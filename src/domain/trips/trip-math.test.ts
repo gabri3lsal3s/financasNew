@@ -292,12 +292,14 @@ describe("trip-math: calculateMemberBalances", () => {
     const bPedro1 = balances1.find((b) => b.memberId === "m2");
     const bTiago1 = balances1.find((b) => b.memberId === "m3");
 
-    // Gabriel: pagou 10000 - 2000 = 8000, cota 3334 -> saldo +4666
-    expect(bGabriel1?.totalPaidCents).toBe(8000);
+    // Gabriel: pagou 10000 em despesas, recebeu 2000 em settlements, cota 3334 -> saldo +4666
+    expect(bGabriel1?.totalPaidCents).toBe(10000);
+    expect(bGabriel1?.settlementsReceivedCents).toBe(2000);
     expect(bGabriel1?.netBalanceCents).toBe(4666);
 
-    // Pedro: pagou 2000, cota 3333 -> saldo -1333 (ainda deve R$ 13,33)
-    expect(bPedro1?.totalPaidCents).toBe(2000);
+    // Pedro: pagou 0 em despesas, pagou 2000 em settlements, cota 3333 -> saldo -1333 (ainda deve R$ 13,33)
+    expect(bPedro1?.totalPaidCents).toBe(0);
+    expect(bPedro1?.settlementsPaidCents).toBe(2000);
     expect(bPedro1?.netBalanceCents).toBe(-1333);
 
     // Tiago: intocado, deve 3333 -> saldo -3333

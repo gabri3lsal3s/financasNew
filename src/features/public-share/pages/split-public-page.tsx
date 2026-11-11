@@ -50,7 +50,7 @@ export function SplitPublicPage() {
   const [isSavingDirectly, setIsSavingDirectly] = useState(false);
   const [isSignalingDirectly, setIsSignalingDirectly] = useState(false);
   const [justSignaledInstallmentIds, setJustSignaledInstallmentIds] = useState<Set<string>>(new Set());
-  const categoriesQuery = useCategories(session?.user ? "expense" : undefined);
+  const categoriesQuery = useCategories("expense", { enabled: Boolean(session?.user) });
 
   // Payload tipado com fallback seguro
   const payload = (share?.payload ?? null) as SplitSharePayload | null;

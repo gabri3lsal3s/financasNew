@@ -208,7 +208,7 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
 
     // Rentabilidade adaptativa: TWR como métrica principal (tela e folha de impressão)
     expect(screen.getAllByText("Rentabilidade (TWR)").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("+9.4% a.a. (Padrão CVM)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+9,4% a.a. (Padrão CVM)").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Retorno contábil: +16,7%").length).toBeGreaterThan(0);
 
     // Quadro Executivo de Metodologias (no final do relatório)

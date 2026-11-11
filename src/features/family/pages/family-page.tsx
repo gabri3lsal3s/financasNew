@@ -302,26 +302,26 @@ export function FamilyPage() {
                 />
               </section>
 
-              {/* 2. Segurança Patrimonial & Reserva Familiar (Linha Única / Full-Width) */}
+              {/* 2. Raio-X de Consumo por Categoria (Linha Única / Full-Width) */}
+              <section>
+                <HouseholdClusteringRanking expenses={consolidation.expenses} />
+              </section>
+
+              {/* 3. Extrato Consolidado da Casa (Linha Única / Full-Width) */}
+              <section>
+                <HouseholdExpenseFeed
+                  expenses={consolidation.expenses}
+                  currentUserId={myFamilyData.currentMember?.user_id}
+                />
+              </section>
+
+              {/* 4. Segurança Patrimonial & Reserva Familiar (Linha Única / Full-Width) */}
               <section>
                 <HouseholdWealthCard
                   portfolioSummary={portfolioSummary}
                   monthlyCeilingCents={consolidation.monthly_ceiling_cents}
                   monthlyExpensesCents={consolidation.total_spent_cents}
                   onOpenManageAssets={() => setIsShareAssetsOpen(true)}
-                />
-              </section>
-
-              {/* 3. Raio-X de Consumo por Categoria (Linha Única / Full-Width) */}
-              <section>
-                <HouseholdClusteringRanking expenses={consolidation.expenses} />
-              </section>
-
-              {/* 4. Extrato Consolidado da Casa (Linha Única / Full-Width) */}
-              <section>
-                <HouseholdExpenseFeed
-                  expenses={consolidation.expenses}
-                  currentUserId={myFamilyData.currentMember?.user_id}
                 />
               </section>
             </div>
@@ -359,26 +359,26 @@ export function FamilyPage() {
                 />
               </section>
 
-              {/* 3. Segurança Patrimonial & Reserva Familiar (Linha Única / Full-Width) */}
+              {/* 3. Consumo por Categorias da Casa (Linha Única / Full-Width) */}
+              <section>
+                <HouseholdClusteringRanking expenses={consolidation.expenses} />
+              </section>
+
+              {/* 4. Extrato Consolidado da Casa (Linha Única / Full-Width) */}
+              <section>
+                <HouseholdExpenseFeed
+                  expenses={consolidation.expenses}
+                  currentUserId={myFamilyData.currentMember?.user_id}
+                />
+              </section>
+
+              {/* 5. Segurança Patrimonial & Reserva Familiar (Linha Única / Full-Width) */}
               <section>
                 <HouseholdWealthCard
                   portfolioSummary={portfolioSummary}
                   monthlyCeilingCents={consolidation.monthly_ceiling_cents}
                   monthlyExpensesCents={consolidation.total_spent_cents}
                   onOpenManageAssets={() => setIsShareAssetsOpen(true)}
-                />
-              </section>
-
-              {/* 4. Consumo por Categorias da Casa (Linha Única / Full-Width) */}
-              <section>
-                <HouseholdClusteringRanking expenses={consolidation.expenses} />
-              </section>
-
-              {/* 5. Extrato Consolidado da Casa (Linha Única / Full-Width) */}
-              <section>
-                <HouseholdExpenseFeed
-                  expenses={consolidation.expenses}
-                  currentUserId={myFamilyData.currentMember?.user_id}
                 />
               </section>
             </div>

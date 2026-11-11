@@ -1,6 +1,6 @@
 import { HandCoins, Plane, Sparkles, User, Users } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
-import { Badge, NumberStepper, RadioGroup, Select } from "@/components/ui";
+import { Badge, Chip, NumberStepper, RadioGroup, Select } from "@/components/ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -415,76 +415,53 @@ export function StepDetails({
 
         {/* Seletor de Contexto */}
         <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Contexto do lançamento">
-          <button
-            type="button"
+          <Chip
             role="radio"
             aria-checked={activeContext === "personal"}
+            selected={activeContext === "personal"}
             onClick={() => handleSelectContext("personal")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg border py-1.5 px-2.5 text-xs font-medium transition-colors cursor-pointer",
-              activeContext === "personal"
-                ? "border-primary bg-primary/10 text-primary font-semibold"
-                : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
-            )}
+            icon={<User className="size-3.5" />}
           >
-            <User className="size-3.5 shrink-0" aria-hidden="true" />
             <span>Pessoal</span>
-          </button>
+          </Chip>
 
           {isFamilyModeEnabled && (
-            <button
-              type="button"
+            <Chip
               role="radio"
               aria-label={isExpense ? "Despesa da Casa / Familiar" : "Receita da Casa / Familiar"}
               aria-checked={activeContext === "family"}
+              selected={activeContext === "family"}
               onClick={() => handleSelectContext("family")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg border py-1.5 px-2.5 text-xs font-medium transition-colors cursor-pointer",
-                activeContext === "family"
-                  ? "border-primary bg-primary/10 text-primary font-semibold"
-                  : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
-              )}
+              icon={<Users className="size-3.5" />}
             >
-              <Users className="size-3.5 shrink-0" aria-hidden="true" />
               <span>{isExpense ? "Despesa da Casa" : "Receita da Casa"}</span>
-            </button>
+            </Chip>
           )}
 
           {isExpense && activeTrips && activeTrips.length > 0 && (
-            <button
-              type="button"
+            <Chip
               role="radio"
               aria-checked={activeContext === "trip"}
+              selected={activeContext === "trip"}
               onClick={() => handleSelectContext("trip")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg border py-1.5 px-2.5 text-xs font-medium transition-colors cursor-pointer",
-                activeContext === "trip"
-                  ? "border-portfolio bg-portfolio/10 text-portfolio font-semibold"
-                  : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
-              )}
+              icon={<Plane className="size-3.5" />}
+              className={activeContext === "trip" ? "border-portfolio bg-portfolio/10 text-portfolio font-semibold" : undefined}
             >
-              <Plane className="size-3.5 shrink-0" aria-hidden="true" />
               <span>Viagem</span>
-            </button>
+            </Chip>
           )}
 
           {isExpense && !state.recurring && (
-            <button
-              type="button"
+            <Chip
               role="radio"
               aria-checked={activeContext === "split"}
+              selected={activeContext === "split"}
               data-tour="wizard-split-toggle"
               onClick={() => handleSelectContext("split")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg border py-1.5 px-2.5 text-xs font-medium transition-colors cursor-pointer",
-                activeContext === "split"
-                  ? "border-primary bg-primary/10 text-primary font-semibold"
-                  : "border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground",
-              )}
+              icon={<HandCoins className="size-3.5" />}
             >
-              <HandCoins className="size-3.5 shrink-0" aria-hidden="true" />
               <span>Rachar c/ Amigos</span>
-            </button>
+            </Chip>
           )}
         </div>
 

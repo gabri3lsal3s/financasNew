@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   changeUserPassword,
+  getActiveUserMfaFactor,
   requestUserEmailChange,
   resendConfirmationEmail,
   resetPasswordForEmail,
@@ -8,6 +9,7 @@ import {
   signUpWithEmail,
   updateUserPassword,
   verifyCurrentPassword,
+  verifyMfaTotpCode,
 } from "./auth";
 import { getPublicAppUrl } from "@/lib/env";
 import { AppError } from "@/services/errors";
@@ -18,6 +20,8 @@ const mockResetPasswordForEmail = vi.fn();
 const mockResend = vi.fn();
 const mockUpdateUser = vi.fn();
 const mockGetUser = vi.fn();
+const mockListFactors = vi.fn();
+const mockChallengeAndVerify = vi.fn();
 
 vi.mock("@/data/client", () => ({
   getSupabase: () => ({
@@ -28,6 +32,10 @@ vi.mock("@/data/client", () => ({
       resend: (...args: unknown[]) => mockResend(...args),
       updateUser: (...args: unknown[]) => mockUpdateUser(...args),
       getUser: (...args: unknown[]) => mockGetUser(...args),
+      mfa: {
+        listFactors: (...args: unknown[]) => mockListFactors(...args),
+        challengeAndVerify: (...args: unknown[]) => mockChallengeAndVerify(...args),
+      },
     },
   }),
 }));
@@ -408,6 +416,74 @@ describe("data/auth — operações de autenticação", () => {
       await expect(
         requestUserEmailChange("MinhaSenha123", "novo@exemplo.com"),
       ).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("getActiveUserMfaFactor", () => {
+    it("retorna id do fator quando houver fator TOTP verificado", async () => {
+      mockListFactors.mockResolvedValueOnce({
+        data: {
+          totp: [{ id: "factor-totp-1", status: "verified" }],
+        },
+        error: null,
+      });
+
+      const result = await getActiveUserMfaFactor();
+      expect(result).toEqual({ id: "factor-totp-1" });
+    });
+
+    it("retorna null quando não houver fator verificado", async () => {
+      mockListFactors.mockResolvedValueOnce({
+        data: {
+          totp: [{ id: "factor-totp-1", status: "unverified" }],
+        },
+        error: null,
+      });
+
+      const result = await getActiveUserMfaFactor();
+      expect(result).toBeNull();
+    });
+
+    it("retorna null quando a listagem de fatores falha", async () => {
+      mockListFactors.mockResolvedValueOnce({
+        data: null,
+        error: { message: "Internal error" },
+      });
+
+      const result = await getActiveUserMfaFactor();
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("verifyMfaTotpCode", () => {
+    it("retorna true quando challengeAndVerify conclui com sucesso", async () => {
+      mockChallengeAndVerify.mockResolvedValueOnce({ error: null });
+
+      const isValid = await verifyMfaTotpCode("factor-totp-1", "123456");
+      expect(isValid).toBe(true);
+      expect(mockChallengeAndVerify).toHaveBeenCalledWith({
+        factorId: "factor-totp-1",
+        code: "123456",
+      });
+    });
+
+    it("retorna false quando challengeAndVerify retorna erro", async () => {
+      mockChallengeAndVerify.mockResolvedValueOnce({ error: { message: "Invalid code" } });
+
+      const isValid = await verifyMfaTotpCode("factor-totp-1", "000000");
+      expect(isValid).toBe(false);
+    });
+
+    it("retorna false sem chamar o Supabase quando código não possui 6 dígitos", async () => {
+      const isValid = await verifyMfaTotpCode("factor-totp-1", "123");
+      expect(isValid).toBe(false);
+      expect(mockChallengeAndVerify).not.toHaveBeenCalled();
+    });
+
+    it("retorna false quando factorId está vazio", async () => {
+      const isValid = await verifyMfaTotpCode("", "123456");
+      expect(isValid).toBe(false);
+      expect(mockChallengeAndVerify).not.toHaveBeenCalled();
     });
   });
 });

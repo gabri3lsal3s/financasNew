@@ -5,9 +5,12 @@ import {
   centsToDecimal,
   computeCents,
   decimalToCents,
+  parseClipboardToDecimal,
   pressBackspace,
   pressDigit,
   pressEquals,
+  pressMoneyBackspace,
+  pressMoneyDigit,
   pressOperator,
   splitInstallments,
 } from "./index";
@@ -152,5 +155,77 @@ describe("addHistory — histórico limitado", () => {
     expect(history).toHaveLength(5);
     expect(history[0]?.resultCents).toBe(700);
     expect(history[4]?.resultCents).toBe(300);
+  });
+});
+
+describe("pressMoneyDigit & pressMoneyBackspace — Digitação RTL em Modo Moeda", () => {
+  it("desloca dígitos da direita para a esquerda: 1 -> 0.01, 5 -> 0.15, 0 -> 1.50, 0 -> 15.00", () => {
+    let state = pressMoneyDigit(INITIAL_STATE, "1");
+    expect(state.display).toBe("0.01");
+
+    state = pressMoneyDigit(state, "5");
+    expect(state.display).toBe("0.15");
+
+    state = pressMoneyDigit(state, "0");
+    expect(state.display).toBe("1.50");
+
+    state = pressMoneyDigit(state, "0");
+    expect(state.display).toBe("15.00");
+  });
+
+  it("backspace em modo moeda divide por 10 descartando o resto", () => {
+    let state = { ...INITIAL_STATE, display: "15.00" };
+
+    state = pressMoneyBackspace(state);
+    expect(state.display).toBe("1.50");
+
+    state = pressMoneyBackspace(state);
+    expect(state.display).toBe("0.15");
+
+    state = pressMoneyBackspace(state);
+    expect(state.display).toBe("0.01");
+
+    state = pressMoneyBackspace(state);
+    expect(state.display).toBe("0.00");
+
+    state = pressMoneyBackspace(state);
+    expect(state.display).toBe("0.00");
+  });
+
+  it("após operador, o próximo dígito inicia novo operando RTL preservando o operador", () => {
+    let state = pressMoneyDigit(INITIAL_STATE, "5");
+    state = pressMoneyDigit(state, "0");
+    state = pressMoneyDigit(state, "0"); // 5.00
+    state = pressOperator(state, "+");
+
+    // Novo operando digitando "2" -> 0.02
+    state = pressMoneyDigit(state, "2");
+    expect(state.display).toBe("0.02");
+    expect(state.accumulator).toBe(500);
+    expect(state.operator).toBe("+");
+  });
+});
+
+describe("parseClipboardToDecimal — Colagem inteligente de clipboard", () => {
+  it("sanitiza formato monetário brasileiro", () => {
+    expect(parseClipboardToDecimal("R$ 1.250,50")).toBe("1250.50");
+    expect(parseClipboardToDecimal("1.250,50")).toBe("1250.50");
+    expect(parseClipboardToDecimal(" 25,30 ")).toBe("25.30");
+  });
+
+  it("sanitiza formato com ponto decimal", () => {
+    expect(parseClipboardToDecimal("1250.50")).toBe("1250.50");
+    expect(parseClipboardToDecimal("1,250.50")).toBe("1250.50");
+  });
+
+  it("sanitiza valor inteiro", () => {
+    expect(parseClipboardToDecimal("1500")).toBe("1500.00");
+    expect(parseClipboardToDecimal("R$ 100")).toBe("100.00");
+  });
+
+  it("retorna null para textos sem números válidos", () => {
+    expect(parseClipboardToDecimal("abc")).toBeNull();
+    expect(parseClipboardToDecimal("")).toBeNull();
+    expect(parseClipboardToDecimal("   ")).toBeNull();
   });
 });

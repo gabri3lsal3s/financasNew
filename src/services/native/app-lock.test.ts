@@ -191,4 +191,170 @@ describe("Gateway Nativo — App Lock & Biometria", () => {
     expect(isAppLocked()).toBe(true);
     cleanup();
   });
+
+  describe("PWA / Navegador — Monitoramento de Segundo Plano (visibilitychange e pagehide/pageshow)", () => {
+    beforeEach(() => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+      setAppLocked(false);
+    });
+
+    it("no navegador/PWA, bloqueia ao retornar à aba (visibilitychange) após a tolerância configurada", () => {
+      setBiometricLockEnabled(true);
+      setAppLockGraceMinutes(1);
+      vi.spyOn(biometricsModule, "isBiometricAuthInProgress").mockReturnValue(false);
+
+      const cleanup = initAppLockListener();
+
+      const now = 2_000_000;
+      vi.spyOn(Date, "now").mockReturnValue(now);
+
+      // Usuário minimiza ou troca de aba no navegador
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "hidden",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      // 2 minutos depois (tolerância de 1 min excedida)
+      vi.spyOn(Date, "now").mockReturnValue(now + 120_000);
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "visible",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      expect(isAppLocked()).toBe(true);
+      cleanup();
+    });
+
+    it("no navegador/PWA, mantém desbloqueado ao retornar à aba antes de esgotar a tolerância", () => {
+      setBiometricLockEnabled(true);
+      setAppLockGraceMinutes(5); // 5 minutos de tolerância
+      vi.spyOn(biometricsModule, "isBiometricAuthInProgress").mockReturnValue(false);
+
+      const cleanup = initAppLockListener();
+
+      const now = 2_000_000;
+      vi.spyOn(Date, "now").mockReturnValue(now);
+
+      // Usuário minimiza a janela
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "hidden",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      // Retorna apenas 30 segundos depois (dentro da tolerância)
+      vi.spyOn(Date, "now").mockReturnValue(now + 30_000);
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "visible",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      expect(isAppLocked()).toBe(false);
+      cleanup();
+    });
+
+    it("no navegador/PWA, não bloqueia o app se o bloqueio estiver desativado", () => {
+      setBiometricLockEnabled(false);
+      setAppLockGraceMinutes(0); // Imediato
+      vi.spyOn(biometricsModule, "isBiometricAuthInProgress").mockReturnValue(false);
+
+      const cleanup = initAppLockListener();
+
+      const now = 2_000_000;
+      vi.spyOn(Date, "now").mockReturnValue(now);
+
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "hidden",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      vi.spyOn(Date, "now").mockReturnValue(now + 60_000);
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "visible",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      expect(isAppLocked()).toBe(false);
+      cleanup();
+    });
+
+    it("no navegador/PWA, ignora eventos se a autenticação biométrica estiver em andamento (anti-loop)", () => {
+      setBiometricLockEnabled(true);
+      setAppLockGraceMinutes(0);
+      vi.spyOn(biometricsModule, "isBiometricAuthInProgress").mockReturnValue(true);
+
+      const cleanup = initAppLockListener();
+
+      const now = 2_000_000;
+      vi.spyOn(Date, "now").mockReturnValue(now);
+
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "hidden",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      vi.spyOn(Date, "now").mockReturnValue(now + 10_000);
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "visible",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      expect(isAppLocked()).toBe(false);
+      cleanup();
+    });
+
+    it("no navegador/PWA, suporta eventos pagehide e pageshow", () => {
+      setBiometricLockEnabled(true);
+      setAppLockGraceMinutes(1);
+      vi.spyOn(biometricsModule, "isBiometricAuthInProgress").mockReturnValue(false);
+
+      const cleanup = initAppLockListener();
+
+      const now = 2_000_000;
+      vi.spyOn(Date, "now").mockReturnValue(now);
+
+      window.dispatchEvent(new Event("pagehide"));
+
+      // 2 minutos depois
+      vi.spyOn(Date, "now").mockReturnValue(now + 120_000);
+      window.dispatchEvent(new Event("pageshow"));
+
+      expect(isAppLocked()).toBe(true);
+      cleanup();
+    });
+
+    it("no navegador/PWA, remove os listeners de evento ao chamar cleanup", () => {
+      setBiometricLockEnabled(true);
+      setAppLockGraceMinutes(0);
+      vi.spyOn(biometricsModule, "isBiometricAuthInProgress").mockReturnValue(false);
+
+      const cleanup = initAppLockListener();
+      cleanup();
+
+      const now = 2_000_000;
+      vi.spyOn(Date, "now").mockReturnValue(now);
+
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "hidden",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      vi.spyOn(Date, "now").mockReturnValue(now + 10_000);
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        value: "visible",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+
+      expect(isAppLocked()).toBe(false);
+    });
+  });
 });

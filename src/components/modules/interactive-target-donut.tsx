@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useState } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatPercent } from "@/services/masks/percent";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 
@@ -209,7 +210,7 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
                   strokeLinecap={arc.strokeLinecap}
                   role="button"
                   tabIndex={0}
-                  aria-label={`${arc.label}: ${arc.targetPercent.toFixed(1)}${unitLabel}`}
+                  aria-label={`${arc.label}: ${formatPercent(arc.targetPercent)}${unitLabel}`}
                   className="transition-all duration-200 cursor-pointer focus:outline-none"
                   style={{ opacity }}
                   onMouseEnter={() => setHoveredKey(arc.key)}
@@ -243,12 +244,12 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
                     {selectedItem.label}
                   </span>
                   <span className="num font-mono text-sm sm:text-base md:text-lg font-bold text-foreground leading-tight mt-0.5 whitespace-nowrap">
-                    {selectedItem.targetPercent.toFixed(1)}
+                    {formatPercent(selectedItem.targetPercent)}
                     <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
                   </span>
                   {selectedItem.currentPercent !== undefined ? (
                     <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium mt-0.5 whitespace-nowrap">
-                      Atual: <strong className="text-foreground">{selectedItem.currentPercent.toFixed(1)}{unitLabel}</strong>
+                      Atual: <strong className="text-foreground">{formatPercent(selectedItem.currentPercent)}{unitLabel}</strong>
                     </span>
                   ) : (
                     <span className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5 whitespace-nowrap">selecionado</span>
@@ -265,16 +266,16 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
                       isOverflow ? "text-critical-strong" : "text-foreground",
                     )}
                   >
-                    {roundedSum.toFixed(1)}
+                    {formatPercent(roundedSum)}
                     <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
                   </span>
                   {freePercent > 0 ? (
                     <span className="text-[10px] sm:text-xs text-muted-foreground font-medium mt-0.5 whitespace-nowrap">
-                      {freePercent.toFixed(1)}{unitLabel} livre
+                      {formatPercent(freePercent)}{unitLabel} livre
                     </span>
                   ) : isOverflow ? (
                     <span className="text-[10px] sm:text-xs text-critical-strong font-semibold mt-0.5 whitespace-nowrap">
-                      +{overflowPercent.toFixed(1)}{unitLabel}
+                      +{formatPercent(overflowPercent)}{unitLabel}
                     </span>
                   ) : (
                     <span className="text-[10px] sm:text-xs text-positive-strong font-medium mt-0.5 whitespace-nowrap">100% calibrado</span>
@@ -317,7 +318,7 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
                     "inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium border transition-all cursor-pointer",
                     isSelected
                       ? "bg-surface border-foreground/30 shadow-xs ring-1 ring-border"
-                      : "bg-surface/50 border-border/60 hover:bg-surface-hover/80 text-muted-foreground hover:text-foreground",
+                      : "bg-surface/50 border-border/80 hover:bg-surface-hover/80 text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <span
@@ -327,11 +328,11 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
                   />
                   <span className="truncate max-w-[110px] font-medium text-foreground">{item.label}</span>
                   <span className="num font-mono text-[11px] font-bold text-foreground">
-                    {item.targetPercent.toFixed(1)}{unitLabel}
+                    {formatPercent(item.targetPercent)}{unitLabel}
                   </span>
                   {item.currentPercent !== undefined ? (
                     <span className="text-[10px] text-muted-foreground font-mono">
-                      ({item.currentPercent.toFixed(1)}{unitLabel})
+                      ({formatPercent(item.currentPercent)}{unitLabel})
                     </span>
                   ) : null}
                 </button>
@@ -341,7 +342,7 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
             {freePercent > 0 ? (
               <span className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-muted-foreground bg-muted/30 border border-dashed border-border/80">
                 <span className="size-1.5 rounded-full bg-muted-foreground/40 shrink-0" aria-hidden="true" />
-                <span>Livre: {freePercent.toFixed(1)}{unitLabel}</span>
+                <span>Livre: {formatPercent(freePercent)}{unitLabel}</span>
               </span>
             ) : null}
           </div>
@@ -350,18 +351,18 @@ function computeVisualTargetShares(items: readonly TargetDonutItem[], denominato
 
       {/* Painel Contextual de Ajuste Rápido */}
       {selectedItem && onChangeTarget ? (
-        <div className="flex flex-col gap-2 w-full md:w-auto shrink-0 pt-3 md:pt-0 border-t md:border-t-0 md:border-l border-border/60 md:pl-5">
+        <div className="flex flex-col gap-2 w-full md:w-auto shrink-0 pt-3 md:pt-0 border-t md:border-t-0 md:border-l border-border/80 md:pl-5">
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs font-semibold text-foreground truncate">
               Ajuste rápido: <span style={{ color: selectedColor }}>{selectedItem.label}</span>
             </span>
             <div className="flex items-center gap-1.5 font-mono text-xs">
               <span className="num font-bold text-foreground">
-                Meta: {selectedItem.targetPercent.toFixed(1)}{unitLabel}
+                Meta: {formatPercent(selectedItem.targetPercent)}{unitLabel}
               </span>
               {selectedItem.currentPercent !== undefined ? (
                 <span className="text-[11px] text-muted-foreground">
-                  (atual: {selectedItem.currentPercent.toFixed(1)}{unitLabel})
+                  (atual: {formatPercent(selectedItem.currentPercent)}{unitLabel})
                 </span>
               ) : null}
             </div>

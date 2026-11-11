@@ -21,7 +21,7 @@ import { getAssetClassMeta, PositionClosedSection, PositionMobileCard } from "@/
 import { isFixedIncomeClass } from "@/domain/portfolio/valuation";
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
-import { formatSignedPct } from "@/services/masks/percent";
+import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import type { AssetCurrency, FixedIncomeMetadata } from "@/types";
 import type { FixedIncomeBalanceResult } from "@/domain/portfolio";
@@ -771,7 +771,7 @@ export function PositionTable({
               )}
               title={
                 row.totalReturnPct !== undefined && row.unrealizedPct !== null
-                  ? `Retorno Total: ${formatSignedPct(effectivePct)} (Cotação: ${formatSignedPct(row.unrealizedPct)}${yoc > 0 ? ` + Proventos/YoC: ${yoc.toFixed(1)}%` : ""})`
+                  ? `Retorno Total: ${formatSignedPct(effectivePct)} (Cotação: ${formatSignedPct(row.unrealizedPct)}${yoc > 0 ? ` + Proventos/YoC: ${formatPercent(yoc)}%` : ""})`
                   : undefined
               }
             >
@@ -794,7 +794,7 @@ export function PositionTable({
                   className="text-portfolio font-medium"
                   title={`Yield on Cost acumulado: ${formatCentsAsBRL(numberToCents(row.dividends ?? 0))}`}
                 >
-                  YoC {yoc.toFixed(1)}%
+                  YoC {formatPercent(yoc)}%
                 </span>
               </div>
             ) : null}
@@ -1042,7 +1042,7 @@ export function PositionTable({
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="text-[11px] font-medium text-muted-foreground bg-surface-hover/80 px-1.5 py-0.5 rounded border border-border/40">
-                        {group.totalPct.toFixed(1)}%
+                        {formatPercent(group.totalPct)}%
                       </span>
                       {groupRentab !== null ? (
                         <span
@@ -1121,7 +1121,7 @@ export function PositionTable({
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1.5 text-xs">
                             <MoneyText cents={numberToCents(group.totalValueBRL)} tone="default" className="font-bold text-foreground" />
-                            <span className="text-muted-foreground">({group.totalPct.toFixed(1)}%)</span>
+                            <span className="text-muted-foreground">({formatPercent(group.totalPct)}%)</span>
                           </div>
                           {groupRentab !== null ? (
                             <span className={cn("text-[11px] font-semibold px-1.5 py-0.5 rounded", rentabTone, groupRentab >= 0 ? "bg-positive/10" : "bg-negative/10")}>

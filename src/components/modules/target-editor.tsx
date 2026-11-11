@@ -7,6 +7,7 @@ import { NumberStepperInput } from "@/components/ui/number-stepper-input";
 import { Progress } from "@/components/ui/progress";
 import { Select } from "@/components/ui/select";
 import { calculateAssetAllocationDelta } from "@/domain/portfolio";
+import { formatPercent } from "@/services/masks";
 import { cn } from "@/lib/utils";
 
 export interface TargetEditorRow {
@@ -121,13 +122,13 @@ export function TargetEditor({
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="font-medium">Soma das metas</span>
           <span className={cn("num font-bold", sumError ? "text-critical" : sumPercent > 0 ? "text-foreground" : "")}>
-            {sumPercent.toFixed(1)}% / 100%
+            {formatPercent(sumPercent)}% / 100%
           </span>
         </div>
         <Progress
           value={sumClamped}
           tone={sumError ? "critical" : "auto"}
-          aria-label={`Soma das metas: ${sumPercent.toFixed(1)}%`}
+          aria-label={`Soma das metas: ${formatPercent(sumPercent)}%`}
         />
         {sumError ? (
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
@@ -149,7 +150,7 @@ export function TargetEditor({
         ) : null}
         {sumError === null && sumPercent < 100 ? (
           <p className="text-xs text-muted-foreground">
-            Sobram {(100 - sumPercent).toFixed(1)}% para caixa/reserva ou novas metas.
+            Sobram {formatPercent(100 - sumPercent)}% para caixa/reserva ou novas metas.
           </p>
         ) : null}
       </div>
@@ -295,11 +296,11 @@ export function TargetEditor({
                     {row.currentPct !== undefined ? (
                       <>
                         <span className="font-mono text-muted-foreground">
-                          Atual: <strong className="text-foreground font-semibold">{row.currentPct.toFixed(1)}%</strong>
+                          Atual: <strong className="text-foreground font-semibold">{formatPercent(row.currentPct)}%</strong>
                         </span>
                         <span className="text-muted-foreground/60">·</span>
                         <span className="font-mono text-muted-foreground">
-                          Meta: <strong className="text-foreground font-semibold">{(Number.isFinite(row.target) ? row.target : 0).toFixed(1)}%</strong>
+                          Meta: <strong className="text-foreground font-semibold">{formatPercent(Number.isFinite(row.target) ? row.target : 0)}%</strong>
                         </span>
                         {row.detail ? (
                           <>

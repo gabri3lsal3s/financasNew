@@ -17,7 +17,12 @@ import {
   Badge,
   Alert,
 } from "@/components/ui";
-import { getSupabase } from "@/data/client";
+import {
+  enrollMfaTotp,
+  listVerifiedMfaFactors,
+  unenrollMfaFactor,
+  verifyMfaEnrollment,
+} from "@/hooks/use-auth";
 import { renderQrCodeSvg } from "@/domain/pix/qr-code";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -54,14 +59,10 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const supabase = getSupabase();
-      const { data, error } = await supabase.auth.mfa.listFactors();
-      if (error) throw error;
-
-      const verified = data?.totp?.find((f) => f.status === "verified");
+      const verified = await listVerifiedMfaFactors();
       setActiveFactor(verified ? {
         id: verified.id,
-        status: verified.status,
+        status: verified.status as "verified" | "unverified",
         friendly_name: verified.friendly_name,
         factor_type: verified.factor_type,
       } : null);
@@ -78,14 +79,11 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
 
     async function loadFactors() {
       try {
-        const supabase = getSupabase();
-        const { data, error } = await supabase.auth.mfa.listFactors();
-        if (error) throw error;
+        const verified = await listVerifiedMfaFactors();
         if (!isCancelled) {
-          const verified = data?.totp?.find((f) => f.status === "verified");
           setActiveFactor(verified ? {
             id: verified.id,
-            status: verified.status,
+            status: verified.status as "verified" | "unverified",
             friendly_name: verified.friendly_name,
             factor_type: verified.factor_type,
           } : null);
@@ -120,14 +118,8 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const supabase = getSupabase();
-      const { data, error } = await supabase.auth.mfa.enroll({
-        factorType: "totp",
-        issuer: "Axir",
-      });
-      if (error) throw error;
-
-      const qrSvg = renderQrCodeSvg(data.totp.uri, {
+      const data = await enrollMfaTotp("Axir");
+      const qrSvg = renderQrCodeSvg(data.totpUri, {
         ecc: "M",
         border: 2,
         blackColor: "#09090b",
@@ -135,8 +127,8 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
       });
 
       setEnrollData({
-        factorId: data.id,
-        secret: data.totp.secret,
+        factorId: data.factorId,
+        secret: data.secret,
         qrSvg,
       });
       setIsEnrolling(true);
@@ -162,16 +154,7 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
     setErrorMessage(null);
 
     try {
-      const supabase = getSupabase();
-      const challenge = await supabase.auth.mfa.challenge({ factorId: enrollData.factorId });
-      if (challenge.error) throw challenge.error;
-
-      const verify = await supabase.auth.mfa.verify({
-        factorId: enrollData.factorId,
-        challengeId: challenge.data.id,
-        code: cleanCode,
-      });
-      if (verify.error) throw verify.error;
+      await verifyMfaEnrollment(enrollData.factorId, cleanCode);
 
       triggerSensory("success");
       pushToast({
@@ -196,9 +179,7 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
     setErrorMessage(null);
 
     try {
-      const supabase = getSupabase();
-      const { error } = await supabase.auth.mfa.unenroll({ factorId: activeFactor.id });
-      if (error) throw error;
+      await unenrollMfaFactor(activeFactor.id);
 
       triggerSensory("selection");
       pushToast({

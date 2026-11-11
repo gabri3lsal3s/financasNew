@@ -89,4 +89,68 @@ describe("RequireActiveAccount Guard", () => {
 
     expect(screen.getByText("Dashboard Protegido")).toBeInTheDocument();
   });
+
+  it("intercepta imediatamente e redireciona para /entrar?desafio=totp se a conta possui 2FA pendente de validação (aal2)", () => {
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "user-123" } },
+      user: { id: "user-123" },
+      loading: false,
+      configError: null,
+      mfaRequired: true,
+      mfaVerified: false,
+      aalLevel: "aal1",
+    });
+
+    mockUseUserAccess.mockReturnValue({
+      isLoading: false,
+      isPendingApproval: false,
+      isSuspended: false,
+      isBanned: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <Routes>
+          <Route element={<RequireActiveAccount />}>
+            <Route path="/dashboard" element={<div>Dashboard Protegido</div>} />
+          </Route>
+          <Route path="/entrar" element={<div>Tela de Desafio TOTP</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText("Dashboard Protegido")).not.toBeInTheDocument();
+    expect(screen.getByText("Tela de Desafio TOTP")).toBeInTheDocument();
+  });
+
+  it("permite acesso ao conteúdo protegido se a conta tiver 2FA e ele já estiver validado (mfaVerified: true)", () => {
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "user-123" } },
+      user: { id: "user-123" },
+      loading: false,
+      configError: null,
+      mfaRequired: true,
+      mfaVerified: true,
+      aalLevel: "aal2",
+    });
+
+    mockUseUserAccess.mockReturnValue({
+      isLoading: false,
+      isPendingApproval: false,
+      isSuspended: false,
+      isBanned: false,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/dashboard"]}>
+        <Routes>
+          <Route element={<RequireActiveAccount />}>
+            <Route path="/dashboard" element={<div>Dashboard Protegido</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Dashboard Protegido")).toBeInTheDocument();
+  });
 });

@@ -125,7 +125,7 @@ export function InsightList({
               ) : null}
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                  <h3 className="text-sm font-medium text-foreground truncate">{item.title}</h3>
+                  <h3 className="text-sm font-medium text-foreground line-clamp-2 break-words">{item.title}</h3>
                   {item.badges?.map((b) => (
                     <Badge key={b.label} variant={b.tone ?? "default"} className="shrink-0">{b.label}</Badge>
                   ))}

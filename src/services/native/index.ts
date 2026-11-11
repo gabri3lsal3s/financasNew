@@ -19,3 +19,5 @@ export * from "./merchant-storage";
 export * from "./auto-register-banner";
 export * from "./receipt-extractor";
 export * from "./use-permissions-status";
+export * from "./device-info";
+export * from "./pin-lock";

@@ -171,6 +171,12 @@ export function FinancialTab({
           type="button"
           variant="default"
           onClick={onOpenFinancialReport}
+          disabled={expenses.length === 0 && grossIncomeBrutoCents === 0}
+          title={
+            expenses.length === 0 && grossIncomeBrutoCents === 0
+              ? "Não há receitas ou despesas no período para emissão do dossiê."
+              : undefined
+          }
           className="gap-2 shrink-0 w-full sm:w-auto justify-center"
         >
           <Printer className="size-4" aria-hidden="true" />

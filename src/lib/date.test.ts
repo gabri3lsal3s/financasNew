@@ -3,6 +3,7 @@ import {
   currentMonth,
   currentYear,
   formatDateBR,
+  formatDateTimeBR,
   formatMonthYear,
   isValidMonth,
   isValidYear,
@@ -90,6 +91,20 @@ describe("lib/date (§4.1 — meses e anos em timezone local, sem toISOString)",
       expect(formatDateBR("invalido")).toBe("invalido");
       expect(formatDateBR("2026-13-99")).toBe("2026-13-99");
       expect(formatDateBR("")).toBe("");
+    });
+  });
+
+  describe("formatDateTimeBR (ISO → dd/mm/aaaa às hh:mm)", () => {
+    it("formata timestamp ISO completo com data e hora", () => {
+      const fixed = new Date(2026, 7, 15, 14, 30, 0).toISOString();
+      const res = formatDateTimeBR(fixed);
+      expect(res).toContain("15/08/2026");
+      expect(res).toContain("14:30");
+    });
+
+    it("retorna vazio para string vazia ou inválida", () => {
+      expect(formatDateTimeBR("")).toBe("");
+      expect(formatDateTimeBR("data_invalida")).toBe("data_invalida");
     });
   });
 

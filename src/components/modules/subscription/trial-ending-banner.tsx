@@ -115,7 +115,7 @@ export function TrialEndingBanner({
         </div>
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-sm font-semibold text-foreground truncate">{titleText}</h2>
+            <h2 className="text-sm font-semibold text-foreground line-clamp-2 break-words">{titleText}</h2>
             <Badge variant={hasAutoRenew ? "positive" : meta.badgeVariant} size="xs">
               {badgeText}
             </Badge>

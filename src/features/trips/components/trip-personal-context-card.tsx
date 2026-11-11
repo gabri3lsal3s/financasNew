@@ -125,7 +125,7 @@ export function TripPersonalContextCard({
       {/* Grid de Balanço Pessoal */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-border/80">
         {/* Card de Saldo Líquido */}
-        <div className="p-3.5 rounded-xl bg-surface-raised border border-border/60 flex flex-col justify-between space-y-2">
+        <div className="p-3.5 rounded-xl bg-surface-raised border border-border/80 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground font-medium">
               Seu Saldo Líquido
@@ -177,7 +177,7 @@ export function TripPersonalContextCard({
         </div>
 
         {/* Total Desembolsado do Bolso */}
-        <div className="p-3.5 rounded-xl bg-surface-raised border border-border/60 space-y-1">
+        <div className="p-3.5 rounded-xl bg-surface-raised border border-border/80 space-y-1">
           <span className="text-[11px] text-muted-foreground font-medium">
             Desembolsado do Seu Bolso
           </span>
@@ -190,7 +190,7 @@ export function TripPersonalContextCard({
         </div>
 
         {/* Cota Real Consumida */}
-        <div className="p-3.5 rounded-xl bg-surface-raised border border-border/60 space-y-1">
+        <div className="p-3.5 rounded-xl bg-surface-raised border border-border/80 space-y-1">
           <span className="text-[11px] text-muted-foreground font-medium">
             Sua Cota Real Consumida
           </span>

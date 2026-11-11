@@ -96,7 +96,7 @@ export function AllocationDriftCard({ analysis, className, onSimulateAporte }: A
             {underweightItems.slice(0, 4).map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border/60 bg-surface/80"
+                className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-border/80 bg-surface/80"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <TrendingDown className="size-3.5 text-warning-strong shrink-0" aria-hidden="true" />

@@ -1,6 +1,7 @@
 import { CheckCircle2, TrendingDown, TrendingUp } from "lucide-react";
 import { Progress } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatPercent } from "@/services/masks";
 import { cn } from "@/lib/utils";
 
 export interface ProjectionLineProps {
@@ -34,7 +35,7 @@ export function ProjectionLine({
   paceActive = false,
 }: ProjectionLineProps) {
   return (
-    <section aria-label="Projeção de gastos" className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+    <section aria-label="Projeção de gastos" className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface shadow-xs p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Projeção de gastos</h3>
         {onTrack !== null ? (
@@ -79,10 +80,10 @@ export function ProjectionLine({
               Ritmo de gastos
             </span>
             <span>
-              {spentPercent.toFixed(0)}% gasto · {elapsedPercent.toFixed(0)}% do mês
+              {formatPercent(spentPercent)}% gasto · {formatPercent(elapsedPercent)}% do mês
             </span>
           </div>
-          <Progress value={Math.min(100, spentPercent)} tone="auto" aria-label={`Ritmo de gastos: ${spentPercent.toFixed(0)}%`} />
+          <Progress value={Math.min(100, spentPercent)} tone="auto" aria-label={`Ritmo de gastos: ${formatPercent(spentPercent)}%`} />
         </div>
       ) : null}
     </section>

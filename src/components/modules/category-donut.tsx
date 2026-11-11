@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatPercent } from "@/services/masks/percent";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { triggerSensory } from "@/services/sensory";
 
@@ -379,7 +380,7 @@ export function CategoryDonut({
             "absolute inset-[10%] flex flex-col items-center justify-center text-center p-2 rounded-full transition-all select-none overflow-hidden focus-visible:outline-none",
             activeSelectedKey ? "cursor-pointer group hover:bg-surface-hover/30" : "pointer-events-none",
           )}
-          aria-label={activeDisplayItem ? `${activeDisplayItem.label}: ${activeDisplayPercent.toFixed(1)}%` : "Total geral"}
+          aria-label={activeDisplayItem ? `${activeDisplayItem.label}: ${formatPercent(activeDisplayPercent)}%` : "Total geral"}
         >
           {activeDisplayItem ? (
             <div className="flex flex-col items-center justify-center w-full max-w-[85%] min-w-0">
@@ -394,7 +395,7 @@ export function CategoryDonut({
                   />
                 )}
                 <span
-                  className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate"
+                  className="text-[10px] sm:text-xs font-bold uppercase tracking-wider line-clamp-2 break-words text-center"
                   style={{ color: activeDisplayItem.colorStyle }}
                   title={activeDisplayItem.label}
                 >
@@ -487,7 +488,7 @@ export function CategoryDonut({
                   <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
                     <span
                       className={cn(
-                        "truncate font-semibold transition-colors",
+                        "line-clamp-2 break-words font-semibold transition-colors",
                         isHighlighted ? "text-foreground font-bold" : "text-foreground/90",
                       )}
                       title={slice.label}

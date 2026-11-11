@@ -889,6 +889,16 @@ export function ReportsPage() {
     return "Exportação completa em 5 abas (Resumo Patrimonial, Custódia de Ativos, Proventos, DRE e Dívidas) com formatações e fórmulas nativas.";
   }, [hasFinanceFeatures, hasInvestmentsFeature]);
 
+  const isExcelDisabled = useMemo(() => {
+    const hasCustody = (workbookData.positions?.length ?? 0) > 0;
+    const hasDividends = (workbookData.dividends?.length ?? 0) > 0;
+    const hasExpenses = expenses.length > 0;
+    const hasIncomes = incomes.length > 0;
+    const hasDebts = debts.length > 0;
+    const hasRedemptions = periodRedemptions.length > 0;
+    return !hasCustody && !hasDividends && !hasExpenses && !hasIncomes && !hasDebts && !hasRedemptions;
+  }, [workbookData.positions, workbookData.dividends, expenses.length, incomes.length, debts.length, periodRedemptions.length]);
+
   if (loading) {
     return (
       <div className="flex flex-col gap-6 w-full min-w-0">
@@ -1027,6 +1037,8 @@ export function ReportsPage() {
                 excelDescription={excelDescription}
                 onOpenTaxReport={() => setTaxReportOpen(true)}
                 onOpenDarfMonitor={() => setDarfMonitorOpen(true)}
+                isExcelDisabled={isExcelDisabled}
+                excelDisabledReason="Nenhum dado ou lançamento encontrado para o período selecionado."
               />
             ),
           },

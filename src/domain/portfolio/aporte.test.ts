@@ -903,5 +903,87 @@ describe("Auditoria de Invariantes & Teste de Estresse Multi-Nível (Classe -> S
       expect(result.leftover).toBe(0);
     });
   });
+
+  describe("Estratégia de Aporte: Otimizada (Menos Movimentações) vs Proporcional", () => {
+    // Portfólio com Ativo C (Caixa) sobre-alocado (1.000), deixando A e B ambos abaixo da meta
+    const assetA: AporteAssetInput = {
+      id: "a1",
+      ticker: "VALE3",
+      assetClass: "Ações",
+      sector: "Mineração",
+      currency: "BRL",
+      currentValueBRL: 100,
+      priceBRL: 50,
+      targetPercentage: 40,
+    };
+    const assetB: AporteAssetInput = {
+      id: "a2",
+      ticker: "PETR4",
+      assetClass: "Ações",
+      sector: "Mineração",
+      currency: "BRL",
+      currentValueBRL: 200,
+      priceBRL: 25,
+      targetPercentage: 40,
+    };
+    const assetC: AporteAssetInput = {
+      id: "a3",
+      ticker: "CAIXA",
+      assetClass: "Caixa",
+      currency: "BRL",
+      currentValueBRL: 1_000,
+      priceBRL: 1,
+      targetPercentage: 20,
+    };
+
+    it("no modo 'proportional', distribui o aporte entre ambos os ativos deficitários", () => {
+      const result = simulateSmartAporte({
+        aporte: 300,
+        assets: [assetA, assetB, assetC],
+        strategy: "proportional",
+      });
+
+      const allocA = result.routes.find((r) => r.ticker === "VALE3");
+      const allocB = result.routes.find((r) => r.ticker === "PETR4");
+
+      expect(allocA).toBeDefined();
+      expect(allocB).toBeDefined();
+      expect(allocA!.allocatedBRL).toBeGreaterThan(0);
+      expect(allocB!.allocatedBRL).toBeGreaterThan(0);
+      expect(result.totalAllocated).toBeLessThanOrEqual(300);
+    });
+
+    it("no modo 'optimized', concentra a compra preferencialmente no ativo mais deficitário (VALE3)", () => {
+      const result = simulateSmartAporte({
+        aporte: 200,
+        assets: [assetA, assetB, assetC],
+        strategy: "optimized",
+      });
+
+      const allocA = result.routes.find((r) => r.ticker === "VALE3");
+      const allocB = result.routes.find((r) => r.ticker === "PETR4");
+
+      // VALE3 tem maior déficit (alvo 520 - atual 100 = gap 420 vs PETR4 alvo 520 - atual 200 = gap 320).
+      // Com aporte 200 <= gap VALE3 (420), o modo otimizado aloca 100% em VALE3 (4 cotas x 50 = 200) e 0 em PETR4.
+      expect(allocA).toBeDefined();
+      expect(allocA!.quantity).toBe(4);
+      expect(allocA!.allocatedBRL).toBe(200);
+      expect(allocB).toBeUndefined();
+      expect(result.totalAllocated).toBe(200);
+      expect(result.leftover).toBe(0);
+    });
+
+    it("respeita invariantes de conservação de capital no modo otimizado", () => {
+      const result = simulateSmartAporte({
+        aporte: 1_000,
+        assets: [assetA, assetB, assetC],
+        strategy: "optimized",
+      });
+
+      expect(result.totalAllocated).toBeLessThanOrEqual(1_000);
+      expect(result.leftover).toBeGreaterThanOrEqual(0);
+      expect(result.totalAllocated + result.leftover).toBe(1_000);
+    });
+  });
 });
 

@@ -14,6 +14,7 @@
 import type { FixedIncomeRateType } from "@/types";
 import { countBusinessDays, countCalendarDays } from "./business-days";
 import { todayISO } from "@/domain/debts";
+import { inferFixedIncomeCategories } from "./tickers-catalog";
 
 /**
  * Tabela oficial de alíquotas regressivas de IOF (Decreto 6.306/2007).
@@ -430,4 +431,141 @@ export function formatFixedIncomeRateLabel(metadata: {
     default:
       return `${formatted}%`;
   }
+}
+
+export type FixedIncomeIndexerKey = FixedIncomeRateType | "other";
+
+export interface FixedIncomeIndexerDriftInputItem {
+  id?: string;
+  ticker: string;
+  currentValueBRL: number;
+  rateType?: FixedIncomeRateType | null;
+  sector?: string | null;
+}
+
+export interface FixedIncomeIndexerDriftGroup {
+  indexer: FixedIncomeIndexerKey;
+  label: string;
+  currentValueBRL: number;
+  currentPct: number;
+  targetPct: number;
+  targetValueBRL: number;
+  driftPct: number;
+  gapBRL: number;
+  count: number;
+  items: FixedIncomeIndexerDriftInputItem[];
+}
+
+export interface FixedIncomeIndexerDriftResult {
+  totalValueBRL: number;
+  groups: FixedIncomeIndexerDriftGroup[];
+  deficitIndexers: FixedIncomeIndexerDriftGroup[];
+  surplusIndexers: FixedIncomeIndexerDriftGroup[];
+}
+
+export const FIXED_INCOME_INDEXER_LABELS_MAP: Record<FixedIncomeIndexerKey, string> = {
+  cdi: "CDI / Pós-fixado",
+  selic: "Selic",
+  ipca: "IPCA+ (Inflação)",
+  pre: "Prefixado",
+  other: "Outros",
+};
+
+/**
+ * Calcula a defasagem (drift), percentuais e gaps de Renda Fixa agrupados por indexador macro.
+ * Função pura — sem dependências de UI/Supabase.
+ */
+export function calculateFixedIncomeIndexerDrift(params: {
+  items: readonly FixedIncomeIndexerDriftInputItem[];
+  targets?: Partial<Record<FixedIncomeIndexerKey | "pos", number>>;
+}): FixedIncomeIndexerDriftResult {
+  const { items, targets = {} } = params;
+
+  const normalizedTargets: Partial<Record<FixedIncomeIndexerKey, number>> = { ...targets };
+  if (targets.pos !== undefined && targets.cdi === undefined) {
+    normalizedTargets.cdi = targets.pos;
+  }
+
+  const groupsMap = new Map<FixedIncomeIndexerKey, FixedIncomeIndexerDriftInputItem[]>();
+  const allKeys: FixedIncomeIndexerKey[] = ["cdi", "selic", "ipca", "pre", "other"];
+  for (const k of allKeys) {
+    groupsMap.set(k, []);
+  }
+
+  let totalValueBRL = 0;
+
+  for (const item of items) {
+    const val = Math.max(0, item.currentValueBRL || 0);
+    totalValueBRL += val;
+
+    let indexer: FixedIncomeIndexerKey;
+    if (item.rateType && allKeys.includes(item.rateType)) {
+      indexer = item.rateType;
+    } else {
+      const inferred = inferFixedIncomeCategories({
+        ticker: item.ticker,
+        sector: item.sector,
+      });
+      indexer = (inferred.indexer && allKeys.includes(inferred.indexer)) ? inferred.indexer : "other";
+    }
+
+    const list = groupsMap.get(indexer) ?? [];
+    list.push(item);
+    groupsMap.set(indexer, list);
+  }
+
+  totalValueBRL = Math.round(totalValueBRL * 100) / 100;
+
+  const groups: FixedIncomeIndexerDriftGroup[] = [];
+
+  for (const key of allKeys) {
+    const groupItems = groupsMap.get(key) ?? [];
+    const targetPct = normalizedTargets[key] ?? 0;
+
+    if (groupItems.length === 0 && targetPct <= 0) {
+      continue;
+    }
+
+    const groupValue = Math.round(
+      groupItems.reduce((acc, it) => acc + Math.max(0, it.currentValueBRL || 0), 0) * 100,
+    ) / 100;
+
+    const currentPct = totalValueBRL > 0
+      ? Math.round((groupValue / totalValueBRL) * 1000) / 10
+      : 0;
+
+    const targetValueBRL = Math.round(((targetPct / 100) * totalValueBRL) * 100) / 100;
+    const driftPct = Math.round((currentPct - targetPct) * 10) / 10;
+    const gapBRL = Math.round(Math.max(0, targetValueBRL - groupValue) * 100) / 100;
+
+    groups.push({
+      indexer: key,
+      label: FIXED_INCOME_INDEXER_LABELS_MAP[key] ?? key,
+      currentValueBRL: groupValue,
+      currentPct,
+      targetPct,
+      targetValueBRL,
+      driftPct,
+      gapBRL,
+      count: groupItems.length,
+      items: groupItems,
+    });
+  }
+
+  groups.sort((a, b) => b.currentValueBRL - a.currentValueBRL);
+
+  const deficitIndexers = groups
+    .filter((g) => g.gapBRL > 0)
+    .sort((a, b) => b.gapBRL - a.gapBRL);
+
+  const surplusIndexers = groups
+    .filter((g) => g.driftPct > 0)
+    .sort((a, b) => b.driftPct - a.driftPct);
+
+  return {
+    totalValueBRL,
+    groups,
+    deficitIndexers,
+    surplusIndexers,
+  };
 }

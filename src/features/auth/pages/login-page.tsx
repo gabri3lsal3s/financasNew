@@ -14,8 +14,17 @@ import {
 import { Alert, Button, Input, PasswordInput, Turnstile } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { BrandLogo } from "@/components/layout";
-import { useAuth, signInWithEmail, resendConfirmationEmail } from "@/hooks/use-auth";
-import { getSupabase } from "@/data/client";
+import {
+  useAuth,
+  signInWithEmail,
+  resendConfirmationEmail,
+  getActiveUserMfaFactor,
+  getMfaAssuranceLevel,
+  listVerifiedMfaFactors,
+  verifyMfaTotpCode,
+  markMfaVerified,
+} from "@/hooks/use-auth";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { classifyError, getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -110,11 +119,12 @@ function LoginSideHero() {
 // Página de login
 // ---------------------------------------------------------------------------
 export function LoginPage() {
-  const { session, loading, configError } = useAuth();
+  const { session, loading, configError, mfaRequired, mfaVerified } = useAuth();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const planoParam = searchParams.get("plano");
   const metodoParam = searchParams.get("metodo");
+  const isDesafioTotpParam = searchParams.get("desafio") === "totp";
 
   const checkoutQuery = new URLSearchParams();
   if (planoParam) checkoutQuery.set("plano", planoParam);
@@ -157,11 +167,19 @@ export function LoginPage() {
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
   // Estados de Verificação em Duas Etapas (2FA / TOTP)
-  const [isMfaRequired, setIsMfaRequired] = useState(false);
+  const [isMfaRequired, setIsMfaRequired] = useState(isDesafioTotpParam);
   const [mfaFactorId, setMfaFactorId] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState("");
   const [isVerifyingMfa, setIsVerifyingMfa] = useState(false);
   const [mfaError, setMfaError] = useState<string | null>(null);
+  const { signOut } = useSignOut();
+
+  // Flag unificada de blindagem 2FA: se o usuário precisa elevar para AAL2, fica retido no desafio TOTP
+  const isMfaActive = Boolean(
+    (mfaRequired && !mfaVerified) ||
+    isMfaRequired ||
+    (session && isDesafioTotpParam)
+  );
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -179,18 +197,18 @@ export function LoginPage() {
     return () => clearInterval(timer);
   }, [lockoutSeconds]);
 
-  // Se a sessão existente exige elevação AAL2, retém a navegação para o desafio
+  // Se a sessão existente exige elevação AAL2, retém a navegação para o desafio e obtém o fator TOTP
   useEffect(() => {
     if (!session) return;
     let isCancelled = false;
-    async function checkAal() {
+    async function loadMfaFactor() {
       try {
-        const supabase = getSupabase();
-        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-        if (isCancelled) return;
-        if (aalData?.currentLevel === "aal1" && aalData?.nextLevel === "aal2") {
-          const { data: factors } = await supabase.auth.mfa.listFactors();
-          const verified = factors?.totp?.find((f) => f.status === "verified");
+        const factor = await getActiveUserMfaFactor();
+        if (factor && !isCancelled) {
+          setMfaFactorId(factor.id);
+          setIsMfaRequired(true);
+        } else if (!isCancelled) {
+          const verified = await listVerifiedMfaFactors();
           if (verified && !isCancelled) {
             setMfaFactorId(verified.id);
             setIsMfaRequired(true);
@@ -200,13 +218,15 @@ export function LoginPage() {
         // Silencia erro em ambiente sem Supabase configurado
       }
     }
-    void checkAal();
+    if (isMfaActive) {
+      void loadMfaFactor();
+    }
     return () => {
       isCancelled = true;
     };
-  }, [session]);
+  }, [session, isMfaActive]);
 
-  if (!loading && session && !isMfaRequired) {
+  if (!loading && session && !isMfaActive) {
     return <Navigate to={from} replace />;
   }
 
@@ -245,11 +265,9 @@ export function LoginPage() {
 
       // Intercepta contas protegidas por 2FA (AAL2)
       try {
-        const supabase = getSupabase();
-        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        const aalData = await getMfaAssuranceLevel();
         if (aalData?.currentLevel === "aal1" && aalData?.nextLevel === "aal2") {
-          const { data: factors } = await supabase.auth.mfa.listFactors();
-          const verified = factors?.totp?.find((f) => f.status === "verified");
+          const verified = await listVerifiedMfaFactors();
           if (verified) {
             setMfaFactorId(verified.id);
             setIsMfaRequired(true);
@@ -289,17 +307,29 @@ export function LoginPage() {
   const handleVerifyMfa = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const cleanCode = totpCode.trim();
-    if (!mfaFactorId || cleanCode.length !== 6 || isVerifyingMfa) return;
+    if (cleanCode.length !== 6 || isVerifyingMfa) return;
     setIsVerifyingMfa(true);
     setMfaError(null);
     try {
-      const supabase = getSupabase();
-      const { error: verifyErr } = await supabase.auth.mfa.challengeAndVerify({
-        factorId: mfaFactorId,
-        code: cleanCode,
-      });
-      if (verifyErr) throw verifyErr;
+      let activeFactorId = mfaFactorId;
+      if (!activeFactorId) {
+        const factor = await getActiveUserMfaFactor();
+        activeFactorId = factor?.id ?? null;
+      }
+      if (!activeFactorId) {
+        const verified = await listVerifiedMfaFactors();
+        activeFactorId = verified?.id ?? null;
+      }
+      if (!activeFactorId) {
+        throw new Error("Dispositivo autenticador não encontrado.");
+      }
 
+      const verifyOk = await verifyMfaTotpCode(activeFactorId, cleanCode);
+      if (!verifyOk) {
+        throw new Error("Código de autenticação incorreto ou expirado.");
+      }
+
+      markMfaVerified();
       triggerSensory("success");
       setIsMfaRequired(false);
       pushToast({
@@ -317,8 +347,7 @@ export function LoginPage() {
 
   const handleCancelMfa = async () => {
     try {
-      const supabase = getSupabase();
-      await supabase.auth.signOut();
+      await signOut({ scope: "local" });
     } catch {
       // Ignora falha de logout
     }
@@ -328,7 +357,7 @@ export function LoginPage() {
     triggerSensory("selection");
   };
 
-  if (isMfaRequired) {
+  if (isMfaActive) {
     return (
       <AuthShell
         title="Verificação em Duas Etapas"

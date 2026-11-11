@@ -1,5 +1,5 @@
 /**
- * Tipos canônicos do Modo Viagem (Áxis Finance).
+ * Tipos canônicos do Modo Viagem (Axir).
  * Espelham as tabelas trips, trip_members, trip_expenses, trip_expense_splits e trip_settlements.
  */
 
@@ -149,7 +149,9 @@ export type TripMemberBalance = {
   name: string;
   totalPaidCents: number;
   totalOwedCents: number;
-  netBalanceCents: number; // totalPaidCents - totalOwedCents
+  netBalanceCents: number; // (totalPaidCents + settlementsPaidCents) - (totalOwedCents + settlementsReceivedCents)
+  settlementsPaidCents?: number;
+  settlementsReceivedCents?: number;
 };
 
 export type SuggestedSettlement = {

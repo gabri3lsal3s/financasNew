@@ -20,7 +20,7 @@ import {
 import { ToolsHeader } from "../components/tools-header";
 import { ToolsFooterCta } from "../components/tools-footer-cta";
 import { ShareSimulationButton } from "../components/share-simulation-button";
-import { calculateCompoundInterest } from "@/domain/portfolio";
+import { calculateCompoundInterest, calculateCriticalCapital } from "@/domain/portfolio";
 import {
   buildStatefulUrl,
   decodeCompoundInterestState,
@@ -79,6 +79,11 @@ export function CompoundInterestPage() {
     if (result.finalBalanceCents <= 0) return 0;
     return Math.round((result.totalInterestCents / result.finalBalanceCents) * 100);
   }, [result]);
+
+  const criticalCapitalCents = useMemo(
+    () => calculateCriticalCapital({ monthlyLivingCostCents }),
+    [monthlyLivingCostCents],
+  );
 
   const getShareUrl = () => {
     const state: CompoundInterestShareState = {
@@ -335,7 +340,14 @@ export function CompoundInterestPage() {
               <Flame className="size-5" aria-hidden="true" />
             </div>
             <div className="space-y-1 text-xs">
-              <h4 className="font-bold text-foreground">Independência Financeira (FIRE)</h4>
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="font-bold text-foreground">Independência Financeira (FIRE)</h4>
+                {criticalCapitalCents > 0 && (
+                  <span className="text-[11px] font-mono font-medium text-muted-foreground">
+                    Meta: <MoneyText cents={criticalCapitalCents} className="inline text-foreground font-semibold" />
+                  </span>
+                )}
+              </div>
               {result.fireReachedAt ? (
                 <p className="text-muted-foreground">
                   No <strong className="text-positive-strong">Ano {result.fireReachedAt.year} (Mês {result.fireReachedAt.month})</strong>,

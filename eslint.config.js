@@ -89,9 +89,9 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ["@/data/repositories/*", "@/data/rpc", "@/data/rpc/*"],
+              group: ["@/data", "@/data/*"],
               message:
-                "Violação arquitetural (AGENTS.md): Features e Components não podem acessar @/data diretamente. Encapsule a chamada na camada @/state.",
+                "Violação arquitetural (AGENTS.md): Features e Components não podem acessar @/data diretamente. Encapsule o acesso em @/state ou use hooks autorizados.",
             },
           ],
         },

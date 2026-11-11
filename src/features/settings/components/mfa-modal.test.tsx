@@ -1,10 +1,13 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MfaModal } from "./mfa-modal";
-import { getSupabase } from "@/data/client";
+import * as authHook from "@/hooks/use-auth";
 
-vi.mock("@/data/client", () => ({
-  getSupabase: vi.fn(),
+vi.mock("@/hooks/use-auth", () => ({
+  listVerifiedMfaFactors: vi.fn(),
+  enrollMfaTotp: vi.fn(),
+  verifyMfaEnrollment: vi.fn(),
+  unenrollMfaFactor: vi.fn(),
 }));
 
 vi.mock("@/services/sensory", () => ({
@@ -23,21 +26,7 @@ describe("MfaModal — Governança de 2FA / TOTP (Fase 3)", () => {
   });
 
   it("renderiza o modal quando aberto e exibe botão de configuração quando não há fator ativo", async () => {
-    const listFactorsMock = vi.fn().mockResolvedValue({
-      data: { totp: [], all: [] },
-      error: null,
-    });
-
-    vi.mocked(getSupabase).mockReturnValue({
-      auth: {
-        mfa: {
-          listFactors: listFactorsMock,
-          enroll: vi.fn(),
-          challengeAndVerify: vi.fn(),
-          unenroll: vi.fn(),
-        },
-      },
-    } as unknown as ReturnType<typeof getSupabase>);
+    vi.mocked(authHook.listVerifiedMfaFactors).mockResolvedValue(null);
 
     render(<MfaModal open={true} onOpenChange={onOpenChangeMock} />);
 
@@ -49,31 +38,12 @@ describe("MfaModal — Governança de 2FA / TOTP (Fase 3)", () => {
   });
 
   it("exibe badge de protegido e botão de desativar quando fator TOTP estiver verificado", async () => {
-    const listFactorsMock = vi.fn().mockResolvedValue({
-      data: {
-        totp: [
-          {
-            id: "factor-123",
-            status: "verified",
-            friendly_name: "Google Authenticator",
-            factor_type: "totp",
-          },
-        ],
-        all: [],
-      },
-      error: null,
+    vi.mocked(authHook.listVerifiedMfaFactors).mockResolvedValue({
+      id: "factor-123",
+      status: "verified",
+      friendly_name: "Google Authenticator",
+      factor_type: "totp",
     });
-
-    vi.mocked(getSupabase).mockReturnValue({
-      auth: {
-        mfa: {
-          listFactors: listFactorsMock,
-          enroll: vi.fn(),
-          challengeAndVerify: vi.fn(),
-          unenroll: vi.fn(),
-        },
-      },
-    } as unknown as ReturnType<typeof getSupabase>);
 
     render(<MfaModal open={true} onOpenChange={onOpenChangeMock} />);
 
@@ -85,32 +55,12 @@ describe("MfaModal — Governança de 2FA / TOTP (Fase 3)", () => {
   });
 
   it("inicia fluxo de cadastro ao clicar em Configurar 2FA", async () => {
-    const listFactorsMock = vi.fn().mockResolvedValue({
-      data: { totp: [], all: [] },
-      error: null,
+    vi.mocked(authHook.listVerifiedMfaFactors).mockResolvedValue(null);
+    vi.mocked(authHook.enrollMfaTotp).mockResolvedValue({
+      factorId: "factor-new",
+      secret: "JBSWY3DPEHPK3PXP",
+      totpUri: "otpauth://totp/Axir:teste?secret=JBSWY3DPEHPK3PXP",
     });
-
-    const enrollMock = vi.fn().mockResolvedValue({
-      data: {
-        id: "factor-new",
-        totp: {
-          secret: "JBSWY3DPEHPK3PXP",
-          uri: "otpauth://totp/Axir:teste?secret=JBSWY3DPEHPK3PXP",
-        },
-      },
-      error: null,
-    });
-
-    vi.mocked(getSupabase).mockReturnValue({
-      auth: {
-        mfa: {
-          listFactors: listFactorsMock,
-          enroll: enrollMock,
-          challengeAndVerify: vi.fn(),
-          unenroll: vi.fn(),
-        },
-      },
-    } as unknown as ReturnType<typeof getSupabase>);
 
     render(<MfaModal open={true} onOpenChange={onOpenChangeMock} />);
 
@@ -121,10 +71,7 @@ describe("MfaModal — Governança de 2FA / TOTP (Fase 3)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Configurar 2FA/i }));
 
     await waitFor(() => {
-      expect(enrollMock).toHaveBeenCalledWith({
-        factorType: "totp",
-        issuer: "Axir",
-      });
+      expect(authHook.enrollMfaTotp).toHaveBeenCalledWith("Axir");
       expect(screen.getByText(/Escaneie o QR Code no seu aplicativo/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText("000000")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Ativar 2FA/i })).toBeInTheDocument();

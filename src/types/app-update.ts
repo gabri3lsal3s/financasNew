@@ -1,5 +1,5 @@
 /**
- * Contratos de tipo para o sistema de atualizações do aplicativo Áxis.
+ * Contratos de tipo para o sistema de atualizações do aplicativo Axir.
  */
 
 export interface AppVersionManifest {

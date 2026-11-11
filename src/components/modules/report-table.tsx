@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { DataList, type DataListColumn } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatPercent } from "@/services/masks";
 
 export interface ReportRow {
   /** Chave única da linha. */
@@ -83,7 +84,7 @@ export function ReportTable({
       align: "right",
       className: "w-12 sm:w-14 shrink-0 text-right",
       cell: (row) => (
-        <span className="num text-xs text-muted-foreground">{row.percent.toFixed(0)}%</span>
+        <span className="num text-xs text-muted-foreground">{formatPercent(row.percent)}%</span>
       ),
     },
   ];

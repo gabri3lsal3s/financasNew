@@ -35,7 +35,7 @@ export function TaxFacilitatorModal({
   assets,
   dividends,
   usdRate = 5.25,
-  appName = "Áxis Finance",
+  appName = "Axir",
   accountHolder,
 }: TaxFacilitatorModalProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);

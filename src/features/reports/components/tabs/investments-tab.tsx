@@ -12,6 +12,7 @@ import {
 import { AllocationBreakdownDialog, AssetDetailSheet } from "@/features/investments/components";
 import { useGroupTargets, usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { numberToCents } from "@/domain/money";
+import { formatPercent } from "@/services/masks";
 import type { AllocationAnalysisResult, ConcentrationRiskResult, AllocationDonutSegment } from "@/domain/reports";
 import type { PositionRow } from "@/components/modules/position-table";
 import { useNavigate } from "react-router";
@@ -179,7 +180,7 @@ export function InvestmentsTab({
         </div>
         <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Top 5 Concentração</span>
-          <span className="text-lg sm:text-xl font-bold font-display text-foreground">{concentrationRisk.top5Pct.toFixed(1)}%</span>
+          <span className="text-lg sm:text-xl font-bold font-display text-foreground">{formatPercent(concentrationRisk.top5Pct)}%</span>
         </div>
         <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Top Setor Dominante</span>
@@ -188,7 +189,7 @@ export function InvestmentsTab({
               {concentrationRisk.topSectorDominance?.sector ?? "Nenhum"}
             </span>
             <span className="text-xs font-bold text-portfolio shrink-0">
-              {concentrationRisk.topSectorDominance ? `${concentrationRisk.topSectorDominance.pct.toFixed(1)}%` : "0%"}
+              {concentrationRisk.topSectorDominance ? `${formatPercent(concentrationRisk.topSectorDominance.pct)}%` : "0%"}
             </span>
           </div>
         </div>
@@ -297,9 +298,9 @@ export function InvestmentsTab({
                       <td className="py-2.5 px-3 text-right font-mono">
                         <MoneyText cents={numberToCents(cNode.currentBRL)} />
                       </td>
-                      <td className="py-2.5 px-3 text-right font-mono">{cNode.currentPct.toFixed(1)}%</td>
+                      <td className="py-2.5 px-3 text-right font-mono">{formatPercent(cNode.currentPct)}%</td>
                       <td className="py-2.5 px-3 text-right font-mono">
-                        {cNode.targetPct > 0 ? `${cNode.targetPct.toFixed(1)}%` : "—"}
+                        {cNode.targetPct > 0 ? `${formatPercent(cNode.targetPct)}%` : "—"}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono">
                         {cNode.gapBRL > 0 ? (
@@ -360,10 +361,10 @@ export function InvestmentsTab({
                                 <MoneyText cents={numberToCents(sNode.currentBRL)} />
                               </td>
                               <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                                {sNode.currentPct.toFixed(1)}%
+                                {formatPercent(sNode.currentPct)}%
                               </td>
                               <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                                {sNode.effectiveTargetPct > 0 ? `${sNode.effectiveTargetPct.toFixed(1)}%` : "—"}
+                                {sNode.effectiveTargetPct > 0 ? `${formatPercent(sNode.effectiveTargetPct)}%` : "—"}
                               </td>
                               <td className="py-2 px-3 text-right font-mono">
                                 {sNode.gapBRL > 0 ? (
@@ -392,10 +393,10 @@ export function InvestmentsTab({
                                     <MoneyText cents={numberToCents(aNode.currentBRL)} />
                                   </td>
                                   <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                    {aNode.currentPct.toFixed(1)}%
+                                    {formatPercent(aNode.currentPct)}%
                                   </td>
                                   <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                    {aNode.targetPct > 0 ? `${aNode.targetPct.toFixed(1)}%` : "—"}
+                                    {aNode.targetPct > 0 ? `${formatPercent(aNode.targetPct)}%` : "—"}
                                   </td>
                                   <td className="py-1.5 px-3 text-right font-mono text-xs">
                                     {aNode.gapBRL > 0 ? (

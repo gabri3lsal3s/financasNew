@@ -56,6 +56,9 @@ vi.mock("@/state", () => ({
   useCreditCards: () => ({ data: [] }),
   useUserPreferences: () => ({ data: { custom_settings: { privacyShieldEnabled: false } } }),
   useUpdateCustomSettings: () => ({ mutate: mockUpdateCustomSettings }),
+  useDevices: () => ({ data: [], isLoading: false, isFetching: false, refetch: vi.fn() }),
+  useRevokeDevice: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteDevice: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteAccountMutation: () => ({
     mutateAsync: async () => {
       try {

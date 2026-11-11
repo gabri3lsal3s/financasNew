@@ -1,15 +1,17 @@
 {
-  "version": "3.0.19",
-  "versionCode": 44,
-  "releaseDate": "2026-11-10T00:00:43Z",
-  "minSupportedVersion": "3.0.19",
+  "version": "3.1.0",
+  "versionCode": 46,
+  "releaseDate": "2026-11-11T17:38:27Z",
+  "minSupportedVersion": "3.1.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "faa0877c038193cde7d79b327eff315800f4799749c3a6032f1fdf874f93a2b4",
-  "fileSizeBytes": 12135716,
+  "sha256": "d2db51c5af028bd4855b7accb9c6240ce7c62e5ca5be852c4ff4bfb995ca8207",
+  "fileSizeBytes": 12164075,
   "changelog": [
-    "Novo Modo Viagem Compartilhada: divisão em grupo, acerto simplificado de contas e links públicos",
-    "Links canônicos unificados hospedados via Cloudflare Workers (Modo Viagem, Família, Racha e Metas)",
-    "Suporte nativo a deep links e abertura direta no aplicativo Android instalado",
-    "Detalhamento sob demanda das obrigações do ciclo no RealCashHeroCard e melhorias de estabilidade"
+    "Axir v3.1.0: Expansão Global de Plataforma, Motores Financeiros e Segurança",
+    "App Lock Híbrido com Biometria Nativa, WebAuthn e PIN Numérico com SHA-256",
+    "Multi-sessão concorrente e painel de dispositivos conectados com revogação remota",
+    "Motor FIRE e Independência Financeira nativos com cálculo de Capital Crítico e Runway",
+    "Explicabilidade matemática transparente com decomposição de fórmulas (Regra 33)",
+    "Rebalanceamento de carteira inteligente (Menos Movimentações) e Pix EMVCo nativo"
   ]
 }

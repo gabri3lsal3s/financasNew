@@ -361,7 +361,7 @@ export function ReportPerformanceChart({
                       bm.alphaPct >= 0 ? "text-positive-strong" : "text-negative-strong",
                     )}
                   >
-                    {bm.alphaPct >= 0 ? `+${bm.alphaPct.toFixed(1)}` : bm.alphaPct.toFixed(1)} p.p.
+                    {bm.alphaPct >= 0 ? `+${formatPercent(bm.alphaPct)}` : formatPercent(bm.alphaPct)} p.p.
                   </span>
                 </div>
 

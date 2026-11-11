@@ -14,10 +14,15 @@ vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),
 }));
 
+const markMfaVerifiedMock = vi.fn();
+const getActiveUserMfaFactorMock = vi.fn().mockResolvedValue({ id: "factor-totp-1" });
+
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: vi.fn(),
   signInWithEmail: vi.fn(),
   resendConfirmationEmail: vi.fn(),
+  markMfaVerified: () => markMfaVerifiedMock(),
+  getActiveUserMfaFactor: () => getActiveUserMfaFactorMock(),
 }));
 
 const getAuthenticatorAssuranceLevelMock = vi.fn().mockResolvedValue({
@@ -604,5 +609,87 @@ describe("LoginPage - Desafio de Verificação em Duas Etapas (2FA / TOTP) (SEC-
     expect(signOutMock).toHaveBeenCalled();
     expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+  });
+
+  it("retém o usuário na tela de desafio TOTP ao atualizar a página com sessão existente e mfaRequired=true sem aal2", async () => {
+    vi.mocked(authHook.useAuth).mockReturnValue({
+      session: { user: { id: "user-mfa-1" } } as never,
+      user: { id: "user-mfa-1" } as never,
+      loading: false,
+      configError: null,
+      mfaRequired: true,
+      mfaVerified: false,
+      aalLevel: "aal1",
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    renderLoginPage();
+
+    expect(screen.getByText("Verificação em Duas Etapas")).toBeInTheDocument();
+    expect(screen.getByLabelText("Código de 6 dígitos")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Confirmar Acesso/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText("E-mail")).not.toBeInTheDocument();
+  });
+
+  it("renderiza imediatamente a tela de desafio TOTP ao carregar /entrar com ?desafio=totp", async () => {
+    vi.mocked(authHook.useAuth).mockReturnValue({
+      session: { user: { id: "user-mfa-1" } } as never,
+      user: { id: "user-mfa-1" } as never,
+      loading: false,
+      configError: null,
+      mfaRequired: false,
+      mfaVerified: false,
+      aalLevel: "aal1",
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/entrar?desafio=totp"]}>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Verificação em Duas Etapas")).toBeInTheDocument();
+    expect(screen.getByLabelText("Código de 6 dígitos")).toBeInTheDocument();
+  });
+
+  it("ao verificar o código com sucesso no desafio TOTP, invoca markMfaVerified", async () => {
+    vi.mocked(authHook.useAuth).mockReturnValue({
+      session: { user: { id: "user-mfa-1" } } as never,
+      user: { id: "user-mfa-1" } as never,
+      loading: false,
+      configError: null,
+      mfaRequired: true,
+      mfaVerified: false,
+      aalLevel: "aal1",
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    challengeAndVerifyMock.mockResolvedValueOnce({ data: {}, error: null });
+
+    renderLoginPage();
+
+    const codeInput = screen.getByLabelText("Código de 6 dígitos");
+    fireEvent.change(codeInput, { target: { value: "654321" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Confirmar Acesso/i }));
+    });
+
+    expect(challengeAndVerifyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "654321",
+      }),
+    );
+    expect(markMfaVerifiedMock).toHaveBeenCalled();
   });
 });

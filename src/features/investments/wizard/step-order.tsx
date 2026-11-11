@@ -6,6 +6,7 @@ import { MoneyText } from "@/components/ui/money-text";
 
 import { numberToCents } from "@/domain/money";
 import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
+import { formatCentsAsBRL, formatPercent } from "@/services/masks";
 import { cn } from "@/lib/utils";
 import {
   calculateInvestmentPreview,
@@ -304,7 +305,7 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                 checked={state.syncCash}
                 onCheckedChange={(checked) => onChange({ syncCash: !!checked })}
               />
-              <span className="text-foreground">Debitar valor do Caixa (saldo: R$ {cashAvailableBRL.toFixed(2)})</span>
+              <span className="text-foreground">Debitar valor do Caixa (saldo: {formatCentsAsBRL(numberToCents(cashAvailableBRL))})</span>
             </label>
 
             <label className="flex items-center gap-2.5 cursor-pointer text-xs">
@@ -341,7 +342,7 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                   if (withdrawVal > 0 && maxVal > 0 && withdrawVal > maxVal * 1.005) {
                     return (
                       <span className="text-[11px] font-medium text-critical">
-                        O valor informado excede o saldo bruto acumulado disponível (R$ {maxVal.toFixed(2)}).
+                        O valor informado excede o saldo bruto acumulado disponível ({formatCentsAsBRL(numberToCents(maxVal))}).
                       </span>
                     );
                   }
@@ -457,7 +458,7 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                   <span className="text-muted-foreground">Rendimento Realizado:</span>
                   <span className={cn("font-mono font-bold text-xs", preview.realizedPnl >= 0 ? "text-positive-strong" : "text-critical-strong")}>
                     {preview.realizedPnl >= 0 ? "+" : ""}
-                    <MoneyText cents={numberToCents(preview.realizedPnl)} currency={state.currency} /> ({preview.realizedPnlPct?.toFixed(1)}%)
+                    <MoneyText cents={numberToCents(preview.realizedPnl)} currency={state.currency} /> ({formatPercent(preview.realizedPnlPct ?? 0)}%)
                   </span>
                 </div>
               )}
@@ -587,7 +588,7 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                   }`}
                 >
                   {preview.realizedPnl >= 0 ? "+" : ""}
-                  <MoneyText cents={numberToCents(preview.realizedPnl)} currency={state.currency} /> ({preview.realizedPnlPct?.toFixed(1)}%)
+                  <MoneyText cents={numberToCents(preview.realizedPnl)} currency={state.currency} /> ({formatPercent(preview.realizedPnlPct ?? 0)}%)
                 </span>
               </div>
 

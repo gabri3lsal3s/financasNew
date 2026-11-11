@@ -9,6 +9,8 @@ export interface TaxTabProps {
   excelDescription: string;
   onOpenTaxReport: () => void;
   onOpenDarfMonitor: () => void;
+  isExcelDisabled?: boolean;
+  excelDisabledReason?: string;
 }
 
 /**
@@ -19,6 +21,8 @@ export function TaxTab({
   excelDescription,
   onOpenTaxReport,
   onOpenDarfMonitor,
+  isExcelDisabled = false,
+  excelDisabledReason,
 }: TaxTabProps) {
   return (
     <div className="flex flex-col gap-6">
@@ -67,7 +71,12 @@ export function TaxTab({
       </div>
 
       {/* Card 3: Caderno de Relatórios em Excel (.xlsx) */}
-      <ExcelExportCard workbookData={workbookData} description={excelDescription} />
+      <ExcelExportCard
+        workbookData={workbookData}
+        description={excelDescription}
+        disabled={isExcelDisabled}
+        disabledReason={excelDisabledReason}
+      />
 
       {/* Aviso Institucional de Responsabilidade Tributária e Fiscal (Contrato 5 / CFC / RFB) */}
       <div className="flex items-start gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">

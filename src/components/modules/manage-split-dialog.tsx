@@ -27,12 +27,13 @@ import {
   useUpdateExpense,
   useUpdatePublicShare,
 } from "@/state";
-import { formatCentsAsCurrency } from "@/services/masks";
+import { formatCentsAsBRL, formatCentsAsCurrency } from "@/services/masks";
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
+  amortizeSettlementAcrossInstallments,
   isParticipantFullySettled,
   isSplitFullyCompleted,
 } from "@/domain/finance/split-math";
@@ -317,17 +318,28 @@ export function ManageSplitDialog({
       return p;
     });
 
-    const updatedInstallments = participantInstallments.map((inst) => {
-      if (inst.participant_id === customInputParticipantId) {
-        return {
-          ...inst,
-          is_settled: fullySettled,
-          settled_at: fullySettled ? new Date().toISOString() : null,
-          signal_status: "none" as const,
-        };
-      }
-      return inst;
-    });
+    const myInsts = participantInstallments.filter((inst) => inst.participant_id === customInputParticipantId);
+    let updatedInstallments: typeof participantInstallments;
+
+    if (myInsts.length > 0) {
+      const amortized = amortizeSettlementAcrossInstallments(myInsts, customInputCents);
+      const amortizedMap = new Map(amortized.updatedInstallments.map((i) => [i.id, i]));
+      updatedInstallments = participantInstallments.map((inst) => {
+        return amortizedMap.get(inst.id) ?? inst;
+      });
+    } else {
+      updatedInstallments = participantInstallments.map((inst) => {
+        if (inst.participant_id === customInputParticipantId) {
+          return {
+            ...inst,
+            is_settled: fullySettled,
+            settled_at: fullySettled ? new Date().toISOString() : null,
+            signal_status: "none" as const,
+          };
+        }
+        return inst;
+      });
+    }
 
     try {
       const allCompleted = isSplitFullyCompleted(updated, updatedInstallments);
@@ -457,7 +469,7 @@ export function ManageSplitDialog({
       setConfirmFinalizeOpen(false);
       pushToast({
         title: "Racha finalizado com sucesso!",
-        description: `Sua despesa foi ajustada para R$ ${(hostNetCostCents / 100).toFixed(2).replace(".", ",")} e a cobrança foi liquidada.`,
+        description: `Sua despesa foi ajustada para ${formatCentsAsBRL(hostNetCostCents)} e a cobrança foi liquidada.`,
         variant: "success",
       });
       onSuccess?.();
@@ -960,7 +972,7 @@ export function ManageSplitDialog({
         open={confirmFinalizeOpen}
         onOpenChange={setConfirmFinalizeOpen}
         title="Finalizar este racha de despesa?"
-        description={`Você recebeu R$ ${(totalSettledFromFriendsCents / 100).toFixed(2).replace(".", ",")} dos amigos. Sua despesa final no extrato considerará R$ ${(hostNetCostCents / 100).toFixed(2).replace(".", ",")} e a cobrança vinculada será encerrada.`}
+        description={`Você recebeu ${formatCentsAsBRL(totalSettledFromFriendsCents)} dos amigos. Sua despesa final no extrato considerará ${formatCentsAsBRL(hostNetCostCents)} e a cobrança vinculada será encerrada.`}
         confirmLabel="Finalizar e Quitar Cobrança"
         onConfirm={handleFinalizeSplit}
       />

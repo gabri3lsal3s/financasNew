@@ -36,13 +36,14 @@ import { triggerSensory } from "@/services/sensory";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { cn } from "@/lib/utils";
 import {
+  useCorporateDividends,
   useDeletePortfolioDividend,
   usePortfolioAssets,
   usePortfolioDividends,
   usePortfolioPosition,
 } from "@/state";
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
-import { DividendFormDialog } from "../components";
+import { DividendFormDialog, PendingDividendsDialog } from "../components";
 import type { WizardMode } from "../wizard/wizard-state";
 
 export type ProventosSubTab = "mensal" | "calendario" | "ativos" | "snowball";
@@ -110,6 +111,8 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   const [editingDividend, setEditingDividend] = useState<PortfolioDividend | null>(null);
   const [rollbackCash, setRollbackCash] = useState(true);
   const [dividendFormOpen, setDividendFormOpen] = useState(false);
+  const [pendingDividendsDialogOpen, setPendingDividendsDialogOpen] = useState(false);
+  const corporateDividends = useCorporateDividends();
 
   const handleSubTabChange = (nextTab: ProventosSubTab) => {
     triggerSensory("selection");
@@ -199,9 +202,21 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
         const total = dividends
           .filter((d) => d.date.startsWith(m))
           .reduce((acc, d) => acc + getDividendAmountBRL(d), 0);
-        return { month: m, total };
+        const projectedInMonth = corporateDividends.projected.filter((p) => p.paymentDate.startsWith(m));
+        const projectedTotal = projectedInMonth.reduce((acc, p) => acc + p.totalAmount, 0);
+        return { month: m, total, projectedTotal, projectedCount: projectedInMonth.length };
       }),
-    [allMonthsOfYear, dividends, getDividendAmountBRL],
+    [allMonthsOfYear, dividends, getDividendAmountBRL, corporateDividends.projected],
+  );
+
+  const projectedInSelectedMonth = useMemo(
+    () => corporateDividends.projected.filter((p) => p.paymentDate.startsWith(month)),
+    [corporateDividends.projected, month],
+  );
+
+  const projectedTotalInSelectedMonth = useMemo(
+    () => projectedInSelectedMonth.reduce((acc, p) => acc + p.totalAmount, 0),
+    [projectedInSelectedMonth],
   );
 
   const yearTotal = useMemo(
@@ -465,6 +480,40 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
         />
       )}
 
+      {/* Proventos Provisionados da B3 com Data COM cumprida */}
+      {projectedInSelectedMonth.length > 0 && (
+        <div className="rounded-2xl border border-portfolio/20 bg-portfolio/5 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border bg-portfolio/10 border-portfolio/20 text-portfolio" aria-hidden="true">
+              <Coins className="size-4.5" />
+            </span>
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-foreground truncate">
+                  Proventos Provisionados da B3
+                </span>
+                <Badge size="xs" variant="muted" className="border-portfolio/30 text-portfolio font-medium">
+                  PROVISIONADO
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground truncate">
+                {projectedInSelectedMonth.length} {projectedInSelectedMonth.length === 1 ? "provento com Data COM cumprida previsto totalizando" : "proventos com Data COM cumprida previstos totalizando"}{" "}
+                <MoneyText cents={numberToCents(projectedTotalInSelectedMonth)} tone="positive" className="font-semibold inline" /> (sem somar no caixa).
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setPendingDividendsDialogOpen(true)}
+            className="shrink-0 text-xs self-stretch sm:self-auto cursor-pointer font-medium"
+          >
+            Conferir Proventos
+          </Button>
+        </div>
+      )}
+
       {/* Extrato Detalhado do Mês */}
       <section
         aria-label={`Extrato de ${monthLabel(month)}`}
@@ -638,13 +687,21 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
                     >
                       <div className="flex w-full items-center justify-between gap-2">
                         <span className="text-xs font-semibold capitalize text-foreground">{monthLabel(entry.month)}</span>
-                        {hasValue ? (
-                          <span className="num text-xs font-bold text-positive-strong">
-                            <MoneyText cents={numberToCents(entry.total)} tone="positive" />
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground">—</span>
-                        )}
+                        <div className="flex flex-col items-end">
+                          {hasValue ? (
+                            <span className="num text-xs font-bold text-positive-strong">
+                              <MoneyText cents={numberToCents(entry.total)} tone="positive" />
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-muted-foreground">—</span>
+                          )}
+                          {entry.projectedTotal > 0 && (
+                            <span className="text-[10px] text-portfolio font-medium truncate flex items-center gap-1">
+                              <span className="inline-block size-1.5 rounded-full bg-portfolio shrink-0" aria-hidden="true" />
+                              Previsto: <MoneyText cents={numberToCents(entry.projectedTotal)} tone="portfolio" />
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {hasValue ? (
                         <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40" aria-hidden="true">
@@ -1051,6 +1108,13 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
           </div>
         )}
       </ConfirmDialog>
+
+      <PendingDividendsDialog
+        open={pendingDividendsDialogOpen}
+        onOpenChange={setPendingDividendsDialogOpen}
+        availableDividends={corporateDividends.available}
+        projectedDividends={corporateDividends.projected}
+      />
 
       {upgradeModal}
     </div>

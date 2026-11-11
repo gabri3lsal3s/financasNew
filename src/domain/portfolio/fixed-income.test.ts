@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   annualRateToDaily,
   calculateFixedIncomeBalance,
+  calculateFixedIncomeIndexerDrift,
   calculateTaxReductionCountdown,
   estimateInitialInvestmentFromRedemption,
   formatFixedIncomeRateLabel,
@@ -237,5 +238,83 @@ describe("formatFixedIncomeRateLabel", () => {
     expect(
       formatFixedIncomeRateLabel({ rate_type: "ipca", rate_value: 6.75 }),
     ).toBe("IPCA + 6,75% a.a.");
+  });
+});
+
+describe("calculateFixedIncomeIndexerDrift", () => {
+  it("agrupa títulos por indexador explícito e calcula drift e gap", () => {
+    const items = [
+      { ticker: "CDB BANCO INTER 110% CDI", currentValueBRL: 50_000, rateType: "cdi" as const },
+      { ticker: "TESOURO SELIC 2029", currentValueBRL: 20_000, rateType: "selic" as const },
+      { ticker: "TESOURO IPCA+ 2035", currentValueBRL: 20_000, rateType: "ipca" as const },
+      { ticker: "CDB PREFIXADO 12%", currentValueBRL: 10_000, rateType: "pre" as const },
+    ];
+
+    const targets = {
+      cdi: 40,
+      selic: 20,
+      ipca: 30,
+      pre: 10,
+    };
+
+    const res = calculateFixedIncomeIndexerDrift({ items, targets });
+
+    expect(res.totalValueBRL).toBe(100_000);
+
+    const cdiGroup = res.groups.find((g) => g.indexer === "cdi");
+    expect(cdiGroup).toBeDefined();
+    expect(cdiGroup?.currentValueBRL).toBe(50_000);
+    expect(cdiGroup?.currentPct).toBe(50);
+    expect(cdiGroup?.targetPct).toBe(40);
+    expect(cdiGroup?.driftPct).toBe(10); // +10% sobre-alocado
+    expect(cdiGroup?.gapBRL).toBe(0);
+
+    const ipcaGroup = res.groups.find((g) => g.indexer === "ipca");
+    expect(ipcaGroup).toBeDefined();
+    expect(ipcaGroup?.currentValueBRL).toBe(20_000);
+    expect(ipcaGroup?.currentPct).toBe(20);
+    expect(ipcaGroup?.targetPct).toBe(30);
+    expect(ipcaGroup?.driftPct).toBe(-10); // -10% sub-alocado
+    expect(ipcaGroup?.gapBRL).toBe(10_000); // R$ 10.000 para atingir meta
+
+    // Deficit indexers deve conter IPCA
+    expect(res.deficitIndexers.map((d) => d.indexer)).toContain("ipca");
+    // Surplus indexers deve conter CDI
+    expect(res.surplusIndexers.map((s) => s.indexer)).toContain("cdi");
+  });
+
+  it("infere indexador por heurística de ticker quando rateType é omitido", () => {
+    const items = [
+      { ticker: "TESOURO IPCA+ 2029", currentValueBRL: 15_000 },
+      { ticker: "LCI PREFIXADA 11.5%", currentValueBRL: 10_000 },
+      { ticker: "CDB LIQUIDEZ DIARIA", currentValueBRL: 25_000 },
+    ];
+
+    const res = calculateFixedIncomeIndexerDrift({
+      items,
+      targets: { pos: 50, ipca: 30, pre: 20 },
+    });
+
+    expect(res.totalValueBRL).toBe(50_000);
+
+    const ipcaGroup = res.groups.find((g) => g.indexer === "ipca");
+    expect(ipcaGroup?.count).toBe(1);
+    expect(ipcaGroup?.currentValueBRL).toBe(15_000);
+
+    const preGroup = res.groups.find((g) => g.indexer === "pre");
+    expect(preGroup?.count).toBe(1);
+    expect(preGroup?.currentValueBRL).toBe(10_000);
+
+    const cdiGroup = res.groups.find((g) => g.indexer === "cdi");
+    expect(cdiGroup?.count).toBe(1);
+    expect(cdiGroup?.currentValueBRL).toBe(25_000);
+  });
+
+  it("lida com lista vazia sem quebras", () => {
+    const res = calculateFixedIncomeIndexerDrift({ items: [] });
+    expect(res.totalValueBRL).toBe(0);
+    expect(res.groups).toEqual([]);
+    expect(res.deficitIndexers).toEqual([]);
+    expect(res.surplusIndexers).toEqual([]);
   });
 });

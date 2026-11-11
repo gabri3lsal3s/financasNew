@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { DollarSign, HeartHandshake, Inbox, PieChart, Plus, TrendingDown, TrendingUp, X } from "lucide-react";
+import { Coins, DollarSign, HeartHandshake, Inbox, PieChart, Plus, TrendingDown, TrendingUp, X } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, MoneyText, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
 import {
   CategoryDonut,
@@ -92,7 +92,9 @@ import {
   useFamilyMode,
   useMyFamily,
   useUserAccess,
+  useCorporateDividends,
 } from "@/state";
+import { PendingDividendsDialog } from "@/features/investments/components/pending-dividends-dialog";
 import type { GoalCompositionConfig } from "@/types";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useOnboardingDismissed, usePendingSplitExpense, usePendingSimulation } from "@/hooks";
@@ -121,6 +123,8 @@ export function OverviewPage() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [isOthersBudgetOpen, setIsOthersBudgetOpen] = useState(false);
   const [isOtherCategoriesOpen, setIsOtherCategoriesOpen] = useState(false);
+  const [pendingDividendsModalOpen, setPendingDividendsModalOpen] = useState(false);
+  const corporateDividends = useCorporateDividends();
   const navigate = useNavigate();
   const subscription = useUserSubscription();
   const [checkpointOpen, setCheckpointOpen] = useState(false);
@@ -1036,6 +1040,51 @@ export function OverviewPage() {
         />
       ),
     },
+    (corporateDividends.available.length > 0 || corporateDividends.projected.length > 0) && {
+      id: "corporate-dividends-alert",
+      priority: corporateDividends.available.length > 0 ? 2 : 3,
+      content: (
+        <div
+          role="alert"
+          className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs transition-all"
+        >
+          <div className="flex items-center gap-3 min-w-0 pr-6 sm:pr-0">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-portfolio/20 bg-portfolio/10 text-portfolio">
+              <Coins className="size-4.5" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-foreground truncate">
+                  {corporateDividends.available.length > 0
+                    ? "Proventos Creditados na Corretora"
+                    : "Proventos Previstos no Mês"}
+                </span>
+                <Badge variant="muted" size="xs">
+                  {corporateDividends.available.length > 0
+                    ? `${corporateDividends.available.length} ${corporateDividends.available.length === 1 ? "disponível" : "disponíveis"}`
+                    : "PROVISIONADO"}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground truncate">
+                {corporateDividends.available.length > 0
+                  ? `${corporateDividends.available.length} ${corporateDividends.available.length === 1 ? "provento disponível totalizando" : "proventos disponíveis totalizando"} R$ ${corporateDividends.totalAvailableAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
+                  : `${corporateDividends.projected.length} ${corporateDividends.projected.length === 1 ? "provento com Data COM cumprida totalizando" : "proventos com Data COM cumprida totalizando"} R$ ${corporateDividends.totalProjectedAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} previstos.`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-center mt-auto sm:mt-0">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setPendingDividendsModalOpen(true)}
+              className="shrink-0 self-stretch sm:self-center font-semibold cursor-pointer"
+            >
+              Conferir
+            </Button>
+          </div>
+        </div>
+      ),
+    },
     subscription.isTrial &&
       !subscription.hasAutoRenew &&
       subscription.trialDaysRemaining !== null && {
@@ -1328,6 +1377,13 @@ export function OverviewPage() {
               share={depositGoalShare}
             />
           )}
+
+          <PendingDividendsDialog
+            open={pendingDividendsModalOpen}
+            onOpenChange={setPendingDividendsModalOpen}
+            availableDividends={corporateDividends.available}
+            projectedDividends={corporateDividends.projected}
+          />
 
           {upgradeModal}
         </>

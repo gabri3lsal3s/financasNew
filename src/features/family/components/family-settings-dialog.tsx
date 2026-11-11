@@ -31,6 +31,7 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
+  QrCodeCanvas,
 } from "@/components/ui";
 import {
   useMyFamily,
@@ -726,12 +727,11 @@ export function FamilySettingsDialog({
 
                     {showQrCode && (
                       <div className="pt-2 flex flex-col items-center gap-2">
-                        <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                            generatedInviteUrl,
-                          )}`}
-                          alt="QR Code do convite familiar"
-                          className="size-36 rounded-xl border border-border/80 bg-white p-2 shadow-xs"
+                        <QrCodeCanvas
+                          text={generatedInviteUrl}
+                          size={144}
+                          label="QR Code do convite familiar"
+                          className="size-36 rounded-xl"
                         />
                         <span className="text-[11px] text-muted-foreground">
                           Aponte a câmera do celular para aceitar o convite

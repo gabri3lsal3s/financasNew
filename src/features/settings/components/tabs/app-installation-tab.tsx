@@ -15,8 +15,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { QrCodeCanvas } from "@/components/ui/qr-code-canvas";
 import { useAppUpdate } from "@/hooks/use-app-update";
-import { isNativePlatform } from "@/services/native/platform";
+import { isNativePlatform, isStandaloneDisplay } from "@/services/native/platform";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { ApkInstallGuideDialog, PlatformsTriptychCard } from "@/components/modules";
 import { useUserAccess } from "@/state";
@@ -28,6 +29,7 @@ export function AppInstallationTab() {
   const { hasFeature } = useUserAccess();
   const isBankListenerAllowed = hasFeature("bank_notification_listener");
   const { isInstalled, isIOS } = usePWAInstall();
+  const isStandalone = isStandaloneDisplay() || isInstalled;
   const {
     status,
     isChecking,
@@ -110,7 +112,7 @@ export function AppInstallationTab() {
                   ? isBankListenerAllowed
                     ? "Aplicativo Nativo Android Pro com automação em tempo real"
                     : "Aplicativo Nativo Android Pro com biometria física e privacidade"
-                  : isInstalled
+                  : isStandalone
                   ? "Progressive Web App (PWA) instalado na tela de início"
                   : isIOS
                   ? "Acesso Web no ecossistema Apple iOS"
@@ -125,7 +127,7 @@ export function AppInstallationTab() {
           >
             {isNative
               ? "Android Pro Nativo"
-              : isInstalled
+              : isStandalone
               ? "PWA Instalado"
               : isIOS
               ? "iOS Web"
@@ -192,41 +194,19 @@ export function AppInstallationTab() {
                       size="sm"
                       onClick={installUpdate}
                       disabled={status === "downloading"}
-                      className="gap-2"
+                      className="gap-2 cursor-pointer font-semibold"
                     >
                       <Download className="size-4" aria-hidden="true" />
                       <span>{status === "downloading" ? "Baixando atualização..." : "Atualizar agora (sem desinstalar)"}</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDownloadApk}
-                      className="gap-2 border-border/80 bg-surface"
-                    >
-                      <Download className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                      <span>Baixar instalador APK direto</span>
                     </Button>
                   </div>
                 </div>
               )}
 
               {!hasUpdate && !isChecking && !error && (
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
-                  <div className="flex items-center gap-2 text-xs text-positive">
-                    <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
-                    <span>Seu aplicativo Android está atualizado com a versão mais recente.</span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleDownloadApk}
-                    className="gap-1.5 text-xs border-border/80 bg-surface cursor-pointer self-start sm:self-auto"
-                  >
-                    <Download className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    <span>Baixar APK (v3.0.7)</span>
-                  </Button>
+                <div className="flex items-center gap-2 text-xs text-positive pt-1">
+                  <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
+                  <span>Seu aplicativo Android está atualizado com a versão mais recente.</span>
                 </div>
               )}
 
@@ -321,16 +301,12 @@ export function AppInstallationTab() {
                     <p className="text-xs text-muted-foreground">
                       Aponte a câmera do seu celular Android para o QR Code abaixo para baixar o instalador:
                     </p>
-                    <div className="p-3 bg-white rounded-xl inline-flex flex-col items-center shadow-xs border border-border/60">
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(activeApkUrl)}`}
-                        alt="QR Code para download do APK do Axir Pro"
-                        className="size-44 object-contain rounded"
-                        loading="lazy"
-                        width={176}
-                        height={176}
-                      />
-                    </div>
+                    <QrCodeCanvas
+                      text={activeApkUrl}
+                      size={176}
+                      label="QR Code para download do APK do Axir Pro"
+                      className="size-44"
+                    />
                     <div className="flex flex-col items-center gap-1.5 max-w-sm">
                       <span className="text-[11px] text-muted-foreground">Ou acesse diretamente pelo link:</span>
                       <a

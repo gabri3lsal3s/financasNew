@@ -145,6 +145,6 @@ describe("InvestmentsTab — Sincronização Temporal e Empty State", () => {
     expect(screen.getByText(/Dossiê Executivo da Posição Vigente Consolidada/i)).toBeInTheDocument();
     expect(screen.getByText("Patrimônio Consolidado")).toBeInTheDocument();
     expect(screen.getByText("85%")).toBeInTheDocument();
-    expect(screen.getByText("35.5%")).toBeInTheDocument();
+    expect(screen.getByText("35,5%")).toBeInTheDocument();
   });
 });

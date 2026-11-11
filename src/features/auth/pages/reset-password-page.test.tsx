@@ -3,7 +3,6 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ResetPasswordPage } from "./reset-password-page";
-import * as authData from "@/data/auth";
 import * as toastModule from "@/services/toast";
 import * as sensoryModule from "@/services/sensory";
 
@@ -11,27 +10,22 @@ const mockUnsubscribe = vi.fn();
 type AuthListener = (event: string, session: unknown) => void;
 let authListener: AuthListener | null = null;
 
-const mockOnAuthStateChange = vi.fn((callback: AuthListener) => {
+const mockSubscribeAuthStateChange = vi.fn((callback: AuthListener) => {
   authListener = callback;
-  return {
-    data: { subscription: { unsubscribe: mockUnsubscribe } },
-  };
+  return mockUnsubscribe;
 });
-const mockGetSession = vi.fn().mockResolvedValue({ data: { session: null } });
+const mockUpdateUserPassword = vi.fn();
 const mockSignOut = vi.fn().mockResolvedValue({ error: null });
 
-vi.mock("@/data/client", () => ({
-  getSupabase: () => ({
-    auth: {
-      onAuthStateChange: mockOnAuthStateChange,
-      getSession: mockGetSession,
-      signOut: mockSignOut,
-    },
-  }),
+vi.mock("@/hooks/use-auth", () => ({
+  subscribeAuthStateChange: (callback: AuthListener) => mockSubscribeAuthStateChange(callback),
+  updateUserPassword: (pwd: string) => mockUpdateUserPassword(pwd),
 }));
 
-vi.mock("@/data/auth", () => ({
-  updateUserPassword: vi.fn(),
+vi.mock("@/hooks/use-sign-out", () => ({
+  useSignOut: () => ({
+    signOut: mockSignOut,
+  }),
 }));
 
 vi.mock("@/services/toast", () => ({
@@ -54,9 +48,6 @@ describe("ResetPasswordPage - Redefinição de Senha", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     authListener = null;
-    mockGetSession.mockResolvedValue({
-      data: { session: { user: { id: "user-123" } } as never },
-    });
     mockSignOut.mockResolvedValue({ error: null });
     Object.defineProperty(window, "location", {
       writable: true,
@@ -90,7 +81,7 @@ describe("ResetPasswordPage - Redefinição de Senha", () => {
 
   it("atualiza a senha com sucesso, invalida outras sessões e exibe tela de confirmação", async () => {
     const user = userEvent.setup();
-    vi.mocked(authData.updateUserPassword).mockResolvedValueOnce();
+    mockUpdateUserPassword.mockResolvedValueOnce(undefined);
 
     renderResetPasswordPage();
 
@@ -100,7 +91,7 @@ describe("ResetPasswordPage - Redefinição de Senha", () => {
     await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
 
     await waitFor(() => {
-      expect(authData.updateUserPassword).toHaveBeenCalledWith("SenhaForte123");
+      expect(mockUpdateUserPassword).toHaveBeenCalledWith("SenhaForte123");
       expect(mockSignOut).toHaveBeenCalledWith({ scope: "others" });
       expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("success");
       expect(toastModule.pushToast).toHaveBeenCalledWith(
@@ -113,7 +104,7 @@ describe("ResetPasswordPage - Redefinição de Senha", () => {
 
   it("invalida outras sessões ativas com fail-safe caso signOut lance erro", async () => {
     const user = userEvent.setup();
-    vi.mocked(authData.updateUserPassword).mockResolvedValueOnce();
+    mockUpdateUserPassword.mockResolvedValueOnce(undefined);
     mockSignOut.mockRejectedValueOnce(new Error("Supabase auth error"));
 
     renderResetPasswordPage();
@@ -124,7 +115,7 @@ describe("ResetPasswordPage - Redefinição de Senha", () => {
     await user.click(screen.getByRole("button", { name: "Salvar nova senha" }));
 
     await waitFor(() => {
-      expect(authData.updateUserPassword).toHaveBeenCalledWith("SenhaForte123");
+      expect(mockUpdateUserPassword).toHaveBeenCalledWith("SenhaForte123");
       expect(mockSignOut).toHaveBeenCalledWith({ scope: "others" });
       expect(screen.getByText("Tudo pronto! Senha atualizada")).toBeInTheDocument();
     });

@@ -7,6 +7,7 @@ export { InterfaceShortcutsCard } from "./interface-shortcuts-card";
 export { ResetDefaultsCard } from "./reset-defaults-card";
 export { NotificationsTab } from "./notifications-tab";
 export { SecurityTab } from "./security-tab";
+export { ActiveDevicesCard } from "./active-devices-card";
 export { SubscriptionTab } from "./subscription-tab";
 export { AppInstallationTab } from "./app-installation-tab";
 export { DeleteAccountCard } from "./delete-account-card";

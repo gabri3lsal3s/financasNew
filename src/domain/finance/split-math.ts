@@ -548,3 +548,57 @@ export function calculateInstallmentReportWeight(
   return Math.min(1, Math.max(0, Number(ratio.toFixed(4))));
 }
 
+export interface AmortizeInstallmentsResult {
+  updatedInstallments: SplitParticipantInstallment[];
+  fullySettledCount: number;
+  pendingCount: number;
+  remainingOwedCents: number;
+  unallocatedCents: number;
+}
+
+/**
+ * Amortiza um valor pago (settlementPaidCents) em ordem cronológica sobre as parcelas do participante.
+ * As parcelas mais antigas pendentes são quitadas prioritariamente.
+ * Garante que o saldo devedor restante nunca fique negativo (>= 0).
+ */
+export function amortizeSettlementAcrossInstallments(
+  installments: readonly SplitParticipantInstallment[],
+  settlementPaidCents: number
+): AmortizeInstallmentsResult {
+  const sorted = [...installments].sort(
+    (a, b) => a.installment_number - b.installment_number || a.due_date.localeCompare(b.due_date)
+  );
+
+  let availableCents = Math.max(0, Math.floor(settlementPaidCents));
+  let fullySettledCount = 0;
+  let remainingOwedCents = 0;
+  const nowIso = new Date().toISOString();
+
+  const updatedInstallments = sorted.map((inst) => {
+    if (availableCents >= inst.amount_cents) {
+      availableCents -= inst.amount_cents;
+      fullySettledCount++;
+      return {
+        ...inst,
+        is_settled: true,
+        settled_at: inst.settled_at ?? nowIso,
+      };
+    } else {
+      remainingOwedCents += inst.amount_cents;
+      return {
+        ...inst,
+        is_settled: false,
+        settled_at: null,
+      };
+    }
+  });
+
+  return {
+    updatedInstallments,
+    fullySettledCount,
+    pendingCount: updatedInstallments.length - fullySettledCount,
+    remainingOwedCents,
+    unallocatedCents: availableCents,
+  };
+}
+

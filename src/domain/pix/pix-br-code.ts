@@ -68,6 +68,7 @@ export interface DecodedPixBrCode {
   txId: string;
   infoAdicional?: string;
   postalCode?: string;
+  pointOfInitiationMethod?: string;
   rawPayload: string;
   crc: string;
   isValidCrc: boolean;
@@ -268,7 +269,8 @@ export function generatePixBrCode(options: GeneratePixBrCodeOptions): string {
   const tag26 = formatEmvField("26", template26Value);
 
   // 6. Demais campos fixos e opcionais
-  const tag00 = formatEmvField("00", "01"); // Payload Format Indicator
+  const tag00 = formatEmvField("00", "01"); // Payload Format Indicator (000201)
+  const tag01 = formatEmvField("01", "11"); // Point of Initiation Method: 11 = QR Estático / Reutilizável (010211)
   const tag52 = formatEmvField("52", "0000"); // Merchant Category Code
   const tag53 = formatEmvField("53", "986"); // Transaction Currency (986 = BRL)
   const tag58 = formatEmvField("58", "BR"); // Country Code
@@ -290,7 +292,7 @@ export function generatePixBrCode(options: GeneratePixBrCodeOptions): string {
   const tag62 = formatEmvField("62", sub62_05);
 
   // 7. Concatenacao para calculo do CRC16
-  const payloadToSign = `${tag00}${tag26}${tag52}${tag53}${tag54}${tag58}${tag59}${tag60}${tag61}${tag62}6304`;
+  const payloadToSign = `${tag00}${tag01}${tag26}${tag52}${tag53}${tag54}${tag58}${tag59}${tag60}${tag61}${tag62}6304`;
   const crc = calculatePixCrc16(payloadToSign);
 
   return `${payloadToSign}${crc}`;
@@ -402,6 +404,7 @@ export function decodePixBrCode(payload: string): DecodedPixBrCode | null {
     txId,
     infoAdicional,
     postalCode,
+    pointOfInitiationMethod: rootTags.get("01"),
     rawPayload: cleanPayload,
     crc: rawCrc,
     isValidCrc,

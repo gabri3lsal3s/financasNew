@@ -486,5 +486,6 @@ export * from "./closing-validator";
 export * from "./dividend-deduplication";
 export * from "./dividend-suggester";
 export * from "./dividend-cash-governance";
+export * from "./fire";
 
 

@@ -96,7 +96,7 @@ export function HouseholdWealthCard({
           )}
         >
           {/* Reserva de Emergência Conjunta */}
-          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/50 space-y-1.5 flex flex-col justify-between">
+          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/80 space-y-1.5 flex flex-col justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
                 <ShieldCheck className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
@@ -121,7 +121,7 @@ export function HouseholdWealthCard({
           </div>
 
           {/* Total Investido Familiar */}
-          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/50 space-y-1.5 flex flex-col justify-between">
+          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/80 space-y-1.5 flex flex-col justify-between">
             <div className="space-y-1">
               <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
                 <TrendingUp className="size-3.5 text-portfolio shrink-0" aria-hidden="true" />
@@ -150,7 +150,7 @@ export function HouseholdWealthCard({
 
           {/* Proventos Anuais (exibido apenas se > 0) */}
           {hasDividends && (
-            <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/50 space-y-1">
+            <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/80 space-y-1">
               <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
                 <PiggyBank className="size-3.5 text-warning-strong shrink-0" aria-hidden="true" />
                 <span>Proventos 12m</span>
@@ -167,7 +167,7 @@ export function HouseholdWealthCard({
 
         {/* Régua de Meta da Reserva Familiar (6 Meses do Teto) */}
         {isCeiling && reserveHealth.target_cents ? (
-          <div className="p-3.5 rounded-xl bg-surface-subtle/40 border border-border/60 space-y-2">
+          <div className="p-3.5 rounded-xl bg-surface-subtle/40 border border-border/80 space-y-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
               <span className="font-semibold text-foreground flex items-center gap-1.5">
                 <Target className="size-3.5 text-primary shrink-0" aria-hidden="true" />
@@ -217,7 +217,7 @@ export function HouseholdWealthCard({
             </div>
           </div>
         ) : (
-          <div className="p-3 rounded-xl bg-surface-subtle/30 border border-border/50 text-[11px] text-muted-foreground">
+          <div className="p-3 rounded-xl bg-surface-subtle/30 border border-border/80 text-[11px] text-muted-foreground">
             Defina o teto mensal de gastos da família nas configurações para acompanhar a meta automática de 6 meses de reserva.
           </div>
         )}

@@ -161,10 +161,12 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Novo Modo Viagem Compartilhada: divisão em grupo, acerto simplificado de contas e links públicos",
-    "Links canônicos unificados hospedados via Cloudflare Workers (Modo Viagem, Família, Racha e Metas)",
-    "Suporte nativo a deep links e abertura direta no aplicativo Android instalado",
-    "Detalhamento sob demanda das obrigações do ciclo no RealCashHeroCard e melhorias de estabilidade"
+    "Axir v3.1.0: Expansão Global de Plataforma, Motores Financeiros e Segurança",
+    "App Lock Híbrido com Biometria Nativa, WebAuthn e PIN Numérico com SHA-256",
+    "Multi-sessão concorrente e painel de dispositivos conectados com revogação remota",
+    "Motor FIRE e Independência Financeira nativos com cálculo de Capital Crítico e Runway",
+    "Explicabilidade matemática transparente com decomposição de fórmulas (Regra 33)",
+    "Rebalanceamento de carteira inteligente (Menos Movimentações) e Pix EMVCo nativo"
   ]
 }
 EOF

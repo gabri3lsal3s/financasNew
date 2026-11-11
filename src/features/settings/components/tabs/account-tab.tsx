@@ -32,7 +32,6 @@ import {
 import { useAuth, requestUserEmailChange } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useUserAccess, useUserSubscription, useUpdateProfile } from "@/state";
-import { getSupabase } from "@/data/client";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
@@ -168,9 +167,7 @@ export function AccountTab() {
     setIsSigningOutOthers(true);
     triggerSensory("action");
     try {
-      const supabase = getSupabase();
-      const { error } = await supabase.auth.signOut({ scope: "others" });
-      if (error) throw error;
+      await signOut({ scope: "others" });
       triggerSensory("success");
       pushToast({
         title: "Outros acessos encerrados",

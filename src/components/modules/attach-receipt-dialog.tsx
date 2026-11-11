@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
-import { Camera, ClipboardPaste, FileUp, Loader2, UploadCloud } from "lucide-react";
+import { useState } from "react";
+import { ClipboardPaste, FileUp, Loader2 } from "lucide-react";
 import {
   Alert,
   Button,
+  Dropzone,
   ResponsiveDialog,
   Textarea,
 } from "@/components/ui";
@@ -54,19 +55,15 @@ export function AttachReceiptDialog({
 }: AttachReceiptDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dragOver, setDragOver] = useState(false);
   const [showTextInput, setShowTextInput] = useState(false);
   const [manualText, setManualText] = useState("");
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const { memory: userMemory } = useMerchantLearning();
   const { cardDigitsMapping } = useCardDigitsMapping();
 
   const handleClose = () => {
     if (loading) return;
     setError(null);
-    setDragOver(false);
     setShowTextInput(false);
     setManualText("");
     onOpenChange(false);
@@ -288,24 +285,6 @@ export function AttachReceiptDialog({
     await handleProcessText(manualText.trim());
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      void handleProcessFile(file);
-    }
-    // Reseta o input para permitir selecionar o mesmo arquivo novamente
-    e.target.value = "";
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      void handleProcessFile(file);
-    }
-  };
-
   return (
     <ResponsiveDialog
       open={open}
@@ -332,27 +311,6 @@ export function AttachReceiptDialog({
       }
     >
       <div className="flex flex-col gap-4 py-1">
-        {/* Input de arquivo oculto */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
-          className="sr-only"
-          tabIndex={-1}
-          onChange={handleFileChange}
-        />
-
-        {/* Input de câmera oculto */}
-        <input
-          ref={cameraInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="sr-only"
-          tabIndex={-1}
-          onChange={handleFileChange}
-        />
-
         {error && <Alert variant="error">{error}</Alert>}
 
         {loading ? (
@@ -374,37 +332,23 @@ export function AttachReceiptDialog({
             </div>
           </div>
         ) : (
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
+          <Dropzone
+            accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+            maxSizeBytes={15 * 1024 * 1024}
+            label="Arraste o comprovante aqui ou toque para selecionar"
+            hint="Formatos aceitos: PDF digital, PNG ou JPG (até 15 MB)"
+            enableCamera={true}
+            onFiles={(files) => {
+              const file = files[0];
+              if (file) void handleProcessFile(file);
             }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            className={`flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed transition-colors text-center cursor-pointer select-none ${
-              dragOver
-                ? "border-primary bg-primary/5"
-                : "border-border/80 bg-surface hover:bg-surface-hover hover:border-border"
-            }`}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <div className="size-12 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
-              <UploadCloud className="size-6" aria-hidden="true" />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-semibold text-foreground">
-                Arraste o comprovante aqui ou toque para selecionar
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Formatos aceitos: PDF digital, PNG ou JPG (até 10 MB)
-              </span>
-            </div>
-
-            <div
-              className="flex items-center gap-2 pt-2 flex-wrap justify-center"
-              onClick={(e) => e.stopPropagation()}
-            >
+            onFileRejected={(_file, reason) => {
+              if (reason === "too-large") {
+                triggerSensory("warning");
+                setError("O arquivo selecionado excede o limite de 15 MB. Envie um comprovante mais leve.");
+              }
+            }}
+            extraActions={
               <Button
                 type="button"
                 variant="outline"
@@ -415,30 +359,8 @@ export function AttachReceiptDialog({
                 <ClipboardPaste className="size-3.5" aria-hidden="true" />
                 <span>Colar comprovante Pix</span>
               </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                className="gap-1.5 cursor-pointer"
-              >
-                <FileUp className="size-3.5" aria-hidden="true" />
-                <span>Escolher arquivo</span>
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => cameraInputRef.current?.click()}
-                className="gap-1.5 cursor-pointer"
-              >
-                <Camera className="size-3.5" aria-hidden="true" />
-                <span>Tirar foto</span>
-              </Button>
-            </div>
-          </div>
+            }
+          />
         )}
 
         {showTextInput && !loading && (

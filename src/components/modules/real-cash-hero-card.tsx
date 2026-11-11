@@ -96,7 +96,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
         {/* Linha de Projeção Safe-to-Spend */}
         <div
           className={cn(
-            "grid grid-cols-1 gap-2.5 rounded-xl bg-surface-hover/50 border border-border/60 p-2.5 sm:p-3 text-xs",
+            "grid grid-cols-1 gap-2.5 rounded-xl bg-surface-hover/50 border border-border/80 p-2.5 sm:p-3 text-xs",
             hasReceivables ? "sm:grid-cols-3" : "sm:grid-cols-2",
           )}
         >

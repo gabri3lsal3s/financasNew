@@ -8,15 +8,20 @@ import { pushToast } from "@/services/toast";
 export interface ExcelExportCardProps {
   workbookData: ExcelWorkbookData;
   description?: string;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 export function ExcelExportCard({
   workbookData,
   description = "Exportação completa das abas de Investimentos e Finanças (Resumo Patrimonial, Custódia de Ativos, Proventos e Fiscal) com formatações e fórmulas nativas.",
+  disabled = false,
+  disabledReason = "Não há dados para exportar no período selecionado.",
 }: ExcelExportCardProps) {
   const [downloading, setDownloading] = useState(false);
 
   const handleExport = () => {
+    if (disabled) return;
     setDownloading(true);
     try {
       const today = todayISO();
@@ -53,7 +58,8 @@ export function ExcelExportCard({
         type="button"
         variant="default"
         onClick={handleExport}
-        disabled={downloading}
+        disabled={downloading || disabled}
+        title={disabled ? disabledReason : undefined}
         className="gap-2 shrink-0 w-full sm:w-auto justify-center"
       >
         <Download className="size-4" aria-hidden="true" />

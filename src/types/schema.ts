@@ -1399,11 +1399,27 @@ export type FamilyPortfolioSummary = {
   assets: FamilySharedAssetSummary[];
 };
 
+// ===========================================================================
+// Dispositivos e Gestão de Sessões Multi-Aparelho (Etapa 1.1)
+// ===========================================================================
 
+export type UserDevice = {
+  id: string;
+  user_id: string;
+  device_id: string;
+  device_name: string;
+  browser: string;
+  os: string;
+  ip_address: string | null;
+  last_seen_at: string;
+  created_at: string;
+  is_revoked: boolean;
+};
 
-
-
-
-
-
-
+export type DeviceRegistrationInput = {
+  deviceId: string;
+  deviceName: string;
+  browser: string;
+  os: string;
+  ipAddress?: string | null;
+};

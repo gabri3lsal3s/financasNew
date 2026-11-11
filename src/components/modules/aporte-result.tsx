@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { DataList } from "@/components/ui/data-list";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
+import { formatCentsAsBRL } from "@/services/masks";
 import type { ClassAporteSummary, SectorAporteSummary, SkippedAssetDiagnostic } from "@/domain/portfolio";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
@@ -566,7 +567,7 @@ export function AporteResult({
                 </div>
                 <div className="flex flex-col items-end shrink-0">
                   <MoneyText cents={numberToCents(cls.actualAllocatedBRL)} tone={cls.actualAllocatedBRL > 0 ? "portfolio" : "default"} className="font-semibold text-xs" />
-                  <span className="text-[10px] text-muted-foreground">Gap: R$ {cls.gapBRL.toFixed(0)}</span>
+                  <span className="text-[10px] text-muted-foreground">Gap: {formatCentsAsBRL(numberToCents(cls.gapBRL))}</span>
                 </div>
               </div>
             ))}
@@ -620,7 +621,7 @@ export function AporteResult({
                 </div>
                 <div className="flex flex-col items-end shrink-0">
                   <MoneyText cents={numberToCents(sec.actualAllocatedBRL)} tone={sec.actualAllocatedBRL > 0 ? "portfolio" : "default"} className="font-semibold text-xs" />
-                  <span className="text-[10px] text-muted-foreground">Gap: R$ {sec.gapBRL.toFixed(0)}</span>
+                  <span className="text-[10px] text-muted-foreground">Gap: {formatCentsAsBRL(numberToCents(sec.gapBRL))}</span>
                 </div>
               </div>
             ))}
@@ -874,7 +875,7 @@ export function AporteResult({
                             <MoneyText cents={numberToCents(cGroup.totalAllocatedBRL)} tone="portfolio" />
                           </td>
                           <td className="py-2 px-3 text-right text-muted-foreground" colSpan={3}>
-                            <span className="text-[11px]">Gap Total: R$ {cGroup.totalGapBRL.toFixed(0)}</span>
+                            <span className="text-[11px]">Gap Total: {formatCentsAsBRL(numberToCents(cGroup.totalGapBRL))}</span>
                           </td>
                         </tr>
 

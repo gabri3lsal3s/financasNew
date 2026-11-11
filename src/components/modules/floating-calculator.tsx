@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { Calculator as CalculatorIcon, Check, Hash, History, Link2 } from "lucide-react";
+import { Calculator as CalculatorIcon, Check, ClipboardPaste, Hash, History, Link2 } from "lucide-react";
 import { Badge, Button, Modal, NumberStepper } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CalculatorKeypad } from "@/components/modules/calculator-keypad";
@@ -21,9 +21,12 @@ import {
   addHistory,
   centsToDecimal,
   decimalToCents,
+  parseClipboardToDecimal,
   pressBackspace,
   pressDigit,
   pressEquals,
+  pressMoneyBackspace,
+  pressMoneyDigit,
   pressOperator,
   splitInstallments,
 } from "@/domain/calculator";
@@ -45,6 +48,9 @@ export function FloatingCalculator() {
   // Lê o modo do alvo ativo (reativo via subscribeCalculatorTarget).
   const targetMode = useSyncExternalStore(subscribeCalculatorTarget, getActiveTargetMode);
 
+  const isDecimalMode = targetMode === "decimal";
+  const isMoneyMode = targetMode === "money";
+
   const [state, setState] = useState<CalculatorState>(INITIAL_STATE);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [installments, setInstallments] = useState(1);
@@ -55,7 +61,7 @@ export function FloatingCalculator() {
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) {
-      if (targetMode === "decimal") {
+      if (isDecimalMode) {
         // Modo decimal: usa o valor string do campo diretamente.
         const display = getActiveDecimalDisplay();
         setState(
@@ -63,25 +69,84 @@ export function FloatingCalculator() {
             ? { display, accumulator: null, operator: null, justEvaluated: true, entering: false, error: false }
             : INITIAL_STATE,
         );
-      } else {
-        // Modo money (padrão): converte centavos para decimal.
+      } else if (isMoneyMode) {
+        // Modo money: converte centavos para decimal formatado com 2 casas.
         const targetCents = getActiveTargetCents();
         setState(
           targetCents !== null && targetCents > 0
             ? {
-                display: centsToDecimal(targetCents),
+                display: (targetCents / 100).toFixed(2),
                 accumulator: null,
                 operator: null,
                 justEvaluated: true,
                 entering: false,
                 error: false,
               }
-            : INITIAL_STATE,
+            : {
+                ...INITIAL_STATE,
+                display: "0.00",
+              },
         );
+      } else {
+        setState(INITIAL_STATE);
       }
       setPlan(null);
     }
   }
+
+  const handleDigit = useCallback(
+    (digit: string) => {
+      setState((current) => (isMoneyMode ? pressMoneyDigit(current, digit) : pressDigit(current, digit)));
+    },
+    [isMoneyMode],
+  );
+
+  const handleBackspace = useCallback(() => {
+    setState((current) => (isMoneyMode ? pressMoneyBackspace(current) : pressBackspace(current)));
+  }, [isMoneyMode]);
+
+  const handlePasteClipboard = useCallback(async () => {
+    try {
+      if (typeof navigator === "undefined" || !navigator.clipboard?.readText) {
+        pushToast({
+          title: "Área de transferência indisponível",
+          description: "O navegador não concedeu permissão para ler a área de transferência.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const rawText = await navigator.clipboard.readText();
+      const sanitized = parseClipboardToDecimal(rawText);
+      if (!sanitized) {
+        pushToast({
+          title: "Valor inválido",
+          description: "Nenhum número ou valor financeiro reconhecido na área de transferência.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setState({
+        display: sanitized,
+        accumulator: null,
+        operator: null,
+        justEvaluated: true,
+        entering: false,
+        error: false,
+      });
+      setPlan(null);
+      pushToast({
+        title: "Valor colado",
+        description: `${sanitized} inserido no display.`,
+        variant: "default",
+      });
+    } catch {
+      pushToast({
+        title: "Erro ao colar",
+        description: "Não foi possível acessar a área de transferência.",
+        variant: "destructive",
+      });
+    }
+  }, []);
 
   const handleEquals = useCallback(() => {
     const previous = state;
@@ -182,6 +247,12 @@ export function FloatingCalculator() {
     if (!open) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v") {
+        event.preventDefault();
+        handlePasteClipboard();
+        return;
+      }
+
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
         event.preventDefault();
         handleInject();
@@ -194,10 +265,12 @@ export function FloatingCalculator() {
 
       if (key >= "0" && key <= "9") {
         event.preventDefault();
-        setState((current) => pressDigit(current, key));
+        handleDigit(key);
       } else if (key === "." || key === ",") {
         event.preventDefault();
-        setState((current) => pressDigit(current, "."));
+        if (!isMoneyMode) {
+          setState((current) => pressDigit(current, "."));
+        }
       } else if (key === "+") {
         event.preventDefault();
         setState((current) => pressOperator(current, "+"));
@@ -218,19 +291,17 @@ export function FloatingCalculator() {
         setCalculatorOpen(false);
       } else if (key === "Backspace") {
         event.preventDefault();
-        setState((current) => pressBackspace(current));
+        handleBackspace();
       } else if (key.toLowerCase() === "c" || key === "Delete") {
         event.preventDefault();
-        setState(INITIAL_STATE);
+        setState(isMoneyMode ? { ...INITIAL_STATE, display: "0.00" } : INITIAL_STATE);
         setPlan(null);
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, handleEquals, handleInject]);
-
-  const isDecimalMode = targetMode === "decimal";
+  }, [open, isMoneyMode, handleDigit, handleBackspace, handleEquals, handleInject, handlePasteClipboard]);
 
   return (
     <Modal
@@ -245,8 +316,8 @@ export function FloatingCalculator() {
       elevated
     >
         <div className="mt-4 flex flex-col gap-4">
-          {/* Status de conexão contextual */}
-          <div className="flex items-center justify-between">
+          {/* Status de conexão contextual + Ação de colar */}
+          <div className="flex items-center justify-between gap-2">
             {isConnected ? (
               <Badge variant="muted" size="sm" className="gap-1.5 font-normal">
                 {isDecimalMode ? (
@@ -254,7 +325,7 @@ export function FloatingCalculator() {
                 ) : (
                   <Link2 className="size-3 text-muted-foreground" aria-hidden="true" />
                 )}
-                <span>{connectedLabel ? `Campo: ${connectedLabel}` : "Conectado ao campo"}</span>
+                <span className="truncate">{connectedLabel ? `Campo: ${connectedLabel}` : "Conectado ao campo"}</span>
               </Badge>
             ) : (
               <Badge variant="muted" size="sm" className="gap-1.5 font-normal">
@@ -262,6 +333,18 @@ export function FloatingCalculator() {
                 <span>Calculadora livre</span>
               </Badge>
             )}
+
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handlePasteClipboard}
+              className="h-7 gap-1.5 px-2 text-xs"
+              title="Colar valor da área de transferência (Ctrl+V)"
+            >
+              <ClipboardPaste className="size-3.5" aria-hidden="true" />
+              <span>Colar</span>
+            </Button>
           </div>
 
           {/* Display */}
@@ -284,14 +367,14 @@ export function FloatingCalculator() {
           </div>
 
           <CalculatorKeypad
-            onDigit={(digit) => setState((current) => pressDigit(current, digit))}
+            onDigit={handleDigit}
             onOperator={(operator) => setState((current) => pressOperator(current, operator))}
             onEquals={handleEquals}
             onClear={() => {
-              setState(INITIAL_STATE);
+              setState(isMoneyMode ? { ...INITIAL_STATE, display: "0.00" } : INITIAL_STATE);
               setPlan(null);
             }}
-            onBackspace={() => setState((current) => pressBackspace(current))}
+            onBackspace={handleBackspace}
           />
 
           {/* Divisão de parcelas — apenas no modo money */}

@@ -62,31 +62,31 @@ Este plano estabelece a reformulação completa do **Módulo Administrativo do �
 ## 3. FASES DE IMPLEMENTAÇÃO E TAREFAS DETALHADAS
 
 ### FASE 1 — Infraestrutura de Dados, Criptografia e Políticas (Backend)
-- [ ] **Tarefa 1.1:** Criar migration PostgreSQL para o controle de acesso ao APK Nativo:
+- [x] **Tarefa 1.1:** Criar migration PostgreSQL para o controle de acesso ao APK Nativo:
   - Adicionar as chaves de feature global `apk_access_free` e `apk_access_pro` na tabela `system_features`.
-- [ ] **Tarefa 1.2:** Estruturar a criptografia e armazenamento seguro de dados de contato (LGPD):
+- [x] **Tarefa 1.2:** Estruturar a criptografia e armazenamento seguro de dados de contato (LGPD):
   - Adicionar colunas `phone` (telefone/WhatsApp de contato) e metadados de contato em `public.profiles`.
   - Criar RPC `admin_get_user_contact_details(p_user_id uuid)` restrita a `role in ('admin', 'superadmin')` com registro imutável em `audit_events` a cada visualização de dados não mascarados (princípio do Menor Privilégio e Auditoria LGPD).
-- [ ] **Tarefa 1.3:** Criar estrutura do Sistema de Notificações Push & Broadcast:
+- [x] **Tarefa 1.3:** Criar estrutura do Sistema de Notificações Push & Broadcast:
   - Tabela `public.admin_broadcast_notifications`: `id`, `title`, `message`, `type`, `action_url`, `target_audience`, `target_user_ids`, `created_by`, `created_at`.
   - Tabela `public.user_notification_reads`: `id`, `user_id`, `notification_id`, `read_at`, `dismissed_at`.
   - RPCs transacionais: `admin_send_broadcast_notification` e `mark_broadcast_as_read`.
-- [ ] **Tarefa 1.4:** Criar estrutura para o Histórico de Backups e Snapshots:
+- [x] **Tarefa 1.4:** Criar estrutura para o Histórico de Backups e Snapshots:
   - Tabela `public.system_backups`: `id`, `created_at`, `created_by`, `backup_type`, `table_count`, `record_count`, `file_size_bytes`, `checksum_sha256`, `status`, `notes`.
   - RPC `admin_log_system_backup` para registro seguro de snapshots.
 
 ---
 
 ### FASE 2 — Login Exclusivo e Shell Administrativo Dedicado (Frontend)
-- [ ] **Tarefa 2.1:** Implementar tela de login dedicada `src/features/admin/pages/admin-login-page.tsx`:
+- [x] **Tarefa 2.1:** Implementar tela de login dedicada `src/features/admin/pages/admin-login-page.tsx`:
   - Interface com visual sóbrio ("Áxis Command Center");
   - Throttling progressivo (backoff exponencial após 3 e 5 tentativas);
   - Desafio Cloudflare Turnstile anti-bot real;
   - Validação atômica pós-login: se o perfil não tiver papel `admin` ou `superadmin`, desconecta imediatamente e exibe alerta de autorização negada.
-- [ ] **Tarefa 2.2:** Criar o componente de guarda de rota `RequireAdminSession`:
+- [x] **Tarefa 2.2:** Criar o componente de guarda de rota `RequireAdminSession`:
   - Bloqueia renderização de qualquer rota `/admin/*`;
   - Redireciona usuários desautenticados ou com papel comum diretamente para `/admin/login`.
-- [ ] **Tarefa 2.3:** Construir o layout dedicado `AdminShell` (`src/features/admin/layouts/admin-shell.tsx`):
+- [x] **Tarefa 2.3:** Construir o layout dedicado `AdminShell` (`src/features/admin/layouts/admin-shell.tsx`):
   - Sidebar executiva com navegação estruturada pelas 8 áreas operacionais;
   - Header administrativo contendo:
     * Status dos serviços (Supabase, Asaas, Telegram, Integridade do Banco);
@@ -97,10 +97,10 @@ Este plano estabelece a reformulação completa do **Módulo Administrativo do �
 ---
 
 ### FASE 3 — Controle do APK Beta (Modos Free e Pro) & Bloqueio Amigável
-- [ ] **Tarefa 3.1:** Implementar no painel administrativo (`AdminSettingsPage`) os controles de liberação do APK:
+- [x] **Tarefa 3.1:** Implementar no painel administrativo (`AdminSettingsPage`) os controles de liberação do APK:
   - Switches para "Permitir APK Android — Usuários Pro" e "Permitir APK Android — Usuários Free";
   - Campo para definir mensagem explicativa da versão beta.
-- [ ] **Tarefa 3.2:** Integrar a checagem no aplicativo cliente:
+- [x] **Tarefa 3.2:** Integrar a checagem no aplicativo cliente:
   - No componente de inicialização nativa ou tela de bloqueio, verificar se o app está rodando em APK (`isNativePlatform()`).
   - Se a feature flag estiver desabilitada para o plano do usuário, apresentar o diálogo modal elegante `ApkBetaRestrictedModal`:
     * Informa que o APK Nativo está em homologação fechada;
@@ -110,10 +110,10 @@ Este plano estabelece a reformulação completa do **Módulo Administrativo do �
 ---
 
 ### FASE 4 — Gestão 360° de Usuários, Contato Criptografado e CRM
-- [ ] **Tarefa 4.1:** Refatorar a página `AdminUsersPage`:
+- [x] **Tarefa 4.1:** Refatorar a página `AdminUsersPage`:
   - Tabela com densidade otimizada, busca instantânea e paginação eficiente;
   - Filtros avançados combinados (Status, Plano, Role, 2FA Ativo).
-- [ ] **Tarefa 4.2:** Desenvolver a Gaveta Lateral de Detalhes do Usuário (`UserDetailDrawer`):
+- [x] **Tarefa 4.2:** Desenvolver a Gaveta Lateral de Detalhes do Usuário (`UserDetailDrawer`):
   - Visualização unificada dos dados do cliente;
   - Campo seguro para visualização de Telefone/WhatsApp com botão "Revelar Dado Protegido" (dispara auditoria LGPD) e atalho direto para iniciar conversa no WhatsApp;
   - Gestão de plano (Asaas), extensão de trial e overrides de módulos em abas organizadas;
@@ -122,36 +122,36 @@ Este plano estabelece a reformulação completa do **Módulo Administrativo do �
 ---
 
 ### FASE 5 — Central de Notificações Push & Avisos In-App
-- [ ] **Tarefa 5.1:** Criar a tela `AdminNotificationsPage`:
+- [x] **Tarefa 5.1:** Criar a tela `AdminNotificationsPage`:
   - Formulário de disparo com pré-visualização em tempo real do aviso (como aparecerá no celular do cliente);
   - Seletor de audiência: "Todos", "Apenas Assinantes Pro", "Apenas Free/Trial", ou "Clientes Selecionados";
   - Tabela de histórico de notificações disparadas com contadores de alcance e leitura.
-- [ ] **Tarefa 5.2:** Integrar a recepção das notificações no app cliente:
+- [x] **Tarefa 5.2:** Integrar a recepção das notificações no app cliente:
   - Adicionar as notificações administrativas ao `NotificationsPopover` e sininho do app;
   - Suporte a disparo de notificação local/push no APK via Capacitor quando o app receber um novo broadcast.
 
 ---
 
 ### FASE 6 — Central de Backups, Integridade SHA-256 e DRP
-- [ ] **Tarefa 6.1:** Desenvolver a página `AdminBackupsPage`:
+- [x] **Tarefa 6.1:** Desenvolver a página `AdminBackupsPage`:
   - Cartão de status do último backup (data, quantidade de registros, tamanho e hash);
   - Botão "Gerar Snapshot Imediato" para exportação administrativa consolidada;
   - Tabela com histórico de backups efetuados e status de retenção;
   - Verificador de Integridade (validação de hash SHA-256);
   - Manual DRP (Disaster Recovery Plan) interativo com instruções de restauração de contingência.
-- [ ] **Tarefa 6.2:** Criar script/serviço para snapshot dos dados consolidados:
+- [x] **Tarefa 6.2:** Criar script/serviço para snapshot dos dados consolidados:
   - Exportação estruturada e higienizada em formato JSON versionado com checksum criptográfico.
 
 ---
 
 ### FASE 7 — Faturamento, Helpdesk, Auditoria e LGPD DPO Console
-- [ ] **Tarefa 7.1:** Estruturar `AdminBillingPage`:
+- [x] **Tarefa 7.1:** Estruturar `AdminBillingPage`:
   - Painel de métricas financeiras SaaS (MRR, inadimplência e conversão);
   - Monitoramento de eventos do webhook Asaas e estorno rápido de 7 dias (CDC Art. 49).
-- [ ] **Tarefa 7.2:** Refatorar `AdminTicketsPage`:
+- [x] **Tarefa 7.2:** Refatorar `AdminTicketsPage`:
   - Fila de chamados com alerta de SLA (> 15 min);
   - Modal de resposta integrado com envio de aviso direto para o cliente.
-- [ ] **Tarefa 7.3:** Estruturar `AdminSecurityPage`:
+- [x] **Tarefa 7.3:** Estruturar `AdminSecurityPage`:
   - Trilha de auditoria avançada com filtros por operador, ação e data;
   - Console DPO com registro de solicitações de titulares da LGPD (Portabilidade e Direito ao Esquecimento).
 
@@ -174,6 +174,6 @@ Para assegurar 100% de estabilidade e zero regressão no sistema:
 
 ## 5. DEFINITION OF DONE (DoD)
 
-- [ ] Todas as 7 fases concluídas com código testado e tipado;
-- [ ] Documentação operacional atualizada (`FOUNDER_RUNBOOK.md` e `SECURITY_GOVERNANCE.md`);
-- [ ] Todos os 6 Quality Gates aprovados com relatório de execução.
+- [x] Todas as 7 fases concluídas com código testado e tipado;
+- [x] Documentação operacional atualizada (`FOUNDER_RUNBOOK.md` e `SECURITY_GOVERNANCE.md`);
+- [x] Todos os 6 Quality Gates aprovados com relatório de execução.

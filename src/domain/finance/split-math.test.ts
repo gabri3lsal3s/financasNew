@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  amortizeSettlementAcrossInstallments,
   buildSplitParticipantInstallments,
   calculateGuestAmountCents,
   calculateInstallmentsProgress,
@@ -522,6 +523,75 @@ describe("split-math (Algoritmo Puro de Rateio de Centavos)", () => {
 
       // Se reembolso exceder fatura por anomalia, crava em 0
       expect(calculateInstallmentReportWeight(5000, 6000)).toBe(0);
+    });
+  });
+
+  describe("amortizeSettlementAcrossInstallments", () => {
+    const installments = [
+      {
+        id: "inst_1",
+        participant_id: "p1",
+        installment_number: 1,
+        total_installments: 3,
+        amount_cents: 3334,
+        due_date: "2026-10-10",
+        is_settled: false,
+      },
+      {
+        id: "inst_2",
+        participant_id: "p1",
+        installment_number: 2,
+        total_installments: 3,
+        amount_cents: 3333,
+        due_date: "2026-11-10",
+        is_settled: false,
+      },
+      {
+        id: "inst_3",
+        participant_id: "p1",
+        installment_number: 3,
+        total_installments: 3,
+        amount_cents: 3333,
+        due_date: "2026-12-10",
+        is_settled: false,
+      },
+    ];
+
+    it("amortiza parcelas em ordem cronológica a partir do montante pago", () => {
+      // Pagamento parcial cobre exatamente a 1ª parcela
+      const res1 = amortizeSettlementAcrossInstallments(installments, 3334);
+      expect(res1.fullySettledCount).toBe(1);
+      expect(res1.pendingCount).toBe(2);
+      expect(res1.updatedInstallments[0]!.is_settled).toBe(true);
+      expect(res1.updatedInstallments[1]!.is_settled).toBe(false);
+      expect(res1.remainingOwedCents).toBe(6666);
+      expect(res1.unallocatedCents).toBe(0);
+
+      // Pagamento de R$ 70,00 (7000 centavos): cobre parcela 1 (3334) e parcela 2 (3333), sobra 333
+      const res2 = amortizeSettlementAcrossInstallments(installments, 7000);
+      expect(res2.fullySettledCount).toBe(2);
+      expect(res2.pendingCount).toBe(1);
+      expect(res2.updatedInstallments[0]!.is_settled).toBe(true);
+      expect(res2.updatedInstallments[1]!.is_settled).toBe(true);
+      expect(res2.updatedInstallments[2]!.is_settled).toBe(false);
+      expect(res2.remainingOwedCents).toBe(3333);
+      expect(res2.unallocatedCents).toBe(333);
+    });
+
+    it("quita 100% das parcelas quando o valor total é coberto", () => {
+      const res = amortizeSettlementAcrossInstallments(installments, 10000);
+      expect(res.fullySettledCount).toBe(3);
+      expect(res.pendingCount).toBe(0);
+      expect(res.remainingOwedCents).toBe(0);
+      expect(res.updatedInstallments.every((i) => i.is_settled)).toBe(true);
+    });
+
+    it("mantém todas pendentes se valor pago for zero ou insuficiente para a primeira parcela", () => {
+      const res = amortizeSettlementAcrossInstallments(installments, 1000);
+      expect(res.fullySettledCount).toBe(0);
+      expect(res.pendingCount).toBe(3);
+      expect(res.remainingOwedCents).toBe(10000);
+      expect(res.unallocatedCents).toBe(1000);
     });
   });
 });

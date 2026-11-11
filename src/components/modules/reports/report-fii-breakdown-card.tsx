@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Building2, AlertTriangle, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatPercent } from "@/services/masks";
 import { numberToCents } from "@/domain/money";
 import {
   calculateFiiExposure,
@@ -80,7 +81,7 @@ export function ReportFiiBreakdownCard(props: ReportFiiBreakdownCardProps) {
           {exposure.isConcentrated ? (
             <Badge variant="warning" size="sm" className="gap-1 inline-flex items-center">
               <AlertTriangle className="size-3" aria-hidden="true" />
-              <span>Concentrado ({exposure.topCategory?.pct.toFixed(0)}% {exposure.topCategory?.label})</span>
+              <span>Concentrado ({formatPercent(exposure.topCategory?.pct ?? 0)}% {exposure.topCategory?.label})</span>
             </Badge>
           ) : (
             <Badge variant="muted" size="sm" className="gap-1 inline-flex items-center">
@@ -136,7 +137,7 @@ export function ReportFiiBreakdownCard(props: ReportFiiBreakdownCardProps) {
                         <MoneyText cents={numberToCents(grp.valueBRL)} />
                       </td>
                       <td className="py-1.5 px-2.5 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                        {grp.pct.toFixed(1)}%
+                        {formatPercent(grp.pct)}%
                       </td>
                     </tr>
                   ))}
@@ -195,7 +196,7 @@ export function ReportFiiBreakdownCard(props: ReportFiiBreakdownCardProps) {
                         <MoneyText cents={numberToCents(grp.valueBRL)} />
                       </td>
                       <td className="py-2 px-3 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                        {grp.pct.toFixed(1)}%
+                        {formatPercent(grp.pct)}%
                       </td>
                     </tr>
                   ))}

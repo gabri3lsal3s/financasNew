@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { TrendingUp, AlertTriangle, ShieldCheck, Layers, PieChart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatPercent } from "@/services/masks";
 import { numberToCents } from "@/domain/money";
 import {
   calculateStocksExposure,
@@ -100,7 +101,7 @@ export function ReportStocksBreakdownCard({
           {exposure.isConcentrated ? (
             <Badge variant="warning" size="sm" className="gap-1 inline-flex items-center">
               <AlertTriangle className="size-3" aria-hidden="true" />
-              <span>Concentrado ({exposure.topProfile?.pct.toFixed(0)}% {exposure.topProfile?.label})</span>
+              <span>Concentrado ({formatPercent(exposure.topProfile?.pct ?? 0)}% {exposure.topProfile?.label})</span>
             </Badge>
           ) : (
             <Badge variant="muted" size="sm" className="gap-1 inline-flex items-center">
@@ -111,7 +112,7 @@ export function ReportStocksBreakdownCard({
 
           {/* Alternador de Visão (Oculto no modo print_all) */}
           {mode !== "print_all" && (
-            <div className="flex items-center gap-1 rounded-xl bg-surface-hover/70 p-1 border border-border/60 print:hidden">
+            <div className="flex items-center gap-1 rounded-xl bg-surface-hover/70 p-1 border border-border/80 print:hidden">
               <button
                 type="button"
                 onClick={() => setActiveView("profile")}
@@ -195,7 +196,7 @@ export function ReportStocksBreakdownCard({
                             <MoneyText cents={numberToCents(grp.valueBRL)} />
                           </td>
                           <td className="py-1 px-2 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                            {grp.pct.toFixed(1)}%
+                            {formatPercent(grp.pct)}%
                           </td>
                         </tr>
                       ))}
@@ -256,7 +257,7 @@ export function ReportStocksBreakdownCard({
                             <MoneyText cents={numberToCents(grp.valueBRL)} />
                           </td>
                           <td className="py-1 px-2 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                            {grp.pct.toFixed(1)}%
+                            {formatPercent(grp.pct)}%
                           </td>
                         </tr>
                       ))}
@@ -325,7 +326,7 @@ export function ReportStocksBreakdownCard({
                           <MoneyText cents={numberToCents(grp.valueBRL)} />
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                          {grp.pct.toFixed(1)}%
+                          {formatPercent(grp.pct)}%
                         </td>
                       </tr>
                     );

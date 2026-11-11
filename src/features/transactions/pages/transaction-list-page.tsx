@@ -11,6 +11,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { SkeletonList } from "@/components/ui/skeleton";
 import { SearchInput, Tabs } from "@/components/ui";
 import { HighlightRow, KpiCard, KpiGrid, MonthPicker, ReadOnlyBanner, SplitPreviewMockupCard, TransactionRow, UpgradeDialog } from "@/components/modules";
+import { PageHeader } from "@/components/layout";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { currentMonth, formatDateBR, isValidMonth, shiftMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
@@ -346,10 +347,40 @@ export function TransactionListPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* F12 — sem header visual: seletor de mês direto; o botão de novo
-          lançamento fica abaixo dos KPIs (só desktop — no mobile o FAB da BottomNav
-          assume) e o título permanece apenas para leitores de tela. */}
-      <h1 className="sr-only">Transações</h1>
+      <PageHeader
+        title="Transações"
+        description="Extrato consolidado de receitas, despesas e transferências por competência"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              disabled={filteredFeedItems.length === 0}
+              aria-label="Exportar CSV"
+              title={
+                filteredFeedItems.length === 0
+                  ? "Nenhum lançamento para exportar"
+                  : "Exportar lançamentos filtrados em CSV"
+              }
+              className="gap-1.5 cursor-pointer"
+            >
+              <Download className="size-3.5" aria-hidden="true" />
+              <span>Exportar CSV</span>
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleNewTransaction}
+              className="gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Plus className="size-3.5" aria-hidden="true" />
+              <span>Nova transação</span>
+            </Button>
+          </div>
+        }
+      />
 
       {permission.isReadOnlyMode && (
         <ReadOnlyBanner
@@ -406,24 +437,6 @@ export function TransactionListPage() {
           }
         />
       </KpiGrid>
-
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-        <Button className="w-full sm:flex-1 gap-1.5" onClick={handleNewTransaction}>
-          <Plus className="size-4" aria-hidden="true" />
-          Nova transação
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full sm:w-auto gap-1.5"
-          onClick={handleExportCsv}
-          disabled={filteredFeedItems.length === 0}
-          aria-label="Exportar CSV"
-          title={filteredFeedItems.length === 0 ? "Nenhum lançamento para exportar" : "Exportar lançamentos filtrados em CSV"}
-        >
-          <Download className="size-4" aria-hidden="true" />
-          <span className="hidden sm:inline">Exportar </span>CSV
-        </Button>
-      </div>
 
       <ActiveSplitsCard month={month} />
 

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Check, Plus, Sparkles } from "lucide-react";
 import { Badge, Button, FormField, SearchInput } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatPercent } from "@/services/masks";
 import { numberToCents } from "@/domain/money";
 import {
   buildAporteSuggestions,
@@ -324,7 +325,7 @@ export function StepSelect({
                     <div className="flex flex-col items-end text-right shrink-0">
                       <span className="text-[10px] uppercase font-semibold text-primary">Aportar</span>
                       <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                        {item.currentPercentage.toFixed(1)}% atual
+                        {formatPercent(item.currentPercentage)}% atual
                       </span>
                     </div>
                   </button>

@@ -175,6 +175,182 @@ export async function requestUserEmailChange(
   }
 }
 
+/**
+ * Nível de garantia de autenticação (AAL) do Supabase Auth.
+ */
+export interface MfaAssuranceLevel {
+  currentLevel: "aal1" | "aal2" | null;
+  nextLevel: "aal1" | "aal2" | null;
+}
 
+/**
+ * Consulta o nível de autenticação atual e esperado (MFA / AAL) do usuário ativo.
+ */
+export async function getMfaAssuranceLevel(): Promise<MfaAssuranceLevel | null> {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error || !data) return null;
+    return {
+      currentLevel: (data.currentLevel as "aal1" | "aal2") ?? null,
+      nextLevel: (data.nextLevel as "aal1" | "aal2") ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
 
+/**
+ * Consulta se o usuário ativo possui um fator TOTP de segundo fator (MFA) verificado.
+ */
+export async function getActiveUserMfaFactor(): Promise<{ id: string } | null> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.auth.mfa.listFactors();
+  if (error) return null;
+  const verified = data?.totp?.find((f) => f.status === "verified");
+  return verified ? { id: verified.id } : null;
+}
+
+/**
+ * Valida o código TOTP de 6 dígitos informado contra o fator MFA ativo.
+ */
+export async function verifyMfaTotpCode(factorId: string, code: string): Promise<boolean> {
+  const cleanCode = code.trim();
+  if (!factorId || cleanCode.length !== 6) return false;
+  const supabase = getSupabase();
+  const { error } = await supabase.auth.mfa.challengeAndVerify({
+    factorId,
+    code: cleanCode,
+  });
+  return !error;
+}
+
+export interface MfaFactorInfo {
+  id: string;
+  status: string;
+  friendly_name?: string;
+  factor_type: string;
+}
+
+export interface MfaEnrollResult {
+  factorId: string;
+  totpUri: string;
+  secret: string;
+}
+
+/**
+ * Lista o fator TOTP ativo/verificado do usuário autenticado.
+ */
+export async function listVerifiedMfaFactors(): Promise<MfaFactorInfo | null> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.auth.mfa.listFactors();
+  if (error) throw error;
+  const verified = data?.totp?.find((f) => f.status === "verified");
+  return verified
+    ? {
+        id: verified.id,
+        status: verified.status,
+        friendly_name: verified.friendly_name,
+        factor_type: verified.factor_type,
+      }
+    : null;
+}
+
+/**
+ * Inicia o processo de cadastro de fator TOTP gerando a URI e o segredo.
+ */
+export async function enrollMfaTotp(issuer = "Axir"): Promise<MfaEnrollResult> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.auth.mfa.enroll({
+    factorType: "totp",
+    issuer,
+  });
+  if (error) throw error;
+  return {
+    factorId: data.id,
+    totpUri: data.totp.uri,
+    secret: data.totp.secret,
+  };
+}
+
+/**
+ * Valida o desafio do fator TOTP para finalizar a ativação de 2FA.
+ */
+export async function verifyMfaEnrollment(factorId: string, code: string): Promise<void> {
+  const supabase = getSupabase();
+  const challenge = await supabase.auth.mfa.challenge({ factorId });
+  if (challenge.error) throw challenge.error;
+
+  const verify = await supabase.auth.mfa.verify({
+    factorId,
+    challengeId: challenge.data.id,
+    code: code.trim(),
+  });
+  if (verify.error) throw verify.error;
+}
+
+/**
+ * Desativa/remove um fator MFA cadastrado.
+ */
+export async function unenrollMfaFactor(factorId: string): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase.auth.mfa.unenroll({ factorId });
+  if (error) throw error;
+}
+
+/**
+ * Autentica usuário administrativo validando atômica e estritamente o perfil na base.
+ */
+export async function signInAdmin(
+  email: string,
+  password: string,
+): Promise<{ id: string; role: string }> {
+  await signInWithEmail(email, password);
+  const supabase = getSupabase();
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData?.user;
+  if (!user) {
+    throw new AppError("invalid-credentials", "Credenciais inválidas.");
+  }
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("role, status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    await supabase.auth.signOut({ scope: "local" });
+    throw new AppError("permission", "Falha ao validar credencial administrativa.");
+  }
+
+  if (profile.role !== "admin" && profile.role !== "superadmin") {
+    await supabase.auth.signOut({ scope: "local" });
+    throw new AppError(
+      "permission",
+      "Acesso restrito: Esta conta não possui privilégios de operador administrativo para acessar o Console da Plataforma.",
+    );
+  }
+
+  if (profile.status !== "active") {
+    await supabase.auth.signOut({ scope: "local" });
+    throw new AppError("permission", "Conta de administrador inativa ou suspensa.");
+  }
+
+  return { id: user.id, role: profile.role };
+}
+
+/**
+ * Assina mudanças no estado de autenticação do Supabase.
+ */
+export function subscribeAuthStateChange(
+  callback: (event: string, session: unknown) => void,
+): () => void {
+  const supabase = getSupabase();
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(callback);
+  return () => {
+    subscription.unsubscribe();
+  };
+}
 

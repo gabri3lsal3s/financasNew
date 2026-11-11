@@ -4,18 +4,11 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminLoginPage } from "./admin-login-page";
 
-const mockSignInWithEmail = vi.fn();
-const mockSignOut = vi.fn();
-const mockSupabaseGetUser = vi.fn();
-const mockSupabaseMaybeSingle = vi.fn();
+const mockSignInAdmin = vi.fn();
 
 vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({ session: null }),
-  signInWithEmail: (...args: unknown[]) => mockSignInWithEmail(...args),
-}));
-
-vi.mock("@/hooks/use-sign-out", () => ({
-  useSignOut: () => ({ signOut: mockSignOut }),
+  signInAdmin: (...args: unknown[]) => mockSignInAdmin(...args),
 }));
 
 vi.mock("@/state", () => ({
@@ -35,21 +28,6 @@ vi.mock("@/components/ui/turnstile", () => ({
       </div>
     );
   },
-}));
-
-vi.mock("@/data/client", () => ({
-  getSupabase: () => ({
-    auth: {
-      getUser: mockSupabaseGetUser,
-    },
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: mockSupabaseMaybeSingle,
-        }),
-      }),
-    }),
-  }),
 }));
 
 vi.mock("@/services/sensory", () => ({
@@ -84,14 +62,11 @@ describe("AdminLoginPage Component", () => {
   it("rejeita login se a conta não possuir papel administrativo ativo", async () => {
     const user = userEvent.setup();
 
-    mockSignInWithEmail.mockResolvedValueOnce({ user: { id: "u-regular" } });
-    mockSupabaseGetUser.mockResolvedValueOnce({
-      data: { user: { id: "u-regular" } },
-    });
-    mockSupabaseMaybeSingle.mockResolvedValueOnce({
-      data: { role: "user", status: "active" },
-      error: null,
-    });
+    mockSignInAdmin.mockRejectedValueOnce(
+      new Error(
+        "Acesso restrito: Esta conta não possui privilégios de operador administrativo para acessar o Console da Plataforma.",
+      ),
+    );
 
     render(
       <MemoryRouter>
@@ -107,8 +82,7 @@ describe("AdminLoginPage Component", () => {
     await user.type(passwordInput, "senha12345");
     await user.click(submitBtn);
 
-    expect(mockSignInWithEmail).toHaveBeenCalledWith("usuario@comum.com", "senha12345");
-    expect(mockSignOut).toHaveBeenCalled();
+    expect(mockSignInAdmin).toHaveBeenCalledWith("usuario@comum.com", "senha12345");
     expect(
       await screen.findByText(/Esta conta não possui privilégios de operador administrativo/i),
     ).toBeInTheDocument();

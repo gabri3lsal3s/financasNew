@@ -34,6 +34,13 @@ import { inferSectorFromTicker } from "./tickers-catalog";
 
 export type AporteMode = "asset" | "class" | "both";
 
+/**
+ * Estratégia de alocação de aporte:
+ * - "optimized": (Menos Movimentações) Concentra o aporte nos ativos mais deficitários para evitar micro-compras.
+ * - "proportional": Rateia proporcionalmente a verba entre todos os ativos abaixo da meta.
+ */
+export type AporteStrategy = "optimized" | "proportional";
+
 export type SkippedReason =
   | "no_price"
   | "no_target"
@@ -122,6 +129,7 @@ export interface AporteRoute {
 
 export interface AporteResult {
   mode: AporteMode;
+  strategy: AporteStrategy;
   /** Aporte informado (BRL). */
   aporte: number;
   /** Total alocado aos ativos (≤ aporte). */
@@ -251,17 +259,20 @@ interface InternalClassMacro {
 
 export function simulateAporte(opts: {
   mode: AporteMode;
+  strategy?: AporteStrategy;
   aporte: number;
   assets: readonly AporteAssetInput[];
   classTargets: readonly ClassTargetInput[];
   sectorTargets?: readonly SectorTargetInput[];
 }): AporteResult {
+  const strategy: AporteStrategy = opts.strategy ?? "proportional";
   const aporte = round2(nonNegative(opts.aporte));
   const skippedAssets: SkippedAssetDiagnostic[] = [];
 
   if (!(aporte > 0)) {
     return {
       mode: opts.mode,
+      strategy,
       aporte,
       totalAllocated: 0,
       leftover: aporte,
@@ -277,6 +288,7 @@ export function simulateAporte(opts: {
   if (!(patrimonioAlvo > 0)) {
     return {
       mode: opts.mode,
+      strategy,
       aporte,
       totalAllocated: 0,
       leftover: aporte,
@@ -604,95 +616,150 @@ export function simulateAporte(opts: {
 
     let remainingBudget = budget;
 
-    // Pass 1: Proporcional ponderado por déficit restante
-    for (const m of eligible) {
-      const eff = effectiveAssetMap.get(m.id)!;
-      const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
-      const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
-      if (!(remainingGap > 0)) continue;
+    if (strategy === "optimized") {
+      // Modo Otimizado (Menos Movimentações):
+      // Concentra os recursos no ativo com maior defasagem restante
+      const sortedByDeficit = [...eligible].sort((a, b) => {
+        const effA = effectiveAssetMap.get(a.id)!;
+        const allocA = allocatedMap.get(a.id)?.allocatedBRL ?? 0;
+        const remA = Math.max(0, effA.gapBRL - allocA);
 
-      const share = Math.min(remainingGap, (remainingGap / sumGaps) * budget);
-      const precision = resolveAssetPrecision(m);
+        const effB = effectiveAssetMap.get(b.id)!;
+        const allocB = allocatedMap.get(b.id)?.allocatedBRL ?? 0;
+        const remB = Math.max(0, effB.gapBRL - allocB);
 
-      let qty: number;
-      let alloc: number;
-
-      if (precision > 0) {
-        const multiplier = Math.pow(10, precision);
-        qty = Math.floor((share / m.priceBRL) * multiplier) / multiplier;
-        alloc = round2(qty * m.priceBRL);
-      } else {
-        qty = Math.floor(share / m.priceBRL);
-        alloc = round2(qty * m.priceBRL);
-      }
-
-      if (alloc > remainingGap) {
-        alloc = remainingGap;
-        qty = precision > 0 ? Math.floor((alloc / m.priceBRL) * Math.pow(10, precision)) / Math.pow(10, precision) : Math.floor(alloc / m.priceBRL);
-        alloc = round2(qty * m.priceBRL);
-      }
-
-      if (alloc > 0 && qty > 0) {
-        const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
-        const newQty = precision > 0 ? Math.round((existing.quantity + qty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + qty;
-        allocatedMap.set(m.id, {
-          quantity: newQty,
-          allocatedBRL: round2(existing.allocatedBRL + alloc),
-        });
-        remainingBudget = Math.max(0, round2(remainingBudget - alloc));
-      }
-    }
-
-    // Pass 2: Sweep de resíduos dentro dos membros elegíveis
-    if (remainingBudget > 0) {
-      const sortedForResiduals = [...eligible].sort((a, b) => {
-        const remA = Math.max(0, (effectiveAssetMap.get(a.id)?.gapBRL ?? 0) - (allocatedMap.get(a.id)?.allocatedBRL ?? 0));
-        const remB = Math.max(0, (effectiveAssetMap.get(b.id)?.gapBRL ?? 0) - (allocatedMap.get(b.id)?.allocatedBRL ?? 0));
         return remB - remA;
       });
 
-      for (const m of sortedForResiduals) {
+      for (const m of sortedByDeficit) {
         if (!(remainingBudget > 0)) break;
         const eff = effectiveAssetMap.get(m.id)!;
         const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
         const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
         if (!(remainingGap > 0)) continue;
 
-        const precision = resolveAssetPrecision(m);
         const canAfford = Math.min(remainingGap, remainingBudget);
+        const precision = resolveAssetPrecision(m);
 
-        let addQty: number;
-        let addAlloc: number;
+        let qty: number;
+        let alloc: number;
 
         if (precision > 0) {
           const multiplier = Math.pow(10, precision);
-          addQty = Math.floor((canAfford / m.priceBRL) * multiplier) / multiplier;
-          addAlloc = round2(addQty * m.priceBRL);
+          qty = Math.floor((canAfford / m.priceBRL) * multiplier) / multiplier;
+          alloc = round2(qty * m.priceBRL);
         } else {
-          addQty = Math.floor(canAfford / m.priceBRL);
-          addAlloc = round2(addQty * m.priceBRL);
+          qty = Math.floor(canAfford / m.priceBRL);
+          alloc = round2(qty * m.priceBRL);
         }
 
-        if (addAlloc > remainingBudget) {
-          addAlloc = remainingBudget;
-          if (precision > 0) {
-            const multiplier = Math.pow(10, precision);
-            addQty = Math.floor((addAlloc / m.priceBRL) * multiplier) / multiplier;
-            addAlloc = round2(addQty * m.priceBRL);
-          } else {
-            addQty = Math.floor(addAlloc / m.priceBRL);
-            addAlloc = round2(addQty * m.priceBRL);
-          }
+        if (alloc > remainingBudget) {
+          alloc = remainingBudget;
+          qty = precision > 0 ? Math.floor((alloc / m.priceBRL) * Math.pow(10, precision)) / Math.pow(10, precision) : Math.floor(alloc / m.priceBRL);
+          alloc = round2(qty * m.priceBRL);
         }
 
-        if (addAlloc > 0 && addQty > 0) {
+        if (alloc > 0 && qty > 0) {
           const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
-          const newQty = precision > 0 ? Math.round((existing.quantity + addQty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + addQty;
+          const newQty = precision > 0 ? Math.round((existing.quantity + qty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + qty;
           allocatedMap.set(m.id, {
             quantity: newQty,
-            allocatedBRL: round2(existing.allocatedBRL + addAlloc),
+            allocatedBRL: round2(existing.allocatedBRL + alloc),
           });
-          remainingBudget = Math.max(0, round2(remainingBudget - addAlloc));
+          remainingBudget = Math.max(0, round2(remainingBudget - alloc));
+        }
+      }
+    } else {
+      // Pass 1: Proporcional ponderado por déficit restante
+      for (const m of eligible) {
+        const eff = effectiveAssetMap.get(m.id)!;
+        const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
+        const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
+        if (!(remainingGap > 0)) continue;
+
+        const share = Math.min(remainingGap, (remainingGap / sumGaps) * budget);
+        const precision = resolveAssetPrecision(m);
+
+        let qty: number;
+        let alloc: number;
+
+        if (precision > 0) {
+          const multiplier = Math.pow(10, precision);
+          qty = Math.floor((share / m.priceBRL) * multiplier) / multiplier;
+          alloc = round2(qty * m.priceBRL);
+        } else {
+          qty = Math.floor(share / m.priceBRL);
+          alloc = round2(qty * m.priceBRL);
+        }
+
+        if (alloc > remainingGap) {
+          alloc = remainingGap;
+          qty = precision > 0 ? Math.floor((alloc / m.priceBRL) * Math.pow(10, precision)) / Math.pow(10, precision) : Math.floor(alloc / m.priceBRL);
+          alloc = round2(qty * m.priceBRL);
+        }
+
+        if (alloc > 0 && qty > 0) {
+          const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
+          const newQty = precision > 0 ? Math.round((existing.quantity + qty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + qty;
+          allocatedMap.set(m.id, {
+            quantity: newQty,
+            allocatedBRL: round2(existing.allocatedBRL + alloc),
+          });
+          remainingBudget = Math.max(0, round2(remainingBudget - alloc));
+        }
+      }
+
+      // Pass 2: Sweep de resíduos dentro dos membros elegíveis
+      if (remainingBudget > 0) {
+        const sortedForResiduals = [...eligible].sort((a, b) => {
+          const remA = Math.max(0, (effectiveAssetMap.get(a.id)?.gapBRL ?? 0) - (allocatedMap.get(a.id)?.allocatedBRL ?? 0));
+          const remB = Math.max(0, (effectiveAssetMap.get(b.id)?.gapBRL ?? 0) - (allocatedMap.get(b.id)?.allocatedBRL ?? 0));
+          return remB - remA;
+        });
+
+        for (const m of sortedForResiduals) {
+          if (!(remainingBudget > 0)) break;
+          const eff = effectiveAssetMap.get(m.id)!;
+          const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
+          const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
+          if (!(remainingGap > 0)) continue;
+
+          const precision = resolveAssetPrecision(m);
+          const canAfford = Math.min(remainingGap, remainingBudget);
+
+          let addQty: number;
+          let addAlloc: number;
+
+          if (precision > 0) {
+            const multiplier = Math.pow(10, precision);
+            addQty = Math.floor((canAfford / m.priceBRL) * multiplier) / multiplier;
+            addAlloc = round2(addQty * m.priceBRL);
+          } else {
+            addQty = Math.floor(canAfford / m.priceBRL);
+            addAlloc = round2(addQty * m.priceBRL);
+          }
+
+          if (addAlloc > remainingBudget) {
+            addAlloc = remainingBudget;
+            if (precision > 0) {
+              const multiplier = Math.pow(10, precision);
+              addQty = Math.floor((addAlloc / m.priceBRL) * multiplier) / multiplier;
+              addAlloc = round2(addQty * m.priceBRL);
+            } else {
+              addQty = Math.floor(addAlloc / m.priceBRL);
+              addAlloc = round2(addQty * m.priceBRL);
+            }
+          }
+
+          if (addAlloc > 0 && addQty > 0) {
+            const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
+            const newQty = precision > 0 ? Math.round((existing.quantity + addQty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + addQty;
+            allocatedMap.set(m.id, {
+              quantity: newQty,
+              allocatedBRL: round2(existing.allocatedBRL + addAlloc),
+            });
+            remainingBudget = Math.max(0, round2(remainingBudget - addAlloc));
+          }
         }
       }
     }
@@ -953,6 +1020,7 @@ export function simulateAporte(opts: {
 
   return {
     mode: opts.mode,
+    strategy,
     aporte,
     totalAllocated,
     leftover,
@@ -967,9 +1035,11 @@ export function simulateAporte(opts: {
 export function simulateSmartAporte(opts: {
   aporte: number;
   assets: readonly AporteAssetInput[];
+  strategy?: AporteStrategy;
 }): AporteResult {
   return simulateAporte({
     mode: "asset",
+    strategy: opts.strategy,
     aporte: opts.aporte,
     assets: opts.assets,
     classTargets: [],
@@ -982,9 +1052,11 @@ export function simulateRebalanceAporte(opts: {
   assets: readonly AporteAssetInput[];
   classTargets: readonly ClassTargetInput[];
   sectorTargets?: readonly SectorTargetInput[];
+  strategy?: AporteStrategy;
 }): AporteResult {
   return simulateAporte({
     mode: "class",
+    strategy: opts.strategy,
     aporte: opts.aporte,
     assets: opts.assets,
     classTargets: opts.classTargets,
@@ -1001,9 +1073,11 @@ export function simulateCombinedAporte(opts: {
   assets: readonly AporteAssetInput[];
   classTargets: readonly ClassTargetInput[];
   sectorTargets?: readonly SectorTargetInput[];
+  strategy?: AporteStrategy;
 }): AporteResult {
   return simulateAporte({
     mode: "both",
+    strategy: opts.strategy,
     aporte: opts.aporte,
     assets: opts.assets,
     classTargets: opts.classTargets,

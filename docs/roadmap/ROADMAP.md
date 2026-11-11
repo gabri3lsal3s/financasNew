@@ -1,5 +1,24 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.1.0 (Build 53)** registra a **Expansão Global de Plataforma, Blindagem Arquitetural de Dados e Padronização Linguística PT-BR** (2026-11-11):
+> - **(1) Blindagem Arquitetural de Dados e Isolamento Estrito de Camadas (Fase 5)**:
+>   - Isolamento total de `@/data`: regra ESLint restritiva bloqueando importações diretas de `["@/data", "@/data/*"]` em `src/features/` e `src/components/`. Telas acessam dados exclusivamente via TanStack Query e hooks de estado em `src/state/`;
+>   - Primitivo canônico `<Dropzone />` integrado ao diálogo de comprovantes (`AttachReceiptDialog`), erradicando `<input type="file">` e handlers manuais de drag/drop;
+>   - Primitivo canônico `<Chip />` padronizado com variantes `cva` em `src/components/ui/chip.tsx` e `chip-variants.ts`, eliminando tags e chips ad-hoc no Wizard de Transações;
+> - **(2) Harmonização de Cabeçalhos e Superfícies Visuais (Fase 6)**:
+>   - Adoção obrigatória do componente canônico `<PageHeader />` oficial com ações responsivas e título editorial nas páginas de Cartões (`cards-page.tsx`) e Transações (`transaction-list-page.tsx`);
+>   - Unificação da trinca canônica de elevação visual `border-border/80 bg-surface shadow-xs` em todos os cartões de dados (RealCashHeroCard, AllocationDriftCard, TripPersonalContextCard, HouseholdWealthCard, HouseholdComparisonCard);
+>   - Blindagem contra truncamento cego (Regra 23 do AGENTS.md), substituindo `truncate` por `line-clamp-2 break-words` em títulos de métricas e alertas que dividem a linha com badges ou ícones;
+> - **(3) Padronização Linguística e Precisão Matemática PT-BR (Fase 7)**:
+>   - Erradicação de `.toFixed()` em valores percentuais e monetários em telas de Investimentos e Relatórios, utilizando `formatPercent`, `formatSignedPct` e `formatCentsAsBRL` com pontuação pt-BR canônica (vírgula decimal);
+>   - Explicabilidade matemática ativa (Regra 33) expandida com `EquationBreakdownPopover` no Balanço 360°, Grau de Liberdade Financeira (FIRE), Autonomia de Reserva (Runway) e TWR Oficial CVM/ANBIMA;
+>   - Extração do motor FIRE para funções puras de domínio em `src/domain/portfolio/fire.ts` operando estritamente em centavos inteiros (`calculateCriticalCapital`, `calculateRunwayMonths`, `calculateFireMetrics`, `getFireStage`) com 100% de cobertura em `fire.test.ts`;
+> - **(4) Quality Gates 100% Verdes & Homologação Final (Fase 8)**:
+>   - Typecheck (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros e 0 warnings (zero emojis no produto, zero controles nativos, zero imports ilegais de dados);
+>   - Vitest: 161 arquivos e 2.573 testes unitários de domínio 100% aprovados;
+>   - Playwright Smoke E2E: 8 testes aprovados com sucesso (zero erros não tratados, zero tela branca, zero overflow horizontal).
+>
 > **v3.0.23 (Build 52)** registra as **Regras de Governança R29–R33, Explicabilidade Ativa de KPIs Compostos e Higienização Global de Testes** (2026-11-10):
 > - **(1) Regras de Governança R29–R33 e Explicabilidade Matemática Ativa (Regra 33)**:
 >   - Criação do componente canônico `EquationBreakdownPopover` (`src/components/modules/equation-breakdown-popover.tsx`) com explicabilidade matemática transparente, decomposição item a item com operadores aritméticos (`+`, `-`, `=`) e semântica monetária;

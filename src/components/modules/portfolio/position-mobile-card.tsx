@@ -3,7 +3,7 @@ import { numberToCents } from "@/domain/money";
 import { calculateYieldOnCost } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
 import { formatCentsAsBRL } from "@/services/masks/money";
-import { formatSignedPct } from "@/services/masks/percent";
+import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 import type { PositionRow } from "./position-types";
 import { formatQuantity } from "./position-types";
 
@@ -129,7 +129,7 @@ export function PositionMobileCard({
                   className="text-portfolio font-medium"
                   title={`Yield on Cost acumulado: ${formatCentsAsBRL(numberToCents(row.dividends ?? 0))}`}
                 >
-                  YoC {yoc.toFixed(1)}%
+                  YoC {formatPercent(yoc)}%
                 </span>
               </div>
             ) : null}

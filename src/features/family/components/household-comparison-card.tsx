@@ -146,7 +146,7 @@ export function HouseholdComparisonCard({
 
                   {/* Comparativo Realizado vs Cota Alvo */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                    <div className="p-2 rounded-lg bg-surface border border-border/60">
+                    <div className="p-2 rounded-lg bg-surface border border-border/80">
                       <p className="text-[11px] text-muted-foreground">Pago no mês</p>
                       <MoneyText
                         cents={member.spent_cents}
@@ -157,7 +157,7 @@ export function HouseholdComparisonCard({
                       </p>
                     </div>
 
-                    <div className="p-2 rounded-lg bg-surface border border-border/60">
+                    <div className="p-2 rounded-lg bg-surface border border-border/80">
                       <p className="text-[11px] text-muted-foreground">Cota devida</p>
                       <MoneyText
                         cents={member.fair_share_cents}
@@ -168,7 +168,7 @@ export function HouseholdComparisonCard({
                       </p>
                     </div>
 
-                    <div className="p-2 rounded-lg bg-surface border border-border/60 col-span-2 sm:col-span-1">
+                    <div className="p-2 rounded-lg bg-surface border border-border/80 col-span-2 sm:col-span-1">
                       <p className="text-[11px] text-muted-foreground">Ticket médio</p>
                       <MoneyText
                         cents={member.average_ticket_cents}

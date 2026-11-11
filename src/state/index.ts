@@ -344,3 +344,6 @@ export {
   useCheckoutMutation,
   type PixCheckoutResult,
 } from "./mutations/use-billing-mutations";
+export { useDevices, userDevicesKey } from "./queries/use-devices";
+export { useRevokeDevice, useDeleteDevice } from "./mutations/use-device-mutations";
+

@@ -1,6 +1,6 @@
 # 🚀 PLANO MESTRE 22 — Migração e Modernização Completa da Marca: "Áxis Finance" ➔ "Axir" & Domínio "AXIR.COM.BR"
 
-> **Status:** 📋 Pronto para Execução (Planejamento Refinado & Aprofundado)  
+> **Status:** 🟡 Código 100% Implementado & Homologado · Pendente Apenas Checklist Operacional de Infraestrutura Externa (§6)  
 > **Prioridade:** Estratégica (Identidade de Marca, Modernização Fintech, Domínio Próprio e Preservação de Equity)  
 > **Domínio Oficial Adquirido:** `axir.com.br` (Web App: `https://axir.com.br` · Redirecionamento: `https://www.axir.com.br`)  
 > **Documentos de Referência:** [`AGENTS.md`](../../AGENTS.md) · [`DESIGN_SYSTEM.md`](../design/DESIGN_SYSTEM.md) · [`ESPECIFICACAO_TECNICA.md`](../architecture/ESPECIFICACAO_TECNICA.md) · [`FOUNDER_RUNBOOK.md`](../operations/FOUNDER_RUNBOOK.md) · [`ROADMAP.md`](../roadmap/ROADMAP.md) · [`DEPLOYMENT.md`](../platforms/DEPLOYMENT.md) · [`NATIVE_DISTRIBUTION_GUIDE.md`](../platforms/NATIVE_DISTRIBUTION_GUIDE.md)
@@ -222,25 +222,25 @@ A auditoria completa do repositório mapeou 10 camadas de arquivos afetados pela
 ## 5. PLANO DE EXECUÇÃO DETALHADO EM 10 FASES ESTRUTURADAS
 
 ### FASE 1 — Núcleo de Identidade Visual, Tipografia, Layout & Overlays
-- [ ] **Tarefa 1.1:** Atualizar [`src/components/layout/brand-logo.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/layout/brand-logo.tsx):
+- [x] **Tarefa 1.1:** Atualizar [`src/components/layout/brand-logo.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/layout/brand-logo.tsx):
   - Remover default `subtitleText="Finance"`, ajustar docstring para a marca oficial Axir;
   - Desativar `showSubtitle` por padrão, garantindo lockup limpo `[Glifo] + Axir`;
   - Acessibilidade do glifo com `title="Axir"`.
-- [ ] **Tarefa 1.2:** Refatorar [`src/components/layout/logo-full.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/layout/logo-full.tsx):
+- [x] **Tarefa 1.2:** Refatorar [`src/components/layout/logo-full.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/layout/logo-full.tsx):
   - Alterar texto do wordmark de `"Áxis"` para `"Axir"`;
   - Definir `showSubtitle=false` como padrão estrito;
   - Atualizar `aria-label` para `"Axir PRO"` ou `"Axir"`.
-- [ ] **Tarefa 1.3:** Atualizar [`src/components/layout/logo-icon.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/layout/logo-icon.tsx):
+- [x] **Tarefa 1.3:** Atualizar [`src/components/layout/logo-icon.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/layout/logo-icon.tsx):
   - Trocar valor padrão de `title` de `"Áxis"` para `"Axir"`.
-- [ ] **Tarefa 1.4:** Atualizar componentes de suporte e layout:
+- [x] **Tarefa 1.4:** Atualizar componentes de suporte e layout:
   - [`src/components/layout/loading-screen.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/layout/loading-screen.tsx): texto acessível `"Axir"`;
   - [`src/components/layout/logo-profile-button.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/layout/logo-profile-button.tsx): texto de versão `"Axir • v..."`;
   - [`src/app/app-lock-overlay.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/app/app-lock-overlay.tsx): texto da marca na tela de bloqueio;
   - [`src/components/ui/command.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/ui/command.tsx): placeholder `"Busca Global Axir"`.
-- [ ] **Tarefa 1.5:** Atualizar estilos globais e tokens:
+- [x] **Tarefa 1.5:** Atualizar estilos globais e tokens:
   - [`src/styles/globals.css`](file:///home/gabrielsales/meus_apps/financasnew/src/styles/globals.css): alterar cabeçalho de impressão `@media print` para `"Axir · Dossiê Oficial"`;
   - [`src/styles/tokens.css`](file:///home/gabrielsales/meus_apps/financasnew/src/styles/tokens.css): atualizar comentários de cabeçalho.
-- [ ] **Tarefa 1.6:** Atualizar testes unitários de identidade visual:
+- [x] **Tarefa 1.6:** Atualizar testes unitários de identidade visual:
   - `src/components/layout/brand-logo.test.tsx`;
   - `src/components/layout/logo-profile-button.test.tsx`;
   - `src/components/layout/sidebar.test.tsx`.
@@ -248,47 +248,47 @@ A auditoria completa do repositório mapeou 10 camadas de arquivos afetados pela
 ---
 
 ### FASE 2 — Metadados Globais Web, PWA, SEO & Domínio Oficial `axir.com.br`
-- [ ] **Tarefa 2.1:** Atualizar [`index.html`](file:///home/gabrielsales/meus_apps/financasnew/index.html):
+- [x] **Tarefa 2.1:** Atualizar [`index.html`](file:///home/gabrielsales/meus_apps/financasnew/index.html):
   - `<title>Axir</title>`;
   - Metatags OpenGraph (`og:site_name="Axir"`, `og:title`, `og:description`);
   - Metatags Twitter Card (`twitter:title`, `twitter:description`);
   - Metatag Apple Web App (`apple-mobile-web-app-title="Axir"`);
   - Schema.org JSON-LD (`"name": "Axir"`, `"url": "https://axir.com.br"`).
-- [ ] **Tarefa 2.2:** Atualizar [`public/pwa/manifest.webmanifest`](file:///home/gabrielsales/meus_apps/financasnew/public/pwa/manifest.webmanifest):
+- [x] **Tarefa 2.2:** Atualizar [`public/pwa/manifest.webmanifest`](file:///home/gabrielsales/meus_apps/financasnew/public/pwa/manifest.webmanifest):
   - `"name": "Axir"`;
   - `"short_name": "Axir"`;
   - Descrição da aplicação adaptada para a marca Axir.
-- [ ] **Tarefa 2.3:** Atualizar páginas offline de contingência:
+- [x] **Tarefa 2.3:** Atualizar páginas offline de contingência:
   - [`public/offline.html`](file:///home/gabrielsales/meus_apps/financasnew/public/offline.html);
   - [`public/pwa/offline.html`](file:///home/gabrielsales/meus_apps/financasnew/public/pwa/offline.html).
-- [ ] **Tarefa 2.4:** Atualizar configurações do pacote e tipos:
+- [x] **Tarefa 2.4:** Atualizar configurações do pacote e tipos:
   - [`package.json`](file:///home/gabrielsales/meus_apps/financasnew/package.json): `"name": "axir"`;
   - [`src/vite-env.d.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/vite-env.d.ts): JSDoc de `VITE_PUBLIC_SITE_URL` para `https://axir.com.br`.
 
 ---
 
 ### FASE 3 — Plataforma Nativa Android, Deep Links & Distribuição APK
-- [ ] **Tarefa 3.1:** Atualizar [`capacitor.config.ts`](file:///home/gabrielsales/meus_apps/financasnew/capacitor.config.ts):
+- [x] **Tarefa 3.1:** Atualizar [`capacitor.config.ts`](file:///home/gabrielsales/meus_apps/financasnew/capacitor.config.ts):
   - `appName: "Axir"`.
-- [ ] **Tarefa 3.2:** Atualizar strings nativas do Android em [`android/app/src/main/res/values/strings.xml`](file:///home/gabrielsales/meus_apps/financasnew/android/app/src/main/res/values/strings.xml):
+- [x] **Tarefa 3.2:** Atualizar strings nativas do Android em [`android/app/src/main/res/values/strings.xml`](file:///home/gabrielsales/meus_apps/financasnew/android/app/src/main/res/values/strings.xml):
   - `<string name="app_name">Axir</string>`
   - `<string name="title_activity_main">Axir</string>`
-- [ ] **Tarefa 3.3:** Atualizar [`android/app/src/main/AndroidManifest.xml`](file:///home/gabrielsales/meus_apps/financasnew/android/app/src/main/AndroidManifest.xml):
+- [x] **Tarefa 3.3:** Atualizar [`android/app/src/main/AndroidManifest.xml`](file:///home/gabrielsales/meus_apps/financasnew/android/app/src/main/AndroidManifest.xml):
   - Configurar `intent-filter` verificado (`autoVerify="true"`) para os hosts `axir.com.br` e `www.axir.com.br` nos prefixos `/r`, `/meta`, `/convite-familiar`, `/orcamento-familiar`, `/viagem` e `/ferramentas`;
   - Preservar os hosts legados para compatibilidade com links antigos em circulação.
-- [ ] **Tarefa 3.4:** Criar ou atualizar [`public/.well-known/assetlinks.json`](file:///home/gabrielsales/meus_apps/financasnew/public/.well-known/assetlinks.json):
+- [x] **Tarefa 3.4:** Criar ou atualizar [`public/.well-known/assetlinks.json`](file:///home/gabrielsales/meus_apps/financasnew/public/.well-known/assetlinks.json):
   - Declarar a relação de auto-verificação entre `com.guiafinanceiro.app` e o domínio `axir.com.br`.
-- [ ] **Tarefa 3.5:** Atualizar serviços nativos de download e telemetria:
+- [x] **Tarefa 3.5:** Atualizar serviços nativos de download e telemetria:
   - [`src/services/native/update-checker.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/services/native/update-checker.ts): nome do arquivo `axir-pro.apk` e mensagens com "Axir";
   - [`src/services/native/biometrics.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/services/native/biometrics.ts): `"Confirme sua identidade para acessar o Axir"`;
   - [`src/services/native/local-notifications.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/services/native/local-notifications.ts): `"Fechamento Diário — Axir"`, `"Axir · Contas e faturas pendentes"`.
-- [ ] **Tarefa 3.6:** Atualizar componentes e abas de distribuição Android:
+- [x] **Tarefa 3.6:** Atualizar componentes e abas de distribuição Android:
   - [`src/components/modules/apk-install-guide-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/apk-install-guide-dialog.tsx);
   - [`src/components/modules/apk-beta-restricted-modal.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/apk-beta-restricted-modal.tsx);
   - [`src/components/modules/platforms-triptych-card.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/platforms-triptych-card.tsx);
   - [`src/features/settings/components/tabs/app-installation-tab.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/settings/components/tabs/app-installation-tab.tsx);
   - [`src/features/settings/components/tabs/security-tab.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/settings/components/tabs/security-tab.tsx).
-- [ ] **Tarefa 3.7:** Atualizar testes unitários da camada nativa:
+- [x] **Tarefa 3.7:** Atualizar testes unitários da camada nativa:
   - `src/services/native/update-checker.test.ts`;
   - `src/services/native/local-notifications.test.ts`;
   - `src/hooks/use-app-update.test.ts`;
@@ -299,14 +299,14 @@ A auditoria completa do repositório mapeou 10 camadas de arquivos afetados pela
 ---
 
 ### FASE 4 — Módulo Institucional, LGPD, Dossiês Executivos e Relatórios PDF
-- [ ] **Tarefa 4.1:** Atualizar [`src/lib/institutional.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/lib/institutional.ts):
+- [x] **Tarefa 4.1:** Atualizar [`src/lib/institutional.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/lib/institutional.ts):
   - `appName: "Axir"`;
   - `companyName: "Axir — Gabriel Sales (Desenvolvedor Independente)"`;
   - `supportEmail: "suporte@axir.com.br"`, `dpoEmail: "privacidade@axir.com.br"`;
   - Disclaimers CVM (`OFFICIAL_CVM_DISCLAIMER`, `OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER`): menções a "Axir";
   - Disclaimers fiscais (`OFFICIAL_TAX_DISCLAIMER`, `OFFICIAL_TAX_FACILITATOR_DISCLAIMER`): menções a "Axir";
   - `OFFICIAL_REPORT_FOOTER_CREDIT`: `"Relatório estruturado via Axir · Gestão Financeira Inteligente & Automação | axir.com.br"`.
-- [ ] **Tarefa 4.2:** Atualizar componentes de relatórios e exportação PDF:
+- [x] **Tarefa 4.2:** Atualizar componentes de relatórios e exportação PDF:
   - [`src/components/modules/reports/report-header.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-header.tsx): padrão `appName = "Axir"`;
   - [`src/components/modules/reports/report-footer.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-footer.tsx):
     - Chancela padrão: `"Chancela Oficial · axir.com.br"`;
@@ -314,47 +314,47 @@ A auditoria completa do repositório mapeou 10 camadas de arquivos afetados pela
     - Link oficial: `"Conheça a plataforma Axir"`;
   - [`src/components/modules/reports/report-document-layout.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-document-layout.tsx);
   - [`src/features/investments/components/portfolio-executive-report.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/components/portfolio-executive-report.tsx).
-- [ ] **Tarefa 4.3:** Atualizar testes unitários de relatórios e institucional:
+- [x] **Tarefa 4.3:** Atualizar testes unitários de relatórios e institucional:
   - `src/components/modules/reports/reports.test.tsx`;
   - `src/lib/institutional.test.ts`.
 
 ---
 
 ### FASE 5 — Landing Page, Marketing & Comunicação Pública
-- [ ] **Tarefa 5.1:** Atualizar [`src/features/landing/pages/landing-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/landing/pages/landing-page.tsx):
+- [x] **Tarefa 5.1:** Atualizar [`src/features/landing/pages/landing-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/landing/pages/landing-page.tsx):
   - Títulos da página, CTAs ("Criar Conta no Axir", "Entrar no Axir") e metatags.
-- [ ] **Tarefa 5.2:** Atualizar componentes de narrativa da landing page:
+- [x] **Tarefa 5.2:** Atualizar componentes de narrativa da landing page:
   - [`src/features/landing/components/hero-editorial.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/landing/components/hero-editorial.tsx);
   - [`src/features/landing/components/faq-section.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/landing/components/faq-section.tsx): respostas informativas com referência ao Axir e ao domínio `axir.com.br`;
   - [`src/features/landing/components/product-narratives.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/landing/components/product-narratives.tsx);
   - [`src/features/landing/components/landing-footer.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/landing/components/landing-footer.tsx);
   - [`src/features/landing/components/legal-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/landing/components/legal-dialog.tsx);
   - [`src/features/landing/components/mobile-cta-dock.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/landing/components/mobile-cta-dock.tsx): wordmark "Axir".
-- [ ] **Tarefa 5.3:** Atualizar testes unitários da Landing Page:
+- [x] **Tarefa 5.3:** Atualizar testes unitários da Landing Page:
   - `src/features/landing/pages/landing-page.test.tsx`;
   - `src/features/landing/components/mobile-cta-dock.test.tsx`.
 
 ---
 
 ### FASE 6 — Autenticação, Onboarding, Gestão de Assinatura & Suporte In-App
-- [ ] **Tarefa 6.1:** Atualizar fluxo de autenticação:
+- [x] **Tarefa 6.1:** Atualizar fluxo de autenticação:
   - [`src/features/auth/components/auth-shell.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/auth/components/auth-shell.tsx);
   - [`src/features/auth/pages/login-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/auth/pages/login-page.tsx): link `"Conhecer o Axir e Planos"`;
   - [`src/features/auth/pages/register-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/auth/pages/register-page.tsx): link `"Conhecer o Axir e Planos"`.
-- [ ] **Tarefa 6.2:** Atualizar modais de onboarding e boas-vindas:
+- [x] **Tarefa 6.2:** Atualizar modais de onboarding e boas-vindas:
   - [`src/components/modules/welcome-modal.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/welcome-modal.tsx): `"Acesso Axir Pro desbloqueado por 30 dias completos..."`;
   - [`src/components/modules/welcome-feature-modal.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/welcome-feature-modal.tsx);
   - [`src/components/modules/quick-balance-adjustment-modal.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/quick-balance-adjustment-modal.tsx).
-- [ ] **Tarefa 6.3:** Atualizar paywalls e gestão de assinatura:
+- [x] **Tarefa 6.3:** Atualizar paywalls e gestão de assinatura:
   - [`src/domain/subscription/trial.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/domain/subscription/trial.ts): título do banner `"Você está no Axir Pro..."`;
   - [`src/components/modules/subscription/trial-ending-banner.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/subscription/trial-ending-banner.tsx);
   - [`src/components/modules/subscription/upgrade-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/subscription/upgrade-dialog.tsx);
   - [`src/features/subscription/pages/subscription-checkout-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/subscription/pages/subscription-checkout-page.tsx);
   - [`src/features/settings/components/tabs/subscription-tab.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/settings/components/tabs/subscription-tab.tsx).
-- [ ] **Tarefa 6.4:** Atualizar componentes de suporte in-app e notificações:
+- [x] **Tarefa 6.4:** Atualizar componentes de suporte in-app e notificações:
   - [`src/components/modules/support/support-chat-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/support/support-chat-dialog.tsx): `"Compartilhe sua ideia para tornar o Axir ainda melhor..."`;
   - [`src/components/modules/notifications-popover.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/notifications-popover.tsx): `"Resposta do Suporte Axir"`.
-- [ ] **Tarefa 6.5:** Atualizar testes unitários de autenticação e assinatura:
+- [x] **Tarefa 6.5:** Atualizar testes unitários de autenticação e assinatura:
   - `src/features/auth/pages/register-page.test.tsx`;
   - `src/data/auth.test.ts`;
   - `src/components/modules/welcome-modal.test.tsx`;
@@ -363,37 +363,37 @@ A auditoria completa do repositório mapeou 10 camadas de arquivos afetados pela
 ---
 
 ### FASE 7 — Módulo Legal, Regulatório, Termos de Serviço & LGPD
-- [ ] **Tarefa 7.1:** Atualizar páginas legais públicas em `src/features/legal/pages/`:
+- [x] **Tarefa 7.1:** Atualizar páginas legais públicas em `src/features/legal/pages/`:
   - [`terms-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/legal/pages/terms-page.tsx): Termos de Serviço do software Axir;
   - [`privacy-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/legal/pages/privacy-page.tsx): Política de Privacidade LGPD do Axir, com menção ao canal DPO `privacidade@axir.com.br`;
   - [`security-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/legal/pages/security-page.tsx): Diretrizes de Segurança do Axir.
-- [ ] **Tarefa 7.2:** Atualizar casca de navegação legal:
+- [x] **Tarefa 7.2:** Atualizar casca de navegação legal:
   - [`src/features/legal/components/legal-page-shell.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/legal/components/legal-page-shell.tsx): aria-label `"Axir - Ir para a página inicial"`.
-- [ ] **Tarefa 7.3:** Atualizar testes unitários do módulo legal:
+- [x] **Tarefa 7.3:** Atualizar testes unitários do módulo legal:
   - `src/features/legal/components/legal-page-shell.test.tsx`.
 
 ---
 
 ### FASE 8 — Ferramentas Públicas, Compartilhamento Viral, Modo Viagem & Família
-- [ ] **Tarefa 8.1:** Atualizar Hub e Simuladores Públicos em `src/features/tools/pages/`:
+- [x] **Tarefa 8.1:** Atualizar Hub e Simuladores Públicos em `src/features/tools/pages/`:
   - [`tools-hub-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/tools/pages/tools-hub-page.tsx);
   - [`compound-interest-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/tools/pages/compound-interest-page.tsx);
   - [`debt-simulator-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/tools/pages/debt-simulator-page.tsx);
   - [`rebalance-simulator-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/tools/pages/rebalance-simulator-page.tsx);
   - Atualizar CTAs para `"Criar Conta no Axir"`.
-- [ ] **Tarefa 8.2:** Atualizar módulo de Convite Familiar:
+- [x] **Tarefa 8.2:** Atualizar módulo de Convite Familiar:
   - [`src/features/family/pages/family-invite-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/family/pages/family-invite-page.tsx): títulos, botões `"Conhecer o Axir"` e rodapé `"Axir · Gestão Financeira Inteligente e Colaborativa"`.
-- [ ] **Tarefa 8.3:** Atualizar Modo Viagem Colaborativo:
+- [x] **Tarefa 8.3:** Atualizar Modo Viagem Colaborativo:
   - [`src/features/trips/components/invite-trip-member-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/trips/components/invite-trip-member-dialog.tsx): mensagens WhatsApp com chancela Axir;
   - [`src/features/trips/pages/trip-details-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/trips/pages/trip-details-page.tsx): badge `"Conta Axir"`;
   - [`src/state/queries/use-trips.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/state/queries/use-trips.ts): toast `"Esta viagem agora está sincronizada com a sua conta Axir."`.
-- [ ] **Tarefa 8.4:** Atualizar páginas de compartilhamento viral público em `src/features/public-share/`:
+- [x] **Tarefa 8.4:** Atualizar páginas de compartilhamento viral público em `src/features/public-share/`:
   - [`shared-link-header-nav.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/public-share/components/shared-link-header-nav.tsx): aria-label `"Ir para a página inicial do Axir"`;
   - [`split-onboarding-modal.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/public-share/components/split-onboarding-modal.tsx): `"Inaugure seu painel no Axir com esta despesa já registrada."`;
   - [`family-budget-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/public-share/pages/family-budget-page.tsx): título e botões `"Conhecer o Axir"`;
   - [`goal-tracker-public-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/public-share/pages/goal-tracker-public-page.tsx);
   - [`trip-public-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/public-share/pages/trip-public-page.tsx).
-- [ ] **Tarefa 8.5:** Atualizar testes unitários de compartilhamento e ferramentas:
+- [x] **Tarefa 8.5:** Atualizar testes unitários de compartilhamento e ferramentas:
   - `src/features/tools/pages/tools-pages.test.tsx`;
   - `src/features/public-share/pages/family-budget-page.test.tsx`;
   - `src/features/public-share/pages/goal-tracker-public-page.test.tsx`;
@@ -408,33 +408,33 @@ A auditoria completa do repositório mapeou 10 camadas de arquivos afetados pela
 ---
 
 ### FASE 9 — Console Administrativo, Backend Edge Functions & Telegram
-- [ ] **Tarefa 9.1:** Atualizar Console Administrativo em `src/features/admin/`:
+- [x] **Tarefa 9.1:** Atualizar Console Administrativo em `src/features/admin/`:
   - [`admin-shell.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/admin/layouts/admin-shell.tsx): cabeçalho oficial Axir Admin;
   - [`admin-login-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/admin/pages/admin-login-page.tsx): placeholder do operador `operador@axir.com.br`;
   - [`admin-settings-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/admin/pages/admin-settings-page.tsx);
   - [`admin-backups-page.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/admin/pages/admin-backups-page.tsx): nomenclatura de snapshots `axir_system_backup_...`;
   - [`ticket-manage-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/admin/components/ticket-manage-dialog.tsx): assunto `Atendimento Axir: ...`;
   - [`user-create-dialog.tsx`](file:///home/gabrielsales/meus_apps/financasnew/src/features/admin/components/user-create-dialog.tsx): mensagem `"...sua conta no Axir foi criada..."`.
-- [ ] **Tarefa 9.2:** Atualizar gateway de erros da aplicação:
+- [x] **Tarefa 9.2:** Atualizar gateway de erros da aplicação:
   - [`src/services/errors/index.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/services/errors/index.ts): `"Este e-mail já está cadastrado no Axir. Faça login ou recupere sua senha se tiver esquecido."`;
   - `src/services/errors/index.test.ts`.
-- [ ] **Tarefa 9.3:** Atualizar descrições de cobrança no Asaas e Edge Functions:
+- [x] **Tarefa 9.3:** Atualizar descrições de cobrança no Asaas e Edge Functions:
   - [`supabase/functions/_shared/asaas.ts`](file:///home/gabrielsales/meus_apps/financasnew/supabase/functions/_shared/asaas.ts): `"Axir — Plano Pro Anual"` e `"Axir — Plano Pro Mensal"`;
   - [`supabase/functions/asaas-checkout/index.ts`](file:///home/gabrielsales/meus_apps/financasnew/supabase/functions/asaas-checkout/index.ts).
-- [ ] **Tarefa 9.4:** Atualizar templates de notificação do Telegram:
+- [x] **Tarefa 9.4:** Atualizar templates de notificação do Telegram:
   - [`supabase/functions/_shared/telegram.ts`](file:///home/gabrielsales/meus_apps/financasnew/supabase/functions/_shared/telegram.ts): cabeçalho `"[CHAMADO DE SUPORTE — AXIR]"`.
-- [ ] **Tarefa 9.5:** Atualizar geração de cupons e afiliados:
+- [x] **Tarefa 9.5:** Atualizar geração de cupons e afiliados:
   - [`supabase/migrations/20260101000089_affiliate_partners_and_referrals.sql`](file:///home/gabrielsales/meus_apps/financasnew/supabase/migrations/20260101000089_affiliate_partners_and_referrals.sql): novos cupons determinísticos com prefixo `AXIR-`, mantendo compatibilidade de leitura com `AXIS-`.
-- [ ] **Tarefa 9.6:** Atualizar testes unitários do admin e auth:
+- [x] **Tarefa 9.6:** Atualizar testes unitários do admin e auth:
   - `src/features/admin/pages/admin-login-page.test.tsx`.
 
 ---
 
 ### FASE 10 — Resolução Canônica de URLs, LocalStorage, Governança & Quality Gates
-- [ ] **Tarefa 10.1:** Atualizar resolução universal de URL em [`src/services/app-url.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/services/app-url.ts):
+- [x] **Tarefa 10.1:** Atualizar resolução universal de URL em [`src/services/app-url.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/services/app-url.ts):
   - Fallback canônico atualizado de workers legados para o domínio definitivo `https://axir.com.br`;
   - Atualizar testes em `src/services/app-url.test.ts` e `src/services/share-urls.test.ts`.
-- [ ] **Tarefa 10.2:** Criar utilitário de migração transparente em [`src/lib/storage-migration.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/lib/storage-migration.ts):
+- [x] **Tarefa 10.2:** Criar utilitário de migração transparente em [`src/lib/storage-migration.ts`](file:///home/gabrielsales/meus_apps/financasnew/src/lib/storage-migration.ts):
   - Função `getMigratedStorageItem(newKey: string, legacyKey: string): string | null`
   - Criar suite de testes `src/lib/storage-migration.test.ts` comprovando leitura legada, gravação na nova chave e expurgo automático da antiga;
   - Aplicar nas chaves:
@@ -443,10 +443,10 @@ A auditoria completa do repositório mapeou 10 camadas de arquivos afetados pela
     * `axis_pending_split_expense` ➔ `axir_pending_split_expense`
     * `axis_dismiss_apk_promo_until` ➔ `axir_dismiss_apk_promo_until`
     * `axis_guest_member_${token}` ➔ `axir_guest_member_${token}`.
-- [ ] **Tarefa 10.3:** Atualizar testes unitários de URL e convites:
+- [x] **Tarefa 10.3:** Atualizar testes unitários de URL e convites:
   - `src/domain/share/stateful-url.test.ts`;
   - `src/features/public-share/hooks/use-public-trip-guest-identity.test.ts`.
-- [ ] **Tarefa 10.4:** Atualizar documentações canônicas em `docs/`:
+- [x] **Tarefa 10.4:** Atualizar documentações canônicas em `docs/`:
   - [`docs/design/DESIGN_SYSTEM.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/design/DESIGN_SYSTEM.md) (§14.10: Arquitetura canônica Axir, lockup e tokens);
   - [`docs/architecture/ESPECIFICACAO_TECNICA.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/architecture/ESPECIFICACAO_TECNICA.md);
   - [`docs/architecture/ARCHITECTURE.md`](file:///home/gabrielsales/meus_apps/financasnew/docs/architecture/ARCHITECTURE.md);
@@ -507,8 +507,9 @@ Para assegurar 100% de estabilidade e zero defeitos na transição de marca:
 
 ## 8. DEFINITION OF DONE (DoD)
 
-- [ ] Todas as 10 fases de tarefas concluídas com código testado, tipado e documentado;
-- [ ] Nenhuma ocorrência da marca legada "Áxis Finance" em strings visíveis ao usuário final;
-- [ ] Domínio `axir.com.br` integrado como referência oficial da aplicação e dos relatórios;
-- [ ] Termos geométricos (`axis-lock`) preservados sem alterações indevidas;
-- [ ] Todos os 7 Quality Gates aprovados com relatório comprovatório no terminal.
+- [x] Todas as 10 fases de tarefas concluídas com código testado, tipado e documentado;
+- [x] Nenhuma ocorrência da marca legada "Áxis Finance" em strings visíveis ao usuário final;
+- [x] Domínio `axir.com.br` integrado como referência oficial da aplicação e dos relatórios;
+- [x] Termos geométricos (`axis-lock`) preservados sem alterações indevidas;
+- [x] Todos os 7 Quality Gates aprovados com relatório comprovatório no terminal.
+- [ ] **Go-live de infraestrutura externa:** Apontamento DNS do domínio `axir.com.br` no Cloudflare e configuração de Site URL no Supabase (Ação operacional externa pelo Fundador conforme §6).

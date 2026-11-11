@@ -96,6 +96,117 @@ export function pressBackspace(state: CalculatorState): CalculatorState {
 }
 
 /**
+ * Digitação financeira Right-to-Left (RTL) para campos monetários:
+ * Os dígitos entram deslocando os centavos da direita para a esquerda:
+ * 1 -> "0.01", 5 -> "0.15", 0 -> "1.50", 0 -> "15.00".
+ * Elimina a necessidade de digitar vírgula para valores financeiros.
+ */
+export function pressMoneyDigit(state: CalculatorState, digit: string): CalculatorState {
+  if (state.error) return { ...INITIAL_STATE, display: "0.01" };
+  if (!/^[0-9]$/.test(digit)) return state;
+
+  if (state.entering || state.justEvaluated) {
+    // Começa um novo operando no modo monetário
+    const parsed = Number.parseInt(digit, 10);
+    return {
+      ...INITIAL_STATE,
+      accumulator: state.accumulator,
+      operator: state.operator,
+      display: (parsed / 100).toFixed(2),
+    };
+  }
+
+  const currentCents = decimalToCents(state.display);
+  const digitsStr = String(currentCents);
+  if (digitsStr.length >= MAX_DIGITS) return state;
+
+  const nextCents = currentCents * 10 + Number.parseInt(digit, 10);
+  return { ...state, display: (nextCents / 100).toFixed(2) };
+}
+
+/**
+ * Backspace em modo monetário RTL:
+ * Remove o dígito menos significativo deslocando para a direita (divide por 10).
+ * Ex: "15.00" -> "1.50" -> "0.15" -> "0.01" -> "0.00".
+ */
+export function pressMoneyBackspace(state: CalculatorState): CalculatorState {
+  if (state.error || state.justEvaluated) return { ...INITIAL_STATE, display: "0.00" };
+  if (state.entering) return { ...state, display: "0.00", entering: false };
+
+  const currentCents = decimalToCents(state.display);
+  const nextCents = Math.floor(currentCents / 10);
+  return { ...state, display: (nextCents / 100).toFixed(2) };
+}
+
+/**
+ * Sanitiza e extrai valor decimal a partir de texto colado da área de transferência.
+ * Ex.: "R$ 1.250,50" -> "1250.50", "1500" -> "1500.00", "25,30" -> "25.30".
+ * Retorna null se não houver número válido.
+ */
+export function parseClipboardToDecimal(text: string): string | null {
+  if (!text || typeof text !== "string") return null;
+
+  const cleaned = text
+    .replace(/[R$\s\u00A0]/g, "")
+    .trim();
+
+  if (!cleaned) return null;
+
+  const lastComma = cleaned.lastIndexOf(",");
+  const lastDot = cleaned.lastIndexOf(".");
+
+  if (lastComma !== -1 && lastDot !== -1) {
+    if (lastComma > lastDot) {
+      // Formato brasileiro: 1.250,50
+      const normalized = cleaned.replace(/\./g, "").replace(",", ".");
+      const num = Number.parseFloat(normalized);
+      if (!Number.isFinite(num) || num < 0) return null;
+      return (Math.round(num * 100) / 100).toFixed(2);
+    } else {
+      // Formato internacional: 1,250.50
+      const normalized = cleaned.replace(/,/g, "");
+      const num = Number.parseFloat(normalized);
+      if (!Number.isFinite(num) || num < 0) return null;
+      return (Math.round(num * 100) / 100).toFixed(2);
+    }
+  }
+
+  if (lastComma !== -1) {
+    const parts = cleaned.split(",");
+    if (parts.length > 2) {
+      const normalized = cleaned.replace(/,/g, "");
+      const num = Number.parseFloat(normalized);
+      if (!Number.isFinite(num) || num < 0) return null;
+      return (Math.round(num * 100) / 100).toFixed(2);
+    }
+    const normalized = cleaned.replace(",", ".");
+    const num = Number.parseFloat(normalized);
+    if (!Number.isFinite(num) || num < 0) return null;
+    return (Math.round(num * 100) / 100).toFixed(2);
+  }
+
+  if (lastDot !== -1) {
+    const parts = cleaned.split(".");
+    if (parts.length > 2) {
+      const normalized = cleaned.replace(/\./g, "");
+      const num = Number.parseFloat(normalized);
+      if (!Number.isFinite(num) || num < 0) return null;
+      return (Math.round(num * 100) / 100).toFixed(2);
+    }
+    const num = Number.parseFloat(cleaned);
+    if (!Number.isFinite(num) || num < 0) return null;
+    return (Math.round(num * 100) / 100).toFixed(2);
+  }
+
+  // Apenas dígitos inteiros (ex: 1500)
+  const digitsOnly = cleaned.replace(/[^0-9]/g, "");
+  if (!digitsOnly) return null;
+  const num = Number.parseInt(digitsOnly, 10);
+  if (!Number.isFinite(num) || num < 0) return null;
+  return (Math.round(num * 100) / 100).toFixed(2);
+}
+
+/**
  * Define um operador. Encadeamentos avaliam da esquerda para a direita;
  * operador repetido sem operando novo apenas troca a operação.
  */

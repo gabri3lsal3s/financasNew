@@ -3,6 +3,7 @@ import { Layers, PieChart, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ReportDonutChart, type ReportDonutSegment } from "./report-donut-chart";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatPercent } from "@/services/masks";
 import { numberToCents } from "@/domain/money";
 import type { AllocationDonutSegment } from "@/domain/reports";
 import { cn } from "@/lib/utils";
@@ -138,7 +139,7 @@ export function ReportAllocationDonuts({
                           <MoneyText cents={numberToCents(seg.value)} />
                         </td>
                         <td className="py-1 px-2.5 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                          {seg.pct.toFixed(1)}%
+                          {formatPercent(seg.pct)}%
                         </td>
                       </tr>
                     ))}
@@ -206,7 +207,7 @@ export function ReportAllocationDonuts({
                           <MoneyText cents={numberToCents(seg.value)} />
                         </td>
                         <td className="py-1 px-2.5 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                          {seg.pct.toFixed(1)}%
+                          {formatPercent(seg.pct)}%
                         </td>
                       </tr>
                     ))}
@@ -300,7 +301,7 @@ export function ReportAllocationDonuts({
                         <MoneyText cents={numberToCents(seg.value)} />
                       </td>
                       <td className="py-2 px-3 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                        {seg.pct.toFixed(1)}%
+                        {formatPercent(seg.pct)}%
                       </td>
                     </tr>
                   ))}
@@ -383,7 +384,7 @@ export function ReportAllocationDonuts({
                         <MoneyText cents={numberToCents(seg.value)} />
                       </td>
                       <td className="py-2 px-3 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                        {seg.pct.toFixed(1)}%
+                        {formatPercent(seg.pct)}%
                       </td>
                     </tr>
                   ))}

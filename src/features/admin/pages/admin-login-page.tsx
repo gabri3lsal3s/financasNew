@@ -8,9 +8,7 @@ import {
 } from "lucide-react";
 import { Alert, Badge, Button, Input, PasswordInput, Turnstile } from "@/components/ui";
 import { BrandLogo } from "@/components/layout";
-import { useAuth, signInWithEmail } from "@/hooks/use-auth";
-import { useSignOut } from "@/hooks/use-sign-out";
-import { getSupabase } from "@/data/client";
+import { useAuth, signInAdmin } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -20,7 +18,6 @@ export function AdminLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { session } = useAuth();
-  const { signOut } = useSignOut();
   const { isAdmin, isLoading: accessLoading } = useUserAccess(session?.user?.id);
 
   const [email, setEmail] = useState("");
@@ -62,44 +59,10 @@ export function AdminLoginPage() {
     setLoading(true);
 
     try {
-      // 1. Autenticação no Supabase Auth
-      await signInWithEmail(email.trim(), password);
-      const supabase = getSupabase();
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData?.user;
+      // 1. Autenticação administrativa com validação atômica de privilégio (Fail-Closed)
+      await signInAdmin(email.trim(), password);
 
-      if (!user) {
-        throw new Error("Credenciais inválidas.");
-      }
-
-      // 2. Validação atômica de privilégio administrativo (Fail-Closed)
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("role, status")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profileError || !profile) {
-        await signOut();
-        throw new Error("Falha ao validar credencial administrativa.");
-      }
-
-      const isPermitted =
-        (profile.role === "admin" || profile.role === "superadmin") &&
-        profile.status === "active";
-
-      if (!isPermitted) {
-        await signOut();
-        triggerSensory("destructive");
-        setConsecutiveFailures((prev) => prev + 1);
-        setErrorMessage(
-          "Acesso restrito: Esta conta não possui privilégios de operador administrativo para acessar o Console da Plataforma.",
-        );
-        setLoading(false);
-        return;
-      }
-
-      // 3. Sucesso: operador autenticado e autorizado
+      // 2. Sucesso: operador autenticado e autorizado
       triggerSensory("success");
       setConsecutiveFailures(0);
       pushToast({

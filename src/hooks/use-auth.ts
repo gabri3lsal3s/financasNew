@@ -2,6 +2,14 @@ import { useEffect, useState } from "react";
 import { getSupabase } from "@/data/client";
 import { ensureOwnProfile } from "@/data/repositories/profiles";
 import { ensureDefaultCategories } from "@/data/repositories/categories";
+import { registerDevice, checkDeviceRevoked } from "@/data/repositories/devices";
+import {
+  getDeviceInfo,
+  getOrCreateDeviceId,
+  shouldSyncDeviceSession,
+  markDeviceSessionSynced,
+  clearDeviceSessionSync,
+} from "@/services/native/device-info";
 import { getErrorMessage } from "@/services/errors";
 import { reportError, setObservabilityUser } from "@/services/observability";
 import { setActiveUserId } from "@/services/user-storage";
@@ -22,7 +30,19 @@ import {
   requestUserEmailChange,
   updateUserPassword,
   verifyCurrentPassword,
+  getActiveUserMfaFactor,
+  verifyMfaTotpCode,
+  getMfaAssuranceLevel,
+  listVerifiedMfaFactors,
+  enrollMfaTotp,
+  verifyMfaEnrollment,
+  unenrollMfaFactor,
+  signInAdmin,
+  subscribeAuthStateChange,
+  type MfaAssuranceLevel,
   type SignUpResult,
+  type MfaFactorInfo,
+  type MfaEnrollResult,
 } from "@/data/auth";
 
 export {
@@ -34,8 +54,17 @@ export {
   requestUserEmailChange,
   updateUserPassword,
   verifyCurrentPassword,
+  getActiveUserMfaFactor,
+  verifyMfaTotpCode,
+  getMfaAssuranceLevel,
+  listVerifiedMfaFactors,
+  enrollMfaTotp,
+  verifyMfaEnrollment,
+  unenrollMfaFactor,
+  signInAdmin,
+  subscribeAuthStateChange,
 };
-export type { SignUpResult };
+export type { SignUpResult, MfaAssuranceLevel, MfaFactorInfo, MfaEnrollResult };
 
 import type { AppMode } from "@/types";
 
@@ -46,6 +75,12 @@ export interface AuthState {
   loading: boolean;
   /** Erro de configuração (ex.: env incompleto) — exposto em vez de crashar. */
   configError: string | null;
+  /** Flag indicando se a conta do usuário possui 2FA configurado e ativo. */
+  mfaRequired?: boolean;
+  /** Flag indicando se o desafio de segundo fator (AAL2) já foi verificado nesta sessão. */
+  mfaVerified?: boolean;
+  /** Nível de garantia da autenticação (aal1, aal2 ou null sem sessão). */
+  aalLevel?: "aal1" | "aal2" | null;
   signIn: (email: string, password: string, captchaToken?: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string, inviteCode?: string, captchaToken?: string, appMode?: AppMode) => Promise<SignUpResult>;
   resetPassword: (email: string, captchaToken?: string) => Promise<void>;
@@ -61,6 +96,9 @@ let globalSession: Session | null = null;
 let globalUser: User | null = null;
 let globalLoading = true;
 let globalConfigError: string | null = null;
+let globalMfaRequired = false;
+let globalMfaVerified = false;
+let globalAalLevel: "aal1" | "aal2" | null = null;
 let isGlobalAuthInitialized = false;
 const authSubscribers = new Set<(state: AuthStateSnapshot) => void>();
 
@@ -69,6 +107,9 @@ interface AuthStateSnapshot {
   user: User | null;
   loading: boolean;
   configError: string | null;
+  mfaRequired: boolean;
+  mfaVerified: boolean;
+  aalLevel: "aal1" | "aal2" | null;
 }
 
 function updateGlobalAuthState(partial: Partial<AuthStateSnapshot>): void {
@@ -76,15 +117,60 @@ function updateGlobalAuthState(partial: Partial<AuthStateSnapshot>): void {
   if (partial.user !== undefined) globalUser = partial.user;
   if (partial.loading !== undefined) globalLoading = partial.loading;
   if (partial.configError !== undefined) globalConfigError = partial.configError;
+  if (partial.mfaRequired !== undefined) globalMfaRequired = partial.mfaRequired;
+  if (partial.mfaVerified !== undefined) globalMfaVerified = partial.mfaVerified;
+  if (partial.aalLevel !== undefined) globalAalLevel = partial.aalLevel;
 
   const current: AuthStateSnapshot = {
     session: globalSession,
     user: globalUser,
     loading: globalLoading,
     configError: globalConfigError,
+    mfaRequired: globalMfaRequired,
+    mfaVerified: globalMfaVerified,
+    aalLevel: globalAalLevel,
   };
 
   authSubscribers.forEach((subscriber) => subscriber(current));
+}
+
+/**
+ * Marca o desafio MFA (2FA) como concluído com sucesso nesta sessão (elevação para AAL2).
+ */
+export function markMfaVerified(): void {
+  updateGlobalAuthState({
+    mfaVerified: true,
+    mfaRequired: false,
+    aalLevel: "aal2",
+  });
+}
+
+async function resolveMfaState(
+  supabase: ReturnType<typeof getSupabase>,
+  session: Session | null,
+): Promise<{
+  mfaRequired: boolean;
+  mfaVerified: boolean;
+  aalLevel: "aal1" | "aal2" | null;
+}> {
+  if (!session) {
+    return { mfaRequired: false, mfaVerified: false, aalLevel: null };
+  }
+  try {
+    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (data) {
+      const isMfaPending = data.currentLevel === "aal1" && data.nextLevel === "aal2";
+      const isMfaSatisfied = data.currentLevel === "aal2";
+      return {
+        mfaRequired: isMfaPending || isMfaSatisfied,
+        mfaVerified: isMfaSatisfied,
+        aalLevel: (data.currentLevel as "aal1" | "aal2") ?? "aal1",
+      };
+    }
+  } catch {
+    // Silencia em ambiente offline / mock
+  }
+  return { mfaRequired: false, mfaVerified: false, aalLevel: "aal1" };
 }
 
 let globalAuthSubscription: { unsubscribe: () => void } | null = null;
@@ -103,18 +189,27 @@ function initGlobalAuth(): void {
 
   void supabase.auth
     .getSession()
-    .then(({ data }) => {
+    .then(async ({ data }) => {
       const session = data?.session ?? null;
       const user = session?.user ?? null;
       const uid = user?.id ?? null;
       if (uid) setActiveUserId(uid);
-      updateGlobalAuthState({ session, user, loading: false, configError: null });
+      const mfa = await resolveMfaState(supabase, session);
+      updateGlobalAuthState({ session, user, loading: false, configError: null, ...mfa });
     })
     .catch((err) => {
-      updateGlobalAuthState({ session: null, user: null, loading: false, configError: getErrorMessage(err) });
+      updateGlobalAuthState({
+        session: null,
+        user: null,
+        loading: false,
+        configError: getErrorMessage(err),
+        mfaRequired: false,
+        mfaVerified: false,
+        aalLevel: null,
+      });
     });
 
-  const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+  const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
     const user = session?.user ?? null;
     const uid = user?.id ?? null;
     if (uid) {
@@ -122,7 +217,8 @@ function initGlobalAuth(): void {
     } else {
       setActiveUserId(null);
     }
-    updateGlobalAuthState({ session, user, loading: false, configError: null });
+    const mfa = await resolveMfaState(supabase, session);
+    updateGlobalAuthState({ session, user, loading: false, configError: null, ...mfa });
   });
 
   globalAuthSubscription = authListener?.subscription ?? null;
@@ -149,6 +245,9 @@ export function useAuth(): AuthState {
       user: globalUser,
       loading: configError ? false : globalLoading,
       configError: configError ?? globalConfigError,
+      mfaRequired: globalMfaRequired,
+      mfaVerified: globalMfaVerified,
+      aalLevel: globalAalLevel,
     };
   });
 
@@ -187,6 +286,47 @@ export function useAuth(): AuthState {
         void reportError(err, { source: "ensureOwnProfile_ensureDefaultCategories" });
       });
   }, [snapshot.user]);
+
+  // Registro e Sincronização de Dispositivos Multi-Sessão (Etapa 1.1)
+  // Permite autenticar a mesma conta em múltiplos aparelhos mantendo ambos conectados.
+  // Caso o aparelho atual seja revogado remotamente, encerra apenas a sessão local.
+  useEffect(() => {
+    const user = snapshot.user;
+    if (!user || snapshot.loading) {
+      if (!user) clearDeviceSessionSync();
+      return;
+    }
+
+    const deviceId = getOrCreateDeviceId();
+
+    void checkDeviceRevoked(deviceId)
+      .then((isRevoked) => {
+        if (isRevoked) {
+          try {
+            const supabase = getSupabase();
+            void supabase.auth.signOut({ scope: "local" });
+          } catch {
+            // Silencia erro em ambiente offline
+          }
+          clearDeviceSessionSync();
+          return;
+        }
+
+        if (shouldSyncDeviceSession()) {
+          const info = getDeviceInfo();
+          void registerDevice(info)
+            .then(() => {
+              markDeviceSessionSynced();
+            })
+            .catch((err) => {
+              void reportError(err, { source: "syncDeviceRegistration" });
+            });
+        }
+      })
+      .catch((err) => {
+        void reportError(err, { source: "checkDeviceRevoked" });
+      });
+  }, [snapshot.user, snapshot.loading]);
 
   return {
     ...snapshot,

@@ -5,6 +5,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
 import { formatMonthYear } from "@/lib/date";
+import { formatSignedPct } from "@/services/masks";
 import { cn } from "@/lib/utils";
 
 export interface PortfolioSnapshotsCarouselProps {
@@ -196,10 +197,9 @@ export function PortfolioSnapshotsCarousel({
                           ? "text-positive-strong bg-positive/10"
                           : "text-negative-strong bg-negative/10",
                       )}
-                      title={`Variação da cota no mês: ${twrMonth >= 0 ? "+" : ""}${twrMonth.toFixed(2)}%`}
+                      title={`Variação da cota no mês: ${formatSignedPct(twrMonth)}`}
                     >
-                      {twrMonth >= 0 ? "+" : ""}
-                      {twrMonth.toFixed(1)}% m/m
+                      {formatSignedPct(twrMonth)} m/m
                     </span>
                   ) : null}
                 </div>
@@ -250,9 +250,7 @@ export function PortfolioSnapshotsCarousel({
                         effectiveGain >= 0 ? "text-positive-strong" : "text-negative-strong",
                       )}
                     >
-                      {effectivePct !== null
-                        ? `${effectivePct >= 0 ? "+" : ""}${effectivePct.toFixed(1)}%`
-                        : "—"}
+                      {formatSignedPct(effectivePct)}
                     </span>
                   </div>
 
@@ -266,9 +264,7 @@ export function PortfolioSnapshotsCarousel({
                         (twrAcc ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong",
                       )}
                     >
-                      {twrAcc !== null && twrAcc !== undefined
-                        ? `${twrAcc >= 0 ? "+" : ""}${twrAcc.toFixed(1)}%`
-                        : "—"}
+                      {formatSignedPct(twrAcc ?? null)}
                     </span>
                   </div>
                 </div>

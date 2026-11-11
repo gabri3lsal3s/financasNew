@@ -93,3 +93,6 @@ export { FilterToolbar } from "./filter-toolbar";
 export type { FilterToolbarProps } from "./filter-toolbar";
 export { KeyValueGrid } from "./key-value-grid";
 export type { KeyValueGridProps, KeyValueItem } from "./key-value-grid";
+export { Chip } from "./chip";
+export { chipVariants } from "./chip-variants";
+export type { ChipProps } from "./chip";

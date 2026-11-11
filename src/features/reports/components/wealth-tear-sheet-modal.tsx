@@ -26,6 +26,7 @@ import {
   ReportFiiBreakdownCard,
   ReportFixedIncomeBreakdownCard,
   ReportInternationalBreakdownCard,
+  EquationBreakdownPopover,
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { Badge } from "@/components/ui/badge";
@@ -169,7 +170,7 @@ export function WealthTearSheetModal({
   ibovPeriodReturnPct,
   assetsMetadata = [],
   periodLabel = "Posição Atual Consolidada",
-  appName = "Áxis Finance",
+  appName = "Axir",
   accountHolder,
 }: WealthTearSheetModalProps) {
   // Custódia Ativa: exclui ativos de caixa e posições totalmente encerradas (quantity <= 0)
@@ -574,11 +575,11 @@ export function WealthTearSheetModal({
               label: "Rentabilidade (TWR)",
               value: (
                 <span className={(portfolioTwr?.accumulatedRatePct ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"}>
-                  {(portfolioTwr?.accumulatedRatePct ?? 0) >= 0 ? "+" : ""}{(portfolioTwr?.accumulatedRatePct ?? 0).toFixed(1)}%
+                  {formatSignedPct(portfolioTwr?.accumulatedRatePct ?? 0)}
                 </span>
               ),
               subtext: portfolioTwr?.annualizedRatePct !== null && portfolioTwr?.annualizedRatePct !== undefined
-                ? `${portfolioTwr.annualizedRatePct >= 0 ? "+" : ""}${portfolioTwr.annualizedRatePct.toFixed(1)}% a.a. (Padrão CVM)`
+                ? `${formatSignedPct(portfolioTwr.annualizedRatePct)} a.a. (Padrão CVM)`
                 : `Por cotas (${portfolioTwr?.monthsElapsed ?? 0}m)`,
             }
           : isCustodyActive
@@ -586,7 +587,7 @@ export function WealthTearSheetModal({
                 label: "Rentabilidade da Carteira",
                 value: (
                   <span className={(totalReturnPct ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"}>
-                    {(totalReturnPct ?? 0) >= 0 ? "+" : ""}{(totalReturnPct ?? 0).toFixed(1)}%
+                    {formatSignedPct(totalReturnPct ?? 0)}
                   </span>
                 ),
                 subtext: "Custódia aberta sobre custo",
@@ -610,9 +611,9 @@ export function WealthTearSheetModal({
               {
                 label: "Retorno do Bolso (TIR)",
                 value: portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
-                  ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
+                  ? `${formatSignedPct(portfolioIrr.annualizedRatePct)} a.a.`
                   : portfolioIrr?.status === "insufficient_history" && portfolioIrr.periodRatePct !== null && Math.abs(portfolioIrr.periodRatePct) <= 200
-                    ? `${portfolioIrr.periodRatePct >= 0 ? "+" : ""}${portfolioIrr.periodRatePct.toFixed(1)}% período`
+                    ? `${formatSignedPct(portfolioIrr.periodRatePct)} período`
                     : "Em formação",
                 subtext: portfolioIrr?.isEligible
                   ? `Ponderada (${portfolioIrr.daysElapsed}d)`
@@ -970,21 +971,52 @@ export function WealthTearSheetModal({
                 <TrendingUp className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                 <span className="truncate">1. TWR (Cotas — Padrão CVM / ANBIMA)</span>
               </span>
-              <Badge
-                variant={
-                  portfolioTwr?.status === "ok" && portfolioTwr.accumulatedRatePct !== null
-                    ? portfolioTwr.accumulatedRatePct >= 0
-                      ? "positive"
-                      : "negative"
-                    : "muted"
-                }
-                size="xs"
-                className="font-mono font-bold tracking-tight shrink-0"
-              >
-                {portfolioTwr?.status === "ok" && portfolioTwr.accumulatedRatePct !== null
-                  ? `${portfolioTwr.accumulatedRatePct >= 0 ? "+" : ""}${portfolioTwr.accumulatedRatePct.toFixed(1)}%`
-                  : "Em formação"}
-              </Badge>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Badge
+                  variant={
+                    portfolioTwr?.status === "ok" && portfolioTwr.accumulatedRatePct !== null
+                      ? portfolioTwr.accumulatedRatePct >= 0
+                        ? "positive"
+                        : "negative"
+                      : "muted"
+                  }
+                  size="xs"
+                  className="font-mono font-bold tracking-tight shrink-0"
+                >
+                  {portfolioTwr?.status === "ok" && portfolioTwr.accumulatedRatePct !== null
+                    ? formatSignedPct(portfolioTwr.accumulatedRatePct)
+                    : "Em formação"}
+                </Badge>
+                {portfolioTwr?.status === "ok" && (
+                  <EquationBreakdownPopover
+                    title="Rentabilidade Ponderada pelo Tempo (TWR)"
+                    description="Métrica oficial de fundos de investimento (ANBIMA/CVM) que apura a performance dos ativos isolando o efeito de aportes e resgates via sistema de cotas."
+                    formula="R_acum = ∏(1 + r_t) − 1 | R_anual = (1 + R_acum)^(12/N) − 1"
+                    items={[
+                      {
+                        label: "Valor Atual da Cota",
+                        cents: numberToCents(portfolioTwr.currentSharePrice),
+                        sign: "=",
+                        tone: "portfolio",
+                        hint: `Base inicial 100,00 (${portfolioTwr.monthsElapsed} ${portfolioTwr.monthsElapsed === 1 ? "mês" : "meses"} de histórico)`,
+                      },
+                      ...(portfolioTwr.annualizedRatePct !== null
+                        ? [
+                            {
+                              label: "Taxa Anualizada CVM",
+                              cents: numberToCents(portfolioTwr.annualizedRatePct),
+                              sign: "+" as const,
+                              tone: portfolioTwr.annualizedRatePct >= 0 ? ("positive" as const) : ("negative" as const),
+                              hint: `${formatSignedPct(portfolioTwr.annualizedRatePct)} a.a. (composto anual)`,
+                            },
+                          ]
+                        : []),
+                    ]}
+                    totalLabel="Rentabilidade Acumulada"
+                    totalCents={numberToCents(portfolioTwr.accumulatedRatePct)}
+                  />
+                )}
+              </div>
             </div>
             <div className="flex flex-col gap-1">
               <span className="text-[9.5px] font-bold text-muted-foreground tracking-wider uppercase">
@@ -1020,7 +1052,7 @@ export function WealthTearSheetModal({
                 className="font-mono font-bold tracking-tight shrink-0"
               >
                 {portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
-                  ? `${portfolioIrr.annualizedRatePct >= 0 ? "+" : ""}${portfolioIrr.annualizedRatePct.toFixed(1)}% a.a.`
+                  ? `${formatSignedPct(portfolioIrr.annualizedRatePct)} a.a.`
                   : "Em formação"}
               </Badge>
             </div>

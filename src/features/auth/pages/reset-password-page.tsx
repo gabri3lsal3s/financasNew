@@ -4,8 +4,8 @@ import { Link, useNavigate } from "react-router";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Alert, Button, PasswordInput } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
-import { getSupabase } from "@/data/client";
-import { updateUserPassword } from "@/hooks/use-auth";
+import { subscribeAuthStateChange, updateUserPassword } from "@/hooks/use-auth";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { checkPasswordRequirements } from "@/domain/validation";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
@@ -13,6 +13,7 @@ import { triggerSensory } from "@/services/sensory";
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
+  const { signOut } = useSignOut();
 
   const initialUrlError = useMemo(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -63,12 +64,8 @@ export function ResetPasswordPage() {
       cleanUrlTokens();
     }
 
-    const supabase = getSupabase();
-
     // Escuta eventos de Auth do Supabase (PASSWORD_RECOVERY ou SIGNED_IN com recovery)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    const unsubscribe = subscribeAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         setIsInvalidLink(false);
         cleanUrlTokens();
@@ -76,7 +73,7 @@ export function ResetPasswordPage() {
     });
 
     return () => {
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, [initialUrlError]);
 
@@ -104,8 +101,7 @@ export function ResetPasswordPage() {
 
       // Invalida outras sessões ativas no Supabase para proteção contra dispositivos roubados ou sessões órfãs
       try {
-        const supabase = getSupabase();
-        await supabase.auth.signOut({ scope: "others" });
+        await signOut({ scope: "others" });
       } catch {
         // fail-safe
       }

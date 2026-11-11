@@ -90,6 +90,15 @@ export function CreateTripDialog({
     e.preventDefault();
     if (!title.trim() || !hostName.trim() || !startDate || !endDate) return;
 
+    const finalMembers = [...members];
+    if (newMemberName.trim()) {
+      finalMembers.push({
+        name: newMemberName.trim(),
+        pix_key: newMemberPix.trim() || undefined,
+        pix_key_type: newMemberPix.trim() ? newMemberPixType : undefined,
+      });
+    }
+
     try {
       const created = await createTripMutation.mutateAsync({
         title: title.trim(),
@@ -97,7 +106,7 @@ export function CreateTripDialog({
         start_date: startDate,
         end_date: endDate,
         host_name: hostName.trim() || undefined,
-        initial_members: members,
+        initial_members: finalMembers,
       });
 
       // Reset

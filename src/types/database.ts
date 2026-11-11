@@ -59,6 +59,7 @@ import type {
   PortfolioDividendDismissal,
   ApproveDividendsBatchResult,
   MonthlyClosingResult,
+  UserDevice,
 } from "./schema";
 
 /**
@@ -119,6 +120,7 @@ export interface Database {
       family_settlements: Table<FamilySettlement>;
       corporate_dividends: Table<CorporateDividend>;
       portfolio_dividend_dismissals: Table<PortfolioDividendDismissal>;
+      user_devices: Table<UserDevice>;
     };
 
     Views: Record<string, never>;
@@ -721,6 +723,28 @@ export interface Database {
           p_items: readonly { categoryId: string; limit: number }[];
         };
         Returns: void;
+      };
+      register_device_session: {
+        Args: {
+          p_device_id: string;
+          p_device_name: string;
+          p_browser: string;
+          p_os: string;
+          p_ip_address?: string | null;
+        };
+        Returns: UserDevice;
+      };
+      check_device_session_revoked: {
+        Args: {
+          p_device_id: string;
+        };
+        Returns: boolean;
+      };
+      revoke_device_session: {
+        Args: {
+          p_device_record_id: string;
+        };
+        Returns: boolean;
       };
     };
   };

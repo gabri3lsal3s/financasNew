@@ -188,7 +188,7 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
  * - Sessão ativa com dados de acesso prontos → renderiza rotas autenticadas isoladas por `key={session.user.id}`.
  */
 function RequireAuth() {
-  const { session, loading: authLoading, configError } = useAuth();
+  const { session, loading: authLoading, configError, mfaRequired, mfaVerified } = useAuth();
   const userAccess = useUserAccess(session?.user?.id);
   const location = useLocation();
   usePendingSplitExpense();
@@ -206,6 +206,11 @@ function RequireAuth() {
 
   // Previne micro-flashes mantendo a tela de transição visível de forma estável e fluida (650ms)
   const { isShowing: isTransitioning, isClosing } = useMinimumLoading(isDataLoading, 650);
+
+  // Blindagem 2FA (Etapa 1.2): sessão sem elevação AAL2 é imediatamente redirecionada para o desafio TOTP
+  if (!authLoading && session?.user && mfaRequired && !mfaVerified) {
+    return <Navigate to="/entrar?desafio=totp" replace />;
+  }
 
   if (configError) {
     return (

@@ -34,10 +34,12 @@ describe("pix-br-code (Motor Puro de Geracao Pix Copia e Cola BACEN)", () => {
         txId: "***",
       });
 
-      const officialBacenPayload =
-        "00020126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-4266554400005204000053039865802BR5913Fulano de Tal6008BRASILIA62070503***63041D3D";
+      // Inclui a Tag 010211 (Point of Initiation Method: Estático) imediatamente após a Tag 00 (000201)
+      const officialBacenPayloadWithTag01 =
+        "00020101021126580014br.gov.bcb.pix0136123e4567-e12b-12d1-a456-4266554400005204000053039865802BR5913Fulano de Tal6008BRASILIA62070503***630448CD";
 
-      expect(payload).toBe(officialBacenPayload);
+      expect(payload).toBe(officialBacenPayloadWithTag01);
+      expect(payload.startsWith("000201010211")).toBe(true);
       expect(validatePixBrCode(payload)).toBe(true);
 
       const decoded = decodePixBrCode(payload);
@@ -46,8 +48,9 @@ describe("pix-br-code (Motor Puro de Geracao Pix Copia e Cola BACEN)", () => {
       expect(decoded?.merchantName).toBe("Fulano de Tal");
       expect(decoded?.merchantCity).toBe("BRASILIA");
       expect(decoded?.txId).toBe("***");
+      expect(decoded?.pointOfInitiationMethod).toBe("11");
       expect(decoded?.amountCents).toBeUndefined();
-      expect(decoded?.crc).toBe("1D3D");
+      expect(decoded?.crc).toBe("48CD");
       expect(decoded?.isValidCrc).toBe(true);
     });
 
@@ -59,13 +62,14 @@ describe("pix-br-code (Motor Puro de Geracao Pix Copia e Cola BACEN)", () => {
         amountCents: 1000, // R$ 10,00
       });
 
+      expect(payload.startsWith("000201010211")).toBe(true);
       expect(payload).toContain("540510.00");
-      expect(payload.endsWith("6304288F")).toBe(true);
       expect(validatePixBrCode(payload)).toBe(true);
 
       const decoded = decodePixBrCode(payload);
       expect(decoded?.amountCents).toBe(1000);
-      expect(decoded?.crc).toBe("288F");
+      expect(decoded?.pointOfInitiationMethod).toBe("11");
+      expect(decoded?.crc).toBe(payload.slice(-4));
       expect(decoded?.isValidCrc).toBe(true);
     });
   });

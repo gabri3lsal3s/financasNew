@@ -2,6 +2,7 @@ import { lazy, Suspense, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { CheckCircle2, Clock, Download, FileUp, Plus, Printer, Repeat, Sparkles, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton } from "@/components/ui";
+import { PageHeader } from "@/components/layout";
 
 
 import {
@@ -488,8 +489,33 @@ export function CardsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Título de acessibilidade */}
-      <h1 className="sr-only">Cartões de Crédito</h1>
+      <PageHeader
+        title="Cartões de Crédito"
+        description="Gestão integrada de cartões, faturas por competência, limites e conciliação"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+              className="gap-1.5 cursor-pointer"
+            >
+              <FileUp className="size-3.5" aria-hidden="true" />
+              <span>Importar Fatura</span>
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => handleOpenForm(null)}
+              className="gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Plus className="size-3.5" aria-hidden="true" />
+              <span>Novo Cartão</span>
+            </Button>
+          </div>
+        }
+      />
 
       {permission.isReadOnlyMode && (
         <ReadOnlyBanner

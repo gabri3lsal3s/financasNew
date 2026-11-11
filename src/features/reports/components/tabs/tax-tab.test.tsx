@@ -6,7 +6,7 @@ import { OFFICIAL_TAX_DISCLAIMER } from "@/lib/institutional";
 import type { ExcelWorkbookData } from "@/services/excel-export";
 
 const mockWorkbookData: ExcelWorkbookData = {
-  appName: "Áxis Finance",
+  appName: "Axir",
   summary: {
     totalPatrimonyBRL: 100000,
     totalInvestedCostBRL: 80000,

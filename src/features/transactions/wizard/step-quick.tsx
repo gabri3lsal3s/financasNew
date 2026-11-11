@@ -14,7 +14,7 @@
 
 import { useMemo, useState } from "react";
 import { Check, Clock, CreditCard, Sparkles, SlidersHorizontal, Users, ChevronLeft, ChevronRight, User, Plane, HandCoins } from "lucide-react";
-import { Badge, Button, Input, MoneyInput, MoneyText, Select, Tabs } from "@/components/ui";
+import { Badge, Button, Chip, Input, MoneyInput, MoneyText, Select, Tabs } from "@/components/ui";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import {
   CANONICAL_MERCHANT_CATALOG,
@@ -250,15 +250,13 @@ export function StepQuick({
           </div>
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
             {habits.map((habit) => (
-              <button
+              <Chip
                 key={`${habit.description}-${habit.categoryName}`}
-                type="button"
+                size="md"
                 aria-label={`Usar habitual ${habit.description}: ${formatCentsAsCurrency(Math.round(habit.value * 100))}`}
                 onClick={() => {
-                  triggerSensory("action");
                   onApplyHabitual?.(habit);
                 }}
-                className="flex items-center gap-2 shrink-0 rounded-xl border border-border/80 bg-surface-raised px-3 py-1.5 text-xs text-foreground hover:border-border hover:bg-surface-hover transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <span className="font-medium max-w-[120px] truncate">{habit.description}</span>
                 <span className="text-muted-foreground">·</span>
@@ -266,7 +264,7 @@ export function StepQuick({
                 <Badge variant="muted" size="xs">
                   {habit.categoryName}
                 </Badge>
-              </button>
+              </Chip>
             ))}
           </div>
         </div>

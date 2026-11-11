@@ -96,12 +96,16 @@ export function calculateMemberBalances(
   expenses: readonly ExpenseItemForBalance[],
   settlements?: readonly SettlementItemForBalance[]
 ): readonly TripMemberBalance[] {
-  const paidMap = new Map<string, number>();
-  const owedMap = new Map<string, number>();
+  const expensesPaidMap = new Map<string, number>();
+  const expensesOwedMap = new Map<string, number>();
+  const settlementsPaidMap = new Map<string, number>();
+  const settlementsReceivedMap = new Map<string, number>();
 
   for (const member of members) {
-    paidMap.set(member.id, 0);
-    owedMap.set(member.id, 0);
+    expensesPaidMap.set(member.id, 0);
+    expensesOwedMap.set(member.id, 0);
+    settlementsPaidMap.set(member.id, 0);
+    settlementsReceivedMap.set(member.id, 0);
   }
 
   if (members.length === 0) {
@@ -111,8 +115,8 @@ export function calculateMemberBalances(
   const memberIdSet = new Set(members.map((m) => m.id));
 
   for (const expense of expenses) {
-    const currentPaid = paidMap.get(expense.paid_by_member_id) ?? 0;
-    paidMap.set(expense.paid_by_member_id, currentPaid + expense.amount_cents);
+    const currentPaid = expensesPaidMap.get(expense.paid_by_member_id) ?? 0;
+    expensesPaidMap.set(expense.paid_by_member_id, currentPaid + expense.amount_cents);
 
     const isCustomSplit =
       expense.split_type === "custom" &&
@@ -121,8 +125,8 @@ export function calculateMemberBalances(
     if (isCustomSplit && expense.splits) {
       for (const split of expense.splits) {
         if (memberIdSet.has(split.member_id)) {
-          const currentOwed = owedMap.get(split.member_id) ?? 0;
-          owedMap.set(split.member_id, currentOwed + split.share_cents);
+          const currentOwed = expensesOwedMap.get(split.member_id) ?? 0;
+          expensesOwedMap.set(split.member_id, currentOwed + split.share_cents);
         }
       }
     } else {
@@ -140,8 +144,8 @@ export function calculateMemberBalances(
       });
 
       for (const split of equalSplits) {
-        const currentOwed = owedMap.get(split.memberId) ?? 0;
-        owedMap.set(split.memberId, currentOwed + split.shareCents);
+        const currentOwed = expensesOwedMap.get(split.memberId) ?? 0;
+        expensesOwedMap.set(split.memberId, currentOwed + split.shareCents);
       }
     }
   }
@@ -161,24 +165,31 @@ export function calculateMemberBalances(
         memberIdSet.has(settlement.from_member_id) &&
         memberIdSet.has(settlement.to_member_id)
       ) {
-        const currentFromPaid = paidMap.get(settlement.from_member_id) ?? 0;
-        paidMap.set(settlement.from_member_id, currentFromPaid + settlement.amount_cents);
+        const currentFrom = settlementsPaidMap.get(settlement.from_member_id) ?? 0;
+        settlementsPaidMap.set(settlement.from_member_id, currentFrom + settlement.amount_cents);
 
-        const currentToPaid = paidMap.get(settlement.to_member_id) ?? 0;
-        paidMap.set(settlement.to_member_id, currentToPaid - settlement.amount_cents);
+        const currentTo = settlementsReceivedMap.get(settlement.to_member_id) ?? 0;
+        settlementsReceivedMap.set(settlement.to_member_id, currentTo + settlement.amount_cents);
       }
     }
   }
 
   return members.map((member) => {
-    const totalPaid = paidMap.get(member.id) ?? 0;
-    const totalOwed = owedMap.get(member.id) ?? 0;
+    const expensesPaid = expensesPaidMap.get(member.id) ?? 0;
+    const expensesOwed = expensesOwedMap.get(member.id) ?? 0;
+    const settlementsPaid = settlementsPaidMap.get(member.id) ?? 0;
+    const settlementsReceived = settlementsReceivedMap.get(member.id) ?? 0;
+
+    const netBalance = (expensesPaid + settlementsPaid) - (expensesOwed + settlementsReceived);
+
     return {
       memberId: member.id,
       name: member.name,
-      totalPaidCents: totalPaid,
-      totalOwedCents: totalOwed,
-      netBalanceCents: totalPaid - totalOwed,
+      totalPaidCents: expensesPaid,
+      totalOwedCents: expensesOwed,
+      netBalanceCents: netBalance,
+      settlementsPaidCents: settlementsPaid,
+      settlementsReceivedCents: settlementsReceived,
     };
   });
 }

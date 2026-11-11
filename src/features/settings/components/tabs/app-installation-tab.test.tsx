@@ -193,8 +193,9 @@ describe("AppInstallationTab", () => {
     );
   });
 
-  it("renderiza botão de download direto de APK no ambiente nativo quando há atualização", () => {
+  it("oculta botões redundantes de download manual de APK no ambiente nativo quando há atualização", () => {
     vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    const installUpdateMock = vi.fn();
     vi.spyOn(appUpdateHookModule, "useAppUpdate").mockReturnValue({
       status: "available",
       isChecking: false,
@@ -216,20 +217,18 @@ describe("AppInstallationTab", () => {
       },
       error: null,
       checkForUpdates: vi.fn(),
-      installUpdate: vi.fn(),
+      installUpdate: installUpdateMock,
     });
 
     render(<AppInstallationTab />);
 
-    const directDownloadButton = screen.getByText("Baixar instalador APK direto");
-    expect(directDownloadButton).toBeInTheDocument();
-    fireEvent.click(directDownloadButton);
+    // Não deve renderizar botão redundante de download de APK no ambiente nativo (regra de despoluição Step 3.2)
+    expect(screen.queryByText("Baixar instalador APK direto")).not.toBeInTheDocument();
+    expect(screen.queryByText("Baixar APK (v3.0.7)")).not.toBeInTheDocument();
 
-    expect(pushToastSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Download iniciado",
-        variant: "info",
-      }),
-    );
+    const updateButton = screen.getByText("Atualizar agora (sem desinstalar)");
+    expect(updateButton).toBeInTheDocument();
+    fireEvent.click(updateButton);
+    expect(installUpdateMock).toHaveBeenCalled();
   });
 });

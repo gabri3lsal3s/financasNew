@@ -6,7 +6,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router";
 import {
-  ArrowLeft,
   Calendar,
   MapPin,
   Share2,
@@ -410,10 +409,20 @@ export function TripDetailsPage() {
                     </div>
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
                       <span>
-                        Total pago: <strong className="text-foreground">{formatCentsAsBRL(paid)}</strong>
+                        Total em despesas: <strong className="text-foreground">{formatCentsAsBRL(paid)}</strong>
                       </span>
+                      {Boolean(memBalance?.settlementsPaidCents && memBalance.settlementsPaidCents > 0) && (
+                        <span>
+                          · Acertos pagos: <strong className="text-foreground">{formatCentsAsBRL(memBalance!.settlementsPaidCents!)}</strong>
+                        </span>
+                      )}
+                      {Boolean(memBalance?.settlementsReceivedCents && memBalance.settlementsReceivedCents > 0) && (
+                        <span>
+                          · Acertos recebidos: <strong className="text-foreground">{formatCentsAsBRL(memBalance!.settlementsReceivedCents!)}</strong>
+                        </span>
+                      )}
                       {member.pix_key && (
-                        <span className="font-mono">Pix: {member.pix_key}</span>
+                        <span className="font-mono">· Pix: {member.pix_key}</span>
                       )}
                     </div>
                   </div>
@@ -516,14 +525,149 @@ export function TripDetailsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Botão de Retorno */}
-      <Link
-        to="/viagens"
-        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="size-3.5" aria-hidden="true" />
-        Voltar para todas as viagens
-      </Link>
+      {/* Cabeçalho da Viagem Unificado */}
+      <PageHeader
+        backTo="/viagens"
+        backLabel="Voltar para todas as viagens"
+        title={trip.title}
+        badge={
+          <Badge
+            size="sm"
+            variant={
+              trip.status === "completed"
+                ? "positive"
+                : trip.status === "settling"
+                ? "warning"
+                : "muted"
+            }
+          >
+            {trip.status === "completed"
+              ? "Finalizada"
+              : trip.status === "settling"
+              ? "Em Acerto"
+              : "Ativa"}
+          </Badge>
+        }
+        description={
+          <span className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-0.5">
+            {trip.destination && (
+              <span className="flex items-center gap-1">
+                <MapPin className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                {trip.destination}
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <Calendar className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              {trip.start_date} até {trip.end_date}
+            </span>
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => setIsAddExpenseOpen(true)}
+              className="h-8 text-xs gap-1.5"
+            >
+              <Plus className="size-3.5" aria-hidden="true" />
+              <span>Nova Despesa</span>
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              data-tour="trip-settlement-card"
+              onClick={() => setIsSettlementOpen(true)}
+              className="h-8 text-xs gap-1.5"
+            >
+              <DollarSign className="size-3.5" aria-hidden="true" />
+              <span>Fechar Contas</span>
+            </Button>
+
+            <div className="flex items-center gap-1 shrink-0">
+              {isHost && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsInviteOpen(true)}
+                  className="size-8 !w-8 !min-w-8 p-0 shrink-0 cursor-pointer"
+                  title="Convidar amigos para a viagem via link ou WhatsApp"
+                  aria-label="Convidar Amigos"
+                >
+                  <UserPlus className="size-3.5" aria-hidden="true" />
+                  <span className="sr-only">Convidar Amigos</span>
+                </Button>
+              )}
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCopyPublicLink}
+                disabled={trip.status === "completed"}
+                className="size-8 !w-8 !min-w-8 p-0 shrink-0"
+                title={
+                  copiedLink
+                    ? "Link de acesso copiado!"
+                    : trip.status === "completed"
+                    ? "Link de compartilhamento encerrado"
+                    : "Copiar link de acesso público"
+                }
+                aria-label="Link Público"
+              >
+                {copiedLink ? (
+                  <Check className="size-3.5 text-positive" aria-hidden="true" />
+                ) : (
+                  <Share2 className="size-3.5" aria-hidden="true" />
+                )}
+                <span className="sr-only">Link Público</span>
+              </Button>
+
+              {isHost && trip.status === "completed" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsReopenTripOpen(true)}
+                  className="size-8 !w-8 !min-w-8 p-0 shrink-0 cursor-pointer"
+                  title="Reabrir a viagem para novos lançamentos e acertos"
+                  aria-label="Reabrir Viagem"
+                >
+                  <RotateCcw className="size-3.5" aria-hidden="true" />
+                  <span className="sr-only">Reabrir Viagem</span>
+                </Button>
+              )}
+
+              {isHost && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsDeleteTripOpen(true)}
+                  className="size-8 !w-8 !min-w-8 p-0 shrink-0 text-muted-foreground hover:text-critical hover:border-critical/30 cursor-pointer"
+                  title="Excluir viagem definitivamente"
+                  aria-label="Excluir Viagem"
+                >
+                  <Trash2 className="size-3.5" aria-hidden="true" />
+                  <span className="sr-only">Excluir Viagem</span>
+                </Button>
+              )}
+
+              {!isHost && myMember && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsLeaveTripOpen(true)}
+                  className="size-8 !w-8 !min-w-8 p-0 shrink-0 text-muted-foreground hover:text-critical hover:border-critical/30 cursor-pointer"
+                  title="Desvincular sua conta e sair desta viagem"
+                  aria-label="Sair da Viagem"
+                >
+                  <LogOut className="size-3.5" aria-hidden="true" />
+                  <span className="sr-only">Sair da Viagem</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        }
+      />
 
       {/* Cockpit Contextual Pessoal */}
       <TripPersonalContextCard
@@ -538,165 +682,33 @@ export function TripDetailsPage() {
         onLeaveTrip={!isHost && myMember ? () => setIsLeaveTripOpen(true) : undefined}
       />
 
-      {/* Cabeçalho da Viagem */}
-      <Card className="p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                {trip.title}
-              </h1>
-              <Badge
-                size="sm"
-                variant={
-                  trip.status === "completed"
-                    ? "positive"
-                    : trip.status === "settling"
-                    ? "warning"
-                    : "muted"
-                }
-              >
-                {trip.status === "completed"
-                  ? "Finalizada"
-                  : trip.status === "settling"
-                  ? "Em Acerto"
-                  : "Ativa"}
-              </Badge>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mt-1">
-              {trip.destination && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                  {trip.destination}
-                </span>
-              )}
-              <span className="flex items-center gap-1">
-                <Calendar className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                {trip.start_date} até {trip.end_date}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant="default"
-              onClick={() => setIsAddExpenseOpen(true)}
-              className="h-8 text-xs gap-1.5"
-            >
-              <Plus className="size-3.5" aria-hidden="true" />
-              Adicionar Despesa
-            </Button>
-            {isHost && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsInviteOpen(true)}
-                className="h-8 text-xs gap-1.5 cursor-pointer"
-                title="Convidar amigos para a viagem via link ou WhatsApp"
-              >
-                <UserPlus className="size-3.5" aria-hidden="true" />
-                Convidar Amigos
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleCopyPublicLink}
-              className="h-8 text-xs gap-1.5"
-              disabled={trip.status === "completed"}
-              title={trip.status === "completed" ? "Link de compartilhamento encerrado" : "Copiar link de acesso público"}
-            >
-              {copiedLink ? (
-                <>
-                  <Check className="size-3.5 text-positive" aria-hidden="true" />
-                  Link Copiado!
-                </>
-              ) : (
-                <>
-                  <Share2 className="size-3.5" aria-hidden="true" />
-                  {trip.status === "completed" ? "Link Encerrado" : "Link Público"}
-                </>
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              data-tour="trip-settlement-card"
-              onClick={() => setIsSettlementOpen(true)}
-              className="h-8 text-xs gap-1.5"
-            >
-              <DollarSign className="size-3.5" aria-hidden="true" />
-              Fechar Contas
-            </Button>
-            {isHost && trip.status === "completed" && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsReopenTripOpen(true)}
-                className="h-8 text-xs gap-1.5 cursor-pointer"
-                title="Reabrir a viagem para novos lançamentos e acertos"
-              >
-                <RotateCcw className="size-3.5" aria-hidden="true" />
-                Reabrir Viagem
-              </Button>
-            )}
-            {isHost && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsDeleteTripOpen(true)}
-                className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-critical hover:border-critical/30 cursor-pointer"
-                title="Excluir viagem definitivamente"
-              >
-                <Trash2 className="size-3.5" aria-hidden="true" />
-                Excluir Viagem
-              </Button>
-            )}
-            {!isHost && myMember && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsLeaveTripOpen(true)}
-                className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-critical hover:border-critical/30 cursor-pointer"
-                title="Desvincular sua conta e sair desta viagem"
-              >
-                <LogOut className="size-3.5" aria-hidden="true" />
-                Sair da Viagem
-              </Button>
-            )}
-          </div>
+      {/* Trinca de Métricas do Grupo */}
+      <div data-tour="trip-balances" className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="p-3.5 rounded-2xl bg-surface border border-border/80 shadow-xs">
+          <p className="text-[11px] text-muted-foreground font-medium">Total do Grupo</p>
+          <p className="text-base sm:text-lg font-bold tabular-nums text-foreground">
+            {formatCentsAsBRL(totalExpensesCents)}
+          </p>
         </div>
 
-        {/* Trinca de Métricas */}
-        <div data-tour="trip-balances" className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-border/80">
-          <div className="p-3 rounded-xl bg-surface-raised border border-border/60">
-            <p className="text-[11px] text-muted-foreground font-medium">Total do Grupo</p>
-            <p className="text-base sm:text-lg font-bold tabular-nums text-foreground">
-              {formatCentsAsBRL(totalExpensesCents)}
-            </p>
-          </div>
-
-          <div className="p-3 rounded-xl bg-surface-raised border border-border/60">
-            <p className="text-[11px] text-muted-foreground font-medium">Seu Balanço Líquido</p>
-            <p className="text-base sm:text-lg font-bold tabular-nums text-foreground">
-              {myBalance
-                ? myBalance.netBalanceCents > 0
-                  ? `+ ${formatCentsAsBRL(myBalance.netBalanceCents)}`
-                  : formatCentsAsBRL(myBalance.netBalanceCents)
-                : "R$ 0,00"}
-            </p>
-          </div>
-
-          <div className="p-3 rounded-xl bg-surface-raised border border-border/60">
-            <p className="text-[11px] text-muted-foreground font-medium">Participantes</p>
-            <p className="text-base sm:text-lg font-bold text-foreground">
-              {members.length} amigos
-            </p>
-          </div>
+        <div className="p-3.5 rounded-2xl bg-surface border border-border/80 shadow-xs">
+          <p className="text-[11px] text-muted-foreground font-medium">Seu Balanço Líquido</p>
+          <p className="text-base sm:text-lg font-bold tabular-nums text-foreground">
+            {myBalance
+              ? myBalance.netBalanceCents > 0
+                ? `+ ${formatCentsAsBRL(myBalance.netBalanceCents)}`
+                : formatCentsAsBRL(myBalance.netBalanceCents)
+              : "R$ 0,00"}
+          </p>
         </div>
-      </Card>
+
+        <div className="p-3.5 rounded-2xl bg-surface border border-border/80 shadow-xs">
+          <p className="text-[11px] text-muted-foreground font-medium">Participantes</p>
+          <p className="text-base sm:text-lg font-bold text-foreground">
+            {members.length} amigos
+          </p>
+        </div>
+      </div>
 
       {/* Abas */}
       <Tabs

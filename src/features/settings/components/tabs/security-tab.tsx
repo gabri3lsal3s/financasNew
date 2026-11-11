@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Fingerprint, RefreshCw, Smartphone, Download } from "lucide-react";
+import { Fingerprint, RefreshCw, Smartphone, Download, KeyRound } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -16,6 +16,8 @@ import type { ExportCsvKind, ExportRange } from "@/components/modules";
 import { downloadCsv } from "@/services/export-actions";
 import { pushToast } from "@/services/toast";
 import { DeleteAccountCard } from "./delete-account-card";
+import { ActiveDevicesCard } from "./active-devices-card";
+import { PinSetupDialog } from "../pin-setup-dialog";
 import {
   checkBiometricsAvailability,
   authenticateWithBiometrics,
@@ -27,6 +29,7 @@ import {
   isPrivacyShieldEnabled,
   setPrivacyShieldEnabled,
   isNativePlatform,
+  isPinLockConfigured,
 } from "@/services/native";
 import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS } from "@/lib/labels";
 import { numberToCents } from "@/domain/money";
@@ -53,6 +56,7 @@ import {
 } from "@/state";
 import { useDemoSession } from "@/state/demo-mode";
 import { useAppUpdate } from "@/hooks/use-app-update";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 interface BackupExpenseItem {
@@ -94,15 +98,20 @@ const APP_LOCK_GRACE_OPTIONS: SelectOption[] = [
 ];
 
 export function SecurityTab() {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const userAccess = useUserAccess();
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
 
-  // Estados de segurança nativa / app lock
+  // Estados de segurança nativa / app lock híbrido (Biometria e PIN)
   const [biometricsAvailable, setBiometricsAvailable] = useState<boolean | null>(null);
   const [biometryType, setBiometryType] = useState<string>("none");
   const [bioLockEnabled, setBioLockEnabled] = useState(() => isBiometricLockEnabled());
   const [graceMinutes, setGraceMinutes] = useState(() => String(getAppLockGraceMinutes()));
+  const [hasPinConfigured, setHasPinConfigured] = useState(() => isPinLockConfigured(userId));
+  const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+
   const { isDemoActive } = useDemoSession();
   const isNative = isNativePlatform() || isDemoActive;
   const showBiometrics = isNative || Boolean(biometricsAvailable);
@@ -358,11 +367,15 @@ export function SecurityTab() {
                     Biometria Indisponível
                   </Badge>
                 ) : null
-              ) : null}
+              ) : (
+                <Badge variant={hasPinConfigured ? "positive" : "muted"} size="xs">
+                  {hasPinConfigured ? "PIN Ativo" : "PIN Não Configurado"}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {showBiometrics && (
+            {showBiometrics ? (
               <div className="space-y-4 rounded-xl border border-border/80 bg-surface shadow-xs p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-0.5">
@@ -398,6 +411,80 @@ export function SecurityTab() {
                   </div>
                 ) : null}
               </div>
+            ) : (
+              <div className="space-y-4 rounded-xl border border-border/80 bg-surface shadow-xs p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="space-y-0.5">
+                    <span className="text-sm font-semibold text-foreground">
+                      Bloqueio com PIN de Acesso
+                    </span>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Exige um código PIN numérico de 4 a 6 dígitos ao retornar para a aba do aplicativo após o tempo de tolerância.
+                    </p>
+                  </div>
+                  <Checkbox
+                    id="toggle-pin-lock"
+                    aria-label="Exigir PIN ao retornar ao aplicativo"
+                    checked={bioLockEnabled}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        if (!hasPinConfigured) {
+                          setIsPinDialogOpen(true);
+                        } else {
+                          setBiometricLockEnabled(true);
+                          setBioLockEnabled(true);
+                          resetAppLockBackgroundTimer();
+                          pushToast({
+                            title: "Bloqueio por PIN ativado",
+                            description: "O aplicativo exigirá PIN ao retornar do segundo plano.",
+                            variant: "success",
+                          });
+                        }
+                      } else {
+                        setBiometricLockEnabled(false);
+                        setBioLockEnabled(false);
+                        pushToast({
+                          title: "Bloqueio por PIN desativado",
+                          variant: "default",
+                        });
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                  <span className="text-xs text-muted-foreground">
+                    {hasPinConfigured ? "PIN configurado neste dispositivo" : "Nenhum PIN configurado"}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPinDialogOpen(true)}
+                    className="gap-1.5 text-xs h-8"
+                  >
+                    <KeyRound className="size-3.5" aria-hidden="true" />
+                    <span>{hasPinConfigured ? "Alterar PIN" : "Configurar PIN"}</span>
+                  </Button>
+                </div>
+
+                {bioLockEnabled ? (
+                  <div className="pt-3 border-t border-border/60 space-y-2">
+                    <span className="text-xs font-semibold text-foreground">
+                      Tolerância para bloqueio
+                    </span>
+                    <Select
+                      value={graceMinutes}
+                      onValueChange={handleGraceMinutesChange}
+                      options={APP_LOCK_GRACE_OPTIONS}
+                      ariaLabel="Selecione o tempo de tolerância para bloqueio"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Define quanto tempo a aba pode permanecer inativa antes de exigir o PIN.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
             )}
 
             {showPrivacyShield && (
@@ -421,6 +508,21 @@ export function SecurityTab() {
           </CardContent>
         </Card>
       ) : null}
+
+      <PinSetupDialog
+        open={isPinDialogOpen}
+        onOpenChange={setIsPinDialogOpen}
+        userId={userId}
+        hasExistingPin={hasPinConfigured}
+        onSuccess={() => {
+          setHasPinConfigured(isPinLockConfigured(userId));
+          setBioLockEnabled(true);
+          setBiometricLockEnabled(true);
+        }}
+      />
+
+      {/* Card 1.5: Dispositivos Conectados e Sessões Ativas (Etapa 1.1) */}
+      <ActiveDevicesCard />
 
       {/* Card 2: Exportação de Dados Financeiros (Extratos CSV) */}
       <ExportDataHub

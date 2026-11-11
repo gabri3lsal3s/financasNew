@@ -30,7 +30,7 @@ export function ConsolidatedWealthModal({
   onOpenChange,
   balanceSheet,
   periodLabel = "Fechamento Consolidado",
-  appName = "Áxis Finance",
+  appName = "Axir",
   accountHolder,
 }: ConsolidatedWealthModalProps) {
   // Segmentos para o gráfico Donut de Composição dos Ativos

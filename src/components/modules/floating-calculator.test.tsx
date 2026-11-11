@@ -43,7 +43,6 @@ describe("FloatingCalculator (F9)", () => {
   });
 
   it("resolve operações no display (2 + 3 = 5)", async () => {
-    registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
     await openCalculator();
@@ -64,7 +63,10 @@ describe("FloatingCalculator (F9)", () => {
     render(<FloatingCalculator />);
     await openCalculator();
 
+    // No modo money com digitação RTL: 1 -> 0,01; 0 -> 0,10; 0 -> 1,00; 0 -> 10,00; 0 -> 100,00
     await user.click(screen.getByRole("button", { name: "Dígito 1" }));
+    await user.click(screen.getByRole("button", { name: "Dígito 0" }));
+    await user.click(screen.getByRole("button", { name: "Dígito 0" }));
     await user.click(screen.getByRole("button", { name: "Dígito 0" }));
     await user.click(screen.getByRole("button", { name: "Dígito 0" }));
     await user.click(screen.getByRole("button", { name: "Usar valor" }));
@@ -91,7 +93,6 @@ describe("FloatingCalculator (F9)", () => {
   });
 
   it("divide em parcelas exatas (100 ÷ 3 → 33,34 com resto na 1ª)", async () => {
-    registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
     await openCalculator();
@@ -123,7 +124,6 @@ describe("FloatingCalculator (F9)", () => {
   });
 
   it("opera a calculadora com o teclado físico (dígitos, operadores e Enter)", async () => {
-    registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
     await openCalculator();
@@ -134,7 +134,6 @@ describe("FloatingCalculator (F9)", () => {
   });
 
   it("suporta operadores alternativos via teclado (*, x, /, -, ,)", async () => {
-    registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
     await openCalculator();
@@ -153,7 +152,6 @@ describe("FloatingCalculator (F9)", () => {
   });
 
   it("apaga dígitos com Backspace e limpa com Delete", async () => {
-    registerFakeTarget();
     const user = userEvent.setup();
     render(<FloatingCalculator />);
     await openCalculator();
@@ -172,7 +170,7 @@ describe("FloatingCalculator (F9)", () => {
     render(<FloatingCalculator />);
     await openCalculator();
 
-    await user.keyboard("75{Control>}{Enter}{/Control}");
+    await user.keyboard("7500{Control>}{Enter}{/Control}");
     expect(setter).toHaveBeenCalledWith(7500);
     expect(screen.queryByText("Calculadora")).not.toBeInTheDocument();
   });
@@ -192,9 +190,11 @@ describe("FloatingCalculator (F9)", () => {
     // Display já deve ter aberto com R$ 150,00
     expect(screen.getByText("R$ 150,00")).toBeInTheDocument();
 
-    // Soma + 50 =
+    // Soma + 50.00 (RTL: 5, 0, 0, 0) =
     await user.click(screen.getByRole("button", { name: "Somar" }));
     await user.click(screen.getByRole("button", { name: "Dígito 5" }));
+    await user.click(screen.getByRole("button", { name: "Dígito 0" }));
+    await user.click(screen.getByRole("button", { name: "Dígito 0" }));
     await user.click(screen.getByRole("button", { name: "Dígito 0" }));
     await user.click(screen.getByRole("button", { name: "Igual" }));
 
@@ -276,5 +276,73 @@ describe("FloatingCalculator (F9)", () => {
     expect(screen.getByText("Calculadora")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByText("Calculadora")).not.toBeInTheDocument();
+  });
+
+  it("digita valores monetários em formato RTL progressivo e apaga com Backspace", async () => {
+    const setter = vi.fn();
+    registerCalculatorTarget(setter);
+    const user = userEvent.setup();
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    // Digita 1 -> R$ 0,01
+    await user.click(screen.getByRole("button", { name: "Dígito 1" }));
+    expect(screen.getAllByText("R$ 0,01").length).toBeGreaterThan(0);
+
+    // Digita 5 -> R$ 0,15
+    await user.click(screen.getByRole("button", { name: "Dígito 5" }));
+    expect(screen.getAllByText("R$ 0,15").length).toBeGreaterThan(0);
+
+    // Digita 0 -> R$ 1,50
+    await user.click(screen.getByRole("button", { name: "Dígito 0" }));
+    expect(screen.getAllByText("R$ 1,50").length).toBeGreaterThan(0);
+
+    // Digita 0 -> R$ 15,00
+    await user.click(screen.getByRole("button", { name: "Dígito 0" }));
+    expect(screen.getAllByText("R$ 15,00").length).toBeGreaterThan(0);
+
+    // Backspace -> R$ 1,50
+    await user.click(screen.getByRole("button", { name: "Apagar dígito" }));
+    expect(screen.getAllByText("R$ 1,50").length).toBeGreaterThan(0);
+
+    // Injeta valor: 150 centavos
+    await user.click(screen.getByRole("button", { name: "Usar valor" }));
+    expect(setter).toHaveBeenCalledWith(150);
+  });
+
+  it("cola valor monetário formatado da área de transferência com sanitização", async () => {
+    const setter = vi.fn();
+    registerCalculatorTarget(setter);
+    const user = userEvent.setup();
+
+    // Mock do clipboard
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        readText: vi.fn().mockResolvedValue("R$ 1.250,50"),
+        writeText: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    // Clica no botão Colar
+    await user.click(screen.getByRole("button", { name: "Colar" }));
+
+    // Deve sanitizar para "1250.50" e exibir R$ 1.250,50
+    expect(screen.getAllByText("R$ 1.250,50").length).toBeGreaterThan(0);
+
+    // Injeta o valor: 125050 centavos
+    await user.click(screen.getByRole("button", { name: "Usar valor" }));
+    expect(setter).toHaveBeenCalledWith(125050);
+
+    Object.defineProperty(navigator, "clipboard", {
+      value: originalClipboard,
+      writable: true,
+      configurable: true,
+    });
   });
 });

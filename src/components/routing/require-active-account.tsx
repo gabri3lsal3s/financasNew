@@ -9,11 +9,17 @@ import { useUserAccess } from "@/state";
  * contas 'suspended' ou 'banned' para a tela de bloqueio.
  */
 export function RequireActiveAccount() {
-  const { session, loading: authLoading } = useAuth();
+  const { session, loading: authLoading, mfaRequired, mfaVerified } = useAuth();
   const { isPendingApproval, isSuspended, isBanned, isLoading } = useUserAccess(session?.user?.id);
 
   if (authLoading || isLoading || !session?.user) {
     return <LoadingScreen />;
+  }
+
+  // Blindagem 2FA (Etapa 1.2): se a conta exige AAL2 e o desafio TOTP ainda não foi validado,
+  // recusa a renderização de qualquer rota interna e retém o usuário na tela de desafio.
+  if (mfaRequired && !mfaVerified) {
+    return <Navigate to="/entrar?desafio=totp" replace />;
   }
 
   if (isPendingApproval) {

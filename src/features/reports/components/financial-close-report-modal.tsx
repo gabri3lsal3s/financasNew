@@ -5,6 +5,7 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui";
 import {
   ReportDocumentLayout,
   ReportHeader,
@@ -100,7 +101,7 @@ export function FinancialCloseReportModal({
   open,
   onOpenChange,
   periodLabel,
-  appName = "Áxis Finance",
+  appName = "Axir",
   accountHolder,
   dre,
   categories,
@@ -164,7 +165,17 @@ export function FinancialCloseReportModal({
         accountHolder={accountHolder}
       />
 
-      {/* 2. Síntese Executiva & KPIs em Linha Única */}
+      {expenseCount === 0 && incomeCount === 0 ? (
+        <div className="py-12">
+          <EmptyState
+            icon={<Landmark className="size-8 text-muted-foreground" aria-hidden="true" />}
+            title="Nenhuma transação encontrada para este período"
+            description="Não há lançamentos de receitas ou despesas registrados na competência selecionada para a geração do Dossiê Contábil."
+          />
+        </div>
+      ) : (
+        <>
+          {/* 2. Síntese Executiva & KPIs em Linha Única */}
       <ReportExecutiveSummary
         title="SÍNTESE DO FLUXO CONTÁBIL & RESULTADO"
         items={[
@@ -261,7 +272,7 @@ export function FinancialCloseReportModal({
                 </td>
                 <td className="py-2 px-3 text-right num font-mono text-muted-foreground">
                   {effectiveGrossIncomeBruto > 0
-                    ? `${((effectiveTotalExpensesBruto / effectiveGrossIncomeBruto) * 100).toFixed(1).replace(".", ",")}%`
+                    ? `${formatPercent((effectiveTotalExpensesBruto / effectiveGrossIncomeBruto) * 100)}%`
                     : "—"}
                 </td>
               </tr>
@@ -279,7 +290,7 @@ export function FinancialCloseReportModal({
                   )}
                 </td>
                 <td className="py-2 px-3 text-right num font-mono">
-                  {formatPercent(effectiveGrossSavingsRatePct)}
+                  {formatPercent(effectiveGrossSavingsRatePct)}%
                 </td>
               </tr>
               <tr>
@@ -291,7 +302,7 @@ export function FinancialCloseReportModal({
                 </td>
                 <td className="py-2 px-3 text-right num font-mono text-muted-foreground">
                   {effectiveGrossIncomeBruto > 0
-                    ? `${((dre.investedAporteCents / effectiveGrossIncomeBruto) * 100).toFixed(1).replace(".", ",")}%`
+                    ? `${formatPercent((dre.investedAporteCents / effectiveGrossIncomeBruto) * 100)}%`
                     : "—"}
                 </td>
               </tr>
@@ -305,7 +316,7 @@ export function FinancialCloseReportModal({
                 </td>
                 <td className="py-2 px-3 text-right num font-mono text-primary-strong">
                   {effectiveGrossIncomeBruto > 0
-                    ? `${(((effectiveGrossSavingsBruto - dre.investedAporteCents) / effectiveGrossIncomeBruto) * 100).toFixed(1).replace(".", ",")}%`
+                    ? `${formatPercent(((effectiveGrossSavingsBruto - dre.investedAporteCents) / effectiveGrossIncomeBruto) * 100)}%`
                     : "—"}
                 </td>
               </tr>
@@ -371,10 +382,10 @@ export function FinancialCloseReportModal({
                                 {cat.variancePct > 0 ? `+${cat.variancePct}%` : `${cat.variancePct}%`}
                               </span>
                             ) : (
-                              <span className="text-muted-foreground">{cat.pct.toFixed(1).replace(".", ",")}%</span>
+                              <span className="text-muted-foreground">{formatPercent(cat.pct)}%</span>
                             )
                           ) : (
-                            <span className="text-muted-foreground">{cat.pct.toFixed(1).replace(".", ",")}%</span>
+                            <span className="text-muted-foreground">{formatPercent(cat.pct)}%</span>
                           )}
                         </td>
                       </tr>
@@ -417,7 +428,7 @@ export function FinancialCloseReportModal({
                         )}
                       </td>
                       <td className="py-1.5 px-1.5 text-right num font-mono text-muted-foreground">
-                        {pm.pct.toFixed(1).replace(".", ",")}%
+                        {formatPercent(pm.pct)}%
                       </td>
                     </tr>
                   ))}
@@ -485,10 +496,12 @@ export function FinancialCloseReportModal({
             <div className="p-2.5 rounded-lg bg-muted/20 border border-border/60">
               <span className="text-[10px] text-muted-foreground block uppercase">Sua Participação</span>
               <MoneyText cents={householdSummary.userContributionCents} className="font-bold text-sm" />
-              <span className="text-[10px] text-muted-foreground ml-1">({householdSummary.userPercentageOfTotal.toFixed(1).replace(".", ",")}%)</span>
+              <span className="text-[10px] text-muted-foreground ml-1">({formatPercent(householdSummary.userPercentageOfTotal)}%)</span>
             </div>
           </div>
         </section>
+      )}
+        </>
       )}
 
       {/* 8. Rodapé Institucional */}

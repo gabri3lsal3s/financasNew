@@ -8,6 +8,8 @@ import { useLandingCta, useAnimatedNumber } from "@/features/landing/hooks";
 import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
 import { FireProjectionCurve } from "./fire-projection-curve";
 import { triggerSensory } from "@/services/sensory";
+import { formatCentsAsBRL, formatPercent } from "@/services/masks";
+import { numberToCents } from "@/domain/money";
 import { simulateStrategyAporte } from "@/domain/portfolio";
 
 
@@ -106,11 +108,7 @@ export function MinimalWealthSimulator() {
   const animatedMonthlyPassive = useAnimatedNumber(rebalanceData.monthlyPassive, { duration: 300 });
 
   const formatBRL = (val: number) => {
-    return val.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      maximumFractionDigits: 0,
-    });
+    return formatCentsAsBRL(numberToCents(val), { hideCents: true });
   };
 
   return (
@@ -321,7 +319,7 @@ export function MinimalWealthSimulator() {
                             <div className="min-w-0">
                               <div className="text-xs sm:text-sm font-bold text-foreground">{cls.name}</div>
                               <div className="text-[11px] text-positive-strong dark:text-positive font-medium">
-                                Atual: {cls.currentPct}% · Meta: {cls.targetPercent}% (Comprando na defasagem)
+                                Atual: {formatPercent(cls.currentPct)}% · Meta: {formatPercent(cls.targetPercent)}% (Comprando na defasagem)
                               </div>
                             </div>
                           </div>
@@ -335,14 +333,14 @@ export function MinimalWealthSimulator() {
                     return (
                       <div
                         key={cls.key}
-                        className="p-3 sm:p-3.5 rounded-xl border border-border/60 bg-background/40 flex items-center justify-between gap-2 opacity-75"
+                        className="p-3 sm:p-3.5 rounded-xl border border-border/80 bg-background/40 flex items-center justify-between gap-2 opacity-75"
                       >
                         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <ShieldCheck className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           <div className="min-w-0">
                             <div className="text-xs sm:text-sm font-semibold text-foreground">{cls.name}</div>
                             <div className="text-[11px] text-muted-foreground">
-                              Alocação balanceada ({cls.currentPct}% / Meta: {cls.targetPercent}%)
+                              Alocação balanceada ({formatPercent(cls.currentPct)}% / Meta: {formatPercent(cls.targetPercent)}%)
                             </div>
                           </div>
                         </div>

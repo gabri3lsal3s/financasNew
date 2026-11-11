@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Landmark, Shield, Percent, Sparkles } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatPercent } from "@/services/masks";
 import { numberToCents } from "@/domain/money";
 import {
   calculateFixedIncomeExposure,
@@ -136,7 +137,7 @@ export function ReportFixedIncomeBreakdownCard({
         <div className="flex items-center gap-2 text-positive-strong">
           <Sparkles className="size-4 shrink-0" aria-hidden="true" />
           <span className="font-semibold">
-            Eficiência Fiscal: {exposure.taxExemptPct.toFixed(1)}% isento de Imposto de Renda
+            Eficiência Fiscal: {formatPercent(exposure.taxExemptPct)}% isento de Imposto de Renda
           </span>
         </div>
         <span className="font-mono text-muted-foreground text-[11px]">
@@ -196,7 +197,7 @@ export function ReportFixedIncomeBreakdownCard({
                             <MoneyText cents={numberToCents(grp.valueBRL)} />
                           </td>
                           <td className="py-1 px-2 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                            {grp.pct.toFixed(1)}%
+                            {formatPercent(grp.pct)}%
                           </td>
                         </tr>
                       ))}
@@ -257,7 +258,7 @@ export function ReportFixedIncomeBreakdownCard({
                             <MoneyText cents={numberToCents(grp.valueBRL)} />
                           </td>
                           <td className="py-1 px-2 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                            {grp.pct.toFixed(1)}%
+                            {formatPercent(grp.pct)}%
                           </td>
                         </tr>
                       ))}
@@ -326,7 +327,7 @@ export function ReportFixedIncomeBreakdownCard({
                           <MoneyText cents={numberToCents(grp.valueBRL)} />
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-semibold text-muted-foreground tabular-nums whitespace-nowrap">
-                          {grp.pct.toFixed(1)}%
+                          {formatPercent(grp.pct)}%
                         </td>
                       </tr>
                     );

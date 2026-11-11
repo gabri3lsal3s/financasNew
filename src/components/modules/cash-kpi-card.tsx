@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
+import { formatPercent } from "@/services/masks";
 import { cn } from "@/lib/utils";
 
 export interface CashKpiCardProps {
@@ -134,7 +135,7 @@ export function CashKpiCard({
           <span className="text-[11px] font-medium leading-tight text-muted-foreground truncate block">
             {hasCashAsset
               ? cashPct !== undefined && cashPct > 0
-                ? `${cashPct.toFixed(1)}% do patrimônio total`
+                ? `${formatPercent(cashPct)}% do patrimônio total`
                 : "Disponível para aportes"
               : "Nenhum saldo em caixa cadastrado"}
           </span>
@@ -187,7 +188,7 @@ export function CashKpiCard({
 
           {hasCashAsset && cashPct !== undefined && cashPct > 0 ? (
             <span className="text-xs font-medium text-muted-foreground">
-              ({cashPct.toFixed(1)}% do patrimônio)
+              ({formatPercent(cashPct)}% do patrimônio)
             </span>
           ) : null}
         </div>

@@ -112,6 +112,25 @@ export function formatDateBR(iso: string): string {
   return `${day}/${month}/${year}`;
 }
 
+/**
+ * Formata um timestamp ISO como dd/mm/aaaa às hh:mm (pt-BR).
+ */
+export function formatDateTimeBR(iso: string): string {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${day}/${month}/${year} às ${hours}:${minutes}`;
+  } catch {
+    return iso;
+  }
+}
+
 /** Valida se é um ano plausível (entre 1900 e 2100). */
 export function isValidYear(year: number): boolean {
   return Number.isInteger(year) && year >= 1900 && year <= 2100;
