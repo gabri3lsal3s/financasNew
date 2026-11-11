@@ -53,13 +53,17 @@ describe("services/app-url — getPublicAppUrl", () => {
   });
 
   describe("em ambiente Web de cloud ou producao (sem VITE_PUBLIC_SITE_URL)", () => {
-    it("deve normalizar dominios internos legados (*.workers.dev / *.pages.dev) para o dominio canonico axir.com.br", () => {
+    it("deve normalizar dominios internos legados (*.workers.dev / *.pages.dev) e subdominios como www para o dominio canonico axir.com.br", () => {
       vi.stubEnv("VITE_PUBLIC_SITE_URL", "");
       mockOrigin("https://financasnew.gabrielisaacsales.workers.dev");
 
       expect(getPublicAppUrl("/entrar")).toBe("https://axir.com.br/entrar");
       expect(getPublicAppUrl("redefinir-senha")).toBe("https://axir.com.br/redefinir-senha");
       expect(getPublicAppUrl()).toBe("https://axir.com.br");
+
+      mockOrigin("https://www.axir.com.br");
+      expect(getPublicAppUrl("viagem/tok-viagem-123")).toBe("https://axir.com.br/viagem/tok-viagem-123");
+      expect(getPublicAppUrl("/entrar")).toBe("https://axir.com.br/entrar");
     });
 
     it("deve normalizar VITE_PUBLIC_SITE_URL se ela contiver workers.dev", () => {

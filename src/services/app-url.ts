@@ -47,7 +47,7 @@ export function getPublicAppUrl(path = ""): string {
     const origin = window.location.origin;
     if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
       base = origin;
-    } else if (origin.includes("workers.dev") || origin.includes("pages.dev")) {
+    } else if (origin.includes("workers.dev") || origin.includes("pages.dev") || origin.includes("axir.com.br")) {
       base = CANONICAL_PUBLIC_DOMAIN;
     } else {
       base = origin;

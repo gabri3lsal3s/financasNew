@@ -51,6 +51,11 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useUserSubscription: () => ({
+    isPro: true,
+    isLoading: false,
+    subscription: null,
+  }),
 }));
 
 vi.mock("@/state/queries/use-public-shares", () => ({
