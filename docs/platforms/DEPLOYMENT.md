@@ -48,9 +48,9 @@
 1. Crie o projeto em [supabase.com/dashboard](https://supabase.com/dashboard) (anote `Project URL` e `anon key` em **Settings → API**).
 2. Aplique as migrations **na ordem** (0001 → 0052).
 3. **Auth — configurar URLs de redirect** (Settings → Auth → URL Configuration):
-   - `Site URL`: `https://financasnew.gabrielisaacsales.workers.dev` (ou domínio próprio customizado)
-   - `Redirect URLs`: adicionar `https://financasnew.gabrielisaacsales.workers.dev/**`, `https://*.workers.dev/**` e `https://*.pages.dev/**`
-   - O arquivo `supabase/config.toml` já contém as entradas `"https://*.workers.dev"` e `"https://financasnew.gabrielisaacsales.workers.dev"`.
+   - `Site URL`: `https://axir.com.br`
+   - `Redirect URLs`: adicionar `https://axir.com.br/**`, `https://www.axir.com.br/**`, `https://*.pages.dev/**` e `http://localhost:5173/**`
+   - O arquivo `supabase/config.toml` já contém as entradas `"https://axir.com.br"` e `"https://www.axir.com.br"`.
 
 ### 3.2 Supabase Auth: Checklist de Rate Limits & Proteção contra Força Bruta
 
@@ -67,13 +67,13 @@ Para assegurar a prontidão para campanhas de aquisição e tráfego massivo (1k
      * **Port:** `465` (SSL) ou `587` (TLS)
      * **Username:** `resend`
      * **Password:** `<API_KEY_RESEND_INICIADA_COM_re_>`
-     * **Sender Email:** `nao-responda@<dominio_verificado>`
-     * **Sender Name:** `Áxis Finance`
+     * **Sender Email:** `suporte@axir.com.br` (ou `nao-responda@axir.com.br`)
+     * **Sender Name:** `Axir`
      * **Minimum TLS version:** `TLS 1.2`
-   - **Apontamentos DNS Obrigatórios no Registrador / Cloudflare:**
-     * **TXT (SPF):** `send.<dominio>` ou `<dominio>` com valor `v=spf1 include:amazonses.com ~all`
-     * **CNAME (DKIM):** `resend._domainkey` apontando para `resend._domainkey.resend.com`
-     * **TXT (DMARC):** `_dmarc.<dominio>` com valor `v=DMARC1; p=none; rua=mailto:dmarc@<dominio>`
+   - **Apontamentos DNS Obrigatórios no Registrador / Cloudflare (Domínio `axir.com.br`):**
+     * **TXT (SPF):** `send.axir.com.br` com valor `v=spf1 include:amazonses.com ~all`
+     * **TXT (DKIM):** `resend._domainkey.axir.com.br` com a chave pública RSA provisionada pelo Resend
+     * **TXT (DMARC):** `_dmarc.axir.com.br` com valor `v=DMARC1; p=none; rua=mailto:dmarc@axir.com.br`
      * **MX (Retornos):** `feedback-smtp.us-east-1.amazonses.com` (Prioridade 10)
    - Consulte o guia completo e os códigos HTML dos templates em [`docs/EMAIL_TEMPLATES.md`](EMAIL_TEMPLATES.md).
 3. **Teto de Cadastros e Criação de Contas:**
@@ -116,14 +116,14 @@ Para evitar que deploys automáticos em cada commit introduzam regressões ou ge
 ### 3.4 Vinculação de Domínio Customizado no Cloudflare Pages
 
 1. Acesse o projeto no Cloudflare Pages → **Custom Domains** → **Set up a custom domain**;
-2. Informe o domínio ou subdomínio de produção oficial (ex.: `app.seudominio.com.br` ou `axis.finance`);
-3. Caso o DNS esteja sob a própria Cloudflare, o CNAME apontando para `<projeto>.pages.dev` é criado e verificado automaticamente;
-4. Aguarde o status mudar para **Active** com provisionamento do certificado SSL universal.
+2. Informe o domínio oficial `axir.com.br` e `www.axir.com.br`;
+3. Como o DNS está sob a própria Cloudflare, os registros DNS (CNAME para `<projeto>.pages.dev`) são criados e validados automaticamente;
+4. O tráfego para `www.axir.com.br` é redirecionado via regra de borda (Bulk Redirects ou Page Rule 301) para a raiz canônica `https://axir.com.br`.
 
 ### 3.5 Criptografia SSL/TLS em Modo Full (Strict)
 
 Para proteger dados bancários e de autenticação em trânsito com segurança de padrão financeiro:
-1. No Cloudflare Dashboard, selecione a zona do domínio oficial;
+1. No Cloudflare Dashboard, selecione a zona do domínio oficial (`axir.com.br`);
 2. Acesse **SSL/TLS** → **Overview** e selecione o modo **Full (strict)**;
 3. Acesse **SSL/TLS** → **Edge Certificates**:
    - **Always Use HTTPS:** Ativado (`On`);
@@ -137,13 +137,14 @@ Para evitar erros de redirecionamento ou links expirados em convites e resets de
 1. Acesse o **Supabase Dashboard** → **Authentication** → **URL Configuration**;
 2. No campo **Site URL**, preencha com a URL oficial de produção:
    ```text
-   https://app.seudominio.com.br
+   https://axir.com.br
    ```
 3. No campo **Redirect URLs**, registre os padrões permitidos para login social, magic link e confirmação:
    ```text
-   https://app.seudominio.com.br/**
-   https://app.seudominio.com.br/redefinir-senha
-   https://app.seudominio.com.br/confirmar-email
+   https://axir.com.br/**
+   https://axir.com.br/redefinir-senha
+   https://axir.com.br/confirmar-email
+   https://www.axir.com.br/**
    https://*.pages.dev/**
    http://localhost:5173/**
    ```
@@ -155,7 +156,7 @@ Após a propagação do domínio, audite as respostas HTTP via terminal:
 
 ```bash
 # 1. Auditar HSTS, CSP e cabeçalhos de segurança na raiz:
-curl -I https://app.seudominio.com.br
+curl -I https://axir.com.br
 
 # Resposta esperada contém:
 # strict-transport-security: max-age=31536000; includeSubDomains; preload
@@ -164,7 +165,7 @@ curl -I https://app.seudominio.com.br
 # x-content-type-options: nosniff
 
 # 2. Auditar cache imutável de assets estáticos:
-curl -I https://app.seudominio.com.br/assets/index-<hash>.js
+curl -I https://axir.com.br/assets/index-<hash>.js
 # Resposta esperada contém:
 # cache-control: public, max-age=31536000, immutable
 ```

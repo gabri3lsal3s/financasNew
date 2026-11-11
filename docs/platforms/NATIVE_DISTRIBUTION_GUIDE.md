@@ -84,23 +84,30 @@ O arquivo [public/releases/version.json](file:///home/gabrielsales/meus_apps/fin
 
 ```json
 {
-  "version": "1.0.1",
-  "versionCode": 2,
-  "releaseDate": "2026-10-20T16:00:00Z",
-  "minSupportedVersion": "1.0.0",
-  "apkUrl": "/releases/guia-financeiro-release.apk",
-  "sha256": "b9c14bf24df9950a8470ea2e026cbc2d843286fe6f0a308f8bf31d4a5c299a1b",
-  "fileSizeBytes": 15420394,
+  "version": "3.1.0",
+  "versionCode": 48,
+  "releaseDate": "2026-11-11T19:11:30Z",
+  "minSupportedVersion": "3.1.0",
+  "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
+  "sha256": "3651d22ab26c804ef472ac9ec549d3e1f6a84074f1eba4c0c9c14a24ff14d517",
+  "fileSizeBytes": 12164115,
   "changelog": [
-    "Assistente Bancário Inteligente com detecção automática de Pix e cartões",
-    "Atualização in-app com 1 toque sem desinstalação",
-    "Melhorias de desempenho e estabilidade"
+    "Axir v3.1.0: Expansão Global de Plataforma, Motores Financeiros e Segurança",
+    "App Lock Híbrido com Biometria Nativa, WebAuthn e PIN Numérico com SHA-256",
+    "Multi-sessão concorrente e painel de dispositivos conectados com revogação remota",
+    "Motor FIRE e Independência Financeira nativos com cálculo de Capital Crítico e Runway",
+    "Explicabilidade matemática transparente com decomposição de fórmulas (Regra 33)",
+    "Rebalanceamento de carteira inteligente (Menos Movimentações) e Pix EMVCo nativo"
   ]
 }
 ```
 
 - **`versionCode`:** Número inteiro que o app instalado compara. Se `remoto.versionCode > local.versionCode`, o app sinaliza atualização disponível.
 - **`sha256`:** Verificação de segurança obrigatória. O app calcula o hash do arquivo baixado antes de acionar o instalador, prevenindo arquivos corrompidos ou adulterados.
+
+### 4.1 Resolução Canônica de Links Externos no APK Nativo
+- **WebView Nativo e Origens Locais:** No Android, o Capacitor executa a interface sob a origem restrita `https://localhost` (ou `capacitor://localhost`).
+- **Resolução via `getPublicAppUrl`:** O serviço `src/services/app-url.ts` detecta o ambiente nativo e ignora o `localhost` local, gerando todos os links públicos e compartilháveis (Modo Viagem `/viagem/:token`, Racha `/r/:token`, Metas `/meta/:token` e Convites Familiares) diretamente sob o domínio oficial **`https://axir.com.br`**.
 
 ---
 

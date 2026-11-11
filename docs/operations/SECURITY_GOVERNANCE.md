@@ -84,7 +84,9 @@ Toda alteração de dados de autenticação sensíveis exige reautenticação at
 * **PKCE Mandatório:** O cliente Supabase (`src/data/client.ts`) é instanciado explicitamente com `flowType: "pkce"`, garantindo geração e troca de `code_verifier` e `code_challenge` para mitigação de interceptação de tokens em SPAs e PWAs.
 * **Resolução Universal via `getPublicAppUrl`:**
   * No ecossistema híbrido (Web Cloudflare Pages + APK Nativo Capacitor Android), a origem do aplicativo no mobile é `capacitor://localhost`. Enviar esse esquema em links de e-mail tornaria os links inoperantes em clientes de e-mail de desktop ou browsers externos.
-  * O helper centralizado `src/services/app-url.ts` resolve links de autenticação (`/redefinir-senha`, `/entrar`, `/configuracoes`) para a URL pública canônica configurada (`VITE_PUBLIC_APP_URL` ou `window.location.origin`), assegurando funcionamento universal.
+  * O helper centralizado `src/services/app-url.ts` resolve links de autenticação (`/redefinir-senha`, `/entrar`, `/configuracoes`) e de compartilhamento (`/viagem`, `/r`, `/convite-familiar`, `/meta`):
+    - **Navegador Web:** Adota dinamicamente a origem pública do domínio em acesso (`window.location.origin`), garantindo compatibilidade entre múltiplos ambientes e previews;
+    - **APK Nativo Android:** Ignora origens internas locais (`https://localhost` e `capacitor://localhost`) e resolve deterministamente para o domínio oficial de produção **`https://axir.com.br`**.
 
 ### 3.3 Teardown Atômico no Logout (`resetAppState`) e Isolamento de Memória
 A desconexão de usuário (`signOut`) executa uma rotina profunda de limpeza de estado para evitar vazamentos de contexto (*cross-session leakage*):

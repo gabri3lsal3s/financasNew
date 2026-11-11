@@ -131,7 +131,14 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 - **Fluxo de Cadastro e Verificação:**
   - O cadastro (`/cadastro`) exige validação em dois campos de senha (Senha e Confirmação de Senha) com regras estritas de complexidade no cliente (Zod);
   - Formulários públicos de autenticação integram o desafio de borda **Cloudflare Turnstile** anti-bot real;
-  - Disparos de confirmação de e-mail, redefinição de senha e links públicos compartilháveis (Modo Viagem `/viagem/:token`, Racha de Contas `/r/:token`, Convites Familiares `/convite-familiar/:token`, Metas `/meta/:token` e Simuladores) utilizam `getPublicAppUrl(path)` (`src/services/app-url.ts`), garantindo resolução determinística para a URL pública oficial do aplicativo (hospedado no Cloudflare Workers em `https://financasnew.gabrielisaacsales.workers.dev`) e eliminando redirecionamentos inválidos para esquemas móveis (`capacitor://localhost`).
+  - Disparos de confirmação de e-mail, redefinição de senha e links públicos compartilháveis (Modo Viagem `/viagem/:token`, Racha de Contas `/r/:token`, Convites Familiares `/convite-familiar/:token`, Metas `/meta/:token` e Simuladores) utilizam `getPublicAppUrl(path)` (`src/services/app-url.ts`):
+    - **Navegador Web / PWA (`!isNative`):** Adota dinamicamente `window.location.origin` com base no domínio que estiver sendo acessado no momento (`axir.com.br`, `www.axir.com.br`, previews da Cloudflare ou dev local);
+    - **Mobile Nativo Android / APK (`isNative`):** Como a WebView interna do Capacitor opera sob `https://localhost` ou `capacitor://localhost`, adota deterministamente o domínio canônico oficial **`https://axir.com.br`**, eliminando links quebrados com esquemas locais.
+- **Fluxo de Roteamento Público e Descoberta (`AppRouter`):**
+  - Visitante desautenticado na Web acessando a raiz (`https://axir.com.br/`): renderiza imediatamente a **Landing Page de Apresentação** (`LandingPage`), exibindo a proposta de valor, simuladores financeiros abertos e planos de assinatura;
+  - Da apresentação, o visitante transita de forma fluida para `/entrar` (Login) ou `/cadastro` (Criação de Conta);
+  - Usuário com sessão ativa armazenada transita automaticamente para o Dashboard financeiro autenticado (`/`);
+  - No aplicativo Android nativo (`isNative`), a inicialização direciona diretamente para o Login ou Dashboard autenticado sem passar pela landing page promocional.
 - **Reautenticação Obrigatória contra Account Takeover:**
   - Toda operação de atualização de credencial sensível — alteração de senha (`changeUserPassword`) e solicitação de troca de e-mail (`requestUserEmailChange`) — exige comprovação atômica da posse da senha atual via `verifyCurrentPassword`;
   - Tentativas com senha incorreta falham de forma fechada (*fail-closed*) lançando `AppError("invalid-credentials", "A senha atual informada está incorreta.")` sem realizar modificações parciais.
