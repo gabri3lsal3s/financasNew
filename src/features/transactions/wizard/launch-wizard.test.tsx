@@ -153,6 +153,7 @@ const predictionHistoryMock = vi.fn(() => [] as unknown[]);
 
 describe("LaunchWizard — fluxo de lançamento (D10)", () => {
   beforeEach(() => {
+    localStorage.clear();
     mockIsFamilyModeEnabled = true;
     mockMyFamily = null;
     mockTrips = [];
@@ -1213,6 +1214,24 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         await waitFor(() => {
           expect(screen.getByRole("button", { name: /alimentação/i })).toHaveAttribute("aria-pressed", "true");
         });
+      });
+    });
+
+    describe("Memória de Preferência do Modo (R31)", () => {
+      it("grava a preferência ao alternar para modo rápido e restaura na próxima abertura", async () => {
+        const user = userEvent.setup();
+        const { unmount } = render(<LaunchWizard initialMode="guided" />);
+
+        // Inicia no modo guiado (com botão 'Modo Rápido' no header)
+        const btnSwitchToQuick = screen.getByRole("button", { name: /Modo Rápido/i });
+        await user.click(btnSwitchToQuick);
+
+        expect(localStorage.getItem("axir_wizard_preferred_mode")).toBe("quick");
+        unmount();
+
+        // Segunda renderização sem initialMode explícito deve carregar diretamente em modo rápido
+        render(<LaunchWizard />);
+        expect(screen.getByRole("button", { name: /Mais opções/i })).toBeInTheDocument();
       });
     });
   });

@@ -674,8 +674,13 @@ A inteligência de repetição do sistema opera em dois trilhos expressos e desa
     * Reset determinístico do recorte SVG (`setRect(null)`) ao transitar entre etapas com rotas distintas (`targetRoute !== prevStep.targetRoute`), prevenindo que o elemento da barra global de busca fique destacado durante a navegação entre páginas.
     * Contêineres de conteúdo e esqueletos de carregamento (`SkeletonList`, `EmptyState`) com atributos de tour estáveis (`[data-tour="transactions-feed-card"]`, `[data-tour="transactions-content"]`, `[data-tour="cards-invoice-summary"]`, `[data-tour="cards-content"]`), garantindo resolução e foco no primeiro frame sem atrasos, timeouts ou fallbacks desconectados no centro da viewport.
 - **Onboarding de Primeiro Uso & Resiliência sem Bloqueio (§5.7):**
-  - **Identificação de Conta Virgem (`isFirstUse`):** a validação de primeiro uso verifica a ausência de movimentações efetivas (`counts.cards === 0 && counts.transactions === 0`). As categorias de despesas pré-populadas pelo sistema no cadastro (`ensureDefaultCategories`) não anulam o primeiro uso, garantindo que o `WelcomeModal` e o checklist inicial sejam exibidos normalmente a todo novo usuário cadastrado.
-  - **Links Precisos no Checklist de Configuração:** links de criação de categorias apontam diretamente para a aba correta com formulário engatilhado (`/orcamentos?tab=categories&novo=categoria`), eliminando redirecionamentos erráticos.
+  - **Identificação de Conta Virgem (`isFirstUse`):** a validação de primeiro uso verifica a ausência de movimentações efetivas (`counts.cards === 0 && counts.transactions === 0 && counts.portfolioAssets === 0 && counts.portfolioTransactions === 0`). As categorias de despesas pré-populadas pelo sistema no cadastro (`ensureDefaultCategories`) não anulam o primeiro uso, garantindo que o `WelcomeModal` e o checklist inicial sejam exibidos normalmente a todo novo usuário cadastrado.
+  - **Checklist Dinâmico e Modular por Permissões (`hasFeature`):** a lista e o progresso dos passos do onboarding (`coreOnboardingSteps`, `coreOnboardingProgress`, `onboardingSteps`) adaptam-se dinamicamente aos módulos liberados para o perfil do usuário:
+    * *Perfil Completo / Finanças:* passos de categorias, cartões, despesas e orçamentos;
+    * *Perfil Investimentos:* passos dedicados de "Cadastrar primeiro ativo" (`/investments?novo=ativo`) e "Registrar primeiro aporte" (`/investments?novo=transacao`);
+    * A contagem total, percentual e verificação de conclusão consideram estritamente o subconjunto de passos permitidos, erradicando passos inalcançáveis ou travamentos para usuários com acesso restrito a investimentos.
+  - **Critério Ativo e Dismiss Inteligente (`isUserActive`):** o banner de onboarding na Home é suprimido automaticamente se o usuário já possui movimentações ativas (despesas/receitas, dívidas, cartões ou ativos/aportes em carteira: `portfolioAssets >= 1 || portfolioTransactions >= 1`), mantendo o checklist acessível a qualquer momento através do popover de notificações no cabeçalho.
+  - **Links Precisos no Checklist de Configuração:** links de criação de categorias apontam diretamente para a aba correta com formulário engatilhado (`/orcamentos?tab=categories&novo=categoria`), ativos para `/investments?novo=ativo` e aportes para `/investments?novo=transacao`, eliminando redirecionamentos erráticos.
   - **Ativação Acolhedora no Hub Familiar (`/familia`):** usuários com o Modo Familiar desativado recebem um cartão explicativo com botão de ativação com um toque (`toggleFamilyMode(true)`), substituindo o redirecionamento silencioso anterior.
   - **Empty States Calmos e Direcionados:** adição de `EmptyState` com ação dupla na calculadora de aportes de investimentos ("Definir Metas" e "Ver Carteira") e no detalhamento de despesas em relatórios ("Novo Lançamento").
 - **Modularização em 4 Blocos Canônicos com Handoff de Ação Tripla:**
@@ -1243,6 +1248,16 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
       * Ancoragem diária de valor: *"Apenas R$ 0,39 por dia"* no plano anual (-40%).
       * Redução de fricção: garantia explícita de *"R$ 0,00 cobrados hoje"*, preservando os dias restantes de teste para o cliente que assinar antecipadamente.
       * Tabela de comparação da aba Assinatura (`SubscriptionTab`) atualizada com 12 recursos sincronizados com a Landing Page pública.
+
+22. **Onboarding Dinâmico e Modular por Permissões & Suporte a Investimentos (v3.0.22)**:
+    - **Filtragem Dinâmica de Passos por Predicado de Permissão (`hasFeature`)**:
+      * Checklist de configuração inicial modularizado: passos são filtrados deterministamente de acordo com as permissões ativas do usuário (`budgets`, `cards`, `transactions`, `investments`).
+      * Para perfis estritos (ex: *Apenas Investimentos*), os 4 passos tradicionais de finanças diárias são suprimidos e substituídos pelos passos dedicados `"portfolio-asset"` (*Cadastrar primeiro ativo*, rota `/investments?novo=ativo`) e `"portfolio-transaction"` (*Registrar primeiro aporte*, rota `/investments?novo=transacao`).
+      * Para contas completas, o checklist contempla harmoniosamente os 6 passos estruturantes.
+    - **Cálculo Preciso de Progresso e Conclusão (`coreOnboardingProgress`)**:
+      * Métricas de progresso (`completed`, `total`, `pct`, `isComplete`) computadas exclusivamente sobre a lista de passos permitidos ao perfil, erradicando metas impossíveis e permitindo a conclusão legítima de 100% para investidores puros.
+    - **Dismiss Automático e Ativação Inteligente (`isUserActive`)**:
+      * Usuários que já realizam movimentações em investimentos (`portfolioAssets >= 1 || portfolioTransactions >= 1`) são reconhecidos como ativos, suprimindo o banner intrusivo da Home (`OnboardingBanner`) enquanto mantêm o checklist acessível a qualquer momento pelo menu de notificações (`NotificationsPopover`).
 
 ---
 

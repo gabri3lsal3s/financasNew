@@ -20,7 +20,9 @@ import {
   hasSeenWelcomeModal,
   markNativeOnboardingSeen,
   markWelcomeModalSeen,
+  setStoredInitialGoal,
 } from "@/state/demo-mode";
+import { useUpdateCustomSettings } from "@/state";
 
 export type OnboardingGoalId = "cards" | "ocr" | "debts" | "family";
 
@@ -98,6 +100,7 @@ export function WelcomeModal({
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [selectedGoal, setSelectedGoal] = useState<OnboardingGoalId>("cards");
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
 
   const [internalOpen, setInternalOpen] = useState<boolean>(() => {
     if (forceShow) return true;
@@ -110,9 +113,15 @@ export function WelcomeModal({
   const handleClose = useCallback(() => {
     markWelcomeModalSeen();
     markNativeOnboardingSeen();
+    setStoredInitialGoal(selectedGoal);
+    try {
+      updateCustomSettingsMutation.mutate({ initialGoal: selectedGoal });
+    } catch {
+      // Ignora falha assíncrona se desconectado
+    }
     setInternalOpen(false);
     onOpenChange?.(false);
-  }, [onOpenChange]);
+  }, [onOpenChange, selectedGoal, updateCustomSettingsMutation]);
 
   const handleStartTour = useCallback(() => {
     triggerSensory("action");
@@ -123,6 +132,12 @@ export function WelcomeModal({
   const handleStartGoal = useCallback(
     (goalId: OnboardingGoalId) => {
       triggerSensory("action");
+      setStoredInitialGoal(goalId);
+      try {
+        updateCustomSettingsMutation.mutate({ initialGoal: goalId });
+      } catch {
+        // Ignora falha assíncrona
+      }
       handleClose();
       onStartRealAccount?.();
       const goal = GOAL_OPTIONS.find((g) => g.id === goalId);
@@ -130,7 +145,7 @@ export function WelcomeModal({
         navigate(goal.route);
       }
     },
-    [handleClose, navigate, onStartRealAccount],
+    [handleClose, navigate, onStartRealAccount, updateCustomSettingsMutation],
   );
 
   if (!isVisible) return null;

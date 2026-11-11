@@ -319,7 +319,10 @@ export type UserCustomSettings = {
   familyModeEnabled?: boolean;
   tripModeEnabled?: boolean;
   preferredTripCategoryId?: string;
+  initialGoal?: OnboardingGoalId;
 };
+
+export type OnboardingGoalId = "cards" | "ocr" | "debts" | "family";
 
 export type GoalAlertStage = "completed" | "final_stretch" | "has_surplus" | "regular";
 

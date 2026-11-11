@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import {
   Bell,
@@ -18,6 +18,8 @@ import { coreOnboardingProgress, coreOnboardingSteps, onboardingSteps } from "@/
 import type { FeaturePredicate, OnboardingCounts, OnboardingStepId } from "@/domain/onboarding";
 import { requestNotificationListenerPermission } from "@/services/native";
 import { triggerSensory } from "@/services/sensory";
+import { getStoredInitialGoal } from "@/state/demo-mode";
+import { useUserPreferences } from "@/state";
 import { DemoTrackSelectModal } from "./demo-track-select-modal";
 import { cn } from "@/lib/utils";
 
@@ -84,7 +86,17 @@ function ChecklistContent({
   onClose,
   onOpenDemoTrackSelect,
 }: ChecklistContentProps) {
-  const steps = onboardingSteps(counts, hasFeature);
+  const userPreferencesQuery = useUserPreferences();
+  const initialGoal = userPreferencesQuery.data?.custom_settings?.initialGoal ?? getStoredInitialGoal();
+  const rawSteps = onboardingSteps(counts, hasFeature);
+  const steps = useMemo(() => {
+    if (!initialGoal) return rawSteps;
+    const priorityId = initialGoal === "cards" ? "card" : initialGoal === "ocr" ? "first-transaction" : null;
+    if (!priorityId) return rawSteps;
+    const target = rawSteps.find((s) => s.id === priorityId);
+    if (!target) return rawSteps;
+    return [target, ...rawSteps.filter((s) => s.id !== priorityId)];
+  }, [rawSteps, initialGoal]);
 
   const handleEnableNotifications = async () => {
     triggerSensory("action");
@@ -95,7 +107,7 @@ function ChecklistContent({
     await requestNotificationListenerPermission();
   };
 
-  const progress = coreOnboardingProgress(counts, hasFeature);
+  const progress = coreOnboardingProgress(counts, hasFeature, initialGoal);
 
   return (
     <div className="flex flex-col gap-4">
@@ -248,8 +260,10 @@ export function OnboardingBanner({
 }: OnboardingBannerProps) {
   const [open, setOpen] = useState(false);
   const [demoTrackModalOpen, setDemoTrackModalOpen] = useState(false);
-  const progress = coreOnboardingProgress(counts, hasFeature);
-  const pendingSteps = coreOnboardingSteps(counts, hasFeature).filter((s) => !s.done);
+  const userPreferencesQuery = useUserPreferences();
+  const initialGoal = userPreferencesQuery.data?.custom_settings?.initialGoal ?? getStoredInitialGoal();
+  const progress = coreOnboardingProgress(counts, hasFeature, initialGoal);
+  const pendingSteps = coreOnboardingSteps(counts, hasFeature, initialGoal).filter((s) => !s.done);
 
   const handleDismiss = () => {
     triggerSensory("action");

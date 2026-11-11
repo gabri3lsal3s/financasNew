@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import * as toastService from "@/services/toast";
 import { IncomeDetailDialog } from "./income-detail-dialog";
 import type { Income } from "@/types";
 
@@ -193,5 +194,45 @@ describe("IncomeDetailDialog", () => {
         is_family: true,
       }),
     });
+  });
+
+  it("exibe Toast com ação Desfazer ao excluir receita simples e restaura ao clicar (R32)", async () => {
+    deleteIncomeMock.mockClear();
+    createIncomeMock.mockClear();
+    deleteIncomeMock.mockResolvedValueOnce(1);
+    createIncomeMock.mockResolvedValueOnce({ id: "i-restaurada" });
+    const pushToastSpy = vi.spyOn(toastService, "pushToast");
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    const income = baseIncome({ description: "Salário Mensal" });
+
+    render(<IncomeDetailDialog open={true} onOpenChange={onOpenChange} income={income} />);
+
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+    await user.click(screen.getAllByRole("button", { name: "Excluir" }).at(-1)!);
+
+    expect(deleteIncomeMock).toHaveBeenCalledWith(income.id);
+    expect(pushToastSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Receita excluída",
+        action: expect.objectContaining({
+          label: "Desfazer",
+        }),
+      })
+    );
+
+    const toastCall = pushToastSpy.mock.calls.find((call) => call[0]?.title === "Receita excluída");
+    const undoAction = toastCall?.[0]?.action;
+    expect(undoAction).toBeDefined();
+    undoAction?.onClick();
+
+    expect(createIncomeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        value: income.value,
+        date: income.date,
+        category_id: income.category_id,
+        description: income.description,
+      })
+    );
   });
 });

@@ -20,6 +20,10 @@ vi.mock("@/services/sensory", () => ({
   triggerSensory: vi.fn(),
 }));
 
+vi.mock("@/state", () => ({
+  useUserPreferences: () => ({ data: null }),
+}));
+
 const empty: OnboardingCounts = {
   expenseCategories: 0,
   incomeCategories: 0,

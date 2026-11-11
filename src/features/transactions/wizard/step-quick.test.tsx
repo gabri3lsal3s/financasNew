@@ -328,4 +328,39 @@ describe("StepQuick (Lançamento Rápido em Tela Única)", () => {
     expect(screen.getByText("2 de 2")).toBeDefined();
     expect(screen.getByRole("button", { name: /Categoria J$/i })).toBeDefined();
   });
+
+  it("renderiza chips de habituais e permite preenchimento em 1 toque (R31)", async () => {
+    const user = userEvent.setup();
+    const handleApplyHabitual = vi.fn();
+    const mockHabits = [
+      {
+        description: "Padaria da Esquina",
+        categoryId: "cat-1",
+        categoryName: "Alimentação",
+        kind: "expense" as const,
+        paymentMethod: "pix",
+        cardId: null,
+        receiveType: null,
+        value: 25.5,
+        frequency: 8,
+      },
+    ];
+
+    render(
+      <StepQuick
+        {...defaultProps}
+        habits={mockHabits}
+        onApplyHabitual={handleApplyHabitual}
+      />,
+    );
+
+    expect(screen.getByTestId("quick-habitual-entries")).toBeInTheDocument();
+    expect(screen.getByText("Padaria da Esquina")).toBeInTheDocument();
+    expect(screen.getByText("R$ 25,50")).toBeInTheDocument();
+
+    const chipButton = screen.getByRole("button", { name: /Usar habitual Padaria da Esquina/i });
+    await user.click(chipButton);
+
+    expect(handleApplyHabitual).toHaveBeenCalledWith(mockHabits[0]);
+  });
 });

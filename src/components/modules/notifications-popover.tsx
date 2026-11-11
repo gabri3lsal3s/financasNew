@@ -18,9 +18,10 @@ import {
   useMySupportTickets,
   useMyBroadcastNotifications,
   useMarkBroadcastAsRead,
+  useUserAccess,
 } from "@/state";
 import { useOnboardingDismissed } from "@/hooks";
-import { shouldShowOnboardingBanner, coreOnboardingProgress } from "@/domain/onboarding";
+import { shouldShowOnboardingBanner, coreOnboardingProgress, coreOnboardingSteps } from "@/domain/onboarding";
 import type { ReminderItem, ReminderStatus } from "@/domain/reminders";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
@@ -57,6 +58,7 @@ export function NotificationsPopover({
   onDismissAdvisor: propOnDismissAdvisor,
 }: NotificationsPopoverProps) {
   const navigate = useNavigate();
+  const { hasFeature } = useUserAccess();
   const { items, totalCount, urgentCount, isLoading } = useReminders();
   const onboardingQuery = useOnboardingCounts();
   const { isDismissed, dismiss } = useOnboardingDismissed();
@@ -81,8 +83,12 @@ export function NotificationsPopover({
   const onDismissAdvisor = propOnDismissAdvisor ?? advisorHook.dismiss;
 
   const showOnboarding =
-    !isDismissed && onboardingQuery?.data ? shouldShowOnboardingBanner(onboardingQuery.data) : false;
-  const onboardingProg = onboardingQuery?.data ? coreOnboardingProgress(onboardingQuery.data) : { done: 0, total: 4 };
+    !isDismissed && onboardingQuery?.data
+      ? shouldShowOnboardingBanner(onboardingQuery.data, hasFeature)
+      : false;
+  const onboardingProg = onboardingQuery?.data
+    ? coreOnboardingProgress(onboardingQuery.data, hasFeature)
+    : { done: 0, total: 0 };
 
   const effectiveTotalCount =
     totalCount + (showOnboarding ? 1 : 0) + advisorAlerts.length + unreadSupportTickets.length + unreadBroadcasts.length;
@@ -190,10 +196,34 @@ export function NotificationsPopover({
   const handleOpenOnboarding = () => {
     triggerSensory("action");
     onOpenChange?.(false);
-    if (!onboardingQuery.data?.expenseCategories || !onboardingQuery.data?.incomeCategories) {
-      navigate("/orcamentos?tab=categories&novo=categoria");
-    } else if (!onboardingQuery.data?.cards) {
-      navigate("/cartoes");
+    if (!onboardingQuery.data) return;
+
+    const pending = coreOnboardingSteps(onboardingQuery.data, hasFeature).filter((s) => !s.done);
+    const nextStep = pending[0];
+
+    if (nextStep) {
+      switch (nextStep.id) {
+        case "expense-category":
+        case "income-category":
+          navigate("/orcamentos?tab=categories&novo=categoria");
+          return;
+        case "card":
+          navigate("/cartoes");
+          return;
+        case "first-transaction":
+          navigate("/transacoes?novo=transacao");
+          return;
+        case "portfolio-asset":
+          navigate("/investments?novo=ativo");
+          return;
+        case "portfolio-transaction":
+          navigate("/investments?novo=investimento");
+          return;
+      }
+    }
+
+    if (hasFeature("investments") && !hasFeature("transactions")) {
+      navigate("/investments");
     } else {
       navigate("/transacoes?novo=transacao");
     }

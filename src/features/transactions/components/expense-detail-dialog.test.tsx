@@ -673,5 +673,44 @@ describe("ExpenseDetailDialog", () => {
       );
       expect(onOpenChange).toHaveBeenCalledWith(false);
     });
+
+    it("exibe Toast com ação Desfazer ao excluir despesa simples e restaura ao clicar (R32)", async () => {
+      deleteExpenseMock.mockClear();
+      createExpenseMock.mockClear();
+      deleteExpenseMock.mockResolvedValueOnce(1);
+      createExpenseMock.mockResolvedValueOnce({ id: "e-restaurada" });
+      const toastSpy = vi.spyOn(toastService, "pushToast");
+      const onOpenChange = vi.fn();
+      const user = userEvent.setup();
+
+      render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={onOpenChange} />);
+
+      await user.click(screen.getByRole("button", { name: "Excluir" }));
+      await user.click(screen.getAllByRole("button", { name: "Excluir" }).at(-1)!);
+
+      expect(deleteExpenseMock).toHaveBeenCalledTimes(1);
+      expect(toastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Despesa excluída",
+          action: expect.objectContaining({
+            label: "Desfazer",
+          }),
+        })
+      );
+
+      // Simula clique na ação Desfazer do toast
+      const toastCall = toastSpy.mock.calls.find((call) => call[0]?.title === "Despesa excluída");
+      const undoAction = toastCall?.[0]?.action;
+      expect(undoAction).toBeDefined();
+      undoAction?.onClick();
+
+      expect(createExpenseMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          value: baseExpense.value,
+          date: baseExpense.date,
+          category_id: baseExpense.category_id,
+        })
+      );
+    });
   });
 });

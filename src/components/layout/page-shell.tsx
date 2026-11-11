@@ -15,7 +15,7 @@ import { NetworkStatusBanner } from "@/components/layout/network-status-banner";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { Badge, Button, Skeleton } from "@/components/ui";
+import { Button, Skeleton } from "@/components/ui";
 import { DemoTourSpotlight } from "@/components/modules/demo-tour-spotlight";
 import { NativeOnboardingDialog } from "@/components/modules/native-onboarding-dialog";
 import { endDemo, useDemoSession } from "@/state/demo-mode";
@@ -28,7 +28,7 @@ import { useContainerScroll, useOnboardingDismissed } from "@/hooks";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { dismissPendingSuggestion } from "@/services/native";
-import { useOnboardingCounts, useReminders, useMySupportTickets, useUserSubscription } from "@/state";
+import { useOnboardingCounts, useReminders, useMySupportTickets, useUserSubscription, useUserAccess } from "@/state";
 import { shouldShowOnboardingBanner } from "@/domain/onboarding";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import type { PaymentMethod } from "@/types";
@@ -191,11 +191,14 @@ export function PageShell() {
     }
   };
 
+  const { hasFeature } = useUserAccess();
   const { totalCount: remindersTotalCount } = useReminders();
   const onboardingQuery = useOnboardingCounts();
   const { isDismissed: onboardingDismissed } = useOnboardingDismissed();
   const showOnboarding =
-    !onboardingDismissed && onboardingQuery?.data ? shouldShowOnboardingBanner(onboardingQuery.data) : false;
+    !onboardingDismissed && onboardingQuery?.data
+      ? shouldShowOnboardingBanner(onboardingQuery.data, hasFeature)
+      : false;
   const advisor = useSmartAdvisorInsights();
   const advisorAlertsCount = advisor.insights.filter((i) => i.priority === 1 || i.priority === 2).length;
   const myTicketsQuery = useMySupportTickets();
@@ -310,20 +313,21 @@ export function PageShell() {
             )}
             {isDemoActive && (
               <div
-                className="flex items-center gap-1.5 shrink-0 animate-fade-in"
+                className="flex items-center gap-1.5 shrink-0 animate-fade-in rounded-full border border-primary/30 bg-primary/10 pl-2.5 pr-1 py-0.5 text-xs text-primary-strong shadow-xs"
                 data-testid="header-demo-indicator"
               >
-                <Badge variant="default" size="xs" className="gap-1 font-semibold hidden sm:inline-flex">
-                  <Sparkles className="size-3" aria-hidden="true" />
-                  <span>Modo Simulação</span>
-                </Badge>
+                <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
+                <span className="font-semibold text-[11px] sm:text-xs">
+                  <span className="inline sm:hidden">Simulação</span>
+                  <span className="hidden sm:inline">Modo Simulação</span>
+                </span>
                 <Button
                   type="button"
                   variant="ghost"
                   size="xs"
                   onClick={endDemo}
                   aria-label="Encerrar demonstração"
-                  className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                  className="h-6 px-2 text-[11px] font-medium text-foreground hover:bg-surface hover:text-foreground cursor-pointer rounded-full"
                 >
                   Sair
                 </Button>

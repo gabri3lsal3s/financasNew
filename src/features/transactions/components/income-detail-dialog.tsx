@@ -348,10 +348,31 @@ export function IncomeDetailDialog({
           variant: "success",
         });
       } else {
+        const deletedPayload = {
+          value: income.value,
+          date: income.date,
+          category_id: income.category_id,
+          description: income.description || "",
+          receive_type: income.receive_type,
+          report_weight: income.report_weight ?? 1,
+          is_family: Boolean(income.is_family),
+          source_ref: income.source_ref ?? null,
+        };
         await deleteIncome.mutateAsync(income.id);
         pushToast({
-          title: "Receita excluída com sucesso",
-          variant: "success",
+          title: "Receita excluída",
+          variant: "default",
+          duration: 7000,
+          action: {
+            label: "Desfazer",
+            onClick: () => {
+              void createIncome.mutateAsync(deletedPayload);
+              pushToast({
+                title: "Receita restaurada com sucesso",
+                variant: "success",
+              });
+            },
+          },
         });
       }
     } catch {

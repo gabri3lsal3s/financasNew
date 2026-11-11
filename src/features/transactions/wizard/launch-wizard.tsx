@@ -75,8 +75,10 @@ import {
   canProceed,
   defaultLaunchState,
   effectiveReportWeight,
+  getStoredWizardMode,
   isPresetWeight,
   recurrenceRuleFromLaunchState,
+  setStoredWizardMode,
   WIZARD_STEPS,
 } from "./wizard-state";
 import type { EntryType, LaunchState } from "./wizard-state";
@@ -111,7 +113,12 @@ export function LaunchWizard({
   const { isDemoActive } = useDemoSession();
   const navigate = useNavigate();
   const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({ moduleKey: "transactions" });
-  const [mode, setMode] = useState<"quick" | "guided">(initialMode);
+  const [mode, setMode] = useState<"quick" | "guided">(() => {
+    if (initialMode === "quick") return "quick";
+    const stored = getStoredWizardMode();
+    if (stored) return stored;
+    return initialMode;
+  });
   const [state, setState] = useState<LaunchState>(() => defaultLaunchState(initialType, initialValues));
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -132,6 +139,7 @@ export function LaunchWizard({
   const handleSwitchToGuided = () => {
     triggerSensory("selection");
     setMode("guided");
+    setStoredWizardMode("guided");
     setState((prev) => {
       let nextStep = 1;
       if (prev.valueCents > 0 && prev.categoryId) {
@@ -147,6 +155,7 @@ export function LaunchWizard({
   const handleSwitchToQuick = () => {
     triggerSensory("selection");
     setMode("quick");
+    setStoredWizardMode("quick");
   };
 
   // Dados preenchidos no fluxo (valor/categoria/descrição) — fechar com o
@@ -155,7 +164,8 @@ export function LaunchWizard({
 
   const handleClose = () => {
     setState(defaultLaunchState(initialType, initialValues));
-    setMode(initialMode);
+    const preferredMode = initialMode === "quick" ? "quick" : (getStoredWizardMode() ?? initialMode);
+    setMode(preferredMode);
     setError(null);
     setPending(false);
     setReceiptMeta(null);
@@ -949,6 +959,18 @@ export function LaunchWizard({
         {mode === "quick" ? (
           <StepQuick
             state={state}
+            habits={habits}
+            onApplyHabitual={(habit) => {
+              handleValueChange(Math.round(habit.value * 100));
+              set("categoryId", habit.categoryId);
+              set("description", habit.description);
+              if (habit.paymentMethod) {
+                set("paymentMethod", habit.paymentMethod as PaymentMethod);
+                set("cardId", habit.cardId);
+              } else if (habit.receiveType) {
+                set("receiveType", habit.receiveType as ReceiveType);
+              }
+            }}
             onTypeChange={(type: EntryType) => {
               set("type", type);
               set("categoryId", "");

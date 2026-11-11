@@ -19,5 +19,7 @@ export {
   markWelcomeModalSeen,
   hasSeenNativeOnboarding,
   markNativeOnboardingSeen,
+  getStoredInitialGoal,
+  setStoredInitialGoal,
   resetDemoTourStorage,
 } from "./demo-storage";

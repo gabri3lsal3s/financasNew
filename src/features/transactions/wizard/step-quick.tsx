@@ -13,8 +13,8 @@
  */
 
 import { useMemo, useState } from "react";
-import { Check, CreditCard, Sparkles, SlidersHorizontal, Users, ChevronLeft, ChevronRight, User, Plane, HandCoins } from "lucide-react";
-import { Badge, Button, Input, MoneyInput, Select, Tabs } from "@/components/ui";
+import { Check, Clock, CreditCard, Sparkles, SlidersHorizontal, Users, ChevronLeft, ChevronRight, User, Plane, HandCoins } from "lucide-react";
+import { Badge, Button, Input, MoneyInput, MoneyText, Select, Tabs } from "@/components/ui";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import {
   CANONICAL_MERCHANT_CATALOG,
@@ -22,7 +22,7 @@ import {
   type CanonicalCategorySlug,
 } from "@/domain/notifications";
 import { calculateSplitSummary } from "@/domain/finance/split-math";
-import { rankCategoriesByFrequency, type PredictionEntry } from "@/domain/predictions";
+import { rankCategoriesByFrequency, type HabitualEntry, type PredictionEntry } from "@/domain/predictions";
 import { useMerchantLearning } from "@/services/merchant-learning";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsCurrency } from "@/services/masks";
@@ -54,6 +54,10 @@ export interface StepQuickProps {
   categories: Category[] | undefined;
   categoriesLoading?: boolean;
   predictionEntries?: readonly PredictionEntry[] | null;
+  /** Lançamentos habituais derivados do histórico para atalhos em 1 toque (R31) */
+  habits?: HabitualEntry[];
+  /** Callback para preenchimento imediato ao tocar em um chip habitual */
+  onApplyHabitual?: (habit: HabitualEntry) => void;
   cards: { id: string; name: string }[] | undefined;
   cardsLoading?: boolean;
   onSubmit?: () => void;
@@ -102,6 +106,8 @@ export function StepQuick({
   categories,
   categoriesLoading = false,
   predictionEntries,
+  habits,
+  onApplyHabitual,
   cards,
   cardsLoading = false,
   onSubmit,
@@ -234,6 +240,37 @@ export function StepQuick({
           { value: "income", label: "Renda", content: null },
         ]}
       />
+
+      {/* 1.1. Atalhos de 1 Toque para Lançamentos Habituais (Regra 31 do AGENTS.md) */}
+      {habits && habits.length > 0 && (
+        <div className="flex flex-col gap-1.5" data-testid="quick-habitual-entries">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+            <Clock className="size-3 text-muted-foreground" aria-hidden="true" />
+            <span>Habituais sugeridos:</span>
+          </div>
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
+            {habits.map((habit) => (
+              <button
+                key={`${habit.description}-${habit.categoryName}`}
+                type="button"
+                aria-label={`Usar habitual ${habit.description}: ${formatCentsAsCurrency(Math.round(habit.value * 100))}`}
+                onClick={() => {
+                  triggerSensory("action");
+                  onApplyHabitual?.(habit);
+                }}
+                className="flex items-center gap-2 shrink-0 rounded-xl border border-border/80 bg-surface-raised px-3 py-1.5 text-xs text-foreground hover:border-border hover:bg-surface-hover transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <span className="font-medium max-w-[120px] truncate">{habit.description}</span>
+                <span className="text-muted-foreground">·</span>
+                <MoneyText cents={Math.round(habit.value * 100)} tone="default" className="text-xs font-semibold tabular-nums" />
+                <Badge variant="muted" size="xs">
+                  {habit.categoryName}
+                </Badge>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 2. Campo de Valor em Destaque */}
       <div className="flex flex-col gap-1.5">

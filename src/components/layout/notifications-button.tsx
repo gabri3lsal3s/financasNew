@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NotificationsPopover } from "@/components/modules/notifications-popover";
-import { useOnboardingCounts, useReminders, useMySupportTickets } from "@/state";
+import { useOnboardingCounts, useReminders, useMySupportTickets, useUserAccess } from "@/state";
 import { useOnboardingDismissed } from "@/hooks";
 import { shouldShowOnboardingBanner } from "@/domain/onboarding";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
  */
 export function NotificationsButton() {
   const [open, setOpen] = useState(false);
+  const { hasFeature } = useUserAccess();
   const { totalCount, overdueCount, dueTodayCount } = useReminders();
   const onboardingQuery = useOnboardingCounts();
   const { isDismissed } = useOnboardingDismissed();
@@ -25,7 +26,9 @@ export function NotificationsButton() {
   ).length;
 
   const showOnboarding =
-    !isDismissed && onboardingQuery?.data ? shouldShowOnboardingBanner(onboardingQuery.data) : false;
+    !isDismissed && onboardingQuery?.data
+      ? shouldShowOnboardingBanner(onboardingQuery.data, hasFeature)
+      : false;
 
   const advisorAlerts = advisor.insights.filter((i) => i.priority === 1 || i.priority === 2);
   const hasAdvisorCritical = advisorAlerts.some((i) => i.priority === 1);

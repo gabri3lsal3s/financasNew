@@ -147,3 +147,5 @@ export { WeeklyDueRadarCard } from "./weekly-due-radar-card";
 export type { WeeklyDueRadarCardProps } from "./weekly-due-radar-card";
 export { KpiGrid } from "./kpi-grid";
 export type { KpiGridProps } from "./kpi-grid";
+export { VirginAccountHero } from "./virgin-account-hero";
+export type { VirginAccountHeroProps } from "./virgin-account-hero";

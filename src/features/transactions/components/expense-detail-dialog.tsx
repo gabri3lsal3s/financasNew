@@ -10,6 +10,7 @@ import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
+import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import {
   useCategories,
@@ -542,11 +543,47 @@ export function ExpenseDetailDialog({
             variant: "success",
           });
         } else {
+          const deletedPayload = {
+            value: expense.value,
+            date: expense.date,
+            categoryId: expense.category_id,
+            description: expense.description || "",
+            paymentMethod: expense.payment_method,
+            cardId: expense.card_id ?? null,
+            reportWeight: expense.report_weight ?? 1,
+            isFamily: Boolean(expense.is_family),
+            installments: [
+              {
+                date: expense.date,
+                value: expense.value,
+                billCompetence: expense.bill_competence ?? null,
+              },
+            ],
+          };
           await deleteExpense.mutateAsync({ expenseId: expense.id, mode });
-          pushToast({
-            title: isInstallment && mode !== "single" ? "Parcelas excluídas com sucesso" : "Despesa excluída com sucesso",
-            variant: "success",
-          });
+          if (!isInstallment) {
+            pushToast({
+              title: "Despesa excluída",
+              variant: "default",
+              duration: 7000,
+              action: {
+                label: "Desfazer",
+                onClick: () => {
+                  triggerSensory("action");
+                  void createExpense.mutateAsync(deletedPayload);
+                  pushToast({
+                    title: "Despesa restaurada com sucesso",
+                    variant: "success",
+                  });
+                },
+              },
+            });
+          } else {
+            pushToast({
+              title: mode !== "single" ? "Parcelas excluídas com sucesso" : "Despesa excluída com sucesso",
+              variant: "success",
+            });
+          }
         }
       }
     } catch {

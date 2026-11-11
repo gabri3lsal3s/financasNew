@@ -240,6 +240,8 @@ export {
   markTourCompleted,
   hasSeenWelcomeModal,
   markWelcomeModalSeen,
+  getStoredInitialGoal,
+  setStoredInitialGoal,
   resetDemoTourStorage,
   type DemoSessionState,
 } from "./demo-mode";

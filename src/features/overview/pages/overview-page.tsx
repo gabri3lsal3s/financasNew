@@ -28,6 +28,7 @@ import {
   DemoTrackSelectModal,
   PermissionsAlertBanner,
   WeeklyDueRadarCard,
+  VirginAccountHero,
 } from "@/components/modules";
 import { isFirstUse, shouldShowOnboardingBanner } from "@/domain/onboarding";
 import {
@@ -90,6 +91,7 @@ import {
   useFamilyConsolidation,
   useFamilyMode,
   useMyFamily,
+  useUserAccess,
 } from "@/state";
 import type { GoalCompositionConfig } from "@/types";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
@@ -157,6 +159,7 @@ export function OverviewPage() {
   const portfolioPositionQuery = usePortfolioPosition();
   const rawPositionRows = portfolioPositionQuery?.rows;
   const positionRows = useMemo(() => rawPositionRows ?? [], [rawPositionRows]);
+  const { hasFeature } = useUserAccess();
   const onboardingQuery = useOnboardingCounts();
 
   const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } = useOnboardingDismissed();
@@ -171,7 +174,7 @@ export function OverviewPage() {
 
   const showOnboarding =
     !isOnboardingDismissed && onboardingQuery?.data
-      ? shouldShowOnboardingBanner(onboardingQuery.data)
+      ? shouldShowOnboardingBanner(onboardingQuery.data, hasFeature)
       : false;
 
   const { alertDismissals, updateAlertDismissals } = useDashboardAlertDismissals();
@@ -1096,203 +1099,213 @@ export function OverviewPage() {
         </div>
       ) : (
         <>
-          <DashboardAlertsCarousel items={alertItems} />
-
-          {isCurrentMonth ? (
-            <SmartAdvisorCard
-              month={month}
-              savingsSurplusCents={surplusCapacity.suggestedAporteCents}
-              safeToSpendCents={realCashData.safeToSpend.safeToSpendCents}
-              committedObligationsCents={realCashData.safeToSpend.committedObligationsCents}
-            />
-          ) : null}
-
           {showOnboarding && onboardingQuery?.data ? (
-            <OnboardingBanner counts={onboardingQuery.data} onDismiss={dismissOnboarding} />
-          ) : null}
-
-          {subscription.isReadOnly && <ReadOnlyBanner />}
-
-          {isCurrentMonth ? (
-            <RealCashHeroCard
-              realCashData={realCashData}
-              onCalibrate={() => guardAction(() => setCheckpointOpen(true), "Calibrar Saldo com o Banco")}
+            <OnboardingBanner
+              counts={onboardingQuery.data}
+              hasFeature={hasFeature}
+              onDismiss={dismissOnboarding}
             />
           ) : null}
 
-          {isCurrentMonth ? <WeeklyDueRadarCard summary={weeklyRadarSummary} /> : null}
+          {isVirginAccount ? (
+            <VirginAccountHero onOpenDemo={() => setDemoTrackModalOpen(true)} />
+          ) : (
+            <>
+              <DashboardAlertsCarousel items={alertItems} />
 
-          {/* KPIs fundamentais (§3.6) com sparkline */}
-          <KpiGrid columns={4} data-tour="overview-kpis">
-            <KpiCard
-              label="Receitas"
-              cents={totals.incomeCents}
-              tone="positive"
-              icon={<TrendingUp className="size-4" aria-hidden="true" />}
-              hint={
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />
-                  {grossIncomeCents !== incomeCents ? (
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap min-w-0 block">
-                      <span className="hidden sm:inline">Ponderada: </span>
-                      <span className="sm:hidden">Pond: </span>
-                      <MoneyText cents={incomeCents} tone="default" className="text-[10px] tabular-nums" />
-                    </span>
-                  ) : null}
-                </div>
-              }
-              spark={dailySeries.incomeSeries}
-            />
-            <KpiCard
-              label="Despesas"
-              cents={totals.expenseCents}
-              tone="negative"
-              icon={<TrendingDown className="size-4" aria-hidden="true" />}
-              hint={
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />
-                  {grossExpenseCents !== expenseCents ? (
-                    <span className="text-[10px] text-muted-foreground whitespace-nowrap min-w-0 block">
-                      <span className="hidden sm:inline">Ponderada: </span>
-                      <span className="sm:hidden">Pond: </span>
-                      <MoneyText cents={expenseCents} tone="default" className="text-[10px] tabular-nums" />
-                    </span>
-                  ) : null}
-                </div>
-              }
-              spark={dailySeries.expenseSeries}
-            />
-            <KpiCard
-              label="Investimentos"
-              cents={totals.investmentCents}
-              tone="portfolio"
-              icon={<TrendingUp className="size-4" aria-hidden="true" />}
-              spark={dailySeries.investmentSeries}
-              onClick={() => navigate("/investments")}
-            />
-            <KpiCard
-              label={
-                <>
-                  <span className="hidden sm:inline">Resultado do mês</span>
-                  <span className="sm:hidden">Resultado</span>
-                </>
-              }
-              cents={totals.operatingBalanceCents}
-              tone={totals.operatingBalanceCents >= 0 ? "positive" : "negative"}
-              icon={<DollarSign className="size-4" aria-hidden="true" />}
-              spark={dailySeries.balanceSeries}
-            />
-          </KpiGrid>
-
-          {/* Análises do período: fluxo diário + distribuição por categoria */}
-          <section
-            aria-label="Análises do período"
-            className={cn("grid gap-3 min-w-0", donutSlices.length > 0 ? "lg:grid-cols-2" : "")}
-          >
-            <OverviewDailyFlowSection
-              days={dailyFlow}
-              hasInvestments={totals.investmentCents > 0}
-            />
-            {donutSlices.length > 0 ? (
-              <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
-                <div className="flex items-center justify-between gap-2 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <PieChart className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                    <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Distribuição por categoria</h2>
-                  </div>
-                  <Badge variant="muted" size="xs">
-                    {totalActiveCategoriesCount} {totalActiveCategoriesCount === 1 ? "categoria" : "categorias"}
-                  </Badge>
-                </div>
-                <CategoryDonut
-                  slices={donutSlices}
-                  totalCents={grossExpenseCents}
-                  onSliceClick={(slice) => {
-                    if (slice.key === "__other_categories__") {
-                      setIsOtherCategoriesOpen(true);
-                    } else if (slice.key) {
-                      setSelectedCategoryId(slice.key);
-                    }
-                  }}
+              {isCurrentMonth ? (
+                <SmartAdvisorCard
+                  month={month}
+                  savingsSurplusCents={surplusCapacity.suggestedAporteCents}
+                  safeToSpendCents={realCashData.safeToSpend.safeToSpendCents}
+                  committedObligationsCents={realCashData.safeToSpend.committedObligationsCents}
                 />
+              ) : null}
+
+              {subscription.isReadOnly && <ReadOnlyBanner />}
+
+              {isCurrentMonth ? (
+                <RealCashHeroCard
+                  realCashData={realCashData}
+                  onCalibrate={() => guardAction(() => setCheckpointOpen(true), "Calibrar Saldo com o Banco")}
+                />
+              ) : null}
+
+              {isCurrentMonth ? <WeeklyDueRadarCard summary={weeklyRadarSummary} /> : null}
+
+              {/* KPIs fundamentais (§3.6) com sparkline */}
+              <KpiGrid columns={4} data-tour="overview-kpis">
+                <KpiCard
+                  label="Receitas"
+                  cents={totals.incomeCents}
+                  tone="positive"
+                  icon={<TrendingUp className="size-4" aria-hidden="true" />}
+                  hint={
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />
+                      {grossIncomeCents !== incomeCents ? (
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap min-w-0 block">
+                          <span className="hidden sm:inline">Ponderada: </span>
+                          <span className="sm:hidden">Pond: </span>
+                          <MoneyText cents={incomeCents} tone="default" className="text-[10px] tabular-nums" />
+                        </span>
+                      ) : null}
+                    </div>
+                  }
+                  spark={dailySeries.incomeSeries}
+                />
+                <KpiCard
+                  label="Despesas"
+                  cents={totals.expenseCents}
+                  tone="negative"
+                  icon={<TrendingDown className="size-4" aria-hidden="true" />}
+                  hint={
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />
+                      {grossExpenseCents !== expenseCents ? (
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap min-w-0 block">
+                          <span className="hidden sm:inline">Ponderada: </span>
+                          <span className="sm:hidden">Pond: </span>
+                          <MoneyText cents={expenseCents} tone="default" className="text-[10px] tabular-nums" />
+                        </span>
+                      ) : null}
+                    </div>
+                  }
+                  spark={dailySeries.expenseSeries}
+                />
+                <KpiCard
+                  label="Investimentos"
+                  cents={totals.investmentCents}
+                  tone="portfolio"
+                  icon={<TrendingUp className="size-4" aria-hidden="true" />}
+                  spark={dailySeries.investmentSeries}
+                  onClick={() => navigate("/investments")}
+                />
+                <KpiCard
+                  label={
+                    <>
+                      <span className="hidden sm:inline">Resultado do mês</span>
+                      <span className="sm:hidden">Resultado</span>
+                    </>
+                  }
+                  cents={totals.operatingBalanceCents}
+                  tone={totals.operatingBalanceCents >= 0 ? "positive" : "negative"}
+                  icon={<DollarSign className="size-4" aria-hidden="true" />}
+                  spark={dailySeries.balanceSeries}
+                />
+              </KpiGrid>
+
+              {/* Análises do período: fluxo diário + distribuição por categoria */}
+              <section
+                aria-label="Análises do período"
+                className={cn("grid gap-3 min-w-0", donutSlices.length > 0 ? "lg:grid-cols-2" : "")}
+              >
+                <OverviewDailyFlowSection
+                  days={dailyFlow}
+                  hasInvestments={totals.investmentCents > 0}
+                />
+                {donutSlices.length > 0 ? (
+                  <section aria-label="Distribuição por categoria" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <PieChart className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                        <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">Distribuição por categoria</h2>
+                      </div>
+                      <Badge variant="muted" size="xs">
+                        {totalActiveCategoriesCount} {totalActiveCategoriesCount === 1 ? "categoria" : "categorias"}
+                      </Badge>
+                    </div>
+                    <CategoryDonut
+                      slices={donutSlices}
+                      totalCents={grossExpenseCents}
+                      onSliceClick={(slice) => {
+                        if (slice.key === "__other_categories__") {
+                          setIsOtherCategoriesOpen(true);
+                        } else if (slice.key) {
+                          setSelectedCategoryId(slice.key);
+                        }
+                      }}
+                    />
+                  </section>
+                ) : null}
               </section>
-            ) : null}
-          </section>
 
-          {/* Orçamentos (§3.6): Layout Revolut / Apple Wallet em largura total */}
-          <OverviewBudgetsSection
-            hasBudgets={budgetRows.length > 0}
-            totalRemainingCents={totalRemainingCents}
-            totalLimitsCents={totalLimitsCents}
-            globalPercent={globalPercent}
-            budgetSegments={budgetSegments}
-            onNavigateBudgets={() => navigate("/orcamentos")}
-            onSelectCategory={(catId) => setSelectedCategoryId(catId)}
-            onOpenOthersBudget={() => setIsOthersBudgetOpen(true)}
-          />
+              {/* Orçamentos (§3.6): Layout Revolut / Apple Wallet em largura total */}
+              <OverviewBudgetsSection
+                hasBudgets={budgetRows.length > 0}
+                totalRemainingCents={totalRemainingCents}
+                totalLimitsCents={totalLimitsCents}
+                globalPercent={globalPercent}
+                budgetSegments={budgetSegments}
+                onNavigateBudgets={() => navigate("/orcamentos")}
+                onSelectCategory={(catId) => setSelectedCategoryId(catId)}
+                onOpenOthersBudget={() => setIsOthersBudgetOpen(true)}
+              />
 
-          {/* Bloco de Investimentos do Mês & Aporte Direcionado */}
-          <QuickAporteCard
-            currentMonthAporteCents={totals.investmentCents}
-            suggestedAporteCents={
-              surplusCapacity.hasSurplus && isCurrentMonth
-                ? surplusCapacity.suggestedAporteCents
-                : 0
-            }
-          />
+              {/* Bloco de Investimentos do Mês & Aporte Direcionado */}
+              <QuickAporteCard
+                currentMonthAporteCents={totals.investmentCents}
+                suggestedAporteCents={
+                  surplusCapacity.hasSurplus && isCurrentMonth
+                    ? surplusCapacity.suggestedAporteCents
+                    : 0
+                }
+              />
 
-          {/* Diálogo Raio-X de Categoria (Responsivo / BottomSheet no mobile / Modal no desktop) */}
-          <CategoryBreakdownDialog
-            open={selectedCategoryId !== null}
-            onOpenChange={(open) => {
-              if (!open) setSelectedCategoryId(null);
-            }}
-            category={selectedCategory}
-            month={month}
-            limitCents={selectedLimitCents}
-            spentWeightedCents={selectedSpentWeightedCents}
-            spentGrossCents={selectedSpentGrossCents}
-            prevSpentWeightedCents={selectedPrevSpentWeightedCents}
-            expenses={selectedExpenses}
-            cards={cardsQuery.data ?? []}
-          />
+              {(incomesQuery.data ?? []).length === 0 && (expensesQuery.data ?? []).length === 0 ? (
+                <EmptyState
+                  icon={<Inbox className="size-6" aria-hidden="true" />}
+                  title="Sem lançamentos neste mês"
+                  description={`Registre receitas e despesas de ${monthLabel(month)} para ver os KPIs aqui.`}
+                  action={
+                    <Button
+                      size="sm"
+                      onClick={() => navigate("/transacoes?novo=transacao")}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <Plus className="size-4" aria-hidden="true" />
+                      Novo lançamento
+                    </Button>
+                  }
+                />
+              ) : null}
 
-          {/* Diálogo Outros Orçamentos (Responsivo / BottomSheet no mobile / Modal no desktop) */}
-          <OtherBudgetsDialog
-            open={isOthersBudgetOpen}
-            onOpenChange={setIsOthersBudgetOpen}
-            month={month}
-            rows={otherBudgetRows}
-            onSelectCategory={(catId) => setSelectedCategoryId(catId)}
-          />
+              {/* Diálogo Raio-X de Categoria (Responsivo / BottomSheet no mobile / Modal no desktop) */}
+              <CategoryBreakdownDialog
+                open={selectedCategoryId !== null}
+                onOpenChange={(open) => {
+                  if (!open) setSelectedCategoryId(null);
+                }}
+                category={selectedCategory}
+                month={month}
+                limitCents={selectedLimitCents}
+                spentWeightedCents={selectedSpentWeightedCents}
+                spentGrossCents={selectedSpentGrossCents}
+                prevSpentWeightedCents={selectedPrevSpentWeightedCents}
+                expenses={selectedExpenses}
+                cards={cardsQuery.data ?? []}
+              />
 
-          {/* Diálogo Demais Categorias do Donut (Responsivo / BottomSheet no mobile / Modal no desktop) */}
-          <OtherCategoriesDialog
-            open={isOtherCategoriesOpen}
-            onOpenChange={setIsOtherCategoriesOpen}
-            month={month}
-            rows={otherCategoriesRows}
-            totalExpensesCents={grossExpenseCents}
-            onSelectCategory={(catId) => setSelectedCategoryId(catId)}
-          />
+              {/* Diálogo Outros Orçamentos (Responsivo / BottomSheet no mobile / Modal no desktop) */}
+              <OtherBudgetsDialog
+                open={isOthersBudgetOpen}
+                onOpenChange={setIsOthersBudgetOpen}
+                month={month}
+                rows={otherBudgetRows}
+                onSelectCategory={(catId) => setSelectedCategoryId(catId)}
+              />
 
-          {(incomesQuery.data ?? []).length === 0 && (expensesQuery.data ?? []).length === 0 ? (
-            <EmptyState
-              icon={<Inbox className="size-6" aria-hidden="true" />}
-              title="Sem lançamentos neste mês"
-              description={`Registre receitas e despesas de ${monthLabel(month)} para ver os KPIs aqui.`}
-              action={
-                <Button
-                  size="sm"
-                  onClick={() => navigate("/transacoes?novo=transacao")}
-                  className="gap-2 cursor-pointer"
-                >
-                  <Plus className="size-4" aria-hidden="true" />
-                  Novo lançamento
-                </Button>
-              }
-            />
-          ) : null}
+              {/* Diálogo Demais Categorias do Donut (Responsivo / BottomSheet no mobile / Modal no desktop) */}
+              <OtherCategoriesDialog
+                open={isOtherCategoriesOpen}
+                onOpenChange={setIsOtherCategoriesOpen}
+                month={month}
+                rows={otherCategoriesRows}
+                totalExpensesCents={grossExpenseCents}
+                onSelectCategory={(catId) => setSelectedCategoryId(catId)}
+              />
+            </>
+          )}
 
           <CashCheckpointDialog
             open={checkpointOpen}

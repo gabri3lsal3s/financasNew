@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
   COMPLETED_ANY: "financas:demo_completed_any",
   WELCOME_SEEN: "financas:welcome_modal_seen",
   NATIVE_ONBOARDING_SEEN: "financas:demo_native_onboarding_seen",
+  INITIAL_GOAL: "financas:initial_onboarding_goal",
 } as const;
 
 function isLocalStorageAvailable(): boolean {
@@ -124,6 +125,34 @@ export function markNativeOnboardingSeen(): void {
 }
 
 /**
+ * Recupera a meta prioritária inicial selecionada no acolhimento do usuário.
+ */
+export function getStoredInitialGoal(): "cards" | "ocr" | "debts" | "family" | null {
+  if (!isLocalStorageAvailable()) return null;
+  try {
+    const val = window.localStorage.getItem(STORAGE_KEYS.INITIAL_GOAL);
+    if (val === "cards" || val === "ocr" || val === "debts" || val === "family") {
+      return val;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Salva a meta prioritária inicial selecionada no acolhimento do usuário.
+ */
+export function setStoredInitialGoal(goal: "cards" | "ocr" | "debts" | "family"): void {
+  if (!isLocalStorageAvailable()) return;
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.INITIAL_GOAL, goal);
+  } catch {
+    // Falha silenciosa
+  }
+}
+
+/**
  * Reseta os sinalizadores de tour no localStorage (útil para testes ou reinício manual pelo usuário).
  */
 export function resetDemoTourStorage(): void {
@@ -134,6 +163,7 @@ export function resetDemoTourStorage(): void {
     window.localStorage.removeItem(STORAGE_KEYS.COMPLETED_ANY);
     window.localStorage.removeItem(STORAGE_KEYS.WELCOME_SEEN);
     window.localStorage.removeItem(STORAGE_KEYS.NATIVE_ONBOARDING_SEEN);
+    window.localStorage.removeItem(STORAGE_KEYS.INITIAL_GOAL);
 
     // Remove chaves dinâmicas de micro-tours
     const keysToRemove: string[] = [];

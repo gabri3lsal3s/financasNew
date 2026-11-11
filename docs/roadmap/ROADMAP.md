@@ -1,5 +1,15 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.0.22 (Build 51)** registra o **Onboarding Dinâmico e Modular por Permissões com Suporte a Investimentos** (2026-11-10):
+> - **(1) Checklist Dinâmico e Modular por Permissões (`hasFeature`)**:
+>   - O checklist de configuração inicial na Home (`OnboardingBanner`), o progresso geral (`coreOnboardingProgress`) e as notificações (`NotificationsPopover`) adaptam-se estritamente aos módulos liberados para o usuário;
+>   - Usuários com acesso restrito a Investimentos recebem passos exclusivos para sua jornada: *"Cadastrar primeiro ativo"* (`/investments?novo=ativo`) e *"Registrar primeiro aporte"* (`/investments?novo=transacao`), eliminando metas inalcançáveis de cartões e despesas diárias;
+>   - Usuários completos continuam com a jornada harmoniosa de 6 passos estruturantes;
+> - **(2) Smart Dismiss e Detecção de Atividade (`isUserActive` & `isFirstUse`)**:
+>   - Contas de investidores com ao menos 1 ativo ou transação cadastrada são reconhecidas como ativas (`portfolioAssets >= 1 || portfolioTransactions >= 1`), aplicando smart dismiss no banner da Home sem perder o acesso no menu de notificações;
+> - **(3) Quality Gates 100% Verdes**:
+>   - Typecheck (`tsc -b`): 0 erros; ESLint (`eslint .`): 0 erros e 0 warnings; Vitest: 107/107 testes de onboarding aprovados com sucesso.
+>
 > **v3.0.21 (Build 50)** registra a **Blindagem Estrita do Modo Somente Leitura e Restrições de Perfil (Apenas Investimentos)** (2026-11-10):
 > - **(1) Blindagem Completa contra Mutações em Modo Somente Leitura**:
 >   - Centralização e padronização através de `useMutationGuard({ moduleKey })`: qualquer tentativa de inserção, edição ou exclusão (lançamentos de receitas/despesas, criação/edição de categorias, exclusão/rachamento de despesas, importação de extratos/planilhas, aportes, proventos, metas de carteira, desmarcar quitações de dívidas e inativação de cartões) é imediatamente interceptada e direcionada ao `UpgradeDialog`;

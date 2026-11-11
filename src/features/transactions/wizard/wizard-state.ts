@@ -371,3 +371,27 @@ export function buildExpenseInstallments(params: {
     billCompetence: item.billCompetence,
   }));
 }
+
+export const WIZARD_PREFERENCE_STORAGE_KEY = "axir_wizard_preferred_mode";
+
+export function getStoredWizardMode(): "quick" | "guided" | null {
+  try {
+    if (typeof window === "undefined") return null;
+    const val = window.localStorage.getItem(WIZARD_PREFERENCE_STORAGE_KEY);
+    if (val === "quick" || val === "guided") return val;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredWizardMode(mode: "quick" | "guided"): void {
+  try {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(WIZARD_PREFERENCE_STORAGE_KEY, mode);
+    }
+  } catch {
+    // no-op
+  }
+}
+

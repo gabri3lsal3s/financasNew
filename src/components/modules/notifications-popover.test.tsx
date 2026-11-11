@@ -9,6 +9,7 @@ const mockUseOnboardingCounts = vi.fn();
 const mockSetReminderStateMutate = vi.fn();
 const mockMarkAllMutate = vi.fn();
 const mockUseSmartAdvisorInsights = vi.fn();
+let mockHasFeature: (key: string) => boolean = (key: string) => key !== "investments";
 
 vi.mock("@/features/overview/hooks", () => ({
   useSmartAdvisorInsights: () => mockUseSmartAdvisorInsights(),
@@ -22,11 +23,18 @@ vi.mock("@/state", () => ({
   useMySupportTickets: () => ({ data: [], isLoading: false }),
   useMyBroadcastNotifications: () => ({ data: [], isLoading: false }),
   useMarkBroadcastAsRead: () => ({ mutate: vi.fn(), isPending: false }),
+  useUserAccess: () => ({
+    hasFeature: (key: string) => mockHasFeature(key),
+    isAdmin: false,
+    role: "user",
+    status: "active",
+  }),
 }));
 
 describe("NotificationsPopover", () => {
   beforeEach(() => {
     localStorage.clear();
+    mockHasFeature = (key: string) => key !== "investments";
     mockUseOnboardingCounts.mockReturnValue({
       data: { expenseCategories: 5, incomeCategories: 5, cards: 1, transactions: 1, notificationsEnabled: true },
     });
@@ -128,6 +136,50 @@ describe("NotificationsPopover", () => {
     await user.click(dismissBtn);
 
     expect(screen.queryByText("1/4 passos")).not.toBeInTheDocument();
+  });
+
+  it("renderiza passos e navega para rota de investimentos para usuário exclusivo de investimentos", async () => {
+    const user = userEvent.setup();
+    mockHasFeature = (key: string) => key === "investments";
+    mockUseReminders.mockReturnValue({
+      items: [],
+      totalCount: 0,
+      urgentCount: 0,
+      isLoading: false,
+    });
+    mockUseOnboardingCounts.mockReturnValue({
+      data: {
+        expenseCategories: 0,
+        incomeCategories: 0,
+        cards: 0,
+        transactions: 0,
+        portfolioAssets: 0,
+        portfolioTransactions: 0,
+      },
+    });
+
+    let currentPath = "";
+    function RouteTracker() {
+      const location = useLocation();
+      currentPath = location.pathname + location.search;
+      return null;
+    }
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <RouteTracker />
+        <NotificationsPopover>
+          <button type="button">Sininho</button>
+        </NotificationsPopover>
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Sininho" }));
+    expect(screen.getByText("Configuração inicial")).toBeInTheDocument();
+    expect(screen.getByText("0/2 passos")).toBeInTheDocument();
+
+    await user.click(screen.getByText("Configuração inicial"));
+    expect(currentPath).toBe("/investments?novo=ativo");
   });
 
   it("renderiza alertas críticos (prioridade 1) e de vencimento do dia (prioridade 2) do Smart Advisor", async () => {

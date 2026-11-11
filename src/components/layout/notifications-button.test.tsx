@@ -7,6 +7,7 @@ import { NotificationsButton } from "./notifications-button";
 const mockUseReminders = vi.fn();
 const mockUseOnboardingCounts = vi.fn();
 const mockUseSmartAdvisorInsights = vi.fn();
+const mockHasFeature: (key: string) => boolean = (key: string) => key !== "investments";
 
 vi.mock("@/features/overview/hooks", () => ({
   useSmartAdvisorInsights: () => mockUseSmartAdvisorInsights(),
@@ -20,6 +21,12 @@ vi.mock("@/state", () => ({
   useMySupportTickets: () => ({ data: [], isLoading: false }),
   useMyBroadcastNotifications: () => ({ data: [], isLoading: false }),
   useMarkBroadcastAsRead: () => ({ mutate: vi.fn(), isPending: false }),
+  useUserAccess: () => ({
+    hasFeature: (key: string) => mockHasFeature(key),
+    isAdmin: false,
+    role: "user",
+    status: "active",
+  }),
 }));
 
 describe("NotificationsButton", () => {

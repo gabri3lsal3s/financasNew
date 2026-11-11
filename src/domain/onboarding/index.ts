@@ -5,7 +5,7 @@
  * respeitando os módulos liberados para a conta (hasFeature). Sem UI, sem Supabase.
  */
 
-import type { SystemFeatureKey } from "@/types";
+import type { OnboardingGoalId, SystemFeatureKey } from "@/types";
 
 export interface OnboardingCounts {
   /** Categorias de despesa criadas pelo usuário (não reservadas). */
@@ -118,22 +118,44 @@ export function onboardingProgress(
 /**
  * Passos centrais do checklist liberados para o usuário (excluindo passos não-core
  * como bank-notifications, que depende de permissão de plataforma Android).
+ * Quando initialGoal for informado, reordena os passos para colocar o objetivo prioritário no topo.
  */
 export function coreOnboardingSteps(
   counts: OnboardingCounts,
   hasFeature?: FeaturePredicate,
+  initialGoal?: OnboardingGoalId | null,
 ): OnboardingStep[] {
-  return ALL_ONBOARDING_STEPS
+  const steps = ALL_ONBOARDING_STEPS
     .filter((step) => step.isCore && (!hasFeature || hasFeature(step.featureKey)))
     .map((step) => ({ id: step.id, done: step.isDone(counts) }));
+
+  if (!initialGoal) return steps;
+
+  // Determina o ID prioritário para o topo do checklist com base na meta escolhida no acolhimento
+  const priorityStepId: OnboardingStepId | null =
+    initialGoal === "cards"
+      ? "card"
+      : initialGoal === "ocr" || initialGoal === "debts"
+        ? "first-transaction"
+        : null;
+
+  if (!priorityStepId) return steps;
+
+  const targetIdx = steps.findIndex((s) => s.id === priorityStepId);
+  if (targetIdx <= 0) return steps;
+
+  const targetStep = steps[targetIdx]!;
+  const rest = steps.filter((s) => s.id !== priorityStepId);
+  return [targetStep, ...rest];
 }
 
 /** Progresso considerando apenas os passos principais habilitados para a conta. */
 export function coreOnboardingProgress(
   counts: OnboardingCounts,
   hasFeature?: FeaturePredicate,
+  initialGoal?: OnboardingGoalId | null,
 ): OnboardingProgress {
-  const steps = coreOnboardingSteps(counts, hasFeature);
+  const steps = coreOnboardingSteps(counts, hasFeature, initialGoal);
   return { done: steps.filter((s) => s.done).length, total: steps.length };
 }
 

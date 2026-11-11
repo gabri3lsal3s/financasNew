@@ -280,6 +280,20 @@ vi.mock("@/state", () => ({
     isLoading: false,
     summary: null,
   }),
+  usePermission: () => ({
+    allowed: true,
+    isTrial: false,
+    isReadOnly: false,
+    reason: null,
+  }),
+  useUserAccess: () => ({
+    isFullAccess: true,
+    isTrial: false,
+    isReadOnly: false,
+    canWrite: true,
+    tier: "pro_annual",
+    hasFeature: () => true,
+  }),
 }));
 
 
@@ -604,7 +618,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     render(<OverviewPage />);
 
     expect(
-      screen.getAllByText("Você está no Áxis Pro com acesso total liberado")[0],
+      screen.getAllByText("Você está no Axir Pro com acesso total liberado")[0],
     ).toBeInTheDocument();
     expect(screen.getAllByText("Teste Pro Ativo")[0]).toBeInTheDocument();
   });

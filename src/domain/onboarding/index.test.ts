@@ -185,6 +185,27 @@ describe("coreOnboardingSteps — passos sem bank-notifications", () => {
     };
     expect(coreOnboardingProgress(doneFinances, hasFinances)).toEqual({ done: 4, total: 4 });
   });
+  it("reordena priorizando cartão quando initialGoal é 'cards'", () => {
+    const steps = coreOnboardingSteps(empty, undefined, "cards");
+    expect(steps[0]!.id).toBe("card");
+  });
+
+  it("reordena priorizando primeira transação quando initialGoal é 'ocr'", () => {
+    const steps = coreOnboardingSteps(empty, undefined, "ocr");
+    expect(steps[0]!.id).toBe("first-transaction");
+  });
+
+  it("reordena priorizando primeira transação quando initialGoal é 'debts'", () => {
+    const steps = coreOnboardingSteps(empty, undefined, "debts");
+    expect(steps[0]!.id).toBe("first-transaction");
+  });
+
+  it("mantém ordem padrão quando initialGoal é omitido ou nulo", () => {
+    const stepsDefault = coreOnboardingSteps(empty);
+    expect(stepsDefault[0]!.id).toBe("expense-category");
+    const stepsNull = coreOnboardingSteps(empty, undefined, null);
+    expect(stepsNull[0]!.id).toBe("expense-category");
+  });
 });
 
 describe("shouldShowOnboardingBanner — lógica de exibição do banner", () => {
