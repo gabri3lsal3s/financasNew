@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Alert, Badge, Button, Input, PasswordInput, Turnstile } from "@/components/ui";
 import { AuthShell } from "@/features/auth/components/auth-shell";
-import { BrandLogo } from "@/components/layout";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import {
   useAuth,
   signInWithEmail,

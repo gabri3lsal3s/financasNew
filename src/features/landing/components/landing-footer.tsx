@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { ShieldCheck, MapPin, Building2, Mail, Lock, User } from "lucide-react";
-import { BrandLogo } from "@/components/layout";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { LegalDialog, type LegalTab } from "./legal-dialog";
 import { useLandingCta } from "@/features/landing/hooks";
 import { INSTITUTIONAL_CONFIG } from "@/lib/institutional";

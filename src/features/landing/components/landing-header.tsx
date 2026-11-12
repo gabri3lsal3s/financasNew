@@ -3,7 +3,8 @@ import { ArrowLeft, ArrowRight, Menu, X, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui";
 import { buttonVariants } from "@/components/ui";
-import { BrandLogo, ThemeToggle } from "@/components/layout";
+import { BrandLogo } from "@/components/layout/brand-logo";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
 import { useLandingCta, useScrollSpy } from "@/features/landing/hooks";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
@@ -100,7 +101,7 @@ export function LandingHeader() {
             className={cn(
               "px-3 py-1.5 rounded-lg transition-all cursor-pointer",
               activeSection === "recursos"
-                ? "bg-primary/10 text-primary font-semibold"
+                ? "bg-primary/10 text-primary-strong font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
             )}
           >
@@ -112,7 +113,7 @@ export function LandingHeader() {
             className={cn(
               "px-3 py-1.5 rounded-lg transition-all cursor-pointer",
               activeSection === "simulador"
-                ? "bg-primary/10 text-primary font-semibold"
+                ? "bg-primary/10 text-primary-strong font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
             )}
           >
@@ -124,7 +125,7 @@ export function LandingHeader() {
             className={cn(
               "px-3 py-1.5 rounded-lg transition-all cursor-pointer",
               activeSection === "plataformas"
-                ? "bg-primary/10 text-primary font-semibold"
+                ? "bg-primary/10 text-primary-strong font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
             )}
           >
@@ -136,7 +137,7 @@ export function LandingHeader() {
             className={cn(
               "px-3 py-1.5 rounded-lg transition-all cursor-pointer",
               activeSection === "ferramentas"
-                ? "bg-primary/10 text-primary font-semibold"
+                ? "bg-primary/10 text-primary-strong font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
             )}
           >
@@ -148,7 +149,7 @@ export function LandingHeader() {
             className={cn(
               "px-3 py-1.5 rounded-lg transition-all cursor-pointer",
               activeSection === "precos"
-                ? "bg-primary/10 text-primary font-semibold"
+                ? "bg-primary/10 text-primary-strong font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
             )}
           >
@@ -160,7 +161,7 @@ export function LandingHeader() {
             className={cn(
               "px-3 py-1.5 rounded-lg transition-all cursor-pointer",
               activeSection === "faq"
-                ? "bg-primary/10 text-primary font-semibold"
+                ? "bg-primary/10 text-primary-strong font-semibold"
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
             )}
           >
@@ -234,7 +235,7 @@ export function LandingHeader() {
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? "Fechar menu de navegação" : "Abrir menu de navegação"}
             aria-expanded={mobileMenuOpen}
-            className="min-h-[44px] min-w-[44px]"
+            className="min-h-12 min-w-12"
           >
             {mobileMenuOpen ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
           </Button>
@@ -292,10 +293,10 @@ export function LandingHeader() {
               type="button"
               onClick={() => scrollToSection("recursos")}
               className={cn(
-                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
+                "flex items-center py-3 px-3 min-h-12 rounded-lg text-left transition-colors cursor-pointer",
                 activeSection === "recursos"
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-foreground hover:text-primary",
+                  ? "bg-primary/10 text-primary-strong font-semibold"
+                  : "text-foreground hover:text-primary-strong",
               )}
             >
               Recursos
@@ -304,10 +305,10 @@ export function LandingHeader() {
               type="button"
               onClick={() => scrollToSection("simulador")}
               className={cn(
-                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
+                "flex items-center py-3 px-3 min-h-12 rounded-lg text-left transition-colors cursor-pointer",
                 activeSection === "simulador"
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-foreground hover:text-primary",
+                  ? "bg-primary/10 text-primary-strong font-semibold"
+                  : "text-foreground hover:text-primary-strong",
               )}
             >
               Simulador Patrimonial
@@ -316,10 +317,10 @@ export function LandingHeader() {
               type="button"
               onClick={() => scrollToSection("plataformas")}
               className={cn(
-                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
+                "flex items-center py-3 px-3 min-h-12 rounded-lg text-left transition-colors cursor-pointer",
                 activeSection === "plataformas"
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-foreground hover:text-primary",
+                  ? "bg-primary/10 text-primary-strong font-semibold"
+                  : "text-foreground hover:text-primary-strong",
               )}
             >
               Plataformas & App
@@ -328,10 +329,10 @@ export function LandingHeader() {
               type="button"
               onClick={() => scrollToSection("ferramentas")}
               className={cn(
-                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
+                "flex items-center py-3 px-3 min-h-12 rounded-lg text-left transition-colors cursor-pointer",
                 activeSection === "ferramentas"
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-foreground hover:text-primary",
+                  ? "bg-primary/10 text-primary-strong font-semibold"
+                  : "text-foreground hover:text-primary-strong",
               )}
             >
               Ferramentas Gratuitas
@@ -340,10 +341,10 @@ export function LandingHeader() {
               type="button"
               onClick={() => scrollToSection("precos")}
               className={cn(
-                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
+                "flex items-center py-3 px-3 min-h-12 rounded-lg text-left transition-colors cursor-pointer",
                 activeSection === "precos"
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-foreground hover:text-primary",
+                  ? "bg-primary/10 text-primary-strong font-semibold"
+                  : "text-foreground hover:text-primary-strong",
               )}
             >
               Planos & Preços
@@ -352,10 +353,10 @@ export function LandingHeader() {
               type="button"
               onClick={() => scrollToSection("faq")}
               className={cn(
-                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
+                "flex items-center py-3 px-3 min-h-12 rounded-lg text-left transition-colors cursor-pointer",
                 activeSection === "faq"
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-foreground hover:text-primary",
+                  ? "bg-primary/10 text-primary-strong font-semibold"
+                  : "text-foreground hover:text-primary-strong",
               )}
             >
               Dúvidas Frequentes
@@ -364,7 +365,7 @@ export function LandingHeader() {
               {isLoggedIn ? (
                 <Link
                   to="/"
-                  className={cn(buttonVariants(), "w-full justify-center min-h-[44px]")}
+                  className={cn(buttonVariants(), "w-full justify-center min-h-12")}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Acessar meu App
@@ -373,14 +374,14 @@ export function LandingHeader() {
                 <>
                   <Link
                     to="/cadastro"
-                    className={cn(buttonVariants(), "w-full justify-center gap-1.5 shadow-sm min-h-[44px]")}
+                    className={cn(buttonVariants(), "w-full justify-center gap-1.5 shadow-sm min-h-12")}
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Criar conta gratuita (30 dias)
                   </Link>
                   <Link
                     to="/entrar"
-                    className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-center text-sm font-medium text-foreground hover:text-primary min-h-[44px]")}
+                    className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-center text-sm font-medium text-foreground hover:text-primary min-h-12")}
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Já tenho conta • Entrar
@@ -395,7 +396,7 @@ export function LandingHeader() {
                     setMobileMenuOpen(false);
                     void install();
                   }}
-                  className="w-full justify-center gap-1.5 cursor-pointer mt-1 min-h-[44px]"
+                  className="w-full justify-center gap-1.5 cursor-pointer mt-1 min-h-12"
                 >
                   <Download className="size-4" aria-hidden="true" />
                   <span>Instalar Aplicativo no Dispositivo</span>

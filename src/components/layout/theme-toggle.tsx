@@ -24,7 +24,7 @@ export function ThemeToggle({ className }: { className?: string } = {}) {
       type="button"
       variant="ghost"
       size="icon"
-      className={cn("size-8 text-muted-foreground hover:text-foreground shrink-0 cursor-pointer", className)}
+      className={cn("size-11 sm:size-8 text-muted-foreground hover:text-foreground shrink-0 cursor-pointer", className)}
       aria-label={`Tema atual: ${LABELS[preference]}. Alternar tema.`}
       title={`Tema: ${LABELS[preference]}`}
       onClick={() => setPreference(next)}

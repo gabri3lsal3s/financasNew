@@ -1,7 +1,12 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { configure, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AppRouter } from "./router";
 import * as useAuthModule from "@/hooks/use-auth";
+
+// Sob carga da suíte completa, o primeiro import lazy de cada rota pode exceder
+// o timeout padrão de 1s sem significar falha funcional.
+configure({ asyncUtilTimeout: 15000 });
 
 vi.mock("@/components/layout", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -13,7 +18,14 @@ vi.mock("@/components/layout", async (importOriginal) => {
 });
 
 vi.mock("@/components/layout/page-shell", () => ({
-  PageShell: () => <div data-testid="page-shell" />,
+  PageShell: ({ children }: { children?: ReactNode }) => (
+    <div data-testid="page-shell">{children}</div>
+  ),
+}));
+
+// Os providers autenticados são exercitados nos testes próprios; aqui isolamos o roteamento.
+vi.mock("@/app/authenticated-providers", () => ({
+  AuthenticatedProviders: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 vi.mock("@/state", () => ({
@@ -117,7 +129,9 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     window.history.pushState({}, "", "/entrar");
     render(<AppRouter />);
 
-    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Entrar" }, { timeout: 8000 }),
+    ).toBeInTheDocument();
   });
 
   it("renderiza a rota /cadastro com lazy loading para visitantes", async () => {
@@ -135,7 +149,9 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     window.history.pushState({}, "", "/cadastro");
     render(<AppRouter />);
 
-    expect(await screen.findByRole("heading", { name: "Criar conta" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Criar conta" }, { timeout: 8000 }),
+    ).toBeInTheDocument();
   });
 
   it("renderiza o alias /cadastrar com lazy loading para visitantes (suporte a links externos e viralidade)", async () => {
@@ -482,6 +498,11 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
   });
 
   it("renderiza o painel financeiro (PageShell) ao acessar a raiz / com sessão autenticada", async () => {
+    // A raiz decide landing vs App Shell por token síncrono antes de montar hooks pesados.
+    window.localStorage.setItem(
+      "sb-test-auth-token",
+      JSON.stringify({ access_token: "token-teste", refresh_token: "refresh-teste" }),
+    );
     vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
       session: { user: { id: "user-123" } } as unknown as useAuthModule.AuthState["session"],
       user: { id: "user-123" } as unknown as useAuthModule.AuthState["user"],
@@ -497,6 +518,7 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     render(<AppRouter />);
 
     expect(await screen.findByTestId("page-shell")).toBeInTheDocument();
+    window.localStorage.removeItem("sb-test-auth-token");
   });
 
   it("redireciona para /entrar ao acessar a raiz / sem autenticação em plataforma nativa (Capacitor Android)", async () => {

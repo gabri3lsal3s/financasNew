@@ -68,7 +68,11 @@ export default defineConfig({
     }),
   ],
   build: {
-    modulePreload: true,
+    // O preload automático do Vite/Rolldown injetava no index.html TODAS as
+    // dependências de rotas lazy (layout, state, skeleton, picker, cmdk...),
+    // baixando ~1 MB antes da landing pintar. Os imports dinâmicos já carregam
+    // seus chunks sob demanda; manter o preload global anulava o code splitting.
+    modulePreload: false,
     chunkSizeWarningLimit: 1700,
     // Vite 8 (Oxc/Rolldown): drop de console/debugger no minifier — esbuild.drop é ignorado.
     rolldownOptions: {

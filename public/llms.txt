@@ -29,3 +29,10 @@ O Axir resolve o estresse financeiro eliminando surpresas com faturas futuras, c
 ## Documentação Estendida para Agentes
 
 - [Documentação Técnica Completa](https://axir.com.br/llms-full.txt): Detalhamento matemático de fórmulas, contratos de dados e diretrizes de cálculo do Axir.
+- [Catálogo de Recursos (ARD)](https://axir.com.br/.well-known/ai-catalog.json): Manifesto `ai-catalog` 1.0 com as ferramentas públicas, tipos de mídia e consultas representativas.
+
+## Limites do Serviço
+
+- O Axir não custodia ativos, não executa ordens e não presta consultoria de valores mobiliários.
+- Simuladores públicos processam os dados localmente no navegador, sem cadastro e sem persistência.
+- Valores projetados são estimativas matemáticas, não garantia de rentabilidade.

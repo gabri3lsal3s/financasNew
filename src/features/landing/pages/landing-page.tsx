@@ -14,11 +14,31 @@ import { BackToTop } from "@/features/landing/components/back-to-top";
 import { MobileCtaDock } from "@/features/landing/components/mobile-cta-dock";
 import { ScrollRevealProvider } from "@/features/landing/components/scroll-reveal-context";
 import { useScrollSpy } from "@/features/landing/hooks";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
+
+const PLAN_ROUTES = ["/precos", "/planos", "/vendas"];
 
 export function LandingPage() {
   const { showBackToTop, resetKey, activeSection } = useScrollSpy();
   const location = useLocation();
   const isDockVisible = showBackToTop && activeSection !== "precos";
+  const isPricingRoute = PLAN_ROUTES.includes(location.pathname);
+
+  useDocumentMeta(
+    isPricingRoute
+      ? {
+          title: "Planos e Preços — Axir | 30 Dias Grátis sem Cartão",
+          description:
+            "Compare os planos do Axir: 30 dias de Acesso Pro Total sem cartão, assinatura mensal ou anual com desconto e garantia legal de 7 dias.",
+          canonicalPath: "/planos",
+        }
+      : {
+          title: "Axir — Gestão Financeira Pessoal, Cartões de Crédito e Aportes",
+          description:
+            "Controle cartões, faturas e dívidas, calcule seu caixa real diário e receba a direção exata do próximo aporte sem vender ativos. Teste 30 dias grátis.",
+          canonicalPath: "/",
+        },
+  );
 
   useEffect(() => {
     if (

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import {
   Flame,
@@ -28,6 +28,7 @@ import {
   type PendingCompoundInterestSimulation,
 } from "@/domain/share";
 import { getPublicAppUrl } from "@/services/app-url";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 
 export function CompoundInterestPage() {
   const [searchParams] = useSearchParams();
@@ -54,10 +55,12 @@ export function CompoundInterestPage() {
     () => sharedState?.monthlyLivingCostCents ?? 500000, // R$ 5.000,00/mês
   );
 
-  useEffect(() => {
-    document.title =
-      "Simulador de Juros Compostos & FIRE — Axir";
-  }, []);
+  useDocumentMeta({
+    title: "Simulador de Juros Compostos e Independência Financeira — Axir",
+    description:
+      "Projete seu patrimônio com juros compostos, aportes mensais e inflação, e descubra o ano em que a renda passiva cobre seu custo de vida.",
+    canonicalPath: "/ferramentas/juros-compostos",
+  });
 
   const result = useMemo(() => {
     return calculateCompoundInterest({

@@ -10,7 +10,7 @@ import { FireProjectionCurve } from "./fire-projection-curve";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsBRL, formatPercent } from "@/services/masks";
 import { numberToCents } from "@/domain/money";
-import { simulateStrategyAporte } from "@/domain/portfolio";
+import { simulateStrategyAporte } from "@/domain/portfolio/simulation";
 
 
 type StrategyKey = "dividendos" | "multimercado" | "crescimento";

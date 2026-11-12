@@ -1,8 +1,14 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { AlertTriangle, RefreshCw, RotateCcw, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SupportChatDialog } from "@/components/modules/support";
 import { reportError } from "@/services/observability";
+
+// Diálogo de suporte só é necessário após uma falha: mantê-lo fora do bundle inicial.
+const SupportChatDialog = lazy(() =>
+  import("@/components/modules/support/support-chat-dialog").then((m) => ({
+    default: m.SupportChatDialog,
+  })),
+);
 
 export interface AppErrorBoundaryProps {
   children: React.ReactNode;
@@ -128,13 +134,14 @@ export class AppErrorBoundary extends React.Component<
             </div>
           </div>
 
-          {/* Diálogo de Suporte com Categoria Bug Pré-Selecionada */}
-          <SupportChatDialog
-            open={this.state.supportChatOpen}
-            onOpenChange={(open) => this.setState({ supportChatOpen: open })}
-            defaultType="bug"
-            initialMessage={`[Falha de renderização capturada pelo ErrorBoundary]\nDetalhe: ${errorMessage}`}
-          />
+          {/* Diálogo de Suporte com Categoria Bug Pré-Selecionada */}            <Suspense fallback={null}>
+              <SupportChatDialog
+                open={this.state.supportChatOpen}
+                onOpenChange={(open) => this.setState({ supportChatOpen: open })}
+                defaultType="bug"
+                initialMessage={`[Falha de renderização capturada pelo ErrorBoundary]\nDetalhe: ${errorMessage}`}
+              />
+            </Suspense>
         </div>
       );
     }

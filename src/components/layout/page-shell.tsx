@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { Link, Outlet, useLocation, useSearchParams, useNavigate } from "react-router";
 import { Sparkles, BookOpen, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,7 @@ function RouteFallback() {
   );
 }
 
-export function PageShell() {
+export function PageShell({ children }: { children?: ReactNode } = {}) {
   const navigate = useNavigate();
   const subscription = useUserSubscription();
   const [headerUpgradeOpen, setHeaderUpgradeOpen] = useState(false);
@@ -349,7 +350,7 @@ export function PageShell() {
             {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}
             <div key={location.pathname} className="animate-route-in min-w-0 w-full">
               <Suspense fallback={<RouteFallback />}>
-                <Outlet />
+                {children ?? <Outlet />}
               </Suspense>
             </div>
           </div>

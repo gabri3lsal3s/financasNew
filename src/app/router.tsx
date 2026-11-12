@@ -1,33 +1,35 @@
-import { lazy, Suspense, useEffect } from "react";
-import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router";
+import { lazy, Suspense } from "react";
+import { Navigate, BrowserRouter, Route, Routes, useLocation } from "react-router";
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen } from "@/components/layout/loading-screen";
-import { RequireActiveAccount, RequireAdminSession, RequireFeature } from "@/components/routing";
+import { isNativePlatform } from "@/services/native";
 
+/**
+ * Guards e App Shell carregados sob demanda: a landing page não deve baixar
+ * stores, sincronizações de conta nem os hooks de prefetch/segurança do app.
+ */
 const PageShell = lazy(() =>
   import("@/components/layout/page-shell").then((m) => ({ default: m.PageShell })),
 );
-
-const FloatingCalculator = lazy(() =>
-  import("@/components/modules/floating-calculator").then((m) => ({ default: m.FloatingCalculator })),
+const AuthenticatedRoot = lazy(() =>
+  import("@/app/authenticated-root").then((m) => ({ default: m.AuthenticatedRoot })),
 );
-import { useAuth } from "@/hooks/use-auth";
-import { useIdleSessionTimeout } from "@/hooks/use-idle-session-timeout";
-import { useMinimumLoading } from "@/hooks/use-minimum-loading";
-import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
-import { usePendingSplitExpense } from "@/hooks/use-pending-split-expense";
-import { usePendingSimulation } from "@/hooks/use-pending-simulation";
-import { useUserAccess } from "@/state";
-import {
-  getPendingRouteAfterUnlock,
-  initBankNotificationListener,
-  initDeepLinkListener,
-  initNotificationActionListener,
-  isAppLocked,
-  isNativePlatform,
-  setPendingRouteAfterUnlock,
-  subscribeAppLock,
-} from "@/services/native";
+const RequireAuth = lazy(() =>
+  import("@/app/require-auth").then((m) => ({ default: m.RequireAuth })),
+);
+const RequireActiveAccount = lazy(() =>
+  import("@/components/routing/require-active-account").then((m) => ({
+    default: m.RequireActiveAccount,
+  })),
+);
+const RequireAdminSession = lazy(() =>
+  import("@/components/routing/require-admin-session").then((m) => ({
+    default: m.RequireAdminSession,
+  })),
+);
+const RequireFeature = lazy(() =>
+  import("@/components/routing/require-feature").then((m) => ({ default: m.RequireFeature })),
+);
 
 /**
  * Importações dinâmicas (Code Splitting — FASE 23 Tarefa 43):
@@ -154,12 +156,6 @@ const AdminSecurityPage = lazy(() =>
 const AdminSettingsPage = lazy(() =>
   import("@/features/admin/pages/admin-settings-page").then((m) => ({ default: m.AdminSettingsPage })),
 );
-const ApkBetaRestrictedModal = lazy(() =>
-  import("@/components/modules/apk-beta-restricted-modal").then((m) => ({ default: m.ApkBetaRestrictedModal })),
-);
-
-
-
 function RouteSuspenseFallback() {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-background text-foreground">
@@ -188,167 +184,37 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
 };
 
 /**
- * Verifica de forma síncrona se existe um token de autenticação salvo no localStorage do navegador.
- * Evita flash da tela de carregamento para novos visitantes que acessam a raiz no navegador Web.
+ * Entrada pública da raiz: visitantes web sem token recebem a landing page
+ * imediatamente, sem montar guards, stores ou sincronizações do App Shell.
+ * Usuários logados e o app nativo carregam a raiz autenticada sob demanda.
  */
-function hasStoredAuthSession(): boolean {
-  if (typeof window === "undefined" || !window.localStorage) return false;
-  try {
-    for (let i = 0; i < window.localStorage.length; i++) {
-      const key = window.localStorage.key(i);
-      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
-        const item = window.localStorage.getItem(key);
-        if (item && item.includes("access_token")) return true;
-      }
-    }
-  } catch {
-    return false;
-  }
-  return false;
-}
-
-/**
- * Guard de autenticação:
- * - Sem sessão → redireciona para a tela de login preservando a rota de origem.
- * - Em transição/carregamento → exibe tela de carregamento oficial (`LoadingScreen`) sincronizada com Auth + Perfil/Acesso.
- * - Sessão ativa com dados de acesso prontos → renderiza rotas autenticadas isoladas por `key={session.user.id}`.
- */
-function RequireAuth() {
-  const { session, loading: authLoading, configError, mfaRequired, mfaVerified } = useAuth();
-  const userAccess = useUserAccess(session?.user?.id);
-  const location = useLocation();
-  usePendingSplitExpense();
-  usePendingSimulation();
-
-  // F23 — pre-fetching discreto dos chunks das rotas vizinhas (idle).
-  useRoutePrefetch();
-
-  // F6.1 — Proteção contra inatividade em ambiente Web (20 minutos de ociosidade)
-  useIdleSessionTimeout();
-
-  // O carregamento inicial só termina quando tanto a autenticação quanto os dados de perfil/permissões estiverem prontos
-  const hasUser = Boolean(session?.user);
-  const isAccessPending = hasUser && !userAccess.profile && !userAccess.error;
-  const isDataLoading = authLoading || (hasUser && (userAccess.isLoading || isAccessPending));
-
-  // Previne micro-flashes mantendo a tela de transição visível de forma estável e fluida (650ms)
-  const { isShowing: isTransitioning, isClosing } = useMinimumLoading(isDataLoading, 650);
-
-  // Visitante desautenticado acessando a raiz "/" no navegador Web:
-  // - Sem token armazenado ou após resolução da autenticação sem usuário ativo -> exibe imediatamente a LandingPage de apresentação
+function RootEntry() {
   const isNative = isNativePlatform();
-  const isRootPath = location.pathname === "/";
-
-  if (isRootPath && !isNative) {
-    if (!hasUser && (!authLoading || !hasStoredAuthSession())) {
-      return <LandingPage />;
+  const hasStoredSession = (() => {
+    if (typeof window === "undefined" || !window.localStorage) return false;
+    try {
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+          const item = window.localStorage.getItem(key);
+          if (item && item.includes("access_token")) return true;
+        }
+      }
+    } catch {
+      return false;
     }
-  }
+    return false;
+  })();
 
-  // Blindagem 2FA (Etapa 1.2): sessão sem elevação AAL2 é imediatamente redirecionada para o desafio TOTP
-  if (!authLoading && session?.user && mfaRequired && !mfaVerified) {
-    return <Navigate to="/entrar?desafio=totp" replace />;
-  }
-
-  if (configError) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center p-4">
-        <pre className="max-w-xl whitespace-pre-wrap rounded-xl border border-critical/40 bg-critical/10 p-4 text-sm text-foreground">
-          {configError}
-        </pre>
-      </div>
-    );
-  }
-
-  if (isDataLoading || isTransitioning || !session?.user) {
-    if (!isDataLoading && !session?.user && !isTransitioning) {
-      const isSettingsOrMais = location.pathname.startsWith("/configuracoes") || location.pathname === "/mais";
-      return <Navigate to="/entrar" replace state={isSettingsOrMais ? undefined : { from: location }} />;
-    }
-
-    let targetProgress: number;
-    let stageText: string;
-
-    if (isClosing) {
-      targetProgress = 100;
-      stageText = "Pronto!";
-    } else if (authLoading) {
-      targetProgress = 35;
-      stageText = "Iniciando sessão segura…";
-    } else if (userAccess.isLoading) {
-      targetProgress = 75;
-      stageText = "Sincronizando preferências e categorias…";
-    } else {
-      targetProgress = 92;
-      stageText = "Preparando painel financeiro…";
-    }
-
-    return (
-      <LoadingScreen
-        progress={targetProgress}
-        statusText={stageText}
-        isClosing={isClosing}
-      />
-    );
+  if (!isNative && !hasStoredSession) {
+    return <LandingPage />;
   }
 
   return (
-    <div key={session.user.id} className="contents">
-      {/* Utilitários globais (F9): disponíveis em todas as telas autenticadas */}
-      <Suspense fallback={null}>
-        <FloatingCalculator />
-        <ApkBetaRestrictedModal />
-      </Suspense>
-      <Outlet />
-    </div>
+    <Suspense fallback={<LoadingScreen statusText="Preparando painel financeiro…" />}>
+      <AuthenticatedRoot />
+    </Suspense>
   );
-}
-
-/**
- * Escuta eventos do sistema operacional nativo (atalhos de launcher, deep links e
- * ações de notificações locais) redirecionando suavemente a navegação interna.
- */
-function NativeIntegrationsHandler() {
-  const navigate = useNavigate();
-  const { hasFeature } = useUserAccess();
-  const isBankListenerAllowed = hasFeature("bank_notification_listener");
-
-  useEffect(() => {
-    const handleNativeNavigation = (route: string) => {
-      if (isAppLocked()) {
-        setPendingRouteAfterUnlock(route);
-      } else {
-        navigate(route);
-      }
-    };
-
-    const cleanupDeepLinks = initDeepLinkListener(handleNativeNavigation);
-    const cleanupNotifications = initNotificationActionListener(handleNativeNavigation);
-    const cleanupBankNotifications = isBankListenerAllowed
-      ? initBankNotificationListener(handleNativeNavigation)
-      : null;
-
-    const cleanupAppLock = subscribeAppLock(() => {
-      if (!isAppLocked()) {
-        const pending = getPendingRouteAfterUnlock();
-        if (pending) {
-          setPendingRouteAfterUnlock(null);
-          navigate(pending);
-        }
-      }
-    });
-
-    return () => {
-      void cleanupDeepLinks();
-      void cleanupNotifications();
-      if (cleanupBankNotifications) {
-        void cleanupBankNotifications();
-      }
-      cleanupAppLock();
-    };
-  }, [navigate, isBankListenerAllowed]);
-
-  return null;
 }
 
 /**
@@ -362,9 +228,11 @@ function RedirectWithSearch({ to }: { to: string }) {
 export function AppRouter() {
   return (
     <BrowserRouter>
-      <NativeIntegrationsHandler />
       <Suspense fallback={<RouteSuspenseFallback />}>
         <Routes>
+          {/* Raiz: landing para visitantes, App Shell apenas com sessão */}
+          <Route path="/" element={<RootEntry />} />
+
           {/* Páginas públicas de apresentação & planos */}
           <Route path="/apresentacao" element={<LandingPage />} />
           <Route path="/landing" element={<LandingPage />} />
@@ -443,7 +311,7 @@ export function AppRouter() {
 
               <Route element={<PageShell />}>
                 <Route path="/share-target" element={<ShareTargetPage />} />
-                {appRoutes.map((route) => {
+                {appRoutes.filter((route) => route.path !== "/").map((route) => {
                   const featureKey = ROUTE_FEATURE_MAP[route.path];
                   if (featureKey) {
                     return (

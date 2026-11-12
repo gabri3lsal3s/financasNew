@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
-import { BrandLogo, ThemeToggle } from "@/components/layout";
+import { BrandLogo } from "@/components/layout/brand-logo";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
 
 export interface AuthShellProps {

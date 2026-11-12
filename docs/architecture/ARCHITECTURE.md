@@ -371,6 +371,21 @@ O console operacional administrativo do Áxis Finance foi completamente segregad
    - Geração de snapshots JSON on-demand no navegador com cálculo de hash criptográfico SHA-256;
    - Registro em `public.system_backups`, verificador de integridade contra adulteração e plano de contingência DRP.
 
+### 5.9 Fronteira Pública x Autenticada, SEO Técnico e Navegação Agêntica (v3.3)
+
+1. **Raiz com decisão síncrona (`RootEntry`):**
+   - `/` verifica sessão persistida (`sb-*-auth-token`) e plataforma nativa antes de montar qualquer guard;
+   - Visitantes web recebem a `LandingPage` imediatamente, sem executar `useAuth`, `useUserAccess`, prefetch de rotas, timeout de inatividade ou listeners nativos;
+   - Usuários autenticados carregam `AuthenticatedRoot` via `lazy`, com `PageShell` e `OverviewPage` sob demanda.
+2. **Providers em duas camadas:**
+   - `AppProviders` mantém apenas QueryClient, sincronização de sessão, tema, toasts e ErrorBoundary;
+   - `AuthenticatedProviders` concentra preferências em nuvem, assinatura, lembretes, ícone dinâmico, App Lock e `NativeUpdateToast`, montados apenas dentro do guard.
+3. **Guards e módulos nativos sob demanda:** `RequireAuth`, `RequireActiveAccount`, `RequireAdminSession` e `RequireFeature` são `lazy`; o handler de deep links/notificações nativas vive no módulo autenticado.
+4. **Preload controlado:** `build.modulePreload: false` evita que o Vite injete no `index.html` todas as dependências de rotas lazy (o preload global anulava o code splitting).
+5. **Metadados por rota (`useDocumentMeta`):** título, descrição, canonical, OpenGraph, Twitter Card e diretiva `robots` são atualizados por landing, planos, ferramentas e documentos legais, com restauração segura ao desmontar.
+6. **Head estático:** canonical absoluto, `hreflang` pt-BR/x-default, OG/Twitter com imagens absolutas e `alt`, `meta robots` indexável, JSON-LD (`SoftwareApplication`, `Organization`, `FAQPage`) e fontes não bloqueantes ativadas pelo bundle (o handler `onload` inline era bloqueado pela CSP).
+7. **Navegação agêntica:** `llms.txt`/`llms-full.txt` seguem Markdown com H1, e `ai-catalog.json` + `.well-known/ai-catalog.json` validam contra o schema ARD 1.0 (`specVersion`, `host`, `entries`, URNs `urn:air:*`, `type`, `representativeQueries`).
+
 ---
 
 ## 6. MOTORES DE CÁLCULO (DOMAIN)

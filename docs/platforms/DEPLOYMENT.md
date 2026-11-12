@@ -412,9 +412,11 @@ O arquivo `public/_headers` implementa uma arquitetura de segurança de borda em
 ### 5.4 Descoberta por Agentes de IA (`llms.txt` & `ai-catalog.json`)
 
 - **`/llms.txt` e `/llms-full.txt`:** documentação pública em texto plano, com rotas canônicas, capacidades e fórmulas financeiras, servida com `Content-Type: text/plain; charset=utf-8`, cache de 24h e `Access-Control-Allow-Origin: *` em `public/_headers`;
-- **`/ai-catalog.json` e `/.well-known/ai-catalog.json`:** catálogo versionado de capacidades (simuladores e ferramentas públicas) em JSON, servido com `application/json` e CORS liberado para leitura por agentes;
-- **`robots.txt`:** permite explicitamente os quatro artefatos acima e mantém `Disallow` para áreas autenticadas (`/admin`, `/configuracoes`, …);
-- **`sitemap.xml`:** inclui `lastmod` e prioridades das rotas públicas indexáveis (landing, ferramentas, planos, legal);
+- **`/ai-catalog.json` e `/.well-known/ai-catalog.json`:** catálogo no schema **Agentic Resource Discovery (ai-catalog 1.0)**, com `specVersion`, `host` (`did:web:axir.com.br`), `entries` tipadas por mídia (`type`), URNs `urn:air:*`, `representativeQueries` e `url`; servido com `application/json` e CORS liberado. Os dois arquivos devem permanecer idênticos e ser validados contra `spec/schemas/ai-catalog.schema.json` do projeto ARD;
+- **`robots.txt`:** permite explicitamente os artefatos de IA e rotas públicas, e mantém `Disallow` para autenticação, checkout, painel, administração e compartilhamentos com token (`/r/`, `/viagem/`, `/meta/`, `/orcamento-familiar/`, `/convite-familiar/`);
+- **`sitemap.xml`:** contém apenas URLs canônicas indexáveis (landing, ferramentas, planos, legal), com `lastmod` e prioridades; aliases e páginas de auth não entram;
+- **Metadados por rota:** `useDocumentMeta` atualiza title/description/canonical/OG/Twitter/robots na landing, planos, ferramentas e documentos legais. O `index.html` mantém o fallback estático para crawlers e primeira pintura;
+- **Fontes e preload:** Google Fonts é carregado via `preload` e ativado pelo bundle (`main.tsx`); `build.modulePreload` permanece `false` para não pré-carregar chunks de rotas autenticadas na landing;
 - **JSON-LD (`index.html`):** grafo Schema.org com `SoftwareApplication`, `Organization` e `FAQPage` para rich snippets consistentes com a marca `axir.com.br`.
 
 ---

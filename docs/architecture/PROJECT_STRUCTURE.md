@@ -147,8 +147,11 @@
 └── src/
     ├── main.tsx                   # Entry point: ReactDOM + registerPWA()
     ├── app/                       # Bootstrap e orquestração (SEM lógica de negócio)
-    │   ├── providers.tsx          # AuthProvider, QueryClientProvider, ThemeProvider
-    │   ├── router.tsx             # <Routes> a partir de routes.ts
+    │   ├── providers.tsx          # Providers mínimos globais: QueryClient, sessão, tema, toasts e ErrorBoundary
+    │   ├── authenticated-providers.tsx # Providers exclusivos da área logada (preferências, assinatura, lembretes, App Lock)
+    │   ├── authenticated-root.tsx # Raiz `/` autenticada com PageShell + OverviewPage sob demanda
+    │   ├── require-auth.tsx       # Guard de autenticação, hooks de sessão e integrações nativas (módulo lazy)
+    │   ├── router.tsx             # <Routes> a partir de routes.ts; RootEntry decide landing x App Shell
     │   ├── routes.tsx             # Mapa de rotas do app + rotas públicas legais (publicLegalRoutes) + deep-links (?card=, ?month=, ?q=) +
     │   │                          #   redirect /carteira → /investments (em redirect-to-investments.tsx)
     │   ├── pwa.ts                 # Registro SW (autoUpdate + toast) + stores de
@@ -413,7 +416,8 @@
     │                              #   use-swipe-navigation (F20 — gesto horizontal),
     │                              #   use-dynamic-favicon, use-dynamic-app-icon (sincronização de marca e ícone no Launcher),
     │                              #   use-container-scroll (monitoramento cirúrgico de rolagem a 120fps sem re-render),
-    │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas)…)
+    │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas),
+    │                              #   use-document-meta (SEO por rota: title, description, canonical e OG)…)
     ├── services/                  # Apresentação + integrações
     │   ├── native/                #   Gateway nativo (Capacitor/Android): platform, back-button,
     │   │                          #     status-bar, haptics, splash-screen, biometrics, privacy-shield, app-lock,

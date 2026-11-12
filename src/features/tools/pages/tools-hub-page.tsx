@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Link } from "react-router";
 import {
   ShieldAlert,
@@ -19,6 +18,7 @@ import {
 } from "@/components/ui";
 import { ToolsHeader } from "../components/tools-header";
 import { ToolsFooterCta } from "../components/tools-footer-cta";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 
 interface ToolCardInfo {
   path: string;
@@ -72,10 +72,12 @@ const TOOLS_LIST: ToolCardInfo[] = [
 ];
 
 export function ToolsHubPage() {
-  useEffect(() => {
-    document.title =
-      "Simuladores e Ferramentas Financeiras Gratuitas — Axir";
-  }, []);
+  useDocumentMeta({
+    title: "Simuladores e Ferramentas Financeiras Gratuitas — Axir",
+    description:
+      "Simule quitação de dívidas, rebalanceamento de carteira e juros compostos gratuitamente. Cálculos determinísticos no navegador, sem cadastro e sem enviar dados.",
+    canonicalPath: "/ferramentas",
+  });
   return (
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between">
       <ToolsHeader />

@@ -9,7 +9,7 @@ import { classifyError } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { checkPasswordRequirements } from "@/domain/validation";
 import { getPendingSimulation } from "@/domain/share";
-import { BrandLogo } from "@/components/layout";
+import { BrandLogo } from "@/components/layout/brand-logo";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------

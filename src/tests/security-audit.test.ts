@@ -621,8 +621,14 @@ describe("Tarefa 5.5 — Fortalecimento Nativo Android & Privacidade de Sessão"
     expect(appLockTs).toContain("initAppLockListener");
 
     const providersTs = readFileSync(resolve(root, "src/app/providers.tsx"), "utf8");
-    expect(providersTs).toContain("<AppLockOverlay />");
     expect(providersTs).toContain("initAppLockListener()");
+
+    // O overlay biométrico vive no escopo autenticado (não é baixado pela landing).
+    const authenticatedProvidersTs = readFileSync(
+      resolve(root, "src/app/authenticated-providers.tsx"),
+      "utf8",
+    );
+    expect(authenticatedProvidersTs).toContain("<AppLockOverlay />");
   });
 });
 

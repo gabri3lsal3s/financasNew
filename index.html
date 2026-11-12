@@ -3,13 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="description" content="Gestão financeira pessoal, controle de cartões de crédito e motor determinístico de rebalanceamento de carteira. 100% Online First e seguro." />
+    <meta name="description" content="Controle cartões, faturas e dívidas, calcule seu caixa real diário e receba a direção exata do próximo aporte sem vender ativos. Teste 30 dias grátis." />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="author" content="Axir" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F7F9" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1923" />
 
-    <!-- Canonical URL -->
+    <!-- Canonical URL e idioma -->
     <link rel="canonical" href="https://axir.com.br/" />
+    <link rel="alternate" hreflang="pt-BR" href="https://axir.com.br/" />
+    <link rel="alternate" hreflang="x-default" href="https://axir.com.br/" />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="Resumo para agentes de IA" />
+    <link rel="alternate" type="application/json" href="/.well-known/ai-catalog.json" title="Catálogo de recursos para agentes" />
 
     <!-- OpenGraph (Facebook, WhatsApp, LinkedIn, Telegram) -->
     <meta property="og:type" content="website" />
@@ -17,16 +23,20 @@
     <meta property="og:title" content="Axir — Gestão Financeira Inteligente, Cartões e Aportes" />
     <meta property="og:description" content="Controle financeiro pessoal de alta precisão, inteligência de cartões de crédito e motor determinístico de rebalanceamento. 100% Online First e seguro no axir.com.br." />
     <meta property="og:url" content="https://axir.com.br/" />
-    <meta property="og:image" content="/pwa/screenshots/desktop-1280x800.png" />
+    <meta property="og:image" content="https://axir.com.br/pwa/screenshots/desktop-1280x800.png" />
+    <meta property="og:image:secure_url" content="https://axir.com.br/pwa/screenshots/desktop-1280x800.png" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="800" />
+    <meta property="og:image:alt" content="Painel do Axir com caixa real, ritmo diário de gastos e aporte calibrado do mês." />
     <meta property="og:locale" content="pt_BR" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Axir — Gestão Financeira Inteligente, Cartões e Aportes" />
     <meta name="twitter:description" content="Controle financeiro pessoal de alta precisão, inteligência de cartões de crédito e motor determinístico de rebalanceamento. 100% Online First e seguro no axir.com.br." />
-    <meta name="twitter:image" content="/pwa/screenshots/desktop-1280x800.png" />
+    <meta name="twitter:image" content="https://axir.com.br/pwa/screenshots/desktop-1280x800.png" />
+    <meta name="twitter:image:alt" content="Painel do Axir com caixa real, ritmo diário de gastos e aporte calibrado do mês." />
 
     <!-- Schema.org JSON-LD (Rich Snippets: SoftwareApplication, Organization & FAQPage) -->
     <script type="application/ld+json">
@@ -137,11 +147,13 @@
     <meta name="apple-mobile-web-app-title" content="Axir" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fontes não bloqueantes: o preload busca o CSS e o bundle ativa a folha de estilo
+         (o antigo onload inline era bloqueado pela CSP e impedia a aplicação das fontes). -->
     <link
+      id="google-fonts-css"
       rel="preload"
       as="style"
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Sora:wght@700;800&display=swap"
-      onload="this.onload=null;this.rel='stylesheet'"
     />
     <noscript>
       <link
@@ -149,7 +161,7 @@
         href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Sora:wght@700;800&display=swap"
       />
     </noscript>
-    <title>Axir</title>
+    <title>Axir — Gestão Financeira Pessoal, Cartões de Crédito e Aportes</title>
     <script>
       (function() {
         try {

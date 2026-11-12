@@ -13,6 +13,7 @@ import { Badge, Button } from "@/components/ui";
 import { BrandLogo, ThemeToggle } from "@/components/layout";
 import { INSTITUTIONAL_CONFIG } from "@/lib/institutional";
 import { cn } from "@/lib/utils";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 
 export interface LegalPageShellProps {
   /** Identificador da aba/documento legal ativo ('terms' | 'privacy'). */
@@ -50,6 +51,12 @@ export function LegalPageShell({
   children,
 }: LegalPageShellProps) {
   const currentYear = new Date().getFullYear();
+
+  useDocumentMeta({
+    title: `${title} — Axir`,
+    description,
+    canonicalPath: activeTab === "privacy" ? "/privacidade" : "/termos",
+  });
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground selection:bg-primary/20">
@@ -135,7 +142,7 @@ export function LegalPageShell({
               to="/termos"
               aria-current={activeTab === "terms" ? "page" : undefined}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                "flex-1 flex min-h-11 items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 activeTab === "terms"
                   ? "bg-surface text-foreground font-semibold shadow-xs border border-border/80"
                   : "text-muted-foreground hover:text-foreground",
@@ -148,7 +155,7 @@ export function LegalPageShell({
               to="/privacidade"
               aria-current={activeTab === "privacy" ? "page" : undefined}
               className={cn(
-                "flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                "flex-1 flex min-h-11 items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                 activeTab === "privacy"
                   ? "bg-surface text-foreground font-semibold shadow-xs border border-border/80"
                   : "text-muted-foreground hover:text-foreground",

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Navigate, Outlet } from "react-router";
 import { LoadingScreen } from "@/components/layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,7 +9,7 @@ import { useUserAccess } from "@/state";
  * Redireciona usuários em 'pending_approval' para a tela de espera e
  * contas 'suspended' ou 'banned' para a tela de bloqueio.
  */
-export function RequireActiveAccount() {
+export function RequireActiveAccount({ children }: { children?: ReactNode } = {}) {
   const { session, loading: authLoading, mfaRequired, mfaVerified } = useAuth();
   const { isPendingApproval, isSuspended, isBanned, isLoading } = useUserAccess(session?.user?.id);
 
@@ -30,5 +31,5 @@ export function RequireActiveAccount() {
     return <Navigate to="/conta-suspensa" replace />;
   }
 
-  return <Outlet />;
+  return <>{children ?? <Outlet />}</>;
 }

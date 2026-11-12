@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import {
   Flame,
@@ -35,6 +35,7 @@ import {
   type PendingDebtSimulation,
 } from "@/domain/share";
 import { getPublicAppUrl } from "@/services/app-url";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 
 const INITIAL_SAMPLE_DEBTS: SimulatorDebtInput[] = [
   {
@@ -79,10 +80,12 @@ export function DebtSimulatorPage() {
     () => sharedState?.strategy ?? "avalanche",
   );
 
-  useEffect(() => {
-    document.title =
-      "Simulador de Quitação de Dívidas: Avalanche vs Bola de Neve — Axir";
-  }, []);
+  useDocumentMeta({
+    title: "Simulador de Quitação de Dívidas: Avalanche vs Bola de Neve — Axir",
+    description:
+      "Compare Avalanche e Bola de Neve e veja quantos meses e quanto de juros você economiza para quitar dívidas. Simulador gratuito, sem cadastro.",
+    canonicalPath: "/ferramentas/simulador-dividas",
+  });
 
   const comparison = useMemo(() => {
     return compareDebtStrategies(debts, extraBudgetCents);

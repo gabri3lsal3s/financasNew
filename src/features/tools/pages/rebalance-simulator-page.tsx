@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import {
   Plus,
@@ -33,6 +33,7 @@ import {
   type PendingRebalanceSimulation,
 } from "@/domain/share";
 import { getPublicAppUrl } from "@/services/app-url";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 
 interface PresetConfig {
   id: string;
@@ -106,10 +107,12 @@ export function RebalanceSimulatorPage() {
     () => sharedState?.selectedPreset ?? (sharedState ? "custom" : "dividendos"),
   );
 
-  useEffect(() => {
-    document.title =
-      "Simulador de Rebalanceamento Inteligente de Carteira — Axir";
-  }, []);
+  useDocumentMeta({
+    title: "Simulador de Rebalanceamento Inteligente de Carteira — Axir",
+    description:
+      "Calcule a distribuição exata do próximo aporte para reequilibrar sua carteira sem vender ativos nem gerar imposto. Simulador gratuito e determinístico.",
+    canonicalPath: "/ferramentas/rebalanceamento",
+  });
 
   const handleApplyPreset = (presetId: string) => {
     const found = PRESETS.find((p) => p.id === presetId);

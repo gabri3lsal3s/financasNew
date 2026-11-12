@@ -31,7 +31,7 @@ export function HeroEditorial() {
         <div className="flex flex-col items-center text-center">
           {/* Badge de Destaque & Pílulas de Recursos no Topo */}
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-primary transition-all duration-200">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-primary-strong transition-all duration-200">
               <Sparkles className="size-3.5 sm:size-4" aria-hidden="true" />
               <span>Controle Financeiro Real · Faturas, Cobranças e Aportes sem Planilhas</span>
             </div>
@@ -44,7 +44,7 @@ export function HeroEditorial() {
                   e.preventDefault();
                   document.getElementById("financas-compartilhadas")?.scrollIntoView({ behavior: "smooth" });
                 }}
-                className="group focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-pill cursor-pointer"
+                className="group inline-flex min-h-11 items-center focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-pill cursor-pointer"
                 title="Conhecer o Racha de Despesas com Pix"
               >
                 <Badge
@@ -64,7 +64,7 @@ export function HeroEditorial() {
                   e.preventDefault();
                   document.getElementById("financas-compartilhadas")?.scrollIntoView({ behavior: "smooth" });
                 }}
-                className="group focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-pill cursor-pointer"
+                className="group inline-flex min-h-11 items-center focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-pill cursor-pointer"
                 title="Conhecer o Modo Família Multi-Contas"
               >
                 <Badge
@@ -130,7 +130,7 @@ export function HeroEditorial() {
             {isLoggedIn ? (
               <Link
                 to="/configuracoes"
-                className="font-medium text-foreground underline underline-offset-4 hover:text-primary transition-colors"
+                className="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary-strong transition-colors"
               >
                 Gerenciar assinatura nas configurações
               </Link>
@@ -141,7 +141,7 @@ export function HeroEditorial() {
                   e.preventDefault();
                   document.getElementById("precos")?.scrollIntoView({ behavior: "smooth" });
                 }}
-                className="font-medium text-foreground underline underline-offset-4 hover:text-primary transition-colors cursor-pointer"
+                className="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary-strong transition-colors cursor-pointer"
               >
                 Conheça os planos Pro com até 40% de desconto
               </a>

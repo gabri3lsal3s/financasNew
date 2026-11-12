@@ -5,33 +5,10 @@ import { ThemeProvider } from "@/app/theme-provider";
 import { Toaster } from "@/components/ui/toast";
 import { ToastHost } from "@/components/ui/toast-host";
 import { PWAUpdateToast } from "@/components/modules/pwa-update-toast";
-import { NativeUpdateToast } from "@/components/modules/native-update-toast";
+import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 import { getSupabase } from "@/data/client";
 import { resetAppState } from "@/services/auth-cleanup";
-import {
-  syncMerchantLearningFromCloud,
-  syncCardDigitsMappingFromCloud,
-  syncBankCardMappingFromCloud,
-} from "@/services/merchant-learning";
-import { useUserPreferences } from "@/state/queries/use-user-preferences";
-import { syncVisualWithCloud } from "@/hooks/use-visual-customization";
-import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
-import { useDynamicAppIcon } from "@/hooks/use-dynamic-app-icon";
-import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
-import { AppLockOverlay } from "@/app/app-lock-overlay";
-import { AppErrorBoundary } from "@/components/layout";
-import {
-  initAppLockListener,
-  setPrivacyShieldEnabled,
-  syncDueReminderNotifications,
-  syncBankAssistantWithCloud,
-  syncDeviceNotificationsWithCloud,
-  syncMonitoredBanksWithNative,
-  isNativePlatform,
-} from "@/services/native";
-import { useReminders } from "@/state";
-import { useDemoSession } from "@/state/demo-mode";
-import { useAuth } from "@/hooks/use-auth";
+import { initAppLockListener } from "@/services/native/app-lock";
 
 /**
  * Sincroniza o ciclo de vida do TanStack Query e das stores locais
@@ -56,16 +33,12 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       const newUserId = session?.user?.id ?? null;
 
-      // Evento de Logout explícito
       if (event === "SIGNED_OUT") {
         resetAppState(queryClient, null);
       } else if (activeUserIdRef.current !== newUserId) {
-        // Ao transicionar entre usuários ou de visitante (null) para logado:
-        // Purgar cache não autenticado em memória para isolamento total
         resetAppState(queryClient, newUserId);
         void queryClient.invalidateQueries();
       } else if (event === "SIGNED_IN") {
-        // Re-autenticação explícita: invalida todas as queries do app
         void queryClient.invalidateQueries();
       }
 
@@ -81,91 +54,16 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
 }
 
 /**
- * Sincroniza preferências customizadas salvas na nuvem com o estado local do app.
- * Só é executado quando há usuário autenticado ativo para evitar queries não autorizadas.
- */
-function CloudPreferencesSync({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
-  if (!user) return <>{children}</>;
-  return <CloudPreferencesSyncInner>{children}</CloudPreferencesSyncInner>;
-}
-
-function CloudPreferencesSyncInner({ children }: { children: ReactNode }) {
-  const { data: preferences } = useUserPreferences();
-
-  useEffect(() => {
-    if (preferences?.custom_settings) {
-      syncVisualWithCloud(preferences.custom_settings);
-      if (preferences.custom_settings.privacyShieldEnabled !== undefined) {
-        setPrivacyShieldEnabled(preferences.custom_settings.privacyShieldEnabled);
-      }
-      if (preferences.custom_settings.merchantLearning) {
-        syncMerchantLearningFromCloud(preferences.custom_settings.merchantLearning);
-      }
-      if (preferences.custom_settings.cardDigitsMapping) {
-        syncCardDigitsMappingFromCloud(preferences.custom_settings.cardDigitsMapping);
-      }
-      if (preferences.custom_settings.bankCardMapping) {
-        syncBankCardMappingFromCloud(preferences.custom_settings.bankCardMapping);
-      }
-      if (preferences.custom_settings.bankAssistant) {
-        const syncedBankPrefs = syncBankAssistantWithCloud(preferences.custom_settings.bankAssistant);
-        if (isNativePlatform()) {
-          void syncMonitoredBanksWithNative(
-            syncedBankPrefs.passiveCaptureEnabled ? syncedBankPrefs.monitoredBanks : [],
-          );
-        }
-      }
-      if (preferences.custom_settings.deviceNotifications) {
-        syncDeviceNotificationsWithCloud(preferences.custom_settings.deviceNotifications);
-      }
-    }
-  }, [preferences?.custom_settings]);
-
-  return <>{children}</>;
-}
-
-function DynamicBrandSync() {
-  const isPro = useIsPro();
-  useDynamicFavicon(isPro);
-  useDynamicAppIcon(isPro);
-  return null;
-}
-
-/**
- * Sincroniza e despacha lembretes de contas e faturas para o sistema operacional
- * (Android via LocalNotifications ou PWA via Web Notification API) quando autorizado.
- * Só é executado quando há usuário autenticado ativo para evitar queries prematuras.
- */
-function RemindersNotificationSync() {
-  const { user } = useAuth();
-  if (!user) return null;
-  return <RemindersNotificationSyncInner userId={user.id} />;
-}
-
-function RemindersNotificationSyncInner({ userId }: { userId: string }) {
-  const { allItems, preferences, isLoading } = useReminders();
-  const { isDemoActive } = useDemoSession();
-
-  useEffect(() => {
-    // Nunca emite notificações para o sistema operacional em modo de demonstração/tour
-    // nem enquanto as queries de contas estiverem carregando.
-    if (isDemoActive || isLoading) return;
-
-    if (preferences.enabled) {
-      void syncDueReminderNotifications(allItems, userId);
-    }
-  }, [preferences.enabled, allItems, userId, isLoading, isDemoActive]);
-
-  return null;
-}
-
-/**
- * Providers globais. A política de retry materializa a regra Online First
- * (docs/ARCHITECTURE.md §5.1): leituras com retry limitado (1 tentativa com backoff);
- * mutações NUNCA com retry automático (evita dupla submissão — o botão fica em isPending).
- * Calibração anti-storm (alta concorrência): refetchOnWindowFocus desabilitado,
- * refetchOnReconnect "always", staleTime padrão de 60s e gcTime de 10 minutos.
+ * Providers globais mínimos do App Shell público.
+ *
+ * A sincronização de sessão permanece global (segurança/isolamento de cache),
+ * mas tudo que depende de usuário autenticado (preferências em nuvem,
+ * assinatura, lembretes, bloqueio biométrico e ícone dinâmico) vive em
+ * `AuthenticatedProviders`, carregado apenas após o guard de autenticação.
+ * Isso evita que a landing page baixe stores e sincronizações de conta.
+ *
+ * Política de retry Online First (docs/ARCHITECTURE.md §5.1): leituras com
+ * retry limitado; mutações nunca com retry automático.
  */
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -192,27 +90,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthQuerySync>
-        <CloudPreferencesSync>
-          <SubscriptionProvider>
-            <DynamicBrandSync />
-            <RemindersNotificationSync />
-            <ThemeProvider>
-              <Toaster>
-                {/* Toast global de nova versão PWA (autoUpdate) — PWA_GUIDELINES §6 */}
-                <PWAUpdateToast />
-                {/* Toast global de nova versão Android nativa (Cloudflare R2 + APK in-app installer) */}
-                <NativeUpdateToast />
-                {/* Host do bus de toasts (services/toast) — rollbacks otimistas etc. */}
-                <ToastHost />
-                {/* Overlay de bloqueio biométrico do aplicativo */}
-                <AppLockOverlay />
-                <AppErrorBoundary>
-                  {children}
-                </AppErrorBoundary>
-              </Toaster>
-            </ThemeProvider>
-          </SubscriptionProvider>
-        </CloudPreferencesSync>
+        <ThemeProvider>
+          <Toaster>
+            <PWAUpdateToast />
+            <ToastHost />
+            <AppErrorBoundary>{children}</AppErrorBoundary>
+          </Toaster>
+        </ThemeProvider>
       </AuthQuerySync>
     </QueryClientProvider>
   );

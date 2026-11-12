@@ -36,7 +36,16 @@ O Axir é um ecossistema financeiro pessoal 100% Online First projetado com rigo
 | Termos de Uso | https://axir.com.br/termos | Acordo de nível de serviço, direitos CDC e LGPD. |
 | Política de Privacidade | https://axir.com.br/privacidade | Diretrizes de segurança, cookies, criptografia e guarda de dados. |
 
-## 4. Integração para Agentes (WebMCP)
-O Axir disponibiliza seu manifesto de ferramentas e recursos legíveis por máquina em:
-- Manifest WebMCP: https://axir.com.br/ai-catalog.json
-- Well-Known WebMCP: https://axir.com.br/.well-known/ai-catalog.json
+## 4. Integração para Agentes (ARD — Agentic Resource Discovery)
+O Axir publica um catálogo de recursos legíveis por máquina, no formato da especificação Agentic Resource Discovery (ai-catalog 1.0):
+- Resumo do produto: https://axir.com.br/llms.txt
+- Catálogo canônico: https://axir.com.br/.well-known/ai-catalog.json
+- Espelho público: https://axir.com.br/ai-catalog.json
+
+As ferramentas de simulação são páginas públicas e processam todos os valores localmente no navegador, sem autenticação e sem persistência de dados financeiros.
+
+## 5. Limites e Transparência
+- O Axir não executa ordens de investimento, não custodia ativos e não emite recomendação de compra ou venda.
+- Cálculos de rebalanceamento são determinísticos e baseados exclusivamente nas metas informadas pelo usuário.
+- Resultados de simulação são estimativas matemáticas, não garantia de rentabilidade futura.
+- Conteúdo e preços podem ser atualizados; a versão vigente dos termos está em https://axir.com.br/termos.

@@ -1,5 +1,16 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.3.0 (Build 56)** registra a **Auditoria SEO, Performance de Entrada e Navegação Agêntica** (2026-11-12):
+> - **(1) Fronteira Pública x Autenticada**: `RootEntry` decide landing x App Shell por token síncrono; visitantes não montam `useAuth`, prefetch, idle timeout nem listeners nativos. `AuthenticatedRoot`, `RequireAuth`, guards e `PageShell` são carregados sob demanda;
+> - **(2) Providers em Duas Camadas**: `AppProviders` mantém apenas QueryClient/sessão/tema/toasts/ErrorBoundary; preferências em nuvem, assinatura, lembretes, ícone dinâmico e App Lock migram para `AuthenticatedProviders`;
+> - **(3) Preload Controlado**: `build.modulePreload: false` elimina a injeção de todas as dependências de rotas lazy no `index.html`; imports de barrels pesados na landing/auth foram substituídos por imports profundos; JS transferido da landing caiu de ~787 KB para ~465 KB no teste local mobile;
+> - **(4) SEO por Rota**: novo `useDocumentMeta` atualiza title, description, canonical, OpenGraph, Twitter e robots na landing, planos, ferramentas e documentos legais;
+> - **(5) Head Técnico**: título descritivo, robots indexável, canonical absoluto, hreflang pt-BR/x-default, OG/Twitter com URLs absolutas e `alt`; fontes não bloqueantes ativadas pelo bundle (o `onload` inline era bloqueado pela CSP);
+> - **(6) Navegação Agêntica**: `ai-catalog.json` e `.well-known/ai-catalog.json` reescritos no schema ARD 1.0 (`specVersion`, `host`, `entries`, URNs, `type`, `representativeQueries`) e validados contra o JSON Schema oficial; `llms.txt`/`llms-full.txt` corrigidos e ampliados;
+> - **(7) Sitemap/Robots**: sitemap apenas com URLs canônicas; robots bloqueia autenticação, checkout e links públicos com token;
+> - **(8) Acessibilidade**: alvos de toque de 48px no menu mobile, 44px nas pílulas da hero e contraste `text-primary-strong` em estados ativos;
+> - **(9) Quality Gates**: `tsc -b`, ESLint, suíte Vitest completa, E2E Playwright, build Vite/PWA e validação de schema ARD.
+>
 > **v3.2.0 (Build 56)** registra a **Experiência Adaptativa de Tema, Distribuição Unificada do App, Consolidação de Configurações e Descoberta por IA** (2026-11-12):
 > - **(1) Tema Programado por Horário e Preferência de Modo Escuro**:
 >   - Novo motor puro `src/domain/theme/theme-resolver.ts` (light/dark/oled/system/schedule) com `isDaytime`, janelas invertidas e parsing seguro de `HH:mm`, coberto por testes colocalizados;
