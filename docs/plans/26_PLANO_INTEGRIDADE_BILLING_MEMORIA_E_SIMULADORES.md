@@ -126,11 +126,21 @@ Implemente troca mensal ↔ anual com efeito exclusivamente na próxima renovaç
 Ao confirmar, grave pending_plan_id e pending_plan_effective_at = current_period_end,
 mostre a data e permita cancelar a mudança. Não altere o gateway nem o tier no ato.
 Um job idempotente aplica a mudança na data efetiva; se falhar, mantém o plano antigo,
-registra auditoria e notifica. Implemente renovação acumulativa apenas para plano mensal:
-o usuário confirma a compra de +365 dias por R$ 191,88 (equivalente a R$ 15,99/mês,
-20% abaixo do mensal e acima do anual), paga via Pix ou cartão avulso, e os 365 dias são
-somados a max(current_period_end, hoje), sem alterar o ciclo mensal. Bloqueie se past_due.
-Inclua confirmação, recibo, idempotência, auditoria e testes de soma de datas.
+registra auditoria e notifica. Implemente renovação acumulativa apenas para plano mensal
+ativo (não trial, não anual, não lifetime, não read_only, não past_due):
+preço fechado de R$ 191,88 por +365 dias (12 × R$ 15,99; 20% abaixo do mensal e
+R$ 48,00 acima do anual), pago à vista via Pix ou cartão avulso, sem parcelamento e sem
+criar nova recorrência. Aplique new_period_end = max(current_period_end, hoje) + 365 dias
+em UTC, sem alterar tier, plan_id, starts_at ou trial_ends_at. Permita apenas uma
+acumulativa ativa por ciclo: bloqueie se houver billing_intent paga cujo
+metadata.new_period_end coincida com o current_period_end vigente; como proteção
+secundária, bloqueie também se current_period_end > hoje + 365 dias.
+Bloqueie se houver pending_plan_id; se cancel_at_period_end, permita somente com aviso
+explícito de reativação. Grave billing_intent com metadata.previous_period_end,
+idempotência por payment_id e webhook duplicado sem soma dupla. Reembolso CDC em 7 dias
+reverte a extensão; após 7 dias, mantém acesso até o novo vencimento. Confirmação deve
+mostrar valor, +365 dias, vencimento anterior e novo vencimento. Inclua recibo,
+auditoria e testes de soma de datas, empilhamento, reembolso e pagamento duplicado.
 ```
 
 ### Prompt 4 — Captura de Pix pela área de transferência
@@ -235,14 +245,42 @@ Audite todas as telas com loading e elimine spinners de conteúdo.
 
 ### 4.4 Renovação acumulativa mensal
 
-- Exclusiva de assinantes **Pro Mensal** ativos, não `past_due`.
-- Preço recomendado: **R$ 191,88 por +365 dias** (equivalente a R$ 15,99/mês).
-  - Mensal cheio em 12 meses: R$ 239,88.
-  - Anual: R$ 143,88.
-  - Acumulativa: R$ 191,88 — desconto de R$ 48,00 (20%) contra o mensal, sem canibalizar o anual.
-- A compra soma 365 dias a `max(current_period_end, hoje)`, mantendo o ciclo mensal para o futuro.
-- Pagamento avulso via Pix ou cartão; não cria nova recorrência.
-- Confirmação obrigatória com valor, data de início e nova data de vencimento.
+#### 4.4.1 Preço e posicionamento
+
+**Preço recomendado e fechado para a implementação: R$ 191,88 por +365 dias.**
+
+Esse valor é exatamente `12 × R$ 15,99` e ocupa o ponto médio entre o anual e o mensal:
+
+| Modalidade | Valor | Equivalente mensal | Economia vs. 12 meses de mensal | Posição |
+|---|---:|---:|---:|---|
+| Mensal recorrente | R$ 19,99/mês | R$ 19,99 | — | Preço cheio |
+| **Acumulativa mensal** | **R$ 191,88/ano** | **R$ 15,99** | **R$ 48,00 (20,0%)** | **Intermediária** |
+| Anual | R$ 143,88/ano | R$ 11,99 | R$ 96,00 (40,0%) | Melhor preço |
+
+Racional:
+
+- `12 × R$ 19,99 = R$ 239,88`.
+- `12 × R$ 15,99 = R$ 191,88` — desconto efetivo de 20,008%, exibido como 20%.
+- `R$ 191,88 − R$ 143,88 = R$ 48,00` — a acumulativa custa exatamente R$ 48,00 a mais que o anual.
+- `R$ 239,88 − R$ 191,88 = R$ 48,00` — e economiza exatamente R$ 48,00 contra o mensal.
+- O anual continua sendo a melhor oferta (40% OFF); a acumulativa não canibaliza o anual e reduz a fricção de quem não quer trocar de ciclo.
+- Não usar R$ 15,00 nem R$ 16,00: R$ 15,00 produziria R$ 180,00 (25% OFF), apenas R$ 36,12 acima do anual, comprimindo o posicionamento intermediário; R$ 16,00 produziria R$ 192,00 (19,97% OFF), praticamente o mesmo desconto, mas sem o efeito psicológico de "abaixo de R$ 16". R$ 15,99 preserva a lógica de preço do produto.
+
+#### 4.4.2 Regras normativas
+
+1. **Elegibilidade:** apenas `billing_phase = active`, `plan = monthly`, `tier = pro_monthly` e `status = active`. Bloquear trial, anual, lifetime, `read_only`, `past_due` e `trial_expired`.
+2. **Cancelamento agendado:** permitir a compra, mas com confirmação explícita de que a renovação automática será reativada (`cancel_at_period_end = false`). Se o produto preferir não misturar retenção com renovação, bloquear até o usuário reativar o plano; a recomendação é permitir com aviso claro.
+3. **Troca de plano pendente:** bloquear enquanto existir `pending_plan_id` mensal → anual. O usuário deve cancelar a migração pendente antes de comprar a acumulativa, evitando duas extensões conflitantes. Uma acumulativa já comprada não impede pedir anual depois; a troca passa a valer no novo `current_period_end`.
+4. **Empilhamento:** permitir **uma única acumulativa ativa por ciclo**. O bloqueio não pode ser apenas por data, porque após um dia o vencimento já estaria a menos de 365 dias e uma segunda compra passaria. Verificar a última `billing_intent` de `cumulative_renewal` paga cujo `metadata.new_period_end` coincide com o `current_period_end` vigente; se existir e o período estiver ativo, bloquear e orientar o anual. A compra volta a ser elegível somente após a renovação mensal normal criar um novo ciclo. Como proteção secundária, bloquear também se `current_period_end > now + 365 dias`.
+5. **Efeito temporal:** `new_period_end = max(current_period_end, now) + 365 dias`, usando adição de dias (não `setFullYear`), em UTC, preservando a hora original. Não alterar `trial_ends_at`, `starts_at`, `plan_id`, `tier` nem o ciclo mensal.
+6. **Cobrança:** pagamento avulso de R$ 191,88 via Pix ou cartão, sem parcelamento e sem criar nova assinatura recorrente no Asaas. A recorrência mensal existente permanece intacta, apenas com a próxima cobrança deslocada para o novo vencimento.
+7. **Idempotência:** cada compra gera uma `billing_intent` com `kind = cumulative_renewal`, `external_reference` única, `metadata.previous_period_end` e `metadata.new_period_end`. Webhook duplicado não soma duas vezes. Pagamento confirmado após expiração local do Pix ainda é honrado pelo `payment_id`. A própria intenção paga é a fonte de verdade para o bloqueio de empilhamento.
+8. **Reembolso CDC:** dentro de 7 dias da compra, reembolso integral e reversão da extensão para `metadata.previous_period_end`. Após 7 dias, sem reembolso; o acesso permanece até o novo vencimento e o cancelamento apenas impede a renovação seguinte.
+9. **Falha de pagamento:** não estender o período. Pix expirado pode ser regenerado; cartão recusado permite nova tentativa. Nunca conceder dias antes da confirmação.
+10. **Transparência:** a confirmação deve mostrar valor, “+365 dias”, data de início da extensão, vencimento anterior e novo vencimento. Exibir “R$ 191,88 à vista” e “equivale a R$ 15,99/mês”; não usar “12x”, pois não é parcelamento.
+11. **Recibo e auditoria:** descrever “Renovação acumulativa +365 dias” no histórico, registrar `audit_events` e manter o `billing_intent` para conciliação e estorno.
+12. **Preço:** o valor é uma constante de domínio (`CUMULATIVE_RENEWAL_CONFIG`) e pode ser exposto no catálogo administrativo. Nunca hardcodar na tela. Compras já confirmadas mantêm o preço pago; mudanças futuras de tabela não recalculam dias já comprados.
+13. **Contabilidade:** receita prepaga de 12 meses; se o regime for de competência, deferir mensalmente. Isso é nota operacional, não regra de UI.
 
 ### 4.5 Modo Família
 
@@ -321,7 +359,7 @@ Mensagens canônicas (sem emojis):
 - Trial expirado: “Seu teste terminou em 10/11/2026. A cobrança de R$ 19,99 será feita hoje no cartão cadastrado.”
 - `past_due`: “Não conseguimos cobrar sua renovação. Atualize o cartão até 13/11/2026 para manter o acesso Pro.”
 - Troca agendada: “Sua migração para o Pro Anual foi agendada para 12/12/2026. Até lá, seu plano mensal continua ativo.”
-- Acumulativa: “Renovação de +365 dias confirmada. Seu novo vencimento é 12/12/2027.”
+- Acumulativa: “Renovação de +365 dias confirmada por R$ 191,88. Seu novo vencimento é 12/12/2027. Seu plano mensal continua ativo.”
 
 ---
 
@@ -396,6 +434,8 @@ Alinhar `public.plans` ao domínio:
 - `trial`: `0`, sem intervalo.
 - `lifetime`: `0`, sem intervalo.
 - Adicionar `monthly_equivalent_cents` e `cumulative_renewal_price_cents` se o admin for editar preços pelo banco; caso contrário, manter a fonte única em `PLAN_CONFIGS` e apenas corrigir os valores.
+- Criar `CUMULATIVE_RENEWAL_CONFIG` em `src/domain/subscription/cumulative-renewal.ts` com `priceCents: 19188`, `months: 12`, `days: 365`, `monthlyEquivalentCents: 1599`, `discountVsMonthlyPercentage: 20` e `maxActivePurchases: 1`. A UI e o Edge Function devem importar/espelhar esse contrato, nunca repetir o valor na tela.
+- Exibir a decomposição: `12 × 1599 = 19188`, economia de `4800` contra 12 meses de mensal e diferença de `4800` para o anual.
 
 ### 6.4 RPCs e jobs
 
@@ -480,7 +520,7 @@ Regras de teste:
 - timezone `America/Sao_Paulo`;
 - `past_due` não reinicia trial;
 - `canceled_until_period_end` não cobra antes do fim;
-- acumulativa soma 365 dias a partir do maior valor.
+- acumulativa soma 365 dias a partir do maior valor, bloqueia empilhamento e reverte no CDC.
 
 **Portão QG-1:** testes de domínio cobrindo 100% dos novos branches; zero `any`; zero import de UI/Supabase.
 
@@ -564,7 +604,7 @@ Etapas:
 5. `PAYMENT_OVERDUE`: `past_due`, manter grace de 3 dias, notificar e tentar retry.
 6. `SUBSCRIPTION_DELETED`: `cancel_at_period_end`, não cortar acesso imediatamente.
 7. `PAYMENT_REFUNDED`: `read_only` imediato, registrar auditoria.
-8. Pagamento de renovação acumulativa: somar +365 dias, sem mudar tier.
+8. Pagamento de renovação acumulativa: somar +365 dias uma única vez por `billing_intent`, sem mudar tier; gravar `previous_period_end`; reembolso CDC reverte para esse valor; duplicata não soma novamente.
 9. Criar `billing_notify` (Edge Function) e cron de lembretes.
 10. Criar `billing-reconcile` diário.
 
@@ -600,10 +640,13 @@ Etapas:
    - botão “Cancelar mudança”;
    - nenhum upgrade imediato.
 4. Renovação acumulativa:
-   - card apenas para mensal;
+   - card apenas para mensal ativo; bloquear trial, anual, lifetime, read_only e past_due;
    - valor R$ 191,88 e equivalente R$ 15,99/mês;
-   - confirmação com nova data de vencimento;
-   - checkout avulso (Pix/cartão), sem recorrência.
+   - explicar que são +365 dias após o vencimento atual, sem trocar o ciclo mensal;
+   - confirmação com vencimento anterior, novo vencimento e aviso de reativação se `cancel_at_period_end`;
+   - bloquear se houver `pending_plan_id`, se já houver acumulativa ativa no ciclo (`billing_intent` paga com `new_period_end = current_period_end`) ou se `current_period_end > hoje + 365 dias`;
+   - checkout avulso (Pix/cartão), sem parcelamento e sem recorrência;
+   - recibo “Renovação acumulativa +365 dias” e estorno CDC revertendo `metadata.previous_period_end`.
 5. Atualizar textos de cancelamento/garantia para usar `starts_at` real.
 6. Atualizar `PLAN_LABELS` para consumir `PLAN_CONFIGS`; remover preços hardcoded.
 
@@ -749,8 +792,8 @@ Etapas:
 - `billing-phase.test.ts`: 8 fases, limites de data, timezone, ano bissexto.
 - `charge-schedule.test.ts`: trial 0/1/30 dias, expirado, pago, null.
 - `plan-change.test.ts`: mensal→anual, anual→mensal, cancelamento, data efetiva.
-- `cumulative-renewal.test.ts`: soma 365, período vigente, período expirado, past_due.
-- `plans.test.ts`: preços 1999/14388/19188, economia, arredondamento.
+- `cumulative-renewal.test.ts`: preço 19188 e equivalente 1599; soma 365 em UTC; período vigente e expirado; bloqueio em trial/anual/lifetime/past_due/read_only; `cancel_at_period_end`; `pending_plan_id`; bloqueio de empilhamento por intenção paga no ciclo; reembolso CDC revertendo `previous_period_end`; webhook duplicado.
+- `plans.test.ts`: preços 1999/14388/19188, economia de R$ 48,00 em cada lado, arredondamento e ausência de hardcode na UI.
 - `pix-clipboard.test.ts`: BR Code, link, comprovante, confiança, falso positivo.
 - `clipboard.test.ts`: permissão, contexto inseguro, vazio.
 - `calculator` existente: regressão de colagem.
@@ -784,7 +827,10 @@ Executar a matriz da Fase 3 e mais:
 - reembolso CDC;
 - cancelamento após 7 dias;
 - troca de plano no dia da renovação;
-- renovação acumulativa com pagamento duplicado.
+- renovação acumulativa com pagamento duplicado;
+- renovação acumulativa com troca de plano pendente;
+- renovação acumulativa com Pix confirmado após expiração local;
+- renovação acumulativa com reembolso CDC e reversão exata do vencimento.
 
 ---
 
@@ -854,7 +900,7 @@ Critérios de abortar:
 - [ ] Trial, agendamento, expiração, past_due e troca de plano cobertos por testes.
 - [ ] Pix nunca gera QR quando não há valor a pagar hoje.
 - [ ] Troca mensal ↔ anual só na renovação, com confirmação e cancelamento.
-- [ ] Renovação acumulativa mensal com R$ 191,88 e +365 dias.
+- [ ] Renovação acumulativa mensal com R$ 191,88, +365 dias, uma compra ativa, bloqueios de elegibilidade, reembolso CDC e idempotência validados.
 - [ ] Clipboard com fallback e opt-in; calculadora corrigida.
 - [ ] Simuladores sem truncamento monetário e sem overflow em 320px.
 - [ ] “Modo Família” padronizado; `/familia` preservado.
@@ -880,7 +926,7 @@ Critérios de abortar:
 Decisões que exigem confirmação do fundador antes da Fase 3:
 
 1. Cobrar somente após confirmação de e-mail ou permitir cobrança antes com acesso limitado? **Recomendação: confirmar antes.**
-2. Preço da acumulativa: R$ 191,88 (R$ 15,99/mês). Confirmar.
+2. Preço da acumulativa: **R$ 191,88 (R$ 15,99/mês), recomendação fechada neste plano**. Validar apenas a nota contábil de receita diferida com o contador; não reabrir para R$ 15,00/R$ 16,00 sem análise de canibalização do anual.
 3. Pix no trial: bloquear totalmente ou permitir “pagar agora e encerrar o teste”? **Recomendação: bloquear por padrão; ação explícita opcional.**
 4. Canal de e-mail: Resend API (nova chave) ou apenas in-app + Telegram nesta fase? **Recomendação: in-app obrigatório; e-mail na mesma fase se a chave existir.**
 
