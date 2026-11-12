@@ -1,5 +1,14 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.4.0 (Planejamento)** registra o **Plano de Integridade de Billing, Memória de Lançamentos e Simuladores** (2026-11-12), ainda **não implementado**:
+> - **Plano canônico:** [`docs/plans/26_PLANO_INTEGRIDADE_BILLING_MEMORIA_E_SIMULADORES.md`](../plans/26_PLANO_INTEGRIDADE_BILLING_MEMORIA_E_SIMULADORES.md);
+> - **Billing:** máquina de estados única (trial ativo, trial com cobrança agendada, expirado, ativo, inadimplente, cancelamento agendado e somente-leitura), autoridade de datas no servidor, intenções de cobrança idempotentes, troca mensal ↔ anual apenas na renovação e renovação acumulativa mensal de +365 dias por R$ 191,88;
+> - **Pix:** QR Code somente quando há valor a pagar hoje; durante o trial, apenas agendamento no cartão;
+> - **Memória:** parser de clipboard para BR Code, links Pix e comprovantes, reutilizando `parsePixEMVPayload`, `parsePixShareText`, `parseUniversalReceipt` e a memória de estabelecimentos; correção da calculadora com fallback manual;
+> - **Simuladores:** simplificação do card da landing, fim do truncamento monetário, gráfico responsivo e acessível, e evolução da página pública de rebalanceamento;
+> - **Modo Família:** padronização do nome, preservação de `/familia` e permanência em Estratégia & Análise;
+> - **Skeletons:** substituição de spinners de conteúdo pelos compostos `SkeletonKpi`, `SkeletonChart`, `SkeletonList` e `SkeletonTable`.
+>
 > **v3.3.0 (Build 56)** registra a **Auditoria SEO, Performance de Entrada e Navegação Agêntica** (2026-11-12):
 > - **(1) Fronteira Pública x Autenticada**: `RootEntry` decide landing x App Shell por token síncrono; visitantes não montam `useAuth`, prefetch, idle timeout nem listeners nativos. `AuthenticatedRoot`, `RequireAuth`, guards e `PageShell` são carregados sob demanda;
 > - **(2) Providers em Duas Camadas**: `AppProviders` mantém apenas QueryClient/sessão/tema/toasts/ErrorBoundary; preferências em nuvem, assinatura, lembretes, ícone dinâmico e App Lock migram para `AuthenticatedProviders`;
