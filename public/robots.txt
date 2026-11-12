@@ -7,6 +7,10 @@ Allow: /termos
 Allow: /privacidade
 Allow: /entrar
 Allow: /cadastrar
+Allow: /llms.txt
+Allow: /llms-full.txt
+Allow: /ai-catalog.json
+Allow: /.well-known/ai-catalog.json
 Disallow: /admin
 Disallow: /admin/*
 Disallow: /configuracoes

@@ -183,7 +183,7 @@ export function PlatformComparison() {
             </Card>
           </ScrollReveal>
 
-          {/* Card 3: Android App Pro (Beta Opcional) */}
+          {/* Card 3: Android App Pro Nativo */}
           <ScrollReveal delay={150}>
             <Card className="h-full border-border/80 bg-surface/90 shadow-xs p-5 sm:p-6 rounded-2xl flex flex-col justify-between space-y-4">
               <div className="space-y-3">
@@ -191,8 +191,8 @@ export function PlatformComparison() {
                   <div className="flex size-10 items-center justify-center rounded-xl bg-background border border-border/60 text-muted-foreground">
                     <Zap className="size-5" aria-hidden="true" />
                   </div>
-                  <Badge variant="warning" size="xs" className="font-semibold">
-                    Beta Opcional para Android
+                  <Badge variant="default" size="xs" className="font-semibold">
+                    Nativo Pro
                   </Badge>
                 </div>
                 <div>
@@ -212,7 +212,7 @@ export function PlatformComparison() {
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Biometria física, atalhos rápidos de launcher e Tile na barra de status</span>
+                    <span>Atalhos rápidos de launcher, Tile na barra de status e atualizações diretas</span>
                   </div>
                 </div>
               </div>
@@ -230,7 +230,7 @@ export function PlatformComparison() {
                   <th scope="col" className="p-3.5 sm:p-4">Funcionalidade</th>
                   <th scope="col" className="p-3.5 sm:p-4 text-center">Web Desktop</th>
                   <th scope="col" className="p-3.5 sm:p-4 text-center bg-primary/5">Mobile PWA (Oficial)</th>
-                  <th scope="col" className="p-3.5 sm:p-4 text-center">Android App Pro (Beta)</th>
+                  <th scope="col" className="p-3.5 sm:p-4 text-center">Android App Pro Nativo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40 text-muted-foreground">

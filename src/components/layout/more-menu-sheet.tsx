@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Compass, HelpCircle, Smartphone } from "lucide-react";
+import { Compass, Download, HelpCircle } from "lucide-react";
 import { navGroups, filterNavItems, navItems } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
-import { InstallAppButton } from "@/components/modules/install-app-button";
+import { AppDownloadModal } from "@/components/modules/app-download-modal";
 import { DemoTrackSelectModal } from "@/components/modules/demo-track-select-modal";
 import { HelpModal } from "@/components/modules/help-modal";
-import { isAndroidDevice, isNativePlatform } from "@/services/native/platform";
+import { isIOSDevice, isNativePlatform, isStandaloneDisplay } from "@/services/native/platform";
+import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { useFamilyMode, useTripMode, useReminders, useUserAccess } from "@/state";
 import { Badge } from "@/components/ui/badge";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
@@ -19,6 +20,16 @@ export interface MoreMenuSheetProps {
 export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
   const [demoSelectOpen, setDemoSelectOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
+  const { isInstalled } = usePWAInstall();
+  const isNative = isNativePlatform();
+  const isPwaActive = isInstalled || isStandaloneDisplay();
+  const isIOS = isIOSDevice();
+
+  // No APK nativo, não deve aparecer a opção de download de aplicativo.
+  // No iOS, se já estiver no PWA, também não há instaladores disponíveis (iOS não executa APK).
+  const showDownloadAppOption = !isNative && !(isIOS && isPwaActive);
+
   const { totalCount, urgentCount } = useReminders();
   const { isAdmin, hasFeature } = useUserAccess();
   const { isFamilyModeEnabled } = useFamilyMode();
@@ -148,28 +159,31 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
               </div>
             </button>
 
-            <InstallAppButton />
-
-            {!isNativePlatform() && isAndroidDevice() && (
-              <Link
-                to="/configuracoes?tab=devices"
-                onClick={() => onOpenChange(false)}
-                className="flex w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover shadow-xs"
+            {showDownloadAppOption && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenChange(false);
+                  setDownloadModalOpen(true);
+                }}
+                className="flex w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover cursor-pointer shadow-xs"
               >
                 <div className="flex items-center gap-3">
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-muted-foreground">
-                    <Smartphone className="size-4" aria-hidden="true" />
+                    <Download className="size-4" aria-hidden="true" />
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-foreground">
-                      Baixar App Android Pro (APK)
+                      Baixar aplicativo
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Leitura automática de comprovantes Pix e cartões
+                      {isPwaActive
+                        ? "Baixe o APK Android Pro com leitura de notificações"
+                        : "Instale o App Web (PWA) ou baixe o APK Android Pro"}
                     </p>
                   </div>
                 </div>
-              </Link>
+              </button>
             )}
           </div>
         </section>
@@ -185,6 +199,11 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
     <DemoTrackSelectModal
       open={demoSelectOpen}
       onOpenChange={setDemoSelectOpen}
+    />
+
+    <AppDownloadModal
+      open={downloadModalOpen}
+      onOpenChange={setDownloadModalOpen}
     />
   </>
   );

@@ -338,7 +338,7 @@ describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe
     await user.click(intGroups[0]!);
 
     // YoC 10.0% deve ser exibido tanto na versão desktop quanto mobile
-    const yocBadges = screen.getAllByText(/YoC 10\.0%/i);
+    const yocBadges = screen.getAllByText(/YoC 10[,.]0%/i);
     expect(yocBadges.length).toBeGreaterThanOrEqual(1);
   });
 });

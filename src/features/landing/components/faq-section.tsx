@@ -15,54 +15,34 @@ const faqs: FaqItem[] = [
       "Não. Você cria sua conta gratuitamente e tem 30 dias de Acesso Pro Total sem precisar inserir nenhum dado de cartão de crédito. Se optar por não assinar após o período, nenhuma cobrança é efetuada.",
   },
   {
-    question: "O que acontece após o término dos 30 dias de teste?",
+    question: "O que acontece após o término dos 30 dias de teste gratuito?",
     answer:
-      "Você não perde absolutamente nada. Seus saldos, cartões, despesas e faturas continuam salvos e disponíveis para consulta a qualquer momento em modo somente-leitura. Para adicionar novos lançamentos e continuar rebalanceando seus aportes, basta ativar o Plano Pro quando quiser.",
+      "Você não perde absolutamente nada. Seus saldos, cartões, dívidas e faturas continuam salvos e disponíveis para consulta permanente no Modo Somente-Leitura. Para adicionar novos lançamentos e continuar rebalanceando seus aportes, basta ativar o Plano Pro quando quiser.",
   },
   {
-    question: "Como funciona o rebalanceamento de carteira de investimentos?",
+    question: "Como funciona o rebalanceamento de carteira de investimentos sem venda de ativos?",
     answer:
-      "Você define suas metas percentuais ideais para cada classe de ativos (ex: 35% Ações, 25% FIIs, 30% Renda Fixa, 10% Internacional). Quando você for realizar um novo aporte financeiro, o motor algorítmico calcula exatamente para onde direcionar o valor para comprar na baixa e equilibrar a carteira sem vender ativos.",
+      "Você define suas metas percentuais ideais para cada classe de ativos (ex: Renda Fixa, Ações, FIIs, Internacional). Quando você for realizar um novo aporte financeiro, o motor determinístico calcula exatamente para onde direcionar o valor para comprar ativos defasados e equilibrar a carteira sem girar patrimônio e sem gerar DARF desnecessário.",
   },
   {
     question: "Meus dados financeiros estão realmente seguros?",
     answer:
-      "Sim. Utilizamos isolamento criptográfico por usuário (Row Level Security no PostgreSQL). Nenhuma informação sua é vendida a terceiros, compartilhada com bancos ou utilizada para anúncios. Você também pode exportar todos os seus dados em Excel ou fazer backup a qualquer momento.",
+      "Sim. Seus dados contam com isolamento criptográfico por usuário (Row Level Security no PostgreSQL) e o Axir não solicita senhas bancárias nem vende informações a terceiros. Além disso, você conta com o Privacy Shield para ocultar valores na tela com 1 clique e pode exportar seu Dossiê Executivo completo em Excel (.xlsx) a qualquer momento.",
   },
   {
-    question: "Como funciona a projeção de patrimônio e liberdade financeira?",
+    question: "Funciona no iPhone e no Android como app nativo?",
     answer:
-      "O aplicativo utiliza fórmulas determinísticas de juros compostos baseadas na sua taxa de poupança mensal e nos seus aportes reais na carteira de investimentos para estimar o crescimento do seu patrimônio ao longo dos anos e projetar sua autonomia financeira.",
-  },
-  {
-    question: "Posso cancelar minha assinatura quando quiser?",
-    answer:
-      "Sim, com 1 clique direto no seu painel de configurações. Sem pegadinhas, taxas ocultas ou ligações. Você continuará tendo acesso completo até o último dia do período já contratado.",
-  },
-  {
-    question: "Preciso baixar algum APK no meu celular para usar?",
-    answer:
-      "Não. O produto comercial oficial do Axir é 100% web e opera como PWA (Progressive Web App). Você pode acessar imediatamente de qualquer navegador no iPhone, Android, Mac ou Windows e fixá-lo na tela inicial em 1 toque, sem precisar baixar nenhum arquivo .apk e sem ocupar o armazenamento do aparelho. O APK Android é apenas um complemento beta opcional para quem deseja biometria física nativa e escudo de privacidade.",
-  },
-  {
-    question: "O aplicativo funciona no celular como um app nativo?",
-    answer:
-      "Sim. O Axir opera com carregamento instantâneo e interface em tela cheia via PWA universal no iPhone e Android. Além disso, para usuários de Android que preferem um instalador dedicado, disponibilizamos o Aplicativo Android Pro Beta opcional (.apk) com biometria física e atalhos de launcher.",
-  },
-  {
-    question: "Por que o Aplicativo Android Pro é baixado pelo site e não pela Google Play Store?",
-    answer:
-      "Distribuir diretamente pelo nosso servidor seguro nos permite duas vantagens fundamentais: repassar a economia das taxas abusivas de 30% das lojas para o valor da sua assinatura e manter um ciclo de melhorias contínuas. O APK é assinado criptograficamente e recebe atualizações automáticas diretamente dentro do aplicativo, sem precisar reinstalar.",
-  },
-  {
-    question: "Tenho iPhone, consigo utilizar normalmente?",
-    answer:
-      "Sim, perfeitamente. No iPhone, você utiliza a versão PWA moderna (adicionada à tela inicial pelo Safari). Você terá acesso a 100% dos motores de cálculo, orçamentos, carteira de investimentos e relatórios executivos. Para registrar transações em segundos sem digitação manual, o Axir conta com o Leitor Inteligente de Pix e Comprovantes: basta copiar o código Pix Copia e Cola ou o texto do comprovante do seu banco e colar no app para aprovar em 1 toque.",
+      "Sim. No iPhone e Android, o Axir opera com carregamento instantâneo e interface em tela cheia via PWA universal (adicionado à tela inicial em 1 toque sem ocupar memória). Para usuários de Android que desejam a experiência máxima de performance, disponibilizamos o Android App Pro Nativo oficial com biometria física, atalhos de launcher e escudo anti-captura FLAG_SECURE.",
   },
   {
     question: "Como funciona o Modo Viagem com amigos que não têm o aplicativo?",
     answer:
-      "Funciona sem nenhum atrito. Ao criar uma viagem em grupo, o Axir gera um link público seguro (com senha opcional). Seus amigos abrem a página pelo navegador do celular, conferem o livro-razão em tempo real e podem lançar os gastos que pagaram. No final da viagem, o algoritmo calcula o menor número possível de transferências Pix para zerar todos os saldos, sem que seus amigos precisem criar conta ou baixar qualquer aplicativo.",
+      "Funciona com zero atrito. Ao criar uma viagem em grupo, o Axir gera um link público seguro com senha opcional. Seus amigos abrem a página pelo navegador do celular, conferem o livro-razão em tempo real e lançam os gastos que pagaram — sem criar conta e sem baixar qualquer app. No fim, o algoritmo calcula o menor número de transferências Pix para zerar todos os saldos.",
+  },
+  {
+    question: "Posso cancelar minha assinatura quando quiser?",
+    answer:
+      "Sim, com 1 clique direto no seu painel de configurações. Sem burocracia, taxas ocultas ou fidelidade. Você continuará tendo acesso completo até o último dia do período já contratado.",
   },
 ];
 

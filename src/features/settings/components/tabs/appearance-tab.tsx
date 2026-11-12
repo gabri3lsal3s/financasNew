@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { useTheme } from "@/app/theme-provider";
-import type { ThemePreference } from "@/app/theme-provider";
+import type {
+  ThemePreference,
+  DarkThemeVariant,
+  ThemeScheduleConfig,
+} from "@/app/theme-provider";
+import { DEFAULT_THEME_SCHEDULE } from "@/domain/theme";
 import {
   useVisualCustomization,
   type AccentTheme,
@@ -18,7 +23,15 @@ import { VisualIdentityCard } from "./visual-identity-card";
 import { InterfaceShortcutsCard } from "./interface-shortcuts-card";
 
 export function AppearanceTab() {
-  const { preference: themePref, setPreference: setThemePref } = useTheme();
+  const {
+    preference: themePref,
+    setPreference: setThemePref,
+    darkThemeVariant,
+    setDarkThemeVariant,
+    scheduleConfig,
+    setScheduleConfig,
+  } = useTheme();
+
   const visual = useVisualCustomization();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
@@ -57,10 +70,42 @@ export function AppearanceTab() {
   const handleSelectTheme = (id: ThemePreference, label: string) => {
     triggerSensory("selection");
     setThemePref(id);
+    updateCustomSettingsMutation.mutate({
+      themePreference: id,
+    });
     pushToast({
       title: "Preferências salvas",
       description: `Tema alterado para ${label}.`,
       duration: 2200,
+    });
+  };
+
+  const handleSelectDarkThemeVariant = (variant: DarkThemeVariant, label: string) => {
+    triggerSensory("selection");
+    setDarkThemeVariant(variant);
+    updateCustomSettingsMutation.mutate({
+      darkThemeVariant: variant,
+    });
+    pushToast({
+      title: "Preferências salvas",
+      description: `Tema escuro preferido alterado para ${label}.`,
+      duration: 2200,
+    });
+  };
+
+  const handleUpdateScheduleConfig = (patch: Partial<ThemeScheduleConfig>) => {
+    triggerSensory("selection");
+    setScheduleConfig(patch);
+    updateCustomSettingsMutation.mutate({
+      themeSchedule: {
+        ...scheduleConfig,
+        ...patch,
+      },
+    });
+    pushToast({
+      title: "Horário atualizado",
+      description: "Programação de tema atualizada com sucesso.",
+      duration: 2000,
     });
   };
 
@@ -97,6 +142,8 @@ export function AppearanceTab() {
     triggerSensory("action");
     handleSelectPreset("dynamic");
     handleSelectTheme("system", "Automático");
+    handleSelectDarkThemeVariant("dark", "Escuro (Abissal Teal)");
+    handleUpdateScheduleConfig(DEFAULT_THEME_SCHEDULE);
     handleSelectAccent("teal", "Teal Vital (Oficial)");
     updateCustomSettingsMutation.mutate({
       headerButtons: {
@@ -105,6 +152,9 @@ export function AppearanceTab() {
         themeToggle: false,
         privacyToggle: false,
       },
+      themePreference: "system",
+      darkThemeVariant: "dark",
+      themeSchedule: DEFAULT_THEME_SCHEDULE,
     });
     pushToast({
       title: "Personalização redefinida",
@@ -125,6 +175,10 @@ export function AppearanceTab() {
       <VisualIdentityCard
         themePref={themePref}
         onSelectTheme={handleSelectTheme}
+        darkThemeVariant={darkThemeVariant}
+        onSelectDarkThemeVariant={handleSelectDarkThemeVariant}
+        scheduleConfig={scheduleConfig}
+        onUpdateScheduleConfig={handleUpdateScheduleConfig}
         accent={visual.accent}
         onSelectAccent={handleSelectAccent}
       />

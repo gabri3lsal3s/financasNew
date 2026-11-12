@@ -1,17 +1,18 @@
 {
-  "version": "3.1.0",
-  "versionCode": 48,
-  "releaseDate": "2026-11-11T19:11:30Z",
-  "minSupportedVersion": "3.1.0",
+  "version": "3.2.0",
+  "versionCode": 56,
+  "releaseDate": "2026-11-12T18:24:09Z",
+  "minSupportedVersion": "3.2.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "3651d22ab26c804ef472ac9ec549d3e1f6a84074f1eba4c0c9c14a24ff14d517",
-  "fileSizeBytes": 12164115,
+  "sha256": "3459f0111d8aa2ca85be0771bcae80a6be0c78e164f02bf93f719fb2a65cf01a",
+  "fileSizeBytes": 12177921,
   "changelog": [
-    "Axir v3.1.0: Expansão Global de Plataforma, Motores Financeiros e Segurança",
-    "App Lock Híbrido com Biometria Nativa, WebAuthn e PIN Numérico com SHA-256",
-    "Multi-sessão concorrente e painel de dispositivos conectados com revogação remota",
-    "Motor FIRE e Independência Financeira nativos com cálculo de Capital Crítico e Runway",
-    "Explicabilidade matemática transparente com decomposição de fórmulas (Regra 33)",
-    "Rebalanceamento de carteira inteligente (Menos Movimentações) e Pix EMVCo nativo"
+    "Axir v3.2.0: Tema Programado, Distribuição Unificada e Descoberta por IA",
+    "Tema automático por horário (dia/noite) com preferência entre Abissal Teal e OLED",
+    "Modal único de download do app unindo instalação PWA e Android Pro (APK)",
+    "Configurações consolidadas em 6 abas e administração modular em /admin/*",
+    "Home, Relatórios, Orçamentos e Cartões modularizados para carregamento mais leve",
+    "Landing page reordenada, documentação llms.txt/ai-catalog.json e JSON-LD expandido",
+    "MFA com limpeza de fatores pendentes e biometria WebAuthn no App Lock web"
   ]
 }

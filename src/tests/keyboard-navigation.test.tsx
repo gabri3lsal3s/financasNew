@@ -226,9 +226,9 @@ describe("Navegação por teclado — telas P0 (F5.3 DoD)", () => {
     const user = userEvent.setup();
     render(<TransactionListPage />);
 
-    // Sem header visual (F12): o primeiro foco é o controle de mês anterior
+    // Primeiro foco: ação primária do PageHeader (Exportar CSV)
     await user.tab();
-    expect(screen.getByRole("button", { name: "Mês anterior" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Exportar CSV" })).toHaveFocus();
 
     // Botão de novo lançamento permanece alcançável (desktop)
     const novo = screen.getByRole("button", { name: "Nova transação" });

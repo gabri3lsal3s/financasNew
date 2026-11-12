@@ -166,7 +166,7 @@ Diretrizes canônicas para autenticação, controle de credenciais, gestão de s
 | Tabela | Colunas-chave | Constraints / Notas |
 |---|---|---|
 | `profiles` | id (PK = auth.users.id), name, email, created_at | Criada no signup (trigger) e sincronizada na alteração de e-mail via trigger `on_auth_user_email_updated` (0064) |
-| `user_preferences` | user_id (PK), theme (`light \| dark \| oled \| system`), reminders_enabled, reminder_days_before_debt, reminder_days_before_bill, report_weights_enabled, app_mode (`essential \| investor`, default `investor`) | — |
+| `user_preferences` | user_id (PK), theme (`light \| dark \| oled \| system \| schedule`), reminders_enabled, reminder_days_before_debt, reminder_days_before_bill, report_weights_enabled, app_mode (`essential \| investor`, default `investor`), custom_settings (JSONB: `themePreference`, `darkThemeVariant`, `themeSchedule`) | — |
 | `categories` | id, user_id, type (`expense \| income`), name, icon, color, is_reserved (ex.: "Estorno"), is_active, is_family (boolean default false), family_id (FK nullable) | Nome único por (user, type); reservadas não são editáveis/excluíveis nos fluxos normais; compartilhamento de categorias familiares ativas |
 | `incomes` | id, user_id, value, date, category_id (FK), receive_type (`cash \| pix \| transfer \| other`), description, report_weight (default 1, 0–1), source_ref (para rendas automáticas `[REFUND]`), is_family (boolean default false), family_id (FK nullable), created_at | Check: value > 0; date ≥ APP_START_DATE; report_weight 0–1; rendas com `source_ref` = somente-leitura |
 | `expenses` | id, user_id, value, date, category_id, payment_method (`cash \| debit \| credit_card \| pix \| transfer \| other`), card_id (FK nullable), installments_total (1–60), installment_number, installment_group_id (UUID, nullable), bill_competence (`YYYY-MM` snapshot, nullable), report_weight, base_amount (valor original p/ auditoria de pesos), description, is_family (boolean default false), family_id (FK nullable), created_at | Check: value > 0; date ≥ APP_START_DATE; installments 1–60; **card_id NOT NULL quando payment_method = `credit_card`**; `installment_group_id` presente sse installments_total > 1 |
@@ -977,7 +977,7 @@ Erros via gateway único (`getErrorMessage`), §1.7.
 - **Paleta Padrão Oficial:** **Teal Vital** (`teal` / `#0D9488`), transmitindo calma, autoridade fintech e controle emocional.
 - **Três temas completos via tokens CSS:** `light`, `dark` e `oled` (**true black `#000000`** para telas AMOLED, com contraste absoluto e máxima economia de bateria).
 - **Recomendação OLED na Paleta Monocromática:** quando a paleta Monocromática (`zinc`) é selecionada, a interface apresenta orientação informativa recomendando a ativação do modo escuro **OLED** para alcançar a melhor experiência visual e de eficiência energética em telas AMOLED.
-- **Tokens CSS centralizados:** cor de fundo, superfície, texto, borda, primária, sucesso/atenção/crítico, radius, sombra, espaçamento. Preferências persistidas em `user_preferences.theme` e `user_preferences.palette`.
+- **Tokens CSS centralizados:** cor de fundo, superfície, texto, borda, primária, sucesso/atenção/crítico, radius, sombra, espaçamento. Preferências persistidas em `user_preferences.theme` e `user_preferences.custom_settings` (`themePreference`, `darkThemeVariant`, `themeSchedule`); a resolução efetiva é determinística em `src/domain/theme`.
 
 ### 5.3.1 Central de Configurações (Settings Hub)
 

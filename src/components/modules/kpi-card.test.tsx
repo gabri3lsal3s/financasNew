@@ -39,12 +39,27 @@ describe("KpiCard (F12 — valores monetários via NumberTicker)", () => {
     const card = container.querySelector("[role=button]");
     expect(card).not.toBeNull();
     expect(card).toHaveAttribute("tabindex", "0");
+    expect(card).toHaveAttribute("aria-label", "Investimentos");
     fireEvent.click(card as Element);
     expect(onClick).toHaveBeenCalledTimes(1);
     fireEvent.keyDown(card as Element, { key: "Enter" });
     expect(onClick).toHaveBeenCalledTimes(2);
     fireEvent.keyDown(card as Element, { key: " " });
     expect(onClick).toHaveBeenCalledTimes(3);
+  });
+
+  it("ariaLabel prevalece sobre label JSX composto quando o card é clicável", () => {
+    const onClick = vi.fn();
+    const { container } = render(
+      <KpiCard
+        label={<span>Resultado do mês</span>}
+        ariaLabel="Resultado do mês"
+        cents={1000}
+        onClick={onClick}
+      />,
+    );
+    const card = container.querySelector("[role=button]");
+    expect(card).toHaveAttribute("aria-label", "Resultado do mês");
   });
 
   it("sem onClick o card permanece informativo (sem role button)", () => {

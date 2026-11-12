@@ -26,48 +26,78 @@ export interface GoalAlertEvaluation {
   status?: string;
 }
 
+export const GOAL_ALERT_DEFAULT_COOLDOWN_DAYS = 30;
+
+export interface GoalAlertEvaluationOptions {
+  nowIso?: string;
+  cooldownDays?: number;
+}
+
 /**
  * Avalia se o alerta da meta deve ser exibido ou se deve permanecer dispensado.
- * Retorna true se deve ser exibido (nunca dispensado OU ocorreu mudança relevante).
+ * Retorna true se deve ser exibido (nunca dispensado, cooldown expirado OU ocorreu marco extraordinário).
+ *
+ * Política de Descarte com Cooldown:
+ * - Permanece pelo menos `cooldownDays` (padrão 30 dias) silenciado após o descarte.
+ * - Durante a janela de cooldown:
+ *   - Micro-variações de saldo diário (currentCents) ou flutuações de sobra no mês (has_surplus) NÃO reativam o alerta.
+ *   - Marcos extraordinários furam o cooldown:
+ *     1. Redefinição de valor-alvo (targetCents alterado).
+ *     2. Alteração de status (reativação, pausa).
+ *     3. Conquista de 100% batido (transição para "completed" / Meta Conquistada).
+ *     4. Entrada na Reta Final (transição de regular para >= 80% / "final_stretch").
+ * - Após expirar a janela de cooldown (ex: 30 dias corridos), o alerta é reexibido como check-in mensal.
  */
 export function shouldShowGoalAlert(
   checkpoint: GoalAlertDismissalCheckpoint | null | undefined,
   current: GoalAlertEvaluation,
+  options?: GoalAlertEvaluationOptions,
 ): boolean {
   if (!checkpoint) {
     return true;
   }
 
-  // 1. Mudança de Alvo (redefinição de valor da meta)
+  // 1. Mudança de Alvo (redefinição manual de valor da meta)
   if (checkpoint.targetCents !== current.targetCents) {
     return true;
   }
 
-  // 2. Mudança de Saldo Acumulado (novo aporte realizado ou retirada)
-  if (checkpoint.currentCents !== current.currentCents) {
-    return true;
-  }
-
-  // 3. Mudança de Status da Meta (reativação, pausa, etc.)
+  // 2. Mudança de Status da Meta (reativação, pausa, etc.)
   if (checkpoint.status !== current.status) {
     return true;
   }
 
-  // 4. Mudança de Estágio / Marco Cognitivo
-  if (checkpoint.stage !== current.stage) {
-    // Transição para Conquistada (100% batido)
-    if (current.stage === "completed") {
-      return true;
-    }
-    // Transição para Reta Final (>= 80%) a partir de ritmo inicial ou sobra
-    if (current.stage === "final_stretch") {
-      return true;
-    }
-    // Qualquer outra mudança de estágio estrutural
+  // 3. Conquista de 100% batido (marco de celebração - fura o cooldown)
+  if (current.stage === "completed" && checkpoint.stage !== "completed") {
     return true;
   }
 
-  // Se nenhum dado relevante mudou, o alerta permanece dispensado
+  // 4. Entrada na Reta Final (transição de regular para >= 80% - fura o cooldown)
+  if (
+    current.stage === "final_stretch" &&
+    checkpoint.stage !== "final_stretch" &&
+    checkpoint.stage !== "completed"
+  ) {
+    return true;
+  }
+
+  // Avaliação temporal do Cooldown (padrão 30 dias corridos)
+  const cooldownDays = options?.cooldownDays ?? GOAL_ALERT_DEFAULT_COOLDOWN_DAYS;
+  const now = options?.nowIso ? new Date(options.nowIso) : new Date();
+  const dismissedDate = new Date(checkpoint.dismissedAt);
+  const isDateValid = !isNaN(dismissedDate.getTime()) && !isNaN(now.getTime());
+
+  if (isDateValid) {
+    const elapsedMs = now.getTime() - dismissedDate.getTime();
+    const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000;
+    if (elapsedMs < cooldownMs) {
+      // Dentro do período de cooldown: permanece dispensado mesmo com oscilações diárias
+      return false;
+    }
+    // Cooldown expirou (passaram-se 30 dias): reexibe o alerta como check-in de progresso
+    return true;
+  }
+
   return false;
 }
 

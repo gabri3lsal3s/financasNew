@@ -108,18 +108,6 @@ export function LandingHeader() {
           </button>
           <button
             type="button"
-            onClick={() => scrollToSection("investimentos")}
-            className={cn(
-              "px-3 py-1.5 rounded-lg transition-all cursor-pointer",
-              activeSection === "investimentos"
-                ? "bg-primary/10 text-primary font-semibold"
-                : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
-            )}
-          >
-            Investimentos
-          </button>
-          <button
-            type="button"
             onClick={() => scrollToSection("simulador")}
             className={cn(
               "px-3 py-1.5 rounded-lg transition-all cursor-pointer",
@@ -128,7 +116,19 @@ export function LandingHeader() {
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
             )}
           >
-            Simulador Patrimonial
+            Simulador
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToSection("plataformas")}
+            className={cn(
+              "px-3 py-1.5 rounded-lg transition-all cursor-pointer",
+              activeSection === "plataformas"
+                ? "bg-primary/10 text-primary font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
+            )}
+          >
+            Plataformas
           </button>
           <button
             type="button"
@@ -140,7 +140,7 @@ export function LandingHeader() {
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
             )}
           >
-            Simuladores
+            Ferramentas
           </button>
           <button
             type="button"
@@ -232,8 +232,9 @@ export function LandingHeader() {
             variant="ghost"
             size="icon"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+            aria-label={mobileMenuOpen ? "Fechar menu de navegação" : "Abrir menu de navegação"}
             aria-expanded={mobileMenuOpen}
+            className="min-h-[44px] min-w-[44px]"
           >
             {mobileMenuOpen ? <X className="size-5" aria-hidden="true" /> : <Menu className="size-5" aria-hidden="true" />}
           </Button>
@@ -291,7 +292,7 @@ export function LandingHeader() {
               type="button"
               onClick={() => scrollToSection("recursos")}
               className={cn(
-                "flex items-center py-2 px-2.5 rounded-lg text-left transition-colors cursor-pointer",
+                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
                 activeSection === "recursos"
                   ? "bg-primary/10 text-primary font-semibold"
                   : "text-foreground hover:text-primary",
@@ -301,21 +302,9 @@ export function LandingHeader() {
             </button>
             <button
               type="button"
-              onClick={() => scrollToSection("investimentos")}
-              className={cn(
-                "flex items-center py-2 px-2.5 rounded-lg text-left transition-colors cursor-pointer",
-                activeSection === "investimentos"
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-foreground hover:text-primary",
-              )}
-            >
-              Investimentos & Aportes
-            </button>
-            <button
-              type="button"
               onClick={() => scrollToSection("simulador")}
               className={cn(
-                "flex items-center py-2 px-2.5 rounded-lg text-left transition-colors cursor-pointer",
+                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
                 activeSection === "simulador"
                   ? "bg-primary/10 text-primary font-semibold"
                   : "text-foreground hover:text-primary",
@@ -325,21 +314,33 @@ export function LandingHeader() {
             </button>
             <button
               type="button"
+              onClick={() => scrollToSection("plataformas")}
+              className={cn(
+                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
+                activeSection === "plataformas"
+                  ? "bg-primary/10 text-primary font-semibold"
+                  : "text-foreground hover:text-primary",
+              )}
+            >
+              Plataformas & App
+            </button>
+            <button
+              type="button"
               onClick={() => scrollToSection("ferramentas")}
               className={cn(
-                "flex items-center py-2 px-2.5 rounded-lg text-left transition-colors cursor-pointer",
+                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
                 activeSection === "ferramentas"
                   ? "bg-primary/10 text-primary font-semibold"
                   : "text-foreground hover:text-primary",
               )}
             >
-              Simuladores Gratuitos
+              Ferramentas Gratuitas
             </button>
             <button
               type="button"
               onClick={() => scrollToSection("precos")}
               className={cn(
-                "flex items-center py-2 px-2.5 rounded-lg text-left transition-colors cursor-pointer",
+                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
                 activeSection === "precos"
                   ? "bg-primary/10 text-primary font-semibold"
                   : "text-foreground hover:text-primary",
@@ -351,7 +352,7 @@ export function LandingHeader() {
               type="button"
               onClick={() => scrollToSection("faq")}
               className={cn(
-                "flex items-center py-2 px-2.5 rounded-lg text-left transition-colors cursor-pointer",
+                "flex items-center py-3 px-3 min-h-[44px] rounded-lg text-left transition-colors cursor-pointer",
                 activeSection === "faq"
                   ? "bg-primary/10 text-primary font-semibold"
                   : "text-foreground hover:text-primary",
@@ -363,7 +364,7 @@ export function LandingHeader() {
               {isLoggedIn ? (
                 <Link
                   to="/"
-                  className={cn(buttonVariants(), "w-full justify-center")}
+                  className={cn(buttonVariants(), "w-full justify-center min-h-[44px]")}
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   Acessar meu App
@@ -372,14 +373,14 @@ export function LandingHeader() {
                 <>
                   <Link
                     to="/cadastro"
-                    className={cn(buttonVariants(), "w-full justify-center gap-1.5 shadow-sm")}
+                    className={cn(buttonVariants(), "w-full justify-center gap-1.5 shadow-sm min-h-[44px]")}
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Criar conta gratuita (30 dias)
                   </Link>
                   <Link
                     to="/entrar"
-                    className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-center text-xs text-muted-foreground")}
+                    className={cn(buttonVariants({ variant: "ghost" }), "w-full justify-center text-sm font-medium text-foreground hover:text-primary min-h-[44px]")}
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Já tenho conta • Entrar
@@ -394,7 +395,7 @@ export function LandingHeader() {
                     setMobileMenuOpen(false);
                     void install();
                   }}
-                  className="w-full justify-center gap-1.5 cursor-pointer mt-1"
+                  className="w-full justify-center gap-1.5 cursor-pointer mt-1 min-h-[44px]"
                 >
                   <Download className="size-4" aria-hidden="true" />
                   <span>Instalar Aplicativo no Dispositivo</span>

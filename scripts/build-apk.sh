@@ -161,12 +161,13 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v3.1.0: Expansão Global de Plataforma, Motores Financeiros e Segurança",
-    "App Lock Híbrido com Biometria Nativa, WebAuthn e PIN Numérico com SHA-256",
-    "Multi-sessão concorrente e painel de dispositivos conectados com revogação remota",
-    "Motor FIRE e Independência Financeira nativos com cálculo de Capital Crítico e Runway",
-    "Explicabilidade matemática transparente com decomposição de fórmulas (Regra 33)",
-    "Rebalanceamento de carteira inteligente (Menos Movimentações) e Pix EMVCo nativo"
+    "Axir v3.2.0: Tema Programado, Distribuição Unificada e Descoberta por IA",
+    "Tema automático por horário (dia/noite) com preferência entre Abissal Teal e OLED",
+    "Modal único de download do app unindo instalação PWA e Android Pro (APK)",
+    "Configurações consolidadas em 6 abas e administração modular em /admin/*",
+    "Home, Relatórios, Orçamentos e Cartões modularizados para carregamento mais leve",
+    "Landing page reordenada, documentação llms.txt/ai-catalog.json e JSON-LD expandido",
+    "MFA com limpeza de fatores pendentes e biometria WebAuthn no App Lock web"
   ]
 }
 EOF

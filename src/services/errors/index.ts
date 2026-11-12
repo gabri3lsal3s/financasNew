@@ -171,14 +171,16 @@ export function classifyError(error: unknown): ClassifiedError {
     code.includes("user-already-exists") ||
     /user already registered|user_already_exists|email_exists|user already exists/i.test(message) ||
     ((status === 422 || code === "422") &&
-      /user|registered|already|cadastrado/i.test(message))
+      !/factor|mfa/i.test(message) &&
+      !/factor|mfa/i.test(code) &&
+      /user|registered|email.*exist|e-mail.*cadastrado/i.test(message))
   ) {
     return { kind: "user-already-exists", message: MESSAGES["user-already-exists"], raw: error };
   }
   if (
     code.includes("email_not_confirmed") ||
     /email not confirmed/i.test(message) ||
-    (status === 422 && !/login|credential/i.test(message))
+    ((status === 422 || code === "422") && !/login|credential|factor|mfa/i.test(message) && !/factor|mfa/i.test(code))
   ) {
     return { kind: "email-not-confirmed", message: MESSAGES["email-not-confirmed"], raw: error };
   }

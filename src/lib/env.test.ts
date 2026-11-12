@@ -43,8 +43,8 @@ describe("lib/env — getPublicAppUrl", () => {
     vi.unstubAllEnvs();
   });
 
-  it("reexporta getPublicAppUrl corretamente", () => {
+  it("reexporta getPublicAppUrl usando a origem web ativa", () => {
     vi.stubEnv("VITE_PUBLIC_SITE_URL", "https://custom.app");
-    expect(getPublicAppUrl("/entrar")).toBe("https://custom.app/entrar");
+    expect(getPublicAppUrl("/entrar")).toBe(`${window.location.origin}/entrar`);
   });
 });

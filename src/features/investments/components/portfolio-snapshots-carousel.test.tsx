@@ -79,7 +79,7 @@ describe("PortfolioSnapshotsCarousel", () => {
 
     // Valores
     expect(screen.getByText(/108\.000,00/)).toBeInTheDocument();
-    expect(screen.getByText("+2.1% m/m")).toBeInTheDocument();
+    expect(screen.getByText(/\+2[,.]1% m\/m/)).toBeInTheDocument();
 
     // Botões de rolagem por setas no desktop
     expect(screen.getByRole("button", { name: /Rolar carrossel para a esquerda/i })).toBeInTheDocument();

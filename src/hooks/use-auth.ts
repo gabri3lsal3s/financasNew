@@ -39,6 +39,7 @@ import {
   unenrollMfaFactor,
   signInAdmin,
   subscribeAuthStateChange,
+  cleanupUnverifiedMfaFactors,
   type MfaAssuranceLevel,
   type SignUpResult,
   type MfaFactorInfo,
@@ -58,6 +59,7 @@ export {
   verifyMfaTotpCode,
   getMfaAssuranceLevel,
   listVerifiedMfaFactors,
+  cleanupUnverifiedMfaFactors,
   enrollMfaTotp,
   verifyMfaEnrollment,
   unenrollMfaFactor,
@@ -157,16 +159,35 @@ async function resolveMfaState(
     return { mfaRequired: false, mfaVerified: false, aalLevel: null };
   }
   try {
-    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (data) {
-      const isMfaPending = data.currentLevel === "aal1" && data.nextLevel === "aal2";
-      const isMfaSatisfied = data.currentLevel === "aal2";
-      return {
-        mfaRequired: isMfaPending || isMfaSatisfied,
-        mfaVerified: isMfaSatisfied,
-        aalLevel: (data.currentLevel as "aal1" | "aal2") ?? "aal1",
-      };
-    }
+    const [aalResult, factorsResult] = await Promise.all([
+      session.access_token
+        ? supabase.auth.mfa.getAuthenticatorAssuranceLevel(session.access_token)
+        : supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+      supabase.auth.mfa.listFactors(),
+    ]);
+
+    const aalData = aalResult.data;
+    const factorsData = factorsResult.data;
+
+    const allFactors = (factorsData?.all ?? []) as Array<{ factor_type: string; status: string }>;
+    const totpFactors = (factorsData?.totp ?? []) as Array<{ factor_type: string; status: string }>;
+    const hasVerifiedTotp = Boolean(
+      allFactors.some((f) => f.factor_type === "totp" && f.status === "verified") ||
+      totpFactors.some((f) => f.status === "verified") ||
+      allFactors.some((f) => f.status === "verified")
+    );
+
+    const currentLevel = (aalData?.currentLevel as "aal1" | "aal2") ?? "aal1";
+    const nextLevel = (aalData?.nextLevel as "aal1" | "aal2") ?? (hasVerifiedTotp ? "aal2" : "aal1");
+
+    const isMfaSatisfied = currentLevel === "aal2";
+    const isMfaPending = hasVerifiedTotp && !isMfaSatisfied;
+
+    return {
+      mfaRequired: isMfaPending || (nextLevel === "aal2" && !isMfaSatisfied),
+      mfaVerified: isMfaSatisfied,
+      aalLevel: currentLevel,
+    };
   } catch {
     // Silencia em ambiente offline / mock
   }

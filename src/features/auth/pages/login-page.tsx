@@ -19,7 +19,6 @@ import {
   signInWithEmail,
   resendConfirmationEmail,
   getActiveUserMfaFactor,
-  getMfaAssuranceLevel,
   listVerifiedMfaFactors,
   verifyMfaTotpCode,
   markMfaVerified,
@@ -226,7 +225,7 @@ export function LoginPage() {
     };
   }, [session, isMfaActive]);
 
-  if (!loading && session && !isMfaActive) {
+  if (!loading && session && !isMfaActive && !pending) {
     return <Navigate to={from} replace />;
   }
 
@@ -263,21 +262,18 @@ export function LoginPage() {
     try {
       await signInWithEmail(email, password, captchaToken ?? undefined);
 
-      // Intercepta contas protegidas por 2FA (AAL2)
+      // Intercepta contas protegidas por 2FA (AAL2) consultando os fatores verificados
       try {
-        const aalData = await getMfaAssuranceLevel();
-        if (aalData?.currentLevel === "aal1" && aalData?.nextLevel === "aal2") {
-          const verified = await listVerifiedMfaFactors();
-          if (verified) {
-            setMfaFactorId(verified.id);
-            setIsMfaRequired(true);
-            triggerSensory("action");
-            setPending(false);
-            return;
-          }
+        const verified = await listVerifiedMfaFactors();
+        if (verified) {
+          setMfaFactorId(verified.id);
+          setIsMfaRequired(true);
+          triggerSensory("action");
+          setPending(false);
+          return;
         }
       } catch {
-        // Continua login se MFA não estiver habilitado
+        // Continua login se MFA não estiver configurado
       }
 
       triggerSensory("success");

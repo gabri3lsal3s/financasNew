@@ -482,6 +482,15 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Ocultação de scrollbars para elementos fluidos horizontais */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Valores monetários: fonte mono + tabular (regra de ouro) */
   .num {
     font-family: var(--font-mono);

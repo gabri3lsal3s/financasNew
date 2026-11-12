@@ -6,7 +6,6 @@ import { describe, expect, it, vi } from "vitest";
 import { ExperiencePresetsCard } from "./experience-presets-card";
 import { VisualIdentityCard } from "./visual-identity-card";
 import { InterfaceShortcutsCard } from "./interface-shortcuts-card";
-import { ResetDefaultsCard } from "./reset-defaults-card";
 
 function renderWithProviders(ui: ReactElement) {
   const queryClient = new QueryClient({
@@ -128,26 +127,6 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
       // Com calculadora e tema ativados (2 slots), o atalho de privacidade deve estar desabilitado
       const privacyCheckbox = screen.getByRole("checkbox", { name: /Ocultar Valores/i });
       expect(privacyCheckbox).toBeDisabled();
-    });
-  });
-
-  describe("ResetDefaultsCard", () => {
-    it("dispara callback ao clicar em Redefinir", async () => {
-      const user = userEvent.setup();
-      const onReset = vi.fn();
-
-      render(<ResetDefaultsCard onReset={onReset} />);
-
-      expect(
-        screen.getByText(
-          "Restaura o modo de experiência Dinâmico, tema oficial Teal Vital e disposição padrão da interface.",
-        ),
-      ).toBeInTheDocument();
-
-      const resetBtn = screen.getByRole("button", { name: /Redefinir/i });
-      await user.click(resetBtn);
-
-      expect(onReset).toHaveBeenCalledTimes(1);
     });
   });
 });

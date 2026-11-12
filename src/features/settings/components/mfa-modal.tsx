@@ -8,6 +8,8 @@ import {
   Smartphone,
   KeyRound,
   Trash2,
+  RefreshCw,
+  Lock,
 } from "lucide-react";
 import {
   Modal,
@@ -22,6 +24,8 @@ import {
   listVerifiedMfaFactors,
   unenrollMfaFactor,
   verifyMfaEnrollment,
+  verifyMfaTotpCode,
+  verifyCurrentPassword,
 } from "@/hooks/use-auth";
 import { renderQrCodeSvg } from "@/domain/pix/qr-code";
 import { pushToast } from "@/services/toast";
@@ -51,9 +55,14 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
   } | null>(null);
   const [verificationCode, setVerificationCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isUnenrolling, setIsUnenrolling] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedSecret, setCopiedSecret] = useState(false);
+
+  // Estados de confirmação de segurança (Desativação e Reconfiguração)
+  const [confirmAction, setConfirmAction] = useState<"none" | "deactivate" | "reconfigure">("none");
+  const [authMethod, setAuthMethod] = useState<"totp" | "password">("totp");
+  const [authInputValue, setAuthInputValue] = useState("");
+  const [isVerifyingSecurity, setIsVerifyingSecurity] = useState(false);
 
   const refreshFactors = useCallback(async () => {
     setIsLoading(true);
@@ -111,6 +120,9 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
       setEnrollData(null);
       setVerificationCode("");
       setErrorMessage(null);
+      setConfirmAction("none");
+      setAuthInputValue("");
+      setIsVerifyingSecurity(false);
     }
   };
 
@@ -173,25 +185,66 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
     }
   };
 
-  const handleUnenroll = async () => {
-    if (!activeFactor) return;
-    setIsUnenrolling(true);
+  const handleExecuteConfirmedAction = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!activeFactor || isVerifyingSecurity) return;
+    setIsVerifyingSecurity(true);
     setErrorMessage(null);
 
     try {
+      if (authMethod === "totp") {
+        const cleanCode = authInputValue.trim();
+        if (cleanCode.length !== 6) {
+          setErrorMessage("Informe o código de 6 dígitos gerado pelo aplicativo autenticador.");
+          setIsVerifyingSecurity(false);
+          return;
+        }
+
+        const isValidMfa = await verifyMfaTotpCode(activeFactor.id, cleanCode);
+        if (!isValidMfa) {
+          setErrorMessage("Código de autenticação incorreto ou expirado. Tente novamente.");
+          setIsVerifyingSecurity(false);
+          return;
+        }
+      } else {
+        if (!authInputValue) {
+          setErrorMessage("Informe sua senha de acesso para autorizar.");
+          setIsVerifyingSecurity(false);
+          return;
+        }
+
+        const isValidPassword = await verifyCurrentPassword(authInputValue);
+        if (!isValidPassword) {
+          setErrorMessage("Senha incorreta. Não foi possível autorizar a operação.");
+          setIsVerifyingSecurity(false);
+          return;
+        }
+      }
+
       await unenrollMfaFactor(activeFactor.id);
 
-      triggerSensory("selection");
-      pushToast({
-        title: "2FA Desativado",
-        description: "A verificação em duas etapas foi desativada.",
-      });
-      setActiveFactor(null);
+      if (confirmAction === "deactivate") {
+        triggerSensory("selection");
+        pushToast({
+          title: "2FA Desativado",
+          description: "A verificação em duas etapas foi desativada com sucesso.",
+          variant: "success",
+        });
+        setActiveFactor(null);
+        setConfirmAction("none");
+        setAuthInputValue("");
+      } else if (confirmAction === "reconfigure") {
+        triggerSensory("action");
+        setActiveFactor(null);
+        setConfirmAction("none");
+        setAuthInputValue("");
+        await handleStartEnrollment();
+      }
     } catch (err) {
       triggerSensory("destructive");
       setErrorMessage(getErrorMessage(err));
     } finally {
-      setIsUnenrolling(false);
+      setIsVerifyingSecurity(false);
     }
   };
 
@@ -228,55 +281,198 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
             <span className="text-xs text-muted-foreground">Carregando status de segurança...</span>
           </div>
         ) : activeFactor ? (
-          /* Estado Ativo: Opção de Desativar */
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface/50">
-              <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-lg border border-positive/20 bg-positive/10 text-positive-strong">
-                  <Smartphone className="size-4.5" aria-hidden="true" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">App Autenticador</span>
-                    <Badge variant="positive" size="xs">Ativo</Badge>
-                  </div>
-                  <span className="text-[11px] text-muted-foreground">
-                    Google Authenticator, Microsoft Authenticator, 1Password ou Authy
+          confirmAction !== "none" ? (
+            /* Confirmação de Segurança para Desativar ou Reconfigurar */
+            <form onSubmit={handleExecuteConfirmedAction} className="space-y-4">
+              <div className="rounded-xl border border-warning/30 bg-warning/10 p-3.5 space-y-1">
+                <span className="text-xs font-semibold text-warning-strong flex items-center gap-1.5">
+                  <Lock className="size-4 shrink-0" aria-hidden="true" />
+                  <span>
+                    {confirmAction === "deactivate"
+                      ? "Confirmar Desativação do 2FA"
+                      : "Confirmar Reconfiguração do 2FA"}
+                  </span>
+                </span>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {confirmAction === "deactivate"
+                    ? "Para sua segurança, valide sua identidade com o código de 6 dígitos gerado no app ou sua senha atual para desativar o 2FA."
+                    : "Para gerar um novo QR Code e vincular outro aplicativo autenticador, confirme sua identidade."}
+                </p>
+              </div>
+
+              {/* Seletor de método de validação */}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={authMethod === "totp" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => {
+                    setAuthMethod("totp");
+                    setAuthInputValue("");
+                    setErrorMessage(null);
+                  }}
+                >
+                  <Smartphone className="size-3.5 mr-1" aria-hidden="true" />
+                  Código do App
+                </Button>
+                <Button
+                  type="button"
+                  variant={authMethod === "password" ? "default" : "outline"}
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => {
+                    setAuthMethod("password");
+                    setAuthInputValue("");
+                    setErrorMessage(null);
+                  }}
+                >
+                  <KeyRound className="size-3.5 mr-1" aria-hidden="true" />
+                  Senha de Acesso
+                </Button>
+              </div>
+
+              {authMethod === "totp" ? (
+                <div className="space-y-1.5">
+                  <label htmlFor="mfa-security-code" className="text-xs font-semibold text-foreground block">
+                    Código de 6 dígitos do aplicativo
+                  </label>
+                  <Input
+                    id="mfa-security-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={authInputValue}
+                    onChange={(e) => {
+                      setAuthInputValue(e.target.value.replace(/\D/g, "").slice(0, 6));
+                      if (errorMessage) setErrorMessage(null);
+                    }}
+                    disabled={isVerifyingSecurity}
+                    className="text-center font-mono tracking-widest text-base sm:text-sm h-10"
+                  />
+                  <span className="text-[11px] text-muted-foreground block">
+                    Abra seu Google Authenticator, Authy ou 1Password e digite o código atual.
                   </span>
                 </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <label htmlFor="mfa-security-password" className="text-xs font-semibold text-foreground block">
+                    Sua senha atual
+                  </label>
+                  <Input
+                    id="mfa-security-password"
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="Digite sua senha de acesso"
+                    value={authInputValue}
+                    onChange={(e) => {
+                      setAuthInputValue(e.target.value);
+                      if (errorMessage) setErrorMessage(null);
+                    }}
+                    disabled={isVerifyingSecurity}
+                    className="text-base sm:text-sm h-10"
+                  />
+                  <span className="text-[11px] text-muted-foreground block">
+                    Digite a senha que você usa para entrar na sua conta.
+                  </span>
+                </div>
+              )}
+
+              <ModalFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setConfirmAction("none");
+                    setAuthInputValue("");
+                    setErrorMessage(null);
+                  }}
+                  disabled={isVerifyingSecurity}
+                >
+                  Voltar
+                </Button>
+                <Button
+                  type="submit"
+                  variant={confirmAction === "deactivate" ? "destructive" : "default"}
+                  disabled={isVerifyingSecurity || !authInputValue.trim()}
+                >
+                  {isVerifyingSecurity ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin mr-1.5" aria-hidden="true" />
+                      Validando...
+                    </>
+                  ) : confirmAction === "deactivate" ? (
+                    <>
+                      <Trash2 className="size-4 mr-1.5" aria-hidden="true" />
+                      Confirmar Desativação
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="size-4 mr-1.5" aria-hidden="true" />
+                      Gerar Novo QR Code
+                    </>
+                  )}
+                </Button>
+              </ModalFooter>
+            </form>
+          ) : (
+            /* Estado Ativo: Opções de Reconfigurar e Desativar */
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface/50">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-lg border border-positive/20 bg-positive/10 text-positive-strong">
+                    <Smartphone className="size-4.5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground">App Autenticador</span>
+                      <Badge variant="positive" size="xs">Ativo</Badge>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground">
+                      Google Authenticator, Microsoft Authenticator, 1Password ou Authy
+                    </span>
+                  </div>
+                </div>
               </div>
+
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Sua conta está configurada com proteção bancária de dois fatores. Ao fazer login, será solicitado um código temporário de 6 dígitos gerado pelo seu aplicativo autenticador.
+              </p>
+
+              <ModalFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Fechar
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setConfirmAction("reconfigure");
+                    setAuthInputValue("");
+                    setErrorMessage(null);
+                  }}
+                >
+                  <RefreshCw className="size-4 mr-1.5" aria-hidden="true" />
+                  Reconfigurar 2FA
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setConfirmAction("deactivate");
+                    setAuthInputValue("");
+                    setErrorMessage(null);
+                  }}
+                >
+                  <Trash2 className="size-4 mr-1.5" aria-hidden="true" />
+                  Desativar 2FA
+                </Button>
+              </ModalFooter>
             </div>
-
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Sua conta está configurada com proteção bancária de dois fatores. Ao fazer login, será solicitado um código temporário de 6 dígitos gerado pelo seu aplicativo autenticador.
-            </p>
-
-            <ModalFooter>
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                Fechar
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleUnenroll}
-                disabled={isUnenrolling}
-              >
-                {isUnenrolling ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin mr-1.5" aria-hidden="true" />
-                    Desativando...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="size-4 mr-1.5" aria-hidden="true" />
-                    Desativar 2FA
-                  </>
-                )}
-              </Button>
-            </ModalFooter>
-          </div>
+          )
         ) : isEnrolling && enrollData ? (
           /* Estado de Configuração: Exibir QR Code e Campo de Código */
           <form onSubmit={handleVerifyEnrollment} className="space-y-4">

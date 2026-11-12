@@ -23,6 +23,7 @@ import {
   authenticateWithBiometrics,
   isBiometricLockEnabled,
   setBiometricLockEnabled,
+  clearWebAuthnPlatformCredential,
   resetAppLockBackgroundTimer,
   getAppLockGraceMinutes,
   setAppLockGraceMinutes,
@@ -147,6 +148,7 @@ export function SecurityTab() {
     if (enabled) {
       const result = await authenticateWithBiometrics({
         reason: "Confirme sua biometria para habilitar o bloqueio do aplicativo",
+        userId: userId ?? undefined,
       });
       if (!result.success) {
         pushToast({
@@ -165,6 +167,7 @@ export function SecurityTab() {
         variant: "success",
       });
     } else {
+      clearWebAuthnPlatformCredential();
       setBiometricLockEnabled(false);
       setBioLockEnabled(false);
       pushToast({

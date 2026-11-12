@@ -95,6 +95,9 @@
 │   ├── brand/                     # Assets oficiais da marca (logo.png, logo-128, favicon-32, favicon.svg, logo-full)
 │   ├── offline.html               # Fallback offline (raiz)
 │   ├── _headers                   # Políticas de cache e segurança Cloudflare Pages
+│   ├── robots.txt / sitemap.xml   # Indexação pública e descoberta de rotas canônicas
+│   ├── llms.txt / llms-full.txt   # Documentação canônica para agentes de IA (llms.txt)
+│   ├── ai-catalog.json            # Catálogo de capacidades para agentes (espelho em .well-known/)
 │   ├── releases/                  # Manifesto de atualização in-app de builds Android (version.json)
 │   └── pwa/                       # Artefatos PWA — ver PWA_GUIDELINES.md
 │       ├── manifest.webmanifest
@@ -149,7 +152,7 @@
     │   ├── routes.tsx             # Mapa de rotas do app + rotas públicas legais (publicLegalRoutes) + deep-links (?card=, ?month=, ?q=) +
     │   │                          #   redirect /carteira → /investments (em redirect-to-investments.tsx)
     │   ├── pwa.ts                 # Registro SW (autoUpdate + toast) + stores de
-    │   ├── theme-provider.tsx     # ThemeProvider — aplica tema/accent do usuário (F11)
+    │   ├── theme-provider.tsx     # ThemeProvider — aplica tema/accent, variante escura e agenda horária (F11)
     │   └── app-lock-overlay.tsx   # Escudo de bloqueio do aplicativo com biometria (App Lock)
     │
     ├── components/
@@ -167,7 +170,7 @@
     │   │   │                      #   category-icon(+icons), month-picker, year-picker, transaction-row,
     │   │   │                      #   budget-progress-bar, debt-status-badge,
     │   │   │                      #   invoice-status-badge, onboarding-banner, pwa-update-toast,
-    │   │   │                      #   notifications-popover, install-app-button,
+    │   │   │                      #   notifications-popover, install-app-button, app-download-modal (PWA + APK unificados),
     │   │   │                      #   category-donut, interactive-target-donut, daily-flow-chart (F8),
     │   │   │                      #   floating-calculator, calculator-keypad (F9),
     │   │   │                      #   credit-card-3d + credit-card-wallet + credit-card-gradient (F13),
@@ -208,18 +211,22 @@
     │
     ├── features/                  # ÁREAS funcionais — padrão interno em §5
     │   ├── overview/              #   Visão Geral (KPIs com sparkline, fluxo com scrubbing, donut F8, layout compacto de orçamentos, QuickAporteCard)
-    │   │                          #     components/ (category-breakdown-dialog, other-budgets-dialog), hooks/ (use-smart-advisor-insights.ts)
+    │   │                          #     components/ (category-breakdown-dialog, other-budgets-dialog),
+    │   │                          #     hooks/ (use-smart-advisor-insights.ts, use-overview-data.ts — queries e derivações da Home)
     │   ├── transactions/          #   Transações (swipe-to-action F8) + wizard de lançamento + reconciliação de extratos
     │   │                          #     pages/ (share-receipt-page.tsx), wizard/ (step-quick.tsx — lançamento rápido em 1 tela)
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
+    │   │                          #     components/ (card-invoice-expenses-feed, card-invoice-payments-feed — extratos extraídos da página)
     │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72, debts-page-demo.test.tsx)
     │   ├── budgets/               #   Orçamentos (limites, realocação)
+    │   │                          #     components/tabs/ (budgets-limits-tab, budgets-goals-tab, budgets-categories-tab)
     │   ├── family/                #   Modo Família Colaborativo Multi-Contas (/familia, /convite-familiar/:token)
     │   │                          #     pages: family-page, family-invite-page
     │   │                          #     components: household-ceiling-card, household-balance-card, household-comparison-card,
     │   │                          #                 household-clustering-ranking, household-expense-feed, family-settlement-dialog
     │   ├── reports/               #   Central Unificada de Relatórios (§F42: Finanças & DRE A4, Investimentos & Metas, Balanço 360°, Fiscal IRPF, Excel XLSX)
-    │   │                          #     components/tabs/ (financial-tab, investments-tab, balance-tab, tax-tab F61)
+    │   │                          #     components/tabs/ (financial-tab, investments-tab, balance-tab, tax-tab F61),
+    │   │                          #     hooks/ (use-reports-data.ts — agregações, DRE, carteira, indicadores e exportação)
     │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Lembretes (central de notificações)
@@ -284,6 +291,7 @@
     │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags, schemas.ts e validação de convites
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
     │   ├── onboarding/            #   checklist/progresso do primeiro uso (F5.4)
+    │   ├── theme/                 #   motor puro de resolução de tema (light/dark/oled/system/schedule), janela diurna e parsing HH:mm
     │   ├── demo-simulation/       # datasets sintéticos puros em memória, trilhas (finanças/investimentos), passos do tour e hand-off contextual (handoff.ts)
     │   ├── notifications/         #   Fase 5 Android: parsing puro de notificações bancárias, comprovantes Pix em centavos,
     │   │                          #     pix-receipt-parser.ts (extração de comprovantes Pix), merchant-memory.ts, pix-emv-parser.ts,

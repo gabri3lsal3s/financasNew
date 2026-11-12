@@ -409,6 +409,14 @@ O arquivo `public/_headers` implementa uma arquitetura de segurança de borda em
 
 - O Cloudflare Pages redireciona automaticamente qualquer rota não encontrada para o `dist/index.html` (SPA fallback nativo para Vite/React), dispensando configurações frágeis em `_redirects`.
 
+### 5.4 Descoberta por Agentes de IA (`llms.txt` & `ai-catalog.json`)
+
+- **`/llms.txt` e `/llms-full.txt`:** documentação pública em texto plano, com rotas canônicas, capacidades e fórmulas financeiras, servida com `Content-Type: text/plain; charset=utf-8`, cache de 24h e `Access-Control-Allow-Origin: *` em `public/_headers`;
+- **`/ai-catalog.json` e `/.well-known/ai-catalog.json`:** catálogo versionado de capacidades (simuladores e ferramentas públicas) em JSON, servido com `application/json` e CORS liberado para leitura por agentes;
+- **`robots.txt`:** permite explicitamente os quatro artefatos acima e mantém `Disallow` para áreas autenticadas (`/admin`, `/configuracoes`, …);
+- **`sitemap.xml`:** inclui `lastmod` e prioridades das rotas públicas indexáveis (landing, ferramentas, planos, legal);
+- **JSON-LD (`index.html`):** grafo Schema.org com `SoftwareApplication`, `Organization` e `FAQPage` para rich snippets consistentes com a marca `axir.com.br`.
+
 ---
 
 ## 6. COMANDOS ÚTEIS (LOCAL)

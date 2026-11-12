@@ -1,6 +1,6 @@
 import { lazy, Suspense, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { CheckCircle2, Clock, Download, FileUp, Plus, Printer, Repeat, Sparkles, Trash2, Undo2, WalletCards, Zap } from "lucide-react";
+import { CheckCircle2, Clock, FileUp, Plus, Sparkles, Undo2, WalletCards } from "lucide-react";
 import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 
@@ -57,9 +57,13 @@ import {
   useUpdateCard,
   useUserPreferences,
 } from "@/state";
-import { CardFormDialog } from "@/features/cards/components/card-form-dialog";
-import { PaymentDialog } from "@/features/cards/components/payment-dialog";
-import { BatchInvoicePaymentDialog } from "@/features/cards/components/batch-invoice-payment-dialog";
+import {
+  BatchInvoicePaymentDialog,
+  CardFormDialog,
+  CardInvoiceExpensesFeed,
+  CardInvoicePaymentsFeed,
+  PaymentDialog,
+} from "@/features/cards/components";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import type { CardPayment, CreditCard, Expense } from "@/types";
 
@@ -887,180 +891,22 @@ export function CardsPage() {
           {/* =========================================================================
               SEÇÃO 3: EXTRATO DISCRIMINADO (DESPESAS E PAGAMENTOS)
              ========================================================================= */}
-          <section aria-label={`Despesas da fatura de ${monthLabel(effectiveMonth)}`} className="flex flex-col gap-4 sm:gap-5">
-            <div className="flex flex-col gap-2.5 pb-1 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Despesas · {monthLabel(effectiveMonth)}
-                </h2>
-                <span className="text-xs text-muted-foreground font-mono sm:hidden">
-                  {competenceExpenses.length} {competenceExpenses.length === 1 ? "item" : "itens"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                <span className="hidden sm:inline text-xs text-muted-foreground font-mono">
-                  {competenceExpenses.length} {competenceExpenses.length === 1 ? "item" : "itens"}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleOpenImport}
-                  disabled={!selectedCard}
-                  className="gap-1.5 flex-1 sm:flex-none justify-center"
-                >
-                  <FileUp className="size-3.5" aria-hidden="true" />
-                  <span>Importar<span className="hidden sm:inline"> fatura</span></span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPrintOpen(true)}
-                  disabled={competenceExpenses.length === 0 || !selectedCard}
-                  className="gap-1.5 flex-1 sm:flex-none justify-center"
-                >
-                  <Printer className="size-3.5" aria-hidden="true" />
-                  <span className="hidden sm:inline">Imprimir / Salvar </span>PDF
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportInvoice}
-                  disabled={competenceExpenses.length === 0 || !selectedCard}
-                  className="gap-1.5 flex-1 sm:flex-none justify-center"
-                >
-                  <Download className="size-3.5" aria-hidden="true" />
-                  <span className="hidden sm:inline">Exportar </span>CSV
-                </Button>
-              </div>
-            </div>
+          <CardInvoiceExpensesFeed
+            monthLabelStr={monthLabel(effectiveMonth)}
+            competenceExpenses={competenceExpenses}
+            installments={installments}
+            regular={regular}
+            selectedCard={selectedCard}
+            onOpenImport={handleOpenImport}
+            onOpenPrint={() => setPrintOpen(true)}
+            onExportCsv={handleExportInvoice}
+            renderInvoiceRow={renderInvoiceRow}
+          />
 
-            {competenceExpenses.length === 0 ? (
-              <div data-tour="cards-installments-section">
-                <EmptyState
-                  icon={<WalletCards className="size-6" aria-hidden="true" />}
-                  title="Sem despesas nesta fatura"
-                  description="As compras no cartão aparecem aqui de acordo com o fechamento da fatura."
-                  className="py-10 sm:py-12 px-4"
-                />
-              </div>
-            ) : (
-              <div className="flex flex-col gap-6 sm:gap-7">
-                {/* Parceladas — compras herdadas de meses anteriores (topo) */}
-                <div data-tour="cards-installments-section" className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between pb-0.5">
-                    <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      <Repeat className="size-3.5" aria-hidden="true" />
-                      Parceladas
-                    </h3>
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {installments.length} {installments.length === 1 ? "item" : "itens"}
-                    </span>
-                  </div>
-                  {installments.length === 0 ? (
-                    <div className="flex items-center justify-center rounded-xl border border-dashed border-border/80 bg-surface/50 py-5 px-4 text-center text-xs text-muted-foreground">
-                      Nenhuma compra parcelada nesta fatura.
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2 sm:gap-2.5">
-                      {installments.map(renderInvoiceRow)}
-                    </div>
-                  )}
-                </div>
-
-                {/* À vista — gastos do próprio mês da fatura (abaixo) */}
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between pb-0.5">
-                    <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      <Zap className="size-3.5" aria-hidden="true" />
-                      À vista
-                    </h3>
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {regular.length} {regular.length === 1 ? "item" : "itens"}
-                    </span>
-                  </div>
-                  {regular.length === 0 ? (
-                    <div className="flex items-center justify-center rounded-xl border border-dashed border-border/80 bg-surface/50 py-5 px-4 text-center text-xs text-muted-foreground">
-                      Nenhuma compra à vista nesta fatura.
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2 sm:gap-2.5">
-                      {regular.map(renderInvoiceRow)}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* Pagamentos e estornos */}
-          <section aria-label="Pagamentos e estornos" className="flex flex-col gap-3.5 sm:gap-4">
-            <div className="flex items-center justify-between pb-0.5">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Pagamentos e estornos
-              </h2>
-              <span className="text-xs text-muted-foreground font-mono">
-                {competencePayments.length} {competencePayments.length === 1 ? "registro" : "registros"}
-              </span>
-            </div>
-
-            {competencePayments.length === 0 ? (
-              <EmptyState
-                icon={<WalletCards className="size-6" aria-hidden="true" />}
-                title="Nenhum pagamento"
-                description="Registre o pagamento ou estorno desta fatura quando for efetuado."
-                className="py-8 sm:py-10 px-4"
-              />
-            ) : (
-              <div className="flex flex-col gap-2 sm:gap-2.5">
-                {competencePayments.map((payment) =>
-                  payment.amount < 0 ? (
-                    <TransactionRow
-                      key={payment.id}
-                      title={payment.note || "Estorno"}
-                      date={payment.date}
-                      amountCents={Math.round(-payment.amount * 100)}
-                      kind="income"
-                      badges={
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeletePaymentClick(payment)}
-                          aria-label={`Excluir estorno ${payment.note || ""}`}
-                          className="size-7 p-0 text-muted-foreground hover:text-critical"
-                        >
-                          <Trash2 className="size-3.5" aria-hidden="true" />
-                        </Button>
-                      }
-                    />
-                  ) : (
-                    <TransactionRow
-                      key={payment.id}
-                      title={payment.note || "Pagamento de fatura"}
-                      date={payment.date}
-                      amountCents={Math.round(payment.amount * 100)}
-                      kind="expense"
-                      badges={
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeletePaymentClick(payment)}
-                          aria-label={`Excluir pagamento ${payment.note || ""}`}
-                          className="size-7 p-0 text-muted-foreground hover:text-critical"
-                        >
-                          <Trash2 className="size-3.5" aria-hidden="true" />
-                        </Button>
-                      }
-                    />
-                  ),
-                )}
-              </div>
-            )}
-          </section>
+          <CardInvoicePaymentsFeed
+            competencePayments={competencePayments}
+            onDeletePayment={handleDeletePaymentClick}
+          />
         </>
       )}
 

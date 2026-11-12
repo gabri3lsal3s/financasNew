@@ -30,7 +30,12 @@ export function InstallAppButton({ variant = "banner", className }: InstallAppBu
   const { canInstall, isIOS, isInstalled, install } = usePWAInstall();
   const [showIosGuide, setShowIosGuide] = useState(false);
 
-  // Se o app já estiver instalado ou a plataforma não permitir instalação
+  // Se o app já estiver instalado e não for o card informativo, oculta o botão
+  if (isInstalled && variant !== "card") {
+    return null;
+  }
+
+  // Se a plataforma não permitir instalação e não estiver instalado
   if (!canInstall && !isInstalled) {
     return null;
   }

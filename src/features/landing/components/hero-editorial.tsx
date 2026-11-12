@@ -81,13 +81,13 @@ export function HeroEditorial() {
 
           {/* Headline Principal Editorial Ampliada */}
           <h1 className="mt-5 sm:mt-8 max-w-4xl font-display text-3xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.15] md:leading-[1.1]">
-            Do controle de cartões e fiados ao aporte do mês.{" "}
-            <span className="text-primary-strong">Saiba quanto gastar hoje e onde investir o que sobrar.</span>
+            Do controle de cartões e compromissos ao aporte do mês.{" "}
+            <span className="text-primary-strong">Saiba exatamente quanto gastar hoje e onde investir o que sobrar.</span>
           </h1>
 
           {/* Subtítulo Rico e Persuasivo com Tipografia Editorial */}
           <p className="mt-4 sm:mt-6 max-w-3xl text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed font-normal">
-            Elimine o susto das faturas futuras e a bagunça do caderninho. O Axir calcula seu caixa real diário, acompanha o que você deve e tem a receber, e distribui seus aportes com rigor matemático sem vender posições.
+            Elimine o susto das faturas futuras e a desorganização de anotações soltas. O Axir calcula seu caixa real diário, acompanha o que você deve e tem a receber, e direciona seus aportes com rigor matemático sem vender posições.
           </p>
 
           {/* CTAs de Conversão com Shimmer Reflexivo e Altura Confortável */}
@@ -175,7 +175,7 @@ export function HeroEditorial() {
                 <div className="size-2.5 sm:size-3.5 rounded-full bg-warning/70" />
                 <div className="size-2.5 sm:size-3.5 rounded-full bg-positive/70" />
                 <span className="ml-2 sm:ml-3 text-xs sm:text-sm font-mono text-muted-foreground hidden sm:inline">
-                  axis.finance / dashboard
+                  axir.app / dashboard
                 </span>
               </div>
               <Badge variant="default" size="xs" className="font-mono border border-primary/30">
@@ -275,9 +275,9 @@ export function HeroEditorial() {
             <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface/50 border border-border/50">
               <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-foreground">
                 <Smartphone className="size-4 text-portfolio" aria-hidden="true" />
-                <span>PWA Multiplataforma</span>
+                <span>PWA &amp; Android Pro</span>
               </div>
-              <span className="text-[11px] text-muted-foreground">Instalável no iOS e Android</span>
+              <span className="text-[11px] text-muted-foreground">Instalável no iOS, Android e Desktop</span>
             </div>
           </div>
         </ScrollReveal>

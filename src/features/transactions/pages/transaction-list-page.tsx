@@ -207,7 +207,22 @@ export function TransactionListPage() {
   const balanceCents = incomesTotalCents - expensesTotalCents;
   const balanceWeightedCents = incomesWeightedCents - expensesWeightedCents;
 
-  const [filter, setFilter] = useState<FeedFilter>("all");
+  const paramFilter = searchParams.get("tipo") ?? searchParams.get("filter");
+  const initialFilter: FeedFilter = useMemo(() => {
+    if (paramFilter === "incomes" || paramFilter === "receitas") return "incomes";
+    if (paramFilter === "expenses" || paramFilter === "despesas") return "expenses";
+    if (paramFilter === "installments" || paramFilter === "parceladas") return "installments";
+    if (paramFilter === "recurring" || paramFilter === "recorrentes") return "recurring";
+    return "all";
+  }, [paramFilter]);
+
+  const [filter, setFilter] = useState<FeedFilter>(initialFilter);
+  const [prevInitialFilter, setPrevInitialFilter] = useState<FeedFilter>(initialFilter);
+  if (prevInitialFilter !== initialFilter) {
+    setPrevInitialFilter(initialFilter);
+    setFilter(initialFilter);
+  }
+
   const [searchQuery, setSearchQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(TRANSACTIONS_PAGE_SIZE);
   const [prevFilterKey, setPrevFilterKey] = useState(() => `${month}-${filter}-${searchQuery}`);

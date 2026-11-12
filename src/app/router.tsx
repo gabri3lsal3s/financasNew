@@ -1,8 +1,12 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Outlet, BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router";
 import { appRoutes } from "@/app/routes";
-import { LoadingScreen, PageShell } from "@/components/layout";
+import { LoadingScreen } from "@/components/layout/loading-screen";
 import { RequireActiveAccount, RequireAdminSession, RequireFeature } from "@/components/routing";
+
+const PageShell = lazy(() =>
+  import("@/components/layout/page-shell").then((m) => ({ default: m.PageShell })),
+);
 
 const FloatingCalculator = lazy(() =>
   import("@/components/modules/floating-calculator").then((m) => ({ default: m.FloatingCalculator })),
@@ -12,6 +16,7 @@ import { useIdleSessionTimeout } from "@/hooks/use-idle-session-timeout";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 import { usePendingSplitExpense } from "@/hooks/use-pending-split-expense";
+import { usePendingSimulation } from "@/hooks/use-pending-simulation";
 import { useUserAccess } from "@/state";
 import {
   getPendingRouteAfterUnlock,
@@ -213,6 +218,7 @@ function RequireAuth() {
   const userAccess = useUserAccess(session?.user?.id);
   const location = useLocation();
   usePendingSplitExpense();
+  usePendingSimulation();
 
   // F23 — pre-fetching discreto dos chunks das rotas vizinhas (idle).
   useRoutePrefetch();

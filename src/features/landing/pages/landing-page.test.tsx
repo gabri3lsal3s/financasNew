@@ -35,7 +35,7 @@ describe("LandingPage", () => {
   it("renderiza a seção Hero Editorial com headline e métricas de caixa real e aporte calibrado", () => {
     renderLanding();
     expect(
-      screen.getByRole("heading", { name: /Do controle de cartões e fiados ao aporte do mês/i }),
+      screen.getByRole("heading", { name: /Do controle de cartões e compromissos ao aporte do mês/i }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/30 Dias de Teste sem Compromisso/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Caixa Real Disponível").length).toBeGreaterThan(0);
@@ -88,10 +88,10 @@ describe("LandingPage", () => {
     const user = userEvent.setup();
     renderLanding();
 
-    // Valida os 3 itens do bloco editorial
-    expect(screen.getByText(/Card de Racha de Despesas com cópia de Pix e botão de WhatsApp/i)).toBeInTheDocument();
-    expect(screen.getByText(/Card de Termômetro de Vaquinha Coletiva em tempo real/i)).toBeInTheDocument();
-    expect(screen.getByText(/Card de Orçamento Familiar Seguro \(divisão 50\/50 e acerto sem atrito\)/i)).toBeInTheDocument();
+    // Valida os itens do bloco editorial
+    expect(screen.getByText(/Racha com Pix Copia e Cola instantâneo e botão de WhatsApp/i)).toBeInTheDocument();
+    expect(screen.getByText(/Modo Viagem com link público e senha/i)).toBeInTheDocument();
+    expect(screen.getByText(/Modo Família com divisão 50\/50/i)).toBeInTheDocument();
 
     // 1. Card de Racha de Despesas ativo inicialmente
     expect(screen.getByTestId("card-racha")).toBeVisible();
@@ -141,16 +141,14 @@ describe("LandingPage", () => {
     expect(screen.getByText("Zero Senhas Bancárias")).toBeInTheDocument();
   });
 
-  it("renderiza a vitrine de investimentos com os 6 cards de inteligência fiscal", () => {
+  it("renderiza o Eixo 3 com rebalanceamento determinístico, Radar Fiscal e Dossiê Excel", () => {
     renderLanding();
 
-    expect(
-      screen.getByRole("heading", { name: /Inteligência de Investimentos e Gestão Fiscal de Nível Bancário/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Motor de Rebalanceamento de Aportes")).toBeInTheDocument();
-    expect(screen.getByText("Radar de Otimização Fiscal de IR")).toBeInTheDocument();
-    expect(screen.getByText("Monitor e Apuração de DARF")).toBeInTheDocument();
-    expect(screen.getByText("Dossiês & Exportação Excel (.xlsx)")).toBeInTheDocument();
+    expect(screen.getByText("Eixo 3 · Vetor Patrimonial & Aportes")).toBeInTheDocument();
+    expect(screen.getByText("Alocação matemática de aportes e blindagem contra impostos")).toBeInTheDocument();
+    expect(screen.getByText(/Rebalanceamento 100% via novos aportes/i)).toBeInTheDocument();
+    expect(screen.getByText(/Radar de alíquota regressiva de IR/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dossiê Executivo em Excel/i)).toBeInTheDocument();
   });
 
   it("permite interagir com o Simulador de Carteira com Allocation Donut e recalcular valores", async () => {

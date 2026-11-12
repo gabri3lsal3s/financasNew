@@ -2,7 +2,6 @@ export * from "./category-breakdown-dialog";
 export * from "./other-budgets-dialog";
 export * from "./other-categories-dialog";
 export * from "./split-pending-banner";
-export * from "./campaigns-summary-banner";
 export * from "./household-alert-banner";
 export * from "./goal-progress-alert-banner";
 export * from "./overview-daily-flow-section";

@@ -269,7 +269,7 @@ Blocos de sugestões inteligentes (habituais, recomendações de aporte) seguem 
 | `tailwind.config.ts` | **Somente se a Fase 0 usar Tailwind v3** — bloco completo no final de `globals.css` |
 | `index.html` | Carregar Google Fonts: Inter (400/500/600/700), Sora (700/800), IBM Plex Mono (400/500/600) + `preconnect`, meta `color-scheme` e inline bootstrap script |
 
-**Fluxo de tema:** `ThemeProvider` (Fase 0) resolve `system → light|oled` (modo escuro padrão do sistema/forced-dark resolve para OLED `#000000`) e grava `data-theme` e `style.colorScheme` em `<html>`; preferência persistida em `user_preferences.theme` e espelhada no storage local síncrono. O fallback `@media (prefers-color-scheme)` e `index.html` inline script evitam flash sem JS e garantem sincronização de tema desde o 1º frame do HTML Splash Screen.
+**Fluxo de tema:** `ThemeProvider` (Fase 0) delega a resolução ao motor puro `src/domain/theme` (`light`, `dark`, `oled`, `system` e `schedule`). Em `system`, o modo escuro do SO resolve para a variante preferida do usuário (`dark` Abissal Teal `#0C1923` — padrão — ou `oled` true black `#000000`); em `schedule`, o tema alterna entre `light` diurno e a variante escura noturna conforme `dayStart`/`nightStart` (`HH:mm`). O provider grava `data-theme` e `style.colorScheme` em `<html>` e persiste `themePreference`, `darkThemeVariant` e `themeSchedule` em `user_preferences.custom_settings`, espelhando-os no storage local síncrono. O fallback `@media (prefers-color-scheme)` e o script inline do `index.html` replicam as mesmas regras para evitar flash sem JS desde o 1º frame do Splash Screen.
 
 ---
 

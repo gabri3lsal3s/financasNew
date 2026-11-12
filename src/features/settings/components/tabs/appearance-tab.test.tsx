@@ -103,10 +103,42 @@ describe("AppearanceTab - Aparência & Identidade Visual (Fase 1 — Tarefa 1.3)
     const user = userEvent.setup();
     renderAppearanceTab();
 
-    const darkOption = screen.getByRole("button", { name: /^Escuro/i });
-    await user.click(darkOption);
+    const darkOptions = screen.getAllByRole("button", { name: /Escuro/i });
+    // O primeiro botão é a opção de tema na grade principal
+    await user.click(darkOptions[0]!);
 
     expect(document.documentElement.dataset.theme).toBe("dark");
+  });
+
+  it("permite selecionar preferência de tema escuro (Escuro vs OLED)", async () => {
+    const user = userEvent.setup();
+    renderAppearanceTab();
+
+    const oledVariantBtn = screen.getByRole("button", { name: /OLED \(True Black\)/i });
+    await user.click(oledVariantBtn);
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        darkThemeVariant: "oled",
+      }),
+    );
+  });
+
+  it("permite selecionar o modo Por Horário e exibe as janelas de horário", async () => {
+    const user = userEvent.setup();
+    renderAppearanceTab();
+
+    const scheduleBtn = screen.getByRole("button", { name: /Por Horário/i });
+    await user.click(scheduleBtn);
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        themePreference: "schedule",
+      }),
+    );
+
+    expect(screen.getByText("Janelas de Horário do Dia")).toBeInTheDocument();
+    expect(screen.getByText("Início do Dia (Tema Claro)")).toBeInTheDocument();
   });
 
   it("permite alternar cores de destaque oficiais", async () => {

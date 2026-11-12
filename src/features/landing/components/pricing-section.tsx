@@ -143,9 +143,11 @@ export function PricingSection() {
           {/* Card 2: Plano Pro (Featured) */}
           <ScrollReveal delay={100} className="h-full">
             <Card className="flex flex-col justify-between border-primary/50 bg-surface shadow-xs p-5 sm:p-8 relative overflow-hidden ring-1 ring-primary/20 rounded-2xl sm:rounded-3xl h-full">
-              {/* Top highlight banner */}
-              <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-bl-xl">
-                Mais Escolhido
+              {/* Top highlight badge padronizado (Regra 14 AGENTS.md) */}
+              <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
+                <Badge variant="default" size="xs" className="font-bold tracking-wider uppercase">
+                  Mais Escolhido
+                </Badge>
               </div>
 
               <div>

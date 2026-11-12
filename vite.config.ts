@@ -68,7 +68,7 @@ export default defineConfig({
     }),
   ],
   build: {
-    modulePreload: false,
+    modulePreload: true,
     chunkSizeWarningLimit: 1700,
     // Vite 8 (Oxc/Rolldown): drop de console/debugger no minifier — esbuild.drop é ignorado.
     rolldownOptions: {
@@ -98,12 +98,20 @@ export default defineConfig({
             return "vendor-react";
           }
 
-          // Componentes de UI, primitivos Radix, ícones e utilitários de classes
+          // Busca global / paleta de comandos isolada sob demanda
+          if (normalizedId.includes("/node_modules/cmdk/")) {
+            return "vendor-cmdk";
+          }
+
+          // Seletor de data e calendário isolado sob demanda
+          if (normalizedId.includes("/node_modules/react-day-picker/")) {
+            return "vendor-picker";
+          }
+
+          // Componentes de UI básicos, primitivos Radix, ícones e utilitários de classes
           if (
             normalizedId.includes("/node_modules/@radix-ui/") ||
             normalizedId.includes("/node_modules/lucide-react/") ||
-            normalizedId.includes("/node_modules/cmdk/") ||
-            normalizedId.includes("/node_modules/react-day-picker/") ||
             normalizedId.includes("/node_modules/class-variance-authority/") ||
             normalizedId.includes("/node_modules/clsx/") ||
             normalizedId.includes("/node_modules/tailwind-merge/")

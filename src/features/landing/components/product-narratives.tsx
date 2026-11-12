@@ -172,21 +172,21 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Com o <strong>Fechamento Automático de Competências</strong>, o sistema calcula o cronograma exato de parcelas para os próximos 12 meses em centavos exatos. Você enxerga com antecedência o limite comprometido e o impacto real no seu orçamento antes de assumir novos compromissos.
+              Com o <strong>Fechamento Determinístico de Competências</strong>, o Axir projeta o cronograma exato de parcelas em até 60x para os próximos 12 meses. Além disso, você <strong>importa e reconcilia faturas completas (PDF, OFX e CSV)</strong> com detecção automática de estornos e pagamentos.
             </p>
 
             <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Fechamento preciso de competência e vencimento</span>
+                <span>Linha do tempo cronológica de 12 meses com limite comprometido</span>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Divisão em centavos sem erros de arredondamento</span>
+                <span>Importação e reconciliação automática de faturas completas (PDF, OFX, CSV)</span>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Visão de limite futuro comprometido mês a mês</span>
+                <span>Parcelamentos em até 60x calculados em centavos exatos sem erros</span>
               </div>
             </div>
           </ScrollReveal>
@@ -206,25 +206,25 @@ export function ProductNarratives() {
             </h3>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Investir com sucesso não é tentar adivinhar a próxima ação do momento, mas manter uma estratégia disciplinada sem girar patrimônio desnecessariamente.
+              Investir com disciplina não é tentar acertar o topo ou fundo do mercado, mas alocar capital com consistência sem girar patrimônio desnecessariamente.
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Nosso <strong>Motor de Rebalanceamento Determinístico</strong> calcula exatamente para onde direcionar cada real do seu aporte mensal para comprar na baixa e reequilibrar sua carteira. E o <strong>Radar Fiscal de Renda Fixa</strong> monitora a tabela regressiva de IR para alertar o momento exato em que a alíquota cai antes de você resgatar.
+              Nosso <strong>Motor de Rebalanceamento Determinístico</strong> calcula exatamente para onde direcionar cada real do novo aporte para comprar ativos defasados e calibrar sua carteira sem vendas. O <strong>Radar Fiscal</strong> monitora a tabela regressiva de IR de Renda Fixa, e você exporta o <strong>Dossiê Executivo completo em Excel (.xlsx estruturado com 5 abas e fórmulas)</strong> em 1 clique.
             </p>
 
             <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Rebalanceamento 100% via aportes (zero venda de ativos)</span>
+                <span>Rebalanceamento 100% via novos aportes (zero venda de ativos e zero DARF)</span>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Radar de alíquota regressiva de IR de Renda Fixa</span>
+                <span>Radar de alíquota regressiva de IR para resgates inteligentes de Renda Fixa</span>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Exportação completa em Excel (.xlsx) com fórmulas em 1 clique</span>
+                <span>Dossiê Executivo em Excel (.xlsx de 5 abas com fórmulas) e Privacy Shield em 1 clique</span>
               </div>
             </div>
           </ScrollReveal>
@@ -301,25 +301,25 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O Axir transforma finanças compartilhadas em um fluxo natural: <strong>Racha de Despesas com Pix Copia e Cola</strong> e lembretes automáticos no WhatsApp, <strong>Termômetro de Vaquinhas Coletivas</strong> com arrecadação pública transparente, <strong>Modo Viagem</strong> com livro-razão em grupo e liquidação mínima inteligente, e o <strong>Modo Família</strong> com divisão 50/50 e acerto de contas sem atrito — preservando a privacidade estrita dos seus gastos individuais.
+              O Axir transforma finanças compartilhadas em um fluxo natural: <strong>Racha de Despesas com Pix Copia e Cola</strong> e lembretes automáticos no WhatsApp, <strong>Modo Família</strong> com divisão 50/50 sem invasão de privacidade, e o <strong>Modo Viagem</strong> com livro-razão público e liquidação mínima via Pix.
             </p>
 
             <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Card de Racha de Despesas com cópia de Pix e botão de WhatsApp</span>
+                <span>Racha com Pix Copia e Cola instantâneo e botão de WhatsApp</span>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Card de Termômetro de Vaquinha Coletiva em tempo real</span>
+                <span>Modo Viagem com link público e senha (amigos participam sem login e sem baixar app)</span>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Modo Viagem com múltiplos pagadores e liquidação mínima com Pix</span>
+                <span>Liquidação mínima inteligente para zerar saldos com o menor número de transferências Pix</span>
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Card de Orçamento Familiar Seguro (divisão 50/50 e acerto sem atrito)</span>
+                <span>Modo Família com divisão 50/50 e preservação estrita da privacidade individual</span>
               </div>
             </div>
           </ScrollReveal>

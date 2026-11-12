@@ -1,5 +1,28 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.2.0 (Build 56)** registra a **Experiência Adaptativa de Tema, Distribuição Unificada do App, Consolidação de Configurações e Descoberta por IA** (2026-11-12):
+> - **(1) Tema Programado por Horário e Preferência de Modo Escuro**:
+>   - Novo motor puro `src/domain/theme/theme-resolver.ts` (light/dark/oled/system/schedule) com `isDaytime`, janelas invertidas e parsing seguro de `HH:mm`, coberto por testes colocalizados;
+>   - `ThemeProvider` estendido com `darkThemeVariant`, `scheduleConfig`, relógio reativo (30s) e resolução determinística do tema efetivo; script anti-flash em `index.html` sincronizado com as mesmas regras;
+>   - `VisualIdentityCard` ganha seleção de tema escuro preferido (Abissal Teal x OLED) e programação de início do dia/noite; preferências persistidas em `user_preferences.custom_settings` (`themePreference`, `darkThemeVariant`, `themeSchedule`);
+>   - Migration `20260101000113_theme_schedule_and_preferences.sql` amplia o CHECK de `theme` para aceitar `schedule`;
+> - **(2) Distribuição Unificada do Aplicativo (PWA + Android Pro)**:
+>   - Novo `AppDownloadModal` centraliza instalação PWA (com guia iOS) e download/instalação do APK, substituindo entradas fragmentadas no menu "Mais opções";
+>   - Detecção de plataforma (`isIOSDevice`, `isStandaloneDisplay`, `isNativePlatform`) oculta opções inválidas no APK nativo e no PWA iOS;
+> - **(3) Consolidação de Configurações e Administração**:
+>   - Configurações passam a operar em 6 abas canônicas com aliases de deep-link; abas legadas (`FamilyTab`, `AppInstallationTab`, `ResetDefaultsCard`) foram absorvidas por Aparência/Segurança e pelo novo modal de distribuição;
+>   - Remoção das páginas administrativas legadas (`AdminPage`, `OverviewTab`, `UsersTab`, `SystemTab`) em favor do console modular `/admin/*` já vigente;
+> - **(4) Modularização de Páginas Densas**:
+>   - `OverviewPage` delega queries/cálculos ao hook `useOverviewData` e remove o banner legado de campanhas e o estado morto de ajuste rápido;
+>   - `ReportsPage` delega a `useReportsData`; `BudgetsPage` divide-se nas abas `BudgetsLimitsTab`, `BudgetsGoalsTab` e `BudgetsCategoriesTab`; `CardsPage` extrai `CardInvoiceExpensesFeed` e `CardInvoicePaymentsFeed`;
+>   - `PageShell` passa a ser carregado via `lazy` e `cmdk`/`react-day-picker` ganham chunks vendor dedicados;
+> - **(5) Política de Cooldown de Alertas de Meta**: `shouldShowGoalAlert` adota cooldown de 30 dias, ignorando oscilações diárias e preservando marcos extraordinários (meta batida, reta final, mudança de alvo/status);
+> - **(6) Landing Page e Descoberta por IA**:
+>   - Navegação reordenada para Recursos, Simulador, Plataformas, Ferramentas, Preços e FAQ, com `scroll-spy` atualizado e alvos de toque de 44px;
+>   - Publicação de `llms.txt`, `llms-full.txt`, `ai-catalog.json` e `.well-known/ai-catalog.json`, com `robots.txt`, `sitemap.xml` e `_headers` (CORS/Content-Type) correspondentes; JSON-LD expandido com Organization e FAQPage;
+> - **(7) Autenticação e MFA Blindados**: detecção robusta de fatores verificados (`data.all` + `data.totp`), limpeza de fatores não confirmados antes do enroll, classificação dedicada de erros MFA e WebAuthn de plataforma no App Lock web;
+> - **(8) Quality Gates**: `tsc -b` 0 erros, ESLint 0 erros/0 warnings, Vitest 6.024 testes aprovados, build de produção Vite e APK de release gerados.
+>
 > **v3.1.2 (Build 55)** registra a **Auditoria Completa de Conformidade Estrita com as 27 Regras de Governança, Higienização Sensorial e Blindagem de Superfícies** (2026-11-11):
 > - **(1) Blindagem contra Truncamento Monetário no Fluxo Pix (Regra 11 - V16)**:
 >   - Eliminação de `truncate` sobre o valor Pix no acerto de contas (`trip-public-page.tsx`), prevenindo cortes como `"Copiar Pix (R$ 1.25..."` e garantindo rótulo adaptativo com `whitespace-nowrap tabular-nums`;

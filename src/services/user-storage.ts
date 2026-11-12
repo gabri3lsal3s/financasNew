@@ -90,6 +90,8 @@ export function subscribeActiveUserId(listener: (userId: string | null) => void)
 
 const SYNCED_BOOT_KEYS = [
   "theme",
+  "dark_theme_variant",
+  "theme_schedule",
   "accent_theme",
   "surface_style",
   "motion_level",

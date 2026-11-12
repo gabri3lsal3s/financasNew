@@ -23,15 +23,65 @@ describe("Gateway Nativo — Biometria", () => {
     vi.clearAllMocks();
   });
 
-  it("informa indisponibilidade e fallback gracioso em Web/PWA", async () => {
+  it("informa indisponibilidade e erro seguro em Web/PWA quando WebAuthn não estiver presente", async () => {
     vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    const originalPKC = window.PublicKeyCredential;
+    // @ts-expect-error test override
+    delete window.PublicKeyCredential;
 
     const availability = await checkBiometricsAvailability();
     expect(availability.isAvailable).toBe(false);
     expect(availability.biometryType).toBe("none");
 
     const auth = await authenticateWithBiometrics();
-    expect(auth.success).toBe(true);
+    expect(auth.success).toBe(false);
+
+    window.PublicKeyCredential = originalPKC;
+  });
+
+  it("detecta autenticador de plataforma WebAuthn disponível no navegador", async () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    const isAvailableMock = vi.fn().mockResolvedValue(true);
+    // @ts-expect-error mock WebAuthn
+    window.PublicKeyCredential = {
+      isUserVerifyingPlatformAuthenticatorAvailable: isAvailableMock,
+    };
+
+    const availability = await checkBiometricsAvailability();
+    expect(availability.isAvailable).toBe(true);
+    expect(availability.biometryType).toBe("fingerprint");
+    expect(availability.deviceIsSecure).toBe(true);
+  });
+
+  it("executa registro e autenticação WebAuthn com sucesso no navegador", async () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    // @ts-expect-error mock WebAuthn
+    window.PublicKeyCredential = {
+      isUserVerifyingPlatformAuthenticatorAvailable: vi.fn().mockResolvedValue(true),
+    };
+
+    const mockRawId = new Uint8Array([1, 2, 3, 4]).buffer;
+    const mockCreate = vi.fn().mockResolvedValue({ rawId: mockRawId });
+    const mockGet = vi.fn().mockResolvedValue({ id: "cred-123" });
+
+    Object.defineProperty(navigator, "credentials", {
+      value: {
+        create: mockCreate,
+        get: mockGet,
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    // 1. Registro e primeira autenticação
+    const firstAuth = await authenticateWithBiometrics({ reason: "Ativar biometria", userId: "user-123" });
+    expect(firstAuth.success).toBe(true);
+    expect(mockCreate).toHaveBeenCalled();
+
+    // 2. Autenticação subsequente usando a credencial armazenada
+    const secondAuth = await authenticateWithBiometrics({ reason: "Desbloquear" });
+    expect(secondAuth.success).toBe(true);
+    expect(mockGet).toHaveBeenCalled();
   });
 
   it("detecta biometria de impressão digital disponível", async () => {

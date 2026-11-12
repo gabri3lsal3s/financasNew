@@ -81,4 +81,20 @@ describe("TransactionListPage — deep-link da busca global (§3.9)", () => {
     expect(requestedMonths[0]).toMatch(/^\d{4}-\d{2}$/);
     expect(screen.getByText("Mercado antigo").closest(".ring-primary")).toBeNull();
   });
+
+  it("seleciona a aba de Receitas quando ?tipo=receitas ou ?filter=incomes", () => {
+    params = new URLSearchParams("tipo=receitas");
+    render(<TransactionListPage />);
+
+    const receitasTab = screen.getByRole("tab", { name: "Receitas" });
+    expect(receitasTab).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("seleciona a aba de Despesas quando ?tipo=despesas ou ?filter=expenses", () => {
+    params = new URLSearchParams("tipo=despesas");
+    render(<TransactionListPage />);
+
+    const despesasTab = screen.getByRole("tab", { name: "Despesas" });
+    expect(despesasTab).toHaveAttribute("aria-selected", "true");
+  });
 });

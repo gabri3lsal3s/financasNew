@@ -1,11 +1,13 @@
 import { useState } from "react";
 import {
   ArrowDownLeft,
+  ArrowRight,
   Calendar,
   Edit2,
   Pencil,
   Plus,
   Receipt,
+  Scissors,
   SlidersHorizontal,
   Trash2,
 } from "lucide-react";
@@ -40,6 +42,7 @@ import {
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import type { PortfolioAsset, PortfolioTransaction, PortfolioTransactionType } from "@/types";
 import { AssetEditDialog } from "./asset-edit-dialog";
+import { AssetSplitDialog } from "./asset-split-dialog";
 import { CalibrateFixedIncomeDialog } from "./calibrate-fixed-income-dialog";
 import { TransactionFormDialog } from "./transaction-form-dialog";
 
@@ -74,6 +77,7 @@ export function AssetDetailSheet({
   const [txToDelete, setTxToDelete] = useState<PortfolioTransaction | null>(null);
   const [txToEdit, setTxToEdit] = useState<PortfolioTransaction | null>(null);
   const [createTxOpen, setCreateTxOpen] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
 
   if (!asset) return null;
 
@@ -244,7 +248,7 @@ export function AssetDetailSheet({
               ) : !isClosed && positionRow?.fixedIncomeResult?.hasExplicitTaxInfo ? (
                 positionRow?.fixedIncomeResult?.taxCountdown ? (
                   <Badge variant="muted" size="xs">
-                    IR {positionRow.taxRatePct}% ➔ {positionRow.fixedIncomeResult.taxCountdown.nextRatePct}% em {positionRow.fixedIncomeResult.taxCountdown.daysRemaining}d
+                    IR {positionRow.taxRatePct}% <ArrowRight className="size-2.5 inline-block mx-0.5" aria-hidden="true" /> {positionRow.fixedIncomeResult.taxCountdown.nextRatePct}% em {positionRow.fixedIncomeResult.taxCountdown.daysRemaining}d
                   </Badge>
                 ) : (
                   <Badge variant="muted" size="xs">
@@ -316,6 +320,24 @@ export function AssetDetailSheet({
                 >
                   <Receipt className="size-3.5" aria-hidden="true" />
                   <span>{isTotalValue ? "Rendimento" : "Provento"}</span>
+                </Button>
+              )}
+              {!isTotalValue && !isCash && !isClosed && quantity > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    guardAction(() => {
+                      setSplitOpen(true);
+                      onAction?.("split", currentAsset);
+                    }, "Desdobrar / Agrupar Cotas")
+                  }
+                  className="gap-1 text-xs text-muted-foreground flex-1 sm:flex-initial"
+                  title="Desdobramento ou grupamento de cotas"
+                >
+                  <Scissors className="size-3.5" aria-hidden="true" />
+                  <span>Desdobrar</span>
                 </Button>
               )}
               <Button
@@ -721,6 +743,13 @@ export function AssetDetailSheet({
         }}
         asset={currentAsset}
         transaction={txToEdit}
+      />
+
+      {/* Diálogo de Desdobramento / Grupamento de Cotas */}
+      <AssetSplitDialog
+        asset={currentAsset}
+        open={splitOpen}
+        onOpenChange={setSplitOpen}
       />
 
       {upgradeModal}

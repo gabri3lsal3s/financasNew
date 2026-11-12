@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/ai-catalog.json",
+  "version": "1.0",
+  "name": "Axir",
+  "description": "Plataforma de inteligência financeira pessoal, controle de faturas de cartões de crédito e motor determinístico de rebalanceamento de investimentos.",
+  "url": "https://axir.com.br",
+  "documentation": "https://axir.com.br/llms.txt",
+  "capabilities": [
+    {
+      "name": "debt-simulator",
+      "description": "Simula e compara estratégias de quitação antecipada de dívidas (Bola de Neve vs Avalanche).",
+      "url": "https://axir.com.br/ferramentas/simulador-dividas"
+    },
+    {
+      "name": "rebalance-simulator",
+      "description": "Calcula a distribuição matemática de novos aportes para calibrar a carteira de investimentos sem venda de ativos.",
+      "url": "https://axir.com.br/ferramentas/rebalanceamento"
+    },
+    {
+      "name": "compound-interest-simulator",
+      "description": "Calcula a evolução patrimonial no tempo com juros compostos, aportes regulares e ajuste inflacionário.",
+      "url": "https://axir.com.br/ferramentas/juros-compostos"
+    }
+  ]
+}

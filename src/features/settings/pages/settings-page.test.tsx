@@ -319,8 +319,9 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     const user = userEvent.setup();
     renderSettings(["/configuracoes?tab=aparencia"]);
 
-    const darkOption = screen.getByRole("button", { name: /^Escuro/i });
-    await user.click(darkOption);
+    const darkOption = screen.getByText("Escuro").closest("button");
+    expect(darkOption).not.toBeNull();
+    await user.click(darkOption as HTMLButtonElement);
     expect(document.documentElement.dataset.theme).toBe("dark");
   });
 

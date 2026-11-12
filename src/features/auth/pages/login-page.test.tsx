@@ -23,6 +23,20 @@ vi.mock("@/hooks/use-auth", () => ({
   resendConfirmationEmail: vi.fn(),
   markMfaVerified: () => markMfaVerifiedMock(),
   getActiveUserMfaFactor: () => getActiveUserMfaFactorMock(),
+  resetEnsuredProfiles: vi.fn(),
+  getMfaAssuranceLevel: async () => {
+    const res = await getAuthenticatorAssuranceLevelMock();
+    return res.data;
+  },
+  listVerifiedMfaFactors: async () => {
+    const res = await listFactorsMock();
+    const verified = res.data?.totp?.find((f: { status: string }) => f.status === "verified");
+    return verified ? { id: verified.id, status: verified.status, factor_type: "totp" } : null;
+  },
+  verifyMfaTotpCode: async (factorId: string, code: string) => {
+    const res = await challengeAndVerifyMock({ factorId, code });
+    return !res.error;
+  },
 }));
 
 const getAuthenticatorAssuranceLevelMock = vi.fn().mockResolvedValue({

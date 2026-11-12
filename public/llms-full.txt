@@ -1,0 +1,42 @@
+# Axir — Especificação Completa para Agentes de IA
+
+Este documento descreve detalhadamente a arquitetura de cálculo, regras financeiras, privacidade e ferramentas do Axir (axir.com.br).
+
+## 1. Visão Geral do Sistema
+O Axir é um ecossistema financeiro pessoal 100% Online First projetado com rigor matemático (inteiro em centavos) para eliminar dívidas, controlar faturas de cartões de crédito e balancear investimentos.
+
+- Plataforma: Web SPA (PWA), Android Pro Nativo (Capacitor + Biometria) e iOS PWA.
+- Criptografia: PostgreSQL Row Level Security (RLS) isolando contas por tenant/user ID.
+- Princípio Zero Venda de Dados: Nenhuma informação pessoal ou transacional é compartilhada ou vendida para publicidade.
+
+## 2. Motores de Cálculo Determinísticos
+
+### 2.1 Caixa Real e Ritmo Diário (Daily Budget)
+- Caixa Real = Saldo em Contas Correntes e Carteiras - (Faturas de Cartão Fechadas/Abertas no Ciclo + Dívidas Vencendo no Mês).
+- Ritmo Diário = Caixa Real Líquido / Dias Restantes no Mês. Permite ao usuário saber exatamente quanto pode gastar por dia sem fechar no vermelho.
+
+### 2.2 Motor de Rebalanceamento de Carteira
+- Premissa: Zero giro de patrimônio. Nunca recomenda a venda de posições para evitar custos de corretagem, spread e tributação de ganho de capital (DARF).
+- Algoritmo: Dado um aporte $A$, o motor calcula o desvio negativo de cada classe $i$ em relação ao target percentual $w_i$. O aporte é distribuído exclusivamente entre as classes mais defasadas até atingir equilíbrio ou esgotar o montante.
+
+### 2.3 Estratégias de Dívidas
+- Snowball (Bola de Neve): Prioriza dívidas de menor saldo para ganhos psicológicos rápidos.
+- Avalanche: Prioriza dívidas com maior taxa de juros efetiva (CET) para minimização estrita do custo financeiro total.
+
+## 3. Catálogo de URLs Públicas e Ferramentas
+
+| Recurso | URL | Finalidade |
+|---|---|---|
+| Início / Apresentação | https://axir.com.br/ | Landing page editorial com demonstração interativa do aplicativo. |
+| Ferramentas Gratuitas | https://axir.com.br/ferramentas | Portal de utilitários financeiros sem exigência de login. |
+| Simulador de Dívidas | https://axir.com.br/ferramentas/simulador-dividas | Comparação gráfica Snowball vs Avalanche. |
+| Simulador de Rebalanceamento | https://axir.com.br/ferramentas/rebalanceamento | Calculadora de novo aporte com pesos percentuais. |
+| Juros Compostos | https://axir.com.br/ferramentas/juros-compostos | Projeção temporal de patrimônio com inflação e taxa real. |
+| Planos e Preços | https://axir.com.br/planos | Tabela de planos Mensal, Semestral e Anual com desconto. |
+| Termos de Uso | https://axir.com.br/termos | Acordo de nível de serviço, direitos CDC e LGPD. |
+| Política de Privacidade | https://axir.com.br/privacidade | Diretrizes de segurança, cookies, criptografia e guarda de dados. |
+
+## 4. Integração para Agentes (WebMCP)
+O Axir disponibiliza seu manifesto de ferramentas e recursos legíveis por máquina em:
+- Manifest WebMCP: https://axir.com.br/ai-catalog.json
+- Well-Known WebMCP: https://axir.com.br/.well-known/ai-catalog.json

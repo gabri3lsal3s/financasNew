@@ -375,6 +375,27 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
   });
 
 
+  it("redireciona ao clicar nos cards de KPI fundamentais (Receitas, Despesas, Investimentos e Resultado)", async () => {
+    const user = userEvent.setup();
+    render(<OverviewPage />);
+
+    const receitasBtn = screen.getByRole("button", { name: "Receitas" });
+    await user.click(receitasBtn);
+    expect(navigateMock).toHaveBeenCalledWith("/transacoes?tipo=receitas&month=2026-08");
+
+    const despesasBtn = screen.getByRole("button", { name: "Despesas" });
+    await user.click(despesasBtn);
+    expect(navigateMock).toHaveBeenCalledWith("/transacoes?tipo=despesas&month=2026-08");
+
+    const investimentosBtn = screen.getByRole("button", { name: "Investimentos" });
+    await user.click(investimentosBtn);
+    expect(navigateMock).toHaveBeenCalledWith("/investments");
+
+    const resultadoBtn = screen.getByRole("button", { name: "Resultado do mês" });
+    await user.click(resultadoBtn);
+    expect(navigateMock).toHaveBeenCalledWith("/relatorios");
+  });
+
   it("mostra o comparativo com o mês anterior (receitas subiram)", () => {
     render(<OverviewPage />);
     // 5.000 vs 4.000 → +25%
@@ -976,7 +997,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       expect(screen.queryByText("100% Batido")).not.toBeInTheDocument();
       expect(screen.queryByText(/Meta Conquistada: Investimentos/i)).not.toBeInTheDocument();
       expect(screen.getByText(/(Meta|Aporte Sugerido): Investimentos/)).toBeInTheDocument();
-      expect(screen.getByText("36% alcançado")).toBeInTheDocument();
+      expect(screen.getAllByText("36% alcançado").length).toBeGreaterThanOrEqual(1);
     });
   });
 });

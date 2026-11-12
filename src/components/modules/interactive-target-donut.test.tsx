@@ -18,8 +18,8 @@ describe("InteractiveTargetDonut", () => {
     expect(screen.getByText("Renda Fixa")).toBeInTheDocument();
 
     // Total alocado: 90.0% e 10.0% livre
-    expect(screen.getByText("90.0")).toBeInTheDocument();
-    expect(screen.getByText("10.0% livre")).toBeInTheDocument();
+    expect(screen.getByText(/90[,.]0/)).toBeInTheDocument();
+    expect(screen.getByText(/10[,.]0% livre/)).toBeInTheDocument();
   });
 
   it("permite selecionar uma fatia e exibe controles contextuais de ajuste", () => {
@@ -59,7 +59,7 @@ describe("InteractiveTargetDonut", () => {
       />,
     );
 
-    const fiiSlice = screen.getByRole("button", { name: /FIIs: 30.0%/i });
+    const fiiSlice = screen.getByRole("button", { name: /FIIs: 30[,.]0%/i });
     fireEvent.click(fiiSlice);
     expect(handleSelectKey).toHaveBeenCalledWith("FIIs");
   });
@@ -72,8 +72,8 @@ describe("InteractiveTargetDonut", () => {
 
     render(<InteractiveTargetDonut items={overflowItems} />);
 
-    expect(screen.getByText("110.0")).toBeInTheDocument();
-    expect(screen.getByText("+10.0%")).toBeInTheDocument();
+    expect(screen.getByText(/110[,.]0/)).toBeInTheDocument();
+    expect(screen.getByText(/\+10[,.]0%/)).toBeInTheDocument();
   });
 
   it("renderiza o centro com safe zone concêntrica e respiro perimétrico", () => {

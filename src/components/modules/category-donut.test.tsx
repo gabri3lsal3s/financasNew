@@ -130,7 +130,7 @@ describe("CategoryDonut (F8)", () => {
     fireEvent.click(itemBtn);
 
     expect(screen.getAllByText("Ativo 20")).toHaveLength(2);
-    expect(screen.getByRole("button", { name: /Ativo 20: 2\.1%/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ativo 20: 2[,.]1%/i })).toBeInTheDocument();
   });
 
   it("sem violações de acessibilidade (axe)", async () => {

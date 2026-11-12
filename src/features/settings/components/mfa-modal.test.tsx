@@ -8,6 +8,8 @@ vi.mock("@/hooks/use-auth", () => ({
   enrollMfaTotp: vi.fn(),
   verifyMfaEnrollment: vi.fn(),
   unenrollMfaFactor: vi.fn(),
+  verifyMfaTotpCode: vi.fn(),
+  verifyCurrentPassword: vi.fn(),
 }));
 
 vi.mock("@/services/sensory", () => ({
@@ -75,6 +77,83 @@ describe("MfaModal — Governança de 2FA / TOTP (Fase 3)", () => {
       expect(screen.getByText(/Escaneie o QR Code no seu aplicativo/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText("000000")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Ativar 2FA/i })).toBeInTheDocument();
+    });
+  });
+
+  it("exige confirmação de código TOTP ao clicar em Desativar 2FA antes de desvincular", async () => {
+    vi.mocked(authHook.listVerifiedMfaFactors).mockResolvedValue({
+      id: "factor-123",
+      status: "verified",
+      friendly_name: "Google Authenticator",
+      factor_type: "totp",
+    });
+    vi.mocked(authHook.verifyMfaTotpCode).mockResolvedValue(true);
+    vi.mocked(authHook.unenrollMfaFactor).mockResolvedValue(undefined);
+
+    render(<MfaModal open={true} onOpenChange={onOpenChangeMock} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Desativar 2FA/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Reconfigurar 2FA/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Desativar 2FA/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Confirmar Desativação do 2FA")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Confirmar Desativação/i })).toBeInTheDocument();
+    });
+
+    // Digita o código de 6 dígitos
+    const codeInput = screen.getByPlaceholderText("000000");
+    fireEvent.change(codeInput, { target: { value: "654321" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar Desativação/i }));
+
+    await waitFor(() => {
+      expect(authHook.verifyMfaTotpCode).toHaveBeenCalledWith("factor-123", "654321");
+      expect(authHook.unenrollMfaFactor).toHaveBeenCalledWith("factor-123");
+    });
+  });
+
+  it("exige confirmação de segurança ao clicar em Reconfigurar 2FA e inicia novo cadastro", async () => {
+    vi.mocked(authHook.listVerifiedMfaFactors).mockResolvedValue({
+      id: "factor-123",
+      status: "verified",
+      friendly_name: "Google Authenticator",
+      factor_type: "totp",
+    });
+    vi.mocked(authHook.verifyMfaTotpCode).mockResolvedValue(true);
+    vi.mocked(authHook.unenrollMfaFactor).mockResolvedValue(undefined);
+    vi.mocked(authHook.enrollMfaTotp).mockResolvedValue({
+      factorId: "factor-novo",
+      secret: "NOVOSEGREDO12345",
+      totpUri: "otpauth://totp/Axir:novo?secret=NOVOSEGREDO12345",
+    });
+
+    render(<MfaModal open={true} onOpenChange={onOpenChangeMock} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Reconfigurar 2FA/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Reconfigurar 2FA/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Confirmar Reconfiguração do 2FA")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Gerar Novo QR Code/i })).toBeInTheDocument();
+    });
+
+    const codeInput = screen.getByPlaceholderText("000000");
+    fireEvent.change(codeInput, { target: { value: "112233" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Gerar Novo QR Code/i }));
+
+    await waitFor(() => {
+      expect(authHook.verifyMfaTotpCode).toHaveBeenCalledWith("factor-123", "112233");
+      expect(authHook.unenrollMfaFactor).toHaveBeenCalledWith("factor-123");
+      expect(authHook.enrollMfaTotp).toHaveBeenCalledWith("Axir");
+      expect(screen.getByText("NOVOSEGREDO12345")).toBeInTheDocument();
     });
   });
 });

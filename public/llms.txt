@@ -1,0 +1,31 @@
+# Axir — Gestão Financeira Inteligente, Cartões e Aportes
+
+> Axir é um aplicativo web e mobile 100% Online First de controle financeiro pessoal, inteligência de cartões de crédito e motor determinístico de rebalanceamento de carteira de investimentos sem venda de ativos.
+
+O Axir resolve o estresse financeiro eliminando surpresas com faturas futuras, calculando o caixa real diário disponível (Daily Budget) e direcionando aportes de investimentos com precisão matemática estrita em centavos.
+
+## Recursos Principais
+
+- [Visão Geral & Dashboard](https://axir.com.br/): Painel financeiro em tempo real com saldo consolidado, ritmo diário de gastos e projeção de fechamento de mês.
+- [Controle de Cartões de Crédito](https://axir.com.br/cartoes): Acompanhamento de limite, melhor dia de compra, fechamento e faturas futuras parceladas com competência precisa.
+- [Motor de Rebalanceamento de Carteira](https://axir.com.br/investments): Algoritmo determinístico que calibra novos aportes em Renda Fixa, Ações e FIIs priorizando classes defasadas sem gerar vendas forçadas ou eventos tributários (DARF).
+- [Gestão de Dívidas & Amortizações](https://axir.com.br/dividas): Estratégias Bola de Neve e Avalanche com projeção exata de quitação antecipada.
+- [Racha de Despesas com Pix](https://axir.com.br/): Divisão justa de contas em grupo com QR Code Pix copia-e-cola e links compartilháveis sem necessidade de cadastro.
+- [Modo Viagem](https://axir.com.br/viagens): Livro-razão compartilhado para férias e eventos com cálculo automático do menor número de transferências Pix entre participantes.
+- [Planos e Assinatura Pro](https://axir.com.br/planos): 30 dias de teste grátis sem cartão de crédito; planos mensais, semestrais e anuais com garantia de 7 dias (CDC).
+
+## Ferramentas Financeiras Gratuitas Abertas
+
+- [Central de Ferramentas](https://axir.com.br/ferramentas): Hub com simuladores abertos para planejamento financeiro pessoal sem necessidade de cadastro prévio.
+- [Simulador de Quitação de Dívidas](https://axir.com.br/ferramentas/simulador-dividas): Comparador interativo de estratégias Bola de Neve (Snowball) vs Avalanche com economia real de juros.
+- [Simulador de Rebalanceamento](https://axir.com.br/ferramentas/rebalanceamento): Cálculo de alocação de novos aportes para atingir a carteira ideal sem vender ativos.
+- [Simulador de Juros Compostos](https://axir.com.br/ferramentas/juros-compostos): Projeção de patrimônio futuro no tempo com taxa de juros real, inflação e aportes mensais.
+
+## Privacidade, Segurança e Conformidade
+
+- [Política de Privacidade e LGPD](https://axir.com.br/privacidade): Conformidade integral com a LGPD (Lei 13.709/2018), isolamento criptográfico por linha (PostgreSQL Row Level Security) e zero venda de dados.
+- [Termos de Uso](https://axir.com.br/termos): Condições contratuais, cancelamento em 1 clique e direitos do consumidor (Decreto 7.962/2013).
+
+## Documentação Estendida para Agentes
+
+- [Documentação Técnica Completa](https://axir.com.br/llms-full.txt): Detalhamento matemático de fórmulas, contratos de dados e diretrizes de cálculo do Axir.

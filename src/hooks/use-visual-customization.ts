@@ -402,6 +402,16 @@ export function syncVisualWithCloud(
     };
   }
 
+  if (customSettings.themePreference) {
+    setUserStorageItem("theme", customSettings.themePreference, userId);
+  }
+  if (customSettings.darkThemeVariant) {
+    setUserStorageItem("dark_theme_variant", customSettings.darkThemeVariant, userId);
+  }
+  if (customSettings.themeSchedule) {
+    setUserStorageItem("theme_schedule", JSON.stringify(customSettings.themeSchedule), userId);
+  }
+
   updateVisualCustomization(partial, userId);
 }
 

@@ -3,7 +3,6 @@ export { CtaBanner } from "./cta-banner";
 export { FaqSection } from "./faq-section";
 export { FireProjectionCurve } from "./fire-projection-curve";
 export { HeroEditorial } from "./hero-editorial";
-export { InvestmentsShowcase } from "./investments-showcase";
 export { LandingFooter } from "./landing-footer";
 export { LandingHeader } from "./landing-header";
 export { LegalDialog } from "./legal-dialog";

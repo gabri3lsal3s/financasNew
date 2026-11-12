@@ -27,43 +27,85 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
       expect(shouldShowGoalAlert(undefined, baseGoal)).toBe(true);
     });
 
-    it("mantém dispensada meta 100% batida quando nada relevante mudou", () => {
-      const checkpoint = createGoalDismissalCheckpoint(baseGoal);
-      expect(shouldShowGoalAlert(checkpoint, baseGoal)).toBe(false);
+    it("mantém dispensada meta 100% batida quando nada relevante mudou dentro do cooldown", () => {
+      const checkpoint = createGoalDismissalCheckpoint(baseGoal, "2026-11-01T12:00:00Z");
+      expect(
+        shouldShowGoalAlert(checkpoint, baseGoal, {
+          nowIso: "2026-11-05T12:00:00Z",
+        }),
+      ).toBe(false);
     });
 
-    it("reativa o alerta quando o saldo acumulado muda (novo aporte ou resgate)", () => {
-      const checkpoint = createGoalDismissalCheckpoint(baseGoal);
-
-      // Usuário aportou mais R$ 50
-      const afterDeposit: GoalAlertEvaluation = {
-        ...baseGoal,
-        currentCents: 105000,
+    it("protege contra oscilações de saldo diário e centavos dentro do cooldown de 30 dias", () => {
+      const regularGoal: GoalAlertEvaluation = {
+        goalId: "goal-invest",
+        currentCents: 1825164,
+        targetCents: 5000000,
+        percentage: 37,
+        stage: "regular",
+        status: "in_progress",
       };
-      expect(shouldShowGoalAlert(checkpoint, afterDeposit)).toBe(true);
+      const checkpoint = createGoalDismissalCheckpoint(regularGoal, "2026-11-01T10:00:00Z");
 
-      // Usuário retirou R$ 200
-      const afterWithdraw: GoalAlertEvaluation = {
-        ...baseGoal,
-        currentCents: 80000,
-        percentage: 80,
-        stage: "final_stretch",
+      // Variação de centavos no dia seguinte (ex: rendimento ou despesa de cafezinho)
+      const nextDayWithCentDiff: GoalAlertEvaluation = {
+        ...regularGoal,
+        currentCents: 1825180,
       };
-      expect(shouldShowGoalAlert(checkpoint, afterWithdraw)).toBe(true);
+      expect(
+        shouldShowGoalAlert(checkpoint, nextDayWithCentDiff, {
+          nowIso: "2026-11-02T10:00:00Z",
+        }),
+      ).toBe(false);
+
+      // 10 dias depois com variação moderada de saldo: continua silenciado
+      const tenDaysLater: GoalAlertEvaluation = {
+        ...regularGoal,
+        currentCents: 1950000,
+        percentage: 39,
+      };
+      expect(
+        shouldShowGoalAlert(checkpoint, tenDaysLater, {
+          nowIso: "2026-11-11T10:00:00Z",
+        }),
+      ).toBe(false);
     });
 
-    it("reativa o alerta quando o valor alvo (targetCents) é redefinido", () => {
-      const checkpoint = createGoalDismissalCheckpoint(baseGoal);
+    it("reativa o alerta após expirar a janela de cooldown (ex: 30 dias)", () => {
+      const regularGoal: GoalAlertEvaluation = {
+        goalId: "goal-invest",
+        currentCents: 1825164,
+        targetCents: 5000000,
+        percentage: 37,
+        stage: "regular",
+        status: "in_progress",
+      };
+      const checkpoint = createGoalDismissalCheckpoint(regularGoal, "2026-10-01T10:00:00Z");
+
+      // 31 dias depois: cooldown expirou, retorna true como check-in mensal
+      expect(
+        shouldShowGoalAlert(checkpoint, regularGoal, {
+          nowIso: "2026-11-02T10:00:00Z",
+        }),
+      ).toBe(true);
+    });
+
+    it("reativa o alerta quando o valor alvo (targetCents) é redefinido mesmo dentro do cooldown", () => {
+      const checkpoint = createGoalDismissalCheckpoint(baseGoal, "2026-11-01T12:00:00Z");
       const afterTargetChange: GoalAlertEvaluation = {
         ...baseGoal,
         targetCents: 200000,
         percentage: 50,
         stage: "regular",
       };
-      expect(shouldShowGoalAlert(checkpoint, afterTargetChange)).toBe(true);
+      expect(
+        shouldShowGoalAlert(checkpoint, afterTargetChange, {
+          nowIso: "2026-11-05T12:00:00Z",
+        }),
+      ).toBe(true);
     });
 
-    it("reativa o alerta quando a meta atinge o marco de 100% batido", () => {
+    it("reativa o alerta imediatamente quando a meta atinge 100% batido (celebração fura cooldown)", () => {
       const inFinalStretch: GoalAlertEvaluation = {
         goalId: "goal-2",
         currentCents: 85000,
@@ -71,7 +113,7 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
         percentage: 85,
         stage: "final_stretch",
       };
-      const checkpoint = createGoalDismissalCheckpoint(inFinalStretch);
+      const checkpoint = createGoalDismissalCheckpoint(inFinalStretch, "2026-11-01T12:00:00Z");
 
       // Bateu 100%
       const completedGoal: GoalAlertEvaluation = {
@@ -80,10 +122,14 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
         percentage: 100,
         stage: "completed",
       };
-      expect(shouldShowGoalAlert(checkpoint, completedGoal)).toBe(true);
+      expect(
+        shouldShowGoalAlert(checkpoint, completedGoal, {
+          nowIso: "2026-11-05T12:00:00Z",
+        }),
+      ).toBe(true);
     });
 
-    it("reativa o alerta quando a meta entra na reta final (>= 80%)", () => {
+    it("reativa o alerta quando a meta entra na reta final (>= 80%) a partir de estágio anterior", () => {
       const regularGoal: GoalAlertEvaluation = {
         goalId: "goal-3",
         currentCents: 50000,
@@ -91,7 +137,7 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
         percentage: 50,
         stage: "regular",
       };
-      const checkpoint = createGoalDismissalCheckpoint(regularGoal);
+      const checkpoint = createGoalDismissalCheckpoint(regularGoal, "2026-11-01T12:00:00Z");
 
       const enteredFinalStretch: GoalAlertEvaluation = {
         ...regularGoal,
@@ -99,19 +145,30 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
         percentage: 82,
         stage: "final_stretch",
       };
-      expect(shouldShowGoalAlert(checkpoint, enteredFinalStretch)).toBe(true);
+      expect(
+        shouldShowGoalAlert(checkpoint, enteredFinalStretch, {
+          nowIso: "2026-11-05T12:00:00Z",
+        }),
+      ).toBe(true);
     });
 
     it("reativa o alerta quando o status da meta é alterado", () => {
-      const checkpoint = createGoalDismissalCheckpoint({
-        ...baseGoal,
-        status: "in_progress",
-      });
+      const checkpoint = createGoalDismissalCheckpoint(
+        {
+          ...baseGoal,
+          status: "in_progress",
+        },
+        "2026-11-01T12:00:00Z",
+      );
       const updatedStatus: GoalAlertEvaluation = {
         ...baseGoal,
         status: "paused",
       };
-      expect(shouldShowGoalAlert(checkpoint, updatedStatus)).toBe(true);
+      expect(
+        shouldShowGoalAlert(checkpoint, updatedStatus, {
+          nowIso: "2026-11-05T12:00:00Z",
+        }),
+      ).toBe(true);
     });
   });
 

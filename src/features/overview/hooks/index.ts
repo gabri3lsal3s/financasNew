@@ -14,3 +14,5 @@ export {
   loadLocalAlertDismissals,
   saveLocalAlertDismissals,
 } from "./use-overview-alerts";
+export { useOverviewData } from "./use-overview-data";
+export type { UseOverviewDataOptions } from "./use-overview-data";

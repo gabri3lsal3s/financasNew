@@ -486,7 +486,12 @@ describe("Auditoria de acessibilidade (axe) — telas P0", () => {
   });
 
   it("OverviewPage sem violações", async () => {
-    const { container } = render(<OverviewPage />);
+    const testQueryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { container } = render(
+      <QueryClientProvider client={testQueryClient}>
+        <OverviewPage />
+      </QueryClientProvider>,
+    );
     expect(await axe(container)).toHaveNoViolations();
   });
 

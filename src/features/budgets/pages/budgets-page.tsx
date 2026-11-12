@@ -1,19 +1,14 @@
 import { useMemo, useState } from "react";
-import { cn } from "@/lib/utils";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowRight, Edit3, HelpCircle, Info, PiggyBank, Plus, SlidersHorizontal, Sparkles, Target, TrendingDown, User, Users } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Popover, PopoverContent, PopoverTrigger, Skeleton, Tabs } from "@/components/ui";
+import { PiggyBank, Plus, SlidersHorizontal, Target, TrendingDown } from "lucide-react";
+import { Alert, Button, ConfirmDialog, ErrorState, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
-import { MoneyText } from "@/components/ui/money-text";
-import { CategoryIcon, MonthPicker, ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
-import { BudgetProgressBar } from "@/components/modules/budget-progress-bar";
-import { HighlightRow } from "@/components/modules/highlight-row";
+import { ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { useCreateDeepLink } from "@/hooks";
 import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
   budgetLimitsByCategory,
-  incomeGoalStatus,
   isInheritedLimit,
   realizedByCategoryMap,
   reallocationSuggestion,
@@ -51,6 +46,9 @@ import {
 } from "@/state";
 import {
   BudgetAdjustDialog,
+  BudgetsCategoriesTab,
+  BudgetsGoalsTab,
+  BudgetsLimitsTab,
   CategoryFormDialog,
   IncomeGoalDialog,
   LimitDialog,
@@ -58,8 +56,6 @@ import {
 } from "@/features/budgets/components";
 import {
   AddContributionDialog,
-  CampaignCard,
-  GoalCard,
   GoalCompositionDialog,
   ManageContributionsDialog,
   ShareGoalDialog,
@@ -394,668 +390,10 @@ export function BudgetsPage() {
     if (goal.month === month) goalsByCategory.set(goal.category_id, numberToCents(goal.expected));
   }
 
-  const renderLimitsContent = () => (
-    <div className="flex flex-col gap-6">
-      {/* Linha do seletor de mês — full-width, padrão das outras páginas */}
-      <MonthPicker value={month} onValueChange={setMonth} />
-
-      {/* Linha de controles: descrição + alternador de métrica */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-          Acompanhe os gastos por categoria e defina o teto mensal.
-        </p>
-
-        {/* Alternância de Métrica estilo pills (padrão Insights) */}
-        <div role="group" aria-label="Modo de cálculo dos gastos" className="flex items-center gap-1.5 self-start sm:self-auto">
-          <Button
-            type="button"
-            size="sm"
-            variant={spendMetric === "personal" ? "default" : "outline"}
-            onClick={() => setSpendMetric("personal")}
-            className={cn(
-              "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
-              spendMetric === "personal" ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
-            )}
-            aria-pressed={spendMetric === "personal"}
-            title="Considera apenas a sua participação pessoal efetiva nas compras (com rateios e reembolsos)"
-            sensoryIntent="selection"
-          >
-            <User className="size-3.5" aria-hidden="true" />
-            <span>Minha Parte</span>
-          </Button>
-
-          <Button
-            type="button"
-            size="sm"
-            variant={spendMetric === "household" ? "default" : "outline"}
-            onClick={() => setSpendMetric("household")}
-            className={cn(
-              "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
-              spendMetric === "household" ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
-            )}
-            aria-pressed={spendMetric === "household"}
-            title="Considera o valor bruto total nominal das compras (100% de cada despesa, sem rateios)"
-            sensoryIntent="selection"
-          >
-            <Users className="size-3.5" aria-hidden="true" />
-            <span>Total Bruto</span>
-          </Button>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="size-8 rounded-xl text-muted-foreground hover:text-foreground"
-                aria-label="Informações sobre os modos de visualização"
-                title="Informações sobre os modos de visualização"
-              >
-                <HelpCircle className="size-3.5" aria-hidden="true" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-80 text-xs">
-              <div className="flex flex-col gap-2">
-                <p className="font-semibold text-foreground">Modos de Visualização do Orçamento</p>
-                <div className="flex flex-col gap-1.5 text-muted-foreground text-[11px] leading-relaxed">
-                  <p>
-                    <strong className="text-foreground font-medium">Minha Parte (Ponderado):</strong> Considera exclusivamente a sua cota ou responsabilidade pessoal nos gastos compartilhados (despesas com taxa de rateio menor que 100% ou reembolsos). Ideal para o controle do seu consumo individual.
-                  </p>
-                  <p>
-                    <strong className="text-foreground font-medium">Total Bruto (Nominal):</strong> Considera 100% do valor nominal de cada compra, mesmo quando rateada com terceiros. Ideal para o controle do orçamento global de todas as despesas.
-                  </p>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-
-      {/* Resumo do Orçamento Geral (§3.5.2) — Régua de 3 Métricas */}
-      <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border" data-tour="budgets-content">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">Total Gasto</p>
-              <Badge variant="muted" size="xs">
-                {spendMetric === "personal" ? "Minha Parte" : "Total Bruto"}
-              </Badge>
-              {totalExpensesGrossCents !== totalExpensesWeightedCents && (
-                <span
-                  className="text-muted-foreground/80 hover:text-foreground cursor-help"
-                  title={
-                    spendMetric === "personal"
-                      ? `Total nominal bruto das despesas: ${formatCentsAsBRL(totalExpensesGrossCents)}`
-                      : `Sua parte proporcional líquida: ${formatCentsAsBRL(totalExpensesWeightedCents)}`
-                  }
-                >
-                  <Info className="size-3 inline" aria-hidden="true" />
-                </span>
-              )}
-            </div>
-            <MoneyText
-              cents={hasBudgetLimits ? totalBudgetedExpensesCents : totalExpensesCents}
-              tone="default"
-              animated
-              className="text-base sm:text-lg font-bold text-foreground whitespace-nowrap tabular-nums block mt-0.5"
-            />
-            {hasPartialBudgets && (
-              <span className="text-[10px] text-muted-foreground truncate block">
-                de {formatCentsAsBRL(totalExpensesCents)} gastos no total do mês
-              </span>
-            )}
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">Teto Planejado</p>
-              {!hasBudgetLimits && (
-                <Badge variant="muted" size="xs">
-                  Sem limites
-                </Badge>
-              )}
-            </div>
-            {hasBudgetLimits ? (
-              <MoneyText
-                cents={totalLimitsCents}
-                tone="default"
-                animated
-                className="text-base sm:text-lg font-semibold text-muted-foreground whitespace-nowrap tabular-nums block mt-0.5"
-              />
-            ) : (
-              <span className="text-base sm:text-lg font-semibold text-muted-foreground tabular-nums block mt-0.5">
-                —
-              </span>
-            )}
-            {!hasBudgetLimits && (
-              <span className="text-[10px] text-muted-foreground truncate block">
-                Nenhum limite ativo no mês
-              </span>
-            )}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground truncate">
-              {hasBudgetLimits
-                ? totalLimitsCents >= totalBudgetedExpensesCents
-                  ? "Disponível no Teto"
-                  : "Excedido no Teto"
-                : "Status do Mês"}
-            </p>
-            {hasBudgetLimits ? (
-              <MoneyText
-                cents={Math.abs(totalLimitsCents - totalBudgetedExpensesCents)}
-                tone={totalLimitsCents >= totalBudgetedExpensesCents ? "positive" : "negative"}
-                animated
-                className="text-base sm:text-lg font-bold whitespace-nowrap tabular-nums block mt-0.5"
-              />
-            ) : (
-              <span className="text-base sm:text-lg font-semibold text-muted-foreground whitespace-nowrap block mt-0.5">
-                Livre de teto
-              </span>
-            )}
-            {hasBudgetLimits && hasPartialBudgets && (
-              <span className="text-[10px] text-muted-foreground truncate block">
-                {budgetedRows.length} de {categories.length} categorias orçadas
-              </span>
-            )}
-          </div>
-        </div>
-
-        {hasBudgetLimits ? (
-          <div className="mt-3.5 pt-3 border-t border-border/50">
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-              <span>Consumo do Teto ({spendMetric === "personal" ? "Minha Parte" : "Total Bruto"})</span>
-              <span className="font-semibold text-foreground tabular-nums">
-                {Math.round((totalBudgetedExpensesCents / totalLimitsCents) * 100)}%
-              </span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted/70">
-              <div
-                className={
-                  totalBudgetedExpensesCents > totalLimitsCents
-                    ? "h-full rounded-full transition-all duration-300 bg-critical"
-                    : totalBudgetedExpensesCents / totalLimitsCents >= 0.85
-                      ? "h-full rounded-full transition-all duration-300 bg-warning"
-                      : "h-full rounded-full transition-all duration-300 bg-primary"
-                }
-                style={{ width: `${Math.min(100, (totalBudgetedExpensesCents / totalLimitsCents) * 100)}%` }}
-              />
-            </div>
-            {hasPartialBudgets && (
-              <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
-                Despesas em categorias livres (sem teto): <MoneyText cents={totalUnbudgetedExpensesCents} tone="default" className="font-medium text-foreground" />
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="mt-3.5 pt-3 border-t border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-muted-foreground">
-            <span>Você não possui tetos de gastos configurados para este mês. Todas as suas categorias estão livres de limites.</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleOpenAdjustBudget}
-              className="text-xs shrink-0 self-start sm:self-auto h-8 gap-1.5"
-            >
-              <SlidersHorizontal className="size-3.5" aria-hidden="true" />
-              <span>Definir limites</span>
-            </Button>
-          </div>
-        )}
-      </div>
-
-
-      {/* Recomendação de realocação inteligente (§3.5.2) */}
-      {suggestion && fromCategory && toCategory ? (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-xs">
-          <div className="flex items-start gap-3 min-w-0">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong">
-              <Sparkles className="size-4.5" aria-hidden="true" />
-            </span>
-            <div className="text-sm min-w-0">
-              <p className="font-semibold text-foreground">Sugestão de Realocação de Limite</p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                <span className="font-medium text-positive-strong">{fromCategory.name}</span> possui folga.
-                Transfira <MoneyText cents={suggestion.amountCents} tone="default" className="font-semibold text-foreground" /> de
-                limite para cobrir os gastos de <span className="font-medium text-critical">{toCategory.name}</span>.
-              </p>
-            </div>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleOpenReallocate}
-            className="shrink-0 self-start sm:self-auto gap-1.5 border-primary/30 hover:bg-primary/10"
-          >
-            <span>Aplicar realocação</span>
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </Button>
-        </div>
-      ) : null}
-
-      {budgetsQuery.isLoading || expensesQuery.isLoading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-16 w-full rounded-2xl" />
-          <Skeleton className="h-16 w-full rounded-2xl" />
-        </div>
-      ) : rows.length === 0 ? (
-        <EmptyState
-          icon={<PiggyBank className="size-6" aria-hidden="true" />}
-          title="Nenhum orçamento configurado"
-          description={
-            categories.length > 0
-              ? "Você já possui categorias criadas. Ative a visualização de categorias para definir o teto mensal de cada uma."
-              : "Defina um limite mensal por categoria de despesa para acompanhar os gastos ou crie uma nova categoria."
-          }
-          action={
-            categories.length > 0 ? (
-              <Button
-                size="sm"
-                onClick={() => setShowAllCategories(true)}
-                className="gap-1.5 cursor-pointer"
-              >
-                <Target className="size-4" aria-hidden="true" />
-                Definir limites por categoria
-              </Button>
-            ) : (
-              <Button size="sm" onClick={handleOpenCreateCategory} className="gap-1.5 cursor-pointer">
-                <Plus className="size-4" aria-hidden="true" />
-                Nova categoria
-              </Button>
-            )
-          }
-        />
-      ) : (
-        <div className="flex flex-col gap-2">
-          {rows.map((row) => {
-            return (
-              <HighlightRow
-                key={row.category.id}
-                highlightId={effectiveHighlightId}
-                id={row.category.id}
-                className="rounded-xl"
-              >
-                <div
-                  className="group flex flex-col gap-2.5 rounded-xl border border-border/70 bg-surface/70 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border hover:bg-surface min-w-0"
-                >
-                  <div className="flex items-center justify-between gap-3 min-w-0">
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Editar limite de ${row.category.name}`}
-                      onClick={() => {
-                        triggerSensory("action");
-                        handleOpenLimit(row.category);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          triggerSensory("action");
-                          handleOpenLimit(row.category);
-                        }
-                      }}
-                      className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg p-0.5"
-                    >
-                      <CategoryIcon icon={row.category.icon} color={row.category.color} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                          <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                            {row.category.name}
-                          </p>
-                          {row.inherited ? (
-                            <Badge variant="muted" size="xs">
-                              herdado
-                            </Badge>
-                          ) : null}
-                          {row.hasSplitDifference ? (
-                            <Badge
-                              variant="muted"
-                              size="xs"
-                              className="text-muted-foreground font-normal"
-                              title={
-                                spendMetric === "personal"
-                                  ? `Total bruto das despesas: ${formatCentsAsBRL(row.spentGrossCents)}`
-                                  : `Sua parte proporcional: ${formatCentsAsBRL(row.spentWeightedCents)}`
-                              }
-                            >
-                              {spendMetric === "personal" ? (
-                                <span>Total bruto: <MoneyText cents={row.spentGrossCents} tone="default" /></span>
-                              ) : (
-                                <span>Sua parte: <MoneyText cents={row.spentWeightedCents} tone="default" /></span>
-                              )}
-                            </Badge>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="size-7 text-muted-foreground hover:text-foreground"
-                        aria-label={`Editar cadastro de ${row.category.name}`}
-                        title={`Editar cadastro de ${row.category.name}`}
-                        onClick={() => handleEditCategory(row.category)}
-                      >
-                        <Edit3 className="size-3.5" aria-hidden="true" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Editar limite de ${row.category.name}`}
-                    onClick={() => {
-                      triggerSensory("action");
-                      handleOpenLimit(row.category);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        triggerSensory("action");
-                        handleOpenLimit(row.category);
-                      }
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <BudgetProgressBar spentCents={row.spentCents} limitCents={row.limitCents} />
-                  </div>
-                </div>
-              </HighlightRow>
-            );
-          })}
-
-          {unbudgetedRows.length > 0 && (
-            <div className="flex justify-center pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAllCategories((prev) => !prev)}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                {showAllCategories
-                  ? "Ocultar categorias sem limite ou gasto no mês"
-                  : `Ver outras ${unbudgetedRows.length} categorias cadastradas`}
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderGoalsContent = () => {
-    const allGoalShares = goalSharesQuery.data ?? [];
-    const standaloneCampaigns = allGoalShares.filter((s) => !s.payload?.category_id);
-    const activeCampaigns = standaloneCampaigns.filter((s) => s.payload?.status !== "archived");
-    const archivedCampaigns = standaloneCampaigns.filter((s) => s.payload?.status === "archived");
-
-    return (
-      <div className="flex flex-col gap-6">
-        <MonthPicker value={month} onValueChange={setMonth} />
-
-        {/* Banner de Metas & Campanhas Coletivas */}
-        <div
-          data-tour="shared-goals-banner"
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-primary/25 bg-primary/5 p-4 shadow-xs"
-        >
-          <div className="flex items-start gap-3 min-w-0">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong">
-              <Target className="size-4.5" aria-hidden="true" />
-            </span>
-            <div className="text-sm min-w-0">
-              <p className="font-semibold text-foreground">Metas Financeiras & Termômetro Coletivo</p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                Crie metas de economia pessoais ou vaquinhas coletivas com link público transparente e chave Pix opcional.
-              </p>
-            </div>
-          </div>
-          <Button
-            size="sm"
-            onClick={() => {
-              setSharingGoalFor(null);
-              setEditingShare(null);
-              setEditingShareInitialEdit(false);
-              setCreateStandaloneCampaignOpen(true);
-            }}
-            className="shrink-0 self-start sm:self-auto gap-1.5 cursor-pointer"
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            <span>Nova Meta</span>
-          </Button>
-        </div>
-
-        {/* Seção de Campanhas & Vaquinhas Ativas */}
-        {activeCampaigns.length > 0 && (
-          <div data-tour="shared-goals-card" className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm font-semibold text-foreground">Metas Financeiras</h2>
-                <Badge variant="portfolio" size="xs">
-                  {activeCampaigns.length} ativa{activeCampaigns.length > 1 ? "s" : ""}
-                </Badge>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2.5">
-              {activeCampaigns.map((share) => (
-                <CampaignCard
-                  key={share.id}
-                  share={share}
-                  liveCurrentCents={liveGoalProgress.get(share.id)?.currentCents}
-                  onOpenDeposit={(s) => setDepositShare(s)}
-                  onManageShare={(s) => {
-                    setEditingShare(s);
-                    setEditingShareInitialEdit(false);
-                  }}
-                  onEditShare={(s) => {
-                    setEditingShare(s);
-                    setEditingShareInitialEdit(true);
-                  }}
-                  onManageContributions={(s) => setManageContributionsShare(s)}
-                  onOpenComposition={(s) => setCompositionShare(s)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Seção de Campanhas Concluídas/Arquivadas */}
-        {archivedCampaigns.length > 0 && (
-          <div className="flex flex-col gap-2 pt-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowArchivedCampaigns((prev) => !prev)}
-              className="self-center text-xs text-muted-foreground hover:text-foreground"
-            >
-              {showArchivedCampaigns
-                ? "Ocultar metas arquivadas"
-                : `Ver ${archivedCampaigns.length} meta${archivedCampaigns.length > 1 ? "s" : ""} arquivada${archivedCampaigns.length > 1 ? "s" : ""}`}
-            </Button>
-            {showArchivedCampaigns && (
-              <div className="flex flex-col gap-2.5 opacity-80">
-                {archivedCampaigns.map((share) => (
-                  <CampaignCard
-                    key={share.id}
-                    share={share}
-                    liveCurrentCents={liveGoalProgress.get(share.id)?.currentCents}
-                    onOpenDeposit={(s) => setDepositShare(s)}
-                    onManageShare={(s) => {
-                      setEditingShare(s);
-                      setEditingShareInitialEdit(false);
-                    }}
-                    onEditShare={(s) => {
-                      setEditingShare(s);
-                      setEditingShareInitialEdit(true);
-                    }}
-                    onManageContributions={(s) => setManageContributionsShare(s)}
-                    onOpenComposition={(s) => setCompositionShare(s)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Seção de Metas Mensais por Categoria de Renda */}
-        <div className="flex flex-col gap-3 pt-2">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">Metas Mensais por Categoria de Renda</h2>
-            <p className="hidden text-xs text-muted-foreground sm:block">
-              Expectativa mensal por categoria para comparar com recebimentos.
-            </p>
-          </div>
-
-          {(incomeCategories.data ?? []).length === 0 ? (
-            <EmptyState
-              icon={<PiggyBank className="size-6" aria-hidden="true" />}
-              title="Sem categorias de renda"
-              description="Crie categorias de renda para definir metas mensais ou crie uma Meta Coletiva acima."
-              action={
-                <Button size="sm" onClick={handleOpenCreateCategory}>
-                  <Plus className="size-4" aria-hidden="true" />
-                  Nova categoria
-                </Button>
-              }
-            />
-          ) : (
-            <div className="flex flex-col gap-2.5">
-              {(incomeCategories.data ?? []).map((category) => {
-                const realizedCents = realizedByCategory.get(category.id) ?? 0;
-                const expectedCents = goalsByCategory.get(category.id) ?? 0;
-                const status = incomeGoalStatus(realizedCents, expectedCents);
-                const percent = expectedCents > 0 ? Math.min(100, (realizedCents / expectedCents) * 100) : 0;
-                const activeShare = (goalSharesQuery.data ?? []).find(
-                  (s) =>
-                    !s.is_revoked &&
-                    (!s.expires_at || new Date(s.expires_at).getTime() > nowMs) &&
-                    s.payload?.category_id === category.id,
-                );
-
-                return (
-                  <GoalCard
-                    key={category.id}
-                    category={category}
-                    month={month}
-                    realizedCents={realizedCents}
-                    expectedCents={expectedCents}
-                    status={status}
-                    percent={percent}
-                    highlightId={effectiveHighlightId}
-                    activeShare={activeShare}
-                    onOpenGoal={handleOpenGoal}
-                    onEditCategory={handleEditCategory}
-                    onShareGoal={(cat) => setSharingGoalFor(cat)}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const renderCategoriesContent = () => {
-    const userCategories = allCategories.filter((c) => !c.is_reserved);
-
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            Catálogo com todas as categorias do sistema e personalizadas.
-          </p>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleSeedCategories}
-              disabled={seedCategoriesMutation.isPending}
-              className="gap-1.5"
-              title="Carrega ou completa as 11 categorias padrão brasileiras sem duplicar as existentes"
-            >
-              <Sparkles className="size-4" aria-hidden="true" />
-              <span>{seedCategoriesMutation.isPending ? "Carregando..." : "Restaurar padrões"}</span>
-            </Button>
-            <Button size="sm" onClick={handleOpenCreateCategory} className="gap-1.5">
-              <Plus className="size-4" aria-hidden="true" />
-              <span>Nova categoria</span>
-            </Button>
-          </div>
-        </div>
-
-        {seedFeedback && (
-          <Alert variant={seedCategoriesMutation.isError ? "error" : "info"}>
-            {seedFeedback}
-          </Alert>
-        )}
-
-        {userCategories.length === 0 ? (
-          <EmptyState
-            icon={<Sparkles className="size-6 text-muted-foreground" aria-hidden="true" />}
-            title="Nenhuma categoria pronta encontrada"
-            description="Sua conta ainda não possui categorias de receitas e despesas. Carregue o catálogo pré-pronto oficial com as 11 categorias brasileiras para começar imediatamente."
-            action={
-              <Button
-                size="sm"
-                onClick={handleSeedCategories}
-                disabled={seedCategoriesMutation.isPending}
-                className="gap-1.5"
-              >
-                <Sparkles className="size-4" aria-hidden="true" />
-                <span>{seedCategoriesMutation.isPending ? "Carregando..." : "Carregar categorias pré-prontas"}</span>
-              </Button>
-            }
-          />
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {allCategories.map((category) => (
-              <div
-                key={category.id}
-                role={category.is_reserved ? undefined : "button"}
-                tabIndex={category.is_reserved ? undefined : 0}
-                aria-label={category.is_reserved ? undefined : `Editar cadastro de ${category.name}`}
-                onClick={() => {
-                  if (!category.is_reserved) {
-                    triggerSensory("action");
-                    handleEditCategory(category);
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (!category.is_reserved && (e.key === "Enter" || e.key === " ")) {
-                    e.preventDefault();
-                    triggerSensory("action");
-                    handleEditCategory(category);
-                  }
-                }}
-                className={cn(
-                  "group flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-surface/70 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border hover:bg-surface min-w-0",
-                  !category.is_reserved && "cursor-pointer hover:border-primary/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40",
-                )}
-              >
-                <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <CategoryIcon icon={category.icon} color={category.color} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                      {category.name}
-                    </p>
-                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-                      {category.type === "income" ? "Receita" : "Despesa"}
-                      {category.is_reserved ? " · Sistema" : ""}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
+  const allGoalShares = goalSharesQuery.data ?? [];
+  const standaloneCampaigns = allGoalShares.filter((s) => !s.payload?.category_id);
+  const activeCampaigns = standaloneCampaigns.filter((s) => s.payload?.status !== "archived");
+  const archivedCampaigns = standaloneCampaigns.filter((s) => s.payload?.status === "archived");
 
   return (
     <div className="flex flex-col gap-6">
@@ -1108,19 +446,93 @@ export function BudgetsPage() {
             value: "limits",
             label: "Despesas",
             icon: <TrendingDown className="size-4" aria-hidden="true" />,
-            content: renderLimitsContent(),
+            content: (
+              <BudgetsLimitsTab
+                month={month}
+                onMonthChange={setMonth}
+                spendMetric={spendMetric}
+                onSpendMetricChange={setSpendMetric}
+                totalExpensesGrossCents={totalExpensesGrossCents}
+                totalExpensesWeightedCents={totalExpensesWeightedCents}
+                hasBudgetLimits={hasBudgetLimits}
+                totalBudgetedExpensesCents={totalBudgetedExpensesCents}
+                totalExpensesCents={totalExpensesCents}
+                hasPartialBudgets={hasPartialBudgets}
+                totalLimitsCents={totalLimitsCents}
+                totalUnbudgetedExpensesCents={totalUnbudgetedExpensesCents}
+                budgetedRowsCount={budgetedRows.length}
+                categoriesCount={categories.length}
+                onOpenAdjustBudget={handleOpenAdjustBudget}
+                suggestion={suggestion}
+                fromCategory={fromCategory}
+                toCategory={toCategory}
+                onOpenReallocate={handleOpenReallocate}
+                isLoading={budgetsQuery.isLoading || expensesQuery.isLoading}
+                rows={rows}
+                unbudgetedRows={unbudgetedRows}
+                effectiveHighlightId={effectiveHighlightId}
+                onOpenLimit={handleOpenLimit}
+                onEditCategory={handleEditCategory}
+                onOpenCreateCategory={handleOpenCreateCategory}
+                showAllCategories={showAllCategories}
+                onToggleShowAllCategories={() => setShowAllCategories((prev) => !prev)}
+              />
+            ),
           },
           {
             value: "goals",
             label: "Metas & Campanhas",
             icon: <Target className="size-4" aria-hidden="true" />,
-            content: renderGoalsContent(),
+            content: (
+              <BudgetsGoalsTab
+                month={month}
+                onMonthChange={setMonth}
+                activeCampaigns={activeCampaigns}
+                archivedCampaigns={archivedCampaigns}
+                showArchivedCampaigns={showArchivedCampaigns}
+                onToggleShowArchivedCampaigns={() => setShowArchivedCampaigns((prev) => !prev)}
+                liveGoalProgress={liveGoalProgress}
+                incomeCategories={incomeCategories.data ?? []}
+                realizedByCategory={realizedByCategory}
+                goalsByCategory={goalsByCategory}
+                goalShares={goalSharesQuery.data ?? []}
+                nowMs={nowMs}
+                effectiveHighlightId={effectiveHighlightId}
+                onOpenNewStandaloneCampaign={() => {
+                  setSharingGoalFor(null);
+                  setEditingShare(null);
+                  setEditingShareInitialEdit(false);
+                  setCreateStandaloneCampaignOpen(true);
+                }}
+                onOpenDeposit={(s) => setDepositShare(s)}
+                onManageShare={(s, initialEdit) => {
+                  setEditingShare(s);
+                  setEditingShareInitialEdit(initialEdit);
+                }}
+                onManageContributions={(s) => setManageContributionsShare(s)}
+                onOpenComposition={(s) => setCompositionShare(s)}
+                onOpenGoal={handleOpenGoal}
+                onEditCategory={handleEditCategory}
+                onShareGoal={(cat) => setSharingGoalFor(cat)}
+                onOpenCreateCategory={handleOpenCreateCategory}
+              />
+            ),
           },
           {
             value: "categories",
             label: "Categorias",
             icon: <PiggyBank className="size-4" aria-hidden="true" />,
-            content: renderCategoriesContent(),
+            content: (
+              <BudgetsCategoriesTab
+                allCategories={allCategories}
+                onSeedCategories={handleSeedCategories}
+                isSeeding={seedCategoriesMutation.isPending}
+                isSeedError={seedCategoriesMutation.isError}
+                seedFeedback={seedFeedback}
+                onOpenCreateCategory={handleOpenCreateCategory}
+                onEditCategory={handleEditCategory}
+              />
+            ),
           },
         ]}
       />

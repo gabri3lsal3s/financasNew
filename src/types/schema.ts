@@ -59,8 +59,21 @@ export const INSIGHT_DECISIONS = [
 ] as const;
 export type InsightDecision = (typeof INSIGHT_DECISIONS)[number];
 
-export const THEME_PREFERENCES = ["light", "dark", "oled", "system"] as const;
+export const THEME_PREFERENCES = ["light", "dark", "oled", "system", "schedule"] as const;
 export type ThemePreference = (typeof THEME_PREFERENCES)[number];
+
+export type DarkThemeVariant = "dark" | "oled";
+
+export interface ThemeScheduleConfig {
+  /** Horário de início do período diurno (formato "HH:mm"). Padrão: "06:00". */
+  dayStart: string;
+  /** Horário de início do período noturno (formato "HH:mm"). Padrão: "18:00". */
+  nightStart: string;
+  /** Tema aplicado no período diurno. Padrão: "light". */
+  dayTheme: "light";
+  /** Tema aplicado no período noturno. Padrão: "dark". */
+  nightTheme: DarkThemeVariant;
+}
 
 export const CHARGE_KINDS = ["regular", "interest", "fine", "tax", "bank_fee"] as const;
 export type ChargeKind = (typeof CHARGE_KINDS)[number];
@@ -320,6 +333,9 @@ export type UserCustomSettings = {
   tripModeEnabled?: boolean;
   preferredTripCategoryId?: string;
   initialGoal?: OnboardingGoalId;
+  themePreference?: ThemePreference;
+  darkThemeVariant?: DarkThemeVariant;
+  themeSchedule?: ThemeScheduleConfig;
 };
 
 export type OnboardingGoalId = "cards" | "ocr" | "debts" | "family";

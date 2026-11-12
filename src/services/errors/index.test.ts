@@ -129,6 +129,16 @@ describe("getErrorMessage — gateway de erros (ESPECIFICAÇÃO §1.7)", () => {
     expect(err3.kind).toBe("user-already-exists");
   });
 
+  it("não classifica erros de fator MFA como user-already-exists mesmo com status 422", () => {
+    const err = classifyError({
+      status: 422,
+      code: "mfa_factor_already_exists",
+      message: "Factor already exists",
+    });
+    expect(err.kind).not.toBe("user-already-exists");
+    expect(err.message).not.toContain("Este e-mail já está cadastrado no Axir");
+  });
+
   it("cai em mensagem genérica para erros desconhecidos", () => {
     expect(getErrorMessage(null)).toContain("Algo deu errado");
   });

@@ -6,13 +6,17 @@
     <meta name="description" content="Gestão financeira pessoal, controle de cartões de crédito e motor determinístico de rebalanceamento de carteira. 100% Online First e seguro." />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F7F9" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1923" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://axir.com.br/" />
 
     <!-- OpenGraph (Facebook, WhatsApp, LinkedIn, Telegram) -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Axir" />
     <meta property="og:title" content="Axir — Gestão Financeira Inteligente, Cartões e Aportes" />
     <meta property="og:description" content="Controle financeiro pessoal de alta precisão, inteligência de cartões de crédito e motor determinístico de rebalanceamento. 100% Online First e seguro no axir.com.br." />
+    <meta property="og:url" content="https://axir.com.br/" />
     <meta property="og:image" content="/pwa/screenshots/desktop-1280x800.png" />
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="800" />
@@ -24,21 +28,99 @@
     <meta name="twitter:description" content="Controle financeiro pessoal de alta precisão, inteligência de cartões de crédito e motor determinístico de rebalanceamento. 100% Online First e seguro no axir.com.br." />
     <meta name="twitter:image" content="/pwa/screenshots/desktop-1280x800.png" />
 
-    <!-- Schema.org JSON-LD (Rich Snippets) -->
+    <!-- Schema.org JSON-LD (Rich Snippets: SoftwareApplication, Organization & FAQPage) -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "Axir",
-        "url": "https://axir.com.br",
-        "applicationCategory": "FinanceApplication",
-        "operatingSystem": "Web, iOS, Android (PWA)",
-        "description": "Controle financeiro pessoal completo, inteligência de cartões de crédito e motor determinístico de rebalanceamento de carteira.",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "BRL"
-        }
+        "@graph": [
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://axir.com.br/#app",
+            "name": "Axir",
+            "url": "https://axir.com.br",
+            "applicationCategory": "FinanceApplication",
+            "operatingSystem": "Web, iOS, Android (PWA & Nativo)",
+            "description": "Controle financeiro pessoal completo, inteligência de cartões de crédito e motor determinístico de rebalanceamento de carteira sem venda de ativos.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "BRL"
+            }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://axir.com.br/#organization",
+            "name": "Axir",
+            "url": "https://axir.com.br",
+            "logo": "https://axir.com.br/brand/logo-192.png",
+            "description": "Plataforma de inteligência financeira pessoal e rebalanceamento determinístico de investimentos.",
+            "sameAs": [
+              "https://t.me/axir_suporte"
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://axir.com.br/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Preciso cadastrar meu cartão de crédito para testar?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Não. Você cria sua conta gratuitamente e tem 30 dias de Acesso Pro Total sem precisar inserir nenhum dado de cartão de crédito. Se optar por não assinar após o período, nenhuma cobrança é efetuada."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "O que acontece após o término dos 30 dias de teste gratuito?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Você não perde absolutamente nada. Seus saldos, cartões, dívidas e faturas continuam salvos e disponíveis para consulta permanente no Modo Somente-Leitura. Para adicionar novos lançamentos e continuar rebalanceando seus aportes, basta ativar o Plano Pro quando quiser."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Como funciona o rebalanceamento de carteira de investimentos sem venda de ativos?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Você define suas metas percentuais ideais para cada classe de ativos (ex: Renda Fixa, Ações, FIIs, Internacional). Quando você for realizar um novo aporte financeiro, o motor determinístico calcula exatamente para onde direcionar o valor para comprar ativos defasados e equilibrar a carteira sem girar patrimônio e sem gerar DARF desnecessário."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Meus dados financeiros estão realmente seguros?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sim. Seus dados contam com isolamento criptográfico por usuário (Row Level Security no PostgreSQL) e o Axir não solicita senhas bancárias nem vende informações a terceiros. Além disso, você conta com o Privacy Shield para ocultar valores na tela com 1 clique e pode exportar seu Dossiê Executivo completo em Excel (.xlsx) a qualquer momento."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Funciona no iPhone e no Android como app nativo?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sim. No iPhone e Android, o Axir opera com carregamento instantâneo e interface em tela cheia via PWA universal (adicionado à tela inicial em 1 toque sem ocupar memória). Para usuários de Android que desejam a experiência máxima de performance, disponibilizamos o Android App Pro Nativo oficial com biometria física, atalhos de launcher e escudo anti-captura FLAG_SECURE."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Como funciona o Modo Viagem com amigos que não têm o aplicativo?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Funciona com zero atrito. Ao criar uma viagem em grupo, o Axir gera um link público seguro com senha opcional. Seus amigos abrem a página pelo navegador do celular, conferem o livro-razão em tempo real e lançam os gastos que pagaram — sem criar conta e sem baixar qualquer app. No fim, o algoritmo calcula o menor número de transferências Pix para zerar todos os saldos."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Posso cancelar minha assinatura quando quiser?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sim, com 1 clique direto no seu painel de configurações. Sem burocracia, taxas ocultas ou fidelidade. Você continuará tendo acesso completo até o último dia do período já contratado."
+                }
+              }
+            ]
+          }
+        ]
       }
     </script>
     <link rel="manifest" href="/pwa/manifest.webmanifest?v=2" />
@@ -56,9 +138,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Sora:wght@700;800&display=swap"
-      rel="stylesheet"
+      onload="this.onload=null;this.rel='stylesheet'"
     />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Sora:wght@700;800&display=swap"
+      />
+    </noscript>
     <title>Axir</title>
     <script>
       (function() {
@@ -77,14 +167,51 @@
             return null;
           }
 
-          var theme = getStoredValue('theme');
-          if (!theme || theme === 'system') {
-            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oled' : 'light';
-          }
-          document.documentElement.setAttribute('data-theme', theme);
-          document.documentElement.style.colorScheme = theme === 'light' ? 'light' : 'dark';
+          var themePref = getStoredValue('theme');
+          var darkVariant = getStoredValue('dark_theme_variant') || 'dark';
+          var resolvedTheme = 'light';
 
-          var themeColor = theme === 'oled' ? '#000000' : (theme === 'dark' ? '#0C1923' : '#F4F7F9');
+          if (!themePref || themePref === 'system') {
+            var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            resolvedTheme = prefersDark ? (darkVariant === 'oled' ? 'oled' : 'dark') : 'light';
+          } else if (themePref === 'schedule') {
+            var scheduleRaw = getStoredValue('theme_schedule');
+            var dayStart = '06:00';
+            var nightStart = '18:00';
+            var dayTheme = 'light';
+            var nightTheme = darkVariant === 'oled' ? 'oled' : 'dark';
+            if (scheduleRaw) {
+              try {
+                var parsed = JSON.parse(scheduleRaw);
+                if (parsed.dayStart) dayStart = parsed.dayStart;
+                if (parsed.nightStart) nightStart = parsed.nightStart;
+                if (parsed.dayTheme) dayTheme = parsed.dayTheme;
+                if (parsed.nightTheme) nightTheme = parsed.nightTheme;
+              } catch (e) {}
+            }
+            var now = new Date();
+            var nowMins = now.getHours() * 60 + now.getMinutes();
+            var dParts = dayStart.split(':');
+            var dMins = parseInt(dParts[0], 10) * 60 + parseInt(dParts[1], 10);
+            var nParts = nightStart.split(':');
+            var nMins = parseInt(nParts[0], 10) * 60 + parseInt(nParts[1], 10);
+            var isDay = false;
+            if (dMins < nMins) {
+              isDay = nowMins >= dMins && nowMins < nMins;
+            } else {
+              isDay = nowMins >= dMins || nowMins < nMins;
+            }
+            resolvedTheme = isDay ? dayTheme : nightTheme;
+          } else if (themePref === 'dark' || themePref === 'oled') {
+            resolvedTheme = themePref;
+          } else {
+            resolvedTheme = 'light';
+          }
+
+          document.documentElement.setAttribute('data-theme', resolvedTheme);
+          document.documentElement.style.colorScheme = resolvedTheme === 'light' ? 'light' : 'dark';
+
+          var themeColor = resolvedTheme === 'oled' ? '#000000' : (resolvedTheme === 'dark' ? '#0C1923' : '#F4F7F9');
           var metas = document.querySelectorAll('meta[name="theme-color"]');
           metas.forEach(function(m) {
             m.setAttribute('content', themeColor);
@@ -180,6 +307,7 @@
         aspect-ratio: 1 / 1;
         display: none;
         animation: splash-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        will-change: transform, opacity;
         user-select: none;
         -webkit-user-drag: none;
         filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.08));
@@ -253,7 +381,7 @@
       <img
         id="app-splash-icon-light"
         class="app-splash-icon app-splash-light"
-        src="/brand/logo-teal-light-192.png"
+        src="/brand/logo-teal-light-192.webp"
         alt=""
         width="116"
         height="116"
@@ -262,7 +390,7 @@
       <img
         id="app-splash-icon-dark"
         class="app-splash-icon app-splash-dark"
-        src="/brand/logo-teal-dark-192.png"
+        src="/brand/logo-teal-dark-192.webp"
         alt=""
         width="116"
         height="116"
@@ -275,11 +403,11 @@
             var l = document.getElementById('app-splash-icon-light');
             var d = document.getElementById('app-splash-icon-dark');
             if (isPro) {
-              if (l) l.src = '/brand/logo-amber-light-192.png';
-              if (d) d.src = '/brand/logo-amber-dark-192.png';
+              if (l) l.src = '/brand/logo-amber-light-192.webp';
+              if (d) d.src = '/brand/logo-amber-dark-192.webp';
             } else {
-              if (l) l.src = '/brand/logo-teal-light-192.png';
-              if (d) d.src = '/brand/logo-teal-dark-192.png';
+              if (l) l.src = '/brand/logo-teal-light-192.webp';
+              if (d) d.src = '/brand/logo-teal-dark-192.webp';
             }
           } catch (e) {}
         })();

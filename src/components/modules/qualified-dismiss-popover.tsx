@@ -23,10 +23,10 @@ export interface QualifiedDismissPopoverProps {
  * Popover sutil de micro-feedback qualificado de 1 toque para calibração e descarte (§F23).
  *
  * Oferece 4 opções claras com aprendizado imediato:
- *   1. "É gasto essencial" ➔ mantém nos custos fixos ativos e silencia sugestões de corte.
- *   2. "Já cancelei" ➔ silencia ocorrência, celebra a economia anual e remove dos custos fixos.
- *   3. "É despesa pontual" ➔ silencia apenas para o ciclo corrente sem penalizar o classificador.
- *   4. "Não é assinatura" ➔ rebaixa de imediato a probabilidade daquele fornecedor virar recorrência.
+ *   1. "É gasto essencial" -> mantém nos custos fixos ativos e silencia sugestões de corte.
+ *   2. "Já cancelei" -> silencia ocorrência, celebra a economia anual e remove dos custos fixos.
+ *   3. "É despesa pontual" -> silencia apenas para o ciclo corrente sem penalizar o classificador.
+ *   4. "Não é assinatura" -> rebaixa de imediato a probabilidade daquele fornecedor virar recorrência.
  */
 export function QualifiedDismissPopover({
   children,

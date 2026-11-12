@@ -186,10 +186,12 @@ export interface MfaAssuranceLevel {
 /**
  * Consulta o nível de autenticação atual e esperado (MFA / AAL) do usuário ativo.
  */
-export async function getMfaAssuranceLevel(): Promise<MfaAssuranceLevel | null> {
+export async function getMfaAssuranceLevel(jwt?: string): Promise<MfaAssuranceLevel | null> {
   try {
     const supabase = getSupabase();
-    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    const { data, error } = await (jwt
+      ? supabase.auth.mfa.getAuthenticatorAssuranceLevel(jwt)
+      : supabase.auth.mfa.getAuthenticatorAssuranceLevel());
     if (error || !data) return null;
     return {
       currentLevel: (data.currentLevel as "aal1" | "aal2") ?? null,
@@ -204,11 +206,12 @@ export async function getMfaAssuranceLevel(): Promise<MfaAssuranceLevel | null> 
  * Consulta se o usuário ativo possui um fator TOTP de segundo fator (MFA) verificado.
  */
 export async function getActiveUserMfaFactor(): Promise<{ id: string } | null> {
-  const supabase = getSupabase();
-  const { data, error } = await supabase.auth.mfa.listFactors();
-  if (error) return null;
-  const verified = data?.totp?.find((f) => f.status === "verified");
-  return verified ? { id: verified.id } : null;
+  try {
+    const verified = await listVerifiedMfaFactors();
+    return verified ? { id: verified.id } : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -240,12 +243,32 @@ export interface MfaEnrollResult {
 
 /**
  * Lista o fator TOTP ativo/verificado do usuário autenticado.
+ * Inspeciona com robustez tanto data.all quanto data.totp para garantir detecção.
  */
 export async function listVerifiedMfaFactors(): Promise<MfaFactorInfo | null> {
   const supabase = getSupabase();
   const { data, error } = await supabase.auth.mfa.listFactors();
   if (error) throw error;
-  const verified = data?.totp?.find((f) => f.status === "verified");
+  if (!data) return null;
+
+  const allFactors = (data.all ?? []) as Array<{
+    id: string;
+    status: string;
+    friendly_name?: string;
+    factor_type: string;
+  }>;
+  const totpFactors = (data.totp ?? []) as Array<{
+    id: string;
+    status: string;
+    friendly_name?: string;
+    factor_type: string;
+  }>;
+
+  const verified =
+    allFactors.find((f) => f.factor_type === "totp" && f.status === "verified") ??
+    totpFactors.find((f) => f.status === "verified") ??
+    allFactors.find((f) => f.status === "verified");
+
   return verified
     ? {
         id: verified.id,
@@ -257,15 +280,45 @@ export async function listVerifiedMfaFactors(): Promise<MfaFactorInfo | null> {
 }
 
 /**
+ * Remove fatores MFA não verificados residuais para prevenir erro 422 (fator já existente).
+ */
+export async function cleanupUnverifiedMfaFactors(): Promise<void> {
+  try {
+    const supabase = getSupabase();
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error || !data) return;
+
+    const allFactors = (data.all ?? []) as Array<{ id: string; status: string }>;
+    const unverified = allFactors.filter((f) => f.status === "unverified");
+
+    for (const factor of unverified) {
+      try {
+        await supabase.auth.mfa.unenroll({ factorId: factor.id });
+      } catch {
+        // Ignora falha de exclusão de fator unverified individual
+      }
+    }
+  } catch {
+    // Silencia em ambiente offline
+  }
+}
+
+/**
  * Inicia o processo de cadastro de fator TOTP gerando a URI e o segredo.
+ * Limpa fatores pendentes não confirmados antes de iniciar para evitar conflito.
  */
 export async function enrollMfaTotp(issuer = "Axir"): Promise<MfaEnrollResult> {
+  await cleanupUnverifiedMfaFactors();
+
   const supabase = getSupabase();
   const { data, error } = await supabase.auth.mfa.enroll({
     factorType: "totp",
     issuer,
   });
-  if (error) throw error;
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
   return {
     factorId: data.id,
     totpUri: data.totp.uri,
@@ -279,14 +332,20 @@ export async function enrollMfaTotp(issuer = "Axir"): Promise<MfaEnrollResult> {
 export async function verifyMfaEnrollment(factorId: string, code: string): Promise<void> {
   const supabase = getSupabase();
   const challenge = await supabase.auth.mfa.challenge({ factorId });
-  if (challenge.error) throw challenge.error;
+  if (challenge.error) {
+    const classified = classifyError(challenge.error);
+    throw new AppError(classified.kind, classified.message, challenge.error);
+  }
 
   const verify = await supabase.auth.mfa.verify({
     factorId,
     challengeId: challenge.data.id,
     code: code.trim(),
   });
-  if (verify.error) throw verify.error;
+  if (verify.error) {
+    const classified = classifyError(verify.error);
+    throw new AppError(classified.kind, classified.message, verify.error);
+  }
 }
 
 /**
@@ -295,7 +354,10 @@ export async function verifyMfaEnrollment(factorId: string, code: string): Promi
 export async function unenrollMfaFactor(factorId: string): Promise<void> {
   const supabase = getSupabase();
   const { error } = await supabase.auth.mfa.unenroll({ factorId });
-  if (error) throw error;
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
 }
 
 /**

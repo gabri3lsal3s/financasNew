@@ -12,6 +12,10 @@ vi.mock("@/components/layout", async (importOriginal) => {
   };
 });
 
+vi.mock("@/components/layout/page-shell", () => ({
+  PageShell: () => <div data-testid="page-shell" />,
+}));
+
 vi.mock("@/state", () => ({
   useUserAccess: () => ({
     profile: { id: "user-123", role: "user", status: "active" },

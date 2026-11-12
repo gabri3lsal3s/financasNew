@@ -66,15 +66,15 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
   return (
     <Card
       className={cn(
-        "border-border/80 bg-surface/90 shadow-xl p-4 sm:p-7 md:p-8 space-y-4 sm:space-y-6 rounded-2xl sm:rounded-3xl",
+        "border-border/80 bg-surface/90 shadow-xl p-4 sm:p-6 md:p-7 space-y-4 sm:space-y-4.5 rounded-2xl sm:rounded-3xl",
         className,
       )}
     >
-      {/* Navegação por Abas Fluidas com Scroll Desobstruído */}
+      {/* Navegação por Abas — Distribuição Fluida Proporcional (Zero Truncamento) */}
       <div
         role="tablist"
         aria-label="Cards de Finanças Compartilhadas"
-        className="flex p-1 rounded-xl bg-background/70 border border-border/60 gap-1 overflow-x-auto no-scrollbar scroll-smooth"
+        className="flex items-center p-1 rounded-xl bg-muted/50 border border-border/60 gap-1 w-full overflow-x-auto no-scrollbar scroll-smooth"
       >
         <button
           type="button"
@@ -82,16 +82,18 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
           id="tab-split"
           aria-selected={activeTab === "split"}
           aria-controls="panel-split"
+          title="Racha com Pix"
+          aria-label="Racha com Pix"
           onClick={() => setActiveTab("split")}
           className={cn(
-            "shrink-0 flex-initial min-w-fit px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+            "flex-auto shrink-0 min-w-fit px-2.5 sm:px-3 py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap font-medium",
             activeTab === "split"
-              ? "bg-primary text-primary-foreground shadow-xs"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+              ? "bg-surface text-foreground shadow-xs border border-border/70 font-bold"
+              : "text-muted-foreground hover:text-foreground hover:bg-surface/50",
           )}
         >
-          <Users className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>Racha com Pix</span>
+          <Users className={cn("size-3.5 shrink-0", activeTab === "split" ? "text-primary" : "text-muted-foreground")} aria-hidden="true" />
+          <span>Racha</span>
         </button>
 
         <button
@@ -100,16 +102,18 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
           id="tab-goal"
           aria-selected={activeTab === "goal"}
           aria-controls="panel-goal"
+          title="Vaquinha Coletiva (Metas)"
+          aria-label="Vaquinha Coletiva (Metas)"
           onClick={() => setActiveTab("goal")}
           className={cn(
-            "shrink-0 flex-initial min-w-fit px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+            "flex-auto shrink-0 min-w-fit px-2.5 sm:px-3 py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap font-medium",
             activeTab === "goal"
-              ? "bg-primary text-primary-foreground shadow-xs"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+              ? "bg-surface text-foreground shadow-xs border border-border/70 font-bold"
+              : "text-muted-foreground hover:text-foreground hover:bg-surface/50",
           )}
         >
-          <Target className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>Vaquinha Coletiva</span>
+          <Target className={cn("size-3.5 shrink-0", activeTab === "goal" ? "text-primary" : "text-muted-foreground")} aria-hidden="true" />
+          <span>Metas</span>
         </button>
 
         <button
@@ -118,16 +122,20 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
           id="tab-family"
           aria-selected={activeTab === "family"}
           aria-controls="panel-family"
+          title="Modo Família (Orçamento Familiar)"
+          aria-label="Orçamento Familiar — Modo Família"
           onClick={() => setActiveTab("family")}
           className={cn(
-            "shrink-0 flex-initial min-w-fit px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+            "flex-auto shrink-0 min-w-fit px-2.5 sm:px-3 py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap font-medium",
             activeTab === "family"
-              ? "bg-primary text-primary-foreground shadow-xs"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+              ? "bg-surface text-foreground shadow-xs border border-border/70 font-bold"
+              : "text-muted-foreground hover:text-foreground hover:bg-surface/50",
           )}
         >
-          <Scale className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>Orçamento Familiar</span>
+          <Scale className={cn("size-3.5 shrink-0", activeTab === "family" ? "text-primary" : "text-muted-foreground")} aria-hidden="true" />
+          <span>
+            <span className="hidden sm:inline">Modo </span>Família
+          </span>
         </button>
 
         <button
@@ -136,16 +144,20 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
           id="tab-trip"
           aria-selected={activeTab === "trip"}
           aria-controls="panel-trip"
+          title="Modo Viagem"
+          aria-label="Modo Viagem"
           onClick={() => setActiveTab("trip")}
           className={cn(
-            "shrink-0 flex-initial min-w-fit px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+            "flex-auto shrink-0 min-w-fit px-2.5 sm:px-3 py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap font-medium",
             activeTab === "trip"
-              ? "bg-primary text-primary-foreground shadow-xs"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
+              ? "bg-surface text-foreground shadow-xs border border-border/70 font-bold"
+              : "text-muted-foreground hover:text-foreground hover:bg-surface/50",
           )}
         >
-          <Plane className="size-3.5 shrink-0" aria-hidden="true" />
-          <span>Modo Viagem</span>
+          <Plane className={cn("size-3.5 shrink-0", activeTab === "trip" ? "text-primary" : "text-muted-foreground")} aria-hidden="true" />
+          <span>
+            <span className="hidden sm:inline">Modo </span>Viagem
+          </span>
         </button>
       </div>
 
@@ -155,93 +167,141 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
         role="tabpanel"
         aria-labelledby="tab-split"
         data-testid="card-racha"
-        className={cn("space-y-4", activeTab === "split" ? "block" : "hidden")}
+        className={cn("space-y-3 sm:space-y-3.5", activeTab === "split" ? "block" : "hidden")}
       >
-        <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-3.5">
+        {/* Cabeçalho Editorial Padronizado */}
+        <div className="flex justify-between items-center border-b border-border/50 pb-2.5 sm:pb-3">
           <div>
             <div className="text-xs sm:text-sm font-bold text-foreground">
               Churrasco de Confraternização
             </div>
-            <div className="text-[11px] sm:text-xs text-muted-foreground">
+            <div className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
               Racha entre 4 amigos · Cota de <MoneyText cents={12000} className="font-semibold text-foreground" />
             </div>
           </div>
-          <Badge variant="positive" size="xs" className="font-mono">
+          <Badge variant="positive" size="xs" className="font-mono shrink-0">
             2 de 3 pagaram
           </Badge>
         </div>
 
-        {/* Resumo da Despesa em Centavos */}
+        {/* Resumo Financeiro em Duas Colunas Simétricas */}
         <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs font-mono">
-          <div className="p-2.5 sm:p-3 rounded-xl bg-background/50 border border-border/50">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-background/50 border border-border/60">
             <span className="text-muted-foreground block text-[11px] font-sans">Valor Total da Conta:</span>
             <MoneyText cents={48000} className="font-bold text-foreground text-sm sm:text-base" />
           </div>
           <div className="p-2.5 sm:p-3 rounded-xl bg-primary/10 border border-primary/30">
-            <span className="text-primary-strong block text-[11px] font-sans font-semibold">Total a Receber:</span>
-            <MoneyText cents={36000} className="font-bold text-foreground text-sm sm:text-base" />
+            <div className="flex justify-between items-baseline">
+              <span className="text-primary-strong font-sans font-semibold text-[11px]">Total a Receber:</span>
+              <span className="text-[10px] text-positive-strong font-semibold">67% pago</span>
+            </div>
+            <MoneyText cents={36000} className="font-bold text-primary-strong text-sm sm:text-base" />
           </div>
         </div>
 
-        {/* Lista de Participantes */}
-        <div className="space-y-2 text-xs">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-            Status dos Participantes
+        {/* Lista de Participantes com Avatares e Hierarquia Harmônica */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center text-[11px] font-semibold text-muted-foreground uppercase tracking-wider font-sans">
+            <span>Status dos Participantes</span>
+            <span className="font-mono font-normal">4 pessoas</span>
           </div>
-          <div className="space-y-1.5 font-mono">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/40 border border-border/50">
-              <span className="font-sans text-foreground">Você (Anfitrião)</span>
-              <div className="flex items-center gap-2">
+
+          <div className="rounded-xl border border-border/60 bg-background/40 divide-y divide-border/40 overflow-hidden text-xs">
+            {/* Você (Anfitrião) */}
+            <div className="flex items-center justify-between p-2.5 transition-colors hover:bg-muted/20">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-[11px] font-bold font-mono">
+                  VC
+                </div>
+                <div className="min-w-0">
+                  <span className="font-semibold text-foreground truncate block">Você (Anfitrião)</span>
+                  <span className="text-[10px] text-muted-foreground block truncate">Pagou o total da conta</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 font-mono">
                 <Badge variant="muted" size="xs">
                   Pago
                 </Badge>
-                <MoneyText cents={12000} className="font-semibold text-foreground" />
+                <MoneyText cents={12000} className="font-bold text-foreground text-xs" />
               </div>
             </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/40 border border-border/50">
-              <span className="font-sans text-foreground">Mariana Costa</span>
-              <div className="flex items-center gap-2">
+
+            {/* Mariana Costa */}
+            <div className="flex items-center justify-between p-2.5 transition-colors hover:bg-muted/20">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-positive/15 text-positive-strong text-[11px] font-bold font-mono">
+                  MC
+                </div>
+                <div className="min-w-0">
+                  <span className="font-semibold text-foreground truncate block">Mariana Costa</span>
+                  <span className="text-[10px] text-positive-strong block truncate">Pix enviado às 14:28</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 font-mono">
                 <Badge variant="positive" size="xs">
                   Pix Enviado
                 </Badge>
-                <MoneyText cents={12000} className="font-semibold text-foreground" />
+                <MoneyText cents={12000} className="font-bold text-foreground text-xs" />
               </div>
             </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/40 border border-border/50">
-              <span className="font-sans text-foreground">Lucas Oliveira</span>
-              <div className="flex items-center gap-2">
+
+            {/* Lucas Oliveira */}
+            <div className="flex items-center justify-between p-2.5 transition-colors hover:bg-muted/20">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-positive/15 text-positive-strong text-[11px] font-bold font-mono">
+                  LO
+                </div>
+                <div className="min-w-0">
+                  <span className="font-semibold text-foreground truncate block">Lucas Oliveira</span>
+                  <span className="text-[10px] text-positive-strong block truncate">Pix enviado às 15:02</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 font-mono">
                 <Badge variant="positive" size="xs">
                   Pix Enviado
                 </Badge>
-                <MoneyText cents={12000} className="font-semibold text-foreground" />
+                <MoneyText cents={12000} className="font-bold text-foreground text-xs" />
               </div>
             </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/40 border border-border/50">
-              <span className="font-sans text-foreground">Beatriz Souza</span>
-              <div className="flex items-center gap-2">
+
+            {/* Beatriz Souza */}
+            <div className="flex items-center justify-between p-2.5 transition-colors hover:bg-muted/20">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-warning/20 text-warning-strong text-[11px] font-bold font-mono">
+                  BS
+                </div>
+                <div className="min-w-0">
+                  <span className="font-semibold text-foreground truncate block">Beatriz Souza</span>
+                  <span className="text-[10px] text-muted-foreground block truncate">Lembrete pendente</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 font-mono">
                 <Badge variant="warning" size="xs">
                   Aguardando
                 </Badge>
-                <MoneyText cents={12000} className="font-semibold text-foreground" />
+                <MoneyText cents={12000} className="font-bold text-foreground text-xs" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Box Pix Copia e Cola & Botão de WhatsApp */}
+        {/* Box Pix Dinâmico e Ações Alinhadas ao Design System */}
         <div className="p-3 sm:p-3.5 rounded-xl border border-border/60 bg-background/60 space-y-2.5">
           <div className="flex justify-between items-center text-xs">
-            <span className="text-muted-foreground font-sans">Chave Pix Dinâmica (E-mail):</span>
-            <span className="font-mono font-semibold text-foreground">financeiro.demo@exemplo.com</span>
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <ShieldCheck className="size-3.5 text-primary shrink-0" aria-hidden="true" />
+              <span>Chave Pix Dinâmica (E-mail):</span>
+            </div>
+            <span className="font-mono font-semibold text-foreground text-xs">financeiro.demo@exemplo.com</span>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          <div className="grid grid-cols-2 gap-2 pt-0.5">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleCopyPix}
-              className="flex-1 justify-center gap-1.5"
+              className="w-full justify-center gap-1.5 h-8.5 text-xs font-semibold rounded-lg"
             >
               {copiedPix ? (
                 <>
@@ -261,7 +321,7 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
               variant="default"
               size="sm"
               onClick={handleShareWhatsApp}
-              className="flex-1 justify-center gap-1.5 bg-[#25D366] hover:bg-[#20ba5a] text-white border-none"
+              className="w-full justify-center gap-1.5 h-8.5 text-xs font-semibold rounded-lg shadow-xs"
             >
               {whatsAppShared ? (
                 <>
@@ -279,30 +339,30 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
         </div>
       </div>
 
-      {/* 2. Card Visual: Termômetro de Vaquinha Coletiva em tempo real */}
+      {/* 2. Card Visual: Termômetro de Vaquinha Coletiva (Metas) */}
       <div
         id="panel-goal"
         role="tabpanel"
         aria-labelledby="tab-goal"
         data-testid="card-vaquinha"
-        className={cn("space-y-4", activeTab === "goal" ? "block" : "hidden")}
+        className={cn("space-y-3 sm:space-y-3.5", activeTab === "goal" ? "block" : "hidden")}
       >
-        <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-3.5">
+        <div className="flex justify-between items-center border-b border-border/50 pb-2.5 sm:pb-3">
           <div>
             <div className="text-xs sm:text-sm font-bold text-foreground">
               Viagem de Fim de Ano em Família
             </div>
-            <div className="text-[11px] sm:text-xs text-muted-foreground">
+            <div className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
               Vaquinha Coletiva com Chave Pix Oficial
             </div>
           </div>
-          <Badge variant="positive" size="xs" className="font-mono">
+          <Badge variant="positive" size="xs" className="font-mono shrink-0">
             75% Concluído
           </Badge>
         </div>
 
         {/* Termômetro e Barra de Progresso com Milestones */}
-        <div className="p-3.5 sm:p-4 rounded-xl border border-border/60 bg-background/60 space-y-3">
+        <div className="p-3 sm:p-3.5 rounded-xl border border-border/60 bg-background/60 space-y-2.5">
           <div className="flex justify-between items-baseline font-mono">
             <div>
               <span className="text-[11px] font-sans text-muted-foreground block">Total Arrecadado:</span>
@@ -316,7 +376,7 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
 
           {/* Barra Visual do Termômetro */}
           <div className="space-y-1.5">
-            <div className="h-3 w-full rounded-full bg-muted/60 overflow-hidden">
+            <div className="h-2.5 w-full rounded-full bg-muted/60 overflow-hidden">
               <div
                 className="h-full rounded-full bg-positive-strong transition-all duration-700"
                 style={{ width: "75%" }}
@@ -331,7 +391,7 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-1 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 pt-0.5 text-xs text-muted-foreground">
             <Calendar className="size-3.5 text-primary shrink-0" aria-hidden="true" />
             <span>
               Restam 14 dias para encerrar · Faltam <MoneyText cents={200000} className="font-semibold text-foreground" /> para a meta
@@ -339,35 +399,52 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
           </div>
         </div>
 
-        {/* Mural de Apoiadores Recentes */}
-        <div className="space-y-1.5 text-xs font-mono">
+        {/* Mural de Apoiadores Recentes com Avatares em 3 Colunas */}
+        <div className="space-y-1.5">
           <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider font-sans">
             Últimas Contribuições via Pix
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div className="p-2 rounded-lg bg-background/40 border border-border/50 text-center">
-              <span className="font-sans text-[11px] text-muted-foreground block truncate">Você</span>
-              <MoneyText cents={300000} className="font-bold text-foreground text-xs" />
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 p-2 rounded-lg bg-background/40 border border-border/50 min-w-0">
+              <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-bold font-mono">
+                VC
+              </div>
+              <div className="min-w-0 truncate">
+                <span className="text-[10px] text-muted-foreground block truncate">Você</span>
+                <MoneyText cents={300000} className="font-bold text-foreground text-xs font-mono" />
+              </div>
             </div>
-            <div className="p-2 rounded-lg bg-background/40 border border-border/50 text-center">
-              <span className="font-sans text-[11px] text-muted-foreground block truncate">Mariana C.</span>
-              <MoneyText cents={150000} className="font-bold text-foreground text-xs" />
+
+            <div className="flex items-center gap-1.5 sm:gap-2 p-2 rounded-lg bg-background/40 border border-border/50 min-w-0">
+              <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-positive/15 text-positive-strong text-[10px] font-bold font-mono">
+                MC
+              </div>
+              <div className="min-w-0 truncate">
+                <span className="text-[10px] text-muted-foreground block truncate">Mariana C.</span>
+                <MoneyText cents={150000} className="font-bold text-foreground text-xs font-mono" />
+              </div>
             </div>
-            <div className="p-2 rounded-lg bg-background/40 border border-border/50 text-center">
-              <span className="font-sans text-[11px] text-muted-foreground block truncate">Lucas O.</span>
-              <MoneyText cents={150000} className="font-bold text-foreground text-xs" />
+
+            <div className="flex items-center gap-1.5 sm:gap-2 p-2 rounded-lg bg-background/40 border border-border/50 min-w-0">
+              <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-positive/15 text-positive-strong text-[10px] font-bold font-mono">
+                LO
+              </div>
+              <div className="min-w-0 truncate">
+                <span className="text-[10px] text-muted-foreground block truncate">Lucas O.</span>
+                <MoneyText cents={150000} className="font-bold text-foreground text-xs font-mono" />
+              </div>
             </div>
           </div>
         </div>
 
         {/* Ação de Apoio via Chave Pix */}
-        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+        <div className="grid grid-cols-2 gap-2 pt-0.5">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={handleCopyGoalPix}
-            className="flex-1 justify-center gap-1.5"
+            className="w-full justify-center gap-1.5 h-8.5 text-xs font-semibold rounded-lg"
           >
             {copiedGoalPix ? (
               <>
@@ -384,71 +461,79 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
 
           <Button
             type="button"
-            variant="ghost"
+            variant="default"
             size="sm"
-            className="flex-1 justify-center gap-1.5 text-primary hover:text-primary hover:bg-primary/10"
+            className="w-full justify-center gap-1.5 h-8.5 text-xs font-semibold rounded-lg shadow-xs"
           >
             <Share2 className="size-3.5" aria-hidden="true" />
-            <span>Página Pública de Arrecadação</span>
+            <span className="truncate">Página Pública</span>
           </Button>
         </div>
       </div>
 
-      {/* 3. Card Visual: Orçamento Familiar Seguro (divisão 50/50 e acerto sem atrito) */}
+      {/* 3. Card Visual: Orçamento Familiar Seguro (Orçamentos) */}
       <div
         id="panel-family"
         role="tabpanel"
         aria-labelledby="tab-family"
         data-testid="card-familia"
-        className={cn("space-y-4", activeTab === "family" ? "block" : "hidden")}
+        className={cn("space-y-3 sm:space-y-3.5", activeTab === "family" ? "block" : "hidden")}
       >
-        <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-3.5">
+        <div className="flex justify-between items-center border-b border-border/50 pb-2.5 sm:pb-3">
           <div>
             <div className="text-xs sm:text-sm font-bold text-foreground">
               Gestão do Lar · Família Silva
             </div>
-            <div className="text-[11px] sm:text-xs text-muted-foreground">
+            <div className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
               Teto Compartilhado: <MoneyText cents={600000} className="font-semibold text-foreground" /> / mês
             </div>
           </div>
-          <Badge variant="default" size="xs" className="font-mono">
+          <Badge variant="default" size="xs" className="font-mono shrink-0">
             Divisão 50% / 50%
           </Badge>
         </div>
 
-        {/* Barra Bicolor de Contribuição nos Gastos da Casa */}
-        <div className="p-3.5 sm:p-4 rounded-xl border border-border/60 bg-background/60 space-y-3">
+        {/* Barra Bicolor de Contribuição nos Gastos da Casa com Avatares */}
+        <div className="p-3 sm:p-3.5 rounded-xl border border-border/60 bg-background/60 space-y-2.5">
           <div className="flex justify-between items-center text-xs">
             <span className="font-semibold text-foreground">Despesas Comuns do Mês:</span>
             <MoneyText cents={600000} className="font-mono font-bold text-foreground" />
           </div>
 
-          <div className="h-3 w-full rounded-full overflow-hidden flex bg-muted/40">
+          <div className="h-2.5 w-full rounded-full overflow-hidden flex bg-muted/60">
             <div className="h-full bg-primary" style={{ width: "53.3%" }} />
             <div className="h-full bg-portfolio" style={{ width: "46.7%" }} />
           </div>
 
-          <div className="flex justify-between text-xs font-mono">
-            <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
-              <span className="font-sans text-muted-foreground">Você pagou:</span>
-              <MoneyText cents={320000} className="font-bold text-foreground" />
-              <span className="text-[11px] text-muted-foreground">(53%)</span>
+          <div className="grid grid-cols-2 gap-2 text-xs font-mono pt-0.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary text-[10px] font-bold">
+                VC
+              </div>
+              <div className="min-w-0 truncate">
+                <span className="font-sans text-muted-foreground block text-[11px] truncate">Você pagou:</span>
+                <span className="font-bold text-foreground text-xs"><MoneyText cents={320000} /></span>{" "}
+                <span className="text-[10px] text-muted-foreground">(53%)</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full bg-portfolio shrink-0" aria-hidden="true" />
-              <span className="font-sans text-muted-foreground">Camila pagou:</span>
-              <MoneyText cents={280000} className="font-bold text-foreground" />
-              <span className="text-[11px] text-muted-foreground">(47%)</span>
+            <div className="flex items-center gap-2 min-w-0 justify-end sm:justify-start">
+              <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-portfolio/20 text-portfolio text-[10px] font-bold">
+                CS
+              </div>
+              <div className="min-w-0 truncate">
+                <span className="font-sans text-muted-foreground block text-[11px] truncate">Camila pagou:</span>
+                <span className="font-bold text-foreground text-xs"><MoneyText cents={280000} /></span>{" "}
+                <span className="text-[10px] text-muted-foreground">(47%)</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Box de Compensação / Acerto sem Atrito */}
-        <div className="p-3 sm:p-3.5 rounded-xl border border-primary/30 bg-primary/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Box de Compensação / Acerto sem Atrito com Layout Responsivo Desobstruído */}
+        <div className="p-3 sm:p-3.5 rounded-xl border border-primary/30 bg-primary/10 space-y-2.5">
           <div className="flex items-start gap-2.5">
             <ArrowRightLeft className="size-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-            <div className="text-xs">
+            <div className="text-xs leading-relaxed">
               <div className="font-semibold text-foreground">Compensação Automática Calculada:</div>
               <div className="text-muted-foreground mt-0.5">
                 Camila deve transferir <MoneyText cents={20000} className="font-bold text-foreground" /> para Você via Pix para equilibrar em 50/50.
@@ -456,60 +541,62 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
             </div>
           </div>
 
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            onClick={handleSettleFamily}
-            className="shrink-0 self-stretch sm:self-auto gap-1.5"
-          >
-            {settledFamily ? (
-              <>
-                <Check className="size-3.5" aria-hidden="true" />
-                <span>Acerto Quitado</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                <span>Liquidar Acerto Pix</span>
-              </>
-            )}
-          </Button>
+          <div className="flex justify-end pt-0.5">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={handleSettleFamily}
+              className="w-full sm:w-auto justify-center gap-1.5 h-8.5 text-xs font-semibold rounded-lg shadow-xs"
+            >
+              {settledFamily ? (
+                <>
+                  <Check className="size-3.5" aria-hidden="true" />
+                  <span>Acerto Quitado</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                  <span>Liquidar Acerto Pix</span>
+                </>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Garantia de Privacidade Individual */}
         <div className="flex items-center gap-2 p-2.5 rounded-xl border border-border/50 bg-background/50 text-[11px] sm:text-xs text-muted-foreground">
           <ShieldCheck className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
-          <span>
+          <span className="leading-relaxed">
             Privacidade absoluta: compras individuais, presentes e faturas pessoais permanecem 100% invisíveis para os outros membros da família.
           </span>
         </div>
       </div>
 
-      {/* 4. Card Visual: Modo Viagem com multi-pagadores e algoritmo de compensação mínima */}
+      {/* 4. Card Visual: Modo Viagem (Viagem) com multi-pagadores e algoritmo de compensação mínima */}
       <div
         id="panel-trip"
         role="tabpanel"
         aria-labelledby="tab-trip"
         data-testid="card-viagem"
-        className={cn("space-y-4", activeTab === "trip" ? "block" : "hidden")}
+        className={cn("space-y-3 sm:space-y-3.5", activeTab === "trip" ? "block" : "hidden")}
       >
-        <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-3.5">
+        <div className="flex justify-between items-center border-b border-border/50 pb-2.5 sm:pb-3">
           <div>
             <div className="text-xs sm:text-sm font-bold text-foreground">
               Viagem Florianópolis / Réveillon
             </div>
-            <div className="text-[11px] sm:text-xs text-muted-foreground">
+            <div className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
               4 amigos · Livro-razão compartilhado · Link público com senha
             </div>
           </div>
-          <Badge variant="warning" size="xs" className="font-mono">
+          <Badge variant="warning" size="xs" className="font-mono shrink-0">
             4 despesas · 2 acertos
           </Badge>
         </div>
 
         {/* Resumo de Gastos Totais */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 text-xs font-mono">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 text-xs font-mono">
           <div className="p-2.5 sm:p-3 rounded-xl bg-background/50 border border-border/50">
             <span className="text-muted-foreground block text-[11px] font-sans">Total da Viagem:</span>
             <MoneyText cents={524000} className="font-bold text-foreground text-sm sm:text-base" />
@@ -524,36 +611,59 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
           </div>
         </div>
 
-        {/* Balanço dos Participantes */}
-        <div className="p-3 sm:p-4 rounded-xl border border-border/60 bg-background/40 space-y-2.5">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+        {/* Balanço dos Participantes com Avatares */}
+        <div className="p-3 sm:p-3.5 rounded-xl border border-border/60 bg-background/40 space-y-2">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider font-sans">
             Balanço Individual em Tempo Real
           </div>
 
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between items-center py-1 border-b border-border/30">
-              <span className="font-medium text-foreground">Você (Anfitrião)</span>
+          <div className="space-y-1 text-xs divide-y divide-border/30">
+            <div className="flex justify-between items-center py-1">
+              <div className="flex items-center gap-2">
+                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary text-[10px] font-bold font-mono">
+                  VC
+                </div>
+                <span className="font-medium text-foreground">Você (Anfitrião)</span>
+              </div>
               <div className="text-right">
                 <span className="text-positive-strong font-mono font-bold">+R$ 2.370,00</span>
                 <span className="text-[10px] text-muted-foreground block">a receber</span>
               </div>
             </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/30">
-              <span className="font-medium text-foreground">Lucas Silva</span>
+
+            <div className="flex justify-between items-center py-1">
+              <div className="flex items-center gap-2">
+                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-negative/20 text-negative-strong text-[10px] font-bold font-mono">
+                  LS
+                </div>
+                <span className="font-medium text-foreground">Lucas Silva</span>
+              </div>
               <div className="text-right">
                 <span className="text-negative-strong font-mono font-bold">-R$ 350,00</span>
                 <span className="text-[10px] text-muted-foreground block">a pagar</span>
               </div>
             </div>
-            <div className="flex justify-between items-center py-1 border-b border-border/30">
-              <span className="font-medium text-foreground">Mariana Costa</span>
+
+            <div className="flex justify-between items-center py-1">
+              <div className="flex items-center gap-2">
+                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-negative/20 text-negative-strong text-[10px] font-bold font-mono">
+                  MC
+                </div>
+                <span className="font-medium text-foreground">Mariana Costa</span>
+              </div>
               <div className="text-right">
                 <span className="text-negative-strong font-mono font-bold">-R$ 710,00</span>
                 <span className="text-[10px] text-muted-foreground block">a pagar</span>
               </div>
             </div>
+
             <div className="flex justify-between items-center py-1">
-              <span className="font-medium text-foreground">Pedro Alves</span>
+              <div className="flex items-center gap-2">
+                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-negative/20 text-negative-strong text-[10px] font-bold font-mono">
+                  PA
+                </div>
+                <span className="font-medium text-foreground">Pedro Alves</span>
+              </div>
               <div className="text-right">
                 <span className="text-negative-strong font-mono font-bold">-R$ 1.310,00</span>
                 <span className="text-[10px] text-muted-foreground block">a pagar</span>
@@ -562,11 +672,11 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
           </div>
         </div>
 
-        {/* Liquidação Mínima Recomendada com Pix */}
-        <div className="p-3 sm:p-3.5 rounded-xl border border-warning/30 bg-warning/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Liquidação Otimizada com Pix: Layout Vertical Desobstruído com Botões em 2 Colunas */}
+        <div className="p-3 sm:p-3.5 rounded-xl border border-warning/30 bg-warning/10 space-y-2.5">
           <div className="flex items-start gap-2.5">
             <ArrowRightLeft className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
-            <div className="text-xs">
+            <div className="text-xs leading-relaxed">
               <div className="font-semibold text-foreground">Liquidação Otimizada (2 transferências em vez de 6):</div>
               <div className="text-muted-foreground mt-0.5">
                 Pedro transfere <MoneyText cents={131000} className="font-bold text-foreground" /> e Mariana transfere <MoneyText cents={71000} className="font-bold text-foreground" /> direto via Pix.
@@ -574,7 +684,7 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-stretch sm:self-auto">
+          <div className="grid grid-cols-2 gap-2 pt-0.5">
             <Button
               type="button"
               variant="outline"
@@ -588,7 +698,7 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
                 setCopiedTripPix(true);
                 setTimeout(() => setCopiedTripPix(false), 2500);
               }}
-              className="gap-1.5 flex-1 sm:flex-none text-xs"
+              className="w-full justify-center gap-1.5 text-xs h-8.5 font-semibold rounded-lg"
             >
               {copiedTripPix ? (
                 <>
@@ -611,7 +721,7 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
                 setSettledTrip(true);
                 setTimeout(() => setSettledTrip(false), 3000);
               }}
-              className="gap-1.5 flex-1 sm:flex-none text-xs"
+              className="w-full justify-center gap-1.5 text-xs h-8.5 font-semibold rounded-lg shadow-xs"
             >
               {settledTrip ? (
                 <>
@@ -631,7 +741,7 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
         {/* Link Público para Amigos Sem Conta */}
         <div className="flex items-center gap-2 p-2.5 rounded-xl border border-border/50 bg-background/50 text-[11px] sm:text-xs text-muted-foreground">
           <Share2 className="size-4 text-primary shrink-0" aria-hidden="true" />
-          <span>
+          <span className="leading-relaxed">
             Zero atrito: compartilhe o link seguro da viagem. Seus amigos lançam gastos e conferem o acerto pelo navegador, sem necessidade de baixar o app ou criar conta.
           </span>
         </div>

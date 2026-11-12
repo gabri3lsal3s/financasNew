@@ -110,4 +110,69 @@ describe("MoreMenuSheet", () => {
 
     expect(screen.getByRole("link", { name: "Investimentos" })).toBeInTheDocument();
   });
+
+  it("não exibe o botão de baixar aplicativo quando executando em plataforma nativa (APK)", async () => {
+    const platformModule = await import("@/services/native/platform");
+    const spy = vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+
+    render(
+      <BrowserRouter>
+        <MoreMenuSheet open={true} onOpenChange={vi.fn()} />
+      </BrowserRouter>,
+    );
+
+    expect(screen.queryByRole("button", { name: /Baixar aplicativo/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Baixar aplicativo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Baixar App Android Pro (APK)")).not.toBeInTheDocument();
+
+    spy.mockRestore();
+  });
+
+  it("não exibe o botão de baixar aplicativo em iOS quando já estiver no PWA", async () => {
+    const platformModule = await import("@/services/native/platform");
+    const nativeSpy = vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    const iosSpy = vi.spyOn(platformModule, "isIOSDevice").mockReturnValue(true);
+    const standaloneSpy = vi.spyOn(platformModule, "isStandaloneDisplay").mockReturnValue(true);
+
+    render(
+      <BrowserRouter>
+        <MoreMenuSheet open={true} onOpenChange={vi.fn()} />
+      </BrowserRouter>,
+    );
+
+    expect(screen.queryByRole("button", { name: /Baixar aplicativo/i })).not.toBeInTheDocument();
+
+    nativeSpy.mockRestore();
+    iosSpy.mockRestore();
+    standaloneSpy.mockRestore();
+  });
+
+  it("exibe o botão unificado 'Baixar aplicativo' na Web e abre o AppDownloadModal ao clicar", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const platformModule = await import("@/services/native/platform");
+    const nativeSpy = vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    const iosSpy = vi.spyOn(platformModule, "isIOSDevice").mockReturnValue(false);
+    const standaloneSpy = vi.spyOn(platformModule, "isStandaloneDisplay").mockReturnValue(false);
+
+    render(
+      <BrowserRouter>
+        <MoreMenuSheet open={true} onOpenChange={onOpenChange} />
+      </BrowserRouter>,
+    );
+
+    const downloadBtn = screen.getByRole("button", { name: /Baixar aplicativo/i });
+    expect(downloadBtn).toBeInTheDocument();
+    expect(screen.getByText("Instale o App Web (PWA) ou baixe o APK Android Pro")).toBeInTheDocument();
+
+    await user.click(downloadBtn);
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(await screen.findByRole("heading", { name: "Baixar aplicativo" })).toBeInTheDocument();
+
+    nativeSpy.mockRestore();
+    iosSpy.mockRestore();
+    standaloneSpy.mockRestore();
+  });
 });
+

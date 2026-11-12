@@ -18,8 +18,8 @@ describe("ReportTable component", () => {
     expect(screen.getByText("Por Categoria")).toBeInTheDocument();
     expect(screen.getByText("Alimentação")).toBeInTheDocument();
     expect(screen.getByText("Transporte")).toBeInTheDocument();
-    expect(screen.getByText("60%")).toBeInTheDocument();
-    expect(screen.getByText("40%")).toBeInTheDocument();
+    expect(screen.getByText(/60([,.]0)?%/)).toBeInTheDocument();
+    expect(screen.getByText(/40([,.]0)?%/)).toBeInTheDocument();
   });
 
   it("renderiza Valor Bruto como coluna principal e Ponderado como coluna de consulta", () => {

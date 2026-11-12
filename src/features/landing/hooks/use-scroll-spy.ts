@@ -24,7 +24,7 @@ export interface UseScrollSpyResult {
   resetKey: number;
 }
 
-const DEFAULT_SECTIONS = ["recursos", "investimentos", "simulador", "precos", "faq"];
+const DEFAULT_SECTIONS = ["recursos", "simulador", "plataformas", "ferramentas", "precos", "faq"];
 
 /**
  * Hook de monitoramento da rolagem com requestAnimationFrame.

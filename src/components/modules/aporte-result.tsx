@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import {
   ArrowDownToLine,
+  ArrowRight,
   Check,
   CheckCheck,
   ChevronDown,
@@ -812,8 +813,8 @@ export function AporteResult({
                           </div>
 
                           <div className="flex flex-col gap-0.5 items-end text-right min-w-0">
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                              Atual ➔ Alvo
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                              Atual <ArrowRight className="size-2.5 inline-block" aria-hidden="true" /> Alvo
                             </span>
                             <div className="flex items-center gap-1 font-mono text-xs whitespace-nowrap tabular-nums">
                               <span className="text-muted-foreground">

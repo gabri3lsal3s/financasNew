@@ -6,6 +6,8 @@ import { Sparkline } from "@/components/ui/sparkline";
 
 export interface KpiCardProps {
   label: ReactNode;
+  /** Rótulo acessível quando `label` é um elemento React composto (ex.: spans responsivos). */
+  ariaLabel?: string;
   /** Valor já formatado (não monetário — ex.: contagem) — quando `cents` não é informado. */
   value?: string;
   /** Valor em centavos — renderiza o MoneyText adaptativo animado com formatação pt-BR (F8/F12). */
@@ -67,15 +69,16 @@ function getDynamicKpiSize(cents?: number): string {
   return "text-lg sm:text-xl lg:text-2xl";
 }
 
-export function KpiCard({ label, value, cents, tone = "default", hint, icon, spark, onClick }: KpiCardProps) {
+export function KpiCard({ label, ariaLabel, value, cents, tone = "default", hint, icon, spark, onClick }: KpiCardProps) {
   const dynamicSize = getDynamicKpiSize(cents);
+  const accessibleName = ariaLabel ?? (typeof label === "string" ? label : undefined);
 
   return (
     <Card
       variant={onClick ? "interactive" : "default"}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
-      aria-label={onClick && typeof label === "string" ? label : undefined}
+      aria-label={onClick ? accessibleName : undefined}
       onKeyDown={
         onClick
           ? (event) => {
