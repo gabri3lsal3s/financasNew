@@ -330,7 +330,7 @@ flowchart TD
 
 > **Objetivo:** Entregar a experiência premium do titular no app Áxis Finance, com integração profunda ao extrato pessoal e cálculo automático de abatimento.
 
-- [ ] **Tarefa 4.1: Hub de Viagens no App (`src/features/trips/pages/trip-list-page.tsx`)**
+- [x] **Tarefa 4.1: Hub de Viagens no App (`src/features/trips/pages/trip-list-page.tsx`)**
   - Listagem de viagens ativas e histórico de viagens concluídas/arquivadas.
   - Card ativo na Home (`ActiveTripHomeBanner`): exibido durante as datas da viagem com saldo em tempo real e botão de atalho.
   - Acesso pelo Menu Mais (`more-menu-sheet.tsx`) e atalho no topo do extrato.
@@ -341,13 +341,13 @@ flowchart TD
   - Gerenciamento de participantes: adicionar amigo, vincular conta Áxis existente, editar chave Pix.
   - Botão de compartilhamento de link público com QR Code e botão de cópia.
 
-- [ ] **Tarefa 4.3: Integração no `LaunchWizard` e Edição de Despesas**
+- [x] **Tarefa 4.3: Integração no `LaunchWizard` e Edição de Despesas**
   - Adição do toggle *"Vincular à Viagem [Nome]"* no assistente de lançamento de despesas pessoais.
   - Ao ativar: o usuário seleciona como a despesa pessoal será dividida entre os amigos da viagem.
   - O sistema calcula o peso contábil `report_weight = cota_titular / valor_total` e grava a despesa na fatura do cartão com o valor cheio e no extrato pessoal com o valor ponderado.
   - Criação atômica do registro correspondente em `trip_expenses` apontando para `linked_personal_expense_id`.
 
-- [ ] **Tarefa 4.4: Mecanismo de Abatimento no Extrato Pessoal**
+- [x] **Tarefa 4.4: Mecanismo de Abatimento no Extrato Pessoal**
   - No extrato (`/transacoes`), a despesa vinculada recebe badge contextual:  
     `[Viagem: Chapada (Aguardando R$ 400 de repasse)]`.
   - Quando o membro confirma o pagamento ou o titular marca como recebido:
@@ -355,12 +355,12 @@ flowchart TD
     - O extrato atualiza o badge para `[Viagem: Chapada (100% Liquidado)]`.
     - A entrada do dinheiro é categorizada como "Ressarcimento de Viagem" com peso 0%, sem gerar distorção na renda tributável ou no gráfico de receitas do ano.
 
-- [ ] **Portão de Qualidade 4 (QG4):**
-  - [ ] Teste de ponta a ponta do lançamento de despesa no cartão de crédito com vinculação à viagem e abatimento posterior.
-  - [ ] Executar: `npx vitest run src/features/trips/ src/features/transactions/`
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] **Commit da Fase 4:** `git commit -m "feat(trips): hub interno, integracao no launch wizard e abatimento no extrato"`
+- [x] **Portão de Qualidade 4 (QG4):**
+  - [x] Teste de ponta a ponta do lançamento de despesa no cartão de crédito com vinculação à viagem e abatimento posterior.
+  - [x] Executar: `npx vitest run src/features/trips/ src/features/transactions/`
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] **Commit da Fase 4:** `git commit -m "feat(trips): hub interno, integracao no launch wizard e abatimento no extrato"`
 
 ---
 
@@ -368,31 +368,31 @@ flowchart TD
 
 > **Objetivo:** Conectar duas contas reais do Áxis Finance na mesma viagem, finalizar o fluxo de liquidação mútua, gerar relatórios executivos e auditar o sistema completo.
 
-- [ ] **Tarefa 5.1: Sincronização Mútua Entre Duas Contas do Áxis**
+- [x] **Tarefa 5.1: Sincronização Mútua Entre Duas Contas do Áxis**
   - Ao convidar um amigo informando seu e-mail de conta Áxis, a viagem surge automaticamente no app dele.
   - Quando o amigo lança uma despesa no cartão dele com a tag da viagem, o registro sincroniza com o grupo do titular instantaneamente.
   - Ambos os usuários têm seus extratos pessoais conciliados com suas respectivas cotas ponderadas.
 
-- [ ] **Tarefa 5.2: Assistente de Liquidação e Fechamento da Viagem (`TripSettlementModal`)**
+- [x] **Tarefa 5.2: Assistente de Liquidação e Fechamento da Viagem (`TripSettlementModal`)**
   - Mudança de status da viagem para `'settling'` e `'completed'`.
   - Resumo final: confirmação dos Pix realizados, recibos e arquivamento formal do grupo.
   - Viagens arquivadas saem dos seletores de despesas ativas e são preservadas para consulta histórica.
 
-- [ ] **Tarefa 5.3: Exportação e Relatório Executivo da Viagem**
+- [x] **Tarefa 5.3: Exportação e Relatório Executivo da Viagem**
   - Geração de relatório formatado em PDF/A4 utilizando o `ReportDocumentLayout` do design system.
   - Discriminação de custos por categoria (Hospedagem, Transporte, Alimentação, Lazer) e comprovantes anexados.
 
-- [ ] **Tarefa 5.4: Atualização da Documentação Oficial**
+- [x] **Tarefa 5.4: Atualização da Documentação Oficial**
   - Atualização do `docs/architecture/ESPECIFICACAO_TECNICA.md` (regras de negócio do Modo Viagem).
   - Atualização do `docs/architecture/ARCHITECTURE.md` (rotas `/viagens`, `/viagem/:token`).
   - Atualização do `docs/architecture/PROJECT_STRUCTURE.md` (novas pastas e componentes).
 
-- [ ] **Portão de Qualidade 5 (QG5):**
-  - [ ] Executar: `npm run typecheck` (zero erros).
-  - [ ] Executar: `npm run lint` (zero erros ou warnings bloqueantes).
-  - [ ] Executar: `npm run test` (100% dos testes da suíte passando).
-  - [ ] Executar: `npm run build` (build de produção verde).
-  - [ ] **Commit de Conclusão:** `git commit -m "chore(release): conclusao da homologacao do modo viagem compartilhado"`
+- [x] **Portão de Qualidade 5 (QG5):**
+  - [x] Executar: `npm run typecheck` (zero erros).
+  - [x] Executar: `npm run lint` (zero erros ou warnings bloqueantes).
+  - [x] Executar: `npm run test` (100% dos testes da suíte passando).
+  - [x] Executar: `npm run build` (build de produção verde).
+  - [x] **Commit de Conclusão:** `git commit -m "chore(release): conclusao da homologacao do modo viagem compartilhado"`
 
 ---
 

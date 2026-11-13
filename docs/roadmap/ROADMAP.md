@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v3.4.0 (Build 57)** registra o **Plano de Integridade de Billing, Memória de Lançamentos e Simuladores** (2026-11-12):
+> **v3.4.0 (Build 57)** registra a conclusão do **Plano de Integridade de Billing, Memória de Lançamentos e Simuladores** (2026-11-12), formalmente arquivado em [`docs/plans/completed/26_PLANO_INTEGRIDADE_BILLING_MEMORIA_E_SIMULADORES.md`](../plans/completed/26_PLANO_INTEGRIDADE_BILLING_MEMORIA_E_SIMULADORES.md):
 > - **(1) Ciclo de Vida da Assinatura & Máquina de Estados Canônica**:
 >   - Domínio puro em `src/domain/subscription/` com estados explícitos: `trial_active`, `trial_scheduled`, `trial_expired`, `active`, `past_due`, `canceled_until_period_end`, `read_only` e `lifetime`;
 >   - Migração `20260101000114_billing_lifecycle_v2.sql` adicionando campos em `user_subscriptions` (`trial_started_at`, `billing_start_at`, `scheduled_plan_id`, `pending_plan_id`, `card_last4`, `asaas_sync_status`);
@@ -109,7 +109,7 @@
 >   - TypeScript (`tsc -b`): 0 erros;
 >   - Build de Produção Vite e Service Worker PWA gerados com sucesso em 2.14s;
 >   - Vitest: 45 arquivos de teste e 363 testes das áreas auditadas 100% aprovados;
->   - Plano canônico detalhado e rastreado em `docs/plans/24_PLANO_EXECUCAO_AUDITORIA_VISUAL_E_CONGRUENCIA_GLOBAL.md`.
+>   - Plano canônico detalhado e arquivado em `docs/plans/completed/24_PLANO_EXECUCAO_AUDITORIA_VISUAL_E_CONGRUENCIA_GLOBAL.md`.
 >
 > **v3.1.0 (Build 53)** registra a **Expansão Global de Plataforma, Blindagem Arquitetural de Dados e Padronização Linguística PT-BR** (2026-11-11):
 > - **(1) Blindagem Arquitetural de Dados e Isolamento Estrito de Camadas (Fase 5)**:

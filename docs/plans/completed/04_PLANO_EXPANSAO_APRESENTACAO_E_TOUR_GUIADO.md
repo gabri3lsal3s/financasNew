@@ -146,12 +146,12 @@ flowchart TD
 - [x] **Tarefa 5.3: Arquivamento em `docs/plans/completed/`**
   - Mover este plano para `docs/plans/completed/04_PLANO_EXPANSAO_APRESENTACAO_E_TOUR_GUIADO.md`.
 
-- [ ] **Portão de Qualidade 5 (QG5):**
-  - [ ] Executar: `npm run typecheck`
-  - [ ] Executar: `npm run lint`
-  - [ ] Executar: `npm run test:run`
-  - [ ] Executar: `npm run build`
-  - [ ] **Commit & Push da Fase 5:** `git commit -m "chore(release): homologacao e conclusao do plano 04 de tour e apresentacao"`
+- [x] **Portão de Qualidade 5 (QG5):**
+  - [x] Executar: `npm run typecheck`
+  - [x] Executar: `npm run lint`
+  - [x] Executar: `npm run test:run`
+  - [x] Executar: `npm run build`
+  - [x] **Commit & Push da Fase 5:** `git commit -m "chore(release): homologacao e conclusao do plano 04 de tour e apresentacao"`
 
 ---
 

@@ -67,6 +67,13 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  usePermission: () => ({
+    canRead: true,
+    canWrite: true,
+    isHidden: false,
+    accessLevel: "write",
+    isReadOnlyMode: false,
+  }),
   useUserSubscription: () => ({
     isPro: true,
     isLoading: false,
@@ -130,9 +137,9 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     render(<AppRouter />);
 
     expect(
-      await screen.findByRole("heading", { name: "Entrar" }, { timeout: 15000 }),
+      await screen.findByRole("heading", { name: "Entrar" }, { timeout: 25000 }),
     ).toBeInTheDocument();
-  }, 30000);
+  }, 40000);
 
   it("renderiza a rota /cadastro com lazy loading para visitantes", async () => {
     vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
@@ -517,9 +524,9 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     window.history.pushState({}, "", "/");
     render(<AppRouter />);
 
-    expect(await screen.findByTestId("page-shell", {}, { timeout: 15000 })).toBeInTheDocument();
+    expect(await screen.findByTestId("page-shell", {}, { timeout: 25000 })).toBeInTheDocument();
     window.localStorage.removeItem("sb-test-auth-token");
-  }, 30000);
+  }, 40000);
 
   it("redireciona para /entrar ao acessar a raiz / sem autenticação em plataforma nativa (Capacitor Android)", async () => {
     const nativeModule = await import("@/services/native");

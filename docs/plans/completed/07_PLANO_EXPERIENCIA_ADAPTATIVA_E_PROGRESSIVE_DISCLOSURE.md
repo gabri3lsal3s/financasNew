@@ -1,8 +1,8 @@
 # PLANO DE IMPLEMENTAÇÃO 07 — EXPERIÊNCIA ADAPTATIVA, DIVULGAÇÃO PROGRESSIVA & PERFIS DE VISUALIZAÇÃO (MODO ESSENCIAL VS MODO INVESTIDOR)
 
 > **Documento Canônico de Arquitetura de UX, Engenharia de Produto e Governança de Software**  
-> **Status:** Estruturado e Reservado para Refinamento & Execução Pós-Planos 04, 05 e 06  
-> **Arquivo:** `docs/plans/07_PLANO_EXPERIENCIA_ADAPTATIVA_E_PROGRESSIVE_DISCLOSURE.md`  
+> **Status:** Concluído e Homologado  
+> **Arquivo:** `docs/plans/completed/07_PLANO_EXPERIENCIA_ADAPTATIVA_E_PROGRESSIVE_DISCLOSURE.md`  
 > **Ordem de Implementação:** **7º (Experiência Avançada & Retenção Comportamental)**  
 > **Módulos Afetados:** `supabase/migrations/`, `src/types/`, `src/state/`, `src/components/layout/`, `src/features/auth/`, `src/features/overview/`, `src/features/settings/`, `src/features/investments/`, `docs/`  
 > **Governança:** TypeScript Estrito (Zero `any`/`@ts-ignore`) · Zero Emojis (`local/no-decorative-unicode`) · Regra 18 (Modais Canônicos) · Mobile-First · Transições de Estado Sem Page Reload  
@@ -67,21 +67,21 @@ A premissa não é limitar recursos nem criar paywalls artificiais, mas sim **re
 
 ---
 
-## 3. FASES PROPOSTAS PARA EXECUÇÃO
+## 3. FASES EXECUTADAS COM SUCESSO
 
-- [ ] **Fase 1: Migration & Tipagem em `user_preferences`**
+- [x] **Fase 1: Migration & Tipagem em `user_preferences`**
   - Migration adicionando `app_mode`.
   - Atualização de contratos em `src/types/settings.ts` e `schema.ts`.
-- [ ] **Fase 2: Condicionamento da Navegação & Dashboard**
+- [x] **Fase 2: Condicionamento da Navegação & Dashboard**
   - Sidebar, BottomNav e MoreMenuSheet adaptativos.
   - Ocultação de widgets de investimento no Dashboard quando em modo Essencial.
-- [ ] **Fase 3: Tela de Acolhimento e Guarda de Rota (`InvestorModePromoView`)**
+- [x] **Fase 3: Tela de Acolhimento e Guarda de Rota (`InvestorModePromoView`)**
   - Componente de transição amigável ao acessar `/investments` em modo Essencial.
-- [ ] **Fase 4: Configurações & Seletor de Modo**
+- [x] **Fase 4: Configurações & Seletor de Modo**
   - Toggle na aba Aparência / Preferências com alternância instantânea.
-- [ ] **Fase 5: Onboarding Inicial Leve**
+- [x] **Fase 5: Onboarding Inicial Leve**
   - Pergunta opcional de 1 clique no cadastro ("Qual seu foco hoje? Organizar Contas ou Gerenciar Carteira?").
-- [ ] **Fase 6: Homologação, Testes E2E & DoD**
+- [x] **Fase 6: Homologação, Testes E2E & DoD**
   - Suíte de testes verificando alternância sem perda de dados e zero vazamento de rotas.
 
 ---

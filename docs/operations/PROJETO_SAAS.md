@@ -1,8 +1,6 @@
 # PROJETO_SAAS.md — Modelo de Planos, 30 Dias de Trial & Modo Somente-Leitura
 
-> **Status:** v2.0 — Especifica o modelo de precificação SaaS limpo e direto: **30 dias de Teste Pro Total (Full Access)** com transição para **Modo Somente-Leitura (Read-Only)** pós-trial, eliminando complexidade desnecessária de cotas parciais.
->
-> **Nota de planejamento (2026-11-12):** o ciclo operacional de trial, cobrança agendada, inadimplência, troca de plano e renovação acumulativa está detalhado no plano [`docs/plans/26_PLANO_INTEGRIDADE_BILLING_MEMORIA_E_SIMULADORES.md`](../plans/26_PLANO_INTEGRIDADE_BILLING_MEMORIA_E_SIMULADORES.md). Enquanto a implementação não for concluída, valem as regras atuais do código; este documento não deve ser usado como prova de que os campos genéricos de gateway ou `isAccountTrialEligible` já existem no schema.
+> **Status:** v2.1 — Especifica o modelo de precificação SaaS limpo e direto: **30 dias de Teste Pro Total (Full Access)** com transição para **Modo Somente-Leitura (Read-Only)** pós-trial, com ciclo de vida completo homologado via Plano 26 (`v3.4.0`), suporte a cobrança agendada, renovação acumulativa progressiva (2 a 11 meses) e sincronização bidirecional Asaas.
 
 ---
 
