@@ -62,6 +62,7 @@ import {
 import { useDashboardAlertDismissals, useOverviewPermissionsBanner, useOverviewData } from "../hooks";
 import { AddContributionDialog } from "@/features/goals";
 import { ActiveTripBanner } from "@/features/trips/components";
+import { ActiveSplitsCard } from "@/features/transactions/components";
 import { isAndroidDevice, isNativePlatform } from "@/services/native/platform";
 import type { PublicShare } from "@/types";
 
@@ -584,6 +585,8 @@ export function OverviewPage() {
                 ) : null}
 
                 {isCurrentMonth ? <WeeklyDueRadarCard summary={weeklyRadarSummary} /> : null}
+
+                <ActiveSplitsCard month={month} />
 
                 {/* KPIs fundamentais com sparkline */}
                 <KpiGrid columns={4} data-tour="overview-kpis">

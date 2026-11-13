@@ -799,8 +799,15 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
     2. *Conta a receber vinculada* (opcional, default marcado);
     3. *Despesa original no extrato* (opcional, default desmarcado; se mantida, restaura o rateio para 100% integral).
 - **Cards Otimizados de Rachas Ativos & Carrossel da Home (`ActiveSplitsCard` & `SplitPendingBanner`):**
-  - Em transações, os rachas são exibidos em blocos de 2 por vez com paginação por setas, ordenação por vencimento próximo e antiguidade, e layout de altura reduzida.
-  - Na Home, o carrossel consolida a soma das divisões pendentes, quantidade de despesas a receber e atalho rápido para gestão.
+  - O card com carrossel de rachas ativos (`ActiveSplitsCard`) é renderizado tanto na página de Transações quanto na Visão Geral (Home), apresentando os rachas em blocos de 2 por vez com paginação por setas, ordenação por vencimento próximo e antiguidade, e layout de altura reduzida.
+  - **Detecção Resiliente de Rachas Ativos:** O componente captura tanto rachas com link público gerado (`public_shares`) quanto lançamentos com cobrança a receber pendente em `debts` (`name` iniciando por "Racha:") cujo link Pix ainda não foi gerado, exibindo o badge "Link pendente" e o botão "Gerar Link Pix" para geração sob demanda.
+  - Na Home, o banner no carrossel (`SplitPendingBanner`) e o card de rachas ativos consolidam todas as divisões em aberto, garantindo visibilidade imediata após o cadastro no Wizard.
+- **Fluxo Ágil Pós-Wizard Sem Duplicação de Entradas (`fromWizard`):**
+  - Ao concluir o cadastro de uma despesa com racha no Wizard (`LaunchWizard`), o diálogo subsequente (`SplitExpenseDialog`) opera em modo simplificado (`fromWizard=true` / pré-configurado).
+  - Suprime inputs redundantes de valor, descrição e seletores manuais de participantes (2 a 5 pessoas), apresentando um card compacto de "Resumo do Rateio Salvo" e focando diretamente na conferência da chave Pix e no CTA "Gerar Link & Copiar Pix".
+- **Confirmação e Exclusão Segura de Despesas com Racha Vinculado (`ExpenseDetailDialog`):**
+  - Ao tentar excluir uma despesa originada de um racha (`report_weight < 1`, dívida a receber vinculada ou registro em `public_shares`), o `ConfirmDialog` adota o título explícito "Excluir despesa e racha vinculado?" acompanhado de aviso em destaque (`Alert variant="warning"`), esclarecendo que a ação remove a despesa do extrato, cancela o valor a receber e exclui/revoga o link público do racha.
+  - A confirmação realiza a exclusão coordenada da despesa, da cobrança em `debts` e do registro em `public_shares`.
 
 #### 3.13.2 Orçamento Familiar Compartilhado & Modo Família Colaborativo Multi-Contas
 - **Segregação de Despesas e Receitas Familiares:** campo booleano `is_family` nas tabelas `expenses`, `incomes` e `portfolio_assets`. Permite que os membros marquem lançamentos e ativos que compõem o custo de vida e o patrimônio conjunto da casa.

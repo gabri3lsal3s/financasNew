@@ -28,6 +28,9 @@ export function useCreatePublicShare() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
+      void queryClient.invalidateQueries({ queryKey: ["debts"] });
+      void queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      void queryClient.invalidateQueries({ queryKey: ["overview"] });
     },
     onError: (error) => {
       pushToast({ title: getErrorMessage(error), variant: "destructive" });

@@ -381,7 +381,9 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
   const splitPendingData = useMemo(() => {
     const debts = debtsQuery.data ?? [];
     const splitShares = splitSharesQuery.data ?? [];
-    if (splitShares.length === 0) return { count: 0, pendingCents: 0, totalExpensesCents: 0, items: [] };
+    if (splitShares.length === 0 && debts.length === 0) {
+      return { count: 0, pendingCents: 0, totalExpensesCents: 0, items: [] };
+    }
 
     let count = 0;
     let pendingCents = 0;
@@ -398,15 +400,22 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     const expenseDebtMap = new Map(
       debts.filter((d) => d.type === "receivable" && d.expense_id).map((d) => [d.expense_id!, d]),
     );
+    const mappedDebtIds = new Set<string>();
+    const mappedExpenseIds = new Set<string>();
 
     for (const share of splitShares) {
       if (share.is_revoked) continue;
       const payload = (share.payload ?? {}) as unknown as SplitSharePayload;
       const debtId = payload?.debt_id;
       const expenseId = payload?.expense_id;
+      if (debtId) mappedDebtIds.add(debtId);
+      if (expenseId) mappedExpenseIds.add(expenseId);
+
       const isCompleted = Boolean(payload?.is_completed);
 
       const debt = (debtId ? debtMap.get(debtId) : null) || (expenseId ? expenseDebtMap.get(expenseId) : null);
+      if (debt) mappedDebtIds.add(debt.id);
+
       const isSettled = isCompleted || (debt ? Boolean(debt.paid_at) : false);
 
       if (isSettled) continue;
@@ -436,6 +445,28 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
           pendingCents: pendingForThisSplit,
           pendingFriendsCount,
           totalFriendsCount,
+        });
+      }
+    }
+
+    // Computa dívidas de racha a receber pendentes que ainda não possuem public_share
+    for (const debt of debts) {
+      if (debt.type !== "receivable" || debt.paid_at) continue;
+      if (mappedDebtIds.has(debt.id)) continue;
+      if (debt.expense_id && mappedExpenseIds.has(debt.expense_id)) continue;
+      if (!debt.name.toLowerCase().startsWith("racha:") && !debt.name.toLowerCase().includes("racha")) continue;
+
+      const debtCents = Math.round(debt.amount * 100);
+      if (debtCents > 0) {
+        count += 1;
+        pendingCents += debtCents;
+        totalExpensesCents += debtCents;
+        items.push({
+          id: `debt_${debt.id}`,
+          title: debt.name.replace(/^racha:\s*/i, "").trim() || "Despesa",
+          pendingCents: debtCents,
+          pendingFriendsCount: 1,
+          totalFriendsCount: 1,
         });
       }
     }

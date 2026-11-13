@@ -111,6 +111,8 @@ vi.mock("@/state", () => ({
   useFamilyMode: () => ({ isFamilyModeEnabled: stateMocks.isFamilyModeEnabled }),
   useMyFamily: () => ({ data: stateMocks.myFamily ?? null, isLoading: false }),
   useExpenses: () => ({ data: [], isLoading: false }),
+  useMyPublicShares: () => ({ data: [], isLoading: false }),
+  useDebts: () => ({ data: [], isLoading: false }),
 }));
 
 vi.mock("@/components/modules/split-expense-dialog", () => ({
@@ -710,6 +712,42 @@ describe("ExpenseDetailDialog", () => {
           date: baseExpense.date,
           categoryId: baseExpense.category_id,
         })
+      );
+    });
+
+    it("alerta sobre despesa e racha vinculado ao tentar excluir despesa com report_weight < 1", async () => {
+      deleteExpenseMock.mockClear();
+      deleteExpenseMock.mockResolvedValueOnce(1);
+      const toastSpy = vi.spyOn(toastService, "pushToast");
+      const onOpenChange = vi.fn();
+      const user = userEvent.setup();
+
+      const rachaExpense: Expense = {
+        ...baseExpense,
+        id: "e-racha-1",
+        description: "Pizza de Sexta",
+        report_weight: 0.5,
+      };
+
+      render(<ExpenseDetailDialog expense={rachaExpense} open={true} onOpenChange={onOpenChange} />);
+
+      // Abre confirmação de exclusão
+      await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+      // Título explícito de exclusão de despesa e racha vinculado
+      expect(screen.getByText("Excluir despesa e racha vinculado?")).toBeInTheDocument();
+      expect(
+        screen.getByText(/Esta despesa originou um racha compartilhado com amigos/i),
+      ).toBeInTheDocument();
+
+      // Confirma exclusão
+      await user.click(screen.getAllByRole("button", { name: "Excluir" }).at(-1)!);
+
+      expect(deleteExpenseMock).toHaveBeenCalledWith({ expenseId: "e-racha-1", mode: "single" });
+      expect(toastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Despesa e racha vinculado excluídos",
+        }),
       );
     });
   });

@@ -901,9 +901,9 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         );
       });
 
-      // SplitExpenseDialog é aberto em sequência
+      // SplitExpenseDialog é aberto em sequência no fluxo do wizard
       await waitFor(() => {
-        expect(screen.getByText("Rachar Despesa")).toBeInTheDocument();
+        expect(screen.getByText("Chave Pix & Link do Racha")).toBeInTheDocument();
       });
     });
 

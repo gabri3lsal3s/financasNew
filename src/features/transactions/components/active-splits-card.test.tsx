@@ -305,4 +305,32 @@ describe("ActiveSplitsCard", () => {
     expect(screen.getByText("Racha Sem Venc Antigo")).toBeInTheDocument();
     expect(screen.getByText("Racha Sem Venc Recente")).toBeInTheDocument();
   });
+
+  it("renderiza racha pendente originado de dívida mesmo sem public_share gerado (Link pendente)", () => {
+    mockPublicShares = [];
+    mockDebts = [
+      {
+        id: "debt-orphan-1",
+        user_id: "user-1",
+        name: "Racha: Jantar de Sexta",
+        type: "receivable",
+        amount: 85,
+        due_date: "2026-08-20",
+        paid_at: null,
+        created_at: "2026-08-10T19:00:00Z",
+        expense_id: "exp-orphan-1",
+        installment_group_id: null,
+      },
+    ];
+
+    render(<ActiveSplitsCard month="2026-08" />);
+
+    // Deve exibir o card e o título do racha
+    expect(screen.getByText("Rachas de Despesa Ativos")).toBeInTheDocument();
+    expect(screen.getByText("Jantar de Sexta")).toBeInTheDocument();
+
+    // Deve exibir o badge de link pendente e o botão para gerar link Pix
+    expect(screen.getByText("Link pendente")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Gerar Link Pix/i })).toBeInTheDocument();
+  });
 });

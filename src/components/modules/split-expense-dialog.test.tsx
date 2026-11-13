@@ -314,4 +314,42 @@ describe("SplitExpenseDialog", () => {
     fireEvent.click(cancelBtn);
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("renderiza modo simplificado sem duplicidade quando acionado a partir do Wizard (fromWizard)", async () => {
+    renderWithClient(
+      <SplitExpenseDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        fromWizard={true}
+        expense={mockExpense}
+        initialPeopleCount={3}
+      />,
+    );
+
+    // Título focado em Chave Pix & Link
+    expect(screen.getByText("Chave Pix & Link do Racha")).toBeInTheDocument();
+    expect(screen.getByText(/Rateio já registrado no seu extrato/i)).toBeInTheDocument();
+
+    // NÃO deve exibir os botões de seleção rápida de participantes (2, 3, 4, 5 pessoas)
+    expect(screen.queryByRole("button", { name: "2 pessoas" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "3 pessoas" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "4 pessoas" })).not.toBeInTheDocument();
+
+    // Não deve ter input para redigitar valor total
+    expect(screen.queryByLabelText("Valor total da despesa")).not.toBeInTheDocument();
+
+    // Deve exibir o resumo da partilha
+    expect(screen.getByText(/3 pessoas \(2 amigos \+ você\)/i)).toBeInTheDocument();
+
+    // Botão focado em gerar link e copiar Pix
+    const generateBtn = screen.getByRole("button", { name: /Gerar Link & Copiar Pix/i });
+    expect(generateBtn).toBeInTheDocument();
+
+    // Permite expandir nomes dos participantes sem mudar a contagem
+    const toggleNamesBtn = screen.getByRole("button", { name: /Personalizar nomes dos participantes/i });
+    fireEvent.click(toggleNamesBtn);
+    expect(screen.getByPlaceholderText("Você (Anfitrião)")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Amigo 1")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Amigo 2")).toBeInTheDocument();
+  });
 });

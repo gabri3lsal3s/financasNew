@@ -1181,9 +1181,15 @@ export function LaunchWizard({
     {createdSplitExpense && (
       <SplitExpenseDialog
         open={true}
+        fromWizard={true}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
             setCreatedSplitExpense(null);
+            void queryClient.invalidateQueries({ queryKey: ["my-public-shares"] });
+            void queryClient.invalidateQueries({ queryKey: ["public-shares"] });
+            void queryClient.invalidateQueries({ queryKey: ["debts"] });
+            void queryClient.invalidateQueries({ queryKey: ["expenses"] });
+            void queryClient.invalidateQueries({ queryKey: ["overview"] });
             onSuccess?.();
             onOpenChange?.(false);
             if (!onSuccess && !onOpenChange) {

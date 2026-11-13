@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Check,
   Copy,
@@ -43,6 +44,8 @@ export interface SplitExpenseDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Despesa original opcional a ser dividida */
   expense?: Partial<Expense> | null;
+  /** Se o diálogo foi acionado a partir do Wizard de lançamento */
+  fromWizard?: boolean;
   /** Valor total alternativo em centavos (caso aberto sem objeto Expense) */
   initialAmountCents?: number;
   /** Descrição alternativa */
@@ -83,6 +86,7 @@ export function SplitExpenseDialog({
   open,
   onOpenChange,
   expense,
+  fromWizard = false,
   initialAmountCents,
   initialDescription,
   initialDate,
@@ -93,6 +97,14 @@ export function SplitExpenseDialog({
   autoGenerate = false,
   isSimulation = false,
 }: SplitExpenseDialogProps) {
+  let queryClient: ReturnType<typeof useQueryClient> | null = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    queryClient = useQueryClient();
+  } catch {
+    // Fallback em testes sem QueryClientProvider
+  }
+
   const { isDemoActive } = useDemoSession();
   const isSimulationActive = Boolean(isSimulation || isDemoActive);
 
@@ -100,6 +112,11 @@ export function SplitExpenseDialog({
   const { preferences, updatePreferences } = useSplitPreferences();
   const createPublicShareMutation = useCreatePublicShare();
   const { data: fullExpense } = useExpense(expense?.id ?? null);
+
+  const isPreconfigured = Boolean(
+    fromWizard ||
+    (expense && typeof expense.value === "number" && (initialPeopleCount ?? 0) >= 2)
+  );
 
   // Sugestão de Pix a partir das preferências salvas ou perfil do usuário (Blindado contra PII leak no tour)
   const effectiveDefaultPix = isSimulationActive
@@ -327,6 +344,14 @@ export function SplitExpenseDialog({
       const url = getPublicAppUrl(`r/${share.token}`);
       setGeneratedLink(url);
 
+      if (queryClient) {
+        void queryClient.invalidateQueries({ queryKey: ["my-public-shares"] });
+        void queryClient.invalidateQueries({ queryKey: ["public-shares"] });
+        void queryClient.invalidateQueries({ queryKey: ["debts"] });
+        void queryClient.invalidateQueries({ queryKey: ["expenses"] });
+        void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      }
+
       if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
         try {
           await navigator.clipboard.writeText(url);
@@ -378,6 +403,7 @@ export function SplitExpenseDialog({
     isSimulationActive,
     initialInstallmentsCount,
     fullExpense,
+    queryClient,
   ]);
 
   const handleShareWhatsApp = () => {
@@ -460,8 +486,12 @@ export function SplitExpenseDialog({
     <Modal
       open={open}
       onOpenChange={onOpenChange}
-      title="Rachar Despesa"
-      description="Divida o valor entre amigos e gere um link público com Pix Copia e Cola automático."
+      title={isPreconfigured ? "Chave Pix & Link do Racha" : "Rachar Despesa"}
+      description={
+        isPreconfigured
+          ? "Sua despesa já foi salva no extrato com o rateio definido. Agora confirme sua chave Pix para gerar o link e o QR Code de cobrança para os amigos."
+          : "Divida o valor entre amigos e gere um link público com Pix Copia e Cola automático."
+      }
       size="lg"
     >
       <div className="space-y-4 pt-1 pb-2">
@@ -585,183 +615,281 @@ export function SplitExpenseDialog({
         ) : (
           /* Formulário de Configuração do Racha */
           <div className="space-y-4">
-            {/* Bloco 1: Valor e Descrição */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">
-                  Valor Total da Despesa
-                </label>
-                <MoneyInput
-                  cents={totalCents}
-                  onCentsChange={setTotalCents}
-                  size="md"
-                  aria-label="Valor total da despesa"
-                />
-                <span className="text-[11px] text-muted-foreground block">
-                  Valor nominal a ser dividido
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">
-                  Descrição ou Título <span className="font-normal text-muted-foreground">(opcional)</span>
-                </label>
-                <Input
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Ex.: Pizza de Sábado, Churrasco, Uber..."
-                  maxLength={60}
-                  aria-label="Descrição do racha"
-                />
-                <span className="text-[11px] text-muted-foreground block">
-                  Exibida aos amigos na página pública
-                </span>
-              </div>
-            </div>
-
-            {/* Bloco 2: Rateio e Participantes */}
-            <div className="rounded-lg border border-border/80 bg-surface p-3.5 space-y-3 shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <Users className="size-4 text-muted-foreground" aria-hidden="true" />
-                  <span className="text-xs font-semibold text-foreground">Divisão entre Participantes</span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant={!isCustomMode ? "secondary" : "ghost"}
-                    size="xs"
-                    onClick={() => setIsCustomMode(false)}
-                  >
-                    Quantidade
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={isCustomMode ? "secondary" : "ghost"}
-                    size="xs"
-                    onClick={() => setIsCustomMode(true)}
-                  >
-                    Nomes Customizados
-                  </Button>
-                </div>
-              </div>
-
-              {!isCustomMode ? (
-                /* Modo Rápido por Quantidade */
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {QUICK_PEOPLE_COUNTS.map((count) => (
-                      <Button
-                        key={count}
-                        type="button"
-                        variant={peopleCount === count ? "default" : "outline"}
-                        size="xs"
-                        onClick={() => handlePeopleCountChange(count)}
-                      >
-                        {count} pessoas
-                      </Button>
-                    ))}
-                    <div className="flex items-center gap-1.5 ml-auto">
-                      <span className="text-xs text-muted-foreground">Outro número:</span>
-                      <Input
-                        type="number"
-                        min={2}
-                        max={50}
-                        value={peopleCount}
-                        onChange={(e) => handlePeopleCountChange(parseInt(e.target.value, 10) || 2)}
-                        className="w-16 h-7 text-xs text-center"
-                        aria-label="Número de pessoas para o racha"
-                      />
+            {isPreconfigured ? (
+              /* Resumo do Rateio Pré-configurado no Lançamento */
+              <div className="rounded-xl border border-border/80 bg-surface/60 p-3.5 space-y-3 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Users className="size-4 text-portfolio shrink-0" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <span className="text-xs font-semibold text-foreground truncate block">
+                        {description.trim() || "Racha de Despesa"}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground block">
+                        Rateio já registrado no seu extrato
+                      </span>
                     </div>
                   </div>
+
+                  <Badge variant="portfolio" size="xs" className="shrink-0 self-start sm:self-center">
+                    {peopleCount} pessoas ({summary.guestCount} {summary.guestCount === 1 ? "amigo" : "amigos"} + você)
+                  </Badge>
                 </div>
-              ) : (
-                /* Modo com Nomes Customizados */
-                <div className="space-y-2">
-                  {participants.map((name, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <Input
-                          value={name}
-                          onChange={(e) => handleParticipantNameChange(index, e.target.value)}
-                          placeholder={index === 0 ? "Você (Anfitrião)" : `Participante ${index + 1}`}
-                          className="h-8 text-xs"
-                          aria-label={`Nome do participante ${index + 1}`}
-                        />
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-border/60">
+                  <div className="p-2.5 rounded-lg bg-background/60">
+                    <span className="text-[11px] text-muted-foreground block">Valor Total</span>
+                    <MoneyText cents={totalCents} variant="value" className="font-semibold text-sm" />
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-background/60">
+                    <span className="text-[11px] text-muted-foreground block">
+                      Cada Amigo ({summary.guestCount})
+                    </span>
+                    <MoneyText
+                      cents={summary.guestShareCents}
+                      tone="portfolio"
+                      variant="value"
+                      className="font-semibold text-sm"
+                    />
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-background/60">
+                    <span className="text-[11px] text-muted-foreground block">Sua Cota (Anfitrião)</span>
+                    <MoneyText cents={summary.hostShareCents} variant="value" className="font-semibold text-sm" />
+                  </div>
+                </div>
+
+                {summary.remainderCents > 0 ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {remainderPolicy === "host"
+                      ? `Diferença de ${summary.remainderCents} centavo(s) de resto atribuída ao anfitrião para que todos os amigos paguem o mesmo valor.`
+                      : `Diferença de ${summary.remainderCents} centavo(s) distribuída proporcionalmente entre os primeiros participantes.`}
+                  </p>
+                ) : null}
+
+                {/* Opção para customizar nomes dos amigos sem alterar contagem */}
+                <div className="pt-0.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={() => setIsCustomMode(!isCustomMode)}
+                    className="text-xs text-muted-foreground hover:text-foreground h-6 px-1.5 cursor-pointer"
+                  >
+                    {isCustomMode ? "Ocultar nomes dos participantes" : "Personalizar nomes dos participantes"}
+                  </Button>
+
+                  {isCustomMode ? (
+                    <div className="space-y-2 pt-2 mt-1 border-t border-border/40">
+                      {participants.map((name, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <Input
+                              value={name}
+                              onChange={(e) => handleParticipantNameChange(index, e.target.value)}
+                              placeholder={index === 0 ? "Você (Anfitrião)" : `Amigo ${index}`}
+                              className="h-8 text-xs"
+                              aria-label={`Nome do participante ${index + 1}`}
+                            />
+                          </div>
+                          <div className="w-24 text-right">
+                            <MoneyText
+                              cents={summary.shares[index] ?? 0}
+                              variant="value"
+                              className="font-medium text-xs"
+                            />
+                          </div>
+                          {index === 0 ? (
+                            <Badge size="xs" variant="muted" className="shrink-0">
+                              Anfitrião
+                            </Badge>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Bloco 1: Valor e Descrição */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-foreground">
+                      Valor Total da Despesa
+                    </label>
+                    <MoneyInput
+                      cents={totalCents}
+                      onCentsChange={setTotalCents}
+                      size="md"
+                      aria-label="Valor total da despesa"
+                    />
+                    <span className="text-[11px] text-muted-foreground block">
+                      Valor nominal a ser dividido
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-foreground">
+                      Descrição ou Título <span className="font-normal text-muted-foreground">(opcional)</span>
+                    </label>
+                    <Input
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Ex.: Pizza de Sábado, Churrasco, Uber..."
+                      maxLength={60}
+                      aria-label="Descrição do racha"
+                    />
+                    <span className="text-[11px] text-muted-foreground block">
+                      Exibida aos amigos na página pública
+                    </span>
+                  </div>
+                </div>
+
+                {/* Bloco 2: Rateio e Participantes */}
+                <div className="rounded-lg border border-border/80 bg-surface p-3.5 space-y-3 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <Users className="size-4 text-muted-foreground" aria-hidden="true" />
+                      <span className="text-xs font-semibold text-foreground">Divisão entre Participantes</span>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant={!isCustomMode ? "secondary" : "ghost"}
+                        size="xs"
+                        onClick={() => setIsCustomMode(false)}
+                      >
+                        Quantidade
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={isCustomMode ? "secondary" : "ghost"}
+                        size="xs"
+                        onClick={() => setIsCustomMode(true)}
+                      >
+                        Nomes Customizados
+                      </Button>
+                    </div>
+                  </div>
+
+                  {!isCustomMode ? (
+                    /* Modo Rápido por Quantidade */
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {QUICK_PEOPLE_COUNTS.map((count) => (
+                          <Button
+                            key={count}
+                            type="button"
+                            variant={peopleCount === count ? "default" : "outline"}
+                            size="xs"
+                            onClick={() => handlePeopleCountChange(count)}
+                          >
+                            {count} pessoas
+                          </Button>
+                        ))}
+                        <div className="flex items-center gap-1.5 ml-auto">
+                          <span className="text-xs text-muted-foreground">Outro número:</span>
+                          <Input
+                            type="number"
+                            min={2}
+                            max={50}
+                            value={peopleCount}
+                            onChange={(e) => handlePeopleCountChange(parseInt(e.target.value, 10) || 2)}
+                            className="w-16 h-7 text-xs text-center"
+                            aria-label="Número de pessoas para o racha"
+                          />
+                        </div>
                       </div>
-                      <div className="w-24 text-right">
-                        <MoneyText
-                          cents={summary.shares[index] ?? 0}
-                          variant="value"
-                          className="font-medium"
-                        />
-                      </div>
-                      {index === 0 ? (
-                        <Badge size="xs" variant="muted" className="shrink-0">
-                          Anfitrião
-                        </Badge>
-                      ) : (
+                    </div>
+                  ) : (
+                    /* Modo com Nomes Customizados */
+                    <div className="space-y-2">
+                      {participants.map((name, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <div className="flex-1">
+                            <Input
+                              value={name}
+                              onChange={(e) => handleParticipantNameChange(index, e.target.value)}
+                              placeholder={index === 0 ? "Você (Anfitrião)" : `Participante ${index + 1}`}
+                              className="h-8 text-xs"
+                              aria-label={`Nome do participante ${index + 1}`}
+                            />
+                          </div>
+                          <div className="w-24 text-right">
+                            <MoneyText
+                              cents={summary.shares[index] ?? 0}
+                              variant="value"
+                              className="font-medium"
+                            />
+                          </div>
+                          {index === 0 ? (
+                            <Badge size="xs" variant="muted" className="shrink-0">
+                              Anfitrião
+                            </Badge>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => handleRemoveParticipant(index)}
+                              className="text-muted-foreground hover:text-critical p-1 shrink-0"
+                              aria-label={`Remover participante ${index + 1}`}
+                            >
+                              <Trash2 className="size-3.5" aria-hidden="true" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+
+                      {peopleCount < 50 ? (
                         <Button
                           type="button"
                           variant="ghost"
                           size="xs"
-                          onClick={() => handleRemoveParticipant(index)}
-                          className="text-muted-foreground hover:text-critical p-1 shrink-0"
-                          aria-label={`Remover participante ${index + 1}`}
+                          onClick={handleAddParticipant}
+                          className="gap-1 text-xs text-muted-foreground hover:text-foreground"
                         >
-                          <Trash2 className="size-3.5" aria-hidden="true" />
+                          <Plus className="size-3.5" aria-hidden="true" />
+                          <span>Adicionar participante</span>
                         </Button>
-                      )}
+                      ) : null}
                     </div>
-                  ))}
+                  )}
 
-                  {peopleCount < 50 ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="xs"
-                      onClick={handleAddParticipant}
-                      className="gap-1 text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      <Plus className="size-3.5" aria-hidden="true" />
-                      <span>Adicionar participante</span>
-                    </Button>
+                  {/* Indicador de Partilha Calculada */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-border/60">
+                    <div className="p-2 rounded bg-background/60">
+                      <span className="text-[11px] text-muted-foreground block">Total</span>
+                      <MoneyText cents={totalCents} variant="value" className="font-semibold" />
+                    </div>
+                    <div className="p-2 rounded bg-background/60">
+                      <span className="text-[11px] text-muted-foreground block">
+                        Cada Convidado ({summary.guestCount})
+                      </span>
+                      <MoneyText
+                        cents={summary.guestShareCents}
+                        tone="portfolio"
+                        variant="value"
+                        className="font-semibold"
+                      />
+                    </div>
+                    <div className="p-2 rounded bg-background/60">
+                      <span className="text-[11px] text-muted-foreground block">Sua Parte (Anfitrião)</span>
+                      <MoneyText cents={summary.hostShareCents} variant="value" className="font-semibold" />
+                    </div>
+                  </div>
+
+                  {summary.remainderCents > 0 ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      {remainderPolicy === "host"
+                        ? `Diferença de ${summary.remainderCents} centavo(s) de resto atribuída ao anfitrião para que todos os convidados paguem o mesmo valor.`
+                        : `Diferença de ${summary.remainderCents} centavo(s) distribuída proporcionalmente entre os primeiros participantes.`}
+                    </p>
                   ) : null}
                 </div>
-              )}
-
-              {/* Indicador de Partilha Calculada */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-border/60">
-                <div className="p-2 rounded bg-background/60">
-                  <span className="text-[11px] text-muted-foreground block">Total</span>
-                  <MoneyText cents={totalCents} variant="value" className="font-semibold" />
-                </div>
-                <div className="p-2 rounded bg-background/60">
-                  <span className="text-[11px] text-muted-foreground block">
-                    Cada Convidado ({summary.guestCount})
-                  </span>
-                  <MoneyText
-                    cents={summary.guestShareCents}
-                    tone="portfolio"
-                    variant="value"
-                    className="font-semibold"
-                  />
-                </div>
-                <div className="p-2 rounded bg-background/60">
-                  <span className="text-[11px] text-muted-foreground block">Sua Parte (Anfitrião)</span>
-                  <MoneyText cents={summary.hostShareCents} variant="value" className="font-semibold" />
-                </div>
-              </div>
-
-              {summary.remainderCents > 0 ? (
-                <p className="text-[11px] text-muted-foreground">
-                  {remainderPolicy === "host"
-                    ? `Diferença de ${summary.remainderCents} centavo(s) de resto atribuída ao anfitrião para que todos os convidados paguem o mesmo valor.`
-                    : `Diferença de ${summary.remainderCents} centavo(s) distribuída proporcionalmente entre os primeiros participantes.`}
-                </p>
-              ) : null}
-            </div>
+              </>
+            )}
 
             {/* Bloco 3: Dados Pix do Anfitrião */}
             <div data-tour="split-pix-config" className="rounded-lg border border-border/80 bg-surface p-3.5 space-y-3 shadow-xs">
@@ -876,8 +1004,10 @@ export function SplitExpenseDialog({
                 <Share2 className="size-3.5" aria-hidden="true" />
                 <span>
                   {createPublicShareMutation.isPending
-                    ? "Gerando Racha…"
-                    : "Gerar Racha & Copiar Link"}
+                    ? "Gerando Link…"
+                    : isPreconfigured
+                      ? "Gerar Link & Copiar Pix"
+                      : "Gerar Racha & Copiar Link"}
                 </span>
               </Button>
             </div>

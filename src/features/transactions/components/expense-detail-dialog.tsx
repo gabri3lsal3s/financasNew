@@ -16,11 +16,13 @@ import {
   useCategories,
   useCreditCards,
   useCreateExpense,
+  useDebts,
   useDeleteExpense,
   useDeleteRecurrenceOccurrences,
   useExpenses,
   useFamilyMode,
   useMyFamily,
+  useMyPublicShares,
   useUpdateExpense,
   useUpdateExpenseGrouped,
   useUpdateRecurrenceOccurrences,
@@ -33,7 +35,7 @@ import {
 } from "@/state/queries/use-trips";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 
-import type { Category, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod, RecurrenceGroupFields } from "@/types";
+import type { Category, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod, RecurrenceGroupFields, SplitSharePayload } from "@/types";
 
 import { PAYMENT_METHOD_LABELS } from "@/lib/labels";
 import { resolveBillCompetence } from "@/domain/competence";
@@ -476,6 +478,40 @@ export function ExpenseDetailDialog({
   const prevMonth2Query = useExpenses(shiftMonth(expenseMonth, -2), { enabled: isDetailOpen && Boolean(expenseMonth) });
   const prevMonth3Query = useExpenses(shiftMonth(expenseMonth, -3), { enabled: isDetailOpen && Boolean(expenseMonth) });
 
+  const { data: splitShares } = useMyPublicShares("split", { enabled: isDetailOpen });
+  const { data: debts } = useDebts({ enabled: isDetailOpen });
+
+  const linkedSplitShare = useMemo(() => {
+    if (!expense || !splitShares) return null;
+    return (
+      splitShares.find((s) => {
+        const p = (s.payload ?? {}) as unknown as SplitSharePayload;
+        if (p.expense_id === expense.id) return true;
+        if (expense.installment_group_id && p.installment_group_id === expense.installment_group_id) {
+          return true;
+        }
+        return false;
+      }) ?? null
+    );
+  }, [expense, splitShares]);
+
+  const linkedRachaDebt = useMemo(() => {
+    if (!expense || !debts) return null;
+    return (
+      debts.find(
+        (d) =>
+          d.type === "receivable" &&
+          (d.expense_id === expense.id ||
+            (expense.installment_group_id && d.installment_group_id === expense.installment_group_id)) &&
+          (d.name.toLowerCase().startsWith("racha:") || d.name.toLowerCase().includes("racha")),
+      ) ?? null
+    );
+  }, [expense, debts]);
+
+  const isRachaExpense = Boolean(
+    linkedSplitShare || linkedRachaDebt || (expense && expense.report_weight < 1),
+  );
+
   const priceEvolution = useMemo(() => {
     if (!expense) return null;
     const allExpenses = [
@@ -502,6 +538,17 @@ export function ExpenseDetailDialog({
     setConfirmOpen(false);
     onOpenChange(false);
     try {
+      if (linkedSplitShare) {
+        try {
+          const { deletePublicShare } = await import("@/data/repositories/public-shares");
+          await deletePublicShare(linkedSplitShare.id);
+          queryClient?.invalidateQueries({ queryKey: ["my-public-shares"] });
+          queryClient?.invalidateQueries({ queryKey: ["public-shares"] });
+        } catch {
+          // Prossegue com exclusão da despesa
+        }
+      }
+
       if (expense.trip_id && tripDeleteMode === "both") {
         const result = await deleteTripExpenseLinked.mutateAsync({
           personalExpenseId: expense.id,
@@ -561,9 +608,14 @@ export function ExpenseDetailDialog({
             ],
           };
           await deleteExpense.mutateAsync({ expenseId: expense.id, mode });
+          queryClient?.invalidateQueries({ queryKey: ["my-public-shares"] });
+          queryClient?.invalidateQueries({ queryKey: ["public-shares"] });
+          queryClient?.invalidateQueries({ queryKey: ["debts"] });
+          queryClient?.invalidateQueries({ queryKey: ["expenses"] });
+          queryClient?.invalidateQueries({ queryKey: ["overview"] });
           if (!isInstallment) {
             pushToast({
-              title: "Despesa excluída",
+              title: isRachaExpense ? "Despesa e racha vinculado excluídos" : "Despesa excluída",
               variant: "default",
               duration: 7000,
               action: {
@@ -580,7 +632,11 @@ export function ExpenseDetailDialog({
             });
           } else {
             pushToast({
-              title: mode !== "single" ? "Parcelas excluídas com sucesso" : "Despesa excluída com sucesso",
+              title: isRachaExpense
+                ? "Parcelas e racha vinculado excluídos com sucesso"
+                : mode !== "single"
+                  ? "Parcelas excluídas com sucesso"
+                  : "Despesa excluída com sucesso",
               variant: "success",
             });
           }
@@ -1053,13 +1109,21 @@ export function ExpenseDetailDialog({
             setTripDeleteMode("both");
           }
         }}
-        title={expense?.trip_id ? "Excluir despesa vinculada?" : "Excluir despesa?"}
+        title={
+          isRachaExpense
+            ? "Excluir despesa e racha vinculado?"
+            : expense?.trip_id
+              ? "Excluir despesa vinculada?"
+              : "Excluir despesa?"
+        }
         description={
           expense?.trip_id
             ? "Esta despesa está vinculada ao Modo Viagem. Escolha como deseja prosseguir com a exclusão:"
-            : isGrouped
-              ? "A exclusão remove também as dívidas pendentes vinculadas. Dívidas quitadas não são alteradas."
-              : "Esta ação não pode ser desfeita. Dívidas pendentes vinculadas também serão removidas."
+            : isRachaExpense
+              ? "Esta ação não pode ser desfeita e cancelará o racha vinculado."
+              : isGrouped
+                ? "A exclusão remove também as dívidas pendentes vinculadas. Dívidas quitadas não são alteradas."
+                : "Esta ação não pode ser desfeita. Dívidas pendentes vinculadas também serão removidas."
         }
         confirmLabel={
           deleteExpense.isPending || deleteRecurrence.isPending || deleteTripExpenseLinked.isPending
@@ -1072,6 +1136,14 @@ export function ExpenseDetailDialog({
         }
         onConfirm={() => void handleConfirmDelete()}
       >
+        {isRachaExpense ? (
+          <div className="flex flex-col gap-3">
+            <Alert variant="warning">
+              Esta despesa originou um racha compartilhado com amigos. Ao confirmar a exclusão, a despesa será removida do extrato, o valor pendente a receber será cancelado e o link público do racha será excluído.
+            </Alert>
+          </div>
+        ) : null}
+
         {expense?.trip_id ? (
           <div className="flex flex-col gap-3">
             <Alert variant="warning">

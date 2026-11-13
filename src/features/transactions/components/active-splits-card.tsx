@@ -15,10 +15,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { ManageSplitDialog } from "@/components/modules/manage-split-dialog";
+import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
 import { useDebts, useMyPublicShares, useSettleIntegratedReceivable } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getPublicAppUrl } from "@/services/app-url";
+import { todayISO } from "@/domain/debts";
 import { isParticipantFullySettled, isSplitFullyCompleted } from "@/domain/finance/split-math";
 import type { Debt, PublicShare, SplitSharePayload } from "@/types";
 
@@ -48,6 +50,15 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
     share: PublicShare;
     linkedDebt: Debt | null;
   } | null>(null);
+  const [generatingShareFor, setGeneratingShareFor] = useState<{
+    id: string;
+    totalCents: number;
+    receivableExpectedCents: number;
+    peopleCount: number;
+    date: string;
+    payload: SplitSharePayload;
+    linkedDebt: Debt | null;
+  } | null>(null);
 
   // Mapa de dívidas a receber por expense_id e debt_id
   const receivableDebtsByExpense = useMemo(() => {
@@ -72,78 +83,133 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
 
   // Rachas ativos vinculados a despesas
   const activeSplits = useMemo(() => {
-    if (!shares || shares.length === 0) return [];
+    const hasShares = Boolean(shares && shares.length > 0);
+    const hasDebts = Boolean(debts && debts.length > 0);
+    if (!hasShares && !hasDebts) return [];
 
-    return shares
-      .map((share) => {
-        const payload = (share.payload ?? {}) as unknown as SplitSharePayload;
-        const expenseId = payload.expense_id;
-        const debtId = payload.debt_id;
+    const mappedDebtIds = new Set<string>();
+    const mappedExpenseIds = new Set<string>();
 
-        // Tenta achar a dívida vinculada diretamente pelo debt_id ou pelo expense_id
-        const linkedDebt =
-          (debtId ? debtById.get(debtId) : null) ||
-          (expenseId ? receivableDebtsByExpense.get(expenseId) : null) ||
-          null;
+    const itemsFromShares = (shares ?? []).map((share) => {
+      const payload = (share.payload ?? {}) as unknown as SplitSharePayload;
+      const expenseId = payload.expense_id;
+      const debtId = payload.debt_id;
+      if (debtId) mappedDebtIds.add(debtId);
+      if (expenseId) mappedExpenseIds.add(expenseId);
 
-        const participants = payload.participants ?? [];
-        const participantInstallments = payload.participant_installments ?? [];
-        const friends = participants.filter((p) => !p.is_host);
+      // Tenta achar a dívida vinculada diretamente pelo debt_id ou pelo expense_id
+      const linkedDebt =
+        (debtId ? debtById.get(debtId) : null) ||
+        (expenseId ? receivableDebtsByExpense.get(expenseId) : null) ||
+        null;
+      if (linkedDebt) mappedDebtIds.add(linkedDebt.id);
 
-        // Se houver parcelas ou participantes estruturados, validação rigorosa de quitação integral
-        const hasStructuredData = participants.length > 0 || participantInstallments.length > 0;
-        const isSettled = hasStructuredData
-          ? isSplitFullyCompleted(participants, participantInstallments)
-          : Boolean(payload.is_completed) || (linkedDebt ? Boolean(linkedDebt.paid_at) : false);
+      const participants = payload.participants ?? [];
+      const participantInstallments = payload.participant_installments ?? [];
+      const friends = participants.filter((p) => !p.is_host);
 
-        const totalCents = Number(payload.total_cents ?? 0);
-        const guestShareCents = Number(payload.guest_share_cents ?? 0);
-        const hostShareCents = Number(payload.host_share_cents ?? 0);
-        const peopleCount = Number(payload.people_count ?? 2);
-        const guestCount = Math.max(1, peopleCount - 1);
-        const receivableExpectedCents = guestShareCents * guestCount;
+      // Se houver parcelas ou participantes estruturados, validação rigorosa de quitação integral
+      const hasStructuredData = participants.length > 0 || participantInstallments.length > 0;
+      const isSettled = hasStructuredData
+        ? isSplitFullyCompleted(participants, participantInstallments)
+        : Boolean(payload.is_completed) || (linkedDebt ? Boolean(linkedDebt.paid_at) : false);
 
-        const settledFriendsCount = friends.filter((f) => {
-          const friendInsts = participantInstallments.filter(
-            (inst) =>
-              inst.participant_id === f.id ||
-              (friends.length === 1 && !participants.find((p) => p.id === inst.participant_id)?.is_host)
-          );
-          return isParticipantFullySettled(f, friendInsts);
-        }).length;
+      const totalCents = Number(payload.total_cents ?? 0);
+      const guestShareCents = Number(payload.guest_share_cents ?? 0);
+      const hostShareCents = Number(payload.host_share_cents ?? 0);
+      const peopleCount = Number(payload.people_count ?? 2);
+      const guestCount = Math.max(1, peopleCount - 1);
+      const receivableExpectedCents = guestShareCents * guestCount;
 
-        const signaledFriends = friends.filter((p) => p.has_payment_signal && !p.is_settled);
-        const totalSettledFromFriendsCents = friends.reduce(
-          (acc, f) => acc + (f.is_settled ? Number(f.settled_cents ?? f.share_cents) : 0),
-          0,
+      const settledFriendsCount = friends.filter((f) => {
+        const friendInsts = participantInstallments.filter(
+          (inst) =>
+            inst.participant_id === f.id ||
+            (friends.length === 1 && !participants.find((p) => p.id === inst.participant_id)?.is_host)
         );
+        return isParticipantFullySettled(f, friendInsts);
+      }).length;
 
-        const dueDate =
-          linkedDebt?.due_date ||
-          ((payload as Record<string, unknown>)?.due_date as string | undefined) ||
-          null;
-        const createdAt = share.created_at || payload.date || "";
+      const signaledFriends = friends.filter((p) => p.has_payment_signal && !p.is_settled);
+      const totalSettledFromFriendsCents = friends.reduce(
+        (acc, f) => acc + (f.is_settled ? Number(f.settled_cents ?? f.share_cents) : 0),
+        0,
+      );
 
-        return {
-          share,
-          payload,
-          linkedDebt,
-          dueDate,
-          createdAt,
-          isSettled,
-          isCompleted: Boolean(payload.is_completed),
-          totalCents,
-          guestShareCents,
-          hostShareCents,
-          peopleCount,
-          guestCount,
-          receivableExpectedCents,
-          settledFriendsCount,
-          signaledFriends,
-          totalSettledFromFriendsCents,
-          date: payload.date || share.created_at.slice(0, 10),
-        };
+      const dueDate =
+        linkedDebt?.due_date ||
+        ((payload as Record<string, unknown>)?.due_date as string | undefined) ||
+        null;
+      const createdAt = share.created_at || payload.date || "";
+
+      return {
+        id: share.id,
+        share: share as PublicShare | null,
+        payload,
+        linkedDebt,
+        dueDate,
+        createdAt,
+        isSettled,
+        isCompleted: Boolean(payload.is_completed),
+        totalCents,
+        guestShareCents,
+        hostShareCents,
+        peopleCount,
+        guestCount,
+        receivableExpectedCents,
+        settledFriendsCount,
+        signaledFriends,
+        totalSettledFromFriendsCents,
+        date: payload.date || share.created_at.slice(0, 10),
+        needsLinkGeneration: false,
+      };
+    });
+
+    // Encontra dívidas a receber de racha pendentes que ainda não possuem public_share gerado
+    const orphanRachaDebts = (debts ?? [])
+      .filter((d) => {
+        if (d.type !== "receivable" || d.paid_at) return false;
+        if (mappedDebtIds.has(d.id)) return false;
+        if (d.expense_id && mappedExpenseIds.has(d.expense_id)) return false;
+        return d.name.toLowerCase().startsWith("racha:") || d.name.toLowerCase().includes("racha");
       })
+      .map((d) => {
+        const cleanTitle = d.name.replace(/^racha:\s*/i, "").trim() || "Racha de Despesa";
+        const debtCents = Math.round(d.amount * 100);
+        return {
+          id: `orphan_debt_${d.id}`,
+          share: null as PublicShare | null,
+          payload: {
+            title: cleanTitle,
+            date: d.due_date || d.created_at?.slice(0, 10) || todayISO(),
+            total_cents: debtCents,
+            guest_share_cents: debtCents,
+            host_share_cents: 0,
+            people_count: 2,
+            participants: [],
+            expense_id: d.expense_id ?? undefined,
+            debt_id: d.id,
+          } as unknown as SplitSharePayload,
+          linkedDebt: d,
+          dueDate: d.due_date || null,
+          createdAt: d.created_at || "",
+          isSettled: false,
+          isCompleted: false,
+          totalCents: debtCents,
+          guestShareCents: debtCents,
+          hostShareCents: 0,
+          peopleCount: 2,
+          guestCount: 1,
+          receivableExpectedCents: debtCents,
+          settledFriendsCount: 0,
+          signaledFriends: [],
+          totalSettledFromFriendsCents: 0,
+          date: d.due_date || d.created_at?.slice(0, 10) || todayISO(),
+          needsLinkGeneration: true,
+        };
+      });
+
+    return [...itemsFromShares, ...orphanRachaDebts]
       .filter((item) => {
         // Se informado mês, prioriza rachas do mês ou pendentes
         if (month && item.date && !item.date.startsWith(month) && item.isSettled) {
@@ -164,7 +230,7 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
         // 2. Se não houver data de vencimento estipulada (ou empate): do mais antigo para o mais recente
         return a.createdAt.localeCompare(b.createdAt);
       });
-  }, [shares, debtById, receivableDebtsByExpense, month]);
+  }, [shares, debts, debtById, receivableDebtsByExpense, month]);
 
   const ITEMS_PER_BLOCK = 2;
   const totalBlocks = Math.max(1, Math.ceil(activeSplits.length / ITEMS_PER_BLOCK));
@@ -187,7 +253,7 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
       (item.payload.participant_installments && item.payload.participant_installments.length > 1) ||
       ((item.payload.installments_count ?? 1) > 1);
 
-    if (hasInstallments) {
+    if (hasInstallments && item.share) {
       setManagingItem({ share: item.share, linkedDebt: item.linkedDebt });
       return;
     }
@@ -320,11 +386,11 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3 pt-0.5 items-stretch">
         {visibleSplits.map((item) => {
           const isSettled = item.isSettled;
-          const isCopied = copiedToken === item.share.token;
+          const isCopied = item.share ? copiedToken === item.share.token : false;
 
           return (
             <div
-              key={item.share.id}
+              key={item.share?.id ?? item.id}
               className="flex flex-col justify-between gap-2.5 rounded-xl border border-border/70 bg-surface/80 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border min-w-0 h-full flex-1"
             >
               {/* Linha superior: Título e Vencimento/Data à esquerda | Badge à direita */}
@@ -360,17 +426,23 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
                       </span>
                     </Badge>
                   )}
-                  <Badge
-                    size="xs"
-                    variant={isSettled ? "positive" : item.settledFriendsCount > 0 ? "default" : "warning"}
-                    className="shrink-0"
-                  >
-                    {isSettled
-                      ? "Quitado"
-                      : item.settledFriendsCount > 0
-                        ? `Parcial (${item.settledFriendsCount}/${item.guestCount})`
-                        : "Pendente"}
-                  </Badge>
+                  {item.needsLinkGeneration || !item.share ? (
+                    <Badge size="xs" variant="warning" className="shrink-0">
+                      Link pendente
+                    </Badge>
+                  ) : (
+                    <Badge
+                      size="xs"
+                      variant={isSettled ? "positive" : item.settledFriendsCount > 0 ? "default" : "warning"}
+                      className="shrink-0"
+                    >
+                      {isSettled
+                        ? "Quitado"
+                        : item.settledFriendsCount > 0
+                          ? `Parcial (${item.settledFriendsCount}/${item.guestCount})`
+                          : "Pendente"}
+                    </Badge>
+                  )}
                 </div>
               </div>
 
@@ -439,18 +511,20 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
                       <CheckCircle2 className="size-3 text-positive-strong shrink-0" aria-hidden="true" />
                       <span>Dar Baixa</span>
                     </Button>
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="outline"
-                      onClick={() => setManagingItem({ share: item.share, linkedDebt: item.linkedDebt })}
-                      className="gap-1 px-2 h-7 text-xs font-medium cursor-pointer"
-                      title="Gerenciar e dar baixa individual por pessoa"
-                      aria-label="Gerenciar racha"
-                    >
-                      <SlidersHorizontal className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
-                      <span>Gerenciar</span>
-                    </Button>
+                    {item.share ? (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="outline"
+                        onClick={() => setManagingItem({ share: item.share!, linkedDebt: item.linkedDebt })}
+                        className="gap-1 px-2 h-7 text-xs font-medium cursor-pointer"
+                        title="Gerenciar e dar baixa individual por pessoa"
+                        aria-label="Gerenciar racha"
+                      >
+                        <SlidersHorizontal className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+                        <span>Gerenciar</span>
+                      </Button>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="flex-1 flex items-center justify-between gap-1 min-w-0 h-7">
@@ -458,65 +532,103 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
                       <CheckCircle2 className="size-3.5 shrink-0" aria-hidden="true" />
                       <span className="truncate">Reembolso recebido</span>
                     </div>
+                    {item.share ? (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => setManagingItem({ share: item.share!, linkedDebt: item.linkedDebt })}
+                        className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+                      >
+                        Ver detalhes
+                      </Button>
+                    ) : null}
+                  </div>
+                )}
+
+                {item.share ? (
+                  <div className="flex items-center gap-1 shrink-0 h-7">
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      onClick={() => void handleCopyLink(item.share!)}
+                      className="px-2 h-7 cursor-pointer"
+                      title="Copiar link do Pix"
+                      aria-label="Copiar link do racha"
+                    >
+                      <Copy className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
+                      <span className="text-[11px] sr-only sm:not-sr-only">{isCopied ? "Copiado" : "Link"}</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      onClick={() => handleShareWhatsApp(item.share!, item.payload)}
+                      className="px-2 h-7 cursor-pointer"
+                      title="Enviar cobrança via WhatsApp"
+                      aria-label="Enviar racha via WhatsApp"
+                    >
+                      <MessageCircle className="size-3 text-positive-strong shrink-0" aria-hidden="true" />
+                    </Button>
+
                     <Button
                       type="button"
                       size="xs"
                       variant="ghost"
-                      onClick={() => setManagingItem({ share: item.share, linkedDebt: item.linkedDebt })}
-                      className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+                      onClick={() => {
+                        if (typeof window !== "undefined") {
+                          window.open(getPublicAppUrl(`r/${item.share!.token}`), "_blank", "noopener,noreferrer");
+                        }
+                      }}
+                      className="px-1.5 h-7 text-muted-foreground hover:text-foreground cursor-pointer"
+                      title="Abrir página pública"
+                      aria-label="Abrir página pública do racha"
                     >
-                      Ver detalhes
+                      <ExternalLink className="size-3 shrink-0" aria-hidden="true" />
                     </Button>
                   </div>
-                )}
-
-                <div className="flex items-center gap-1 shrink-0 h-7">
+                ) : (
                   <Button
                     type="button"
                     size="xs"
                     variant="outline"
-                    onClick={() => void handleCopyLink(item.share)}
-                    className="px-2 h-7 cursor-pointer"
-                    title="Copiar link do Pix"
-                    aria-label="Copiar link do racha"
-                  >
-                    <Copy className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
-                    <span className="text-[11px] sr-only sm:not-sr-only">{isCopied ? "Copiado" : "Link"}</span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="outline"
-                    onClick={() => handleShareWhatsApp(item.share, item.payload)}
-                    className="px-2 h-7 cursor-pointer"
-                    title="Enviar cobrança via WhatsApp"
-                    aria-label="Enviar racha via WhatsApp"
-                  >
-                    <MessageCircle className="size-3 text-positive-strong shrink-0" aria-hidden="true" />
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="ghost"
-                    onClick={() => {
-                      if (typeof window !== "undefined") {
-                        window.open(getPublicAppUrl(`r/${item.share.token}`), "_blank", "noopener,noreferrer");
-                      }
-                    }}
-                    className="px-1.5 h-7 text-muted-foreground hover:text-foreground cursor-pointer"
-                    title="Abrir página pública"
-                    aria-label="Abrir página pública do racha"
+                    onClick={() => setGeneratingShareFor(item)}
+                    className="gap-1 px-2.5 h-7 text-xs font-medium cursor-pointer border-portfolio/30 text-portfolio hover:bg-portfolio/10 shrink-0"
+                    aria-label="Gerar link Pix para cobrança"
                   >
                     <ExternalLink className="size-3 shrink-0" aria-hidden="true" />
+                    <span>Gerar Link Pix</span>
                   </Button>
-                </div>
+                )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {generatingShareFor && (
+        <SplitExpenseDialog
+          open={Boolean(generatingShareFor)}
+          fromWizard={true}
+          onOpenChange={(open) => {
+            if (!open) setGeneratingShareFor(null);
+          }}
+          expense={{
+            id: generatingShareFor.linkedDebt?.expense_id ?? undefined,
+            value: (generatingShareFor.totalCents || generatingShareFor.receivableExpectedCents) / 100,
+            description: generatingShareFor.payload.title ?? null,
+            date: generatingShareFor.date,
+            payment_method: "pix",
+            created_at: "",
+          }}
+          initialAmountCents={generatingShareFor.totalCents || generatingShareFor.receivableExpectedCents}
+          initialDescription={generatingShareFor.payload.title || ""}
+          initialDate={generatingShareFor.date}
+          initialPeopleCount={generatingShareFor.peopleCount || 2}
+        />
+      )}
 
       {managingItem && (
         <ManageSplitDialog
