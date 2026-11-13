@@ -18,7 +18,7 @@ import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import {
   bestDividendMonth,
-  calculatePortfolioAverageYoC,
+  calculateWeightedPortfolioYoC,
   topDividendPayer,
 } from "@/domain/portfolio";
 import {
@@ -285,7 +285,12 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   );
 
   const portfolioAverageYoC = useMemo(() => {
-    return calculatePortfolioAverageYoC(assetsWithDividends.map((a) => a.yoc));
+    return calculateWeightedPortfolioYoC(
+      assetsWithDividends.map((a) => ({
+        costBRL: a.asset.quantity * a.asset.average_price * a.rate,
+        dividendsBRL: a.totalAmountBRL,
+      })),
+    );
   }, [assetsWithDividends]);
 
 

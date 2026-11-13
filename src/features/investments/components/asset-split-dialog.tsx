@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Divide, Sparkles } from "lucide-react";
 import { Alert, Button, NumericInput, Modal, ModalFooter } from "@/components/ui";
+import { todayISO } from "@/domain/debts";
 import { splitAssetPosition } from "@/domain/portfolio";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { useUpdatePortfolioAsset } from "@/state";
+import { useCreatePortfolioTransaction, useUpdatePortfolioAsset } from "@/state";
 import type { PortfolioAsset } from "@/types";
 
 export interface AssetSplitDialogProps {
@@ -16,6 +17,7 @@ export interface AssetSplitDialogProps {
 
 export function AssetSplitDialog({ open, onOpenChange, asset }: AssetSplitDialogProps) {
   const updateAsset = useUpdatePortfolioAsset();
+  const createTx = useCreatePortfolioTransaction();
   const [ratioFromStr, setRatioFromStr] = useState("1");
   const [ratioToStr, setRatioToStr] = useState("2");
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +43,19 @@ export function AssetSplitDialog({ open, onOpenChange, asset }: AssetSplitDialog
   const handleApplySplit = async () => {
     setError(null);
     try {
+      const factor = isSplit ? splitResult.factor : ratioFrom / ratioTo;
+
+      // 1. Grava a movimentação no ledger de transações para auditoria e histórico permanente
+      await createTx.mutateAsync({
+        asset_id: asset.id,
+        type: isSplit ? "split" : "reverse_split",
+        date: todayISO(),
+        quantity: factor,
+        price: 0,
+        total: 0,
+      });
+
+      // 2. Atualiza a posição de custódia do ativo
       await updateAsset.mutateAsync({
         id: asset.id,
         patch: {

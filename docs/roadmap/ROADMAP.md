@@ -1,5 +1,30 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.6.1 (Build 60)** registra a conclusão do **Plano de Auditoria Integral e Blindagem de Investimentos** ([`docs/plans/31_PLANO_AUDITORIA_INTEGRAL_INVESTIMENTOS.md`](../plans/31_PLANO_AUDITORIA_INTEGRAL_INVESTIMENTOS.md)) (2026-11-13):
+> - **(1) Hardening da RPC de Aportes em Lote (INV-01)**:
+>   - Migração `20260101000120_harden_portfolio_batch_aporte_rpc.sql` saneando sobrecargas divergentes de `execute_batch_portfolio_orders`;
+>   - Declaração estrita de variáveis como `numeric(18, 8)` e `numeric(18, 2)` no Postgres, eliminando exceções de sintaxe de tipos inteiros;
+>   - Bloqueio atômico de linha com `FOR UPDATE`, verificação de `can_current_user_write_module('investments')` e checagem de ativos arquivados/inativos;
+> - **(2) Rastreabilidade de Desdobramentos e Reconciliação Histórica (INV-02 & INV-05)**:
+>   - Persistência explícita de eventos de `split` e `reverse_split` no histórico de transações (`portfolio_transactions`) ao executar o diálogo `AssetSplitDialog`;
+>   - Arredondamento preciso de grupamento para 4 casas decimais no motor de mutações;
+>   - Reconciliação no motor puro `calculateReconciledAssetPosition` com preservação de custódia base legada (`untrackedBaseQty`) e dedução exata de custo em caso de remoção de ordens;
+> - **(3) Importação em Lote Consolidada e Sem Perda de Histórico (INV-03)**:
+>   - Agrupamento inteligente de múltiplas ordens por ticker no `PortfolioImportDialog`;
+>   - Ativos inexistentes consolidam suas ordens via `computeLedger` gerando posição inicial exata;
+>   - Ativos pré-existentes acumulam posições sucessivas via `applyOperation` preservando a custódia e recalibrando o preço médio sem sobrescrita destrutiva;
+> - **(4) Yield on Cost Ponderado Canônico (INV-04)**:
+>   - Novo motor puro de domínio `calculateWeightedPortfolioYoC` em `src/domain/portfolio/dividends.ts` aplicando a métrica financeira estrita $\sum \text{Proventos} / \sum \text{Custo de Aquisicao}$;
+>   - Integração na aba Proventos (`proventos-tab.tsx`) eliminando médias aritméticas que inflacionavam o YoC com micro-posições;
+> - **(5) Precisão Fiscal DARF 6015 e Acesso Rápido na Aba Movimentações (INV-06 & INV-07)**:
+>   - Suporte a subscrições, desdobramentos e grupamentos no replay histórico de Preço Médio ponderado móvel em `portfolio-darf-monitor.tsx`;
+>   - Card de ação rápida integrado na aba Movimentações (`movimentacoes-tab.tsx`) com acionamento do monitor de apuração mensal DARF 6015;
+> - **(6) Quality Gates 100% Verdes**:
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros, 0 avisos;
+>   - Vitest: 69 suítes e 720 testes do módulo de investimentos 100% aprovados, além de 58/58 no security-audit;
+>   - Build de produção Vite e PWA precache gerados com sucesso.
+>
 > **v3.6.0 (Build 59)** registra a conclusão do **Plano de Auditoria Transversal da Jornada 360 do Usuário e Blindagem de Integridade Contábil** ([`docs/plans/30_PLANO_AUDITORIA_TRANSVERSAL_JORNADA_360.md`](../plans/30_PLANO_AUDITORIA_TRANSVERSAL_JORNADA_360.md)) (2026-11-13):
 > - **(1) Integridade Contábil & Deduplicação de Caixa (JORNADA360-03 & JORNADA360-04)**:
 >   - Deduplicação atômica no motor contábil (`src/domain/cash/cash-ledger.ts`): amortizações e quitações de dívidas pagáveis que geram despesa financeira (`debt.expense_id`) e recebimentos com marcação de conciliação (`[DEBT]`) são filtrados para eliminar saídas/entradas duplicadas de caixa;

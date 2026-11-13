@@ -16,6 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { numberToCents } from "@/domain/money";
 import { todayLocalIso } from "@/lib/date";
 import {
+  applyOperation,
+  computeLedger,
   detectPortfolioColumns,
   isFixedIncomeClass,
   isTesouroAsset,
@@ -298,7 +300,16 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
     setIsProcessing(true);
 
     try {
-      // 1. Identifica ativos únicos que precisam ser criados
+      // 1. Agrupa as linhas selecionadas por ticker para consolidação multilinhas
+      const rowsByTicker = new Map<string, ParsedPortfolioImportRow[]>();
+      for (const row of selectedRows) {
+        const key = row.ticker.trim().toUpperCase();
+        const list = rowsByTicker.get(key) ?? [];
+        list.push(row);
+        rowsByTicker.set(key, list);
+      }
+
+      // 2. Identifica ativos únicos que precisam ser criados
       const uniqueTickers = new Map<string, { ticker: string; assetClass?: string | null; currency: "BRL" | "USD" }>();
       for (const row of selectedRows) {
         const key = row.ticker.trim().toUpperCase();
@@ -311,12 +322,31 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
         }
       }
 
-      // 2. Cria os novos ativos já com quantidade e preço médio
+      // 3. Cria os novos ativos já com quantidade e preço médio consolidados
       const assetMap = new Map(existingTickerMap);
       for (const item of uniqueTickers.values()) {
-        const matchingRow = selectedRows.find((r) => r.ticker.trim().toUpperCase() === item.ticker);
+        const rowsForTicker = rowsByTicker.get(item.ticker) ?? [];
+        const firstRow = rowsForTicker[0];
         const isFi = isFixedIncomeClass(item.assetClass) || isTesouroAsset(item.ticker, item.assetClass);
         let fixedIncomeMetadata: FixedIncomeMetadata | null = null;
+
+        // Consolida as operações da planilha para apurar quantidade e preço médio inicial
+        const ledger = computeLedger(
+          rowsForTicker.map((r, i) => ({
+            id: `import-${i}`,
+            date: r.date || todayLocalIso(),
+            type: r.type,
+            quantity: r.quantity,
+            price: r.price,
+            total: r.total > 0 ? r.total : r.quantity * r.price,
+          })),
+        );
+
+        const initialQuantity = ledger.quantity > 0 ? ledger.quantity : (firstRow?.quantity ?? 0);
+        const initialAveragePrice =
+          ledger.averageCost > 0
+            ? Math.round(ledger.averageCost * 10000) / 10000
+            : (firstRow?.price ?? 0);
 
         if (isFi) {
           const upper = item.ticker.toUpperCase();
@@ -329,13 +359,13 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
                 ? "pre"
                 : "cdi";
           const rateValue = rateType === "cdi" || rateType === "selic" ? 100 : rateType === "ipca" ? 6 : 12;
-          const importDate = matchingRow?.date || todayLocalIso();
+          const importDate = firstRow?.date || todayLocalIso();
 
           fixedIncomeMetadata = {
             rate_type: rateType,
             rate_value: rateValue,
             base_date: importDate,
-            base_value: matchingRow && matchingRow.price > 0 ? matchingRow.price : null,
+            base_value: initialAveragePrice > 0 ? initialAveragePrice : null,
             initial_investment_date: importDate,
             maturity_date: null,
             is_tax_exempt: isExempt,
@@ -346,25 +376,50 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
           ticker: item.ticker,
           asset_class: item.assetClass ?? (isFi ? "Renda Fixa" : "Ações"),
           currency: item.currency,
-          quantity: matchingRow ? matchingRow.quantity : 0,
-          average_price: matchingRow ? matchingRow.price : 0,
+          quantity: initialQuantity,
+          average_price: initialAveragePrice,
           fixed_income_metadata: fixedIncomeMetadata,
         });
         assetMap.set(item.ticker, created);
       }
 
-      // 3. Para ativos que já existiam e foram reimportados com custódia/posição, atualiza a posição
-      for (const row of selectedRows) {
-        const key = row.ticker.trim().toUpperCase();
+      // 4. Para ativos que já existiam e foram reimportados, atualiza a posição consolidada
+      for (const [key, rowsForTicker] of rowsByTicker.entries()) {
         if (existingTickerMap.has(key)) {
           const existing = existingTickerMap.get(key);
-          if (existing && (row.quantity > 0 || row.price > 0)) {
+          if (!existing) continue;
+
+          const singleRow = rowsForTicker[0];
+          if (rowsForTicker.length === 1 && singleRow && (singleRow.quantity > 0 || singleRow.price > 0)) {
             await updateAsset.mutateAsync({
               id: existing.id,
               patch: {
-                quantity: row.quantity,
-                average_price: row.price,
-                asset_class: row.assetClass ?? existing.asset_class,
+                quantity: singleRow.quantity,
+                average_price: singleRow.price,
+                asset_class: singleRow.assetClass ?? existing.asset_class,
+              },
+            });
+          } else if (rowsForTicker.length > 1) {
+            let pos = {
+              quantity: existing.quantity,
+              averageCost: existing.average_price,
+              totalCost: Math.round(existing.quantity * existing.average_price * 100) / 100,
+              dividends: 0,
+            };
+            for (const r of rowsForTicker) {
+              pos = applyOperation(pos, {
+                type: r.type,
+                quantity: r.quantity,
+                price: r.price,
+                total: r.total > 0 ? r.total : r.quantity * r.price,
+              });
+            }
+            await updateAsset.mutateAsync({
+              id: existing.id,
+              patch: {
+                quantity: pos.quantity,
+                average_price: Math.round(pos.averageCost * 10000) / 10000,
+                asset_class: rowsForTicker[0]?.assetClass ?? existing.asset_class,
               },
             });
           }

@@ -188,7 +188,34 @@ export function bestDividendMonth(
 }
 
 /**
- * Calcula a média de Yield on Cost da carteira (ponderada por ativos que possuem YoC positivo).
+ * Calcula o Yield on Cost consolidado da carteira ponderado pelo capital investido real (§F39).
+ * Fórmula Canônica: (Total de Proventos em BRL / Total de Custo em BRL) * 100.
+ *
+ * Evita a distorção de médias aritméticas simples que hipervalorizam posições irrelevantes.
+ */
+export function calculateWeightedPortfolioYoC(
+  items: readonly { costBRL: number; dividendsBRL: number }[],
+): number {
+  let totalCost = 0;
+  let totalDividends = 0;
+
+  for (const item of items) {
+    if (Number.isFinite(item.costBRL) && item.costBRL > 0) {
+      totalCost += item.costBRL;
+      if (Number.isFinite(item.dividendsBRL) && item.dividendsBRL > 0) {
+        totalDividends += item.dividendsBRL;
+      }
+    }
+  }
+
+  if (totalCost <= 0) return 0;
+  const raw = (totalDividends / totalCost) * 100;
+  return Math.round(raw * 10) / 10;
+}
+
+/**
+ * Calcula a média aritmética de Yield on Cost da carteira (para ativos que possuem YoC positivo).
+ * Prefira `calculateWeightedPortfolioYoC` para refletir o retorno efetivo sobre o capital.
  */
 export function calculatePortfolioAverageYoC(yocs: readonly number[]): number {
   const valid = yocs.filter((y) => Number.isFinite(y) && y > 0);

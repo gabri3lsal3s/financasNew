@@ -450,9 +450,39 @@ export function calculateReconciledAssetPosition(
   }));
 
   if (removedTransaction.type === "buy" || removedTransaction.type === "subscription") {
+    // Calcula o volume de cotas que era efetivamente rastreado pelas transações antes da exclusão
+    const normalizedAll: LedgerTransaction[] = [
+      ...normalizedRemaining,
+      {
+        id: "removed-tx",
+        date: (removedTransaction as { date?: string }).date ?? todayISO(),
+        type: removedTransaction.type as LedgerTransaction["type"],
+        quantity: removedTransaction.quantity,
+        price: removedTransaction.price,
+        total: removedTransaction.total,
+      },
+    ];
+    const priorTrackedQty = computeLedger(normalizedAll).quantity;
+    const untrackedBaseQty = Math.max(0, Math.round((currentQuantity - priorTrackedQty) * 10000) / 10000);
+
     // Se ainda restam transações no ledger, reprocessa o ledger completo
     if (normalizedRemaining.length > 0) {
       const ledger = computeLedger(normalizedRemaining);
+
+      // Salvaguarda de dados legados / posições base não registradas em transações
+      if (untrackedBaseQty > 0) {
+        const totalQty = Math.max(0, currentQuantity - removedTransaction.quantity);
+        const previousTotalCost = Math.round(currentQuantity * currentAveragePrice * 100) / 100;
+        const totalCost = Math.max(0, Math.round((previousTotalCost - removedTransaction.total) * 100) / 100);
+        const avgCost = totalQty > 0 ? Math.round((totalCost / totalQty) * 10000) / 10000 : 0;
+        return {
+          newQuantity: totalQty,
+          newAveragePrice: avgCost,
+          newTotalCost: totalCost,
+          updatedFixedIncomeMetadata: null,
+        };
+      }
+
       return {
         newQuantity: ledger.quantity,
         newAveragePrice: Math.round(ledger.averageCost * 10000) / 10000,

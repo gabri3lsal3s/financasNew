@@ -315,6 +315,7 @@ export type {
 export {
   bestDividendMonth,
   calculatePortfolioAverageYoC,
+  calculateWeightedPortfolioYoC,
   calculateTotalCostBRL,
   dividendExtractForMonth,
   dividendsByYear,

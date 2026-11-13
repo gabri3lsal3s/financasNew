@@ -16,12 +16,16 @@ vi.mock("@/state", () => ({
     isReadOnlyMode: false,
     accessLevel: "write",
   }),
+  usePortfolioAssets: () => ({ data: [], isLoading: false }),
+  useAllPortfolioTransactions: () => ({ data: [], isLoading: false }),
 }));
 
 vi.mock("../components", () => ({
   PortfolioActivityPanel: () => <div data-testid="portfolio-activity-panel">Extrato de Movimentações</div>,
   PortfolioImportDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="import-dialog">Diálogo de Importação</div> : null,
+  PortfolioDarfMonitor: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="darf-monitor-dialog">Diálogo de DARF</div> : null,
 }));
 
 describe("MovimentacoesTab — Histórico e Importação", () => {
@@ -41,5 +45,15 @@ describe("MovimentacoesTab — Histórico e Importação", () => {
     await user.click(importBtn);
 
     expect(screen.getByTestId("import-dialog")).toBeInTheDocument();
+  });
+
+  it("abre o diálogo de monitor de DARF ao clicar em Consultar DARF Mensal", async () => {
+    const user = userEvent.setup();
+    render(<MovimentacoesTab />);
+
+    const darfBtn = screen.getByRole("button", { name: /Consultar DARF Mensal/i });
+    await user.click(darfBtn);
+
+    expect(screen.getByTestId("darf-monitor-dialog")).toBeInTheDocument();
   });
 });

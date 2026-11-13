@@ -405,6 +405,32 @@ describe("domain/portfolio/operations — Adição Inicial e Reconciliação do 
       expect(result.newTotalCost).toBe(2591);
     });
 
+    it("salvaguarda de dados legados com transações remanescentes: preserva cotas base somadas às compras restantes", () => {
+      // Ativo tinha 100 cotas a R$ 10 legadas (sem tx).
+      // Depois comprou 10 a R$ 20 (tx1) e 10 a R$ 30 (tx2).
+      // currentQuantity = 120 cotas, currentAveragePrice = (1000 + 200 + 300) / 120 = 12.50.
+      // Ao excluir tx2 (10 a R$ 30), sobram tx1 (10 a R$ 20) + 100 cotas legadas a R$ 10.
+      // Nova quantidade = 110 cotas. Custo = 100*10 + 200 = 1200. Novo PM = 1200/110 = 10.9091.
+      const result = calculateReconciledAssetPosition({
+        currentQuantity: 120,
+        currentAveragePrice: 12.5,
+        assetClass: "Ações",
+        removedTransaction: {
+          type: "buy",
+          quantity: 10,
+          price: 30,
+          total: 300,
+        },
+        remainingTransactions: [
+          { type: "buy", quantity: 10, price: 20, total: 200, date: "2026-01-15" },
+        ],
+      });
+
+      expect(result.newQuantity).toBe(110);
+      expect(result.newAveragePrice).toBe(10.9091);
+      expect(result.newTotalCost).toBe(1200);
+    });
+
     it("exclusão de venda restaura a quantidade vendida mantendo o PM inalterado", () => {
       const result = calculateReconciledAssetPosition({
         currentQuantity: 15,

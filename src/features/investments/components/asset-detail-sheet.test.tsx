@@ -93,6 +93,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn().mockResolvedValue(mockAsset),
     isPending: false,
   }),
+  useCreatePortfolioTransaction: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  }),
   useSetManualPrice: () => ({
     mutateAsync: vi.fn().mockResolvedValue(true),
     isPending: false,

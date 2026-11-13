@@ -413,16 +413,16 @@ export function useRecordOrder() {
         await updateAsset.mutateAsync({
           id: asset.id,
           patch: {
-            quantity: asset.quantity * quantity,
-            average_price: asset.average_price / quantity,
+            quantity: Math.round(asset.quantity * quantity * 10000) / 10000,
+            average_price: Math.round((asset.average_price / quantity) * 10000) / 10000,
           },
         });
       } else if (type === "reverse_split" && quantity > 0) {
         await updateAsset.mutateAsync({
           id: asset.id,
           patch: {
-            quantity: Math.floor(asset.quantity / quantity),
-            average_price: asset.average_price * quantity,
+            quantity: Math.round((asset.quantity / quantity) * 10000) / 10000,
+            average_price: Math.round(asset.average_price * quantity * 10000) / 10000,
           },
         });
       }

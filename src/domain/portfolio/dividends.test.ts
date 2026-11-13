@@ -3,6 +3,7 @@ import {
   bestDividendMonth,
   calculatePortfolioAverageYoC,
   calculateTotalCostBRL,
+  calculateWeightedPortfolioYoC,
   dividendExtractForMonth,
   dividendsByYear,
   dividendsInMonth,
@@ -147,6 +148,24 @@ describe("dividends — motor puro de proventos (F18)", () => {
         { month: "2026-03", total: 200 },
       ];
       expect(bestDividendMonth(series)).toEqual({ month: "2026-02", total: 450 });
+    });
+  });
+
+  describe("calculateWeightedPortfolioYoC", () => {
+    it("retorna 0 para lista vazia ou custos zerados", () => {
+      expect(calculateWeightedPortfolioYoC([])).toBe(0);
+      expect(calculateWeightedPortfolioYoC([{ costBRL: 0, dividendsBRL: 100 }])).toBe(0);
+    });
+
+    it("calcula o YoC ponderado pelo capital investido com precisão", () => {
+      // Ativo A: R$ 100.000 investidos, R$ 10.000 em proventos (YoC 10%)
+      // Ativo B: R$ 100 investidos, R$ 50 em proventos (YoC 50%)
+      // Total custo: 100.100, Total proventos: 10.050. Retorno real = (10050 / 100100) * 100 = 10.04% -> 10.0%
+      const items = [
+        { costBRL: 100000, dividendsBRL: 10000 },
+        { costBRL: 100, dividendsBRL: 50 },
+      ];
+      expect(calculateWeightedPortfolioYoC(items)).toBe(10.0);
     });
   });
 

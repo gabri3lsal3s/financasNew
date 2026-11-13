@@ -131,4 +131,69 @@ describe("features/investments/components/PortfolioDarfMonitor", () => {
     expect(screen.getByText("DARF a Recolher neste Mês")).toBeInTheDocument();
     expect(screen.getAllByText("R$ 40,00").length).toBeGreaterThanOrEqual(1);
   });
+
+  it("reconhece subscrições e desdobramentos na reconstituição de preço médio", () => {
+    const currentMonthPrefix = new Date().toISOString().slice(0, 7);
+
+    const fiiAsset: PortfolioAsset[] = [
+      {
+        id: "asset-sub",
+        user_id: "user-1",
+        ticker: "HGLG11",
+        asset_class: "FIIs",
+        quantity: 0,
+        average_price: 0,
+        currency: "BRL",
+        notes: null,
+      },
+    ];
+
+    const txs: PortfolioTransaction[] = [
+      // 1. Subscrição de 10 cotas a R$ 100
+      {
+        id: "tx-sub-1",
+        user_id: "user-1",
+        asset_id: "asset-sub",
+        type: "subscription",
+        date: `${currentMonthPrefix}-02`,
+        quantity: 10,
+        price: 100,
+        total: 1000,
+      },
+      // 2. Desdobramento 1:2 (fator 2 -> passa a ter 20 cotas com PM 50)
+      {
+        id: "tx-split-1",
+        user_id: "user-1",
+        asset_id: "asset-sub",
+        type: "split",
+        date: `${currentMonthPrefix}-05`,
+        quantity: 2,
+        price: 0,
+        total: 0,
+      },
+      // 3. Venda das 20 cotas a R$ 70 (lucro de R$ 20/cota = R$ 400 de lucro -> 20% = R$ 80)
+      {
+        id: "tx-sell-1",
+        user_id: "user-1",
+        asset_id: "asset-sub",
+        type: "sell",
+        date: `${currentMonthPrefix}-10`,
+        quantity: 20,
+        price: 70,
+        total: 1400,
+      },
+    ];
+
+    render(
+      <PortfolioDarfMonitor
+        open={true}
+        onOpenChange={vi.fn()}
+        assets={fiiAsset}
+        transactions={txs}
+      />,
+    );
+
+    expect(screen.getByText("DARF a Recolher neste Mês")).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 80,00").length).toBeGreaterThanOrEqual(1);
+  });
 });

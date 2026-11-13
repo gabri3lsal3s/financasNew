@@ -162,4 +162,42 @@ describe("PortfolioImportDialog — Fase 35 & 36", () => {
     expect(screen.getByText(/200 cotas/i)).toBeInTheDocument();
     expect(screen.getByText(/@ R\$40.00/i)).toBeInTheDocument();
   });
+
+  it("consolida múltiplas compras do mesmo ticker calculando o preço médio ponderado total ao criar o ativo", async () => {
+    mockCreateAsset.mockClear();
+    mockCreateBatch.mockClear();
+
+    render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
+
+    const textarea = screen.getByRole("textbox");
+    fireEvent.change(textarea, {
+      target: {
+        value: "10/08 comprei 100 BBAS3 a 20,00\n15/08 comprei 100 BBAS3 a 30,00",
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Processar texto/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Confirmar importação \(2\)/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar importação \(2\)/i }));
+
+    await waitFor(() => {
+      expect(mockCreateAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ticker: "BBAS3",
+          quantity: 200,
+          average_price: 25,
+        }),
+      );
+      expect(mockCreateBatch).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ type: "buy", quantity: 100, price: 20 }),
+          expect.objectContaining({ type: "buy", quantity: 100, price: 30 }),
+        ]),
+      );
+    });
+  });
 });

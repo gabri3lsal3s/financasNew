@@ -47,7 +47,7 @@ export function PortfolioDarfMonitor({
       let runningQty = 0;
       let runningCost = 0;
       for (const tx of assetTxs) {
-        if (tx.type === "buy") {
+        if (tx.type === "buy" || tx.type === "subscription") {
           runningQty += tx.quantity;
           runningCost += tx.quantity * tx.price;
         } else if (tx.type === "sell" && tx.id !== t.id) {
@@ -57,6 +57,12 @@ export function PortfolioDarfMonitor({
             runningQty -= soldQty;
             runningCost -= soldQty * pm;
           }
+        } else if (tx.type === "split") {
+          const factor = tx.quantity > 0 ? tx.quantity : 1;
+          runningQty *= factor;
+        } else if (tx.type === "reverse_split") {
+          const factor = tx.quantity > 0 ? tx.quantity : 1;
+          runningQty /= factor;
         }
       }
 
