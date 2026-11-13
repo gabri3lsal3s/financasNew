@@ -22,6 +22,7 @@ export type WizardMode =
   | "sell"
   | "dividend"
   | "split"
+  | "reverse_split"
   | "existing_aporte"; // alias para buy
 
 export interface InvestmentWizardState {
@@ -55,6 +56,7 @@ export interface InvestmentWizardState {
   month: string;
   dividendEntryMode: DividendEntryMode;
   splitFactor: number;
+  reverseSplitFactor: number;
 
   // Proventos Históricos (anteriores ao extrato periódico)
   /** Total de proventos acumulados em centavos. Alimenta YoC sem distorcer calendário/extrato. */
@@ -106,6 +108,7 @@ export const defaultWizardState: InvestmentWizardState = {
   month: currentMonth(),
   dividendEntryMode: "daily",
   splitFactor: 2,
+  reverseSplitFactor: 2,
 
   accumulatedDividendsCents: 0,
   estimatedDividendPerShareCents: 0,
@@ -219,6 +222,14 @@ export function getWizardSteps(mode: WizardMode): readonly { title: string; subt
     ];
   }
 
+  if (mode === "reverse_split") {
+    return [
+      { title: "Ativo", subtitle: "Seleção" },
+      { title: "Grupamento", subtitle: "Fator & Data" },
+      { title: "Revisão", subtitle: "Confirmação" },
+    ];
+  }
+
   if (mode === "buy" || mode === "existing_aporte") {
     return [
       { title: "Ativo", subtitle: "Seleção" },
@@ -305,6 +316,16 @@ export function canProceed(state: InvestmentWizardState): boolean {
     }
     if (state.step === 2) {
       return state.splitFactor >= 2;
+    }
+    return true;
+  }
+
+  if (state.mode === "reverse_split") {
+    if (state.step === 1) {
+      return state.selectedAsset !== null;
+    }
+    if (state.step === 2) {
+      return state.reverseSplitFactor >= 2;
     }
     return true;
   }
@@ -515,6 +536,22 @@ export function calculateInvestmentPreview(
   if (state.mode === "split") {
     const newQty = currentQty * state.splitFactor;
     const newAvg = currentAvgPrice / state.splitFactor;
+    return {
+      currentQuantity: currentQty,
+      currentAveragePrice: currentAvgPrice,
+      newQuantity: newQty,
+      newAveragePrice: newAvg,
+      totalOrderValueNative: 0,
+      totalOrderValueBRL: 0,
+      cashDebitBRL: 0,
+      contributionBRL: 0,
+    };
+  }
+
+  if (state.mode === "reverse_split") {
+    const factor = state.reverseSplitFactor >= 1 ? state.reverseSplitFactor : 1;
+    const newQty = Math.round((currentQty / factor) * 10000) / 10000;
+    const newAvg = Math.round(currentAvgPrice * factor * 10000) / 10000;
     return {
       currentQuantity: currentQty,
       currentAveragePrice: currentAvgPrice,

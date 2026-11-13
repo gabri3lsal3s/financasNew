@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateHistoricalLossesCarryover,
   calculateMonthlyDarf,
   classifyAnnualDividendsReport,
   generateAnnualBensDireitosReport,
@@ -8,8 +9,9 @@ import {
   isEtfAsset,
   isFiiAsset,
   isForeignAsset,
+  sortTransactionsChronologically,
 } from "./tax";
-import type { PortfolioAsset, PortfolioDividend } from "@/types";
+import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction } from "@/types";
 
 describe("domain/portfolio/tax — Apuração Fiscal e IRPF", () => {
   describe("getBensDireitosClassification", () => {
@@ -416,6 +418,120 @@ describe("domain/portfolio/tax — Apuração Fiscal e IRPF", () => {
       expect(isFiiAsset("VGIA11", "FIAGRO")).toBe(true);
       expect(isFiiAsset("PETR4", "Ações")).toBe(false);
       expect(isFiiAsset("BOVA11", "ETFs")).toBe(false);
+    });
+  });
+
+  describe("sortTransactionsChronologically (INV-08)", () => {
+    it("ordena operações na mesma data colocando split -> buy -> sell", () => {
+      const txs = [
+        { id: "3", date: "2026-05-10", type: "sell" },
+        { id: "1", date: "2026-05-10", type: "split" },
+        { id: "2", date: "2026-05-10", type: "buy" },
+      ];
+      const sorted = sortTransactionsChronologically(txs);
+      expect(sorted.map((t) => t.type)).toEqual(["split", "buy", "sell"]);
+    });
+
+    it("respeita a ordem cronológica por data primária", () => {
+      const txs = [
+        { id: "3", date: "2026-05-15", type: "buy" },
+        { id: "1", date: "2026-05-01", type: "sell" },
+        { id: "2", date: "2026-05-10", type: "buy" },
+      ];
+      const sorted = sortTransactionsChronologically(txs);
+      expect(sorted.map((t) => t.id)).toEqual(["1", "2", "3"]);
+    });
+  });
+
+  describe("calculateHistoricalLossesCarryover (INV-09)", () => {
+    it("transporta prejuízos acumulados anteriores ao mês de consulta para compensação contínua", () => {
+      const assets: PortfolioAsset[] = [
+        {
+          id: "a1",
+          user_id: "u1",
+          ticker: "VALE3",
+          asset_class: "Ações",
+          currency: "BRL",
+          quantity: 100,
+          average_price: 60,
+        },
+      ];
+
+      // Compra 100 a 60 em janeiro, vende 100 a 40 em janeiro (prejuízo de 2.000)
+      const transactions: PortfolioTransaction[] = [
+        {
+          id: "t1",
+          user_id: "u1",
+          asset_id: "a1",
+          type: "buy",
+          date: "2026-01-05",
+          quantity: 100,
+          price: 60,
+          total: 6000,
+        },
+        {
+          id: "t2",
+          user_id: "u1",
+          asset_id: "a1",
+          type: "sell",
+          date: "2026-01-20",
+          quantity: 100,
+          price: 40,
+          total: 4000,
+        },
+      ];
+
+      // Consulta para março de 2026
+      const losses = calculateHistoricalLossesCarryover({
+        transactions,
+        assets,
+        targetMonth: "2026-03",
+      });
+
+      // Prejuízo de R$ 2.000,00 = 200.000 centavos
+      expect(losses.stockCents).toBe(200_000);
+      expect(losses.fiiCents).toBe(0);
+      expect(losses.etfCents).toBe(0);
+    });
+
+    it("retorna zeros se não houver vendas anteriores a targetMonth", () => {
+      const losses = calculateHistoricalLossesCarryover({
+        transactions: [],
+        assets: [],
+        targetMonth: "2026-05",
+      });
+      expect(losses).toEqual({ stockCents: 0, fiiCents: 0, etfCents: 0 });
+    });
+  });
+
+  describe("classificação de JCP com prefixo estruturado (INV-11)", () => {
+    it("classifica JCP em exclusiveJCP mesmo quando a nota contém texto personalizado", () => {
+      const assets: PortfolioAsset[] = [
+        {
+          id: "a1",
+          user_id: "u1",
+          ticker: "BBDC4",
+          asset_class: "Ações",
+          currency: "BRL",
+          quantity: 100,
+          average_price: 15,
+        },
+      ];
+
+      const dividends: PortfolioDividend[] = [
+        {
+          id: "d1",
+          user_id: "u1",
+          asset_id: "a1",
+          date: "2026-04-10",
+          amount: 50,
+          notes: "[JCP] Pagamento semestral Bradesco",
+        },
+      ];
+
+      const report = classifyAnnualDividendsReport(dividends, assets, 2026);
+      expect(report.exclusiveJCP.totalCents).toBe(5000);
+      expect(report.exemptDividends.totalCents).toBe(0);
     });
   });
 });

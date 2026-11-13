@@ -530,6 +530,22 @@ describe("domain/portfolio/valuation (§1.6 D5 + §3.11.2)", () => {
       expect(pnl.unrealizedPct).toBeNull();
       expect(pnl.totalReturnPct).toBeNull();
     });
+
+    it("preserva valor de mercado para micro-cotações sub-centavos (< R$ 0,01) (INV-12)", () => {
+      const summary = calculatePositionSummary({
+        quantity: 1_000_000,
+        averagePrice: 0.0015,
+        assetClass: "Cripto",
+        resolvedPrice: { price: 0.002, source: "api" },
+        currency: "BRL",
+        usdRate: 5.25,
+      });
+
+      // 1.000.000 cotas a R$ 0,002 = R$ 2.000,00
+      expect(summary.valueBRL).toBe(2000);
+      expect(summary.priceBRL).toBe(0.002);
+      expect(summary.unrealizedPnl).toBe(500); // 2000 - 1500
+    });
   });
 });
 

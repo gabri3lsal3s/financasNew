@@ -140,7 +140,14 @@ export function resolveDividendNote(
   userNote: string,
   type: string,
 ): string {
-  const base = userNote.trim() ? userNote.trim() : type.toUpperCase();
+  const isJCP = type === "jcp" || type.toLowerCase().includes("jcp");
+  const trimmed = userNote.trim();
+  let base = trimmed;
+  if (isJCP && !base.toUpperCase().includes("JCP")) {
+    base = base ? `[JCP] ${base}` : "JCP";
+  } else if (!base) {
+    base = type.toUpperCase();
+  }
   if (mode === "monthly") {
     return `[MENSAL] ${base}`;
   }

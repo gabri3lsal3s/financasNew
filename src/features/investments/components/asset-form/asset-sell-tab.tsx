@@ -70,13 +70,22 @@ export function AssetSellTab({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
             {isTotalValueMode ? "Valor a Resgatar" : "Quantidade a Vender"}
-            <NumericInput
-              value={sellQtyStr}
-              onValueChange={setSellQtyStr}
-              placeholder={isTotalValueMode ? "Ex: 1000,00" : "Ex: 50"}
-              aria-label={isTotalValueMode ? "Valor a resgatar" : "Quantidade a vender"}
-              showCalculatorAction
-            />
+            {isTotalValueMode ? (
+              <MoneyInput
+                cents={Math.round(parsedSellQty * 100)}
+                currency={asset.currency}
+                onCentsChange={(cents) => setSellQtyStr((cents / 100).toFixed(2))}
+                aria-label="Valor a resgatar"
+              />
+            ) : (
+              <NumericInput
+                value={sellQtyStr}
+                onValueChange={setSellQtyStr}
+                placeholder="Ex: 50"
+                aria-label="Quantidade a vender"
+                showCalculatorAction
+              />
+            )}
           </label>
 
           <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">

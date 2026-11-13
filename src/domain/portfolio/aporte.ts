@@ -25,7 +25,7 @@
  */
 
 import type { AssetCurrency } from "@/types";
-import { normalizeClassName } from "./valuation";
+import { isFixedIncomeClass, isTesouroAsset, normalizeClassName } from "./valuation";
 import { inferSectorFromTicker } from "./tickers-catalog";
 
 // ---------------------------------------------------------------------------
@@ -195,8 +195,17 @@ export function resolveAssetPrecision(asset: Pick<AporteAssetInput, "assetClass"
     return 8;
   }
 
-  // 2. Mercado Nacional B3 (BRL) -> Estritamente cotas inteiras (0 casas)
-  // Ativos cotados em BRL (ações, FIIs, ETFs B3, BDRs) na B3 não aceitam frações
+  // 2. Tesouro Direto -> Frações de 0,01 título (2 casas decimais - INV-10)
+  if (isTesouroAsset(asset.ticker, asset.assetClass)) {
+    return 2;
+  }
+
+  // 3. Renda Fixa Privada (CDB, LCI, LCA) e Caixa -> Alocação em valor financeiro direto (2 casas decimais - INV-10)
+  if (isFixedIncomeClass(asset.assetClass)) {
+    return 2;
+  }
+
+  // 4. Mercado Nacional B3 (ações, FIIs, ETFs B3, BDRs em BRL) -> Estritamente cotas inteiras (0 casas)
   if (asset.currency === "BRL") {
     return 0;
   }

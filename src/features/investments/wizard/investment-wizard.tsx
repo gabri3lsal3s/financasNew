@@ -330,6 +330,18 @@ function InvestmentWizardContent({
           total: 0,
           notes: state.notes,
         });
+      } else if (state.mode === "reverse_split") {
+        if (!state.selectedAsset) throw new Error("Selecione um ativo");
+
+        await recordOrder.mutateAsync({
+          asset: state.selectedAsset,
+          type: "reverse_split",
+          date: state.date,
+          quantity: state.reverseSplitFactor,
+          price: 0,
+          total: 0,
+          notes: state.notes,
+        });
       } else if (state.mode === "new_asset") {
         const parsedQty = parseNumber(state.quantityStr);
         const price = state.priceCents / 100;

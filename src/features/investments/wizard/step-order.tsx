@@ -74,9 +74,17 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
       icon: GitFork,
       activeClass: "border-warning/60 bg-warning/10 text-warning-strong shadow-xs font-bold",
     },
+    {
+      id: "reverse_split",
+      label: "Grupamento",
+      icon: RotateCcw,
+      activeClass: "border-warning/60 bg-warning/10 text-warning-strong shadow-xs font-bold",
+    },
   ];
 
-  const availableOperations = isTotalValue ? operations.filter((op) => op.id !== "split") : operations;
+  const availableOperations = isTotalValue
+    ? operations.filter((op) => op.id !== "split" && op.id !== "reverse_split")
+    : operations;
 
   return (
     <div className="flex flex-col gap-5">
@@ -138,7 +146,18 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
 
       {/* Seletor de Tipo de Operação quando o ativo já existe na carteira */}
       {!isCash && state.selectedAsset && (
-        <div className={cn("grid gap-2", availableOperations.length === 3 ? "grid-cols-3" : "grid-cols-2")} role="tablist" aria-label="Tipo de Operação">
+        <div
+          className={cn(
+            "grid gap-2",
+            availableOperations.length === 3
+              ? "grid-cols-3"
+              : availableOperations.length >= 5
+                ? "grid-cols-2 sm:grid-cols-3"
+                : "grid-cols-2",
+          )}
+          role="tablist"
+          aria-label="Tipo de Operação"
+        >
           {availableOperations.map((op) => {
             const Icon = op.icon;
             const isSelected = mode === op.id || (op.id === "buy" && mode === "existing_aporte");
@@ -723,6 +742,54 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
                 {state.selectedAsset.quantity * state.splitFactor} cotas a{" "}
                 <MoneyText
                   cents={numberToCents(state.selectedAsset.average_price / state.splitFactor)}
+                  currency={state.currency}
+                />
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                O custo total da posição é rigorosamente preservado.
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 5. MODO GRUPAMENTO (REVERSE SPLIT) */}
+      {mode === "reverse_split" && (
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="wizard-reverse-split-factor" className="text-xs font-semibold text-foreground">
+                Fator de Grupamento (N para 1)
+              </label>
+              <Input
+                id="wizard-reverse-split-factor"
+                type="number"
+                min="2"
+                step="1"
+                value={state.reverseSplitFactor}
+                onChange={(e) => onChange({ reverseSplitFactor: Math.max(2, Number(e.target.value) || 2) })}
+                className="font-mono text-base"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-foreground">
+                Data do Evento
+              </label>
+              <DatePicker
+                value={state.date}
+                onValueChange={(date) => onChange({ date })}
+              />
+            </div>
+          </div>
+
+          {state.selectedAsset && (
+            <div className="flex flex-col gap-1 rounded-xl bg-surface-hover/60 p-3.5 text-xs">
+              <span className="text-muted-foreground">Posição Resultante:</span>
+              <span className="font-mono font-bold text-foreground">
+                {Math.round((state.selectedAsset.quantity / (state.reverseSplitFactor || 1)) * 10000) / 10000} cotas a{" "}
+                <MoneyText
+                  cents={numberToCents(state.selectedAsset.average_price * (state.reverseSplitFactor || 1))}
                   currency={state.currency}
                 />
               </span>

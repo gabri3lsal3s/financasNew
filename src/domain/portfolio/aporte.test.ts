@@ -985,5 +985,47 @@ describe("Auditoria de Invariantes & Teste de Estresse Multi-Nível (Classe -> S
       expect(result.totalAllocated + result.leftover).toBe(1_000);
     });
   });
+
+  describe("precisão fracionária de Tesouro Direto e Renda Fixa (INV-10)", () => {
+    it("resolveAssetPrecision retorna 2 casas decimais para Tesouro Direto", () => {
+      const precision = resolveAssetPrecision({
+        ticker: "Tesouro Selic 2029",
+        assetClass: "Renda Fixa",
+        currency: "BRL",
+      });
+      expect(precision).toBe(2);
+    });
+
+    it("resolveAssetPrecision retorna 2 casas decimais para CDB / Renda Fixa privada", () => {
+      const precision = resolveAssetPrecision({
+        ticker: "CDB Banco Inter 110% CDI",
+        assetClass: "Renda Fixa",
+        currency: "BRL",
+      });
+      expect(precision).toBe(2);
+    });
+
+    it("permite alocação fracionada de 0,01 título em Tesouro Direto com preço unitário elevado", () => {
+      const result = simulateSmartAporte({
+        aporte: 1_000,
+        assets: [
+          asset({
+            id: "tesouro-selic",
+            ticker: "Tesouro Selic 2029",
+            assetClass: "Renda Fixa",
+            currentValueBRL: 0,
+            priceBRL: 15_234.5,
+            targetPercentage: 100,
+          }),
+        ],
+      });
+
+      const route = result.routes.find((r) => r.ticker === "Tesouro Selic 2029");
+      expect(route).toBeDefined();
+      expect(route!.quantity).toBe(0.06); // 1000 / 15234.5 = 0.0656 -> 0.06 cotas
+      expect(route!.allocatedBRL).toBe(914.07);
+      expect(result.leftover).toBe(85.93);
+    });
+  });
 });
 

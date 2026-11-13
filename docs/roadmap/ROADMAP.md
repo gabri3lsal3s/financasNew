@@ -1,5 +1,26 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.6.2 (Build 61)** registra a conclusão integral do **Plano de Refinamento e Blindagem Integral dos Cálculos e Fluxos de Investimentos** ([`docs/plans/32_PLANO_REFINAMENTO_E_BLINDAGEM_INTEGRAL_INVESTIMENTOS.md`](../plans/32_PLANO_REFINAMENTO_E_BLINDAGEM_INTEGRAL_INVESTIMENTOS.md)) (2026-11-13):
+> - **(1) Blindagem de Cálculos Fiscais & Temporalidade (INV-08, INV-09, INV-11)**:
+>   - Desempate intraday determinístico em `sortTransactionsChronologically` com pesos corporativos estritos (`split`/`reverse_split` = 0 < `buy`/`subscription` = 1 < `sell` = 2 < outros = 3), eliminando assincronia e distorções de preço médio no replay contábil quando ordens ocorrem no mesmo dia;
+>   - Motor puro de domínio `calculateHistoricalLossesCarryover` em `src/domain/portfolio/tax.ts` calculando o acúmulo contínuo e encadeamento cronológico de prejuízos compensáveis anteriores (ações, FIIs e ETFs) conforme art. 56 da IN RFB nº 1.585/2015;
+>   - Exibição de prejuízos a compensar acumulados e compensados no monitor fiscal DARF 6015 (`portfolio-darf-monitor.tsx`);
+>   - Deduplicação e preservação do identificador `[JCP]` em notas fiscais customizadas de Juros sobre Capital Próprio (`resolveDividendNote` e `classifyAnnualDividendsReport`), garantindo conformidade com a DIRPF;
+> - **(2) Precisão de Rebalanceamento & Cotações Fracionárias (INV-10 & INV-12)**:
+>   - Preservação da escala decimal de micro-cotações sub-centavos ($< \text{R\$}~0,01$) em `calculatePositionSummary` com até 8 casas decimais, impedindo que tokens e frações de cotas sejam truncados prematuramente para zero;
+>   - Resolução de precisão fracionária no motor de rebalanceamento de aportes (`resolveAssetPrecision` em `aporte.ts`), permitindo frações de até $0,01$ título para o Tesouro Direto e Renda Fixa com alocação financeira precisa;
+> - **(3) Unificação de Grupamento (`reverse_split`) no Wizard de Investimentos (INV-13)**:
+>   - Suporte completo ao modo `reverse_split` no `InvestmentWizard` (`wizard-state.ts`, `step-order.tsx`, `step-review.tsx`, `investment-wizard.tsx`);
+>   - Validação de fator $\ge 2$, prévia da posição resultante ($Q \div F$ cotas a $\text{PM} \times F$) preservando o custo total aplicado e gravação atômica no ledger e custódia;
+> - **(4) Ergonomia de Formulários & Conformidade DRY (INV-14 & INV-15)**:
+>   - Adoção de `MoneyInput` com máscara de centavos e moeda para o valor a resgatar de posições de Valor Completo em `asset-sell-tab.tsx`;
+>   - Substituição de botões crus `<button>` pelo primitivo canônico e acessível `<Tabs />` (Radix UI) no diálogo `asset-form-dialog.tsx`;
+> - **(5) Quality Gates 100% Verdes**:
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros, 0 avisos;
+>   - Vitest: 69 suítes e 731 testes de Investimentos 100% aprovados, mais 58/58 no security audit;
+>   - Build de produção Vite e PWA precache gerados com sucesso.
+>
 > **v3.6.1 (Build 60)** registra a conclusão do **Plano de Auditoria Integral e Blindagem de Investimentos** ([`docs/plans/31_PLANO_AUDITORIA_INTEGRAL_INVESTIMENTOS.md`](../plans/31_PLANO_AUDITORIA_INTEGRAL_INVESTIMENTOS.md)) (2026-11-13):
 > - **(1) Hardening da RPC de Aportes em Lote (INV-01)**:
 >   - Migração `20260101000120_harden_portfolio_batch_aporte_rpc.sql` saneando sobrecargas divergentes de `execute_batch_portfolio_orders`;

@@ -23,6 +23,7 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
     expect(getWizardSteps("sell").length).toBe(3);
     expect(getWizardSteps("dividend").length).toBe(3);
     expect(getWizardSteps("split").length).toBe(3);
+    expect(getWizardSteps("reverse_split").length).toBe(3);
     expect(getWizardSteps("new_asset").length).toBe(4);
   });
 
@@ -106,6 +107,18 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
       expect(canProceed({ ...state, splitFactor: 2 })).toBe(true);
     });
 
+    it("valida modo reverse_split (requer fator >= 2)", () => {
+      const state: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "reverse_split",
+        step: 2,
+        selectedAsset: mockAsset,
+        reverseSplitFactor: 1,
+      };
+      expect(canProceed(state)).toBe(false);
+      expect(canProceed({ ...state, reverseSplitFactor: 5 })).toBe(true);
+    });
+
     it("valida modo new_asset", () => {
       const state: InvestmentWizardState = {
         ...defaultWizardState,
@@ -184,6 +197,19 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
       const preview = calculateInvestmentPreview(state);
       expect(preview.newQuantity).toBe(200);
       expect(preview.newAveragePrice).toBe(15.0);
+    });
+
+    it("calcula grupamento / reverse_split com preservação de custo", () => {
+      const state: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "reverse_split",
+        selectedAsset: mockAsset,
+        reverseSplitFactor: 2,
+      };
+
+      const preview = calculateInvestmentPreview(state);
+      expect(preview.newQuantity).toBe(50);
+      expect(preview.newAveragePrice).toBe(60.0);
     });
 
     it("valida e calcula Aporte em Renda Fixa / Tesouro Direto sem exigência de cotas", () => {

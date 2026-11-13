@@ -48,6 +48,8 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
         return { label: "Provento", variant: "positive" as const };
       case "split":
         return { label: "Split / Desdobro", variant: "warning" as const };
+      case "reverse_split":
+        return { label: "Grupamento", variant: "warning" as const };
       case "new_asset":
         return { label: "Novo Ativo", variant: "default" as const };
       default:
@@ -349,6 +351,32 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Fator do Desdobramento:</span>
               <span className="font-mono font-bold text-foreground">1 para {state.splitFactor}</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 py-2 text-xs bg-surface-hover/30 -mx-4 px-4 rounded-lg">
+              <div className="flex flex-col">
+                <span className="text-muted-foreground">Nova Quantidade</span>
+                <span className="font-mono font-bold text-primary">
+                  {preview.newQuantity} cotas
+                </span>
+              </div>
+
+              <div className="flex flex-col text-right">
+                <span className="text-muted-foreground">Novo Preço Médio</span>
+                <span className="font-mono font-bold text-primary">
+                  <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 5. Revisão de Grupamento */}
+        {mode === "reverse_split" && (
+          <div className="pt-3 flex flex-col gap-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Fator do Grupamento:</span>
+              <span className="font-mono font-bold text-foreground">{state.reverseSplitFactor} para 1</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3 py-2 text-xs bg-surface-hover/30 -mx-4 px-4 rounded-lg">

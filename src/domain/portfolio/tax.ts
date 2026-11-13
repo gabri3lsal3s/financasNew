@@ -5,7 +5,7 @@
 
 import { formatCentsAsBRL } from "@/services/masks";
 import { sanitizeReportText } from "@/domain/reports/sanitize-text";
-import type { PortfolioAsset, PortfolioDividend } from "@/types";
+import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction } from "@/types";
 import {
   inferCurrencyFromTicker,
   isCashAssetClass,
@@ -205,7 +205,11 @@ export function classifyAnnualDividendsReport(
     const rate = isUSD ? usdRate : 1;
     const amountCents = Math.round(div.amount * rate * 100);
     const noteUpper = (div.notes ?? "").toUpperCase();
-    const isJCP = noteUpper.includes("JCP") || noteUpper.includes("JUROS SOBRE CAPITAL");
+    const isJCP =
+      (div as { type?: string }).type === "jcp" ||
+      noteUpper.includes("[JCP]") ||
+      noteUpper.includes("JCP") ||
+      noteUpper.includes("JUROS SOBRE CAPITAL");
 
     if (isUSD) {
       const cur = foreignItemsMap.get(div.asset_id ?? ticker) ?? { ticker, cents: 0 };
@@ -578,4 +582,150 @@ export function calculateMonthlyDarf(input: MonthlyDarfInput): MonthlyDarfResult
       etfCents: initialEtfLoss,
     },
   };
+}
+
+/**
+ * Peso de precedência de operações para ordenação na mesma data:
+ * 1. Eventos corporativos (split / reverse_split): abertura de pregão
+ * 2. Compras e subscrições (buy / subscription): provisionam custódia
+ * 3. Vendas e resgates (sell): liquidam de custódia disponível
+ * 4. Demais operações (dividendos, amortizações)
+ */
+export function getTransactionIntradayWeight(type: string): number {
+  switch (type) {
+    case "split":
+    case "reverse_split":
+      return 0;
+    case "buy":
+    case "subscription":
+      return 1;
+    case "sell":
+      return 2;
+    default:
+      return 3;
+  }
+}
+
+/**
+ * Ordena transações deterministicamente com desempate por tipo de ordem na mesma data.
+ */
+export function sortTransactionsChronologically<T extends { date: string; type: string; id?: string; created_at?: string }>(
+  transactions: readonly T[],
+): T[] {
+  return [...transactions].sort((a, b) => {
+    if (a.date !== b.date) {
+      return a.date.localeCompare(b.date);
+    }
+    const weightDiff = getTransactionIntradayWeight(a.type) - getTransactionIntradayWeight(b.type);
+    if (weightDiff !== 0) return weightDiff;
+    const timeA = a.created_at ?? "";
+    const timeB = b.created_at ?? "";
+    if (timeA && timeB && timeA !== timeB) {
+      return timeA.localeCompare(timeB);
+    }
+    return (a.id ?? "").localeCompare(b.id ?? "");
+  });
+}
+
+export interface HistoricalLossesCarryoverInput {
+  transactions: readonly PortfolioTransaction[];
+  assets: readonly PortfolioAsset[];
+  targetMonth: string;
+}
+
+/**
+ * Calcula os prejuízos acumulados a compensar que foram gerados nos meses anteriores a targetMonth (IN RFB 1.585/2015, art. 56).
+ */
+export function calculateHistoricalLossesCarryover(
+  input: HistoricalLossesCarryoverInput,
+): { stockCents: number; fiiCents: number; etfCents: number } {
+  const { transactions, assets, targetMonth } = input;
+  const assetMap = new Map(assets.map((a) => [a.id, a]));
+
+  // 1. Identifica todos os meses distintos anteriores a targetMonth com vendas registradas
+  const priorMonthsSet = new Set<string>();
+  for (const t of transactions) {
+    if (t.type === "sell" && t.date) {
+      const m = t.date.slice(0, 7);
+      if (m < targetMonth) {
+        priorMonthsSet.add(m);
+      }
+    }
+  }
+
+  if (priorMonthsSet.size === 0) {
+    return { stockCents: 0, fiiCents: 0, etfCents: 0 };
+  }
+
+  const sortedPriorMonths = Array.from(priorMonthsSet).sort((a, b) => a.localeCompare(b));
+  let runningLosses = { stockCents: 0, fiiCents: 0, etfCents: 0 };
+
+  // 2. Ordena todas as transações cronologicamente com desempate intraday
+  const sortedTxs = sortTransactionsChronologically(transactions);
+
+  for (const m of sortedPriorMonths) {
+    const monthSalesTxs = sortedTxs.filter((t) => t.type === "sell" && t.date.startsWith(m));
+    const monthSales: MonthlyDarfSaleItem[] = [];
+
+    for (const t of monthSalesTxs) {
+      const asset = assetMap.get(t.asset_id);
+      const ticker = asset?.ticker ?? "Ativo";
+      const assetClass = asset?.asset_class ?? null;
+      const currency = asset?.currency ?? "BRL";
+
+      // Reconstitui o PM histórico até a data desta venda
+      const priorAssetTxs = sortedTxs.filter((tx) => tx.asset_id === t.asset_id && tx.date <= t.date);
+      let runningQty = 0;
+      let runningCost = 0;
+
+      for (const tx of priorAssetTxs) {
+        if (tx.type === "buy" || tx.type === "subscription") {
+          runningQty += tx.quantity;
+          runningCost += tx.quantity * tx.price;
+        } else if (tx.type === "sell" && tx.id !== t.id) {
+          if (runningQty > 0) {
+            const pm = runningCost / runningQty;
+            const soldQty = Math.min(runningQty, tx.quantity);
+            runningQty -= soldQty;
+            runningCost -= soldQty * pm;
+          }
+        } else if (tx.type === "split") {
+          const factor = tx.quantity > 0 ? tx.quantity : 1;
+          runningQty *= factor;
+        } else if (tx.type === "reverse_split") {
+          const factor = tx.quantity > 0 ? tx.quantity : 1;
+          runningQty /= factor;
+        }
+      }
+
+      const historicalPm = runningQty > 0 ? runningCost / runningQty : 0;
+      const averagePrice =
+        historicalPm > 0
+          ? historicalPm
+          : (asset?.average_price && asset.average_price > 0 ? asset.average_price : t.price);
+
+      const costAmountCents = Math.round(t.quantity * averagePrice * 100);
+      const saleAmountCents = Math.round(t.total * 100);
+      const profitCents = saleAmountCents - costAmountCents;
+
+      monthSales.push({
+        ticker,
+        assetClass,
+        currency,
+        saleAmountCents,
+        costAmountCents,
+        profitCents,
+      });
+    }
+
+    const monthResult = calculateMonthlyDarf({
+      month: m,
+      sales: monthSales,
+      previousLosses: runningLosses,
+    });
+
+    runningLosses = monthResult.remainingAccumulatedLossCents;
+  }
+
+  return runningLosses;
 }

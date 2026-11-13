@@ -186,6 +186,9 @@ export function isFiiClass(assetClass: string | null | undefined): boolean {
 export function isFixedIncomeClass(assetClass: string | null | undefined): boolean {
   if (!assetClass) return false;
   const norm = normalizeClassName(assetClass);
+  if (norm.includes("cripto") || norm.includes("crypto")) {
+    return false;
+  }
   return (
     FIXED_INCOME_CLASS_ALIASES.has(norm) ||
     norm.includes("renda fixa") ||
@@ -194,9 +197,8 @@ export function isFixedIncomeClass(assetClass: string | null | undefined): boole
     norm.includes("cdb") ||
     norm.includes("lci") ||
     norm.includes("lca") ||
-    norm.includes("cri") ||
-    norm.includes("cra") ||
-    norm.includes("debenture")
+    norm.includes("debenture") ||
+    /\b(cri|cra)\b/.test(norm)
   );
 }
 
@@ -542,7 +544,13 @@ export function calculatePositionSummary(params: {
   }
 
   // Modo Preço Unitário (Ações, FIIs, BDRs, Cripto, etc.):
-  const priceBRL = Math.round(resolvedPrice.price * rate * 100) / 100;
+  const rawPriceBRL = resolvedPrice.price * rate;
+  // Se a cotação unitária for maior ou igual a 1 centavo, arredonda para 2 casas;
+  // se for sub-centavo (< 0.01), preserva até 8 casas decimais para não zerar a cotação (INV-12).
+  const priceBRL =
+    rawPriceBRL >= 0.01
+      ? Math.round(rawPriceBRL * 100) / 100
+      : Math.round(rawPriceBRL * 100_000_000) / 100_000_000;
 
   if (quantity <= 0) {
     return {
@@ -568,8 +576,11 @@ export function calculatePositionSummary(params: {
 
   const totalCost = Math.round(quantity * averagePrice * 100) / 100;
   const totalCostBRL = Math.round(totalCost * rate * 100) / 100;
-  const averagePriceBRL = Math.round(averagePrice * rate * 100) / 100;
-  const valueBRL = Math.round(quantity * priceBRL * 100) / 100;
+  const averagePriceBRL =
+    averagePrice * rate >= 0.01
+      ? Math.round(averagePrice * rate * 100) / 100
+      : Math.round(averagePrice * rate * 100_000_000) / 100_000_000;
+  const valueBRL = Math.round(quantity * rawPriceBRL * 100) / 100;
   const pnl = positionPnl(valueBRL, totalCostBRL, totalDividendsBRL);
 
   return {

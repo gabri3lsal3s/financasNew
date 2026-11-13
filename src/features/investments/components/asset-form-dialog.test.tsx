@@ -140,7 +140,7 @@ describe("AssetFormDialog — feedback de escrita (F15 e F36)", () => {
     render(<AssetFormDialog open={true} onOpenChange={vi.fn()} asset={existingAsset} />);
 
     // Clica na aba Venda / Desinvestimento
-    const sellTab = screen.getByRole("button", { name: /Venda \/ Desinvestimento/i });
+    const sellTab = screen.getByRole("tab", { name: /Venda \/ Desinvestimento/i });
     await user.click(sellTab);
 
     expect(screen.getByText(/Custódia Disponível para Venda/i)).toBeInTheDocument();

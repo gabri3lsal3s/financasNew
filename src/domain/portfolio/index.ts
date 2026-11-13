@@ -440,6 +440,9 @@ export type {
 } from "./snowball";
 export {
   calculateMonthlyDarf,
+  calculateHistoricalLossesCarryover,
+  sortTransactionsChronologically,
+  getTransactionIntradayWeight,
   classifyAnnualDividendsReport,
   generateAnnualBensDireitosReport,
   getBensDireitosClassification,

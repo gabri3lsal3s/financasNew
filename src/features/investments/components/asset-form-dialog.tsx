@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowDownLeft, Calculator, ChevronDown, ChevronUp, Loader2, Sparkles, Trash2 } from "lucide-react";
-import { Alert, Badge, Button, Checkbox, ConfirmDialog, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumericInput, Select } from "@/components/ui";
+import { Alert, Badge, Button, Checkbox, ConfirmDialog, Input, Modal, ModalFooter, MoneyInput, MoneyText, NumericInput, Select, Tabs, type TabItem } from "@/components/ui";
 
 
 import { numberToCents, parseDecimalNumber } from "@/domain/money";
@@ -600,39 +600,29 @@ function AssetFormContent({ asset = null, initialAssetClass, onClose }: AssetFor
     }
   };
 
+  const dialogTabs: TabItem[] = [
+    { value: "edit", label: "Editar Dados & Compras" },
+    {
+      value: "sell",
+      label: "Venda / Desinvestimento",
+      icon: <ArrowDownLeft className="size-3.5" aria-hidden="true" />,
+    },
+  ];
+
   return (
     <>
       {hasExistingQuantity && (
-        <div className="mt-3 flex items-center gap-1 rounded-xl border border-border/80 bg-surface-hover/30 p-1">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("edit");
-              triggerSensory("selection");
+        <div className="mt-3">
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => {
+              setActiveTab(val as "edit" | "sell");
             }}
-            className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
-              activeTab === "edit"
-                ? "bg-surface shadow-xs text-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Editar Dados & Compras
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("sell");
-              triggerSensory("selection");
-            }}
-            className={`flex-1 flex items-center justify-center gap-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
-              activeTab === "sell"
-                ? "bg-surface shadow-xs text-negative-strong font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <ArrowDownLeft className="size-3.5" aria-hidden="true" />
-            <span>Venda / Desinvestimento</span>
-          </button>
+            items={dialogTabs}
+            variant="pills"
+            fullWidth
+            ariaLabel="Seções do Ativo"
+          />
         </div>
       )}
 

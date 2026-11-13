@@ -3,7 +3,11 @@ import { Calendar, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Badge, Modal } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
-import { calculateMonthlyDarf } from "@/domain/portfolio";
+import {
+  calculateHistoricalLossesCarryover,
+  calculateMonthlyDarf,
+  sortTransactionsChronologically,
+} from "@/domain/portfolio";
 import { currentMonth } from "@/lib/date";
 import { OFFICIAL_TAX_DISCLAIMER } from "@/lib/institutional";
 import type { PortfolioAsset, PortfolioTransaction } from "@/types";
@@ -38,11 +42,10 @@ export function PortfolioDarfMonitor({
       const currency = asset?.currency ?? "BRL";
 
       // Reconstituição do Preço Médio Ponderado histórico até a data da venda (JORNADA360-05)
-      // Evita tributação de 100% do principal quando a posição foi encerrada (average_price = 0)
-      // e impede distorção retroativa se houveram novas compras por preço superior após a venda.
-      const assetTxs = transactions
-        .filter((tx) => tx.asset_id === t.asset_id && tx.date <= t.date)
-        .sort((a, b) => a.date.localeCompare(b.date));
+      // com desempate determinístico para operações na mesma data (INV-08).
+      const assetTxs = sortTransactionsChronologically(
+        transactions.filter((tx) => tx.asset_id === t.asset_id && tx.date <= t.date),
+      );
 
       let runningQty = 0;
       let runningCost = 0;
@@ -86,9 +89,17 @@ export function PortfolioDarfMonitor({
       };
     });
 
+  // Apuração de prejuízos acumulados a compensar anteriores ao mês selecionado (INV-09)
+  const previousLosses = calculateHistoricalLossesCarryover({
+    transactions,
+    assets,
+    targetMonth: selectedMonth,
+  });
+
   const darf = calculateMonthlyDarf({
     month: selectedMonth,
     sales: monthSales,
+    previousLosses,
   });
 
   return (
@@ -241,6 +252,45 @@ export function PortfolioDarfMonitor({
             </div>
           )}
         </div>
+
+        {/* Prejuízos Acumulados a Compensar (IN RFB 1.585/2015, art. 56) */}
+        {(darf.stockCompensatedLossCents > 0 ||
+          darf.fiiCompensatedLossCents > 0 ||
+          darf.etfCompensatedLossCents > 0 ||
+          darf.remainingAccumulatedLossCents.stockCents > 0 ||
+          darf.remainingAccumulatedLossCents.fiiCents > 0 ||
+          darf.remainingAccumulatedLossCents.etfCents > 0) && (
+          <div className="flex flex-col gap-2 rounded-xl border border-portfolio-border/80 bg-portfolio-surface/20 p-3.5 shadow-xs">
+            <div className="flex items-center justify-between">
+              <strong className="text-xs font-semibold text-foreground">
+                Prejuízos Acumulados & Compensações (Art. 56)
+              </strong>
+              <Badge variant="portfolio" size="xs">
+                Crédito Fiscal
+              </Badge>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-1">
+              {darf.remainingAccumulatedLossCents.stockCents > 0 && (
+                <div className="flex items-center justify-between sm:flex-col sm:items-start p-2 rounded-lg bg-surface/50 border border-border/50">
+                  <span className="text-muted-foreground text-[11px]">Ações a Compensar:</span>
+                  <MoneyText cents={darf.remainingAccumulatedLossCents.stockCents} tone="portfolio" className="font-semibold" />
+                </div>
+              )}
+              {darf.remainingAccumulatedLossCents.fiiCents > 0 && (
+                <div className="flex items-center justify-between sm:flex-col sm:items-start p-2 rounded-lg bg-surface/50 border border-border/50">
+                  <span className="text-muted-foreground text-[11px]">FIIs a Compensar:</span>
+                  <MoneyText cents={darf.remainingAccumulatedLossCents.fiiCents} tone="portfolio" className="font-semibold" />
+                </div>
+              )}
+              {darf.remainingAccumulatedLossCents.etfCents > 0 && (
+                <div className="flex items-center justify-between sm:flex-col sm:items-start p-2 rounded-lg bg-surface/50 border border-border/50">
+                  <span className="text-muted-foreground text-[11px]">ETFs a Compensar:</span>
+                  <MoneyText cents={darf.remainingAccumulatedLossCents.etfCents} tone="portfolio" className="font-semibold" />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Disclaimer Contábil e Fiscal Oficial (Contrato 5 / CFC / RFB) */}
         <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface-hover/30 p-3 text-[11px] text-muted-foreground leading-relaxed">
