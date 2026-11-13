@@ -60,7 +60,7 @@ describe("HeroEditorial", () => {
     expect(screen.getByText("Caixa Real Disponível")).toBeInTheDocument();
     expect(screen.getByText("R$ 6.240,00")).toBeInTheDocument();
 
-    expect(screen.getByText("Ritmo Diário (Daily Budget)")).toBeInTheDocument();
+    expect(screen.getByText("Ritmo Diário")).toBeInTheDocument();
     expect(screen.getByText("R$ 148,00")).toBeInTheDocument();
 
     expect(screen.getByText("Aporte Calibrado do Mês")).toBeInTheDocument();

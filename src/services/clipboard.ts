@@ -15,6 +15,34 @@ export type ClipboardReadResult =
   | { status: "unsupported"; reason: string };
 
 /**
+ * Verifica se o navegador possui permissão explícita prévia concedida ('granted')
+ * para leitura da área de transferência sem interação direta.
+ *
+ * Se a permissão estiver em 'prompt' ou 'denied', chamar navigator.clipboard.readText()
+ * passivamente faz o Chromium exibir o chip flutuante nativo [ Colar ], que é invasivo
+ * e cobre a interface. Nesses casos, a leitura automática de fundo é bloqueada.
+ */
+export async function canReadClipboardSilently(): Promise<boolean> {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return false;
+  }
+  if (!navigator.clipboard?.readText) {
+    return false;
+  }
+  if (!navigator.permissions?.query) {
+    return false;
+  }
+  try {
+    const permission = await navigator.permissions.query({
+      name: "clipboard-read" as PermissionName,
+    });
+    return permission.state === "granted";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Lê o texto da área de transferência com tratamento robusto de permissões e contextos restritos.
  */
 export async function readClipboardText(): Promise<ClipboardReadResult> {

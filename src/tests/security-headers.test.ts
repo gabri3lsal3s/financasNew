@@ -24,9 +24,8 @@ describe("Tarefa 1.3 — Content-Security-Policy (CSP) & Segurança de Borda em 
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'");
     expect(csp).toContain("https://challenges.cloudflare.com");
-    // Verifica hashes dos scripts inline de tema/splash do index.html
-    expect(csp).toContain("'sha256-JKOMn8MoPLcRGkLyFyVqR4TBgboPYTctNyzH/JtKaXQ='");
-    expect(csp).toContain("'sha256-I7ylwc+uMxBp7vNGAaMZGrK+dMK2PimKgi2kbE4MB8A='");
+    // Verifica o hash do script inline de tema/splash do index.html
+    expect(csp).toContain("'sha256-jvmQZvz40KC4MXFgSyfpQANZKBjT6X3sYOFZPe+jDq4='");
     expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     expect(csp).toContain("img-src 'self' data: blob: https://*.supabase.co");
     expect(csp).toContain(

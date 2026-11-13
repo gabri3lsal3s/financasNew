@@ -53,7 +53,7 @@ UPDATE public.user_subscriptions
 SET trial_consumed_at = COALESCE(trial_consumed_at, trial_ends_at, NOW())
 WHERE trial_consumed_at IS NULL AND (
   tier = 'read_only'::public.subscription_tier OR
-  status IN ('canceled'::public.subscription_status, 'expired'::public.subscription_status, 'past_due'::public.subscription_status) OR
+  status IN ('canceled'::public.subscription_status, 'read_only_expired'::public.subscription_status, 'past_due'::public.subscription_status) OR
   billing_start_at IS NOT NULL OR
   starts_at < NOW() - INTERVAL '30 days' OR
   (tier = 'trial'::public.subscription_tier AND trial_ends_at IS NOT NULL AND trial_ends_at <= NOW())
@@ -166,7 +166,7 @@ BEGIN
     v_sub.trial_consumed_at IS NOT NULL
     OR v_sub.billing_start_at IS NOT NULL
     OR v_sub.tier = 'read_only'::public.subscription_tier
-    OR v_sub.status IN ('canceled'::public.subscription_status, 'expired'::public.subscription_status)
+    OR v_sub.status IN ('canceled'::public.subscription_status, 'read_only_expired'::public.subscription_status)
     OR (v_sub.trial_ends_at IS NOT NULL AND v_sub.trial_ends_at <= NOW())
   );
 

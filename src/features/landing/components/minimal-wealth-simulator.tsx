@@ -20,6 +20,7 @@ import { formatCentsAsBRL, formatPercent } from "@/services/masks";
 import { numberToCents } from "@/domain/money";
 import { storePendingSimulation } from "@/domain/share";
 import {
+  annualRateToMonthlyRate,
   resolveAllocationStatus,
   simulateStrategyAporte,
   STRATEGY_PRESETS,
@@ -95,7 +96,7 @@ export function MinimalWealthSimulator() {
         <ScrollReveal className="text-center max-w-4xl mx-auto">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-primary-strong dark:text-primary">
             <PieChart className="size-3.5 sm:size-4" aria-hidden="true" />
-            <span>Motor de Rebalanceamento Determinístico</span>
+            <span>Rebalanceamento sem vender ativos</span>
           </div>
           <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
             Simulador de Carteira & Aportes Inteligentes
@@ -220,9 +221,34 @@ export function MinimalWealthSimulator() {
                         Pós-aporte
                       </Badge>
                     ) : (
-                      <Badge variant="default" size="xs" className="font-mono">
-                        Retorno {formatPercent(SIMULATION_ANNUAL_RATE)}% a.a.
-                      </Badge>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="cursor-pointer"
+                            aria-label="Como calculamos a rentabilidade da projeção"
+                          >
+                            <Badge variant="default" size="xs" className="font-mono">
+                              Retorno {formatPercent(SIMULATION_ANNUAL_RATE)}% a.a.
+                            </Badge>
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-[min(20rem,calc(100vw-2rem))]">
+                          <p className="text-xs font-bold text-foreground">Rentabilidade da projeção</p>
+                          <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                            {formatPercent(SIMULATION_ANNUAL_RATE)}% ao ano equivalem a{" "}
+                            {formatPercent(
+                              annualRateToMonthlyRate(SIMULATION_ANNUAL_RATE) * 100,
+                            )}
+                            % ao mês, compostos com o aporte lançado ao fim de cada mês.
+                          </p>
+                          <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
+                            A renda passiva usa o yield da carteira pós-aporte ({" "}
+                            {formatPercent(rebalanceData.annualYieldPct)}% a.a.), não a rentabilidade
+                            da projeção.
+                          </p>
+                        </PopoverContent>
+                      </Popover>
                     )}
                   </div>
                 </div>
@@ -254,15 +280,10 @@ export function MinimalWealthSimulator() {
 
               {/* Coluna 2: Ação Calculada pelo Algoritmo */}
               <div className="lg:col-span-6 space-y-4 sm:space-y-5">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-strong dark:text-primary uppercase tracking-wider">
-                    <Sparkles className="size-3.5" aria-hidden="true" />
-                    <span>Cálculo de Aporte em Tempo Real</span>
-                  </div>
-                  <h3 className="text-base sm:text-xl font-bold text-foreground mt-1">
-                    Direcionamento Calculado para {formatBRL(aporteAmount)}:
-                  </h3>
-                </div>
+                <h3 className="flex items-center gap-2 text-base sm:text-xl font-bold text-foreground">
+                  <Sparkles className="size-4 text-primary shrink-0" aria-hidden="true" />
+                  <span>Seu próximo aporte de {formatBRL(aporteAmount)}</span>
+                </h3>
 
                 {/* Cards Dinâmicos de Ação por Classe */}
                 <div className="space-y-2 sm:space-y-2.5">
@@ -387,14 +408,9 @@ export function MinimalWealthSimulator() {
 
             {/* CTA Rodapé do Simulador */}
             <div className="pt-3 sm:pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 border-t border-border/50">
-              <div className="flex flex-col text-center sm:text-left">
-                <span className="text-xs text-muted-foreground">
-                  Zero giro de carteira e zero DARF: o algoritmo equilibra seu patrimônio apenas direcionando novos aportes.
-                </span>
-                <span className="text-[11px] text-muted-foreground mt-0.5">
-                  Simulação ilustrativa e matemática parametrizada. Não constitui análise ou recomendação de investimentos (Resoluções CVM nº 19 e 20/2021).
-                </span>
-              </div>
+              <span className="text-[11px] text-muted-foreground text-center sm:text-left leading-relaxed">
+                Simulação ilustrativa, sem recomendação de investimento (Resoluções CVM 19/20).
+              </span>
               <Link
                 to={trialUrl}
                 onClick={() =>

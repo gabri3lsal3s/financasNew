@@ -16,3 +16,8 @@ export {
 } from "./use-overview-alerts";
 export { useOverviewData } from "./use-overview-data";
 export type { UseOverviewDataOptions } from "./use-overview-data";
+export {
+  usePixClipboardDetector,
+  type DetectedPixTransaction,
+  type UsePixClipboardDetectorResult,
+} from "@/hooks";

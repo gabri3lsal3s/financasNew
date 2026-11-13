@@ -179,6 +179,7 @@
     │   │   │                      #   credit-card-3d + credit-card-wallet + credit-card-gradient (F13),
     │   │   │                      #   delta-hint (F14), highlight-row, projection-line, pace-alert-banner,
     │   │   │                      #   dashboard-alerts-carousel (carrossel inteligente de alertas do dashboard),
+    │   │   │                      #   dashboard-pix-clipboard-card (card dinâmico de sugestão de Pix com valor detectado no clipboard),
     │   │   │                      #   smart-advisor-card (assistente proativo de insights com confirmação de renda em 1 toque),
     │   │   │                      #   quick-aporte-card (bloco de aporte rápido direcionado na Home com rebalanceamento em lote),
     │   │   │                      #   pending-suggestions-card (card discreto de transações capturadas do assistente passivo),
@@ -296,8 +297,10 @@
     │   ├── onboarding/            #   checklist/progresso do primeiro uso (F5.4)
     │   ├── theme/                 #   motor puro de resolução de tema (light/dark/oled/system/schedule), janela diurna e parsing HH:mm
     │   ├── demo-simulation/       # datasets sintéticos puros em memória, trilhas (finanças/investimentos), passos do tour e hand-off contextual (handoff.ts)
-    │   ├── notifications/         #   Fase 5 Android: parsing puro de notificações bancárias, comprovantes Pix em centavos,
-    │   │                          #     pix-receipt-parser.ts (extração de comprovantes Pix), merchant-memory.ts, pix-emv-parser.ts,
+    │   ├── notifications/         #   Parsing puro de notificações bancárias, comprovantes e área de transferência:
+    │   │                          #     pix-clipboard.ts (cascateamento multiformato: EMV, texto livre, comprovante universal),
+    │   │                          #     pix-text-parser.ts (parser puro de chaves, links e mensagens com valor),
+    │   │                          #     pix-emv-parser.ts (decodificador EMV QRCPS tag 26 e 62), merchant-memory.ts (aprendizado com pixKeys),
     │   │                          #     card-resolution.ts (resolução e auto-vínculo de cartões por banco emissor),
     │   │                          #     merchant-catalog.ts (catálogo canônico e aliases), category-inference.ts
     │   ├── money/                 #   parcelamento em centavos, arredondamento, parsing e totais brutos/ponderados (totals.ts)
@@ -416,6 +419,7 @@
     │                              #   use-swipe-navigation (F20 — gesto horizontal),
     │                              #   use-dynamic-favicon, use-dynamic-app-icon (sincronização de marca e ícone no Launcher),
     │                              #   use-container-scroll (monitoramento cirúrgico de rolagem a 120fps sem re-render),
+    │                              #   use-pix-clipboard-detector (detecção reativa e passiva de Pix com valor no clipboard sem polling e sem poluição visual),
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas),
     │                              #   use-document-meta (SEO por rota: title, description, canonical e OG)…)
     ├── services/                  # Apresentação + integrações

@@ -90,13 +90,23 @@ export function detectPixKey(text: string): DetectedPixKey | null {
   }
 
   // 6. CNPJ ou CPF desformatados precedidos por marcador semântico de Pix ou documento
-  const unformattedPixKeyMatch = /(?:chave\s*pix|pix\s*chave|pix|cpf|cnpj)[\s:.-]*(\d{11}|\d{14})\b/i.exec(trimmed);
+  const unformattedPixKeyMatch = /(?:chave\s*pix|pix\s*chave|pix|cpf|cnpj|para)[\s:.-]*(\d{11}|\d{14})\b/i.exec(trimmed);
   if (unformattedPixKeyMatch && unformattedPixKeyMatch[1]) {
     const digits = unformattedPixKeyMatch[1];
     return {
       rawKey: digits,
       normalizedKey: digits,
       type: digits.length === 14 ? "cnpj" : "cpf",
+    };
+  }
+
+  // 6.1 CNPJ isolado de 14 dígitos no texto (sequência exclusiva de pessoas jurídicas)
+  const cnpj14Match = /\b(\d{14})\b/.exec(trimmed);
+  if (cnpj14Match && cnpj14Match[1]) {
+    return {
+      rawKey: cnpj14Match[1],
+      normalizedKey: cnpj14Match[1],
+      type: "cnpj",
     };
   }
 
@@ -165,7 +175,7 @@ export function extractRecipientFromText(text: string): string | undefined {
   if (!text || typeof text !== "string") return undefined;
 
   // Marcadores comuns: "para [Nome]", "favorecido: [Nome]", "destinatário: [Nome]", "recebedor: [Nome]"
-  const recipientMatch = /(?:para|favorecido|destinat[aá]rio|recebedor|recebido de|de)[\s:]+([A-ZÁÉÍÓÚÂÊÔÃÕÇa-záéíóúâêôãõç\s]{3,35})(?:[\n,.-]|$)/i.exec(
+  const recipientMatch = /(?:para|favorecido|destinat[aá]rio|recebedor|recebido de|de)[\s:]+([A-ZÁÉÍÓÚÂÊÔÃÕÇa-záéíóúâêôãõç\s]{3,35}?)(?=\s+(?:chave|pix|cpf|cnpj|banco|ag[eê]ncia|conta|no\s+valor|valor)|[\n,.;-]|$)/i.exec(
     text,
   );
 

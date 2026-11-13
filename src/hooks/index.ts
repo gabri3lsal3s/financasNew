@@ -41,5 +41,10 @@ export {
   type PendingSplitExpenseData,
 } from "./use-pending-split-expense";
 export { usePendingSimulation } from "./use-pending-simulation";
+export { usePixClipboardDetector } from "./use-pix-clipboard-detector";
+export type {
+  DetectedPixTransaction,
+  UsePixClipboardDetectorResult,
+} from "./use-pix-clipboard-detector";
 
 

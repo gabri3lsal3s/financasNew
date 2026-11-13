@@ -37,7 +37,7 @@ describe("LandingPage", () => {
     expect(
       screen.getByRole("heading", { name: /Do controle de cartões e compromissos ao aporte do mês/i }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/30 Dias de Teste sem Compromisso/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Sem Cartão de Crédito/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Caixa Real Disponível").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Ritmo Diário/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Aporte Calibrado do Mês").length).toBeGreaterThan(0);
@@ -72,12 +72,13 @@ describe("LandingPage", () => {
     renderLanding();
 
     expect(
-      screen.getByRole("heading", { name: /Quatro eixos coordenados para sustentação e expansão do seu patrimônio/i }),
+      screen.getByRole("heading", { name: /(Quatro|Cinco) eixos coordenados para sustentação e expansão do seu patrimônio/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Eixo 1 · Liquidez & Caixa Real/i)).toBeInTheDocument();
     expect(screen.getByText(/Eixo 2 · Linha Temporal & Cartões/i)).toBeInTheDocument();
     expect(screen.getByText(/Eixo 3 · Vetor Patrimonial & Aportes/i)).toBeInTheDocument();
     expect(screen.getByText(/Eixo 4 · Finanças Compartilhadas & Pix/i)).toBeInTheDocument();
+    expect(screen.getByText(/Eixo 5 · Captura Invisível & OCR Local/i)).toBeInTheDocument();
     expect(screen.getByText(/O fim da ilusão de saldo e da ansiedade de fim de mês/i)).toBeInTheDocument();
     expect(screen.getByText(/Nunca mais seja pego de surpresa por parcelas esquecidas/i)).toBeInTheDocument();
     expect(screen.getByText(/Alocação matemática de aportes e blindagem contra impostos/i)).toBeInTheDocument();
@@ -131,14 +132,14 @@ describe("LandingPage", () => {
     expect(screen.getByText("Acerto Quitado")).toBeInTheDocument();
   });
 
-  it("renderiza o bloco de narrativa editorial 'Captura Invisível com Inteligência Local' com os caminhos 1, 2 e mágica semântica (Fase 6 — Tarefa 6.1)", () => {
+  it("renderiza o Eixo 5 de captura invisível com os caminhos 1, 2 e aprendizado de comerciantes", () => {
     renderLanding();
 
-    expect(screen.getByText("Captura Invisível com Inteligência Local")).toBeInTheDocument();
+    expect(screen.getByText(/Captura Invisível/i)).toBeInTheDocument();
     expect(screen.getByText(/Caminho 1 \(Rápido\): Leitura Instantânea de Pix & Compartilhamento/i)).toBeInTheDocument();
     expect(screen.getByText(/Caminho 2 \(Garantia\): Leitura Universal de Comprovantes & Cupons/i)).toBeInTheDocument();
-    expect(screen.getByText(/Mágica Semântica: Memória Ativa de CNPJs e Comerciantes/i)).toBeInTheDocument();
-    expect(screen.getByText("Zero Senhas Bancárias")).toBeInTheDocument();
+    expect(screen.getByText(/Aprendizado de Comerciantes: memória ativa de CNPJs/i)).toBeInTheDocument();
+    expect(screen.getByText("Sem senhas bancárias")).toBeInTheDocument();
   });
 
   it("renderiza o Eixo 3 com rebalanceamento determinístico, Radar Fiscal e Dossiê Excel", () => {
@@ -148,7 +149,7 @@ describe("LandingPage", () => {
     expect(screen.getByText("Alocação matemática de aportes e blindagem contra impostos")).toBeInTheDocument();
     expect(screen.getByText(/Rebalanceamento 100% via novos aportes/i)).toBeInTheDocument();
     expect(screen.getByText(/Radar de alíquota regressiva de IR/i)).toBeInTheDocument();
-    expect(screen.getByText(/Dossiê Executivo em Excel/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Dossiê Executivo em planilha Excel/i).length).toBeGreaterThan(0);
   });
 
   it("permite interagir com o Simulador de Carteira com Allocation Donut e recalcular valores", async () => {
@@ -161,7 +162,7 @@ describe("LandingPage", () => {
     const aporte6k = screen.getByRole("button", { name: "R$ 6k" });
     await user.click(aporte6k);
 
-    expect(screen.getByText(/Direcionamento Calculado para R\$ 6.000/i)).toBeInTheDocument();
+    expect(screen.getByText(/Seu próximo aporte de R\$ 6.000/i)).toBeInTheDocument();
 
     const globalStrategy = screen.getByRole("button", { name: "Global" });
     await user.click(globalStrategy);

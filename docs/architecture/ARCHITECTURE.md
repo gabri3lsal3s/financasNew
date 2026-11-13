@@ -134,6 +134,7 @@ O Axir opera em um ecossistema unificado composto por três pilares sob a mesma 
     │
     ├── domain/                    # ⭐ MOTORES DE CÁLCULO PUROS (testáveis, sem deps)
     │   ├── pix/                   #   gerador EMV QRCPS-MPM BACEN, CRC16, chave Pix e QR Code
+    │   ├── notifications/         #   parsers puros de notificações, comprovantes bancários, pix-clipboard, pix-text-parser, merchant-memory
     │   ├── finance/               #   rateio de despesas em centavos e políticas de sobra (split-math.ts)
     │   ├── trips/                 #   algoritmo de liquidação líquida ótima e divisão de cotas (trip-math.ts)
     │   ├── share/                 #   tokens crypto, stateful URLs comprimidas (?s=...) e transporte de simulação
@@ -417,6 +418,13 @@ O console operacional administrativo do Áxis Finance foi completamente segregad
     2. *Nível Micro (Ativo):* a verba designada à classe é distribuída exclusivamente entre seus membros com base no gap das metas individuais ou equiponderação $1/N$;
     3. *Transbordamento & Fracionários:* sobras internas de classe retornam ao pool para atender a próxima classe; suporte nativo a cotas decimais em Cripto (até 8 casas) e painel diagnóstico de ativos não contemplados;
     4. *Gravação Atômica Transacional:* execução em 1-clique via RPC `execute_portfolio_batch_aporte`, atualizando posições em `portfolio_assets`, lançando compras individuais em `portfolio_transactions` e registrando a contribuição em `portfolio_contributions` numa única transação PostgreSQL.
+- **Motor de Captura Pix Multiformato & Área de Transferência (`src/domain/notifications/` — Plano 28):**
+  - Cascateamento puro sem dependências externas: decodificador EMV QRCPS (tag 26 e 62), parser determinístico de chaves e links Pix, e extrator monetário tolerante a expressões textuais de WhatsApp/bancos.
+  - Memória adaptativa estendida com suporte a `pixKeys` e `defaultNature`, permitindo autopreenchimento imediato de nome fantasia e categoria em 1 toque.
+  - Hook reativo passivo `usePixClipboardDetector` em `src/hooks/` operando via `focus` e `visibilitychange` com filtro estrito de valor monetário (`valueCents > 0`), garantindo zero polling de CPU e zero poluição visual (cards na Home e botões no Wizard nunca ficam fixos).
+- **Calculadora Flutuante com Suporte Tolerante a Frases (`src/domain/calculator/`):**
+  - Regex monetário de alta tolerância para captura de valores em frases bancárias.
+  - Fallback acessível elevado que previne foco travado e conflitos com diálogos modais subjacentes.
 
 ---
 

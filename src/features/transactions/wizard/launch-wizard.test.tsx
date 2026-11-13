@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as clipboardService from "@/services/clipboard";
 import { LaunchWizard } from "./launch-wizard";
 
 const createExpenseMock = vi.fn();
@@ -664,6 +665,46 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
       // Deve abrir o diálogo de anexar comprovante
       expect(await screen.findByRole("heading", { name: /Anexar Comprovante/i })).toBeInTheDocument();
       expect(screen.getByText(/Arraste o comprovante aqui/i)).toBeInTheDocument();
+    });
+  });
+
+  describe("Botão Colar Pix Condicional na Área de Transferência", () => {
+    it("não renderiza o botão Colar Pix quando a área de transferência não tiver Pix com valor", () => {
+      vi.spyOn(clipboardService, "readClipboardText").mockResolvedValue({
+        status: "empty",
+      });
+
+      render(<LaunchWizard initialMode="quick" />);
+
+      expect(screen.queryByRole("button", { name: /Colar comprovante Pix/i })).not.toBeInTheDocument();
+    });
+
+    it("renderiza o botão Colar Pix quando houver um Pix com valor válido na área de transferência e preenche o formulário ao clicar", async () => {
+      const user = userEvent.setup();
+      vi.spyOn(clipboardService, "canReadClipboardSilently").mockResolvedValue(true);
+      vi.spyOn(clipboardService, "readClipboardText").mockResolvedValue({
+        status: "success",
+        text: "Pix de R$ 38,00 para Padaria São Bento",
+      });
+
+      render(<LaunchWizard initialMode="quick" />);
+
+      // Aguarda detecção passiva do hook
+      const pasteBtn = await screen.findByRole("button", { name: /Colar comprovante Pix/i });
+      expect(pasteBtn).toBeInTheDocument();
+
+      await user.click(pasteBtn);
+
+      // Deve preencher a descrição e o valor
+      await waitFor(() => {
+        const descInput = screen.getByLabelText(/Descrição/i) as HTMLInputElement;
+        expect(descInput.value).toContain("Padaria São Bento");
+        const valInput = screen.getByRole("textbox", { name: "Valor do lançamento" }) as HTMLInputElement;
+        expect(valInput.value).toMatch(/38,00/);
+      });
+
+      // E o botão é limpo e desaparece
+      expect(screen.queryByRole("button", { name: /Colar comprovante Pix/i })).not.toBeInTheDocument();
     });
   });
 

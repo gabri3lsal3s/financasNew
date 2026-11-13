@@ -1,6 +1,6 @@
 # 27 — Refinamento do Simulador de Carteira/Aportes e da Apresentação Pública
 
-> **Status:** diagnóstico concluído · execução pendente de aprovação
+> **Status:** ✅ concluído e arquivado (v3.5.0) — ver §11
 > **Classificação (AGENTS.md §10.5):** 🔵 Fluxo Completo (Feature/Plano)
 > **Versão alvo:** 3.5.0 (MINOR) com bump 3.4.0 → 3.5.0 no fechamento
 > **Quality gate previsto:** `npm run verify:full`
@@ -302,11 +302,42 @@ Regra editorial: no máximo 2 linhas por bloco de apoio, zero advérbios de inte
 
 ## 10. Checklist de verificação final
 
-- [ ] `npm run verify` (typecheck + lint + vitest domínio) verde
-- [ ] `npm run verify:full` (Playwright smoke) verde
-- [ ] Simulador em 375px, 768px e 1280px sem overflow horizontal
-- [ ] Nenhum valor monetário truncado (375px, fontes 200%)
-- [ ] Navegação por teclado completa no gráfico e no donut
-- [ ] Uma única definição de renda passiva em todo o card
-- [ ] Zero claims não verificáveis na landing
-- [ ] `docs/roadmap/ROADMAP.md` e este plano atualizados/arquivados
+- [x] `npm run verify` (typecheck + lint + vitest domínio) verde
+- [x] `npm run verify:full` (Playwright smoke) verde
+- [x] Simulador em 375px, 768px e 1280px sem overflow horizontal
+- [x] Nenhum valor monetário truncado (375px, fontes 200%)
+- [x] Navegação por teclado completa no gráfico e no donut
+- [x] Uma única definição de renda passiva em todo o card
+- [x] Zero claims não verificáveis na landing
+- [x] `docs/roadmap/ROADMAP.md` e este plano atualizados/arquivados
+
+---
+
+## 11. Resultado da execução (v3.5.0)
+
+### Fase 1 — entregue
+- `src/domain/portfolio/projection.ts` (+ `projection.test.ts`, 10 casos) como motor puro da projeção patrimonial, exportado pelo barrel do domínio; `FireProjectionCurve` consome o motor (nenhum cálculo no componente).
+- `resolveAllocationStatus` (+ testes) classifica cada classe em `on_target` / `below_target` / `above_target` (tolerância de 1 p.p.), usado no direcionamento.
+- Renda passiva unificada no yield médio ponderado da carteira pós-aporte (7,8% a.a. no preset Dividendos) nas duas abas; a regra dos 4% permanece só em `calculateCriticalCapital` (domínio).
+- Curva reescrita: eixo em duas faixas ("Hoje" / "25 anos"), pill clampada por medição (`ResizeObserver`), marcos "Hoje" e "Independência (12a)", cards `grid-cols-1 sm:grid-cols-3` com `p-3`, sem `text-[9px]`/`text-white`, ARIA de slider sem controles focáveis internos.
+- Rótulos por classe: "Hoje X% · meta Y% — abaixo da meta" e "Acima da meta / Na meta · Sem aporte" (fim de "Aguardar" e "Comprando na defasagem").
+- "Aprovar Despesa" virou `Button` real com confirmação e `pushToast({ action: Desfazer })` (AGENTS §32).
+
+### Fase 2 — entregue
+- As duas tablists artesanais migraram para `components/ui/tabs.tsx` (novo campo opcional `ariaLabel` no `TabItem` para nomes acessíveis descritivos).
+- Donut clicável (`selectedKey`/`onSelectKey`): a classe escolhida destaca o card correspondente do direcionamento.
+- Curva: série comparativa "Sem aportes" (tracejada), toggle "Valores reais" (inflação de 4% a.a.) e linha de ponto de inflexão ("juros ≥ aporte").
+- Explicabilidade (§33): popover com o cálculo da renda passiva (rendimento por classe ÷ 12) e popover do badge de rentabilidade (8% a.a. ↔ 0,64% a.m.).
+- Pix do showcase com payload único gerado por `generatePixBrCode` (`src/domain/pix`), QR renderizado por `QrCodeCanvas` e toast ao copiar/cobrar.
+- Handoff pós-signup: o CTA do simulador grava `PendingRebalanceSimulation` via `storePendingSimulation` antes de navegar.
+- Densidade: removidas as legendas redundantes dos controles, o parágrafo legal do rodapé virou uma linha e o direcionamento tem um único título ("Seu próximo aporte de R$ 3.000").
+
+### Fase 3 — entregue
+- 5º eixo nomeado ("Eixo 5 · Captura Invisível & OCR Local") e headline ajustada para "Cinco eixos".
+- Prova de Metas, Relatórios e Insights em três cards curtos ao fim das narrativas.
+- Tabela de plataformas de 13 → 6 linhas, com "E mais: …" resumindo o restante.
+- "30 dias grátis" consolidado: hero (CTA), pricing (card de teste) e FAQ.
+- Claims corrigidos: Dossiê em XML Spreadsheet (5 abas, sem promessa de fórmulas), remoção de "99% Confiança", "menos de 2 segundos", "em 3 segundos"; "Mágica Semântica" → "Aprendizado de Comerciantes"; anglicismos reduzidos a Safe-to-Spend (Daily Budget → Ritmo Diário, FIRE → Independência, Privacy Shield → Escudo de Privacidade).
+
+### Pendência consciente
+- **Item 17 (Modo Demonstração na hero) não executado:** `DemoTrackSelectModal` depende de `@/state/demo-mode` e do App Shell para rodar a trilha; montá-lo na landing quebraria o isolamento de bundle público (v3.3.0) e ofereceria um tour que não executa. Fica registrado como próximo passo: rota pública dedicada (`/demonstracao`) carregando o shell em modo demo sob demanda.

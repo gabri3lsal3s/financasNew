@@ -61,6 +61,7 @@ import {
 } from "@/state/queries/use-trips";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
+import { usePixClipboardDetector } from "@/hooks";
 import { calculateEqualSplits, resolveActiveTripMember } from "@/domain/trips";
 import { useDemoSession } from "@/state/demo-mode";
 import type { RecurrenceFrequency } from "@/domain/recurrences";
@@ -207,6 +208,7 @@ export function LaunchWizard({
   const createIncomeInstallments = useCreateIncomeInstallments();
   const createRecurrence = useCreateRecurrence();
   const addTripExpenseMutation = useAddTripExpenseMutation();
+  const { detectedPix, clearDetectedPix } = usePixClipboardDetector();
 
   const tripMembers = useMemo(
     () => selectedTripDetails.data?.members ?? [],
@@ -834,6 +836,33 @@ export function LaunchWizard({
 
   const handlePastePixFromClipboard = async () => {
     try {
+      if (detectedPix && detectedPix.candidate.valueCents > 0) {
+        const candidate = detectedPix.candidate;
+        handleReceiptParsed({
+          id: `pix_clip_${Date.now()}`,
+          bankName: "Pix",
+          nature: candidate.nature,
+          type: candidate.nature,
+          amountCents: candidate.valueCents,
+          description: candidate.description,
+          merchant: candidate.merchant,
+          recipientName: candidate.recipientName,
+          pixKey: candidate.pixKey,
+          taxId: candidate.taxId,
+          date: candidate.date || todayISO(),
+          paymentMethod:
+            candidate.paymentMethod === "debit_card"
+              ? "debit"
+              : candidate.paymentMethod === "boleto"
+                ? "other"
+                : candidate.paymentMethod,
+          timestamp: Date.now(),
+          rawText: detectedPix.rawText,
+        });
+        clearDetectedPix();
+        return;
+      }
+
       const clipResult = await readClipboardText();
       if (clipResult.status !== "success" || !clipResult.text) {
         setAttachOpen(true);
@@ -842,7 +871,7 @@ export function LaunchWizard({
 
       const text = clipResult.text.trim();
       const candidate = parseClipboardTransactionCandidate(text);
-      if (candidate) {
+      if (candidate && candidate.valueCents > 0) {
         handleReceiptParsed({
           id: `pix_clip_${Date.now()}`,
           bankName: "Pix",
@@ -864,6 +893,7 @@ export function LaunchWizard({
           timestamp: Date.now(),
           rawText: text,
         });
+        clearDetectedPix();
         return;
       }
 
@@ -909,17 +939,19 @@ export function LaunchWizard({
               <span className="hidden sm:inline">Modo rápido</span>
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            onClick={() => void handlePastePixFromClipboard()}
-            className="h-7 text-xs border-primary/30 bg-surface-raised hover:bg-primary/5 text-primary-strong gap-1 px-2.5 font-medium shadow-xs cursor-pointer"
-            aria-label="Colar comprovante Pix"
-          >
-            <ClipboardPaste className="size-3.5 text-primary" aria-hidden="true" />
-            <span className="hidden sm:inline">Colar Pix</span>
-          </Button>
+          {detectedPix && detectedPix.candidate.valueCents > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => void handlePastePixFromClipboard()}
+              className="h-7 text-xs border-primary/30 bg-surface-raised hover:bg-primary/5 text-primary-strong gap-1 px-2.5 font-medium shadow-xs cursor-pointer animate-in fade-in duration-200"
+              aria-label="Colar comprovante Pix"
+            >
+              <ClipboardPaste className="size-3.5 text-primary" aria-hidden="true" />
+              <span className="hidden sm:inline">Colar Pix</span>
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"

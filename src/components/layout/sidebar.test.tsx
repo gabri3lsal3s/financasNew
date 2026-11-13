@@ -6,9 +6,26 @@ import { axe } from "vitest-axe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./sidebar";
 
-const { mockState } = vi.hoisted(() => ({
+const { mockState, mockSub } = vi.hoisted(() => ({
   mockState: {
     appMode: "investor" as "essential" | "investor",
+  },
+  mockSub: {
+    current: {
+      isPro: true,
+      isTrial: false,
+      isReadOnly: false,
+      trialDaysRemaining: null as number | null,
+      plan: "annual" as "annual" | "monthly" | null,
+      tier: "pro_annual" as "pro_annual" | "pro_monthly" | "trial" | "read_only",
+      status: "active",
+      billingPhase: "active",
+      trialEndsAt: null as string | null,
+      currentPeriodEnd: null as string | null,
+      cancelAtPeriodEnd: false,
+      isFullAccess: true,
+      hasAutoRenew: false,
+    },
   },
 }));
 
@@ -45,18 +62,7 @@ vi.mock("@/state", () => ({
     isLoading: false,
     toggleTripMode: vi.fn(),
   }),
-  useUserSubscription: () => ({
-    isPro: true,
-    isTrial: false,
-    isReadOnly: false,
-    trialDaysRemaining: null,
-    plan: "annual",
-    tier: "pro_annual",
-    trialEndsAt: null,
-    currentPeriodEnd: null,
-    cancelAtPeriodEnd: false,
-    isFullAccess: true,
-  }),
+  useUserSubscription: () => mockSub.current,
   useAppMode: () => ({
     appMode: mockState.appMode,
     isInvestorMode: mockState.appMode === "investor",
@@ -84,6 +90,21 @@ beforeEach(() => {
   mockFamilyData = null;
   mockIsFamilyModeEnabled = false;
   mockState.appMode = "investor";
+  mockSub.current = {
+    isPro: true,
+    isTrial: false,
+    isReadOnly: false,
+    trialDaysRemaining: null,
+    plan: "annual",
+    tier: "pro_annual",
+    status: "active",
+    billingPhase: "active",
+    trialEndsAt: null,
+    currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
+    isFullAccess: true,
+    hasAutoRenew: false,
+  };
 });
 
 describe("Sidebar colapsável (F7.2)", () => {
@@ -195,6 +216,45 @@ describe("Sidebar colapsável (F7.2)", () => {
   it("mantém o item Investimentos sempre acessível na sidebar para todos os usuários (§Plano 11)", () => {
     renderSidebar();
     expect(screen.getByRole("link", { name: "Investimentos" })).toBeInTheDocument();
+  });
+
+  it("não exibe o card de Plano Pro Ativo quando o plano Pro estiver ativo e regular", () => {
+    mockSub.current = {
+      ...mockSub.current,
+      isPro: true,
+      isTrial: false,
+      isReadOnly: false,
+      status: "active",
+      billingPhase: "active",
+    };
+    renderSidebar();
+    expect(screen.queryByText("Plano Pro Ativo")).not.toBeInTheDocument();
+    expect(screen.queryByText("Assinatura confirmada")).not.toBeInTheDocument();
+  });
+
+  it("exibe o bloco de Pagamento Pendente quando a assinatura estiver com status past_due", () => {
+    mockSub.current = {
+      ...mockSub.current,
+      status: "past_due",
+      billingPhase: "past_due",
+    };
+    renderSidebar();
+    expect(screen.getByText("Pagamento Pendente")).toBeInTheDocument();
+    expect(screen.getByText("Regularize sua assinatura")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Regularizar" })).toBeInTheDocument();
+  });
+
+  it("exibe o bloco de Teste Pro quando o usuário estiver no período de trial", () => {
+    mockSub.current = {
+      ...mockSub.current,
+      isPro: false,
+      isTrial: true,
+      trialDaysRemaining: 15,
+      hasAutoRenew: false,
+    };
+    renderSidebar();
+    expect(screen.getByText("Teste Pro Ativo")).toBeInTheDocument();
+    expect(screen.getByText("15d restantes")).toBeInTheDocument();
   });
 });
 

@@ -60,7 +60,12 @@ import {
   OverviewDailyFlowSection,
   OverviewBudgetsSection,
 } from "../components";
-import { useDashboardAlertDismissals, useOverviewPermissionsBanner, useOverviewData } from "../hooks";
+import {
+  useDashboardAlertDismissals,
+  useOverviewPermissionsBanner,
+  useOverviewData,
+  usePixClipboardDetector,
+} from "../hooks";
 import { AddContributionDialog } from "@/features/goals";
 import { ActiveTripBanner } from "@/features/trips/components";
 import { ActiveSplitsCard } from "@/features/transactions/components";
@@ -78,7 +83,7 @@ export function OverviewPage() {
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [demoTrackModalOpen, setDemoTrackModalOpen] = useState(false);
   const [androidBannerDismissed, setAndroidBannerDismissed] = useState(false);
-  const [pixCardDismissed, setPixCardDismissed] = useState(false);
+  const { detectedPix, dismissDetectedPix, clearDetectedPix } = usePixClipboardDetector();
 
   const navigate = useNavigate();
   const { guardAction, upgradeModal } = useMutationGuard();
@@ -92,6 +97,7 @@ export function OverviewPage() {
       forma?: "pix";
       pixKey?: string;
     }) => {
+      clearDetectedPix();
       const search = new URLSearchParams();
       search.set("novo", params.tipo || "despesa");
       search.set("modo", "rapido");
@@ -101,7 +107,7 @@ export function OverviewPage() {
       if (params.categoria) search.set("categoria", params.categoria);
       navigate({ pathname: "/", search: search.toString() });
     },
-    [navigate],
+    [clearDetectedPix, navigate],
   );
 
   const { alertDismissals, updateAlertDismissals } = useDashboardAlertDismissals();
@@ -390,13 +396,14 @@ export function OverviewPage() {
       priority: cashGapResult.severity === "critical" ? 1 : 3,
       content: <CashGapAlert result={cashGapResult} />,
     },
-    !pixCardDismissed && {
+    Boolean(detectedPix && detectedPix.candidate.valueCents > 0) && {
       id: "pix-clipboard-alert",
-      priority: 2,
+      priority: 1,
       content: (
         <DashboardPixClipboardCard
+          detected={detectedPix!}
           onLaunch={handleLaunchPixFromClipboard}
-          onDismiss={() => setPixCardDismissed(true)}
+          onDismiss={dismissDetectedPix}
         />
       ),
     },

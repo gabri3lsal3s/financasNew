@@ -79,6 +79,16 @@ vi.mock("@/state", () => ({
     isLoading: false,
     subscription: null,
   }),
+  useUserPreferences: () => ({
+    data: null,
+    isLoading: false,
+    error: null,
+  }),
+  useUpdateCustomSettings: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 vi.mock("@/state/queries/use-public-shares", () => ({

@@ -133,7 +133,7 @@ export function LandingFooter() {
                   to="/ferramentas/juros-compostos"
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors py-0.5 inline-block"
                 >
-                  Juros Compostos & FIRE
+                  Juros Compostos & Independência
                 </Link>
               </div>
             </div>

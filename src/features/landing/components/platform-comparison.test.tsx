@@ -24,26 +24,27 @@ describe("PlatformComparison — Comparação Realista de Plataformas (Fase 6 �
     expect(screen.getByText("Nativo Pro")).toBeInTheDocument();
   });
 
-  it("renderiza os diferenciais reais de captura inteligente na tabela detalhada", () => {
+  it("renderiza apenas os diferenciais reais na tabela e resume o restante em uma linha", () => {
     render(<PlatformComparison />);
 
-    // Fatos reais solicitados na Tarefa 6.2:
+    // Matriz enxuta: 6 linhas que realmente diferenciam as plataformas
     expect(
-      screen.getByText("Compartilhamento Nativo de Comprovantes via Intent do Android"),
+      screen.getByText("Compartilhar comprovantes de qualquer banco direto no app"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Captura Inteligente de Comprovantes (PDF/Imagem/Texto com OCR local gratuito)"),
+      screen.getByText("Captura de comprovantes com OCR no dispositivo"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Caixa Real Seguro e orçamento diário")).toBeInTheDocument();
+    expect(screen.getByText("Rebalanceamento de aportes sem vender ativos")).toBeInTheDocument();
+    expect(
+      screen.getByText("Instalação na tela inicial sem loja de aplicativos"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Aprendizado Semântico de CNPJ e Nomes Fantasia"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Lançamento Rápido em 3 segundos (tela única)"),
+      screen.getByText("Biometria física (digital ou reconhecimento facial)"),
     ).toBeInTheDocument();
 
-    // Outros pilares fundamentais
-    expect(screen.getByText("Caixa Real Seguro (Safe-to-Spend) e Daily Budget")).toBeInTheDocument();
-    expect(screen.getByText("Rebalanceamento determinístico de aportes")).toBeInTheDocument();
+    // O restante do catálogo vive em uma única linha de resumo
+    expect(screen.getByText(/E mais: Radar Fiscal, Escudo de Privacidade/i)).toBeInTheDocument();
   });
 
   it("garante responsividade da tabela com container de rolagem horizontal e min-width seguro", () => {

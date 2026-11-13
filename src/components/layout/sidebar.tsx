@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { NavLink, useNavigate } from "react-router";
-import { ChevronLeft, ChevronRight, Sparkles, BookOpen, ShieldCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, BookOpen, ShieldCheck, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { navGroups, filterNavItems } from "@/components/layout/nav-items";
@@ -74,6 +74,10 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const isFamilyActive = Boolean(isFamilyModeEnabled);
   const isTripActive = Boolean(isTripModeEnabled);
   const expanded = !isCollapsed || hoverExpanded;
+  const isPaymentPending =
+    subscription.status === "past_due" ||
+    subscription.status === "unpaid" ||
+    subscription.billingPhase === "past_due";
 
   const visibleGroups = useMemo(() => {
     return navGroups
@@ -180,43 +184,43 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Bloco de Status do Plano e Conversão Pro */}
-      {subscription.isPro && !subscription.isTrial && !subscription.isReadOnly && expanded && (
-        <div className="shrink-0 mx-2.5 mb-2 rounded-xl border border-border/80 bg-surface/80 p-2.5 flex items-center justify-between text-xs animate-fade-slide-in select-none">
+      {/* Bloco de Status do Plano: exibido apenas para pendências de pagamento */}
+      {isPaymentPending && !subscription.isReadOnly && expanded && (
+        <div className="shrink-0 mx-2.5 mb-2 rounded-xl border border-warning/30 bg-warning/10 p-2.5 flex items-center justify-between text-xs animate-fade-slide-in select-none">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-positive/10 border border-positive/20 text-positive-strong">
-              <ShieldCheck className="size-3.5" aria-hidden="true" />
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-warning/20 border border-warning/30 text-warning-strong">
+              <AlertTriangle className="size-3.5" aria-hidden="true" />
             </span>
             <div className="flex flex-col min-w-0">
               <span className="font-semibold text-foreground text-[11px] truncate">
-                Plano Pro Ativo
+                Pagamento Pendente
               </span>
               <span className="text-[10px] text-muted-foreground truncate">
-                Assinatura confirmada
+                Regularize sua assinatura
               </span>
             </div>
           </div>
           <button
             type="button"
             onClick={() => navigate("/configuracoes?tab=assinatura")}
-            title="Gerenciar assinatura nas configurações"
-            className="text-[11px] font-medium text-primary-strong hover:text-primary transition-colors shrink-0 ml-2 cursor-pointer"
+            title="Regularizar assinatura nas configurações"
+            className="text-[11px] font-medium text-warning-strong hover:underline transition-colors shrink-0 ml-2 cursor-pointer"
           >
-            Gerenciar
+            Regularizar
           </button>
         </div>
       )}
 
-      {subscription.isPro && !subscription.isTrial && !subscription.isReadOnly && !expanded && (
+      {isPaymentPending && !subscription.isReadOnly && !expanded && (
         <div className="shrink-0 flex justify-center mb-2">
           <button
             type="button"
             onClick={() => navigate("/configuracoes?tab=assinatura")}
-            title="Plano Pro Ativo · Clique para gerenciar"
-            aria-label="Plano Pro Ativo"
-            className="flex size-9 items-center justify-center rounded-xl border border-positive/30 bg-positive/10 text-positive-strong hover:bg-positive/20 transition-colors cursor-pointer"
+            title="Pagamento Pendente · Clique para regularizar"
+            aria-label="Pagamento Pendente"
+            className="flex size-9 items-center justify-center rounded-xl border border-warning/30 bg-warning/10 text-warning-strong hover:bg-warning/20 transition-colors cursor-pointer"
           >
-            <ShieldCheck className="size-4" aria-hidden="true" />
+            <AlertTriangle className="size-4" aria-hidden="true" />
           </button>
         </div>
       )}

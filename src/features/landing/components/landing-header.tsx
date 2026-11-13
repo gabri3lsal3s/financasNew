@@ -377,7 +377,7 @@ export function LandingHeader() {
                     className={cn(buttonVariants(), "w-full justify-center gap-1.5 shadow-sm min-h-12")}
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    Criar conta gratuita (30 dias)
+                    Criar conta gratuita
                   </Link>
                   <Link
                     to="/entrar"

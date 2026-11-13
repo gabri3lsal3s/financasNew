@@ -1,5 +1,24 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.5.0 (Build 58)** registra a conclusão conjunta do **Plano de Refinamento do Simulador de Carteira/Aportes e da Apresentação Pública** ([`docs/plans/completed/27_PLANO_REFINAMENTO_SIMULADOR_E_APRESENTACAO_PUBLICA.md`](../plans/completed/27_PLANO_REFINAMENTO_SIMULADOR_E_APRESENTACAO_PUBLICA.md)) e do **Plano de Captura Inteligente de Pix, Memória Adaptativa e Fricção Zero** ([`docs/plans/completed/28_PLANO_CAPTURA_PIX_MEMORIA_E_FRICCAO_ZERO.md`](../plans/completed/28_PLANO_CAPTURA_PIX_MEMORIA_E_FRICCAO_ZERO.md)) (2026-11-13):
+> - **(1) Captura Inteligente de Pix & Fricção Zero**:
+>   - Card de sugestão Pix na Home estritamente não-fixo e reativo, disparado apenas quando houver chave com valor monetário detectado na área de transferência (`valueCents > 0`);
+>   - Botão `[📋 Colar Pix]` no Wizard de Lançamentos condicional, visível exclusivamente quando houver Pix válido com valor na área de transferência;
+>   - Motor puro de parsing EMVCo e mensagens Pix com decodificação de chave na tag 26, extração de QR code, CPF/CNPJ/e-mail/celular/EVP e links;
+> - **(2) Memória Adaptativa Contínua**:
+>   - Aprendizado incremental de natureza (receita/despesa) e categorias frequentes indexadas por chaves Pix de estabelecimentos e favorecidos;
+> - **(3) Governança Sensorial da Sidebar (Status do Plano)**:
+>   - Ocultação do bloco de status Pro Ativo quando o assinante estiver com plano ativo e regular (sem pendências), eliminando ruído visual desnecessário na navegação;
+>   - Exibição de alerta visual apenas em caso de inadimplência/tolerância (`past_due` com ação de "Regularizar"), modo somente-leitura ou período de degustação (trial);
+> - **(4) Motor de Projeção no Domínio**: novo `src/domain/portfolio/projection.ts` (nominal/real, renda passiva por yield da carteira, snapshots anuais, ponto de inflexão juros ≥ aporte) com 10 testes; `FireProjectionCurve` deixou de calcular na view e passou a consumir o motor;
+> - **(5) Renda Passiva Unificada**: o card e a curva usam o yield médio ponderado da carteira pós-aporte (fim do valor paralelo de 4% a.a.); a regra dos 4% permanece exclusivamente em `calculateCriticalCapital`;
+> - **(6) Responsividade e Legibilidade do Simulador**: eixo temporal em duas faixas, pill flutuante clampada por medição, cards `grid-cols-1 sm:grid-cols-3`, remoção de `text-[9px]`, de setas de ano e de rótulos ambíguos ("Aguardar", "Comprando na defasagem");
+> - **(7) Interatividade**: donut clicável com destaque do direcionamento, série comparativa "Sem aportes", toggle Nominal/Real, popovers de explicabilidade (§33) da renda passiva e da rentabilidade;
+> - **(8) Consistência de Primitivos**: as duas tablists artesanais migraram para `components/ui/tabs.tsx` (com `ariaLabel` por item), Pix do showcase com payload EMV único + QR + toast, e "Aprovar Despesa" virou `Button` com Desfazer (Regra 32);
+> - **(9) Handoff de Simulação**: o CTA do simulador grava `PendingRebalanceSimulation` antes do cadastro, retomando os valores no onboarding;
+> - **(10) Narrativa Pública**: 5º eixo nomeado (Captura Invisível & OCR Local), prova de Metas/Relatórios/Insights, tabela de plataformas de 13 → 6 linhas, "30 dias grátis" consolidado em 3 menções e claims não verificáveis removidos (XML Spreadsheet real, sem "99% confiança"/"2 segundos"/anglicismos);
+> - **(11) Quality Gates**: TypeScript `tsc -b` 0 erros, `eslint .` 0 erros, Vitest 170 arquivos / 2.666 testes de domínio aprovados e Playwright smoke 8/8 verde em `npm run verify:full`.
+>
 > **v3.4.0 (Build 57)** registra a conclusão do **Plano de Integridade de Billing, Memória de Lançamentos e Simuladores** (2026-11-12), formalmente arquivado em [`docs/plans/completed/26_PLANO_INTEGRIDADE_BILLING_MEMORIA_E_SIMULADORES.md`](../plans/completed/26_PLANO_INTEGRIDADE_BILLING_MEMORIA_E_SIMULADORES.md):
 > - **(1) Ciclo de Vida da Assinatura & Máquina de Estados Canônica**:
 >   - Domínio puro em `src/domain/subscription/` com estados explícitos: `trial_active`, `trial_scheduled`, `trial_expired`, `active`, `past_due`, `canceled_until_period_end`, `read_only` e `lifetime`;
@@ -6910,6 +6929,33 @@ flowchart TD
 >   - Suíte `src/domain/subscription` expandida com novos testes anti-brecha (100% aprovados, 22 testes em `trial.test.ts`);
 >   - Testes de integração em `subscription-checkout-page.test.tsx` cobrindo o bloqueio de agendamento e exigência de pagamento imediato para contas em somente leitura;
 >   - Typecheck (`tsc --noEmit`) e ESLint 100% verdes.
+
+---
+
+### Fase 105 — Captura Inteligente de Pix, Memória Adaptativa e Lançamento de Fricção Zero (v3.5.0)
+
+> **Status:** ✅ Concluída e Auditada — **Captura Reativa sem Poluição Visual & Fricção Zero**: Conclusão integral do plano `docs/plans/28_PLANO_CAPTURA_PIX_MEMORIA_E_FRICCAO_ZERO.md`. Eliminação definitiva da fricção de lançamento de despesas e receitas a partir da área de transferência com comportamento equivalente aos maiores bancos digitais:
+> - **Motor Puro Multiformato de Pix & Área de Transferência (`pix-clipboard.ts`, `pix-text-parser.ts`, `pix-emv-parser.ts`):**
+>   - Cascateamento 100% puro em TypeScript: decodificação de BR Code EMV (tags 26 `01` chave e `02` descrição, tag 54 valor em centavos e tag 62 txId), parser de mensagens livres de bancos/WhatsApp, detecção de chaves EVP (UUIDv4), e-mails, CNPJs (formatados e 14 dígitos), CPFs (formatados e 11 dígitos), celulares com DDD (+55) e links de cobrança com query params (`valor`, `chave`, `nome`);
+>   - Extração tolerante de valores monetários em formato brasileiro (`R$ 45,00`, `45,00`) e internacional em centavos inteiros (`amountCents`);
+>   - Separação semântica limpa de recebedor com lookahead de palavras de parada (`chave`, `pix`, `cpf`, `cnpj`, `valor`).
+> - **Memória Adaptativa Contínua por Chave Pix (`merchant-memory.ts`, `merchant-resolver.ts`, `merchant-learning.ts`):**
+>   - Expansão do modelo de memória de estabelecimentos para armazenar array `pixKeys` e `defaultNature` (`expense` | `income`);
+>   - Resolução em Camada 1: se uma chave Pix já foi utilizada pelo usuário, o sistema recupera instantaneamente o nome amigável e a categoria previamente confirmada;
+>   - Aprendizado contínuo: submissões no Wizard Rápido gravam a chave Pix associada à categoria selecionada.
+> - **Requisito Estrito da Home & Wizard (Zero Card Fixo & Sem Poluição Visual):**
+>   - **Zero Card Fixo na Home:** Remoção completa de cards estáticos genéricos de Pix. O card no carrossel de alertas (`DashboardPixClipboardCard`) surge **exclusivamente quando houver um Pix com valor monetário válido (> R$ 0,00)** na área de transferência;
+>   - **Chaves avulsas sem valor não aparecem** na tela inicial para prevenir poluição e fadiga visual;
+>   - **Botão "Colar Pix" Condicional no Wizard:** No cabeçalho do `LaunchWizard`, o botão `[📋 Colar Pix]` agora é 100% condicional à presença de um Pix com valor no clipboard. Sem Pix com valor, a barra exibe apenas `[📎 Anexar]`. Ao clicar, os dados são preenchidos em 1 toque e o botão desaparece imediatamente;
+>   - **Hook Passivo Global:** `usePixClipboardDetector` em `src/hooks/` escutando eventos de `focus` da janela e `visibilitychange` (ao retornar de outro app bancário ou desbloqueio biométrico) com debounce de 150ms e silenciamento de erros;
+>   - **Ação de Dispensar:** Botão `✕` no card memoriza o texto na sessão para não reativar o alerta repetidamente.
+> - **Calculadora Flutuante com Suporte Tolerante a Frases (`floating-calculator.tsx`, `domain/calculator/`):**
+>   - Resolução de regex monetário tolerante a strings com texto livre e palavras misturadas;
+>   - Elevação acessível do diálogo de fallback para prevenir bloqueios de focus trap com modais subjacentes.
+> - **Qualidade e Testes:**
+>   - Suíte de 606 testes aprovados no Vitest cobrindo os parsers multiformato, detector reativo, card da Home, memória de chaves Pix e Wizard Rápido;
+>   - Typecheck (`tsc --noEmit`) com 0 erros;
+>   - ESLint (`npm run lint`) com 0 advertências.
 
 
 

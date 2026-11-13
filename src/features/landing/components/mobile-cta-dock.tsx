@@ -32,14 +32,14 @@ export function MobileCtaDock({ visible }: MobileCtaDockProps) {
             <span>Axir</span>
           </span>
           <span className="text-[11px] text-muted-foreground truncate">
-            {isLoggedIn ? "Acesse seu painel" : "30 dias de teste · Cancele fácil"}
+            {isLoggedIn ? "Acesse seu painel" : "Sem cartão · Cancele fácil"}
           </span>
         </div>
 
         <Link
           to={isLoggedIn ? "/" : trialUrl}
           aria-label={
-            isLoggedIn ? "Acessar painel do Axir" : "Testar Grátis — 30 dias de teste pelo celular"
+            isLoggedIn ? "Acessar painel do Axir" : "Testar Grátis pelo celular"
           }
           className={cn(
             buttonVariants({ size: "sm" }),

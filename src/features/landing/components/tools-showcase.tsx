@@ -55,14 +55,14 @@ const TOOLS: ToolItem[] = [
   },
   {
     id: "compound",
-    title: "Simulador de Juros Compostos & FIRE",
+    title: "Simulador de Juros Compostos & Independência",
     badge: "Longo Prazo & Independência",
     badgeVariant: "positive",
     description:
       "Projete a multiplicação exponencial do seu patrimônio com aportes mensais e descubra o ano exato em que a sua renda passiva cobrirá seu custo de vida.",
     highlights: [
       "Ponto de Inflexão (juros mensais superando aportes)",
-      "Estimativa de ano de alcance do FIRE (Independência)",
+      "Estimativa do ano de alcance da independência financeira",
       "Tabela completa de evolução patrimonial ano a ano",
     ],
     path: "/ferramentas/juros-compostos",

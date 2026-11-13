@@ -9,83 +9,45 @@ interface PlatformFeature {
   androidPro: boolean | string;
 }
 
+/**
+ * Matriz enxuta: apenas os recursos que diferenciam as plataformas.
+ * O restante do catálogo aparece resumido em uma linha após a tabela.
+ */
 const features: PlatformFeature[] = [
   {
-    name: "Compartilhamento Nativo de Comprovantes via Intent do Android",
+    name: "Compartilhar comprovantes de qualquer banco direto no app",
     web: false,
     pwa: false,
     androidPro: true,
   },
   {
-    name: "Captura Inteligente de Comprovantes (PDF/Imagem/Texto com OCR local gratuito)",
+    name: "Captura de comprovantes com OCR no dispositivo",
     web: true,
     pwa: true,
     androidPro: true,
   },
   {
-    name: "Aprendizado Semântico de CNPJ e Nomes Fantasia",
+    name: "Caixa Real Seguro e orçamento diário",
     web: true,
     pwa: true,
     androidPro: true,
   },
   {
-    name: "Lançamento Rápido em 3 segundos (tela única)",
+    name: "Rebalanceamento de aportes sem vender ativos",
     web: true,
     pwa: true,
     androidPro: true,
   },
   {
-    name: "Caixa Real Seguro (Safe-to-Spend) e Daily Budget",
-    web: true,
-    pwa: true,
-    androidPro: true,
-  },
-  {
-    name: "Rebalanceamento determinístico de aportes",
-    web: true,
-    pwa: true,
-    androidPro: true,
-  },
-  {
-    name: "Simulador de Projeção Patrimonial",
-    web: true,
-    pwa: true,
-    androidPro: true,
-  },
-  {
-    name: "Privacy Shield (Ocultar valores da tela em 1 clique)",
-    web: true,
-    pwa: true,
-    androidPro: true,
-  },
-  {
-    name: "Facilitador de IRPF com cópia de Bens e Direitos",
-    web: true,
-    pwa: true,
-    androidPro: true,
-  },
-  {
-    name: "Instalação instantânea na tela inicial sem lojas",
+    name: "Instalação na tela inicial sem loja de aplicativos",
     web: false,
     pwa: true,
-    androidPro: true,
+    androidPro: "Nativo",
   },
   {
-    name: "Compatível com iPhone (iOS Safari)",
-    web: true,
-    pwa: true,
-    androidPro: "Via PWA",
-  },
-  {
-    name: "Biometria física nativa (Digital / FaceID)",
+    name: "Biometria física (digital ou reconhecimento facial)",
     web: "PIN local",
     pwa: "PIN local",
-    androidPro: true,
-  },
-  {
-    name: "Atalhos rápidos na barra de status e launcher",
-    web: false,
-    pwa: false,
     androidPro: true,
   },
 ];
@@ -176,7 +138,7 @@ export function PlatformComparison() {
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2 className="size-4 text-positive shrink-0 mt-0.5" aria-hidden="true" />
-                    <span>Captura rápida de Pix Copia e Cola, leitura de comprovantes com OCR e Privacy Shield</span>
+                    <span>Captura rápida de Pix Copia e Cola, leitura de comprovantes com OCR e Escudo de Privacidade</span>
                   </div>
                 </div>
               </div>
@@ -275,6 +237,10 @@ export function PlatformComparison() {
               </tbody>
             </table>
           </div>
+          <p className="mt-3 text-xs sm:text-sm text-muted-foreground text-center">
+            E mais: Radar Fiscal, Escudo de Privacidade, Facilitador de IRPF, simuladores
+            públicos e atalhos de launcher.
+          </p>
         </ScrollReveal>
 
         {/* Rodapé da Seção */}

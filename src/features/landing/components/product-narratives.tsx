@@ -11,6 +11,9 @@ import {
   FileText,
   Users,
   Check,
+  Target,
+  ClipboardList,
+  Lightbulb,
 } from "lucide-react";
 import { Badge, Button, Card } from "@/components/ui";
 import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
@@ -105,7 +108,7 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O Axir calcula o seu <strong>Caixa Real Seguro (Safe-to-Spend)</strong>: desconta dívidas pendentes, faturas abertas e provisões, traduzindo seu dinheiro restante em um <strong>Ritmo Diário (Daily Budget)</strong> em R$/dia. Você sabe exatamente quanto pode gastar hoje sem estourar o orçamento do mês.
+              O Axir calcula o seu <strong>Caixa Real Seguro (Safe-to-Spend)</strong>: desconta dívidas pendentes, faturas abertas e provisões, traduzindo seu dinheiro restante em um <strong>Ritmo Diário</strong> em R$/dia. Você sabe exatamente quanto pode gastar hoje sem estourar o orçamento do mês.
             </p>
 
             <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
@@ -266,7 +269,7 @@ export function ProductNarratives() {
             </p>
 
             <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Nosso <strong>Motor de Rebalanceamento Determinístico</strong> calcula exatamente para onde direcionar cada real do novo aporte para comprar ativos defasados e calibrar sua carteira sem vendas. O <strong>Radar Fiscal</strong> monitora a tabela regressiva de IR de Renda Fixa, e você exporta o <strong>Dossiê Executivo completo em Excel (.xlsx estruturado com 5 abas e fórmulas)</strong> em 1 clique.
+              O rebalanceamento calcula o destino de cada real do novo aporte para calibrar as classes defasadas sem vender ativos. O <strong>Radar Fiscal</strong> acompanha a tabela regressiva de IR de Renda Fixa, e você exporta o <strong>Dossiê Executivo em planilha Excel (XML Spreadsheet, 5 abas)</strong> em 1 clique.
             </p>
 
             <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
@@ -280,7 +283,7 @@ export function ProductNarratives() {
               </div>
               <div className="flex items-center gap-2.5 sm:gap-3">
                 <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Dossiê Executivo em Excel (.xlsx de 5 abas com fórmulas) e Privacy Shield em 1 clique</span>
+                <span>Dossiê Executivo em planilha Excel (5 abas) e Escudo de Privacidade em 1 clique</span>
               </div>
             </div>
           </ScrollReveal>
@@ -294,7 +297,7 @@ export function ProductNarratives() {
                   <div className="text-[11px] sm:text-xs text-muted-foreground">Aporte Mensal: R$ 2.000,00</div>
                 </div>
                 <Badge variant="portfolio" size="xs" className="font-mono">
-                  Motor Algorítmico
+                  Aporte calculado
                 </Badge>
               </div>
 
@@ -407,7 +410,7 @@ export function ProductNarratives() {
               <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
                 <div className="flex items-center gap-2 text-foreground font-semibold">
                   <Share2 className="size-4 text-primary shrink-0" aria-hidden="true" />
-                  <span>Caminho 1 (Rápido): Leitura Instantânea de Pix &amp; Compartilhamento</span>
+                  <span>Caminho 1 (Rápido): Leitura Instantânea de Pix & Compartilhamento</span>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
                   Copie o código Pix ou compartilhe comprovantes diretamente do aplicativo do seu banco pelo menu de compartilhamento. O Axir extrai favorecido, valor e data automaticamente do texto recebido.
@@ -417,7 +420,7 @@ export function ProductNarratives() {
               <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
                 <div className="flex items-center gap-2 text-foreground font-semibold">
                   <FileText className="size-4 text-portfolio shrink-0" aria-hidden="true" />
-                  <span>Caminho 2 (Garantia): Leitura Universal de Comprovantes &amp; Cupons</span>
+                  <span>Caminho 2 (Garantia): Leitura Universal de Comprovantes & Cupons</span>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
                   Anexe cupons fiscais (NFC-e/SAT com múltiplos itens), boletos, carnês e slips de cartão parcelado. Nosso OCR local processa na hora no seu dispositivo, sem enviar fotos para a nuvem.
@@ -488,14 +491,49 @@ export function ProductNarratives() {
                   <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
                     <span className="text-muted-foreground block text-[11px]">Pagamento</span>
                     <span className="font-bold text-foreground truncate block">Pix</span>
-                  </div>
-                </div>
+                  </div>              </div>
 
-                <ApproveExpenseButton />
-              </div>
-            </Card>
+              <ApproveExpenseButton />
+            </div>
+          </Card>
           </ScrollReveal>
         </div>
+
+        {/* Cobertura adicional: módulos que sustentam o dia a dia após o primeiro mês */}
+        <ScrollReveal delay={100}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            {[
+              {
+                icon: Target,
+                title: "Metas com aporte mensal",
+                text: "Cada objetivo tem o aporte necessário e o progresso até a data-alvo.",
+              },
+              {
+                icon: ClipboardList,
+                title: "Relatórios de fechamento",
+                text: "Resumo mensal, divisão patrimonial e relatório em layout A4.",
+              },
+              {
+                icon: Lightbulb,
+                title: "Insights do seu histórico",
+                text: "Alertas de variação fora do padrão e de assinaturas recorrentes.",
+              },
+            ].map((item) => (
+              <Card
+                key={item.title}
+                className="border-border/80 bg-surface/90 shadow-xs p-3.5 sm:p-4 space-y-1.5 rounded-2xl"
+              >
+                <div className="flex items-center gap-2">
+                  <item.icon className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                  <span className="text-xs sm:text-sm font-bold text-foreground">{item.title}</span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+                  {item.text}
+                </p>
+              </Card>
+            ))}
+          </div>
+        </ScrollReveal>
       </div>
     </section>
   );

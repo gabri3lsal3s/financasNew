@@ -511,6 +511,22 @@ A inteligência de repetição do sistema opera em dois trilhos expressos e desa
   - Paginação fluida com `pageSize = 8` (`grid-cols-2 sm:grid-cols-4`) e navegação tátil por setas.
   - Ranking dinâmico por frequência histórica real (`rankCategoriesByFrequency`).
   - Auto-posicionamento automático na página da categoria inferida pela notificação ou histórico.
+- **Motor Puro de Captura Pix Multiformato & Área de Transferência (`pix-clipboard.ts`, `pix-text-parser.ts`, `pix-emv-parser.ts` — Plano 28):**
+  - **Cascateamento de Detecção:**
+    1. *BR Code EMV QRCPS-MPM:* Decodifica tags 26 (subtag `01` chave Pix e `02` descrição/infoAdicional), tag 54 (valor em centavos) e tag 62 (txId).
+    2. *Texto Livre & Mensagens Bancárias:* Detecção pura de chaves EVP (UUIDv4), e-mails, CNPJs (formatados e 14 dígitos isolados), CPFs (formatados e 11 dígitos com marcador), telefones BR com DDD (+55, com/sem parênteses) e links Pix (`https://pix.bcb.gov.br/...`).
+    3. *Extração Monetária Tolerante:* Expressões monetárias brasileiras (`R$ 45,00`, `45,00`) e internacionais em frases completas do WhatsApp e bancos.
+  - **Memória Adaptativa de Chaves Pix (`merchant-memory.ts`, `merchant-resolver.ts`, `merchant-learning.ts`):**
+    - Extensão do dicionário de memória do usuário para armazenar `pixKeys` e `defaultNature` (`expense` | `income`).
+    - Resolução em Camada 1: a identificação de uma chave Pix prévia recupera deterministicamente o nome fantasia e a categoria previamente confirmada pelo usuário.
+  - **Governança Estrita Anti-Poluição Visual (Home & Wizard):**
+    - *Zero Card Fixo:* O banner de Pix na Home (`DashboardPixClipboardCard`) **nunca fica fixo** na interface.
+    - *Filtro de Valor Válido:* Apenas códigos ou mensagens Pix que contenham **valor monetário válido (> R$ 0,00)** disparam a sugestão. Chaves avulsas sem valor não aparecem na Home nem ativam o botão no Wizard.
+    - *Botão "Colar Pix" Condicional no Wizard:* O botão `[📋 Colar Pix]` no cabeçalho do `LaunchWizard` é 100% condicional, renderizado exclusivamente quando houver Pix com valor no clipboard. Ao clicar, preenche os campos em 1 toque e limpa o detector, sumindo da barra de ações.
+    - *Monitoramento Passivo sem Poluição de CPU:* Hook `usePixClipboardDetector` em `src/hooks/` escuta exclusivamente `focus` e `visibilitychange` (ao retornar de app bancário ou desbloqueio biométrico) com debounce de 150ms e silenciamento de erros passivos.
+- **Calculadora Flutuante com Leitura Resiliente de Clipboard (`floating-calculator.tsx`, `domain/calculator/`):**
+  - Regex monetário de alta tolerância para colar valores contidos em mensagens bancárias e frases.
+  - Modal de fallback com elevação acessível sobrepondo focus traps sem bloquear o formulário subjacente.
 
 ### 3.11 Motor de Rebalanceamento de Carteira
 
@@ -1011,6 +1027,12 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 4. **Detalhes** — data (default hoje), descrição, peso de relatório; **resumo** com valor/categoria/parcelamento/competência; botão salvar (RPC transacional).
 
 **Anti-fricção:** defaults inteligentes (última categoria e forma usadas), estado do wizard preservado ao navegar, validação inline com mensagens do gateway, sucesso com toast + retorno à lista do mês. Fluxo alternativo futuro (modal rápido) pode ser adicionado sem quebrar o fluxo guiado.
+
+**Lançamento Rápido via Pix com Memória Contínua (Plano 28):**
+- Ao copiar um código Pix Copia e Cola, link ou mensagem de cobrança em qualquer app de banco e retornar ao aplicativo:
+  - Na **Home**: surge no carrossel de alertas o card *"Pix Detectado"* com valor formatado, estabelecimento reconhecido e botão contextual *"Lançar Despesa"* ou *"Lançar Receita"* que abre o Wizard Rápido em 1 toque já pré-carregado.
+  - No **Wizard**: surge no cabeçalho o botão `[📋 Colar Pix]`, que preenche instantaneamente o formulário mantendo a categoria predita pela memória da chave Pix.
+- Chaves sem valor cadastrado são ignoradas para evitar poluição da tela.
 
 ### 5.6 Inventário de telas (prioridade)
 

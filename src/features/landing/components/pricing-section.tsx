@@ -22,7 +22,7 @@ export function PricingSection() {
             Invista na sua organização com o melhor custo-benefício
           </p>
           <p className="mt-4 sm:mt-5 text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-            Comece com 30 dias de acesso total gratuito sem precisar de cartão de crédito. Após o período, seu histórico fica preservado para consulta e você assina o Pro quando quiser.
+            Comece com acesso total gratuito, sem cartão de crédito. Após o período de teste, seu histórico fica preservado para consulta e você assina o Pro quando quiser.
           </p>
 
           {/* Billing Cycle Toggle */}
@@ -87,7 +87,7 @@ export function PricingSection() {
 
                 <div className="mt-3 sm:mt-4 flex items-baseline gap-1">
                   <span className="font-mono text-3xl sm:text-4xl font-extrabold text-foreground">R$ 0</span>
-                  <span className="text-xs sm:text-sm text-muted-foreground">/ 30 dias</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground">no período de teste</span>
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Acesso irrestrito a todas as funcionalidades do Pro
@@ -212,7 +212,7 @@ export function PricingSection() {
               <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/80">
                 <Link
                   to={proUrl(isAnnual ? "pro-anual" : "pro-mensal")}
-                  aria-label="Assinar Plano Pro com 30 dias de teste"
+                  aria-label="Assinar Plano Pro"
                   className={cn(
                     buttonVariants({ size: "lg" }),
                     "w-full justify-center shadow-md font-semibold inline-flex items-center gap-2 rounded-xl",
@@ -223,7 +223,7 @@ export function PricingSection() {
                 </Link>
                 <div className="mt-2.5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                   <ShieldCheck className="size-3.5 text-positive-strong dark:text-positive" aria-hidden="true" />
-                  <span>30 dias de teste sem compromisso</span>
+                  <span>Sem cartão · Cancele quando quiser</span>
                 </div>
               </div>
             </Card>

@@ -37,7 +37,7 @@ export function CtaBanner() {
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 to={isLoggedIn ? "/" : freeRegisterUrl}
-                aria-label={isLoggedIn ? "Acessar Meu Painel Agora" : "Criar conta e começar 30 dias grátis"}
+                aria-label={isLoggedIn ? "Acessar Meu Painel Agora" : "Criar conta e começar o teste gratuito"}
                 className="group relative overflow-hidden w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-sm sm:text-base font-bold bg-primary text-primary-foreground hover:bg-primary-strong shadow-lg hover:shadow-xl inline-flex items-center justify-center gap-2 transition-all duration-150 active:scale-95"
               >
                 {/* Shimmer Sweep Effect */}
@@ -70,7 +70,7 @@ export function CtaBanner() {
 
             <div className="mt-5 sm:mt-6 flex items-center justify-center gap-1.5 sm:gap-2 text-xs text-muted-foreground">
               <ShieldCheck className="size-3.5 sm:size-4 text-positive-strong dark:text-positive" aria-hidden="true" />
-              <span>30 dias de teste sem compromisso · Garantia legal de 7 dias (CDC) · Histórico preservado</span>
+              <span>Garantia legal de 7 dias (CDC) · Histórico preservado após o teste</span>
             </div>
           </div>
         </ScrollReveal>

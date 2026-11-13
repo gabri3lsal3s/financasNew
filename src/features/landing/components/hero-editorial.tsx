@@ -97,7 +97,7 @@ export function HeroEditorial() {
               aria-label={
                 isLoggedIn
                   ? "Acessar Meu Painel"
-                  : "Começar 30 Dias Grátis — teste de 30 dias sem cartão"
+                  : "Começar 30 Dias Grátis — teste sem cartão"
               }
               className={cn(
                 buttonVariants({ size: "lg" }),
@@ -202,7 +202,7 @@ export function HeroEditorial() {
               </div>
 
               <div className="p-3.5 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/60 flex flex-col justify-between overflow-hidden">
-                <span className="text-xs sm:text-sm text-muted-foreground block truncate">Ritmo Diário (Daily Budget)</span>
+                <span className="text-xs sm:text-sm text-muted-foreground block truncate">Ritmo Diário</span>
                 <div className="my-1.5 sm:my-2 font-mono text-xl sm:text-2xl lg:text-3xl font-extrabold text-primary-strong tracking-tight whitespace-nowrap tabular-nums flex items-baseline gap-1.5">
                   <span>R$ 148,00</span>
                   <span className="text-xs sm:text-sm font-normal text-muted-foreground">/ dia</span>

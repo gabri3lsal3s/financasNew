@@ -1,11 +1,11 @@
 {
-  "version": "3.4.0",
-  "versionCode": 57,
-  "releaseDate": "2026-11-13T01:24:06Z",
-  "minSupportedVersion": "3.4.0",
+  "version": "3.5.0",
+  "versionCode": 58,
+  "releaseDate": "2026-11-13T17:47:24Z",
+  "minSupportedVersion": "3.5.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "561dd8232c48092880c2741886eab275aade4dd15351800d824f718156a02eaf",
-  "fileSizeBytes": 12189352,
+  "sha256": "8ac180524d138a2c18ba741979f612a961c55f76e73fda214ed31407643866ce",
+  "fileSizeBytes": 12198465,
   "changelog": [
     "Axir v3.4.0: Integridade de Billing, Memória de Lançamentos e Simuladores",
     "Máquina de estados canônica de billing e autoridade integral do servidor",

@@ -27,7 +27,7 @@ const faqs: FaqItem[] = [
   {
     question: "Meus dados financeiros estão realmente seguros?",
     answer:
-      "Sim. Seus dados contam com isolamento criptográfico por usuário (Row Level Security no PostgreSQL) e o Axir não solicita senhas bancárias nem vende informações a terceiros. Além disso, você conta com o Privacy Shield para ocultar valores na tela com 1 clique e pode exportar seu Dossiê Executivo completo em Excel (.xlsx) a qualquer momento.",
+      "Sim. Seus dados contam com isolamento criptográfico por usuário (Row Level Security no PostgreSQL) e o Axir não solicita senhas bancárias nem vende informações a terceiros. Além disso, você conta com o Escudo de Privacidade para ocultar valores na tela com 1 clique e pode exportar seu Dossiê Executivo em planilha Excel a qualquer momento.",
   },
   {
     question: "Funciona no iPhone e no Android como app nativo?",

@@ -2,67 +2,114 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DashboardPixClipboardCard } from "./dashboard-pix-clipboard-card";
+import type { DetectedPixTransaction } from "@/hooks";
 
 vi.mock("@/services/sensory", () => ({
   triggerSensory: vi.fn(),
 }));
 
-vi.mock("@/services/toast", () => ({
-  pushToast: vi.fn(),
-}));
-
 describe("DashboardPixClipboardCard", () => {
-  const originalClipboard = navigator.clipboard;
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renderiza o card no padrão do carrossel da Home", () => {
-    render(<DashboardPixClipboardCard onLaunch={vi.fn()} />);
+  const mockDetected: DetectedPixTransaction = {
+    candidate: {
+      kind: "pix_message",
+      valueCents: 4500,
+      description: "Padaria São Bento",
+      recipientName: "Padaria São Bento",
+      pixKey: "12345678000199",
+      nature: "expense",
+      paymentMethod: "pix",
+      confidence: "high",
+    },
+    identity: {
+      friendlyName: "Padaria São Bento",
+      categorySlug: "alimentacao",
+      isLearned: true,
+      confidence: "canonical_catalog",
+      layer: 3,
+    },
+    rawText: "Pix de R$ 45,00 para Padaria São Bento",
+  };
 
-    expect(screen.getByText("Lançamento Rápido via Pix")).toBeInTheDocument();
-    expect(screen.getByText("Colar Pix")).toBeInTheDocument();
+  it("renderiza o card no padrão do carrossel da Home com dados detectados", () => {
+    render(
+      <DashboardPixClipboardCard
+        detected={mockDetected}
+        onLaunch={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Padaria São Bento")).toBeInTheDocument();
+    expect(screen.getByText("PIX DETECTADO")).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s*45,00/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Lançar Despesa/i })).toBeInTheDocument();
   });
 
-  it("ao clicar em 'Colar Pix', lê a área de transferência e dispara onLaunch com dados estruturados", async () => {
+  it("ao clicar em Lançar Despesa, dispara onLaunch com dados estruturados e enriquecidos pela memória", async () => {
     const onLaunch = vi.fn();
     const user = userEvent.setup();
 
-    Object.defineProperty(navigator, "clipboard", {
-      value: {
-        readText: vi.fn().mockResolvedValue("Pix de R$ 45,00 para Padaria São Bento"),
-        writeText: vi.fn(),
-      },
-      writable: true,
-      configurable: true,
-    });
+    render(
+      <DashboardPixClipboardCard
+        detected={mockDetected}
+        onLaunch={onLaunch}
+        onDismiss={vi.fn()}
+      />,
+    );
 
-    render(<DashboardPixClipboardCard onLaunch={onLaunch} />);
-
-    const button = screen.getByRole("button", { name: "Colar Pix" });
+    const button = screen.getByRole("button", { name: /Lançar Despesa/i });
     await user.click(button);
 
     expect(onLaunch).toHaveBeenCalledTimes(1);
-    expect(onLaunch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        valorCents: 4500,
-        forma: "pix",
-      }),
+    expect(onLaunch).toHaveBeenCalledWith({
+      valorCents: 4500,
+      desc: "Padaria São Bento",
+      categoria: "alimentacao",
+      tipo: "expense",
+      forma: "pix",
+      pixKey: "12345678000199",
+    });
+  });
+
+  it("renderiza botão de Lançar Receita quando nature for income", () => {
+    const incomeDetected: DetectedPixTransaction = {
+      ...mockDetected,
+      candidate: {
+        ...mockDetected.candidate,
+        nature: "income",
+      },
+      identity: {
+        ...mockDetected.identity,
+        defaultNature: "income",
+      },
+    };
+
+    render(
+      <DashboardPixClipboardCard
+        detected={incomeDetected}
+        onLaunch={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
     );
 
-    Object.defineProperty(navigator, "clipboard", {
-      value: originalClipboard,
-      writable: true,
-      configurable: true,
-    });
+    expect(screen.getByRole("button", { name: /Lançar Receita/i })).toBeInTheDocument();
   });
 
   it("permite dispensar o card via callback onDismiss", async () => {
     const onDismiss = vi.fn();
     const user = userEvent.setup();
 
-    render(<DashboardPixClipboardCard onLaunch={vi.fn()} onDismiss={onDismiss} />);
+    render(
+      <DashboardPixClipboardCard
+        detected={mockDetected}
+        onLaunch={vi.fn()}
+        onDismiss={onDismiss}
+      />,
+    );
 
     const dismissBtn = screen.getByRole("button", { name: "Dispensar sugestão de Pix" });
     await user.click(dismissBtn);
