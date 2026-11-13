@@ -242,7 +242,7 @@ export function PlatformComparison() {
                         f.web ? (
                           <CheckCircle2 className="size-4 text-positive mx-auto" aria-hidden="true" />
                         ) : (
-                          <span className="text-muted-foreground/40">-</span>
+                          <span className="text-muted-foreground font-medium" aria-label="Não disponível">—</span>
                         )
                       ) : (
                         <span className="font-semibold text-foreground">{f.web}</span>
@@ -253,10 +253,10 @@ export function PlatformComparison() {
                         f.pwa ? (
                           <CheckCircle2 className="size-4 text-positive-strong mx-auto" aria-hidden="true" />
                         ) : (
-                          <span className="text-muted-foreground/40">-</span>
+                          <span className="text-muted-foreground font-medium" aria-label="Não disponível">—</span>
                         )
                       ) : (
-                        <span className="font-semibold text-primary">{f.pwa}</span>
+                        <span className="font-semibold text-primary-strong dark:text-primary">{f.pwa}</span>
                       )}
                     </td>
                     <td className="p-3.5 sm:p-4 text-center">
@@ -264,7 +264,7 @@ export function PlatformComparison() {
                         f.androidPro ? (
                           <CheckCircle2 className="size-4 text-positive mx-auto" aria-hidden="true" />
                         ) : (
-                          <span className="text-muted-foreground/40">-</span>
+                          <span className="text-muted-foreground font-medium" aria-label="Não disponível">—</span>
                         )
                       ) : (
                         <span className="font-semibold text-foreground">{f.androidPro}</span>

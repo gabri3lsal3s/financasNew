@@ -37,6 +37,12 @@ export interface CategoryDonutProps {
   listClassName?: string;
   /** Texto para estado vazio quando não há fatias. */
   emptyText?: string;
+  /**
+   * Legenda abaixo do total no centro do anel. Default: contagem de fatias
+   * ("4 itens"). Use quando a contagem não representa itens reais (ex.: classes
+   * de ativo) ou quando o total exige qualificação (ex.: "Pós-aporte").
+   */
+  centerCaption?: string;
   /** Número máximo de fatias desenhadas no anel SVG antes de agrupar em "Outros" (default: 7). */
   maxVisualSlices?: number;
   /** Disposição entre o anel SVG e a lista de legendas. Default: "auto" (coluna no mobile, linha a partir de md). */
@@ -135,6 +141,7 @@ export function CategoryDonut({
   className,
   listClassName,
   emptyText = "Sem despesas",
+  centerCaption,
   maxVisualSlices = 7,
   layout = "auto",
   donutSize = "md",
@@ -432,7 +439,7 @@ export function CategoryDonut({
                 )}
               </p>
               <span className="text-[10px] sm:text-[11px] text-muted-foreground/80 font-medium mt-0.5 whitespace-nowrap">
-                {slices.length} {slices.length === 1 ? "item" : "itens"}
+                {centerCaption ?? `${slices.length} ${slices.length === 1 ? "item" : "itens"}`}
               </span>
             </div>
           )}

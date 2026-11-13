@@ -81,10 +81,16 @@ A gestão financeira pessoal opera em ciclos mensais (recebimento de salário, p
 
 ---
 
-## 6. REGRAS DE TRIAL POR CONTA & ELEGIBILIDADE
+## 6. REGRAS DE TRIAL POR CONTA & ELEGIBILIDADE (BLINDAGEM ANTI-BRECHA)
 
 - **Escopo do Ciclo de Trial:** 30 dias corridos calculados a partir da data de criação da conta (`created_at` do perfil/usuário).
-- **Invariante de Elegibilidade:** A elegibilidade ao período de teste gratuito é avaliada no nível da conta (`isAccountTrialEligible` em `src/domain/subscription/trial.ts`). O benefício do trial é intransferível e único por cadastro.
+- **Invariante de Elegibilidade Estrita:** O benefício do trial é **intransferível e estritamente único por cadastro/conta**.
+- **Regra de Cobrança Imediata para Contas Reativadas / Read-Only:**
+  - Usuários com `tier = 'read_only'`, com status `canceled`, `expired`, `past_due`, ou com `trial_consumed_at IS NOT NULL` / histórico de pagamento prévio (`billing_start_at IS NOT NULL`) **NÃO possuem direito a novo período de teste nem a agendamento diferido de cobrança**.
+  - Ao contratar qualquer nova assinatura pelo checkout, a cobrança no cartão ou Pix é processada **imediatamente no ato**, sem adiamento de 30 dias (`isDelayedByTrial = false`).
+  - O agendamento da primeira cobrança para data futura (`nextDueDate`) é restrito exclusivamente a visitantes recém-cadastrados ou contas virgens em período de teste inicial ativo (`status = 'trialing'` e `trialDaysRemaining > 0`), mantendo apenas os dias residuais restantes do teste original de 30 dias.
+  - O cancelamento da assinatura durante o período de teste encerra sumariamente o benefício e marca `trial_consumed_at = now()`, impedindo permanentemente reaberturas de ciclos gratuitos.
+- **Catálogo Canônico e Deduplicação:** A tabela `public.plans` mantém estritamente os 4 planos oficiais: `'trial'`, `'pro_monthly'`, `'pro_annual'` e `'lifetime'`, eliminando aliases duplicados como `'lifetime_vip'` ou `'free'`.
 - **Contagem Regressiva e Alertas:** A interface exibe avisos sutis no Dashboard apenas quando restam $\le 5$ dias para o término do trial (`TrialEndingBanner`), mantendo a experiência desobstruída nos primeiros 25 dias.
 - **Transição Automática e Suave:** Ao término do 30º dia, a conta transiciona imediatamente para o Modo Somente-Leitura (`read_only`), mantendo todos os dados intactos e sem qualquer cobrança surpresa.
 

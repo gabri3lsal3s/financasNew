@@ -59,6 +59,10 @@ function sanitizeLearningMemory(raw: unknown): MerchantLearningMemory {
         friendlyName: String(rec.friendlyName || "").trim(),
         categorySlug: String(rec.categorySlug || "").trim(),
         cnpjOrCpf: rec.cnpjOrCpf ? String(rec.cnpjOrCpf).replace(/\D/g, "") : undefined,
+        pixKeys: Array.isArray(rec.pixKeys)
+          ? rec.pixKeys.map((k) => String(k).trim()).filter(Boolean)
+          : undefined,
+        defaultNature: rec.defaultNature === "expense" || rec.defaultNature === "income" ? rec.defaultNature : undefined,
         rawAliases: Array.isArray(rec.rawAliases)
           ? rec.rawAliases.map((a) => String(a).toLowerCase().trim()).filter(Boolean)
           : [],
@@ -166,11 +170,16 @@ export function syncMerchantLearningFromCloud(
       const mergedAliases = Array.from(
         new Set([...localRec.rawAliases, ...cloudRec.rawAliases]),
       );
+      const mergedPixKeys = Array.from(
+        new Set([...(localRec.pixKeys || []), ...(cloudRec.pixKeys || [])]),
+      );
 
       merged[key] = {
         friendlyName: cloudTime >= localTime ? cloudRec.friendlyName : localRec.friendlyName,
         categorySlug: cloudTime >= localTime ? cloudRec.categorySlug : localRec.categorySlug,
         cnpjOrCpf: cloudRec.cnpjOrCpf || localRec.cnpjOrCpf,
+        pixKeys: mergedPixKeys.length > 0 ? mergedPixKeys : undefined,
+        defaultNature: cloudTime >= localTime ? cloudRec.defaultNature ?? localRec.defaultNature : localRec.defaultNature ?? cloudRec.defaultNature,
         rawAliases: mergedAliases,
         preferredPaymentMethod:
           cloudTime >= localTime
@@ -791,32 +800,36 @@ export function useBankCardMapping() {
 // =========================================================================
 
 export interface RecordTransactionLearningParams {
-  merchant: string;
+  merchant?: string;
   categoryId: string;
   paymentMethod: PaymentMethod;
   cardId?: string;
   cardLastDigits?: string;
   taxId?: string;
   packageName?: string;
+  pixKey?: string;
+  nature?: "expense" | "income";
 }
 
 /**
  * Helper unificado que atualiza a memória semântica do estabelecimento (categoria habitual,
- * método de pagamento e cartão preferencial), os dígitos aprendidos do cartão e a associação
+ * método de pagamento, chave Pix e cartão preferencial), os dígitos aprendidos do cartão e a associação
  * com o app bancário emissor simultaneamente.
  */
 export function recordTransactionLearning(params: RecordTransactionLearningParams): void {
-  const { merchant, categoryId, paymentMethod, cardId, cardLastDigits, taxId, packageName } = params;
+  const { merchant, categoryId, paymentMethod, cardId, cardLastDigits, taxId, packageName, pixKey, nature } = params;
 
   try {
     const trimmedMerchant = merchant?.trim();
 
-    // 1. Memoriza estabelecimento, categoria habitual e preferências se houver nome válido
-    if (trimmedMerchant && trimmedMerchant.length >= 2 && categoryId) {
+    // 1. Memoriza estabelecimento, categoria habitual, chave Pix e preferências
+    if ((trimmedMerchant && trimmedMerchant.length >= 2 || pixKey) && categoryId) {
       recordMerchantLearningAction({
-        friendlyName: trimmedMerchant,
+        friendlyName: trimmedMerchant || (pixKey ? `Pix ${pixKey}` : "Contato"),
         categorySlug: categoryId,
         cnpjOrCpf: taxId,
+        pixKey,
+        defaultNature: nature,
         preferredPaymentMethod: paymentMethod,
         preferredCardId: cardId,
       });

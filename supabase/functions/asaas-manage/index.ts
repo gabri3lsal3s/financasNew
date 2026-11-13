@@ -174,6 +174,9 @@ Deno.serve(async (req: Request) => {
             tier: "read_only",
             status: "canceled",
             cancel_at_period_end: false,
+            trial_consumed_at: userSub.trial_consumed_at || new Date().toISOString(),
+            scheduled_plan_id: null,
+            scheduled_first_charge_at: null,
             current_period_end: new Date().toISOString(),
           })
           .eq("user_id", user.id);
@@ -206,7 +209,10 @@ Deno.serve(async (req: Request) => {
 
       await supabase
         .from("user_subscriptions")
-        .update({ cancel_at_period_end: true })
+        .update({
+          cancel_at_period_end: true,
+          trial_consumed_at: userSub.trial_consumed_at || new Date().toISOString(),
+        })
         .eq("user_id", user.id);
 
       await supabase.from("audit_events").insert({

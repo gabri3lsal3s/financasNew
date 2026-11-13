@@ -1,0 +1,55 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Axir",
+    "identifier": "did:web:axir.com.br",
+    "documentationUrl": "https://axir.com.br/llms.txt",
+    "logoUrl": "https://axir.com.br/brand/logo-192.png"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:axir.com.br:tool:debt-simulator",
+      "displayName": "Simulador de Quitação de Dívidas — Axir",
+      "type": "text/html",
+      "url": "https://axir.com.br/ferramentas/simulador-dividas",
+      "representativeQueries": [
+        "Como quitar minhas dívidas mais rápido?",
+        "Avalanche ou Bola de Neve economiza mais juros?",
+        "Quanto tempo leva para pagar uma dívida com juros de 12% ao mês?"
+      ]
+    },
+    {
+      "identifier": "urn:air:axir.com.br:tool:rebalance-simulator",
+      "displayName": "Simulador de Rebalanceamento de Carteira — Axir",
+      "type": "text/html",
+      "url": "https://axir.com.br/ferramentas/rebalanceamento",
+      "representativeQueries": [
+        "Onde investir meu próximo aporte?",
+        "Como rebalancear a carteira sem vender ativos?",
+        "Quanto comprar de cada classe para atingir minha meta?"
+      ]
+    },
+    {
+      "identifier": "urn:air:axir.com.br:tool:compound-interest-simulator",
+      "displayName": "Simulador de Juros Compostos e FIRE — Axir",
+      "type": "text/html",
+      "url": "https://axir.com.br/ferramentas/juros-compostos",
+      "representativeQueries": [
+        "Quanto terei investindo 1.500 reais por mês?",
+        "Quando a renda passiva cobre meu custo de vida?",
+        "Como a inflação afeta meus juros compostos?"
+      ]
+    },
+    {
+      "identifier": "urn:air:axir.com.br:knowledge:product-documentation",
+      "displayName": "Documentação Estendida do Axir para Agentes",
+      "type": "text/plain",
+      "url": "https://axir.com.br/llms-full.txt",
+      "representativeQueries": [
+        "Como o Axir calcula o caixa real diário?",
+        "Quais ferramentas financeiras gratuitas o Axir oferece?",
+        "O Axir vende dados pessoais?"
+      ]
+    }
+  ]
+}

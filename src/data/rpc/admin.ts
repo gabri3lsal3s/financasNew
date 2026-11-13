@@ -193,7 +193,9 @@ export async function getMySubscription(): Promise<{
   starts_at: string;
   trial_started_at?: string | null;
   trial_ends_at: string | null;
+  trial_consumed_at?: string | null;
   trial_days_remaining: number | null;
+  has_used_trial?: boolean;
   billing_start_at?: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;

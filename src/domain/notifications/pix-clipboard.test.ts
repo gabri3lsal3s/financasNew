@@ -13,6 +13,34 @@ describe("pix-clipboard (Parser em Cascata da Área de Transferência)", () => {
     expect(candidate?.valueCents).toBe(2550);
     expect(candidate?.paymentMethod).toBe("pix");
     expect(candidate?.description).toContain("PADARIA CENTRAL");
+    expect(candidate?.pixKey).toBe("+5511999999999");
+  });
+
+  it("reconhece mensagem de WhatsApp com chave Pix e valor", () => {
+    const text = "Segue minha chave Pix celular: 11988887777 para o almoço no valor de R$ 42,50";
+    const candidate = parseClipboardTransactionCandidate(text);
+    expect(candidate).not.toBeNull();
+    expect(candidate?.kind).toBe("pix_message");
+    expect(candidate?.valueCents).toBe(4250);
+    expect(candidate?.pixKey).toBe("5511988887777");
+    expect(candidate?.paymentMethod).toBe("pix");
+  });
+
+  it("reconhece link Pix de cobrança", () => {
+    const text = "https://pix.bcb.gov.br/qr/cob?valor=120.00&chave=loja@pix.com&nome=Mercado+Local";
+    const candidate = parseClipboardTransactionCandidate(text);
+    expect(candidate).not.toBeNull();
+    expect(candidate?.kind).toBe("pix_link");
+    expect(candidate?.valueCents).toBe(12000);
+    expect(candidate?.recipientName).toContain("Mercado Local");
+  });
+
+  it("reconhece chave Pix pura avulsa", () => {
+    const text = "contato@empresa.com.br";
+    const candidate = parseClipboardTransactionCandidate(text);
+    expect(candidate).not.toBeNull();
+    expect(candidate?.kind).toBe("pix_key");
+    expect(candidate?.pixKey).toBe("contato@empresa.com.br");
   });
 
   it("reconhece comprovante universal de transferência Pix", () => {

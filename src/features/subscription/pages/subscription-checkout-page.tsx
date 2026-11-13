@@ -92,8 +92,15 @@ export function SubscriptionCheckoutPage() {
       currentTier: subscription?.tier,
       trialDaysRemaining: subscription?.trialDaysRemaining,
       hasAlreadyPaid: subscription?.isPro || subscription?.isLifetime,
+      isReadOnly: subscription?.isReadOnly,
+      status: subscription?.status,
+      hasConsumedTrial:
+        subscription?.hasUsedTrial ||
+        subscription?.isReadOnly ||
+        subscription?.billingPhase === "trial_expired",
+      isNewRegistration: !session,
     });
-  }, [plan, subscription]);
+  }, [plan, subscription, session]);
 
   const [method, setMethod] = useState<CheckoutPaymentMethod>(
     metodoParam === "pix" && plan === "annual" ? "pix" : "credit_card",

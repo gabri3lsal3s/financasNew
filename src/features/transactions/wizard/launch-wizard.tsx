@@ -20,8 +20,7 @@ import {
   getReceiptKindLabel,
   inferCategoryKeyword,
   matchCategoryBySlug,
-  parsePixEMVPayload,
-  parseUniversalReceipt,
+  parseClipboardTransactionCandidate,
   resolveBestMatchingCard,
   resolveMerchantIdentity,
   type CanonicalCategorySlug,
@@ -135,6 +134,7 @@ export function LaunchWizard({
     cardLastDigits?: string;
     taxId?: string;
     packageName?: string;
+    pixKey?: string;
   } | null>(null);
 
   // Transição suave para o modo guiado sem perda de dados
@@ -612,6 +612,8 @@ export function LaunchWizard({
           cardLastDigits: resolvedLastDigits,
           taxId: receiptMeta?.taxId,
           packageName: receiptMeta?.packageName,
+          pixKey: receiptMeta?.pixKey,
+          nature: state.type,
         });
       }
 
@@ -678,8 +680,11 @@ export function LaunchWizard({
       "";
 
     // 1. Resolução em 3 camadas de identidade e categoria via resolveMerchantIdentity
+    const pixKey = "pixKey" in parsed && typeof parsed.pixKey === "string" ? parsed.pixKey : undefined;
+
     const identity = resolveMerchantIdentity({
       merchantOrDescription: rawMerchant,
+      pixKey,
       rawText: "rawText" in parsed ? parsed.rawText : undefined,
       taxId: parsed.taxId,
       userMemory: merchantLearning.memory,
@@ -720,6 +725,7 @@ export function LaunchWizard({
       cardLastDigits,
       taxId: parsed.taxId || identity.taxId,
       packageName,
+      pixKey: pixKey || identity.pixKey,
     });
 
     setState((prev) => {
@@ -727,9 +733,10 @@ export function LaunchWizard({
 
       // Natureza / Tipo
       const nature: EntryType =
-        ("nature" in parsed && (parsed.nature === "expense" || parsed.nature === "income"))
+        identity.defaultNature ||
+        (("nature" in parsed && (parsed.nature === "expense" || parsed.nature === "income"))
           ? parsed.nature
-          : ("type" in parsed && (parsed.type === "expense" || parsed.type === "income") ? parsed.type : "expense");
+          : ("type" in parsed && (parsed.type === "expense" || parsed.type === "income") ? parsed.type : "expense"));
       next.type = nature;
 
       // Valores e Data
@@ -834,20 +841,29 @@ export function LaunchWizard({
       }
 
       const text = clipResult.text.trim();
-
-      // 1. Decodificação de Pix Copia e Cola / BR Code EMV
-      if (text.includes("000201")) {
-        const emv = parsePixEMVPayload(text);
-        if (emv) {
-          handleReceiptParsed(emv);
-          return;
-        }
-      }
-
-      // 2. Decodificação de Comprovante Bancário Universal
-      const universal = parseUniversalReceipt(text);
-      if (universal) {
-        handleReceiptParsed(universal);
+      const candidate = parseClipboardTransactionCandidate(text);
+      if (candidate) {
+        handleReceiptParsed({
+          id: `pix_clip_${Date.now()}`,
+          bankName: "Pix",
+          nature: candidate.nature,
+          type: candidate.nature,
+          amountCents: candidate.valueCents,
+          description: candidate.description,
+          merchant: candidate.merchant,
+          recipientName: candidate.recipientName,
+          pixKey: candidate.pixKey,
+          taxId: candidate.taxId,
+          date: candidate.date || todayISO(),
+          paymentMethod:
+            candidate.paymentMethod === "debit_card"
+              ? "debit"
+              : candidate.paymentMethod === "boleto"
+                ? "other"
+                : candidate.paymentMethod,
+          timestamp: Date.now(),
+          rawText: text,
+        });
         return;
       }
 

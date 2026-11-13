@@ -15,6 +15,8 @@ export interface AllocationDonutProps {
   slices: AllocationSlice[];
   /** Centro do donut: valor total formatado (default). */
   centerValue?: string;
+  /** Legenda abaixo do total no centro (default: contagem de fatias). */
+  centerCaption?: string;
   /** Chave selecionada (modo controlado). */
   selectedKey?: string | null;
   /** Callback acionado ao alterar a seleção. */
@@ -36,6 +38,7 @@ export interface AllocationDonutProps {
 export function AllocationDonut({
   slices,
   centerValue,
+  centerCaption,
   selectedKey,
   onSelectKey,
   className,
@@ -54,6 +57,7 @@ export function AllocationDonut({
         onClick: slice.onClick,
       }))}
       centerValue={centerValue}
+      centerCaption={centerCaption}
       selectedKey={selectedKey}
       onSelectKey={onSelectKey}
       className={className}

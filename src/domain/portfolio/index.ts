@@ -476,6 +476,7 @@ export * from "./benchmarks";
 export * from "./statement-parser";
 export * from "./contributions";
 export * from "./simulation";
+export * from "./projection";
 export * from "./historical-quotes";
 export * from "./point-in-time";
 export * from "./class-breakdown";

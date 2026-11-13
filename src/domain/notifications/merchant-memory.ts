@@ -26,6 +26,10 @@ export interface MerchantLearningRecord {
   categorySlug: string;
   /** Dígitos limpos do CNPJ (14 dígitos) ou CPF (11 dígitos) para correspondência unívoca. */
   cnpjOrCpf?: string;
+  /** Lista de chaves Pix associadas ao recebedor/pagador (e-mails, celulares, CPFs, CNPJs, EVPs). */
+  pixKeys?: string[];
+  /** Natureza padrão memorizada para este contato/chave ("expense" ou "income"). */
+  defaultNature?: "expense" | "income";
   /** Lista de variações brutas/termos de identificação (ex.: ["arcos dourados", "pag*mcdonalds", "mc donalds"]). */
   rawAliases: string[];
   /** Método de pagamento preferencial memorizado para o estabelecimento (ex.: "credit_card", "pix"). */
@@ -46,6 +50,9 @@ export interface RecordMerchantLearningParams {
   friendlyName: string;
   categorySlug: string;
   cnpjOrCpf?: string;
+  pixKey?: string;
+  pixKeys?: string[];
+  defaultNature?: "expense" | "income";
   alias?: string;
   rawAliases?: string[];
   preferredPaymentMethod?: PaymentMethod;
@@ -54,6 +61,7 @@ export interface RecordMerchantLearningParams {
 
 export interface FindLearnedMerchantQuery {
   taxId?: string;
+  pixKey?: string;
   merchant?: string;
   rawText?: string;
 }
@@ -138,6 +146,57 @@ export function extractTaxIdFromText(text?: string | null): string | undefined {
 }
 
 /**
+ * Normaliza uma chave Pix para indexação e busca consistente na memória.
+ */
+export function normalizePixKeyForMemory(pixKey?: string | null): string | undefined {
+  if (!pixKey || typeof pixKey !== "string") return undefined;
+  const trimmed = pixKey.trim();
+  if (!trimmed) return undefined;
+
+  // Se for e-mail ou UUID (EVP), normaliza para minúsculo
+  if (trimmed.includes("@") || trimmed.includes("-")) {
+    return trimmed.toLowerCase();
+  }
+
+  // Se for celular com +55 ou parênteses, ou CPF/CNPJ, limpa dígitos
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length >= 10) {
+    return digits;
+  }
+
+  return trimmed.toLowerCase();
+}
+
+/**
+ * Busca um registro na memória associado especificamente a uma chave Pix.
+ */
+export function findLearnedMerchantByPixKey(
+  pixKey?: string | null,
+  memory: MerchantLearningMemory = {},
+): MerchantLearningRecord | undefined {
+  if (!pixKey) return undefined;
+  const normKey = normalizePixKeyForMemory(pixKey);
+  if (!normKey) return undefined;
+
+  const records = Object.values(memory);
+  return records.find((r) => {
+    // 1. Chaves Pix explícitas cadastradas
+    if (r.pixKeys?.some((k) => normalizePixKeyForMemory(k) === normKey)) {
+      return true;
+    }
+    // 2. Compatibilidade com CPF/CNPJ
+    if (r.cnpjOrCpf && (r.cnpjOrCpf === normKey || normKey.includes(r.cnpjOrCpf))) {
+      return true;
+    }
+    // 3. Aliases
+    if (r.rawAliases?.some((a) => a.toLowerCase().trim() === normKey)) {
+      return true;
+    }
+    return false;
+  });
+}
+
+/**
  * Normaliza o nome do estabelecimento para ser usado como chave determinística na memória.
  */
 export function toMerchantMemoryKey(merchant: string): string {
@@ -179,10 +238,32 @@ export function recordMerchantLearning(
   }
   const cleanAliases = Array.from(aliasesSet).filter(Boolean);
 
+  // Agrega e normaliza chaves Pix sem duplicatas
+  const pixKeysSet = new Set<string>();
+  if (existing?.pixKeys) {
+    for (const k of existing.pixKeys) {
+      const norm = normalizePixKeyForMemory(k);
+      if (norm) pixKeysSet.add(norm);
+    }
+  }
+  if (params.pixKeys) {
+    for (const k of params.pixKeys) {
+      const norm = normalizePixKeyForMemory(k);
+      if (norm) pixKeysSet.add(norm);
+    }
+  }
+  if (params.pixKey) {
+    const norm = normalizePixKeyForMemory(params.pixKey);
+    if (norm) pixKeysSet.add(norm);
+  }
+  const cleanPixKeys = Array.from(pixKeysSet);
+
   const updatedRecord: MerchantLearningRecord = {
     friendlyName: params.friendlyName.trim() || existing?.friendlyName || normalizedFriendly,
     categorySlug: params.categorySlug,
     cnpjOrCpf: cleanTax || existing?.cnpjOrCpf,
+    pixKeys: cleanPixKeys.length > 0 ? cleanPixKeys : existing?.pixKeys,
+    defaultNature: params.defaultNature ?? existing?.defaultNature,
     rawAliases: cleanAliases.length > 0 ? cleanAliases : [params.friendlyName.toLowerCase().trim()],
     preferredPaymentMethod: params.preferredPaymentMethod ?? existing?.preferredPaymentMethod,
     preferredCardId: params.preferredCardId ?? existing?.preferredCardId,
@@ -197,7 +278,7 @@ export function recordMerchantLearning(
 }
 
 /**
- * Busca um estabelecimento na memória aprendida por CNPJ/CPF (1ª camada) ou aliases/nome (2ª camada).
+ * Busca um estabelecimento na memória aprendida por Chave Pix (0ª camada), CNPJ/CPF (1ª camada) ou aliases/nome (2ª camada).
  */
 export function findLearnedMerchant(
   query: FindLearnedMerchantQuery,
@@ -205,6 +286,12 @@ export function findLearnedMerchant(
 ): MerchantLearningRecord | undefined {
   const records = Object.values(memory);
   if (records.length === 0) return undefined;
+
+  // 0. Chave Pix Direta (precisão 100%)
+  if (query.pixKey) {
+    const matchByPix = findLearnedMerchantByPixKey(query.pixKey, memory);
+    if (matchByPix) return matchByPix;
+  }
 
   // 1. Chave de Ouro: Busca por CNPJ / CPF (precisão 100%)
   const cleanTax = cleanTaxId(query.taxId) || extractTaxIdFromText(query.rawText);

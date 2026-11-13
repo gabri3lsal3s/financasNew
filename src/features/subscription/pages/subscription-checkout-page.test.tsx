@@ -27,12 +27,18 @@ const mutateAsyncMock = vi.fn().mockResolvedValue({
   status: "active",
 });
 
+const userSubscriptionMock = vi.fn<() => Record<string, unknown>>(() => ({
+  tier: "read_only",
+  isPro: false,
+  isReadOnly: true,
+  isTrial: false,
+  trialDaysRemaining: null,
+  plan: null,
+  status: "canceled",
+}));
+
 vi.mock("@/state", () => ({
-  useUserSubscription: () => ({
-    isPro: false,
-    plan: "free",
-    status: "active",
-  }),
+  useUserSubscription: () => userSubscriptionMock(),
   useCheckoutMutation: () => ({
     mutateAsync: mutateAsyncMock,
     isPending: false,
@@ -306,6 +312,31 @@ describe("SubscriptionCheckoutPage Component", () => {
     expect(screen.getByText("novo@exemplo.com")).toBeInTheDocument();
     expect(screen.getByText(/Cartão com final •••• 4242/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Ir para o login/i })).toBeInTheDocument();
+  });
+
+  it("exibe cobrança imediata integral e não concede novo período de teste para usuário em somente-leitura ou cancelado", () => {
+    userSubscriptionMock.mockReturnValue({
+      tier: "read_only",
+      isPro: false,
+      isReadOnly: true,
+      isTrial: false,
+      trialDaysRemaining: null,
+      status: "canceled",
+      billingPhase: "read_only",
+    });
+
+    renderCheckout("/assinatura?plano=pro-mensal");
+
+    // O resumo deve indicar total a pagar integral (R$ 19,99), e não R$ 0,00
+    expect(screen.getByText("Total a pagar")).toBeInTheDocument();
+    expect(screen.getAllByText(/19,99/).length).toBeGreaterThan(0);
+
+    // O botão deve indicar confirmação imediata da assinatura Pro
+    expect(screen.getByRole("button", { name: /Confirmar Assinatura Pro/i })).toBeInTheDocument();
+
+    // Não deve haver menção a período de degustação ou cobrança agendada
+    expect(screen.queryByText(/dias de teste/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Primeira fatura de .* agendada para/i)).not.toBeInTheDocument();
   });
 });
 

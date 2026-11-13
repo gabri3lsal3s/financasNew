@@ -1,7 +1,15 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router";
-import { PieChart, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, TrendingUp } from "lucide-react";
-import { Card, Badge, buttonVariants } from "@/components/ui";
+import { PieChart, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, TrendingUp, Info } from "lucide-react";
+import {
+  Badge,
+  Card,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Tabs,
+  buttonVariants,
+} from "@/components/ui";
 import { AllocationDonut, type AllocationSlice } from "@/components/modules/allocation-donut";
 import { cn } from "@/lib/utils";
 import { useLandingCta, useAnimatedNumber } from "@/features/landing/hooks";
@@ -10,11 +18,18 @@ import { FireProjectionCurve } from "./fire-projection-curve";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsBRL, formatPercent } from "@/services/masks";
 import { numberToCents } from "@/domain/money";
+import { storePendingSimulation } from "@/domain/share";
 import {
+  resolveAllocationStatus,
   simulateStrategyAporte,
   STRATEGY_PRESETS,
   type StrategyPresetKey,
 } from "@/domain/portfolio";
+
+/** Parâmetros ilustrativos do simulador (explícitos — nunca escondidos no cálculo). */
+const SIMULATION_ANNUAL_RATE = 8; // % a.a. de rentabilidade esperada
+const SIMULATION_MONTHLY_LIVING_COST = 2500; // R$/mês de custo de vida desejado
+const SIMULATION_HORIZON_YEARS = 25;
 
 export function MinimalWealthSimulator() {
   const { trialUrl } = useLandingCta();
@@ -22,6 +37,7 @@ export function MinimalWealthSimulator() {
   const [patrimonyBase, setPatrimonyBase] = useState<number>(25000);
   const [aporteAmount, setAporteAmount] = useState<number>(3000);
   const [activeTab, setActiveTab] = useState<"alocacao" | "fire">("alocacao");
+  const [selectedClass, setSelectedClass] = useState<string | null>(null);
 
   const currentStrategy = STRATEGY_PRESETS[strategy];
 
@@ -38,14 +54,28 @@ export function MinimalWealthSimulator() {
       key: cls.key,
       label: cls.name,
       valueCents: Math.round(cls.finalValue * 100),
-      subtitle: `Meta: ${cls.targetPercent}% · Atual: ${cls.finalPct}%`,
+      // "Pós-aporte" qualifica o percentual exibido (não é a posição atual)
+      subtitle: `Pós-aporte ${formatPercent(cls.finalPct)}% · Meta ${formatPercent(cls.targetPercent)}%`,
     }));
+
+    // Yield médio ponderado da carteira pós-aporte — fonte única da renda passiva
+    const annualYieldPct =
+      simulation.newTotalPatrimony > 0
+        ? (simulation.allocations.reduce((acc, cls) => acc + cls.finalValue * cls.yieldRate, 0) /
+            simulation.newTotalPatrimony) *
+          100
+        : 0;
 
     return {
       newTotalPatrimony: simulation.newTotalPatrimony,
       allocations: simulation.allocations,
       donutSlices,
       monthlyPassive: simulation.monthlyPassive,
+      annualYieldPct,
+      weightedYield: simulation.allocations.reduce(
+        (acc, cls) => acc + cls.finalValue * cls.yieldRate,
+        0,
+      ),
     };
   }, [currentStrategy, patrimonyBase, aporteAmount]);
 
@@ -55,6 +85,9 @@ export function MinimalWealthSimulator() {
   const formatBRL = (val: number) => {
     return formatCentsAsBRL(numberToCents(val), { hideCents: true });
   };
+
+  const dimWhenUnselected = (key: string) =>
+    selectedClass !== null && selectedClass !== key ? "opacity-50" : "";
 
   return (
     <section id="simulador" className="py-14 md:py-32 bg-surface/30 border-t border-border/60 scroll-mt-20">
@@ -81,7 +114,7 @@ export function MinimalWealthSimulator() {
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs font-semibold">
                   <span className="text-foreground">Patrimônio Atual:</span>
-                  <span className="font-mono font-bold text-primary text-sm">{formatBRL(patrimonyBase)}</span>
+                  <span className="font-mono font-bold text-primary-strong dark:text-primary text-sm">{formatBRL(patrimonyBase)}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[25000, 100000, 300000].map((val) => (
@@ -103,14 +136,13 @@ export function MinimalWealthSimulator() {
                     </button>
                   ))}
                 </div>
-                <span className="text-[11px] text-muted-foreground block">Posição atual acumulada</span>
               </div>
 
               {/* Controle 2: Estratégia de Carteira */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs font-semibold">
                   <span className="text-foreground">Perfil de Alocação:</span>
-                  <span className="text-primary font-bold">{currentStrategy.buttonLabel}</span>
+                  <span className="text-primary-strong dark:text-primary font-bold">{currentStrategy.buttonLabel}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {(Object.keys(STRATEGY_PRESETS) as StrategyPresetKey[]).map((key) => (
@@ -132,14 +164,13 @@ export function MinimalWealthSimulator() {
                     </button>
                   ))}
                 </div>
-                <span className="text-[11px] text-muted-foreground block truncate">{currentStrategy.tag}</span>
               </div>
 
               {/* Controle 3: Valor do Aporte a Simular */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs font-semibold">
                   <span className="text-foreground">Aporte Mensal:</span>
-                  <span className="font-mono font-bold text-primary text-sm">{formatBRL(aporteAmount)}</span>
+                  <span className="font-mono font-bold text-primary-strong dark:text-primary text-sm">{formatBRL(aporteAmount)}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {[1500, 3000, 6000].map((val) => (
@@ -161,7 +192,6 @@ export function MinimalWealthSimulator() {
                     </button>
                   ))}
                 </div>
-                <span className="text-[11px] text-muted-foreground block">Novo capital a aportar</span>
               </div>
             </div>
 
@@ -173,46 +203,27 @@ export function MinimalWealthSimulator() {
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     {activeTab === "alocacao" ? "Composição da Carteira" : "Projeção Patrimonial"}
                   </span>
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <div className="inline-flex rounded-lg border border-border/80 bg-muted/40 p-0.5" role="tablist" aria-label="Modo de visualização gráfica">
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activeTab === "alocacao"}
-                        onClick={() => {
-                          triggerSensory("selection", { skipSound: true });
-                          setActiveTab("alocacao");
-                        }}
-                        className={cn(
-                          "px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer",
-                          activeTab === "alocacao"
-                            ? "bg-surface text-foreground shadow-xs"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        Aporte
-                      </button>
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activeTab === "fire"}
-                        onClick={() => {
-                          triggerSensory("selection", { skipSound: true });
-                          setActiveTab("fire");
-                        }}
-                        className={cn(
-                          "px-2.5 py-1 rounded-md text-xs font-semibold transition-all cursor-pointer",
-                          activeTab === "fire"
-                            ? "bg-surface text-foreground shadow-xs"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        Curva Patrimonial
-                      </button>
-                    </div>
-                    <Badge variant="positive" size="xs" className="font-mono">
-                      {activeTab === "alocacao" ? "Pós-Aporte" : "Rentabilidade: 8% a.a."}
-                    </Badge>
+                  <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                    <Tabs
+                      value={activeTab}
+                      onValueChange={(value) => setActiveTab(value as "alocacao" | "fire")}
+                      variant="pills"
+                      ariaLabel="Modo de visualização gráfica"
+                      className="shrink-0"
+                      items={[
+                        { value: "alocacao", label: "Aporte" },
+                        { value: "fire", label: "Curva Patrimonial", shortLabel: "Curva" },
+                      ]}
+                    />
+                    {activeTab === "alocacao" ? (
+                      <Badge variant="muted" size="xs">
+                        Pós-aporte
+                      </Badge>
+                    ) : (
+                      <Badge variant="default" size="xs" className="font-mono">
+                        Retorno {formatPercent(SIMULATION_ANNUAL_RATE)}% a.a.
+                      </Badge>
+                    )}
                   </div>
                 </div>
 
@@ -220,6 +231,9 @@ export function MinimalWealthSimulator() {
                   <AllocationDonut
                     slices={rebalanceData.donutSlices}
                     centerValue={formatBRL(rebalanceData.newTotalPatrimony)}
+                    centerCaption="Pós-aporte"
+                    selectedKey={selectedClass}
+                    onSelectKey={setSelectedClass}
                     layout="side-by-side"
                     donutSize="sm"
                     className="w-full"
@@ -229,9 +243,10 @@ export function MinimalWealthSimulator() {
                     <FireProjectionCurve
                       initialPatrimony={patrimonyBase}
                       monthlyAporte={aporteAmount}
-                      monthlyExpenses={Math.max(2500, Math.round((patrimonyBase * 0.04) / 12))}
-                      annualRate={0.08}
-                      years={25}
+                      monthlyExpenses={SIMULATION_MONTHLY_LIVING_COST}
+                      annualRate={SIMULATION_ANNUAL_RATE / 100}
+                      annualPassiveYield={rebalanceData.annualYieldPct / 100}
+                      years={SIMULATION_HORIZON_YEARS}
                     />
                   </div>
                 )}
@@ -240,7 +255,7 @@ export function MinimalWealthSimulator() {
               {/* Coluna 2: Ação Calculada pelo Algoritmo */}
               <div className="lg:col-span-6 space-y-4 sm:space-y-5">
                 <div>
-                  <div className="inline-flex items-center gap-1.5 text-xs font-bold text-primary uppercase tracking-wider">
+                  <div className="inline-flex items-center gap-1.5 text-xs font-bold text-primary-strong dark:text-primary uppercase tracking-wider">
                     <Sparkles className="size-3.5" aria-hidden="true" />
                     <span>Cálculo de Aporte em Tempo Real</span>
                   </div>
@@ -255,42 +270,57 @@ export function MinimalWealthSimulator() {
                     if (cls.isReceivingAporte) {
                       const shareOfAporte = Math.round((cls.allocatedAmount / aporteAmount) * 100);
                       return (
-                        <div
+                        <button
                           key={cls.key}
-                          className="p-3 sm:p-3.5 rounded-xl border border-positive/40 bg-positive/10 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2.5 transition-all"
+                          type="button"
+                          onClick={() => setSelectedClass(selectedClass === cls.key ? null : cls.key)}
+                          aria-pressed={selectedClass === cls.key}
+                          className={cn(
+                            "w-full text-left p-3 sm:p-3.5 rounded-xl border border-positive/40 bg-positive/10 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2.5 transition-all cursor-pointer hover:border-positive/60",
+                            dimWhenUnselected(cls.key),
+                          )}
                         >
                           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                             <CheckCircle2 className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
                             <div className="min-w-0">
                               <div className="text-xs sm:text-sm font-bold text-foreground">{cls.name}</div>
                               <div className="text-[11px] text-positive-strong dark:text-positive font-medium">
-                                Atual: {formatPercent(cls.currentPct)}% · Meta: {formatPercent(cls.targetPercent)}% (Comprando na defasagem)
+                                Hoje {formatPercent(cls.currentPct)}% · meta {formatPercent(cls.targetPercent)}% — abaixo da meta
                               </div>
                             </div>
                           </div>
                           <Badge variant="positive" size="xs" className="font-mono font-bold shrink-0 self-start sm:self-center">
                             +{formatBRL(cls.allocatedAmount)} ({shareOfAporte}%)
                           </Badge>
-                        </div>
+                        </button>
                       );
                     }
 
+                    const status = resolveAllocationStatus(cls.finalPct, cls.targetPercent);
+
                     return (
-                      <div
+                      <button
                         key={cls.key}
-                        className="p-3 sm:p-3.5 rounded-xl border border-border/80 bg-background/40 flex items-center justify-between gap-2 opacity-75"
+                        type="button"
+                        onClick={() => setSelectedClass(selectedClass === cls.key ? null : cls.key)}
+                        aria-pressed={selectedClass === cls.key}
+                        className={cn(
+                          "w-full text-left p-3 sm:p-3.5 rounded-xl border border-border/80 bg-background/40 flex items-center justify-between gap-2 cursor-pointer transition-all hover:border-border",
+                          dimWhenUnselected(cls.key),
+                        )}
                       >
                         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                           <ShieldCheck className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                           <div className="min-w-0">
                             <div className="text-xs sm:text-sm font-semibold text-foreground">{cls.name}</div>
                             <div className="text-[11px] text-muted-foreground">
-                              Alocação balanceada ({formatPercent(cls.currentPct)}% / Meta: {formatPercent(cls.targetPercent)}%)
+                              {status === "above_target" ? "Acima da meta" : "Na meta"}: {formatPercent(cls.finalPct)}% · meta{" "}
+                              {formatPercent(cls.targetPercent)}%
                             </div>
                           </div>
                         </div>
-                        <span className="text-xs font-mono text-muted-foreground shrink-0">Aguardar</span>
-                      </div>
+                        <span className="text-xs text-muted-foreground shrink-0">Sem aporte</span>
+                      </button>
                     );
                   })}
                 </div>
@@ -305,7 +335,47 @@ export function MinimalWealthSimulator() {
                       <span className="text-xs font-bold text-primary-strong dark:text-primary block">
                         Renda Passiva Mensal Estimada:
                       </span>
-                      <span className="text-[11px] text-muted-foreground">Proventos & Dividendos recorrentes</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors cursor-pointer"
+                          >
+                            <Info className="size-3 shrink-0" aria-hidden="true" />
+                            <span>
+                              Yield ponderado de {formatPercent(rebalanceData.annualYieldPct)}% a.a.
+                            </span>
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-[min(21rem,calc(100vw-2rem))]">
+                          <p className="text-xs font-bold text-foreground">Como calculamos a renda passiva</p>
+                          <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                            Rendimento anual de cada classe dividido por 12 meses, somado sobre o
+                            patrimônio pós-aporte.
+                          </p>
+                          <ul className="mt-2.5 space-y-1.5">
+                            {rebalanceData.allocations.map((cls) => (
+                              <li
+                                key={cls.key}
+                                className="flex items-center justify-between gap-2 text-[11px]"
+                              >
+                                <span className="text-muted-foreground">
+                                  {cls.name} · {formatPercent(cls.yieldRate * 100)}% a.a.
+                                </span>
+                                <span className="font-mono tabular-nums text-foreground">
+                                  {formatBRL((cls.finalValue * cls.yieldRate) / 12)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="mt-2.5 pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-semibold text-foreground">
+                            <span>Total mensal</span>
+                            <span className="font-mono tabular-nums">
+                              {formatBRL(rebalanceData.monthlyPassive)}
+                            </span>
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                     </div>
                   </div>
                   <span className="font-mono text-lg sm:text-2xl font-extrabold text-foreground tabular-nums whitespace-nowrap self-end sm:self-center">
@@ -321,12 +391,25 @@ export function MinimalWealthSimulator() {
                 <span className="text-xs text-muted-foreground">
                   Zero giro de carteira e zero DARF: o algoritmo equilibra seu patrimônio apenas direcionando novos aportes.
                 </span>
-                <span className="text-[10px] text-muted-foreground/80 mt-0.5">
+                <span className="text-[11px] text-muted-foreground mt-0.5">
                   Simulação ilustrativa e matemática parametrizada. Não constitui análise ou recomendação de investimentos (Resoluções CVM nº 19 e 20/2021).
                 </span>
               </div>
               <Link
                 to={trialUrl}
+                onClick={() =>
+                  storePendingSimulation({
+                    type: "rebalance_simulator",
+                    classes: currentStrategy.classes.map((cls) => ({
+                      name: cls.name,
+                      targetPercent: cls.targetPercent,
+                    })),
+                    patrimonyBaseCents: numberToCents(patrimonyBase),
+                    aporteAmountCents: numberToCents(aporteAmount),
+                    selectedPreset: strategy,
+                  })
+                }
+                aria-label="Organizar investimentos e começar teste gratuito de 30 dias"
                 className={cn(
                   buttonVariants({ size: "default" }),
                   "w-full sm:w-auto px-6 font-semibold inline-flex items-center justify-center gap-2 group shadow-xs rounded-xl shrink-0",

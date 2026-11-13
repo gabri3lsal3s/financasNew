@@ -94,6 +94,11 @@ export function HeroEditorial() {
           <div className="mt-7 sm:mt-10 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <Link
               to={trialUrl}
+              aria-label={
+                isLoggedIn
+                  ? "Acessar Meu Painel"
+                  : "Começar 30 Dias Grátis — teste de 30 dias sem cartão"
+              }
               className={cn(
                 buttonVariants({ size: "lg" }),
                 "group relative overflow-hidden w-full sm:w-auto px-6 sm:px-9 py-3.5 sm:py-7 text-base sm:text-lg font-semibold shadow-lg inline-flex items-center justify-center gap-2.5 rounded-xl sm:rounded-2xl",
@@ -166,7 +171,7 @@ export function HeroEditorial() {
         </div>
 
         {/* Visual Mockup Espaçoso e Cinematográfico */}
-        <ScrollReveal delay={120} className="mt-10 sm:mt-18 max-w-6xl mx-auto">
+        <ScrollReveal delay={120} direction="none" className="mt-10 sm:mt-18 max-w-6xl mx-auto">
           <div className="relative rounded-2xl sm:rounded-3xl border border-border/80 bg-surface/95 p-4 sm:p-8 md:p-10 shadow-xl sm:shadow-2xl backdrop-blur-2xl">
             {/* Header da Janela */}
             <div className="flex items-center justify-between border-b border-border/60 pb-3 sm:pb-4 mb-4 sm:mb-8">
@@ -246,7 +251,7 @@ export function HeroEditorial() {
         </ScrollReveal>
 
         {/* Faixa de Confiança & Garantias Técnicas */}
-        <ScrollReveal delay={150} className="mt-8 sm:mt-14 border-t border-border/70 pt-8 sm:pt-10">
+        <ScrollReveal delay={150} direction="none" className="mt-8 sm:mt-14 border-t border-border/70 pt-8 sm:pt-10">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 text-center">
             <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface/50 border border-border/50">
               <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-foreground">

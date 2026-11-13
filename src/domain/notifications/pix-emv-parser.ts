@@ -78,6 +78,28 @@ export function parsePixEMVPayload(rawText: string): ParsedBankTransaction | nul
     return null;
   }
 
+  // Tag 26: Informações da conta do recebedor (BR.GOV.BCB.PIX + Chave Pix + Descrição opcional)
+  let pixKey: string | undefined;
+  let customDesc: string | undefined;
+  if (tags["26"]) {
+    const subTags26 = parseEMVTLV(tags["26"]);
+    if (subTags26["01"]) {
+      pixKey = subTags26["01"].trim();
+    }
+    if (subTags26["02"]) {
+      customDesc = subTags26["02"].trim();
+    }
+  }
+
+  // Tag 62: Campo adicional com TxID (subtag 05)
+  let txId: string | undefined;
+  if (tags["62"]) {
+    const subTags62 = parseEMVTLV(tags["62"]);
+    if (subTags62["05"] && subTags62["05"] !== "***") {
+      txId = subTags62["05"].trim();
+    }
+  }
+
   // Tag 54: Valor da transação (opcional em QRs estáticos, comum em faturas e cobranças)
   const cents = parseEMVAmountToCents(tags["54"]) ?? 0;
 
@@ -85,12 +107,14 @@ export function parsePixEMVPayload(rawText: string): ParsedBankTransaction | nul
   const rawRecipient = tags["59"] ? tags["59"].trim() : "";
   const cleanedRecipient = cleanMerchantName(rawRecipient);
 
-  const description = cleanedRecipient
-    ? `Pix: ${cleanedRecipient}`
-    : "Pix Copia e Cola";
+  const description = customDesc
+    ? `Pix: ${customDesc}`
+    : cleanedRecipient
+      ? `Pix: ${cleanedRecipient}`
+      : "Pix Copia e Cola";
 
   const id = `pix_emv_${Date.now()}_${cents}_${Math.random().toString(36).slice(2, 7)}`;
-  const categorySlug = inferCategoryKeyword(cleanedRecipient || description);
+  const categorySlug = inferCategoryKeyword(customDesc || cleanedRecipient || description);
 
   return {
     id,
@@ -101,6 +125,9 @@ export function parsePixEMVPayload(rawText: string): ParsedBankTransaction | nul
     currency: "BRL",
     description,
     merchant: cleanedRecipient || undefined,
+    recipientName: cleanedRecipient || undefined,
+    pixKey,
+    txId,
     timestamp: Date.now(),
     categorySlug,
     date: toISODate(new Date()),

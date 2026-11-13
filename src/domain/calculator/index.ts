@@ -140,70 +140,57 @@ export function pressMoneyBackspace(state: CalculatorState): CalculatorState {
 
 /**
  * Sanitiza e extrai valor decimal a partir de texto colado da área de transferência.
+ * Suporta formatos numéricos diretos e frases com valores embutidos (ex.: "Pix de R$ 50,00", "Total 1.250,50").
  * Ex.: "R$ 1.250,50" -> "1250.50", "1500" -> "1500.00", "25,30" -> "25.30".
  * Retorna null se não houver número válido.
  */
 export function parseClipboardToDecimal(text: string): string | null {
   if (!text || typeof text !== "string") return null;
 
-  const cleaned = text
-    .replace(/[R$\s\u00A0]/g, "")
-    .trim();
+  const trimmed = text.trim();
+  if (!trimmed) return null;
 
-  if (!cleaned) return null;
-
-  const lastComma = cleaned.lastIndexOf(",");
-  const lastDot = cleaned.lastIndexOf(".");
-
-  if (lastComma !== -1 && lastDot !== -1) {
-    if (lastComma > lastDot) {
-      // Formato brasileiro: 1.250,50
-      const normalized = cleaned.replace(/\./g, "").replace(",", ".");
-      const num = Number.parseFloat(normalized);
-      if (!Number.isFinite(num) || num < 0) return null;
-      return (Math.round(num * 100) / 100).toFixed(2);
-    } else {
-      // Formato internacional: 1,250.50
-      const normalized = cleaned.replace(/,/g, "");
-      const num = Number.parseFloat(normalized);
-      if (!Number.isFinite(num) || num < 0) return null;
+  // 1. Tenta extrair padrões monetários explícitos no formato brasileiro (com vírgula decimal)
+  // Ex.: "Total: R$ 1.250,50", "Valor R$ 50,00", "paguei 35,50", "Pix de 25,00"
+  const brlMoneyMatch = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})\b/.exec(trimmed);
+  if (brlMoneyMatch && brlMoneyMatch[1]) {
+    const rawNum = brlMoneyMatch[1].replace(/\./g, "").replace(",", ".");
+    const num = Number.parseFloat(rawNum);
+    if (Number.isFinite(num) && num >= 0) {
       return (Math.round(num * 100) / 100).toFixed(2);
     }
   }
 
-  if (lastComma !== -1) {
-    const parts = cleaned.split(",");
-    if (parts.length > 2) {
-      const normalized = cleaned.replace(/,/g, "");
-      const num = Number.parseFloat(normalized);
-      if (!Number.isFinite(num) || num < 0) return null;
+  // 2. Tenta extrair padrões com ponto decimal internacional (ex.: "1,250.50", "1250.50", "$ 45.00")
+  const intlMoneyMatch = /(?:\$\s*)?(\d{1,3}(?:,\d{3})+\.\d{2}|\d+\.\d{2})\b/.exec(trimmed);
+  if (intlMoneyMatch && intlMoneyMatch[1]) {
+    const rawNum = intlMoneyMatch[1].replace(/,/g, "");
+    const num = Number.parseFloat(rawNum);
+    if (Number.isFinite(num) && num >= 0) {
       return (Math.round(num * 100) / 100).toFixed(2);
     }
-    const normalized = cleaned.replace(",", ".");
-    const num = Number.parseFloat(normalized);
-    if (!Number.isFinite(num) || num < 0) return null;
-    return (Math.round(num * 100) / 100).toFixed(2);
   }
 
-  if (lastDot !== -1) {
-    const parts = cleaned.split(".");
-    if (parts.length > 2) {
-      const normalized = cleaned.replace(/\./g, "");
-      const num = Number.parseFloat(normalized);
-      if (!Number.isFinite(num) || num < 0) return null;
+  // 3. Padrão inteiro com símbolo de moeda (ex.: "R$ 100", "R$ 1.500")
+  const currencyIntegerMatch = /(?:R\$|\$)\s*(\d{1,3}(?:\.\d{3})+|\d+)\b/i.exec(trimmed);
+  if (currencyIntegerMatch && currencyIntegerMatch[1]) {
+    const rawNum = currencyIntegerMatch[1].replace(/\./g, "");
+    const num = Number.parseInt(rawNum, 10);
+    if (Number.isFinite(num) && num >= 0) {
       return (Math.round(num * 100) / 100).toFixed(2);
     }
-    const num = Number.parseFloat(cleaned);
-    if (!Number.isFinite(num) || num < 0) return null;
-    return (Math.round(num * 100) / 100).toFixed(2);
   }
 
-  // Apenas dígitos inteiros (ex: 1500)
-  const digitsOnly = cleaned.replace(/[^0-9]/g, "");
-  if (!digitsOnly) return null;
-  const num = Number.parseInt(digitsOnly, 10);
-  if (!Number.isFinite(num) || num < 0) return null;
-  return (Math.round(num * 100) / 100).toFixed(2);
+  // 4. Caso a string inteira seja apenas um número inteiro limpo (ex.: "1500")
+  const cleaned = trimmed.replace(/[R$\s\u00A0]/g, "").trim();
+  if (/^\d+$/.test(cleaned)) {
+    const num = Number.parseInt(cleaned, 10);
+    if (Number.isFinite(num) && num >= 0) {
+      return (Math.round(num * 100) / 100).toFixed(2);
+    }
+  }
+
+  return null;
 }
 
 /**

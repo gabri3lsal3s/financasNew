@@ -55,7 +55,7 @@ export function ScrollReveal({
       ref={ref}
       style={getTransitionStyle()}
       className={cn(
-        "transition-all duration-700 ease-out",
+        "transition-[opacity,transform] duration-700 ease-out",
         isInView
           ? "opacity-100 translate-y-0"
           : direction === "up"

@@ -29,6 +29,7 @@ import {
   WeeklyDueRadarCard,
   VirginAccountHero,
   AndroidProBanner,
+  DashboardPixClipboardCard,
 } from "@/components/modules";
 import {
   budgetLimitsByCategory,
@@ -77,9 +78,31 @@ export function OverviewPage() {
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [demoTrackModalOpen, setDemoTrackModalOpen] = useState(false);
   const [androidBannerDismissed, setAndroidBannerDismissed] = useState(false);
+  const [pixCardDismissed, setPixCardDismissed] = useState(false);
 
   const navigate = useNavigate();
   const { guardAction, upgradeModal } = useMutationGuard();
+
+  const handleLaunchPixFromClipboard = useCallback(
+    (params: {
+      valorCents?: number;
+      desc?: string;
+      categoria?: string;
+      tipo?: "expense" | "income";
+      forma?: "pix";
+      pixKey?: string;
+    }) => {
+      const search = new URLSearchParams();
+      search.set("novo", params.tipo || "despesa");
+      search.set("modo", "rapido");
+      search.set("forma", "pix");
+      if (params.valorCents) search.set("valor", String(params.valorCents));
+      if (params.desc) search.set("desc", params.desc);
+      if (params.categoria) search.set("categoria", params.categoria);
+      navigate({ pathname: "/", search: search.toString() });
+    },
+    [navigate],
+  );
 
   const { alertDismissals, updateAlertDismissals } = useDashboardAlertDismissals();
   const {
@@ -366,6 +389,16 @@ export function OverviewPage() {
       id: "cash-gap-alert",
       priority: cashGapResult.severity === "critical" ? 1 : 3,
       content: <CashGapAlert result={cashGapResult} />,
+    },
+    !pixCardDismissed && {
+      id: "pix-clipboard-alert",
+      priority: 2,
+      content: (
+        <DashboardPixClipboardCard
+          onLaunch={handleLaunchPixFromClipboard}
+          onDismiss={() => setPixCardDismissed(true)}
+        />
+      ),
     },
     activeTrips[0]
       ? {

@@ -21,6 +21,9 @@ export type SubscriptionStatus = {
   /** Tier atual do usuário. */
   tier: SubscriptionTier;
 
+  /** Status bruto da assinatura no banco (active, trialing, canceled, past_due, etc.). */
+  status?: string | null;
+
   /** Fase de faturamento derivada de forma determinística (BillingPhase). */
   billingPhase?: string;
 
@@ -32,6 +35,9 @@ export type SubscriptionStatus = {
 
   /** Data de encerramento do trial (ISO string, null fora do trial). */
   trialEndsAt: string | null;
+
+  /** Data em que o trial de 30 dias foi consumido definitivamente. */
+  trialConsumedAt?: string | null;
 
   /** Data de renovação/encerramento do ciclo atual (ISO string, null se não aplicável). */
   currentPeriodEnd: string | null;

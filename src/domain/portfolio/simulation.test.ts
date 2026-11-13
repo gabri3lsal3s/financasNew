@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { simulateStrategyAporte } from "./simulation";
+import { resolveAllocationStatus, simulateStrategyAporte } from "./simulation";
 
 describe("domain/portfolio/simulation", () => {
   const classes = [
@@ -43,5 +43,24 @@ describe("domain/portfolio/simulation", () => {
     expect(fiis?.allocatedAmount).toBeGreaterThan(0);
     expect(rf?.allocatedAmount).toBeGreaterThan(0);
     expect(res.monthlyPassive).toBeGreaterThan(0);
+  });
+});
+
+describe("resolveAllocationStatus", () => {
+  it("classifica classe abaixo, na meta e acima (inclusive sobre-alocada)", () => {
+    expect(resolveAllocationStatus(28, 40)).toBe("below_target");
+    expect(resolveAllocationStatus(40, 40)).toBe("on_target");
+    expect(resolveAllocationStatus(37, 20)).toBe("above_target");
+  });
+
+  it("usa tolerância de 1 p.p. por padrão e aceita tolerância customizada", () => {
+    expect(resolveAllocationStatus(10.7, 10)).toBe("on_target");
+    expect(resolveAllocationStatus(12, 10)).toBe("above_target");
+    expect(resolveAllocationStatus(12, 10, 3)).toBe("on_target");
+  });
+
+  it("trata entradas inválidas como abaixo da meta", () => {
+    expect(resolveAllocationStatus(Number.NaN, 20)).toBe("below_target");
+    expect(resolveAllocationStatus(20, Number.POSITIVE_INFINITY)).toBe("below_target");
   });
 });

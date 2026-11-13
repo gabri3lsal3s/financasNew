@@ -8,6 +8,8 @@ import { useSwipeNavigation } from "@/hooks/use-swipe-navigation";
 export interface TabItem {
   value: string;
   label: string;
+  /** Nome acessível mais descritivo, quando o rótulo visível é abreviado. */
+  ariaLabel?: string;
   shortLabel?: string;
   icon?: ReactNode;
   badge?: ReactNode;
@@ -111,7 +113,7 @@ export function Tabs({
           <TabsPrimitive.Trigger
             key={item.value}
             value={item.value}
-            aria-label={item.label}
+            aria-label={item.ariaLabel ?? item.label}
             className={cn(
               "inline-flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap py-2 text-xs sm:text-sm font-medium tracking-tight sm:tracking-normal transition-all duration-200 outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:rounded-md cursor-pointer select-none active:scale-[0.98] [&_svg]:size-3.5 sm:[&_svg]:size-4 [&_svg]:shrink-0",
               isFullWidth

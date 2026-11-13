@@ -335,6 +335,31 @@ describe("merchant-memory — Aprendizado Semântico de Estabelecimentos (Mercha
     const overwrittenRecord = overwritten["name_posto_shell"];
     expect(overwrittenRecord?.preferredPaymentMethod).toBe("pix");
   });
+
+  it("recordMerchantLearning armazena chaves Pix e permite busca por chave", () => {
+    const now = "2026-11-13T10:00:00.000Z";
+    const memory = recordMerchantLearning(
+      {
+        friendlyName: "Padaria do Zé",
+        categorySlug: "alimentacao",
+        pixKey: "ze@padaria.com.br",
+        defaultNature: "expense",
+      },
+      {},
+      now,
+    );
+
+    const record = memory["name_padaria_do_ze"];
+    expect(record).toBeDefined();
+    expect(record?.pixKeys).toContain("ze@padaria.com.br");
+    expect(record?.defaultNature).toBe("expense");
+
+    // Busca pela chave Pix
+    const found = findLearnedMerchant({ pixKey: "ze@padaria.com.br" }, memory);
+    expect(found).toBeDefined();
+    expect(found?.friendlyName).toBe("Padaria do Zé");
+    expect(found?.categorySlug).toBe("alimentacao");
+  });
 });
 
 describe("merchant-memory — Mapeamento e Memória de Dígitos de Cartão (CardDigitsMapping)", () => {

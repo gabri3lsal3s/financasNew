@@ -38,6 +38,9 @@ export function MobileCtaDock({ visible }: MobileCtaDockProps) {
 
         <Link
           to={isLoggedIn ? "/" : trialUrl}
+          aria-label={
+            isLoggedIn ? "Acessar painel do Axir" : "Testar Grátis — 30 dias de teste pelo celular"
+          }
           className={cn(
             buttonVariants({ size: "sm" }),
             "shadow-xs shrink-0 font-semibold inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs",

@@ -1,21 +1,17 @@
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { useLandingCta } from "./use-landing-cta";
-import * as useAuthModule from "@/hooks/use-auth";
 
 describe("useLandingCta", () => {
-  it("retorna rotas de cadastro quando o usuário não está autenticado", () => {
-    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
-      session: null,
-      user: null,
-      loading: false,
-      configError: null,
-      signIn: vi.fn(),
-      signUp: vi.fn(),
-      resetPassword: vi.fn(),
-      resendConfirmation: vi.fn(),
-    });
+  beforeEach(() => {
+    localStorage.clear();
+  });
 
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it("retorna rotas de cadastro quando o usuário não está autenticado", () => {
     const { result } = renderHook(() => useLandingCta());
 
     expect(result.current.isLoggedIn).toBe(false);
@@ -24,17 +20,11 @@ describe("useLandingCta", () => {
     expect(result.current.proUrl("pro-mensal")).toBe("/assinatura?plano=pro-mensal");
   });
 
-  it("retorna rotas diretas para app e checkout quando o usuário já está autenticado", () => {
-    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
-      session: { user: { id: "user-123" } } as unknown as useAuthModule.AuthState["session"],
-      user: { id: "user-123" } as unknown as useAuthModule.AuthState["user"],
-      loading: false,
-      configError: null,
-      signIn: vi.fn(),
-      signUp: vi.fn(),
-      resetPassword: vi.fn(),
-      resendConfirmation: vi.fn(),
-    });
+  it("retorna rotas diretas para app e checkout quando o usuário já está autenticado no localStorage", () => {
+    localStorage.setItem(
+      "sb-test-auth-token",
+      JSON.stringify({ access_token: "mock-valid-token-123" }),
+    );
 
     const { result } = renderHook(() => useLandingCta());
 

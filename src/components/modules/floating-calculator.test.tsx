@@ -345,4 +345,35 @@ describe("FloatingCalculator (F9)", () => {
       configurable: true,
     });
   });
+
+  it("cola valor monetário embutido em mensagem de Pix ou texto livre", async () => {
+    const setter = vi.fn();
+    registerCalculatorTarget(setter);
+    const user = userEvent.setup();
+
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        readText: vi.fn().mockResolvedValue("Pix de R$ 75,30 para Almoço"),
+        writeText: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    await user.click(screen.getByRole("button", { name: "Colar" }));
+    expect(screen.getAllByText("R$ 75,30").length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("button", { name: "Usar valor" }));
+    expect(setter).toHaveBeenCalledWith(7530);
+
+    Object.defineProperty(navigator, "clipboard", {
+      value: originalClipboard,
+      writable: true,
+      configurable: true,
+    });
+  });
 });

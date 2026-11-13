@@ -85,6 +85,8 @@ export { InteractiveTargetDonut } from "./interactive-target-donut";
 export type { InteractiveTargetDonutProps, TargetDonutItem } from "./interactive-target-donut";
 export { DashboardAlertsCarousel } from "./dashboard-alerts-carousel";
 export type { DashboardAlertsCarouselProps, DashboardAlertItem } from "./dashboard-alerts-carousel";
+export { DashboardPixClipboardCard } from "./dashboard-pix-clipboard-card";
+export type { DashboardPixClipboardCardProps } from "./dashboard-pix-clipboard-card";
 export { PermissionsAlertBanner } from "./permissions-alert-banner";
 export type { PermissionsAlertBannerProps, PermissionAlertBannerType } from "./permissions-alert-banner";
 export * from "./portfolio";

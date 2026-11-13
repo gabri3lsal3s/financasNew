@@ -1,10 +1,31 @@
-import { useAuth } from "@/hooks/use-auth";
+import { useState } from "react";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
+
+/**
+ * Verifica de forma síncrona e ultraleve se existe uma sessão válida persistida no localStorage.
+ * Não inicializa o cliente Supabase, não carrega SDKs externos e não gera tráfego de rede.
+ */
+function hasStoredSession(): boolean {
+  if (typeof window === "undefined" || !window.localStorage) return false;
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        const item = window.localStorage.getItem(key);
+        if (item && item.includes("access_token")) return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
 
 /**
  * Hook de URLs inteligentes para os CTAs da Landing Page.
  *
- * Detecta se o usuário já possui sessão ativa e retorna as URLs corretas:
+ * Detecta se o usuário já possui sessão ativa de forma puramente local e síncrona,
+ * desacoplando a Landing Page do bundle pesado do cliente Supabase e TanStack Query:
  * - Logado: "Começar grátis" → "/" (já está no app)
  * - Logado: "Assinar Pro" → "/assinatura?plano=..." (vai direto ao checkout)
  * - Sem sessão: ambos passam pelo /cadastro preservando o parâmetro de plano
@@ -12,8 +33,8 @@ import { buildCheckoutUrl } from "@/domain/subscription/plans";
  * Mantido na landing feature — zero import de shell/app routes fora da camada pública.
  */
 export function useLandingCta() {
-  const { session, loading } = useAuth();
-  const isLoggedIn = !loading && Boolean(session);
+  // Leitura síncrona do storage na inicialização — sem efeito de sincronização
+  const [isLoggedIn] = useState(hasStoredSession);
 
   /**
    * URL do fluxo secundário de cadastro gratuito (sem cartão).

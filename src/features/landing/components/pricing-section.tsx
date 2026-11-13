@@ -124,6 +124,7 @@ export function PricingSection() {
               <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/80">
                 <Link
                   to={trialUrl}
+                  aria-label="Começar teste gratuito no plano Básico"
                   className={cn(
                     buttonVariants({ variant: "outline", size: "lg" }),
                     "w-full justify-center font-semibold inline-flex items-center gap-2 rounded-xl",
@@ -211,6 +212,7 @@ export function PricingSection() {
               <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/80">
                 <Link
                   to={proUrl(isAnnual ? "pro-anual" : "pro-mensal")}
+                  aria-label="Assinar Plano Pro com 30 dias de teste"
                   className={cn(
                     buttonVariants({ size: "lg" }),
                     "w-full justify-center shadow-md font-semibold inline-flex items-center gap-2 rounded-xl",

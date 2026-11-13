@@ -51,10 +51,13 @@ export async function getMySubscription(): Promise<SubscriptionStatus | null> {
 
     return {
       tier,
+      status: raw.status ?? null,
       billingPhase: raw.billing_phase ?? undefined,
       startsAt: raw.starts_at ?? null,
       trialDaysRemaining: raw.trial_days_remaining,
       trialEndsAt: raw.trial_ends_at,
+      trialConsumedAt: raw.trial_consumed_at ?? null,
+      hasUsedTrial: Boolean(raw.has_used_trial ?? (raw.trial_consumed_at || raw.billing_start_at || raw.is_read_only)),
       currentPeriodEnd: raw.current_period_end,
       plan,
       cancelAtPeriodEnd: raw.cancel_at_period_end,

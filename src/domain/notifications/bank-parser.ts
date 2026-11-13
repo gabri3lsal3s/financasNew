@@ -55,6 +55,7 @@ export interface ParsedBankTransaction {
   scheduledFor?: string;
   txId?: string;
   taxId?: string;
+  pixKey?: string;
   payerName?: string;
   recipientName?: string;
   notes?: string;

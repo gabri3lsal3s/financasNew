@@ -1,16 +1,26 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useLayoutEffect, useEffect } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { Sparkles, Flag, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sparkles, Flag } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
+import { Switch } from "@/components/ui/switch";
 import { triggerSensory } from "@/services/sensory";
+import { formatCentsAsBRL, formatPercent } from "@/services/masks";
+import { projectPatrimony, type ProjectionBasis } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
 
 export interface FireProjectionCurveProps {
+  /** Patrimônio atual em reais. */
   initialPatrimony?: number;
+  /** Aporte mensal em reais. */
   monthlyAporte: number;
+  /** Custo de vida mensal desejado em reais (base do capital crítico). */
   monthlyExpenses?: number;
+  /** Rentabilidade anual esperada (decimal — 0.08 = 8% a.a.). */
   annualRate?: number;
+  /** Yield anual da carteira usado na renda passiva (decimal). Default: `annualRate`. */
+  annualPassiveYield?: number;
   years?: number;
+  basis?: ProjectionBasis;
   className?: string;
 }
 
@@ -18,6 +28,9 @@ interface LinePoint {
   x: number;
   y: number;
 }
+
+const money = (valueInReais: number): string =>
+  formatCentsAsBRL(Math.round(valueInReais * 100), { hideCents: true });
 
 /**
  * Gera um comando SVG path com curvas suaves (Catmull-Rom / Bézier cúbicas),
@@ -46,45 +59,63 @@ function toSmoothPath(points: readonly LinePoint[]): string {
   return path;
 }
 
+/**
+ * Curva de projeção patrimonial — a série vem do motor puro
+ * `projectPatrimony` (domínio), nunca de cálculo local no componente.
+ */
 export function FireProjectionCurve({
   initialPatrimony = 0,
   monthlyAporte,
   monthlyExpenses = 2500,
   annualRate = 0.08,
+  annualPassiveYield,
   years = 25,
+  basis = "nominal",
   className,
 }: FireProjectionCurveProps) {
   const chartWrapperRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
   const [scrubIndex, setScrubIndex] = useState<number | null>(null);
   const [isPointerActive, setIsPointerActive] = useState(false);
+  const [pillLeft, setPillLeft] = useState<number | null>(null);
+  const [realValues, setRealValues] = useState(basis === "real");
   const lastHapticIndexRef = useRef<number | null>(null);
 
-  // Regra 4%: Patrimônio necessário = Despesas anuais * 25
-  const fireTarget = monthlyExpenses * 12 * 25;
+  const activeBasis: ProjectionBasis = realValues ? "real" : "nominal";
 
-  const dataPoints = useMemo(() => {
-    const points: Array<{ year: number; balance: number; passiveMonthly: number }> = [];
-    const monthlyRate = Math.pow(1 + annualRate, 1 / 12) - 1;
+  const projection = useMemo(
+    () =>
+      projectPatrimony({
+        initialCents: Math.round(initialPatrimony * 100),
+        monthlyContributionCents: Math.round(monthlyAporte * 100),
+        annualRatePercent: annualRate * 100,
+        annualPassiveYieldPercent: (annualPassiveYield ?? annualRate) * 100,
+        monthlyLivingCostCents: Math.round(monthlyExpenses * 100),
+        years,
+        basis: activeBasis,
+      }),
+    [initialPatrimony, monthlyAporte, annualRate, annualPassiveYield, monthlyExpenses, years, activeBasis],
+  );
 
-    let balance = initialPatrimony;
-    for (let y = 0; y <= years; y++) {
-      if (y === 0) {
-        const passiveMonthly = (balance * 0.04) / 12;
-        points.push({ year: 0, balance: Math.round(balance), passiveMonthly: Math.round(passiveMonthly) });
-      } else {
-        for (let m = 0; m < 12; m++) {
-          balance = balance * (1 + monthlyRate) + monthlyAporte;
-        }
-        const passiveMonthly = (balance * 0.04) / 12;
-        points.push({ year: y, balance: Math.round(balance), passiveMonthly: Math.round(passiveMonthly) });
-      }
-    }
-    return points;
-  }, [initialPatrimony, monthlyAporte, annualRate, years]);
+  // Série de comparação: mesmo patrimônio e rentabilidade, sem novos aportes
+  const comparison = useMemo(() => {
+    if (monthlyAporte <= 0) return null;
+    return projectPatrimony({
+      initialCents: Math.round(initialPatrimony * 100),
+      monthlyContributionCents: 0,
+      annualRatePercent: annualRate * 100,
+      annualPassiveYieldPercent: (annualPassiveYield ?? annualRate) * 100,
+      monthlyLivingCostCents: Math.round(monthlyExpenses * 100),
+      years,
+      basis: activeBasis,
+    });
+  }, [initialPatrimony, monthlyAporte, annualRate, annualPassiveYield, monthlyExpenses, years, activeBasis]);
 
-  // Encontra o ano de crossover (onde o patrimônio atinge ou supera o alvo FIRE)
-  const fireCrossoverIndex = dataPoints.findIndex((p) => p.balance >= fireTarget);
-  const fireCrossover = fireCrossoverIndex !== -1 ? dataPoints[fireCrossoverIndex] : null;
+  const dataPoints = projection.years;
+  const fireTarget = projection.independenceTargetCents;
+  const fireCrossoverIndex =
+    fireTarget !== null ? dataPoints.findIndex((point) => point.balanceCents >= fireTarget) : -1;
+  const fireCrossover = fireCrossoverIndex !== -1 ? dataPoints[fireCrossoverIndex]! : null;
 
   // Dimensões do SVG
   const width = 500;
@@ -93,7 +124,8 @@ export function FireProjectionCurve({
   const paddingTop = 16;
   const paddingBottom = 26;
 
-  const maxBalance = Math.max(fireTarget * 1.15, dataPoints[dataPoints.length - 1]?.balance ?? 1);
+  const lastBalance = dataPoints[dataPoints.length - 1]?.balanceCents ?? 0;
+  const maxBalance = Math.max((fireTarget ?? 0) * 1.15, lastBalance, 1);
 
   const linePoints: LinePoint[] = useMemo(() => {
     const usableHeight = height - paddingTop - paddingBottom;
@@ -101,7 +133,7 @@ export function FireProjectionCurve({
     const lastIndex = Math.max(1, dataPoints.length - 1);
     return dataPoints.map((point, idx) => {
       const x = paddingX + (idx / lastIndex) * usableWidth;
-      const normalized = Math.min(1, Math.max(0, point.balance / maxBalance));
+      const normalized = Math.min(1, Math.max(0, point.balanceCents / maxBalance));
       const y = height - paddingBottom - normalized * usableHeight;
       return { x, y };
     });
@@ -109,25 +141,62 @@ export function FireProjectionCurve({
 
   const smoothCurvePath = useMemo(() => toSmoothPath(linePoints), [linePoints]);
 
+  const comparisonPath = useMemo(() => {
+    if (!comparison) return "";
+    const usableHeight = height - paddingTop - paddingBottom;
+    const usableWidth = width - paddingX * 2;
+    const lastIndex = Math.max(1, comparison.years.length - 1);
+    const points = comparison.years.map((point, idx) => ({
+      x: paddingX + (idx / lastIndex) * usableWidth,
+      y:
+        height -
+        paddingBottom -
+        Math.min(1, Math.max(0, point.balanceCents / maxBalance)) * usableHeight,
+    }));
+    return toSmoothPath(points);
+  }, [comparison, maxBalance]);
+
   const areaD = useMemo(() => {
     if (linePoints.length === 0) return "";
     return `${smoothCurvePath} L ${linePoints[linePoints.length - 1]!.x} ${height - paddingBottom} L ${linePoints[0]!.x} ${height - paddingBottom} Z`;
   }, [smoothCurvePath, linePoints]);
 
-  const fireTargetY = height - paddingBottom - (fireTarget / maxBalance) * (height - paddingTop - paddingBottom);
+  const fireTargetY =
+    fireTarget !== null
+      ? height - paddingBottom - (fireTarget / maxBalance) * (height - paddingTop - paddingBottom)
+      : null;
 
   const activeIndex =
-    scrubIndex !== null
-      ? scrubIndex
-      : fireCrossoverIndex !== -1
-        ? fireCrossoverIndex
-        : dataPoints.length - 1;
+    scrubIndex !== null ? scrubIndex : fireCrossoverIndex !== -1 ? fireCrossoverIndex : dataPoints.length - 1;
 
   const activePoint = dataPoints[activeIndex]!;
   const activeCoord = linePoints[activeIndex]!;
 
-  // Percentual horizontal para posicionamento de elementos de UI flutuantes
-  const activePercent = (activeIndex / Math.max(1, dataPoints.length - 1)) * 100;
+  // Mantém o pill flutuante integralmente dentro do painel (zero corte nas bordas)
+  const syncPillPosition = useCallback(() => {
+    const wrapper = chartWrapperRef.current;
+    const pill = pillRef.current;
+    if (!wrapper || !pill) return;
+    const usableWidth = wrapper.clientWidth;
+    if (usableWidth <= 0) return;
+
+    const ratio = activeIndex / Math.max(1, dataPoints.length - 1);
+    const halfWidth = pill.offsetWidth / 2 + 8;
+    const target = ratio * usableWidth;
+    setPillLeft(Math.min(Math.max(target, halfWidth), Math.max(halfWidth, usableWidth - halfWidth)));
+  }, [activeIndex, dataPoints.length]);
+
+  useLayoutEffect(() => {
+    syncPillPosition();
+  }, [syncPillPosition]);
+
+  useEffect(() => {
+    const wrapper = chartWrapperRef.current;
+    if (!wrapper || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => syncPillPosition());
+    observer.observe(wrapper);
+    return () => observer.disconnect();
+  }, [syncPillPosition]);
 
   // Manipulador unificado de coordenadas relativas do ponteiro com captura nativa
   const updatePointerIndex = useCallback(
@@ -182,27 +251,24 @@ export function FireProjectionCurve({
     setScrubIndex(clampedYear);
   };
 
-  const formatBRL = (val: number) => {
-    return val.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      maximumFractionDigits: 0,
-    });
-  };
-
-  const isFireReached = activePoint.balance >= fireTarget;
+  const isFireReached = fireTarget !== null && activePoint.balanceCents >= fireTarget;
+  const livingCostCents = Math.round(monthlyExpenses * 100);
+  const livingCostCoveragePct =
+    livingCostCents > 0 ? Math.round((activePoint.monthlyPassiveIncomeCents / livingCostCents) * 100) : 0;
+  const horizonProgressPct =
+    fireCrossover && fireCrossover.year > 0 ? Math.min(100, (activePoint.year / fireCrossover.year) * 100) : 0;
 
   return (
     <div className={cn("flex flex-col gap-3.5 sm:gap-4 w-full min-w-0 select-none", className)}>
-      {/* Zona Interativa do Gráfico com touch-action: none e captura de ponteiro */}
+      {/* Zona Interativa do Gráfico — sem controles focáveis dentro do widget slider */}
       <div
         ref={chartWrapperRef}
         role="slider"
-        aria-label="Projeção FIRE ao longo dos anos"
+        aria-label="Projeção patrimonial ao longo dos anos"
         aria-valuemin={0}
         aria-valuemax={years}
         aria-valuenow={activePoint.year}
-        aria-valuetext={`${activePoint.year} anos, patrimônio estimado de ${formatBRL(activePoint.balance)}`}
+        aria-valuetext={`${activePoint.year} anos, patrimônio estimado de ${money(activePoint.balanceCents / 100)}`}
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === "ArrowLeft") {
@@ -219,40 +285,43 @@ export function FireProjectionCurve({
             setYearExplicit(years);
           }
         }}
-        className="relative w-full rounded-2xl bg-surface/40 p-2 sm:p-3 border border-border/60 touch-none cursor-ew-resize select-none overflow-hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40"
+        className="relative w-full rounded-2xl bg-surface/40 p-2 sm:p-3 border border-border/80 touch-none cursor-ew-resize select-none overflow-hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerCancel}
-        onPointerLeave={() => {
-          if (!isPointerActive) {
-            // No desktop com mouse, o scrub pode resetar ao sair; no mobile, preserva o ano tocado
-            // para comodidade de leitura
-          }
-        }}
         data-swipe-nav-ignore
       >
-        {/* Tooltip Flutuante Dinâmico que acompanha o cursor (Floating Scrub Pill) */}
+        {/* Leitura ativa ancorada ao ponto — posição clampada dentro do painel */}
         <div
-          className="absolute z-20 pointer-events-none transition-transform duration-75 ease-out"
+          ref={pillRef}
+          className={cn(
+            "absolute z-20 pointer-events-none transition-[left] duration-75 ease-out",
+            pillLeft === null && "opacity-0",
+          )}
           style={{
-            left: `${Math.max(20, Math.min(80, activePercent))}%`,
+            left: `${pillLeft ?? 0}px`,
             top: "10px",
             transform: "translateX(-50%)",
           }}
         >
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface border border-border/90 shadow-md text-[11px] font-mono whitespace-nowrap">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface border border-border/90 shadow-md text-xs font-mono whitespace-nowrap">
             <span className="font-bold text-foreground">
               {activePoint.year === 0 ? "Hoje" : `${activePoint.year}a`}
             </span>
-            <span className="text-muted-foreground/60">·</span>
-            <span className={cn("font-bold tabular-nums", isFireReached ? "text-positive-strong" : "text-foreground")}>
-              {formatBRL(activePoint.balance)}
+            <span className="text-muted-foreground/60" aria-hidden="true">
+              ·
             </span>
+            <MoneyText
+              cents={activePoint.balanceCents}
+              hideCents
+              tone="default"
+              className="font-bold tabular-nums"
+            />
             {isFireReached ? (
-              <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-positive-strong bg-positive/10 px-1.5 py-0.2 rounded-md">
-                <Sparkles className="size-2.5" aria-hidden="true" />
-                FIRE
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-positive-strong bg-positive/10 px-1.5 py-0.5 rounded-md">
+                <Sparkles className="size-3" aria-hidden="true" />
+                Meta
               </span>
             ) : null}
           </div>
@@ -300,30 +369,45 @@ export function FireProjectionCurve({
               strokeWidth={1}
             />
 
-            {/* Linha Tracejada da Meta FIRE */}
-            <line
-              x1={paddingX}
-              y1={fireTargetY}
-              x2={width - paddingX}
-              y2={fireTargetY}
-              stroke="currentColor"
-              strokeDasharray="3 3"
-              className="text-positive-strong/70 dark:text-positive/70"
-              strokeWidth={1.5}
-            />
-
-            {/* Rótulo da Meta Patrimonial */}
-            <text
-              x={width - paddingX}
-              y={fireTargetY - 4}
-              textAnchor="end"
-              className="fill-positive-strong dark:fill-positive text-[10px] font-mono font-bold"
-            >
-              Meta Patrimonial: {formatBRL(fireTarget)}
-            </text>
+            {/* Linha Tracejada do Capital Crítico de Independência */}
+            {fireTargetY !== null && fireTarget !== null ? (
+              <>
+                <line
+                  x1={paddingX}
+                  y1={fireTargetY}
+                  x2={width - paddingX}
+                  y2={fireTargetY}
+                  stroke="currentColor"
+                  strokeDasharray="3 3"
+                  className="text-positive-strong/70 dark:text-positive/70"
+                  strokeWidth={1.5}
+                />
+                <text
+                  x={width - paddingX}
+                  y={fireTargetY - 4}
+                  textAnchor="end"
+                  className="fill-positive-strong dark:fill-positive text-[11px] font-mono font-bold"
+                >
+                  Meta Patrimonial: {money(fireTarget / 100)}
+                </text>
+              </>
+            ) : null}
 
             {/* Área com Gradiente Suave */}
             <path d={areaD} fill="url(#fireAreaGradient)" />
+
+            {/* Cenário sem novos aportes — apenas rentabilidade composta */}
+            {comparisonPath ? (
+              <path
+                d={comparisonPath}
+                fill="none"
+                stroke="currentColor"
+                strokeDasharray="4 4"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                className="text-muted-foreground/60"
+              />
+            ) : null}
 
             {/* Linha Principal da Curva Suave Bézier */}
             <path
@@ -356,175 +440,162 @@ export function FireProjectionCurve({
               strokeWidth={isPointerActive ? "3" : "2"}
             />
 
-            {/* Rótulos dos eixos temporais */}
-            <text x={paddingX} y={height - 6} className="fill-muted-foreground text-[10px] font-mono">
-              Ano 0 (Hoje)
+            {/* Eixo temporal em duas faixas: apenas início e fim (zero colisão) */}
+            <text x={paddingX} y={height - 6} className="fill-muted-foreground text-[11px] font-mono">
+              Hoje
             </text>
-            {fireCrossover && fireCrossover.year > 0 && fireCrossover.year < years ? (
-              <text
-                x={Math.max(80, Math.min(width - 80, linePoints[fireCrossoverIndex]!.x))}
-                y={height - 6}
-                textAnchor="middle"
-                className="fill-positive-strong text-[10px] font-mono font-bold"
-              >
-                {fireCrossover.year} anos (Liberdade Financeira)
-              </text>
-            ) : null}
-            <text x={width - paddingX} y={height - 6} textAnchor="end" className="fill-muted-foreground text-[10px] font-mono">
+            <text
+              x={width - paddingX}
+              y={height - 6}
+              textAnchor="end"
+              className="fill-muted-foreground text-[11px] font-mono"
+            >
               {years} anos
             </text>
           </svg>
         </div>
-
-        {/* Trilho de Toque Rápido / Stepper com Marcos de Navegação */}
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/40 gap-1.5 text-xs">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setYearExplicit(activePoint.year - 1)}
-              disabled={activePoint.year <= 0}
-              aria-label="Voltar 1 ano"
-              className="size-7 rounded-lg border border-border/80 bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none cursor-pointer active:scale-95 transition-all"
-            >
-              <ChevronLeft className="size-3.5" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setYearExplicit(activePoint.year + 1)}
-              disabled={activePoint.year >= years}
-              aria-label="Avançar 1 ano"
-              className="size-7 rounded-lg border border-border/80 bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:pointer-events-none cursor-pointer active:scale-95 transition-all"
-            >
-              <ChevronRight className="size-3.5" aria-hidden="true" />
-            </button>
-          </div>
-
-          {/* Atalhos para Marcos Importantes */}
-          <div className="flex items-center gap-1 font-mono text-[11px]">
-            <button
-              type="button"
-              onClick={() => setYearExplicit(0)}
-              className={cn(
-                "px-2 py-1 rounded-md transition-all cursor-pointer border text-center font-semibold",
-                activePoint.year === 0
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-surface/80 border-border/60 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Hoje (0a)
-            </button>
-
-            {fireCrossover ? (
-              <button
-                type="button"
-                onClick={() => setYearExplicit(fireCrossover.year)}
-                className={cn(
-                  "px-2 py-1 rounded-md transition-all cursor-pointer border text-center font-semibold flex items-center gap-1",
-                  activePoint.year === fireCrossover.year
-                    ? "bg-positive-strong text-white border-positive-strong shadow-xs"
-                    : "bg-surface/80 border-positive-strong/30 text-positive-strong hover:bg-positive/10",
-                )}
-              >
-                <Flag className="size-2.5" aria-hidden="true" />
-                <span>Meta ({fireCrossover.year}a)</span>
-              </button>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={() => setYearExplicit(years)}
-              className={cn(
-                "px-2 py-1 rounded-md transition-all cursor-pointer border text-center font-semibold",
-                activePoint.year === years
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-surface/80 border-border/60 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {years}a
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* Grid com os 3 Cards Métricos — Mobile-First (1 Coluna Mobile, 3 Desktop) */}
+      {/* Legenda + ajuste inflacionário: 2 séries e 1 controle declarado */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-0.5 w-4 rounded-full bg-positive-strong" aria-hidden="true" />
+            <span>Com aportes</span>
+          </span>
+          {comparisonPath ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="w-4 border-t border-dashed border-muted-foreground/70"
+                aria-hidden="true"
+              />
+              <span>Sem aportes</span>
+            </span>
+          ) : null}
+        </div>
+        <Switch
+          checked={realValues}
+          onCheckedChange={setRealValues}
+          label="Valores reais"
+          aria-label="Descontar a inflação de 4% ao ano"
+          className="shrink-0"
+        />
+      </div>
+
+      {/* Marcos de navegação — fora do widget slider (ARIA válido) */}
+      <div className="flex items-center gap-1.5 flex-wrap font-mono text-xs">
+        <button
+          type="button"
+          onClick={() => setYearExplicit(0)}
+          className={cn(
+            "px-2.5 py-1.5 rounded-lg transition-all cursor-pointer border text-center font-semibold",
+            activePoint.year === 0
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-surface border-border/80 text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Hoje
+        </button>
+
+        {fireCrossover ? (
+          <button
+            type="button"
+            onClick={() => setYearExplicit(fireCrossover.year)}
+            className={cn(
+              "px-2.5 py-1.5 rounded-lg transition-all cursor-pointer border text-center font-semibold flex items-center gap-1.5",
+              activePoint.year === fireCrossover.year
+                ? "bg-positive/15 border-positive-strong text-positive-strong shadow-xs"
+                : "bg-surface border-positive-strong/40 text-positive-strong hover:bg-positive/10",
+            )}
+          >
+            <Flag className="size-3" aria-hidden="true" />
+            <span>Independência ({fireCrossover.year}a)</span>
+          </button>
+        ) : (
+          <span className="px-2 py-1.5 text-xs text-muted-foreground">
+            Meta não alcançada em {years} anos
+          </span>
+        )}
+      </div>
+
+      {projection.interestExceedsContributionAt ? (
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          Ponto de inflexão: a partir de {projection.interestExceedsContributionAt.year}a
+          {projection.interestExceedsContributionAt.month}m a rentabilidade mensal supera o aporte de{" "}
+          {money(monthlyAporte)}.
+        </p>
+      ) : null}
+
+      {/* Grid com os 3 Cards Métricos — mobile-first, sem truncamento de valores */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5">
         {/* Card 1: Horizonte Patrimonial */}
-        <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
+        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/80 shadow-xs text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground">Horizonte</span>
-            <span className="size-1.5 sm:size-2 rounded-full bg-positive-strong shrink-0" />
+            <span className="text-xs font-medium text-muted-foreground">Horizonte</span>
+            <span className="size-1.5 rounded-full bg-positive-strong shrink-0" aria-hidden="true" />
           </div>
-          <div className="mt-0.5 sm:mt-1 min-w-0">
-            <span className="font-mono font-bold text-foreground text-sm sm:text-base lg:text-lg tabular-nums tracking-tight block whitespace-nowrap">
-              {activePoint.year === 0 ? "Ano 0" : `${activePoint.year} anos`}
+          <div className="mt-1 min-w-0">
+            <span className="font-mono font-bold text-foreground text-sm sm:text-base tabular-nums tracking-tight block whitespace-nowrap">
+              {activePoint.year === 0 ? "Hoje" : `${activePoint.year} anos`}
             </span>
-            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5">
-              {fireCrossover ? `Meta: ${fireCrossover.year}a` : "25 anos"}
+            <span className="text-xs text-muted-foreground block mt-0.5">
+              {fireCrossover ? `Meta em ${fireCrossover.year} anos` : `Horizonte de ${years} anos`}
             </span>
           </div>
-          <div className="h-1 sm:h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-1.5 sm:mt-2">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-2" aria-hidden="true">
             <div
               className="h-full rounded-full bg-positive-strong transition-all duration-300"
-              style={{
-                width: `${Math.min(100, Math.max(5, (activePoint.year / (fireCrossover?.year || years)) * 100))}%`,
-              }}
+              style={{ width: `${Math.min(100, Math.max(4, horizonProgressPct))}%` }}
             />
           </div>
         </div>
 
         {/* Card 2: Patrimônio Acumulado */}
-        <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
+        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/80 shadow-xs text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground">Patrimônio</span>
-            <span className="size-1.5 sm:size-2 rounded-full bg-portfolio shrink-0" />
+            <span className="text-xs font-medium text-muted-foreground">Patrimônio</span>
+            <span className="size-1.5 rounded-full bg-portfolio shrink-0" aria-hidden="true" />
           </div>
-          <div className="mt-0.5 sm:mt-1 min-w-0">
+          <div className="mt-1 min-w-0">
             <MoneyText
-              cents={activePoint.balance * 100}
+              cents={activePoint.balanceCents}
               tone="default"
               hideCents
-              className="font-mono font-bold text-foreground text-sm sm:text-base lg:text-lg tabular-nums tracking-tight block whitespace-nowrap"
+              className="font-bold text-foreground text-sm sm:text-base tabular-nums tracking-tight block"
             />
-            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5">
-              {Math.round((activePoint.balance / fireTarget) * 100)}% da meta
+            <span className="text-xs text-muted-foreground block mt-0.5">
+              {formatPercent(activePoint.targetProgressPct)}% da meta
             </span>
           </div>
-          <div className="h-1 sm:h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-1.5 sm:mt-2">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-2" aria-hidden="true">
             <div
               className="h-full rounded-full bg-portfolio transition-all duration-300"
-              style={{
-                width: `${Math.min(100, Math.max(5, (activePoint.balance / fireTarget) * 100))}%`,
-              }}
+              style={{ width: `${Math.min(100, Math.max(4, activePoint.targetProgressPct))}%` }}
             />
           </div>
         </div>
 
-        {/* Card 3: Renda Mensal Passiva */}
-        <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
+        {/* Card 3: Renda Passiva Estimada (yield da carteira) */}
+        <div className="flex flex-col justify-between p-3 rounded-xl bg-surface/60 border border-border/80 shadow-xs text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground">Renda Passiva</span>
-            <span className="size-1.5 sm:size-2 rounded-full bg-positive-strong shrink-0" />
+            <span className="text-xs font-medium text-muted-foreground">Renda passiva</span>
+            <span className="size-1.5 rounded-full bg-positive-strong shrink-0" aria-hidden="true" />
           </div>
-          <div className="mt-0.5 sm:mt-1 min-w-0">
-            <div className="flex items-baseline gap-0.5 min-w-0">
-              <MoneyText
-                cents={activePoint.passiveMonthly * 100}
-                tone="positive"
-                hideCents
-                className="font-mono font-bold text-positive-strong dark:text-positive text-sm sm:text-base lg:text-lg tabular-nums tracking-tight whitespace-nowrap"
-              />
-              <span className="text-[9px] sm:text-[11px] text-muted-foreground font-normal shrink-0">/m</span>
-            </div>
-            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5">
-              Regra dos 4%
+          <div className="mt-1 min-w-0">
+            <MoneyText
+              cents={activePoint.monthlyPassiveIncomeCents}
+              tone="positive"
+              hideCents
+              className="font-bold text-positive-strong dark:text-positive text-sm sm:text-base tabular-nums tracking-tight block"
+            />
+            <span className="text-xs text-muted-foreground block mt-0.5">
+              {livingCostCoveragePct}% do custo de vida
             </span>
           </div>
-          <div className="h-1 sm:h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-1.5 sm:mt-2">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border/40 mt-2" aria-hidden="true">
             <div
               className="h-full rounded-full bg-positive-strong transition-all duration-300"
-              style={{
-                width: `${Math.min(100, Math.max(5, (activePoint.passiveMonthly / monthlyExpenses) * 100))}%`,
-              }}
+              style={{ width: `${Math.min(100, Math.max(4, livingCostCoveragePct))}%` }}
             />
           </div>
         </div>
@@ -532,4 +603,3 @@ export function FireProjectionCurve({
     </div>
   );
 }
-

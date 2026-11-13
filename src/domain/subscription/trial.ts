@@ -66,40 +66,92 @@ export function calculateTrialResidual(params: {
 
 /**
  * Resolve o cronograma de cobrança no checkout com base no plano escolhido,
- * no tier atual do usuário e nos dias residuais de trial disponíveis.
+ * no tier atual do usuário, nas flags de somente-leitura e no histórico de trial.
+ *
+ * Regra de Governança Estrita anti-brecha:
+ * - O período de teste de 30 dias é um benefício ÚNICO por usuário/conta.
+ * - Usuários em modo somente leitura (read_only), com assinaturas canceladas,
+ *   expiradas ou inadimplentes (past_due), ou que já foram assinantes/já consumiram o trial,
+ *   NUNCA recebem novo período de teste nem agendamento para 30 dias depois.
+ * - O pagamento para esses usuários DEVE ser processado no ato (cobrança imediata).
+ * - Apenas novos visitantes/cadastros sem conta ou usuários em período de teste
+ *   ativo (tier = 'trial' com trialDaysRemaining > 0) podem usufruir dos dias restantes de teste.
  */
 export function resolveCheckoutBillingSchedule(params: {
   plan: SubscriptionPlan;
   currentTier?: SubscriptionTier | null;
   trialDaysRemaining?: number | null;
   hasAlreadyPaid?: boolean;
+  isReadOnly?: boolean;
+  status?: string | null;
+  hasConsumedTrial?: boolean;
+  isNewRegistration?: boolean;
   now?: Date;
 }): BillingScheduleResult {
   const now = params.now ?? new Date();
   const fullPriceCents = PLAN_PRICES_CENTS[params.plan];
 
-  // Se o usuário já é assinante ativo pagante ou se o tier é read_only/expirado,
-  // ou se ele já consumiu os 30 dias de trial, a cobrança é IMEDIATA.
-  const isPaidSubscriber =
+  // 1. Usuários categoricamente excluídos de qualquer benefício de trial:
+  // - Quem já é/foi assinante pago (pro_monthly, pro_annual, lifetime ou hasAlreadyPaid)
+  // - Quem está em modo somente leitura (tier read_only ou isReadOnly)
+  // - Quem possui status de cancelado, expirado ou past_due
+  // - Quem já teve o trial consumido (hasConsumedTrial)
+  const isExcludedFromTrial =
+    Boolean(params.hasAlreadyPaid) ||
+    Boolean(params.isReadOnly) ||
+    Boolean(params.hasConsumedTrial) ||
     params.currentTier === "pro_monthly" ||
     params.currentTier === "pro_annual" ||
     params.currentTier === "lifetime" ||
-    Boolean(params.hasAlreadyPaid);
+    params.currentTier === "read_only" ||
+    params.status === "canceled" ||
+    params.status === "expired" ||
+    params.status === "past_due";
 
-  const availableTrialDays = isPaidSubscriber
-    ? 0
-    : Math.max(0, params.trialDaysRemaining ?? STANDARD_TRIAL_DAYS);
+  if (isExcludedFromTrial) {
+    return {
+      chargeTodayCents: fullPriceCents,
+      firstBillingDate: now,
+      isDelayedByTrial: false,
+      daysUntilFirstCharge: 0,
+    };
+  }
 
-  if (availableTrialDays > 0) {
-    // Cobrança adiada para o final do trial restante
+  // 2. Usuário existente em período de teste inicial ativo (currentTier = 'trial'):
+  // Apenas preserva os dias residuais restantes do teste original de 30 dias.
+  // Se trialDaysRemaining for <= 0 ou null (expirou), cobra imediatamente no ato.
+  if (params.currentTier === "trial") {
+    const days = params.trialDaysRemaining ?? 0;
+    if (days > 0) {
+      const firstBillingDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+      return {
+        chargeTodayCents: 0,
+        firstBillingDate,
+        isDelayedByTrial: true,
+        daysUntilFirstCharge: days,
+      };
+    }
+
+    return {
+      chargeTodayCents: fullPriceCents,
+      firstBillingDate: now,
+      isDelayedByTrial: false,
+      daysUntilFirstCharge: 0,
+    };
+  }
+
+  // 3. Visitante anônimo / novo cadastro integrado (sem conta criada ainda):
+  // Concede o período inicial de 30 dias apenas para nova conta.
+  const initialTrialDays = params.trialDaysRemaining ?? STANDARD_TRIAL_DAYS;
+  if (initialTrialDays > 0) {
     const firstBillingDate = new Date(
-      now.getTime() + availableTrialDays * 24 * 60 * 60 * 1000,
+      now.getTime() + initialTrialDays * 24 * 60 * 60 * 1000,
     );
     return {
       chargeTodayCents: 0,
       firstBillingDate,
       isDelayedByTrial: true,
-      daysUntilFirstCharge: availableTrialDays,
+      daysUntilFirstCharge: initialTrialDays,
     };
   }
 

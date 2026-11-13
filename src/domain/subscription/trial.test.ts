@@ -96,6 +96,77 @@ describe("Domain: resolveCheckoutBillingSchedule", () => {
     expect(schedule.isDelayedByTrial).toBe(false);
     expect(schedule.daysUntilFirstCharge).toBe(0);
   });
+
+  it("cobra valor integral hoje para usuário em somente leitura (read_only) mesmo com trialDaysRemaining nulo", () => {
+    const schedule = resolveCheckoutBillingSchedule({
+      plan: "monthly",
+      currentTier: "read_only",
+      trialDaysRemaining: null,
+      isReadOnly: true,
+      now: baseTime,
+    });
+
+    expect(schedule.chargeTodayCents).toBe(PLAN_PRICES_CENTS.monthly);
+    expect(schedule.isDelayedByTrial).toBe(false);
+    expect(schedule.daysUntilFirstCharge).toBe(0);
+  });
+
+  it("cobra valor integral hoje para usuário com status cancelado tentando nova contratação", () => {
+    const schedule = resolveCheckoutBillingSchedule({
+      plan: "annual",
+      currentTier: "read_only",
+      status: "canceled",
+      now: baseTime,
+    });
+
+    expect(schedule.chargeTodayCents).toBe(PLAN_PRICES_CENTS.annual);
+    expect(schedule.isDelayedByTrial).toBe(false);
+    expect(schedule.daysUntilFirstCharge).toBe(0);
+  });
+
+  it("cobra valor integral hoje para usuário com status expirado ou past_due", () => {
+    const scheduleExpired = resolveCheckoutBillingSchedule({
+      plan: "monthly",
+      status: "expired",
+      now: baseTime,
+    });
+    expect(scheduleExpired.chargeTodayCents).toBe(PLAN_PRICES_CENTS.monthly);
+    expect(scheduleExpired.isDelayedByTrial).toBe(false);
+
+    const schedulePastDue = resolveCheckoutBillingSchedule({
+      plan: "annual",
+      status: "past_due",
+      now: baseTime,
+    });
+    expect(schedulePastDue.chargeTodayCents).toBe(PLAN_PRICES_CENTS.annual);
+    expect(schedulePastDue.isDelayedByTrial).toBe(false);
+  });
+
+  it("cobra valor integral hoje para conta que já consumiu o trial (hasConsumedTrial=true)", () => {
+    const schedule = resolveCheckoutBillingSchedule({
+      plan: "monthly",
+      hasConsumedTrial: true,
+      trialDaysRemaining: 30, // mesmo se for enviado 30, a flag de consumido bloqueia
+      now: baseTime,
+    });
+
+    expect(schedule.chargeTodayCents).toBe(PLAN_PRICES_CENTS.monthly);
+    expect(schedule.isDelayedByTrial).toBe(false);
+    expect(schedule.daysUntilFirstCharge).toBe(0);
+  });
+
+  it("cobra valor integral hoje para conta trial cujo tempo encerrou (trialDaysRemaining=null)", () => {
+    const schedule = resolveCheckoutBillingSchedule({
+      plan: "monthly",
+      currentTier: "trial",
+      trialDaysRemaining: null,
+      now: baseTime,
+    });
+
+    expect(schedule.chargeTodayCents).toBe(PLAN_PRICES_CENTS.monthly);
+    expect(schedule.isDelayedByTrial).toBe(false);
+    expect(schedule.daysUntilFirstCharge).toBe(0);
+  });
 });
 
 describe("Domain: calculateGuaranteeResidual", () => {

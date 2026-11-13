@@ -12,64 +12,44 @@
       "displayName": "Simulador de Quitação de Dívidas — Axir",
       "type": "text/html",
       "url": "https://axir.com.br/ferramentas/simulador-dividas",
-      "description": "Compara as estratégias Avalanche e Bola de Neve e calcula prazo de quitação, juros pagos e economia, com processamento local no navegador.",
-      "tags": ["financas-pessoais", "dividas", "simulador", "avalanche", "bola-de-neve"],
-      "capabilities": ["compareDebtStrategies", "projectDebtPayoff"],
       "representativeQueries": [
         "Como quitar minhas dívidas mais rápido?",
         "Avalanche ou Bola de Neve economiza mais juros?",
         "Quanto tempo leva para pagar uma dívida com juros de 12% ao mês?"
-      ],
-      "version": "1.0",
-      "updatedAt": "2026-11-12T00:00:00Z"
+      ]
     },
     {
       "identifier": "urn:air:axir.com.br:tool:rebalance-simulator",
       "displayName": "Simulador de Rebalanceamento de Carteira — Axir",
       "type": "text/html",
       "url": "https://axir.com.br/ferramentas/rebalanceamento",
-      "description": "Calcula a distribuição do próximo aporte entre classes de ativos para atingir a carteira-alvo sem vender posições.",
-      "tags": ["investimentos", "rebalanceamento", "aporte", "carteira", "simulador"],
-      "capabilities": ["simulateStrategyAporte", "allocationDonut"],
       "representativeQueries": [
         "Onde investir meu próximo aporte?",
         "Como rebalancear a carteira sem vender ativos?",
         "Quanto comprar de cada classe para atingir minha meta?"
-      ],
-      "version": "1.0",
-      "updatedAt": "2026-11-12T00:00:00Z"
+      ]
     },
     {
       "identifier": "urn:air:axir.com.br:tool:compound-interest-simulator",
       "displayName": "Simulador de Juros Compostos e FIRE — Axir",
       "type": "text/html",
       "url": "https://axir.com.br/ferramentas/juros-compostos",
-      "description": "Projeta patrimônio com juros compostos, aportes mensais e inflação, incluindo o ponto de independência financeira.",
-      "tags": ["juros-compostos", "investimentos", "fire", "simulador", "patrimonio"],
-      "capabilities": ["calculateCompoundInterest", "calculateCriticalCapital"],
       "representativeQueries": [
         "Quanto terei investindo 1.500 reais por mês?",
         "Quando a renda passiva cobre meu custo de vida?",
         "Como a inflação afeta meus juros compostos?"
-      ],
-      "version": "1.0",
-      "updatedAt": "2026-11-12T00:00:00Z"
+      ]
     },
     {
       "identifier": "urn:air:axir.com.br:knowledge:product-documentation",
       "displayName": "Documentação Estendida do Axir para Agentes",
       "type": "text/plain",
       "url": "https://axir.com.br/llms-full.txt",
-      "description": "Especificação detalhada dos motores de cálculo financeiro, regras de privacidade e catálogo de URLs públicas do Axir.",
-      "tags": ["documentacao", "llms-txt", "financas", "agentes"],
-      "capabilities": ["financial-methodology", "privacy-policy", "public-url-catalog"],
       "representativeQueries": [
         "Como o Axir calcula o caixa real diário?",
         "Quais ferramentas financeiras gratuitas o Axir oferece?",
         "O Axir vende dados pessoais?"
-      ],
-      "version": "1.0",
-      "updatedAt": "2026-11-12T00:00:00Z"
+      ]
     }
   ]
 }

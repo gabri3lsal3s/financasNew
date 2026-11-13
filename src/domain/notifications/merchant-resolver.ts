@@ -33,6 +33,8 @@ export type MerchantResolutionConfidence =
 export interface ResolveMerchantIdentityParams {
   /** Nome ou descrição bruta recebida (ex.: "PAG*Padaria Estrela", "Uber *Trip"). */
   merchantOrDescription?: string;
+  /** Chave Pix identificada (e-mail, celular, CPF, CNPJ, EVP). */
+  pixKey?: string;
   /** Texto bruto completo da notificação ou comprovante (para extração contextual de CNPJ/CPF). */
   rawText?: string;
   /** CNPJ ou CPF informado ou extraído previamente (opcional). */
@@ -54,6 +56,10 @@ export interface ResolvedMerchantIdentity {
   isLearned: boolean;
   /** CNPJ ou CPF associado, se identificado. */
   taxId?: string;
+  /** Chave Pix associada, se identificada. */
+  pixKey?: string;
+  /** Natureza padrão memorizada associada a este recebedor/chave. */
+  defaultNature?: "expense" | "income";
   /** Identificador da camada vitoriosa na hierarquia. */
   layer: 1 | 2 | 3 | "fallback";
   /** Método de pagamento preferencial memorizado para o estabelecimento (se aprendido). */
@@ -118,8 +124,29 @@ export function resolveMerchantIdentity(
   const cleanedMerchant = cleanAcquirerPrefixes(rawInput);
 
   // =========================================================================
-  // 1ª CAMADA — Chave de Ouro (CNPJ / CPF com precisão 100%)
+  // 1ª CAMADA — Chave Pix e Chave de Ouro (CNPJ / CPF com precisão 100%)
   // =========================================================================
+  if (params.pixKey && params.userMemory) {
+    const learnedByPix = findLearnedMerchant(
+      { pixKey: params.pixKey },
+      params.userMemory,
+    );
+    if (learnedByPix) {
+      return {
+        friendlyName: learnedByPix.friendlyName,
+        categorySlug: learnedByPix.categorySlug as CanonicalCategorySlug,
+        confidence: "exact_tax_id",
+        isLearned: true,
+        taxId: learnedByPix.cnpjOrCpf,
+        pixKey: params.pixKey,
+        defaultNature: learnedByPix.defaultNature,
+        layer: 1,
+        preferredPaymentMethod: learnedByPix.preferredPaymentMethod || "pix",
+        preferredCardId: learnedByPix.preferredCardId,
+      };
+    }
+  }
+
   const explicitTax = cleanTaxId(params.taxId);
   const extractedTax =
     explicitTax ||

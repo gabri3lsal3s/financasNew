@@ -9,16 +9,6 @@ import { initOrientationLock } from "@/services/orientation-lock";
 import { initVisualCustomization } from "@/hooks/use-visual-customization";
 import { hideNativeSplashScreen, initHardwareBackButton, initSafeAreaInsets } from "@/services/native";
 
-// Ativa a folha de estilos das fontes carregada via preload não bloqueante no index.html.
-// O atributo onload inline era bloqueado pela CSP, mantendo a tipografia de fallback.
-function activateDeferredFontStylesheet(): void {
-  const fontStylesheet = document.getElementById("google-fonts-css");
-  if (fontStylesheet instanceof HTMLLinkElement) {
-    fontStylesheet.rel = "stylesheet";
-  }
-}
-
-activateDeferredFontStylesheet();
 // Aplica preferências visuais (acento, superfície, movimento) imediatamente
 initVisualCustomization();
 registerPWA();

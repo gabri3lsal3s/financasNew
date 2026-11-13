@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useSafeTheme } from "@/app/theme-provider";
-import { useIsPro } from "@/state/subscription-context";
+import { useIsPro } from "@/hooks/use-is-pro";
 
 export interface LogoIconProps extends React.HTMLAttributes<HTMLElement> {
   className?: string;
@@ -90,13 +90,15 @@ export function LogoIcon({
       <picture className="size-full flex items-center justify-center pointer-events-none select-none">
         <source
           type="image/webp"
-          srcSet={`${assetBase}-64.webp 64w, ${assetBase}-128.webp 128w, ${assetBase}-256.webp 256w, ${assetBase}.webp 1024w`}
+          srcSet={`${assetBase}-64.webp 64w, ${assetBase}-128.webp 128w, ${assetBase}-256.webp 256w`}
           sizes="(max-width: 64px) 64px, (max-width: 128px) 128px, 256px"
         />
         <img
           src={`${assetBase}-128.png`}
-          srcSet={`${assetBase}-64.png 64w, ${assetBase}-128.png 128w, ${assetBase}-256.png 256w, ${assetBase}.png 1024w`}
+          srcSet={`${assetBase}-64.png 64w, ${assetBase}-128.png 128w, ${assetBase}-256.png 256w`}
           sizes="(max-width: 64px) 64px, (max-width: 128px) 128px, 256px"
+          width={128}
+          height={128}
           alt={effectiveTitle || ""}
           aria-hidden={isAriaHidden ? "true" : undefined}
           role={isAriaHidden ? "presentation" : "img"}

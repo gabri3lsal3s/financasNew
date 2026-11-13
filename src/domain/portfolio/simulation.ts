@@ -40,6 +40,30 @@ export interface StrategySimulationResult {
 }
 
 /**
+ * Situação de uma classe após a simulação de aporte:
+ * - `below_target`: ainda abaixo da meta (candidata a receber aporte);
+ * - `on_target`: dentro da tolerância da meta;
+ * - `above_target`: acima da meta — o motor de novos aportes não a corrige
+ *   (exigiria venda), por isso ela não deve ser exibida como "balanceada".
+ */
+export type AllocationStatus = "below_target" | "on_target" | "above_target";
+
+/**
+ * Classifica a posição da classe frente à meta percentual.
+ * Função pura de apresentação/negócio — a decisão "acima/abaixo da meta" não
+ * deve ser reinventada em componentes.
+ */
+export function resolveAllocationStatus(
+  currentPct: number,
+  targetPercent: number,
+  tolerancePct = 1,
+): AllocationStatus {
+  if (!Number.isFinite(currentPct) || !Number.isFinite(targetPercent)) return "below_target";
+  if (Math.abs(currentPct - targetPercent) <= Math.abs(tolerancePct)) return "on_target";
+  return currentPct > targetPercent ? "above_target" : "below_target";
+}
+
+/**
  * Simula a alocação de um aporte entre classes de ativos para aproximar das metas percentuais.
  * Distribui proporcionalmente ao déficit de cada classe e ajusta centavos no maior aporte.
  */

@@ -16,6 +16,7 @@
     <link rel="alternate" hreflang="x-default" href="https://axir.com.br/" />
     <link rel="alternate" type="text/plain" href="/llms.txt" title="Resumo para agentes de IA" />
     <link rel="alternate" type="application/json" href="/.well-known/ai-catalog.json" title="Catálogo de recursos para agentes" />
+    <link rel="ard" href="/.well-known/ai-catalog.json" />
 
     <!-- OpenGraph (Facebook, WhatsApp, LinkedIn, Telegram) -->
     <meta property="og:type" content="website" />
@@ -147,20 +148,10 @@
     <meta name="apple-mobile-web-app-title" content="Axir" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Fontes não bloqueantes: o preload busca o CSS e o bundle ativa a folha de estilo
-         (o antigo onload inline era bloqueado pela CSP e impedia a aplicação das fontes). -->
     <link
-      id="google-fonts-css"
-      rel="preload"
-      as="style"
+      rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Sora:wght@700;800&display=swap"
     />
-    <noscript>
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Sora:wght@700;800&display=swap"
-      />
-    </noscript>
     <title>Axir — Gestão Financeira Pessoal, Cartões de Crédito e Aportes</title>
     <script>
       (function() {
@@ -315,52 +306,16 @@
 
       .app-splash-icon {
         width: clamp(84px, 22vw, 116px);
-        height: auto;
+        height: clamp(84px, 22vw, 116px);
         aspect-ratio: 1 / 1;
-        display: none;
+        display: block;
         animation: splash-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         will-change: transform, opacity;
         user-select: none;
         -webkit-user-drag: none;
-        filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.08));
       }
 
-      /* Responsividade visual ao tema ativo (Claro vs Escuro/OLED) */
-      html[data-theme="light"] .app-splash-light {
-        display: block;
-      }
-      html[data-theme="light"] .app-splash-dark {
-        display: none;
-      }
-
-      html[data-theme="dark"] .app-splash-light,
-      html[data-theme="oled"] .app-splash-light {
-        display: none;
-      }
-      html[data-theme="dark"] .app-splash-dark,
-      html[data-theme="oled"] .app-splash-dark {
-        display: block;
-      }
-
-      /* Fallback com prefers-color-scheme antes de data-theme ser injetado */
-      @media (prefers-color-scheme: dark) {
-        html:not([data-theme="light"]) .app-splash-light {
-          display: none;
-        }
-        html:not([data-theme="light"]) .app-splash-dark {
-          display: block;
-        }
-      }
-      @media (prefers-color-scheme: light) {
-        html:not([data-theme="dark"]):not([data-theme="oled"]) .app-splash-light {
-          display: block;
-        }
-        html:not([data-theme="dark"]):not([data-theme="oled"]) .app-splash-dark {
-          display: none;
-        }
-      }
-
-      /* Keyframes */
+      /* Keyframes — Aceleração na GPU pura via transform e opacity (zero repaint) */
       @keyframes splash-pulse {
         0%, 100% { opacity: 1; transform: scale(1); }
         50%       { opacity: 0.94; transform: scale(0.97); }
@@ -388,42 +343,53 @@
     </style>
   </head>
   <body>
-    <!-- Splash screen inline inicial com fade suave e logo responsiva ao tema ativo -->
+    <!-- Splash screen inline inicial com fade suave e símbolo vetorial SVG puro -->
     <div id="app-splash" aria-hidden="true" role="presentation">
-      <img
-        id="app-splash-icon-light"
-        class="app-splash-icon app-splash-light"
-        src="/brand/logo-teal-light-192.webp"
-        alt=""
-        width="116"
-        height="116"
-        decoding="async"
-      />
-      <img
-        id="app-splash-icon-dark"
-        class="app-splash-icon app-splash-dark"
-        src="/brand/logo-teal-dark-192.webp"
-        alt=""
-        width="116"
-        height="116"
-        decoding="async"
-      />
-      <script>
-        (function() {
-          try {
-            var isPro = localStorage.getItem('last_applied_icon_tier') === 'PRO';
-            var l = document.getElementById('app-splash-icon-light');
-            var d = document.getElementById('app-splash-icon-dark');
-            if (isPro) {
-              if (l) l.src = '/brand/logo-amber-light-192.webp';
-              if (d) d.src = '/brand/logo-amber-dark-192.webp';
-            } else {
-              if (l) l.src = '/brand/logo-teal-light-192.webp';
-              if (d) d.src = '/brand/logo-teal-dark-192.webp';
-            }
-          } catch (e) {}
-        })();
-      </script>
+      <svg class="app-splash-icon" viewBox="0 0 512 512" fill="none" width="116" height="116">
+        <defs>
+          <linearGradient id="brand-splash-primary-grad" x1="100" y1="420" x2="260" y2="92" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0D9488" />
+            <stop offset="50%" stop-color="#14B8A6" />
+            <stop offset="100%" stop-color="#2DD4BF" />
+          </linearGradient>
+          <linearGradient id="brand-splash-primary-depth-grad" x1="160" y1="420" x2="295" y2="92" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0F766E" />
+            <stop offset="100%" stop-color="#115E59" />
+          </linearGradient>
+          <linearGradient id="brand-splash-gold-grad" x1="280" y1="92" x2="430" y2="420" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FDE68A" />
+            <stop offset="25%" stop-color="#F59E0B" />
+            <stop offset="85%" stop-color="#D97706" />
+            <stop offset="100%" stop-color="#B45309" />
+          </linearGradient>
+          <linearGradient id="brand-splash-gold-depth-grad" x1="260" y1="92" x2="350" y2="420" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#D97706" />
+            <stop offset="100%" stop-color="#78350F" />
+          </linearGradient>
+          <linearGradient id="brand-splash-orbit-grad" x1="40" y1="360" x2="470" y2="140" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#92400E" />
+            <stop offset="15%" stop-color="#B45309" />
+            <stop offset="35%" stop-color="#D97706" />
+            <stop offset="65%" stop-color="#F59E0B" />
+            <stop offset="85%" stop-color="#FBBF24" />
+            <stop offset="100%" stop-color="#D97706" />
+          </linearGradient>
+          <linearGradient id="brand-splash-specular" x1="60" y1="360" x2="440" y2="150" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0" />
+            <stop offset="25%" stop-color="#FFFFFF" stop-opacity="0.8" />
+            <stop offset="55%" stop-color="#FFFBEB" stop-opacity="0.95" />
+            <stop offset="80%" stop-color="#FEF3C7" stop-opacity="0.85" />
+            <stop offset="100%" stop-color="#FDE68A" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+        <path d="M 40 347 C 45 295 100 230 190 185 C 275 142 360 115 422 108 C 450 105 470 120 472 148 C 460 130 430 125 395 135 C 335 152 255 190 185 235 C 115 280 65 325 40 347 Z" fill="url(#brand-splash-orbit-grad)" opacity="0.92" />
+        <polygon points="231,92 281,92 161,421 118,421 216,215" fill="url(#brand-splash-primary-depth-grad)" />
+        <polygon points="231,92 281,92 133,421 82,421" fill="url(#brand-splash-primary-grad)" />
+        <polygon points="281,92 295,92 431,421 380,421" fill="url(#brand-splash-gold-grad)" />
+        <polygon points="281,92 349,421 380,421" fill="url(#brand-splash-gold-depth-grad)" />
+        <path d="M 40 347 C 48 375 105 402 195 398 C 290 394 380 345 440 255 C 468 212 478 172 472 148 C 470 170 452 210 422 252 C 365 335 280 376 195 380 C 118 384 68 362 40 347 Z" fill="url(#brand-splash-orbit-grad)" />
+        <path d="M 58 354 C 110 380 190 383 275 365 C 355 348 420 300 452 238 C 462 218 468 190 468 172 C 462 192 450 220 422 255 C 380 308 322 348 250 366 C 180 380 110 378 68 360 C 62 357 58 354 58 354 Z" fill="url(#brand-splash-specular)" />
+      </svg>
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

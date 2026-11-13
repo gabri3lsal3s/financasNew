@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   CreditCard,
   PieChart,
@@ -9,10 +10,65 @@ import {
   ShieldCheck,
   FileText,
   Users,
+  Check,
 } from "lucide-react";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Button, Card } from "@/components/ui";
 import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
+import { pushToast } from "@/services/toast";
 import { SharedFinancesShowcase } from "./shared-finances-showcase";
+
+/**
+ * Demonstração interativa da aprovação de despesa capturada por OCR/Pix.
+ * Ação reversível com confirmação + "Desfazer" (AGENTS.md §32); nada é
+ * persistido — é um exemplo em memória.
+ */
+function ApproveExpenseButton() {
+  const [approved, setApproved] = useState(false);
+
+  const handleApprove = () => {
+    setApproved(true);
+    pushToast({
+      title: "Despesa aprovada",
+      description: "Padaria Bella · R$ 42,90 · Alimentação · Pix",
+      variant: "success",
+      duration: 5000,
+      action: { label: "Desfazer", onClick: () => setApproved(false) },
+    });
+  };
+
+  return (
+    <div className="pt-1 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
+      <span className="sr-only" role="status" aria-live="polite">
+        {approved ? "Despesa aprovada e lançada em Alimentação." : ""}
+      </span>
+      {approved ? (
+        <Badge variant="positive" size="sm" className="self-start sm:self-auto">
+          <Check className="size-3" aria-hidden="true" />
+          Despesa aprovada · Alimentação
+        </Badge>
+      ) : null}
+      <Button
+        type="button"
+        size="sm"
+        variant={approved ? "outline" : "default"}
+        onClick={approved ? () => setApproved(false) : handleApprove}
+        className="self-start sm:self-auto gap-1.5 text-xs h-8 rounded-lg shadow-xs"
+      >
+        {approved ? (
+          <>
+            <Check className="size-3.5" aria-hidden="true" />
+            <span>Aprovada</span>
+          </>
+        ) : (
+          <>
+            <CheckCircle2 className="size-3.5" aria-hidden="true" />
+            <span>Aprovar Despesa</span>
+          </>
+        )}
+      </Button>
+    </div>
+  );
+}
 
 export function ProductNarratives() {
   return (
@@ -20,11 +76,11 @@ export function ProductNarratives() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 space-y-16 md:space-y-36">
         {/* Cabeçalho da Seção de Recursos */}
         <ScrollReveal className="text-center max-w-4xl mx-auto">
-          <span className="text-xs sm:text-sm font-bold uppercase tracking-widest text-primary block">
+          <span className="text-xs sm:text-sm font-bold uppercase tracking-widest text-primary-strong dark:text-primary block">
             Engenharia Financeira com Clareza Absoluta
           </span>
           <h2 className="mt-3 sm:mt-4 font-display text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
-            Quatro eixos coordenados para sustentação e expansão do seu patrimônio
+            Cinco eixos coordenados para sustentação e expansão do seu patrimônio
           </h2>
           <p className="mt-4 sm:mt-5 text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
             Sem fórmulas frágeis de planilhas e sem relatórios opacos. Uma arquitetura concebida para fornecer estabilidade imediata de caixa, horizonte seguro de compromissos futuros, cooperação financeira sem atrito e disciplina matemática de investimentos.
@@ -35,7 +91,7 @@ export function ProductNarratives() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-16 xl:gap-20 items-center">
           {/* Texto Explicativo (Esquerda) */}
           <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary-strong dark:text-primary">
               <Zap className="size-3.5 sm:size-4" aria-hidden="true" />
               <span>Eixo 1 · Liquidez & Caixa Real</span>
             </div>
@@ -287,7 +343,7 @@ export function ProductNarratives() {
 
           {/* Texto Explicativo (Direita no Desktop) */}
           <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6 order-1 lg:order-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary-strong dark:text-primary">
               <Users className="size-3.5 sm:size-4" aria-hidden="true" />
               <span>Eixo 4 · Finanças Compartilhadas & Pix</span>
             </div>
@@ -329,9 +385,9 @@ export function ProductNarratives() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-16 xl:gap-20 items-center">
           {/* Texto Explicativo (Esquerda) */}
           <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary-strong dark:text-primary">
               <Zap className="size-3.5 sm:size-4" aria-hidden="true" />
-              <span>Captura Invisível com Inteligência Local</span>
+              <span>Eixo 5 · Captura Invisível &amp; OCR Local</span>
             </div>
 
             <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
@@ -354,7 +410,7 @@ export function ProductNarratives() {
                   <span>Caminho 1 (Rápido): Leitura Instantânea de Pix &amp; Compartilhamento</span>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
-                  Copie o código Pix ou compartilhe comprovantes diretamente do aplicativo do seu banco pelo menu de compartilhamento. O Axir extrai favorecido, valor e data em menos de 2 segundos.
+                  Copie o código Pix ou compartilhe comprovantes diretamente do aplicativo do seu banco pelo menu de compartilhamento. O Axir extrai favorecido, valor e data automaticamente do texto recebido.
                 </p>
               </div>
 
@@ -371,7 +427,7 @@ export function ProductNarratives() {
               <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
                 <div className="flex items-center gap-2 text-foreground font-semibold">
                   <Sparkles className="size-4 text-warning-strong dark:text-warning shrink-0" aria-hidden="true" />
-                  <span>Mágica Semântica: Memória Ativa de CNPJs e Comerciantes</span>
+                  <span>Aprendizado de Comerciantes: memória ativa de CNPJs</span>
                 </div>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
                   O motor aprende onde você consome (ex.: "Mc" vira "McDonald's" em Alimentação com pagamento no Crédito). Quanto mais você usa, mais inteligente e invisível fica o registro.
@@ -389,7 +445,7 @@ export function ProductNarratives() {
                   <span className="text-xs sm:text-sm font-bold text-foreground">Captura Local &amp; Privada</span>
                 </div>
                 <Badge variant="positive" size="xs" className="font-mono">
-                  Zero Senhas Bancárias
+                  Sem senhas bancárias
                 </Badge>
               </div>
 
@@ -412,35 +468,30 @@ export function ProductNarratives() {
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-semibold text-primary-strong">Identificação Semântica Automática:</span>
                   <Badge variant="default" size="xs">
-                    99% Confiança · OCR Local
+                    OCR no dispositivo
                   </Badge>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs font-mono">
                   <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
-                    <span className="text-muted-foreground block text-[10px]">Favorecido</span>
+                    <span className="text-muted-foreground block text-[11px]">Favorecido</span>
                     <span className="font-bold text-foreground truncate block">Padaria Bella</span>
                   </div>
                   <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
-                    <span className="text-muted-foreground block text-[10px]">Valor</span>
+                    <span className="text-muted-foreground block text-[11px]">Valor</span>
                     <span className="font-bold text-negative-strong dark:text-negative">R$ 42,90</span>
                   </div>
                   <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
-                    <span className="text-muted-foreground block text-[10px]">Categoria</span>
+                    <span className="text-muted-foreground block text-[11px]">Categoria</span>
                     <span className="font-bold text-foreground truncate block">Alimentação</span>
                   </div>
                   <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
-                    <span className="text-muted-foreground block text-[10px]">Pagamento</span>
+                    <span className="text-muted-foreground block text-[11px]">Pagamento</span>
                     <span className="font-bold text-foreground truncate block">Pix</span>
                   </div>
                 </div>
 
-                <div className="pt-1 flex justify-end">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-semibold text-xs shadow-xs">
-                    <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                    <span>Aprovar Despesa (1 Toque)</span>
-                  </div>
-                </div>
+                <ApproveExpenseButton />
               </div>
             </Card>
           </ScrollReveal>

@@ -261,13 +261,30 @@ Deno?.serve?.(async (req: Request) => {
     const planMeta = ASAAS_PLAN_CATALOG[planKey];
     const now = new Date();
 
-    // Autoridade do Servidor sobre Trial e Primeira Cobrança
-    const isTrialActive =
-      userSub?.tier === "trial" &&
-      userSub?.trial_ends_at &&
-      new Date(userSub.trial_ends_at).getTime() > now.getTime();
+    // Autoridade do Servidor sobre Trial e Primeira Cobrança:
+    // O período de teste de 30 dias é estritamente único por usuário/conta.
+    // Qualquer usuário em modo somente leitura (read_only), com status cancelado/expirado/past_due,
+    // com histórico prévio de cobrança (billing_start_at), com trial já consumido (trial_consumed_at),
+    // ou cujo período de teste de 30 dias já se encerrou no tempo NUNCA terá cobrança agendada para 30 dias depois.
+    // Para esses usuários, a cobrança no cartão DEVE ser imediata no ato.
+    const hasAlreadyConsumedTrial = Boolean(
+      userSub?.trial_consumed_at ||
+      userSub?.billing_start_at ||
+      userSub?.tier === "read_only" ||
+      userSub?.status === "canceled" ||
+      userSub?.status === "expired" ||
+      userSub?.status === "past_due" ||
+      (userSub && userSub.tier !== "trial" && !isRegistration)
+    );
 
-    const serverTrialEnds = isTrialActive ? new Date(userSub.trial_ends_at) : null;
+    const isTrialActive =
+      !hasAlreadyConsumedTrial &&
+      (isRegistration || userSub?.tier === "trial") &&
+      (isRegistration || userSub?.status === "trialing") &&
+      Boolean(userSub?.trial_ends_at) &&
+      new Date(userSub!.trial_ends_at).getTime() > now.getTime();
+
+    const serverTrialEnds = isTrialActive ? new Date(userSub!.trial_ends_at) : null;
     const isDelayedByTrial = Boolean(serverTrialEnds);
 
     if (method === "pix") {
@@ -332,6 +349,9 @@ Deno?.serve?.(async (req: Request) => {
         .update({
           asaas_customer_id: customer.id,
           asaas_payment_id: payment.id,
+          trial_consumed_at: userSub?.trial_consumed_at || now.toISOString(),
+          scheduled_plan_id: null,
+          scheduled_first_charge_at: null,
         })
         .eq("user_id", user.id);
 
@@ -444,8 +464,11 @@ Deno?.serve?.(async (req: Request) => {
         status: confirmed ? "active" : "incomplete",
         starts_at: userSub?.starts_at || now.toISOString(),
         billing_start_at: now.toISOString(),
+        trial_consumed_at: userSub?.trial_consumed_at || now.toISOString(),
         current_period_end: periodEnd.toISOString(),
         cancel_at_period_end: false,
+        scheduled_plan_id: null,
+        scheduled_first_charge_at: null,
         payment_method: "credit_card",
         card_last4: cardLast4,
         asaas_customer_id: customer.id,

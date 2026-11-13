@@ -223,6 +223,13 @@ describe("parseClipboardToDecimal — Colagem inteligente de clipboard", () => {
     expect(parseClipboardToDecimal("R$ 100")).toBe("100.00");
   });
 
+  it("extrai valores embutidos em frases e mensagens de Pix", () => {
+    expect(parseClipboardToDecimal("Pix de R$ 50,00")).toBe("50.00");
+    expect(parseClipboardToDecimal("Total a pagar: R$ 1.250,50 no app")).toBe("1250.50");
+    expect(parseClipboardToDecimal("Paguei 35,00 para João da Silva")).toBe("35.00");
+    expect(parseClipboardToDecimal("Segue cobrança de R$ 380,90 referente ao serviço")).toBe("380.90");
+  });
+
   it("retorna null para textos sem números válidos", () => {
     expect(parseClipboardToDecimal("abc")).toBeNull();
     expect(parseClipboardToDecimal("")).toBeNull();

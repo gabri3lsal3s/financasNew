@@ -118,6 +118,11 @@ export function FloatingCalculator() {
     ) {
       setManualPasteText("");
       setManualPasteOpen(true);
+      pushToast({
+        title: "Acesso à área de transferência restrito",
+        description: "Cole o valor manualmente no campo a seguir.",
+        variant: "default",
+      });
       return;
     }
 
@@ -134,6 +139,11 @@ export function FloatingCalculator() {
     if (!sanitized) {
       setManualPasteText(result.text);
       setManualPasteOpen(true);
+      pushToast({
+        title: "Valor numérico não identificado",
+        description: "Confira ou edite o texto colado.",
+        variant: "default",
+      });
       return;
     }
 
@@ -476,6 +486,7 @@ export function FloatingCalculator() {
           if (!next) setManualPasteOpen(false);
         }}
         size="sm"
+        elevated
         title="Colar Valor Manualmente"
         description="Cole o valor ou texto financeiro no campo abaixo para inseri-lo na calculadora."
       >

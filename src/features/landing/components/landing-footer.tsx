@@ -113,7 +113,7 @@ export function LandingFooter() {
                 </span>
                 <Link
                   to="/ferramentas"
-                  className="text-xs text-primary font-medium hover:underline py-0.5 inline-block"
+                  className="text-xs text-primary-strong dark:text-primary font-medium hover:underline py-0.5 inline-block"
                 >
                   Hub de Simuladores
                 </Link>

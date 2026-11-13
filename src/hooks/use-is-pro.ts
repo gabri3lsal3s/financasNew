@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { SubscriptionContext } from "@/state/subscription-context";
+import { SubscriptionContext } from "@/state/subscription-context-def";
 import { getCachedIconTier } from "@/services/native/app-icon";
 
 /**

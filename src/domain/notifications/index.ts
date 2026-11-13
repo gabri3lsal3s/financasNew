@@ -20,3 +20,5 @@ export * from "./receipt-learning";
 export * from "./payment-method-resolver";
 export * from "./income-category-resolver";
 export * from "./bank-patterns";
+export * from "./pix-text-parser";
+export * from "./pix-clipboard";

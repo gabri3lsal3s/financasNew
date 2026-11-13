@@ -6893,4 +6893,23 @@ flowchart TD
 >   - ESLint (`npm run lint`) com 0 advertências;
 >   - Validação em produção via cliente PostgREST com retorno HTTP 200 nas três entidades.
 
+---
+
+### Fase 104 — Blindagem Definitiva de Trial, Deduplicação de Planos VIP e Erradicação de Brecha de Cobrança Diferida (v3.4.1)
+
+> **Status:** ✅ Concluída e Auditada — **Blindagem Anti-Brecha de Degustação Recorrente & Catálogo Canônico**:
+> - **Deduplicação do Catálogo de Planos em `public.plans`:**
+>   - Identificação e saneamento da duplicidade de planos VIP criada pela migração de compatibilidade `20260101000109`: remoção definitiva do alias `'lifetime_vip'` e do plano legado `'free'`.
+>   - Adição da migration `20260101000117_fix_trial_abuse_and_deduplicate_plans.sql` que alinha estritamente os 4 planos oficiais (`'trial'`, `'pro_monthly'`, `'pro_annual'`, `'lifetime'`) e migra foreign keys remanescentes.
+> - **Erradicação da Brecha de 30 Dias de Teste Recorrente (Trial Loophole):**
+>   - **Motor de Domínio (`trial.ts`):** Reformulação da função `resolveCheckoutBillingSchedule` para isolar contas em modo somente leitura (`currentTier === "read_only"` ou `isReadOnly === true`), canceladas, expiradas ou inadimplentes (`status IN ('canceled', 'expired', 'past_due')`), ou que já consumiram o período de teste (`hasConsumedTrial === true`). Para essas contas, o benefício de trial é sumariamente zero (`availableTrialDays = 0`, `isDelayedByTrial = false`) e a cobrança é processada de imediato no ato com valor integral (R$ 19,99 ou R$ 143,88).
+>   - **Página de Checkout (`subscription-checkout-page.tsx`):** Integração das flags de estado real da assinatura (`isReadOnly`, `status`, `hasConsumedTrial`), garantindo que usuários cancelados/expirados visualizem imediatamente *"Total a pagar: R$ 19,99"* e botão de confirmação imediata, sem menção a novos 30 dias de teste.
+>   - **Edge Functions Asaas (`asaas-checkout` e `asaas-manage`):** Implementação de autoridade estrita do servidor: rejeição de `nextDueDate` para usuários com `hasAlreadyConsumedTrial`, débito no ato pelo gateway e gravação atômica indelével de `trial_consumed_at = now()`. O cancelamento da assinatura durante ou após o teste grava `trial_consumed_at`, impossibilitando o agendamento de novas degustações gratuitas.
+>   - **Backfill no Banco de Dados:** Atualização atômica marcando `trial_consumed_at` para todas as contas históricas em `read_only`, canceladas, expiradas ou com histórico de faturamento prévio, e atualização do RPC `get_my_subscription()`.
+> - **Qualidade e Testes:**
+>   - Suíte `src/domain/subscription` expandida com novos testes anti-brecha (100% aprovados, 22 testes em `trial.test.ts`);
+>   - Testes de integração em `subscription-checkout-page.test.tsx` cobrindo o bloqueio de agendamento e exigência de pagamento imediato para contas em somente leitura;
+>   - Typecheck (`tsc --noEmit`) e ESLint 100% verdes.
+
+
 
