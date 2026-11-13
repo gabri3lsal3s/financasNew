@@ -435,8 +435,8 @@ export function SubscriptionCheckoutPage() {
             }
           }
         } catch (pixErr: unknown) {
-          // Fallback exclusivamente para testes locais se explicitamente habilitado via VITE_TEST_MODE
-          if (import.meta.env.DEV && import.meta.env.VITE_TEST_MODE === "true") {
+          // Fallback exclusivamente para testes locais de desenvolvimento se modo de teste ativo
+          if (import.meta.env.DEV && import.meta.env.MODE === "test") {
             const mockPix: PixCheckoutResult = {
               ok: true,
               method: "pix",

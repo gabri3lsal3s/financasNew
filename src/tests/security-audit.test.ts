@@ -250,6 +250,14 @@ describe("F6.2 — RPCs transacionais endurecidos (D1)", () => {
           continue;
         }
 
+        // Exceção fundamentada: RPC de reconciliação periódica de assinaturas expiradas (cron / maintenance).
+        // Opera como rotina sistêmica transversal sobre todas as assinaturas vencidas, sem contexto de usuário único.
+        if (fn.cleanName === "reconcile_expired_subscriptions") {
+          expect(fn.body).toMatch(/cancel_at_period_end\s*=\s*true/i);
+          expect(fn.body).toMatch(/current_period_end\s*<=\s*now\(\)/i);
+          continue;
+        }
+
         expect(
           /auth\.uid\(\)/i.test(fn.body),
           `escrita sem ownership (auth.uid()) no RPC ${fn.cleanName} em ${fn.file}`,

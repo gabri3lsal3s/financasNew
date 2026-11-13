@@ -36,7 +36,36 @@ export function PortfolioDarfMonitor({
       const ticker = asset?.ticker ?? "Ativo";
       const assetClass = asset?.asset_class ?? null;
       const currency = asset?.currency ?? "BRL";
-      const averagePrice = asset?.average_price ?? t.price;
+
+      // Reconstituição do Preço Médio Ponderado histórico até a data da venda (JORNADA360-05)
+      // Evita tributação de 100% do principal quando a posição foi encerrada (average_price = 0)
+      // e impede distorção retroativa se houveram novas compras por preço superior após a venda.
+      const assetTxs = transactions
+        .filter((tx) => tx.asset_id === t.asset_id && tx.date <= t.date)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      let runningQty = 0;
+      let runningCost = 0;
+      for (const tx of assetTxs) {
+        if (tx.type === "buy") {
+          runningQty += tx.quantity;
+          runningCost += tx.quantity * tx.price;
+        } else if (tx.type === "sell" && tx.id !== t.id) {
+          if (runningQty > 0) {
+            const pm = runningCost / runningQty;
+            const soldQty = Math.min(runningQty, tx.quantity);
+            runningQty -= soldQty;
+            runningCost -= soldQty * pm;
+          }
+        }
+      }
+
+      const historicalPm = runningQty > 0 ? runningCost / runningQty : 0;
+      const averagePrice =
+        historicalPm > 0
+          ? historicalPm
+          : (asset?.average_price && asset.average_price > 0 ? asset.average_price : t.price);
+
       const costAmountCents = Math.round(t.quantity * averagePrice * 100);
       const saleAmountCents = Math.round(t.total * 100);
       const profitCents = saleAmountCents - costAmountCents;

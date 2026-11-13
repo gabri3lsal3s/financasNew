@@ -90,6 +90,7 @@ export interface CalculateCashBalanceParams {
     type: "payable" | "receivable" | string;
     amount: number;
     paid_at: string | null;
+    expense_id?: string | null;
     created_at?: string | null;
   }[];
   contributions?: readonly {
@@ -120,7 +121,12 @@ export function resolveCashFlowEvents(params: CalculateCashBalanceParams): CashL
   const events: CashLedgerEvent[] = [];
 
   // 1. Receitas (Entradas de Caixa)
+  const debtIdsWithIncome = new Set<string>();
   for (const inc of incomes) {
+    if (inc.source_ref?.startsWith("[DEBT]")) {
+      const debtId = inc.source_ref.slice(6);
+      if (debtId) debtIdsWithIncome.add(debtId);
+    }
     if (inc.date > referenceDate) continue;
     // Rendas automáticas de estorno [REFUND] são contrapartidas contábeis;
     // não devem duplicar no caixa se o estorno já estiver nos pagamentos do cartão.
@@ -200,6 +206,10 @@ export function resolveCashFlowEvents(params: CalculateCashBalanceParams): CashL
     if (amountCents <= 0) continue;
 
     if (debt.type === "payable") {
+      // Invariante Contábil (§F49/JORNADA360-03): Se a dívida possui despesa vinculada (debt.expense_id),
+      // o desembolso financeiro já foi computado como cash_expense no passo 2 acima. Não duplicar saída!
+      if (debt.expense_id) continue;
+
       events.push({
         id: debt.id ?? `debt-${paidDate}-${amountCents}`,
         kind: "debt_payment",
@@ -210,6 +220,10 @@ export function resolveCashFlowEvents(params: CalculateCashBalanceParams): CashL
         createdAt: debt.created_at,
       });
     } else if (debt.type === "receivable") {
+      // Invariante Contábil (§F49/JORNADA360-03): Se o recebimento já gerou renda correspondente
+      // (source_ref [DEBT]{id}), a entrada já foi computada como income no passo 1. Não duplicar entrada!
+      if (debt.id && debtIdsWithIncome.has(debt.id)) continue;
+
       events.push({
         id: debt.id ?? `debt-${paidDate}-${amountCents}`,
         kind: "debt_receipt",

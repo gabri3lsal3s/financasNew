@@ -1,5 +1,24 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.6.0 (Build 59)** registra a conclusão do **Plano de Auditoria Transversal da Jornada 360 do Usuário e Blindagem de Integridade Contábil** ([`docs/plans/30_PLANO_AUDITORIA_TRANSVERSAL_JORNADA_360.md`](../plans/30_PLANO_AUDITORIA_TRANSVERSAL_JORNADA_360.md)) (2026-11-13):
+> - **(1) Integridade Contábil & Deduplicação de Caixa (JORNADA360-03 & JORNADA360-04)**:
+>   - Deduplicação atômica no motor contábil (`src/domain/cash/cash-ledger.ts`): amortizações e quitações de dívidas pagáveis que geram despesa financeira (`debt.expense_id`) e recebimentos com marcação de conciliação (`[DEBT]`) são filtrados para eliminar saídas/entradas duplicadas de caixa;
+>   - Correção matemática no amortizador de parcelas fixas (`src/domain/loans/index.ts`): quitação antecipada calcula `principal + interest` exatos em vez de cobrar a parcela cheia contratual quando o saldo devedor for residual;
+>   - Migração `20260101000119_link_debt_settlement_transactions.sql`: colunas de vínculo relacional e backfill de integridade histórica via logs de auditoria;
+> - **(2) Experiência de Primeiro Acesso & Fim de Dead-Ends (JORNADA360-01 & JORNADA360-02)**:
+>   - Substituição de atalho quebrado no `VirginAccountHero` pela calibração nativa de saldo inicial de contas e cartões (`onCalibrate` com diálogo de calibragem ou navegação para `/cartoes`), permitindo o início da gestão sem criação de falsas receitas;
+>   - Acionamento direto do assistente de novos lançamentos (`novo=transacao`) a partir do hero card de boas-vindas;
+> - **(3) Precisão Fiscal DARF & Posições Zeradas (JORNADA360-05)**:
+>   - Reconstituição histórica do Preço Médio ponderado móvel em `portfolio-darf-monitor.tsx` via replay cronológico de ordens anteriores à venda;
+>   - Fallback de segurança contra tributação indevida de 100% do principal quando a posição de um ativo atinge quantidade zero;
+> - **(4) Hardening de Segurança & Conformidade (JORNADA360-06)**:
+>   - Remoção de variáveis de ambiente não expostas ao cliente no checkout e auditoria documentada de funções de cron de manutenção no Supabase;
+> - **(5) Quality Gates 100% Verdes**:
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros, 0 avisos;
+>   - Vitest: 633 arquivos de teste e 6.140 testes aprovados;
+>   - Build de produção Vite e PWA precache gerados com sucesso.
+>
 > **v3.5.0 (Build 58)** registra a conclusão conjunta do **Plano de Refinamento do Simulador de Carteira/Aportes e da Apresentação Pública** ([`docs/plans/completed/27_PLANO_REFINAMENTO_SIMULADOR_E_APRESENTACAO_PUBLICA.md`](../plans/completed/27_PLANO_REFINAMENTO_SIMULADOR_E_APRESENTACAO_PUBLICA.md)) e do **Plano de Captura Inteligente de Pix, Memória Adaptativa e Fricção Zero** ([`docs/plans/completed/28_PLANO_CAPTURA_PIX_MEMORIA_E_FRICCAO_ZERO.md`](../plans/completed/28_PLANO_CAPTURA_PIX_MEMORIA_E_FRICCAO_ZERO.md)) (2026-11-13):
 > - **(1) Captura Inteligente de Pix & Fricção Zero**:
 >   - Card de sugestão Pix na Home estritamente não-fixo e reativo, disparado apenas quando houver chave com valor monetário detectado na área de transferência (`valueCents > 0`);

@@ -117,6 +117,66 @@ describe("Cash Ledger Domain — calculateRealCashBalance & resolveCashFlowEvent
     expect(res.outflowSinceCheckpointCents).toBe(60000);
   });
 
+  it("não duplica saída de caixa quando dívida quitada já gerou despesa vinculada (expense_id)", () => {
+    const res = calculateRealCashBalance({
+      incomes: [{ id: "inc-1", date: "2026-08-01", value: 3000 }],
+      expenses: [
+        {
+          id: "exp-debt-1",
+          date: "2026-08-15",
+          value: 600,
+          payment_method: "other",
+          description: "IPVA 2026",
+        },
+      ],
+      debts: [
+        {
+          id: "debt-1",
+          name: "IPVA 2026",
+          type: "payable",
+          amount: 600,
+          paid_at: "2026-08-15T10:00:00Z",
+          expense_id: "exp-debt-1", // Vinculado à despesa
+        },
+      ],
+      referenceDate: "2026-08-24",
+    });
+
+    // 3000 - 600 = 2400 (deduzido estritamente uma única vez!)
+    expect(res.currentBalanceCents).toBe(240000);
+    expect(res.outflowSinceCheckpointCents).toBe(60000);
+    expect(res.eventsSinceCheckpoint.map((e) => e.kind)).toEqual(["income", "cash_expense"]);
+  });
+
+  it("não duplica entrada de caixa quando recebimento de dívida já gerou renda com source_ref [DEBT]{id}", () => {
+    const res = calculateRealCashBalance({
+      incomes: [
+        {
+          id: "inc-from-debt",
+          date: "2026-08-18",
+          value: 800,
+          source_ref: "[DEBT]debt-rec-1",
+          description: "Venda Celular",
+        },
+      ],
+      debts: [
+        {
+          id: "debt-rec-1",
+          name: "Venda Celular",
+          type: "receivable",
+          amount: 800,
+          paid_at: "2026-08-18T14:00:00Z",
+        },
+      ],
+      referenceDate: "2026-08-24",
+    });
+
+    // 800 (computado estritamente uma única vez!)
+    expect(res.currentBalanceCents).toBe(80000);
+    expect(res.inflowSinceCheckpointCents).toBe(80000);
+    expect(res.eventsSinceCheckpoint.map((e) => e.kind)).toEqual(["income"]);
+  });
+
   it("desconta aportes de investimentos como saída de caixa para corretora", () => {
     const res = calculateRealCashBalance({
       incomes: [{ id: "inc-1", date: "2026-08-01", value: 4000 }],

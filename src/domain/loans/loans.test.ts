@@ -295,5 +295,34 @@ describe("calculateLoanProgress", () => {
     expect(result.progressPercent).toBe(0);
     expect(result.pendingAmountCents).toBe(0);
   });
+
+  it("ajusta valor da parcela (actualPmt = principal + interest) em quitação antecipada por parcela fixa", () => {
+    // Empréstimo de R$ 1.000 (100.000 centavos) com parcela fixa de R$ 600 (60.000 centavos) em 3 parcelas e taxa 0%
+    // Parcela 1: 60.000 amortiza 60.000, saldo restante 40.000
+    // Parcela 2: principal restante é apenas 40.000 (< 60.000). A parcela deve ser 40.000, NÃO 60.000!
+    const res = calculateLoanSchedule({
+      principalCents: 100000,
+      totalInstallments: 3,
+      monthlyRatePercent: 0,
+      system: "fixed_installment",
+      fixedInstallmentCents: 60000,
+      startDate: "2026-01-01",
+    });
+
+    expect(res.schedule).toHaveLength(3);
+    expect(res.schedule[0]!.amountCents).toBe(60000);
+    expect(res.schedule[0]!.remainingBalanceCents).toBe(40000);
+
+    // Parcela 2 deve cobrar estritamente 40000 (saldo restante + juros)
+    expect(res.schedule[1]!.amountCents).toBe(40000);
+    expect(res.schedule[1]!.principalCents).toBe(40000);
+    expect(res.schedule[1]!.remainingBalanceCents).toBe(0);
+
+    // Parcela 3: saldo já zerado
+    expect(res.schedule[2]!.amountCents).toBe(0);
+    expect(res.schedule[2]!.remainingBalanceCents).toBe(0);
+
+    expect(res.totalPaidCents).toBe(100000);
+  });
 });
 

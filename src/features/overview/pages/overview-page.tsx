@@ -601,7 +601,11 @@ export function OverviewPage() {
             ) : null}
 
             {isVirginAccount ? (
-              <VirginAccountHero onOpenDemo={() => setDemoTrackModalOpen(true)} />
+              <VirginAccountHero
+                onCalibrate={() => guardAction(() => setCheckpointOpen(true), "Calibrar Saldo com o Banco")}
+                onOpenNewTransaction={() => navigate({ pathname: "/", search: "novo=transacao" })}
+                onOpenDemo={() => setDemoTrackModalOpen(true)}
+              />
             ) : (
               <>
                 <DashboardAlertsCarousel items={alertItems} />

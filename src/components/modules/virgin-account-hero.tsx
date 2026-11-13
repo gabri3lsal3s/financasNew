@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   CreditCard,
-  FileUp,
+  Landmark,
   PlusCircle,
   Sparkles,
 } from "lucide-react";
@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { DemoTrackSelectModal } from "./demo-track-select-modal";
 
 export interface VirginAccountHeroProps {
+  /** Callback para calibrar o saldo bancário inicial (CashCheckpoint / Bater com o Banco). */
+  onCalibrate?: () => void;
   /** Callback para abrir o assistente de nova transação (LaunchWizard). */
   onOpenNewTransaction?: () => void;
   /** Callback para abrir o diálogo de importação de extrato bancário. */
@@ -28,6 +30,7 @@ export interface VirginAccountHeroProps {
  * de partida a frio (cold-start anxiety).
  */
 export function VirginAccountHero({
+  onCalibrate,
   onOpenNewTransaction,
   onOpenStatementImport,
   onOpenDemo,
@@ -74,26 +77,35 @@ export function VirginAccountHero({
 
         {/* 3 Portas de Entrada Imediatas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-          {/* Opção 1: Importar Extrato (Recomendada) */}
+          {/* Opção 1: Informar Saldo Inicial (Recomendada) */}
           <div className="flex flex-col justify-between gap-4 rounded-xl border border-primary/25 bg-primary/5 p-4 transition-colors hover:border-primary/40 shadow-xs">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-strong">
-                  <FileUp className="size-4.5" aria-hidden="true" />
+                  <Landmark className="size-4.5" aria-hidden="true" />
                 </div>
                 <Badge variant="default" size="xs">
-                  Mais Rápido
+                  Recomendado
                 </Badge>
               </div>
               <h3 className="text-sm font-semibold text-foreground">
-                Importar Extrato Bancário
+                Informar Saldo Inicial
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Carregue seu arquivo OFX ou CSV bancário para preencher histórico, saldos e categorias em 1 minuto sem digitação.
+                Defina o saldo real das suas contas bancárias para conciliação perfeita e acompanhamento de caixa desde o primeiro dia.
               </p>
             </div>
 
-            {onOpenStatementImport ? (
+            {onCalibrate ? (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={onCalibrate}
+                className="w-full text-xs font-semibold cursor-pointer"
+              >
+                Calibrar Saldo
+              </Button>
+            ) : onOpenStatementImport ? (
               <Button
                 size="sm"
                 variant="default"
@@ -103,11 +115,14 @@ export function VirginAccountHero({
                 Importar Arquivo
               </Button>
             ) : (
-              <Link to="/transacoes?importar=extrato" className="w-full">
-                <Button size="sm" variant="default" className="w-full text-xs font-semibold cursor-pointer">
-                  Importar Arquivo
-                </Button>
-              </Link>
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => navigate("/cartoes")}
+                className="w-full text-xs font-semibold cursor-pointer"
+              >
+                Calibrar Saldo
+              </Button>
             )}
           </div>
 

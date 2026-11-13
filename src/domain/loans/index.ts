@@ -124,7 +124,7 @@ export function calculateLoanSchedule(input: LoanScheduleInput): LoanScheduleRes
       if (i === n || principal > balance) {
         principal = balance;
       }
-      const actualPmt = i === n ? balance + interest : pmt;
+      const actualPmt = principal + interest;
       balance = Math.max(0, balance - principal);
 
       totalPaidCents += actualPmt;

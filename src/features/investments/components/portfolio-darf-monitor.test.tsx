@@ -75,4 +75,60 @@ describe("features/investments/components/PortfolioDarfMonitor", () => {
     expect(screen.getByText("Fundos Imobiliários (FIIs)")).toBeInTheDocument();
     expect(screen.getByText(OFFICIAL_TAX_DISCLAIMER)).toBeInTheDocument();
   });
+
+  it("calcula o custo correto a partir do histórico de compras mesmo quando a posição foi totalmente encerrada (average_price zerado)", () => {
+    const currentMonthPrefix = new Date().toISOString().slice(0, 7);
+
+    // Ativo com posição totalmente encerrada na tabela assets (quantity: 0, average_price: 0)
+    const exitedAssets: PortfolioAsset[] = [
+      {
+        id: "asset-exited",
+        user_id: "user-1",
+        ticker: "KNRI11",
+        asset_class: "FIIs",
+        quantity: 0,
+        average_price: 0,
+        currency: "BRL",
+        notes: null,
+      },
+    ];
+
+    const transactionsWithHistory: PortfolioTransaction[] = [
+      // Compra histórica de 10 cotas a R$ 100
+      {
+        id: "tx-buy-1",
+        user_id: "user-1",
+        asset_id: "asset-exited",
+        type: "buy",
+        date: `${currentMonthPrefix}-01`,
+        quantity: 10,
+        price: 100,
+        total: 1000,
+      },
+      // Venda total das 10 cotas a R$ 120 (lucro de R$ 20 por cota = R$ 200 de lucro -> 20% = R$ 40)
+      {
+        id: "tx-sell-all",
+        user_id: "user-1",
+        asset_id: "asset-exited",
+        type: "sell",
+        date: `${currentMonthPrefix}-15`,
+        quantity: 10,
+        price: 120,
+        total: 1200,
+      },
+    ];
+
+    render(
+      <PortfolioDarfMonitor
+        open={true}
+        onOpenChange={vi.fn()}
+        assets={exitedAssets}
+        transactions={transactionsWithHistory}
+      />,
+    );
+
+    // O imposto apurado é 20% sobre o lucro real de R$ 200 = R$ 40,00, NÃO sobre o total bruto de R$ 1.200 (R$ 240)
+    expect(screen.getByText("DARF a Recolher neste Mês")).toBeInTheDocument();
+    expect(screen.getAllByText("R$ 40,00").length).toBeGreaterThanOrEqual(1);
+  });
 });

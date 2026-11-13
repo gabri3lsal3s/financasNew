@@ -14,10 +14,28 @@ describe("VirginAccountHero", () => {
     render(<VirginAccountHero />);
 
     expect(screen.getByText("Bem-vindo ao seu novo centro financeiro")).toBeInTheDocument();
-    expect(screen.getByText("Importar Extrato Bancário")).toBeInTheDocument();
+    expect(screen.getByText("Informar Saldo Inicial")).toBeInTheDocument();
     expect(screen.getByText("Adicionar Cartão de Crédito")).toBeInTheDocument();
     expect(screen.getByText("Lançar Despesa ou Receita")).toBeInTheDocument();
     expect(screen.getByText("Explorar Conta Demonstrativa")).toBeInTheDocument();
+  });
+
+  it("chama onCalibrate ao clicar em Calibrar Saldo", async () => {
+    const user = userEvent.setup();
+    const handleCalibrate = vi.fn();
+    render(<VirginAccountHero onCalibrate={handleCalibrate} />);
+
+    await user.click(screen.getByText("Calibrar Saldo"));
+    expect(handleCalibrate).toHaveBeenCalledTimes(1);
+  });
+
+  it("chama onOpenNewTransaction ao clicar em Fazer Lançamento", async () => {
+    const user = userEvent.setup();
+    const handleNewTx = vi.fn();
+    render(<VirginAccountHero onOpenNewTransaction={handleNewTx} />);
+
+    await user.click(screen.getByText("Fazer Lançamento"));
+    expect(handleNewTx).toHaveBeenCalledTimes(1);
   });
 
   it("navega para as rotas corretas ao clicar nas opções", async () => {
