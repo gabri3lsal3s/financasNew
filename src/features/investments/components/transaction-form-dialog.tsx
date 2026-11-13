@@ -380,22 +380,27 @@ function TransactionFormContent({
 
         {error ? <Alert variant="error">{error}</Alert> : null}
 
-        <ModalFooter className="sm:justify-between">
-          {isEdit ? (
-            <Button type="button" variant="ghost" onClick={() => setConfirmDelete(true)} disabled={pending}>
-              Excluir lançamento
-            </Button>
-          ) : (
-            <span />
-          )}
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={!canSubmit}>
-              {pending ? "Salvando…" : isEdit ? "Salvar" : "Registrar"}
-            </Button>
-          </div>
+        <ModalFooter
+          destructiveAction={
+            isEdit ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setConfirmDelete(true)}
+                disabled={pending}
+                className="text-critical-strong hover:bg-critical/10"
+              >
+                Excluir lançamento
+              </Button>
+            ) : undefined
+          }
+        >
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={!canSubmit}>
+            {pending ? "Salvando…" : isEdit ? "Salvar" : "Registrar"}
+          </Button>
         </ModalFooter>
       </form>
 

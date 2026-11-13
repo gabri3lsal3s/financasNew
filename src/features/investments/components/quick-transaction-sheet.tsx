@@ -425,13 +425,21 @@ export function QuickTransactionSheet({
     },
     {
       id: "split",
-      label: "Split / Desdobro",
+      label: "Desdobro",
       icon: GitFork,
+      activeClass: "border-warning/60 bg-warning/10 text-warning-strong shadow-xs font-bold",
+    },
+    {
+      id: "reverse_split",
+      label: "Grupamento",
+      icon: RotateCcw,
       activeClass: "border-warning/60 bg-warning/10 text-warning-strong shadow-xs font-bold",
     },
   ];
 
-  const availableOperations = isTotalValue ? operations.filter((op) => op.id !== "split") : operations;
+  const availableOperations = isTotalValue
+    ? operations.filter((op) => op.id !== "split" && op.id !== "reverse_split")
+    : operations;
 
   return (
     <Modal
@@ -469,7 +477,18 @@ export function QuickTransactionSheet({
         )}
 
         {/* Seletor de Operação */}
-        <div className={cn("grid gap-2", availableOperations.length === 3 ? "grid-cols-3" : "grid-cols-2")} role="tablist" aria-label="Tipo de Operação">
+        <div
+          className={cn(
+            "grid gap-2",
+            availableOperations.length >= 5
+              ? "grid-cols-2 sm:grid-cols-3"
+              : availableOperations.length === 3
+                ? "grid-cols-3"
+                : "grid-cols-2",
+          )}
+          role="tablist"
+          aria-label="Tipo de Operação"
+        >
           {availableOperations.map((op) => {
             const Icon = op.icon;
             const isSelected = type === op.id;
@@ -1123,8 +1142,8 @@ export function QuickTransactionSheet({
                 <span className="text-muted-foreground">Posição Resultante:</span>
                 <span className="font-mono font-bold text-foreground">
                   {type === "split"
-                    ? `${targetAsset.quantity * splitFactor} cotas a `
-                    : `${Math.floor(targetAsset.quantity / splitFactor)} cotas a `}
+                    ? `${Math.round(targetAsset.quantity * splitFactor * 10000) / 10000} cotas a `
+                    : `${Math.round((targetAsset.quantity / splitFactor) * 10000) / 10000} cotas a `}
                   <MoneyText
                     cents={numberToCents(
                       type === "split"

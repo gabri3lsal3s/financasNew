@@ -433,7 +433,7 @@ export function isFiiAsset(ticker: string, assetClass?: string | null): boolean 
   }
   const upperTicker = ticker.trim().toUpperCase();
   if (
-    upperTicker.endsWith("11") &&
+    (upperTicker.endsWith("11") || upperTicker.endsWith("11B")) &&
     !KNOWN_B3_ETFS.has(upperTicker) &&
     !KNOWN_STOCK_UNITS.has(upperTicker) &&
     !isBdrAsset(upperTicker, assetClass)

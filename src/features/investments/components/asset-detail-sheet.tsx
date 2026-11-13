@@ -337,7 +337,7 @@ export function AssetDetailSheet({
                   title="Desdobramento ou grupamento de cotas"
                 >
                   <Scissors className="size-3.5" aria-hidden="true" />
-                  <span>Desdobrar</span>
+                  <span>Ajuste de Cotas</span>
                 </Button>
               )}
               <Button

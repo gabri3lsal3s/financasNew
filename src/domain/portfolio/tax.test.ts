@@ -415,6 +415,7 @@ describe("domain/portfolio/tax — Apuração Fiscal e IRPF", () => {
     it("isFiiAsset identifica FIIs e FIAGROs", () => {
       expect(isFiiAsset("MXRF11", "FIIs")).toBe(true);
       expect(isFiiAsset("HGLG11", "Fundo Imobiliário")).toBe(true);
+      expect(isFiiAsset("KNCR11B")).toBe(true);
       expect(isFiiAsset("VGIA11", "FIAGRO")).toBe(true);
       expect(isFiiAsset("PETR4", "Ações")).toBe(false);
       expect(isFiiAsset("BOVA11", "ETFs")).toBe(false);

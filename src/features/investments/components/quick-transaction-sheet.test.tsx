@@ -94,4 +94,16 @@ describe("QuickTransactionSheet (Fase 41)", () => {
     expect(screen.getByLabelText(/Alíquota personalizada de imposto de renda/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Valor de imposto de renda retido na fonte/i)).toBeInTheDocument();
   });
+
+  it("permite selecionar Grupamento (reverse_split) e exibe prévia com cotas ajustadas", async () => {
+    const user = userEvent.setup();
+    render(<QuickTransactionSheet open={true} asset={mockAsset} onOpenChange={vi.fn()} />);
+    const reverseSplitTab = screen.getByRole("tab", { name: /Grupamento/i });
+    expect(reverseSplitTab).toBeInTheDocument();
+    await user.click(reverseSplitTab);
+    expect(screen.getByText(/Fator \(N para 1\)/i)).toBeInTheDocument();
+    expect(screen.getByText("Posição Resultante:")).toBeInTheDocument();
+    // mockAsset tem 100 cotas com fator default 2 => 50 cotas
+    expect(screen.getByText(/50 cotas a/i)).toBeInTheDocument();
+  });
 });

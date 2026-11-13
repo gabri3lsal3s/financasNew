@@ -1,5 +1,27 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.6.3 (Build 62)** registra a conclusão integral da **Segunda Rodada de Auditoria e Refinamentos de Investimentos** ([`docs/plans/33_PLANO_SEGUNDA_RODADA_AUDITORIA_E_REFINAMENTOS_INVESTIMENTOS.md`](../plans/33_PLANO_SEGUNDA_RODADA_AUDITORIA_E_REFINAMENTOS_INVESTIMENTOS.md)) (2026-11-13):
+> - **(1) Classificação Fiscal FIIs com Sufixo B3 11B (AUDIT-05)**:
+>   - Suporte nativo ao sufixo `11B` (fundos imobiliários com negociação diferenciada ou balcão organizado, ex.: `KNCR11B`) na função pura `isFiiAsset` em `src/domain/portfolio/tax.ts`;
+>   - Garante a alíquota canônica de 20% sobre o ganho de capital líquido e impede a contaminação da faixa de isenção de R$ 20.000,00 de ações ordinárias/preferenciais;
+> - **(2) Suporte a Grupamento (`reverse_split`) no Lançamento Rápido & Sem Truncamento (AUDIT-02 & AUDIT-04)**:
+>   - Adição da operação `reverse_split` ("Grupamento") com ícone `RotateCcw` nas operações disponíveis do `QuickTransactionSheet`;
+>   - Filtro automático de exclusão de `split` e `reverse_split` em ativos de Valor Completo (`isTotalValue`);
+>   - Grid de botões adaptativo (`grid-cols-2 sm:grid-cols-3` quando $\ge 5$ operações);
+>   - Eliminação de truncamento prematuro de cotas (`Math.floor`) no preview resultante, adotando precisão de 4 casas decimais com arredondamento seguro (`Math.round(... * 10000) / 10000`);
+>   - Atualização do rótulo do botão de eventos societários em `AssetDetailSheet` de "Desdobrar" para "Ajuste de Cotas" (mais neutro e profissional);
+> - **(3) Conformidade DRY e Acessibilidade Radix UI nas Sub-abas de Proventos (AUDIT-01)**:
+>   - Substituição de botões manuais `<div role="tablist">` pelo primitivo canônico `<Tabs variant="pills" />` (Radix UI) em `src/features/investments/pages/proventos-tab.tsx`;
+>   - Acessibilidade padrão WAI-ARIA com suporte a navegação por setas (`ArrowLeft`/`ArrowRight`), ativação tátil com gateway sensorial e sem descontinuidades de layout;
+> - **(4) Padronização de Rodapé e Ação Destrutiva em Diálogo de Transação (AUDIT-03)**:
+>   - Adoção da propriedade canônica `destructiveAction` em `<ModalFooter />` em `src/features/investments/components/transaction-form-dialog.tsx`;
+>   - Posicionamento padronizado à esquerda no desktop e isolado abaixo no mobile (`order-last`), atendendo estritamente às Regras 15 e 18 de Governança de UI;
+> - **(5) Quality Gates 100% Verdes**:
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros, 0 avisos;
+>   - Vitest: 69 suítes e 732 testes de Investimentos 100% aprovados, mais 58/58 no security audit;
+>   - Build de produção Vite e PWA precache gerados com sucesso.
+>
 > **v3.6.2 (Build 61)** registra a conclusão integral do **Plano de Refinamento e Blindagem Integral dos Cálculos e Fluxos de Investimentos** ([`docs/plans/32_PLANO_REFINAMENTO_E_BLINDAGEM_INTEGRAL_INVESTIMENTOS.md`](../plans/32_PLANO_REFINAMENTO_E_BLINDAGEM_INTEGRAL_INVESTIMENTOS.md)) (2026-11-13):
 > - **(1) Blindagem de Cálculos Fiscais & Temporalidade (INV-08, INV-09, INV-11)**:
 >   - Desempate intraday determinístico em `sortTransactionsChronologically` com pesos corporativos estritos (`split`/`reverse_split` = 0 < `buy`/`subscription` = 1 < `sell` = 2 < outros = 3), eliminando assincronia e distorções de preço médio no replay contábil quando ordens ocorrem no mesmo dia;

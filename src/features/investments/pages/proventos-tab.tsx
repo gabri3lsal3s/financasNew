@@ -12,7 +12,7 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { Badge, Button, Checkbox, ConfirmDialog, EmptyState, ErrorState, SkeletonTable } from "@/components/ui";
+import { Badge, Button, Checkbox, ConfirmDialog, EmptyState, ErrorState, SkeletonTable, Tabs } from "@/components/ui";
 import { MonthPicker, SnowballActionCard } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
@@ -34,7 +34,6 @@ import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import { cn } from "@/lib/utils";
 import {
   useCorporateDividends,
   useDeletePortfolioDividend,
@@ -1024,35 +1023,13 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
       ) : null}
 
       {/* Barra de Subseletores com Pills no padrão Insights (§F36 e §F39) */}
-      <div
-        role="tablist"
-        aria-label="Sub-abas de proventos"
-        className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth pb-1 -mx-1 px-1"
-      >
-        {SUBTAB_ITEMS.map((item) => {
-          const isSelected = subTab === item.value;
-          return (
-            <Button
-              key={item.value}
-              role="tab"
-              aria-selected={isSelected}
-              type="button"
-              variant={isSelected ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleSubTabChange(item.value)}
-              className={cn(
-                "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
-                isSelected
-                  ? "shadow-xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </Button>
-          );
-        })}
-      </div>
+      <Tabs
+        value={subTab}
+        onValueChange={(val) => handleSubTabChange(val as ProventosSubTab)}
+        variant="pills"
+        items={SUBTAB_ITEMS}
+        ariaLabel="Sub-abas de proventos"
+      />
 
       {loading ? (
         <div aria-hidden="true">
