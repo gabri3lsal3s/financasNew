@@ -9,7 +9,7 @@ describe("SharedFinancesShowcase — Cards Visuais do Eixo 4", () => {
 
     expect(screen.getByRole("tab", { name: /Racha com Pix/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Vaquinha Coletiva/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Orçamento Familiar/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Modo Família|Família/i })).toBeInTheDocument();
   });
 
   it("exibe o Card 1: Racha de Despesas com cópia de Pix e botão de WhatsApp por padrão", async () => {
@@ -54,7 +54,7 @@ describe("SharedFinancesShowcase — Cards Visuais do Eixo 4", () => {
     const user = userEvent.setup();
     render(<SharedFinancesShowcase />);
 
-    const familyTab = screen.getByRole("tab", { name: /Orçamento Familiar/i });
+    const familyTab = screen.getByRole("tab", { name: /Modo Família|Família/i });
     await user.click(familyTab);
 
     expect(screen.getByTestId("card-familia")).toBeVisible();

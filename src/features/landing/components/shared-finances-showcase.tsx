@@ -122,8 +122,8 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
           id="tab-family"
           aria-selected={activeTab === "family"}
           aria-controls="panel-family"
-          title="Modo Família (Orçamento Familiar)"
-          aria-label="Orçamento Familiar — Modo Família"
+          title="Modo Família"
+          aria-label="Modo Família"
           onClick={() => setActiveTab("family")}
           className={cn(
             "flex-auto shrink-0 min-w-fit px-2.5 sm:px-3 py-1.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 whitespace-nowrap font-medium",

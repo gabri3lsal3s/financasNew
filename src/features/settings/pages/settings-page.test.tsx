@@ -103,6 +103,9 @@ vi.mock("@/state", () => ({
   useCancelSubscriptionMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateSubscriptionCardMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpgradeToAnnualMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCancelScheduledPlanChangeMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSchedulePlanChangeMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCumulativeCheckoutMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteAccountMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUserAccess: () => ({
     profile: null,

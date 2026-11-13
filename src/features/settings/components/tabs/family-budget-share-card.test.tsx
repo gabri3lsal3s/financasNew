@@ -101,7 +101,7 @@ describe("FamilyBudgetShareCard", () => {
 
     renderCard();
 
-    const toggle = screen.getByRole("switch", { name: "Habilitar Modo Familiar" });
+    const toggle = screen.getByRole("switch", { name: "Habilitar Modo Família" });
     expect(toggle).toBeInTheDocument();
     expect(toggle).toBeChecked();
 
@@ -121,7 +121,7 @@ describe("FamilyBudgetShareCard", () => {
     expect(screen.getByText("Modo Desativado")).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Ao desativar o modo familiar, todas as transações continuam disponíveis de forma consolidada/i,
+        /Ao desativar o Modo Família, todas as transações continuam disponíveis de forma consolidada/i,
       ),
     ).toBeInTheDocument();
     // O link não deve aparecer quando desativado
@@ -136,7 +136,7 @@ describe("FamilyBudgetShareCard", () => {
 
     renderCard();
 
-    expect(screen.getByText("Orçamento Familiar & Link do Cônjuge")).toBeInTheDocument();
+    expect(screen.getByText("Modo Família & Link do Cônjuge")).toBeInTheDocument();
     expect(screen.getByText("Sem Link Ativo")).toBeInTheDocument();
     expect(screen.getByText("Nenhum link familiar ativo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Gerar Link Familiar" })).toBeInTheDocument();
@@ -153,7 +153,7 @@ describe("FamilyBudgetShareCard", () => {
 
     await user.click(screen.getByRole("button", { name: "Gerar Link Familiar" }));
 
-    expect(screen.getByText("Gerar Link de Orçamento Familiar")).toBeInTheDocument();
+    expect(screen.getByText("Gerar Link do Modo Família")).toBeInTheDocument();
     expect(screen.getByText("Privacidade Garantida")).toBeInTheDocument();
 
     const submitBtn = screen.getByRole("button", { name: "Gerar Link" });

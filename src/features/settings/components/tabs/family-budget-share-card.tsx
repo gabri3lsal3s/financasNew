@@ -155,7 +155,7 @@ export function FamilyBudgetShareCard() {
           <CardTitle className="text-base flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
             <span className="flex items-center gap-2">
               <Users className="size-4 text-muted-foreground" aria-hidden="true" />
-              <span>Orçamento Familiar &amp; Link do Cônjuge</span>
+              <span>Modo Família &amp; Link do Cônjuge</span>
             </span>
             {isFamilyModeEnabled ? (
               activeShare ? (
@@ -178,14 +178,14 @@ export function FamilyBudgetShareCard() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Switch Mestre: Habilitar Modo Familiar */}
+          {/* Switch Mestre: Habilitar Modo Família */}
           <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-muted/20 gap-3">
             <div className="space-y-0.5">
               <label
                 htmlFor="family-mode-toggle"
                 className="text-xs font-semibold text-foreground cursor-pointer block"
               >
-                Habilitar Modo Familiar
+                Habilitar Modo Família
               </label>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {isFamilyModeEnabled
@@ -200,7 +200,7 @@ export function FamilyBudgetShareCard() {
               onCheckedChange={(checked) => {
                 void toggleFamilyMode(checked);
               }}
-              aria-label="Habilitar Modo Familiar"
+              aria-label="Habilitar Modo Família"
             />
           </div>
 
@@ -208,7 +208,7 @@ export function FamilyBudgetShareCard() {
             <div className="flex items-start gap-2.5 p-3 rounded-xl border border-border/60 bg-surface text-muted-foreground">
               <Info className="size-4 shrink-0 mt-0.5" aria-hidden="true" />
               <p className="text-[11px] leading-relaxed">
-                Ao desativar o modo familiar, todas as transações continuam disponíveis de forma consolidada no extrato. Nenhum lançamento familiar anterior é excluído e você pode reativar a qualquer momento.
+                Ao desativar o Modo Família, todas as transações continuam disponíveis de forma consolidada no extrato. Nenhum lançamento familiar anterior é excluído e você pode reativar a qualquer momento.
               </p>
             </div>
           ) : isLoading ? (
@@ -338,7 +338,7 @@ export function FamilyBudgetShareCard() {
       <Modal
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
-        title="Gerar Link de Orçamento Familiar"
+        title="Gerar Link do Modo Família"
         description="Configure o link de leitura para compartilhar com seu cônjuge ou membros da casa."
         size="md"
       >

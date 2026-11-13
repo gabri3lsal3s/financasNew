@@ -1,6 +1,5 @@
 import { getSupabase } from "@/data/client";
 import { AppError } from "@/services/errors";
-import { getPublicAppUrl } from "@/services/app-url";
 import type {
   BillingInvoiceItem,
   BillingProviderAdapter,
@@ -8,6 +7,7 @@ import type {
   CancelSubscriptionParams,
   CheckoutSessionResult,
   CreateCheckoutParams,
+  CreateCumulativeCheckoutParams,
   CreditCardPayload,
   CustomerBillingDetails,
   DirectCreditCardResult,
@@ -23,6 +23,7 @@ export type {
   CancelSubscriptionParams,
   CheckoutSessionResult,
   CreateCheckoutParams,
+  CreateCumulativeCheckoutParams,
   CreditCardPayload,
   CustomerBillingDetails,
   DirectCreditCardResult,
@@ -65,7 +66,7 @@ export type CheckoutParams = CheckoutCreditCardParams | CheckoutPixParams | Crea
 export type CheckoutResult = CheckoutSessionResult;
 
 // ============================================================================
-// Adaptador Asaas (Brasil - PIX Dinâmico e Cartão de Crédito Transparente)
+// Adaptador Asaas (Brasil - PIX Dinâmico, Cartão Transparente e Acumulativo)
 // ============================================================================
 
 export const asaasBillingAdapter: BillingProviderAdapter = {
@@ -78,8 +79,6 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
       cpf: params.customer.cpf,
       phone: params.customer.phone,
       card: params.card,
-      trialDaysRemaining: params.trialDaysRemaining,
-      firstBillingDate: params.firstBillingDate,
       name: params.customer.name,
       email: params.customer.email,
       registration: params.registration,
@@ -91,6 +90,30 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
 
     if (error || !data || data.error) {
       const errorMsg = data?.error || error?.message || "Falha ao processar pagamento com o gateway.";
+      throw new AppError("network", errorMsg, error);
+    }
+
+    return {
+      ...data,
+      provider: "asaas",
+    } as CheckoutSessionResult;
+  },
+
+  async createCumulativeCheckoutSession(params: CreateCumulativeCheckoutParams): Promise<CheckoutSessionResult> {
+    const payload = {
+      kind: "cumulative_months",
+      months: params.months,
+      method: params.method,
+      card: params.card,
+      phone: params.phone,
+    };
+
+    const { data, error } = await getSupabase().functions.invoke("asaas-checkout", {
+      body: payload,
+    });
+
+    if (error || !data || data.error) {
+      const errorMsg = data?.error || error?.message || "Falha ao gerar pagamento acumulativo com o gateway.";
       throw new AppError("network", errorMsg, error);
     }
 
@@ -147,136 +170,51 @@ export const asaasBillingAdapter: BillingProviderAdapter = {
       throw new AppError("network", errorMsg, error);
     }
   },
-};
 
-// ============================================================================
-// Adaptador Stripe (Global - Checkout Sessions e Customer Portal)
-// ============================================================================
-
-export const stripeBillingAdapter: BillingProviderAdapter = {
-  providerName: "stripe",
-
-  async createCheckoutSession(params: CreateCheckoutParams): Promise<CheckoutSessionResult> {
-    const payload = {
-      plan: params.plan,
-      method: params.method,
-      customer: params.customer,
-      trialDaysRemaining: params.trialDaysRemaining,
-      firstBillingDate: params.firstBillingDate,
-      successUrl: params.successUrl || getPublicAppUrl(`assinatura/sucesso?plano=${params.plan}`),
-      cancelUrl: params.cancelUrl || getPublicAppUrl("assinatura?status=cancelado"),
-    };
-
-    const { data, error } = await getSupabase().functions.invoke("stripe-checkout", {
-      body: payload,
+  async schedulePlanChange(targetPlan: "monthly" | "annual"): Promise<{ ok: boolean; message: string }> {
+    const { data, error } = await getSupabase().functions.invoke("asaas-manage", {
+      body: { action: "schedule-plan-change", targetPlan },
     });
 
     if (error || !data || data.error) {
-      const errorMsg = data?.error || error?.message || "Falha ao iniciar checkout no Stripe.";
+      const errorMsg = data?.error || error?.message || "Falha ao agendar mudança de plano.";
       throw new AppError("network", errorMsg, error);
     }
 
-    if (data.checkoutUrl) {
-      return {
-        ok: true,
-        method: "hosted_session",
-        provider: "stripe",
-        checkoutUrl: data.checkoutUrl,
-        sessionId: data.sessionId || data.id,
-      };
-    }
-
-    return {
-      ...data,
-      provider: "stripe",
-    } as CheckoutSessionResult;
+    return { ok: true, message: data.message || "Mudança agendada com sucesso." };
   },
 
-  async cancelSubscription(params?: CancelSubscriptionParams): Promise<void> {
-    const { data, error } = await getSupabase().functions.invoke("stripe-manage", {
-      body: {
-        action: "cancel",
-        subscriptionId: params?.subscriptionId,
-        immediate: params?.immediate ?? false,
-      },
+  async cancelScheduledPlanChange(): Promise<{ ok: boolean; message: string }> {
+    const { data, error } = await getSupabase().functions.invoke("asaas-manage", {
+      body: { action: "cancel-scheduled-plan-change" },
     });
 
     if (error || !data || data.error) {
-      const errorMsg = data?.error || error?.message || "Falha ao cancelar assinatura no Stripe.";
-      throw new AppError("network", errorMsg, error);
-    }
-  },
-
-  async updatePaymentMethod(params: UpdatePaymentParams): Promise<void> {
-    const { data, error } = await getSupabase().functions.invoke("stripe-manage", {
-      body: {
-        action: "update-payment-method",
-        subscriptionId: params.subscriptionId,
-        card: params.card,
-        returnUrl: params.returnUrl || getPublicAppUrl("configuracoes"),
-      },
-    });
-
-    if (error || !data || data.error) {
-      const errorMsg = data?.error || error?.message || "Falha ao atualizar forma de pagamento no Stripe.";
-      throw new AppError("network", errorMsg, error);
-    }
-  },
-
-  async getBillingPortalUrl(customerId: string, returnUrl?: string): Promise<string> {
-    const { data, error } = await getSupabase().functions.invoke("stripe-manage", {
-      body: {
-        action: "portal",
-        customerId,
-        returnUrl: returnUrl || getPublicAppUrl("configuracoes"),
-      },
-    });
-
-    if (error || !data || data.error || !data.portalUrl) {
-      const errorMsg = data?.error || error?.message || "Falha ao obter portal de faturamento Stripe.";
+      const errorMsg = data?.error || error?.message || "Falha ao cancelar mudança de plano agendada.";
       throw new AppError("network", errorMsg, error);
     }
 
-    return data.portalUrl as string;
+    return { ok: true, message: data.message || "Agendamento cancelado com sucesso." };
   },
 };
 
 // ============================================================================
-// Despachante & Resolução Dinâmica de Provedor
+// Despachante & Resolução Canônica do Provedor Oficial (Asaas)
 // ============================================================================
 
-/**
- * Retorna o adaptador de faturamento ativo baseado no provedor solicitado
- * ou na variável de ambiente de configuração padrão do app.
- */
-export function getBillingAdapter(provider?: BillingProviderName): BillingProviderAdapter {
-  const selectedProvider: BillingProviderName =
-    provider ||
-    (import.meta.env.VITE_DEFAULT_BILLING_PROVIDER as BillingProviderName) ||
-    "asaas";
-
-  switch (selectedProvider) {
-    case "stripe":
-      return stripeBillingAdapter;
-    case "asaas":
-    default:
-      return asaasBillingAdapter;
-  }
+export function getBillingAdapter(): BillingProviderAdapter {
+  return asaasBillingAdapter;
 }
 
 // ============================================================================
 // Funções Canônicas Exportadas da Camada de Repositório
 // ============================================================================
 
-/**
- * Normaliza parâmetros de checkout de formatos legados para o contrato canônico CreateCheckoutParams.
- */
 function normalizeCheckoutParams(params: CheckoutParams): CreateCheckoutParams {
   if ("customer" in params) {
     return params;
   }
 
-  // Parâmetros legados Asaas
   return {
     plan: params.plan,
     method: params.method,
@@ -289,89 +227,67 @@ function normalizeCheckoutParams(params: CheckoutParams): CreateCheckoutParams {
       addressNumber: (params as CheckoutCreditCardParams).card?.addressNumber,
     },
     card: (params as CheckoutCreditCardParams).card,
-    trialDaysRemaining: (params as CheckoutCreditCardParams).trialDaysRemaining,
-    firstBillingDate: (params as CheckoutCreditCardParams).firstBillingDate,
   };
 }
 
-/**
- * Inicia uma sessão de checkout com o provedor de faturamento ativo.
- */
-export async function createCheckoutSession(
-  params: CheckoutParams,
-  provider?: BillingProviderName,
-): Promise<CheckoutSessionResult> {
-  const adapter = getBillingAdapter(provider);
+export async function createCheckoutSession(params: CheckoutParams): Promise<CheckoutSessionResult> {
+  const adapter = getBillingAdapter();
   const canonicalParams = normalizeCheckoutParams(params);
   return adapter.createCheckoutSession(canonicalParams);
 }
 
-/**
- * Cancela a renovação da assinatura no provedor de faturamento ativo.
- */
-export async function cancelSubscription(
-  params?: CancelSubscriptionParams,
-  provider?: BillingProviderName,
-): Promise<void> {
-  const adapter = getBillingAdapter(provider);
+export async function createCumulativeCheckoutSession(
+  params: CreateCumulativeCheckoutParams,
+): Promise<CheckoutSessionResult> {
+  const adapter = getBillingAdapter();
+  if (adapter.createCumulativeCheckoutSession) {
+    return adapter.createCumulativeCheckoutSession(params);
+  }
+  throw new AppError("validation", "Provedor atual não suporta pagamento acumulativo.");
+}
+
+export async function cancelSubscription(params?: CancelSubscriptionParams): Promise<void> {
+  const adapter = getBillingAdapter();
   return adapter.cancelSubscription(params);
 }
 
-/**
- * Atualiza a forma de pagamento cadastrada no provedor ativo.
- */
-export async function updatePaymentMethod(
-  params: UpdatePaymentParams,
-  provider?: BillingProviderName,
-): Promise<void> {
-  const adapter = getBillingAdapter(provider);
+export async function updatePaymentMethod(params: UpdatePaymentParams): Promise<void> {
+  const adapter = getBillingAdapter();
   return adapter.updatePaymentMethod(params);
 }
 
-/**
- * Atualiza o cartão de crédito da assinatura ativa (compatibilidade direta).
- */
-export async function updateSubscriptionCreditCard(
-  card: CreditCardPayload,
-  provider?: BillingProviderName,
-): Promise<void> {
-  return updatePaymentMethod({ subscriptionId: "", card }, provider);
+export async function updateSubscriptionCreditCard(card: CreditCardPayload): Promise<void> {
+  return updatePaymentMethod({ subscriptionId: "", card });
 }
 
-/**
- * Obtém a URL do portal de autoatendimento do cliente (quando suportado pelo gateway).
- */
-export async function getBillingPortalUrl(
-  customerId: string,
-  returnUrl?: string,
-  provider?: BillingProviderName,
-): Promise<string> {
-  const adapter = getBillingAdapter(provider);
-  if (!adapter.getBillingPortalUrl) {
-    throw new AppError("validation", "O provedor atual não possui portal de autoatendimento hospedado.");
-  }
-  return adapter.getBillingPortalUrl(customerId, returnUrl);
-}
-
-/**
- * Consulta a lista cronológica de faturas e comprovantes fiscais do cliente.
- */
-export async function listInvoices(provider?: BillingProviderName): Promise<BillingInvoiceItem[]> {
-  const adapter = getBillingAdapter(provider);
+export async function listInvoices(): Promise<BillingInvoiceItem[]> {
+  const adapter = getBillingAdapter();
   if (adapter.listInvoices) {
     return adapter.listInvoices();
   }
   return [];
 }
 
-/**
- * Realiza a migração direta do plano Mensal para o plano Anual (Upsell 40%).
- */
-export async function upgradeToAnnual(provider?: BillingProviderName): Promise<void> {
-  const adapter = getBillingAdapter(provider);
+export async function upgradeToAnnual(): Promise<void> {
+  const adapter = getBillingAdapter();
   if (adapter.upgradeToAnnual) {
     return adapter.upgradeToAnnual();
   }
   throw new AppError("validation", "Provedor atual não suporta migração direta de plano.");
 }
 
+export async function schedulePlanChange(targetPlan: "monthly" | "annual"): Promise<{ ok: boolean; message: string }> {
+  const adapter = getBillingAdapter();
+  if (adapter.schedulePlanChange) {
+    return adapter.schedulePlanChange(targetPlan);
+  }
+  throw new AppError("validation", "Provedor atual não suporta agendamento de troca de plano.");
+}
+
+export async function cancelScheduledPlanChange(): Promise<{ ok: boolean; message: string }> {
+  const adapter = getBillingAdapter();
+  if (adapter.cancelScheduledPlanChange) {
+    return adapter.cancelScheduledPlanChange();
+  }
+  throw new AppError("validation", "Provedor atual não possui cancelamento de troca agendada.");
+}

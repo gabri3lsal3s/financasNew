@@ -1,13 +1,37 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v3.4.0 (Planejamento)** registra o **Plano de Integridade de Billing, Memória de Lançamentos e Simuladores** (2026-11-12), ainda **não implementado**:
-> - **Plano canônico:** [`docs/plans/26_PLANO_INTEGRIDADE_BILLING_MEMORIA_E_SIMULADORES.md`](../plans/26_PLANO_INTEGRIDADE_BILLING_MEMORIA_E_SIMULADORES.md);
-> - **Billing:** máquina de estados única (trial ativo, trial com cobrança agendada, expirado, ativo, inadimplente, cancelamento agendado e somente-leitura), autoridade de datas no servidor, intenções de cobrança idempotentes, troca mensal ↔ anual apenas na renovação e renovação acumulativa mensal de +365 dias por R$ 191,88;
-> - **Pix:** QR Code somente quando há valor a pagar hoje; durante o trial, apenas agendamento no cartão;
-> - **Memória:** parser de clipboard para BR Code, links Pix e comprovantes, reutilizando `parsePixEMVPayload`, `parsePixShareText`, `parseUniversalReceipt` e a memória de estabelecimentos; correção da calculadora com fallback manual;
-> - **Simuladores:** simplificação do card da landing, fim do truncamento monetário, gráfico responsivo e acessível, e evolução da página pública de rebalanceamento;
-> - **Modo Família:** padronização do nome, preservação de `/familia` e permanência em Estratégia & Análise;
-> - **Skeletons:** substituição de spinners de conteúdo pelos compostos `SkeletonKpi`, `SkeletonChart`, `SkeletonList` e `SkeletonTable`.
+> **v3.4.0 (Build 57)** registra o **Plano de Integridade de Billing, Memória de Lançamentos e Simuladores** (2026-11-12):
+> - **(1) Ciclo de Vida da Assinatura & Máquina de Estados Canônica**:
+>   - Domínio puro em `src/domain/subscription/` com estados explícitos: `trial_active`, `trial_scheduled`, `trial_expired`, `active`, `past_due`, `canceled_until_period_end`, `read_only` e `lifetime`;
+>   - Migração `20260101000114_billing_lifecycle_v2.sql` adicionando campos em `user_subscriptions` (`trial_started_at`, `billing_start_at`, `scheduled_plan_id`, `pending_plan_id`, `card_last4`, `asaas_sync_status`);
+>   - Migração `20260101000115_billing_intents_and_notifications.sql` criando a tabela `billing_intents` com RLS total, idempotência atômica e logs auditáveis;
+>   - Migração `20260101000116_plans_catalog_alignment_and_rpcs.sql` alinhando catálogo `plans` (R$ 19,99 e R$ 143,88), atualizando `get_my_subscription()` e blindando `can_current_user_write()`;
+> - **(2) Pagamento Acumulativo de Mensalidades (2 a 11 meses)**:
+>   - Tabela progressiva de descontos: 5% (2–3 meses), 10% (4–6 meses), 15% (7–9 meses) e 20% (10–11 meses);
+>   - Trava estrita em 11 meses com card de recomendação e ancoragem no Plano Pro Anual (R$ 143,88 — 40% OFF);
+>   - Adição determinística de meses civis via `addCivilMonths` com clamping estrito contra o bug de *month overshoot* em viradas de 31 dias;
+>   - Sincronização bidirecional do `nextDueDate` no Asaas (`asaas-webhook`) para pausar cobranças recorrentes no cartão durante os meses antecipados;
+> - **(3) Gateway de Captura da Área de Transferência & Calculadora Resiliente**:
+>   - Gateway de clipboard `src/services/clipboard.ts` com estados tipados seguros (`success`, `permission_denied`, `unsupported`, `empty`);
+>   - Decodificação em cascata: BR Code Copia e Cola EMVCo (`000201...`), links Pix, compartilhamentos e comprovantes bancários universais (`parseUniversalReceipt`);
+>   - Pré-preenchimento rápido no Wizard de Lançamentos com memória de estabelecimentos;
+>   - Atalho `Ctrl+V` na calculadora sem interceptação indevida de teclado e com fallback amigável;
+> - **(4) Simulador de Carteira & Ferramentas Públicas**:
+>   - Unificação de presets em `src/domain/portfolio/simulation-presets.ts` (Dividendos, Global e Crescimento);
+>   - Erradicação de truncamentos cegos em valores monetários (Regra 11) com `<MoneyText />` adaptativo;
+>   - Grids responsivos `grid-cols-1 sm:grid-cols-3` (Regra 10) e gráficos de alocação/curva de juros otimizados para viewports estreitos (320px–390px);
+> - **(5) Padronização Universal do Modo Família**:
+>   - Unificação da marca e rótulos de interface para **"Modo Família"** em 100% dos menus, cabeçalhos, switches e diálogos;
+>   - Adição da rota alias `/modo-familia` redirecionando para `/familia`;
+> - **(6) Skeletons Compostos Universais (Zero CLS)**:
+>   - `RouteSuspenseFallback` em `router.tsx` migrado de spinner centralizado para Shell Skeleton estruturado (Navbar + Hero Card + KPIs + Listagem);
+>   - Telas com carregamento de dados (como `active-devices-card.tsx`) adotando `SkeletonList` e primitivos compostos;
+> - **(7) Quality Gates 100% Verdes & Homologação Final**:
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros, 0 avisos;
+>   - Vitest: 168 arquivos de teste de domínio e 2.627 testes aprovados;
+>   - Build de produção Vite e PWA precache gerados com sucesso;
+>   - Build Android Pro (Release APK) v3.4.0 (código 57).
 >
 > **v3.3.0 (Build 56)** registra a **Auditoria SEO, Performance de Entrada e Navegação Agêntica** (2026-11-12):
 > - **(1) Fronteira Pública x Autenticada**: `RootEntry` decide landing x App Shell por token síncrono; visitantes não montam `useAuth`, prefetch, idle timeout nem listeners nativos. `AuthenticatedRoot`, `RequireAuth`, guards e `PageShell` são carregados sob demanda;

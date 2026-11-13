@@ -20,6 +20,8 @@ import {
   Input,
   Modal,
   ModalFooter,
+  Skeleton,
+  SkeletonList,
 } from "@/components/ui";
 import { useDevices, useRevokeDevice, useDeleteDevice } from "@/state";
 import { getOrCreateDeviceId } from "@/services/native/device-info";
@@ -182,9 +184,9 @@ export function ActiveDevicesCard({ className }: ActiveDevicesCardProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           {devicesQuery.isLoading ? (
-            <div className="flex items-center justify-center p-8 text-muted-foreground gap-2">
-              <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />
-              <span className="text-xs">Carregando dispositivos conectados...</span>
+            <div role="status" aria-busy="true" className="space-y-2.5 p-1">
+              <SkeletonList rows={3} />
+              <span className="sr-only">Carregando dispositivos conectados...</span>
             </div>
           ) : sortedDevices.length === 0 ? (
             <div className="p-5 rounded-xl border border-dashed border-border/80 text-center">
@@ -328,9 +330,10 @@ export function ActiveDevicesCard({ className }: ActiveDevicesCardProps) {
           </div>
 
           {isCheckingMfa ? (
-            <div className="flex items-center justify-center p-4 text-muted-foreground gap-2">
-              <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />
-              <span className="text-xs">Verificando requisitos de segurança...</span>
+            <div role="status" aria-busy="true" className="space-y-2 p-2">
+              <Skeleton className="h-4 w-3/4 rounded" />
+              <Skeleton className="h-9 w-full rounded-lg" />
+              <span className="sr-only">Verificando requisitos de segurança...</span>
             </div>
           ) : hasMfa ? (
             <div className="space-y-1.5">

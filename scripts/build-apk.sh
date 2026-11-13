@@ -161,13 +161,15 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v3.2.0: Tema Programado, Distribuição Unificada e Descoberta por IA",
-    "Tema automático por horário (dia/noite) com preferência entre Abissal Teal e OLED",
-    "Modal único de download do app unindo instalação PWA e Android Pro (APK)",
-    "Configurações consolidadas em 6 abas e administração modular em /admin/*",
-    "Home, Relatórios, Orçamentos e Cartões modularizados para carregamento mais leve",
-    "Landing page reordenada, documentação llms.txt/ai-catalog.json e JSON-LD expandido",
-    "MFA com limpeza de fatores pendentes e biometria WebAuthn no App Lock web"
+    "Axir v3.4.0: Integridade de Billing, Memória de Lançamentos e Simuladores",
+    "Máquina de estados canônica de billing e autoridade integral do servidor",
+    "Antecipação acumulativa de mensalidades com desconto progressivo (2 a 11 meses)",
+    "Trava em 11 meses e recomendação com ancoragem no Plano Pro Anual",
+    "Gateway de captura da área de transferência (BR Code, Pix Copia e Cola e comprovantes)",
+    "Calculadora financeira resiliente com atalho Ctrl+V e fallback manual",
+    "Simuladores de carteira responsivos sem reticências em valores monetários",
+    "Padronização universal da nomenclatura do Modo Família e rota /modo-familia",
+    "Carregamento unificado com Skeletons estruturados eliminando Cumulative Layout Shift (CLS)"
   ]
 }
 EOF

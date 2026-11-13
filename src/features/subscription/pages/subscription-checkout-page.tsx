@@ -198,9 +198,9 @@ export function SubscriptionCheckoutPage() {
     return <LoadingScreen statusText="Iniciando ambiente seguro…" />;
   }
 
-  // Já é Pro (e não acabou de ativar via PIX) → redirecionar para o app
-  if (session && subscription.isPro && !pixResult) {
-    return <Navigate to="/" replace />;
+  // Já é Pro no mesmo plano (e não está em fluxo de PIX pendente) -> direciona para a gestão de assinatura
+  if (session && subscription.isPro && !pixResult && subscription.plan === plan) {
+    return <Navigate to="/configuracoes?tab=assinatura" replace />;
   }
 
   const handleCpfChange = (val: string) => {

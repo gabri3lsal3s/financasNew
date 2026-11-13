@@ -804,10 +804,10 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
 
 #### 3.13.2 Orçamento Familiar Compartilhado & Modo Família Colaborativo Multi-Contas
 - **Segregação de Despesas e Receitas Familiares:** campo booleano `is_family` nas tabelas `expenses`, `incomes` e `portfolio_assets`. Permite que os membros marquem lançamentos e ativos que compõem o custo de vida e o patrimônio conjunto da casa.
-- **Governança do Switch do Modo Familiar em Configurações (`isFamilyModeEnabled`):**
-  - **Padrão Ativado para Novos Usuários:** O Modo Familiar inicia ativado por padrão (`isFamilyModeEnabled = true`) para novas contas (configurado em `user_preferences.custom_settings`), proporcionando acesso imediato às ferramentas colaborativas familiares sem fricção inicial.
-  - **Visibilidade Estrita de Toggles e Badges:** Quando o usuário desativa o Modo Familiar nas preferências da conta (`isFamilyModeEnabled = false`), todos os controles e switches de compartilhamento familiar desaparecem completamente da interface (criação/edição de despesas, receitas, categorias e investimentos).
-  - **Ocultação de Badges em Extratos e Fichas:** Lançamentos ou ativos com a flag `is_family = true` pré-existente só exibem os badges visuais "Familiar" ou "Patrimônio Familiar" quando o Modo Familiar estiver expressamente **ativado**.
+- **Governança do Switch do Modo Família em Configurações (`isFamilyModeEnabled`):**
+  - **Padrão Ativado para Novos Usuários:** O Modo Família inicia ativado por padrão (`isFamilyModeEnabled = true`) para novas contas (configurado em `user_preferences.custom_settings`), proporcionando acesso imediato às ferramentas colaborativas familiares sem fricção inicial.
+  - **Visibilidade Estrita de Toggles e Badges:** Quando o usuário desativa o Modo Família nas preferências da conta (`isFamilyModeEnabled = false`), todos os controles e switches de compartilhamento familiar desaparecem completamente da interface (criação/edição de despesas, receitas, categorias e investimentos).
+  - **Ocultação de Badges em Extratos e Fichas:** Lançamentos ou ativos com a flag `is_family = true` pré-existente só exibem os badges visuais "Familiar" ou "Patrimônio Familiar" quando o Modo Família estiver expressamente **ativado**.
   - **Princípio de Zero Data Loss:** Desativar o switch de preferências não altera nem apaga dados do banco de dados; a persistência de vínculos permanece íntegra, aguardando reativação sem perda histórica.
 - **Modelos de Divisão & Gestão Financeira Familiar:**
   - *Caixa Único / Gastos Combinados (`combined_finances`):* Consolidação unificada de despesas e receitas da casa sem comparação individual ou necessidade de transferências Pix compensatórias entre os membros.

@@ -487,5 +487,6 @@ export * from "./dividend-deduplication";
 export * from "./dividend-suggester";
 export * from "./dividend-cash-governance";
 export * from "./fire";
+export * from "./simulation-presets";
 
 

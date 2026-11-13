@@ -196,7 +196,7 @@ describe("FamilyPage (/familia)", () => {
     renderPage();
 
     expect(screen.getByTestId("family-page-skeleton")).toBeInTheDocument();
-    expect(screen.queryByText("Orçamento Familiar")).not.toBeInTheDocument();
+    expect(screen.queryByText("Modo Família")).not.toBeInTheDocument();
   });
 
   it("renderiza tela explicativa para ativar o modo familiar quando estiver desativado", () => {
@@ -205,8 +205,8 @@ describe("FamilyPage (/familia)", () => {
     renderPage();
 
     expect(screen.getByTestId("family-mode-inactive")).toBeInTheDocument();
-    expect(screen.getByText("Modo Familiar desativado")).toBeInTheDocument();
-    const activateButton = screen.getByRole("button", { name: "Ativar Modo Familiar" });
+    expect(screen.getByText("Modo Família desativado")).toBeInTheDocument();
+    const activateButton = screen.getByRole("button", { name: "Ativar Modo Família" });
     expect(activateButton).toBeInTheDocument();
     fireEvent.click(activateButton);
     expect(mockToggleFamilyMode).toHaveBeenCalledWith(true);
@@ -217,7 +217,7 @@ describe("FamilyPage (/familia)", () => {
     mockIsFamilyModeEnabled = true;
     renderPage();
 
-    expect(screen.getByRole("heading", { name: "Orçamento Familiar" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Modo Família" })).toBeInTheDocument();
     expect(screen.getByText("Nenhuma família criada ainda")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Criar Família" })).toBeInTheDocument();
   });
@@ -250,7 +250,7 @@ describe("FamilyPage (/familia)", () => {
     mockConsolidationData = sampleConsolidation;
     renderPage();
 
-    expect(screen.getByRole("heading", { name: "Orçamento Familiar" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Modo Família" })).toBeInTheDocument();
     expect(screen.getByText("Família Silva")).toBeInTheDocument();
 
     // Cards Analíticos

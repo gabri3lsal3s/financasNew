@@ -70,4 +70,27 @@ describe("FireProjectionCurve", () => {
     fireEvent.click(voltarBtn);
     expect(screen.getByRole("button", { name: /Hoje \(0a\)/i })).toBeInTheDocument();
   });
+
+  it("permite controlar a projeção via teclado usando o slider com setas", () => {
+    render(
+      <FireProjectionCurve
+        initialPatrimony={25000}
+        monthlyAporte={3000}
+        monthlyExpenses={2500}
+        annualRate={0.08}
+        years={25}
+      />
+    );
+
+    const slider = screen.getByRole("slider", { name: /Projeção FIRE ao longo dos anos/i });
+    expect(slider).toBeInTheDocument();
+
+    fireEvent.keyDown(slider, { key: "ArrowRight" });
+    fireEvent.keyDown(slider, { key: "ArrowLeft" });
+    fireEvent.keyDown(slider, { key: "End" });
+    expect(slider).toHaveAttribute("aria-valuenow", "25");
+
+    fireEvent.keyDown(slider, { key: "Home" });
+    expect(slider).toHaveAttribute("aria-valuenow", "0");
+  });
 });

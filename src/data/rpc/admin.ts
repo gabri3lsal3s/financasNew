@@ -185,23 +185,35 @@ export async function adminGetMetrics(): Promise<AdminMetricsResult> {
  * Consulta agregada de status da assinatura e permissões do usuário autenticado.
  */
 export async function getMySubscription(): Promise<{
+  id?: string;
   tier: string;
   status: string;
+  billing_phase?: string | null;
   plan_id: string;
   starts_at: string;
+  trial_started_at?: string | null;
   trial_ends_at: string | null;
-  current_period_end: string | null;
   trial_days_remaining: number | null;
+  billing_start_at?: string | null;
+  current_period_end: string | null;
   cancel_at_period_end: boolean;
+  scheduled_plan_id?: string | null;
+  scheduled_first_charge_at?: string | null;
+  pending_plan_id?: string | null;
+  pending_plan_effective_at?: string | null;
+  payment_method?: string | null;
+  card_brand?: string | null;
+  card_last4?: string | null;
+  asaas_subscription_id?: string | null;
+  asaas_sync_status?: string | null;
+  has_card_registered?: boolean;
+  has_auto_renew?: boolean;
   is_full_access: boolean;
   is_trial: boolean;
   is_pro: boolean;
   is_lifetime: boolean;
   is_read_only: boolean;
   can_write: boolean;
-  has_card_registered?: boolean;
-  has_auto_renew?: boolean;
-  asaas_subscription_id?: string | null;
   module_permissions: Record<string, string>;
 } | null> {
   return unwrapRpc(callRpc("get_my_subscription", {}), true);

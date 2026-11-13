@@ -1,6 +1,6 @@
 import type { SubscriptionPlan, SubscriptionTier } from "./subscription";
 
-export type BillingProviderName = "stripe" | "asaas" | "manual";
+export type BillingProviderName = "asaas" | "manual";
 
 export interface CustomerBillingDetails {
   name: string;
@@ -37,6 +37,13 @@ export interface CreateCheckoutParams {
   };
 }
 
+export interface CreateCumulativeCheckoutParams {
+  months: number;
+  method: "pix" | "credit_card";
+  card?: CreditCardPayload;
+  phone?: string;
+}
+
 export interface PixCheckoutResult {
   ok: true;
   method: "pix";
@@ -53,7 +60,8 @@ export interface DirectCreditCardResult {
   ok: true;
   method: "credit_card";
   provider: BillingProviderName;
-  subscriptionId: string;
+  subscriptionId?: string;
+  paymentId?: string;
   tier: SubscriptionTier;
   status: "active" | "trialing" | "pending";
   needsEmailConfirmation?: boolean;
@@ -136,6 +144,11 @@ export interface BillingProviderAdapter {
   createCheckoutSession(params: CreateCheckoutParams): Promise<CheckoutSessionResult>;
 
   /**
+   * Cria uma cobrança avulsa para pagamento acumulativo de 2 a 11 meses.
+   */
+  createCumulativeCheckoutSession?(params: CreateCumulativeCheckoutParams): Promise<CheckoutSessionResult>;
+
+  /**
    * Cancela a renovação da assinatura no provedor de pagamento.
    */
   cancelSubscription(params?: CancelSubscriptionParams): Promise<void>;
@@ -156,7 +169,12 @@ export interface BillingProviderAdapter {
   upgradeToAnnual?(): Promise<void>;
 
   /**
-   * Opcional: Obtém a URL do portal de autoatendimento do cliente (ex.: Stripe Billing Portal).
+   * Agenda a troca de plano para a próxima renovação (mensal <-> anual).
    */
-  getBillingPortalUrl?(customerId: string, returnUrl?: string): Promise<string>;
+  schedulePlanChange?(targetPlan: SubscriptionPlan): Promise<{ ok: boolean; message: string }>;
+
+  /**
+   * Cancela uma troca de plano agendada previamente.
+   */
+  cancelScheduledPlanChange?(): Promise<{ ok: boolean; message: string }>;
 }

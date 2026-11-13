@@ -341,6 +341,9 @@ export {
   useCancelSubscriptionMutation,
   useUpdateSubscriptionCardMutation,
   useUpgradeToAnnualMutation,
+  useSchedulePlanChangeMutation,
+  useCancelScheduledPlanChangeMutation,
+  useCumulativeCheckoutMutation,
   useCheckoutMutation,
   type PixCheckoutResult,
 } from "./mutations/use-billing-mutations";

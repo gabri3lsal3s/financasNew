@@ -118,8 +118,8 @@ describe("LandingPage", () => {
     await user.click(copyPixBtn);
     expect(screen.getByText("Chave Pix Copiada")).toBeInTheDocument();
 
-    // 3. Alterna para Card de Orçamento Familiar Seguro
-    const familiaTab = screen.getByRole("tab", { name: /Orçamento Familiar/i });
+    // 3. Alterna para Card de Modo Família Seguro
+    const familiaTab = screen.getByRole("tab", { name: /Modo Família|Família/i });
     await user.click(familiaTab);
 
     expect(screen.getByTestId("card-familia")).toBeVisible();

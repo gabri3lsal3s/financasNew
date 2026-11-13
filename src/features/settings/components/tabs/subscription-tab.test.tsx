@@ -34,6 +34,14 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useCancelScheduledPlanChangeMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useCumulativeCheckoutMutation: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 vi.mock("@/data/repositories/billing", () => ({

@@ -17,7 +17,6 @@ import {
   Receipt,
   FileText,
   ExternalLink,
-  Zap,
 } from "lucide-react";
 import {
   Card,
@@ -32,11 +31,13 @@ import {
   RadioGroup,
 } from "@/components/ui";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
+import { CumulativeRenewalCard } from "../subscription/cumulative-renewal-card";
 import {
   useUserSubscription,
   useCancelSubscriptionMutation,
   useUpdateSubscriptionCardMutation,
   useUpgradeToAnnualMutation,
+  useCancelScheduledPlanChangeMutation,
 } from "@/state";
 import { formatCardNumber, formatCardExpiry } from "@/services/masks";
 import { useInvoices } from "@/state/queries/use-invoices";
@@ -91,6 +92,7 @@ export function SubscriptionTab() {
 
   const cancelMutation = useCancelSubscriptionMutation();
   const upgradeMutation = useUpgradeToAnnualMutation();
+  const cancelScheduledPlanMutation = useCancelScheduledPlanChangeMutation();
 
   const handleUpgradeToAnnual = async () => {
     try {
@@ -163,66 +165,47 @@ export function SubscriptionTab() {
       )}
  
 
-      {/* Banner de Renovação Antecipada Anual via Pix (se faltarem 30 dias ou menos) */}
-      {subscription.isPro && subscription.plan === "annual" && (
-        <Card className="border-portfolio/30 bg-portfolio/5">
+      {/* Card de Troca de Plano Agendada (se houver migração programada para a próxima renovação) */}
+      {subscription.pendingPlanId && subscription.pendingPlanEffectiveAt && (
+        <Card className="border-warning-strong/40 bg-warning/5">
           <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <Badge variant="default" size="xs">
-                  Renovação Acumulativa Pix
+                <Badge variant="warning" size="xs">
+                  Mudança Agendada
                 </Badge>
-                <span className="text-xs font-semibold text-foreground">Plano Anual Pro</span>
+                <span className="text-xs font-semibold text-foreground">
+                  Migração para {subscription.pendingPlanId === "pro_annual" ? "Plano Pro Anual" : "Plano Pro Mensal"}
+                </span>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Você pode antecipar sua renovação anual via Pix a qualquer momento. Os +365 dias são somados ao fim do seu período vigente sem perda de dias.
+                Sua migração está programada para entrar em vigor em{" "}
+                <span className="font-semibold text-foreground">
+                  {new Date(subscription.pendingPlanEffectiveAt).toLocaleDateString("pt-BR")}
+                </span>
+                . Até lá, seu plano atual continuará funcionando normalmente.
               </p>
             </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => handleProceedToCheckout("annual")}
-              className="gap-2 shrink-0 cursor-pointer"
+              disabled={cancelScheduledPlanMutation.isPending}
+              onClick={() => { void cancelScheduledPlanMutation.mutateAsync(); }}
+              className="shrink-0 cursor-pointer text-xs"
             >
-              <RefreshCw className="size-3.5" aria-hidden="true" />
-              Renovar Anual (+365 dias)
+              Cancelar Mudança
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Upsell 1-clique Mensal -> Anual (Economia de 40%) */}
-      {subscription.isPro && subscription.plan === "monthly" && !subscription.cancelAtPeriodEnd && (
-        <Card className="border-primary/40 bg-primary/5">
-          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <Badge variant="default" size="xs">
-                  Economize 40%
-                </Badge>
-                <span className="text-xs font-semibold text-foreground">Migrar para o Plano Anual</span>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Pague o equivalente a apenas R$ 11,99/mês (R$ 143,88/ano) em vez de R$ 19,99/mês. Migração imediata em 1 clique mantendo seu cartão atual.
-              </p>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              disabled={upgradeMutation.isPending}
-              onClick={() => { void handleUpgradeToAnnual(); }}
-              className="gap-2 shrink-0 cursor-pointer"
-            >
-              {upgradeMutation.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-              ) : (
-                <Zap className="size-3.5" aria-hidden="true" />
-              )}
-              {upgradeMutation.isPending ? "Migrando..." : "Migrar para Anual (-40%)"}
-            </Button>
-          </CardContent>
-        </Card>
+      {/* Antecipação Acumulativa de 2 a 11 meses (Exclusivo para Assinantes Pro Mensal Ativos) */}
+      {subscription.isPro && subscription.plan === "monthly" && !subscription.pendingPlanId && (
+        <CumulativeRenewalCard
+          currentPeriodEnd={subscription.currentPeriodEnd}
+          onUpgradeToAnnual={() => { void handleUpgradeToAnnual(); }}
+        />
       )}
 
       {/* Histórico de Faturas & Recibos */}

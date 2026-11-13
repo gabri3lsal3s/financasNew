@@ -51,11 +51,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const payload = await req.json();
-    const { action, card } = payload;
+    const { action, card, targetPlan } = payload;
 
     const { data: userSub } = await supabase
       .from("user_subscriptions")
-      .select("id, user_id, asaas_subscription_id, asaas_payment_id, asaas_customer_id, starts_at, created_at, status, tier")
+      .select("id, user_id, asaas_subscription_id, asaas_payment_id, asaas_customer_id, starts_at, billing_start_at, created_at, status, tier, current_period_end, pending_plan_id")
       .eq("user_id", user.id)
       .single();
 
@@ -63,13 +63,89 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(req, { error: "Assinatura não localizada" }, 404);
     }
 
+    // -------------------------------------------------------------------------
+    // AÇÃO 1: AGENDAR TROCA DE PLANO (MENSAL <-> ANUAL NA PRÓXIMA RENOVAÇÃO)
+    // -------------------------------------------------------------------------
+    if (action === "schedule-plan-change") {
+      if (!targetPlan || !["monthly", "annual"].includes(targetPlan)) {
+        return jsonResponse(req, { error: "Plano de destino inválido." }, 400);
+      }
+
+      const targetPlanId = targetPlan === "annual" ? "pro_annual" : "pro_monthly";
+      if (userSub.tier === targetPlanId) {
+        return jsonResponse(req, { error: "Você já está no plano solicitado." }, 400);
+      }
+
+      if (!userSub.current_period_end) {
+        return jsonResponse(req, { error: "Não foi possível identificar a data de renovação atual." }, 400);
+      }
+
+      await supabase
+        .from("user_subscriptions")
+        .update({
+          pending_plan_id: targetPlanId,
+          pending_plan_effective_at: userSub.current_period_end,
+        })
+        .eq("user_id", user.id);
+
+      await supabase.from("audit_events").insert({
+        user_id: user.id,
+        entity_type: "user_subscription",
+        entity_id: userSub.id,
+        action: "plan_change_scheduled",
+        payload: {
+          from_plan: userSub.tier,
+          to_plan: targetPlanId,
+          effective_at: userSub.current_period_end,
+        },
+      });
+
+      const formattedDate = new Date(userSub.current_period_end).toLocaleDateString("pt-BR");
+      return jsonResponse(req, {
+        ok: true,
+        message: `Sua mudança para o ${targetPlan === "annual" ? "Plano Pro Anual" : "Plano Pro Mensal"} foi agendada para ${formattedDate}. Até lá, seu plano atual continuará ativo.`,
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // AÇÃO 2: CANCELAR TROCA DE PLANO AGENDADA
+    // -------------------------------------------------------------------------
+    if (action === "cancel-scheduled-plan-change") {
+      if (!userSub.pending_plan_id) {
+        return jsonResponse(req, { error: "Não há nenhuma troca de plano agendada." }, 400);
+      }
+
+      await supabase
+        .from("user_subscriptions")
+        .update({
+          pending_plan_id: null,
+          pending_plan_effective_at: null,
+        })
+        .eq("user_id", user.id);
+
+      await supabase.from("audit_events").insert({
+        user_id: user.id,
+        entity_type: "user_subscription",
+        entity_id: userSub.id,
+        action: "plan_change_canceled",
+        payload: { canceled_target_plan: userSub.pending_plan_id },
+      });
+
+      return jsonResponse(req, {
+        ok: true,
+        message: "A troca de plano agendada foi cancelada com sucesso. Seu plano atual permanecerá inalterado.",
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // AÇÃO 3: CANCELAMENTO DE ASSINATURA (COM REGRA CDC DE 7 DIAS)
+    // -------------------------------------------------------------------------
     if (action === "cancel") {
-      const referenceDateStr = userSub.starts_at || userSub.created_at;
+      const referenceDateStr = userSub.billing_start_at || userSub.starts_at || userSub.created_at;
       const startTime = referenceDateStr ? new Date(referenceDateStr).getTime() : 0;
       const isWithin7Days = startTime > 0 && Date.now() - startTime <= SEVEN_DAYS_MS;
 
       if (isWithin7Days) {
-        // Regra dos 7 dias (CDC Art. 49): Reembolso integral + perda imediata do Pro
         let refundRequested = false;
 
         if (userSub.asaas_payment_id) {
@@ -80,10 +156,7 @@ Deno.serve(async (req: Request) => {
             );
             refundRequested = true;
           } catch (err: unknown) {
-            console.warn(
-              "[asaas-manage] Aviso ao estornar cobrança no Asaas:",
-              err instanceof Error ? err.message : err,
-            );
+            console.warn("[asaas-manage] Aviso ao estornar cobrança no Asaas:", err);
           }
         }
 
@@ -91,10 +164,7 @@ Deno.serve(async (req: Request) => {
           try {
             await cancelAsaasSubscription(userSub.asaas_subscription_id);
           } catch (err: unknown) {
-            console.warn(
-              "[asaas-manage] Aviso ao cancelar assinatura no Asaas:",
-              err instanceof Error ? err.message : err,
-            );
+            console.warn("[asaas-manage] Aviso ao cancelar assinatura no Asaas:", err);
           }
         }
 
@@ -130,10 +200,7 @@ Deno.serve(async (req: Request) => {
         try {
           await cancelAsaasSubscription(userSub.asaas_subscription_id);
         } catch (err: unknown) {
-          console.warn(
-            "[asaas-manage] Aviso ao cancelar renovação no Asaas:",
-            err instanceof Error ? err.message : err,
-          );
+          console.warn("[asaas-manage] Aviso ao cancelar renovação no Asaas:", err);
         }
       }
 
@@ -153,39 +220,33 @@ Deno.serve(async (req: Request) => {
       return jsonResponse(req, {
         ok: true,
         refunded: false,
-        message:
-          "Assinatura cancelada com sucesso. Seu acesso Pro continuará ativo até o final do período vigente.",
+        message: "Assinatura cancelada com sucesso. Seu acesso Pro continuará ativo até o final do período vigente.",
       });
     }
 
+    // -------------------------------------------------------------------------
+    // AÇÃO 4: ATUALIZAR CARTÃO
+    // -------------------------------------------------------------------------
     if (action === "update-card") {
       if (!userSub.asaas_subscription_id) {
-        return jsonResponse(
-          req,
-          { error: "Usuário não possui assinatura com cartão recorrente ativa" },
-          400,
-        );
+        return jsonResponse(req, { error: "Usuário não possui assinatura com cartão recorrente ativa." }, 400);
       }
 
       if (!card || !card.number || !card.holderName || !card.expiryMonth || !card.expiryYear || !card.ccv) {
-        return jsonResponse(req, { error: "Dados do cartão incompletos" }, 400);
+        return jsonResponse(req, { error: "Dados do cartão incompletos." }, 400);
       }
 
       if (!isValidLuhn(card.number)) {
-        return jsonResponse(req, { error: "Número do cartão de crédito inválido" }, 400);
+        return jsonResponse(req, { error: "Número do cartão de crédito inválido." }, 400);
       }
 
       if (!isValidCardExpiry(card.expiryMonth, card.expiryYear)) {
-        return jsonResponse(
-          req,
-          { error: "Cartão de crédito com data de validade vencida ou incorreta" },
-          400,
-        );
+        return jsonResponse(req, { error: "Cartão de crédito com data de validade vencida ou incorreta." }, 400);
       }
 
       const cleanCcv = (card.ccv || "").replace(/\D/g, "");
       if (cleanCcv.length < 3 || cleanCcv.length > 4) {
-        return jsonResponse(req, { error: "Código de segurança (CVV) inválido" }, 400);
+        return jsonResponse(req, { error: "Código de segurança (CVV) inválido." }, 400);
       }
 
       const { data: profile } = await supabase
@@ -197,7 +258,6 @@ Deno.serve(async (req: Request) => {
       const customerName = profile?.name || user.email?.split("@")[0] || "Cliente";
       const customerEmail = profile?.email || user.email || "";
       const customerCpf = profile?.cpf || "";
-
       const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
 
       await updateAsaasSubscriptionCreditCard(userSub.asaas_subscription_id, {
@@ -219,6 +279,14 @@ Deno.serve(async (req: Request) => {
         remoteIp: clientIp,
       });
 
+      const rawCardNum = String(card.number).replace(/\D/g, "");
+      const cardLast4 = rawCardNum.length >= 4 ? rawCardNum.slice(-4) : "••••";
+
+      await supabase
+        .from("user_subscriptions")
+        .update({ card_last4: cardLast4 })
+        .eq("user_id", user.id);
+
       await supabase.from("audit_events").insert({
         user_id: user.id,
         entity_type: "user_subscription",
@@ -227,13 +295,16 @@ Deno.serve(async (req: Request) => {
         payload: {
           gateway: "asaas",
           subscription_id: userSub.asaas_subscription_id,
-          card_last4: (card.number || "").replace(/\D/g, "").slice(-4),
+          card_last4: cardLast4,
         },
       });
 
-      return jsonResponse(req, { ok: true, message: "Cartão atualizado com sucesso" });
+      return jsonResponse(req, { ok: true, message: "Cartão atualizado com sucesso." });
     }
 
+    // -------------------------------------------------------------------------
+    // AÇÃO 5: LISTAR FATURAS
+    // -------------------------------------------------------------------------
     if (action === "list-invoices") {
       if (!userSub.asaas_customer_id) {
         return jsonResponse(req, { invoices: [] });
@@ -248,6 +319,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // -------------------------------------------------------------------------
+    // AÇÃO 6: UPGRADE DIRETO ANUAL
+    // -------------------------------------------------------------------------
     if (action === "upgrade-to-annual") {
       if (!userSub.asaas_subscription_id) {
         return jsonResponse(
@@ -257,37 +331,32 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      try {
-        await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
-          value: 143.88,
-          cycle: "YEARLY",
-        });
+      await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
+        value: 143.88,
+        cycle: "YEARLY",
+      });
 
-        await supabase
-          .from("user_subscriptions")
-          .update({
-            tier: "pro_annual",
-            plan_id: "pro_annual",
-            cancel_at_period_end: false,
-          })
-          .eq("user_id", user.id);
+      await supabase
+        .from("user_subscriptions")
+        .update({
+          tier: "pro_annual",
+          plan_id: "pro_annual",
+          cancel_at_period_end: false,
+        })
+        .eq("user_id", user.id);
 
-        await supabase.from("audit_events").insert({
-          user_id: user.id,
-          entity_type: "user_subscription",
-          entity_id: userSub.id,
-          action: "upgraded_to_annual",
-          payload: { gateway: "asaas", subscription_id: userSub.asaas_subscription_id },
-        });
+      await supabase.from("audit_events").insert({
+        user_id: user.id,
+        entity_type: "user_subscription",
+        entity_id: userSub.id,
+        action: "upgraded_to_annual",
+        payload: { gateway: "asaas", subscription_id: userSub.asaas_subscription_id },
+      });
 
-        return jsonResponse(req, {
-          ok: true,
-          message: "Assinatura migrada para o Plano Pro Anual com sucesso! O novo valor de R$ 143,88 será aplicado no próximo ciclo anual.",
-        });
-      } catch (err: unknown) {
-        console.error("[asaas-manage] Falha ao migrar para anual no Asaas:", err);
-        return safeErrorResponse(req, 500, "Não foi possível migrar para o plano anual.", err);
-      }
+      return jsonResponse(req, {
+        ok: true,
+        message: "Assinatura migrada para o Plano Pro Anual com sucesso! O novo valor de R$ 143,88 será aplicado no próximo ciclo anual.",
+      });
     }
 
     return jsonResponse(req, { error: "Ação não suportada" }, 400);

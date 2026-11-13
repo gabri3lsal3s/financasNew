@@ -2,6 +2,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { decideWebhookAction } from "../_shared/asaas-webhook-logic.ts";
 import { timingSafeEqualString } from "../_shared/http.ts";
 import { buildTelegramSaleMessage, sendTelegramNotification } from "../_shared/telegram.ts";
+import { getAsaasBaseUrl, getAsaasApiKey } from "../_shared/asaas.ts";
 
 declare const Deno: {
   env?: {
@@ -36,6 +37,7 @@ Deno?.serve?.(async (req: Request) => {
 
     const event = await req.json();
     const eventType: string = event?.event;
+    const eventId: string | undefined = event?.id;
     const payment = event?.payment;
 
     if (!eventType || !payment) {
@@ -45,6 +47,7 @@ Deno?.serve?.(async (req: Request) => {
     const customerId: string = payment.customer;
     const paymentId: string = payment.id;
     const subscriptionId: string | null = payment.subscription || null;
+    const externalReference: string | null = payment.externalReference || null;
 
     const supabaseUrl = Deno?.env?.get ? Deno.env.get("SUPABASE_URL") : undefined;
     const supabaseServiceKey = Deno?.env?.get ? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") : undefined;
@@ -54,12 +57,28 @@ Deno?.serve?.(async (req: Request) => {
     }
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // 1. Busca da intenção de cobrança vinculada (se houver)
+    let intentQuery = supabase
+      .from("billing_intents")
+      .select("id, user_id, kind, plan_id, months_count, amount_cents, status, metadata");
+    if (paymentId) {
+      intentQuery = intentQuery.eq("provider_payment_id", paymentId);
+    } else if (externalReference) {
+      intentQuery = intentQuery.eq("external_reference", externalReference);
+    }
+
+    const { data: intent } = await intentQuery.maybeSingle();
+
+    // 2. Busca da assinatura do usuário
     let subQuery = supabase
       .from("user_subscriptions")
       .select(
         "id, user_id, tier, plan_id, status, asaas_payment_id, asaas_subscription_id, current_period_end, cancel_at_period_end",
       );
-    if (subscriptionId) {
+
+    if (intent?.user_id) {
+      subQuery = subQuery.eq("user_id", intent.user_id);
+    } else if (subscriptionId) {
       subQuery = subQuery.eq("asaas_subscription_id", subscriptionId);
     } else if (paymentId) {
       subQuery = subQuery.eq("asaas_payment_id", paymentId);
@@ -73,11 +92,11 @@ Deno?.serve?.(async (req: Request) => {
       return json({ received: true, unlinked: true });
     }
 
-
-    // Gravar log de auditoria do evento no banco
+    // 3. Log de auditoria desduplicado por provider_event_id
     try {
       await supabase.from("billing_webhook_logs").insert({
         provider: "asaas",
+        provider_event_id: eventId || `${eventType}_${paymentId}_${Date.now()}`,
         event_type: eventType,
         payment_id: paymentId,
         subscription_id: subscriptionId,
@@ -85,13 +104,14 @@ Deno?.serve?.(async (req: Request) => {
         payload: event,
       });
     } catch (logErr) {
-      console.error("[asaas-webhook] Erro ao gravar log de auditoria", logErr);
+      console.warn("[asaas-webhook] Log de auditoria já gravado ou erro de dedup:", logErr);
     }
 
     const decision = decideWebhookAction({
       eventType,
       payment,
       currentSub: userSub,
+      intent,
     });
 
     if (decision.action === "ignore_duplicate") {
@@ -113,6 +133,121 @@ Deno?.serve?.(async (req: Request) => {
       return json({ received: true, ignored: true, reason: "unknown_plan" });
     }
 
+    // =========================================================================
+    // CASO A: APLICAR RENOVAÇÃO ACUMULATIVA (2 A 11 MESES)
+    // =========================================================================
+    if (decision.action === "apply_cumulative_renewal") {
+      // Atualização atômica para garantir proteção estrita contra concorrência
+      const { data: updatedIntent } = await supabase
+        .from("billing_intents")
+        .update({
+          status: "paid",
+          updated_at: new Date().toISOString(),
+          metadata: {
+            ...(intent?.metadata || {}),
+            applied_new_period_end: decision.newPeriodEnd,
+          },
+        })
+        .eq("id", decision.intentId)
+        .eq("status", "pending")
+        .select("id")
+        .maybeSingle();
+
+      if (!updatedIntent) {
+        return json({ received: true, duplicate: true, reason: "concurrency_handled" });
+      }
+
+      let asaasSyncSuccess = false;
+
+      // Chama a API do Asaas para atualizar nextDueDate e congelar cobranças recorrentes
+      if (userSub.asaas_subscription_id) {
+        try {
+          const baseUrl = getAsaasBaseUrl();
+          const apiKey = getAsaasApiKey();
+          const targetDueDate = decision.newPeriodEnd.slice(0, 10);
+
+          const asaasResp = await fetch(`${baseUrl}/subscriptions/${userSub.asaas_subscription_id}`, {
+            method: "PUT",
+            headers: {
+              access_token: apiKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              nextDueDate: targetDueDate,
+              updatePendingPayments: false,
+            }),
+          });
+
+          if (asaasResp.ok) {
+            asaasSyncSuccess = true;
+          } else {
+            console.error("[asaas-webhook] Erro ao atualizar nextDueDate no Asaas:", await asaasResp.text());
+          }
+        } catch (subErr) {
+          console.error("[asaas-webhook] Falha de rede ao conectar com Asaas para nextDueDate:", subErr);
+        }
+      }
+
+      await supabase
+        .from("user_subscriptions")
+        .update({
+          current_period_end: decision.newPeriodEnd,
+          asaas_sync_status: asaasSyncSuccess || !userSub.asaas_subscription_id ? "synced" : "pending_resync",
+        })
+        .eq("id", userSub.id);
+
+      await supabase.from("audit_events").insert({
+        user_id: userSub.user_id,
+        entity_type: "user_subscription",
+        entity_id: userSub.id,
+        action: "cumulative_renewal_applied",
+        payload: {
+          gateway: "asaas",
+          payment_id: paymentId,
+          months: decision.monthsCount,
+          new_period_end: decision.newPeriodEnd,
+          asaas_sync_success: asaasSyncSuccess,
+        },
+      });
+
+      // Disparar notificação Telegram de venda acumulativa
+      try {
+        const botToken = Deno?.env?.get ? Deno.env.get("TELEGRAM_BOT_TOKEN") : undefined;
+        const chatId = Deno?.env?.get ? Deno.env.get("TELEGRAM_CHAT_ID") : undefined;
+        if (botToken && chatId) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name, email")
+            .eq("id", userSub.user_id)
+            .maybeSingle();
+
+          const text = [
+            `<b>[ÁXIS] ANTECIPAÇÃO ACUMULATIVA CONFIRMADA!</b>`,
+            `<b>Cliente:</b> ${profile?.full_name || "Assinante"} (${profile?.email || "—"})`,
+            `<b>Meses Antecipados:</b> +${decision.monthsCount} meses`,
+            `<b>Valor Pago:</b> R$ ${payment.value?.toFixed(2)} (${payment.billingType})`,
+            `<b>Novo Vencimento:</b> ${new Date(decision.newPeriodEnd).toLocaleDateString("pt-BR")}`,
+            `<b>Sincronizado no Asaas:</b> ${asaasSyncSuccess ? "SIM" : "PENDENTE RECONCILIAÇÃO"}`,
+          ].join("\n");
+
+          await sendTelegramNotification({ botToken, chatId, text });
+        }
+      } catch (tgErr) {
+        console.warn("[asaas-webhook] Falha ao notificar Telegram sobre acumulativo:", tgErr);
+      }
+
+      return json({
+        received: true,
+        event: eventType,
+        action: "cumulative_renewal_applied",
+        months: decision.monthsCount,
+        newPeriodEnd: decision.newPeriodEnd,
+      });
+    }
+
+    // =========================================================================
+    // CASO B: ATIVAR OU RENOVAR ASSINATURA NORMAL
+    // =========================================================================
     if (decision.action === "activate") {
       await supabase
         .from("user_subscriptions")
@@ -127,6 +262,13 @@ Deno?.serve?.(async (req: Request) => {
           ...(subscriptionId ? { asaas_subscription_id: subscriptionId } : {}),
         })
         .eq("id", userSub.id);
+
+      if (intent?.id) {
+        await supabase
+          .from("billing_intents")
+          .update({ status: "paid", updated_at: new Date().toISOString() })
+          .eq("id", intent.id);
+      }
 
       await supabase.from("audit_events").insert({
         user_id: userSub.user_id,
@@ -181,7 +323,7 @@ Deno?.serve?.(async (req: Request) => {
         entity_type: "user_subscription",
         entity_id: userSub.id,
         action: "marked_past_due",
-        payload: { gateway: "asaas", event: eventType, payment_id: paymentId },
+        payload: { payment_id: paymentId, subscription_id: subscriptionId },
       });
 
       return json({ received: true, event: eventType, status: "past_due" });
@@ -193,20 +335,7 @@ Deno?.serve?.(async (req: Request) => {
         .update({ cancel_at_period_end: true })
         .eq("id", userSub.id);
 
-      await supabase.from("audit_events").insert({
-        user_id: userSub.user_id,
-        entity_type: "user_subscription",
-        entity_id: userSub.id,
-        action: "cancelled",
-        payload: {
-          gateway: "asaas",
-          event: eventType,
-          payment_id: paymentId,
-          subscription_id: subscriptionId,
-        },
-      });
-
-      return json({ received: true, event: eventType, cancel_at_period_end: true });
+      return json({ received: true, event: eventType, status: "canceled_at_period_end" });
     }
 
     if (decision.action === "mark_refunded") {
@@ -224,16 +353,16 @@ Deno?.serve?.(async (req: Request) => {
         user_id: userSub.user_id,
         entity_type: "user_subscription",
         entity_id: userSub.id,
-        action: "refunded",
-        payload: { gateway: "asaas", event: eventType, payment_id: paymentId },
+        action: "marked_refunded",
+        payload: { payment_id: paymentId },
       });
 
-      return json({ received: true, event: eventType, tier: "read_only", status: "canceled" });
+      return json({ received: true, event: eventType, status: "refunded" });
     }
 
-    return json({ received: true, event: eventType, ignored: true, reason: "unsupported_event" });
+    return json({ received: true, ignored: true, reason: decision.action });
   } catch (err: unknown) {
-    console.error("[asaas-webhook] falha interna", err instanceof Error ? err.message : err);
-    return json({ error: "Falha ao processar webhook" }, 500);
+    console.error("[asaas-webhook] Erro não tratado:", err);
+    return json({ error: "Erro interno no processamento do webhook" }, 500);
   }
 });

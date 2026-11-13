@@ -24,6 +24,7 @@ import { ToolsFooterCta } from "../components/tools-footer-cta";
 import { ShareSimulationButton } from "../components/share-simulation-button";
 import {
   simulateStrategyAporte,
+  STRATEGY_PRESETS_LIST,
   type StrategyClassItem,
 } from "@/domain/portfolio";
 import {
@@ -34,49 +35,6 @@ import {
 } from "@/domain/share";
 import { getPublicAppUrl } from "@/services/app-url";
 import { useDocumentMeta } from "@/hooks/use-document-meta";
-
-interface PresetConfig {
-  id: string;
-  name: string;
-  description: string;
-  classes: StrategyClassItem[];
-}
-
-const PRESETS: PresetConfig[] = [
-  {
-    id: "dividendos",
-    name: "Foco em Proventos & Dividendos",
-    description: "Carteira voltada para fluxo de renda mensal com FIIs e ações pagadoras.",
-    classes: [
-      { key: "fiis", name: "Fundos Imobiliários", targetPercent: 40, currentProportion: 0.30, yieldRate: 0.10 },
-      { key: "acoes_div", name: "Ações de Dividendos", targetPercent: 30, currentProportion: 0.25, yieldRate: 0.085 },
-      { key: "rf_cdi", name: "Renda Fixa CDI", targetPercent: 20, currentProportion: 0.35, yieldRate: 0.06 },
-      { key: "global", name: "REITs / Ativos Globais", targetPercent: 10, currentProportion: 0.10, yieldRate: 0.05 },
-    ],
-  },
-  {
-    id: "multimercado",
-    name: "Global Multi-Mercado",
-    description: "Equilíbrio entre Bolsa Brasil, Renda Fixa IPCA+ e Exposição Global em Dólar.",
-    classes: [
-      { key: "global", name: "Ativos Globais / Dólar", targetPercent: 30, currentProportion: 0.20, yieldRate: 0.035 },
-      { key: "rf_ipca", name: "Renda Fixa IPCA+", targetPercent: 30, currentProportion: 0.40, yieldRate: 0.065 },
-      { key: "acoes_br", name: "Ações Brasil", targetPercent: 25, currentProportion: 0.25, yieldRate: 0.07 },
-      { key: "fiis", name: "Fundos Imobiliários", targetPercent: 15, currentProportion: 0.15, yieldRate: 0.095 },
-    ],
-  },
-  {
-    id: "crescimento",
-    name: "Crescimento & Longo Prazo",
-    description: "Foco em valorização exponencial de empresas e tecnologia global.",
-    classes: [
-      { key: "acoes_growth", name: "Ações Brasil Growth", targetPercent: 40, currentProportion: 0.25, yieldRate: 0.04 },
-      { key: "tech_global", name: "Tech Global / Nasdaq", targetPercent: 35, currentProportion: 0.25, yieldRate: 0.02 },
-      { key: "fiis_tijolo", name: "FIIs de Tijolo", targetPercent: 15, currentProportion: 0.20, yieldRate: 0.085 },
-      { key: "rf_caixa", name: "Reserva de Oportunidade", targetPercent: 10, currentProportion: 0.30, yieldRate: 0.06 },
-    ],
-  },
-];
 
 export function RebalanceSimulatorPage() {
   const [searchParams] = useSearchParams();
@@ -101,7 +59,7 @@ export function RebalanceSimulatorPage() {
         targetPercent: c.targetPercent,
         currentProportion: c.currentProportion,
         yieldRate: c.yieldRate ?? 0.06,
-      })) ?? PRESETS[0]!.classes,
+      })) ?? STRATEGY_PRESETS_LIST[0]!.classes,
   );
   const [selectedPreset, setSelectedPreset] = useState<string>(
     () => sharedState?.selectedPreset ?? (sharedState ? "custom" : "dividendos"),
@@ -115,7 +73,7 @@ export function RebalanceSimulatorPage() {
   });
 
   const handleApplyPreset = (presetId: string) => {
-    const found = PRESETS.find((p) => p.id === presetId);
+    const found = STRATEGY_PRESETS_LIST.find((p) => p.id === presetId);
     if (found) {
       setSelectedPreset(found.id);
       setClasses(found.classes);
@@ -239,7 +197,7 @@ export function RebalanceSimulatorPage() {
           <span className="text-xs font-semibold text-muted-foreground mr-1">
             Modelos de Estratégia:
           </span>
-          {PRESETS.map((preset) => (
+          {STRATEGY_PRESETS_LIST.map((preset) => (
             <Button
               key={preset.id}
               variant={selectedPreset === preset.id ? "default" : "outline"}

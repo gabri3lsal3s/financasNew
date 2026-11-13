@@ -2,10 +2,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   cancelSubscription,
   createCheckoutSession,
+  createCumulativeCheckoutSession,
+  schedulePlanChange,
+  cancelScheduledPlanChange,
   updateSubscriptionCreditCard,
   upgradeToAnnual,
   type CheckoutParams,
   type CheckoutSessionResult,
+  type CreateCumulativeCheckoutParams,
   type CreditCardPayload,
   type PixCheckoutResult,
 } from "@/data/repositories/billing";
@@ -15,7 +19,7 @@ import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 
-export type { PixCheckoutResult, CheckoutSessionResult, CreditCardPayload };
+export type { PixCheckoutResult, CheckoutSessionResult, CreditCardPayload, CreateCumulativeCheckoutParams };
 
 export function useCancelSubscriptionMutation() {
   const queryClient = useQueryClient();
@@ -90,6 +94,70 @@ export function useUpgradeToAnnualMutation() {
         description: getErrorMessage(error),
         variant: "destructive",
       });
+    },
+  });
+}
+
+export function useSchedulePlanChangeMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ ok: boolean; message: string }, Error, "monthly" | "annual">({
+    mutationFn: (targetPlan: "monthly" | "annual") => schedulePlanChange(targetPlan),
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
+      triggerSensory("success");
+      pushToast({
+        title: "Mudança agendada",
+        description: data.message,
+        variant: "success",
+      });
+    },
+    onError: (error) => {
+      triggerSensory("destructive");
+      pushToast({
+        title: "Não foi possível agendar a mudança",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useCancelScheduledPlanChangeMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ ok: boolean; message: string }, Error, void>({
+    mutationFn: () => cancelScheduledPlanChange(),
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
+      triggerSensory("selection");
+      pushToast({
+        title: "Agendamento cancelado",
+        description: data.message,
+        variant: "default",
+      });
+    },
+    onError: (error) => {
+      triggerSensory("destructive");
+      pushToast({
+        title: "Falha ao cancelar agendamento",
+        description: getErrorMessage(error),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useCumulativeCheckoutMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<CheckoutSessionResult, Error, CreateCumulativeCheckoutParams>({
+    mutationFn: (params: CreateCumulativeCheckoutParams) => createCumulativeCheckoutSession(params),
+    onSuccess: (data) => {
+      if ("status" in data && data.status === "active") {
+        void queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
+        void queryClient.invalidateQueries({ queryKey: INVOICES_KEY });
+      }
     },
   });
 }

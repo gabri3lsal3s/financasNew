@@ -3,6 +3,7 @@ import { Navigate, BrowserRouter, Route, Routes, useLocation } from "react-route
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { isNativePlatform } from "@/services/native";
+import { Skeleton, SkeletonHeroCard, SkeletonKpi, SkeletonChart, SkeletonList } from "@/components/ui/skeleton";
 
 /**
  * Guards e App Shell carregados sob demanda: a landing page não deve baixar
@@ -158,11 +159,43 @@ const AdminSettingsPage = lazy(() =>
 );
 function RouteSuspenseFallback() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-background text-foreground">
-      <div className="flex flex-col items-center gap-3">
-        <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        <span className="text-xs text-muted-foreground animate-pulse">Carregando…</span>
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label="Carregando página"
+      className="min-h-dvh bg-background p-4 sm:p-6 lg:p-8 space-y-6 motion-reduce:animate-none"
+    >
+      <div className="flex items-center justify-between border-b border-border/60 pb-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="size-9 rounded-xl" />
+          <Skeleton className="h-6 w-36 rounded-md" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-9 w-24 rounded-lg hidden sm:block" />
+          <Skeleton className="size-9 rounded-lg" />
+        </div>
       </div>
+
+      <div className="max-w-7xl mx-auto space-y-6">
+        <SkeletonHeroCard />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+          <SkeletonKpi />
+          <SkeletonKpi />
+          <SkeletonKpi />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
+            <SkeletonChart />
+          </div>
+          <div>
+            <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs space-y-3">
+              <Skeleton className="h-4 w-28 rounded" />
+              <SkeletonList rows={4} />
+            </div>
+          </div>
+        </div>
+      </div>
+      <span className="sr-only">Carregando conteúdo da página…</span>
     </div>
   );
 }
@@ -179,6 +212,7 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
   "/investments": "investments",
   "/lembretes": "reminders",
   "/familia": "transactions",
+  "/modo-familia": "transactions",
   "/viagens": "transactions",
   "/viagens/:id": "transactions",
 };
@@ -308,6 +342,7 @@ export function AppRouter() {
               <Route path="/metas" element={<RedirectWithSearch to="/orcamentos?tab=goals" />} />
               <Route path="/investimentos" element={<RedirectWithSearch to="/investments" />} />
               <Route path="/carteira" element={<RedirectWithSearch to="/investments" />} />
+              <Route path="/modo-familia" element={<RedirectWithSearch to="/familia" />} />
 
               <Route element={<PageShell />}>
                 <Route path="/share-target" element={<ShareTargetPage />} />

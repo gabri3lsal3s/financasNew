@@ -3,7 +3,10 @@
  * Isola as regras de transição de status para permitir testes unitários determinísticos.
  */
 
-import { resolveTierFromPayment } from "./asaas-plans.ts";
+import {
+  resolveTierFromPayment,
+  addCivilMonthsServer,
+} from "./asaas-plans.ts";
 
 export interface AsaasPaymentPayload {
   id: string;
@@ -11,6 +14,10 @@ export interface AsaasPaymentPayload {
   billingType?: string;
   value?: number;
   subscription?: string | null;
+  externalReference?: string | null;
+  dueDate?: string | null;
+  confirmedDate?: string | null;
+  paymentDate?: string | null;
 }
 
 export interface UserSubscriptionSnapshot {
@@ -26,6 +33,17 @@ export interface UserSubscriptionSnapshot {
   cancel_at_period_end?: boolean;
 }
 
+export interface BillingIntentSnapshot {
+  id: string;
+  user_id: string;
+  kind: "subscription_start" | "plan_change" | "cumulative_renewal" | "reactivation";
+  plan_id?: string | null;
+  months_count?: number | null;
+  amount_cents: number;
+  status: string;
+  metadata?: Record<string, unknown>;
+}
+
 export type WebhookDecision =
   | {
       action: "ignore_unknown_plan";
@@ -33,12 +51,18 @@ export type WebhookDecision =
     }
   | {
       action: "ignore_duplicate";
-      reason: "already_active" | "already_past_due" | "already_cancelled" | "already_refunded";
+      reason: "already_active" | "already_past_due" | "already_cancelled" | "already_refunded" | "intent_already_paid";
     }
   | {
       action: "activate";
       targetTier: "pro_monthly" | "pro_annual";
       currentPeriodEnd: string;
+    }
+  | {
+      action: "apply_cumulative_renewal";
+      intentId: string;
+      monthsCount: number;
+      newPeriodEnd: string;
     }
   | {
       action: "mark_past_due";
@@ -57,25 +81,51 @@ export function computeNextPeriodEnd(
   targetTier: "pro_monthly" | "pro_annual",
   baseDate: Date = new Date(),
 ): string {
-  const next = new Date(baseDate);
-  if (targetTier === "pro_annual") {
-    next.setFullYear(next.getFullYear() + 1);
-  } else {
-    next.setMonth(next.getMonth() + 1);
-  }
-  return next.toISOString();
+  const months = targetTier === "pro_annual" ? 12 : 1;
+  return addCivilMonthsServer(baseDate, months).toISOString();
 }
 
 export function decideWebhookAction(params: {
   eventType: string;
   payment: AsaasPaymentPayload;
   currentSub: UserSubscriptionSnapshot;
+  intent?: BillingIntentSnapshot | null;
   now?: Date;
 }): WebhookDecision {
-  const { eventType, payment, currentSub } = params;
+  const { eventType, payment, currentSub, intent } = params;
   const now = params.now ?? new Date();
 
+  const referenceDate = payment.confirmedDate || payment.paymentDate || payment.dueDate
+    ? new Date(payment.confirmedDate || payment.paymentDate || payment.dueDate!)
+    : now;
+
   if (["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"].includes(eventType)) {
+    // 1. Reconciliação prioritária por Billing Intent
+    if (intent) {
+      if (intent.status === "paid") {
+        return {
+          action: "ignore_duplicate",
+          reason: "intent_already_paid",
+        };
+      }
+
+      if (intent.kind === "cumulative_renewal") {
+        const months = intent.months_count ?? 1;
+        const currentEnd = currentSub.current_period_end && new Date(currentSub.current_period_end) > now
+          ? new Date(currentSub.current_period_end)
+          : now;
+        const newPeriodEnd = addCivilMonthsServer(currentEnd, months).toISOString();
+
+        return {
+          action: "apply_cumulative_renewal",
+          intentId: intent.id,
+          monthsCount: months,
+          newPeriodEnd,
+        };
+      }
+    }
+
+    // 2. Resolução padrão por Catálogo de Valores
     const targetTier = resolveTierFromPayment(payment);
     if (!targetTier) {
       return {
@@ -84,9 +134,6 @@ export function decideWebhookAction(params: {
       };
     }
 
-    // Regra de Idempotência Estrita:
-    // Se a assinatura já está ativa com este tier e vinculada ao mesmo paymentId ou subscriptionId,
-    // não duplicamos registros nem alteramos a data de vigência original.
     const isAlreadyActiveForThisPayment =
       currentSub.status === "active" &&
       currentSub.tier === targetTier &&
@@ -103,7 +150,7 @@ export function decideWebhookAction(params: {
     return {
       action: "activate",
       targetTier,
-      currentPeriodEnd: computeNextPeriodEnd(targetTier, now),
+      currentPeriodEnd: computeNextPeriodEnd(targetTier, referenceDate),
     };
   }
 

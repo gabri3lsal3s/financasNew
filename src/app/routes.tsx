@@ -17,6 +17,7 @@ const pageLoaders: Record<string, () => Promise<PageModule>> = {
   "/dividas": () => import("@/features/debts/pages/debts-page").then((m) => ({ default: m.DebtsPage })),
   "/orcamentos": () => import("@/features/budgets/pages/budgets-page").then((m) => ({ default: m.BudgetsPage })),
   "/familia": () => import("@/features/family/pages/family-page").then((m) => ({ default: m.FamilyPage })),
+  "/modo-familia": () => import("@/features/family/pages/family-page").then((m) => ({ default: m.FamilyPage })),
   "/relatorios": () => import("@/features/reports/pages/reports-page").then((m) => ({ default: m.ReportsPage })),
   "/insights": () => import("@/features/insights/pages/insights-page").then((m) => ({ default: m.InsightsPage })),
   "/investments": () =>

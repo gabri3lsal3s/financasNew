@@ -63,7 +63,7 @@ describe("navigation domain resolver", () => {
       { label: "Transações", path: "/transacoes", featureKey: "transactions" },
       { label: "Cartões", path: "/cartoes", featureKey: "cards" },
       { label: "Orçamentos", path: "/orcamentos", featureKey: "budgets" },
-      { label: "Orçamento Familiar", path: "/familia", familyOnly: true },
+      { label: "Modo Família", path: "/familia", familyOnly: true },
       { label: "Configurações", path: "/configuracoes" },
     ];
 

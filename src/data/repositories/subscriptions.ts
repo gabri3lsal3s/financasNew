@@ -51,6 +51,7 @@ export async function getMySubscription(): Promise<SubscriptionStatus | null> {
 
     return {
       tier,
+      billingPhase: raw.billing_phase ?? undefined,
       startsAt: raw.starts_at ?? null,
       trialDaysRemaining: raw.trial_days_remaining,
       trialEndsAt: raw.trial_ends_at,
@@ -63,8 +64,15 @@ export async function getMySubscription(): Promise<SubscriptionStatus | null> {
       isLifetime: raw.is_lifetime,
       isReadOnly: raw.is_read_only,
       canWrite: raw.can_write,
-      hasCardRegistered: Boolean(raw.has_card_registered || raw.asaas_subscription_id),
+      hasCardRegistered: Boolean(raw.has_card_registered || raw.asaas_subscription_id || raw.card_last4),
       hasAutoRenew: Boolean(raw.has_auto_renew ?? (raw.asaas_subscription_id && !raw.cancel_at_period_end)),
+      cardLast4: raw.card_last4 ?? null,
+      cardBrand: raw.card_brand ?? null,
+      pendingPlanId: raw.pending_plan_id ?? null,
+      pendingPlanEffectiveAt: raw.pending_plan_effective_at ?? null,
+      scheduledPlanId: raw.scheduled_plan_id ?? null,
+      scheduledFirstChargeAt: raw.scheduled_first_charge_at ?? null,
+      asaasSyncStatus: raw.asaas_sync_status ?? null,
       moduleAccess: raw.module_permissions as Record<string, ModuleAccessLevel>,
     };
   } catch (error) {

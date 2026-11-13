@@ -21,6 +21,9 @@ export type SubscriptionStatus = {
   /** Tier atual do usuário. */
   tier: SubscriptionTier;
 
+  /** Fase de faturamento derivada de forma determinística (BillingPhase). */
+  billingPhase?: string;
+
   /** Data de início/ativação da assinatura ou período atual (ISO string, null se não aplicável). */
   startsAt?: string | null;
 
@@ -74,6 +77,21 @@ export type SubscriptionStatus = {
 
   /** Bandeira do cartão cadastrado (quando disponível). */
   cardBrand?: string | null;
+
+  /** Plano futuro agendado para troca na próxima renovação. */
+  pendingPlanId?: string | null;
+
+  /** Data em que a troca de plano agendada entrará em vigor. */
+  pendingPlanEffectiveAt?: string | null;
+
+  /** Plano agendado para primeira cobrança após o trial. */
+  scheduledPlanId?: string | null;
+
+  /** Data da primeira cobrança futura agendada após o trial. */
+  scheduledFirstChargeAt?: string | null;
+
+  /** Status de sincronização de vencimento no Asaas. */
+  asaasSyncStatus?: string | null;
 
   /** Mapeamento de permissões individuais por módulo. */
   moduleAccess?: Record<string, ModuleAccessLevel>;

@@ -10,75 +10,20 @@ import { FireProjectionCurve } from "./fire-projection-curve";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsBRL, formatPercent } from "@/services/masks";
 import { numberToCents } from "@/domain/money";
-import { simulateStrategyAporte } from "@/domain/portfolio/simulation";
-
-
-type StrategyKey = "dividendos" | "multimercado" | "crescimento";
-
-interface ClassTarget {
-  key: string;
-  name: string;
-  targetPercent: number;
-  /** Proporção atual defasada da carteira antes do aporte (para simular o desbalanceamento real de mercado) */
-  currentProportion: number;
-  yieldRate: number; // taxa anual de dividendos/proventos
-}
-
-interface StrategyConfig {
-  label: string;
-  buttonLabel: string;
-  tag: string;
-  description: string;
-  classes: ClassTarget[];
-}
-
-const STRATEGIES: Record<StrategyKey, StrategyConfig> = {
-  dividendos: {
-    label: "Foco em Dividendos",
-    buttonLabel: "Dividendos",
-    tag: "Geração de Renda",
-    description: "Prioridade para proventos mensais recorrentes com Fundos Imobiliários e Ações de dividendos.",
-    classes: [
-      { key: "fiis", name: "Fundos Imobiliários", targetPercent: 40, currentProportion: 0.28, yieldRate: 0.10 },
-      { key: "acoes", name: "Ações de Dividendos", targetPercent: 30, currentProportion: 0.23, yieldRate: 0.085 },
-      { key: "rf", name: "Renda Fixa CDI", targetPercent: 20, currentProportion: 0.37, yieldRate: 0.06 },
-      { key: "global", name: "REITs Globais", targetPercent: 10, currentProportion: 0.12, yieldRate: 0.05 },
-    ],
-  },
-  multimercado: {
-    label: "Multi-Mercado Global",
-    buttonLabel: "Global",
-    tag: "Diversificação Ampla",
-    description: "Equilíbrio entre Bolsa Brasil, Renda Fixa e Exposição Internacional em Dólar.",
-    classes: [
-      { key: "global", name: "Ativos Globais / Dólar", targetPercent: 25, currentProportion: 0.15, yieldRate: 0.035 },
-      { key: "fiis", name: "Fundos Imobiliários", targetPercent: 20, currentProportion: 0.14, yieldRate: 0.095 },
-      { key: "acoes", name: "Ações Brasil", targetPercent: 25, currentProportion: 0.29, yieldRate: 0.07 },
-      { key: "rf", name: "Renda Fixa IPCA+", targetPercent: 30, currentProportion: 0.42, yieldRate: 0.065 },
-    ],
-  },
-  crescimento: {
-    label: "Crescimento & Ações",
-    buttonLabel: "Crescimento",
-    tag: "Multiplicação de Capital",
-    description: "Maior exposição à valorização de empresas e tecnologia com horizonte de longo prazo.",
-    classes: [
-      { key: "acoes", name: "Ações Brasil Growth", targetPercent: 40, currentProportion: 0.26, yieldRate: 0.045 },
-      { key: "global", name: "Tech Global / Nasdaq", targetPercent: 30, currentProportion: 0.20, yieldRate: 0.02 },
-      { key: "fiis", name: "FIIs de Tijolo", targetPercent: 15, currentProportion: 0.21, yieldRate: 0.085 },
-      { key: "rf", name: "Reserva de Oportunidade", targetPercent: 15, currentProportion: 0.33, yieldRate: 0.06 },
-    ],
-  },
-};
+import {
+  simulateStrategyAporte,
+  STRATEGY_PRESETS,
+  type StrategyPresetKey,
+} from "@/domain/portfolio";
 
 export function MinimalWealthSimulator() {
   const { trialUrl } = useLandingCta();
-  const [strategy, setStrategy] = useState<StrategyKey>("dividendos");
+  const [strategy, setStrategy] = useState<StrategyPresetKey>("dividendos");
   const [patrimonyBase, setPatrimonyBase] = useState<number>(25000);
   const [aporteAmount, setAporteAmount] = useState<number>(3000);
   const [activeTab, setActiveTab] = useState<"alocacao" | "fire">("alocacao");
 
-  const currentStrategy = STRATEGIES[strategy];
+  const currentStrategy = STRATEGY_PRESETS[strategy];
 
   // Cálculo do Rebalanceamento Determinístico via motor puro de domínio
   const rebalanceData = useMemo(() => {
@@ -168,7 +113,7 @@ export function MinimalWealthSimulator() {
                   <span className="text-primary font-bold">{currentStrategy.buttonLabel}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  {(Object.keys(STRATEGIES) as StrategyKey[]).map((key) => (
+                  {(Object.keys(STRATEGY_PRESETS) as StrategyPresetKey[]).map((key) => (
                     <button
                       key={key}
                       type="button"
@@ -183,7 +128,7 @@ export function MinimalWealthSimulator() {
                           : "bg-surface border-border/70 text-muted-foreground hover:text-foreground hover:border-border",
                       )}
                     >
-                      {STRATEGIES[key].buttonLabel}
+                      {STRATEGY_PRESETS[key].buttonLabel}
                     </button>
                   ))}
                 </div>

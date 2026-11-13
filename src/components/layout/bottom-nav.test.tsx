@@ -172,16 +172,16 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
     expect(fab).toHaveAttribute("href", "/relatorios?novo=transacao");
   });
 
-  it("não exibe o item Orçamento Familiar na gaveta Mais quando o usuário não possui família ativa", () => {
+  it("não exibe o item Modo Família na gaveta Mais quando o usuário não possui família ativa", () => {
     mockFamilyData = null;
     mockIsFamilyModeEnabled = false;
     renderNav();
     const moreBtn = screen.getByRole("button", { name: "Mais opções" });
     fireEvent.click(moreBtn);
-    expect(screen.queryByRole("link", { name: /Orçamento Familiar/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Modo Família/i })).not.toBeInTheDocument();
   });
 
-  it("exibe o item Orçamento Familiar na gaveta Mais quando o usuário pertencer a uma família ativa", () => {
+  it("exibe o item Modo Família na gaveta Mais quando o usuário pertencer a uma família ativa", () => {
     mockFamilyData = {
       family: { id: "fam-1", name: "Família Carvalho" },
     };
@@ -189,7 +189,7 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
     renderNav();
     const moreBtn = screen.getByRole("button", { name: "Mais opções" });
     fireEvent.click(moreBtn);
-    expect(screen.getByRole("link", { name: /Orçamento Familiar/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Modo Família/i })).toBeInTheDocument();
   });
 
   it("mantém Investimentos sempre acessível na navegação para todos os usuários (§Plano 11)", () => {

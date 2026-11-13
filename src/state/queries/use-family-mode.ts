@@ -38,7 +38,7 @@ export function useFamilyMode() {
         familyModeEnabled: enabled,
       });
       pushToast({
-        title: enabled ? "Modo Familiar ativado" : "Modo Familiar desativado",
+        title: enabled ? "Modo Família ativado" : "Modo Família desativado",
         description: enabled
           ? "Abas e opções de despesas familiares agora estão disponíveis."
           : "Interface simplificada. Seus dados familiares continuam preservados com segurança.",

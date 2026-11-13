@@ -93,7 +93,7 @@ export function FamilyPage() {
           title={
             <div className="flex items-center gap-2.5">
               <Users className="size-5 text-muted-foreground" aria-hidden="true" />
-              <span>Orçamento Familiar</span>
+              <span>Modo Família</span>
             </div>
           }
           description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
@@ -102,8 +102,8 @@ export function FamilyPage() {
         <Card className="border-border/80 bg-surface shadow-xs p-6 sm:p-10 rounded-2xl text-center">
           <EmptyState
             icon={<Users className="size-10 text-muted-foreground" aria-hidden="true" />}
-            title="Modo Familiar desativado"
-            description="O Modo Familiar consolida os gastos da residência, calcula o teto de gastos da casa e realiza acertos justos de contas via Pix, mantendo suas contas e compras pessoais sob total privacidade."
+            title="Modo Família desativado"
+            description="O Modo Família consolida os gastos da residência, calcula o teto de gastos da casa e realiza acertos justos de contas via Pix, mantendo suas contas e compras pessoais sob total privacidade."
             action={
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Button
@@ -115,7 +115,7 @@ export function FamilyPage() {
                   className="gap-2 rounded-xl cursor-pointer"
                 >
                   <Plus className="size-4" aria-hidden="true" />
-                  <span>{isTogglingMode ? "Ativando..." : "Ativar Modo Familiar"}</span>
+                  <span>{isTogglingMode ? "Ativando..." : "Ativar Modo Família"}</span>
                 </Button>
                 <Button
                   type="button"
@@ -142,7 +142,7 @@ export function FamilyPage() {
           title={
             <div className="flex items-center gap-2.5">
               <Users className="size-5 text-muted-foreground" aria-hidden="true" />
-              <span>Orçamento Familiar</span>
+              <span>Modo Família</span>
             </div>
           }
           description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
@@ -186,7 +186,7 @@ export function FamilyPage() {
         title={
           <div className="flex items-center gap-2.5">
             <Users className="size-5 text-muted-foreground" aria-hidden="true" />
-            <span>Orçamento Familiar</span>
+            <span>Modo Família</span>
           </div>
         }
         description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."

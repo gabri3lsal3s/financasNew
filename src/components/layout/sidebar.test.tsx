@@ -176,20 +176,20 @@ describe("Sidebar colapsável (F7.2)", () => {
     expect(screen.getByRole("button", { name: /Sair da Conta/i })).toBeInTheDocument();
   });
 
-  it("não exibe o item Orçamento Familiar quando o usuário não possui família ativa", () => {
+  it("não exibe o item Modo Família quando o usuário não possui família ativa", () => {
     mockFamilyData = null;
     mockIsFamilyModeEnabled = false;
     renderSidebar();
-    expect(screen.queryByRole("link", { name: "Orçamento Familiar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Modo Família" })).not.toBeInTheDocument();
   });
 
-  it("exibe o item Orçamento Familiar quando o usuário pertencer a uma família ativa", () => {
+  it("exibe o item Modo Família quando o usuário pertencer a uma família ativa", () => {
     mockFamilyData = {
       family: { id: "fam-1", name: "Família Carvalho" },
     };
     mockIsFamilyModeEnabled = true;
     renderSidebar();
-    expect(screen.getByRole("link", { name: "Orçamento Familiar" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Modo Família" })).toBeInTheDocument();
   });
 
   it("mantém o item Investimentos sempre acessível na sidebar para todos os usuários (§Plano 11)", () => {

@@ -197,7 +197,29 @@ export function FireProjectionCurve({
       {/* Zona Interativa do Gráfico com touch-action: none e captura de ponteiro */}
       <div
         ref={chartWrapperRef}
-        className="relative w-full rounded-2xl bg-surface/40 p-2 sm:p-3 border border-border/60 touch-none cursor-ew-resize select-none overflow-hidden"
+        role="slider"
+        aria-label="Projeção FIRE ao longo dos anos"
+        aria-valuemin={0}
+        aria-valuemax={years}
+        aria-valuenow={activePoint.year}
+        aria-valuetext={`${activePoint.year} anos, patrimônio estimado de ${formatBRL(activePoint.balance)}`}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            setYearExplicit(activePoint.year - 1);
+          } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            setYearExplicit(activePoint.year + 1);
+          } else if (e.key === "Home") {
+            e.preventDefault();
+            setYearExplicit(0);
+          } else if (e.key === "End") {
+            e.preventDefault();
+            setYearExplicit(years);
+          }
+        }}
+        className="relative w-full rounded-2xl bg-surface/40 p-2 sm:p-3 border border-border/60 touch-none cursor-ew-resize select-none overflow-hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -214,7 +236,7 @@ export function FireProjectionCurve({
         <div
           className="absolute z-20 pointer-events-none transition-transform duration-75 ease-out"
           style={{
-            left: `${Math.max(16, Math.min(84, activePercent))}%`,
+            left: `${Math.max(20, Math.min(80, activePercent))}%`,
             top: "10px",
             transform: "translateX(-50%)",
           }}
@@ -424,19 +446,19 @@ export function FireProjectionCurve({
         </div>
       </div>
 
-      {/* Grid com os 3 Cards Métricos Ricos e Compactos no Mobile (3 Colunas Sempre) */}
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5">
+      {/* Grid com os 3 Cards Métricos — Mobile-First (1 Coluna Mobile, 3 Desktop) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5">
         {/* Card 1: Horizonte Patrimonial */}
-        <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
+        <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground truncate">Horizonte</span>
+            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground">Horizonte</span>
             <span className="size-1.5 sm:size-2 rounded-full bg-positive-strong shrink-0" />
           </div>
           <div className="mt-0.5 sm:mt-1 min-w-0">
-            <span className="font-mono font-bold text-foreground text-xs sm:text-base lg:text-lg tabular-nums block truncate">
+            <span className="font-mono font-bold text-foreground text-sm sm:text-base lg:text-lg tabular-nums tracking-tight block whitespace-nowrap">
               {activePoint.year === 0 ? "Ano 0" : `${activePoint.year} anos`}
             </span>
-            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5 truncate">
+            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5">
               {fireCrossover ? `Meta: ${fireCrossover.year}a` : "25 anos"}
             </span>
           </div>
@@ -451,9 +473,9 @@ export function FireProjectionCurve({
         </div>
 
         {/* Card 2: Patrimônio Acumulado */}
-        <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
+        <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground truncate">Patrimônio</span>
+            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground">Patrimônio</span>
             <span className="size-1.5 sm:size-2 rounded-full bg-portfolio shrink-0" />
           </div>
           <div className="mt-0.5 sm:mt-1 min-w-0">
@@ -461,9 +483,9 @@ export function FireProjectionCurve({
               cents={activePoint.balance * 100}
               tone="default"
               hideCents
-              className="font-mono font-bold text-foreground text-xs sm:text-base lg:text-lg tabular-nums block truncate"
+              className="font-mono font-bold text-foreground text-sm sm:text-base lg:text-lg tabular-nums tracking-tight block whitespace-nowrap"
             />
-            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5 truncate">
+            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5">
               {Math.round((activePoint.balance / fireTarget) * 100)}% da meta
             </span>
           </div>
@@ -478,9 +500,9 @@ export function FireProjectionCurve({
         </div>
 
         {/* Card 3: Renda Mensal Passiva */}
-        <div className="flex flex-col justify-between p-2 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
+        <div className="flex flex-col justify-between p-2.5 sm:p-3 rounded-xl bg-surface/60 border border-border/70 shadow-xs transition-all text-left min-w-0">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground truncate">Renda Passiva</span>
+            <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground">Renda Passiva</span>
             <span className="size-1.5 sm:size-2 rounded-full bg-positive-strong shrink-0" />
           </div>
           <div className="mt-0.5 sm:mt-1 min-w-0">
@@ -489,11 +511,11 @@ export function FireProjectionCurve({
                 cents={activePoint.passiveMonthly * 100}
                 tone="positive"
                 hideCents
-                className="font-mono font-bold text-positive-strong dark:text-positive text-xs sm:text-base lg:text-lg tabular-nums truncate"
+                className="font-mono font-bold text-positive-strong dark:text-positive text-sm sm:text-base lg:text-lg tabular-nums tracking-tight whitespace-nowrap"
               />
               <span className="text-[9px] sm:text-[11px] text-muted-foreground font-normal shrink-0">/m</span>
             </div>
-            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5 truncate">
+            <span className="text-[9px] sm:text-[10px] text-muted-foreground block mt-0.5">
               Regra dos 4%
             </span>
           </div>

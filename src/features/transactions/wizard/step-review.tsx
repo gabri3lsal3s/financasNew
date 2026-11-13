@@ -70,7 +70,7 @@ export function StepReview({ state, categoryName, closingDay, isFamilyModeEnable
         )}
         {isFamilyModeEnabled && (
           <Row
-            label="Orçamento Familiar"
+            label="Modo Família"
             value={
               state.isFamily ? (
                 <Badge variant="muted" size="xs">

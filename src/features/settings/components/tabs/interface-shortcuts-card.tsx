@@ -177,7 +177,7 @@ export function InterfaceShortcutsCard({
           </div>
 
           <div className="grid grid-cols-1 gap-2.5">
-            {/* Modo Familiar */}
+            {/* Modo Família */}
             <div
               role="button"
               tabIndex={isUpdatingFamilyMode ? -1 : 0}
@@ -203,7 +203,7 @@ export function InterfaceShortcutsCard({
               <div className="flex items-center gap-3 pr-2 min-w-0">
                 <Users className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                 <div className="min-w-0">
-                  <div className="font-semibold text-xs text-foreground">Modo Familiar</div>
+                  <div className="font-semibold text-xs text-foreground">Modo Família</div>
                   <div className="text-[11px] text-muted-foreground">
                     {isFamilyModeEnabled
                       ? "Ativo. Exibe abas de visão e botões para separar gastos pessoais e familiares."
@@ -217,7 +217,7 @@ export function InterfaceShortcutsCard({
                 onCheckedChange={(checked) => {
                   void toggleFamilyMode(checked);
                 }}
-                aria-label="Modo Familiar"
+                aria-label="Modo Família"
               />
             </div>
 

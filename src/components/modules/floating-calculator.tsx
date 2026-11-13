@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Calculator as CalculatorIcon, Check, ClipboardPaste, Hash, History, Link2 } from "lucide-react";
-import { Badge, Button, Modal, NumberStepper } from "@/components/ui";
+import { Badge, Button, Input, Modal, ModalFooter, NumberStepper } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { CalculatorKeypad } from "@/components/modules/calculator-keypad";
+import { readClipboardText } from "@/services/clipboard";
 import {
   getActiveDecimalDisplay,
   getActiveTargetCents,
@@ -55,6 +56,8 @@ export function FloatingCalculator() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [installments, setInstallments] = useState(1);
   const [plan, setPlan] = useState<string | null>(null);
+  const [manualPasteOpen, setManualPasteOpen] = useState(false);
+  const [manualPasteText, setManualPasteText] = useState("");
 
   // Hidratação do display ao abrir: padrão "when props change" do React (sem useEffect).
   const [prevOpen, setPrevOpen] = useState(false);
@@ -106,47 +109,77 @@ export function FloatingCalculator() {
   }, [isMoneyMode]);
 
   const handlePasteClipboard = useCallback(async () => {
-    try {
-      if (typeof navigator === "undefined" || !navigator.clipboard?.readText) {
-        pushToast({
-          title: "Área de transferência indisponível",
-          description: "O navegador não concedeu permissão para ler a área de transferência.",
-          variant: "destructive",
-        });
-        return;
-      }
-      const rawText = await navigator.clipboard.readText();
-      const sanitized = parseClipboardToDecimal(rawText);
-      if (!sanitized) {
-        pushToast({
-          title: "Valor inválido",
-          description: "Nenhum número ou valor financeiro reconhecido na área de transferência.",
-          variant: "destructive",
-        });
-        return;
-      }
-      setState({
-        display: sanitized,
-        accumulator: null,
-        operator: null,
-        justEvaluated: true,
-        entering: false,
-        error: false,
-      });
-      setPlan(null);
+    const result = await readClipboardText();
+
+    if (
+      result.status === "permission_denied" ||
+      result.status === "unsupported" ||
+      result.status === "insecure_context"
+    ) {
+      setManualPasteText("");
+      setManualPasteOpen(true);
+      return;
+    }
+
+    if (result.status === "empty") {
       pushToast({
-        title: "Valor colado",
-        description: `${sanitized} inserido no display.`,
+        title: "Área de transferência vazia",
+        description: "Nenhum texto encontrado para colar.",
         variant: "default",
       });
-    } catch {
+      return;
+    }
+
+    const sanitized = parseClipboardToDecimal(result.text);
+    if (!sanitized) {
+      setManualPasteText(result.text);
+      setManualPasteOpen(true);
+      return;
+    }
+
+    setState({
+      display: sanitized,
+      accumulator: null,
+      operator: null,
+      justEvaluated: true,
+      entering: false,
+      error: false,
+    });
+    setPlan(null);
+    pushToast({
+      title: "Valor colado",
+      description: `${sanitized} inserido no display.`,
+      variant: "default",
+    });
+  }, []);
+
+  const handleApplyManualPaste = () => {
+    const sanitized = parseClipboardToDecimal(manualPasteText);
+    if (!sanitized) {
       pushToast({
-        title: "Erro ao colar",
-        description: "Não foi possível acessar a área de transferência.",
+        title: "Valor inválido",
+        description: "Não foi possível identificar um valor numérico no texto informado.",
         variant: "destructive",
       });
+      return;
     }
-  }, []);
+
+    setState({
+      display: sanitized,
+      accumulator: null,
+      operator: null,
+      justEvaluated: true,
+      entering: false,
+      error: false,
+    });
+    setPlan(null);
+    setManualPasteOpen(false);
+    pushToast({
+      title: "Valor aplicado",
+      description: `${sanitized} inserido no display.`,
+      variant: "default",
+    });
+  };
 
   const handleEquals = useCallback(() => {
     const previous = state;
@@ -304,7 +337,8 @@ export function FloatingCalculator() {
   }, [open, isMoneyMode, handleDigit, handleBackspace, handleEquals, handleInject, handlePasteClipboard]);
 
   return (
-    <Modal
+    <>
+      <Modal
       open={open}
       onOpenChange={setCalculatorOpen}
       title="Calculadora"
@@ -434,5 +468,51 @@ export function FloatingCalculator() {
           </Button>
         </div>
       </Modal>
+
+      {/* Modal de Fallback para Colagem Manual quando a API do navegador for bloqueada */}
+      <Modal
+        open={manualPasteOpen}
+        onOpenChange={(next) => {
+          if (!next) setManualPasteOpen(false);
+        }}
+        size="sm"
+        title="Colar Valor Manualmente"
+        description="Cole o valor ou texto financeiro no campo abaixo para inseri-lo na calculadora."
+      >
+        <div className="space-y-4 py-2">
+          <Input
+            value={manualPasteText}
+            onChange={(e) => setManualPasteText(e.target.value)}
+            placeholder="Ex.: R$ 1.250,50 ou 1250.50"
+            className="text-base sm:text-sm font-mono"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleApplyManualPaste();
+              }
+            }}
+          />
+
+          <ModalFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setManualPasteOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={handleApplyManualPaste}
+            >
+              Aplicar Valor
+            </Button>
+          </ModalFooter>
+        </div>
+      </Modal>
+    </>
   );
 }

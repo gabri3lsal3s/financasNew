@@ -261,7 +261,7 @@ describe("Tarefa 5.1: Testes E2E de Simulação (Vitest) — Trilha de Finanças
 
       // Valida que o cabeçalho e os seletores alvos do tour foram renderizados
       await waitFor(() => {
-        expect(screen.getByText("Orçamento Familiar")).toBeInTheDocument();
+        expect(screen.getByText("Modo Família")).toBeInTheDocument();
         expect(screen.getByText("Família Silva")).toBeInTheDocument();
       });
 

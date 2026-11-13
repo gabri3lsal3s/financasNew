@@ -20,6 +20,7 @@ import {
   getReceiptKindLabel,
   inferCategoryKeyword,
   matchCategoryBySlug,
+  parsePixEMVPayload,
   parseUniversalReceipt,
   resolveBestMatchingCard,
   resolveMerchantIdentity,
@@ -27,6 +28,7 @@ import {
   type ParsedBankTransaction,
   type UniversalReceiptData,
 } from "@/domain/notifications";
+import { readClipboardText } from "@/services/clipboard";
 import {
   getBankAssistantPreferences,
   storeMerchantCategory,
@@ -825,18 +827,30 @@ export function LaunchWizard({
 
   const handlePastePixFromClipboard = async () => {
     try {
-      if (!navigator.clipboard?.readText) {
+      const clipResult = await readClipboardText();
+      if (clipResult.status !== "success" || !clipResult.text) {
         setAttachOpen(true);
         return;
       }
-      const clipText = await navigator.clipboard.readText();
-      if (clipText && clipText.trim()) {
-        const universal = parseUniversalReceipt(clipText.trim());
-        if (universal) {
-          handleReceiptParsed(universal);
+
+      const text = clipResult.text.trim();
+
+      // 1. Decodificação de Pix Copia e Cola / BR Code EMV
+      if (text.includes("000201")) {
+        const emv = parsePixEMVPayload(text);
+        if (emv) {
+          handleReceiptParsed(emv);
           return;
         }
       }
+
+      // 2. Decodificação de Comprovante Bancário Universal
+      const universal = parseUniversalReceipt(text);
+      if (universal) {
+        handleReceiptParsed(universal);
+        return;
+      }
+
       setAttachOpen(true);
     } catch {
       setAttachOpen(true);
