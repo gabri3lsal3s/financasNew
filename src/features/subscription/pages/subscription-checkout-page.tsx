@@ -393,13 +393,19 @@ export function SubscriptionCheckoutPage() {
           return;
         }
 
+        const isScheduled = Boolean(res && "phase" in res && res.phase === "trial_scheduled");
+        const firstChargeParam =
+          isScheduled && res && "firstChargeAt" in res && typeof res.firstChargeAt === "string"
+            ? `&fase=trial_scheduled&primeira_cobranca=${encodeURIComponent(res.firstChargeAt)}`
+            : "";
+
         triggerSensory("success");
         pushToast({
-          title: "Plano Pro ativado com sucesso!",
-          description: "Bem-vindo ao Axir Pro.",
+          title: isScheduled ? "Cartão cadastrado com sucesso!" : "Plano Pro ativado com sucesso!",
+          description: isScheduled ? "Seu período de teste de 30 dias está ativo." : "Bem-vindo ao Axir Pro.",
           variant: "default",
         });
-        void navigate(`/assinatura/sucesso?plano=${plan}&metodo=credit_card`);
+        void navigate(`/assinatura/sucesso?plano=${plan}&metodo=credit_card${firstChargeParam}`);
       } else {
         // PIX (apenas Anual)
         try {
@@ -428,24 +434,28 @@ export function SubscriptionCheckoutPage() {
               setConfirmedEmail(customerEmail);
             }
           }
-        } catch {
-          // Fallback interativo para testes visuais quando Edge Function não conectada
-          const mockPix: PixCheckoutResult = {
-            ok: true,
-            method: "pix",
-            provider: "asaas",
-            paymentId: "pay_simulated_" + Date.now(),
-            qrCodeBase64: "",
-            copyPasteKey: "00020126580014br.gov.bcb.pix0136123e4567-e89b-12d3-a456-4266141740005204000053039865406178.805802BR5913GUIA_FINANC6009SAO_PAULO62070503***6304ABCD",
-            expirationDate: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-          };
-          setPixResult(mockPix);
-          triggerSensory("success");
-          pushToast({
-            title: "QR Code PIX demonstrativo gerado!",
-            description: "Você pode copiar a chave ou simular a confirmação imediata.",
-            variant: "default",
-          });
+        } catch (pixErr: unknown) {
+          // Fallback exclusivamente para testes locais se explicitamente habilitado via VITE_TEST_MODE
+          if (import.meta.env.DEV && import.meta.env.VITE_TEST_MODE === "true") {
+            const mockPix: PixCheckoutResult = {
+              ok: true,
+              method: "pix",
+              provider: "asaas",
+              paymentId: "pay_simulated_" + Date.now(),
+              qrCodeBase64: "",
+              copyPasteKey: "00020126580014br.gov.bcb.pix0136123e4567-e89b-12d3-a456-4266141740005204000053039865406178.805802BR5913GUIA_FINANC6009SAO_PAULO62070503***6304ABCD",
+              expirationDate: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+            };
+            setPixResult(mockPix);
+            triggerSensory("success");
+            pushToast({
+              title: "QR Code PIX demonstrativo gerado!",
+              description: "Ambiente de testes: chave demonstrativa gerada.",
+              variant: "default",
+            });
+          } else {
+            throw pixErr;
+          }
         }
       }
     } catch (err: unknown) {

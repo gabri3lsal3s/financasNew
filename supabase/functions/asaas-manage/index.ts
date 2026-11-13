@@ -80,6 +80,17 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "Não foi possível identificar a data de renovação atual." }, 400);
       }
 
+      if (userSub.asaas_subscription_id) {
+        try {
+          await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
+            value: targetPlan === "annual" ? 143.88 : 19.99,
+            cycle: targetPlan === "annual" ? "YEARLY" : "MONTHLY",
+          });
+        } catch (err: unknown) {
+          console.warn("[asaas-manage] Aviso ao atualizar ciclo de cobrança no Asaas:", err);
+        }
+      }
+
       await supabase
         .from("user_subscriptions")
         .update({
@@ -115,6 +126,18 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "Não há nenhuma troca de plano agendada." }, 400);
       }
 
+      if (userSub.asaas_subscription_id) {
+        try {
+          const currentIsAnnual = userSub.tier === "pro_annual";
+          await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
+            value: currentIsAnnual ? 143.88 : 19.99,
+            cycle: currentIsAnnual ? "YEARLY" : "MONTHLY",
+          });
+        } catch (err: unknown) {
+          console.warn("[asaas-manage] Aviso ao reverter ciclo de cobrança no Asaas:", err);
+        }
+      }
+
       await supabase
         .from("user_subscriptions")
         .update({
@@ -147,11 +170,31 @@ Deno.serve(async (req: Request) => {
 
       if (isWithin7Days) {
         let refundRequested = false;
+        let paymentToRefundId = userSub.asaas_payment_id;
 
-        if (userSub.asaas_payment_id) {
+        // Se o paymentId não estiver no banco, busca os pagamentos confirmados recentes do cliente no Asaas
+        if (!paymentToRefundId && userSub.asaas_customer_id) {
+          try {
+            const customerPayments = await listAsaasCustomerPayments(userSub.asaas_customer_id, 5);
+            const confirmedPayment = customerPayments.find(
+              (p) => p.status === "CONFIRMED" || p.status === "RECEIVED"
+            );
+            if (confirmedPayment) {
+              paymentToRefundId = confirmedPayment.id;
+              await supabase
+                .from("user_subscriptions")
+                .update({ asaas_payment_id: confirmedPayment.id })
+                .eq("user_id", user.id);
+            }
+          } catch (err: unknown) {
+            console.warn("[asaas-manage] Falha ao consultar pagamentos recentes do cliente para estorno:", err);
+          }
+        }
+
+        if (paymentToRefundId) {
           try {
             await refundAsaasPayment(
-              userSub.asaas_payment_id,
+              paymentToRefundId,
               "Cancelamento e estorno nos primeiros 7 dias (CDC)",
             );
             refundRequested = true;

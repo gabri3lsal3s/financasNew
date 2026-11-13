@@ -10,6 +10,7 @@ import {
   isValidLuhn,
   isValidCardExpiry,
   sanitizePaymentLog,
+  mapAsaasCardErrorMessage,
 } from "../_shared/asaas.ts";
 import {
   ASAAS_PLAN_CATALOG,
@@ -135,11 +136,24 @@ Deno?.serve?.(async (req: Request) => {
       phone,
     });
 
-    const { data: userSub } = await supabase
+    let { data: userSub } = await supabase
       .from("user_subscriptions")
       .select("*")
       .eq("user_id", user.id)
       .maybeSingle();
+
+    if (!userSub && isRegistration) {
+      // Breve respiro caso o trigger handle_new_user esteja concluindo a transação inicial
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      const { data: retriedSub } = await supabase
+        .from("user_subscriptions")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (retriedSub) {
+        userSub = retriedSub;
+      }
+    }
 
     // =========================================================================
     // FLUXO A: PAGAMENTO ACUMULATIVO DE 2 A 11 MESES (EXCLUSIVO PRO MENSAL)
@@ -261,6 +275,31 @@ Deno?.serve?.(async (req: Request) => {
     const planMeta = ASAAS_PLAN_CATALOG[planKey];
     const now = new Date();
 
+    // Garante que o registro de user_subscriptions exista (prevenindo corrida de trigger)
+    const defaultTrialEnds = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    if (!userSub && isRegistration) {
+      const { data: upsertedSub } = await supabase
+        .from("user_subscriptions")
+        .upsert(
+          {
+            user_id: user.id,
+            plan_id: "trial",
+            tier: "trial",
+            status: "trialing",
+            starts_at: now.toISOString(),
+            trial_started_at: now.toISOString(),
+            trial_ends_at: defaultTrialEnds.toISOString(),
+          },
+          { onConflict: "user_id" },
+        )
+        .select()
+        .maybeSingle();
+
+      if (upsertedSub) {
+        userSub = upsertedSub;
+      }
+    }
+
     // Autoridade do Servidor sobre Trial e Primeira Cobrança:
     // O período de teste de 30 dias é estritamente único por usuário/conta.
     // Qualquer usuário em modo somente leitura (read_only), com status cancelado/expirado/past_due,
@@ -277,14 +316,17 @@ Deno?.serve?.(async (req: Request) => {
       (userSub && userSub.tier !== "trial" && !isRegistration)
     );
 
+    const trialEndsDate = userSub?.trial_ends_at
+      ? new Date(userSub.trial_ends_at)
+      : (isRegistration ? defaultTrialEnds : null);
+
     const isTrialActive =
       !hasAlreadyConsumedTrial &&
-      (isRegistration || userSub?.tier === "trial") &&
-      (isRegistration || userSub?.status === "trialing") &&
-      Boolean(userSub?.trial_ends_at) &&
-      new Date(userSub!.trial_ends_at).getTime() > now.getTime();
+      (isRegistration || (userSub?.tier === "trial" && userSub?.status === "trialing")) &&
+      trialEndsDate !== null &&
+      trialEndsDate.getTime() > now.getTime();
 
-    const serverTrialEnds = isTrialActive ? new Date(userSub!.trial_ends_at) : null;
+    const serverTrialEnds = isTrialActive ? trialEndsDate : null;
     const isDelayedByTrial = Boolean(serverTrialEnds);
 
     if (method === "pix") {
@@ -292,14 +334,6 @@ Deno?.serve?.(async (req: Request) => {
         return jsonResponse(
           req,
           { error: "Pagamento via PIX está disponível exclusivamente para o Plano Anual." },
-          400,
-        );
-      }
-
-      if (isDelayedByTrial) {
-        return jsonResponse(
-          req,
-          { error: "Durante o período de teste gratuito não há valor a pagar hoje. Cadastre seu cartão para agendar a primeira cobrança para o término do teste." },
           400,
         );
       }
@@ -489,6 +523,12 @@ Deno?.serve?.(async (req: Request) => {
   } catch (err: unknown) {
     const rawMsg = err instanceof Error ? err.message : String(err);
     console.error("[asaas-checkout] Falha ao processar pagamento:", sanitizePaymentLog(rawMsg));
+
+    const friendlyError = mapAsaasCardErrorMessage(rawMsg);
+    if (friendlyError) {
+      return jsonResponse(req, { error: friendlyError }, 400);
+    }
+
     return safeErrorResponse(req, 500, "Falha ao processar pagamento. Tente novamente.", err);
   }
 });

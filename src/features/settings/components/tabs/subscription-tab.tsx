@@ -77,10 +77,10 @@ export function SubscriptionTab() {
 
   const { isWithinGuarantee, daysRemaining: guaranteeDaysRemaining } = useMemo(() => {
     return calculateGuaranteeResidual({
-      startsAt: subscription.startsAt,
+      startsAt: subscription.billingStartAt || subscription.startsAt,
       isPro: subscription.isPro,
     });
-  }, [subscription.startsAt, subscription.isPro]);
+  }, [subscription.billingStartAt, subscription.startsAt, subscription.isPro]);
 
   const currentPeriodFormatted = subscription.currentPeriodEnd
     ? new Date(subscription.currentPeriodEnd).toLocaleDateString("pt-BR", {

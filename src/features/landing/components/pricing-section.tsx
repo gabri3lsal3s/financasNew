@@ -223,7 +223,7 @@ export function PricingSection() {
                 </Link>
                 <div className="mt-2.5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                   <ShieldCheck className="size-3.5 text-positive-strong dark:text-positive" aria-hidden="true" />
-                  <span>Sem cartão · Cancele quando quiser</span>
+                  <span>7 dias de garantia legal · Cancele em 1 clique</span>
                 </div>
               </div>
             </Card>

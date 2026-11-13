@@ -44,4 +44,17 @@ describe("SubscriptionSuccessPage Component", () => {
     expect(screen.getByText("Motor de Rebalanceamento Determinístico")).toBeInTheDocument();
     expect(screen.getByText("Radar Fiscal IR e Dossiê Executivo")).toBeInTheDocument();
   });
+
+  it("renderiza mensagem de período de teste ativo quando a cobrança é agendada", () => {
+    render(
+      <MemoryRouter initialEntries={["/assinatura/sucesso?plano=pro-anual&metodo=credit_card&fase=trial_scheduled&primeira_cobranca=2026-12-13T00:00:00.000Z"]}>
+        <SubscriptionSuccessPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { name: /Cartão Cadastrado com Sucesso/i })).toBeInTheDocument();
+    expect(screen.getByText("Período de Teste Ativo")).toBeInTheDocument();
+    expect(screen.getByText(/Nenhuma cobrança foi realizada hoje/i)).toBeInTheDocument();
+    expect(screen.getByText("Primeira Cobrança")).toBeInTheDocument();
+  });
 });

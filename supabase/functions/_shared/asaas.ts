@@ -477,4 +477,35 @@ export async function updateAsaasSubscriptionCycle(
   });
 }
 
+/**
+ * Traduz e sanitiza mensagens de recusa da adquirente / Asaas em mensagens
+ * claras e acionáveis para o usuário, sem expor rastros internos de infraestrutura.
+ */
+export function mapAsaasCardErrorMessage(errorMsg: string): string | null {
+  if (!errorMsg || typeof errorMsg !== "string") return null;
+
+  const lower = errorMsg.toLowerCase();
+
+  if (lower.includes("não autorizado") || lower.includes("nao autorizado") || lower.includes("recusad") || lower.includes("negad") || lower.includes("declined")) {
+    return "Transação não autorizada pela emissora do seu cartão. Verifique com seu banco ou tente outro cartão.";
+  }
+  if (lower.includes("saldo insuficiente") || lower.includes("limite insuficiente") || lower.includes("sem limite") || lower.includes("insufficient funds")) {
+    return "Limite de crédito insuficiente no cartão para concluir a assinatura.";
+  }
+  if (lower.includes("código de segurança") || lower.includes("cvv") || lower.includes("ccv") || lower.includes("security code")) {
+    return "Código de segurança (CVV) incorreto ou inválido.";
+  }
+  if (lower.includes("expirado") || lower.includes("vencido") || lower.includes("validade") || lower.includes("expired")) {
+    return "Data de validade do cartão incorreta ou cartão vencido.";
+  }
+  if (lower.includes("bloqueado") || lower.includes("blocked") || lower.includes("cartão inválido") || lower.includes("cartao invalido")) {
+    return "Cartão de crédito bloqueado ou inválido. Utilize outro cartão.";
+  }
+  if (lower.includes("cpf") || lower.includes("cnpj")) {
+    return "CPF/CNPJ do titular inválido ou inconsistente junto à Receita Federal.";
+  }
+
+  return null;
+}
+
 

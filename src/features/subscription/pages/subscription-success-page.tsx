@@ -48,13 +48,25 @@ export function SubscriptionSuccessPage() {
   const [searchParams] = useSearchParams();
   const planoParam = searchParams.get("plano");
   const metodoParam = searchParams.get("metodo");
+  const faseParam = searchParams.get("fase");
+  const primeiraCobrancaParam = searchParams.get("primeira_cobranca");
 
+  const isTrialScheduled = faseParam === "trial_scheduled";
   const plan: SubscriptionPlan = resolvePlanFromQuery(planoParam);
   const isAnnual = plan === "annual";
   const isPix = metodoParam === "pix";
 
   const priceText = isAnnual ? "R$\u00a0143,88/ano" : "R$\u00a019,99/mês";
   const planTitle = isAnnual ? "Plano Pro Anual" : "Plano Pro Mensal";
+
+  // Data formatada da primeira cobrança quando agendada
+  const scheduledChargeFormatted = primeiraCobrancaParam
+    ? new Date(primeiraCobrancaParam).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : null;
 
   // Data estimada de próxima renovação (1 ano ou 1 mês a partir de hoje)
   const nextRenewalDate = new Date();
@@ -63,11 +75,13 @@ export function SubscriptionSuccessPage() {
   } else {
     nextRenewalDate.setMonth(nextRenewalDate.getMonth() + 1);
   }
-  const formattedRenewal = nextRenewalDate.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+  const formattedRenewal = isTrialScheduled && scheduledChargeFormatted
+    ? scheduledChargeFormatted
+    : nextRenewalDate.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
 
   const today = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
@@ -112,15 +126,23 @@ export function SubscriptionSuccessPage() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-0.5 text-xs font-semibold text-primary">
               <Sparkles className="size-3.5" aria-hidden="true" />
-              <span>Assinatura Ativa</span>
+              <span>{isTrialScheduled ? "Período de Teste Ativo" : "Assinatura Ativa"}</span>
             </div>
 
             <h1 className="font-display text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-              Pagamento Confirmado!
+              {isTrialScheduled ? "Cartão Cadastrado com Sucesso!" : "Pagamento Confirmado!"}
             </h1>
 
             <p className="text-sm sm:text-base text-muted-foreground max-w-lg mx-auto leading-relaxed">
-              Sua conta foi promovida com sucesso ao <strong className="text-foreground">{planTitle}</strong>. Todos os recursos avançados de engenharia financeira já estão liberados.
+              {isTrialScheduled ? (
+                <>
+                  Seu período de teste de 30 dias está ativo. Nenhuma cobrança foi realizada hoje. Sua primeira cobrança de <strong className="text-foreground">{priceText}</strong> ocorrerá apenas em <strong className="text-foreground">{scheduledChargeFormatted || "30 dias"}</strong>.
+                </>
+              ) : (
+                <>
+                  Sua conta foi promovida com sucesso ao <strong className="text-foreground">{planTitle}</strong>. Todos os recursos avançados de engenharia financeira já estão liberados.
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -158,7 +180,7 @@ export function SubscriptionSuccessPage() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Calendar className="size-3.5" aria-hidden="true" />
-                    <span>Data de Ativação</span>
+                    <span>{isTrialScheduled ? "Cadastro do Cartão" : "Data de Ativação"}</span>
                   </div>
                   <span className="font-semibold text-foreground">{today}</span>
                 </div>
@@ -176,7 +198,7 @@ export function SubscriptionSuccessPage() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-muted-foreground">
                     <ShieldCheck className="size-3.5 text-positive-strong" aria-hidden="true" />
-                    <span>Próxima Renovação</span>
+                    <span>{isTrialScheduled ? "Primeira Cobrança" : "Próxima Renovação"}</span>
                   </div>
                   <span className="font-semibold text-foreground">{formattedRenewal}</span>
                 </div>

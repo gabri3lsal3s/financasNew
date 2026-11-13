@@ -30,6 +30,9 @@ export type SubscriptionStatus = {
   /** Data de início/ativação da assinatura ou período atual (ISO string, null se não aplicável). */
   startsAt?: string | null;
 
+  /** Data em que a primeira cobrança real (efetiva) foi realizada (marco do direito de arrependimento CDC). */
+  billingStartAt?: string | null;
+
   /** Dias restantes do trial (0 quando encerrado; null fora do trial). */
   trialDaysRemaining: number | null;
 

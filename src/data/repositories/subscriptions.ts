@@ -54,6 +54,7 @@ export async function getMySubscription(): Promise<SubscriptionStatus | null> {
       status: raw.status ?? null,
       billingPhase: raw.billing_phase ?? undefined,
       startsAt: raw.starts_at ?? null,
+      billingStartAt: (raw as { billing_start_at?: string | null }).billing_start_at ?? null,
       trialDaysRemaining: raw.trial_days_remaining,
       trialEndsAt: raw.trial_ends_at,
       trialConsumedAt: raw.trial_consumed_at ?? null,
