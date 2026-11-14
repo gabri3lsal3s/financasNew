@@ -82,6 +82,7 @@ vi.mock("@/state", () => ({
   useUpsertPortfolioSnapshot: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useBatchUpsertPortfolioSnapshots: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioSnapshot: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useResetManualSnapshotCalibration: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAllocationTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSaveAllocationTargets: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useGroupTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),

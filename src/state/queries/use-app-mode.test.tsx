@@ -75,11 +75,14 @@ describe("useAppMode Hook — Governança de Perfis de Visualização (§Plano 0
   });
 
   it("permite alternar modo com atualização otimista imediata e persistência", async () => {
-    vi.mocked(userPrefsRepo.getUserPreferences).mockResolvedValueOnce({
+    let currentPrefs: UserPreferences = {
       ...mockBasePreferences,
       app_mode: "investor",
+    };
+    vi.mocked(userPrefsRepo.getUserPreferences).mockImplementation(async () => currentPrefs);
+    vi.mocked(userPrefsRepo.updateAppMode).mockImplementation(async (nextMode) => {
+      currentPrefs = { ...currentPrefs, app_mode: nextMode };
     });
-    vi.mocked(userPrefsRepo.updateAppMode).mockResolvedValueOnce();
 
     const { result } = renderHook(() => useAppMode(), {
       wrapper: createWrapper(),

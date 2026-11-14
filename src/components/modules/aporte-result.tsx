@@ -13,6 +13,7 @@ import {
   ListOrdered,
   PiggyBank,
   PieChart,
+  ShoppingCart,
   Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,8 @@ export interface AporteResultProps {
   skippedAssets?: SkippedAssetDiagnostic[];
   /** Ação rápida para gravar todas as transações sugeridas no extrato */
   onExecuteAporte?: (items?: CustomAporteExecutionItem[]) => void;
+  /** Ação para abrir o Wizard de Compra para um ativo específico com quantidade sugerida */
+  onOpenWizard?: (ticker: string, quantity: number, allocatedBRL?: number) => void;
   executing?: boolean;
 }
 
@@ -96,6 +99,7 @@ export function AporteResult({
   sectorSummaries = [],
   skippedAssets = [],
   onExecuteAporte,
+  onOpenWizard,
   executing = false,
 }: AporteResultProps) {
   const [completedTickers, setCompletedTickers] = useState<Set<string>>(new Set());
@@ -426,27 +430,46 @@ export function AporteResult({
       align: "right",
       cell: (row) => {
         const isDone = completedTickers.has(row.ticker);
+        const eff = effectiveRouteMap.get(row.assetId);
+        const qty = eff?.effectiveQuantity ?? row.quantity;
+        const total = eff?.effectiveAllocatedBRL ?? row.allocatedBRL;
         return (
-          <button
-            type="button"
-            onClick={() => toggleTicker(row.ticker)}
-            aria-label={isDone ? `Marcar ${row.ticker} como pendente` : `Marcar ${row.ticker} como executado`}
-            className={cn(
-              "inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer",
-              isDone
-                ? "border border-positive/30 bg-positive/10 text-positive-strong animate-spring-pop"
-                : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-[0.98]",
+          <div className="flex items-center justify-end gap-1.5">
+            {onOpenWizard && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenWizard(row.ticker, qty, total)}
+                className="h-7 px-2 text-xs gap-1 font-medium text-foreground hover:bg-muted/40 cursor-pointer"
+                title={`Comprar ${row.ticker} no Wizard`}
+                aria-label={`Comprar ${row.ticker} no Wizard`}
+              >
+                <ShoppingCart className="size-3 text-portfolio" aria-hidden="true" />
+                <span className="hidden md:inline">Comprar</span>
+              </Button>
             )}
-          >
-            {isDone ? (
-              <>
-                <Check className="size-3.5" aria-hidden="true" />
-                <span>Feito</span>
-              </>
-            ) : (
-              <span>Pendente</span>
-            )}
-          </button>
+            <button
+              type="button"
+              onClick={() => toggleTicker(row.ticker)}
+              aria-label={isDone ? `Marcar ${row.ticker} como pendente` : `Marcar ${row.ticker} como executado`}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer",
+                isDone
+                  ? "border border-positive/30 bg-positive/10 text-positive-strong animate-spring-pop"
+                  : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-[0.98]",
+              )}
+            >
+              {isDone ? (
+                <>
+                  <Check className="size-3.5" aria-hidden="true" />
+                  <span>Feito</span>
+                </>
+              ) : (
+                <span>Pendente</span>
+              )}
+            </button>
+          </div>
         );
       },
     },
@@ -754,26 +777,48 @@ export function AporteResult({
                             </div>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => toggleTicker(row.ticker)}
-                            aria-label={isDone ? `Marcar ${row.ticker} como pendente` : `Marcar ${row.ticker} como executado`}
-                            className={cn(
-                              "inline-flex items-center justify-center gap-1 rounded-pill px-3 py-1 text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0",
-                              isDone
-                                ? "border border-positive/30 bg-positive/10 text-positive-strong animate-spring-pop"
-                                : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-[0.98]",
-                            )}
-                          >
-                            {isDone ? (
-                              <>
-                                <Check className="size-3.5" aria-hidden="true" />
-                                <span>Feito</span>
-                              </>
-                            ) : (
-                              <span>Pendente</span>
-                            )}
-                          </button>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {onOpenWizard ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  onOpenWizard(
+                                    row.ticker,
+                                    eff?.effectiveQuantity ?? row.quantity,
+                                    eff?.effectiveAllocatedBRL ?? row.allocatedBRL,
+                                  )
+                                }
+                                className="h-7 px-2 text-xs gap-1 font-medium text-foreground hover:bg-muted/40 cursor-pointer"
+                                title={`Comprar ${row.ticker} no Wizard`}
+                                aria-label={`Comprar ${row.ticker} no Wizard`}
+                              >
+                                <ShoppingCart className="size-3 text-portfolio" aria-hidden="true" />
+                                <span>Comprar</span>
+                              </Button>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => toggleTicker(row.ticker)}
+                              aria-label={isDone ? `Marcar ${row.ticker} como pendente` : `Marcar ${row.ticker} como executado`}
+                              className={cn(
+                                "inline-flex items-center justify-center gap-1 rounded-pill px-3 py-1 text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0",
+                                isDone
+                                  ? "border border-positive/30 bg-positive/10 text-positive-strong animate-spring-pop"
+                                  : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-[0.98]",
+                              )}
+                            >
+                              {isDone ? (
+                                <>
+                                  <Check className="size-3.5" aria-hidden="true" />
+                                  <span>Feito</span>
+                                </>
+                              ) : (
+                                <span>Pendente</span>
+                              )}
+                            </button>
+                          </div>
                         </div>
 
                         {/* Grid 2 Colunas: Aporte Sugerido (Destaque) & Posição Alvo vs Atual */}
@@ -943,26 +988,42 @@ export function AporteResult({
                                           <MoneyText cents={numberToCents(r.priceBRL)} tone="default" />
                                         </td>
                                         <td className="py-2 px-3 text-right">
-                                          <button
-                                            type="button"
-                                            onClick={() => toggleTicker(r.ticker)}
-                                            aria-label={isDone ? `Marcar ${r.ticker} como pendente` : `Marcar ${r.ticker} como executado`}
-                                            className={cn(
-                                              "inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-[11px] font-medium transition-all duration-150 cursor-pointer",
-                                              isDone
-                                                ? "border border-positive/30 bg-positive/10 text-positive-strong"
-                                                : "border border-border bg-surface text-muted-foreground hover:border-primary/40",
+                                          <div className="flex items-center justify-end gap-1.5">
+                                            {onOpenWizard && (
+                                              <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => onOpenWizard(r.ticker, r.quantity, r.allocatedBRL)}
+                                                className="h-6 px-1.5 text-[11px] gap-1 font-medium text-foreground hover:bg-muted/40 cursor-pointer"
+                                                title={`Comprar ${r.ticker} no Wizard`}
+                                                aria-label={`Comprar ${r.ticker} no Wizard`}
+                                              >
+                                                <ShoppingCart className="size-2.5 text-portfolio" aria-hidden="true" />
+                                                <span>Comprar</span>
+                                              </Button>
                                             )}
-                                          >
-                                            {isDone ? (
-                                              <>
-                                                <Check className="size-3" aria-hidden="true" />
-                                                <span>Feito</span>
-                                              </>
-                                            ) : (
-                                              <span>Pendente</span>
-                                            )}
-                                          </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => toggleTicker(r.ticker)}
+                                              aria-label={isDone ? `Marcar ${r.ticker} como pendente` : `Marcar ${r.ticker} como executado`}
+                                              className={cn(
+                                                "inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-[11px] font-medium transition-all duration-150 cursor-pointer",
+                                                isDone
+                                                  ? "border border-positive/30 bg-positive/10 text-positive-strong"
+                                                  : "border border-border bg-surface text-muted-foreground hover:border-primary/40",
+                                              )}
+                                            >
+                                              {isDone ? (
+                                                <>
+                                                  <Check className="size-3" aria-hidden="true" />
+                                                  <span>Feito</span>
+                                                </>
+                                              ) : (
+                                                <span>Pendente</span>
+                                              )}
+                                            </button>
+                                          </div>
                                         </td>
                                       </tr>
                                     );

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Equal, Layers, RotateCcw, Scale, Trash2 } from "lucide-react";
+import { Equal, Layers, RotateCcw, Scale, Sparkles, Trash2 } from "lucide-react";
 import { Badge, Button, NumberStepperInput } from "@/components/ui";
 import { InteractiveTargetDonut, type TargetDonutItem } from "@/components/modules";
 import { parseTargetInput } from "@/domain/portfolio";
@@ -15,6 +15,7 @@ export interface TargetClassesCardProps {
   savingClass: string | null;
   onNormalizeClasses: () => void;
   onDistributeClassesEqually: () => void;
+  onDistributeRemaining?: () => void;
   onResetClassesZero: () => void;
   onClassTargetChange: (className: string, val: number) => void;
   onSaveClass: (className: string) => void;
@@ -32,6 +33,7 @@ export function TargetClassesCard({
   savingClass,
   onNormalizeClasses,
   onDistributeClassesEqually,
+  onDistributeRemaining,
   onResetClassesZero,
   onClassTargetChange,
   onSaveClass,
@@ -92,8 +94,65 @@ export function TargetClassesCard({
         </div>
       ) : null}
 
+      {/* Barra de Progresso de Alocação Macro */}
+      <div className="flex flex-col gap-1.5 rounded-xl border border-border/70 bg-surface-hover/20 p-3">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-medium text-foreground">Total alocado em classes:</span>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={cn(
+                "font-mono font-bold tabular-nums",
+                classSum.sum === 100
+                  ? "text-positive-strong"
+                  : classSum.sum > 100
+                    ? "text-critical-strong"
+                    : "text-foreground",
+              )}
+            >
+              {classSum.sum.toFixed(1)}% / 100%
+            </span>
+            <Badge
+              variant={classSum.sum === 100 ? "positive" : classSum.sum > 100 ? "critical" : "muted"}
+              size="xs"
+            >
+              {classSum.sum === 100
+                ? "Completo"
+                : classSum.sum > 100
+                  ? `Excesso de ${(classSum.sum - 100).toFixed(1)}%`
+                  : `Faltam ${(100 - classSum.sum).toFixed(1)}%`}
+            </Badge>
+          </div>
+        </div>
+        <div className="relative h-2 w-full overflow-hidden rounded-full bg-surface-active/40">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all duration-300",
+              classSum.sum === 100
+                ? "bg-positive"
+                : classSum.sum > 100
+                  ? "bg-critical"
+                  : "bg-primary",
+            )}
+            style={{ width: `${Math.min(100, Math.max(0, classSum.sum))}%` }}
+          />
+        </div>
+      </div>
+
       {/* Ações Rápidas de Classes */}
       <div className="flex flex-wrap items-center gap-2">
+        {onDistributeRemaining && classSum.sum < 100 && classSum.sum > 0 ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onDistributeRemaining}
+            disabled={savingClass !== null}
+            className="gap-1.5 text-xs font-semibold"
+          >
+            <Sparkles className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+            Distribuir restante ({(100 - classSum.sum).toFixed(1)}%)
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="outline"

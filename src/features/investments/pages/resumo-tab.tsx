@@ -320,10 +320,13 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const targetsQuery = useAllocationTargets();
   const rawTargets = targetsQuery.data;
   const targets = useMemo(() => rawTargets ?? [], [rawTargets]);
+  const rawClassTargets = classTargetsQuery.data;
+  const classTargetsList = useMemo(() => rawClassTargets ?? [], [rawClassTargets]);
 
-  const driftItems = useMemo(
-    () =>
-      targets.map((t) => {
+  const driftItems = useMemo(() => {
+    // Se houver metas individuais por ativo, prioriza os ativos
+    if (targets.length > 0) {
+      return targets.map((t) => {
         const row = position.rows.find((r) => r.assetId === t.asset_id);
         const valCents = Math.round((row?.valueBRL ?? 0) * 100);
         return {
@@ -332,9 +335,29 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           currentValueCents: valCents,
           targetPercent: Number(t.target_percentage),
         };
-      }),
-    [targets, position.rows],
-  );
+      });
+    }
+
+    // Blindagem B9: Fallback Macro-First por classes quando não houver metas por ativos
+    if (classTargetsList.length > 0) {
+      return classTargetsList.map((ct) => {
+        const classRows = position.rows.filter((r) => {
+          const cls = r.assetClass?.trim() || (r.isCash ? "Caixa" : "Sem classe");
+          return cls.toLowerCase() === ct.name.trim().toLowerCase();
+        });
+        const totalClassValBRL = classRows.reduce((acc, r) => acc + (r.valueBRL ?? 0), 0);
+        const valCents = Math.round(totalClassValBRL * 100);
+        return {
+          id: ct.id,
+          name: ct.name,
+          currentValueCents: valCents,
+          targetPercent: Number(ct.target_percentage),
+        };
+      });
+    }
+
+    return [];
+  }, [targets, classTargetsList, position.rows]);
 
   const allocationDrift = useMemo(
     () =>

@@ -272,6 +272,7 @@ vi.mock("@/state", () => ({
   useSaveMonthlyClosing: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useUpsertPortfolioSnapshot: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioSnapshot: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useResetManualSnapshotCalibration: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useBatchUpsertPortfolioSnapshots: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useCreatePortfolioContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateHistoricalContribution: () => ({ mutateAsync: vi.fn(), isPending: false }),

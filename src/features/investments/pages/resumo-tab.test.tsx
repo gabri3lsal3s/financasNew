@@ -11,8 +11,10 @@ const {
   mockSetStepIndex,
   getMockPortfolioPosition,
   getMockPortfolioAssets,
+  getMockClassTargets,
   setMockPortfolioPosition,
   setMockPortfolioAssets,
+  setMockClassTargets,
   defaultPosition,
   defaultAssets,
 } = vi.hoisted(() => {
@@ -81,6 +83,7 @@ const {
 
   let currentPos = initialPosition;
   let currentAss = initialAssets;
+  let currentClassTargets = [] as { id: string; name: string; target_percentage: number; group_type: "class" }[];
 
   return {
     mockDeleteAsset: vi.fn(),
@@ -91,11 +94,15 @@ const {
     defaultAssets: initialAssets,
     getMockPortfolioPosition: () => currentPos,
     getMockPortfolioAssets: () => currentAss,
+    getMockClassTargets: () => currentClassTargets,
     setMockPortfolioPosition: (p: typeof initialPosition) => {
       currentPos = p;
     },
     setMockPortfolioAssets: (a: typeof initialAssets) => {
       currentAss = a;
+    },
+    setMockClassTargets: (t: typeof currentClassTargets) => {
+      currentClassTargets = t;
     },
   };
 });
@@ -137,7 +144,7 @@ vi.mock("@/state", () => ({
     isPending: false,
   }),
   useGroupTargets: () => ({
-    data: [],
+    data: getMockClassTargets(),
     isLoading: false,
     error: null,
   }),
@@ -224,6 +231,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useResetManualSnapshotCalibration: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useAllocationTargets: () => ({
     data: [],
     isLoading: false,
@@ -282,6 +293,7 @@ describe("ResumoTab", () => {
   beforeEach(() => {
     setMockPortfolioPosition(defaultPosition);
     setMockPortfolioAssets(defaultAssets);
+    setMockClassTargets([]);
     vi.clearAllMocks();
   });
   it("renderiza o card exclusivo de Caixa & Liquidez com ações de ajustar e aportar caixa, e o grid de 4 KPIs de performance", () => {
@@ -372,5 +384,15 @@ describe("ResumoTab", () => {
     await user.click(demoBtn);
     expect(mockStartDemo).toHaveBeenCalledWith("investments");
     expect(mockSetStepIndex).toHaveBeenCalledWith(0);
+  });
+
+  it("renderiza o card de desvio de alocação (AllocationDriftCard) por macroclasses quando não há metas por ativo (Blindagem B9)", () => {
+    setMockClassTargets([
+      { id: "c1", name: "Ações", target_percentage: 50, group_type: "class" },
+      { id: "c2", name: "FIIs", target_percentage: 50, group_type: "class" },
+    ]);
+    renderResumo();
+
+    expect(screen.getByText("Desvio de Alocação Detectado")).toBeInTheDocument();
   });
 });

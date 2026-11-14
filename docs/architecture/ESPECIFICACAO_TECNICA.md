@@ -657,6 +657,12 @@ A inteligência de repetição do sistema opera em dois trilhos expressos e desa
     - **Com saldo em Caixa ($> 0$):** os cards calculam a quantidade de cotas que cabe no saldo disponível ($\min(\lfloor\text{gapBRL} / \text{preço}\rfloor, \lfloor\text{caixa} / \text{preço}\rfloor)$) e exibem `"Cabe no caixa: X cota(s) (~R$ Y) · Meta: W%"`. Se o saldo for insuficiente para 1 cota, exibem `"Saldo em caixa insuficiente para 1 cota · Meta: W%"`. Ao clicar, o formulário já inicia preenchido com essas cotas (ou vazio se saldo insuficiente) e a sincronização com o caixa configurada.
     - **Sem saldo em Caixa (ou R$ 0,00):** os cards exibem `"Meta: W%"` (sem valor monetário de déficit) e, ao clicar, a quantidade no formulário vem **em branco** (`""`), permitindo digitação livre pelo usuário.
     - **Soberania da Quantidade Digitada:** para ativos cotizados (renda variável), o total financeiro é estritamente $\text{Quantidade} \times \text{Preço Unitário}$. Alterações na quantidade ou preço limpam qualquer resquício de valor residual, impedindo a imposição forçada de valores recomendados.
+12. **Motor Canônico de Sugestões & Radar de Setores (`getAporteSuggestions` — Fase 108 / v3.6.8):**
+    - **Single Source of Truth:** `getAporteSuggestions` alimenta de ponta a ponta a aba Aportes (`AporteTab`) e o `InvestmentWizard`, garantindo congruência algorítmica total.
+    - **Cascata Natural em 3 Níveis:** Classes (Macro — 100% obrigatório) $\rightarrow$ Setores (Meso — 100% opcional) $\rightarrow$ Ativos (Micro — 100% opcional). Usuários Macro-First só preenchem classes; investidores Setoriais preenchem classes e setores; detalhistas preenchem até os ativos.
+    - **Radar de Setores e Desconto frente ao Preço Médio:** No Wizard, modo setorial agrupa ativos por setor defasado, exibindo o orçamento setorial disponível e destacando ativos com `diffVsAveragePct < 0` (abaixo do PM) para absorver o aporte daquele setor.
+    - **CTA "Comprar no Wizard":** Integrado no `AporteResult` (tabela desktop, cards mobile e árvore), permitindo ao investidor acionar o Wizard com ativo, cotas calculadas e valor orçado pré-carregados.
+    - **Fallback de Drift por Classe:** No Resumo da Carteira, se não houver metas por ativo (`targets.length === 0`), o desvio de alocação monitora automaticamente as classes a partir de `classTargets` (Blindagem B9).
 
 #### 3.11.4 Fechamento Histórico de Carteira, Relatórios Retroativos Ponto-no-Tempo e Retificação Quantitativa do Dossiê Executivo (§F51)
 

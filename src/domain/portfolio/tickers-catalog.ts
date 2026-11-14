@@ -34,6 +34,10 @@ export interface AporteSuggestionItem {
   gapBRL: number;
   targetPercentage: number;
   currentPercentage: number;
+  /** Cotas sugeridas para aporte (calculadas pelo motor canônico). */
+  suggestedQty?: number;
+  /** Valor total estimado para a sugestão de cotas (BRL). */
+  suggestedTotalBRL?: number;
 }
 
 /**

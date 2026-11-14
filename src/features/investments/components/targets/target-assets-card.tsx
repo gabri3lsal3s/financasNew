@@ -44,7 +44,7 @@ export function TargetAssetsCard({
   onSave,
 }: TargetAssetsCardProps) {
   return (
-    <div data-tour="targets-assets-card" className="flex flex-col gap-4">
+    <section role="region" aria-label="Metas por ativo" data-tour="targets-assets-card" className="flex flex-col gap-4">
       {classes.length > 1 ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -110,6 +110,6 @@ export function TargetAssetsCard({
         sumError={assetSum.error}
         emptyMessage={assetClassFilter ? `Nenhum ativo na classe ${assetClassFilter}.` : "Nenhum ativo na carteira."}
       />
-    </div>
+    </section>
   );
 }

@@ -7159,6 +7159,32 @@ flowchart TD
 >   - Interface modal canônica `CalibrateSnapshotDialog` e ações contextuais na tabela analítica `PortfolioSnapshotsDialog` (badges "fechado", "provisório" e "calibrado", botão de calibrar e botão de restaurar fechamento oficial).
 > - **Qualidade e Testes:** Suíte de 603 testes 100% aprovados no Vitest, `npm run typecheck` com 0 erros, `npm run lint` com 0 erros e build Vite concluído com sucesso.
 
+---
+
+### Fase 108 — Refatoração Integral do Rebalanceamento & Investment Wizard (v3.6.8)
+
+> **Status:** ✅ Concluída e Auditada — **Arquitetura Canônica de Rebalanceamento, Cascata Hierárquica em 3 Níveis e Sugestões Unificadas**: Conclusão integral do plano `docs/plans/completed/38_PLANO_FASE_10_REFATORACAO_REBALANCEAMENTO_E_WIZARD.md`.
+> - **Motor Puro Unificado (`getAporteSuggestions` em `src/domain/portfolio/aporte.ts`):**
+>   - Single Source of Truth para a aba Aportes e o Investment Wizard;
+>   - Cascata natural de 3 níveis: Classes (Macro — 100% obrigatório) $\rightarrow$ Setores (Meso — 100% opcional) $\rightarrow$ Ativos (Micro — 100% opcional);
+>   - Identificação de ativos com desconto frente ao Preço Médio (`diffVsAveragePct < 0`) e cotas de absorção orçamentária;
+>   - Resiliência com totalPortfolioBRL, união de classes (`allClasses`) para classes sem ativos alocados e suporte a aporte/caixa zero.
+> - **Configuração de Metas (`TargetsTab`):**
+>   - Barra dinâmica de progresso em classes com badges semânticos e botão 1-toque com ícone `Sparkles` ("Distribuir restante") quando soma < 100%;
+>   - Salvamento atômico em lote (`saveAllClasses` e `saveAllSectorsForClass`) com `sanitizeGroupTargetsForSave` e remoção automática de itens zerados;
+>   - Preservação estrita dos seletores de tour (`data-tour="targets-classes-card"` e `data-tour="targets-assets-card"`).
+> - **Investment Wizard:**
+>   - Pré-carregamento de cotas (`initialQuantity`) e valor (`initialTotalCents`);
+>   - Seletor de modo ("Radar de Setores" vs "Por Ativo Direto") com inicialização adaptativa baseada na presença de metas setoriais;
+>   - Modo setorial com exibição de orçamento por setor (`<MoneyText />`), badges de desconto frente ao PM e expansor de setores densos com > 3 ativos;
+>   - Invalidação de cache atômica no `onSuccess` para `portfolio`, `group-targets`, `allocation-targets`, `accounts` e `transactions`.
+> - **Painel de Aportes & Resumo:**
+>   - Botão CTA "Comprar no Wizard" integrado na tabela desktop, nos cards adaptativos mobile e na visualização em árvore de `AporteResult`;
+>   - Fallback do Drift por classe no Resumo (Blindagem B9) quando não houver metas de ativos (`targets.length === 0`);
+>   - Zero reticências em moedas (Blindagem B7 e Regra 11 do AGENTS.md);
+>   - Qualidade: 186/186 testes de investimentos, 572 testes de domínio, TypeScript 0 erros, ESLint 0 erros.
+
+
 
 
 

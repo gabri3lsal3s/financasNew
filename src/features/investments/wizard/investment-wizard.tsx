@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Alert, Button, ConfirmDialog, Modal, ModalFooter, Stepper } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -49,6 +50,10 @@ export interface InvestmentWizardProps {
   initialAsset?: PortfolioAsset | null;
   /** Modo inicial ("select" | "new_asset" | "buy" | "sell" | "dividend" | "split" | "existing_aporte"). */
   initialMode?: WizardMode;
+  /** Quantidade pré-carregada (para sugestões do AporteTab ou Wizard). */
+  initialQuantity?: number | string | null;
+  /** Valor total pré-carregado em centavos (para renda fixa ou alocações pré-definidas). */
+  initialTotalCents?: number | null;
 }
 
 export interface InvestmentWizardContentProps extends InvestmentWizardProps {
@@ -62,7 +67,10 @@ function InvestmentWizardContent({
   onSuccess,
   initialAsset,
   initialMode,
+  initialQuantity,
+  initialTotalCents,
 }: InvestmentWizardContentProps) {
+  const queryClient = useQueryClient();
   const assetsQuery = usePortfolioAssets();
   const position = usePortfolioPosition();
   const targetsQuery = useAllocationTargets();
@@ -110,6 +118,17 @@ function InvestmentWizardContent({
           : (initialAsset.average_price !== undefined && initialAsset.average_price > 0)
             ? initialAsset.average_price
             : (initialAsset.fixed_income_metadata?.base_value ?? 0);
+
+      const priceCents = numberToCents(initialCost);
+      const quantityStr = initialQuantity !== undefined && initialQuantity !== null ? String(initialQuantity) : "";
+      const numQty = parseFloat(quantityStr) || 0;
+      const totalCents =
+        initialTotalCents !== undefined && initialTotalCents !== null && initialTotalCents > 0
+          ? initialTotalCents
+          : numQty > 0 && priceCents > 0
+            ? Math.round(numQty * priceCents)
+            : 0;
+
       return {
         ...defaultWizardState,
         mode,
@@ -119,7 +138,10 @@ function InvestmentWizardContent({
         assetClass: initialAsset.asset_class ?? "Ações",
         currency: initialAsset.currency,
         isCash: isCashAssetClass(initialAsset.asset_class),
-        appliedCostCents: numberToCents(initialCost),
+        priceCents,
+        quantityStr,
+        totalCents,
+        appliedCostCents: priceCents,
       };
     }
     if (initialMode === "new_asset") {
@@ -441,6 +463,16 @@ function InvestmentWizardContent({
         }
       }
 
+      if (queryClient) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ["portfolio"] }),
+          queryClient.invalidateQueries({ queryKey: ["group-targets"] }),
+          queryClient.invalidateQueries({ queryKey: ["allocation-targets"] }),
+          queryClient.invalidateQueries({ queryKey: ["accounts"] }),
+          queryClient.invalidateQueries({ queryKey: ["transactions"] }),
+        ]);
+      }
+
       onSuccess?.();
       handleClose();
     } catch (err) {
@@ -465,7 +497,12 @@ function InvestmentWizardContent({
     const cashAvailableBRL = cashAsset?.quantity ?? 0;
 
     if (isTotalValue) {
-      const suggestedAmount = cashAvailableBRL > 0 ? Math.min(cashAvailableBRL, item.gapBRL) : 0;
+      const suggestedAmount =
+        item.suggestedTotalBRL && item.suggestedTotalBRL > 0
+          ? item.suggestedTotalBRL
+          : cashAvailableBRL > 0
+            ? Math.min(cashAvailableBRL, item.gapBRL)
+            : item.gapBRL;
       const totalCents = Math.round(suggestedAmount * 100);
       setState((prev) => ({
         ...prev,
@@ -481,7 +518,7 @@ function InvestmentWizardContent({
         priceCents: totalCents,
         quantityStr: "",
         totalCents,
-        syncCash: suggestedAmount > 0,
+        syncCash: cashAvailableBRL > 0 && suggestedAmount > 0,
       }));
       return;
     }
@@ -492,8 +529,8 @@ function InvestmentWizardContent({
       currency: (asset?.currency ?? "BRL") as "BRL" | "USD",
     });
 
-    let suggestedQty = 0;
-    if (cashAvailableBRL > 0 && priceBRL > 0) {
+    let suggestedQty = item.suggestedQty ?? 0;
+    if (!(suggestedQty > 0) && cashAvailableBRL > 0 && priceBRL > 0) {
       if (precision > 0) {
         const factor = 10 ** precision;
         const maxUsefulQty = Math.floor((item.gapBRL / priceBRL) * factor) / factor;
@@ -776,18 +813,22 @@ export function InvestmentWizard({
   onSuccess,
   initialAsset = null,
   initialMode = "select",
+  initialQuantity,
+  initialTotalCents,
 }: InvestmentWizardProps) {
   if (!open) return null;
 
   return (
     <InvestmentWizardContent
-      key={`${initialAsset?.id ?? "none"}-${initialMode}`}
+      key={`${initialAsset?.id ?? "none"}-${initialMode}-${initialQuantity ?? "default"}`}
       open={open}
       onOpenChange={onOpenChange}
       onClose={onClose}
       onSuccess={onSuccess}
       initialAsset={initialAsset}
       initialMode={initialMode}
+      initialQuantity={initialQuantity}
+      initialTotalCents={initialTotalCents}
     />
   );
 }

@@ -18,6 +18,16 @@ let mockTargets = [{ asset_id: "asset-1", target_percentage: 20 }];
 let mockAssetsList: PortfolioAsset[] = [mockAsset];
 const mockRecordOrder = vi.fn().mockResolvedValue({ success: true });
 
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      invalidateQueries: vi.fn(),
+    }),
+  };
+});
+
 vi.mock("@/state", () => ({
   useUserSubscription: () => ({
     canWrite: true,
@@ -253,5 +263,24 @@ describe("InvestmentWizard (Fase 41)", () => {
     // No passo 2, deve vir preenchido com a fração exata 0.5
     const qtyInput = screen.getByLabelText(/Quantidade de Cotas/i) as HTMLInputElement;
     expect(qtyInput.value).toBe("0.5");
+  });
+
+  it("suporta initialQuantity e initialTotalCents pré-carregados (Fase 10)", () => {
+    render(
+      <InvestmentWizard
+        open={true}
+        onOpenChange={vi.fn()}
+        initialAsset={mockAsset}
+        initialMode="buy"
+        initialQuantity={25}
+        initialTotalCents={125000} // R$ 1.250,00
+      />,
+    );
+
+    const qtyInput = screen.getByLabelText(/Quantidade de Cotas/i) as HTMLInputElement;
+    expect(qtyInput.value).toBe("25");
+
+    expect(screen.getByText("Total Investido na Ordem")).toBeInTheDocument();
+    expect(screen.getAllByText(/750,00/).length).toBeGreaterThan(0);
   });
 });

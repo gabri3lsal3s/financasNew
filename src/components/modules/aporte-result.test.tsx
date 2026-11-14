@@ -240,6 +240,29 @@ describe("AporteResult", () => {
     await user.click(collapseBtn);
     expect(screen.queryByText("Internacional")).not.toBeInTheDocument();
   });
+
+  it("renderiza o botão CTA 'Comprar no Wizard' e dispara onOpenWizard com parâmetros corretos", async () => {
+    const onOpenWizard = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <AporteResult
+        mode="asset"
+        aporte={2000}
+        totalAllocated={2000}
+        leftover={0}
+        routes={mockRoutes}
+        onOpenWizard={onOpenWizard}
+      />,
+    );
+
+    const buyButtons = screen.getAllByRole("button", { name: "Comprar PETR4 no Wizard" });
+    expect(buyButtons.length).toBeGreaterThan(0);
+    const buyBtn = buyButtons[0];
+    if (!buyBtn) throw new Error("Botão não encontrado");
+    await user.click(buyBtn);
+
+    expect(onOpenWizard).toHaveBeenCalledWith("PETR4", 25, 1000);
+  });
 });
 
 

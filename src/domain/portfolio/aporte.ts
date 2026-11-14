@@ -81,6 +81,7 @@ export interface SectorAporteSummary {
 export interface AporteAssetInput {
   id: string;
   ticker: string;
+  name?: string | null;
   assetClass: string | null;
   sector?: string | null;
   currency: AssetCurrency;
@@ -88,10 +89,67 @@ export interface AporteAssetInput {
   currentValueBRL: number;
   /** Preço unitário em BRL (já convertido) — 0 = sem preço (não comprável). */
   priceBRL: number;
+  /** Custo médio unitário (BRL) para cálculo de desconto frente ao PM. */
+  averageCost?: number;
   /** Meta individual (% do patrimônio) — null = sem meta. */
   targetPercentage: number | null;
   /** Indica se aceita compra fracionária (override manual). */
   isFractional?: boolean;
+}
+
+export type RebalanceMode = "sector_oriented" | "asset_prescriptive";
+
+export interface SectorOpportunityItem {
+  assetId: string;
+  ticker: string;
+  name?: string | null;
+  assetClass: string;
+  sector: string;
+  currentPrice: number;
+  averageCost: number;
+  /** Variação % frente ao PM (ex: -8.5% = descontado). */
+  diffVsAveragePct: number;
+  currentWeightPct: number;
+  currentValueBRL: number;
+  bazinTargetPrice?: number | null;
+  marginOfSafetyPct?: number | null;
+  /** Cotas sugeridas caso este ativo absorva o orçamento do setor. */
+  suggestedQty: number;
+  suggestedTotalBRL: number;
+}
+
+export interface SectorAporteGroup {
+  className: string;
+  sectorName: string;
+  targetPctInClass: number;
+  effectiveTargetPct: number;
+  targetValueBRL: number;
+  currentValueBRL: number;
+  gapBRL: number;
+  deficitRel: number;
+  budgetAllocatedBRL: number;
+  assets: SectorOpportunityItem[];
+}
+
+export interface UnifiedAporteOptions {
+  mode?: RebalanceMode;
+  aporteAmount?: number;
+  cashAvailableBRL?: number;
+  assets: readonly AporteAssetInput[];
+  classTargets: readonly ClassTargetInput[];
+  sectorTargets?: readonly SectorTargetInput[];
+  strategy?: AporteStrategy;
+  totalPortfolioBRL?: number;
+}
+
+export interface UnifiedAporteResult {
+  mode: RebalanceMode;
+  totalAllocatedBRL: number;
+  leftoverBRL: number;
+  classSummaries: ClassAporteSummary[];
+  sectorGroups: SectorAporteGroup[];
+  prescriptiveRoutes: AporteRoute[];
+  skippedAssets: SkippedAssetDiagnostic[];
 }
 
 export interface ClassTargetInput {
@@ -273,6 +331,7 @@ export function simulateAporte(opts: {
   assets: readonly AporteAssetInput[];
   classTargets: readonly ClassTargetInput[];
   sectorTargets?: readonly SectorTargetInput[];
+  totalPortfolioBRL?: number;
 }): AporteResult {
   const strategy: AporteStrategy = opts.strategy ?? "proportional";
   const aporte = round2(nonNegative(opts.aporte));
@@ -293,7 +352,8 @@ export function simulateAporte(opts: {
   }
 
   const totalAtual = round2(opts.assets.reduce((acc, a) => acc + nonNegative(a.currentValueBRL), 0));
-  const patrimonioAlvo = round2(totalAtual + aporte);
+  const basePatrimonio = opts.totalPortfolioBRL && opts.totalPortfolioBRL > 0 ? opts.totalPortfolioBRL : totalAtual;
+  const patrimonioAlvo = round2(basePatrimonio + aporte);
   if (!(patrimonioAlvo > 0)) {
     return {
       mode: opts.mode,
@@ -490,7 +550,19 @@ export function simulateAporte(opts: {
   const classMacros: InternalClassMacro[] = [];
   const sectorMacrosByClass = new Map<string, InternalSectorMacro[]>();
 
-  for (const [className, sectorMap] of assetsByClassAndSector) {
+  // União das classes com ativos + classes com meta configurada (Blindagem B3)
+  const allClasses = new Set<string>();
+  for (const className of assetsByClassAndSector.keys()) {
+    allClasses.add(className);
+  }
+  for (const ct of opts.classTargets) {
+    if (ct.targetPercentage > 0) {
+      allClasses.add(ct.className);
+    }
+  }
+
+  for (const className of allClasses) {
+    const sectorMap = assetsByClassAndSector.get(className);
     const normClass = normalizeClassName(className);
     let classTargetValueBRL = 0;
     let classTargetPct = classTargetMap.get(normClass) ?? 0;
@@ -500,48 +572,50 @@ export function simulateAporte(opts: {
     const sectorMacroList: InternalSectorMacro[] = [];
     const sectorsWithTarget = sectorTargetMap.get(normClass);
 
-    for (const [sectorName, members] of sectorMap) {
-      let sectorTargetValBRL = 0;
-      let sectorCurrentValBRL = 0;
-      let sectorMemberGapsBRL = 0;
+    if (sectorMap && sectorMap.size > 0) {
+      for (const [sectorName, members] of sectorMap) {
+        let sectorTargetValBRL = 0;
+        let sectorCurrentValBRL = 0;
+        let sectorMemberGapsBRL = 0;
 
-      for (const member of members) {
-        sectorCurrentValBRL += nonNegative(member.currentValueBRL);
-        const eff = effectiveAssetMap.get(member.id);
-        if (eff) {
-          sectorTargetValBRL += eff.targetValueBRL;
-          if (member.priceBRL > 0) {
-            sectorMemberGapsBRL += eff.gapBRL;
+        for (const member of members) {
+          sectorCurrentValBRL += nonNegative(member.currentValueBRL);
+          const eff = effectiveAssetMap.get(member.id);
+          if (eff) {
+            sectorTargetValBRL += eff.targetValueBRL;
+            if (member.priceBRL > 0) {
+              sectorMemberGapsBRL += eff.gapBRL;
+            }
           }
         }
+
+        sectorCurrentValBRL = round2(sectorCurrentValBRL);
+        sectorMemberGapsBRL = round2(sectorMemberGapsBRL);
+        sectorTargetValBRL = round2(sectorTargetValBRL);
+
+        const targetPctInClass = sectorsWithTarget?.get(sectorName) ?? 0;
+        const effectiveTargetPct = round2((sectorTargetValBRL / patrimonioAlvo) * 100);
+
+        const sectorDeficitRel =
+          sectorTargetValBRL > 0
+            ? Math.max(0, (sectorTargetValBRL - sectorCurrentValBRL) / sectorTargetValBRL)
+            : (sectorCurrentValBRL === 0 && sectorMemberGapsBRL > 0 ? 1 : 0);
+
+        sectorMacroList.push({
+          className,
+          sectorName,
+          targetPctInClass,
+          effectiveTargetPct,
+          targetValueBRL: sectorTargetValBRL,
+          currentValueBRL: sectorCurrentValBRL,
+          gapBRL: sectorMemberGapsBRL,
+          deficitRel: sectorDeficitRel,
+        });
+
+        classCurrentValueBRL += sectorCurrentValBRL;
+        classTargetValueBRL += sectorTargetValBRL;
+        sumMemberGapsBRL += sectorMemberGapsBRL;
       }
-
-      sectorCurrentValBRL = round2(sectorCurrentValBRL);
-      sectorMemberGapsBRL = round2(sectorMemberGapsBRL);
-      sectorTargetValBRL = round2(sectorTargetValBRL);
-
-      const targetPctInClass = sectorsWithTarget?.get(sectorName) ?? 0;
-      const effectiveTargetPct = round2((sectorTargetValBRL / patrimonioAlvo) * 100);
-
-      const sectorDeficitRel =
-        sectorTargetValBRL > 0
-          ? Math.max(0, (sectorTargetValBRL - sectorCurrentValBRL) / sectorTargetValBRL)
-          : (sectorCurrentValBRL === 0 && sectorMemberGapsBRL > 0 ? 1 : 0);
-
-      sectorMacroList.push({
-        className,
-        sectorName,
-        targetPctInClass,
-        effectiveTargetPct,
-        targetValueBRL: sectorTargetValBRL,
-        currentValueBRL: sectorCurrentValBRL,
-        gapBRL: sectorMemberGapsBRL,
-        deficitRel: sectorDeficitRel,
-      });
-
-      classCurrentValueBRL += sectorCurrentValBRL;
-      classTargetValueBRL += sectorTargetValBRL;
-      sumMemberGapsBRL += sectorMemberGapsBRL;
     }
 
     if (opts.mode === "class" || (opts.mode === "both" && classTargetPct > 0)) {
@@ -556,7 +630,8 @@ export function simulateAporte(opts: {
     let gapBRL: number;
     if (opts.mode === "class" || (opts.mode === "both" && classTargetPct > 0)) {
       const classLevelGap = round2(Math.max(0, classTargetValueBRL - classCurrentValueBRL));
-      gapBRL = Math.min(sumMemberGapsBRL, classLevelGap);
+      // Se não há membros na classe, gapBRL = classLevelGap para registrar necessidade (Blindagem B3)
+      gapBRL = !sectorMap || sectorMap.size === 0 ? classLevelGap : Math.min(sumMemberGapsBRL, classLevelGap);
     } else {
       gapBRL = sumMemberGapsBRL;
     }
@@ -1083,6 +1158,7 @@ export function simulateCombinedAporte(opts: {
   classTargets: readonly ClassTargetInput[];
   sectorTargets?: readonly SectorTargetInput[];
   strategy?: AporteStrategy;
+  totalPortfolioBRL?: number;
 }): AporteResult {
   return simulateAporte({
     mode: "both",
@@ -1091,5 +1167,260 @@ export function simulateCombinedAporte(opts: {
     assets: opts.assets,
     classTargets: opts.classTargets,
     sectorTargets: opts.sectorTargets,
+    totalPortfolioBRL: opts.totalPortfolioBRL,
   });
+}
+
+/**
+ * Motor Canônico Unificado de Sugestões de Aporte & Cascata Hierárquica — FASE 10.
+ *
+ * Single Source of Truth para o Painel de Aportes e Wizard de Investimentos:
+ *   1. Modo Orientação Setorial: Orça o capital necessário por Classe e Setor defasados
+ *      e enriquece os ativos com métricas de oportunidade (% vs Preço Médio, margem de
+ *      segurança), permitindo ao investidor direcionar o orçamento do setor no ativo descontado.
+ *   2. Modo Prescritivo por Ativo: Calcula cotas diretas e precisas por ticker.
+ *   3. Cascata Hierárquica Suave (Graceful Fallback):
+ *      • Classes (100% obrigatório) -> Setores (opcional) -> Ativos (opcional).
+ *      • Se faltar meta de ativo, orça pelo setor; se faltar setor, orça pela classe.
+ *   4. Blindagem B2 (Aporte/Caixa Zero): Quando não há aporte ou caixa, calcula cotas
+ *      ideais com base no gap da meta em vez de zerar sugestões.
+ *   5. Blindagem B3 (Classes sem ativos): Alerta suave para classes carentes sem travar o motor.
+ *   6. Blindagem B5 (Ativos sem preço): Isola em skippedAssets sem bloquear os demais.
+ */
+export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteResult {
+  const mode: RebalanceMode = opts.mode ?? "sector_oriented";
+  const strategy: AporteStrategy = opts.strategy ?? "optimized";
+  const aporteAmount = opts.aporteAmount && opts.aporteAmount > 0 ? round2(opts.aporteAmount) : 0;
+  const cashAvailableBRL = opts.cashAvailableBRL && opts.cashAvailableBRL > 0 ? round2(opts.cashAvailableBRL) : 0;
+
+  const totalAtual = round2(opts.assets.reduce((acc, a) => acc + nonNegative(a.currentValueBRL), 0));
+  const portfolioBase = opts.totalPortfolioBRL && opts.totalPortfolioBRL > 0 ? opts.totalPortfolioBRL : totalAtual;
+
+  // Agrupamento por classe e setor
+  const assetsByClass = new Map<string, AporteAssetInput[]>();
+  const assetsByClassAndSector = new Map<string, Map<string, AporteAssetInput[]>>();
+
+  for (const asset of opts.assets) {
+    const cls = asset.assetClass || "Ações";
+    const sec = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, cls);
+
+    let classList = assetsByClass.get(cls);
+    if (!classList) {
+      classList = [];
+      assetsByClass.set(cls, classList);
+    }
+    classList.push(asset);
+
+    let secMap = assetsByClassAndSector.get(cls);
+    if (!secMap) {
+      secMap = new Map();
+      assetsByClassAndSector.set(cls, secMap);
+    }
+    let secList = secMap.get(sec);
+    if (!secList) {
+      secList = [];
+      secMap.set(sec, secList);
+    }
+    secList.push(asset);
+  }
+
+  // Executa simulação combinada com valor efetivo
+  // Se aporteAmount = 0, usa cashAvailableBRL ou uma referência nominal de 5% da carteira (ou R$ 1.000)
+  const isZeroAporte = aporteAmount === 0;
+  const effectiveSimAporte = !isZeroAporte
+    ? aporteAmount
+    : cashAvailableBRL > 0
+      ? cashAvailableBRL
+      : Math.max(100, round2(portfolioBase > 0 ? portfolioBase * 0.05 : 1000));
+
+  const simResult = simulateCombinedAporte({
+    aporte: effectiveSimAporte,
+    assets: opts.assets,
+    classTargets: opts.classTargets,
+    sectorTargets: opts.sectorTargets,
+    strategy,
+    totalPortfolioBRL: portfolioBase,
+  });
+
+  const skippedAssets: SkippedAssetDiagnostic[] = [...simResult.skippedAssets];
+
+  // Blindagem B3: Detectar classes com meta definida mas sem ativos cadastrados
+  for (const ct of opts.classTargets) {
+    if (ct.targetPercentage > 0) {
+      const norm = normalizeClassName(ct.className);
+      const hasAssets =
+        assetsByClass.has(ct.className) ||
+        Array.from(assetsByClass.keys()).some((k) => normalizeClassName(k) === norm);
+
+      if (!hasAssets) {
+        skippedAssets.push({
+          assetId: `unassigned_class_${ct.className}`,
+          ticker: ct.className,
+          assetClass: ct.className,
+          reason: "no_target",
+          detail: `Classe com meta de ${ct.targetPercentage}% mas sem ativos cadastrados no momento.`,
+        });
+      }
+    }
+  }
+
+  // Construção dos Grupos Setoriais
+  const sectorGroups: SectorAporteGroup[] = [];
+
+  // Mapear resumos existentes de simulateCombinedAporte
+  const summaryBySectorKey = new Map<string, SectorAporteSummary>();
+  for (const s of simResult.sectorSummaries) {
+    summaryBySectorKey.set(`${normalizeClassName(s.className)}::${s.sectorName.trim()}`, s);
+  }
+
+  for (const [className, sectorMap] of assetsByClassAndSector) {
+    const normClass = normalizeClassName(className);
+    const classSummary = simResult.classSummaries.find((cs) => normalizeClassName(cs.className) === normClass);
+    const classDeficitRel = classSummary && classSummary.targetValueBRL > 0
+      ? Math.max(0, (classSummary.targetValueBRL - classSummary.currentValueBRL) / classSummary.targetValueBRL)
+      : 0;
+
+    for (const [sectorName, members] of sectorMap) {
+      const key = `${normClass}::${sectorName.trim()}`;
+      const existingSummary = summaryBySectorKey.get(key);
+
+      const sectorCurrentValBRL = round2(members.reduce((acc, m) => acc + nonNegative(m.currentValueBRL), 0));
+      let sectorTargetValBRL = existingSummary?.targetValueBRL ?? 0;
+      let sectorGapBRL = existingSummary?.gapBRL ?? 0;
+      let budgetAllocatedBRL = !isZeroAporte
+        ? (existingSummary?.budgetAllocatedBRL ?? 0)
+        : round2(existingSummary?.gapBRL ?? 0);
+
+      // Cascata: se não havia meta setorial configurada e o summary ficou zero, infere da classe
+      if (!(sectorTargetValBRL > 0) && classSummary && classSummary.targetValueBRL > 0) {
+        const sectorCount = sectorMap.size;
+        sectorTargetValBRL = round2(classSummary.targetValueBRL / Math.max(1, sectorCount));
+        sectorGapBRL = round2(Math.max(0, sectorTargetValBRL - sectorCurrentValBRL));
+        if (isZeroAporte) {
+          budgetAllocatedBRL = sectorGapBRL;
+        } else if (classSummary.budgetAllocatedBRL > 0) {
+          budgetAllocatedBRL = round2(classSummary.budgetAllocatedBRL / Math.max(1, sectorCount));
+        }
+      }
+
+      // Blindagem B2: se aporteAmount é 0 e cashAvailableBRL é 0, o gap deve refletir a defasagem até a meta do patrimônio base
+      if (isZeroAporte && cashAvailableBRL <= 0) {
+        const classTargetPct = opts.classTargets.find((ct) => normalizeClassName(ct.className) === normClass)?.targetPercentage ?? 0;
+        const sectorCount = Math.max(1, sectorMap.size);
+        const effectiveSectorTargetVal = round2(((classTargetPct / 100) * portfolioBase) / sectorCount);
+        sectorTargetValBRL = effectiveSectorTargetVal;
+        sectorGapBRL = round2(Math.max(0, effectiveSectorTargetVal - sectorCurrentValBRL));
+        budgetAllocatedBRL = sectorGapBRL;
+      }
+
+      const deficitRel =
+        sectorTargetValBRL > 0
+          ? Math.max(0, (sectorTargetValBRL - sectorCurrentValBRL) / sectorTargetValBRL)
+          : classDeficitRel;
+
+      const opportunityItems: SectorOpportunityItem[] = [];
+
+      for (const member of members) {
+        const currentPrice = member.priceBRL;
+        const averageCost =
+          member.averageCost && member.averageCost > 0
+            ? member.averageCost
+            : currentPrice > 0
+              ? currentPrice
+              : 0;
+
+        const diffVsAveragePct =
+          averageCost > 0 && currentPrice > 0
+            ? Math.round(((currentPrice - averageCost) / averageCost) * 1000) / 10
+            : 0;
+
+        const currentWeightPct =
+          portfolioBase > 0 ? Math.round((nonNegative(member.currentValueBRL) / portfolioBase) * 1000) / 10 : 0;
+
+        // Cálculo de absorção do orçamento do setor
+        let usableBudget = budgetAllocatedBRL > 0 ? budgetAllocatedBRL : sectorGapBRL;
+        if (cashAvailableBRL > 0) {
+          usableBudget = Math.min(usableBudget, cashAvailableBRL);
+        }
+        if (usableBudget <= 0 && sectorGapBRL > 0) {
+          usableBudget = sectorGapBRL;
+        }
+
+        let suggestedQty = 0;
+        if (currentPrice > 0 && usableBudget > 0) {
+          const precision = resolveAssetPrecision(member);
+          if (precision > 0) {
+            const factor = 10 ** precision;
+            suggestedQty = Math.floor((usableBudget / currentPrice) * factor) / factor;
+          } else {
+            suggestedQty = Math.max(1, Math.floor(usableBudget / currentPrice));
+          }
+        }
+
+        const suggestedTotalBRL = round2(suggestedQty * currentPrice);
+
+        opportunityItems.push({
+          assetId: member.id,
+          ticker: member.ticker,
+          name: member.name ?? member.ticker,
+          assetClass: className,
+          sector: sectorName,
+          currentPrice,
+          averageCost,
+          diffVsAveragePct,
+          currentWeightPct,
+          currentValueBRL: round2(member.currentValueBRL),
+          bazinTargetPrice: null,
+          marginOfSafetyPct: null,
+          suggestedQty,
+          suggestedTotalBRL,
+        });
+      }
+
+      // Ordenação de ativos dentro do setor:
+      // 1. Ativos com desconto frente ao PM (diffVsAveragePct < 0), mais descontados primeiro
+      // 2. Demais ativos ordenados pelo menor peso na carteira
+      opportunityItems.sort((a, b) => {
+        const aDiscount = a.diffVsAveragePct < 0;
+        const bDiscount = b.diffVsAveragePct < 0;
+        if (aDiscount && bDiscount) {
+          return a.diffVsAveragePct - b.diffVsAveragePct; // Mais negativo primeiro
+        }
+        if (aDiscount) return -1;
+        if (bDiscount) return 1;
+        return a.currentWeightPct - b.currentWeightPct;
+      });
+
+      sectorGroups.push({
+        className,
+        sectorName,
+        targetPctInClass: existingSummary?.targetPctInClass ?? 0,
+        effectiveTargetPct: existingSummary?.effectiveTargetPct ?? 0,
+        targetValueBRL: sectorTargetValBRL,
+        currentValueBRL: sectorCurrentValBRL,
+        gapBRL: sectorGapBRL,
+        deficitRel,
+        budgetAllocatedBRL,
+        assets: opportunityItems,
+      });
+    }
+  }
+
+  // Ordena os setores pelo maior déficit relativo
+  sectorGroups.sort((a, b) => {
+    if (Math.abs(b.deficitRel - a.deficitRel) > 0.001) {
+      return b.deficitRel - a.deficitRel;
+    }
+    return b.gapBRL - a.gapBRL;
+  });
+
+  return {
+    mode,
+    totalAllocatedBRL: !isZeroAporte ? simResult.totalAllocated : 0,
+    leftoverBRL: !isZeroAporte ? simResult.leftover : 0,
+    classSummaries: simResult.classSummaries,
+    sectorGroups,
+    prescriptiveRoutes: simResult.routes,
+    skippedAssets,
+  };
 }

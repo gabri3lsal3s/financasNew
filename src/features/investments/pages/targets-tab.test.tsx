@@ -214,4 +214,32 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
     expect(screen.getByText("Salvar Cenário de Alocação")).toBeInTheDocument();
     expect(screen.getByLabelText("Nome do Cenário")).toBeInTheDocument();
   });
+
+  it("exibe barra de progresso, botão Distribuir Restante e preserva data-tour (Fase 10 / B10)", async () => {
+    const user = userEvent.setup();
+    renderTargetsTab();
+
+    // Preserva data-tour do card de classes (B10)
+    const classesCard = screen.getByRole("region", { name: "Metas por classe" });
+    expect(classesCard).toHaveAttribute("data-tour", "targets-classes-card");
+
+    // Verifica presença da barra de progresso macro (Ações tem meta 60%, FIIs tem 0% -> soma 60%, faltam 40%)
+    expect(screen.getByText("Total alocado em classes:")).toBeInTheDocument();
+    expect(screen.getByText(/Faltam 40\.0%/i)).toBeInTheDocument();
+
+    // Botão 1-toque Distribuir Restante
+    const distributeRemainingBtn = screen.getByRole("button", { name: /Distribuir restante \(40\.0%\)/i });
+    expect(distributeRemainingBtn).toBeInTheDocument();
+
+    // Clica no botão para fechar 100%
+    await user.click(distributeRemainingBtn);
+
+    // Agora deve estar em 100% completo
+    expect(screen.getByText(/Completo/i)).toBeInTheDocument();
+
+    // Navega para aba Ativos e valida data-tour (B10)
+    await user.click(screen.getByRole("tab", { name: "Ativos" }));
+    const assetsCard = screen.getByRole("region", { name: "Metas por ativo" });
+    expect(assetsCard).toHaveAttribute("data-tour", "targets-assets-card");
+  });
 });

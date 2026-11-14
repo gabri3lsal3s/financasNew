@@ -102,7 +102,7 @@ export async function getPublicShareByToken(token: string): Promise<PublicShare 
   } catch (error) {
     // Se a RPC falhar por qualquer motivo (ex: em mocks ou antes da migration ser aplicada),
     // prossegue para a consulta direta por compatibilidade.
-    if (process.env.NODE_ENV === "development") {
+    if (import.meta.env.DEV) {
       console.warn("Falha na chamada da RPC get_public_share_by_token, tentando fallback direto:", error);
     }
   }

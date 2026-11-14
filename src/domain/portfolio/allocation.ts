@@ -108,6 +108,37 @@ export function sanitizeTargetsForSave<T extends { assetId: string; target: numb
   return result;
 }
 
+/**
+ * Higieniza metas de grupo (classes ou setores) antes de enviar ao servidor:
+ * 1. Arredonda todos os valores para 2 casas decimais.
+ * 2. Garante que a soma total não ultrapasse 100.00% por dízimas ou ponto flutuante (§Blindagem B11).
+ */
+export function sanitizeGroupTargetsForSave<T extends { name: string; target: number }>(
+  targets: readonly T[],
+): T[] {
+  const result = targets.map((t) => ({
+    ...t,
+    target: Math.max(0, Math.round((Number.isFinite(t.target) ? t.target : 0) * 100) / 100),
+  }));
+
+  const sum = Math.round(result.reduce((acc, t) => acc + t.target, 0) * 100) / 100;
+  if (sum > 100) {
+    const diff = Math.round((sum - 100) * 100) / 100;
+    for (let i = result.length - 1; i >= 0; i--) {
+      const item = result[i];
+      if (item && item.target >= diff) {
+        result[i] = {
+          ...item,
+          target: Math.round((item.target - diff) * 100) / 100,
+        };
+        break;
+      }
+    }
+  }
+
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Ações Rápidas de Alocação (1/N, Espelhamento e Comparativo de Gap)
 // ---------------------------------------------------------------------------

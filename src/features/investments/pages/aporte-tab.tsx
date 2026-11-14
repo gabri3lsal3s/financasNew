@@ -19,8 +19,11 @@ import {
   useAllocationTargets,
   useExecutePortfolioBatchAporte,
   useGroupTargets,
+  usePortfolioAssets,
   usePortfolioPosition,
 } from "@/state";
+import { InvestmentWizard } from "../wizard";
+import type { PortfolioAsset } from "@/types";
 
 /**
  * Calculadora de aporte (§F36) — simulação hierárquica unificada (Classe -> Setor -> Ativo).
@@ -40,7 +43,24 @@ export function AporteTab({
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
+  const assetsQuery = usePortfolioAssets();
   const executeBatch = useExecutePortfolioBatchAporte();
+
+  // Estados do Investment Wizard integrado (§F36)
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardAsset, setWizardAsset] = useState<PortfolioAsset | null>(null);
+  const [wizardQuantity, setWizardQuantity] = useState<number | undefined>(undefined);
+  const [wizardTotalCents, setWizardTotalCents] = useState<number | undefined>(undefined);
+
+  const handleOpenWizardForAsset = useCallback((ticker: string, quantity: number, allocatedBRL?: number) => {
+    const asset = (assetsQuery.data ?? []).find((a) => a.ticker.toUpperCase() === ticker.toUpperCase()) ?? null;
+    if (asset) {
+      setWizardAsset(asset);
+      setWizardQuantity(quantity > 0 ? quantity : undefined);
+      setWizardTotalCents(allocatedBRL && allocatedBRL > 0 ? Math.round(allocatedBRL * 100) : undefined);
+      setWizardOpen(true);
+    }
+  }, [assetsQuery.data]);
 
   // Valor do aporte: por padrão ZERO (R$ 0,00)
   const [userAporteCents, setUserAporteCents] = useState<number>(0);
@@ -346,6 +366,7 @@ export function AporteTab({
                 sectorSummaries={result.sectorSummaries}
                 skippedAssets={result.skippedAssets}
                 onExecuteAporte={handleTriggerAporte}
+                onOpenWizard={handleOpenWizardForAsset}
                 executing={isApplying}
               />
             </div>
@@ -384,6 +405,21 @@ export function AporteTab({
         confirmLabel="Aplicar aporte"
         confirmPending={isApplying}
         onConfirm={() => void handleExecuteBatch()}
+      />
+
+      <InvestmentWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        initialAsset={wizardAsset}
+        initialQuantity={wizardQuantity}
+        initialTotalCents={wizardTotalCents}
+        onSuccess={() => {
+          void position.refetch();
+          void targetsQuery.refetch();
+          void classTargetsQuery.refetch();
+          void sectorTargetsQuery.refetch();
+          void assetsQuery.refetch();
+        }}
       />
 
       {upgradeModal}

@@ -6,6 +6,16 @@ import { AporteTab } from "./aporte-tab";
 
 const mockExecuteBatch = vi.fn().mockResolvedValue({ success: true, count: 1 });
 
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      invalidateQueries: vi.fn(),
+    }),
+  };
+});
+
 vi.mock("@/state", () => ({
   useUserSubscription: () => ({
     canWrite: true,
@@ -35,20 +45,93 @@ vi.mock("@/state", () => ({
     totalBRL: 6000,
     isLoading: false,
     error: null,
+    refetch: vi.fn(),
+  }),
+  usePortfolioAssets: () => ({
+    data: [
+      {
+        id: "a1",
+        ticker: "PETR4",
+        asset_class: "Ações",
+        quantity: 125,
+        average_price: 35,
+        currency: "BRL",
+      },
+    ],
+    isLoading: false,
+    error: null,
+    refetch: vi.fn(),
   }),
   useAllocationTargets: () => ({
     data: [{ id: "t1", asset_id: "a1", target_percentage: 100 }],
     isLoading: false,
     error: null,
+    refetch: vi.fn(),
   }),
   useGroupTargets: () => ({
     data: [],
     isLoading: false,
     error: null,
+    refetch: vi.fn(),
   }),
   useExecutePortfolioBatchAporte: () => ({
     mutateAsync: mockExecuteBatch,
     isPending: false,
+  }),
+  useCreatePortfolioTransaction: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: "tx1" }),
+    isPending: false,
+  }),
+  useCreatePortfolioContribution: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useSetManualPrice: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  }),
+  useFamilyMode: () => ({ isFamilyModeEnabled: false }),
+  useMyFamily: () => ({ data: null, isLoading: false }),
+  useCreatePortfolioAsset: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: "a2" }),
+    isPending: false,
+  }),
+  useSaveAllocationTargets: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useSaveGroupTarget: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useRecordOrder: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+    isPending: false,
+  }),
+  useAssetPrices: () => ({
+    data: [],
+    isLoading: false,
+    error: null,
+  }),
+  useAllPortfolioTransactions: () => ({
+    data: [],
+    isLoading: false,
+  }),
+  usePortfolioContributions: () => ({
+    data: [],
+    isLoading: false,
+  }),
+  usePortfolioSnapshots: () => ({
+    data: [],
+    isLoading: false,
+  }),
+  usePortfolioDividends: () => ({
+    data: [],
+    isLoading: false,
+  }),
+  useAccounts: () => ({
+    data: [],
+    isLoading: false,
   }),
 }));
 
@@ -141,5 +224,26 @@ describe("AporteTab — Calculadora e Aportes", () => {
     expect(
       screen.getByText(/não configurando análise de valores mobiliários, consultoria financeira ou recomendação/i),
     ).toBeInTheDocument();
+  });
+
+  it("permite abrir o InvestmentWizard a partir da sugestão de aporte com o ativo pré-carregado", async () => {
+    vi.useFakeTimers();
+    const user = userEvent.setup({ delay: null });
+    render(
+      <MemoryRouter initialEntries={["/investimentos?tab=aporte&valor=100000"]}>
+        <AporteTab />
+      </MemoryRouter>,
+    );
+
+    await vi.runAllTimersAsync();
+    vi.useRealTimers();
+
+    const buyButtons = screen.getAllByRole("button", { name: /Comprar PETR4 no Wizard/i });
+    expect(buyButtons.length).toBeGreaterThanOrEqual(1);
+    const buyBtn = buyButtons[0];
+    if (!buyBtn) throw new Error("Botão não encontrado");
+    await user.click(buyBtn);
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

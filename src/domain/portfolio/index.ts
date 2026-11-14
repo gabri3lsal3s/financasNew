@@ -338,6 +338,7 @@ export {
   groupAssetsByClassAndSector,
   mirrorCurrentPositionTargets,
   parseTargetInput,
+  sanitizeGroupTargetsForSave,
   sanitizeTargetsForSave,
   targetsSum,
   validateClassSectorTargetsSum,
@@ -357,6 +358,7 @@ export type {
   SystemPresetTemplate,
 } from "./presets";
 export {
+  getAporteSuggestions,
   isFractionalAsset,
   resolveAssetPrecision,
   simulateAporte,
@@ -371,10 +373,15 @@ export type {
   AporteRoute,
   ClassAporteSummary,
   ClassTargetInput,
+  RebalanceMode,
+  SectorAporteGroup,
   SectorAporteSummary,
+  SectorOpportunityItem,
   SectorTargetInput,
   SkippedAssetDiagnostic,
   SkippedReason,
+  UnifiedAporteOptions,
+  UnifiedAporteResult,
 } from "./aporte";
 export {
   detectPortfolioColumns,

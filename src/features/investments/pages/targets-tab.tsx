@@ -12,6 +12,7 @@ import {
   mirrorCurrentPositionTargets,
   normalizeAllocationTargets,
   parseTargetInput,
+  sanitizeGroupTargetsForSave,
   validateClassSectorTargetsSum,
   validateTargetsSum,
 } from "@/domain/portfolio";
@@ -348,9 +349,21 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     setError(null);
     setSavingClass("all");
     try {
-      for (const className of classes) {
-        await saveClassTarget.mutateAsync({ name: className, target: classTargetOf(className) });
+      const rawTargets = classes.map((className) => ({
+        name: className,
+        target: classTargetOf(className),
+      }));
+      const sanitized = sanitizeGroupTargetsForSave(rawTargets);
+
+      const promises: Promise<unknown>[] = [];
+      for (const item of sanitized) {
+        if (item.target > 0) {
+          promises.push(saveClassTarget.mutateAsync({ name: item.name, target: item.target }));
+        } else {
+          promises.push(removeClassTarget.mutateAsync(item.name));
+        }
       }
+      await Promise.all(promises);
       setClassDraft({});
       triggerSensory("success");
       pushToast({ title: "Metas de classes salvas com sucesso!", variant: "success" });
@@ -409,9 +422,21 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     setError(null);
     setSavingSector("all");
     try {
-      for (const sectorName of availableSectors) {
-        await saveSectorTarget.mutateAsync({ name: sectorName, target: sectorTargetOf(sectorName) });
+      const rawTargets = availableSectors.map((sectorName) => ({
+        name: sectorName,
+        target: sectorTargetOf(sectorName),
+      }));
+      const sanitized = sanitizeGroupTargetsForSave(rawTargets);
+
+      const promises: Promise<unknown>[] = [];
+      for (const item of sanitized) {
+        if (item.target > 0) {
+          promises.push(saveSectorTarget.mutateAsync({ name: item.name, target: item.target }));
+        } else {
+          promises.push(removeSectorTarget.mutateAsync(item.name));
+        }
       }
+      await Promise.all(promises);
       setSectorDraft({});
       triggerSensory("success");
       pushToast({ title: `Metas setoriais de ${activeSectorClass} salvas!`, variant: "success" });
@@ -451,6 +476,40 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
       nextDraft[item.id] = item.targetPercentage;
     });
     setClassDraft((prev) => ({ ...prev, ...nextDraft }));
+    triggerSensory("selection");
+  };
+
+  const handleDistributeRemainingClasses = () => {
+    setError(null);
+    const sum = classRows.reduce((acc, r) => acc + r.target, 0);
+    const remaining = Math.max(0, Math.round((100 - sum) * 100) / 100);
+    if (!(remaining > 0)) return;
+
+    // Se houver classes com meta zero, prioriza preenchê-las; caso contrário distribui entre todas
+    const zeroClasses = classes.filter((c) => classTargetOf(c) === 0);
+    const targetClasses = zeroClasses.length > 0 ? zeroClasses : classes;
+    const perClass = Math.round((remaining / targetClasses.length) * 100) / 100;
+
+    const nextDraft: Record<string, number> = {};
+    let assigned = 0;
+    targetClasses.forEach((c, idx) => {
+      const isLast = idx === targetClasses.length - 1;
+      const add = isLast ? Math.max(0, Math.round((remaining - assigned) * 100) / 100) : perClass;
+      assigned += add;
+      nextDraft[c] = Math.round((classTargetOf(c) + add) * 100) / 100;
+    });
+
+    const rawTargets = classes.map((c) => ({
+      name: c,
+      target: nextDraft[c] ?? classTargetOf(c),
+    }));
+    const sanitized = sanitizeGroupTargetsForSave(rawTargets);
+    const finalDraft: Record<string, number> = {};
+    sanitized.forEach((item) => {
+      finalDraft[item.name] = item.target;
+    });
+
+    setClassDraft((prev) => ({ ...prev, ...finalDraft }));
     triggerSensory("selection");
   };
 
@@ -766,6 +825,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                   savingClass={savingClass}
                   onNormalizeClasses={handleNormalizeClasses}
                   onDistributeClassesEqually={handleDistributeClassesEqually}
+                  onDistributeRemaining={handleDistributeRemainingClasses}
                   onResetClassesZero={handleResetClassesZero}
                   onClassTargetChange={(c, v) => setClassDraft((prev) => ({ ...prev, [c]: v }))}
                   onSaveClass={(c) => void saveClass(c)}

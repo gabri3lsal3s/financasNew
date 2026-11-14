@@ -1,8 +1,9 @@
-import { useMemo } from "react";
-import { Check, Plus, Sparkles } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Check, ChevronDown, ChevronUp, Layers, Plus, Sparkles, Target } from "lucide-react";
 import { Badge, Button, FormField, SearchInput } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { formatPercent } from "@/services/masks";
+import { triggerSensory } from "@/services/sensory";
 import { numberToCents } from "@/domain/money";
 import {
   buildAporteSuggestions,
@@ -17,7 +18,14 @@ import {
   isFixedIncomeClass,
   isTesouroAsset,
 } from "@/domain/portfolio/valuation";
-import { resolveAssetPrecision } from "@/domain/portfolio/aporte";
+import {
+  getAporteSuggestions,
+  resolveAssetPrecision,
+  type AporteAssetInput,
+  type ClassTargetInput,
+  type SectorOpportunityItem,
+  type SectorTargetInput,
+} from "@/domain/portfolio";
 import type { AllocationTarget, PortfolioAsset } from "@/types";
 import type { InvestmentWizardState } from "./wizard-state";
 
@@ -61,8 +69,62 @@ export function StepSelect({
   );
 
   const hasTargets = targets.length > 0 || (classTargets && classTargets.length > 0) || (sectorTargets && sectorTargets.length > 0);
+  const hasSectorTargets = Boolean(sectorTargets && sectorTargets.length > 0);
 
-  // Top 3 sugestões baseadas no motor hierárquico (só são calculadas se houver metas)
+  const [viewMode, setViewMode] = useState<"sector_radar" | "direct_asset">(
+    hasSectorTargets ? "sector_radar" : "direct_asset",
+  );
+  const [expandedSectors, setExpandedSectors] = useState<Record<string, boolean>>({});
+
+  const toggleSector = (key: string) => {
+    setExpandedSectors((prev) => ({ ...prev, [key]: !prev[key] }));
+    triggerSensory("selection");
+  };
+
+  // Motor Canônico Unificado (Fase 10)
+  const unifiedAporte = useMemo(() => {
+    if (!hasTargets) return null;
+    const aporteAssets: AporteAssetInput[] = existingAssets.map((asset) => {
+      const row = assetRows.find((r) => r.assetId === asset.id);
+      const target = targets.find((t) => t.asset_id === asset.id);
+      const priceBRL = row?.priceBRL ?? Number(asset.average_price ?? 0);
+      return {
+        id: asset.id,
+        ticker: asset.ticker,
+        name: asset.notes ?? asset.ticker,
+        assetClass: asset.asset_class,
+        sector: asset.sector,
+        currency: (asset.currency ?? "BRL") as "BRL" | "USD",
+        currentValueBRL: row?.valueBRL ?? 0,
+        priceBRL,
+        averageCost: Number(asset.average_price ?? 0),
+        targetPercentage: target?.target_percentage ?? null,
+      };
+    });
+
+    const normalizedClassTargets: ClassTargetInput[] = (classTargets ?? []).map((ct) => ({
+      className: ct.name,
+      targetPercentage: ct.target_percentage,
+    }));
+
+    const normalizedSectorTargets: SectorTargetInput[] = (sectorTargets ?? []).map((st) => ({
+      className: st.className,
+      sectorName: st.sectorName,
+      targetPercentage: st.target_percentage,
+    }));
+
+    return getAporteSuggestions({
+      mode: "sector_oriented",
+      aporteAmount: 0,
+      cashAvailableBRL: cashAvailableBRL > 0 ? cashAvailableBRL : 0,
+      assets: aporteAssets,
+      classTargets: normalizedClassTargets,
+      sectorTargets: normalizedSectorTargets,
+      totalPortfolioBRL,
+    });
+  }, [hasTargets, existingAssets, assetRows, targets, classTargets, sectorTargets, totalPortfolioBRL, cashAvailableBRL]);
+
+  // Top sugestões diretas por ativo para retrocompatibilidade e modo prescritivo
   const aporteSuggestions = useMemo(
     () =>
       hasTargets
@@ -70,6 +132,22 @@ export function StepSelect({
         : [],
     [hasTargets, existingAssets, assetRows, targets, classTargets, sectorTargets, totalPortfolioBRL],
   );
+
+  const handleSelectOpportunity = (opp: SectorOpportunityItem, groupGapBRL: number) => {
+    onSelectSuggestion({
+      assetId: opp.assetId,
+      ticker: opp.ticker,
+      assetClass: opp.assetClass,
+      sector: opp.sector,
+      currentValueBRL: opp.currentValueBRL,
+      targetValueBRL: opp.currentValueBRL + groupGapBRL,
+      gapBRL: groupGapBRL,
+      targetPercentage: opp.currentWeightPct,
+      currentPercentage: opp.currentWeightPct,
+      suggestedQty: opp.suggestedQty,
+      suggestedTotalBRL: opp.suggestedTotalBRL,
+    });
+  };
 
   // Mapa de sugestão por assetId para enriquecer resultados de busca
   const suggestionByAsset = useMemo(
@@ -233,129 +311,295 @@ export function StepSelect({
               </div>
             )
           ) : (
-            <div className="flex flex-col gap-1.5">
-              {aporteSuggestions.map((item) => {
-                const asset = existingAssets.find((a) => a.id === item.assetId);
-                const row = assetRows.find((r) => r.assetId === item.assetId);
-                const priceBRL = row?.priceBRL ?? Number(asset?.average_price ?? 0);
-                const isTesouro = isTesouroAsset(item.ticker, item.assetClass);
-                const isFixedIncome = isFixedIncomeClass(item.assetClass) || isTesouro;
-                const pricingMode = getAssetPricingMode(asset ?? { ticker: item.ticker, asset_class: item.assetClass, notes: null });
-                const isTotalValue = pricingMode === "total_value" || isFixedIncome;
+            <div className="flex flex-col gap-3">
+              {/* Barra seletora de visualização (Radar de Setores vs Por Ativo Direto) */}
+              {unifiedAporte && unifiedAporte.sectorGroups.length > 0 && (
+                <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+                  <div className="flex items-center gap-1.5 bg-surface-hover/50 p-1 rounded-xl border border-border/60">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViewMode("sector_radar");
+                        triggerSensory("selection");
+                      }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        viewMode === "sector_radar"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Layers className="size-3.5 shrink-0" aria-hidden="true" />
+                      <span>Radar de Setores</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViewMode("direct_asset");
+                        triggerSensory("selection");
+                      }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        viewMode === "direct_asset"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Target className="size-3.5 shrink-0" aria-hidden="true" />
+                      <span>Por Ativo Direto</span>
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                    {viewMode === "sector_radar" ? "Oportunidades por setor" : "Prescrição direta"}
+                  </span>
+                </div>
+              )}
 
-                const name = asset?.notes ?? item.ticker;
-                const isSelected = currentCleanTicker === cleanTicker(item.ticker);
+              {/* MODO RADAR DE SETORES */}
+              {viewMode === "sector_radar" && unifiedAporte && unifiedAporte.sectorGroups.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {unifiedAporte.sectorGroups.map((group) => {
+                    const groupKey = `${group.className}::${group.sectorName}`;
+                    const isExpanded = expandedSectors[groupKey] ?? false;
+                    const displayAssets = isExpanded ? group.assets : group.assets.slice(0, 3);
+                    const hasMore = group.assets.length > 3;
 
-                // Cálculo de cabimento no saldo em caixa
-                let cashInfo: { text: string; fits: boolean; costBRL?: number } | null = null;
-                if (cashAvailableBRL > 0) {
-                  if (isTotalValue) {
-                    const amountFit = Math.min(cashAvailableBRL, item.gapBRL);
-                    cashInfo = {
-                      text: `Cabe no caixa: `,
-                      costBRL: amountFit,
-                      fits: true,
-                    };
-                  } else if (priceBRL > 0) {
-                    const precision = resolveAssetPrecision({
-                      assetClass: item.assetClass,
-                      ticker: item.ticker,
-                      currency: (asset?.currency ?? "BRL") as "BRL" | "USD",
-                    });
-                    if (precision > 0) {
-                      const factor = 10 ** precision;
-                      const maxUsefulQty = Math.floor((item.gapBRL / priceBRL) * factor) / factor;
-                      const cashQty = Math.floor((cashAvailableBRL / priceBRL) * factor) / factor;
-                      const sharesFit = Math.min(maxUsefulQty, cashQty);
-                      if (sharesFit > 0) {
+                    return (
+                      <div
+                        key={groupKey}
+                        className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-surface/70 p-3.5 shadow-xs transition-all hover:border-border"
+                      >
+                        {/* Cabeçalho do Setor */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 border-b border-border/50 pb-2.5">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-semibold text-sm text-foreground truncate">
+                              {group.sectorName}
+                            </span>
+                            <Badge variant="muted" size="xs">
+                              {group.className}
+                            </Badge>
+                            <Badge variant="positive" size="xs">
+                              Defasado
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span>Orçamento estimado:</span>
+                            <MoneyText
+                              cents={numberToCents(group.budgetAllocatedBRL)}
+                              tone="positive"
+                              className="font-bold text-positive-strong tabular-nums"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Lista de Ativos do Setor */}
+                        <div className="flex flex-col gap-1.5">
+                          {displayAssets.map((opp) => {
+                            const isSelected = currentCleanTicker === cleanTicker(opp.ticker);
+                            const isDiscounted = opp.diffVsAveragePct < 0;
+
+                            return (
+                              <button
+                                key={opp.assetId}
+                                type="button"
+                                onClick={() => handleSelectOpportunity(opp, group.gapBRL)}
+                                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] cursor-pointer ${
+                                  isSelected
+                                    ? "border-primary bg-primary/15 ring-2 ring-primary/40 shadow-xs"
+                                    : isDiscounted
+                                      ? "border-positive/30 bg-positive/5 hover:border-positive/50 hover:bg-positive/10"
+                                      : "border-border/60 bg-surface hover:border-border hover:bg-surface-hover"
+                                }`}
+                              >
+                                <div className="flex flex-col gap-0.5 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-sm font-bold text-foreground">
+                                      {opp.ticker}
+                                    </span>
+                                    {isDiscounted ? (
+                                      <Badge variant="positive" size="xs">
+                                        {Math.abs(opp.diffVsAveragePct).toFixed(1)}% abaixo do PM
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="muted" size="xs">
+                                        +{opp.diffVsAveragePct.toFixed(1)}% vs PM
+                                      </Badge>
+                                    )}
+                                    {isSelected && (
+                                      <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
+                                        <Check className="size-3" aria-hidden="true" />
+                                        Selecionado
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <span className="truncate text-xs text-muted-foreground">{opp.name}</span>
+                                </div>
+
+                                <div className="flex flex-col items-end text-right shrink-0">
+                                  <span className="text-[10px] uppercase font-semibold text-primary">
+                                    {opp.suggestedQty > 0 ? `Aportar ${opp.suggestedQty} cota(s)` : "Aportar"}
+                                  </span>
+                                  {opp.suggestedTotalBRL > 0 && (
+                                    <MoneyText
+                                      cents={numberToCents(opp.suggestedTotalBRL)}
+                                      tone="default"
+                                      className="text-[11px] tabular-nums whitespace-nowrap text-muted-foreground"
+                                    />
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* Expansor de Setores Densos (Blindagem B6) */}
+                        {hasMore && (
+                          <button
+                            type="button"
+                            onClick={() => toggleSector(groupKey)}
+                            className="flex items-center justify-center gap-1.5 pt-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <ChevronUp className="size-3.5" aria-hidden="true" />
+                                <span>Recolher ativos do setor</span>
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="size-3.5" aria-hidden="true" />
+                                <span>Ver mais {group.assets.length - 3} ativos deste setor</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* MODO POR ATIVO DIRETO */
+                <div className="flex flex-col gap-1.5">
+                  {aporteSuggestions.map((item) => {
+                    const asset = existingAssets.find((a) => a.id === item.assetId);
+                    const row = assetRows.find((r) => r.assetId === item.assetId);
+                    const priceBRL = row?.priceBRL ?? Number(asset?.average_price ?? 0);
+                    const isTesouro = isTesouroAsset(item.ticker, item.assetClass);
+                    const isFixedIncome = isFixedIncomeClass(item.assetClass) || isTesouro;
+                    const pricingMode = getAssetPricingMode(asset ?? { ticker: item.ticker, asset_class: item.assetClass, notes: null });
+                    const isTotalValue = pricingMode === "total_value" || isFixedIncome;
+
+                    const name = asset?.notes ?? item.ticker;
+                    const isSelected = currentCleanTicker === cleanTicker(item.ticker);
+
+                    let cashInfo: { text: string; fits: boolean; costBRL?: number } | null = null;
+                    if (cashAvailableBRL > 0) {
+                      if (isTotalValue) {
+                        const amountFit = Math.min(cashAvailableBRL, item.gapBRL);
                         cashInfo = {
-                          text: `Cabe no caixa: ${parseFloat(sharesFit.toFixed(precision))} cota${sharesFit > 1 ? "s" : ""} (~`,
-                          costBRL: sharesFit * priceBRL,
+                          text: `Cabe no caixa: `,
+                          costBRL: amountFit,
                           fits: true,
                         };
-                      } else {
-                        cashInfo = {
-                          text: "Saldo em caixa insuficiente para aporte",
-                          fits: false,
-                        };
-                      }
-                    } else {
-                      const maxUsefulQty = Math.floor(item.gapBRL / priceBRL);
-                      const cashQty = Math.floor(cashAvailableBRL / priceBRL);
-                      const sharesFit = Math.min(maxUsefulQty, cashQty);
-                      if (sharesFit > 0) {
-                        cashInfo = {
-                          text: `Cabe no caixa: ${sharesFit} cota${sharesFit > 1 ? "s" : ""} (~`,
-                          costBRL: sharesFit * priceBRL,
-                          fits: true,
-                        };
-                      } else {
-                        cashInfo = {
-                          text: "Saldo em caixa insuficiente para 1 cota",
-                          fits: false,
-                        };
+                      } else if (priceBRL > 0) {
+                        const precision = resolveAssetPrecision({
+                          assetClass: item.assetClass,
+                          ticker: item.ticker,
+                          currency: (asset?.currency ?? "BRL") as "BRL" | "USD",
+                        });
+                        if (precision > 0) {
+                          const factor = 10 ** precision;
+                          const maxUsefulQty = Math.floor((item.gapBRL / priceBRL) * factor) / factor;
+                          const cashQty = Math.floor((cashAvailableBRL / priceBRL) * factor) / factor;
+                          const sharesFit = Math.min(maxUsefulQty, cashQty);
+                          if (sharesFit > 0) {
+                            cashInfo = {
+                              text: `Cabe no caixa: ${parseFloat(sharesFit.toFixed(precision))} cota${sharesFit > 1 ? "s" : ""} (~`,
+                              costBRL: sharesFit * priceBRL,
+                              fits: true,
+                            };
+                          } else {
+                            cashInfo = {
+                              text: "Saldo em caixa insuficiente para aporte",
+                              fits: false,
+                            };
+                          }
+                        } else {
+                          const maxUsefulQty = Math.floor(item.gapBRL / priceBRL);
+                          const cashQty = Math.floor(cashAvailableBRL / priceBRL);
+                          const sharesFit = Math.min(maxUsefulQty, cashQty);
+                          if (sharesFit > 0) {
+                            cashInfo = {
+                              text: `Cabe no caixa: ${sharesFit} cota${sharesFit > 1 ? "s" : ""} (~`,
+                              costBRL: sharesFit * priceBRL,
+                              fits: true,
+                            };
+                          } else {
+                            cashInfo = {
+                              text: "Saldo em caixa insuficiente para 1 cota",
+                              fits: false,
+                            };
+                          }
+                        }
                       }
                     }
-                  }
-                }
 
-                return (
-                  <button
-                    key={item.assetId}
-                    type="button"
-                    onClick={() => onSelectSuggestion(item)}
-                    className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] ${
-                      isSelected
-                        ? "border-primary bg-primary/15 ring-2 ring-primary/40 shadow-xs"
-                        : "border-primary/20 bg-primary/5 hover:border-primary/40 hover:bg-primary/10"
-                    }`}
-                  >
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm font-bold text-foreground">{item.ticker}</span>
-                        <Badge variant="default" size="xs">Na carteira</Badge>
-                        {isSelected && (
-                          <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
-                            <Check className="size-3" aria-hidden="true" />
-                            Selecionado
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="truncate text-xs text-muted-foreground">{name}</span>
-                      <div className="flex flex-col gap-0.5 pt-0.5 text-[11px] text-muted-foreground">
-                        {cashInfo ? (
-                          <span>
-                            <span className={cashInfo.fits ? "font-semibold text-positive-strong" : "text-muted-foreground"}>
-                              {cashInfo.text}
-                              {cashInfo.costBRL !== undefined && (
-                                <>
-                                  <MoneyText
-                                    cents={numberToCents(cashInfo.costBRL)}
-                                    tone="positive"
-                                    className="font-semibold text-positive-strong inline"
-                                  />
-                                  {!isTotalValue ? ")" : ""}
-                                </>
-                              )}
-                            </span>
-                            {` · Meta: ${item.targetPercentage}%`}
+                    return (
+                      <button
+                        key={item.assetId}
+                        type="button"
+                        onClick={() => onSelectSuggestion(item)}
+                        className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] cursor-pointer ${
+                          isSelected
+                            ? "border-primary bg-primary/15 ring-2 ring-primary/40 shadow-xs"
+                            : "border-primary/20 bg-primary/5 hover:border-primary/40 hover:bg-primary/10"
+                        }`}
+                      >
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm font-bold text-foreground">{item.ticker}</span>
+                            <Badge variant="default" size="xs">Na carteira</Badge>
+                            {isSelected && (
+                              <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
+                                <Check className="size-3" aria-hidden="true" />
+                                Selecionado
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="truncate text-xs text-muted-foreground">{name}</span>
+                          <div className="flex flex-col gap-0.5 pt-0.5 text-[11px] text-muted-foreground">
+                            {cashInfo ? (
+                              <span>
+                                <span className={cashInfo.fits ? "font-semibold text-positive-strong" : "text-muted-foreground"}>
+                                  {cashInfo.text}
+                                  {cashInfo.costBRL !== undefined && (
+                                    <>
+                                      <MoneyText
+                                        cents={numberToCents(cashInfo.costBRL)}
+                                        tone="positive"
+                                        className="font-semibold text-positive-strong inline"
+                                      />
+                                      {!isTotalValue ? ")" : ""}
+                                    </>
+                                  )}
+                                </span>
+                                {` · Meta: ${item.targetPercentage}%`}
+                              </span>
+                            ) : (
+                              <span>
+                                {`Meta: ${item.targetPercentage}%`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end text-right shrink-0">
+                          <span className="text-[10px] uppercase font-semibold text-primary">Aportar</span>
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                            {formatPercent(item.currentPercentage)}% atual
                           </span>
-                        ) : (
-                          <span>
-                            {`Meta: ${item.targetPercentage}%`}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end text-right shrink-0">
-                      <span className="text-[10px] uppercase font-semibold text-primary">Aportar</span>
-                      <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                        {formatPercent(item.currentPercentage)}% atual
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )
         ) : searchResults.length === 0 ? (

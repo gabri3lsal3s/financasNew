@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getAporteSuggestions,
   isFractionalAsset,
   resolveAssetPrecision,
   simulateCombinedAporte,
@@ -1025,6 +1026,247 @@ describe("Auditoria de Invariantes & Teste de Estresse Multi-Nível (Classe -> S
       expect(route!.quantity).toBe(0.06); // 1000 / 15234.5 = 0.0656 -> 0.06 cotas
       expect(route!.allocatedBRL).toBe(914.07);
       expect(result.leftover).toBe(85.93);
+    });
+  });
+
+  describe("getAporteSuggestions — Motor Canônico Unificado (Fase 10)", () => {
+    const classTargets: ClassTargetInput[] = [
+      { className: "Ações", targetPercentage: 60 },
+      { className: "FIIs", targetPercentage: 40 },
+    ];
+
+    it("cenário Macro-First: distribui por classes quando não há metas de setores nem ativos", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "itub4",
+          ticker: "ITUB4",
+          assetClass: "Ações",
+          sector: "Financeiro",
+          currentValueBRL: 1000,
+          priceBRL: 30,
+          averageCost: 35, // descontado vs PM (-14.3%)
+          targetPercentage: null,
+        }),
+        asset({
+          id: "vale3",
+          ticker: "VALE3",
+          assetClass: "Ações",
+          sector: "Materiais Básicos",
+          currentValueBRL: 1000,
+          priceBRL: 60,
+          averageCost: 55, // acima do PM (+9.1%)
+          targetPercentage: null,
+        }),
+        asset({
+          id: "hglg11",
+          ticker: "HGLG11",
+          assetClass: "FIIs",
+          sector: "Logística",
+          currentValueBRL: 8000,
+          priceBRL: 160,
+          averageCost: 160,
+          targetPercentage: null,
+        }),
+      ];
+
+      // Total carteira = 10.000.
+      // Ações atual = 2.000 (20%), meta = 60% (6.000) -> déficit relativo alto.
+      // FIIs atual = 8.000 (80%), meta = 40% (4.000) -> superávit.
+      const result = getAporteSuggestions({
+        mode: "sector_oriented",
+        aporteAmount: 2000,
+        assets,
+        classTargets,
+      });
+
+      expect(result.sectorGroups.length).toBeGreaterThan(0);
+      // Os setores de Ações devem vir antes de FIIs devido ao maior déficit relativo
+      const topGroup = result.sectorGroups[0];
+      expect(topGroup).toBeDefined();
+      expect(topGroup!.className).toBe("Ações");
+      expect(topGroup!.budgetAllocatedBRL).toBeGreaterThan(0);
+
+      // Dentro do setor Financeiro, ITUB4 (descontado) é ordenado com prioridade
+      const financeiro = result.sectorGroups.find((g) => g.sectorName === "Financeiro");
+      expect(financeiro).toBeDefined();
+      const firstAsset = financeiro!.assets[0];
+      expect(firstAsset).toBeDefined();
+      expect(firstAsset!.ticker).toBe("ITUB4");
+      expect(firstAsset!.diffVsAveragePct).toBeLessThan(0);
+      expect(firstAsset!.suggestedQty).toBeGreaterThan(0);
+    });
+
+    it("cenário Setorial: orça e prioriza setores configurados com maior déficit", () => {
+      const sectorTargets: SectorTargetInput[] = [
+        { className: "Ações", sectorName: "Financeiro", targetPercentage: 70 },
+        { className: "Ações", sectorName: "Energia", targetPercentage: 30 },
+      ];
+
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "itub4",
+          ticker: "ITUB4",
+          assetClass: "Ações",
+          sector: "Financeiro",
+          currentValueBRL: 500,
+          priceBRL: 30,
+          averageCost: 32,
+          targetPercentage: null,
+        }),
+        asset({
+          id: "egie3",
+          ticker: "EGIE3",
+          assetClass: "Ações",
+          sector: "Energia",
+          currentValueBRL: 2500,
+          priceBRL: 40,
+          averageCost: 40,
+          targetPercentage: null,
+        }),
+      ];
+
+      const result = getAporteSuggestions({
+        mode: "sector_oriented",
+        aporteAmount: 1000,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        sectorTargets,
+      });
+
+      expect(result.sectorGroups.length).toBe(2);
+      // Financeiro (meta 70% da classe, atual 500 de 3000 = 16.6%) tem déficit relativo muito maior
+      const sec0 = result.sectorGroups[0];
+      const sec1 = result.sectorGroups[1];
+      expect(sec0).toBeDefined();
+      expect(sec1).toBeDefined();
+      expect(sec0!.sectorName).toBe("Financeiro");
+      expect(sec0!.budgetAllocatedBRL).toBeGreaterThan(sec1!.budgetAllocatedBRL);
+    });
+
+    it("modo prescritivo: gera rotas diretas por ativo", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "a1",
+          ticker: "A1",
+          assetClass: "Ações",
+          sector: "Tecnologia",
+          currentValueBRL: 1000,
+          priceBRL: 50,
+          targetPercentage: 70,
+        }),
+        asset({
+          id: "a2",
+          ticker: "A2",
+          assetClass: "Ações",
+          sector: "Tecnologia",
+          currentValueBRL: 3000,
+          priceBRL: 100,
+          targetPercentage: 30,
+        }),
+      ];
+
+      const result = getAporteSuggestions({
+        mode: "asset_prescriptive",
+        aporteAmount: 2000,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      });
+
+      expect(result.mode).toBe("asset_prescriptive");
+      expect(result.prescriptiveRoutes.length).toBeGreaterThan(0);
+      expect(result.totalAllocatedBRL).toBeLessThanOrEqual(2000);
+      const route0 = result.prescriptiveRoutes[0];
+      expect(route0).toBeDefined();
+      expect(route0!.ticker).toBe("A1");
+    });
+
+    it("Blindagem B2: aporte ou caixa zero calcula cotas com base no gap da meta (ideal para Wizard)", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "itub4",
+          ticker: "ITUB4",
+          assetClass: "Ações",
+          sector: "Financeiro",
+          currentValueBRL: 1000,
+          priceBRL: 30,
+          averageCost: 30,
+          targetPercentage: null,
+        }),
+      ];
+
+      const result = getAporteSuggestions({
+        mode: "sector_oriented",
+        aporteAmount: 0,
+        cashAvailableBRL: 0,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        totalPortfolioBRL: 5000, // Meta = 5000, atual = 1000 -> gap = 4000
+      });
+
+      // Não zera as sugestões de absorção do setor
+      const financeiro = result.sectorGroups.find((g) => g.sectorName === "Financeiro");
+      expect(financeiro).toBeDefined();
+      const b2Asset = financeiro!.assets[0];
+      expect(b2Asset).toBeDefined();
+      expect(b2Asset!.suggestedQty).toBeGreaterThan(0);
+      // 4000 / 30 = 133 cotas
+      expect(b2Asset!.suggestedQty).toBe(133);
+    });
+
+    it("Blindagem B3: classe com meta mas sem ativos cadastrados não causa erro", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "itub4",
+          ticker: "ITUB4",
+          assetClass: "Ações",
+          currentValueBRL: 1000,
+          priceBRL: 30,
+          targetPercentage: null,
+        }),
+      ];
+
+      const result = getAporteSuggestions({
+        assets,
+        classTargets: [
+          { className: "Ações", targetPercentage: 70 },
+          { className: "Cripto", targetPercentage: 30 }, // sem ativos cadastrados
+        ],
+      });
+
+      const criptoSummary = result.classSummaries.find((c) => c.className === "Cripto");
+      expect(criptoSummary).toBeDefined();
+      expect(criptoSummary!.currentValueBRL).toBe(0);
+      expect(criptoSummary!.gapBRL).toBeGreaterThan(0);
+    });
+
+    it("Blindagem B5: ativos sem preço válido são diagnosticados em skippedAssets", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "noprice",
+          ticker: "XYZW3",
+          assetClass: "Ações",
+          sector: "Outros",
+          currentValueBRL: 500,
+          priceBRL: 0, // sem cotação
+          targetPercentage: 50,
+        }),
+        asset({
+          id: "withprice",
+          ticker: "ITUB4",
+          assetClass: "Ações",
+          sector: "Financeiro",
+          currentValueBRL: 500,
+          priceBRL: 30,
+          targetPercentage: 50,
+        }),
+      ];
+
+      const result = getAporteSuggestions({
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      });
+
+      expect(result.skippedAssets.some((s) => s.ticker === "XYZW3" && s.reason === "no_price")).toBe(true);
     });
   });
 });
