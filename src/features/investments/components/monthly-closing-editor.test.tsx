@@ -272,5 +272,36 @@ describe("MonthlyClosingEditor", () => {
       expect(firstInput).toHaveValue(originalValue);
     });
   });
+
+  it("impede o salvamento do fechamento caso haja ativo com custódia e cotação zerada", async () => {
+    mockSaveClosing.mockClear();
+
+    const positionWithZeroPrice: PointInTimeResult = {
+      ...mockHistoricalPosition,
+      positions: [
+        {
+          ...mockHistoricalPosition.positions[0]!,
+          quantity: 10,
+          priceQuote: 0,
+          priceBRL: 0,
+          valueBRL: 0,
+        },
+      ],
+    };
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MonthlyClosingEditor
+          month="2026-08"
+          historicalPosition={positionWithZeroPrice}
+        />
+      </QueryClientProvider>,
+    );
+
+    const saveButton = screen.getByRole("button", { name: /Salvar Fechamento/i });
+    fireEvent.click(saveButton);
+
+    expect(mockSaveClosing).not.toHaveBeenCalled();
+  });
 });
 

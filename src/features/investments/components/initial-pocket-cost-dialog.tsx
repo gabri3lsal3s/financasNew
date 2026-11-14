@@ -243,6 +243,8 @@ export function InitialPocketCostDialog({
           month: monthStr,
           total_value: newGrossBalanceCents / 100,
           total_cost: newAmountCents / 100,
+          status: "closed",
+          closing_date: newDate,
         });
         await snapshotsQuery.refetch?.();
       }
@@ -382,6 +384,8 @@ export function InitialPocketCostDialog({
           month: r.date.slice(0, 7),
           total_value: r.grossBalance ?? r.appliedValue,
           total_cost: r.appliedValue,
+          status: "closed" as const,
+          closing_date: r.date,
         }));
 
       if (snapshotPayloads.length > 0) {

@@ -521,6 +521,7 @@ export function usePortfolioPosition(): PortfolioPosition {
           capital_gain_pct: consolidatedReturn.capitalGainPct,
           total_return_pnl: consolidatedReturn.totalReturnPnl,
           total_return_pct: consolidatedReturn.totalReturnPct,
+          status: "provisional" as const,
         }
       : null;
 

@@ -7,6 +7,8 @@ import { MoneyInput } from "@/components/ui/money-input";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { formatPercent, formatSignedPct } from "@/services/masks/percent";
+import { pushToast } from "@/services/toast";
+import { triggerSensory } from "@/services/sensory";
 import { useSaveMonthlyClosing } from "@/state/mutations/use-portfolio-monthly-mutations";
 import type { PointInTimeResult } from "@/domain/portfolio";
 import type { MonthlyPriceInput, MonthlyPriceSource } from "@/types";
@@ -185,6 +187,21 @@ export function MonthlyClosingEditor({
   }, [itemsState, cashBalanceCents, historicalPosition]);
 
   const handleSave = async () => {
+    // Validação pré-flight: ativos com custódia positiva devem possuir cotação maior que zero
+    const invalidItems = recalculatedSummary.items.filter(
+      (item) => item.quantity > 0 && (item.editedPrice <= 0 || !Number.isFinite(item.editedPrice)),
+    );
+    if (invalidItems.length > 0) {
+      const tickers = invalidItems.map((it) => it.ticker).join(", ");
+      pushToast({
+        title: "Cotação obrigatória ausente",
+        description: `Os seguintes ativos sob custódia não possuem cotação válida informada: ${tickers}. Informe um valor maior que zero antes de fechar a competência.`,
+        variant: "destructive",
+      });
+      triggerSensory("destructive");
+      return;
+    }
+
     const validItems = recalculatedSummary.items.filter((item) => item.editedPrice > 0);
 
     const pricesPayload: MonthlyPriceInput[] = validItems.map((item) => ({
