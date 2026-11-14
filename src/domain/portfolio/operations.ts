@@ -387,19 +387,34 @@ export function calculateReconciledAssetPosition(
 
   // 2. Caso Renda Fixa (modo total_value)
   if (isTotalValue) {
+    const allTracked = [
+      removedTransaction,
+      ...remainingTransactions.map((t) => ({ type: t.type, total: t.total })),
+    ];
+    const priorTrackedCost = allTracked.reduce((acc, t) => {
+      if (t.type === "buy" || t.type === "subscription") return acc + t.total;
+      if (t.type === "sell") return Math.max(0, acc - t.total);
+      return acc;
+    }, 0);
+
+    const untrackedBaseCost = Math.max(
+      0,
+      Math.round((currentAveragePrice - priorTrackedCost) * 100) / 100,
+    );
+
     const totalAppliedRemaining = remainingTransactions.reduce((acc, t) => {
       if (t.type === "buy" || t.type === "subscription") return acc + t.total;
       if (t.type === "sell") return Math.max(0, acc - t.total);
       return acc;
     }, 0);
 
-    // Se restaram transações registradas no ledger, utiliza a soma delas
-    let finalCost = totalAppliedRemaining;
+    // Se restaram transações registradas no ledger, preserva a base não rastreada + soma restante
+    let finalCost = untrackedBaseCost + totalAppliedRemaining;
     if (remainingTransactions.length === 0) {
       if (removedTransaction.type === "buy") {
-        finalCost = Math.max(0, currentAveragePrice - removedTransaction.total);
+        finalCost = Math.max(0, Math.round((currentAveragePrice - removedTransaction.total) * 100) / 100);
       } else if (removedTransaction.type === "sell") {
-        finalCost = currentAveragePrice + removedTransaction.total;
+        finalCost = Math.round((currentAveragePrice + removedTransaction.total) * 100) / 100;
       }
     }
 

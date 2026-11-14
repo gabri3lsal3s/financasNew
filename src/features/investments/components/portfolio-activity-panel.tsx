@@ -402,17 +402,39 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         }
       } else if (itemToDelete.source === "transaction" && itemToDelete.rawTransaction) {
         await deleteTransaction.mutateAsync(itemToDelete.rawTransaction);
-        // Se a compra foi paga com saldo de Caixa (sem aporte vinculado) e o usuário optou por estornar ao Caixa:
-        const isFundedByPocket = Boolean(itemToDelete.linkedContribution);
-        if (!isFundedByPocket && rollbackCash && cashAsset && itemToDelete.total > 0) {
+
+        const asset = itemToDelete.rawTransaction.asset_id
+          ? assetMap.get(itemToDelete.rawTransaction.asset_id)
+          : undefined;
+        const rate = asset?.currency === "USD" ? usdRate : 1;
+        const totalBRL = Math.round(itemToDelete.total * rate * 100) / 100;
+
+        if (rollbackCash && cashAsset && totalBRL > 0) {
           const currentCashBalance = Number(cashAsset.quantity ?? 0);
-          await updateAsset.mutateAsync({
-            id: cashAsset.id,
-            patch: {
-              quantity: Math.round((currentCashBalance + itemToDelete.total) * 100) / 100,
-              average_price: 1,
-            },
-          });
+
+          if (itemToDelete.type === "buy") {
+            // Se a compra foi paga com saldo de Caixa (sem aporte vinculado) e o usuário optou por estornar ao Caixa:
+            const isFundedByPocket = Boolean(itemToDelete.linkedContribution);
+            if (!isFundedByPocket) {
+              await updateAsset.mutateAsync({
+                id: cashAsset.id,
+                patch: {
+                  quantity: Math.round((currentCashBalance + totalBRL) * 100) / 100,
+                  average_price: 1,
+                },
+              });
+            }
+          } else if (itemToDelete.type === "sell") {
+            // Ao excluir uma venda que havia creditado o Caixa, estorna o crédito deduzindo do Caixa:
+            const newBal = Math.max(0, Math.round((currentCashBalance - totalBRL) * 100) / 100);
+            await updateAsset.mutateAsync({
+              id: cashAsset.id,
+              patch: {
+                quantity: newBal,
+                average_price: 1,
+              },
+            });
+          }
         }
       } else if (itemToDelete.source === "contribution" && itemToDelete.rawContribution) {
         await deleteContribution.mutateAsync(itemToDelete.rawContribution);
@@ -845,7 +867,32 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
               />
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Esta compra foi liquidada com saldo da corretora. Ao estornar, R$ {itemToDelete.total.toFixed(2)} retornarão ao seu Ativo Caixa.
+              Esta compra foi liquidada com saldo da corretora. Ao estornar, R$ {(Math.round(itemToDelete.total * ((itemToDelete.rawTransaction?.asset_id ? assetMap.get(itemToDelete.rawTransaction.asset_id)?.currency === "USD" : false) ? usdRate : 1) * 100) / 100).toFixed(2)} retornarão ao seu Ativo Caixa.
+            </p>
+          </div>
+        )}
+
+        {itemToDelete?.source === "transaction" && itemToDelete.type === "sell" && cashAsset && (
+          <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-subtle p-3 text-xs text-left">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-foreground">Estornar valor creditado no Caixa</span>
+              <Checkbox
+                checked={rollbackCash}
+                onCheckedChange={(checked) => setRollbackCash(Boolean(checked))}
+                aria-label="Estornar valor creditado no Caixa"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {(() => {
+                const asset = itemToDelete.rawTransaction?.asset_id
+                  ? assetMap.get(itemToDelete.rawTransaction.asset_id)
+                  : undefined;
+                const rate = asset?.currency === "USD" ? usdRate : 1;
+                const totalBRL = Math.round(itemToDelete.total * rate * 100) / 100;
+                return cashBalance < totalBRL
+                  ? `Saldo atual em Caixa (R$ ${cashBalance.toFixed(2)}) é menor que o valor da venda. Ao estornar, o saldo do Caixa será ajustado para R$ 0,00.`
+                  : `Abaterá R$ ${totalBRL.toFixed(2)} do saldo atual de Caixa (R$ ${cashBalance.toFixed(2)}).`;
+              })()}
             </p>
           </div>
         )}

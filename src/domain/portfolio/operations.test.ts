@@ -500,5 +500,38 @@ describe("domain/portfolio/operations — Adição Inicial e Reconciliação do 
       expect(result.newAveragePrice).toBe(10000);
       expect(result.updatedFixedIncomeMetadata?.base_value).toBe(10000);
     });
+
+    it("salvaguarda de Renda Fixa: preserva custo base não rastreado ao excluir transações subsequentes", () => {
+      // Ativo tinha base de R$ 10.000 (não rastreada no ledger).
+      // Comprou R$ 2.000 (tx1) e depois R$ 3.000 (tx2). Custo total atual = R$ 15.000.
+      // Ao excluir tx2 (R$ 3.000), restam tx1 (R$ 2.000) + base legada (R$ 10.000).
+      // Novo custo = R$ 12.000.
+      const result = calculateReconciledAssetPosition({
+        currentQuantity: 1,
+        currentAveragePrice: 15000,
+        isTotalValue: true,
+        assetClass: "Renda Fixa",
+        fixedIncomeMetadata: {
+          rate_type: "cdi",
+          rate_value: 110,
+          base_date: "2026-03-01",
+          base_value: 15000,
+          initial_investment_value: 15000,
+        },
+        removedTransaction: {
+          type: "buy",
+          quantity: 1,
+          price: 3000,
+          total: 3000,
+        },
+        remainingTransactions: [
+          { type: "buy", quantity: 1, price: 2000, total: 2000, date: "2026-02-01" },
+        ],
+      });
+
+      expect(result.newQuantity).toBe(1);
+      expect(result.newAveragePrice).toBe(12000);
+      expect(result.updatedFixedIncomeMetadata?.base_value).toBe(12000);
+    });
   });
 });

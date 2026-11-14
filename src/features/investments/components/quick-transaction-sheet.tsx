@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, GitFork, Info, Receipt, RotateCcw, SlidersHorizontal } from "lucide-react";
 import {
   Alert,
@@ -86,6 +86,8 @@ export function QuickTransactionSheet({
   const [customTaxRatePct, setCustomTaxRatePct] = useState<number | null>(null);
   const [customTaxAmountCents, setCustomTaxAmountCents] = useState<number | null>(null);
   const [showTaxEditor, setShowTaxEditor] = useState(false);
+  const isSubmittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Ativo Alvo
   const targetAsset = useMemo(() => {
@@ -289,7 +291,9 @@ export function QuickTransactionSheet({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetAsset) return;
+    if (!targetAsset || recordOrder.isPending || isSubmittingRef.current || isSubmitting) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setError(null);
 
     const price = priceCents / 100;
@@ -395,6 +399,9 @@ export function QuickTransactionSheet({
     } catch (err) {
       triggerSensory("destructive");
       setError(getErrorMessage(err));
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -1165,17 +1172,17 @@ export function QuickTransactionSheet({
             type="button"
             variant="outline"
             onClick={() => handleOpenChange(false)}
-            disabled={recordOrder.isPending}
+            disabled={recordOrder.isPending || isSubmitting}
             className="w-full sm:w-auto"
           >
             Cancelar
           </Button>
           <Button
             type="submit"
-            disabled={recordOrder.isPending}
+            disabled={recordOrder.isPending || isSubmitting}
             className="w-full sm:w-auto"
           >
-            {recordOrder.isPending ? "Processando..." : "Confirmar Operação"}
+            {recordOrder.isPending || isSubmitting ? "Processando..." : "Confirmar Operação"}
           </Button>
         </ModalFooter>
       </form>

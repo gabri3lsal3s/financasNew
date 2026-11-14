@@ -1,10 +1,11 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PortfolioActivityPanel } from "./portfolio-activity-panel";
 
 const mockDeleteTransaction = vi.fn().mockResolvedValue(undefined);
 const mockDeleteContribution = vi.fn().mockResolvedValue(undefined);
 const mockDeleteDividend = vi.fn().mockResolvedValue(undefined);
+const mockUpdateAsset = vi.fn().mockResolvedValue(undefined);
 const mockDownloadCsv = vi.fn();
 
 vi.mock("@/services/export-actions", () => ({
@@ -54,7 +55,7 @@ vi.mock("@/state", () => ({
     data: [
       { id: "a-1", ticker: "PETR4", asset_class: "Ações", currency: "BRL" },
       { id: "a-2", ticker: "CDB-FACTA", asset_class: "Renda Fixa", currency: "BRL" },
-      { id: "a-cash", ticker: "CAIXA", asset_class: "Caixa", currency: "BRL" },
+      { id: "a-cash", ticker: "CAIXA", asset_class: "Caixa", currency: "BRL", quantity: 2000 },
     ],
     isLoading: false,
   }),
@@ -79,7 +80,7 @@ vi.mock("@/state", () => ({
     isPending: false,
   }),
   useUpdatePortfolioAsset: () => ({
-    mutateAsync: vi.fn(),
+    mutateAsync: mockUpdateAsset,
     isPending: false,
   }),
   usePortfolioPosition: () => ({
@@ -218,6 +219,39 @@ describe("PortfolioActivityPanel", () => {
         rollbackCash: true,
       }),
     );
+  });
+
+  it("ao excluir venda com estorno de Caixa ativado, estorna subtraindo o crédito do Caixa", async () => {
+    mockDeleteTransaction.mockClear();
+    mockUpdateAsset.mockClear();
+    render(<PortfolioActivityPanel defaultMonth="2026-08" />);
+
+    // Filtra por Vendas
+    const sellFilterBtn = screen.getByRole("radio", { name: /Vendas/i });
+    fireEvent.click(sellFilterBtn);
+
+    // Clica no botão de exclusão de CDB-FACTA
+    const deleteButton = screen.getByRole("button", { name: /Excluir movimentação de CDB-FACTA/i });
+    fireEvent.click(deleteButton);
+
+    // Modal deve exibir opção de estorno do Caixa
+    expect(screen.getByText("Estornar valor creditado no Caixa")).toBeInTheDocument();
+    expect(screen.getByText(/Abaterá R\$ 1400.00 do saldo atual de Caixa/i)).toBeInTheDocument();
+
+    // Confirma exclusão
+    const confirmButton = screen.getByRole("button", { name: "Excluir movimentação" });
+    fireEvent.click(confirmButton);
+
+    expect(mockDeleteTransaction).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(mockUpdateAsset).toHaveBeenCalledWith({
+        id: "a-cash",
+        patch: {
+          quantity: 600, // 2000 - 1400
+          average_price: 1,
+        },
+      });
+    });
   });
 
   it("renderiza botão de edição para aporte financeiro e abre ContributionFormDialog", () => {

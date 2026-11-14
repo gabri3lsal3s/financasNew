@@ -1,5 +1,23 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.6.6 (Build 65)** registra a conclusão integral da **Auditoria e Blindagem do Fluxo de Compra e Venda de Ativos** ([`docs/plans/36_PLANO_AUDITORIA_E_BLINDAGEM_COMPRA_E_VENDA_ATIVOS.md`](../plans/36_PLANO_AUDITORIA_E_BLINDAGEM_COMPRA_E_VENDA_ATIVOS.md)) (2026-11-13):
+> - **(1) Correção Crítica de Estorno de Venda no Ativo Caixa**:
+>   - Segregação de sinal em `PortfolioActivityPanel`: exclusão de compras devolve recursos somando ao Caixa (`+ totalBRL`), enquanto exclusão de vendas estorna o crédito deduzindo do Caixa (`- totalBRL`);
+>   - Conversão de ativos em USD para BRL via taxa cambial PTAX (`usdRate`), eliminando distorções de moeda ao debitar ou creditar o Caixa;
+>   - Mensagem explicativa adaptativa no modal de exclusão sinalizando com precisão o impacto no Caixa ou avisando caso o saldo atual seja insuficiente para o estorno total;
+> - **(2) Blindagem de Custódia e Venda a Descoberto em `TransactionFormDialog`**:
+>   - Atualização atômica da posição em `portfolio_assets` ao registrar compras (recálculo ponderado do PM e incremento de cotas) e vendas (redução de cotas mantendo PM inalterado);
+>   - Validação explícita contra venda a descoberto (`parsedQty <= asset.quantity`), impedindo vendas com cotas superiores à custódia disponível e emitindo feedback sonoro/tátil de erro;
+>   - Seletor de destino de recursos na venda: opção direta de creditar o valor apurado no ativo Caixa ou registrar como retirada direta para conta externa;
+>   - Suporte a sincronização com Caixa para novos proventos e aportes de bolso;
+> - **(3) Proteção de Concorrência e Trava de Duplo Clique**:
+>   - Adição de `isSubmittingRef` e desabilitação imediata de botões durante a submissão assíncrona em `QuickTransactionSheet` e `TransactionFormDialog`, prevenindo ordens duplicadas no ledger por cliques rápidos;
+> - **(4) Quality Gates 100% Verdes**:
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros, 0 avisos;
+>   - Vitest: 69 suítes e 741 testes de Investimentos 100% aprovados, incluindo testes de exclusão de venda com estorno de Caixa e blindagem de formulário de transações;
+>   - Build de produção Vite e PWA gerados com sucesso.
+>
 > **v3.6.5 (Build 64)** registra a conclusão integral da **Auditoria e Blindagem de Snapshots Patrimoniais** ([`docs/plans/35_PLANO_AUDITORIA_E_BLINDAGEM_SNAPSHOTS_PATRIMONIAIS.md`](../plans/35_PLANO_AUDITORIA_E_BLINDAGEM_SNAPSHOTS_PATRIMONIAIS.md)) (2026-11-13):
 > - **(1) Repositório e Preservação de Metadados de Snapshots**:
 >   - Atualização de `PortfolioSnapshotInput` em `src/types/schema.ts` e de `validateSnapshotInput` em `src/data/repositories/portfolio.ts` para validar e persistir `status` (`provisional` | `closed`), `closing_date` e `closed_at`;

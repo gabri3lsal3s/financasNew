@@ -177,7 +177,7 @@ export function useRecordOrder() {
                 initial_investment_date:
                   asset.fixed_income_metadata.initial_investment_date ?? asset.fixed_income_metadata.base_date,
                 initial_investment_value:
-                  asset.fixed_income_metadata.initial_investment_value ?? newTotalApplied,
+                  (asset.fixed_income_metadata.initial_investment_value ?? currentCost) + orderAmount,
               }
             : null;
 
