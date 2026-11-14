@@ -161,15 +161,13 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v3.4.0: Integridade de Billing, Memória de Lançamentos e Simuladores",
-    "Máquina de estados canônica de billing e autoridade integral do servidor",
-    "Antecipação acumulativa de mensalidades com desconto progressivo (2 a 11 meses)",
-    "Trava em 11 meses e recomendação com ancoragem no Plano Pro Anual",
-    "Gateway de captura da área de transferência (BR Code, Pix Copia e Cola e comprovantes)",
-    "Calculadora financeira resiliente com atalho Ctrl+V e fallback manual",
-    "Simuladores de carteira responsivos sem reticências em valores monetários",
-    "Padronização universal da nomenclatura do Modo Família e rota /modo-familia",
-    "Carregamento unificado com Skeletons estruturados eliminando Cumulative Layout Shift (CLS)"
+    "Axir v3.6.6: Blindagem de Compra, Venda e Resgate de Renda Fixa",
+    "Estorno seguro no ativo Caixa ao excluir compras e vendas com conversão cambial PTAX",
+    "Trava rigorosa contra venda e resgate a descoberto em toda a carteira de investimentos",
+    "Cálculo proporcional de resgate de Renda Fixa com dedução contábil de IRRF regressivo",
+    "Acumulação contínua do custo de aquisição em novos aportes de Renda Fixa",
+    "Sincronização atômica imediata de custódia em portfolio_assets nos lançamentos de ordens",
+    "Proteção anti-duplo clique e prevenção de concorrência em sheets e modais de transação"
   ]
 }
 EOF
