@@ -97,4 +97,33 @@ describe("PortfolioSnapshotsCarousel", () => {
     fireEvent.click(ctaBtn);
     expect(onOpen).toHaveBeenCalledTimes(2);
   }, 15000);
+
+  it("renderiza badge provisório em card de competência histórica com status provisional", () => {
+    const seriesWithProvisional: PortfolioMonthlySeriesPoint[] = [
+      {
+        month: "2026-08",
+        valueBRL: 105000,
+        costBRL: 96000,
+        monthDividendsBRL: 600,
+        accumulatedDividendsBRL: 7100,
+        capitalGainPnl: 9000,
+        capitalGainPct: 9.38,
+        totalReturnPnl: 16100,
+        totalReturnPct: 16.77,
+        twrMonthPct: 1.25,
+        twrAccumulatedPct: 24.5,
+        sharePrice: 124.55,
+        status: "provisional",
+      },
+    ];
+
+    render(
+      <PortfolioSnapshotsCarousel
+        series={seriesWithProvisional}
+        currentMonthStr="2026-09"
+      />,
+    );
+
+    expect(screen.getByText("provisório")).toBeInTheDocument();
+  });
 });

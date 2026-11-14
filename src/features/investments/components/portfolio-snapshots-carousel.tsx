@@ -186,6 +186,10 @@ export function PortfolioSnapshotsCarousel({
                       <Badge variant="portfolio" size="xs" className="shrink-0">
                         atual
                       </Badge>
+                    ) : point.status === "provisional" ? (
+                      <Badge variant="warning" size="xs" className="shrink-0">
+                        provisório
+                      </Badge>
                     ) : null}
                   </div>
 

@@ -811,6 +811,12 @@ export type PortfolioSnapshotInput = {
   total_value: number;
   /** Custo de aquisição total aplicado sob custódia (Custo dos Ativos + Saldo de Caixa 1:1). */
   total_cost: number;
+  /** Status do snapshot: provisional (em aberto/estimado) ou closed (fechamento consolidado). */
+  status?: "provisional" | "closed";
+  /** Data efetiva do último dia útil de mercado do fechamento mensal (YYYY-MM-DD). */
+  closing_date?: string | null;
+  /** Data/hora exata do processamento do fechamento. */
+  closed_at?: string | null;
 };
 
 export type PortfolioMonthlyPrice = {

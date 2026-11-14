@@ -191,6 +191,8 @@ export interface PortfolioMonthlySeriesPoint {
   twrAccumulatedPct: number | null;
   /** Valor da cota teórica da carteira neste mês (base 100). */
   sharePrice: number | null;
+  /** Status do snapshot: provisional (em aberto/estimado) ou closed (fechamento oficial consolidado). */
+  status?: "provisional" | "closed";
 }
 
 export interface CurrentMonthSeriesPoint {
@@ -201,6 +203,7 @@ export interface CurrentMonthSeriesPoint {
   capital_gain_pct?: number | null;
   total_return_pnl?: number;
   total_return_pct?: number | null;
+  status?: "provisional" | "closed";
 }
 
 /**
@@ -208,7 +211,12 @@ export interface CurrentMonthSeriesPoint {
  * com a evolução temporal de proventos recebidos e o encadeamento TWR (§F36 e §F37).
  */
 export function buildPortfolioMonthlySeries(params: {
-  rawSnapshots: readonly { month: string; total_value: number; total_cost: number }[];
+  rawSnapshots: readonly {
+    month: string;
+    total_value: number;
+    total_cost: number;
+    status?: "provisional" | "closed";
+  }[];
   currentMonthPoint?: CurrentMonthSeriesPoint | null;
   dividends: readonly { date: string; amount: number }[];
   contributions?: readonly { date: string; amount: number; notes?: string | null }[];
@@ -227,13 +235,17 @@ export function buildPortfolioMonthlySeries(params: {
   } = params;
 
   const currentMonthStr = currentMonthPoint?.month ?? "";
-  const allMonthsMap = new Map<string, { total_value: number; total_cost: number }>();
+  const allMonthsMap = new Map<
+    string,
+    { total_value: number; total_cost: number; status?: "provisional" | "closed" }
+  >();
 
   for (const snap of rawSnapshots) {
     if (snap.month < currentMonthStr || !currentMonthStr) {
       allMonthsMap.set(snap.month, {
         total_value: Number(snap.total_value),
         total_cost: Number(snap.total_cost),
+        status: snap.status ?? "closed",
       });
     }
   }
@@ -242,6 +254,7 @@ export function buildPortfolioMonthlySeries(params: {
     allMonthsMap.set(currentMonthPoint.month, {
       total_value: Number(currentMonthPoint.total_value),
       total_cost: Number(currentMonthPoint.total_cost),
+      status: currentMonthPoint.status ?? "provisional",
     });
   }
 
@@ -343,6 +356,7 @@ export function buildPortfolioMonthlySeries(params: {
       twrMonthPct: twrPt ? twrPt.monthRatePct : null,
       twrAccumulatedPct: twrPt ? twrPt.accumulatedRatePct : null,
       sharePrice: twrPt ? twrPt.sharePrice : null,
+      status: data.status,
     });
   }
 

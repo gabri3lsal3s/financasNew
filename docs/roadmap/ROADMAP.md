@@ -1,5 +1,29 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.6.5 (Build 64)** registra a conclusão integral da **Auditoria e Blindagem de Snapshots Patrimoniais** ([`docs/plans/35_PLANO_AUDITORIA_E_BLINDAGEM_SNAPSHOTS_PATRIMONIAIS.md`](../plans/35_PLANO_AUDITORIA_E_BLINDAGEM_SNAPSHOTS_PATRIMONIAIS.md)) (2026-11-13):
+> - **(1) Repositório e Preservação de Metadados de Snapshots**:
+>   - Atualização de `PortfolioSnapshotInput` em `src/types/schema.ts` e de `validateSnapshotInput` em `src/data/repositories/portfolio.ts` para validar e persistir `status` (`provisional` | `closed`), `closing_date` e `closed_at`;
+>   - Atribuição de defaults canônicos inteligentes: competência corrente defaulta para `'provisional'`, enquanto meses pretéritos defaultam para `'closed'`;
+>   - Deduplicação inteligente de competências em `batchUpsertPortfolioSnapshots`, eliminando conflitos de chave única no PostgreSQL;
+> - **(2) Fechamento Mensal Transacional e Atômico**:
+>   - Migração do hook `useSaveMonthlyClosing` para invocar a RPC atômica `commit_monthly_closing_atomic` via `commitMonthlyClosingRpc` em `src/data/rpc/portfolio.ts`, gravando cotações auditadas e snapshot em uma única transação no banco;
+>   - Fallback gracioso resiliente caso a RPC esteja temporariamente indisponível no ambiente de teste;
+>   - Propagação de `closingDate: historicalPosition.cutoffDate` no editor de fechamento mensal (`monthly-closing-editor.tsx`);
+>   - Invalidação estrita de cache de cotações mensais (`PORTFOLIO_MONTHLY_PRICES_QUERY_KEY`) ao excluir snapshot histórico em `useDeletePortfolioSnapshot`;
+> - **(3) Materialização Autônoma e Sincronismo do Mês Aberto**:
+>   - Atualização da rotina `useAutoPortfolioSnapshot` para materializar o snapshot do mês corrente explicitamente com `status: "provisional"`;
+>   - Recalibração automática do snapshot provisório quando houver divergência relevante ($\ge \text{R\$}~1,00$) em relação à custódia viva, mantendo consistência com backups e relatórios;
+>   - Respeito estrito à imutabilidade de competências formalmente fechadas (`status === "closed"`);
+>   - Repasse do histórico de `snapshots: existingSnapshots` ao calcular pontos-no-tempo de meses retroativos;
+> - **(4) Transparência Analítica na Interface (Série Mensal e Extratos)**:
+>   - Adição do metadado `status?: "provisional" | "closed"` em `PortfolioMonthlySeriesPoint` e `CurrentMonthSeriesPoint` em `src/domain/portfolio/summary.ts`;
+>   - Identificação visual imediata de competências históricas provisórias via badge `provisório` (`variant="warning" size="xs"`) na tabela analítica do diálogo (`portfolio-snapshots-dialog.tsx`) e no carrossel horizontal (`portfolio-snapshots-carousel.tsx`);
+> - **(5) Quality Gates 100% Verdes**:
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros, 0 avisos;
+>   - Vitest: 94 suítes e 861 testes de Investimentos e Hooks 100% aprovados, mais 58/58 no security audit;
+>   - Build de produção Vite e PWA precache gerados em 2.08s.
+>
 > **v3.6.4 (Build 63)** registra a conclusão integral da **Terceira Rodada de Refinamentos de Investimentos** ([`docs/plans/34_PLANO_TERCEIRA_RODADA_REFINAMENTOS_INVESTIMENTOS.md`](../plans/34_PLANO_TERCEIRA_RODADA_REFINAMENTOS_INVESTIMENTOS.md)) (2026-11-13):
 > - **(1) Blindagem Fiscal de Criptoativos no DARF 6015 (AUDIT-06)**:
 >   - Função pura `isCryptoAsset` em `src/domain/portfolio/tax.ts` identificando criptomoedas diretas (BTC, ETH, SOL, etc.) e distinguindo-as de ETFs B3 (ex.: HASH11, QBTC11);

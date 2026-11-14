@@ -181,9 +181,75 @@ describe("portfolio repository (Fase 36 — Posição Consolidada)", () => {
     ]);
     expect(results).toHaveLength(2);
     expect(lastUpsertInput).toEqual([
-      { user_id: "u1", month: "2026-07", total_value: 40000, total_cost: 38000 },
-      { user_id: "u1", month: "2026-08", total_value: 45000, total_cost: 41000 },
+      expect.objectContaining({
+        user_id: "u1",
+        month: "2026-07",
+        total_value: 40000,
+        total_cost: 38000,
+        status: "closed",
+      }),
+      expect.objectContaining({
+        user_id: "u1",
+        month: "2026-08",
+        total_value: 45000,
+        total_cost: 41000,
+        status: "closed",
+      }),
     ]);
+  });
+
+  it("batchUpsertPortfolioSnapshots deduplica registros com mesma competência", async () => {
+    builder = makeBuilder({
+      data: [
+        { id: "s1", user_id: "u1", month: "2026-07", total_value: 42000, total_cost: 39000 },
+      ],
+    });
+    const results = await batchUpsertPortfolioSnapshots([
+      { month: "2026-07", total_value: 40000, total_cost: 38000 },
+      { month: "2026-07", total_value: 42000, total_cost: 39000 },
+    ]);
+    expect(results).toHaveLength(1);
+    expect(lastUpsertInput).toEqual([
+      expect.objectContaining({
+        user_id: "u1",
+        month: "2026-07",
+        total_value: 42000,
+        total_cost: 39000,
+      }),
+    ]);
+  });
+
+  it("upsertPortfolioSnapshot preserva metadados explícitos de fechamento", async () => {
+    builder = makeBuilder({
+      data: {
+        id: "s1",
+        user_id: "u1",
+        month: "2026-08",
+        total_value: 50000,
+        total_cost: 42000,
+        status: "closed",
+        closing_date: "2026-08-31",
+        closed_at: "2026-08-31T20:00:00.000Z",
+      },
+    });
+    const snap = await upsertPortfolioSnapshot({
+      month: "2026-08",
+      total_value: 50000,
+      total_cost: 42000,
+      status: "closed",
+      closing_date: "2026-08-31",
+      closed_at: "2026-08-31T20:00:00.000Z",
+    });
+    expect(lastUpsertInput).toMatchObject({
+      user_id: "u1",
+      month: "2026-08",
+      total_value: 50000,
+      total_cost: 42000,
+      status: "closed",
+      closing_date: "2026-08-31",
+      closed_at: "2026-08-31T20:00:00.000Z",
+    });
+    expect(snap.status).toBe("closed");
   });
 
   it("batchUpsertPortfolioSnapshots retorna array vazio quando inputs for vazio", async () => {

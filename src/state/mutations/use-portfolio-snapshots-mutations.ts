@@ -6,6 +6,7 @@ import {
   deletePortfolioSnapshot,
 } from "@/data/repositories/portfolio";
 import { PORTFOLIO_QUERY_KEYS } from "./use-portfolio-mutations";
+import { PORTFOLIO_MONTHLY_PRICES_QUERY_KEY } from "@/state/queries/use-portfolio-monthly-prices";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
@@ -55,6 +56,7 @@ export function useDeletePortfolioSnapshot() {
     onSuccess: (_, month) => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
       void queryClient.invalidateQueries({ queryKey: ["portfolio_position"] });
+      void queryClient.invalidateQueries({ queryKey: [PORTFOLIO_MONTHLY_PRICES_QUERY_KEY, month] });
       pushToast({
         title: "Snapshot removido",
         description: `O registro histórico do mês ${month} foi removido com sucesso.`,

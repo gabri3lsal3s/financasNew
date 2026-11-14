@@ -200,5 +200,36 @@ describe("PortfolioSnapshotsDialog", () => {
     // Proventos zerados no mês exibidos sem erro (resumo e linha da tabela)
     expect(screen.getAllByText(/R\$[\s\u00a0]0,00$/).length).toBe(2);
   });
+
+  it("exibe badge provisório para competência histórica com status provisional", () => {
+    const seriesWithProvisional: PortfolioMonthlySeriesPoint[] = [
+      {
+        month: "2026-08",
+        valueBRL: 80000,
+        costBRL: 75000,
+        monthDividendsBRL: 200,
+        accumulatedDividendsBRL: 2000,
+        capitalGainPnl: 5000,
+        capitalGainPct: 6.67,
+        totalReturnPnl: 7000,
+        totalReturnPct: 9.33,
+        twrMonthPct: 1.0,
+        twrAccumulatedPct: 12.0,
+        sharePrice: 112.0,
+        status: "provisional",
+      },
+    ];
+
+    renderWithClient(
+      <PortfolioSnapshotsDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        series={seriesWithProvisional}
+        currentMonthStr="2026-09"
+      />,
+    );
+
+    expect(screen.getByText("provisório")).toBeInTheDocument();
+  });
 });
 

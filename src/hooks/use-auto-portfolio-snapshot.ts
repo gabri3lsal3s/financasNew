@@ -47,22 +47,40 @@ export function useAutoPortfolioSnapshot() {
 
     const thisMonth = currentMonth();
     const existingSnapshots = snapshotsQuery.data ?? [];
-    const hasThisMonthSnapshot = existingSnapshots.some((s) => s.month === thisMonth);
+    const thisMonthSnapshot = existingSnapshots.find((s) => s.month === thisMonth);
 
     // 1. Mês corrente: aplica a regra canônica de total_value e total_cost
+    // - Se inexiste snapshot para a competência ativa, materializa com status 'provisional'.
+    // - Se existe snapshot com status 'provisional' e houver divergência relevante (>= R$ 1,00),
+    //   recalibra o snapshot provisório para acompanhar a custódia viva do mês.
+    // - Se status for 'closed', respeita estritamente a imutabilidade do fechamento oficial.
     const currentCost = Math.round((position.totalCostBRL + position.cashBRL) * 100) / 100;
-    if (
-      !isTriggeredRef.current &&
-      !hasThisMonthSnapshot &&
-      (position.totalBRL > 0 || currentCost > 0)
-    ) {
-      isTriggeredRef.current = true;
-      upsertMutation.mutate({
-        month: thisMonth,
-        total_value: position.totalBRL,
-        total_cost: currentCost,
-      });
-      return;
+    const currentTotalValue = Math.round(position.totalBRL * 100) / 100;
+
+    if (!isTriggeredRef.current && (currentTotalValue > 0 || currentCost > 0)) {
+      if (!thisMonthSnapshot) {
+        isTriggeredRef.current = true;
+        upsertMutation.mutate({
+          month: thisMonth,
+          total_value: currentTotalValue,
+          total_cost: currentCost,
+          status: "provisional",
+        });
+        return;
+      } else if (thisMonthSnapshot.status === "provisional") {
+        const valDiff = Math.abs(currentTotalValue - (Number(thisMonthSnapshot.total_value) || 0));
+        const costDiff = Math.abs(currentCost - (Number(thisMonthSnapshot.total_cost) || 0));
+        if (valDiff >= 1.0 || costDiff >= 1.0) {
+          isTriggeredRef.current = true;
+          upsertMutation.mutate({
+            month: thisMonth,
+            total_value: currentTotalValue,
+            total_cost: currentCost,
+            status: "provisional",
+          });
+          return;
+        }
+      }
     }
 
     // 2. Meses retroativos sem snapshot mas com movimentações registradas
@@ -113,6 +131,7 @@ export function useAutoPortfolioSnapshot() {
         assets: assetsQuery.data,
         transactions: transactionsQuery.data,
         dividends: dividendsQuery.data ?? [],
+        snapshots: existingSnapshots,
       });
 
       const retroCost = Math.round((pointInTime.totalCostBRL + pointInTime.cashQuantity) * 100) / 100;
@@ -121,6 +140,7 @@ export function useAutoPortfolioSnapshot() {
           month: nextRetroMonth,
           total_value: pointInTime.totalValueBRL,
           total_cost: retroCost,
+          status: "closed",
         });
       }
     }

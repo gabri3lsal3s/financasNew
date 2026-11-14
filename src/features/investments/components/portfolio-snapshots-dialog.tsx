@@ -297,6 +297,10 @@ export function PortfolioSnapshotsDialog({
                             <Badge variant="portfolio" size="xs">
                               atual
                             </Badge>
+                          ) : pt.status === "provisional" ? (
+                            <Badge variant="warning" size="xs" title="Snapshot provisório em aberto">
+                              provisório
+                            </Badge>
                           ) : null}
                         </div>
                       </td>

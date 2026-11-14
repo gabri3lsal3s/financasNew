@@ -2,6 +2,7 @@ import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
+import { currentMonth } from "@/lib/date";
 import type {
   DbInsert,
   DbUpdate,
@@ -147,12 +148,18 @@ export async function deletePortfolioAsset(id: string): Promise<void> {
  * Valida e normaliza as invariantes canônicas de um snapshot patrimonial (§2.1 PLANO_AUDITORIA):
  * - month: formato estrito YYYY-MM;
  * - total_value: saldo patrimonial total na data de corte (Ativos valorados + Saldo de Caixa), não-negativo;
- * - total_cost: custo de aquisição total aplicado sob custódia (Custo dos Ativos + Saldo de Caixa 1:1), não-negativo.
+ * - total_cost: custo de aquisição total aplicado sob custódia (Custo dos Ativos + Saldo de Caixa 1:1), não-negativo;
+ * - status: 'provisional' ou 'closed' (default: 'provisional' para o mês corrente, 'closed' para pretéritos);
+ * - closing_date: data válida do fechamento YYYY-MM-DD ou null;
+ * - closed_at: timestamp ISO de consolidação ou null.
  */
 function validateSnapshotInput(input: PortfolioSnapshotInput): {
   month: string;
   total_value: number;
   total_cost: number;
+  status: "provisional" | "closed";
+  closing_date: string | null;
+  closed_at: string | null;
 } {
   if (!/^\d{4}-\d{2}$/.test(input.month)) {
     throw new AppError(
@@ -174,10 +181,36 @@ function validateSnapshotInput(input: PortfolioSnapshotInput): {
       "O custo total do snapshot (total_cost) deve ser um número não-negativo.",
     );
   }
+
+  // Determina status canônico do ciclo de vida
+  let status: "provisional" | "closed";
+  if (input.status === "provisional" || input.status === "closed") {
+    status = input.status;
+  } else {
+    status = input.month >= currentMonth() ? "provisional" : "closed";
+  }
+
+  // Validação opcional da data de corte (YYYY-MM-DD)
+  let closing_date: string | null = null;
+  if (input.closing_date && /^\d{4}-\d{2}-\d{2}$/.test(input.closing_date)) {
+    closing_date = input.closing_date;
+  }
+
+  // Timestamp de fechamento
+  let closed_at: string | null = null;
+  if (input.closed_at) {
+    closed_at = input.closed_at;
+  } else if (status === "closed") {
+    closed_at = new Date().toISOString();
+  }
+
   return {
     month: input.month,
     total_value: Math.round(totalValue * 100) / 100,
     total_cost: Math.round(totalCost * 100) / 100,
+    status,
+    closing_date,
+    closed_at,
   };
 }
 
@@ -220,15 +253,24 @@ export async function upsertPortfolioSnapshot(
 }
 
 /**
- * Cria ou atualiza em lote múltiplos snapshots mensais com validação das invariantes canônicas.
+ * Cria ou atualiza em lote múltiplos snapshots mensais com validação das invariantes canônicas
+ * e deduplicação inteligente de competência.
  */
 export async function batchUpsertPortfolioSnapshots(
   inputs: PortfolioSnapshotInput[],
 ): Promise<PortfolioSnapshot[]> {
   if (inputs.length === 0) return [];
   const sanitizedInputs = inputs.map(validateSnapshotInput);
+
+  // Deduplica por month mantendo a última ocorrência para evitar conflito ON CONFLICT DO UPDATE no Postgres
+  const dedupedMap = new Map<string, (typeof sanitizedInputs)[number]>();
+  for (const item of sanitizedInputs) {
+    dedupedMap.set(item.month, item);
+  }
+  const dedupedInputs = Array.from(dedupedMap.values());
+
   const user_id = await currentUserId();
-  const rows = sanitizedInputs.map((input) => ({ ...input, user_id }));
+  const rows = dedupedInputs.map((input) => ({ ...input, user_id }));
   const { data, error } = await resolveQuery<PortfolioSnapshot[]>(
     getSupabase()
       .from("portfolio_snapshots")

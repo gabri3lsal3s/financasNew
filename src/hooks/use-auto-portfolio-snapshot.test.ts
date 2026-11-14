@@ -159,6 +159,182 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
     expect(mutateMock).not.toHaveBeenCalled();
   });
 
+  it("recalibra snapshot do mês atual quando status for provisional e houver divergência relevante", () => {
+    const mutateMock = vi.fn();
+    const currentMonthStr = new Date().toISOString().slice(0, 7);
+
+    vi.spyOn(stateModule, "usePortfolioPosition").mockReturnValue({
+      rows: [],
+      totalBRL: 55000,
+      totalCostBRL: 45000,
+      cashBRL: 5000,
+      totalDividendsBRL: 0,
+      totalReturnPnlBRL: 5000,
+      totalReturnPct: 10,
+      unrealizedPnlBRL: 5000,
+      unrealizedPct: 10,
+      allTimeEconomicPnlBRL: 5000,
+      realizedPnlBRL: 0,
+      netInjectedCapitalBRL: 45000,
+      netPocketGainBRL: 5000,
+      portfolioIrr: {
+        annualizedRatePct: 10,
+        periodRatePct: 10,
+        daysElapsed: 100,
+        isEligible: true,
+        status: "ok",
+      },
+      hasMarcoZeroContribution: false,
+      monthlySeries: [],
+      monthlyContributionCents: 0,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioPosition>);
+
+    // Snapshot existente gravado no início do mês com valor defasado
+    vi.spyOn(stateModule, "usePortfolioSnapshots").mockReturnValue({
+      data: [
+        {
+          id: "s1",
+          user_id: "u1",
+          month: currentMonthStr,
+          total_value: 40000,
+          total_cost: 35000,
+          status: "provisional",
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioSnapshots>);
+
+    vi.spyOn(stateModule, "useUpsertPortfolioSnapshot").mockReturnValue({
+      mutate: mutateMock,
+      isPending: false,
+    } as unknown as ReturnType<typeof stateModule.useUpsertPortfolioSnapshot>);
+
+    vi.spyOn(stateModule, "usePortfolioAssets").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioAssets>);
+
+    vi.spyOn(stateModule, "useAllPortfolioTransactions").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.useAllPortfolioTransactions>);
+
+    vi.spyOn(stateModule, "usePortfolioDividends").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioDividends>);
+
+    renderHook(() => useAutoPortfolioSnapshot());
+
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+    expect(mutateMock).toHaveBeenCalledWith({
+      month: currentMonthStr,
+      total_value: 55000,
+      total_cost: 50000,
+      status: "provisional",
+    });
+  });
+
+  it("NÃO recalibra snapshot do mês atual quando status for closed (fechamento oficial)", () => {
+    const mutateMock = vi.fn();
+    const currentMonthStr = new Date().toISOString().slice(0, 7);
+
+    vi.spyOn(stateModule, "usePortfolioPosition").mockReturnValue({
+      rows: [],
+      totalBRL: 55000,
+      totalCostBRL: 45000,
+      cashBRL: 5000,
+      totalDividendsBRL: 0,
+      totalReturnPnlBRL: 5000,
+      totalReturnPct: 10,
+      unrealizedPnlBRL: 5000,
+      unrealizedPct: 10,
+      allTimeEconomicPnlBRL: 5000,
+      realizedPnlBRL: 0,
+      netInjectedCapitalBRL: 45000,
+      netPocketGainBRL: 5000,
+      portfolioIrr: {
+        annualizedRatePct: 10,
+        periodRatePct: 10,
+        daysElapsed: 100,
+        isEligible: true,
+        status: "ok",
+      },
+      hasMarcoZeroContribution: false,
+      monthlySeries: [],
+      monthlyContributionCents: 0,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioPosition>);
+
+    // Snapshot existente já formalmente fechado
+    vi.spyOn(stateModule, "usePortfolioSnapshots").mockReturnValue({
+      data: [
+        {
+          id: "s1",
+          user_id: "u1",
+          month: currentMonthStr,
+          total_value: 40000,
+          total_cost: 35000,
+          status: "closed",
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioSnapshots>);
+
+    vi.spyOn(stateModule, "useUpsertPortfolioSnapshot").mockReturnValue({
+      mutate: mutateMock,
+      isPending: false,
+    } as unknown as ReturnType<typeof stateModule.useUpsertPortfolioSnapshot>);
+
+    vi.spyOn(stateModule, "usePortfolioAssets").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioAssets>);
+
+    vi.spyOn(stateModule, "useAllPortfolioTransactions").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.useAllPortfolioTransactions>);
+
+    vi.spyOn(stateModule, "usePortfolioDividends").mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioDividends>);
+
+    renderHook(() => useAutoPortfolioSnapshot());
+
+    expect(mutateMock).not.toHaveBeenCalled();
+  });
+
   it("materializa mês retroativo pendente aplicando a regra canônica de total_cost (custo + caixa)", () => {
     const mutateMock = vi.fn();
     const currentMonthStr = new Date().toISOString().slice(0, 7);

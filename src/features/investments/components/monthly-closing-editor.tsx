@@ -200,6 +200,7 @@ export function MonthlyClosingEditor({
       prices: pricesPayload,
       totalValueBRL: recalculatedSummary.totalValueBRL,
       totalCostBRL: recalculatedSummary.totalCostBRL,
+      closingDate: historicalPosition.cutoffDate,
     });
 
     if (onSaved) {
