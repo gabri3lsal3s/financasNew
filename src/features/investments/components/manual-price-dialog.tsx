@@ -116,30 +116,29 @@ function ManualPriceContent({ asset, onClose }: ManualPriceContentProps) {
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
-      <ModalFooter className="sm:justify-between">
-        {asset.source === "manual" ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => void handleRemove()}
-            disabled={pending}
-            className="text-xs"
-          >
-            <RefreshCw className="mr-1.5 size-3.5" aria-hidden="true" />
-            Usar cotação automática
-          </Button>
-        ) : (
-          <span />
-        )}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
-          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={!canSave}>
-            {pending ? "Salvando…" : "Salvar preço"}
-          </Button>
-        </div>
+      <ModalFooter
+        destructiveAction={
+          asset.source === "manual" ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => void handleRemove()}
+              disabled={pending}
+              className="text-xs"
+            >
+              <RefreshCw className="mr-1.5 size-3.5" aria-hidden="true" />
+              Usar cotação automática
+            </Button>
+          ) : undefined
+        }
+      >
+        <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={!canSave}>
+          {pending ? "Salvando…" : "Salvar preço"}
+        </Button>
       </ModalFooter>
     </form>
   );

@@ -177,8 +177,12 @@ export function AssetSplitDialog({ open, onOpenChange, asset }: AssetSplitDialog
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button type="button" onClick={handleApplySplit} disabled={updateAsset.isPending}>
-            {updateAsset.isPending ? "Aplicando…" : `Confirmar ${operationLabel}`}
+          <Button
+            type="button"
+            onClick={handleApplySplit}
+            disabled={updateAsset.isPending || createTx.isPending}
+          >
+            {updateAsset.isPending || createTx.isPending ? "Aplicando…" : `Confirmar ${operationLabel}`}
           </Button>
         </ModalFooter>
       </div>

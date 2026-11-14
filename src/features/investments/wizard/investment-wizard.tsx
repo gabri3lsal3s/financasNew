@@ -3,6 +3,7 @@ import { Alert, Button, ConfirmDialog, Modal, ModalFooter, Stepper } from "@/com
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
+import { resolveAssetPrecision } from "@/domain/portfolio/aporte";
 import { numberToCents } from "@/domain/money";
 import { inferSectorFromTicker, type AporteSuggestionItem } from "@/domain/portfolio/tickers-catalog";
 import { resolveDividendDate, resolveDividendNote } from "@/domain/portfolio/dividends";
@@ -485,15 +486,34 @@ function InvestmentWizardContent({
       return;
     }
 
+    const precision = resolveAssetPrecision({
+      assetClass: item.assetClass,
+      ticker: item.ticker,
+      currency: (asset?.currency ?? "BRL") as "BRL" | "USD",
+    });
+
     let suggestedQty = 0;
     if (cashAvailableBRL > 0 && priceBRL > 0) {
-      const maxUsefulQty = Math.floor(item.gapBRL / priceBRL);
-      const cashQty = Math.floor(cashAvailableBRL / priceBRL);
-      suggestedQty = Math.min(maxUsefulQty, cashQty);
+      if (precision > 0) {
+        const factor = 10 ** precision;
+        const maxUsefulQty = Math.floor((item.gapBRL / priceBRL) * factor) / factor;
+        const cashQty = Math.floor((cashAvailableBRL / priceBRL) * factor) / factor;
+        suggestedQty = Math.min(maxUsefulQty, cashQty);
+      } else {
+        const maxUsefulQty = Math.floor(item.gapBRL / priceBRL);
+        const cashQty = Math.floor(cashAvailableBRL / priceBRL);
+        suggestedQty = Math.min(maxUsefulQty, cashQty);
+      }
     }
 
     const priceCents = Math.round(priceBRL * 100);
     const totalCents = suggestedQty > 0 ? Math.round(suggestedQty * priceBRL * 100) : 0;
+    const formattedQty =
+      suggestedQty > 0
+        ? precision > 0
+          ? parseFloat(suggestedQty.toFixed(precision)).toString()
+          : String(suggestedQty)
+        : "";
 
     setState((prev) => ({
       ...prev,
@@ -507,7 +527,7 @@ function InvestmentWizardContent({
       currency: asset?.currency ?? "BRL",
       isCash: false,
       priceCents,
-      quantityStr: suggestedQty > 0 ? String(suggestedQty) : "",
+      quantityStr: formattedQty,
       totalCents,
       syncCash: suggestedQty > 0,
     }));

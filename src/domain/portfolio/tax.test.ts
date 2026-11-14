@@ -6,6 +6,7 @@ import {
   generateAnnualBensDireitosReport,
   getBensDireitosClassification,
   isBdrAsset,
+  isCryptoAsset,
   isEtfAsset,
   isFiiAsset,
   isForeignAsset,
@@ -381,9 +382,40 @@ describe("domain/portfolio/tax — Apuração Fiscal e IRPF", () => {
       expect(result.totalTaxDueCents).toBe(0);
       expect(result.shouldPayDarf).toBe(false);
     });
+
+    it("ignora vendas de Criptoativos diretos e não contamina o teto de isenção de 20k de ações", () => {
+      const result = calculateMonthlyDarf({
+        month: "2026-05",
+        sales: [
+          // Venda de R$ 50.000 de Bitcoin com lucro (regime GCAP / DARF 4600 com teto próprio de 35k)
+          {
+            ticker: "BTC",
+            assetClass: "Cripto",
+            saleAmountCents: 5_000_000,
+            costAmountCents: 3_000_000,
+            profitCents: 2_000_000,
+          },
+          // Venda de R$ 10.000 de PETR4 com lucro de R$ 2.000
+          {
+            ticker: "PETR4",
+            assetClass: "Ações",
+            saleAmountCents: 1_000_000,
+            costAmountCents: 800_000,
+            profitCents: 200_000,
+          },
+        ],
+      });
+
+      // PETR4 deve permanecer 100% isento pois suas vendas isoladas foram R$ 10.000 (<= 20.000)
+      expect(result.stockSalesVolumeCents).toBe(1_000_000);
+      expect(result.isStockExempt).toBe(true);
+      expect(result.stockTaxDueCents).toBe(0);
+      expect(result.totalTaxDueCents).toBe(0);
+      expect(result.shouldPayDarf).toBe(false);
+    });
   });
 
-  describe("classificadores fiscais (isForeignAsset, isEtfAsset, isBdrAsset, isFiiAsset)", () => {
+  describe("classificadores fiscais (isForeignAsset, isEtfAsset, isBdrAsset, isFiiAsset, isCryptoAsset)", () => {
     it("isForeignAsset classifica ativos em USD e internacionais", () => {
       expect(isForeignAsset("AAPL", "Internacional", "USD")).toBe(true);
       expect(isForeignAsset("VOO", "ETFs", "USD")).toBe(true);
@@ -419,6 +451,16 @@ describe("domain/portfolio/tax — Apuração Fiscal e IRPF", () => {
       expect(isFiiAsset("VGIA11", "FIAGRO")).toBe(true);
       expect(isFiiAsset("PETR4", "Ações")).toBe(false);
       expect(isFiiAsset("BOVA11", "ETFs")).toBe(false);
+    });
+
+    it("isCryptoAsset identifica criptomoedas diretas e não classifica ETFs B3 como cripto direto", () => {
+      expect(isCryptoAsset("BTC", "Cripto")).toBe(true);
+      expect(isCryptoAsset("ETH", "Criptoativos")).toBe(true);
+      expect(isCryptoAsset("SOL")).toBe(true);
+      expect(isCryptoAsset("USDT")).toBe(true);
+      expect(isCryptoAsset("HASH11", "ETFs")).toBe(false);
+      expect(isCryptoAsset("QBTC11", "ETFs")).toBe(false);
+      expect(isCryptoAsset("PETR4", "Ações")).toBe(false);
     });
   });
 

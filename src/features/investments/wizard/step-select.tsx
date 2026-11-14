@@ -17,6 +17,7 @@ import {
   isFixedIncomeClass,
   isTesouroAsset,
 } from "@/domain/portfolio/valuation";
+import { resolveAssetPrecision } from "@/domain/portfolio/aporte";
 import type { AllocationTarget, PortfolioAsset } from "@/types";
 import type { InvestmentWizardState } from "./wizard-state";
 
@@ -256,20 +257,44 @@ export function StepSelect({
                       fits: true,
                     };
                   } else if (priceBRL > 0) {
-                    const maxUsefulQty = Math.floor(item.gapBRL / priceBRL);
-                    const cashQty = Math.floor(cashAvailableBRL / priceBRL);
-                    const sharesFit = Math.min(maxUsefulQty, cashQty);
-                    if (sharesFit > 0) {
-                      cashInfo = {
-                        text: `Cabe no caixa: ${sharesFit} cota${sharesFit > 1 ? "s" : ""} (~`,
-                        costBRL: sharesFit * priceBRL,
-                        fits: true,
-                      };
+                    const precision = resolveAssetPrecision({
+                      assetClass: item.assetClass,
+                      ticker: item.ticker,
+                      currency: (asset?.currency ?? "BRL") as "BRL" | "USD",
+                    });
+                    if (precision > 0) {
+                      const factor = 10 ** precision;
+                      const maxUsefulQty = Math.floor((item.gapBRL / priceBRL) * factor) / factor;
+                      const cashQty = Math.floor((cashAvailableBRL / priceBRL) * factor) / factor;
+                      const sharesFit = Math.min(maxUsefulQty, cashQty);
+                      if (sharesFit > 0) {
+                        cashInfo = {
+                          text: `Cabe no caixa: ${parseFloat(sharesFit.toFixed(precision))} cota${sharesFit > 1 ? "s" : ""} (~`,
+                          costBRL: sharesFit * priceBRL,
+                          fits: true,
+                        };
+                      } else {
+                        cashInfo = {
+                          text: "Saldo em caixa insuficiente para aporte",
+                          fits: false,
+                        };
+                      }
                     } else {
-                      cashInfo = {
-                        text: "Saldo em caixa insuficiente para 1 cota",
-                        fits: false,
-                      };
+                      const maxUsefulQty = Math.floor(item.gapBRL / priceBRL);
+                      const cashQty = Math.floor(cashAvailableBRL / priceBRL);
+                      const sharesFit = Math.min(maxUsefulQty, cashQty);
+                      if (sharesFit > 0) {
+                        cashInfo = {
+                          text: `Cabe no caixa: ${sharesFit} cota${sharesFit > 1 ? "s" : ""} (~`,
+                          costBRL: sharesFit * priceBRL,
+                          fits: true,
+                        };
+                      } else {
+                        cashInfo = {
+                          text: "Saldo em caixa insuficiente para 1 cota",
+                          fits: false,
+                        };
+                      }
                     }
                   }
                 }

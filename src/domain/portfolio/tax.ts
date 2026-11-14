@@ -444,6 +444,30 @@ export function isFiiAsset(ticker: string, assetClass?: string | null): boolean 
 }
 
 /**
+ * Identifica se o ativo é um Criptoativo / Moeda Digital direta (ex: BTC, ETH, SOL, USDT, etc.).
+ * No Brasil, a alienação de criptoativos possui regime fiscal próprio (GCAP / DARF 4600 com isenção
+ * de até R$ 35.000,00/mês - IN RFB nº 1.888/2019 e Lei nº 8.981/1995) e NÃO compõe o DARF 6015 de renda
+ * variável em bolsa, não podendo contaminar a faixa de isenção de R$ 20.000,00 de ações ordinárias e preferenciais.
+ * Nota: ETFs de cripto listados na B3 (ex.: HASH11, QBTC11) são negociados como ativos de bolsa (ETFs).
+ */
+export function isCryptoAsset(ticker: string, assetClass?: string | null): boolean {
+  const upperTicker = ticker.trim().toUpperCase();
+  if (KNOWN_B3_ETFS.has(upperTicker)) {
+    return false;
+  }
+  const normClass = normalizeClassName(assetClass ?? "");
+  if (
+    normClass === "cripto" ||
+    normClass === "crypto" ||
+    normClass.includes("cripto") ||
+    normClass.includes("crypto")
+  ) {
+    return true;
+  }
+  return ["BTC", "ETH", "SOL", "USDT", "USDC", "ADA", "XRP", "DOT", "LINK", "AVAX"].includes(upperTicker);
+}
+
+/**
  * Apuração mensal de impostos sobre ganhos líquidos de renda variável (DARF).
  * Segrega estritamente ações comuns B3 (isenção 20k), FIIs (20%), ETFs/BDRs (15% sem isenção)
  * e ativos no exterior (Lei 14.754/2023 - DAA anual, sem DARF 6015 mensal).
@@ -474,7 +498,8 @@ export function calculateMonthlyDarf(input: MonthlyDarfInput): MonthlyDarfResult
     if (
       isFixedIncomeClass(s.assetClass) ||
       isCashAssetClass(s.assetClass) ||
-      isTesouroAsset(s.ticker, s.assetClass)
+      isTesouroAsset(s.ticker, s.assetClass) ||
+      isCryptoAsset(s.ticker, s.assetClass)
     ) {
       continue;
     }

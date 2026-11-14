@@ -1,5 +1,23 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.6.4 (Build 63)** registra a conclusão integral da **Terceira Rodada de Refinamentos de Investimentos** ([`docs/plans/34_PLANO_TERCEIRA_RODADA_REFINAMENTOS_INVESTIMENTOS.md`](../plans/34_PLANO_TERCEIRA_RODADA_REFINAMENTOS_INVESTIMENTOS.md)) (2026-11-13):
+> - **(1) Blindagem Fiscal de Criptoativos no DARF 6015 (AUDIT-06)**:
+>   - Função pura `isCryptoAsset` em `src/domain/portfolio/tax.ts` identificando criptomoedas diretas (BTC, ETH, SOL, etc.) e distinguindo-as de ETFs B3 (ex.: HASH11, QBTC11);
+>   - Segregação estrita em `calculateMonthlyDarf` e `calculateHistoricalLossesCarryover`: vendas de criptomoedas não contaminam o limite de R$ 20.000,00 de ações ordinárias/preferenciais e não geram DARF 6015 indevido (criptoativos sujeitos ao GCAP / DARF 4600 com isenção própria de R$ 35.000,00 da IN RFB 1.888);
+> - **(2) Resolução Precisa de Cotas Fracionárias no Wizard de Aporte (AUDIT-07)**:
+>   - Integração de `resolveAssetPrecision` em `investment-wizard.tsx` e `step-select.tsx`, substituindo o truncamento estático `Math.floor` por precisão ponderada para Tesouro Direto (0,01), Ativos USD (0,0001) e Cripto (0,00000001);
+>   - Permite que saldos parciais em caixa preencham a sugestão de cotas fracionárias reais em vez de exibir incorretamente "saldo insuficiente para 1 cota";
+> - **(3) Governança Canônica de Rodapés em Diálogos (AUDIT-08)**:
+>   - Migração para a propriedade canônica `destructiveAction` de `<ModalFooter />` em `contribution-form-dialog.tsx` e `manual-price-dialog.tsx`;
+>   - Remoção de tags vazias `<span />` e alinhamento responsivo simétrico de 2 botões no mobile e à direita no desktop (Regras 15 e 18);
+> - **(4) Prevenção de Concorrência em Desdobramentos (AUDIT-09)**:
+>   - Adição da guarda `createTx.isPending` junto a `updateAsset.isPending` no botão de confirmação de `asset-split-dialog.tsx`, prevenindo registros duplicados no ledger por duplo clique;
+> - **(5) Quality Gates 100% Verdes**:
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros, 0 avisos;
+>   - Vitest: 69 suítes e 735 testes de Investimentos 100% aprovados, mais 58/58 no security audit;
+>   - Build de produção Vite e PWA precache gerados em 1.68s.
+>
 > **v3.6.3 (Build 62)** registra a conclusão integral da **Segunda Rodada de Auditoria e Refinamentos de Investimentos** ([`docs/plans/33_PLANO_SEGUNDA_RODADA_AUDITORIA_E_REFINAMENTOS_INVESTIMENTOS.md`](../plans/33_PLANO_SEGUNDA_RODADA_AUDITORIA_E_REFINAMENTOS_INVESTIMENTOS.md)) (2026-11-13):
 > - **(1) Classificação Fiscal FIIs com Sufixo B3 11B (AUDIT-05)**:
 >   - Suporte nativo ao sufixo `11B` (fundos imobiliários com negociação diferenciada ou balcão organizado, ex.: `KNCR11B`) na função pura `isFiiAsset` em `src/domain/portfolio/tax.ts`;

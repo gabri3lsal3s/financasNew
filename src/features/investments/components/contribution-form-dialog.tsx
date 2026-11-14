@@ -251,28 +251,27 @@ export function ContributionFormContent({
 
         {error ? <Alert variant="error">{error}</Alert> : null}
 
-        <ModalFooter className="sm:justify-between">
-          {isEdit ? (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setConfirmDelete(true)}
-              disabled={pending}
-              className="text-negative-strong hover:bg-destructive/10"
-            >
-              Excluir aporte
-            </Button>
-          ) : (
-            <span />
-          )}
-          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
-            <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={!canSubmit}>
-              {pending ? "Salvando…" : isEdit ? "Salvar" : "Registrar Aporte"}
-            </Button>
-          </div>
+        <ModalFooter
+          destructiveAction={
+            isEdit ? (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setConfirmDelete(true)}
+                disabled={pending}
+                className="text-critical-strong hover:bg-critical/10"
+              >
+                Excluir aporte
+              </Button>
+            ) : undefined
+          }
+        >
+          <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={!canSubmit}>
+            {pending ? "Salvando…" : isEdit ? "Salvar" : "Registrar Aporte"}
+          </Button>
         </ModalFooter>
       </form>
 

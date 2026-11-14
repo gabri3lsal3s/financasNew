@@ -224,4 +224,34 @@ describe("InvestmentWizard (Fase 41)", () => {
       }),
     );
   });
+
+  it("calcula e preenche quantidade fracionária precisa para ativo do Tesouro Direto ou Cripto", () => {
+    mockTargets = [{ asset_id: "asset-1", target_percentage: 80 }];
+    const cryptoAsset: PortfolioAsset = {
+      ...mockAsset,
+      asset_class: "Cripto",
+    };
+    const cashAsset: PortfolioAsset = {
+      id: "cash-1",
+      user_id: "user-1",
+      ticker: "CAIXA",
+      asset_class: "Caixa",
+      currency: "BRL",
+      quantity: 25, // R$ 25 em caixa, insuficiente para 1 cota inteira (R$ 50)
+      average_price: 1,
+    };
+    mockAssetsList = [cryptoAsset, cashAsset];
+
+    render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
+    // Com caixa de R$ 25 e preço de R$ 50, ativo fracionário cabe no caixa (0.5 cota)
+    expect(screen.getByText(/Cabe no caixa: 0.5 cota/i)).toBeInTheDocument();
+
+    const suggestionCard = screen.getByText("PETR4").closest("button");
+    expect(suggestionCard).toBeTruthy();
+    fireEvent.click(suggestionCard!);
+
+    // No passo 2, deve vir preenchido com a fração exata 0.5
+    const qtyInput = screen.getByLabelText(/Quantidade de Cotas/i) as HTMLInputElement;
+    expect(qtyInput.value).toBe("0.5");
+  });
 });

@@ -447,6 +447,7 @@ export {
   generateAnnualBensDireitosReport,
   getBensDireitosClassification,
   isBdrAsset,
+  isCryptoAsset,
   isEtfAsset,
   isFiiAsset,
   isForeignAsset,
