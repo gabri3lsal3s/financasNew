@@ -24,7 +24,7 @@
   - **Defesa em Profundidade:** `Strict-Transport-Security` (HSTS preload), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`;
   - **CORS das Edge Functions:** allowlist (`ALLOWED_ORIGINS` + `*.workers.dev` + `*.pages.dev` + localhost/Capacitor); webhook Asaas sem CORS de browser; `quotes` só grava cache global com service role.
   - **Estratégia de Cache de Borda:** assets estáticos versionados (`/assets/*`) com cache imutável de 1 ano (`max-age=31536000, immutable`), e artefatos dinâmicos de ciclo de vida (`/index.html`, `/sw.js`, `/pwa/*`) com validação imediata (`max-age=0, must-revalidate`).
-- **Backend:** Supabase — migrations em `supabase/migrations/` (0001–0010: schema, RLS, RPCs, overrides, metas, metas de alocação, backfill de perfis, restauração de backup F22).
+- **Backend:** Supabase — migrations em `supabase/migrations/` (sequência canônica estrita 0001–0121: schema, RLS, RPCs, quotas, planos, conciliação, colaboração familiar/viagens, faturamento, auditoria, calibração não-destrutiva e blindagem de snapshots patrimoniais).
 - **Auth:** Supabase Auth (email/senha) + trigger `handle_new_user` (cria `profiles` e `user_preferences` automaticamente).
 - **Cotações:** tabela `asset_prices` com cache global (`user_id NULL`) + override manual do usuário. O cache global é escrito pela **edge function `quotes`** (implementada em `supabase/functions/quotes/`).
 
@@ -46,7 +46,7 @@
 ### 3.1 Supabase: criar o projeto e aplicar o schema
 
 1. Crie o projeto em [supabase.com/dashboard](https://supabase.com/dashboard) (anote `Project URL` e `anon key` em **Settings → API**).
-2. Aplique as migrations **na ordem** (0001 → 0052).
+2. Aplique as migrations **na ordem** (0001 → 0121) via `supabase db push` ou console SQL.
 3. **Auth — configurar URLs de redirect** (Settings → Auth → URL Configuration):
    - `Site URL`: `https://axir.com.br`
    - `Redirect URLs`: adicionar `https://axir.com.br/**`, `https://www.axir.com.br/**`, `https://*.pages.dev/**` e `http://localhost:5173/**`

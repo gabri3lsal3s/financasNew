@@ -1,5 +1,23 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.6.8** registra a **Organização Canônica e Sincronização Integral das Migrações do Supabase** (2026-11-14):
+> - **(1) Saneamento e Unificação Canônica do Diretório de Migrações (`supabase/migrations/`)**:
+>   - Resolução definitiva de sufixos alfanuméricos ignorados pelo Supabase CLI: fusão dos pares `46a/46b` em `20260101000046_batch_budget_limits_and_access_hardening.sql` e `56a/56b` em `20260101000056_fix_import_statement_rpcs_and_qualified_decisions.sql`;
+>   - Eliminação de colisões de timestamps e duplicidade de versões: consolidação atômica dos pares 0062, 0069, 0071, 0081, 0098 e 0104 nos seus arquivos canônicos correspondentes, preservando 100% dos objetos, tabelas e funções DDL;
+>   - Estrutura local estritamente sequencial: exatamente 121 migrações canônicas de `20260101000001` até `20260101000121`, sem saltos, sem sufixos inválidos e sem duplicatas;
+> - **(2) Execução e Push das Migrações no PostgreSQL Remoto**:
+>   - Registro formal das versões 46 e 56 na tabela de histórico `supabase_migrations.schema_migrations`;
+>   - Aplicação bem-sucedida das migrações pendentes via `supabase db push`:
+>     * `20260101000118_harden_modular_access_period_expiration.sql`: controle de vigência do plano Pro e reconciliação de períodos;
+>     * `20260101000119_link_debt_settlement_transactions.sql`: vínculos relacionais e rastreabilidade de liquidação de dívidas/empréstimos;
+>     * `20260101000120_harden_portfolio_batch_aporte_rpc.sql`: saneamento de sobrecargas de ordens em lote e suporte a frações decimais;
+>     * `20260101000121_portfolio_snapshots_hardening_and_calibration.sql`: blindagem de isolamento por `user_id`, imutabilidade pós-fechamento e calibração não-destrutiva de snapshots;
+> - **(3) Paridade e Validação 100% Concluída**:
+>   - `supabase migration list`: 121 migrações locais e 121 migrações remotas em perfeita paridade cronológica (0 pendências, 0 discrepâncias);
+>   - `supabase db push --dry-run`: status `Remote database is up to date`;
+>   - Vitest: 118 testes de segurança de migrations e RLS (`security-audit`, `database-integrity`, `rpc-transactional-rollback`, `cross-tenant-penetration`) 100% aprovados;
+>   - `npm run verify`: `tsc -b` (0 erros), `eslint .` (0 avisos) e 2.684 testes de domínio 100% aprovados.
+>
 > **v3.6.6 (Build 65)** registra a conclusão integral da **Auditoria e Blindagem do Fluxo de Compra e Venda de Ativos** ([`docs/plans/36_PLANO_AUDITORIA_E_BLINDAGEM_COMPRA_E_VENDA_ATIVOS.md`](../plans/36_PLANO_AUDITORIA_E_BLINDAGEM_COMPRA_E_VENDA_ATIVOS.md)) (2026-11-13):
 > - **(1) Correção Crítica de Estorno de Venda no Ativo Caixa**:
 >   - Segregação de sinal em `PortfolioActivityPanel`: exclusão de compras devolve recursos somando ao Caixa (`+ totalBRL`), enquanto exclusão de vendas estorna o crédito deduzindo do Caixa (`- totalBRL`);
