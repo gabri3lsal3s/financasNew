@@ -1,4 +1,4 @@
-import { getSupabase } from "@/data/client";
+import { getSupabase, createIsolatedSupabaseClient } from "@/data/client";
 import { normalizeEmail, sanitizeString } from "@/domain/validation";
 import { getPublicAppUrl } from "@/lib/env";
 import { AppError, classifyError, MESSAGES } from "@/services/errors";
@@ -133,7 +133,10 @@ export async function verifyCurrentPassword(password: string): Promise<boolean> 
   if (!user || !user.email) {
     throw new AppError("session-expired", MESSAGES["session-expired"]);
   }
-  const { error } = await supabase.auth.signInWithPassword({
+
+  // Usa cliente isolado sem persistência para evitar rebaixar a sessão ativa de AAL2 para AAL1
+  const isolatedClient = createIsolatedSupabaseClient();
+  const { error } = await isolatedClient.auth.signInWithPassword({
     email: user.email,
     password,
   });

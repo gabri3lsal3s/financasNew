@@ -89,6 +89,7 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
 
     const mappedDebtIds = new Set<string>();
     const mappedExpenseIds = new Set<string>();
+    const mappedInstallmentGroupIds = new Set<string>();
 
     const itemsFromShares = (shares ?? []).map((share) => {
       const payload = (share.payload ?? {}) as unknown as SplitSharePayload;
@@ -102,7 +103,12 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
         (debtId ? debtById.get(debtId) : null) ||
         (expenseId ? receivableDebtsByExpense.get(expenseId) : null) ||
         null;
-      if (linkedDebt) mappedDebtIds.add(linkedDebt.id);
+      if (linkedDebt) {
+        mappedDebtIds.add(linkedDebt.id);
+        if (linkedDebt.installment_group_id) {
+          mappedInstallmentGroupIds.add(linkedDebt.installment_group_id);
+        }
+      }
 
       const participants = payload.participants ?? [];
       const participantInstallments = payload.participant_installments ?? [];
@@ -165,13 +171,33 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
       };
     });
 
+    // Coleta todos os installment_group_id de dívidas órfãs de racha para agrupar e exibir apenas a primeira parcela
+    const seenOrphanGroupIds = new Set<string>();
+
     // Encontra dívidas a receber de racha pendentes que ainda não possuem public_share gerado
     const orphanRachaDebts = (debts ?? [])
       .filter((d) => {
         if (d.type !== "receivable" || d.paid_at) return false;
         if (mappedDebtIds.has(d.id)) return false;
         if (d.expense_id && mappedExpenseIds.has(d.expense_id)) return false;
-        return d.name.toLowerCase().startsWith("racha:") || d.name.toLowerCase().includes("racha");
+        if (d.installment_group_id && mappedInstallmentGroupIds.has(d.installment_group_id)) return false;
+
+        const isRacha = d.name.toLowerCase().startsWith("racha:") || d.name.toLowerCase().includes("racha");
+        if (!isRacha) return false;
+
+        // Se a dívida pertence a um grupo de parcelas não mapeado por share, permite apenas a primeira que encontrarmos
+        if (d.installment_group_id) {
+          if (seenOrphanGroupIds.has(d.installment_group_id)) return false;
+          seenOrphanGroupIds.add(d.installment_group_id);
+        }
+
+        // Se o nome contiver padrão de parcela filha (ex: (2/10), (3/5), etc., com número inicial > 1)
+        const installmentMatch = d.name.match(/\((\d+)\/\d+\)/);
+        if (installmentMatch && Number(installmentMatch[1]) > 1) {
+          return false;
+        }
+
+        return true;
       })
       .map((d) => {
         const cleanTitle = d.name.replace(/^racha:\s*/i, "").trim() || "Racha de Despesa";

@@ -1,52 +1,29 @@
-import { act, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { LoadingScreen } from "./loading-screen";
 
 describe("LoadingScreen", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it("renderiza a logo, barra de progresso e log inicial", () => {
+  it("renderiza a logo oficial e o indicador de carregamento", () => {
     render(<LoadingScreen />);
     expect(screen.getByRole("status")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar")).toBeInTheDocument();
-    expect(screen.getByText("Iniciando sessão segura…")).toBeInTheDocument();
+    expect(screen.getByText("Axir")).toBeInTheDocument();
+    expect(screen.getByText("Carregando…")).toBeInTheDocument();
   });
 
-  it("avança as etapas do log e porcentagem com o tempo", () => {
-    render(<LoadingScreen />);
-
-    expect(screen.getByText("Iniciando sessão segura…")).toBeInTheDocument();
-
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    expect(
-      screen.getByText("Sincronizando preferências e categorias…"),
-    ).toBeInTheDocument();
-  });
-
-  it("permite customização de statusText fixo e progresso externo", () => {
+  it("renderiza mensagem customizada quando statusText for fornecido", () => {
     render(
-      <LoadingScreen
-        statusText="Restaurando cópia de segurança…"
-        progress={65}
-      />,
+      <LoadingScreen statusText="Restaurando cópia de segurança…" />,
     );
 
     expect(
       screen.getByText("Restaurando cópia de segurança…"),
     ).toBeInTheDocument();
-    expect(screen.getByText("65%")).toBeInTheDocument();
-    expect(screen.getByRole("progressbar")).toHaveAttribute(
-      "aria-valuenow",
-      "65",
-    );
+  });
+
+  it("aplica classes de fade-out e desativação quando isClosing for true", () => {
+    const { container } = render(<LoadingScreen isClosing />);
+    const root = container.querySelector('[role="status"]');
+    expect(root).toHaveClass("opacity-0");
+    expect(root).toHaveClass("pointer-events-none");
   });
 });

@@ -3,7 +3,7 @@ import { getSupabase } from "@/data/client";
 import { setActiveUserId, sanitizeLegacyStorage } from "@/services/user-storage";
 import { resetVisualCustomization } from "@/hooks/use-visual-customization";
 import { resetPrivacyMask } from "@/hooks/use-privacy-mask";
-import { resetEnsuredProfiles } from "@/hooks/use-auth";
+import { resetEnsuredProfiles, resetGlobalMfaState } from "@/hooks/use-auth";
 import { setObservabilityUser } from "@/services/observability";
 import { setAppLocked, resetAppLockBackgroundTimer } from "@/services/native/app-lock";
 import { setCachedIconTier } from "@/services/native/app-icon";
@@ -65,6 +65,7 @@ export function resetAppState(queryClient?: QueryClient, nextUserId: string | nu
   resetVisualCustomization(nextUserId);
   resetPrivacyMask();
   resetEnsuredProfiles();
+  resetGlobalMfaState();
 
   // 5. Limpa usuário de observabilidade (Sentry)
   void setObservabilityUser(null);

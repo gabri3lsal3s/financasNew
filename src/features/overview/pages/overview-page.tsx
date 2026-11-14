@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { Navigate, useNavigate } from "react-router";
 import { Coins, DollarSign, Inbox, PieChart, Plus, TrendingDown, TrendingUp } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, MoneyText, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
+import { useUpdateCustomSettings, useUserAccess, useUserPreferences } from "@/state";
 import {
   CategoryDonut,
   DashboardAlertsCarousel,
@@ -73,6 +74,7 @@ import { isAndroidDevice, isNativePlatform } from "@/services/native/platform";
 import type { PublicShare } from "@/types";
 
 export function OverviewPage() {
+  const { hasFeature, isLoading: accessLoading } = useUserAccess();
   const [month, setMonth] = useState(currentMonth);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [isOthersBudgetOpen, setIsOthersBudgetOpen] = useState(false);
@@ -166,10 +168,23 @@ export function OverviewPage() {
   const welcomeModalOpen = shouldOpenWelcome && !welcomeDismissed;
 
 
+  const userPreferencesQuery = useUserPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
+  const hasDismissedInSettings = Boolean(
+    userPreferencesQuery.data?.custom_settings?.hasDismissedAndroidProBanner,
+  );
+
   const isAndroidEligible = useMemo(() => {
-    if (androidBannerDismissed) return false;
-    return isAndroidDevice() && !isNativePlatform();
-  }, [androidBannerDismissed]);
+    if (androidBannerDismissed || hasDismissedInSettings) return false;
+    return Boolean(subscription.isPro) && isAndroidDevice() && !isNativePlatform();
+  }, [androidBannerDismissed, hasDismissedInSettings, subscription.isPro]);
+
+  const handleDismissAndroidBanner = useCallback(() => {
+    setAndroidBannerDismissed(true);
+    updateCustomSettingsMutation.mutate({
+      hasDismissedAndroidProBanner: true,
+    });
+  }, [updateCustomSettingsMutation]);
 
   // Handlers de Descarte de Alertas (§F23)
   const handleDismissPace = useCallback(() => {
@@ -396,17 +411,6 @@ export function OverviewPage() {
       priority: cashGapResult.severity === "critical" ? 1 : 3,
       content: <CashGapAlert result={cashGapResult} />,
     },
-    Boolean(detectedPix && detectedPix.candidate.valueCents > 0) && {
-      id: "pix-clipboard-alert",
-      priority: 1,
-      content: (
-        <DashboardPixClipboardCard
-          detected={detectedPix!}
-          onLaunch={handleLaunchPixFromClipboard}
-          onDismiss={dismissDetectedPix}
-        />
-      ),
-    },
     activeTrips[0]
       ? {
           id: `active-trip-${activeTrips[0].id}`,
@@ -529,7 +533,7 @@ export function OverviewPage() {
     isAndroidEligible && {
       id: "android-pro-banner",
       priority: 4,
-      content: <AndroidProBanner onDismiss={() => setAndroidBannerDismissed(true)} />,
+      content: <AndroidProBanner onDismiss={handleDismissAndroidBanner} />,
     },
     subscription.isTrial &&
       !subscription.hasAutoRenew &&
@@ -539,6 +543,16 @@ export function OverviewPage() {
         content: <TrialEndingBanner daysRemaining={subscription.trialDaysRemaining} />,
       },
   ];
+
+  const hasFinance =
+    hasFeature("transactions") ||
+    hasFeature("cards") ||
+    hasFeature("debts") ||
+    hasFeature("budgets");
+
+  if (!accessLoading && !hasFinance && hasFeature("investments")) {
+    return <Navigate to="/investments" replace />;
+  }
 
   return (
     <>
@@ -608,6 +622,16 @@ export function OverviewPage() {
               />
             ) : (
               <>
+                {Boolean(detectedPix && detectedPix.candidate.valueCents > 0) && (
+                  <div className="w-full animate-fade-slide-in">
+                    <DashboardPixClipboardCard
+                      detected={detectedPix!}
+                      onLaunch={handleLaunchPixFromClipboard}
+                      onDismiss={dismissDetectedPix}
+                    />
+                  </div>
+                )}
+
                 <DashboardAlertsCarousel items={alertItems} />
 
                 {isCurrentMonth ? (

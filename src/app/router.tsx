@@ -3,7 +3,15 @@ import { Navigate, BrowserRouter, Route, Routes, useLocation } from "react-route
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { isNativePlatform } from "@/services/native";
-import { Skeleton, SkeletonHeroCard, SkeletonKpi, SkeletonChart, SkeletonList } from "@/components/ui/skeleton";
+import {
+  Skeleton,
+  OverviewSkeleton,
+  InvestmentsSkeleton,
+  TransactionsSkeleton,
+  BudgetsSkeleton,
+  ReportsSkeleton,
+  SettingsSkeleton,
+} from "@/components/ui/skeleton";
 
 /**
  * Guards e App Shell carregados sob demanda: a landing page não deve baixar
@@ -158,6 +166,28 @@ const AdminSettingsPage = lazy(() =>
   import("@/features/admin/pages/admin-settings-page").then((m) => ({ default: m.AdminSettingsPage })),
 );
 function RouteSuspenseFallback() {
+  const location = useLocation();
+  const path = location.pathname;
+
+  const renderContent = () => {
+    if (path.startsWith("/investments") || path.startsWith("/carteira")) {
+      return <InvestmentsSkeleton />;
+    }
+    if (path.startsWith("/transacoes")) {
+      return <TransactionsSkeleton />;
+    }
+    if (path.startsWith("/orcamentos") || path.startsWith("/categorias") || path.startsWith("/metas")) {
+      return <BudgetsSkeleton />;
+    }
+    if (path.startsWith("/relatorios")) {
+      return <ReportsSkeleton />;
+    }
+    if (path.startsWith("/configuracoes")) {
+      return <SettingsSkeleton />;
+    }
+    return <OverviewSkeleton />;
+  };
+
   return (
     <div
       role="status"
@@ -176,24 +206,8 @@ function RouteSuspenseFallback() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto space-y-6">
-        <SkeletonHeroCard />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
-          <SkeletonKpi />
-          <SkeletonKpi />
-          <SkeletonKpi />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
-            <SkeletonChart />
-          </div>
-          <div>
-            <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs space-y-3">
-              <Skeleton className="h-4 w-28 rounded" />
-              <SkeletonList rows={4} />
-            </div>
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto">
+        {renderContent()}
       </div>
       <span className="sr-only">Carregando conteúdo da página…</span>
     </div>

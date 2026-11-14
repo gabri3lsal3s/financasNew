@@ -147,6 +147,32 @@ export function markMfaVerified(): void {
   });
 }
 
+/**
+ * Reseta o estado global de 2FA em memória ao efetuar logout ou trocar de usuário.
+ */
+export function resetGlobalMfaState(): void {
+  updateGlobalAuthState({
+    mfaRequired: false,
+    mfaVerified: false,
+    aalLevel: null,
+  });
+}
+
+/**
+ * Reavalia forçadamente o estado de MFA da sessão atual (ex.: após desativação ou ativação de 2FA).
+ */
+export async function refreshMfaState(): Promise<void> {
+  try {
+    const supabase = getSupabase();
+    const { data } = await supabase.auth.getSession();
+    const session = data?.session ?? null;
+    const mfa = await resolveMfaState(supabase, session);
+    updateGlobalAuthState(mfa);
+  } catch {
+    // Silencia em ambiente offline / mock
+  }
+}
+
 async function resolveMfaState(
   supabase: ReturnType<typeof getSupabase>,
   session: Session | null,

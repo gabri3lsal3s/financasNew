@@ -1,3 +1,6 @@
+import { Clipboard } from "@capacitor/clipboard";
+import { isNativePlatform } from "@/services/native";
+
 /**
  * Gateway central de Área de Transferência (Clipboard Service).
  *
@@ -18,11 +21,12 @@ export type ClipboardReadResult =
  * Verifica se o navegador possui permissão explícita prévia concedida ('granted')
  * para leitura da área de transferência sem interação direta.
  *
- * Se a permissão estiver em 'prompt' ou 'denied', chamar navigator.clipboard.readText()
- * passivamente faz o Chromium exibir o chip flutuante nativo [ Colar ], que é invasivo
- * e cobre a interface. Nesses casos, a leitura automática de fundo é bloqueada.
+ * No ambiente nativo (Capacitor), retorna true pois a bridge possui acesso ao sistema.
  */
 export async function canReadClipboardSilently(): Promise<boolean> {
+  if (isNativePlatform()) {
+    return true;
+  }
   if (typeof window === "undefined" || typeof navigator === "undefined") {
     return false;
   }
@@ -44,8 +48,31 @@ export async function canReadClipboardSilently(): Promise<boolean> {
 
 /**
  * Lê o texto da área de transferência com tratamento robusto de permissões e contextos restritos.
+ * No ambiente nativo (Android APK / Capacitor), utiliza o plugin @capacitor/clipboard com
+ * pequeno delay defensivo para conformidade com a janela de foco do Android 12+.
  */
 export async function readClipboardText(): Promise<ClipboardReadResult> {
+  // 1. Caminho nativo Android / iOS via Capacitor
+  if (isNativePlatform()) {
+    try {
+      // Delay preventivo para Android 12+ quando disparado logo após foco de janela
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      const result = await Clipboard.read();
+      const val = result.value ? result.value.trim() : "";
+      if (!val) {
+        return { status: "empty" };
+      }
+      return { status: "success", text: val };
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      return {
+        status: "permission_denied",
+        reason: errorMsg || "Acesso à área de transferência restrito no dispositivo.",
+      };
+    }
+  }
+
+  // 2. Caminho Web / PWA padrão
   if (typeof window === "undefined" || typeof navigator === "undefined") {
     return { status: "unsupported", reason: "Ambiente sem suporte a DOM / Window." };
   }
@@ -84,6 +111,15 @@ export async function readClipboardText(): Promise<ClipboardReadResult> {
  * Escreve um texto na área de transferência com tratamento seguro.
  */
 export async function writeClipboardText(text: string): Promise<boolean> {
+  if (isNativePlatform()) {
+    try {
+      await Clipboard.write({ string: text });
+      return true;
+    } catch {
+      // Fallback para navigator.clipboard se a bridge falhar
+    }
+  }
+
   if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
     return false;
   }

@@ -24,6 +24,8 @@ vi.mock("@/hooks/use-auth", () => ({
   markMfaVerified: () => markMfaVerifiedMock(),
   getActiveUserMfaFactor: () => getActiveUserMfaFactorMock(),
   resetEnsuredProfiles: vi.fn(),
+  resetGlobalMfaState: vi.fn(),
+  refreshMfaState: vi.fn(),
   getMfaAssuranceLevel: async () => {
     const res = await getAuthenticatorAssuranceLevelMock();
     return res.data;

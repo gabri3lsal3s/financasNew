@@ -109,6 +109,7 @@ export type DeletePortfolioContributionInput =
       assetId?: string | null;
       date?: string | null;
       amount?: number | null;
+      skipTransactionCascade?: boolean;
     };
 
 export function useDeletePortfolioContribution() {
@@ -116,10 +117,11 @@ export function useDeletePortfolioContribution() {
   return useMutation({
     mutationFn: async (input: DeletePortfolioContributionInput) => {
       const id = typeof input === "string" ? input : input.id;
+      const skipTransactionCascade = typeof input !== "string" ? Boolean(input.skipTransactionCascade) : false;
       let assetId = typeof input !== "string" ? (input.asset_id ?? input.assetId) : undefined;
       let date = typeof input !== "string" ? input.date : undefined;
 
-      if (!assetId || !date) {
+      if (!skipTransactionCascade && (!assetId || !date)) {
         const cached = queryClient.getQueryData<PortfolioContribution[]>(PORTFOLIO_QUERY_KEYS.contributions) ?? [];
         const match = cached.find((c) => c.id === id);
         if (match) {
@@ -131,8 +133,8 @@ export function useDeletePortfolioContribution() {
       // 1. Deleta a contribuição de aporte
       await deletePortfolioContribution(id);
 
-      // 2. Cascata em Transações de Ativos se vinculado
-      if (assetId && date) {
+      // 2. Cascata em Transações de Ativos se vinculado e não suprimido explicitamente
+      if (!skipTransactionCascade && assetId && date) {
         const cachedAll = queryClient.getQueryData<PortfolioTransaction[]>(PORTFOLIO_QUERY_KEYS.allTransactions) ?? [];
         const linkedTx = cachedAll.find(
           (t) => t.asset_id === assetId && t.date === date && t.type === "buy",

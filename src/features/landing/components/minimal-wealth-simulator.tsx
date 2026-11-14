@@ -109,43 +109,15 @@ export function MinimalWealthSimulator() {
         {/* Card do Simulador com Gráfico Donut Real */}
         <ScrollReveal delay={100} className="mt-10 sm:mt-16 max-w-6xl mx-auto">
           <Card className="border-border/80 bg-surface/95 shadow-xl sm:shadow-2xl p-4 sm:p-8 lg:p-12 space-y-6 sm:space-y-8 rounded-2xl sm:rounded-3xl backdrop-blur-2xl">
-            {/* Controles Enxutos e Espaçosos de 3 Opções Claras */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 border-b border-border/60 pb-5 sm:pb-8">
-              {/* Controle 1: Patrimônio Atual */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs font-semibold">
-                  <span className="text-foreground">Patrimônio Atual:</span>
-                  <span className="font-mono font-bold text-primary-strong dark:text-primary text-sm">{formatBRL(patrimonyBase)}</span>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[25000, 100000, 300000].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => {
-                        triggerSensory("selection", { skipSound: true });
-                        setPatrimonyBase(val);
-                      }}
-                      className={cn(
-                        "py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer border text-center",
-                        patrimonyBase === val
-                          ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
-                          : "bg-surface border-border/70 text-muted-foreground hover:text-foreground hover:border-border",
-                      )}
-                    >
-                      {`R$ ${val / 1000}k`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Controle 2: Estratégia de Carteira */}
+            {/* Controles Enxutos em 2 Linhas: Linha 1 Perfil / Linha 2 Valores */}
+            <div className="flex flex-col gap-4 sm:gap-6 border-b border-border/60 pb-5 sm:pb-8">
+              {/* Linha 1: Estratégia de Carteira (Largura total, espaçosa) */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center text-xs font-semibold">
                   <span className="text-foreground">Perfil de Alocação:</span>
                   <span className="text-primary-strong dark:text-primary font-bold">{currentStrategy.buttonLabel}</span>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                   {(Object.keys(STRATEGY_PRESETS) as StrategyPresetKey[]).map((key) => (
                     <button
                       key={key}
@@ -155,7 +127,7 @@ export function MinimalWealthSimulator() {
                         setStrategy(key);
                       }}
                       className={cn(
-                        "py-2 sm:py-2.5 px-1 sm:px-1.5 rounded-lg sm:rounded-xl text-xs font-semibold transition-all cursor-pointer border text-center truncate",
+                        "py-2.5 px-2 sm:px-3 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer border text-center whitespace-nowrap",
                         strategy === key
                           ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
                           : "bg-surface border-border/70 text-muted-foreground hover:text-foreground hover:border-border",
@@ -167,31 +139,62 @@ export function MinimalWealthSimulator() {
                 </div>
               </div>
 
-              {/* Controle 3: Valor do Aporte a Simular */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs font-semibold">
-                  <span className="text-foreground">Aporte Mensal:</span>
-                  <span className="font-mono font-bold text-primary-strong dark:text-primary text-sm">{formatBRL(aporteAmount)}</span>
+              {/* Linha 2: Valores - Patrimônio Atual e Aporte Mensal lado a lado */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                {/* Patrimônio Atual */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-foreground">Patrimônio Atual:</span>
+                    <span className="font-mono font-bold text-primary-strong dark:text-primary text-sm whitespace-nowrap tabular-nums">{formatBRL(patrimonyBase)}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[25000, 100000, 300000].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => {
+                          triggerSensory("selection", { skipSound: true });
+                          setPatrimonyBase(val);
+                        }}
+                        className={cn(
+                          "py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer border text-center whitespace-nowrap tabular-nums",
+                          patrimonyBase === val
+                            ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
+                            : "bg-surface border-border/70 text-muted-foreground hover:text-foreground hover:border-border",
+                        )}
+                      >
+                        {`R$ ${val / 1000}k`}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {[1500, 3000, 6000].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => {
-                        triggerSensory("selection", { skipSound: true });
-                        setAporteAmount(val);
-                      }}
-                      className={cn(
-                        "py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-lg sm:rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer border text-center",
-                        aporteAmount === val
-                          ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
-                          : "bg-surface border-border/70 text-muted-foreground hover:text-foreground hover:border-border",
-                      )}
-                    >
-                      {`R$ ${val / 1000}k`}
-                    </button>
-                  ))}
+
+                {/* Aporte Mensal */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span className="text-foreground">Aporte Mensal:</span>
+                    <span className="font-mono font-bold text-primary-strong dark:text-primary text-sm whitespace-nowrap tabular-nums">{formatBRL(aporteAmount)}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[1500, 3000, 6000].map((val) => (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => {
+                          triggerSensory("selection", { skipSound: true });
+                          setAporteAmount(val);
+                        }}
+                        className={cn(
+                          "py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer border text-center whitespace-nowrap tabular-nums",
+                          aporteAmount === val
+                            ? "bg-primary text-primary-foreground border-primary shadow-xs font-bold"
+                            : "bg-surface border-border/70 text-muted-foreground hover:text-foreground hover:border-border",
+                        )}
+                      >
+                        {`R$ ${val / 1000}k`}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>

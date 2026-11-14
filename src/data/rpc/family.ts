@@ -15,6 +15,20 @@ import type {
 } from "@/types";
 
 /**
+ * Consulta pública e segura de um compartilhamento público por token (/r/:token).
+ */
+export async function getPublicShareByTokenRpc(params: {
+  token: string;
+}): Promise<Record<string, unknown> | null> {
+  return unwrapRpc(
+    callRpc("get_public_share_by_token", {
+      p_token: params.token,
+    }),
+    true,
+  );
+}
+
+/**
  * Consulta pública e segura do Orçamento Familiar compartilhado (/orcamento-familiar/:token).
  */
 export async function getSharedFamilyBudget(params: {

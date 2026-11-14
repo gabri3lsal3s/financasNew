@@ -23,8 +23,8 @@ const mockGetUser = vi.fn();
 const mockListFactors = vi.fn();
 const mockChallengeAndVerify = vi.fn();
 
-vi.mock("@/data/client", () => ({
-  getSupabase: () => ({
+vi.mock("@/data/client", () => {
+  const mockClient = {
     auth: {
       signInWithPassword: (...args: unknown[]) => mockSignInWithPassword(...args),
       signUp: (...args: unknown[]) => mockSignUp(...args),
@@ -37,8 +37,12 @@ vi.mock("@/data/client", () => ({
         challengeAndVerify: (...args: unknown[]) => mockChallengeAndVerify(...args),
       },
     },
-  }),
-}));
+  };
+  return {
+    getSupabase: () => mockClient,
+    createIsolatedSupabaseClient: () => mockClient,
+  };
+});
 
 describe("data/auth — operações de autenticação", () => {
   beforeEach(() => {

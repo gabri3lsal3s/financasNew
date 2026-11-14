@@ -34,3 +34,20 @@ export function getSupabase(): Supabase {
   }
   return client;
 }
+
+/**
+ * Cria um cliente Supabase isolado e efêmero sem persistência de sessão em localStorage.
+ * Essencial para operações de verificação de credenciais secundárias (ex.: validar senha
+ * atual em verifyCurrentPassword) sem rebaixar ou sobrepor a sessão ativa (AAL2 para AAL1).
+ */
+export function createIsolatedSupabaseClient(): Supabase {
+  const { url, anonKey } = getSupabaseEnv();
+  return createClient<Database, "public">(url, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  }) as Supabase;
+}
+

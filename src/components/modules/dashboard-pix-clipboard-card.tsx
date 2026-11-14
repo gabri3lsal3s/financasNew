@@ -43,10 +43,10 @@ export function DashboardPixClipboardCard({
   return (
     <div
       role="alert"
-      className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs transition-all"
+      className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full min-h-[72px] p-3.5 sm:p-4 rounded-2xl border border-positive/30 bg-surface shadow-xs transition-all ring-1 ring-positive/10"
     >
       <div className="flex items-center gap-3 min-w-0 pr-6 sm:pr-0">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-portfolio/20 bg-portfolio/10 text-portfolio">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-positive/20 bg-positive/10 text-positive-strong">
           <Zap className="size-4.5" aria-hidden="true" />
         </div>
         <div className="flex flex-col min-w-0">

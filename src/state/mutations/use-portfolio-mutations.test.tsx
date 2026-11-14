@@ -106,6 +106,23 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
     });
   });
 
+  it("useDeletePortfolioContribution com skipTransactionCascade: true exclui o aporte sem remover a transação", async () => {
+    const { result } = renderHook(() => useDeletePortfolioContribution(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        id: "contrib-456",
+        asset_id: "asset-petr4",
+        date: "2026-08-15",
+        amount: 3850.0,
+        skipTransactionCascade: true,
+      });
+    });
+
+    expect(repo.deletePortfolioContribution).toHaveBeenCalledWith("contrib-456");
+    expect(repo.deletePortfolioTransactionsMatching).not.toHaveBeenCalled();
+  });
+
   it("useDeletePortfolioTransaction de provento exclui a transação e o provento vinculado", async () => {
     const { result } = renderHook(() => useDeletePortfolioTransaction(), { wrapper });
 

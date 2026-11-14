@@ -28,7 +28,7 @@
 >   - Vitest: 118 testes de segurança de migrations e RLS (`security-audit`, `database-integrity`, `rpc-transactional-rollback`, `cross-tenant-penetration`) 100% aprovados;
 >   - `npm run verify`: `tsc -b` (0 erros), `eslint .` (0 avisos) e 2.684 testes de domínio 100% aprovados.
 >
-> **v3.6.6 (Build 65)** registra a conclusão integral da **Auditoria e Blindagem do Fluxo de Compra e Venda de Ativos** ([`docs/plans/36_PLANO_AUDITORIA_E_BLINDAGEM_COMPRA_E_VENDA_ATIVOS.md`](../plans/36_PLANO_AUDITORIA_E_BLINDAGEM_COMPRA_E_VENDA_ATIVOS.md)) (2026-11-13):
+> **v3.6.6 (Build 65)** registra a conclusão integral da **Auditoria e Blindagem do Fluxo de Compra e Venda de Ativos** ([`docs/plans/completed/36_PLANO_AUDITORIA_E_BLINDAGEM_COMPRA_E_VENDA_ATIVOS.md`](../plans/completed/36_PLANO_AUDITORIA_E_BLINDAGEM_COMPRA_E_VENDA_ATIVOS.md)) (2026-11-13):
 > - **(1) Correção Crítica de Estorno de Venda no Ativo Caixa**:
 >   - Segregação de sinal em `PortfolioActivityPanel`: exclusão de compras devolve recursos somando ao Caixa (`+ totalBRL`), enquanto exclusão de vendas estorna o crédito deduzindo do Caixa (`- totalBRL`);
 >   - Conversão de ativos em USD para BRL via taxa cambial PTAX (`usdRate`), eliminando distorções de moeda ao debitar ou creditar o Caixa;
@@ -46,7 +46,7 @@
 >   - Vitest: 69 suítes e 741 testes de Investimentos 100% aprovados, incluindo testes de exclusão de venda com estorno de Caixa e blindagem de formulário de transações;
 >   - Build de produção Vite e PWA gerados com sucesso.
 >
-> **v3.6.5 (Build 64)** registra a conclusão integral da **Auditoria e Blindagem de Snapshots Patrimoniais** ([`docs/plans/35_PLANO_AUDITORIA_E_BLINDAGEM_SNAPSHOTS_PATRIMONIAIS.md`](../plans/35_PLANO_AUDITORIA_E_BLINDAGEM_SNAPSHOTS_PATRIMONIAIS.md)) (2026-11-13):
+> **v3.6.5 (Build 64)** registra a conclusão integral da **Auditoria e Blindagem de Snapshots Patrimoniais** ([`docs/plans/completed/35_PLANO_AUDITORIA_E_BLINDAGEM_SNAPSHOTS_PATRIMONIAIS.md`](../plans/completed/35_PLANO_AUDITORIA_E_BLINDAGEM_SNAPSHOTS_PATRIMONIAIS.md)) (2026-11-13):
 > - **(1) Repositório e Preservação de Metadados de Snapshots**:
 >   - Atualização de `PortfolioSnapshotInput` em `src/types/schema.ts` e de `validateSnapshotInput` em `src/data/repositories/portfolio.ts` para validar e persistir `status` (`provisional` | `closed`), `closing_date` e `closed_at`;
 >   - Atribuição de defaults canônicos inteligentes: competência corrente defaulta para `'provisional'`, enquanto meses pretéritos defaultam para `'closed'`;
@@ -70,7 +70,7 @@
 >   - Vitest: 94 suítes e 861 testes de Investimentos e Hooks 100% aprovados, mais 58/58 no security audit;
 >   - Build de produção Vite e PWA precache gerados em 2.08s.
 >
-> **v3.6.4 (Build 63)** registra a conclusão integral da **Terceira Rodada de Refinamentos de Investimentos** ([`docs/plans/34_PLANO_TERCEIRA_RODADA_REFINAMENTOS_INVESTIMENTOS.md`](../plans/34_PLANO_TERCEIRA_RODADA_REFINAMENTOS_INVESTIMENTOS.md)) (2026-11-13):
+> **v3.6.4 (Build 63)** registra a conclusão integral da **Terceira Rodada de Refinamentos de Investimentos** ([`docs/plans/completed/34_PLANO_TERCEIRA_RODADA_REFINAMENTOS_INVESTIMENTOS.md`](../plans/completed/34_PLANO_TERCEIRA_RODADA_REFINAMENTOS_INVESTIMENTOS.md)) (2026-11-13):
 > - **(1) Blindagem Fiscal de Criptoativos no DARF 6015 (AUDIT-06)**:
 >   - Função pura `isCryptoAsset` em `src/domain/portfolio/tax.ts` identificando criptomoedas diretas (BTC, ETH, SOL, etc.) e distinguindo-as de ETFs B3 (ex.: HASH11, QBTC11);
 >   - Segregação estrita em `calculateMonthlyDarf` e `calculateHistoricalLossesCarryover`: vendas de criptomoedas não contaminam o limite de R$ 20.000,00 de ações ordinárias/preferenciais e não geram DARF 6015 indevido (criptoativos sujeitos ao GCAP / DARF 4600 com isenção própria de R$ 35.000,00 da IN RFB 1.888);
@@ -88,7 +88,7 @@
 >   - Vitest: 69 suítes e 735 testes de Investimentos 100% aprovados, mais 58/58 no security audit;
 >   - Build de produção Vite e PWA precache gerados em 1.68s.
 >
-> **v3.6.3 (Build 62)** registra a conclusão integral da **Segunda Rodada de Auditoria e Refinamentos de Investimentos** ([`docs/plans/33_PLANO_SEGUNDA_RODADA_AUDITORIA_E_REFINAMENTOS_INVESTIMENTOS.md`](../plans/33_PLANO_SEGUNDA_RODADA_AUDITORIA_E_REFINAMENTOS_INVESTIMENTOS.md)) (2026-11-13):
+> **v3.6.3 (Build 62)** registra a conclusão integral da **Segunda Rodada de Auditoria e Refinamentos de Investimentos** ([`docs/plans/completed/33_PLANO_SEGUNDA_RODADA_AUDITORIA_E_REFINAMENTOS_INVESTIMENTOS.md`](../plans/completed/33_PLANO_SEGUNDA_RODADA_AUDITORIA_E_REFINAMENTOS_INVESTIMENTOS.md)) (2026-11-13):
 > - **(1) Classificação Fiscal FIIs com Sufixo B3 11B (AUDIT-05)**:
 >   - Suporte nativo ao sufixo `11B` (fundos imobiliários com negociação diferenciada ou balcão organizado, ex.: `KNCR11B`) na função pura `isFiiAsset` em `src/domain/portfolio/tax.ts`;
 >   - Garante a alíquota canônica de 20% sobre o ganho de capital líquido e impede a contaminação da faixa de isenção de R$ 20.000,00 de ações ordinárias/preferenciais;
@@ -110,7 +110,7 @@
 >   - Vitest: 69 suítes e 732 testes de Investimentos 100% aprovados, mais 58/58 no security audit;
 >   - Build de produção Vite e PWA precache gerados com sucesso.
 >
-> **v3.6.2 (Build 61)** registra a conclusão integral do **Plano de Refinamento e Blindagem Integral dos Cálculos e Fluxos de Investimentos** ([`docs/plans/32_PLANO_REFINAMENTO_E_BLINDAGEM_INTEGRAL_INVESTIMENTOS.md`](../plans/32_PLANO_REFINAMENTO_E_BLINDAGEM_INTEGRAL_INVESTIMENTOS.md)) (2026-11-13):
+> **v3.6.2 (Build 61)** registra a conclusão integral do **Plano de Refinamento e Blindagem Integral dos Cálculos e Fluxos de Investimentos** ([`docs/plans/completed/32_PLANO_REFINAMENTO_E_BLINDAGEM_INTEGRAL_INVESTIMENTOS.md`](../plans/completed/32_PLANO_REFINAMENTO_E_BLINDAGEM_INTEGRAL_INVESTIMENTOS.md)) (2026-11-13):
 > - **(1) Blindagem de Cálculos Fiscais & Temporalidade (INV-08, INV-09, INV-11)**:
 >   - Desempate intraday determinístico em `sortTransactionsChronologically` com pesos corporativos estritos (`split`/`reverse_split` = 0 < `buy`/`subscription` = 1 < `sell` = 2 < outros = 3), eliminando assincronia e distorções de preço médio no replay contábil quando ordens ocorrem no mesmo dia;
 >   - Motor puro de domínio `calculateHistoricalLossesCarryover` em `src/domain/portfolio/tax.ts` calculando o acúmulo contínuo e encadeamento cronológico de prejuízos compensáveis anteriores (ações, FIIs e ETFs) conforme art. 56 da IN RFB nº 1.585/2015;
@@ -131,7 +131,7 @@
 >   - Vitest: 69 suítes e 731 testes de Investimentos 100% aprovados, mais 58/58 no security audit;
 >   - Build de produção Vite e PWA precache gerados com sucesso.
 >
-> **v3.6.1 (Build 60)** registra a conclusão do **Plano de Auditoria Integral e Blindagem de Investimentos** ([`docs/plans/31_PLANO_AUDITORIA_INTEGRAL_INVESTIMENTOS.md`](../plans/31_PLANO_AUDITORIA_INTEGRAL_INVESTIMENTOS.md)) (2026-11-13):
+> **v3.6.1 (Build 60)** registra a conclusão do **Plano de Auditoria Integral e Blindagem de Investimentos** ([`docs/plans/completed/31_PLANO_AUDITORIA_INTEGRAL_INVESTIMENTOS.md`](../plans/completed/31_PLANO_AUDITORIA_INTEGRAL_INVESTIMENTOS.md)) (2026-11-13):
 > - **(1) Hardening da RPC de Aportes em Lote (INV-01)**:
 >   - Migração `20260101000120_harden_portfolio_batch_aporte_rpc.sql` saneando sobrecargas divergentes de `execute_batch_portfolio_orders`;
 >   - Declaração estrita de variáveis como `numeric(18, 8)` e `numeric(18, 2)` no Postgres, eliminando exceções de sintaxe de tipos inteiros;
@@ -156,7 +156,7 @@
 >   - Vitest: 69 suítes e 720 testes do módulo de investimentos 100% aprovados, além de 58/58 no security-audit;
 >   - Build de produção Vite e PWA precache gerados com sucesso.
 >
-> **v3.6.0 (Build 59)** registra a conclusão do **Plano de Auditoria Transversal da Jornada 360 do Usuário e Blindagem de Integridade Contábil** ([`docs/plans/30_PLANO_AUDITORIA_TRANSVERSAL_JORNADA_360.md`](../plans/30_PLANO_AUDITORIA_TRANSVERSAL_JORNADA_360.md)) (2026-11-13):
+> **v3.6.0 (Build 59)** registra a conclusão do **Plano de Auditoria Transversal da Jornada 360 do Usuário e Blindagem de Integridade Contábil** ([`docs/plans/completed/30_PLANO_AUDITORIA_TRANSVERSAL_JORNADA_360.md`](../plans/completed/30_PLANO_AUDITORIA_TRANSVERSAL_JORNADA_360.md)) (2026-11-13):
 > - **(1) Integridade Contábil & Deduplicação de Caixa (JORNADA360-03 & JORNADA360-04)**:
 >   - Deduplicação atômica no motor contábil (`src/domain/cash/cash-ledger.ts`): amortizações e quitações de dívidas pagáveis que geram despesa financeira (`debt.expense_id`) e recebimentos com marcação de conciliação (`[DEBT]`) são filtrados para eliminar saídas/entradas duplicadas de caixa;
 >   - Correção matemática no amortizador de parcelas fixas (`src/domain/loans/index.ts`): quitação antecipada calcula `principal + interest` exatos em vez de cobrar a parcela cheia contratual quando o saldo devedor for residual;

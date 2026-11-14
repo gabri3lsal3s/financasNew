@@ -26,6 +26,7 @@ import {
   verifyMfaEnrollment,
   verifyMfaTotpCode,
   verifyCurrentPassword,
+  refreshMfaState,
 } from "@/hooks/use-auth";
 import { renderQrCodeSvg } from "@/domain/pix/qr-code";
 import { pushToast } from "@/services/toast";
@@ -233,6 +234,8 @@ export function MfaModal({ open, onOpenChange }: MfaModalProps) {
         setActiveFactor(null);
         setConfirmAction("none");
         setAuthInputValue("");
+        handleModalOpenChange(false);
+        void refreshMfaState();
       } else if (confirmAction === "reconfigure") {
         triggerSensory("action");
         setActiveFactor(null);

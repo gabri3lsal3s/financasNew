@@ -182,7 +182,7 @@ function encodeIco(pngBuffers) {
 // - sourceAmberLight: letra 'A' escura e asas âmbar (para ícone do launcher Pro em fundo branco)
 const darkPath = existsSync(join(root, "public", "brand", "logo-teal-dark.png"))
   ? join(root, "public", "brand", "logo-teal-dark.png")
-  : join(root, "public", "brand", "axis-logo.png");
+  : join(root, "public", "brand", "logo-teal-dark-512.png");
 const lightPath = existsSync(join(root, "public", "brand", "logo-teal-light.png"))
   ? join(root, "public", "brand", "logo-teal-light.png")
   : darkPath;

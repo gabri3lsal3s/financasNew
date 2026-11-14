@@ -1,17 +1,15 @@
-import { useEffect, useState } from "react";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { cn } from "@/lib/utils";
 
 export interface LoadingScreenProps {
-  /** Log ou mensagem inicial/customizada (opcional). Se não fornecido, alterna logs dinâmicos. */
+  /** Mensagem opcional de acessibilidade ou subtítulo discreto. */
   statusText?: string;
-  /** Lista customizada de etapas do log com progresso alvo (opcional). */
-  customSteps?: Array<{ progress: number; text: string }>;
-  /** Valor de progresso fixo (0 a 100). Se omitido, avança dinamicamente em tempo real. */
+  /** Mantido para compatibilidade retroativa com chamadas existentes. */
+  customSteps?: Array<{ progress?: number; text?: string }>;
+  /** Mantido para compatibilidade retroativa. */
   progress?: number;
   /**
-   * Quando `true`, sinaliza que o carregamento real terminou e o componente
-   * está prestes a ser desmontado. A barra corre suavemente até 100%.
+   * Quando `true`, aciona o fade-out rápido de fechamento.
    */
   isClosing?: boolean;
   /** Classes CSS adicionais para o container externo. */
@@ -20,75 +18,17 @@ export interface LoadingScreenProps {
   fullScreen?: boolean;
 }
 
-const DEFAULT_STAGES = [
-  { progress: 22, text: "Iniciando sessão segura…" },
-  { progress: 54, text: "Sincronizando preferências e categorias…" },
-  { progress: 78, text: "Carregando transações e dados…" },
-  { progress: 92, text: "Preparando painel financeiro…" },
-  { progress: 100, text: "Pronto!" },
-];
-
 /**
- * Tela de carregamento oficial otimizada — "Axir".
- * Apresenta somente a logo com brilho orbital sutil e barra de progresso
- * responsiva com avanço dinâmico e log em tempo real das etapas em execução.
- *
- * Ao receber `isClosing=true`, a barra corre até 100% antes de desmontar.
+ * Tela de carregamento oficial minimalista e fluida — "Axir".
+ * Apresenta o símbolo oficial centralizado com pulso sutil e brilho orbital suave,
+ * eliminando barras de progresso simuladas e logs textuais dinâmicos.
  */
 export function LoadingScreen({
   statusText,
-  customSteps,
-  progress: externalProgress,
   isClosing = false,
   className,
   fullScreen = true,
 }: LoadingScreenProps) {
-  const steps = customSteps ?? DEFAULT_STAGES;
-  const lastStepIndex = steps.length - 1;
-  const lastStepProgress = steps[lastStepIndex]?.progress ?? 100;
-
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [simulatedProgress, setSimulatedProgress] = useState(steps[0]?.progress ?? 15);
-  const [prevIsClosing, setPrevIsClosing] = useState(isClosing);
-
-  // Ao entrar na fase de fechamento, salta para o último estágio (100%) durante o render
-  if (isClosing !== prevIsClosing) {
-    setPrevIsClosing(isClosing);
-    if (isClosing) {
-      setCurrentStepIndex(lastStepIndex);
-      setSimulatedProgress(lastStepProgress);
-    }
-  }
-
-  // Avanço dinâmico e realista do progresso e dos logs
-  useEffect(() => {
-    if (externalProgress !== undefined) return;
-
-    const interval = setInterval(() => {
-      setCurrentStepIndex((prev) => {
-        const next = prev + 1;
-        if (next < steps.length) {
-          setSimulatedProgress(steps[next]!.progress);
-          return next;
-        }
-        // Já está na última etapa: não avança mais além de 99
-        setSimulatedProgress((p) => Math.min(99, p + 1));
-        return prev;
-      });
-    }, 450);
-
-    return () => clearInterval(interval);
-  }, [externalProgress, steps]);
-
-
-  const activeProgress = isClosing
-    ? 100
-    : Math.min(100, Math.max(0, externalProgress ?? simulatedProgress));
-
-  const activeLogText =
-    statusText ??
-    (isClosing ? "Pronto!" : (steps[currentStepIndex]?.text ?? "Carregando informações…"));
-
   return (
     <div
       role="status"
@@ -101,7 +41,7 @@ export function LoadingScreen({
         className,
       )}
     >
-      <div className="flex flex-col items-center gap-8 w-full max-w-xs text-center animate-fade-slide-in">
+      <div className="flex flex-col items-center gap-4 w-full max-w-xs text-center animate-fade-slide-in">
         {/* Logo Oficial com Brilho Orbital Suave */}
         <div className="relative flex items-center justify-center">
           <div
@@ -116,34 +56,20 @@ export function LoadingScreen({
           />
         </div>
 
-        {/* Barra de Carregamento Responsiva com Progresso Dinâmico e Log */}
-        <div className="flex flex-col items-center gap-2.5 w-full">
-          {/* Barra de Progresso */}
-          <div
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(activeProgress)}
-            className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted/80 shadow-inner"
-          >
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-primary via-secondary to-primary transition-all duration-500 ease-out animate-shimmer bg-[length:200%_100%]"
-              style={{ width: `${activeProgress}%` }}
-            />
+        {/* Indicador de pulso discreto e acessibilidade */}
+        <div className="flex flex-col items-center gap-1.5 pt-2">
+          <div className="flex items-center gap-1.5" aria-hidden="true">
+            <span className="size-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:-0.3s]" />
+            <span className="size-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:-0.15s]" />
+            <span className="size-1.5 rounded-full bg-primary/60 animate-bounce" />
           </div>
-
-          {/* Log Dinâmico de Ações em Execução + Porcentagem */}
-          <div className="flex items-center justify-between w-full text-xs px-0.5 min-h-[1.25rem]">
-            <span
-              key={activeLogText}
-              className="text-muted-foreground font-medium tracking-tight animate-fade-slide-in text-left truncate flex-1"
-            >
-              {activeLogText}
-            </span>
-            <span className="num font-mono text-[11px] font-semibold text-primary-strong pl-2 shrink-0">
-              {Math.round(activeProgress)}%
-            </span>
-          </div>
+          {statusText ? (
+            <p className="text-xs text-muted-foreground font-medium tracking-tight animate-fade-slide-in">
+              {statusText}
+            </p>
+          ) : (
+            <span className="sr-only">Carregando…</span>
+          )}
         </div>
       </div>
     </div>

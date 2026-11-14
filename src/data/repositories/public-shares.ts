@@ -8,7 +8,7 @@
 import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
-import { createExpenseWithDebt, getSharedFamilyBudget, getSharedGoalTracker } from "@/data/rpc";
+import { createExpenseWithDebt, getPublicShareByTokenRpc, getSharedFamilyBudget, getSharedGoalTracker } from "@/data/rpc";
 import { createCategory, listCategories } from "./categories";
 import { createDebt } from "./debts";
 import { saveGroupTarget } from "./allocation-targets";
@@ -90,6 +90,23 @@ export async function createPublicShare(input: CreatePublicShareInput): Promise<
  * Retorna null se não encontrado, se revogado ou se expirado.
  */
 export async function getPublicShareByToken(token: string): Promise<PublicShare | null> {
+  try {
+    const rpcResult = await getPublicShareByTokenRpc({ token });
+    if (rpcResult) {
+      const share = mapPublicShare(rpcResult);
+      if (share.expires_at && new Date(share.expires_at).getTime() <= Date.now()) {
+        return null;
+      }
+      return share;
+    }
+  } catch (error) {
+    // Se a RPC falhar por qualquer motivo (ex: em mocks ou antes da migration ser aplicada),
+    // prossegue para a consulta direta por compatibilidade.
+    if (process.env.NODE_ENV === "development") {
+      console.warn("Falha na chamada da RPC get_public_share_by_token, tentando fallback direto:", error);
+    }
+  }
+
   const { data, error } = await resolveQuery<Record<string, unknown>[]>(
     getSupabase()
       .from("public_shares")

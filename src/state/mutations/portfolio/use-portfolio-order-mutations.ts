@@ -309,11 +309,25 @@ export function useRecordOrder() {
               ? 0
               : Math.max(0, Math.round(effectiveAppliedCost * (1 - proportion) * 100) / 100);
           } else {
-            const isFullRedemption = orderAmount >= effectiveAppliedCost;
+            const currentGrossBalance =
+              asset.quantity > 0 && asset.average_price > 0 && asset.quantity !== 1
+                ? Math.round(asset.quantity * asset.average_price * 100) / 100
+                : asset.average_price > 0
+                  ? asset.average_price
+                  : asset.quantity;
+
+            const effectiveGross = Math.max(currentGrossBalance, effectiveAppliedCost);
+            const isFullRedemption = effectiveGross > 0
+              ? orderAmount >= effectiveGross - 0.01
+              : orderAmount >= effectiveAppliedCost - 0.01;
+
+            const proportion = effectiveGross > 0 ? Math.min(1, orderAmount / effectiveGross) : 1;
             remainingGrossBalance = isFullRedemption
               ? 0
-              : Math.round(Math.max(0, effectiveAppliedCost - orderAmount) * 100) / 100;
-            remainingCost = remainingGrossBalance;
+              : Math.max(0, Math.round((effectiveGross - orderAmount) * 100) / 100);
+            remainingCost = isFullRedemption
+              ? 0
+              : Math.max(0, Math.round(effectiveAppliedCost * (1 - proportion) * 100) / 100);
           }
 
           const updatedFiMetadata =

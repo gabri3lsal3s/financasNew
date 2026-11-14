@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Link, Navigate, useLocation } from "react-router";
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router";
 import {
   ArrowLeft,
   ArrowRight,
@@ -120,7 +120,8 @@ function LoginSideHero() {
 export function LoginPage() {
   const { session, loading, configError, mfaRequired, mfaVerified } = useAuth();
   const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const planoParam = searchParams.get("plano");
   const metodoParam = searchParams.get("metodo");
   const isDesafioTotpParam = searchParams.get("desafio") === "totp";
@@ -173,11 +174,10 @@ export function LoginPage() {
   const [mfaError, setMfaError] = useState<string | null>(null);
   const { signOut } = useSignOut();
 
-  // Flag unificada de blindagem 2FA: se o usuário precisa elevar para AAL2, fica retido no desafio TOTP
+  // Flag unificada de blindagem 2FA: se o usuário já validou MFA nesta sessão, isMfaActive é falso
   const isMfaActive = Boolean(
-    (mfaRequired && !mfaVerified) ||
-    isMfaRequired ||
-    (session && isDesafioTotpParam)
+    !mfaVerified &&
+    (mfaRequired || isMfaRequired || (session && isDesafioTotpParam))
   );
 
   useEffect(() => {
@@ -333,6 +333,14 @@ export function LoginPage() {
         description: "Identidade validada com sucesso.",
         variant: "success",
       });
+
+      // Remove o parâmetro desafio=totp da URL se presente e redireciona
+      if (searchParams.has("desafio")) {
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete("desafio");
+        setSearchParams(nextParams, { replace: true });
+      }
+      navigate(from, { replace: true });
     } catch {
       triggerSensory("destructive");
       setMfaError("Código de autenticação incorreto ou expirado. Verifique seu aplicativo e tente novamente.");
@@ -350,6 +358,11 @@ export function LoginPage() {
     setIsMfaRequired(false);
     setTotpCode("");
     setMfaError(null);
+    if (searchParams.has("desafio")) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("desafio");
+      setSearchParams(nextParams, { replace: true });
+    }
     triggerSensory("selection");
   };
 

@@ -189,6 +189,12 @@ export interface Database {
           success: boolean;
         };
       };
+      get_public_share_by_token: {
+        Args: {
+          p_token: string;
+        };
+        Returns: Record<string, unknown> | null;
+      };
       get_shared_goal_tracker: {
         Args: {
           p_token: string;

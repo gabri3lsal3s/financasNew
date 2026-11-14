@@ -336,6 +336,7 @@ export type UserCustomSettings = {
   themePreference?: ThemePreference;
   darkThemeVariant?: DarkThemeVariant;
   themeSchedule?: ThemeScheduleConfig;
+  hasDismissedAndroidProBanner?: boolean;
 };
 
 export type OnboardingGoalId = "cards" | "ocr" | "debts" | "family";

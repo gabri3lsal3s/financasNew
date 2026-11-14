@@ -139,3 +139,152 @@ export function SkeletonHeroCard({ className }: { className?: string }) {
   );
 }
 
+/** Esqueleto da Visão Geral (Home): Hero de Caixa Real, Grid de KPIs, Carrossel de Alertas e Gráficos. */
+export function OverviewSkeleton() {
+  return (
+    <div aria-label="Carregando Visão Geral" className="space-y-6 motion-reduce:animate-none">
+      <SkeletonHeroCard />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        <SkeletonKpi />
+        <SkeletonKpi />
+        <SkeletonKpi />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <SkeletonChart />
+        </div>
+        <div>
+          <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs space-y-3">
+            <Skeleton className="h-4 w-28 rounded" />
+            <SkeletonList rows={4} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Esqueleto da Carteira de Investimentos: Grid de 4 KPIs, Card de Caixa e Tabela de Posições. */
+export function InvestmentsSkeleton() {
+  return (
+    <div aria-label="Carregando Investimentos" className="space-y-6 motion-reduce:animate-none">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
+        <SkeletonKpi />
+        <SkeletonKpi />
+        <SkeletonKpi />
+        <SkeletonKpi />
+      </div>
+      <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-5 w-40 rounded" />
+          <Skeleton className="h-8 w-28 rounded-lg" />
+        </div>
+        <Skeleton className="h-14 w-full rounded-xl" />
+      </div>
+      <SkeletonTable rows={6} />
+    </div>
+  );
+}
+
+/** Esqueleto de Transações: Filtro de busca, resumo mensal e lista agrupada por data. */
+export function TransactionsSkeleton() {
+  return (
+    <div aria-label="Carregando Transações" className="space-y-6 motion-reduce:animate-none">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <Skeleton className="h-10 flex-1 max-w-md rounded-xl" />
+        <div className="flex gap-2">
+          <Skeleton className="h-10 w-28 rounded-xl" />
+          <Skeleton className="h-10 w-32 rounded-xl" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <SkeletonKpi />
+        <SkeletonKpi />
+        <SkeletonKpi />
+      </div>
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs space-y-3">
+          <Skeleton className="h-4 w-24 rounded" />
+          <SkeletonList rows={5} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Esqueleto de Orçamentos: Cards de teto planejado e barras de categorias. */
+export function BudgetsSkeleton() {
+  return (
+    <div aria-label="Carregando Orçamentos" className="space-y-6 motion-reduce:animate-none">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        <SkeletonKpi />
+        <SkeletonKpi />
+        <SkeletonKpi />
+      </div>
+      <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b border-border/40">
+          <Skeleton className="h-5 w-36 rounded" />
+          <Skeleton className="h-5 w-24 rounded" />
+        </div>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="space-y-2">
+            <div className="flex justify-between">
+              <Skeleton className="h-4 w-32 rounded" />
+              <Skeleton className="h-4 w-20 rounded" />
+            </div>
+            <Skeleton className="h-2.5 w-full rounded-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Esqueleto de Relatórios: Cabeçalho executivo e tabela de DRE. */
+export function ReportsSkeleton() {
+  return (
+    <div aria-label="Carregando Relatórios" className="space-y-6 motion-reduce:animate-none">
+      <div className="flex items-center justify-between pb-3 border-b border-border/40">
+        <Skeleton className="h-6 w-48 rounded" />
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-28 rounded-lg" />
+          <Skeleton className="h-9 w-28 rounded-lg" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <SkeletonKpi />
+        <SkeletonKpi />
+        <SkeletonKpi />
+      </div>
+      <SkeletonTable rows={7} />
+    </div>
+  );
+}
+
+/** Esqueleto de Configurações: Layout de abas e cards de configuração. */
+export function SettingsSkeleton() {
+  return (
+    <div aria-label="Carregando Configurações" className="space-y-6 motion-reduce:animate-none">
+      <div className="flex gap-2 border-b border-border/60 pb-2 overflow-x-auto">
+        <Skeleton className="h-9 w-24 rounded-lg shrink-0" />
+        <Skeleton className="h-9 w-24 rounded-lg shrink-0" />
+        <Skeleton className="h-9 w-28 rounded-lg shrink-0" />
+        <Skeleton className="h-9 w-24 rounded-lg shrink-0" />
+      </div>
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs space-y-3">
+          <Skeleton className="h-5 w-36 rounded" />
+          <Skeleton className="h-4 w-64 rounded" />
+          <div className="pt-2 flex gap-3">
+            <Skeleton className="h-10 w-32 rounded-xl" />
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs space-y-3">
+          <Skeleton className="h-5 w-44 rounded" />
+          <Skeleton className="h-4 w-72 rounded" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
