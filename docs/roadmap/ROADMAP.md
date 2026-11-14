@@ -12,8 +12,18 @@
 >     * `20260101000119_link_debt_settlement_transactions.sql`: vínculos relacionais e rastreabilidade de liquidação de dívidas/empréstimos;
 >     * `20260101000120_harden_portfolio_batch_aporte_rpc.sql`: saneamento de sobrecargas de ordens em lote e suporte a frações decimais;
 >     * `20260101000121_portfolio_snapshots_hardening_and_calibration.sql`: blindagem de isolamento por `user_id`, imutabilidade pós-fechamento e calibração não-destrutiva de snapshots;
-> - **(3) Paridade e Validação 100% Concluída**:
->   - `supabase migration list`: 121 migrações locais e 121 migrações remotas em perfeita paridade cronológica (0 pendências, 0 discrepâncias);
+> - **(3) Auditoria e Blindagem Avançada de RPCs e Performance (Migração 122)**:
+>   - Correção de erro 22P02 em `reconcile_expired_subscriptions` com uso canônico de `read_only_expired`::subscription_status;
+>   - Remoção de casts para tipos inexistentes em `import_bank_transactions` (colunas são textuais);
+>   - Correção do identificador da coluna `is_family` em `remove_family_member`;
+>   - Reescrita da junção de recálculo em `recalculate_bill_competences` eliminando erro 42P01 de referência à tabela alvo no FROM;
+>   - Saneamento de colunas inexistentes de viagens em `delete_current_user_account` e `admin_delete_user`;
+>   - Descontinuação definitiva de funções legadas obsoletas (`restore_user_backup`, `restore_user_data`);
+>   - Criação de 18 índices B-tree cobrindo chaves estrangeiras desindexadas para mitigação de sequential scans e contenção de locks;
+>   - Ativação de `FORCE ROW LEVEL SECURITY` em todas as tabelas de dados do usuário;
+> - **(4) Paridade e Validação 100% Concluída**:
+>   - `supabase migration list`: 122 migrações locais e 122 migrações remotas em perfeita paridade cronológica (0 pendências, 0 discrepâncias);
+>   - `supabase db lint`: 0 erros de sintaxe ou tipagem no PostgreSQL;
 >   - `supabase db push --dry-run`: status `Remote database is up to date`;
 >   - Vitest: 118 testes de segurança de migrations e RLS (`security-audit`, `database-integrity`, `rpc-transactional-rollback`, `cross-tenant-penetration`) 100% aprovados;
 >   - `npm run verify`: `tsc -b` (0 erros), `eslint .` (0 avisos) e 2.684 testes de domínio 100% aprovados.
