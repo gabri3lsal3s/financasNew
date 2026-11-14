@@ -15,10 +15,12 @@ function mapMonthlyPrice(row: PortfolioMonthlyPrice): MonthlyPriceRow {
  * Lista todas as cotações mensais gravadas para uma competência específica (YYYY-MM).
  */
 export async function listPortfolioMonthlyPrices(month: string): Promise<MonthlyPriceRow[]> {
+  const user_id = await currentUserId();
   const { data, error } = await resolveQuery<PortfolioMonthlyPrice[]>(
     getSupabase()
       .from("portfolio_monthly_prices")
       .select("*")
+      .eq("user_id", user_id)
       .eq("month", month)
       .order("ticker"),
   );

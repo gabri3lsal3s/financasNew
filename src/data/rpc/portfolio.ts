@@ -4,6 +4,7 @@ import type {
   ApproveDividendsBatchResult,
   MonthlyClosingPayload,
   MonthlyClosingResult,
+  PortfolioSnapshot,
 } from "@/types";
 
 export interface AllocationTargetItem {
@@ -139,5 +140,35 @@ export async function allocateGoalDeposit(input: {
       p_source_account_id: input.sourceAccountId ?? null,
       p_notes: input.notes ?? null,
     } as never),
+  );
+}
+
+/**
+ * Calibra manualmente o snapshot de um mês fechado de forma não destrutiva via RPC.
+ */
+export async function calibratePortfolioSnapshotRpc(payload: {
+  month: string;
+  total_value: number;
+  total_cost: number;
+}): Promise<{ success: boolean; snapshot: PortfolioSnapshot }> {
+  return unwrapRpc(
+    callRpc("calibrate_portfolio_snapshot", {
+      p_month: payload.month,
+      p_total_value: payload.total_value,
+      p_total_cost: payload.total_cost,
+    }),
+  );
+}
+
+/**
+ * Restaura o snapshot de um mês ao valor original gravado no fechamento oficial de mercado via RPC.
+ */
+export async function resetManualSnapshotCalibrationRpc(payload: {
+  month: string;
+}): Promise<{ success: boolean; action?: string; snapshot?: PortfolioSnapshot; message?: string }> {
+  return unwrapRpc(
+    callRpc("reset_manual_snapshot_calibration", {
+      p_month: payload.month,
+    }),
   );
 }

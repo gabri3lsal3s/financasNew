@@ -142,6 +142,28 @@ export interface Database {
         };
         Returns: ApproveDividendsBatchResult;
       };
+      calibrate_portfolio_snapshot: {
+        Args: {
+          p_month: string;
+          p_total_value: number;
+          p_total_cost: number;
+        };
+        Returns: {
+          success: boolean;
+          snapshot: PortfolioSnapshot;
+        };
+      };
+      reset_manual_snapshot_calibration: {
+        Args: {
+          p_month: string;
+        };
+        Returns: {
+          success: boolean;
+          action?: string;
+          snapshot?: PortfolioSnapshot;
+          message?: string;
+        };
+      };
       signal_split_payment: {
         Args: {
           p_token: string;

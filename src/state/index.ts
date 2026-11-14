@@ -94,6 +94,8 @@ export {
   useUpsertPortfolioSnapshot,
   useBatchUpsertPortfolioSnapshots,
   useDeletePortfolioSnapshot,
+  useCalibratePortfolioSnapshot,
+  useResetManualSnapshotCalibration,
   usePortfolioContributions,
   useCreatePortfolioContribution,
   useDeletePortfolioContribution,

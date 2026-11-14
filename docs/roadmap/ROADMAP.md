@@ -7104,5 +7104,33 @@ flowchart TD
 >   - Typecheck (`tsc --noEmit`) com 0 erros;
 >   - ESLint (`npm run lint`) com 0 advertências.
 
+---
+
+### Fase 106 — Blindagem de Compra, Venda e Resgate de Renda Fixa e Estorno Contábil (v3.6.6)
+
+> **Status:** ✅ Concluída e Auditada — **Blindagem Integral de Operações em Renda Fixa e Custódia Transacional**:
+> - **Validação Anti-Descoberto em Venda e Resgate:** Bloqueio estrito no formulário e na mutação de transações caso a quantidade ou valor resgatado supere a custódia disponível;
+> - **Cálculo Proporcional de Custo e Tributação Regressiva:** Dedução contábil proporcional do custo de aquisição e apuração automática de IRRF regressivo (22,5% a 15,0%) nos resgates;
+> - **Sincronização Atômica de Caixa e Custódia:** Estorno seguro no ativo Caixa ao excluir ou editar ordens de compra e venda com conversão cambial PTAX;
+> - **Qualidade e Testes:** Suíte de 597 testes aprovados cobrindo ordens e liquidações.
+
+---
+
+### Fase 107 — Blindagem de Snapshots Mensais, Isolamento Total e Calibração Não Destrutiva (v3.6.7)
+
+> **Status:** ✅ Concluída e Auditada — **Integridade Absoluta da Série Histórica Patrimonial**:
+> - **Diagnóstico e Correção da Causa Raiz:** Identificação da rotina autônoma de reconciliação retroativa em `useAutoPortfolioSnapshot` que forjava snapshots passados utilizando a custódia atual como baseline na ausência de cotações históricas, gerando registros anômalos no mês 8 e re-gravando-os ciclicamente após exclusão.
+> - **Isolamento Total por `user_id`:** Filtragem explícita com `.eq("user_id", user_id)` em todas as consultas da camada de dados (`listPortfolioSnapshots`, `listPortfolioAssets`, `listPortfolioContributions`, `listPortfolioDividends`, `listPortfolioTransactions`, `listAllPortfolioTransactions`, `listPortfolioMonthlyPrices`), garantindo isolamento total em conjunto com o RLS do PostgreSQL.
+> - **Imutabilidade Pós-Fechamento:**
+>   - Remoção completa do recálculo automático retroativo de meses passados; `useAutoPortfolioSnapshot` restrito com exclusividade ao mês ativo (`thisMonth`) em status `provisional`;
+>   - Trigger `trg_portfolio_snapshot_immutability` no PostgreSQL bloqueando o rebaixamento de snapshots `closed` para `provisional` e impedindo mutações de `user_id`.
+> - **Calibração Manual Não Destrutiva e Reversão ao Fechamento Oficial:**
+>   - Expansão do schema `portfolio_snapshots` com colunas `auto_total_value`, `auto_total_cost`, `manual_total_value`, `manual_total_cost`, `is_manually_calibrated` e `calibrated_at`;
+>   - RPC `calibrate_portfolio_snapshot` para ajustes pontuais pelo usuário sem perder o valor oficial gravado pelo fechamento de mercado;
+>   - RPC `reset_manual_snapshot_calibration` para reversão instantânea não destrutiva ao valor original gravado no fechamento;
+>   - Interface modal canônica `CalibrateSnapshotDialog` e ações contextuais na tabela analítica `PortfolioSnapshotsDialog` (badges "fechado", "provisório" e "calibrado", botão de calibrar e botão de restaurar fechamento oficial).
+> - **Qualidade e Testes:** Suíte de 603 testes 100% aprovados no Vitest, `npm run typecheck` com 0 erros, `npm run lint` com 0 erros e build Vite concluído com sucesso.
+
+
 
 

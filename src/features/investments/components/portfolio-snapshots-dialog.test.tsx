@@ -231,5 +231,58 @@ describe("PortfolioSnapshotsDialog", () => {
 
     expect(screen.getByText("provisório")).toBeInTheDocument();
   });
+
+  it("exibe badge calibrado e botão de restaurar para snapshot com calibração manual", () => {
+    const seriesWithCalibrated: PortfolioMonthlySeriesPoint[] = [
+      {
+        month: "2026-08",
+        valueBRL: 95000,
+        costBRL: 85000,
+        autoTotalValue: 90000,
+        autoTotalCost: 80000,
+        isManuallyCalibrated: true,
+        monthDividendsBRL: 200,
+        accumulatedDividendsBRL: 2000,
+        capitalGainPnl: 10000,
+        capitalGainPct: 11.76,
+        totalReturnPnl: 12000,
+        totalReturnPct: 14.12,
+        twrMonthPct: 2.0,
+        twrAccumulatedPct: 15.0,
+        sharePrice: 115.0,
+        status: "closed",
+      },
+    ];
+
+    renderWithClient(
+      <PortfolioSnapshotsDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        series={seriesWithCalibrated}
+        currentMonthStr="2026-09"
+      />,
+    );
+
+    expect(screen.getByText("calibrado")).toBeInTheDocument();
+
+    // Botão de restaurar fechamento oficial deve estar disponível
+    const restoreBtn = screen.getByRole("button", {
+      name: "Restaurar fechamento oficial de Ago/2026",
+    });
+    expect(restoreBtn).toBeInTheDocument();
+
+    // Botão de calibrar também deve estar disponível
+    const calibrateBtn = screen.getByRole("button", {
+      name: "Calibrar snapshot de Ago/2026",
+    });
+    expect(calibrateBtn).toBeInTheDocument();
+
+    // Clicar em restaurar deve abrir diálogo de confirmação
+    fireEvent.click(restoreBtn);
+    expect(screen.getByText("Restaurar Fechamento Oficial")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Deseja desfazer a calibração manual de Ago\/2026 e restaurar o valor gravado originalmente no fechamento oficial/),
+    ).toBeInTheDocument();
+  });
 });
 

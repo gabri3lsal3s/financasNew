@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Calendar, Printer, Trash2, FileText } from "lucide-react";
+import { Calendar, Printer, Trash2, FileText, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Badge, Button, ConfirmDialog, EmptyState, Modal, usePrint } from "@/components/ui";
 import { ReportFooter } from "@/components/modules/reports";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
@@ -8,7 +8,8 @@ import { numberToCents } from "@/domain/money";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
 import { formatMonthYear } from "@/lib/date";
 import { cn } from "@/lib/utils";
-import { useDeletePortfolioSnapshot } from "@/state";
+import { useDeletePortfolioSnapshot, useResetManualSnapshotCalibration } from "@/state";
+import { CalibrateSnapshotDialog } from "./calibrate-snapshot-dialog";
 
 export interface PortfolioSnapshotsDialogProps {
   open: boolean;
@@ -37,7 +38,10 @@ export function PortfolioSnapshotsDialog({
   const { printing, triggerPrint } = usePrint("Extrato_Evolucao_Patrimonial.pdf");
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [snapshotToDelete, setSnapshotToDelete] = useState<string | null>(null);
+  const [snapshotToCalibrate, setSnapshotToCalibrate] = useState<PortfolioMonthlySeriesPoint | null>(null);
+  const [snapshotToRestore, setSnapshotToRestore] = useState<PortfolioMonthlySeriesPoint | null>(null);
   const deleteSnapshotMutation = useDeletePortfolioSnapshot();
+  const resetCalibrationMutation = useResetManualSnapshotCalibration();
 
   // Anos únicos presentes na série (ordenados decrescentemente)
   const availableYears = useMemo(() => {
@@ -301,7 +305,23 @@ export function PortfolioSnapshotsDialog({
                             <Badge variant="warning" size="xs" title="Snapshot provisório em aberto">
                               provisório
                             </Badge>
-                          ) : null}
+                          ) : pt.isManuallyCalibrated ? (
+                            <Badge
+                              variant="warning"
+                              size="xs"
+                              title={
+                                pt.autoTotalValue != null
+                                  ? `Calibrado manualmente. Fechamento original: R$ ${pt.autoTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                  : "Calibrado manualmente pelo usuário"
+                              }
+                            >
+                              calibrado
+                            </Badge>
+                          ) : (
+                            <Badge variant="muted" size="xs" title="Fechamento oficial de mercado">
+                              fechado
+                            </Badge>
+                          )}
                         </div>
                       </td>
 
@@ -426,17 +446,43 @@ export function PortfolioSnapshotsDialog({
                             </Button>
                           )}
                           {!isCurrent ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setSnapshotToDelete(pt.month)}
-                              className="size-7 p-0 text-muted-foreground hover:text-negative-strong hover:bg-negative/10 cursor-pointer inline-flex items-center justify-center"
-                              aria-label={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
-                              title={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
-                            >
-                              <Trash2 className="size-3.5" aria-hidden="true" />
-                            </Button>
+                            <>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSnapshotToCalibrate(pt)}
+                                className="size-7 p-0 text-muted-foreground hover:text-portfolio hover:bg-portfolio/10 cursor-pointer inline-flex items-center justify-center"
+                                aria-label={`Calibrar snapshot de ${formatMonthYear(pt.month)}`}
+                                title={`Calibrar snapshot de ${formatMonthYear(pt.month)}`}
+                              >
+                                <SlidersHorizontal className="size-3.5" aria-hidden="true" />
+                              </Button>
+                              {pt.isManuallyCalibrated && pt.autoTotalValue != null ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setSnapshotToRestore(pt)}
+                                  className="size-7 p-0 text-muted-foreground hover:text-portfolio hover:bg-portfolio/10 cursor-pointer inline-flex items-center justify-center"
+                                  aria-label={`Restaurar fechamento oficial de ${formatMonthYear(pt.month)}`}
+                                  title={`Restaurar fechamento oficial de ${formatMonthYear(pt.month)}`}
+                                >
+                                  <RotateCcw className="size-3.5" aria-hidden="true" />
+                                </Button>
+                              ) : null}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSnapshotToDelete(pt.month)}
+                                className="size-7 p-0 text-muted-foreground hover:text-negative-strong hover:bg-negative/10 cursor-pointer inline-flex items-center justify-center"
+                                aria-label={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
+                                title={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
+                              >
+                                <Trash2 className="size-3.5" aria-hidden="true" />
+                              </Button>
+                            </>
                           ) : null}
                         </div>
                       </td>
@@ -479,6 +525,37 @@ export function PortfolioSnapshotsDialog({
           }
           setSnapshotToDelete(null);
         }}
+      />
+
+      {/* Confirmação de restauração ao valor original do fechamento oficial */}
+      <ConfirmDialog
+        open={snapshotToRestore !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSnapshotToRestore(null);
+        }}
+        title="Restaurar Fechamento Oficial"
+        description={
+          snapshotToRestore && snapshotToRestore.autoTotalValue != null
+            ? `Deseja desfazer a calibração manual de ${formatMonthYear(snapshotToRestore.month)} e restaurar o valor gravado originalmente no fechamento oficial de mercado (R$ ${snapshotToRestore.autoTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})?`
+            : "Deseja restaurar o snapshot para o valor original do fechamento?"
+        }
+        confirmLabel="Restaurar Fechamento"
+        variant="default"
+        confirmPending={resetCalibrationMutation.isPending}
+        onConfirm={async () => {
+          if (!snapshotToRestore) return;
+          await resetCalibrationMutation.mutateAsync(snapshotToRestore.month);
+          setSnapshotToRestore(null);
+        }}
+      />
+
+      {/* Modal de Calibração Manual Não Destrutiva */}
+      <CalibrateSnapshotDialog
+        open={snapshotToCalibrate !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSnapshotToCalibrate(null);
+        }}
+        snapshot={snapshotToCalibrate}
       />
     </Modal>
   );

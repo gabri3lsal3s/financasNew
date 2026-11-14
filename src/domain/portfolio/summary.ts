@@ -193,6 +193,18 @@ export interface PortfolioMonthlySeriesPoint {
   sharePrice: number | null;
   /** Status do snapshot: provisional (em aberto/estimado) ou closed (fechamento oficial consolidado). */
   status?: "provisional" | "closed";
+  /** Indica se o snapshot foi customizado por calibração manual pelo usuário. */
+  isManuallyCalibrated?: boolean;
+  /** Valor original consolidado pelo fechamento oficial do mercado em BRL. */
+  autoTotalValue?: number | null;
+  /** Custo original consolidado pelo fechamento oficial do mercado em BRL. */
+  autoTotalCost?: number | null;
+  /** Valor calibrado manualmente pelo usuário em BRL. */
+  manualTotalValue?: number | null;
+  /** Custo calibrado manualmente pelo usuário em BRL. */
+  manualTotalCost?: number | null;
+  /** Timestamp da calibração manual. */
+  calibratedAt?: string | null;
 }
 
 export interface CurrentMonthSeriesPoint {
@@ -215,6 +227,12 @@ export function buildPortfolioMonthlySeries(params: {
     month: string;
     total_value: number;
     total_cost: number;
+    auto_total_value?: number | null;
+    auto_total_cost?: number | null;
+    manual_total_value?: number | null;
+    manual_total_cost?: number | null;
+    is_manually_calibrated?: boolean;
+    calibrated_at?: string | null;
     status?: "provisional" | "closed";
   }[];
   currentMonthPoint?: CurrentMonthSeriesPoint | null;
@@ -237,7 +255,17 @@ export function buildPortfolioMonthlySeries(params: {
   const currentMonthStr = currentMonthPoint?.month ?? "";
   const allMonthsMap = new Map<
     string,
-    { total_value: number; total_cost: number; status?: "provisional" | "closed" }
+    {
+      total_value: number;
+      total_cost: number;
+      auto_total_value?: number | null;
+      auto_total_cost?: number | null;
+      manual_total_value?: number | null;
+      manual_total_cost?: number | null;
+      is_manually_calibrated?: boolean;
+      calibrated_at?: string | null;
+      status?: "provisional" | "closed";
+    }
   >();
 
   for (const snap of rawSnapshots) {
@@ -245,6 +273,12 @@ export function buildPortfolioMonthlySeries(params: {
       allMonthsMap.set(snap.month, {
         total_value: Number(snap.total_value),
         total_cost: Number(snap.total_cost),
+        auto_total_value: snap.auto_total_value != null ? Number(snap.auto_total_value) : null,
+        auto_total_cost: snap.auto_total_cost != null ? Number(snap.auto_total_cost) : null,
+        manual_total_value: snap.manual_total_value != null ? Number(snap.manual_total_value) : null,
+        manual_total_cost: snap.manual_total_cost != null ? Number(snap.manual_total_cost) : null,
+        is_manually_calibrated: Boolean(snap.is_manually_calibrated),
+        calibrated_at: snap.calibrated_at ?? null,
         status: snap.status ?? "closed",
       });
     }
@@ -357,6 +391,12 @@ export function buildPortfolioMonthlySeries(params: {
       twrAccumulatedPct: twrPt ? twrPt.accumulatedRatePct : null,
       sharePrice: twrPt ? twrPt.sharePrice : null,
       status: data.status,
+      isManuallyCalibrated: data.is_manually_calibrated,
+      autoTotalValue: data.auto_total_value,
+      autoTotalCost: data.auto_total_cost,
+      manualTotalValue: data.manual_total_value,
+      manualTotalCost: data.manual_total_cost,
+      calibratedAt: data.calibrated_at,
     });
   }
 

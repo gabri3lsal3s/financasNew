@@ -150,5 +150,7 @@ export {
   useBatchUpsertPortfolioSnapshots,
   useUpsertPortfolioAssetsBatch,
   useDeletePortfolioSnapshot,
+  useCalibratePortfolioSnapshot,
+  useResetManualSnapshotCalibration,
 } from "@/state/mutations/use-portfolio-snapshots-mutations";
 

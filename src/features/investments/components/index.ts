@@ -49,6 +49,8 @@ export { PortfolioInsightsCarousel } from "./portfolio-insights-carousel";
 export type { PortfolioInsightsCarouselProps } from "./portfolio-insights-carousel";
 export { PendingDividendsDialog } from "./pending-dividends-dialog";
 export type { PendingDividendsDialogProps } from "./pending-dividends-dialog";
+export { CalibrateSnapshotDialog } from "./calibrate-snapshot-dialog";
+export type { CalibrateSnapshotDialogProps } from "./calibrate-snapshot-dialog";
 
 
 

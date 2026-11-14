@@ -45,6 +45,12 @@ function mapSnapshot(row: PortfolioSnapshot): PortfolioSnapshot {
     ...row,
     total_value: Number(row.total_value),
     total_cost: Number(row.total_cost),
+    auto_total_value: row.auto_total_value != null ? Number(row.auto_total_value) : null,
+    auto_total_cost: row.auto_total_cost != null ? Number(row.auto_total_cost) : null,
+    manual_total_value: row.manual_total_value != null ? Number(row.manual_total_value) : null,
+    manual_total_cost: row.manual_total_cost != null ? Number(row.manual_total_cost) : null,
+    is_manually_calibrated: Boolean(row.is_manually_calibrated),
+    calibrated_at: row.calibrated_at ?? null,
   };
 }
 
@@ -71,8 +77,13 @@ function mapDividend(row: PortfolioDividend): PortfolioDividend {
 
 /** Ativos da carteira com quantidade e preço médio consolidados. */
 export async function listPortfolioAssets(): Promise<PortfolioAsset[]> {
+  const user_id = await currentUserId();
   const { data, error } = await resolveQuery<PortfolioAsset[]>(
-    getSupabase().from("portfolio_assets").select("*").order("ticker"),
+    getSupabase()
+      .from("portfolio_assets")
+      .select("*")
+      .eq("user_id", user_id)
+      .order("ticker"),
   );
   if (error) {
     const classified = classifyError(error);
@@ -215,14 +226,73 @@ function validateSnapshotInput(input: PortfolioSnapshotInput): {
 }
 
 export async function listPortfolioSnapshots(): Promise<PortfolioSnapshot[]> {
+  const user_id = await currentUserId();
   const { data, error } = await resolveQuery<PortfolioSnapshot[]>(
-    getSupabase().from("portfolio_snapshots").select("*").order("month"),
+    getSupabase()
+      .from("portfolio_snapshots")
+      .select("*")
+      .eq("user_id", user_id)
+      .order("month"),
   );
   if (error) {
     const classified = classifyError(error);
     throw new AppError(classified.kind, classified.message, error);
   }
   return (data ?? []).map(mapSnapshot);
+}
+
+/**
+ * Calibra manualmente o snapshot de um mês fechado de forma não destrutiva (§F50/F51).
+ * O valor original do fechamento automático permanece preservado no banco (auto_total_value/auto_total_cost).
+ */
+export async function calibratePortfolioSnapshot(
+  month: string,
+  totalValue: number,
+  totalCost: number,
+): Promise<PortfolioSnapshot> {
+  const { data, error } = await resolveQuery<{ success: boolean; snapshot: PortfolioSnapshot }>(
+    getSupabase().rpc("calibrate_portfolio_snapshot", {
+      p_month: month,
+      p_total_value: Math.round(totalValue * 100) / 100,
+      p_total_cost: Math.round(totalCost * 100) / 100,
+    }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data?.snapshot) {
+    throw new AppError("unknown", "Resposta vazia ao calibrar snapshot de patrimônio.", null);
+  }
+  return mapSnapshot(data.snapshot);
+}
+
+/**
+ * Restaura o snapshot de um mês para o valor original gravado no fechamento de mercado,
+ * removendo a calibração manual do usuário de forma não destrutiva (§F50/F51).
+ */
+export async function resetManualSnapshotCalibration(
+  month: string,
+): Promise<{ success: boolean; action?: string; snapshot?: PortfolioSnapshot }> {
+  const { data, error } = await resolveQuery<{
+    success: boolean;
+    action?: string;
+    snapshot?: PortfolioSnapshot;
+    message?: string;
+  }>(
+    getSupabase().rpc("reset_manual_snapshot_calibration", {
+      p_month: month,
+    }),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  return {
+    success: Boolean(data?.success),
+    action: data?.action,
+    snapshot: data?.snapshot ? mapSnapshot(data.snapshot) : undefined,
+  };
 }
 
 /**
@@ -304,8 +374,13 @@ export async function deletePortfolioSnapshot(month: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export async function listPortfolioContributions(): Promise<PortfolioContribution[]> {
+  const user_id = await currentUserId();
   const { data, error } = await resolveQuery<PortfolioContribution[]>(
-    getSupabase().from("portfolio_contributions").select("*").order("date", { ascending: false }),
+    getSupabase()
+      .from("portfolio_contributions")
+      .select("*")
+      .eq("user_id", user_id)
+      .order("date", { ascending: false }),
   );
   if (error) {
     const classified = classifyError(error);
@@ -440,8 +515,13 @@ export async function createHistoricalContribution(params: {
 // ---------------------------------------------------------------------------
 
 export async function listPortfolioDividends(): Promise<PortfolioDividend[]> {
+  const user_id = await currentUserId();
   const { data, error } = await resolveQuery<PortfolioDividend[]>(
-    getSupabase().from("portfolio_dividends").select("*").order("date", { ascending: false }),
+    getSupabase()
+      .from("portfolio_dividends")
+      .select("*")
+      .eq("user_id", user_id)
+      .order("date", { ascending: false }),
   );
   if (error) {
     const classified = classifyError(error);
@@ -497,8 +577,14 @@ export async function deletePortfolioDividend(id: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export async function listPortfolioTransactions(assetId: string): Promise<PortfolioTransaction[]> {
+  const user_id = await currentUserId();
   const { data, error } = await resolveQuery<PortfolioTransaction[]>(
-    getSupabase().from("portfolio_transactions").select("*").eq("asset_id", assetId).order("date"),
+    getSupabase()
+      .from("portfolio_transactions")
+      .select("*")
+      .eq("user_id", user_id)
+      .eq("asset_id", assetId)
+      .order("date"),
   );
   if (error) {
     const classified = classifyError(error);
@@ -508,8 +594,13 @@ export async function listPortfolioTransactions(assetId: string): Promise<Portfo
 }
 
 export async function listAllPortfolioTransactions(): Promise<PortfolioTransaction[]> {
+  const user_id = await currentUserId();
   const { data, error } = await resolveQuery<PortfolioTransaction[]>(
-    getSupabase().from("portfolio_transactions").select("*").order("date"),
+    getSupabase()
+      .from("portfolio_transactions")
+      .select("*")
+      .eq("user_id", user_id)
+      .order("date"),
   );
   if (error) {
     const classified = classifyError(error);

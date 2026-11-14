@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   batchUpsertPortfolioSnapshots,
+  calibratePortfolioSnapshot,
   createPortfolioAsset,
   createPortfolioContribution,
   createPortfolioDividend,
@@ -9,7 +10,9 @@ import {
   deletePortfolioDividend,
   listAllPortfolioTransactions,
   listPortfolioAssets,
+  listPortfolioSnapshots,
   listPortfolioTransactions,
+  resetManualSnapshotCalibration,
   upsertPortfolioSnapshot,
 } from "./portfolio";
 
@@ -71,9 +74,17 @@ function makeBuilder(result: unknown): Builder {
 }
 
 let builder: Builder;
+let lastRpcCall: { name: string; args: unknown } | null = null;
+let rpcResult: unknown = null;
 
 vi.mock("@/data/client", () => ({
-  getSupabase: () => ({ from: () => builder }),
+  getSupabase: () => ({
+    from: () => builder,
+    rpc: (name: string, args: unknown) => {
+      lastRpcCall = { name, args };
+      return Promise.resolve(rpcResult);
+    },
+  }),
 }));
 
 vi.mock("@/data/session", () => ({
@@ -85,6 +96,8 @@ describe("portfolio repository (Fase 36 — Posição Consolidada)", () => {
     lastInsertInput = null;
     lastUpsertInput = null;
     lastDeletedId = null;
+    lastRpcCall = null;
+    rpcResult = null;
   });
 
   it("listPortfolioAssets devolve os ativos com quantity e average_price numéricos", async () => {
@@ -292,5 +305,98 @@ describe("portfolio repository (Fase 36 — Posição Consolidada)", () => {
   it("delete propaga erro classificado quando a exclusão falha", async () => {
     builder = makeBuilder({ data: null, error: { message: "network down", code: "NETWORK_ERROR" } });
     await expect(deletePortfolioAsset("a1")).rejects.toThrow();
+  });
+
+  it("listPortfolioSnapshots filtra estritamente por user_id", async () => {
+    builder = makeBuilder({
+      data: [
+        {
+          id: "s1",
+          user_id: "u1",
+          month: "2026-08",
+          total_value: 50000,
+          total_cost: 40000,
+          auto_total_value: 50000,
+          auto_total_cost: 40000,
+          status: "closed",
+        },
+      ],
+      error: null,
+    });
+    const snapshots = await listPortfolioSnapshots();
+    expect(builder.eq).toHaveBeenCalledWith("user_id", "u1");
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]?.total_value).toBe(50000);
+    expect(snapshots[0]?.auto_total_value).toBe(50000);
+  });
+
+  it("calibratePortfolioSnapshot invoca o RPC calibrate_portfolio_snapshot com arredondamento correto", async () => {
+    rpcResult = {
+      data: {
+        success: true,
+        snapshot: {
+          id: "s1",
+          user_id: "u1",
+          month: "2026-08",
+          total_value: 95000.5,
+          total_cost: 85000,
+          manual_total_value: 95000.5,
+          manual_total_cost: 85000,
+          auto_total_value: 90000,
+          auto_total_cost: 80000,
+          is_manually_calibrated: true,
+          status: "closed",
+        },
+      },
+      error: null,
+    };
+
+    const result = await calibratePortfolioSnapshot("2026-08", 95000.504, 85000);
+    expect(lastRpcCall).toEqual({
+      name: "calibrate_portfolio_snapshot",
+      args: {
+        p_month: "2026-08",
+        p_total_value: 95000.5,
+        p_total_cost: 85000,
+      },
+    });
+    expect(result.is_manually_calibrated).toBe(true);
+    expect(result.total_value).toBe(95000.5);
+    expect(result.auto_total_value).toBe(90000);
+  });
+
+  it("resetManualSnapshotCalibration invoca o RPC reset_manual_snapshot_calibration", async () => {
+    rpcResult = {
+      data: {
+        success: true,
+        action: "restored_to_auto",
+        snapshot: {
+          id: "s1",
+          user_id: "u1",
+          month: "2026-08",
+          total_value: 90000,
+          total_cost: 80000,
+          auto_total_value: 90000,
+          auto_total_cost: 80000,
+          manual_total_value: null,
+          manual_total_cost: null,
+          is_manually_calibrated: false,
+          status: "closed",
+        },
+      },
+      error: null,
+    };
+
+    const res = await resetManualSnapshotCalibration("2026-08");
+    expect(lastRpcCall).toEqual({
+      name: "reset_manual_snapshot_calibration",
+      args: {
+        p_month: "2026-08",
+      },
+    });
+    expect(res.success).toBe(true);
+    expect(res.action).toBe("restored_to_auto");
+    expect(res.snapshot?.is_manually_calibrated).toBe(false);
+    expect(res.snapshot?.total_value).toBe(90000);
   });
 });

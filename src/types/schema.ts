@@ -722,6 +722,18 @@ export type PortfolioSnapshot = {
   total_value: number;
   /** Custo de aquisição total aplicado sob custódia (Custo dos Ativos + Saldo de Caixa 1:1). */
   total_cost: number;
+  /** Valor original gravado pelo fechamento oficial do mercado. */
+  auto_total_value?: number | null;
+  /** Custo original gravado pelo fechamento oficial do mercado. */
+  auto_total_cost?: number | null;
+  /** Valor calibrado manualmente pelo usuário. */
+  manual_total_value?: number | null;
+  /** Custo calibrado manualmente pelo usuário. */
+  manual_total_cost?: number | null;
+  /** Indica se o snapshot foi customizado por calibração manual do usuário. */
+  is_manually_calibrated?: boolean;
+  /** Data/hora da última calibração manual do snapshot. */
+  calibrated_at?: string | null;
   /** Status do snapshot: provisional (em aberto/estimado) ou closed (fechamento consolidado). */
   status?: "provisional" | "closed";
   /** Data efetiva do último dia útil de mercado do fechamento mensal. */
@@ -811,6 +823,18 @@ export type PortfolioSnapshotInput = {
   total_value: number;
   /** Custo de aquisição total aplicado sob custódia (Custo dos Ativos + Saldo de Caixa 1:1). */
   total_cost: number;
+  /** Valor original gravado pelo fechamento oficial do mercado. */
+  auto_total_value?: number | null;
+  /** Custo original gravado pelo fechamento oficial do mercado. */
+  auto_total_cost?: number | null;
+  /** Valor calibrado manualmente pelo usuário. */
+  manual_total_value?: number | null;
+  /** Custo calibrado manualmente pelo usuário. */
+  manual_total_cost?: number | null;
+  /** Indica se o snapshot foi customizado por calibração manual do usuário. */
+  is_manually_calibrated?: boolean;
+  /** Data/hora da última calibração manual do snapshot. */
+  calibrated_at?: string | null;
   /** Status do snapshot: provisional (em aberto/estimado) ou closed (fechamento consolidado). */
   status?: "provisional" | "closed";
   /** Data efetiva do último dia útil de mercado do fechamento mensal (YYYY-MM-DD). */

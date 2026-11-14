@@ -1,18 +1,17 @@
 {
-  "version": "3.6.6",
-  "versionCode": 59,
-  "releaseDate": "2026-11-14T02:17:46Z",
-  "minSupportedVersion": "3.6.6",
+  "version": "3.6.7",
+  "versionCode": 60,
+  "releaseDate": "2026-11-14T03:15:58Z",
+  "minSupportedVersion": "3.6.7",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "ccd4f9f48fcb6329de80f2b0e8d7b9ef2b9056bd91eeb2ba41227266c1e8f745",
-  "fileSizeBytes": 12202901,
+  "sha256": "384d7f15678243b29fd3a19d20c53fd6d877bdcbfd9973e2df48ea9b273772fc",
+  "fileSizeBytes": 12204061,
   "changelog": [
-    "Axir v3.6.6: Blindagem de Compra, Venda e Resgate de Renda Fixa",
-    "Estorno seguro no ativo Caixa ao excluir compras e vendas com conversão cambial PTAX",
-    "Trava rigorosa contra venda e resgate a descoberto em toda a carteira de investimentos",
-    "Cálculo proporcional de resgate de Renda Fixa com dedução contábil de IRRF regressivo",
-    "Acumulação contínua do custo de aquisição em novos aportes de Renda Fixa",
-    "Sincronização atômica imediata de custódia em portfolio_assets nos lançamentos de ordens",
-    "Proteção anti-duplo clique e prevenção de concorrência em sheets e modais de transação"
+    "Axir v3.6.7: Blindagem de Snapshots Mensais, Isolamento Total e Calibração Não Destrutiva",
+    "Isolamento total de tenant em todas as consultas da camada de dados de investimentos com user_id explícito",
+    "Imutabilidade pós-fechamento com trigger no banco e eliminação de reconciliação automática retroativa",
+    "Calibração manual não destrutiva com preservação separada dos valores originais de fechamento",
+    "Restauração com um toque para o valor gravado originalmente no fechamento oficial de mercado",
+    "Novo modal CalibrateSnapshotDialog e badges analíticos no extrato de snapshots"
   ]
 }

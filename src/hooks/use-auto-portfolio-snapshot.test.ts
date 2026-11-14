@@ -335,7 +335,7 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
     expect(mutateMock).not.toHaveBeenCalled();
   });
 
-  it("materializa mês retroativo pendente aplicando a regra canônica de total_cost (custo + caixa)", () => {
+  it("NÃO materializa nem altera meses retroativos automaticamente (preserva imutabilidade pós-fechamento)", () => {
     const mutateMock = vi.fn();
     const currentMonthStr = new Date().toISOString().slice(0, 7);
 
@@ -440,14 +440,8 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
 
     renderHook(() => useAutoPortfolioSnapshot());
 
-    expect(mutateMock).toHaveBeenCalledTimes(1);
-    expect(mutateMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        month: "2026-03",
-        // Custo total: 3.000 (ações) + 2.000 (caixa 1:1) = 5.000
-        total_cost: 5000,
-      }),
-    );
+    // Nenhuma mutação automática pode ser disparada para meses retroativos
+    expect(mutateMock).not.toHaveBeenCalled();
   });
 
   describe("Quality Gate 2 (QG2) — Integridade de Persistência e Desacoplamento Concorrente", () => {
