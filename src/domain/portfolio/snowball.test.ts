@@ -5,6 +5,7 @@ import {
   calculateSnowballProgress,
   calculateYieldOnCost,
   calculateYieldOnCostTotal,
+  calculateSnowballReinvestmentPlan,
   detectReinvestmentOpportunities,
   normalizeAllocationTargets,
   resolveMonthlyDividendPerShare,
@@ -327,6 +328,63 @@ describe("domain/portfolio/snowball — Efeito Bola de Neve, YoC e Concentraçã
       ]);
 
       expect(opportunities).toEqual([]);
+    });
+  });
+
+  describe("calculateSnowballReinvestmentPlan (D3)", () => {
+    it("projeta o plano de reinvestimento respeitando as metas da carteira e priorizando os maiores déficits", () => {
+      const plan = calculateSnowballReinvestmentPlan({
+        cashAvailable: 500,
+        totalPortfolioValue: 10000,
+        targets: [
+          {
+            assetId: "a1",
+            ticker: "HGLG11",
+            currentPrice: 160,
+            currentValue: 1500, // Meta 20% = R$ 2.000 -> Gap = R$ 500
+            targetPct: 20,
+          },
+          {
+            assetId: "a2",
+            ticker: "MXRF11",
+            currentPrice: 10,
+            currentValue: 900, // Meta 10% = R$ 1.000 -> Gap = R$ 100
+            targetPct: 10,
+          },
+          {
+            assetId: "a3",
+            ticker: "PETR4",
+            currentPrice: 35,
+            currentValue: 3500, // Meta 30% = R$ 3.000 -> Sem gap
+            targetPct: 30,
+          },
+        ],
+      });
+
+      expect(plan.allocations.length).toBeGreaterThanOrEqual(1);
+      // HGLG11 gap R$ 500: com R$ 500 de caixa, cabem 3 cotas de R$ 160 (R$ 480). Sobra R$ 20.
+      const hglg = plan.allocations.find((a) => a.ticker === "HGLG11");
+      expect(hglg?.purchasableShares).toBe(3);
+      expect(hglg?.allocatedAmount).toBe(480);
+
+      // Sobrou R$ 20: MXRF11 gap R$ 100: com R$ 20 de caixa, cabem 2 cotas de R$ 10 (R$ 20). Sobra R$ 0.
+      const mxrf = plan.allocations.find((a) => a.ticker === "MXRF11");
+      expect(mxrf?.purchasableShares).toBe(2);
+      expect(mxrf?.allocatedAmount).toBe(20);
+
+      expect(plan.totalAllocated).toBe(500);
+      expect(plan.leftoverCash).toBe(0);
+    });
+
+    it("trata com segurança caixa zerado ou sem ativos com gap", () => {
+      const plan = calculateSnowballReinvestmentPlan({
+        cashAvailable: 0,
+        totalPortfolioValue: 10000,
+        targets: [],
+      });
+      expect(plan.totalAllocated).toBe(0);
+      expect(plan.leftoverCash).toBe(0);
+      expect(plan.allocations).toEqual([]);
     });
   });
 });

@@ -7,6 +7,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Layers,
+  PieChart,
   Search,
   X,
 } from "lucide-react";
@@ -15,8 +17,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { calculateYieldOnCost, calculatePositionClassGroups } from "@/domain/portfolio";
-import type { AssetPricingMode, PriceSource, CalculatedClassGroup } from "@/domain/portfolio";
+import {
+  calculateYieldOnCost,
+  calculatePositionClassGroups,
+  calculatePositionSectorGroups,
+  inferSectorFromTicker,
+} from "@/domain/portfolio";
+import type {
+  AssetPricingMode,
+  PriceSource,
+  CalculatedClassGroup,
+  CalculatedSectorGroup,
+} from "@/domain/portfolio";
 import { getAssetClassMeta, PositionClosedSection, PositionMobileCard } from "@/components/modules/portfolio";
 import { isFixedIncomeClass } from "@/domain/portfolio/valuation";
 import { formatDateBR } from "@/lib/date";
@@ -120,6 +132,7 @@ const formatQuantity = (quantity: number): string =>
   Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 
 type ClassGroup = CalculatedClassGroup<PositionRow>;
+type SectorGroup = CalculatedSectorGroup<PositionRow>;
 
 function SortableHeader({
   label,
@@ -177,7 +190,9 @@ export function PositionTable({
   const [sort, setSort] = useState<SortState | null>(null);
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
+  const [groupBy, setGroupBy] = useState<"class" | "sector">("class");
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
+  const [expandedSectors, setExpandedSectors] = useState<Record<string, boolean>>({});
   const [hideClosed, setHideClosed] = useState(true);
   const [closedSectionOpen, setClosedSectionOpen] = useState(false);
 
@@ -198,6 +213,19 @@ export function PositionTable({
       if (target) {
         const targetCls = target.assetClass ?? "Sem classe";
         if (targetCls === clsName) return true;
+      }
+    }
+    return false;
+  };
+
+  const isSectorExpanded = (sectorKey: string) => {
+    if (expandedSectors[sectorKey] !== undefined) return expandedSectors[sectorKey];
+    if (highlightId) {
+      const target = effectiveRows.find((r) => r.assetId === highlightId);
+      if (target) {
+        const targetSec = target.sector?.trim() || inferSectorFromTicker(target.ticker, target.assetClass);
+        const targetCls = target.assetClass ?? "Outros";
+        if (`${targetCls}__${targetSec}` === sectorKey || targetSec === sectorKey) return true;
       }
     }
     return false;
@@ -251,6 +279,16 @@ export function PositionTable({
       return {
         ...prev,
         [className]: !current,
+      };
+    });
+  };
+
+  const toggleSectorCollapse = (sectorKey: string) => {
+    setExpandedSectors((prev) => {
+      const current = isSectorExpanded(sectorKey);
+      return {
+        ...prev,
+        [sectorKey]: !current,
       };
     });
   };
@@ -349,6 +387,45 @@ export function PositionTable({
     return groups;
   })();
 
+  // Agrupamento por setor
+  const sectorGroups: SectorGroup[] = (() => {
+    if (groupBy !== "sector") return [];
+    const groups = calculatePositionSectorGroups(filteredRows, sortRows);
+
+    if (sort) {
+      const { key, direction } = sort;
+      groups.sort((a, b) => {
+        const firstA = a.rows[0];
+        const firstB = b.rows[0];
+        if (!firstA || !firstB) return 0;
+        let cmp = 0;
+        if (key === "ticker") cmp = firstA.ticker.localeCompare(firstB.ticker);
+        else if (key === "quantity") cmp = firstA.quantity - firstB.quantity;
+        else if (key === "price") cmp = firstA.priceBRL - firstB.priceBRL;
+        else if (key === "averageCost") {
+          const costA = firstA.totalCostBRL ?? firstA.totalCost ?? firstA.averageCost;
+          const costB = firstB.totalCostBRL ?? firstB.totalCost ?? firstB.averageCost;
+          cmp = costA - costB;
+        }
+        else if (key === "value") cmp = firstA.valueBRL - firstB.valueBRL;
+        else if (key === "pct") cmp = firstA.pct - firstB.pct;
+        else if (key === "unrealizedPct") {
+          const aVal = firstA.totalReturnPct ?? firstA.unrealizedPct ?? -Infinity;
+          const bVal = firstB.totalReturnPct ?? firstB.unrealizedPct ?? -Infinity;
+          cmp = aVal - bVal;
+        }
+        else if (key === "maturityDate") {
+          const dateA = firstA.fixedIncomeMetadata?.maturity_date || firstA.maturityDate || "";
+          const dateB = firstB.fixedIncomeMetadata?.maturity_date || firstB.maturityDate || "";
+          cmp = dateA.localeCompare(dateB);
+        }
+        return direction === "asc" ? cmp : -cmp;
+      });
+    }
+
+    return groups;
+  })();
+
   const totalPages = pageSize === Infinity ? 1 : Math.max(1, Math.ceil(sortedRows.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const paginatedFlatRows =
@@ -388,6 +465,7 @@ export function PositionTable({
               ? `${row.fixedIncomeMetadata.rate_value}% a.a.`
               : `IPCA + ${row.fixedIncomeMetadata.rate_value}%`
         : null;
+    const resolvedSector = row.sector?.trim() || inferSectorFromTicker(row.ticker, row.assetClass);
 
     return handleOpen ? (
       <button
@@ -417,22 +495,34 @@ export function PositionTable({
             </span>
           )}
         </div>
+        {resolvedSector ? (
+          <span className="truncate text-[11px] text-muted-foreground/80 font-normal">
+            {resolvedSector}
+          </span>
+        ) : null}
       </button>
     ) : (
-      <div className="flex min-w-0 items-center gap-1.5">
-        <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
-        {rfLabel && (
-          <span
-            className={cn(
-              "rounded px-1.5 py-0.5 text-[10px] font-semibold shrink-0",
-              row.isMatured
-                ? "bg-destructive/10 text-critical-strong"
-                : "bg-surface-hover/80 text-muted-foreground",
-            )}
-          >
-            {rfLabel}
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
+          {rfLabel && (
+            <span
+              className={cn(
+                "rounded px-1.5 py-0.5 text-[10px] font-semibold shrink-0",
+                row.isMatured
+                  ? "bg-destructive/10 text-critical-strong"
+                  : "bg-surface-hover/80 text-muted-foreground",
+              )}
+            >
+              {rfLabel}
+            </span>
+          )}
+        </div>
+        {resolvedSector ? (
+          <span className="truncate text-[11px] text-muted-foreground/80 font-normal">
+            {resolvedSector}
           </span>
-        )}
+        ) : null}
       </div>
     );
   };
@@ -925,6 +1015,44 @@ export function PositionTable({
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
+            {/* Alternador de Agrupamento Dinâmico (Por Classe vs Por Setor) */}
+            <div
+              role="group"
+              aria-label="Modo de agrupamento"
+              className="inline-flex items-center rounded-lg border border-border/70 bg-surface-hover/40 p-0.5 shadow-xs shrink-0 self-start sm:self-auto"
+            >
+              <button
+                type="button"
+                onClick={() => setGroupBy("class")}
+                aria-pressed={groupBy === "class"}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
+                  groupBy === "class"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                title="Agrupar posições por Classe de Ativo"
+              >
+                <Layers className="size-3.5" aria-hidden="true" />
+                <span>Por Classe</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setGroupBy("sector")}
+                aria-pressed={groupBy === "sector"}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
+                  groupBy === "sector"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                title="Agrupar posições por Setor"
+              >
+                <PieChart className="size-3.5" aria-hidden="true" />
+                <span>Por Setor</span>
+              </button>
+            </div>
+
             {availableClasses.length > 1 ? (
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap py-0.5 -mx-1 px-1">
                 <button
@@ -988,6 +1116,88 @@ export function PositionTable({
           <li className="rounded-xl border border-border bg-surface px-4 py-8 text-center text-sm text-muted-foreground">
             {hasFiltersActive ? "Nenhum ativo encontrado para os filtros selecionados." : emptyMessage ?? "Nenhum ativo na carteira."}
           </li>
+        ) : groupBy === "sector" && sectorGroups.length > 0 ? (
+          sectorGroups.map((group) => {
+            const sectorKey = `${group.className}__${group.sectorName}`;
+            const isExpanded = isSectorExpanded(sectorKey);
+            const meta = getAssetClassMeta(group.className);
+            const Icon = meta.icon;
+            const groupRentab = group.totalReturnPct !== null ? group.totalReturnPct : group.unrealizedPct;
+            const rentabTone =
+              groupRentab === null
+                ? "text-muted-foreground"
+                : groupRentab >= 0
+                  ? "text-positive-strong"
+                  : "text-negative-strong";
+
+            return (
+              <li
+                key={sectorKey}
+                className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 shadow-xs"
+              >
+                {/* Cabeçalho de Setor Mobile em 2 Linhas Semânticas */}
+                <button
+                  type="button"
+                  onClick={() => toggleSectorCollapse(sectorKey)}
+                  aria-expanded={isExpanded}
+                  aria-label={`Setor ${group.sectorName}, ${group.count} ativos, total de ${group.totalValueBRL} reais`}
+                  className="flex w-full flex-col gap-2.5 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-lg transition-colors hover:bg-surface-hover/50 p-1 -m-1"
+                >
+                  {/* Linha 1: Identificação do Setor (Ícone + Nome do Setor + Badge da Classe + Chevron) */}
+                  <div className="flex items-center justify-between gap-2 w-full min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg border", meta.badgeClass)}>
+                        <Icon className="size-4 shrink-0" aria-hidden="true" />
+                      </span>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm font-bold text-foreground tracking-tight truncate">
+                          {group.sectorName}
+                        </span>
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <span className="font-medium">{group.className}</span>
+                          <span>•</span>
+                          <span>{group.count} {group.count === 1 ? "ativo" : "ativos"}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <span className="text-muted-foreground shrink-0 p-1">
+                      {isExpanded ? <ChevronDown className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
+                    </span>
+                  </div>
+
+                  {/* Linha 2: Métricas Financeiras (Saldo à esquerda | % e Rentabilidade à direita) */}
+                  <div className="flex items-center justify-between gap-2 w-full pt-2 border-t border-border/40">
+                    <div className="flex items-baseline gap-1.5 min-w-0">
+                      <span className="text-[11px] text-muted-foreground">Saldo:</span>
+                      <MoneyText cents={numberToCents(group.totalValueBRL)} tone="default" className="text-xs font-bold text-foreground" />
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[11px] font-medium text-muted-foreground bg-surface-hover/80 px-1.5 py-0.5 rounded border border-border/40">
+                        {formatPercent(group.totalPct)}%
+                      </span>
+                      {groupRentab !== null ? (
+                        <span
+                          className={cn(
+                            "text-[11px] font-semibold px-1.5 py-0.5 rounded",
+                            rentabTone,
+                            groupRentab >= 0 ? "bg-positive/10" : "bg-negative/10",
+                          )}
+                        >
+                          {formatSignedPct(groupRentab)}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                </button>
+
+                {isExpanded ? (
+                  <ul className="flex flex-col gap-2 pt-2 border-t border-border/40">
+                    {group.rows.map(renderMobileCard)}
+                  </ul>
+                ) : null}
+              </li>
+            );
+          })
         ) : isGroupedMode && classGroups.length > 0 ? (
           classGroups.map((group) => {
             const isExpanded = isClassExpanded(group.className);
@@ -1081,6 +1291,74 @@ export function PositionTable({
               <div className="px-4 py-12 text-center text-sm text-muted-foreground">
                 {hasFiltersActive ? "Nenhum ativo encontrado para os filtros selecionados." : emptyMessage ?? "Nenhum ativo na carteira."}
               </div>
+            ) : groupBy === "sector" && sectorGroups.length > 0 ? (
+              sectorGroups.map((group) => {
+                const sectorKey = `${group.className}__${group.sectorName}`;
+                const isExpanded = isSectorExpanded(sectorKey);
+                const meta = getAssetClassMeta(group.className);
+                const Icon = meta.icon;
+                const groupRentab = group.totalReturnPct !== null ? group.totalReturnPct : group.unrealizedPct;
+                const rentabTone =
+                  groupRentab === null
+                    ? "text-muted-foreground"
+                    : groupRentab >= 0
+                      ? "text-positive-strong"
+                      : "text-negative-strong";
+                const groupColumns = getColumnsForClass(group.className);
+
+                return (
+                  <div key={sectorKey} className="border-b border-border/60 last:border-b-0">
+                    {/* Linha Cabeçalho de Setor */}
+                    <button
+                      type="button"
+                      onClick={() => toggleSectorCollapse(sectorKey)}
+                      aria-expanded={isExpanded}
+                      aria-label={`Setor ${group.sectorName}, ${group.count} ativos, total de ${group.totalValueBRL} reais`}
+                      className="flex w-full items-center justify-between gap-3 bg-surface-hover/50 px-4 py-3 text-left transition-colors hover:bg-surface-hover cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring border-y border-border/40 first:border-t-0"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={cn("flex size-5 shrink-0 items-center justify-center rounded border", meta.badgeClass)}>
+                          <Icon className="size-3 shrink-0" aria-hidden="true" />
+                        </span>
+                        <span className="truncate text-xs font-bold uppercase tracking-wider text-foreground">
+                          {group.sectorName}
+                        </span>
+                        <Badge variant="muted" size="xs">
+                          {group.className}
+                        </Badge>
+                        <span className="text-[11px] text-muted-foreground">
+                          ({group.count} {group.count === 1 ? "ativo" : "ativos"})
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <MoneyText cents={numberToCents(group.totalValueBRL)} tone="default" className="font-bold text-foreground" />
+                            <span className="text-muted-foreground">({formatPercent(group.totalPct)}%)</span>
+                          </div>
+                          {groupRentab !== null ? (
+                            <span className={cn("text-[11px] font-semibold px-1.5 py-0.5 rounded", rentabTone, groupRentab >= 0 ? "bg-positive/10" : "bg-negative/10")}>
+                              {formatSignedPct(groupRentab)}
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="text-muted-foreground">
+                          {isExpanded ? <ChevronDown className="size-3.5" aria-hidden="true" /> : <ChevronRight className="size-3.5" aria-hidden="true" />}
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Cabeçalho e Linhas dos Ativos do Setor quando expandido */}
+                    {isExpanded ? (
+                      <div className="bg-surface/50 border-t border-border/50">
+                        {renderDesktopHeader(true, groupColumns)}
+                        {group.rows.map((row) => renderDesktopRow(row, groupColumns))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
             ) : isGroupedMode && classGroups.length > 0 ? (
               classGroups.map((group) => {
                 const isExpanded = isClassExpanded(group.className);

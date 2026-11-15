@@ -8,7 +8,7 @@ import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { DbInsert, DbUpdate, PortfolioAsset } from "@/types";
-import { PORTFOLIO_QUERY_KEYS } from "./portfolio-keys";
+import { invalidatePortfolioSuite } from "./portfolio-keys";
 
 export function useCreatePortfolioAsset() {
   const queryClient = useQueryClient();
@@ -21,9 +21,7 @@ export function useCreatePortfolioAsset() {
       return created;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
-      void queryClient.invalidateQueries({ queryKey: ["family"] });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Ativo criado",
         description: "O novo ativo foi adicionado à sua carteira.",
@@ -48,9 +46,7 @@ export function useUpdatePortfolioAsset() {
     mutationFn: ({ id, patch }: { id: string; patch: DbUpdate<PortfolioAsset> }) =>
       updatePortfolioAsset(id, patch),
     onSuccess: (updated) => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
-      void queryClient.invalidateQueries({ queryKey: ["family"] });
+      void invalidatePortfolioSuite(queryClient);
       if (updated?.ticker) {
         void import("@/services/quotes")
           .then(({ syncQuoteForTicker }) => syncQuoteForTicker(updated.ticker, updated.asset_class))
@@ -74,12 +70,7 @@ export function useDeletePortfolioAsset() {
   return useMutation({
     mutationFn: (assetId: string) => deletePortfolioAsset(assetId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Ativo excluído",
         description: "O ativo e todo o seu histórico foram removidos da carteira.",

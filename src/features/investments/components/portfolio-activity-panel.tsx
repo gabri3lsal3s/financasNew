@@ -4,9 +4,11 @@ import {
   ArrowUpRight,
   Coins,
   Download,
+  FilterX,
   History,
   Layers,
   Pencil,
+  Sparkles,
   Trash2,
   Wallet,
 } from "lucide-react";
@@ -18,12 +20,13 @@ import {
   EmptyState,
   FilterChips,
   SearchInput,
+  Select,
   SkeletonTable,
 } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { isCashAssetClass, isDividendType } from "@/domain/portfolio";
+import { inferSectorFromTicker, isCashAssetClass, isDividendType } from "@/domain/portfolio";
 import { currentMonth, formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
@@ -81,6 +84,8 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
   const { guardAction, upgradeModal } = useMutationGuard({ moduleKey: "investments" });
   const [month, setMonth] = useState(() => defaultMonth ?? currentMonth());
   const [filterType, setFilterType] = useState<ActivityFilterType>("all");
+  const [selectedClass, setSelectedClass] = useState<string>("all");
+  const [selectedSector, setSelectedSector] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [itemToDelete, setItemToDelete] = useState<ActivityItem | null>(null);
   const [rollbackCash, setRollbackCash] = useState(true);
@@ -296,13 +301,38 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
       }
     }
 
+    const netInvestedCents = numberToCents(totalBoughtAssets - totalSoldAssets);
+
     return {
       boughtCents: numberToCents(totalBoughtAssets),
       contributionsCents: numberToCents(totalContributions),
       soldCents: numberToCents(totalSoldAssets),
       dividendsCents: numberToCents(totalDividends),
+      netInvestedCents,
     };
   }, [monthActivities, contributionsQuery.data, month, assetMap, usdRate]);
+
+  // Classes e Setores disponíveis nas movimentações da competência
+  const availableClasses = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of monthActivities) {
+      if (item.assetClass) {
+        set.add(item.assetClass);
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [monthActivities]);
+
+  const availableSectors = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of monthActivities) {
+      const sec = inferSectorFromTicker(item.ticker, item.assetClass ?? undefined);
+      if (sec && sec !== "Outros") {
+        set.add(sec);
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [monthActivities]);
 
   // Contadores para os botões de filtro
   const typeCounts = useMemo(() => {
@@ -324,7 +354,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
     return { buys, contributions, sells, dividends };
   }, [monthActivities, contributionsQuery.data, month]);
 
-  // Filtros de Tipo e Busca
+  // Filtros de Tipo, Classe, Setor e Busca
   const filteredActivities = useMemo(() => {
     return monthActivities.filter((item) => {
       if (filterType === "buy" && item.type !== "buy") return false;
@@ -336,17 +366,28 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
       if (filterType === "sell" && item.type !== "sell") return false;
       if (filterType === "dividend" && item.type !== "dividend") return false;
 
+      if (selectedClass !== "all" && item.assetClass !== selectedClass) {
+        return false;
+      }
+
+      if (selectedSector !== "all") {
+        const sec = inferSectorFromTicker(item.ticker, item.assetClass ?? undefined);
+        if (sec !== selectedSector) return false;
+      }
+
       if (search.trim()) {
         const query = search.toLowerCase().trim();
         const matchTicker = item.ticker.toLowerCase().includes(query);
         const matchNotes = item.notes?.toLowerCase().includes(query) ?? false;
         const matchClass = item.assetClass?.toLowerCase().includes(query) ?? false;
-        return matchTicker || matchNotes || matchClass;
+        const sec = inferSectorFromTicker(item.ticker, item.assetClass ?? undefined);
+        const matchSector = sec?.toLowerCase().includes(query) ?? false;
+        return matchTicker || matchNotes || matchClass || matchSector;
       }
 
       return true;
     });
-  }, [monthActivities, filterType, search]);
+  }, [monthActivities, filterType, selectedClass, selectedSector, search]);
 
   const handleExportCsv = () => {
     if (filteredActivities.length === 0) return;
@@ -486,8 +527,8 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
         <MonthPicker value={month} onValueChange={setMonth} aria-label="Mês do extrato" />
 
         {/* Resumo Consolidado de Fluxo no Mês */}
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-4">
-          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3.5 shadow-2xs">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-2xs">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Compras de Ativos</span>
               <ArrowDownLeft className="size-3.5 text-positive-strong" aria-hidden="true" />
@@ -497,7 +538,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
             </span>
           </div>
 
-          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3.5 shadow-2xs">
+          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-2xs">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Vendas / Resgates</span>
               <ArrowUpRight className="size-3.5 text-negative-strong" aria-hidden="true" />
@@ -507,7 +548,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
             </span>
           </div>
 
-          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3.5 shadow-2xs">
+          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-2xs">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Proventos do Mês</span>
               <Coins className="size-3.5 text-portfolio" aria-hidden="true" />
@@ -517,7 +558,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
             </span>
           </div>
 
-          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3.5 shadow-2xs">
+          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-2xs">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>Aportes do Bolso</span>
               <Wallet className="size-3.5 text-portfolio" aria-hidden="true" />
@@ -528,13 +569,24 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
           </div>
         </div>
 
+        {/* Balanço Líquido de Compras no Mês */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-3.5 py-2 rounded-xl border border-border/80 bg-surface/70 text-xs text-muted-foreground shadow-2xs">
+          <div className="flex items-center gap-1.5">
+            <Layers className="size-3.5 text-portfolio" aria-hidden="true" />
+            <span>Compras Líquidas (Compras - Vendas):</span>
+          </div>
+          <span className="font-semibold text-foreground">
+            <MoneyText cents={monthStats.netInvestedCents} tone="default" sign="auto" />
+          </span>
+        </div>
+
         {/* Barra de Filtros e Busca */}
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between min-w-0">
           <SearchInput
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onClear={() => setSearch("")}
-            placeholder="Buscar por ativo ou observação…"
+            placeholder="Buscar por ativo, setor ou observação…"
             aria-label="Buscar movimentações"
             className="w-full"
           />
@@ -567,6 +619,59 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
             </Button>
           </div>
         </div>
+
+        {/* Filtros Auxiliares por Classe e Setor */}
+        {(availableClasses.length > 0 || availableSectors.length > 0) && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-0.5">
+            {availableClasses.length > 0 && (
+              <div className="flex items-center gap-1.5 min-w-0 flex-1 sm:max-w-xs">
+                <span className="text-xs text-muted-foreground shrink-0">Classe:</span>
+                <Select
+                  value={selectedClass}
+                  onValueChange={setSelectedClass}
+                  options={[
+                    { value: "all", label: "Todas as classes" },
+                    ...availableClasses.map((cls) => ({ value: cls, label: cls })),
+                  ]}
+                  ariaLabel="Filtrar por classe de ativo"
+                  className="h-8 text-xs flex-1"
+                />
+              </div>
+            )}
+
+            {availableSectors.length > 0 && (
+              <div className="flex items-center gap-1.5 min-w-0 flex-1 sm:max-w-xs">
+                <span className="text-xs text-muted-foreground shrink-0">Setor:</span>
+                <Select
+                  value={selectedSector}
+                  onValueChange={setSelectedSector}
+                  options={[
+                    { value: "all", label: "Todos os setores" },
+                    ...availableSectors.map((sec) => ({ value: sec, label: sec })),
+                  ]}
+                  ariaLabel="Filtrar por setor de investimento"
+                  className="h-8 text-xs flex-1"
+                />
+              </div>
+            )}
+
+            {(selectedClass !== "all" || selectedSector !== "all") && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedClass("all");
+                  setSelectedSector("all");
+                }}
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground gap-1 self-start sm:self-auto"
+              >
+                <FilterX className="size-3.5" aria-hidden="true" />
+                <span>Limpar filtros</span>
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Lista de Movimentações */}
         {isLoading ? (
@@ -604,6 +709,11 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
               const isDividend = item.type === "dividend";
               const isSplit = item.type === "split";
               const itemCurrency = itemAsset?.currency ?? "BRL";
+              const itemSector = inferSectorFromTicker(item.ticker, item.assetClass ?? undefined);
+              const isSmartAporte =
+                Boolean(item.notes?.toLowerCase().includes("aporte inteligente")) ||
+                Boolean(item.notes?.toLowerCase().includes("rebalanceamento")) ||
+                Boolean(item.notes?.toLowerCase().includes("lote"));
 
               return (
                 <div
@@ -678,6 +788,17 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                           {isBuy && Boolean(item.linkedContribution) && (
                             <Badge variant="muted" size="xs" className="gap-1 border-muted-foreground/30 text-muted-foreground font-medium">
                               <span>Via Aporte</span>
+                            </Badge>
+                          )}
+                          {isSmartAporte && (
+                            <Badge variant="portfolio" size="xs" className="gap-1 border-portfolio/30 text-portfolio font-medium">
+                              <Sparkles className="size-2.5" aria-hidden="true" />
+                              <span>Aporte Inteligente</span>
+                            </Badge>
+                          )}
+                          {itemSector && itemSector !== "Outros" && (
+                            <Badge variant="muted" size="xs" className="text-[10px] text-muted-foreground border-border/80">
+                              {itemSector}
                             </Badge>
                           )}
                           <span className="text-[11px] text-muted-foreground whitespace-nowrap">

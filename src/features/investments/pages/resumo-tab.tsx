@@ -91,6 +91,8 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [wizardOpen, setWizardOpen] = useState(false);
   const [wizardInitialAsset, setWizardInitialAsset] = useState<PortfolioAsset | null>(null);
   const [wizardInitialMode, setWizardInitialMode] = useState<WizardMode>("select");
+  const [wizardInitialQuantity, setWizardInitialQuantity] = useState<number | string | null>(null);
+  const [wizardInitialTotalCents, setWizardInitialTotalCents] = useState<number | null>(null);
   const [snapshotsDialogOpen, setSnapshotsDialogOpen] = useState(false);
   const [executiveReportOpen, setExecutiveReportOpen] = useState(false);
   const [reportSelectedMonth, setReportSelectedMonth] = useState<string | undefined>(undefined);
@@ -105,6 +107,8 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
     if (!next) {
       setWizardInitialAsset(null);
       setWizardInitialMode("select");
+      setWizardInitialQuantity(null);
+      setWizardInitialTotalCents(null);
     }
   };
 
@@ -114,6 +118,8 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
     } else {
       setWizardInitialAsset(asset);
       setWizardInitialMode(mode);
+      setWizardInitialQuantity(null);
+      setWizardInitialTotalCents(null);
       setWizardOpen(true);
     }
   };
@@ -773,6 +779,8 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           onOpenChange={handleWizardOpenChange}
           initialAsset={wizardInitialAsset}
           initialMode={wizardInitialMode}
+          initialQuantity={wizardInitialQuantity}
+          initialTotalCents={wizardInitialTotalCents}
         />
       ) : null}
 
@@ -793,6 +801,19 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             action === "sell" || action === "dividend" || action === "split" ? action : "buy";
           setQuickTxAsset(asset);
           setQuickTxType(txType);
+        }}
+        onOpenWizard={(asset, qty, totalCents) => {
+          setDetailAsset(null);
+          setDismissedHighlight(true);
+          if (onOpenWizard) {
+            onOpenWizard(asset, "buy");
+          } else {
+            setWizardInitialAsset(asset);
+            setWizardInitialMode("buy");
+            setWizardInitialQuantity(qty ?? null);
+            setWizardInitialTotalCents(totalCents ?? null);
+            setWizardOpen(true);
+          }
         }}
       />
 

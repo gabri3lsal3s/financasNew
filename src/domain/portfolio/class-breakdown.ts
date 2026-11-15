@@ -31,6 +31,7 @@ import {
   INTERNATIONAL_REGION_LABELS,
   INTERNATIONAL_VEHICLE_LABELS,
   getInternationalProfile,
+  inferSectorFromTicker,
   type StocksCyclingProfile,
   type StocksCapSize,
   type InternationalRegion,
@@ -986,4 +987,82 @@ export function calculatePositionClassGroups<T extends PositionCalculationRow>(
 
   return groups;
 }
+
+export interface PositionSectorCalculationRow extends PositionCalculationRow {
+  ticker: string;
+  sector?: string | null;
+}
+
+export interface CalculatedSectorGroup<T extends PositionSectorCalculationRow> {
+  sectorName: string;
+  className: string;
+  rows: T[];
+  totalValueBRL: number;
+  totalPct: number;
+  totalPnl: number;
+  totalCostBRL: number;
+  totalDividends: number;
+  totalReturnPnl: number;
+  totalReturnPct: number | null;
+  unrealizedPct: number | null;
+  count: number;
+}
+
+/**
+ * Agrupa linhas de posições patrimoniais por setor (inferido ou explicitado) e calcula métricas financeiras agregadas.
+ * Harmoniza com o motor canônico de rebalanceamento (Fase 108 / v3.6.8).
+ * Regra AGENTS.md §3: Todo cálculo de negócio vive em src/domain/ como função pura.
+ */
+export function calculatePositionSectorGroups<T extends PositionSectorCalculationRow>(
+  rows: readonly T[],
+  sortFn?: (rows: T[]) => T[],
+): CalculatedSectorGroup<T>[] {
+  const groupsMap = new Map<string, { className: string; rows: T[] }>();
+  for (const row of rows) {
+    const cls = row.assetClass || "Outros";
+    const sec = row.sector?.trim() || inferSectorFromTicker(row.ticker, row.assetClass);
+    const key = `${cls}__${sec}`;
+    const entry = groupsMap.get(key) ?? { className: cls, rows: [] };
+    entry.rows.push(row);
+    groupsMap.set(key, entry);
+  }
+
+  const groups: CalculatedSectorGroup<T>[] = [];
+  for (const [key, { className, rows: groupRows }] of groupsMap.entries()) {
+    const separatorIdx = key.indexOf("__");
+    const sectorName = separatorIdx >= 0 ? key.slice(separatorIdx + 2) : key;
+    const totalValueBRL = groupRows.reduce((sum, r) => sum + r.valueBRL, 0);
+    const totalPct = groupRows.reduce((sum, r) => sum + r.pct, 0);
+    const totalPnl = groupRows.reduce((sum, r) => sum + r.unrealizedPnl, 0);
+    const totalDividends = groupRows.reduce((sum, r) => sum + (r.dividends ?? 0), 0);
+    const totalCostBRL = groupRows.reduce((sum, r) => {
+      const cost = r.totalCostBRL ?? r.totalCost ?? (r.valueBRL - r.unrealizedPnl);
+      return sum + Math.max(0, cost);
+    }, 0);
+    const unrealizedPct = totalCostBRL > 0 ? (totalPnl / totalCostBRL) * 100 : null;
+    const totalReturnPnl = Math.round((totalPnl + totalDividends) * 100) / 100;
+    const totalReturnPct = totalCostBRL > 0 ? (totalReturnPnl / totalCostBRL) * 100 : null;
+
+    groups.push({
+      sectorName: sectorName || "Outros",
+      className,
+      rows: sortFn ? sortFn(groupRows) : groupRows,
+      totalValueBRL,
+      totalPct,
+      totalPnl,
+      totalCostBRL,
+      totalDividends,
+      totalReturnPnl,
+      totalReturnPct,
+      unrealizedPct,
+      count: groupRows.length,
+    });
+  }
+
+  // Ordena por maior valor BRL por padrão
+  groups.sort((a, b) => b.totalValueBRL - a.totalValueBRL);
+
+  return groups;
+}
+
 

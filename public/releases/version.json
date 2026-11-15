@@ -1,11 +1,11 @@
 {
-  "version": "3.6.8",
-  "versionCode": 61,
-  "releaseDate": "2026-11-14T22:18:20Z",
-  "minSupportedVersion": "3.6.8",
+  "version": "3.7.0",
+  "versionCode": 62,
+  "releaseDate": "2026-11-15T00:21:17Z",
+  "minSupportedVersion": "3.7.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "94be2803a99ed7bda6d680c23e7083d60ebead8b4aaf7a62d8ba769c4ac4f672",
-  "fileSizeBytes": 12111166,
+  "sha256": "0db2b7088581cf8c7ddb759b331cc387e65f76f9178c41d7614c0b7fef94f97a",
+  "fileSizeBytes": 12114038,
   "changelog": [
     "Axir v3.6.6: Blindagem de Compra, Venda e Resgate de Renda Fixa",
     "Estorno seguro no ativo Caixa ao excluir compras e vendas com conversão cambial PTAX",

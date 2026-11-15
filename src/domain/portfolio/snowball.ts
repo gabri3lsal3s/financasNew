@@ -357,3 +357,86 @@ export function detectReinvestmentOpportunities(
   return opportunities.sort((a, b) => b.purchasableShares - a.purchasableShares);
 }
 
+export interface PortfolioSnowballReinvestmentPlanInput {
+  cashAvailable: number;
+  targets: {
+    assetId: string;
+    ticker: string;
+    currentPrice: number;
+    currentValue: number;
+    targetPct: number;
+  }[];
+  totalPortfolioValue: number;
+}
+
+export interface SnowballReinvestmentAllocationItem {
+  assetId: string;
+  ticker: string;
+  allocatedAmount: number;
+  purchasableShares: number;
+  currentPrice: number;
+}
+
+export interface PortfolioSnowballReinvestmentPlan {
+  totalAllocated: number;
+  leftoverCash: number;
+  allocations: SnowballReinvestmentAllocationItem[];
+}
+
+/**
+ * Projeta o plano de reinvestimento da bola de neve de proventos em caixa
+ * respeitando as metas de alocação da carteira (D3).
+ * Distribui o saldo disponível de caixa priorizando os ativos com maior déficit relativo à meta.
+ */
+export function calculateSnowballReinvestmentPlan(
+  input: PortfolioSnowballReinvestmentPlanInput,
+): PortfolioSnowballReinvestmentPlan {
+  const { cashAvailable, targets, totalPortfolioValue } = input;
+  if (cashAvailable <= 0 || targets.length === 0 || totalPortfolioValue <= 0) {
+    return {
+      totalAllocated: 0,
+      leftoverCash: Math.max(0, cashAvailable),
+      allocations: [],
+    };
+  }
+
+  // Identifica gaps frente à meta
+  const gaps = targets
+    .map((t) => {
+      const targetVal = (totalPortfolioValue * t.targetPct) / 100;
+      const gap = Math.max(0, targetVal - t.currentValue);
+      return { ...t, gap };
+    })
+    .filter((t) => t.gap > 0 && t.currentPrice > 0)
+    .sort((a, b) => b.gap - a.gap);
+
+  let remaining = cashAvailable;
+  const allocations: SnowballReinvestmentAllocationItem[] = [];
+
+  for (const item of gaps) {
+    if (remaining < item.currentPrice) continue;
+    // Quantas cotas cabem no orçamento menor entre o gap e o caixa restante
+    const budget = Math.min(item.gap, remaining);
+    const shares = Math.floor(budget / item.currentPrice);
+    if (shares >= 1) {
+      const allocated = Math.round(shares * item.currentPrice * 100) / 100;
+      remaining = Math.round((remaining - allocated) * 100) / 100;
+      allocations.push({
+        assetId: item.assetId,
+        ticker: item.ticker,
+        allocatedAmount: allocated,
+        purchasableShares: shares,
+        currentPrice: item.currentPrice,
+      });
+    }
+  }
+
+  const totalAllocated = Math.round((cashAvailable - remaining) * 100) / 100;
+
+  return {
+    totalAllocated,
+    leftoverCash: remaining,
+    allocations,
+  };
+}
+

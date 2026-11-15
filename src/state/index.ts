@@ -117,6 +117,7 @@ export {
   useDismissCorporateDividend,
   reconcileAssetCustody,
   PORTFOLIO_QUERY_KEYS,
+  invalidatePortfolioSuite,
 } from "./queries/use-portfolio";
 export { useCorporateDividends } from "./queries/use-corporate-dividends";
 export { useAssetPrices, useSetManualPrice, useRemoveManualPrice, useSyncQuotes } from "./queries/use-asset-prices";

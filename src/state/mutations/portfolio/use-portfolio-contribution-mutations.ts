@@ -17,7 +17,7 @@ import type {
   PortfolioContribution,
   PortfolioTransaction,
 } from "@/types";
-import { PORTFOLIO_QUERY_KEYS } from "./portfolio-keys";
+import { PORTFOLIO_QUERY_KEYS, invalidatePortfolioSuite } from "./portfolio-keys";
 import { reconcileAssetCustody } from "./use-portfolio-transaction-mutations";
 
 export function useCreatePortfolioContribution() {
@@ -26,8 +26,7 @@ export function useCreatePortfolioContribution() {
     mutationFn: (input: Omit<DbInsert<PortfolioContribution>, "user_id">) =>
       createPortfolioContribution(input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Aporte financeiro registrado",
         description: "O valor foi contabilizado nos aportes do mês.",
@@ -57,8 +56,7 @@ export function useUpsertMarcoZero() {
     mutationFn: (params: { date: string; amount: number; notes?: string }) =>
       upsertMarcoZero(params),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
     },
     onError: (err) => {
       pushToast({
@@ -81,8 +79,7 @@ export function useCreateHistoricalContribution() {
     mutationFn: (params: { date: string; amount: number; notes?: string }) =>
       createHistoricalContribution(params),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Marco Histórico adicionado!",
         description: "A Linha do Tempo e a TIR da carteira foram atualizadas.",
@@ -152,11 +149,7 @@ export function useDeletePortfolioContribution() {
       }
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Aporte excluído",
         description: "O lançamento de aporte e a operação vinculada foram removidos.",
@@ -185,8 +178,7 @@ export function useUpdatePortfolioContribution() {
     mutationFn: (params: { id: string; input: DbUpdate<PortfolioContribution> }) =>
       updatePortfolioContribution(params.id, params.input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Marco Histórico atualizado!",
         description: "O valor foi calibrado e a TIR recalculada com sucesso.",
@@ -214,8 +206,7 @@ export function useBatchCreateHistoricalContributions() {
     mutationFn: (inputs: Omit<DbInsert<PortfolioContribution>, "user_id">[]) =>
       createPortfolioContributionsBatch(inputs),
     onSuccess: (created) => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Marcos Históricos importados!",
         description: `${created.length} marco(s) gravado(s) com sucesso. A TIR foi recalculada.`,

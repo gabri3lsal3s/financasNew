@@ -341,4 +341,35 @@ describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe
     const yocBadges = screen.getAllByText(/YoC 10[,.]0%/i);
     expect(yocBadges.length).toBeGreaterThanOrEqual(1);
   });
+
+  it("permite alternar entre agrupamento Por Classe e Por Setor", async () => {
+    const user = userEvent.setup();
+    render(<PositionTable rows={rows} />);
+
+    // Por padrão está agrupado por classe
+    expect(screen.getAllByRole("button", { name: /Classe Ações/i }).length).toBeGreaterThanOrEqual(1);
+
+    // Clica no alternador 'Por Setor'
+    const sectorToggleBtn = screen.getByRole("button", { name: /Por Setor/i });
+    await user.click(sectorToggleBtn);
+
+    // Agora deve exibir cabeçalhos de setores agrupados
+    const petroSector = screen.getAllByRole("button", { name: /Setor Petróleo/i });
+    expect(petroSector.length).toBeGreaterThanOrEqual(1);
+
+    // Expande o setor de petróleo
+    await user.click(petroSector[0]!);
+    expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("exibe metadados de setor sob o ticker quando expandido", async () => {
+    const user = userEvent.setup();
+    render(<PositionTable rows={rows} />);
+    const acoesGroup = screen.getAllByRole("button", { name: /Classe Ações/i })[0]!;
+    await user.click(acoesGroup);
+
+    // PETR4 tem setor inferido como 'Petróleo, Gás e Combustíveis'
+    const sectorLabels = screen.getAllByText("Petróleo, Gás e Combustíveis");
+    expect(sectorLabels.length).toBeGreaterThanOrEqual(1);
+  });
 });

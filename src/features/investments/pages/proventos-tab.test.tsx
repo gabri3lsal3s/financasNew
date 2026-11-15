@@ -276,4 +276,29 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     expect(snowballTab).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("Efeito Bola de Neve (Renda Passiva)")).toBeInTheDocument();
   });
+
+  it("exibe o banner de reinvestimento quando há caixa disponível e dispara onOpenWizard ao clicar", async () => {
+    dividendsMock.mockReturnValue(dividends);
+    assetsMock.mockReturnValue([
+      ...assets,
+      {
+        id: "cash-1",
+        ticker: "CAIXA",
+        asset_class: "Caixa",
+        currency: "BRL",
+        quantity: 450,
+        average_price: 1,
+      },
+    ]);
+    const onOpenWizard = vi.fn();
+    const user = userEvent.setup();
+
+    renderTab(<ProventosTab defaultMonth="2026-08" onOpenWizard={onOpenWizard} />);
+
+    expect(screen.getByText("Proventos em Caixa Disponíveis")).toBeInTheDocument();
+    const reinvestBtn = screen.getByRole("button", { name: /Reinvestir no Rebalanceador/i });
+    await user.click(reinvestBtn);
+
+    expect(onOpenWizard).toHaveBeenCalledWith(null, "existing_aporte");
+  });
 });

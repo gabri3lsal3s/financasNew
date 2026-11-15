@@ -15,7 +15,7 @@ import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { PortfolioAsset } from "@/types";
-import { PORTFOLIO_QUERY_KEYS } from "./portfolio-keys";
+import { invalidatePortfolioSuite } from "./portfolio-keys";
 import {
   useCreatePortfolioAsset,
   useUpdatePortfolioAsset,
@@ -444,11 +444,7 @@ export function useRecordOrder() {
       return { success: true };
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
       pushToast({
         title: "Ordem executada",
         description: "A movimentação foi concluída e a posição atualizada.",
@@ -476,11 +472,7 @@ export function useExecutePortfolioBatchAporte() {
   return useMutation({
     mutationFn: (params: ExecutePortfolioBatchAporteParams) => executePortfolioBatchAporte(params),
     onSuccess: (_, params) => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
       pushToast({
         title: "Aportes aplicados à carteira",
         description: `Posições de ${params.items.length} ativos atualizadas e compras lançadas com sucesso.`,

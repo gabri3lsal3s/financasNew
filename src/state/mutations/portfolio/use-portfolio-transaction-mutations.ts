@@ -23,7 +23,7 @@ import type {
   PortfolioAsset,
   PortfolioTransaction,
 } from "@/types";
-import { PORTFOLIO_QUERY_KEYS } from "./portfolio-keys";
+import { PORTFOLIO_QUERY_KEYS, invalidatePortfolioSuite } from "./portfolio-keys";
 
 export function useCreatePortfolioTransaction() {
   const queryClient = useQueryClient();
@@ -31,10 +31,7 @@ export function useCreatePortfolioTransaction() {
     mutationFn: (input: Omit<DbInsert<PortfolioTransaction>, "user_id">) =>
       createPortfolioTransaction(input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       triggerSensory("success");
     },
     onError: (err) => {
@@ -54,10 +51,7 @@ export function useCreatePortfolioTransactionsBatch() {
     mutationFn: (inputs: Omit<DbInsert<PortfolioTransaction>, "user_id">[]) =>
       createPortfolioTransactionsBatch(inputs),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       triggerSensory("success");
     },
     onError: (err) => {
@@ -129,10 +123,7 @@ export function useUpdatePortfolioTransaction() {
       return updated;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Lançamento atualizado",
         description: "A movimentação foi alterada com sucesso.",
@@ -220,12 +211,7 @@ export function useDeletePortfolioTransaction() {
       }
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.contributions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Lançamento excluído",
         description: "A operação e seus lançamentos vinculados foram removidos.",

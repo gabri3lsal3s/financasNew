@@ -1,5 +1,27 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.7.0 (Fase 109)** registra a conclusão integral da **Reorganização Integral & Harmonização 360° do Motor de Investimentos** ([`docs/plans/39_PLANO_FASE_11_REORGANIZACAO_INTEGRAL_MOTOR_INVESTIMENTOS_360.md`](../plans/39_PLANO_FASE_11_REORGANIZACAO_INTEGRAL_MOTOR_INVESTIMENTOS_360.md)) (2026-11-14):
+> - **(1) Custódia Dinâmica por Classe e Setor (`PositionTable`)**:
+>   - Segmented toggle com ícones sóbrios (`Layers` e `PieChart`) alternando entre agrupamento por Classe e Setor sem duplicidade;
+>   - Função de domínio puro `calculatePositionSectorGroups` em `src/domain/portfolio/class-breakdown.ts` calculando subtotais ponderados de saldo, rentabilidade e % da carteira;
+>   - Tags e metadados setoriais em linhas do desktop e cards mobile (`PositionMobileCard`);
+> - **(2) Ficha do Ativo (`AssetDetailSheet`) & Conexão Direta ao Wizard**:
+>   - Card de **Diagnóstico de Alocação & Metas**: integração com `useAllocationTargets` e `useGroupTargets`, exibindo meta individual, meta de setor/classe, gap financeiro em R$ e badge de desconto frente ao Preço Médio (`diffVsPMPct < 0`);
+>   - Botão CTA "Aportar no Wizard" conectado a `onOpenWizard`, pré-selecionando o ativo no fluxo de aporte guiado;
+>   - Card de **Custódia Internacional Dual (USD)** com cotação nativa em US$, total de proventos e taxa cambial PTAX explícita;
+> - **(3) Ciclo de Proventos & Reinvestimento Ativo (`ProventosTab`)**:
+>   - Card canônico `ReinvestDividendsBanner` (Regras 13 e 19 de `AGENTS.md`) exibido quando `cashBalance > 0`, com ação de 1-toque abrindo o wizard em modo `existing_aporte` para reinvestir saldo ocioso;
+>   - Atualização do simulador Snowball (`src/domain/portfolio/snowball.ts`) com `calculateSnowballReinvestmentPlan`, projetando proventos e recomposição respeitando as metas de alocação da carteira;
+> - **(4) Movimentações, Renda Fixa e Invalidação Atômica (`PortfolioActivityPanel` e `portfolio-keys.ts`)**:
+>   - Resumo financeiro mensal no topo: Total Comprado, Total Vendido, Proventos do Mês, Aportes do Bolso e Balanço Líquido de Compras;
+>   - Filtros dinâmicos por Classe e Setor utilizando o primitivo `Select` do Design System (Radix, sem controle nativo — Regra 7);
+>   - Destaque e rastreabilidade visual de operações originadas de "Aporte Inteligente" e tags setoriais inferidas (`inferSectorFromTicker`);
+>   - Função central `invalidatePortfolioSuite(queryClient)` em `portfolio-keys.ts`, sincronizando atômica e integralmente todo o cache do ecossistema de investimentos;
+> - **(5) Quality Gates 100% Aprovados**:
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros, 0 avisos;
+>   - Vitest: 71 arquivos e 783 testes de investimentos e domínio de portfólio 100% aprovados.
+>
 > **v3.6.8** registra a **Organização Canônica e Sincronização Integral das Migrações do Supabase** (2026-11-14):
 > - **(1) Saneamento e Unificação Canônica do Diretório de Migrações (`supabase/migrations/`)**:
 >   - Resolução definitiva de sufixos alfanuméricos ignorados pelo Supabase CLI: fusão dos pares `46a/46b` em `20260101000046_batch_budget_limits_and_access_hardening.sql` e `56a/56b` em `20260101000056_fix_import_statement_rpcs_and_qualified_decisions.sql`;

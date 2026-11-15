@@ -1,6 +1,6 @@
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { calculateYieldOnCost } from "@/domain/portfolio";
+import { calculateYieldOnCost, inferSectorFromTicker } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { formatPercent, formatSignedPct } from "@/services/masks/percent";
@@ -47,6 +47,7 @@ export function PositionMobileCard({
       ? calculateYieldOnCost(effectiveDividends, effectiveCost)
       : 0;
   const isClickable = Boolean(onOpen);
+  const resolvedSector = row.sector?.trim() || inferSectorFromTicker(row.ticker, row.assetClass);
 
   return (
     <li
@@ -72,23 +73,30 @@ export function PositionMobileCard({
           "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
       )}
     >
-      {/* Linha 1: Ticker | Valor Total, Rentabilidade e YoC */}
+      {/* Linha 1: Ticker e Setor | Valor Total, Rentabilidade e YoC */}
       <div className="flex items-center justify-between gap-2 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="truncate font-mono text-base font-bold text-foreground">{row.ticker}</span>
-          {row.isMatured ? (
-            <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-critical-strong shrink-0">
-              Vencido
-            </span>
-          ) : row.fixedIncomeMetadata ? (
-            <span className="rounded bg-surface-hover/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shrink-0">
-              {row.fixedIncomeMetadata.rate_type === "cdi"
-                ? `${row.fixedIncomeMetadata.rate_value}% CDI`
-                : row.fixedIncomeMetadata.rate_type === "selic"
-                  ? `${row.fixedIncomeMetadata.rate_value}% Selic`
-                  : row.fixedIncomeMetadata.rate_type === "pre"
-                    ? `${row.fixedIncomeMetadata.rate_value}% a.a.`
-                    : `IPCA + ${row.fixedIncomeMetadata.rate_value}%`}
+        <div className="flex flex-col min-w-0 gap-0.5">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate font-mono text-base font-bold text-foreground">{row.ticker}</span>
+            {row.isMatured ? (
+              <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-critical-strong shrink-0">
+                Vencido
+              </span>
+            ) : row.fixedIncomeMetadata ? (
+              <span className="rounded bg-surface-hover/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shrink-0">
+                {row.fixedIncomeMetadata.rate_type === "cdi"
+                  ? `${row.fixedIncomeMetadata.rate_value}% CDI`
+                  : row.fixedIncomeMetadata.rate_type === "selic"
+                    ? `${row.fixedIncomeMetadata.rate_value}% Selic`
+                    : row.fixedIncomeMetadata.rate_type === "pre"
+                      ? `${row.fixedIncomeMetadata.rate_value}% a.a.`
+                      : `IPCA + ${row.fixedIncomeMetadata.rate_value}%`}
+              </span>
+            ) : null}
+          </div>
+          {resolvedSector ? (
+            <span className="truncate text-[11px] text-muted-foreground font-normal">
+              {resolvedSector}
             </span>
           ) : null}
         </div>

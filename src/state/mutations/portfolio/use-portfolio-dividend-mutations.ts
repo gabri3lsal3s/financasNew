@@ -22,7 +22,7 @@ import type {
   PortfolioDividend,
   PortfolioDividendDismissalReason,
 } from "@/types";
-import { PORTFOLIO_QUERY_KEYS } from "./portfolio-keys";
+import { PORTFOLIO_QUERY_KEYS, invalidatePortfolioSuite } from "./portfolio-keys";
 
 export function useCreatePortfolioDividend() {
   const queryClient = useQueryClient();
@@ -30,8 +30,7 @@ export function useCreatePortfolioDividend() {
     mutationFn: (input: Omit<DbInsert<PortfolioDividend>, "user_id">) =>
       createPortfolioDividend(input),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Provento registrado",
         description: "O rendimento foi salvo no extrato de proventos.",
@@ -93,11 +92,7 @@ export function useUpdatePortfolioDividend() {
       return updated;
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Provento atualizado",
         description: "As alterações foram salvas com sucesso.",
@@ -179,11 +174,7 @@ export function useDeletePortfolioDividend() {
       }
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.transactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allTransactions });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
+      void invalidatePortfolioSuite(queryClient);
       pushToast({
         title: "Provento excluído",
         description: "O rendimento e a operação vinculada foram removidos.",
@@ -214,12 +205,7 @@ export function useApproveDividendsBatch() {
       return approveDividendsBatchRpc(payload);
     },
     onSuccess: (result, variables) => {
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.corporateDividends });
-      void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividendDismissals });
-      void queryClient.invalidateQueries({ queryKey: ["portfolio_position"] });
+      void invalidatePortfolioSuite(queryClient);
 
       triggerSensory("success");
 
@@ -269,12 +255,7 @@ export function useApproveDividendsBatch() {
                 }
               }
 
-              void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.assets });
-              void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividends });
-              void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.snapshots });
-              void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.corporateDividends });
-              void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.dividendDismissals });
-              void queryClient.invalidateQueries({ queryKey: ["portfolio_position"] });
+              void invalidatePortfolioSuite(queryClient);
 
               triggerSensory("warning");
               pushToast({

@@ -32,6 +32,7 @@ vi.mock("@/state", () => ({
       { id: "tx-1", user_id: "u-1", asset_id: "a-1", type: "buy", date: "2026-08-05", quantity: 10, price: 38.5, total: 385, notes: "Compra PETR4" },
       { id: "tx-2", user_id: "u-1", asset_id: "a-2", type: "sell", date: "2026-08-12", quantity: 1, price: 1400, total: 1400, notes: "Resgate CDB-FACTA" },
       { id: "tx-3", user_id: "u-1", asset_id: "a-1", type: "buy", date: "2026-08-02", quantity: 100, price: 30, total: 3000 },
+      { id: "tx-4", user_id: "u-1", asset_id: "a-1", type: "buy", date: "2026-08-08", quantity: 5, price: 38.5, total: 192.5, notes: "Aporte Inteligente · Lote #108" },
       { id: "tx-div", user_id: "u-1", asset_id: "a-1", type: "dividend", date: "2026-08-25", quantity: 0, price: 0, total: 12.5, notes: "Dividendo PETR4 via ledger" },
       { id: "tx-cash", user_id: "u-1", asset_id: "a-cash", type: "buy", date: "2026-08-10", quantity: 500, price: 1, total: 500, notes: "Pseudo-compra de Caixa" },
     ],
@@ -266,6 +267,26 @@ describe("PortfolioActivityPanel", () => {
     fireEvent.click(editContribButtons[0]!);
 
     expect(screen.getByText("Editar Aporte Financeiro")).toBeInTheDocument();
+  });
+
+  it("renderiza o indicador de Balanço Líquido de Compras no resumo mensal", () => {
+    render(<PortfolioActivityPanel defaultMonth="2026-08" />);
+
+    expect(screen.getByText(/Compras Líquidas \(Compras - Vendas\):/i)).toBeInTheDocument();
+  });
+
+  it("renderiza tag setorial inferida e badge de Aporte Inteligente", () => {
+    render(<PortfolioActivityPanel defaultMonth="2026-08" />);
+
+    expect(screen.getAllByText("Petróleo, Gás e Combustíveis").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Aporte Inteligente")).toBeInTheDocument();
+  });
+
+  it("renderiza os controles de seleção por Classe e Setor", () => {
+    render(<PortfolioActivityPanel defaultMonth="2026-08" />);
+
+    expect(screen.getByLabelText(/Filtrar por classe de ativo/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Filtrar por setor de investimento/i)).toBeInTheDocument();
   });
 });
 

@@ -109,6 +109,17 @@ vi.mock("@/state", () => ({
     data: null,
     isLoading: false,
   }),
+  useAllocationTargets: () => ({
+    data: [{ asset_id: "asset-1", ticker: "PETR4", target_percentage: 20 }],
+    isLoading: false,
+  }),
+  useGroupTargets: (type: "class" | "sector") => ({
+    data:
+      type === "sector"
+        ? [{ id: "s1", user_id: "user-1", group_type: "sector" as const, name: "Petróleo, Gás e Combustíveis", target_percentage: 25 }]
+        : [{ id: "c1", user_id: "user-1", group_type: "class" as const, name: "Ações", target_percentage: 40 }],
+    isLoading: false,
+  }),
 }));
 
 
@@ -157,9 +168,39 @@ describe("AssetDetailSheet (Fase 41 & F57)", () => {
   it("dispara callback ao clicar no botão de Aporte", () => {
     const onAction = vi.fn();
     render(<AssetDetailSheet asset={mockAsset} open={true} onOpenChange={vi.fn()} onAction={onAction} />);
-    const aporteBtn = screen.getByRole("button", { name: /Aportar/i });
+    const aporteBtn = screen.getByRole("button", { name: /^Aportar$/i });
     fireEvent.click(aporteBtn);
     expect(onAction).toHaveBeenCalledWith("buy", mockAsset);
+  });
+
+  it("renderiza o card de Diagnóstico de Alocação e dispara onOpenWizard ao clicar em Aportar no Wizard", () => {
+    const onOpenWizard = vi.fn();
+    render(<AssetDetailSheet asset={mockAsset} open={true} onOpenChange={vi.fn()} onOpenWizard={onOpenWizard} />);
+
+    expect(screen.getByText("Diagnóstico de Alocação & Metas")).toBeInTheDocument();
+    expect(screen.getByText(/Meta: 20[,.]0%/i)).toBeInTheDocument();
+
+    const wizardBtn = screen.getByRole("button", { name: /Aportar no Wizard/i });
+    fireEvent.click(wizardBtn);
+    expect(onOpenWizard).toHaveBeenCalledWith(mockAsset, undefined, undefined);
+  });
+
+  it("renderiza o card de Custódia Internacional Dual para ativos em USD", () => {
+    const mockUsdAsset: PortfolioAsset = {
+      id: "asset-usd-1",
+      user_id: "user-1",
+      ticker: "AAPL",
+      asset_class: "Internacional",
+      currency: "USD",
+      quantity: 10,
+      average_price: 150.0,
+    };
+    render(<AssetDetailSheet asset={mockUsdAsset} open={true} onOpenChange={vi.fn()} />);
+
+    expect(screen.getByText("Custódia Internacional (USD)")).toBeInTheDocument();
+    expect(screen.getByText(/Taxa PTAX/i)).toBeInTheDocument();
+    expect(screen.getByText("Posição em US$")).toBeInTheDocument();
+    expect(screen.getByText("Cotação Nativa")).toBeInTheDocument();
   });
 
   it("renderiza corretamente para ativo de Renda Fixa com taxa e vencimento formatado pt-BR", () => {

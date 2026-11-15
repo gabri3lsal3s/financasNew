@@ -42,7 +42,7 @@ import {
   usePortfolioPosition,
 } from "@/state";
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
-import { DividendFormDialog, PendingDividendsDialog } from "../components";
+import { DividendFormDialog, PendingDividendsDialog, ReinvestDividendsBanner } from "../components";
 import type { WizardMode } from "../wizard/wizard-state";
 
 export type ProventosSubTab = "mensal" | "calendario" | "ativos" | "snowball";
@@ -404,6 +404,12 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
     }, "Reinvestir Proventos");
   };
 
+  const handleReinvestCash = () => {
+    guardAction(() => {
+      onOpenWizard?.(null, "existing_aporte");
+    }, "Reinvestir Proventos em Caixa");
+  };
+
   // Conteúdo da Aba 1: Extrato Mensal
   const mensalContent = (
     <div className="flex flex-col gap-5">
@@ -481,6 +487,14 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
         <SnowballActionCard
           opportunities={reinvestmentOpportunities}
           onReinvest={handleReinvest}
+        />
+      )}
+
+      {/* Banner de Proventos em Caixa para Reinvestimento Ativo (D3) */}
+      {cashBalance > 0 && (
+        <ReinvestDividendsBanner
+          cashBalance={cashBalance}
+          onReinvest={handleReinvestCash}
         />
       )}
 

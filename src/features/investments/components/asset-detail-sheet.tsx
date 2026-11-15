@@ -4,12 +4,17 @@ import {
   ArrowRight,
   Calendar,
   Edit2,
+  Globe,
   Pencil,
   Plus,
   Receipt,
   Scissors,
   SlidersHorizontal,
+  Sparkles,
+  Target,
   Trash2,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react";
 import {
   Badge,
@@ -31,10 +36,12 @@ import { formatFixedIncomeRateLabel } from "@/domain/portfolio/fixed-income";
 import { getAssetPricingMode, isCashAssetClass } from "@/domain/portfolio/valuation";
 import { formatDateBR } from "@/lib/date";
 import {
+  useAllocationTargets,
   useAssetPosition,
   useDeletePortfolioAsset,
   useDeletePortfolioTransaction,
   useFamilyMode,
+  useGroupTargets,
   useMyFamily,
   usePortfolioAssets,
   usePortfolioPosition,
@@ -51,6 +58,7 @@ export interface AssetDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAction?: (action: "buy" | "sell" | "dividend" | "split", asset: PortfolioAsset) => void;
+  onOpenWizard?: (asset: PortfolioAsset, initialQuantity?: number, initialTotalCents?: number) => void;
 }
 
 export function AssetDetailSheet({
@@ -58,6 +66,7 @@ export function AssetDetailSheet({
   open,
   onOpenChange,
   onAction,
+  onOpenWizard,
 }: AssetDetailSheetProps) {
   const { guardAction, upgradeModal } = useMutationGuard();
   const assetId = asset?.id ?? null;
@@ -70,6 +79,10 @@ export function AssetDetailSheet({
   const { isFamilyModeEnabled } = useFamilyMode();
   const { data: myFamilyData } = useMyFamily();
   const currentMember = myFamilyData?.currentMember;
+
+  const allocationTargets = useAllocationTargets();
+  const groupTargetsSector = useGroupTargets("sector");
+  const groupTargetsClass = useGroupTargets("class");
 
   const [editOpen, setEditOpen] = useState(false);
   const [calibrateOpen, setCalibrateOpen] = useState(false);
@@ -193,6 +206,48 @@ export function AssetDetailSheet({
   };
 
   const resolvedSector = currentAsset.sector?.trim() || (currentAsset.asset_class ? inferSectorFromTicker(currentAsset.ticker, currentAsset.asset_class) : null);
+
+  const assetTarget = (allocationTargets.data ?? []).find(
+    (t) => t.asset_id === currentAsset.id,
+  );
+  const assetTargetPct = assetTarget?.target_percentage ?? null;
+
+  const sectorTarget = resolvedSector
+    ? (groupTargetsSector.data ?? []).find((s) => s.name === resolvedSector)
+    : undefined;
+  const sectorTargetPct = sectorTarget?.target_percentage ?? null;
+
+  const classTarget = currentAsset.asset_class
+    ? (groupTargetsClass.data ?? []).find((c) => c.name === currentAsset.asset_class)
+    : undefined;
+  const classTargetPct = classTarget?.target_percentage ?? null;
+
+  const totalPortfolioValue = position.totalBRL || position.rows.reduce((s, r) => s + r.valueBRL, 0);
+  const currentPctInPortfolio = totalPortfolioValue > 0 ? (currentValue / totalPortfolioValue) * 100 : 0;
+
+  const hasAssetTarget = assetTargetPct !== null && assetTargetPct > 0;
+  const targetValueBRL = hasAssetTarget ? (totalPortfolioValue * assetTargetPct) / 100 : 0;
+  const gapBRL = hasAssetTarget ? targetValueBRL - currentValue : 0;
+  const gapCents = numberToCents(gapBRL);
+
+  // Desconto vs Preço Médio (PM) para Renda Variável
+  const hasDiscountVsPM = !isTotalValue && !isCash && averageCost > 0 && currentPrice < averageCost;
+  const diffVsPMPct = !isTotalValue && !isCash && averageCost > 0 ? ((currentPrice - averageCost) / averageCost) * 100 : 0;
+
+  // Sugestão de cotas para absorver o gap
+  const suggestedQtyToAbsorb =
+    !isTotalValue && currentPrice > 0 && gapBRL > 0 ? Math.floor(gapBRL / currentPrice) : undefined;
+  const suggestedTotalCents = gapCents > 0 ? gapCents : undefined;
+
+  const handleAporteClick = () => {
+    guardAction(() => {
+      if (onOpenWizard) {
+        onOpenWizard(currentAsset, suggestedQtyToAbsorb, suggestedTotalCents);
+      } else {
+        onAction?.("buy", currentAsset);
+      }
+    }, "Registrar Aporte");
+  };
 
   return (
     <>
@@ -538,6 +593,193 @@ export function AssetDetailSheet({
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Diagnóstico de Alocação & Metas */}
+          {!isClosed && !isCash && (
+            <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+              {/* Cabeçalho do Card */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Target className="size-4 text-primary shrink-0" aria-hidden="true" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Diagnóstico de Alocação & Metas
+                  </span>
+                  {hasAssetTarget ? (
+                    <Badge variant="default" size="xs">
+                      Meta: {assetTargetPct?.toFixed(1)}%
+                    </Badge>
+                  ) : sectorTargetPct !== null ? (
+                    <Badge variant="muted" size="xs">
+                      Setor: {sectorTargetPct.toFixed(1)}%
+                    </Badge>
+                  ) : classTargetPct !== null ? (
+                    <Badge variant="muted" size="xs">
+                      Classe: {classTargetPct.toFixed(1)}%
+                    </Badge>
+                  ) : null}
+                </div>
+
+                {hasDiscountVsPM ? (
+                  <Badge variant="positive" size="xs" className="self-start sm:self-auto gap-1">
+                    <TrendingDown className="size-3" aria-hidden="true" />
+                    <span>Desconto de {Math.abs(diffVsPMPct).toFixed(1)}% vs PM</span>
+                  </Badge>
+                ) : diffVsPMPct > 0 ? (
+                  <Badge variant="muted" size="xs" className="self-start sm:self-auto gap-1">
+                    <TrendingUp className="size-3" aria-hidden="true" />
+                    <span>+{diffVsPMPct.toFixed(1)}% acima do PM</span>
+                  </Badge>
+                ) : null}
+              </div>
+
+              {/* Métricas do Diagnóstico */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                    % na Carteira
+                  </span>
+                  <span className="font-mono text-sm font-bold text-foreground tabular-nums">
+                    {currentPctInPortfolio.toFixed(1)}%
+                  </span>
+                  <span className="text-[10px] text-muted-foreground truncate">
+                    de R$ {totalPortfolioValue.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                    Meta Alvo
+                  </span>
+                  <span className="font-mono text-sm font-bold text-foreground tabular-nums">
+                    {hasAssetTarget ? `${assetTargetPct?.toFixed(1)}%` : sectorTargetPct !== null ? `${sectorTargetPct.toFixed(1)}% (setor)` : "Não definida"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono truncate">
+                    {hasAssetTarget ? (
+                      <>Alvo: <MoneyText cents={numberToCents(targetValueBRL)} /></>
+                    ) : (
+                      "Ajuste na aba Metas"
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                    Gap Orçamentário
+                  </span>
+                  {hasAssetTarget ? (
+                    gapBRL > 0 ? (
+                      <>
+                        <span className="font-mono text-sm font-bold text-positive-strong tabular-nums">
+                          +<MoneyText cents={gapCents} tone="positive" />
+                        </span>
+                        <span className="text-[10px] text-positive-strong font-medium truncate">
+                          {suggestedQtyToAbsorb ? `${suggestedQtyToAbsorb} cota(s) sugerida(s)` : "Abaixo da meta"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-mono text-sm font-bold text-muted-foreground tabular-nums">
+                          Equilibrado
+                        </span>
+                        <span className="text-[10px] text-muted-foreground truncate">
+                          Meta atingida
+                        </span>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      <span className="font-mono text-sm font-bold text-muted-foreground tabular-nums">
+                        —
+                      </span>
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        Sem meta por ativo
+                      </span>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex flex-col justify-end min-w-0 col-span-2 sm:col-span-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={gapBRL > 0 || hasDiscountVsPM ? "default" : "outline"}
+                    onClick={handleAporteClick}
+                    className="gap-1.5 text-xs font-semibold w-full"
+                  >
+                    <Sparkles className="size-3.5" aria-hidden="true" />
+                    <span>Aportar no Wizard</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Card de Custódia Internacional Dual (USD / BRL) */}
+          {isUSD && (
+            <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Globe className="size-4 text-primary shrink-0" aria-hidden="true" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Custódia Internacional (USD)
+                  </span>
+                </div>
+                <Badge variant="muted" size="xs">
+                  Taxa PTAX: R$ {usdRate.toFixed(4)}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                    Posição em US$
+                  </span>
+                  <span className="font-mono text-sm font-bold text-foreground tabular-nums">
+                    $ {(currentValue / usdRate).toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    R$ <MoneyText cents={numberToCents(currentValue)} />
+                  </span>
+                </div>
+
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                    Cotação Nativa
+                  </span>
+                  <span className="font-mono text-sm font-bold text-foreground tabular-nums">
+                    $ {(positionRow?.priceQuote ?? (currentPrice / usdRate)).toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    R$ <MoneyText cents={numberToCents(currentPrice)} />
+                  </span>
+                </div>
+
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                    Preço Médio US$
+                  </span>
+                  <span className="font-mono text-sm font-bold text-foreground tabular-nums">
+                    $ {averageCost.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    Custo nativo
+                  </span>
+                </div>
+
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                    Proventos em US$
+                  </span>
+                  <span className="font-mono text-sm font-bold text-positive-strong tabular-nums">
+                    $ {totalDividendsNative.toFixed(2)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    YoC Nativo: {yieldOnCostPct.toFixed(2)}%
+                  </span>
+                </div>
+              </div>
             </div>
           )}
 

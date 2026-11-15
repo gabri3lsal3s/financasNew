@@ -6,6 +6,7 @@ import {
   calculateStocksExposure,
   calculateMonthsElapsed,
   detectClassInceptions,
+  calculatePositionSectorGroups,
 } from "./class-breakdown";
 import type { PortfolioAsset } from "@/types";
 
@@ -486,3 +487,61 @@ describe("Detecção de Safra Efetiva por Classe (detectClassInceptions)", () =>
     expect(inceptions.stocks.isMaturing).toBe(false);
   });
 });
+
+describe("Motor Puro de Agrupamento por Setor (calculatePositionSectorGroups)", () => {
+  it("agrupa ativos por setor e calcula métricas agregadas respeitando setores explícitos e inferidos", () => {
+    const rows = [
+      {
+        ticker: "PETR4",
+        assetClass: "Ações",
+        sector: "Petróleo, Gás e Combustíveis",
+        valueBRL: 10000,
+        pct: 40,
+        unrealizedPnl: 1500,
+        totalCostBRL: 8500,
+        dividends: 500,
+      },
+      {
+        ticker: "PRIO3",
+        assetClass: "Ações",
+        // Sem setor explícito, deve inferir Petróleo, Gás e Combustíveis
+        valueBRL: 5000,
+        pct: 20,
+        unrealizedPnl: 500,
+        totalCostBRL: 4500,
+        dividends: 0,
+      },
+      {
+        ticker: "ITUB4",
+        assetClass: "Ações",
+        // Sem setor explícito, deve inferir Financeiro / Bancos
+        valueBRL: 10000,
+        pct: 40,
+        unrealizedPnl: 1000,
+        totalCostBRL: 9000,
+        dividends: 600,
+      },
+    ];
+
+    const groups = calculatePositionSectorGroups(rows);
+
+    expect(groups).toHaveLength(2);
+    // Petróleo (10000 + 5000 = 15000) > Bancos (10000), ordenado por totalValueBRL
+    const petroleo = groups[0];
+    expect(petroleo?.sectorName).toBe("Petróleo, Gás e Combustíveis");
+    expect(petroleo?.count).toBe(2);
+    expect(petroleo?.totalValueBRL).toBe(15000);
+    expect(petroleo?.totalPct).toBe(60);
+    expect(petroleo?.totalPnl).toBe(2000);
+    expect(petroleo?.totalCostBRL).toBe(13000);
+    expect(petroleo?.totalDividends).toBe(500);
+    expect(petroleo?.totalReturnPnl).toBe(2500);
+
+    const bancos = groups[1];
+    expect(bancos?.sectorName).toBe("Financeiro / Bancos");
+    expect(bancos?.count).toBe(1);
+    expect(bancos?.totalValueBRL).toBe(10000);
+    expect(bancos?.totalPct).toBe(40);
+  });
+});
+
