@@ -232,6 +232,10 @@ O Axir opera em um ecossistema unificado composto por três pilares sob a mesma 
 - **Calibração de Stale Time Estendido para Dados Cadastrais e Estáticos (5 minutos / 300.000 ms):**
   - Queries de baixa frequência de alteração (`useCategories`, `useUserPreferences`, `useBudgets`, `useUserAccess`, `useUserSubscription`) utilizam explicitamente `staleTime: STALE_TIMES.static` (300.000 ms) e `gcTime: STATIC_GC_TIME` (1.800.000 ms / 30 min);
   - Assegura imunidade contra re-execuções desnecessárias em navegações internas, mantendo invalidação atômica e imediata após mutações locais (`queryClient.invalidateQueries`) e canais Supabase Realtime.
+- **Gateway Central de Invalidação Atômica do Portfólio (`invalidatePortfolioSuite` — Fase 109 / v3.7.0):**
+  - Todas as mutações de ativos, transações, proventos, aportes e ordens de investimento utilizam o gateway centralizado `invalidatePortfolioSuite(queryClient, options)` (`src/state/mutations/portfolio/portfolio-keys.ts`).
+  - Invalida atômica e coordenadamente toda a suíte de queries (`portfolio_assets`, `portfolio_transactions`, `portfolio_dividends`, `portfolio_contributions`, `portfolio_snapshots`, `portfolio_position`, `portfolio_monthly_position`, `allocation_targets`, `group_targets`, `corporate_dividends`, `portfolio_dividend_dismissals` e opcionalmente `accounts`).
+  - Erradica assimetrias visuais e garante sincronia em tempo real entre a Custódia Dinâmica (por Classe e Setor), a Ficha do Ativo, a Esteira de Proventos e a Calculadora de Rebalanceamento.
 
 ### 5.2 Escritas — RPCs transacionais (D1)
 

@@ -1,6 +1,6 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v3.7.0 (Fase 109)** registra a conclusão integral da **Reorganização Integral & Harmonização 360° do Motor de Investimentos** ([`docs/plans/39_PLANO_FASE_11_REORGANIZACAO_INTEGRAL_MOTOR_INVESTIMENTOS_360.md`](../plans/39_PLANO_FASE_11_REORGANIZACAO_INTEGRAL_MOTOR_INVESTIMENTOS_360.md)) (2026-11-14):
+> **v3.7.0 (Fase 109)** registra a conclusão integral da **Reorganização Integral & Harmonização 360° do Motor de Investimentos** ([`docs/plans/completed/39_PLANO_FASE_11_REORGANIZACAO_INTEGRAL_MOTOR_INVESTIMENTOS_360.md`](../plans/completed/39_PLANO_FASE_11_REORGANIZACAO_INTEGRAL_MOTOR_INVESTIMENTOS_360.md)) (2026-11-14):
 > - **(1) Custódia Dinâmica por Classe e Setor (`PositionTable`)**:
 >   - Segmented toggle com ícones sóbrios (`Layers` e `PieChart`) alternando entre agrupamento por Classe e Setor sem duplicidade;
 >   - Função de domínio puro `calculatePositionSectorGroups` em `src/domain/portfolio/class-breakdown.ts` calculando subtotais ponderados de saldo, rentabilidade e % da carteira;

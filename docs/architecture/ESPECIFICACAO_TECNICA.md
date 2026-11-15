@@ -692,6 +692,29 @@ A inteligência de repetição do sistema opera em dois trilhos expressos e desa
 - **Visão Híbrida de Benchmarks:**
   - Exibição simultânea da performance histórica global ("Desde o Início") com destaque visual no cabeçalho e da janela recente dos últimos 12 meses móveis (12M) em subtítulo adaptativo.
 
+#### 3.11.5 Reorganização Integral e Harmonização 360° do Motor de Investimentos (Fase 109 / v3.7.0)
+
+Após a consolidação canônica do motor de rebalanceamento hierárquico em 3 níveis (Fase 108 / v3.6.8), a Fase 109 unificou todo o ecossistema remanescente de investimentos, integrando custódia viva, fichas de ativos, proventos e histórico de movimentações:
+
+- **Custódia Dinâmica por Classe e Setor (`PositionTable`):**
+  - Segmented toggle sóbrio (`Layers` e `PieChart`) que permite alternar a visualização da carteira entre agrupamento por Classe e agrupamento por Setor;
+  - Função pura `calculatePositionSectorGroups` (`src/domain/portfolio/class-breakdown.ts`) calcula subtotais de saldo, retorno não realizado, proventos acumulados, retorno total % e percentual na carteira para cada setor;
+  - Metadados setoriais exibidos de forma adaptativa no desktop e cards mobile (`PositionMobileCard`).
+- **Ficha do Ativo Conectada ao Rebalanceamento (`AssetDetailSheet`):**
+  - Card de **Diagnóstico de Alocação & Metas**: consome `useAllocationTargets` e `useGroupTargets`, exibindo a meta individual do ativo, a meta de seu setor/classe, o gap financeiro em R$ e a cotação atual;
+  - Identificação de oportunidade com badge discreto de desconto frente ao Preço Médio (`diffVsPMPct < 0`);
+  - Botão CTA "Aportar no Wizard" conectado ao fluxo de aporte guiado (`onOpenWizard`);
+  - Card de **Custódia Internacional Dual (USD)** com cotação na moeda nativa US$, proventos totais e taxa cambial PTAX explícita.
+- **Ciclo Ativo de Proventos & Reinvestimento (`ProventosTab`):**
+  - Banner canônico `ReinvestDividendsBanner` (Regras 13 e 19 de `AGENTS.md`) exibido quando há saldo de dividendos em Caixa (`cashBalance > 0`), oferecendo atalho de 1-toque para o Rebalanceador em modo `existing_aporte`;
+  - Simulador Snowball (`snowball.ts` / `calculateSnowballReinvestmentPlan`) projeta o efeito bola de neve respeitando as metas de alocação da carteira.
+- **Extrato Integrado de Movimentações (`PortfolioActivityPanel`):**
+  - Resumo de fluxo financeiro mensal com Total Comprado, Total Vendido, Proventos do Mês, Aportes do Bolso e Balanço Líquido de Compras (`netInvestedCents`);
+  - Filtros dinâmicos por Classe e Setor utilizando o componente `Select` Radix do Design System (Regra 7 de `AGENTS.md`);
+  - Destaque e rastreabilidade visual de operações geradas por "Aporte Inteligente" e tags setoriais inferidas (`inferSectorFromTicker`).
+- **Gateway Central de Sincronização Atômica de Cache (`invalidatePortfolioSuite`):**
+  - Função centralizada em `src/state/mutations/portfolio/portfolio-keys.ts` que revalida atômica e coordenadamente todas as chaves de query (`assets`, `transactions`, `allTransactions`, `dividends`, `contributions`, `snapshots`, `portfolioPositions`, `allocationTargets`, `groupTargets` e opcionalmente `accounts`), erradicando inconsistências visuais e dessincronizações pós-mutação.
+
 ---
 
 ### 3.12 Tour Interativo, Micro-Tours, Modo Simulação em Memória & Unificação Canônica
