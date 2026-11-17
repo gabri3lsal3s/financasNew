@@ -318,9 +318,28 @@ export function BudgetsLimitsTab({
       ) : null}
 
       {isLoading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-16 w-full rounded-2xl" />
-          <Skeleton className="h-16 w-full rounded-2xl" />
+        <div className="flex flex-col gap-2.5" aria-hidden="true">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 shadow-xs min-w-0"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <Skeleton className="size-8 rounded-lg shrink-0" />
+                  <div className="flex flex-col gap-1.5">
+                    <Skeleton className="h-4 w-28 sm:w-36" />
+                    <Skeleton className="h-3 w-20 sm:w-28" />
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1.5">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+              <Skeleton className="h-2 w-full rounded-full" />
+            </div>
+          ))}
         </div>
       ) : rows.length === 0 ? (
         <EmptyState

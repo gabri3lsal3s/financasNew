@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { CheckCircle2, Clock, FileUp, Plus, Sparkles, Undo2, WalletCards } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton } from "@/components/ui";
+import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton, SkeletonKpi, SkeletonList } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 
 
@@ -569,13 +569,21 @@ export function CardsPage() {
         />
       ) : loading ? (
         <div className="flex flex-col gap-4" data-tour="cards-content">
-          <Skeleton className="h-64 w-full rounded-2xl max-w-[440px] mx-auto" />
-          <Skeleton className="h-12 w-full rounded-xl" />
+          <div className="flex justify-center py-2">
+            <Skeleton className="h-52 sm:h-60 w-full max-w-[400px] rounded-2xl shadow-xs" />
+          </div>
           <KpiGrid columns={3} data-tour="cards-invoice-summary">
-            <Skeleton className="h-24 w-full rounded-xl" />
-            <Skeleton className="h-24 w-full rounded-xl" />
-            <Skeleton className="h-24 w-full rounded-xl" />
+            <SkeletonKpi />
+            <SkeletonKpi />
+            <SkeletonKpi />
           </KpiGrid>
+          <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-border/40">
+              <Skeleton className="h-4 w-32 rounded" />
+              <Skeleton className="h-4 w-20 rounded" />
+            </div>
+            <SkeletonList rows={4} />
+          </div>
         </div>
       ) : cards.length === 0 ? (
         <EmptyState

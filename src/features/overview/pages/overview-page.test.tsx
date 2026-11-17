@@ -118,6 +118,23 @@ let expensesMock = {
 };
 
 vi.mock("@/state", () => ({
+  useAssetGovernanceInsights: () => ({
+    insights: [],
+    summary: {
+      overdueCount: 0,
+      quarantineCount: 0,
+      opportunityCount: 0,
+      lowScoreRiskCount: 0,
+      totalInsights: 0,
+    },
+    consolidatedReviewAlert: null,
+    overdueReviewsCount: 0,
+    quarantinedCount: 0,
+    discountOpportunitiesCount: 0,
+    lowScoreRiskCount: 0,
+    isLoading: false,
+    refetch: vi.fn(),
+  }),
   useCorporateDividends: () => ({
     available: [],
     projected: [],

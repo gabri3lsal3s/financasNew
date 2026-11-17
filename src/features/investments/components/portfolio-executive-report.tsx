@@ -16,8 +16,9 @@ import {
   ReportClassTables,
 } from "@/components/modules/reports";
 import { MonthlyClosingEditor } from "./monthly-closing-editor";
-import { usePortfolioMonthlyPosition, usePortfolioSnapshots, useDeletePortfolioSnapshot } from "@/state";
+import { usePortfolioMonthlyPosition, usePortfolioSnapshots, useDeletePortfolioSnapshot, usePortfolioAssets } from "@/state";
 import { numberToCents } from "@/domain/money";
+import { calculatePortfolioQualityScore } from "@/domain/portfolio";
 import { formatFixedIncomeRateLabel } from "@/domain/portfolio/fixed-income";
 import { formatSignedPct } from "@/services/masks";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
@@ -72,6 +73,7 @@ export function PortfolioExecutiveReport({
   }
 
   const deleteSnapshotMutation = useDeletePortfolioSnapshot();
+  const assetsQuery = usePortfolioAssets();
 
   // Consulta snapshots historicos para povoar as opcoes de meses disponiveis
   const snapshotsQuery = usePortfolioSnapshots();
@@ -189,6 +191,20 @@ export function PortfolioExecutiveReport({
   }, [isCurrentSelected, selectedMonth]);
 
   const investmentRows = useMemo(() => effectiveRows.filter((r) => !r.isCash), [effectiveRows]);
+  const rawAssets = useMemo(() => assetsQuery.data ?? [], [assetsQuery.data]);
+  const rawAssetMap = useMemo(() => new Map(rawAssets.map((a) => [a.id, a])), [rawAssets]);
+
+  const pqs = useMemo(() => {
+    return calculatePortfolioQualityScore(
+      investmentRows.map((r) => {
+        const raw = rawAssetMap.get(r.assetId) ?? rawAssets.find((a) => a.ticker.toUpperCase() === r.ticker.toUpperCase());
+        return {
+          score: raw?.score ?? null,
+          valueBRL: r.valueBRL,
+        };
+      }),
+    );
+  }, [investmentRows, rawAssetMap, rawAssets]);
 
   // Agrupamento por classe para ReportClassTables
   const classGroups = useMemo(() => {
@@ -251,6 +267,8 @@ export function PortfolioExecutiveReport({
                 ? i.totalReturnPct
                 : (i.unrealizedPct ?? 0);
 
+            const raw = rawAssetMap.get(i.assetId) ?? rawAssets.find((a) => a.ticker.toUpperCase() === i.ticker.toUpperCase());
+
             return {
               ticker: i.ticker,
               sector: i.sector,
@@ -266,12 +284,14 @@ export function PortfolioExecutiveReport({
                 ? formatFixedIncomeRateLabel(i.fixedIncomeMetadata)
                 : null,
               maturityDate: i.fixedIncomeMetadata?.maturity_date ?? i.maturityDate ?? null,
+              score: raw?.score ?? null,
+              status: raw?.allocation_status ?? "active",
             };
           }),
         };
       })
       .sort((a, b) => b.totalCents - a.totalCents);
-  }, [investmentRows, effectiveTotalBRL]);
+  }, [investmentRows, effectiveTotalBRL, rawAssetMap, rawAssets]);
 
   return (
     <ReportDocumentLayout
@@ -607,8 +627,14 @@ export function PortfolioExecutiveReport({
                       />
                       ), distribuídos em{" "}
                       <strong>{investmentRows.length} ativos</strong> e{" "}
-                      <strong>{classGroups.length} classes de investimento</strong>. O saldo em
-                      reserva de liquidez é de{" "}
+                      <strong>{classGroups.length} classes de investimento</strong>.
+                      {pqs !== null && pqs !== undefined ? (
+                        <>
+                          {" "}O Índice de Qualidade da Carteira (PQS ponderado) situa-se em{" "}
+                          <strong className="text-foreground">{pqs.toFixed(1)} / 10</strong>.
+                        </>
+                      ) : null}{" "}
+                      O saldo em reserva de liquidez é de{" "}
                       <MoneyText
                         cents={numberToCents(effectiveCashBRL)}
                         className="inline font-bold"

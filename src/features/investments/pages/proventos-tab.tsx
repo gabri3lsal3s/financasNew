@@ -350,7 +350,14 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
   );
 
   const nonCashActiveAssets = useMemo(
-    () => assets.filter((a) => !isCashAssetClass(a.asset_class) && a.quantity > 0),
+    () =>
+      assets.filter(
+        (a) =>
+          !isCashAssetClass(a.asset_class) &&
+          a.quantity > 0 &&
+          a.allocation_status !== "quarantine" &&
+          a.allocation_status !== "exit",
+      ),
     [assets],
   );
 

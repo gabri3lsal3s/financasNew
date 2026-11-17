@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateAssetAllocationDelta,
+  calculateEffectiveAssetTargets,
+  calculatePortfolioQualityScore,
   calculateSectorEffectiveTargetPct,
   clampTargetPercentage,
+  deriveAssetWeightsFromScores,
   distributeEquallyTargets,
   groupAssetsByClassAndSector,
   mirrorCurrentPositionTargets,
@@ -220,6 +223,133 @@ describe("domain/portfolio/allocation (§3.11.1)", () => {
       expect(res.sum).toBe(110);
       expect(res.error).toContain("Ações");
       expect(res.error).toContain("excede 100%");
+    });
+  });
+
+  describe("deriveAssetWeightsFromScores — Fase 41 Governança por Notas & Quarentenas", () => {
+    it("calcula pesos proporcionais para notas 10, 8 e 6 somando rigorosamente 1.0", () => {
+      const assets = [
+        { id: "a1", ticker: "ITUB4", score: 10, allocation_status: "active" as const },
+        { id: "a2", ticker: "BBAS3", score: 8, allocation_status: "active" as const },
+        { id: "a3", ticker: "SANB11", score: 6, allocation_status: "active" as const },
+      ];
+
+      const result = deriveAssetWeightsFromScores(assets);
+      expect(result).toHaveLength(3);
+
+      // Soma total das notas = 24. Pesos esperados: 10/24 (~0.4167), 8/24 (~0.3333), 6/24 (~0.25)
+      expect(result[0]?.weightInSector).toBeCloseTo(10 / 24, 3);
+      expect(result[1]?.weightInSector).toBeCloseTo(8 / 24, 3);
+      expect(result[2]?.weightInSector).toBeCloseTo(6 / 24, 3);
+
+      const totalWeight = result.reduce((acc, r) => acc + r.weightInSector, 0);
+      expect(totalWeight).toBe(1.0);
+    });
+
+    it("isola rigorosamente ativos em quarentena ou saída com peso 0 e sem aportes (Salvaguarda S3)", () => {
+      const assets = [
+        { id: "a1", ticker: "WEGE3", score: 10, allocation_status: "active" as const },
+        { id: "a2", ticker: "OIBR3", score: 0, allocation_status: "quarantine" as const },
+        { id: "a3", ticker: "AMER3", score: 0, allocation_status: "exit" as const },
+      ];
+
+      const result = deriveAssetWeightsFromScores(assets);
+      expect(result[0]?.weightInSector).toBe(1.0);
+      expect(result[0]?.isEligible).toBe(true);
+
+      // Quarentena e Saída são 0 estritos
+      expect(result[1]?.weightInSector).toBe(0);
+      expect(result[1]?.isEligible).toBe(false);
+      expect(result[2]?.weightInSector).toBe(0);
+      expect(result[2]?.isEligible).toBe(false);
+    });
+
+    it("aplica fallback neutro (Nota 5) para ativos ativos sem nota preenchida (Salvaguarda S1)", () => {
+      const assets = [
+        { id: "a1", ticker: "TAEE11", score: 10, allocation_status: "active" as const },
+        { id: "a2", ticker: "ALUP11", score: null, allocation_status: "active" as const }, // assume 5
+      ];
+
+      const result = deriveAssetWeightsFromScores(assets);
+      expect(result[1]?.effectiveScore).toBe(5);
+      expect(result[1]?.isEligible).toBe(true);
+      // 10 / 15 = ~0.6667, 5 / 15 = ~0.3333
+      expect(result[0]?.weightInSector).toBeCloseTo(2 / 3, 3);
+      expect(result[1]?.weightInSector).toBeCloseTo(1 / 3, 3);
+    });
+
+    it("evita divisão por zero se todos os ativos do setor estiverem em quarentena (Salvaguarda S2)", () => {
+      const assets = [
+        { id: "a1", ticker: "OIBR3", score: 2, allocation_status: "quarantine" as const },
+        { id: "a2", ticker: "IRBR3", score: 1, allocation_status: "quarantine" as const },
+      ];
+
+      const result = deriveAssetWeightsFromScores(assets);
+      expect(result[0]?.weightInSector).toBe(0);
+      expect(result[1]?.weightInSector).toBe(0);
+      expect(result.every((r) => !r.isEligible)).toBe(true);
+    });
+  });
+
+  describe("calculateEffectiveAssetTargets — 3 Níveis & Classes sem Setores", () => {
+    it("deriva meta efetiva encadeando Classe × Setor × Nota", () => {
+      const assets = [
+        { id: "a1", ticker: "ITUB4", assetClass: "Ações", sector: "Bancos", score: 10, allocation_status: "active" as const },
+        { id: "a2", ticker: "BBDC4", assetClass: "Ações", sector: "Bancos", score: 10, allocation_status: "active" as const },
+      ];
+
+      // Ações 40% da carteira, Bancos 50% de Ações -> 20% no setor. Cada ativo recebe 10%
+      const res = calculateEffectiveAssetTargets({
+        assets,
+        classTargets: { Ações: 40 },
+        sectorTargets: { Bancos: 50 },
+      });
+
+      expect(res).toHaveLength(2);
+      expect(res[0]?.effectiveTargetPct).toBe(10);
+      expect(res[1]?.effectiveTargetPct).toBe(10);
+    });
+
+    it("colapsa ponderação diretamente na classe quando não há setores cadastrados (Salvaguarda S5)", () => {
+      const assets = [
+        { id: "rf1", ticker: "Tesouro Selic", assetClass: "Renda Fixa", score: 10, allocation_status: "active" as const },
+        { id: "rf2", ticker: "CDB Banco Inter", assetClass: "Renda Fixa", score: 10, allocation_status: "active" as const },
+      ];
+
+      // Renda Fixa com meta de 30% sem divisão setorial -> 15% para cada
+      const res = calculateEffectiveAssetTargets({
+        assets,
+        classTargets: { "Renda Fixa": 30 },
+        sectorTargets: {},
+      });
+
+      expect(res).toHaveLength(2);
+      expect(res[0]?.effectiveTargetPct).toBe(15);
+      expect(res[1]?.effectiveTargetPct).toBe(15);
+    });
+  });
+
+  describe("calculatePortfolioQualityScore (PQS) — Índice Consolidado", () => {
+    it("calcula média ponderada das notas pelo patrimônio real", () => {
+      const assets = [
+        { score: 10, currentValueBRL: 80000, allocation_status: "active" as const },
+        { score: 5, currentValueBRL: 20000, allocation_status: "active" as const },
+      ];
+      // (10 * 80000 + 5 * 20000) / 100000 = (800000 + 100000) / 100000 = 9.0
+      expect(calculatePortfolioQualityScore(assets)).toBe(9.0);
+    });
+
+    it("atribui nota 0 para ativos em quarentena sem nota explícita no PQS", () => {
+      const assets = [
+        { score: 10, currentValueBRL: 50000, allocation_status: "active" as const },
+        { score: null, currentValueBRL: 50000, allocation_status: "quarantine" as const }, // score 0
+      ];
+      // (10 * 50000 + 0 * 50000) / 100000 = 5.0
+      expect(calculatePortfolioQualityScore(assets)).toBe(5.0);
+    });
+
+    it("retorna fallback 5.0 para carteira vazia", () => {
+      expect(calculatePortfolioQualityScore([])).toBe(5.0);
     });
   });
 });

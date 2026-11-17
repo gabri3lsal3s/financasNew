@@ -28,6 +28,8 @@ export interface ExcelPositionRow {
   unrealizedPnlPct: number;
   yearDividendsBRL: number;
   yocPct: number;
+  score?: number | null;
+  allocationStatus?: string | null;
 }
 
 export interface ExcelDividendRow {
@@ -94,6 +96,7 @@ export interface ExcelWorkbookData {
     yearDividendsBRL: number;
     freedomPct: number;
     savingsRatePct: number;
+    portfolioQualityScore?: number | null;
   };
   positions: readonly ExcelPositionRow[];
   dividends: readonly ExcelDividendRow[];
@@ -256,6 +259,11 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Taxa Média de Poupança</Data></Cell>
     <Cell ss:StyleID="Percent"><Data ss:Type="Number">${(data.summary.savingsRatePct / 100).toFixed(4)}</Data></Cell>
    </Row>
+   ${data.summary.portfolioQualityScore !== undefined && data.summary.portfolioQualityScore !== null ? `
+   <Row>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">Qualidade da Carteira (PQS 0-10)</Data></Cell>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">${formatNumberRaw(data.summary.portfolioQualityScore)} / 10</Data></Cell>
+   </Row>` : ""}
    <Row/>
    <Row ss:Height="20">
     <Cell ss:MergeAcross="1" ss:StyleID="TextBold"><Data ss:Type="String">Aviso Legal, Isenção Regulatória (CVM) e Responsabilidade Tributária (CFC / RFB):</Data></Cell>
@@ -287,6 +295,8 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
     <Cell ss:StyleID="Percent"><Data ss:Type="Number">${(p.unrealizedPnlPct / 100).toFixed(4)}</Data></Cell>
     <Cell ss:StyleID="Currency"><Data ss:Type="Number">${formatNumberRaw(p.yearDividendsBRL)}</Data></Cell>
     <Cell ss:StyleID="Percent"><Data ss:Type="Number">${(p.yocPct / 100).toFixed(4)}</Data></Cell>
+    <Cell ss:StyleID="TextBold"><Data ss:Type="String">${p.score !== undefined && p.score !== null ? formatNumberRaw(p.score) : "—"}</Data></Cell>
+    <Cell><Data ss:Type="String">${escapeXml(p.allocationStatus === "quarantine" ? "Em Quarentena" : p.allocationStatus === "exit" ? "Saída" : p.allocationStatus === "neutral" ? "Neutro / Manter" : "Ativo")}</Data></Cell>
    </Row>`,
     )
     .join("");
@@ -307,6 +317,8 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
    <Column ss:Width="80"/>
    <Column ss:Width="110"/>
    <Column ss:Width="80"/>
+   <Column ss:Width="70"/>
+   <Column ss:Width="100"/>
    <Row ss:StyleID="Header">
     <Cell><Data ss:Type="String">Ticker</Data></Cell>
     <Cell><Data ss:Type="String">Nome / Descrição</Data></Cell>
@@ -321,6 +333,8 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
     <Cell><Data ss:Type="String">PnL (%)</Data></Cell>
     <Cell><Data ss:Type="String">Proventos no Ano</Data></Cell>
     <Cell><Data ss:Type="String">YoC (%)</Data></Cell>
+    <Cell><Data ss:Type="String">Nota (0-10)</Data></Cell>
+    <Cell><Data ss:Type="String">Status Governança</Data></Cell>
    </Row>${positionRowsXml}
   </Table>
  </Worksheet>`;

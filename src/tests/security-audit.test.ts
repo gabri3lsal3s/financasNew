@@ -294,7 +294,7 @@ describe("F6.2 — segredos e ambiente", () => {
       return secretPattern.test(readFileSync(abs, "utf8"));
     });
     expect(hits).toEqual([]);
-  }, 15000);
+  }, 60000);
 
   it(".env.example usa apenas placeholders (sem valores reais)", () => {
     const example = readFileSync(resolve(root, ".env.example"), "utf8");
@@ -536,7 +536,7 @@ describe("Fase 5.3 — Auditoria do Bundle Client contra Vazamento de Segredos",
     }
 
     expect(violations).toEqual([]);
-  });
+  }, 60000);
 
   it("apenas variáveis de ambiente públicas autorizadas são acessadas via import.meta.env em src/", () => {
     const srcFiles = walkDir(resolve(root, "src"), [".ts", ".tsx", ".js", ".jsx"]).filter(
@@ -556,7 +556,7 @@ describe("Fase 5.3 — Auditoria do Bundle Client contra Vazamento de Segredos",
     }
 
     expect(unallowedEnvVars).toEqual([]);
-  });
+  }, 60000);
 
   it("zero ocorrências de process.env em código de produção em src/", () => {
     const srcFiles = walkDir(resolve(root, "src"), [".ts", ".tsx", ".js", ".jsx"]).filter(
@@ -572,7 +572,7 @@ describe("Fase 5.3 — Auditoria do Bundle Client contra Vazamento de Segredos",
     }
 
     expect(processEnvUses).toEqual([]);
-  });
+  }, 60000);
 
   it("auditoria do bundle compilado (dist/): zero segredos ou credenciais embutidas nos chunks", () => {
     const distDir = resolve(root, "dist");

@@ -20,6 +20,7 @@ export {
   SkeletonTable,
   OverviewSkeleton,
   InvestmentsSkeleton,
+  TargetsSkeleton,
   TransactionsSkeleton,
   BudgetsSkeleton,
   ReportsSkeleton,

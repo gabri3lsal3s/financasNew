@@ -118,7 +118,7 @@ export function HouseholdCombinedFlowCard({
               <span>Consumo da renda da família</span>
               <span className="font-semibold text-foreground">{spentRate}%</span>
             </div>
-            <div className="h-2 w-full rounded-full bg-surface-subtle overflow-hidden border border-border/40">
+            <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden">
               <div
                 className={cn(
                   "h-full rounded-full transition-all duration-300",

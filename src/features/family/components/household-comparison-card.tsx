@@ -111,7 +111,7 @@ export function HouseholdComparisonCard({
               return (
                 <div
                   key={member.user_id}
-                  className="p-3.5 rounded-xl border border-border/70 bg-surface-muted/30 space-y-3 transition-colors hover:border-border"
+                  className="p-3.5 rounded-xl border border-border/80 bg-surface-subtle/50 space-y-3 transition-colors hover:border-border"
                 >
                   {/* Cabeçalho do Participante */}
                   <div className="flex items-center justify-between gap-2">

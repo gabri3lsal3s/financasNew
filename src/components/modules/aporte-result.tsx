@@ -77,6 +77,8 @@ const SKIPPED_REASON_LABEL: Record<SkippedAssetDiagnostic["reason"], { label: st
   above_target: { label: "Na meta", variant: "muted" },
   no_target: { label: "Sem meta", variant: "muted" },
   price_exceeds_budget: { label: "Preço > Saldo", variant: "muted" },
+  quarantine: { label: "Em quarentena", variant: "warning" },
+  exit: { label: "Saída da carteira", variant: "warning" },
 };
 
 function formatQuantity(qty: number): string {

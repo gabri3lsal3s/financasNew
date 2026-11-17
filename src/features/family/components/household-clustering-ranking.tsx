@@ -65,11 +65,11 @@ export function HouseholdClusteringRanking({
               return (
                 <div
                   key={cluster.clusterId}
-                  className="p-3 rounded-xl border border-border/70 bg-surface-muted/30 space-y-2.5 transition-colors hover:border-border"
+                  className="p-3 rounded-xl border border-border/80 bg-surface-subtle/50 space-y-2.5 transition-colors hover:border-border"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="flex size-7 items-center justify-center rounded-lg bg-surface border border-border/80 shrink-0">
+                      <div className="flex size-8 items-center justify-center rounded-xl bg-surface-muted/60 border border-border/80 shrink-0">
                         <CategoryIcon
                           icon={cluster.icon}
                           color={cluster.color}

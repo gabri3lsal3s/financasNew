@@ -11,3 +11,10 @@ export {
   type UsePublicTripGuestIdentityReturn,
 } from "./use-public-trip-guest-identity";
 
+export {
+  usePublicSplitGuestIdentity,
+  getPublicSplitGuestStorageKey,
+  GUEST_SPLIT_STORAGE_KEY_PREFIX,
+  type UsePublicSplitGuestIdentityReturn,
+} from "./use-public-split-guest-identity";
+

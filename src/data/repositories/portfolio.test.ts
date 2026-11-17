@@ -13,6 +13,7 @@ import {
   listPortfolioSnapshots,
   listPortfolioTransactions,
   resetManualSnapshotCalibration,
+  updatePortfolioAsset,
   upsertPortfolioSnapshot,
 } from "./portfolio";
 
@@ -29,6 +30,7 @@ interface Builder {
 
 let lastInsertInput: unknown = null;
 let lastUpsertInput: unknown = null;
+let lastUpdateInput: unknown = null;
 let lastDeletedId: string | null = null;
 
 function makeBuilder(result: unknown): Builder {
@@ -48,6 +50,20 @@ function makeBuilder(result: unknown): Builder {
   builder.insert.mockImplementation((input: unknown) => {
     lastInsertInput = input;
     return { ...builder, select: () => ({ ...builder, single: () => ({ then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) }) }) };
+  });
+  builder.update.mockImplementation((input: unknown) => {
+    lastUpdateInput = input;
+    const chain = {
+      ...builder,
+      eq: vi.fn(() => ({
+        ...builder,
+        select: () => ({
+          ...builder,
+          single: () => ({ then: (cb: (v: unknown) => unknown) => Promise.resolve(result).then(cb) }),
+        }),
+      })),
+    };
+    return chain;
   });
   builder.upsert.mockImplementation((input: unknown) => {
     lastUpsertInput = input;
@@ -137,6 +153,62 @@ describe("portfolio repository (Fase 36 — Posição Consolidada)", () => {
     const asset = await createPortfolioAsset({ ticker: "BOVA11", asset_class: "fii", currency: "BRL", quantity: 0, average_price: 0 });
     expect(lastInsertInput).toMatchObject({ user_id: "u1", ticker: "BOVA11" });
     expect(asset.ticker).toBe("BOVA11");
+  });
+
+  it("updatePortfolioAsset atualiza notas, quarentena e tese do ativo (Fase 41)", async () => {
+    builder = makeBuilder({
+      data: {
+        id: "a1",
+        user_id: "u1",
+        ticker: "ITUB4",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 100,
+        average_price: 30,
+        score: 9,
+        allocation_status: "active",
+        score_criteria: { consistent_profits: true, low_debt: true },
+        last_reviewed_at: "2026-11-17T00:00:00Z",
+        review_frequency_months: 6,
+        thesis_summary: "Banco líder com ROE consistente acima de 20%",
+      },
+    });
+
+    const updated = await updatePortfolioAsset("a1", {
+      score: 9,
+      allocation_status: "active",
+      score_criteria: { consistent_profits: true, low_debt: true },
+      thesis_summary: "Banco líder com ROE consistente acima de 20%",
+    });
+
+    expect(lastUpdateInput).toMatchObject({
+      score: 9,
+      allocation_status: "active",
+      thesis_summary: "Banco líder com ROE consistente acima de 20%",
+    });
+    expect(updated.score).toBe(9);
+    expect(updated.allocation_status).toBe("active");
+    expect(updated.thesis_summary).toContain("ROE consistente");
+    expect(updated.review_frequency_months).toBe(6);
+  });
+
+  it("mapAsset fornece fallbacks seguros para ativos legados sem nota", async () => {
+    builder = makeBuilder({
+      data: [{
+        id: "a2",
+        user_id: "u1",
+        ticker: "VALE3",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 50,
+        average_price: 60,
+      }],
+    });
+    const assets = await listPortfolioAssets();
+    expect(assets[0]?.score).toBeNull();
+    expect(assets[0]?.allocation_status).toBe("active");
+    expect(assets[0]?.review_frequency_months).toBe(6);
+    expect(assets[0]?.thesis_summary).toBeNull();
   });
 
   it("upsertPortfolioSnapshot grava snapshot mensal", async () => {

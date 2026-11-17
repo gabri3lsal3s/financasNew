@@ -199,7 +199,7 @@ export function FamilySettlementDialog({
               </p>
             </div>
 
-            <div className="p-3 rounded-lg bg-surface border border-border/70 flex items-center justify-between">
+            <div className="p-3 rounded-lg bg-surface border border-border/80 flex items-center justify-between">
               <span className="text-xs text-muted-foreground font-medium">Valor a compensar</span>
               <MoneyText
                 cents={primaryTransfer.amount_cents}
@@ -226,7 +226,7 @@ export function FamilySettlementDialog({
                   <Input
                     readOnly
                     value={primaryTransfer.pix_key}
-                    className="font-mono text-xs bg-surface h-9 select-all"
+                    className="font-mono text-base sm:text-xs bg-surface h-9 select-all"
                   />
                   <Button
                     type="button"
@@ -241,7 +241,7 @@ export function FamilySettlementDialog({
                 </div>
               </div>
             ) : (
-              <div className="p-2.5 rounded-lg border border-border/70 bg-surface text-xs text-muted-foreground">
+              <div className="p-2.5 rounded-lg border border-border/80 bg-surface text-xs text-muted-foreground">
                 {primaryTransfer.receiver_name} ainda não cadastrou uma Chave Pix nas configurações
                 da família. A transferência pode ser feita por outro canal acordado entre vocês.
               </div>
@@ -258,7 +258,7 @@ export function FamilySettlementDialog({
                   <Input
                     readOnly
                     value={primaryTransfer.pix_payload}
-                    className="font-mono text-xs bg-surface h-9 select-all truncate text-muted-foreground"
+                    className="font-mono text-base sm:text-xs bg-surface h-9 select-all truncate text-muted-foreground"
                   />
                   <Button
                     type="button"
@@ -294,7 +294,7 @@ export function FamilySettlementDialog({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Ex.: Transferência realizada via Nubank"
-              className="h-9 text-xs"
+              className="h-9 text-base sm:text-sm"
             />
           </div>
         ) : null}

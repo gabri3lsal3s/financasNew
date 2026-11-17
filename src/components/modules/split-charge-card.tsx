@@ -33,6 +33,7 @@ import type { SplitParticipantInstallment } from "@/types";
 import { cn } from "@/lib/utils";
 
 export interface SplitParticipantView {
+  id?: string;
   name: string;
   is_host?: boolean;
   share_cents: number;
@@ -66,6 +67,10 @@ export interface SplitChargeCardProps {
   onSignalPayment?: () => void;
   isSignalingPayment?: boolean;
   hasSignaledCurrent?: boolean;
+  /** ID do participante ativo identificado no racha */
+  activeParticipantId?: string | null;
+  /** Banner de identificação exibido acima dos detalhes do racha */
+  identityBanner?: React.ReactNode;
   /** Modo de layout: "single-column" (coluna única) ou "split-desktop" (2 colunas no desktop) */
   layout?: "single-column" | "split-desktop";
   /** Conteúdo extra a ser injetado abaixo das informações no desktop (ex: banner de conversão/onboarding) */
@@ -109,6 +114,8 @@ export function SplitChargeCard({
   onSignalPayment,
   isSignalingPayment = false,
   hasSignaledCurrent = false,
+  activeParticipantId,
+  identityBanner,
   layout = "single-column",
   desktopExtraContent,
 }: SplitChargeCardProps) {
@@ -517,27 +524,53 @@ export function SplitChargeCard({
         <span className="text-xs font-semibold text-muted-foreground block">
           Divisão entre os participantes
         </span>
-        <div className="space-y-1.5 max-h-40 overflow-y-auto no-scrollbar">
-          {participants.map((item, idx) => (
-            <div
-              key={idx}
-              className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg bg-background/40 border border-border/40"
-            >
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-foreground truncate font-medium">
-                  {item.name}
-                </span>
-                {item.is_host && (
-                  <Badge variant="muted" size="xs">
-                    Anfitrião
-                  </Badge>
+        <div className="space-y-1.5 max-h-48 overflow-y-auto no-scrollbar">
+          {participants.map((item, idx) => {
+            const isHost = Boolean(item.is_host);
+            const isMe = Boolean(
+              activeParticipantId &&
+                (item.id === activeParticipantId ||
+                  item.name.trim().toLowerCase() === activeParticipantId.trim().toLowerCase()) &&
+                !isHost,
+            );
+            const cleanHostName = hostName || "Anfitrião";
+            const displayName = isHost
+              ? item.name.includes("Você")
+                ? cleanHostName
+                : item.name
+              : item.name;
+
+            return (
+              <div
+                key={item.id ?? idx}
+                className={cn(
+                  "flex items-center justify-between text-xs py-2 px-3 rounded-xl border transition-colors",
+                  isMe
+                    ? "bg-primary/5 border-primary/30 ring-1 ring-primary/20"
+                    : "bg-surface-raised/60 border-border/60",
                 )}
+              >
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-foreground truncate font-medium">
+                    {displayName}
+                  </span>
+                  {isHost && (
+                    <Badge variant="muted" size="xs">
+                      Anfitrião
+                    </Badge>
+                  )}
+                  {isMe && (
+                    <Badge variant="default" size="xs">
+                      Você
+                    </Badge>
+                  )}
+                </div>
+                <span className="tabular-nums font-semibold text-foreground shrink-0 ml-2">
+                  {formatCentsAsCurrency(item.share_cents)}
+                </span>
               </div>
-              <span className="tabular-nums font-semibold text-foreground shrink-0 ml-2">
-                {formatCentsAsCurrency(item.share_cents)}
-              </span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -566,30 +599,36 @@ export function SplitChargeCard({
   // Layout Desktop em 2 Colunas (sem duplicação de nós no DOM)
   if (layout === "split-desktop") {
     return (
-      <div className={cn("grid grid-cols-1 md:grid-cols-12 md:gap-6 items-start w-full", className)}>
+      <div className={cn("grid grid-cols-1 md:grid-cols-12 md:gap-6 items-start w-full space-y-4 md:space-y-0", className)}>
         {/* Coluna 1: Informações, Participantes e Parcelas (Desktop 7 cols) */}
         <div className="md:col-span-7 space-y-4">
+          {identityBanner}
+
           <Card
             data-tour={cardTourId}
-            className="border-border/80 bg-surface shadow-xs"
+            className="border-border/80 bg-surface shadow-xs rounded-2xl"
           >
-            <CardHeader className="p-5 sm:p-6 pb-4">
+            <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
               {renderHeader()}
             </CardHeader>
-            <CardContent className="p-5 sm:p-6 pt-0 space-y-4">
+            <CardContent className="p-4 sm:p-6 pt-0 space-y-4 sm:space-y-5">
               {renderParticipantsBlock()}
               {renderInstallmentsBlock()}
               {renderShareButton()}
             </CardContent>
           </Card>
 
-          {desktopExtraContent}
+          {desktopExtraContent && (
+            <div className="hidden md:block">
+              {desktopExtraContent}
+            </div>
+          )}
         </div>
 
         {/* Coluna 2: Card de Pagamento Pix Sticky (Desktop 5 cols) */}
         <div className="md:col-span-5 md:sticky md:top-20 space-y-4">
-          <Card className="border-border/80 bg-surface shadow-xs">
-            <CardHeader className="p-5 sm:p-6 pb-3">
+          <Card className="border-border/80 bg-surface shadow-xs rounded-2xl">
+            <CardHeader className="p-4 sm:p-6 pb-3">
               <div className="flex items-center justify-between gap-2">
                 <Badge variant="default" size="xs" className="gap-1">
                   <QrCode className="size-3 text-muted-foreground" aria-hidden="true" />
@@ -601,7 +640,7 @@ export function SplitChargeCard({
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-5 sm:p-6 pt-0 space-y-4">
+            <CardContent className="p-4 sm:p-6 pt-0 space-y-4 sm:space-y-5">
               {renderHeroPaymentBlock()}
               {renderPixActionsAndQrBlock()}
             </CardContent>
@@ -613,21 +652,24 @@ export function SplitChargeCard({
 
   // Layout Clássico de Coluna Única (default)
   return (
-    <Card
-      data-tour={cardTourId}
-      className={cn("border-border/80 bg-surface shadow-xs", className)}
-    >
-      <CardHeader className="p-5 sm:p-6 pb-4">
-        {renderHeader()}
-      </CardHeader>
+    <div className="space-y-4">
+      {identityBanner}
+      <Card
+        data-tour={cardTourId}
+        className={cn("border-border/80 bg-surface shadow-xs rounded-2xl", className)}
+      >
+        <CardHeader className="p-4 sm:p-6 pb-4">
+          {renderHeader()}
+        </CardHeader>
 
-      <CardContent className="p-5 sm:p-6 pt-0 space-y-4">
-        {renderHeroPaymentBlock()}
-        {renderInstallmentsBlock()}
-        {renderPixActionsAndQrBlock()}
-        {renderParticipantsBlock()}
-        {renderShareButton()}
-      </CardContent>
-    </Card>
+        <CardContent className="p-4 sm:p-6 pt-0 space-y-4 sm:space-y-5">
+          {renderHeroPaymentBlock()}
+          {renderInstallmentsBlock()}
+          {renderPixActionsAndQrBlock()}
+          {renderParticipantsBlock()}
+          {renderShareButton()}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

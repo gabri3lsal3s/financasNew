@@ -4,6 +4,12 @@ import { PortfolioInsightsCarousel } from "./portfolio-insights-carousel";
 
 const mockUseCorporateDividends = vi.fn();
 const mockMutateAsync = vi.fn();
+const mockUseAssetGovernanceInsights = vi.fn();
+const mockNavigate = vi.fn();
+
+vi.mock("react-router", () => ({
+  useNavigate: () => mockNavigate,
+}));
 
 vi.mock("@/state", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -18,15 +24,22 @@ vi.mock("@/state", async (importOriginal) => {
       mutateAsync: vi.fn(),
       isPending: false,
     }),
+    useAssetGovernanceInsights: () => mockUseAssetGovernanceInsights(),
   };
 });
 
 describe("PortfolioInsightsCarousel (Regra 19)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseAssetGovernanceInsights.mockReturnValue({
+      overdueReviewsCount: 0,
+      quarantinedCount: 0,
+      discountOpportunitiesCount: 0,
+      isLoading: false,
+    });
   });
 
-  it("não renderiza nada se não houver proventos nem disponíveis nem previstos", () => {
+  it("não renderiza nada se não houver proventos nem governança ativa", () => {
     mockUseCorporateDividends.mockReturnValue({
       available: [],
       projected: [],
@@ -113,5 +126,80 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
 
     expect(screen.getByText("Proventos Previstos no Mês")).toBeInTheDocument();
     expect(screen.getByText("Ver projeção")).toBeInTheDocument();
+  });
+
+  it("renderiza o slide de revisão de teses pendente com navegação para metas", () => {
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+    mockUseAssetGovernanceInsights.mockReturnValue({
+      overdueReviewsCount: 2,
+      quarantinedCount: 0,
+      discountOpportunitiesCount: 0,
+      isLoading: false,
+    });
+
+    render(<PortfolioInsightsCarousel />);
+
+    expect(screen.getByText("Revisão de Teses Pendente")).toBeInTheDocument();
+    expect(screen.getByText("2 ativos")).toBeInTheDocument();
+    expect(screen.getByText("Revisar Metas")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Revisar Metas"));
+    expect(mockNavigate).toHaveBeenCalledWith("/investimentos?tab=metas&subtab=assets");
+  });
+
+  it("renderiza o slide de ativos em quarentena com navegação para carteira", () => {
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+    mockUseAssetGovernanceInsights.mockReturnValue({
+      overdueReviewsCount: 0,
+      quarantinedCount: 1,
+      discountOpportunitiesCount: 0,
+      isLoading: false,
+    });
+
+    render(<PortfolioInsightsCarousel />);
+
+    expect(screen.getByText("Ativos em Quarentena")).toBeInTheDocument();
+    expect(screen.getByText("1 em observação")).toBeInTheDocument();
+    expect(screen.getByText("Auditar Carteira")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Auditar Carteira"));
+    expect(mockNavigate).toHaveBeenCalledWith("/investimentos?tab=metas&subtab=assets");
+  });
+
+  it("renderiza o slide de oportunidade em desconto com navegação para aporte", () => {
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+    mockUseAssetGovernanceInsights.mockReturnValue({
+      overdueReviewsCount: 0,
+      quarantinedCount: 0,
+      discountOpportunitiesCount: 3,
+      isLoading: false,
+    });
+
+    render(<PortfolioInsightsCarousel />);
+
+    expect(screen.getByText("Oportunidade em Desconto")).toBeInTheDocument();
+    expect(screen.getByText("3 ativos")).toBeInTheDocument();
+    expect(screen.getByText("Simular Aporte")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Simular Aporte"));
+    expect(mockNavigate).toHaveBeenCalledWith("/investimentos?tab=aporte");
   });
 });

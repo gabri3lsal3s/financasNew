@@ -643,6 +643,24 @@ export type ReminderState = {
   updated_at: string;
 };
 
+export type AssetAllocationStatus = "active" | "neutral" | "quarantine" | "exit";
+
+export type AssetScoreCriteria = {
+  consistent_profits?: boolean;
+  low_debt?: boolean;
+  good_governance?: boolean;
+  competitive_moat?: boolean;
+  dividends_or_roe?: boolean;
+  quality_properties?: boolean;
+  low_vacancy?: boolean;
+  reputable_management?: boolean;
+  attractive_p_vp?: boolean;
+  credit_safety?: boolean;
+  liquidity_match?: boolean;
+  custom_notes?: string;
+  [key: string]: boolean | string | number | undefined;
+};
+
 export type PortfolioAsset = {
   id: string;
   user_id: string;
@@ -673,6 +691,12 @@ export type PortfolioAsset = {
   family_share_mode?: "full" | "percentage";
   family_share_percentage?: number;
   notes?: string | null;
+  score?: number | null;
+  allocation_status?: AssetAllocationStatus;
+  score_criteria?: AssetScoreCriteria | null;
+  last_reviewed_at?: string | null;
+  review_frequency_months?: number;
+  thesis_summary?: string | null;
   updated_at?: string;
 };
 
@@ -904,35 +928,6 @@ export type GroupTarget = {
   group_type: "class" | "sector";
   name: string;
   target_percentage: number;
-};
-
-export type PresetAssetTarget = {
-  ticker: string;
-  asset_id?: string;
-  target_percentage: number;
-};
-
-export type PresetClassTarget = {
-  name: string;
-  target_percentage: number;
-};
-
-export type PresetSectorTarget = {
-  class_name: string;
-  name: string;
-  target_percentage: number;
-};
-
-export type AllocationPreset = {
-  id: string;
-  user_id: string;
-  name: string;
-  description: string | null;
-  asset_targets: PresetAssetTarget[];
-  class_targets: PresetClassTarget[];
-  sector_targets?: PresetSectorTarget[];
-  created_at: string;
-  updated_at: string;
 };
 
 export type AssetPrice = {

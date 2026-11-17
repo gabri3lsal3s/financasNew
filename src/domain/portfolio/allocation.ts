@@ -9,6 +9,8 @@
  * Motor puro — testável isoladamente.
  */
 
+import type { AssetAllocationStatus } from "@/types";
+
 // ---------------------------------------------------------------------------
 // Tipos
 // ---------------------------------------------------------------------------
@@ -298,4 +300,247 @@ export function validateClassSectorTargetsSum(
     remaining: Math.max(0, Math.round((100 - safeSum) * 100) / 100),
     error: null,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Governança por Notas, Quarentenas & PQS (Fase 41 — Roadmap v3.9.0)
+// ---------------------------------------------------------------------------
+
+export interface AssetScoreInput {
+  id: string;
+  ticker?: string;
+  assetClass?: string | null;
+  sector?: string | null;
+  score?: number | null;
+  allocation_status?: AssetAllocationStatus;
+}
+
+export interface DerivedAssetWeight {
+  effectiveScore: number;
+  weightInSector: number; // 0 a 1
+  isEligible: boolean;
+  status: AssetAllocationStatus;
+}
+
+/**
+ * Deriva os pesos relativos dos ativos dentro de um grupo (setor ou classe)
+ * a partir das notas (0–10) e do status de alocação (§4.1 PLANO_41).
+ *
+ * Invariantes Canônicas:
+ * - Ativos em 'quarantine' ou 'exit' recebem peso 0 e isEligible = false (Salvaguarda S3).
+ * - Ativos em 'neutral' mantêm posição mas não recebem novos aportes (peso 0, isEligible = false).
+ * - Ativo 'active' sem nota (null/undefined) recebe Nota 5 (Neutro) por padrão (Salvaguarda S1).
+ * - Se a soma das notas elegíveis for > 0, os pesos somam estritamente 1.0 (100%).
+ * - Se todos os ativos estiverem inelegíveis (soma = 0), todos recebem peso 0 (Salvaguarda S2).
+ */
+export function deriveAssetWeightsFromScores<T extends AssetScoreInput>(
+  assets: readonly T[],
+): Array<T & DerivedAssetWeight> {
+  if (assets.length === 0) return [];
+
+  const mapped = assets.map((asset) => {
+    const status: AssetAllocationStatus = asset.allocation_status ?? "active";
+    let effectiveScore: number;
+    let isEligible: boolean;
+
+    if (status === "active") {
+      const rawScore = asset.score;
+      if (rawScore == null) {
+        effectiveScore = 5; // Fallback neutro (Salvaguarda S1)
+        isEligible = true;
+      } else {
+        const clamped = Math.max(0, Math.min(10, Math.round(rawScore)));
+        effectiveScore = clamped;
+        isEligible = clamped > 0;
+      }
+    } else {
+      // quarantine, exit, neutral -> peso 0 (Salvaguarda S3)
+      effectiveScore = 0;
+      isEligible = false;
+    }
+
+    return {
+      ...asset,
+      status,
+      effectiveScore,
+      isEligible,
+      weightInSector: 0,
+    };
+  });
+
+  const totalEligibleScore = mapped.reduce((acc, a) => acc + (a.isEligible ? a.effectiveScore : 0), 0);
+
+  if (totalEligibleScore <= 0) {
+    return mapped.map((m) => ({ ...m, weightInSector: 0 }));
+  }
+
+  // Distribuição proporcional com conservação rigorosa de 1.0
+  let accumulatedWeight = 0;
+  const eligibleItems = mapped.filter((m) => m.isEligible);
+  const lastEligibleId = eligibleItems[eligibleItems.length - 1]?.id;
+
+  return mapped.map((item) => {
+    if (!item.isEligible) {
+      return { ...item, weightInSector: 0 };
+    }
+    if (item.id === lastEligibleId) {
+      const remainingWeight = Math.max(0, Math.round((1 - accumulatedWeight) * 10000) / 10000);
+      return { ...item, weightInSector: remainingWeight };
+    }
+    const rawWeight = item.effectiveScore / totalEligibleScore;
+    const roundedWeight = Math.round(rawWeight * 10000) / 10000;
+    accumulatedWeight += roundedWeight;
+    return { ...item, weightInSector: roundedWeight };
+  });
+}
+
+export interface EffectiveAssetTargetResult {
+  assetId: string;
+  effectiveTargetPct: number; // % do patrimônio total da carteira (0 a 100)
+  classTargetPct: number;
+  sectorTargetPctInClass: number;
+  weightInSector: number;
+  isEligible: boolean;
+  status: AssetAllocationStatus;
+}
+
+/**
+ * Calcula a meta efetiva global nos 3 níveis hierárquicos (§4.2 PLANO_41):
+ * T_i = Target_Classe × Target_Setor_na_Classe × w_{i ∈ Setor}
+ *
+ * Tratamento especial para classes sem divisão setorial (Salvaguarda S5):
+ * Se a classe não possuir setores cadastrados ou tiver apenas setor genérico "Geral", colapsa diretamente:
+ * T_i = Target_Classe × w_{i ∈ Classe}
+ */
+export function calculateEffectiveAssetTargets<
+  T extends AssetScoreInput & { assetClass?: string | null; sector?: string | null },
+>(params: {
+  assets: readonly T[];
+  classTargets: Record<string, number>;
+  sectorTargets: Record<string, number>;
+}): EffectiveAssetTargetResult[] {
+  const { assets, classTargets, sectorTargets } = params;
+  if (assets.length === 0) return [];
+
+  const assetsByClass = new Map<string, T[]>();
+  for (const asset of assets) {
+    const cls = asset.assetClass?.trim() || "Outros";
+    const list = assetsByClass.get(cls) || [];
+    list.push(asset);
+    assetsByClass.set(cls, list);
+  }
+
+  const results: EffectiveAssetTargetResult[] = [];
+
+  for (const [className, classAssets] of assetsByClass.entries()) {
+    const classTargetPct = Math.max(0, classTargets[className] ?? 0);
+
+    const sectorsInClass = new Set(classAssets.map((a) => a.sector?.trim() || "Geral"));
+    const hasConfiguredSectorTargets = Array.from(sectorsInClass).some(
+      (sec) => sec !== "Geral" && (sectorTargets[sec] ?? 0) > 0,
+    );
+
+    if (!hasConfiguredSectorTargets) {
+      // Salvaguarda S5: Sem divisão setorial rígida -> Ponderação direta na classe
+      const weightedAssets = deriveAssetWeightsFromScores(classAssets);
+      for (const item of weightedAssets) {
+        const effectivePct = Math.round((classTargetPct * item.weightInSector) * 100) / 100;
+        results.push({
+          assetId: item.id,
+          effectiveTargetPct: effectivePct,
+          classTargetPct,
+          sectorTargetPctInClass: 100,
+          weightInSector: item.weightInSector,
+          isEligible: item.isEligible,
+          status: item.status,
+        });
+      }
+    } else {
+      // Hierarquia completa: Classe -> Setores -> Ativos
+      const assetsBySector = new Map<string, T[]>();
+      for (const asset of classAssets) {
+        const sec = asset.sector?.trim() || "Geral";
+        const list = assetsBySector.get(sec) || [];
+        list.push(asset);
+        assetsBySector.set(sec, list);
+      }
+
+      for (const [sectorName, sectorAssets] of assetsBySector.entries()) {
+        const sectorTargetInClass = Math.max(0, sectorTargets[sectorName] ?? 0);
+        const sectorEffectivePctOfPortfolio = (classTargetPct * sectorTargetInClass) / 100;
+
+        const weightedAssets = deriveAssetWeightsFromScores(sectorAssets);
+        for (const item of weightedAssets) {
+          const effectivePct = Math.round((sectorEffectivePctOfPortfolio * item.weightInSector) * 100) / 100;
+          results.push({
+            assetId: item.id,
+            effectiveTargetPct: effectivePct,
+            classTargetPct,
+            sectorTargetPctInClass: sectorTargetInClass,
+            weightInSector: item.weightInSector,
+            isEligible: item.isEligible,
+            status: item.status,
+          });
+        }
+      }
+    }
+  }
+
+  return results;
+}
+
+export interface PQSAssetInput {
+  score?: number | null;
+  allocation_status?: AssetAllocationStatus;
+  currentValueBRL?: number;
+  valueBRL?: number;
+}
+
+/**
+ * Portfolio Quality Score (PQS) — Índice de Qualidade da Carteira (§4.3 PLANO_41).
+ * Escala 0 a 10, ponderada pelo patrimônio real de cada ativo.
+ *
+ * PQS = ∑(score_i × V_atual,i) / V_total
+ *
+ * Invariantes:
+ * - Ativos sem nota assumem Nota 5 (Neutro - Salvaguarda S1).
+ * - Ativos em 'quarantine' ou 'exit' utilizam sua nota real atribuída ou 0 se nula.
+ * - Se patrimônio total <= 0, calcula a média simples das notas.
+ * - Resultado arredondado para 1 casa decimal (ex.: 8.4).
+ */
+export function calculatePortfolioQualityScore(assets: readonly PQSAssetInput[]): number {
+  if (assets.length === 0) return 5.0;
+
+  let totalValue = 0;
+  let weightedScoreSum = 0;
+  let simpleScoreSum = 0;
+  let count = 0;
+
+  for (const asset of assets) {
+    const rawScore = asset.score;
+    const isQuarantineOrExit = asset.allocation_status === "quarantine" || asset.allocation_status === "exit";
+    const score = rawScore != null
+      ? Math.max(0, Math.min(10, rawScore))
+      : isQuarantineOrExit
+        ? 0
+        : 5; // Fallback neutro 5 para ativos ativos sem nota
+
+    const rawVal = asset.currentValueBRL ?? asset.valueBRL ?? 0;
+    const val = Math.max(0, Number.isFinite(rawVal) ? rawVal : 0);
+    totalValue += val;
+    weightedScoreSum += score * val;
+    simpleScoreSum += score;
+    count++;
+  }
+
+  if (totalValue > 0) {
+    const pqs = weightedScoreSum / totalValue;
+    return Math.round(pqs * 10) / 10;
+  }
+
+  if (count > 0) {
+    return Math.round((simpleScoreSum / count) * 10) / 10;
+  }
+
+  return 5.0;
 }

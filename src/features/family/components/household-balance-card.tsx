@@ -119,7 +119,7 @@ export function HouseholdBalanceCard({
                 return (
                   <div
                     key={member.user_id}
-                    className="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-muted/40 border border-border/80 text-xs"
+                    className="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-subtle/50 border border-border/80 text-xs"
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className={cn("size-2 rounded-full shrink-0", dotColor)} aria-hidden="true" />

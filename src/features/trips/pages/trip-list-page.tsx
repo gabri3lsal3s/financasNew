@@ -42,12 +42,7 @@ export function TripListPage() {
     return (
       <div className="space-y-6" data-testid="trip-mode-inactive">
         <PageHeader
-          title={
-            <div className="flex items-center gap-2.5">
-              <Plane className="size-5 text-muted-foreground" aria-hidden="true" />
-              <span>Modo Viagem</span>
-            </div>
-          }
+          title="Modo Viagem"
           description="Grupos temporários de despesas compartilhadas com compensação líquida e acerto Pix."
         />
 
@@ -207,12 +202,7 @@ export function TripListPage() {
   return (
     <div className="space-y-6" data-tour="trips-hub">
       <PageHeader
-        title={
-          <div className="flex items-center gap-2.5">
-            <Plane className="size-5 text-muted-foreground" aria-hidden="true" />
-            <span>Modo Viagem</span>
-          </div>
-        }
+        title="Modo Viagem"
         description="Grupos temporários de despesas compartilhadas com compensação líquida e acerto Pix."
         actions={
           <Button

@@ -10,6 +10,7 @@ import {
   SkeletonKpi,
   SkeletonList,
   SkeletonTable,
+  TargetsSkeleton,
 } from "./skeleton";
 
 describe("Skeleton por contexto (F12 — polimento)", () => {
@@ -50,6 +51,13 @@ describe("Skeleton por contexto (F12 — polimento)", () => {
 
     render(<DebtsSkeleton />);
     expect(screen.getByLabelText("Carregando Contas e Dívidas")).toBeInTheDocument();
+  });
+
+  it("TargetsSkeleton renderiza com rótulo acessível e estrutura canônica de cards", () => {
+    const { container } = render(<TargetsSkeleton />);
+    expect(screen.getByLabelText("Carregando Metas de Alocação")).toBeInTheDocument();
+    expect(container.querySelector("[data-tour='targets-classes-card']")).toBeInTheDocument();
+    expect(container.querySelectorAll(".bg-surface, .bg-surface\\/90").length).toBeGreaterThanOrEqual(2);
   });
 
   it("RouteSkeletonFallback renderiza o esqueleto correto baseado na rota", () => {

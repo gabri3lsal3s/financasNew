@@ -21,6 +21,12 @@ export interface TargetEditorRow {
   target: number;
   /** Alocação real de mercado atual em % (0–100). */
   currentPct?: number;
+  /** Nota de convicção do ativo (0 a 10). */
+  score?: number | null;
+  /** Status de governança do ativo na carteira. */
+  allocationStatus?: "active" | "neutral" | "quarantine" | "exit";
+  /** Callback opcional para abrir a avaliação de tese/nota do ativo. */
+  onEvaluate?: () => void;
 }
 
 export interface TargetEditorProps {
@@ -276,6 +282,44 @@ export function TargetEditor({
                       <Badge variant="muted" size="xs">
                         {row.assetClass}
                       </Badge>
+                    ) : null}
+
+                    {row.score !== undefined && row.score !== null ? (
+                      <Badge
+                        size="xs"
+                        variant={row.score >= 7 ? "positive" : row.score <= 3 ? "negative" : "muted"}
+                        className="font-mono"
+                      >
+                        Nota {row.score}
+                      </Badge>
+                    ) : null}
+
+                    {row.allocationStatus === "quarantine" ? (
+                      <Badge size="xs" variant="warning" className="font-medium">
+                        Em Quarentena
+                      </Badge>
+                    ) : row.allocationStatus === "exit" ? (
+                      <Badge size="xs" variant="negative" className="font-medium">
+                        Saída
+                      </Badge>
+                    ) : row.allocationStatus === "neutral" ? (
+                      <Badge size="xs" variant="muted" className="font-medium">
+                        Manter
+                      </Badge>
+                    ) : null}
+
+                    {row.onEvaluate ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        onClick={row.onEvaluate}
+                        className="h-5 px-1.5 text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Avaliar tese e nota"
+                        aria-label={`Avaliar tese e nota de ${row.label}`}
+                      >
+                        Avaliar
+                      </Button>
                     ) : null}
 
                     {/* Badge de Comparativo Visual Atual vs Alvo */}

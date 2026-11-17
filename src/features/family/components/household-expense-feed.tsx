@@ -101,7 +101,7 @@ export function HouseholdExpenseFeed({
             className="py-10"
           />
         ) : (
-          <div className="divide-y divide-border/60">
+          <div className="divide-y divide-border/80">
             {displayedExpenses.map((expense) => {
               const isOwn = currentUserId ? expense.user_id === currentUserId : expense.is_own;
 

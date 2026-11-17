@@ -12,7 +12,7 @@ import {
   validateCustomPeriod,
   weightedCents,
 } from "@/domain/reports";
-import { isCashAssetClass, isDividendType } from "@/domain/portfolio";
+import { calculatePortfolioQualityScore, isCashAssetClass, isDividendType } from "@/domain/portfolio";
 import { budgetLimitsByCategory } from "@/domain/budgets";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { currentMonth, currentYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
@@ -734,6 +734,17 @@ export function useReportsData({
         yearDividendsBRL,
         freedomPct: freedomAnalysis.freedomPct,
         savingsRatePct: consolidatedBalance.dre.savingsRatePct,
+        portfolioQualityScore: calculatePortfolioQualityScore(
+          positionRows
+            .filter((r) => !r.isCash && r.quantity > 0)
+            .map((r) => {
+              const a = assets.find((item) => item.id === r.assetId || item.ticker.toUpperCase() === r.ticker.toUpperCase());
+              return {
+                score: a?.score ?? null,
+                valueBRL: r.valueBRL,
+              };
+            }),
+        ),
       },
       positions: positionRows
         .filter((r) => !r.isCash && r.quantity > 0)
@@ -741,6 +752,7 @@ export function useReportsData({
           const effectiveDivs = r.currency === "USD" ? (r.dividendsNative ?? (r.usdRate && r.usdRate > 0 ? r.dividends / r.usdRate : r.dividends)) : r.dividends;
           const effectiveCost = r.currency === "USD" ? (r.totalCost ?? (r.usdRate && r.usdRate > 0 && r.totalCostBRL ? r.totalCostBRL / r.usdRate : r.totalCostBRL)) : r.totalCostBRL;
           const yoc = effectiveCost > 0 && effectiveDivs > 0 ? (effectiveDivs / effectiveCost) * 100 : 0;
+          const asset = assets.find((a) => a.id === r.assetId || a.ticker.toUpperCase() === r.ticker.toUpperCase());
           return {
             ticker: r.ticker,
             name: r.ticker,
@@ -755,6 +767,8 @@ export function useReportsData({
             unrealizedPnlPct: r.unrealizedPct ?? 0,
             yearDividendsBRL: r.dividends,
             yocPct: yoc,
+            score: asset?.score ?? null,
+            allocationStatus: asset?.allocation_status ?? "active",
           };
         }),
       dividends: dividends

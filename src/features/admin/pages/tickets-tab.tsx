@@ -4,7 +4,7 @@ import {
   Inbox,
   AlertCircle,
 } from "lucide-react";
-import { Button, EmptyState, SearchInput, Select, SkeletonList } from "@/components/ui";
+import { Button, EmptyState, SearchInput, Select, Skeleton } from "@/components/ui";
 import { KpiCard, KpiGrid } from "@/components/modules";
 import { useAdminSupportTickets } from "@/state";
 import { TicketManageDialog, TicketRow } from "../components";
@@ -113,7 +113,28 @@ export function TicketsTab() {
 
       {/* Estado: Carregando (Skeleton) */}
       {ticketsQuery.isLoading && (
-        <SkeletonList rows={3} className="space-y-3.5" />
+        <div className="space-y-3.5" aria-hidden="true">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs space-y-3.5"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="size-4 rounded" />
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+                <Skeleton className="h-3 w-28" />
+              </div>
+              <Skeleton className="h-4 w-3/4" />
+              <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-7 w-20 rounded-lg" />
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Estado: Erro */}

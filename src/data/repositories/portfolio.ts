@@ -28,6 +28,12 @@ function mapAsset(row: PortfolioAsset): PortfolioAsset {
     average_price: Number(row.average_price ?? 0),
     accumulated_dividends: Number(row.accumulated_dividends ?? 0),
     estimated_monthly_dividend_per_share: Number(row.estimated_monthly_dividend_per_share ?? 0),
+    score: row.score != null ? Number(row.score) : null,
+    allocation_status: row.allocation_status ?? "active",
+    score_criteria: row.score_criteria ?? {},
+    last_reviewed_at: row.last_reviewed_at ?? null,
+    review_frequency_months: row.review_frequency_months != null ? Number(row.review_frequency_months) : 6,
+    thesis_summary: row.thesis_summary ?? null,
   };
 }
 

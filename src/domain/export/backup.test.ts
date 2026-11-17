@@ -154,18 +154,55 @@ describe("domain/export — backup JSON", () => {
     }
   });
 
-  it("aceita backups legados sem checksum por compatibilidade", () => {
+  it("preserva e valida campos de governança e notas em portfolio_assets (§F41)", () => {
     const data = emptyData();
-    data.categories = [CATEGORY];
-    const legacyPayload = {
-      version: 1,
-      app: "Finanças Pessoais",
-      exportedAt: "2026-01-01T00:00:00.000Z",
-      data,
-    };
+    data.portfolio_assets = [
+      {
+        id: "asset-gov-1",
+        user_id: "u-1",
+        ticker: "WEGE3",
+        asset_class: "Ações",
+        currency: "BRL",
+        score: 9,
+        allocation_status: "active",
+        score_criteria: { roic: 10, governance: 9, moat: 9 },
+        last_reviewed_at: "2026-06-01T00:00:00.000Z",
+        review_frequency_months: 6,
+        thesis_summary: "Líder global em motores elétricos com ROIC > 25%",
+      },
+      {
+        id: "asset-gov-2",
+        user_id: "u-1",
+        ticker: "OIBR3",
+        asset_class: "Ações",
+        currency: "BRL",
+        score: 2,
+        allocation_status: "quarantine",
+        score_criteria: null,
+        last_reviewed_at: "2026-01-01T00:00:00.000Z",
+        review_frequency_months: 3,
+        thesis_summary: "Em quarentena para eventual desinvestimento",
+      },
+    ];
 
-    const result = parseBackupPayload(legacyPayload);
-    expect(result.ok).toBe(true);
+    const payload = buildBackupPayload(data);
+    const parsed = parseBackupPayload(payload);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.payload.data.portfolio_assets).toHaveLength(2);
+      const wege = parsed.payload.data.portfolio_assets[0];
+      const oibr = parsed.payload.data.portfolio_assets[1];
+      expect(wege).toBeDefined();
+      expect(oibr).toBeDefined();
+      if (wege && oibr) {
+        expect(wege.score).toBe(9);
+        expect(wege.allocation_status).toBe("active");
+        expect(wege.review_frequency_months).toBe(6);
+        expect(wege.thesis_summary).toContain("Líder global");
+        expect(oibr.score).toBe(2);
+        expect(oibr.allocation_status).toBe("quarantine");
+      }
+    }
   });
 });
 

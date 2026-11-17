@@ -268,9 +268,19 @@ export function AdminBackupsPage() {
 
         <div className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden">
           {backupsQuery.isLoading ? (
-            <div className="p-6 flex flex-col gap-3">
-              <Skeleton className="h-12 w-full rounded-xl" />
-              <Skeleton className="h-12 w-full rounded-xl" />
+            <div className="p-4 sm:p-5 divide-y divide-border/40" aria-hidden="true">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="size-8 rounded-lg shrink-0" />
+                    <div className="flex flex-col gap-1.5">
+                      <Skeleton className="h-4 w-32 sm:w-44" />
+                      <Skeleton className="h-3 w-40 sm:w-56" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                </div>
+              ))}
             </div>
           ) : backups.length === 0 ? (
             <div className="p-8">

@@ -123,6 +123,7 @@ export { useCorporateDividends } from "./queries/use-corporate-dividends";
 export { useAssetPrices, useSetManualPrice, useRemoveManualPrice, useSyncQuotes } from "./queries/use-asset-prices";
 export { usePortfolioPosition } from "./queries/use-portfolio-position";
 export type { PortfolioPosition, PortfolioPositionRow } from "./queries/use-portfolio-position";
+export { useAssetGovernanceInsights, type UseAssetGovernanceInsightsResult } from "./queries/use-asset-governance-insights";
 export { usePortfolioMonthlyPosition } from "./queries/use-portfolio-monthly-position";
 export type { PortfolioMonthlyPositionState } from "./queries/use-portfolio-monthly-position";
 export { usePortfolioMonthlyPrices, PORTFOLIO_MONTHLY_PRICES_QUERY_KEY } from "./queries/use-portfolio-monthly-prices";
@@ -136,12 +137,6 @@ export {
   useSaveGroupTarget,
   useRemoveGroupTarget,
 } from "./queries/use-allocation";
-export {
-  useAllocationPresets,
-  useCreateAllocationPreset,
-  useUpdateAllocationPreset,
-  useDeleteAllocationPreset,
-} from "./queries/use-allocation-presets";
 export { useGlobalSearchEntries } from "./queries/use-search";
 export { usePredictionHistory } from "./queries/use-prediction-history";
 export { useOnboardingCounts } from "./queries/use-onboarding";

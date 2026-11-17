@@ -31,13 +31,19 @@ const AVAILABLE_ASSET_CLASSES = [
   "Internacional",
 ];
 
-interface DialogContentProps {
+interface DialogInnerModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   currentMember: FamilyMemberWithProfile;
   familyId?: string | null;
-  onClose: () => void;
 }
 
-function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogContentProps) {
+function FamilyShareAssetsInnerModal({
+  open,
+  onOpenChange,
+  currentMember,
+  familyId,
+}: DialogInnerModalProps) {
   const assetsQuery = usePortfolioAssets();
   const updateWealthSharing = useUpdateFamilyWealthSharing();
   const toggleAssetFamily = useTogglePortfolioAssetFamily();
@@ -64,7 +70,7 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
         shareAllPortfolio: shareAll,
         sharedAssetClasses: selectedClasses,
       });
-      onClose();
+      onOpenChange(false);
     } catch {
       // Toast tratado na mutation
     } finally {
@@ -86,10 +92,45 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
   };
 
   return (
-    <>
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Compartilhar Meus Investimentos"
+      description="Escolha quais investimentos da sua carteira pessoal compõem o patrimônio e reserva da família."
+      size="lg"
+      footer={
+        <ModalFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isSaving}
+            className="rounded-xl cursor-pointer"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            onClick={handleSavePreferences}
+            disabled={isSaving}
+            className="rounded-xl cursor-pointer"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                <span>Salvando…</span>
+              </>
+            ) : (
+              <span>Salvar Preferências</span>
+            )}
+          </Button>
+        </ModalFooter>
+      }
+    >
       <div className="space-y-5 pt-2">
         {/* Nível 1: Toda a Carteira */}
-        <div className="p-3.5 rounded-2xl border border-border/80 bg-surface-subtle/40 space-y-2">
+        <div className="p-3.5 rounded-2xl border border-border/80 bg-surface-subtle/50 space-y-2">
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-0.5">
               <span className="text-xs font-semibold text-foreground block">
@@ -130,7 +171,7 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
                     "flex items-center justify-between p-2.5 rounded-xl border text-xs font-medium transition-all text-left cursor-pointer",
                     isSelected
                       ? "border-primary/40 bg-primary/10 text-primary-strong"
-                      : "border-border/70 bg-surface hover:border-border text-foreground",
+                      : "border-border/80 bg-surface hover:border-border text-foreground",
                   )}
                   aria-pressed={isSelected}
                 >
@@ -154,7 +195,7 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
           </div>
 
           {/* Dica de Governança e Diferenciação Patrimônio vs. Reserva */}
-          <div className="p-3 rounded-xl border border-border/70 bg-surface-subtle/30 space-y-1 text-[11px] text-muted-foreground">
+          <div className="p-3 rounded-xl border border-border/80 bg-surface-subtle/50 space-y-1 text-[11px] text-muted-foreground">
             <p>
               <strong className="text-foreground font-medium">Como a Reserva da Casa é calculada:</strong> Apenas ativos com perfil de liquidez imediata (Caixa, Tesouro Selic ou títulos com &ldquo;CDI&rdquo; no código ou classe Caixa) compõem a Reserva da Casa.
             </p>
@@ -164,7 +205,7 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
           </div>
 
           {userAssets.length === 0 ? (
-            <div className="p-4 rounded-xl border border-dashed border-border/70 text-center text-xs text-muted-foreground">
+            <div className="p-4 rounded-xl border border-dashed border-border/80 text-center text-xs text-muted-foreground">
               Nenhum ativo cadastrado na sua carteira pessoal de investimentos.
             </div>
           ) : (
@@ -179,7 +220,7 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
                 return (
                   <div
                     key={asset.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl border border-border/70 bg-surface"
+                    className="flex items-center justify-between p-2.5 rounded-xl border border-border/80 bg-surface"
                   >
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -223,35 +264,7 @@ function FamilyShareAssetsContent({ currentMember, familyId, onClose }: DialogCo
           )}
         </div>
       </div>
-
-      <ModalFooter>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onClose}
-          disabled={isSaving}
-          className="rounded-xl cursor-pointer"
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="button"
-          variant="default"
-          onClick={handleSavePreferences}
-          disabled={isSaving}
-          className="rounded-xl cursor-pointer"
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
-              <span>Salvando…</span>
-            </>
-          ) : (
-            <span>Salvar Preferências</span>
-          )}
-        </Button>
-      </ModalFooter>
-    </>
+    </Modal>
   );
 }
 
@@ -265,22 +278,15 @@ export function FamilyShareAssetsDialog({
   const { data: myFamilyData } = useMyFamily();
   const currentMember = myFamilyData?.currentMember;
 
+  if (!open || !currentMember) return null;
+
   return (
-    <Modal
+    <FamilyShareAssetsInnerModal
+      key={currentMember.id}
       open={open}
       onOpenChange={onOpenChange}
-      title="Compartilhar Meus Investimentos"
-      description="Escolha quais investimentos da sua carteira pessoal compõem o patrimônio e reserva da família."
-      size="lg"
-    >
-      {currentMember ? (
-        <FamilyShareAssetsContent
-          key={currentMember.id}
-          currentMember={currentMember}
-          familyId={myFamilyData?.family?.id}
-          onClose={() => onOpenChange(false)}
-        />
-      ) : null}
-    </Modal>
+      currentMember={currentMember}
+      familyId={myFamilyData?.family?.id}
+    />
   );
 }

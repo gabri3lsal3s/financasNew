@@ -220,9 +220,28 @@ export function DebtsPage() {
         )}
 
         {debtsQuery.isLoading ? (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-20 w-full rounded-2xl" />
-            <Skeleton className="h-20 w-full rounded-2xl" />
+          <div className="flex flex-col gap-3" aria-hidden="true">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-border/80 bg-surface shadow-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <Skeleton className="size-9 rounded-xl shrink-0" />
+                  <div className="flex flex-col gap-1.5">
+                    <Skeleton className="h-4 w-32 sm:w-44" />
+                    <Skeleton className="h-3 w-24 sm:w-32" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-0 border-border/40">
+                  <div className="flex flex-col items-start sm:items-end gap-1">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                  <Skeleton className="h-8 w-20 rounded-lg" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : list.length === 0 ? (
           <EmptyState
@@ -391,9 +410,32 @@ export function DebtsPage() {
   const renderLoansContent = () => (
     <div data-tour="debts-loans-section" className="flex flex-col gap-4">
       {loansQuery.isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Skeleton className="h-40 w-full rounded-2xl" />
-          <Skeleton className="h-40 w-full rounded-2xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-hidden="true">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex flex-col gap-3.5 p-4 sm:p-5 rounded-xl border border-border/80 bg-surface shadow-xs"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Skeleton className="size-8 rounded-lg shrink-0" />
+                  <Skeleton className="h-4 w-32" />
+                </div>
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/40">
+                <div className="flex flex-col gap-1">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </div>
+              <Skeleton className="h-2 w-full rounded-full" />
+            </div>
+          ))}
         </div>
       ) : loans.length === 0 ? (
         <EmptyState

@@ -115,7 +115,7 @@ export function HouseholdCeilingCard({
         )}
 
         {typeof totalIncomeCents === "number" && totalIncomeCents > 0 && (
-          <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="pt-2 border-t border-border/80 flex items-center justify-between text-xs text-muted-foreground">
             <span>Receita conjunta informada</span>
             <MoneyText cents={totalIncomeCents} tone="positive" className="font-medium" />
           </div>

@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
 import {
   Calendar,
+  Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Copy,
   ExternalLink,
   HandCoins,
@@ -46,6 +49,7 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
   const settleMutation = useSettleIntegratedReceivable();
   const [currentBlock, setCurrentBlock] = useState(0);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
   const [managingItem, setManagingItem] = useState<{
     share: PublicShare;
     linkedDebt: Debt | null;
@@ -244,7 +248,19 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
         return true;
       })
       .sort((a, b) => {
-        // 1. Data de vencimento estipulada mais próxima primeiro
+        // 1. Rachas pendentes primeiro, arquivados (quitados) por último
+        if (!a.isSettled && b.isSettled) return -1;
+        if (a.isSettled && !b.isSettled) return 1;
+
+        // Se ambos são arquivados/quitados: ordenar por data de quitação mais recente primeiro
+        if (a.isSettled && b.isSettled) {
+          const aPaid = a.linkedDebt?.paid_at ?? a.createdAt;
+          const bPaid = b.linkedDebt?.paid_at ?? b.createdAt;
+          return bPaid.localeCompare(aPaid);
+        }
+
+        // Se ambos são pendentes:
+        // 2. Data de vencimento estipulada mais próxima primeiro
         if (a.dueDate && b.dueDate) {
           if (a.dueDate !== b.dueDate) {
             return a.dueDate.localeCompare(b.dueDate);
@@ -253,7 +269,7 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
         if (a.dueDate && !b.dueDate) return -1;
         if (!a.dueDate && b.dueDate) return 1;
 
-        // 2. Se não houver data de vencimento estipulada (ou empate): do mais antigo para o mais recente
+        // 3. Se não houver data de vencimento estipulada (ou empate): do mais antigo para o mais recente
         return a.createdAt.localeCompare(b.createdAt);
       });
   }, [shares, debts, debtById, receivableDebtsByExpense, month]);
@@ -272,6 +288,48 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
 
   if (activeSplits.length === 0) {
     return null;
+  }
+
+  const allFinalized = activeSplits.length > 0 && activeSplits.every((item) => item.isSettled);
+  const isExpanded = userExpanded !== null ? userExpanded : !allFinalized;
+
+  if (allFinalized && !isExpanded) {
+    return (
+      <div
+        data-tour="active-splits-card"
+        className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface p-3 sm:p-3.5 shadow-xs min-w-0"
+      >
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Users className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+            <span className="text-xs font-semibold text-foreground whitespace-nowrap">
+              Rachas de Despesa
+            </span>
+            <Badge variant="positive" size="xs" className="gap-1 font-semibold">
+              <Check className="size-3" aria-hidden="true" />
+              <span>Todos quitados</span>
+            </Badge>
+            <span className="text-[11px] text-muted-foreground truncate hidden xs:inline">
+              {activeSplits.length} {activeSplits.length === 1 ? "arquivado" : "arquivados"} neste mês
+            </span>
+          </div>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="xs"
+          onClick={() => {
+            triggerSensory("action");
+            setUserExpanded(true);
+          }}
+          className="h-7 px-2.5 text-xs gap-1 cursor-pointer shrink-0 text-muted-foreground hover:text-foreground"
+        >
+          <span>Ver arquivados</span>
+          <ChevronDown className="size-3" aria-hidden="true" />
+        </Button>
+      </div>
+    );
   }
 
   const handleQuickSettle = async (item: (typeof activeSplits)[0]) => {
@@ -359,17 +417,35 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
           <Users className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <div className="min-w-0 flex items-center gap-2">
             <h2 className="text-xs font-semibold text-foreground whitespace-nowrap">
-              Rachas de Despesa Ativos
+              {allFinalized ? "Rachas de Despesa" : "Rachas de Despesa Ativos"}
             </h2>
-            <Badge variant="muted" size="xs">
-              {activeSplits.length} {activeSplits.length === 1 ? "ativo" : "ativos"}
+            <Badge variant={allFinalized ? "positive" : "muted"} size="xs">
+              {allFinalized
+                ? "Todos quitados"
+                : `${activeSplits.length} ${activeSplits.length === 1 ? "ativo" : "ativos"}`}
             </Badge>
           </div>
         </div>
 
-        {/* Setas para transitar entre os blocos (2 por vez) */}
-        {totalBlocks > 1 && (
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+          {allFinalized && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              onClick={() => {
+                triggerSensory("action");
+                setUserExpanded(false);
+              }}
+              className="h-7 px-2 text-xs gap-1 cursor-pointer text-muted-foreground hover:text-foreground"
+            >
+              <span>Recolher</span>
+              <ChevronUp className="size-3" aria-hidden="true" />
+            </Button>
+          )}
+
+          {/* Setas para transitar entre os blocos (2 por vez) */}
+          {totalBlocks > 1 && (
             <div className="flex items-center rounded-md border border-border/80 bg-surface-hover/50 px-1 py-0.5">
               <Button
                 type="button"
@@ -405,8 +481,8 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
                 <ChevronRight className="size-3.5" aria-hidden="true" />
               </Button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3 pt-0.5 items-stretch">

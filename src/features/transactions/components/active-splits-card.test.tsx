@@ -333,4 +333,128 @@ describe("ActiveSplitsCard", () => {
     expect(screen.getByText("Link pendente")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Gerar Link Pix/i })).toBeInTheDocument();
   });
+
+  it("exibe visual compacto/arquivado quando todos os rachas estão quitados e expande ao clicar em 'Ver arquivados'", () => {
+    mockPublicShares = [
+      {
+        id: "share-settled-1",
+        user_id: "u1",
+        token: "tok-s1",
+        kind: "split",
+        created_at: "2026-08-01T10:00:00Z",
+        expires_at: null,
+        is_revoked: false,
+        updated_at: "2026-08-01T10:00:00Z",
+        payload: { title: "Racha Bar Quitado", total_cents: 6000, debt_id: "debt-s1" },
+      },
+    ];
+
+    mockDebts = [
+      {
+        id: "debt-s1",
+        user_id: "u1",
+        name: "Racha Bar Quitado",
+        type: "receivable",
+        amount: 30,
+        due_date: "2026-08-05",
+        paid_at: "2026-08-06T12:00:00Z",
+        created_at: "2026-08-01T10:00:00Z",
+        expense_id: null,
+        installment_group_id: null,
+      },
+    ];
+
+    render(<ActiveSplitsCard month="2026-08" />);
+
+    // Deve estar no modo compacto arquivado
+    expect(screen.getByText("Rachas de Despesa")).toBeInTheDocument();
+    expect(screen.getByText("Todos quitados")).toBeInTheDocument();
+    expect(screen.getByText(/1 arquivado neste mês/i)).toBeInTheDocument();
+
+    const expandBtn = screen.getByRole("button", { name: /Ver arquivados/i });
+    expect(expandBtn).toBeInTheDocument();
+
+    // O título individual do racha não deve estar visível no modo recolhido
+    expect(screen.queryByText("Racha Bar Quitado")).not.toBeInTheDocument();
+
+    // Clica para expandir
+    fireEvent.click(expandBtn);
+
+    // Agora o racha quitado deve estar visível e o botão muda para Recolher
+    expect(screen.getByText("Racha Bar Quitado")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Recolher/i })).toBeInTheDocument();
+
+    // Clica para recolher novamente
+    fireEvent.click(screen.getByRole("button", { name: /Recolher/i }));
+    expect(screen.queryByText("Racha Bar Quitado")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ver arquivados/i })).toBeInTheDocument();
+  });
+
+  it("ordena rachas pendentes primeiro (por vencimento) e arquivados por último", () => {
+    mockPublicShares = [
+      {
+        id: "share-settled",
+        user_id: "u1",
+        token: "tok-s",
+        kind: "split",
+        created_at: "2026-08-01T10:00:00Z",
+        expires_at: null,
+        is_revoked: false,
+        updated_at: "2026-08-01T10:00:00Z",
+        payload: { title: "Racha Já Quitado", total_cents: 8000, debt_id: "debt-s" },
+      },
+      {
+        id: "share-pending",
+        user_id: "u1",
+        token: "tok-p",
+        kind: "split",
+        created_at: "2026-08-05T10:00:00Z",
+        expires_at: null,
+        is_revoked: false,
+        updated_at: "2026-08-05T10:00:00Z",
+        payload: { title: "Racha Ainda Pendente", total_cents: 8000, debt_id: "debt-p" },
+      },
+    ];
+
+    mockDebts = [
+      {
+        id: "debt-s",
+        user_id: "u1",
+        name: "Racha Já Quitado",
+        type: "receivable",
+        amount: 40,
+        due_date: "2026-08-03",
+        paid_at: "2026-08-04T10:00:00Z",
+        created_at: "2026-08-01T10:00:00Z",
+        expense_id: null,
+        installment_group_id: null,
+      },
+      {
+        id: "debt-p",
+        user_id: "u1",
+        name: "Racha Ainda Pendente",
+        type: "receivable",
+        amount: 40,
+        due_date: "2026-08-20",
+        paid_at: null,
+        created_at: "2026-08-05T10:00:00Z",
+        expense_id: null,
+        installment_group_id: null,
+      },
+    ];
+
+    render(<ActiveSplitsCard month="2026-08" />);
+
+    // Quando há pendente, não colapsa automaticamente
+    const pendingTitle = screen.getByText("Racha Ainda Pendente");
+    const settledTitle = screen.getByText("Racha Já Quitado");
+    expect(pendingTitle).toBeInTheDocument();
+    expect(settledTitle).toBeInTheDocument();
+
+    // Como ambos cabem no bloco inicial de 2 itens, o pendente vem primeiro no DOM
+    expect(
+      Boolean(pendingTitle.compareDocumentPosition(settledTitle) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ).toBe(true);
+  });
 });
+

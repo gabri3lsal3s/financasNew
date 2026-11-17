@@ -223,4 +223,25 @@ describe("AssetDetailSheet (Fase 41 & F57)", () => {
     expect(screen.queryByText(/^IR/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/cai p\//i)).not.toBeInTheDocument();
   });
+
+  it("renderiza o card de Tese & Governança do Ativo com nota, status e botão de avaliação", () => {
+    const assetWithGovernance: typeof mockAsset = {
+      ...mockAsset,
+      id: "asset-gov",
+      ticker: "GOV4",
+      score: 9,
+      allocation_status: "active",
+      thesis_summary: "Líder global em logística integrada e dividendos consistentes.",
+      review_frequency_months: 6,
+      last_reviewed_at: "2026-01-15T10:00:00Z",
+    };
+
+    render(<AssetDetailSheet asset={assetWithGovernance} open={true} onOpenChange={vi.fn()} />);
+
+    expect(screen.getByText("Tese & Governança do Ativo")).toBeInTheDocument();
+    expect(screen.getByText("Nota 9/10")).toBeInTheDocument();
+    expect(screen.getAllByText("Aportar").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Líder global em logística integrada/i)).toBeInTheDocument();
+    expect(screen.getByText("Avaliar Tese & Nota")).toBeInTheDocument();
+  });
 });

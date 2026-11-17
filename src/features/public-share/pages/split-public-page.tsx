@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router";
 import {
   Receipt,
@@ -24,12 +24,14 @@ import { sanitizeShareToken } from "@/domain/share/token";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import {
+  PublicSplitIdentityBanner,
   SelectParticipantDialog,
   SelectSplitCategoryDialog,
   SharedLinkHeaderNav,
   SplitOnboardingModal,
 } from "../components";
-import type { SplitParticipantItem, SplitSharePayload } from "@/types";
+import { usePublicSplitGuestIdentity } from "../hooks";
+import type { SplitParticipantInstallment, SplitParticipantItem, SplitSharePayload } from "@/types";
 
 export function SplitPublicPage() {
   const { token: rawToken } = useParams<{ token: string }>();
@@ -60,28 +62,57 @@ export function SplitPublicPage() {
   const [justSignaledInstallmentIds, setJustSignaledInstallmentIds] = useState<Set<string>>(new Set());
   const categoriesQuery = useCategories("expense", { enabled: Boolean(session?.user) });
 
+  const guestIdentity = usePublicSplitGuestIdentity(token);
+
   // Payload tipado com fallback seguro
   const payload = (share?.payload ?? null) as SplitSharePayload | null;
 
-  const participantInstallments = (() => {
-    if (!payload?.participant_installments || payload.participant_installments.length === 0) {
+  // Normalização de participantes para garantir que cada um possua um id
+  const rawParticipants = payload?.participants;
+  const normalizedParticipants: SplitParticipantItem[] = useMemo(() => {
+    if (!rawParticipants) return [];
+    return rawParticipants.map((p, idx) => ({
+      ...p,
+      id: p.id || `p_${idx + 1}`,
+    }));
+  }, [rawParticipants]);
+
+  // Identidade ativa do participante identificado
+  const activeParticipant = useMemo(() => {
+    if (selectedParticipant) return selectedParticipant;
+    if (guestIdentity.activeParticipantId && normalizedParticipants.length > 0) {
+      const match = normalizedParticipants.find(
+        (p) =>
+          p.id === guestIdentity.activeParticipantId ||
+          p.name.trim().toLowerCase() === guestIdentity.activeParticipantId?.trim().toLowerCase(),
+      );
+      if (match) return match;
+    }
+    return null;
+  }, [selectedParticipant, guestIdentity.activeParticipantId, normalizedParticipants]);
+
+  const currentParticipant = activeParticipant || selectedParticipant;
+
+  const rawInstallments = payload?.participant_installments;
+  const participantInstallments: SplitParticipantInstallment[] = useMemo(() => {
+    if (!rawInstallments || rawInstallments.length === 0) {
       return [];
     }
-    if (selectedParticipant?.id) {
-      const match = payload.participant_installments.filter(
-        (i) => i.participant_id === selectedParticipant.id
+    if (currentParticipant?.id) {
+      const match = rawInstallments.filter(
+        (i) => i.participant_id === currentParticipant.id,
       );
       if (match.length > 0) return match;
     }
-    const firstGuest = payload.participants?.find((p) => !p.is_host);
+    const firstGuest = normalizedParticipants.find((p) => !p.is_host);
     if (firstGuest?.id) {
-      const match = payload.participant_installments.filter(
-        (i) => i.participant_id === firstGuest.id
+      const match = rawInstallments.filter(
+        (i) => i.participant_id === firstGuest.id,
       );
       if (match.length > 0) return match;
     }
-    return payload.participant_installments;
-  })();
+    return rawInstallments;
+  }, [rawInstallments, currentParticipant, normalizedParticipants]);
 
   const installmentsProgress =
     participantInstallments.length > 1
@@ -96,10 +127,10 @@ export function SplitPublicPage() {
         null
       : null;
 
-  const effectiveChargeCents = (() => {
+  const effectiveChargeCents = useMemo(() => {
     if (!payload) return 0;
     const guestShareCents =
-      selectedParticipant?.share_cents ??
+      currentParticipant?.share_cents ??
       payload.guest_share_cents ??
       (payload.people_count > 0
         ? Math.round(payload.total_cents / payload.people_count)
@@ -110,7 +141,7 @@ export function SplitPublicPage() {
       if (selectedInstallment) return selectedInstallment.amount_cents;
     }
     return guestShareCents;
-  })();
+  }, [payload, currentParticipant?.share_cents, participantInstallments.length, installmentsProgress, isPayAllRemaining, selectedInstallment]);
 
   const dynamicPixBrCode = (() => {
     if (!payload || !payload.pix_key) return payload?.pix_br_code || "";
@@ -192,15 +223,18 @@ export function SplitPublicPage() {
       return;
     }
 
-    // 1. Identificar participante se houver múltiplos participantes não quitados
-    const guestParticipants = (payload.participants ?? []).filter((p) => !p.is_host);
-    const unsettledGuests = guestParticipants.filter((p) => !p.is_settled);
+    // 1. Identificar participante
+    let targetParticipant: SplitParticipantItem | null = currentParticipant;
+    if (!targetParticipant) {
+      const guestParticipants = normalizedParticipants.filter((p) => !p.is_host);
+      const unsettledGuests = guestParticipants.filter((p) => !p.is_settled);
 
-    let activeParticipant: SplitParticipantItem | null = selectedParticipant;
-    if (!activeParticipant) {
       if (unsettledGuests.length === 1) {
-        activeParticipant = unsettledGuests[0] ?? null;
-        setSelectedParticipant(activeParticipant);
+        targetParticipant = unsettledGuests[0] ?? null;
+        setSelectedParticipant(targetParticipant);
+        if (targetParticipant?.id) {
+          guestIdentity.setActiveParticipantId(targetParticipant.id);
+        }
       } else if (unsettledGuests.length > 1) {
         const userName = (
           session.user.user_metadata?.name ||
@@ -217,8 +251,11 @@ export function SplitPublicPage() {
           : null;
 
         if (matched) {
-          activeParticipant = matched;
+          targetParticipant = matched;
           setSelectedParticipant(matched);
+          if (matched.id) {
+            guestIdentity.setActiveParticipantId(matched.id);
+          }
         } else {
           setParticipantSelectionIntent("save");
           setIsSelectParticipantOpen(true);
@@ -244,16 +281,18 @@ export function SplitPublicPage() {
     }
 
     if (matchedCategory) {
-      await executeSaveAndSignal(activeParticipant, matchedCategory.id);
+      await executeSaveAndSignal(targetParticipant, matchedCategory.id);
     } else if (userCategories.length > 0) {
       setIsSelectCategoryOpen(true);
     } else {
-      await executeSaveAndSignal(activeParticipant);
+      await executeSaveAndSignal(targetParticipant);
     }
   }, [
     payload,
     session,
-    selectedParticipant,
+    currentParticipant,
+    normalizedParticipants,
+    guestIdentity,
     categoriesQuery.data,
     executeSaveAndSignal,
   ]);
@@ -306,14 +345,17 @@ export function SplitPublicPage() {
   const handleSignalPixPayment = useCallback(async () => {
     if (!payload || !token) return;
 
-    const guestParticipants = (payload.participants ?? []).filter((p) => !p.is_host);
-    const unsettledGuests = guestParticipants.filter((p) => !p.is_settled);
+    let targetParticipant: SplitParticipantItem | null = currentParticipant;
+    if (!targetParticipant) {
+      const guestParticipants = normalizedParticipants.filter((p) => !p.is_host);
+      const unsettledGuests = guestParticipants.filter((p) => !p.is_settled);
 
-    let activeParticipant: SplitParticipantItem | null = selectedParticipant;
-    if (!activeParticipant) {
       if (unsettledGuests.length === 1) {
-        activeParticipant = unsettledGuests[0] ?? null;
-        setSelectedParticipant(activeParticipant);
+        targetParticipant = unsettledGuests[0] ?? null;
+        setSelectedParticipant(targetParticipant);
+        if (targetParticipant?.id) {
+          guestIdentity.setActiveParticipantId(targetParticipant.id);
+        }
       } else if (unsettledGuests.length > 1) {
         setParticipantSelectionIntent("signal");
         setIsSelectParticipantOpen(true);
@@ -321,12 +363,15 @@ export function SplitPublicPage() {
       }
     }
 
-    await executeSignalOnly(activeParticipant);
-  }, [payload, token, selectedParticipant, executeSignalOnly]);
+    await executeSignalOnly(targetParticipant);
+  }, [payload, token, currentParticipant, normalizedParticipants, guestIdentity, executeSignalOnly]);
 
   const handleConfirmParticipant = useCallback(
     async (participant: SplitParticipantItem) => {
       setSelectedParticipant(participant);
+      if (participant.id) {
+        guestIdentity.setActiveParticipantId(participant.id);
+      }
       setIsSelectParticipantOpen(false);
 
       if (participantSelectionIntent === "signal") {
@@ -357,7 +402,7 @@ export function SplitPublicPage() {
         await executeSaveAndSignal(participant);
       }
     },
-    [participantSelectionIntent, executeSignalOnly, payload?.category_name, categoriesQuery.data, executeSaveAndSignal],
+    [participantSelectionIntent, guestIdentity, executeSignalOnly, payload?.category_name, categoriesQuery.data, executeSaveAndSignal],
   );
 
   const handleConfirmCategorySave = useCallback(
@@ -387,6 +432,53 @@ export function SplitPublicPage() {
     }
   }, [searchParams, payload, isLoading, handleSaveExpenseClick]);
 
+  /* Bloco de Auto-Onboarding & Conversão Viral Padronizado */
+  const adBanner = (
+    <Card className="border-border/80 bg-surface shadow-xs rounded-2xl p-4 sm:p-5 space-y-3.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-primary shrink-0" aria-hidden="true" />
+          <span className="text-xs font-bold text-foreground">
+            Divida despesas com elegância
+          </span>
+        </div>
+        <Badge variant="muted" size="xs">
+          30 Dias Grátis
+        </Badge>
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        Gostou da facilidade da divisão de contas? Organize suas finanças, cartões, metas e Safe-to-Spend em tempo real sem planilhas complicadas.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+        <Button
+          type="button"
+          size="default"
+          className="flex-1 h-10 gap-2 font-semibold text-xs sm:text-sm cursor-pointer shadow-xs"
+          onClick={() => navigate("/cadastrar?ref=split")}
+        >
+          <ArrowRight className="size-4" aria-hidden="true" />
+          <span>Testar 30 dias grátis</span>
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="default"
+          className="flex-1 h-10 gap-2 border-border/80 bg-surface hover:bg-surface-hover font-semibold text-xs sm:text-sm text-foreground cursor-pointer"
+          onClick={handleSaveExpenseClick}
+          disabled={isSavingDirectly}
+          sensoryIntent="action"
+          aria-label="Salvar esta despesa no meu controle financeiro"
+        >
+          <Sparkles className="size-4 text-primary" aria-hidden="true" />
+          <span>
+            {isSavingDirectly
+              ? "Salvando despesa…"
+              : "Salvar esta despesa"}
+          </span>
+        </Button>
+      </div>
+    </Card>
+  );
 
   return (
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between pb-8">
@@ -400,7 +492,7 @@ export function SplitPublicPage() {
       {/* Conteúdo Central */}
       <main className="w-full max-w-md md:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-4 sm:py-6 flex-1 space-y-6">
         {isLoading ? (
-          <Card className="border-border/80 bg-surface shadow-xs p-5 sm:p-6 space-y-4">
+          <Card className="border-border/80 bg-surface shadow-xs p-5 sm:p-6 space-y-4 rounded-2xl">
             <div className="space-y-2">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-7 w-3/4" />
@@ -411,7 +503,7 @@ export function SplitPublicPage() {
             <Skeleton className="h-9 w-full rounded-xl" />
           </Card>
         ) : error || !share || share.kind !== "split" || !payload ? (
-          <Card className="border-border/80 bg-surface shadow-xs p-2">
+          <Card className="border-border/80 bg-surface shadow-xs p-2 rounded-2xl">
             <EmptyState
               icon={<Receipt className="size-8 text-muted-foreground" aria-hidden="true" />}
               title="Racha não encontrado ou expirado"
@@ -427,7 +519,7 @@ export function SplitPublicPage() {
             />
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <SplitChargeCard
               layout="split-desktop"
               title={payload.title || "Racha de Despesa"}
@@ -439,7 +531,27 @@ export function SplitPublicPage() {
               pixBrCode={dynamicPixBrCode}
               pixKey={payload.pix_key}
               pixKeyType={payload.pix_key_type}
-              participants={payload.participants}
+              participants={normalizedParticipants}
+              activeParticipantId={currentParticipant?.id}
+              identityBanner={
+                <PublicSplitIdentityBanner
+                  token={token || ""}
+                  participants={normalizedParticipants}
+                  hostName={payload.host_name || "Anfitrião"}
+                  activeParticipantId={currentParticipant?.id}
+                  onSelectParticipant={(id: string | null) => {
+                    if (!id) {
+                      setSelectedParticipant(null);
+                      guestIdentity.clearActiveParticipant();
+                    } else {
+                      const match =
+                        normalizedParticipants.find((p) => p.id === id || p.name === id) ?? null;
+                      setSelectedParticipant(match);
+                      guestIdentity.setActiveParticipantId(id);
+                    }
+                  }}
+                />
+              }
               installmentsCount={payload.installments_count}
               installments={participantInstallments}
               selectedInstallmentId={selectedInstallment?.id ?? null}
@@ -454,56 +566,14 @@ export function SplitPublicPage() {
               hasSignaledCurrent={Boolean(
                 (selectedInstallment?.id && justSignaledInstallmentIds.has(selectedInstallment.id)) ||
                 selectedInstallment?.signal_status === "pending_confirmation" ||
-                (!participantInstallments.length && selectedParticipant?.has_payment_signal)
+                (!participantInstallments.length && currentParticipant?.has_payment_signal)
               )}
-              desktopExtraContent={
-                /* Bloco de Auto-Onboarding & Conversão Viral (Plano 06) */
-                <Card className="border-border/80 bg-gradient-to-r from-primary/10 via-surface to-surface shadow-xs p-4 sm:p-5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="size-4 text-primary shrink-0" aria-hidden="true" />
-                      <span className="text-xs font-bold text-foreground">
-                        Divida despesas com elegância
-                      </span>
-                    </div>
-                    <Badge variant="muted" size="xs">
-                      30 Dias Grátis
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Gostou da facilidade da divisão de contas? Organize suas finanças, cartões, metas e Safe-to-Spend em tempo real sem planilhas complicadas.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 gap-2 border-border/80 bg-surface font-semibold text-foreground cursor-pointer"
-                      onClick={handleSaveExpenseClick}
-                      disabled={isSavingDirectly}
-                      sensoryIntent="action"
-                      aria-label="Salvar esta despesa no meu controle financeiro"
-                    >
-                      <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-                      <span>
-                        {isSavingDirectly
-                          ? "Salvando despesa…"
-                          : "Salvar esta despesa"}
-                      </span>
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="flex-1 gap-1.5 font-semibold cursor-pointer"
-                      onClick={() => navigate("/cadastrar?ref=split")}
-                    >
-                      <ArrowRight className="size-3.5" aria-hidden="true" />
-                      <span>Testar 30 dias grátis</span>
-                    </Button>
-                  </div>
-                </Card>
-              }
             />
+
+            {/* Banner de conversão no rodapé da página após todo o conteúdo do racha e pagamento Pix */}
+            <div className="pt-2">
+              {adBanner}
+            </div>
 
             <SplitOnboardingModal
               open={isOnboardingModalOpen}
@@ -528,7 +598,7 @@ export function SplitPublicPage() {
             <SelectParticipantDialog
               open={isSelectParticipantOpen}
               onOpenChange={setIsSelectParticipantOpen}
-              participants={(payload.participants ?? []).filter((p) => !p.is_host && !p.is_settled)}
+              participants={normalizedParticipants.filter((p) => !p.is_host && !p.is_settled)}
               isPending={isSavingDirectly}
               onConfirm={handleConfirmParticipant}
             />

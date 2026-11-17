@@ -3,6 +3,7 @@ import {
   ArrowDownLeft,
   ArrowRight,
   Calendar,
+  Clock,
   Edit2,
   Globe,
   Pencil,
@@ -49,6 +50,7 @@ import {
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import type { PortfolioAsset, PortfolioTransaction, PortfolioTransactionType } from "@/types";
 import { AssetEditDialog } from "./asset-edit-dialog";
+import { AssetScoreEvaluationDialog } from "./asset-score-evaluation-dialog";
 import { AssetSplitDialog } from "./asset-split-dialog";
 import { CalibrateFixedIncomeDialog } from "./calibrate-fixed-income-dialog";
 import { TransactionFormDialog } from "./transaction-form-dialog";
@@ -91,6 +93,8 @@ export function AssetDetailSheet({
   const [txToEdit, setTxToEdit] = useState<PortfolioTransaction | null>(null);
   const [createTxOpen, setCreateTxOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
+  const [evaluationOpen, setEvaluationOpen] = useState(false);
+  const [nowMs] = useState(() => Date.now());
 
   if (!asset) return null;
 
@@ -238,6 +242,38 @@ export function AssetDetailSheet({
   const suggestedQtyToAbsorb =
     !isTotalValue && currentPrice > 0 && gapBRL > 0 ? Math.floor(gapBRL / currentPrice) : undefined;
   const suggestedTotalCents = gapCents > 0 ? gapCents : undefined;
+
+  // Metadados de Governança, Nota e Tese
+  const assetScore = currentAsset.score ?? 8;
+  const allocationStatus = currentAsset.allocation_status ?? "active";
+  const reviewFreqMonths = currentAsset.review_frequency_months ?? 6;
+  const maxAllowedDays = reviewFreqMonths * 30.4375;
+  const lastReviewedDate = currentAsset.last_reviewed_at ? new Date(currentAsset.last_reviewed_at) : null;
+  const daysSinceReview = lastReviewedDate
+    ? Math.floor((nowMs - lastReviewedDate.getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const isReviewOverdue = daysSinceReview !== null && daysSinceReview > maxAllowedDays;
+
+  const statusBadgeVariant =
+    allocationStatus === "active"
+      ? ("positive" as const)
+      : allocationStatus === "quarantine"
+        ? ("warning" as const)
+        : allocationStatus === "exit"
+          ? ("negative" as const)
+          : ("muted" as const);
+
+  const statusBadgeLabel =
+    allocationStatus === "active"
+      ? "Aportar"
+      : allocationStatus === "neutral"
+        ? "Manter"
+        : allocationStatus === "quarantine"
+          ? "Quarentena"
+          : "Saída";
+
+  const scoreBadgeVariant =
+    assetScore >= 7 ? ("positive" as const) : assetScore >= 4 ? ("warning" as const) : ("negative" as const);
 
   const handleAporteClick = () => {
     guardAction(() => {
@@ -719,6 +755,76 @@ export function AssetDetailSheet({
             </div>
           )}
 
+          {/* Card de Governança & Tese do Ativo */}
+          <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/50 pb-2.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <SlidersHorizontal className="size-4 text-primary shrink-0" aria-hidden="true" />
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  Tese & Governança do Ativo
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant={scoreBadgeVariant} size="xs">
+                  Nota {assetScore}/10
+                </Badge>
+                <Badge variant={statusBadgeVariant} size="xs">
+                  {statusBadgeLabel}
+                </Badge>
+                {isReviewOverdue && (
+                  <Badge variant="warning" size="xs" className="gap-1">
+                    <Clock className="size-3" aria-hidden="true" />
+                    <span>Revisão vencida</span>
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {currentAsset.thesis_summary ? (
+              <div className="flex flex-col gap-1 text-xs">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                  Tese de Investimento
+                </span>
+                <p className="text-xs text-foreground/90 italic bg-surface-hover/50 border-l-2 border-primary/50 rounded-r-lg p-2.5">
+                  &ldquo;{currentAsset.thesis_summary}&rdquo;
+                </p>
+              </div>
+            ) : null}
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 text-xs pt-1">
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                  Ciclo de Revisão
+                </span>
+                <span className="text-xs font-semibold text-foreground">
+                  A cada {reviewFreqMonths} meses
+                </span>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                  Última Avaliação
+                </span>
+                <span className="text-xs font-semibold text-foreground">
+                  {currentAsset.last_reviewed_at
+                    ? formatDateBR(currentAsset.last_reviewed_at.slice(0, 10))
+                    : "Não registrada"}
+                </span>
+              </div>
+              <div className="flex flex-col justify-end min-w-0 col-span-2 sm:col-span-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEvaluationOpen(true)}
+                  className="gap-1.5 text-xs font-medium w-full cursor-pointer"
+                >
+                  <SlidersHorizontal className="size-3.5" aria-hidden="true" />
+                  <span>Avaliar Tese & Nota</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+
           {/* Card de Custódia Internacional Dual (USD / BRL) */}
           {isUSD && (
             <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
@@ -995,6 +1101,13 @@ export function AssetDetailSheet({
         asset={currentAsset}
         open={splitOpen}
         onOpenChange={setSplitOpen}
+      />
+
+      {/* Diálogo de Avaliação Holística de Tese & Nota */}
+      <AssetScoreEvaluationDialog
+        asset={currentAsset}
+        open={evaluationOpen}
+        onOpenChange={setEvaluationOpen}
       />
 
       {upgradeModal}

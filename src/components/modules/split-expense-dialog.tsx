@@ -281,6 +281,11 @@ export function SplitExpenseDialog({
         });
       }
 
+      const resolvedHostName =
+        cleanMerchant && cleanMerchant !== "Você"
+          ? cleanMerchant
+          : profile?.name || "Anfitrião";
+
       const payload: SplitSharePayload = {
         title: description.trim() || "Racha de Despesa",
         total_cents: totalCents,
@@ -288,17 +293,25 @@ export function SplitExpenseDialog({
         people_count: peopleCount,
         guest_share_cents: summary.guestShareCents,
         host_share_cents: summary.hostShareCents,
-        participants: participants.map((name, i) => ({
-          id: `p_${i + 1}`,
-          name: name.trim() || (i === 0 ? "Você (Anfitrião)" : `Participante ${i + 1}`),
-          share_cents: summary.shares[i] ?? summary.guestShareCents,
-          is_host: i === 0,
-          is_settled: i === 0,
-          settled_cents: i === 0 ? (summary.shares[i] ?? summary.hostShareCents) : 0,
-          settled_at: i === 0 ? new Date().toISOString() : null,
-        })),
+        participants: participants.map((name, i) => {
+          const isHost = i === 0;
+          const trimmed = name.trim();
+          const cleanName = isHost
+            ? (trimmed && !trimmed.toLowerCase().includes("você") ? trimmed : resolvedHostName)
+            : (trimmed || `Participante ${i + 1}`);
+
+          return {
+            id: `p_${i + 1}`,
+            name: cleanName,
+            share_cents: summary.shares[i] ?? summary.guestShareCents,
+            is_host: isHost,
+            is_settled: isHost,
+            settled_cents: isHost ? (summary.shares[i] ?? summary.hostShareCents) : 0,
+            settled_at: isHost ? new Date().toISOString() : null,
+          };
+        }),
         remainder_policy: remainderPolicy,
-        host_name: cleanMerchant,
+        host_name: resolvedHostName,
         host_city: cleanCity,
         pix_key: pixKey.trim(),
         pix_key_type: detectedType,

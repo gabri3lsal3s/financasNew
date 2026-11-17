@@ -94,9 +94,22 @@ export function AdminSettingsPage() {
         </div>
 
         {featuresQuery.isLoading ? (
-          <div className="flex flex-col gap-3">
-            <Skeleton className="h-20 w-full rounded-2xl" />
-            <Skeleton className="h-20 w-full rounded-2xl" />
+          <div className="flex flex-col gap-3" aria-hidden="true">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="flex items-center justify-between gap-3 p-4 rounded-xl border border-border/80 bg-surface shadow-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <Skeleton className="size-9 rounded-xl shrink-0" />
+                  <div className="flex flex-col gap-1.5">
+                    <Skeleton className="h-4 w-36 sm:w-48" />
+                    <Skeleton className="h-3 w-48 sm:w-64" />
+                  </div>
+                </div>
+                <Skeleton className="h-6 w-11 rounded-full" />
+              </div>
+            ))}
           </div>
         ) : coreFeatures.length === 0 ? (
           <EmptyState

@@ -18,6 +18,8 @@ export interface ReportClassTableItem {
   currency?: string | null;
   indexType?: string | null;
   maturityDate?: string | null;
+  score?: number | null;
+  status?: string | null;
 }
 
 export interface ReportClassGroup {
@@ -235,7 +237,19 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                         ) : isInternacional ? (
                           <>
                             <td className="py-1.5 px-2.5 font-semibold text-foreground whitespace-normal break-words leading-tight text-[11px]">
-                              {sanitizeReportText(item.ticker)}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{sanitizeReportText(item.ticker)}</span>
+                                {item.score != null && (
+                                  <span className="text-[8.5px] px-1 py-0.2 rounded bg-muted/80 font-mono font-medium text-muted-foreground border border-border/50">
+                                    Nota {item.score}
+                                  </span>
+                                )}
+                                {item.status === "quarantine" && (
+                                  <span className="text-[8.5px] px-1 py-0.2 rounded bg-warning/15 font-mono font-medium text-warning-strong border border-warning/30">
+                                    Quarentena
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-1.5 px-2 text-muted-foreground whitespace-normal break-words leading-tight text-[9.5px]">
                               {sanitizeReportText(item.sector || " — ")}
@@ -267,7 +281,19 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                         ) : (
                           <>
                             <td className="py-1.5 px-2.5 font-semibold text-foreground whitespace-normal break-words leading-tight text-[11px]">
-                              {sanitizeReportText(item.ticker)}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{sanitizeReportText(item.ticker)}</span>
+                                {item.score != null && (
+                                  <span className="text-[8.5px] px-1 py-0.2 rounded bg-muted/80 font-mono font-medium text-muted-foreground border border-border/50">
+                                    Nota {item.score}
+                                  </span>
+                                )}
+                                {item.status === "quarantine" && (
+                                  <span className="text-[8.5px] px-1 py-0.2 rounded bg-warning/15 font-mono font-medium text-warning-strong border border-warning/30">
+                                    Quarentena
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-1.5 px-2 text-muted-foreground whitespace-normal break-words leading-tight text-[9.5px]">
                               {sanitizeReportText(item.sector || " — ")}

@@ -1,16 +1,16 @@
 {
-  "version": "3.8.2",
-  "versionCode": 67,
-  "releaseDate": "2026-11-17T15:43:20Z",
-  "minSupportedVersion": "3.8.2",
+  "version": "3.9.0",
+  "versionCode": 69,
+  "releaseDate": "2026-11-17T19:17:54Z",
+  "minSupportedVersion": "3.9.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "2696f72f6023163cb7ea9f5b8a053be2b3b47c74d8ecc12bd33cd7ab4651023f",
-  "fileSizeBytes": 12125391,
+  "sha256": "e961c1e24d3aaf3cb15c8ada12f66a29f31f7b2aa56d9376cb05611cef93ae14",
+  "fileSizeBytes": 12132151,
   "changelog": [
-    "Axir v3.8.1: Diferenciação de Renda Fixa (Cálculo Automático vs Fallback Manual)",
-    "Saldo de títulos com taxa contratada projetado diariamente sem pontinho de atenção manual",
-    "Indicador circular de atenção restrito exclusivamente a posições que requerem calibração ou taxa manual",
-    "Alinhamento da procedência de cotações fixed_income e closing_saved no motor canônico de investimentos",
-    "Preservação da affordance de clique para calibração rápida com extrato oficial"
+    "Axir v3.9.0: Sistema Holístico de Notas (0–10), Quarentenas e Governança de Carteira (Fase 41)",
+    "Portfolio Quality Score (PQS) ponderado por capital e distribuição por níveis de convicção",
+    "Meta Única Oficial por ativo, classe ou setor com cálculo de desvio e recomendação de aporte",
+    "Radar proativo no carrossel de investimentos para revisões vencidas, quarentenas e oportunidades",
+    "Modal de avaliação de tese e critérios por arquétipo com total responsividade mobile/tablet/desktop"
   ]
 }

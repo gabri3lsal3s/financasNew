@@ -27,3 +27,7 @@ export {
   ClaimTripMemberDialog,
   type ClaimTripMemberDialogProps,
 } from "./claim-trip-member-dialog";
+export {
+  PublicSplitIdentityBanner,
+  type PublicSplitIdentityBannerProps,
+} from "./public-split-identity-banner";

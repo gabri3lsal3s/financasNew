@@ -223,4 +223,69 @@ describe("generateMultiSheetExcelXml", () => {
     expect(xml).toContain('ss:Name="Resgates e Vendas"');
     expect(xml).toContain("Aviso Fiscal sobre Ganho de Capital e DARF (Receita Federal do Brasil):");
   });
+
+  it("deve exportar PQS no Resumo e Nota/Status Governança na Custódia (§F41)", () => {
+    const mockDataWithGov: ExcelWorkbookData = {
+      appName: "Finanças Pro",
+      generatedAt: "23/08/2026",
+      summary: {
+        totalPatrimonyBRL: 50000,
+        totalInvestedCostBRL: 40000,
+        unrealizedPnlBRL: 10000,
+        unrealizedPnlPct: 25,
+        cashBalanceBRL: 5000,
+        yearDividendsBRL: 2000,
+        freedomPct: 30,
+        savingsRatePct: 20,
+        portfolioQualityScore: 8.5,
+      },
+      positions: [
+        {
+          ticker: "WEGE3",
+          name: "WEG ON",
+          assetClass: "Ações",
+          sector: "Motores",
+          currency: "BRL",
+          quantity: 200,
+          averagePrice: 40,
+          currentPrice: 50,
+          totalValueBRL: 10000,
+          unrealizedPnlBRL: 2000,
+          unrealizedPnlPct: 25,
+          yearDividendsBRL: 300,
+          yocPct: 3.75,
+          score: 9.0,
+          allocationStatus: "active",
+        },
+        {
+          ticker: "OIBR3",
+          name: "Oi ON",
+          assetClass: "Ações",
+          sector: "Telecom",
+          currency: "BRL",
+          quantity: 1000,
+          averagePrice: 2,
+          currentPrice: 1,
+          totalValueBRL: 1000,
+          unrealizedPnlBRL: -1000,
+          unrealizedPnlPct: -50,
+          yearDividendsBRL: 0,
+          yocPct: 0,
+          score: 2.0,
+          allocationStatus: "quarantine",
+        },
+      ],
+      dividends: [],
+      dreMonthly: [],
+      debts: [],
+    };
+
+    const xml = generateMultiSheetExcelXml(mockDataWithGov);
+    expect(xml).toContain("Qualidade da Carteira (PQS 0-10)");
+    expect(xml).toContain("8.50 / 10");
+    expect(xml).toContain("Nota (0-10)");
+    expect(xml).toContain("Status Governança");
+    expect(xml).toContain("9.00");
+    expect(xml).toContain("Em Quarentena");
+  });
 });

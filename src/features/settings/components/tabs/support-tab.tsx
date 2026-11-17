@@ -84,9 +84,22 @@ export function SupportTab() {
         <CardContent className="space-y-4">
           {/* Lista de Chamados */}
           {ticketsQuery.isLoading ? (
-            <div className="space-y-3">
-              <Skeleton className="h-28 w-full rounded-2xl" />
-              <Skeleton className="h-28 w-full rounded-2xl" />
+            <div className="space-y-3" aria-hidden="true">
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="p-4 rounded-xl border border-border/80 bg-surface shadow-xs space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <Skeleton className="h-3.5 w-3/4" />
+                </div>
+              ))}
             </div>
           ) : tickets.length === 0 ? (
             <EmptyState

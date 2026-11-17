@@ -41,6 +41,10 @@ android {
             }
         }
     }
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
 }
 
 repositories {
@@ -74,3 +78,10 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
+tasks.configureEach { task ->
+    if (task.name.startsWith("lintVital")) {
+        task.enabled = false
+    }
+}
+

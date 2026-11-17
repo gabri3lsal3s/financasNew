@@ -90,12 +90,7 @@ export function FamilyPage() {
     return (
       <div className="space-y-6" data-testid="family-mode-inactive">
         <PageHeader
-          title={
-            <div className="flex items-center gap-2.5">
-              <Users className="size-5 text-muted-foreground" aria-hidden="true" />
-              <span>Modo Família</span>
-            </div>
-          }
+          title="Modo Família"
           description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
         />
 
@@ -139,12 +134,7 @@ export function FamilyPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title={
-            <div className="flex items-center gap-2.5">
-              <Users className="size-5 text-muted-foreground" aria-hidden="true" />
-              <span>Modo Família</span>
-            </div>
-          }
+          title="Modo Família"
           description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
         />
 
@@ -183,12 +173,7 @@ export function FamilyPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={
-          <div className="flex items-center gap-2.5">
-            <Users className="size-5 text-muted-foreground" aria-hidden="true" />
-            <span>Modo Família</span>
-          </div>
-        }
+        title="Modo Família"
         description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
         badge={
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -207,7 +192,7 @@ export function FamilyPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="gap-1.5"
+                className="gap-1.5 rounded-xl cursor-pointer"
                 onClick={() => {
                   setSettingsTab("members");
                   setIsSettingsOpen(true);
@@ -223,7 +208,7 @@ export function FamilyPage() {
               type="button"
               variant="outline"
               size="icon"
-              className="shrink-0"
+              className="shrink-0 rounded-xl cursor-pointer"
               onClick={() => {
                 setSettingsTab("general");
                 setIsSettingsOpen(true);

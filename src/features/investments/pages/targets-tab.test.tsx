@@ -54,41 +54,14 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
-  useAllocationPresets: () => ({
-    data: [
-      {
-        id: "p1",
-        user_id: "u1",
-        name: "Meu Cenário 50/50",
-        description: "Teste",
-        asset_targets: [
-          { asset_id: "a1", ticker: "PETR4", target_percentage: 50 },
-          { asset_id: "a2", ticker: "VALE3", target_percentage: 50 },
-        ],
-        class_targets: [{ name: "Ações", target_percentage: 100 }],
-        created_at: "2026-01-01T00:00:00Z",
-        updated_at: "2026-01-01T00:00:00Z",
-      },
-    ],
-    isLoading: false,
-    error: null,
-  }),
-  useCreateAllocationPreset: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ id: "p2" }),
-    isPending: false,
-  }),
-  useUpdateAllocationPreset: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ id: "p1" }),
-    isPending: false,
-  }),
-  useDeleteAllocationPreset: () => ({
-    mutateAsync: vi.fn().mockResolvedValue(undefined),
-    isPending: false,
-  }),
   usePortfolioAssets: () => ({
     data: [],
     isLoading: false,
     error: null,
+  }),
+  useUpdatePortfolioAsset: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
   }),
 }));
 
@@ -204,15 +177,24 @@ describe("TargetsTab — Fase 39 Normalização de Metas & Ações Rápidas", ()
     );
   });
 
-  it("renderiza a barra de cenários e permite abrir o modal de salvar cenário", async () => {
+  it("permite descartar alterações do rascunho de metas em 1 toque (Salvaguarda S24)", async () => {
     const user = userEvent.setup();
     renderTargetsTab();
 
-    expect(screen.getByText(/Salvar como cenário/i)).toBeInTheDocument();
-    await user.click(screen.getByText(/Salvar como cenário/i));
+    // Clica no botão de normalização para alterar o rascunho
+    const normalizeBtn = screen.getByRole("button", { name: /Normalizar classes para 100%/i });
+    await user.click(normalizeBtn);
 
-    expect(screen.getByText("Salvar Cenário de Alocação")).toBeInTheDocument();
-    expect(screen.getByLabelText("Nome do Cenário")).toBeInTheDocument();
+    // Barra de rascunho deve surgir
+    expect(screen.getByText(/Existem alterações não salvas no rascunho de metas/i)).toBeInTheDocument();
+    const discardBtn = screen.getByRole("button", { name: "Descartar alterações" });
+    expect(discardBtn).toBeInTheDocument();
+
+    // Clica para descartar
+    await user.click(discardBtn);
+
+    // O aviso de rascunho deve sumir e o valor original ser restaurado
+    expect(screen.queryByText(/Existem alterações não salvas no rascunho de metas/i)).not.toBeInTheDocument();
   });
 
   it("exibe barra de progresso, botão Distribuir Restante e preserva data-tour (Fase 10 / B10)", async () => {

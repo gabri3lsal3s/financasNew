@@ -525,7 +525,7 @@ export function FamilyInvitePage() {
 
             {/* Pilares Blindados de Engenharia & Zero Data Bleed */}
             <div className="space-y-3 pt-2">
-              <div className="flex items-start gap-3 p-3.5 rounded-xl border border-border/60 bg-surface-hover/30">
+              <div className="flex items-start gap-3 p-3.5 rounded-xl border border-border/80 bg-surface-subtle/50">
                 <ShieldCheck
                   className="size-5 text-positive-strong shrink-0 mt-0.5"
                   aria-hidden="true"
@@ -541,7 +541,7 @@ export function FamilyInvitePage() {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-3.5 rounded-xl border border-border/60 bg-surface-hover/30">
+              <div className="flex items-start gap-3 p-3.5 rounded-xl border border-border/80 bg-surface-subtle/50">
                 <PiggyBank
                   className="size-5 text-primary-strong shrink-0 mt-0.5"
                   aria-hidden="true"
@@ -557,7 +557,7 @@ export function FamilyInvitePage() {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-3.5 rounded-xl border border-border/60 bg-surface-hover/30">
+              <div className="flex items-start gap-3 p-3.5 rounded-xl border border-border/80 bg-surface-subtle/50">
                 <ArrowLeftRight
                   className="size-5 text-portfolio shrink-0 mt-0.5"
                   aria-hidden="true"

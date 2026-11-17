@@ -13,6 +13,7 @@ export { PortfolioMappingStep } from "./portfolio-mapping-step";
 export { TransactionFormDialog } from "./transaction-form-dialog";
 export { AssetDetailSheet } from "./asset-detail-sheet";
 export { AssetEditDialog } from "./asset-edit-dialog";
+export { AssetScoreEvaluationDialog, type AssetScoreEvaluationDialogProps } from "./asset-score-evaluation-dialog";
 export { CalibrateFixedIncomeDialog } from "./calibrate-fixed-income-dialog";
 export { FixedIncomeFormFields } from "./fixed-income-form-fields";
 export { QuickTransactionSheet } from "./quick-transaction-sheet";

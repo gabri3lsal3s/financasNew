@@ -589,9 +589,22 @@ export function RemindersPage() {
       {error ? <ErrorState message={getErrorMessage(error)} /> : null}
 
       {isLoading ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
+        <div className="flex flex-col gap-3" aria-hidden="true">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between gap-3 p-4 rounded-xl border border-border/80 bg-surface shadow-xs"
+            >
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-9 rounded-xl shrink-0" />
+                <div className="flex flex-col gap-1.5">
+                  <Skeleton className="h-4 w-36 sm:w-48" />
+                  <Skeleton className="h-3 w-28 sm:w-36" />
+                </div>
+              </div>
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
+          ))}
         </div>
       ) : !preferences.enabled ? (
         <EmptyState

@@ -8,7 +8,7 @@ import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
 import { MoneyText } from "@/components/ui/money-text";
-import { SkeletonList } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonList } from "@/components/ui/skeleton";
 import { SearchInput, Tabs } from "@/components/ui";
 import { HighlightRow, KpiCard, KpiGrid, MonthPicker, ReadOnlyBanner, SplitPreviewMockupCard, TransactionRow, UpgradeDialog } from "@/components/modules";
 import { PageHeader } from "@/components/layout";
@@ -486,9 +486,15 @@ export function TransactionListPage() {
           onRetry={() => void Promise.all([expensesQuery.refetch(), incomesQuery.refetch(), categoriesQuery.refetch(), recurrencesQuery.refetch()])}
         />
       ) : loading ? (
-        <div className="flex flex-col gap-2" data-tour="transactions-content">
-          <div data-tour="transactions-feed-card" className="w-full">
-            <SkeletonList rows={4} />
+        <div className="flex flex-col gap-3.5 sm:gap-4" data-tour="transactions-content">
+          <div data-tour="transactions-feed-card" className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden">
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 bg-surface-hover/25 border-b border-border/50">
+              <Skeleton className="h-4 w-28 rounded" />
+              <Skeleton className="h-3 w-16 rounded" />
+            </div>
+            <div className="p-3 sm:p-4">
+              <SkeletonList rows={4} />
+            </div>
           </div>
         </div>
       ) : feedGroups.length === 0 ? (

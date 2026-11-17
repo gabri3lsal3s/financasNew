@@ -1269,5 +1269,158 @@ describe("Auditoria de Invariantes & Teste de Estresse Multi-Nível (Classe -> S
       expect(result.skippedAssets.some((s) => s.ticker === "XYZW3" && s.reason === "no_price")).toBe(true);
     });
   });
+
+  describe("Fase 41 — Governança por Notas, Quarentenas & Transbordo no Aporte", () => {
+    it("ativo em quarentena recebe R$ 0,00 e é registrado em skippedAssets com reason quarantine (Salvaguarda S3)", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "healthy",
+          ticker: "ITUB4",
+          assetClass: "Ações",
+          sector: "Bancos",
+          currentValueBRL: 1000,
+          priceBRL: 30,
+          targetPercentage: null,
+          score: 10,
+          allocation_status: "active",
+        }),
+        asset({
+          id: "quarantined",
+          ticker: "OIBR3",
+          assetClass: "Ações",
+          sector: "Telecom",
+          currentValueBRL: 500,
+          priceBRL: 5,
+          targetPercentage: null,
+          score: 2,
+          allocation_status: "quarantine",
+        }),
+      ];
+
+      const result = simulateCombinedAporte({
+        aporte: 3000,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      });
+
+      // Ativo saudável recebe todo o aporte elegível
+      const routeHealthy = result.routes.find((r) => r.ticker === "ITUB4");
+      const routeQuarantine = result.routes.find((r) => r.ticker === "OIBR3");
+
+      expect(routeHealthy).toBeDefined();
+      expect(routeHealthy!.allocatedBRL).toBeGreaterThan(0);
+      expect(routeQuarantine).toBeUndefined();
+
+      // Ativo em quarentena consta no diagnóstico com reason: "quarantine"
+      const skipDiag = result.skippedAssets.find((s) => s.ticker === "OIBR3");
+      expect(skipDiag).toBeDefined();
+      expect(skipDiag!.reason).toBe("quarantine");
+      expect(skipDiag!.detail).toContain("quarentena");
+    });
+
+    it("ativo com status exit é isolado com reason exit (Salvaguarda S11)", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "exit_asset",
+          ticker: "AMER3",
+          assetClass: "Ações",
+          currentValueBRL: 200,
+          priceBRL: 1,
+          targetPercentage: 10,
+          allocation_status: "exit",
+        }),
+      ];
+
+      const result = simulateSmartAporte({
+        aporte: 1000,
+        assets,
+      });
+
+      expect(result.routes).toHaveLength(0);
+      const skipDiag = result.skippedAssets.find((s) => s.ticker === "AMER3");
+      expect(skipDiag).toBeDefined();
+      expect(skipDiag!.reason).toBe("exit");
+    });
+
+    it("distribui proporcionalmente às notas no aporte combinado (Nota 10 vs Nota 6)", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "a1",
+          ticker: "VALE3",
+          assetClass: "Ações",
+          sector: "Mineração",
+          currentValueBRL: 0,
+          priceBRL: 60,
+          targetPercentage: null,
+          score: 10,
+          allocation_status: "active",
+        }),
+        asset({
+          id: "a2",
+          ticker: "CSNA3",
+          assetClass: "Ações",
+          sector: "Mineração",
+          currentValueBRL: 0,
+          priceBRL: 12,
+          targetPercentage: null,
+          score: 6,
+          allocation_status: "active",
+        }),
+      ];
+
+      const result = simulateCombinedAporte({
+        aporte: 16000,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        sectorTargets: [{ className: "Ações", sectorName: "Mineração", targetPercentage: 100 }],
+      });
+
+      const r1 = result.routes.find((r) => r.ticker === "VALE3")!;
+      const r2 = result.routes.find((r) => r.ticker === "CSNA3")!;
+
+      expect(r1).toBeDefined();
+      expect(r2).toBeDefined();
+      // Nota 10 (10/16 = 62.5%) recebe mais do que Nota 6 (6/16 = 37.5%)
+      expect(r1.allocatedBRL).toBeGreaterThan(r2.allocatedBRL);
+      expect(result.totalAllocated).toBeLessThanOrEqual(16000);
+    });
+
+    it("setor 100% em quarentena não quebra e mantém conservação de recursos (Salvaguarda S2)", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "q1",
+          ticker: "BAD1",
+          assetClass: "Ações",
+          sector: "Ruim",
+          currentValueBRL: 100,
+          priceBRL: 10,
+          score: 0,
+          allocation_status: "quarantine",
+        }),
+        asset({
+          id: "q2",
+          ticker: "BAD2",
+          assetClass: "Ações",
+          sector: "Ruim",
+          currentValueBRL: 100,
+          priceBRL: 10,
+          score: 0,
+          allocation_status: "quarantine",
+        }),
+      ];
+
+      const result = simulateCombinedAporte({
+        aporte: 5000,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        sectorTargets: [{ className: "Ações", sectorName: "Ruim", targetPercentage: 100 }],
+      });
+
+      expect(result.routes).toHaveLength(0);
+      expect(result.totalAllocated).toBe(0);
+      expect(result.leftover).toBe(5000);
+      expect(result.skippedAssets.filter((s) => s.reason === "quarantine")).toHaveLength(2);
+    });
+  });
 });
 

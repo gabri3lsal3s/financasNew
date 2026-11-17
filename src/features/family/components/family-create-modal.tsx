@@ -83,11 +83,40 @@ export function FamilyCreateModal({
         if (!next) handleClose();
         else onOpenChange(true);
       }}
-      title="Criar Orçamento Familiar"
+      title="Criar Família"
       description="Configure o grupo compartilhado para centralizar despesas e metas da casa."
       size="md"
+      footer={
+        <ModalFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={createFamilyMutation.isPending}
+            className="rounded-xl cursor-pointer"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form="create-family-form"
+            variant="default"
+            disabled={createFamilyMutation.isPending || !name.trim()}
+            className="rounded-xl cursor-pointer"
+          >
+            {createFamilyMutation.isPending ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
+                <span>Criando…</span>
+              </>
+            ) : (
+              <span>Criar Família</span>
+            )}
+          </Button>
+        </ModalFooter>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+      <form id="create-family-form" onSubmit={handleSubmit} className="space-y-4 pt-2">
         <div className="space-y-1.5">
           <label htmlFor="create-family-name-modal" className="text-xs font-semibold text-foreground block">
             Nome da família ou casa
@@ -115,7 +144,7 @@ export function FamilyCreateModal({
             cents={budgetCents ?? 0}
             onCentsChange={(cents) => setBudgetCents(cents > 0 ? cents : null)}
             placeholder="Ex: R$ 5.000,00"
-            className="h-10 text-sm rounded-xl"
+            className="h-10 text-base sm:text-sm rounded-xl"
           />
           <span className="text-[11px] text-muted-foreground block">
             Meta global de gastos do lar para acompanhamento consolidado.
@@ -142,33 +171,6 @@ export function FamilyCreateModal({
               "Rateio proporcional às rendas dos participantes, com percentuais customizáveis e acertos via Pix."}
           </span>
         </div>
-
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={createFamilyMutation.isPending}
-            className="rounded-xl cursor-pointer"
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            variant="default"
-            disabled={createFamilyMutation.isPending || !name.trim()}
-            className="rounded-xl cursor-pointer"
-          >
-            {createFamilyMutation.isPending ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
-                <span>Criando…</span>
-              </>
-            ) : (
-              <span>Criar Família</span>
-            )}
-          </Button>
-        </ModalFooter>
       </form>
     </Modal>
   );

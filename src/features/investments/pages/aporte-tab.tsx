@@ -13,6 +13,7 @@ import {
 } from "@/domain/portfolio";
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
+import { formatCentsAsBRL } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import {
@@ -123,18 +124,19 @@ export function AporteTab({
   // Ref para guardar o valor pendente de injeção via URL
   const pendingInjectRef = useRef<number | null>(null);
 
-  // Passo 1 — Consome o parâmetro da URL e armazena em ref (sem setState no body do effect)
+  // Passo 1 — Consome o parâmetro da URL (valor ou surplusCents) e armazena em ref (sem setState no body do effect)
   useEffect(() => {
-    const raw = searchParams.get("valor");
+    const raw = searchParams.get("valor") || searchParams.get("surplusCents");
     if (raw && raw !== lastParamValorRef.current) {
       lastParamValorRef.current = raw;
       const parsed = Number(raw);
       if (Number.isFinite(parsed) && parsed > 0) {
-        // Remove silenciosamente o parâmetro 'valor' da URL
+        // Remove silenciosamente o parâmetro da URL
         setSearchParams(
           (prev) => {
             const next = new URLSearchParams(prev);
             next.delete("valor");
+            next.delete("surplusCents");
             return next;
           },
           { replace: true },
@@ -170,6 +172,9 @@ export function AporteTab({
   const classes = [...new Set(position.rows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
 
   const targetByAsset = new Map((targetsQuery.data ?? []).map((t) => [t.asset_id, t.target_percentage]));
+  const rawAssets = assetsQuery.data ?? [];
+  const rawAssetMap = new Map(rawAssets.map((a) => [a.id, a]));
+
   const classTargets: ClassTargetInput[] = (classTargetsQuery.data ?? []).map((t) => ({
     className: t.name,
     targetPercentage: t.target_percentage,
@@ -191,18 +196,23 @@ export function AporteTab({
   });
 
   const hasIndividualTargets = (targetsQuery.data ?? []).length > 0;
-  const assets: AporteAssetInput[] = nonCashRows.map((row) => ({
-    id: row.assetId,
-    ticker: row.ticker,
-    assetClass: row.assetClass,
-    sector: row.sector ?? inferSectorFromTicker(row.ticker, row.assetClass),
-    currency: row.currency,
-    currentValueBRL: row.valueBRL,
-    priceBRL: row.priceBRL,
-    targetPercentage: targetByAsset.has(row.assetId)
-      ? targetByAsset.get(row.assetId)!
-      : (hasIndividualTargets ? 0 : null),
-  }));
+  const assets: AporteAssetInput[] = nonCashRows.map((row) => {
+    const raw = rawAssetMap.get(row.assetId);
+    return {
+      id: row.assetId,
+      ticker: row.ticker,
+      assetClass: row.assetClass,
+      sector: row.sector ?? inferSectorFromTicker(row.ticker, row.assetClass),
+      currency: row.currency,
+      currentValueBRL: row.valueBRL,
+      priceBRL: row.priceBRL,
+      score: raw?.score ?? null,
+      allocation_status: raw?.allocation_status ?? "active",
+      targetPercentage: targetByAsset.has(row.assetId)
+        ? targetByAsset.get(row.assetId)!
+        : (hasIndividualTargets ? 0 : null),
+    };
+  });
 
   const result =
     aporteCents > 0 && assets.length > 0
@@ -342,7 +352,7 @@ export function AporteTab({
                   }}
                   className="self-start text-[11px] text-portfolio hover:underline font-medium cursor-pointer pt-0.5"
                 >
-                  Usar saldo em caixa (R$ {position.cashBRL.toFixed(2)})
+                  Usar saldo em caixa ({formatCentsAsBRL(Math.round(position.cashBRL * 100))})
                 </button>
               ) : null}
             </label>

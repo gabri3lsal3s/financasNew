@@ -534,7 +534,7 @@ export function FamilySettingsDialog({
                 </div>
 
                 {family?.split_rule === "proportional" && (
-                  <div className="space-y-2 pt-2 border-t border-border/60">
+                  <div className="space-y-2 pt-2 border-t border-border/80">
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-semibold text-foreground">
                         Minha cota de participação na casa
@@ -743,7 +743,7 @@ export function FamilySettingsDialog({
 
                 {/* Convites Pendentes */}
                 {pendingInvites.length > 0 && (
-                  <div className="pt-3 border-t border-border/60 space-y-2">
+                  <div className="pt-3 border-t border-border/80 space-y-2">
                     <span className="text-xs font-semibold text-foreground block">
                       Convites Pendentes ({pendingInvites.length})
                     </span>
@@ -795,7 +795,7 @@ export function FamilySettingsDialog({
           )}
 
           {/* Zona de Ações: Sair ou Excluir */}
-          <div className="pt-3 border-t border-border/60 flex justify-end">
+          <div className="pt-3 border-t border-border/80 flex justify-end">
             {isOwner ? (
               <Button
                 type="button"

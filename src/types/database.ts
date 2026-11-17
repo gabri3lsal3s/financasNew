@@ -1,6 +1,5 @@
 import type {
   AccessInvite,
-  AllocationPreset,
   AllocationTarget,
   AssetPrice,
   AuditEvent,
@@ -104,7 +103,6 @@ export interface Database {
       portfolio_monthly_prices: Table<PortfolioMonthlyPrice>;
       portfolio_transactions: Table<PortfolioTransaction>;
       allocation_targets: Table<AllocationTarget>;
-      allocation_presets: Table<AllocationPreset>;
       class_targets: Table<GroupTarget>;
       sector_targets: Table<GroupTarget>;
       asset_prices: Table<AssetPrice>;

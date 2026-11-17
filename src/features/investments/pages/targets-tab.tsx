@@ -1,12 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Save } from "lucide-react";
-import { Alert, Button, EmptyState, ErrorState, SkeletonList, SkeletonTable, Tabs } from "@/components/ui";
-import { PresetSelectorBar, SavePresetDialog } from "@/components/modules";
+import { Alert, Button, EmptyState, ErrorState, Tabs, TargetsSkeleton } from "@/components/ui";
 import {
-  SYSTEM_PRESET_TEMPLATES,
-  applyPresetToPosition,
-  createPresetSnapshot,
   distributeEquallyTargets,
   inferSectorFromTicker,
   mirrorCurrentPositionTargets,
@@ -21,21 +17,18 @@ import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import type { PortfolioAsset } from "@/types";
 import {
-  useAllocationPresets,
   useAllocationTargets,
-  useCreateAllocationPreset,
-  useDeleteAllocationPreset,
   useGroupTargets,
   usePortfolioAssets,
   usePortfolioPosition,
   useRemoveGroupTarget,
   useSaveAllocationTargets,
   useSaveGroupTarget,
-  useUpdateAllocationPreset,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import { AllocationBreakdownDialog, AssetDetailSheet } from "../components";
+import { AllocationBreakdownDialog, AssetDetailSheet, AssetScoreEvaluationDialog } from "../components";
 import { TargetAssetsCard, TargetClassesCard, TargetSectorsCard } from "../components/targets";
 
 /**
@@ -54,17 +47,12 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
-  const presetsQuery = useAllocationPresets();
 
   const saveTargets = useSaveAllocationTargets();
   const saveClassTarget = useSaveGroupTarget("class");
   const removeClassTarget = useRemoveGroupTarget("class");
   const saveSectorTarget = useSaveGroupTarget("sector");
   const removeSectorTarget = useRemoveGroupTarget("sector");
-
-  const createPreset = useCreateAllocationPreset();
-  const updatePreset = useUpdateAllocationPreset();
-  const deletePreset = useDeleteAllocationPreset();
   const assetsQuery = usePortfolioAssets();
 
   // Estados locais dos rascunhos de metas
@@ -82,8 +70,6 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     ? (assetsQuery.data ?? []).find((a) => a.id === assetDetailId) ?? null
     : null;
 
-  const [selectedPresetId, setSelectedPresetId] = useState<string | null>("official");
-  const [savePresetOpen, setSavePresetOpen] = useState(false);
   const [savingClass, setSavingClass] = useState<string | null>(null);
   const [savingSector, setSavingSector] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -132,14 +118,27 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     activeSectorClass,
   );
 
-  const assetRows = position.rows.map((row) => ({
-    key: row.assetId,
-    label: row.ticker,
-    assetClass: row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
-    detail: `${formatCentsAsBRL(numberToCents(row.valueBRL))} · ${row.pct.toFixed(1)}% hoje`,
-    target: assetTargetOf(row.assetId),
-    currentPct: row.pct,
-  }));
+  const [evaluatingAsset, setEvaluatingAsset] = useState<PortfolioAsset | null>(null);
+
+  const assetMap = useMemo(
+    () => new Map((assetsQuery.data ?? []).map((a) => [a.id, a])),
+    [assetsQuery.data],
+  );
+
+  const assetRows = position.rows.map((row) => {
+    const asset = assetMap.get(row.assetId);
+    return {
+      key: row.assetId,
+      label: row.ticker,
+      assetClass: row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
+      detail: `${formatCentsAsBRL(numberToCents(row.valueBRL))} · ${row.pct.toFixed(1)}% hoje`,
+      target: assetTargetOf(row.assetId),
+      currentPct: row.pct,
+      score: asset?.score ?? 8,
+      allocationStatus: asset?.allocation_status ?? "active",
+      onEvaluate: asset ? () => setEvaluatingAsset(asset) : undefined,
+    };
+  });
 
   const assetSum = validateTargetsSum(assetRows.map((r) => ({ target: r.target })));
 
@@ -557,163 +556,37 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     triggerSensory("selection");
   };
 
-  // Gerenciamento de Presets / Cenários
-  const userPresets = presetsQuery.data ?? [];
-  const allTemplates = SYSTEM_PRESET_TEMPLATES;
-  const currentActiveUserPreset = userPresets.find((p) => p.id === selectedPresetId);
-  const currentActiveTemplate = allTemplates.find((t) => t.id === selectedPresetId);
+  // Rascunho Local & Descarte em 1 Toque (Salvaguarda S24 / Meta Única Oficial)
+  const hasDraftChanges =
+    Object.keys(classDraft).length > 0 ||
+    Object.keys(sectorDraft).length > 0 ||
+    Object.keys(assetDraft).length > 0;
 
-  const activePresetName = selectedPresetId === "official"
-    ? "Estratégia Atual (Oficial)"
-    : currentActiveUserPreset?.name ?? currentActiveTemplate?.name ?? "Cenário Simulado";
-
-  const activePresetDescription = selectedPresetId === "official"
-    ? "Metas vigentes gravadas na sua carteira."
-    : currentActiveUserPreset?.description ?? currentActiveTemplate?.description;
-
-  const isSimulating = selectedPresetId !== "official";
-
-  const handleSelectPreset = (presetId: string) => {
+  const handleDiscardDraft = () => {
+    setClassDraft({});
+    setSectorDraft({});
+    setAssetDraft({});
     setError(null);
     setSaved(false);
-    setSelectedPresetId(presetId);
-
-    if (presetId === "official") {
-      setAssetDraft({});
-      setClassDraft({});
-      setSectorDraft({});
-      triggerSensory("selection");
-      return;
-    }
-
-    const template = SYSTEM_PRESET_TEMPLATES.find((t) => t.id === presetId);
-    if (template) {
-      const applied = applyPresetToPosition(
-        template,
-        position.rows.map((r) => ({
-          assetId: r.assetId,
-          ticker: r.ticker,
-          assetClass: r.assetClass,
-          pct: r.pct,
-        })),
-      );
-      setClassDraft(applied.classDraft);
-      setAssetDraft(applied.assetDraft);
-      triggerSensory("selection");
-      return;
-    }
-
-    const userPreset = userPresets.find((p) => p.id === presetId);
-    if (userPreset) {
-      const applied = applyPresetToPosition(
-        userPreset,
-        position.rows.map((r) => ({
-          assetId: r.assetId,
-          ticker: r.ticker,
-          assetClass: r.assetClass,
-          pct: r.pct,
-        })),
-      );
-      setClassDraft(applied.classDraft);
-      setAssetDraft(applied.assetDraft);
-      triggerSensory("selection");
-    }
-  };
-
-  const handleResetToOfficial = () => {
-    handleSelectPreset("official");
-  };
-
-  const handleSaveNewPreset = async (name: string, description?: string | null) => {
-    if (isReadOnlyMode) {
-      guardAction(() => {}, "Salvar Cenário de Alocação");
-      return;
-    }
-    const snapshot = createPresetSnapshot({
-      name,
-      description,
-      assetRows: position.rows.map((r) => ({
-        assetId: r.assetId,
-        ticker: r.ticker,
-        target: assetTargetOf(r.assetId),
-      })),
-      classRows: classes.map((c) => ({
-        name: c,
-        target: classTargetOf(c),
-      })),
-    });
-
-    const result = await createPreset.mutateAsync({
-      name: snapshot.name,
-      description: snapshot.description ?? undefined,
-      class_targets: snapshot.class_targets,
-      asset_targets: snapshot.asset_targets,
-    });
-    setSelectedPresetId(result.id);
-    triggerSensory("success");
-    pushToast({ title: `Cenário "${name}" salvo!`, variant: "success" });
-  };
-
-  const handleOverwritePreset = async () => {
-    if (isReadOnlyMode) {
-      guardAction(() => {}, "Atualizar Cenário de Alocação");
-      return;
-    }
-    if (!currentActiveUserPreset) return;
-
-    const snapshot = createPresetSnapshot({
-      name: currentActiveUserPreset.name,
-      description: currentActiveUserPreset.description,
-      assetRows: position.rows.map((r) => ({
-        assetId: r.assetId,
-        ticker: r.ticker,
-        target: assetTargetOf(r.assetId),
-      })),
-      classRows: classes.map((c) => ({
-        name: c,
-        target: classTargetOf(c),
-      })),
-    });
-
-    await updatePreset.mutateAsync({
-      id: currentActiveUserPreset.id,
-      input: {
-        name: snapshot.name,
-        description: snapshot.description,
-        class_targets: snapshot.class_targets,
-        asset_targets: snapshot.asset_targets,
-      },
-    });
-    triggerSensory("success");
-    pushToast({ title: `Cenário "${currentActiveUserPreset.name}" atualizado!`, variant: "success" });
-  };
-
-  const handleDeletePreset = async (id: string) => {
-    if (isReadOnlyMode) {
-      guardAction(() => {}, "Excluir Cenário de Alocação");
-      return;
-    }
-    await deletePreset.mutateAsync(id);
-    if (selectedPresetId === id) {
-      handleSelectPreset("official");
-    }
     triggerSensory("selection");
-    pushToast({ title: "Cenário excluído.", variant: "default" });
+    pushToast({
+      title: "Alterações descartadas",
+      description: "Valores restaurados para a meta oficial salva no banco.",
+      variant: "default",
+    });
   };
 
   const loading =
     position.isLoading ||
     targetsQuery.isLoading ||
     classTargetsQuery.isLoading ||
-    sectorTargetsQuery.isLoading ||
-    presetsQuery.isLoading;
+    sectorTargetsQuery.isLoading;
 
   const loadError =
     position.error ??
     targetsQuery.error ??
     classTargetsQuery.error ??
-    sectorTargetsQuery.error ??
-    presetsQuery.error;
+    sectorTargetsQuery.error;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const paramSubTab = searchParams.get("subtab");
@@ -749,7 +622,6 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
           message={getErrorMessage(loadError)}
           onRetry={() => {
             position.refetch();
-            void presetsQuery.refetch();
             void targetsQuery.refetch();
             void classTargetsQuery.refetch();
             void sectorTargetsQuery.refetch();
@@ -759,37 +631,28 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
-      {/* Barra de Controle de Cenários / Presets */}
-      {position.rows.length > 0 ? (
-        <PresetSelectorBar
-          userPresets={presetsQuery.data ?? []}
-          selectedPresetId={selectedPresetId}
-          onSelectPreset={handleSelectPreset}
-          onSaveNewPreset={() => setSavePresetOpen(true)}
-          onOverwritePreset={currentActiveUserPreset ? () => void handleOverwritePreset() : undefined}
-          onDeletePreset={(id) => void handleDeletePreset(id)}
-          onResetToOfficial={handleResetToOfficial}
-          isSimulating={isSimulating}
-          activePresetName={activePresetName}
-          activePresetDescription={activePresetDescription}
-        />
+      {/* Barra de Rascunho & Descarte (Salvaguarda S24) */}
+      {hasDraftChanges ? (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl border border-warning/20 bg-warning/10">
+          <span className="text-xs sm:text-sm font-medium text-warning-strong">
+            Existem alterações não salvas no rascunho de metas.
+          </span>
+          <div className="flex items-center gap-2 self-stretch sm:self-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDiscardDraft}
+              className="flex-1 sm:flex-none cursor-pointer"
+            >
+              Descartar alterações
+            </Button>
+          </div>
+        </div>
       ) : null}
 
-      {/* Diálogo para salvar novo cenário */}
-      <SavePresetDialog
-        open={savePresetOpen}
-        onOpenChange={setSavePresetOpen}
-        onSave={handleSaveNewPreset}
-        assetCount={assetRows.filter((r) => r.target > 0).length}
-        classCount={classRows.filter((r) => r.target > 0).length}
-        saving={createPreset.isPending}
-      />
-
       {loading ? (
-        <div data-tour="targets-classes-card" className="flex flex-col gap-3" aria-hidden="true">
-          <SkeletonList rows={4} />
-          <SkeletonTable rows={3} />
-        </div>
+        <TargetsSkeleton />
       ) : position.rows.length === 0 ? (
         <EmptyState
           icon={<Save className="size-6" aria-hidden="true" />}
@@ -931,6 +794,15 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
           asset={detailAsset}
         />
       ) : null}
+
+      {/* Avaliação de Tese & Nota Holística */}
+      <AssetScoreEvaluationDialog
+        open={evaluatingAsset !== null}
+        onOpenChange={(open) => {
+          if (!open) setEvaluatingAsset(null);
+        }}
+        asset={evaluatingAsset}
+      />
 
       {upgradeModal}
     </div>

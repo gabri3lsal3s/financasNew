@@ -8,6 +8,28 @@ import * as publicShareQuery from "@/state/queries/use-public-shares";
 import * as toastService from "@/services/toast";
 import type { PublicShare } from "@/types";
 
+const mockSignalMutateAsync = vi.fn().mockResolvedValue({ success: true });
+const mockSaveSplitMutateAsync = vi.fn().mockResolvedValue({ success: true });
+
+vi.mock("@/state", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/state")>();
+  return {
+    ...actual,
+    useSignalSplitPayment: () => ({
+      mutateAsync: mockSignalMutateAsync,
+      isPending: false,
+    }),
+    useSaveSplitExpense: () => ({
+      mutateAsync: mockSaveSplitMutateAsync,
+      isPending: false,
+    }),
+    useCategories: () => ({
+      data: [],
+      isLoading: false,
+    }),
+  };
+});
+
 vi.mock("@/state/queries/use-public-shares");
 vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),
@@ -184,10 +206,59 @@ describe("SplitPublicPage (/r/:token)", () => {
 
     renderPage();
 
-    expect(screen.getByText("Divisão entre os participantes")).toBeInTheDocument();
-    expect(screen.getByText("Gabriel (Anfitriao)")).toBeInTheDocument();
-    expect(screen.getByText("Mariana")).toBeInTheDocument();
-    expect(screen.getByText("Lucas")).toBeInTheDocument();
+    const divisionSection = screen.getByText("Divisão entre os participantes").closest("div")!;
+    expect(divisionSection).toBeInTheDocument();
+    expect(screen.getAllByText("Gabriel (Anfitriao)").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Mariana").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Lucas").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("permite ao visitante selecionar sua identidade e envia sinal nominativo ao clicar em Já fiz o Pix", async () => {
+    const user = userEvent.setup();
+    window.localStorage.clear();
+
+    vi.spyOn(publicShareQuery, "usePublicShare").mockReturnValue({
+      data: mockPublicShare,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof publicShareQuery.usePublicShare>);
+
+    renderPage();
+
+    // Estado inicial: exibe banner "Quem é você neste racha?"
+    expect(screen.getByText("Quem é você neste racha?")).toBeInTheDocument();
+
+    // Seleciona o participante Mariana
+    const marianaBtn = screen.getByRole("button", { name: "Mariana" });
+    await user.click(marianaBtn);
+
+    // Deve exibir o badge de confirmação e persistir no localStorage
+    expect(screen.getByText("Você é Mariana")).toBeInTheDocument();
+    expect(window.localStorage.getItem("axis_guest_split_abc12345")).toBe("p_2");
+
+    // Ao clicar em "Já fiz o Pix", envia sinal nominativo
+    const notifyBtn = screen.getByRole("button", {
+      name: /Avisar ao anfitrião que você já realizou o pagamento via Pix/i,
+    });
+    await user.click(notifyBtn);
+    expect(mockSignalMutateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: "abc12345",
+        participantName: "Mariana",
+        participantId: "p_2",
+      })
+    );
+    expect(toastService.pushToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Aviso enviado ao anfitrião!",
+      })
+    );
+
+    // Permite alterar a identidade
+    const changeBtn = screen.getByRole("button", { name: /Alterar/i });
+    await user.click(changeBtn);
+    expect(screen.getByText("Quem é você neste racha?")).toBeInTheDocument();
+    expect(window.localStorage.getItem("axis_guest_split_abc12345")).toBeNull();
   });
 
   it("exibe cartao de auto-onboarding com link para criacao de conta", () => {

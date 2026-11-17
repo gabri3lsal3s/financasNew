@@ -24,9 +24,10 @@
  * Motor puro — sem import de UI/Supabase; valores em reais (2 casas).
  */
 
-import type { AssetCurrency } from "@/types";
+import type { AssetAllocationStatus, AssetCurrency } from "@/types";
 import { isFixedIncomeClass, isTesouroAsset, normalizeClassName } from "./valuation";
 import { inferSectorFromTicker } from "./tickers-catalog";
+import { deriveAssetWeightsFromScores } from "./allocation";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -45,7 +46,9 @@ export type SkippedReason =
   | "no_price"
   | "no_target"
   | "above_target"
-  | "price_exceeds_budget";
+  | "price_exceeds_budget"
+  | "quarantine"
+  | "exit";
 
 export interface SkippedAssetDiagnostic {
   assetId: string;
@@ -93,6 +96,10 @@ export interface AporteAssetInput {
   averageCost?: number;
   /** Meta individual (% do patrimônio) — null = sem meta. */
   targetPercentage: number | null;
+  /** Nota de governança fundamentalista (0 a 10). */
+  score?: number | null;
+  /** Status de alocação operacional (active, neutral, quarantine, exit). */
+  allocation_status?: AssetAllocationStatus;
   /** Indica se aceita compra fracionária (override manual). */
   isFractional?: boolean;
 }
@@ -414,7 +421,9 @@ export function simulateAporte(opts: {
   if (opts.mode === "asset") {
     // Modo individual: cada ativo usa sua meta direta
     for (const asset of opts.assets) {
-      if (asset.targetPercentage !== null && asset.targetPercentage !== undefined) {
+      if (asset.allocation_status === "quarantine" || asset.allocation_status === "exit") {
+        effectiveAssetMap.set(asset.id, { targetPct: 0, targetValueBRL: 0, gapBRL: 0 });
+      } else if (asset.targetPercentage !== null && asset.targetPercentage !== undefined) {
         const targetPct = nonNegative(asset.targetPercentage);
         const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
         const gapBRL = targetPct > 0 ? round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL))) : 0;
@@ -425,7 +434,9 @@ export function simulateAporte(opts: {
     // Se mode === "both", metas individuais são consideradas prioritariamente (incluindo 0%)
     if (opts.mode === "both") {
       for (const asset of opts.assets) {
-        if (asset.targetPercentage !== null && asset.targetPercentage !== undefined) {
+        if (asset.allocation_status === "quarantine" || asset.allocation_status === "exit") {
+          effectiveAssetMap.set(asset.id, { targetPct: 0, targetValueBRL: 0, gapBRL: 0 });
+        } else if (asset.targetPercentage !== null && asset.targetPercentage !== undefined) {
           const targetPct = nonNegative(asset.targetPercentage);
           const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
           const gapBRL = targetPct > 0 ? round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL))) : 0;
@@ -471,20 +482,23 @@ export function simulateAporte(opts: {
 
           const remainingSectorPct = Math.max(0, sectorEffectiveTargetPct - assignedInSector);
           if (remainingSectorPct > 0) {
-            const sharePerMember = remainingSectorPct / unassignedMembers.length;
-            for (const member of unassignedMembers) {
-              const targetPct = round2(sharePerMember);
+            // Governança por Notas (Fase 41): pondera pelos scores e isola quarentenas
+            const weightedMembers = deriveAssetWeightsFromScores(unassignedMembers);
+            for (const member of weightedMembers) {
+              const targetPct = round2(remainingSectorPct * member.weightInSector);
               const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
               const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(member.currentValueBRL)));
-              if (targetPct > 0) {
+              if (targetPct > 0 && member.isEligible) {
                 effectiveAssetMap.set(member.id, { targetPct, targetValueBRL, gapBRL });
+              } else {
+                effectiveAssetMap.set(member.id, { targetPct: 0, targetValueBRL: 0, gapBRL: 0 });
               }
             }
           }
         }
       }
 
-      // Fallback para membros da classe que ficaram sem meta (equiponderação do restante da classe)
+      // Fallback para membros da classe que ficaram sem meta (ponderação por notas da classe)
       const allClassMembers = assetsByClass.get(className) ?? [];
       const remainingUnassigned = allClassMembers.filter((m) => !effectiveAssetMap.has(m.id));
       if (remainingUnassigned.length > 0) {
@@ -494,13 +508,15 @@ export function simulateAporte(opts: {
 
         const remainingClassPct = Math.max(0, classTargetPct - assignedClassPct);
         if (remainingClassPct > 0) {
-          const sharePerMember = remainingClassPct / remainingUnassigned.length;
-          for (const member of remainingUnassigned) {
-            const targetPct = round2(sharePerMember);
+          const weightedMembers = deriveAssetWeightsFromScores(remainingUnassigned);
+          for (const member of weightedMembers) {
+            const targetPct = round2(remainingClassPct * member.weightInSector);
             const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
             const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(member.currentValueBRL)));
-            if (targetPct > 0) {
+            if (targetPct > 0 && member.isEligible) {
               effectiveAssetMap.set(member.id, { targetPct, targetValueBRL, gapBRL });
+            } else {
+              effectiveAssetMap.set(member.id, { targetPct: 0, targetValueBRL: 0, gapBRL: 0 });
             }
           }
         }
@@ -514,7 +530,25 @@ export function simulateAporte(opts: {
   for (const asset of opts.assets) {
     const eff = effectiveAssetMap.get(asset.id);
     const sector = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, asset.assetClass);
-    if (!eff || eff.targetPct <= 0) {
+    if (asset.allocation_status === "quarantine") {
+      skippedAssets.push({
+        assetId: asset.id,
+        ticker: asset.ticker,
+        assetClass: asset.assetClass,
+        sector,
+        reason: "quarantine",
+        detail: "Ativo em quarentena de fundamentos. Novos aportes congelados.",
+      });
+    } else if (asset.allocation_status === "exit") {
+      skippedAssets.push({
+        assetId: asset.id,
+        ticker: asset.ticker,
+        assetClass: asset.assetClass,
+        sector,
+        reason: "exit",
+        detail: "Ativo com tese encerrada (Desinvestimento). Aportes bloqueados.",
+      });
+    } else if (!eff || eff.targetPct <= 0) {
       skippedAssets.push({
         assetId: asset.id,
         ticker: asset.ticker,

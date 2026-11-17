@@ -1,5 +1,43 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.9.0 (Plano 41)** registra a conclusão integral do **Sistema Holístico de Notas, Quarentenas, PQS e Meta Única Oficial de Carteira** ([`docs/plans/41_PLANO_SISTEMA_NOTAS_REBALANCEAMENTO_INTELIGENTE_E_GOVERNANCA_CARTEIRA.md`](../plans/41_PLANO_SISTEMA_NOTAS_REBALANCEAMENTO_INTELIGENTE_E_GOVERNANCA_CARTEIRA.md)) (2026-11-17):
+> - **(1) Schema, Migração SQL e Tipagem Canônica (Fase 1)**:
+>   - Migração `20260101000125_portfolio_asset_scoring_and_governance.sql` adicionando `score`, `allocation_status` (`active`, `neutral`, `quarantine`, `exit`), `score_criteria`, `last_reviewed_at`, `review_frequency_months` e `thesis_summary` em `portfolio_assets` com políticas RLS e validação;
+>   - Contratos de domínio em `src/types/schema.ts`, `src/types/database.ts` e repositório `src/data/repositories/portfolio.ts`.
+> - **(2) Motores Matemáticos Puros no Domínio (Fase 2)**:
+>   - `src/domain/portfolio/allocation.ts`: cálculo de nota (0–10), *Portfolio Quality Score* (PQS) ponderado por capital, níveis de convicção, critérios por arquétipo, derivação de status e hierarquia de **Meta Única Oficial** (`ativo` > `setor` > `classe`);
+>   - `src/domain/portfolio/aporte.ts`: motor de cálculo de aporte inteligente respeitando notas, quarentenas e prioridades da Meta Única Oficial;
+>   - `src/domain/portfolio/asset-governance-insights.ts`: radar proativo identificando revisões vencidas, ativos em quarentena e oportunidades de aporte com desconto em ativos de alta convicção.
+> - **(3) Estado Reativo & TanStack Query (Fase 3)**:
+>   - Mutação `useUpdatePortfolioAsset` e hook reativo `useAssetGovernanceInsights` exportados em `src/state/` com invalidação atômica de `portfolio-assets`, `portfolio-position` e `portfolio-targets`.
+> - **(4) Interface PQS, Calibração de Tese e Metas (Fases 4 & 5)**:
+>   - `AssetScoreEvaluationDialog`: modal responsivo de avaliação de critérios por arquétipo, tese resumida e frequência de revisão (com estado isolado por chave sem efeitos síncronos);
+>   - `TargetEditor`, `TargetsTab` e `AporteTab`: badges de nota/status, gatilhos de avaliação rápida e editor unificado sem presets legados redundantes;
+>   - `AssetDetailSheet`: seção "Tese & Governança do Ativo" com contagem regressiva de revisão e acesso direto à avaliação;
+>   - `PortfolioExecutiveReport`: gauge de PQS e distribuição da carteira por faixas de convicção;
+>   - `PortfolioInsightsCarousel`: slides de governança em estrita conformidade com a Regra 19 (altura uniforme, 2 linhas de texto e badges padrão).
+> - **(5) Portões de Qualidade & Distribuição 100% Verdes**:
+>   - `npm run typecheck` (`tsc -b`): 0 erros; `npm run lint` (`eslint .`): 0 erros e 0 avisos;
+>   - Suíte completa Vitest: **640 arquivos / 6.369 testes 100% aprovados**;
+>   - Build de produção Web, PWA e APK Android release (v3.9.0) compilados com sucesso.
+
+> **v3.8.3 (Fase 42)** registra a conclusão integral do **Refinamento Visual, Consistência de Superfícies e Ergonomia de Modais do Modo Família** (2026-11-17):
+> - **(1) Padronização Estrita de Superfícies e Bordas (Regras 13 e 16 de `AGENTS.md`)**:
+>   - Unificação canônica de superfícies e bordas de todos os cards analíticos do Modo Família (`HouseholdCeilingCard`, `HouseholdCombinedFlowCard`, `HouseholdBalanceCard`, `HouseholdComparisonCard`, `HouseholdClusteringRanking`, `HouseholdExpenseFeed`, `HouseholdWealthCard`) para a trinca canônica `border-border/80`, `bg-surface-subtle/50` e `shadow-xs`;
+>   - Trilha de consumo de renda e metas de reserva padronizadas para `bg-muted/60 overflow-hidden`;
+>   - Unificação dos contêineres de ícones de categorias (`CategoryIcon`) no ranking e no extrato de despesas da família para o padrão oficial do design system: `size-8 rounded-xl bg-surface-muted/60 border border-border/80 shrink-0`.
+> - **(2) Ergonomia Canônica de Modais e Diálogos (Regras 18, 20 e 26 de `AGENTS.md`)**:
+>   - `FamilyCreateModal`, `FamilySettingsDialog`, `FamilySettlementDialog` e `FamilyShareAssetsDialog` migrados para usar a prop `footer` do primitivo `<Modal>` (com `<ModalFooter>`), eliminando overflow aninhado e garantindo a barra de controle minimalista fluida no mobile;
+>   - Eliminação de risco de auto-zoom no iOS Safari (Regra 20) com campos de input e select utilizando `text-base sm:text-sm`;
+>   - Lazy mount de queries patrimoniais em `FamilyShareAssetsDialog`, prevenindo disparos ociosos de consultas de ativos quando o modal estiver fechado.
+> - **(3) Conformidade Estrita em Toda a Experiência Mobile & Desktop**:
+>   - Visual e hierarquia harmonizados tanto no modo "Finanças Conjuntas" (Caixa Único) quanto no modo "Divisão de Despesas" (Rateio 50/50 e Proporcional);
+>   - Botões de ação do `PageHeader` com cantos suaves `rounded-xl cursor-pointer` e zero concorrência visual.
+> - **(4) Quality Gates 100% Verdes**:
+>   - 157 testes automatizados de domínio e UI do Modo Família aprovados com 100% de sucesso;
+>   - Zero erros de TypeScript (`tsc -b`) e zero erros ou alertas de ESLint;
+>   - Build de produção Web, manifesto PWA e APK Android release compilados com sucesso.
+>
 > **v3.8.2 (Fase 41)** registra a conclusão integral da **Consolidação Definitiva do Motor Canônico e Erradicação de Duplicações em Investimentos** ([`docs/plans/41_PLANO_CONSOLIDACAO_DEFINITIVA_MOTOR_CANONICO_E_ERRADICACAO_DUPLICACOES.md`](../plans/41_PLANO_CONSOLIDACAO_DEFINITIVA_MOTOR_CANONICO_E_ERRADICACAO_DUPLICACOES.md)) (2026-11-17):
 > - **(1) Emagrecimento Radical de `point-in-time.ts` (-555 linhas)**:
 >   - Transformado em adapter levíssimo de ~140 linhas delegando integralmente para o motor canônico `evaluatePortfolioCanonicalState({ mode: "point_in_time", ... })`;
@@ -479,6 +517,20 @@
 >   - Ferramenta de verificação de integridade contra corrupção e manual de Disaster Recovery Plan (DRP) integrado;
 > - **(6) Portões de Qualidade & Conformidade 100% Verdes**:
 >   - Typecheck (`tsc -b`): 0 erros; Lint: 0 erros e 0 warnings; Novos testes unitários (`require-admin-session.test.tsx`, `apk-beta-restricted-modal.test.tsx`, `admin-login-page.test.tsx`) 100% aprovados; Build de produção Vite e PWA gerados com sucesso.
+>
+> **v3.8.3 (Build 47)** registra as **Melhorias de UI/UX no Racha de Despesas, Identificação de Convidado sem Anfitrião Genérico e Card de Rachas nas Transações** (2026-11-17):
+> - **(1) Ergonomia e UI/UX na Página Pública de Racha (`/r/:token`)**:
+>   - Reposicionamento do card de auto-onboarding institucional (*"Divida despesas com elegância"*) para o rodapé da página, garantindo foco total no racha e pagamento Pix;
+>   - Botões de conversão com altura `h-10`, cantos arredondados padronizados e tipografia alinhada ao design system;
+>   - Alívio visual com paddings responsivos generosos nos cards de parcelas (`p-3 sm:p-3.5`) e participantes (`p-2 sm:p-3`).
+> - **(2) Identificação de Convidado ("Quem é você neste racha?")**:
+>   - `PublicSplitIdentityBanner` e hook reativo `usePublicSplitGuestIdentity` com persistência em `localStorage` (`axis_guest_split_${token}`);
+>   - Remoção do texto confuso `"Você (Anfitrião)"` para convidados; anfitrião exibido com nome real e badge `(Organizador)` / `[Anfitrião]`;
+>   - Convidado identificado vê *"Você é [Nome]"* com botão *"Alterar"*, visualiza sua cota/parcelas e envia avisos de Pix nominativos (`participantId` e `participantName`).
+> - **(3) Card de Rachas nas Transações (`ActiveSplitsCard`)**:
+>   - Modo compacto/arquivado sutil quando todos os rachas do mês estão quitados, exibindo badge `"Todos quitados"` e botão `"Ver arquivados"`;
+>   - Expansão dinâmica com botão `"Recolher"`;
+>   - Ordenação estrita: pendentes primeiro (por vencimento mais próximo), seguidos de quitados/arquivados (por quitação mais recente).
 >
 > **v3.0.17 (Build 46)** registra a **Otimização do Onboarding, Atratividade da Assinatura e Gestão do Ciclo de Vida do Período de Testes (Trial 30 dias)** (2026-11-09):
 > - **(1) Acolhimento Unificado por Metas no Primeiro Acesso (FTUX — `WelcomeModal`)**:

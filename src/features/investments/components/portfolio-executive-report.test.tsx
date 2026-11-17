@@ -25,6 +25,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  usePortfolioAssets: () => ({
+    data: [],
+    isLoading: false,
+  }),
 }));
 
 vi.mock("./monthly-closing-editor", () => ({

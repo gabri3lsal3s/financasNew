@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
-import { Coins, DollarSign, Inbox, PieChart, Plus, TrendingDown, TrendingUp } from "lucide-react";
+import { Coins, DollarSign, Inbox, PieChart, Plus, ShieldAlert, TrendingDown, TrendingUp } from "lucide-react";
 import { Badge, Button, EmptyState, ErrorState, MoneyText, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
-import { useUpdateCustomSettings, useUserAccess, useUserPreferences } from "@/state";
+import { useAssetGovernanceInsights, useUpdateCustomSettings, useUserAccess, useUserPreferences } from "@/state";
 import {
   CategoryDonut,
   DashboardAlertsCarousel,
@@ -168,6 +168,7 @@ export function OverviewPage() {
 
 
   const userPreferencesQuery = useUserPreferences();
+  const govInsights = useAssetGovernanceInsights();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
   const hasDismissedInSettings = Boolean(
     userPreferencesQuery.data?.custom_settings?.hasDismissedAndroidProBanner,
@@ -524,6 +525,51 @@ export function OverviewPage() {
               className="shrink-0 self-stretch sm:self-center font-semibold cursor-pointer"
             >
               Conferir
+            </Button>
+          </div>
+        </div>
+      ),
+    },
+    hasFeature("investments") && govInsights.overdueReviewsCount > 0 && {
+      id: "portfolio-governance-review-alert",
+      priority: 3,
+      content: (
+        <div
+          role="alert"
+          className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs transition-all hover:border-border"
+        >
+          <div className="flex items-start sm:items-center gap-3 min-w-0 pr-6 sm:pr-0 flex-1">
+            <span
+              className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-warning/20 bg-warning/15 text-warning-strong"
+              aria-hidden="true"
+            >
+              <ShieldAlert className="size-4.5" />
+            </span>
+            <div className="flex flex-col min-w-0 flex-1 gap-0.5">
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                <h4 className="text-xs sm:text-sm font-semibold tracking-tight text-foreground truncate">
+                  Revisão de Teses de Carteira
+                </h4>
+                <Badge size="xs" variant="warning">
+                  {govInsights.overdueReviewsCount} {govInsights.overdueReviewsCount === 1 ? "ativo pendente" : "ativos pendentes"}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground truncate sm:line-clamp-1">
+                {govInsights.overdueReviewsCount === 1
+                  ? "1 ativo da sua carteira ultrapassou a periodicidade de governança sem revisão."
+                  : `${govInsights.overdueReviewsCount} ativos da sua carteira ultrapassaram a periodicidade de governança sem revisão.`}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-center mt-auto sm:mt-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/investments?tab=metas")}
+              className="w-full sm:w-auto h-8 text-xs font-medium cursor-pointer"
+            >
+              Revisar Teses
             </Button>
           </div>
         </div>

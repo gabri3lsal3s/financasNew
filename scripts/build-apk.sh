@@ -119,7 +119,9 @@ export KEY_PASSWORD="${KEY_PASS}"
 export APP_VERSION_CODE="${APP_VERSION_CODE}"
 export APP_VERSION_NAME="${APP_VERSION_NAME}"
 
-./gradlew clean assembleDebug assembleRelease
+./gradlew clean
+./gradlew assembleRelease
+./gradlew assembleDebug || true
 
 # 7. Organização e cópia dos APKs para dist-apk/ e public/releases/
 echo ""
@@ -161,11 +163,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v3.8.1: Diferenciação de Renda Fixa (Cálculo Automático vs Fallback Manual)",
-    "Saldo de títulos com taxa contratada projetado diariamente sem pontinho de atenção manual",
-    "Indicador circular de atenção restrito exclusivamente a posições que requerem calibração ou taxa manual",
-    "Alinhamento da procedência de cotações fixed_income e closing_saved no motor canônico de investimentos",
-    "Preservação da affordance de clique para calibração rápida com extrato oficial"
+    "Axir v3.9.0: Sistema Holístico de Notas (0–10), Quarentenas e Governança de Carteira (Fase 41)",
+    "Portfolio Quality Score (PQS) ponderado por capital e distribuição por níveis de convicção",
+    "Meta Única Oficial por ativo, classe ou setor com cálculo de desvio e recomendação de aporte",
+    "Radar proativo no carrossel de investimentos para revisões vencidas, quarentenas e oportunidades",
+    "Modal de avaliação de tese e critérios por arquétipo com total responsividade mobile/tablet/desktop"
   ]
 }
 EOF

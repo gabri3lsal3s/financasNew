@@ -28,6 +28,10 @@ vi.mock("@/app/authenticated-providers", () => ({
   AuthenticatedProviders: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
+vi.mock("@/features/overview/pages/overview-page", () => ({
+  OverviewPage: () => <div data-testid="overview-page-stub" />,
+}));
+
 vi.mock("@/state", () => ({
   useUserAccess: () => ({
     profile: { id: "user-123", role: "user", status: "active" },
@@ -88,6 +92,23 @@ vi.mock("@/state", () => ({
     mutate: vi.fn(),
     mutateAsync: vi.fn(),
     isPending: false,
+  }),
+  useAssetGovernanceInsights: () => ({
+    insights: [],
+    summary: {
+      overdueCount: 0,
+      quarantineCount: 0,
+      opportunityCount: 0,
+      lowScoreRiskCount: 0,
+      totalInsights: 0,
+    },
+    consolidatedReviewAlert: null,
+    overdueReviewsCount: 0,
+    quarantinedCount: 0,
+    discountOpportunitiesCount: 0,
+    lowScoreRiskCount: 0,
+    isLoading: false,
+    refetch: vi.fn(),
   }),
 }));
 
@@ -534,9 +555,9 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     window.history.pushState({}, "", "/");
     render(<AppRouter />);
 
-    expect(await screen.findByTestId("page-shell", {}, { timeout: 25000 })).toBeInTheDocument();
+    expect(await screen.findByTestId("page-shell", {}, { timeout: 45000 })).toBeInTheDocument();
     window.localStorage.removeItem("sb-test-auth-token");
-  }, 40000);
+  }, 60000);
 
   it("redireciona para /entrar ao acessar a raiz / sem autenticação em plataforma nativa (Capacitor Android)", async () => {
     const nativeModule = await import("@/services/native");

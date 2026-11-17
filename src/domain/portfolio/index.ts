@@ -336,8 +336,11 @@ export type {
 
 export {
   calculateAssetAllocationDelta,
+  calculateEffectiveAssetTargets,
+  calculatePortfolioQualityScore,
   calculateSectorEffectiveTargetPct,
   clampTargetPercentage,
+  deriveAssetWeightsFromScores,
   distributeEquallyTargets,
   groupAssetsByClassAndSector,
   mirrorCurrentPositionTargets,
@@ -348,19 +351,16 @@ export {
   validateClassSectorTargetsSum,
   validateTargetsSum,
 } from "./allocation";
-export type { AssetAllocationDelta, SectorItem, TargetDraft, TargetValidation } from "./allocation";
-export {
-  SYSTEM_PRESET_TEMPLATES,
-  applyPresetToPosition,
-  createPresetSnapshot,
-  validatePresetInput,
-} from "./presets";
 export type {
-  AppliedPresetDraft,
-  PositionAssetReference,
-  PresetSnapshotInput,
-  SystemPresetTemplate,
-} from "./presets";
+  AssetAllocationDelta,
+  AssetScoreInput,
+  DerivedAssetWeight,
+  EffectiveAssetTargetResult,
+  PQSAssetInput,
+  SectorItem,
+  TargetDraft,
+  TargetValidation,
+} from "./allocation";
 export {
   getAporteSuggestions,
   isFractionalAsset,
@@ -509,5 +509,6 @@ export * from "./canonical-types";
 export * from "./canonical-normalizer";
 export * from "./canonical-returns";
 export * from "./canonical-engine";
+export * from "./asset-governance-insights";
 
 

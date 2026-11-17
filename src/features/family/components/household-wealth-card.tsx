@@ -115,7 +115,7 @@ export function HouseholdWealthCard({
                 )}
               </span>
             </div>
-            <span className="text-[10px] text-muted-foreground/80 block pt-1 border-t border-border/40">
+            <span className="text-[10px] text-muted-foreground/80 block pt-1 border-t border-border/80">
               Liquidez imediata (Caixa, Selic e CDI)
             </span>
           </div>
@@ -135,7 +135,7 @@ export function HouseholdWealthCard({
                 {!hasDividends && " · Sem proventos 12m"}
               </span>
             </div>
-            <div className="text-[10px] text-muted-foreground/80 pt-1 border-t border-border/40 flex items-center gap-1 flex-wrap">
+            <div className="text-[10px] text-muted-foreground/80 pt-1 border-t border-border/80 flex items-center gap-1 flex-wrap">
               {otherInvestedCents > 0 ? (
                 <>
                   <span>Reserva +</span>
@@ -167,7 +167,7 @@ export function HouseholdWealthCard({
 
         {/* Régua de Meta da Reserva Familiar (6 Meses do Teto) */}
         {isCeiling && reserveHealth.target_cents ? (
-          <div className="p-3.5 rounded-xl bg-surface-subtle/40 border border-border/80 space-y-2">
+          <div className="p-3.5 rounded-xl bg-surface-subtle/50 border border-border/80 space-y-2">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
               <span className="font-semibold text-foreground flex items-center gap-1.5">
                 <Target className="size-3.5 text-primary shrink-0" aria-hidden="true" />
@@ -181,7 +181,7 @@ export function HouseholdWealthCard({
 
             {/* Barra de Progresso Customizada (Role progressbar) */}
             <div
-              className="h-2 w-full bg-border/40 rounded-full overflow-hidden"
+              className="h-2 w-full bg-muted/60 rounded-full overflow-hidden"
               role="progressbar"
               aria-valuenow={reserveHealth.progress_percent}
               aria-valuemin={0}
@@ -217,7 +217,7 @@ export function HouseholdWealthCard({
             </div>
           </div>
         ) : (
-          <div className="p-3 rounded-xl bg-surface-subtle/30 border border-border/80 text-[11px] text-muted-foreground">
+          <div className="p-3 rounded-xl bg-surface-subtle/50 border border-border/80 text-[11px] text-muted-foreground">
             Defina o teto mensal de gastos da família nas configurações para acompanhar a meta automática de 6 meses de reserva.
           </div>
         )}
