@@ -986,40 +986,41 @@ export function PositionTable({
     <div ref={containerRef} className="flex flex-col gap-3">
       {rows.length > 0 ? (
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between min-w-0">
-          <div className="relative flex-1 w-full min-w-0">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Buscar por ticker ou classe…"
-              aria-label="Buscar ativo"
-              className={cn("pl-8 w-full", hasFiltersActive ? "pr-24" : "pr-8")}
-            />
-            {hasFiltersActive ? (
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
-                <span className="text-[11px] font-medium text-muted-foreground bg-surface-hover/80 px-1.5 py-0.5 rounded border border-border/40">
-                  {filteredRows.length}/{rows.length}
-                </span>
-                {search ? (
-                  <button
-                    type="button"
-                    onClick={() => handleSearchChange("")}
-                    aria-label="Limpar busca"
-                    className="pointer-events-auto text-muted-foreground hover:text-foreground cursor-pointer p-0.5 transition-colors"
-                  >
-                    <X className="size-3.5" aria-hidden="true" />
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
+          {/* Esquerda: Campo de Busca + Alternador de Agrupamento */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1 min-w-0">
+            <div className="relative w-full sm:max-w-xs min-w-0">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                value={search}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                placeholder="Buscar por ticker ou classe…"
+                aria-label="Buscar ativo"
+                className={cn("pl-8 w-full", hasFiltersActive ? "pr-24" : "pr-8")}
+              />
+              {hasFiltersActive ? (
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+                  <Badge variant="muted" size="xs">
+                    {filteredRows.length}/{rows.length}
+                  </Badge>
+                  {search ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSearchChange("")}
+                      aria-label="Limpar busca"
+                      className="pointer-events-auto text-muted-foreground hover:text-foreground cursor-pointer p-0.5 transition-colors"
+                    >
+                      <X className="size-3.5" aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 shrink-0">
-            {/* Alternador de Agrupamento Dinâmico (Por Classe vs Por Setor) */}
+            {/* Alternador de Agrupamento Dinâmico (Desktop: ao lado da busca) */}
             <div
               role="group"
               aria-label="Modo de agrupamento"
-              className="inline-flex items-center rounded-lg border border-border/70 bg-surface-hover/40 p-0.5 shadow-xs shrink-0 self-start sm:self-auto"
+              className="hidden sm:inline-flex items-center rounded-lg border border-border/80 bg-surface-hover/50 p-0.5 shadow-xs shrink-0"
             >
               <button
                 type="button"
@@ -1052,60 +1053,104 @@ export function PositionTable({
                 <span>Por Setor</span>
               </button>
             </div>
+          </div>
 
-            {availableClasses.length > 1 ? (
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap py-0.5 -mx-1 px-1">
-                <button
-                  type="button"
-                  onClick={() => handleClassChange(null)}
-                  className={cn(
-                    "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap",
-                    selectedClass === null
-                      ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                      : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  Todas
-                </button>
-                {availableClasses.map((cls) => {
-                  const isSelected = selectedClass === cls;
-                  return (
-                    <button
-                      key={cls}
-                      type="button"
-                      onClick={() => handleClassChange(isSelected ? null : cls)}
-                      className={cn(
-                        "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap",
-                        isSelected
-                          ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                          : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {cls}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-
-            {closedRows.length > 0 ? (
+          {/* Direita (Desktop) / Linha 2 (Mobile): Alternador mobile + Trilha fluida de Chips + Encerradas */}
+          <div className="flex items-center gap-2 overflow-hidden min-w-0 shrink-0">
+            {/* Alternador no Mobile (shrink-0 à esquerda da trilha de chips) */}
+            <div
+              role="group"
+              aria-label="Modo de agrupamento"
+              className="inline-flex sm:hidden items-center rounded-lg border border-border/80 bg-surface-hover/50 p-0.5 shadow-xs shrink-0"
+            >
               <button
                 type="button"
-                onClick={() => setHideClosed(!hideClosed)}
+                onClick={() => setGroupBy("class")}
+                aria-pressed={groupBy === "class"}
                 className={cn(
-                  "inline-flex items-center justify-center sm:justify-start gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0 border whitespace-nowrap self-start sm:self-auto",
-                  !hideClosed
-                    ? "bg-surface border-primary/50 text-foreground font-semibold shadow-xs"
-                    : "bg-surface-hover/60 border-border/60 text-muted-foreground hover:text-foreground",
+                  "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors cursor-pointer",
+                  groupBy === "class"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
-                title={hideClosed ? "Exibir posições zeradas/encerradas" : "Ocultar posições zeradas/encerradas"}
+                title="Agrupar posições por Classe de Ativo"
               >
-                <span>{hideClosed ? "Ver encerradas" : "Ocultar encerradas"}</span>
-                <Badge variant="muted" size="xs">
-                  {closedRows.length}
-                </Badge>
+                <Layers className="size-3.5" aria-hidden="true" />
+                <span>Classe</span>
               </button>
-            ) : null}
+              <button
+                type="button"
+                onClick={() => setGroupBy("sector")}
+                aria-pressed={groupBy === "sector"}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors cursor-pointer",
+                  groupBy === "sector"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                title="Agrupar posições por Setor"
+              >
+                <PieChart className="size-3.5" aria-hidden="true" />
+                <span>Setor</span>
+              </button>
+            </div>
+
+            {/* Trilha rolável horizontal de filtros de classe e botão de encerradas */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap py-0.5 min-w-0 flex-1 sm:flex-initial">
+              {availableClasses.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleClassChange(null)}
+                    className={cn(
+                      "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap border",
+                      selectedClass === null
+                        ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
+                        : "bg-surface border-border/80 text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                    )}
+                  >
+                    Todas
+                  </button>
+                  {availableClasses.map((cls) => {
+                    const isSelected = selectedClass === cls;
+                    return (
+                      <button
+                        key={cls}
+                        type="button"
+                        onClick={() => handleClassChange(isSelected ? null : cls)}
+                        className={cn(
+                          "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap border",
+                          isSelected
+                            ? "bg-primary text-primary-foreground border-primary font-semibold shadow-xs"
+                            : "bg-surface border-border/80 text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                        )}
+                      >
+                        {cls}
+                      </button>
+                    );
+                  })}
+                </>
+              ) : null}
+
+              {closedRows.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setHideClosed(!hideClosed)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0 border whitespace-nowrap",
+                    !hideClosed
+                      ? "bg-surface border-primary/50 text-foreground font-semibold shadow-xs"
+                      : "bg-surface border-border/80 text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                  )}
+                  title={hideClosed ? "Exibir posições zeradas/encerradas" : "Ocultar posições zeradas/encerradas"}
+                >
+                  <span>{hideClosed ? "Ver encerradas" : "Ocultar encerradas"}</span>
+                  <Badge variant="muted" size="xs">
+                    {closedRows.length}
+                  </Badge>
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}
@@ -1123,12 +1168,6 @@ export function PositionTable({
             const meta = getAssetClassMeta(group.className);
             const Icon = meta.icon;
             const groupRentab = group.totalReturnPct !== null ? group.totalReturnPct : group.unrealizedPct;
-            const rentabTone =
-              groupRentab === null
-                ? "text-muted-foreground"
-                : groupRentab >= 0
-                  ? "text-positive-strong"
-                  : "text-negative-strong";
 
             return (
               <li
@@ -1172,19 +1211,16 @@ export function PositionTable({
                       <MoneyText cents={numberToCents(group.totalValueBRL)} tone="default" className="text-xs font-bold text-foreground" />
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[11px] font-medium text-muted-foreground bg-surface-hover/80 px-1.5 py-0.5 rounded border border-border/40">
+                      <Badge variant="muted" size="xs">
                         {formatPercent(group.totalPct)}%
-                      </span>
+                      </Badge>
                       {groupRentab !== null ? (
-                        <span
-                          className={cn(
-                            "text-[11px] font-semibold px-1.5 py-0.5 rounded",
-                            rentabTone,
-                            groupRentab >= 0 ? "bg-positive/10" : "bg-negative/10",
-                          )}
+                        <Badge
+                          variant={groupRentab >= 0 ? "positive" : "negative"}
+                          size="xs"
                         >
                           {formatSignedPct(groupRentab)}
-                        </span>
+                        </Badge>
                       ) : null}
                     </div>
                   </div>
@@ -1204,12 +1240,6 @@ export function PositionTable({
             const meta = getAssetClassMeta(group.className);
             const Icon = meta.icon;
             const groupRentab = group.totalReturnPct !== null ? group.totalReturnPct : group.unrealizedPct;
-            const rentabTone =
-              groupRentab === null
-                ? "text-muted-foreground"
-                : groupRentab >= 0
-                  ? "text-positive-strong"
-                  : "text-negative-strong";
 
             return (
               <li
@@ -1251,19 +1281,16 @@ export function PositionTable({
                       <MoneyText cents={numberToCents(group.totalValueBRL)} tone="default" className="text-xs font-bold text-foreground" />
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[11px] font-medium text-muted-foreground bg-surface-hover/80 px-1.5 py-0.5 rounded border border-border/40">
+                      <Badge variant="muted" size="xs">
                         {formatPercent(group.totalPct)}%
-                      </span>
+                      </Badge>
                       {groupRentab !== null ? (
-                        <span
-                          className={cn(
-                            "text-[11px] font-semibold px-1.5 py-0.5 rounded",
-                            rentabTone,
-                            groupRentab >= 0 ? "bg-positive/10" : "bg-negative/10",
-                          )}
+                        <Badge
+                          variant={groupRentab >= 0 ? "positive" : "negative"}
+                          size="xs"
                         >
                           {formatSignedPct(groupRentab)}
-                        </span>
+                        </Badge>
                       ) : null}
                     </div>
                   </div>

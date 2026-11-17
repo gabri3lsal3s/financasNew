@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { calculateYieldOnCost, inferSectorFromTicker } from "@/domain/portfolio";
@@ -33,12 +34,6 @@ export function PositionMobileCard({
 }: PositionMobileCardProps) {
   const effectivePct = row.totalReturnPct !== undefined ? row.totalReturnPct : row.unrealizedPct;
   const pctLabel = row.isCash || effectivePct === null ? "—" : formatSignedPct(effectivePct);
-  const pctTone =
-    row.isCash || effectivePct === null
-      ? "text-muted-foreground"
-      : effectivePct >= 0
-        ? "text-positive-strong"
-        : "text-negative-strong";
   const effectiveDividends = row.currency === "USD" ? (row.dividendsNative ?? row.dividends) : row.dividends;
   const effectiveCost =
     row.currency === "USD" ? (row.totalCost ?? row.totalCostBRL) : (row.totalCostBRL ?? row.totalCost);
@@ -79,11 +74,11 @@ export function PositionMobileCard({
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="truncate font-mono text-base font-bold text-foreground">{row.ticker}</span>
             {row.isMatured ? (
-              <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-critical-strong shrink-0">
+              <Badge variant="critical" size="xs">
                 Vencido
-              </span>
+              </Badge>
             ) : row.fixedIncomeMetadata ? (
-              <span className="rounded bg-surface-hover/80 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shrink-0">
+              <Badge variant="muted" size="xs">
                 {row.fixedIncomeMetadata.rate_type === "cdi"
                   ? `${row.fixedIncomeMetadata.rate_value}% CDI`
                   : row.fixedIncomeMetadata.rate_type === "selic"
@@ -91,7 +86,7 @@ export function PositionMobileCard({
                     : row.fixedIncomeMetadata.rate_type === "pre"
                       ? `${row.fixedIncomeMetadata.rate_value}% a.a.`
                       : `IPCA + ${row.fixedIncomeMetadata.rate_value}%`}
-              </span>
+              </Badge>
             ) : null}
           </div>
           {resolvedSector ? (
@@ -110,15 +105,13 @@ export function PositionMobileCard({
                   className="text-sm font-bold text-foreground"
                 />
               )}
-              <span
-                className={cn(
-                  "num text-xs font-bold px-1.5 py-0.5 rounded",
-                  pctTone,
-                  effectivePct !== null && effectivePct >= 0 ? "bg-positive/10" : "bg-negative/10",
-                )}
+              <Badge
+                variant={effectivePct === null || row.isCash ? "muted" : effectivePct >= 0 ? "positive" : "negative"}
+                size="xs"
+                className="font-bold tabular-nums"
               >
                 {pctLabel}
-              </span>
+              </Badge>
             </div>
             {yoc > 0 ? (
               <div className="flex items-center gap-1.5 text-[10px]">

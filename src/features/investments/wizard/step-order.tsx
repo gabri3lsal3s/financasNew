@@ -150,7 +150,7 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
           className={cn(
             "grid gap-2",
             availableOperations.length === 3
-              ? "grid-cols-3"
+              ? "grid-cols-1 sm:grid-cols-3"
               : availableOperations.length >= 5
                 ? "grid-cols-2 sm:grid-cols-3"
                 : "grid-cols-2",

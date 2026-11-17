@@ -451,27 +451,27 @@ flowchart TD
 **Objetivo:** Auditoria geral de qualidade, validação de conformidade com `AGENTS.md`, atualização de documentação normativa e lançamento da versão `v3.8.0`.
 
 #### Etapa 6.1: Suíte Global de Testes e Tipagem Estrita
-- [ ] Executar suíte completa de testes unitários e de integração: `npm run test:run`.
-- [ ] Executar verificação rigorosa de tipos TypeScript: `npm run typecheck`.
-- [ ] Executar linter global sem nenhuma violação: `npm run lint`.
+- [x] Executar suíte completa de testes unitários e de integração: `npm run test:run`.
+- [x] Executar verificação rigorosa de tipos TypeScript: `npm run typecheck`.
+- [x] Executar linter global sem nenhuma violação: `npm run lint`.
 
 #### Etapa 6.2: Auditoria Visual e de Responsividade (Conformidade com `AGENTS.md`)
-- [ ] **Regra 7:** ZERO elementos nativos de controle (Select, Checkbox, Dialog nativos banidos).
-- [ ] **Regra 8:** ZERO emojis decorativos no produto.
-- [ ] **Regra 11:** ZERO reticências (`truncate`) em valores monetários (usar `<MoneyText />` ou tabular auto-fit).
-- [ ] **Regra 18:** Modais responsivos (`size` tipado, drawer no mobile com pill handle e safe-area iOS).
-- [ ] **Regra 20:** ZERO `autoFocus` declarativo em formulários.
-- [ ] **Regra 22:** Contenção absoluta de viewport (`overflow-x: clip`, zero vazamento lateral de 100vw).
+- [x] **Regra 7:** ZERO elementos nativos de controle (Select, Checkbox, Dialog nativos banidos).
+- [x] **Regra 8:** ZERO emojis decorativos no produto.
+- [x] **Regra 11:** ZERO reticências (`truncate`) em valores monetários (usar `<MoneyText />` ou tabular auto-fit).
+- [x] **Regra 18:** Modais responsivos (`size` tipado, drawer no mobile com pill handle e safe-area iOS).
+- [x] **Regra 20:** ZERO `autoFocus` declarativo em formulários.
+- [x] **Regra 22:** Contenção absoluta de viewport (`overflow-x: clip`, zero vazamento lateral de 100vw).
 
 #### Etapa 6.3: Atualização de Documentações Normativas
-- [ ] Atualizar `docs/architecture/ARCHITECTURE.md` registrando a consolidação do `PortfolioCanonicalEngine`.
-- [ ] Atualizar `docs/roadmap/ROADMAP.md` registrando a entrega da Fase 40.
-- [ ] Incrementar a versão no `package.json` para `3.8.0`.
+- [x] Atualizar `docs/architecture/ARCHITECTURE.md` registrando a consolidação do `PortfolioCanonicalEngine`.
+- [x] Atualizar `docs/roadmap/ROADMAP.md` registrando a entrega da Fase 40.
+- [x] Incrementar a versão no `package.json` para `3.8.0`.
 
 #### 🚪 Portão de Qualidade 6 (Final de Lançamento)
-- [ ] Checklist completo de Definition of Done (DoD) auditado.
-- [ ] Build de produção gerado com sucesso: `npm run build`.
-- [ ] **Ação Git:** Commit de versão e Push definitivo:  
+- [x] Checklist completo de Definition of Done (DoD) auditado.
+- [x] Build de produção gerado com sucesso: `npm run build`.
+- [x] **Ação Git:** Commit de versão e Push definitivo:  
   `git commit -m "chore(release): lancamento da versao v3.8.0 - unificacao canonica do motor de investimentos, relatorios e UI/UX 360" && git push`
 
 ---

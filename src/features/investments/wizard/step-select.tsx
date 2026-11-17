@@ -5,6 +5,8 @@ import { MoneyText } from "@/components/ui/money-text";
 import { formatPercent } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { numberToCents } from "@/domain/money";
+import { cn } from "@/lib/utils";
+import { sanitizeReportText } from "@/domain/reports/sanitize-text";
 import {
   buildAporteSuggestions,
   cleanTicker,
@@ -224,18 +226,19 @@ export function StepSelect({
                             currentAveragePrice: asset.average_price,
                           })
                         }
-                        className={`flex items-center justify-between gap-3 px-3.5 py-3 text-left transition-all hover:bg-surface-hover/80 active:scale-[0.99] ${
-                          isSelected ? "bg-primary/10 border-l-2 border-l-primary" : ""
-                        }`}
+                        className={cn(
+                          "flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-3 text-left transition-all hover:bg-surface-hover/80 active:scale-[0.99] cursor-pointer",
+                          isSelected && "bg-primary/10 border-l-2 border-l-primary",
+                        )}
                       >
                         <div className="flex flex-col gap-0.5 min-w-0">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-mono text-sm font-bold text-foreground">{asset.ticker}</span>
-                            <Badge variant="default" size="xs">
+                            <Badge variant="muted" size="xs">
                               Na carteira
                             </Badge>
                             {isSelected && (
-                              <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
+                              <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground shrink-0">
                                 <Check className="size-3" aria-hidden="true" />
                                 Selecionado
                               </Badge>
@@ -243,11 +246,9 @@ export function StepSelect({
                           </div>
                           <span className="truncate text-xs text-muted-foreground">{asset.notes ?? asset.ticker}</span>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="flex flex-col items-end text-right">
-                            <span className="text-[10px] uppercase font-semibold text-primary">Aportar</span>
-                            <span className="text-[11px] text-muted-foreground">{asset.quantity} cota(s)</span>
-                          </div>
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1 shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-border/40">
+                          <span className="text-xs font-semibold text-primary">Aportar</span>
+                          <span className="text-xs text-muted-foreground tabular-nums">{asset.quantity} cota(s)</span>
                         </div>
                       </button>
                     );
@@ -282,18 +283,19 @@ export function StepSelect({
                           currentAveragePrice: asset.average_price,
                         })
                       }
-                      className={`flex items-center justify-between gap-3 px-3.5 py-3 text-left transition-all hover:bg-surface-hover/80 active:scale-[0.99] ${
-                        isSelected ? "bg-primary/10 border-l-2 border-l-primary" : ""
-                      }`}
+                      className={cn(
+                        "flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-3 text-left transition-all hover:bg-surface-hover/80 active:scale-[0.99] cursor-pointer",
+                        isSelected && "bg-primary/10 border-l-2 border-l-primary",
+                      )}
                     >
                       <div className="flex flex-col gap-0.5 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="font-mono text-sm font-bold text-foreground">{asset.ticker}</span>
-                          <Badge variant="default" size="xs">
+                          <Badge variant="muted" size="xs">
                             Na carteira
                           </Badge>
                           {isSelected && (
-                            <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
+                            <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground shrink-0">
                               <Check className="size-3" aria-hidden="true" />
                               Selecionado
                             </Badge>
@@ -301,11 +303,9 @@ export function StepSelect({
                         </div>
                         <span className="truncate text-xs text-muted-foreground">{asset.notes ?? asset.ticker}</span>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex flex-col items-end text-right">
-                          <span className="text-[10px] uppercase font-semibold text-primary">Aportar</span>
-                          <span className="text-[11px] text-muted-foreground">{asset.quantity} cota(s)</span>
-                        </div>
+                      <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1 shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-border/40">
+                        <span className="text-xs font-semibold text-primary">Aportar</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{asset.quantity} cota(s)</span>
                       </div>
                     </button>
                   );
@@ -372,7 +372,7 @@ export function StepSelect({
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-border/50 pb-2">
                           <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                             <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
-                              {group.sectorName}
+                              {sanitizeReportText(group.sectorName)}
                             </span>
                             <Badge variant="muted" size="xs">
                               {group.className}
@@ -381,7 +381,7 @@ export function StepSelect({
                               Defasado
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <span>Orçamento estimado:</span>
                             <MoneyText
                               cents={numberToCents(group.budgetAllocatedBRL)}
@@ -402,30 +402,31 @@ export function StepSelect({
                                 key={opp.assetId}
                                 type="button"
                                 onClick={() => handleSelectOpportunity(opp, group.gapBRL)}
-                                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] cursor-pointer ${
+                                className={cn(
+                                  "flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] cursor-pointer",
                                   isSelected
                                     ? "border-primary bg-primary/15 ring-2 ring-primary/40 shadow-xs"
                                     : isDiscounted
                                       ? "border-positive/30 bg-positive/5 hover:border-positive/50 hover:bg-positive/10"
-                                      : "border-border/60 bg-surface hover:border-border hover:bg-surface-hover"
-                                }`}
+                                      : "border-border/80 bg-surface hover:border-border hover:bg-surface-hover",
+                                )}
                               >
-                                <div className="flex flex-col gap-0.5 min-w-0">
-                                  <div className="flex items-center gap-2">
+                                <div className="flex flex-col gap-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="font-mono text-sm font-bold text-foreground">
                                       {opp.ticker}
                                     </span>
                                     {isDiscounted ? (
-                                      <Badge variant="positive" size="xs">
-                                        {Math.abs(opp.diffVsAveragePct).toFixed(1)}% abaixo do PM
+                                      <Badge variant="positive" size="xs" className="max-w-full truncate inline-flex">
+                                        {`-${Math.abs(opp.diffVsAveragePct).toFixed(1)}% vs PM`}
                                       </Badge>
                                     ) : (
-                                      <Badge variant="muted" size="xs">
-                                        +{opp.diffVsAveragePct.toFixed(1)}% vs PM
+                                      <Badge variant="muted" size="xs" className="max-w-full truncate inline-flex">
+                                        {`+${opp.diffVsAveragePct.toFixed(1)}% vs PM`}
                                       </Badge>
                                     )}
                                     {isSelected && (
-                                      <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
+                                      <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground shrink-0">
                                         <Check className="size-3" aria-hidden="true" />
                                         Selecionado
                                       </Badge>
@@ -434,15 +435,15 @@ export function StepSelect({
                                   <span className="truncate text-xs text-muted-foreground">{opp.name}</span>
                                 </div>
 
-                                <div className="flex flex-col items-end text-right shrink-0">
-                                  <span className="text-[10px] uppercase font-semibold text-primary">
+                                <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1 shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-border/40">
+                                  <span className="text-xs font-semibold text-primary">
                                     {opp.suggestedQty > 0 ? `Aportar ${opp.suggestedQty} cota(s)` : "Aportar"}
                                   </span>
                                   {opp.suggestedTotalBRL > 0 && (
                                     <MoneyText
                                       cents={numberToCents(opp.suggestedTotalBRL)}
                                       tone="default"
-                                      className="text-[11px] tabular-nums whitespace-nowrap text-muted-foreground"
+                                      className="text-xs tabular-nums whitespace-nowrap text-muted-foreground font-medium"
                                     />
                                   )}
                                 </div>
@@ -526,25 +527,26 @@ export function StepSelect({
                         key={item.assetId}
                         type="button"
                         onClick={() => onSelectSuggestion(item)}
-                        className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] cursor-pointer ${
+                        className={cn(
+                          "flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] cursor-pointer",
                           isSelected
                             ? "border-primary bg-primary/15 ring-2 ring-primary/40 shadow-xs"
-                            : "border-primary/20 bg-primary/5 hover:border-primary/40 hover:bg-primary/10"
-                        }`}
+                            : "border-primary/20 bg-primary/5 hover:border-primary/40 hover:bg-primary/10",
+                        )}
                       >
-                        <div className="flex flex-col gap-0.5 min-w-0">
-                          <div className="flex items-center gap-2">
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-mono text-sm font-bold text-foreground">{item.ticker}</span>
-                            <Badge variant="default" size="xs">Na carteira</Badge>
+                            <Badge variant="muted" size="xs">Na carteira</Badge>
                             {isSelected && (
-                              <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
+                              <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground shrink-0">
                                 <Check className="size-3" aria-hidden="true" />
                                 Selecionado
                               </Badge>
                             )}
                           </div>
                           <span className="truncate text-xs text-muted-foreground">{name}</span>
-                          <div className="flex flex-col gap-0.5 pt-0.5 text-[11px] text-muted-foreground">
+                          <div className="flex flex-col gap-0.5 pt-0.5 text-xs text-muted-foreground">
                             {cashInfo ? (
                               <span>
                                 <span className={cashInfo.fits ? "font-semibold text-positive-strong" : "text-muted-foreground"}>
@@ -569,9 +571,9 @@ export function StepSelect({
                             )}
                           </div>
                         </div>
-                        <div className="flex flex-col items-end text-right shrink-0">
-                          <span className="text-[10px] uppercase font-semibold text-primary">Aportar</span>
-                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1 shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-border/40">
+                          <span className="text-xs font-semibold text-primary">Aportar</span>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap tabular-nums">
                             {formatPercent(item.currentPercentage)}% atual
                           </span>
                         </div>
@@ -614,18 +616,19 @@ export function StepSelect({
                   key={res.ticker}
                   type="button"
                   onClick={() => onSelectResult(res)}
-                  className={`flex items-center justify-between gap-3 px-3.5 py-3 text-left transition-all hover:bg-surface-hover/80 active:scale-[0.99] ${
-                    isSelected ? "bg-primary/10 border-l-2 border-l-primary" : ""
-                  }`}
+                  className={cn(
+                    "flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 px-3.5 py-3 text-left transition-all hover:bg-surface-hover/80 active:scale-[0.99] cursor-pointer",
+                    isSelected && "bg-primary/10 border-l-2 border-l-primary",
+                  )}
                 >
                   <div className="flex flex-col gap-0.5 min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-mono text-sm font-bold text-foreground">{res.ticker}</span>
                       <Badge variant={res.isExisting ? "default" : "muted"} size="xs">
                         {res.isExisting ? "Na carteira" : res.assetClass}
                       </Badge>
                       {isSelected && (
-                        <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground">
+                        <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground shrink-0">
                           <Check className="size-3" aria-hidden="true" />
                           Selecionado
                         </Badge>
@@ -633,19 +636,19 @@ export function StepSelect({
                     </div>
                     <span className="truncate text-xs text-muted-foreground">{res.name}</span>
                     {suggestion ? (
-                      <span className="text-[11px] text-muted-foreground pt-0.5">
+                      <span className="text-xs text-muted-foreground pt-0.5">
                         {`Meta: ${suggestion.targetPercentage}%`}
                       </span>
                     ) : null}
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1 shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-border/40">
                     {res.isExisting ? (
-                      <div className="flex flex-col items-end text-right">
-                        <span className="text-[10px] uppercase font-semibold text-primary">Aportar</span>
-                        <span className="text-[11px] text-muted-foreground">{res.currentQuantity} cota(s)</span>
-                      </div>
+                      <>
+                        <span className="text-xs font-semibold text-primary">Aportar</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{res.currentQuantity} cota(s)</span>
+                      </>
                     ) : (
-                      <Badge variant={isSelected ? "default" : "muted"} className="text-xs gap-1">
+                      <Badge variant={isSelected ? "default" : "muted"} size="xs" className="gap-1">
                         {isSelected ? (
                           <>
                             <Check className="size-3" aria-hidden="true" />

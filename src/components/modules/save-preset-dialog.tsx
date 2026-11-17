@@ -98,7 +98,7 @@ function SavePresetForm({
         </div>
       </div>
 
-      <ModalFooter>
+      <ModalFooter borderless>
         <Button
           type="button"
           variant="outline"

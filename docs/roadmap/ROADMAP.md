@@ -1,5 +1,27 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.8.0 (Fase 40)** registra a conclusão integral da **Unificação Canônica do Motor de Cálculos, Rentabilidade, Relatórios & UI/UX de Investimentos 360°** ([`docs/plans/40_PLANO_UNIFICACAO_CANONICA_MOTOR_CALCULOS_E_RELATORIOS_INVESTIMENTOS.md`](../plans/40_PLANO_UNIFICACAO_CANONICA_MOTOR_CALCULOS_E_RELATORIOS_INVESTIMENTOS.md)) (2026-11-17):
+> - **(1) Motor Canônico Puro e Centralizado (`PortfolioCanonicalEngine`)**:
+>   - Unificação definitiva dos 7 motores de cálculo dispersos em um único motor matemático puro no domínio (`src/domain/portfolio/canonical-*.ts`), desacoplado de UI e Supabase;
+>   - Redução do hook de UI `usePortfolioPosition` de ~735 linhas para ~220 linhas, delegando 100% dos cálculos para `evaluatePortfolioCanonicalState` em tempo $O(1)$;
+>   - Eliminação de duplicação de regras em `usePortfolioMonthlyPosition`, garantindo que posições em tempo real e ponto no tempo falem exatamente a mesma língua matemática.
+> - **(2) Congruência Total entre Relatórios Gerais e Relatórios Executivos de Snapshots**:
+>   - Homogeneidade matemática de bases: resolução de distorção de até 10 p.p. (ex.: caso de Out/2026 com $-3,6\%$ real reconciliado com precisão institucional ANBIMA/CVM);
+>   - Soberania de Snapshots e Sentinela de Fidelidade: reconciliação automática de integridade entre saldos oficiais homologados e reconstituições analíticas com badge de Fidelidade Alta e fluxo assistido de conciliação;
+>   - Injeção dinâmica de taxas cambiais PTAX de competências pretéritas (`USDBRL=X`), eliminando fallbacks estáticos em meses passados.
+> - **(3) Operações Blindadas, Resgate Proporcional de Renda Fixa & Ativos Não Cotados**:
+>   - Resgates parciais de Renda Fixa abatem `base_value` e `initial_investment_value` proporcionalmente ($\text{prop} = \frac{\text{resgate}}{\text{saldo}}$), preservando `base_date` e a curva diária de juros compostos sem geração de juros fantasmas sobre capital sacado (Salvaguarda S6);
+>   - Suporte nativo a ativos de Valoração Própria / Alternativos (`[VALUATION:CUSTOM]`), blindando ativos contra erros 404 e reset de preço (Salvaguarda S7).
+> - **(4) Modernização Ergonômica de UI/UX 360° & Fricção Zero (Regras de Ouro AGENTS.md)**:
+>   - Investment Wizard com adaptação dinâmica por arquétipo (oculta campos irrelevantes para Renda Fixa e ativos de valoração própria);
+>   - Ficha do Ativo (`AssetDetailSheet`) com barra de ações secundárias compacta (ícones `size-8` com acessibilidade total) e zero concorrência visual no mobile;
+>   - Zero reticências em valores monetários (`MoneyText`), zero `autoFocus` declarativo e contenção estrita de viewport.
+> - **(5) Quality Gates 100% Aprovados**:
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros, 0 avisos;
+>   - Vitest: 689 testes de domínio de portfólio + 192 testes de UI de investimentos + 34 testes de relatórios 100% verdes;
+>   - Build de produção e PWA gerados com sucesso.
+>
 > **v3.7.1** registra a **Orquestração Canônica da Transição de Boot e Telas de Loading** (2026-11-17):
 > - **(1) Erradicação do Efeito Ioiô e Flashes de Skeletons na Raiz**:
 >   - Substituição definitiva do fallback de topo do `<Suspense>` no `AppRouter` (`src/app/router.tsx`) de `<RouteSuspenseFallback />` para `<LoadingScreen statusText="Iniciando sessão segura…" />`;

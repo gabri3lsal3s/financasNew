@@ -600,43 +600,67 @@ function InvestmentWizardContent({
         size="xl"
         showCalculator
         footer={
-          <ModalFooter className="mt-0 pt-0 border-t-0 sm:justify-between">
-            <div>
-              {state.mode !== "select" && (state.step > 1 || !initialAsset) && (
+          <ModalFooter borderless className="w-full">
+            {state.mode !== "select" && (state.step > 1 || !initialAsset) ? (
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-between sm:gap-2.5 w-full">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={handleBack}
                   disabled={isPending}
-                  className="w-full sm:w-auto"
+                  className="order-1 sm:order-1 w-full sm:w-auto sm:min-w-[110px]"
                 >
                   Voltar
                 </Button>
-              )}
-            </div>
 
-            <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={requestClose}
-                disabled={isPending}
-              >
-                Cancelar
-              </Button>
-
-              {isLastStep ? (
                 <Button
                   type="button"
+                  variant="ghost"
                   size="sm"
-                  onClick={handleSubmit}
-                  disabled={!canProceed(state) || isPending || isSubmitting}
+                  onClick={requestClose}
+                  disabled={isPending}
+                  className="order-3 sm:order-2 col-span-2 sm:col-span-1 w-full sm:w-auto sm:min-w-[110px] sm:ml-auto"
                 >
-                  {isPending || isSubmitting ? "Gravando..." : "Confirmar Operação"}
+                  Cancelar
                 </Button>
-              ) : (
+
+                {isLastStep ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleSubmit}
+                    disabled={!canProceed(state) || isPending || isSubmitting}
+                    className="order-2 sm:order-3 w-full sm:w-auto sm:min-w-[110px]"
+                  >
+                    {isPending || isSubmitting ? "Gravando..." : "Confirmar Operação"}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleNext}
+                    disabled={!canProceed(state) || isPending}
+                    className="order-2 sm:order-3 w-full sm:w-auto sm:min-w-[110px]"
+                  >
+                    {state.step === 1 && state.ticker
+                      ? `Continuar com ${state.ticker}`
+                      : "Continuar"}
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={requestClose}
+                  disabled={isPending}
+                >
+                  Cancelar
+                </Button>
+
                 <Button
                   type="button"
                   size="sm"
@@ -647,8 +671,8 @@ function InvestmentWizardContent({
                     ? `Continuar com ${state.ticker}`
                     : "Continuar"}
                 </Button>
-              )}
-            </div>
+              </>
+            )}
           </ModalFooter>
         }
       >

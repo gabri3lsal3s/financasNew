@@ -252,6 +252,7 @@ export function ContributionFormContent({
         {error ? <Alert variant="error">{error}</Alert> : null}
 
         <ModalFooter
+          borderless
           destructiveAction={
             isEdit ? (
               <Button
@@ -270,7 +271,7 @@ export function ContributionFormContent({
             Cancelar
           </Button>
           <Button type="submit" disabled={!canSubmit}>
-            {pending ? "Salvando…" : isEdit ? "Salvar" : "Registrar Aporte"}
+            {pending ? "Salvando..." : isEdit ? "Salvar" : "Registrar Aporte"}
           </Button>
         </ModalFooter>
       </form>

@@ -342,14 +342,13 @@ function DividendFormContent({ defaultAssetId, dividend = null, onClose }: Divid
         </p>
       </div>
 
-      <ModalFooter>
-        <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
+      <ModalFooter borderless>
+        <Button type="button" variant="outline" onClick={onClose}>
           Cancelar
         </Button>
         <Button
           type="submit"
           disabled={(isEdit ? updateDividend.isPending : recordOrder.isPending) || amountCents <= 0}
-          className="w-full sm:w-auto"
         >
           {(isEdit ? updateDividend.isPending : recordOrder.isPending)
             ? "Salvando..."
