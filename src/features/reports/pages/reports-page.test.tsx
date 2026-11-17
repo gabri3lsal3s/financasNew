@@ -175,11 +175,6 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
-  useAllocationTargets: () => ({
-    data: [{ asset_id: "a1", target_percentage: 50 }],
-    isLoading: false,
-    error: null,
-  }),
   useCreditCards: () => ({
     data: [],
     isLoading: false,

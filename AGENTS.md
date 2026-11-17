@@ -138,10 +138,10 @@ A IA **está proibida de recriar marcações JSX/HTML ou estilos duplicados** en
 
 ## 6. NÃO VIOLAÇÃO DE ESCOPO
 
-- **Proibido** reintroduzir motores legados: integração B3, conciliação bancária pesada, parsers de extrato, análise quantamental/tiers/scoring de ativos.
+- **Proibido** reintroduzir motores legados: integração B3, conciliação bancária pesada, parsers de extrato, motor quantamental automatizado ou metas percentuais manuais por ativo individual (`allocation_targets`).
 - **Proibido** alterar regras de negócio definidas no `ESPECIFICACAO_TECNICA.md` sem instrução explícita do usuário.
 - **Proibido** adicionar persistência local/offline de dados de negócio (o app é Online First).
-- Escopo do investimento: **apenas** metas, leitura de posição e cálculo de aporte (rebalanceamento).
+- Escopo do investimento: **governança hierárquica por classes, setores opcionais, notas de convicção (0–10) com status operacional (quarentena/saída), leitura de posição e cálculo de aporte (rebalanceamento)**.
 - Dúvida de escopo ou regra → perguntar antes de implementar.
 
 ## 7. CRIAÇÃO DE ARQUIVOS E PASTAS

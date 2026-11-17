@@ -17,12 +17,14 @@ import {
   MoneyInput,
   PercentInput,
   MoneyText,
+  Select,
 } from "@/components/ui";
 import { AllocationDonut, type AllocationSlice } from "@/components/modules/allocation-donut";
 import { ToolsHeader } from "../components/tools-header";
 import { ToolsFooterCta } from "../components/tools-footer-cta";
 import { ShareSimulationButton } from "../components/share-simulation-button";
 import {
+  deriveAssetWeightsFromScores,
   simulateStrategyAporte,
   STRATEGY_PRESETS_LIST,
   type StrategyClassItem,
@@ -34,7 +36,55 @@ import {
   type PendingRebalanceSimulation,
 } from "@/domain/share";
 import { getPublicAppUrl } from "@/services/app-url";
+import { formatPercent } from "@/services/masks";
 import { useDocumentMeta } from "@/hooks/use-document-meta";
+
+interface SimClassAsset {
+  id: string;
+  ticker: string;
+  score: number | null;
+}
+
+type SimClassItem = StrategyClassItem & {
+  assets: SimClassAsset[];
+};
+
+const SCORE_SELECT_OPTIONS = [
+  { value: "null", label: "Sem nota (peso 5)" },
+  ...Array.from({ length: 11 }, (_, idx) => {
+    const scoreVal = 10 - idx;
+    return { value: String(scoreVal), label: `Nota ${scoreVal}/10` };
+  }),
+];
+
+function getDefaultAssetsForClassKey(key: string): SimClassAsset[] {
+  if (key === "fiis") {
+    return [
+      { id: `${key}_1`, ticker: "HGLG11", score: 9 },
+      { id: `${key}_2`, ticker: "MXRF11", score: 7 },
+    ];
+  }
+  if (key === "acoes") {
+    return [
+      { id: `${key}_1`, ticker: "BBAS3", score: 8 },
+      { id: `${key}_2`, ticker: "WEGE3", score: 9 },
+    ];
+  }
+  if (key === "rf") {
+    return [{ id: `${key}_1`, ticker: "CDB 110% CDI", score: 9 }];
+  }
+  if (key === "global") {
+    return [{ id: `${key}_1`, ticker: "IVVB11", score: 9 }];
+  }
+  return [];
+}
+
+function hydratePresetClasses(items: readonly StrategyClassItem[]): SimClassItem[] {
+  return items.map((c) => ({
+    ...c,
+    assets: getDefaultAssetsForClassKey(c.key),
+  }));
+}
 
 export function RebalanceSimulatorPage() {
   const [searchParams] = useSearchParams();
@@ -51,7 +101,7 @@ export function RebalanceSimulatorPage() {
   const [aporteAmountCents, setAporteAmountCents] = useState<number>(
     () => sharedState?.aporteAmountCents ?? 300000, // R$ 3.000,00
   );
-  const [classes, setClasses] = useState<StrategyClassItem[]>(
+  const [classes, setClasses] = useState<SimClassItem[]>(
     () =>
       sharedState?.classes.map((c) => ({
         key: c.key,
@@ -59,7 +109,8 @@ export function RebalanceSimulatorPage() {
         targetPercent: c.targetPercent,
         currentProportion: c.currentProportion,
         yieldRate: c.yieldRate ?? 0.06,
-      })) ?? STRATEGY_PRESETS_LIST[0]!.classes,
+        assets: c.assets ?? getDefaultAssetsForClassKey(c.key),
+      })) ?? hydratePresetClasses(STRATEGY_PRESETS_LIST[0]!.classes),
   );
   const [selectedPreset, setSelectedPreset] = useState<string>(
     () => sharedState?.selectedPreset ?? (sharedState ? "custom" : "dividendos"),
@@ -68,7 +119,7 @@ export function RebalanceSimulatorPage() {
   useDocumentMeta({
     title: "Simulador de Rebalanceamento Inteligente de Carteira — Axir",
     description:
-      "Calcule a distribuição exata do próximo aporte para reequilibrar sua carteira sem vender ativos nem gerar imposto. Simulador gratuito e determinístico.",
+      "Calcule a distribuição exata do próximo aporte usando Classes (%) e Notas (0 a 10) para reequilibrar sua carteira sem vender ativos.",
     canonicalPath: "/ferramentas/rebalanceamento",
   });
 
@@ -76,18 +127,19 @@ export function RebalanceSimulatorPage() {
     const found = STRATEGY_PRESETS_LIST.find((p) => p.id === presetId);
     if (found) {
       setSelectedPreset(found.id);
-      setClasses(found.classes);
+      setClasses(hydratePresetClasses(found.classes));
     }
   };
 
   const handleAddClass = () => {
     setSelectedPreset("custom");
-    const newClass: StrategyClassItem = {
+    const newClass: SimClassItem = {
       key: `cls_${Date.now()}`,
       name: `Classe ${classes.length + 1}`,
       targetPercent: 10,
       currentProportion: 0,
       yieldRate: 0.06,
+      assets: [],
     };
     setClasses((prev) => [...prev, newClass]);
   };
@@ -97,10 +149,56 @@ export function RebalanceSimulatorPage() {
     setClasses((prev) => prev.filter((c) => c.key !== key));
   };
 
-  const handleUpdateClass = (key: string, updates: Partial<StrategyClassItem>) => {
+  const handleUpdateClass = (key: string, updates: Partial<SimClassItem>) => {
     setSelectedPreset("custom");
     setClasses((prev) =>
       prev.map((c) => (c.key === key ? { ...c, ...updates } : c)),
+    );
+  };
+
+  const handleAddClassAsset = (classKey: string) => {
+    setSelectedPreset("custom");
+    setClasses((prev) =>
+      prev.map((c) =>
+        c.key === classKey
+          ? {
+              ...c,
+              assets: [
+                ...c.assets,
+                { id: `asset_${Date.now()}_${c.assets.length}`, ticker: "", score: null },
+              ],
+            }
+          : c,
+      ),
+    );
+  };
+
+  const handleUpdateClassAsset = (
+    classKey: string,
+    assetId: string,
+    updates: Partial<SimClassAsset>,
+  ) => {
+    setSelectedPreset("custom");
+    setClasses((prev) =>
+      prev.map((c) =>
+        c.key === classKey
+          ? {
+              ...c,
+              assets: c.assets.map((a) => (a.id === assetId ? { ...a, ...updates } : a)),
+            }
+          : c,
+      ),
+    );
+  };
+
+  const handleRemoveClassAsset = (classKey: string, assetId: string) => {
+    setSelectedPreset("custom");
+    setClasses((prev) =>
+      prev.map((c) =>
+        c.key === classKey
+          ? { ...c, assets: c.assets.filter((a) => a.id !== assetId) }
+          : c,
+      ),
     );
   };
 
@@ -209,7 +307,7 @@ export function RebalanceSimulatorPage() {
             </Button>
           ))}
           {selectedPreset === "custom" && (
-            <Badge variant="muted" size="sm" className="text-xs">
+            <Badge variant="muted" size="sm">
               Personalizada
             </Badge>
           )}
@@ -381,6 +479,98 @@ export function RebalanceSimulatorPage() {
                           />
                         </div>
                       </div>
+
+                      {/* Ativos com Notas (0 a 10) dentro da Classe (§Plano 42) */}
+                      {(() => {
+                        const validWeights = deriveAssetWeightsFromScores(
+                          cls.assets.map((a) => ({
+                            id: a.id,
+                            ticker: a.ticker.trim() || "Ativo",
+                            score: a.score,
+                            allocation_status: "active" as const,
+                          })),
+                        );
+                        const weightMap = new Map(validWeights.map((w) => [w.id, w.weightInSector]));
+
+                        return (
+                          <div className="pt-2.5 border-t border-border/60 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-semibold text-muted-foreground">
+                                Ativos & Notas (0 a 10) dentro de {cls.name}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="xs"
+                                onClick={() => handleAddClassAsset(cls.key)}
+                                className="gap-1 h-7 px-2 text-[11px]"
+                              >
+                                <Plus className="size-3" aria-hidden="true" />
+                                Adicionar ativo
+                              </Button>
+                            </div>
+
+                            {cls.assets.length > 0 ? (
+                              <div className="space-y-2">
+                                {cls.assets.map((asset, aIdx) => {
+                                  const wPct = (weightMap.get(asset.id) ?? 0) * 100;
+                                  return (
+                                    <div
+                                      key={asset.id}
+                                      className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center"
+                                    >
+                                      <div className="sm:col-span-5">
+                                        <Input
+                                          value={asset.ticker}
+                                          onChange={(e) =>
+                                            handleUpdateClassAsset(cls.key, asset.id, {
+                                              ticker: e.target.value.toUpperCase(),
+                                            })
+                                          }
+                                          placeholder="Ex: PETR4"
+                                          className="h-9 text-base sm:text-xs font-mono"
+                                          aria-label={`Ticker do ativo ${aIdx + 1} de ${cls.name}`}
+                                        />
+                                      </div>
+                                      <div className="sm:col-span-4">
+                                        <Select
+                                          value={asset.score === null ? "null" : String(asset.score)}
+                                          onValueChange={(val) =>
+                                            handleUpdateClassAsset(cls.key, asset.id, {
+                                              score: val === "null" ? null : Number(val),
+                                            })
+                                          }
+                                          options={SCORE_SELECT_OPTIONS}
+                                          ariaLabel={`Nota do ativo ${asset.ticker || aIdx + 1} de ${cls.name}`}
+                                        />
+                                      </div>
+                                      <div className="sm:col-span-2 text-right font-mono text-[11px] text-muted-foreground whitespace-nowrap">
+                                        {formatPercent(wPct)}%
+                                      </div>
+                                      <div className="sm:col-span-1 flex justify-end">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          onClick={() => handleRemoveClassAsset(cls.key, asset.id)}
+                                          className="size-8 text-muted-foreground hover:text-critical-strong"
+                                          aria-label={`Remover ativo ${asset.ticker || aIdx + 1} de ${cls.name}`}
+                                        >
+                                          <Trash2 className="size-3.5" aria-hidden="true" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-muted-foreground">
+                                Nenhum ativo listado nesta classe. Adicione ativos para dividir o aporte proporcionalmente por Nota.
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -412,35 +602,80 @@ export function RebalanceSimulatorPage() {
                     Recomendação de Compra do Próximo Aporte
                   </h4>
                   <div className="space-y-2">
-                    {simulation.allocations.map((alloc) => (
-                      <div
-                        key={alloc.key}
-                        className="flex items-center justify-between p-2.5 rounded-lg border border-border/70 bg-background/60 text-xs"
-                      >
-                        <div>
-                          <p className="font-semibold text-foreground">{alloc.name}</p>
-                          <p className="text-[11px] text-muted-foreground">
-                            Atual: {alloc.currentPct}% → Alvo: {alloc.targetPercent}%
-                          </p>
+                    {simulation.allocations.map((alloc) => {
+                      const matchedClass = classes.find((c) => c.key === alloc.key);
+                      const weightedAssets =
+                        matchedClass && matchedClass.assets.length > 0 && alloc.allocatedAmount > 0
+                          ? deriveAssetWeightsFromScores(
+                              matchedClass.assets.map((a) => ({
+                                id: a.id,
+                                ticker: a.ticker.trim() || "Ativo",
+                                score: a.score,
+                                allocation_status: "active" as const,
+                              })),
+                            )
+                          : [];
+
+                      return (
+                        <div
+                          key={alloc.key}
+                          className="p-2.5 rounded-lg border border-border/70 bg-background/60 text-xs space-y-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div>
+                              <p className="font-semibold text-foreground">{alloc.name}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                Atual: {alloc.currentPct}% · Alvo: {alloc.targetPercent}%
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              {alloc.allocatedAmount > 0 ? (
+                                <>
+                                  <MoneyText
+                                    cents={Math.round(alloc.allocatedAmount * 100)}
+                                    tone="positive"
+                                    className="font-bold tabular-nums"
+                                  />
+                                  <p className="text-[11px] text-positive-strong font-medium">Aportar aqui</p>
+                                </>
+                              ) : (
+                                <Badge variant="muted" size="xs">
+                                  Sem aporte
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+
+                          {weightedAssets.length > 0 ? (
+                            <div className="pt-2 border-t border-border/50 space-y-1">
+                              {weightedAssets.map((wa) => {
+                                const assetAmountBRL = alloc.allocatedAmount * wa.weightInSector;
+                                return (
+                                  <div
+                                    key={wa.id}
+                                    className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"
+                                  >
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="font-mono font-semibold text-foreground">
+                                        {wa.ticker}
+                                      </span>
+                                      <Badge variant={wa.rawScore === null ? "warning" : "muted"} size="xs">
+                                        {wa.rawScore === null ? "Sem nota" : `Nota ${wa.rawScore}`}
+                                      </Badge>
+                                    </div>
+                                    <MoneyText
+                                      cents={Math.round(assetAmountBRL * 100)}
+                                      tone="default"
+                                      className="font-mono font-medium text-foreground"
+                                    />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : null}
                         </div>
-                        <div className="text-right">
-                          {alloc.allocatedAmount > 0 ? (
-                            <>
-                              <MoneyText
-                                cents={Math.round(alloc.allocatedAmount * 100)}
-                                tone="positive"
-                                className="font-bold tabular-nums"
-                              />
-                              <p className="text-[10px] text-positive-strong font-medium">Aportar aqui</p>
-                            </>
-                          ) : (
-                            <Badge variant="muted" size="xs">
-                              Sem aporte
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </CardContent>

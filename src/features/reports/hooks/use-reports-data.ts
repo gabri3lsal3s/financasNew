@@ -12,14 +12,18 @@ import {
   validateCustomPeriod,
   weightedCents,
 } from "@/domain/reports";
-import { calculatePortfolioQualityScore, isCashAssetClass, isDividendType } from "@/domain/portfolio";
+import {
+  calculateEffectiveAssetTargets,
+  calculatePortfolioQualityScore,
+  isCashAssetClass,
+  isDividendType,
+} from "@/domain/portfolio";
 import { budgetLimitsByCategory } from "@/domain/budgets";
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { currentMonth, currentYear, monthRange, shiftMonth, yearRange } from "@/lib/date";
 import { numberToCents } from "@/domain/money";
 import type { ExcelWorkbookData } from "@/services/excel-export";
 import {
-  useAllocationTargets,
   useBudgets,
   useCategories,
   useDebts,
@@ -157,7 +161,6 @@ export function useReportsData({
   const transactionsQuery = useAllPortfolioTransactions();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
-  const assetTargetsQuery = useAllocationTargets();
 
   const expenses = useMemo(
     () =>
@@ -265,12 +268,12 @@ export function useReportsData({
   const sectorTargets = useMemo(
     () =>
       (sectorTargetsQuery.data ?? []).map((st) => ({
+        className: st.class_name ?? undefined,
         sectorName: st.name,
         targetPercentage: st.target_percentage,
       })),
     [sectorTargetsQuery.data],
   );
-  const assetTargets = useMemo(() => assetTargetsQuery.data ?? [], [assetTargetsQuery.data]);
 
   const usdRate = useMemo(
     () => positionRows.find((r) => r.currency === "USD")?.usdRate ?? 5.25,
@@ -471,6 +474,27 @@ export function useReportsData({
   ]);
 
   const allocationAnalysis = useMemo(() => {
+    const classTargetMap = Object.fromEntries(
+      classTargets.map((ct) => [ct.name, ct.target_percentage]),
+    );
+    const assetById = new Map(assets.map((a) => [a.id, a]));
+    const derivedTargets = calculateEffectiveAssetTargets({
+      assets: positionRows
+        .filter((r) => !r.isCash && r.quantity > 0)
+        .map((r) => {
+          const matched = assetById.get(r.assetId) ?? assets.find((a) => a.ticker.toUpperCase() === r.ticker.toUpperCase());
+          return {
+            id: r.assetId ?? r.ticker,
+            assetClass: r.assetClass ?? "Outros",
+            sector: r.sector ?? null,
+            score: matched?.score ?? r.score ?? null,
+            allocation_status: matched?.allocation_status ?? r.allocationStatus ?? "active",
+          };
+        }),
+      classTargets: classTargetMap,
+      sectorTargets,
+    }).map((t) => ({ assetId: t.assetId, targetPercentage: t.effectiveTargetPct }));
+
     return calculateAllocationGaps(
       positionRows.map((r) => ({
         id: r.assetId ?? r.ticker,
@@ -481,10 +505,10 @@ export function useReportsData({
         isCash: isCashAssetClass(r.assetClass),
       })),
       classTargets.map((ct) => ({ assetClass: ct.name, targetPercentage: ct.target_percentage })),
-      assetTargets.map((at) => ({ assetId: at.asset_id, targetPercentage: at.target_percentage })),
+      derivedTargets,
       sectorTargets,
     );
-  }, [positionRows, classTargets, assetTargets, sectorTargets]);
+  }, [positionRows, assets, classTargets, sectorTargets]);
 
   const concentrationRisk = useMemo(() => {
     return calculateConcentrationRisk(
@@ -740,7 +764,8 @@ export function useReportsData({
             .map((r) => {
               const a = assets.find((item) => item.id === r.assetId || item.ticker.toUpperCase() === r.ticker.toUpperCase());
               return {
-                score: a?.score ?? null,
+                score: a?.score ?? r.score ?? null,
+                allocation_status: a?.allocation_status ?? r.allocationStatus ?? "active",
                 valueBRL: r.valueBRL,
               };
             }),

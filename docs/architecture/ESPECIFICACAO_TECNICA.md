@@ -536,16 +536,16 @@ A inteligência de repetição do sistema opera em dois trilhos expressos e desa
 
 #### 3.11.1 Metas / Alocação Alvo
 
-#### 3.11.1 Metas de Alocação Hierárquicas (Classe $\rightarrow$ Setor $\rightarrow$ Ativo)
+#### 3.11.1 Metas de Alocação Hierárquicas em 3 Níveis (Classe $\rightarrow$ Setor Opcional $\rightarrow$ Nota 0–10 · Plano 42 / v3.10.0)
 
-- **Meta macro por classe:** `class_targets` (`group_type = "class"`) — % do patrimônio total ($\sum \le 100\%$).
-- **Meta meso por setor:** `sector_targets` (`group_type = "sector"`) — % relativo da classe ($\sum \le 100\%$ dentro da respectiva classe). Meta efetiva do setor no patrimônio total = $(\text{meta da classe} \times \text{meta do setor}) / 100$.
-- **Meta micro por ativo:** `target_percentage` (0–100) por `(user, asset_id)` no patrimônio total ($\sum \le 100\%$).
+- **Meta macro por classe (Nível 1):** `group_targets` (`group_type = "class"`) — `%` do patrimônio investível ($\sum \le 100\%$), **excluindo explicitamente `Caixa / Reserva`**.
+- **Meta meso opcional por setor (Nível 2):** `group_targets` (`group_type = "sector"`, escopado por `class_name`) — `%` relativo dentro da respectiva classe ($\sum \le 100\%$). Classes sem metas setoriais configuradas colapsam diretamente para as Notas dos ativos (Nível 3).
+- **Governança micro por Nota e Status (Nível 3):** cada ativo em `portfolio_assets` possui `score` (`0–10` ou `null` exibido como `"Sem nota"`, com peso neutro `5` no motor quando elegível) e `allocation_status` (`active`, `neutral`, `quarantine`, `exit`). A tabela legada `allocation_targets` (% manual por ativo) foi extinta na migração `000127`.
+- **Meta efetiva derivada ($T_i$):** calculada puramente em `calculateEffectiveAssetTargets` ($\text{Target\_Classe} \times \text{Target\_Setor} \times w_{i \in \text{Setor}}$), com transbordamento automático se 100% de um setor estiver bloqueado (`neutral`/`quarantine`/`exit`/Nota `0`).
 - **Inferência setorial automática (`inferSectorFromTicker`):** mapeamento canônico de setores por classe (Ações B3 por setor financeiro/bancos, petróleo, utilidades; FIIs por tijolo/logística, papel/CRI; Tesouro Direto por indexador econômico Selic/CDI, IPCA+, Prefixado; Ativos Internacionais USD por tecnologia, saúde, REITs, ETFs globais neutros; Criptoativos).
-- **Ações contextuais:** normalização em 1-clique (100% ou teto da classe), equiponderação ($1/N$) e zeramento em todos os 3 níveis.
-- **Comparativo de Alocação Atual vs Meta:** nas abas de metas (Classes, Setores e Ativos), exibição direta do percentual atual de mercado frente à meta estabelecida (`Atual: X.X% · Meta: Y.Y%`), indicando visualmente o desvio (gap) e a prioridade de recebimento de aporte.
-- **Raio-X Analítico de Classes e Setores (`AllocationBreakdownDialog`):** acionado ao clicar nas fatias e legendas dos gráficos Donut (aba Resumo e Relatórios Executivos) e nos cards de metas, apresentando os KPIs consolidados do grupo (posição atual, meta/gap, rentabilidade não realizada, proventos totais acumulados) e a lista detalhada de ativos em custódia com acesso direto à ficha do ativo.
-- Edição em lote com feedback visual de soma (barra de total ≤ 100% validada no domínio e no banco via RPC).
+- **Ações contextuais em Classes & Setores:** normalização em 1-clique (`100%`), equiponderação ($1/N$), distribuição do restante e rascunho descartável (S24), com persistência atômica via RPC `save_portfolio_hierarchy_targets`.
+- **Comparativo Atual vs. Meta Efetiva:** na sub-aba Ativos (Nível 3), exibição direta da participação atual frente à meta efetiva derivada, badge de Nota (`"Sem nota"` ou `"Nota X/10"`), badge de Status e gatilho direto para `AssetScoreEvaluationDialog`.
+- **Raio-X Analítico de Classes e Setores (`AllocationBreakdownDialog`):** acionado ao clicar nas fatias e legendas dos gráficos Donut e nos cards de metas, apresentando os KPIs consolidados do grupo (posição atual, meta/gap, rentabilidade não realizada, proventos totais acumulados) e a lista detalhada de ativos em custódia com acesso direto à ficha do ativo.
 
 #### 3.11.2 Posição Atual (Posição Consolidada & Snapshots — F36)
 
@@ -704,20 +704,25 @@ Após a consolidação canônica do motor de rebalanceamento hierárquico em 3 n
   - Segmented toggle sóbrio (`Layers` e `PieChart`) que permite alternar a visualização da carteira entre agrupamento por Classe e agrupamento por Setor;
   - Função pura `calculatePositionSectorGroups` (`src/domain/portfolio/class-breakdown.ts`) calcula subtotais de saldo, retorno não realizado, proventos acumulados, retorno total % e percentual na carteira para cada setor;
   - Metadados setoriais exibidos de forma adaptativa no desktop e cards mobile (`PositionMobileCard`).
-- **Ficha do Ativo Conectada ao Rebalanceamento (`AssetDetailSheet`):**
-  - Card de **Diagnóstico de Alocação & Metas**: consome `useAllocationTargets` e `useGroupTargets`, exibindo a meta individual do ativo, a meta de seu setor/classe, o gap financeiro em R$ e a cotação atual;
+- **Ficha do Ativo Conectada à Governança (`AssetDetailSheet`):**
+  - Card unificado de **Governança, Nota & Meta Efetiva**: consome `useGroupTargets` e `calculateEffectiveAssetTargets`, exibindo Nota (`"Sem nota"` ou `"Nota X/10"`), Status (`active`/`neutral`/`quarantine`/`exit`), fórmula hierárquica (`Classe × Setor × Nota`), gap financeiro em R$ e cotação atual;
   - Identificação de oportunidade com badge discreto de desconto frente ao Preço Médio (`diffVsPMPct < 0`);
-  - Botão CTA "Aportar no Wizard" conectado ao fluxo de aporte guiado (`onOpenWizard`);
+  - Botão CTA "Aportar no Wizard" respeitando elegibilidade (`active`) e conectado ao fluxo de aporte guiado (`onOpenWizard`);
   - Card de **Custódia Internacional Dual (USD)** com cotação na moeda nativa US$, proventos totais e taxa cambial PTAX explícita.
 - **Ciclo Ativo de Proventos & Reinvestimento (`ProventosTab`):**
   - Banner canônico `ReinvestDividendsBanner` (Regras 13 e 19 de `AGENTS.md`) exibido quando há saldo de dividendos em Caixa (`cashBalance > 0`), oferecendo atalho de 1-toque para o Rebalanceador em modo `existing_aporte`;
-  - Simulador Snowball (`snowball.ts` / `calculateSnowballReinvestmentPlan`) projeta o efeito bola de neve respeitando as metas de alocação da carteira.
-- **Extrato Integrado de Movimentações (`PortfolioActivityPanel`):**
+  - Lançamento e edição rápida de proventos centralizados em `QuickTransactionSheet` (modos Total vs. Por Cota).
+  - Simulador Snowball (`snowball.ts` / `calculateSnowballReinvestmentPlan`) projeta o efeito bola de neve respeitando a governança hierárquica da carteira.
+- **Extrato Integrado de Movimentações (`PortfolioActivityPanel` & `MovimentacoesTab`):**
   - Resumo de fluxo financeiro mensal com Total Comprado, Total Vendido, Proventos do Mês, Aportes do Bolso e Balanço Líquido de Compras (`netInvestedCents`);
-  - Filtros dinâmicos por Classe e Setor utilizando o componente `Select` Radix do Design System (Regra 7 de `AGENTS.md`);
-  - Destaque e rastreabilidade visual de operações geradas por "Aporte Inteligente" e tags setoriais inferidas (`inferSectorFromTicker`).
+  - Filtros dinâmicos por Classe e Setor utilizando o componente `Select` Radix do Design System (Regra 7 de `AGENTS.md`), além de atalhos integrados para **Marcos Históricos**, **Importar Planilha** e **DARF 6015**;
+  - Edição e criação operacional centralizadas em `QuickTransactionSheet` (Compra, Venda, Provento, Desdobro/Bonificação e Grupamento com fator `X:Y` livre).
 - **Gateway Central de Sincronização Atômica de Cache (`invalidatePortfolioSuite`):**
-  - Função centralizada em `src/state/mutations/portfolio/portfolio-keys.ts` que revalida atômica e coordenadamente todas as chaves de query (`assets`, `transactions`, `allTransactions`, `dividends`, `contributions`, `snapshots`, `portfolioPositions`, `allocationTargets`, `groupTargets` e opcionalmente `accounts`), erradicando inconsistências visuais e dessincronizações pós-mutação.
+  - Função centralizada em `src/state/mutations/portfolio/portfolio-keys.ts` que revalida atômica e coordenadamente todas as chaves de query (`assets`, `transactions`, `allTransactions`, `dividends`, `contributions`, `snapshots`, `portfolioPositions`, `groupTargets` e opcionalmente `accounts`), erradicando inconsistências visuais e dessincronizações pós-mutação.
+- **Unificação Integral UI/UX & Aporte Composto (Plano 42 / v3.10.0):**
+  - Consolidação da página `/investments` em **3 abas Nível 1** (`Carteira [Posição | Extrato]`, `Rebalancear [Simulador | Metas]` e `Proventos`), com roteamento retrocompatível para query strings legadas (`?tab=metas`, `?tab=aporte&valor=...`, `?tab=movimentacoes`).
+  - **Aporte Composto (`Bolso + Caixa`):** na aba `Rebalancear > Simulador` (`AporteTab`), o investidor pode somar parcialmente ou integralmente o saldo de `CAIXA` da corretora ao dinheiro novo do bolso para simular e aplicar compras em lote via RPC `execute_portfolio_batch_aporte` com `p_cash_used`, debitando `CAIXA` sem inflar `portfolio_contributions`.
+  - **Superfícies Operacionais Únicas:** `InvestmentWizard` (`StepGovernance` com Nota 0–10 + Status + Reserva de Emergência RF + `FundingSourceSelector`) e `QuickTransactionSheet` extinguiram os antigos formulários fragmentados (`AssetFormDialog`, `TransactionFormDialog`, `DividendFormDialog`, `AssetSplitDialog`, `ContributionsListDialog`).
 - **Sistema Holístico de Notas, Quarentenas, PQS & Meta Única Oficial (Plano 41 / v3.9.0):**
   - *Notas e Critérios por Arquétipo (`src/domain/portfolio/allocation.ts`):* cada ativo recebe nota objetiva de `0` a `10` calculada a partir de critérios ponderados por arquétipo de classe (`Ações`, `FIIs`, `Internacional`, `Renda Fixa`, `Cripto` etc.), com derivação de nível de convicção e status operacional (`active` / Aportar, `neutral` / Manter, `quarantine` / Quarentena, `exit` / Saída).
   - *Portfolio Quality Score (PQS):* índice consolidado da carteira ponderado pelo valor de mercado de cada posição avaliada ($\text{PQS} = \frac{\sum (v_i \cdot \text{score}_i)}{\sum v_i}$), exibido no relatório executivo (`PortfolioExecutiveReport`) com distribuição de patrimônio por faixas de convicção.

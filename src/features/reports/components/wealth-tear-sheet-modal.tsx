@@ -69,6 +69,8 @@ export interface WealthPositionRow {
   yearDividendsBRL?: number;
   yocPct?: number;
   isCash?: boolean;
+  score?: number | null;
+  allocationStatus?: string | null;
 }
 
 export interface MonthFlowSummary {
@@ -805,6 +807,8 @@ export function WealthTearSheetModal({
                   dividendsCents: numberToCents(r.dividendsBRL ?? r.yearDividendsBRL ?? 0),
                   yocPct: r.yocPct,
                   currency: r.currency,
+                  score: r.score,
+                  status: r.allocationStatus ?? "active",
                 };
               }),
             };

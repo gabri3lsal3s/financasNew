@@ -338,5 +338,56 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText(/350,00/)).toBeInTheDocument();
     expect(screen.getByText(/\+\s*R\$[\s\u00a0]*1\.700,00/i)).toBeInTheDocument();
   });
+
+  it("renderiza badges de Nota, 'Sem nota' e Status (Neutro, Quarentena, Saída) inclusive em Renda Fixa", () => {
+    render(
+      <ReportClassTables
+        groups={[
+          {
+            className: "Renda Fixa",
+            totalCents: 1000000,
+            sharePct: 50,
+            pnlPct: 12.5,
+            items: [
+              {
+                ticker: "CDB Banco Alpha",
+                quantity: 1,
+                avgPriceCents: 900000,
+                currentPriceCents: 1000000,
+                totalCents: 1000000,
+                pnlPct: 12.5,
+                indexType: "110% CDI",
+                score: null,
+                status: "neutral",
+              },
+            ],
+          },
+          {
+            className: "Ações",
+            totalCents: 1000000,
+            sharePct: 50,
+            pnlPct: -5,
+            items: [
+              {
+                ticker: "OIBR3",
+                quantity: 100,
+                avgPriceCents: 200,
+                currentPriceCents: 100,
+                totalCents: 10000,
+                pnlPct: -50,
+                score: 2,
+                status: "exit",
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Sem nota")).toBeInTheDocument();
+    expect(screen.getByText("Neutro")).toBeInTheDocument();
+    expect(screen.getByText("Nota 2")).toBeInTheDocument();
+    expect(screen.getByText("Saída")).toBeInTheDocument();
+  });
 });
 

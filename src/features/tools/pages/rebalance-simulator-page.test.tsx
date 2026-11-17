@@ -43,4 +43,15 @@ describe("RebalanceSimulatorPage", () => {
     // Deve conter classes do modelo multimercado (ex: Ativos Globais / Dólar)
     expect(screen.getByDisplayValue(/Ativos Globais \/ Dólar/i)).toBeInTheDocument();
   });
+
+  it("exibe ativos com Notas (0 a 10) por classe e distribui o aporte recomendado via deriveAssetWeightsFromScores (§Plano 42)", () => {
+    renderWithProviders(<RebalanceSimulatorPage />);
+
+    expect(screen.getByText(/Ativos & Notas \(0 a 10\) dentro de Fundos Imobiliários/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue("HGLG11")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("MXRF11")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Adicionar ativo/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("HGLG11").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Nota 9").length).toBeGreaterThan(0);
+  });
 });

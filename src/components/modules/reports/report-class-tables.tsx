@@ -59,6 +59,50 @@ const formatQuantity = (quantity: number): string =>
     ? String(quantity)
     : quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 
+function ReportAssetGovernanceBadges({
+  score,
+  status,
+}: {
+  score?: number | null;
+  status?: string | null;
+}) {
+  const showScore = score !== undefined;
+  const showStatus = status && status !== "active";
+  if (!showScore && !showStatus) return null;
+
+  return (
+    <>
+      {showScore && (
+        <span
+          className={cn(
+            "text-[8.5px] px-1 py-0.2 rounded font-mono font-medium border",
+            score === null
+              ? "bg-warning/15 text-warning-strong border-warning/30"
+              : "bg-muted/80 text-muted-foreground border-border/50",
+          )}
+        >
+          {score === null ? "Sem nota" : `Nota ${score}`}
+        </span>
+      )}
+      {status === "neutral" && (
+        <span className="text-[8.5px] px-1 py-0.2 rounded bg-muted/80 font-mono font-medium text-muted-foreground border border-border/50">
+          Neutro
+        </span>
+      )}
+      {status === "quarantine" && (
+        <span className="text-[8.5px] px-1 py-0.2 rounded bg-warning/15 font-mono font-medium text-warning-strong border border-warning/30">
+          Quarentena
+        </span>
+      )}
+      {status === "exit" && (
+        <span className="text-[8.5px] px-1 py-0.2 rounded bg-negative/15 font-mono font-medium text-negative-strong border border-negative/30">
+          Saída
+        </span>
+      )}
+    </>
+  );
+}
+
 /**
  * Tabelas de Custódia Especializadas por Classe de Ativo para Relatórios A4/PDF.
  * Renderiza seções de custódia com cabeçalho leve e linha de subtotais contábeis no tfoot:
@@ -195,7 +239,10 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                         {isRendaFixa ? (
                           <>
                             <td className="py-1.5 px-2.5 font-semibold text-foreground whitespace-normal break-words leading-tight text-[10.5px]">
-                              {sanitizeReportText(item.ticker)}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{sanitizeReportText(item.ticker)}</span>
+                                <ReportAssetGovernanceBadges score={item.score} status={item.status} />
+                              </div>
                             </td>
                             <td className="py-1.5 px-2 whitespace-normal break-words leading-tight text-[9.5px]">
                               {item.indexType ? (
@@ -239,16 +286,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                             <td className="py-1.5 px-2.5 font-semibold text-foreground whitespace-normal break-words leading-tight text-[11px]">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span>{sanitizeReportText(item.ticker)}</span>
-                                {item.score != null && (
-                                  <span className="text-[8.5px] px-1 py-0.2 rounded bg-muted/80 font-mono font-medium text-muted-foreground border border-border/50">
-                                    Nota {item.score}
-                                  </span>
-                                )}
-                                {item.status === "quarantine" && (
-                                  <span className="text-[8.5px] px-1 py-0.2 rounded bg-warning/15 font-mono font-medium text-warning-strong border border-warning/30">
-                                    Quarentena
-                                  </span>
-                                )}
+                                <ReportAssetGovernanceBadges score={item.score} status={item.status} />
                               </div>
                             </td>
                             <td className="py-1.5 px-2 text-muted-foreground whitespace-normal break-words leading-tight text-[9.5px]">
@@ -283,16 +321,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                             <td className="py-1.5 px-2.5 font-semibold text-foreground whitespace-normal break-words leading-tight text-[11px]">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span>{sanitizeReportText(item.ticker)}</span>
-                                {item.score != null && (
-                                  <span className="text-[8.5px] px-1 py-0.2 rounded bg-muted/80 font-mono font-medium text-muted-foreground border border-border/50">
-                                    Nota {item.score}
-                                  </span>
-                                )}
-                                {item.status === "quarantine" && (
-                                  <span className="text-[8.5px] px-1 py-0.2 rounded bg-warning/15 font-mono font-medium text-warning-strong border border-warning/30">
-                                    Quarentena
-                                  </span>
-                                )}
+                                <ReportAssetGovernanceBadges score={item.score} status={item.status} />
                               </div>
                             </td>
                             <td className="py-1.5 px-2 text-muted-foreground whitespace-normal break-words leading-tight text-[9.5px]">

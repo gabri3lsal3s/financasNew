@@ -1,5 +1,17 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.10.0 (Plano 42)** registra a conclusão da **Unificação Integral da UI/UX, Domínio e Governança de Investimentos** ([`docs/plans/completed/42_PLANO_UNIFICACAO_INTEGRAL_UI_UX_INVESTIMENTOS.md`](../plans/completed/42_PLANO_UNIFICACAO_INTEGRAL_UI_UX_INVESTIMENTOS.md)) (2026-11-17):
+> - **(1) Extinção de `allocation_targets` e Migração Canônica (`000127`)**:
+>   - Remoção definitiva da tabela, RPCs, schemas Zod, hooks e inputs manuais de `%` por ativo (`TargetEditor`), instituindo a cascata estrita em 3 níveis: `Classes %` (excluindo Caixa) -> `Setores %` opcionais escopados por classe (`group_targets.class_name`) -> `Notas (0–10)` + `Status` (`active`, `neutral`, `quarantine`, `exit`), com cálculo derivado único (`calculateEffectiveAssetTargets` / `save_portfolio_hierarchy_targets`) e exibição explícita de `"Sem nota"` (sem fallback falso Nota 8);
+>   - Suporte a **Aporte Composto (`Bolso + Caixa`)** na simulação e no RPC `execute_portfolio_batch_aporte(..., p_cash_used)`, debitando o saldo em Caixa sem distorcer aportes externos (`portfolio_contributions`).
+> - **(2) Arquitetura de 3 Abas Nível 1 & 2 Superfícies Operacionais**:
+>   - `/investments` consolidada em **Carteira** (`Posição` | `Extrato` com Marcos Históricos, Importar Planilha e DARF 6015), **Rebalancear** (`Simulador` | `Metas`) e **Proventos**, preservando retrocompatibilidade integral com deep links e tours (`?tab=metas`, `?tab=aporte`, `?tab=movimentacoes`, `?tab=proventos`);
+>   - Unificação de fluxos operacionais em apenas **`InvestmentWizard`** (com `StepGovernance`, `FundingSourceSelector` Bolso vs Caixa e sincronização de Reserva de Emergência RF) e **`QuickTransactionSheet`** (criação e edição de compras, vendas, proventos Total/Por Cota e eventos `X:Y`), eliminando 7 diálogos fragmentados (`AssetFormDialog`, `TransactionFormDialog`, `DividendFormDialog`, `AssetSplitDialog`, `ContributionsListDialog`, `StepTarget`).
+> - **(3) Ecossistema Satélite, Relatórios A4 & Compliance**:
+>   - Simulador público `/ferramentas/rebalanceamento` migrado para demonstrar Classes `%` + Notas `0–10` com rateio determinístico (`deriveAssetWeightsFromScores`);
+>   - `ReportClassTables` (`PortfolioExecutiveReport` & `WealthTearSheetModal`) uniformizados para renderizar badges de Nota (`"Sem nota"` / `"Nota X"`) e Status em todas as classes, inclusive Renda Fixa;
+>   - 100% conforme às regras de UI/UX, acessibilidade e lint do `AGENTS.md` (zero warnings de ESLint, zero erros TS).
+
 > **v3.9.0 (Plano 41)** registra a conclusão integral do **Sistema Holístico de Notas, Quarentenas, PQS e Meta Única Oficial de Carteira** ([`docs/plans/41_PLANO_SISTEMA_NOTAS_REBALANCEAMENTO_INTELIGENTE_E_GOVERNANCA_CARTEIRA.md`](../plans/41_PLANO_SISTEMA_NOTAS_REBALANCEAMENTO_INTELIGENTE_E_GOVERNANCA_CARTEIRA.md)) (2026-11-17):
 > - **(1) Schema, Migração SQL e Tipagem Canônica (Fase 1)**:
 >   - Migração `20260101000125_portfolio_asset_scoring_and_governance.sql` adicionando `score`, `allocation_status` (`active`, `neutral`, `quarantine`, `exit`), `score_criteria`, `last_reviewed_at`, `review_frequency_months` e `thesis_summary` em `portfolio_assets` com políticas RLS e validação;
