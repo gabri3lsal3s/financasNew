@@ -19,6 +19,7 @@ import { numberToCents } from "@/domain/money";
 import {
   bestDividendMonth,
   calculateWeightedPortfolioYoC,
+  FALLBACK_USD_RATE,
   topDividendPayer,
 } from "@/domain/portfolio";
 import {
@@ -148,7 +149,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
     const asset = d.asset_id ? assetById.get(d.asset_id) : null;
     const row = d.asset_id ? rowByAssetId.get(d.asset_id) : null;
     const isUSD = asset?.currency === "USD" || row?.currency === "USD";
-    const rate = isUSD ? (row?.usdRate || 5.25) : 1;
+    const rate = isUSD ? (row?.usdRate || FALLBACK_USD_RATE) : 1;
     return d.amount * rate;
   }, [assetById, rowByAssetId]);
 
@@ -239,7 +240,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
       assets.reduce((acc, a) => {
         const row = rowByAssetId.get(a.id);
         const isUSD = a.currency === "USD" || row?.currency === "USD";
-        const rate = isUSD ? (row?.usdRate || 5.25) : 1;
+        const rate = isUSD ? (row?.usdRate || FALLBACK_USD_RATE) : 1;
         return acc + (a.accumulated_dividends ?? 0) * rate;
       }, 0),
     [assets, rowByAssetId],
@@ -258,7 +259,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
         .map((a) => {
           const row = rowByAssetId.get(a.id);
           const isUSD = a.currency === "USD" || row?.currency === "USD";
-          const rate = isUSD ? (row?.usdRate || 5.25) : 1;
+          const rate = isUSD ? (row?.usdRate || FALLBACK_USD_RATE) : 1;
           const initialHistorical = a.accumulated_dividends ?? 0;
           const assetDivs = dividends.filter((d) => d.asset_id === a.id);
           const periodicAmount = assetDivs.reduce((acc, d) => acc + d.amount, 0);
@@ -556,7 +557,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
               const row = entry.asset_id ? rowByAssetId.get(entry.asset_id) : null;
               const currency = asset?.currency ?? row?.currency ?? "BRL";
               const ticker = asset?.ticker ?? entry.ticker ?? "Ativo";
-              const rate = currency === "USD" ? (row?.usdRate || 5.25) : 1;
+              const rate = currency === "USD" ? (row?.usdRate || FALLBACK_USD_RATE) : 1;
               const amountBRL = entry.amount * rate;
 
               return (

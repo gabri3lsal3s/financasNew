@@ -1,5 +1,20 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.8.2 (Fase 41)** registra a conclusão integral da **Consolidação Definitiva do Motor Canônico e Erradicação de Duplicações em Investimentos** ([`docs/plans/41_PLANO_CONSOLIDACAO_DEFINITIVA_MOTOR_CANONICO_E_ERRADICACAO_DUPLICACOES.md`](../plans/41_PLANO_CONSOLIDACAO_DEFINITIVA_MOTOR_CANONICO_E_ERRADICACAO_DUPLICACOES.md)) (2026-11-17):
+> - **(1) Emagrecimento Radical de `point-in-time.ts` (-555 linhas)**:
+>   - Transformado em adapter levíssimo de ~140 linhas delegando integralmente para o motor canônico `evaluatePortfolioCanonicalState({ mode: "point_in_time", ... })`;
+>   - Reconciliação canônica de posições passadas, eliminação de ativos futuros com quantidade zero na custódia histórica, resolução de splits proporcionais/aditivos e preservação de Custo Total ao centavo (Salvaguarda S17);
+> - **(2) Unificação Integral do Ledger (`computeLedger`)**:
+>   - `computeLedger` em `src/domain/portfolio/index.ts` passa a delegar o cálculo de quantidade, preço médio ponderado, custo total e proventos para `computeCanonicalAssetLedger`, garantindo a mesma fonte da verdade matemática em mutações e exclusões (`operations.ts`);
+> - **(3) Emagrecimento de `monthly-statement.ts` (-207 linhas)**:
+>   - `calculateMonthlyStatement` passa a delegar para `createCanonicalMonthlyStatement`, garantindo Modified Dietz ANBIMA/GIPS idêntico com ponderação exata por dias corridos e homogeneidade de bases contábeis (Salvaguarda S9);
+> - **(4) Harmonização Cambial PTAX Dinâmica**:
+>   - Eliminação de constantes hardcoded soltas (`5.25`) em abas de proventos, adotando a taxa PTAX dinâmica do motor e `FALLBACK_USD_RATE`;
+> - **(5) Quality Gates 100% Aprovados**:
+>   - 689 testes unitários de domínio de carteira + 4 cenários de regressão histórica (978 dias, 34 competências) + 11 testes de UI/Extrato 100% verdes;
+>   - TypeScript (`tsc -b`), ESLint e build Vite gerados com sucesso;
+>   - Build de produção e APK Android release compilados com sucesso.
+>
 > **v3.8.0 (Fase 40)** registra a conclusão integral da **Unificação Canônica do Motor de Cálculos, Rentabilidade, Relatórios & UI/UX de Investimentos 360°** ([`docs/plans/40_PLANO_UNIFICACAO_CANONICA_MOTOR_CALCULOS_E_RELATORIOS_INVESTIMENTOS.md`](../plans/40_PLANO_UNIFICACAO_CANONICA_MOTOR_CALCULOS_E_RELATORIOS_INVESTIMENTOS.md)) (2026-11-17):
 > - **(1) Motor Canônico Puro e Centralizado (`PortfolioCanonicalEngine`)**:
 >   - Unificação definitiva dos 7 motores de cálculo dispersos em um único motor matemático puro no domínio (`src/domain/portfolio/canonical-*.ts`), desacoplado de UI e Supabase;

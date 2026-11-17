@@ -882,7 +882,7 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       });
 
       let quoteSource: string = resolvedHistorical.source;
-      if (quoteSource === "fallback" && averageCostNative > 0) {
+      if (quoteSource === "fallback" && isCustomValuationAsset(asset) && averageCostNative > 0) {
         quoteSource = "custom_valuation";
         pricingMode = "custom_valuation";
       }
@@ -904,6 +904,9 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
 
     const holdingDividendsBRL = reconciliation.dividendsByAssetId.get(asset.id) ?? 0;
     const holdingDividendsNative = reconciliation.dividendsNativeByAssetId.get(asset.id) ?? holdingDividendsBRL;
+    const assetMonthDividendsBRL = reconciliation.dividends
+      .filter((d) => d.assetId === asset.id && d.date.slice(0, 7) === month)
+      .reduce((acc, d) => acc + d.amountBRL, 0);
 
     const holding = createCanonicalAssetHolding({
       assetId: asset.id,
@@ -919,6 +922,7 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       resolvedPrice,
       accumulatedDividendsBRL: holdingDividendsBRL,
       dividendsNative: holdingDividendsNative,
+      monthDividendsBRL: round2(assetMonthDividendsBRL),
       fixedIncomeMetadata: fiMeta,
       fixedIncomeResult,
       pricingMode,

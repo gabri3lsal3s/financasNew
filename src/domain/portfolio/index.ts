@@ -14,6 +14,7 @@
  */
 
 import type { PortfolioTransactionType } from "@/types";
+import { computeCanonicalAssetLedger } from "./canonical-normalizer";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -125,32 +126,34 @@ function roundMoney(value: number): number {
  * cronológica e deriva o caixa. A posição inicial é zerada.
  */
 export function computeLedger(transactions: readonly LedgerTransaction[]): LedgerResult {
-  const sorted = [...transactions].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  let position: AssetPosition = { quantity: 0, averageCost: 0, totalCost: 0, dividends: 0 };
+  const canonicalLedger = computeCanonicalAssetLedger(transactions);
   let cash = 0;
-
-  for (const tx of sorted) {
-    position = applyOperation(position, tx);
+  for (const tx of transactions) {
+    const rawTotal = Number(tx.total) || (Number(tx.quantity) || 0) * (Number(tx.price) || 0);
     switch (tx.type) {
       case "buy":
       case "subscription":
-        cash -= tx.total;
+        cash -= rawTotal;
         break;
       case "sell":
-        cash += tx.total;
-        break;
       case "dividend":
       case "jcp":
       case "fii_yield":
-        cash += tx.total;
+        cash += rawTotal;
         break;
       case "split":
       case "reverse_split":
-        break; // não movimentam caixa
+        break;
     }
   }
 
-  return { ...position, cash: roundMoney(cash) };
+  return {
+    quantity: canonicalLedger.quantity,
+    averageCost: canonicalLedger.averagePrice,
+    totalCost: canonicalLedger.totalCost,
+    dividends: canonicalLedger.dividendsTotal,
+    cash: roundMoney(cash),
+  };
 }
 
 /** Posição com valor de mercado (cotação) e peso no patrimônio. */

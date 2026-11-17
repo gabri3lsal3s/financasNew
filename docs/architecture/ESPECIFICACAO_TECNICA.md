@@ -667,12 +667,13 @@ A inteligência de repetição do sistema opera em dois trilhos expressos e desa
     - **CTA "Comprar no Wizard":** Integrado no `AporteResult` (tabela desktop, cards mobile e árvore), permitindo ao investidor acionar o Wizard com ativo, cotas calculadas e valor orçado pré-carregados.
     - **Fallback de Drift por Classe:** No Resumo da Carteira, se não houver metas por ativo (`targets.length === 0`), o desvio de alocação monitora automaticamente as classes a partir de `classTargets` (Blindagem B9).
 
-#### 3.11.4 Fechamento Histórico de Carteira, Relatórios Retroativos Ponto-no-Tempo e Retificação Quantitativa do Dossiê Executivo (§F51)
+#### 3.11.4 Fechamento Histórico de Carteira, Relatórios Retroativos Ponto-no-Tempo e Retificação Quantitativa do Dossiê Executivo (§F51 / Plano 41)
 
 - **Reconstrução Ponto-no-Tempo de Custódia (`calculatePointInTimePosition`, `domain/portfolio/point-in-time.ts`):**
+  - Opera como adapter canônico levíssimo delegando 100% dos cálculos para o motor unificado puro `evaluatePortfolioCanonicalState({ mode: "point_in_time", ... })`.
   - Permite reproduzir a carteira exata do investidor em qualquer data de corte histórica $t$ (`cutoffDate = YYYY-MM-lastDay`).
   - **Filtro Estrito de Eventos:** considera exclusivamente compras e vendas com $\text{data} \le \text{cutoffDate}$; movimentações posteriores são categoricamente ignoradas na quantidade histórica.
-  - **Soma Contábil de Proventos:** soma de proventos filtrada por $\text{data} \le \text{cutoffDate}$.
+  - **Soma Contábil de Proventos:** soma de proventos filtrada por $\text{data} \le \text{cutoffDate}$ com discriminação por ativo (`monthDividendsBRL`).
   - **Preservação do Caixa Ponto-no-Tempo:** suporta injeção de saldo de caixa histórico (`cashBalance`) desacoplado de ativos de renda variável.
 - **Cascata Hierárquica Defensiva de Cotações de Fechamento (`historical-quotes.ts` / `portfolio_monthly_prices`):**
   - Resolução de preço para cada ativo no fechamento mensal obedece a 4 níveis estritos de prioridade com timeout defensivo de 4 segundos:

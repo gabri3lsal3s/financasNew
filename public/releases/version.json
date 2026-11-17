@@ -1,11 +1,11 @@
 {
-  "version": "3.8.1",
-  "versionCode": 65,
-  "releaseDate": "2026-11-17T15:10:15Z",
-  "minSupportedVersion": "3.8.1",
+  "version": "3.8.2",
+  "versionCode": 67,
+  "releaseDate": "2026-11-17T15:43:20Z",
+  "minSupportedVersion": "3.8.2",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "6919bbeb1d06291acf323d7b3cd4fe8e532d6638f7057b6f5686afa8ad8a7688",
-  "fileSizeBytes": 12125559,
+  "sha256": "2696f72f6023163cb7ea9f5b8a053be2b3b47c74d8ecc12bd33cd7ab4651023f",
+  "fileSizeBytes": 12125391,
   "changelog": [
     "Axir v3.8.1: Diferenciação de Renda Fixa (Cálculo Automático vs Fallback Manual)",
     "Saldo de títulos com taxa contratada projetado diariamente sem pontinho de atenção manual",

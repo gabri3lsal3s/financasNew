@@ -1225,8 +1225,8 @@ export function createCanonicalMonthlyStatement(
   let monthDividendsBRL = params.monthDividendsBRL ?? 0;
   let dividendsCount = params.dividendsCount ?? 0;
 
-  if (params.monthDividendsBRL === undefined && params.dividends) {
-    const eligibleDividends = params.dividends.filter(
+  if (params.monthDividendsBRL === undefined) {
+    const eligibleDividends = (params.dividends ?? []).filter(
       (d) => d.date && d.date.slice(0, 7) === month,
     );
     for (const d of eligibleDividends) {
