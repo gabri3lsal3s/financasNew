@@ -396,52 +396,52 @@ flowchart TD
 **Objetivo:** Elevar a experiência do usuário a um patamar de conforto, clareza e ausência de fricção em todos os pontos de contato da área de Investimentos, em estrita conformidade com as Regras de Ouro de UI do `AGENTS.md` (Regras 4, 7–28) e `DESIGN_SYSTEM.md`.
 
 #### Etapa 5.1: Ergonomia Móvel & Fricção Mínima no Investment Wizard (`src/features/investments/wizard/`)
-- [ ] **Adaptação Dinâmica por Arquétipo:**  
+- [x] **Adaptação Dinâmica por Arquétipo:**  
   Quando o usuário selecionar "Renda Fixa", o Wizard oculta dinamicamente campos de bolsa (cotação intraday, múltiplos lotes) e expõe exclusivamente os campos nativos do título: *Nome, Emissor, Indexador (CDI, IPCA+, Pré), Taxa (% ou a.a.), Vencimento e Isenção de IR*.
-- [ ] **Modo Não-Cotado / Alternativo:**  
+- [x] **Modo Não-Cotado / Alternativo:**  
   Para ativos sem ticker de mercado (Imóveis, Fundos Fechados, Empresas Locais), ativar o modo *"Valoração Própria"*, dispensando máscara rígida de ticker B3 de 4 letras.
-- [ ] **Ergonomia Tátil & Prevenção de Auto-Zoom (Regra 20):**  
+- [x] **Ergonomia Tátil & Prevenção de Auto-Zoom (Regra 20):**  
   Garantir que todos os campos de entrada de texto e números possuam tamanho mínimo de fonte de 16px no mobile (`text-base sm:text-sm`) e teclado virtual apropriado (`inputMode="decimal"`).
-- [ ] **Proibição Estrita de `autoFocus`:**  
+- [x] **Proibição Estrita de `autoFocus`:**  
   Garantir zero `autoFocus` declarativo ao abrir o Wizard, prevenindo saltos de viewport e fechamento involuntário do teclado no iOS/Android.
 
 #### Etapa 5.2: Ficha do Ativo (`AssetDetailSheet`) & Ações Rápidas de Custódia
-- [ ] **Bottom Sheet Canônico no Mobile (Regra 18):**  
+- [x] **Bottom Sheet Canônico no Mobile (Regra 18):**  
   Ajustar o contêiner móvel para gaveta deslizante com alça de arraste dedicada (`pill handle: pt-2.5 pb-1 flex justify-center md:hidden pointer-events-none`) e micro-título reativo no topo ao rolar além de 32px.
-- [ ] **Barra de Ações Secundárias Compacta (Regra 18):**  
+- [x] **Barra de Ações Secundárias Compacta (Regra 18):**  
   Agrupar ações utilitárias (Editar, Desdobrar, Calibrar, Excluir) em botões de ícone compactos (`size="sm"`, `size-8 !min-w-8 !w-8 p-0 shrink-0`) acompanhados de `title`, `aria-label` e `<span className="sr-only">`, eliminando overflow horizontal.
-- [ ] **Feedback Sensorial Canônico (Regra 17):**  
+- [x] **Feedback Sensorial Canônico (Regra 17):**  
   Disparar feedback tátil e sonoro exclusivamente via `triggerSensory` no sucesso de operações, com **zero chamadas manuais** de `triggerHaptic` dentro de handlers `onClick` de botões (prevenindo o defeito de duplos disparos simultâneos).
 
 #### Etapa 5.3: Interface de Conciliação e Fidelidade no Relatório Executivo e Snapshots
-- [ ] **Badge da Sentinela de Fidelidade:**  
+- [x] **Badge da Sentinela de Fidelidade:**  
   No cabeçalho do Relatório Executivo A4 e no modal de snapshots, exibir badge elegante e calmo:  
   - Quando $|\text{discrepancyPct}| \le 3\%$: `<Badge variant="positive" size="sm">Fidelidade Alta (100% Conciliado)</Badge>`
   - Quando $|\text{discrepancyPct}| > 3\%$: `<Badge variant="warning" size="sm">Conciliação Sugerida</Badge>` acompanhado de banner explicativo suave com botão de ação direta: `"Abrir Editor de Fechamento"`.
-- [ ] **Carrossel de Snapshots Suave (Regra 19):**  
+- [x] **Carrossel de Snapshots Suave (Regra 19):**  
   Garantir que todos os cards da fita de snapshots preencham 100% da altura da trilha flex (`min-h-[104px] sm:min-h-[72px]`), eliminando saltos de layout (*layout jumps*) durante a navegação.
 
 #### Etapa 5.4: Fluidez na Central Geral de Relatórios e Tabelas Densas (Regras 11, 24 e 25)
-- [ ] **Zero Reticências em Valores Monetários (Regra 11):**  
+- [x] **Zero Reticências em Valores Monetários (Regra 11):**  
   Todo valor financeiro em cards, tabelas e relatórios deve utilizar `<MoneyText />` ou tipografia adaptativa com auto-fit proporcional (`tabular-nums tracking-tight whitespace-nowrap`).
-- [ ] **Contêiner Desobstruído em Tabelas Densas (Regra 25):**  
+- [x] **Contêiner Desobstruído em Tabelas Densas (Regra 25):**  
   Tabelas com 3 ou mais colunas financeiras envolvidas em contêiner de rolagem horizontal desobstruída (`overflow-x-auto no-scrollbar scroll-smooth w-full`) com indicador visual sutil de rolagem no mobile.
-- [ ] **Superfície e Elevação Padronizada (Regra 16):**  
+- [x] **Superfície e Elevação Padronizada (Regra 16):**  
   Unificar todos os cards de métricas na trinca canônica `border-border/80 bg-surface shadow-xs`.
 
 #### Etapa 5.5: Auditoria Completa de Acessibilidade e Controles Nativos (Regras 7, 8 e 28)
-- [ ] **ZERO Controles Nativos (Regra 7):**  
+- [x] **ZERO Controles Nativos (Regra 7):**  
   Confirmar que nenhum `<select>`, `<input type="checkbox">` ou `<dialog>` nativo é utilizado diretamente nas telas de investimentos, assegurando uso estrito dos primitivos estilizados com tokens do Design System.
-- [ ] **ZERO Emojis (Regra 8):**  
+- [x] **ZERO Emojis (Regra 8):**  
   Confirmar a ausência absoluta de emojis ou caracteres decorativos soltos em qualquer texto, empty state ou mensagem de erro da área de investimentos, mantendo ícones `lucide-react` padronizados.
-- [ ] **Padronização Linguística PT-BR (Regra 28):**  
+- [x] **Padronização Linguística PT-BR (Regra 28):**  
   Formatação rigorosa com `formatCentsAsBRL` e `formatPercent` em todas as superfícies.
 
 #### 🚪 Portão de Qualidade 5 (Fim da Fase 5)
-- [ ] Auditoria de acessibilidade WCAG 2.1 AA e verificação de layout responsivo em 320px, 375px, 768px e 1280px aprovada.
-- [ ] Testes de UI passando com 100% de sucesso.
-- [ ] `npm run typecheck` e `npm run lint` limpos.
-- [ ] **Ação Git:** Commit semântico e Push:  
+- [x] Auditoria de acessibilidade WCAG 2.1 AA e verificação de layout responsivo em 320px, 375px, 768px e 1280px aprovada.
+- [x] Testes de UI passando com 100% de sucesso.
+- [x] `npm run typecheck` e `npm run lint` limpos.
+- [x] **Ação Git:** Commit semântico e Push:  
   `git commit -m "feat(investments-ui): modernizacao ergonomica de UI/UX, friccao minima e fidelidade institucional (v3.7.5)" && git push`
 
 ---

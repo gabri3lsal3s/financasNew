@@ -354,11 +354,12 @@ export function AssetDetailSheet({
                       setCalibrateOpen(true);
                     }, "Calibrar Renda Fixa")
                   }
-                  className="gap-1 text-xs text-muted-foreground flex-1 sm:flex-initial"
+                  className="size-8 !min-w-8 !w-8 p-0 shrink-0 text-muted-foreground cursor-pointer"
                   title="Calibrar com saldo do extrato"
+                  aria-label="Calibrar com saldo do extrato"
                 >
                   <SlidersHorizontal className="size-3.5" aria-hidden="true" />
-                  <span>Calibrar</span>
+                  <span className="sr-only">Calibrar com saldo do extrato</span>
                 </Button>
               )}
               {(!isTotalValue || totalDividendsNative > 0 || (currentAsset.accumulated_dividends ?? 0) > 0) && (
@@ -388,27 +389,29 @@ export function AssetDetailSheet({
                       onAction?.("split", currentAsset);
                     }, "Desdobrar / Agrupar Cotas")
                   }
-                  className="gap-1 text-xs text-muted-foreground flex-1 sm:flex-initial"
+                  className="size-8 !min-w-8 !w-8 p-0 shrink-0 text-muted-foreground cursor-pointer"
                   title="Desdobramento ou grupamento de cotas"
+                  aria-label="Desdobramento ou grupamento de cotas"
                 >
                   <Scissors className="size-3.5" aria-hidden="true" />
-                  <span>Ajuste de Cotas</span>
+                  <span className="sr-only">Desdobrar ou agrupar cotas</span>
                 </Button>
               )}
               <Button
                 type="button"
                 size="sm"
-                variant="ghost"
+                variant="outline"
                 onClick={() =>
                   guardAction(() => {
                     setEditOpen(true);
                   }, "Editar Ativo")
                 }
-                className="size-8 p-0 text-muted-foreground shrink-0 cursor-pointer"
+                className="size-8 !min-w-8 !w-8 p-0 shrink-0 text-muted-foreground cursor-pointer"
                 title="Editar Ativo"
                 aria-label="Editar Ativo"
               >
                 <Edit2 className="size-3.5" aria-hidden="true" />
+                <span className="sr-only">Editar Ativo</span>
               </Button>
             </div>
           </div>

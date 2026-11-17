@@ -25,7 +25,8 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
   const isCash = isCashAssetClass(state.assetClass) || state.ticker.toUpperCase() === "CAIXA";
   const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
   const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
-  const isTotalValueMode = !isCash && isFixedIncome;
+  const isCustomValuation = Boolean(state.notes?.includes("[VALUATION:CUSTOM]") || state.notes?.includes("[PRICING:TOTAL]"));
+  const isTotalValueMode = !isCash && (isFixedIncome || isCustomValuation);
   const isCrypto = state.assetClass === "Cripto";
   const needsCurrencyField = CLASSES_WITH_CURRENCY.has(state.assetClass);
   const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[state.assetClass] ?? [];
@@ -110,6 +111,29 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
         </div>
       )}
 
+      {/* Toggle de Valoração Própria / Ativo Não Cotado em Bolsa (Salvaguarda S7) */}
+      {!isCash && !isFixedIncome && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface/60 p-3">
+          <Checkbox
+            id="wizard-custom-val"
+            checked={isCustomValuation}
+            onCheckedChange={(checked) => {
+              const currentNotes = (state.notes ?? "").replace(/\[VALUATION:CUSTOM\]/g, "").trim();
+              const updatedNotes = checked
+                ? [currentNotes, "[VALUATION:CUSTOM]"].filter(Boolean).join(" ")
+                : currentNotes;
+              onChange({ notes: updatedNotes });
+            }}
+          />
+          <label htmlFor="wizard-custom-val" className="flex flex-col gap-0.5 text-xs text-foreground cursor-pointer select-none">
+            <span className="font-semibold">Valoração Própria / Ativo Não Cotado em Bolsa</span>
+            <span className="text-[11px] text-muted-foreground font-normal">
+              Permite lançar valor aplicado e saldo diretamente (sem cotas ou código B3) e ignora a busca de cotações automáticas.
+            </span>
+          </label>
+        </div>
+      )}
+
       {/* Bloco de Posição Inicial */}
       {isCash ? (
         <div className="rounded-xl border border-border/80 bg-surface/60 p-4 flex flex-col gap-3">
@@ -130,7 +154,11 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
         <div className="rounded-xl border border-border/80 bg-surface/60 p-4 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground">
-              {isTesouro ? "Posição Inicial (Tesouro Direto)" : "Posição Inicial (Renda Fixa)"}
+              {isTesouro
+                ? "Posição Inicial (Tesouro Direto)"
+                : isFixedIncome
+                  ? "Posição Inicial (Renda Fixa)"
+                  : "Posição Inicial (Valoração Própria)"}
             </span>
             <span className="text-[11px] text-muted-foreground">Valor Completo</span>
           </div>

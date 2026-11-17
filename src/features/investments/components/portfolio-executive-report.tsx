@@ -303,6 +303,18 @@ export function PortfolioExecutiveReport({
               {isCurrentSelected ? "Mês Aberto" : "Fechamento Histórico"}
             </Badge>
 
+            {!isCurrentSelected && monthlyPositionQuery.data?.fidelity && (
+              Math.abs(monthlyPositionQuery.data.fidelity.discrepancyPct ?? 0) <= 3 ? (
+                <Badge variant="positive" size="xs" className="shrink-0 font-medium">
+                  Fidelidade Alta (100% Conciliado)
+                </Badge>
+              ) : (
+                <Badge variant="warning" size="xs" className="shrink-0 font-medium">
+                  Conciliação Sugerida
+                </Badge>
+              )
+            )}
+
             {!isCurrentSelected && snapshotsQuery.data?.some((s) => s.month === selectedMonth) ? (
               <Button
                 type="button"
@@ -507,7 +519,7 @@ export function PortfolioExecutiveReport({
                     className="shrink-0 gap-1.5 cursor-pointer font-medium self-stretch sm:self-auto"
                   >
                     <SlidersHorizontal className="size-3 text-muted-foreground" aria-hidden="true" />
-                    <span>Conferir Ativos</span>
+                    <span>Abrir Editor de Fechamento</span>
                   </Button>
                 </div>
               );
