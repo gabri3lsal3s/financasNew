@@ -4,6 +4,10 @@ import { Badge } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import {
+  ALLOCATION_STATUS_META,
+  getScoreConvictionMeta,
+} from "@/domain/portfolio";
+import {
   getAssetPricingMode,
   isCashAssetClass,
   isFixedIncomeClass,
@@ -181,6 +185,37 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
                   <span className="font-mono text-positive-strong">
                     + <MoneyText cents={numberToCents(preview.contributionBRL)} currency="BRL" />
                   </span>
+                </div>
+              )}
+
+              {mode === "new_asset" && !isCash && (
+                <div className="mt-2 pt-2.5 border-t border-border/60 flex flex-col gap-1.5 text-[11px]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Nota de Convicção:</span>
+                    <span className="font-semibold text-foreground">
+                      {state.score !== null
+                        ? `Nota ${state.score}/10 (${getScoreConvictionMeta(state.score).label})`
+                        : "Sem nota (peso neutro 5)"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Status na Carteira:</span>
+                    <span className="font-semibold text-foreground">
+                      {ALLOCATION_STATUS_META[state.allocationStatus].label}
+                    </span>
+                  </div>
+                  {isFixedIncome && state.isEmergencyFund && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground">Reserva de Emergência:</span>
+                      <span className="font-semibold text-positive-strong">Incluído automaticamente</span>
+                    </div>
+                  )}
+                  {state.thesisSummary.trim().length > 0 && (
+                    <div className="flex flex-col gap-0.5 pt-1">
+                      <span className="text-muted-foreground">Tese resumida:</span>
+                      <span className="text-foreground line-clamp-2">{state.thesisSummary.trim()}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

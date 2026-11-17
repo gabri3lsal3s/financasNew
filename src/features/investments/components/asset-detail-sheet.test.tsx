@@ -109,16 +109,24 @@ vi.mock("@/state", () => ({
     data: null,
     isLoading: false,
   }),
-  useAllocationTargets: () => ({
-    data: [{ asset_id: "asset-1", ticker: "PETR4", target_percentage: 20 }],
-    isLoading: false,
-  }),
   useGroupTargets: (type: "class" | "sector") => ({
     data:
       type === "sector"
-        ? [{ id: "s1", user_id: "user-1", group_type: "sector" as const, name: "Petróleo, Gás e Combustíveis", target_percentage: 25 }]
+        ? [{ id: "s1", user_id: "user-1", group_type: "sector" as const, class_name: "Ações", name: "Petróleo, Gás e Combustíveis", target_percentage: 25 }]
         : [{ id: "c1", user_id: "user-1", group_type: "class" as const, name: "Ações", target_percentage: 40 }],
     isLoading: false,
+  }),
+  useRecordOrder: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+    isPending: false,
+  }),
+  useUpdatePortfolioTransaction: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(mockTransaction),
+    isPending: false,
+  }),
+  useUpdatePortfolioDividend: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
   }),
 }));
 
@@ -173,16 +181,30 @@ describe("AssetDetailSheet (Fase 41 & F57)", () => {
     expect(onAction).toHaveBeenCalledWith("buy", mockAsset);
   });
 
-  it("renderiza o card de Diagnóstico de Alocação e dispara onOpenWizard ao clicar em Aportar no Wizard", () => {
+  it("renderiza o card de Diagnóstico de Alocação derivada e dispara onOpenWizard ao clicar em Aportar no Wizard", () => {
     const onOpenWizard = vi.fn();
     render(<AssetDetailSheet asset={mockAsset} open={true} onOpenChange={vi.fn()} onOpenWizard={onOpenWizard} />);
 
     expect(screen.getByText("Diagnóstico de Alocação & Metas")).toBeInTheDocument();
-    expect(screen.getByText(/Meta: 20[,.]0%/i)).toBeInTheDocument();
+    // Classe 40% x Setor 25% dentro da classe -> 10,0% derivado automaticamente
+    expect(screen.getByText("10,0%")).toBeInTheDocument();
 
     const wizardBtn = screen.getByRole("button", { name: /Aportar no Wizard/i });
     fireEvent.click(wizardBtn);
     expect(onOpenWizard).toHaveBeenCalledWith(mockAsset, undefined, undefined);
+  });
+
+  it("exibe 'Sem nota' (nunca 'Nota 8') quando score é nulo", () => {
+    const unratedAsset: PortfolioAsset = {
+      ...mockAsset,
+      score: null,
+      allocation_status: "active",
+    };
+
+    render(<AssetDetailSheet asset={unratedAsset} open={true} onOpenChange={vi.fn()} />);
+
+    expect(screen.getByText("Sem nota")).toBeInTheDocument();
+    expect(screen.queryByText("Nota 8/10")).not.toBeInTheDocument();
   });
 
   it("renderiza o card de Custódia Internacional Dual para ativos em USD", () => {

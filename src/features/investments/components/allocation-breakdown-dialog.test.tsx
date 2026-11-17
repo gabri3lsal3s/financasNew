@@ -110,7 +110,7 @@ describe("AllocationBreakdownDialog", () => {
 
     // KPIs da classe
     expect(screen.getByText("Meta de Alocação")).toBeInTheDocument();
-    expect(screen.getByText("50.0%")).toBeInTheDocument();
+    expect(screen.getByText("50,0%")).toBeInTheDocument();
   });
 
   it("renderiza o raio-x de um setor com os ativos daquele setor", () => {

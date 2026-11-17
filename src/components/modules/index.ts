@@ -26,8 +26,6 @@ export { InsightList } from "./insight-list";
 export type { InsightListProps, InsightListItemData } from "./insight-list";
 export { PositionTable } from "./position-table";
 export type { PositionRow, PositionTableProps } from "./position-table";
-export { TargetEditor } from "./target-editor";
-export type { TargetEditorProps, TargetEditorRow } from "./target-editor";
 export { AporteResult } from "./aporte-result";
 export type { AporteResultProps, AporteRouteRow, CustomAporteExecutionItem } from "./aporte-result";
 export { HighlightRow } from "./highlight-row";

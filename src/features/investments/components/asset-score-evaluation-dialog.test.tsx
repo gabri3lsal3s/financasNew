@@ -113,4 +113,29 @@ describe("AssetScoreEvaluationDialog (§F41)", () => {
       expect(handleOpenChange).toHaveBeenCalledWith(false);
     });
   });
+
+  it("permite limpar nota selecionando 'Sem nota' (null) sem falsos positivos", async () => {
+    render(
+      <AssetScoreEvaluationDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        asset={mockAsset}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /^Sem nota$/i }));
+    expect(screen.getByText(/Sem nota \(peso neutro 5\)/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Salvar Avaliação/i }));
+    await waitFor(() => {
+      expect(mockUpdateAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "asset-wege-1",
+          patch: expect.objectContaining({
+            score: null,
+          }),
+        }),
+      );
+    });
+  });
 });

@@ -1,8 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuickTransactionSheet } from "./quick-transaction-sheet";
-import type { PortfolioAsset } from "@/types";
+import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction } from "@/types";
 
 const mockAsset: PortfolioAsset = {
   id: "asset-1",
@@ -12,6 +12,16 @@ const mockAsset: PortfolioAsset = {
   currency: "BRL",
   quantity: 100,
   average_price: 60.0,
+};
+
+const mockCashAsset: PortfolioAsset = {
+  id: "cash-1",
+  user_id: "user-1",
+  ticker: "CAIXA",
+  asset_class: "Caixa",
+  currency: "BRL",
+  quantity: 1500,
+  average_price: 1,
 };
 
 const mockTesouroAsset: PortfolioAsset = {
@@ -34,10 +44,12 @@ const mockTesouroAsset: PortfolioAsset = {
 };
 
 const mockRecordOrder = vi.fn().mockResolvedValue({ success: true });
+const mockUpdateTx = vi.fn().mockResolvedValue({ id: "tx-1" });
+const mockUpdateDividend = vi.fn().mockResolvedValue({ id: "div-1" });
 
 vi.mock("@/state", () => ({
   usePortfolioAssets: () => ({
-    data: [mockAsset, mockTesouroAsset],
+    data: [mockAsset, mockTesouroAsset, mockCashAsset],
     isLoading: false,
     error: null,
   }),
@@ -45,17 +57,31 @@ vi.mock("@/state", () => ({
     mutateAsync: mockRecordOrder,
     isPending: false,
   }),
+  useUpdatePortfolioTransaction: () => ({
+    mutateAsync: mockUpdateTx,
+    isPending: false,
+  }),
+  useUpdatePortfolioDividend: () => ({
+    mutateAsync: mockUpdateDividend,
+    isPending: false,
+  }),
   usePortfolioPosition: () => ({
     rows: [],
   }),
 }));
 
-describe("QuickTransactionSheet (Fase 41)", () => {
-  it("renderiza corretamente para o ativo fornecido", () => {
+describe("QuickTransactionSheet (Fase 41 / Plano 42)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renderiza corretamente para o ativo fornecido com FundingSourceSelector (padrão Bolso)", () => {
     render(<QuickTransactionSheet open={true} asset={mockAsset} onOpenChange={vi.fn()} />);
     expect(screen.getByText("Movimentar VALE3")).toBeInTheDocument();
     expect(screen.getByText("Compra / Aporte")).toBeInTheDocument();
     expect(screen.getByText("Venda / Resgate")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Dinheiro Novo \(Bolso\)/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: /Saldo da Corretora \(Caixa\)/i })).toHaveAttribute("aria-checked", "false");
   });
 
   it("permite alternar para modo de Venda e exibe campo de quantidade a vender", async () => {
@@ -79,13 +105,11 @@ describe("QuickTransactionSheet (Fase 41)", () => {
 
     expect(screen.getByText("Custo Original da Aplicação (R$)")).toBeInTheDocument();
 
-    // Preenche valor de resgate clicando no atalho 100%
     const totalShortcutBtn = screen.getByRole("button", { name: /100% \(Total\)/i });
     await user.click(totalShortcutBtn);
 
     expect(screen.getByText("Discriminação do Resgate")).toBeInTheDocument();
 
-    // Clica no botão de ajuste de alíquota/IRRF
     const adjustBtn = screen.getByRole("button", { name: /Ajustar alíquota e imposto de renda retido na fonte/i });
     expect(adjustBtn).toBeInTheDocument();
     await user.click(adjustBtn);
@@ -95,15 +119,128 @@ describe("QuickTransactionSheet (Fase 41)", () => {
     expect(screen.getByLabelText(/Valor de imposto de renda retido na fonte/i)).toBeInTheDocument();
   });
 
-  it("permite selecionar Grupamento (reverse_split) e exibe prévia com cotas ajustadas", async () => {
+  it("suporta proporção livre X:Y em Grupamento e Desdobro/Bonificação preservando custo total", async () => {
     const user = userEvent.setup();
     render(<QuickTransactionSheet open={true} asset={mockAsset} onOpenChange={vi.fn()} />);
     const reverseSplitTab = screen.getByRole("tab", { name: /Grupamento/i });
-    expect(reverseSplitTab).toBeInTheDocument();
     await user.click(reverseSplitTab);
     expect(screen.getByText(/Fator \(N para 1\)/i)).toBeInTheDocument();
     expect(screen.getByText("Posição Resultante:")).toBeInTheDocument();
-    // mockAsset tem 100 cotas com fator default 2 => 50 cotas
     expect(screen.getByText(/50 cotas a/i)).toBeInTheDocument();
+
+    // Testa bonificação proporcional 10 para 11 (fator 1.1 -> 110 cotas)
+    const splitTab = screen.getByRole("tab", { name: /Desdobro/i });
+    await user.click(splitTab);
+    fireEvent.change(screen.getByLabelText(/De \(cotas atuais\)/i), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText(/Para \(novas cotas\)/i), { target: { value: "11" } });
+    expect(screen.getByText(/110 cotas a/i)).toBeInTheDocument();
+  });
+
+  it("permite lançar proventos no modo Valor por Cota calculando o total automaticamente", async () => {
+    const user = userEvent.setup();
+    render(<QuickTransactionSheet open={true} asset={mockAsset} initialType="dividend" onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /Valor por Cota/i }));
+    const perShareInput = screen.getByLabelText(/Rendimento por Cota/i);
+    fireEvent.change(perShareInput, { target: { value: "150" } }); // R$ 1,50 por cota * 100 cotas = R$ 150,00
+
+    await user.click(screen.getByRole("button", { name: /Confirmar Operação/i }));
+
+    await waitFor(() => {
+      expect(mockRecordOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "dividend",
+          total: 150,
+          syncCash: true,
+        }),
+      );
+    });
+  });
+
+  it("permite editar transação existente via useUpdatePortfolioTransaction", async () => {
+    const user = userEvent.setup();
+    const editTx: PortfolioTransaction = {
+      id: "tx-1",
+      user_id: "user-1",
+      asset_id: "asset-1",
+      type: "buy",
+      date: "2026-05-10",
+      quantity: 10,
+      price: 55,
+      total: 550,
+    };
+
+    render(
+      <QuickTransactionSheet
+        open={true}
+        asset={mockAsset}
+        editTransaction={editTx}
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Editar Movimentação · VALE3")).toBeInTheDocument();
+    const qtyInput = screen.getByLabelText(/Quantidade/i);
+    fireEvent.change(qtyInput, { target: { value: "20" } });
+    await user.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateTx).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "tx-1",
+          patch: expect.objectContaining({
+            quantity: 20,
+            price: 55,
+            total: 1100,
+          }),
+        }),
+      );
+    });
+  });
+
+  it("permite editar provento existente via useUpdatePortfolioDividend preservando syncCash anterior", async () => {
+    const user = userEvent.setup();
+    const editDiv: PortfolioDividend = {
+      id: "div-1",
+      user_id: "user-1",
+      asset_id: "asset-1",
+      ticker: "VALE3",
+      amount: 100,
+      date: "2026-05-01",
+      notes: "[MENSAL] Provento mensal",
+      sync_cash: true,
+      cash_amount: 100,
+    };
+
+    render(
+      <QuickTransactionSheet
+        open={true}
+        asset={mockAsset}
+        editDividend={editDiv}
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Editar Provento · VALE3")).toBeInTheDocument();
+    const amountInput = screen.getByLabelText(/Valor Total Recebido/i);
+    fireEvent.change(amountInput, { target: { value: "25000" } }); // R$ 250,00
+
+    await user.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateDividend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "div-1",
+          syncCash: true,
+          previousSyncCash: true,
+          previousCashAmount: 100,
+          patch: expect.objectContaining({
+            amount: 250,
+            cash_amount: 250,
+            sync_cash: true,
+          }),
+        }),
+      );
+    });
   });
 });

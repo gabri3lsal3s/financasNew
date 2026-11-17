@@ -32,6 +32,7 @@ import { numberToCents } from "@/domain/money";
 import { currentMonth } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatPercent } from "@/services/masks/percent";
 import { getErrorMessage } from "@/services/errors";
 
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
@@ -39,7 +40,6 @@ import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
   setStepIndex,
   startDemo,
-  useAllocationTargets,
   useDeletePortfolioAsset,
   useGroupTargets,
   usePortfolioAssets,
@@ -50,6 +50,7 @@ import {
   AllocationBreakdownDialog,
   AssetDetailSheet,
   AssetEditDialog,
+  AssetScoreEvaluationDialog,
   CalibrateFixedIncomeDialog,
   CashFormDialog,
   InitialPocketCostDialog,
@@ -139,6 +140,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [detailAsset, setDetailAsset] = useState<PortfolioAsset | null>(null);
   const [dismissedHighlight, setDismissedHighlight] = useState(false);
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
+  const [scoreEvaluatingAsset, setScoreEvaluatingAsset] = useState<PortfolioAsset | null>(null);
 
   const [explainModalOpen, setExplainModalOpen] = useState(false);
   const [initialCostDialogOpen, setInitialCostDialogOpen] = useState(false);
@@ -147,6 +149,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
   const [breakdownGroup, setBreakdownGroup] = useState<{
     type: "class" | "sector";
     name: string;
+    parentClass?: string;
   } | null>(null);
   const [calibrateFor, setCalibrateFor] = useState<{ asset: PortfolioAsset; valueCents: number } | null>(null);
   const [priceFor, setPriceFor] = useState<{
@@ -323,55 +326,46 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
     [investmentRows],
   );
 
-  const targetsQuery = useAllocationTargets();
-  const rawTargets = targetsQuery.data;
-  const targets = useMemo(() => rawTargets ?? [], [rawTargets]);
   const rawClassTargets = classTargetsQuery.data;
   const classTargetsList = useMemo(() => rawClassTargets ?? [], [rawClassTargets]);
 
   const driftItems = useMemo(() => {
-    // Se houver metas individuais por ativo, prioriza os ativos
-    if (targets.length > 0) {
-      return targets.map((t) => {
-        const row = position.rows.find((r) => r.assetId === t.asset_id);
-        const valCents = Math.round((row?.valueBRL ?? 0) * 100);
-        return {
-          id: t.id,
-          name: row?.ticker ?? t.asset_id,
-          currentValueCents: valCents,
-          targetPercent: Number(t.target_percentage),
-        };
+    // Governança Hierárquica Plano 42: desvio medido pelas classes produtivas (excluindo Caixa)
+    const validClassTargets = classTargetsList.filter(
+      (ct) => !isCashAssetClass(ct.name) && ct.name.trim().toLowerCase() !== "caixa",
+    );
+    if (validClassTargets.length === 0) return [];
+
+    return validClassTargets.map((ct) => {
+      const classRows = position.rows.filter((r) => {
+        if (r.isCash) return false;
+        const cls = r.assetClass?.trim() || "Sem classe";
+        return cls.toLowerCase() === ct.name.trim().toLowerCase();
       });
-    }
+      const totalClassValBRL = classRows.reduce((acc, r) => acc + (r.valueBRL ?? 0), 0);
+      return {
+        id: ct.id,
+        name: ct.name,
+        currentValueCents: Math.round(totalClassValBRL * 100),
+        targetPercent: Number(ct.target_percentage),
+      };
+    });
+  }, [classTargetsList, position.rows]);
 
-    // Blindagem B9: Fallback Macro-First por classes quando não houver metas por ativos
-    if (classTargetsList.length > 0) {
-      return classTargetsList.map((ct) => {
-        const classRows = position.rows.filter((r) => {
-          const cls = r.assetClass?.trim() || (r.isCash ? "Caixa" : "Sem classe");
-          return cls.toLowerCase() === ct.name.trim().toLowerCase();
-        });
-        const totalClassValBRL = classRows.reduce((acc, r) => acc + (r.valueBRL ?? 0), 0);
-        const valCents = Math.round(totalClassValBRL * 100);
-        return {
-          id: ct.id,
-          name: ct.name,
-          currentValueCents: valCents,
-          targetPercent: Number(ct.target_percentage),
-        };
-      });
-    }
-
-    return [];
-  }, [targets, classTargetsList, position.rows]);
-
+  const investableRowsSumBRL = position.rows
+    .filter((r) => !r.isCash)
+    .reduce((acc, r) => acc + (r.valueBRL ?? 0), 0);
+  const investablePortfolioBRL =
+    investableRowsSumBRL > 0
+      ? investableRowsSumBRL
+      : Math.max(0, position.totalBRL - position.cashBRL);
   const allocationDrift = useMemo(
     () =>
       calculateAllocationDrift({
-        totalPortfolioCents: Math.round(position.totalBRL * 100),
+        totalPortfolioCents: Math.round(investablePortfolioBRL * 100),
         items: driftItems,
       }),
-    [position.totalBRL, driftItems],
+    [investablePortfolioBRL, driftItems],
   );
 
   // ---------------------------------------------------------------------------
@@ -567,7 +561,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           if (onSelectTab) {
             onSelectTab("aporte", { valor: cashCents });
           } else {
-            navigate(`/investimentos?tab=aporte&valor=${cashCents}`);
+            navigate(`/investments?tab=aporte&valor=${cashCents}`);
           }
         }}
       />
@@ -581,7 +575,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             <span className="text-muted-foreground">
               Seu maior ativo ({concentration.concentratedAssets[0]?.ticker}) representa{" "}
               <strong className="font-mono text-foreground">
-                {concentration.concentratedAssets[0]?.pct.toFixed(1)}%
+                {formatPercent(concentration.concentratedAssets[0]?.pct ?? 0)}%
               </strong>{" "}
               do patrimônio investido. Considere diversificar nos próximos aportes.
             </span>
@@ -634,7 +628,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           {allocationDrift.hasTargets && (
             <AllocationDriftCard
               analysis={allocationDrift}
-              onSimulateAporte={() => (onSelectTab ? onSelectTab("aporte") : navigate("/carteira?tab=aporte"))}
+              onSimulateAporte={() => (onSelectTab ? onSelectTab("aporte") : navigate("/investments?tab=aporte"))}
             />
           )}
 
@@ -753,6 +747,10 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
               onSetManualPrice={(assetId, ticker, currency, priceBRL, source, priceQuote, pricingMode, usdRate) => {
                 setPriceFor({ id: assetId, ticker, currency, priceQuote, priceBRL, usdRate, source, pricingMode });
               }}
+              onEvaluateScore={(assetId) => {
+                const asset = assetById(assetId);
+                if (asset) setScoreEvaluatingAsset(asset);
+              }}
               onDeleteAsset={openDelete}
             />
           </section>
@@ -836,6 +834,13 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         />
       ) : null}
 
+      {/* Diálogo de Avaliação de Nota (0-10) e Tese */}
+      <AssetScoreEvaluationDialog
+        open={scoreEvaluatingAsset !== null}
+        onOpenChange={(next) => !next && setScoreEvaluatingAsset(null)}
+        asset={scoreEvaluatingAsset}
+      />
+
       {/* CashFormDialog (quando renderizado standalone) */}
       {!onOpenCash ? (
         <CashFormDialog
@@ -892,17 +897,22 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         }}
         type={breakdownGroup?.type ?? "class"}
         groupName={breakdownGroup?.name ?? null}
+        parentClassName={breakdownGroup?.parentClass}
         rows={rows}
         totalPortfolioBRL={position.totalBRL}
         targetPercent={
           breakdownGroup?.type === "class"
             ? classTargetsQuery.data?.find((t) => t.name === breakdownGroup.name)?.target_percentage ?? null
             : breakdownGroup?.name
-              ? sectorTargetsQuery.data?.find((t) => t.name === breakdownGroup.name)?.target_percentage ?? null
+              ? sectorTargetsQuery.data?.find(
+                  (t) =>
+                    t.name === breakdownGroup.name &&
+                    (!t.class_name || !breakdownGroup.parentClass || t.class_name === breakdownGroup.parentClass),
+                )?.target_percentage ?? null
               : null
         }
         onSelectAsset={(assetId) => openDetail(assetId)}
-        onNavigateToTargets={onSelectTab ? () => onSelectTab("targets") : undefined}
+        onNavigateToTargets={onSelectTab ? () => onSelectTab("metas") : () => navigate("/investments?tab=metas")}
       />
 
       {/* Modal Didático: Entenda os Modelos de Rentabilidade */}

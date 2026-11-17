@@ -28,7 +28,7 @@ import {
   type SectorOpportunityItem,
   type SectorTargetInput,
 } from "@/domain/portfolio";
-import type { AllocationTarget, PortfolioAsset } from "@/types";
+import type { PortfolioAsset } from "@/types";
 import type { InvestmentWizardState } from "./wizard-state";
 
 export interface StepSelectProps {
@@ -43,7 +43,6 @@ export interface StepSelectProps {
     assetClass?: string | null;
     priceBRL?: number;
   }[];
-  targets: readonly AllocationTarget[];
   classTargets?: readonly { name: string; target_percentage: number }[];
   sectorTargets?: readonly { className: string; sectorName: string; target_percentage: number }[];
   totalPortfolioBRL: number;
@@ -57,7 +56,6 @@ export function StepSelect({
   onChange,
   existingAssets,
   assetRows,
-  targets,
   classTargets,
   sectorTargets,
   totalPortfolioBRL,
@@ -70,7 +68,7 @@ export function StepSelect({
     [state.searchQuery, existingAssets],
   );
 
-  const hasTargets = targets.length > 0 || (classTargets && classTargets.length > 0) || (sectorTargets && sectorTargets.length > 0);
+  const hasTargets = (classTargets && classTargets.length > 0) || (sectorTargets && sectorTargets.length > 0);
   const hasSectorTargets = Boolean(sectorTargets && sectorTargets.length > 0);
 
   const [viewMode, setViewMode] = useState<"sector_radar" | "direct_asset">(
@@ -82,7 +80,6 @@ export function StepSelect({
     if (!hasTargets) return null;
     const aporteAssets: AporteAssetInput[] = existingAssets.map((asset) => {
       const row = assetRows.find((r) => r.assetId === asset.id);
-      const target = targets.find((t) => t.asset_id === asset.id);
       const priceBRL = row?.priceBRL ?? Number(asset.average_price ?? 0);
       return {
         id: asset.id,
@@ -94,7 +91,8 @@ export function StepSelect({
         currentValueBRL: row?.valueBRL ?? 0,
         priceBRL,
         averageCost: Number(asset.average_price ?? 0),
-        targetPercentage: target?.target_percentage ?? null,
+        score: asset.score ?? null,
+        allocationStatus: asset.allocation_status ?? "active",
       };
     });
 
@@ -118,7 +116,7 @@ export function StepSelect({
       sectorTargets: normalizedSectorTargets,
       totalPortfolioBRL,
     });
-  }, [hasTargets, existingAssets, assetRows, targets, classTargets, sectorTargets, totalPortfolioBRL, cashAvailableBRL]);
+  }, [hasTargets, existingAssets, assetRows, classTargets, sectorTargets, totalPortfolioBRL, cashAvailableBRL]);
 
   // Top 3 setores prioritários no Wizard (déficit > 0 / defasados)
   const topSectorGroups = useMemo(() => {
@@ -132,9 +130,9 @@ export function StepSelect({
   const aporteSuggestions = useMemo(
     () =>
       hasTargets
-        ? buildAporteSuggestions(existingAssets, assetRows, targets, totalPortfolioBRL, 3, classTargets, sectorTargets)
+        ? buildAporteSuggestions(existingAssets, assetRows, totalPortfolioBRL, 3, classTargets, sectorTargets)
         : [],
-    [hasTargets, existingAssets, assetRows, targets, classTargets, sectorTargets, totalPortfolioBRL],
+    [hasTargets, existingAssets, assetRows, classTargets, sectorTargets, totalPortfolioBRL],
   );
 
   const handleSelectOpportunity = (opp: SectorOpportunityItem, groupGapBRL: number) => {

@@ -16,6 +16,8 @@ import {
   type WizardMode,
 } from "./wizard-state";
 import type { PortfolioAsset } from "@/types";
+import { FundingSourceSelector } from "../components/funding-source-selector";
+import { flagsFromFundingSource, fundingSourceFromFlags } from "../components/funding-source-utils";
 
 export interface StepOrderProps {
   state: InvestmentWizardState;
@@ -317,24 +319,13 @@ export function StepOrder({ state, onChange, cashAsset, usdRate }: StepOrderProp
             </div>
           ) : null}
 
-          {/* Sincronização com Caixa & Aporte do Mês */}
-          <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-surface/40 p-3.5">
-            <label className="flex items-center gap-2.5 cursor-pointer text-xs">
-              <Checkbox
-                checked={state.syncCash}
-                onCheckedChange={(checked) => onChange({ syncCash: !!checked })}
-              />
-              <span className="text-foreground">Debitar valor do Caixa (saldo: {formatCentsAsBRL(numberToCents(cashAvailableBRL))})</span>
-            </label>
-
-            <label className="flex items-center gap-2.5 cursor-pointer text-xs">
-              <Checkbox
-                checked={state.recordContribution}
-                onCheckedChange={(checked) => onChange({ recordContribution: !!checked })}
-              />
-              <span className="text-foreground">Contabilizar como Aporte Financeiro no mês</span>
-            </label>
-          </div>
+          {/* Origem dos Recursos da Compra (Exclusão Mútua — Dinheiro Novo vs Caixa) */}
+          <FundingSourceSelector
+            value={fundingSourceFromFlags(state.syncCash, state.recordContribution)}
+            onChange={(source) => onChange(flagsFromFundingSource(source))}
+            cashBalanceBRL={cashAvailableBRL}
+            orderTotalBRL={preview.totalOrderValueBRL}
+          />
         </div>
       )}
 

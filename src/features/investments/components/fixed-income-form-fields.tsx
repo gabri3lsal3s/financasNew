@@ -40,7 +40,7 @@ const TAX_RATE_OPTIONS = [
 
 /**
  * Subcomponente canônico para parâmetros de Renda Fixa e Tesouro Direto (Fase 63/72).
- * Reutilizado no Wizard de Ativos, AssetEditDialog e AssetFormDialog (Regra DRY §4).
+ * Reutilizado no Wizard de Ativos e AssetEditDialog (Regra DRY §4).
  *
  * Campos sempre visíveis:
  *   - Indexador / Regime

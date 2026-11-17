@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { inferSectorFromTicker } from "@/domain/portfolio";
+import { formatPercent, formatSignedPct } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 import type { PortfolioPositionRow } from "@/state";
@@ -149,7 +150,7 @@ export function AllocationBreakdownDialog({
               <MoneyText cents={numberToCents(groupTotalBRL)} />
             </div>
             <span className="text-[11px] text-muted-foreground font-mono">
-              {currentPctOfPortfolio.toFixed(1)}% da carteira
+              {formatPercent(currentPctOfPortfolio)}% da carteira
             </span>
           </div>
 
@@ -159,7 +160,7 @@ export function AllocationBreakdownDialog({
               Meta de Alocação
             </span>
             <div className="num font-mono text-base sm:text-lg font-bold text-foreground">
-              {hasTarget ? `${targetPercent.toFixed(1)}%` : "Sem meta"}
+              {hasTarget ? `${formatPercent(targetPercent)}%` : "Sem meta"}
             </div>
             {hasTarget ? (
               <span
@@ -168,7 +169,9 @@ export function AllocationBreakdownDialog({
                   isUnderallocated ? "text-positive-strong" : "text-muted-foreground",
                 )}
               >
-                {isUnderallocated ? `+${gap.toFixed(1)}% (Recebe aporte)` : `${gap.toFixed(1)}% (Acima)`}
+                {isUnderallocated
+                  ? `+${formatPercent(gap)}% (Recebe aporte)`
+                  : `${formatPercent(gap)}% (Acima)`}
               </span>
             ) : (
               <span className="text-[11px] text-muted-foreground">Definir nas Metas</span>
@@ -191,7 +194,7 @@ export function AllocationBreakdownDialog({
               ) : (
                 <TrendingDown className="size-4 shrink-0" aria-hidden="true" />
               )}
-              <span>{groupUnrealizedPct >= 0 ? "+" : ""}{groupUnrealizedPct.toFixed(2)}%</span>
+              <span>{formatSignedPct(groupUnrealizedPct)}</span>
             </div>
             <span className="text-[11px] text-muted-foreground font-mono">
               {groupUnrealizedPnlBRL >= 0 ? "+" : ""}
@@ -271,7 +274,7 @@ export function AllocationBreakdownDialog({
                           <MoneyText cents={numberToCents(row.valueBRL)} />
                         </span>
                         <span className="text-[11px] text-muted-foreground font-mono">
-                          {relativePctInGroup.toFixed(1)}% do grupo · {row.pct.toFixed(1)}% total
+                          {formatPercent(relativePctInGroup)}% do grupo · {formatPercent(row.pct)}% total
                         </span>
                       </div>
 
@@ -283,9 +286,7 @@ export function AllocationBreakdownDialog({
                             assetUnrealizedPnl >= 0 ? "text-positive-strong" : "text-negative-strong",
                           )}
                         >
-                          {assetUnrealizedPct !== null
-                            ? `${assetUnrealizedPct >= 0 ? "+" : ""}${assetUnrealizedPct.toFixed(1)}%`
-                            : "—"}
+                          {assetUnrealizedPct !== null ? formatSignedPct(assetUnrealizedPct) : "—"}
                         </span>
                         <span className="text-[10px] text-muted-foreground font-mono">
                           {assetUnrealizedPnl >= 0 ? "+" : ""}

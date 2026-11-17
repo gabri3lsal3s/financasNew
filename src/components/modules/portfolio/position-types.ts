@@ -8,7 +8,7 @@ import {
   Wallet,
 } from "lucide-react";
 import type { AssetPricingMode, PriceSource, FixedIncomeBalanceResult } from "@/domain/portfolio";
-import type { AssetCurrency, FixedIncomeMetadata } from "@/types";
+import type { AssetAllocationStatus, AssetCurrency, FixedIncomeMetadata } from "@/types";
 
 export interface PositionRow {
   assetId: string;
@@ -50,6 +50,8 @@ export interface PositionRow {
   isMatured?: boolean;
   maturityDate?: string | null;
   netValueBRL?: number;
+  score?: number | null;
+  allocationStatus?: AssetAllocationStatus;
 }
 
 export interface PositionTableProps {
@@ -73,6 +75,8 @@ export interface PositionTableProps {
   ) => void;
   /** Confirma a exclusão do ativo (transações e metas em cascata). */
   onDeleteAsset?: (assetId: string, ticker: string) => void;
+  /** Abre o diálogo de avaliação de Nota (0-10) & Status na carteira. */
+  onEvaluateScore?: (assetId: string, ticker: string) => void;
   emptyMessage?: string;
   /**
    * Id do ativo destacado vindo da busca global (?q=<assetId>).

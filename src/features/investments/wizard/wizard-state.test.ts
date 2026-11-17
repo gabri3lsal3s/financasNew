@@ -136,9 +136,11 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
       expect(canProceed({ ...state, step: 2, quantityStr: "100", priceCents: 5000 })).toBe(true);
       expect(canProceed({ ...state, step: 2, quantityStr: "0", priceCents: 5000 })).toBe(false);
 
-      // Passo 3 meta válida
-      expect(canProceed({ ...state, step: 3, targetPercentage: 15 })).toBe(true);
-      expect(canProceed({ ...state, step: 3, targetPercentage: 120 })).toBe(false);
+      // Passo 3 governança (nota nullable 0-10)
+      expect(canProceed({ ...state, step: 3, score: null })).toBe(true);
+      expect(canProceed({ ...state, step: 3, score: 8 })).toBe(true);
+      expect(canProceed({ ...state, step: 3, score: -1 })).toBe(false);
+      expect(canProceed({ ...state, step: 3, score: 11 })).toBe(false);
     });
   });
 

@@ -1,10 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
-  Calendar,
   CalendarDays,
   Coins,
-  Layers,
   Pencil,
   Plus,
   Sparkles,
@@ -33,6 +31,7 @@ import { isCashAssetClass } from "@/domain/portfolio/valuation";
 
 import { currentMonth, formatDateBR, monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
+import { formatCentsAsBRL } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import {
@@ -43,7 +42,7 @@ import {
   usePortfolioPosition,
 } from "@/state";
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
-import { DividendFormDialog, PendingDividendsDialog, ReinvestDividendsBanner } from "../components";
+import { PendingDividendsDialog, QuickTransactionSheet, ReinvestDividendsBanner } from "../components";
 import type { WizardMode } from "../wizard/wizard-state";
 
 export type ProventosSubTab = "mensal" | "calendario" | "ativos" | "snowball";
@@ -56,14 +55,13 @@ export interface ProventosTabProps {
 interface SubTabItem {
   value: ProventosSubTab;
   label: string;
-  icon: React.ReactNode;
 }
 
 const SUBTAB_ITEMS: SubTabItem[] = [
-  { value: "mensal", label: "Extrato Mensal", icon: <Calendar className="size-3.5" aria-hidden="true" /> },
-  { value: "calendario", label: "Calendário", icon: <CalendarDays className="size-3.5" aria-hidden="true" /> },
-  { value: "ativos", label: "Por Ativo", icon: <Layers className="size-3.5" aria-hidden="true" /> },
-  { value: "snowball", label: "Bola de Neve", icon: <Sparkles className="size-3.5" aria-hidden="true" /> },
+  { value: "mensal", label: "Extrato Mensal" },
+  { value: "calendario", label: "Calendário" },
+  { value: "ativos", label: "Por Ativo" },
+  { value: "snowball", label: "Bola de Neve" },
 ];
 
 /**
@@ -968,7 +966,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
                 key={asset.id}
                 className={`flex flex-col gap-2.5 rounded-xl border p-3.5 transition-colors ${
                   progress.isSnowballActive
-                    ? "border-positive-strong/40 bg-positive-surface/20"
+                    ? "border-positive/30 bg-positive/5"
                     : "border-border/80 bg-surface"
                 }`}
               >
@@ -1066,8 +1064,8 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
         </div>
       )}
 
-      {/* Diálogo de Provento (Criação ou Edição) */}
-      <DividendFormDialog
+      {/* Lançamento / Edição Unificada de Provento (QuickTransactionSheet §Plano 42) */}
+      <QuickTransactionSheet
         open={dividendFormOpen || editingDividend !== null}
         onOpenChange={(open) => {
           if (!open) {
@@ -1075,7 +1073,8 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
             setEditingDividend(null);
           }
         }}
-        dividend={editingDividend}
+        initialType="dividend"
+        editDividend={editingDividend}
       />
 
       {/* Diálogo de Confirmação de Exclusão */}
@@ -1088,14 +1087,14 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
           }
         }}
         title="Excluir provento?"
-        description={`O registro deste provento de ${dividendToDelete ? (assetById.get(dividendToDelete.asset_id ?? "")?.ticker ?? dividendToDelete.ticker ?? "Ativo") : ""} no valor de R$ ${dividendToDelete?.amount.toFixed(2) ?? ""} será removido da carteira.`}
+        description={`O registro deste provento de ${dividendToDelete ? (assetById.get(dividendToDelete.asset_id ?? "")?.ticker ?? dividendToDelete.ticker ?? "Ativo") : ""} no valor de ${formatCentsAsBRL(numberToCents(dividendToDelete?.amount ?? 0))} será removido da carteira.`}
         confirmLabel="Excluir"
         variant="destructive"
         confirmPending={deleteDividend.isPending}
         onConfirm={() => void handleDelete()}
       >
         {dividendToDelete && Boolean(dividendToDelete.sync_cash) && (
-          <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-subtle p-3 text-xs text-left">
+          <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/40 p-3 text-xs text-left">
             <div className="flex items-center justify-between">
               <span className="font-medium text-foreground">Estornar valor do Caixa</span>
               <Checkbox
@@ -1106,8 +1105,8 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {cashBalance < (dividendToDelete.cash_amount ?? dividendToDelete.amount)
-                ? `Saldo atual em Caixa (R$ ${cashBalance.toFixed(2)}) é menor que o provento. Ao estornar, o saldo do Caixa será ajustado para R$ 0,00.`
-                : `Abaterá R$ ${(dividendToDelete.cash_amount ?? dividendToDelete.amount).toFixed(2)} do saldo atual de Caixa (R$ ${cashBalance.toFixed(2)}).`}
+                ? `Saldo atual em Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}) é menor que o provento. Ao estornar, o saldo do Caixa será ajustado para R$ 0,00.`
+                : `Abaterá ${formatCentsAsBRL(numberToCents(dividendToDelete.cash_amount ?? dividendToDelete.amount))} do saldo atual de Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}).`}
             </p>
           </div>
         )}

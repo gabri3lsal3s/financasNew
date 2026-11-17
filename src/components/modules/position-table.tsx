@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -24,151 +21,31 @@ import {
   inferSectorFromTicker,
 } from "@/domain/portfolio";
 import type {
-  AssetPricingMode,
-  PriceSource,
   CalculatedClassGroup,
   CalculatedSectorGroup,
 } from "@/domain/portfolio";
-import { getAssetClassMeta, PositionClosedSection, PositionMobileCard } from "@/components/modules/portfolio";
+import {
+  formatQuantity,
+  getAssetClassMeta,
+  PositionClosedSection,
+  PositionMobileCard,
+  PRICE_SOURCE_LABEL,
+  SortableHeader,
+  type PositionRow,
+  type PositionTableProps,
+  type SortKey,
+  type SortState,
+} from "@/components/modules/portfolio";
 import { isFixedIncomeClass } from "@/domain/portfolio/valuation";
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 import { formatCentsAsBRL } from "@/services/masks/money";
-import type { AssetCurrency, FixedIncomeMetadata } from "@/types";
-import type { FixedIncomeBalanceResult } from "@/domain/portfolio";
 
-
-export interface PositionRow {
-  assetId: string;
-  ticker: string;
-  assetClass: string | null;
-  sector?: string | null;
-  currency: AssetCurrency;
-  quantity: number;
-  averageCost: number;
-  totalCost?: number;
-  totalCostBRL?: number;
-  averageCostBRL?: number;
-  dividends?: number;
-  dividendsNative?: number;
-  priceQuote?: number;
-  priceBRL: number;
-  usdRate?: number;
-  source: PriceSource;
-  valueBRL: number;
-  pct: number;
-  /** Lucro/prejuízo não realizado em BRL (valor − custo; F14). */
-  unrealizedPnl: number;
-  /** Variação da cotação % sobre o custo (null quando não há custo — caixa; F14). */
-  unrealizedPct: number | null;
-  /** Resultado total em BRL ((valor − custo) + proventos). */
-  totalReturnPnl?: number;
-  /** Retorno Total % sobre o custo (null quando não há custo — caixa). */
-  totalReturnPct?: number | null;
-  /** Custo histórico total aplicado no ativo (mesmo para posições encerradas). */
-  historicalCostBRL?: number;
-  /** Total bruto histórico já resgatado/vendido do ativo. */
-  historicalRedeemedBRL?: number;
-  /** Rentabilidade final realizada % (para posições encerradas). */
-  finalReturnPct?: number | null;
-  isCash: boolean;
-  pricingMode?: AssetPricingMode;
-  fixedIncomeMetadata?: FixedIncomeMetadata | null;
-  fixedIncomeResult?: FixedIncomeBalanceResult | null;
-  isMatured?: boolean;
-  maturityDate?: string | null;
-  netValueBRL?: number;
-}
-
-export interface PositionTableProps {
-  rows: PositionRow[];
-  /** Abre a lista de lançamentos / detalhes do ativo. */
-  onListTransactions?: (assetId: string, ticker: string) => void;
-  /** Abre o formulário de edição cadastral do ativo (ticker/classe/moeda). */
-  onEditAsset?: (assetId: string, ticker: string) => void;
-  /** Abre o diálogo de calibrar saldo com extrato para Renda Fixa / Tesouro Direto. */
-  onCalibrateAsset?: (assetId: string, ticker: string, currentValueCents: number) => void;
-  /** Abre o diálogo de preço manual/cotação do ativo (para Renda Variável). */
-  onSetManualPrice?: (
-    assetId: string,
-    ticker: string,
-    currency: AssetCurrency,
-    priceBRL: number,
-    source: PriceSource,
-    priceQuote?: number,
-    pricingMode?: AssetPricingMode,
-    usdRate?: number,
-  ) => void;
-  /** Confirma a exclusão do ativo (transações e metas em cascata). */
-  onDeleteAsset?: (assetId: string, ticker: string) => void;
-  emptyMessage?: string;
-  /**
-   * Id do ativo destacado vindo da busca global (?q=<assetId>).
-   */
-  highlightId?: string | null;
-  /**
-   * F17 — ordenação por coluna clicável (aria-sort + ícone de direção).
-   * Desabilitada por padrão (a Posição atual mantém a ordem do ledger).
-   */
-  sortable?: boolean;
-}
-
-type SortKey = "ticker" | "quantity" | "price" | "averageCost" | "value" | "unrealizedPct" | "pct" | "maturityDate";
-type SortDirection = "asc" | "desc";
-
-interface SortState {
-  key: SortKey;
-  direction: SortDirection;
-}
-
-const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> = {
-  manual: { label: "manual", title: "Preço definido manualmente pelo usuário" },
-  api: { label: "cotação", title: "Cotação de fechamento atualizada via API" },
-  fallback: { label: "fallback", title: "Preço estimado por fallback estático" },
-};
-
-const formatQuantity = (quantity: number): string =>
-  Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+export type { PositionRow, PositionTableProps };
 
 type ClassGroup = CalculatedClassGroup<PositionRow>;
 type SectorGroup = CalculatedSectorGroup<PositionRow>;
-
-function SortableHeader({
-  label,
-  active,
-  direction,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  direction: SortDirection;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}
-      className={cn(
-        "inline-flex items-center gap-1 font-semibold text-foreground transition-colors hover:text-primary cursor-pointer",
-        active && "text-primary",
-      )}
-      aria-label={`Ordenar por ${label} (${active ? (direction === "asc" ? "crescente" : "decrescente") : "clique para ordenar"})`}
-    >
-      <span>{label}</span>
-      {active ? (
-        direction === "asc" ? (
-          <ArrowUp className="size-3.5" aria-hidden="true" />
-        ) : (
-          <ArrowDown className="size-3.5" aria-hidden="true" />
-        )
-      ) : (
-        <ArrowUpDown className="size-3.5 text-muted-foreground/60" aria-hidden="true" />
-      )}
-    </button>
-  );
-}
 
 /**
  * Tabela de posições (§3.11.1 / §F17) — ledger derivado:
@@ -182,6 +59,7 @@ export function PositionTable({
   onEditAsset,
   onCalibrateAsset,
   onSetManualPrice,
+  onEvaluateScore,
   emptyMessage,
   highlightId,
   sortable = false,
@@ -466,41 +344,102 @@ export function PositionTable({
               : `IPCA + ${row.fixedIncomeMetadata.rate_value}%`
         : null;
     const resolvedSector = row.sector?.trim() || inferSectorFromTicker(row.ticker, row.assetClass);
+    const shouldShowScoreBadge = !row.isCash && (row.score !== undefined || Boolean(onEvaluateScore));
+    const scoreBadgeContent = shouldShowScoreBadge ? (
+      <Badge
+        variant={
+          row.score == null
+            ? "muted"
+            : row.score >= 7
+              ? "positive"
+              : row.score >= 4
+                ? "warning"
+                : "negative"
+        }
+        size="xs"
+      >
+        {row.score != null ? `Nota ${row.score}` : "Sem nota"}
+      </Badge>
+    ) : null;
+    const statusBadgeContent =
+      !row.isCash && row.allocationStatus && row.allocationStatus !== "active" ? (
+        <Badge
+          variant={
+            row.allocationStatus === "exit"
+              ? "negative"
+              : row.allocationStatus === "quarantine"
+                ? "warning"
+                : "muted"
+          }
+          size="xs"
+        >
+          {row.allocationStatus === "exit"
+            ? "Saída"
+            : row.allocationStatus === "quarantine"
+              ? "Quarentena"
+              : "Manter"}
+        </Badge>
+      ) : null;
+
+    const tickerMetaRow = (shouldShowScoreBadge || statusBadgeContent) && (
+      <div className="flex items-center gap-1 flex-wrap pt-0.5">
+        {scoreBadgeContent &&
+          (onEvaluateScore ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEvaluateScore(row.assetId, row.ticker);
+              }}
+              aria-label={`Avaliar nota de ${row.ticker}`}
+              className="shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              {scoreBadgeContent}
+            </button>
+          ) : (
+            scoreBadgeContent
+          ))}
+        {statusBadgeContent}
+      </div>
+    );
 
     return handleOpen ? (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleOpen(row.assetId, row.ticker);
-        }}
-        className="group inline-flex min-w-0 flex-col gap-0.5 rounded-md px-1.5 py-1 -ml-1.5 text-left transition-colors hover:bg-surface-hover/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
-        aria-label={`Ver detalhes de ${row.ticker}`}
-        title={`Ver detalhes de ${row.ticker}`}
-      >
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="truncate font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-            {row.ticker}
-          </span>
-          {rfLabel && (
-            <span
-              className={cn(
-                "rounded px-1.5 py-0.5 text-[10px] font-semibold shrink-0",
-                row.isMatured
-                  ? "bg-destructive/10 text-critical-strong"
-                  : "bg-surface-hover/80 text-muted-foreground",
-              )}
-            >
-              {rfLabel}
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpen(row.assetId, row.ticker);
+          }}
+          className="group inline-flex min-w-0 flex-col gap-0.5 rounded-md px-1.5 py-1 -ml-1.5 text-left transition-colors hover:bg-surface-hover/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+          aria-label={`Ver detalhes de ${row.ticker}`}
+          title={`Ver detalhes de ${row.ticker}`}
+        >
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+              {row.ticker}
             </span>
-          )}
-        </div>
-        {resolvedSector ? (
-          <span className="truncate text-[11px] text-muted-foreground/80 font-normal">
-            {resolvedSector}
-          </span>
-        ) : null}
-      </button>
+            {rfLabel && (
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px] font-semibold shrink-0",
+                  row.isMatured
+                    ? "bg-destructive/10 text-critical-strong"
+                    : "bg-surface-hover/80 text-muted-foreground",
+                )}
+              >
+                {rfLabel}
+              </span>
+            )}
+          </div>
+          {resolvedSector ? (
+            <span className="truncate text-[11px] text-muted-foreground/80 font-normal">
+              {resolvedSector}
+            </span>
+          ) : null}
+        </button>
+        {tickerMetaRow}
+      </div>
     ) : (
       <div className="flex min-w-0 flex-col gap-0.5">
         <div className="flex items-center gap-1.5 min-w-0">
@@ -523,6 +462,7 @@ export function PositionTable({
             {resolvedSector}
           </span>
         ) : null}
+        {tickerMetaRow}
       </div>
     );
   };
@@ -910,6 +850,7 @@ export function PositionTable({
       highlightId={highlightId}
       onOpen={handleOpen}
       onCalibrateAsset={onCalibrateAsset}
+      onEvaluateScore={onEvaluateScore}
       onSetManualPrice={onSetManualPrice}
     />
   );

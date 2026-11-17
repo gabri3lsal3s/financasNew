@@ -31,12 +31,12 @@ import { currentMonth, formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
 import { downloadCsv } from "@/services/export-actions";
+import { formatCentsAsBRL } from "@/services/masks";
 import { serializePortfolioActivitiesCsv, type ExportPortfolioActivityRow } from "@/domain/export";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { ContributionFormDialog } from "./contribution-form-dialog";
-import { DividendFormDialog } from "./dividend-form-dialog";
-import { TransactionFormDialog } from "./transaction-form-dialog";
+import { QuickTransactionSheet } from "./quick-transaction-sheet";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import {
   useAllPortfolioTransactions,
@@ -442,41 +442,22 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
           await deleteTransaction.mutateAsync(itemToDelete.rawTransaction);
         }
       } else if (itemToDelete.source === "transaction" && itemToDelete.rawTransaction) {
-        await deleteTransaction.mutateAsync(itemToDelete.rawTransaction);
-
         const asset = itemToDelete.rawTransaction.asset_id
           ? assetMap.get(itemToDelete.rawTransaction.asset_id)
           : undefined;
         const rate = asset?.currency === "USD" ? usdRate : 1;
-        const totalBRL = Math.round(itemToDelete.total * rate * 100) / 100;
+        const shouldReverseCash = Boolean(
+          rollbackCash &&
+            cashAsset &&
+            itemToDelete.total > 0 &&
+            (itemToDelete.type === "sell" || (itemToDelete.type === "buy" && !itemToDelete.linkedContribution)),
+        );
 
-        if (rollbackCash && cashAsset && totalBRL > 0) {
-          const currentCashBalance = Number(cashAsset.quantity ?? 0);
-
-          if (itemToDelete.type === "buy") {
-            // Se a compra foi paga com saldo de Caixa (sem aporte vinculado) e o usuário optou por estornar ao Caixa:
-            const isFundedByPocket = Boolean(itemToDelete.linkedContribution);
-            if (!isFundedByPocket) {
-              await updateAsset.mutateAsync({
-                id: cashAsset.id,
-                patch: {
-                  quantity: Math.round((currentCashBalance + totalBRL) * 100) / 100,
-                  average_price: 1,
-                },
-              });
-            }
-          } else if (itemToDelete.type === "sell") {
-            // Ao excluir uma venda que havia creditado o Caixa, estorna o crédito deduzindo do Caixa:
-            const newBal = Math.max(0, Math.round((currentCashBalance - totalBRL) * 100) / 100);
-            await updateAsset.mutateAsync({
-              id: cashAsset.id,
-              patch: {
-                quantity: newBal,
-                average_price: 1,
-              },
-            });
-          }
-        }
+        await deleteTransaction.mutateAsync({
+          ...itemToDelete.rawTransaction,
+          reverseCash: shouldReverseCash,
+          usdRate: rate,
+        });
       } else if (itemToDelete.source === "contribution" && itemToDelete.rawContribution) {
         await deleteContribution.mutateAsync(itemToDelete.rawContribution);
         // Se o aporte foi direto em Caixa e pediu estorno:
@@ -953,14 +934,14 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
           }
         }}
         title="Excluir movimentação?"
-        description={`O lançamento de ${itemToDelete?.ticker ?? ""} no valor de R$ ${itemToDelete?.total.toFixed(2) ?? ""} será excluído permanentemente.`}
+        description={`O lançamento de ${itemToDelete?.ticker ?? ""} no valor de ${formatCentsAsBRL(numberToCents(itemToDelete?.total ?? 0))} será excluído permanentemente com recálculo da posição.`}
         confirmLabel="Excluir movimentação"
         variant="destructive"
         confirmPending={deleteTransaction.isPending || deleteContribution.isPending || deleteDividend.isPending}
         onConfirm={handleDeleteItem}
       >
         {itemToDelete?.type === "dividend" && Boolean(itemToDelete.rawDividend?.sync_cash) && (
-          <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-subtle p-3 text-xs text-left">
+          <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/35 p-3 text-xs text-left">
             <div className="flex items-center justify-between">
               <span className="font-medium text-foreground">Estornar valor do Caixa</span>
               <Checkbox
@@ -971,14 +952,14 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {cashBalance < (itemToDelete.rawDividend?.cash_amount ?? itemToDelete.total)
-                ? `Saldo atual em Caixa (R$ ${cashBalance.toFixed(2)}) é menor que o provento. Ao estornar, o saldo do Caixa será ajustado para R$ 0,00.`
-                : `Abaterá R$ ${(itemToDelete.rawDividend?.cash_amount ?? itemToDelete.total).toFixed(2)} do saldo atual de Caixa (R$ ${cashBalance.toFixed(2)}).`}
+                ? `Saldo atual em Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}) é menor que o provento. Ao estornar, o saldo do Caixa será ajustado para R$ 0,00.`
+                : `Abaterá ${formatCentsAsBRL(numberToCents(itemToDelete.rawDividend?.cash_amount ?? itemToDelete.total))} do saldo atual de Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}).`}
             </p>
           </div>
         )}
 
         {itemToDelete?.source === "transaction" && itemToDelete.type === "buy" && !itemToDelete.linkedContribution && cashAsset && (
-          <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-subtle p-3 text-xs text-left">
+          <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/35 p-3 text-xs text-left">
             <div className="flex items-center justify-between">
               <span className="font-medium text-foreground">Devolver valor para o Caixa</span>
               <Checkbox
@@ -988,13 +969,27 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
               />
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Esta compra foi liquidada com saldo da corretora. Ao estornar, R$ {(Math.round(itemToDelete.total * ((itemToDelete.rawTransaction?.asset_id ? assetMap.get(itemToDelete.rawTransaction.asset_id)?.currency === "USD" : false) ? usdRate : 1) * 100) / 100).toFixed(2)} retornarão ao seu Ativo Caixa.
+              Esta compra foi liquidada com saldo da corretora. Ao estornar,{" "}
+              {formatCentsAsBRL(
+                numberToCents(
+                  Math.round(
+                    itemToDelete.total *
+                      ((itemToDelete.rawTransaction?.asset_id
+                        ? assetMap.get(itemToDelete.rawTransaction.asset_id)?.currency === "USD"
+                        : false)
+                        ? usdRate
+                        : 1) *
+                      100,
+                  ) / 100,
+                ),
+              )}{" "}
+              retornarão ao seu Ativo Caixa.
             </p>
           </div>
         )}
 
         {itemToDelete?.source === "transaction" && itemToDelete.type === "sell" && cashAsset && (
-          <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-subtle p-3 text-xs text-left">
+          <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/35 p-3 text-xs text-left">
             <div className="flex items-center justify-between">
               <span className="font-medium text-foreground">Estornar valor creditado no Caixa</span>
               <Checkbox
@@ -1011,15 +1006,15 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
                 const rate = asset?.currency === "USD" ? usdRate : 1;
                 const totalBRL = Math.round(itemToDelete.total * rate * 100) / 100;
                 return cashBalance < totalBRL
-                  ? `Saldo atual em Caixa (R$ ${cashBalance.toFixed(2)}) é menor que o valor da venda. Ao estornar, o saldo do Caixa será ajustado para R$ 0,00.`
-                  : `Abaterá R$ ${totalBRL.toFixed(2)} do saldo atual de Caixa (R$ ${cashBalance.toFixed(2)}).`;
+                  ? `Saldo atual em Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}) é menor que o valor da venda. Ao estornar, o saldo do Caixa será ajustado para R$ 0,00.`
+                  : `Abaterá ${formatCentsAsBRL(numberToCents(totalBRL))} do saldo atual de Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}).`;
               })()}
             </p>
           </div>
         )}
 
         {itemToDelete?.source === "contribution" && cashAsset && itemToDelete.rawContribution?.asset_id === cashAsset.id && (
-          <div className="flex flex-col gap-2 rounded-lg border border-border/70 bg-surface-subtle p-3 text-xs text-left">
+          <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/35 p-3 text-xs text-left">
             <div className="flex items-center justify-between">
               <span className="font-medium text-foreground">Estornar valor do Caixa</span>
               <Checkbox
@@ -1030,28 +1025,28 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               {cashBalance < itemToDelete.total
-                ? `Saldo atual em Caixa (R$ ${cashBalance.toFixed(2)}) é menor que o aporte. Ao estornar, o saldo será zerado.`
-                : `Abaterá R$ ${itemToDelete.total.toFixed(2)} do saldo atual de Caixa (R$ ${cashBalance.toFixed(2)}).`}
+                ? `Saldo atual em Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}) é menor que o aporte. Ao estornar, o saldo será zerado.`
+                : `Abaterá ${formatCentsAsBRL(numberToCents(itemToDelete.total))} do saldo atual de Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}).`}
             </p>
           </div>
         )}
       </ConfirmDialog>
 
       {editingTx && (
-        <TransactionFormDialog
+        <QuickTransactionSheet
           open={editingTx !== null}
           onOpenChange={(open) => !open && setEditingTx(null)}
           asset={editingTx.asset}
-          transaction={editingTx.transaction}
-          linkedContribution={editingTx.linkedContribution}
+          editTransaction={editingTx.transaction}
         />
       )}
 
       {editingDividend && (
-        <DividendFormDialog
+        <QuickTransactionSheet
           open={editingDividend !== null}
           onOpenChange={(open) => !open && setEditingDividend(null)}
-          dividend={editingDividend}
+          asset={assetMap.get(editingDividend.asset_id ?? "") ?? null}
+          editDividend={editingDividend}
         />
       )}
 

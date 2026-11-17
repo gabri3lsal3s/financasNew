@@ -23,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { DataList } from "@/components/ui/data-list";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { formatCentsAsBRL } from "@/services/masks";
+import { formatCentsAsBRL, formatPercent } from "@/services/masks";
 import type { ClassAporteSummary, SectorAporteSummary, SkippedAssetDiagnostic } from "@/domain/portfolio";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,9 @@ export interface AporteRouteRow {
   allocatedBRL: number;
   quantity: number;
   priceBRL: number;
+  rawScore?: number | null;
+  effectiveTargetPct?: number;
+  formulaLabel?: string;
 }
 
 export interface CustomAporteExecutionItem {
@@ -79,6 +82,8 @@ const SKIPPED_REASON_LABEL: Record<SkippedAssetDiagnostic["reason"], { label: st
   price_exceeds_budget: { label: "Preço > Saldo", variant: "muted" },
   quarantine: { label: "Em quarentena", variant: "warning" },
   exit: { label: "Saída da carteira", variant: "warning" },
+  neutral: { label: "Mantido (neutro)", variant: "muted" },
+  insufficient_aporte: { label: "Aporte insuficiente", variant: "muted" },
 };
 
 function formatQuantity(qty: number): string {
@@ -354,13 +359,28 @@ export function AporteResult({
         const isDone = completedTickers.has(row.ticker);
         return (
           <div className={cn("flex min-w-0 flex-col gap-0.5 transition-opacity duration-150", isDone && "opacity-60")}>
-            <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
             <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
+              {row.rawScore !== undefined ? (
+                <Badge variant={row.rawScore === null ? "warning" : "muted"} size="xs">
+                  {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
+                </Badge>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap" title={row.formulaLabel}>
               {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
               {row.sector ? (
                 <>
-                  <span className="text-[10px] text-muted-foreground/60">•</span>
+                  <span className="text-[11px] text-muted-foreground/60" aria-hidden="true">·</span>
                   <span className="text-[11px] text-muted-foreground font-medium">{row.sector}</span>
+                </>
+              ) : null}
+              {row.effectiveTargetPct !== undefined && row.effectiveTargetPct > 0 ? (
+                <>
+                  <span className="text-[11px] text-muted-foreground/60" aria-hidden="true">·</span>
+                  <span className="text-[11px] font-mono tabular-nums text-muted-foreground">
+                    Meta {formatPercent(row.effectiveTargetPct)}%
+                  </span>
                 </>
               ) : null}
             </div>
@@ -761,7 +781,7 @@ export function AporteResult({
                               className="shrink-0"
                             />
                             <div className="flex flex-col gap-0.5 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="font-mono text-sm font-bold text-foreground truncate">
                                   {row.ticker}
                                 </span>
@@ -770,10 +790,29 @@ export function AporteResult({
                                     {row.assetClass}
                                   </Badge>
                                 ) : null}
+                                {row.rawScore !== undefined ? (
+                                  <Badge
+                                    variant={row.rawScore === null ? "warning" : "muted"}
+                                    size="xs"
+                                    className="shrink-0"
+                                  >
+                                    {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
+                                  </Badge>
+                                ) : null}
                               </div>
-                              {row.sector ? (
-                                <span className="text-[11px] text-muted-foreground font-medium truncate">
-                                  {row.sector}
+                              {row.sector || (row.effectiveTargetPct !== undefined && row.effectiveTargetPct > 0) ? (
+                                <span
+                                  className="text-[11px] text-muted-foreground font-medium truncate"
+                                  title={row.formulaLabel}
+                                >
+                                  {[
+                                    row.sector,
+                                    row.effectiveTargetPct !== undefined && row.effectiveTargetPct > 0
+                                      ? `Meta ${formatPercent(row.effectiveTargetPct)}%`
+                                      : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ")}
                                 </span>
                               ) : null}
                             </div>

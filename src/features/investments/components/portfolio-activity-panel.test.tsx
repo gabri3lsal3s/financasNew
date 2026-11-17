@@ -235,24 +235,23 @@ describe("PortfolioActivityPanel", () => {
     const deleteButton = screen.getByRole("button", { name: /Excluir movimentação de CDB-FACTA/i });
     fireEvent.click(deleteButton);
 
-    // Modal deve exibir opção de estorno do Caixa
+    // Modal deve exibir opção de estorno do Caixa formatada pt-BR
     expect(screen.getByText("Estornar valor creditado no Caixa")).toBeInTheDocument();
-    expect(screen.getByText(/Abaterá R\$ 1400.00 do saldo atual de Caixa/i)).toBeInTheDocument();
+    expect(screen.getByText(/Abaterá R\$\s*1\.400,00 do saldo atual de Caixa/i)).toBeInTheDocument();
 
-    // Confirma exclusão
+    // Confirma exclusão e garante envio atômico de reverseCash sem updateAsset duplicado
     const confirmButton = screen.getByRole("button", { name: "Excluir movimentação" });
     fireEvent.click(confirmButton);
 
-    expect(mockDeleteTransaction).toHaveBeenCalledTimes(1);
     await waitFor(() => {
-      expect(mockUpdateAsset).toHaveBeenCalledWith({
-        id: "a-cash",
-        patch: {
-          quantity: 600, // 2000 - 1400
-          average_price: 1,
-        },
-      });
+      expect(mockDeleteTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "tx-2",
+          reverseCash: true,
+        }),
+      );
     });
+    expect(mockUpdateAsset).not.toHaveBeenCalled();
   });
 
   it("renderiza botão de edição para aporte financeiro e abre ContributionFormDialog", () => {

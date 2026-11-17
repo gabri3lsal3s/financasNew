@@ -1,10 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Calculator, ShieldCheck, Sparkles } from "lucide-react";
-import { Alert, Button, ConfirmDialog, EmptyState, ErrorState, MoneyInput, SkeletonChart, SkeletonKpi } from "@/components/ui";
+import { Calculator, ShieldCheck, Sparkles, Wallet } from "lucide-react";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  MoneyInput,
+  MoneyText,
+  SkeletonChart,
+  SkeletonKpi,
+  Switch,
+} from "@/components/ui";
 
 import { AporteResult, type AporteRouteRow, type CustomAporteExecutionItem } from "@/components/modules";
 import {
+  calculateEffectiveAssetTargets,
   inferSectorFromTicker,
   simulateCombinedAporte,
   type AporteAssetInput,
@@ -14,10 +26,8 @@ import {
 import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
 import { formatCentsAsBRL } from "@/services/masks";
-import { triggerSensory } from "@/services/sensory";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import {
-  useAllocationTargets,
   useExecutePortfolioBatchAporte,
   useGroupTargets,
   usePortfolioAssets,
@@ -41,7 +51,6 @@ export function AporteTab({
   const { guardAction, upgradeModal } = useMutationGuard({ moduleKey: "investments" });
   const [searchParams, setSearchParams] = useSearchParams();
   const position = usePortfolioPosition();
-  const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
   const assetsQuery = usePortfolioAssets();
@@ -160,18 +169,27 @@ export function AporteTab({
   const aporteCents = userAporteCents;
   const setAporteCents = (val: number) => setUserAporteCents(val);
 
+  // Aporte Composto (Bolso + Saldo de Caixa na corretora — Decisão 1 · Plano 42)
+  const availableCashCents = Math.max(0, Math.round(position.cashBRL * 100));
+  const [useBrokerageCash, setUseBrokerageCash] = useState(false);
+  const [cashUsedCents, setCashUsedCents] = useState<number>(0);
+  const effectiveCashSelectedCents =
+    useBrokerageCash && availableCashCents > 0
+      ? Math.min(Math.max(0, cashUsedCents), availableCashCents)
+      : 0;
+  const totalPurchasingCents = aporteCents + effectiveCashSelectedCents;
+
   const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
   const [pendingCustomItems, setPendingCustomItems] = useState<CustomAporteExecutionItem[] | null>(null);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
 
-  const error = position.error ?? targetsQuery.error ?? classTargetsQuery.error ?? sectorTargetsQuery.error;
-  const loading = position.isLoading || targetsQuery.isLoading || classTargetsQuery.isLoading || sectorTargetsQuery.isLoading;
+  const error = position.error ?? classTargetsQuery.error ?? sectorTargetsQuery.error;
+  const loading = position.isLoading || classTargetsQuery.isLoading || sectorTargetsQuery.isLoading;
 
   const nonCashRows = position.rows.filter((r) => !r.isCash);
-  const classes = [...new Set(position.rows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
+  const classes = [...new Set(nonCashRows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
 
-  const targetByAsset = new Map((targetsQuery.data ?? []).map((t) => [t.asset_id, t.target_percentage]));
   const rawAssets = assetsQuery.data ?? [];
   const rawAssetMap = new Map(rawAssets.map((a) => [a.id, a]));
 
@@ -181,10 +199,17 @@ export function AporteTab({
   }));
 
   const sectorTargets: SectorTargetInput[] = (sectorTargetsQuery.data ?? []).flatMap((st) => {
-    const matchedClasses = classes.filter((cls) => {
-      const inAssets = position.rows.some((r) => r.assetClass === cls && (r.sector === st.name || inferSectorFromTicker(r.ticker, cls) === st.name));
-      return inAssets;
-    });
+    const scopedClass = st.class_name?.trim();
+    if (scopedClass) {
+      return [{ className: scopedClass, sectorName: st.name, targetPercentage: st.target_percentage }];
+    }
+    const matchedClasses = classes.filter((cls) =>
+      nonCashRows.some(
+        (r) =>
+          r.assetClass === cls &&
+          (r.sector === st.name || inferSectorFromTicker(r.ticker, cls) === st.name),
+      ),
+    );
     if (matchedClasses.length === 0) {
       return [{ className: "Ações", sectorName: st.name, targetPercentage: st.target_percentage }];
     }
@@ -195,43 +220,58 @@ export function AporteTab({
     }));
   });
 
-  const hasIndividualTargets = (targetsQuery.data ?? []).length > 0;
   const assets: AporteAssetInput[] = nonCashRows.map((row) => {
     const raw = rawAssetMap.get(row.assetId);
     return {
       id: row.assetId,
       ticker: row.ticker,
       assetClass: row.assetClass,
-      sector: row.sector ?? inferSectorFromTicker(row.ticker, row.assetClass),
+      sector: row.sector ?? raw?.sector ?? inferSectorFromTicker(row.ticker, row.assetClass),
       currency: row.currency,
       currentValueBRL: row.valueBRL,
       priceBRL: row.priceBRL,
       score: raw?.score ?? null,
       allocation_status: raw?.allocation_status ?? "active",
-      targetPercentage: targetByAsset.has(row.assetId)
-        ? targetByAsset.get(row.assetId)!
-        : (hasIndividualTargets ? 0 : null),
     };
   });
 
+  const effectiveTargetsMap = new Map(
+    calculateEffectiveAssetTargets({ assets, classTargets, sectorTargets }).map((item) => [
+      item.assetId,
+      item,
+    ]),
+  );
+
   const result =
-    aporteCents > 0 && assets.length > 0
-      ? simulateCombinedAporte({ aporte: aporteCents / 100, assets, classTargets, sectorTargets })
+    totalPurchasingCents > 0 && assets.length > 0
+      ? simulateCombinedAporte({
+          aporte: totalPurchasingCents / 100,
+          assets,
+          classTargets,
+          sectorTargets,
+        })
       : null;
 
   const routes: AporteRouteRow[] =
-    result?.routes.map((r) => ({
-      assetId: r.assetId,
-      ticker: r.ticker,
-      assetClass: r.assetClass,
-      sector: r.sector,
-      targetValueBRL: r.targetValueBRL,
-      currentValueBRL: r.currentValueBRL,
-      gapBRL: r.gapBRL,
-      allocatedBRL: r.allocatedBRL,
-      quantity: r.quantity,
-      priceBRL: r.priceBRL,
-    })) ?? [];
+    result?.routes.map((r) => {
+      const eff = effectiveTargetsMap.get(r.assetId);
+      const raw = rawAssetMap.get(r.assetId);
+      return {
+        assetId: r.assetId,
+        ticker: r.ticker,
+        assetClass: r.assetClass,
+        sector: r.sector,
+        targetValueBRL: r.targetValueBRL,
+        currentValueBRL: r.currentValueBRL,
+        gapBRL: r.gapBRL,
+        allocatedBRL: r.allocatedBRL,
+        quantity: r.quantity,
+        priceBRL: r.priceBRL,
+        rawScore: eff?.rawScore ?? raw?.score ?? null,
+        effectiveTargetPct: eff?.effectiveTargetPct,
+        formulaLabel: eff?.formulaLabel,
+      };
+    }) ?? [];
 
   const eligibleRoutes = routes.filter((r) => r.quantity > 0);
 
@@ -267,17 +307,28 @@ export function AporteTab({
         };
       });
       const totalAmount = activeItems.reduce((acc, r) => acc + r.allocatedBRL, 0);
+      const cashUsedBRL =
+        effectiveCashSelectedCents > 0
+          ? Math.min(effectiveCashSelectedCents / 100, totalAmount, position.cashBRL)
+          : 0;
+      const roundedCashUsed =
+        cashUsedBRL > 0 ? Math.round(cashUsedBRL * 100) / 100 : undefined;
 
       await executeBatch.mutateAsync({
         items,
         date,
         totalAmount,
-        notes: `Aporte inteligente (${activeItems.length} ativos)`,
+        cashUsed: roundedCashUsed,
+        notes: roundedCashUsed
+          ? `Aporte composto (${activeItems.length} ativos · Caixa ${formatCentsAsBRL(Math.round(roundedCashUsed * 100))})`
+          : `Aporte inteligente (${activeItems.length} ativos)`,
       });
 
       setConfirmBatchOpen(false);
       setPendingCustomItems(null);
       setAporteCents(0);
+      setUseBrokerageCash(false);
+      setCashUsedCents(0);
       onGoToPosition?.();
     } catch (err) {
       setBatchError(getErrorMessage(err));
@@ -300,7 +351,6 @@ export function AporteTab({
           message={getErrorMessage(error)}
           onRetry={() => {
             position.refetch();
-            void targetsQuery.refetch();
             void classTargetsQuery.refetch();
             void sectorTargetsQuery.refetch();
           }}
@@ -335,7 +385,7 @@ export function AporteTab({
         <>
           <section aria-label="Parâmetros da simulação" data-tour="investments-rebalance" className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden">
             <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground w-full min-w-0">
-              Valor do aporte
+              Valor do aporte (dinheiro novo)
               <MoneyInput
                 cents={aporteCents}
                 onCentsChange={setAporteCents}
@@ -343,23 +393,78 @@ export function AporteTab({
                 aria-label="Valor do aporte"
                 placeholder="R$ 0,00"
               />
-              {position.cashBRL > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    animateToCents(Math.round(position.cashBRL * 100));
-                    triggerSensory("selection");
-                  }}
-                  className="self-start text-[11px] text-portfolio hover:underline font-medium cursor-pointer pt-0.5"
-                >
-                  Usar saldo em caixa ({formatCentsAsBRL(Math.round(position.cashBRL * 100))})
-                </button>
-              ) : null}
             </label>
+
+            {availableCashCents > 0 ? (
+              <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface-hover/30 p-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <Wallet className="size-4 shrink-0 text-muted-foreground mt-0.5" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <Switch
+                        checked={useBrokerageCash}
+                        onCheckedChange={(checked) => {
+                          setUseBrokerageCash(checked);
+                          if (checked && (cashUsedCents <= 0 || cashUsedCents > availableCashCents)) {
+                            setCashUsedCents(availableCashCents);
+                          }
+                        }}
+                        label="Somar saldo em Caixa da corretora"
+                        description={`Disponível em Caixa: ${formatCentsAsBRL(availableCashCents)}`}
+                      />
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      animateToCents(0);
+                      setUseBrokerageCash(true);
+                      setCashUsedCents(availableCashCents);
+                    }}
+                    className="self-start sm:self-center shrink-0"
+                  >
+                    Usar apenas o Caixa
+                  </Button>
+                </div>
+
+                {useBrokerageCash ? (
+                  <div className="flex flex-col gap-2.5 border-t border-border/60 pt-2.5">
+                    <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground w-full min-w-0">
+                      Saldo em Caixa a utilizar (máx. {formatCentsAsBRL(availableCashCents)})
+                      <MoneyInput
+                        cents={effectiveCashSelectedCents}
+                        onCentsChange={(next) =>
+                          setCashUsedCents(Math.min(Math.max(0, next), availableCashCents))
+                        }
+                        size="md"
+                        aria-label="Saldo em caixa utilizado"
+                        placeholder="R$ 0,00"
+                      />
+                    </label>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span>
+                        Poder de compra composto: Bolso{" "}
+                        <MoneyText cents={aporteCents} tone="default" className="font-semibold text-foreground" />{" "}
+                        + Caixa{" "}
+                        <MoneyText cents={effectiveCashSelectedCents} tone="default" className="font-semibold text-foreground" />
+                      </span>
+                      <MoneyText
+                        cents={totalPurchasingCents}
+                        tone="portfolio"
+                        className="text-sm font-bold"
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-xs text-muted-foreground">
               <Sparkles className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
               <span>
-                <strong className="font-semibold text-foreground">Motor Hierárquico:</strong> Estabiliza primeiro a macroclasse com maior déficit e depois distribui pelas metas dos ativos.
+                <strong className="font-semibold text-foreground">Motor Hierárquico:</strong> Estabiliza primeiro a classe e o setor mais defasados e distribui pelos pesos das Notas (0 a 10) dos ativos elegíveis.
               </span>
             </div>
           </section>
@@ -411,7 +516,11 @@ export function AporteTab({
           if (!open) setPendingCustomItems(null);
         }}
         title="Aplicar aporte à carteira?"
-        description={`Essa ação atualizará a quantidade e o preço médio ponderado de ${(pendingCustomItems ?? eligibleRoutes).length} ativos da sua carteira e registrará a contribuição deste mês.`}
+        description={
+          effectiveCashSelectedCents > 0
+            ? `Essa ação atualizará ${(pendingCustomItems ?? eligibleRoutes).length} ativos, debitando até ${formatCentsAsBRL(effectiveCashSelectedCents)} do saldo em Caixa e registrando apenas o dinheiro novo no histórico de aportes.`
+            : `Essa ação atualizará a quantidade e o preço médio ponderado de ${(pendingCustomItems ?? eligibleRoutes).length} ativos da sua carteira e registrará a contribuição deste mês.`
+        }
         confirmLabel="Aplicar aporte"
         confirmPending={isApplying}
         onConfirm={() => void handleExecuteBatch()}
@@ -425,7 +534,6 @@ export function AporteTab({
         initialTotalCents={wizardTotalCents}
         onSuccess={() => {
           void position.refetch();
-          void targetsQuery.refetch();
           void classTargetsQuery.refetch();
           void sectorTargetsQuery.refetch();
           void assetsQuery.refetch();

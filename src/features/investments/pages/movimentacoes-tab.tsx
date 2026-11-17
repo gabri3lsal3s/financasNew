@@ -1,19 +1,28 @@
 import { useState } from "react";
-import { ShieldCheck, Upload } from "lucide-react";
+import { History, ShieldCheck, Upload } from "lucide-react";
 import { Button } from "@/components/ui";
+import { currentMonth } from "@/lib/date";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import { useAllPortfolioTransactions, usePortfolioAssets } from "@/state";
-import { PortfolioActivityPanel, PortfolioDarfMonitor, PortfolioImportDialog } from "../components";
+import { useAllPortfolioTransactions, usePortfolioAssets, usePortfolioPosition } from "@/state";
+import {
+  PortfolioActivityPanel,
+  PortfolioDarfMonitor,
+  PortfolioImportDialog,
+  PortfolioSnapshotsDialog,
+} from "../components";
 
 /**
- * Aba dedicada ao histórico de movimentações da carteira (ledger):
- * compras, vendas, proventos, desdobramentos, apuração fiscal e importação de planilha em lote.
+ * Extrato da Carteira: histórico completo de lançamentos, proventos, aportes,
+ * marcos históricos mensais, importação de planilha em lote e apuração fiscal DARF 6015.
  */
 export function MovimentacoesTab() {
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [darfOpen, setDarfOpen] = useState(false);
   const assetsQuery = usePortfolioAssets();
   const txsQuery = useAllPortfolioTransactions();
+  const position = usePortfolioPosition();
+  const allSeries = position.allMonthlySeries ?? position.monthlySeries ?? [];
 
   const { guardAction, upgradeModal } = useMutationGuard({
     moduleKey: "investments",
@@ -24,15 +33,37 @@ export function MovimentacoesTab() {
     <div className="flex flex-col gap-5">
       <PortfolioActivityPanel />
 
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+        <section
+          aria-label="Marcos históricos da carteira"
+          className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface p-4 shadow-xs transition-all hover:border-border"
+        >
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span className="text-xs font-semibold text-foreground">Marcos Históricos & TWR</span>
+            <span className="text-xs text-muted-foreground">
+              Audite e calibre fechamentos mensais, patrimônio histórico e evolução da cota.
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setSnapshotsOpen(true)}
+            className="h-8 text-xs gap-1.5 self-start"
+          >
+            <History className="size-3.5 text-portfolio" aria-hidden="true" />
+            <span>Marcos Históricos</span>
+          </Button>
+        </section>
+
         <section
           aria-label="Importar posição via planilha"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/70 p-4 shadow-xs transition-all hover:border-border"
+          className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface p-4 shadow-xs transition-all hover:border-border"
         >
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-xs font-semibold text-foreground">Posição ou histórico desatualizado?</span>
             <span className="text-xs text-muted-foreground">
-              Importe um arquivo .xlsx ou .csv para atualizar suas posições e registrar operações em lote.
+              Importe um arquivo .xlsx ou .csv para atualizar posições e registrar operações em lote.
             </span>
           </div>
           <Button
@@ -49,7 +80,7 @@ export function MovimentacoesTab() {
 
         <section
           aria-label="Apuração fiscal e DARF"
-          className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/70 p-4 shadow-xs transition-all hover:border-border"
+          className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface p-4 shadow-xs transition-all hover:border-border"
         >
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-xs font-semibold text-foreground">Apuração Fiscal & DARF 6015</span>
@@ -70,6 +101,12 @@ export function MovimentacoesTab() {
         </section>
       </div>
 
+      <PortfolioSnapshotsDialog
+        open={snapshotsOpen}
+        onOpenChange={setSnapshotsOpen}
+        series={allSeries}
+        currentMonthStr={currentMonth()}
+      />
       <PortfolioImportDialog open={importOpen} onOpenChange={setImportOpen} />
       <PortfolioDarfMonitor
         open={darfOpen}

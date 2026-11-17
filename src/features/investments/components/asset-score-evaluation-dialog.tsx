@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
+import {
+  CRITERIA_BY_ARCHETYPE,
+  getScoreArchetypeKey,
+  getScoreConvictionMeta,
+  REVIEW_FREQUENCY_OPTIONS,
+} from "@/domain/portfolio";
 import { useUpdatePortfolioAsset } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -17,57 +23,6 @@ export interface AssetScoreEvaluationDialogProps {
   onOpenChange: (open: boolean) => void;
   asset: PortfolioAsset | null;
 }
-
-interface CriterionConfig {
-  key: string;
-  label: string;
-  description: string;
-}
-
-const CRITERIA_BY_ARCHETYPE: Record<string, CriterionConfig[]> = {
-  acoes: [
-    { key: "governance", label: "Governança & Alinhamento", description: "Novo Mercado, tag along 100%, controle societário transparente" },
-    { key: "roic", label: "Rentabilidade & ROIC", description: "ROIC e ROE consistentemente acima do custo de capital" },
-    { key: "moat", label: "Vantagens Competitivas", description: "Barreiras de entrada fortes, poder de precificação e escala" },
-    { key: "debt", label: "Saúde Financeira", description: "Dívida líquida / EBITDA saudável e fluxo de caixa livre previsível" },
-  ],
-  fiis: [
-    { key: "location", label: "Qualidade dos Imóveis", description: "Ativos bem localizados (regiões prime / AAA) e bom estado" },
-    { key: "vacancy", label: "Ocupação & Inadimplência", description: "Baixo histórico de vacância física/financeira e contratos atípicos" },
-    { key: "management", label: "Qualidade da Gestão", description: "Gestora experiente, alinhamento de taxas e transparência" },
-    { key: "yield_sustainability", label: "Sustentabilidade do Yield", description: "Rendimentos consistentes sem depender de reservas pontuais" },
-  ],
-  renda_fixa: [
-    { key: "credit_risk", label: "Risco de Crédito", description: "Solidez do emissor (Rating AAA/AA) ou cobertura pelo FGC" },
-    { key: "liquidity", label: "Liquidez & Prazo", description: "Prazo condizente com os objetivos e carência respeitada" },
-    { key: "index_alignment", label: "Taxa & Indexador", description: "Taxa real atrativa frente à inflação ou juros futuros" },
-  ],
-  cripto: [
-    { key: "decentralization", label: "Descentralização & Segurança", description: "Rede robusta, sem ponto único de falha e código auditado" },
-    { key: "adoption", label: "Efeito de Rede & Liquidez", description: "Adoção institucional crescente e alta liquidez global" },
-    { key: "tokenomics", label: "Tokenomics", description: "Escassez programada, emissão controlada e utilidade clara" },
-  ],
-  default: [
-    { key: "conviction", label: "Convicção Estratégica", description: "Entendimento profundo da tese e dos riscos envolvidos" },
-    { key: "risk_reward", label: "Relação Risco-Retorno", description: "Assimetria favorável e potencial de valorização comprovado" },
-  ],
-};
-
-function getArchetypeKey(assetClass?: string | null): string {
-  if (!assetClass) return "default";
-  const norm = assetClass.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  if (norm.includes("acao") || norm.includes("acoes") || norm.includes("stock")) return "acoes";
-  if (norm.includes("fii") || norm.includes("imobiliario") || norm.includes("reit")) return "fiis";
-  if (norm.includes("fixa") || norm.includes("tesouro") || norm.includes("cdb")) return "renda_fixa";
-  if (norm.includes("cripto") || norm.includes("crypto") || norm.includes("bitcoin")) return "cripto";
-  return "default";
-}
-
-const REVIEW_FREQUENCY_OPTIONS = [
-  { value: "3", label: "Trimestral (3 meses)" },
-  { value: "6", label: "Semestral (6 meses - recomendado)" },
-  { value: "12", label: "Anual (12 meses)" },
-];
 
 export function AssetScoreEvaluationDialog({
   open,
@@ -93,7 +48,7 @@ function AssetScoreEvaluationDialogContent({
 }: AssetScoreEvaluationDialogProps & { asset: PortfolioAsset }) {
   const updateMutation = useUpdatePortfolioAsset();
 
-  const [score, setScore] = useState<number>(() => asset.score ?? 5);
+  const [score, setScore] = useState<number | null>(() => asset.score ?? null);
   const [allocationStatus, setAllocationStatus] = useState<AssetAllocationStatus>(
     () => asset.allocation_status ?? "active",
   );
@@ -105,8 +60,9 @@ function AssetScoreEvaluationDialogContent({
     () => (asset.score_criteria as Record<string, number> | null) ?? {},
   );
 
-  const archetypeKey = getArchetypeKey(asset.asset_class);
+  const archetypeKey = getScoreArchetypeKey(asset.asset_class);
   const availableCriteria = CRITERIA_BY_ARCHETYPE[archetypeKey] || CRITERIA_BY_ARCHETYPE.default!;
+  const conviction = getScoreConvictionMeta(score);
 
   const handleToggleCriterion = (key: string) => {
     setCriteria((prev) => {
@@ -131,7 +87,7 @@ function AssetScoreEvaluationDialogContent({
           review_frequency_months: reviewFrequencyMonths,
           thesis_summary: thesisSummary.trim() || null,
           score_criteria: Object.keys(criteria).length > 0 ? criteria : null,
-          last_reviewed_at: new Date().toISOString(),
+          last_reviewed_at: score !== null ? new Date().toISOString() : asset.last_reviewed_at ?? null,
         },
       });
 
@@ -140,7 +96,6 @@ function AssetScoreEvaluationDialogContent({
         description: `Tese e nota de ${asset.ticker} salvas com sucesso.`,
         variant: "success",
       });
-      triggerSensory("success");
       onOpenChange(false);
     } catch {
       // O hook já dispara toast de erro
@@ -189,39 +144,40 @@ function AssetScoreEvaluationDialogContent({
       <div className="flex flex-col gap-5 py-1">
         {/* Bloco 1: Seletor de Nota (0 a 10) com Semáforo Cognitivo */}
         <section aria-label="Nota de convicção" className="flex flex-col gap-2.5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-xs font-semibold text-foreground">
               Nota de Convicção (0 a 10)
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span
                 className={cn(
-                  "font-mono font-bold text-base px-2 py-0.5 rounded-lg border",
-                  score >= 7
-                    ? "bg-positive/10 border-positive/30 text-positive-strong"
-                    : score >= 4
-                      ? "bg-warning/15 border-warning/30 text-warning-strong"
-                      : "bg-critical/10 border-critical/30 text-critical-strong",
+                  "font-mono font-bold text-sm px-2.5 py-0.5 rounded-lg border tabular-nums whitespace-nowrap",
+                  score === null
+                    ? "bg-muted/50 border-border/80 text-muted-foreground"
+                    : score >= 7
+                      ? "bg-positive/10 border-positive/30 text-positive-strong"
+                      : score >= 4
+                        ? "bg-warning/15 border-warning/30 text-warning-strong"
+                        : "bg-critical/10 border-critical/30 text-critical-strong",
                 )}
               >
-                {score} / 10
+                {score !== null ? `${score} / 10` : "Sem nota"}
               </span>
-              <Badge
-                size="xs"
-                variant={score >= 7 ? "positive" : score >= 4 ? "muted" : "negative"}
-              >
-                {score >= 8
-                  ? "Alta Convicção"
-                  : score >= 6
-                    ? "Média Convicção"
-                    : score >= 4
-                      ? "Neutro / Regular"
-                      : "Baixa Convicção"}
+              <Badge size="xs" variant={conviction.badgeVariant}>
+                {conviction.label}
               </Badge>
+              <Button
+                type="button"
+                variant={score === null ? "secondary" : "outline"}
+                size="xs"
+                onClick={() => setScore(null)}
+              >
+                Sem nota
+              </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-11 gap-1 w-full">
+          <div className="grid grid-cols-6 sm:grid-cols-11 gap-1.5 w-full">
             {Array.from({ length: 11 }, (_, i) => i).map((n) => {
               const isSelected = score === n;
               return (
@@ -251,7 +207,9 @@ function AssetScoreEvaluationDialogContent({
             })}
           </div>
           <p className="text-[11px] text-muted-foreground">
-            A nota pondera a alocação do ativo dentro do setor no rebalanceamento. Ativos sem nota assumem Nota 5 neutra.
+            {score === null
+              ? "Ativos sem nota entram no motor de rebalanceamento com peso neutro (5) caso o status esteja Ativo."
+              : "A nota pondera a alocação do ativo dentro da sua classe ou setor no rebalanceamento."}
           </p>
         </section>
 
@@ -396,7 +354,7 @@ function AssetScoreEvaluationDialogContent({
                 setReviewFrequencyMonths(Number(val));
                 triggerSensory("selection");
               }}
-              options={REVIEW_FREQUENCY_OPTIONS}
+              options={[...REVIEW_FREQUENCY_OPTIONS]}
               className="text-xs h-9"
             />
             {asset.last_reviewed_at ? (

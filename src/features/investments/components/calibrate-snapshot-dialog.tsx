@@ -22,10 +22,12 @@ export interface CalibrateSnapshotDialogProps {
 
 interface CalibrateSnapshotFormProps {
   snapshot: SnapshotCalibrationData;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onClose: () => void;
 }
 
-function CalibrateSnapshotForm({ snapshot, onClose }: CalibrateSnapshotFormProps) {
+function CalibrateSnapshotForm({ snapshot, open, onOpenChange, onClose }: CalibrateSnapshotFormProps) {
   const calibrateMutation = useCalibratePortfolioSnapshot();
 
   const [totalValueCents, setTotalValueCents] = useState<number>(() =>
@@ -64,62 +66,15 @@ function CalibrateSnapshotForm({ snapshot, onClose }: CalibrateSnapshotFormProps
   const autoCost = snapshot.autoTotalCost != null ? snapshot.autoTotalCost : null;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {error ? (
-        <Alert variant="error">{error}</Alert>
-      ) : null}
-
-      {autoVal !== null ? (
-        <Alert variant="info">
-          Fechamento de mercado oficial:{" "}
-          <span className="font-semibold text-foreground">
-            R$&nbsp;{autoVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </span>
-          {autoCost !== null ? (
-            <span>
-              {" "}(Custo: R$&nbsp;{autoCost.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
-            </span>
-          ) : null}
-          . A calibração é não destrutiva e pode ser restaurada ao valor original a qualquer momento.
-        </Alert>
-      ) : null}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="calibrate-total-value" className="text-xs font-semibold text-foreground">
-            Patrimônio Total (R$)
-          </label>
-          <MoneyInput
-            id="calibrate-total-value"
-            cents={totalValueCents}
-            onCentsChange={setTotalValueCents}
-            className="text-base sm:text-sm"
-            placeholder="0,00"
-          />
-          <span className="text-[11px] text-muted-foreground">
-            Valor de mercado total da custódia + caixa.
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="calibrate-total-cost" className="text-xs font-semibold text-foreground">
-            Custo Total Aplicado (R$)
-          </label>
-          <MoneyInput
-            id="calibrate-total-cost"
-            cents={totalCostCents}
-            onCentsChange={setTotalCostCents}
-            className="text-base sm:text-sm"
-            placeholder="0,00"
-          />
-          <span className="text-[11px] text-muted-foreground">
-            Custo de aquisição total dos ativos + caixa.
-          </span>
-        </div>
-      </div>
-
-      <ModalFooter>
-        <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:justify-end">
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Calibrar Mês ${formatMonthYear(snapshot.month)}`}
+      description="Ajuste o valor de mercado e o custo deste mês. O valor original gravado no fechamento permanecerá intacto."
+      size="md"
+      showCalculator
+      footer={
+        <ModalFooter borderless>
           <Button
             type="button"
             variant="outline"
@@ -130,14 +85,72 @@ function CalibrateSnapshotForm({ snapshot, onClose }: CalibrateSnapshotFormProps
           </Button>
           <Button
             type="submit"
+            form="calibrate-snapshot-form"
             variant="portfolio"
             disabled={calibrateMutation.isPending}
           >
             {calibrateMutation.isPending ? "Salvando..." : "Salvar Calibração"}
           </Button>
+        </ModalFooter>
+      }
+    >
+      <form id="calibrate-snapshot-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pt-1">
+        {error ? (
+          <Alert variant="error">{error}</Alert>
+        ) : null}
+
+        {autoVal !== null ? (
+          <Alert variant="info">
+            Fechamento de mercado oficial:{" "}
+            <span className="font-semibold text-foreground">
+              R$&nbsp;{autoVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            {autoCost !== null ? (
+              <span>
+                {" "}(Custo: R$&nbsp;{autoCost.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+              </span>
+            ) : null}
+            . A calibração é não destrutiva e pode ser restaurada ao valor original a qualquer momento.
+          </Alert>
+        ) : null}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="calibrate-total-value" className="text-xs font-semibold text-foreground">
+              Patrimônio Total (R$)
+            </label>
+            <MoneyInput
+              id="calibrate-total-value"
+              cents={totalValueCents}
+              onCentsChange={setTotalValueCents}
+              className="text-base sm:text-sm"
+              placeholder="0,00"
+              showCalculatorAction
+            />
+            <span className="text-[11px] text-muted-foreground">
+              Valor de mercado total da custódia + caixa.
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="calibrate-total-cost" className="text-xs font-semibold text-foreground">
+              Custo Total Aplicado (R$)
+            </label>
+            <MoneyInput
+              id="calibrate-total-cost"
+              cents={totalCostCents}
+              onCentsChange={setTotalCostCents}
+              className="text-base sm:text-sm"
+              placeholder="0,00"
+              showCalculatorAction
+            />
+            <span className="text-[11px] text-muted-foreground">
+              Custo de aquisição total dos ativos + caixa.
+            </span>
+          </div>
         </div>
-      </ModalFooter>
-    </form>
+      </form>
+    </Modal>
   );
 }
 
@@ -150,21 +163,15 @@ export function CalibrateSnapshotDialog({
   onOpenChange,
   snapshot,
 }: CalibrateSnapshotDialogProps) {
-  if (!snapshot) return null;
+  if (!snapshot || !open) return null;
 
   return (
-    <Modal
+    <CalibrateSnapshotForm
+      key={snapshot.month}
+      snapshot={snapshot}
       open={open}
       onOpenChange={onOpenChange}
-      title={`Calibrar Mês ${formatMonthYear(snapshot.month)}`}
-      description="Ajuste o valor de mercado e o custo deste mês. O valor original gravado no fechamento permanecerá intacto."
-      size="md"
-    >
-      <CalibrateSnapshotForm
-        key={snapshot.month}
-        snapshot={snapshot}
-        onClose={() => onOpenChange(false)}
-      />
-    </Modal>
+      onClose={() => onOpenChange(false)}
+    />
   );
 }

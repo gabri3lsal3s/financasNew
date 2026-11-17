@@ -86,13 +86,18 @@ export function TargetSectorsCard({
       aria-label="Metas por setor"
       className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden"
     >
-      <div className="flex items-center justify-between min-w-0">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+        <div className="min-w-0">
           <h3 className="text-sm font-semibold text-foreground truncate">Metas setoriais por classe</h3>
           <p className="text-xs text-muted-foreground">
-            Defina a proporção relativa (% da classe) de cada setor / segmento.
+            Opcional: defina a proporção (% dentro de {activeSectorClass}). Se não configurar setores nesta classe, o peso vai direto para as Notas dos ativos.
           </p>
         </div>
+        {sectorSum.sum === 0 && availableSectors.length > 0 ? (
+          <Badge variant="muted" size="xs" className="self-start sm:self-center shrink-0">
+            Opcional (direto para Notas)
+          </Badge>
+        ) : null}
       </div>
 
       {/* Seletor de Classe Ativa para os Setores */}
@@ -238,7 +243,7 @@ export function TargetSectorsCard({
                         <Badge
                           variant={gap > 0 ? "positive" : "muted"}
                           size="xs"
-                          className="font-mono text-[10px]"
+                          className="font-mono"
                         >
                           {gap > 0 ? `+${gap.toFixed(1)}% (Aporte)` : `${gap.toFixed(1)}% (Acima)`}
                         </Badge>

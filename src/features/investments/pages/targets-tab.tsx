@@ -1,42 +1,49 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Save } from "lucide-react";
 import { Alert, Button, EmptyState, ErrorState, Tabs, TargetsSkeleton } from "@/components/ui";
 import {
+  calculateEffectiveAssetTargets,
   distributeEquallyTargets,
   inferSectorFromTicker,
-  mirrorCurrentPositionTargets,
+  isCashAssetClass,
   normalizeAllocationTargets,
-  parseTargetInput,
   sanitizeGroupTargetsForSave,
   validateClassSectorTargetsSum,
   validateTargetsSum,
 } from "@/domain/portfolio";
-import { numberToCents } from "@/domain/money";
-import { formatCentsAsBRL } from "@/services/masks";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { PortfolioAsset } from "@/types";
 import {
-  useAllocationTargets,
   useGroupTargets,
   usePortfolioAssets,
   usePortfolioPosition,
   useRemoveGroupTarget,
-  useSaveAllocationTargets,
   useSaveGroupTarget,
+  useSaveHierarchyTargets,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import { AllocationBreakdownDialog, AssetDetailSheet, AssetScoreEvaluationDialog } from "../components";
-import { TargetAssetsCard, TargetClassesCard, TargetSectorsCard } from "../components/targets";
+import {
+  AllocationBreakdownDialog,
+  AssetDetailSheet,
+  AssetScoreEvaluationDialog,
+} from "../components";
+import {
+  TargetAssetsCard,
+  TargetClassesCard,
+  TargetSectorsCard,
+  type TargetAssetScoreRow,
+} from "../components/targets";
+
+const sectorDraftKey = (className: string, sectorName: string) => `${className}::${sectorName}`;
 
 /**
- * Metas de alocação (§3.11.1 e §F39) — edição hierárquica em 3 níveis:
- * 1. Classes: alocação macro (% do patrimônio total);
- * 2. Setores: alocação meso por segmento/setor (% relativo da classe);
- * 3. Ativos: alocação micro individual (% do patrimônio).
- * Suporte a cenários estratégicos (presets), normalização em 1-clique e validações estritas (<= 100%).
+ * Governança hierárquica da carteira em 3 níveis (§3.11.1 · Plano 42):
+ * 1. Classes: alocação macro (% do patrimônio investível, fora o Caixa);
+ * 2. Setores: alocação meso opcional com escopo por classe (% dentro da classe);
+ * 3. Ativos: Notas de Tese (0–10) + Status, com meta efetiva derivada automaticamente.
  */
 export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({
@@ -44,19 +51,16 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     defaultContext: "Definir Metas de Alocação",
   });
   const position = usePortfolioPosition();
-  const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
+  const assetsQuery = usePortfolioAssets();
 
-  const saveTargets = useSaveAllocationTargets();
   const saveClassTarget = useSaveGroupTarget("class");
   const removeClassTarget = useRemoveGroupTarget("class");
   const saveSectorTarget = useSaveGroupTarget("sector");
   const removeSectorTarget = useRemoveGroupTarget("sector");
-  const assetsQuery = usePortfolioAssets();
+  const saveHierarchyTargets = useSaveHierarchyTargets();
 
-  // Estados locais dos rascunhos de metas
-  const [assetDraft, setAssetDraft] = useState<Record<string, number>>({});
   const [classDraft, setClassDraft] = useState<Record<string, number>>({});
   const [sectorDraft, setSectorDraft] = useState<Record<string, number>>({});
 
@@ -69,237 +73,209 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   const detailAsset = assetDetailId
     ? (assetsQuery.data ?? []).find((a) => a.id === assetDetailId) ?? null
     : null;
+  const [evaluatingAsset, setEvaluatingAsset] = useState<PortfolioAsset | null>(null);
 
   const [savingClass, setSavingClass] = useState<string | null>(null);
   const [savingSector, setSavingSector] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
-  const timerRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
-
-  const storedAssetTargets = new Map((targetsQuery.data ?? []).map((t) => [t.asset_id, t.target_percentage]));
-  const storedClassTargets = new Map((classTargetsQuery.data ?? []).map((t) => [t.name, t.target_percentage]));
-  const storedSectorTargets = new Map((sectorTargetsQuery.data ?? []).map((t) => [t.name, t.target_percentage]));
-
-  const assetTargetOf = (assetId: string) => assetDraft[assetId] ?? storedAssetTargets.get(assetId) ?? 0;
-  const classTargetOf = (className: string) => classDraft[className] ?? storedClassTargets.get(className) ?? 0;
-  const sectorTargetOf = (sectorName: string) => sectorDraft[sectorName] ?? storedSectorTargets.get(sectorName) ?? 0;
-
   const [assetClassFilter, setAssetClassFilter] = useState<string | null>(null);
-
-  const classes = [...new Set(position.rows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
-
-  // Sub-aba de Setores: classe selecionada
   const [selectedSectorClass, setSelectedSectorClass] = useState<string | null>(null);
-  const activeSectorClass = selectedSectorClass ?? classes[0] ?? "Ações";
-  const availableSectors = [
-    ...new Set(
-      position.rows
-        .filter((r) => r.assetClass === activeSectorClass)
-        .map((r) => r.sector?.trim() || inferSectorFromTicker(r.ticker, activeSectorClass))
-        .filter(Boolean),
-    ),
-  ];
+
+  // Exclui Caixa das metas de classes e notas (Decisão 1 · Plano 42)
+  const investableRows = useMemo(
+    () =>
+      position.rows.filter(
+        (r) => !isCashAssetClass(r.assetClass) && r.ticker.trim().toUpperCase() !== "CAIXA",
+      ),
+    [position.rows],
+  );
+
+  const investableTotalBRL = useMemo(
+    () => investableRows.reduce((acc, r) => acc + r.valueBRL, 0),
+    [investableRows],
+  );
+
+  const classes = useMemo(
+    () => [
+      ...new Set(
+        investableRows
+          .map((r) => r.assetClass)
+          .filter((c): c is string => Boolean(c && !isCashAssetClass(c))),
+      ),
+    ],
+    [investableRows],
+  );
+
+  const storedClassTargets = useMemo(
+    () => new Map((classTargetsQuery.data ?? []).map((t) => [t.name, t.target_percentage])),
+    [classTargetsQuery.data],
+  );
+
+  const storedSectorMaps = useMemo(() => {
+    const byClass = new Map<string, Map<string, number>>();
+    const legacyFallback = new Map<string, number>();
+
+    for (const item of sectorTargetsQuery.data ?? []) {
+      const cls = item.class_name?.trim();
+      if (cls) {
+        const inner = byClass.get(cls) ?? new Map<string, number>();
+        inner.set(item.name, item.target_percentage);
+        byClass.set(cls, inner);
+      } else {
+        legacyFallback.set(item.name, item.target_percentage);
+      }
+    }
+
+    return { byClass, legacyFallback };
+  }, [sectorTargetsQuery.data]);
+
+  const classTargetOf = (className: string) =>
+    classDraft[className] ?? storedClassTargets.get(className) ?? 0;
+
+  const activeSectorClass =
+    selectedSectorClass && classes.includes(selectedSectorClass)
+      ? selectedSectorClass
+      : (classes[0] ?? "Ações");
+
+  const availableSectors = useMemo(
+    () => [
+      ...new Set(
+        investableRows
+          .filter((r) => r.assetClass === activeSectorClass)
+          .map((r) => r.sector?.trim() || inferSectorFromTicker(r.ticker, activeSectorClass))
+          .filter(Boolean),
+      ),
+    ],
+    [investableRows, activeSectorClass],
+  );
+
+  const activeClassStoredSectors = useMemo(() => {
+    const scoped = new Map(storedSectorMaps.byClass.get(activeSectorClass) ?? []);
+    for (const sec of availableSectors) {
+      if (!scoped.has(sec) && storedSectorMaps.legacyFallback.has(sec)) {
+        scoped.set(sec, storedSectorMaps.legacyFallback.get(sec)!);
+      }
+    }
+    return scoped;
+  }, [storedSectorMaps, activeSectorClass, availableSectors]);
+
+  const sectorTargetOf = (sectorName: string, className = activeSectorClass): number => {
+    const key = sectorDraftKey(className, sectorName);
+    if (key in sectorDraft) return sectorDraft[key] ?? 0;
+    const scoped = storedSectorMaps.byClass.get(className);
+    if (scoped?.has(sectorName)) return scoped.get(sectorName) ?? 0;
+    return storedSectorMaps.legacyFallback.get(sectorName) ?? 0;
+  };
 
   const sectorRows = availableSectors.map((s) => ({
     key: s,
     label: s,
-    target: sectorTargetOf(s),
+    target: sectorTargetOf(s, activeSectorClass),
   }));
   const sectorSum = validateClassSectorTargetsSum(
     sectorRows.map((r) => ({ target: r.target })),
     activeSectorClass,
   );
 
-  const [evaluatingAsset, setEvaluatingAsset] = useState<PortfolioAsset | null>(null);
-
   const assetMap = useMemo(
     () => new Map((assetsQuery.data ?? []).map((a) => [a.id, a])),
     [assetsQuery.data],
   );
 
-  const assetRows = position.rows.map((row) => {
-    const asset = assetMap.get(row.assetId);
-    return {
-      key: row.assetId,
-      label: row.ticker,
-      assetClass: row.assetClass ?? (row.isCash ? "Caixa" : "Sem classe"),
-      detail: `${formatCentsAsBRL(numberToCents(row.valueBRL))} · ${row.pct.toFixed(1)}% hoje`,
-      target: assetTargetOf(row.assetId),
-      currentPct: row.pct,
-      score: asset?.score ?? 8,
-      allocationStatus: asset?.allocation_status ?? "active",
-      onEvaluate: asset ? () => setEvaluatingAsset(asset) : undefined,
-    };
-  });
-
-  const assetSum = validateTargetsSum(assetRows.map((r) => ({ target: r.target })));
-
-  const visibleAssetRows = assetClassFilter
-    ? assetRows.filter((r) => r.assetClass === assetClassFilter)
-    : assetRows;
-
-  const activeClassTargetSum = assetClassFilter
-    ? assetRows
-        .filter((r) => r.assetClass === assetClassFilter)
-        .reduce((acc, r) => acc + r.target, 0)
-    : null;
-
-  const otherClassesSum = assetClassFilter
-    ? assetRows
-        .filter((r) => r.assetClass !== assetClassFilter)
-        .reduce((acc, r) => acc + r.target, 0)
-    : 0;
-
-  const maxAllowedForThisClass = Math.max(0, Math.round((100 - otherClassesSum) * 100) / 100);
-
-  const selectedClassTarget = assetClassFilter
-    ? (classTargetOf(assetClassFilter) > 0 ? classTargetOf(assetClassFilter) : null)
-    : null;
-
-  const targetCeiling = selectedClassTarget !== null
-    ? selectedClassTarget
-    : (activeClassTargetSum !== null && activeClassTargetSum > 0
-        ? Math.min(activeClassTargetSum, maxAllowedForThisClass)
-        : (classes.length > 1 ? maxAllowedForThisClass : 100));
-
-  const normalizeLabel = assetClassFilter
-    ? `Normalizar ${assetClassFilter} para ${targetCeiling.toFixed(1)}%`
-    : "Normalizar para 100%";
-
-  const distributeLabel = assetClassFilter
-    ? `Distribuir igualmente (${targetCeiling.toFixed(1)}%)`
-    : "Distribuir igualmente (1/N)";
-
-  const handleNormalizeAll = () => {
-    setError(null);
-    setSaved(false);
-    const items = position.rows.map((row) => ({
-      id: row.assetId,
-      targetPercentage: assetTargetOf(row.assetId),
+  const effectiveAssetTargetsMap = useMemo(() => {
+    const effectiveClassTargets = classes.map((cls) => ({
+      className: cls,
+      targetPercentage: classTargetOf(cls),
     }));
-    const normalized = normalizeAllocationTargets(items, 100);
-    const nextDraft: Record<string, number> = {};
-    normalized.forEach((item) => {
-      nextDraft[item.id] = item.targetPercentage;
-    });
-    setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
-    triggerSensory("selection");
-  };
 
-  const handleNormalize = () => {
-    setError(null);
-    setSaved(false);
-    if (assetClassFilter) {
-      const items = visibleAssetRows.map((r) => ({
-        id: r.key,
-        targetPercentage: r.target,
-      }));
-      const normalized = normalizeAllocationTargets(items, targetCeiling);
-      const nextDraft: Record<string, number> = {};
-      normalized.forEach((item) => {
-        nextDraft[item.id] = item.targetPercentage;
-      });
-      setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
-    } else {
-      handleNormalizeAll();
-    }
-    triggerSensory("selection");
-  };
+    const effectiveSectorTargets: Array<{
+      className?: string | null;
+      sectorName: string;
+      targetPercentage: number;
+    }> = [];
 
-  const handleDistributeEqually = () => {
-    setError(null);
-    setSaved(false);
-    if (assetClassFilter) {
-      const items = visibleAssetRows.map((r) => ({ id: r.key }));
-      const distributed = distributeEquallyTargets(items, targetCeiling);
-      const nextDraft: Record<string, number> = {};
-      distributed.forEach((item) => {
-        nextDraft[item.id] = item.targetPercentage;
-      });
-      setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
-    } else {
-      const items = position.rows.map((row) => ({ id: row.assetId }));
-      const distributed = distributeEquallyTargets(items, 100);
-      const nextDraft: Record<string, number> = {};
-      distributed.forEach((item) => {
-        nextDraft[item.id] = item.targetPercentage;
-      });
-      setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
-    }
-    triggerSensory("selection");
-  };
-
-  const handleMirrorPosition = () => {
-    setError(null);
-    setSaved(false);
-    if (assetClassFilter) {
-      const items = visibleAssetRows.map((r) => ({ id: r.key, currentPct: r.currentPct }));
-      const mirrored = mirrorCurrentPositionTargets(items, targetCeiling);
-      const nextDraft: Record<string, number> = {};
-      mirrored.forEach((item) => {
-        nextDraft[item.id] = item.targetPercentage;
-      });
-      setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
-    } else {
-      const items = position.rows.map((row) => ({ id: row.assetId, currentPct: row.pct }));
-      const mirrored = mirrorCurrentPositionTargets(items, 100);
-      const nextDraft: Record<string, number> = {};
-      mirrored.forEach((item) => {
-        nextDraft[item.id] = item.targetPercentage;
-      });
-      setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
-    }
-    triggerSensory("selection");
-  };
-
-  const handleResetZero = () => {
-    setError(null);
-    setSaved(false);
-    const nextDraft: Record<string, number> = {};
-    if (assetClassFilter) {
-      visibleAssetRows.forEach((r) => {
-        nextDraft[r.key] = 0;
-      });
-    } else {
-      position.rows.forEach((r) => {
-        nextDraft[r.assetId] = 0;
-      });
-    }
-    setAssetDraft((prev) => ({ ...prev, ...nextDraft }));
-    triggerSensory("selection");
-  };
-
-  const saveAssets = async () => {
-    if (isReadOnlyMode) {
-      guardAction(() => {}, "Definir Metas de Alocação");
-      return;
-    }
-    setError(null);
-    setSaved(false);
-    try {
-      await saveTargets.mutateAsync(
-        position.rows.map((row) => ({ assetId: row.assetId, target: assetTargetOf(row.assetId) })),
-      );
-      setAssetDraft({});
-      setSaved(true);
-      triggerSensory("success");
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
+    for (const cls of classes) {
+      const sectorsInClass = new Set<string>();
+      for (const row of investableRows) {
+        if (row.assetClass === cls) {
+          const sec = row.sector?.trim() || inferSectorFromTicker(row.ticker, cls);
+          if (sec) sectorsInClass.add(sec);
+        }
       }
-      timerRef.current = window.setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    }
-  };
+      const storedForClass = storedSectorMaps.byClass.get(cls);
+      if (storedForClass) {
+        for (const sec of storedForClass.keys()) sectorsInClass.add(sec);
+      }
 
+      for (const sec of sectorsInClass) {
+        const pct = sectorTargetOf(sec, cls);
+        if (pct > 0) {
+          effectiveSectorTargets.push({
+            className: cls,
+            sectorName: sec,
+            targetPercentage: pct,
+          });
+        }
+      }
+    }
+
+    const inputs = investableRows.map((row) => {
+      const asset = assetMap.get(row.assetId);
+      const sec =
+        row.sector?.trim() ||
+        asset?.sector?.trim() ||
+        inferSectorFromTicker(row.ticker, row.assetClass);
+      return {
+        id: row.assetId,
+        ticker: row.ticker,
+        assetClass: row.assetClass ?? "Sem classe",
+        sector: sec || null,
+        score: asset?.score ?? null,
+        allocation_status: asset?.allocation_status ?? "active",
+      };
+    });
+
+    const results = calculateEffectiveAssetTargets({
+      assets: inputs,
+      classTargets: effectiveClassTargets,
+      sectorTargets: effectiveSectorTargets,
+    });
+
+    return new Map(results.map((r) => [r.assetId, r]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [classes, investableRows, assetMap, classDraft, sectorDraft, storedClassTargets, storedSectorMaps]);
+
+  const assetScoreRows: TargetAssetScoreRow[] = useMemo(
+    () =>
+      investableRows.map((row) => {
+        const asset = assetMap.get(row.assetId);
+        const effective = effectiveAssetTargetsMap.get(row.assetId);
+        const rawScore = asset?.score ?? null;
+        const status = asset?.allocation_status ?? "active";
+        const sector =
+          row.sector?.trim() ||
+          asset?.sector?.trim() ||
+          inferSectorFromTicker(row.ticker, row.assetClass);
+
+        return {
+          assetId: row.assetId,
+          ticker: row.ticker,
+          assetClass: row.assetClass ?? "Sem classe",
+          sector: sector || null,
+          valueBRL: row.valueBRL,
+          currentPct: investableTotalBRL > 0 ? (row.valueBRL / investableTotalBRL) * 100 : row.pct,
+          rawScore: effective?.rawScore ?? rawScore,
+          effectiveScore: effective?.effectiveScore ?? rawScore ?? 5,
+          effectiveTargetPct: effective?.effectiveTargetPct ?? 0,
+          status,
+          formulaLabel: effective?.formulaLabel ?? "Defina a meta da classe para calcular",
+          onEvaluate: asset ? () => setEvaluatingAsset(asset) : undefined,
+        };
+      }),
+    [investableRows, assetMap, effectiveAssetTargetsMap, investableTotalBRL],
+  );
+
+  // Handlers de Classes
   const saveClass = async (className: string) => {
     if (isReadOnlyMode) {
       guardAction(() => {}, "Definir Metas de Classes");
@@ -309,7 +285,11 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     setSavingClass(className);
     try {
       await saveClassTarget.mutateAsync({ name: className, target: classTargetOf(className) });
-      setClassDraft((prev) => ({ ...prev, [className]: classTargetOf(className) }));
+      setClassDraft((prev) => {
+        const next = { ...prev };
+        delete next[className];
+        return next;
+      });
       triggerSensory("success");
     } catch (err) {
       setError(getErrorMessage(err));
@@ -340,6 +320,34 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     }
   };
 
+  const buildStoredSectorsPayload = (overrideClass?: string, overrideSectors?: Array<{ name: string; target: number }>) => {
+    const payload: Array<{ class_name: string; name: string; target_percentage: number }> = [];
+    for (const item of sectorTargetsQuery.data ?? []) {
+      const cls = item.class_name?.trim();
+      if (!cls) continue;
+      if (overrideClass && cls === overrideClass) continue;
+      if (item.target_percentage > 0) {
+        payload.push({
+          class_name: cls,
+          name: item.name,
+          target_percentage: item.target_percentage,
+        });
+      }
+    }
+    if (overrideClass && overrideSectors) {
+      for (const item of overrideSectors) {
+        if (item.target > 0) {
+          payload.push({
+            class_name: overrideClass,
+            name: item.name,
+            target_percentage: item.target,
+          });
+        }
+      }
+    }
+    return payload;
+  };
+
   const saveAllClasses = async () => {
     if (isReadOnlyMode) {
       guardAction(() => {}, "Definir Metas de Classes");
@@ -354,15 +362,13 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
       }));
       const sanitized = sanitizeGroupTargetsForSave(rawTargets);
 
-      const promises: Promise<unknown>[] = [];
-      for (const item of sanitized) {
-        if (item.target > 0) {
-          promises.push(saveClassTarget.mutateAsync({ name: item.name, target: item.target }));
-        } else {
-          promises.push(removeClassTarget.mutateAsync(item.name));
-        }
-      }
-      await Promise.all(promises);
+      await saveHierarchyTargets.mutateAsync({
+        classes: sanitized
+          .filter((item) => item.target > 0)
+          .map((item) => ({ name: item.name, target_percentage: item.target })),
+        sectors: buildStoredSectorsPayload(),
+      });
+
       setClassDraft({});
       triggerSensory("success");
       pushToast({ title: "Metas de classes salvas com sucesso!", variant: "success" });
@@ -373,6 +379,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     }
   };
 
+  // Handlers de Setores
   const saveSector = async (sectorName: string) => {
     if (isReadOnlyMode) {
       guardAction(() => {}, "Definir Metas Setoriais");
@@ -381,8 +388,16 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     setError(null);
     setSavingSector(sectorName);
     try {
-      await saveSectorTarget.mutateAsync({ name: sectorName, target: sectorTargetOf(sectorName) });
-      setSectorDraft((prev) => ({ ...prev, [sectorName]: sectorTargetOf(sectorName) }));
+      await saveSectorTarget.mutateAsync({
+        name: sectorName,
+        target: sectorTargetOf(sectorName, activeSectorClass),
+        className: activeSectorClass,
+      });
+      setSectorDraft((prev) => {
+        const next = { ...prev };
+        delete next[sectorDraftKey(activeSectorClass, sectorName)];
+        return next;
+      });
       triggerSensory("success");
     } catch (err) {
       setError(getErrorMessage(err));
@@ -399,10 +414,13 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     setError(null);
     setSavingSector(sectorName);
     try {
-      await removeSectorTarget.mutateAsync(sectorName);
+      await removeSectorTarget.mutateAsync({
+        name: sectorName,
+        className: activeSectorClass,
+      });
       setSectorDraft((prev) => {
         const next = { ...prev };
-        delete next[sectorName];
+        delete next[sectorDraftKey(activeSectorClass, sectorName)];
         return next;
       });
       triggerSensory("selection");
@@ -423,20 +441,27 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     try {
       const rawTargets = availableSectors.map((sectorName) => ({
         name: sectorName,
-        target: sectorTargetOf(sectorName),
+        target: sectorTargetOf(sectorName, activeSectorClass),
       }));
       const sanitized = sanitizeGroupTargetsForSave(rawTargets);
 
-      const promises: Promise<unknown>[] = [];
-      for (const item of sanitized) {
-        if (item.target > 0) {
-          promises.push(saveSectorTarget.mutateAsync({ name: item.name, target: item.target }));
-        } else {
-          promises.push(removeSectorTarget.mutateAsync(item.name));
+      const storedClasses = (classTargetsQuery.data ?? [])
+        .filter((item) => item.target_percentage > 0)
+        .map((item) => ({ name: item.name, target_percentage: item.target_percentage }));
+
+      await saveHierarchyTargets.mutateAsync({
+        classes: storedClasses,
+        sectors: buildStoredSectorsPayload(activeSectorClass, sanitized),
+      });
+
+      setSectorDraft((prev) => {
+        const prefix = `${activeSectorClass}::`;
+        const next: Record<string, number> = {};
+        for (const [k, v] of Object.entries(prev)) {
+          if (!k.startsWith(prefix)) next[k] = v;
         }
-      }
-      await Promise.all(promises);
-      setSectorDraft({});
+        return next;
+      });
       triggerSensory("success");
       pushToast({ title: `Metas setoriais de ${activeSectorClass} salvas!`, variant: "success" });
     } catch (err) {
@@ -484,7 +509,6 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     const remaining = Math.max(0, Math.round((100 - sum) * 100) / 100);
     if (!(remaining > 0)) return;
 
-    // Se houver classes com meta zero, prioriza preenchê-las; caso contrário distribui entre todas
     const zeroClasses = classes.filter((c) => classTargetOf(c) === 0);
     const targetClasses = zeroClasses.length > 0 ? zeroClasses : classes;
     const perClass = Math.round((remaining / targetClasses.length) * 100) / 100;
@@ -524,11 +548,14 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
 
   const handleNormalizeSectors = () => {
     setError(null);
-    const items = availableSectors.map((s) => ({ id: s, targetPercentage: sectorTargetOf(s) }));
+    const items = availableSectors.map((s) => ({
+      id: s,
+      targetPercentage: sectorTargetOf(s, activeSectorClass),
+    }));
     const normalized = normalizeAllocationTargets(items, 100);
     const nextDraft: Record<string, number> = {};
     normalized.forEach((item) => {
-      nextDraft[item.id] = item.targetPercentage;
+      nextDraft[sectorDraftKey(activeSectorClass, item.id)] = item.targetPercentage;
     });
     setSectorDraft((prev) => ({ ...prev, ...nextDraft }));
     triggerSensory("selection");
@@ -540,7 +567,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     const distributed = distributeEquallyTargets(items, 100);
     const nextDraft: Record<string, number> = {};
     distributed.forEach((item) => {
-      nextDraft[item.id] = item.targetPercentage;
+      nextDraft[sectorDraftKey(activeSectorClass, item.id)] = item.targetPercentage;
     });
     setSectorDraft((prev) => ({ ...prev, ...nextDraft }));
     triggerSensory("selection");
@@ -550,24 +577,20 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
     setError(null);
     const nextDraft: Record<string, number> = {};
     availableSectors.forEach((s) => {
-      nextDraft[s] = 0;
+      nextDraft[sectorDraftKey(activeSectorClass, s)] = 0;
     });
     setSectorDraft((prev) => ({ ...prev, ...nextDraft }));
     triggerSensory("selection");
   };
 
-  // Rascunho Local & Descarte em 1 Toque (Salvaguarda S24 / Meta Única Oficial)
+  // Rascunho Local & Descarte em 1 Toque (Salvaguarda S24)
   const hasDraftChanges =
-    Object.keys(classDraft).length > 0 ||
-    Object.keys(sectorDraft).length > 0 ||
-    Object.keys(assetDraft).length > 0;
+    Object.keys(classDraft).length > 0 || Object.keys(sectorDraft).length > 0;
 
   const handleDiscardDraft = () => {
     setClassDraft({});
     setSectorDraft({});
-    setAssetDraft({});
     setError(null);
-    setSaved(false);
     triggerSensory("selection");
     pushToast({
       title: "Alterações descartadas",
@@ -577,16 +600,10 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
   };
 
   const loading =
-    position.isLoading ||
-    targetsQuery.isLoading ||
-    classTargetsQuery.isLoading ||
-    sectorTargetsQuery.isLoading;
+    position.isLoading || classTargetsQuery.isLoading || sectorTargetsQuery.isLoading;
 
   const loadError =
-    position.error ??
-    targetsQuery.error ??
-    classTargetsQuery.error ??
-    sectorTargetsQuery.error;
+    position.error ?? classTargetsQuery.error ?? sectorTargetsQuery.error;
 
   const [searchParams, setSearchParams] = useSearchParams();
   const paramSubTab = searchParams.get("subtab");
@@ -622,7 +639,6 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
           message={getErrorMessage(loadError)}
           onRetry={() => {
             position.refetch();
-            void targetsQuery.refetch();
             void classTargetsQuery.refetch();
             void sectorTargetsQuery.refetch();
           }}
@@ -653,17 +669,25 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
 
       {loading ? (
         <TargetsSkeleton />
-      ) : position.rows.length === 0 ? (
+      ) : investableRows.length === 0 ? (
         <EmptyState
           icon={<Save className="size-6" aria-hidden="true" />}
-          title="Sem ativos para definir metas"
-          description="Adicione ativos na aba Resumo para definir as metas de alocação."
-          tone="portfolio"
+          title={
+            position.rows.length > 0
+              ? "Apenas liquidez em Caixa no momento"
+              : "Sem ativos para definir metas"
+          }
+          description={
+            position.rows.length > 0
+              ? "O Caixa fica fora das metas de alocação. Cadastre ativos investíveis (Ações, FIIs, Renda Fixa) para definir classes, setores e notas."
+              : "Adicione ativos na carteira para configurar metas de classes, setores e notas."
+          }
+          tone="default"
           headingLevel="h2"
           action={
             onGoToPosition ? (
               <Button type="button" onClick={onGoToPosition}>
-                Ir para Resumo
+                Ir para Carteira
               </Button>
             ) : undefined
           }
@@ -671,95 +695,85 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
       ) : (
         <div className="w-full">
           <Tabs
-          value={subTab}
-          onValueChange={(val: string) => handleSubTabChange(val as "classes" | "sectors" | "assets")}
-          variant="pills"
-          items={[
-            {
-              value: "classes",
-              label: "Classes",
-              content: (
-                <TargetClassesCard
-                  classes={classes}
-                  classTargetOf={classTargetOf}
-                  storedClassTargets={storedClassTargets}
-                  positionRows={position.rows}
-                  classSum={classSum}
-                  savingClass={savingClass}
-                  onNormalizeClasses={handleNormalizeClasses}
-                  onDistributeClassesEqually={handleDistributeClassesEqually}
-                  onDistributeRemaining={handleDistributeRemainingClasses}
-                  onResetClassesZero={handleResetClassesZero}
-                  onClassTargetChange={(c, v) => setClassDraft((prev) => ({ ...prev, [c]: v }))}
-                  onSaveClass={(c) => void saveClass(c)}
-                  onRemoveClass={(c) => void removeClass(c)}
-                  onSaveAllClasses={() => void saveAllClasses()}
-                  onOpenClassDetail={(cls) => setBreakdownGroup({ type: "class", name: cls })}
-                />
-              ),
-            },
-            {
-              value: "sectors",
-              label: "Setores",
-              content: (
-                <TargetSectorsCard
-                  classes={classes}
-                  activeSectorClass={activeSectorClass}
-                  availableSectors={availableSectors}
-                  storedSectorTargets={storedSectorTargets}
-                  positionRows={position.rows}
-                  sectorTargetOf={sectorTargetOf}
-                  sectorSum={sectorSum}
-                  savingSector={savingSector}
-                  onSelectSectorClass={(cls) => setSelectedSectorClass(cls)}
-                  onNormalizeSectors={handleNormalizeSectors}
-                  onDistributeSectorsEqually={handleDistributeSectorsEqually}
-                  onResetSectorsZero={handleResetSectorsZero}
-                  onSectorTargetChange={(s, v) => setSectorDraft((prev) => ({ ...prev, [s]: v }))}
-                  onSaveSector={(s) => void saveSector(s)}
-                  onRemoveSector={(s) => void removeSector(s)}
-                  onSaveAllSectorsForClass={() => void saveAllSectorsForClass()}
-                  onOpenSectorDetail={(sec, parentCls) =>
-                    setBreakdownGroup({ type: "sector", name: sec, parentClass: parentCls })
-                  }
-                />
-              ),
-            },
-            {
-              value: "assets",
-              label: "Ativos",
-              content: (
-                <TargetAssetsCard
-                  classes={classes}
-                  assetClassFilter={assetClassFilter}
-                  activeClassTargetSum={activeClassTargetSum}
-                  selectedClassTarget={selectedClassTarget}
-                  visibleAssetRows={visibleAssetRows}
-                  normalizeLabel={normalizeLabel}
-                  distributeLabel={distributeLabel}
-                  saved={saved}
-                  isPending={saveTargets.isPending}
-                  assetSum={assetSum}
-                  onAssetClassFilterChange={(cls) => setAssetClassFilter(cls)}
-                  onTargetChange={(key, value) => {
-                    setError(null);
-                    setSaved(false);
-                    setAssetDraft((prev) => ({
-                      ...prev,
-                      [key]: parseTargetInput(Number.isFinite(value) ? String(value) : "0"),
-                    }));
-                  }}
-                  onNormalize={handleNormalize}
-                  onNormalizeAll={handleNormalizeAll}
-                  onDistributeEqually={handleDistributeEqually}
-                  onMirrorPosition={handleMirrorPosition}
-                  onResetZero={handleResetZero}
-                  onSave={() => void saveAssets()}
-                />
-              ),
-            },
-          ]}
-        />
+            value={subTab}
+            onValueChange={(val: string) =>
+              handleSubTabChange(val as "classes" | "sectors" | "assets")
+            }
+            variant="pills"
+            items={[
+              {
+                value: "classes",
+                label: "Classes",
+                content: (
+                  <TargetClassesCard
+                    classes={classes}
+                    classTargetOf={classTargetOf}
+                    storedClassTargets={storedClassTargets}
+                    positionRows={investableRows}
+                    classSum={classSum}
+                    savingClass={savingClass}
+                    onNormalizeClasses={handleNormalizeClasses}
+                    onDistributeClassesEqually={handleDistributeClassesEqually}
+                    onDistributeRemaining={handleDistributeRemainingClasses}
+                    onResetClassesZero={handleResetClassesZero}
+                    onClassTargetChange={(c, v) =>
+                      setClassDraft((prev) => ({ ...prev, [c]: v }))
+                    }
+                    onSaveClass={(c) => void saveClass(c)}
+                    onRemoveClass={(c) => void removeClass(c)}
+                    onSaveAllClasses={() => void saveAllClasses()}
+                    onOpenClassDetail={(cls) =>
+                      setBreakdownGroup({ type: "class", name: cls })
+                    }
+                  />
+                ),
+              },
+              {
+                value: "sectors",
+                label: "Setores",
+                content: (
+                  <TargetSectorsCard
+                    classes={classes}
+                    activeSectorClass={activeSectorClass}
+                    availableSectors={availableSectors}
+                    storedSectorTargets={activeClassStoredSectors}
+                    positionRows={investableRows}
+                    sectorTargetOf={(s) => sectorTargetOf(s, activeSectorClass)}
+                    sectorSum={sectorSum}
+                    savingSector={savingSector}
+                    onSelectSectorClass={(cls) => setSelectedSectorClass(cls)}
+                    onNormalizeSectors={handleNormalizeSectors}
+                    onDistributeSectorsEqually={handleDistributeSectorsEqually}
+                    onResetSectorsZero={handleResetSectorsZero}
+                    onSectorTargetChange={(s, v) =>
+                      setSectorDraft((prev) => ({
+                        ...prev,
+                        [sectorDraftKey(activeSectorClass, s)]: v,
+                      }))
+                    }
+                    onSaveSector={(s) => void saveSector(s)}
+                    onRemoveSector={(s) => void removeSector(s)}
+                    onSaveAllSectorsForClass={() => void saveAllSectorsForClass()}
+                    onOpenSectorDetail={(sec, parentCls) =>
+                      setBreakdownGroup({ type: "sector", name: sec, parentClass: parentCls })
+                    }
+                  />
+                ),
+              },
+              {
+                value: "assets",
+                label: "Ativos",
+                content: (
+                  <TargetAssetsCard
+                    classes={classes}
+                    assetClassFilter={assetClassFilter}
+                    rows={assetScoreRows}
+                    onAssetClassFilterChange={(cls) => setAssetClassFilter(cls)}
+                  />
+                ),
+              },
+            ]}
+          />
         </div>
       )}
 
@@ -772,13 +786,16 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
         type={breakdownGroup?.type ?? "class"}
         groupName={breakdownGroup?.name ?? null}
         parentClassName={breakdownGroup?.parentClass}
-        rows={position.rows}
-        totalPortfolioBRL={position.totalBRL}
+        rows={investableRows}
+        totalPortfolioBRL={investableTotalBRL}
         targetPercent={
           breakdownGroup?.type === "class"
             ? classTargetOf(breakdownGroup.name)
             : breakdownGroup?.name
-              ? sectorTargetOf(breakdownGroup.name)
+              ? sectorTargetOf(
+                  breakdownGroup.name,
+                  breakdownGroup.parentClass ?? activeSectorClass,
+                )
               : null
         }
         onSelectAsset={(assetId) => setAssetDetailId(assetId)}

@@ -131,8 +131,8 @@ export function PortfolioMappingStep({
           </span>
         </div>
 
-        {/* Tabela com scroll horizontal e vertical garantidos */}
-        <div className="overflow-x-auto overflow-y-auto max-h-56 rounded-lg border border-border/60 bg-surface/80 scrollbar-thin touch-pan-x w-full">
+        {/* Tabela com scroll horizontal garantido sem overflow vertical aninhado (Regra 26) */}
+        <div className="overflow-x-auto no-scrollbar rounded-xl border border-border/80 bg-surface touch-pan-x w-full">
           <table className="min-w-max w-full text-left text-xs border-collapse">
             <thead className="sticky top-0 z-10 bg-muted/90 backdrop-blur-sm">
               <tr className="border-b border-border/60 text-muted-foreground">

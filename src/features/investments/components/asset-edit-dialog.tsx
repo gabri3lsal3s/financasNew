@@ -9,6 +9,7 @@ import { todayISO } from "@/domain/debts";
 import { getErrorMessage } from "@/services/errors";
 import {
   useAssetPrices,
+  useEmergencyFundComposition,
   useSetManualPrice,
   useUpdatePortfolioAsset,
   useFamilyMode,
@@ -17,6 +18,10 @@ import {
 import type { AssetCurrency, FixedIncomeMetadata, FixedIncomeRateType, PortfolioAsset } from "@/types";
 import { cn } from "@/lib/utils";
 import { FixedIncomeFormFields } from "./fixed-income-form-fields";
+import {
+  buildEmergencyConfigWithAssetToggle,
+  isAssetInEmergencyConfig,
+} from "./emergency-fund-sync";
 
 export interface AssetEditDialogProps {
   asset: PortfolioAsset | null;
@@ -48,19 +53,29 @@ const CLASSES_WITHOUT_DIVIDENDS = new Set(["Cripto", "Caixa"]);
 
 interface AssetEditFormContentProps {
   asset: PortfolioAsset;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onClose: () => void;
 }
 
-function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
+function AssetEditFormContent({ asset, open, onOpenChange, onClose }: AssetEditFormContentProps) {
   const updateAsset = useUpdatePortfolioAsset();
   const pricesQuery = useAssetPrices();
   const setManualPrice = useSetManualPrice();
+  const emergencyFund = useEmergencyFundComposition();
   const { isFamilyModeEnabled } = useFamilyMode();
   const { data: myFamilyData } = useMyFamily();
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [isFamily, setIsFamily] = useState(Boolean(asset.is_family));
+  const initialEmergencyIncluded = isAssetInEmergencyConfig({
+    config: emergencyFund.config,
+    assetId: asset.id,
+    assetClass: asset.asset_class,
+    isCash: isCashAssetClass(asset.asset_class),
+  });
+  const [isEmergencyFund, setIsEmergencyFund] = useState(initialEmergencyIncluded);
   const [ticker, setTicker] = useState(asset.ticker);
   const [assetClass, setAssetClass] = useState(asset.asset_class ?? "Ações");
   const [sector, setSector] = useState(asset.sector ?? inferSectorFromTicker(asset.ticker, asset.asset_class));
@@ -304,6 +319,20 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         }
       }
 
+      // Sincroniza Reserva de Emergência se o usuário alterou o vínculo do título de Renda Fixa
+      if (isFixedIncome && !isCash && isEmergencyFund !== initialEmergencyIncluded) {
+        const nextConfig = buildEmergencyConfigWithAssetToggle({
+          config: emergencyFund.config,
+          portfolioRows: emergencyFund.portfolioRows,
+          breakdownAssetIds: emergencyFund.composition.breakdown
+            .filter((b) => b.type === "asset")
+            .map((b) => b.id),
+          assetId: asset.id,
+          include: isEmergencyFund,
+        });
+        await emergencyFund.updateConfig(nextConfig);
+      }
+
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
@@ -314,7 +343,34 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Editar Ativo"
+      description={`Atualize as informações cadastrais de ${asset.ticker}`}
+      size="lg"
+      showCalculator
+      footer={
+        <ModalFooter borderless>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={updateAsset.isPending || isSubmitting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form="asset-edit-form"
+            disabled={updateAsset.isPending || setManualPrice.isPending || isSubmitting}
+          >
+            {updateAsset.isPending || isSubmitting ? "Salvando..." : "Salvar Alterações"}
+          </Button>
+        </ModalFooter>
+      }
+    >
+    <form id="asset-edit-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
       {error && <Alert variant="error">{error}</Alert>}
 
       {/* Ticker */}
@@ -700,6 +756,29 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
         </div>
       )}
 
+      {/* Vinculação direta à Reserva de Emergência para títulos de Renda Fixa elegíveis */}
+      {isFixedIncome && !isCash && (
+        <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface/80">
+          <div className="space-y-0.5 pr-3">
+            <label
+              htmlFor="edit-asset-emergency-fund"
+              className="text-xs font-semibold text-foreground block cursor-pointer"
+            >
+              Compõe minha Reserva de Emergência
+            </label>
+            <span className="text-[11px] text-muted-foreground block">
+              Inclui automaticamente este título no termômetro de liquidez e reserva da casa.
+            </span>
+          </div>
+          <Checkbox
+            id="edit-asset-emergency-fund"
+            checked={isEmergencyFund}
+            onCheckedChange={(checked) => setIsEmergencyFund(Boolean(checked))}
+            aria-label="Compõe minha Reserva de Emergência"
+          />
+        </div>
+      )}
+
       {/* Bloco de Compartilhamento Familiar — Contextual ao Modo Familiar */}
       {isFamilyModeEnabled && (
         <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface/50">
@@ -719,24 +798,8 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
           />
         </div>
       )}
-
-      <ModalFooter>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onClose}
-          disabled={updateAsset.isPending}
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          disabled={updateAsset.isPending || setManualPrice.isPending || isSubmitting}
-        >
-          {updateAsset.isPending || isSubmitting ? "Salvando..." : "Salvar Alterações"}
-        </Button>
-      </ModalFooter>
     </form>
+    </Modal>
   );
 }
 
@@ -745,22 +808,15 @@ export function AssetEditDialog({
   open,
   onOpenChange,
 }: AssetEditDialogProps) {
-  if (!asset) return null;
+  if (!asset || !open) return null;
 
   return (
-    <Modal
+    <AssetEditFormContent
+      key={`${asset.id}-${open ? "open" : "closed"}`}
+      asset={asset}
       open={open}
       onOpenChange={onOpenChange}
-      title="Editar Ativo"
-      description={`Atualize as informações cadastrais de ${asset.ticker}`}
-      size="xl"
-      showCalculator
-    >
-      <AssetEditFormContent
-        key={asset.id}
-        asset={asset}
-        onClose={() => onOpenChange(false)}
-      />
-    </Modal>
+      onClose={() => onOpenChange(false)}
+    />
   );
 }

@@ -264,30 +264,44 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
         />
       )}
 
-      {/* RF / Tesouro: toggle "Distribui juros/cupons" controla o painel de proventos */}
+      {/* RF / Tesouro: toggles de Reserva de Emergência & Juros/Cupons */}
       {isFixedIncome && !isCash && (
-        <div className="flex flex-col gap-2">
-          <Checkbox
-            id="wizard-fi-distributes-interest"
-            checked={distributesInterest}
-            onCheckedChange={(v) => {
-              const checked = Boolean(v);
-              setDistributesInterest(checked);
-              setShowDividendPanel(checked);
-              if (!checked) {
-                onChange({
-                  accumulatedDividendsCents: 0,
-                  estimatedDividendPerShareCents: 0,
-                });
-              }
-            }}
-            label="Distribui juros / cupons periodicamente (NTN-B, CRI, CRA, debêntures)"
-          />
-          {distributesInterest && (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-surface/80 p-3.5">
+            <Checkbox
+              id="wizard-fi-emergency-fund"
+              checked={state.isEmergencyFund}
+              onCheckedChange={(v) => onChange({ isEmergencyFund: Boolean(v) })}
+              label="Compõe minha Reserva de Emergência"
+            />
             <p className="pl-6 text-[11px] text-muted-foreground">
-              Informe os proventos anteriores ao cadastro para alimentar o Yield on Cost e a Bola de Neve.
+              Inclui automaticamente este título no termômetro de liquidez e reserva da casa.
             </p>
-          )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Checkbox
+              id="wizard-fi-distributes-interest"
+              checked={distributesInterest}
+              onCheckedChange={(v) => {
+                const checked = Boolean(v);
+                setDistributesInterest(checked);
+                setShowDividendPanel(checked);
+                if (!checked) {
+                  onChange({
+                    accumulatedDividendsCents: 0,
+                    estimatedDividendPerShareCents: 0,
+                  });
+                }
+              }}
+              label="Distribui juros / cupons periodicamente (NTN-B, CRI, CRA, debêntures)"
+            />
+            {distributesInterest && (
+              <p className="pl-6 text-[11px] text-muted-foreground">
+                Informe os proventos anteriores ao cadastro para alimentar o Yield on Cost e a Bola de Neve.
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -377,7 +391,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
             <label htmlFor="wizard-new-notes" className="text-xs font-semibold text-foreground">
-              Anotações / Descrição <span className="text-muted-foreground/70 font-normal">(opcional)</span>
+              Observações operacionais <span className="text-muted-foreground/70 font-normal">(opcional)</span>
             </label>
             <button
               type="button"
@@ -394,7 +408,7 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
             id="wizard-new-notes"
             value={state.notes}
             onChange={(e) => onChange({ notes: e.target.value })}
-            placeholder="Ex: Tese de investimento, corretora..."
+            placeholder="Ex: Corretora, custódia ou regra operacional..."
           />
         </div>
       )}

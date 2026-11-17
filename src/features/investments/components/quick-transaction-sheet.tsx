@@ -6,7 +6,6 @@ import {
   Button,
   Checkbox,
   DatePicker,
-  Input,
   Modal,
   ModalFooter,
   MoneyInput,
@@ -30,77 +29,159 @@ import {
 } from "@/domain/portfolio/valuation";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
+import { formatCentsAsBRL, formatPercent } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { usePortfolioAssets, usePortfolioPosition, useRecordOrder } from "@/state";
-import type { PortfolioAsset, PortfolioTransactionType } from "@/types";
+import {
+  usePortfolioAssets,
+  usePortfolioPosition,
+  useRecordOrder,
+  useUpdatePortfolioDividend,
+  useUpdatePortfolioTransaction,
+} from "@/state";
+import type {
+  PortfolioAsset,
+  PortfolioDividend,
+  PortfolioTransaction,
+  PortfolioTransactionType,
+} from "@/types";
+import { FundingSourceSelector } from "./funding-source-selector";
+import { flagsFromFundingSource, type FundingSource } from "./funding-source-utils";
 
 export interface QuickTransactionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   asset?: PortfolioAsset | null;
   initialType?: PortfolioTransactionType;
+  editTransaction?: PortfolioTransaction | null;
+  editDividend?: PortfolioDividend | null;
   onClose?: () => void;
   onSuccess?: () => void;
 }
 
 const parseNumber = parseDecimalNumber;
+const QUICK_TX_FORM_ID = "quick-transaction-form";
 
-export function QuickTransactionSheet({
+function QuickTransactionSheetContent({
   open,
   onOpenChange,
   asset = null,
   initialType = "buy",
+  editTransaction = null,
+  editDividend = null,
   onClose,
   onSuccess,
 }: QuickTransactionSheetProps) {
   const assetsQuery = usePortfolioAssets();
   const recordOrder = useRecordOrder();
+  const updateTx = useUpdatePortfolioTransaction();
+  const updateDividend = useUpdatePortfolioDividend();
   const position = usePortfolioPosition();
   const usdRate = position.rows.find((r) => r.currency === "USD")?.usdRate ?? 5.25;
 
+  const isEditingTransaction = Boolean(editTransaction);
+  const isEditingDividend = Boolean(editDividend);
+  const isEditMode = isEditingTransaction || isEditingDividend;
+
   const allAssets = useMemo(() => assetsQuery.data ?? [], [assetsQuery.data]);
   const cashAsset = useMemo(
-    () => allAssets.find((a) => isCashAssetClass(a.asset_class)) ?? null,
+    () => allAssets.find((a) => isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA") ?? null,
     [allAssets],
   );
 
-  const [selectedAssetId, setSelectedAssetId] = useState<string>(() => asset?.id ?? (allAssets[0]?.id ?? ""));
-  const [type, setType] = useState<PortfolioTransactionType>(initialType);
-  const [date, setDate] = useState(() => todayISO());
-  const [month, setMonth] = useState(() => currentMonth());
-  // Modo de registro de provento: "daily" (data exata) ou "monthly" (extrato do mês)
-  const [dividendEntryMode, setDividendEntryMode] = useState<DividendEntryMode>("daily");
-  const [quantityStr, setQuantityStr] = useState("");
-  const [priceCents, setPriceCents] = useState(0);
-  const [totalCents, setTotalCents] = useState(0);
-  const [syncCash, setSyncCash] = useState(true);
-  const [recordContribution, setRecordContribution] = useState(false);
-  const [splitFactor, setSplitFactor] = useState(2);
+  const [selectedAssetId, setSelectedAssetId] = useState<string>(
+    () =>
+      editTransaction?.asset_id ??
+      editDividend?.asset_id ??
+      asset?.id ??
+      allAssets.find((a) => !isCashAssetClass(a.asset_class))?.id ??
+      allAssets[0]?.id ??
+      "",
+  );
+
+  const [type, setType] = useState<PortfolioTransactionType>(() => {
+    if (editDividend) return "dividend";
+    if (editTransaction) return editTransaction.type;
+    return initialType;
+  });
+
+  const [date, setDate] = useState(() => {
+    if (editDividend) return editDividend.date.slice(0, 10);
+    if (editTransaction) return editTransaction.date.slice(0, 10);
+    return todayISO();
+  });
+
+  const [month, setMonth] = useState(() => {
+    if (editDividend) return editDividend.date.slice(0, 7);
+    return currentMonth();
+  });
+
+  const [dividendEntryMode, setDividendEntryMode] = useState<DividendEntryMode>(() => {
+    if (editDividend?.notes?.includes("[MENSAL]")) return "monthly";
+    return "daily";
+  });
+
+  const [dividendCalcMode, setDividendCalcMode] = useState<"total" | "per_share">("total");
+  const [perShareCents, setPerShareCents] = useState(0);
+
+  const [quantityStr, setQuantityStr] = useState(() => {
+    if (editTransaction && editTransaction.type !== "split" && editTransaction.type !== "reverse_split") {
+      return String(editTransaction.quantity);
+    }
+    return "";
+  });
+
+  const [priceCents, setPriceCents] = useState(() => {
+    if (editTransaction && editTransaction.type !== "split" && editTransaction.type !== "reverse_split") {
+      return numberToCents(editTransaction.price);
+    }
+    return 0;
+  });
+
+  const [totalCents, setTotalCents] = useState(() => {
+    if (editDividend) return numberToCents(editDividend.amount);
+    if (editTransaction) return numberToCents(editTransaction.total);
+    return 0;
+  });
+
+  // Origem de recursos para Compra/Aporte (padrão Bolso) e flag de Crédito em Caixa para Venda/Provento
+  const [buyFundingSource, setBuyFundingSource] = useState<FundingSource>("pocket");
+  const [creditCash, setCreditCash] = useState<boolean>(() => {
+    if (editDividend) return Boolean(editDividend.sync_cash);
+    return true;
+  });
+
+  // Proporção livre De X para Y (Split / Bonificação / Grupamento)
+  const [splitFromStr, setSplitFromStr] = useState<string>(() => {
+    if (editTransaction?.type === "reverse_split") return String(editTransaction.quantity);
+    if (initialType === "reverse_split") return "2";
+    return "1";
+  });
+  const [splitToStr, setSplitToStr] = useState<string>(() => {
+    if (editTransaction?.type === "split") return String(editTransaction.quantity);
+    if (initialType === "reverse_split") return "1";
+    return "2";
+  });
+
   const [error, setError] = useState<string | null>(null);
-
-  // Custo original aplicado da posição/lote (especialmente para Renda Fixa)
   const [customAppliedCostCents, setCustomAppliedCostCents] = useState<number | null>(null);
-
-  // Ajuste manual de tributação e IRRF no resgate
   const [customTaxRatePct, setCustomTaxRatePct] = useState<number | null>(null);
   const [customTaxAmountCents, setCustomTaxAmountCents] = useState<number | null>(null);
   const [showTaxEditor, setShowTaxEditor] = useState(false);
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Ativo Alvo
   const targetAsset = useMemo(() => {
     if (asset) return asset;
     return allAssets.find((a) => a.id === selectedAssetId) ?? null;
   }, [asset, selectedAssetId, allAssets]);
 
   const defaultAppliedCost =
-    (targetAsset?.fixed_income_metadata?.initial_investment_value !== undefined &&
-      targetAsset.fixed_income_metadata.initial_investment_value !== null &&
-      targetAsset.fixed_income_metadata.initial_investment_value > 0)
+    targetAsset?.fixed_income_metadata?.initial_investment_value !== undefined &&
+    targetAsset.fixed_income_metadata.initial_investment_value !== null &&
+    targetAsset.fixed_income_metadata.initial_investment_value > 0
       ? targetAsset.fixed_income_metadata.initial_investment_value
-      : (targetAsset?.average_price !== undefined && targetAsset.average_price > 0)
+      : targetAsset?.average_price !== undefined && targetAsset.average_price > 0
         ? targetAsset.average_price
         : (targetAsset?.fixed_income_metadata?.base_value ?? 0);
 
@@ -109,14 +190,41 @@ export function QuickTransactionSheet({
 
   const isCash = isCashAssetClass(targetAsset?.asset_class ?? null);
   const isTesouro = targetAsset ? isTesouroAsset(targetAsset.ticker, targetAsset.asset_class) : false;
-  const isFixedIncome = targetAsset ? (isFixedIncomeClass(targetAsset.asset_class) || isTesouro) : false;
+  const isFixedIncome = targetAsset ? isFixedIncomeClass(targetAsset.asset_class) || isTesouro : false;
   const pricingMode = targetAsset ? getAssetPricingMode(targetAsset) : "unit_price";
   const isTotalValue =
     !isCash &&
-    !!targetAsset &&
+    Boolean(targetAsset) &&
     (pricingMode === "total_value" || (isFixedIncome && !isTesouro));
 
   const parsedQty = parseNumber(quantityStr);
+  const isDividendType = type === "dividend" || type === "jcp" || type === "fii_yield";
+  const isCorporateEvent = type === "split" || type === "reverse_split";
+
+  // Fator calculado a partir de De X para Y cotas
+  const parsedSplitFrom = parseNumber(splitFromStr);
+  const parsedSplitTo = parseNumber(splitToStr);
+  const computedEventFactor = useMemo(() => {
+    if (parsedSplitFrom <= 0 || parsedSplitTo <= 0) return 0;
+    return type === "split" ? parsedSplitTo / parsedSplitFrom : parsedSplitFrom / parsedSplitTo;
+  }, [parsedSplitFrom, parsedSplitTo, type]);
+
+  // Valor calculado de proventos quando Por Cota está ativo
+  const custodyQty = Math.max(0, targetAsset?.quantity ?? 0);
+  const effectiveDividendTotalBRL = useMemo(() => {
+    if (dividendCalcMode === "per_share" && !isTotalValue) {
+      return Math.round((perShareCents / 100) * custodyQty * 100) / 100;
+    }
+    return totalCents / 100;
+  }, [dividendCalcMode, isTotalValue, perShareCents, custodyQty, totalCents]);
+
+  const currentOrderTotalBRL = useMemo(() => {
+    if (isCash) return totalCents / 100;
+    if (isTotalValue) return (totalCents || priceCents) / 100;
+    if (isDividendType) return effectiveDividendTotalBRL;
+    const unitBRL = (priceCents / 100) * (targetAsset?.currency === "USD" ? usdRate : 1);
+    return Math.round(parsedQty * unitBRL * 100) / 100;
+  }, [isCash, isTotalValue, isDividendType, totalCents, priceCents, effectiveDividendTotalBRL, parsedQty, targetAsset, usdRate]);
 
   // Prévia de Recálculo de PM na Compra
   const buyPreview = useMemo(() => {
@@ -150,8 +258,8 @@ export function QuickTransactionSheet({
       return targetAsset.average_price > 0 ? targetAsset.average_price : targetAsset.quantity;
     }
     const currentCost =
-      (targetAsset.fixed_income_metadata.initial_investment_value &&
-        targetAsset.fixed_income_metadata.initial_investment_value > 0)
+      targetAsset.fixed_income_metadata.initial_investment_value &&
+      targetAsset.fixed_income_metadata.initial_investment_value > 0
         ? targetAsset.fixed_income_metadata.initial_investment_value
         : targetAsset.average_price > 0
           ? targetAsset.average_price
@@ -177,7 +285,7 @@ export function QuickTransactionSheet({
     return fiRes.grossValue > 0 ? fiRes.grossValue : currentCost;
   }, [targetAsset, date]);
 
-  // Prévia de Resgate de Renda Fixa & Tributação (Fase 63)
+  // Prévia de Resgate de Renda Fixa & Tributação
   const fixedIncomeSellTaxPreview = useMemo(() => {
     if (
       type !== "sell" ||
@@ -189,8 +297,8 @@ export function QuickTransactionSheet({
     }
 
     const currentCost =
-      (targetAsset.fixed_income_metadata?.initial_investment_value &&
-        targetAsset.fixed_income_metadata.initial_investment_value > 0)
+      targetAsset.fixed_income_metadata?.initial_investment_value &&
+      targetAsset.fixed_income_metadata.initial_investment_value > 0
         ? targetAsset.fixed_income_metadata.initial_investment_value
         : targetAsset.average_price > 0
           ? targetAsset.average_price
@@ -231,7 +339,6 @@ export function QuickTransactionSheet({
     const realizedProfitPct =
       costBasisProportion > 0 ? Math.round((realizedProfit / costBasisProportion) * 10000) / 100 : 0;
 
-    // Tributação efetiva (considerando ajustes manuais de alíquota e IRRF retido)
     let effectiveTaxAmount = projectedTax;
     let effectiveTaxRatePct = projectedTaxRatePct;
 
@@ -240,7 +347,9 @@ export function QuickTransactionSheet({
       effectiveTaxRatePct =
         realizedProfit > 0
           ? Math.round((effectiveTaxAmount / realizedProfit) * 10000) / 100
-          : (customTaxRatePct !== null ? customTaxRatePct : projectedTaxRatePct);
+          : customTaxRatePct !== null
+            ? customTaxRatePct
+            : projectedTaxRatePct;
     } else if (customTaxRatePct !== null) {
       effectiveTaxRatePct = Math.max(0, customTaxRatePct);
       effectiveTaxAmount =
@@ -289,20 +398,20 @@ export function QuickTransactionSheet({
     }
   };
 
+  const isBusy =
+    recordOrder.isPending || updateTx.isPending || updateDividend.isPending || isSubmitting;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetAsset || recordOrder.isPending || isSubmittingRef.current || isSubmitting) return;
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
-    setError(null);
+    if (!targetAsset || isBusy || isSubmittingRef.current) return;
 
     const price = priceCents / 100;
     const total = isCash
       ? totalCents / 100
       : isTotalValue
         ? (totalCents || priceCents) / 100
-        : type === "dividend" || type === "jcp" || type === "fii_yield"
-          ? totalCents / 100
+        : isDividendType
+          ? effectiveDividendTotalBRL
           : Math.round(parsedQty * price * 100) / 100;
 
     if (isTotalValue) {
@@ -316,12 +425,12 @@ export function QuickTransactionSheet({
           return;
         }
         const maxBalance = fiSellResult?.grossBalance ?? targetAsset.average_price;
-        if (maxBalance > 0 && total > maxBalance * 1.005) {
-          setError(`Valor excede o saldo bruto acumulado (R$ ${maxBalance.toFixed(2)}).`);
+        if (!isEditingTransaction && maxBalance > 0 && total > maxBalance * 1.005) {
+          setError(`Valor excede o saldo bruto acumulado (${formatCentsAsBRL(numberToCents(maxBalance))}).`);
           return;
         }
       }
-    } else if (type === "buy" || type === "sell") {
+    } else if (type === "buy" || type === "sell" || type === "subscription") {
       if (!isCash && parsedQty <= 0) {
         setError("Informe uma quantidade válida de cotas.");
         return;
@@ -334,44 +443,114 @@ export function QuickTransactionSheet({
         setError("Informe o valor da movimentação em caixa.");
         return;
       }
-      if (type === "sell" && !isCash && parsedQty > targetAsset.quantity) {
+      if (!isEditingTransaction && type === "sell" && !isCash && parsedQty > targetAsset.quantity) {
         setError(`Quantidade excede a custódia atual (${targetAsset.quantity} cotas).`);
         return;
       }
     }
 
-    if ((type === "dividend" || type === "jcp" || type === "fii_yield") && total <= 0) {
-      setError("Informe o valor total do provento recebido.");
+    if (isDividendType && total <= 0) {
+      setError("Informe o valor válido do provento recebido.");
       return;
     }
 
-    if ((type === "split" || type === "reverse_split") && splitFactor <= 1) {
-      setError("O fator deve ser maior que 1.");
+    if (isCorporateEvent && (computedEventFactor <= 1 || !Number.isFinite(computedEventFactor))) {
+      setError(
+        type === "split"
+          ? "Para desdobro ou bonificação, a proporção final (Para) deve ser maior que a inicial (De)."
+          : "Para grupamento, a proporção inicial (De) deve ser maior que a final (Para).",
+      );
       return;
     }
+
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    setError(null);
 
     try {
-      const isDividendType =
-        type === "dividend" || type === "jcp" || type === "fii_yield";
+      // 1. Modo Edição de Provento Existente
+      if (editDividend) {
+        const resolvedDate = resolveDividendDate(
+          dividendEntryMode,
+          dividendEntryMode === "monthly" ? month : date,
+        );
+        const resolvedNotes = resolveDividendNote(dividendEntryMode, editDividend.notes ?? "", type);
+        const rate = targetAsset.currency === "USD" ? usdRate : 1;
+        const cashAmountBRL = Math.round(total * rate * 100) / 100;
 
-      // Resolve data e nota para proventos conforme o modo de entrada
+        await updateDividend.mutateAsync({
+          id: editDividend.id,
+          patch: {
+            amount: total,
+            date: resolvedDate,
+            ticker: targetAsset.ticker,
+            asset_id: targetAsset.id,
+            notes: resolvedNotes,
+            sync_cash: Boolean(creditCash && cashAmountBRL > 0),
+            cash_amount: creditCash && cashAmountBRL > 0 ? cashAmountBRL : null,
+          },
+          syncCash: creditCash,
+          previousSyncCash: Boolean(editDividend.sync_cash),
+          previousCashAmount: editDividend.cash_amount ?? editDividend.amount,
+        });
+
+        handleOpenChange(false);
+        onSuccess?.();
+        return;
+      }
+
+      // 2. Modo Edição de Lançamento / Transação Existente
+      if (editTransaction) {
+        const resolvedQty = isCorporateEvent
+          ? Math.round(computedEventFactor * 1000000) / 1000000
+          : isTotalValue
+            ? 1
+            : parsedQty;
+        const resolvedPrice = isCorporateEvent ? 0 : isTotalValue ? total : price;
+        const resolvedTotal = isCorporateEvent ? 0 : total;
+
+        await updateTx.mutateAsync({
+          id: editTransaction.id,
+          patch: {
+            type,
+            date,
+            quantity: resolvedQty,
+            price: resolvedPrice,
+            total: resolvedTotal,
+          },
+        });
+
+        handleOpenChange(false);
+        onSuccess?.();
+        return;
+      }
+
+      // 3. Criação de Nova Operação / Ordem
       const resolvedDate = isDividendType
         ? resolveDividendDate(dividendEntryMode, dividendEntryMode === "monthly" ? month : date)
         : date;
-      const resolvedNotes = isDividendType
-        ? resolveDividendNote(dividendEntryMode, "", type)
-        : undefined;
+      const resolvedNotes = isDividendType ? resolveDividendNote(dividendEntryMode, "", type) : undefined;
+
+      const buyFlags = flagsFromFundingSource(buyFundingSource);
+      const effectiveSyncCash =
+        type === "buy" || type === "subscription" ? buyFlags.syncCash : isCorporateEvent ? false : creditCash;
+      const effectiveRecordContribution =
+        type === "buy" || type === "subscription" ? buyFlags.recordContribution : false;
 
       await recordOrder.mutateAsync({
         asset: targetAsset,
         type,
         date: resolvedDate,
-        quantity: isTotalValue ? 1 : type === "split" || type === "reverse_split" ? splitFactor : parsedQty,
-        price: isTotalValue ? total : price,
-        total,
-        syncCash,
+        quantity: isTotalValue
+          ? 1
+          : isCorporateEvent
+            ? Math.round(computedEventFactor * 1000000) / 1000000
+            : parsedQty,
+        price: isTotalValue ? total : isCorporateEvent ? 0 : price,
+        total: isCorporateEvent ? 0 : total,
+        syncCash: effectiveSyncCash,
         cashAsset,
-        recordContribution,
+        recordContribution: effectiveRecordContribution,
         notes: resolvedNotes,
         usdRate,
         appliedCostBasis: isTotalValue && appliedCostCents > 0 ? appliedCostCents / 100 : undefined,
@@ -380,18 +559,18 @@ export function QuickTransactionSheet({
         netCreditAmount: isTotalValue && fixedIncomeSellTaxPreview ? fixedIncomeSellTaxPreview.netCredit : undefined,
       });
 
-      triggerSensory(type === "sell" ? "destructive" : "success");
       const operationLabel =
         type === "buy" || type === "subscription"
-          ? "Compra/Aporte registrado"
+          ? "Compra / Aporte registrado"
           : type === "sell"
-            ? "Venda/Resgate registrado"
-            : type === "dividend" || type === "jcp" || type === "fii_yield"
+            ? "Venda / Resgate registrado"
+            : isDividendType
               ? "Provento registrado"
-              : "Split registrado";
+              : "Evento corporativo registrado";
       pushToast({
         title: operationLabel,
-        description: `${targetAsset?.ticker ?? "Ativo"} movimentado com sucesso.`,
+        description: `${targetAsset.ticker} atualizado na carteira com sucesso.`,
+        variant: "success",
       });
 
       handleOpenChange(false);
@@ -405,11 +584,12 @@ export function QuickTransactionSheet({
     }
   };
 
-
-  const assetOptions = allAssets.map((a) => ({
-    value: a.id,
-    label: `${a.ticker} (${a.asset_class ?? "Ativo"})`,
-  }));
+  const assetOptions = allAssets
+    .filter((a) => !isCashAssetClass(a.asset_class))
+    .map((a) => ({
+      value: a.id,
+      label: `${a.ticker} (${a.asset_class ?? "Ativo"})`,
+    }));
 
   const operations = [
     {
@@ -432,7 +612,7 @@ export function QuickTransactionSheet({
     },
     {
       id: "split",
-      label: "Desdobro",
+      label: "Desdobro / Bonif.",
       icon: GitFork,
       activeClass: "border-warning/60 bg-warning/10 text-warning-strong shadow-xs font-bold",
     },
@@ -444,29 +624,77 @@ export function QuickTransactionSheet({
     },
   ];
 
-  const availableOperations = isTotalValue
-    ? operations.filter((op) => op.id !== "split" && op.id !== "reverse_split")
-    : operations;
+  const availableOperations = isEditingDividend
+    ? operations.filter((op) => op.id === "dividend")
+    : isEditingTransaction
+      ? isTotalValue
+        ? operations.filter((op) => op.id !== "split" && op.id !== "reverse_split" && op.id !== "dividend")
+        : operations.filter((op) => op.id !== "dividend")
+      : isTotalValue
+        ? operations.filter((op) => op.id !== "split" && op.id !== "reverse_split")
+        : operations;
+
+  const modalTitle = isEditingDividend
+    ? `Editar Provento${targetAsset ? ` · ${targetAsset.ticker}` : ""}`
+    : isEditingTransaction
+      ? `Editar Movimentação${targetAsset ? ` · ${targetAsset.ticker}` : ""}`
+      : targetAsset
+        ? `Movimentar ${targetAsset.ticker}`
+        : "Nova Operação na Carteira";
+
+  const modalDescription = isEditMode
+    ? "Ajuste valor, cotas ou data com recálculo automático da posição em custódia."
+    : "Registre compras, vendas, proventos ou eventos corporativos em tempo real.";
+
+  const resultedEventQty = useMemo(() => {
+    if (!targetAsset || computedEventFactor <= 1) return null;
+    if (type === "split") {
+      return Math.round(targetAsset.quantity * computedEventFactor * 10000) / 10000;
+    }
+    return Math.round((targetAsset.quantity / computedEventFactor) * 10000) / 10000;
+  }, [targetAsset, computedEventFactor, type]);
+
+  const resultedEventAvgPrice = useMemo(() => {
+    if (!targetAsset || computedEventFactor <= 1) return null;
+    if (type === "split") {
+      return targetAsset.average_price / computedEventFactor;
+    }
+    return targetAsset.average_price * computedEventFactor;
+  }, [targetAsset, computedEventFactor, type]);
 
   return (
     <Modal
       open={open}
       onOpenChange={handleOpenChange}
-      title={
-        targetAsset
-          ? `Movimentar ${targetAsset.ticker}`
-          : "Lançamento Rápido em Investimentos"
-      }
-      description="Registre compras, vendas, proventos ou eventos corporativos com atualização em tempo real da carteira."
+      title={modalTitle}
+      description={modalDescription}
       size="lg"
       showCalculator
+      footer={
+        <ModalFooter borderless>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={isBusy}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form={QUICK_TX_FORM_ID}
+            disabled={!targetAsset || isBusy}
+          >
+            {isBusy ? "Processando..." : isEditMode ? "Salvar Alterações" : "Confirmar Operação"}
+          </Button>
+        </ModalFooter>
+      }
     >
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
+      <form id={QUICK_TX_FORM_ID} onSubmit={handleSubmit} className="flex flex-col gap-4 pt-1">
         {error && <Alert variant="error">{error}</Alert>}
 
-        {/* Seleção do Ativo (quando não pré-fornecido) */}
-        {!asset && (
+        {/* Seleção do Ativo (quando não pré-fornecido e não está em modo edição) */}
+        {!asset && !isEditMode && (
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-foreground">
               Selecione o Ativo
@@ -484,51 +712,61 @@ export function QuickTransactionSheet({
         )}
 
         {/* Seletor de Operação */}
-        <div
-          className={cn(
-            "grid gap-2",
-            availableOperations.length >= 5
-              ? "grid-cols-2 sm:grid-cols-3"
-              : availableOperations.length === 3
-                ? "grid-cols-3"
-                : "grid-cols-2",
-          )}
-          role="tablist"
-          aria-label="Tipo de Operação"
-        >
-          {availableOperations.map((op) => {
-            const Icon = op.icon;
-            const isSelected = type === op.id;
-            return (
-              <button
-                key={op.id}
-                type="button"
-                role="tab"
-                aria-selected={isSelected}
-                onClick={() => {
-                  setType(op.id as PortfolioTransactionType);
-                  triggerSensory("selection");
-                }}
-                className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-xs font-medium transition-all duration-150 cursor-pointer select-none active:scale-[0.98]",
-                  isSelected
-                    ? op.activeClass
-                    : "border-border/80 bg-surface/60 text-muted-foreground hover:bg-surface-hover hover:text-foreground",
-                )}
-              >
-                <Icon className="size-4 shrink-0" aria-hidden="true" />
-                <span className="truncate">{op.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {availableOperations.length > 1 && (
+          <div
+            className={cn(
+              "grid gap-2",
+              availableOperations.length >= 5
+                ? "grid-cols-2 sm:grid-cols-3"
+                : availableOperations.length === 3
+                  ? "grid-cols-3"
+                  : "grid-cols-2",
+            )}
+            role="tablist"
+            aria-label="Tipo de Operação"
+          >
+            {availableOperations.map((op) => {
+              const Icon = op.icon;
+              const isSelected = type === op.id;
+              return (
+                <button
+                  key={op.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={isSelected}
+                  onClick={() => {
+                    const nextType = op.id as PortfolioTransactionType;
+                    setType(nextType);
+                    if (nextType === "reverse_split" && !isEditingTransaction) {
+                      setSplitFromStr("2");
+                      setSplitToStr("1");
+                    } else if (nextType === "split" && !isEditingTransaction) {
+                      setSplitFromStr("1");
+                      setSplitToStr("2");
+                    }
+                    triggerSensory("selection");
+                  }}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 rounded-xl border p-2.5 text-xs font-medium transition-all duration-150 cursor-pointer select-none active:scale-[0.98]",
+                    isSelected
+                      ? op.activeClass
+                      : "border-border/80 bg-surface text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                  )}
+                >
+                  <Icon className="size-4 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{op.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* 1. MODO COMPRA / APORTE */}
         {(type === "buy" || type === "subscription") && (
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {isTotalValue ? (
-                <div className="flex flex-col gap-1.5 col-span-2">
+                <div className="flex flex-col gap-1.5 sm:col-span-2">
                   <label htmlFor="quick-rf-aporte-amount" className="text-xs font-semibold text-foreground">
                     Valor do Aporte / Aplicação ({targetAsset?.currency ?? "BRL"})
                   </label>
@@ -556,6 +794,7 @@ export function QuickTransactionSheet({
                       placeholder="Ex: 10"
                       aria-label="Quantidade de cotas"
                       showCalculatorAction
+                      className="text-base sm:text-sm"
                     />
                   </div>
 
@@ -573,7 +812,7 @@ export function QuickTransactionSheet({
                   </div>
                 </>
               ) : (
-                <div className="flex flex-col gap-1.5 col-span-2">
+                <div className="flex flex-col gap-1.5 sm:col-span-2">
                   <label htmlFor="quick-cash-amount" className="text-xs font-semibold text-foreground">
                     Valor do Depósito em Caixa
                   </label>
@@ -586,7 +825,7 @@ export function QuickTransactionSheet({
                 </div>
               )}
 
-              <div className="flex flex-col gap-1.5 col-span-2">
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <label className="text-xs font-semibold text-foreground">
                   Data da Operação
                 </label>
@@ -594,76 +833,42 @@ export function QuickTransactionSheet({
               </div>
             </div>
 
-            {/* Prévia de Novo Saldo para RF */}
-            {isTotalValue && (totalCents > 0 || priceCents > 0) && (
-              <div className="flex items-center justify-between rounded-xl bg-surface-hover/60 p-3 text-xs">
+            {!isEditingTransaction && isTotalValue && (totalCents > 0 || priceCents > 0) && (
+              <div className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/35 p-3 text-xs">
                 <span className="text-muted-foreground">Saldo aplicado resultante:</span>
-                <span className="font-mono font-bold text-primary text-sm">
+                <span className="font-mono font-bold text-primary-strong text-sm">
                   <MoneyText cents={numberToCents((targetAsset?.average_price ?? 0) + (totalCents || priceCents) / 100)} />
                 </span>
               </div>
             )}
 
-            {/* Prévia de Novo PM */}
-            {!isTotalValue && buyPreview && parsedQty > 0 && priceCents > 0 && (
-              <div className="flex items-center justify-between rounded-xl bg-surface-hover/60 p-3 text-xs">
+            {!isEditingTransaction && !isTotalValue && buyPreview && parsedQty > 0 && priceCents > 0 && (
+              <div className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/35 p-3 text-xs">
                 <span className="text-muted-foreground">Novo Preço Médio Resultante:</span>
-                <span className="font-mono font-bold text-primary text-sm">
+                <span className="font-mono font-bold text-primary-strong text-sm">
                   <MoneyText cents={numberToCents(buyPreview.newAveragePrice)} currency={targetAsset?.currency ?? "BRL"} />
                 </span>
               </div>
             )}
 
-            {/* Origem dos Recursos da Compra (Exclusão Mútua) */}
-            <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface-subtle p-3 text-xs">
-              <span className="font-semibold text-foreground">Origem dos recursos desta compra:</span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRecordContribution(true);
-                    setSyncCash(false);
-                    triggerSensory("selection");
-                  }}
-                  className={`flex-1 rounded-lg py-2 px-3 text-xs font-medium border transition-colors cursor-pointer text-left ${
-                    recordContribution && !syncCash
-                      ? "border-positive-strong bg-positive/10 text-positive-strong font-semibold shadow-2xs"
-                      : "border-border/60 bg-surface hover:bg-surface-hover text-muted-foreground"
-                  }`}
-                >
-                  <div className="font-semibold">Dinheiro Novo (Aporte do Bolso)</div>
-                  <div className="text-[10px] opacity-80">Alimenta o fluxo de aportes do mês</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRecordContribution(false);
-                    setSyncCash(true);
-                    triggerSensory("selection");
-                  }}
-                  className={`flex-1 rounded-lg py-2 px-3 text-xs font-medium border transition-colors cursor-pointer text-left ${
-                    syncCash && !recordContribution
-                      ? "border-portfolio bg-portfolio/10 text-portfolio font-semibold shadow-2xs"
-                      : "border-border/60 bg-surface hover:bg-surface-hover text-muted-foreground"
-                  }`}
-                >
-                  <div className="font-semibold">Saldo da Corretora (Caixa)</div>
-                  <div className="text-[10px] opacity-80">
-                    Disponível: R$ {Number(cashAsset?.quantity ?? 0).toFixed(2)}
-                  </div>
-                </button>
-              </div>
-            </div>
+            {!isEditingTransaction && !isCash && (
+              <FundingSourceSelector
+                value={buyFundingSource}
+                onChange={setBuyFundingSource}
+                cashBalanceBRL={cashAsset?.quantity ?? 0}
+                orderTotalBRL={currentOrderTotalBRL}
+                label="Origem dos recursos desta compra"
+              />
+            )}
           </div>
         )}
 
-        {/* 2. MODO VENDA / DESINVESTIMENTO */}
+        {/* 2. MODO VENDA / RESGATE */}
         {type === "sell" && (
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {isTotalValue ? (
-                <div className="flex flex-col gap-3 col-span-2">
+                <div className="flex flex-col gap-3 sm:col-span-2">
                   <div className="flex flex-col gap-1.5">
                     <label htmlFor="quick-rf-sell-amount" className="text-xs font-semibold text-foreground">
                       Valor a Resgatar ({targetAsset?.currency ?? "BRL"})
@@ -678,50 +883,53 @@ export function QuickTransactionSheet({
                       placeholder="R$ 0,00"
                       aria-label="Valor a resgatar em renda fixa"
                     />
-                    {/* Atalhos rápidos de percentual do saldo total */}
-                    <div className="flex items-center gap-2 pt-1">
-                      <span className="text-[11px] text-muted-foreground">Resgatar:</span>
-                      {[
-                        { label: "25%", pct: 0.25 },
-                        { label: "50%", pct: 0.5 },
-                        { label: "75%", pct: 0.75 },
-                        { label: "100% (Total)", pct: 1 },
-                      ].map((s) => (
-                        <button
-                          key={s.label}
-                          type="button"
-                          onClick={() => {
-                            const balance = fixedIncomeSellTaxPreview?.grossBalance ?? currentGrossBalance;
-                            const cents = Math.round(balance * s.pct * 100);
-                            setTotalCents(cents);
-                            setPriceCents(cents);
-                          }}
-                          className="rounded-md border border-border/70 bg-surface px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
+                    {!isEditingTransaction && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <span className="text-[11px] text-muted-foreground">Resgatar:</span>
+                        {[
+                          { label: "25%", pct: 0.25 },
+                          { label: "50%", pct: 0.5 },
+                          { label: "75%", pct: 0.75 },
+                          { label: "100% (Total)", pct: 1 },
+                        ].map((s) => (
+                          <button
+                            key={s.label}
+                            type="button"
+                            onClick={() => {
+                              const balance = fixedIncomeSellTaxPreview?.grossBalance ?? currentGrossBalance;
+                              const cents = Math.round(balance * s.pct * 100);
+                              setTotalCents(cents);
+                              setPriceCents(cents);
+                            }}
+                            className="rounded-md border border-border/80 bg-surface px-2 py-0.5 text-[11px] font-medium text-foreground hover:bg-surface-hover transition-colors cursor-pointer"
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between">
-                      <label htmlFor="quick-rf-applied-cost" className="text-xs font-semibold text-foreground">
-                        Custo Original da Aplicação (R$)
-                      </label>
-                      <span className="text-[10px] text-muted-foreground">Base contábil</span>
+                  {!isEditingTransaction && (
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <label htmlFor="quick-rf-applied-cost" className="text-xs font-semibold text-foreground">
+                          Custo Original da Aplicação (R$)
+                        </label>
+                        <span className="text-[11px] text-muted-foreground">Base contábil</span>
+                      </div>
+                      <MoneyInput
+                        id="quick-rf-applied-cost"
+                        cents={appliedCostCents}
+                        onCentsChange={setCustomAppliedCostCents}
+                        placeholder="R$ 0,00"
+                        aria-label="Custo original da aplicação do lote"
+                      />
+                      <span className="text-[11px] text-muted-foreground">
+                        Valor original investido neste lote (utilizado para apurar o lucro realizado e rentabilidade final).
+                      </span>
                     </div>
-                    <MoneyInput
-                      id="quick-rf-applied-cost"
-                      cents={appliedCostCents}
-                      onCentsChange={setCustomAppliedCostCents}
-                      placeholder="R$ 0,00"
-                      aria-label="Custo original da aplicação do lote"
-                    />
-                    <span className="text-[10px] text-muted-foreground">
-                      Valor original investido neste lote (utilizado para apurar o lucro realizado e rentabilidade final).
-                    </span>
-                  </div>
+                  )}
                 </div>
               ) : (
                 <>
@@ -736,6 +944,7 @@ export function QuickTransactionSheet({
                       placeholder={`Máx: ${targetAsset?.quantity ?? 0}`}
                       aria-label="Quantidade a vender"
                       showCalculatorAction
+                      className="text-base sm:text-sm"
                     />
                   </div>
 
@@ -754,7 +963,7 @@ export function QuickTransactionSheet({
                 </>
               )}
 
-              <div className="flex flex-col gap-1.5 col-span-2">
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
                 <label className="text-xs font-semibold text-foreground">
                   Data {isTotalValue ? "do Resgate" : "da Venda"}
                 </label>
@@ -762,9 +971,8 @@ export function QuickTransactionSheet({
               </div>
             </div>
 
-            {/* Prévia de Novo Saldo para RF */}
-            {isTotalValue && (totalCents > 0 || priceCents > 0) && (
-              <div className="flex flex-col gap-1.5 rounded-xl bg-surface-hover/60 p-3 text-xs">
+            {!isEditingTransaction && isTotalValue && (totalCents > 0 || priceCents > 0) && (
+              <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-muted/35 p-3 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Saldo bruto restante após resgate:</span>
                   <span className="font-mono font-bold text-foreground text-sm">
@@ -782,7 +990,7 @@ export function QuickTransactionSheet({
                   </span>
                 </div>
                 {fixedIncomeSellTaxPreview && (
-                  <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/40 pt-1">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/60 pt-1">
                     <span>Custo original remanescente:</span>
                     <span className="font-mono text-foreground">
                       <MoneyText cents={numberToCents(fixedIncomeSellTaxPreview.remainingCostBasis)} />
@@ -792,11 +1000,10 @@ export function QuickTransactionSheet({
               </div>
             )}
 
-            {/* Painel de Discriminação Fiscal e Rentabilidade de Renda Fixa (Fase 63/72) */}
-            {fixedIncomeSellTaxPreview && (
-              <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/90 p-3.5 text-xs">
-                <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                  <div className="flex items-center gap-1.5">
+            {!isEditingTransaction && fixedIncomeSellTaxPreview && (
+              <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 text-xs shadow-xs">
+                <div className="flex items-center justify-between border-b border-border/60 pb-2 gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-xs font-semibold text-foreground">Discriminação do Resgate</span>
                     {fixedIncomeSellTaxPreview.isCustomized && (
                       <Badge variant="warning" size="xs">
@@ -805,18 +1012,17 @@ export function QuickTransactionSheet({
                     )}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {fixedIncomeSellTaxPreview.isExempt && !fixedIncomeSellTaxPreview.isCustomized ? (
-                      <span className="rounded bg-positive/10 px-2 py-0.5 text-[11px] font-medium text-positive-strong">
+                    {fixedIncomeSellTaxPreview.isExempt && !fixedIncomeSellTaxPreview.isCustomized && (
+                      <Badge variant="positive" size="xs">
                         Isento de IR
-                      </span>
-                    ) : null}
+                      </Badge>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"
                       size="xs"
                       onClick={() => setShowTaxEditor((prev) => !prev)}
                       className={cn(
-                        "h-6 px-2 text-[11px] gap-1",
                         fixedIncomeSellTaxPreview.isCustomized
                           ? "text-warning-strong font-semibold"
                           : "text-muted-foreground hover:text-foreground",
@@ -827,15 +1033,14 @@ export function QuickTransactionSheet({
                       <span>
                         {showTaxEditor
                           ? "Fechar Ajuste"
-                          : `Alíquota: ${fixedIncomeSellTaxPreview.taxRatePct}%`}
+                          : `Alíquota: ${formatPercent(fixedIncomeSellTaxPreview.taxRatePct)}`}
                       </span>
                     </Button>
                   </div>
                 </div>
 
-                {/* Editor expansível de Alíquota e IRRF Retido */}
                 {showTaxEditor && (
-                  <div className="flex flex-col gap-2.5 rounded-lg border border-border/70 bg-surface-hover/50 p-2.5 my-1">
+                  <div className="flex flex-col gap-2.5 rounded-lg border border-border/80 bg-muted/35 p-2.5 my-1">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-semibold text-foreground">
                         Ajuste Fiscal Manual (Nota de Corretagem)
@@ -855,13 +1060,12 @@ export function QuickTransactionSheet({
                       )}
                     </div>
 
-                    {/* Alíquota de IR */}
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-center justify-between">
                         <label htmlFor="quick-tax-rate" className="text-[11px] font-medium text-foreground">
                           Alíquota de IR (%):
                         </label>
-                        <span className="text-[10px] text-muted-foreground">Regressiva</span>
+                        <span className="text-[11px] text-muted-foreground">Regressiva</span>
                       </div>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {[
@@ -882,7 +1086,7 @@ export function QuickTransactionSheet({
                               "rounded px-2 py-0.5 text-[11px] font-medium border transition-colors cursor-pointer",
                               fixedIncomeSellTaxPreview.taxRatePct === item.rate && customTaxAmountCents === null
                                 ? "border-primary bg-primary/10 text-primary-strong font-bold"
-                                : "border-border/60 bg-surface hover:bg-surface-hover text-foreground",
+                                : "border-border/80 bg-surface hover:bg-surface-hover text-foreground",
                             )}
                           >
                             {item.label}
@@ -898,19 +1102,19 @@ export function QuickTransactionSheet({
                             setCustomTaxRatePct(isNaN(num) ? 0 : Math.max(0, Math.min(100, num)));
                             setCustomTaxAmountCents(null);
                           }}
-                          placeholder="Ex: 22.5"
+                          placeholder="Ex: 22,5"
                           aria-label="Alíquota personalizada de imposto de renda"
+                          className="text-base sm:text-sm"
                         />
                       </div>
                     </div>
 
-                    {/* Valor do IRRF Retido em R$ */}
-                    <div className="flex flex-col gap-1.5 pt-1.5 border-t border-border/40">
+                    <div className="flex flex-col gap-1.5 pt-1.5 border-t border-border/60">
                       <div className="flex items-center justify-between">
                         <label htmlFor="quick-tax-irrf" className="text-[11px] font-medium text-foreground">
                           IRRF Retido na Fonte ({targetAsset?.currency ?? "BRL"}):
                         </label>
-                        <span className="text-[10px] text-muted-foreground">Valor na corretora</span>
+                        <span className="text-[11px] text-muted-foreground">Valor na corretora</span>
                       </div>
                       <MoneyInput
                         id="quick-tax-irrf"
@@ -930,9 +1134,6 @@ export function QuickTransactionSheet({
                         placeholder="R$ 0,00"
                         aria-label="Valor de imposto de renda retido na fonte"
                       />
-                      <span className="text-[10px] text-muted-foreground">
-                        Informe o valor retido de IRRF informado pela corretora para ajustar o crédito líquido no Caixa.
-                      </span>
                     </div>
                   </div>
                 )}
@@ -962,7 +1163,7 @@ export function QuickTransactionSheet({
                     {fixedIncomeSellTaxPreview.realizedProfit >= 0 ? "+" : ""}
                     <MoneyText cents={numberToCents(fixedIncomeSellTaxPreview.realizedProfit)} /> (
                     {fixedIncomeSellTaxPreview.realizedProfitPct >= 0 ? "+" : ""}
-                    {fixedIncomeSellTaxPreview.realizedProfitPct.toFixed(2)}%)
+                    {formatPercent(fixedIncomeSellTaxPreview.realizedProfitPct)})
                   </span>
                 </div>
 
@@ -973,7 +1174,7 @@ export function QuickTransactionSheet({
                   )}
                 >
                   <div className="flex items-center gap-1.5">
-                    <span>IRRF Retido na Fonte ({fixedIncomeSellTaxPreview.taxRatePct}%):</span>
+                    <span>IRRF Retido na Fonte ({formatPercent(fixedIncomeSellTaxPreview.taxRatePct)}):</span>
                     {fixedIncomeSellTaxPreview.isCustomized && (
                       <Badge variant="warning" size="xs">
                         Ajustado
@@ -989,7 +1190,7 @@ export function QuickTransactionSheet({
                       <button
                         type="button"
                         onClick={() => setShowTaxEditor(true)}
-                        className="text-[10px] underline text-muted-foreground hover:text-foreground cursor-pointer"
+                        className="text-[11px] underline text-muted-foreground hover:text-foreground cursor-pointer"
                       >
                         Editar
                       </button>
@@ -997,7 +1198,7 @@ export function QuickTransactionSheet({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between border-t border-border/40 pt-2 font-bold">
+                <div className="flex items-center justify-between border-t border-border/60 pt-2 font-bold">
                   <span className="text-foreground">Crédito Líquido no Caixa:</span>
                   <span className="font-mono text-positive-strong text-sm">
                     <MoneyText cents={numberToCents(fixedIncomeSellTaxPreview.netCredit)} />
@@ -1005,23 +1206,35 @@ export function QuickTransactionSheet({
                 </div>
 
                 {fixedIncomeSellTaxPreview.taxCountdown && (
-                  <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+                  <p className="text-[11px] text-muted-foreground pt-1 border-t border-border/60">
                     A alíquota de IR reduzirá para{" "}
-                    <span className="font-semibold text-foreground">{fixedIncomeSellTaxPreview.taxCountdown.nextRatePct}%</span>{" "}
-                    em <span className="font-semibold text-foreground">{fixedIncomeSellTaxPreview.taxCountdown.daysRemaining} dias</span>.
+                    <span className="font-semibold text-foreground">
+                      {formatPercent(fixedIncomeSellTaxPreview.taxCountdown.nextRatePct)}
+                    </span>{" "}
+                    em{" "}
+                    <span className="font-semibold text-foreground">
+                      {fixedIncomeSellTaxPreview.taxCountdown.daysRemaining} dias
+                    </span>
+                    .
                   </p>
                 )}
               </div>
             )}
 
-            {/* Prévia de Lucro/Prejuízo Realizado */}
-            {!isTotalValue && sellPreview && parsedQty > 0 && (
-              <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/90 p-3.5 text-xs">
+            {!isEditingTransaction && !isTotalValue && sellPreview && parsedQty > 0 && (
+              <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 text-xs shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Resultado Realizado:</span>
-                  <span className={`font-mono font-bold text-sm ${sellPreview.realizedPnl >= 0 ? "text-positive-strong" : "text-negative-strong"}`}>
+                  <span
+                    className={cn(
+                      "font-mono font-bold text-sm",
+                      sellPreview.realizedPnl >= 0 ? "text-positive-strong" : "text-negative-strong",
+                    )}
+                  >
                     {sellPreview.realizedPnl >= 0 ? "+" : ""}
-                    <MoneyText cents={numberToCents(sellPreview.realizedPnl)} currency={targetAsset?.currency ?? "BRL"} /> ({sellPreview.realizedPnlPct >= 0 ? "+" : ""}{sellPreview.realizedPnlPct.toFixed(1)}%)
+                    <MoneyText cents={numberToCents(sellPreview.realizedPnl)} currency={targetAsset?.currency ?? "BRL"} /> (
+                    {sellPreview.realizedPnlPct >= 0 ? "+" : ""}
+                    {formatPercent(sellPreview.realizedPnlPct)})
                   </span>
                 </div>
 
@@ -1034,48 +1247,118 @@ export function QuickTransactionSheet({
               </div>
             )}
 
-            <label className="flex items-center gap-2 cursor-pointer text-xs rounded-xl border border-border/60 bg-surface/40 p-3">
-              <Checkbox checked={syncCash} onCheckedChange={(c) => setSyncCash(!!c)} />
-              <span>Creditar o valor da venda diretamente no Caixa da carteira</span>
-            </label>
+            {!isEditingTransaction && (
+              <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-muted/35 p-3 text-xs">
+                <Checkbox
+                  id="quick-sell-sync-cash"
+                  checked={creditCash}
+                  onCheckedChange={(c) => setCreditCash(Boolean(c))}
+                  label="Creditar o valor líquido da venda diretamente no Caixa da carteira"
+                />
+              </div>
+            )}
           </div>
         )}
 
         {/* 3. MODO PROVENTO (DIVIDENDO / JCP / RENDIMENTO) */}
-        {(type === "dividend" || type === "jcp" || type === "fii_yield") && (
+        {isDividendType && (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5 col-span-2">
-              <label htmlFor="quick-div-amount" className="text-xs font-semibold text-foreground">
-                Valor Total Recebido (Líquido) ({targetAsset?.currency ?? "BRL"})
-              </label>
-              <MoneyInput
-                id="quick-div-amount"
-                cents={totalCents}
-                currency={targetAsset?.currency ?? "BRL"}
-                onCentsChange={setTotalCents}
-                placeholder={targetAsset?.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
-              />
-            </div>
+            {/* Alternador Valor Total vs Por Cota (quando não for Renda Fixa valor total) */}
+            {!isTotalValue && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-semibold text-foreground">Formato do Valor</span>
+                <div className="flex items-center gap-1 rounded-xl bg-muted/35 p-1 border border-border/80">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDividendCalcMode("total");
+                      triggerSensory("selection");
+                    }}
+                    className={cn(
+                      "flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer",
+                      dividendCalcMode === "total"
+                        ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Valor Total Recebido
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDividendCalcMode("per_share");
+                      triggerSensory("selection");
+                    }}
+                    className={cn(
+                      "flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer",
+                      dividendCalcMode === "per_share"
+                        ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    Valor por Cota
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {dividendCalcMode === "per_share" && !isTotalValue ? (
+              <div className="flex flex-col gap-2">
+                <label htmlFor="quick-div-per-share" className="text-xs font-semibold text-foreground">
+                  Rendimento por Cota (Líquido) ({targetAsset?.currency ?? "BRL"})
+                </label>
+                <MoneyInput
+                  id="quick-div-per-share"
+                  cents={perShareCents}
+                  currency={targetAsset?.currency ?? "BRL"}
+                  onCentsChange={setPerShareCents}
+                  placeholder={targetAsset?.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
+                />
+                <div className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/35 p-3 text-xs">
+                  <span className="text-muted-foreground">
+                    Total calculado ({custodyQty} cotas):
+                  </span>
+                  <span className="font-mono font-bold text-positive-strong text-sm">
+                    <MoneyText
+                      cents={numberToCents(effectiveDividendTotalBRL)}
+                      currency={targetAsset?.currency ?? "BRL"}
+                    />
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="quick-div-amount" className="text-xs font-semibold text-foreground">
+                  Valor Total Recebido (Líquido) ({targetAsset?.currency ?? "BRL"})
+                </label>
+                <MoneyInput
+                  id="quick-div-amount"
+                  cents={totalCents}
+                  currency={targetAsset?.currency ?? "BRL"}
+                  onCentsChange={setTotalCents}
+                  placeholder={targetAsset?.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
+                />
+              </div>
+            )}
 
             {/* Alternador de Modo de Data */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold text-foreground">
-                Modo de Registro
-              </span>
-              <div className="flex items-center gap-1 rounded-xl bg-surface-hover/60 p-1 border border-border/60">
+              <span className="text-xs font-semibold text-foreground">Modo de Registro</span>
+              <div className="flex items-center gap-1 rounded-xl bg-muted/35 p-1 border border-border/80">
                 <button
                   type="button"
                   onClick={() => {
                     setDividendEntryMode("daily");
                     triggerSensory("selection");
                   }}
-                  className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                  className={cn(
+                    "flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer",
                     dividendEntryMode === "daily"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                      ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
                 >
-                  Diario (Data Exata)
+                  Diário (Data Exata)
                 </button>
                 <button
                   type="button"
@@ -1083,13 +1366,14 @@ export function QuickTransactionSheet({
                     setDividendEntryMode("monthly");
                     triggerSensory("selection");
                   }}
-                  className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer ${
+                  className={cn(
+                    "flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors cursor-pointer",
                     dividendEntryMode === "monthly"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                      ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
                 >
-                  Extrato do Mes
+                  Extrato do Mês
                 </button>
               </div>
 
@@ -1098,18 +1382,20 @@ export function QuickTransactionSheet({
               ) : (
                 <div className="flex flex-col gap-1">
                   <MonthPicker value={month} onValueChange={setMonth} />
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[11px] text-muted-foreground">
                     Gravado como {month}-01 com tag [MENSAL].
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="flex flex-col gap-1 rounded-xl border border-border/60 bg-surface/40 p-3 text-xs">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <Checkbox checked={syncCash} onCheckedChange={(c) => setSyncCash(!!c)} />
-                <span className="font-medium text-foreground">Creditar o rendimento diretamente no Caixa da carteira</span>
-              </label>
+            <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-muted/35 p-3 text-xs">
+              <Checkbox
+                id="quick-div-sync-cash"
+                checked={creditCash}
+                onCheckedChange={(c) => setCreditCash(Boolean(c))}
+                label="Creditar o rendimento diretamente no Caixa da carteira"
+              />
               <p className="text-[11px] text-muted-foreground pl-6">
                 Aumenta a liquidez em caixa para reinvestimentos sem registrar novo aporte financeiro do bolso.
               </p>
@@ -1117,75 +1403,92 @@ export function QuickTransactionSheet({
           </div>
         )}
 
-        {/* 4. MODO SPLIT / DESDOBRAMENTO */}
-        {(type === "split" || type === "reverse_split") && (
+        {/* 4. MODO EVENTOS CORPORATIVOS: DESDOBRO / BONIFICAÇÃO / GRUPAMENTO X:Y */}
+        {isCorporateEvent && (
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="quick-split-factor" className="text-xs font-semibold text-foreground">
-                  {type === "split" ? "Fator (1 para N)" : "Fator (N para 1)"}
-                </label>
-                <Input
-                  id="quick-split-factor"
-                  type="number"
-                  min="2"
-                  step="1"
-                  value={splitFactor}
-                  onChange={(e) => setSplitFactor(Number(e.target.value) || 2)}
-                  className="font-mono"
-                />
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-foreground">
+                  {type === "split" ? "Fator (1 para N) · Proporção X para Y" : "Fator (N para 1) · Proporção X para Y"}
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Ex.: {type === "split" ? "1 para 10 ou 10 para 11 (bonif.)" : "10 para 1 ou 5 para 2"}
+                </span>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-foreground">
-                  Data do Evento
-                </label>
-                <DatePicker value={date} onValueChange={setDate} />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="quick-split-from" className="text-xs font-semibold text-foreground">
+                    De (cotas atuais)
+                  </label>
+                  <NumericInput
+                    id="quick-split-from"
+                    value={splitFromStr}
+                    onValueChange={setSplitFromStr}
+                    placeholder={type === "split" ? "1" : "10"}
+                    className="font-mono text-base sm:text-sm"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="quick-split-to" className="text-xs font-semibold text-foreground">
+                    Para (novas cotas)
+                  </label>
+                  <NumericInput
+                    id="quick-split-to"
+                    value={splitToStr}
+                    onValueChange={setSplitToStr}
+                    placeholder={type === "split" ? "10" : "1"}
+                    className="font-mono text-base sm:text-sm"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-semibold text-foreground">
+                    Data do Evento
+                  </label>
+                  <DatePicker value={date} onValueChange={setDate} />
+                </div>
               </div>
             </div>
 
-            {targetAsset && (
-              <div className="flex flex-col gap-1 rounded-xl bg-surface-hover/60 p-3 text-xs">
-                <span className="text-muted-foreground">Posição Resultante:</span>
-                <span className="font-mono font-bold text-foreground">
-                  {type === "split"
-                    ? `${Math.round(targetAsset.quantity * splitFactor * 10000) / 10000} cotas a `
-                    : `${Math.round((targetAsset.quantity / splitFactor) * 10000) / 10000} cotas a `}
-                  <MoneyText
-                    cents={numberToCents(
-                      type === "split"
-                        ? targetAsset.average_price / splitFactor
-                        : targetAsset.average_price * splitFactor,
-                    )}
-                  />
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  O custo total da posição é rigorosamente preservado.
-                </span>
+            {targetAsset && resultedEventQty !== null && resultedEventAvgPrice !== null && (
+              <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-muted/35 p-3.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Posição Resultante:</span>
+                  <span className="font-mono font-bold text-foreground">
+                    {resultedEventQty} cotas a{" "}
+                    <MoneyText
+                      cents={numberToCents(resultedEventAvgPrice)}
+                      currency={targetAsset.currency ?? "BRL"}
+                      className="inline font-bold"
+                    />
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/60 pt-1">
+                  <span>
+                    Antes: {targetAsset.quantity} cotas a{" "}
+                    <MoneyText
+                      cents={numberToCents(targetAsset.average_price)}
+                      currency={targetAsset.currency ?? "BRL"}
+                      className="inline"
+                    />
+                  </span>
+                  <span>Custo total preservado</span>
+                </div>
               </div>
             )}
           </div>
         )}
-
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            disabled={recordOrder.isPending || isSubmitting}
-            className="w-full sm:w-auto"
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            disabled={recordOrder.isPending || isSubmitting}
-            className="w-full sm:w-auto"
-          >
-            {recordOrder.isPending || isSubmitting ? "Processando..." : "Confirmar Operação"}
-          </Button>
-        </ModalFooter>
       </form>
     </Modal>
   );
+}
+
+export function QuickTransactionSheet(props: QuickTransactionSheetProps) {
+  if (!props.open) return null;
+
+  const instanceKey = `${props.editTransaction?.id ?? props.editDividend?.id ?? props.asset?.id ?? "new"}-${props.initialType ?? "buy"}-${props.open ? "open" : "closed"}`;
+
+  return <QuickTransactionSheetContent key={instanceKey} {...props} />;
 }

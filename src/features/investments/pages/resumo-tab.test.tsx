@@ -235,14 +235,6 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
-  useAllocationTargets: () => ({
-    data: [],
-    isLoading: false,
-  }),
-  useSaveAllocationTargets: () => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-  }),
   useRecordOrder: () => ({
     mutateAsync: vi.fn().mockResolvedValue({ success: true }),
     isPending: false,
@@ -394,5 +386,20 @@ describe("ResumoTab", () => {
     renderResumo();
 
     expect(screen.getByText("Desvio de Alocação Detectado")).toBeInTheDocument();
+  });
+
+  it("exibe badge 'Sem nota' clicável na tabela de posições para ativos sem nota avaliada", async () => {
+    const user = userEvent.setup();
+    renderResumo();
+
+    // Expande a classe Ações na tabela agrupada por classe (renderizada em mobile + desktop)
+    await user.click(screen.getAllByRole("button", { name: /^Classe Ações,/i })[0]!);
+
+    const noScoreBadges = screen.getAllByText("Sem nota");
+    expect(noScoreBadges.length).toBeGreaterThan(0);
+
+    // Ao clicar em "Sem nota", abre o diálogo de Avaliação de Tese
+    await user.click(screen.getAllByRole("button", { name: /Avaliar nota de PETR4/i })[0]!);
+    expect(screen.getByText(/Avaliação de Tese: PETR4/i)).toBeInTheDocument();
   });
 });

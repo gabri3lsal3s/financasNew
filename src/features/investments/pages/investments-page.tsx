@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import { ArrowLeftRight, Briefcase, Coins, Plus, Target, TrendingUp, Wallet } from "lucide-react";
+import { Briefcase, Coins, Plus, Scale, Wallet } from "lucide-react";
 import { Button, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
@@ -9,33 +9,41 @@ import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { useAutoPortfolioSnapshot } from "@/hooks/use-auto-portfolio-snapshot";
 import { usePermission } from "@/state";
 import { ResumoTab } from "./resumo-tab";
-import { ProventosTab } from "./proventos-tab";
-import { AporteTab } from "./aporte-tab";
-import { TargetsTab } from "./targets-tab";
 import { MovimentacoesTab } from "./movimentacoes-tab";
+import { RebalanceTab } from "./rebalance-tab";
+import { ProventosTab } from "./proventos-tab";
 import { CashFormDialog, PortfolioInsightsCarousel } from "../components";
 import { InvestmentWizard } from "../wizard";
 import type { WizardMode } from "../wizard/wizard-state";
 import type { PortfolioAsset } from "@/types";
 
-type InvestmentsTab = "resumo" | "aporte" | "metas" | "proventos" | "movimentacoes";
-
-const VALID_TABS: readonly InvestmentsTab[] = ["resumo", "aporte", "metas", "proventos", "movimentacoes"];
+type MainInvestmentsTab = "carteira" | "rebalancear" | "proventos";
+type CarteiraSubView = "posicao" | "extrato";
 
 /**
- * Investimentos — área única de consolidação da carteira (unificação /carteira
- * + dashboard): Carteira (posição executiva + operação + ferramentas no rodapé),
- * Aporte (rebalanceamento + metas integradas) e Proventos (extrato e calendário).
+ * Investimentos (§Plano 42 · v3.10.0) — Arquitetura unificada em 3 abas Nível 1:
+ * 1. Carteira (Posição | Extrato)
+ * 2. Rebalancear (Simulador | Metas)
+ * 3. Proventos (Extrato Mensal | Calendário | Por Ativo | Bola de Neve)
+ * Preserva roteamento retrocompatível para ?tab=resumo, ?tab=movimentacoes, ?tab=aporte e ?tab=metas.
  */
 export function InvestmentsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const tab: InvestmentsTab =
-    tabParam && (VALID_TABS as readonly string[]).includes(tabParam)
-      ? (tabParam as InvestmentsTab)
-      : "resumo";
+  const viewParam = searchParams.get("view");
 
-  // Materialização autônoma de snapshots patrimoniais (§F50)
+  const activeTab: MainInvestmentsTab =
+    tabParam === "proventos"
+      ? "proventos"
+      : tabParam === "rebalancear" || tabParam === "aporte" || tabParam === "metas"
+        ? "rebalancear"
+        : "carteira";
+
+  const carteiraView: CarteiraSubView =
+    tabParam === "movimentacoes" || (activeTab === "carteira" && viewParam === "extrato")
+      ? "extrato"
+      : "posicao";
+
   useAutoPortfolioSnapshot();
 
   const permission = usePermission("investments");
@@ -44,17 +52,54 @@ export function InvestmentsPage() {
   const [upgradeContext, setUpgradeContext] = useState<string | undefined>();
 
   const handleTabChange = (nextTab: string, params?: Record<string, string | number>) => {
-    const valid = nextTab as InvestmentsTab;
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
-        next.set("tab", valid);
-        if (!params) {
-          next.delete("valor");
+        next.delete("valor");
+        next.delete("surplusCents");
+        next.delete("view");
+        next.delete("subtab");
+
+        if (nextTab === "movimentacoes") {
+          next.set("tab", "carteira");
+          next.set("view", "extrato");
+        } else if (nextTab === "resumo" || nextTab === "carteira") {
+          next.set("tab", "carteira");
+        } else if (nextTab === "aporte") {
+          next.set("tab", "rebalancear");
+          next.set("view", "simulador");
+        } else if (nextTab === "metas") {
+          next.set("tab", "rebalancear");
+          next.set("view", "metas");
+        } else if (nextTab === "rebalancear" || nextTab === "proventos") {
+          next.set("tab", nextTab);
         } else {
+          next.set("tab", "carteira");
+        }
+
+        if (params) {
           Object.entries(params).forEach(([key, val]) => {
             next.set(key, String(val));
           });
+        }
+        return next;
+      },
+      { replace: true },
+    );
+  };
+
+  const handleCarteiraViewChange = (nextView: string) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", "carteira");
+        next.delete("valor");
+        next.delete("surplusCents");
+        next.delete("subtab");
+        if (nextView === "extrato") {
+          next.set("view", "extrato");
+        } else {
+          next.delete("view");
         }
         return next;
       },
@@ -101,7 +146,6 @@ export function InvestmentsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header canônico com ações acessíveis no mobile e desktop */}
       <PageHeader
         title="Investimentos"
         description="Posição da carteira, rendimentos, rebalanceamento de aportes e inteligência fiscal"
@@ -144,38 +188,49 @@ export function InvestmentsPage() {
       <PortfolioInsightsCarousel />
 
       <Tabs
-        value={tab}
+        value={activeTab}
         onValueChange={handleTabChange}
         swipeable
         items={[
           {
-            value: "resumo",
+            value: "carteira",
             label: "Carteira",
             icon: <Briefcase className="size-4" aria-hidden="true" />,
             content: (
-              <ResumoTab
-                onOpenWizard={handleOpenWizard}
-                onOpenCash={handleOpenCash}
-                onSelectTab={handleTabChange}
-              />
+              <div className="flex flex-col gap-5 min-w-0">
+                <Tabs
+                  value={carteiraView}
+                  onValueChange={handleCarteiraViewChange}
+                  variant="pills"
+                  fullWidth
+                  ariaLabel="Sub-abas da carteira"
+                  items={[
+                    {
+                      value: "posicao",
+                      label: "Posição",
+                      content: (
+                        <ResumoTab
+                          onOpenWizard={handleOpenWizard}
+                          onOpenCash={handleOpenCash}
+                          onSelectTab={handleTabChange}
+                        />
+                      ),
+                    },
+                    {
+                      value: "extrato",
+                      label: "Extrato",
+                      content: <MovimentacoesTab />,
+                    },
+                  ]}
+                />
+              </div>
             ),
           },
           {
-            value: "aporte",
-            label: "Aporte",
-            icon: <TrendingUp className="size-4" aria-hidden="true" />,
-            content: (
-              <AporteTab
-                onGoToPosition={() => handleTabChange("resumo")}
-                onGoToTargets={() => handleTabChange("metas")}
-              />
-            ),
-          },
-          {
-            value: "metas",
-            label: "Metas",
-            icon: <Target className="size-4" aria-hidden="true" />,
-            content: <TargetsTab onGoToPosition={() => handleTabChange("resumo")} />,
+            value: "rebalancear",
+            label: "Rebalancear",
+            icon: <Scale className="size-4" aria-hidden="true" />,
+            content: <RebalanceTab onGoToPosition={() => handleTabChange("carteira")} />,
           },
           {
             value: "proventos",
@@ -183,16 +238,9 @@ export function InvestmentsPage() {
             icon: <Coins className="size-4" aria-hidden="true" />,
             content: <ProventosTab onOpenWizard={handleOpenWizard} />,
           },
-          {
-            value: "movimentacoes",
-            label: "Movimentações",
-            icon: <ArrowLeftRight className="size-4" aria-hidden="true" />,
-            content: <MovimentacoesTab />,
-          },
         ]}
       />
 
-      {/* Investment Wizard Unificado */}
       <InvestmentWizard
         open={isWizardOpen}
         onOpenChange={handleWizardOpenChange}
@@ -200,7 +248,6 @@ export function InvestmentsPage() {
         initialMode={wizardInitialMode}
       />
 
-      {/* Diálogo de Saldo em Caixa */}
       <CashFormDialog
         open={cashDialogOpen}
         onOpenChange={setCashDialogOpen}

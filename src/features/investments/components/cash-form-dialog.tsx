@@ -25,10 +25,12 @@ export interface CashFormDialogProps {
 
 interface CashFormContentProps {
   asset?: PortfolioAsset | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onClose: () => void;
 }
 
-function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
+function CashFormContent({ asset = null, open, onOpenChange, onClose }: CashFormContentProps) {
   const createAsset = useCreatePortfolioAsset();
   const updateAsset = useUpdatePortfolioAsset();
   const deleteAsset = useDeletePortfolioAsset();
@@ -123,99 +125,113 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
 
   return (
     <>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-        className="mt-4 flex flex-col gap-4"
+      <Modal
+        open={open}
+        onOpenChange={onOpenChange}
+        title={isEdit ? "Editar Saldo em Caixa" : "Cadastrar Saldo em Caixa"}
+        description="Informe o valor disponível em conta ou corretora reservado para oportunidades e novos aportes."
+        size="md"
+        showCalculator
+        footer={
+          <ModalFooter
+            borderless
+            destructiveAction={
+              isEdit ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={pending}
+                  className="text-critical hover:bg-critical/10 gap-1.5"
+                >
+                  <Trash2 className="size-3.5" aria-hidden="true" />
+                  Excluir caixa
+                </Button>
+              ) : null
+            }
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={pending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              form="cash-form-dialog-form"
+              size="sm"
+              disabled={pending}
+            >
+              {pending ? "Salvando…" : isEdit ? "Atualizar saldo" : "Cadastrar caixa"}
+            </Button>
+          </ModalFooter>
+        }
       >
-        {error ? <Alert variant="error">{error}</Alert> : null}
-
-        {/* Informação contextual de regra de Caixa */}
-        <div className="flex items-center gap-2.5 rounded-xl border border-portfolio/20 bg-portfolio/5 p-3 text-xs text-foreground">
-          <Wallet className="size-4 shrink-0 text-portfolio" aria-hidden="true" />
-          <div className="flex flex-col">
-            <span className="font-semibold text-foreground">Ativo Único de Caixa</span>
-            <span className="text-muted-foreground">
-              Nome fixo: <strong className="text-foreground">CAIXA</strong> · Paridade 1:1 em BRL para oportunidades e aportes.
-            </span>
-          </div>
-        </div>
-
-        {/* Campo de Saldo Disponível */}
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Saldo Disponível em Caixa (R$)
-          <MoneyInput
-            cents={balanceCents}
-            onCentsChange={setBalanceCents}
-            aria-label="Saldo disponível em caixa"
-          />
-        </label>
-
-        {/* Campo de Observações */}
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Anotações <span className="font-normal text-muted-foreground">(opcional)</span>
-          <Input
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ex.: Reserva em conta corrente, CDI de liquidez diária…"
-            maxLength={100}
-            aria-label="Anotações do caixa"
-          />
-        </label>
-
-        {/* Switch opcional de registro de aporte financeiro externo */}
-        {(isEdit ? balanceCents > (existingCash?.quantity ? numberToCents(existingCash.quantity) : 0) : balanceCents > 0) && (
-          <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-surface-hover/30 p-3">
-            <Checkbox
-              id="cash-record-external-contribution"
-              checked={recordAsContribution}
-              onCheckedChange={setRecordAsContribution}
-              label="Registrar como Aporte do Bolso (Depósito em Caixa)"
-            />
-            <p className="pl-6 text-[11px] text-muted-foreground">
-              Desligado por padrão (reconciliação contábil pura). Ao ativar, registra um <strong>Aporte em Caixa</strong> nas movimentações e no fluxo do mês (dinheiro novo transferido da sua conta corrente para a corretora).
-            </p>
-          </div>
-        )}
-
-        {/* Rodapé de Ações */}
-        <ModalFooter
-          destructiveAction={
-            isEdit ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setConfirmDelete(true)}
-                disabled={pending}
-                className="text-critical hover:bg-critical/10 gap-1.5"
-              >
-                <Trash2 className="size-3.5" aria-hidden="true" />
-                Excluir caixa
-              </Button>
-            ) : null
-          }
+        <form
+          id="cash-form-dialog-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
+          }}
+          className="mt-2 flex flex-col gap-4"
         >
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={pending}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            size="sm"
-            disabled={pending}
-          >
-            {pending ? "Salvando…" : isEdit ? "Atualizar saldo" : "Cadastrar caixa"}
-          </Button>
-        </ModalFooter>
-      </form>
+          {error ? <Alert variant="error">{error}</Alert> : null}
+
+          {/* Informação contextual de regra de Caixa */}
+          <div className="flex items-center gap-2.5 rounded-xl border border-portfolio/20 bg-portfolio/5 p-3 text-xs text-foreground">
+            <Wallet className="size-4 shrink-0 text-portfolio" aria-hidden="true" />
+            <div className="flex flex-col">
+              <span className="font-semibold text-foreground">Ativo Único de Caixa</span>
+              <span className="text-muted-foreground">
+                Nome fixo: <strong className="text-foreground">CAIXA</strong> · Paridade 1:1 em BRL para oportunidades e aportes.
+              </span>
+            </div>
+          </div>
+
+          {/* Campo de Saldo Disponível */}
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
+            Saldo Disponível em Caixa (R$)
+            <MoneyInput
+              cents={balanceCents}
+              onCentsChange={setBalanceCents}
+              aria-label="Saldo disponível em caixa"
+              showCalculatorAction
+            />
+          </label>
+
+          {/* Campo de Observações */}
+          <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
+            Anotações <span className="font-normal text-muted-foreground">(opcional)</span>
+            <Input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Ex.: Reserva em conta corrente, CDI de liquidez diária…"
+              maxLength={100}
+              aria-label="Anotações do caixa"
+              className="text-base sm:text-sm"
+            />
+          </label>
+
+          {/* Switch opcional de registro de aporte financeiro externo */}
+          {(isEdit ? balanceCents > (existingCash?.quantity ? numberToCents(existingCash.quantity) : 0) : balanceCents > 0) && (
+            <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-surface-hover/30 p-3">
+              <Checkbox
+                id="cash-record-external-contribution"
+                checked={recordAsContribution}
+                onCheckedChange={setRecordAsContribution}
+                label="Registrar como Aporte do Bolso (Depósito em Caixa)"
+              />
+              <p className="pl-6 text-[11px] text-muted-foreground">
+                Desligado por padrão (reconciliação contábil pura). Ao ativar, registra um <strong>Aporte em Caixa</strong> nas movimentações e no fluxo do mês (dinheiro novo transferido da sua conta corrente para a corretora).
+              </p>
+            </div>
+          )}
+        </form>
+      </Modal>
 
       {/* Confirmação de exclusão */}
       <ConfirmDialog
@@ -237,22 +253,15 @@ function CashFormContent({ asset = null, onClose }: CashFormContentProps) {
  * Garante paridade 1:1, identificação padronizada ("CAIXA") e impede duplicidade.
  */
 export function CashFormDialog({ open, onOpenChange, asset = null }: CashFormDialogProps) {
+  if (!open) return null;
+
   return (
-    <Modal
+    <CashFormContent
+      key={asset?.id ?? "cash-dialog"}
+      asset={asset}
       open={open}
       onOpenChange={onOpenChange}
-      title={asset ? "Editar Saldo em Caixa" : "Cadastrar Saldo em Caixa"}
-      description="Informe o valor disponível em conta ou corretora reservado para oportunidades e novos aportes."
-      size="md"
-      showCalculator
-    >
-      {open ? (
-        <CashFormContent
-          key={asset?.id ?? "cash-dialog"}
-          asset={asset}
-          onClose={() => onOpenChange(false)}
-        />
-      ) : null}
-    </Modal>
+      onClose={() => onOpenChange(false)}
+    />
   );
 }

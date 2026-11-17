@@ -263,6 +263,56 @@ describe("AporteResult", () => {
 
     expect(onOpenWizard).toHaveBeenCalledWith("PETR4", 25, 1000);
   });
+
+  it("exibe Nota, 'Sem nota', meta efetiva e motivos neutral/insufficient_aporte nos ignorados (§Plano 42)", async () => {
+    const user = userEvent.setup();
+    render(
+      <AporteResult
+        mode="both"
+        aporte={1500}
+        totalAllocated={1000}
+        leftover={500}
+        routes={[
+          {
+            ...mockRoutes[0]!,
+            rawScore: 9,
+            effectiveTargetPct: 25,
+            formulaLabel: "50% Classe x peso Nota 9",
+          },
+          {
+            ...mockRoutes[1]!,
+            rawScore: null,
+            effectiveTargetPct: 12.5,
+          },
+        ]}
+        skippedAssets={[
+          {
+            assetId: "s-neutral",
+            ticker: "ITUB4",
+            assetClass: "Ações",
+            reason: "neutral",
+            detail: "Status neutro.",
+          },
+          {
+            assetId: "s-insufficient",
+            ticker: "BBAS3",
+            assetClass: "Ações",
+            reason: "insufficient_aporte",
+            detail: "Saldo restante inferior à cota.",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getAllByText("Nota 9/10").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Sem nota").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Meta 25,0%").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Meta 12,5%").length).toBeGreaterThan(0);
+
+    await user.click(screen.getByText("Ativos não contemplados neste aporte (2)"));
+    expect(screen.getByText("Mantido (neutro)")).toBeInTheDocument();
+    expect(screen.getByText("Aporte insuficiente")).toBeInTheDocument();
+  });
 });
 
 

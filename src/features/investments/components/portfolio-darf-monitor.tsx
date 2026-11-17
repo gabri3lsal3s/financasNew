@@ -122,7 +122,7 @@ export function PortfolioDarfMonitor({
 
         {/* Status Geral de DARF */}
         {darf.shouldPayDarf ? (
-          <div className="flex flex-col gap-2 rounded-xl border border-warning-border/80 bg-warning-surface/30 p-4">
+          <div className="flex flex-col gap-2 rounded-xl border border-warning/20 bg-warning/10 p-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 font-bold text-warning-strong text-sm">
                 <ShieldAlert className="size-4 shrink-0" aria-hidden="true" />
@@ -135,7 +135,7 @@ export function PortfolioDarfMonitor({
             </p>
           </div>
         ) : (
-          <div className="flex items-center gap-3 rounded-xl border border-positive-border/80 bg-positive-surface/30 p-4">
+          <div className="flex items-center gap-3 rounded-xl border border-positive/20 bg-positive/10 p-4">
             <ShieldCheck className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
             <div className="flex flex-col gap-0.5">
               <strong className="text-xs font-semibold text-foreground">Sem DARF a recolher no período</strong>

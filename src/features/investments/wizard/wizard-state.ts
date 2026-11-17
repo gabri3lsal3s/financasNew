@@ -12,7 +12,14 @@ import { todayISO } from "@/domain/debts";
 import { currentMonth } from "@/lib/date";
 import { parseDecimalNumber } from "@/domain/money";
 import type { DividendEntryMode } from "@/domain/portfolio/dividends";
-import type { AssetCurrency, FixedIncomeRateType, PortfolioAsset } from "@/types";
+import type {
+  AssetAllocationStatus,
+  AssetCurrency,
+  FixedIncomeRateType,
+  PortfolioAsset,
+} from "@/types";
+
+export type ScoreCriteriaBreakdown = Record<string, number>;
 
 
 export type WizardMode =
@@ -70,8 +77,13 @@ export interface InvestmentWizardState {
   /** Valor de IRRF retido na fonte customizado em centavos. */
   customTaxAmountCents?: number | null;
 
-  // Metas e Opções
-  targetPercentage: number | null;
+  // Governança, Metas e Opções
+  score: number | null;
+  allocationStatus: AssetAllocationStatus;
+  scoreCriteria: ScoreCriteriaBreakdown;
+  thesisSummary: string;
+  reviewFrequencyMonths: number | null;
+  isEmergencyFund: boolean;
   syncCash: boolean;
   recordContribution: boolean;
   isFamily: boolean;
@@ -113,7 +125,12 @@ export const defaultWizardState: InvestmentWizardState = {
   accumulatedDividendsCents: 0,
   estimatedDividendPerShareCents: 0,
 
-  targetPercentage: null,
+  score: null,
+  allocationStatus: "active",
+  scoreCriteria: {},
+  thesisSummary: "",
+  reviewFrequencyMonths: 6,
+  isEmergencyFund: false,
   syncCash: false,
   recordContribution: true,
   isFamily: false,
@@ -242,7 +259,7 @@ export function getWizardSteps(mode: WizardMode): readonly { title: string; subt
   return [
     { title: "Identificação", subtitle: "Código & Classe" },
     { title: "Posição", subtitle: "Cotas & Custo" },
-    { title: "Meta", subtitle: "Alocação %" },
+    { title: "Governança", subtitle: "Nota & Status" },
     { title: "Revisão", subtitle: "Confirmação" },
   ];
 }
@@ -347,8 +364,8 @@ export function canProceed(state: InvestmentWizardState): boolean {
       return parsedQty > 0 && price > 0;
     }
     if (state.step === 3) {
-      if (state.targetPercentage === null) return true;
-      return state.targetPercentage >= 0 && state.targetPercentage <= 100;
+      if (state.isCash) return true;
+      return state.score === null || (state.score >= 0 && state.score <= 10);
     }
     return true;
   }

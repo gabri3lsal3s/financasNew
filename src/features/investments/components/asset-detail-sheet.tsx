@@ -28,16 +28,23 @@ import {
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { formatCentsAsBRL } from "@/services/masks/money";
+import { formatPercent } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
+import {
+  ALLOCATION_STATUS_META,
+  CRITERIA_BY_ARCHETYPE,
+  calculateEffectiveAssetTargets,
+  getScoreArchetypeKey,
+  getScoreConvictionMeta,
+} from "@/domain/portfolio";
 import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { calculateYieldOnCostTotal } from "@/domain/portfolio/snowball";
 import { formatFixedIncomeRateLabel } from "@/domain/portfolio/fixed-income";
 import { getAssetPricingMode, isCashAssetClass } from "@/domain/portfolio/valuation";
 import { formatDateBR } from "@/lib/date";
 import {
-  useAllocationTargets,
   useAssetPosition,
   useDeletePortfolioAsset,
   useDeletePortfolioTransaction,
@@ -51,9 +58,8 @@ import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import type { PortfolioAsset, PortfolioTransaction, PortfolioTransactionType } from "@/types";
 import { AssetEditDialog } from "./asset-edit-dialog";
 import { AssetScoreEvaluationDialog } from "./asset-score-evaluation-dialog";
-import { AssetSplitDialog } from "./asset-split-dialog";
 import { CalibrateFixedIncomeDialog } from "./calibrate-fixed-income-dialog";
-import { TransactionFormDialog } from "./transaction-form-dialog";
+import { QuickTransactionSheet } from "./quick-transaction-sheet";
 
 export interface AssetDetailSheetProps {
   asset: PortfolioAsset | null;
@@ -82,7 +88,6 @@ export function AssetDetailSheet({
   const { data: myFamilyData } = useMyFamily();
   const currentMember = myFamilyData?.currentMember;
 
-  const allocationTargets = useAllocationTargets();
   const groupTargetsSector = useGroupTargets("sector");
   const groupTargetsClass = useGroupTargets("class");
 
@@ -211,20 +216,54 @@ export function AssetDetailSheet({
 
   const resolvedSector = currentAsset.sector?.trim() || (currentAsset.asset_class ? inferSectorFromTicker(currentAsset.ticker, currentAsset.asset_class) : null);
 
-  const assetTarget = (allocationTargets.data ?? []).find(
-    (t) => t.asset_id === currentAsset.id,
-  );
-  const assetTargetPct = assetTarget?.target_percentage ?? null;
+  const effectiveTargets = calculateEffectiveAssetTargets({
+    assets: (assetsQuery.data ?? []).map((a) => {
+      const cls = a.asset_class?.trim() || "Ações";
+      const sec = a.sector?.trim() || inferSectorFromTicker(a.ticker, cls);
+      return {
+        id: a.id,
+        ticker: a.ticker,
+        assetClass: cls,
+        sector: sec,
+        score: a.score ?? null,
+        allocation_status: a.allocation_status ?? "active",
+      };
+    }),
+    classTargets: (groupTargetsClass.data ?? []).map((ct) => ({
+      className: ct.name,
+      targetPercentage: ct.target_percentage,
+    })),
+    sectorTargets: (groupTargetsSector.data ?? [])
+      .map((st) => ({
+        className:
+          st.class_name?.trim() ||
+          (resolvedSector && st.name === resolvedSector && currentAsset.asset_class ? currentAsset.asset_class : ""),
+        sectorName: st.name,
+        targetPercentage: st.target_percentage,
+      }))
+      .filter((st) => st.className.length > 0),
+  });
 
-  const sectorTarget = resolvedSector
-    ? (groupTargetsSector.data ?? []).find((s) => s.name === resolvedSector)
-    : undefined;
-  const sectorTargetPct = sectorTarget?.target_percentage ?? null;
+  const effectiveResult = effectiveTargets.find((r) => r.assetId === currentAsset.id) ?? null;
+  const assetTargetPct =
+    !isCash && effectiveResult && effectiveResult.classTargetPct > 0
+      ? effectiveResult.effectiveTargetPct
+      : null;
 
   const classTarget = currentAsset.asset_class
     ? (groupTargetsClass.data ?? []).find((c) => c.name === currentAsset.asset_class)
     : undefined;
-  const classTargetPct = classTarget?.target_percentage ?? null;
+  const classTargetPct =
+    effectiveResult && effectiveResult.classTargetPct > 0
+      ? effectiveResult.classTargetPct
+      : (classTarget?.target_percentage ?? null);
+
+  const sectorTarget = resolvedSector
+    ? (groupTargetsSector.data ?? []).find(
+        (s) => s.name === resolvedSector && (!s.class_name || s.class_name === currentAsset.asset_class),
+      )
+    : undefined;
+  const sectorTargetPct = sectorTarget?.target_percentage ?? null;
 
   const totalPortfolioValue = position.totalBRL || position.rows.reduce((s, r) => s + r.valueBRL, 0);
   const currentPctInPortfolio = totalPortfolioValue > 0 ? (currentValue / totalPortfolioValue) * 100 : 0;
@@ -243,9 +282,15 @@ export function AssetDetailSheet({
     !isTotalValue && currentPrice > 0 && gapBRL > 0 ? Math.floor(gapBRL / currentPrice) : undefined;
   const suggestedTotalCents = gapCents > 0 ? gapCents : undefined;
 
-  // Metadados de Governança, Nota e Tese
-  const assetScore = currentAsset.score ?? 8;
+  // Metadados de Governança, Nota e Tese (null nunca fabrica "Nota 8")
+  const assetScore = currentAsset.score ?? null;
   const allocationStatus = currentAsset.allocation_status ?? "active";
+  const convictionMeta = getScoreConvictionMeta(assetScore);
+  const statusMeta = ALLOCATION_STATUS_META[allocationStatus];
+  const archetypeCriteria = CRITERIA_BY_ARCHETYPE[getScoreArchetypeKey(currentAsset.asset_class)] ?? [];
+  const metCriteriaCount = archetypeCriteria.filter(
+    (c) => Number(currentAsset.score_criteria?.[c.key] ?? 0) >= 1,
+  ).length;
   const reviewFreqMonths = currentAsset.review_frequency_months ?? 6;
   const maxAllowedDays = reviewFreqMonths * 30.4375;
   const lastReviewedDate = currentAsset.last_reviewed_at ? new Date(currentAsset.last_reviewed_at) : null;
@@ -263,17 +308,16 @@ export function AssetDetailSheet({
           ? ("negative" as const)
           : ("muted" as const);
 
-  const statusBadgeLabel =
-    allocationStatus === "active"
-      ? "Aportar"
-      : allocationStatus === "neutral"
-        ? "Manter"
-        : allocationStatus === "quarantine"
-          ? "Quarentena"
-          : "Saída";
+  const statusBadgeLabel = statusMeta.label;
 
   const scoreBadgeVariant =
-    assetScore >= 7 ? ("positive" as const) : assetScore >= 4 ? ("warning" as const) : ("negative" as const);
+    assetScore === null
+      ? ("muted" as const)
+      : assetScore >= 7
+        ? ("positive" as const)
+        : assetScore >= 4
+          ? ("warning" as const)
+          : ("negative" as const);
 
   const handleAporteClick = () => {
     guardAction(() => {
@@ -293,6 +337,36 @@ export function AssetDetailSheet({
         title={currentAsset.ticker}
         description={resolvedSector ? `${currentAsset.asset_class ?? "Ativo"} · ${resolvedSector}` : (currentAsset.asset_class ?? "Ativo em Carteira")}
         size="2xl"
+        footer={
+          <ModalFooter
+            borderless
+            destructiveAction={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  guardAction(() => {
+                    setDeleteConfirmOpen(true);
+                  }, "Excluir Ativo da Carteira")
+                }
+                className="text-critical hover:bg-critical/10"
+              >
+                <Trash2 className="size-3.5 mr-1" aria-hidden="true" />
+                Excluir Ativo da Carteira
+              </Button>
+            }
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
+              Fechar
+            </Button>
+          </ModalFooter>
+        }
       >
         <div className="flex flex-col gap-5 pt-1">
           {/* Header de Metadados & Ações Rápidas */}
@@ -647,15 +721,15 @@ export function AssetDetailSheet({
                   </span>
                   {hasAssetTarget ? (
                     <Badge variant="default" size="xs">
-                      Meta: {assetTargetPct?.toFixed(1)}%
+                      Meta: {formatPercent(assetTargetPct ?? 0)}%
                     </Badge>
                   ) : sectorTargetPct !== null ? (
                     <Badge variant="muted" size="xs">
-                      Setor: {sectorTargetPct.toFixed(1)}%
+                      Setor: {formatPercent(sectorTargetPct)}%
                     </Badge>
                   ) : classTargetPct !== null ? (
                     <Badge variant="muted" size="xs">
-                      Classe: {classTargetPct.toFixed(1)}%
+                      Classe: {formatPercent(classTargetPct)}%
                     </Badge>
                   ) : null}
                 </div>
@@ -689,16 +763,20 @@ export function AssetDetailSheet({
 
                 <div className="flex flex-col min-w-0">
                   <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                    Meta Alvo
+                    Meta Derivada
                   </span>
                   <span className="font-mono text-sm font-bold text-foreground tabular-nums">
-                    {hasAssetTarget ? `${assetTargetPct?.toFixed(1)}%` : sectorTargetPct !== null ? `${sectorTargetPct.toFixed(1)}% (setor)` : "Não definida"}
+                    {hasAssetTarget
+                      ? `${formatPercent(assetTargetPct ?? 0)}%`
+                      : sectorTargetPct !== null
+                        ? `${formatPercent(sectorTargetPct)}% (setor)`
+                        : "Não definida"}
                   </span>
                   <span className="text-[10px] text-muted-foreground font-mono truncate">
                     {hasAssetTarget ? (
                       <>Alvo: <MoneyText cents={numberToCents(targetValueBRL)} /></>
                     ) : (
-                      "Ajuste na aba Metas"
+                      "Configure em Rebalancear > Metas"
                     )}
                   </span>
                 </div>
@@ -766,11 +844,16 @@ export function AssetDetailSheet({
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <Badge variant={scoreBadgeVariant} size="xs">
-                  Nota {assetScore}/10
+                  {assetScore !== null ? `Nota ${assetScore}/10` : "Sem nota"}
                 </Badge>
                 <Badge variant={statusBadgeVariant} size="xs">
                   {statusBadgeLabel}
                 </Badge>
+                {assetScore !== null && (
+                  <Badge variant="muted" size="xs">
+                    {convictionMeta.label}
+                  </Badge>
+                )}
                 {isReviewOverdue && (
                   <Badge variant="warning" size="xs" className="gap-1">
                     <Clock className="size-3" aria-hidden="true" />
@@ -779,6 +862,12 @@ export function AssetDetailSheet({
                 )}
               </div>
             </div>
+
+            {effectiveResult?.formulaLabel && (
+              <p className="text-[11px] text-muted-foreground">
+                Fórmula na carteira: <span className="font-medium text-foreground">{effectiveResult.formulaLabel}</span>
+              </p>
+            )}
 
             {currentAsset.thesis_summary ? (
               <div className="flex flex-col gap-1 text-xs">
@@ -791,13 +880,21 @@ export function AssetDetailSheet({
               </div>
             ) : null}
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 text-xs pt-1">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-xs pt-1">
               <div className="flex flex-col min-w-0">
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
                   Ciclo de Revisão
                 </span>
                 <span className="text-xs font-semibold text-foreground">
                   A cada {reviewFreqMonths} meses
+                </span>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                  Critérios Atendidos
+                </span>
+                <span className="text-xs font-semibold text-foreground font-mono">
+                  {metCriteriaCount}/{archetypeCriteria.length}
                 </span>
               </div>
               <div className="flex flex-col min-w-0">
@@ -1004,35 +1101,6 @@ export function AssetDetailSheet({
               </div>
             )}
           </div>
-
-          {/* Rodapé: Exclusão do Ativo da Carteira */}
-          <ModalFooter
-            destructiveAction={
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  guardAction(() => {
-                    setDeleteConfirmOpen(true);
-                  }, "Excluir Ativo da Carteira")
-                }
-                className="text-critical hover:bg-critical/10"
-              >
-                <Trash2 className="size-3.5 mr-1" aria-hidden="true" />
-                Excluir Ativo da Carteira
-              </Button>
-            }
-          >
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-            >
-              Fechar
-            </Button>
-          </ModalFooter>
         </div>
       </Modal>
 
@@ -1071,7 +1139,7 @@ export function AssetDetailSheet({
         open={txToDelete !== null}
         onOpenChange={(next) => !next && setTxToDelete(null)}
         title="Excluir movimentação?"
-        description="Esta operação será removida do histórico do ativo."
+        description="Esta operação será removida do histórico do ativo e a posição recalculada atomicamente."
         confirmLabel="Excluir"
         variant="destructive"
         onConfirm={async () => {
@@ -1083,24 +1151,19 @@ export function AssetDetailSheet({
         }}
       />
 
-      {/* Diálogo de Criação / Edição de Transação Individual */}
-      <TransactionFormDialog
-        open={txToEdit !== null || createTxOpen}
-        onOpenChange={(open) => {
-          if (!open) {
+      {/* Painel Unificado de Operação / Edição / Split */}
+      <QuickTransactionSheet
+        open={txToEdit !== null || createTxOpen || splitOpen}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
             setTxToEdit(null);
             setCreateTxOpen(false);
+            setSplitOpen(false);
           }
         }}
         asset={currentAsset}
-        transaction={txToEdit}
-      />
-
-      {/* Diálogo de Desdobramento / Grupamento de Cotas */}
-      <AssetSplitDialog
-        asset={currentAsset}
-        open={splitOpen}
-        onOpenChange={setSplitOpen}
+        initialType={splitOpen ? "split" : "buy"}
+        editTransaction={txToEdit}
       />
 
       {/* Diálogo de Avaliação Holística de Tese & Nota */}

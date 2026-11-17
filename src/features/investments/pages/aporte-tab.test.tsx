@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AporteTab } from "./aporte-tab";
 
 const mockExecuteBatch = vi.fn().mockResolvedValue({ success: true, count: 1 });
@@ -56,20 +56,19 @@ vi.mock("@/state", () => ({
         quantity: 125,
         average_price: 35,
         currency: "BRL",
+        score: 8,
+        allocation_status: "active",
       },
     ],
     isLoading: false,
     error: null,
     refetch: vi.fn(),
   }),
-  useAllocationTargets: () => ({
-    data: [{ id: "t1", asset_id: "a1", target_percentage: 100 }],
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
-  useGroupTargets: () => ({
-    data: [],
+  useGroupTargets: (groupType: "class" | "sector") => ({
+    data:
+      groupType === "class"
+        ? [{ id: "g1", user_id: "u1", name: "Ações", group_type: "class", target_percentage: 100 }]
+        : [],
     isLoading: false,
     error: null,
     refetch: vi.fn(),
@@ -94,10 +93,6 @@ vi.mock("@/state", () => ({
   useMyFamily: () => ({ data: null, isLoading: false }),
   useCreatePortfolioAsset: () => ({
     mutateAsync: vi.fn().mockResolvedValue({ id: "a2" }),
-    isPending: false,
-  }),
-  useSaveAllocationTargets: () => ({
-    mutateAsync: vi.fn(),
     isPending: false,
   }),
   useSaveGroupTarget: () => ({
@@ -133,9 +128,38 @@ vi.mock("@/state", () => ({
     data: [],
     isLoading: false,
   }),
+  useEmergencyFundComposition: () => ({
+    composition: {
+      totalReserveCents: 0,
+      cashInAccountsCents: 0,
+      portfolioReserveCents: 0,
+      breakdown: [],
+      warnings: [],
+      targetMonths: 6,
+      targetMonthsProgressPercent: 0,
+      targetMonthsCents: 0,
+    },
+    config: {
+      includeCheckingAccounts: true,
+      selectionMode: "auto_cash",
+      selectedAssetIds: [],
+      selectedClasses: [],
+      useNetValue: true,
+      targetMonths: 6,
+    },
+    updateConfig: vi.fn(),
+    isLoading: false,
+    isUpdating: false,
+    portfolioRows: [],
+  }),
+  invalidatePortfolioSuite: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe("AporteTab — Calculadora e Aportes", () => {
+  beforeEach(() => {
+    mockExecuteBatch.mockClear();
+  });
+
   it("renderiza a calculadora e os campos de simulação corretamente", () => {
     render(
       <MemoryRouter>
@@ -143,7 +167,7 @@ describe("AporteTab — Calculadora e Aportes", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Valor do aporte")).toBeInTheDocument();
+    expect(screen.getByText(/Valor do aporte/i)).toBeInTheDocument();
     expect(screen.getByText(/Motor Hierárquico:/i)).toBeInTheDocument();
   });
 
@@ -245,5 +269,46 @@ describe("AporteTab — Calculadora e Aportes", () => {
     await user.click(buyBtn);
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("permite Aporte Composto (Bolso + Caixa) e repassa cashUsed ao executeBatch (§Plano 42)", async () => {
+    vi.useFakeTimers();
+    const user = userEvent.setup({ delay: null });
+    render(
+      <MemoryRouter initialEntries={["/investments?tab=rebalancear&valor=100000"]}>
+        <AporteTab />
+      </MemoryRouter>,
+    );
+
+    await vi.runAllTimersAsync();
+    vi.useRealTimers();
+
+    // Ativa o uso do saldo em Caixa disponível (R$ 1.000,00) somado aos R$ 1.000,00 do bolso
+    const cashSwitch = screen.getByRole("switch", {
+      name: /Somar saldo em Caixa da corretora/i,
+    });
+    await user.click(cashSwitch);
+
+    expect(screen.getByText(/Poder de compra composto:/i)).toBeInTheDocument();
+
+    const submitBtn = screen.getByRole("button", { name: /Lançar compras no extrato/i });
+    await user.click(submitBtn);
+
+    expect(screen.getByText(/debitando até/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Aplicar aporte" }));
+
+    expect(mockExecuteBatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        totalAmount: 2000,
+        cashUsed: 1000,
+        items: expect.arrayContaining([
+          expect.objectContaining({
+            asset_id: "a1",
+            quantity: 50,
+            total: 2000,
+          }),
+        ]),
+      }),
+    );
   });
 });

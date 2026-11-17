@@ -83,11 +83,37 @@ vi.mock("@/state", () => ({
   useBatchUpsertPortfolioSnapshots: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioSnapshot: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useResetManualSnapshotCalibration: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useAllocationTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
-  useSaveAllocationTargets: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSaveHierarchyTargets: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useGroupTargets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSaveGroupTarget: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRemoveGroupTarget: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreatePortfolioDividend: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdatePortfolioDividend: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAccounts: () => ({ data: [], isLoading: false }),
+  useEmergencyFundComposition: () => ({
+    composition: {
+      totalReserveCents: 0,
+      cashInAccountsCents: 0,
+      portfolioReserveCents: 0,
+      breakdown: [],
+      warnings: [],
+      targetMonths: 6,
+      targetMonthsProgressPercent: 0,
+      targetMonthsCents: 0,
+    },
+    config: {
+      includeCheckingAccounts: true,
+      selectionMode: "auto_cash",
+      selectedAssetIds: [],
+      selectedClasses: [],
+      useNetValue: true,
+      targetMonths: 6,
+    },
+    updateConfig: vi.fn(),
+    isLoading: false,
+    isUpdating: false,
+    portfolioRows: [],
+  }),
   useCreatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeletePortfolioAsset: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -194,16 +220,20 @@ describe("InvestmentsPage — F17 unificada", () => {
     mockMode.isEssential = false;
   });
 
-  it("renderiza o header com os botões de ação e abas de navegação", () => {
+  it("renderiza o header com os botões de ação e as 3 abas principais de Nível 1", () => {
     renderPage();
     expect(screen.getByRole("heading", { name: "Investimentos", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Adicionar caixa" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Nova operação" })).toBeInTheDocument();
+
+    // 3 abas Nível 1
     expect(screen.getByRole("tab", { name: "Carteira" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Aporte" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Metas" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Rebalancear" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Proventos" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Movimentações" })).toBeInTheDocument();
+
+    // Sub-abas Nível 2 dentro de Carteira
+    expect(screen.getByRole("tab", { name: "Posição" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Extrato" })).toBeInTheDocument();
   });
 
   it("estado vazio quando não há ativos", () => {
@@ -246,18 +276,21 @@ describe("InvestmentsPage — F17 unificada", () => {
     expect(screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
   });
 
-  it("permite navegar para a aba de Metas e Movimentações diretamente", async () => {
+  it("permite navegar entre Carteira (Posição / Extrato) e Rebalancear (Simulador / Metas)", async () => {
     renderPage();
-    const metasTab = screen.getByRole("tab", { name: "Metas" });
-    await userEvent.click(metasTab);
-    expect(screen.getByRole("tab", { name: "Metas", selected: true })).toBeInTheDocument();
+    const extratoTab = screen.getByRole("tab", { name: "Extrato" });
+    await userEvent.click(extratoTab);
+    expect(screen.getByRole("tab", { name: "Extrato", selected: true })).toBeInTheDocument();
 
-    const movTab = screen.getByRole("tab", { name: "Movimentações" });
-    await userEvent.click(movTab);
-    expect(screen.getByRole("tab", { name: "Movimentações", selected: true })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Rebalancear" }));
+    expect(screen.getByRole("tab", { name: "Rebalancear", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Simulador", selected: true })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Metas" }));
+    expect(screen.getByRole("tab", { name: "Metas", selected: true })).toBeInTheDocument();
   });
 
-  it("abre imediatamente as abas Metas, Aporte e Proventos via query string com seus seletores de tour", () => {
+  it("abre as visões corretas via query strings legadas (?tab=metas, ?tab=aporte, ?tab=movimentacoes, ?tab=proventos) preservando seletores de tour", () => {
     // Configura ativos na posição para simular o estado do tour
     positionMock = {
       ...positionMock,
@@ -267,15 +300,23 @@ describe("InvestmentsPage — F17 unificada", () => {
 
     // Passo 3 do Tour: /investments?tab=metas
     const { unmount: unmountMetas } = renderPage("/investments?tab=metas");
+    expect(screen.getByRole("tab", { name: "Rebalancear", selected: true })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Metas", selected: true })).toBeInTheDocument();
     expect(document.querySelector('[data-tour="investments-targets"]')).toBeInTheDocument();
     unmountMetas();
 
-    // Passo 4 do Tour: /investments?tab=aporte
-    const { unmount: unmountAporte } = renderPage("/investments?tab=aporte");
-    expect(screen.getByRole("tab", { name: "Aporte", selected: true })).toBeInTheDocument();
+    // Passo 4 do Tour: /investments?tab=aporte&valor=500000
+    const { unmount: unmountAporte } = renderPage("/investments?tab=aporte&valor=500000");
+    expect(screen.getByRole("tab", { name: "Rebalancear", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Simulador", selected: true })).toBeInTheDocument();
     expect(document.querySelector('[data-tour="investments-rebalance"]')).toBeInTheDocument();
     unmountAporte();
+
+    // Deep link legado: /investments?tab=movimentacoes -> Carteira > Extrato
+    const { unmount: unmountMov } = renderPage("/investments?tab=movimentacoes");
+    expect(screen.getByRole("tab", { name: "Carteira", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Extrato", selected: true })).toBeInTheDocument();
+    unmountMov();
 
     // Passo 5 do Tour: /investments?tab=proventos
     const { unmount: unmountProventos } = renderPage("/investments?tab=proventos");

@@ -68,7 +68,7 @@ export function TargetClassesCard({
         <div>
           <h3 className="text-sm font-semibold text-foreground truncate">Metas por classe de ativo</h3>
           <p className="text-xs text-muted-foreground">
-            Defina a alocação macro ideal (% do patrimônio total) entre as classes.
+            Defina a alocação macro ideal (% da carteira investível, fora o Caixa) entre as classes.
           </p>
         </div>
         <span className="text-xs text-muted-foreground font-mono font-medium">
@@ -238,7 +238,7 @@ export function TargetClassesCard({
                     <Badge
                       variant={gap > 0 ? "positive" : "muted"}
                       size="xs"
-                      className="font-mono text-[10px]"
+                      className="font-mono"
                     >
                       {gap > 0 ? `+${gap.toFixed(1)}% (Aporte)` : `${gap.toFixed(1)}% (Acima)`}
                     </Badge>

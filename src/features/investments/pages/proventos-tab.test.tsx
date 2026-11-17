@@ -74,6 +74,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn().mockResolvedValue({ success: true }),
     isPending: false,
   }),
+  useUpdatePortfolioTransaction: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ success: true }),
+    isPending: false,
+  }),
   useRecordOrder: () => ({
     mutateAsync: vi.fn().mockResolvedValue({ success: true }),
     isPending: false,

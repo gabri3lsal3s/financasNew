@@ -5,6 +5,7 @@ import type { PortfolioAsset } from "@/types";
 
 const mockUpdateAsset = vi.fn();
 const mockSetManualPrice = vi.fn();
+const mockUpdateEmergencyConfig = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/state", () => ({
   useUpdatePortfolioAsset: () => ({
@@ -23,6 +24,30 @@ vi.mock("@/state", () => ({
         manual_price: 10500,
       },
     ],
+  }),
+  useEmergencyFundComposition: () => ({
+    composition: {
+      totalReserveCents: 0,
+      cashInAccountsCents: 0,
+      portfolioReserveCents: 0,
+      breakdown: [],
+      warnings: [],
+      targetMonths: 6,
+      targetMonthsProgressPercent: 0,
+      targetMonthsCents: 0,
+    },
+    config: {
+      includeCheckingAccounts: true,
+      selectionMode: "auto_cash",
+      selectedAssetIds: [],
+      selectedClasses: [],
+      useNetValue: true,
+      targetMonths: 6,
+    },
+    updateConfig: mockUpdateEmergencyConfig,
+    isLoading: false,
+    isUpdating: false,
+    portfolioRows: [],
   }),
   useFamilyMode: () => ({ isFamilyModeEnabled: false, toggleFamilyMode: vi.fn() }),
   useMyFamily: () => ({ data: null, isLoading: false, isError: false }),
@@ -313,6 +338,38 @@ describe("AssetEditDialog", () => {
           average_price: 1,
         }),
       });
+    });
+  });
+
+  it("permite incluir título de Renda Fixa na Reserva de Emergência e sincroniza updateConfig", async () => {
+    mockUpdateAsset.mockResolvedValue({ ...mockFixedIncomeAsset });
+    mockSetManualPrice.mockResolvedValue({});
+    mockUpdateEmergencyConfig.mockClear();
+
+    render(
+      <AssetEditDialog
+        asset={mockFixedIncomeAsset}
+        open={true}
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    const emergencyCheckbox = screen.getByRole("checkbox", {
+      name: /Compõe minha Reserva de Emergência/i,
+    });
+    expect(emergencyCheckbox).not.toBeChecked();
+    fireEvent.click(emergencyCheckbox);
+    expect(emergencyCheckbox).toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateEmergencyConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          selectionMode: "selected_assets",
+          selectedAssetIds: expect.arrayContaining(["asset-rf-1"]),
+        }),
+      );
     });
   });
 });

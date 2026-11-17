@@ -13,6 +13,7 @@ export interface PositionMobileCardProps {
   highlightId?: string | null;
   onOpen?: (assetId: string, ticker: string) => void;
   onCalibrateAsset?: (assetId: string, ticker: string, currentValueCents: number) => void;
+  onEvaluateScore?: (assetId: string, ticker: string) => void;
   onSetManualPrice?: (
     assetId: string,
     ticker: string,
@@ -30,6 +31,7 @@ export function PositionMobileCard({
   highlightId,
   onOpen,
   onCalibrateAsset,
+  onEvaluateScore,
   onSetManualPrice,
 }: PositionMobileCardProps) {
   const effectivePct = row.totalReturnPct !== undefined ? row.totalReturnPct : row.unrealizedPct;
@@ -86,6 +88,67 @@ export function PositionMobileCard({
                     : row.fixedIncomeMetadata.rate_type === "pre"
                       ? `${row.fixedIncomeMetadata.rate_value}% a.a.`
                       : `IPCA + ${row.fixedIncomeMetadata.rate_value}%`}
+              </Badge>
+            ) : null}
+            {!row.isCash && (row.score !== undefined || Boolean(onEvaluateScore)) && (
+              onEvaluateScore ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEvaluateScore(row.assetId, row.ticker);
+                  }}
+                  aria-label={`Avaliar nota de ${row.ticker}`}
+                  className="shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <Badge
+                    variant={
+                      row.score == null
+                        ? "muted"
+                        : row.score >= 7
+                          ? "positive"
+                          : row.score >= 4
+                            ? "warning"
+                            : "negative"
+                    }
+                    size="xs"
+                  >
+                    {row.score != null ? `Nota ${row.score}` : "Sem nota"}
+                  </Badge>
+                </button>
+              ) : (
+                <Badge
+                  variant={
+                    row.score == null
+                      ? "muted"
+                      : row.score >= 7
+                        ? "positive"
+                        : row.score >= 4
+                          ? "warning"
+                          : "negative"
+                  }
+                  size="xs"
+                >
+                  {row.score != null ? `Nota ${row.score}` : "Sem nota"}
+                </Badge>
+              )
+            )}
+            {!row.isCash && row.allocationStatus && row.allocationStatus !== "active" ? (
+              <Badge
+                variant={
+                  row.allocationStatus === "exit"
+                    ? "negative"
+                    : row.allocationStatus === "quarantine"
+                      ? "warning"
+                      : "muted"
+                }
+                size="xs"
+              >
+                {row.allocationStatus === "exit"
+                  ? "Saída"
+                  : row.allocationStatus === "quarantine"
+                    ? "Quarentena"
+                    : "Manter"}
               </Badge>
             ) : null}
           </div>

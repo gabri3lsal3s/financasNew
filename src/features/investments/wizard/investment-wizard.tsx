@@ -10,28 +10,28 @@ import { inferSectorFromTicker, type AporteSuggestionItem } from "@/domain/portf
 import { resolveDividendDate, resolveDividendNote } from "@/domain/portfolio/dividends";
 import { buildInitialPositionOperations } from "@/domain/portfolio/operations";
 import {
-  useAllocationTargets,
+  invalidatePortfolioSuite,
   useCreatePortfolioAsset,
   useCreatePortfolioContribution,
   useCreatePortfolioTransaction,
+  useEmergencyFundComposition,
   useGroupTargets,
   usePortfolioAssets,
   usePortfolioPosition,
   useRecordOrder,
-  useSaveAllocationTargets,
   useSetManualPrice,
   useFamilyMode,
   useMyFamily,
 } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import type { AllocationTargetInput, FixedIncomeMetadata, PortfolioAsset } from "@/types";
+import type { FixedIncomeMetadata, PortfolioAsset } from "@/types";
+import { buildEmergencyConfigWithAssetToggle } from "../components/emergency-fund-sync";
 
-
+import { StepGovernance } from "./step-governance";
 import { StepNewPosition } from "./step-new-position";
 import { StepOrder } from "./step-order";
 import { StepReview } from "./step-review";
 import { StepSelect } from "./step-select";
-import { StepTarget } from "./step-target";
 import {
   canProceed,
   defaultWizardState,
@@ -73,24 +73,26 @@ function InvestmentWizardContent({
   const queryClient = useQueryClient();
   const assetsQuery = usePortfolioAssets();
   const position = usePortfolioPosition();
-  const targetsQuery = useAllocationTargets();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
   const createAsset = useCreatePortfolioAsset();
   const createTransaction = useCreatePortfolioTransaction();
   const createContribution = useCreatePortfolioContribution();
   const recordOrder = useRecordOrder();
-  const saveTargets = useSaveAllocationTargets();
   const setManualPrice = useSetManualPrice();
+  const emergencyFund = useEmergencyFundComposition();
   const { isFamilyModeEnabled } = useFamilyMode();
   const { data: myFamilyData } = useMyFamily();
 
   const existingAssets = assetsQuery.data ?? [];
-  const targets = targetsQuery.data ?? [];
   const classTargets = classTargetsQuery.data ?? [];
+  const rawSectorTargets = sectorTargetsQuery.data ?? [];
   const classes = [...new Set(position.rows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
 
-  const sectorTargets = (sectorTargetsQuery.data ?? []).flatMap((st) => {
+  const sectorTargets = rawSectorTargets.flatMap((st) => {
+    if (st.class_name && st.class_name.trim().length > 0) {
+      return [{ className: st.class_name, sectorName: st.name, target_percentage: st.target_percentage }];
+    }
     const matchedClasses = classes.filter((cls) => {
       const inAssets = position.rows.some((r) => r.assetClass === cls && (r.sector === st.name || inferSectorFromTicker(r.ticker, cls) === st.name));
       return inAssets;
@@ -415,6 +417,15 @@ function InvestmentWizardContent({
           is_family: isFamilyModeEnabled ? state.isFamily : false,
           family_id: isFamilyModeEnabled && state.isFamily ? (myFamilyData?.family?.id ?? null) : null,
           notes: finalNotes,
+          score: isCash ? null : state.score,
+          allocation_status: isCash ? "active" : state.allocationStatus,
+          score_criteria:
+            !isCash && Object.keys(state.scoreCriteria ?? {}).length > 0
+              ? state.scoreCriteria
+              : null,
+          thesis_summary: !isCash && state.thesisSummary.trim() ? state.thesisSummary.trim() : null,
+          review_frequency_months: !isCash ? (state.reviewFrequencyMonths ?? 6) : undefined,
+          last_reviewed_at: !isCash && state.score !== null ? new Date().toISOString() : null,
         });
 
         // Registra a transação inicial de compra no ledger e o aporte correspondente
@@ -450,27 +461,23 @@ function InvestmentWizardContent({
           });
         }
 
-        // Se foi definida meta de alocação % para o novo ativo, salva no repositório
-        if (state.targetPercentage !== null && state.targetPercentage > 0) {
-          const currentTargets: AllocationTargetInput[] = targets.map((t) => ({
-            assetId: t.asset_id,
-            target: t.target_percentage,
-          }));
-          await saveTargets.mutateAsync([
-            ...currentTargets.filter((t) => t.assetId !== newAsset.id),
-            { assetId: newAsset.id, target: state.targetPercentage },
-          ]);
+        // Sincroniza Reserva de Emergência para títulos de Renda Fixa elegíveis
+        if (isFixedIncome && !isCash && state.isEmergencyFund && newAsset?.id) {
+          const nextConfig = buildEmergencyConfigWithAssetToggle({
+            config: emergencyFund.config,
+            portfolioRows: emergencyFund.portfolioRows,
+            breakdownAssetIds: emergencyFund.composition.breakdown
+              .filter((b) => b.type === "asset")
+              .map((b) => b.id),
+            assetId: newAsset.id,
+            include: true,
+          });
+          await emergencyFund.updateConfig(nextConfig);
         }
       }
 
       if (queryClient) {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ["portfolio"] }),
-          queryClient.invalidateQueries({ queryKey: ["group-targets"] }),
-          queryClient.invalidateQueries({ queryKey: ["allocation-targets"] }),
-          queryClient.invalidateQueries({ queryKey: ["accounts"] }),
-          queryClient.invalidateQueries({ queryKey: ["transactions"] }),
-        ]);
+        await invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
       }
 
       onSuccess?.();
@@ -567,6 +574,7 @@ function InvestmentWizardContent({
       quantityStr: formattedQty,
       totalCents,
       syncCash: suggestedQty > 0,
+      recordContribution: suggestedQty <= 0,
     }));
   };
 
@@ -575,7 +583,7 @@ function InvestmentWizardContent({
     createTransaction.isPending ||
     createContribution.isPending ||
     recordOrder.isPending ||
-    saveTargets.isPending;
+    emergencyFund.isUpdating;
 
   const getModalTitle = () => {
     if (state.mode === "sell") return `Vender · ${state.ticker || "Investimento"}`;
@@ -694,7 +702,6 @@ function InvestmentWizardContent({
               onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
               existingAssets={existingAssets}
               assetRows={position.rows}
-              targets={targets}
               classTargets={classTargets}
               sectorTargets={sectorTargets}
               totalPortfolioBRL={position.totalBRL}
@@ -753,8 +760,8 @@ function InvestmentWizardContent({
               onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
               existingAssets={existingAssets}
               assetRows={position.rows}
-              targets={targets}
               classTargets={classTargets}
+              sectorTargets={sectorTargets}
               totalPortfolioBRL={position.totalBRL}
               cashAvailableBRL={cashAsset?.quantity ?? 0}
               onSelectResult={(res) => {
@@ -784,12 +791,14 @@ function InvestmentWizardContent({
             />
           )}
 
-          {/* Passo 3 do Novo Ativo: Meta de Alocação */}
+          {/* Passo 3 do Novo Ativo: Governança (Nota & Status) */}
           {state.mode === "new_asset" && state.step === 3 && (
-            <StepTarget
+            <StepGovernance
               state={state}
               onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
-              targets={targets}
+              existingAssets={existingAssets}
+              classTargets={classTargets}
+              sectorTargets={rawSectorTargets}
             />
           )}
 

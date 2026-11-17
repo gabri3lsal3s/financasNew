@@ -69,7 +69,8 @@ const SUMMARY_LABELS: Record<string, string> = {
   reminder_states: "Lembretes",
   portfolio_assets: "Ativos",
   portfolio_transactions: "Lançamentos de ativos",
-  allocation_targets: "Metas de alocação",
+  class_targets: "Metas por classe",
+  sector_targets: "Metas por setor",
   asset_prices: "Cotações manuais",
   user_preferences: "Preferências",
 };

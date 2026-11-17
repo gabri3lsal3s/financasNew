@@ -1,7 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InvestmentWizard } from "./investment-wizard";
-import type { PortfolioAsset } from "@/types";
+import type { GroupTarget, PortfolioAsset } from "@/types";
 
 const mockAsset: PortfolioAsset = {
   id: "asset-1",
@@ -14,9 +14,27 @@ const mockAsset: PortfolioAsset = {
   notes: "Petrobras PN",
 };
 
-let mockTargets = [{ asset_id: "asset-1", target_percentage: 20 }];
+const secondAsset: PortfolioAsset = {
+  id: "asset-2",
+  user_id: "user-1",
+  ticker: "TESOURO",
+  asset_class: "Renda Fixa",
+  currency: "BRL",
+  quantity: 1,
+  average_price: 3000,
+  notes: "Tesouro Selic",
+};
+
+let mockClassTargets: GroupTarget[] = [
+  { id: "gt-1", user_id: "user-1", group_type: "class", name: "Ações", target_percentage: 20 },
+];
 let mockAssetsList: PortfolioAsset[] = [mockAsset];
+let mockPositionRows = [
+  { assetId: "asset-1", ticker: "PETR4", valueBRL: 1000, pct: 20, assetClass: "Ações", priceBRL: 50 },
+];
 const mockRecordOrder = vi.fn().mockResolvedValue({ success: true });
+const mockCreateAsset = vi.fn().mockResolvedValue({ id: "new-asset-id", ticker: "WEGE3" });
+const mockUpdateEmergencyConfig = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
@@ -50,30 +68,21 @@ vi.mock("@/state", () => ({
     totalBRL: 5000,
     cashBRL: 1000,
     investedBRL: 4000,
-    rows: [{ assetId: "asset-1", ticker: "PETR4", valueBRL: 1000, pct: 20, assetClass: "Ações", priceBRL: 50 }],
+    rows: mockPositionRows,
     isLoading: false,
     error: null,
   }),
-  useAllocationTargets: () => ({
-    data: mockTargets,
-    isLoading: false,
-    error: null,
-  }),
-  useGroupTargets: () => ({
-    data: [],
+  useGroupTargets: (groupType: "class" | "sector") => ({
+    data: groupType === "class" ? mockClassTargets : [],
     isLoading: false,
     error: null,
   }),
   useCreatePortfolioAsset: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({ id: "new-asset-id", ticker: "WEGE3" }),
+    mutateAsync: mockCreateAsset,
     isPending: false,
   }),
   useRecordOrder: () => ({
     mutateAsync: mockRecordOrder,
-    isPending: false,
-  }),
-  useSaveAllocationTargets: () => ({
-    mutateAsync: vi.fn().mockResolvedValue(true),
     isPending: false,
   }),
   useSetManualPrice: () => ({
@@ -88,11 +97,46 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn().mockResolvedValue({ id: "cb1" }),
     isPending: false,
   }),
+  useEmergencyFundComposition: () => ({
+    composition: {
+      totalReserveCents: 0,
+      cashInAccountsCents: 0,
+      portfolioReserveCents: 0,
+      breakdown: [],
+      warnings: [],
+      targetMonths: 6,
+      targetMonthsProgressPercent: 0,
+      targetMonthsCents: 0,
+    },
+    config: {
+      includeCheckingAccounts: true,
+      selectionMode: "auto_cash",
+      selectedAssetIds: [],
+      selectedClasses: [],
+      useNetValue: true,
+      targetMonths: 6,
+    },
+    updateConfig: mockUpdateEmergencyConfig,
+    isLoading: false,
+    isUpdating: false,
+    portfolioRows: [],
+  }),
+  invalidatePortfolioSuite: vi.fn().mockResolvedValue(undefined),
   useFamilyMode: () => ({ isFamilyModeEnabled: false, toggleFamilyMode: vi.fn() }),
   useMyFamily: () => ({ data: null, isLoading: false, isError: false }),
 }));
 
-describe("InvestmentWizard (Fase 41)", () => {
+describe("InvestmentWizard (Fase 41 / Plano 42)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAssetsList = [mockAsset];
+    mockPositionRows = [
+      { assetId: "asset-1", ticker: "PETR4", valueBRL: 1000, pct: 20, assetClass: "Ações", priceBRL: 50 },
+    ];
+    mockClassTargets = [
+      { id: "gt-1", user_id: "user-1", group_type: "class", name: "Ações", target_percentage: 20 },
+    ];
+  });
   it("renderiza o passo inicial de seleção com autocomplete e sugestões", () => {
     render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
     expect(screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i)).toBeInTheDocument();
@@ -153,8 +197,15 @@ describe("InvestmentWizard (Fase 41)", () => {
   });
 
   it("deixa quantidade vazia ao selecionar ativo sugerido quando não há saldo em caixa", () => {
-    mockTargets = [{ asset_id: "asset-1", target_percentage: 80 }];
-    mockAssetsList = [mockAsset]; // Sem ativo de CAIXA
+    mockClassTargets = [
+      { id: "gt-1", user_id: "user-1", group_type: "class", name: "Ações", target_percentage: 80 },
+      { id: "gt-2", user_id: "user-1", group_type: "class", name: "Renda Fixa", target_percentage: 20 },
+    ];
+    mockAssetsList = [mockAsset, secondAsset]; // Sem ativo de CAIXA; PETR4 está em 25% contra meta 80%
+    mockPositionRows = [
+      { assetId: "asset-1", ticker: "PETR4", valueBRL: 1000, pct: 25, assetClass: "Ações", priceBRL: 50 },
+      { assetId: "asset-2", ticker: "TESOURO", valueBRL: 3000, pct: 75, assetClass: "Renda Fixa", priceBRL: 3000 },
+    ];
 
     render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
     expect(screen.getByText("Sugeridos para rebalanceamento")).toBeInTheDocument();
@@ -170,7 +221,10 @@ describe("InvestmentWizard (Fase 41)", () => {
   });
 
   it("sugere cotas limitadas ao caixa quando há saldo em caixa disponível", () => {
-    mockTargets = [{ asset_id: "asset-1", target_percentage: 80 }];
+    mockClassTargets = [
+      { id: "gt-1", user_id: "user-1", group_type: "class", name: "Ações", target_percentage: 80 },
+      { id: "gt-2", user_id: "user-1", group_type: "class", name: "Renda Fixa", target_percentage: 20 },
+    ];
     const cashAsset: PortfolioAsset = {
       id: "cash-1",
       user_id: "user-1",
@@ -180,7 +234,11 @@ describe("InvestmentWizard (Fase 41)", () => {
       quantity: 150, // R$ 150 em caixa
       average_price: 1,
     };
-    mockAssetsList = [mockAsset, cashAsset]; // PETR4 custa R$ 50 no mock, logo 150 / 50 = 3 cotas
+    mockAssetsList = [mockAsset, secondAsset, cashAsset]; // PETR4 custa R$ 50 no mock, logo 150 / 50 = 3 cotas
+    mockPositionRows = [
+      { assetId: "asset-1", ticker: "PETR4", valueBRL: 1000, pct: 25, assetClass: "Ações", priceBRL: 50 },
+      { assetId: "asset-2", ticker: "TESOURO", valueBRL: 3000, pct: 75, assetClass: "Renda Fixa", priceBRL: 3000 },
+    ];
 
     render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
     expect(screen.getByText("Sugeridos para rebalanceamento")).toBeInTheDocument();
@@ -196,7 +254,10 @@ describe("InvestmentWizard (Fase 41)", () => {
   });
 
   it("permite editar a quantidade após sugestão e submete total = parsedQty * price", async () => {
-    mockTargets = [{ asset_id: "asset-1", target_percentage: 80 }];
+    mockClassTargets = [
+      { id: "gt-1", user_id: "user-1", group_type: "class", name: "Ações", target_percentage: 80 },
+      { id: "gt-2", user_id: "user-1", group_type: "class", name: "Renda Fixa", target_percentage: 20 },
+    ];
     const cashAsset: PortfolioAsset = {
       id: "cash-1",
       user_id: "user-1",
@@ -206,7 +267,11 @@ describe("InvestmentWizard (Fase 41)", () => {
       quantity: 500, // R$ 500 em caixa
       average_price: 1,
     };
-    mockAssetsList = [mockAsset, cashAsset];
+    mockAssetsList = [mockAsset, secondAsset, cashAsset];
+    mockPositionRows = [
+      { assetId: "asset-1", ticker: "PETR4", valueBRL: 1000, pct: 25, assetClass: "Ações", priceBRL: 50 },
+      { assetId: "asset-2", ticker: "TESOURO", valueBRL: 3000, pct: 75, assetClass: "Renda Fixa", priceBRL: 3000 },
+    ];
 
     render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
     const suggestionCard = screen.getByText("PETR4").closest("button");
@@ -236,7 +301,10 @@ describe("InvestmentWizard (Fase 41)", () => {
   });
 
   it("calcula e preenche quantidade fracionária precisa para ativo do Tesouro Direto ou Cripto", () => {
-    mockTargets = [{ asset_id: "asset-1", target_percentage: 80 }];
+    mockClassTargets = [
+      { id: "gt-1", user_id: "user-1", group_type: "class", name: "Cripto", target_percentage: 80 },
+      { id: "gt-2", user_id: "user-1", group_type: "class", name: "Renda Fixa", target_percentage: 20 },
+    ];
     const cryptoAsset: PortfolioAsset = {
       ...mockAsset,
       asset_class: "Cripto",
@@ -250,7 +318,11 @@ describe("InvestmentWizard (Fase 41)", () => {
       quantity: 25, // R$ 25 em caixa, insuficiente para 1 cota inteira (R$ 50)
       average_price: 1,
     };
-    mockAssetsList = [cryptoAsset, cashAsset];
+    mockAssetsList = [cryptoAsset, secondAsset, cashAsset];
+    mockPositionRows = [
+      { assetId: "asset-1", ticker: "PETR4", valueBRL: 1000, pct: 25, assetClass: "Cripto", priceBRL: 50 },
+      { assetId: "asset-2", ticker: "TESOURO", valueBRL: 3000, pct: 75, assetClass: "Renda Fixa", priceBRL: 3000 },
+    ];
 
     render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
     // Com caixa de R$ 25 e preço de R$ 50, ativo fracionário cabe no caixa (0.5 cota)
@@ -282,5 +354,85 @@ describe("InvestmentWizard (Fase 41)", () => {
 
     expect(screen.getByText("Total Investido na Ordem")).toBeInTheDocument();
     expect(screen.getAllByText(/750,00/).length).toBeGreaterThan(0);
+  });
+
+  it("cria novo ativo passando pelo Passo 3 de Governança (Nota 0-10 e Status) e salva sem allocation_targets (§Plano 42)", async () => {
+    render(<InvestmentWizard open={true} onOpenChange={vi.fn()} />);
+    const searchInput = screen.getByPlaceholderText(/Ex: PETR4, MXRF11/i);
+    fireEvent.change(searchInput, { target: { value: "WEGE3" } });
+
+    const option = screen.getByText(/WEGE3/i).closest("button");
+    expect(option).toBeTruthy();
+    fireEvent.click(option!);
+
+    // Passo 2: Posição Inicial
+    const qtyInput = screen.getByLabelText(/Quantidade Inicial de Cotas/i);
+    fireEvent.change(qtyInput, { target: { value: "10" } });
+    const priceInput = screen.getByLabelText(/Preço Médio/i);
+    fireEvent.change(priceInput, { target: { value: "4000" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar$/i }));
+
+    // Passo 3: Governança (Nota & Status)
+    expect(screen.getByText(/Nota de Convicção \(0 a 10\)/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Nota 9" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar$/i }));
+
+    // Passo 4: Revisão
+    expect(screen.getByText(/Nota 9\/10/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar Operação/i }));
+
+    await waitFor(() => {
+      expect(mockCreateAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ticker: "WEGE3",
+          score: 9,
+          allocation_status: "active",
+        }),
+      );
+    });
+  });
+
+  it("permite alternar FundingSourceSelector entre Dinheiro Novo (Bolso) e Caixa na compra", () => {
+    const cashAsset: PortfolioAsset = {
+      id: "cash-1",
+      user_id: "user-1",
+      ticker: "CAIXA",
+      asset_class: "Caixa",
+      currency: "BRL",
+      quantity: 1000,
+      average_price: 1,
+    };
+    mockAssetsList = [mockAsset, cashAsset];
+
+    render(
+      <InvestmentWizard
+        open={true}
+        initialAsset={mockAsset}
+        initialMode="buy"
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    // Padrão: Bolso selecionado (syncCash=false, recordContribution=true)
+    const pocketRadio = screen.getByRole("radio", { name: /Dinheiro Novo \(Bolso\)/i });
+    const cashRadio = screen.getByRole("radio", { name: /Saldo da Corretora \(Caixa\)/i });
+    expect(pocketRadio).toHaveAttribute("aria-checked", "true");
+    expect(cashRadio).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(cashRadio);
+    expect(cashRadio).toHaveAttribute("aria-checked", "true");
+
+    const qtyInput = screen.getByLabelText(/Quantidade de Cotas/i);
+    fireEvent.change(qtyInput, { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar Operação/i }));
+
+    expect(mockRecordOrder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        syncCash: true,
+        recordContribution: false,
+      }),
+    );
   });
 });
