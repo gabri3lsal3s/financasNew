@@ -73,7 +73,6 @@ export const RESTORE_MODULES: readonly RestoreModuleMeta[] = [
       "portfolio_snapshots",
       "portfolio_contributions",
       "portfolio_dividends",
-      "allocation_targets",
       "class_targets",
       "sector_targets",
       "asset_prices",
@@ -208,8 +207,14 @@ export function isRecordDuplicate(
         normalizeAmountCents(backup.amount) === normalizeAmountCents(existing.amount)
       );
 
-    case "allocation_targets":
-      return String(backup.asset_id ?? "") === String(existing.asset_id ?? "");
+    case "class_targets":
+      return normalizeStr(backup.name) === normalizeStr(existing.name);
+
+    case "sector_targets":
+      return (
+        normalizeStr(backup.class_name ?? "Ações") === normalizeStr(existing.class_name ?? "Ações") &&
+        normalizeStr(backup.name) === normalizeStr(existing.name)
+      );
 
     case "user_preferences":
       return true; // Preferências do usuário: se já existe, é o mesmo registro

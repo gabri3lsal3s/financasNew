@@ -16,7 +16,6 @@ const tableData: Record<string, unknown[]> = {
   reminder_states: [],
   portfolio_assets: [],
   portfolio_transactions: [],
-  allocation_targets: [],
   class_targets: [],
   sector_targets: [],
   asset_prices: [],

@@ -270,12 +270,12 @@ describe("Hierarquia Classe -> Setor -> Ativo & Fracionamento Internacional (Fas
     expect(result.skippedAssets).toContainEqual(expect.objectContaining({ ticker: "ACIMA_META", reason: "above_target" }));
   });
 
-  it("não sugere aporte para ativo com meta individual explicitamente zerada (targetPercentage = 0)", () => {
+  it("não sugere aporte para ativo em status neutral ou com nota 0 (Plano 42)", () => {
     const assets: AporteAssetInput[] = [
-      // Ativo A com meta individual explicitamente 0%
-      asset({ id: "a", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 0, priceBRL: 30, targetPercentage: 0 }),
-      // Ativo B com meta individual de 10%
-      asset({ id: "b", ticker: "VALE3", assetClass: "Ações", currentValueBRL: 0, priceBRL: 50, targetPercentage: 10 }),
+      // Ativo A em status neutral (manter em carteira, sem novos aportes)
+      asset({ id: "a", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 0, priceBRL: 30, score: 8, allocation_status: "neutral" }),
+      // Ativo B ativo elegível
+      asset({ id: "b", ticker: "VALE3", assetClass: "Ações", currentValueBRL: 0, priceBRL: 50, score: 8, allocation_status: "active" }),
     ];
 
     const result = simulateCombinedAporte({
@@ -284,10 +284,10 @@ describe("Hierarquia Classe -> Setor -> Ativo & Fracionamento Internacional (Fas
       classTargets: [{ className: "Ações", targetPercentage: 100 }],
     });
 
-    // Apenas VALE3 deve receber aporte, PETR4 tem meta individual 0% e deve ser ignorado
+    // Apenas VALE3 deve receber aporte; PETR4 neutro é pulado com motivo "neutral"
     expect(result.routes.map((r) => r.ticker)).toEqual(["VALE3"]);
     expect(result.routes.find((r) => r.ticker === "PETR4")).toBeUndefined();
-    expect(result.skippedAssets).toContainEqual(expect.objectContaining({ ticker: "PETR4", reason: "no_target" }));
+    expect(result.skippedAssets).toContainEqual(expect.objectContaining({ ticker: "PETR4", reason: "neutral" }));
   });
 
   it("não sugere aporte para ativo pertencente a setor com meta explicitamente zerada (0%)", () => {
@@ -335,12 +335,12 @@ describe("Hierarquia Classe -> Setor -> Ativo & Fracionamento Internacional (Fas
     expect(result.totalAllocated).toBe(1000);
   });
 
-  it("respeita teto individual estrito e distribui o restante do setor para outro ativo", () => {
+  it("distribui proporcionalmente dentro do setor usando notas de convicção (Nota 1 vs Nota 9) e enriquece rotas", () => {
     const assets: AporteAssetInput[] = [
-      // Ativo com meta individual de 10% (em patrimônio de 1000 = R$ 100)
-      asset({ id: "itub", ticker: "ITUB4", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 0, priceBRL: 20, targetPercentage: 10 }),
-      // Ativo com meta individual de 90% (em patrimônio de 1000 = R$ 900)
-      asset({ id: "bbas", ticker: "BBAS3", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 0, priceBRL: 25, targetPercentage: 90 }),
+      // Nota 1 => peso 1/10 = 10% do setor (R$ 100)
+      asset({ id: "itub", ticker: "ITUB4", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 0, priceBRL: 20, score: 1 }),
+      // Nota 9 => peso 9/10 = 90% do setor (R$ 900)
+      asset({ id: "bbas", ticker: "BBAS3", assetClass: "Ações", sector: "Financeiro / Bancos", currentValueBRL: 0, priceBRL: 25, score: 9 }),
     ];
 
     const result = simulateCombinedAporte({
@@ -351,8 +351,8 @@ describe("Hierarquia Classe -> Setor -> Ativo & Fracionamento Internacional (Fas
 
     const itub = result.routes.find((r) => r.ticker === "ITUB4");
     const bbas = result.routes.find((r) => r.ticker === "BBAS3");
-    expect(itub).toMatchObject({ quantity: 5, allocatedBRL: 100 });
-    expect(bbas).toMatchObject({ quantity: 36, allocatedBRL: 900 });
+    expect(itub).toMatchObject({ quantity: 5, allocatedBRL: 100, rawScore: 1, effectiveTargetPct: 10 });
+    expect(bbas).toMatchObject({ quantity: 36, allocatedBRL: 900, rawScore: 9, effectiveTargetPct: 90 });
     expect(result.totalAllocated).toBe(1000);
   });
 
@@ -866,24 +866,27 @@ describe("Auditoria de Invariantes & Teste de Estresse Multi-Nível (Classe -> S
 
     it("executa transbordamento de sobra de setor caro para outro setor mais acessível da mesma classe", () => {
       const assets = [
-        // Setor 1: Ativo caro (preço R$ 800) em setor com meta 30% da classe (orçado em R$ 300)
-        asset({ id: "caro", ticker: "CARO3", assetClass: "Ações", sector: "Setor Caro", currentValueBRL: 0, priceBRL: 800 }),
-        // Setor 2: Ativos com gap suficiente para absorver a verba do setor e o transbordamento
-        asset({ id: "barato1", ticker: "BARATO1", assetClass: "Ações", sector: "Setor Barato", currentValueBRL: 0, priceBRL: 25, targetPercentage: 50 }),
-        asset({ id: "barato2", ticker: "BARATO2", assetClass: "Ações", sector: "Setor Barato", currentValueBRL: 0, priceBRL: 20, targetPercentage: 50 }),
+        // Renda Fixa já está acima da meta (1.000 vs 30% de 2.000 = 600), logo 100% dos 1.000 do aporte vai para Ações
+        asset({ id: "rf", ticker: "TESOURO SELIC", assetClass: "Renda Fixa", currentValueBRL: 1000, priceBRL: 1000 }),
+        // Setor Caro: 25% de Ações (350 de 2.000), mas preço R$ 800 > orçamento de R$ 250
+        asset({ id: "caro", ticker: "CARO3", assetClass: "Ações", sector: "Setor Caro", currentValueBRL: 0, priceBRL: 800, score: 5 }),
+        // Setor Barato: 75% de Ações (1.050 de 2.000 -> 525 de gap cada, total R$ 1.050)
+        asset({ id: "barato1", ticker: "BARATO1", assetClass: "Ações", sector: "Setor Barato", currentValueBRL: 0, priceBRL: 25, score: 5 }),
+        asset({ id: "barato2", ticker: "BARATO2", assetClass: "Ações", sector: "Setor Barato", currentValueBRL: 0, priceBRL: 20, score: 5 }),
       ];
 
-      // Aporte de R$ 1.000:
-      // Setor Caro orçado em R$ 300 -> não compra 1 cota de R$ 800 (sobra R$ 300)
-      // A sobra de R$ 300 transborda no Pass 2 para o Setor Barato, que tem R$ 800 de gap (400 + 400)
-      // Setor Barato absorve seu orçamento inicial (R$ 700) + a sobra transbordada (R$ 300) = R$ 1.000
+      // Aporte R$ 1.000:
+      // Setor Barato recebe inicialmente ~R$ 750 e, no Pass 2, absorve os R$ 250 não gastos em Setor Caro -> R$ 1.000 totais!
       const result = simulateCombinedAporte({
         aporte: 1000,
         assets,
-        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        classTargets: [
+          { className: "Renda Fixa", targetPercentage: 30 },
+          { className: "Ações", targetPercentage: 70 },
+        ],
         sectorTargets: [
-          { className: "Ações", sectorName: "Setor Caro", targetPercentage: 30 },
-          { className: "Ações", sectorName: "Setor Barato", targetPercentage: 70 },
+          { className: "Ações", sectorName: "Setor Caro", targetPercentage: 25 },
+          { className: "Ações", sectorName: "Setor Barato", targetPercentage: 75 },
         ],
       });
 
@@ -897,7 +900,7 @@ describe("Auditoria de Invariantes & Teste de Estresse Multi-Nível (Classe -> S
         expect.objectContaining({ ticker: "CARO3", reason: "price_exceeds_budget" }),
       );
 
-      // Baratos absorveram o orçamento inicial do setor (700) + a sobra transbordada do setor caro (300) = 1000
+      // Baratos absorveram o orçamento inicial do setor (~750) + a sobra transbordada (~250) = 1000
       expect(b1).toBeDefined();
       expect(b2).toBeDefined();
       expect(result.totalAllocated).toBe(1000);
@@ -1420,6 +1423,23 @@ describe("Auditoria de Invariantes & Teste de Estresse Multi-Nível (Classe -> S
       expect(result.totalAllocated).toBe(0);
       expect(result.leftover).toBe(5000);
       expect(result.skippedAssets.filter((s) => s.reason === "quarantine")).toHaveLength(2);
+    });
+
+    it("exclui saldo em CAIXA da base investível e das metas no simulateCombinedAporte (§Plano 42)", () => {
+      const assets: AporteAssetInput[] = [
+        asset({ id: "cash", ticker: "CAIXA", assetClass: "Caixa", currentValueBRL: 5000, priceBRL: 1 }),
+        asset({ id: "itub", ticker: "ITUB4", assetClass: "Ações", sector: "Bancos", currentValueBRL: 1000, priceBRL: 20, score: 8 }),
+      ];
+
+      const result = simulateCombinedAporte({
+        aporte: 1000,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      });
+
+      expect(result.routes.map((r) => r.ticker)).toEqual(["ITUB4"]);
+      expect(result.routes[0]).toMatchObject({ targetValueBRL: 2000, gapBRL: 1000, allocatedBRL: 1000 });
+      expect(result.skippedAssets.some((s) => s.ticker === "CAIXA")).toBe(false);
     });
   });
 });

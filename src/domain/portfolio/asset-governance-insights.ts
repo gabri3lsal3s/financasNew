@@ -166,12 +166,13 @@ export function generateAssetGovernanceInsights(params: {
     if (totalPortfolioBRL > 0 && score != null && score <= 4 && status !== "exit") {
       const allocationPct = Math.round(((asset.currentValueBRL / totalPortfolioBRL) * 100) * 10) / 10;
       if (allocationPct > 5.0) {
+        const formattedPct = allocationPct.toFixed(1).replace(".", ",");
         insights.push({
           id: `gov-lowscore-${asset.id}`,
           kind: "low_score_overweight",
           severity: "critical",
-          title: `Alerta de risco: ${asset.ticker} (${allocationPct}%)`,
-          description: `${asset.ticker} possui Nota baixa (${score}/10) mas representa ${allocationPct.toFixed(1)}% do patrimônio. Considere reduzir a exposição.`,
+          title: `Alerta de risco: ${asset.ticker} (${formattedPct}%)`,
+          description: `${asset.ticker} possui Nota baixa (${score}/10) mas representa ${formattedPct}% do patrimônio. Considere reduzir a exposição.`,
           assetId: asset.id,
           ticker: asset.ticker,
           assetClass: asset.assetClass,

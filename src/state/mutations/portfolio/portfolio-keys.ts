@@ -7,7 +7,6 @@ export const PORTFOLIO_QUERY_KEYS = {
   contributions: ["portfolio_contributions"] as const,
   dividends: ["portfolio_dividends"] as const,
   snapshots: ["portfolio_snapshots"] as const,
-  allocationTargets: ["allocation_targets"] as const,
   groupTargets: ["group_targets"] as const,
   portfolioPositions: ["portfolio_position"] as const,
   portfolioMonthlyPosition: ["portfolio_monthly_position"] as const,
@@ -47,7 +46,6 @@ export function invalidatePortfolioSuite(
 
   if (options.invalidateTargets !== false) {
     promises.push(
-      queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.allocationTargets }),
       queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.groupTargets }),
     );
   }

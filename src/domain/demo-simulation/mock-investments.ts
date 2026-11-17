@@ -1,6 +1,5 @@
 import { currentMonth, shiftMonth } from "@/lib/date";
 import type {
-  AllocationTarget,
   GroupTarget,
   PortfolioAsset,
   PortfolioContribution,
@@ -13,15 +12,15 @@ import type { InvestmentsDataset } from "./types";
 
 /**
  * Gera um dataset puro e em memória para a simulação de investimentos e rebalanceamento,
- * estruturando ativos com metas equilibradas por classe (Renda Fixa, Ações, FIIs, Cripto)
- * e histórico recente de evolução patrimonial.
+ * estruturando ativos com metas por classe, setores opcionais escopados, notas de convicção (0–10)
+ * e status operacionais de governança.
  */
 export function generateMockInvestments(referenceMonth: string = currentMonth()): InvestmentsDataset {
   const monthMinus2 = shiftMonth(referenceMonth, -2);
   const monthMinus1 = shiftMonth(referenceMonth, -1);
   const nowIso = new Date().toISOString();
 
-  // 1. Ativos de carteira diversificados
+  // 1. Ativos de carteira diversificados com governança por Nota (0–10) e Status
   const assets: PortfolioAsset[] = [
     {
       id: "asset-demo-tesouro",
@@ -32,6 +31,11 @@ export function generateMockInvestments(referenceMonth: string = currentMonth())
       currency: "BRL",
       quantity: 14,
       average_price: 1510.5,
+      score: 9,
+      allocation_status: "active",
+      last_reviewed_at: nowIso,
+      review_frequency_months: 12,
+      thesis_summary: "Reserva soberana pós-fixada com liquidez D+0 e menor risco de crédito.",
       fixed_income_metadata: {
         rate_type: "selic",
         rate_value: 100,
@@ -50,6 +54,11 @@ export function generateMockInvestments(referenceMonth: string = currentMonth())
       currency: "BRL",
       quantity: 9500,
       average_price: 1.0,
+      score: 7,
+      allocation_status: "active",
+      last_reviewed_at: nowIso,
+      review_frequency_months: 6,
+      thesis_summary: "Liquidez diária com prêmio de 10% acima do CDI e cobertura FGC.",
       fixed_income_metadata: {
         rate_type: "cdi",
         rate_value: 110,
@@ -70,6 +79,11 @@ export function generateMockInvestments(referenceMonth: string = currentMonth())
       average_price: 31.8,
       accumulated_dividends: 420.5,
       estimated_monthly_dividend_per_share: 0.28,
+      score: 9,
+      allocation_status: "active",
+      last_reviewed_at: nowIso,
+      review_frequency_months: 6,
+      thesis_summary: "ROE líder entre grandes bancos, eficiência operacional e dividendos recorrentes.",
       notes: "Banco consolidado de dividendos perenes",
       updated_at: nowIso,
     },
@@ -84,6 +98,11 @@ export function generateMockInvestments(referenceMonth: string = currentMonth())
       average_price: 64.2,
       accumulated_dividends: 310.2,
       estimated_monthly_dividend_per_share: 0.65,
+      score: 4,
+      allocation_status: "quarantine",
+      last_reviewed_at: nowIso,
+      review_frequency_months: 3,
+      thesis_summary: "Em revisão devido à desaceleração do ciclo siderúrgico chinês; aportes congelados.",
       notes: "Exportadora com forte geração de caixa",
       updated_at: nowIso,
     },
@@ -98,6 +117,11 @@ export function generateMockInvestments(referenceMonth: string = currentMonth())
       average_price: 162.0,
       accumulated_dividends: 890.0,
       estimated_monthly_dividend_per_share: 1.1,
+      score: 8,
+      allocation_status: "active",
+      last_reviewed_at: nowIso,
+      review_frequency_months: 6,
+      thesis_summary: "Ativos logísticos triple-A em raios estratégicos e vacância controlada.",
       notes: "Galpões logísticos de alto padrão",
       updated_at: nowIso,
     },
@@ -112,6 +136,11 @@ export function generateMockInvestments(referenceMonth: string = currentMonth())
       average_price: 102.5,
       accumulated_dividends: 1150.0,
       estimated_monthly_dividend_per_share: 1.05,
+      score: 7,
+      allocation_status: "active",
+      last_reviewed_at: nowIso,
+      review_frequency_months: 6,
+      thesis_summary: "CRIs high grade pós-fixados protegidos contra alta de juros.",
       notes: "Crédito imobiliário atrelado ao CDI",
       updated_at: nowIso,
     },
@@ -124,12 +153,17 @@ export function generateMockInvestments(referenceMonth: string = currentMonth())
       currency: "BRL",
       quantity: 0.045,
       average_price: 335000.0,
+      score: 8,
+      allocation_status: "active",
+      last_reviewed_at: nowIso,
+      review_frequency_months: 6,
+      thesis_summary: "Escassez programada e reserva descentralizada de longo prazo.",
       notes: "Reserva de valor descentralizada",
       updated_at: nowIso,
     },
   ];
 
-  // 2. Metas percentuais por classe (soma = 100%)
+  // 2. Metas percentuais por classe (soma = 100%) e setores opcionais escopados em FIIs
   const groupTargets: GroupTarget[] = [
     {
       id: "grp-demo-renda-fixa",
@@ -159,55 +193,25 @@ export function generateMockInvestments(referenceMonth: string = currentMonth())
       name: "Cripto",
       target_percentage: 10,
     },
-  ];
-
-  // 3. Metas percentuais por ativo (soma = 100%)
-  const allocationTargets: AllocationTarget[] = [
     {
-      id: "tgt-demo-tesouro",
+      id: "grp-demo-fii-logistica",
       user_id: DEMO_USER_ID,
-      asset_id: "asset-demo-tesouro",
-      target_percentage: 25,
+      group_type: "sector",
+      class_name: "FIIs",
+      name: "Logística",
+      target_percentage: 60,
     },
     {
-      id: "tgt-demo-cdb",
+      id: "grp-demo-fii-papel",
       user_id: DEMO_USER_ID,
-      asset_id: "asset-demo-cdb",
-      target_percentage: 15,
-    },
-    {
-      id: "tgt-demo-itub4",
-      user_id: DEMO_USER_ID,
-      asset_id: "asset-demo-itub4",
-      target_percentage: 15,
-    },
-    {
-      id: "tgt-demo-vale3",
-      user_id: DEMO_USER_ID,
-      asset_id: "asset-demo-vale3",
-      target_percentage: 10,
-    },
-    {
-      id: "tgt-demo-hglg11",
-      user_id: DEMO_USER_ID,
-      asset_id: "asset-demo-hglg11",
-      target_percentage: 15,
-    },
-    {
-      id: "tgt-demo-kncr11",
-      user_id: DEMO_USER_ID,
-      asset_id: "asset-demo-kncr11",
-      target_percentage: 10,
-    },
-    {
-      id: "tgt-demo-btc",
-      user_id: DEMO_USER_ID,
-      asset_id: "asset-demo-btc",
-      target_percentage: 10,
+      group_type: "sector",
+      class_name: "FIIs",
+      name: "Papel e Crédito",
+      target_percentage: 40,
     },
   ];
 
-  // 4. Snapshots mensais (últimos 3 meses para curva patrimonial crescente)
+  // 3. Snapshots mensais (últimos 3 meses para curva patrimonial crescente)
   const snapshots: PortfolioSnapshot[] = [
     {
       id: "snap-demo-m2",
@@ -301,7 +305,6 @@ export function generateMockInvestments(referenceMonth: string = currentMonth())
     assets,
     transactions,
     groupTargets,
-    allocationTargets,
     snapshots,
     contributions,
     dividends,

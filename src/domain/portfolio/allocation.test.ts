@@ -10,7 +10,6 @@ import {
   groupAssetsByClassAndSector,
   mirrorCurrentPositionTargets,
   parseTargetInput,
-  sanitizeTargetsForSave,
   targetsSum,
   validateClassSectorTargetsSum,
   validateTargetsSum,
@@ -78,35 +77,6 @@ describe("domain/portfolio/allocation (§3.11.1)", () => {
     });
   });
 
-  describe("sanitizeTargetsForSave", () => {
-    it("arredonda todos os valores para 2 casas e preserva soma <= 100", () => {
-      const input = [
-        { assetId: "a1", target: 33.33333 },
-        { assetId: "a2", target: 33.33333 },
-        { assetId: "a3", target: 33.33334 },
-      ];
-      const result = sanitizeTargetsForSave(input);
-      expect(result).toEqual([
-        { assetId: "a1", target: 33.33 },
-        { assetId: "a2", target: 33.33 },
-        { assetId: "a3", target: 33.33 },
-      ]);
-      const sum = result.reduce((acc, t) => acc + t.target, 0);
-      expect(sum).toBeLessThanOrEqual(100);
-    });
-
-    it("absorve resíduo que ultrapassaria 100% no último item positivo", () => {
-      const input = [
-        { assetId: "a1", target: 50.005 }, // -> 50.01
-        { assetId: "a2", target: 50.005 }, // -> 50.01 (soma = 100.02)
-      ];
-      const result = sanitizeTargetsForSave(input);
-      const sum = result.reduce((acc, t) => acc + t.target, 0);
-      expect(sum).toBe(100);
-      expect(result[1]?.target).toBe(49.99);
-    });
-  });
-
   describe("distributeEquallyTargets (1/N)", () => {
     it("distribui 100% perfeitamente em 4 itens (25% cada)", () => {
       const items = [{ id: "1" }, { id: "2" }, { id: "3" }, { id: "4" }];
@@ -157,18 +127,18 @@ describe("domain/portfolio/allocation (§3.11.1)", () => {
   });
 
   describe("calculateAssetAllocationDelta", () => {
-    it("calcula delta positivo quando alvo > atual (precisa de aporte)", () => {
+    it("calcula delta positivo quando alvo > atual (precisa de aporte) em pt-BR", () => {
       const delta = calculateAssetAllocationDelta(5.2, 10.0);
       expect(delta.deltaPct).toBe(4.8);
       expect(delta.isUnderallocated).toBe(true);
-      expect(delta.formattedDelta).toBe("+4.8%");
+      expect(delta.formattedDelta).toBe("+4,8%");
     });
 
-    it("calcula delta negativo ou zero quando alvo <= atual", () => {
+    it("calcula delta negativo ou zero quando alvo <= atual em pt-BR", () => {
       const delta = calculateAssetAllocationDelta(12.5, 10.0);
       expect(delta.deltaPct).toBe(-2.5);
       expect(delta.isUnderallocated).toBe(false);
-      expect(delta.formattedDelta).toBe("-2.5%");
+      expect(delta.formattedDelta).toBe("-2,5%");
     });
   });
 
@@ -325,7 +295,65 @@ describe("domain/portfolio/allocation (§3.11.1)", () => {
 
       expect(res).toHaveLength(2);
       expect(res[0]?.effectiveTargetPct).toBe(15);
+      expect(res[0]?.sectorTargetPctInClass).toBeNull();
       expect(res[1]?.effectiveTargetPct).toBe(15);
+      expect(res[1]?.formulaLabel).toContain("30,0% Classe");
+    });
+
+    it("exclui Caixa das metas efetivas e isola setores homônimos entre classes", () => {
+      const assets = [
+        { id: "cash", ticker: "CAIXA", assetClass: "Caixa", score: 10, allocation_status: "active" as const },
+        { id: "a1", ticker: "LOGN3", assetClass: "Ações", sector: "Logística", score: 10, allocation_status: "active" as const },
+        { id: "f1", ticker: "HGLG11", assetClass: "FIIs", sector: "Logística", score: null, allocation_status: "active" as const },
+      ];
+
+      const res = calculateEffectiveAssetTargets({
+        assets,
+        classTargets: [
+          { className: "Ações", targetPercentage: 50 },
+          { className: "FIIs", targetPercentage: 50 },
+        ],
+        sectorTargets: [
+          { className: "Ações", sectorName: "Logística", targetPercentage: 20 },
+          { className: "FIIs", sectorName: "Logística", targetPercentage: 80 },
+        ],
+      });
+
+      const cashRes = res.find((r) => r.assetId === "cash")!;
+      const stockRes = res.find((r) => r.assetId === "a1")!;
+      const fiiRes = res.find((r) => r.assetId === "f1")!;
+
+      expect(cashRes.effectiveTargetPct).toBe(0);
+      expect(cashRes.isEligible).toBe(false);
+      // Ações 50% * Setor 20% = 10%
+      expect(stockRes.effectiveTargetPct).toBe(10);
+      // FIIs 50% * Setor 80% = 40% (preservando rawScore === null)
+      expect(fiiRes.effectiveTargetPct).toBe(40);
+      expect(fiiRes.rawScore).toBeNull();
+      expect(fiiRes.effectiveScore).toBe(5);
+      expect(fiiRes.formulaLabel).toContain("Sem nota, peso 5");
+    });
+
+    it("transborda fatia de setor 100% em quarentena para outro setor ativo na mesma classe (Salvaguarda S2)", () => {
+      const assets = [
+        { id: "b1", ticker: "ITUB4", assetClass: "Ações", sector: "Bancos", score: 10, allocation_status: "active" as const },
+        { id: "t1", ticker: "OIBR3", assetClass: "Ações", sector: "Telecom", score: 1, allocation_status: "quarantine" as const },
+      ];
+
+      const res = calculateEffectiveAssetTargets({
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 40 }],
+        sectorTargets: [
+          { className: "Ações", sectorName: "Bancos", targetPercentage: 60 },
+          { className: "Ações", sectorName: "Telecom", targetPercentage: 40 },
+        ],
+      });
+
+      const itub = res.find((r) => r.assetId === "b1")!;
+      const oibr = res.find((r) => r.assetId === "t1")!;
+      expect(oibr.effectiveTargetPct).toBe(0);
+      // Os 40% de Telecom transbordam para Bancos -> 100% da classe Ações (40%)
+      expect(itub.effectiveTargetPct).toBe(40);
     });
   });
 

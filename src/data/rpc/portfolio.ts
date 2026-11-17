@@ -2,54 +2,63 @@ import { callRpc, unwrapRpc } from "./client";
 import type {
   ApproveDividendsBatchPayload,
   ApproveDividendsBatchResult,
+  FixedIncomeMetadata,
   MonthlyClosingPayload,
   MonthlyClosingResult,
   PortfolioSnapshot,
 } from "@/types";
 
-export interface AllocationTargetItem {
-  assetId: string;
-  /** 0–100. */
-  target: number;
-}
-
-/**
- * Substitui o conjunto de metas por ativo em UMA transação (D1/§3.11.1).
- * Valida a soma final ≤ 100% após o lote — excedeu, nada é salvo.
- */
-export async function setAllocationTargets(targets: AllocationTargetItem[]): Promise<void> {
-  await unwrapRpc(
-    callRpc("set_allocation_targets", {
-      p_targets: targets.map((t) => ({ asset_id: t.assetId, target_percentage: t.target })),
-    }),
-    true,
-  );
-}
-
-/** Upsert de meta de grupo (classe ou setor) — §3.11.1. */
+/** Upsert de meta de grupo (classe ou setor escopado por classe) — §3.11.1. */
 export async function setGroupTarget(
   groupType: "class" | "sector",
   name: string,
   target: number,
+  className?: string,
 ): Promise<void> {
   await unwrapRpc(
     callRpc("set_group_target", {
       p_group_type: groupType,
       p_name: name,
       p_target: target,
+      ...(groupType === "sector" && className ? { p_class_name: className } : {}),
     }),
     true,
   );
 }
 
-/** Remove uma meta de grupo (classe ou setor). */
-export async function removeGroupTarget(groupType: "class" | "sector", name: string): Promise<void> {
+/** Remove uma meta de grupo (classe ou setor escopado por classe). */
+export async function removeGroupTarget(
+  groupType: "class" | "sector",
+  name: string,
+  className?: string,
+): Promise<void> {
   await unwrapRpc(
     callRpc("remove_group_target", {
       p_group_type: groupType,
       p_name: name,
+      ...(groupType === "sector" && className ? { p_class_name: className } : {}),
     }),
     true,
+  );
+}
+
+export interface SaveHierarchyTargetsParams {
+  classes: Array<{ name: string; target_percentage: number }>;
+  sectors: Array<{ class_name: string; name: string; target_percentage: number }>;
+}
+
+/**
+ * Substitui atomicamente toda a árvore hierárquica de metas (Classes % + Setores % por Classe).
+ * Valida soma de classes ≤ 100% e soma de setores por classe ≤ 100% no servidor.
+ */
+export async function savePortfolioHierarchyTargets(
+  params: SaveHierarchyTargetsParams,
+): Promise<boolean> {
+  return unwrapRpc(
+    callRpc("save_portfolio_hierarchy_targets", {
+      p_classes: params.classes,
+      p_sectors: params.sectors,
+    }),
   );
 }
 
@@ -64,13 +73,14 @@ export interface ExecutePortfolioBatchAporteParams {
   items: ExecuteBatchAporteItemInput[];
   date: string;
   totalAmount: number;
+  cashUsed?: number;
   notes?: string | null;
 }
 
 /**
- * Executa aporte em lote de forma transacional e atômica (§F36).
- * Atualiza posições em `portfolio_assets`, insere compras em `portfolio_transactions`
- * e grava a contribuição em `portfolio_contributions`.
+ * Executa aporte em lote de forma transacional e atômica (§F36 + Aporte Composto).
+ * Atualiza posições em `portfolio_assets`, insere compras em `portfolio_transactions`,
+ * abate eventual `cashUsed` de CAIXA e grava apenas o dinheiro novo em `portfolio_contributions`.
  */
 export async function executePortfolioBatchAporte(params: ExecutePortfolioBatchAporteParams): Promise<boolean> {
   return unwrapRpc(
@@ -79,6 +89,35 @@ export async function executePortfolioBatchAporte(params: ExecutePortfolioBatchA
       p_date: params.date,
       p_total_amount: params.totalAmount,
       p_notes: params.notes ?? null,
+      p_cash_used: params.cashUsed ?? 0,
+    }),
+  );
+}
+
+export interface DeletePortfolioTransactionAtomicParams {
+  transactionId: string;
+  newQuantity?: number | null;
+  newAveragePrice?: number | null;
+  fixedIncomeMetadata?: FixedIncomeMetadata | null;
+  reverseCash?: boolean;
+  usdRate?: number;
+}
+
+/**
+ * Exclui atomicamente uma transação da carteira, cascateia provento/aporte vinculado
+ * e reconcilia quantidade/preço médio do ativo (RPC `delete_portfolio_transaction_atomic`).
+ */
+export async function deletePortfolioTransactionAtomic(
+  params: DeletePortfolioTransactionAtomicParams,
+): Promise<boolean> {
+  return unwrapRpc(
+    callRpc("delete_portfolio_transaction_atomic", {
+      p_transaction_id: params.transactionId,
+      p_reverse_cash: params.reverseCash ?? false,
+      p_usd_rate: params.usdRate ?? 5.25,
+      p_reconciled_quantity: params.newQuantity ?? null,
+      p_reconciled_avg_price: params.newAveragePrice ?? null,
+      p_reconciled_fi_metadata: params.fixedIncomeMetadata ?? null,
     }),
   );
 }

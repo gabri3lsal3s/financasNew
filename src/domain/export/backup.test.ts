@@ -20,7 +20,6 @@ function emptyData(): BackupData {
     portfolio_snapshots: [],
     portfolio_contributions: [],
     portfolio_dividends: [],
-    allocation_targets: [],
     class_targets: [],
     sector_targets: [],
     asset_prices: [],
@@ -202,6 +201,21 @@ describe("domain/export — backup JSON", () => {
         expect(oibr.score).toBe(2);
         expect(oibr.allocation_status).toBe("quarantine");
       }
+    }
+  });
+
+  it("aceita backup legado contendo allocation_targets e normaliza class_name em sector_targets (§Plano 42)", () => {
+    const legacyData = {
+      ...emptyData(),
+      allocation_targets: [{ id: "at-1", user_id: "u-1", asset_id: "a-1", target_percentage: 25 }],
+      sector_targets: [{ id: "st-1", user_id: "u-1", group_type: "sector", name: "Bancos", target_percentage: 50 }],
+    };
+    const legacyPayload = buildBackupPayload(legacyData as unknown as BackupData);
+    const parsed = parseBackupPayload(legacyPayload);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect("allocation_targets" in parsed.payload.data).toBe(false);
+      expect(parsed.payload.data.sector_targets[0]?.class_name).toBe("Ações");
     }
   });
 });

@@ -278,9 +278,9 @@ export function useSaveSimulationToAccount() {
       if (variables.type === "debt_simulator") {
         void queryClient.invalidateQueries({ queryKey: ["debts"] });
       } else if (variables.type === "rebalance_simulator") {
-        void queryClient.invalidateQueries({ queryKey: ["class_targets"] });
-        void queryClient.invalidateQueries({ queryKey: ["allocation_targets"] });
-        void queryClient.invalidateQueries({ queryKey: ["investments"] });
+        void queryClient.invalidateQueries({ queryKey: ["group_targets"] });
+        void queryClient.invalidateQueries({ queryKey: ["portfolio_assets"] });
+        void queryClient.invalidateQueries({ queryKey: ["portfolio_position"] });
       } else if (variables.type === "compound_interest") {
         void queryClient.invalidateQueries({ queryKey: ["income_goals"] });
       }

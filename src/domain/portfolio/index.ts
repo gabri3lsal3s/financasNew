@@ -346,7 +346,6 @@ export {
   mirrorCurrentPositionTargets,
   parseTargetInput,
   sanitizeGroupTargetsForSave,
-  sanitizeTargetsForSave,
   targetsSum,
   validateClassSectorTargetsSum,
   validateTargetsSum,
@@ -354,10 +353,13 @@ export {
 export type {
   AssetAllocationDelta,
   AssetScoreInput,
+  ClassTargetsInput,
   DerivedAssetWeight,
   EffectiveAssetTargetResult,
   PQSAssetInput,
+  ScopedSectorTargetInput,
   SectorItem,
+  SectorTargetsInput,
   TargetDraft,
   TargetValidation,
 } from "./allocation";
@@ -503,6 +505,7 @@ export * from "./closing-validator";
 export * from "./dividend-deduplication";
 export * from "./dividend-suggester";
 export * from "./dividend-cash-governance";
+export * from "./score-criteria";
 export * from "./fire";
 export * from "./simulation-presets";
 export * from "./canonical-types";

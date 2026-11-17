@@ -1,15 +1,20 @@
 /**
- * Metas de alocação — ESPECIFICAÇÃO §3.11.1.
+ * Metas de alocação hierárquicas — ESPECIFICAÇÃO §3.11.1 (Plano 42 / v3.10.0).
  *
- * Regras:
- *   • Meta por ativo: 0–100; SOMA ≤ 100% (domínio + banco — D1);
- *   • Meta por classe/setor: 0–100 (opcional);
- *   • Alvo = % do patrimônio total (incluindo caixa/reserva).
+ * Regras canônicas (3 níveis):
+ *   • Nível 1 — Classes %: soma ≤ 100% dos ativos investíveis (exclui Caixa).
+ *   • Nível 2 — Setores % por Classe (opcional por classe): quando configurados, somam ≤ 100% da classe.
+ *   • Nível 3 — Notas de Convicção (0–10) + Status Operacional por ativo: derivam o peso no grupo.
  *
- * Motor puro — testável isoladamente.
+ * Motor 100% puro — testável isoladamente, sem UI ou Supabase.
  */
 
 import type { AssetAllocationStatus } from "@/types";
+import { isCashAssetClass, normalizeClassName } from "./valuation";
+
+function formatPctPtBr(value: number, decimals = 1): string {
+  return value.toFixed(decimals).replace(".", ",");
+}
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -43,7 +48,7 @@ export function targetsSum(targets: readonly Pick<TargetDraft, "target">[]): num
 
 /**
  * Valida a soma das metas (≤ 100%). Usada na UI (barra de soma) e
- * espelhada no servidor (RPC `set_allocation_targets` valida após o lote).
+ * espelhada no servidor (RPC `save_portfolio_hierarchy_targets` valida após o lote).
  */
 export function validateTargetsSum(targets: readonly Pick<TargetDraft, "target">[]): TargetValidation {
   const sum = targetsSum(targets);
@@ -77,37 +82,6 @@ export function parseTargetInput(raw: string): number {
   if (normalized === "" || normalized === ".") return 0;
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? clampTargetPercentage(parsed) : 0;
-}
-
-/**
- * Higieniza a lista de metas antes de enviar ao servidor:
- * 1. Arredonda todos os valores para 2 casas decimais.
- * 2. Garante que a soma total não ultrapasse 100.00% por dízimas ou erros de ponto flutuante.
- */
-export function sanitizeTargetsForSave<T extends { assetId: string; target: number }>(
-  targets: readonly T[],
-): T[] {
-  const result = targets.map((t) => ({
-    ...t,
-    target: Math.max(0, Math.round((Number.isFinite(t.target) ? t.target : 0) * 100) / 100),
-  }));
-
-  const sum = Math.round(result.reduce((acc, t) => acc + t.target, 0) * 100) / 100;
-  if (sum > 100) {
-    const diff = Math.round((sum - 100) * 100) / 100;
-    for (let i = result.length - 1; i >= 0; i--) {
-      const item = result[i];
-      if (item && item.target >= diff) {
-        result[i] = {
-          ...item,
-          target: Math.round((item.target - diff) * 100) / 100,
-        };
-        break;
-      }
-    }
-  }
-
-  return result;
 }
 
 /**
@@ -224,7 +198,7 @@ export function calculateAssetAllocationDelta(currentPct: number, targetPct: num
     targetPct: tgt,
     deltaPct: delta,
     isUnderallocated: delta > 0.05,
-    formattedDelta: `${sign}${delta.toFixed(1)}%`,
+    formattedDelta: `${sign}${formatPctPtBr(delta, 1)}%`,
   };
 }
 
@@ -316,6 +290,7 @@ export interface AssetScoreInput {
 }
 
 export interface DerivedAssetWeight {
+  rawScore: number | null;
   effectiveScore: number;
   weightInSector: number; // 0 a 1
   isEligible: boolean;
@@ -340,11 +315,11 @@ export function deriveAssetWeightsFromScores<T extends AssetScoreInput>(
 
   const mapped = assets.map((asset) => {
     const status: AssetAllocationStatus = asset.allocation_status ?? "active";
+    const rawScore: number | null = asset.score ?? null;
     let effectiveScore: number;
     let isEligible: boolean;
 
     if (status === "active") {
-      const rawScore = asset.score;
       if (rawScore == null) {
         effectiveScore = 5; // Fallback neutro (Salvaguarda S1)
         isEligible = true;
@@ -361,6 +336,7 @@ export function deriveAssetWeightsFromScores<T extends AssetScoreInput>(
 
     return {
       ...asset,
+      rawScore,
       status,
       effectiveScore,
       isEligible,
@@ -394,94 +370,339 @@ export function deriveAssetWeightsFromScores<T extends AssetScoreInput>(
   });
 }
 
+export interface ScopedSectorTargetInput {
+  className?: string | null;
+  sectorName: string;
+  targetPercentage: number;
+}
+
+export type ClassTargetsInput =
+  | Record<string, number>
+  | readonly { className: string; targetPercentage: number }[];
+
+export type SectorTargetsInput =
+  | Record<string, number>
+  | readonly ScopedSectorTargetInput[];
+
 export interface EffectiveAssetTargetResult {
   assetId: string;
-  effectiveTargetPct: number; // % do patrimônio total da carteira (0 a 100)
+  rawScore: number | null;
+  effectiveScore: number;
+  effectiveTargetPct: number; // % do patrimônio investível da carteira (0 a 100)
   classTargetPct: number;
-  sectorTargetPctInClass: number;
+  sectorTargetPctInClass: number | null; // null quando setores não estão configurados para a classe
   weightInSector: number;
   isEligible: boolean;
   status: AssetAllocationStatus;
+  formulaLabel: string;
+}
+
+function buildStatusBlockedFormula(status: AssetAllocationStatus, rawScore: number | null): string {
+  if (status === "quarantine") return "Em quarentena (aportes bloqueados)";
+  if (status === "exit") return "Encerramento / Saída (meta zerada)";
+  if (status === "neutral") return "Status Neutro (sem novos aportes)";
+  if (rawScore != null && rawScore <= 0) return "Nota 0 (sem participação em aportes)";
+  return "Inelegível nesta rodada";
+}
+
+function buildScoreDescriptor(rawScore: number | null, effectiveScore: number): string {
+  return rawScore == null ? "Sem nota, peso 5" : `Nota ${effectiveScore}`;
 }
 
 /**
- * Calcula a meta efetiva global nos 3 níveis hierárquicos (§4.2 PLANO_41):
+ * Calcula a meta efetiva global nos 3 níveis hierárquicos (§3.11.1 · Plano 42):
  * T_i = Target_Classe × Target_Setor_na_Classe × w_{i ∈ Setor}
  *
- * Tratamento especial para classes sem divisão setorial (Salvaguarda S5):
- * Se a classe não possuir setores cadastrados ou tiver apenas setor genérico "Geral", colapsa diretamente:
- * T_i = Target_Classe × w_{i ∈ Classe}
+ * Invariantes:
+ * - Ativos de Caixa são excluídos das metas (effectiveTargetPct = 0).
+ * - Setores são escopados por classe (`class_name::sector_name`) e opcionais:
+ *   se a classe não tiver metas setoriais (> 0%), distribui diretamente por Nota (Salvaguarda S5).
+ * - Se um setor configurado (> 0%) tiver 100% dos seus ativos inelegíveis (quarentena/saída/neutro),
+ *   sua fatia transborda proporcionalmente para os setores elegíveis da mesma classe (Salvaguarda S2).
  */
 export function calculateEffectiveAssetTargets<
   T extends AssetScoreInput & { assetClass?: string | null; sector?: string | null },
 >(params: {
   assets: readonly T[];
-  classTargets: Record<string, number>;
-  sectorTargets: Record<string, number>;
+  classTargets: ClassTargetsInput;
+  sectorTargets?: SectorTargetsInput;
 }): EffectiveAssetTargetResult[] {
   const { assets, classTargets, sectorTargets } = params;
   if (assets.length === 0) return [];
 
+  // 1. Normalizar metas por classe
+  const classTargetByNorm = new Map<string, number>();
+  if (Array.isArray(classTargets)) {
+    for (const ct of classTargets) {
+      const norm = normalizeClassName(ct.className);
+      if (norm && norm !== "caixa") {
+        classTargetByNorm.set(norm, Math.max(0, ct.targetPercentage));
+      }
+    }
+  } else {
+    for (const [cls, pct] of Object.entries(classTargets)) {
+      const norm = normalizeClassName(cls);
+      if (norm && norm !== "caixa") {
+        classTargetByNorm.set(norm, Math.max(0, pct));
+      }
+    }
+  }
+
+  // 2. Normalizar metas setoriais escopadas por classe (ou legado plano)
+  const scopedSectors = new Map<string, Map<string, number>>();
+  const flatSectors = new Map<string, number>();
+
+  if (Array.isArray(sectorTargets)) {
+    for (const st of sectorTargets) {
+      const secKey = st.sectorName.trim().toLowerCase();
+      if (!secKey) continue;
+      if (st.className && st.className.trim().length > 0) {
+        const normCls = normalizeClassName(st.className);
+        const clsMap = scopedSectors.get(normCls) ?? new Map<string, number>();
+        clsMap.set(secKey, Math.max(0, st.targetPercentage));
+        scopedSectors.set(normCls, clsMap);
+      } else {
+        flatSectors.set(secKey, Math.max(0, st.targetPercentage));
+      }
+    }
+  } else if (sectorTargets) {
+    for (const [rawKey, pct] of Object.entries(sectorTargets)) {
+      const sepIndex = rawKey.indexOf("::");
+      if (sepIndex > 0) {
+        const normCls = normalizeClassName(rawKey.slice(0, sepIndex));
+        const secKey = rawKey.slice(sepIndex + 2).trim().toLowerCase();
+        if (normCls && secKey) {
+          const clsMap = scopedSectors.get(normCls) ?? new Map<string, number>();
+          clsMap.set(secKey, Math.max(0, pct));
+          scopedSectors.set(normCls, clsMap);
+        }
+      } else {
+        const secKey = rawKey.trim().toLowerCase();
+        if (secKey) {
+          flatSectors.set(secKey, Math.max(0, pct));
+        }
+      }
+    }
+  }
+
+  const results: EffectiveAssetTargetResult[] = [];
   const assetsByClass = new Map<string, T[]>();
+
   for (const asset of assets) {
+    const isCash =
+      isCashAssetClass(asset.assetClass) ||
+      (asset.ticker ?? "").trim().toUpperCase() === "CAIXA";
+
+    if (isCash) {
+      results.push({
+        assetId: asset.id,
+        rawScore: asset.score ?? null,
+        effectiveScore: 0,
+        effectiveTargetPct: 0,
+        classTargetPct: 0,
+        sectorTargetPctInClass: null,
+        weightInSector: 0,
+        isEligible: false,
+        status: asset.allocation_status ?? "active",
+        formulaLabel: "Liquidez em Caixa (fora das metas)",
+      });
+      continue;
+    }
+
     const cls = asset.assetClass?.trim() || "Outros";
     const list = assetsByClass.get(cls) || [];
     list.push(asset);
     assetsByClass.set(cls, list);
   }
 
-  const results: EffectiveAssetTargetResult[] = [];
-
   for (const [className, classAssets] of assetsByClass.entries()) {
-    const classTargetPct = Math.max(0, classTargets[className] ?? 0);
+    const normClass = normalizeClassName(className);
+    const classTargetPct = Math.max(0, classTargetByNorm.get(normClass) ?? 0);
 
-    const sectorsInClass = new Set(classAssets.map((a) => a.sector?.trim() || "Geral"));
-    const hasConfiguredSectorTargets = Array.from(sectorsInClass).some(
-      (sec) => sec !== "Geral" && (sectorTargets[sec] ?? 0) > 0,
-    );
+    // Identificar mapa setorial efetivo desta classe
+    const classScopedMap = scopedSectors.get(normClass);
+    const effectiveSectorMap = new Map<string, number>();
+    if (classScopedMap) {
+      for (const [secKey, pct] of classScopedMap.entries()) {
+        effectiveSectorMap.set(secKey, pct);
+      }
+    } else if (flatSectors.size > 0) {
+      for (const asset of classAssets) {
+        const sec = (asset.sector?.trim() || "Geral").toLowerCase();
+        if (flatSectors.has(sec)) {
+          effectiveSectorMap.set(sec, flatSectors.get(sec)!);
+        }
+      }
+    }
+
+    const hasConfiguredSectorTargets = Array.from(effectiveSectorMap.values()).some((v) => v > 0);
 
     if (!hasConfiguredSectorTargets) {
-      // Salvaguarda S5: Sem divisão setorial rígida -> Ponderação direta na classe
+      // Salvaguarda S5: Setores não configurados nesta classe -> ponderação direta por Notas na classe
       const weightedAssets = deriveAssetWeightsFromScores(classAssets);
       for (const item of weightedAssets) {
-        const effectivePct = Math.round((classTargetPct * item.weightInSector) * 100) / 100;
+        const effectivePct =
+          classTargetPct > 0 && item.isEligible
+            ? Math.round(classTargetPct * item.weightInSector * 100) / 100
+            : 0;
+        const formulaLabel = !item.isEligible
+          ? buildStatusBlockedFormula(item.status, item.rawScore)
+          : classTargetPct <= 0
+            ? "Classe sem meta configurada"
+            : `${formatPctPtBr(classTargetPct)}% Classe · ${formatPctPtBr(item.weightInSector * 100)}% Peso (${buildScoreDescriptor(item.rawScore, item.effectiveScore)})`;
+
         results.push({
           assetId: item.id,
+          rawScore: item.rawScore,
+          effectiveScore: item.effectiveScore,
           effectiveTargetPct: effectivePct,
           classTargetPct,
-          sectorTargetPctInClass: 100,
+          sectorTargetPctInClass: null,
           weightInSector: item.weightInSector,
           isEligible: item.isEligible,
           status: item.status,
+          formulaLabel,
         });
       }
-    } else {
-      // Hierarquia completa: Classe -> Setores -> Ativos
-      const assetsBySector = new Map<string, T[]>();
-      for (const asset of classAssets) {
-        const sec = asset.sector?.trim() || "Geral";
-        const list = assetsBySector.get(sec) || [];
-        list.push(asset);
-        assetsBySector.set(sec, list);
+      continue;
+    }
+
+    // Hierarquia completa: Classe -> Setores escopados -> Notas dos ativos
+    const assetsBySector = new Map<string, T[]>();
+    for (const asset of classAssets) {
+      const sec = asset.sector?.trim() || "Geral";
+      const list = assetsBySector.get(sec) || [];
+      list.push(asset);
+      assetsBySector.set(sec, list);
+    }
+
+    interface SectorComputedBlock {
+      sectorName: string;
+      secKey: string;
+      configuredPct: number;
+      weightedAssets: Array<T & DerivedAssetWeight>;
+      hasEligible: boolean;
+    }
+
+    const sectorBlocks: SectorComputedBlock[] = [];
+    for (const [sectorName, sectorAssets] of assetsBySector.entries()) {
+      const secKey = sectorName.trim().toLowerCase();
+      const configuredPct = Math.max(0, effectiveSectorMap.get(secKey) ?? 0);
+      const weightedAssets = deriveAssetWeightsFromScores(sectorAssets);
+      const hasEligible = weightedAssets.some((w) => w.isEligible);
+      sectorBlocks.push({
+        sectorName,
+        secKey,
+        configuredPct,
+        weightedAssets,
+        hasEligible,
+      });
+    }
+
+    // Salvaguarda S2: detectar setores configurados (> 0%) que ficaram 100% inelegíveis
+    let blockedSectorPctOverflow = 0;
+    let activeConfiguredSectorsSum = 0;
+    for (const block of sectorBlocks) {
+      if (block.configuredPct > 0) {
+        if (block.hasEligible) {
+          activeConfiguredSectorsSum += block.configuredPct;
+        } else {
+          blockedSectorPctOverflow += block.configuredPct;
+        }
+      }
+    }
+
+    // Se algum setor > 0% ficou 100% inelegível e nenhum outro setor configurado é elegível,
+    // verifica se existem ativos elegíveis em setores não zerados da classe para absorverem a verba.
+    if (blockedSectorPctOverflow > 0 && activeConfiguredSectorsSum === 0) {
+      const fallbackClassAssets = sectorBlocks
+        .filter((b) => !(effectiveSectorMap.has(b.secKey) && b.configuredPct === 0))
+        .flatMap((b) => b.weightedAssets)
+        .filter((w) => w.isEligible);
+
+      if (fallbackClassAssets.length > 0) {
+        const reweightedFallback = deriveAssetWeightsFromScores(fallbackClassAssets);
+        const fallbackWeightById = new Map(reweightedFallback.map((w) => [w.id, w.weightInSector]));
+
+        for (const block of sectorBlocks) {
+          for (const item of block.weightedAssets) {
+            const w = fallbackWeightById.get(item.id) ?? 0;
+            const effectivePct =
+              classTargetPct > 0 && w > 0 ? Math.round(classTargetPct * w * 100) / 100 : 0;
+            const formulaLabel = !item.isEligible
+              ? buildStatusBlockedFormula(item.status, item.rawScore)
+              : w > 0 && classTargetPct > 0
+                ? `${formatPctPtBr(classTargetPct)}% Classe · ${formatPctPtBr(w * 100)}% Peso (${buildScoreDescriptor(item.rawScore, item.effectiveScore)})`
+                : effectiveSectorMap.has(block.secKey) && block.configuredPct === 0
+                  ? "Setor com meta 0% nesta classe"
+                  : "Sem meta ativa nesta classe";
+
+            results.push({
+              assetId: item.id,
+              rawScore: item.rawScore,
+              effectiveScore: item.effectiveScore,
+              effectiveTargetPct: effectivePct,
+              classTargetPct,
+              sectorTargetPctInClass: effectiveSectorMap.has(block.secKey) ? block.configuredPct : null,
+              weightInSector: w,
+              isEligible: item.isEligible,
+              status: item.status,
+              formulaLabel,
+            });
+          }
+        }
+        continue;
+      }
+    }
+
+    for (const block of sectorBlocks) {
+      let effectiveSectorInClass = block.configuredPct;
+      if (
+        block.configuredPct > 0 &&
+        block.hasEligible &&
+        blockedSectorPctOverflow > 0 &&
+        activeConfiguredSectorsSum > 0
+      ) {
+        effectiveSectorInClass =
+          block.configuredPct + (block.configuredPct / activeConfiguredSectorsSum) * blockedSectorPctOverflow;
+      } else if (block.configuredPct > 0 && !block.hasEligible && activeConfiguredSectorsSum > 0) {
+        effectiveSectorInClass = 0;
       }
 
-      for (const [sectorName, sectorAssets] of assetsBySector.entries()) {
-        const sectorTargetInClass = Math.max(0, sectorTargets[sectorName] ?? 0);
-        const sectorEffectivePctOfPortfolio = (classTargetPct * sectorTargetInClass) / 100;
+      const roundedSectorShare = Math.round(effectiveSectorInClass * 100) / 100;
+      const sectorEffectivePctOfPortfolio = (classTargetPct * effectiveSectorInClass) / 100;
 
-        const weightedAssets = deriveAssetWeightsFromScores(sectorAssets);
-        for (const item of weightedAssets) {
-          const effectivePct = Math.round((sectorEffectivePctOfPortfolio * item.weightInSector) * 100) / 100;
-          results.push({
-            assetId: item.id,
-            effectiveTargetPct: effectivePct,
-            classTargetPct,
-            sectorTargetPctInClass: sectorTargetInClass,
-            weightInSector: item.weightInSector,
-            isEligible: item.isEligible,
-            status: item.status,
-          });
+      for (const item of block.weightedAssets) {
+        const effectivePct =
+          classTargetPct > 0 && effectiveSectorInClass > 0 && item.isEligible
+            ? Math.round(sectorEffectivePctOfPortfolio * item.weightInSector * 100) / 100
+            : 0;
+
+        let formulaLabel: string;
+        if (!item.isEligible) {
+          formulaLabel = buildStatusBlockedFormula(item.status, item.rawScore);
+        } else if (classTargetPct <= 0) {
+          formulaLabel = "Classe sem meta configurada";
+        } else if (block.configuredPct <= 0) {
+          formulaLabel = effectiveSectorMap.has(block.secKey)
+            ? "Setor com meta 0% nesta classe"
+            : "Setor sem meta nesta classe";
+        } else {
+          formulaLabel = `${formatPctPtBr(classTargetPct)}% Classe · ${formatPctPtBr(roundedSectorShare)}% Setor · ${formatPctPtBr(item.weightInSector * 100)}% Peso (${buildScoreDescriptor(item.rawScore, item.effectiveScore)})`;
         }
+
+        results.push({
+          assetId: item.id,
+          rawScore: item.rawScore,
+          effectiveScore: item.effectiveScore,
+          effectiveTargetPct: effectivePct,
+          classTargetPct,
+          sectorTargetPctInClass: effectiveSectorMap.has(block.secKey) ? roundedSectorShare : 0,
+          weightInSector: item.weightInSector,
+          isEligible: item.isEligible,
+          status: item.status,
+          formulaLabel,
+        });
       }
     }
   }

@@ -202,16 +202,6 @@ export function useSimulatedPortfolioDividends() {
   return makeSimulatedQueryResult(data);
 }
 
-/** Metas por ativo simuladas. */
-export function useSimulatedAllocationTargets() {
-  const data = useMemo(() => {
-    const mock = generateMockInvestments();
-    return mock.allocationTargets;
-  }, []);
-
-  return makeSimulatedQueryResult(data);
-}
-
 /** Metas por classe/setor simuladas. */
 export function useSimulatedGroupTargets(groupType: "class" | "sector") {
   const data = useMemo(() => {

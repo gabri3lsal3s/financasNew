@@ -18,6 +18,7 @@ import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction } from "@/
 vi.mock("@/data/rpc", () => ({
   approveDividendsBatchRpc: vi.fn(),
   executePortfolioBatchAporte: vi.fn(),
+  deletePortfolioTransactionAtomic: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/data/repositories/portfolio", () => ({
@@ -123,7 +124,7 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
     expect(repo.deletePortfolioTransactionsMatching).not.toHaveBeenCalled();
   });
 
-  it("useDeletePortfolioTransaction de provento exclui a transação e o provento vinculado", async () => {
+  it("useDeletePortfolioTransaction de provento chama deletePortfolioTransactionAtomic com reconciliação", async () => {
     const { result } = renderHook(() => useDeletePortfolioTransaction(), { wrapper });
 
     await act(async () => {
@@ -136,15 +137,49 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
       });
     });
 
-    expect(repo.deletePortfolioTransaction).toHaveBeenCalledWith("tx-div-1");
-    expect(repo.deletePortfolioDividendsMatching).toHaveBeenCalledWith({
-      asset_id: "asset-vale3",
-      date: "2026-08-22",
-      amount: 120.5,
+    expect(rpc.deletePortfolioTransactionAtomic).toHaveBeenCalledWith({
+      transactionId: "tx-div-1",
+      reverseCash: false,
+      usdRate: 5.25,
+      newQuantity: null,
+      newAveragePrice: null,
+      fixedIncomeMetadata: null,
     });
   });
 
-  it("useDeletePortfolioTransaction de compra exclui a transação e o aporte financeiro vinculado", async () => {
+  it("useDeletePortfolioTransaction de compra com ativo em cache calcula posição reconciliada e chama RPC atômico", async () => {
+    queryClient.setQueryData(PORTFOLIO_QUERY_KEYS.assets, [
+      {
+        id: "asset-vale3",
+        user_id: "u-1",
+        ticker: "VALE3",
+        asset_class: "Ações",
+        currency: "BRL",
+        quantity: 100,
+        average_price: 50,
+      },
+    ]);
+    queryClient.setQueryData(PORTFOLIO_QUERY_KEYS.allTransactions, [
+      {
+        id: "tx-buy-0",
+        asset_id: "asset-vale3",
+        type: "buy",
+        date: "2026-07-10",
+        quantity: 60,
+        price: 50,
+        total: 3000,
+      },
+      {
+        id: "tx-buy-1",
+        asset_id: "asset-vale3",
+        type: "buy",
+        date: "2026-08-10",
+        quantity: 40,
+        price: 50,
+        total: 2000,
+      },
+    ]);
+
     const { result } = renderHook(() => useDeletePortfolioTransaction(), { wrapper });
 
     await act(async () => {
@@ -153,18 +188,23 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
         asset_id: "asset-vale3",
         type: "buy",
         date: "2026-08-10",
-        total: 2500.0,
+        quantity: 40,
+        price: 50,
+        total: 2000,
       });
     });
 
-    expect(repo.deletePortfolioTransaction).toHaveBeenCalledWith("tx-buy-1");
-    expect(repo.deletePortfolioContributionsMatching).toHaveBeenCalledWith({
-      asset_id: "asset-vale3",
-      date: "2026-08-10",
+    expect(rpc.deletePortfolioTransactionAtomic).toHaveBeenCalledWith({
+      transactionId: "tx-buy-1",
+      reverseCash: false,
+      usdRate: 5.25,
+      newQuantity: 60,
+      newAveragePrice: 50,
+      fixedIncomeMetadata: null,
     });
   });
 
-  it("busca metadados do cache quando apenas a string de ID é fornecida na exclusão", async () => {
+  it("busca metadados do cache quando apenas a string de ID é fornecida na exclusão atômica", async () => {
     queryClient.setQueryData(PORTFOLIO_QUERY_KEYS.allTransactions, [
       {
         id: "tx-cached-1",
@@ -181,11 +221,13 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
       await result.current.mutateAsync("tx-cached-1");
     });
 
-    expect(repo.deletePortfolioTransaction).toHaveBeenCalledWith("tx-cached-1");
-    expect(repo.deletePortfolioDividendsMatching).toHaveBeenCalledWith({
-      asset_id: "asset-itub4",
-      date: "2026-08-18",
-      amount: 35.0,
+    expect(rpc.deletePortfolioTransactionAtomic).toHaveBeenCalledWith({
+      transactionId: "tx-cached-1",
+      reverseCash: false,
+      usdRate: 5.25,
+      newQuantity: null,
+      newAveragePrice: null,
+      fixedIncomeMetadata: null,
     });
   });
 

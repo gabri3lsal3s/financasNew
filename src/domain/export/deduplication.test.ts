@@ -25,7 +25,6 @@ function makeEmptyData(): BackupData {
     portfolio_snapshots: [],
     portfolio_contributions: [],
     portfolio_dividends: [],
-    allocation_targets: [],
     class_targets: [],
     sector_targets: [],
     asset_prices: [],
@@ -104,6 +103,24 @@ describe("domain/export/deduplication — detecção e estratégias", () => {
           "portfolio_assets",
           { id: "a1", ticker: "petr4" },
           { id: "a2", ticker: "PETR4" },
+        ),
+      ).toBe(true);
+    });
+
+    it("diferencia sector_targets com mesmo nome em classes diferentes", () => {
+      expect(
+        isRecordDuplicate(
+          "sector_targets",
+          { id: "s1", class_name: "Ações Brasil", name: "Logística" },
+          { id: "s2", class_name: "FIIs", name: "Logística" },
+        ),
+      ).toBe(false);
+
+      expect(
+        isRecordDuplicate(
+          "sector_targets",
+          { id: "s1", class_name: "FIIs", name: " Logística " },
+          { id: "s2", class_name: "FIIs", name: "logística" },
         ),
       ).toBe(true);
     });

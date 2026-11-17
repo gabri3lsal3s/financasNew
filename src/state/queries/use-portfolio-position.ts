@@ -19,7 +19,13 @@ import {
   type XIRRResult,
 } from "@/domain/portfolio";
 import { todayISO } from "@/domain/debts";
-import type { AssetCurrency, FixedIncomeMetadata } from "@/types";
+import type {
+  AssetAllocationStatus,
+  AssetCurrency,
+  AssetScoreCriteria,
+  FixedIncomeMetadata,
+  PortfolioAsset,
+} from "@/types";
 
 export interface PortfolioPositionRow {
   assetId: string;
@@ -50,6 +56,12 @@ export interface PortfolioPositionRow {
   isCash: boolean;
   pricingMode: AssetPricingMode;
   notes?: string | null;
+  score?: number | null;
+  allocationStatus?: AssetAllocationStatus;
+  thesisSummary?: string | null;
+  scoreCriteria?: AssetScoreCriteria | null;
+  lastReviewedAt?: string | null;
+  reviewFrequencyMonths?: number | null;
   fixedIncomeMetadata?: FixedIncomeMetadata | null;
   fixedIncomeResult?: FixedIncomeBalanceResult | null;
   isMatured?: boolean;
@@ -87,7 +99,10 @@ export interface PortfolioPosition {
   refetch: () => void;
 }
 
-function mapCanonicalHoldingToRow(holding: CanonicalAssetHolding): PortfolioPositionRow {
+function mapCanonicalHoldingToRow(
+  holding: CanonicalAssetHolding,
+  assetById: Map<string, PortfolioAsset>,
+): PortfolioPositionRow {
   let source: PriceSource = "manual";
   if (
     holding.resolvedPrice.source === "api" ||
@@ -109,6 +124,8 @@ function mapCanonicalHoldingToRow(holding: CanonicalAssetHolding): PortfolioPosi
       : holding.pricingMode === "total_value"
         ? "total_value"
         : "unit_price";
+
+  const asset = assetById.get(holding.assetId);
 
   return {
     assetId: holding.assetId,
@@ -139,6 +156,12 @@ function mapCanonicalHoldingToRow(holding: CanonicalAssetHolding): PortfolioPosi
     isCash: holding.isCash,
     pricingMode,
     notes: holding.notes,
+    score: asset?.score ?? null,
+    allocationStatus: asset?.allocation_status ?? "active",
+    thesisSummary: asset?.thesis_summary ?? null,
+    scoreCriteria: asset?.score_criteria ?? null,
+    lastReviewedAt: asset?.last_reviewed_at ?? null,
+    reviewFrequencyMonths: asset?.review_frequency_months ?? null,
     fixedIncomeMetadata: holding.fixedIncomeMetadata,
     fixedIncomeResult: holding.fixedIncomeResult,
     isMatured: holding.isMatured,
@@ -181,8 +204,11 @@ export function usePortfolioPosition(): PortfolioPosition {
   ]);
 
   const rows = useMemo(() => {
-    return canonicalState.rows.map(mapCanonicalHoldingToRow);
-  }, [canonicalState.rows]);
+    const assetById = new Map<string, PortfolioAsset>(
+      (assetsQuery.data ?? []).map((a) => [a.id, a]),
+    );
+    return canonicalState.rows.map((holding) => mapCanonicalHoldingToRow(holding, assetById));
+  }, [canonicalState.rows, assetsQuery.data]);
 
   const refetch = useCallback(() => {
     void assetsQuery.refetch();

@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { endDemo, resetDemoSession, startDemo } from "@/state/demo-mode";
 import {
-  useAllocationTargets,
   useBudgets,
   useCategories,
   useCreditCards,
@@ -361,7 +360,7 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
       expect(result.current.data?.length).toBeGreaterThan(0);
     });
 
-    it("usePortfolioAssets, usePortfolioSnapshots, useAllocationTargets e useGroupTargets interceptam no modo demo", () => {
+    it("usePortfolioAssets, usePortfolioSnapshots e useGroupTargets interceptam no modo demo", () => {
       act(() => {
         startDemo("investments");
       });
@@ -372,18 +371,18 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
       const { result: snapshots } = renderHook(() => usePortfolioSnapshots(), {
         wrapper: createWrapper(),
       });
-      const { result: allocTargets } = renderHook(() => useAllocationTargets(), {
+      const { result: groupTargets } = renderHook(() => useGroupTargets("class"), {
         wrapper: createWrapper(),
       });
-      const { result: groupTargets } = renderHook(() => useGroupTargets("class"), {
+      const { result: sectorTargets } = renderHook(() => useGroupTargets("sector"), {
         wrapper: createWrapper(),
       });
 
       expect(mockListPortfolioAssets).not.toHaveBeenCalled();
       expect(assets.current.data?.length).toBeGreaterThanOrEqual(6);
       expect(snapshots.current.data).toHaveLength(3);
-      expect(allocTargets.current.data?.length).toBeGreaterThan(0);
       expect(groupTargets.current.data?.length).toBeGreaterThan(0);
+      expect(sectorTargets.current.data?.some((s) => s.class_name === "FIIs")).toBe(true);
     });
 
     it("useOnboardingCounts retorna contagens simuladas quando isDemoActive === true", () => {

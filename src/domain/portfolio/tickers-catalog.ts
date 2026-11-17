@@ -7,7 +7,8 @@ import type {
   FixedIncomeRateType,
 } from "@/types";
 import { inferAssetClassFromTicker } from "./import-parser";
-import { inferCurrencyFromTicker, normalizeClassName } from "./valuation";
+import { inferCurrencyFromTicker, isCashAssetClass, normalizeClassName } from "./valuation";
+import { calculateEffectiveAssetTargets } from "./allocation";
 
 export interface CatalogTickerItem {
   ticker: string;
@@ -522,8 +523,12 @@ export function searchTickers(
 }
 
 /**
- * Gera sugestões preditivas de aporte baseadas na lógica hierárquica
- * (defasagem macro da classe -> maior gap financeiro do ativo em relação às metas).
+ * Gera sugestões preditivas de aporte baseadas na hierarquia de 3 níveis (§3.11.1 · Plano 42):
+ * Classes % -> Setores % por Classe (opcional) -> Notas (0–10) + Status Operacional.
+ *
+ * Invariantes:
+ * - Exclui CAIXA e ativos em quarentena, saída ou neutro.
+ * - Prioriza a classe com maior déficit relativo em relação à meta.
  */
 export function buildAporteSuggestions(
   assets: readonly PortfolioAsset[],
@@ -535,139 +540,80 @@ export function buildAporteSuggestions(
     assetClass?: string | null;
     sector?: string | null;
   }[],
-  targets: readonly { asset_id: string; target_percentage: number }[],
   totalPortfolioBRL: number,
   limit = 3,
   classTargets?: readonly { name: string; target_percentage: number }[],
   sectorTargets?: readonly { className: string; sectorName: string; target_percentage: number }[],
 ): AporteSuggestionItem[] {
-  const hasTargets = targets.length > 0 || (classTargets && classTargets.length > 0) || (sectorTargets && sectorTargets.length > 0);
+  const hasTargets = (classTargets && classTargets.length > 0) || false;
   if (totalPortfolioBRL <= 0 || !hasTargets) return [];
 
-  const targetMap = new Map(targets.map((t) => [t.asset_id, t.target_percentage]));
-  const classTargetMap = new Map((classTargets ?? []).map((t) => [normalizeClassName(t.name), t.target_percentage]));
-
-  const sectorTargetMap = new Map<string, Map<string, number>>();
-  for (const st of sectorTargets ?? []) {
-    const normClass = normalizeClassName(st.className);
-    let sMap = sectorTargetMap.get(normClass);
-    if (!sMap) {
-      sMap = new Map<string, number>();
-      sectorTargetMap.set(normClass, sMap);
-    }
-    sMap.set(st.sectorName.trim(), st.target_percentage);
-  }
+  const investableAssets = assets.filter(
+    (a) => !isCashAssetClass(a.asset_class) && a.ticker.trim().toUpperCase() !== "CAIXA",
+  );
+  if (investableAssets.length === 0) return [];
 
   const rowMap = new Map(assetRows.map((r) => [r.assetId, r]));
+  const investableValueBRL = investableAssets.reduce(
+    (acc, a) => acc + Math.max(0, rowMap.get(a.id)?.valueBRL ?? 0),
+    0,
+  );
+  const basePortfolioBRL = investableValueBRL > 0 ? investableValueBRL : totalPortfolioBRL;
 
-  // Agrupamento por classe e setor
-  const assetsByClass = new Map<string, PortfolioAsset[]>();
-  const assetsByClassAndSector = new Map<string, Map<string, PortfolioAsset[]>>();
+  const classTargetMap = new Map(
+    (classTargets ?? [])
+      .filter((t) => normalizeClassName(t.name) !== "caixa")
+      .map((t) => [normalizeClassName(t.name), t.target_percentage]),
+  );
 
-  for (const asset of assets) {
-    const classKey = asset.asset_class ?? "Ações";
-    const sectorKey = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, classKey);
+  const effectiveTargets = calculateEffectiveAssetTargets({
+    assets: investableAssets.map((a) => {
+      const cls = a.asset_class?.trim() || "Ações";
+      const sec = a.sector?.trim() || inferSectorFromTicker(a.ticker, cls);
+      return {
+        id: a.id,
+        ticker: a.ticker,
+        assetClass: cls,
+        sector: sec,
+        score: a.score ?? null,
+        allocation_status: a.allocation_status ?? "active",
+      };
+    }),
+    classTargets: (classTargets ?? []).map((ct) => ({
+      className: ct.name,
+      targetPercentage: ct.target_percentage,
+    })),
+    sectorTargets: (sectorTargets ?? []).map((st) => ({
+      className: st.className,
+      sectorName: st.sectorName,
+      targetPercentage: st.target_percentage,
+    })),
+  });
 
-    const classList = assetsByClass.get(classKey) ?? [];
-    classList.push(asset);
-    assetsByClass.set(classKey, classList);
-
-    let sectorMap = assetsByClassAndSector.get(classKey);
-    if (!sectorMap) {
-      sectorMap = new Map<string, PortfolioAsset[]>();
-      assetsByClassAndSector.set(classKey, sectorMap);
-    }
-    const sectorList = sectorMap.get(sectorKey) ?? [];
-    sectorList.push(asset);
-    sectorMap.set(sectorKey, sectorList);
-  }
-
-  // Resolução de metas efetivas hierárquicas (Classe -> Setor -> Ativo)
-  const effectiveTargetMap = new Map<string, number>();
-  const hasIndividualTargets = targets.length > 0;
-
-  // 1. Metas individuais explícitas (incluindo 0% e ativos não listados quando há metas individuais)
-  for (const asset of assets) {
-    if (targetMap.has(asset.id)) {
-      effectiveTargetMap.set(asset.id, targetMap.get(asset.id)!);
-    } else if (hasIndividualTargets) {
-      effectiveTargetMap.set(asset.id, 0);
-    }
-  }
-
-  // 2. Metas de setor e classe em 3 níveis
-  for (const [className, sectorMap] of assetsByClassAndSector) {
-    const normClass = normalizeClassName(className);
-    const classTargetPct = classTargetMap.get(normClass) ?? 0;
-    if (!(classTargetPct > 0)) continue;
-
-    const sectorsWithTarget = sectorTargetMap.get(normClass);
-    const hasConfiguredSectorTargets = sectorsWithTarget && sectorsWithTarget.size > 0;
-
-    if (hasConfiguredSectorTargets) {
-      for (const [sectorName, members] of sectorMap) {
-        const sectorTargetInClass = sectorsWithTarget?.get(sectorName);
-
-        if (sectorTargetInClass === 0) {
-          for (const member of members) {
-            if (!effectiveTargetMap.has(member.id)) {
-              effectiveTargetMap.set(member.id, 0);
-            }
-          }
-          continue;
-        }
-
-        if (!sectorTargetInClass || !(sectorTargetInClass > 0)) continue;
-
-        const sectorEffectiveTargetPct = (classTargetPct * sectorTargetInClass) / 100;
-        const unassigned = members.filter((a) => !effectiveTargetMap.has(a.id));
-        if (unassigned.length === 0) continue;
-
-        const assignedSum = members
-          .filter((a) => effectiveTargetMap.has(a.id))
-          .reduce((acc, a) => acc + (effectiveTargetMap.get(a.id) ?? 0), 0);
-
-        const remainingSectorPct = Math.max(0, sectorEffectiveTargetPct - assignedSum);
-        if (remainingSectorPct > 0) {
-          const share = remainingSectorPct / unassigned.length;
-          for (const member of unassigned) {
-            effectiveTargetMap.set(member.id, share);
-          }
-        }
-      }
-    }
-
-    // Fallback de classe para membros sem meta
-    const classMembers = assetsByClass.get(className) ?? [];
-    const remainingUnassigned = classMembers.filter((a) => !effectiveTargetMap.has(a.id));
-    if (remainingUnassigned.length > 0) {
-      const assignedClassSum = classMembers
-        .filter((a) => effectiveTargetMap.has(a.id))
-        .reduce((acc, a) => acc + (effectiveTargetMap.get(a.id) ?? 0), 0);
-
-      const remainingClassPct = Math.max(0, classTargetPct - assignedClassSum);
-      if (remainingClassPct > 0) {
-        const share = remainingClassPct / remainingUnassigned.length;
-        for (const member of remainingUnassigned) {
-          effectiveTargetMap.set(member.id, share);
-        }
-      }
-    }
-  }
+  const effectiveTargetMap = new Map(effectiveTargets.map((t) => [t.assetId, t]));
 
   // Estatísticas macro por classe para ordenação hierárquica
-  const classDeficitMap = new Map<string, number>();
+  const assetsByClass = new Map<string, PortfolioAsset[]>();
+  for (const asset of investableAssets) {
+    const classKey = asset.asset_class?.trim() || "Ações";
+    const list = assetsByClass.get(classKey) ?? [];
+    list.push(asset);
+    assetsByClass.set(classKey, list);
+  }
+
+  const classMacroStatusMap = new Map<string, { deficitRel: number; isOverallocated: boolean }>();
   for (const [className, members] of assetsByClass) {
     const normClass = normalizeClassName(className);
     const classTargetPct = classTargetMap.get(normClass) ?? 0;
-    const classTargetValueBRL = (totalPortfolioBRL * classTargetPct) / 100;
+    const classTargetValueBRL = (basePortfolioBRL * classTargetPct) / 100;
     const classCurrentValueBRL = members.reduce((acc, a) => acc + (rowMap.get(a.id)?.valueBRL ?? 0), 0);
 
     const deficitRel =
       classTargetValueBRL > 0
         ? Math.max(0, (classTargetValueBRL - classCurrentValueBRL) / classTargetValueBRL)
         : 0;
-    classDeficitMap.set(className, deficitRel);
+    const isOverallocated = classTargetPct > 0 && classCurrentValueBRL > classTargetValueBRL + 0.01;
+    classMacroStatusMap.set(className, { deficitRel, isOverallocated });
   }
 
   interface SuggestionWithPriority extends AporteSuggestionItem {
@@ -676,24 +622,29 @@ export function buildAporteSuggestions(
 
   const suggestions: SuggestionWithPriority[] = [];
 
-  for (const asset of assets) {
-    const targetPct = effectiveTargetMap.get(asset.id);
-    if (!targetPct || targetPct <= 0) continue;
-
-    const className = asset.asset_class ?? "Ações";
-    const normClass = normalizeClassName(className);
-    const hasClassTarget = (classTargetMap.get(normClass) ?? 0) > 0;
-    const classDeficit = classDeficitMap.get(className) ?? 0;
-
-    // Trava Hierárquica Estrita: se a classe possui meta definida e já atingiu/superou o alvo, nenhum membro da classe recebe sugestão de aporte
-    if (hasClassTarget && classDeficit <= 0) {
+  for (const asset of investableAssets) {
+    const status = asset.allocation_status ?? "active";
+    if (status === "quarantine" || status === "exit" || status === "neutral") {
       continue;
     }
 
+    const eff = effectiveTargetMap.get(asset.id);
+    if (!eff || !eff.isEligible || eff.effectiveTargetPct <= 0) continue;
+
+    const className = asset.asset_class?.trim() || "Ações";
+    const classMacro = classMacroStatusMap.get(className);
+
+    // Trava Hierárquica Estrita: se a classe está sobre-alocada acima da meta, nenhum membro recebe sugestão de aporte
+    if (classMacro?.isOverallocated) {
+      continue;
+    }
+
+    const classDeficit = classMacro?.deficitRel ?? 0;
+
     const row = rowMap.get(asset.id);
     const currentValueBRL = row?.valueBRL ?? 0;
-    const currentPct = row?.pct ?? 0;
-    const targetValueBRL = (totalPortfolioBRL * targetPct) / 100;
+    const currentPct = basePortfolioBRL > 0 ? (currentValueBRL / basePortfolioBRL) * 100 : (row?.pct ?? 0);
+    const targetValueBRL = (basePortfolioBRL * eff.effectiveTargetPct) / 100;
     const gapBRL = targetValueBRL - currentValueBRL;
 
     if (gapBRL > 0) {
@@ -706,8 +657,8 @@ export function buildAporteSuggestions(
         currentValueBRL,
         targetValueBRL,
         gapBRL: Math.round(gapBRL * 100) / 100,
-        targetPercentage: targetPct,
-        currentPercentage: currentPct,
+        targetPercentage: eff.effectiveTargetPct,
+        currentPercentage: Math.round(currentPct * 100) / 100,
         classDeficitRel: classDeficit,
       });
     }

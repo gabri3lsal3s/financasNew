@@ -1,6 +1,5 @@
 import type {
   AccessInvite,
-  AllocationTarget,
   AssetPrice,
   AuditEvent,
   Budget,
@@ -102,7 +101,6 @@ export interface Database {
       portfolio_snapshots: Table<PortfolioSnapshot>;
       portfolio_monthly_prices: Table<PortfolioMonthlyPrice>;
       portfolio_transactions: Table<PortfolioTransaction>;
-      allocation_targets: Table<AllocationTarget>;
       class_targets: Table<GroupTarget>;
       sector_targets: Table<GroupTarget>;
       asset_prices: Table<AssetPrice>;
@@ -529,17 +527,28 @@ export interface Database {
         };
         Returns: void;
       };
-      set_allocation_targets: {
-        Args: { p_targets: unknown };
-        Returns: void;
-      };
       set_group_target: {
-        Args: { p_group_type: "class" | "sector"; p_name: string; p_target: number };
+        Args: { p_group_type: "class" | "sector"; p_name: string; p_target: number; p_class_name?: string };
         Returns: void;
       };
       remove_group_target: {
-        Args: { p_group_type: "class" | "sector"; p_name: string };
+        Args: { p_group_type: "class" | "sector"; p_name: string; p_class_name?: string | null };
         Returns: void;
+      };
+      save_portfolio_hierarchy_targets: {
+        Args: { p_classes: unknown; p_sectors?: unknown };
+        Returns: boolean;
+      };
+      delete_portfolio_transaction_atomic: {
+        Args: {
+          p_transaction_id: string;
+          p_reverse_cash?: boolean;
+          p_usd_rate?: number;
+          p_reconciled_quantity?: number | null;
+          p_reconciled_avg_price?: number | null;
+          p_reconciled_fi_metadata?: unknown;
+        };
+        Returns: boolean;
       };
       restore_backup: {
         Args: { p_backup: unknown };
@@ -576,6 +585,7 @@ export interface Database {
           p_date: string;
           p_total_amount: number;
           p_notes?: string | null;
+          p_cash_used?: number;
         };
         Returns: boolean;
       };

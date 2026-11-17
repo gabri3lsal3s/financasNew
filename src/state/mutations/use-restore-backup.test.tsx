@@ -46,7 +46,6 @@ const emptyBackupPayload: BackupPayload = {
     portfolio_snapshots: [],
     portfolio_contributions: [],
     portfolio_dividends: [],
-    allocation_targets: [],
     class_targets: [],
     sector_targets: [],
     asset_prices: [],

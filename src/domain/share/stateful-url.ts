@@ -213,12 +213,19 @@ export function decodeDebtSimulatorState(
 }
 
 // 3. Simulador de Rebalanceamento Inteligente de Carteira (/ferramentas/rebalanceamento)
+export const rebalanceAssetShareSchema = z.object({
+  id: z.string().max(64),
+  ticker: z.string().max(32),
+  score: z.number().min(0).max(10).nullable(),
+});
+
 export const rebalanceClassShareSchema = z.object({
   key: z.string().max(64),
   name: z.string().max(100),
   targetPercent: z.number().min(0).max(100),
   currentProportion: z.number().min(0).max(1),
   yieldRate: z.number().min(0).max(100).default(0.06),
+  assets: z.array(rebalanceAssetShareSchema).max(30).optional(),
 });
 
 export const rebalanceSimulatorShareSchema = z.object({

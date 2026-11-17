@@ -914,18 +914,11 @@ export type PortfolioTransaction = {
   total: number;
 };
 
-export type AllocationTarget = {
-  id: string;
-  user_id: string;
-  asset_id: string;
-  /** 0–100; soma por usuário ≤ 100 (validada no domínio e no banco). */
-  target_percentage: number;
-};
-
 export type GroupTarget = {
   id: string;
   user_id: string;
   group_type: "class" | "sector";
+  class_name?: string | null;
   name: string;
   target_percentage: number;
 };
@@ -992,12 +985,6 @@ export type CreditCardForm = {
   color: string | null;
   is_active: boolean;
   last_four_digits?: string | null;
-};
-
-export type AllocationTargetInput = {
-  assetId: string;
-  /** 0–100. */
-  target: number;
 };
 
 export type RecurrenceGroupFields = {

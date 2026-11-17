@@ -2,13 +2,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   createPortfolioTransaction,
   createPortfolioTransactionsBatch,
-  deletePortfolioContributionsMatching,
-  deletePortfolioDividendsMatching,
-  deletePortfolioTransaction,
   listPortfolioTransactions,
   updatePortfolioAsset,
   updatePortfolioTransaction,
 } from "@/data/repositories/portfolio";
+import { deletePortfolioTransactionAtomic } from "@/data/rpc";
 import { calculateReconciledAssetPosition } from "@/domain/portfolio/operations";
 import {
   getAssetPricingMode,
@@ -20,6 +18,7 @@ import { pushToast } from "@/services/toast";
 import type {
   DbInsert,
   DbUpdate,
+  FixedIncomeMetadata,
   PortfolioAsset,
   PortfolioTransaction,
 } from "@/types";
@@ -153,6 +152,8 @@ export type DeletePortfolioTransactionInput =
       total?: number | null;
       quantity?: number | null;
       price?: number | null;
+      reverseCash?: boolean;
+      usdRate?: number;
     };
 
 export function useDeletePortfolioTransaction() {
@@ -166,6 +167,8 @@ export function useDeletePortfolioTransaction() {
       let total = typeof input !== "string" ? input.total : undefined;
       let quantity = typeof input !== "string" ? input.quantity : undefined;
       let price = typeof input !== "string" ? input.price : undefined;
+      const reverseCash = typeof input !== "string" ? Boolean(input.reverseCash) : false;
+      const usdRate = typeof input !== "string" && input.usdRate ? input.usdRate : 5.25;
 
       // Se não foram passados todos os metadados, tenta localizá-los no cache
       const cachedAll = queryClient.getQueryData<PortfolioTransaction[]>(PORTFOLIO_QUERY_KEYS.allTransactions) ?? [];
@@ -184,31 +187,52 @@ export function useDeletePortfolioTransaction() {
         quantity: quantity ?? 1,
         price: price ?? (total ?? 0),
         total: total ?? 0,
+        date: date ?? undefined,
       };
 
-      // 1. Deleta a transação principal
-      await deletePortfolioTransaction(id);
+      let newQuantity: number | null = null;
+      let newAveragePrice: number | null = null;
+      let fixedIncomeMetadata: FixedIncomeMetadata | null = null;
 
-      // 2. Cascata em Proventos ou Aportes correspondentes
-      if (assetId && date) {
-        if (type === "dividend" || type === "jcp" || type === "fii_yield") {
-          await deletePortfolioDividendsMatching({
-            asset_id: assetId,
-            date,
-            amount: total !== null && total !== undefined ? total : undefined,
+      if (assetId) {
+        const cachedAssets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
+        const asset = cachedAssets.find((a) => a.id === assetId);
+        if (asset) {
+          const allAssetTxs =
+            cachedAll.length > 0
+              ? cachedAll.filter((t) => t.asset_id === assetId)
+              : await listPortfolioTransactions(assetId);
+          const remainingTxs = allAssetTxs.filter((t) => t.id !== id);
+          const pricingMode = getAssetPricingMode(asset);
+          const isCash = isCashAssetClass(asset.asset_class);
+          const isTotalValue = !isCash && pricingMode === "total_value";
+
+          const reconciled = calculateReconciledAssetPosition({
+            currentQuantity: asset.quantity,
+            currentAveragePrice: asset.average_price,
+            assetClass: asset.asset_class,
+            currency: asset.currency,
+            isCash,
+            isTotalValue,
+            fixedIncomeMetadata: asset.fixed_income_metadata,
+            removedTransaction: removedTx,
+            remainingTransactions: remainingTxs,
           });
-        } else if (type === "buy") {
-          await deletePortfolioContributionsMatching({
-            asset_id: assetId,
-            date,
-          });
+          newQuantity = reconciled.newQuantity;
+          newAveragePrice = reconciled.newAveragePrice;
+          fixedIncomeMetadata = reconciled.updatedFixedIncomeMetadata ?? null;
         }
       }
 
-      // 3. Reconcilia o ativo debitando cotas, recalculando PM ou regredindo saldo
-      if (assetId) {
-        await reconcileAssetCustody(assetId, removedTx, queryClient);
-      }
+      // Exclusão transacional atômica no banco (cascata em proventos/aportes + custódia + caixa opcional)
+      await deletePortfolioTransactionAtomic({
+        transactionId: id,
+        reverseCash,
+        usdRate,
+        newQuantity,
+        newAveragePrice,
+        fixedIncomeMetadata,
+      });
     },
     onSuccess: () => {
       void invalidatePortfolioSuite(queryClient);

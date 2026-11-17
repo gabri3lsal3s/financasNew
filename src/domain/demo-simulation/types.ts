@@ -6,7 +6,6 @@ import type {
   CardPayment,
   Budget,
   PortfolioAsset,
-  AllocationTarget,
   GroupTarget,
   PortfolioSnapshot,
   PortfolioContribution,
@@ -204,7 +203,6 @@ export interface InvestmentsDataset {
   referenceMonth: string;
   assets: PortfolioAsset[];
   transactions: PortfolioTransaction[];
-  allocationTargets: AllocationTarget[];
   groupTargets: GroupTarget[];
   snapshots: PortfolioSnapshot[];
   contributions: PortfolioContribution[];

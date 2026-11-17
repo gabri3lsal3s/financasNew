@@ -40,7 +40,6 @@ export const BACKUP_TABLE_KEYS = [
   "portfolio_snapshots",
   "portfolio_contributions",
   "portfolio_dividends",
-  "allocation_targets",
   "class_targets",
   "sector_targets",
   "asset_prices",
@@ -67,7 +66,6 @@ export interface BackupData {
   portfolio_snapshots: BackupRow[];
   portfolio_contributions: BackupRow[];
   portfolio_dividends: BackupRow[];
-  allocation_targets: BackupRow[];
   class_targets: BackupRow[];
   sector_targets: BackupRow[];
   asset_prices: BackupRow[];
@@ -189,7 +187,6 @@ export function buildBackupPayload(data: BackupData): BackupPayload {
       (data.portfolio_snapshots?.length ?? 0) +
       (data.portfolio_contributions?.length ?? 0) +
       (data.portfolio_dividends?.length ?? 0) +
-      (data.allocation_targets?.length ?? 0) +
       (data.class_targets?.length ?? 0) +
       (data.sector_targets?.length ?? 0) +
       (data.asset_prices?.length ?? 0) +
@@ -245,9 +242,37 @@ export function parseBackupPayload(raw: unknown): BackupValidation {
   }
 
   const dataByKey = parsed.data.data as Record<string, BackupRow[]>;
-  const payloadData = Object.fromEntries(
+  const rawCanonicalData = Object.fromEntries(
     BACKUP_TABLE_KEYS.map((key) => [key, dataByKey[key] ?? []]),
   ) as unknown as BackupData;
+
+  const expectedChecksum = parsed.data.checksum ?? parsed.data.metadata?.checksum;
+  if (expectedChecksum) {
+    const actualChecksum = calculateBackupChecksum(rawCanonicalData);
+    const hasLegacyAlloc = Array.isArray(dataByKey.allocation_targets);
+    const legacyChecksum = hasLegacyAlloc ? calculateBackupChecksum(dataByKey) : null;
+    if (actualChecksum !== expectedChecksum && legacyChecksum !== expectedChecksum) {
+      return {
+        ok: false,
+        errors: [
+          `Checksum de integridade inválido (esperado: ${expectedChecksum}, calculado: ${actualChecksum}). O arquivo pode ter sido corrompido ou alterado.`,
+        ],
+      };
+    }
+  }
+
+  const normalizedSectorTargets = (dataByKey.sector_targets ?? []).map((row) => ({
+    ...row,
+    class_name:
+      typeof row.class_name === "string" && row.class_name.trim().length > 0
+        ? row.class_name.trim()
+        : "Ações",
+  }));
+
+  const payloadData: BackupData = {
+    ...rawCanonicalData,
+    sector_targets: normalizedSectorTargets,
+  };
 
   const payload: BackupPayload = {
     version: parsed.data.version,
@@ -263,20 +288,6 @@ export function parseBackupPayload(raw: unknown): BackupValidation {
       ok: false,
       errors: [`Versão de backup não suportada: ${payload.version} (esperada: ${BACKUP_VERSION}).`],
     };
-  }
-
-  // Se um checksum foi incluído no arquivo, validamos contra os dados desserializados
-  const expectedChecksum = payload.checksum;
-  if (expectedChecksum) {
-    const actualChecksum = calculateBackupChecksum(payload.data);
-    if (actualChecksum !== expectedChecksum) {
-      return {
-        ok: false,
-        errors: [
-          `Checksum de integridade inválido (esperado: ${expectedChecksum}, calculado: ${actualChecksum}). O arquivo pode ter sido corrompido ou alterado.`,
-        ],
-      };
-    }
   }
 
   const integrityErrors = validateIntegrity(payload.data);
@@ -319,7 +330,6 @@ export function validateIntegrity(data: BackupData): string[] {
   checkRef(data.portfolio_transactions, "asset_id", assetIds, "de transação de ativo");
   checkRef(data.portfolio_contributions, "asset_id", assetIds, "de contribuição de ativo");
   checkRef(data.portfolio_dividends, "asset_id", assetIds, "de provento de ativo");
-  checkRef(data.allocation_targets, "asset_id", assetIds, "de meta de alocação");
 
   return errors;
 }

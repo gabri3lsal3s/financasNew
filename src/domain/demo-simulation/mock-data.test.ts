@@ -308,25 +308,17 @@ describe("demo-simulation — Datasets Puros e Dinâmicos em Memória (Fase 2)",
       expect(assetClasses).toContain("FIIs");
       expect(assetClasses).toContain("Cripto");
 
-      // Soma de metas por classe == 100%
-      const totalGroupPercent = dataset.groupTargets.reduce(
+      // Soma de metas por classe == 100% e setores dentro de classe <= 100%
+      const classTargets = dataset.groupTargets.filter((g) => g.group_type === "class");
+      const totalClassPercent = classTargets.reduce(
         (sum, t) => sum + t.target_percentage,
         0,
       );
-      expect(totalGroupPercent).toBe(100);
+      expect(totalClassPercent).toBe(100);
 
-      // Soma de metas por ativo == 100%
-      const totalAllocPercent = dataset.allocationTargets.reduce(
-        (sum, t) => sum + t.target_percentage,
-        0,
-      );
-      expect(totalAllocPercent).toBe(100);
-
-      // Todo ativo em allocationTargets existe em assets
-      const assetIds = new Set(dataset.assets.map((a) => a.id));
-      for (const target of dataset.allocationTargets) {
-        expect(assetIds.has(target.asset_id)).toBe(true);
-      }
+      // Todos os ativos não-Caixa possuem governança configurada (score e allocation_status)
+      expect(dataset.assets.every((a) => typeof a.score === "number" && a.allocation_status)).toBe(true);
+      expect(dataset.assets.some((a) => a.allocation_status === "quarantine")).toBe(true);
     });
 
     it("gera curva patrimonial crescente de 3 meses para os snapshots", () => {

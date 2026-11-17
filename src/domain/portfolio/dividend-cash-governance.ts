@@ -46,9 +46,11 @@ export function validateDividendReversalSafeguard(
 
   let warningMessage: string | undefined;
   if (!isSafe) {
+    const fmt = (val: number) =>
+      val.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     warningMessage =
-      `O saldo atual de Caixa (R$ ${currentBalance.toFixed(2)}) é menor que o estorno (R$ ${targetReversal.toFixed(2)}). ` +
-      `O saldo restante de Caixa ficará zerado e a diferença (R$ ${shortfall.toFixed(2)}) indica que o recurso já foi reinvestido.`;
+      `O saldo atual de Caixa (R$ ${fmt(currentBalance)}) é menor que o estorno (R$ ${fmt(targetReversal)}). ` +
+      `O saldo restante de Caixa ficará zerado e a diferença (R$ ${fmt(shortfall)}) indica que o recurso já foi reinvestido.`;
   }
 
   return {

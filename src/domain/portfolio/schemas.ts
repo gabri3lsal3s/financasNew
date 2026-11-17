@@ -44,6 +44,33 @@ const notesSchema = z
     return clean.length > 0 ? clean.slice(0, 500) : null;
   });
 
+const allocationStatusSchema = z.enum(["active", "neutral", "quarantine", "exit"] as const, {
+  message: "Status operacional inválido",
+});
+
+const scoreSchema = z
+  .number({ message: "Informe uma nota válida entre 0 e 10" })
+  .int("A nota deve ser um número inteiro de 0 a 10")
+  .min(0, "A nota mínima é 0")
+  .max(10, "A nota máxima é 10")
+  .nullable()
+  .optional();
+
+const scoreCriteriaSchema = z.record(
+  z.string(),
+  z.number().min(0, "Pontuação do critério deve ser >= 0").max(2, "Pontuação máxima por critério é 2"),
+);
+
+const reviewFrequencyMonthsSchema = z
+  .number({ message: "Frequência de revisão inválida" })
+  .int("A frequência deve ser um número inteiro de meses")
+  .min(1, "A frequência mínima é 1 mês")
+  .max(60, "A frequência máxima é 60 meses")
+  .nullable()
+  .optional();
+
+const thesisSummarySchema = notesSchema;
+
 const assetCurrencySchema = z.enum(["BRL", "USD"] as const, {
   message: "Moeda inválida (escolha BRL ou USD)",
 });
@@ -105,12 +132,16 @@ export const newAssetSchema = z.object({
     .number({ message: "Informe um preço médio válido" })
     .min(0, "O preço médio não pode ser negativo")
     .max(MAX_MONEY_AMOUNT, "O preço médio não pode ultrapassar o limite monetário permitido"),
-  target_percentage: z
-    .number({ message: "Informe um percentual válido" })
-    .min(0, "A meta não pode ser inferior a 0%")
-    .max(100, "A meta não pode ultrapassar 100%")
-    .nullable()
-    .optional(),
+  /** Nota de qualidade/convicção do ativo (0–10; null = Sem nota). */
+  score: scoreSchema,
+  /** Status operacional de governança para o rebalanceamento. */
+  allocation_status: allocationStatusSchema.optional(),
+  /** Pontuação detalhada por critério do checklist. */
+  score_criteria: scoreCriteriaSchema.optional(),
+  /** Periodicidade sugerida de revisão da tese (meses). */
+  review_frequency_months: reviewFrequencyMonthsSchema,
+  /** Resumo da tese de investimento do ativo. */
+  thesis_summary: thesisSummarySchema,
   /** Proventos históricos acumulados anteriores ao extrato periódico. Alimenta YoC e Bola de Neve. */
   accumulated_dividends: z
     .number({ message: "Informe um valor válido para proventos acumulados" })
@@ -177,9 +208,9 @@ export const quickTransactionSchema = z
       if (data.type === "dividend" || data.type === "jcp" || data.type === "fii_yield") {
         return data.total > 0;
       }
-      // Split / Reverse split
+      // Split / Reverse split (aceita proporções livres X:Y e bonificações decimais > 0 e != 1)
       if (data.type === "split" || data.type === "reverse_split") {
-        return data.quantity > 1;
+        return data.quantity > 0 && Math.abs(data.quantity - 1) > 1e-6;
       }
       return true;
     },
@@ -206,6 +237,16 @@ export const assetMetadataSchema = z.object({
     .min(0, "O preço médio não pode ser negativo")
     .max(MAX_MONEY_AMOUNT, "O preço médio ultrapassa o limite monetário permitido")
     .optional(),
+  /** Nota de qualidade/convicção do ativo (0–10; null = Sem nota). */
+  score: scoreSchema,
+  /** Status operacional de governança para o rebalanceamento. */
+  allocation_status: allocationStatusSchema.optional(),
+  /** Pontuação detalhada por critério do checklist. */
+  score_criteria: scoreCriteriaSchema.optional(),
+  /** Periodicidade sugerida de revisão da tese (meses). */
+  review_frequency_months: reviewFrequencyMonthsSchema,
+  /** Resumo da tese de investimento do ativo. */
+  thesis_summary: thesisSummarySchema,
   /** Proventos históricos acumulados anteriores ao extrato periódico. Alimenta YoC e Bola de Neve. */
   accumulated_dividends: z
     .number({ message: "Informe um valor válido para proventos acumulados" })

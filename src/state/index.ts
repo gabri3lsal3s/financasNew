@@ -131,11 +131,10 @@ export { useSaveMonthlyClosing, type SaveMonthlyClosingInput } from "./mutations
 export { useMacroIndicators, type MacroIndicatorsData, MACRO_INDICATORS_QUERY_KEY } from "./queries/use-macro-indicators";
 
 export {
-  useAllocationTargets,
-  useSaveAllocationTargets,
   useGroupTargets,
   useSaveGroupTarget,
   useRemoveGroupTarget,
+  useSaveHierarchyTargets,
 } from "./queries/use-allocation";
 export { useGlobalSearchEntries } from "./queries/use-search";
 export { usePredictionHistory } from "./queries/use-prediction-history";
@@ -262,7 +261,6 @@ export {
   useSimulatedPortfolioSnapshots,
   useSimulatedPortfolioContributions,
   useSimulatedPortfolioDividends,
-  useSimulatedAllocationTargets,
   useSimulatedGroupTargets,
   useSimulatedOnboardingCounts,
   useSimulatedFamily,

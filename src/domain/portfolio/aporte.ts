@@ -25,9 +25,9 @@
  */
 
 import type { AssetAllocationStatus, AssetCurrency } from "@/types";
-import { isFixedIncomeClass, isTesouroAsset, normalizeClassName } from "./valuation";
+import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset, normalizeClassName } from "./valuation";
 import { inferSectorFromTicker } from "./tickers-catalog";
-import { deriveAssetWeightsFromScores } from "./allocation";
+import { calculateEffectiveAssetTargets } from "./allocation";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -47,7 +47,9 @@ export type SkippedReason =
   | "no_target"
   | "above_target"
   | "price_exceeds_budget"
+  | "insufficient_aporte"
   | "quarantine"
+  | "neutral"
   | "exit";
 
 export interface SkippedAssetDiagnostic {
@@ -94,8 +96,8 @@ export interface AporteAssetInput {
   priceBRL: number;
   /** Custo médio unitário (BRL) para cálculo de desconto frente ao PM. */
   averageCost?: number;
-  /** Meta individual (% do patrimônio) — null = sem meta. */
-  targetPercentage: number | null;
+  /** Meta individual (% do patrimônio) — usada apenas no modo unitário legado ("asset"). */
+  targetPercentage?: number | null;
   /** Nota de governança fundamentalista (0 a 10). */
   score?: number | null;
   /** Status de alocação operacional (active, neutral, quarantine, exit). */
@@ -178,7 +180,7 @@ export interface AporteRoute {
   ticker: string;
   assetClass: string | null;
   sector: string | null;
-  /** Valor alvo em BRL (meta aplicada ao patrimônio pós-aporte). */
+  /** Valor alvo em BRL (meta aplicada ao patrimônio investível pós-aporte). */
   targetValueBRL: number;
   /** Valor atual em BRL. */
   currentValueBRL: number;
@@ -190,6 +192,13 @@ export interface AporteRoute {
   quantity: number;
   /** Preço unitário usado (BRL). */
   priceBRL: number;
+  /** Metadados de governança usados na derivação da meta (§Plano 42). */
+  rawScore?: number | null;
+  effectiveScore?: number;
+  effectiveTargetPct?: number;
+  classTargetPct?: number;
+  sectorTargetPctInClass?: number | null;
+  weightInSector?: number;
 }
 
 export interface AporteResult {
@@ -309,6 +318,11 @@ interface InternalEffectiveAssetTarget {
   targetPct: number;
   targetValueBRL: number;
   gapBRL: number;
+  rawScore: number | null;
+  effectiveScore: number;
+  classTargetPct: number;
+  sectorTargetPctInClass: number | null;
+  weightInSector: number;
 }
 
 interface InternalSectorMacro {
@@ -358,7 +372,14 @@ export function simulateAporte(opts: {
     };
   }
 
-  const totalAtual = round2(opts.assets.reduce((acc, a) => acc + nonNegative(a.currentValueBRL), 0));
+  const investableAssets =
+    opts.mode === "asset"
+      ? [...opts.assets]
+      : opts.assets.filter(
+          (a) => !isCashAssetClass(a.assetClass) && a.ticker.trim().toUpperCase() !== "CAIXA",
+        );
+
+  const totalAtual = round2(investableAssets.reduce((acc, a) => acc + nonNegative(a.currentValueBRL), 0));
   const basePatrimonio = opts.totalPortfolioBRL && opts.totalPortfolioBRL > 0 ? opts.totalPortfolioBRL : totalAtual;
   const patrimonioAlvo = round2(basePatrimonio + aporte);
   if (!(patrimonioAlvo > 0)) {
@@ -379,7 +400,7 @@ export function simulateAporte(opts: {
   const assetsByClass = new Map<string, AporteAssetInput[]>();
   const assetsByClassAndSector = new Map<string, Map<string, AporteAssetInput[]>>();
 
-  for (const asset of opts.assets) {
+  for (const asset of investableAssets) {
     const classKey = asset.assetClass?.trim() || "Outros";
     const sectorKey = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, classKey);
 
@@ -399,7 +420,10 @@ export function simulateAporte(opts: {
 
   const classTargetMap = new Map<string, number>();
   for (const ct of opts.classTargets) {
-    classTargetMap.set(normalizeClassName(ct.className), nonNegative(ct.targetPercentage));
+    const norm = normalizeClassName(ct.className);
+    if (norm && norm !== "caixa") {
+      classTargetMap.set(norm, nonNegative(ct.targetPercentage));
+    }
   }
 
   const sectorTargetMap = new Map<string, Map<string, number>>();
@@ -410,124 +434,92 @@ export function simulateAporte(opts: {
       sMap = new Map<string, number>();
       sectorTargetMap.set(normClass, sMap);
     }
-    sMap.set(st.sectorName.trim(), nonNegative(st.targetPercentage));
+    sMap.set(st.sectorName.trim().toLowerCase(), nonNegative(st.targetPercentage));
   }
 
   // -------------------------------------------------------------------------
-  // 1. Meta efetiva por ativo (Hierarquia 3 Níveis: Classe -> Setor -> Ativo)
+  // 1. Meta efetiva por ativo (Fonte única: calculateEffectiveAssetTargets)
   // -------------------------------------------------------------------------
   const effectiveAssetMap = new Map<string, InternalEffectiveAssetTarget>();
 
   if (opts.mode === "asset") {
-    // Modo individual: cada ativo usa sua meta direta
-    for (const asset of opts.assets) {
-      if (asset.allocation_status === "quarantine" || asset.allocation_status === "exit") {
-        effectiveAssetMap.set(asset.id, { targetPct: 0, targetValueBRL: 0, gapBRL: 0 });
+    // Modo unitário puro (compatibilidade com testes legados por ativo)
+    for (const asset of investableAssets) {
+      if (
+        asset.allocation_status === "quarantine" ||
+        asset.allocation_status === "exit" ||
+        asset.allocation_status === "neutral"
+      ) {
+        effectiveAssetMap.set(asset.id, {
+          targetPct: 0,
+          targetValueBRL: 0,
+          gapBRL: 0,
+          rawScore: asset.score ?? null,
+          effectiveScore: 0,
+          classTargetPct: 0,
+          sectorTargetPctInClass: null,
+          weightInSector: 0,
+        });
       } else if (asset.targetPercentage !== null && asset.targetPercentage !== undefined) {
         const targetPct = nonNegative(asset.targetPercentage);
         const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
         const gapBRL = targetPct > 0 ? round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL))) : 0;
-        effectiveAssetMap.set(asset.id, { targetPct, targetValueBRL, gapBRL });
+        effectiveAssetMap.set(asset.id, {
+          targetPct,
+          targetValueBRL,
+          gapBRL,
+          rawScore: asset.score ?? null,
+          effectiveScore: asset.score ?? 5,
+          classTargetPct: targetPct,
+          sectorTargetPctInClass: null,
+          weightInSector: 1,
+        });
       }
     }
   } else {
-    // Se mode === "both", metas individuais são consideradas prioritariamente (incluindo 0%)
-    if (opts.mode === "both") {
-      for (const asset of opts.assets) {
-        if (asset.allocation_status === "quarantine" || asset.allocation_status === "exit") {
-          effectiveAssetMap.set(asset.id, { targetPct: 0, targetValueBRL: 0, gapBRL: 0 });
-        } else if (asset.targetPercentage !== null && asset.targetPercentage !== undefined) {
-          const targetPct = nonNegative(asset.targetPercentage);
-          const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
-          const gapBRL = targetPct > 0 ? round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL))) : 0;
-          effectiveAssetMap.set(asset.id, { targetPct, targetValueBRL, gapBRL });
-        }
-      }
-    }
+    const investableById = new Map(investableAssets.map((a) => [a.id, a]));
+    const derivedTargets = calculateEffectiveAssetTargets({
+      assets: investableAssets.map((a) => {
+        const cls = a.assetClass?.trim() || "Outros";
+        return {
+          id: a.id,
+          ticker: a.ticker,
+          assetClass: cls,
+          sector: a.sector?.trim() || inferSectorFromTicker(a.ticker, cls),
+          score: a.score ?? null,
+          allocation_status: a.allocation_status ?? "active",
+        };
+      }),
+      classTargets: opts.classTargets,
+      sectorTargets: opts.sectorTargets ?? [],
+    });
 
-    for (const [className, sectorMap] of assetsByClassAndSector) {
-      const normClass = normalizeClassName(className);
-      const classTargetPct = classTargetMap.get(normClass) ?? 0;
-      if (!(classTargetPct > 0)) continue;
+    for (const eff of derivedTargets) {
+      const asset = investableById.get(eff.assetId);
+      if (!asset) continue;
+      const targetValueBRL = round2((eff.effectiveTargetPct / 100) * patrimonioAlvo);
+      const gapBRL =
+        eff.effectiveTargetPct > 0 && eff.isEligible
+          ? round2(Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL)))
+          : 0;
 
-      const sectorsWithTarget = sectorTargetMap.get(normClass);
-      const hasConfiguredSectorTargets = sectorsWithTarget && sectorsWithTarget.size > 0;
-
-      if (hasConfiguredSectorTargets) {
-        // Alocação em 3 níveis: distribui a meta da classe para os setores cadastrados
-        for (const [sectorName, members] of sectorMap) {
-          const sectorTargetInClass = sectorsWithTarget?.get(sectorName);
-
-          // Se o setor foi explicitamente configurado com 0%, zera os membros sem meta individual
-          if (sectorTargetInClass === 0) {
-            for (const member of members) {
-              if (!effectiveAssetMap.has(member.id)) {
-                effectiveAssetMap.set(member.id, { targetPct: 0, targetValueBRL: 0, gapBRL: 0 });
-              }
-            }
-            continue;
-          }
-
-          if (!sectorTargetInClass || !(sectorTargetInClass > 0)) continue;
-
-          const sectorEffectiveTargetPct = round2((classTargetPct * sectorTargetInClass) / 100);
-          if (!(sectorEffectiveTargetPct > 0)) continue;
-
-          const unassignedMembers = members.filter((m) => !effectiveAssetMap.has(m.id));
-          if (unassignedMembers.length === 0) continue;
-
-          const assignedInSector = members
-            .filter((m) => effectiveAssetMap.has(m.id))
-            .reduce((acc, m) => acc + (effectiveAssetMap.get(m.id)?.targetPct ?? 0), 0);
-
-          const remainingSectorPct = Math.max(0, sectorEffectiveTargetPct - assignedInSector);
-          if (remainingSectorPct > 0) {
-            // Governança por Notas (Fase 41): pondera pelos scores e isola quarentenas
-            const weightedMembers = deriveAssetWeightsFromScores(unassignedMembers);
-            for (const member of weightedMembers) {
-              const targetPct = round2(remainingSectorPct * member.weightInSector);
-              const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
-              const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(member.currentValueBRL)));
-              if (targetPct > 0 && member.isEligible) {
-                effectiveAssetMap.set(member.id, { targetPct, targetValueBRL, gapBRL });
-              } else {
-                effectiveAssetMap.set(member.id, { targetPct: 0, targetValueBRL: 0, gapBRL: 0 });
-              }
-            }
-          }
-        }
-      }
-
-      // Fallback para membros da classe que ficaram sem meta (ponderação por notas da classe)
-      const allClassMembers = assetsByClass.get(className) ?? [];
-      const remainingUnassigned = allClassMembers.filter((m) => !effectiveAssetMap.has(m.id));
-      if (remainingUnassigned.length > 0) {
-        const assignedClassPct = allClassMembers
-          .filter((m) => effectiveAssetMap.has(m.id))
-          .reduce((acc, m) => acc + (effectiveAssetMap.get(m.id)?.targetPct ?? 0), 0);
-
-        const remainingClassPct = Math.max(0, classTargetPct - assignedClassPct);
-        if (remainingClassPct > 0) {
-          const weightedMembers = deriveAssetWeightsFromScores(remainingUnassigned);
-          for (const member of weightedMembers) {
-            const targetPct = round2(remainingClassPct * member.weightInSector);
-            const targetValueBRL = round2((targetPct / 100) * patrimonioAlvo);
-            const gapBRL = round2(Math.max(0, targetValueBRL - nonNegative(member.currentValueBRL)));
-            if (targetPct > 0 && member.isEligible) {
-              effectiveAssetMap.set(member.id, { targetPct, targetValueBRL, gapBRL });
-            } else {
-              effectiveAssetMap.set(member.id, { targetPct: 0, targetValueBRL: 0, gapBRL: 0 });
-            }
-          }
-        }
-      }
+      effectiveAssetMap.set(eff.assetId, {
+        targetPct: eff.effectiveTargetPct,
+        targetValueBRL,
+        gapBRL,
+        rawScore: eff.rawScore,
+        effectiveScore: eff.effectiveScore,
+        classTargetPct: eff.classTargetPct,
+        sectorTargetPctInClass: eff.sectorTargetPctInClass,
+        weightInSector: eff.weightInSector,
+      });
     }
   }
 
   // -------------------------------------------------------------------------
   // 2. Diagnóstico prévio de inelegibilidade dos ativos
   // -------------------------------------------------------------------------
-  for (const asset of opts.assets) {
+  for (const asset of investableAssets) {
     const eff = effectiveAssetMap.get(asset.id);
     const sector = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, asset.assetClass);
     if (asset.allocation_status === "quarantine") {
@@ -548,6 +540,15 @@ export function simulateAporte(opts: {
         reason: "exit",
         detail: "Ativo com tese encerrada (Desinvestimento). Aportes bloqueados.",
       });
+    } else if (asset.allocation_status === "neutral") {
+      skippedAssets.push({
+        assetId: asset.id,
+        ticker: asset.ticker,
+        assetClass: asset.assetClass,
+        sector,
+        reason: "neutral",
+        detail: "Ativo em status Neutro (mantido em carteira sem novos aportes).",
+      });
     } else if (!eff || eff.targetPct <= 0) {
       skippedAssets.push({
         assetId: asset.id,
@@ -555,7 +556,7 @@ export function simulateAporte(opts: {
         assetClass: asset.assetClass,
         sector,
         reason: "no_target",
-        detail: "Sem meta percentual definida.",
+        detail: "Sem meta percentual definida ou nota zerada.",
       });
     } else if (asset.priceBRL <= 0) {
       skippedAssets.push({
@@ -627,7 +628,7 @@ export function simulateAporte(opts: {
         sectorMemberGapsBRL = round2(sectorMemberGapsBRL);
         sectorTargetValBRL = round2(sectorTargetValBRL);
 
-        const targetPctInClass = sectorsWithTarget?.get(sectorName) ?? 0;
+        const targetPctInClass = sectorsWithTarget?.get(sectorName.trim().toLowerCase()) ?? 0;
         const effectiveTargetPct = round2((sectorTargetValBRL / patrimonioAlvo) * 100);
 
         const sectorDeficitRel =
@@ -790,19 +791,20 @@ export function simulateAporte(opts: {
     } else {
       // Pass 1: Proporcional ponderado por déficit restante
       for (const m of eligible) {
+        if (!(remainingBudget > 0)) break;
         const eff = effectiveAssetMap.get(m.id)!;
         const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
         const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
         if (!(remainingGap > 0)) continue;
 
-        const share = Math.min(remainingGap, (remainingGap / sumGaps) * budget);
+        const share = Math.min(remainingGap, remainingBudget, (remainingGap / sumGaps) * budget);
         const precision = resolveAssetPrecision(m);
+        const multiplier = Math.pow(10, precision);
 
         let qty: number;
         let alloc: number;
 
         if (precision > 0) {
-          const multiplier = Math.pow(10, precision);
           qty = Math.floor((share / m.priceBRL) * multiplier) / multiplier;
           alloc = round2(qty * m.priceBRL);
         } else {
@@ -810,15 +812,23 @@ export function simulateAporte(opts: {
           alloc = round2(qty * m.priceBRL);
         }
 
-        if (alloc > remainingGap) {
-          alloc = remainingGap;
-          qty = precision > 0 ? Math.floor((alloc / m.priceBRL) * Math.pow(10, precision)) / Math.pow(10, precision) : Math.floor(alloc / m.priceBRL);
+        const cap = Math.min(remainingGap, remainingBudget);
+        if (alloc > cap) {
+          qty =
+            precision > 0
+              ? Math.floor((cap / m.priceBRL) * multiplier) / multiplier
+              : Math.floor(cap / m.priceBRL);
           alloc = round2(qty * m.priceBRL);
+          if (alloc > cap && qty > 0) {
+            const step = precision > 0 ? 1 / multiplier : 1;
+            qty = Math.max(0, precision > 0 ? Math.round((qty - step) * multiplier) / multiplier : qty - 1);
+            alloc = round2(qty * m.priceBRL);
+          }
         }
 
-        if (alloc > 0 && qty > 0) {
+        if (alloc > 0 && qty > 0 && alloc <= remainingBudget) {
           const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
-          const newQty = precision > 0 ? Math.round((existing.quantity + qty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + qty;
+          const newQty = precision > 0 ? Math.round((existing.quantity + qty) * multiplier) / multiplier : existing.quantity + qty;
           allocatedMap.set(m.id, {
             quantity: newQty,
             allocatedBRL: round2(existing.allocatedBRL + alloc),
@@ -910,7 +920,7 @@ export function simulateAporte(opts: {
       });
 
     const normClass = normalizeClassName(classMacro.className);
-    const hasSectorTargets = (sectorTargetMap.get(normClass)?.size ?? 0) > 0;
+    const hasSectorTargets = Array.from(sectorTargetMap.get(normClass)?.values() ?? []).some((v) => v > 0);
 
     if (hasSectorTargets && sectorMacros.length > 0) {
       const totalSectorsGap = sectorMacros.reduce((acc, s) => acc + s.gapBRL, 0);
@@ -1013,7 +1023,7 @@ export function simulateAporte(opts: {
       });
 
     const normClass = normalizeClassName(classMacro.className);
-    const hasSectorTargets = (sectorTargetMap.get(normClass)?.size ?? 0) > 0;
+    const hasSectorTargets = Array.from(sectorTargetMap.get(normClass)?.values() ?? []).some((v) => v > 0);
 
     if (hasSectorTargets && sectorMacros.length > 0) {
       for (const sectorMacro of sectorMacros) {
@@ -1042,6 +1052,12 @@ export function simulateAporte(opts: {
             allocatedBRL: res.allocatedBRL,
             quantity: res.quantity,
             priceBRL: round2(nonNegative(asset.priceBRL)),
+            rawScore: eff.rawScore,
+            effectiveScore: eff.effectiveScore,
+            effectiveTargetPct: eff.targetPct,
+            classTargetPct: eff.classTargetPct,
+            sectorTargetPctInClass: eff.sectorTargetPctInClass,
+            weightInSector: eff.weightInSector,
           });
         }
       }
@@ -1071,6 +1087,12 @@ export function simulateAporte(opts: {
           allocatedBRL: res.allocatedBRL,
           quantity: res.quantity,
           priceBRL: round2(nonNegative(asset.priceBRL)),
+          rawScore: eff.rawScore,
+          effectiveScore: eff.effectiveScore,
+          effectiveTargetPct: eff.targetPct,
+          classTargetPct: eff.classTargetPct,
+          sectorTargetPctInClass: eff.sectorTargetPctInClass,
+          weightInSector: eff.weightInSector,
         });
       }
     }
@@ -1092,7 +1114,7 @@ export function simulateAporte(opts: {
   }
 
   // Adiciona ativos que tinham gap individual mas não receberam aporte (ex: classe sobre-alocada ou saldo insuficiente)
-  for (const asset of opts.assets) {
+  for (const asset of investableAssets) {
     const isAllocated = (allocatedMap.get(asset.id)?.allocatedBRL ?? 0) > 0;
     const isAlreadySkipped = skippedAssets.some((s) => s.assetId === asset.id);
     if (!isAllocated && !isAlreadySkipped) {
@@ -1227,14 +1249,17 @@ export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteR
   const aporteAmount = opts.aporteAmount && opts.aporteAmount > 0 ? round2(opts.aporteAmount) : 0;
   const cashAvailableBRL = opts.cashAvailableBRL && opts.cashAvailableBRL > 0 ? round2(opts.cashAvailableBRL) : 0;
 
-  const totalAtual = round2(opts.assets.reduce((acc, a) => acc + nonNegative(a.currentValueBRL), 0));
+  const investableAssets = opts.assets.filter(
+    (a) => !isCashAssetClass(a.assetClass) && a.ticker.trim().toUpperCase() !== "CAIXA",
+  );
+  const totalAtual = round2(investableAssets.reduce((acc, a) => acc + nonNegative(a.currentValueBRL), 0));
   const portfolioBase = opts.totalPortfolioBRL && opts.totalPortfolioBRL > 0 ? opts.totalPortfolioBRL : totalAtual;
 
   // Agrupamento por classe e setor
   const assetsByClass = new Map<string, AporteAssetInput[]>();
   const assetsByClassAndSector = new Map<string, Map<string, AporteAssetInput[]>>();
 
-  for (const asset of opts.assets) {
+  for (const asset of investableAssets) {
     const cls = asset.assetClass || "Ações";
     const sec = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, cls);
 
@@ -1269,7 +1294,7 @@ export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteR
 
   const simResult = simulateCombinedAporte({
     aporte: effectiveSimAporte,
-    assets: opts.assets,
+    assets: investableAssets,
     classTargets: opts.classTargets,
     sectorTargets: opts.sectorTargets,
     strategy,
@@ -1355,6 +1380,13 @@ export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteR
       const opportunityItems: SectorOpportunityItem[] = [];
 
       for (const member of members) {
+        if (
+          member.allocation_status === "quarantine" ||
+          member.allocation_status === "exit" ||
+          member.allocation_status === "neutral"
+        ) {
+          continue;
+        }
         const currentPrice = member.priceBRL;
         const averageCost =
           member.averageCost && member.averageCost > 0

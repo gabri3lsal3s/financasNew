@@ -147,6 +147,8 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
         currency: "BRL",
         quantity: 100,
         average_price: 35.0,
+        score: 8,
+        allocation_status: "active",
       },
       {
         id: "a-2",
@@ -156,6 +158,8 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
         currency: "BRL",
         quantity: 50,
         average_price: 10.0,
+        score: 8,
+        allocation_status: "active",
       },
     ];
 
@@ -164,31 +168,51 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
       { assetId: "a-2", ticker: "MXRF11", valueBRL: 500, pct: 5, assetClass: "FIIs" },
     ];
 
-    const mockTargets = [
-      { asset_id: "a-1", target_percentage: 30 }, // Alvo: 3.000, Atual: 4.000 -> Gap 0 (sem déficit)
-      { asset_id: "a-2", target_percentage: 20 }, // Alvo: 2.000, Atual: 500 -> Gap: 1.500 (déficit!)
+    const mockClassTargets = [
+      { name: "Ações", target_percentage: 30 }, // Alvo: 1.350, Atual: 4.000 -> sem déficit
+      { name: "FIIs", target_percentage: 70 }, // Alvo: 3.150, Atual: 500 -> déficit 2.650!
     ];
 
-    it("sugere aporte apenas para ativos com déficit em relação à meta", () => {
-      const suggestions = buildAporteSuggestions(mockAssets, mockRows, mockTargets, 10000);
+    it("sugere aporte apenas para ativos pertencentes a classes com déficit", () => {
+      const suggestions = buildAporteSuggestions(mockAssets, mockRows, 4500, 3, mockClassTargets);
       expect(suggestions.length).toBe(1);
       expect(suggestions[0]!.ticker).toBe("MXRF11");
-      expect(suggestions[0]!.gapBRL).toBe(1500);
-      expect(suggestions[0]!.targetValueBRL).toBe(2000);
+      expect(suggestions[0]!.gapBRL).toBe(2650);
+      expect(suggestions[0]!.targetValueBRL).toBe(3150);
     });
 
-    it("suporta metas de classe distribuídas equiponderadamente para ativos sem meta individual", () => {
-      const suggestions = buildAporteSuggestions(
-        mockAssets,
-        mockRows,
-        [], // sem metas individuais
-        10000,
-        3,
-        [{ name: "FIIs", target_percentage: 20 }], // Classe FIIs com 20% = 2.000 (MXRF11 atual 500 -> gap 1.500)
-      );
-      expect(suggestions.length).toBe(1);
-      expect(suggestions[0]!.ticker).toBe("MXRF11");
-      expect(suggestions[0]!.gapBRL).toBe(1500);
+    it("pondera ativos dentro da mesma classe pelas notas de convicção (Nota 8 vs Nota 4)", () => {
+      const scoredAssets: PortfolioAsset[] = [
+        { id: "s1", user_id: "u-1", ticker: "ITUB4", asset_class: "Ações", currency: "BRL", quantity: 10, average_price: 10, score: 8, allocation_status: "active" },
+        { id: "s2", user_id: "u-1", ticker: "BBDC4", asset_class: "Ações", currency: "BRL", quantity: 10, average_price: 10, score: 2, allocation_status: "active" },
+      ];
+      const rows = [
+        { assetId: "s1", ticker: "ITUB4", valueBRL: 500, pct: 50, assetClass: "Ações" },
+        { assetId: "s2", ticker: "BBDC4", valueBRL: 500, pct: 50, assetClass: "Ações" },
+      ];
+      // Meta Ações 100%: ITUB4 (8/10 = 80% = 800, gap 300), BBDC4 (2/10 = 20% = 200, gap <= 0)
+      const suggestions = buildAporteSuggestions(scoredAssets, rows, 1000, 3, [{ name: "Ações", target_percentage: 100 }]);
+      expect(suggestions.map((s) => s.ticker)).toEqual(["ITUB4"]);
+      expect(suggestions[0]!.targetPercentage).toBe(80);
+    });
+
+    it("ignora CAIXA e ativos em quarentena, saída ou neutro nas sugestões", () => {
+      const govAssets: PortfolioAsset[] = [
+        { id: "cash", user_id: "u-1", ticker: "CAIXA", asset_class: "Caixa", currency: "BRL", quantity: 5000, average_price: 1 },
+        { id: "a-q", user_id: "u-1", ticker: "OIBR3", asset_class: "Ações", currency: "BRL", quantity: 10, average_price: 10, score: 2, allocation_status: "quarantine" },
+        { id: "a-n", user_id: "u-1", ticker: "SANB11", asset_class: "Ações", currency: "BRL", quantity: 10, average_price: 10, score: 6, allocation_status: "neutral" },
+        { id: "a-ok", user_id: "u-1", ticker: "ITUB4", asset_class: "Ações", currency: "BRL", quantity: 10, average_price: 10, score: 9, allocation_status: "active" },
+      ];
+      const rows = [
+        { assetId: "cash", ticker: "CAIXA", valueBRL: 5000, pct: 80, assetClass: "Caixa" },
+        { assetId: "a-q", ticker: "OIBR3", valueBRL: 100, pct: 5, assetClass: "Ações" },
+        { assetId: "a-n", ticker: "SANB11", valueBRL: 100, pct: 5, assetClass: "Ações" },
+        { assetId: "a-ok", ticker: "ITUB4", valueBRL: 100, pct: 10, assetClass: "Ações" },
+      ];
+      const suggestions = buildAporteSuggestions(govAssets, rows, 5300, 5, [{ name: "Ações", target_percentage: 100 }]);
+      expect(suggestions.map((s) => s.ticker)).toEqual(["ITUB4"]);
+      // Base investível exclui CAIXA (300 reais investidos)
+      expect(suggestions[0]!.targetValueBRL).toBe(300);
     });
 
     it("prioriza a classe com maior déficit relativo", () => {
@@ -197,42 +221,43 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
         { id: "a-2", user_id: "u-1", ticker: "HGLG11", asset_class: "FIIs", currency: "BRL", quantity: 10, average_price: 10 },
       ];
       const rows = [
-        { assetId: "a-1", ticker: "PETR4", valueBRL: 100, pct: 10, assetClass: "Ações" },
-        { assetId: "a-2", ticker: "HGLG11", valueBRL: 30, pct: 3, assetClass: "FIIs" },
+        { assetId: "a-1", ticker: "PETR4", valueBRL: 100, pct: 76.9, assetClass: "Ações" },
+        { assetId: "a-2", ticker: "HGLG11", valueBRL: 30, pct: 23.1, assetClass: "FIIs" },
       ];
-      // Ações: alvo 200, atual 100 -> déficit rel 50%, gap 100
-      // FIIs: alvo 100, atual 30 -> déficit rel 70%, gap 70
+      // Base 130: Ações alvo 70% (91 vs 100 -> sem déficit? use 60/40: Ações 60%=78 vs 100 superávit; use 80/20? wait:)
+      // Use base 130: Ações 50% (65 vs 100 superávit) vs 70%/30%: 70%=91 vs 100 -> superávit! Use 80/20? FIIs 20%=26 vs 30 superávit!
+      // Instead keep 2 rows totaling 130 + RF: 870 => 1000! Wait: with investable sum 130, set Ações 60% (alvo 78 vs atual 50) & FIIs 40% (alvo 52 vs atual 10)? Total current = 130 means at least 1 class has surplus unless sum class targets = 100%: wait if Ações 100/130? Use RF asset with value 870!
+      const assets3: PortfolioAsset[] = [
+        ...assetsWithTwoClasses,
+        { id: "a-3", user_id: "u-1", ticker: "TESOURO SELIC", asset_class: "Renda Fixa", currency: "BRL", quantity: 1, average_price: 870 },
+      ];
+      const rows3 = [
+        ...rows,
+        { assetId: "a-3", ticker: "TESOURO SELIC", valueBRL: 870, pct: 87, assetClass: "Renda Fixa" },
+      ];
+      // Total 1000. Ações: alvo 200 (20%), atual 100 -> déficit rel 50%. FIIs: alvo 100 (10%), atual 30 -> déficit rel 70%.
       const classTargets = [
         { name: "Ações", target_percentage: 20 },
         { name: "FIIs", target_percentage: 10 },
+        { name: "Renda Fixa", target_percentage: 70 },
       ];
-      const suggestions = buildAporteSuggestions(assetsWithTwoClasses, rows, [], 1000, 3, classTargets);
+      const suggestions = buildAporteSuggestions(assets3, rows3, 1000, 3, classTargets);
       expect(suggestions.map((s) => s.ticker)).toEqual(["HGLG11", "PETR4"]);
     });
 
     it("retorna lista vazia quando não há metas ou patrimônio zerado", () => {
-      expect(buildAporteSuggestions(mockAssets, mockRows, [], 10000)).toEqual([]);
-      expect(buildAporteSuggestions(mockAssets, mockRows, mockTargets, 0)).toEqual([]);
+      expect(buildAporteSuggestions(mockAssets, mockRows, 10000, 3, [])).toEqual([]);
+      expect(buildAporteSuggestions(mockAssets, mockRows, 0, 3, mockClassTargets)).toEqual([]);
     });
 
-    it("ignora ativos com meta individual zerada (target_percentage = 0)", () => {
-      const targetsWithZero = [
-        { asset_id: "a-1", target_percentage: 0 },
-        { asset_id: "a-2", target_percentage: 20 },
-      ];
-      const suggestions = buildAporteSuggestions(mockAssets, mockRows, targetsWithZero, 10000);
-      expect(suggestions.map((s) => s.ticker)).toEqual(["MXRF11"]);
-      expect(suggestions.find((s) => s.ticker === "PETR4")).toBeUndefined();
-    });
-
-    it("suporta metas setoriais e ignora setores com meta 0%", () => {
+    it("suporta metas setoriais escopadas e ignora setores com meta 0%", () => {
       const sectorAssets: PortfolioAsset[] = [
         { id: "a-1", user_id: "u-1", ticker: "ITUB4", asset_class: "Ações", sector: "Financeiro / Bancos", currency: "BRL", quantity: 10, average_price: 10 },
         { id: "a-2", user_id: "u-1", ticker: "TAEE11", asset_class: "Ações", sector: "Energia Elétrica", currency: "BRL", quantity: 10, average_price: 10 },
       ];
       const rows = [
-        { assetId: "a-1", ticker: "ITUB4", valueBRL: 100, pct: 10, assetClass: "Ações", sector: "Financeiro / Bancos" },
-        { assetId: "a-2", ticker: "TAEE11", valueBRL: 100, pct: 10, assetClass: "Ações", sector: "Energia Elétrica" },
+        { assetId: "a-1", ticker: "ITUB4", valueBRL: 100, pct: 50, assetClass: "Ações", sector: "Financeiro / Bancos" },
+        { assetId: "a-2", ticker: "TAEE11", valueBRL: 100, pct: 50, assetClass: "Ações", sector: "Energia Elétrica" },
       ];
       const classTargets = [{ name: "Ações", target_percentage: 100 }];
       const sectorTargets = [
@@ -240,16 +265,9 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
         { className: "Ações", sectorName: "Energia Elétrica", target_percentage: 100 },
       ];
 
-      const suggestions = buildAporteSuggestions(sectorAssets, rows, [], 1000, 3, classTargets, sectorTargets);
+      const suggestions = buildAporteSuggestions(sectorAssets, rows, 200, 3, classTargets, sectorTargets);
       expect(suggestions.map((s) => s.ticker)).toEqual(["TAEE11"]);
       expect(suggestions.find((s) => s.ticker === "ITUB4")).toBeUndefined();
-    });
-
-    it("zera ativos da carteira não incluídos na lista quando existem metas individuais salvas", () => {
-      const onlyMxrfTarget = [{ asset_id: "a-2", target_percentage: 20 }];
-      const suggestions = buildAporteSuggestions(mockAssets, mockRows, onlyMxrfTarget, 10000);
-      expect(suggestions.map((s) => s.ticker)).toEqual(["MXRF11"]);
-      expect(suggestions.find((s) => s.ticker === "PETR4")).toBeUndefined();
     });
 
     it("não sugere ativos pertencentes a classes sobre-alocadas no wizard (ex: Internacional 40% vs 25% meta)", () => {
@@ -266,7 +284,7 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
         { name: "Ações", target_percentage: 75 },
       ];
 
-      const suggestions = buildAporteSuggestions(assets, rows, [], 1000, 3, classTargets);
+      const suggestions = buildAporteSuggestions(assets, rows, 1000, 3, classTargets);
       // Apenas PETR4 (Ações Brasil) deve ser sugerido, AAPL está em classe acima da meta
       expect(suggestions.map((s) => s.ticker)).toEqual(["PETR4"]);
       expect(suggestions.find((s) => s.ticker === "AAPL")).toBeUndefined();
