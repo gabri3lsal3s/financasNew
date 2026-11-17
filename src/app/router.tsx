@@ -1,17 +1,8 @@
-import { lazy, Suspense } from "react";
-import { Navigate, BrowserRouter, Route, Routes, useLocation } from "react-router";
+import { lazy, Suspense, useEffect } from "react";
+import { Navigate, BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router";
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { isNativePlatform } from "@/services/native";
-import {
-  Skeleton,
-  OverviewSkeleton,
-  InvestmentsSkeleton,
-  TransactionsSkeleton,
-  BudgetsSkeleton,
-  ReportsSkeleton,
-  SettingsSkeleton,
-} from "@/components/ui/skeleton";
 
 /**
  * Guards e App Shell carregados sob demanda: a landing page não deve baixar
@@ -165,54 +156,7 @@ const AdminSecurityPage = lazy(() =>
 const AdminSettingsPage = lazy(() =>
   import("@/features/admin/pages/admin-settings-page").then((m) => ({ default: m.AdminSettingsPage })),
 );
-function RouteSuspenseFallback() {
-  const location = useLocation();
-  const path = location.pathname;
 
-  const renderContent = () => {
-    if (path.startsWith("/investments") || path.startsWith("/carteira")) {
-      return <InvestmentsSkeleton />;
-    }
-    if (path.startsWith("/transacoes")) {
-      return <TransactionsSkeleton />;
-    }
-    if (path.startsWith("/orcamentos") || path.startsWith("/categorias") || path.startsWith("/metas")) {
-      return <BudgetsSkeleton />;
-    }
-    if (path.startsWith("/relatorios")) {
-      return <ReportsSkeleton />;
-    }
-    if (path.startsWith("/configuracoes")) {
-      return <SettingsSkeleton />;
-    }
-    return <OverviewSkeleton />;
-  };
-
-  return (
-    <div
-      role="status"
-      aria-busy="true"
-      aria-label="Carregando página"
-      className="min-h-dvh bg-background p-4 sm:p-6 lg:p-8 space-y-6 motion-reduce:animate-none"
-    >
-      <div className="flex items-center justify-between border-b border-border/60 pb-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="size-9 rounded-xl" />
-          <Skeleton className="h-6 w-36 rounded-md" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-9 w-24 rounded-lg hidden sm:block" />
-          <Skeleton className="size-9 rounded-lg" />
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto">
-        {renderContent()}
-      </div>
-      <span className="sr-only">Carregando conteúdo da página…</span>
-    </div>
-  );
-}
 
 /** Mapeamento de rotas para suas respectivas Feature Flags (§F43). */
 const ROUTE_FEATURE_MAP: Record<string, string> = {
@@ -273,10 +217,41 @@ function RedirectWithSearch({ to }: { to: string }) {
   return <Navigate to={`${to}${location.search}`} replace />;
 }
 
+/**
+ * Normaliza automaticamente links compartilhados acessados com fragmento de hash
+ * (ex.: /#/r/:token, #r/:token, /#/orcamento-familiar/:token, /#/meta/:token, /#/viagem/:token)
+ * gerados por clientes de e-mail, WebViews antigas ou mensageiros móveis.
+ */
+function HashRouteNormalizer() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (!hash || hash.length < 3) return;
+
+    const cleanHash = hash.replace(/^#\/?/, "/");
+    const isPublicSharedRoute =
+      cleanHash.startsWith("/r/") ||
+      cleanHash.startsWith("/orcamento-familiar/") ||
+      cleanHash.startsWith("/meta/") ||
+      cleanHash.startsWith("/convite-familiar/") ||
+      cleanHash.startsWith("/viagem/") ||
+      cleanHash.startsWith("/ferramentas/");
+
+    if (isPublicSharedRoute) {
+      navigate(cleanHash, { replace: true });
+    }
+  }, [navigate]);
+
+  return null;
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<RouteSuspenseFallback />}>
+      <HashRouteNormalizer />
+      <Suspense fallback={<LoadingScreen statusText="Iniciando sessão segura…" />}>
         <Routes>
           {/* Raiz: landing para visitantes, App Shell apenas com sessão */}
           <Route path="/" element={<RootEntry />} />

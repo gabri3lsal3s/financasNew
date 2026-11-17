@@ -1,4 +1,4 @@
-import { BrandLogo } from "@/components/layout/brand-logo";
+import { LogoIcon } from "@/components/layout/logo-icon";
 import { cn } from "@/lib/utils";
 
 export interface LoadingScreenProps {
@@ -19,9 +19,9 @@ export interface LoadingScreenProps {
 }
 
 /**
- * Tela de carregamento oficial minimalista e fluida — "Axir".
- * Apresenta o símbolo oficial centralizado com pulso sutil e brilho orbital suave,
- * eliminando barras de progresso simuladas e logs textuais dinâmicos.
+ * Tela de carregamento oficial minimalista, serena e fluida — Axir.
+ * Apresenta o símbolo oficial centralizado (sem wordmark e sem halos luminosos),
+ * acompanhado de 3 micro-pontos flutuantes com dinâmica sutil e status textual reativo.
  */
 export function LoadingScreen({
   statusText,
@@ -41,30 +41,27 @@ export function LoadingScreen({
         className,
       )}
     >
-      <div className="flex flex-col items-center gap-4 w-full max-w-xs text-center animate-fade-slide-in">
-        {/* Logo Oficial com Brilho Orbital Suave */}
-        <div className="relative flex items-center justify-center">
-          <div
-            className="absolute -inset-4 rounded-full bg-primary/15 blur-xl animate-pulse"
-            aria-hidden="true"
-          />
-          <BrandLogo
-            showWordmark
-            markClassName="size-16 transition-transform duration-300"
-            wordmarkClassName="text-xl font-bold tracking-tight"
-            showSubtitle={false}
+      <div className="relative flex flex-col items-center justify-center">
+        {/* Símbolo Oficial Centralizado — Zero brilho, zero wordmark, decodificação síncrona prioritária */}
+        <div className="flex items-center justify-center size-16">
+          <LogoIcon
+            size={64}
+            priority
+            className="transition-transform duration-300 ease-out"
           />
         </div>
 
-        {/* Indicador de pulso discreto e acessibilidade */}
-        <div className="flex flex-col items-center gap-1.5 pt-2">
+        {/* Três micro-pontos flutuantes e status textual ancorados estavelmente abaixo do centro */}
+        <div className="absolute top-full mt-4 flex flex-col items-center gap-2 w-64 text-center pointer-events-none">
           <div className="flex items-center gap-1.5" aria-hidden="true">
-            <span className="size-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:-0.3s]" />
-            <span className="size-1.5 rounded-full bg-primary/60 animate-bounce [animation-delay:-0.15s]" />
-            <span className="size-1.5 rounded-full bg-primary/60 animate-bounce" />
+            <span className="size-1 rounded-full bg-primary/75 animate-dot-float [animation-delay:-0.32s]" />
+            <span className="size-1 rounded-full bg-primary/75 animate-dot-float [animation-delay:-0.16s]" />
+            <span className="size-1 rounded-full bg-primary/75 animate-dot-float" />
           </div>
+
+          {/* Status textual discreto e dinâmico */}
           {statusText ? (
-            <p className="text-xs text-muted-foreground font-medium tracking-tight animate-fade-slide-in">
+            <p className="text-xs text-muted-foreground font-medium tracking-tight animate-fade-in truncate max-w-full">
               {statusText}
             </p>
           ) : (

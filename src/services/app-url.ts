@@ -45,3 +45,31 @@ export function getPublicAppUrl(path = ""): string {
   return `${cleanBase}${cleanPath}`;
 }
 
+/**
+ * Helper especializado de resolução de URLs para COMPARTILHAMENTO EXTERNO (WhatsApp, SMS, convites para terceiros).
+ * Se o usuário estiver gerando o link em ambiente de desenvolvimento local (localhost / 127.0.0.1),
+ * resolve automaticamente o domínio canônico oficial (https://axir.com.br ou VITE_PUBLIC_SITE_URL),
+ * garantindo que outros dispositivos consigam abrir o link enviado sem falhar por apontar para localhost.
+ */
+export function getPublicShareUrl(path = ""): string {
+  const isLocalhost =
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1" ||
+      window.location.origin.includes("localhost:") ||
+      window.location.origin.includes("127.0.0.1:"));
+
+  if (isLocalhost) {
+    const publicSiteUrl = (import.meta.env.VITE_PUBLIC_SITE_URL ?? "").trim();
+    const base =
+      publicSiteUrl && !publicSiteUrl.includes("localhost") && !publicSiteUrl.includes("127.0.0.1")
+        ? publicSiteUrl
+        : CANONICAL_PUBLIC_DOMAIN;
+    const cleanBase = base.replace(/\/+$/, "");
+    const cleanPath = path ? (path.startsWith("/") ? path : `/${path}`) : "";
+    return `${cleanBase}${cleanPath}`;
+  }
+
+  return getPublicAppUrl(path);
+}
+

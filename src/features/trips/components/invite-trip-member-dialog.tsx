@@ -22,7 +22,7 @@ import {
   Users,
   ShieldAlert,
 } from "lucide-react";
-import { getPublicAppUrl } from "@/services/app-url";
+import { getPublicShareUrl } from "@/services/app-url";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 
@@ -49,7 +49,7 @@ export function InviteTripMemberDialog({
   const [copiedLink, setCopiedLink] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
 
-  const inviteUrl = getPublicAppUrl(`viagem/${publicToken}`);
+  const inviteUrl = getPublicShareUrl(`viagem/${publicToken}`);
 
   const handleCopyLink = async () => {
     if (isCompleted) return;
@@ -79,7 +79,7 @@ export function InviteTripMemberDialog({
     if (destination) {
       message += ` para ${destination}`;
     }
-    message += ` no Axis Finance.\n\nAcesse pelo link para acompanhar os gastos coletivos, registrar comprovantes e acertar contas:\n${inviteUrl}`;
+    message += ` no Axis Finance.\n\nAcesse pelo link para acompanhar os gastos coletivos, registrar comprovantes e acertar contas:\n\n${inviteUrl}`;
 
     const encoded = encodeURIComponent(message);
     window.open(`https://api.whatsapp.com/send?text=${encoded}`, "_blank", "noopener,noreferrer");

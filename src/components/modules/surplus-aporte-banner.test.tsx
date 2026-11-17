@@ -16,13 +16,13 @@ describe("SurplusAporteBanner (§F50)", () => {
     expect(screen.getByRole("button", { name: /Simular Aporte/i })).toBeInTheDocument();
   });
 
-  it("navega para /carteira?tab=aporte&valor=150000 ao clicar em Simular Aporte", () => {
+  it("navega para /investments?tab=aporte&valor=150000 ao clicar em Simular Aporte", () => {
     render(<SurplusAporteBanner surplusCents={150000} />);
 
     const button = screen.getByRole("button", { name: /Simular Aporte/i });
     fireEvent.click(button);
 
-    expect(navigateMock).toHaveBeenCalledWith("/carteira?tab=aporte&valor=150000");
+    expect(navigateMock).toHaveBeenCalledWith("/investments?tab=aporte&valor=150000");
   });
 
   it("não renderiza nada quando surplusCents <= 0", () => {

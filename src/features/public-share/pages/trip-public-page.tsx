@@ -39,6 +39,7 @@ import { formatCentsAsBRL } from "@/services/masks/money";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getPublicAppUrl } from "@/services/app-url";
+import { sanitizeShareToken } from "@/domain/share/token";
 import {
   SharedLinkHeaderNav,
   AddPublicTripExpenseDialog,
@@ -50,7 +51,8 @@ import { usePublicTripGuestIdentity } from "../hooks";
 import type { PublicTripMember } from "@/types/trips";
 
 export function TripPublicPage() {
-  const { token } = useParams<{ token: string }>();
+  const { token: rawToken } = useParams<{ token: string }>();
+  const token = sanitizeShareToken(rawToken);
   const navigate = useNavigate();
   const { session } = useAuth();
   const currentUser = session?.user;

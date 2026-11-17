@@ -29,6 +29,8 @@ export interface LogoIconProps extends React.HTMLAttributes<HTMLElement> {
   accentReactive?: boolean;
   title?: string;
   "aria-hidden"?: boolean | "true" | "false";
+  /** Prioriza decodificação imediata síncrona e alta prioridade de fetch (Zero Pop-in). */
+  priority?: boolean;
 }
 
 /**
@@ -46,6 +48,7 @@ export function LogoIcon({
   accentReactive: _ignored,
   title = "Axir",
   "aria-hidden": ariaHidden,
+  priority = false,
   ...props
 }: LogoIconProps) {
   void _ignored;
@@ -103,7 +106,8 @@ export function LogoIcon({
           aria-hidden={isAriaHidden ? "true" : undefined}
           role={isAriaHidden ? "presentation" : "img"}
           loading="eager"
-          decoding="async"
+          decoding={priority ? "sync" : "async"}
+          fetchPriority={priority ? "high" : undefined}
           draggable={false}
           className="size-full object-contain pointer-events-none select-none transition-transform duration-200"
         />

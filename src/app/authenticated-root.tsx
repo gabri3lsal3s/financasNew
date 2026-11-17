@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Navigate } from "react-router";
-import { LoadingScreen } from "@/components/layout/loading-screen";
+import { OverviewSkeleton } from "@/components/ui";
 import { PageShell } from "@/components/layout/page-shell";
 import { RequireActiveAccount } from "@/components/routing/require-active-account";
 import { RequireAuth } from "@/app/require-auth";
@@ -14,7 +14,7 @@ function OverviewOrInvestmentsRedirect() {
   const { hasFeature, isLoading } = useUserAccess();
 
   if (isLoading) {
-    return <LoadingScreen fullScreen={false} statusText="Carregando visão geral…" />;
+    return <OverviewSkeleton />;
   }
 
   const hasFinance =
@@ -29,7 +29,7 @@ function OverviewOrInvestmentsRedirect() {
   }
 
   return (
-    <Suspense fallback={<LoadingScreen fullScreen={false} statusText="Carregando visão geral…" />}>
+    <Suspense fallback={<OverviewSkeleton />}>
       <OverviewPage />
     </Suspense>
   );

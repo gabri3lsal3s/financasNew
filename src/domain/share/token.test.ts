@@ -5,6 +5,7 @@ import {
   isValidShareToken,
   MAX_SHARE_TOKEN_LENGTH,
   MIN_SHARE_TOKEN_LENGTH,
+  sanitizeShareToken,
 } from "./token";
 
 describe("generateShareToken", () => {
@@ -67,5 +68,46 @@ describe("isValidShareToken", () => {
     expect(isValidShareToken("a".repeat(65))).toBe(false); // > 64
     expect(isValidShareToken("token com espaco")).toBe(false);
     expect(isValidShareToken("token!@#$")).toBe(false);
+  });
+});
+
+describe("sanitizeShareToken", () => {
+  it("preserva tokens validos intactos", () => {
+    expect(sanitizeShareToken("5nLtbjCtrj")).toBe("5nLtbjCtrj");
+    expect(sanitizeShareToken("tok-valido_123")).toBe("tok-valido_123");
+  });
+
+  it("remove pontuacao acidental colada pelo WhatsApp/Telegram", () => {
+    expect(sanitizeShareToken("5nLtbjCtrj.")).toBe("5nLtbjCtrj");
+    expect(sanitizeShareToken("5nLtbjCtrj,")).toBe("5nLtbjCtrj");
+    expect(sanitizeShareToken("5nLtbjCtrj;")).toBe("5nLtbjCtrj");
+    expect(sanitizeShareToken("5nLtbjCtrj:")).toBe("5nLtbjCtrj");
+    expect(sanitizeShareToken("5nLtbjCtrj!")).toBe("5nLtbjCtrj");
+    expect(sanitizeShareToken("5nLtbjCtrj...")).toBe("5nLtbjCtrj");
+  });
+
+  it("remove barras acidentais de URL", () => {
+    expect(sanitizeShareToken("/5nLtbjCtrj/")).toBe("5nLtbjCtrj");
+    expect(sanitizeShareToken("5nLtbjCtrj/")).toBe("5nLtbjCtrj");
+    expect(sanitizeShareToken("///5nLtbjCtrj///")).toBe("5nLtbjCtrj");
+  });
+
+  it("remove query strings e hashes anexados ao token", () => {
+    expect(sanitizeShareToken("5nLtbjCtrj?source=whatsapp")).toBe("5nLtbjCtrj");
+    expect(sanitizeShareToken("5nLtbjCtrj#section")).toBe("5nLtbjCtrj");
+    expect(sanitizeShareToken("5nLtbjCtrj?foo=bar#hash")).toBe("5nLtbjCtrj");
+  });
+
+  it("trata espacos ao redor e caracteres espurios", () => {
+    expect(sanitizeShareToken("  5nLtbjCtrj  ")).toBe("5nLtbjCtrj");
+    expect(sanitizeShareToken("  5nLtbjCtrj.\n")).toBe("5nLtbjCtrj");
+  });
+
+  it("retorna string vazia para entradas invalidas ou insuficientes", () => {
+    expect(sanitizeShareToken(null)).toBe("");
+    expect(sanitizeShareToken(undefined)).toBe("");
+    expect(sanitizeShareToken("")).toBe("");
+    expect(sanitizeShareToken("12345")).toBe(""); // < 6 caracteres
+    expect(sanitizeShareToken("   ")).toBe("");
   });
 });

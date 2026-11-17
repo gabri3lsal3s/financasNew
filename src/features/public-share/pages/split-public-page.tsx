@@ -19,6 +19,7 @@ import { useCategories, useSaveSplitExpense, useSignalSplitPayment } from "@/sta
 import { useAuth } from "@/hooks/use-auth";
 import { detectPixKeyType, generatePixBrCode } from "@/domain/pix/pix-br-code";
 import { calculateInstallmentsProgress } from "@/domain/finance/split-math";
+import { sanitizeShareToken } from "@/domain/share/token";
 
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -31,7 +32,8 @@ import {
 import type { SplitParticipantItem, SplitSharePayload } from "@/types";
 
 export function SplitPublicPage() {
-  const { token } = useParams<{ token: string }>();
+  const { token: rawToken } = useParams<{ token: string }>();
+  const token = sanitizeShareToken(rawToken);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { session } = useAuth();
@@ -39,6 +41,12 @@ export function SplitPublicPage() {
   const signalSplitPaymentMutation = useSignalSplitPayment();
 
   const { data: share, isLoading, error } = usePublicShare(token);
+
+  useEffect(() => {
+    if (rawToken && token && rawToken !== token && typeof window !== "undefined") {
+      window.history.replaceState(null, "", `/r/${token}${window.location.search}`);
+    }
+  }, [rawToken, token]);
 
   const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
   const [isSelectCategoryOpen, setIsSelectCategoryOpen] = useState(false);

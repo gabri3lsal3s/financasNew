@@ -69,7 +69,6 @@ import {
 } from "../hooks";
 import { AddContributionDialog } from "@/features/goals";
 import { ActiveTripBanner } from "@/features/trips/components";
-import { ActiveSplitsCard } from "@/features/transactions/components";
 import { isAndroidDevice, isNativePlatform } from "@/services/native/platform";
 import type { PublicShare } from "@/types";
 
@@ -455,7 +454,7 @@ export function OverviewPage() {
           dailyCents={daily.dailyCents}
           daysRemaining={daily.daysRemaining}
           surplusCents={projection.surplusCents}
-          onNavigateInsights={() => navigate("/insights")}
+          onNavigateInsights={() => navigate("/insights?aba=projection")}
           onDismiss={handleDismissPace}
         />
       ),
@@ -470,7 +469,7 @@ export function OverviewPage() {
           liveCurrentCents={liveGoalProgress.get(share.id)?.currentCents}
           surplusCents={surplusCapacity.hasSurplus ? surplusCapacity.suggestedAporteCents : null}
           onOpenDeposit={(s) => setDepositGoalShare(s)}
-          onNavigateGoals={() => navigate("/orcamentos?tab=goals")}
+          onNavigateGoals={() => navigate(`/orcamentos?tab=goals&q=${share.id}`)}
           onDismiss={() => handleDismissGoal(share)}
         />
       ),
@@ -653,8 +652,6 @@ export function OverviewPage() {
                 ) : null}
 
                 {isCurrentMonth ? <WeeklyDueRadarCard summary={weeklyRadarSummary} /> : null}
-
-                <ActiveSplitsCard month={month} />
 
                 {/* KPIs fundamentais com sparkline */}
                 <KpiGrid columns={4} data-tour="overview-kpis">

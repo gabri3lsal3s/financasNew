@@ -46,7 +46,7 @@ import {
 } from "@/state/mutations/use-public-share-mutations";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { getPublicAppUrl } from "@/services/app-url";
+import { getPublicAppUrl, getPublicShareUrl } from "@/services/app-url";
 import type { Category, GoalTrackerSharePayload, GoalTrackerStatus, PublicShare } from "@/types";
 
 export interface ShareGoalDialogProps {
@@ -158,7 +158,7 @@ function ShareGoalDialogInner({
   const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const shareUrl = activeShare ? getPublicAppUrl(`meta/${activeShare.token}`) : "";
+  const shareUrl = activeShare ? getPublicShareUrl(`meta/${activeShare.token}`) : "";
 
   // Pré-computação segura do Pix BACEN
   const effectivePixBrCode = useMemo(() => {

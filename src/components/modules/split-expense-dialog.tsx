@@ -35,7 +35,7 @@ import { useDemoSession } from "@/state/demo-mode";
 import { useSplitPreferences } from "@/services/split-preferences";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { getPublicAppUrl } from "@/services/app-url";
+import { getPublicAppUrl, getPublicShareUrl } from "@/services/app-url";
 import { todayISO } from "@/domain/debts";
 import type { Expense, SplitParticipantInstallment, SplitSharePayload } from "@/types";
 
@@ -341,7 +341,7 @@ export function SplitExpenseDialog({
         payload: payload as unknown as Record<string, unknown>,
       });
 
-      const url = getPublicAppUrl(`r/${share.token}`);
+      const url = getPublicShareUrl(`r/${share.token}`);
       setGeneratedLink(url);
 
       if (queryClient) {
@@ -413,7 +413,7 @@ export function SplitExpenseDialog({
       currency: "BRL",
     });
     const cleanTitle = description.trim() || "Despesa";
-    const msg = `Oi! Segue o link para o racha da conta de ${cleanTitle} (${guestFormatted} para cada): ${generatedLink}\nVocê pode pagar direto copiando o Pix!`;
+    const msg = `Oi! Segue o link para o racha da conta de ${cleanTitle} (${guestFormatted} para cada):\n\n${generatedLink}\n\nVocê pode pagar direto copiando o Pix!`;
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
     if (typeof window !== "undefined") {
       window.open(url, "_blank", "noopener,noreferrer");

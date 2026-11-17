@@ -32,7 +32,7 @@ export function SurplusAporteBanner({
     if (onSimulate) {
       onSimulate();
     } else {
-      navigate(`/carteira?tab=aporte&valor=${surplusCents}`);
+      navigate(`/investments?tab=aporte&valor=${surplusCents}`);
     }
   };
 

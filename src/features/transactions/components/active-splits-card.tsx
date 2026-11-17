@@ -19,7 +19,7 @@ import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
 import { useDebts, useMyPublicShares, useSettleIntegratedReceivable } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { getPublicAppUrl } from "@/services/app-url";
+import { getPublicAppUrl, getPublicShareUrl } from "@/services/app-url";
 import { todayISO } from "@/domain/debts";
 import { isParticipantFullySettled, isSplitFullyCompleted } from "@/domain/finance/split-math";
 import type { Debt, PublicShare, SplitSharePayload } from "@/types";
@@ -317,7 +317,7 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
   };
 
   const handleCopyLink = async (share: PublicShare) => {
-    const url = getPublicAppUrl(`r/${share.token}`);
+    const url = getPublicShareUrl(`r/${share.token}`);
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(url);
@@ -336,13 +336,13 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
   };
 
   const handleShareWhatsApp = (share: PublicShare, payload: SplitSharePayload) => {
-    const url = getPublicAppUrl(`r/${share.token}`);
+    const url = getPublicShareUrl(`r/${share.token}`);
     const guestFormatted = (payload.guest_share_cents / 100).toLocaleString("pt-BR", {
       style: "currency",
       currency: "BRL",
     });
     const cleanTitle = payload.title?.trim() || "Despesa";
-    const msg = `Oi! Segue o link para o racha da conta de ${cleanTitle} (${guestFormatted} para cada): ${url}\nVocê pode pagar direto copiando o Pix!`;
+    const msg = `Oi! Segue o link para o racha da conta de ${cleanTitle} (${guestFormatted} para cada):\n\n${url}\n\nVocê pode pagar direto copiando o Pix!`;
     const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
     if (typeof window !== "undefined") {
       window.open(waUrl, "_blank", "noopener,noreferrer");

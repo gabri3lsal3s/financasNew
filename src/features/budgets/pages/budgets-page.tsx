@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { PiggyBank, Plus, SlidersHorizontal, Target, TrendingDown } from "lucide-react";
 import { Alert, Button, ConfirmDialog, ErrorState, Tabs } from "@/components/ui";
@@ -66,9 +66,8 @@ import type { Category, GoalCompositionConfig, PublicShare } from "@/types";
 export function BudgetsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { highlightId } = useHighlightTarget("q");
-  const targetCategory = searchParams.get("category");
+  const targetCategory = searchParams.get("categoria") ?? searchParams.get("category");
   const targetType = searchParams.get("type");
-  const effectiveHighlightId = highlightId ?? targetCategory;
 
   const [month, setMonth] = useState(currentMonth());
   const paramTab = searchParams.get("tab");
@@ -80,7 +79,7 @@ export function BudgetsPage() {
       ? "goals"
       : targetType === "category" || paramTab === "categories" || paramAba === "categorias"
         ? "categories"
-        : paramTab === "limits" || paramAba === "limites"
+        : paramTab === "limits" || paramAba === "limites" || Boolean(targetCategory)
           ? "limits"
           : pickedTab;
 
@@ -245,6 +244,20 @@ export function BudgetsPage() {
     };
   });
 
+  const matchedTargetCategory = useMemo(() => {
+    if (!targetCategory || !expenseCategories.data) return null;
+    const norm = targetCategory.toLowerCase().trim();
+    return (
+      expenseCategories.data.find(
+        (c) =>
+          c.id === targetCategory ||
+          c.name.toLowerCase().trim() === norm,
+      ) ?? null
+    );
+  }, [targetCategory, expenseCategories.data]);
+
+  const effectiveHighlightId = highlightId ?? matchedTargetCategory?.id ?? targetCategory;
+
   const activeRows = allExpenseRows
     .filter((row) => row.limitCents > 0 || row.spentCents > 0)
     .sort((a, b) => {
@@ -292,6 +305,28 @@ export function BudgetsPage() {
     }
     setLimitFor(category);
   };
+
+  useEffect(() => {
+    if (
+      matchedTargetCategory &&
+      (searchParams.get("definirLimite") === "1" || searchParams.get("acao") === "definir-limite") &&
+      !permission.isReadOnlyMode
+    ) {
+      const timer = setTimeout(() => {
+        setLimitFor(matchedTargetCategory);
+        setSearchParams(
+          (prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("definirLimite");
+            next.delete("acao");
+            return next;
+          },
+          { replace: true },
+        );
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [matchedTargetCategory, searchParams, permission.isReadOnlyMode, setSearchParams]);
 
   const handleOpenGoal = (category: Category) => {
     if (permission.isReadOnlyMode) {

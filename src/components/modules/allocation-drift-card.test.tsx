@@ -41,7 +41,7 @@ describe("AllocationDriftCard (§F52)", () => {
 
     const button = screen.getByRole("button", { name: /Simular Rebalanceamento/i });
     fireEvent.click(button);
-    expect(navigateMock).toHaveBeenCalledWith("/carteira?tab=aporte");
+    expect(navigateMock).toHaveBeenCalledWith("/investments?tab=aporte");
   });
 
   it("renderiza estado balanceado quando não há desvios", () => {

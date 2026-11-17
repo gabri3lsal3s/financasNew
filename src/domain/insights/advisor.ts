@@ -51,6 +51,7 @@ export interface SmartAdvisorAction {
     | "confirm_expense"
     | "register_expense"
     | "cut_subscription"
+    | "set_category_budget"
     | "confirm_recurrence"
     | "ignore_recurrence"
     | "navigate_aporte"
@@ -661,7 +662,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
       iconName: "trending-down",
       primaryAction: {
         label: habit.actionLabel,
-        kind: "cut_subscription",
+        kind: "set_category_budget",
         payload: {
           key: habit.key,
           name: habit.name,

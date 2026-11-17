@@ -1,6 +1,16 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { Skeleton, SkeletonChart, SkeletonKpi, SkeletonList, SkeletonTable } from "./skeleton";
+import {
+  CardsSkeleton,
+  DebtsSkeleton,
+  RouteSkeletonFallback,
+  Skeleton,
+  SkeletonChart,
+  SkeletonKpi,
+  SkeletonList,
+  SkeletonTable,
+} from "./skeleton";
 
 describe("Skeleton por contexto (F12 — polimento)", () => {
   it("Skeleton base renderiza com shimmer e aria-hidden", () => {
@@ -32,5 +42,23 @@ describe("Skeleton por contexto (F12 — polimento)", () => {
     expect(tableContainer.querySelector("[aria-hidden='true']")).toHaveClass("rounded-2xl", "bg-surface");
     // Table: 2 blocos no cabeçalho + 4 linhas (4 subelementos cada) = 18 blocos
     expect(tableContainer.querySelectorAll(".animate-shimmer")).toHaveLength(2 + 4 * 4);
+  });
+
+  it("CardsSkeleton e DebtsSkeleton renderizam com rótulos e estrutura acessível", () => {
+    render(<CardsSkeleton />);
+    expect(screen.getByLabelText("Carregando Cartões")).toBeInTheDocument();
+
+    render(<DebtsSkeleton />);
+    expect(screen.getByLabelText("Carregando Contas e Dívidas")).toBeInTheDocument();
+  });
+
+  it("RouteSkeletonFallback renderiza o esqueleto correto baseado na rota", () => {
+    render(
+      <MemoryRouter initialEntries={["/transacoes"]}>
+        <RouteSkeletonFallback />
+      </MemoryRouter>,
+    );
+    expect(screen.getByLabelText("Carregando Transações")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toBeInTheDocument();
   });
 });

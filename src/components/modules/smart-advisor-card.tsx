@@ -368,11 +368,28 @@ export function SmartAdvisorCard({
       return;
     }
 
+    // 3.5 Definir teto/limite de categoria para hábitos frequentes e microvazamentos
+    if (
+      activeInsight.primaryAction?.kind === "set_category_budget" ||
+      (activeInsight.primaryAction?.payload as { isHabit?: boolean } | undefined)?.isHabit ||
+      activeInsight.themeKey.startsWith("habit:")
+    ) {
+      const p = activeInsight.primaryAction?.payload as { categoryId?: string } | undefined;
+      const catId = p?.categoryId ?? activeInsight.metadata?.categoryId;
+      if (catId) {
+        navigate?.(`/orcamentos?tab=limits&categoria=${encodeURIComponent(catId)}&definirLimite=1`);
+      } else {
+        navigate?.("/orcamentos?tab=limits");
+      }
+      return;
+    }
+
     // 4. Rever assinatura ou cobrança duplicada -> foca o item na aba de recorrências
     if (
-      activeInsight.category === "savings" ||
       activeInsight.primaryAction?.kind === "cut_subscription" ||
-      activeInsight.id.startsWith("dup:")
+      activeInsight.id.startsWith("dup:") ||
+      activeInsight.id.startsWith("price_adj:") ||
+      activeInsight.id.startsWith("savings:")
     ) {
       const p = activeInsight.primaryAction?.payload as { key?: string } | undefined;
       const itemKey = p?.key ?? activeInsight.themeKey.replace(/^(dup:|savings:|price_adj:)/, "");
@@ -496,7 +513,9 @@ export function SmartAdvisorCard({
           )}
 
           {/* Ação de dispensa ou marcação como essencial sincronizada */}
-          {activeInsight.category === "savings" && activeInsight.primaryAction?.kind === "cut_subscription" ? (
+          {activeInsight.category === "savings" &&
+          (activeInsight.primaryAction?.kind === "cut_subscription" ||
+            activeInsight.primaryAction?.kind === "set_category_budget") ? (
             <Button
               variant="ghost"
               size="xs"
@@ -577,7 +596,9 @@ export function SmartAdvisorCard({
                 </Button>
               </QualifiedDismissPopover>
             </>
-          ) : activeInsight.category === "savings" && activeInsight.primaryAction?.kind === "cut_subscription" ? (
+          ) : activeInsight.category === "savings" &&
+            (activeInsight.primaryAction?.kind === "cut_subscription" ||
+              activeInsight.primaryAction?.kind === "set_category_budget") ? (
             <>
               <Button
                 size="sm"

@@ -50,3 +50,32 @@ export function isValidShareToken(token: unknown): token is string {
   }
   return /^[a-zA-Z0-9_-]+$/.test(trimmed);
 }
+
+/**
+ * Sanitiza e normaliza um token de compartilhamento público de entrada.
+ * Remove espaços, query params acoplados, hashes, barras e pontuações finais de mensageiros (WhatsApp/Telegram).
+ * Retorna string vazia caso o token resultante não seja válido.
+ */
+export function sanitizeShareToken(rawToken: unknown): string {
+  if (typeof rawToken !== "string") return "";
+  let clean = rawToken.trim();
+  if (!clean) return "";
+
+  // 1. Remove qualquer query string (?...) ou hash (#...) residual
+  clean = clean.split(/[?#]/)[0] ?? "";
+
+  // 2. Remove barras finais e iniciais
+  clean = clean.replace(/^\/+|\/+$/g, "");
+
+  // 3. Remove pontuações finais acidentais de mensageiros (WhatsApp/Telegram: '.', ',', ';', ':', '!')
+  clean = clean.replace(/[.,;:!]+$/g, "");
+
+  // 4. Remove caracteres inválidos restantes fora de [a-zA-Z0-9_-]
+  clean = clean.replace(/[^a-zA-Z0-9_-]/g, "");
+
+  if (!isValidShareToken(clean)) {
+    return "";
+  }
+
+  return clean;
+}

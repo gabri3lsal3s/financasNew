@@ -1,5 +1,23 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.7.1** registra a **Orquestração Canônica da Transição de Boot e Telas de Loading** (2026-11-17):
+> - **(1) Erradicação do Efeito Ioiô e Flashes de Skeletons na Raiz**:
+>   - Substituição definitiva do fallback de topo do `<Suspense>` no `AppRouter` (`src/app/router.tsx`) de `<RouteSuspenseFallback />` para `<LoadingScreen statusText="Iniciando sessão segura…" />`;
+>   - Eliminação de esqueletos falsos e cabeçalhos fantasma renderizados antes da resolução de chunks e guards de autenticação;
+>   - Confinamento estrito de `<RouteSkeletonFallback />` ao interior do `<PageShell>` (`main#main-content`), ativado apenas para carregamento de páginas filhas com o shell já montado e estável.
+> - **(2) Continuidade Geométrica Perfeita entre Splash Screen e LoadingScreen**:
+>   - Calibração do ícone no `#app-splash` HTML para tamanho estrito de 64x64px, sem pulsações bruscas de escala e com decodificação síncrona;
+>   - Alinhamento do `LogoIcon` em `LoadingScreen` no centro geométrico absoluto da viewport (64x64px), garantindo correspondência pixel a pixel com a imagem do splash;
+>   - Ancoragem sutil e estática de 3 micro-pontos flutuantes (`animate-dot-float`) e texto de status reativo abaixo do centro, sem provocar deslocamentos no símbolo oficial.
+> - **(3) Coordenação Suave de Desvanecimento (`hideNativeSplashScreen`)**:
+>   - Sincronização da ocultação da splash screen nativa/web com duplo `requestAnimationFrame` no `src/main.tsx`, assegurando que o React já pintou o primeiro frame antes do início do fade-out do `#app-splash`;
+>   - Eliminação de qualquer flash branco, vazio visual ou corte abrupto durante a inicialização.
+> - **(4) Quality Gates 100% Aprovados**:
+>   - TypeScript (`tsc -b`): 0 erros;
+>   - ESLint (`eslint .`): 0 erros, 0 avisos;
+>   - Vitest: 26 testes focados de loading, splash e router 100% aprovados;
+>   - Build de produção Vite e PWA gerados com sucesso.
+>
 > **v3.7.0 (Fase 109)** registra a conclusão integral da **Reorganização Integral & Harmonização 360° do Motor de Investimentos** ([`docs/plans/completed/39_PLANO_FASE_11_REORGANIZACAO_INTEGRAL_MOTOR_INVESTIMENTOS_360.md`](../plans/completed/39_PLANO_FASE_11_REORGANIZACAO_INTEGRAL_MOTOR_INVESTIMENTOS_360.md)) (2026-11-14):
 > - **(1) Custódia Dinâmica por Classe e Setor (`PositionTable`)**:
 >   - Segmented toggle com ícones sóbrios (`Layers` e `PieChart`) alternando entre agrupamento por Classe e Setor sem duplicidade;

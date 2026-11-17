@@ -431,6 +431,34 @@ describe("SmartAdvisorCard", () => {
       expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=aporte&valor=120000");
     });
 
+    it("ao clicar em Definir teto de hábito, navega para /orcamentos destacando a categoria e abrindo o modal de limites", () => {
+      const habitInsight: SmartAdvisorInsight = {
+        id: "habit:cat-lazer:leisure:casual",
+        themeKey: "habit:cat-lazer:leisure:casual",
+        priority: 3,
+        category: "savings",
+        title: "Hábito frequente: Lazer e passeios casuais",
+        description: "Você realizou 3 despesas neste mês totalizando R$ 147,03.",
+        iconName: "trending-down",
+        primaryAction: {
+          label: "Definir teto para lazer",
+          kind: "set_category_budget",
+          payload: {
+            categoryId: "cat-lazer",
+            name: "Lazer e passeios casuais",
+            isHabit: true,
+          },
+        },
+      };
+
+      render(<SmartAdvisorCard insight={habitInsight} />);
+
+      const actionBtn = screen.getByRole("button", { name: /Definir teto para lazer/i });
+      fireEvent.click(actionBtn);
+
+      expect(mockNavigate).toHaveBeenCalledWith("/orcamentos?tab=limits&categoria=cat-lazer&definirLimite=1");
+    });
+
     it("ao clicar em Registrar pagamento, abre modal LaunchWizard pré-preenchido via query params", () => {
       const missingExpenseInsight: SmartAdvisorInsight = {
         id: "missing_expense:youtube",

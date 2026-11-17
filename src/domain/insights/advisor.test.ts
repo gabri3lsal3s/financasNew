@@ -857,6 +857,7 @@ describe("filterAndRankAdvisorInsights", () => {
     expect(habitInsight?.description).toContain("4 despesas");
     expect(habitInsight?.description).toContain("R$ 99,00"); // 25 + 30 + 22 + 22 = 99
     expect(habitInsight?.primaryAction?.label).toBe("Definir teto para transporte");
+    expect(habitInsight?.primaryAction?.kind).toBe("set_category_budget");
 
     // 2. Não deve haver cards atômicos duplicados de corte para "ida para caju" ou "ida para gloria"
     const cajuCard = insights.find((i) => i.id.includes("caju"));

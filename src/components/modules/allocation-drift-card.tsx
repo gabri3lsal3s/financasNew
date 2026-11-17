@@ -30,7 +30,7 @@ export function AllocationDriftCard({ analysis, className, onSimulateAporte }: A
     if (onSimulateAporte) {
       onSimulateAporte();
     } else {
-      navigate("/carteira?tab=aporte");
+      navigate("/investments?tab=aporte");
     }
   };
 

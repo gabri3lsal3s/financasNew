@@ -36,6 +36,7 @@ import {
   type GetFamilyPortfolioSummaryParams,
 } from "@/data/rpc";
 import { AppError, classifyError } from "@/services/errors";
+import { sanitizeShareToken } from "@/domain/share/token";
 import type {
   Family,
   FamilySplitRule,
@@ -459,7 +460,7 @@ export async function revokeFamilyInvite(inviteId: string): Promise<void> {
 export async function getFamilyInviteByToken(
   token: string,
 ): Promise<FamilyInviteWithDetails | null> {
-  const cleanToken = token.trim();
+  const cleanToken = sanitizeShareToken(token);
   if (!cleanToken) return null;
 
   // 1. Tentar via RPC segura pública get_family_invite_preview

@@ -38,5 +38,11 @@ createRoot(root).render(
   </StrictMode>,
 );
 
-// Oculta a Splash Screen nativa suavemente após a montagem do App Shell
-void hideNativeSplashScreen(300);
+// Oculta a Splash Screen nativa suavemente após a montagem do primeiro frame do React
+if (typeof window !== "undefined") {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      void hideNativeSplashScreen(350);
+    });
+  });
+}

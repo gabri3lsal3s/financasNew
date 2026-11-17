@@ -534,7 +534,9 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     const actionButton = screen.queryByRole("button", { name: /Simular cortes e projeção/i });
     if (actionButton) {
       await user.click(actionButton);
-      expect(navigateMock).toHaveBeenCalledWith("/insights");
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.stringMatching(/^\/insights(\?aba=projection)?$/),
+      );
     }
   });
 

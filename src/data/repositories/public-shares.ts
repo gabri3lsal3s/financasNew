@@ -22,7 +22,7 @@ import type {
   SharedFamilyBudgetResult,
   SharedGoalTrackerResult,
 } from "@/types";
-import { generateShareToken } from "@/domain/share/token";
+import { generateShareToken, sanitizeShareToken } from "@/domain/share/token";
 import type { PendingSimulation } from "@/domain/share/simulation-transport";
 
 export interface CreatePublicShareInput {
@@ -90,8 +90,11 @@ export async function createPublicShare(input: CreatePublicShareInput): Promise<
  * Retorna null se não encontrado, se revogado ou se expirado.
  */
 export async function getPublicShareByToken(token: string): Promise<PublicShare | null> {
+  const cleanToken = sanitizeShareToken(token);
+  if (!cleanToken) return null;
+
   try {
-    const rpcResult = await getPublicShareByTokenRpc({ token });
+    const rpcResult = await getPublicShareByTokenRpc({ token: cleanToken });
     if (rpcResult) {
       const share = mapPublicShare(rpcResult);
       if (share.expires_at && new Date(share.expires_at).getTime() <= Date.now()) {
@@ -111,7 +114,7 @@ export async function getPublicShareByToken(token: string): Promise<PublicShare 
     getSupabase()
       .from("public_shares")
       .select("*")
-      .eq("token", token)
+      .eq("token", cleanToken)
       .eq("is_revoked", false)
       .limit(1),
   );
@@ -310,7 +313,9 @@ export async function getSharedFamilyBudgetByToken(
   token: string,
   month?: string | null,
 ): Promise<SharedFamilyBudgetResult | null> {
-  return getSharedFamilyBudget({ token, month });
+  const cleanToken = sanitizeShareToken(token);
+  if (!cleanToken) return null;
+  return getSharedFamilyBudget({ token: cleanToken, month });
 }
 
 /**
@@ -319,7 +324,9 @@ export async function getSharedFamilyBudgetByToken(
 export async function getSharedGoalTrackerByToken(
   token: string,
 ): Promise<SharedGoalTrackerResult | null> {
-  return getSharedGoalTracker({ token });
+  const cleanToken = sanitizeShareToken(token);
+  if (!cleanToken) return null;
+  return getSharedGoalTracker({ token: cleanToken });
 }
 
 

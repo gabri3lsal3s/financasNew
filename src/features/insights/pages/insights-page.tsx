@@ -96,7 +96,7 @@ export function InsightsPage({
     // Permite renderização resiliente fora de Router (testes unitários isolados)
   }
 
-  const rawTab = searchParams?.get("aba");
+  const rawTab = searchParams?.get("aba") ?? searchParams?.get("tab");
   const resolveTab = (val: string | null | undefined): ActiveTab => {
     if (val === "recurrences" || val === "occurrences") return "recurrences";
     if (val === "projection" || val === "planning") return "projection";

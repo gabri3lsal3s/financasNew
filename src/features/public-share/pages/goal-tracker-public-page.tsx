@@ -41,6 +41,7 @@ import { IosPwaInstallDialog } from "@/components/modules/ios-pwa-install-dialog
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
+import { sanitizeShareToken } from "@/domain/share/token";
 import { SharedLinkHeaderNav } from "../components";
 
 const PIX_KEY_TYPE_LABELS: Record<string, string> = {
@@ -54,7 +55,8 @@ const PIX_KEY_TYPE_LABELS: Record<string, string> = {
 };
 
 export function GoalTrackerPublicPage() {
-  const { token } = useParams<{ token: string }>();
+  const { token: rawToken } = useParams<{ token: string }>();
+  const token = sanitizeShareToken(rawToken);
   const { data: goalData, isLoading, isError, refetch, isRefetching } = useSharedGoalTracker(token);
   const { canInstall, isIOS, isInstalled, install } = usePWAInstall();
 

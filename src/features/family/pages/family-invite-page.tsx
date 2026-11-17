@@ -38,6 +38,7 @@ import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getPublicAppUrl } from "@/services/app-url";
 import { cn } from "@/lib/utils";
+import { sanitizeShareToken } from "@/domain/share/token";
 import type { FamilyPixKeyType } from "@/types";
 
 const PIX_KEY_OPTIONS: SelectOption[] = [
@@ -48,7 +49,8 @@ const PIX_KEY_OPTIONS: SelectOption[] = [
 ];
 
 export function FamilyInvitePage() {
-  const { token } = useParams<{ token: string }>();
+  const { token: rawToken } = useParams<{ token: string }>();
+  const token = sanitizeShareToken(rawToken);
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
   const { data: myFamilyData } = useMyFamily();

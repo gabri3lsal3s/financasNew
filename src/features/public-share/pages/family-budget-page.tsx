@@ -32,10 +32,12 @@ import { formatDateBR, currentMonth, isValidMonth } from "@/lib/date";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { IosPwaInstallDialog } from "@/components/modules/ios-pwa-install-dialog";
 import { cn } from "@/lib/utils";
+import { sanitizeShareToken } from "@/domain/share/token";
 import { SharedLinkHeaderNav } from "../components";
 
 export function FamilyBudgetPage() {
-  const { token } = useParams<{ token: string }>();
+  const { token: rawToken } = useParams<{ token: string }>();
+  const token = sanitizeShareToken(rawToken);
   const [searchParams, setSearchParams] = useSearchParams();
   const paramMonth = searchParams.get("month");
   const initialMonth = paramMonth && isValidMonth(paramMonth) ? paramMonth : currentMonth();

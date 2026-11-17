@@ -4,9 +4,9 @@ import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BudgetsPage } from "./budgets-page";
 
-function renderBudgetsPage() {
+function renderBudgetsPage(initialEntries: string[] = ["/"]) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <BudgetsPage />
     </MemoryRouter>,
   );
@@ -364,5 +364,13 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
       limit: 0,
     });
   });
+
+  it("ao acessar com ?categoria=c2&definirLimite=1, abre automaticamente o LimitDialog para a categoria", async () => {
+    renderBudgetsPage(["/orcamentos?categoria=c2&definirLimite=1"]);
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Limite — Lazer" })).toBeInTheDocument();
+  });
 });
+
 

@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 import { LoadingScreen } from "./loading-screen";
 
 describe("LoadingScreen", () => {
-  it("renderiza a logo oficial e o indicador de carregamento", () => {
+  it("renderiza a logo oficial e o indicador de carregamento sem o texto Axir", () => {
     render(<LoadingScreen />);
     expect(screen.getByRole("status")).toBeInTheDocument();
-    expect(screen.getByText("Axir")).toBeInTheDocument();
+    // O wordmark textual foi removido em prol do minimalismo puro
+    expect(screen.queryByText("Axir")).not.toBeInTheDocument();
+    // A logo oficial monograma está presente via imagem acessível
+    expect(screen.getByRole("img", { name: "Axir" })).toBeInTheDocument();
     expect(screen.getByText("Carregando…")).toBeInTheDocument();
   });
 

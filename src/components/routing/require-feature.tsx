@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from "react-router";
-import { LoadingScreen } from "@/components/layout";
+import { RouteSkeletonFallback } from "@/components/ui";
 import { resolveLandingPath } from "@/domain/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserAccess } from "@/state";
@@ -19,7 +19,7 @@ export function RequireFeature({ featureKey, redirectTo }: RequireFeatureProps) 
   const { hasFeature, isAdmin, isLoading } = useUserAccess(session?.user?.id);
 
   if (authLoading || isLoading || !session?.user) {
-    return <LoadingScreen />;
+    return <RouteSkeletonFallback />;
   }
 
   if (!hasFeature(featureKey)) {

@@ -1,4 +1,5 @@
 import type { HTMLAttributes } from "react";
+import { useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 
 export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
@@ -284,6 +285,95 @@ export function SettingsSkeleton() {
           <Skeleton className="h-4 w-72 rounded" />
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Esqueleto de Cartões: Cartão virtual, grid de resumo da fatura e lançamentos. */
+export function CardsSkeleton() {
+  return (
+    <div aria-label="Carregando Cartões" className="space-y-6 motion-reduce:animate-none">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <Skeleton className="h-10 w-full sm:w-64 rounded-xl" />
+        <div className="flex gap-2">
+          <Skeleton className="h-10 w-28 rounded-xl" />
+          <Skeleton className="h-10 w-32 rounded-xl" />
+        </div>
+      </div>
+      <div className="flex flex-col items-center justify-center py-2">
+        <Skeleton className="h-52 sm:h-60 w-full max-w-[400px] rounded-2xl shadow-xs" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        <SkeletonKpi />
+        <SkeletonKpi />
+        <SkeletonKpi />
+      </div>
+      <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs space-y-3">
+        <Skeleton className="h-4 w-32 rounded" />
+        <SkeletonList rows={4} />
+      </div>
+    </div>
+  );
+}
+
+/** Esqueleto de Dívidas & Contas: Resumo de pendências e lista de lançamentos. */
+export function DebtsSkeleton() {
+  return (
+    <div aria-label="Carregando Contas e Dívidas" className="space-y-6 motion-reduce:animate-none">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+        <SkeletonKpi />
+        <SkeletonKpi />
+        <SkeletonKpi />
+      </div>
+      <div className="flex gap-2 border-b border-border/60 pb-2">
+        <Skeleton className="h-9 w-28 rounded-lg" />
+        <Skeleton className="h-9 w-28 rounded-lg" />
+      </div>
+      <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs space-y-3">
+        <Skeleton className="h-4 w-36 rounded" />
+        <SkeletonList rows={4} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Fallback estrutural universal e inteligente para rotas sob o PageShell.
+ * Detecta a rota ativa via pathname ou useLocation e renderiza o esqueleto correspondente.
+ */
+export function RouteSkeletonFallback({ pathname }: { pathname?: string }) {
+  const location = useLocation();
+  const path = pathname ?? location.pathname;
+
+  const renderContent = () => {
+    if (path.startsWith("/investments") || path.startsWith("/carteira")) {
+      return <InvestmentsSkeleton />;
+    }
+    if (path.startsWith("/transacoes")) {
+      return <TransactionsSkeleton />;
+    }
+    if (path.startsWith("/cartoes")) {
+      return <CardsSkeleton />;
+    }
+    if (path.startsWith("/dividas")) {
+      return <DebtsSkeleton />;
+    }
+    if (path.startsWith("/orcamentos") || path.startsWith("/categorias") || path.startsWith("/metas")) {
+      return <BudgetsSkeleton />;
+    }
+    if (path.startsWith("/relatorios")) {
+      return <ReportsSkeleton />;
+    }
+    if (path.startsWith("/configuracoes")) {
+      return <SettingsSkeleton />;
+    }
+    return <OverviewSkeleton />;
+  };
+
+  return (
+    <div role="status" aria-busy="true" aria-live="polite" className="w-full">
+      {renderContent()}
+      <span className="sr-only">Carregando conteúdo da página…</span>
     </div>
   );
 }

@@ -121,11 +121,28 @@ export function NotificationsPopover({
       return;
     }
 
+    // 1.5 Definir teto de categoria para hábitos de consumo
+    if (
+      item.primaryAction?.kind === "set_category_budget" ||
+      (item.primaryAction?.payload as { isHabit?: boolean } | undefined)?.isHabit ||
+      item.themeKey.startsWith("habit:")
+    ) {
+      const p = item.primaryAction?.payload as { categoryId?: string } | undefined;
+      const catId = p?.categoryId ?? item.metadata?.categoryId;
+      if (catId) {
+        navigate(`/orcamentos?tab=limits&categoria=${encodeURIComponent(catId)}&definirLimite=1`);
+      } else {
+        navigate("/orcamentos?tab=limits");
+      }
+      return;
+    }
+
     // 2. Revisão de recorrências / assinaturas / duplicidades
     if (
-      item.category === "savings" ||
       item.primaryAction?.kind === "cut_subscription" ||
-      item.id.startsWith("dup:")
+      item.id.startsWith("dup:") ||
+      item.id.startsWith("price_adj:") ||
+      item.id.startsWith("savings:")
     ) {
       const p = item.primaryAction?.payload as { key?: string } | undefined;
       const itemKey = p?.key ?? item.themeKey.replace(/^(dup:|savings:|price_adj:)/, "");

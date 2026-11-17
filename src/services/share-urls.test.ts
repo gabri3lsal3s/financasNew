@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getPublicAppUrl } from "./app-url";
+import { getPublicAppUrl, getPublicShareUrl } from "./app-url";
 
 describe("services/share-urls — Resolução Canônica de Links Compartilháveis", () => {
   const originalLocation = window.location;
@@ -126,6 +126,12 @@ describe("services/share-urls — Resolução Canônica de Links Compartilhávei
       expect(splitUrl).toBe("http://localhost:5173/r/tok-local");
       expect(famUrl).toBe("http://localhost:5173/convite-familiar/tok-local");
       expect(metaUrl).toBe("http://localhost:5173/meta/tok-local");
+    });
+
+    it("getPublicShareUrl deve fazer fallback para o domínio canônico oficial quando em localhost", () => {
+      const shareUrl = getPublicShareUrl("r/tok-external");
+      expect(shareUrl).not.toContain("localhost");
+      expect(shareUrl).toBe("https://axir.com.br/r/tok-external");
     });
   });
 });

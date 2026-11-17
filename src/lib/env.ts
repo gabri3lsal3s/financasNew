@@ -42,5 +42,5 @@ export function getSupabaseEnv(): SupabaseEnv {
   };
 }
 
-export { getPublicAppUrl } from "@/services/app-url";
+export { getPublicAppUrl, getPublicShareUrl } from "@/services/app-url";
 

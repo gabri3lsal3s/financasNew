@@ -9,6 +9,7 @@ import { getSupabase } from "@/data/client";
 import { resolveQuery } from "@/data/query";
 import { currentUserId } from "@/data/session";
 import { AppError, classifyError } from "@/services/errors";
+import { sanitizeShareToken } from "@/domain/share/token";
 import {
   getPublicTripLedger,
   addPublicTripExpense as addPublicTripExpenseRpc,
@@ -488,7 +489,9 @@ export async function fetchPublicTripLedger(
   token: string,
   passcode?: string
 ): Promise<PublicTripLedgerData | null> {
-  const data = await getPublicTripLedger(token, passcode);
+  const cleanToken = sanitizeShareToken(token);
+  if (!cleanToken) return null;
+  const data = await getPublicTripLedger(cleanToken, passcode);
   if (!data) return null;
   return data as PublicTripLedgerData;
 }
@@ -506,7 +509,8 @@ export async function submitPublicExpense(input: {
   createdByMemberId?: string | null;
   passcode?: string | null;
 }): Promise<{ success: boolean; expense_id: string }> {
-  return addPublicTripExpenseRpc(input);
+  const cleanToken = sanitizeShareToken(input.token);
+  return addPublicTripExpenseRpc({ ...input, token: cleanToken });
 }
 
 export async function recordTripSettlements(

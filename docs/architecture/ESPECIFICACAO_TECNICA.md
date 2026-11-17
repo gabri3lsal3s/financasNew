@@ -1061,6 +1061,21 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
 - **Componentes core:** Button, Input, Select, Modal/Dialog, Sheet (mobile), Tabs, Card, Sidebar, BottomNav, Badge, Toast, Skeleton, EmptyState, Progress, Stepper (wizard), Command (busca ⌘K), DataList, Chart primitives.
 - **Formatação centralizada** nos serviços de apresentação (moeda, datas, status de dívida, cores de categoria).
 
+#### 5.4.1 Padronização e Orquestração Canônica de Boot e Telas de Loading
+1. **Hierarquia e Sequência Unidirecional de Carregamento:**
+   - **Fase 1 — Splash Screen Estática (`#app-splash` no HTML):**
+     - Símbolo oficial Axir centralizado de 64x64px, sem wordmark textual e sem animações bruscas de escala (`splash-pulse`).
+     - Fundo estático e logo comutando automaticamente via CSS de acordo com o tema (`html[data-theme="light|dark|oled"]`).
+     - Ocultação suave com fade-out de 350ms após montagem comprovada do primeiro frame React (`requestAnimationFrame` duplo em `main.tsx`).
+   - **Fase 2 — LoadingScreen Minimalista Oficial (`LoadingScreen`):**
+     - Alinhamento pixel a pixel nas mesmas coordenadas geométricas centrais (símbolo de 64x64px, sem halo luminoso ou textos supérfluos).
+     - Três micro-pontos flutuantes (`animate-dot-float`) e texto de status reativo ("Iniciando sessão segura…", "Preparando painel financeiro…") ancorados estavelmente abaixo da logo sem deslocar seu centro.
+     - Atua como o fallback unificado de Suspense da raiz de rotas em `src/app/router.tsx`, cobrindo o download assíncrono de chunks JS e a validação de autenticação em `RequireAuth`.
+   - **Fase 3 — Shell da Aplicação e Skeletons Contextuais (`PageShell` & `RouteSkeletonFallback`):**
+     - Ao resolver a autenticação e autorização, o `PageShell` é montado de forma definitiva (Sidebar, Header e BottomNav interativos e sem trepidação).
+     - O `<RouteSkeletonFallback />` atua exclusivamente no container interno de conteúdo (`main#main-content`), ativado apenas durante o download de rotas filhas ou queries pendentes.
+     - **Proibição Expressa:** Nunca renderizar esqueletos de tela inteira ou cabeçalhos fantasma antes da resolução da sessão ou fora do `PageShell`. O fluxo é rigorosamente unidirecional (`Splash` $\to$ `LoadingScreen` $\to$ `PageShell com Skeleton Interno` $\to$ `Página Final Pronta`).
+
 ### 5.5 Fluxos críticos — Lançamento guiado (D10)
 
 **Tela cheia guiada (wizard de 4 passos), aberta por atalho global (tecla `N`) ou FAB `[+]`:**

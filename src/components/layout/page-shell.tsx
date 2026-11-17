@@ -16,7 +16,7 @@ import { NetworkStatusBanner } from "@/components/layout/network-status-banner";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { Button, Skeleton } from "@/components/ui";
+import { Button, RouteSkeletonFallback } from "@/components/ui";
 import { DemoTourSpotlight } from "@/components/modules/demo-tour-spotlight";
 import { NativeOnboardingDialog } from "@/components/modules/native-onboarding-dialog";
 import { endDemo, useDemoSession } from "@/state/demo-mode";
@@ -34,15 +34,9 @@ import { shouldShowOnboardingBanner } from "@/domain/onboarding";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import type { PaymentMethod } from "@/types";
 
-/** Fallback de carregamento das rotas lazy (bundle splitting F5.5) — Skeleton, sem spinner. */
+/** Fallback de carregamento das rotas lazy — Skeleton contextual da rota correspondente (Zero CLS). */
 function RouteFallback() {
-  return (
-    <div className="flex flex-col gap-6">
-      <Skeleton className="h-9 w-48" />
-      <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-24 w-full" />
-    </div>
-  );
+  return <RouteSkeletonFallback />;
 }
 
 export function PageShell({ children }: { children?: ReactNode } = {}) {
