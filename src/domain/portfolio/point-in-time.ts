@@ -20,6 +20,7 @@ import type {
   PortfolioSnapshot,
   PortfolioTransaction,
 } from "@/types";
+import { getMonthEndCutoffDate, resolveDynamicPtaxRate } from "./canonical-normalizer";
 import { isDividendType } from "./dividends";
 import { calculateFixedIncomeBalance } from "./fixed-income";
 import { resolveHistoricalQuotePriority, type ResolvedHistoricalQuote } from "./historical-quotes";
@@ -100,6 +101,8 @@ export interface PointInTimeResult {
   monthlyStatement?: MonthlyStatementResult;
   /** Sinaliza se o resultado patrimonial da competência é derivado do saldo consolidado de snapshot (TWA) */
   isDerivedFromSnapshot?: boolean;
+  /** Taxa de câmbio USD/BRL (PTAX) resolvida para a competência (§Salvaguarda S12) */
+  usdRate?: number;
 }
 
 export interface PointInTimeCalculationParams {
@@ -135,19 +138,7 @@ export interface PointInTimeCalculationParams {
   explicitRatePct?: number | null;
 }
 
-/**
- * Retorna o último dia civil do mês YYYY-MM em formato YYYY-MM-DD.
- */
-export function getMonthEndCutoffDate(month: string): string {
-  const parts = month.split("-");
-  const yearStr = parts[0] ?? "2026";
-  const monthStr = parts[1] ?? "01";
-  const year = Number.parseInt(yearStr, 10);
-  const monthNum = Number.parseInt(monthStr, 10);
-  const lastDay = new Date(year, monthNum, 0).getDate();
-  const padDay = String(lastDay).padStart(2, "0");
-  return `${yearStr}-${monthStr}-${padDay}`;
-}
+export { getMonthEndCutoffDate };
 
 /**
  * Retorna a competência anterior no calendário civil (YYYY-MM).
@@ -178,7 +169,7 @@ export function calculatePointInTimePosition(
     startBalanceBRL,
     apiPrices = {},
     livePrices = {},
-    usdRate = 5.25,
+    usdRate,
     annualCdiRate = 10.5,
     cashBalance,
     externalFlows,
@@ -196,6 +187,17 @@ export function calculatePointInTimePosition(
       monthlyPriceMap.set(mp.ticker.toUpperCase().trim(), mp);
     }
   }
+
+  // Resolução dinâmica de câmbio PTAX a partir de portfolio_monthly_prices para o ticker USDBRL=X (§Salvaguarda S12)
+  const effectiveUsdRate = resolveDynamicPtaxRate(
+    monthlyPrices,
+    month,
+    {
+      explicitRate: usdRate,
+      preferExplicitOverSaved: Boolean(usdRate && usdRate !== 5.25),
+      fallbackRate: 5.25,
+    },
+  );
 
   // Filtrar proventos até a data de corte
   const eligibleDividends = dividends.filter(
@@ -228,7 +230,7 @@ export function calculatePointInTimePosition(
       .sort((a, b) => a.date.localeCompare(b.date));
 
     const assetCurrency = asset.currency ?? "BRL";
-    const fxRate = assetCurrency === "USD" ? usdRate : 1;
+    const fxRate = assetCurrency === "USD" ? effectiveUsdRate : 1;
     const tickerUpper = asset.ticker.toUpperCase().trim();
 
     // Verificação de Renda Fixa parametrizada com metadados
@@ -622,7 +624,7 @@ export function calculatePointInTimePosition(
   const statementDividends: MonthlyStatementDividend[] = (dividends ?? []).map((d) => {
     const asset = d.asset_id ? assetMap.get(d.asset_id) : undefined;
     const isUSD = asset?.currency === "USD";
-    const fx = isUSD ? usdRate : 1;
+    const fx = isUSD ? effectiveUsdRate : 1;
     const rawAmount = Number(d.amount) || 0;
     return {
       date: d.date,
@@ -635,7 +637,7 @@ export function calculatePointInTimePosition(
   const statementTransactions: MonthlyStatementTransaction[] = (transactions ?? []).map((t) => {
     const asset = assetMap.get(t.asset_id);
     const isUSD = asset?.currency === "USD";
-    const fx = isUSD ? usdRate : 1;
+    const fx = isUSD ? effectiveUsdRate : 1;
     const rawTotal = Number(t.total) || (Number(t.quantity) || 0) * (Number(t.price) || 0);
     return {
       date: t.date,
@@ -693,5 +695,6 @@ export function calculatePointInTimePosition(
     candidateAssets,
     monthlyStatement,
     isDerivedFromSnapshot,
+    usdRate: effectiveUsdRate,
   };
 }

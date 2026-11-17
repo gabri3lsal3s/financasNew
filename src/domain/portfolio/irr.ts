@@ -317,12 +317,24 @@ export interface ContributionFlowItem {
 }
 
 /**
- * Verifica se um registro de contribuição representa um resgate histórico do bolso.
+ * Verifica se um registro de contribuição representa um resgate histórico do bolso (§Salvaguarda S4).
  */
 export function isHistoricalWithdrawal(c: { amount: number; notes?: string | null }): boolean {
   if (c.amount < 0) return true;
   const n = (c.notes ?? "").toLowerCase();
-  return n.includes("[resgate]") || n.includes("[retirada]");
+  return (
+    n.includes("[resgate]") ||
+    n.includes("[retirada]") ||
+    n.includes("[saque]") ||
+    n.includes("(resgate)") ||
+    n.includes("(retirada)") ||
+    n.includes("(saque)") ||
+    n.includes("resgate do bolso") ||
+    n.includes("retirada do bolso") ||
+    n.includes("saque do bolso") ||
+    n.includes("resgate historico") ||
+    n.includes("resgate histórico")
+  );
 }
 
 /**

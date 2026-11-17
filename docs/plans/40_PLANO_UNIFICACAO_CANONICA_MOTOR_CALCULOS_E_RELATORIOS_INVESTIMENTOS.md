@@ -261,43 +261,43 @@ flowchart TD
 **Objetivo:** Criar a biblioteca pura de domínio que unifica a valoração de ativos, normalização de eventos e apuração de rentabilidade homogênea, blindando a fidelidade institucional.
 
 #### Etapa 1.1: Contratos Tipados Canônicos (`src/domain/portfolio/canonical-types.ts`)
-- [ ] Definir `CanonicalAssetHolding`: modelo unificado de ativo contendo ticker, classe, setor, moeda, quantidade, custo nativo, custo BRL, cotação resolvida, valor de mercado BRL, PnL não realizado, proventos acumulados, Retorno Total e diagnóstico de renda fixa.
-- [ ] Definir `CanonicalPortfolioState`: estado consolidado da carteira para uma data de corte `asOfDate`, contendo patrimônio total BRL, custo total, caixa BRL, caixa USD, proventos totais, Retorno Total %, Ganho de Capital %, P&L Histórico Econômico acumulado, TWR e TIR (XIRR).
-- [ ] Definir `CanonicalMonthlyStatement`: apuração de competência isolada com garantia de **Homogeneidade Temporal de Bases (Salvaguarda S9)**.
-- [ ] Definir `CanonicalFidelityReport`: diagnóstico completo de integridade analítica com tolerância soberana de $3\%$ (Salvaguarda S10).
+- [x] Definir `CanonicalAssetHolding`: modelo unificado de ativo contendo ticker, classe, setor, moeda, quantidade, custo nativo, custo BRL, cotação resolvida, valor de mercado BRL, PnL não realizado, proventos acumulados, Retorno Total e diagnóstico de renda fixa.
+- [x] Definir `CanonicalPortfolioState`: estado consolidado da carteira para uma data de corte `asOfDate`, contendo patrimônio total BRL, custo total, caixa BRL, caixa USD, proventos totais, Retorno Total %, Ganho de Capital %, P&L Histórico Econômico acumulado, TWR e TIR (XIRR).
+- [x] Definir `CanonicalMonthlyStatement`: apuração de competência isolada com garantia de **Homogeneidade Temporal de Bases (Salvaguarda S9)**.
+- [x] Definir `CanonicalFidelityReport`: diagnóstico completo de integridade analítica com tolerância soberana de $3\%$ (Salvaguarda S10).
 
 #### Etapa 1.2: Normalizador Determinístico de Eventos (`src/domain/portfolio/canonical-normalizer.ts`)
-- [ ] Unificar a reconciliação entre `portfolio_transactions`, `portfolio_contributions` e `portfolio_dividends`.
-- [ ] Normalizar a data de corte temporal no padrão civil local `YYYY-MM-DD` com corte exato às 23:59:59 (Salvaguarda S13).
-- [ ] Resolução dinâmica da taxa de câmbio PTAX a partir de `portfolio_monthly_prices` para o ticker `USDBRL=X` (Salvaguarda S12).
-- [ ] Normalização exata de desdobramentos (`split` e `reverse_split`), preservando Custo Total constante (Salvaguarda S17).
-- [ ] Preservar compatibilidade retroativa integral com anotações de texto de dados legados (`[Resgate]`, `Marco Zero`) conforme Salvaguarda S4.
+- [x] Unificar a reconciliação entre `portfolio_transactions`, `portfolio_contributions` e `portfolio_dividends`.
+- [x] Normalizar a data de corte temporal no padrão civil local `YYYY-MM-DD` com corte exato às 23:59:59 (Salvaguarda S13).
+- [x] Resolução dinâmica da taxa de câmbio PTAX a partir de `portfolio_monthly_prices` para o ticker `USDBRL=X` (Salvaguarda S12).
+- [x] Normalização exata de desdobramentos (`split` e `reverse_split`), preservando Custo Total constante (Salvaguarda S17).
+- [x] Preservar compatibilidade retroativa integral com anotações de texto de dados legados (`[Resgate]`, `Marco Zero`) conforme Salvaguarda S4.
 
 #### Etapa 1.3: Resolvedor Híbrido de Valoração & Câmbio Dinâmico (`src/domain/portfolio/canonical-engine.ts`)
-- [ ] Implementar `evaluatePortfolioCanonicalState({ asOfDate, mode: "instant" | "point_in_time", ... })`.
-- [ ] Quando `mode === "instant"` (mês corrente): computar valoração direta em $O(1)$ a partir de `portfolio_assets` e preços atuais (Salvaguarda S1).
-- [ ] Quando `mode === "point_in_time"` (mês histórico): reconstruir a posição cronológica respeitando Custódia Base (Salvaguarda S2), calibrações manuais salvas (Salvaguarda S3) e PTAX dinâmica para ativos em USD (Salvaguarda S12).
-- [ ] Memoização interna de competências passadas para carregamento a 60 FPS.
-- [ ] Integrar precificação de Renda Fixa diária (`fixed-income.ts`), ativos cotados B3 (`valuation.ts`) e ativos sem cotação B3 (`custom_valuation`) conforme Salvaguardas S5 e S7.
+- [x] Implementar `evaluatePortfolioCanonicalState({ asOfDate, mode: "instant" | "point_in_time", ... })`.
+- [x] Quando `mode === "instant"` (mês corrente): computar valoração direta em $O(1)$ a partir de `portfolio_assets` e preços atuais (Salvaguarda S1).
+- [x] Quando `mode === "point_in_time"` (mês histórico): reconstruir a posição cronológica respeitando Custódia Base (Salvaguarda S2), calibrações manuais salvas (Salvaguarda S3) e PTAX dinâmica para ativos em USD (Salvaguarda S12).
+- [x] Memoização interna de competências passadas para carregamento a 60 FPS.
+- [x] Integrar precificação de Renda Fixa diária (`fixed-income.ts`), ativos cotados B3 (`valuation.ts`) e ativos sem cotação B3 (`custom_valuation`) conforme Salvaguardas S5 e S7.
 
 #### Etapa 1.4: Apurador de Rentabilidade Homogênea & Correção da Falha dos -13,9% (`src/domain/portfolio/canonical-returns.ts` & `canonical-fidelity.ts`)
-- [ ] Corrigir a lógica de cálculo do extrato mensal:
+- [x] Corrigir a lógica de cálculo do extrato mensal:
   - Se a competência possui snapshot oficial registrado, o saldo inicial e o saldo final da síntese de desempenho devem adotar a base oficial de snapshots ($106.937,10 \to 104.740,27 \implies -3,6\%$).
   - Se a apuração for analítica pura, tanto $V_{\text{ini}}$ quanto $V_{\text{fim}}$ devem ser apurados pelo somatório de ativos na mesma metodologia.
-- [ ] Corrigir a regra de fidelidade: o teste de discrepância ($|\text{discrepancyPct}| \le 3\%$) é avaliado incondicionalmente, mesmo que existam cotações salvas em `portfolio_monthly_prices`.
-- [ ] Implementar algoritmo universal de encadeamento geométrico de cotas (Salvaguarda S11).
+- [x] Corrigir a regra de fidelidade: o teste de discrepância ($|\text{discrepancyPct}| \le 3\%$) é avaliado incondicionalmente, mesmo que existam cotações salvas em `portfolio_monthly_prices`.
+- [x] Implementar algoritmo universal de encadeamento geométrico de cotas (Salvaguarda S11).
 
 #### Etapa 1.5: Bateria de Testes Unitários de Domínio (`src/domain/portfolio/canonical-engine.test.ts`)
-- [ ] Testar caso real de Outubro de 2026: provar matematicamente que o retorno apurado é de $-3,6\%$ e P&L de $-\text{R\$}~3.832,16$ (e nunca $-13,9\%$).
-- [ ] Testar todos os 5 perfis de usuários (Ledger Completo, Custódia Base, Snapshots TWA, Perfil Misto, Múltiplos Aportes).
-- [ ] Testar imunidade a divisão por zero e consistência temporal de ativos em USD com variação cambial.
-- [ ] Testar desdobramentos de ativos (Splits) validando a conservação estrita do Custo Total.
+- [x] Testar caso real de Outubro de 2026: provar matematicamente que o retorno apurado é de $-3,6\%$ e P&L de $-\text{R\$}~3.832,16$ (e nunca $-13,9\%$).
+- [x] Testar todos os 5 perfis de usuários (Ledger Completo, Custódia Base, Snapshots TWA, Perfil Misto, Múltiplos Aportes).
+- [x] Testar imunidade a divisão por zero e consistência temporal de ativos em USD com variação cambial.
+- [x] Testar desdobramentos de ativos (Splits) validando a conservação estrita do Custo Total.
 
 #### 🚪 Portão de Qualidade 1 (Fim da Fase 1)
-- [ ] `vitest run src/domain/portfolio/canonical-engine.test.ts` passando com 100% de sucesso.
-- [ ] `npm run typecheck` sem nenhum erro de tipagem.
-- [ ] `npm run lint` sem violações.
-- [ ] **Ação Git:** Commit semântico e Push:  
+- [x] `vitest run src/domain/portfolio/canonical-engine.test.ts` passando com 100% de sucesso.
+- [x] `npm run typecheck` sem nenhum erro de tipagem.
+- [x] `npm run lint` sem violações.
+- [x] **Ação Git:** Commit semântico e Push:  
   `git commit -m "feat(portfolio): implementar motor canonico puro com resolucao de bases homogeneas e rentabilidade blindada (v3.7.1)" && git push`
 
 ---

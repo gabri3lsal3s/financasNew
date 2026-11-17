@@ -501,5 +501,9 @@ export * from "./dividend-suggester";
 export * from "./dividend-cash-governance";
 export * from "./fire";
 export * from "./simulation-presets";
+export * from "./canonical-types";
+export * from "./canonical-normalizer";
+export * from "./canonical-returns";
+export * from "./canonical-engine";
 
 

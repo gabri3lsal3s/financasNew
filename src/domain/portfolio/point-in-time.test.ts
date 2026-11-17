@@ -641,6 +641,68 @@ describe("point-in-time portfolio calculation engine", () => {
       expect(vooPos.unrealizedPct).toBe(25); // +25%
     });
 
+    it("dynamically resolves PTAX rate from monthlyPrices for USDBRL=X when usdRate is omitted (§Salvaguarda S12)", () => {
+      const assetAapl: PortfolioAsset = {
+        id: "asset-aapl",
+        user_id: "user-1",
+        ticker: "AAPL",
+        asset_class: "Internacional",
+        currency: "USD",
+        quantity: 10,
+        average_price: 150,
+      };
+
+      const txAapl: PortfolioTransaction = {
+        id: "tx-aapl",
+        user_id: "user-1",
+        asset_id: "asset-aapl",
+        type: "buy",
+        date: "2026-10-10",
+        quantity: 10,
+        price: 150,
+        total: 1500, // USD 1,500
+      };
+
+      const monthlyPrices: PortfolioMonthlyPrice[] = [
+        {
+          id: "pmp-ptax",
+          user_id: "user-1",
+          ticker: "USDBRL=X",
+          month: "2026-10",
+          price: 5.78, // Taxa PTAX oficial da competência
+          currency: "BRL",
+          source: "api",
+        },
+        {
+          id: "pmp-aapl",
+          user_id: "user-1",
+          ticker: "AAPL",
+          month: "2026-10",
+          price: 200, // Cotação USD 200
+          currency: "USD",
+          source: "api",
+        },
+      ];
+
+      const result = calculatePointInTimePosition({
+        month: "2026-10",
+        assets: [assetAapl],
+        transactions: [txAapl],
+        monthlyPrices,
+        // usdRate omitted on purpose
+      });
+
+      expect(result.usdRate).toBe(5.78);
+      expect(result.positions).toHaveLength(1);
+      const pos = result.positions[0]!;
+      expect(pos.ticker).toBe("AAPL");
+      expect(pos.priceQuote).toBe(200); // USD 200
+      expect(pos.priceBRL).toBe(1156); // 200 * 5.78 = 1156
+      expect(pos.valueBRL).toBe(11560); // 10 * 200 * 5.78 = 11560
+      expect(pos.totalCostBRL).toBe(8670); // 1500 * 5.78 = 8670
+      expect(pos.unrealizedPnl).toBe(2890); // 11560 - 8670 = 2890
+    });
+
     it("correctly factors splits and reverse splits into running quantity and average price", () => {
       const assetItub: PortfolioAsset = {
         id: "asset-itub",

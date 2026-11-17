@@ -188,6 +188,13 @@ Set.	2026	94.532,22	100.095,95	0,81
     expect(cleanContributionNotes("Aporte Histórico (Mar/2024) [Rent: +1.11%]")).toBe(
       "Aporte Histórico (Mar/2024)",
     );
+    expect(
+      cleanContributionNotes("[Saque] Retirada de Caixa [tx: tx_sell_123] [Rent: -0.50%]"),
+    ).toBe("Retirada de Caixa");
+    expect(cleanContributionNotes("Aporte via TED tx: 98765")).toBe("Aporte via TED");
+    expect(cleanContributionNotes("[origem: tx_div_1] Provento trimestral")).toBe(
+      "Provento trimestral",
+    );
   });
 
   it("ignora linhas de rodapé e totalizadores sem gerar falhas", () => {

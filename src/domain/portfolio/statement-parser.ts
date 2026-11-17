@@ -355,13 +355,18 @@ export function extractExplicitRateFromNotes(notes?: string | null): number | nu
 }
 
 /**
- * Remove marcadores de sistema ([Resgate], [Retirada], [Rent: ...]) para exibição limpa ao usuário.
+ * Remove marcadores de sistema ([Resgate], [Retirada], [Saque], [Rent: ...], [tx: ...], etc.) para exibição limpa ao usuário (§Salvaguarda S4).
  */
 export function cleanContributionNotes(notes?: string | null): string {
   if (!notes) return "";
   return notes
-    .replace(/^\[(?:resgate|retirada)\]\s*/i, "")
+    .replace(/^\[(?:resgate|retirada|saque)\]\s*/i, "")
     .replace(/\[(?:rent|taxa|retorno):\s*[+-]?\d+(?:[.,]\d+)?%?\]/gi, "")
+    .replace(/\[(?:tx|tx_id|transacao|transação|origem):\s*[^\]]+\]/gi, "")
+    .replace(/\b(?:tx|tx_id|transacao|transação|origem):\s*[a-zA-Z0-9_-]+\b/gi, "")
+    .replace(/\[(?:custo|valor):\s*[^\]]+\]/gi, "")
+    .replace(/^[–—\-:\s]+|[–—\-:\s]+$/g, "")
+    .replace(/\s{2,}/g, " ")
     .trim();
 }
 
