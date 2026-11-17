@@ -24,8 +24,9 @@ import { getMonthEndCutoffDate, resolveDynamicPtaxRate } from "./canonical-norma
 import { isDividendType } from "./dividends";
 import { calculateFixedIncomeBalance } from "./fixed-income";
 import { resolveHistoricalQuotePriority, type ResolvedHistoricalQuote } from "./historical-quotes";
+import { calculateHomogeneousMonthlyStatement } from "./canonical-returns";
+import type { CanonicalMonthlyStatement } from "./canonical-types";
 import {
-  calculateMonthlyStatement,
   type MonthlyStatementCashFlow,
   type MonthlyStatementDividend,
   type MonthlyStatementResult,
@@ -98,7 +99,7 @@ export interface PointInTimeResult {
   /** Ativos existentes na carteira que não tiveram movimentações retroativas apuradas na competência */
   candidateAssets?: PointInTimeCandidateAsset[];
   /** Apuração da competência mensal isolada (Modified Dietz, P&L do mês, fluxos e proventos) */
-  monthlyStatement?: MonthlyStatementResult;
+  monthlyStatement?: MonthlyStatementResult | CanonicalMonthlyStatement;
   /** Sinaliza se o resultado patrimonial da competência é derivado do saldo consolidado de snapshot (TWA) */
   isDerivedFromSnapshot?: boolean;
   /** Taxa de câmbio USD/BRL (PTAX) resolvida para a competência (§Salvaguarda S12) */
@@ -609,16 +610,6 @@ export function calculatePointInTimePosition(
         ? Number(resolvedPrevSnapshot.total_value) || 0
         : 0;
 
-  // Saldo final M: se derivado de saldo consolidado de snapshot (TWA), adota o saldo registrado no snapshot;
-  // caso contrário, adota o saldo total reconstruído da carteira
-  const effectiveEndBalance =
-    isDerivedFromSnapshot &&
-    snapshot &&
-    snapshot.total_value !== undefined &&
-    snapshot.total_value !== null
-      ? Number(snapshot.total_value) || 0
-      : totalValueBRL;
-
   const assetMap = new Map<string, PortfolioAsset>(assets.map((a) => [a.id, a]));
 
   const statementDividends: MonthlyStatementDividend[] = (dividends ?? []).map((d) => {
@@ -654,10 +645,13 @@ export function calculatePointInTimePosition(
       ? explicitRatePct
       : null;
 
-  const monthlyStatement = calculateMonthlyStatement({
+  const monthlyStatement = calculateHomogeneousMonthlyStatement({
     month,
-    startBalanceBRL: effectiveStartBalance,
-    endBalanceBRL: effectiveEndBalance,
+    snapshots,
+    snapshot,
+    previousSnapshot,
+    startBalanceBRL: startBalanceBRL !== undefined ? startBalanceBRL : effectiveStartBalance,
+    reconstructedEndBalanceBRL: totalValueBRL,
     externalFlows,
     netExternalCashFlowBRL,
     dividends: statementDividends,

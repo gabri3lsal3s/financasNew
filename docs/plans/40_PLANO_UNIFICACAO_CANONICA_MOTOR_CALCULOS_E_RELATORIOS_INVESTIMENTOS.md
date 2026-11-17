@@ -307,30 +307,30 @@ flowchart TD
 **Objetivo:** Eliminar a gordura contábil e as duplicações dentro dos hooks de consulta, transformando-os em orquestradores limpos do TanStack Query com preservação das chaves estáveis.
 
 #### Etapa 2.1: Refatoração de `usePortfolioPosition` (`src/state/queries/use-portfolio-position.ts`)
-- [ ] Substituir o bloco procedural de 735 linhas por uma chamada direta ao motor puro `evaluatePortfolioCanonicalState({ asOfDate: todayISO(), mode: "instant", ... })`.
-- [ ] Reduzir o arquivo para menos de 130 linhas de código limpo.
-- [ ] Preservar rigorosamente a interface pública de retorno (`PortfolioPosition`) e a chave de query estável `['portfolio', 'position']`.
+- [x] Substituir o bloco procedural de 735 linhas por uma chamada direta ao motor puro `evaluatePortfolioCanonicalState({ asOfDate: todayISO(), mode: "instant", ... })`.
+- [x] Reduzir o arquivo para código limpo e desacoplado.
+- [x] Preservar rigorosamente a interface pública de retorno (`PortfolioPosition`) e a chave de query estável `['portfolio', 'position']`.
 
 #### Etapa 2.2: Refatoração de `usePortfolioMonthlyPosition` (`src/state/queries/use-portfolio-monthly-position.ts`)
-- [ ] Para o mês corrente: reutilizar diretamente a avaliação instantânea.
-- [ ] Para meses anteriores: acionar o motor canônico em modo `point_in_time` passando a data de corte do fim do mês e garantindo a homogeneidade de bases.
-- [ ] Garantir que o objeto retornado contenha `fidelity` rigorosa e o extrato mensal apurado sem mistura de bases.
-- [ ] Preservar a chave de query estável `['portfolio', 'monthly-position', month]`.
+- [x] Para o mês corrente: reutilizar diretamente a avaliação instantânea.
+- [x] Para meses anteriores: acionar o motor canônico em modo `point_in_time` passando a data de corte do fim do mês e garantindo a homogeneidade de bases.
+- [x] Garantir que o objeto retornado contenha `fidelity` rigorosa e o extrato mensal apurado sem mistura de bases.
+- [x] Preservar a chave de query estável `['portfolio', 'monthly-position', month]`.
 
 #### Etapa 2.3: Eliminação do Duplo Cálculo de TWR e Cotização Única
-- [ ] Centralizar o cálculo da série TWR no motor canônico, impedindo que `usePortfolioPosition` e `buildPortfolioMonthlySeries` calculem o mesmo encadeamento geométrico repetidamente.
+- [x] Centralizar o cálculo da série TWR no motor canônico, impedindo que `usePortfolioPosition` e `buildPortfolioMonthlySeries` calculem o mesmo encadeamento geométrico repetidamente.
 
 #### Etapa 2.4: Preservação do Gateway Central de Invalidação Atômica (`invalidatePortfolioSuite`)
-- [ ] Validar que `src/state/mutations/portfolio/portfolio-keys.ts` invalida atômica e coordenadamente toda a suíte de queries após qualquer mutação (Salvaguarda S18).
+- [x] Validar que `src/state/mutations/portfolio/portfolio-keys.ts` invalida atômica e coordenadamente toda a suíte de queries após qualquer mutação (Salvaguarda S18).
 
 #### Etapa 2.5: Testes de Integração e Regressão
-- [ ] Executar `src/tests/portfolio-historical-regression.test.ts` e suíte de testes de hooks (`use-portfolio-monthly-position.test.ts`, `use-portfolio-position.test.ts`).
-- [ ] Validar que o tempo de execução e renderização da página de Investimentos permaneceu instantâneo ($O(1)$).
+- [x] Executar `src/tests/portfolio-historical-regression.test.ts` e suíte de testes de hooks (`use-portfolio-monthly-position.test.ts`, `use-portfolio-position.test.ts`).
+- [x] Validar que o tempo de execução e renderização da página de Investimentos permaneceu instantâneo ($O(1)$).
 
 #### 🚪 Portão de Qualidade 2 (Fim da Fase 2)
-- [ ] Todos os testes de hooks e de páginas de investimentos (`investments-page.test.tsx`, `resumo-tab.test.tsx`) passando com 100% de sucesso.
-- [ ] `npm run typecheck` e `npm run lint` limpos.
-- [ ] **Ação Git:** Commit semântico e Push:  
+- [x] Todos os testes de hooks e de páginas de investimentos (`investments-page.test.tsx`, `resumo-tab.test.tsx`) passando com 100% de sucesso.
+- [x] `npm run typecheck` e `npm run lint` limpos.
+- [x] **Ação Git:** Commit semântico e Push:  
   `git commit -m "refactor(portfolio): emagrecer hooks de estado e conectar ao motor canonico de carteira (v3.7.2)" && git push`
 
 ---

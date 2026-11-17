@@ -9,36 +9,17 @@ import {
 import { useAssetPrices } from "./use-asset-prices";
 import { useMacroIndicators } from "./use-macro-indicators";
 import {
-  buildPortfolioMonthlySeries,
-  calculatePortfolioTotalReturn,
-  calculatePositionSummary,
-  estimateInitialInvestmentFromRedemption,
-  fallbackPriceFor,
-  isCashAssetClass,
-  resolvePrice,
-  usdRateFromPrices,
-  buildAssetCashFlows,
-  buildPortfolioCashFlows,
-  calculateNetInjectedCapital,
-  calculateNetPocketGain,
-  calculateXIRR,
-  calculateTwrSeries,
-  extractExplicitRateFromNotes,
-  isDividendType,
-  isHistoricalWithdrawal,
+  evaluatePortfolioCanonicalState,
   type AssetPricingMode,
+  type CanonicalAssetHolding,
   type FixedIncomeBalanceResult,
   type PortfolioMonthlySeriesPoint,
   type PriceSource,
   type TwrConsolidatedResult,
-  type TwrMonthlyInputPoint,
   type XIRRResult,
 } from "@/domain/portfolio";
 import { todayISO } from "@/domain/debts";
-import { currentMonth } from "@/lib/date";
 import type { AssetCurrency, FixedIncomeMetadata } from "@/types";
-
-const round2 = (value: number): number => Math.round(value * 100) / 100;
 
 export interface PortfolioPositionRow {
   assetId: string;
@@ -47,43 +28,24 @@ export interface PortfolioPositionRow {
   sector?: string | null;
   currency: AssetCurrency;
   quantity: number;
-  /** Custo médio na moeda nativa do ativo (USD ou BRL). */
   averageCost: number;
-  /** Custo total na moeda nativa do ativo (USD ou BRL). */
   totalCost: number;
-  /** Custo total convertido para BRL (para PnL e relatórios consolidados). */
   totalCostBRL: number;
-  /** Custo médio convertido para BRL. */
   averageCostBRL: number;
-  /** Total de proventos recebidos em BRL (dividendos + jcp + rendimentos + acumulados históricos). */
   dividends: number;
-  /** Total de proventos recebidos na moeda nativa do ativo (USD ou BRL). */
   dividendsNative?: number;
-  /** Preço unitário na moeda nativa do ativo (USD ou BRL). */
   priceQuote: number;
-  /** Preço unitário em BRL (caixa = 1). */
   priceBRL: number;
-  /** Taxa de câmbio USD/BRL utilizada. */
   usdRate: number;
-  /** Fonte do preço usado (manual / api / fallback). */
   source: PriceSource;
-  /** Valor de mercado em BRL (caixa = quantidade × 1). */
   valueBRL: number;
-  /** % do patrimônio (0–100). */
   pct: number;
-  /** Lucro/prejuízo de capital não realizado em BRL (valor − custo; F14). */
   unrealizedPnl: number;
-  /** Variação da cotação % sobre o custo (null quando não há custo — caixa; F14). */
   unrealizedPct: number | null;
-  /** Resultado total em BRL ((valor − custo) + proventos). */
   totalReturnPnl: number;
-  /** Retorno Total % sobre o custo (null quando não há custo — caixa). */
   totalReturnPct: number | null;
-  /** Custo histórico total aplicado no ativo (mesmo para posições encerradas). */
   historicalCostBRL?: number;
-  /** Total bruto histórico já resgatado/vendido do ativo. */
   historicalRedeemedBRL?: number;
-  /** Rentabilidade final realizada % (para posições encerradas). */
   finalReturnPct?: number | null;
   isCash: boolean;
   pricingMode: AssetPricingMode;
@@ -95,62 +57,88 @@ export interface PortfolioPositionRow {
   netValueBRL?: number;
   taxAmountBRL?: number;
   taxRatePct?: number;
-  /** Taxa Interna de Retorno (TIR / Fluxo do Bolso) individual deste ativo. */
   irrResult?: XIRRResult;
 }
 
 export interface PortfolioPosition {
   rows: PortfolioPositionRow[];
-  /** Patrimônio total = soma das posições em BRL. */
   totalBRL: number;
-  /** Custo total da carteira em BRL. */
   totalCostBRL: number;
-  /** Caixa derivado/alocado (valor dos ativos com classe caixa/reserva). */
   cashBRL: number;
-  /** Proventos totais recebidos na carteira em BRL. */
   totalDividendsBRL: number;
-  /** Resultado total consolidado em BRL ((patrimônio − custo) + proventos). */
   totalReturnPnlBRL: number;
-  /** Retorno Total % consolidado da carteira (com proventos). */
   totalReturnPct: number | null;
-  /** Ganho de capital não realizado consolidado em BRL (patrimônio − custo). */
   unrealizedPnlBRL: number;
-  /** Variação da cotação % consolidada da carteira (sem proventos). */
   unrealizedPct: number | null;
-  /** Resultado Econômico Histórico Acumulado em BRL (P&L Total: lucro aberto + proventos totais + lucro realizado passado). */
   allTimeEconomicPnlBRL: number;
-  /** Lucro realizado acumulado em BRL de posições encerradas no passado. */
   realizedPnlBRL: number;
-  /** Capital líquido total injetado do bolso em BRL (Aportes - Saques). */
   netInjectedCapitalBRL: number;
-  /** Ganho líquido real do bolso em BRL (Patrimônio Atual - Capital Injetado). */
   netPocketGainBRL: number;
-  /** Taxa Interna de Retorno (TIR / Fluxo do Bolso / XIRR) da carteira consolidada. */
   portfolioIrr: XIRRResult;
-  /** Rentabilidade por Cotas (TWR / Time-Weighted Return - Padrão CVM/ANBIMA) da carteira consolidada. */
   portfolioTwr: TwrConsolidatedResult;
-  /**
-   * Série mensal a partir de snapshots com proventos integrados (F36 & F37).
-   */
   monthlySeries: PortfolioMonthlySeriesPoint[];
-  /**
-   * Série mensal completa histórica sem limite de meses (para auditoria e tabelas analíticas).
-   */
   allMonthlySeries: PortfolioMonthlySeriesPoint[];
-  /**
-   * Aporte líquido do mês corrente em centavos (F19 & F36).
-   */
   monthlyContributionCents: number;
-  /** Indica se há um Marco Zero do Bolso registrado para o usuário (para UI contextual). */
   hasMarcoZeroContribution: boolean;
-  /** Mês de origem (Marco Zero) do cadastro da carteira no aplicativo */
   marcoZeroMonth: string | null;
-  /** Quantidade de fechamentos mensais de snapshots persistidos (excluindo mês corrente em aberto) */
   closedSnapshotsCount: number;
   isLoading: boolean;
   error: unknown;
-  /** Reexecuta as consultas. */
   refetch: () => void;
+}
+
+function mapCanonicalHoldingToRow(holding: CanonicalAssetHolding): PortfolioPositionRow {
+  let source: PriceSource = "manual";
+  if (holding.resolvedPrice.source === "api") {
+    source = "api";
+  } else if (holding.resolvedPrice.source === "fallback") {
+    source = "fallback";
+  }
+
+  const pricingMode: AssetPricingMode =
+    holding.pricingMode === "cash"
+      ? "cash"
+      : holding.pricingMode === "total_value"
+        ? "total_value"
+        : "unit_price";
+
+  return {
+    assetId: holding.assetId,
+    ticker: holding.ticker,
+    assetClass: holding.assetClass,
+    sector: holding.sector,
+    currency: holding.currency,
+    quantity: holding.quantity,
+    averageCost: holding.averageCost,
+    totalCost: holding.totalCost,
+    totalCostBRL: holding.totalCostBRL,
+    averageCostBRL: holding.averageCostBRL,
+    dividends: holding.dividends,
+    dividendsNative: holding.dividendsNative,
+    priceQuote: holding.priceQuote,
+    priceBRL: holding.priceBRL,
+    usdRate: holding.usdRate,
+    source,
+    valueBRL: holding.valueBRL,
+    pct: holding.weightPct,
+    unrealizedPnl: holding.unrealizedPnl,
+    unrealizedPct: holding.unrealizedPct,
+    totalReturnPnl: holding.totalReturnPnl,
+    totalReturnPct: holding.totalReturnPct,
+    historicalCostBRL: holding.totalCostBRL,
+    historicalRedeemedBRL: 0,
+    finalReturnPct: null,
+    isCash: holding.isCash,
+    pricingMode,
+    notes: holding.notes,
+    fixedIncomeMetadata: holding.fixedIncomeMetadata,
+    fixedIncomeResult: holding.fixedIncomeResult,
+    isMatured: holding.isMatured,
+    maturityDate: holding.maturityDate,
+    netValueBRL: holding.netValueBRL,
+    taxAmountBRL: holding.taxAmountBRL,
+    taxRatePct: holding.taxRatePct,
+  };
 }
 
 export function usePortfolioPosition(): PortfolioPosition {
@@ -162,505 +150,18 @@ export function usePortfolioPosition(): PortfolioPosition {
   const snapshotsQuery = usePortfolioSnapshots();
   const transactionsQuery = useAllPortfolioTransactions();
 
-  const computed = useMemo(() => {
-    const assets = assetsQuery.data ?? [];
-    const prices = pricesQuery.data ?? [];
-    const macro = macroQuery.data;
-    const contributions = contributionsQuery.data ?? [];
-    const dividends = dividendsQuery.data ?? [];
-    const snapshots = snapshotsQuery.data ?? [];
-    const transactions = transactionsQuery.data ?? [];
-
-    const usdRate = usdRateFromPrices(prices);
-    const priceByTicker = new Map(prices.map((p) => [p.ticker.trim().toUpperCase(), p]));
-    const annualCdiRate = macro?.annualCdiRate;
-    const today = todayISO();
-
-    // Agrupa compras e vendas históricas por ativo a partir do ledger
-    const boughtByAsset = new Map<string, number>();
-    const soldByAsset = new Map<string, number>();
-    for (const t of transactions) {
-    const amount = t.total > 0 ? t.total : (t.quantity > 0 && t.price > 0 ? t.quantity * t.price : 0);
-    if (t.type === "buy" || t.type === "subscription") {
-      boughtByAsset.set(t.asset_id, (boughtByAsset.get(t.asset_id) ?? 0) + amount);
-    } else if (t.type === "sell") {
-      soldByAsset.set(t.asset_id, (soldByAsset.get(t.asset_id) ?? 0) + amount);
-    }
-  }
-
-  // Agrega também aportes financeiros direcionados ao ativo (evitando duplicar se já estiver no ledger)
-  for (const c of contributions) {
-    if (c.asset_id && c.amount > 0) {
-      const alreadyInTx = transactions.some(
-        (t) => t.asset_id === c.asset_id && (t.type === "buy" || t.type === "subscription") && t.date === c.date && Math.abs(t.total - c.amount) < 0.01,
-      );
-      if (!alreadyInTx) {
-        boughtByAsset.set(c.asset_id, (boughtByAsset.get(c.asset_id) ?? 0) + c.amount);
-      }
-    }
-  }
-
-  // Agrupa proventos periódicos por ativo (lançamentos em portfolio_dividends)
-  const dividendsByAsset = new Map<string, number>();
-  for (const d of dividends) {
-    if (d.asset_id) {
-      dividendsByAsset.set(d.asset_id, (dividendsByAsset.get(d.asset_id) ?? 0) + d.amount);
-    }
-  }
-
-  // Agrega proventos lançados no ledger (portfolio_transactions) evitando duplicatas com portfolio_dividends
-  for (const t of transactions) {
-    if (t.asset_id && isDividendType(t.type)) {
-      const amount = t.total > 0 ? t.total : (t.quantity > 0 && t.price > 0 ? t.quantity * t.price : 0);
-      if (amount <= 0) continue;
-      const tDate = t.date ? t.date.slice(0, 10) : "";
-      const alreadyInDividends = dividends.some(
-        (d) => d.asset_id === t.asset_id && d.date && d.date.slice(0, 10) === tDate && Math.abs(d.amount - amount) < 0.01,
-      );
-      if (!alreadyInDividends) {
-        dividendsByAsset.set(t.asset_id, (dividendsByAsset.get(t.asset_id) ?? 0) + amount);
-      }
-    }
-  }
-  // Soma proventos acumulados históricos (anteriores ao extrato periódico).
-  // Alimentam YoC e Bola de Neve sem distorcer o calendário/extrato mensal.
-  for (const a of assets) {
-    const acc = a.accumulated_dividends ?? 0;
-    if (acc > 0) {
-      dividendsByAsset.set(a.id, (dividendsByAsset.get(a.id) ?? 0) + acc);
-    }
-  }
-
-  let totalBRL = 0;
-  let totalCostBRL = 0;
-  let cashBRL = 0;
-  const rawRows: Array<Omit<PortfolioPositionRow, "pct">> = [];
-
-  for (const asset of assets) {
-    const isCash = isCashAssetClass(asset.asset_class);
-    const quantity = Number(asset.quantity ?? 0);
-    const averageCost = Number(asset.average_price ?? 0);
-
-    const normalizedTicker = asset.ticker.trim().toUpperCase();
-    const effectiveCurrency =
-      asset.currency === "BRL" && asset.asset_class === "Internacional" && /^[A-Za-z]{1,5}$/.test(normalizedTicker)
-        ? "USD"
-        : asset.currency;
-
-    const priceRow = priceByTicker.get(normalizedTicker);
-    const defaultFallback = fallbackPriceFor(effectiveCurrency);
-    const effectiveFallback = averageCost > 0 ? averageCost : defaultFallback;
-
-    const manualPriceCandidate =
-      priceRow?.manual_price !== null && priceRow?.manual_price !== undefined && priceRow.manual_price > 0
-        ? priceRow.manual_price
-        : priceRow?.source === "manual" && priceRow.price > 0
-          ? priceRow.price
-          : null;
-
-    const cachePriceCandidate =
-      priceRow?.source === "api" && priceRow.price > 0
-        ? priceRow.price
-        : priceRow?.source !== "manual" && priceRow?.price && priceRow.price > 0
-          ? priceRow.price
-          : null;
-
-    const resolved = resolvePrice({
-      manualPrice: manualPriceCandidate,
-      cachePrice: cachePriceCandidate,
-      fallbackPrice: effectiveFallback,
+  const canonicalState = useMemo(() => {
+    return evaluatePortfolioCanonicalState({
+      asOfDate: todayISO(),
+      mode: "instant",
+      assets: assetsQuery.data ?? [],
+      transactions: transactionsQuery.data ?? [],
+      contributions: contributionsQuery.data ?? [],
+      dividends: dividendsQuery.data ?? [],
+      snapshots: snapshotsQuery.data ?? [],
+      assetPrices: pricesQuery.data ?? [],
+      annualCdiRate: macroQuery.data?.annualCdiRate,
     });
-
-    const assetDividends = dividendsByAsset.get(asset.id) ?? 0;
-
-    const summary = calculatePositionSummary({
-      quantity,
-      averagePrice: averageCost,
-      assetClass: asset.asset_class,
-      currency: effectiveCurrency,
-      resolvedPrice: resolved,
-      usdRate,
-      ticker: asset.ticker,
-      notes: asset.notes,
-      totalDividends: assetDividends,
-      fixedIncomeMetadata: asset.fixed_income_metadata,
-      annualCdiRate,
-      today,
-    });
-
-    totalBRL = round2(totalBRL + summary.valueBRL);
-    if (isCash) {
-      cashBRL = round2(cashBRL + summary.valueBRL);
-    } else if (summary.quantity > 0) {
-      totalCostBRL = round2(totalCostBRL + summary.totalCostBRL);
-    }
-
-    const rate = effectiveCurrency === "USD" ? usdRate : 1;
-    const totalBought = boughtByAsset.get(asset.id) ?? 0;
-    const totalSold = soldByAsset.get(asset.id) ?? 0;
-
-    const explicitInitialInvestment =
-      asset.fixed_income_metadata?.initial_investment_value !== undefined &&
-      asset.fixed_income_metadata?.initial_investment_value !== null &&
-      asset.fixed_income_metadata.initial_investment_value > 0
-        ? asset.fixed_income_metadata.initial_investment_value
-        : undefined;
-
-    const fiOriginalCost =
-      explicitInitialInvestment !== undefined
-        ? explicitInitialInvestment
-        : asset.fixed_income_metadata?.base_value !== undefined &&
-            asset.fixed_income_metadata?.base_value !== null &&
-            asset.fixed_income_metadata.base_value > 0
-          ? asset.fixed_income_metadata.base_value
-          : undefined;
-
-    let effectiveAppliedNative =
-      explicitInitialInvestment !== undefined
-        ? explicitInitialInvestment
-        : totalBought > 0
-          ? totalBought
-          : fiOriginalCost !== undefined
-            ? fiOriginalCost
-            : summary.totalCostBRL > 0
-              ? summary.totalCostBRL
-              : Number(asset.average_price || 0);
-
-    const isClosed = summary.quantity <= 0 && summary.valueBRL <= 0;
-
-    // Se a posição estiver encerrada e totalAplicado for igual ao totalResgatado (redundância contábil),
-    // mas o ativo possuir taxa contratada de renda fixa cadastrada e prazo, estima o custo inicial descapitalizado:
-    if (
-      isClosed &&
-      totalSold > 0 &&
-      Math.abs(effectiveAppliedNative - totalSold) < 0.05 &&
-      explicitInitialInvestment === undefined &&
-      asset.fixed_income_metadata &&
-      asset.fixed_income_metadata.rate_value > 0
-    ) {
-      const fi = asset.fixed_income_metadata;
-      const startDate = fi.initial_investment_date || fi.base_date;
-      if (startDate && startDate < today) {
-        const estimated = estimateInitialInvestmentFromRedemption({
-          redeemedAmount: totalSold,
-          startDate,
-          redemptionDate: today,
-          rateType: fi.rate_type,
-          rateValue: fi.rate_value,
-          annualCdiRate,
-        });
-        if (estimated > 0 && estimated < totalSold) {
-          effectiveAppliedNative = estimated;
-        }
-      }
-    }
-
-    const historicalCostBRL = round2(effectiveAppliedNative * rate);
-    const historicalRedeemedBRL = round2(totalSold * rate);
-    const effectiveRealizedPnl = isClosed
-      ? round2(historicalRedeemedBRL - historicalCostBRL)
-      : summary.unrealizedPnl;
-
-    const effectiveTotalReturnPnl = isClosed
-      ? round2(historicalRedeemedBRL - historicalCostBRL + summary.totalDividendsBRL)
-      : summary.totalReturnPnl;
-
-    const effectiveFinalReturnPct = isClosed && historicalCostBRL > 0
-      ? round2((effectiveTotalReturnPnl / historicalCostBRL) * 100)
-      : isClosed
-        ? null
-        : summary.totalReturnPct;
-
-    // Fluxos do ativo para cálculo da TIR individual
-    const assetTxs = transactions.filter((t) => t.asset_id === asset.id);
-    const assetDivs = dividends.filter((d) => d.asset_id === asset.id);
-    const assetAccDiv = asset.accumulated_dividends ?? 0;
-    const allAssetDivs =
-      assetAccDiv > 0
-        ? [
-            ...assetDivs.map((d) => ({ date: d.date, amount: Number(d.amount) })),
-            { date: assetTxs[0]?.date ?? today, amount: assetAccDiv },
-          ]
-        : assetDivs.map((d) => ({ date: d.date, amount: Number(d.amount) }));
-
-    const assetFlows = buildAssetCashFlows({
-      transactions: assetTxs.map((t) => ({
-        date: t.date,
-        type: t.type,
-        total: t.total,
-        quantity: t.quantity,
-        price: t.price,
-      })),
-      dividends: allAssetDivs,
-      currentAssetValue: summary.valueBRL,
-      today,
-    });
-    const irrResult = calculateXIRR(assetFlows);
-
-    rawRows.push({
-      assetId: asset.id,
-      ticker: asset.ticker,
-      assetClass: asset.asset_class,
-      sector: asset.sector ?? null,
-      currency: effectiveCurrency,
-      quantity: summary.quantity,
-      averageCost: summary.pricingMode === "total_value" ? summary.totalCost : averageCost,
-      totalCost: summary.totalCost,
-      totalCostBRL: summary.totalCostBRL,
-      averageCostBRL: summary.averagePriceBRL,
-      dividends: summary.totalDividendsBRL,
-      dividendsNative: summary.totalDividends,
-      priceQuote: summary.priceQuote,
-      priceBRL: summary.priceBRL,
-      usdRate,
-      source: summary.source,
-      valueBRL: summary.valueBRL,
-      unrealizedPnl: effectiveRealizedPnl,
-      unrealizedPct: summary.unrealizedPct,
-      totalReturnPnl: effectiveTotalReturnPnl,
-      totalReturnPct: summary.totalReturnPct,
-      historicalCostBRL,
-      historicalRedeemedBRL,
-      finalReturnPct: effectiveFinalReturnPct,
-      isCash,
-      pricingMode: summary.pricingMode,
-      notes: asset.notes,
-      fixedIncomeMetadata: asset.fixed_income_metadata,
-      fixedIncomeResult: summary.fixedIncomeResult,
-      isMatured: summary.isMatured,
-      maturityDate: summary.maturityDate,
-      netValueBRL: summary.netValueBRL,
-      taxAmountBRL: summary.taxAmountBRL,
-      taxRatePct: summary.taxRatePct,
-      irrResult,
-    });
-  }
-
-  const rows = rawRows.map((row) => ({
-    ...row,
-    pct: totalBRL > 0 ? Math.round((row.valueBRL / totalBRL) * 10000) / 100 : 0,
-  }));
-
-  const consolidatedReturn = calculatePortfolioTotalReturn(rawRows);
-
-  // ---------------------------------------------------------------------------
-  // Fluxo do Bolso & TIR da Carteira Consolidada (XIRR)
-  // ---------------------------------------------------------------------------
-  const cashAssetIds = new Set(
-    assets
-      .filter((a) => isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA")
-      .map((a) => a.id),
-  );
-
-  const cashWithdrawals: { date: string; amount: number }[] = [];
-  for (const t of transactions) {
-    if (t.type === "sell" && cashAssetIds.has(t.asset_id) && t.total > 0) {
-      cashWithdrawals.push({
-        date: t.date,
-        amount: t.total,
-      });
-    }
-  }
-
-  const portfolioCashFlows = buildPortfolioCashFlows({
-    contributions: contributions.map((c) => ({
-      date: c.date,
-      amount: c.amount,
-      notes: c.notes,
-    })),
-    cashWithdrawals,
-    currentPortfolioValueBRL: totalBRL,
-    today,
-  });
-
-  const hasMarcoZeroContribution = contributions.some((c) => {
-    if (!c.asset_id) return true;
-    const n = (c.notes ?? "").toLowerCase();
-    return (
-      n.includes("marco") ||
-      n.includes("custo inicial") ||
-      n.includes("histórico inicial") ||
-      n.includes("aporte histórico")
-    );
-  });
-
-  const portfolioIrr = calculateXIRR(portfolioCashFlows);
-
-  const netInjectedCapitalBRL = calculateNetInjectedCapital(
-    contributions,
-    cashWithdrawals,
-  );
-  const netPocketGainBRL = calculateNetPocketGain(totalBRL, netInjectedCapitalBRL);
-
-  // Aporte líquido do mês corrente a partir de portfolio_contributions
-  const thisMonth = currentMonth();
-  let contributionBRL = 0;
-  for (const c of contributions) {
-    if (c.date.startsWith(thisMonth)) {
-      contributionBRL += c.amount;
-    }
-  }
-
-  // Snapshots mensais reais com proventos integrados (F36 & F37)
-  const initialAccumulatedDividends = assets.reduce(
-    (acc, a) => {
-      const isUSD = a.currency === "USD";
-      const aRate = isUSD ? usdRate : 1;
-      return acc + (a.accumulated_dividends ?? 0) * aRate;
-    },
-    0,
-  );
-
-  const currentMonthPoint =
-    totalBRL > 0 || assets.length > 0
-      ? {
-          month: thisMonth,
-          total_value: totalBRL,
-          total_cost: Math.round((totalCostBRL + cashBRL) * 100) / 100,
-          capital_gain_pnl: consolidatedReturn.capitalGainPnl,
-          capital_gain_pct: consolidatedReturn.capitalGainPct,
-          total_return_pnl: consolidatedReturn.totalReturnPnl,
-          total_return_pct: consolidatedReturn.totalReturnPct,
-          status: "provisional" as const,
-        }
-      : null;
-
-  const allMonthsTwrMap = new Map<string, { total_value: number; total_cost: number }>();
-  for (const snap of snapshots) {
-    if (snap.month < thisMonth || !thisMonth) {
-      allMonthsTwrMap.set(snap.month, {
-        total_value: Number(snap.total_value),
-        total_cost: Number(snap.total_cost),
-      });
-    }
-  }
-
-  if (currentMonthPoint && (currentMonthPoint.total_value > 0 || currentMonthPoint.total_cost > 0)) {
-    allMonthsTwrMap.set(currentMonthPoint.month, {
-      total_value: Number(currentMonthPoint.total_value),
-      total_cost: Number(currentMonthPoint.total_cost),
-    });
-  }
-
-  const sortedAllMonths = Array.from(allMonthsTwrMap.entries()).sort((a, b) =>
-    a[0].localeCompare(b[0]),
-  );
-
-  const twrInputs: TwrMonthlyInputPoint[] = sortedAllMonths.map(([m, data]) => {
-    let flow = 0;
-    let explicitRate: number | null = null;
-    const monthFlows: { date: string; amount: number }[] = [];
-    for (const c of contributions) {
-      if (c.date.startsWith(m)) {
-        const isWithdrawal = isHistoricalWithdrawal(c);
-        const signedAmount = isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
-        flow += signedAmount;
-        monthFlows.push({ date: c.date, amount: signedAmount });
-        const r = extractExplicitRateFromNotes(c.notes);
-        if (r !== null) {
-          explicitRate = r;
-        }
-      }
-    }
-    return {
-      month: m,
-      totalValueBRL: data.total_value,
-      totalCostBRL: data.total_cost,
-      netExternalCashFlowBRL: Math.round(flow * 100) / 100,
-      flows: monthFlows.length > 0 ? monthFlows : undefined,
-      explicitRatePct: explicitRate,
-    };
-  });
-
-  // Determina a primeira operação real (transação ou aporte) para cálculo temporal exato
-  let firstOpDate: string | null = null;
-  for (const t of transactions) {
-    if (t.date && (!firstOpDate || t.date.slice(0, 10) < firstOpDate)) {
-      firstOpDate = t.date.slice(0, 10);
-    }
-  }
-  for (const c of contributions) {
-    if (c.date && (!firstOpDate || c.date.slice(0, 10) < firstOpDate)) {
-      firstOpDate = c.date.slice(0, 10);
-    }
-  }
-
-  let daysElapsed: number | undefined;
-  if (firstOpDate) {
-    const startMs = new Date(`${firstOpDate}T00:00:00`).getTime();
-    const todayMs = new Date(`${todayISO()}T00:00:00`).getTime();
-    if (!Number.isNaN(startMs) && !Number.isNaN(todayMs) && todayMs >= startMs) {
-      daysElapsed = Math.round((todayMs - startMs) / (1000 * 60 * 60 * 24));
-    }
-  }
-
-  const portfolioTwr = calculateTwrSeries(twrInputs, daysElapsed);
-
-  const rawDividendsForSeries = dividends.map((d) => {
-    const asset = d.asset_id ? assets.find((a) => a.id === d.asset_id) : null;
-    const isUSD = asset?.currency === "USD";
-    const dRate = isUSD ? usdRate : 1;
-    return {
-      date: d.date,
-      amount: Number(d.amount) * dRate,
-    };
-  });
-
-  const rawContributionsForSeries = contributions.map((c) => ({
-    date: c.date,
-    amount: c.amount,
-    notes: c.notes,
-  }));
-
-  const rawSnapshotsForSeries = snapshots.map((s) => ({
-    month: s.month,
-    total_value: Number(s.total_value),
-    total_cost: Number(s.total_cost),
-  }));
-
-  const monthlySeries = buildPortfolioMonthlySeries({
-    rawSnapshots: rawSnapshotsForSeries,
-    currentMonthPoint,
-    dividends: rawDividendsForSeries,
-    contributions: rawContributionsForSeries,
-    initialAccumulatedDividends,
-    limit: 6,
-  });
-
-  const allMonthlySeries = buildPortfolioMonthlySeries({
-    rawSnapshots: rawSnapshotsForSeries,
-    currentMonthPoint,
-    dividends: rawDividendsForSeries,
-    contributions: rawContributionsForSeries,
-    initialAccumulatedDividends,
-    limit: 0,
-  });
-
-  // Mapeamento Canônico do Marco Zero dos Snapshots
-  const validSnapshotMonths = snapshots
-    .filter((s) => Number(s.total_value) > 0 || Number(s.total_cost) > 0)
-    .map((s) => s.month)
-    .sort();
-  const marcoZeroMonth: string | null = validSnapshotMonths.length > 0 ? (validSnapshotMonths[0] ?? null) : (assets.length > 0 ? thisMonth : null);
-  const closedSnapshotsCount = snapshots.filter((s) => s.month < thisMonth && (Number(s.total_value) > 0 || Number(s.total_cost) > 0)).length;
-
-    return {
-      rows,
-      totalBRL,
-      totalCostBRL,
-      cashBRL,
-      consolidatedReturn,
-      netInjectedCapitalBRL,
-      netPocketGainBRL,
-      portfolioIrr,
-      portfolioTwr,
-      hasMarcoZeroContribution,
-      marcoZeroMonth,
-      closedSnapshotsCount,
-      monthlySeries,
-      allMonthlySeries,
-      contributionBRL,
-    };
   }, [
     assetsQuery.data,
     pricesQuery.data,
@@ -671,23 +172,9 @@ export function usePortfolioPosition(): PortfolioPosition {
     transactionsQuery.data,
   ]);
 
-  const {
-    rows,
-    totalBRL,
-    totalCostBRL,
-    cashBRL,
-    consolidatedReturn,
-    netInjectedCapitalBRL,
-    netPocketGainBRL,
-    portfolioIrr,
-    portfolioTwr,
-    hasMarcoZeroContribution,
-    marcoZeroMonth,
-    closedSnapshotsCount,
-    monthlySeries,
-    allMonthlySeries,
-    contributionBRL,
-  } = computed;
+  const rows = useMemo(() => {
+    return canonicalState.rows.map(mapCanonicalHoldingToRow);
+  }, [canonicalState.rows]);
 
   const refetch = useCallback(() => {
     void assetsQuery.refetch();
@@ -696,6 +183,7 @@ export function usePortfolioPosition(): PortfolioPosition {
     void contributionsQuery.refetch();
     void dividendsQuery.refetch();
     void snapshotsQuery.refetch();
+    void transactionsQuery.refetch();
   }, [
     assetsQuery,
     pricesQuery,
@@ -703,30 +191,31 @@ export function usePortfolioPosition(): PortfolioPosition {
     contributionsQuery,
     dividendsQuery,
     snapshotsQuery,
+    transactionsQuery,
   ]);
 
   return {
     rows,
-    totalBRL,
-    totalCostBRL,
-    cashBRL,
-    totalDividendsBRL: consolidatedReturn.totalDividendsBRL,
-    totalReturnPnlBRL: consolidatedReturn.totalReturnPnl,
-    totalReturnPct: consolidatedReturn.totalReturnPct,
-    unrealizedPnlBRL: consolidatedReturn.capitalGainPnl,
-    unrealizedPct: consolidatedReturn.capitalGainPct,
-    allTimeEconomicPnlBRL: consolidatedReturn.allTimeEconomicPnl,
-    realizedPnlBRL: consolidatedReturn.realizedPnl,
-    netInjectedCapitalBRL,
-    netPocketGainBRL,
-    portfolioIrr,
-    portfolioTwr,
-    hasMarcoZeroContribution,
-    marcoZeroMonth,
-    closedSnapshotsCount,
-    monthlySeries,
-    allMonthlySeries,
-    monthlyContributionCents: Math.round(contributionBRL * 100),
+    totalBRL: canonicalState.totalBRL,
+    totalCostBRL: canonicalState.totalCostBRL,
+    cashBRL: canonicalState.cashBRL,
+    totalDividendsBRL: canonicalState.totalDividendsBRL,
+    totalReturnPnlBRL: canonicalState.totalReturnPnlBRL,
+    totalReturnPct: canonicalState.totalReturnPct,
+    unrealizedPnlBRL: canonicalState.unrealizedPnlBRL,
+    unrealizedPct: canonicalState.unrealizedPct,
+    allTimeEconomicPnlBRL: canonicalState.allTimeEconomicPnlBRL,
+    realizedPnlBRL: canonicalState.realizedPnlBRL,
+    netInjectedCapitalBRL: canonicalState.netInjectedCapitalBRL,
+    netPocketGainBRL: canonicalState.netPocketGainBRL,
+    portfolioIrr: canonicalState.portfolioIrr,
+    portfolioTwr: canonicalState.portfolioTwr,
+    monthlySeries: canonicalState.monthlySeries,
+    allMonthlySeries: canonicalState.allMonthlySeries,
+    monthlyContributionCents: canonicalState.monthlyContributionCents,
+    hasMarcoZeroContribution: canonicalState.hasMarcoZeroContribution,
+    marcoZeroMonth: canonicalState.marcoZeroMonth,
+    closedSnapshotsCount: canonicalState.closedSnapshotsCount,
     isLoading: assetsQuery.isLoading || pricesQuery.isLoading,
     error: assetsQuery.error ?? pricesQuery.error,
     refetch,

@@ -76,6 +76,10 @@ import {
   resolvePrice,
   type PriceCandidate,
 } from "./valuation";
+import {
+  buildPortfolioMonthlySeries,
+  type PortfolioMonthlySeriesPoint,
+} from "./summary";
 
 // ---------------------------------------------------------------------------
 // Arredondamentos e Auxiliares
@@ -90,6 +94,14 @@ const round4 = (value: number): number =>
 // ---------------------------------------------------------------------------
 // Contratos de Entrada do Motor Canônico
 // ---------------------------------------------------------------------------
+
+export interface CanonicalAssetPriceItem {
+  ticker: string;
+  price: number;
+  currency?: AssetCurrency;
+  source?: "api" | "fallback" | "manual" | string;
+  manual_price?: number | null;
+}
 
 export interface CanonicalEngineParams {
   /** Data civil ou competência de avaliação (YYYY-MM-DD ou YYYY-MM). */
@@ -108,8 +120,8 @@ export interface CanonicalEngineParams {
   monthlyPrices?: readonly PortfolioMonthlyPrice[];
   /** Snapshots patrimoniais arquivados (portfolio_snapshots). */
   snapshots?: readonly PortfolioSnapshot[];
-  /** Cache de cotações live/recentes em servidor ou API (ticker -> cotação). */
-  assetPrices?: Readonly<Record<string, number>>;
+  /** Cache de cotações live/recentes em servidor ou API (ticker -> cotação ou array de cotações). */
+  assetPrices?: Readonly<Record<string, number>> | readonly CanonicalAssetPriceItem[];
   /** Cotações buscadas sob demanda via API externa (ticker -> cotação). */
   apiPrices?: Readonly<Record<string, number>>;
   /** Taxa anual do CDI (%) vigente ou de fechamento (padrão: 10.5). */
@@ -143,6 +155,10 @@ export interface CanonicalEngineResult extends CanonicalPortfolioState {
   fidelity?: CanonicalFidelityReport;
   /** Lista de ativos candidatos avaliados (para editor de fechamento e auditoria). */
   candidateAssets?: CandidateAssetItem[];
+  /** Série mensal a partir de snapshots com proventos integrados (F36 & F37). */
+  monthlySeries: PortfolioMonthlySeriesPoint[];
+  /** Série mensal completa histórica sem limite de meses. */
+  allMonthlySeries: PortfolioMonthlySeriesPoint[];
   /** Sinaliza se a síntese patrimonial executiva adotou soberanamente o snapshot oficial. */
   isDerivedFromSnapshot?: boolean;
   /** Data civil de corte efetiva aplicada (YYYY-MM-DD). */
@@ -286,15 +302,26 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     effectiveUsdRate,
     annualCdiRate,
     month,
-    assetPrices = {},
     apiPrices = {},
   } = params;
 
+  const livePriceMap: Record<string, number> = {};
+  if (Array.isArray(params.assetPrices)) {
+    for (const p of params.assetPrices) {
+      if (p.ticker && typeof p.price === "number") {
+        livePriceMap[p.ticker.toUpperCase().trim()] = p.price;
+      }
+    }
+  } else if (params.assetPrices) {
+    for (const [k, v] of Object.entries(params.assetPrices)) {
+      if (typeof v === "number") {
+        livePriceMap[k.toUpperCase().trim()] = v;
+      }
+    }
+  }
+
   const holdings: CanonicalAssetHolding[] = [];
   const candidateAssets: CandidateAssetItem[] = [];
-
-  let cashBRL = params.cashBalance ?? 0;
-  let cashUSD = 0;
 
   for (const asset of assets) {
     const rawClass = (asset.asset_class ?? "").toLowerCase().trim();
@@ -313,11 +340,33 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
 
     if (isCash) {
       const qty = Number(asset.quantity) || 0;
-      if (currency === "USD") {
-        cashUSD += qty;
-      } else {
-        cashBRL += qty;
-      }
+      const holding = createCanonicalAssetHolding({
+        assetId: asset.id,
+        ticker: tickerUpper,
+        assetClass: asset.asset_class ?? "Caixa / Reserva",
+        sector: asset.sector,
+        currency,
+        quantity: qty,
+        averageCost: 1.0,
+        totalCost: qty,
+        averageCostBRL: currency === "USD" ? effectiveUsdRate : 1.0,
+        totalCostBRL: currency === "USD" ? round2(qty * effectiveUsdRate) : qty,
+        resolvedPrice: {
+          ticker: tickerUpper,
+          priceQuote: 1.0,
+          priceBRL: currency === "USD" ? effectiveUsdRate : 1.0,
+          usdRate: currency === "USD" ? effectiveUsdRate : 1.0,
+          source: "cash",
+          isEstimate: false,
+          asOfDate,
+          badgeLabel: "Caixa 1:1",
+        },
+        accumulatedDividendsBRL: Number(asset.accumulated_dividends) || 0,
+        pricingMode: "cash",
+        isCash: true,
+        notes: asset.notes,
+      });
+      holdings.push(holding);
       continue;
     }
 
@@ -368,7 +417,7 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
       };
     } else {
       // Ativo de Renda Variável ou Alternativo
-      const priceFromLive = apiPrices[tickerUpper] ?? assetPrices[tickerUpper] ?? null;
+      const priceFromLive = apiPrices[tickerUpper] ?? livePriceMap[tickerUpper] ?? null;
       const fallbackPrice = fallbackPriceFor(currency);
 
       const candidate: PriceCandidate = {
@@ -441,8 +490,7 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     mode: "instant",
     usdRate: effectiveUsdRate,
     holdings,
-    cashBRL,
-    cashUSD,
+    cashBRL: params.cashBalance ?? 0,
     closedSnapshotsCount: (params.snapshots ?? []).filter((s) => s.month < month).length,
   });
 
@@ -531,6 +579,76 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     fallbackQuotesCount: holdings.filter((h) => h.resolvedPrice.isEstimate).length,
   });
 
+  const rawDividendsForSeries = (params.dividends ?? []).map((d) => {
+    const asset = d.asset_id ? (params.assets ?? []).find((a) => a.id === d.asset_id) : null;
+    const isUSD = asset?.currency === "USD";
+    const dRate = isUSD ? effectiveUsdRate : 1;
+    return {
+      date: d.date,
+      amount: Number(d.amount) * dRate,
+    };
+  });
+
+  const rawContributionsForSeries = (params.contributions ?? []).map((c) => ({
+    date: c.date,
+    amount: c.amount,
+    notes: c.notes,
+  }));
+
+  const rawSnapshotsForSeries = (params.snapshots ?? []).map((s) => ({
+    month: s.month,
+    total_value: Number(s.total_value),
+    total_cost: Number(s.total_cost),
+    auto_total_value: s.auto_total_value != null ? Number(s.auto_total_value) : null,
+    auto_total_cost: s.auto_total_cost != null ? Number(s.auto_total_cost) : null,
+    manual_total_value: s.manual_total_value != null ? Number(s.manual_total_value) : null,
+    manual_total_cost: s.manual_total_cost != null ? Number(s.manual_total_cost) : null,
+    is_manually_calibrated: Boolean(s.is_manually_calibrated),
+    calibrated_at: s.calibrated_at ?? null,
+    status: s.status ?? "closed",
+  }));
+
+  const initialAccumulatedDividends = (params.assets ?? []).reduce(
+    (acc, a) => {
+      const isUSD = a.currency === "USD";
+      const aRate = isUSD ? effectiveUsdRate : 1;
+      return acc + (a.accumulated_dividends ?? 0) * aRate;
+    },
+    0,
+  );
+
+  const currentMonthPoint =
+    baseState.totalBRL > 0 || (params.assets ?? []).length > 0
+      ? {
+          month,
+          total_value: baseState.totalBRL,
+          total_cost: Math.round((baseState.totalCostBRL + baseState.cashBRL) * 100) / 100,
+          capital_gain_pnl: baseState.unrealizedPnlBRL,
+          capital_gain_pct: baseState.unrealizedPct,
+          total_return_pnl: baseState.totalReturnPnlBRL,
+          total_return_pct: baseState.totalReturnPct,
+          status: "provisional" as const,
+        }
+      : null;
+
+  const monthlySeries = buildPortfolioMonthlySeries({
+    rawSnapshots: rawSnapshotsForSeries,
+    currentMonthPoint,
+    dividends: rawDividendsForSeries,
+    contributions: rawContributionsForSeries,
+    initialAccumulatedDividends,
+    limit: 6,
+  });
+
+  const allMonthlySeries = buildPortfolioMonthlySeries({
+    rawSnapshots: rawSnapshotsForSeries,
+    currentMonthPoint,
+    dividends: rawDividendsForSeries,
+    contributions: rawContributionsForSeries,
+    initialAccumulatedDividends,
+    limit: 0,
+  });
+
   const finalHoldings = baseState.holdings;
 
   return {
@@ -544,6 +662,8 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     monthlyStatement,
     fidelity,
     candidateAssets,
+    monthlySeries,
+    allMonthlySeries,
     isDerivedFromSnapshot: fidelity.isDerivedFromSnapshot,
     cutoffDate: asOfDate,
     month,
@@ -574,8 +694,22 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
     monthlyPrices = [],
     snapshots = [],
     apiPrices = {},
-    assetPrices = {},
   } = params;
+
+  const livePriceMap: Record<string, number> = {};
+  if (Array.isArray(params.assetPrices)) {
+    for (const p of params.assetPrices) {
+      if (p.ticker && typeof p.price === "number") {
+        livePriceMap[p.ticker.toUpperCase().trim()] = p.price;
+      }
+    }
+  } else if (params.assetPrices) {
+    for (const [k, v] of Object.entries(params.assetPrices)) {
+      if (typeof v === "number") {
+        livePriceMap[k.toUpperCase().trim()] = v;
+      }
+    }
+  }
 
   // 1. Reconciliação Determinística de Eventos até a Data de Corte (Salvaguarda S13)
   const reconciliation = reconcilePortfolioEvents({
@@ -725,7 +859,7 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       // Prioridade histórica de cotação
       const savedMonthlyPrice = monthlyPriceMap.get(tickerUpper) ?? null;
       const apiPrice = apiPrices[tickerUpper] ?? null;
-      const livePrice = assetPrices[tickerUpper] ?? null;
+      const livePrice = livePriceMap[tickerUpper] ?? null;
 
       const resolvedHistorical: ResolvedHistoricalQuote = resolveHistoricalQuotePriority({
         ticker: tickerUpper,
@@ -927,6 +1061,8 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
     monthlyStatement,
     fidelity,
     candidateAssets,
+    monthlySeries: [],
+    allMonthlySeries: [],
     isDerivedFromSnapshot: fidelity.isDerivedFromSnapshot,
     cutoffDate,
     month,

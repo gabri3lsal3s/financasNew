@@ -91,13 +91,19 @@ export interface ResolveHomogeneousStatementParams {
   month: string;
   /** Snapshots persistidos no banco de dados para reconciliação histórica. */
   snapshots?: readonly PortfolioSnapshot[];
+  /** Snapshot oficial da competência atual (M). */
+  snapshot?: PortfolioSnapshot | null;
+  /** Snapshot oficial da competência anterior (M-1). */
+  previousSnapshot?: PortfolioSnapshot | null;
   /** Saldo patrimonial reconstruído analiticamente para o fim da competência (M). */
   reconstructedEndBalanceBRL?: number;
   /** Saldo patrimonial reconstruído analiticamente para o fim da competência anterior (M-1). */
   reconstructedStartBalanceBRL?: number;
-  /** Saldo inicial bruto direto (override, se houver). */
+  /** Saldo inicial bruto direto (override ou compatibilidade com startBalanceBRL). */
+  startBalanceBRL?: number;
   explicitStartBalanceBRL?: number;
-  /** Saldo final bruto direto (override, se houver). */
+  /** Saldo final bruto direto (override ou compatibilidade com endBalanceBRL). */
+  endBalanceBRL?: number;
   explicitEndBalanceBRL?: number;
   /** Fluxos de caixa externos do bolso na competência (aportes e resgates). */
   externalFlows?: readonly CanonicalMonthlyCashFlow[];
@@ -135,6 +141,16 @@ export function calculateHomogeneousMonthlyStatement(
       snapshotMap.set(s.month.slice(0, 7), s);
     }
   }
+  if (params.previousSnapshot?.month) {
+    snapshotMap.set(params.previousSnapshot.month.slice(0, 7), params.previousSnapshot);
+  } else if (params.previousSnapshot) {
+    snapshotMap.set(prevMonth, params.previousSnapshot);
+  }
+  if (params.snapshot?.month) {
+    snapshotMap.set(params.snapshot.month.slice(0, 7), params.snapshot);
+  } else if (params.snapshot) {
+    snapshotMap.set(month, params.snapshot);
+  }
 
   const currSnapshot = snapshotMap.get(month);
   const prevSnapshot = snapshotMap.get(prevMonth);
@@ -145,9 +161,12 @@ export function calculateHomogeneousMonthlyStatement(
   let endBalanceBase: CanonicalBalanceOrigin;
   let accountingBase: CanonicalAccountingBase;
 
+  const rawStart = params.startBalanceBRL ?? params.explicitStartBalanceBRL;
+  const rawEnd = params.endBalanceBRL ?? params.explicitEndBalanceBRL;
+
   // 1. Resolução do Saldo Inicial (M-1)
-  if (params.explicitStartBalanceBRL != null) {
-    startBalanceBRL = Math.max(0, round2(params.explicitStartBalanceBRL));
+  if (rawStart != null) {
+    startBalanceBRL = Math.max(0, round2(rawStart));
     startBalanceBase = "snapshot";
   } else if (prevSnapshot) {
     startBalanceBRL = getSnapshotEffectiveValue(prevSnapshot);
@@ -162,8 +181,8 @@ export function calculateHomogeneousMonthlyStatement(
   }
 
   // 2. Resolução do Saldo Final (M) com garantia de Salvaguarda S9
-  if (params.explicitEndBalanceBRL != null) {
-    endBalanceBRL = Math.max(0, round2(params.explicitEndBalanceBRL));
+  if (rawEnd != null) {
+    endBalanceBRL = Math.max(0, round2(rawEnd));
     endBalanceBase = "snapshot";
   } else if (currSnapshot) {
     // Snapshot oficial existe para o mês: SOBERANO (§Salvaguarda S9 e S10)
