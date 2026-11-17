@@ -559,14 +559,15 @@ export function PositionTable({
       className: "flex-1",
       cell: (row) => {
         const hasActiveRate = Boolean(row.fixedIncomeMetadata?.rate_value && row.fixedIncomeMetadata.rate_value > 0);
-        const isManual = row.source === "manual" || !hasActiveRate;
-        const isFallback = row.source === "fallback" && hasActiveRate;
+        const isAutoCalculated = hasActiveRate && row.source !== "manual";
+        const isManualFallback = !isAutoCalculated;
         const valueCents = numberToCents(row.valueBRL);
 
-        const tooltipTitle =
-          row.fixedIncomeResult && row.fixedIncomeResult.businessDaysAccrued > 0
-            ? `Saldo projetado (+${row.fixedIncomeResult.businessDaysAccrued}d úteis desde ${formatDateBR(row.fixedIncomeMetadata?.base_date ?? "")}) — clique para calibrar`
-            : "Calibrar saldo com extrato oficial";
+        const tooltipTitle = isAutoCalculated
+          ? row.fixedIncomeResult && row.fixedIncomeResult.businessDaysAccrued > 0
+            ? `Saldo projetado automaticamente (+${row.fixedIncomeResult.businessDaysAccrued}d úteis desde ${formatDateBR(row.fixedIncomeMetadata?.base_date ?? "")}) — clique para calibrar`
+            : "Saldo com rentabilidade calculada automaticamente — clique para calibrar com o extrato"
+          : "Saldo manual estático — informe a taxa contratada para ativar o cálculo automático ou calibre com o extrato";
 
         if (onCalibrateAsset) {
           return (
@@ -585,22 +586,17 @@ export function PositionTable({
                 tone="default"
                 className="group-hover:text-primary transition-colors text-sm font-semibold text-foreground"
               />
-              {isManual ? (
+              {isManualFallback ? (
                 <span
                   aria-hidden="true"
                   className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                  title="Saldo cadastrado manual"
-                />
-              ) : isFallback ? (
-                <span
-                  aria-hidden="true"
-                  className="size-1.5 rounded-full bg-warning-strong shrink-0 ring-2 ring-warning-strong/25"
-                  title="Saldo estimado na curva"
+                  title="Saldo cadastrado manual — informe a taxa para cálculo automático"
                 />
               ) : (
                 <span
                   aria-hidden="true"
                   className="size-1 rounded-full bg-muted-foreground/30 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Cálculo automático ativo — clique para calibrar"
                 />
               )}
             </button>
@@ -626,36 +622,42 @@ export function PositionTable({
               }}
               aria-label={`Saldo de ${row.ticker}`}
               className="group inline-flex items-center justify-end gap-1.5 rounded-md px-1.5 py-0.5 -mr-1.5 transition-colors hover:bg-surface-hover/80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
-              title={`${PRICE_SOURCE_LABEL[row.source].title} — clique para alterar`}
+              title={tooltipTitle}
             >
               <MoneyText
                 cents={valueCents}
                 tone="default"
                 className="group-hover:text-primary transition-colors text-sm font-semibold text-foreground"
               />
-              {isManual ? (
+              {isManualFallback ? (
                 <span
                   aria-hidden="true"
                   className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                  title="Saldo cadastrado manual"
-                />
-              ) : isFallback ? (
-                <span
-                  aria-hidden="true"
-                  className="size-1.5 rounded-full bg-warning-strong shrink-0 ring-2 ring-warning-strong/25"
-                  title="Saldo estimado na curva"
+                  title="Saldo cadastrado manual — informe a taxa para cálculo automático"
                 />
               ) : (
                 <span
                   aria-hidden="true"
                   className="size-1 rounded-full bg-muted-foreground/30 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Cálculo automático ativo"
                 />
               )}
             </button>
           );
         }
 
-        return <MoneyText cents={valueCents} tone="default" className="text-sm font-semibold text-foreground" />;
+        return (
+          <div className="inline-flex items-center justify-end gap-1.5">
+            <MoneyText cents={valueCents} tone="default" className="text-sm font-semibold text-foreground" />
+            {isManualFallback ? (
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                title="Saldo cadastrado manual — informe a taxa para cálculo automático"
+              />
+            ) : null}
+          </div>
+        );
       },
     },
     {
@@ -985,42 +987,43 @@ export function PositionTable({
   return (
     <div ref={containerRef} className="flex flex-col gap-3">
       {rows.length > 0 ? (
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between min-w-0">
-          {/* Esquerda: Campo de Busca + Alternador de Agrupamento */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1 min-w-0">
-            <div className="relative w-full sm:max-w-xs min-w-0">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-              <Input
-                value={search}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                placeholder="Buscar por ticker ou classe…"
-                aria-label="Buscar ativo"
-                className={cn("pl-8 w-full", hasFiltersActive ? "pr-24" : "pr-8")}
-              />
-              {hasFiltersActive ? (
-                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
-                  <Badge variant="muted" size="xs">
-                    {filteredRows.length}/{rows.length}
-                  </Badge>
-                  {search ? (
-                    <button
-                      type="button"
-                      onClick={() => handleSearchChange("")}
-                      aria-label="Limpar busca"
-                      className="pointer-events-auto text-muted-foreground hover:text-foreground cursor-pointer p-0.5 transition-colors"
-                    >
-                      <X className="size-3.5" aria-hidden="true" />
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
+        <div className="flex flex-col gap-2.5 w-full min-w-0">
+          {/* Linha 1 Isolada: Campo de Busca Full Width */}
+          <div className="relative w-full min-w-0">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            <Input
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Buscar por ticker ou classe…"
+              aria-label="Buscar ativo"
+              className={cn("pl-8 w-full", hasFiltersActive ? "pr-24" : "pr-8")}
+            />
+            {hasFiltersActive ? (
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+                <Badge variant="muted" size="xs">
+                  {filteredRows.length}/{rows.length}
+                </Badge>
+                {search ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSearchChange("")}
+                    aria-label="Limpar busca"
+                    className="pointer-events-auto text-muted-foreground hover:text-foreground cursor-pointer p-0.5 transition-colors"
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
 
-            {/* Alternador de Agrupamento Dinâmico (Desktop: ao lado da busca) */}
+          {/* Linha 2 Abaixo: Seletores de Agrupamento, Filtros de Classe e Encerradas */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 w-full min-w-0">
+            {/* Alternador de Agrupamento Dinâmico (Por Classe vs Por Setor) */}
             <div
               role="group"
               aria-label="Modo de agrupamento"
-              className="hidden sm:inline-flex items-center rounded-lg border border-border/80 bg-surface-hover/50 p-0.5 shadow-xs shrink-0"
+              className="inline-flex items-center rounded-lg border border-border/80 bg-surface-hover/50 p-0.5 shadow-xs shrink-0 self-start sm:self-auto"
             >
               <button
                 type="button"
@@ -1053,50 +1056,9 @@ export function PositionTable({
                 <span>Por Setor</span>
               </button>
             </div>
-          </div>
-
-          {/* Direita (Desktop) / Linha 2 (Mobile): Alternador mobile + Trilha fluida de Chips + Encerradas */}
-          <div className="flex items-center gap-2 overflow-hidden min-w-0 shrink-0">
-            {/* Alternador no Mobile (shrink-0 à esquerda da trilha de chips) */}
-            <div
-              role="group"
-              aria-label="Modo de agrupamento"
-              className="inline-flex sm:hidden items-center rounded-lg border border-border/80 bg-surface-hover/50 p-0.5 shadow-xs shrink-0"
-            >
-              <button
-                type="button"
-                onClick={() => setGroupBy("class")}
-                aria-pressed={groupBy === "class"}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors cursor-pointer",
-                  groupBy === "class"
-                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-                title="Agrupar posições por Classe de Ativo"
-              >
-                <Layers className="size-3.5" aria-hidden="true" />
-                <span>Classe</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setGroupBy("sector")}
-                aria-pressed={groupBy === "sector"}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors cursor-pointer",
-                  groupBy === "sector"
-                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-                title="Agrupar posições por Setor"
-              >
-                <PieChart className="size-3.5" aria-hidden="true" />
-                <span>Setor</span>
-              </button>
-            </div>
 
             {/* Trilha rolável horizontal de filtros de classe e botão de encerradas */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap py-0.5 min-w-0 flex-1 sm:flex-initial">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap py-0.5 min-w-0 max-w-full">
               {availableClasses.length > 1 ? (
                 <>
                   <button

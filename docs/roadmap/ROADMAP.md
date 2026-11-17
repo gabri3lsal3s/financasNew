@@ -7246,7 +7246,15 @@ flowchart TD
 >   - Zero reticências em moedas (Blindagem B7 e Regra 11 do AGENTS.md);
 >   - Qualidade: 186/186 testes de investimentos, 572 testes de domínio, TypeScript 0 erros, ESLint 0 erros.
 
+---
 
+### Fase 109 — Diferenciação de Renda Fixa: Cálculo Automático vs Fallback Manual & Alinhamento Canônico (v3.8.1)
 
-
-
+> **Status:** ✅ Concluída e Auditada — **Ergonomia e Clareza Operacional na Gestão de Renda Fixa**:
+> - **Causa Raiz & Diagnóstico:** Identificação de divergência no mapeamento de linhas da tabela (`mapCanonicalHoldingToRow` em `use-portfolio-position.ts`) que mapeava a procedência `"fixed_income"` (calculada na curva com base em dias úteis da B3 e CDI/SELIC) para o fallback forçado `"manual"`, provocando a exibição indiscriminada do pontinho de "Saldo cadastrado manual" em todos os ativos da carteira, mesmo aqueles com rentabilidade 100% automatizada.
+> - **Alinhamento do Motor Canônico (`canonical-engine.ts`):** Resolução estrita da procedência de cotação: ativos com taxa contratada ativa (`rate_value > 0`) recebem `source: "fixed_income"`, `isEstimate: false` e badge `"Renda Fixa Atualizada"`. Ativos sem taxa ativa recebem `source: "manual"`, `isEstimate: true` e badge `"Saldo Manual"`.
+> - **Mapeamento de Linhas Reativo (`use-portfolio-position.ts`):** Mapeamento adequado de `fixed_income` e `closing_saved` como fontes automatizadas (`source: "api"`), permitindo que a UI diferencie fielmente títulos sob carrego automático de posições em fallback.
+> - **Tabela Desktop & Mobile (`position-table.tsx`, `position-mobile-card.tsx`):**
+>   - *Ativos com Cálculo Automático:* Saldo exibido limpo, sem pontinho permanente. Ação de clique para "Calibrar com Extrato" preservada com affordance no hover e tooltip transparente informando a contagem de dias úteis projetados desde o Marco Zero ($D_0$).
+>   - *Ativos com Fallback Manual:* Exibição deliberada do indicador circular (`bg-portfolio`) com tooltip claro (*"Saldo manual estático — informe a taxa para cálculo automático"*), orientando o usuário sobre quais ativos requerem inserção manual de saldo ou taxa.
+> - **Qualidade e Testes:** Testes unitários dedicados em `position-table.test.tsx` cobrindo cenários de cálculo automático vs fallback manual; 29 testes de carteira e tabela 100% aprovados; typecheck e ESLint com zero erros.

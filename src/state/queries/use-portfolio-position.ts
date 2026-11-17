@@ -89,9 +89,17 @@ export interface PortfolioPosition {
 
 function mapCanonicalHoldingToRow(holding: CanonicalAssetHolding): PortfolioPositionRow {
   let source: PriceSource = "manual";
-  if (holding.resolvedPrice.source === "api") {
+  if (
+    holding.resolvedPrice.source === "api" ||
+    holding.resolvedPrice.source === "fixed_income" ||
+    holding.resolvedPrice.source === "closing_saved"
+  ) {
     source = "api";
-  } else if (holding.resolvedPrice.source === "fallback") {
+  } else if (
+    holding.resolvedPrice.source === "fallback" ||
+    holding.resolvedPrice.source === "custom_valuation" ||
+    holding.resolvedPrice.source === "cash"
+  ) {
     source = "fallback";
   }
 

@@ -161,13 +161,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v3.6.6: Blindagem de Compra, Venda e Resgate de Renda Fixa",
-    "Estorno seguro no ativo Caixa ao excluir compras e vendas com conversão cambial PTAX",
-    "Trava rigorosa contra venda e resgate a descoberto em toda a carteira de investimentos",
-    "Cálculo proporcional de resgate de Renda Fixa com dedução contábil de IRRF regressivo",
-    "Acumulação contínua do custo de aquisição em novos aportes de Renda Fixa",
-    "Sincronização atômica imediata de custódia em portfolio_assets nos lançamentos de ordens",
-    "Proteção anti-duplo clique e prevenção de concorrência em sheets e modais de transação"
+    "Axir v3.8.1: Diferenciação de Renda Fixa (Cálculo Automático vs Fallback Manual)",
+    "Saldo de títulos com taxa contratada projetado diariamente sem pontinho de atenção manual",
+    "Indicador circular de atenção restrito exclusivamente a posições que requerem calibração ou taxa manual",
+    "Alinhamento da procedência de cotações fixed_income e closing_saved no motor canônico de investimentos",
+    "Preservação da affordance de clique para calibração rápida com extrato oficial"
   ]
 }
 EOF

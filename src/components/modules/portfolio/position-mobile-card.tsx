@@ -176,7 +176,11 @@ export function PositionMobileCard({
               }}
               aria-label={`Calibrar saldo de ${row.ticker}`}
               className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded whitespace-nowrap tabular-nums"
-              title="Calibrar saldo com extrato oficial"
+              title={
+                row.fixedIncomeResult && row.fixedIncomeResult.businessDaysAccrued > 0
+                  ? `Saldo projetado (+${row.fixedIncomeResult.businessDaysAccrued}d úteis) — clique para calibrar`
+                  : "Calibrar saldo com extrato oficial"
+              }
             >
               <MoneyText cents={numberToCents(row.valueBRL)} tone="default" />
               {row.source === "manual" ||
@@ -185,7 +189,7 @@ export function PositionMobileCard({
                 <span
                   aria-hidden="true"
                   className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                  title="Saldo cadastrado manual"
+                  title="Saldo cadastrado manual — informe a taxa para cálculo automático"
                 />
               ) : null}
             </button>

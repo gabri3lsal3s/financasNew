@@ -73,6 +73,7 @@ import {
   FALLBACK_USD_RATE,
   fallbackPriceFor,
   isCashAssetClass,
+  isCustomValuationAsset,
   resolvePrice,
   type PriceCandidate,
 } from "./valuation";
@@ -120,6 +121,12 @@ export interface CanonicalEngineParams {
   monthlyPrices?: readonly PortfolioMonthlyPrice[];
   /** Snapshots patrimoniais arquivados (portfolio_snapshots). */
   snapshots?: readonly PortfolioSnapshot[];
+  /** Snapshot consolidado da competência atual (override ou modo isolado). */
+  snapshot?: PortfolioSnapshot | null;
+  /** Snapshot da competência anterior M-1 (override ou modo isolado). */
+  previousSnapshot?: PortfolioSnapshot | null;
+  /** Saldo patrimonial inicial de fechamento do mês anterior M-1 em BRL. */
+  startBalanceBRL?: number;
   /** Cache de cotações live/recentes em servidor ou API (ticker -> cotação ou array de cotações). */
   assetPrices?: Readonly<Record<string, number>> | readonly CanonicalAssetPriceItem[];
   /** Cotações buscadas sob demanda via API externa (ticker -> cotação). */
@@ -405,15 +412,17 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
       const grossVal = fixedIncomeResult.grossValue;
       const unitPriceBRL = quantity > 0 ? grossVal / quantity : grossVal;
 
+      const hasActiveRate = Boolean(fiMeta.rate_value && fiMeta.rate_value > 0);
+
       resolvedPrice = {
         ticker: tickerUpper,
         priceQuote: round4(unitPriceBRL),
         priceBRL: round4(unitPriceBRL),
         usdRate: 1.0,
-        source: "fixed_income",
-        isEstimate: false,
+        source: hasActiveRate ? "fixed_income" : "manual",
+        isEstimate: !hasActiveRate,
         asOfDate,
-        badgeLabel: "Renda Fixa Atualizada",
+        badgeLabel: hasActiveRate ? "Renda Fixa Atualizada" : "Saldo Manual",
       };
     } else {
       // Ativo de Renda Variável ou Alternativo
@@ -723,12 +732,13 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
   });
 
   const holdings: CanonicalAssetHolding[] = [];
-  const candidateAssets: CandidateAssetItem[] = [];
 
+  const hasExplicitCashBalance = params.cashBalance !== undefined;
   let cashBRL = params.cashBalance ?? 0;
   let cashUSD = 0;
 
-  const targetSnapshot = snapshots.find((s) => s.month === month);
+  const targetSnapshot =
+    params.snapshot ?? snapshots.find((s) => s.month === month) ?? null;
   const monthlyPriceMap = new Map<string, MonthlyPriceRow>();
   for (const mp of monthlyPrices) {
     if (mp.month === month) {
@@ -765,7 +775,7 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       const qty = Number(asset.quantity) || 0;
       if (currency === "USD") {
         cashUSD += qty;
-      } else {
+      } else if (!hasExplicitCashBalance) {
         cashBRL += qty;
       }
       continue;
@@ -845,15 +855,17 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       const grossVal = fixedIncomeResult.grossValue;
       const unitPriceBRL = quantity > 0 ? grossVal / quantity : grossVal;
 
+      const hasActiveRate = Boolean(fiMeta.rate_value && fiMeta.rate_value > 0);
+
       resolvedPrice = {
         ticker: tickerUpper,
         priceQuote: round4(unitPriceBRL),
         priceBRL: round4(unitPriceBRL),
         usdRate: 1.0,
-        source: "fixed_income",
-        isEstimate: false,
+        source: hasActiveRate ? "fixed_income" : "manual",
+        isEstimate: !hasActiveRate,
         asOfDate: cutoffDate,
-        badgeLabel: "Renda Fixa na Competência",
+        badgeLabel: hasActiveRate ? "Renda Fixa na Competência" : "Saldo Manual",
       };
     } else {
       // Prioridade histórica de cotação
@@ -914,18 +926,35 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
     });
 
     holdings.push(holding);
+  }
 
-    candidateAssets.push({
-      ticker: tickerUpper,
-      assetClass: asset.asset_class,
-      currency,
-      quantity,
-      priceQuote: resolvedPrice.priceQuote,
-      priceBRL: resolvedPrice.priceBRL,
-      valueBRL: holding.marketValueBRL,
-      source: resolvedPrice.source,
-      isEstimate: resolvedPrice.isEstimate,
-    });
+  const candidateAssets: CandidateAssetItem[] = [];
+  const includedAssetIds = new Set(holdings.map((h) => h.assetId));
+
+  for (const asset of assets) {
+    const rawClass = (asset.asset_class ?? "").toLowerCase().trim();
+    const isCash =
+      isCashAssetClass(asset.asset_class) ||
+      rawClass.includes("caixa") ||
+      rawClass.includes("reserva") ||
+      rawClass.includes("cash") ||
+      asset.ticker.toUpperCase() === "CAIXA" ||
+      asset.ticker.toUpperCase() === "CASH";
+    if (isCash) continue;
+
+    if (!includedAssetIds.has(asset.id)) {
+      candidateAssets.push({
+        ticker: asset.ticker.toUpperCase().trim(),
+        assetClass: asset.asset_class,
+        currency: asset.currency ?? "BRL",
+        quantity: Number(asset.quantity) || 0,
+        priceQuote: Number(asset.average_price) || 0,
+        priceBRL: Number(asset.average_price) || 0,
+        valueBRL: (Number(asset.quantity) || 0) * (Number(asset.average_price) || 0),
+        source: "fallback",
+        isEstimate: true,
+      });
+    }
   }
 
   // 3. Montagem do Estado Base
@@ -954,7 +983,8 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
 
   // 5. Extrato Mensal Homogêneo (§Salvaguarda S9 — Eliminação dos -13,9% vs. -3,6%)
   const prevMonth = getPreviousMonthISO(month);
-  const prevSnapshot = snapshots.find((s) => s.month === prevMonth);
+  const prevSnapshot =
+    params.previousSnapshot ?? snapshots.find((s) => s.month === prevMonth) ?? null;
 
   // Se houver snapshot para a competência atual, adota o saldo oficial soberano para o Modified Dietz
   const endBalanceForStatement =
@@ -963,9 +993,11 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       : baseState.totalBRL;
 
   const startBalanceForStatement =
-    prevSnapshot
-      ? getSnapshotEffectiveValue(prevSnapshot)
-      : 0;
+    params.startBalanceBRL !== undefined
+      ? params.startBalanceBRL
+      : prevSnapshot
+        ? getSnapshotEffectiveValue(prevSnapshot)
+        : 0;
 
   const monthContributions = reconciliation.externalFlows.filter((f: CanonicalReconciledFlow) => f.date.slice(0, 7) === month);
   const explicitRate =
@@ -976,8 +1008,11 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
   const monthlyStatement = calculateHomogeneousMonthlyStatement({
     month,
     snapshots,
+    snapshot: targetSnapshot,
+    previousSnapshot: prevSnapshot,
     reconstructedEndBalanceBRL: endBalanceForStatement,
     reconstructedStartBalanceBRL: startBalanceForStatement,
+    startBalanceBRL: params.startBalanceBRL !== undefined ? params.startBalanceBRL : startBalanceForStatement,
     externalFlows: reconciliation.externalFlows,
     dividends: reconciliation.dividends.map((d: CanonicalReconciledDividend) => ({
       date: d.date,
@@ -1046,8 +1081,6 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
     today: cutoffDate,
   });
 
-  const finalHoldings = baseState.holdings;
-
   return {
     ...baseState,
     totalBRL: fidelity.sovereignExecutiveBalanceBRL,
@@ -1068,6 +1101,6 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
     month,
     cashTotal: baseState.totalCashBRL,
     monthDividends: monthlyStatement.monthDividendsBRL,
-    positions: finalHoldings,
+    positions: baseState.holdings,
   };
 }

@@ -372,4 +372,67 @@ describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe
     const sectorLabels = screen.getAllByText("Petróleo, Gás e Combustíveis");
     expect(sectorLabels.length).toBeGreaterThanOrEqual(1);
   });
+
+  it("não renderiza o pontinho de saldo manual quando a renda fixa possui cálculo automático ativo", async () => {
+    const user = userEvent.setup();
+    const autoRfRow: PositionRow = {
+      assetId: "rf-auto",
+      ticker: "CDB-AUTOMATICO",
+      assetClass: "Renda Fixa",
+      currency: "BRL",
+      quantity: 1,
+      averageCost: 5000,
+      totalCostBRL: 5000,
+      priceBRL: 5200,
+      source: "api",
+      valueBRL: 5200,
+      pct: 100,
+      unrealizedPnl: 200,
+      unrealizedPct: 4,
+      isCash: false,
+      pricingMode: "total_value",
+      fixedIncomeMetadata: {
+        rate_type: "cdi",
+        rate_value: 110,
+        base_date: "2026-01-01",
+      },
+    };
+
+    render(<PositionTable rows={[autoRfRow]} onCalibrateAsset={vi.fn()} />);
+    const rfGroup = screen.getAllByRole("button", { name: /Classe Renda Fixa/i })[0]!;
+    await user.click(rfGroup);
+
+    // O pontinho de saldo manual NÃO deve existir (nem no desktop nem no mobile)
+    expect(screen.queryAllByTitle(/Saldo cadastrado manual/i)).toHaveLength(0);
+  });
+
+  it("renderiza o pontinho de saldo manual quando a renda fixa não possui taxa cadastrada ativa", async () => {
+    const user = userEvent.setup();
+    const manualRfRow: PositionRow = {
+      assetId: "rf-manual",
+      ticker: "CDB-SEM-TAXA",
+      assetClass: "Renda Fixa",
+      currency: "BRL",
+      quantity: 1,
+      averageCost: 5000,
+      totalCostBRL: 5000,
+      priceBRL: 5000,
+      source: "manual",
+      valueBRL: 5000,
+      pct: 100,
+      unrealizedPnl: 0,
+      unrealizedPct: 0,
+      isCash: false,
+      pricingMode: "total_value",
+      fixedIncomeMetadata: null, // sem taxa ou metadados
+    };
+
+    render(<PositionTable rows={[manualRfRow]} onCalibrateAsset={vi.fn()} />);
+    const rfGroup = screen.getAllByRole("button", { name: /Classe Renda Fixa/i })[0]!;
+    await user.click(rfGroup);
+
+    // O pontinho de saldo manual DEVE existir (tanto no desktop quanto no mobile)
+    const manualDots = screen.getAllByTitle(/Saldo cadastrado manual — informe a taxa para cálculo automático/i);
+    expect(manualDots.length).toBeGreaterThanOrEqual(1);
+  });
 });
