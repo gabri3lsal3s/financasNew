@@ -368,25 +368,25 @@ flowchart TD
 **Objetivo:** Solucionar o descompasso de resgates parciais de renda fixa e blindar o cadastro de ativos que não possuem cotação automática na B3.
 
 #### Etapa 4.1: Sincronização Matemática do Abatimento do `base_value` em Renda Fixa (Salvaguarda S6)
-- [ ] Em `src/domain/portfolio/operations.ts` (`sellAssetPosition`): para ativos com `fixed_income_metadata`, calcular a proporção resgatada frente ao valor bruto atual:
+- [x] Em `src/domain/portfolio/operations.ts` (`sellAssetPosition`): para ativos com `fixed_income_metadata`, calcular a proporção resgatada frente ao valor bruto atual:
   $$\text{proporcao} = \frac{\text{valor\_resgate\_bruto}}{\text{valor\_bruto\_atual}}$$
   $$\text{novo\_base\_value} = \text{base\_value} \times (1 - \text{proporcao})$$
   $$\text{novo\_initial\_investment\_value} = \text{initial\_investment\_value} \times (1 - \text{proporcao})$$
-- [ ] Preservar a data inicial (`initial_investment_date` e `base_date`), assegurando que a contagem de dias úteis e a alíquota regressiva de IR continuem perfeitamente calibradas sobre o saldo remanescente.
-- [ ] Conectar a mutação de transação (`usePortfolioTransactionMutations.ts`) para persistir os novos metadados recalculados atomicamente junto com a ordem de venda no Supabase.
+- [x] Preservar a data inicial (`initial_investment_date` e `base_date`), assegurando que a contagem de dias úteis e a alíquota regressiva de IR continuem perfeitamente calibradas sobre o saldo remanescente.
+- [x] Conectar a mutação de transação (`usePortfolioTransactionMutations.ts`) para persistir os novos metadados recalculados atomicamente junto com a ordem de venda no Supabase.
 
 #### Etapa 4.2: Modo Explícito de Ativos Não Cotados (Salvaguarda S7)
-- [ ] No Investment Wizard (`src/features/investments/wizard/`) e no diálogo de edição (`asset-edit-dialog.tsx`), fornecer modo explícito de "Valoração Própria / Custo de Aquisição" para ativos que não pertencem à B3 ou ao mercado acionário internacional.
-- [ ] Garantir que a rotina de sincronização de cotações (`useSyncQuotes`) ignore esses ativos, evitando erros 404 de API externa ou redefinição para zero.
+- [x] No Investment Wizard (`src/features/investments/wizard/`) e no diálogo de edição (`asset-edit-dialog.tsx`), fornecer modo explícito de "Valoração Própria / Custo de Aquisição" para ativos que não pertencem à B3 ou ao mercado acionário internacional.
+- [x] Garantir que a rotina de sincronização de cotações (`useSyncQuotes`) ignore esses ativos, evitando erros 404 de API externa ou redefinição para zero.
 
 #### Etapa 4.3: Testes de Ponta a Ponta de Operações e Renda Fixa
-- [ ] Criar teste de resgate parcial de Renda Fixa validando que a capitalização dos dias subsequentes ocorre exclusivamente sobre o saldo remanescente sem juros fantasmas.
-- [ ] Testar venda de ações mantendo a regra de isenção de R$ 20.000 (Salvaguarda S8).
+- [x] Criar teste de resgate parcial de Renda Fixa validando que a capitalização dos dias subsequentes ocorre exclusivamente sobre o saldo remanescente sem juros fantasmas.
+- [x] Testar venda de ações mantendo a regra de isenção de R$ 20.000 (Salvaguarda S8).
 
 #### 🚪 Portão de Qualidade 4 (Fim da Fase 4)
-- [ ] Testes de operações de investimento (`operations.test.ts`, `fixed-income.test.ts`) passando com 100% de sucesso.
-- [ ] `npm run typecheck` e `npm run lint` limpos.
-- [ ] **Ação Git:** Commit semântico e Push:  
+- [x] Testes de operações de investimento (`operations.test.ts`, `fixed-income.test.ts`) passando com 100% de sucesso.
+- [x] `npm run typecheck` e `npm run lint` limpos.
+- [x] **Ação Git:** Commit semântico e Push:  
   `git commit -m "fix(portfolio): sincronizar resgates proporcionais de renda fixa e blindar ativos nao-cotados (v3.7.4)" && git push`
 
 ---

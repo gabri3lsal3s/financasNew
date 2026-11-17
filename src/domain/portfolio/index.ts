@@ -267,6 +267,7 @@ export {
   getAssetPricingMode,
   inferCurrencyFromTicker,
   isCashAssetClass,
+  isCustomValuationAsset,
   isFiiClass,
   isFixedIncomeClass,
   isStockClass,

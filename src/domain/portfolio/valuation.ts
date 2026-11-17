@@ -226,9 +226,38 @@ export function isTesouroAsset(ticker: string | null | undefined, assetClass?: s
 export type AssetPricingMode = "cash" | "total_value" | "unit_price";
 
 /**
+ * Identifica se o ativo adota regime de Valoração Própria / Custo de Aquisição (Salvaguarda S7).
+ * Ativos com esta marcação são ignorados na sincronização automática de cotações da B3.
+ */
+export function isCustomValuationAsset(asset: {
+  ticker?: string | null;
+  asset_class?: string | null;
+  notes?: string | null;
+}): boolean {
+  if (isCashAssetClass(asset.asset_class)) return true;
+  if (isFixedIncomeClass(asset.asset_class) && !isTesouroAsset(asset.ticker, asset.asset_class)) return true;
+  const ticker = (asset.ticker ?? "").trim().toUpperCase();
+  if (
+    ticker.startsWith("CDB") ||
+    ticker.startsWith("LCI") ||
+    ticker.startsWith("LCA") ||
+    ticker.startsWith("CRI") ||
+    ticker.startsWith("CRA") ||
+    ticker.startsWith("RDB") ||
+    ticker.startsWith("DEB")
+  ) {
+    return true;
+  }
+  if (asset.notes && (asset.notes.includes("[VALUATION:CUSTOM]") || asset.notes.includes("[PRICING:TOTAL]"))) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Determina o modo de precificação do ativo:
  * - "cash": Caixa/Reserva 1:1
- * - "total_value": Renda Fixa e Tesouro Direto (Preço Inicial e Preço Atual / Saldo)
+ * - "total_value": Renda Fixa, Tesouro Direto ou Valoração Própria (Preço Inicial e Preço Atual / Saldo)
  * - "unit_price": Renda Variável (Ações, FIIs, etc. - Quantidade de Cotas e Preço Médio)
  */
 export function getAssetPricingMode(asset: {
@@ -240,6 +269,9 @@ export function getAssetPricingMode(asset: {
     return "cash";
   }
   if (isFixedIncomeClass(asset.asset_class) || isTesouroAsset(asset.ticker, asset.asset_class)) {
+    return "total_value";
+  }
+  if (asset.notes && (asset.notes.includes("[PRICING:TOTAL]") || asset.notes.includes("[VALUATION:CUSTOM]"))) {
     return "total_value";
   }
   return "unit_price";

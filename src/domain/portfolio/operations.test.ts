@@ -5,6 +5,8 @@ import {
   buildInitialPositionOperations,
   calculateReconciledAssetPosition,
 } from "./operations";
+import { calculateFixedIncomeBalance } from "./fixed-income";
+import { isCustomValuationAsset } from "./valuation";
 
 describe("domain/portfolio/operations — Vendas e Desinvestimentos", () => {
   it("venda parcial mantém o Preço Médio das cotas remanescentes inalterado", () => {
@@ -532,6 +534,133 @@ describe("domain/portfolio/operations — Adição Inicial e Reconciliação do 
       expect(result.newQuantity).toBe(1);
       expect(result.newAveragePrice).toBe(12000);
       expect(result.updatedFixedIncomeMetadata?.base_value).toBe(12000);
+    });
+  });
+
+  describe("Salvaguarda S6: Sincronização Atômica e Proporcional de Resgates de Renda Fixa", () => {
+    it("abate base_value e initial_investment_value proporcionalmente ao valor bruto e preserva base_date", () => {
+      // CDB com base_value R$ 10.000, initial_investment_value R$ 10.000, aplicado em 2026-01-01
+      // Saldo bruto projetado = R$ 11.000 (R$ 1.000 de juros acumulados).
+      // Resgate de R$ 5.500 (50% de proporção).
+      const fiMeta = {
+        rate_type: "cdi" as const,
+        rate_value: 100,
+        base_date: "2026-01-01",
+        initial_investment_date: "2026-01-01",
+        maturity_date: "2028-01-01",
+        base_value: 10000,
+        initial_investment_value: 10000,
+        is_tax_exempt: false,
+      };
+
+      const res = sellAssetPosition({
+        currentQuantity: 1,
+        currentAveragePrice: 10000,
+        sellQuantity: 1,
+        sellPrice: 5500,
+        assetClass: "Renda Fixa",
+        currentGrossBalance: 11000,
+        fixedIncomeMetadata: fiMeta,
+        calendarDays: 150,
+      });
+
+      expect(res.redemptionProportion).toBe(0.5); // 5.500 / 11.000 = 50%
+      expect(res.isFullyExited).toBe(false);
+      expect(res.remainingQuantity).toBe(1);
+      expect(res.remainingAveragePrice).toBe(5000); // 10.000 * 50%
+      expect(res.updatedFixedIncomeMetadata).toBeDefined();
+      expect(res.updatedFixedIncomeMetadata?.base_value).toBe(5000); // 10.000 * 50%
+      expect(res.updatedFixedIncomeMetadata?.initial_investment_value).toBe(5000);
+      // Preservação estrita das datas de referência originais
+      expect(res.updatedFixedIncomeMetadata?.base_date).toBe("2026-01-01");
+      expect(res.updatedFixedIncomeMetadata?.initial_investment_date).toBe("2026-01-01");
+    });
+
+    it("garante que a capitalização subsequente incide estritamente sobre o capital remanescente sem juros fantasmas", () => {
+      // 1. Simulação antes do resgate: R$ 10.000 a 10% a.a. pré
+      const beforeBalance = calculateFixedIncomeBalance({
+        baseValue: 10000,
+        baseDate: "2026-01-01",
+        rateType: "pre",
+        rateValue: 10,
+        today: "2027-01-01",
+      });
+      expect(beforeBalance.grossValue).toBeGreaterThan(10000);
+
+      // 2. Resgate de 40% do saldo bruto
+      const redemptionAmount = Math.round(beforeBalance.grossValue * 0.4 * 100) / 100;
+      const sellRes = sellAssetPosition({
+        currentQuantity: 1,
+        currentAveragePrice: 10000,
+        sellQuantity: 1,
+        sellPrice: redemptionAmount,
+        assetClass: "Renda Fixa",
+        currentGrossBalance: beforeBalance.grossValue,
+        fixedIncomeMetadata: {
+          rate_type: "pre",
+          rate_value: 10,
+          base_date: "2026-01-01",
+          base_value: 10000,
+          initial_investment_value: 10000,
+        },
+      });
+
+      expect(sellRes.redemptionProportion).toBeCloseTo(0.4, 2);
+      expect(sellRes.updatedFixedIncomeMetadata).toBeDefined();
+      const newBase = sellRes.updatedFixedIncomeMetadata?.base_value ?? 0;
+      expect(newBase).toBe(6000); // 10.000 * (1 - 0.4) = 6.000
+
+      // 3. Projeção na mesma data com o novo base_value sobre a mesma data base_date:
+      // O saldo bruto remanescente deve ser exatamente 60% do original
+      const afterBalance = calculateFixedIncomeBalance({
+        baseValue: newBase,
+        baseDate: sellRes.updatedFixedIncomeMetadata?.base_date ?? "2026-01-01",
+        rateType: "pre",
+        rateValue: 10,
+        today: "2027-01-01",
+      });
+
+      const expectedGross = Math.round(beforeBalance.grossValue * 0.6 * 100) / 100;
+      expect(afterBalance.grossValue).toBeCloseTo(expectedGross, 1);
+    });
+
+    it("resgate total (100%) zera a posição e limpa metadados de capital", () => {
+      const fiMeta = {
+        rate_type: "cdi" as const,
+        rate_value: 100,
+        base_date: "2026-01-01",
+        base_value: 10000,
+        initial_investment_value: 10000,
+      };
+
+      const res = sellAssetPosition({
+        currentQuantity: 1,
+        currentAveragePrice: 10000,
+        sellQuantity: 1,
+        sellPrice: 10500,
+        assetClass: "Renda Fixa",
+        currentGrossBalance: 10500,
+        fixedIncomeMetadata: fiMeta,
+      });
+
+      expect(res.redemptionProportion).toBe(1);
+      expect(res.isFullyExited).toBe(true);
+      expect(res.remainingQuantity).toBe(0);
+      expect(res.updatedFixedIncomeMetadata?.base_value).toBeNull();
+      expect(res.updatedFixedIncomeMetadata?.initial_investment_value).toBeNull();
+    });
+  });
+
+  describe("Salvaguarda S7: Ativos Não Cotados e Valoração Própria", () => {
+    it("isCustomValuationAsset reconhece ativos com tags de valoração própria ou títulos privados", () => {
+      expect(isCustomValuationAsset({ ticker: "IMOVEL1", notes: "Imóvel de aluguel [VALUATION:CUSTOM]" })).toBe(true);
+      expect(isCustomValuationAsset({ ticker: "STARTUP", notes: "[PRICING:TOTAL]" })).toBe(true);
+      expect(isCustomValuationAsset({ ticker: "CDB BANCO INTER" })).toBe(true);
+      expect(isCustomValuationAsset({ ticker: "CAIXA", asset_class: "Caixa" })).toBe(true);
+      // Ativos de bolsa cotados normalmente não são valoração própria
+      expect(isCustomValuationAsset({ ticker: "PETR4", asset_class: "Ações" })).toBe(false);
+      expect(isCustomValuationAsset({ ticker: "HGLG11", asset_class: "FIIs" })).toBe(false);
+      expect(isCustomValuationAsset({ ticker: "AAPL", asset_class: "Internacional" })).toBe(false);
     });
   });
 });

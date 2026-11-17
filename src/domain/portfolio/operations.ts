@@ -10,6 +10,7 @@
  * - Sem dependência de UI ou banco de dados.
  */
 
+import type { FixedIncomeMetadata } from "@/types";
 import { getFixedIncomeTaxRatePct } from "./fixed-income";
 import { isFixedIncomeClass, isFiiClass, isStockClass } from "./valuation";
 
@@ -32,6 +33,10 @@ export interface SellAssetInput {
   customTaxRatePct?: number | null;
   /** Valor de imposto retido customizado em moeda. */
   customTaxAmount?: number | null;
+  /** Metadados de Renda Fixa para abatimento proporcional atômico (Salvaguarda S6). */
+  fixedIncomeMetadata?: FixedIncomeMetadata | null;
+  /** Valor bruto atual projetado da Renda Fixa (se conhecido). */
+  currentGrossBalance?: number | null;
 }
 
 export interface SellAssetResult {
@@ -55,6 +60,10 @@ export interface SellAssetResult {
     estimatedTaxPayable: number;
     isCustomized?: boolean;
   };
+  /** Metadados de Renda Fixa com abatimento proporcional mantendo base_date e initial_investment_date originais (Salvaguarda S6). */
+  updatedFixedIncomeMetadata?: FixedIncomeMetadata | null;
+  /** Proporção resgatada frente ao saldo bruto atual (0 a 1). */
+  redemptionProportion?: number;
 }
 
 export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
@@ -131,15 +140,71 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
     ? Math.max(0, Math.round((grossAmount - estimatedTaxPayable) * 100) / 100)
     : grossAmount;
 
+  // ─── Abatimento Proporcional em Renda Fixa (Salvaguarda S6) ─────────────
+  let updatedFixedIncomeMetadata: FixedIncomeMetadata | null = null;
+  let redemptionProportion = 0;
+  let adjustedRemainingQuantity = remainingQuantity;
+  let adjustedRemainingAveragePrice = remainingAveragePrice;
+  let adjustedRemainingTotalCost = remainingTotalCost;
+
+  if (isFixedIncome || input.fixedIncomeMetadata) {
+    const effectiveGrossBalance =
+      input.currentGrossBalance !== undefined && input.currentGrossBalance !== null && input.currentGrossBalance > 0
+        ? input.currentGrossBalance
+        : currentQuantity > 0 && currentAveragePrice > 0 && currentQuantity !== 1
+          ? Math.round(currentQuantity * currentAveragePrice * 100) / 100
+          : currentAveragePrice > 0
+            ? currentAveragePrice
+            : (input.fixedIncomeMetadata?.base_value ?? currentQuantity);
+
+    redemptionProportion = effectiveGrossBalance > 0
+      ? Math.min(1, Math.max(0, grossAmount / effectiveGrossBalance))
+      : 1;
+
+    if (input.fixedIncomeMetadata) {
+      const isFull =
+        redemptionProportion >= 0.9999 ||
+        (effectiveGrossBalance > 0 && grossAmount >= effectiveGrossBalance - 0.01);
+      const currentBase = input.fixedIncomeMetadata.base_value ?? effectiveGrossBalance;
+      const currentInitial = input.fixedIncomeMetadata.initial_investment_value ?? currentBase;
+
+      const newBaseValue = isFull
+        ? 0
+        : Math.max(0, Math.round(currentBase * (1 - redemptionProportion) * 100) / 100);
+      const newInitialValue = isFull
+        ? 0
+        : Math.max(0, Math.round(currentInitial * (1 - redemptionProportion) * 100) / 100);
+
+      updatedFixedIncomeMetadata = {
+        ...input.fixedIncomeMetadata,
+        base_value: newBaseValue > 0 ? newBaseValue : null,
+        initial_investment_value: newInitialValue > 0 ? newInitialValue : null,
+        // Preserva rigorosamente base_date e initial_investment_date originais conforme Salvaguarda S6
+        base_date: input.fixedIncomeMetadata.base_date,
+        initial_investment_date: input.fixedIncomeMetadata.initial_investment_date,
+      };
+
+      if (!isFull) {
+        adjustedRemainingQuantity = currentQuantity <= 1 ? 1 : Math.max(0, currentQuantity - sellQuantity);
+        adjustedRemainingAveragePrice = newInitialValue;
+        adjustedRemainingTotalCost = newInitialValue;
+      } else {
+        adjustedRemainingQuantity = 0;
+        adjustedRemainingAveragePrice = 0;
+        adjustedRemainingTotalCost = 0;
+      }
+    }
+  }
+
   return {
-    remainingQuantity,
-    remainingAveragePrice,
-    remainingTotalCost,
+    remainingQuantity: adjustedRemainingQuantity,
+    remainingAveragePrice: adjustedRemainingAveragePrice,
+    remainingTotalCost: adjustedRemainingTotalCost,
     grossAmount,
     costOfSoldQuantity,
     realizedPnl,
     realizedPnlPct: Math.round(realizedPnlPct * 100) / 100,
-    isFullyExited: remainingQuantity === 0,
+    isFullyExited: adjustedRemainingQuantity === 0,
     netCreditAmount,
     taxInfo: {
       isStock,
@@ -151,6 +216,8 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
       estimatedTaxPayable,
       isCustomized,
     },
+    updatedFixedIncomeMetadata,
+    redemptionProportion,
   };
 }
 
@@ -198,7 +265,7 @@ export function splitAssetPosition(input: SplitAssetInput): SplitAssetResult {
 // ---------------------------------------------------------------------------
 
 import { todayISO } from "@/domain/debts";
-import type { AssetCurrency, FixedIncomeMetadata } from "@/types";
+import type { AssetCurrency } from "@/types";
 import { computeLedger, type LedgerTransaction } from "./index";
 
 export const APP_MIN_DATE = "2026-01-01";

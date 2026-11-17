@@ -117,8 +117,12 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
   const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[assetClass] ?? [];
 
-  // Modo efetivo de valor total (Renda Fixa e Tesouro Direto)
-  const isTotalValueMode = !isCash && isFixedIncome;
+  const [isCustomValuation, setIsCustomValuation] = useState<boolean>(
+    Boolean(asset.notes?.includes("[VALUATION:CUSTOM]") || asset.notes?.includes("[PRICING:TOTAL]")),
+  );
+
+  // Modo efetivo de valor total (Renda Fixa, Tesouro Direto ou Valoração Própria)
+  const isTotalValueMode = !isCash && (isFixedIncome || isCustomValuation);
   const isClosed = !isCash && (asset.quantity <= 0);
 
   // ─── Preços para modo total_value ─────────────────────────────────────────
@@ -202,7 +206,16 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
 
     let payloadQuantity: number;
     let payloadAvgPrice: number;
-    const finalNotes = notes.trim() || null;
+    const cleanNotes = notes
+      .replace(/\[VALUATION:CUSTOM\]/g, "")
+      .replace(/\[PRICING:(UNIT|TOTAL)\]/g, "")
+      .trim();
+    const finalNotes = [
+      cleanNotes,
+      isCustomValuation && !isFixedIncome ? "[VALUATION:CUSTOM]" : "",
+    ]
+      .filter(Boolean)
+      .join(" ") || null;
 
     if (isCash) {
       payloadQuantity = parsedQuantity;
@@ -390,6 +403,23 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
       )}
 
 
+      {/* Toggle de Valoração Própria / Ativo Não Cotado em Bolsa (Salvaguarda S7) */}
+      {!isCash && !isFixedIncome && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface-hover/20 p-3">
+          <Checkbox
+            id="edit-asset-custom-val"
+            checked={isCustomValuation}
+            onCheckedChange={(checked) => setIsCustomValuation(Boolean(checked))}
+          />
+          <label htmlFor="edit-asset-custom-val" className="flex flex-col gap-0.5 text-xs text-foreground cursor-pointer select-none">
+            <span className="font-semibold">Valoração Própria / Ativo Não Cotado em Bolsa</span>
+            <span className="text-[11px] text-muted-foreground font-normal">
+              Permite lançar valor aplicado e saldo diretamente (sem cotas ou código B3) e ignora a busca de cotações automáticas.
+            </span>
+          </label>
+        </div>
+      )}
+
       {/* Campos de Posição de Custódia */}
       {isCash ? (
         <div className="rounded-xl border border-border/80 bg-surface-hover/20 p-3.5 flex flex-col gap-3">
@@ -414,10 +444,12 @@ function AssetEditFormContent({ asset, onClose }: AssetEditFormContentProps) {
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-foreground">
               {isClosed
-                ? "Posição Encerrada (Histórico de Renda Fixa)"
+                ? "Posição Encerrada"
                 : isTesouro
                   ? "Posição de Custódia (Tesouro Direto)"
-                  : "Posição de Custódia (Renda Fixa)"}
+                  : isFixedIncome
+                    ? "Posição de Custódia (Renda Fixa)"
+                    : "Posição de Custódia (Valoração Própria)"}
             </span>
             <Badge variant={isClosed ? "muted" : "default"} size="sm">
               {isClosed ? "Liquidada" : "Valor Completo"}

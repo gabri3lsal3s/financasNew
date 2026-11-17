@@ -14,7 +14,7 @@ import {
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import type { PortfolioAsset } from "@/types";
+import type { FixedIncomeMetadata, PortfolioAsset } from "@/types";
 import { invalidatePortfolioSuite } from "./portfolio-keys";
 import {
   useCreatePortfolioAsset,
@@ -263,6 +263,8 @@ export function useRecordOrder() {
 
           let remainingGrossBalance: number;
           let remainingCost: number;
+          let isFullRedemption: boolean;
+          let proportion: number;
 
           if (asset.fixed_income_metadata) {
             const baseValue =
@@ -286,11 +288,11 @@ export function useRecordOrder() {
             });
 
             const grossBalance = Math.max(fiRes.grossValue, effectiveAppliedCost);
-            const isFullRedemption = grossBalance > 0
+            isFullRedemption = grossBalance > 0
               ? orderAmount >= grossBalance - 0.01
               : orderAmount >= effectiveAppliedCost - 0.01;
 
-            const proportion = grossBalance > 0 ? Math.min(1, orderAmount / grossBalance) : 1;
+            proportion = grossBalance > 0 ? Math.min(1, orderAmount / grossBalance) : 1;
             const projectedTax = asset.fixed_income_metadata.is_tax_exempt
               ? 0
               : Math.round(fiRes.taxAmount * proportion * 100) / 100;
@@ -317,11 +319,11 @@ export function useRecordOrder() {
                   : asset.quantity;
 
             const effectiveGross = Math.max(currentGrossBalance, effectiveAppliedCost);
-            const isFullRedemption = effectiveGross > 0
+            isFullRedemption = effectiveGross > 0
               ? orderAmount >= effectiveGross - 0.01
               : orderAmount >= effectiveAppliedCost - 0.01;
 
-            const proportion = effectiveGross > 0 ? Math.min(1, orderAmount / effectiveGross) : 1;
+            proportion = effectiveGross > 0 ? Math.min(1, orderAmount / effectiveGross) : 1;
             remainingGrossBalance = isFullRedemption
               ? 0
               : Math.max(0, Math.round((effectiveGross - orderAmount) * 100) / 100);
@@ -330,13 +332,20 @@ export function useRecordOrder() {
               : Math.max(0, Math.round(effectiveAppliedCost * (1 - proportion) * 100) / 100);
           }
 
-          const updatedFiMetadata =
+          const updatedFiMetadata: FixedIncomeMetadata | null =
             asset.fixed_income_metadata
               ? {
                   ...asset.fixed_income_metadata,
-                  base_date: remainingGrossBalance > 0 ? date : asset.fixed_income_metadata.base_date,
-                  base_value: remainingGrossBalance,
-                  initial_investment_value: remainingCost,
+                  base_date: asset.fixed_income_metadata.base_date,
+                  base_value: isFullRedemption
+                    ? null
+                    : Math.max(
+                        0,
+                        Math.round(
+                          (asset.fixed_income_metadata.base_value ?? effectiveAppliedCost) * (1 - proportion) * 100,
+                        ) / 100,
+                      ),
+                  initial_investment_value: isFullRedemption ? null : remainingCost,
                 }
               : null;
 

@@ -13,6 +13,7 @@
 
 import {
   isCashAssetClass,
+  isCustomValuationAsset,
   isFixedIncomeClass,
   isPrivateFixedIncomeTicker,
   isTesouroAsset,
@@ -221,7 +222,7 @@ export async function syncQuoteForTicker(
  * Retorna o total de ativos atualizados com sucesso.
  */
 export async function syncQuotesForAssets(
-  assets: { ticker: string; asset_class?: string | null }[],
+  assets: { ticker: string; asset_class?: string | null; notes?: string | null }[],
 ): Promise<number> {
   const eligible = assets.filter((a) => {
     if (isCashAssetClass(a.asset_class ?? null)) return false;
@@ -229,6 +230,7 @@ export async function syncQuotesForAssets(
       return false;
     }
     if (isPrivateFixedIncomeTicker(a.ticker)) return false;
+    if (isCustomValuationAsset(a)) return false;
     return true;
   });
 
