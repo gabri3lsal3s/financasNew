@@ -36,9 +36,11 @@ import {
   usePortfolioContributions,
   usePortfolioDividends,
   usePortfolioPosition,
+  usePortfolioMonthlyPosition,
   usePortfolioSnapshots,
   useMacroIndicators,
   useEmergencyFundComposition,
+  type PortfolioPositionRow,
 } from "@/state";
 
 export type PeriodMode = "month" | "year" | "custom";
@@ -146,6 +148,7 @@ export function useReportsData({
 
   // Queries de Investimentos & Patrimônio
   const positionQuery = usePortfolioPosition();
+  const monthlyPositionQuery = usePortfolioMonthlyPosition(mode === "month" ? month : currentMonth());
   const emergencyFund = useEmergencyFundComposition();
   const snapshotsQuery = usePortfolioSnapshots();
   const macroIndicatorsQuery = useMacroIndicators();
@@ -215,7 +218,49 @@ export function useReportsData({
   const transactions = useMemo(() => transactionsQuery.data ?? [], [transactionsQuery.data]);
   const contributions = useMemo(() => contributionsQuery.data ?? [], [contributionsQuery.data]);
   const snapshots = useMemo(() => snapshotsQuery.data ?? [], [snapshotsQuery.data]);
-  const positionRows = useMemo(() => positionQuery.rows ?? [], [positionQuery.rows]);
+  const isCurrentPeriod = useMemo(() => {
+    if (mode === "month") return month === currentMonth();
+    if (mode === "year") return year === currentYear();
+    if (mode === "custom") return !!debouncedCustomEnd && debouncedCustomEnd >= todayISO();
+    return true;
+  }, [mode, month, year, debouncedCustomEnd]);
+
+  const historicalPit = !isCurrentPeriod && mode === "month" ? monthlyPositionQuery.data : null;
+
+  const positionRows: readonly PortfolioPositionRow[] = useMemo(() => {
+    if (historicalPit && historicalPit.positions.length > 0) {
+      return historicalPit.positions.map((p): PortfolioPositionRow => ({
+        assetId: p.assetId ?? p.ticker,
+        ticker: p.ticker,
+        assetClass: p.assetClass,
+        sector: p.sector ?? null,
+        currency: (p.currency as "BRL" | "USD") ?? "BRL",
+        quantity: p.quantity,
+        averageCost: p.averagePrice,
+        totalCost: p.totalCost,
+        totalCostBRL: p.totalCostBRL,
+        averageCostBRL: p.averagePrice,
+        dividends: p.accumulatedDividendsBRL,
+        dividendsNative:
+          p.currency === "USD" && p.priceQuote > 0 && p.priceBRL > 0
+            ? p.accumulatedDividendsBRL / (p.priceBRL / p.priceQuote)
+            : p.accumulatedDividendsBRL,
+        priceQuote: p.priceQuote,
+        priceBRL: p.priceBRL,
+        usdRate: p.currency === "USD" && p.priceQuote > 0 ? p.priceBRL / p.priceQuote : 1,
+        source: (p.quoteSource ?? "manual") as import("@/domain/portfolio").PriceSource,
+        valueBRL: p.valueBRL,
+        pct: historicalPit.totalValueBRL > 0 ? (p.valueBRL / historicalPit.totalValueBRL) * 100 : 0,
+        unrealizedPnl: p.unrealizedPnl,
+        unrealizedPct: p.unrealizedPct,
+        totalReturnPnl: p.totalReturnPnl,
+        totalReturnPct: p.totalReturnPct,
+        isCash: false,
+        pricingMode: "unit_price" as const,
+      }));
+    }
+    return positionQuery.rows ?? [];
+  }, [historicalPit, positionQuery.rows]);
   const classTargets = useMemo(() => classTargetsQuery.data ?? [], [classTargetsQuery.data]);
   const sectorTargets = useMemo(
     () =>
@@ -369,35 +414,37 @@ export function useReportsData({
     return null;
   }, [snapshots, mode, month, year, debouncedCustomEnd]);
 
-  const isCurrentPeriod = useMemo(() => {
-    if (mode === "month") return month === currentMonth();
-    if (mode === "year") return year === currentYear();
-    if (mode === "custom") return !!debouncedCustomEnd && debouncedCustomEnd >= todayISO();
-    return true;
-  }, [mode, month, year, debouncedCustomEnd]);
-
   const periodPatrimonyBRL = useMemo(() => {
     if (isCurrentPeriod) {
       return positionQuery.totalBRL ?? 0;
+    }
+    if (historicalPit) {
+      if (historicalPit.monthlyStatement?.endBalanceBRL && historicalPit.fidelity?.snapshotTotalValue) {
+        return historicalPit.monthlyStatement.endBalanceBRL;
+      }
+      return historicalPit.fidelity?.snapshotTotalValue ?? historicalPit.totalValueBRL;
     }
     if (selectedSnapshot) {
       return Number(selectedSnapshot.total_value);
     }
     return 0;
-  }, [isCurrentPeriod, positionQuery.totalBRL, selectedSnapshot]);
+  }, [isCurrentPeriod, positionQuery.totalBRL, historicalPit, selectedSnapshot]);
 
   const periodInvestedCostBRL = useMemo(() => {
     if (isCurrentPeriod) {
       return positionQuery.totalCostBRL ?? 0;
     }
+    if (historicalPit) {
+      return historicalPit.totalCostBRL;
+    }
     if (selectedSnapshot) {
       return Number(selectedSnapshot.total_cost);
     }
     return 0;
-  }, [isCurrentPeriod, positionQuery.totalCostBRL, selectedSnapshot]);
+  }, [isCurrentPeriod, positionQuery.totalCostBRL, historicalPit, selectedSnapshot]);
 
   const totalPatrimonyBRL = periodPatrimonyBRL;
-  const cashBalanceBRL = positionQuery.cashBRL ?? 0;
+  const cashBalanceBRL = historicalPit ? historicalPit.cashQuantity : (positionQuery.cashBRL ?? 0);
   const totalInvestedCostBRL = periodInvestedCostBRL;
 
   const periodRedemptions = useMemo(() => {
@@ -669,11 +716,20 @@ export function useReportsData({
       summary: {
         totalPatrimonyBRL,
         totalInvestedCostBRL,
-        unrealizedPnlBRL: positionQuery.unrealizedPnlBRL ?? fallbackUnrealizedPnl,
-        unrealizedPnlPct: positionQuery.unrealizedPct ?? fallbackUnrealizedPct,
-        totalReturnPct: positionQuery.totalReturnPct,
-        portfolioIrrPct: positionQuery.portfolioIrr?.annualizedRatePct ?? null,
-        allTimeEconomicPnlBRL: positionQuery.allTimeEconomicPnlBRL,
+        unrealizedPnlBRL:
+          !isCurrentPeriod && historicalPit?.monthlyStatement
+            ? historicalPit.monthlyStatement.monthNetPnlBRL
+            : (positionQuery.unrealizedPnlBRL ?? fallbackUnrealizedPnl),
+        unrealizedPnlPct:
+          !isCurrentPeriod && historicalPit?.monthlyStatement?.monthRatePct != null
+            ? historicalPit.monthlyStatement.monthRatePct
+            : (positionQuery.unrealizedPct ?? fallbackUnrealizedPct),
+        totalReturnPct:
+          !isCurrentPeriod && historicalPit?.monthlyStatement?.monthRatePct != null
+            ? historicalPit.monthlyStatement.monthRatePct
+            : positionQuery.totalReturnPct,
+        portfolioIrrPct: isCurrentPeriod ? (positionQuery.portfolioIrr?.annualizedRatePct ?? null) : null,
+        allTimeEconomicPnlBRL: (isCurrentPeriod ? positionQuery.allTimeEconomicPnlBRL : undefined) ?? undefined,
         cashBalanceBRL,
         yearDividendsBRL,
         freedomPct: freedomAnalysis.freedomPct,
@@ -781,6 +837,8 @@ export function useReportsData({
     periodRedemptions,
     allocationAnalysis.classGaps,
     usdRate,
+    isCurrentPeriod,
+    historicalPit,
   ]);
 
   const excelDescription = useMemo(() => {

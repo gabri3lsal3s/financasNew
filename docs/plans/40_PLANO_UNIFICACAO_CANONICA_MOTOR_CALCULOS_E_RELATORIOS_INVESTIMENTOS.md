@@ -340,25 +340,25 @@ flowchart TD
 **Objetivo:** Garantir que o Relatório Executivo A4/PDF, a Central Geral de Relatórios e as exportações em Excel reflitam rigorosamente a mesma fotografia patrimonial e de rentabilidade.
 
 #### Etapa 3.1: Alinhamento do Relatório Executivo (`src/features/investments/components/portfolio-executive-report.tsx`)
-- [ ] Ajustar a Síntese Executiva no cabeçalho do relatório para exibir o Patrimônio de Fechamento oficial da competência ($\text{R\$ } 104.740,27$ no caso auditado) e rentabilidade de $-3,6\%$.
-- [ ] Quando houver discrepância entre a custódia analítica e o snapshot oficial, exibir banner informativo de conciliação e convidar para o editor de fechamento sem corromper a síntese de retorno.
+- [x] Ajustar a Síntese Executiva no cabeçalho do relatório para exibir o Patrimônio de Fechamento oficial da competência ($\text{R\$ } 104.740,27$ no caso auditado) e rentabilidade de $-3,6\%$.
+- [x] Quando houver discrepância entre a custódia analítica e o snapshot oficial, exibir banner informativo de conciliação e convidar para o editor de fechamento sem corromper a síntese de retorno.
 
 #### Etapa 3.2: Conexão de `useReportsData` com o Motor Histórico
-- [ ] Em `src/features/reports/hooks/use-reports-data.ts`: quando o período selecionado for um mês histórico ou exercício passado, consumir a rentabilidade, o PnL e a alocação do motor canônico referente àquela competência.
-- [ ] Eliminar a armadilha de exibir o PnL e o Retorno Total da carteira viva de hoje em relatórios do passado.
+- [x] Em `src/features/reports/hooks/use-reports-data.ts`: quando o período selecionado for um mês histórico ou exercício passado, consumir a rentabilidade, o PnL e a alocação do motor canônico referente àquela competência.
+- [x] Eliminar a armadilha de exibir o PnL e o Retorno Total da carteira viva de hoje em relatórios do passado.
 
 #### Etapa 3.3: Congruência da `InvestmentsTab` em Relatórios e Exportação Excel
-- [ ] Atualizar `src/features/reports/components/tabs/investments-tab.tsx`: renderizar a fotografia patrimonial congruente da competência selecionada.
-- [ ] Atualizar `src/services/excel-export/`: garantir que as abas do `.xlsx` gerem os números oficiais consolidados.
+- [x] Atualizar `src/features/reports/components/tabs/investments-tab.tsx`: renderizar a fotografia patrimonial congruente da competência selecionada.
+- [x] Atualizar `src/services/excel-export/`: garantir que as abas do `.xlsx` gerem os números oficiais consolidados.
 
 #### Etapa 3.4: Testes de Congruência Cruzada
-- [ ] Executar `investments-tab.test.tsx`, `reports-page.test.tsx` e `portfolio-executive-report.test.tsx`.
-- [ ] Verificar que o número exibido no card do carrossel, na tabela analítica de snapshots, no PDF oficial e na Central Geral de Relatórios é exatamente idêntico.
+- [x] Executar `investments-tab.test.tsx`, `reports-page.test.tsx` e `portfolio-executive-report.test.tsx`.
+- [x] Verificar que o número exibido no card do carrossel, na tabela analítica de snapshots, no PDF oficial e na Central Geral de Relatórios é exatamente idêntico.
 
 #### 🚪 Portão de Qualidade 3 (Fim da Fase 3)
-- [ ] Testes de relatórios passando com 100% de sucesso.
-- [ ] Verificação de congruência cruzada 100% aprovada.
-- [ ] **Ação Git:** Commit semântico e Push:  
+- [x] Testes de relatórios passando com 100% de sucesso.
+- [x] Verificação de congruência cruzada 100% aprovada.
+- [x] **Ação Git:** Commit semântico e Push:  
   `git commit -m "fix(reports): assegurar congruencia total entre relatorios executivos de snapshots e central geral (v3.7.3)" && git push`
 
 ---

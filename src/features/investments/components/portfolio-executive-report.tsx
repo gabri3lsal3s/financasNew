@@ -164,7 +164,11 @@ export function PortfolioExecutiveReport({
 
   const effectiveTotalBRL = useMemo(() => {
     if (isCurrentSelected || !monthlyPositionQuery.data) return totalBRL;
-    return monthlyPositionQuery.data.totalValueBRL;
+    const pit = monthlyPositionQuery.data;
+    if (pit.monthlyStatement?.endBalanceBRL && pit.fidelity?.snapshotTotalValue) {
+      return pit.monthlyStatement.endBalanceBRL;
+    }
+    return pit.fidelity?.snapshotTotalValue ?? pit.totalValueBRL;
   }, [isCurrentSelected, monthlyPositionQuery.data, totalBRL]);
 
   const effectiveCashBRL = useMemo(() => {
@@ -469,6 +473,45 @@ export function PortfolioExecutiveReport({
                   icon={TrendingUp}
               accountHolder={accountHolder}
             />
+
+            {/* Sentinela de Fidelidade: Banner de Conciliação Sugerida (§Salvaguarda S10) */}
+            {(() => {
+              const fidelity = monthlyPositionQuery.data?.fidelity;
+              const discrepancyPct = fidelity?.discrepancyPct;
+              if (!fidelity || discrepancyPct == null || Math.abs(discrepancyPct) <= 3) return null;
+
+              return (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-warning/30 bg-warning/5 text-xs text-foreground print:hidden">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-warning/20 bg-warning/10 text-warning-strong">
+                      <AlertCircle className="size-4" aria-hidden="true" />
+                    </div>
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                      <span className="font-semibold text-warning-strong">
+                        Conciliação Sugerida ({formatSignedPct(discrepancyPct)})
+                      </span>
+                      <span className="text-[11px] text-muted-foreground truncate">
+                        O saldo oficial do fechamento (
+                        <MoneyText cents={numberToCents(fidelity.snapshotTotalValue ?? effectiveTotalBRL)} className="inline font-medium" />
+                        ) difere da soma analítica de ativos (
+                        <MoneyText cents={numberToCents(fidelity.reconstructedTotalValue)} className="inline font-medium" />
+                        ).
+                      </span>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => setActiveTab("closing")}
+                    className="shrink-0 gap-1.5 cursor-pointer font-medium self-stretch sm:self-auto"
+                  >
+                    <SlidersHorizontal className="size-3 text-muted-foreground" aria-hidden="true" />
+                    <span>Conferir Ativos</span>
+                  </Button>
+                </div>
+              );
+            })()}
 
             {/* Síntese Executiva em Linha Única — 4 KPIs da Competência */}
             {(() => {
