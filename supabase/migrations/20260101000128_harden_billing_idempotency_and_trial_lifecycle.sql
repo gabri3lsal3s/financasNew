@@ -713,22 +713,54 @@ CREATE POLICY "trip_members_write_policy" ON public.trip_members
   );
 
 DROP POLICY IF EXISTS "trip_expenses_write_policy" ON public.trip_expenses;
-CREATE POLICY "trip_expenses_write_policy" ON public.trip_expenses
-  FOR ALL TO authenticated
+DROP POLICY IF EXISTS "trip_expenses_insert_policy" ON public.trip_expenses;
+CREATE POLICY "trip_expenses_insert_policy" ON public.trip_expenses
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    (
+      public.is_trip_host(trip_id, (SELECT auth.uid()))
+      OR public.is_trip_member(trip_id, (SELECT auth.uid()))
+    )
+    AND (SELECT public.is_current_user_active())
+    AND (SELECT public.can_current_user_write_module('transactions'))
+  );
+
+DROP POLICY IF EXISTS "trip_expenses_update_policy" ON public.trip_expenses;
+CREATE POLICY "trip_expenses_update_policy" ON public.trip_expenses
+  FOR UPDATE TO authenticated
   USING (
     (
-      payer_id = (SELECT auth.uid())
-      OR public.is_trip_host(trip_id, (SELECT auth.uid()))
-      OR public.is_trip_member(trip_id, (SELECT auth.uid()))
+      public.is_trip_host(trip_id, (SELECT auth.uid()))
+      OR (SELECT auth.uid()) IN (
+        SELECT tm.user_id FROM public.trip_members tm 
+        WHERE tm.id IN (trip_expenses.paid_by_member_id, trip_expenses.created_by_member_id)
+      )
     )
     AND (SELECT public.is_current_user_active())
     AND (SELECT public.can_current_user_write_module('transactions'))
   )
   WITH CHECK (
     (
-      payer_id = (SELECT auth.uid())
-      OR public.is_trip_host(trip_id, (SELECT auth.uid()))
-      OR public.is_trip_member(trip_id, (SELECT auth.uid()))
+      public.is_trip_host(trip_id, (SELECT auth.uid()))
+      OR (SELECT auth.uid()) IN (
+        SELECT tm.user_id FROM public.trip_members tm 
+        WHERE tm.id IN (trip_expenses.paid_by_member_id, trip_expenses.created_by_member_id)
+      )
+    )
+    AND (SELECT public.is_current_user_active())
+    AND (SELECT public.can_current_user_write_module('transactions'))
+  );
+
+DROP POLICY IF EXISTS "trip_expenses_delete_policy" ON public.trip_expenses;
+CREATE POLICY "trip_expenses_delete_policy" ON public.trip_expenses
+  FOR DELETE TO authenticated
+  USING (
+    (
+      public.is_trip_host(trip_id, (SELECT auth.uid()))
+      OR (SELECT auth.uid()) IN (
+        SELECT tm.user_id FROM public.trip_members tm 
+        WHERE tm.id IN (trip_expenses.paid_by_member_id, trip_expenses.created_by_member_id)
+      )
     )
     AND (SELECT public.is_current_user_active())
     AND (SELECT public.can_current_user_write_module('transactions'))
@@ -739,18 +771,16 @@ CREATE POLICY "trip_settlements_write_policy" ON public.trip_settlements
   FOR ALL TO authenticated
   USING (
     (
-      payer_member_id = (SELECT auth.uid())
-      OR receiver_member_id = (SELECT auth.uid())
-      OR public.is_trip_host(trip_id, (SELECT auth.uid()))
+      public.is_trip_host(trip_id, (SELECT auth.uid()))
+      OR public.is_trip_member(trip_id, (SELECT auth.uid()))
     )
     AND (SELECT public.is_current_user_active())
     AND (SELECT public.can_current_user_write_module('transactions'))
   )
   WITH CHECK (
     (
-      payer_member_id = (SELECT auth.uid())
-      OR receiver_member_id = (SELECT auth.uid())
-      OR public.is_trip_host(trip_id, (SELECT auth.uid()))
+      public.is_trip_host(trip_id, (SELECT auth.uid()))
+      OR public.is_trip_member(trip_id, (SELECT auth.uid()))
     )
     AND (SELECT public.is_current_user_active())
     AND (SELECT public.can_current_user_write_module('transactions'))
@@ -801,46 +831,59 @@ BEGIN
   ),
   valid_expenses AS (
     SELECT
+      v_user_id AS user_id,
       r.id AS recurrence_id,
-      r.user_id,
+      i.occurrence_number,
+      r.value,
+      i.occurrence_date AS date,
       r.category_id,
-      r.account_id,
+      r.payment_method,
       r.card_id,
+      1 AS installments_total,
+      1 AS installment_number,
+      null::uuid AS installment_group_id,
+      i.bill_competence,
+      r.report_weight,
+      r.value AS base_amount,
       r.description,
-      inc.occurrence_value AS amount,
-      inc.occurrence_date AS date,
-      inc.occurrence_number,
-      inc.bill_competence,
-      r.tags,
-      r.observation,
-      r.is_family,
-      r.family_id
-    FROM incoming inc
-    JOIN public.recurrences r ON r.id = inc.recurrence_id
-    WHERE r.user_id = v_user_id
-      AND r.type = 'expense'
+      coalesce(r.is_family, false) AS is_family
+    FROM incoming i
+    JOIN public.recurrences r
+      ON r.id = i.recurrence_id
+     AND r.user_id = v_user_id
+     AND r.is_active = true
+     AND r.kind = 'expense'
+    WHERE i.occurrence_date >= date '2026-01-01'
+      AND i.occurrence_number >= 1
+      AND (r.end_date IS NULL OR i.occurrence_date <= r.end_date)
+      AND (r.occurrences_total IS NULL OR i.occurrence_number <= r.occurrences_total)
+      AND NOT EXISTS (
+        SELECT 1 FROM public.recurrence_skips s
+        WHERE s.recurrence_id = r.id AND s.occurrence_date = i.occurrence_date
+      )
       AND NOT EXISTS (
         SELECT 1 FROM public.expenses e
-        WHERE e.recurrence_id = r.id
-          AND e.recurrence_number = inc.occurrence_number
+        WHERE e.recurrence_id = r.id AND e.date = i.occurrence_date
       )
   ),
   inserted_expenses AS (
     INSERT INTO public.expenses (
-      user_id, category_id, account_id, card_id, description,
-      amount, date, recurrence_id, recurrence_number,
-      bill_competence, tags, observation, is_family, family_id
+      user_id, recurrence_id, occurrence_number, value, date, category_id,
+      payment_method, card_id, installments_total, installment_number,
+      installment_group_id, bill_competence, report_weight, base_amount,
+      description, is_family
     )
     SELECT
-      user_id, category_id, account_id, card_id, description,
-      amount, date, recurrence_id, occurrence_number,
-      bill_competence, tags, observation, is_family, family_id
+      user_id, recurrence_id, occurrence_number, value, date, category_id,
+      payment_method, card_id, installments_total, installment_number,
+      installment_group_id, bill_competence, report_weight, base_amount,
+      description, is_family
     FROM valid_expenses
-    RETURNING id
+    RETURNING 1
   )
   SELECT count(*) INTO v_expense_count FROM inserted_expenses;
 
-  -- 2) Inserção em lote de ocorrências de RECEITAS (set-based)
+  -- 2) Inserção em lote de ocorrências de RENDAS (set-based)
   WITH incoming AS (
     SELECT
       (item->>'recurrence_id')::uuid AS recurrence_id,
@@ -851,40 +894,44 @@ BEGIN
   ),
   valid_incomes AS (
     SELECT
+      v_user_id AS user_id,
       r.id AS recurrence_id,
-      r.user_id,
+      i.occurrence_number,
+      r.value,
+      i.occurrence_date AS date,
       r.category_id,
-      r.account_id,
+      r.receive_type,
       r.description,
-      inc.occurrence_value AS amount,
-      inc.occurrence_date AS date,
-      inc.occurrence_number,
-      r.tags,
-      r.observation,
-      r.is_family,
-      r.family_id
-    FROM incoming inc
-    JOIN public.recurrences r ON r.id = inc.recurrence_id
-    WHERE r.user_id = v_user_id
-      AND r.type = 'income'
+      coalesce(r.is_family, false) AS is_family
+    FROM incoming i
+    JOIN public.recurrences r
+      ON r.id = i.recurrence_id
+     AND r.user_id = v_user_id
+     AND r.is_active = true
+     AND r.kind = 'income'
+    WHERE i.occurrence_date >= date '2026-01-01'
+      AND i.occurrence_number >= 1
+      AND (r.end_date IS NULL OR i.occurrence_date <= r.end_date)
+      AND (r.occurrences_total IS NULL OR i.occurrence_number <= r.occurrences_total)
       AND NOT EXISTS (
-        SELECT 1 FROM public.incomes i
-        WHERE i.recurrence_id = r.id
-          AND i.recurrence_number = inc.occurrence_number
+        SELECT 1 FROM public.recurrence_skips s
+        WHERE s.recurrence_id = r.id AND s.occurrence_date = i.occurrence_date
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM public.incomes inc
+        WHERE inc.recurrence_id = r.id AND inc.date = i.occurrence_date
       )
   ),
   inserted_incomes AS (
     INSERT INTO public.incomes (
-      user_id, category_id, account_id, description,
-      amount, date, recurrence_id, recurrence_number,
-      tags, observation, is_family, family_id
+      user_id, recurrence_id, occurrence_number, value, date, category_id,
+      receive_type, description, is_family
     )
     SELECT
-      user_id, category_id, account_id, description,
-      amount, date, recurrence_id, occurrence_number,
-      tags, observation, is_family, family_id
+      user_id, recurrence_id, occurrence_number, value, date, category_id,
+      receive_type, description, is_family
     FROM valid_incomes
-    RETURNING id
+    RETURNING 1
   )
   SELECT count(*) INTO v_income_count FROM inserted_incomes;
 
@@ -918,7 +965,7 @@ DECLARE
 BEGIN
   v_uid := auth.uid();
   IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'Usuario nao autenticado.' USING ERRCODE = '28000';
+    RAISE EXCEPTION 'Usuario nao autenticado.' USING ERRCODE = '42501';
   END IF;
 
   IF NOT public.is_current_user_active() THEN
@@ -941,65 +988,46 @@ BEGIN
     AND kind = 'goal_tracker'
   FOR UPDATE;
 
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Meta compartilhada nao encontrada ou nao pertence ao usuario.' USING ERRCODE = 'P0002';
+  IF v_share IS NULL THEN
+    RAISE EXCEPTION 'Meta nao encontrada ou acesso nao autorizado.' USING ERRCODE = 'P0002';
   END IF;
 
-  IF v_share.is_revoked THEN
-    RAISE EXCEPTION 'Esta meta esta arquivada ou revogada.' USING ERRCODE = '22023';
-  END IF;
-
-  v_current_cents := coalesce((v_share.payload->>'current_amount_cents')::bigint, 0);
-  v_target_cents := coalesce((v_share.payload->>'target_amount_cents')::bigint, 0);
+  v_today := to_char(current_date, 'YYYY-MM-DD');
+  v_current_cents := coalesce((v_share.payload->>'current_cents')::bigint, 0);
+  v_target_cents := coalesce((v_share.payload->>'target_cents')::bigint, 0);
   v_new_current_cents := v_current_cents + p_amount_cents;
-  v_contributions := coalesce(v_share.payload->'contributions', '[]'::jsonb);
-  v_today := to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
 
+  v_contributions := coalesce(v_share.payload->'contributions', '[]'::jsonb);
   v_new_contribution := jsonb_build_object(
-    'id', gen_random_uuid()::text,
-    'contributor_name', coalesce(nullif(trim(p_contributor_name), ''), 'Você'),
+    'id', gen_random_uuid(),
     'amount_cents', p_amount_cents,
-    'source_account_id', p_source_account_id,
-    'notes', p_notes,
-    'created_at', v_today
+    'contributor_name', coalesce(nullif(trim(p_contributor_name), ''), 'Você'),
+    'date', v_today,
+    'created_at', now()
   );
 
   v_contributions := v_contributions || jsonb_build_array(v_new_contribution);
 
   v_updated_payload := v_share.payload || jsonb_build_object(
-    'current_amount_cents', v_new_current_cents,
-    'contributions', v_contributions,
-    'last_deposit_at', v_today
+    'current_cents', v_new_current_cents,
+    'contributions', v_contributions
   );
+
+  IF v_target_cents > 0 AND v_new_current_cents >= v_target_cents THEN
+    v_updated_payload := v_updated_payload || jsonb_build_object('status', 'completed');
+  END IF;
 
   UPDATE public.public_shares
   SET payload = v_updated_payload,
       updated_at = now()
   WHERE id = p_share_id;
 
-  INSERT INTO public.audit_events (
-    user_id, entity_type, entity_id, action, payload
-  )
-  VALUES (
-    v_uid,
-    'public_shares',
-    p_share_id::text,
-    'ALLOCATE_GOAL_DEPOSIT',
-    jsonb_build_object(
-      'amount_cents', p_amount_cents,
-      'previous_cents', v_current_cents,
-      'new_cents', v_new_current_cents,
-      'target_cents', v_target_cents,
-      'contributor_name', p_contributor_name
-    )
-  );
-
   RETURN jsonb_build_object(
     'success', true,
     'share_id', p_share_id,
-    'new_current_amount_cents', v_new_current_cents,
-    'target_amount_cents', v_target_cents,
-    'contribution', v_new_contribution
+    'new_current_cents', v_new_current_cents,
+    'target_cents', v_target_cents,
+    'is_completed', (v_target_cents > 0 AND v_new_current_cents >= v_target_cents)
   );
 END;
 $$;
@@ -1025,6 +1053,7 @@ DECLARE
   v_clean_display_name text;
   v_clean_pix_key text;
 BEGIN
+  -- 1. Autenticação fail-closed
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Não autenticado.' USING ERRCODE = '28000';
   END IF;
@@ -1037,56 +1066,70 @@ BEGIN
     RAISE EXCEPTION 'Acesso negado: permissão de escrita em Transações requerida.' USING ERRCODE = '42501';
   END IF;
 
+  -- 2. Invariante: participante único em família ativa
   IF EXISTS (SELECT 1 FROM public.family_members WHERE user_id = v_user_id) THEN
     RAISE EXCEPTION 'Usuário já pertence a uma família ativa.' USING ERRCODE = '23505';
   END IF;
 
+  -- 3. Sanitização e validação do nome da família
   v_clean_name := trim(coalesce(p_name, ''));
   IF length(v_clean_name) NOT BETWEEN 1 AND 100 THEN
-    RAISE EXCEPTION 'O nome da família deve ter entre 1 e 100 caracteres.' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'Nome da família deve conter entre 1 e 100 caracteres.' USING ERRCODE = '22023';
   END IF;
 
+  -- 4. Validação de teto orçamentário
   IF p_monthly_budget IS NOT NULL AND p_monthly_budget < 0 THEN
-    RAISE EXCEPTION 'O orçamento mensal não pode ser negativo.' USING ERRCODE = '22003';
+    RAISE EXCEPTION 'Teto orçamentário não pode ser negativo.' USING ERRCODE = '22023';
   END IF;
 
-  IF p_split_rule NOT IN ('equal', 'income_proportional', 'custom') THEN
-    RAISE EXCEPTION 'Regra de divisão inválida.' USING ERRCODE = '22023';
+  -- 5. Validação da regra de divisão
+  IF p_split_rule NOT IN ('equal', 'proportional') THEN
+    RAISE EXCEPTION 'Regra de divisão inválida (esperado: equal ou proportional).' USING ERRCODE = '22023';
   END IF;
 
-  v_clean_display_name := nullif(trim(coalesce(p_display_name, '')), '');
-  v_clean_pix_key      := nullif(trim(coalesce(p_pix_key, '')), '');
+  -- 6. Validação de chave Pix se informada
+  IF p_pix_key_type IS NOT NULL AND p_pix_key_type NOT IN ('cpf', 'email', 'phone', 'random') THEN
+    RAISE EXCEPTION 'Tipo de chave Pix inválido.' USING ERRCODE = '22023';
+  END IF;
 
-  INSERT INTO public.families (name, owner_id, monthly_budget, split_rule)
-  VALUES (v_clean_name, v_user_id, p_monthly_budget, p_split_rule)
-  RETURNING id INTO v_family_id;
+  v_clean_pix_key := nullif(trim(coalesce(p_pix_key, '')), '');
 
+  -- 7. Resolver nome de exibição do proprietário
+  v_clean_display_name := trim(coalesce(p_display_name, ''));
+  IF v_clean_display_name = '' THEN
+    SELECT coalesce(name, 'Titular') INTO v_clean_display_name FROM public.profiles WHERE id = v_user_id;
+  END IF;
+
+  -- 8. Inserir registro na tabela families
+  INSERT INTO public.families (
+    name,
+    owner_id,
+    monthly_budget,
+    split_rule
+  ) VALUES (
+    v_clean_name,
+    v_user_id,
+    p_monthly_budget,
+    p_split_rule
+  ) RETURNING id INTO v_family_id;
+
+  -- 9. Inserir atomicamente o membro proprietário
   INSERT INTO public.family_members (
-    family_id, user_id, role, display_name,
-    pix_key, pix_key_type, color_avatar, joined_at
-  )
-  VALUES (
+    family_id,
+    user_id,
+    role,
+    display_name,
+    pix_key,
+    pix_key_type,
+    split_ratio
+  ) VALUES (
     v_family_id,
     v_user_id,
     'owner',
-    coalesce(v_clean_display_name, (SELECT name FROM public.profiles WHERE id = v_user_id), 'Proprietário'),
+    nullif(v_clean_display_name, ''),
     v_clean_pix_key,
     p_pix_key_type,
-    '#2563EB',
-    now()
-  );
-
-  INSERT INTO public.audit_events (user_id, entity_type, entity_id, action, payload)
-  VALUES (
-    v_user_id,
-    'families',
-    v_family_id::text,
-    'CREATE_FAMILY',
-    jsonb_build_object(
-      'name', v_clean_name,
-      'split_rule', p_split_rule,
-      'monthly_budget', p_monthly_budget
-    )
+    0.5000
   );
 
   RETURN v_family_id;
@@ -1095,9 +1138,10 @@ $$;
 
 -- 6.4 public.invite_family_member
 CREATE OR REPLACE FUNCTION public.invite_family_member(
-  p_family_id uuid,
-  p_invited_email text,
-  p_role text DEFAULT 'member'
+  p_family_id uuid DEFAULT null,
+  p_invited_email text DEFAULT null,
+  p_role text DEFAULT 'member',
+  p_token text DEFAULT null
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -1106,13 +1150,15 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_user_id uuid := auth.uid();
-  v_clean_email text;
-  v_target_user_id uuid;
-  v_invite_code text;
-  v_expires_at timestamptz;
-  v_existing_member_count int;
-  v_invite_id uuid;
+  v_family_id uuid;
+  v_email text;
+  v_role text := coalesce(p_role, 'member');
+  v_token text;
+  v_invite record;
+  v_active_members_count int;
+  v_pending_invites_count int;
 BEGIN
+  -- 1. Autenticação fail-closed
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Não autenticado.' USING ERRCODE = '28000';
   END IF;
@@ -1125,87 +1171,128 @@ BEGIN
     RAISE EXCEPTION 'Acesso negado: permissão de escrita em Transações requerida.' USING ERRCODE = '42501';
   END IF;
 
-  IF NOT public.is_family_admin(p_family_id, v_user_id) THEN
-    RAISE EXCEPTION 'Apenas proprietários ou administradores podem convidar membros.' USING ERRCODE = '42501';
+  -- 2. Resolver family_id
+  IF p_family_id IS NOT NULL THEN
+    v_family_id := p_family_id;
+  ELSE
+    SELECT fm.family_id INTO v_family_id
+    FROM public.family_members fm
+    WHERE fm.user_id = v_user_id
+    LIMIT 1;
   END IF;
 
-  SELECT count(*) INTO v_existing_member_count
+  IF v_family_id IS NULL THEN
+    RAISE EXCEPTION 'Família não encontrada.' USING ERRCODE = 'P0002';
+  END IF;
+
+  -- 3. Autorização: apenas owner ou admin podem gerar convites
+  IF NOT public.is_family_admin(v_family_id, v_user_id) THEN
+    RAISE EXCEPTION 'Apenas administradores podem convidar membros para a família.' USING ERRCODE = '42501';
+  END IF;
+
+  -- 4. Invariante: Limite máximo de 6 participantes na família (membros ativos + convites pendentes válidos)
+  SELECT count(*) INTO v_active_members_count
   FROM public.family_members
-  WHERE family_id = p_family_id;
+  WHERE family_id = v_family_id;
 
-  IF v_existing_member_count >= 10 THEN
-    RAISE EXCEPTION 'Limite máximo de 10 membros por família atingido.' USING ERRCODE = 'P0001';
+  SELECT count(*) INTO v_pending_invites_count
+  FROM public.family_invites
+  WHERE family_id = v_family_id AND status = 'pending' AND expires_at > now();
+
+  IF (v_active_members_count + v_pending_invites_count) >= 6 THEN
+    RAISE EXCEPTION 'A família já atingiu o limite máximo de 6 participantes.' USING ERRCODE = '22023';
   END IF;
 
-  v_clean_email := lower(trim(coalesce(p_invited_email, '')));
-  IF v_clean_email !~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$' THEN
-    RAISE EXCEPTION 'Endereço de e-mail inválido.' USING ERRCODE = '22023';
+  -- 5. Validação de papel
+  IF v_role NOT IN ('member', 'admin') THEN
+    RAISE EXCEPTION 'Papel de convite inválido (permitido apenas member ou admin).' USING ERRCODE = '22023';
   END IF;
 
-  SELECT id INTO v_target_user_id
-  FROM public.profiles
-  WHERE lower(email) = v_clean_email;
+  -- 6. Validação de e-mail se fornecido
+  IF p_invited_email IS NOT NULL AND trim(p_invited_email) != '' THEN
+    v_email := lower(trim(p_invited_email));
+    IF length(v_email) NOT BETWEEN 3 AND 255 OR v_email !~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' THEN
+      RAISE EXCEPTION 'Formato de e-mail inválido.' USING ERRCODE = '22023';
+    END IF;
 
-  IF v_target_user_id = v_user_id THEN
-    RAISE EXCEPTION 'Você não pode convidar a si mesmo.' USING ERRCODE = '22023';
+    -- Verificar se usuário já é membro desta família
+    IF EXISTS (
+      SELECT 1
+      FROM public.family_members fm
+      JOIN public.profiles p ON p.id = fm.user_id
+      WHERE fm.family_id = v_family_id
+        AND lower(p.email) = v_email
+    ) THEN
+      RAISE EXCEPTION 'Este usuário já é membro da família.' USING ERRCODE = '23505';
+    END IF;
+
+    -- Revogar convites pendentes anteriores para o mesmo e-mail nesta família
+    UPDATE public.family_invites
+    SET status = 'revoked'
+    WHERE family_id = v_family_id
+      AND lower(invited_email) = v_email
+      AND status = 'pending';
+  ELSE
+    v_email := null;
   END IF;
 
-  IF v_target_user_id IS NOT NULL AND EXISTS (
-    SELECT 1 FROM public.family_members WHERE user_id = v_target_user_id
-  ) THEN
-    RAISE EXCEPTION 'O usuário informado já faz parte de uma família ativa.' USING ERRCODE = '23505';
+  -- 7. Geração de token à prova de falha
+  IF p_token IS NOT NULL AND trim(p_token) != '' THEN
+    v_token := trim(p_token);
+    IF length(v_token) NOT BETWEEN 6 AND 64 OR v_token !~ '^[a-zA-Z0-9_-]+$' THEN
+      RAISE EXCEPTION 'Formato de token de convite inválido.' USING ERRCODE = '22023';
+    END IF;
+  ELSE
+    BEGIN
+      v_token := encode(extensions.gen_random_bytes(24), 'hex');
+    EXCEPTION WHEN others THEN
+      v_token := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
+      v_token := substr(v_token, 1, 48);
+    END;
   END IF;
 
-  UPDATE public.family_invites
-  SET status = 'canceled', updated_at = now()
-  WHERE family_id = p_family_id
-    AND lower(invited_email) = v_clean_email
-    AND status = 'pending';
-
-  v_invite_code := upper(substring(md5(random()::text || clock_timestamp()::text) from 1 for 8));
-  v_expires_at  := now() + interval '7 days';
-
+  -- 8. Inserir convite ativo
   INSERT INTO public.family_invites (
-    family_id, invited_by, invited_email, role,
-    invite_code, status, expires_at
-  )
-  VALUES (
-    p_family_id, v_user_id, v_clean_email, p_role,
-    v_invite_code, 'pending', v_expires_at
-  )
-  RETURNING id INTO v_invite_id;
-
-  INSERT INTO public.audit_events (user_id, entity_type, entity_id, action, payload)
-  VALUES (
+    family_id,
+    invited_by,
+    invited_email,
+    token,
+    role,
+    status,
+    expires_at
+  ) VALUES (
+    v_family_id,
     v_user_id,
-    'family_invites',
-    v_invite_id::text,
-    'INVITE_FAMILY_MEMBER',
-    jsonb_build_object(
-      'family_id', p_family_id,
-      'invited_email', v_clean_email,
-      'role', p_role
-    )
-  );
+    v_email,
+    v_token,
+    v_role,
+    'pending',
+    now() + interval '7 days'
+  ) RETURNING * INTO v_invite;
 
   RETURN jsonb_build_object(
-    'invite_id', v_invite_id,
-    'invite_code', v_invite_code,
-    'invited_email', v_clean_email,
-    'expires_at', v_expires_at
+    'id', v_invite.id,
+    'family_id', v_invite.family_id,
+    'token', v_invite.token,
+    'role', v_invite.role,
+    'invited_email', v_invite.invited_email,
+    'status', v_invite.status,
+    'expires_at', v_invite.expires_at,
+    'created_at', v_invite.created_at
   );
 END;
 $$;
 
 -- 6.5 public.record_family_settlement
 CREATE OR REPLACE FUNCTION public.record_family_settlement(
-  p_family_id uuid,
+  p_month text,
   p_payer_id uuid,
   p_receiver_id uuid,
   p_amount numeric,
+  p_family_id uuid DEFAULT null,
   p_payment_method text DEFAULT 'pix',
-  p_proof_url text DEFAULT null,
-  p_notes text DEFAULT null
+  p_notes text DEFAULT null,
+  p_snapshot jsonb DEFAULT '{}'::jsonb
 )
 RETURNS uuid
 LANGUAGE plpgsql
@@ -1214,8 +1301,12 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_user_id uuid := auth.uid();
+  v_family_id uuid;
   v_settlement_id uuid;
+  v_clean_month text;
+  v_clean_method text := coalesce(p_payment_method, 'pix');
 BEGIN
+  -- 1. Autenticação fail-closed
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Não autenticado.' USING ERRCODE = '28000';
   END IF;
@@ -1228,47 +1319,83 @@ BEGIN
     RAISE EXCEPTION 'Acesso negado: permissão de escrita em Transações requerida.' USING ERRCODE = '42501';
   END IF;
 
-  IF NOT public.is_family_member(p_family_id, v_user_id) THEN
-    RAISE EXCEPTION 'Você não pertence a esta família.' USING ERRCODE = '42501';
+  -- 2. Resolver family_id
+  IF p_family_id IS NOT NULL THEN
+    v_family_id := p_family_id;
+  ELSE
+    SELECT fm.family_id INTO v_family_id
+    FROM public.family_members fm
+    WHERE fm.user_id = v_user_id
+    LIMIT 1;
   END IF;
 
-  IF NOT public.is_family_member(p_family_id, p_payer_id) OR
-     NOT public.is_family_member(p_family_id, p_receiver_id) THEN
-    RAISE EXCEPTION 'Pagador e recebedor devem ser membros da mesma família.' USING ERRCODE = '22023';
+  IF v_family_id IS NULL THEN
+    RAISE EXCEPTION 'Família não encontrada.' USING ERRCODE = 'P0002';
   END IF;
 
+  -- 3. Validação de membresia do autor
+  IF NOT public.is_family_member(v_family_id, v_user_id) THEN
+    RAISE EXCEPTION 'Acesso negado: usuário não pertence à família especificada.' USING ERRCODE = '42501';
+  END IF;
+
+  -- 4. Validação da competência (mês YYYY-MM)
+  v_clean_month := trim(coalesce(p_month, ''));
+  IF v_clean_month !~ '^\d{4}-\d{2}$' THEN
+    RAISE EXCEPTION 'Competência inválida (formato esperado: YYYY-MM).' USING ERRCODE = '22023';
+  END IF;
+
+  -- 5. Validação de valor do acerto
+  IF p_amount IS NULL OR p_amount <= 0 THEN
+    RAISE EXCEPTION 'Valor do acerto deve ser maior que zero.' USING ERRCODE = '22023';
+  END IF;
+
+  -- 6. Validação de pagador e recebedor
   IF p_payer_id = p_receiver_id THEN
-    RAISE EXCEPTION 'Pagador e recebedor não podem ser a mesma pessoa.' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'Pagador e recebedor devem ser membros diferentes.' USING ERRCODE = '22023';
   END IF;
 
-  IF p_amount <= 0 THEN
-    RAISE EXCEPTION 'O valor do acerto deve ser maior que zero.' USING ERRCODE = '22003';
+  IF NOT public.is_family_member(v_family_id, p_payer_id) THEN
+    RAISE EXCEPTION 'Pagador não é membro da família.' USING ERRCODE = '22023';
   END IF;
 
+  IF NOT public.is_family_member(v_family_id, p_receiver_id) THEN
+    RAISE EXCEPTION 'Recebedor não é membro da família.' USING ERRCODE = '22023';
+  END IF;
+
+  -- 7. Autorização: quem pode registrar? Payer, Receiver ou Admin da família
+  IF v_user_id != p_payer_id AND v_user_id != p_receiver_id AND NOT public.is_family_admin(v_family_id, v_user_id) THEN
+    RAISE EXCEPTION 'Apenas o pagador, recebedor ou administrador podem registrar este acerto.' USING ERRCODE = '42501';
+  END IF;
+
+  -- 8. Validação de método de pagamento
+  IF v_clean_method NOT IN ('pix', 'transfer', 'cash', 'other') THEN
+    RAISE EXCEPTION 'Método de pagamento inválido.' USING ERRCODE = '22023';
+  END IF;
+
+  -- 9. Inserção do acerto auditável na tabela family_settlements
   INSERT INTO public.family_settlements (
-    family_id, payer_id, receiver_id, amount,
-    payment_method, proof_url, notes, created_by
-  )
-  VALUES (
-    p_family_id, p_payer_id, p_receiver_id, p_amount,
-    p_payment_method, p_proof_url, trim(coalesce(p_notes, '')), v_user_id
-  )
-  RETURNING id INTO v_settlement_id;
-
-  INSERT INTO public.audit_events (user_id, entity_type, entity_id, action, payload)
-  VALUES (
-    v_user_id,
-    'family_settlements',
-    v_settlement_id::text,
-    'RECORD_FAMILY_SETTLEMENT',
-    jsonb_build_object(
-      'family_id', p_family_id,
-      'payer_id', p_payer_id,
-      'receiver_id', p_receiver_id,
-      'amount', p_amount,
-      'payment_method', p_payment_method
-    )
-  );
+    family_id,
+    month,
+    payer_id,
+    receiver_id,
+    amount,
+    settled_at,
+    payment_method,
+    notes,
+    snapshot,
+    created_by
+  ) VALUES (
+    v_family_id,
+    v_clean_month,
+    p_payer_id,
+    p_receiver_id,
+    p_amount,
+    now(),
+    v_clean_method,
+    nullif(trim(coalesce(p_notes, '')), ''),
+    coalesce(p_snapshot, '{}'::jsonb),
+    v_user_id
+  ) RETURNING id INTO v_settlement_id;
 
   RETURN v_settlement_id;
 END;
@@ -1302,7 +1429,7 @@ BEGIN
   END IF;
 
   IF NOT public.is_current_user_active() THEN
-    RAISE EXCEPTION 'Acesso negado: conta inativa, pendente de aprovação ou suspensa.' USING ERRCODE = '42501';
+    RAISE EXCEPTION 'Usuário inativo ou não autorizado.' USING ERRCODE = '42501';
   END IF;
 
   IF NOT public.can_current_user_write_module('transactions') THEN
@@ -1320,8 +1447,22 @@ BEGIN
   BEGIN
     v_token := encode(extensions.gen_random_bytes(24), 'hex');
   EXCEPTION WHEN others THEN
-    v_token := md5(random()::text || clock_timestamp()::text) || md5(v_caller_id::text || clock_timestamp()::text);
+    v_token := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
+    v_token := substr(v_token, 1, 48);
   END;
+
+  -- Resolve o nome do anfitrião
+  IF p_host_name IS NOT NULL AND trim(p_host_name) <> '' THEN
+    v_host_name := trim(p_host_name);
+  ELSE
+    SELECT nullif(trim(name), '') INTO v_host_name
+    FROM public.profiles
+    WHERE id = v_caller_id;
+
+    IF v_host_name IS NULL THEN
+      v_host_name := 'Organizador';
+    END IF;
+  END IF;
 
   INSERT INTO public.trips (
     host_user_id,
@@ -1331,73 +1472,53 @@ BEGIN
     end_date,
     currency,
     cover_photo_url,
-    share_token
-  )
-  VALUES (
+    public_token
+  ) VALUES (
     v_caller_id,
     trim(p_title),
-    nullif(trim(coalesce(p_destination, '')), ''),
+    nullif(trim(p_destination), ''),
     p_start_date,
     p_end_date,
     coalesce(nullif(trim(p_currency), ''), 'BRL'),
-    nullif(trim(coalesce(p_cover_photo_url, '')), ''),
+    nullif(trim(p_cover_photo_url), ''),
     v_token
-  )
-  RETURNING * INTO v_trip;
+  ) RETURNING * INTO v_trip;
 
-  IF p_host_name IS NOT NULL AND trim(p_host_name) <> '' THEN
-    v_host_name := trim(p_host_name);
-  ELSE
-    SELECT name INTO v_host_name FROM public.profiles WHERE id = v_caller_id;
-    IF v_host_name IS NULL OR trim(v_host_name) = '' THEN
-      v_host_name := 'Você (Anfitrião)';
-    END IF;
-  END IF;
-
+  -- Insere o host com seu nome real
   INSERT INTO public.trip_members (
     trip_id,
+    name,
     user_id,
-    display_name,
-    is_registered,
-    is_host,
-    role
-  )
-  VALUES (
+    is_host
+  ) VALUES (
     v_trip.id,
-    v_caller_id,
     v_host_name,
-    true,
-    true,
-    'host'
+    v_caller_id,
+    true
   );
 
+  -- Insere membros adicionais se informados
   IF p_initial_members IS NOT NULL AND jsonb_array_length(p_initial_members) > 0 THEN
-    FOR v_member IN
-      SELECT
-        trim(value->>'display_name') AS display_name,
-        nullif(trim(value->>'pix_key'), '') AS pix_key,
-        nullif(trim(value->>'user_id'), '')::uuid AS user_id
-      FROM jsonb_array_elements(p_initial_members)
+    FOR v_member IN SELECT * FROM jsonb_to_recordset(p_initial_members) AS x(
+      name text,
+      pix_key text,
+      pix_key_type text
+    )
     LOOP
-      IF v_member.display_name IS NOT NULL AND v_member.display_name <> '' THEN
+      IF v_member.name IS NOT NULL AND trim(v_member.name) <> '' AND trim(v_member.name) <> v_host_name AND trim(v_member.name) <> 'Você' THEN
         INSERT INTO public.trip_members (
           trip_id,
-          user_id,
-          display_name,
+          name,
           pix_key,
-          is_registered,
-          is_host,
-          role
-        )
-        VALUES (
+          pix_key_type,
+          is_host
+        ) VALUES (
           v_trip.id,
-          v_member.user_id,
-          v_member.display_name,
-          v_member.pix_key,
-          (v_member.user_id IS NOT NULL),
-          false,
-          'guest'
-        );
+          trim(v_member.name),
+          nullif(trim(v_member.pix_key), ''),
+          nullif(trim(v_member.pix_key_type), ''),
+          false
+        ) ON CONFLICT DO NOTHING;
       END IF;
     END LOOP;
   END IF;
@@ -1408,20 +1529,24 @@ $$;
 
 -- 6.7 public.delete_trip_expense_sync
 CREATE OR REPLACE FUNCTION public.delete_trip_expense_sync(
-  p_trip_expense_id uuid,
-  p_delete_personal_copy boolean DEFAULT false
+  p_expense_id uuid,
+  p_delete_personal boolean DEFAULT false
 )
-RETURNS boolean
+RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_uid uuid := auth.uid();
-  v_expense public.trip_expenses;
+  v_user_id uuid := auth.uid();
+  v_trip_id uuid;
+  v_personal_id uuid;
+  v_payer_user_id uuid;
+  v_creator_user_id uuid;
+  v_is_host boolean;
 BEGIN
-  IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'Não autenticado.' USING ERRCODE = '28000';
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'AUTH_REQUIRED: Usuário não autenticado.' USING ERRCODE = '28000';
   END IF;
 
   IF NOT public.is_current_user_active() THEN
@@ -1432,28 +1557,50 @@ BEGIN
     RAISE EXCEPTION 'Acesso negado: permissão de escrita em Transações requerida.' USING ERRCODE = '42501';
   END IF;
 
-  SELECT * INTO v_expense
-  FROM public.trip_expenses
-  WHERE id = p_trip_expense_id;
+  -- Busca despesa
+  SELECT 
+    te.trip_id, 
+    te.linked_personal_expense_id,
+    tm_payer.user_id,
+    tm_creator.user_id
+  INTO v_trip_id, v_personal_id, v_payer_user_id, v_creator_user_id
+  FROM public.trip_expenses te
+  LEFT JOIN public.trip_members tm_payer ON tm_payer.id = te.paid_by_member_id
+  LEFT JOIN public.trip_members tm_creator ON tm_creator.id = te.created_by_member_id
+  WHERE te.id = p_expense_id;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Despesa de viagem não encontrada.' USING ERRCODE = 'P0002';
+    RAISE EXCEPTION 'NOT_FOUND: Despesa de viagem não encontrada.' USING ERRCODE = 'P0002';
   END IF;
 
-  IF NOT (v_expense.payer_id = v_uid OR public.is_trip_host(v_expense.trip_id, v_uid)) THEN
-    RAISE EXCEPTION 'Permissão negada para excluir esta despesa.' USING ERRCODE = '42501';
+  v_is_host := public.is_trip_host(v_trip_id, v_user_id);
+
+  IF NOT v_is_host 
+     AND (v_payer_user_id IS NULL OR v_payer_user_id <> v_user_id)
+     AND (v_creator_user_id IS NULL OR v_creator_user_id <> v_user_id) THEN
+    RAISE EXCEPTION 'PERMISSION_DENIED: Sem permissão para excluir esta despesa.' USING ERRCODE = '42501';
   END IF;
 
-  IF p_delete_personal_copy AND v_expense.source_expense_id IS NOT NULL THEN
+  -- 1. Exclui a despesa pessoal se solicitado e se pertencer ao usuário
+  IF p_delete_personal AND v_personal_id IS NOT NULL THEN
     DELETE FROM public.expenses
-    WHERE id = v_expense.source_expense_id
-      AND user_id = v_uid;
+    WHERE id = v_personal_id AND user_id = v_user_id;
+  ELSIF v_personal_id IS NOT NULL THEN
+    -- Se não excluiu a despesa pessoal, desvincula o trip_id
+    UPDATE public.expenses
+    SET trip_id = null
+    WHERE id = v_personal_id;
   END IF;
 
+  -- 2. Exclui da viagem (cascata remove splits)
   DELETE FROM public.trip_expenses
-  WHERE id = p_trip_expense_id;
+  WHERE id = p_expense_id;
 
-  RETURN true;
+  RETURN jsonb_build_object(
+    'success', true,
+    'deleted_trip_expense_id', p_expense_id,
+    'deleted_personal_expense', p_delete_personal AND v_personal_id IS NOT NULL
+  );
 END;
 $$;
 
@@ -1462,17 +1609,16 @@ CREATE OR REPLACE FUNCTION public.record_trip_settlements(
   p_trip_id uuid,
   p_settlements jsonb
 )
-RETURNS integer
+RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_uid uuid := auth.uid();
-  v_count integer := 0;
-  v_item jsonb;
+  v_caller_id uuid := auth.uid();
+  v_trip record;
 BEGIN
-  IF v_uid IS NULL THEN
+  IF v_caller_id IS NULL THEN
     RAISE EXCEPTION 'Não autenticado.' USING ERRCODE = '28000';
   END IF;
 
@@ -1484,36 +1630,47 @@ BEGIN
     RAISE EXCEPTION 'Acesso negado: permissão de escrita em Transações requerida.' USING ERRCODE = '42501';
   END IF;
 
-  IF NOT (public.is_trip_host(p_trip_id, v_uid) OR public.is_trip_member(p_trip_id, v_uid)) THEN
-    RAISE EXCEPTION 'Apenas o anfitrião ou membros da viagem podem registrar liquidações.' USING ERRCODE = '42501';
+  SELECT * INTO v_trip
+  FROM public.trips
+  WHERE id = p_trip_id;
+
+  IF v_trip IS NULL THEN
+    RAISE EXCEPTION 'Viagem não encontrada.' USING ERRCODE = 'P0002';
   END IF;
 
-  IF jsonb_typeof(p_settlements) <> 'array' OR jsonb_array_length(p_settlements) = 0 THEN
-    RETURN 0;
+  IF v_trip.host_user_id <> v_caller_id AND NOT EXISTS (
+    SELECT 1 FROM public.trip_members tm
+    WHERE tm.trip_id = v_trip.id AND tm.user_id = v_caller_id
+  ) THEN
+    RAISE EXCEPTION 'Permissão negada para liquidar esta viagem.' USING ERRCODE = '42501';
   END IF;
 
-  FOR v_item IN SELECT * FROM jsonb_array_elements(p_settlements)
-  LOOP
-    INSERT INTO public.trip_settlements (
-      trip_id,
-      payer_member_id,
-      receiver_member_id,
-      amount,
-      is_settled,
-      settled_at
-    )
-    VALUES (
-      p_trip_id,
-      (v_item->>'payer_member_id')::uuid,
-      (v_item->>'receiver_member_id')::uuid,
-      (v_item->>'amount')::numeric,
-      coalesce((v_item->>'is_settled')::boolean, true),
-      CASE WHEN coalesce((v_item->>'is_settled')::boolean, true) THEN now() ELSE null END
-    );
-    v_count := v_count + 1;
-  END LOOP;
+  -- Limpar pendências anteriores se re-calculando
+  DELETE FROM public.trip_settlements
+  WHERE trip_id = p_trip_id AND status = 'pending';
 
-  RETURN v_count;
+  -- Gravar novos settlements
+  INSERT INTO public.trip_settlements (
+    trip_id,
+    from_member_id,
+    to_member_id,
+    amount_cents,
+    status
+  )
+  SELECT
+    p_trip_id,
+    x.from_member_id,
+    x.to_member_id,
+    x.amount_cents,
+    'pending'
+  FROM jsonb_to_recordset(p_settlements) AS x(from_member_id uuid, to_member_id uuid, amount_cents int);
+
+  -- Atualizar status da viagem para 'settling'
+  UPDATE public.trips
+  SET status = 'settling', updated_at = timezone('utc'::text, now())
+  WHERE id = p_trip_id AND status IN ('planning', 'active');
+
+  RETURN jsonb_build_object('success', true);
 END;
 $$;
 
@@ -1522,17 +1679,18 @@ CREATE OR REPLACE FUNCTION public.unlink_trip_member(
   p_trip_id uuid,
   p_member_id uuid
 )
-RETURNS boolean
+RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_uid uuid := auth.uid();
+  v_user_id uuid := auth.uid();
+  v_is_host boolean;
   v_target_user_id uuid;
 BEGIN
-  IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'Não autenticado.' USING ERRCODE = '28000';
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'AUTH_REQUIRED: Usuário não autenticado.' USING ERRCODE = '28000';
   END IF;
 
   IF NOT public.is_current_user_active() THEN
@@ -1543,27 +1701,39 @@ BEGIN
     RAISE EXCEPTION 'Acesso negado: permissão de escrita em Transações requerida.' USING ERRCODE = '42501';
   END IF;
 
+  -- Verifica se é o host ou o próprio membro
+  v_is_host := public.is_trip_host(p_trip_id, v_user_id);
+  
   SELECT user_id INTO v_target_user_id
   FROM public.trip_members
   WHERE id = p_member_id AND trip_id = p_trip_id;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Membro não encontrado na viagem informada.' USING ERRCODE = 'P0002';
+    RAISE EXCEPTION 'NOT_FOUND: Membro não encontrado na viagem.' USING ERRCODE = 'P0002';
   END IF;
 
-  IF NOT (v_target_user_id = v_uid OR public.is_trip_host(p_trip_id, v_uid)) THEN
-    RAISE EXCEPTION 'Apenas o próprio membro ou o anfitrião podem desvincular uma conta.' USING ERRCODE = '42501';
+  IF NOT v_is_host AND (v_target_user_id IS NULL OR v_target_user_id <> v_user_id) THEN
+    RAISE EXCEPTION 'PERMISSION_DENIED: Apenas o anfitrião ou o próprio usuário podem desvincular a conta.' USING ERRCODE = '42501';
   END IF;
 
   UPDATE public.trip_members
-  SET user_id = null,
-      is_registered = false,
-      updated_at = now()
-  WHERE id = p_member_id AND trip_id = p_trip_id;
+  SET user_id = null
+  WHERE id = p_member_id;
 
-  RETURN true;
+  RETURN jsonb_build_object('success', true, 'member_id', p_member_id);
 END;
 $$;
+
+-- Concessão explícita de execução para authenticated e service_role
+GRANT EXECUTE ON FUNCTION public.materialize_recurrences(jsonb) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.allocate_goal_deposit(uuid, bigint, text, uuid, text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.create_family(text, numeric, text, text, text, text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.invite_family_member(uuid, text, text, text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.record_family_settlement(text, uuid, uuid, numeric, uuid, text, text, jsonb) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.create_trip(text, text, date, date, text, text, jsonb, text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.delete_trip_expense_sync(uuid, boolean) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.record_trip_settlements(uuid, jsonb) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.unlink_trip_member(uuid, uuid) TO authenticated, service_role;
 
 
 -- ----------------------------------------------------------------------------
@@ -1878,5 +2048,30 @@ BEGIN
     AND created_at < (now() - INTERVAL '24 hours');
 
   RETURN v_updated_count;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.admin_toggle_global_feature(text, boolean) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_set_user_subscription(uuid, text, public.subscription_tier, public.subscription_status, timestamptz, timestamptz) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_set_user_module_permission(uuid, text, public.access_level, timestamptz) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_remove_user_module_permission(uuid, text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.reconcile_expired_subscriptions() TO authenticated, service_role;
+
+-- ----------------------------------------------------------------------------
+-- 9. AGENDAMENTO DEFENSIVO NO PG_CRON (SE DISPONÍVEL NO PROVEDOR)
+-- ----------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+    BEGIN
+      PERFORM cron.unschedule('reconcile-subscriptions-hourly');
+    EXCEPTION WHEN OTHERS THEN
+      -- ignora se não existia o job anterior
+      NULL;
+    END;
+    PERFORM cron.schedule('reconcile-subscriptions-hourly', '0 * * * *', 'SELECT public.reconcile_expired_subscriptions();');
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'pg_cron schedule skipped: %', SQLERRM;
 END;
 $$;
