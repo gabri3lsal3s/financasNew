@@ -20,6 +20,8 @@ export interface CancelSubscriptionWizardModalProps {
   step: "reason" | "confirm";
   reason: string;
   isWithinGuarantee: boolean;
+  isTrialScheduled?: boolean;
+  trialEndsFormatted?: string | null;
   currentPeriodFormatted: string | null;
   isPending: boolean;
   onOpenChange: (open: boolean) => void;
@@ -33,6 +35,8 @@ export function CancelSubscriptionWizardModal({
   step,
   reason,
   isWithinGuarantee,
+  isTrialScheduled = false,
+  trialEndsFormatted = null,
   currentPeriodFormatted,
   isPending,
   onOpenChange,
@@ -48,16 +52,20 @@ export function CancelSubscriptionWizardModal({
       title={
         step === "reason"
           ? "Pesquisa de Cancelamento"
-          : isWithinGuarantee
-            ? "Confirmar Cancelamento e Estorno Integral"
-            : "Confirmar Cancelamento da Renovação"
+          : isTrialScheduled
+            ? "Confirmar Cancelamento do Agendamento"
+            : isWithinGuarantee
+              ? "Confirmar Cancelamento e Estorno Integral"
+              : "Confirmar Cancelamento da Renovação"
       }
       description={
         step === "reason"
           ? "Lamentamos ver você partir. Nos ajude a melhorar contando o principal motivo do cancelamento:"
-          : isWithinGuarantee
-            ? "Você está dentro do prazo legal de 7 dias de garantia (CDC). Ao confirmar, o valor pago será estornado integralmente pelo Asaas no seu cartão ou conta Pix e seu acesso Pro será encerrado imediatamente."
-            : `Sua assinatura não será renovada ao final do ciclo. Você continuará com acesso Pro completo normalmente até ${currentPeriodFormatted || "o fim do período já pago"} e seus dados serão preservados.`
+          : isTrialScheduled
+            ? `Seu cartão ainda não foi cobrado. Ao confirmar, o agendamento de renovação futura será cancelado no Asaas e você continuará aproveitando seus dias restantes de teste gratuito até ${trialEndsFormatted || "o término do teste"} normalmente sem nenhum débito.`
+            : isWithinGuarantee
+              ? "Você está dentro do prazo legal de 7 dias de garantia (CDC). Ao confirmar, o valor pago será estornado integralmente pelo Asaas no seu cartão ou conta Pix e seu acesso Pro será encerrado imediatamente."
+              : `Sua assinatura não será renovada ao final do ciclo. Você continuará com acesso Pro completo normalmente até ${currentPeriodFormatted || "o fim do período já pago"} e seus dados serão preservados.`
       }
       footer={
         <ModalFooter borderless>
@@ -90,7 +98,7 @@ export function CancelSubscriptionWizardModal({
               </Button>
               <Button
                 type="button"
-                variant="destructive"
+                variant={isTrialScheduled ? "outline" : "destructive"}
                 sensoryIntent={false}
                 disabled={isPending}
                 onClick={onConfirm}
@@ -100,9 +108,11 @@ export function CancelSubscriptionWizardModal({
                 <span>
                   {isPending
                     ? "Processando..."
-                    : isWithinGuarantee
-                      ? "Confirmar e Estornar"
-                      : "Confirmar Cancelamento"}
+                    : isTrialScheduled
+                      ? "Cancelar Agendamento"
+                      : isWithinGuarantee
+                        ? "Confirmar e Estornar"
+                        : "Confirmar Cancelamento"}
                 </span>
               </Button>
             </>
@@ -121,14 +131,16 @@ export function CancelSubscriptionWizardModal({
         ) : (
           <div className="rounded-xl border border-critical/25 bg-critical/5 p-3.5 space-y-1.5">
             <div className="flex items-center gap-2">
-              <Badge variant="critical" size="xs">
-                {isWithinGuarantee ? "Estorno Integral Asaas" : "Acesso Mantido"}
+              <Badge variant={isTrialScheduled ? "warning" : "critical"} size="xs">
+                {isTrialScheduled ? "Nenhuma Cobrança Realizada" : isWithinGuarantee ? "Estorno Integral Asaas" : "Acesso Mantido"}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              {isWithinGuarantee
-                ? "O estorno é disparado diretamente na API do Asaas e seu acesso Pro volta a ser Somente Leitura."
-                : `Nenhuma nova cobrança será realizada no cartão. Seu acesso Pro segue ativo até ${currentPeriodFormatted || "o término do ciclo"}.`}
+              {isTrialScheduled
+                ? `O agendamento no Asaas é desfeito imediatamente e você continua no período de teste gratuito até ${trialEndsFormatted || "o encerramento"}.`
+                : isWithinGuarantee
+                  ? "O estorno é disparado diretamente na API do Asaas e seu acesso Pro volta a ser Somente Leitura."
+                  : `Nenhuma nova cobrança será realizada no cartão. Seu acesso Pro segue ativo até ${currentPeriodFormatted || "o término do ciclo"}.`}
             </p>
           </div>
         )}

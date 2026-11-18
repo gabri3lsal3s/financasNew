@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Clock, Copy, CreditCard, QrCode, Zap } from "lucide-react";
+import { ArrowLeft, Check, Clock, Copy, CreditCard, Loader2, QrCode, Zap } from "lucide-react";
 import { Button, MoneyText, QrCodeCanvas } from "@/components/ui";
 import type { PixCheckoutResult } from "@/state";
 
@@ -6,7 +6,9 @@ export interface PixQrWaitingPanelProps {
   pixResult: PixCheckoutResult;
   priceCents: number;
   copiedPix: boolean;
+  isVerifyingManual?: boolean;
   onCopyPix: () => void;
+  onManualVerify?: () => void;
   onSimulateConfirmation: () => void;
   onSwitchToCard: () => void;
   onBackToPlans: () => void;
@@ -17,7 +19,9 @@ export function PixQrWaitingPanel({
   pixResult,
   priceCents,
   copiedPix,
+  isVerifyingManual = false,
   onCopyPix,
+  onManualVerify,
   onSimulateConfirmation,
   onSwitchToCard,
   onBackToPlans,
@@ -83,6 +87,27 @@ export function PixQrWaitingPanel({
         <Clock className="size-3.5 shrink-0" aria-hidden="true" />
         <span>Aguardando pagamento... A ativação é automática.</span>
       </div>
+
+      {onManualVerify ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          sensoryIntent={false}
+          disabled={isVerifyingManual}
+          onClick={onManualVerify}
+          className="w-full gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        >
+          {isVerifyingManual ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              <span>Consultando compensação...</span>
+            </>
+          ) : (
+            <span>Já realizei o pagamento — Verificar agora</span>
+          )}
+        </Button>
+      ) : null}
 
       {import.meta.env.DEV ? (
         <Button

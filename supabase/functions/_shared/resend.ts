@@ -55,19 +55,21 @@ export async function sendTransactionalEmail(
     try {
       const { data: existingLog } = await supabaseAdmin
         .from("transactional_email_logs")
-        .select("id, status, provider_id")
+        .select("id, status, provider_message_id")
+        .eq("dedup_key", idempotencyKey)
         .eq("status", "sent")
-        .contains("metadata", { idempotency_key: idempotencyKey })
         .maybeSingle();
 
       if (existingLog) {
         console.log(`[resend] E-mail com idempotency_key '${idempotencyKey}' ja enviado. Ignorando reenvio.`);
-        return { success: true, skipped: true, id: existingLog.provider_id || undefined };
+        return { success: true, skipped: true, id: existingLog.provider_message_id || undefined };
       }
     } catch (err: unknown) {
       console.warn("[resend] Falha ao verificar idempotencia de e-mail:", err);
     }
   }
+
+  const effectiveDedupKey = idempotencyKey || `${options.template}_${cleanTo}_${Date.now()}`;
 
   // 2. Se a chave do Resend nao estiver configurada, registrar log de fallback seguro
   if (!apiKey) {
@@ -76,11 +78,12 @@ export async function sendTransactionalEmail(
       await supabaseAdmin.from("transactional_email_logs").insert({
         user_id: options.userId || null,
         recipient_email: cleanTo,
-        template_name: options.template,
-        subject: options.subject,
+        template_key: options.template,
+        dedup_key: effectiveDedupKey,
         status: "skipped_missing_key",
         metadata: {
           ...options.metadata,
+          subject: options.subject,
           idempotency_key: idempotencyKey,
           reason: "RESEND_API_KEY not configured",
         },
@@ -119,12 +122,13 @@ export async function sendTransactionalEmail(
       await supabaseAdmin.from("transactional_email_logs").insert({
         user_id: options.userId || null,
         recipient_email: cleanTo,
-        template_name: options.template,
-        subject: options.subject,
+        template_key: options.template,
+        dedup_key: effectiveDedupKey,
         status: "failed",
-        error_message: String(errorMsg),
         metadata: {
           ...options.metadata,
+          subject: options.subject,
+          error_message: String(errorMsg),
           idempotency_key: idempotencyKey,
         },
       });
@@ -137,12 +141,13 @@ export async function sendTransactionalEmail(
     await supabaseAdmin.from("transactional_email_logs").insert({
       user_id: options.userId || null,
       recipient_email: cleanTo,
-      template_name: options.template,
-      subject: options.subject,
+      template_key: options.template,
+      dedup_key: effectiveDedupKey,
       status: "sent",
-      provider_id: providerId,
+      provider_message_id: providerId,
       metadata: {
         ...options.metadata,
+        subject: options.subject,
         idempotency_key: idempotencyKey,
       },
     });
@@ -156,12 +161,13 @@ export async function sendTransactionalEmail(
       await supabaseAdmin.from("transactional_email_logs").insert({
         user_id: options.userId || null,
         recipient_email: cleanTo,
-        template_name: options.template,
-        subject: options.subject,
+        template_key: options.template,
+        dedup_key: effectiveDedupKey,
         status: "failed",
-        error_message: errorMsg,
         metadata: {
           ...options.metadata,
+          subject: options.subject,
+          error_message: errorMsg,
           idempotency_key: idempotencyKey,
         },
       });

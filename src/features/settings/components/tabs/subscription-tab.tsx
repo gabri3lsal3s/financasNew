@@ -128,6 +128,8 @@ export function SubscriptionTab() {
         step={cancelStep}
         reason={cancelReason}
         isWithinGuarantee={isWithinGuarantee}
+        isTrialScheduled={subscription.billingPhase === "trial_scheduled" || (Boolean(subscription.isTrial) && Boolean(subscription.hasCardRegistered) && !subscription.billingStartAt)}
+        trialEndsFormatted={subscription.trialEndsAt ? new Date(subscription.trialEndsAt).toLocaleDateString("pt-BR") : null}
         currentPeriodFormatted={currentPeriodFormatted}
         isPending={cancelMutation.isPending}
         onOpenChange={(open) => {

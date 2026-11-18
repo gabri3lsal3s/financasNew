@@ -1,3 +1,4 @@
+import { getSupabase } from "@/data/client";
 import { callRpc, unwrapRpc } from "./client";
 import type {
   AdminContactDetails,
@@ -326,6 +327,30 @@ export async function deleteOwnAccount(): Promise<void> {
  * Superadmin exclui definitivamente um usuário e todos os seus dados do sistema.
  */
 export async function adminDeleteUser(params: { targetUserId: string }): Promise<void> {
+  // Cancelamento preventivo no Asaas caso o usuário possua assinatura recorrente ativa
+  try {
+    const supabase = getSupabase();
+    const { data: sub } = await supabase
+      .from("user_subscriptions")
+      .select("asaas_subscription_id")
+      .eq("user_id", params.targetUserId)
+      .maybeSingle();
+
+    if (sub?.asaas_subscription_id) {
+      await supabase.functions.invoke("admin-super-action", {
+        body: {
+          action: "admin_update_subscription",
+          target_user_id: params.targetUserId,
+          cancel_asaas: true,
+          status: "canceled",
+          tier: "read_only",
+        },
+      });
+    }
+  } catch (err) {
+    console.warn("[adminDeleteUser] Aviso ao cancelar assinatura Asaas pré-deleção:", err);
+  }
+
   await unwrapRpc(
     callRpc("admin_delete_user", {
       target_user_id: params.targetUserId,

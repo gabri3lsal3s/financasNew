@@ -140,6 +140,14 @@ export function UserModulePermissionsMatrix({
           </span>
         </div>
 
+        {hasCoreOverrides && (
+          <div className="flex items-start gap-2 p-2.5 rounded-lg border border-warning/30 bg-warning/5 text-xs text-warning-strong">
+            <span className="text-[11px] leading-relaxed text-muted-foreground">
+              Este usuário possui permissões manuais ativas que sobrepõem as regras automáticas do plano SaaS. Use o botão <strong className="text-foreground">Restaurar Padrão do Plano</strong> caso deseje reconectar o comportamento modular ao status da assinatura.
+            </span>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2">
           {CORE_MODULES.map((mod) => {
             const override = modulePermissionsMap.get(mod.key);

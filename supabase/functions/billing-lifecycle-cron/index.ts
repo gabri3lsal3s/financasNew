@@ -1,5 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { getAsaasSubscription } from "../_shared/asaas.ts";
+import { getAsaasSubscription, postponeAsaasSubscriptionAfterPrepayment } from "../_shared/asaas.ts";
 import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
 import { sendTransactionalEmail } from "../_shared/resend.ts";
 import { renderTrialEndingReminderEmail } from "../_shared/email-templates.ts";
@@ -44,7 +44,7 @@ Deno.serve(async (req: Request) => {
     let resyncedCount = 0;
     const { data: pendingSubscriptions } = await supabaseAdmin
       .from("user_subscriptions")
-      .select("id, user_id, asaas_subscription_id, status, tier")
+      .select("id, user_id, asaas_subscription_id, current_period_end, status, tier")
       .eq("asaas_sync_status", "pending_resync")
       .not("asaas_subscription_id", "is", null)
       .limit(10);
@@ -52,9 +52,18 @@ Deno.serve(async (req: Request) => {
     for (const sub of pendingSubscriptions || []) {
       if (!sub.asaas_subscription_id) continue;
       try {
-        const asaasSub = await getAsaasSubscription(sub.asaas_subscription_id);
-        if (asaasSub) {
-          const isAsaasActive = asaasSub.status === "ACTIVE";
+        let postponeOk = true;
+        if (sub.current_period_end && new Date(sub.current_period_end) > new Date()) {
+          const postponeRes = await postponeAsaasSubscriptionAfterPrepayment(
+            sub.asaas_subscription_id,
+            sub.current_period_end,
+          );
+          postponeOk = postponeRes.success;
+        }
+
+        if (postponeOk) {
+          const asaasSub = await getAsaasSubscription(sub.asaas_subscription_id);
+          const isAsaasActive = asaasSub?.status === "ACTIVE";
           const newStatus = isAsaasActive ? "active" : "canceled";
           await supabaseAdmin
             .from("user_subscriptions")
@@ -65,6 +74,8 @@ Deno.serve(async (req: Request) => {
             })
             .eq("id", sub.id);
           resyncedCount++;
+        } else {
+          console.warn(`[billing-lifecycle-cron] Adiamento no Asaas pendente de retentativa para sub ${sub.id}`);
         }
       } catch (err: unknown) {
         console.warn(`[billing-lifecycle-cron] Falha ao sincronizar sub ${sub.id}:`, err);

@@ -11,6 +11,7 @@ export function useCheckoutPixFlow(plan: SubscriptionPlan, isPro: boolean) {
   const queryClient = useQueryClient();
   const [pixResult, setPixResult] = useState<PixCheckoutResult | null>(null);
   const [copiedPix, setCopiedPix] = useState(false);
+  const [isVerifyingManual, setIsVerifyingManual] = useState(false);
 
   useEffect(() => {
     if (!pixResult || isPro) return;
@@ -53,6 +54,22 @@ export function useCheckoutPixFlow(plan: SubscriptionPlan, isPro: boolean) {
     }
   };
 
+  const handleManualVerify = async () => {
+    setIsVerifyingManual(true);
+    triggerSensory("selection");
+    try {
+      await queryClient.invalidateQueries({ queryKey: USER_SUBSCRIPTION_KEY });
+      await queryClient.refetchQueries({ queryKey: USER_SUBSCRIPTION_KEY });
+      pushToast({
+        title: "Verificando liquidação",
+        description: "Consultando confirmação instantânea do PIX junto ao Banco Central...",
+        variant: "default",
+      });
+    } finally {
+      setTimeout(() => setIsVerifyingManual(false), 1200);
+    }
+  };
+
   const handleSimulatePixConfirmation = () => {
     pushToast({
       title: "Pagamento PIX confirmado!",
@@ -66,7 +83,9 @@ export function useCheckoutPixFlow(plan: SubscriptionPlan, isPro: boolean) {
     pixResult,
     setPixResult,
     copiedPix,
+    isVerifyingManual,
     handleCopyPix,
+    handleManualVerify,
     handleSimulatePixConfirmation,
   };
 }

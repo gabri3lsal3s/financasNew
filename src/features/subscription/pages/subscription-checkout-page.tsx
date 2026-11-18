@@ -167,9 +167,11 @@ export function SubscriptionCheckoutPage() {
                   pixResult={c.pixResult}
                   priceCents={c.planConfig.priceCents}
                   copiedPix={c.copiedPix}
+                  isVerifyingManual={c.isVerifyingManual}
                   onCopyPix={() => {
                     void c.handleCopyPix();
                   }}
+                  onManualVerify={c.handleManualVerify}
                   onSimulateConfirmation={c.handleSimulatePixConfirmation}
                   onSwitchToCard={() => {
                     c.setPixResult(null);

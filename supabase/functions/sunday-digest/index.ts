@@ -35,6 +35,7 @@ Deno.serve(async (req: Request) => {
     const { data: profiles, error: profErr } = await supabaseAdmin
       .from("profiles")
       .select("id, email, name")
+      .eq("status", "active")
       .limit(100);
 
     if (profErr) {
@@ -48,12 +49,12 @@ Deno.serve(async (req: Request) => {
     for (const profile of profiles || []) {
       const { data: weeklyExpenses } = await supabaseAdmin
         .from("expenses")
-        .select("amount_cents")
+        .select("value")
         .eq("user_id", profile.id)
         .gte("date", sevenDaysAgo);
 
       const totalWeeklySpentCents = (weeklyExpenses || []).reduce(
-        (acc: number, cur: { amount_cents: number }) => acc + (cur.amount_cents || 0),
+        (acc: number, cur: { value: number | string }) => acc + Math.round(Number(cur.value || 0) * 100),
         0,
       );
 
