@@ -84,9 +84,8 @@ export function TripExpensesTab({
               <Button
                 type="button"
                 size="default"
-                variant="solid"
                 onClick={onOpenAddExpense}
-                className="gap-1.5"
+                className="gap-1.5 shadow-xs"
               >
                 <Plus className="size-4" aria-hidden="true" />
                 <span>Adicionar Despesa</span>

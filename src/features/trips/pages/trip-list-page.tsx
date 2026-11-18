@@ -49,12 +49,11 @@ export function TripListPage() {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto">
               <Button
                 type="button"
-                variant="solid"
                 size="default"
                 loading={isTogglingTripMode}
                 disabled={isTogglingTripMode}
                 onClick={() => toggleTripMode(true)}
-                className="gap-2"
+                className="gap-2 shadow-xs"
               >
                 <Plus className="size-4" aria-hidden="true" />
                 <span>{isTogglingTripMode ? "Ativando..." : "Ativar Modo Viagem"}</span>
@@ -98,10 +97,9 @@ export function TripListPage() {
               action={
                 <Button
                   type="button"
-                  variant="solid"
                   size="default"
                   onClick={() => setIsCreateOpen(true)}
-                  className="gap-1.5"
+                  className="gap-1.5 shadow-xs"
                 >
                   <Plus className="size-4" aria-hidden="true" />
                   <span>Criar Primeira Viagem</span>
@@ -157,10 +155,9 @@ export function TripListPage() {
         actions={
           <Button
             type="button"
-            variant="solid"
             size="sm"
             onClick={() => setIsCreateOpen(true)}
-            className="gap-1.5 w-full sm:w-auto min-h-11 sm:min-h-8"
+            className="gap-1.5 w-full sm:w-auto min-h-11 sm:min-h-8 shadow-xs"
           >
             <Plus className="size-4" aria-hidden="true" />
             <span>Nova Viagem</span>

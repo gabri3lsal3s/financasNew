@@ -1,16 +1,16 @@
 {
   "version": "3.10.0",
-  "versionCode": 70,
-  "releaseDate": "2026-11-18T04:16:59Z",
+  "versionCode": 71,
+  "releaseDate": "2026-11-18T12:39:03Z",
   "minSupportedVersion": "3.10.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "f68204aa3ffa98da55d287158662ee95b10b334c15076c9b185f071650a2acca",
-  "fileSizeBytes": 12193651,
+  "sha256": "7f191dca46a56eb097b1e2fabd6689605cb85050a014d6404faad64da1677e73",
+  "fileSizeBytes": 12195131,
   "changelog": [
-    "Axir v3.10.0: Padronização Visual Integral, Conforto Ocular e Bíblia Visual Oficial",
-    "Novos tokens semânticos e paletas oficiais para Dark Mode padrão, OLED e Light Mode",
-    "Padronização canônica de 100% dos modais e drawers com rodapé fixo e ergonomia tátil",
-    "Modularização de páginas e componentes com eliminação de ruído e foco na legibilidade",
-    "Blindagem sensorial estrita (100% opt-out) e eliminação de duplos feedbacks hápticos"
+    "Axir v3.10.0 (Build 71): Polimento visual refinado, responsividade e estabilidade",
+    "Responsividade mobile aprimorada nos rodapés e barras de ações de detalhes de lançamento",
+    "Padronização canônica do gráfico donut de metas e classes de ativos com pill caps",
+    "Uniformização dos botões de ação e estados vazios no Modo Viagem",
+    "Estabilização do foco e rastreamento de holofote no tour guiado em modais e bottom sheets"
   ]
 }

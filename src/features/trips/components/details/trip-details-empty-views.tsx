@@ -31,12 +31,11 @@ export function TripDetailsModeInactiveView({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto">
             <Button
               type="button"
-              variant="solid"
               size="default"
               loading={isTogglingTripMode}
               disabled={isTogglingTripMode}
               onClick={onActivateMode}
-              className="gap-2"
+              className="gap-2 shadow-xs"
             >
               <Plus className="size-4" aria-hidden="true" />
               <span>{isTogglingTripMode ? "Ativando..." : "Ativar Modo Viagem"}</span>

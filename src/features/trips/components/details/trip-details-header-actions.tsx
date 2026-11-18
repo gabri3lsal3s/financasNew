@@ -43,9 +43,8 @@ export function TripDetailsHeaderActions({
       <Button
         type="button"
         size="sm"
-        variant="solid"
         onClick={onOpenAddExpense}
-        className="gap-1.5"
+        className="gap-1.5 shadow-xs"
       >
         <Plus className="size-3.5" aria-hidden="true" />
         <span>Nova Despesa</span>

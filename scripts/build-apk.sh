@@ -163,11 +163,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v3.10.0: Padronização Visual Integral, Conforto Ocular e Bíblia Visual Oficial",
-    "Novos tokens semânticos e paletas oficiais para Dark Mode padrão, OLED e Light Mode",
-    "Padronização canônica de 100% dos modais e drawers com rodapé fixo e ergonomia tátil",
-    "Modularização de páginas e componentes com eliminação de ruído e foco na legibilidade",
-    "Blindagem sensorial estrita (100% opt-out) e eliminação de duplos feedbacks hápticos"
+    "Axir v3.10.0 (Build 71): Polimento visual refinado, responsividade e estabilidade",
+    "Responsividade mobile aprimorada nos rodapés e barras de ações de detalhes de lançamento",
+    "Padronização canônica do gráfico donut de metas e classes de ativos com pill caps",
+    "Uniformização dos botões de ação e estados vazios no Modo Viagem",
+    "Estabilização do foco e rastreamento de holofote no tour guiado em modais e bottom sheets"
   ]
 }
 EOF

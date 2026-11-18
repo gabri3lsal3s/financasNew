@@ -193,8 +193,8 @@ describe("ModalFooter e Slot de Footer", () => {
     const footer = screen.getByText("Salvar").parentElement;
     expect(footer).toBeInTheDocument();
     expect(footer).toHaveClass("grid-cols-2", "sm:flex", "sm:flex-row", "sm:justify-end", "border-border/80", "w-full");
-    expect(footer?.className).toContain("[&_button]:w-full");
-    expect(footer?.className).toContain("[&_button]:sm:min-w-[110px]");
+    expect(footer?.className).toContain("[&>button]:w-full");
+    expect(footer?.className).toContain("[&>button]:sm:min-w-[110px]");
   });
 
   it("renderiza layout empilhado seguro (flex-col-reverse) quando houver 3 ou mais botões no rodapé", () => {

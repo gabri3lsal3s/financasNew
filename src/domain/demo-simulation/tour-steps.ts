@@ -174,6 +174,10 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       targetRoute:
         "/transacoes?novo=despesa&passo=3&racha=1&valor=48000&descricao=Churrasco+de+Confraternizacao",
       targetSelector: '[data-tour="wizard-split-toggle"]',
+      fallbackSelectors: [
+        '[data-tour="launch-context-selector"]',
+        '[data-tour="launch-wizard-dialog"]',
+      ],
       preferredPlacement: "top",
       spotlightPadding: 10,
       badgeLabel: "Passo 1 de 4",
@@ -741,6 +745,10 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       targetRoute:
         "/transacoes?novo=despesa&passo=3&racha=1&valor=48000&descricao=Churrasco+de+Confraternizacao",
       targetSelector: '[data-tour="wizard-split-toggle"]',
+      fallbackSelectors: [
+        '[data-tour="launch-context-selector"]',
+        '[data-tour="launch-wizard-dialog"]',
+      ],
       preferredPlacement: "top",
       spotlightPadding: 10,
       badgeLabel: "Passo 1 de 6",
