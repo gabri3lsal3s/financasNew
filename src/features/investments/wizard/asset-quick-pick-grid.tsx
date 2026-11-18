@@ -6,7 +6,6 @@ import { cleanTicker, type AporteSuggestionItem, type TickerSearchResult } from 
 import { getAssetPricingMode, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { cn } from "@/lib/utils";
 import { formatPercent } from "@/services/masks";
-import { triggerSensory } from "@/services/sensory";
 import type { PortfolioAsset } from "@/types";
 import { AssetSectorRadarList } from "./asset-sector-radar-list";
 import { ExistingAssetsFallbackList } from "./existing-assets-fallback-list";

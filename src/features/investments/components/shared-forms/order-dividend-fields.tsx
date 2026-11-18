@@ -3,8 +3,6 @@ import { MonthPicker } from "@/components/modules";
 import { numberToCents } from "@/domain/money";
 import { computeDividendTotalFromMode, type DividendCalculationMode } from "@/domain/portfolio";
 import type { DividendEntryMode } from "@/domain/portfolio/dividends";
-import { cn } from "@/lib/utils";
-import { triggerSensory } from "@/services/sensory";
 import type { AssetCurrency } from "@/types";
 
 export interface OrderDividendFieldsProps {
