@@ -98,7 +98,7 @@ export function PlanComparisonCard({
 
         {showUpgradeCta ? (
           <div className="mt-5">
-            <Button type="button" variant="solid" className="w-full gap-2" onClick={onUpgrade}>
+            <Button type="button" variant="default" className="w-full gap-2 shadow-xs" onClick={onUpgrade}>
               <Sparkles className="size-4" aria-hidden="true" />
               <span>Ativar Plano Pro</span>
             </Button>

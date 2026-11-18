@@ -1,5 +1,5 @@
 import { Award, Info, SlidersHorizontal } from "lucide-react";
-import { Badge, Button, MoneyText } from "@/components/ui";
+import { Badge, Button, MoneyText, SegmentedControl, Select } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import { ALLOCATION_STATUS_META, getScoreConvictionMeta } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
@@ -82,30 +82,31 @@ export function TargetAssetsCard({
 
       {/* Filtros de classe */}
       {classes.length > 1 ? (
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/80 pb-3">
-          <Button
-            type="button"
-            variant={assetClassFilter === null ? "solid" : "outline"}
-            size="sm"
-            sensoryIntent="selection"
-            onClick={() => onAssetClassFilterChange(null)}
-            className="h-7 px-2.5 text-xs"
-          >
-            Todas as classes
-          </Button>
-          {classes.map((cls) => (
-            <Button
-              key={cls}
-              type="button"
-              variant={assetClassFilter === cls ? "solid" : "outline"}
-              size="sm"
-              sensoryIntent="selection"
-              onClick={() => onAssetClassFilterChange(assetClassFilter === cls ? null : cls)}
-              className="h-7 px-2.5 text-xs"
-            >
-              {cls}
-            </Button>
-          ))}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 border-b border-border/80 pb-3">
+          <span className="text-xs font-medium text-muted-foreground shrink-0">Filtrar Classe:</span>
+          <div className="sm:hidden w-full">
+            <Select
+              value={assetClassFilter ?? "all"}
+              onValueChange={(val) => onAssetClassFilterChange(val === "all" ? null : val)}
+              options={[
+                { value: "all", label: "Todas as classes" },
+                ...classes.map((c) => ({ value: c, label: c })),
+              ]}
+              ariaLabel="Filtrar classe de ativo"
+              className="h-8 text-xs w-full"
+            />
+          </div>
+          <div className="hidden sm:block overflow-x-auto no-scrollbar">
+            <SegmentedControl
+              value={assetClassFilter ?? "all"}
+              onChange={(val) => onAssetClassFilterChange(val === "all" ? null : val)}
+              options={[
+                { value: "all", label: "Todas as classes" },
+                ...classes.map((c) => ({ value: c, label: c })),
+              ]}
+              ariaLabel="Filtrar classe de ativo"
+            />
+          </div>
         </div>
       ) : null}
 

@@ -1,4 +1,4 @@
-import { Checkbox, DatePicker, FormField, MoneyInput, MoneyText } from "@/components/ui";
+import { Checkbox, DatePicker, FormField, MoneyInput, MoneyText, SegmentedControl } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
 import { numberToCents } from "@/domain/money";
 import { computeDividendTotalFromMode, type DividendCalculationMode } from "@/domain/portfolio";
@@ -62,40 +62,16 @@ export function OrderDividendFields({
       {!isTotalValue && (
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold text-foreground">Formato do Valor</span>
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-surface-raised/80 p-1 border border-border/80">
-            <button
-              type="button"
-              aria-pressed={calcMode === "total"}
-              onClick={() => {
-                triggerSensory("selection");
-                onCalcModeChange("total");
-              }}
-              className={cn(
-                "min-h-9 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors cursor-pointer",
-                calcMode === "total"
-                  ? "bg-primary text-primary-foreground shadow-xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Valor Total Recebido
-            </button>
-            <button
-              type="button"
-              aria-pressed={calcMode === "per_share"}
-              onClick={() => {
-                triggerSensory("selection");
-                onCalcModeChange("per_share");
-              }}
-              className={cn(
-                "min-h-9 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors cursor-pointer",
-                calcMode === "per_share"
-                  ? "bg-primary text-primary-foreground shadow-xs font-semibold"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Valor por Cota
-            </button>
-          </div>
+          <SegmentedControl
+            value={calcMode}
+            onChange={onCalcModeChange}
+            options={[
+              { value: "total", label: "Valor Total Recebido" },
+              { value: "per_share", label: "Valor por Cota" },
+            ]}
+            ariaLabel="Formato do valor do provento"
+            fullWidth
+          />
         </div>
       )}
 
@@ -135,40 +111,16 @@ export function OrderDividendFields({
 
       <div className="flex flex-col gap-2">
         <span className="text-xs font-semibold text-foreground">Modo de Registro</span>
-        <div className="grid grid-cols-2 gap-1 rounded-xl bg-surface-raised/80 p-1 border border-border/80">
-          <button
-            type="button"
-            aria-pressed={entryMode === "daily"}
-            onClick={() => {
-              triggerSensory("selection");
-              onEntryModeChange("daily");
-            }}
-            className={cn(
-              "min-h-9 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors cursor-pointer",
-              entryMode === "daily"
-                ? "bg-primary text-primary-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Diário (Data Exata)
-          </button>
-          <button
-            type="button"
-            aria-pressed={entryMode === "monthly"}
-            onClick={() => {
-              triggerSensory("selection");
-              onEntryModeChange("monthly");
-            }}
-            className={cn(
-              "min-h-9 rounded-lg px-2 py-1.5 text-xs font-medium transition-colors cursor-pointer",
-              entryMode === "monthly"
-                ? "bg-primary text-primary-foreground shadow-xs font-semibold"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Extrato do Mês
-          </button>
-        </div>
+        <SegmentedControl
+          value={entryMode}
+          onChange={onEntryModeChange}
+          options={[
+            { value: "daily", label: "Diário (Data Exata)" },
+            { value: "monthly", label: "Extrato do Mês" },
+          ]}
+          ariaLabel="Modo de registro do provento"
+          fullWidth
+        />
 
         {entryMode === "daily" ? (
           <DatePicker value={date} onValueChange={onDateChange} />

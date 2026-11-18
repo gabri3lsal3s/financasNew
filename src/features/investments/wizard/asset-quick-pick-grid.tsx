@@ -1,5 +1,5 @@
 import { Check, Layers, Sparkles, Target } from "lucide-react";
-import { Badge, MoneyText } from "@/components/ui";
+import { Badge, MoneyText, SegmentedControl } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import { computeCashFitSummary, type SectorAporteGroup } from "@/domain/portfolio";
 import { cleanTicker, type AporteSuggestionItem, type TickerSearchResult } from "@/domain/portfolio/tickers-catalog";
@@ -71,36 +71,23 @@ export function AssetQuickPickGrid({
     <div className="flex flex-col gap-3">
       {topSectorGroups.length > 0 && (
         <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2.5">
-          <div className="flex items-center gap-1.5 bg-surface-raised p-1 rounded-xl border border-border/60">
-            <button
-              type="button"
-              onClick={() => {
-                triggerSensory("selection");
-                onViewModeChange("sector_radar");
-              }}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-                viewMode === "sector_radar" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Layers className="size-3.5 shrink-0" aria-hidden="true" />
-              <span>Radar de Setores</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                triggerSensory("selection");
-                onViewModeChange("direct_asset");
-              }}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-                viewMode === "direct_asset" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Target className="size-3.5 shrink-0" aria-hidden="true" />
-              <span>Por Ativo Direto</span>
-            </button>
-          </div>
+          <SegmentedControl
+            value={viewMode}
+            onChange={onViewModeChange}
+            options={[
+              {
+                value: "sector_radar",
+                label: "Radar de Setores",
+                icon: <Layers aria-hidden="true" />,
+              },
+              {
+                value: "direct_asset",
+                label: "Por Ativo Direto",
+                icon: <Target aria-hidden="true" />,
+              },
+            ]}
+            ariaLabel="Modo de seleção de ativos"
+          />
           <span className="text-[11px] text-muted-foreground hidden sm:inline">
             {viewMode === "sector_radar" ? "Top 3 setores prioritários" : "Top 3 ativos diretos"}
           </span>

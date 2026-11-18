@@ -1,8 +1,7 @@
 import { type Dispatch, type SetStateAction } from "react";
-import { Button } from "@/components/ui";
+import { SegmentedControl } from "@/components/ui";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthPicker, YearPicker } from "@/components/modules";
-import { cn } from "@/lib/utils";
 import type { PeriodMode } from "./financial-tab";
 
 export interface FinancialPeriodToolbarProps {
@@ -68,34 +67,13 @@ export function FinancialPeriodToolbar({
           Acompanhe o fluxo de caixa, DRE pessoal e taxas de poupança da competência.
         </p>
 
-        <div
-          role="group"
-          aria-label="Periodicidade do relatório"
-          className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto no-scrollbar scroll-smooth py-1 -my-1"
-        >
-          {PERIOD_OPTIONS.map((option) => {
-            const isActive = mode === option.value;
-            return (
-              <Button
-                key={option.value}
-                type="button"
-                size="sm"
-                variant={isActive ? "default" : "outline"}
-                onClick={() => setMode(option.value)}
-                className={cn(
-                  "shrink-0 gap-1.5 text-xs px-3.5 rounded-pill transition-all",
-                  isActive
-                    ? "shadow-xs font-semibold"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-                aria-pressed={isActive}
-                sensoryIntent="selection"
-              >
-                <span>{option.label}</span>
-              </Button>
-            );
-          })}
-        </div>
+        <SegmentedControl
+          value={mode}
+          onChange={(val) => setMode(val as PeriodMode)}
+          options={PERIOD_OPTIONS}
+          ariaLabel="Periodicidade do relatório"
+          className="self-start sm:self-auto"
+        />
       </div>
     </div>
   );

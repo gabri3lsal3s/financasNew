@@ -163,11 +163,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Erradicação de truncamentos e ergonomia tátil",
-    "Carrossel e alertas sem corte de texto no mobile com descrição fluida em até 2 linhas",
-    "Botão dispensar reposicionado no topo direito dos insights sem colidir com ações",
-    "Toolbar de posições de ativos com seletor compacto sem rolagem lateral no mobile",
-    "Padronização visual de botões de ação e estados vazios em Proventos e Modo Família"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Responsividade tablet e padronização SegmentedControl",
+    "Toolbar de posições adaptativa com Select em tablets e chips em desktops (zero quebra de linhas)",
+    "Novo primitivo SegmentedControl unificado para modos de agrupamento, distribuição e períodos",
+    "Harmonização de cards de insight e gráficos Donut com proporções balanceadas no tablet",
+    "Erradicação transversal de variantes solid em filtros, empty states e cards"
   ]
 }
 EOF

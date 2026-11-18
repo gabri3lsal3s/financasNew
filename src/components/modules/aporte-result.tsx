@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { CheckCheck, FolderTree, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { triggerSensory } from "@/services/sensory";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { AporteDesktopTable } from "./aporte-result/aporte-desktop-table";
 import { AporteMobileCardList } from "./aporte-result/aporte-mobile-card-list";
 import { AporteSkippedAssets } from "./aporte-result/aporte-skipped-assets";
@@ -65,12 +64,6 @@ export function AporteResult({
     sectorSummaries,
   });
 
-  const handleViewChange = (next: "list" | "tree") => {
-    if (viewMode === next) return;
-    triggerSensory("selection");
-    setViewMode(next);
-  };
-
   return (
     <section
       aria-label="Resultado da simulação de aporte"
@@ -103,32 +96,25 @@ export function AporteResult({
               <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
                 Detalhamento dos aportes
               </h3>
-              <div className="inline-flex rounded-lg border border-border/80 bg-muted/40 p-0.5 text-xs">
-                <button
-                  type="button"
-                  onClick={() => handleViewChange("list")}
-                  className={cn(
-                    "relative flex min-h-8 items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-sm:after:absolute max-sm:after:-inset-y-1.5 max-sm:after:inset-x-0",
-                    viewMode === "list" ? "bg-surface text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
-                  )}
-                  title="Visualização em lista por prioridade"
-                >
-                  <ListOrdered className="size-3.5" aria-hidden="true" />
-                  <span>Prioridade</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleViewChange("tree")}
-                  className={cn(
-                    "relative flex min-h-8 items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-sm:after:absolute max-sm:after:-inset-y-1.5 max-sm:after:inset-x-0",
-                    viewMode === "tree" ? "bg-surface text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
-                  )}
-                  title="Visualização hierárquica (Classe, Setor e Ativos)"
-                >
-                  <FolderTree className="size-3.5" aria-hidden="true" />
-                  <span>Árvore</span>
-                </button>
-              </div>
+              <SegmentedControl
+                value={viewMode}
+                onChange={setViewMode}
+                options={[
+                  {
+                    value: "list",
+                    label: "Prioridade",
+                    icon: <ListOrdered aria-hidden="true" />,
+                    title: "Visualização em lista por prioridade",
+                  },
+                  {
+                    value: "tree",
+                    label: "Árvore",
+                    icon: <FolderTree aria-hidden="true" />,
+                    title: "Visualização hierárquica (Classe, Setor e Ativos)",
+                  },
+                ]}
+                ariaLabel="Modo de visualização dos aportes"
+              />
             </div>
 
             {onExecuteAporte && (routes.some((r) => r.quantity > 0) || selectedExecutionItems.length > 0) ? (

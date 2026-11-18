@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { InteractiveTargetDonut, type TargetDonutItem } from "@/components/modules";
-import { Button } from "@/components/ui";
+import { Button, SegmentedControl, Select } from "@/components/ui";
 import { TargetDistributionActions } from "./target-distribution-actions";
 import { TargetDistributionProgress } from "./target-distribution-progress";
 import { TargetDistributionRow } from "./target-distribution-row";
@@ -107,21 +107,25 @@ export function TargetDistributionCard({
       </div>
 
       {classSelector ? (
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/60 pb-3">
-          <span className="text-xs font-medium text-muted-foreground mr-1">Classe:</span>
-          {classSelector.classes.map((cls) => (
-            <Button
-              key={cls}
-              type="button"
-              variant={classSelector.activeClass === cls ? "solid" : "outline"}
-              size="sm"
-              sensoryIntent="selection"
-              onClick={() => classSelector.onSelectClass(cls)}
-              className="h-7 px-2.5 text-xs"
-            >
-              {cls}
-            </Button>
-          ))}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 border-b border-border/80 pb-3">
+          <span className="text-xs font-medium text-muted-foreground shrink-0">Filtrar Classe:</span>
+          <div className="sm:hidden w-full">
+            <Select
+              value={classSelector.activeClass}
+              onValueChange={classSelector.onSelectClass}
+              options={classSelector.classes.map((c) => ({ value: c, label: c }))}
+              ariaLabel="Filtrar classe de ativo"
+              className="h-8 text-xs w-full"
+            />
+          </div>
+          <div className="hidden sm:block">
+            <SegmentedControl
+              value={classSelector.activeClass}
+              onChange={classSelector.onSelectClass}
+              options={classSelector.classes.map((c) => ({ value: c, label: c }))}
+              ariaLabel="Filtrar classe de ativo"
+            />
+          </div>
         </div>
       ) : null}
 

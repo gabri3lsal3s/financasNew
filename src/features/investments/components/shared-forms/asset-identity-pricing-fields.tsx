@@ -151,7 +151,7 @@ export function AssetIdentityPricingFields({
                   className={cn(
                     "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer",
                     sector === s
-                      ? "bg-primary text-primary-foreground font-semibold"
+                      ? "border border-primary/25 bg-primary/10 text-primary-strong font-semibold shadow-xs"
                       : "border border-border/80 bg-surface-raised/60 text-muted-foreground hover:text-foreground",
                   )}
                 >

@@ -111,10 +111,10 @@ export function ChangeEmailModal({
           <Button
             type="submit"
             form={CHANGE_EMAIL_FORM_ID}
-            variant="solid"
+            variant="default"
             sensoryIntent={false}
             disabled={isUpdating || !newEmail.trim() || !currentPassword.trim()}
-            className="gap-1.5"
+            className="gap-1.5 shadow-xs"
           >
             {isUpdating ? (
               <>

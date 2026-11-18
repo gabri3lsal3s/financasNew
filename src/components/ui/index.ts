@@ -132,3 +132,5 @@ export type {
 } from "./accordion";
 export { DonutRing } from "./donut-ring";
 export type { DonutRingProps } from "./donut-ring";
+export { SegmentedControl } from "./segmented-control";
+export type { SegmentedControlProps, SegmentedControlOption } from "./segmented-control";

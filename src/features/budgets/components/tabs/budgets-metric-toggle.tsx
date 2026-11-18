@@ -1,6 +1,5 @@
 import { HelpCircle, User, Users } from "lucide-react";
-import { Button, Popover, PopoverContent, PopoverTrigger } from "@/components/ui";
-import { cn } from "@/lib/utils";
+import { Button, Popover, PopoverContent, PopoverTrigger, SegmentedControl } from "@/components/ui";
 
 export interface BudgetsMetricToggleProps {
   spendMetric: "personal" | "household";
@@ -18,40 +17,26 @@ export function BudgetsMetricToggle({
         Acompanhe os gastos por categoria e defina o teto mensal.
       </p>
 
-      <div role="group" aria-label="Modo de cálculo dos gastos" className="flex items-center gap-1.5 self-start sm:self-auto">
-        <Button
-          type="button"
-          size="sm"
-          variant={spendMetric === "personal" ? "default" : "outline"}
-          onClick={() => onSpendMetricChange("personal")}
-          className={cn(
-            "shrink-0 gap-1.5",
-            spendMetric === "personal" ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
-          )}
-          aria-pressed={spendMetric === "personal"}
-          title="Considera apenas a sua participação pessoal efetiva nas compras (com rateios e reembolsos)"
-          sensoryIntent="selection"
-        >
-          <User className="size-3.5" aria-hidden="true" />
-          <span>Minha Parte</span>
-        </Button>
-
-        <Button
-          type="button"
-          size="sm"
-          variant={spendMetric === "household" ? "default" : "outline"}
-          onClick={() => onSpendMetricChange("household")}
-          className={cn(
-            "shrink-0 gap-1.5",
-            spendMetric === "household" ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
-          )}
-          aria-pressed={spendMetric === "household"}
-          title="Considera o valor bruto total nominal das compras (100% de cada despesa, sem rateios)"
-          sensoryIntent="selection"
-        >
-          <Users className="size-3.5" aria-hidden="true" />
-          <span>Total Bruto</span>
-        </Button>
+      <div className="flex items-center gap-1.5 self-start sm:self-auto">
+        <SegmentedControl
+          value={spendMetric}
+          onChange={onSpendMetricChange}
+          options={[
+            {
+              value: "personal",
+              label: "Minha Parte",
+              icon: <User aria-hidden="true" />,
+              title: "Considera apenas a sua participação pessoal efetiva nas compras (com rateios e reembolsos)",
+            },
+            {
+              value: "household",
+              label: "Total Bruto",
+              icon: <Users aria-hidden="true" />,
+              title: "Considera o valor bruto total nominal das compras (100% de cada despesa, sem rateios)",
+            },
+          ]}
+          ariaLabel="Modo de cálculo dos gastos"
+        />
 
         <Popover>
           <PopoverTrigger asChild>

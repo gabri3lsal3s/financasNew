@@ -1,6 +1,6 @@
 import { PieChart } from "lucide-react";
 import { CategoryDonut, type DonutSlice } from "@/components/modules";
-import { Button } from "@/components/ui";
+import { SegmentedControl } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 
 export type AllocationDisplayMode = "class" | "sector" | "asset";
@@ -35,26 +35,13 @@ export function PortfolioAllocationCard({
           <h2 className="text-sm font-semibold text-foreground">Distribuição Patrimonial</h2>
         </div>
 
-        <div
-          role="group"
-          aria-label="Modo de distribuição"
-          className="inline-flex items-center gap-1 rounded-xl border border-border/80 bg-muted/50 p-0.5 self-start sm:self-auto"
-        >
-          {MODE_OPTIONS.map((opt) => (
-            <Button
-              key={opt.value}
-              type="button"
-              variant={allocationMode === opt.value ? "solid" : "ghost"}
-              size="sm"
-              sensoryIntent="selection"
-              aria-pressed={allocationMode === opt.value}
-              onClick={() => onChangeMode(opt.value)}
-              className="h-7 px-2.5 text-xs"
-            >
-              {opt.label}
-            </Button>
-          ))}
-        </div>
+        <SegmentedControl
+          value={allocationMode}
+          onChange={onChangeMode}
+          options={MODE_OPTIONS}
+          ariaLabel="Modo de distribuição patrimonial"
+          className="self-start sm:self-auto"
+        />
       </div>
 
       <div className="flex flex-col items-center">

@@ -196,7 +196,7 @@ export function InteractiveTargetDonut({
       )}
       data-swipe-nav-ignore
     >
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full min-w-0">
+      <div className="flex flex-col md:flex-row items-center justify-center gap-6 w-full min-w-0">
         <div className="relative shrink-0 flex items-center justify-center py-2 self-center">
           <svg
             viewBox={`0 0 ${CATEGORY_DONUT_SIZE} ${CATEGORY_DONUT_SIZE}`}

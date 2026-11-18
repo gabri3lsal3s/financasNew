@@ -167,7 +167,7 @@ export function CurrentPlanHeroCard({ subscription, onUpgrade }: CurrentPlanHero
               </p>
             </div>
 
-            <Button type="button" variant="solid" className="w-full gap-2" onClick={onUpgrade}>
+            <Button type="button" variant="default" className="w-full gap-2 shadow-xs" onClick={onUpgrade}>
               <Sparkles className="size-4" aria-hidden="true" />
               <span>Assinar Plano Pro e manter tudo ativo</span>
             </Button>
@@ -212,7 +212,7 @@ export function CurrentPlanHeroCard({ subscription, onUpgrade }: CurrentPlanHero
               Seu período de teste encerrou. Todos os seus dados e relatórios estão preservados e você pode consultar seu histórico a qualquer momento. Para lançar novos registros e orçamentos, ative o Plano Pro.
             </p>
 
-            <Button type="button" variant="solid" className="w-full gap-2" onClick={onUpgrade}>
+            <Button type="button" variant="default" className="w-full gap-2 shadow-xs" onClick={onUpgrade}>
               <Sparkles className="size-4" aria-hidden="true" />
               <span>Ativar Plano Pro</span>
             </Button>

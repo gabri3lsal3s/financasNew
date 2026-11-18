@@ -2,6 +2,7 @@ import { Layers, PieChart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Select, type SelectOption } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -61,62 +62,46 @@ export function PositionToolbar({
 
       {/* Linha 2: Seletores de Agrupamento, Filtros de Classe e Encerradas */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 w-full min-w-0">
-        <div
-          role="group"
-          aria-label="Modo de agrupamento"
-          className="inline-flex items-center gap-0.5 sm:gap-1 rounded-lg border border-border/80 bg-muted/50 p-0.5 shadow-xs shrink-0 w-full sm:w-auto"
-        >
-          <Button
-            type="button"
-            variant={groupBy === "class" ? "default" : "ghost"}
-            size="sm"
-            sensoryIntent="selection"
-            onClick={() => onGroupByChange("class")}
-            aria-pressed={groupBy === "class"}
-            title="Agrupar posições por Classe de Ativo"
-            className={cn(
-              "flex-1 sm:flex-initial h-8 sm:h-7 px-2.5 gap-1.5 text-xs justify-center",
-              groupBy === "class" && "shadow-xs font-semibold",
-            )}
-          >
-            <Layers className="size-3.5 shrink-0" aria-hidden="true" />
-            <span>Por Classe</span>
-          </Button>
-          <Button
-            type="button"
-            variant={groupBy === "sector" ? "default" : "ghost"}
-            size="sm"
-            sensoryIntent="selection"
-            onClick={() => onGroupByChange("sector")}
-            aria-pressed={groupBy === "sector"}
-            title="Agrupar posições por Setor"
-            className={cn(
-              "flex-1 sm:flex-initial h-8 sm:h-7 px-2.5 gap-1.5 text-xs justify-center",
-              groupBy === "sector" && "shadow-xs font-semibold",
-            )}
-          >
-            <PieChart className="size-3.5 shrink-0" aria-hidden="true" />
-            <span>Por Setor</span>
-          </Button>
-        </div>
+        {/* Controle Segmentado Canônico de Agrupamento */}
+        <SegmentedControl
+          value={groupBy}
+          onChange={onGroupByChange}
+          options={[
+            {
+              value: "class",
+              label: "Por Classe",
+              icon: <Layers aria-hidden="true" />,
+              title: "Agrupar posições por Classe de Ativo",
+            },
+            {
+              value: "sector",
+              label: "Por Setor",
+              icon: <PieChart aria-hidden="true" />,
+              title: "Agrupar posições por Setor",
+            },
+          ]}
+          ariaLabel="Modo de agrupamento"
+          fullWidth
+          className="sm:w-auto"
+        />
 
-        {/* Filtros de classe e encerradas */}
+        {/* Filtros de classe e encerradas com adaptação simétrica para Tablet */}
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end min-w-0">
           {availableClasses.length > 1 ? (
             <>
-              {/* Mobile (< sm): Select dropdown nativo e limpo — zero rolagem lateral */}
-              <div className="sm:hidden flex-1 min-w-0">
+              {/* Mobile (< sm) & Tablet (sm a lg): Select dropdown compacto sem quebra de linhas */}
+              <div className="lg:hidden flex-1 sm:flex-initial sm:w-44 md:w-48 min-w-0">
                 <Select
                   value={selectedClass ?? "all"}
                   onValueChange={(val) => onSelectClass(val === "all" ? null : val)}
                   options={classOptions}
                   ariaLabel="Filtrar por classe de ativo"
-                  className="h-8 text-xs w-full min-w-0"
+                  className="h-8 sm:h-7 text-xs w-full min-w-0"
                 />
               </div>
 
-              {/* Desktop (sm+): Chips rápidos */}
-              <div className="hidden sm:flex items-center gap-1.5 flex-wrap">
+              {/* Desktop (lg+): Chips rápidos completos com espaço garantido */}
+              <div className="hidden lg:flex items-center gap-1.5 flex-wrap">
                 <Button
                   type="button"
                   variant={selectedClass === null ? "default" : "outline"}

@@ -109,10 +109,10 @@ export function UpdateCardModal({ open, onOpenChange }: UpdateCardModalProps) {
           <Button
             type="submit"
             form={UPDATE_CARD_FORM_ID}
-            variant="solid"
+            variant="default"
             sensoryIntent={false}
             disabled={updateCardMutation.isPending}
-            className="gap-2"
+            className="gap-2 shadow-xs"
           >
             {updateCardMutation.isPending ? (
               <>

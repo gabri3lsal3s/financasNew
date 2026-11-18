@@ -58,10 +58,10 @@ export function DividendsHistoryPanel({
           action={
             <Button
               type="button"
-              variant="solid"
+              variant="default"
               size="sm"
               onClick={onOpenNewDividend}
-              className="gap-1.5 text-xs font-semibold"
+              className="gap-1.5 text-xs font-semibold shadow-xs"
             >
               <Plus className="size-3.5" aria-hidden="true" />
               <span>Registrar primeiro provento</span>

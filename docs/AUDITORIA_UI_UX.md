@@ -621,4 +621,27 @@ Em complemento às homologações em aparelhos físicos, foram refinados 4 aspec
    - **Causa Raiz:** Botões de ação em estados vazios utilizando `variant="solid"`, gerando blocos brancos estourados em Dark/OLED mode.
    - **Correção Canônica:** Substituídos pela variante canônica padrão (`variant="default"` com `shadow-xs`), restabelecendo elegância e conforto ocular em todos os modos de tema.
 
+---
+
+## 11. APÊNDICE: RESPONSIVIDADE EM TABLETS, SELETOR ADAPTATIVO E PRIMITIVO SEGMENTEDCONTROL (BUILD 74)
+
+Em resposta à homologação em telas intermediárias (tablets ~640px a 1024px — `sm` a `lg`), foram solucionados os pontos de quebra de layout e padronizados os componentes estruturais do app:
+
+1. **Resolução de Quebra de Layout no Tablet em `PositionToolbar` (`position-toolbar.tsx`):**
+   - **Causa Raiz:** No breakpoint `sm:` (640px), o componente forçava alinhamento horizontal único de 3 blocos (`[Por Classe | Por Setor]` + 5 chips de classe + `[Ver encerradas (2)]`), exigindo ~840px de largura. Em telas de tablet (768px em retrato), as pílulas sofriam `flex-wrap` assimétrico, derrubando a última classe para uma linha isolada embaixo enquanto o botão de encerradas permanecia no topo direito.
+   - **Correção Canônica:** Implementado layout adaptativo em 3 estágios:
+     - **Mobile (< 640px):** Segmentado full-width + `<Select>` dropdown para classes + botão de encerradas embaixo.
+     - **Tablet (640px a 1023px — `sm` e `md`):** Segmentado à esquerda + `<Select>` compacto (`w-44` a `w-48`) à direita integrado ao botão de encerradas (largura necessária ~520px vs ~768px disponíveis — zero quebra e zero scroll lateral).
+     - **Desktop (≥ 1024px — `lg`):** Chips rápidos inline completos em linha única garantida.
+2. **Criação do Primitivo Canônico `SegmentedControl` (`src/components/ui/segmented-control.tsx`):**
+   - **Causa Raiz:** Diversos seletores segmentados no app (`PositionToolbar`, `PortfolioAllocationCard`, `AporteResult`, `FinancialPeriodToolbar`, `TargetDistributionCard` e `TargetAssetsCard`) utilizavam marcações HTML manuais, `<button>` crus ou classes CSS duplicadas, incluindo resquícios de `variant="solid"`.
+   - **Correção Canônica:** Primitivo `SegmentedControl<T>` com casca unificada `rounded-xl border border-border/80 bg-muted/50 p-0.5 shadow-xs`, botões `variant="default"` ativos com `shadow-xs font-semibold` e `variant="ghost"` inativos, suporte a ícones, atalhos de acessibilidade (`role="group"`, `aria-pressed`) e feedback tátil `triggerSensory("selection")` automático na alternância.
+3. **Erradicação Ampla de `variant="solid"` em Filtros, Cards e Configurações (`target-distribution-card.tsx`, `target-assets-card.tsx`, `plan-comparison-card.tsx`, `current-plan-hero-card.tsx`, `change-email-modal.tsx`, `update-card-modal.tsx`, `dividends-history-panel.tsx`):**
+   - **Causa Raiz:** Resquícios de `variant="solid"` em chips de filtro e botões de ação secundária gerando blocos brancos de alto contraste no tema escuro.
+   - **Correção Canônica:** Substituídos por `SegmentedControl` ou `variant="default"` com `shadow-xs`, reservando `variant="solid"` exclusivamente para botões de submissão primária de autenticação e checkout.
+4. **Harmonização de Alertas e Rosca Donut no Tablet (`insight-slide.tsx`, `interactive-target-donut.tsx`):**
+   - **`InsightSlide`:** O botão dispensar (`X`) permanece ancorado no canto superior direito no mobile e no tablet (`absolute top-3 right-3 lg:static`) com zona de exclusão `pr-8 lg:pr-0`, liberando toda a largura horizontal da linha para a descrição e os botões de ação.
+   - **`InteractiveTargetDonut`:** A transição para rosca + legenda lado a lado foi ajustada para `md:flex-row`, mantendo centralização vertical equilibrada em larguras menores e impedindo que a legenda de classes seja espremida lateralmente pela rosca no tablet.
+
+
 

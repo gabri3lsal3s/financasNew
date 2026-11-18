@@ -20,10 +20,10 @@ export interface FilterChipsProps extends Omit<HTMLAttributes<HTMLDivElement>, "
 }
 
 const toneActiveStyles: Record<FilterChipTone, string> = {
-  default: "bg-primary text-primary-foreground border-primary shadow-xs",
-  positive: "bg-positive text-positive-foreground border-positive shadow-xs",
+  default: "bg-primary/10 text-primary-strong border-primary/30 shadow-xs",
+  positive: "bg-positive/10 text-positive-strong border-positive/30 shadow-xs",
   warning: "bg-warning/15 text-warning-strong border-warning/30 shadow-xs",
-  critical: "bg-critical text-critical-foreground border-critical shadow-xs",
+  critical: "bg-critical/10 text-critical-strong border-critical/30 shadow-xs",
 };
 
 const toneInactiveStyles: Record<FilterChipTone, string> = {
