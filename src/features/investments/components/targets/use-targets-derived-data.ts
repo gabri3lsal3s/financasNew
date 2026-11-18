@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import {
   normalizeGroupTargets,
   validateClassSectorTargetsSum,
@@ -72,8 +72,10 @@ export function useTargetsDerivedData<TRow extends TargetDraftPositionRow>({
     [assets],
   );
 
-  const classTargetOf = (className: string) =>
-    resolveDraftClassTarget(className, classDraft, storedClassTargets);
+  const classTargetOf = useCallback(
+    (className: string) => resolveDraftClassTarget(className, classDraft, storedClassTargets),
+    [classDraft, storedClassTargets],
+  );
 
   const activeSectorClass =
     selectedSectorClass && classes.includes(selectedSectorClass)
@@ -102,8 +104,11 @@ export function useTargetsDerivedData<TRow extends TargetDraftPositionRow>({
     return scoped;
   }, [storedSectorMaps, activeSectorClass, availableSectors]);
 
-  const sectorTargetOf = (sectorName: string, className = activeSectorClass) =>
-    resolveDraftSectorTarget(sectorName, className, sectorDraft, storedSectorMaps);
+  const sectorTargetOf = useCallback(
+    (sectorName: string, className = activeSectorClass) =>
+      resolveDraftSectorTarget(sectorName, className, sectorDraft, storedSectorMaps),
+    [activeSectorClass, sectorDraft, storedSectorMaps],
+  );
 
   // Metas de classes normalizadas automaticamente para somar rigorosamente 100%
   const normalizedClassTargets = useMemo(() => {
@@ -112,7 +117,7 @@ export function useTargetsDerivedData<TRow extends TargetDraftPositionRow>({
       target: classTargetOf(c),
     }));
     return new Map(normalizeGroupTargets(rawList).map((item) => [item.name, item.normalizedTarget]));
-  }, [classes, classDraft, storedClassTargets, classTargetOf]);
+  }, [classes, classTargetOf]);
 
   const effectiveClassTargetOf = (className: string) =>
     normalizedClassTargets.get(className) ?? classTargetOf(className);
@@ -124,7 +129,7 @@ export function useTargetsDerivedData<TRow extends TargetDraftPositionRow>({
       target: sectorTargetOf(s, activeSectorClass),
     }));
     return new Map(normalizeGroupTargets(rawList).map((item) => [item.name, item.normalizedTarget]));
-  }, [availableSectors, activeSectorClass, sectorDraft, activeClassStoredSectors, sectorTargetOf]);
+  }, [availableSectors, activeSectorClass, sectorTargetOf]);
 
   const effectiveSectorTargetOf = (sectorName: string, className = activeSectorClass) => {
     if (className === activeSectorClass) {

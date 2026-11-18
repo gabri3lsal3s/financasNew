@@ -109,7 +109,7 @@ export function SettingsPage() {
   );
 
   return (
-    <div className="flex w-full max-w-4xl flex-col gap-5 sm:gap-6">
+    <div className="flex w-full flex-col gap-5 sm:gap-6 min-w-0">
       <PageHeader
         title="Configurações"
         description="Gestão de conta, personalização visual, notificações, privacidade e plano"

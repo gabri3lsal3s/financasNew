@@ -22,7 +22,7 @@ export function RemindersPage() {
   const s = useRemindersPageState();
 
   return (
-    <div className="flex flex-col gap-6 max-w-4xl min-w-0">
+    <div className="flex flex-col gap-5 sm:gap-6 min-w-0">
       <PageHeader
         title="Lembretes e Avisos"
         description="Faturas, compromissos e avisos inteligentes que precisam da sua atenção"

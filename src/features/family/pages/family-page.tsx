@@ -100,7 +100,7 @@ export function FamilyPage() {
   const isFamilyFull = activeMembersCount >= 6;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-5 sm:gap-6 min-w-0">
       <PageHeader
         title="Modo Família"
         description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
@@ -115,20 +115,21 @@ export function FamilyPage() {
           </div>
         }
         actions={
-          <div className="flex items-center gap-2">
+          <>
             {isOwner && !isFamilyFull && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="gap-1.5"
+                sensoryIntent="selection"
+                className="gap-1.5 max-sm:min-h-11"
                 onClick={() => {
                   setSettingsTab("members");
                   setIsSettingsOpen(true);
                 }}
                 aria-label="Convidar novo membro da família"
               >
-                <UserPlus className="size-3.5" aria-hidden="true" />
+                <UserPlus className="size-3.5 text-muted-foreground" aria-hidden="true" />
                 <span>Convidar</span>
               </Button>
             )}
@@ -136,17 +137,20 @@ export function FamilyPage() {
             <Button
               type="button"
               variant="outline"
-              size="icon"
-              className="size-10 sm:size-9 shrink-0"
+              size="sm"
+              sensoryIntent="selection"
+              className="gap-1.5 max-sm:min-h-11"
               onClick={() => {
                 setSettingsTab("general");
                 setIsSettingsOpen(true);
               }}
               aria-label="Abrir configurações da família"
+              title="Abrir configurações da família"
             >
-              <Settings className="size-4" aria-hidden="true" />
+              <Settings className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <span>Ajustes</span>
             </Button>
-          </div>
+          </>
         }
       />
 
