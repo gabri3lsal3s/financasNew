@@ -2,12 +2,24 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { EditTripExpenseDialog } from "./edit-trip-expense-dialog";
-import type { TripMember, TripExpense } from "@/types/trips";
+import type { Category } from "@/types";
+import type { TripExpense, TripMember } from "@/types/trips";
 
 const updateTripExpenseMock = vi.fn();
-const updateExpenseRepoMock = vi.fn();
-const getExpenseMock = vi.fn();
-const listCreditCardsMock = vi.fn();
+const syncLinkedPersonalExpenseMock = vi.fn();
+
+vi.mock("@/state", () => ({
+  useCategories: () => ({
+    data: [
+      { id: "cat-1", name: "Alimentação", type: "expense" },
+      { id: "cat-2", name: "Passeios Náuticos", type: "expense" },
+    ],
+  }),
+  useSyncLinkedPersonalExpenseMutation: () => ({
+    mutateAsync: syncLinkedPersonalExpenseMock,
+    isPending: false,
+  }),
+}));
 
 vi.mock("@/state/queries/use-trips", () => ({
   useUpdateTripExpenseMutation: () => ({
@@ -16,17 +28,44 @@ vi.mock("@/state/queries/use-trips", () => ({
   }),
 }));
 
+vi.mock("@/features/budgets/components", () => ({
+  CategoryFormDialog: ({
+    open,
+    onOpenChange,
+    onSuccess,
+  }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSuccess?: (category: Category) => void;
+  }) => {
+    if (!open) return null;
+    return (
+      <div data-testid="mock-edit-category-form-dialog">
+        <button
+          type="button"
+          onClick={() => {
+            onSuccess?.({
+              id: "cat-new",
+              user_id: "user-123",
+              name: "Mergulho",
+              icon: "waves",
+              color: "#0284C7",
+              type: "expense",
+              is_reserved: false,
+              is_active: true,
+            });
+            onOpenChange(false);
+          }}
+        >
+          Criar Categoria Edição
+        </button>
+      </div>
+    );
+  },
+}));
+
 vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),
-}));
-
-vi.mock("@/data/repositories/expenses", () => ({
-  updateExpense: (...args: unknown[]) => updateExpenseRepoMock(...args),
-  getExpense: (...args: unknown[]) => getExpenseMock(...args),
-}));
-
-vi.mock("@/data/repositories/credit-cards", () => ({
-  listCreditCards: (...args: unknown[]) => listCreditCardsMock(...args),
 }));
 
 const mockMembers: TripMember[] = [
@@ -58,7 +97,7 @@ const mockExpense: TripExpense = {
   id: "exp-1",
   trip_id: "trip-1",
   paid_by_member_id: "m-1",
-  amount_cents: 20000, // R$ 200,00
+  amount_cents: 20000,
   description: "Jantar na Praia",
   category_name: "Alimentação",
   expense_date: "2026-02-05",
@@ -74,22 +113,20 @@ const mockExpense: TripExpense = {
   ],
 };
 
-describe("EditTripExpenseDialog — sincronização de peso no extrato pessoal", () => {
+describe("EditTripExpenseDialog — sincronização de peso no extrato pessoal e categorias personalizadas", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    updateExpenseRepoMock.mockResolvedValue({});
+    syncLinkedPersonalExpenseMock.mockResolvedValue({});
     updateTripExpenseMock.mockResolvedValue({});
-    getExpenseMock.mockResolvedValue(null);
-    listCreditCardsMock.mockResolvedValue([]);
   });
 
-  it("renderiza os campos com os dados existentes da despesa", () => {
+  it("renderiza os campos com os dados existentes da despesa e preserva categorias personalizadas", () => {
     render(
       <EditTripExpenseDialog
         open={true}
         onOpenChange={vi.fn()}
         tripId="trip-1"
-        expense={mockExpense}
+        expense={{ ...mockExpense, category_name: "Categoria Customizada do Grupo" }}
         members={mockMembers}
       />,
     );
@@ -97,9 +134,12 @@ describe("EditTripExpenseDialog — sincronização de peso no extrato pessoal",
     expect(screen.getByDisplayValue("Jantar na Praia")).toBeInTheDocument();
     expect(screen.getByDisplayValue("R$ 200,00")).toBeInTheDocument();
     expect(screen.getByText("Editar Despesa da Viagem")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Categoria da despesa" })).toHaveTextContent(
+      "Categoria Customizada do Grupo",
+    );
   });
 
-  it("ao salvar edição, atualiza a despesa pessoal vinculada com o novo report_weight sincronizado", async () => {
+  it("ao salvar edição, sincroniza a despesa pessoal vinculada via mutation de @/state", async () => {
     const onOpenChange = vi.fn();
     render(
       <EditTripExpenseDialog
@@ -114,21 +154,19 @@ describe("EditTripExpenseDialog — sincronização de peso no extrato pessoal",
     const descInput = screen.getByPlaceholderText("Ex.: Almoço no centro, Uber, Combustível");
     fireEvent.change(descInput, { target: { value: "Jantar Especial na Praia" } });
 
-    // Submete o formulário
     const form = document.getElementById("edit-trip-expense-form");
     expect(form).toBeInTheDocument();
     fireEvent.submit(form!);
 
     await waitFor(() => {
-      expect(updateExpenseRepoMock).toHaveBeenCalledWith(
-        "pers-exp-99",
-        expect.objectContaining({
-          value: 200,
-          description: "Jantar Especial na Praia",
-          date: "2026-02-05",
-          report_weight: 0.5, // 10000 / 20000 = 0.5
-        }),
-      );
+      expect(syncLinkedPersonalExpenseMock).toHaveBeenCalledWith({
+        personalExpenseId: "pers-exp-99",
+        amountCents: 20000,
+        description: "Jantar Especial na Praia",
+        expenseDate: "2026-02-05",
+        reportWeight: 0.5,
+        tripId: "trip-1",
+      });
     });
 
     expect(updateTripExpenseMock).toHaveBeenCalledWith(
@@ -141,18 +179,8 @@ describe("EditTripExpenseDialog — sincronização de peso no extrato pessoal",
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("ao alterar a data de despesa vinculada paga no cartão de crédito, recalcula bill_competence pelo fechamento do cartão", async () => {
+  it("ao alterar a data de despesa vinculada, envia nova expenseDate para a mutation de sincronização", async () => {
     const user = userEvent.setup();
-    getExpenseMock.mockResolvedValueOnce({
-      id: "pers-exp-99",
-      payment_method: "credit_card",
-      card_id: "card-visa",
-      bill_competence: "2026-02",
-    });
-    listCreditCardsMock.mockResolvedValueOnce([
-      { id: "card-visa", closing_day: 10 },
-    ]);
-
     const onOpenChange = vi.fn();
     render(
       <EditTripExpenseDialog
@@ -164,11 +192,9 @@ describe("EditTripExpenseDialog — sincronização de peso no extrato pessoal",
       />,
     );
 
-    // Abre o calendário clicando no botão da data atual ("05/02/2026")
-    const dateButton = screen.getByRole("button", { name: "05/02/2026" });
+    const dateButton = screen.getByRole("button", { name: /Data do Gasto/i });
     await user.click(dateButton);
 
-    // Seleciona o dia 15 no calendário (após dia 10 de fechamento -> fatura 2026-03)
     const calendar = await screen.findByRole("grid");
     const day15 = within(calendar)
       .getAllByRole("gridcell")
@@ -180,12 +206,11 @@ describe("EditTripExpenseDialog — sincronização de peso no extrato pessoal",
     fireEvent.submit(form!);
 
     await waitFor(() => {
-      expect(updateExpenseRepoMock).toHaveBeenCalledWith(
-        "pers-exp-99",
+      expect(syncLinkedPersonalExpenseMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          value: 200,
-          date: "2026-02-15",
-          bill_competence: "2026-03",
+          personalExpenseId: "pers-exp-99",
+          expenseDate: "2026-02-15",
+          tripId: "trip-1",
         }),
       );
     });

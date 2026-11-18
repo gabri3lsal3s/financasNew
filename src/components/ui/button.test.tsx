@@ -65,4 +65,20 @@ describe("Button", () => {
 
     spy.mockRestore();
   });
+
+  it("suporta variante solid (M3), variante portfolio com text-portfolio-strong e loading em size=icon com texto sr-only", () => {
+    const { rerender } = render(<Button variant="solid">Confirmar</Button>);
+    const solidBtn = screen.getByRole("button", { name: "Confirmar" });
+    expect(solidBtn.className).toContain("bg-primary-strong");
+    expect(solidBtn.className).toContain("text-primary-foreground");
+
+    rerender(<Button variant="portfolio">Aportar</Button>);
+    expect(screen.getByRole("button", { name: "Aportar" }).className).toContain("text-portfolio-strong");
+
+    rerender(<Button size="icon" loading aria-label="Carregando ação" />);
+    const iconBtn = screen.getByRole("button");
+    expect(iconBtn.className).toContain("size-10");
+    const srText = screen.getByText("Carregando...");
+    expect(srText).toHaveClass("sr-only");
+  });
 });

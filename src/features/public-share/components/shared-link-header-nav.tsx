@@ -1,9 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowLeft, ExternalLink, Smartphone } from "lucide-react";
-import { Button, Badge } from "@/components/ui";
+import { Badge, Button, buttonVariants } from "@/components/ui";
 import { BrandLogo, ThemeToggle } from "@/components/layout";
-import { isNativePlatform } from "@/services/native/platform";
+import { buildAppDeepLink } from "@/services/native/app-links";
+import { isMobileDevice, isNativePlatform } from "@/services/native/platform";
 import { isStandaloneMode } from "@/app/pwa";
 import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -17,14 +18,21 @@ export interface SharedLinkHeaderNavProps {
   maxWidth?: "md" | "2xl" | "3xl" | "5xl" | "full";
 }
 
+const MAX_WIDTH_CLASS: Record<NonNullable<SharedLinkHeaderNavProps["maxWidth"]>, string> = {
+  md: "max-w-md",
+  "2xl": "max-w-2xl",
+  "3xl": "max-w-3xl",
+  "5xl": "max-w-5xl",
+  full: "w-full",
+};
+
 /**
- * SharedLinkHeaderNav — Cabeçalho inteligente, padronizado e responsivo para páginas públicas.
+ * SharedLinkHeaderNav — Cabeçalho institucional e responsivo para páginas públicas.
  *
- * Características:
- * 1. Barra de navegação sticky com backdrop-blur suave e distribuição desktop limpa;
- * 2. Alternador de temas integrado (Claro / Escuro / OLED / Sistema) para todos os visitantes;
- * 3. Deep link nativo ergonômico no mobile ("Abrir no App") e atalho ao painel quando logado;
- * 4. Botão "Voltar ao Início" quando instalado como PWA ou App Nativo.
+ * - Sticky header com `z-sticky` e `.pt-safe`;
+ * - Alternador de tema integrado;
+ * - Botão "Abrir no App" (scheme `axir://`) exibido exclusivamente em dispositivos móveis web;
+ * - Atalho direto ao painel quando o usuário já está autenticado.
  */
 export function SharedLinkHeaderNav({
   badgeLabel = "Compartilhamento",
@@ -34,46 +42,46 @@ export function SharedLinkHeaderNav({
   const navigate = useNavigate();
   const { session } = useAuth();
   const [appOpenAttempted, setAppOpenAttempted] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isStandalone = isStandaloneMode();
   const isNative = isNativePlatform();
   const isAppShell = isStandalone || isNative;
+  const showOpenInApp = !isAppShell && Boolean(targetPath) && isMobileDevice();
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   const handleOpenInApp = useCallback(() => {
     setAppOpenAttempted(true);
-    const cleanPath = targetPath.replace(/^\/+/, "");
-    const nativeUri = `com.guiafinanceiro.app://${cleanPath}`;
+    window.location.href = buildAppDeepLink(targetPath);
 
-    window.location.href = nativeUri;
-
-    setTimeout(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
       setAppOpenAttempted(false);
     }, 1500);
   }, [targetPath]);
 
-  const maxWidthClass =
-    maxWidth === "md"
-      ? "max-w-md"
-      : maxWidth === "2xl"
-      ? "max-w-2xl"
-      : maxWidth === "3xl"
-      ? "max-w-3xl"
-      : maxWidth === "full"
-      ? "w-full"
-      : "max-w-5xl";
-
   return (
-    <header className="sticky top-0 z-30 w-full bg-surface/90 backdrop-blur-md border-b border-border/80 transition-colors pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]">
-      <div className={cn("mx-auto px-4 sm:px-6 md:px-8 h-14 flex items-center justify-between gap-3", maxWidthClass)}>
-        {/* Lado Esquerdo: Logo / Voltar + Badge */}
+    <header className="sticky top-0 z-sticky w-full bg-surface/90 backdrop-blur-md border-b border-border/80 transition-colors pt-safe">
+      <div
+        className={cn(
+          "mx-auto px-4 sm:px-6 md:px-8 h-14 flex items-center justify-between gap-2 sm:gap-3 min-w-0",
+          MAX_WIDTH_CLASS[maxWidth],
+        )}
+      >
         <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
           {isAppShell ? (
             <Button
               type="button"
               variant="ghost"
               size="xs"
+              sensoryIntent="selection"
               onClick={() => navigate("/")}
-              className="gap-1.5 h-8 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+              className="gap-1.5 h-8 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
               aria-label="Voltar para a página inicial"
             >
               <ArrowLeft className="size-3.5" aria-hidden="true" />
@@ -83,14 +91,14 @@ export function SharedLinkHeaderNav({
           ) : (
             <Link
               to={session?.user ? "/" : "/apresentacao"}
-              className="inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-lg shrink-0"
+              className="inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-lg shrink-0 min-h-11 sm:min-h-0"
               aria-label="Ir para a página inicial do Axir"
             >
               <BrandLogo
                 showWordmark
                 showSubtitle={false}
                 markClassName="size-7"
-                wordmarkClassName="text-sm font-bold tracking-tight hidden xs:inline"
+                wordmarkClassName="text-sm font-bold tracking-tight hidden sm:inline"
               />
             </Link>
           )}
@@ -98,22 +106,21 @@ export function SharedLinkHeaderNav({
           <Badge
             variant="muted"
             size="xs"
-            className="shrink-0 font-medium truncate max-w-[110px] xs:max-w-[160px] sm:max-w-none text-[11px]"
+            className="shrink-0 font-medium truncate max-w-[140px] sm:max-w-none text-[11px]"
             title={badgeLabel}
           >
             {badgeLabel}
           </Badge>
         </div>
 
-        {/* Lado Direito: Ações Contextuais + ThemeToggle */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {!isAppShell && targetPath ? (
+          {showOpenInApp ? (
             <Button
               type="button"
               variant="outline"
               size="xs"
               onClick={handleOpenInApp}
-              className="gap-1.5 h-8 px-2 sm:px-2.5 text-xs text-primary-strong border-primary/30 hover:bg-primary/5 cursor-pointer shrink-0"
+              className="gap-1.5 h-8 px-2 sm:px-2.5 text-xs text-primary-strong border-primary/30 hover:bg-primary/5 shrink-0"
               title="Abrir no aplicativo instalado no dispositivo"
               aria-label="Abrir no aplicativo instalado no dispositivo"
             >
@@ -124,23 +131,22 @@ export function SharedLinkHeaderNav({
           ) : null}
 
           {!isAppShell && session?.user ? (
-            <Link to="/" className="shrink-0">
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                className="gap-1.5 h-8 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
-                title="Acessar Meu Painel"
-                aria-label="Acessar Meu Painel"
-              >
-                <span className="hidden sm:inline">Meu Painel</span>
-                <span className="sm:hidden text-xs">Painel</span>
-                <ExternalLink className="size-3.5" aria-hidden="true" />
-              </Button>
+            <Link
+              to="/"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "xs" }),
+                "gap-1.5 h-8 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0",
+              )}
+              title="Acessar Meu Painel"
+              aria-label="Acessar Meu Painel"
+            >
+              <span className="hidden sm:inline">Meu Painel</span>
+              <span className="sm:hidden text-xs">Painel</span>
+              <ExternalLink className="size-3.5" aria-hidden="true" />
             </Link>
           ) : null}
 
-          <ThemeToggle className="size-8 shrink-0 rounded-lg border border-border/60 hover:bg-surface-hover text-muted-foreground hover:text-foreground" />
+          <ThemeToggle className="rounded-lg border border-border/80 hover:bg-surface-hover" />
         </div>
       </div>
     </header>

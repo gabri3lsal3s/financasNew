@@ -282,7 +282,7 @@ describe("SubscriptionCheckoutPage Component", () => {
     // Preenche campos de conta
     const nameInput = screen.getByPlaceholderText("Seu nome");
     const emailInput = screen.getByPlaceholderText("seu.email@exemplo.com");
-    const passwordInput = screen.getByPlaceholderText("Mínimo 6 caracteres");
+    const passwordInput = screen.getByPlaceholderText("Mínimo de 8 caracteres");
 
     await user.type(nameInput, "Novo Usuário");
     await user.type(emailInput, "novo@exemplo.com");
@@ -310,7 +310,7 @@ describe("SubscriptionCheckoutPage Component", () => {
     // Verifica que a tela atualizou para a confirmação de e-mail
     expect(await screen.findByRole("heading", { name: "Confirme seu endereço de e-mail" })).toBeInTheDocument();
     expect(screen.getByText("novo@exemplo.com")).toBeInTheDocument();
-    expect(screen.getByText(/Cartão com final •••• 4242/i)).toBeInTheDocument();
+    expect(screen.getByText(/Cartão com final \*{4} 4242/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Ir para o login/i })).toBeInTheDocument();
   });
 

@@ -1,7 +1,18 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render as originalRender, screen, fireEvent, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ManageSplitDialog } from "./manage-split-dialog";
 import type { Debt, PublicShare } from "@/types";
+
+function render(ui: React.ReactElement, options?: Parameters<typeof originalRender>[1]) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  return originalRender(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+    options,
+  );
+}
 
 const mockUpdatePublicShare = vi.fn();
 const mockDeletePublicShare = vi.fn();
@@ -421,6 +432,31 @@ describe("ManageSplitDialog", () => {
               is_settled: true,
             }),
           ]),
+        }),
+      );
+    });
+  });
+
+  it("revoga o share (isRevoked: true) ao finalizar o racha e ativa calculadora apenas no Outro Valor", async () => {
+    mockUpdatePublicShare.mockResolvedValueOnce({ ...baseShare, is_revoked: true });
+    render(<ManageSplitDialog open={true} onOpenChange={vi.fn()} share={baseShare} linkedDebt={baseDebt} />);
+
+    // Calculadora oculta na visão inicial
+    expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
+
+    // Abre "Outro Valor" -> ativa calculadora
+    fireEvent.click(screen.getAllByRole("button", { name: /outro valor/i })[0]!);
+    expect(screen.getByRole("button", { name: "Abrir calculadora" })).toBeInTheDocument();
+
+    // Finaliza racha no diálogo elevado e preserva isRevoked: true
+    fireEvent.click(screen.getByRole("button", { name: /finalizar racha/i }));
+    fireEvent.click(screen.getByRole("button", { name: /finalizar e quitar cobrança/i }));
+
+    await waitFor(() => {
+      expect(mockUpdatePublicShare).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "share-123",
+          isRevoked: true,
         }),
       );
     });

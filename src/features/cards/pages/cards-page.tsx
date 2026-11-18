@@ -1,268 +1,42 @@
-import { lazy, Suspense, useState, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router";
-import { CheckCircle2, Clock, FileUp, Plus, Sparkles, Undo2, WalletCards } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, EmptyState, ErrorState, MoneyText, Skeleton, SkeletonKpi, SkeletonList } from "@/components/ui";
+import { FileUp, Plus } from "lucide-react";
+import { Alert, Badge, Button, ErrorState } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
-
-
-import {
-  CardInvoicePrintView,
-  CardSubscriptionRadar,
-  CreditCardWallet,
-  InvoiceStatusBadge,
-  KpiCard,
-  KpiGrid,
-  MonthPicker,
-  ReadOnlyBanner,
-  ReportDocumentLayout,
-  TransactionRow,
-  UpgradeDialog,
-} from "@/components/modules";
-import { buildCheckoutUrl } from "@/domain/subscription/plans";
-import {
-  autoSelectBillMonth,
-  buildCompetenceSummaries,
-  invoiceDueDate,
-  invoiceStatus,
-  partitionInvoiceExpenses,
-  shiftMonth,
-  sortCardsByPreference,
-} from "@/domain/cards";
-import { resolveBillCompetence } from "@/domain/competence";
-import { currentMonth, monthLabel } from "@/lib/date";
-import { serializeCardInvoiceCsv, type ExportCardInvoiceRow } from "@/domain/export";
-import { todayISO } from "@/domain/debts";
-import { detectRecurrences, type ExpenseLike } from "@/domain/insights/recurrences";
-import { calculateCardSubscriptionImpact } from "@/domain/insights/card-radar";
-import { partitionFeedback } from "@/domain/insights/feedback";
-import type { CardInvoiceExpenseRow, CardInvoicePaymentRow } from "@/components/modules";
+import { CreditCardWallet, ReadOnlyBanner, TransactionRow } from "@/components/modules";
 import { numberToCents } from "@/domain/money";
-import { downloadCsv } from "@/services/export-actions";
+import { formatDateBR, monthLabel } from "@/lib/date";
+import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
-import { triggerSensory } from "@/services/sensory";
-import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
-import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import {
-  startDemo,
-  useAllCardExpenses,
-  useAllCardPayments,
-  useCardExpenses,
-  useCardPayments,
-  useCategories,
-  useCreditCards,
-  useDeleteCardPayment,
-  useFeedback,
-  usePermission,
-  useSetFeedback,
-  useUpdateCard,
-  useUserPreferences,
-} from "@/state";
-import {
-  BatchInvoicePaymentDialog,
-  CardFormDialog,
   CardInvoiceExpensesFeed,
   CardInvoicePaymentsFeed,
-  PaymentDialog,
+  CardsEmptyState,
+  CardsPageModals,
+  CardsPageSkeleton,
+  InvoiceCompetenceToolbar,
+  InvoiceKpisSection,
 } from "@/features/cards/components";
-import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
-import type { CardPayment, CreditCard, Expense } from "@/types";
-
-const StatementImportDialog = lazy(() =>
-  import("@/features/cards/components/statement-import-dialog").then((m) => ({
-    default: m.StatementImportDialog,
-  })),
-);
-import { cn } from "@/lib/utils";
-
-type PaymentMode = "payment" | "refund" | null;
+import { useCardsPageState } from "@/features/cards/hooks/use-cards-page-state";
+import type { Expense } from "@/types";
 
 /**
  * Página de Gestão Completa de Cartões de Crédito:
- * - Carteira / Carrossel 3D com modelo de cartão que agrega todas as informações
- *   (limite total/disponível, fatura atual, melhor dia de compra, fechamento e vencimento)
- * - Edição, Desativação/Arquivamento e Exclusão segura de cartões
+ * - Carteira / Carrossel 3D com modelo interativo
  * - Fatura por competência (previsto, pago, saldo aberto, estornos)
- * - Extrato discriminado de despesas e pagamentos/estornos (com opção de exclusão)
+ * - Extrato discriminado de despesas e pagamentos/estornos
  */
 export function CardsPage() {
-  const cardsQuery = useCreditCards();
-  const updateCardMutation = useUpdateCard();
-  const deleteCardPaymentMutation = useDeleteCardPayment();
-  const allCardExpensesQuery = useAllCardExpenses();
-  const allCardPaymentsQuery = useAllCardPayments();
-  const feedbackQuery = useFeedback();
-  const setFeedbackMutation = useSetFeedback();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const state = useCardsPageState();
 
-  const userPreferencesQuery = useUserPreferences();
-  const primaryCardId = userPreferencesQuery.data?.custom_settings?.primaryCardId ?? null;
-  const cardOrder = useMemo(
-    () => userPreferencesQuery.data?.custom_settings?.cardOrder ?? [],
-    [userPreferencesQuery.data?.custom_settings?.cardOrder],
-  );
-
-  const rawCards = useMemo(() => cardsQuery.data ?? [], [cardsQuery.data]);
-  const cards = useMemo(
-    () => sortCardsByPreference(rawCards, { primaryCardId, cardOrder }),
-    [rawCards, primaryCardId, cardOrder],
-  );
-
-  // Destaque do cartão via ?q= (um-shot — limpo pelo hook); seleção via
-  // ?card= (derivada) ou escolha manual (limpa o param). Sem setState em effect.
-  const { isHighlighted } = useHighlightTarget("q");
-  const paramCard = searchParams.get("card");
-  const paramMonth = searchParams.get("month");
-
-  // Derivação pura: prioriza o cartão principal (se configurado) ou fatura em aberto com vencimento mais próximo
-  const prioritySelection = useMemo(() => {
-    if (cards.length === 0) return { cardId: null, month: null };
-
-    // Se o usuário tiver um cartão principal configurado e ativo, prioriza esse cartão para exibição consistente
-    if (primaryCardId) {
-      const activePrimary = cards.find((c) => c.id === primaryCardId && c.is_active);
-      if (activePrimary) {
-        return { cardId: activePrimary.id, month: null };
-      }
-    }
-
-    const allExpenses = allCardExpensesQuery.data ?? [];
-    const allPayments = allCardPaymentsQuery.data ?? [];
-
-    interface OpenBillCandidate {
-      cardId: string;
-      month: string;
-      dueDate: string;
-      saldoCents: number;
-    }
-
-    const openBills: OpenBillCandidate[] = [];
-
-    for (const card of cards.filter((c) => c.is_active)) {
-      const cExpenses = allExpenses.filter((e) => e.card_id === card.id);
-      const cPayments = allPayments.filter((p) => p.card_id === card.id);
-      const cSummaries = buildCompetenceSummaries(cExpenses, cPayments);
-
-      for (const s of cSummaries) {
-        if (s.saldoCents > 0) {
-          const dueDate = invoiceDueDate(s.month, card.due_day);
-          openBills.push({
-            cardId: card.id,
-            month: s.month,
-            dueDate,
-            saldoCents: s.saldoCents,
-          });
-        }
-      }
-    }
-
-    if (openBills.length > 0) {
-      // Ordena por vencimento: prioridade máxima para a fatura mais urgente / vencida em aberto
-      openBills.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-      return { cardId: openBills[0]!.cardId, month: openBills[0]!.month };
-    }
-
-    // Se nenhum cartão tiver saldo em aberto, busca o cartão cujo vencimento no mês atual é o mais próximo
-    const currentM = currentMonth();
-    const sortedByDue = [...cards.filter((c) => c.is_active)].sort((a, b) => {
-      const dueA = invoiceDueDate(currentM, a.due_day);
-      const dueB = invoiceDueDate(currentM, b.due_day);
-      return dueA.localeCompare(dueB);
-    });
-
-    const fallbackCard = sortedByDue[0] ?? cards[0];
-    return { cardId: fallbackCard?.id ?? null, month: null };
-  }, [cards, primaryCardId, allCardExpensesQuery.data, allCardPaymentsQuery.data]);
-
-  const [pickedCardId, setPickedCardId] = useState<string | null>(null);
-  const selectedCardId = paramCard ?? pickedCardId ?? prioritySelection.cardId;
-
-  const [month, setMonth] = useState<string | null>(null);
-  // Deep link direto (F12): ?novo=cartao abre o formulário de criação.
-  const { open: formOpen, setOpen: setFormOpen, fromUrl } = useCreateDeepLink("cartao");
-  const [editingCard, setEditingCard] = useState<CreditCard | null>(null);
-  const [deletingPayment, setDeletingPayment] = useState<CardPayment | null>(null);
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>(null);
-  const [printOpen, setPrintOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [batchPaymentOpen, setBatchPaymentOpen] = useState(false);
-
-  const selectedCard =
-    cards.find((card) => card.id === selectedCardId) ?? (selectedCardId ? undefined : cards[0]) ?? null;
-
-  const cardId = selectedCard?.id ?? null;
-  const expensesQuery = useCardExpenses(cardId);
-  const paymentsQuery = useCardPayments(cardId);
-  const categoriesQuery = useCategories("expense");
-
-  const loading = cardsQuery.isLoading || (cardId !== null && (expensesQuery.isLoading || paymentsQuery.isLoading));
-  const error = cardsQuery.error ?? expensesQuery.error ?? paymentsQuery.error ?? categoriesQuery.error ?? (actionError ? new Error(actionError) : null);
-
-  const categoryById = useMemo(
-    () => new Map((categoriesQuery.data ?? []).map((c) => [c.id, c])),
-    [categoriesQuery.data],
-  );
-
-  // Derivação pura (domain/cards): resumos por competência + seleção automática de mês.
-  const summaries = useMemo(
-    () => buildCompetenceSummaries(expensesQuery.data ?? [], paymentsQuery.data ?? []),
-    [expensesQuery.data, paymentsQuery.data],
-  );
-  const effectiveMonth =
-    paramMonth ??
-    month ??
-    (pickedCardId === null && !paramCard && prioritySelection.month ? prioritySelection.month : null) ??
-    (summaries.length > 0 ? autoSelectBillMonth(summaries) : currentMonth());
-  const summary = summaries.find((s) => s.month === effectiveMonth);
-
-  // Faturas anteriores à competência atual que permanecem com saldo em aberto
-  const previousUnpaidSummaries = useMemo(() => {
-    return summaries.filter((s) => s.month < effectiveMonth && s.saldoCents > 0);
-  }, [summaries, effectiveMonth]);
-
-  const currMonth = currentMonth();
-  const prevMonth = shiftMonth(currMonth, -1);
-  const nextMonth = shiftMonth(currMonth, 1);
-
-  const getMonthStatus = (m: string) => {
-    if (!selectedCard) return "closed";
-    const sum = summaries.find((s) => s.month === m);
-    return invoiceStatus(m, selectedCard.due_day, sum?.saldoCents ?? 0);
-  };
-
-  const handleSelectQuickMonth = (m: string) => {
-    triggerSensory("selection");
-    setMonth(m);
-  };
-
-  const competenceExpenses = useMemo(
-    () => (expensesQuery.data ?? []).filter((e) => e.bill_competence === effectiveMonth),
-    [expensesQuery.data, effectiveMonth],
-  );
-  const competencePayments = useMemo(
-    () => (paymentsQuery.data ?? []).filter((p) => p.competence_month === effectiveMonth),
-    [paymentsQuery.data, effectiveMonth],
-  );
-
-  // Fatura separada: parceladas (herdadas de meses anteriores) × à vista
-  // (gastos do mês), cada grupo ordenado por data — motor puro em domain/cards.
-  const { installments, regular } = useMemo(
-    () => partitionInvoiceExpenses(competenceExpenses),
-    [competenceExpenses],
-  );
-
-  /** Linha de despesa da fatura (mesmo layout para os dois grupos). */
   const renderInvoiceRow = (expense: Expense) => {
-    const category = categoryById.get(expense.category_id);
+    const category = state.categoryById.get(expense.category_id);
     const title = expense.description || category?.name || "Despesa";
     return (
       <TransactionRow
         key={expense.id}
         title={title}
-        date={expense.date}
+        date={formatDateBR(expense.date)}
         subtitle={category?.name && expense.description ? category.name : undefined}
-        amountCents={Math.round(expense.value * 100)}
+        amountCents={numberToCents(expense.value)}
         reportWeight={expense.report_weight}
         kind="expense"
         icon={category?.icon}
@@ -274,221 +48,9 @@ export function CardsPage() {
             </Badge>
           ) : undefined
         }
-        onClick={() => setSelectedExpense(expense)}
+        onClick={() => state.setSelectedExpense(expense)}
       />
     );
-  };
-
-  const invStatus = selectedCard
-    ? invoiceStatus(effectiveMonth, selectedCard.due_day, summary?.saldoCents ?? 0)
-    : "closed";
-
-  /**
-   * Exporta a fatura do cartão em CSV — APENAS os gastos lançados no cartão na
-   * competência selecionada (sem cartão/forma por coluna: redundantes aqui).
-   * Permite comparar com a fatura do banco em planilha.
-   */
-  const handleExportInvoice = () => {
-    if (!selectedCard || competenceExpenses.length === 0) return;
-    const rows: ExportCardInvoiceRow[] = competenceExpenses.map((expense) => ({
-      date: expense.date,
-      description: expense.description ?? "",
-      categoryName: categoryById.get(expense.category_id)?.name ?? "Sem categoria",
-      valueCents: numberToCents(expense.value),
-      reportValueCents: numberToCents(expense.value * expense.report_weight),
-      installments: expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : "—",
-    }));
-    const slug = selectedCard.name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-    downloadCsv(`fatura_${slug}_${effectiveMonth}.csv`, serializeCardInvoiceCsv(rows));
-  };
-
-  // Fatura imprimível (PDF) — mesmos dados do CSV, com resumo e pagamentos.
-  const printExpenseRows: CardInvoiceExpenseRow[] = competenceExpenses.map((expense) => ({
-    date: expense.date,
-    description: expense.description ?? "",
-    categoryName: categoryById.get(expense.category_id)?.name ?? "Sem categoria",
-    valueCents: numberToCents(expense.value),
-    reportValueCents: numberToCents(expense.value * expense.report_weight),
-    installments: expense.installments_total > 1 ? `${expense.installment_number}/${expense.installments_total}` : "—",
-  }));
-  const printPaymentRows: CardInvoicePaymentRow[] = competencePayments.map((payment) => ({
-    date: payment.date,
-    note: payment.note,
-    amountCents: numberToCents(Math.abs(payment.amount)),
-    isRefund: payment.amount < 0,
-  }));
-
-  const selectCard = (id: string) => {
-    setActionError(null);
-    setPickedCardId(id);
-    setMonth(null); // reaplica a seleção automática do mês para o novo cartão
-    setSearchParams(
-      (prev) => {
-        const updated = new URLSearchParams(prev);
-        updated.delete("card");
-        return updated;
-      },
-      { replace: true },
-    );
-  };
-
-  const openForm = (card: CreditCard | null) => {
-    setActionError(null);
-    setEditingCard(card);
-    setFormOpen(true);
-  };
-
-  const handleDeactivateCard = async (card: CreditCard) => {
-    if (permission.isReadOnlyMode) {
-      setUpgradeContext("Desativar Cartão de Crédito");
-      setUpgradeOpen(true);
-      return;
-    }
-    setActionError(null);
-    try {
-      await updateCardMutation.mutateAsync({
-        id: card.id,
-        input: {
-          name: card.name,
-          brand: card.brand,
-          credit_limit: card.credit_limit,
-          closing_day: card.closing_day,
-          due_day: card.due_day,
-          color: card.color,
-          is_active: false,
-        },
-      });
-    } catch (err) {
-      setActionError(getErrorMessage(err));
-    }
-  };
-
-  /**
-   * Exclusão otimista (F30): fecha a confirmação e remove o registro da
-   * fatura na hora; o hook faz rollback + toast se o servidor rejeitar.
-   */
-  const handleConfirmDeletePayment = () => {
-    if (!deletingPayment) return;
-    if (permission.isReadOnlyMode) {
-      setUpgradeContext("Excluir Pagamento de Fatura");
-      setUpgradeOpen(true);
-      return;
-    }
-    setActionError(null);
-    setDeletingPayment(null);
-    void Promise.resolve(deleteCardPaymentMutation.mutateAsync(deletingPayment.id)).catch(() => undefined);
-  };
-
-  const usedLimitMap: Record<string, { brutoCents: number; ponderadoCents: number }> = {};
-  const allExpenses = useMemo(() => allCardExpensesQuery.data ?? [], [allCardExpensesQuery.data]);
-  const allPayments = useMemo(() => allCardPaymentsQuery.data ?? [], [allCardPaymentsQuery.data]);
-
-  for (const card of cards) {
-    const cExpenses = allExpenses.filter((e) => e.card_id === card.id);
-    const cPayments = allPayments.filter((p) => p.card_id === card.id);
-    const cSummaries = buildCompetenceSummaries(cExpenses, cPayments);
-    const cSum = cSummaries.find((s) => s.month === effectiveMonth);
-    if (cSum) {
-      usedLimitMap[card.id] = {
-        brutoCents: cSum.saldoBrutoCents,
-        ponderadoCents: cSum.saldoPonderadoCents,
-      };
-    }
-  }
-
-  const currentInvoiceSaldoBrutoCents = summary?.saldoBrutoCents ?? 0;
-
-  // Radar de Assinaturas e Impacto na Fatura em Aberto (F22 / Tarefa 7.6)
-  const cardSubscriptionImpact = useMemo(() => {
-    if (!selectedCard) return null;
-    const availableLimitCents =
-      selectedCard.credit_limit !== null && selectedCard.credit_limit !== undefined && selectedCard.credit_limit > 0
-        ? Math.max(0, Math.round(selectedCard.credit_limit * 100) - currentInvoiceSaldoBrutoCents)
-        : null;
-
-    const cardExpenseLikes: ExpenseLike[] = allExpenses
-      .filter((e) => e.card_id === selectedCard.id)
-      .map((e) => ({
-        id: e.id,
-        description: e.description,
-        date: e.date,
-        month: e.date ? e.date.slice(0, 7) : (e.bill_competence ?? currentMonth()),
-        valueCents: Math.round(e.value * 100),
-        categoryId: e.category_id,
-        categoryName: categoryById.get(e.category_id)?.name ?? null,
-        categoryIcon: categoryById.get(e.category_id)?.icon ?? null,
-        installmentGroupId: e.installment_group_id,
-        recurrenceId: e.recurrence_id,
-        paymentMethod: "credit_card",
-        cardId: e.card_id,
-        cardName: selectedCard.name,
-        rawExpense: e,
-      }));
-
-    const todayISOStr = todayISO();
-    const detected = detectRecurrences(cardExpenseLikes, { todayISO: todayISOStr });
-    const feedbackMap = feedbackQuery.data ?? {};
-    const { active } = partitionFeedback(detected, feedbackMap);
-
-    const openInvoiceCompetence = resolveBillCompetence(todayISOStr, selectedCard.closing_day);
-    const openInvoiceExpenses = allExpenses.filter(
-      (e) => e.card_id === selectedCard.id && e.bill_competence === openInvoiceCompetence,
-    );
-
-    return calculateCardSubscriptionImpact(selectedCard, active, {
-      todayISO: todayISOStr,
-      availableLimitCents,
-      existingCardExpenses: openInvoiceExpenses.map((e) => ({
-        description: e.description,
-        installmentGroupId: e.installment_group_id,
-      })),
-    });
-  }, [selectedCard, allExpenses, categoryById, currentInvoiceSaldoBrutoCents, feedbackQuery.data]);
-
-  const permission = usePermission("cards");
-  const navigate = useNavigate();
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [upgradeContext, setUpgradeContext] = useState<string | undefined>();
-
-  const handleOpenForm = (card: CreditCard | null) => {
-    if (permission.isReadOnlyMode) {
-      setUpgradeContext(card ? "Editar Cartão de Crédito" : "Adicionar Cartão de Crédito");
-      setUpgradeOpen(true);
-      return;
-    }
-    openForm(card);
-  };
-
-  const handleOpenPayment = (mode: PaymentMode) => {
-    if (permission.isReadOnlyMode) {
-      setUpgradeContext("Registrar Pagamento / Estorno de Fatura");
-      setUpgradeOpen(true);
-      return;
-    }
-    setPaymentMode(mode);
-  };
-
-  const handleOpenImport = () => {
-    if (permission.isReadOnlyMode) {
-      setUpgradeContext("Importar Fatura de Cartão");
-      setUpgradeOpen(true);
-      return;
-    }
-    setImportOpen(true);
-  };
-
-  const handleDeletePaymentClick = (payment: CardPayment) => {
-    if (permission.isReadOnlyMode) {
-      setUpgradeContext("Excluir Pagamento de Fatura");
-      setUpgradeOpen(true);
-      return;
-    }
-    setDeletingPayment(payment);
   };
 
   return (
@@ -497,13 +59,13 @@ export function CardsPage() {
         title="Cartões de Crédito"
         description="Gestão integrada de cartões, faturas por competência, limites e conciliação"
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setImportOpen(true)}
-              className="gap-1.5 cursor-pointer"
+              onClick={state.handleOpenImport}
+              className="gap-1.5"
             >
               <FileUp className="size-3.5" aria-hidden="true" />
               <span>Importar Fatura</span>
@@ -511,539 +73,140 @@ export function CardsPage() {
             <Button
               type="button"
               size="sm"
-              onClick={() => handleOpenForm(null)}
-              className="gap-1.5 cursor-pointer shadow-xs"
+              onClick={() => state.handleOpenForm(null)}
+              className="gap-1.5 shadow-xs"
             >
               <Plus className="size-3.5" aria-hidden="true" />
               <span>Novo Cartão</span>
             </Button>
-          </div>
+          </>
         }
       />
 
-      {permission.isReadOnlyMode && (
-        <ReadOnlyBanner
-          onActivatePro={() => {
-            setUpgradeContext(undefined);
-            setUpgradeOpen(true);
-          }}
-        />
+      {state.permission.isReadOnlyMode && (
+        <ReadOnlyBanner onActivatePro={() => state.requireUpgrade(undefined)} />
       )}
 
-      {error ? (
+      {!state.queryError && state.actionError ? (
         <div className="flex flex-col gap-3">
-          <Alert variant="error">{getErrorMessage(error)}</Alert>
-          <div className="flex items-center gap-2">
-            {actionError &&
-            (actionError.includes("desativá-lo") || actionError.includes("histórico")) &&
-            selectedCard &&
-            selectedCard.is_active ? (
+          <Alert variant="error">{state.actionError}</Alert>
+          <div className="flex flex-wrap items-center gap-2">
+            {(state.actionError.includes("desativá-lo") || state.actionError.includes("histórico")) &&
+            state.selectedCard &&
+            state.selectedCard.is_active ? (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => void handleDeactivateCard(selectedCard)}
+                onClick={() => void state.handleDeactivateCard(state.selectedCard!)}
               >
-                Desativar cartão {selectedCard.name}
+                Desativar cartão {state.selectedCard.name}
               </Button>
             ) : null}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setActionError(null);
-                void Promise.all([cardsQuery.refetch(), expensesQuery.refetch(), paymentsQuery.refetch()]);
-              }}
-            >
+            <Button variant="outline" size="sm" onClick={state.refetchAll}>
               Tentar novamente
             </Button>
           </div>
         </div>
       ) : null}
 
-      {cardsQuery.isError || expensesQuery.isError || paymentsQuery.isError ? (
-        <ErrorState
-          message={getErrorMessage(cardsQuery.error || expensesQuery.error || paymentsQuery.error)}
-          onRetry={() => {
-            void Promise.all([cardsQuery.refetch(), expensesQuery.refetch(), paymentsQuery.refetch()]);
-          }}
-        />
-      ) : loading ? (
-        <div className="flex flex-col gap-4" data-tour="cards-content">
-          <div className="flex justify-center py-2">
-            <Skeleton className="h-52 sm:h-60 w-full max-w-[400px] rounded-2xl shadow-xs" />
-          </div>
-          <KpiGrid columns={3} data-tour="cards-invoice-summary">
-            <SkeletonKpi />
-            <SkeletonKpi />
-            <SkeletonKpi />
-          </KpiGrid>
-          <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-border/40">
-              <Skeleton className="h-4 w-32 rounded" />
-              <Skeleton className="h-4 w-20 rounded" />
-            </div>
-            <SkeletonList rows={4} />
-          </div>
-        </div>
-      ) : cards.length === 0 ? (
-        <EmptyState
-          icon={<WalletCards className="size-6" aria-hidden="true" />}
-          title="Nenhum cartão cadastrado"
-          description="Adicione seus cartões de crédito para acompanhar faturas, limites disponíveis, melhor data de compra e extrato."
-          tone="default"
-          className="py-12 sm:py-16 px-6"
-          action={
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-              <Button onClick={() => handleOpenForm(null)} className="gap-2 cursor-pointer">
-                <Plus className="size-4" aria-hidden="true" />
-                Adicionar primeiro cartão
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  startDemo("finances_cards");
-                }}
-                className="gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
-              >
-                <Sparkles className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                Ver fatura na Simulação
-              </Button>
-            </div>
-          }
-        />
+      {state.queryError ? (
+        <ErrorState message={getErrorMessage(state.queryError)} onRetry={state.refetchAll} />
+      ) : state.loading ? (
+        <CardsPageSkeleton />
+      ) : state.cards.length === 0 ? (
+        <CardsEmptyState onAddFirstCard={() => state.handleOpenForm(null)} />
       ) : (
         <>
-          {/* =========================================================================
-              SEÇÃO 1: CARTEIRA 3D (WALLET) COM MODELO INTERATIVO E INFORMAÇÕES EMBUTIDAS
-             ========================================================================= */}
           <section
             aria-label="Carteira de Cartões"
             data-tour="cards-content"
             className={cn(
-              "flex flex-col items-center justify-center p-3 sm:p-6 rounded-2xl bg-surface border border-border/80 shadow-xs transition-all",
-              selectedCard && isHighlighted(selectedCard.id) && "ring-2 ring-primary",
+              "flex flex-col items-center justify-center p-3.5 sm:p-6 rounded-2xl bg-surface border border-border/80 shadow-xs transition-colors",
+              state.selectedCard && state.isHighlighted(state.selectedCard.id) && "ring-2 ring-primary",
             )}
           >
             <CreditCardWallet
-              cards={cards}
-              selectedCardId={selectedCard?.id ?? null}
-              primaryCardId={primaryCardId}
-              onSelectCard={selectCard}
-              onEditCard={handleOpenForm}
-              onNewCard={() => handleOpenForm(null)}
-              usedLimitMap={usedLimitMap}
-              competenceMonth={effectiveMonth}
-              status={invStatus}
+              cards={state.cards}
+              selectedCardId={state.selectedCard?.id ?? null}
+              primaryCardId={state.primaryCardId}
+              onSelectCard={state.selectCard}
+              onEditCard={state.handleOpenForm}
+              onNewCard={() => state.handleOpenForm(null)}
+              usedLimitMap={state.usedLimitMap}
+              competenceMonth={state.effectiveMonth}
             />
           </section>
 
-          {/* =========================================================================
-              SEÇÃO 2: SELETOR DE MÊS, STATUS DA FATURA E KPIS
-             ========================================================================= */}
           <div className="flex flex-col gap-4 sm:gap-5">
-            {/* Seletor de mês full-width (padrão Orçamentos e Relatórios) */}
-            <MonthPicker value={effectiveMonth} onValueChange={setMonth} />
+            <InvoiceCompetenceToolbar
+              effectiveMonth={state.effectiveMonth}
+              onSelectMonth={state.setMonth}
+              selectedCard={state.selectedCard}
+              summary={state.summary}
+              invStatus={state.invStatus}
+              getMonthStatus={state.getMonthStatus}
+              previousUnpaidSummaries={state.previousUnpaidSummaries}
+              onOpenPayment={state.handleOpenPayment}
+              onOpenBatchPayment={state.handleOpenBatchPayment}
+            />
 
-            {/* Linha de controles: atalhos de competência (cards no mobile, pills no desktop) + ações de fatura */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              {/* Seletor rápido de faturas em cards (exclusivo para mobile — layout da versão anterior) */}
-              <div className="grid grid-cols-3 gap-2 sm:hidden w-full" role="tablist" aria-label="Seletor rápido de faturas">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={effectiveMonth === prevMonth}
-                  onClick={() => handleSelectQuickMonth(prevMonth)}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-2 rounded-xl border transition-all text-center",
-                    effectiveMonth === prevMonth
-                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
-                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
-                  )}
-                >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Anterior</span>
-                  <span className="text-xs font-semibold text-foreground capitalize mt-0.5">{monthLabel(prevMonth).split(" ")[0]}</span>
-                  <div className="mt-1">
-                    <InvoiceStatusBadge status={getMonthStatus(prevMonth)} size="xs" />
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={effectiveMonth === currMonth}
-                  onClick={() => handleSelectQuickMonth(currMonth)}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-2 rounded-xl border transition-all text-center",
-                    effectiveMonth === currMonth
-                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
-                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
-                  )}
-                >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Atual</span>
-                  <span className="text-xs font-semibold text-foreground capitalize mt-0.5">{monthLabel(currMonth).split(" ")[0]}</span>
-                  <div className="mt-1">
-                    <InvoiceStatusBadge status={getMonthStatus(currMonth)} size="xs" />
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={effectiveMonth === nextMonth}
-                  onClick={() => handleSelectQuickMonth(nextMonth)}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-2 rounded-xl border transition-all text-center",
-                    effectiveMonth === nextMonth
-                      ? "bg-surface-hover border-primary/50 shadow-xs ring-1 ring-primary/30"
-                      : "bg-surface border-border hover:bg-surface-hover/60 text-muted-foreground",
-                  )}
-                >
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Próxima</span>
-                  <span className="text-xs font-semibold text-foreground capitalize mt-0.5">{monthLabel(nextMonth).split(" ")[0]}</span>
-                  <div className="mt-1">
-                    <InvoiceStatusBadge status={getMonthStatus(nextMonth)} size="xs" />
-                  </div>
-                </button>
-              </div>
-
-              {/* Atalhos rápidos em pills (Anterior, Atual, Próxima) — exclusivo para desktop */}
-              <div role="group" aria-label="Seletor rápido de faturas" className="hidden sm:flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={effectiveMonth === prevMonth ? "default" : "outline"}
-                  onClick={() => handleSelectQuickMonth(prevMonth)}
-                  className={cn(
-                    "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
-                    effectiveMonth === prevMonth ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
-                  )}
-                  aria-pressed={effectiveMonth === prevMonth}
-                  sensoryIntent="selection"
-                >
-                  <span>Anterior</span>
-                  <span className="text-[11px] opacity-75 capitalize">({monthLabel(prevMonth).split(" ")[0]})</span>
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={effectiveMonth === currMonth ? "default" : "outline"}
-                  onClick={() => handleSelectQuickMonth(currMonth)}
-                  className={cn(
-                    "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
-                    effectiveMonth === currMonth ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
-                  )}
-                  aria-pressed={effectiveMonth === currMonth}
-                  sensoryIntent="selection"
-                >
-                  <span>Atual</span>
-                  <span className="text-[11px] opacity-75 capitalize">({monthLabel(currMonth).split(" ")[0]})</span>
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={effectiveMonth === nextMonth ? "default" : "outline"}
-                  onClick={() => handleSelectQuickMonth(nextMonth)}
-                  className={cn(
-                    "shrink-0 gap-1.5 text-xs h-8 px-3 rounded-xl transition-all",
-                    effectiveMonth === nextMonth ? "shadow-xs font-semibold" : "text-muted-foreground hover:text-foreground",
-                  )}
-                  aria-pressed={effectiveMonth === nextMonth}
-                  sensoryIntent="selection"
-                >
-                  <span>Próxima</span>
-                  <span className="text-[11px] opacity-75 capitalize">({monthLabel(nextMonth).split(" ")[0]})</span>
-                </Button>
-              </div>
-
-              {/* Ações principais da fatura */}
-              {selectedCard ? (
-                <div className="flex items-center gap-2 self-start sm:self-auto w-full sm:w-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleOpenPayment("refund")}
-                    className="gap-1.5 flex-1 sm:flex-none justify-center text-xs h-8"
-                  >
-                    <Undo2 className="size-3.5" aria-hidden="true" />
-                    Estorno
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleOpenPayment("payment")}
-                    className="gap-1.5 flex-1 sm:flex-none justify-center text-xs h-8 shadow-xs"
-                  >
-                    Registrar pagamento
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-
-            {/* Linha discreta de status da fatura e limite disponível */}
-            {selectedCard ? (
-              <div className="flex flex-wrap items-center justify-between gap-2.5 px-0.5 text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">Status da fatura:</span>
-                  <InvoiceStatusBadge status={invStatus} size="sm" />
-                </div>
-                {selectedCard.credit_limit !== null && selectedCard.credit_limit !== undefined && selectedCard.credit_limit > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <span>Limite disponível:</span>
-                    <span className="font-semibold text-foreground">
-                      <MoneyText
-                        cents={Math.max(0, Math.round(selectedCard.credit_limit * 100) - (summary?.saldoBrutoCents ?? 0))}
-                        tone="default"
-                      />
-                    </span>
-                  </div>
-                )}
-              </div>
-            ) : null}
-
-            {/* Aviso inteligente de faturas anteriores em aberto */}
-            {selectedCard && previousUnpaidSummaries.length > 0 && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-warning/40 bg-warning/5 text-xs text-foreground">
-                <div className="flex items-center gap-2.5">
-                  <Clock className="size-4 shrink-0 text-warning-strong" aria-hidden="true" />
-                  <span>
-                    Identificamos <strong>{previousUnpaidSummaries.length} fatura(s) anterior(es)</strong> com saldo pendente de{" "}
-                    <MoneyText
-                      cents={previousUnpaidSummaries.reduce((a, b) => a + b.saldoCents, 0)}
-                      tone="default"
-                      className="font-semibold"
-                    />
-                    .
-                  </span>
-                </div>
-                <Button
-                  size="xs"
-                  variant="outline"
-                  onClick={() => setBatchPaymentOpen(true)}
-                  className="shrink-0 gap-1.5 self-start sm:self-auto border-warning/50 hover:bg-warning/10"
-                >
-                  <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                  Quitar faturas anteriores
-                </Button>
-              </div>
-            )}
-
-            {/* KPIs da fatura com visão dupla (Bruto vs. Ponderado) */}
-            <KpiGrid columns={3} data-tour="cards-invoice-summary">
-              <KpiCard
-                label="Fatura Total (Bruto)"
-                cents={summary?.previstoBrutoCents ?? 0}
-                hint={
-                  summary && summary.previstoBrutoCents !== summary.previstoPonderadoCents ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
-                      <span className="hidden sm:inline">Ponderada:</span>
-                      <span className="sm:hidden">Pond:</span>
-                      <MoneyText cents={summary.previstoPonderadoCents} tone="default" className="text-[11px] tabular-nums" />
-                    </span>
-                  ) : undefined
-                }
-              />
-              <KpiCard
-                label="Pago"
-                cents={summary?.pagoCents ?? 0}
-                hint={
-                  summary && (summary.estornoCents > 0 || summary.creditoAnteriorCents > 0) ? (
-                    <span className="inline-flex items-center gap-1.5 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
-                      {summary.creditoAnteriorCents > 0 && (
-                        <span>
-                          <span className="hidden sm:inline">Crédito anterior:</span>
-                          <span className="sm:hidden">Créd. ant:</span>{" "}
-                          <MoneyText cents={summary.creditoAnteriorCents} tone="positive" className="text-[11px] tabular-nums" />
-                        </span>
-                      )}
-                      {summary.creditoAnteriorCents > 0 && summary.estornoCents > 0 && <span>·</span>}
-                      {summary.estornoCents > 0 && (
-                        <span>
-                          <span>Estornos:</span>{" "}
-                          <MoneyText cents={summary.estornoCents} tone="positive" className="text-[11px] tabular-nums" />
-                        </span>
-                      )}
-                    </span>
-                  ) : undefined
-                }
-              />
-              <KpiCard
-                label="Saldo aberto (Bruto)"
-                cents={summary?.saldoBrutoCents ?? 0}
-                tone={summary && summary.saldoBrutoCents > 0 ? "negative" : "positive"}
-                hint={
-                  summary && summary.creditoRestanteCents > 0 ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-positive-strong text-[11px] whitespace-nowrap tabular-nums">
-                      <span className="hidden sm:inline">Crédito p/ fatura seguinte:</span>
-                      <span className="sm:hidden">Créd. seguinte:</span>
-                      <MoneyText cents={summary.creditoRestanteCents} tone="positive" className="text-[11px] tabular-nums" />
-                    </span>
-                  ) : summary && summary.saldoBrutoCents !== summary.saldoPonderadoCents ? (
-                    <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
-                      <span className="hidden sm:inline">Ponderado:</span>
-                      <span className="sm:hidden">Pond:</span>
-                      <MoneyText cents={summary.saldoPonderadoCents} tone="default" className="text-[11px] tabular-nums" />
-                    </span>
-                  ) : undefined
-                }
-              />
-            </KpiGrid>
-
-            {/* Bloco Informativo de Impacto de Assinaturas na Fatura em Aberto (F22 / Tarefa 7.6) */}
-            {cardSubscriptionImpact && cardSubscriptionImpact.totalProjectedCents > 0 ? (
-              <div data-tour="cards-subscription-radar">
-                <CardSubscriptionRadar
-                  impact={cardSubscriptionImpact}
-                  onIgnoreItem={(key) => setFeedbackMutation.mutate({ occurrenceKey: key, decision: "ignore" })}
-                />
-              </div>
-            ) : null}
+            <InvoiceKpisSection
+              summary={state.summary}
+              cardSubscriptionImpact={state.cardSubscriptionImpact}
+              onIgnoreSubscriptionItem={state.ignoreSubscriptionItem}
+            />
           </div>
 
-          {/* =========================================================================
-              SEÇÃO 3: EXTRATO DISCRIMINADO (DESPESAS E PAGAMENTOS)
-             ========================================================================= */}
           <CardInvoiceExpensesFeed
-            monthLabelStr={monthLabel(effectiveMonth)}
-            competenceExpenses={competenceExpenses}
-            installments={installments}
-            regular={regular}
-            selectedCard={selectedCard}
-            onOpenImport={handleOpenImport}
-            onOpenPrint={() => setPrintOpen(true)}
-            onExportCsv={handleExportInvoice}
+            monthLabelStr={monthLabel(state.effectiveMonth)}
+            competenceExpenses={state.competenceExpenses}
+            installments={state.installments}
+            regular={state.regular}
+            selectedCard={state.selectedCard}
+            onOpenImport={state.handleOpenImport}
+            onOpenPrint={() => state.setPrintOpen(true)}
+            onExportCsv={state.handleExportInvoice}
             renderInvoiceRow={renderInvoiceRow}
           />
 
           <CardInvoicePaymentsFeed
-            competencePayments={competencePayments}
-            onDeletePayment={handleDeletePaymentClick}
+            competencePayments={state.competencePayments}
+            onDeletePayment={state.handleDeletePaymentClick}
           />
         </>
       )}
 
-      {/* Diálogo de Cartão: Edição quando editingCard estiver definido; Criação caso contrário */}
-      <CardFormDialog
-        card={editingCard}
-        open={formOpen || fromUrl}
-        onOpenChange={(next) => {
-          if (!next) {
-            setFormOpen(false);
-            setEditingCard(null);
-            if (fromUrl) {
-              setSearchParams(
-                (prev) => {
-                  const updated = new URLSearchParams(prev);
-                  updated.delete("novo");
-                  return updated;
-                },
-                { replace: true },
-              );
-            }
-          } else {
-            setFormOpen(true);
-          }
-        }}
-        onDeleted={(deletedId) => {
-          const remaining = cards.filter((c) => c.id !== deletedId);
-          if (selectedCard?.id === deletedId) {
-            if (remaining.length > 0 && remaining[0]) {
-              selectCard(remaining[0].id);
-            } else {
-              setPickedCardId(null);
-            }
-          }
-        }}
-      />
-
-      {/* Diálogo de confirmação para exclusão de pagamento ou estorno */}
-      {deletingPayment && (
-        <ConfirmDialog
-          open={deletingPayment !== null}
-          onOpenChange={(next) => {
-            if (!next) setDeletingPayment(null);
-          }}
-          title={deletingPayment.amount < 0 ? "Excluir estorno" : "Excluir pagamento de fatura"}
-          description={
-            deletingPayment.amount < 0
-              ? "Tem certeza que deseja excluir este estorno? A receita automática correspondente no extrato também será removida."
-              : "Tem certeza que deseja excluir este pagamento de fatura? O saldo da fatura será recalculado automaticamente."
-          }
-          confirmLabel="Excluir"
-          variant="destructive"
-          onConfirm={() => void handleConfirmDeletePayment()}
-        />
-      )}
-
-      {cardId && paymentMode ? (
-        <PaymentDialog
-          cardId={cardId}
-          competenceMonth={effectiveMonth}
-          mode={paymentMode}
-          open={paymentMode !== null}
-          onOpenChange={(next) => {
-            if (!next) setPaymentMode(null);
-          }}
-          openBalanceCents={summary?.saldoBrutoCents ?? 0}
-        />
-      ) : null}
-
-      {importOpen && (
-        <Suspense fallback={null}>
-          <StatementImportDialog
-            open={importOpen}
-            onOpenChange={setImportOpen}
-            card={selectedCard}
-            competenceMonth={effectiveMonth}
-          />
-        </Suspense>
-      )}
-
-      {selectedCard && previousUnpaidSummaries.length > 0 && (
-        <BatchInvoicePaymentDialog
-          open={batchPaymentOpen}
-          onOpenChange={setBatchPaymentOpen}
-          card={selectedCard}
-          unpaidSummaries={previousUnpaidSummaries}
-        />
-      )}
-
-      <ExpenseDetailDialog
-        expense={selectedExpense}
-        open={selectedExpense !== null}
-        onOpenChange={(next) => {
-          if (!next) setSelectedExpense(null);
-        }}
-      />
-
-      {/* Fatura imprimível — preview no modal + portal de impressão (padrão unificado F22/F42) */}
-      {selectedCard && summary ? (
-        <ReportDocumentLayout
-          open={printOpen}
-          onOpenChange={setPrintOpen}
-          title={`Fatura — ${selectedCard.name}`}
-          documentTitle={`Fatura_${selectedCard.name.replace(/[^a-zA-Z0-9_\u00C0-\u00FF]+/g, "_")}_${effectiveMonth}.pdf`}
-          size="2xl"
-        >
-          <CardInvoicePrintView
-            cardName={selectedCard.name}
-            competenceMonth={effectiveMonth}
-            competenceLabel={monthLabel(effectiveMonth)}
-            totalBrutoCents={summary.previstoBrutoCents}
-            totalPonderadoCents={summary.previstoPonderadoCents}
-            pagoCents={summary.pagoCents}
-            saldoAbertoCents={summary.saldoBrutoCents}
-            saldoPonderadoCents={summary.saldoPonderadoCents}
-            expenses={printExpenseRows}
-            payments={printPaymentRows}
-          />
-        </ReportDocumentLayout>
-      ) : null}
-
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        context={upgradeContext}
-        onProceedToCheckout={(p) => {
-          setUpgradeOpen(false);
-          navigate(buildCheckoutUrl({ plan: p }));
-        }}
+      <CardsPageModals
+        cards={state.cards}
+        selectedCard={state.selectedCard}
+        cardId={state.cardId}
+        effectiveMonth={state.effectiveMonth}
+        summary={state.summary}
+        previousUnpaidSummaries={state.previousUnpaidSummaries}
+        formOpen={state.formOpen}
+        fromUrl={state.fromUrl}
+        editingCard={state.editingCard}
+        onCloseForm={state.handleFormOpenChange}
+        onCardDeleted={state.handleCardDeleted}
+        deletingPayment={state.deletingPayment}
+        onCloseDeletePayment={() => state.setDeletingPayment(null)}
+        onConfirmDeletePayment={state.handleConfirmDeletePayment}
+        paymentMode={state.paymentMode}
+        onClosePayment={() => state.setPaymentMode(null)}
+        importOpen={state.importOpen}
+        onImportOpenChange={state.setImportOpen}
+        batchPaymentOpen={state.batchPaymentOpen}
+        onBatchPaymentOpenChange={state.setBatchPaymentOpen}
+        selectedExpense={state.selectedExpense}
+        onCloseExpense={() => state.setSelectedExpense(null)}
+        printOpen={state.printOpen}
+        onPrintOpenChange={state.setPrintOpen}
+        printExpenseRows={state.printExpenseRows}
+        printPaymentRows={state.printPaymentRows}
+        upgradeOpen={state.upgradeOpen}
+        onUpgradeOpenChange={state.setUpgradeOpen}
+        upgradeContext={state.upgradeContext}
+        onProceedToCheckout={(url) => state.navigate(url)}
       />
     </div>
   );

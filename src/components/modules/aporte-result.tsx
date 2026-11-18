@@ -1,73 +1,21 @@
-import { useState, useMemo } from "react";
-import {
-  ArrowDownToLine,
-  ArrowRight,
-  Check,
-  CheckCheck,
-  ChevronDown,
-  ChevronRight,
-  ChevronUp,
-  FolderTree,
-  Info,
-  Layers,
-  ListOrdered,
-  PiggyBank,
-  PieChart,
-  ShoppingCart,
-  Wallet,
-} from "lucide-react";
+import { useState } from "react";
+import { CheckCheck, FolderTree, ListOrdered } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { DataList } from "@/components/ui/data-list";
-import { MoneyText } from "@/components/ui/money-text";
-import { numberToCents } from "@/domain/money";
-import { formatCentsAsBRL, formatPercent } from "@/services/masks";
-import type { ClassAporteSummary, SectorAporteSummary, SkippedAssetDiagnostic } from "@/domain/portfolio";
-import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
+import { triggerSensory } from "@/services/sensory";
+import { AporteDesktopTable } from "./aporte-result/aporte-desktop-table";
+import { AporteMobileCardList } from "./aporte-result/aporte-mobile-card-list";
+import { AporteSkippedAssets } from "./aporte-result/aporte-skipped-assets";
+import { AporteSummarySection } from "./aporte-result/aporte-summary-section";
+import { useAporteSimulationOverrides } from "./aporte-result/use-aporte-simulation-overrides";
+import { AporteTreeBreakdown } from "./aporte-result/aporte-tree-breakdown";
+import type {
+  AporteResultProps,
+  AporteRouteRow,
+  CustomAporteExecutionItem,
+} from "./aporte-result/aporte-result-types";
 
-export interface AporteRouteRow {
-  assetId: string;
-  ticker: string;
-  assetClass: string | null;
-  sector?: string | null;
-  targetValueBRL: number;
-  currentValueBRL: number;
-  gapBRL: number;
-  allocatedBRL: number;
-  quantity: number;
-  priceBRL: number;
-  rawScore?: number | null;
-  effectiveTargetPct?: number;
-  formulaLabel?: string;
-}
-
-export interface CustomAporteExecutionItem {
-  assetId: string;
-  ticker: string;
-  quantity: number;
-  priceBRL: number;
-  allocatedBRL: number;
-}
-
-export interface AporteResultProps {
-  mode: "asset" | "class" | "both";
-  aporte: number;
-  totalAllocated: number;
-  leftover: number;
-  routes: AporteRouteRow[];
-  classSummaries?: ClassAporteSummary[];
-  sectorSummaries?: SectorAporteSummary[];
-  skippedAssets?: SkippedAssetDiagnostic[];
-  /** Ação rápida para gravar todas as transações sugeridas no extrato */
-  onExecuteAporte?: (items?: CustomAporteExecutionItem[]) => void;
-  /** Ação para abrir o Wizard de Compra para um ativo específico com quantidade sugerida */
-  onOpenWizard?: (ticker: string, quantity: number, allocatedBRL?: number) => void;
-  executing?: boolean;
-}
+export type { AporteResultProps, AporteRouteRow, CustomAporteExecutionItem };
 
 const MODE_LABEL: Record<AporteResultProps["mode"], string> = {
   asset: "por meta individual",
@@ -75,26 +23,9 @@ const MODE_LABEL: Record<AporteResultProps["mode"], string> = {
   both: "hierárquico (ativo, setor e classe)",
 };
 
-const SKIPPED_REASON_LABEL: Record<SkippedAssetDiagnostic["reason"], { label: string; variant: "warning" | "muted" }> = {
-  no_price: { label: "Sem cotação", variant: "warning" },
-  above_target: { label: "Na meta", variant: "muted" },
-  no_target: { label: "Sem meta", variant: "muted" },
-  price_exceeds_budget: { label: "Preço > Saldo", variant: "muted" },
-  quarantine: { label: "Em quarentena", variant: "warning" },
-  exit: { label: "Saída da carteira", variant: "warning" },
-  neutral: { label: "Mantido (neutro)", variant: "muted" },
-  insufficient_aporte: { label: "Aporte insuficiente", variant: "muted" },
-};
-
-function formatQuantity(qty: number): string {
-  if (qty % 1 === 0) return qty.toLocaleString("pt-BR");
-  return qty.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 6 });
-}
-
 /**
  * Resultado da calculadora de aporte (§3.11.3) — módulo de domínio F4.
- * Visão hierárquica em três níveis: Macro por Classe, Meso por Setor e Micro por Ativo,
- * com log de roteamento, visualização em lista/árvore e diagnóstico completo.
+ * Visão hierárquica em três níveis: Macro por Classe, Meso por Setor e Micro por Ativo.
  */
 export function AporteResult({
   mode,
@@ -109,443 +40,36 @@ export function AporteResult({
   onOpenWizard,
   executing = false,
 }: AporteResultProps) {
-  const [completedTickers, setCompletedTickers] = useState<Set<string>>(new Set());
-  const [showSkipped, setShowSkipped] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "tree">("list");
-  const [expandedClasses, setExpandedClasses] = useState<Set<string>>(() => new Set());
-  const [expandedSectors, setExpandedSectors] = useState<Set<string>>(() => new Set());
-  const [showAllClasses, setShowAllClasses] = useState(false);
-  const [showAllSectors, setShowAllSectors] = useState(false);
 
-  // Armazena exclusões e overrides de cotas sem necessidade de useEffect síncrono
-  const [excludedAssetIds, setExcludedAssetIds] = useState<Set<string>>(() => new Set());
-  const [quantityOverrides, setQuantityOverrides] = useState<Map<string, number>>(() => new Map());
+  const {
+    completedTickers,
+    completedCount,
+    quantityOverrides,
+    quantityDrafts,
+    effectiveRouteMap,
+    effectiveTotalAllocated,
+    effectiveLeftover,
+    selectedExecutionItems,
+    sortedRoutes,
+    treeGroups,
+    toggleAssetSelection,
+    handleQuantityChange,
+    toggleTicker,
+  } = useAporteSimulationOverrides({
+    aporte,
+    initialTotalAllocated,
+    initialLeftover,
+    routes,
+    classSummaries,
+    sectorSummaries,
+  });
 
-  const toggleAssetSelection = (assetId: string, isChecked: boolean) => {
-    setExcludedAssetIds((prev) => {
-      const next = new Set(prev);
-      if (isChecked) {
-        next.delete(assetId);
-      } else {
-        next.add(assetId);
-      }
-      return next;
-    });
+  const handleViewChange = (next: "list" | "tree") => {
+    if (viewMode === next) return;
+    triggerSensory("selection");
+    setViewMode(next);
   };
-
-  const setAssetQuantity = (assetId: string, quantity: number) => {
-    setQuantityOverrides((prev) => {
-      const next = new Map(prev);
-      next.set(assetId, quantity);
-      return next;
-    });
-    if (quantity > 0) {
-      setExcludedAssetIds((prev) => {
-        if (prev.has(assetId)) {
-          const next = new Set(prev);
-          next.delete(assetId);
-          return next;
-        }
-        return prev;
-      });
-    }
-  };
-
-  const hasCustomizations = excludedAssetIds.size > 0 || quantityOverrides.size > 0;
-
-  const effectiveRouteMap = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        isSelected: boolean;
-        effectiveQuantity: number;
-        effectiveAllocatedBRL: number;
-        isQuantityCustom: boolean;
-      }
-    >();
-
-    for (const r of routes) {
-      const isExcluded = excludedAssetIds.has(r.assetId);
-      const customQty = quantityOverrides.get(r.assetId);
-      const isQuantityCustom = customQty !== undefined && customQty !== r.quantity;
-      const effectiveQty = customQty !== undefined ? customQty : r.quantity;
-      const isSelected = !isExcluded && effectiveQty > 0;
-      const quantityToApply = isSelected ? effectiveQty : 0;
-      const effectiveAllocatedBRL = Math.round(quantityToApply * r.priceBRL * 100) / 100;
-
-      map.set(r.assetId, {
-        isSelected,
-        effectiveQuantity: quantityToApply,
-        effectiveAllocatedBRL,
-        isQuantityCustom,
-      });
-    }
-
-    return map;
-  }, [routes, excludedAssetIds, quantityOverrides]);
-
-  const effectiveTotalAllocated = useMemo(() => {
-    if (!hasCustomizations && typeof initialTotalAllocated === "number") {
-      return initialTotalAllocated;
-    }
-    let sum = 0;
-    for (const r of routes) {
-      const eff = effectiveRouteMap.get(r.assetId);
-      if (eff?.isSelected) {
-        sum += eff.effectiveAllocatedBRL;
-      }
-    }
-    return Math.round(sum * 100) / 100;
-  }, [hasCustomizations, initialTotalAllocated, routes, effectiveRouteMap]);
-
-  const effectiveLeftover = useMemo(() => {
-    if (!hasCustomizations && typeof initialLeftover === "number") {
-      return initialLeftover;
-    }
-    return Math.max(0, Math.round((aporte - effectiveTotalAllocated) * 100) / 100);
-  }, [hasCustomizations, initialLeftover, aporte, effectiveTotalAllocated]);
-
-  const selectedExecutionItems: CustomAporteExecutionItem[] = useMemo(() => {
-    const items: CustomAporteExecutionItem[] = [];
-    for (const r of routes) {
-      const eff = effectiveRouteMap.get(r.assetId);
-      if (eff?.isSelected && eff.effectiveQuantity > 0) {
-        items.push({
-          assetId: r.assetId,
-          ticker: r.ticker,
-          quantity: eff.effectiveQuantity,
-          priceBRL: r.priceBRL,
-          allocatedBRL: eff.effectiveAllocatedBRL,
-        });
-      }
-    }
-    return items;
-  }, [routes, effectiveRouteMap]);
-
-  const toggleTicker = (ticker: string) => {
-    setCompletedTickers((prev) => {
-      const next = new Set(prev);
-      if (next.has(ticker)) {
-        next.delete(ticker);
-        triggerSensory("selection");
-      } else {
-        next.add(ticker);
-        triggerSensory("success");
-      }
-      return next;
-    });
-  };
-
-  const toggleClass = (className: string) => {
-    setExpandedClasses((prev) => {
-      const next = new Set(prev);
-      if (next.has(className)) {
-        next.delete(className);
-      } else {
-        next.add(className);
-      }
-      return next;
-    });
-  };
-
-  const toggleSector = (sectorKey: string) => {
-    setExpandedSectors((prev) => {
-      const next = new Set(prev);
-      if (next.has(sectorKey)) {
-        next.delete(sectorKey);
-      } else {
-        next.add(sectorKey);
-      }
-      return next;
-    });
-  };
-
-  const completedCount = completedTickers.size;
-
-  const sortedRoutes = useMemo(() => {
-    return [...routes].sort((a, b) => {
-      if (b.allocatedBRL !== a.allocatedBRL) return b.allocatedBRL - a.allocatedBRL;
-      return a.gapBRL - b.gapBRL;
-    });
-  }, [routes]);
-
-  // Estrutura agrupada para modo Árvore (Classe -> Setor -> Ativos)
-  const treeGroups = useMemo(() => {
-    const classMap = new Map<
-      string,
-      {
-        className: string;
-        classSummary?: ClassAporteSummary;
-        totalAllocatedBRL: number;
-        totalGapBRL: number;
-        sectors: Map<
-          string,
-          {
-            sectorName: string;
-            sectorSummary?: SectorAporteSummary;
-            totalAllocatedBRL: number;
-            totalGapBRL: number;
-            routes: AporteRouteRow[];
-          }
-        >;
-      }
-    >();
-
-    for (const r of sortedRoutes) {
-      const cls = r.assetClass?.trim() || "Outros";
-      const sec = r.sector?.trim() || "Geral";
-
-      let cGroup = classMap.get(cls);
-      if (!cGroup) {
-        cGroup = {
-          className: cls,
-          classSummary: classSummaries.find((cs) => cs.className === cls),
-          totalAllocatedBRL: 0,
-          totalGapBRL: 0,
-          sectors: new Map(),
-        };
-        classMap.set(cls, cGroup);
-      }
-
-      cGroup.totalAllocatedBRL += r.allocatedBRL;
-      cGroup.totalGapBRL += r.gapBRL;
-
-      let sGroup = cGroup.sectors.get(sec);
-      if (!sGroup) {
-        sGroup = {
-          sectorName: sec,
-          sectorSummary: sectorSummaries.find((ss) => ss.className === cls && ss.sectorName === sec),
-          totalAllocatedBRL: 0,
-          totalGapBRL: 0,
-          routes: [],
-        };
-        cGroup.sectors.set(sec, sGroup);
-      }
-
-      sGroup.totalAllocatedBRL += r.allocatedBRL;
-      sGroup.totalGapBRL += r.gapBRL;
-      sGroup.routes.push(r);
-    }
-
-    return Array.from(classMap.values());
-  }, [sortedRoutes, classSummaries, sectorSummaries]);
-
-  const columns: {
-    key: string;
-    header: ReactNode;
-    align?: "left" | "right";
-    cell: (row: AporteRouteRow) => ReactNode;
-  }[] = [
-    {
-      key: "select",
-      header: <span className="sr-only">Selecionar</span>,
-      cell: (row) => {
-        const eff = effectiveRouteMap.get(row.assetId);
-        const isEligible = row.quantity > 0;
-        return (
-          <Checkbox
-            checked={eff?.isSelected ?? false}
-            disabled={!isEligible}
-            onCheckedChange={(checked) => toggleAssetSelection(row.assetId, checked)}
-            aria-label={`Selecionar ${row.ticker} para aporte`}
-          />
-        );
-      },
-    },
-    {
-      key: "ticker",
-      header: "Ativo",
-      cell: (row) => {
-        const isDone = completedTickers.has(row.ticker);
-        return (
-          <div className={cn("flex min-w-0 flex-col gap-0.5 transition-opacity duration-150", isDone && "opacity-60")}>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
-              {row.rawScore !== undefined ? (
-                <Badge variant={row.rawScore === null ? "warning" : "muted"} size="xs">
-                  {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
-                </Badge>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-1.5 flex-wrap" title={row.formulaLabel}>
-              {row.assetClass ? <span className="text-[11px] text-muted-foreground">{row.assetClass}</span> : null}
-              {row.sector ? (
-                <>
-                  <span className="text-[11px] text-muted-foreground/60" aria-hidden="true">·</span>
-                  <span className="text-[11px] text-muted-foreground font-medium">{row.sector}</span>
-                </>
-              ) : null}
-              {row.effectiveTargetPct !== undefined && row.effectiveTargetPct > 0 ? (
-                <>
-                  <span className="text-[11px] text-muted-foreground/60" aria-hidden="true">·</span>
-                  <span className="text-[11px] font-mono tabular-nums text-muted-foreground">
-                    Meta {formatPercent(row.effectiveTargetPct)}%
-                  </span>
-                </>
-              ) : null}
-            </div>
-          </div>
-        );
-      },
-    },
-    {
-      key: "target",
-      header: "Valor alvo",
-      align: "right",
-      cell: (row) => <MoneyText cents={numberToCents(row.targetValueBRL)} tone="default" />,
-    },
-    {
-      key: "current",
-      header: "Atual",
-      align: "right",
-      cell: (row) => <MoneyText cents={numberToCents(row.currentValueBRL)} tone="default" className="text-muted-foreground" />,
-    },
-    {
-      key: "allocated",
-      header: "Aporte sugerido",
-      align: "right",
-      cell: (row) => {
-        const eff = effectiveRouteMap.get(row.assetId);
-        return <MoneyText cents={numberToCents(eff?.effectiveAllocatedBRL ?? row.allocatedBRL)} tone="portfolio" />;
-      },
-    },
-    {
-      key: "quantity",
-      header: "Quantidade",
-      align: "right",
-      cell: (row) => {
-        const eff = effectiveRouteMap.get(row.assetId);
-        const currentQty = quantityOverrides.get(row.assetId) ?? row.quantity;
-        return (
-          <div className="flex items-center justify-end gap-1.5">
-            <Input
-              type="number"
-              step="any"
-              min="0"
-              value={currentQty}
-              onChange={(e) => {
-                const val = parseFloat(e.target.value);
-                const nextVal = Number.isFinite(val) && val >= 0 ? val : 0;
-                setAssetQuantity(row.assetId, nextVal);
-              }}
-              aria-label={`Quantidade de cotas para ${row.ticker}`}
-              className="h-7 w-16 px-1.5 py-0.5 text-right font-mono text-xs"
-            />
-            {eff?.isQuantityCustom ? (
-              <span className="text-[10px] text-muted-foreground font-mono" title={`Sugerido originalmente: ${formatQuantity(row.quantity)}`}>
-                (sug: {formatQuantity(row.quantity)})
-              </span>
-            ) : null}
-          </div>
-        );
-      },
-    },
-    {
-      key: "price",
-      header: "Preço",
-      align: "right",
-      cell: (row) => <MoneyText cents={numberToCents(row.priceBRL)} tone="default" className="text-muted-foreground" />,
-    },
-    {
-      key: "status",
-      header: "Execução",
-      align: "right",
-      cell: (row) => {
-        const isDone = completedTickers.has(row.ticker);
-        const eff = effectiveRouteMap.get(row.assetId);
-        const qty = eff?.effectiveQuantity ?? row.quantity;
-        const total = eff?.effectiveAllocatedBRL ?? row.allocatedBRL;
-        return (
-          <div className="flex items-center justify-end gap-1.5">
-            {onOpenWizard && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onOpenWizard(row.ticker, qty, total)}
-                className="h-7 px-2 text-xs gap-1 font-medium text-foreground hover:bg-muted/40 cursor-pointer"
-                title={`Comprar ${row.ticker} no Wizard`}
-                aria-label={`Comprar ${row.ticker} no Wizard`}
-              >
-                <ShoppingCart className="size-3 text-portfolio" aria-hidden="true" />
-                <span className="hidden md:inline">Comprar</span>
-              </Button>
-            )}
-            <button
-              type="button"
-              onClick={() => toggleTicker(row.ticker)}
-              aria-label={isDone ? `Marcar ${row.ticker} como pendente` : `Marcar ${row.ticker} como executado`}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer",
-                isDone
-                  ? "border border-positive/30 bg-positive/10 text-positive-strong animate-spring-pop"
-                  : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-[0.98]",
-              )}
-            >
-              {isDone ? (
-                <>
-                  <Check className="size-3.5" aria-hidden="true" />
-                  <span>Feito</span>
-                </>
-              ) : (
-                <span>Pendente</span>
-              )}
-            </button>
-          </div>
-        );
-      },
-    },
-  ];
-
-  // 1. Classes: Ordenadas por aporte alocado desc, depois gap desc
-  const sortedClasses = useMemo(() => {
-    return classSummaries
-      .filter((c) => c.actualAllocatedBRL > 0 || c.gapBRL > 0)
-      .sort((a, b) => {
-        if (b.actualAllocatedBRL !== a.actualAllocatedBRL) {
-          return b.actualAllocatedBRL - a.actualAllocatedBRL;
-        }
-        return b.gapBRL - a.gapBRL;
-      });
-  }, [classSummaries]);
-
-  const allocatedClassesCount = useMemo(
-    () => sortedClasses.filter((c) => c.actualAllocatedBRL > 0).length,
-    [sortedClasses],
-  );
-
-  const displayedClasses = useMemo(() => {
-    if (showAllClasses) return sortedClasses;
-    const withAlloc = sortedClasses.filter((c) => c.actualAllocatedBRL > 0);
-    return withAlloc.length > 0 ? withAlloc : sortedClasses.slice(0, 3);
-  }, [showAllClasses, sortedClasses]);
-
-  const canToggleClasses = sortedClasses.length > displayedClasses.length || showAllClasses;
-
-  // 2. Setores: Ordenados por aporte alocado desc, depois gap desc
-  const sortedSectors = useMemo(() => {
-    return sectorSummaries
-      .filter((s) => s.actualAllocatedBRL > 0 || s.gapBRL > 0)
-      .sort((a, b) => {
-        if (b.actualAllocatedBRL !== a.actualAllocatedBRL) {
-          return b.actualAllocatedBRL - a.actualAllocatedBRL;
-        }
-        return b.gapBRL - a.gapBRL;
-      });
-  }, [sectorSummaries]);
-
-  const allocatedSectorsCount = useMemo(
-    () => sortedSectors.filter((s) => s.actualAllocatedBRL > 0).length,
-    [sortedSectors],
-  );
-
-  const displayedSectors = useMemo(() => {
-    if (showAllSectors) return sortedSectors;
-    const withAlloc = sortedSectors.filter((s) => s.actualAllocatedBRL > 0);
-    return withAlloc.length > 0 ? withAlloc : sortedSectors.slice(0, 3);
-  }, [showAllSectors, sortedSectors]);
-
-  const canToggleSectors = sortedSectors.length > displayedSectors.length || showAllSectors;
 
   return (
     <section
@@ -553,127 +77,15 @@ export function AporteResult({
       data-tour="aporte-result-section"
       className="flex flex-col gap-4 min-w-0"
     >
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0">
-        <ResultStat icon={<PiggyBank className="size-4 shrink-0" aria-hidden="true" />} label="Aporte informado" cents={numberToCents(aporte)} />
-        <ResultStat
-          icon={<ArrowDownToLine className="size-4 shrink-0" aria-hidden="true" />}
-          label={completedCount > 0 ? `Alocado (${completedCount}/${routes.length} feitos)` : "Alocado em ativos"}
-          cents={numberToCents(effectiveTotalAllocated)}
-          accent
-        />
-        <ResultStat
-          icon={<Wallet className="size-4 shrink-0" aria-hidden="true" />}
-          label="Sobra para caixa"
-          cents={numberToCents(effectiveLeftover)}
-          tone={effectiveLeftover > 0 ? "attention" : "neutral"}
-        />
-      </div>
-
-      {/* 1. Macro por Classe */}
-      {sortedClasses.length > 0 ? (
-        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/60 p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-foreground uppercase tracking-wider">
-              <Layers className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              <span>Distribuição Macro por Classe</span>
-            </div>
-            {canToggleClasses && (
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline">
-                  {allocatedClassesCount > 0
-                    ? `${allocatedClassesCount} com aporte de ${sortedClasses.length}`
-                    : `${sortedClasses.length} classes`}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAllClasses((prev) => !prev)}
-                  className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1"
-                >
-                  <span>{showAllClasses ? "Recolher" : `Ver todas (${sortedClasses.length})`}</span>
-                  {showAllClasses ? (
-                    <ChevronUp className="size-3" aria-hidden="true" />
-                  ) : (
-                    <ChevronDown className="size-3" aria-hidden="true" />
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
-            {displayedClasses.map((cls) => (
-              <div
-                key={cls.className}
-                className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-surface px-3 py-2 text-xs"
-              >
-                <div className="flex flex-col truncate">
-                  <span className="font-medium text-foreground truncate">{cls.className || "Sem classe"}</span>
-                  <span className="text-[11px] text-muted-foreground">Meta: {cls.targetPct}%</span>
-                </div>
-                <div className="flex flex-col items-end shrink-0">
-                  <MoneyText cents={numberToCents(cls.actualAllocatedBRL)} tone={cls.actualAllocatedBRL > 0 ? "portfolio" : "default"} className="font-semibold text-xs" />
-                  <span className="text-[10px] text-muted-foreground">Gap: {formatCentsAsBRL(numberToCents(cls.gapBRL))}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {/* 2. Meso por Setor */}
-      {sortedSectors.length > 0 ? (
-        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/60 p-3 sm:p-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-foreground uppercase tracking-wider">
-              <PieChart className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              <span>Distribuição Meso por Setor</span>
-            </div>
-            {canToggleSectors && (
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline">
-                  {allocatedSectorsCount > 0
-                    ? `${allocatedSectorsCount} com aporte de ${sortedSectors.length}`
-                    : `${sortedSectors.length} setores`}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAllSectors((prev) => !prev)}
-                  className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1"
-                >
-                  <span>{showAllSectors ? "Recolher" : `Ver todos (${sortedSectors.length})`}</span>
-                  {showAllSectors ? (
-                    <ChevronUp className="size-3" aria-hidden="true" />
-                  ) : (
-                    <ChevronDown className="size-3" aria-hidden="true" />
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-1">
-            {displayedSectors.map((sec) => (
-              <div
-                key={`${sec.className}::${sec.sectorName}`}
-                className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-surface px-3 py-2 text-xs"
-              >
-                <div className="flex flex-col truncate">
-                  <span className="font-medium text-foreground truncate">{sec.sectorName}</span>
-                  <span className="text-[11px] text-muted-foreground">
-                    {sec.className} {sec.targetPctInClass > 0 ? `• Meta: ${sec.targetPctInClass}%` : ""}
-                  </span>
-                </div>
-                <div className="flex flex-col items-end shrink-0">
-                  <MoneyText cents={numberToCents(sec.actualAllocatedBRL)} tone={sec.actualAllocatedBRL > 0 ? "portfolio" : "default"} className="font-semibold text-xs" />
-                  <span className="text-[10px] text-muted-foreground">Gap: {formatCentsAsBRL(numberToCents(sec.gapBRL))}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
+      <AporteSummarySection
+        aporte={aporte}
+        effectiveTotalAllocated={effectiveTotalAllocated}
+        effectiveLeftover={effectiveLeftover}
+        completedCount={completedCount}
+        totalRoutesCount={routes.length}
+        classSummaries={classSummaries}
+        sectorSummaries={sectorSummaries}
+      />
 
       <p className="text-xs text-muted-foreground">
         Roteamento <span className="font-medium text-foreground">{MODE_LABEL[mode]}</span>: estabilização macro das classes,
@@ -681,41 +93,44 @@ export function AporteResult({
       </p>
 
       {routes.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl border border-dashed border-border/80 bg-surface px-4 py-8 text-center text-sm text-muted-foreground">
           Nenhum ativo elegível: defina metas abaixo da posição atual (gap positivo) com preço disponível.
         </p>
       ) : (
         <>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider truncate">Detalhamento dos aportes</h3>
-              <div className="inline-flex rounded-lg border border-border bg-muted/30 p-0.5 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                Detalhamento dos aportes
+              </h3>
+              <div className="inline-flex rounded-lg border border-border/80 bg-muted/40 p-0.5 text-xs">
                 <button
                   type="button"
-                  onClick={() => setViewMode("list")}
+                  onClick={() => handleViewChange("list")}
                   className={cn(
-                    "flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-all cursor-pointer",
+                    "relative flex min-h-8 items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-sm:after:absolute max-sm:after:-inset-y-1.5 max-sm:after:inset-x-0",
                     viewMode === "list" ? "bg-surface text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
                   )}
                   title="Visualização em lista por prioridade"
                 >
-                  <ListOrdered className="size-3" aria-hidden="true" />
+                  <ListOrdered className="size-3.5" aria-hidden="true" />
                   <span>Prioridade</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setViewMode("tree")}
+                  onClick={() => handleViewChange("tree")}
                   className={cn(
-                    "flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium transition-all cursor-pointer",
+                    "relative flex min-h-8 items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-sm:after:absolute max-sm:after:-inset-y-1.5 max-sm:after:inset-x-0",
                     viewMode === "tree" ? "bg-surface text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground",
                   )}
-                  title="Visualização hierárquica (Classe -> Setor -> Ativos)"
+                  title="Visualização hierárquica (Classe, Setor e Ativos)"
                 >
-                  <FolderTree className="size-3" aria-hidden="true" />
+                  <FolderTree className="size-3.5" aria-hidden="true" />
                   <span>Árvore</span>
                 </button>
               </div>
             </div>
+
             {onExecuteAporte && (routes.some((r) => r.quantity > 0) || selectedExecutionItems.length > 0) ? (
               <Button
                 type="button"
@@ -739,419 +154,42 @@ export function AporteResult({
 
           {viewMode === "list" ? (
             <>
-              {/* Tabela Tabular Completa para Desktop (≥ 640px) */}
-              <div className="hidden sm:block overflow-x-auto rounded-xl border border-border/80 bg-surface shadow-xs">
-                <DataList
-                  columns={columns}
-                  rows={sortedRoutes}
-                  rowKey={(row, index) => `${row.ticker}:${index}`}
-                  density="compact"
-                  className="border-none shadow-none min-w-[700px]"
-                  emptyMessage="Sem sugestão de aporte."
-                />
-              </div>
-
-              {/* Cards de Aporte Adaptativos para Mobile (< 640px) */}
-              <div className="sm:hidden flex flex-col gap-2.5">
-                {sortedRoutes.length === 0 ? (
-                  <div className="rounded-xl border border-border bg-surface p-6 text-center text-xs text-muted-foreground">
-                    Sem sugestão de aporte.
-                  </div>
-                ) : (
-                  sortedRoutes.map((row, index) => {
-                    const isDone = completedTickers.has(row.ticker);
-                    const eff = effectiveRouteMap.get(row.assetId);
-                    const currentQty = quantityOverrides.get(row.assetId) ?? row.quantity;
-                    return (
-                      <div
-                        key={`${row.ticker}:${index}`}
-                        className={cn(
-                          "flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs transition-colors",
-                          isDone && "bg-muted/10 opacity-75",
-                        )}
-                      >
-                        {/* Cabeçalho do Card: Checkbox + Ticker + Badges à esquerda, Botão de Execução à direita */}
-                        <div className="flex items-start justify-between gap-2 min-w-0">
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <Checkbox
-                              checked={eff?.isSelected ?? false}
-                              disabled={row.quantity <= 0}
-                              onCheckedChange={(checked) => toggleAssetSelection(row.assetId, checked)}
-                              aria-label={`Selecionar ${row.ticker} para aporte`}
-                              className="shrink-0"
-                            />
-                            <div className="flex flex-col gap-0.5 min-w-0">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-mono text-sm font-bold text-foreground truncate">
-                                  {row.ticker}
-                                </span>
-                                {row.assetClass ? (
-                                  <Badge variant="muted" size="xs" className="shrink-0 font-medium">
-                                    {row.assetClass}
-                                  </Badge>
-                                ) : null}
-                                {row.rawScore !== undefined ? (
-                                  <Badge
-                                    variant={row.rawScore === null ? "warning" : "muted"}
-                                    size="xs"
-                                    className="shrink-0"
-                                  >
-                                    {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
-                                  </Badge>
-                                ) : null}
-                              </div>
-                              {row.sector || (row.effectiveTargetPct !== undefined && row.effectiveTargetPct > 0) ? (
-                                <span
-                                  className="text-[11px] text-muted-foreground font-medium truncate"
-                                  title={row.formulaLabel}
-                                >
-                                  {[
-                                    row.sector,
-                                    row.effectiveTargetPct !== undefined && row.effectiveTargetPct > 0
-                                      ? `Meta ${formatPercent(row.effectiveTargetPct)}%`
-                                      : null,
-                                  ]
-                                    .filter(Boolean)
-                                    .join(" · ")}
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {onOpenWizard ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  onOpenWizard(
-                                    row.ticker,
-                                    eff?.effectiveQuantity ?? row.quantity,
-                                    eff?.effectiveAllocatedBRL ?? row.allocatedBRL,
-                                  )
-                                }
-                                className="h-7 px-2 text-xs gap-1 font-medium text-foreground hover:bg-muted/40 cursor-pointer"
-                                title={`Comprar ${row.ticker} no Wizard`}
-                                aria-label={`Comprar ${row.ticker} no Wizard`}
-                              >
-                                <ShoppingCart className="size-3 text-portfolio" aria-hidden="true" />
-                                <span>Comprar</span>
-                              </Button>
-                            ) : null}
-                            <button
-                              type="button"
-                              onClick={() => toggleTicker(row.ticker)}
-                              aria-label={isDone ? `Marcar ${row.ticker} como pendente` : `Marcar ${row.ticker} como executado`}
-                              className={cn(
-                                "inline-flex items-center justify-center gap-1 rounded-pill px-3 py-1 text-xs font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0",
-                                isDone
-                                  ? "border border-positive/30 bg-positive/10 text-positive-strong animate-spring-pop"
-                                  : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-[0.98]",
-                              )}
-                            >
-                              {isDone ? (
-                                <>
-                                  <Check className="size-3.5" aria-hidden="true" />
-                                  <span>Feito</span>
-                                </>
-                              ) : (
-                                <span>Pendente</span>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Grid 2 Colunas: Aporte Sugerido (Destaque) & Posição Alvo vs Atual */}
-                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60">
-                          <div className="flex flex-col gap-1 min-w-0">
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                              Aporte Sugerido
-                            </span>
-                            <MoneyText
-                              cents={numberToCents(eff?.effectiveAllocatedBRL ?? row.allocatedBRL)}
-                              tone="portfolio"
-                              className="text-sm font-bold"
-                            />
-                            <div className="flex items-center gap-1.5 pt-0.5">
-                              <label htmlFor={`mobile-qty-${row.assetId}`} className="text-xs font-semibold text-foreground">
-                                Cotas:
-                              </label>
-                              <Input
-                                id={`mobile-qty-${row.assetId}`}
-                                type="number"
-                                step="any"
-                                min="0"
-                                value={currentQty}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value);
-                                  const nextVal = Number.isFinite(val) && val >= 0 ? val : 0;
-                                  setAssetQuantity(row.assetId, nextVal);
-                                }}
-                                aria-label={`Quantidade de cotas para ${row.ticker}`}
-                                className="h-6 w-16 px-1 text-right font-mono text-xs"
-                              />
-                            </div>
-                            <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap tabular-nums">
-                              @ R$ {row.priceBRL.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              {eff?.isQuantityCustom ? ` (sug: ${formatQuantity(row.quantity)})` : ""}
-                            </span>
-                          </div>
-
-                          <div className="flex flex-col gap-0.5 items-end text-right min-w-0">
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                              Atual <ArrowRight className="size-2.5 inline-block" aria-hidden="true" /> Alvo
-                            </span>
-                            <div className="flex items-center gap-1 font-mono text-xs whitespace-nowrap tabular-nums">
-                              <span className="text-muted-foreground">
-                                <MoneyText cents={numberToCents(row.currentValueBRL)} tone="default" />
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-medium text-foreground font-mono whitespace-nowrap tabular-nums">
-                              Alvo: <MoneyText cents={numberToCents(row.targetValueBRL)} tone="default" />
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+              <AporteDesktopTable
+                routes={sortedRoutes}
+                effectiveRouteMap={effectiveRouteMap}
+                quantityOverrides={quantityOverrides}
+                quantityDrafts={quantityDrafts}
+                completedTickers={completedTickers}
+                onToggleAssetSelection={toggleAssetSelection}
+                onQuantityChange={handleQuantityChange}
+                onToggleTicker={toggleTicker}
+                onOpenWizard={onOpenWizard}
+              />
+              <AporteMobileCardList
+                routes={sortedRoutes}
+                effectiveRouteMap={effectiveRouteMap}
+                quantityOverrides={quantityOverrides}
+                quantityDrafts={quantityDrafts}
+                completedTickers={completedTickers}
+                onToggleAssetSelection={toggleAssetSelection}
+                onQuantityChange={handleQuantityChange}
+                onToggleTicker={toggleTicker}
+                onOpenWizard={onOpenWizard}
+              />
             </>
           ) : (
-            /* Visualização em Árvore Hierárquica */
-            <div className="overflow-x-auto rounded-xl border border-border/80 bg-surface shadow-xs">
-              <table className="w-full min-w-[660px] text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium">
-                    <th className="py-2.5 px-3">Hierarquia / Ativo</th>
-                    <th className="py-2.5 px-3 text-right">Alvo</th>
-                    <th className="py-2.5 px-3 text-right">Atual</th>
-                    <th className="py-2.5 px-3 text-right">Aporte Sugerido</th>
-                    <th className="py-2.5 px-3 text-right">Qtd</th>
-                    <th className="py-2.5 px-3 text-right">Preço</th>
-                    <th className="py-2.5 px-3 text-right">Execução</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {treeGroups.map((cGroup) => {
-                    const isClassExpanded = !expandedClasses.has(cGroup.className);
-                    return (
-                      <ReactNodeFragment key={cGroup.className}>
-                        {/* Linha da Classe */}
-                        <tr
-                          onClick={() => toggleClass(cGroup.className)}
-                          className="bg-muted/20 hover:bg-muted/30 cursor-pointer font-semibold"
-                        >
-                          <td className="py-2 px-3 text-foreground" colSpan={3}>
-                            <div className="flex items-center gap-1.5">
-                              {isClassExpanded ? (
-                                <ChevronDown className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                              ) : (
-                                <ChevronRight className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                              )}
-                              <span>{cGroup.className}</span>
-                              {cGroup.classSummary?.targetPct ? (
-                                <span className="text-[10px] font-normal text-muted-foreground">
-                                  (Meta: {cGroup.classSummary.targetPct}%)
-                                </span>
-                              ) : null}
-                            </div>
-                          </td>
-                          <td className="py-2 px-3 text-right font-mono text-portfolio">
-                            <MoneyText cents={numberToCents(cGroup.totalAllocatedBRL)} tone="portfolio" />
-                          </td>
-                          <td className="py-2 px-3 text-right text-muted-foreground" colSpan={3}>
-                            <span className="text-[11px]">Gap Total: {formatCentsAsBRL(numberToCents(cGroup.totalGapBRL))}</span>
-                          </td>
-                        </tr>
-
-                        {isClassExpanded &&
-                          Array.from(cGroup.sectors.values()).map((sGroup) => {
-                            const sectorKey = `${cGroup.className}::${sGroup.sectorName}`;
-                            const isSectorExpanded = !expandedSectors.has(sectorKey);
-
-                            return (
-                              <ReactNodeFragment key={sectorKey}>
-                                {/* Linha do Setor */}
-                                <tr
-                                  onClick={() => toggleSector(sectorKey)}
-                                  className="bg-surface hover:bg-muted/10 cursor-pointer font-medium"
-                                >
-                                  <td className="py-1.5 px-3 pl-8 text-foreground" colSpan={3}>
-                                    <div className="flex items-center gap-1.5">
-                                      {isSectorExpanded ? (
-                                        <ChevronDown className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                                      ) : (
-                                        <ChevronRight className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                                      )}
-                                      <span className="text-xs">{sGroup.sectorName}</span>
-                                      {sGroup.sectorSummary?.targetPctInClass ? (
-                                        <span className="text-[10px] text-muted-foreground">
-                                          ({sGroup.sectorSummary.targetPctInClass}%)
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right font-mono">
-                                    <MoneyText cents={numberToCents(sGroup.totalAllocatedBRL)} tone="default" className="text-xs" />
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right text-muted-foreground" colSpan={3}>
-                                    <span className="text-[10px]">{sGroup.routes.length} ativos</span>
-                                  </td>
-                                </tr>
-
-                                {/* Linhas dos Ativos */}
-                                {isSectorExpanded &&
-                                  sGroup.routes.map((r) => {
-                                    const isDone = completedTickers.has(r.ticker);
-                                    return (
-                                      <tr
-                                        key={r.assetId}
-                                        className={cn("hover:bg-muted/20 transition-opacity", isDone && "opacity-60")}
-                                      >
-                                        <td className="py-2 px-3 pl-14 font-mono font-semibold text-foreground">
-                                          {r.ticker}
-                                        </td>
-                                        <td className="py-2 px-3 text-right num font-mono">
-                                          <MoneyText cents={numberToCents(r.targetValueBRL)} tone="default" />
-                                        </td>
-                                        <td className="py-2 px-3 text-right num font-mono text-muted-foreground">
-                                          <MoneyText cents={numberToCents(r.currentValueBRL)} tone="default" />
-                                        </td>
-                                        <td className="py-2 px-3 text-right num font-mono font-semibold text-portfolio">
-                                          <MoneyText cents={numberToCents(r.allocatedBRL)} tone="portfolio" />
-                                        </td>
-                                        <td className="py-2 px-3 text-right num font-mono text-muted-foreground">
-                                          {formatQuantity(r.quantity)}
-                                        </td>
-                                        <td className="py-2 px-3 text-right num font-mono text-muted-foreground">
-                                          <MoneyText cents={numberToCents(r.priceBRL)} tone="default" />
-                                        </td>
-                                        <td className="py-2 px-3 text-right">
-                                          <div className="flex items-center justify-end gap-1.5">
-                                            {onOpenWizard && (
-                                              <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => onOpenWizard(r.ticker, r.quantity, r.allocatedBRL)}
-                                                className="h-6 px-1.5 text-[11px] gap-1 font-medium text-foreground hover:bg-muted/40 cursor-pointer"
-                                                title={`Comprar ${r.ticker} no Wizard`}
-                                                aria-label={`Comprar ${r.ticker} no Wizard`}
-                                              >
-                                                <ShoppingCart className="size-2.5 text-portfolio" aria-hidden="true" />
-                                                <span>Comprar</span>
-                                              </Button>
-                                            )}
-                                            <button
-                                              type="button"
-                                              onClick={() => toggleTicker(r.ticker)}
-                                              aria-label={isDone ? `Marcar ${r.ticker} como pendente` : `Marcar ${r.ticker} como executado`}
-                                              className={cn(
-                                                "inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-[11px] font-medium transition-all duration-150 cursor-pointer",
-                                                isDone
-                                                  ? "border border-positive/30 bg-positive/10 text-positive-strong"
-                                                  : "border border-border bg-surface text-muted-foreground hover:border-primary/40",
-                                              )}
-                                            >
-                                              {isDone ? (
-                                                <>
-                                                  <Check className="size-3" aria-hidden="true" />
-                                                  <span>Feito</span>
-                                                </>
-                                              ) : (
-                                                <span>Pendente</span>
-                                              )}
-                                            </button>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                              </ReactNodeFragment>
-                            );
-                          })}
-                      </ReactNodeFragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <AporteTreeBreakdown
+              treeGroups={treeGroups}
+              effectiveRouteMap={effectiveRouteMap}
+              completedTickers={completedTickers}
+              onToggleTicker={toggleTicker}
+              onOpenWizard={onOpenWizard}
+            />
           )}
         </>
       )}
 
-      {skippedAssets.length > 0 ? (
-        <div className="flex flex-col gap-2 rounded-xl border border-border/60 bg-surface/40 p-3">
-          <button
-            type="button"
-            onClick={() => setShowSkipped(!showSkipped)}
-            className="flex items-center justify-between w-full text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-          >
-            <span className="flex items-center gap-1.5">
-              <Info className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              <span>Ativos não contemplados neste aporte ({skippedAssets.length})</span>
-            </span>
-            {showSkipped ? <ChevronUp className="size-4" aria-hidden="true" /> : <ChevronDown className="size-4" aria-hidden="true" />}
-          </button>
-
-          {showSkipped ? (
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-border/40">
-              {skippedAssets.map((asset) => {
-                const config = SKIPPED_REASON_LABEL[asset.reason] ?? { label: asset.reason, variant: "muted" };
-                return (
-                  <div
-                    key={asset.assetId}
-                    className="flex items-center gap-1.5 rounded-lg border border-border/50 bg-surface px-2.5 py-1 text-xs"
-                    title={asset.detail}
-                  >
-                    <span className="font-mono font-medium text-foreground">{asset.ticker}</span>
-                    <Badge variant={config.variant} size="xs">
-                      {config.label}
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      <AporteSkippedAssets skippedAssets={skippedAssets} />
     </section>
   );
 }
-
-function ReactNodeFragment({ children }: { children: ReactNode }) {
-  return <>{children}</>;
-}
-
-function ResultStat({
-  icon,
-  label,
-  cents,
-  accent = false,
-  tone = "neutral",
-}: {
-  icon: ReactNode;
-  label: string;
-  cents: number;
-  accent?: boolean;
-  tone?: "neutral" | "attention";
-}) {
-  return (
-    <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-3.5 sm:p-4 min-w-0 overflow-hidden">
-      <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground truncate">
-        {icon}
-        <span className="truncate">{label}</span>
-      </span>
-      <MoneyText
-        cents={cents}
-        variant="value"
-        tone="default"
-        animated
-        className={cn("text-lg sm:text-xl font-semibold tabular-nums tracking-tight whitespace-nowrap", accent && "text-portfolio", tone === "attention" && "text-warning-strong")}
-      />
-    </div>
-  );
-}
-

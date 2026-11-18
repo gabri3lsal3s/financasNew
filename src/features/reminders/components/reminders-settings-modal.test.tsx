@@ -88,12 +88,12 @@ describe("RemindersSettingsModal", () => {
     const user = userEvent.setup();
     render(<RemindersSettingsModal open={true} onOpenChange={vi.fn()} />);
 
-    const appRemindersCheckbox = screen.getByRole("checkbox", {
+    const appRemindersSwitch = screen.getByRole("switch", {
       name: "Habilitar Lembretes no Aplicativo",
     });
-    expect(appRemindersCheckbox).toBeChecked();
+    expect(appRemindersSwitch).toBeChecked();
 
-    await user.click(appRemindersCheckbox);
+    await user.click(appRemindersSwitch);
     expect(mockUpdateReminderPreferences).toHaveBeenCalledWith({
       remindersEnabled: false,
     });

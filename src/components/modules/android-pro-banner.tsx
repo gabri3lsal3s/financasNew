@@ -1,19 +1,29 @@
 import { useNavigate } from "react-router";
 import { Download, X, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { shouldOfferAndroidApk } from "@/services/native/app-links";
+import { triggerSensory } from "@/services/sensory";
 
 export interface AndroidProBannerProps {
   onDismiss: () => void;
   className?: string;
 }
 
+/**
+ * Sugestão contextual para instalação do aplicativo Android Pro em dispositivos Android Web.
+ */
 export function AndroidProBanner({ onDismiss, className }: AndroidProBannerProps) {
   const navigate = useNavigate();
 
-  const handleOpenDevicesTab = () => {
-    navigate("/configuracoes?tab=devices");
+  if (!shouldOfferAndroidApk()) {
+    return null;
+  }
+
+  const handleDismiss = () => {
+    triggerSensory("action");
+    onDismiss();
   };
 
   return (
@@ -21,7 +31,7 @@ export function AndroidProBanner({ onDismiss, className }: AndroidProBannerProps
       role="region"
       aria-label="Sugestão do Aplicativo Android Pro"
       className={cn(
-        "relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-primary/25 bg-gradient-to-r from-primary/10 via-surface to-surface p-3.5 sm:p-4 shadow-xs transition-all",
+        "relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-primary/25 bg-primary/5 p-3.5 sm:p-4 shadow-xs transition-all",
         className,
       )}
     >
@@ -48,7 +58,7 @@ export function AndroidProBanner({ onDismiss, className }: AndroidProBannerProps
         <Button
           size="sm"
           variant="default"
-          onClick={handleOpenDevicesTab}
+          onClick={() => navigate("/configuracoes?tab=devices")}
           className="w-full sm:w-auto gap-1.5 text-xs font-medium cursor-pointer"
         >
           <Download className="size-3.5" aria-hidden="true" />
@@ -57,9 +67,9 @@ export function AndroidProBanner({ onDismiss, className }: AndroidProBannerProps
 
         <button
           type="button"
-          onClick={onDismiss}
-          className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors cursor-pointer"
-          aria-label="Dispensar sugestão por 7 dias"
+          onClick={handleDismiss}
+          className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
+          aria-label="Dispensar sugestão"
         >
           <X className="size-4" aria-hidden="true" />
         </button>

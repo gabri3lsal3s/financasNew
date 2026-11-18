@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { Card, CardContent, CardHeader } from "@/components/ui";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -14,10 +14,9 @@ export interface AuthShellProps {
 }
 
 /**
-  * Casca das telas de autenticação — Card centralizado com identidade oficial Axir.
-  * No desktop (≥ lg) com `sideHero`, ativa um layout split harmônico e reativo ao tema ativo
-  * com a logo e benefícios à esquerda e formulário espaçoso à direita.
-  */
+ * Casca das telas de autenticação — Card centralizado com identidade oficial Axir.
+ * No desktop (≥ lg) com `sideHero`, ativa um layout split harmônico e reativo ao tema ativo.
+ */
 export function AuthShell({ title, subtitle, children, sideHero, className }: AuthShellProps) {
   if (sideHero) {
     return (
@@ -26,8 +25,7 @@ export function AuthShell({ title, subtitle, children, sideHero, className }: Au
           "flex min-h-dvh items-center justify-center p-4 sm:p-6 lg:p-8",
           "pt-[calc(1.5rem+env(safe-area-inset-top,0px))]",
           "pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]",
-          "bg-background selection:bg-primary/20",
-          "overflow-y-auto",
+          "bg-background selection:bg-primary/20 overflow-y-auto",
           className,
         )}
       >
@@ -37,9 +35,7 @@ export function AuthShell({ title, subtitle, children, sideHero, className }: Au
           </div>
           <Card className="w-full overflow-hidden border-border/80 bg-surface shadow-md rounded-2xl">
             <div className="grid grid-cols-1 lg:grid-cols-12 min-h-[580px]">
-              {/* Painel lateral institucional — Visível apenas no Desktop (≥ lg) e reativo ao tema */}
-              <div className="relative hidden lg:flex lg:col-span-5 flex-col justify-between overflow-hidden bg-gradient-to-br from-surface-hover/80 via-muted/30 to-surface p-8 lg:p-9 text-foreground border-r border-border/60">
-                {/* Iluminação ambiente suave refletindo a identidade do tema e acento ativo */}
+              <div className="relative hidden lg:flex lg:col-span-5 flex-col justify-between overflow-hidden bg-gradient-to-br from-surface-hover/80 via-muted/30 to-surface p-8 lg:p-9 text-foreground border-r border-border/80">
                 <div
                   className="pointer-events-none absolute -top-24 -left-24 size-64 rounded-full bg-primary/15 blur-3xl"
                   aria-hidden="true"
@@ -53,10 +49,8 @@ export function AuthShell({ title, subtitle, children, sideHero, className }: Au
                 </div>
               </div>
 
-              {/* Painel do formulário — Mobile e Desktop */}
               <div className="lg:col-span-7 flex flex-col justify-center px-6 sm:px-10 lg:px-12 py-8 sm:py-10 bg-surface">
                 <CardHeader className="p-0 flex-col items-center gap-2 text-center mb-6">
-                  {/* Logo com adaptação automática a temas claros/escuros no Mobile */}
                   <BrandLogo
                     className="lg:hidden mb-2"
                     markClassName="size-10"
@@ -64,9 +58,9 @@ export function AuthShell({ title, subtitle, children, sideHero, className }: Au
                     showSubtitle
                   />
                   <div className="flex flex-col gap-1 items-center">
-                    <CardTitle className="font-display text-2xl font-bold tracking-tight text-foreground">
+                    <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
                       {title}
-                    </CardTitle>
+                    </h1>
                     {subtitle ? (
                       <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm">
                         {subtitle}
@@ -83,15 +77,13 @@ export function AuthShell({ title, subtitle, children, sideHero, className }: Au
     );
   }
 
-  // Layout simples (Recuperação de senha, etc.)
   return (
     <div
       className={cn(
         "flex min-h-dvh items-center justify-center p-4 sm:p-6",
         "pt-[calc(1.5rem+env(safe-area-inset-top,0px))]",
         "pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]",
-        "bg-background selection:bg-primary/20",
-        "overflow-y-auto",
+        "bg-background selection:bg-primary/20 overflow-y-auto",
         className,
       )}
     >
@@ -103,9 +95,9 @@ export function AuthShell({ title, subtitle, children, sideHero, className }: Au
           <CardHeader className="p-0 flex-col items-center gap-3 text-center mb-6">
             <BrandLogo markClassName="size-11" showWordmark showSubtitle />
             <div className="flex flex-col gap-1">
-              <CardTitle className="font-display text-2xl font-bold tracking-tight text-foreground">
+              <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
                 {title}
-              </CardTitle>
+              </h1>
               {subtitle ? (
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm">
                   {subtitle}

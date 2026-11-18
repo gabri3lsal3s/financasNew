@@ -1,11 +1,5 @@
-/**
- * Modal de confirmação para reabrir uma viagem finalizada pelo organizador.
- * Altera o status para "active", reativando lançamentos e o link público.
- * Respeita as diretrizes de governança do AGENTS.md.
- */
-
 import { RotateCcw } from "lucide-react";
-import { Modal, ModalFooter, Button } from "@/components/ui";
+import { Button, Modal, ModalFooter } from "@/components/ui";
 import { useUpdateTripMutation } from "@/state/queries/use-trips";
 import type { Trip } from "@/types/trips";
 
@@ -31,14 +25,11 @@ function ReopenTripDialogContent({
 
   const handleConfirm = async () => {
     try {
-      await updateMutation.mutateAsync({
-        tripId: trip.id,
-        input: { status: "active" },
-      });
+      await updateMutation.mutateAsync({ tripId: trip.id, input: { status: "active" } });
       onOpenChange(false);
       onSuccess?.();
     } catch {
-      // Erro tratado pela mutation (toast e sensory)
+      // Erro tratado pela mutation
     }
   };
 
@@ -50,24 +41,21 @@ function ReopenTripDialogContent({
       title="Reabrir viagem?"
       description={`A viagem "${trip.title}" voltará para o status Ativa. O link de compartilhamento voltará a aceitar novas despesas e o grupo reaparecerá na lista de viagens em andamento.`}
       footer={
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={updateMutation.isPending}
-            onClick={() => onOpenChange(false)}
-          >
+        <ModalFooter borderless>
+          <Button type="button" variant="outline" disabled={updateMutation.isPending} onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button
             type="button"
             variant="default"
+            sensoryIntent={false}
             disabled={updateMutation.isPending}
+            loading={updateMutation.isPending}
             onClick={() => void handleConfirm()}
             className="gap-1.5"
           >
             <RotateCcw className="size-3.5" aria-hidden="true" />
-            <span>{updateMutation.isPending ? "Reabrindo..." : "Reabrir Viagem"}</span>
+            <span>Reabrir Viagem</span>
           </Button>
         </ModalFooter>
       }

@@ -1,6 +1,7 @@
-import { ChevronRight, Target } from "lucide-react";
+import { ArrowRight, ChevronRight, Target } from "lucide-react";
 import { Badge, Button, MoneyText } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { triggerSensory } from "@/services/sensory";
 
 export interface BudgetSegment {
   id: string;
@@ -34,7 +35,7 @@ export function OverviewBudgetsSection({
   return (
     <section
       aria-label="Orçamentos"
-      className="flex flex-col gap-3.5 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden"
+      className="flex flex-col gap-3.5 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all min-w-0 overflow-hidden"
     >
       {/* Header do Card: Título + Botão de Ação */}
       <div className="flex items-center justify-between gap-2 min-w-0">
@@ -62,10 +63,14 @@ export function OverviewBudgetsSection({
           <span>Nenhum orçamento configurado para este mês.</span>
           <button
             type="button"
-            onClick={onNavigateBudgets}
-            className="font-medium text-primary hover:underline cursor-pointer"
+            onClick={() => {
+              triggerSensory("action");
+              onNavigateBudgets();
+            }}
+            className="inline-flex items-center gap-1 font-medium text-primary-strong hover:underline min-h-11 sm:min-h-0 px-2 rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
           >
-            Definir limites →
+            <span>Definir limites</span>
+            <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />
           </button>
         </div>
       ) : (
@@ -124,9 +129,11 @@ export function OverviewBudgetsSection({
                     width: `${Math.max(1.5, seg.percent)}%`,
                     backgroundColor: seg.color ?? undefined,
                   }}
-                  className="h-full rounded-full transition-all duration-300 first:rounded-l-full last:rounded-r-full shrink-0 outline-none cursor-pointer hover:brightness-110 active:scale-95 focus-visible:ring-1 focus-visible:ring-ring"
-                  title={`${seg.label}: ${(seg.spentCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — clique para ver detalhes`}
+                  className="relative h-full rounded-full transition-all duration-300 first:rounded-l-full last:rounded-r-full shrink-0 outline-none cursor-pointer hover:brightness-110 active:scale-95 focus-visible:ring-1 focus-visible:ring-ring max-sm:after:absolute max-sm:after:-inset-y-4 max-sm:after:inset-x-0"
+                  title={`${seg.label} - ver detalhes`}
+                  aria-label={`${seg.label} - ver detalhes`}
                   onClick={() => {
+                    triggerSensory("selection");
                     if (seg.id === "others") {
                       onOpenOthersBudget();
                     } else {
@@ -145,13 +152,14 @@ export function OverviewBudgetsSection({
                     type="button"
                     key={seg.id}
                     onClick={() => {
+                      triggerSensory("selection");
                       if (seg.id === "others") {
                         onOpenOthersBudget();
                       } else {
                         onSelectCategory(seg.id);
                       }
                     }}
-                    className="inline-flex items-center gap-1.5 min-w-0 text-muted-foreground transition-all duration-150 rounded-lg p-1 -m-1 cursor-pointer hover:bg-surface-hover hover:text-foreground active:scale-95 text-left"
+                    className="inline-flex items-center gap-1.5 min-w-0 min-h-11 sm:min-h-0 text-muted-foreground transition-all duration-150 rounded-lg p-1 -m-1 cursor-pointer hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:scale-95 text-left"
                   >
                     <span
                       className="size-2 rounded-full shrink-0"

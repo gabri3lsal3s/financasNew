@@ -2,7 +2,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { calculateLoginBackoff, LoginPage } from "./login-page";
+import { LoginPage } from "./login-page";
+import { calculateLoginBackoff } from "../utils/login-backoff";
 import * as authHook from "@/hooks/use-auth";
 import * as toastModule from "@/services/toast";
 

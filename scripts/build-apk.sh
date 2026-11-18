@@ -163,11 +163,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v3.9.0: Sistema Holístico de Notas (0–10), Quarentenas e Governança de Carteira (Fase 41)",
-    "Portfolio Quality Score (PQS) ponderado por capital e distribuição por níveis de convicção",
-    "Meta Única Oficial por ativo, classe ou setor com cálculo de desvio e recomendação de aporte",
-    "Radar proativo no carrossel de investimentos para revisões vencidas, quarentenas e oportunidades",
-    "Modal de avaliação de tese e critérios por arquétipo com total responsividade mobile/tablet/desktop"
+    "Axir v3.10.0: Padronização Visual Integral, Conforto Ocular e Bíblia Visual Oficial",
+    "Novos tokens semânticos e paletas oficiais para Dark Mode padrão, OLED e Light Mode",
+    "Padronização canônica de 100% dos modais e drawers com rodapé fixo e ergonomia tátil",
+    "Modularização de páginas e componentes com eliminação de ruído e foco na legibilidade",
+    "Blindagem sensorial estrita (100% opt-out) e eliminação de duplos feedbacks hápticos"
   ]
 }
 EOF

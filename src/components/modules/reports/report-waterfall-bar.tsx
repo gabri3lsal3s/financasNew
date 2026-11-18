@@ -20,9 +20,6 @@ export interface ReportWaterfallBarProps {
 
 /**
  * Cascata Visual de Fluxo Financeiro (DRE Waterfall) para Relatórios A4 / PDF.
- *
- * Apresenta o fluxo em degraus proporcionais:
- * Receitas Brutas -> Custos Essenciais -> Estilo de Vida -> Poupança & Investimentos.
  */
 export function ReportWaterfallBar({
   title = "Fluxo Contábil & Destinação da Renda (Cascata DRE)",
@@ -33,15 +30,15 @@ export function ReportWaterfallBar({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-border/80 bg-muted/10 p-4 break-inside-avoid print:bg-white print:border-border",
+        "flex flex-col gap-3 rounded-xl border border-border/80 bg-muted/10 p-4 shadow-xs break-inside-avoid print:bg-surface print:border-border",
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-2">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-foreground">
           {title}
         </h4>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
           Base: <MoneyText cents={grossIncomeCents} className="font-bold text-foreground" /> (100%)
         </span>
       </div>
@@ -54,8 +51,8 @@ export function ReportWaterfallBar({
 
           return (
             <div key={step.key} className="flex flex-col gap-1">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 font-medium">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-1.5 font-medium min-w-0">
                   {isIncome ? (
                     <ArrowUpRight className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
                   ) : isSavings ? (
@@ -63,23 +60,22 @@ export function ReportWaterfallBar({
                   ) : (
                     <ArrowDownRight className="size-3.5 text-negative-strong shrink-0" aria-hidden="true" />
                   )}
-                  <span className="text-foreground">{step.label}</span>
+                  <span className="text-foreground truncate">{step.label}</span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
                   <MoneyText
                     cents={step.amountCents}
                     tone={isIncome || isSavings ? "positive" : "negative"}
-                    className="font-bold font-mono num"
+                    className="font-bold font-mono num tabular-nums"
                   />
-                  <span className="num font-mono text-[11px] text-muted-foreground w-12 text-right">
+                  <span className="num font-mono text-[11px] text-muted-foreground w-12 text-right tabular-nums">
                     {formatPercent(step.pctOfTotal)}%
                   </span>
                 </div>
               </div>
 
-              {/* Barra de Progresso do Degrau */}
-              <div className="w-full h-2 rounded-full bg-muted/30 overflow-hidden border border-border/40">
+              <div className="w-full h-2 rounded-full bg-muted/30 overflow-hidden border border-border/80">
                 <div
                   style={{ width: `${Math.min(Math.max(step.pctOfTotal, 0), 100)}%` }}
                   className={cn(

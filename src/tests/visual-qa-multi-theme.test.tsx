@@ -37,10 +37,10 @@ describe("Revisão Visual Desktop + Mobile nos 3 Temas (F14 & F15 QA — RELEASE
       expect(tokensCss).toMatch(/html\[data-theme="dark"\][\s\S]*?--foreground:\s*199\s+39%\s+94%/);
     });
 
-    it("tema oled possui fundo preto absoluto (#000000 / 0 0% 0%) para economia e contraste máximo", () => {
+    it("tema oled possui fundo preto absoluto (#000000 / 0 0% 0%) e texto suavizado sem estourar brilho", () => {
       expect(tokensCss).toMatch(/html\[data-theme="oled"\][\s\S]*?--background:\s*0\s+0%\s+0%/);
-      expect(tokensCss).toMatch(/html\[data-theme="oled"\][\s\S]*?--surface:\s*0\s+0%\s+4%/);
-      expect(tokensCss).toMatch(/html\[data-theme="oled"\][\s\S]*?--foreground:\s*0\s+0%\s+98%/);
+      expect(tokensCss).toMatch(/html\[data-theme="oled"\][\s\S]*?--surface:\s*0\s+0%\s+5%/);
+      expect(tokensCss).toMatch(/html\[data-theme="oled"\][\s\S]*?--foreground:\s*0\s+0%\s+93%/);
     });
   });
 

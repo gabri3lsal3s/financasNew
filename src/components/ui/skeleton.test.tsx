@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 import {
   CardsSkeleton,
   DebtsSkeleton,
+  OverviewSkeleton,
   RouteSkeletonFallback,
+  SettingsSkeleton,
   Skeleton,
   SkeletonChart,
   SkeletonKpi,
@@ -53,6 +55,17 @@ describe("Skeleton por contexto (F12 — polimento)", () => {
     expect(screen.getByLabelText("Carregando Contas e Dívidas")).toBeInTheDocument();
   });
 
+  it("OverviewSkeleton espelha a estrutura da Home com MonthPicker, Hero, 4 KPIs e 2 gráficos", () => {
+    const { container } = render(<OverviewSkeleton />);
+    const root = screen.getByLabelText("Carregando Visão Geral");
+    expect(root).toBeInTheDocument();
+    // 4 KPIs em grid de 4 colunas no desktop + 2 gráficos em grid de 2 colunas
+    const kpiGrid = container.querySelector(".lg\\:grid-cols-4");
+    expect(kpiGrid?.children).toHaveLength(4);
+    const chartGrid = container.querySelector(".lg\\:grid-cols-2");
+    expect(chartGrid?.children).toHaveLength(2);
+  });
+
   it("TargetsSkeleton renderiza com rótulo acessível e estrutura canônica de cards", () => {
     const { container } = render(<TargetsSkeleton />);
     expect(screen.getByLabelText("Carregando Metas de Alocação")).toBeInTheDocument();
@@ -68,5 +81,31 @@ describe("Skeleton por contexto (F12 — polimento)", () => {
     );
     expect(screen.getByLabelText("Carregando Transações")).toBeInTheDocument();
     expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("SettingsSkeleton renderiza 6 abas e RouteSkeletonFallback mapeia novas rotas", () => {
+    const { unmount } = render(<SettingsSkeleton />);
+    const tabsRow = screen.getByTestId("settings-skeleton-tabs");
+    expect(tabsRow.children).toHaveLength(6);
+    unmount();
+
+    const routeExpectations = [
+      { path: "/viagens", label: "Carregando Viagens" },
+      { path: "/familia", label: "Carregando Orçamento Familiar" },
+      { path: "/modo-familia", label: "Carregando Orçamento Familiar" },
+      { path: "/insights", label: "Carregando Insights" },
+      { path: "/lembretes", label: "Carregando Lembretes" },
+      { path: "/investimentos", label: "Carregando Investimentos" },
+    ];
+
+    for (const entry of routeExpectations) {
+      const view = render(
+        <MemoryRouter initialEntries={[entry.path]}>
+          <RouteSkeletonFallback />
+        </MemoryRouter>,
+      );
+      expect(screen.getByLabelText(entry.label)).toBeInTheDocument();
+      view.unmount();
+    }
   });
 });

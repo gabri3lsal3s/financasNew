@@ -23,15 +23,15 @@ export function CardSubscriptionRadar({ impact, className, onIgnoreItem }: CardS
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 shadow-xs transition-all",
-        impact.exceedsAvailableLimit && "border-warning-border/80 bg-warning-surface/10",
+        "flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 shadow-xs transition-colors",
+        impact.exceedsAvailableLimit && "border-warning/40 bg-warning/5",
         className,
       )}
       data-testid={`card-subscription-radar-${impact.cardId}`}
     >
       {/* Cabeçalho adaptativo do Card */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 min-w-0">
           <CreditCard
             className={cn(
               "size-4 shrink-0",
@@ -39,7 +39,7 @@ export function CardSubscriptionRadar({ impact, className, onIgnoreItem }: CardS
             )}
             aria-hidden="true"
           />
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground break-words">
             {impact.cardName}
           </h3>
           <span className="text-[11px] text-muted-foreground font-mono">
@@ -67,10 +67,10 @@ export function CardSubscriptionRadar({ impact, className, onIgnoreItem }: CardS
       {impact.exceedsAvailableLimit ? (
         <div
           role="alert"
-          className="flex items-start gap-2.5 rounded-lg border border-warning-border bg-warning-surface/30 p-3 text-xs text-warning-strong"
+          className="flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning-strong"
         >
           <AlertTriangle className="size-4 shrink-0 text-warning-strong mt-0.5" aria-hidden="true" />
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-0.5 min-w-0">
             <span className="font-semibold">
               Alerta de Limite Comprometido
             </span>
@@ -84,13 +84,14 @@ export function CardSubscriptionRadar({ impact, className, onIgnoreItem }: CardS
 
       {/* Lista de Assinaturas Previstas (Expansível) */}
       {impact.items.length > 0 ? (
-        <div className="flex flex-col gap-2 pt-1 border-t border-border/40">
+        <div className="flex flex-col gap-2 pt-1.5 border-t border-border/50">
           <Button
             type="button"
             variant="ghost"
             size="sm"
+            sensoryIntent="selection"
             onClick={() => setDetailsOpen((prev) => !prev)}
-            className="flex items-center justify-between gap-2 h-7 px-1.5 self-start text-[11px] text-muted-foreground hover:text-foreground"
+            className="flex items-center justify-between gap-2 px-2 self-start text-xs text-muted-foreground hover:text-foreground"
             aria-expanded={detailsOpen}
           >
             <span>
@@ -108,7 +109,7 @@ export function CardSubscriptionRadar({ impact, className, onIgnoreItem }: CardS
               {impact.items.map((item) => (
                 <li
                   key={item.key}
-                  className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-surface-hover/50 text-xs"
+                  className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg bg-surface-raised text-xs"
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="font-medium text-foreground truncate">{item.name}</span>
@@ -125,7 +126,8 @@ export function CardSubscriptionRadar({ impact, className, onIgnoreItem }: CardS
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="size-6 text-muted-foreground hover:text-foreground"
+                        sensoryIntent="selection"
+                        className="size-8 sm:size-7 text-muted-foreground hover:text-foreground max-sm:after:absolute max-sm:after:-inset-2"
                         title="Já cortei ou desconsiderar nesta fatura"
                         aria-label={`Já cortei ou desconsiderar ${item.name}`}
                         onClick={() => onIgnoreItem(item.key)}

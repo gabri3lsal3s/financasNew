@@ -10,6 +10,7 @@ import {
   revokePublicShare,
   saveSplitExpenseToAccount,
   saveSimulationToAccount,
+  updatePublicSharePayload,
 } from "./public-shares";
 import { getSupabase } from "@/data/client";
 import * as rpcModule from "@/data/rpc";
@@ -176,6 +177,62 @@ describe("data/repositories/public-shares", () => {
       expect.objectContaining({ is_revoked: false }),
     );
     expect(mockEq).toHaveBeenCalledWith("id", "share-uuid-to-restore");
+  });
+
+  it("getPublicShareByToken retorna null para racha finalizado/arquivado (is_completed = true)", async () => {
+    const mockRow = {
+      id: "share-archived",
+      user_id: "user-test-uuid",
+      kind: "split",
+      token: "archived-tok",
+      payload: { title: "Racha Arquivado", is_completed: true },
+      created_at: "2026-11-05T10:00:00Z",
+      expires_at: null,
+      is_revoked: false,
+      updated_at: "2026-11-05T10:00:00Z",
+    };
+
+    const mockLimit = vi.fn().mockResolvedValue({ data: [mockRow], error: null });
+    const mockEqRevoked = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockEqToken = vi.fn().mockReturnValue({ eq: mockEqRevoked });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEqToken });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+
+    vi.mocked(getSupabase).mockReturnValue({
+      from: mockFrom,
+    } as unknown as ReturnType<typeof getSupabase>);
+
+    const result = await getPublicShareByToken("archived-tok");
+    expect(result).toBeNull();
+  });
+
+  it("updatePublicSharePayload sincroniza is_revoked quando options.isRevoked é informado", async () => {
+    const mockRow = {
+      id: "share-1",
+      user_id: "user-test-uuid",
+      kind: "split",
+      token: "tok1",
+      payload: { is_completed: true },
+      created_at: "2026-11-05T10:00:00Z",
+      expires_at: null,
+      is_revoked: true,
+      updated_at: "2026-11-05T10:00:00Z",
+    };
+
+    const mockSelect = vi.fn().mockResolvedValue({ data: [mockRow], error: null });
+    const mockEq = vi.fn().mockReturnValue({ select: mockSelect });
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ update: mockUpdate });
+
+    vi.mocked(getSupabase).mockReturnValue({
+      from: mockFrom,
+    } as unknown as ReturnType<typeof getSupabase>);
+
+    const updated = await updatePublicSharePayload("share-1", { is_completed: true }, { isRevoked: true });
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: { is_completed: true }, is_revoked: true }),
+    );
+    expect(updated.is_revoked).toBe(true);
   });
 
   it("deletePublicShare executa delete no banco", async () => {

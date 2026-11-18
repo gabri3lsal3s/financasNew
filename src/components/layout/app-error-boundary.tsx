@@ -1,14 +1,8 @@
-import React, { Suspense, lazy } from "react";
+import React from "react";
 import { AlertTriangle, RefreshCw, RotateCcw, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SupportChatDialog } from "@/components/modules/support/support-chat-dialog";
 import { reportError } from "@/services/observability";
-
-// Diálogo de suporte só é necessário após uma falha: mantê-lo fora do bundle inicial.
-const SupportChatDialog = lazy(() =>
-  import("@/components/modules/support/support-chat-dialog").then((m) => ({
-    default: m.SupportChatDialog,
-  })),
-);
 
 export interface AppErrorBoundaryProps {
   children: React.ReactNode;
@@ -86,7 +80,7 @@ export class AppErrorBoundary extends React.Component<
         <div className="min-h-dvh w-full flex items-center justify-center p-4 bg-background selection:bg-primary/20">
           <div className="w-full max-w-md rounded-2xl border border-border/80 bg-surface p-6 sm:p-8 shadow-lg text-center space-y-6">
             {/* Ícone de Atenção Semântico */}
-            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-danger-surface text-danger">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl border border-critical/20 bg-critical/10 text-critical-strong">
               <AlertTriangle className="size-6" aria-hidden="true" />
             </div>
 
@@ -134,14 +128,13 @@ export class AppErrorBoundary extends React.Component<
             </div>
           </div>
 
-          {/* Diálogo de Suporte com Categoria Bug Pré-Selecionada */}            <Suspense fallback={null}>
-              <SupportChatDialog
-                open={this.state.supportChatOpen}
-                onOpenChange={(open) => this.setState({ supportChatOpen: open })}
-                defaultType="bug"
-                initialMessage={`[Falha de renderização capturada pelo ErrorBoundary]\nDetalhe: ${errorMessage}`}
-              />
-            </Suspense>
+          {/* Diálogo de Suporte com Categoria Bug Pré-Selecionada */}
+          <SupportChatDialog
+            open={this.state.supportChatOpen}
+            onOpenChange={(open) => this.setState({ supportChatOpen: open })}
+            defaultType="bug"
+            initialMessage={`[Falha de renderização capturada pelo ErrorBoundary]\nDetalhe: ${errorMessage}`}
+          />
         </div>
       );
     }

@@ -1,33 +1,22 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import {
-  CreditCard,
-  Landmark,
-  PlusCircle,
-  Sparkles,
-} from "lucide-react";
+import { CreditCard, Landmark, PlusCircle, Sparkles } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
+import { CashCheckpointDialog } from "./cash-checkpoint-dialog";
 import { DemoTrackSelectModal } from "./demo-track-select-modal";
 
 export interface VirginAccountHeroProps {
-  /** Callback para calibrar o saldo bancário inicial (CashCheckpoint / Bater com o Banco). */
   onCalibrate?: () => void;
-  /** Callback para abrir o assistente de nova transação (LaunchWizard). */
   onOpenNewTransaction?: () => void;
-  /** Callback para abrir o diálogo de importação de extrato bancário. */
   onOpenStatementImport?: () => void;
-  /** Callback customizado para abrir a demonstração. Se omitido, abre DemoTrackSelectModal internamente. */
   onOpenDemo?: () => void;
   className?: string;
 }
 
 /**
- * VirginAccountHero — Contêiner de recepção para o primeiro acesso (Regra 30 do AGENTS.md).
- *
- * Em contas virgens (sem movimentações nem cartões), substitui a sucessão de 8 cards analíticos
- * vazios e gráficos zerados por 3 portas de entrada claras e acolhedoras, eliminando a ansiedade
- * de partida a frio (cold-start anxiety).
+ * VirginAccountHero — Contêiner de recepção para o primeiro acesso.
  */
 export function VirginAccountHero({
   onCalibrate,
@@ -38,13 +27,11 @@ export function VirginAccountHero({
 }: VirginAccountHeroProps) {
   const navigate = useNavigate();
   const [demoModalOpen, setDemoModalOpen] = useState(false);
+  const [checkpointOpen, setCheckpointOpen] = useState(false);
 
   const handleOpenDemo = () => {
-    if (onOpenDemo) {
-      onOpenDemo();
-    } else {
-      setDemoModalOpen(true);
-    }
+    if (onOpenDemo) onOpenDemo();
+    else setDemoModalOpen(true);
   };
 
   return (
@@ -57,7 +44,6 @@ export function VirginAccountHero({
           className,
         )}
       >
-        {/* Cabeçalho Acolhedor */}
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-strong">
@@ -75,10 +61,8 @@ export function VirginAccountHero({
           </p>
         </div>
 
-        {/* 3 Portas de Entrada Imediatas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-          {/* Opção 1: Informar Saldo Inicial (Recomendada) */}
-          <div className="flex flex-col justify-between gap-4 rounded-xl border border-primary/25 bg-primary/5 p-4 transition-colors hover:border-primary/40 shadow-xs">
+          <div className="flex flex-col justify-between gap-4 rounded-xl border border-primary/25 bg-primary/5 p-4 shadow-xs">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary-strong">
@@ -88,9 +72,7 @@ export function VirginAccountHero({
                   Recomendado
                 </Badge>
               </div>
-              <h3 className="text-sm font-semibold text-foreground">
-                Informar Saldo Inicial
-              </h3>
+              <h3 className="text-sm font-semibold text-foreground">Informar Saldo Inicial</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Defina o saldo real das suas contas bancárias para conciliação perfeita e acompanhamento de caixa desde o primeiro dia.
               </p>
@@ -118,7 +100,7 @@ export function VirginAccountHero({
               <Button
                 size="sm"
                 variant="default"
-                onClick={() => navigate("/cartoes")}
+                onClick={() => setCheckpointOpen(true)}
                 className="w-full text-xs font-semibold cursor-pointer"
               >
                 Calibrar Saldo
@@ -126,15 +108,12 @@ export function VirginAccountHero({
             )}
           </div>
 
-          {/* Opção 2: Cadastrar Cartão de Crédito */}
-          <div className="flex flex-col justify-between gap-4 rounded-xl border border-border/80 bg-surface p-4 transition-colors hover:bg-surface-hover hover:border-border shadow-xs">
+          <div className="flex flex-col justify-between gap-4 rounded-xl border border-border/80 bg-surface p-4 shadow-xs">
             <div className="space-y-2">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-subtle text-muted-foreground">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised border border-border/80 text-muted-foreground">
                 <CreditCard className="size-4.5" aria-hidden="true" />
               </div>
-              <h3 className="text-sm font-semibold text-foreground">
-                Adicionar Cartão de Crédito
-              </h3>
+              <h3 className="text-sm font-semibold text-foreground">Adicionar Cartão de Crédito</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Monitore limites disponíveis, datas de fechamento, vencimento de faturas e saiba seu melhor dia de compra.
               </p>
@@ -150,15 +129,12 @@ export function VirginAccountHero({
             </Button>
           </div>
 
-          {/* Opção 3: Primeiro Lançamento Rápido */}
-          <div className="flex flex-col justify-between gap-4 rounded-xl border border-border/80 bg-surface p-4 transition-colors hover:bg-surface-hover hover:border-border shadow-xs">
+          <div className="flex flex-col justify-between gap-4 rounded-xl border border-border/80 bg-surface p-4 shadow-xs">
             <div className="space-y-2">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-subtle text-muted-foreground">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-raised border border-border/80 text-muted-foreground">
                 <PlusCircle className="size-4.5" aria-hidden="true" />
               </div>
-              <h3 className="text-sm font-semibold text-foreground">
-                Lançar Despesa ou Receita
-              </h3>
+              <h3 className="text-sm font-semibold text-foreground">Lançar Despesa ou Receita</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Registre uma movimentação agora mesmo com digitação rápida ou fotografando um comprovante Pix.
               </p>
@@ -174,16 +150,16 @@ export function VirginAccountHero({
                 Fazer Lançamento
               </Button>
             ) : (
-              <Link to="/transacoes?novo=transacao" className="w-full">
-                <Button size="sm" variant="outline" className="w-full text-xs font-medium cursor-pointer">
-                  Fazer Lançamento
-                </Button>
+              <Link
+                to="/transacoes?novo=transacao"
+                className={cn(buttonVariants({ size: "sm", variant: "outline" }), "w-full text-xs font-medium")}
+              >
+                Fazer Lançamento
               </Link>
             )}
           </div>
         </div>
 
-        {/* Rodapé: Ponte para o Modo Demonstração */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-border/80">
           <span className="text-xs text-muted-foreground text-center sm:text-left">
             Deseja ver como o app funciona com relatórios completos e investimentos antes de começar?
@@ -201,10 +177,15 @@ export function VirginAccountHero({
         </div>
       </div>
 
-      <DemoTrackSelectModal
-        open={demoModalOpen}
-        onOpenChange={setDemoModalOpen}
-      />
+      {checkpointOpen ? (
+        <CashCheckpointDialog
+          open={checkpointOpen}
+          onOpenChange={setCheckpointOpen}
+          currentBalanceCents={0}
+        />
+      ) : null}
+
+      <DemoTrackSelectModal open={demoModalOpen} onOpenChange={setDemoModalOpen} />
     </>
   );
 }

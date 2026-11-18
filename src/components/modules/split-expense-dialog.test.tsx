@@ -21,9 +21,11 @@ const MOCK_PROFILE = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
+let currentMockProfile: typeof MOCK_PROFILE | null = MOCK_PROFILE;
+
 vi.mock("@/state/queries/use-user-access", () => ({
   useUserAccess: () => ({
-    profile: MOCK_PROFILE,
+    profile: currentMockProfile,
   }),
 }));
 
@@ -41,11 +43,10 @@ function renderWithClient(ui: React.ReactElement) {
       queries: { retry: false },
     },
   });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
+  return render(ui, { wrapper: Wrapper });
 }
 
 const mockExpense: Expense = {
@@ -351,5 +352,51 @@ describe("SplitExpenseDialog", () => {
     expect(screen.getByPlaceholderText("Você (Anfitrião)")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Amigo 1")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Amigo 2")).toBeInTheDocument();
+  });
+
+  it("nunca vaza PII do perfil em Modo Simulação (mesmo ao reabrir) nem usa fallback demo em conta real", () => {
+    currentMockProfile = MOCK_PROFILE;
+    const { rerender } = renderWithClient(
+      <SplitExpenseDialog
+        open={false}
+        onOpenChange={vi.fn()}
+        expense={mockExpense}
+        isSimulation={true}
+      />,
+    );
+
+    rerender(
+      <SplitExpenseDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        expense={mockExpense}
+        isSimulation={true}
+      />,
+    );
+
+    expect(screen.getByLabelText("Chave Pix do anfitrião")).toHaveValue("pix.demo@exemplo.com");
+    expect(screen.getByLabelText("Nome do titular da chave Pix")).toHaveValue("Gabriel (Demonstração)");
+
+    storeSplitPreferences({ pixKey: "", merchantName: "", merchantCity: "São Paulo", pixKeyType: "auto" });
+    currentMockProfile = null;
+    rerender(
+      <SplitExpenseDialog
+        open={false}
+        onOpenChange={vi.fn()}
+        expense={mockExpense}
+        isSimulation={false}
+      />,
+    );
+    rerender(
+      <SplitExpenseDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        expense={mockExpense}
+        isSimulation={false}
+      />,
+    );
+
+    expect(screen.getByLabelText("Chave Pix do anfitrião")).toHaveValue("");
+    currentMockProfile = MOCK_PROFILE;
   });
 });

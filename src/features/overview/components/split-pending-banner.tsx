@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
-import { triggerSensory } from "@/services/sensory";
 
 export interface SplitPendingItemSummary {
   id: string;
@@ -30,7 +29,6 @@ export function SplitPendingBanner({
   const navigate = useNavigate();
 
   const handleNavigate = () => {
-    triggerSensory("action");
     navigate("/transacoes");
   };
 

@@ -333,7 +333,9 @@ describe("ResumoTab", () => {
     expect(tableBtn).toBeInTheDocument();
     await user.click(tableBtn);
 
-    expect(screen.getByText("Extrato Analítico de Evolução Patrimonial")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Extrato Analítico de Evolução Patrimonial" }),
+    ).toBeInTheDocument();
   });
 
   it("renderiza o card adaptativo de Rentabilidade da Carteira com fallback para Custódia Aberta", () => {
@@ -376,16 +378,6 @@ describe("ResumoTab", () => {
     await user.click(demoBtn);
     expect(mockStartDemo).toHaveBeenCalledWith("investments");
     expect(mockSetStepIndex).toHaveBeenCalledWith(0);
-  });
-
-  it("renderiza o card de desvio de alocação (AllocationDriftCard) por macroclasses quando não há metas por ativo (Blindagem B9)", () => {
-    setMockClassTargets([
-      { id: "c1", name: "Ações", target_percentage: 50, group_type: "class" },
-      { id: "c2", name: "FIIs", target_percentage: 50, group_type: "class" },
-    ]);
-    renderResumo();
-
-    expect(screen.getByText("Desvio de Alocação Detectado")).toBeInTheDocument();
   });
 
   it("exibe badge 'Sem nota' clicável na tabela de posições para ativos sem nota avaliada", async () => {

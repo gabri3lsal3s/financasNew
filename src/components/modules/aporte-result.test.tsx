@@ -313,6 +313,30 @@ describe("AporteResult", () => {
     expect(screen.getByText("Mantido (neutro)")).toBeInTheDocument();
     expect(screen.getByText("Aporte insuficiente")).toBeInTheDocument();
   });
+
+  it("sincroniza exclusões e overrides de cotas na visão em Árvore (§AUDITORIA)", async () => {
+    const user = userEvent.setup();
+    render(
+      <AporteResult
+        mode="both"
+        aporte={2000}
+        totalAllocated={2000}
+        leftover={0}
+        routes={mockRoutes}
+      />,
+    );
+
+    const petrCheckbox = screen.getAllByRole("checkbox", { name: "Selecionar PETR4 para aporte" })[0];
+    if (!petrCheckbox) throw new Error("Checkbox PETR4 não encontrado");
+    await user.click(petrCheckbox);
+
+    await user.click(screen.getByRole("button", { name: "Árvore" }));
+
+    const treeRows = screen.getAllByRole("row");
+    const petrTreeRow = treeRows.find((row) => row.textContent?.includes("PETR4"));
+    expect(petrTreeRow).toBeDefined();
+    expect(petrTreeRow?.textContent).toContain("0,00");
+  });
 });
 
 

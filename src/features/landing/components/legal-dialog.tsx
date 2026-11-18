@@ -1,14 +1,14 @@
 import { useState } from "react";
 import {
-  ShieldCheck,
-  Lock,
+  CheckCircle2,
+  Coins,
   Database,
   FileText,
-  Coins,
-  CheckCircle2,
+  Lock,
+  ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { Button, Badge, ResponsiveDialog, Tabs } from "@/components/ui";
+import { Badge, Button, Modal, ModalFooter, Tabs } from "@/components/ui";
 
 export type LegalTab = "terms" | "privacy";
 
@@ -18,6 +18,9 @@ export interface LegalDialogProps {
   defaultTab?: LegalTab;
 }
 
+/**
+ * Diálogo institucional de Termos de Serviço e Privacidade (LGPD).
+ */
 export function LegalDialog({
   open,
   onOpenChange,
@@ -35,7 +38,7 @@ export function LegalDialog({
   }
 
   return (
-    <ResponsiveDialog
+    <Modal
       open={open}
       onOpenChange={onOpenChange}
       title="Termos de Serviço & Privacidade (LGPD)"
@@ -46,21 +49,16 @@ export function LegalDialog({
           Legal & LGPD
         </Badge>
       }
-      footerClassName="sm:justify-between"
       footer={
-        <>
-          <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
-            <ShieldCheck className="size-3.5 text-positive-strong dark:text-positive" aria-hidden="true" />
-            <span>Em estrita conformidade com a LGPD (Lei nº 13.709/2018)</span>
-          </div>
+        <ModalFooter borderless>
           <Button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="w-full sm:w-auto min-w-[130px] bg-primary text-primary-foreground hover:bg-primary-strong shadow-xs font-semibold"
+            className="font-semibold"
           >
             Entendido
           </Button>
-        </>
+        </ModalFooter>
       }
     >
       <div className="flex flex-col gap-4">
@@ -76,10 +74,9 @@ export function LegalDialog({
               label: "Termos de Serviço",
               icon: <FileText className="size-3.5" aria-hidden="true" />,
               content: (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5 pt-1 pb-4">
-                  {/* Item 1 */}
-                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-colors hover:border-border">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-warning/30 bg-warning/10 text-warning-strong dark:text-warning">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5 pt-1 pb-2">
+                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-warning/20 bg-warning/15 text-warning-strong">
                       <FileText className="size-4.5" aria-hidden="true" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -92,9 +89,8 @@ export function LegalDialog({
                     </div>
                   </div>
 
-                  {/* Item 2 */}
-                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-colors hover:border-border">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-portfolio/30 bg-portfolio/10 text-portfolio dark:text-sky-400">
+                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-portfolio/20 bg-portfolio/10 text-portfolio">
                       <Database className="size-4.5" aria-hidden="true" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -107,9 +103,8 @@ export function LegalDialog({
                     </div>
                   </div>
 
-                  {/* Item 3 */}
-                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-colors hover:border-border">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-portfolio/30 bg-portfolio/10 text-portfolio dark:text-sky-400">
+                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-portfolio/20 bg-portfolio/10 text-portfolio">
                       <Coins className="size-4.5" aria-hidden="true" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -122,9 +117,8 @@ export function LegalDialog({
                     </div>
                   </div>
 
-                  {/* Item 4 */}
-                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-colors hover:border-border">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary-strong dark:text-primary">
+                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary-strong">
                       <CheckCircle2 className="size-4.5" aria-hidden="true" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -144,10 +138,9 @@ export function LegalDialog({
               label: "Privacidade (LGPD)",
               icon: <ShieldCheck className="size-3.5" aria-hidden="true" />,
               content: (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5 pt-1 pb-4">
-                  {/* Item 1 */}
-                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-colors hover:border-border">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 text-primary-strong dark:text-primary">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5 pt-1 pb-2">
+                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary-strong">
                       <Lock className="size-4.5" aria-hidden="true" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -160,9 +153,8 @@ export function LegalDialog({
                     </div>
                   </div>
 
-                  {/* Item 2 */}
-                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-colors hover:border-border">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-positive/30 bg-positive/10 text-positive-strong dark:text-positive">
+                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-positive/20 bg-positive/10 text-positive-strong">
                       <ShieldCheck className="size-4.5" aria-hidden="true" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -175,9 +167,8 @@ export function LegalDialog({
                     </div>
                   </div>
 
-                  {/* Item 3 */}
-                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-colors hover:border-border">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-portfolio/30 bg-portfolio/10 text-portfolio dark:text-sky-400">
+                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-portfolio/20 bg-portfolio/10 text-portfolio">
                       <Database className="size-4.5" aria-hidden="true" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -190,9 +181,8 @@ export function LegalDialog({
                     </div>
                   </div>
 
-                  {/* Item 4 */}
-                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-colors hover:border-border">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-critical/30 bg-critical/10 text-critical-strong dark:text-critical">
+                  <div className="flex items-start gap-3.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-critical/20 bg-critical/10 text-critical-strong">
                       <Trash2 className="size-4.5" aria-hidden="true" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -209,7 +199,12 @@ export function LegalDialog({
             },
           ]}
         />
+
+        <div className="flex items-center gap-2 rounded-xl border border-border/80 bg-muted/40 px-3.5 py-2.5 text-xs text-muted-foreground">
+          <ShieldCheck className="size-4 shrink-0 text-positive-strong" aria-hidden="true" />
+          <span>Em estrita conformidade com a LGPD (Lei nº 13.709/2018)</span>
+        </div>
       </div>
-    </ResponsiveDialog>
+    </Modal>
   );
 }

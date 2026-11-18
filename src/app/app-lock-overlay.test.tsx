@@ -171,4 +171,58 @@ describe("AppLockOverlay", () => {
 
     expect(await screen.findByText(/PIN incorreto. Tente novamente./i)).toBeInTheDocument();
   });
+
+  it("não exibe o botão 'Usar PIN' quando nenhum PIN local estiver configurado", () => {
+    vi.spyOn(nativeModule, "isPinLockConfigured").mockReturnValue(false);
+    nativeModule.setAppLocked(true);
+
+    render(<AppLockOverlay />);
+
+    expect(screen.queryByRole("button", { name: /Usar PIN/i })).not.toBeInTheDocument();
+  });
+
+  it("aplica inert no #root, prende o foco com Tab/Shift+Tab e restaura foco ao desbloquear", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(nativeModule, "isPinLockConfigured").mockReturnValue(false);
+
+    const rootEl = document.createElement("div");
+    rootEl.id = "root";
+    const bgButton = document.createElement("button");
+    bgButton.textContent = "Botão do App";
+    rootEl.appendChild(bgButton);
+    document.body.appendChild(rootEl);
+    bgButton.focus();
+
+    const unlockSpy = vi.spyOn(nativeModule, "unlockAppWithBiometrics").mockImplementation(async () => {
+      nativeModule.setAppLocked(false);
+      return true;
+    });
+
+    act(() => {
+      nativeModule.setAppLocked(true);
+    });
+    render(<AppLockOverlay />);
+
+    expect(rootEl.hasAttribute("inert")).toBe(true);
+    expect(document.activeElement).not.toBe(bgButton);
+
+    const bioButton = screen.getByRole("button", { name: /Desbloquear com Biometria/i });
+    const signOutButton = screen.getByRole("button", { name: /Sair da conta e entrar com senha/i });
+
+    // Tab do último botão volta para o primeiro botão dentro do overlay
+    signOutButton.focus();
+    await user.tab();
+    expect(document.activeElement).toBe(bioButton);
+
+    // Shift+Tab do primeiro botão volta para o último botão dentro do overlay
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(signOutButton);
+
+    await user.click(bioButton);
+    expect(unlockSpy).toHaveBeenCalled();
+    expect(rootEl.hasAttribute("inert")).toBe(false);
+    expect(document.activeElement).toBe(bgButton);
+
+    rootEl.remove();
+  });
 });

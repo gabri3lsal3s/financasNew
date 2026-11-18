@@ -1,21 +1,15 @@
 import { useState } from "react";
-import { Share2, Check } from "lucide-react";
+import { Check, Share2 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { pushToast } from "@/services/toast";
 import { cn } from "@/lib/utils";
 
 export interface ShareSimulationButtonProps {
-  /** Função que retorna a URL completa compartilhável ou query string */
   getShareUrl: () => string;
-  /** Título/Contexto da simulação para enriquecer a notificação */
   simulationTitle?: string;
-  /** Rótulo principal do botão (padrão: "Copiar Link da Simulação") */
   label?: string;
-  /** Variante visual do botão */
   variant?: "outline" | "default" | "secondary" | "ghost";
-  /** Tamanho do botão */
   size?: "xs" | "sm" | "default" | "lg" | "icon";
-  /** Classe CSS adicional */
   className?: string;
 }
 
@@ -46,7 +40,6 @@ export function ShareSimulationButton({
         document.body.removeChild(textArea);
       }
 
-      // Atualiza a URL na barra de endereço sem recarregar a página (com segurança de mesma origem)
       if (typeof window !== "undefined" && window.history?.replaceState) {
         try {
           const parsed = new URL(url, window.location.origin);
@@ -84,8 +77,8 @@ export function ShareSimulationButton({
       size={size}
       onClick={handleCopy}
       className={cn(
-        "gap-2 font-medium transition-all shrink-0 shadow-xs",
-        copied && "border-positive-strong/40 text-positive-strong bg-positive-strong/5",
+        "gap-2 font-medium transition-colors shrink-0 shadow-xs",
+        copied && "border-positive/40 text-positive-strong bg-positive/10",
         className,
       )}
       aria-label={copied ? "Link da simulação copiado" : label}

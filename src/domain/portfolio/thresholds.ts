@@ -14,6 +14,17 @@ export interface AllocationItem {
   targetPercent: number; // 0..100
 }
 
+/**
+ * Normaliza rótulos legados de classes de ativos para exibição neutra na UI.
+ */
+export function normalizeAllocationClassName(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.toLowerCase() === "ações de dividendos") {
+    return "Ações";
+  }
+  return trimmed;
+}
+
 export interface AllocationDriftItem {
   id: string;
   name: string;

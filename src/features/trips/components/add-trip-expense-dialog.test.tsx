@@ -7,6 +7,7 @@ import type { TripMember } from "@/types/trips";
 
 const createExpenseMock = vi.fn();
 const addTripExpenseMock = vi.fn();
+const linkPersonalExpenseMock = vi.fn();
 const updateCustomSettingsMock = vi.fn().mockResolvedValue({});
 let mockPreferredTripCategoryId: string | undefined = undefined;
 
@@ -33,6 +34,10 @@ vi.mock("@/state", () => ({
   }),
   useCreateExpense: () => ({
     mutateAsync: createExpenseMock,
+    isPending: false,
+  }),
+  useLinkPersonalExpenseToTripMutation: () => ({
+    mutateAsync: linkPersonalExpenseMock,
     isPending: false,
   }),
   useUserPreferences: () => ({
@@ -96,10 +101,6 @@ vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),
 }));
 
-vi.mock("@/data/repositories/expenses", () => ({
-  updateExpense: vi.fn().mockResolvedValue({}),
-}));
-
 const mockMembers: TripMember[] = [
   {
     id: "m-1",
@@ -130,6 +131,7 @@ describe("AddTripExpenseDialog — integração com extrato pessoal e parcelamen
     vi.clearAllMocks();
     mockPreferredTripCategoryId = undefined;
     createExpenseMock.mockResolvedValue("expense-123");
+    linkPersonalExpenseMock.mockResolvedValue({ personalExpense: {}, tripExpense: null });
     addTripExpenseMock.mockResolvedValue({});
   });
 
@@ -140,7 +142,7 @@ describe("AddTripExpenseDialog — integração com extrato pessoal e parcelamen
         onOpenChange={vi.fn()}
         tripId="trip-1"
         members={mockMembers}
-      />
+      />,
     );
 
     expect(screen.getByText("Adicionar Despesa da Viagem")).toBeInTheDocument();
@@ -156,49 +158,40 @@ describe("AddTripExpenseDialog — integração com extrato pessoal e parcelamen
         onOpenChange={vi.fn()}
         tripId="trip-1"
         members={mockMembers}
-      />
+      />,
     );
 
-    // Preenche descrição
     const descInput = screen.getByPlaceholderText(/Ex.: Almoço no centro/i);
     await user.type(descInput, "Jantar comemorativo");
 
-    // Preenche valor: R$ 300,00
     const moneyInput = screen.getByPlaceholderText("R$ 0,00");
     await user.type(moneyInput, "30000");
 
-    // Ativa o switch de lançar no extrato
     const syncSwitch = screen.getByRole("switch", { name: "Lançar no meu extrato bancário" });
     await user.click(syncSwitch);
     expect(syncSwitch).toHaveAttribute("aria-checked", "true");
 
-    // Deve exibir o seletor de categorias do aplicativo
     expect(screen.getByText("Categoria no seu extrato pessoal")).toBeInTheDocument();
 
-    // Seleciona forma de pagamento: Cartão de Crédito
     const allCombos = screen.getAllByRole("combobox");
     const formaPagamentoCombo = allCombos[3] || allCombos[2];
     await user.click(formaPagamentoCombo!);
     const creditCardOption = await screen.findByRole("option", { name: "Cartão de Crédito" });
     await user.click(creditCardOption);
 
-    // Deve exibir Cartão de Crédito e Quantidade de Parcelas
     expect(screen.getAllByText("Cartão de Crédito").length).toBeGreaterThan(0);
     expect(screen.getByText("Quantidade de Parcelas")).toBeInTheDocument();
 
-    // Seleciona 3 parcelas
     const updatedCombos = screen.getAllByRole("combobox");
-    const installmentsSelect = updatedCombos[updatedCombos.length - 1]; // Parcelas
+    const installmentsSelect = updatedCombos[updatedCombos.length - 1];
     await user.click(installmentsSelect!);
     const threeXOption = await screen.findByRole("option", { name: /3x de/i });
     await user.click(threeXOption);
 
-    // Submete o formulário
     const form = document.getElementById("add-trip-expense-form")!;
     fireEvent.submit(form);
 
     await waitFor(() => {
-      // Verifica que a despesa pessoal foi criada com credit_card (e NÃO 'credit')
       expect(createExpenseMock).toHaveBeenCalledWith(
         expect.objectContaining({
           value: 300,
@@ -210,31 +203,33 @@ describe("AddTripExpenseDialog — integração com extrato pessoal e parcelamen
             expect.objectContaining({ value: 100 }),
             expect.objectContaining({ value: 100 }),
           ]),
-        })
+        }),
       );
+      expect(linkPersonalExpenseMock).toHaveBeenCalledWith({
+        personalExpenseId: "expense-123",
+        tripId: "trip-1",
+      });
     });
 
-    // Verifica que gravou a categoria nas preferências do usuário para aprendizado automático
     expect(updateCustomSettingsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         preferredTripCategoryId: expect.any(String),
-      })
+      }),
     );
 
-    // Verifica que a despesa na viagem foi registrada com o valor integral (R$ 300)
     await waitFor(() => {
       expect(addTripExpenseMock).toHaveBeenCalledWith(
         expect.objectContaining({
           amount_cents: 30000,
           description: "Jantar comemorativo",
           linked_personal_expense_id: "expense-123",
-        })
+        }),
       );
     });
   });
 
   it("pré-seleciona a categoria preferida a partir de user_preferences.custom_settings.preferredTripCategoryId", () => {
-    mockPreferredTripCategoryId = "cat-2"; // Restaurantes
+    mockPreferredTripCategoryId = "cat-2";
 
     render(
       <AddTripExpenseDialog
@@ -242,10 +237,9 @@ describe("AddTripExpenseDialog — integração com extrato pessoal e parcelamen
         onOpenChange={vi.fn()}
         tripId="trip-1"
         members={mockMembers}
-      />
+      />,
     );
 
-    // O combobox de Categoria da viagem deve estar preenchido com Restaurantes
     const comboboxes = screen.getAllByRole("combobox");
     const categoryCombo = comboboxes[0];
     expect(categoryCombo).toHaveTextContent("Restaurantes");
@@ -260,28 +254,23 @@ describe("AddTripExpenseDialog — integração com extrato pessoal e parcelamen
         onOpenChange={vi.fn()}
         tripId="trip-1"
         members={mockMembers}
-      />
+      />,
     );
 
-    // Clica no botão inline 'Nova Categoria'
     const newCategoryButtons = screen.getAllByRole("button", { name: /nova categoria/i });
     expect(newCategoryButtons.length).toBeGreaterThan(0);
     await user.click(newCategoryButtons[0]!);
 
-    // O modal mock de criação de categoria deve estar visível
     expect(screen.getByTestId("mock-category-form-dialog")).toBeInTheDocument();
 
-    // Clica no botão para confirmar a criação da categoria
     const confirmBtn = screen.getByRole("button", {
       name: "Confirmar Criar Categoria Mock",
       hidden: true,
     });
     fireEvent.click(confirmBtn);
 
-    // O modal deve ser fechado
     expect(screen.queryByTestId("mock-category-form-dialog")).not.toBeInTheDocument();
 
-    // A categoria selecionada no combobox da viagem agora é a criada
     const comboboxes = screen.getAllByRole("combobox");
     expect(comboboxes[0]).toHaveTextContent("Praia e Passeios");
   });

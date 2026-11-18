@@ -22,7 +22,10 @@ export function RebalanceTab({ onGoToPosition }: RebalanceTabProps) {
   const tabParam = searchParams.get("tab");
   const viewParam = searchParams.get("view");
   const hasSubTab = searchParams.has("subtab");
-  const hasValor = searchParams.has("valor") || searchParams.has("surplusCents");
+  const hasValor =
+    searchParams.has("valor") ||
+    searchParams.has("surplusCents") ||
+    searchParams.get("usarCaixa") === "1";
 
   const activeView: RebalanceView =
     viewParam === "metas" || (tabParam === "metas" && viewParam !== "simulador") || hasSubTab
@@ -42,6 +45,7 @@ export function RebalanceTab({ onGoToPosition }: RebalanceTabProps) {
           updated.set("view", "metas");
           updated.delete("valor");
           updated.delete("surplusCents");
+          updated.delete("usarCaixa");
         } else {
           updated.delete("view");
           updated.delete("subtab");

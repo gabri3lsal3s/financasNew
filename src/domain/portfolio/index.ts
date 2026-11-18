@@ -513,5 +513,7 @@ export * from "./canonical-normalizer";
 export * from "./canonical-returns";
 export * from "./canonical-engine";
 export * from "./asset-governance-insights";
+export * from "./fixed-income-redemption-preview";
+export * from "./wizard-calculations";
 
 

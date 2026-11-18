@@ -5,6 +5,8 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="oled"], [data-theme="dark"] *, [data-theme="oled"] *));
+
 /* ----------------------------------------------------------------
    Mapeamento @theme (Tailwind v4) — cria utilitários:
    bg-background, text-foreground, bg-primary, border-border,
@@ -40,6 +42,8 @@
   --color-critical: hsl(var(--critical));
   --color-critical-strong: hsl(var(--critical-strong));
   --color-portfolio: hsl(var(--portfolio));
+  --color-portfolio-strong: hsl(var(--portfolio-strong));
+  --color-portfolio-foreground: hsl(var(--portfolio-foreground));
 
   --color-cat-1: hsl(var(--cat-1));
   --color-cat-2: hsl(var(--cat-2));
@@ -380,6 +384,13 @@
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-left: env(safe-area-inset-left, 0px);
   --safe-area-right: env(safe-area-inset-right, 0px);
+  --density-row-py: 0.625rem;
+  --density-section-gap: 1.25rem;
+}
+
+html[data-density="compact"] {
+  --density-row-py: 0.375rem;
+  --density-section-gap: 0.875rem;
 }
 
 /* ----------------------------------------------------------------
@@ -573,34 +584,14 @@
     border-color: hsl(var(--primary) / 0.25);
   }
 
-  /* Glow suave na cor de acento */
-  .glow-primary {
-    box-shadow: 0 0 20px -3px hsl(var(--primary) / 0.35);
-  }
-
-  /* Efeito de clique físico com spring */
-  .spring-press {
-    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease-out;
-  }
-  .spring-press:active {
-    transform: scale(0.97);
-  }
-
   /* F11 — Nível de movimento "Econômica" (data-motion="eco"): mantém os fades
      (route-in, toasts) e desliga os efeitos de maior consumo — shimmer dos
      skeletons, pulso vivo (beacon), ping e spring-pop. O ripple é desligado
      via JS (Button só cria ripple em motionLevel === "fluid"). */
   html[data-motion="eco"] .animate-shimmer,
-  html[data-motion="eco"] .animate-live-pulse,
   html[data-motion="eco"] .animate-ping,
   html[data-motion="eco"] .animate-spring-pop {
     animation: none !important;
-  }
-  html[data-motion="eco"] .spring-press {
-    transition: none !important;
-  }
-  html[data-motion="eco"] .spring-press:active {
-    transform: none !important;
   }
 
   /* F11 — Nível "Reduzida / A11y" (data-motion="reduced"): mesmo tratamento
@@ -616,9 +607,6 @@
   }
 
   /* Utilitários de camada Z-Index padronizados (dropdowns < tooltips < bottom bar < modais < toasts) */
-  .z-base {
-    z-index: var(--z-base);
-  }
   .z-sticky {
     z-index: var(--z-sticky);
   }
@@ -676,54 +664,6 @@
     app-region: no-drag;
   }
 }
-
-/* ----------------------------------------------------------------
-   NOTA — Tailwind v3 (alternativa, se a Fase 0 optar por v3):
-   o mesmo mapeamento vai em tailwind.config.ts:
-
-   import type { Config } from "tailwindcss";
-   export default {
-     theme: {
-       extend: {
-         colors: {
-           background: "hsl(var(--background))",
-           surface: "hsl(var(--surface))",
-           border: "hsl(var(--border))",
-           foreground: "hsl(var(--foreground))",
-           muted: { DEFAULT: "hsl(var(--muted))", foreground: "hsl(var(--muted-foreground))" },
-           primary: { DEFAULT: "hsl(var(--primary))", strong: "hsl(var(--primary-strong))", foreground: "hsl(var(--primary-foreground))" },
-           secondary: { DEFAULT: "hsl(var(--secondary))", foreground: "hsl(var(--secondary-foreground))" },
-           accent: { DEFAULT: "hsl(var(--accent))", foreground: "hsl(var(--accent-foreground))" },
-           positive: { DEFAULT: "hsl(var(--positive))", strong: "hsl(var(--positive-strong))" },
-           negative: { DEFAULT: "hsl(var(--negative))", strong: "hsl(var(--negative-strong))" },
-           warning: { DEFAULT: "hsl(var(--warning))", strong: "hsl(var(--warning-strong))" },
-           critical: { DEFAULT: "hsl(var(--critical))", strong: "hsl(var(--critical-strong))" },
-           portfolio: "hsl(var(--portfolio))",
-           cat: {
-             1: "hsl(var(--cat-1))", 2: "hsl(var(--cat-2))", 3: "hsl(var(--cat-3))",
-             4: "hsl(var(--cat-4))", 5: "hsl(var(--cat-5))", 6: "hsl(var(--cat-6))",
-             7: "hsl(var(--cat-7))", 8: "hsl(var(--cat-8))", 9: "hsl(var(--cat-9))",
-             10: "hsl(var(--cat-10))",
-           },
-           ring: "hsl(var(--ring))",
-         },
-         borderRadius: {
-           sm: "var(--radius-sm)", md: "var(--radius-md)", lg: "var(--radius-lg)",
-           xl: "var(--radius-xl)", "2xl": "var(--radius-2xl)", pill: "var(--radius-pill)",
-         },
-         boxShadow: {
-           sm: "var(--shadow-sm)", md: "var(--shadow-md)",
-           lg: "var(--shadow-lg)", kpi: "var(--shadow-kpi)",
-         },
-         fontFamily: {
-           sans: ["var(--font-sans)"],
-           display: ["var(--font-display)"],
-           mono: ["var(--font-mono)"],
-         },
-       },
-     },
-   } satisfies Config;
-   ---------------------------------------------------------------- */
 
 /* ----------------------------------------------------------------
    Impressão — F22 (Fechamento do período imprimível)

@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, Landmark, Scale } from "lucide-react";
+import { Scale } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
@@ -11,6 +11,7 @@ import { numberToCents } from "@/domain/money";
 import type { ConsolidatedBalanceSheetResult } from "@/domain/reports";
 import { formatPercent } from "@/services/masks";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
+import { ConsolidatedBalanceSection } from "./consolidated-wealth/ConsolidatedBalanceSection";
 
 export interface ConsolidatedWealthModalProps {
   open: boolean;
@@ -33,39 +34,32 @@ export function ConsolidatedWealthModal({
   appName = "Axir",
   accountHolder,
 }: ConsolidatedWealthModalProps) {
-  // Segmentos para o gráfico Donut de Composição dos Ativos
+  const totalAssets = balanceSheet.totalAssetsBRL;
+  const pctOfAssets = (v: number) => (totalAssets > 0 ? (v / totalAssets) * 100 : 0);
+
   const assetSegments = [
     {
       key: "investments",
       label: "Investimentos em Custódia",
       value: balanceSheet.totalInvestmentsBRL,
-      pct:
-        balanceSheet.totalAssetsBRL > 0
-          ? (balanceSheet.totalInvestmentsBRL / balanceSheet.totalAssetsBRL) * 100
-          : 0,
-      color: "#1b6b62",
+      pct: pctOfAssets(balanceSheet.totalInvestmentsBRL),
+      color: "hsl(var(--primary-strong))",
       formattedValue: <MoneyText cents={numberToCents(balanceSheet.totalInvestmentsBRL)} />,
     },
     {
       key: "cash",
       label: "Reserva de Caixa (Liquidez)",
       value: balanceSheet.cashBalanceBRL,
-      pct:
-        balanceSheet.totalAssetsBRL > 0
-          ? (balanceSheet.cashBalanceBRL / balanceSheet.totalAssetsBRL) * 100
-          : 0,
-      color: "#2dd4bf",
+      pct: pctOfAssets(balanceSheet.cashBalanceBRL),
+      color: "hsl(var(--cat-7))",
       formattedValue: <MoneyText cents={numberToCents(balanceSheet.cashBalanceBRL)} />,
     },
     {
       key: "receivables",
       label: "Contas a Receber",
       value: balanceSheet.receivablesBRL,
-      pct:
-        balanceSheet.totalAssetsBRL > 0
-          ? (balanceSheet.receivablesBRL / balanceSheet.totalAssetsBRL) * 100
-          : 0,
-      color: "#38bdf8",
+      pct: pctOfAssets(balanceSheet.receivablesBRL),
+      color: "hsl(var(--portfolio))",
       formattedValue: <MoneyText cents={numberToCents(balanceSheet.receivablesBRL)} />,
     },
   ];
@@ -76,7 +70,6 @@ export function ConsolidatedWealthModal({
       onOpenChange={onOpenChange}
       title="Balanço Patrimonial 360° & Evolução Líquida"
     >
-      {/* 1. Cabeçalho Institucional */}
       <ReportHeader
         title="Balanço Patrimonial 360° & Visão Consolidada"
         subtitle="Ativos Totais, Passivos Exigíveis, Patrimônio Líquido & Alavancagem"
@@ -86,7 +79,6 @@ export function ConsolidatedWealthModal({
         accountHolder={accountHolder}
       />
 
-      {/* 2. Síntese Executiva & KPIs em Linha Única */}
       <ReportExecutiveSummary
         title="SÍNTESE PATRIMONIAL & GRAU DE ALAVANCAGEM"
         items={[
@@ -113,135 +105,38 @@ export function ConsolidatedWealthModal({
         ]}
         narrative={
           <span>
-            O patrimônio líquido consolidado totaliza <strong><MoneyText cents={numberToCents(balanceSheet.netWorthBRL)} tone="portfolio" className="inline font-bold" /></strong>, composto por <strong><MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} tone="positive" className="inline font-bold" /></strong> em ativos totais (investimentos em custódia, reserva de liquidez e direitos a receber) e <strong><MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="inline font-bold" /></strong> em passivos exigíveis, resultando em um grau de alavancagem de <strong>{formatPercent(balanceSheet.debtToAssetRatioPct)}%</strong> dos ativos.
+            O patrimônio líquido consolidado totaliza{" "}
+            <strong>
+              <MoneyText cents={numberToCents(balanceSheet.netWorthBRL)} tone="portfolio" className="inline font-bold" />
+            </strong>
+            , composto por{" "}
+            <strong>
+              <MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} tone="positive" className="inline font-bold" />
+            </strong>{" "}
+            em ativos totais (investimentos em custódia, reserva de liquidez e direitos a receber) e{" "}
+            <strong>
+              <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="inline font-bold" />
+            </strong>{" "}
+            em passivos exigíveis, resultando em um grau de alavancagem de{" "}
+            <strong>{formatPercent(balanceSheet.debtToAssetRatioPct)}%</strong> dos ativos.
           </span>
         }
       />
 
-
-      {/* 3. Gráfico Donut de Composição dos Ativos */}
-      {balanceSheet.totalAssetsBRL > 0 && (
+      {totalAssets > 0 && (
         <ReportDonutChart
           title="Composição dos Ativos Patrimoniais"
           segments={assetSegments}
           centerLabel="Ativos"
-          centerValue={<MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} />}
+          centerValue={<MoneyText cents={numberToCents(totalAssets)} />}
           size={136}
           strokeWidth={12}
         />
       )}
 
-      {/* 4. Seção: Balanço Detalhado (Ativos vs. Passivos) */}
-      <section aria-label="Balanço Patrimonial" className="grid grid-cols-1 sm:grid-cols-2 gap-3 break-inside-avoid print:grid-cols-2">
-        {/* Card de Ativos */}
-        <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-2.5 print:bg-white print:border-border shadow-2xs">
-          <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-positive-strong">
-              <ArrowUpRight className="size-3.5" aria-hidden="true" />
-              <span>ATIVOS TOTAIS</span>
-            </div>
-            <MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} tone="positive" className="font-bold text-xs" />
-          </div>
-          <div className="flex flex-col gap-1.5 text-xs">
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Investimentos em Custódia:</span>
-              <MoneyText cents={numberToCents(balanceSheet.totalInvestmentsBRL)} className="num font-mono font-bold text-foreground" />
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Reserva de Liquidez (Caixa):</span>
-              <MoneyText cents={numberToCents(balanceSheet.cashBalanceBRL)} className="num font-mono font-bold text-foreground" />
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Contas a Receber (Empréstimos):</span>
-              <MoneyText cents={numberToCents(balanceSheet.receivablesBRL)} className="num font-mono font-bold text-foreground" />
-            </div>
-          </div>
-        </div>
+      <ConsolidatedBalanceSection balanceSheet={balanceSheet} />
 
-        {/* Card de Passivos */}
-        <div className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-2.5 print:bg-white print:border-border shadow-2xs">
-          <div className="flex items-center justify-between border-b border-border/70 pb-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-negative-strong">
-              <ArrowDownRight className="size-3.5" aria-hidden="true" />
-              <span>PASSIVOS (DÍVIDAS &amp; FATURAS)</span>
-            </div>
-            <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="font-bold text-xs" />
-          </div>
-          <div className="flex flex-col gap-1.5 text-xs">
-            {balanceSheet.creditCardInvoicesBRL > 0 ? (
-              <>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Empréstimos &amp; Financiamentos:</span>
-                  <MoneyText cents={numberToCents(balanceSheet.debtsPayableBRL)} className="num font-mono font-bold text-foreground" />
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Faturas de Cartão em Aberto:</span>
-                  <MoneyText cents={numberToCents(balanceSheet.creditCardInvoicesBRL)} className="num font-mono font-bold text-foreground" />
-                </div>
-              </>
-            ) : (
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Saldo Devedor Total:</span>
-                <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="num font-mono font-bold" />
-              </div>
-            )}
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Comprometimento de Patrimônio:</span>
-              <span className="num font-mono font-bold text-foreground">
-                {formatPercent(balanceSheet.debtToAssetRatioPct)} dos ativos
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. Seção: Demonstração Contábil Integrada (DRE) */}
-      <section aria-label="DRE Pessoal" className="flex flex-col gap-2.5 break-inside-avoid">
-        <div className="flex items-center gap-2 border-b border-border/80 pb-1.5">
-          <Landmark className="size-3.5 text-primary-strong" aria-hidden="true" />
-          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-            Demonstração do Resultado do Exercício (DRE Pessoal)
-          </h3>
-        </div>
-        <div className="rounded-xl border border-border/80 overflow-hidden text-xs">
-          <div className="flex justify-between items-center p-2.5 bg-muted/40 border-b border-border font-bold text-foreground">
-            <span>(+) Receitas Brutas Totais</span>
-            <MoneyText cents={numberToCents(balanceSheet.dre.grossIncomeBRL)} tone="positive" className="num font-mono font-bold" />
-          </div>
-          <div className="flex justify-between items-center p-2.5 border-b border-border text-foreground">
-            <span>(-) Despesas Operacionais e Custo de Vida</span>
-            <MoneyText cents={numberToCents(balanceSheet.dre.totalExpensesBRL)} tone="negative" className="num font-mono font-bold" />
-          </div>
-          <div className="flex justify-between items-center p-2.5 bg-muted/20 border-b border-border font-semibold text-foreground">
-            <span>(=) Poupança Operacional Líquida (Margem: {formatPercent(balanceSheet.dre.savingsRatePct)})</span>
-            <MoneyText
-              cents={numberToCents(balanceSheet.dre.operationalSavingsBRL)}
-              tone={balanceSheet.dre.operationalSavingsBRL >= 0 ? "positive" : "negative"}
-              className="num font-mono font-bold"
-            />
-          </div>
-          <div className="flex justify-between items-center p-2.5 border-b border-border text-foreground">
-            <span>(-) Aportes Destinados a Investimentos</span>
-            <MoneyText cents={numberToCents(balanceSheet.dre.investedAporteBRL)} tone="default" className="num font-mono font-bold" />
-          </div>
-          <div className="flex justify-between items-center p-2.5 bg-primary/5 font-bold text-foreground">
-            <span>(=) Variação Final de Caixa no Período</span>
-            <MoneyText
-              cents={numberToCents(balanceSheet.dre.netCashFlowBRL)}
-              tone={balanceSheet.dre.netCashFlowBRL >= 0 ? "positive" : "negative"}
-              className="text-xs num font-mono font-bold text-primary-strong"
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* 6. Rodapé Institucional */}
-      <ReportFooter
-        accountHolder={accountHolder}
-        disclaimer={OFFICIAL_CVM_DISCLAIMER}
-        showQrCode
-      />
+      <ReportFooter accountHolder={accountHolder} disclaimer={OFFICIAL_CVM_DISCLAIMER} showQrCode />
     </ReportDocumentLayout>
   );
 }
-

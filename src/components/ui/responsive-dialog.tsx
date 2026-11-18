@@ -1,75 +1,43 @@
-import type { ReactNode } from "react";
-import { Modal, ModalFooter, type ModalSize } from "./modal";
+import { cloneElement, isValidElement } from "react";
+import type { ReactElement } from "react";
+import { Modal, ModalFooter, type ModalFooterProps, type ModalProps } from "./modal";
 import { cn } from "@/lib/utils";
 
-export interface ResponsiveDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: string;
-  description?: string;
-  children?: ReactNode;
-  footer?: ReactNode;
-  size?: ModalSize;
-  elevated?: boolean;
-  showCalculator?: boolean;
-  headerActions?: ReactNode;
-  wideHeaderActions?: boolean;
-  hideTitle?: boolean;
-  className?: string;
-  contentClassName?: string;
+export interface ResponsiveDialogProps extends ModalProps {
   footerClassName?: string;
 }
 
 /**
- * Primitivo canônico de Diálogo / BottomSheet responsivo (F55).
- * 
- * Unifica contratos de modais no sistema:
- * - Mobile (< md): Bottom Sheet deslizante com drag-to-close e alça ergonômica.
- * - Desktop (md+): Diálogo centralizado com backdrop blur e tamanhos canônicos.
- * - Suporte nativo a sticky footer, calculadora contextual e Zero Auto-Focus.
+ * Alias/wrapper de compatibilidade sobre `<Modal />` (primitivo único de diálogo/Bottom Sheet).
+ * Repassa integralmente `ModalProps` (`destructiveAction`, `modal`, `dataTour`, `showCalculator`,
+ * `elevated`, `wideHeaderActions`, etc.) sem embrulhar `<ModalFooter>` duas vezes.
  */
 export function ResponsiveDialog({
-  open,
-  onOpenChange,
-  title,
-  description,
-  children,
   footer,
-  size = "md",
-  elevated = false,
-  showCalculator = false,
-  headerActions,
-  wideHeaderActions = false,
-  hideTitle = false,
-  className,
-  contentClassName,
   footerClassName,
+  destructiveAction,
+  ...modalProps
 }: ResponsiveDialogProps) {
-  return (
-    <Modal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={title}
-      description={description}
-      size={size}
-      elevated={elevated}
-      showCalculator={showCalculator}
-      headerActions={headerActions}
-      wideHeaderActions={wideHeaderActions}
-      hideTitle={hideTitle}
-      className={className}
-      contentClassName={contentClassName}
-      footer={
-        footer ? (
-          <ModalFooter className={cn("mt-0 pt-0 border-t-0", footerClassName)}>
-            {footer}
-          </ModalFooter>
-        ) : undefined
-      }
-    >
-      <div className="flex flex-col gap-3.5">
-        <div className="flex-1 min-w-0">{children}</div>
-      </div>
-    </Modal>
-  );
+  const resolvedFooter = (() => {
+    if (!footer && !destructiveAction) return undefined;
+    if (isValidElement(footer) && footer.type === ModalFooter) {
+      const existingProps = footer.props as ModalFooterProps;
+      return cloneElement(footer as ReactElement<ModalFooterProps>, {
+        borderless: existingProps.borderless ?? true,
+        destructiveAction: existingProps.destructiveAction ?? destructiveAction,
+        className: cn(footerClassName, existingProps.className),
+      });
+    }
+    return (
+      <ModalFooter
+        borderless
+        destructiveAction={destructiveAction}
+        className={footerClassName}
+      >
+        {footer}
+      </ModalFooter>
+    );
+  })();
+
+  return <Modal {...modalProps} footer={resolvedFooter} />;
 }

@@ -1,7 +1,6 @@
-import { Zap, X } from "lucide-react";
+import { X, Zap } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
-import { formatCentsAsBRL } from "@/services/masks";
-import { triggerSensory } from "@/services/sensory";
+import { MoneyText } from "@/components/ui/money-text";
 import type { DetectedPixTransaction } from "@/hooks";
 
 export interface DashboardPixClipboardCardProps {
@@ -17,6 +16,9 @@ export interface DashboardPixClipboardCardProps {
   onDismiss: () => void;
 }
 
+/**
+ * Cartão contextual de sugestão para Pix copiado na área de transferência.
+ */
 export function DashboardPixClipboardCard({
   detected,
   onLaunch,
@@ -25,7 +27,6 @@ export function DashboardPixClipboardCard({
   const { candidate, identity } = detected;
 
   const handleLaunch = () => {
-    triggerSensory("success");
     onLaunch({
       valorCents: candidate.valueCents,
       desc: identity.friendlyName || candidate.description,
@@ -37,7 +38,6 @@ export function DashboardPixClipboardCard({
   };
 
   const title = identity.friendlyName || candidate.recipientName || "Pix Detectado";
-  const amountFormatted = formatCentsAsBRL(candidate.valueCents);
   const isIncome = candidate.nature === "income";
 
   return (
@@ -51,15 +51,14 @@ export function DashboardPixClipboardCard({
         </div>
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-foreground truncate">
-              {title}
-            </span>
+            <span className="text-xs font-semibold text-foreground truncate">{title}</span>
             <Badge variant="positive" size="xs">
               PIX DETECTADO
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground truncate">
-            {amountFormatted} • {identity.isLearned ? `Categoria: ${identity.categorySlug}` : "Toque para confirmar lançamento"}
+            <MoneyText cents={candidate.valueCents} tone="default" className="font-semibold" /> ·{" "}
+            {identity.isLearned ? `Categoria: ${identity.categorySlug}` : "Toque para confirmar lançamento"}
           </p>
         </div>
       </div>
@@ -69,6 +68,7 @@ export function DashboardPixClipboardCard({
           type="button"
           size="sm"
           variant="default"
+          sensoryIntent="success"
           onClick={handleLaunch}
           className="h-8 gap-1.5 px-3 text-xs flex-1 sm:flex-initial"
         >
@@ -81,7 +81,7 @@ export function DashboardPixClipboardCard({
           variant="ghost"
           size="xs"
           onClick={onDismiss}
-          className="size-7 p-0 text-muted-foreground hover:text-foreground shrink-0"
+          className="relative size-7 p-0 text-muted-foreground hover:text-foreground shrink-0 max-sm:after:absolute max-sm:after:-inset-2"
           aria-label="Dispensar sugestão de Pix"
         >
           <X className="size-3.5" aria-hidden="true" />

@@ -341,6 +341,104 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
     titleContainer = screen.getByRole("heading", { name: "Título Largo" }).parentElement;
     expect(titleContainer).toHaveClass("md:pr-[360px]");
   });
+
+  it("mantém o cabeçalho transparente no estado inicial e aplica fundo translúcido borda-a-borda apenas ao rolar", () => {
+    render(
+      <Modal open onOpenChange={vi.fn()} title="Operação em Investimentos">
+        <div style={{ height: "1000px" }}>Conteúdo longo</div>
+      </Modal>,
+    );
+
+    const heading = screen.getByRole("heading", { name: "Operação em Investimentos" });
+    const headerContainer = heading.parentElement;
+    expect(headerContainer).toHaveClass("bg-transparent", "md:-mx-6", "md:pl-6");
+    expect(headerContainer?.className).not.toContain("md:bg-surface ");
+    expect(headerContainer?.className).not.toContain("md:bg-surface/95");
+
+    const scrollContainer = screen.getByText("Conteúdo longo").parentElement;
+    const mobileTopBar = scrollContainer?.previousElementSibling;
+    expect(mobileTopBar).toHaveClass("bg-transparent");
+    expect(mobileTopBar?.className).not.toMatch(/\bbg-surface\b/);
+
+    if (scrollContainer) {
+      fireEvent.scroll(scrollContainer, { target: { scrollTop: 50 } });
+      expect(headerContainer).toHaveClass("md:bg-surface/95", "md:border-border/80");
+      expect(mobileTopBar).toHaveClass("bg-transparent", "border-border/80");
+      expect(mobileTopBar?.className).not.toMatch(/\bbg-surface/);
+    }
+  });
+
+  it("mantém barra superior transparente em hideTitle=true mesmo após rolagem", () => {
+    render(
+      <Modal open onOpenChange={vi.fn()} title="Relatório" hideTitle>
+        <div style={{ height: "1000px" }}>Folha A4</div>
+      </Modal>,
+    );
+
+    const scrollContainer = screen.getByText("Folha A4").parentElement;
+    const hideTitleBar = scrollContainer?.previousElementSibling;
+    expect(hideTitleBar).toHaveClass("bg-transparent");
+    expect(hideTitleBar?.className).not.toMatch(/\bbg-surface/);
+
+    if (scrollContainer) {
+      fireEvent.scroll(scrollContainer, { target: { scrollTop: 12 } });
+      expect(hideTitleBar).toHaveClass("bg-transparent", "border-border/80");
+      expect(hideTitleBar?.className).not.toMatch(/\bbg-surface/);
+    }
+  });
+
+  it("suprime margem e borda superior duplicadas de ModalFooter filho dentro do slot footer", () => {
+    render(
+      <Modal
+        open
+        onOpenChange={vi.fn()}
+        title="Com ModalFooter"
+        footer={
+          <ModalFooter>
+            <button type="button">Cancelar</button>
+            <button type="button">Salvar</button>
+          </ModalFooter>
+        }
+      >
+        <p>Corpo</p>
+      </Modal>,
+    );
+
+    const footerEl = screen.getByText("Salvar").parentElement;
+    const slotWrapper = footerEl?.parentElement;
+    expect(slotWrapper?.className).toContain("[&>*]:mt-0");
+    expect(slotWrapper?.className).toContain("[&>*]:pt-0");
+    expect(slotWrapper?.className).toContain("[&>*]:border-t-0");
+  });
+
+  it("suprime rubber-band visual quando motionLevel !== fluid mas preserva drag-to-close", async () => {
+    const { updateVisualCustomization } = await import("@/hooks/use-visual-customization");
+    updateVisualCustomization({ motionLevel: "eco" });
+
+    const onOpenChange = vi.fn();
+    render(
+      <Modal open onOpenChange={onOpenChange} title="Eco Motion">
+        <p>Conteúdo</p>
+      </Modal>,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    fireEvent.pointerDown(dialog, {
+      pointerId: 1,
+      pointerType: "touch",
+      clientY: 100,
+      clientX: 50,
+      isPrimary: true,
+    });
+    fireEvent.pointerMove(dialog, { pointerId: 1, pointerType: "touch", clientY: 160, clientX: 50 });
+    expect(dialog.style.transform).toBe("");
+
+    fireEvent.pointerMove(dialog, { pointerId: 1, pointerType: "touch", clientY: 250, clientX: 50 });
+    fireEvent.pointerUp(dialog, { pointerId: 1, pointerType: "touch", clientY: 250, clientX: 50 });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+
+    updateVisualCustomization({ motionLevel: "fluid" });
+  });
 });
 
 

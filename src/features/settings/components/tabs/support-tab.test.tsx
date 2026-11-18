@@ -14,9 +14,18 @@ vi.mock("@/state", () => ({
   }),
 }));
 
-vi.mock("@/components/modules/support/support-chat-modal", () => ({
-  SupportChatModal: ({ open }: { open: boolean }) => (
+vi.mock("@/components/modules/support/support-chat-dialog", () => ({
+  SupportChatDialog: ({ open }: { open: boolean }) => (
     open ? <div data-testid="support-chat-modal">Modal de Suporte</div> : null
+  ),
+}));
+
+vi.mock("@/components/modules", () => ({
+  HelpModal: ({ open }: { open: boolean }) => (
+    open ? <div data-testid="help-modal">Central de Ajuda</div> : null
+  ),
+  DemoTrackSelectModal: ({ open }: { open: boolean }) => (
+    open ? <div data-testid="demo-select-modal">Tour Guiado</div> : null
   ),
 }));
 

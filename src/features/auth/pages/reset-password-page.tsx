@@ -2,14 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
-import { Alert, Button, PasswordInput } from "@/components/ui";
-import { AuthShell } from "@/features/auth/components/auth-shell";
+import {
+  Alert,
+  Button,
+  FormField,
+  PasswordInput,
+  buttonVariants,
+} from "@/components/ui";
+import { checkPasswordRequirements } from "@/domain/validation";
 import { subscribeAuthStateChange, updateUserPassword } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
-import { checkPasswordRequirements } from "@/domain/validation";
+import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
-import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
+import { pushToast } from "@/services/toast";
+import { AuthShell } from "../components/auth-shell";
+import { PasswordRequirementsChecklist } from "../components/password-requirements-checklist";
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -38,9 +46,7 @@ export function ResetPasswordPage() {
   const [isInvalidLink, setIsInvalidLink] = useState(() => Boolean(initialUrlError));
 
   useEffect(() => {
-    if (initialUrlError) {
-      return;
-    }
+    if (initialUrlError) return;
 
     const cleanUrlTokens = () => {
       if (typeof window !== "undefined" && (window.location.hash || window.location.search)) {
@@ -64,7 +70,6 @@ export function ResetPasswordPage() {
       cleanUrlTokens();
     }
 
-    // Escuta eventos de Auth do Supabase (PASSWORD_RECOVERY ou SIGNED_IN com recovery)
     const unsubscribe = subscribeAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
         setIsInvalidLink(false);
@@ -86,10 +91,12 @@ export function ResetPasswordPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!isPasswordSufficient) {
+      triggerSensory("error");
       setError("A nova senha deve atender aos critérios de segurança mínimos.");
       return;
     }
     if (!isMatching) {
+      triggerSensory("error");
       setError("As senhas digitadas não coincidem.");
       return;
     }
@@ -99,7 +106,6 @@ export function ResetPasswordPage() {
     try {
       await updateUserPassword(newPassword);
 
-      // Invalida outras sessões ativas no Supabase para proteção contra dispositivos roubados ou sessões órfãs
       try {
         await signOut({ scope: "others" });
       } catch {
@@ -133,18 +139,18 @@ export function ResetPasswordPage() {
               <CheckCircle2 className="size-6" aria-hidden="true" />
             </div>
             <div className="space-y-1.5">
-              <h3 className="text-base font-semibold text-foreground">
+              <h2 className="text-base font-semibold text-foreground">
                 Tudo pronto! Senha atualizada
-              </h3>
+              </h2>
               <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
                 Sua credencial de acesso foi alterada com sucesso. Agora você pode prosseguir normalmente.
               </p>
             </div>
             <Button
               type="button"
-              variant="default"
+              variant="solid"
               onClick={() => navigate("/", { replace: true })}
-              className="w-full text-xs h-9 font-semibold rounded-xl"
+              className="w-full"
             >
               Acessar minha conta
             </Button>
@@ -157,7 +163,7 @@ export function ResetPasswordPage() {
             <div className="pt-2 flex flex-col gap-2">
               <Link
                 to="/recuperar-senha"
-                className="w-full h-9 rounded-xl inline-flex items-center justify-center text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                className={cn(buttonVariants({ variant: "solid" }), "w-full")}
               >
                 Solicitar novo link de recuperação
               </Link>
@@ -171,13 +177,10 @@ export function ResetPasswordPage() {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+          <form onSubmit={(e) => { void handleSubmit(e); }} className="flex flex-col gap-4" noValidate>
             {error ? <Alert variant="error">{error}</Alert> : null}
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="reset-new-password" className="text-xs font-semibold text-foreground">
-                Nova senha
-              </label>
+            <FormField label="Nova senha" htmlFor="reset-new-password">
               <PasswordInput
                 id="reset-new-password"
                 autoComplete="new-password"
@@ -185,40 +188,19 @@ export function ResetPasswordPage() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="No mínimo 8 caracteres"
-                className="h-10 text-sm rounded-xl"
+                className="text-base sm:text-sm"
               />
-            </div>
+            </FormField>
 
-            {/* Requisitos visuais de senha */}
-            {newPassword.length > 0 && (
-              <div className="rounded-xl bg-muted/20 border border-border/80 p-3 space-y-2">
-                <span className="text-[11px] font-semibold text-foreground">
-                  Requisitos de segurança:
-                </span>
-                <ul className="text-[11px] space-y-1 text-muted-foreground">
-                  <li className={requirements.minLength ? "text-positive-strong font-medium" : ""}>
-                    • Pelo menos 8 caracteres
-                  </li>
-                  <li
-                    className={
-                      requirements.hasUppercase || requirements.hasNumber
-                        ? "text-positive-strong font-medium"
-                        : ""
-                    }
-                  >
-                    • Letras maiúsculas ou números
-                  </li>
-                </ul>
-              </div>
-            )}
+            {newPassword.length > 0 ? (
+              <PasswordRequirementsChecklist password={newPassword} mode="basic" />
+            ) : null}
 
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="reset-confirm-password"
-                className="text-xs font-semibold text-foreground"
-              >
-                Confirmar nova senha
-              </label>
+            <FormField
+              label="Confirmar nova senha"
+              htmlFor="reset-confirm-password"
+              error={showMismatch ? "As senhas digitadas não coincidem." : undefined}
+            >
               <PasswordInput
                 id="reset-confirm-password"
                 autoComplete="new-password"
@@ -226,19 +208,16 @@ export function ResetPasswordPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Repita a nova senha"
-                className="h-10 text-sm rounded-xl"
+                className="text-base sm:text-sm"
               />
-              {showMismatch && (
-                <span className="text-[11px] text-critical-strong">
-                  As senhas digitadas não coincidem.
-                </span>
-              )}
-            </div>
+            </FormField>
 
             <Button
               type="submit"
+              variant="solid"
+              sensoryIntent={false}
               disabled={pending || !isPasswordSufficient || !isMatching}
-              className="h-10 text-sm font-semibold rounded-xl bg-primary-strong hover:bg-primary text-primary-foreground shadow-xs transition-colors mt-1"
+              className="mt-1"
             >
               {pending ? "Atualizando senha…" : "Salvar nova senha"}
             </Button>

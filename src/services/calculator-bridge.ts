@@ -1,7 +1,9 @@
 /**
  * Injeção Contextual da Calculadora (F9 — Decisão C): "Usar Valor".
  *
- * Ponte bidirecional entre inputs do app e a calculadora flutuante.
+ * Ponte bidirecional entre inputs do app e a calculadora flutuante com pilha
+ * LIFO de alvos: o campo focado/montado mais recentemente assume o topo, e ao
+ * desmontar um campo ou sub-modal secundário o alvo anterior é restaurado.
  * Suporta dois modos:
  *  - "money": MoneyInput (centavos inteiros). A calculadora exibe em R$/$.
  *  - "decimal": campos numéricos livres (quantidade de cotas, taxa, saldo).
@@ -29,11 +31,15 @@ export type CalculatorTarget =
   | CalculatorDecimalTarget
   | CalculatorTargetCallback;
 
-let activeTarget: CalculatorTarget | null = null;
+let targetStack: CalculatorTarget[] = [];
 const listeners = new Set<() => void>();
 
 function notify(): void {
   for (const listener of listeners) listener();
+}
+
+function getActiveTarget(): CalculatorTarget | null {
+  return targetStack.length > 0 ? targetStack[targetStack.length - 1]! : null;
 }
 
 function isTargetObject(target: CalculatorTarget): target is CalculatorTargetObject {
@@ -48,34 +54,46 @@ function isDecimalTarget(target: CalculatorTarget): target is CalculatorDecimalT
   );
 }
 
-/** Registra o campo ativo (chamado no focus do MoneyInput/NumericInput). */
+/** Registra ou promove o campo ao topo da pilha LIFO de alvos da calculadora. */
 export function registerCalculatorTarget(target: CalculatorTarget): void {
-  activeTarget = target;
+  if (getActiveTarget() === target) return;
+  targetStack = targetStack.filter((item) => item !== target);
+  targetStack.push(target);
   notify();
 }
 
-/** Remove o registro quando o campo desmonta (apenas se ainda é o ativo). */
+/** Remove o alvo da pilha LIFO (restaurando o anterior caso fosse o topo). */
 export function unregisterCalculatorTarget(target: CalculatorTarget): void {
-  if (activeTarget === target) {
-    activeTarget = null;
+  const previousLength = targetStack.length;
+  if (previousLength === 0) return;
+  targetStack = targetStack.filter((item) => item !== target);
+  if (targetStack.length !== previousLength) {
     notify();
   }
 }
 
-/** Campo atualmente ativo (para testes/inspeção). */
+/** Limpa toda a pilha de alvos (uso exclusivo de isolamento em testes). */
+export function clearCalculatorTargets(): void {
+  if (targetStack.length === 0) return;
+  targetStack = [];
+  notify();
+}
+
+/** Campo atualmente ativo no topo da pilha (para testes/inspeção). */
 export function getCalculatorTarget(): CalculatorTarget | null {
-  return activeTarget;
+  return getActiveTarget();
 }
 
 /** Retorna se há um campo registrado atualmente como alvo ativo. */
 export function hasActiveTarget(): boolean {
-  return activeTarget !== null;
+  return getActiveTarget() !== null;
 }
 
 /** Modo do alvo ativo: "money" | "decimal" | null. */
 export function getActiveTargetMode(): "money" | "decimal" | null {
-  if (!activeTarget) return null;
-  if (isDecimalTarget(activeTarget)) return "decimal";
+  const active = getActiveTarget();
+  if (!active) return null;
+  if (isDecimalTarget(active)) return "decimal";
   return "money";
 }
 
@@ -84,8 +102,9 @@ export function getActiveTargetMode(): "money" | "decimal" | null {
  * Retorna `null` para alvos decimais ou quando não há alvo.
  */
 export function getActiveTargetCents(): number | null {
-  if (!activeTarget) return null;
-  if (isTargetObject(activeTarget)) return activeTarget.getCents();
+  const active = getActiveTarget();
+  if (!active) return null;
+  if (isTargetObject(active)) return active.getCents();
   return null;
 }
 
@@ -94,16 +113,18 @@ export function getActiveTargetCents(): number | null {
  * Retorna `null` para alvos money ou quando não há alvo.
  */
 export function getActiveDecimalDisplay(): string | null {
-  if (!activeTarget) return null;
-  if (isDecimalTarget(activeTarget)) return activeTarget.getDecimalDisplay();
+  const active = getActiveTarget();
+  if (!active) return null;
+  if (isDecimalTarget(active)) return active.getDecimalDisplay();
   return null;
 }
 
 /** Rótulo contextual do campo ativo, se fornecido. */
 export function getActiveTargetLabel(): string | undefined {
-  if (!activeTarget) return undefined;
-  if (isTargetObject(activeTarget)) return activeTarget.label;
-  if (isDecimalTarget(activeTarget)) return activeTarget.label;
+  const active = getActiveTarget();
+  if (!active) return undefined;
+  if (isTargetObject(active)) return active.label;
+  if (isDecimalTarget(active)) return active.label;
   return undefined;
 }
 
@@ -120,12 +141,13 @@ export function subscribeCalculatorTarget(listener: () => void): () => void {
  * quando nenhum campo está registrado ou o alvo é decimal.
  */
 export function injectCalculatedValue(cents: number): boolean {
-  if (!activeTarget) return false;
-  if (isDecimalTarget(activeTarget)) return false;
-  if (isTargetObject(activeTarget)) {
-    activeTarget.inject(cents);
+  const active = getActiveTarget();
+  if (!active) return false;
+  if (isDecimalTarget(active)) return false;
+  if (isTargetObject(active)) {
+    active.inject(cents);
   } else {
-    activeTarget(cents);
+    active(cents);
   }
   return true;
 }
@@ -135,8 +157,9 @@ export function injectCalculatedValue(cents: number): boolean {
  * quando nenhum campo está registrado ou o alvo é money.
  */
 export function injectDecimalValue(display: string): boolean {
-  if (!activeTarget) return false;
-  if (!isDecimalTarget(activeTarget)) return false;
-  activeTarget.injectDecimal(display);
+  const active = getActiveTarget();
+  if (!active) return false;
+  if (!isDecimalTarget(active)) return false;
+  active.injectDecimal(display);
   return true;
 }

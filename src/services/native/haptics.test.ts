@@ -1,5 +1,6 @@
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { updateVisualCustomization } from "@/hooks/use-visual-customization";
 import { triggerNativeHaptic } from "./haptics";
 import * as platformModule from "./platform";
 
@@ -24,6 +25,17 @@ vi.mock("@capacitor/haptics", () => ({
 describe("Gateway Nativo — Haptics", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    updateVisualCustomization({ hapticEnabled: true });
+  });
+
+  it("não dispara háptico nativo quando hapticEnabled = false", async () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+    updateVisualCustomization({ hapticEnabled: false });
+
+    const result = await triggerNativeHaptic("light");
+
+    expect(result).toBe(false);
+    expect(Haptics.impact).not.toHaveBeenCalled();
   });
 
   it("retorna false e não chama Haptics em ambiente Web/PWA", async () => {

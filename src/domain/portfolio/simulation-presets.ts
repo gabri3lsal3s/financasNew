@@ -25,10 +25,10 @@ export const STRATEGY_PRESETS: Record<StrategyPresetKey, StrategyPresetConfig> =
     name: "Foco em Proventos & Dividendos",
     buttonLabel: "Dividendos",
     tag: "Geração de Renda",
-    description: "Prioridade para proventos mensais recorrentes com Fundos Imobiliários e Ações de dividendos.",
+    description: "Prioridade para proventos mensais recorrentes com Fundos Imobiliários e Ações.",
     classes: [
       { key: "fiis", name: "Fundos Imobiliários", targetPercent: 40, currentProportion: 0.28, yieldRate: 0.10 },
-      { key: "acoes", name: "Ações de Dividendos", targetPercent: 30, currentProportion: 0.23, yieldRate: 0.085 },
+      { key: "acoes", name: "Ações", targetPercent: 30, currentProportion: 0.23, yieldRate: 0.085 },
       { key: "rf", name: "Renda Fixa CDI", targetPercent: 20, currentProportion: 0.37, yieldRate: 0.06 },
       { key: "global", name: "REITs Globais", targetPercent: 10, currentProportion: 0.12, yieldRate: 0.05 },
     ],

@@ -9,6 +9,7 @@ import type {
 import { DEFAULT_THEME_SCHEDULE } from "@/domain/theme";
 import {
   useVisualCustomization,
+  DEFAULT_HEADER_BUTTONS,
   type AccentTheme,
   type ExperiencePreset,
   type HeaderButtonsConfig,
@@ -37,8 +38,9 @@ export function AppearanceTab() {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   const handleSelectPreset = (preset: ExperiencePreset) => {
-    triggerSensory("action");
+    // Persiste o preset ANTES do feedback sensorial para que "Discreto" silencie de imediato (DESIGN_RULES §5.2)
     visual.setExperiencePreset(preset);
+    triggerSensory("selection");
 
     if (preset !== "custom") {
       const applied = EXPERIENCE_PRESETS[preset];
@@ -52,106 +54,97 @@ export function AppearanceTab() {
         disabledSensoryIntents: applied.disabledSensoryIntents,
       });
     }
+  };
 
-    const titles: Record<ExperiencePreset, string> = {
-      dynamic: "Dinâmico",
-      minimal: "Foco (Minimalista)",
-      discreet: "Discreto (Silencioso)",
-      custom: "Personalizado",
-    };
-
-    pushToast({
-      title: "Modo de Experiência aplicado",
-      description: `Perfil alterado para ${titles[preset]}.`,
-      duration: 2200,
+  const handleToggleSound = (enabled: boolean) => {
+    const clearMuted = enabled && visual.disabledSensoryIntents.length >= 7;
+    visual.setSoundEnabled(enabled);
+    updateCustomSettingsMutation.mutate({
+      soundEnabled: enabled,
+      ...(clearMuted ? { disabledSensoryIntents: [] } : {}),
     });
   };
 
-  const handleSelectTheme = (id: ThemePreference, label: string) => {
+  const handleToggleHaptic = (enabled: boolean) => {
+    const clearMuted = enabled && visual.disabledSensoryIntents.length >= 7;
+    visual.setHapticEnabled(enabled);
+    updateCustomSettingsMutation.mutate({
+      hapticEnabled: enabled,
+      ...(clearMuted ? { disabledSensoryIntents: [] } : {}),
+    });
+  };
+
+  const handleSelectTheme = (id: ThemePreference) => {
     triggerSensory("selection");
     setThemePref(id);
     updateCustomSettingsMutation.mutate({
       themePreference: id,
     });
-    pushToast({
-      title: "Preferências salvas",
-      description: `Tema alterado para ${label}.`,
-      duration: 2200,
-    });
   };
 
-  const handleSelectDarkThemeVariant = (variant: DarkThemeVariant, label: string) => {
+  const handleSelectDarkThemeVariant = (variant: DarkThemeVariant) => {
     triggerSensory("selection");
     setDarkThemeVariant(variant);
+    const nextSchedule = {
+      ...scheduleConfig,
+      nightTheme: variant,
+    };
+    setScheduleConfig(nextSchedule);
     updateCustomSettingsMutation.mutate({
       darkThemeVariant: variant,
-    });
-    pushToast({
-      title: "Preferências salvas",
-      description: `Tema escuro preferido alterado para ${label}.`,
-      duration: 2200,
+      themeSchedule: nextSchedule,
     });
   };
 
   const handleUpdateScheduleConfig = (patch: Partial<ThemeScheduleConfig>) => {
     triggerSensory("selection");
-    setScheduleConfig(patch);
+    const nextSchedule = {
+      ...scheduleConfig,
+      ...patch,
+    };
+    setScheduleConfig(nextSchedule);
     updateCustomSettingsMutation.mutate({
-      themeSchedule: {
-        ...scheduleConfig,
-        ...patch,
-      },
-    });
-    pushToast({
-      title: "Horário atualizado",
-      description: "Programação de tema atualizada com sucesso.",
-      duration: 2000,
+      themeSchedule: nextSchedule,
     });
   };
 
-  const handleSelectAccent = (id: AccentTheme, label: string) => {
+  const handleSelectAccent = (id: AccentTheme) => {
     triggerSensory("selection");
     visual.setAccent(id);
-    pushToast({
-      title: "Preferências salvas",
-      description: `Cor de destaque alterada para ${label}.`,
-      duration: 2200,
+    updateCustomSettingsMutation.mutate({
+      accent: id,
     });
   };
 
   const handleToggleHeaderButton = (
     key: keyof HeaderButtonsConfig,
-    label: string,
+    _label: string,
     nextChecked: boolean,
   ) => {
-    triggerSensory("toggle");
     visual.setHeaderButton(key, nextChecked);
     updateCustomSettingsMutation.mutate({
       headerButtons: { [key]: nextChecked },
     });
-    pushToast({
-      title: "Preferências salvas",
-      description: nextChecked
-        ? `Atalho "${label}" adicionado ao cabeçalho.`
-        : `Atalho "${label}" removido do cabeçalho.`,
-      duration: 2200,
-    });
   };
 
   const handleResetDefaults = () => {
+    const dynamic = EXPERIENCE_PRESETS.dynamic;
+    visual.resetToDefaults();
+    setThemePref("system");
+    setDarkThemeVariant("dark");
+    setScheduleConfig(DEFAULT_THEME_SCHEDULE);
     triggerSensory("action");
-    handleSelectPreset("dynamic");
-    handleSelectTheme("system", "Automático");
-    handleSelectDarkThemeVariant("dark", "Escuro (Abissal Teal)");
-    handleUpdateScheduleConfig(DEFAULT_THEME_SCHEDULE);
-    handleSelectAccent("teal", "Teal Vital (Oficial)");
     updateCustomSettingsMutation.mutate({
-      headerButtons: {
-        logo: true,
-        calculatorButton: true,
-        themeToggle: false,
-        privacyToggle: false,
-      },
+      experiencePreset: "dynamic",
+      accent: "teal",
+      surfaceStyle: "glass",
+      motionLevel: dynamic.motionLevel,
+      density: dynamic.density,
+      soundEnabled: dynamic.soundEnabled,
+      hapticEnabled: dynamic.hapticEnabled,
+      numberTickerEnabled: dynamic.numberTickerEnabled,
+      disabledSensoryIntents: dynamic.disabledSensoryIntents,
+      headerButtons: DEFAULT_HEADER_BUTTONS,
       themePreference: "system",
       darkThemeVariant: "dark",
       themeSchedule: DEFAULT_THEME_SCHEDULE,
@@ -169,6 +162,10 @@ export function AppearanceTab() {
       <ExperiencePresetsCard
         activePreset={visual.experiencePreset}
         onSelectPreset={handleSelectPreset}
+        soundEnabled={visual.soundEnabled}
+        onToggleSound={handleToggleSound}
+        hapticEnabled={visual.hapticEnabled}
+        onToggleHaptic={handleToggleHaptic}
       />
 
       {/* --- CARD 2: IDENTIDADE VISUAL & TEMA --- */}
@@ -190,7 +187,7 @@ export function AppearanceTab() {
       />
 
       {/* --- AÇÃO DE RODAPÉ: REDEFINIÇÃO DE PADRÕES --- */}
-      <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4">
+      <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 sm:p-5">
         <div className="space-y-0.5">
           <span className="text-xs font-semibold text-foreground block">
             Restaurar Padrões de Personalização
@@ -204,9 +201,9 @@ export function AppearanceTab() {
           variant="outline"
           size="sm"
           onClick={() => setIsResetConfirmOpen(true)}
-          className="h-8 px-3 text-xs font-semibold rounded-xl shrink-0 cursor-pointer gap-1.5"
+          className="shrink-0 gap-1.5"
         >
-          <RotateCcw className="size-3 text-muted-foreground" aria-hidden="true" />
+          <RotateCcw className="size-3.5 text-muted-foreground" aria-hidden="true" />
           <span>Restaurar Padrões</span>
         </Button>
       </Card>

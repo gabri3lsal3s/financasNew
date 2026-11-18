@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Landmark, TrendingUp } from "lucide-react";
 import { getPublicAppUrl } from "@/services/app-url";
@@ -15,6 +15,10 @@ import {
   ReportDocumentLayout,
   ReportPerformanceChart,
   ReportMonthlyMovements,
+  ReportStocksBreakdownCard,
+  ReportFiiBreakdownCard,
+  ReportFixedIncomeBreakdownCard,
+  ReportInternationalBreakdownCard,
 } from "./index";
 
 describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () => {
@@ -280,7 +284,35 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
 
     expect(screen.getAllByText("Prévia do Dossiê")[0]).toBeInTheDocument();
     expect(screen.getByText("Imprimir / Salvar PDF")).toBeInTheDocument();
-    expect(screen.getAllByText("Conteúdo Editorial").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Conteúdo Editorial")).toHaveLength(1);
+    const printSheet = document.body.querySelector(".print-sheet");
+    expect(printSheet).toBeInTheDocument();
+    expect(printSheet?.querySelector(".print-document")).toBeEmptyDOMElement();
+  });
+
+  it("monta children no PrintSheet sob demanda ao imprimir ou receber beforeprint/afterprint", () => {
+    render(
+      <ReportDocumentLayout
+        open={true}
+        onOpenChange={() => {}}
+        title="Dossiê Sob Demanda"
+      >
+        <div data-testid="report-body">Conteúdo Pesado</div>
+      </ReportDocumentLayout>,
+    );
+
+    const printDoc = document.body.querySelector(".print-sheet .print-document");
+    expect(printDoc).not.toBeNull();
+    expect(printDoc).toBeEmptyDOMElement();
+    expect(screen.getAllByTestId("report-body")).toHaveLength(1);
+
+    fireEvent(window, new Event("beforeprint"));
+    expect(screen.getAllByTestId("report-body")).toHaveLength(2);
+    expect(printDoc).not.toBeEmptyDOMElement();
+
+    fireEvent(window, new Event("afterprint"));
+    expect(screen.getAllByTestId("report-body")).toHaveLength(1);
+    expect(printDoc).toBeEmptyDOMElement();
   });
 
   it("renderiza ReportPerformanceChart com rótulos sem colisão e footer explicativo de MTD", () => {
@@ -388,6 +420,89 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     expect(screen.getByText("Neutro")).toBeInTheDocument();
     expect(screen.getByText("Nota 2")).toBeInTheDocument();
     expect(screen.getByText("Saída")).toBeInTheDocument();
+  });
+
+  it("renderiza os 4 cards de Raio-X via ReportExposureBreakdownCard com alternância de visão, print_all e MoneyText", () => {
+    const positions = [
+      { assetId: "1", ticker: "BBAS3", assetClass: "Ações", sector: "Bancos", valueBRL: 6000 },
+      { assetId: "2", ticker: "VALE3", assetClass: "Ações", sector: "Mineração", valueBRL: 4000 },
+      { assetId: "3", ticker: "HGLG11", assetClass: "FIIs", sector: "Logística", valueBRL: 5000 },
+      { assetId: "4", ticker: "MXRF11", assetClass: "FIIs", sector: "Papel / CRI", valueBRL: 3000 },
+      { assetId: "5", ticker: "LCI BANCO X", assetClass: "Renda Fixa", sector: "Bancário", valueBRL: 8000 },
+      { assetId: "6", ticker: "IVV", assetClass: "Internacional", sector: "EUA", valueBRL: 7000 },
+    ];
+
+    render(
+      <div>
+        <ReportStocksBreakdownCard positions={positions} />
+        <ReportFiiBreakdownCard positions={positions} />
+        <ReportFixedIncomeBreakdownCard positions={positions} />
+        <ReportInternationalBreakdownCard positions={positions} mode="print_all" />
+      </div>,
+    );
+
+    // Stocks interactive switch
+    expect(screen.getByText("Perfil Cíclico / Resiliência")).toBeInTheDocument();
+    const porteBtn = screen.getByRole("button", { name: /Por Porte/i });
+    expect(porteBtn).toHaveClass("min-h-11");
+    fireEvent.click(porteBtn);
+    expect(screen.getByText("Porte / Capitalização")).toBeInTheDocument();
+
+    // FIIs single view (sem botão de alternância)
+    expect(screen.getByText("Estratégia / Categoria")).toBeInTheDocument();
+
+    // Fixed income com callout de eficiência fiscal
+    expect(screen.getByText(/Eficiência Fiscal:/)).toBeInTheDocument();
+    expect(screen.getByText(/Total Isento:/)).toBeInTheDocument();
+
+    // International em modo print_all renderiza ambos os quadros simultaneamente
+    expect(screen.getByText("Região Geográfica")).toBeInTheDocument();
+    expect(screen.getByText("Veículo de Custódia (Dólar vs. BDR)")).toBeInTheDocument();
+    expect(screen.getByText(/Exposição em Dólar Direto/)).toBeInTheDocument();
+  });
+
+  it("exibe estado vazio limpo nos cards de Raio-X quando não há ativos da classe", () => {
+    render(<ReportStocksBreakdownCard positions={[]} />);
+    expect(
+      screen.getByText("Nenhuma ação da B3 em custódia na carteira para decomposição setorial."),
+    ).toBeInTheDocument();
+  });
+
+  it("não impõe teto artificial de 12% ao CDI e permite inspeção interativa nas barras de rentabilidade", () => {
+    const series = [
+      { month: "2026-09", monthLabel: "09/26", patrimonyBRL: 10000, ratePct: 1.5, isMtd: false },
+      { month: "2026-10", monthLabel: "10/26", patrimonyBRL: 10200, ratePct: 2.0, isMtd: false },
+    ];
+
+    render(
+      <ReportPerformanceChart
+        series={series}
+        annualCdiRate={14.25}
+        annualSelicRate={10.5}
+      />,
+    );
+
+    // CDI acima de 12% a.a. é preservado (2 meses compostos de 14,25% a.a. = 2,25 -> "2,3%", sem fallback 10,5% -> "1,7%")
+    const cdiCard = screen.getByText("CDI").closest("div")?.parentElement ?? null;
+    expect(cdiCard).not.toBeNull();
+    if (cdiCard) {
+      expect(within(cdiCard).getByText("2,3%")).toBeInTheDocument();
+      expect(within(cdiCard).queryByText("1,7%")).not.toBeInTheDocument();
+    }
+
+    const firstBar = screen.getByRole("button", { name: /09\/26/i });
+    fireEvent.click(firstBar);
+    expect(screen.getByText(/R\$\s*10\.000,00/)).toBeInTheDocument();
+  });
+
+  it("usa shadow-xs canônico (zero shadow-2xs) nos cards do ReportKpiGrid", () => {
+    const { container } = render(
+      <ReportKpiGrid
+        items={[{ label: "Patrimônio", value: "R$ 50.000,00", tone: "primary" }]}
+      />,
+    );
+    expect(container.querySelector(".shadow-2xs")).toBeNull();
+    expect(container.querySelector(".shadow-xs")).not.toBeNull();
   });
 });
 

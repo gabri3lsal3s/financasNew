@@ -37,7 +37,7 @@ describe("AllocationDriftCard (§F52)", () => {
 
     expect(screen.getByText("Desvio de Alocação Detectado")).toBeInTheDocument();
     expect(screen.getByText("FIIs")).toBeInTheDocument();
-    expect(screen.getByText(/2\.000,00/)).toBeInTheDocument();
+    expect(screen.getByText("-20,0 p.p.")).toBeInTheDocument();
 
     const button = screen.getByRole("button", { name: /Simular Rebalanceamento/i });
     fireEvent.click(button);

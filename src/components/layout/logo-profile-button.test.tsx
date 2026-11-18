@@ -74,6 +74,7 @@ describe("LogoProfileButton (mobile & desktop)", () => {
     expect(screen.getByText("gabriel@exemplo.com")).toBeInTheDocument();
     expect(screen.getByText("Sessão Segura")).toBeInTheDocument();
     expect(screen.getByText(/Teste Pro/i)).toBeInTheDocument();
+    expect(screen.getByText("Axir - v3.10.0")).toBeInTheDocument();
   });
 
   it("renderiza no desktop com nome/wordmark e abre o modal de perfil ao clicar", async () => {
@@ -110,7 +111,7 @@ describe("LogoProfileButton (mobile & desktop)", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/assinatura");
   });
 
-  it("atalho 'Segurança & Perfil' navega exatamente para a tab de segurança", async () => {
+  it("atalho 'Minha Conta & Perfil' navega exatamente para a tab account", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -119,12 +120,12 @@ describe("LogoProfileButton (mobile & desktop)", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Abrir perfil do usuário" }));
-    await user.click(screen.getByRole("button", { name: /Segurança & Perfil/i }));
+    await user.click(screen.getByRole("button", { name: /Minha Conta & Perfil/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=seguranca");
+    expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=account");
   });
 
-  it("atalho 'Aparência & Tema' navega exatamente para a tab de personalização", async () => {
+  it("atalho 'Aparência & Tema' navega exatamente para a tab appearance", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -135,10 +136,10 @@ describe("LogoProfileButton (mobile & desktop)", () => {
     await user.click(screen.getByRole("button", { name: "Abrir perfil do usuário" }));
     await user.click(screen.getByRole("button", { name: /Aparência & Tema/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=personalizacao");
+    expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=appearance");
   });
 
-  it("atalho 'Dados & Backup' navega para a tab de dados", async () => {
+  it("atalho 'Notificações & Alertas' navega exatamente para a tab notifications", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -147,12 +148,26 @@ describe("LogoProfileButton (mobile & desktop)", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Abrir perfil do usuário" }));
-    await user.click(screen.getByRole("button", { name: /Dados & Backup/i }));
+    await user.click(screen.getByRole("button", { name: /Notificações & Alertas/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=dados");
+    expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=notifications");
   });
 
-  it("atalho 'Gerenciar Assinatura' navega para a tab de plano", async () => {
+  it("atalho 'Segurança & Dados' navega exatamente para a tab security", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <LogoProfileButton />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Abrir perfil do usuário" }));
+    await user.click(screen.getByRole("button", { name: /Segurança & Dados/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=security");
+  });
+
+  it("atalho 'Gerenciar Assinatura' navega exatamente para a tab subscription", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -163,10 +178,10 @@ describe("LogoProfileButton (mobile & desktop)", () => {
     await user.click(screen.getByRole("button", { name: "Abrir perfil do usuário" }));
     await user.click(screen.getByRole("button", { name: /Gerenciar Assinatura/i }));
 
-    expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=plano");
+    expect(mockNavigate).toHaveBeenCalledWith("/configuracoes?tab=subscription");
   });
 
-  it("botão 'Sair da Conta' dispara logout", async () => {
+  it("botão 'Sair da Conta' dispara logout ancorado no rodapé", async () => {
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -175,7 +190,9 @@ describe("LogoProfileButton (mobile & desktop)", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Abrir perfil do usuário" }));
-    await user.click(screen.getByRole("button", { name: /Sair da Conta/i }));
+    const logoutBtn = screen.getByRole("button", { name: /Sair da Conta/i });
+    expect(logoutBtn.className).toContain("text-critical-strong");
+    await user.click(logoutBtn);
 
     expect(mockSignOut).toHaveBeenCalled();
   });

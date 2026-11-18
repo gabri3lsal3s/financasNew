@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PortfolioSnapshotsDialog } from "./portfolio-snapshots-dialog";
@@ -58,109 +58,97 @@ const mockSeries: PortfolioMonthlySeriesPoint[] = [
 ];
 
 describe("PortfolioSnapshotsDialog", () => {
-  it("renderiza a tabela analítica completa com os pontos ordenados decrescentemente", () => {
-    const onOpenChange = vi.fn();
+  it("renderiza a tabela analítica completa com os pontos ordenados decrescentemente e folha de impressão", () => {
     renderWithClient(
       <PortfolioSnapshotsDialog
         open={true}
-        onOpenChange={onOpenChange}
+        onOpenChange={vi.fn()}
         series={mockSeries}
         currentMonthStr="2026-09"
       />,
     );
 
-    expect(
-      screen.getByText("Extrato Analítico de Evolução Patrimonial"),
-    ).toBeInTheDocument();
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getAllByText("Extrato Analítico de Evolução Patrimonial").length).toBeGreaterThanOrEqual(1);
+    expect(dialog.getByText("Imprimir / Salvar PDF")).toBeInTheDocument();
 
-    // KPIs de resumo
-    expect(screen.getByText("3 meses")).toBeInTheDocument();
-    expect(screen.getAllByText(/108\.000,00/).length).toBeGreaterThan(0);
-    expect(screen.getByText("Proventos no Período")).toBeInTheDocument();
+    expect(dialog.getByText("3 meses")).toBeInTheDocument();
+    expect(dialog.getAllByText(/108\.000,00/).length).toBeGreaterThan(0);
+    expect(dialog.getByText("Proventos no Período")).toBeInTheDocument();
 
-    // Colunas da tabela
-    expect(screen.getByText("Competência")).toBeInTheDocument();
-    expect(screen.getByText("Patrimônio")).toBeInTheDocument();
-    expect(screen.getByText("Custo")).toBeInTheDocument();
-    expect(screen.getByText("Proventos Mês")).toBeInTheDocument();
-    expect(screen.getByText("Proventos Acum.")).toBeInTheDocument();
-    expect(screen.getByText("Mês (TWR %)")).toBeInTheDocument();
-    expect(screen.getByText("Retorno Total")).toBeInTheDocument();
-    expect(screen.getByText("TWR Acum.")).toBeInTheDocument();
-    expect(screen.getByText("Cota (R$)")).toBeInTheDocument();
-    expect(screen.getByText("Ações")).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "Competência" })).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "Patrimônio" })).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "Custo" })).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "Proventos Mês" })).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "Proventos Acum." })).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "Mês (TWR %)" })).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "Retorno Total" })).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "TWR Acum." })).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "Cota (R$)" })).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "Ações" })).toBeInTheDocument();
 
-    // Proventos auferidos no respectivo mês exibidos na tabela
-    expect(screen.getByText(/R\$[\s\u00a0]500,00$/)).toBeInTheDocument();
-    expect(screen.getByText(/R\$[\s\u00a0]450,00$/)).toBeInTheDocument();
-    expect(screen.getByText(/R\$[\s\u00a0]300,00$/)).toBeInTheDocument();
+    expect(dialog.getByText(/R\$[\s\u00a0]500,00$/)).toBeInTheDocument();
+    expect(dialog.getByText(/R\$[\s\u00a0]450,00$/)).toBeInTheDocument();
+    expect(dialog.getByText(/R\$[\s\u00a0]300,00$/)).toBeInTheDocument();
 
-    // Mês (TWR %) destacado como performance periódica isolada
-    expect(screen.getByText("+2.50%")).toBeInTheDocument();
-    expect(screen.getByText("+1.20%")).toBeInTheDocument();
-    expect(screen.getByText("+0.50%")).toBeInTheDocument();
+    expect(dialog.getByText("+2.50%")).toBeInTheDocument();
+    expect(dialog.getByText("+1.20%")).toBeInTheDocument();
+    expect(dialog.getByText("+0.50%")).toBeInTheDocument();
 
-    // Linhas de dados formatadas
-    expect(screen.getByText("Set/2026")).toBeInTheDocument();
-    expect(screen.getByText("Ago/2026")).toBeInTheDocument();
-    expect(screen.getByText("Dez/2025")).toBeInTheDocument();
+    expect(dialog.getByText("Set/2026")).toBeInTheDocument();
+    expect(dialog.getByText("Ago/2026")).toBeInTheDocument();
+    expect(dialog.getByText("Dez/2025")).toBeInTheDocument();
+    expect(dialog.getByText("atual")).toBeInTheDocument();
 
-    // Badge atual no mês 2026-09
-    expect(screen.getByText("atual")).toBeInTheDocument();
+    // Garante que a folha de impressão (.print-sheet) monta o documento sob demanda durante a impressão (correção do bug de PDF em branco)
+    const printSheet = document.body.querySelector(".print-sheet");
+    expect(printSheet).not.toBeNull();
+    fireEvent(window, new Event("beforeprint"));
+    expect(within(printSheet as HTMLElement).getByText("Extrato Analítico de Evolução Patrimonial")).toBeInTheDocument();
+    expect(within(printSheet as HTMLElement).getByText("Set/2026")).toBeInTheDocument();
+    fireEvent(window, new Event("afterprint"));
   });
 
   it("permite filtrar por ano", () => {
-    const onOpenChange = vi.fn();
     renderWithClient(
       <PortfolioSnapshotsDialog
         open={true}
-        onOpenChange={onOpenChange}
+        onOpenChange={vi.fn()}
         series={mockSeries}
         currentMonthStr="2026-09"
       />,
     );
 
-    // Botões de filtro por ano
-    const btn2025 = screen.getByRole("button", { name: "2025" });
-    expect(btn2025).toBeInTheDocument();
-
+    const dialog = within(screen.getByRole("dialog"));
+    const btn2025 = dialog.getByRole("button", { name: "2025" });
     fireEvent.click(btn2025);
 
-    // Agora deve exibir apenas 1 mês (Dez/2025)
-    expect(screen.getByText("1 mês")).toBeInTheDocument();
-    expect(screen.getByText("Dez/2025")).toBeInTheDocument();
-    expect(screen.queryByText("Set/2026")).not.toBeInTheDocument();
-    expect(screen.queryByText("Ago/2026")).not.toBeInTheDocument();
+    expect(dialog.getByText("1 mês")).toBeInTheDocument();
+    expect(dialog.getByText("Dez/2025")).toBeInTheDocument();
+    expect(dialog.queryByText("Set/2026")).not.toBeInTheDocument();
+    expect(dialog.queryByText("Ago/2026")).not.toBeInTheDocument();
   });
 
-  it("permite acionar o diálogo de exclusão de snapshot histórico", async () => {
-    const onOpenChange = vi.fn();
+  it("permite acionar o diálogo de exclusão de snapshot histórico", () => {
     const onDeleteSnapshot = vi.fn();
     renderWithClient(
       <PortfolioSnapshotsDialog
         open={true}
-        onOpenChange={onOpenChange}
+        onOpenChange={vi.fn()}
         series={mockSeries}
         currentMonthStr="2026-09"
         onDeleteSnapshot={onDeleteSnapshot}
       />,
     );
 
-    // Botão de exclusão para o mês Ago/2026
-    const deleteBtn = screen.getByRole("button", {
-      name: "Excluir snapshot de Ago/2026",
-    });
-    expect(deleteBtn).toBeInTheDocument();
-
+    const deleteBtn = screen.getByRole("button", { name: "Excluir snapshot de Ago/2026" });
     fireEvent.click(deleteBtn);
 
-    // Deve abrir o ConfirmDialog
     expect(screen.getByText("Excluir Snapshot Mensal")).toBeInTheDocument();
     expect(
       screen.getByText(/Tem certeza que deseja excluir o snapshot patrimonial de Ago\/2026/),
     ).toBeInTheDocument();
 
-    // Clicar em confirmar
     const confirmBtn = screen.getByRole("button", { name: "Excluir Snapshot" });
     fireEvent.click(confirmBtn);
 
@@ -194,11 +182,9 @@ describe("PortfolioSnapshotsDialog", () => {
       />,
     );
 
-    // Mês (TWR %) negativo destacado com sinal e formatação
-    expect(screen.getByText("-1.75%")).toBeInTheDocument();
-
-    // Proventos zerados no mês exibidos sem erro (resumo e linha da tabela)
-    expect(screen.getAllByText(/R\$[\s\u00a0]0,00$/).length).toBe(2);
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("-1.75%")).toBeInTheDocument();
+    expect(dialog.getAllByText(/R\$[\s\u00a0]0,00$/).length).toBe(2);
   });
 
   it("exibe badge provisório para competência histórica com status provisional", () => {
@@ -229,7 +215,8 @@ describe("PortfolioSnapshotsDialog", () => {
       />,
     );
 
-    expect(screen.getByText("provisório")).toBeInTheDocument();
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("provisório")).toBeInTheDocument();
   });
 
   it("exibe badge calibrado e botão de restaurar para snapshot com calibração manual", () => {
@@ -263,21 +250,17 @@ describe("PortfolioSnapshotsDialog", () => {
       />,
     );
 
-    expect(screen.getByText("calibrado")).toBeInTheDocument();
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("calibrado")).toBeInTheDocument();
 
-    // Botão de restaurar fechamento oficial deve estar disponível
-    const restoreBtn = screen.getByRole("button", {
+    const restoreBtn = dialog.getByRole("button", {
       name: "Restaurar fechamento oficial de Ago/2026",
     });
     expect(restoreBtn).toBeInTheDocument();
+    expect(
+      dialog.getByRole("button", { name: "Calibrar snapshot de Ago/2026" }),
+    ).toBeInTheDocument();
 
-    // Botão de calibrar também deve estar disponível
-    const calibrateBtn = screen.getByRole("button", {
-      name: "Calibrar snapshot de Ago/2026",
-    });
-    expect(calibrateBtn).toBeInTheDocument();
-
-    // Clicar em restaurar deve abrir diálogo de confirmação
     fireEvent.click(restoreBtn);
     expect(screen.getByText("Restaurar Fechamento Oficial")).toBeInTheDocument();
     expect(
@@ -285,4 +268,3 @@ describe("PortfolioSnapshotsDialog", () => {
     ).toBeInTheDocument();
   });
 });
-

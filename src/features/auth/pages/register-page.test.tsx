@@ -60,7 +60,7 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
     expect(screen.getByLabelText("Confirmar Senha")).toBeInTheDocument();
-    expect(screen.getByLabelText("Código de Convite")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Código de Convite/i)).toBeInTheDocument();
     const checkbox = screen.getByRole("checkbox", {
       name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
     });

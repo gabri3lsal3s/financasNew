@@ -27,13 +27,10 @@ export function Switch({
   className,
   "aria-label": ariaLabel,
 }: SwitchProps) {
-  const switchId =
-    id ??
-    (typeof label === "string"
-      ? `switch-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`
-      : undefined);
+  const generatedId = React.useId();
+  const switchId = id ?? generatedId;
 
-  const handleClick = () => {
+  const handleToggle = () => {
     if (disabled) return;
     triggerSensory("toggle");
     onCheckedChange(!checked);
@@ -48,9 +45,9 @@ export function Switch({
         aria-checked={checked}
         disabled={disabled}
         aria-label={ariaLabel ?? (typeof label === "string" ? label : undefined)}
-        onClick={handleClick}
+        onClick={handleToggle}
         className={cn(
-          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 mt-0.5",
+          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 mt-0.5 max-sm:after:absolute max-sm:after:-inset-2",
           checked ? "bg-primary" : "bg-input",
         )}
       >
@@ -62,11 +59,8 @@ export function Switch({
         />
       </button>
       {label || description ? (
-        <div
-          className={cn("flex flex-col gap-0.5 min-w-0 select-none", !disabled && "cursor-pointer")}
-          onClick={handleClick}
-        >
-          {label && (
+        <div className="flex flex-col gap-0.5 min-w-0 select-none">
+          {label ? (
             <label
               htmlFor={switchId}
               className={cn(
@@ -76,12 +70,12 @@ export function Switch({
             >
               {label}
             </label>
-          )}
-          {description && (
+          ) : null}
+          {description ? (
             <p className={cn("text-[11px] text-muted-foreground leading-normal", disabled && "opacity-50")}>
               {description}
             </p>
-          )}
+          ) : null}
         </div>
       ) : null}
     </div>

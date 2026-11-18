@@ -227,8 +227,8 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     await user.click(alterarSenhaButton);
 
     expect(screen.getByRole("heading", { name: "Alterar Senha de Acesso" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Senha atual")).toBeInTheDocument();
-    expect(screen.getByLabelText("Nova senha")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Senha atual/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Nova senha/i)).toBeInTheDocument();
   });
 
   it("permite alternar entre os Modos de Experiência na aba Aparência", async () => {
@@ -269,7 +269,7 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     expect(screen.getByRole("combobox", { name: /Seletor de dias de antecedência para faturas/i })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: /Seletor de dias de antecedência para dívidas/i })).toBeInTheDocument();
 
-    const toggleButton = screen.getByRole("checkbox", { name: /Habilitar Lembretes no Aplicativo/i });
+    const toggleButton = screen.getByRole("switch", { name: /Habilitar Lembretes no Aplicativo/i });
     await user.click(toggleButton);
 
     expect(mockUpdateReminderPreferences).toHaveBeenCalledWith({ remindersEnabled: false });

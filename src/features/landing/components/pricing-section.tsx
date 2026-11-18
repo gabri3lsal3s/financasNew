@@ -1,43 +1,46 @@
 import { useState } from "react";
-import { Check, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
-import { Card, Badge, buttonVariants } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router";
 import { useLandingCta } from "@/features/landing/hooks";
 import { triggerSensory } from "@/services/sensory";
 import { ScrollReveal } from "./scroll-reveal";
+import { PricingCardsGrid } from "./pricing-cards-grid";
 
 export function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(true);
   const { trialUrl, proUrl } = useLandingCta();
 
   return (
-    <section id="precos" className="py-14 md:py-32 bg-surface/40 border-y border-border/80 scroll-mt-20">
+    <section
+      id="precos"
+      className="py-14 md:py-32 bg-surface-raised/30 border-y border-border/80 scroll-mt-20"
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <ScrollReveal className="text-center max-w-4xl mx-auto">
-          <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-primary">
+          <h2 className="text-xs sm:text-sm font-bold uppercase tracking-widest text-primary-strong dark:text-primary">
             Planos Transparentes & Justos
           </h2>
           <p className="mt-3 sm:mt-4 font-display text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
             Invista na sua organização com o melhor custo-benefício
           </p>
           <p className="mt-4 sm:mt-5 text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-            Comece com acesso total gratuito, sem cartão de crédito. Após o período de teste, seu histórico fica preservado para consulta e você assina o Pro quando quiser.
+            Comece com acesso total gratuito, sem cartão de crédito. Após o período de teste, seu
+            histórico fica preservado para consulta e você assina o Pro quando quiser.
           </p>
 
-          {/* Billing Cycle Toggle */}
-          <div className="mt-6 sm:mt-8 inline-flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 rounded-xl border border-border bg-surface shadow-xs">
+          <div className="mt-6 sm:mt-8 inline-flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 rounded-xl border border-border/80 bg-surface shadow-xs">
             <button
               type="button"
               onClick={() => {
                 triggerSensory("selection");
                 setIsAnnual(false);
               }}
-              className={`min-h-[40px] sm:min-h-[44px] px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer inline-flex items-center justify-center ${
+              className={cn(
+                "min-h-11 px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors cursor-pointer inline-flex items-center justify-center",
                 !isAnnual
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+                  ? "bg-primary-strong text-primary-foreground dark:bg-primary shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
             >
               Mensal
             </button>
@@ -47,11 +50,12 @@ export function PricingSection() {
                 triggerSensory("selection");
                 setIsAnnual(true);
               }}
-              className={`min-h-[40px] sm:min-h-[44px] px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer inline-flex items-center justify-center gap-1.5 ${
+              className={cn(
+                "min-h-11 px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5",
                 isAnnual
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+                  ? "bg-primary-strong text-primary-foreground dark:bg-primary shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
             >
               <span>Anual</span>
               <Badge
@@ -60,8 +64,8 @@ export function PricingSection() {
                 className={cn(
                   "font-bold transition-colors",
                   isAnnual
-                    ? "bg-surface text-primary-strong shadow-2xs border border-primary-strong/20"
-                    : "border border-transparent"
+                    ? "bg-surface text-primary-strong shadow-xs border border-primary-strong/20"
+                    : "border border-transparent",
                 )}
               >
                 Economize 40%
@@ -70,165 +74,11 @@ export function PricingSection() {
           </div>
         </ScrollReveal>
 
-        {/* Pricing Cards Grid com Entrada Escalonada */}
-        <div className="mt-8 sm:mt-12 grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 max-w-4xl mx-auto items-stretch">
-          {/* Card 1: Teste de 30 Dias (Depois Somente-Leitura) */}
-          <ScrollReveal delay={0} className="h-full">
-            <Card className="flex flex-col justify-between border-border/80 bg-surface shadow-xs p-5 sm:p-8 rounded-2xl sm:rounded-3xl h-full">
-              <div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                    Teste de 30 Dias
-                  </span>
-                  <Badge variant="default" size="xs" className="font-mono border border-primary/30">
-                    Sem Cartão
-                  </Badge>
-                </div>
-
-                <div className="mt-3 sm:mt-4 flex items-baseline gap-1">
-                  <span className="font-mono text-3xl sm:text-4xl font-extrabold text-foreground">R$ 0</span>
-                  <span className="text-xs sm:text-sm text-muted-foreground">no período de teste</span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Acesso irrestrito a todas as funcionalidades do Pro
-                </p>
-
-                <p className="mt-2.5 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
-                  Experimente o poder do Safe-to-Spend, controle de cartões e rebalanceamento com seus dados reais.
-                </p>
-
-                <div className="mt-6 sm:mt-8 flex flex-col gap-2.5 sm:gap-3.5 text-xs sm:text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span>Lançamentos e escritas 100% liberados</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span>Gestão de múltiplos cartões e parcelamentos</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span>Controle de dívidas a pagar e a receber</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span>Simulador e rebalanceamento de carteira</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Modo Somente-Leitura após o período:</strong> seus dados continuam seus para consulta</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/80">
-                <Link
-                  to={trialUrl}
-                  aria-label="Começar teste gratuito no plano Básico"
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "lg" }),
-                    "w-full justify-center font-semibold inline-flex items-center gap-2 rounded-xl",
-                  )}
-                >
-                  Começar Teste Grátis
-                  <ArrowRight className="size-4" aria-hidden="true" />
-                </Link>
-                <div className="mt-2.5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-                  <ShieldCheck className="size-3.5 text-positive-strong dark:text-positive" aria-hidden="true" />
-                  <span>Não pedimos dados bancários</span>
-                </div>
-              </div>
-            </Card>
-          </ScrollReveal>
-
-          {/* Card 2: Plano Pro (Featured) */}
-          <ScrollReveal delay={100} className="h-full">
-            <Card className="flex flex-col justify-between border-primary/50 bg-surface shadow-xs p-5 sm:p-8 relative overflow-hidden ring-1 ring-primary/20 rounded-2xl sm:rounded-3xl h-full">
-              {/* Top highlight badge padronizado (Regra 14 AGENTS.md) */}
-              <div className="absolute top-3 right-3 sm:top-4 sm:right-4">
-                <Badge variant="default" size="xs" className="font-bold tracking-wider uppercase">
-                  Mais Escolhido
-                </Badge>
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs sm:text-sm font-bold text-primary-strong uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="size-3.5" aria-hidden="true" />
-                    Plano Pro
-                  </span>
-                </div>
-
-                <div className="mt-3 sm:mt-4 flex items-baseline gap-1">
-                  <span className="font-mono text-3xl sm:text-4xl font-extrabold text-foreground">
-                    {isAnnual ? "R$ 11,99" : "R$ 19,99"}
-                  </span>
-                  <span className="text-xs sm:text-sm text-muted-foreground">/ mês</span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {isAnnual ? "Cobrado anualmente (R$ 143,88/ano · apenas R$ 0,39/dia)" : "Cobrado mensalmente (sem fidelidade)"}
-                </p>
-
-                <p className="mt-2.5 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
-                  Gestão ativa contínua, lançamentos ilimitados e motor avançado de inteligência financeira.
-                </p>
-
-                <div className="mt-6 sm:mt-8 flex flex-col gap-2.5 sm:gap-3.5 text-xs sm:text-sm">
-                  <div className="flex items-center gap-2.5 font-medium text-foreground">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Lançamentos e escritas 100% ilimitados</strong></span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Leitor OCR</strong> de cupons fiscais NFC-e e boletos</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Multi-Cartões</strong> + Parcelamentos em até 60x</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Safe-to-Spend diário</strong> e Radar de Vencimentos</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Espaço Família colaborativo</strong> e Racha Pix</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Controle de Dívidas</strong> (Snowball / Avalanche)</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Motor de Rebalanceamento</strong> de carteira sem DARF</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <Check className="size-4 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                    <span><strong>Radar Fiscal de IR</strong> & Dossiê em Excel (.xlsx)</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-border/80">
-                <Link
-                  to={proUrl(isAnnual ? "pro-anual" : "pro-mensal")}
-                  aria-label="Assinar Plano Pro"
-                  className={cn(
-                    buttonVariants({ size: "lg" }),
-                    "w-full justify-center shadow-md font-semibold inline-flex items-center gap-2 rounded-xl",
-                  )}
-                >
-                  Assinar Plano Pro
-                  <ArrowRight className="size-4" aria-hidden="true" />
-                </Link>
-                <div className="mt-2.5 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-                  <ShieldCheck className="size-3.5 text-positive-strong dark:text-positive" aria-hidden="true" />
-                  <span>7 dias de garantia legal · Cancele em 1 clique</span>
-                </div>
-              </div>
-            </Card>
-          </ScrollReveal>
-        </div>
+        <PricingCardsGrid
+          isAnnual={isAnnual}
+          trialUrl={trialUrl}
+          proPlanUrl={proUrl(isAnnual ? "pro-anual" : "pro-mensal")}
+        />
       </div>
     </section>
   );

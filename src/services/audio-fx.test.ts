@@ -1,11 +1,20 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { updateVisualCustomization } from "@/hooks/use-visual-customization";
 import { playSound, soundManager, SoundManager } from "./audio-fx";
 
 describe("audio-fx (F11)", () => {
   beforeEach(() => {
+    updateVisualCustomization({ soundEnabled: true });
     soundManager.reset();
     soundManager.unmute();
     soundManager.setVolume(0.3);
+  });
+
+  it("não falha e retorna false quando soundEnabled global está desativado", () => {
+    const manager = new SoundManager();
+    updateVisualCustomization({ soundEnabled: false });
+    expect(manager.play("click", true)).toBe(false);
+    expect(() => playSound("click", true)).not.toThrow();
   });
 
   it("não falha quando o áudio está desativado", () => {

@@ -14,7 +14,7 @@ vi.mock("react-router", async () => {
 });
 
 describe("PageHeader", () => {
-  it("renderiza título e descrição corretamente", () => {
+  it("renderiza título com line-clamp-2 break-words e descrição corretamente", () => {
     render(
       <BrowserRouter>
         <PageHeader
@@ -24,7 +24,11 @@ describe("PageHeader", () => {
       </BrowserRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "Contas & Dívidas" })).toBeInTheDocument();
+    const heading = screen.getByRole("heading", { name: "Contas & Dívidas" });
+    expect(heading).toBeInTheDocument();
+    expect(heading.className).toContain("line-clamp-2");
+    expect(heading.className).toContain("break-words");
+    expect(heading.className).not.toContain("truncate");
     expect(screen.getByText("Gestão de contas a pagar e receber")).toBeInTheDocument();
   });
 
@@ -43,7 +47,27 @@ describe("PageHeader", () => {
     expect(screen.getByRole("button", { name: "Nova Categoria" })).toBeInTheDocument();
   });
 
-  it("aciona callback de voltar ao clicar no botão de voltar", async () => {
+  it("aplica grid proporcional grid-cols-2 sm:flex no mobile quando há 2 botões diretos no slot actions", () => {
+    render(
+      <BrowserRouter>
+        <PageHeader
+          title="Orçamentos"
+          actions={
+            <>
+              <button type="button">Ajustar</button>
+              <button type="button">Nova Categoria</button>
+            </>
+          }
+        />
+      </BrowserRouter>,
+    );
+
+    const actionsContainer = screen.getByRole("button", { name: "Ajustar" }).parentElement;
+    expect(actionsContainer?.className).toContain("grid-cols-2");
+    expect(actionsContainer?.className).toContain("sm:flex");
+  });
+
+  it("aciona callback de voltar ao clicar no botão de voltar com área mínima de toque 44px no mobile", async () => {
     const user = userEvent.setup();
     const onBack = vi.fn();
 
@@ -59,6 +83,8 @@ describe("PageHeader", () => {
 
     const backBtn = screen.getByRole("button", { name: "Retornar à lista" });
     expect(backBtn).toBeInTheDocument();
+    expect(backBtn.className).toContain("min-h-11");
+    expect(backBtn.className).toContain("min-w-11");
     await user.click(backBtn);
     expect(onBack).toHaveBeenCalledTimes(1);
   });

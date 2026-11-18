@@ -1,66 +1,45 @@
 import { useState } from "react";
-import {
-  Copy,
-  FileCheck2,
-  HardDriveDownload,
-  History,
-  LifeBuoy,
-  RefreshCw,
-  ShieldCheck,
-} from "lucide-react";
-import {
-  Alert,
-  Badge,
-  Button,
-  EmptyState,
-  Input,
-  Skeleton,
-} from "@/components/ui";
+import { Copy, HardDriveDownload, LifeBuoy, ShieldCheck } from "lucide-react";
+import { Alert, Button } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
-import { useAdminLogBackup, useAdminSystemBackups, fetchUserDataExport } from "@/state";
+import { formatDateTimeBR } from "@/lib/date";
+import { fetchUserDataExport, useAdminLogBackup, useAdminSystemBackups } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { BackupIntegrityVerifier } from "../components/backup-integrity-verifier";
+import { BackupHistoryList } from "../components/backup-history-list";
 
 async function computeSha256(content: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(content);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 export function AdminBackupsPage() {
   const backupsQuery = useAdminSystemBackups();
   const logBackupMutation = useAdminLogBackup();
-
   const [generating, setGenerating] = useState(false);
-  const [integrityInput, setIntegrityInput] = useState("");
-  const [integrityResult, setIntegrityResult] = useState<"match" | "mismatch" | null>(null);
 
   const backups = backupsQuery.data ?? [];
   const latestBackup = backups[0] ?? null;
 
   const handleGenerateSnapshot = async () => {
-    triggerSensory("action");
     setGenerating(true);
-
     try {
-      // 1. Coleta dados estruturados do sistema
-      const systemData = await fetchUserDataExport();
-      const payloadString = JSON.stringify(systemData, null, 2);
+      const scopedData = await fetchUserDataExport();
+      const payloadString = JSON.stringify(scopedData, null, 2);
       const fileSizeBytes = new Blob([payloadString]).size;
-
-      // 2. Cálculo matemático de Checksum SHA-256
       const checksumSha256 = await computeSha256(payloadString);
 
-      // 3. Contagem de registros e tabelas
-      const tableCount = Object.keys(systemData).length;
+      const tableCount = Object.keys(scopedData).length;
       let recordCount = 0;
-      for (const val of Object.values(systemData)) {
+      for (const val of Object.values(scopedData)) {
         if (Array.isArray(val)) recordCount += val.length;
       }
 
-      // 4. Registro no banco de dados e auditoria
       await logBackupMutation.mutateAsync({
         backupType: "manual",
         tableCount,
@@ -68,15 +47,14 @@ export function AdminBackupsPage() {
         fileSizeBytes,
         checksumSha256,
         status: "completed",
-        notes: "Snapshot administrativo consolidado gerado pelo console.",
+        notes: "Exportação auditada (escopo RLS da conta operadora) registrada pelo console.",
       });
 
-      // 5. Download do arquivo assinado
       const blob = new Blob([payloadString], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `axir_system_backup_${new Date().toISOString().slice(0, 10)}_${checksumSha256.slice(0, 8)}.json`;
+      a.download = `axir_operator_snapshot_${new Date().toISOString().slice(0, 10)}_${checksumSha256.slice(0, 8)}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -84,15 +62,15 @@ export function AdminBackupsPage() {
 
       triggerSensory("success");
       pushToast({
-        title: "Snapshot Gerado com Sucesso",
-        description: `Arquivo de backup salvo com hash SHA-256: ${checksumSha256.slice(0, 16)}…`,
+        title: "Snapshot Exportado com Sucesso",
+        description: `Arquivo salvo com hash SHA-256: ${checksumSha256.slice(0, 16)}…`,
         variant: "success",
       });
     } catch {
       triggerSensory("destructive");
       pushToast({
         title: "Erro ao gerar snapshot",
-        description: "Falha na exportação segura dos dados da plataforma.",
+        description: "Falha na exportação segura dos registros da sessão.",
         variant: "destructive",
       });
     } finally {
@@ -100,74 +78,66 @@ export function AdminBackupsPage() {
     }
   };
 
-  const handleCheckIntegrity = () => {
-    triggerSensory("action");
-    if (!integrityInput.trim() || !latestBackup) return;
-
-    if (integrityInput.trim().toLowerCase() === latestBackup.checksum_sha256.toLowerCase()) {
-      setIntegrityResult("match");
-    } else {
-      setIntegrityResult("mismatch");
+  const handleCopyHash = async (hash: string) => {
+    try {
+      await navigator.clipboard.writeText(hash);
+      triggerSensory("selection");
+      pushToast({
+        title: "Hash copiado",
+        description: "Checksum SHA-256 copiado para a área de transferência.",
+        variant: "default",
+      });
+    } catch {
+      triggerSensory("destructive");
     }
-  };
-
-  const handleCopyHash = (hash: string) => {
-    triggerSensory("selection");
-    void navigator.clipboard.writeText(hash);
-    pushToast({
-      title: "Hash copiado",
-      description: "Checksum SHA-256 copiado para a área de transferência.",
-      variant: "default",
-    });
   };
 
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
-      {/* Cabeçalho */}
       <PageHeader
         title="Central de Backups & Continuidade (DRP)"
-        description="Gestão de snapshots, cálculo criptográfico SHA-256 e plano de recuperação de desastres"
+        description="Registro auditável de snapshots, cálculo criptográfico SHA-256 e plano de recuperação"
         actions={
           <Button
+            type="button"
             variant="default"
             size="sm"
+            sensoryIntent={false}
+            loading={generating}
             onClick={handleGenerateSnapshot}
             disabled={generating}
             className="gap-2"
           >
             <HardDriveDownload className="size-4" aria-hidden="true" />
-            <span>{generating ? "Exportando snapshot…" : "Gerar Snapshot Imediato"}</span>
+            <span>{generating ? "Exportando snapshot…" : "Exportar Snapshot Auditado"}</span>
           </Button>
         }
       />
 
-      {/* Cartão de Status do Último Backup */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <Alert variant="info">
+        <span className="text-xs leading-relaxed">
+          <strong>Escopo de Isolamento RLS (LGPD):</strong> A exportação via navegador coleta exclusivamente os registros financeiros acessíveis à conta operadora autenticada e registra a assinatura SHA-256 na trilha de auditoria. Backups integrais multi-tenant (PITR) são gerenciados diretamente na infraestrutura Supabase.
+        </span>
+      </Alert>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="rounded-xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col justify-between gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Último Snapshot</span>
+          <span className="text-xs font-medium text-muted-foreground">Último Registro</span>
           <span className="font-semibold text-foreground text-sm">
-            {latestBackup
-              ? new Date(latestBackup.created_at).toLocaleDateString("pt-BR", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "Nenhum registro"}
+            {latestBackup ? formatDateTimeBR(latestBackup.created_at) : "Nenhum registro"}
           </span>
         </div>
 
         <div className="rounded-xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col justify-between gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Registros Consolidados</span>
-          <span className="font-semibold text-foreground text-sm font-mono">
+          <span className="text-xs font-medium text-muted-foreground">Registros Exportados</span>
+          <span className="font-semibold text-foreground text-sm font-mono tabular-nums">
             {latestBackup ? latestBackup.record_count.toLocaleString("pt-BR") : "0"}
           </span>
         </div>
 
         <div className="rounded-xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col justify-between gap-2">
           <span className="text-xs font-medium text-muted-foreground">Tamanho em Disco</span>
-          <span className="font-semibold text-foreground text-sm font-mono">
+          <span className="font-semibold text-foreground text-sm font-mono tabular-nums">
             {latestBackup ? `${(latestBackup.file_size_bytes / 1024).toFixed(1)} KB` : "0 KB"}
           </span>
         </div>
@@ -181,12 +151,11 @@ export function AdminBackupsPage() {
         </div>
       </div>
 
-      {/* Checksum SHA-256 do Último Backup */}
       {latestBackup && (
         <div className="rounded-xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-              <ShieldCheck className="size-4 text-positive-strong" aria-hidden="true" />
+              <ShieldCheck className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
               <span>Assinatura de Integridade (SHA-256):</span>
             </div>
             <span className="font-mono text-xs text-muted-foreground break-all mt-1">
@@ -195,9 +164,11 @@ export function AdminBackupsPage() {
           </div>
 
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            onClick={() => handleCopyHash(latestBackup.checksum_sha256)}
+            sensoryIntent={false}
+            onClick={() => void handleCopyHash(latestBackup.checksum_sha256)}
             className="gap-1.5 text-xs shrink-0 self-start sm:self-center"
           >
             <Copy className="size-3.5" aria-hidden="true" />
@@ -206,140 +177,30 @@ export function AdminBackupsPage() {
         </div>
       )}
 
-      {/* Teste de Integridade & Verificação */}
-      <section aria-label="Verificador de Integridade" className="rounded-xl border border-border/80 bg-surface p-5 shadow-xs flex flex-col gap-4">
-        <div className="flex items-center gap-2">
-          <FileCheck2 className="size-4 text-primary-strong" aria-hidden="true" />
-          <h2 className="text-sm font-bold text-foreground">Verificador de Integridade SHA-256</h2>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Cole o hash de um arquivo de backup para validar matematicamente se ele corresponde ao último snapshot registrado, garantindo que o arquivo não sofreu corrupção ou adulteração.
-        </p>
+      <BackupIntegrityVerifier latestBackup={latestBackup} />
 
-        <div className="flex flex-col sm:flex-row items-center gap-2">
-          <Input
-            value={integrityInput}
-            onChange={(e) => {
-              setIntegrityInput(e.target.value);
-              setIntegrityResult(null);
-            }}
-            placeholder="Cole o hash SHA-256 de 64 caracteres aqui…"
-            className="font-mono text-xs"
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCheckIntegrity}
-            className="w-full sm:w-auto shrink-0 gap-1.5 text-xs h-9"
-          >
-            <RefreshCw className="size-3.5" aria-hidden="true" />
-            <span>Verificar Hash</span>
-          </Button>
-        </div>
+      <BackupHistoryList backups={backups} isLoading={backupsQuery.isLoading} />
 
-        {integrityResult === "match" && (
-          <Alert variant="success">
-            <span className="text-xs">
-              <strong>Integridade Confirmada:</strong> O hash confere exatamente com o snapshot oficial registrado no banco de dados.
-            </span>
-          </Alert>
-        )}
-
-        {integrityResult === "mismatch" && (
-          <Alert variant="error">
-            <span className="text-xs">
-              <strong>Atenção:</strong> O hash informado diverge do snapshot ativo. O arquivo pode ter sido modificado ou pertencer a outra data.
-            </span>
-          </Alert>
-        )}
-      </section>
-
-      {/* Histórico Auditável de Backups */}
-      <section aria-label="Histórico de Backups" className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <History className="size-4 text-muted-foreground" aria-hidden="true" />
-            <h2 className="text-base font-bold text-foreground">Trilha de Snapshots Realizados</h2>
-          </div>
-          <Badge variant="muted" size="xs">
-            {backups.length} registros
-          </Badge>
-        </div>
-
-        <div className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-          {backupsQuery.isLoading ? (
-            <div className="p-4 sm:p-5 divide-y divide-border/40" aria-hidden="true">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="size-8 rounded-lg shrink-0" />
-                    <div className="flex flex-col gap-1.5">
-                      <Skeleton className="h-4 w-32 sm:w-44" />
-                      <Skeleton className="h-3 w-40 sm:w-56" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-6 w-20 rounded-full" />
-                </div>
-              ))}
-            </div>
-          ) : backups.length === 0 ? (
-            <div className="p-8">
-              <EmptyState
-                title="Nenhum backup registrado no histórico"
-                description="Clique em 'Gerar Snapshot Imediato' para registrar a primeira cópia segura."
-              />
-            </div>
-          ) : (
-            <div className="divide-y divide-border/60">
-              {backups.map((b) => (
-                <div key={b.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-hover/20 transition-colors text-xs">
-                  <div className="flex flex-col min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-foreground">
-                        {new Date(b.created_at).toLocaleDateString("pt-BR", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                      <Badge variant="positive" size="xs">
-                        {b.status === "completed" ? "Concluído" : b.status}
-                      </Badge>
-                    </div>
-                    <span className="text-muted-foreground font-mono text-[11px] truncate mt-0.5">
-                      Hash: {b.checksum_sha256}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-3 shrink-0 text-muted-foreground font-mono">
-                    <span>{b.record_count.toLocaleString("pt-BR")} registros</span>
-                    <span>{(b.file_size_bytes / 1024).toFixed(1)} KB</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Manual Interativo de DRP (Disaster Recovery Plan) */}
-      <section aria-label="Manual DRP" className="rounded-xl border border-border/80 bg-surface p-5 shadow-xs flex flex-col gap-3">
+      <section
+        aria-label="Manual DRP"
+        className="rounded-xl border border-border/80 bg-surface p-5 shadow-xs flex flex-col gap-3"
+      >
         <div className="flex items-center gap-2">
           <LifeBuoy className="size-4 text-primary-strong" aria-hidden="true" />
-          <h2 className="text-sm font-bold text-foreground">Manual Operacional de DRP (Recuperação de Desastres)</h2>
+          <h2 className="text-sm font-bold text-foreground">
+            Manual Operacional de DRP (Recuperação de Desastres)
+          </h2>
         </div>
         <p className="text-xs text-muted-foreground leading-relaxed">
           Em caso de falha catastrófica na nuvem ou necessidade de restauração emergencial:
         </p>
 
         <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1.5 pl-1 leading-relaxed">
-          <li>Localize o arquivo de backup mais recente com a assinatura SHA-256 validada;</li>
-          <li>Acesse o <strong>Supabase Dashboard &gt; SQL Editor</strong> com credenciais de proprietário;</li>
+          <li>Localize o snapshot PITR ou arquivo validado com a assinatura SHA-256;</li>
+          <li>Acesse o <strong>Supabase Dashboard &gt; Database &gt; Backups</strong> com credenciais de proprietário;</li>
           <li>Execute a verificação de integridade referencial com o script <code>restore_backup</code>;</li>
-          <li>Em caso de restauração de banco completo, utilize o snapshot nativo PITR (Point-in-Time Recovery) configurado na AWS/Supabase;</li>
-          <li>Após a conclusão, execute <code>npm run preflight</code> no terminal para homologar as 7 checagens canônicas de prontidão.</li>
+          <li>Em caso de restauração integral multi-tenant, acione o Point-in-Time Recovery (PITR) nativo do projeto;</li>
+          <li>Após a conclusão, execute <code>npm run preflight</code> no terminal para homologar as checagens de prontidão.</li>
         </ol>
       </section>
     </div>

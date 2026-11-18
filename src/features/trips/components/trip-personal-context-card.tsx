@@ -57,9 +57,9 @@ export function TripPersonalContextCard({
       className="p-4 sm:p-5 rounded-2xl border border-border/80 bg-surface shadow-xs space-y-4"
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-foreground">
+            <span className="text-xs sm:text-sm font-semibold text-foreground break-words">
               Seu Espaço na Viagem: {myMember.name}
             </span>
             {isHost ? (
@@ -84,11 +84,12 @@ export function TripPersonalContextCard({
             <Button
               type="button"
               size="sm"
+              sensoryIntent="selection"
               variant={isFilterActive ? "default" : "outline"}
               onClick={onToggleFilterMyExpenses}
-              className="h-8 text-xs gap-1.5"
+              className="gap-1.5"
             >
-              <Filter className="size-3" aria-hidden="true" />
+              <Filter className="size-3.5" aria-hidden="true" />
               <span>{isFilterActive ? "Mostrando Meus Gastos" : "Ver Meus Gastos"}</span>
             </Button>
           )}
@@ -99,9 +100,9 @@ export function TripPersonalContextCard({
               size="sm"
               variant="outline"
               onClick={onOpenStatement}
-              className="h-8 text-xs gap-1.5"
+              className="gap-1.5"
             >
-              <FileText className="size-3" aria-hidden="true" />
+              <FileText className="size-3.5" aria-hidden="true" />
               <span>Meu Extrato</span>
             </Button>
           )}
@@ -112,27 +113,27 @@ export function TripPersonalContextCard({
               size="sm"
               variant="outline"
               onClick={onLeaveTrip}
-              className="h-8 text-xs gap-1.5 text-muted-foreground hover:text-critical hover:border-critical/30 cursor-pointer"
+              className="gap-1.5 text-muted-foreground hover:text-critical-strong hover:border-critical/30"
               title="Desvincular sua conta e sair desta viagem"
             >
-              <LogOut className="size-3" aria-hidden="true" />
+              <LogOut className="size-3.5" aria-hidden="true" />
               <span>Sair da Viagem</span>
             </Button>
           )}
         </div>
       </div>
 
-      {/* Grid de Balanço Pessoal */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-border/80">
-        {/* Card de Saldo Líquido */}
-        <div className="p-3.5 rounded-xl bg-surface-raised border border-border/80 flex flex-col justify-between space-y-2">
-          <div className="flex items-center justify-between">
+      {/* Grid de Balanço Pessoal (M2: contraste de superfície sem borda dupla interna) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-3 border-t border-border/80">
+        {/* Bloco de Saldo Líquido */}
+        <div className="p-3.5 rounded-xl bg-surface-raised flex flex-col justify-between space-y-2 min-w-0">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] text-muted-foreground font-medium">
               Seu Saldo Líquido
             </span>
             {isSettled ? (
               <Badge size="xs" variant="muted" className="gap-1">
-                <ShieldCheck className="size-3 text-positive" aria-hidden="true" />
+                <ShieldCheck className="size-3 text-positive-strong" aria-hidden="true" />
                 Zerado
               </Badge>
             ) : isCreditor ? (
@@ -146,14 +147,14 @@ export function TripPersonalContextCard({
             )}
           </div>
 
-          <div>
+          <div className="space-y-0.5">
             <MoneyText
               cents={netBalanceCents}
               tone={isCreditor ? "positive" : isDebtor ? "negative" : "default"}
               variant="hero"
               className="font-bold tracking-tight"
             />
-            <p className="text-[10px] text-muted-foreground mt-0.5">
+            <p className="text-[11px] text-muted-foreground">
               {isCreditor
                 ? "Outros amigos devem reembolsar você"
                 : isDebtor
@@ -168,36 +169,44 @@ export function TripPersonalContextCard({
               size="sm"
               variant="default"
               onClick={onOpenSettlement}
-              className="w-full h-7 text-xs gap-1 mt-1"
+              className="w-full gap-1.5 mt-1"
             >
-              <Wallet className="size-3" aria-hidden="true" />
-              Quitar Minha Cota
+              <Wallet className="size-3.5" aria-hidden="true" />
+              <span>Quitar Minha Cota</span>
             </Button>
           )}
         </div>
 
         {/* Total Desembolsado do Bolso */}
-        <div className="p-3.5 rounded-xl bg-surface-raised border border-border/80 space-y-1">
-          <span className="text-[11px] text-muted-foreground font-medium">
+        <div className="p-3.5 rounded-xl bg-surface-raised space-y-1 min-w-0">
+          <span className="text-[11px] text-muted-foreground font-medium block">
             Desembolsado do Seu Bolso
           </span>
-          <p className="text-base sm:text-lg font-bold tabular-nums text-foreground">
-            <MoneyText cents={totalPaidCents} variant="value" />
-          </p>
-          <p className="text-[10px] text-muted-foreground">
+          <div className="pt-0.5">
+            <MoneyText
+              cents={totalPaidCents}
+              tone="default"
+              className="text-base sm:text-lg font-bold"
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
             Valor integral passado em suas contas ou cartões
           </p>
         </div>
 
         {/* Cota Real Consumida */}
-        <div className="p-3.5 rounded-xl bg-surface-raised border border-border/80 space-y-1">
-          <span className="text-[11px] text-muted-foreground font-medium">
+        <div className="p-3.5 rounded-xl bg-surface-raised space-y-1 min-w-0">
+          <span className="text-[11px] text-muted-foreground font-medium block">
             Sua Cota Real Consumida
           </span>
-          <p className="text-base sm:text-lg font-bold tabular-nums text-foreground">
-            <MoneyText cents={totalShareCents} variant="value" />
-          </p>
-          <p className="text-[10px] text-muted-foreground">
+          <div className="pt-0.5">
+            <MoneyText
+              cents={totalShareCents}
+              tone="default"
+              className="text-base sm:text-lg font-bold"
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
             Sua participação efetiva nas despesas rateadas
           </p>
         </div>

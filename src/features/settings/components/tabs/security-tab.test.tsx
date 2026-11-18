@@ -184,8 +184,8 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
     expect(screen.queryByRole("button", { name: "Exportar JSON" })).not.toBeInTheDocument();
   });
 
-  describe("Ambiente Web / PWA (Ocultação de Recursos Nativos - Tarefa 1.1)", () => {
-    it("não renderiza o card de Bloqueio do Aplicativo nem o Escudo de Privacidade na Web sem biometria", async () => {
+  describe("Ambiente Web / PWA (Bloqueio por PIN acessível e ocultação de recursos nativos)", () => {
+    it("renderiza o card de Bloqueio com PIN de Acesso na Web sem biometria e oculta biometria e Escudo de Privacidade", async () => {
       vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
       vi.mocked(nativeServices.checkBiometricsAvailability).mockResolvedValue({
         isAvailable: false,
@@ -195,8 +195,9 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
 
       renderSecurityTab();
 
-      // Aguarda qualquer tick e confirma que opções nativas inoperantes estão ocultas
-      expect(screen.queryByText("Bloqueio do Aplicativo & Privacidade")).not.toBeInTheDocument();
+      expect(screen.getByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
+      expect(screen.getByText("Bloqueio com PIN de Acesso")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Configurar PIN/i })).toBeInTheDocument();
       expect(screen.queryByText("Exigir biometria ao retornar")).not.toBeInTheDocument();
       expect(screen.queryByText("Escudo de Privacidade (Privacy Shield)")).not.toBeInTheDocument();
     });

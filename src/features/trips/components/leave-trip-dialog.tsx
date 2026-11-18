@@ -1,12 +1,5 @@
-/**
- * Modal de confirmação para participante sair da viagem (desvincular conta).
- * Chama a RPC unlink_trip_member.
- * Respeita as diretrizes de governança do AGENTS.md.
- */
-
-import { LogOut, AlertTriangle } from "lucide-react";
-import { Modal, ModalFooter, Button } from "@/components/ui";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { AlertTriangle, LogOut } from "lucide-react";
+import { Button, Modal, ModalFooter, MoneyText } from "@/components/ui";
 import { useUnlinkTripMemberMutation } from "@/state/queries/use-trips";
 import type { Trip, TripMember, TripMemberBalance } from "@/types/trips";
 
@@ -45,7 +38,7 @@ function LeaveTripDialogContent({
       onOpenChange(false);
       onSuccess?.();
     } catch {
-      // Erro tratado pela mutation (toast e sensory)
+      // Erro tratado pela mutation
     }
   };
 
@@ -57,25 +50,21 @@ function LeaveTripDialogContent({
       title="Sair da viagem?"
       description={`Tem certeza de que deseja sair de "${trip.title}"? Sua conta será desvinculada e o grupo deixará de aparecer no seu painel. Seus registros de despesas e cotas continuarão salvos no histórico dos amigos.`}
       footer={
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={unlinkMutation.isPending}
-            onClick={() => onOpenChange(false)}
-          >
+        <ModalFooter borderless>
+          <Button type="button" variant="outline" disabled={unlinkMutation.isPending} onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button
             type="button"
             variant="destructive"
+            sensoryIntent={false}
             disabled={unlinkMutation.isPending}
-            sensoryIntent="destructive"
+            loading={unlinkMutation.isPending}
             onClick={() => void handleConfirm()}
             className="gap-1.5"
           >
             <LogOut className="size-3.5" aria-hidden="true" />
-            <span>{unlinkMutation.isPending ? "Saindo..." : "Sair da Viagem"}</span>
+            <span>Sair da Viagem</span>
           </Button>
         </ModalFooter>
       }
@@ -87,7 +76,8 @@ function LeaveTripDialogContent({
             <div>
               <p className="font-semibold">Pendência financeira em aberto</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Você possui um saldo devedor de <strong className="text-foreground">{formatCentsAsBRL(Math.abs(netCents))}</strong> nesta viagem. Certifique-se de realizar a quitação com o organizador ou amigos.
+                Você possui um saldo devedor de{" "}
+                <MoneyText cents={Math.abs(netCents)} tone="default" variant="caption" className="font-bold text-foreground" /> nesta viagem. Certifique-se de realizar a quitação com o organizador ou amigos.
               </p>
             </div>
           </div>
@@ -99,7 +89,8 @@ function LeaveTripDialogContent({
             <div>
               <p className="font-semibold">Saldo a receber pendente</p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Você ainda possui <strong className="text-foreground">{formatCentsAsBRL(netCents)}</strong> a receber dos participantes desta viagem.
+                Você ainda possui{" "}
+                <MoneyText cents={netCents} tone="default" variant="caption" className="font-bold text-foreground" /> a receber dos participantes desta viagem.
               </p>
             </div>
           </div>
@@ -117,11 +108,5 @@ function LeaveTripDialogContent({
 
 export function LeaveTripDialog(props: LeaveTripDialogProps) {
   if (!props.trip || !props.myMember) return null;
-  return (
-    <LeaveTripDialogContent
-      {...props}
-      trip={props.trip}
-      myMember={props.myMember}
-    />
-  );
+  return <LeaveTripDialogContent {...props} trip={props.trip} myMember={props.myMember} />;
 }

@@ -1,5 +1,6 @@
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
+import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +31,9 @@ export function Select({
   ariaLabel,
   className,
 }: SelectProps) {
+  const visual = useVisualCustomization();
+  const isFlat = visual.surfaceStyle === "flat";
+
   const handleValueChange = (next: string) => {
     if (!next && !options.some((opt) => opt.value === "")) return;
     onValueChange(next);
@@ -40,12 +44,12 @@ export function Select({
 
   return (
     <SelectPrimitive.Root value={value} onValueChange={handleValueChange} disabled={disabled}>
-
       <SelectPrimitive.Trigger
         id={id}
         aria-label={ariaLabel}
         className={cn(
-          "flex h-10 w-full items-center justify-between gap-2 rounded-md border border-input bg-surface px-4 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",
+          "flex h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-surface px-3.5 text-base sm:text-sm text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground",
+          isFlat ? "shadow-none" : "shadow-xs",
           className,
         )}
       >
@@ -59,20 +63,18 @@ export function Select({
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
-        {/* `position="popper"`: configuração recomendada para Select
-            dentro de Dialogs/containers roláveis — mede com colisão de viewport
-            e não depende do alinhamento com o item selecionado.
-            `z-floating-tools` (60) garante que o menu fique sempre acima do Modal (50). */}
         <SelectPrimitive.Content
           position="popper"
           sideOffset={4}
           collisionPadding={{ top: 8, left: 8, right: 8, bottom: 80 }}
           align="start"
           onCloseAutoFocus={(e) => {
-            // Evita que o fechamento transfira o foco ou acione outros controles indesejados
             e.preventDefault();
           }}
-          className="z-floating-tools max-h-72 w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-primary/25 bg-surface p-1 shadow-xl backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+          className={cn(
+            "z-floating-tools max-h-72 w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-primary/25 p-1 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+            isFlat ? "bg-surface shadow-none" : "bg-surface/95 shadow-xl backdrop-blur-md",
+          )}
         >
           <SelectPrimitive.Viewport className="w-full">
             {options.map((option) => (

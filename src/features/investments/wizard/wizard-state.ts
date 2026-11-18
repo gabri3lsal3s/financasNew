@@ -1,44 +1,43 @@
-import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
-import { sellAssetPosition } from "@/domain/portfolio/operations";
+import { parseDecimalNumber } from "@/domain/money";
 import {
-  FALLBACK_USD_RATE,
-  getAssetPricingMode,
-  isFixedIncomeClass,
-  isTesouroAsset,
-} from "@/domain/portfolio/valuation";
-import { calculateFixedIncomeBalance } from "@/domain/portfolio/fixed-income";
-import { cleanTicker } from "@/domain/portfolio/tickers-catalog";
+  calculateWizardOrderPreview,
+  computeDividendTotalFromMode,
+  getFixedIncomeRedemptionInfo,
+  resolveEffectiveSplitFactor,
+  type DividendCalculationMode,
+  type InvestmentPreviewResult,
+  type OrderWizardMode,
+} from "@/domain/portfolio";
+import type { DividendEntryMode } from "@/domain/portfolio/dividends";
+import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
 import { todayISO } from "@/domain/debts";
 import { currentMonth } from "@/lib/date";
-import { parseDecimalNumber } from "@/domain/money";
-import type { DividendEntryMode } from "@/domain/portfolio/dividends";
 import type {
   AssetAllocationStatus,
   AssetCurrency,
   FixedIncomeRateType,
   PortfolioAsset,
 } from "@/types";
+import { canProceed, getWizardSteps } from "./wizard-step-rules";
 
 export type ScoreCriteriaBreakdown = Record<string, number>;
+export type WizardMode = OrderWizardMode;
+export type { InvestmentPreviewResult };
 
-
-export type WizardMode =
-  | "select"
-  | "new_asset"
-  | "buy"
-  | "sell"
-  | "dividend"
-  | "split"
-  | "reverse_split"
-  | "existing_aporte"; // alias para buy
+export {
+  canProceed,
+  computeDividendTotalFromMode,
+  getFixedIncomeRedemptionInfo,
+  getWizardSteps,
+  resolveEffectiveSplitFactor,
+};
 
 export interface InvestmentWizardState {
   mode: WizardMode;
-  step: number; // 1 | 2 | 3 | 4
+  step: number;
   searchQuery: string;
   selectedAsset: PortfolioAsset | null;
 
-  // Metadados do Ativo (Novo ou Existente)
   ticker: string;
   name: string;
   assetClass: string;
@@ -46,7 +45,6 @@ export interface InvestmentWizardState {
   currency: AssetCurrency;
   isCash: boolean;
 
-  // Parâmetros de Renda Fixa (Fase 63/72)
   fixedIncomeRateType: FixedIncomeRateType;
   fixedIncomeRateValue: number | string;
   fixedIncomeBaseDate: string;
@@ -55,29 +53,25 @@ export interface InvestmentWizardState {
   fixedIncomeIsTaxExempt: boolean;
   fixedIncomeManualTaxRatePct?: number | null;
 
-  // Valores da Ordem / Posição
   quantityStr: string;
   priceCents: number;
   totalCents: number;
   date: string;
   month: string;
   dividendEntryMode: DividendEntryMode;
+  dividendCalcMode?: DividendCalculationMode;
+  perShareCents?: number;
   splitFactor: number;
   reverseSplitFactor: number;
+  splitFromStr?: string;
+  splitToStr?: string;
 
-  // Proventos Históricos (anteriores ao extrato periódico)
-  /** Total de proventos acumulados em centavos. Alimenta YoC sem distorcer calendário/extrato. */
   accumulatedDividendsCents: number;
-  /** Dividendo mensal estimado por cota em centavos. Alimenta Bola de Neve (Cenário B). */
   estimatedDividendPerShareCents: number;
-  /** Custo original aplicado da posição/lote (especialmente para Renda Fixa). */
   appliedCostCents: number;
-  /** Alíquota customizada de IR em % para resgate de Renda Fixa. */
   customTaxRatePct?: number | null;
-  /** Valor de IRRF retido na fonte customizado em centavos. */
   customTaxAmountCents?: number | null;
 
-  // Governança, Metas e Opções
   score: number | null;
   allocationStatus: AssetAllocationStatus;
   scoreCriteria: ScoreCriteriaBreakdown;
@@ -119,8 +113,12 @@ export const defaultWizardState: InvestmentWizardState = {
   date: todayISO(),
   month: currentMonth(),
   dividendEntryMode: "daily",
+  dividendCalcMode: "total",
+  perShareCents: 0,
   splitFactor: 2,
   reverseSplitFactor: 2,
+  splitFromStr: "",
+  splitToStr: "",
 
   accumulatedDividendsCents: 0,
   estimatedDividendPerShareCents: 0,
@@ -137,472 +135,12 @@ export const defaultWizardState: InvestmentWizardState = {
   notes: "",
 };
 
-
-
 export const parseNumber = parseDecimalNumber;
-
-/**
- * Retorna as informações contábeis e fiscais para resgate de Renda Fixa / Valor Completo.
- */
-export function getFixedIncomeRedemptionInfo(
-  asset: PortfolioAsset | null,
-  date: string = todayISO(),
-): {
-  appliedCost: number;
-  grossValue: number;
-  netValue: number;
-  taxAmount: number;
-  taxRatePct: number;
-  isMatured: boolean;
-} {
-  if (!asset) {
-    return { appliedCost: 0, grossValue: 0, netValue: 0, taxAmount: 0, taxRatePct: 0, isMatured: false };
-  }
-
-  const appliedCost =
-    (asset.fixed_income_metadata?.initial_investment_value !== undefined &&
-      asset.fixed_income_metadata.initial_investment_value !== null &&
-      asset.fixed_income_metadata.initial_investment_value > 0)
-      ? asset.fixed_income_metadata.initial_investment_value
-      : asset.quantity > 1 && asset.average_price > 0
-        ? Math.round(asset.quantity * asset.average_price * 100) / 100
-        : asset.average_price > 0
-          ? asset.average_price
-          : asset.quantity;
-
-  if (!asset.fixed_income_metadata) {
-    return {
-      appliedCost,
-      grossValue: appliedCost,
-      netValue: appliedCost,
-      taxAmount: 0,
-      taxRatePct: 0,
-      isMatured: false,
-    };
-  }
-
-  const baseValue =
-    asset.fixed_income_metadata.base_value !== undefined &&
-    asset.fixed_income_metadata.base_value !== null &&
-    asset.fixed_income_metadata.base_value > 0
-      ? asset.fixed_income_metadata.base_value
-      : appliedCost;
-
-  const fiRes = calculateFixedIncomeBalance({
-    baseValue,
-    baseDate: asset.fixed_income_metadata.base_date,
-    initialInvestmentDate: asset.fixed_income_metadata.initial_investment_date,
-    maturityDate: asset.fixed_income_metadata.maturity_date,
-    rateType: asset.fixed_income_metadata.rate_type,
-    rateValue: asset.fixed_income_metadata.rate_value,
-    isTaxExempt: asset.fixed_income_metadata.is_tax_exempt,
-    manualTaxRatePct: asset.fixed_income_metadata.manual_tax_rate_pct,
-    totalCost: appliedCost,
-    today: date,
-  });
-
-  return {
-    appliedCost,
-    grossValue: Math.max(fiRes.grossValue, appliedCost),
-    netValue: fiRes.netValue,
-    taxAmount: fiRes.taxAmount,
-    taxRatePct: fiRes.taxRatePct,
-    isMatured: fiRes.isMatured,
-  };
-}
-
-/**
- * Retorna os passos dinâmicos do Wizard conforme o modo de operação.
- */
-export function getWizardSteps(mode: WizardMode): readonly { title: string; subtitle: string }[] {
-  if (mode === "sell") {
-    return [
-      { title: "Ativo", subtitle: "Seleção" },
-      { title: "Venda", subtitle: "Quantidade & Preço" },
-      { title: "Revisão", subtitle: "Confirmação" },
-    ];
-  }
-
-  if (mode === "dividend") {
-    return [
-      { title: "Ativo", subtitle: "Seleção" },
-      { title: "Provento", subtitle: "Valor & Data" },
-      { title: "Revisão", subtitle: "Confirmação" },
-    ];
-  }
-
-  if (mode === "split") {
-    return [
-      { title: "Ativo", subtitle: "Seleção" },
-      { title: "Desdobro", subtitle: "Fator & Data" },
-      { title: "Revisão", subtitle: "Confirmação" },
-    ];
-  }
-
-  if (mode === "reverse_split") {
-    return [
-      { title: "Ativo", subtitle: "Seleção" },
-      { title: "Grupamento", subtitle: "Fator & Data" },
-      { title: "Revisão", subtitle: "Confirmação" },
-    ];
-  }
-
-  if (mode === "buy" || mode === "existing_aporte") {
-    return [
-      { title: "Ativo", subtitle: "Seleção" },
-      { title: "Aporte", subtitle: "Quantidade & Preço" },
-      { title: "Revisão", subtitle: "Confirmação" },
-    ];
-  }
-
-  // Modo new_asset (4 passos)
-  return [
-    { title: "Identificação", subtitle: "Código & Classe" },
-    { title: "Posição", subtitle: "Cotas & Custo" },
-    { title: "Governança", subtitle: "Nota & Status" },
-    { title: "Revisão", subtitle: "Confirmação" },
-  ];
-}
-
-/**
- * Validação pura de elegibilidade para avançar de passo.
- */
-export function canProceed(state: InvestmentWizardState): boolean {
-  const parsedQty = parseNumber(state.quantityStr);
-  const price = state.priceCents / 100;
-  const total = state.totalCents / 100;
-
-  const isCash = state.isCash;
-  const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
-  const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
-  const pricingMode = getAssetPricingMode(
-    state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
-  );
-  const isTotalValue = !isCash && (pricingMode === "total_value" || isFixedIncome);
-
-  if (state.mode === "select") {
-    return cleanTicker(state.ticker).length > 0 || state.selectedAsset !== null;
-  }
-
-  if (state.mode === "buy" || state.mode === "existing_aporte") {
-    // Passo 1 (Seleção): precisa ter ativo selecionado
-    if (state.step === 1) {
-      return state.selectedAsset !== null || cleanTicker(state.ticker).length > 0;
-    }
-    // Passo 2 (Ordem de Aporte): quantidade e preço (ou total para caixa / valor completo) > 0
-    if (state.step === 2) {
-      if (isCash || isTotalValue) {
-        return total > 0 || price > 0 || parsedQty > 0;
-      }
-      return parsedQty > 0 && (price > 0 || total > 0);
-    }
-    // Passo 3 (Revisão): pode concluir
-    return true;
-  }
-
-  if (state.mode === "sell") {
-    if (state.step === 1) {
-      return state.selectedAsset !== null;
-    }
-    if (state.step === 2) {
-      if (isTotalValue) {
-        const { grossValue, appliedCost } = getFixedIncomeRedemptionInfo(state.selectedAsset, state.date);
-        const sellAmount = total > 0 ? total : price;
-        const maxLimit = Math.max(grossValue, appliedCost);
-        return sellAmount > 0 && (maxLimit === 0 || sellAmount <= maxLimit * 1.005);
-      }
-      const maxQty = state.selectedAsset?.quantity ?? 0;
-      return parsedQty > 0 && parsedQty <= maxQty && price > 0;
-    }
-    return true;
-  }
-
-  if (state.mode === "dividend") {
-    if (state.step === 1) {
-      return state.selectedAsset !== null;
-    }
-    if (state.step === 2) {
-      return total > 0;
-    }
-    return true;
-  }
-
-  if (state.mode === "split") {
-    if (state.step === 1) {
-      return state.selectedAsset !== null;
-    }
-    if (state.step === 2) {
-      return state.splitFactor >= 2;
-    }
-    return true;
-  }
-
-  if (state.mode === "reverse_split") {
-    if (state.step === 1) {
-      return state.selectedAsset !== null;
-    }
-    if (state.step === 2) {
-      return state.reverseSplitFactor >= 2;
-    }
-    return true;
-  }
-
-  // Modo: new_asset
-  if (state.mode === "new_asset") {
-    // Passo 1: Identificação
-    if (state.step === 1) {
-      return cleanTicker(state.ticker).length >= 1 && state.assetClass.trim().length > 0;
-    }
-    // Passo 2: Posição Inicial
-    if (state.step === 2) {
-      if (isCash) {
-        return total > 0 || parsedQty > 0;
-      }
-      if (isTotalValue) {
-        return state.priceCents > 0 || state.totalCents > 0;
-      }
-      return parsedQty > 0 && price > 0;
-    }
-    if (state.step === 3) {
-      if (state.isCash) return true;
-      return state.score === null || (state.score >= 0 && state.score <= 10);
-    }
-    return true;
-  }
-  return false;
-}
-
-export interface InvestmentPreviewResult {
-  currentQuantity: number;
-  currentAveragePrice: number;
-  newQuantity: number;
-  newAveragePrice: number;
-  remainingGrossValue?: number;
-  remainingCostBasis?: number;
-  totalOrderValueNative?: number;
-  totalOrderValueBRL: number;
-  cashDebitBRL: number;
-  cashCreditBRL?: number;
-  contributionBRL: number;
-  realizedPnl?: number;
-  realizedPnlPct?: number;
-  taxAmountBRL?: number;
-  taxRatePct?: number;
-  isTaxCustomized?: boolean;
-}
 
 export function calculateInvestmentPreview(
   state: InvestmentWizardState,
   cashAvailableBRL = 0,
   usdRate = FALLBACK_USD_RATE,
 ): InvestmentPreviewResult {
-  const parsedQty = parseNumber(state.quantityStr);
-  const inputPrice = state.priceCents / 100;
-  const inputTotal = state.totalCents / 100;
-
-  const currentQty = state.selectedAsset?.quantity ?? 0;
-  const currentAvgPrice = state.selectedAsset?.average_price ?? 0;
-  const rate = state.currency === "USD" ? usdRate : 1;
-
-  const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
-  const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
-  const pricingMode = getAssetPricingMode(
-    state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
-  );
-  const isTotalValue = !state.isCash && (pricingMode === "total_value" || isFixedIncome);
-
-  if (state.isCash) {
-    const amount = inputTotal > 0 ? inputTotal : parsedQty;
-    return {
-      currentQuantity: currentQty,
-      currentAveragePrice: 1,
-      newQuantity: currentQty + amount,
-      newAveragePrice: 1,
-      totalOrderValueNative: amount,
-      totalOrderValueBRL: amount,
-      cashDebitBRL: 0,
-      contributionBRL: amount,
-    };
-  }
-
-  if (isTotalValue) {
-    const amountNative = inputTotal > 0 ? inputTotal : inputPrice;
-    const amountBRL = Math.round(amountNative * rate * 100) / 100;
-    if (state.mode === "sell") {
-      const { grossValue, appliedCost, taxAmount, taxRatePct } = getFixedIncomeRedemptionInfo(
-        state.selectedAsset,
-        state.date,
-      );
-      const effectiveAppliedCost =
-        state.appliedCostCents > 0 ? state.appliedCostCents / 100 : appliedCost;
-      const isFullRedemption = grossValue > 0
-        ? amountNative >= grossValue - 0.01
-        : amountNative >= effectiveAppliedCost - 0.01;
-      const proportion = grossValue > 0 ? Math.min(1, amountNative / grossValue) : 1;
-      const costBasis = isFullRedemption ? effectiveAppliedCost : Math.round(effectiveAppliedCost * proportion * 100) / 100;
-      const realizedProfit = Math.round((amountBRL - costBasis) * 100) / 100;
-
-      let estimatedTax = 0;
-      let effectiveTaxRatePct = taxRatePct;
-      const isTaxCustomized =
-        (state.customTaxAmountCents !== null && state.customTaxAmountCents !== undefined) ||
-        (state.customTaxRatePct !== null && state.customTaxRatePct !== undefined);
-
-      if (state.customTaxAmountCents !== null && state.customTaxAmountCents !== undefined) {
-        estimatedTax = Math.max(0, state.customTaxAmountCents / 100);
-        effectiveTaxRatePct =
-          realizedProfit > 0
-            ? Math.round((estimatedTax / realizedProfit) * 10000) / 100
-            : (state.customTaxRatePct ?? taxRatePct);
-      } else if (state.customTaxRatePct !== null && state.customTaxRatePct !== undefined) {
-        effectiveTaxRatePct = Math.max(0, state.customTaxRatePct);
-        estimatedTax =
-          effectiveTaxRatePct === 0
-            ? 0
-            : Math.max(0, Math.round(Math.max(0, realizedProfit) * (effectiveTaxRatePct / 100) * 100) / 100);
-      } else if (taxAmount > 0) {
-        estimatedTax = Math.round(taxAmount * proportion * 100) / 100;
-      }
-
-      const netCreditBRL = Math.max(0, Math.round((amountBRL - estimatedTax) * 100) / 100);
-      const remainingCostBasis = isFullRedemption
-        ? 0
-        : Math.max(0, Math.round(effectiveAppliedCost * (1 - proportion) * 100) / 100);
-      const remainingGrossValue = isFullRedemption
-        ? 0
-        : Math.max(0, Math.round((grossValue - amountNative) * 100) / 100);
-
-      return {
-        currentQuantity: 1,
-        currentAveragePrice: currentAvgPrice,
-        newQuantity: isFullRedemption ? 0 : 1,
-        newAveragePrice: remainingCostBasis,
-        remainingGrossValue,
-        remainingCostBasis,
-        totalOrderValueNative: amountNative,
-        totalOrderValueBRL: amountBRL,
-        cashDebitBRL: 0,
-        cashCreditBRL: state.syncCash ? netCreditBRL : 0,
-        contributionBRL: 0,
-        realizedPnl: realizedProfit,
-        realizedPnlPct: costBasis > 0 ? Math.round((realizedProfit / costBasis) * 10000) / 100 : 0,
-        taxAmountBRL: estimatedTax,
-        taxRatePct: effectiveTaxRatePct,
-        isTaxCustomized,
-      };
-    }
-    let cashDebitBRL = 0;
-    let contributionBRL = amountBRL;
-    if (state.syncCash && cashAvailableBRL > 0) {
-      cashDebitBRL = Math.min(cashAvailableBRL, amountBRL);
-      contributionBRL = Math.max(0, amountBRL - cashDebitBRL);
-    }
-    return {
-      currentQuantity: 1,
-      currentAveragePrice: currentAvgPrice,
-      newQuantity: 1,
-      newAveragePrice: currentAvgPrice + amountNative,
-      totalOrderValueNative: amountNative,
-      totalOrderValueBRL: amountBRL,
-      cashDebitBRL: Math.round(cashDebitBRL * 100) / 100,
-      contributionBRL: Math.round(contributionBRL * 100) / 100,
-    };
-  }
-
-  if (state.mode === "sell") {
-    const sellRes = sellAssetPosition({
-      currentQuantity: currentQty,
-      currentAveragePrice: currentAvgPrice,
-      sellQuantity: parsedQty,
-      sellPrice: inputPrice,
-      assetClass: state.assetClass,
-    });
-    const orderTotalNative = parsedQty * inputPrice;
-    const orderTotalBRL = Math.round(orderTotalNative * rate * 100) / 100;
-    return {
-      currentQuantity: currentQty,
-      currentAveragePrice: currentAvgPrice,
-      newQuantity: sellRes.remainingQuantity,
-      newAveragePrice: sellRes.remainingAveragePrice,
-      totalOrderValueNative: Math.round(orderTotalNative * 100) / 100,
-      totalOrderValueBRL: orderTotalBRL,
-      cashDebitBRL: 0,
-      cashCreditBRL: state.syncCash ? orderTotalBRL : 0,
-      contributionBRL: 0,
-      realizedPnl: sellRes.realizedPnl,
-      realizedPnlPct: sellRes.realizedPnlPct,
-    };
-  }
-
-  if (state.mode === "dividend") {
-    const dividendNative = inputTotal;
-    const dividendBRL = Math.round(dividendNative * rate * 100) / 100;
-    return {
-      currentQuantity: currentQty,
-      currentAveragePrice: currentAvgPrice,
-      newQuantity: currentQty,
-      newAveragePrice: currentAvgPrice,
-      totalOrderValueNative: Math.round(dividendNative * 100) / 100,
-      totalOrderValueBRL: dividendBRL,
-      cashDebitBRL: 0,
-      cashCreditBRL: state.syncCash ? dividendBRL : 0,
-      contributionBRL: 0,
-    };
-  }
-
-  if (state.mode === "split") {
-    const newQty = currentQty * state.splitFactor;
-    const newAvg = currentAvgPrice / state.splitFactor;
-    return {
-      currentQuantity: currentQty,
-      currentAveragePrice: currentAvgPrice,
-      newQuantity: newQty,
-      newAveragePrice: newAvg,
-      totalOrderValueNative: 0,
-      totalOrderValueBRL: 0,
-      cashDebitBRL: 0,
-      contributionBRL: 0,
-    };
-  }
-
-  if (state.mode === "reverse_split") {
-    const factor = state.reverseSplitFactor >= 1 ? state.reverseSplitFactor : 1;
-    const newQty = Math.round((currentQty / factor) * 10000) / 10000;
-    const newAvg = Math.round(currentAvgPrice * factor * 10000) / 10000;
-    return {
-      currentQuantity: currentQty,
-      currentAveragePrice: currentAvgPrice,
-      newQuantity: newQty,
-      newAveragePrice: newAvg,
-      totalOrderValueNative: 0,
-      totalOrderValueBRL: 0,
-      cashDebitBRL: 0,
-      contributionBRL: 0,
-    };
-  }
-
-  const orderPrice = inputPrice > 0 ? inputPrice : parsedQty > 0 && inputTotal > 0 ? inputTotal / parsedQty : 0;
-  const orderTotalNative = parsedQty * orderPrice;
-  const orderTotalBRL = Math.round(orderTotalNative * rate * 100) / 100;
-
-  const lot = calculateWeightedAveragePrice(currentQty, currentAvgPrice, parsedQty, orderPrice);
-  let cashDebitBRL = 0;
-  let contributionBRL = orderTotalBRL;
-
-  if (state.syncCash && cashAvailableBRL > 0) {
-    cashDebitBRL = Math.min(cashAvailableBRL, orderTotalBRL);
-    contributionBRL = Math.max(0, orderTotalBRL - cashDebitBRL);
-  }
-
-  return {
-    currentQuantity: currentQty,
-    currentAveragePrice: currentAvgPrice,
-    newQuantity: lot.newQuantity,
-    newAveragePrice: lot.newAveragePrice,
-    totalOrderValueNative: Math.round(orderTotalNative * 100) / 100,
-    totalOrderValueBRL: orderTotalBRL,
-    cashDebitBRL: Math.round(cashDebitBRL * 100) / 100,
-    cashCreditBRL: 0,
-    contributionBRL: state.recordContribution ? Math.round(contributionBRL * 100) / 100 : 0,
-  };
+  return calculateWizardOrderPreview(state, cashAvailableBRL, usdRate);
 }

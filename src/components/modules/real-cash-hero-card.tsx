@@ -45,7 +45,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
     <>
       <div
         className={cn(
-          "flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0",
+          "flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all min-w-0",
           className,
         )}
       >
@@ -97,13 +97,13 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
         <div
           className={cn(
             "grid grid-cols-1 gap-2.5 rounded-xl bg-surface-hover/50 border border-border/80 p-2.5 sm:p-3 text-xs",
-            hasReceivables ? "sm:grid-cols-3" : "sm:grid-cols-2",
+            hasReceivables ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2",
           )}
         >
           <button
             type="button"
             onClick={() => setBreakdownOpen(true)}
-            className="flex items-center justify-between sm:justify-start gap-2 min-w-0 -m-1 p-1 rounded-lg hover:bg-surface/80 active:bg-surface transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group"
+            className="flex items-center justify-between sm:justify-start gap-2 min-w-0 min-h-11 sm:min-h-0 -m-1 p-1 rounded-lg hover:bg-surface/80 active:bg-surface transition-colors cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group"
             aria-label="Ver detalhamento das faturas e contas a pagar do ciclo"
             title="Clique para ver o detalhamento das obrigações do ciclo"
           >
@@ -124,7 +124,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
           </button>
 
           {hasReceivables && (
-            <div className="flex items-center justify-between sm:justify-center gap-2 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-t-0 min-w-0">
+            <div className="flex items-center justify-between sm:justify-center gap-2 pt-1.5 sm:pt-0 border-t border-border/80 sm:border-t-0 min-w-0">
               <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
                 <ArrowUpRight className="size-3.5 shrink-0 text-positive" aria-hidden="true" />
                 <span className="truncate hidden sm:inline">A receber previsto:</span>
@@ -139,7 +139,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
             </div>
           )}
 
-          <div className="flex items-center justify-between sm:justify-end gap-2 pt-1.5 sm:pt-0 border-t border-border/40 sm:border-t-0 min-w-0">
+          <div className="flex items-center justify-between sm:justify-end gap-2 pt-1.5 sm:pt-0 border-t border-border/80 sm:border-t-0 min-w-0">
             <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
               <ShieldCheck className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <span className="truncate text-muted-foreground">Saldo Livre Real:</span>

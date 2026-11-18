@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  clearCalculatorTargets,
   getActiveDecimalDisplay,
   getActiveTargetCents,
   getActiveTargetLabel,
@@ -13,9 +14,7 @@ import {
 } from "./calculator-bridge";
 
 afterEach(() => {
-  // Limpa o alvo registrado entre testes (módulo singleton).
-  const target = getCalculatorTarget();
-  if (target) unregisterCalculatorTarget(target);
+  clearCalculatorTargets();
 });
 
 describe("calculator-bridge (F9 — Decisão C)", () => {
@@ -27,7 +26,7 @@ describe("calculator-bridge (F9 — Decisão C)", () => {
     expect(setter).toHaveBeenCalledWith(12345);
   });
 
-  it("o último campo registrado vence (substitui o anterior)", () => {
+  it("o último campo registrado vence (topo da pilha LIFO)", () => {
     const first = vi.fn();
     const second = vi.fn();
     registerCalculatorTarget(first);
@@ -42,17 +41,40 @@ describe("calculator-bridge (F9 — Decisão C)", () => {
     expect(injectCalculatedValue(100)).toBe(false);
   });
 
-  it("unregister do campo desmontado remove apenas ele", () => {
+  it("unregister do campo desmontado remove apenas ele e restaura o anterior (LIFO)", () => {
     const first = vi.fn();
     const second = vi.fn();
     registerCalculatorTarget(first);
     registerCalculatorTarget(second);
-    unregisterCalculatorTarget(first);
 
-    // Segundo ainda é o ativo.
+    // Desmonta o segundo (topo) -> restaura o primeiro automaticamente.
+    unregisterCalculatorTarget(second);
+    expect(getCalculatorTarget()).toBe(first);
+
+    // Re-registra o segundo e remove o primeiro (base) -> segundo segue no topo.
+    registerCalculatorTarget(second);
+    unregisterCalculatorTarget(first);
     expect(getCalculatorTarget()).toBe(second);
 
     unregisterCalculatorTarget(second);
+    expect(getCalculatorTarget()).toBeNull();
+  });
+
+  it("permite promover campo anterior para o topo sem duplicar entrada na pilha", () => {
+    const primary = vi.fn();
+    const secondary = vi.fn();
+    registerCalculatorTarget(primary);
+    registerCalculatorTarget(secondary);
+
+    // Usuário foca o campo principal novamente.
+    registerCalculatorTarget(primary);
+    expect(getCalculatorTarget()).toBe(primary);
+
+    // Quando o principal desmonta, o secundário volta sem duplicatas.
+    unregisterCalculatorTarget(primary);
+    expect(getCalculatorTarget()).toBe(secondary);
+
+    unregisterCalculatorTarget(secondary);
     expect(getCalculatorTarget()).toBeNull();
   });
 

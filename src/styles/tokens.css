@@ -20,8 +20,8 @@ html[data-theme="light"] {
 
   /* Neutros (família ardósia-teal) */
   --background: 204 29% 97%;        /* #F4F7F9 */
-  --surface: 0 0% 100%;             /* #FFFFFF */
-  --surface-raised: 204 25% 97%;     /* #F3F7FA — cards internos em modais/wizards */
+  --surface: 204 33% 99%;           /* #FBFCFD — papel acetinado confortável (M1) */
+  --surface-raised: 204 25% 96%;    /* #EFF4F7 — cards internos em modais/wizards */
   --surface-hover: 200 22% 94%;     /* #EDF2F4 */
   --surface-active: 200 20% 90%;    /* #E0E8EC */
   --border: 200 18% 87%;            /* #D7E1E6 */
@@ -49,6 +49,8 @@ html[data-theme="light"] {
   --critical: 0 84% 60%;            /* crítico / excedido — #EF4444 */
   --critical-strong: 0 74% 42%;     /* #B91C1C (AA 6.5:1) */
   --portfolio: 201 47% 20%;         /* investimentos — Sky Petróleo #1B3A4B */
+  --portfolio-strong: 201 52% 18%;  /* AA texto alto contraste em Light */
+  --portfolio-foreground: 0 0% 100%; /* texto sobre fundo bg-portfolio sólido */
 
   /* Categorias — paleta de alto contraste e distinção (10 cores harmônicas) */
   --cat-1: 199 90% 40%;             /* safira / oceano */
@@ -61,6 +63,13 @@ html[data-theme="light"] {
   --cat-8: 88 68% 36%;              /* oliva / lima */
   --cat-9: 286 65% 48%;             /* orquídea / magenta */
   --cat-10: 215 40% 46%;            /* ardósia aço */
+
+  /* Swatches canônicos da paleta Accent (preview em Configurações > Aparência) */
+  --accent-swatch-teal: 173 58% 39%;
+  --accent-swatch-gold: 42 73% 51%;
+  --accent-swatch-sapphire: 201 96% 40%;
+  --accent-swatch-violet: 263 83% 58%;
+  --accent-swatch-rose: 347 77% 50%;
 
   /* Tipografia */
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -143,6 +152,8 @@ html[data-theme="dark"] {
   --critical: 0 91% 71%;            /* #F87171 */
   --critical-strong: 0 91% 71%;
   --portfolio: 198 93% 60%;         /* #38BDF8 — sky petrolizado */
+  --portfolio-strong: 198 93% 60%;
+  --portfolio-foreground: 206 49% 9%;
 
   /* Categorias (versão luminosa de alto contraste) */
   --cat-1: 199 95% 58%;             /* safira céu */
@@ -180,15 +191,15 @@ html[data-theme="oled"] {
   color-scheme: dark;
 
   --background: 0 0% 0%;            /* #000000 — true black (AMOLED) */
-  --surface: 0 0% 4%;               /* #0A0A0A */
-  --surface-raised: 0 0% 8%;        /* #141414 — cards internos em modais/wizards */
-  --surface-hover: 0 0% 8%;         /* #141414 — hover perceptível sobre true black */
-  --surface-active: 0 0% 12%;       /* #1F1F1F — pressed */
+  --surface: 0 0% 5%;               /* #0D0D0D */
+  --surface-raised: 0 0% 9%;        /* #171717 — cards internos em modais/wizards */
+  --surface-hover: 0 0% 9%;         /* #171717 — hover perceptível sobre true black */
+  --surface-active: 0 0% 13%;       /* #212121 — pressed */
   --border: 0 0% 18%;               /* #2E2E2E — cinza neutro puro P&B (sem matiz azulada) */
   --input: 0 0% 24%;                /* #3D3D3D — cinza neutro */
-  --muted: 0 0% 6%;                 /* #0F0F0F */
-  --foreground: 0 0% 98%;           /* #FAFAFA */
-  --muted-foreground: 0 0% 50%;     /* #808080 — AA sobre #000 (5.3:1) */
+  --muted: 0 0% 7%;                 /* #121212 */
+  --foreground: 0 0% 93%;           /* #EDEDED — sem branco estourado 21:1 (M1) */
+  --muted-foreground: 0 0% 60%;     /* #999999 — AA confortável sobre #000 */
 
   --primary: 173 66% 50%;
   --primary-strong: 173 66% 50%;
@@ -207,6 +218,8 @@ html[data-theme="oled"] {
   --critical: 0 91% 71%;
   --critical-strong: 0 91% 71%;
   --portfolio: 198 93% 60%;
+  --portfolio-strong: 198 93% 60%;
+  --portfolio-foreground: 0 0% 0%;
 
   --cat-1: 199 95% 58%;             /* safira céu */
   --cat-2: 160 80% 50%;             /* esmeralda viva */
@@ -284,10 +297,16 @@ html[data-theme="oled"] {
     --accent: 42 87% 64%;
     --accent-foreground: 43 87% 15%;
     --positive: 173 66% 50%;
+    --positive-strong: 173 66% 50%;
     --negative: 351 95% 71%;
+    --negative-strong: 351 95% 71%;
     --warning: 38 92% 50%;
+    --warning-strong: 38 92% 50%;
     --critical: 0 91% 71%;
+    --critical-strong: 0 91% 71%;
     --portfolio: 198 93% 60%;
+    --portfolio-strong: 198 93% 60%;
+    --portfolio-foreground: 206 49% 9%;
     --ring: 173 66% 50%;
     --ring-offset: 206 49% 9%;
     --icon-stroke-width: 1.85px;
@@ -390,5 +409,7 @@ html[data-surface-style="flat"] {
   --shadow-sm: none !important;
   --shadow-md: none !important;
   --shadow-lg: none !important;
+  --shadow-xl: none !important;
+  --shadow-2xl: none !important;
   --shadow-kpi: none !important;
 }

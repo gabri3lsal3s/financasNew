@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { FormEvent } from "react";
-import { Loader2 } from "lucide-react";
 import {
+  Button,
+  FormField,
+  Input,
   Modal,
   ModalFooter,
-  Button,
-  Input,
   MoneyInput,
   Select,
   type SelectOption,
 } from "@/components/ui";
 import { useCreateFamily } from "@/state";
+import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { FamilySplitRule } from "@/types";
 
@@ -26,15 +27,12 @@ export interface FamilyCreateModalProps {
   onSuccess?: (familyId: string) => void;
 }
 
-/**
- * Modal Canônico de Criação de Família.
- * Reutilizável entre a página principal (/familia) e as configurações (DRY).
- */
 export function FamilyCreateModal({
   open,
   onOpenChange,
   onSuccess,
 }: FamilyCreateModalProps) {
+  const formId = useId();
   const [name, setName] = useState("");
   const [budgetCents, setBudgetCents] = useState<number | null>(null);
   const [splitRule, setSplitRule] = useState<FamilySplitRule>("combined");
@@ -56,10 +54,8 @@ export function FamilyCreateModal({
     e.preventDefault();
     const cleanName = name.trim();
     if (!cleanName) {
-      pushToast({
-        title: "Informe o nome da família",
-        variant: "destructive",
-      });
+      triggerSensory("error");
+      pushToast({ title: "Informe o nome da família", variant: "destructive" });
       return;
     }
 
@@ -86,41 +82,37 @@ export function FamilyCreateModal({
       title="Criar Família"
       description="Configure o grupo compartilhado para centralizar despesas e metas da casa."
       size="md"
+      showCalculator
       footer={
-        <ModalFooter>
+        <ModalFooter borderless>
           <Button
             type="button"
             variant="outline"
             onClick={handleClose}
             disabled={createFamilyMutation.isPending}
-            className="rounded-xl cursor-pointer"
           >
             Cancelar
           </Button>
           <Button
             type="submit"
-            form="create-family-form"
+            form={formId}
             variant="default"
+            sensoryIntent={false}
             disabled={createFamilyMutation.isPending || !name.trim()}
-            className="rounded-xl cursor-pointer"
+            loading={createFamilyMutation.isPending}
           >
-            {createFamilyMutation.isPending ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
-                <span>Criando…</span>
-              </>
-            ) : (
-              <span>Criar Família</span>
-            )}
+            Criar Família
           </Button>
         </ModalFooter>
       }
     >
-      <form id="create-family-form" onSubmit={handleSubmit} className="space-y-4 pt-2">
-        <div className="space-y-1.5">
-          <label htmlFor="create-family-name-modal" className="text-xs font-semibold text-foreground block">
-            Nome da família ou casa
-          </label>
+      <form id={formId} onSubmit={handleSubmit} className="space-y-4 pt-2">
+        <FormField
+          label="Nome da família ou casa"
+          required
+          htmlFor="create-family-name-modal"
+          helperText="Identificador compartilhado visível para todos os membros da família."
+        >
           <Input
             id="create-family-name-modal"
             value={name}
@@ -130,15 +122,14 @@ export function FamilyCreateModal({
             required
             className="h-10 text-base sm:text-sm rounded-xl"
           />
-          <span className="text-[11px] text-muted-foreground block">
-            Identificador compartilhado visível para todos os membros da família.
-          </span>
-        </div>
+        </FormField>
 
-        <div className="space-y-1.5">
-          <label htmlFor="create-family-budget-modal" className="text-xs font-semibold text-foreground block">
-            Teto mensal compartilhado <span className="text-muted-foreground font-normal">(opcional)</span>
-          </label>
+        <FormField
+          label="Teto mensal compartilhado"
+          optional
+          htmlFor="create-family-budget-modal"
+          helperText="Meta global de gastos do lar para acompanhamento consolidado."
+        >
           <MoneyInput
             id="create-family-budget-modal"
             cents={budgetCents ?? 0}
@@ -146,31 +137,28 @@ export function FamilyCreateModal({
             placeholder="Ex: R$ 5.000,00"
             className="h-10 text-base sm:text-sm rounded-xl"
           />
-          <span className="text-[11px] text-muted-foreground block">
-            Meta global de gastos do lar para acompanhamento consolidado.
-          </span>
-        </div>
+        </FormField>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-foreground block">
-            Regra de divisão dos gastos da casa
-          </label>
+        <FormField
+          label="Regra de divisão dos gastos da casa"
+          htmlFor="create-family-split-rule"
+          helperText={
+            splitRule === "combined"
+              ? "Orçamento e patrimônio 100% unificados. Sem comparações individuais ou acertos via Pix."
+              : splitRule === "equal"
+                ? "Rateio meio a meio (50/50) com cálculo de equilíbrio e sugestão de acertos via Pix."
+                : "Rateio proporcional às rendas dos participantes, com percentuais customizáveis e acertos via Pix."
+          }
+        >
           <Select
+            id="create-family-split-rule"
             value={splitRule}
             onValueChange={(val) => setSplitRule(val as FamilySplitRule)}
             options={SPLIT_RULE_OPTIONS}
-            aria-label="Regra de rateio familiar"
-            className="h-10 text-sm rounded-xl"
+            ariaLabel="Regra de rateio familiar"
+            className="h-10 text-base sm:text-sm rounded-xl"
           />
-          <span className="text-[11px] text-muted-foreground block">
-            {splitRule === "combined" &&
-              "Orçamento e patrimônio 100% unificados. Sem comparações individuais ou acertos via Pix."}
-            {splitRule === "equal" &&
-              "Rateio meio a meio (50/50) com cálculo de equilíbrio e sugestão de acertos via Pix."}
-            {splitRule === "proportional" &&
-              "Rateio proporcional às rendas dos participantes, com percentuais customizáveis e acertos via Pix."}
-          </span>
-        </div>
+        </FormField>
       </form>
     </Modal>
   );

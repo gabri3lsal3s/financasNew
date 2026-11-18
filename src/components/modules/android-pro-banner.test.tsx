@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { AndroidProBanner } from "./android-pro-banner";
 
 const mockNavigate = vi.fn();
+const shouldOfferMock = vi.fn(() => true);
+
 vi.mock("react-router", async () => {
   const actual = await vi.importActual("react-router");
   return {
@@ -12,7 +14,26 @@ vi.mock("react-router", async () => {
   };
 });
 
+vi.mock("@/services/native/app-links", () => ({
+  shouldOfferAndroidApk: () => shouldOfferMock(),
+}));
+
 describe("AndroidProBanner", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    shouldOfferMock.mockReturnValue(true);
+  });
+
+  it("não renderiza fora de dispositivos elegíveis via shouldOfferAndroidApk()", () => {
+    shouldOfferMock.mockReturnValue(false);
+    const { container } = render(
+      <MemoryRouter>
+        <AndroidProBanner onDismiss={vi.fn()} />
+      </MemoryRouter>,
+    );
+    expect(container.firstChild).toBeNull();
+  });
+
   it("renderiza título, badge e texto informativo", () => {
     const handleDismiss = vi.fn();
     render(
@@ -41,7 +62,7 @@ describe("AndroidProBanner", () => {
       </MemoryRouter>,
     );
 
-    const closeBtn = screen.getByLabelText("Dispensar sugestão por 7 dias");
+    const closeBtn = screen.getByLabelText("Dispensar sugestão");
     fireEvent.click(closeBtn);
     expect(handleDismiss).toHaveBeenCalledTimes(1);
   });

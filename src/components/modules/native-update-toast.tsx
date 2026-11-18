@@ -1,9 +1,29 @@
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Toast } from "@/components/ui/toast";
 import { dismissUpdateForSession, isUpdateDismissedForSession } from "@/domain/native";
 import { useActiveOverlays } from "@/hooks/use-active-overlays";
 import { useAppUpdate } from "@/hooks/use-app-update";
 import { isNativePlatform } from "@/services/native/platform";
+
+const UNIFIED_HOST_EVENT = "axir:update-toast-host-change";
+
+function subscribeUnifiedMount(listener: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(UNIFIED_HOST_EVENT, listener);
+  return () => {
+    window.removeEventListener(UNIFIED_HOST_EVENT, listener);
+  };
+}
+
+function getIsUnifiedToastMounted(): boolean {
+  if (typeof document === "undefined") return false;
+  return Number(document.documentElement.dataset.appUpdateToastCount ?? "0") > 0;
+}
+
+export interface NativeUpdateToastProps {
+  /** Uso interno do `AppUpdateToast` para renderizar o fluxo nativo unificado. */
+  bypassUnifiedGuard?: boolean;
+}
 
 /**
  * Toast global de atualização para plataforma Android Nativa.
@@ -14,14 +34,29 @@ import { isNativePlatform } from "@/services/native/platform";
  * (modais, wizards, onboarding ou tour guiado), adiando a notificação
  * para momentos calmos da navegação, e persiste a dispensa na sessão.
  */
-export function NativeUpdateToast() {
+export function NativeUpdateToast({ bypassUnifiedGuard = false }: NativeUpdateToastProps = {}) {
   const isNative = isNativePlatform();
-  const { hasUpdate, updateInfo, installUpdate, error, status } = useAppUpdate({ autoCheck: isNative });
+  const isUnifiedMounted = useSyncExternalStore(
+    subscribeUnifiedMount,
+    getIsUnifiedToastMounted,
+    () => false,
+  );
+  const suppressedByUnified = !bypassUnifiedGuard && isUnifiedMounted;
+  const { hasUpdate, updateInfo, installUpdate, error, status } = useAppUpdate({
+    autoCheck: isNative && !suppressedByUnified,
+  });
   const { hasBlockingOverlay } = useActiveOverlays();
   const [dismissed, setDismissed] = useState<boolean>(() => isUpdateDismissedForSession());
   const [isInstalling, setIsInstalling] = useState(false);
 
-  if (!isNative || dismissed || !hasUpdate || hasBlockingOverlay) {
+  if (
+    !isNative ||
+    suppressedByUnified ||
+    dismissed ||
+    isUpdateDismissedForSession() ||
+    !hasUpdate ||
+    hasBlockingOverlay
+  ) {
     return null;
   }
 

@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Edit2 } from "lucide-react";
-import { Alert, Button, Modal, ModalFooter, MoneyInput } from "@/components/ui";
+import { monthLabel } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
 import { useRemoveIncomeGoal, useSetIncomeGoal } from "@/state";
 import type { Category } from "@/types";
+import { GoalOrLimitDialog } from "./goal-or-limit-dialog";
 
 export interface IncomeGoalDialogProps {
   category: Category;
@@ -17,21 +18,14 @@ export interface IncomeGoalDialogProps {
   onEditCategory?: (category: Category) => void;
 }
 
-interface IncomeGoalDialogContentProps {
-  category: Category;
-  month: string;
-  currentExpectedCents: number;
-  onClose: () => void;
-  onEditCategory?: (category: Category) => void;
-}
-
 function IncomeGoalDialogContent({
   category,
   month,
   currentExpectedCents,
-  onClose,
+  open,
+  onOpenChange,
   onEditCategory,
-}: IncomeGoalDialogContentProps) {
+}: IncomeGoalDialogProps) {
   const [cents, setCents] = useState(currentExpectedCents);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,8 +38,10 @@ function IncomeGoalDialogContent({
     if (cents <= 0) return;
     try {
       await setGoal.mutateAsync({ categoryId: category.id, month, expected: cents / 100 });
-      onClose();
+      triggerSensory("success");
+      onOpenChange(false);
     } catch (err) {
+      triggerSensory("error");
       setError(getErrorMessage(err));
     }
   };
@@ -54,123 +50,47 @@ function IncomeGoalDialogContent({
     setError(null);
     try {
       await removeGoal.mutateAsync({ categoryId: category.id, month });
-      onClose();
+      triggerSensory("destructive");
+      onOpenChange(false);
     } catch (err) {
+      triggerSensory("error");
       setError(getErrorMessage(err));
     }
   };
 
+  const formattedMonth = monthLabel(month);
+
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (cents > 0 && !pending) {
-          void handleSave();
-        }
-      }}
-      className="mt-4 flex flex-col gap-4"
-    >
-      {error ? <Alert variant="error">{error}</Alert> : null}
-
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="goal-amount" className="text-xs font-semibold text-foreground">
-          Expectativa de renda mensal
-        </label>
-        <MoneyInput
-          id="goal-amount"
-          cents={cents}
-          onCentsChange={setCents}
-          aria-label="Expectativa de renda mensal da categoria"
-          placeholder="Ex.: R$ 5.000,00"
-        />
-        <p className="text-[11px] text-muted-foreground">
-          Define quanto você planeja receber nesta categoria em {month}.
-        </p>
-      </div>
-
-      {onEditCategory ? (
-        <div className="flex items-center justify-between border-t border-border pt-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-xs text-muted-foreground hover:text-foreground gap-1.5 px-0"
-            onClick={() => {
-              onClose();
-              onEditCategory(category);
-            }}
-          >
-            <Edit2 className="size-3.5" aria-hidden="true" />
-            <span>Editar detalhes da categoria (nome, cor, ícone)</span>
-          </Button>
-        </div>
-      ) : null}
-
-      <ModalFooter
-        destructiveAction={
-          currentExpectedCents > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-critical hover:text-critical"
-              onClick={() => void handleRemove()}
-              disabled={pending}
-            >
-              Remover meta
-            </Button>
-          ) : null
-        }
-      >
-        <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          disabled={cents <= 0 || pending}
-          aria-label={pending ? "Salvando…" : "Salvar meta"}
-        >
-          {pending ? (
-            "Salvando…"
-          ) : (
-            <>
-              <span className="hidden sm:inline">Salvar meta</span>
-              <span className="sm:hidden">Salvar</span>
-            </>
-          )}
-        </Button>
-      </ModalFooter>
-    </form>
+    <GoalOrLimitDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Meta de Renda — ${category.name}`}
+      description={`Definição para ${formattedMonth}`}
+      inputId="goal-amount"
+      amountLabel="Expectativa de renda mensal"
+      inputAriaLabel="Expectativa de renda mensal da categoria"
+      inputPlaceholder="Ex.: R$ 5.000,00"
+      helperText={`Define quanto você planeja receber nesta categoria em ${formattedMonth}.`}
+      cents={cents}
+      onCentsChange={setCents}
+      error={error}
+      pending={pending}
+      saveDisabled={cents <= 0}
+      saveLabel="Salvar meta"
+      saveAriaLabel={pending ? "Salvando…" : "Salvar meta"}
+      canRemove={currentExpectedCents > 0}
+      removeLabel="Remover meta"
+      onSave={() => void handleSave()}
+      onRemove={() => void handleRemove()}
+      category={category}
+      onEditCategory={onEditCategory}
+    />
   );
 }
 
 /** Edição da meta de renda de uma categoria (§3.5.3). */
-export function IncomeGoalDialog({
-  category,
-  month,
-  currentExpectedCents,
-  open,
-  onOpenChange,
-  onEditCategory,
-}: IncomeGoalDialogProps) {
-  return (
-    <Modal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={`Meta de Renda — ${category.name}`}
-      description={`Definição para o mês ${month}`}
-      size="md"
-      showCalculator
-    >
-      {open ? (
-        <IncomeGoalDialogContent
-          key={`${category.id}:${month}`}
-          category={category}
-          month={month}
-          currentExpectedCents={currentExpectedCents}
-          onClose={() => onOpenChange(false)}
-          onEditCategory={onEditCategory}
-        />
-      ) : null}
-    </Modal>
-  );
+export function IncomeGoalDialog(props: IncomeGoalDialogProps) {
+  if (!props.open) return null;
+
+  return <IncomeGoalDialogContent key={`${props.category.id}:${props.month}`} {...props} />;
 }

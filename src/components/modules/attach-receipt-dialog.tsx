@@ -1,58 +1,24 @@
 import { useState } from "react";
 import { ClipboardPaste, FileUp, Loader2 } from "lucide-react";
-import {
-  Alert,
-  Button,
-  Dropzone,
-  ResponsiveDialog,
-  Textarea,
-} from "@/components/ui";
-import {
-  formatReceiptItemsObservation,
-  getReceiptKindLabel,
-  parseBankNotification,
-  parsePixShareText,
-  parseUniversalReceipt,
-  resolveBestMatchingCard,
-  resolveMerchantIdentity,
-  type ParsedBankTransaction,
-} from "@/domain/notifications";
-import {
-  addPendingSuggestion,
-  extractReceiptTextFromFile,
-  processPixShare,
-} from "@/services/native";
-import {
-  useCardDigitsMapping,
-  useMerchantLearning,
-} from "@/services/merchant-learning";
+import { Alert, Button, Dropzone, Modal, ModalFooter, Textarea } from "@/components/ui";
+import { MAX_RECEIPT_FILE_SIZE_BYTES, addPendingSuggestion } from "@/services/native";
+import { useBankCardMapping, useCardDigitsMapping, useMerchantLearning } from "@/services/merchant-learning";
+import { resolveAndScanReceiptFile, resolveReceiptFromText } from "@/services/receipt-resolution";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsCurrency } from "@/services/masks";
+import type { ParsedBankTransaction } from "@/domain/notifications";
 import type { CreditCard } from "@/types/schema";
 
 export interface AttachReceiptDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Callback acionado quando o comprovante é convertido com sucesso */
   onParsed?: (parsed: ParsedBankTransaction) => void;
-  /** Carteira de cartões de crédito ativos para auto-resolução */
   cards?: CreditCard[];
 }
 
-/**
- * Diálogo ergonômico de "Anexar Comprovante".
- *
- * Permite ao usuário enviar comprovantes bancários por arquivo (PDF ou imagem)
- * ou tirar foto diretamente pela câmera no mobile, convertendo automaticamente
- * as informações financeiras via OCR e abrindo o Wizard Rápido pré-preenchido.
- */
-export function AttachReceiptDialog({
-  open,
-  onOpenChange,
-  onParsed,
-  cards,
-}: AttachReceiptDialogProps) {
+/** Diálogo de "Anexar Comprovante": processa PDF/imagem ou texto Pix/notificação via `receipt-resolution`. */
+export function AttachReceiptDialog({ open, onOpenChange, onParsed, cards }: AttachReceiptDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showTextInput, setShowTextInput] = useState(false);
@@ -60,6 +26,9 @@ export function AttachReceiptDialog({
 
   const { memory: userMemory } = useMerchantLearning();
   const { cardDigitsMapping } = useCardDigitsMapping();
+  const { bankCardMapping } = useBankCardMapping();
+
+  const resolutionOptions = { cards, isManualAttachment: true, userMemory, cardDigitsMapping, bankCardMapping };
 
   const handleClose = () => {
     if (loading) return;
@@ -69,148 +38,33 @@ export function AttachReceiptDialog({
     onOpenChange(false);
   };
 
-  const handleProcessText = async (trimmed: string) => {
+  const notifySuccess = (parsed: ParsedBankTransaction, kindLabel: string) => {
+    triggerSensory("success");
+    pushToast({
+      title: `${kindLabel} reconhecido`,
+      description: `${parsed.description} no valor de ${formatCentsAsCurrency(parsed.amountCents)} pronto para conferência.`,
+      variant: "success",
+    });
+    if (onParsed) onParsed(parsed);
+    else addPendingSuggestion(parsed);
+    handleClose();
+  };
+
+  const handleProcessText = async (raw: string) => {
+    const trimmed = raw.trim();
     if (!trimmed) {
       triggerSensory("warning");
-      setError(
-        "Não foi possível ler o texto informado. Certifique-se de que contenha informações de pagamento Pix ou bancário.",
-      );
-      setLoading(false);
+      setError("Não foi possível ler o texto informado. Certifique-se de que contenha informações de pagamento Pix ou bancário.");
       return;
     }
-
     setError(null);
     setLoading(true);
-    triggerSensory("action");
-
     try {
-      // 1. Processa primariamente via Orquestrador Universal com flag de anexo manual
-      const universal = parseUniversalReceipt(trimmed, true);
-      let resolvedParsed: ParsedBankTransaction | null = null;
-
-      if (universal) {
-        // 2. Resolução de Identidade do Estabelecimento em 3 Camadas
-        const merchantTarget = universal.merchantOrBeneficiary || universal.description;
-        const identity = resolveMerchantIdentity({
-          merchantOrDescription: merchantTarget,
-          rawText: universal.rawCleanText,
-          taxId: universal.taxId,
-          userMemory,
-        });
-
-        // 3. Resolução de Cartão em 5 Etapas
-        const matchedCard = resolveBestMatchingCard(cards, {
-          cardId: identity.preferredCardId,
-          cardLastDigits: universal.cardLastDigits,
-          bankName: universal.bankName,
-          issuerBank: universal.bankName,
-          cardBrand: universal.cardBrand,
-          cardDigitsMapping,
-          preferredCardId: identity.preferredCardId,
-        });
-
-        const effectivePaymentMethod =
-          universal.paymentMethod ||
-          identity.preferredPaymentMethod ||
-          (matchedCard ? "credit_card" : "pix");
-
-        // Formatação refinada de itens do cupom fiscal para observações
-        const itemsNotes =
-          universal.items && universal.items.length > 0
-            ? formatReceiptItemsObservation(universal.items)
-            : undefined;
-
-        resolvedParsed = {
-          id: universal.id,
-          bankName: universal.bankName || matchedCard?.name || "Banco",
-          nature: universal.nature,
-          type: universal.nature === "income" ? "income" : "expense",
-          amountCents: universal.amountCents,
-          description: identity.friendlyName || universal.description,
-          date: universal.date,
-          paymentMethod: effectivePaymentMethod,
-          cardId: matchedCard?.id,
-          cardLastDigits: universal.cardLastDigits,
-          cardBrand: universal.cardBrand || matchedCard?.brand || undefined,
-          merchant: identity.friendlyName,
-          categorySlug: identity.categorySlug,
-          receiptKind: universal.kind,
-          rawText: universal.rawCleanText,
-          timestamp: Date.now(),
-          installments: universal.installments?.count,
-          currentInstallment: universal.installments?.currentInstallment,
-          installmentAmountCents: universal.installments?.installmentAmountCents,
-          taxId: universal.taxId,
-          payerName: universal.payerOrSource,
-          recipientName: universal.merchantOrBeneficiary,
-          notes: itemsNotes,
-          source: "receipt",
-        };
-      } else {
-        // Fallback secundário para parsers legados
-        let legacyParsed = processPixShare(trimmed, { skipSuggestion: true });
-        if (!legacyParsed) {
-          legacyParsed =
-            parsePixShareText(trimmed) ||
-            parseBankNotification({ title: "", text: trimmed });
-        }
-
-        if (legacyParsed) {
-          const identity = resolveMerchantIdentity({
-            merchantOrDescription: legacyParsed.merchant || legacyParsed.description,
-            rawText: legacyParsed.rawText || trimmed,
-            taxId: legacyParsed.taxId,
-            userMemory,
-          });
-
-          const matchedCard = resolveBestMatchingCard(cards, {
-            cardId: identity.preferredCardId,
-            cardLastDigits: legacyParsed.cardLastDigits,
-            bankName: legacyParsed.bankName,
-            issuerBank: legacyParsed.issuerBank,
-            cardBrand: legacyParsed.cardBrand,
-            cardDigitsMapping,
-            preferredCardId: identity.preferredCardId,
-          });
-
-          resolvedParsed = {
-            ...legacyParsed,
-            description: identity.friendlyName || legacyParsed.description,
-            merchant: identity.friendlyName,
-            categorySlug: identity.categorySlug || legacyParsed.categorySlug,
-            cardId: matchedCard?.id || legacyParsed.cardId,
-            cardBrand: matchedCard?.brand || legacyParsed.cardBrand,
-          };
-        }
-      }
-
-      if (resolvedParsed) {
-        const kindLabel = getReceiptKindLabel(
-          resolvedParsed.receiptKind,
-          resolvedParsed.installments,
-        );
-        const formattedAmount = formatCentsAsCurrency(resolvedParsed.amountCents);
-
-        triggerSensory("success");
-
-        pushToast({
-          title: `${kindLabel} reconhecido`,
-          description: `${resolvedParsed.description} no valor de ${formattedAmount} pronto para conferência.`,
-          variant: "success",
-        });
-
-        if (onParsed) {
-          onParsed(resolvedParsed);
-        } else {
-          addPendingSuggestion(resolvedParsed);
-        }
-
-        handleClose();
-      } else {
+      const resolved = resolveReceiptFromText(trimmed, resolutionOptions);
+      if (resolved) notifySuccess(resolved.parsed, resolved.kindLabel);
+      else {
         triggerSensory("warning");
-        setError(
-          "Não foi possível identificar informações financeiras válidas (valor, data e destinatário) no comprovante. Verifique o arquivo e tente novamente.",
-        );
+        setError("Não foi possível identificar informações financeiras válidas (valor, data e destinatário) no comprovante. Verifique o arquivo e tente novamente.");
       }
     } catch {
       triggerSensory("warning");
@@ -222,41 +76,19 @@ export function AttachReceiptDialog({
 
   const handleProcessFile = async (file: File) => {
     if (!file) return;
-
-    if (file.size > 15 * 1024 * 1024) {
-      triggerSensory("warning");
-      setError("O arquivo selecionado excede o limite de 15 MB. Envie um comprovante mais leve.");
-      return;
-    }
-
-    const lowerName = file.name.toLowerCase();
-    if (file.type === "image/svg+xml" || lowerName.endsWith(".svg")) {
-      triggerSensory("warning");
-      setError("Arquivos SVG não são suportados. Envie uma imagem (JPG, PNG) ou PDF.");
-      return;
-    }
-
     setError(null);
     setLoading(true);
-    triggerSensory("action");
-
     try {
-      const extractedText = await extractReceiptTextFromFile(file);
-      const trimmed = extractedText.trim();
-
-      if (!trimmed) {
+      const result = await resolveAndScanReceiptFile(file, resolutionOptions);
+      if (result.ok && result.parsed) notifySuccess(result.parsed, result.kindLabel ?? "Comprovante");
+      else {
         triggerSensory("warning");
-        setError(
-          "Não foi possível ler o texto deste arquivo. Certifique-se de que o comprovante esteja nítido ou seja um PDF digital emitido pelo banco.",
-        );
-        setLoading(false);
-        return;
+        setError(result.errorMessage ?? "Ocorreu uma falha inesperada ao ler o arquivo do comprovante. Tente novamente.");
       }
-
-      await handleProcessText(trimmed);
     } catch {
       triggerSensory("warning");
       setError("Ocorreu uma falha inesperada ao ler o arquivo do comprovante. Tente novamente.");
+    } finally {
       setLoading(false);
     }
   };
@@ -264,84 +96,51 @@ export function AttachReceiptDialog({
   const handlePasteFromClipboard = async () => {
     setError(null);
     try {
-      if (!navigator.clipboard?.readText) {
-        setShowTextInput(true);
-        return;
-      }
+      if (!navigator.clipboard?.readText) { setShowTextInput(true); return; }
       const clipText = await navigator.clipboard.readText();
-      if (clipText && clipText.trim()) {
-        await handleProcessText(clipText.trim());
-      } else {
-        setShowTextInput(true);
-      }
+      if (clipText?.trim()) await handleProcessText(clipText);
+      else setShowTextInput(true);
     } catch {
-      // Caso a permissão do clipboard seja bloqueada pelo navegador, abre a caixa de texto
       setShowTextInput(true);
     }
   };
 
-  const handleProcessManualText = async () => {
-    if (!manualText.trim()) return;
-    await handleProcessText(manualText.trim());
-  };
-
   return (
-    <ResponsiveDialog
+    <Modal
       open={open}
-      onOpenChange={(next) => {
-        if (!next) handleClose();
-        else onOpenChange(next);
-      }}
+      onOpenChange={(next) => (next ? onOpenChange(true) : handleClose())}
       title="Anexar Comprovante ou Cupom"
       description="Identificação automática de cupons fiscais (DANFE NFC-e / SAT), comprovantes Pix, cartões com parcelamento, boletos bancários e carnês em PDF ou foto."
       size="md"
       footer={
-        <div className="flex items-center justify-end w-full">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleClose}
-            disabled={loading}
-            className="w-full sm:w-auto cursor-pointer"
-          >
+        <ModalFooter borderless>
+          <Button type="button" variant="outline" size="sm" onClick={handleClose} disabled={loading}>
             Cancelar
           </Button>
-        </div>
+        </ModalFooter>
       }
     >
       <div className="flex flex-col gap-4 py-1">
-        {error && <Alert variant="error">{error}</Alert>}
+        {error ? <Alert variant="error">{error}</Alert> : null}
 
         {loading ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex flex-col items-center justify-center gap-3 p-8 rounded-xl border border-border/80 bg-surface/50 text-center animate-in fade-in duration-150"
-          >
-            <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+          <div role="status" aria-live="polite" className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border/80 bg-surface-raised p-8 text-center animate-in fade-in duration-150">
+            <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary-strong">
               <Loader2 className="size-5 animate-spin" aria-hidden="true" />
             </div>
             <div className="flex flex-col gap-1">
-              <span className="text-sm font-semibold text-foreground">
-                Lendo dados do comprovante...
-              </span>
-              <span className="text-xs text-muted-foreground">
-                Identificando tipo de comprovante, valor, parcelamento e cartão para o Wizard Rápido
-              </span>
+              <span className="text-sm font-semibold text-foreground">Lendo dados do comprovante...</span>
+              <span className="text-xs text-muted-foreground">Identificando tipo de comprovante, valor, parcelamento e cartão para o Wizard Rápido</span>
             </div>
           </div>
         ) : (
           <Dropzone
             accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
-            maxSizeBytes={15 * 1024 * 1024}
+            maxSizeBytes={MAX_RECEIPT_FILE_SIZE_BYTES}
             label="Arraste o comprovante aqui ou toque para selecionar"
             hint="Formatos aceitos: PDF digital, PNG ou JPG (até 15 MB)"
             enableCamera={true}
-            onFiles={(files) => {
-              const file = files[0];
-              if (file) void handleProcessFile(file);
-            }}
+            onFiles={(files) => { if (files[0]) void handleProcessFile(files[0]); }}
             onFileRejected={(_file, reason) => {
               if (reason === "too-large") {
                 triggerSensory("warning");
@@ -349,13 +148,7 @@ export function AttachReceiptDialog({
               }
             }}
             extraActions={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void handlePasteFromClipboard()}
-                className="gap-1.5 cursor-pointer border-primary/30 text-primary-strong hover:bg-primary/5"
-              >
+              <Button type="button" variant="outline" size="sm" onClick={() => void handlePasteFromClipboard()} className="gap-1.5 border-primary/30 text-primary-strong hover:bg-primary/5">
                 <ClipboardPaste className="size-3.5" aria-hidden="true" />
                 <span>Colar comprovante Pix</span>
               </Button>
@@ -363,48 +156,34 @@ export function AttachReceiptDialog({
           />
         )}
 
-        {showTextInput && !loading && (
-          <div className="flex flex-col gap-2 p-3.5 rounded-xl border border-border/80 bg-surface">
-            <span className="text-xs font-semibold text-foreground">
+        {showTextInput && !loading ? (
+          <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5">
+            <label htmlFor="manual-receipt-text" className="text-xs font-semibold text-foreground">
               Cole o texto do comprovante ou notificação bancária
-            </span>
+            </label>
             <Textarea
+              id="manual-receipt-text"
               value={manualText}
               onChange={(e) => setManualText(e.target.value)}
               placeholder="Cole aqui o texto do Pix, boleto ou notificação..."
               rows={4}
-              className="text-xs font-mono resize-none"
+              className="font-mono resize-none"
             />
             <div className="flex items-center justify-end gap-2 pt-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                onClick={() => setShowTextInput(false)}
-              >
-                Ocultar
-              </Button>
-              <Button
-                type="button"
-                size="xs"
-                disabled={!manualText.trim()}
-                onClick={() => void handleProcessManualText()}
-                className="gap-1.5 font-semibold"
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowTextInput(false)}>Ocultar</Button>
+              <Button type="button" size="sm" sensoryIntent={false} disabled={!manualText.trim()} onClick={() => void handleProcessText(manualText)} className="gap-1.5 font-semibold">
                 <ClipboardPaste className="size-3.5" aria-hidden="true" />
                 <span>Reconhecer Pix</span>
               </Button>
             </div>
           </div>
-        )}
+        ) : null}
 
-        <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-muted/40 border border-border/40 text-[11px] text-muted-foreground">
-          <FileUp className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-          <span>
-            Compatível com cupons fiscais com múltiplos itens, comprovantes Pix de 11 bancos, slips de maquininhas com parcelamento em até 60x, boletos bancários e carnês de lojas.
-          </span>
+        <div className="flex items-center gap-2 rounded-lg bg-surface-raised px-3 py-2.5 text-[11px] text-muted-foreground">
+          <FileUp className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span>Compatível com cupons fiscais com múltiplos itens, comprovantes Pix de 11 bancos, slips de maquininhas com parcelamento em até 60x, boletos bancários e carnês de lojas.</span>
         </div>
       </div>
-    </ResponsiveDialog>
+    </Modal>
   );
 }

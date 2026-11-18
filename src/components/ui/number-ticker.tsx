@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 
@@ -7,6 +8,8 @@ export interface NumberTickerProps {
   value: number;
   /** Formata o valor para exibição (default: inteiro). */
   format?: (value: number) => string;
+  /** Renderizador customizado opcional (ex.: hierarquia tipográfica de centavos). */
+  renderValue?: (value: number) => ReactNode;
   /** Duração da interpolação em ms (default 300). */
   durationMs?: number;
   className?: string;
@@ -26,6 +29,7 @@ function prefersReducedMotion(): boolean {
 export function NumberTicker({
   value,
   format = (v) => String(v),
+  renderValue,
   durationMs = 300,
   className,
 }: NumberTickerProps) {
@@ -60,5 +64,5 @@ export function NumberTicker({
 
   const shown = reduceMotion ? value : display;
 
-  return <span className={cn("num", className)}>{format(shown)}</span>;
+  return <span className={cn("num", className)}>{renderValue ? renderValue(shown) : format(shown)}</span>;
 }

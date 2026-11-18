@@ -8,6 +8,7 @@ import {
   Wallet,
 } from "lucide-react";
 import type { AssetPricingMode, PriceSource, FixedIncomeBalanceResult } from "@/domain/portfolio";
+import { formatAssetQuantity } from "@/services/formatting";
 import type { AssetAllocationStatus, AssetCurrency, FixedIncomeMetadata } from "@/types";
 
 export interface PositionRow {
@@ -73,8 +74,6 @@ export interface PositionTableProps {
     pricingMode?: AssetPricingMode,
     usdRate?: number,
   ) => void;
-  /** Confirma a exclusão do ativo (transações e metas em cascata). */
-  onDeleteAsset?: (assetId: string, ticker: string) => void;
   /** Abre o diálogo de avaliação de Nota (0-10) & Status na carteira. */
   onEvaluateScore?: (assetId: string, ticker: string) => void;
   emptyMessage?: string;
@@ -111,8 +110,8 @@ export const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: str
   fallback: { label: "fallback", title: "Preço estimado por fallback estático" },
 };
 
-export const formatQuantity = (quantity: number): string =>
-  Number.isInteger(quantity) ? String(quantity) : quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
+export const formatQuantity = (quantity: number, assetClass?: string | null): string =>
+  formatAssetQuantity(quantity, assetClass ?? undefined);
 
 export interface AssetClassMeta {
   label: string;

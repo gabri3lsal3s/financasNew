@@ -1,45 +1,13 @@
-import { useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { Alert, Button, ConfirmDialog, Modal, ModalFooter, Stepper } from "@/components/ui";
-import { getErrorMessage } from "@/services/errors";
-import { triggerSensory } from "@/services/sensory";
-import { getAssetPricingMode, isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
-import { resolveAssetPrecision } from "@/domain/portfolio/aporte";
-import { numberToCents } from "@/domain/money";
-import { inferSectorFromTicker, type AporteSuggestionItem } from "@/domain/portfolio/tickers-catalog";
-import { resolveDividendDate, resolveDividendNote } from "@/domain/portfolio/dividends";
-import { buildInitialPositionOperations } from "@/domain/portfolio/operations";
-import {
-  invalidatePortfolioSuite,
-  useCreatePortfolioAsset,
-  useCreatePortfolioContribution,
-  useCreatePortfolioTransaction,
-  useEmergencyFundComposition,
-  useGroupTargets,
-  usePortfolioAssets,
-  usePortfolioPosition,
-  useRecordOrder,
-  useSetManualPrice,
-  useFamilyMode,
-  useMyFamily,
-} from "@/state";
-import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import type { FixedIncomeMetadata, PortfolioAsset } from "@/types";
-import { buildEmergencyConfigWithAssetToggle } from "../components/emergency-fund-sync";
-
+import { Alert, ConfirmDialog, Modal, Stepper } from "@/components/ui";
+import type { PortfolioAsset } from "@/types";
 import { StepGovernance } from "./step-governance";
 import { StepNewPosition } from "./step-new-position";
 import { StepOrder } from "./step-order";
 import { StepReview } from "./step-review";
 import { StepSelect } from "./step-select";
-import {
-  canProceed,
-  defaultWizardState,
-  getWizardSteps,
-  parseNumber,
-  type InvestmentWizardState,
-  type WizardMode,
-} from "./wizard-state";
+import { useInvestmentWizard } from "./use-investment-wizard";
+import { WizardNavigationFooter } from "./wizard-navigation-footer";
+import { canProceed, type WizardMode } from "./wizard-state";
 
 export interface InvestmentWizardProps {
   open?: boolean;
@@ -48,7 +16,7 @@ export interface InvestmentWizardProps {
   onSuccess?: () => void;
   /** Ativo pré-selecionado para iniciar diretamente no fluxo Fast-Track. */
   initialAsset?: PortfolioAsset | null;
-  /** Modo inicial ("select" | "new_asset" | "buy" | "sell" | "dividend" | "split" | "existing_aporte"). */
+  /** Modo inicial ("select" | "new_asset" | "buy" | "sell" | "dividend" | "split" | "reverse_split" | "existing_aporte"). */
   initialMode?: WizardMode;
   /** Quantidade pré-carregada (para sugestões do AporteTab ou Wizard). */
   initialQuantity?: number | string | null;
@@ -58,6 +26,17 @@ export interface InvestmentWizardProps {
 
 export interface InvestmentWizardContentProps extends InvestmentWizardProps {
   open: boolean;
+}
+
+function getWizardModalTitle(mode: WizardMode, ticker: string): string {
+  const target = ticker || "Investimento";
+  if (mode === "sell") return `Vender · ${target}`;
+  if (mode === "dividend") return `Provento · ${target}`;
+  if (mode === "split") return `Desdobro (Split) · ${target}`;
+  if (mode === "reverse_split") return `Grupamento (Inplit) · ${target}`;
+  if (mode === "buy" || mode === "existing_aporte") return `Novo Aporte · ${target}`;
+  if (mode === "new_asset") return `Novo Ativo · ${target}`;
+  return "Operação em Investimentos";
 }
 
 function InvestmentWizardContent({
@@ -70,771 +49,131 @@ function InvestmentWizardContent({
   initialQuantity,
   initialTotalCents,
 }: InvestmentWizardContentProps) {
-  const queryClient = useQueryClient();
-  const assetsQuery = usePortfolioAssets();
-  const position = usePortfolioPosition();
-  const classTargetsQuery = useGroupTargets("class");
-  const sectorTargetsQuery = useGroupTargets("sector");
-  const createAsset = useCreatePortfolioAsset();
-  const createTransaction = useCreatePortfolioTransaction();
-  const createContribution = useCreatePortfolioContribution();
-  const recordOrder = useRecordOrder();
-  const setManualPrice = useSetManualPrice();
-  const emergencyFund = useEmergencyFundComposition();
-  const { isFamilyModeEnabled } = useFamilyMode();
-  const { data: myFamilyData } = useMyFamily();
-
-  const existingAssets = assetsQuery.data ?? [];
-  const classTargets = classTargetsQuery.data ?? [];
-  const rawSectorTargets = sectorTargetsQuery.data ?? [];
-  const classes = [...new Set(position.rows.map((r) => r.assetClass).filter((c): c is string => c !== null))];
-
-  const sectorTargets = rawSectorTargets.flatMap((st) => {
-    if (st.class_name && st.class_name.trim().length > 0) {
-      return [{ className: st.class_name, sectorName: st.name, target_percentage: st.target_percentage }];
-    }
-    const matchedClasses = classes.filter((cls) => {
-      const inAssets = position.rows.some((r) => r.assetClass === cls && (r.sector === st.name || inferSectorFromTicker(r.ticker, cls) === st.name));
-      return inAssets;
-    });
-    if (matchedClasses.length === 0) {
-      return [{ className: "Ações", sectorName: st.name, target_percentage: st.target_percentage }];
-    }
-    return matchedClasses.map((className) => ({
-      className,
-      sectorName: st.name,
-      target_percentage: st.target_percentage,
-    }));
-  });
-  const cashAsset =
-    existingAssets.find((a) => isCashAssetClass(a.asset_class) || a.ticker.toUpperCase() === "CAIXA") ?? null;
-
-  const [state, setState] = useState<InvestmentWizardState>(() => {
-    if (initialAsset) {
-      const mode: WizardMode = initialMode && initialMode !== "select" ? initialMode : "buy";
-      const initialCost =
-        (initialAsset.fixed_income_metadata?.initial_investment_value !== undefined &&
-          initialAsset.fixed_income_metadata.initial_investment_value !== null &&
-          initialAsset.fixed_income_metadata.initial_investment_value > 0)
-          ? initialAsset.fixed_income_metadata.initial_investment_value
-          : (initialAsset.average_price !== undefined && initialAsset.average_price > 0)
-            ? initialAsset.average_price
-            : (initialAsset.fixed_income_metadata?.base_value ?? 0);
-
-      const priceCents = numberToCents(initialCost);
-      const quantityStr = initialQuantity !== undefined && initialQuantity !== null ? String(initialQuantity) : "";
-      const numQty = parseFloat(quantityStr) || 0;
-      const totalCents =
-        initialTotalCents !== undefined && initialTotalCents !== null && initialTotalCents > 0
-          ? initialTotalCents
-          : numQty > 0 && priceCents > 0
-            ? Math.round(numQty * priceCents)
-            : 0;
-
-      return {
-        ...defaultWizardState,
-        mode,
-        step: 2,
-        selectedAsset: initialAsset,
-        ticker: initialAsset.ticker,
-        assetClass: initialAsset.asset_class ?? "Ações",
-        currency: initialAsset.currency,
-        isCash: isCashAssetClass(initialAsset.asset_class),
-        priceCents,
-        quantityStr,
-        totalCents,
-        appliedCostCents: priceCents,
-      };
-    }
-    if (initialMode === "new_asset") {
-      return {
-        ...defaultWizardState,
-        mode: "new_asset",
-        step: 1,
-      };
-    }
-    return defaultWizardState;
+  const wizard = useInvestmentWizard({
+    onOpenChange,
+    onClose,
+    onSuccess,
+    initialAsset,
+    initialMode,
+    initialQuantity,
+    initialTotalCents,
   });
 
-  const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({
-    moduleKey: "investments",
-    defaultContext: "Cadastrar Operação de Investimento",
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [confirmClose, setConfirmClose] = useState(false);
-  const isSubmittingRef = useRef(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const isDirty =
-    state.ticker !== "" ||
-    state.quantityStr !== "" ||
-    state.priceCents > 0 ||
-    state.totalCents > 0;
-
-  const handleClose = () => {
-    setState(defaultWizardState);
-    setError(null);
-    setConfirmClose(false);
-    onClose?.();
-    onOpenChange?.(false);
-  };
-
-  const requestClose = () => {
-    if (isDirty) {
-      setConfirmClose(true);
-    } else {
-      handleClose();
-    }
-  };
-
-  const steps = getWizardSteps(state.mode);
-  const isLastStep =
-    (state.mode === "new_asset" && state.step === 4) ||
-    (state.mode !== "new_asset" && state.mode !== "select" && state.step === 3);
-
-  const handleNext = () => {
-    if (!canProceed(state)) return;
-    setError(null);
-
-    // No modo select, ao avançar vai para o step 2 do modo correspondente
-    if (state.mode === "select") {
-      if (state.selectedAsset) {
-        setState((prev) => ({ ...prev, mode: "buy", step: 2 }));
-      } else {
-        setState((prev) => ({ ...prev, mode: "new_asset", step: 2 }));
-      }
-      return;
-    }
-
-    setState((prev) => ({ ...prev, step: prev.step + 1 }));
-  };
-
-  const handleBack = () => {
-    setError(null);
-
-    if (state.mode !== "new_asset" && state.mode !== "select" && state.step === 2 && !initialAsset) {
-      setState((prev) => ({ ...prev, mode: "select", step: 1 }));
-      return;
-    }
-
-    if (state.mode === "new_asset" && state.step === 1 && !initialAsset) {
-      setState((prev) => ({ ...prev, mode: "select", step: 1 }));
-      return;
-    }
-
-    setState((prev) => ({ ...prev, step: Math.max(1, prev.step - 1) }));
-  };
-
-  const handleSubmit = async () => {
-    if (isReadOnlyMode) {
-      guardAction(() => {}, "Confirmar Operação de Investimento");
-      return;
-    }
-    if (isPending || isSubmittingRef.current || isSubmitting) return;
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      if (state.mode === "buy" || state.mode === "existing_aporte") {
-        if (!state.selectedAsset) throw new Error("Selecione um ativo");
-        const parsedQty = parseNumber(state.quantityStr);
-        const price = state.priceCents / 100;
-        const total = state.totalCents / 100;
-
-        const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
-        const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
-        const pricingMode = getAssetPricingMode(
-          state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
-        );
-        const isTotalValue = !state.isCash && (pricingMode === "total_value" || isFixedIncome);
-
-        const finalTotal = isTotalValue
-          ? total > 0
-            ? total
-            : price
-          : state.isCash
-            ? total > 0
-              ? total
-              : parsedQty
-            : parsedQty * price;
-
-        const usdRate = position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25;
-
-        await recordOrder.mutateAsync({
-          asset: state.selectedAsset,
-          type: "buy",
-          date: state.date,
-          quantity: isTotalValue ? 1 : state.isCash ? (total > 0 ? total : parsedQty) : parsedQty,
-          price: isTotalValue ? finalTotal : state.isCash ? 1 : price,
-          total: finalTotal,
-          syncCash: state.syncCash,
-          cashAsset,
-          recordContribution: state.recordContribution,
-          notes: state.notes,
-          usdRate,
-        });
-      } else if (state.mode === "sell") {
-        if (!state.selectedAsset) throw new Error("Selecione um ativo");
-        const parsedQty = parseNumber(state.quantityStr);
-        const price = state.priceCents / 100;
-        const total = state.totalCents / 100;
-
-        const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
-        const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
-        const pricingMode = getAssetPricingMode(
-          state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
-        );
-        const isTotalValue = !state.isCash && (pricingMode === "total_value" || isFixedIncome);
-
-        const finalTotal = isTotalValue
-          ? total > 0
-            ? total
-            : price
-          : parsedQty * price;
-
-        const usdRate = position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25;
-
-        await recordOrder.mutateAsync({
-          asset: state.selectedAsset,
-          type: "sell",
-          date: state.date,
-          quantity: isTotalValue ? 1 : parsedQty,
-          price: isTotalValue ? finalTotal : price,
-          total: finalTotal,
-          syncCash: state.syncCash,
-          cashAsset,
-          notes: state.notes,
-          usdRate,
-          appliedCostBasis: isTotalValue && state.appliedCostCents > 0 ? state.appliedCostCents / 100 : undefined,
-          customTaxAmount:
-            isTotalValue && state.customTaxAmountCents !== null && state.customTaxAmountCents !== undefined
-              ? state.customTaxAmountCents / 100
-              : undefined,
-          customTaxRatePct:
-            isTotalValue && state.customTaxRatePct !== null && state.customTaxRatePct !== undefined
-              ? state.customTaxRatePct
-              : undefined,
-        });
-      } else if (state.mode === "dividend") {
-        if (!state.selectedAsset) throw new Error("Selecione um ativo");
-        const total = state.totalCents / 100;
-
-        const resolvedDate = resolveDividendDate(
-          state.dividendEntryMode,
-          state.dividendEntryMode === "monthly" ? state.month : state.date,
-        );
-        const resolvedNotes = resolveDividendNote(
-          state.dividendEntryMode,
-          state.notes,
-          "dividend",
-        );
-
-        const usdRate = position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25;
-
-        await recordOrder.mutateAsync({
-          asset: state.selectedAsset,
-          type: "dividend",
-          date: resolvedDate,
-          quantity: 0,
-          price: 0,
-          total,
-          syncCash: state.syncCash,
-          cashAsset,
-          notes: resolvedNotes,
-          usdRate,
-        });
-      } else if (state.mode === "split") {
-        if (!state.selectedAsset) throw new Error("Selecione um ativo");
-
-        await recordOrder.mutateAsync({
-          asset: state.selectedAsset,
-          type: "split",
-          date: state.date,
-          quantity: state.splitFactor,
-          price: 0,
-          total: 0,
-          notes: state.notes,
-        });
-      } else if (state.mode === "reverse_split") {
-        if (!state.selectedAsset) throw new Error("Selecione um ativo");
-
-        await recordOrder.mutateAsync({
-          asset: state.selectedAsset,
-          type: "reverse_split",
-          date: state.date,
-          quantity: state.reverseSplitFactor,
-          price: 0,
-          total: 0,
-          notes: state.notes,
-        });
-      } else if (state.mode === "new_asset") {
-        const parsedQty = parseNumber(state.quantityStr);
-        const price = state.priceCents / 100;
-        const total = state.totalCents / 100;
-
-        const isCash = state.isCash || isCashAssetClass(state.assetClass) || state.ticker.toUpperCase() === "CAIXA";
-        const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
-        const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
-        const isTotalValue = !isCash && isFixedIncome;
-
-        let finalQuantity = parsedQty;
-        let finalAveragePrice = price;
-        const finalNotes = state.notes ? state.notes.trim() : null;
-
-        if (isCash) {
-          finalQuantity = total > 0 ? total : parsedQty;
-          finalAveragePrice = 1;
-        } else if (isTotalValue) {
-          finalQuantity = 1;
-          finalAveragePrice = price > 0 ? price : total;
-        }
-
-        let fixedIncomeMetadata: FixedIncomeMetadata | null = null;
-        if (isFixedIncome && !isCash) {
-          const rateVal = parseNumber(state.fixedIncomeRateValue);
-          fixedIncomeMetadata = {
-            rate_type: state.fixedIncomeRateType,
-            rate_value: rateVal,
-            base_date: state.fixedIncomeBaseDate || state.date,
-            base_value: isTotalValue && total > 0 ? total : null,
-            initial_investment_date: state.fixedIncomeInitialInvestmentDate ? state.fixedIncomeInitialInvestmentDate.slice(0, 10) : null,
-            maturity_date: state.fixedIncomeMaturityDate ? state.fixedIncomeMaturityDate.slice(0, 10) : null,
-            is_tax_exempt: state.fixedIncomeIsTaxExempt,
-            manual_tax_rate_pct: state.fixedIncomeIsTaxExempt ? null : state.fixedIncomeManualTaxRatePct,
-          };
-        }
-
-        const newAsset = await createAsset.mutateAsync({
-          ticker: state.ticker,
-          asset_class: state.assetClass,
-          sector: state.sector.trim() || null,
-          currency: state.currency,
-          quantity: finalQuantity,
-          average_price: finalAveragePrice,
-          accumulated_dividends: state.accumulatedDividendsCents / 100,
-          estimated_monthly_dividend_per_share: state.estimatedDividendPerShareCents / 100,
-          fixed_income_metadata: fixedIncomeMetadata,
-          is_family: isFamilyModeEnabled ? state.isFamily : false,
-          family_id: isFamilyModeEnabled && state.isFamily ? (myFamilyData?.family?.id ?? null) : null,
-          notes: finalNotes,
-          score: isCash ? null : state.score,
-          allocation_status: isCash ? "active" : state.allocationStatus,
-          score_criteria:
-            !isCash && Object.keys(state.scoreCriteria ?? {}).length > 0
-              ? state.scoreCriteria
-              : null,
-          thesis_summary: !isCash && state.thesisSummary.trim() ? state.thesisSummary.trim() : null,
-          review_frequency_months: !isCash ? (state.reviewFrequencyMonths ?? 6) : undefined,
-          last_reviewed_at: !isCash && state.score !== null ? new Date().toISOString() : null,
-        });
-
-        // Registra a transação inicial de compra no ledger e o aporte correspondente
-        const ops = buildInitialPositionOperations({
-          assetId: newAsset.id,
-          ticker: state.ticker,
-          assetClass: state.assetClass,
-          currency: state.currency,
-          quantity: finalQuantity,
-          averagePrice: finalAveragePrice,
-          initialDate:
-            fixedIncomeMetadata?.initial_investment_date ||
-            fixedIncomeMetadata?.base_date ||
-            state.date,
-          usdRate: position.rows.find((r) => r.currency === "USD")?.usdRate ?? 5.25,
-          isTotalValue,
-          isCash,
-          notes: finalNotes,
-        });
-
-        if (ops.transaction) {
-          await createTransaction.mutateAsync(ops.transaction);
-        }
-        if (ops.contribution) {
-          await createContribution.mutateAsync(ops.contribution);
-        }
-
-        // Se for modo total_value e tiver preço atual / saldo definido, salva override manual
-        if (isTotalValue && total > 0) {
-          await setManualPrice.mutateAsync({
-            ticker: state.ticker,
-            price: total,
-          });
-        }
-
-        // Sincroniza Reserva de Emergência para títulos de Renda Fixa elegíveis
-        if (isFixedIncome && !isCash && state.isEmergencyFund && newAsset?.id) {
-          const nextConfig = buildEmergencyConfigWithAssetToggle({
-            config: emergencyFund.config,
-            portfolioRows: emergencyFund.portfolioRows,
-            breakdownAssetIds: emergencyFund.composition.breakdown
-              .filter((b) => b.type === "asset")
-              .map((b) => b.id),
-            assetId: newAsset.id,
-            include: true,
-          });
-          await emergencyFund.updateConfig(nextConfig);
-        }
-      }
-
-      if (queryClient) {
-        await invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
-      }
-
-      onSuccess?.();
-      handleClose();
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      isSubmittingRef.current = false;
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSelectSuggestion = (item: AporteSuggestionItem) => {
-    triggerSensory("selection");
-    const asset = existingAssets.find((a) => a.id === item.assetId);
-    const row = position.rows.find((r) => r.assetId === item.assetId);
-    const priceBRL = row?.priceBRL ?? Number(asset?.average_price ?? 0);
-    const isTesouro = isTesouroAsset(item.ticker, item.assetClass);
-    const isFixedIncome = isFixedIncomeClass(item.assetClass) || isTesouro;
-    const pricingMode = getAssetPricingMode(
-      asset ?? { ticker: item.ticker, asset_class: item.assetClass, notes: null },
-    );
-    const isTotalValue = pricingMode === "total_value" || isFixedIncome;
-    const cashAvailableBRL = cashAsset?.quantity ?? 0;
-
-    if (isTotalValue) {
-      const suggestedAmount =
-        item.suggestedTotalBRL && item.suggestedTotalBRL > 0
-          ? item.suggestedTotalBRL
-          : cashAvailableBRL > 0
-            ? Math.min(cashAvailableBRL, item.gapBRL)
-            : item.gapBRL;
-      const totalCents = Math.round(suggestedAmount * 100);
-      setState((prev) => ({
-        ...prev,
-        mode: "buy",
-        step: 2,
-        searchQuery: item.ticker,
-        selectedAsset: asset ?? null,
-        ticker: item.ticker,
-        assetClass: item.assetClass,
-        sector: item.sector ?? asset?.sector ?? "",
-        currency: asset?.currency ?? "BRL",
-        isCash: false,
-        priceCents: totalCents,
-        quantityStr: "",
-        totalCents,
-        syncCash: cashAvailableBRL > 0 && suggestedAmount > 0,
-      }));
-      return;
-    }
-
-    const precision = resolveAssetPrecision({
-      assetClass: item.assetClass,
-      ticker: item.ticker,
-      currency: (asset?.currency ?? "BRL") as "BRL" | "USD",
-    });
-
-    let suggestedQty = item.suggestedQty ?? 0;
-    if (!(suggestedQty > 0) && cashAvailableBRL > 0 && priceBRL > 0) {
-      if (precision > 0) {
-        const factor = 10 ** precision;
-        const maxUsefulQty = Math.floor((item.gapBRL / priceBRL) * factor) / factor;
-        const cashQty = Math.floor((cashAvailableBRL / priceBRL) * factor) / factor;
-        suggestedQty = Math.min(maxUsefulQty, cashQty);
-      } else {
-        const maxUsefulQty = Math.floor(item.gapBRL / priceBRL);
-        const cashQty = Math.floor(cashAvailableBRL / priceBRL);
-        suggestedQty = Math.min(maxUsefulQty, cashQty);
-      }
-    }
-
-    const priceCents = Math.round(priceBRL * 100);
-    const totalCents = suggestedQty > 0 ? Math.round(suggestedQty * priceBRL * 100) : 0;
-    const formattedQty =
-      suggestedQty > 0
-        ? precision > 0
-          ? parseFloat(suggestedQty.toFixed(precision)).toString()
-          : String(suggestedQty)
-        : "";
-
-    setState((prev) => ({
-      ...prev,
-      mode: "buy",
-      step: 2,
-      searchQuery: item.ticker,
-      selectedAsset: asset ?? null,
-      ticker: item.ticker,
-      assetClass: item.assetClass,
-      sector: item.sector ?? asset?.sector ?? "",
-      currency: asset?.currency ?? "BRL",
-      isCash: false,
-      priceCents,
-      quantityStr: formattedQty,
-      totalCents,
-      syncCash: suggestedQty > 0,
-      recordContribution: suggestedQty <= 0,
-    }));
-  };
-
-  const isPending =
-    createAsset.isPending ||
-    createTransaction.isPending ||
-    createContribution.isPending ||
-    recordOrder.isPending ||
-    emergencyFund.isUpdating;
-
-  const getModalTitle = () => {
-    if (state.mode === "sell") return `Vender · ${state.ticker || "Investimento"}`;
-    if (state.mode === "dividend") return `Provento · ${state.ticker || "Investimento"}`;
-    if (state.mode === "split") return `Split · ${state.ticker || "Investimento"}`;
-    if (state.mode === "buy" || state.mode === "existing_aporte") {
-      return `Novo Aporte · ${state.ticker || "Investimento"}`;
-    }
-    if (state.mode === "new_asset") {
-      return `Novo Ativo · ${state.ticker || "Investimento"}`;
-    }
-    return "Operação em Investimentos";
-  };
+  const { state, setState } = wizard;
+  const canGoBack = state.mode !== "select" && (state.step > 1 || !initialAsset);
+  const showCalculator =
+    (state.mode === "new_asset" && state.step === 2) ||
+    (state.mode !== "new_asset" && state.mode !== "select" && state.step === 2);
+  const continueLabel =
+    (state.mode === "select" || state.step === 1) && state.ticker
+      ? `Continuar com ${state.ticker}`
+      : "Continuar";
 
   return (
     <>
       <Modal
         open={open}
-        onOpenChange={(next) => (!next ? requestClose() : onOpenChange?.(true))}
-        title={getModalTitle()}
-        description="Lance compras, vendas, proventos, splits ou cadastre novos ativos com atualização em tempo real."
+        onOpenChange={(next) => (!next ? wizard.requestClose() : onOpenChange?.(true))}
+        title={getWizardModalTitle(state.mode, state.ticker)}
+        description="Lance compras, vendas, proventos, desdobramentos ou cadastre novos ativos com atualização em tempo real."
         size="xl"
-        showCalculator
+        showCalculator={showCalculator}
         footer={
-          <ModalFooter borderless className="w-full">
-            {state.mode !== "select" && (state.step > 1 || !initialAsset) ? (
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-between sm:gap-2.5 w-full">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleBack}
-                  disabled={isPending}
-                  className="order-1 sm:order-1 w-full sm:w-auto sm:min-w-[110px]"
-                >
-                  Voltar
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={requestClose}
-                  disabled={isPending}
-                  className="order-3 sm:order-2 col-span-2 sm:col-span-1 w-full sm:w-auto sm:min-w-[110px] sm:ml-auto"
-                >
-                  Cancelar
-                </Button>
-
-                {isLastStep ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleSubmit}
-                    disabled={!canProceed(state) || isPending || isSubmitting}
-                    className="order-2 sm:order-3 w-full sm:w-auto sm:min-w-[110px]"
-                  >
-                    {isPending || isSubmitting ? "Gravando..." : "Confirmar Operação"}
-                  </Button>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleNext}
-                    disabled={!canProceed(state) || isPending}
-                    className="order-2 sm:order-3 w-full sm:w-auto sm:min-w-[110px]"
-                  >
-                    {state.step === 1 && state.ticker
-                      ? `Continuar com ${state.ticker}`
-                      : "Continuar"}
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={requestClose}
-                  disabled={isPending}
-                >
-                  Cancelar
-                </Button>
-
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleNext}
-                  disabled={!canProceed(state) || isPending}
-                >
-                  {(state.mode === "select" || state.step === 1) && state.ticker
-                    ? `Continuar com ${state.ticker}`
-                    : "Continuar"}
-                </Button>
-              </>
-            )}
-          </ModalFooter>
+          <WizardNavigationFooter
+            canGoBack={canGoBack}
+            isLastStep={wizard.isLastStep}
+            canAdvance={canProceed(state)}
+            isPending={wizard.isPending}
+            isSubmitting={wizard.isSubmitting}
+            continueLabel={continueLabel}
+            onBack={wizard.handleBack}
+            onCancel={wizard.requestClose}
+            onNext={wizard.handleNext}
+            onSubmit={wizard.handleSubmit}
+          />
         }
       >
         <div className="flex flex-col gap-6 pt-2">
-          {/* Stepper com passos contextuais */}
           {state.mode !== "select" && (
-            <Stepper
-              steps={steps.map((s) => s.title)}
-              current={state.step}
-            />
+            <Stepper steps={wizard.steps.map((s) => s.title)} current={state.step} />
           )}
 
-          {error && <Alert variant="error">{error}</Alert>}
+          {wizard.error && <Alert variant="error">{wizard.error}</Alert>}
 
-          {/* Renderização do Passo Ativo */}
           {state.mode === "select" && (
             <StepSelect
               state={state}
               onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
-              existingAssets={existingAssets}
-              assetRows={position.rows}
-              classTargets={classTargets}
-              sectorTargets={sectorTargets}
-              totalPortfolioBRL={position.totalBRL}
-              cashAvailableBRL={cashAsset?.quantity ?? 0}
-              onSelectResult={(res) => {
-                triggerSensory("selection");
-                const isCash = isCashAssetClass(res.assetClass);
-                if (res.isExisting && res.existingAssetId) {
-                  const asset = existingAssets.find((a) => a.id === res.existingAssetId);
-                  const initialCost =
-                    (asset?.fixed_income_metadata?.initial_investment_value !== undefined &&
-                      asset.fixed_income_metadata.initial_investment_value !== null &&
-                      asset.fixed_income_metadata.initial_investment_value > 0)
-                      ? asset.fixed_income_metadata.initial_investment_value
-                      : (asset?.average_price !== undefined && asset.average_price > 0)
-                        ? asset.average_price
-                        : (asset?.fixed_income_metadata?.base_value ?? 0);
-                  setState((prev) => ({
-                    ...prev,
-                    mode: "buy",
-                    step: 2,
-                    searchQuery: res.ticker,
-                    selectedAsset: asset ?? null,
-                    ticker: res.ticker,
-                    name: res.name,
-                    assetClass: res.assetClass,
-                    sector: res.sector ?? asset?.sector ?? "",
-                    currency: res.currency,
-                    isCash,
-                    appliedCostCents: numberToCents(initialCost),
-                  }));
-                } else {
-                  setState((prev) => ({
-                    ...prev,
-                    mode: "new_asset",
-                    step: 2,
-                    searchQuery: res.ticker,
-                    selectedAsset: null,
-                    ticker: res.ticker,
-                    name: res.name,
-                    assetClass: res.assetClass,
-                    sector: res.sector ?? "",
-                    currency: res.currency,
-                    isCash,
-                  }));
-                }
-              }}
-              onSelectSuggestion={handleSelectSuggestion}
+              existingAssets={wizard.existingAssets}
+              assetRows={wizard.position.rows}
+              classTargets={wizard.classTargets}
+              sectorTargets={wizard.sectorTargets}
+              totalPortfolioBRL={wizard.position.totalBRL}
+              cashAvailableBRL={wizard.cashAsset?.quantity ?? 0}
+              onSelectResult={(res) => wizard.handleSelectResult(res, false)}
+              onSelectSuggestion={wizard.handleSelectSuggestion}
             />
           )}
 
-          {/* Passo 1 do Novo Ativo: Identificação Cadastral */}
           {state.mode === "new_asset" && state.step === 1 && (
             <StepSelect
               state={state}
               onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
-              existingAssets={existingAssets}
-              assetRows={position.rows}
-              classTargets={classTargets}
-              sectorTargets={sectorTargets}
-              totalPortfolioBRL={position.totalBRL}
-              cashAvailableBRL={cashAsset?.quantity ?? 0}
-              onSelectResult={(res) => {
-                triggerSensory("selection");
-                const isCash = isCashAssetClass(res.assetClass);
-                setState((prev) => ({
-                  ...prev,
-                  step: 2,
-                  searchQuery: res.ticker,
-                  ticker: res.ticker,
-                  name: res.name,
-                  assetClass: res.assetClass,
-                  sector: res.sector ?? "",
-                  currency: res.currency,
-                  isCash,
-                }));
-              }}
-              onSelectSuggestion={handleSelectSuggestion}
+              existingAssets={wizard.existingAssets}
+              assetRows={wizard.position.rows}
+              classTargets={wizard.classTargets}
+              sectorTargets={wizard.sectorTargets}
+              totalPortfolioBRL={wizard.position.totalBRL}
+              cashAvailableBRL={wizard.cashAsset?.quantity ?? 0}
+              onSelectResult={(res) => wizard.handleSelectResult(res, true)}
+              onSelectSuggestion={wizard.handleSelectSuggestion}
             />
           )}
 
-          {/* Passo 2 do Novo Ativo: Posição Inicial */}
           {state.mode === "new_asset" && state.step === 2 && (
-            <StepNewPosition
-              state={state}
-              onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
-            />
+            <StepNewPosition state={state} onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))} />
           )}
 
-          {/* Passo 3 do Novo Ativo: Governança (Nota & Status) */}
           {state.mode === "new_asset" && state.step === 3 && (
             <StepGovernance
               state={state}
               onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
-              existingAssets={existingAssets}
-              classTargets={classTargets}
-              sectorTargets={rawSectorTargets}
+              existingAssets={wizard.existingAssets}
+              classTargets={wizard.classTargets}
+              sectorTargets={wizard.rawSectorTargets}
             />
           )}
 
-          {/* Passo 2 de Operações em Ativo Existente: Quantidade e Preço */}
           {state.mode !== "new_asset" && state.mode !== "select" && state.step === 2 && (
             <StepOrder
               state={state}
               onChange={(patch) => setState((prev) => ({ ...prev, ...patch }))}
-              cashAsset={cashAsset}
-              usdRate={position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25}
+              cashAsset={wizard.cashAsset}
+              usdRate={wizard.usdRate}
             />
           )}
 
-          {/* Passo Final: Revisão & Confirmação */}
-          {isLastStep && (
+          {wizard.isLastStep && (
             <StepReview
               state={state}
-              cashAvailableBRL={cashAsset?.quantity ?? 0}
-              usdRate={position.rows.find((r) => r.usdRate)?.usdRate ?? 5.25}
+              cashAvailableBRL={wizard.cashAsset?.quantity ?? 0}
+              usdRate={wizard.usdRate}
             />
           )}
         </div>
       </Modal>
 
-      {/* Confirmação de Descarte se formulário foi preenchido */}
       <ConfirmDialog
-        open={confirmClose}
-        onOpenChange={setConfirmClose}
+        open={wizard.confirmClose}
+        onOpenChange={wizard.setConfirmClose}
         title="Descartar alterações?"
         description="Você já preencheu dados da operação. Se fechar agora, as informações serão perdidas."
         confirmLabel="Descartar"
         variant="destructive"
-        onConfirm={handleClose}
+        onConfirm={wizard.handleClose}
       />
 
-      {upgradeModal}
+      {wizard.upgradeModal}
     </>
   );
 }

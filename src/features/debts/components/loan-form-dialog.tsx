@@ -1,42 +1,36 @@
-import { useState } from "react";
-import { Alert, Button, DatePicker, FormField, Input, Modal, ModalFooter, MoneyInput, NumberStepperInput, Select } from "@/components/ui";
+import { useId, useState } from "react";
+import { Alert, Button, Modal, ModalFooter, MoneyText } from "@/components/ui";
+import { calculateLoanSchedule } from "@/domain/loans";
+import { toISODate } from "@/domain/money";
 import { getErrorMessage } from "@/services/errors";
 import { sensory } from "@/services/sensory";
-import { formatCentsAsBRL } from "@/services/masks";
-import { toISODate } from "@/domain/money";
-
-import {
-  AMORTIZATION_SYSTEM_LABELS,
-  calculateLoanSchedule,
-  LOAN_TYPE_LABELS,
-} from "@/domain/loans";
 import { useCreateLoanContract } from "@/state";
 import type { AmortizationSystem, LoanType } from "@/types";
+import { LoanContractFields } from "./loan-contract-fields";
 
 export interface LoanFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
+function LoanFormContent({ open, onOpenChange }: LoanFormDialogProps) {
+  const formId = useId();
   const [name, setName] = useState("");
   const [loanType, setLoanType] = useState<LoanType>("financing");
   const [principalCents, setPrincipalCents] = useState(500000); // R$ 5.000,00
   const [installmentsCount, setInstallmentsCount] = useState(24);
-  const [monthlyRateStr, setMonthlyRateStr] = useState("1.8");
+  const [monthlyRatePercent, setMonthlyRatePercent] = useState(1.8);
   const [system, setSystem] = useState<AmortizationSystem>("price");
-  const [startDate, setStartDate] = useState(toISODate(new Date()));
+  const [startDate, setStartDate] = useState(() => toISODate(new Date()));
   const [error, setError] = useState<string | null>(null);
 
   const createLoan = useCreateLoanContract();
   const pending = createLoan.isPending;
 
-  const actualRate = parseFloat(monthlyRateStr.replace(",", ".")) || 0;
-
   const preview = calculateLoanSchedule({
     principalCents,
     totalInstallments: installmentsCount,
-    monthlyRatePercent: actualRate,
+    monthlyRatePercent,
     system,
     startDate,
   });
@@ -45,10 +39,12 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
     e.preventDefault();
     setError(null);
     if (!name.trim()) {
+      sensory.error();
       setError("Informe o nome ou credor do empréstimo/financiamento.");
       return;
     }
     if (principalCents <= 0) {
+      sensory.error();
       setError("Informe o valor financiado.");
       return;
     }
@@ -58,7 +54,7 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
         name: name.trim(),
         loanType,
         principalAmount: principalCents / 100,
-        interestRateMonthly: actualRate / 100,
+        interestRateMonthly: monthlyRatePercent,
         amortizationSystem: system,
         totalInstallments: installmentsCount,
         startDate,
@@ -71,6 +67,7 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
       sensory.success();
       onOpenChange(false);
     } catch (err) {
+      sensory.error();
       setError(getErrorMessage(err));
     }
   };
@@ -83,110 +80,85 @@ export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
       description="Cadastre o contrato com cálculo de saldo devedor e parcelas"
       size="xl"
       showCalculator
+      footer={
+        <ModalFooter borderless>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={pending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form={formId}
+            sensoryIntent={false}
+            disabled={pending || !name.trim() || principalCents <= 0}
+          >
+            {pending ? "Criando contrato…" : "Salvar contrato"}
+          </Button>
+        </ModalFooter>
+      }
     >
-      <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3.5">
+      <form id={formId} onSubmit={handleSubmit} className="mt-2 flex flex-col gap-3.5">
         {error ? <Alert variant="error">{error}</Alert> : null}
 
-        <FormField label="Nome do contrato ou credor">
-          <Input
-            id="loan-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ex.: Financiamento Carro, Empréstimo Caixa"
-          />
-        </FormField>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <FormField label="Tipo de crédito">
-            <Select
-              value={loanType}
-              onValueChange={(val) => setLoanType(val as LoanType)}
-              options={Object.entries(LOAN_TYPE_LABELS).map(([k, v]) => ({ value: k, label: v }))}
-              ariaLabel="Tipo de empréstimo"
-            />
-          </FormField>
-
-          <FormField label="Sistema de amortização">
-            <Select
-              value={system}
-              onValueChange={(val) => setSystem(val as AmortizationSystem)}
-              options={Object.entries(AMORTIZATION_SYSTEM_LABELS).map(([k, v]) => ({ value: k, label: v }))}
-              ariaLabel="Sistema de amortização"
-            />
-          </FormField>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <FormField label="Valor financiado (principal)">
-            <MoneyInput
-              id="loan-principal"
-              cents={principalCents}
-              onCentsChange={setPrincipalCents}
-              aria-label="Valor financiado"
-            />
-          </FormField>
-
-          <FormField label="Número de parcelas">
-            <NumberStepperInput
-              min={1}
-              max={420}
-              step={1}
-              value={installmentsCount}
-              onValueChange={(val) => setInstallmentsCount(Math.max(1, parseInt(val) || 1))}
-              ariaLabel="Número de parcelas"
-            />
-          </FormField>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <FormField label="Taxa de juros (% a.m.)">
-            <Input
-              id="loan-rate"
-              value={monthlyRateStr}
-              onChange={(e) => setMonthlyRateStr(e.target.value)}
-              placeholder="Ex.: 1.8"
-            />
-          </FormField>
-
-          <FormField label="Data da 1ª parcela">
-            <DatePicker value={startDate} onValueChange={setStartDate} ariaLabel="Data inicial" />
-          </FormField>
-        </div>
+        <LoanContractFields
+          idPrefix="loan"
+          name={name}
+          onNameChange={setName}
+          loanType={loanType}
+          onLoanTypeChange={setLoanType}
+          system={system}
+          onSystemChange={setSystem}
+          principalCents={principalCents}
+          onPrincipalCentsChange={setPrincipalCents}
+          installmentsCount={installmentsCount}
+          onInstallmentsCountChange={setInstallmentsCount}
+          monthlyRatePercent={monthlyRatePercent}
+          onMonthlyRatePercentChange={setMonthlyRatePercent}
+          startDate={startDate}
+          onStartDateChange={setStartDate}
+        />
 
         {preview.schedule.length > 0 ? (
           <div className="rounded-xl border border-border/80 p-3.5 bg-surface shadow-xs flex flex-col gap-2">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Primeira parcela:</span>
-              <span className="font-semibold text-foreground">
-                {formatCentsAsBRL(preview.schedule[0]?.amountCents ?? 0)}
-              </span>
+              <MoneyText
+                cents={preview.schedule[0]?.amountCents ?? 0}
+                tone="default"
+                className="text-xs font-semibold"
+              />
             </div>
-            {system === "sac" && (
+            {system === "sac" ? (
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Última parcela estimada:</span>
-                <span className="font-semibold text-foreground">
-                  {formatCentsAsBRL(preview.schedule[preview.schedule.length - 1]?.amountCents ?? 0)}
-                </span>
+                <MoneyText
+                  cents={preview.schedule[preview.schedule.length - 1]?.amountCents ?? 0}
+                  tone="default"
+                  className="text-xs font-semibold"
+                />
               </div>
-            )}
+            ) : null}
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Total de juros estimados:</span>
-              <span className="font-semibold text-warning">
-                {formatCentsAsBRL(preview.totalInterestCents)}
-              </span>
+              <MoneyText
+                cents={preview.totalInterestCents}
+                tone="default"
+                className="text-xs font-semibold text-warning-strong"
+              />
             </div>
           </div>
         ) : null}
-
-        <ModalFooter>
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={pending || !name.trim() || principalCents <= 0}>
-            {pending ? "Criando contrato…" : "Salvar contrato"}
-          </Button>
-        </ModalFooter>
       </form>
     </Modal>
   );
+}
+
+export function LoanFormDialog({ open, onOpenChange }: LoanFormDialogProps) {
+  if (!open) return null;
+
+  return <LoanFormContent key="new-loan" open={open} onOpenChange={onOpenChange} />;
 }

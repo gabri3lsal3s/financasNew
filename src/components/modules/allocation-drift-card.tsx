@@ -2,8 +2,7 @@ import { useNavigate } from "react-router";
 import { ArrowRight, CheckCircle2, Compass, TrendingDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { MoneyText } from "@/components/ui/money-text";
-import type { AllocationDriftAnalysis } from "@/domain/portfolio";
+import { normalizeAllocationClassName, type AllocationDriftAnalysis } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
 
 export interface AllocationDriftCardProps {
@@ -100,15 +99,16 @@ export function AllocationDriftCard({ analysis, className, onSimulateAporte }: A
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <TrendingDown className="size-3.5 text-warning-strong shrink-0" aria-hidden="true" />
-                  <span className="text-xs font-semibold text-foreground truncate">{item.name}</span>
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-xs font-semibold text-foreground truncate">
+                    {normalizeAllocationClassName(item.name)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground whitespace-nowrap">
                     ({item.currentPercent}% / {item.targetPercent}%)
                   </span>
                 </div>
-                <div className="text-right shrink-0">
-                  <span className="text-[10px] text-muted-foreground block">Gap:</span>
-                  <MoneyText cents={item.recommendedAporteCents} tone="default" className="text-xs font-semibold" />
-                </div>
+                <span className="text-xs font-semibold text-warning-strong tabular-nums whitespace-nowrap shrink-0">
+                  {item.diffPercent.toFixed(1).replace(".", ",")} p.p.
+                </span>
               </div>
             ))}
           </div>

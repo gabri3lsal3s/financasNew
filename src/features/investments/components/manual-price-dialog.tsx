@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { Alert, Badge, Button, Modal, ModalFooter, MoneyInput } from "@/components/ui";
-import { MoneyText } from "@/components/ui/money-text";
+import { Alert, Badge, Button, FormField, Modal, ModalFooter, MoneyInput, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import type { PriceSource } from "@/domain/portfolio";
 import { getErrorMessage } from "@/services/errors";
@@ -47,7 +46,6 @@ function ManualPriceContent({ asset, open, onOpenChange, onClose }: ManualPriceC
   const [error, setError] = useState<string | null>(null);
 
   const pending = setManual.isPending || removeManual.isPending;
-
   const parsedPrice = priceCents / 100;
   const canSave = Number.isFinite(parsedPrice) && parsedPrice > 0 && !pending;
 
@@ -55,14 +53,12 @@ function ManualPriceContent({ asset, open, onOpenChange, onClose }: ManualPriceC
     if (!canSave) return;
     setError(null);
     try {
-      await setManual.mutateAsync({
-        ticker: asset.ticker,
-        price: parsedPrice,
-      });
+      await setManual.mutateAsync({ ticker: asset.ticker, price: parsedPrice });
       triggerSensory("success");
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
+      triggerSensory("error");
     }
   };
 
@@ -74,6 +70,7 @@ function ManualPriceContent({ asset, open, onOpenChange, onClose }: ManualPriceC
       onClose();
     } catch (err) {
       setError(getErrorMessage(err));
+      triggerSensory("error");
     }
   };
 
@@ -96,6 +93,7 @@ function ManualPriceContent({ asset, open, onOpenChange, onClose }: ManualPriceC
                 size="sm"
                 onClick={() => void handleRemove()}
                 disabled={pending}
+                sensoryIntent={false}
                 className="text-xs"
               >
                 <RefreshCw className="mr-1.5 size-3.5" aria-hidden="true" />
@@ -107,8 +105,13 @@ function ManualPriceContent({ asset, open, onOpenChange, onClose }: ManualPriceC
           <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
             Cancelar
           </Button>
-          <Button type="submit" form="manual-price-form" disabled={!canSave}>
-            {pending ? "Salvando…" : "Salvar preço"}
+          <Button
+            type="submit"
+            form="manual-price-form"
+            disabled={!canSave}
+            sensoryIntent={false}
+          >
+            {pending ? "Salvando..." : "Salvar preço"}
           </Button>
         </ModalFooter>
       }
@@ -117,22 +120,23 @@ function ManualPriceContent({ asset, open, onOpenChange, onClose }: ManualPriceC
         id="manual-price-form"
         onSubmit={(event) => {
           event.preventDefault();
-          if (canSave) {
-            void handleSave();
-          }
+          if (canSave) void handleSave();
         }}
-        className="mt-2 flex flex-col gap-4"
+        className="flex flex-col gap-4 pt-1"
       >
         <div className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface-hover/30 p-3">
           <div className="flex flex-col gap-0.5">
             <span className="text-xs text-muted-foreground">Preço atual considerado</span>
             <div className="flex items-center gap-2">
-              <span className="num text-sm font-semibold text-foreground">
-                <MoneyText cents={numberToCents(nativePrice)} currency={asset.currency} tone="default" />
-              </span>
+              <MoneyText
+                cents={numberToCents(nativePrice)}
+                currency={asset.currency}
+                tone="default"
+                className="text-sm font-semibold"
+              />
               {asset.currency === "USD" ? (
                 <span className="text-xs text-muted-foreground font-mono">
-                  (<MoneyText cents={numberToCents(asset.priceBRL)} currency="BRL" tone="default" />)
+                  (<MoneyText cents={numberToCents(asset.priceBRL)} currency="BRL" tone="default" variant="caption" />)
                 </span>
               ) : null}
             </div>
@@ -142,17 +146,18 @@ function ManualPriceContent({ asset, open, onOpenChange, onClose }: ManualPriceC
           </Badge>
         </div>
 
-        <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-          Preço unitário manual ({asset.currency})
+        <FormField label={`Preço unitário manual (${asset.currency})`} htmlFor="manual-price-input">
           <MoneyInput
+            id="manual-price-input"
             cents={priceCents}
             currency={asset.currency}
             onCentsChange={setPriceCents}
             placeholder={asset.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
             aria-label={`Preço manual do ativo em ${asset.currency}`}
+            className="text-base sm:text-sm"
             showCalculatorAction
           />
-        </label>
+        </FormField>
 
         {error ? <Alert variant="error">{error}</Alert> : null}
       </form>
@@ -162,7 +167,6 @@ function ManualPriceContent({ asset, open, onOpenChange, onClose }: ManualPriceC
 
 /**
  * Diálogo para definição de override de preço manual (§1.6 / D5).
- * Preço manual prevalece sobre cotações de API e fallback.
  */
 export function ManualPriceDialog({ open, onOpenChange, asset }: ManualPriceDialogProps) {
   if (!open || !asset) return null;

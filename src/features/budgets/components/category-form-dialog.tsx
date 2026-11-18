@@ -1,22 +1,10 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Trash2 } from "lucide-react";
-import { Alert, Button, ColorPicker, IconPicker, Input, Modal, ModalFooter, RadioGroup, Switch } from "@/components/ui";
-import type { IconPickerOption } from "@/components/ui";
-import { CATEGORY_ICON_MAP } from "@/components/modules/category-icons";
-import { categoryFormSchema, suggestCategory } from "@/domain/budgets";
-import { getErrorMessage } from "@/services/errors";
-import { triggerSensory } from "@/services/sensory";
-import { useCreateCategory, useFamilyMode, useMyFamily, useUpdateCategory } from "@/state";
-import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import { DeleteCategoryDialog } from "@/features/budgets/components/delete-category-dialog";
+import { Alert, Button, Modal, ModalFooter } from "@/components/ui";
 import type { Category, CategoryType } from "@/types";
-
-/** Opções de ícone (lucide-react, sem emojis) montadas uma única vez. */
-const ICON_OPTIONS: IconPickerOption[] = Object.entries(CATEGORY_ICON_MAP).map(([name, icon]) => ({
-  value: name,
-  label: name,
-  icon,
-}));
+import { CategoryFormFields } from "./category-form-fields";
+import { DeleteCategoryDialog } from "./delete-category-dialog";
+import { useCategoryForm } from "./use-category-form";
 
 export interface CategoryFormDialogProps {
   /** Categoria em edição; `null` = criação. */
@@ -29,219 +17,121 @@ export interface CategoryFormDialogProps {
   siblings?: Category[];
   /** Uso atual da categoria (lançamentos vinculados). Obrigatório em edição. */
   usage?: { expenses: number; incomes: number } | null;
-  /** Z-index elevado para sobreposição segura em outro modal */
+  /** Z-index elevado para sobreposição segura em outro modal. */
   elevated?: boolean;
-  /** Callback opcional chamado quando uma categoria for criada ou atualizada */
+  /** Callback opcional chamado quando uma categoria for criada ou atualizada. */
   onSuccess?: (category: Category) => void;
 }
 
 interface CategoryFormContentProps {
   category: Category | null;
   defaultType: CategoryType;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   siblings?: Category[];
   onOpenDelete?: () => void;
+  elevated: boolean;
   onSuccess?: (category: Category) => void;
 }
 
 function CategoryFormContent({
   category,
   defaultType,
-  onClose,
+  open,
+  onOpenChange,
   siblings,
   onOpenDelete,
+  elevated,
   onSuccess,
 }: CategoryFormContentProps) {
-  const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({ moduleKey: "budgets" });
-  const [name, setName] = useState(category?.name ?? "");
-  const [type, setType] = useState<CategoryType>(category?.type ?? defaultType);
-  const [icon, setIcon] = useState(category?.icon ?? "");
-  const [color, setColor] = useState(category?.color ?? "");
-  const [isFamily, setIsFamily] = useState(Boolean(category?.is_family));
-  const [error, setError] = useState<string | null>(null);
-
-  const { isFamilyModeEnabled } = useFamilyMode();
-  const { data: myFamilyData } = useMyFamily();
-  const isFamilyActive = Boolean(isFamilyModeEnabled);
-  const createCategory = useCreateCategory();
-  const updateCategory = useUpdateCategory();
-  const pending = createCategory.isPending || updateCategory.isPending;
-
-  const applySuggestion = (value: string) => {
-    const rule = suggestCategory(value);
-    if (rule) {
-      setIcon(rule.icon);
-      if (!color) setColor(rule.color);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (isReadOnlyMode) {
-      guardAction(() => {}, category ? "Editar Categoria" : "Cadastrar Nova Categoria");
-      return;
-    }
-    setError(null);
-    const rawForm = {
-      name,
-      type,
-      icon: icon || null,
-      color: color || null,
-      is_family: isFamilyActive ? isFamily : Boolean(category?.is_family),
-    };
-    const parsed = categoryFormSchema.safeParse(rawForm);
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Dados da categoria inválidos.");
-      return;
-    }
-
-    try {
-      if (category) {
-        const updated = await updateCategory.mutateAsync({
-          id: category.id,
-          input: {
-            name: parsed.data.name,
-            icon: parsed.data.icon ?? null,
-            color: parsed.data.color ?? null,
-            is_family: parsed.data.is_family,
-            family_id: parsed.data.is_family ? (category.family_id ?? myFamilyData?.family.id ?? null) : null,
-          },
-        });
-        triggerSensory("success");
-        if (updated) onSuccess?.(updated);
-        onClose();
-      } else {
-        const created = await createCategory.mutateAsync({
-          type: parsed.data.type,
-          name: parsed.data.name,
-          icon: parsed.data.icon ?? null,
-          color: parsed.data.color ?? null,
-          is_family: parsed.data.is_family,
-          family_id: parsed.data.is_family ? (myFamilyData?.family.id ?? null) : null,
-        });
-        triggerSensory("success");
-        if (created) onSuccess?.(created);
-        onClose();
-      }
-    } catch (err) {
-      triggerSensory("destructive");
-      setError(getErrorMessage(err));
-    }
-  };
+  const formId = useId();
+  const state = useCategoryForm({
+    category,
+    defaultType,
+    onClose: () => onOpenChange(false),
+    onSuccess,
+  });
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (name.trim() !== "" && !pending) {
-          void handleSubmit();
+    <>
+      <Modal
+        open={open}
+        onOpenChange={onOpenChange}
+        title={category ? "Editar categoria" : "Nova categoria"}
+        description={
+          category ? undefined : "A sugestão inteligente infere ícone, cor e limite por nome."
         }
-      }}
-      className="mt-4 flex flex-col gap-3.5"
-    >
-      {error ? <Alert variant="error">{error}</Alert> : null}
-
-      {!category ? (
-        <RadioGroup
-          value={type}
-          onValueChange={(value) => {
-            setType(value as CategoryType);
-          }}
-          name="category-type"
-          options={[
-            { value: "expense", label: "Despesa" },
-            { value: "income", label: "Renda" },
-          ]}
-        />
-      ) : null}
-
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="category-name" className="text-xs font-semibold text-foreground">
-          Nome
-        </label>
-        <Input
-          id="category-name"
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value);
-            if (!category) applySuggestion(event.target.value);
-          }}
-          placeholder="Ex.: Alimentação"
-        />
-        {!category && name.trim() ? (
-          <p className="text-[11px] text-muted-foreground">
-            {suggestCategory(name)
-              ? "Ícone e cor sugeridos automaticamente (e limite de orçamento por % da renda)."
-              : "Sem regra conhecida para este nome — escolha ícone e cor manualmente."}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-foreground">Ícone</span>
-          <IconPicker
-            value={icon}
-            onValueChange={setIcon}
-            options={ICON_OPTIONS}
-            placeholder="Selecione"
-            ariaLabel="Ícone da categoria"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-foreground">Cor</span>
-          <ColorPicker
-            value={color}
-            onValueChange={setColor}
-            ariaLabel="Cor da categoria"
-          />
-        </div>
-      </div>
-
-      {isFamilyActive && (
-        <div className="rounded-xl border border-border/80 bg-surface-raised p-3">
-          <Switch
-            id="category-is-family"
-            checked={isFamily}
-            onCheckedChange={setIsFamily}
-            label="Sugerir como familiar por padrão"
-            description="Lançamentos desta categoria serão marcados como despesas familiares automaticamente."
-          />
-        </div>
-      )}
-
-      <ModalFooter
-        destructiveAction={
-          category && siblings !== undefined ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-critical hover:bg-critical/10"
-              onClick={() => guardAction(() => onOpenDelete?.(), "Excluir Categoria")}
-            >
-              <Trash2 className="size-4" aria-hidden="true" />
-              Excluir
+        size="md"
+        elevated={elevated}
+        footer={
+          <ModalFooter
+            borderless
+            destructiveAction={
+              category && siblings !== undefined ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  sensoryIntent="selection"
+                  className="text-critical-strong hover:bg-critical/10 gap-1.5"
+                  onClick={() => state.guardAction(() => onOpenDelete?.(), "Excluir Categoria")}
+                  disabled={state.pending}
+                >
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  Excluir
+                </Button>
+              ) : null
+            }
+          >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={state.pending}>
+              Cancelar
             </Button>
-          ) : null
+            <Button
+              type="submit"
+              form={formId}
+              sensoryIntent={false}
+              aria-label={category ? "Salvar alterações" : "Criar categoria"}
+              disabled={state.name.trim() === "" || state.pending}
+            >
+              {state.pending ? (
+                "Salvando…"
+              ) : (
+                <>
+                  <span className="hidden sm:inline">{category ? "Salvar alterações" : "Criar categoria"}</span>
+                  <span className="sm:hidden">Salvar</span>
+                </>
+              )}
+            </Button>
+          </ModalFooter>
         }
       >
-        <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          aria-label={category ? "Salvar alterações" : "Criar categoria"}
-          disabled={name.trim() === "" || pending}
+        <form
+          id={formId}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (state.name.trim() !== "" && !state.pending) void state.handleSubmit();
+          }}
+          className="mt-2 flex flex-col gap-3.5"
         >
-          {pending ? "Salvando…" : (
-            <>
-              <span className="hidden sm:inline">{category ? "Salvar alterações" : "Criar categoria"}</span>
-              <span className="sm:hidden">Salvar</span>
-            </>
-          )}
-        </Button>
-      </ModalFooter>
-      {upgradeModal}
-    </form>
+          {state.error ? <Alert variant="error">{state.error}</Alert> : null}
+
+          <CategoryFormFields
+            isEditing={Boolean(category)}
+            name={state.name}
+            onNameChange={state.handleNameChange}
+            type={state.type}
+            onTypeChange={state.setType}
+            icon={state.icon}
+            onIconChange={state.setIcon}
+            color={state.color}
+            onColorChange={state.setColor}
+            isFamilyActive={state.isFamilyActive}
+            isFamily={state.isFamily}
+            onIsFamilyChange={state.setIsFamily}
+          />
+        </form>
+      </Modal>
+      {state.upgradeModal}
+    </>
   );
 }
 
@@ -258,28 +148,21 @@ export function CategoryFormDialog({
 }: CategoryFormDialogProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
+  if (!open) return null;
+
   return (
     <>
-      <Modal
+      <CategoryFormContent
+        key={category?.id ?? "new-category"}
+        category={category}
+        defaultType={defaultType}
         open={open}
         onOpenChange={onOpenChange}
-        title={category ? "Editar categoria" : "Nova categoria"}
-        description={category ? undefined : "A sugestão inteligente infere ícone, cor e limite por nome."}
-        size="md"
+        siblings={siblings}
+        onOpenDelete={() => setDeleteOpen(true)}
         elevated={elevated}
-      >
-        {open ? (
-          <CategoryFormContent
-            key={category?.id ?? "new-category"}
-            category={category}
-            defaultType={defaultType}
-            onClose={() => onOpenChange(false)}
-            siblings={siblings}
-            onOpenDelete={() => setDeleteOpen(true)}
-            onSuccess={onSuccess}
-          />
-        ) : null}
-      </Modal>
+        onSuccess={onSuccess}
+      />
 
       {category && siblings !== undefined ? (
         <DeleteCategoryDialog
@@ -287,11 +170,9 @@ export function CategoryFormDialog({
           siblings={siblings}
           usage={usage ?? null}
           open={deleteOpen}
-          onOpenChange={(next) => {
-            setDeleteOpen(next);
-            // Ao fechar o diálogo de exclusão (cancelou ou confirmou), fecha o form também
-            if (!next) onOpenChange(false);
-          }}
+          onOpenChange={setDeleteOpen}
+          elevated
+          onDeleted={() => onOpenChange(false)}
         />
       ) : null}
     </>

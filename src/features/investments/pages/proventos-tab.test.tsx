@@ -115,8 +115,11 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     dividendsMock.mockReturnValue(dividends);
     renderTab();
 
-    // 100 + 50,25 = 150,25 (07/05 é outro mês).
-    expect(screen.getAllByText("R$ 150,25").length).toBeGreaterThan(0);
+    // 100 + 50,25 = 150,25 (07/05 é outro mês) — KpiCard usa MoneyText variant="hero" (M6: centavos em span filho).
+    expect(
+      screen.getAllByText((_, el) => el?.textContent?.replace(/\u00a0/g, " ") === "R$ 150,25")
+        .length,
+    ).toBeGreaterThan(0);
     expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("MXRF11").length).toBeGreaterThanOrEqual(1);
     // Sub-aba de calendário presente.

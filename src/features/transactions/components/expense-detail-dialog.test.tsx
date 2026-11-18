@@ -12,6 +12,7 @@ const createExpenseMock = vi.fn();
 const navigateMock = vi.fn();
 const deleteTripExpenseLinkedMock = vi.fn();
 const updateTripExpenseLinkedMock = vi.fn();
+const deletePublicShareMock = vi.fn().mockResolvedValue(undefined);
 
 let currentTestQueryClient: QueryClient;
 
@@ -113,6 +114,10 @@ vi.mock("@/state", () => ({
   useExpenses: () => ({ data: [], isLoading: false }),
   useMyPublicShares: () => ({ data: [], isLoading: false }),
   useDebts: () => ({ data: [], isLoading: false }),
+}));
+
+vi.mock("@/state/mutations/use-public-share-mutations", () => ({
+  useDeletePublicShareMutation: () => ({ mutateAsync: deletePublicShareMock, isPending: false }),
 }));
 
 vi.mock("@/components/modules/split-expense-dialog", () => ({
@@ -231,7 +236,8 @@ describe("ExpenseDetailDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /editar/i }));
 
-    // Abre o seletor de pesos (dentro do modal) e escolhe o preset 75%
+    // Expande 'Mais detalhes', abre o seletor de pesos e escolhe o preset 75%
+    await user.click(screen.getByRole("button", { name: /mais detalhes/i }));
     await user.click(screen.getByRole("combobox", { name: /Sua Participação \/ Rateio|Peso no relatório/i }));
     await user.click(screen.getByRole("option", { name: "75%" }));
 
@@ -317,6 +323,7 @@ describe("ExpenseDetailDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /editar/i }));
 
+    await user.click(screen.getByRole("button", { name: /mais detalhes/i }));
     await user.click(screen.getByRole("combobox", { name: /Sua Participação \/ Rateio|Peso no relatório/i }));
     await user.click(screen.getByRole("option", { name: /personalizado/i }));
 
@@ -421,6 +428,7 @@ describe("ExpenseDetailDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /editar/i }));
 
+    await user.click(screen.getByRole("button", { name: /mais detalhes/i }));
     const familySwitch = screen.getByRole("switch", { name: "Despesa da Casa / Familiar" });
     expect(familySwitch).toHaveAttribute("aria-checked", "false");
     await user.click(familySwitch);

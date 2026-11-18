@@ -1,11 +1,20 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BottomNav } from "./bottom-nav";
+import * as scrollModule from "@/services/scroll";
 
 let mockSubscription = {
   isReadOnly: false,
   canWrite: true,
+};
+
+let mockReminders = {
+  totalCount: 0,
+  urgentCount: 0,
+  items: [] as unknown[],
+  isLoading: false,
+  error: null as unknown,
 };
 
 let mockHasFeature: (key: string) => boolean = () => true;
@@ -15,13 +24,7 @@ const mockAppMode = "investor";
 
 vi.mock("@/state", () => ({
   useUserSubscription: () => mockSubscription,
-  useReminders: () => ({
-    totalCount: 0,
-    urgentCount: 0,
-    items: [],
-    isLoading: false,
-    error: null,
-  }),
+  useReminders: () => mockReminders,
   useUserAccess: () => ({
     role: "user",
     status: "active",
@@ -58,6 +61,16 @@ vi.mock("@/state", () => ({
     isLoading: false,
   }),
 }));
+
+beforeEach(() => {
+  mockReminders = {
+    totalCount: 0,
+    urgentCount: 0,
+    items: [],
+    isLoading: false,
+    error: null,
+  };
+});
 
 function renderNav(entry = "/") {
   return render(
@@ -197,5 +210,57 @@ describe("BottomNav Dinâmica & Adaptativa", () => {
     const moreBtn = screen.getByRole("button", { name: "Mais opções" });
     fireEvent.click(moreBtn);
     expect(screen.getByRole("link", { name: /Investimentos|Carteira/i })).toBeInTheDocument();
+  });
+
+  it("usa pb-safe, container expandido no tablet (md:max-w-xl) e bg-critical no indicador de urgência", () => {
+    mockReminders = { totalCount: 2, urgentCount: 1, items: [], isLoading: false, error: null };
+    const { container } = renderNav("/");
+    const nav = container.querySelector("nav");
+    expect(nav?.className).toContain("pb-safe");
+    expect(nav?.firstElementChild?.className).toContain("md:max-w-xl");
+    expect(nav?.querySelector(".bg-critical")).toBeInTheDocument();
+    expect(nav?.querySelector(".bg-danger")).not.toBeInTheDocument();
+    mockReminders = { totalCount: 0, urgentCount: 0, items: [], isLoading: false, error: null };
+  });
+
+  it("aciona scrollToTop ao tocar na aba da rota já ativa", () => {
+    const scrollSpy = vi.spyOn(scrollModule, "scrollToTop").mockReturnValue(true);
+    renderNav("/transacoes");
+
+    fireEvent.click(screen.getByRole("link", { name: "Transações" }));
+    expect(scrollSpy).toHaveBeenCalledTimes(1);
+    scrollSpy.mockRestore();
+  });
+
+  it("FAB contextual em /viagens, /viagens/:id, /familia e /orcamentos?tab=goals (M8)", () => {
+    mockSubscription = { isReadOnly: false, canWrite: true };
+    mockHasFeature = () => true;
+
+    const { unmount } = renderNav("/viagens");
+    expect(screen.getByRole("link", { name: "Nova Viagem" })).toHaveAttribute(
+      "href",
+      "/viagens?novo=viagem",
+    );
+    unmount();
+
+    const details = renderNav("/viagens/v-123");
+    expect(screen.getByRole("link", { name: "Novo Gasto da Viagem" })).toHaveAttribute(
+      "href",
+      "/viagens/v-123?novo=gasto-viagem",
+    );
+    details.unmount();
+
+    const fam = renderNav("/familia");
+    expect(screen.getByRole("link", { name: "Nova despesa familiar" })).toHaveAttribute(
+      "href",
+      "/familia?novo=despesa&familia=1",
+    );
+    fam.unmount();
+
+    renderNav("/orcamentos?tab=goals");
+    expect(screen.getByRole("link", { name: "Nova Meta" })).toHaveAttribute(
+      "href",
+      "/orcamentos?tab=goals&novo=meta",
+    );
   });
 });

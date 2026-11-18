@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/modal";
 import { MoneyText } from "@/components/ui/money-text";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TransactionRow } from "@/components/modules/transaction-row";
+import { formatDateBR } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks";
 import { shareText } from "@/services/export-actions";
 import { weightedCents } from "@/domain/reports";
@@ -45,7 +46,7 @@ export function ReportDetailDialog({
     try {
       const lines = expenses.slice(0, 8).map((e) => {
         const cat = categoryById.get(e.category_id);
-        return `- ${e.description || cat?.name || "Despesa"}: ${formatCentsAsBRL(Math.round(e.value * 100))} (${e.date})`;
+        return `- ${e.description || cat?.name || "Despesa"}: ${formatCentsAsBRL(Math.round(e.value * 100))} (${formatDateBR(e.date)})`;
       });
       const text = [
         `${title}${subtitle ? ` — ${subtitle}` : ""}`,
@@ -55,7 +56,7 @@ export function ReportDetailDialog({
         ...lines,
         expenses.length > 8 ? `... e mais ${expenses.length - 8} lançamento(s).` : "",
       ].filter(Boolean).join("\n");
-      await shareText("Resumo de despesas — Finanças Pessoais", text);
+      await shareText("Resumo de despesas — Axir", text);
     } finally {
       setSharing(false);
     }
@@ -69,16 +70,15 @@ export function ReportDetailDialog({
       description={subtitle}
       size="xl"
     >
-      <div className="flex flex-col gap-4 mt-4">
-        {/* Resumo do agrupamento */}
-        <div className="flex items-center justify-between rounded-xl border border-border/80 bg-surface shadow-xs p-3.5">
-          <div className="flex flex-col">
+      <div className="flex flex-col gap-4 mt-2">
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface shadow-xs p-3.5">
+          <div className="flex flex-col min-w-0">
             <span className="text-xs text-muted-foreground">Lançamentos</span>
             <span className="text-sm font-semibold text-foreground">
               {expenses.length} {expenses.length === 1 ? "despesa" : "despesas"}
             </span>
           </div>
-          <div className="flex flex-col items-end text-right">
+          <div className="flex flex-col items-end text-right ml-auto">
             <span className="text-sm font-semibold text-foreground">
               {hasDualMetrics ? "Total Bruto: " : "Total: "}
               <MoneyText cents={totalBrutoCents} tone="negative" />
@@ -104,7 +104,6 @@ export function ReportDetailDialog({
           </Button>
         </div>
 
-        {/* Lista de despesas */}
         {expenses.length === 0 ? (
           <EmptyState
             icon={<ReceiptText className="size-6" aria-hidden="true" />}
@@ -124,7 +123,7 @@ export function ReportDetailDialog({
                 <TransactionRow
                   key={expense.id}
                   title={itemTitle}
-                  date={expense.date}
+                  date={formatDateBR(expense.date)}
                   subtitle={itemSubtitle}
                   amountCents={Math.round(expense.value * 100)}
                   reportWeight={expense.report_weight}

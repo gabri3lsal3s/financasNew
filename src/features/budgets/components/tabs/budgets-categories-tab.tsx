@@ -2,7 +2,6 @@ import { Plus, Sparkles } from "lucide-react";
 import { Alert, Button, EmptyState } from "@/components/ui";
 import { CategoryIcon } from "@/components/modules";
 import { triggerSensory } from "@/services/sensory";
-import { cn } from "@/lib/utils";
 import type { Category } from "@/types";
 
 export interface BudgetsCategoriesTabProps {
@@ -27,12 +26,12 @@ export function BudgetsCategoriesTab({
   const userCategories = allCategories.filter((c) => !c.is_reserved);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5 sm:gap-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs sm:text-sm text-muted-foreground">
           Catálogo com todas as categorias do sistema e personalizadas.
         </p>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0 w-full sm:w-auto">
           <Button
             size="sm"
             variant="outline"
@@ -59,7 +58,7 @@ export function BudgetsCategoriesTab({
 
       {userCategories.length === 0 ? (
         <EmptyState
-          icon={<Sparkles className="size-6 text-muted-foreground" aria-hidden="true" />}
+          icon={<Sparkles className="size-6" aria-hidden="true" />}
           title="Nenhuma categoria pronta encontrada"
           description="Sua conta ainda não possui categorias de receitas e despesas. Carregue o catálogo pré-pronto oficial com as 11 categorias brasileiras para começar imediatamente."
           action={
@@ -76,44 +75,48 @@ export function BudgetsCategoriesTab({
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {allCategories.map((category) => (
-            <div
-              key={category.id}
-              role={category.is_reserved ? undefined : "button"}
-              tabIndex={category.is_reserved ? undefined : 0}
-              aria-label={category.is_reserved ? undefined : `Editar cadastro de ${category.name}`}
-              onClick={() => {
-                if (!category.is_reserved) {
-                  triggerSensory("action");
-                  onEditCategory(category);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (!category.is_reserved && (e.key === "Enter" || e.key === " ")) {
-                  e.preventDefault();
-                  triggerSensory("action");
-                  onEditCategory(category);
-                }
-              }}
-              className={cn(
-                "group flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-surface/70 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border hover:bg-surface min-w-0",
-                !category.is_reserved && "cursor-pointer hover:border-primary/40 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/40",
-              )}
-            >
+          {allCategories.map((category) => {
+            const inner = (
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <CategoryIcon icon={category.icon} color={category.color} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                  <p className="line-clamp-2 break-words text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
                     {category.name}
                   </p>
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                  <span className="text-[11px] text-muted-foreground uppercase tracking-wider">
                     {category.type === "income" ? "Receita" : "Despesa"}
                     {category.is_reserved ? " · Sistema" : ""}
                   </span>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+
+            if (category.is_reserved) {
+              return (
+                <div
+                  key={category.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs min-h-12 min-w-0"
+                >
+                  {inner}
+                </div>
+              );
+            }
+
+            return (
+              <button
+                key={category.id}
+                type="button"
+                aria-label={`Editar cadastro de ${category.name}`}
+                onClick={() => {
+                  triggerSensory("selection");
+                  onEditCategory(category);
+                }}
+                className="group flex w-full text-left items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs min-h-12 min-w-0 cursor-pointer transition-colors duration-150 hover:border-primary/40 hover:bg-surface-hover/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {inner}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

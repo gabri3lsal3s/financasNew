@@ -1,8 +1,5 @@
 import {
   Calendar,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   Flame,
   PiggyBank,
   ShieldCheck,
@@ -10,8 +7,7 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { Alert, Badge, Button } from "@/components/ui";
-import { formatPercent, formatSignedPct } from "@/services/masks";
+import { Badge } from "@/components/ui";
 import {
   ESSENTIAL_STATUS_LABELS,
   SAVINGS_HEALTH_LABELS,
@@ -19,7 +15,9 @@ import {
   type EssentialSpendingResult,
   type SavingsHealth,
 } from "@/domain/insights";
+import { formatPercent, formatSignedPct } from "@/services/masks";
 import { DiagnosticCard } from "./diagnostic-card";
+import { DiagnosticsWarningsSection } from "./DiagnosticsWarningsSection";
 
 export interface WarningItem {
   id: string;
@@ -33,7 +31,6 @@ export interface DiagnosticsTabProps {
   setExpandedWarnings: (val: boolean | ((prev: boolean) => boolean)) => void;
   health: SavingsHealth;
   savingsRate: number;
-  burnRate: number;
   concentration: { topSharePercent: number; alert: boolean };
   weekendComparable: boolean;
   weekendRatio: number;
@@ -61,100 +58,60 @@ export function DiagnosticsTab({
 }: DiagnosticsTabProps) {
   return (
     <div className="flex flex-col gap-6 min-w-0">
-      {/* Bloco 1: Avisos e Recomendações Imediatas */}
-      <section aria-label="Avisos e recomendações" className="flex flex-col gap-2.5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Avisos & Recomendações
-          </h2>
-          {warnings.length > 2 && (
-            <Badge size="xs" variant="muted">
-              {expandedWarnings ? `${warnings.length} de ${warnings.length}` : `2 de ${warnings.length} alertas`}
-            </Badge>
-          )}
-        </div>
-        {warnings.length === 0 ? (
-          <div className="flex items-center gap-3 rounded-xl border border-positive/30 bg-positive/5 p-4 text-xs">
-            <CheckCircle2 className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
-            <div className="flex flex-col gap-0.5">
-              <p className="font-medium text-foreground">
-                {hasTransactions === false ? "Tudo pronto para começar seus diagnósticos" : "Nenhum aviso no momento."}
-              </p>
-              <p className="text-muted-foreground">
-                {hasTransactions === false
-                  ? "Registre suas primeiras receitas e despesas para acompanhar seu ritmo de gastos e diagnósticos de economia."
-                  : "Seu ritmo de gastos e orçamentos estão equilibrados neste mês."}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {(expandedWarnings ? warnings : warnings.slice(0, 2)).map((w) => (
-              <Alert key={w.id} variant={w.variant}>
-                {w.message}
-              </Alert>
-            ))}
-            {warnings.length > 2 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setExpandedWarnings((prev) => !prev);
-                }}
-                className="self-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mt-0.5"
-              >
-                {expandedWarnings ? (
-                  <>
-                    <ChevronUp className="size-3.5" aria-hidden="true" />
-                    <span>Mostrar menos alertas</span>
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="size-3.5" aria-hidden="true" />
-                    <span>Ver mais {warnings.length - 2} {warnings.length - 2 === 1 ? "alerta" : "alertas"}</span>
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-        )}
-      </section>
+      <DiagnosticsWarningsSection
+        warnings={warnings}
+        expandedWarnings={expandedWarnings}
+        setExpandedWarnings={setExpandedWarnings}
+        hasTransactions={hasTransactions}
+      />
 
-      {/* Bloco 2: Diagnóstico Financeiro */}
       <section aria-label="Diagnóstico financeiro" className="flex flex-col gap-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Diagnóstico de Hábitos & Indicadores
+          Diagnóstico de Hábitos &amp; Indicadores
         </h2>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 min-w-0">
-          {/* Card 1: Saúde da Poupança & Taxa unificadas */}
           <DiagnosticCard
             icon={<PiggyBank className="size-4" aria-hidden="true" />}
             label="Saúde da poupança"
             value={`${formatPercent(savingsRate)}%`}
             subtitle="Capacidade de poupar"
-            tone={health === "forte" || health === "saudavel" ? "positive" : health === "moderado" ? "neutral" : "negative"}
+            tone={
+              health === "forte" || health === "saudavel"
+                ? "positive"
+                : health === "moderado"
+                  ? "neutral"
+                  : "negative"
+            }
             badge={
               <Badge
-                variant={health === "forte" || health === "saudavel" ? "positive" : health === "moderado" ? "warning" : "critical"}
+                variant={
+                  health === "forte" || health === "saudavel"
+                    ? "positive"
+                    : health === "moderado"
+                      ? "warning"
+                      : "critical"
+                }
                 size="xs"
+                className="max-w-full truncate"
               >
                 {SAVINGS_HEALTH_LABELS[health]}
               </Badge>
             }
           />
 
-          {/* Card 2: Orçamentos em Risco / Estourados */}
           <DiagnosticCard
             icon={<Flame className="size-4" aria-hidden="true" />}
             label="Orçamentos estourados"
-            value={overspentBudgets === 0 ? "Em dia" : `${overspentBudgets} ${overspentBudgets === 1 ? "estouro" : "estouros"}`}
+            value={
+              overspentBudgets === 0
+                ? "Em dia"
+                : `${overspentBudgets} ${overspentBudgets === 1 ? "estouro" : "estouros"}`
+            }
             subtitle={overspentBudgets === 0 ? "Todas categorias no teto" : "Excederam o limite"}
             tone={overspentBudgets === 0 ? "positive" : "negative"}
           />
 
-          {/* Card 3: Concentração de renda */}
           <DiagnosticCard
             icon={<Wallet className="size-4" aria-hidden="true" />}
             label="Concentração de renda"
@@ -163,16 +120,20 @@ export function DiagnosticsTab({
             tone={concentration.alert ? "negative" : "neutral"}
           />
 
-          {/* Card 4: Gastos no fim de semana */}
           <DiagnosticCard
             icon={<Calendar className="size-4" aria-hidden="true" />}
             label="Gastos fim de semana"
             value={weekendComparable ? `${formatPercent(weekendRatio)}×` : "—"}
             subtitle="vs. dias úteis"
-            tone={weekendComparable ? (weekendRatio > WEEKEND_RATIO_LIMIT ? "negative" : "positive") : "neutral"}
+            tone={
+              weekendComparable
+                ? weekendRatio > WEEKEND_RATIO_LIMIT
+                  ? "negative"
+                  : "positive"
+                : "neutral"
+            }
           />
 
-          {/* Card 5: Comprometimento Essencial (Regra 50/30/20) */}
           <DiagnosticCard
             icon={<ShieldCheck className="size-4" aria-hidden="true" />}
             label="Gastos essenciais"
@@ -198,6 +159,7 @@ export function DiagnosticsTab({
                         : "critical"
                   }
                   size="xs"
+                  className="max-w-full truncate"
                 >
                   {ESSENTIAL_STATUS_LABELS[essentialSpending.status]}
                 </Badge>
@@ -205,9 +167,14 @@ export function DiagnosticsTab({
             }
           />
 
-          {/* Card 6: Tendência histórica de gastos */}
           <DiagnosticCard
-            icon={trendPercent >= 0 ? <TrendingUp className="size-4" aria-hidden="true" /> : <TrendingDown className="size-4" aria-hidden="true" />}
+            icon={
+              trendPercent >= 0 ? (
+                <TrendingUp className="size-4" aria-hidden="true" />
+              ) : (
+                <TrendingDown className="size-4" aria-hidden="true" />
+              )
+            }
             label="Tendência de gastos"
             value={formatSignedPct(trendPercent)}
             subtitle="vs. mês anterior"

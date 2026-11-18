@@ -2,6 +2,7 @@ import { Target } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MoneyText } from "@/components/ui/money-text";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 export interface HouseholdCeilingCardProps {
@@ -27,13 +28,12 @@ export function HouseholdCeilingCard({
 }: HouseholdCeilingCardProps) {
   const hasCeiling = monthlyCeilingCents > 0;
   const isOverCeiling = hasCeiling && totalSpentCents > monthlyCeilingCents;
-  const clampedPercent = hasCeiling ? Math.min(100, Math.max(0, spentPercentage)) : 0;
 
-  const barColor = isOverCeiling
-    ? "bg-critical"
+  const progressTone = isOverCeiling
+    ? "critical"
     : spentPercentage >= 85
-      ? "bg-warning"
-      : "bg-primary";
+      ? "warning"
+      : "positive";
 
   return (
     <Card
@@ -70,17 +70,18 @@ export function HouseholdCeilingCard({
             <MoneyText
               cents={totalSpentCents}
               tone="default"
-              className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground tabular-nums whitespace-nowrap"
+              variant="hero"
+              className="text-2xl sm:text-3xl font-bold tracking-tight"
             />
           </div>
         </div>
 
         {hasCeiling ? (
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
               <span>
                 {isOverCeiling ? (
-                  <span className="text-critical font-medium">
+                  <span className="text-critical-strong font-medium">
                     Excedido em <MoneyText cents={Math.abs(remainingCents)} tone="negative" className="font-semibold" />
                   </span>
                 ) : (
@@ -90,23 +91,16 @@ export function HouseholdCeilingCard({
                 )}
               </span>
               <span>
-                Teto: <MoneyText cents={monthlyCeilingCents} className="font-medium text-foreground" />
+                Teto: <MoneyText cents={monthlyCeilingCents} tone="default" className="font-medium text-foreground" />
               </span>
             </div>
 
-            <div
-              className="relative h-2 w-full overflow-hidden rounded-full bg-muted/60"
-              role="progressbar"
-              aria-valuenow={Math.round(spentPercentage)}
-              aria-valuemin={0}
-              aria-valuemax={100}
+            <Progress
+              value={spentPercentage}
+              tone={progressTone}
+              size="md"
               aria-label="Progresso do teto familiar"
-            >
-              <div
-                className={cn("h-full rounded-full transition-all duration-300", barColor)}
-                style={{ width: `${clampedPercent}%` }}
-              />
-            </div>
+            />
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">
@@ -115,7 +109,7 @@ export function HouseholdCeilingCard({
         )}
 
         {typeof totalIncomeCents === "number" && totalIncomeCents > 0 && (
-          <div className="pt-2 border-t border-border/80 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="pt-2 border-t border-border/80 flex items-center justify-between gap-2 text-xs text-muted-foreground">
             <span>Receita conjunta informada</span>
             <MoneyText cents={totalIncomeCents} tone="positive" className="font-medium" />
           </div>

@@ -84,6 +84,18 @@ vi.mock("@/state", () => ({
     data: null,
     isLoading: false,
   }),
+  usePortfolioAssets: () => ({
+    data: [],
+    isLoading: false,
+  }),
+  useUpdateFamilyWealthSharing: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useTogglePortfolioAssetFamily: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 const sampleConsolidation: FamilyConsolidationResult = {

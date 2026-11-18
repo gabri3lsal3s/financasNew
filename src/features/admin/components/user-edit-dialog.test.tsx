@@ -412,6 +412,45 @@ describe("UserEditDialog", () => {
 
       expect(screen.getByText("Link de Acesso Direto Gerado:")).toBeInTheDocument();
       expect(screen.getByDisplayValue("https://financas.app/#access_token=xyz")).toBeInTheDocument();
+
+      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+      await user.click(screen.getByRole("button", { name: /WhatsApp/i }));
+      expect(openSpy).toHaveBeenCalledWith(
+        expect.stringContaining(encodeURIComponent("aplicativo Axir")),
+        "_blank",
+        "noopener,noreferrer",
+      );
+      openSpy.mockRestore();
+    });
+
+    it("reseta o estado interno e links gerados ao trocar de user.id", async () => {
+      const user = userEvent.setup();
+      mockCurrentUserRole = "superadmin";
+      mockGenerateRecoveryMutateAsync.mockResolvedValueOnce("https://financas.app/#access_token=xyz");
+
+      const { rerender } = render(
+        <UserEditDialog user={mockUser} open={true} onOpenChange={vi.fn()} />,
+      );
+
+      await user.click(screen.getByRole("button", { name: /Link Recuperação/i }));
+      expect(screen.getByText("Link de Acesso Direto Gerado:")).toBeInTheDocument();
+
+      const secondUser: AdminUserRow = {
+        ...mockUser,
+        id: "u-999",
+        name: "João Silva",
+        email: "joao@teste.com",
+        status: "suspended",
+        suspended_reason: "Cobrança pendente",
+      };
+
+      rerender(<UserEditDialog user={secondUser} open={true} onOpenChange={vi.fn()} />);
+
+      expect(screen.getByText("joao@teste.com")).toBeInTheDocument();
+      expect(screen.queryByText("Link de Acesso Direto Gerado:")).not.toBeInTheDocument();
+      expect(screen.getByLabelText(/Motivo da Suspensão \/ Banimento/i)).toHaveValue(
+        "Cobrança pendente",
+      );
     });
   });
 });

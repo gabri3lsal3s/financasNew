@@ -1,17 +1,16 @@
 import { useState } from "react";
-import { Download, Globe, Smartphone, HelpCircle, Check } from "lucide-react";
-import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Check, Download, Globe, HelpCircle, Smartphone } from "lucide-react";
+import { Badge, Button, Modal, ModalFooter } from "@/components/ui";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
+import {
+  AXIR_APK_DOWNLOAD_URL,
+  AXIR_APK_FILENAME,
+  shouldOfferAndroidApk,
+} from "@/services/native/app-links";
 import { isIOSDevice, isStandaloneDisplay } from "@/services/native/platform";
-import { triggerSensory } from "@/services/sensory";
-import { IosPwaInstallDialog } from "./ios-pwa-install-dialog";
-import { ApkInstallGuideDialog } from "./apk-install-guide-dialog";
 import { cn } from "@/lib/utils";
-
-const DEFAULT_APK_URL =
-  "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk";
+import { ApkInstallGuideDialog } from "./apk-install-guide-dialog";
+import { IosPwaInstallDialog } from "./ios-pwa-install-dialog";
 
 export interface AppDownloadModalProps {
   open: boolean;
@@ -23,14 +22,13 @@ export interface AppDownloadModalProps {
  * Diálogo unificado para download e instalação do aplicativo.
  *
  * Apresenta:
- * - Opção 1: Aplicativo Web (PWA) — visível somente se o usuário ainda não estiver
- *   utilizando o PWA no dispositivo.
- * - Opção 2: App Android Pro (APK) — com download direto do pacote e guia de instalação.
+ * - Aplicativo Web (PWA) — visível quando o usuário ainda não está em modo standalone.
+ * - App Android Pro (APK) — ofertado somente em contexto Android elegível.
  */
 export function AppDownloadModal({
   open,
   onOpenChange,
-  apkUrl = DEFAULT_APK_URL,
+  apkUrl = AXIR_APK_DOWNLOAD_URL,
 }: AppDownloadModalProps) {
   const { isInstalled, install } = usePWAInstall();
   const [showIosGuide, setShowIosGuide] = useState(false);
@@ -38,9 +36,9 @@ export function AppDownloadModal({
 
   const isIOS = isIOSDevice();
   const isPwaActive = isInstalled || isStandaloneDisplay();
+  const offerAndroidApk = shouldOfferAndroidApk();
 
   const handleInstallPwa = async () => {
-    triggerSensory("action");
     if (isIOS) {
       setShowIosGuide(true);
       return;
@@ -54,10 +52,9 @@ export function AppDownloadModal({
   };
 
   const handleDownloadApk = () => {
-    triggerSensory("action");
     const link = document.createElement("a");
     link.href = apkUrl;
-    link.download = "axir-pro.apk";
+    link.download = AXIR_APK_FILENAME;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     document.body.appendChild(link);
@@ -66,21 +63,16 @@ export function AppDownloadModal({
     onOpenChange(false);
   };
 
-  const handleOpenApkGuide = () => {
-    triggerSensory("action");
-    setShowApkGuide(true);
-  };
-
   return (
     <>
-      <ResponsiveDialog
+      <Modal
         open={open}
         onOpenChange={onOpenChange}
         title="Baixar aplicativo"
         description="Escolha a opção ideal para o seu dispositivo e modo de uso."
         size="md"
         footer={
-          <div className="flex w-full justify-end">
+          <ModalFooter borderless>
             <Button
               type="button"
               variant="outline"
@@ -90,37 +82,34 @@ export function AppDownloadModal({
             >
               Fechar
             </Button>
-          </div>
+          </ModalFooter>
         }
       >
         <div className="space-y-3.5 py-1">
-          {/* Opção 1: Aplicativo Web (PWA) — exibido somente se o usuário NÃO estiver já no PWA */}
           {!isPwaActive && (
             <div className="rounded-xl border border-border/80 bg-surface p-4 shadow-xs space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-muted-foreground border border-border/60">
-                    <Globe className="size-4.5" aria-hidden="true" />
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground border border-border/80">
+                  <Globe className="size-4.5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-sm font-semibold text-foreground">
+                      Aplicativo Web (PWA)
+                    </h4>
+                    <Badge variant="default" size="xs">
+                      Sem download
+                    </Badge>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-semibold text-foreground">
-                        Aplicativo Web (PWA)
-                      </h4>
-                      <Badge variant="default" size="xs">
-                        Sem download
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-                      Adicione à tela inicial direto pelo navegador. Ocupa zero
-                      espaço de armazenamento, abre em tela cheia e atualiza
-                      automaticamente.
-                    </p>
-                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                    Adicione à tela inicial direto pelo navegador. Ocupa zero
+                    espaço de armazenamento, abre em tela cheia e atualiza
+                    automaticamente.
+                  </p>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2 pt-1 border-t border-border/50">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2 pt-2 border-t border-border/80">
                 <Button
                   type="button"
                   variant="default"
@@ -135,20 +124,19 @@ export function AppDownloadModal({
             </div>
           )}
 
-          {/* Opção 2: App Android Pro (APK) */}
-          <div
-            className={cn(
-              "rounded-xl border border-border/80 bg-surface p-4 shadow-xs space-y-3",
-              isPwaActive && "border-primary/30 bg-primary/5",
-            )}
-          >
-            <div className="flex items-start justify-between gap-3">
+          {offerAndroidApk && (
+            <div
+              className={cn(
+                "rounded-xl border border-border/80 bg-surface p-4 shadow-xs space-y-3",
+                isPwaActive && "border-primary/30 bg-primary/5",
+              )}
+            >
               <div className="flex items-start gap-3">
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-muted-foreground border border-border/60">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground border border-border/80">
                   <Smartphone className="size-4.5" aria-hidden="true" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h4 className="text-sm font-semibold text-foreground">
                       App Android Pro (APK)
                     </h4>
@@ -162,54 +150,51 @@ export function AppDownloadModal({
                   </p>
                 </div>
               </div>
-            </div>
 
-            <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 pt-1 border-t border-border/50">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleOpenApkGuide}
-                className="w-full sm:w-auto gap-1.5"
-              >
-                <HelpCircle className="size-3.5" aria-hidden="true" />
-                <span>Como instalar</span>
-              </Button>
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                onClick={handleDownloadApk}
-                className="w-full sm:w-auto gap-1.5"
-              >
-                <Download className="size-3.5" aria-hidden="true" />
-                <span>Baixar APK</span>
-              </Button>
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 pt-2 border-t border-border/80">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowApkGuide(true)}
+                  className="w-full sm:w-auto gap-1.5"
+                >
+                  <HelpCircle className="size-3.5" aria-hidden="true" />
+                  <span>Como instalar</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  onClick={handleDownloadApk}
+                  className="w-full sm:w-auto gap-1.5"
+                >
+                  <Download className="size-3.5" aria-hidden="true" />
+                  <span>Baixar APK</span>
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Nota informativa quando o usuário já estiver navegando pelo PWA */}
           {isPwaActive && (
-            <div className="flex items-center gap-2 rounded-lg bg-surface-subtle px-3 py-2 text-[11px] text-muted-foreground border border-border/60">
+            <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground border border-border/80">
               <Check className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
               <span>Você já está utilizando a versão Web (PWA) instalada neste dispositivo.</span>
             </div>
           )}
         </div>
-      </ResponsiveDialog>
+      </Modal>
 
-      {/* Diálogos secundários de instrução */}
-      <IosPwaInstallDialog
-        open={showIosGuide}
-        onOpenChange={setShowIosGuide}
-      />
+      <IosPwaInstallDialog open={showIosGuide} onOpenChange={setShowIosGuide} />
 
-      <ApkInstallGuideDialog
-        open={showApkGuide}
-        onOpenChange={setShowApkGuide}
-        onDownloadApk={handleDownloadApk}
-        apkUrl={apkUrl}
-      />
+      {offerAndroidApk && (
+        <ApkInstallGuideDialog
+          open={showApkGuide}
+          onOpenChange={setShowApkGuide}
+          onDownloadApk={handleDownloadApk}
+          apkUrl={apkUrl}
+        />
+      )}
     </>
   );
 }

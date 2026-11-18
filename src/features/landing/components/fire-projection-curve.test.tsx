@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { triggerSensory } from "@/services/sensory";
 import { FireProjectionCurve } from "./fire-projection-curve";
 
 vi.mock("@/services/sensory", () => ({
@@ -15,6 +16,9 @@ const DEFAULT_PROPS = {
 };
 
 describe("FireProjectionCurve", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
   it("renderiza a meta patrimonial e o eixo temporal em duas faixas", () => {
     render(<FireProjectionCurve {...DEFAULT_PROPS} />);
 
@@ -80,5 +84,22 @@ describe("FireProjectionCurve", () => {
     render(<FireProjectionCurve {...DEFAULT_PROPS} monthlyAporte={0} years={5} />);
 
     expect(screen.getByText(/Meta não alcançada em 5 anos/i)).toBeInTheDocument();
+  });
+
+  it("usa hsl(var(--positive)) nos tokens SVG e não dispara feedback sensorial no hover", () => {
+    const { container } = render(<FireProjectionCurve {...DEFAULT_PROPS} />);
+
+    const stops = Array.from(container.querySelectorAll("linearGradient stop"));
+    expect(stops.length).toBe(2);
+    for (const stop of stops) {
+      expect(stop).toHaveAttribute("stop-color", "hsl(var(--positive))");
+    }
+
+    const slider = screen.getByRole("slider", { name: /Projeção patrimonial ao longo dos anos/i });
+    fireEvent.pointerMove(slider, { pointerType: "mouse", clientX: 120 });
+    expect(triggerSensory).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(slider, { pointerId: 1, pointerType: "mouse", clientX: 50 });
+    expect(triggerSensory).toHaveBeenCalledWith("selection", { skipSound: true });
   });
 });

@@ -20,7 +20,7 @@ describe("SelectSplitCategoryDialog", () => {
         sentCategoryName="Gastronomia"
         categories={mockCategories}
         onConfirm={onConfirm}
-      />
+      />,
     );
 
     expect(screen.getByText("Escolha uma Categoria")).toBeInTheDocument();
@@ -35,5 +35,37 @@ describe("SelectSplitCategoryDialog", () => {
     fireEvent.click(confirmBtn);
 
     expect(onConfirm).toHaveBeenCalledWith("cat-2");
+  });
+
+  it("sincroniza seleção padrão quando categorias carregam assincronamente após o mount", () => {
+    const onConfirm = vi.fn();
+    const { rerender } = render(
+      <SelectSplitCategoryDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        title="Jantar de amigos"
+        amountCents={3500}
+        categories={[]}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    const confirmBtn = screen.getByRole("button", { name: /salvar nesta categoria/i });
+    expect(confirmBtn).toBeDisabled();
+
+    rerender(
+      <SelectSplitCategoryDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        title="Jantar de amigos"
+        amountCents={3500}
+        categories={mockCategories}
+        onConfirm={onConfirm}
+      />,
+    );
+
+    expect(confirmBtn).toBeEnabled();
+    fireEvent.click(confirmBtn);
+    expect(onConfirm).toHaveBeenCalledWith("cat-1");
   });
 });

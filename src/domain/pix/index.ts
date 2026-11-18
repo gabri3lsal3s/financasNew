@@ -17,11 +17,18 @@ export {
 } from "./pix-br-code";
 
 export {
+  buildPixTransferCode,
+  resolvePixKeyType,
+} from "./build-pix-transfer-code";
+
+export {
   drawQrCodeToCanvas,
   drawQrMatrixToCanvas,
   generateQrCodeMatrix,
   renderQrCodeSvg,
 } from "./qr-code";
+
+export type { BuildPixTransferCodeOptions } from "./build-pix-transfer-code";
 
 export type {
   DecodedPixBrCode,

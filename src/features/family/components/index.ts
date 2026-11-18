@@ -30,3 +30,5 @@ export type { FamilyShareAssetsDialogProps } from "./family-share-assets-dialog"
 
 export { FamilySettingsDialog } from "./family-settings-dialog";
 export type { FamilySettingsDialogProps } from "./family-settings-dialog";
+
+export { FamilyBudgetShareCard } from "./budget-share";

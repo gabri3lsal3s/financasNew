@@ -85,9 +85,16 @@ export async function createPublicShare(input: CreatePublicShareInput): Promise<
   return mapPublicShare(data);
 }
 
+function isArchivedSplitShare(share: PublicShare): boolean {
+  return (
+    share.kind === "split" &&
+    Boolean((share.payload as Record<string, unknown> | undefined)?.is_completed)
+  );
+}
+
 /**
  * Consulta um compartilhamento público válido pelo seu token.
- * Retorna null se não encontrado, se revogado ou se expirado.
+ * Retorna null se não encontrado, se revogado, se expirado ou se for um racha finalizado/arquivado.
  */
 export async function getPublicShareByToken(token: string): Promise<PublicShare | null> {
   const cleanToken = sanitizeShareToken(token);
@@ -98,6 +105,9 @@ export async function getPublicShareByToken(token: string): Promise<PublicShare 
     if (rpcResult) {
       const share = mapPublicShare(rpcResult);
       if (share.expires_at && new Date(share.expires_at).getTime() <= Date.now()) {
+        return null;
+      }
+      if (isArchivedSplitShare(share)) {
         return null;
       }
       return share;
@@ -129,6 +139,9 @@ export async function getPublicShareByToken(token: string): Promise<PublicShare 
 
   const share = mapPublicShare(row);
   if (share.expires_at && new Date(share.expires_at).getTime() <= Date.now()) {
+    return null;
+  }
+  if (isArchivedSplitShare(share)) {
     return null;
   }
 
@@ -188,15 +201,23 @@ export async function deletePublicShare(id: string): Promise<void> {
 
 /**
  * Atualiza o payload de um compartilhamento público existente (ex.: registrar contribuições ou alterar status).
+ * Opcionalmente sincroniza `is_revoked` na mesma operação (ex.: cancelar página pública de racha arquivado ou restaurá-la).
  */
 export async function updatePublicSharePayload(
   id: string,
   payload: Record<string, unknown>,
+  options?: { isRevoked?: boolean },
 ): Promise<PublicShare> {
+  const updateData: DbUpdate<PublicShare> = {
+    payload,
+    updated_at: new Date().toISOString(),
+    ...(options?.isRevoked !== undefined ? { is_revoked: options.isRevoked } : {}),
+  };
+
   const { data, error } = await resolveQuery<Record<string, unknown>[]>(
     getSupabase()
       .from("public_shares")
-      .update({ payload, updated_at: new Date().toISOString() })
+      .update(updateData)
       .eq("id", id)
       .select("*"),
   );

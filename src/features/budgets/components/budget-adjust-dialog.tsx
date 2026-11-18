@@ -1,17 +1,19 @@
-import { useMemo, useState } from "react";
-import { Alert, Button, Input, Modal, ModalFooter, MoneyInput, Tabs } from "@/components/ui";
-import { MoneyText } from "@/components/ui/money-text";
-import { CategoryIcon } from "@/components/modules";
 import {
-  redistributeProportionalBudget,
-  redistributeProportionalBudgetByPercent,
-  type ProportionalCategoryInput,
-} from "@/domain/budgets";
+  Alert,
+  Button,
+  FormField,
+  Modal,
+  ModalFooter,
+  MoneyInput,
+  MoneyText,
+  NumberStepper,
+  Tabs,
+} from "@/components/ui";
 import { monthLabel } from "@/lib/date";
-import { getErrorMessage } from "@/services/errors";
-import { triggerSensory } from "@/services/sensory";
-import { useSetBatchBudgetLimits } from "@/state";
+import { cn } from "@/lib/utils";
 import type { Category } from "@/types";
+import { BudgetAdjustPreviewList } from "./budget-adjust-preview-list";
+import { BUDGET_ADJUST_PRESETS, useBudgetAdjust } from "./use-budget-adjust";
 
 export interface BudgetAdjustCategoryItem {
   category: Category;
@@ -28,296 +30,172 @@ export interface BudgetAdjustDialogProps {
 interface BudgetAdjustDialogContentProps {
   month: string;
   categories: BudgetAdjustCategoryItem[];
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
-
-const PRESET_PERCENTAGES = [-15, -10, -5, 5, 10, 15, 20] as const;
 
 function BudgetAdjustDialogContent({
   month,
   categories,
-  onClose,
+  open,
+  onOpenChange,
 }: BudgetAdjustDialogContentProps) {
-  const [mode, setMode] = useState<"percent" | "target">("percent");
-  const [percent, setPercent] = useState<number>(10);
-  const [percentInputText, setPercentInputText] = useState<string>("10");
-
-  const totalCurrentCents = useMemo(
-    () => categories.reduce((acc, c) => acc + Math.max(0, c.currentLimitCents), 0),
-    [categories],
-  );
-
-  const [targetTotalCents, setTargetTotalCents] = useState<number>(() =>
-    Math.max(0, Math.round(totalCurrentCents * 1.1)),
-  );
-  const [isPending, setIsPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const setBatchLimits = useSetBatchBudgetLimits();
-
-  const domainCategories: ProportionalCategoryInput[] = useMemo(
-    () =>
-      categories.map((c) => ({
-        categoryId: c.category.id,
-        name: c.category.name,
-        currentLimitCents: c.currentLimitCents,
-      })),
-    [categories],
-  );
-
-  const categoryMap = useMemo(
-    () => new Map(categories.map((c) => [c.category.id, c.category])),
-    [categories],
-  );
-
-  const result = useMemo(() => {
-    if (mode === "percent") {
-      return redistributeProportionalBudgetByPercent(domainCategories, percent);
-    }
-    return redistributeProportionalBudget(domainCategories, targetTotalCents);
-  }, [domainCategories, mode, percent, targetTotalCents]);
-
-  const handleModeChange = (newModeStr: string) => {
-    const newMode = newModeStr as "percent" | "target";
-    if (newMode === "target" && mode === "percent") {
-      setTargetTotalCents(result.totalNewCents);
-    } else if (newMode === "percent" && mode === "target") {
-      const delta =
-        totalCurrentCents > 0
-          ? ((targetTotalCents - totalCurrentCents) / totalCurrentCents) * 100
-          : 0;
-      const roundedDelta = Math.round(delta);
-      setPercent(roundedDelta);
-      setPercentInputText(String(roundedDelta));
-    }
-    setMode(newMode);
-  };
-
-  const handlePercentInputChange = (val: string) => {
-    setPercentInputText(val);
-    const parsed = parseFloat(val);
-    if (!isNaN(parsed)) {
-      setPercent(parsed);
-    }
-  };
-
-  const handleSelectPreset = (p: number) => {
-    triggerSensory("selection");
-    setPercent(p);
-    setPercentInputText(String(p));
-  };
-
-  const handleApply = async () => {
-    if (categories.length === 0 || isPending) return;
-    setIsPending(true);
-    setError(null);
-    try {
-      const itemsToSave =
-        totalCurrentCents === 0
-          ? result.items
-          : result.items.filter((item) => item.currentLimitCents > 0 || item.newLimitCents > 0);
-      await setBatchLimits.mutateAsync({
-        month,
-        items: itemsToSave.map((item) => ({
-          categoryId: item.categoryId,
-          limit: item.newLimitCents / 100,
-        })),
-      });
-      triggerSensory("success");
-      onClose();
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setIsPending(false);
-    }
-  };
+  const state = useBudgetAdjust({
+    month,
+    categories,
+    onClose: () => onOpenChange(false),
+  });
 
   return (
-    <div className="mt-4 flex flex-col gap-4">
-      {error ? <Alert variant="error">{error}</Alert> : null}
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Ajustar Orçamento"
+      description={`Redistribuição proporcional dos limites para ${monthLabel(month)}`}
+      size="lg"
+      showCalculator={state.mode === "target"}
+      footer={
+        <ModalFooter borderless>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={state.isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            sensoryIntent={false}
+            onClick={() => void state.handleApply()}
+            disabled={state.isPending || state.result.items.length === 0}
+          >
+            {state.isPending ? "Aplicando…" : "Aplicar ajuste"}
+          </Button>
+        </ModalFooter>
+      }
+    >
+      <div className="mt-2 flex flex-col gap-4">
+        {state.error ? <Alert variant="error">{state.error}</Alert> : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-surface border border-border/80">
-        <div>
-          <span className="text-[11px] font-medium text-muted-foreground block">Total Atual</span>
-          <MoneyText cents={result.totalCurrentCents} tone="default" className="text-sm font-semibold tabular-nums" />
-        </div>
-        <div>
-          <span className="text-[11px] font-medium text-muted-foreground block">Novo Total</span>
-          <MoneyText cents={result.totalNewCents} tone="default" className="text-sm font-semibold tabular-nums" />
-        </div>
-        <div>
-          <span className="text-[11px] font-medium text-muted-foreground block">Variação</span>
-          <span className="inline-flex items-center gap-1 text-sm font-semibold tabular-nums">
-            <span className={result.diffCents >= 0 ? "text-positive-strong" : "text-negative-strong"}>
-              {result.diffCents >= 0 ? "+" : "−"}
-              <MoneyText cents={Math.abs(result.diffCents)} tone={result.diffCents >= 0 ? "positive" : "negative"} />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3 rounded-xl bg-surface-raised border border-border/80">
+          <div>
+            <span className="text-[11px] font-medium text-muted-foreground block">
+              Total Atual
             </span>
-            <span className="text-[10px] text-muted-foreground">
-              ({result.deltaPercent >= 0 ? "+" : ""}{result.deltaPercent.toFixed(1)}%)
+            <MoneyText
+              cents={state.result.totalCurrentCents}
+              tone="default"
+              className="text-sm font-semibold"
+            />
+          </div>
+          <div>
+            <span className="text-[11px] font-medium text-muted-foreground block">
+              Novo Total
             </span>
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label className="text-xs font-semibold text-foreground">Método de Ajuste</label>
-        <Tabs
-          value={mode}
-          onValueChange={handleModeChange}
-          fullWidth={true}
-          variant="pills"
-          items={[
-            { value: "percent", label: "Por Percentual (+/- %)" },
-            { value: "target", label: "Por Valor Total (R$)" },
-          ]}
-        />
-      </div>
-
-      {mode === "percent" ? (
-        <div className="flex flex-col gap-2.5">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-            <div className="flex-1 flex flex-col gap-1">
-              <label htmlFor="adjust-percent-input" className="text-xs font-semibold text-foreground">
-                Variação percentual (%)
-              </label>
-              <div className="relative">
-                <Input
-                  id="adjust-percent-input"
-                  type="number"
-                  step="0.5"
-                  value={percentInputText}
-                  onChange={(e) => handlePercentInputChange(e.target.value)}
-                  placeholder="Ex.: 10 ou -5"
-                  className="pr-8 tabular-nums font-medium"
-                  aria-label="Variação percentual do orçamento"
+            <MoneyText
+              cents={state.result.totalNewCents}
+              tone="default"
+              className="text-sm font-semibold"
+            />
+          </div>
+          <div>
+            <span className="text-[11px] font-medium text-muted-foreground block">Variação</span>
+            <span className="inline-flex items-center gap-1 text-sm font-semibold tabular-nums">
+              <span
+                className={
+                  state.result.diffCents >= 0 ? "text-positive-strong" : "text-negative-strong"
+                }
+              >
+                {state.result.diffCents >= 0 ? "+" : "−"}
+                <MoneyText
+                  cents={Math.abs(state.result.diffCents)}
+                  tone={state.result.diffCents >= 0 ? "positive" : "negative"}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
-                  %
-                </span>
-              </div>
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                ({state.result.deltaPercent >= 0 ? "+" : ""}
+                {state.result.deltaPercent.toFixed(1)}%)
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <FormField label="Método de Ajuste">
+          <Tabs
+            value={state.mode}
+            onValueChange={state.handleModeChange}
+            fullWidth={true}
+            variant="pills"
+            items={[
+              { value: "percent", label: "Por Percentual (+/- %)" },
+              { value: "target", label: "Por Valor Total (R$)" },
+            ]}
+          />
+        </FormField>
+
+        {state.mode === "percent" ? (
+          <div className="flex flex-col gap-2.5">
+            <FormField label="Variação percentual (%)">
+              <NumberStepper
+                editable
+                value={state.percent}
+                onValueChange={state.setPercent}
+                min={-99}
+                max={500}
+                step={0.5}
+                placeholder="Ex.: 10 ou -5"
+                ariaLabel="Variação percentual do orçamento"
+                decreaseLabel="Diminuir variação percentual"
+                increaseLabel="Aumentar variação percentual"
+              />
+            </FormField>
+
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[11px] font-medium text-muted-foreground mr-1">
+                Atalhos:
+              </span>
+              {BUDGET_ADJUST_PRESETS.map((p) => {
+                const isSelected = state.percent === p;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => state.handleSelectPreset(p)}
+                    className={cn(
+                      "relative px-2.5 py-1.5 sm:py-1 text-xs font-medium rounded-lg border transition-colors cursor-pointer select-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring max-sm:after:absolute max-sm:after:-inset-1",
+                      isSelected
+                        ? "border-primary bg-primary/10 text-primary-strong font-semibold"
+                        : "border-border/80 bg-surface text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                    )}
+                  >
+                    {p > 0 ? `+${p}%` : `${p}%`}
+                  </button>
+                );
+              })}
             </div>
           </div>
-
-          <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            <span className="text-[11px] font-medium text-muted-foreground mr-1">Atalhos:</span>
-            {PRESET_PERCENTAGES.map((p) => {
-              const isSelected = percent === p;
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => handleSelectPreset(p)}
-                  className={`px-2 py-1 text-xs font-medium rounded-lg border transition-colors cursor-pointer select-none ${
-                    isSelected
-                      ? "border-primary bg-primary/10 text-primary-strong"
-                      : "border-border/80 bg-surface text-muted-foreground hover:bg-surface-hover hover:text-foreground"
-                  }`}
-                >
-                  {p > 0 ? `+${p}%` : `${p}%`}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="adjust-target-amount" className="text-xs font-semibold text-foreground">
-            Novo valor total pretendido para o mês
-          </label>
-          <MoneyInput
-            id="adjust-target-amount"
-            cents={targetTotalCents}
-            onCentsChange={setTargetTotalCents}
-            aria-label="Novo valor total pretendido para o mês"
-          />
-        </div>
-      )}
-
-      <div className="flex flex-col gap-1.5 pt-1">
-        <div className="flex items-center justify-between text-xs font-semibold text-foreground px-1">
-          <span>Pré-visualização por Categoria ({result.items.length})</span>
-          <span className="text-[11px] font-normal text-muted-foreground">Atual → Novo (Variação)</span>
-        </div>
-
-        {result.items.length === 0 ? (
-          <div className="p-4 text-center text-xs text-muted-foreground rounded-xl border border-border/80 bg-surface">
-            Nenhuma categoria de despesa disponível para ajuste.
-          </div>
         ) : (
-          <div className="rounded-xl border border-border/80 bg-surface divide-y divide-border/60">
-            {result.items.map((item) => {
-              const cat = categoryMap.get(item.categoryId);
-              return (
-                <div key={item.categoryId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3 p-2.5 text-xs">
-                  <div className="flex items-center justify-between sm:justify-start gap-2 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <CategoryIcon icon={cat?.icon} color={cat?.color} />
-                      <span className="font-medium text-foreground truncate">
-                        {item.name || cat?.name || "Categoria"}
-                      </span>
-                    </div>
-                    {item.diffCents !== 0 && (
-                      <span
-                        className={`sm:hidden text-[11px] font-medium shrink-0 ${
-                          item.diffCents > 0
-                            ? "text-positive-strong"
-                            : "text-negative-strong"
-                        }`}
-                      >
-                        {item.diffCents > 0 ? "+" : "−"}
-                        <MoneyText cents={Math.abs(item.diffCents)} tone="default" />
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 tabular-nums shrink-0 self-end sm:self-auto text-[11px] sm:text-xs">
-                    {item.currentLimitCents === 0 && item.newLimitCents === 0 ? (
-                      <span className="text-[11px] text-muted-foreground italic">
-                        Livre (sem limite)
-                      </span>
-                    ) : (
-                      <>
-                        <span className="text-muted-foreground">
-                          <MoneyText cents={item.currentLimitCents} tone="default" />
-                        </span>
-                        <span className="text-muted-foreground/60">→</span>
-                        <span className="font-semibold text-foreground">
-                          <MoneyText cents={item.newLimitCents} tone="default" />
-                        </span>
-                        <span
-                          className={`hidden sm:inline text-[11px] font-medium ${
-                            item.diffCents > 0
-                              ? "text-positive-strong"
-                              : item.diffCents < 0
-                                ? "text-negative-strong"
-                                : "text-muted-foreground"
-                          }`}
-                        >
-                          ({item.diffCents > 0 ? "+" : item.diffCents < 0 ? "−" : ""}
-                          <MoneyText cents={Math.abs(item.diffCents)} tone="default" />)
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <FormField
+            label="Novo valor total pretendido para o mês"
+            htmlFor="adjust-target-amount"
+          >
+            <MoneyInput
+              id="adjust-target-amount"
+              cents={state.targetTotalCents}
+              onCentsChange={state.setTargetTotalCents}
+              aria-label="Novo valor total pretendido para o mês"
+            />
+          </FormField>
         )}
-      </div>
 
-      <ModalFooter>
-        <Button type="button" variant="ghost" onClick={onClose} disabled={isPending}>
-          Cancelar
-        </Button>
-        <Button
-          type="button"
-          onClick={() => void handleApply()}
-          disabled={isPending || result.items.length === 0}
-        >
-          {isPending ? "Aplicando…" : "Aplicar ajuste"}
-        </Button>
-      </ModalFooter>
-    </div>
+        <BudgetAdjustPreviewList
+          items={state.result.items}
+          categoryMap={state.categoryMap}
+        />
+      </div>
+    </Modal>
   );
 }
 
@@ -330,21 +208,15 @@ export function BudgetAdjustDialog({
   open,
   onOpenChange,
 }: BudgetAdjustDialogProps) {
+  if (!open) return null;
+
   return (
-    <Modal
+    <BudgetAdjustDialogContent
+      key={month}
+      month={month}
+      categories={categories}
       open={open}
       onOpenChange={onOpenChange}
-      title="Ajustar Orçamento"
-      description={`Redistribuição proporcional dos limites para ${monthLabel(month)}`}
-      size="lg"
-    >
-      {open ? (
-        <BudgetAdjustDialogContent
-          month={month}
-          categories={categories}
-          onClose={() => onOpenChange(false)}
-        />
-      ) : null}
-    </Modal>
+    />
   );
 }

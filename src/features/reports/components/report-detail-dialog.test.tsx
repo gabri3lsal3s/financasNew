@@ -67,6 +67,8 @@ describe("ReportDetailDialog", () => {
     expect(screen.getByRole("button", { name: /compartilhar resumo/i })).toBeInTheDocument();
     expect(screen.getByText("Supermercado")).toBeInTheDocument();
     expect(screen.getByText("Restaurante")).toBeInTheDocument();
+    expect(screen.getByText("01/08/2026")).toBeInTheDocument();
+    expect(screen.getByText("05/08/2026")).toBeInTheDocument();
     expect(screen.getByText(/Total Bruto:/i)).toBeInTheDocument();
     expect(screen.getByText(/Ponderado:/i)).toBeInTheDocument();
   });

@@ -10,10 +10,11 @@ const deleteIncomeMock = vi.fn();
 const createIncomeMock = vi.fn();
 
 let mockIsFamilyModeEnabled = true;
+let mockMyFamily: unknown = null;
 
 vi.mock("@/state", () => ({
   useFamilyMode: () => ({ isFamilyModeEnabled: mockIsFamilyModeEnabled }),
-  useMyFamily: () => ({ data: null, isLoading: false }),
+  useMyFamily: () => ({ data: mockMyFamily, isLoading: false }),
   useUserSubscription: () => ({
     canWrite: true,
     isReadOnly: false,
@@ -155,6 +156,7 @@ describe("IncomeDetailDialog", () => {
 
     await user.click(screen.getByRole("button", { name: /editar/i }));
 
+    await user.click(screen.getByRole("button", { name: /mais detalhes/i }));
     const familySwitch = screen.getByRole("switch", { name: "Receita da Casa / Familiar" });
     expect(familySwitch).toHaveAttribute("aria-checked", "false");
     await user.click(familySwitch);
@@ -234,5 +236,29 @@ describe("IncomeDetailDialog", () => {
         description: income.description,
       })
     );
+  });
+
+  it("grava family_id da família do usuário ao marcar is_family na edição", async () => {
+    mockIsFamilyModeEnabled = true;
+    mockMyFamily = { family: { id: "fam-1" } };
+    updateIncomeMock.mockClear();
+    updateIncomeMock.mockResolvedValue({});
+    const user = userEvent.setup();
+
+    render(<IncomeDetailDialog income={baseIncome({ is_family: false })} open={true} onOpenChange={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+    await user.click(screen.getByRole("button", { name: /mais detalhes/i }));
+    await user.click(screen.getByRole("switch", { name: "Receita da Casa / Familiar" }));
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    expect(updateIncomeMock).toHaveBeenCalledWith({
+      id: "i1",
+      input: expect.objectContaining({
+        is_family: true,
+        family_id: "fam-1",
+      }),
+    });
+    mockMyFamily = null;
   });
 });

@@ -83,9 +83,10 @@ export function EquationBreakdownPopover({
             type="button"
             variant="ghost"
             size="xs"
+            sensoryIntent={false}
             aria-label={`Ver fórmula e explicabilidade de ${title}`}
             title={`Ver como ${title} é calculado`}
-            className="size-5 p-0 text-muted-foreground/80 hover:text-foreground cursor-pointer rounded-full"
+            className="relative size-6 p-0 text-muted-foreground/80 hover:text-foreground cursor-pointer rounded-full max-sm:after:absolute max-sm:after:-inset-3"
           >
             <Info className="size-3.5" aria-hidden="true" />
             <span className="sr-only">Explicar cálculo de {title}</span>
@@ -96,14 +97,15 @@ export function EquationBreakdownPopover({
       <PopoverContent
         align={align}
         sideOffset={6}
+        collisionPadding={{ top: 8, left: 8, right: 8, bottom: 80 }}
         className={cn(
-          "w-80 sm:w-88 flex flex-col gap-3 p-4 text-xs shadow-xl border-border/80 bg-surface/98 backdrop-blur-md rounded-2xl",
+          "w-80 sm:w-88 max-w-[calc(100vw-1.5rem)] flex flex-col gap-3 p-4 text-xs shadow-xl border-border/80 bg-surface/98 backdrop-blur-md rounded-2xl",
           className,
         )}
         data-testid="equation-breakdown-popover"
       >
         {/* Cabeçalho */}
-        <div className="flex flex-col gap-1.5 pb-1 border-b border-border/60">
+        <div className="flex flex-col gap-1.5 pb-1 border-b border-border/80">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 font-semibold text-foreground text-xs">
               <Calculator className="size-3.5 text-primary-strong" aria-hidden="true" />
@@ -121,7 +123,7 @@ export function EquationBreakdownPopover({
           )}
 
           {formula && (
-            <div className="rounded-lg bg-surface-raised border border-border/60 px-2 py-1 text-[10px] font-mono text-muted-foreground break-words">
+            <div className="rounded-lg bg-surface-raised border border-border/80 px-2 py-1 text-[10px] font-mono text-muted-foreground break-words">
               {formula}
             </div>
           )}

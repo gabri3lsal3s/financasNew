@@ -78,29 +78,43 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       onClick={handleClick}
       {...props}
     >
-      {/* Camada de Ripples */}
-      {ripples.map((r) => (
+      {/* Camada de Ripples contida no raio do botão (permite ::after hit-area sem recorte) */}
+      {ripples.length > 0 ? (
         <span
-          key={r.id}
-          className="pointer-events-none absolute rounded-full bg-foreground/15 animate-ripple"
-          style={{
-            left: r.x,
-            top: r.y,
-            width: r.size,
-            height: r.size,
-          }}
-          onAnimationEnd={() => {
-            setRipples((prev) => prev.filter((item) => item.id !== r.id));
-          }}
-        />
-      ))}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]"
+        >
+          {ripples.map((r) => (
+            <span
+              key={r.id}
+              className="pointer-events-none absolute rounded-full bg-foreground/15 animate-ripple"
+              style={{
+                left: r.x,
+                top: r.y,
+                width: r.size,
+                height: r.size,
+              }}
+              onAnimationEnd={() => {
+                setRipples((prev) => prev.filter((item) => item.id !== r.id));
+              }}
+            />
+          ))}
+        </span>
+      ) : null}
 
       {/* Conteúdo com Morphing Loading */}
       {loading ? (
-        <>
-          <Loader2 className="animate-spin" />
-          <span>Carregando...</span>
-        </>
+        size === "icon" ? (
+          <>
+            <Loader2 className="animate-spin" aria-hidden="true" />
+            <span className="sr-only">Carregando...</span>
+          </>
+        ) : (
+          <>
+            <Loader2 className="animate-spin" aria-hidden="true" />
+            <span>Carregando...</span>
+          </>
+        )
       ) : (
         children
       )}

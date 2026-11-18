@@ -79,4 +79,18 @@ describe("ConfirmDialog", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(onConfirm).not.toHaveBeenCalled();
   });
+
+  it("aceita elevated=true e aplica camada z-floating-tools ao Modal", () => {
+    render(
+      <ConfirmDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        title="Confirmar sobre modal"
+        elevated={true}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("dialog").className).toContain("z-floating-tools");
+  });
 });

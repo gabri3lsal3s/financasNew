@@ -7,6 +7,7 @@ import {
   unregisterCalculatorTarget,
 } from "@/services/calculator-bridge";
 import type { CalculatorDecimalTarget } from "@/services/calculator-bridge";
+import { setCalculatorOpen } from "@/services/calculator-open";
 
 export interface NumericInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "onChange" | "value" | "size"> {
@@ -14,20 +15,11 @@ export interface NumericInputProps
   value: string | number;
   /** Callback quando o valor muda (sempre string normalizada). */
   onValueChange: (value: string) => void;
-  /**
-   * Rótulo exibido na calculadora ao abrir ("Campo: Quantidade de cotas").
-   * Usa aria-label como fallback.
-   */
+  /** Rótulo exibido na calculadora ao abrir ("Campo: Quantidade de cotas"). */
   calculatorLabel?: string;
-  /**
-   * Exibe botão inline para abrir a calculadora flutuante.
-   * Padrão: false.
-   */
+  /** Exibe botão inline para abrir a calculadora flutuante. Padrão: false. */
   showCalculatorAction?: boolean;
-  /**
-   * Callback chamado ao clicar no botão da calculadora (abre a calculadora).
-   * Se não fornecido, o botão abre a calculadora global via evento customizado.
-   */
+  /** Callback opcional ao clicar no botão da calculadora. */
   onCalculatorOpen?: () => void;
   /** Variante de tamanho. */
   size?: "sm" | "md" | "lg";
@@ -44,7 +36,7 @@ const sizeClasses: Record<
   },
   md: {
     wrapper: "h-10",
-    input: "h-10 text-base",
+    input: "h-10 text-base sm:text-sm",
     button: "size-8",
   },
   lg: {
@@ -56,15 +48,7 @@ const sizeClasses: Record<
 
 /**
  * NumericInput — Primitivo para campos numéricos decimais livres
- * (quantidade de cotas, taxa, saldo etc.) com integração bidirecional
- * à calculadora flutuante.
- *
- * Ao receber foco, registra um `CalculatorDecimalTarget` no bridge, permitindo
- * que a calculadora:
- *   1. Carregue o valor atual do campo ao abrir.
- *   2. Injete o resultado (display string) de volta no campo ao clicar "Usar valor".
- *
- * A conversão de/para centavos NÃO é feita aqui — o valor permanece decimal.
+ * com integração bidirecional à calculadora flutuante.
  */
 export function NumericInput({
   value,
@@ -99,7 +83,6 @@ export function NumericInput({
     };
   });
 
-  // Alvo estável com getters encaminhados para o ref mais recente
   const decimalTarget = useMemo<CalculatorDecimalTarget>(
     () => ({
       mode: "decimal" as const,
@@ -112,7 +95,6 @@ export function NumericInput({
     [],
   );
 
-  // Registra/desregistra o alvo ao montar/desmontar.
   useLayoutEffect(() => {
     return () => {
       unregisterCalculatorTarget(decimalTarget);
@@ -124,11 +106,11 @@ export function NumericInput({
   };
 
   const handleOpenCalculator = () => {
+    registerCalculatorTarget(decimalTarget);
     if (onCalculatorOpen) {
       onCalculatorOpen();
     } else {
-      // Dispara evento customizado captado pelo FloatingCalculator global.
-      window.dispatchEvent(new CustomEvent("calculator:open"));
+      setCalculatorOpen(true);
     }
   };
 
@@ -151,8 +133,7 @@ export function NumericInput({
         }}
         onFocus={handleFocus}
         className={cn(
-          "flex w-full rounded-md border border-input bg-surface font-mono text-foreground shadow-sm transition-colors",
-          "px-4 py-2",
+          "flex w-full rounded-md border border-input bg-surface px-3.5 py-2 font-mono tabular-nums text-foreground shadow-xs transition-colors",
           "placeholder:text-muted-foreground",
           "focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20",
           "disabled:cursor-not-allowed disabled:opacity-50",
@@ -169,9 +150,10 @@ export function NumericInput({
           tabIndex={-1}
           onClick={handleOpenCalculator}
           className={cn(
-            "absolute right-0 mr-1 flex items-center justify-center rounded text-muted-foreground transition-colors",
+            "absolute right-1 flex cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors",
             "hover:bg-surface-hover hover:text-foreground",
             "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+            "max-sm:after:absolute max-sm:after:-inset-1.5",
             sizeStyle.button,
           )}
         >

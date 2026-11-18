@@ -84,4 +84,18 @@ describe("MoneyText (F12 — hierarquia tipográfica de valores)", () => {
     const el = container.firstChild as HTMLElement;
     expect(el.textContent).toBe("R$\u00a01.500");
   });
+
+  it("suaviza centavos por padrão apenas em variant=hero (M6) e respeita deemphasizeCents", () => {
+    const { container, rerender } = render(<MoneyText cents={150075} variant="hero" />);
+    expect(container.querySelector("span.opacity-80")?.textContent).toBe(",75");
+
+    rerender(<MoneyText cents={150075} variant="value" />);
+    expect(container.querySelector("span.opacity-80")).toBeNull();
+
+    rerender(<MoneyText cents={150075} variant="value" deemphasizeCents />);
+    expect(container.querySelector("span.opacity-80")?.textContent).toBe(",75");
+
+    rerender(<MoneyText cents={150075} variant="hero" deemphasizeCents={false} />);
+    expect(container.querySelector("span.opacity-80")).toBeNull();
+  });
 });

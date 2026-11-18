@@ -16,16 +16,19 @@ describe("KpiCard (F12 — valores monetários via NumberTicker)", () => {
   });
 
   it("cents com tom positivo usa a cor forte (padrão de escaneamento)", () => {
-    render(<KpiCard label="Receitas" cents={1500} tone="positive" />);
-    const value = screen.getByText("R$ 15,00");
-    expect(value).toHaveClass("num");
-    expect(value.closest("p")).toHaveClass("text-positive-strong");
+    const { container } = render(<KpiCard label="Receitas" cents={1500} tone="positive" />);
+    const p = container.querySelector("p.text-positive-strong");
+    expect(p).not.toBeNull();
+    expect(p?.textContent).toBe(`R$${"\u00A0"}15,00`);
+    expect(p?.querySelector(".num")).not.toBeNull();
   });
 
   it("cents anima via NumberTicker até o valor final (F8)", async () => {
-    render(<KpiCard label="Despesas" cents={500} tone="negative" />);
+    const { container } = render(<KpiCard label="Despesas" cents={500} tone="negative" />);
     await waitFrames(400); // janela de animação (300ms) termina no valor exato
-    expect(screen.getByText("R$ 5,00")).toBeInTheDocument();
+    const p = container.querySelector("p.text-negative-strong");
+    expect(p).not.toBeNull();
+    expect(p?.textContent).toBe(`R$${"\u00A0"}5,00`);
   });
 
   it("value (string) segue como fallback para valores não monetários", () => {

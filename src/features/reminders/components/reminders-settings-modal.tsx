@@ -1,5 +1,4 @@
 import { Modal, ModalFooter, Button } from "@/components/ui";
-import { triggerSensory } from "@/services/sensory";
 import { RemindersPreferencesForm } from "./reminders-preferences-form";
 
 export interface RemindersSettingsModalProps {
@@ -15,11 +14,6 @@ export function RemindersSettingsModal({
   open,
   onOpenChange,
 }: RemindersSettingsModalProps) {
-  const handleClose = () => {
-    triggerSensory("action");
-    onOpenChange(false);
-  };
-
   return (
     <Modal
       open={open}
@@ -33,7 +27,7 @@ export function RemindersSettingsModal({
             type="button"
             variant="default"
             size="sm"
-            onClick={handleClose}
+            onClick={() => onOpenChange(false)}
             className="w-full sm:w-auto font-medium"
           >
             Concluir
@@ -42,7 +36,7 @@ export function RemindersSettingsModal({
       }
     >
       <div className="space-y-4 pt-1">
-        <RemindersPreferencesForm isInsideModal />
+        <RemindersPreferencesForm />
       </div>
     </Modal>
   );

@@ -115,8 +115,11 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
     const hasFinances = (k: string) => k === "budgets" || k === "cards" || k === "transactions";
     render(<OnboardingBanner counts={partial} hasFeature={hasFinances} onDismiss={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
-    const configurarButtons = screen.getAllByRole("button", { name: "Configurar" });
-    expect(configurarButtons.length).toBeLessThan(4);
+    const configurarActions = [
+      ...screen.queryAllByRole("link", { name: "Configurar" }),
+      ...screen.queryAllByRole("button", { name: "Configurar" }),
+    ];
+    expect(configurarActions.length).toBeLessThan(4);
   });
 
   it("ativa permissões de notificação ao clicar em Configurar no passo de notificações", () => {

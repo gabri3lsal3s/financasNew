@@ -234,11 +234,11 @@ describe("MonthlyClosingEditor", () => {
     expect(screen.getByText(/vs TWA/)).toBeInTheDocument();
 
     // Localiza o input de quantidade de VALE3 e altera para 150 (150 * 60 = 9.000 + 1.000 caixa = 10.000!)
-    const qtyInput = screen.getByRole("spinbutton");
-    expect(qtyInput).toHaveValue(100);
+    const qtyInput = screen.getByLabelText(/Quantidade de fechamento de VALE3/i);
+    expect(qtyInput).toHaveValue("100");
 
     fireEvent.change(qtyInput, { target: { value: "150" } });
-    expect(qtyInput).toHaveValue(150);
+    expect(qtyInput).toHaveValue("150");
 
     // Agora o total é 10.000,00, exatamente igual ao TWA (diferença zero)
     // A régua de reconciliação deve exibir "100% Alinhado ao Saldo TWA"
@@ -257,12 +257,12 @@ describe("MonthlyClosingEditor", () => {
       </QueryClientProvider>,
     );
 
-    const qtyInputs = screen.getAllByRole("spinbutton");
+    const qtyInputs = screen.getAllByLabelText(/Quantidade de fechamento de/i);
     const firstInput = qtyInputs[0]!;
-    const originalValue = Number(firstInput.getAttribute("value"));
+    const originalValue = firstInput.getAttribute("value") ?? "";
 
     fireEvent.change(firstInput, { target: { value: "999" } });
-    expect(firstInput).toHaveValue(999);
+    expect(firstInput).toHaveValue("999");
 
     const resetButton = screen.getByRole("button", { name: /Restaurar/i });
     expect(resetButton).toBeInTheDocument();

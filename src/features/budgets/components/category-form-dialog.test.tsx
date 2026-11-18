@@ -69,7 +69,7 @@ describe("CategoryFormDialog & DeleteCategoryDialog", () => {
 
     // Sugestão inteligente por nome
     const iconTrigger = screen.getByRole("button", { name: "Ícone da categoria" });
-    expect(iconTrigger).toHaveTextContent("transporte");
+    expect(iconTrigger).toHaveTextContent("Transporte");
 
     await user.click(screen.getByRole("button", { name: "Criar categoria" }));
 
@@ -255,5 +255,65 @@ describe("CategoryFormDialog & DeleteCategoryDialog", () => {
     expect(updateCategoryMock).toHaveBeenCalledTimes(1);
     const params = updateCategoryMock.mock.calls[0]?.[0];
     expect(params.input.is_family).toBe(true);
+  });
+
+  it("exibe rótulo acentuado em pt-BR no IconPicker preservando o slug salvo no banco", async () => {
+    createCategoryMock.mockResolvedValue({ id: "c11" });
+    const user = userEvent.setup();
+
+    render(
+      <CategoryFormDialog
+        category={null}
+        defaultType="expense"
+        open={true}
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByLabelText("Nome"), "Alimentação");
+
+    const iconTrigger = screen.getByRole("button", { name: "Ícone da categoria" });
+    expect(iconTrigger).toHaveTextContent("Alimentação");
+
+    await user.click(screen.getByRole("button", { name: "Criar categoria" }));
+    expect(createCategoryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Alimentação",
+        icon: "alimentacao",
+      }),
+    );
+  });
+
+  it("ao cancelar DeleteCategoryDialog mantém o modal pai aberto preservando edições não salvas", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+
+    render(
+      <CategoryFormDialog
+        category={sampleCategory}
+        defaultType="expense"
+        open={true}
+        onOpenChange={onOpenChange}
+        siblings={[siblingCategory]}
+        usage={{ expenses: 0, incomes: 0 }}
+      />,
+    );
+
+    const nameInput = screen.getByLabelText("Nome");
+    await user.clear(nameInput);
+    await user.type(nameInput, "Alimentação Editada");
+
+    // Abre confirmação de exclusão
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+    expect(screen.getByRole("heading", { name: "Excluir Alimentação?" })).toBeInTheDocument();
+
+    // Cancela a exclusão (último botão Cancelar no DOM pertence ao diálogo elevado)
+    const cancelButtons = screen.getAllByRole("button", { name: "Cancelar" });
+    await user.click(cancelButtons[cancelButtons.length - 1]!);
+
+    // Modal pai NÃO fecha e preserva o texto editado
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(screen.getByRole("heading", { name: "Editar categoria" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome")).toHaveValue("Alimentação Editada");
   });
 });

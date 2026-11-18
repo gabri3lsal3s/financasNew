@@ -2,7 +2,9 @@ import { AlarmClock, Bell, Check, CheckCircle2, CreditCard, HandCoins, RotateCcw
 import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import type { ReminderItem as ReminderItemData, ReminderStatus } from "@/domain/reminders";
+import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { triggerSensory } from "@/services/sensory";
 
 const STATUS_VARIANTS: Record<ReminderStatus, "critical" | "warning" | "muted"> = {
   overdue: "critical",
@@ -20,48 +22,65 @@ const STATUS_LABELS: Record<ReminderStatus, string> = {
 
 export interface ReminderItemProps {
   item: ReminderItemData;
-  /** Callbacks opcionais — a tela decide o que renderizar. */
   onMarkRead?: (key: string) => void;
   onSnooze?: (key: string) => void;
   onRestore?: (key: string) => void;
-  /** Ação de baixa/quitação contábil in-loco (com diálogo de confirmação). */
   onSettle?: (item: ReminderItemData) => void;
-  /** Abre o item na tela de destino (deep-link do lembrete). */
   onOpen?: () => void;
-  /** Estado atual (para rotular os botões). */
   stateKind?: "read" | "snoozed" | null;
 }
 
 /** Item de lembrete da central (§3.10) — status + ações lido/snooze/reabrir. */
-export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, onSettle, onOpen, stateKind }: ReminderItemProps) {
+export function ReminderItem({
+  item,
+  onMarkRead,
+  onSnooze,
+  onRestore,
+  onSettle,
+  onOpen,
+  stateKind,
+}: ReminderItemProps) {
   const Icon = item.kind === "bill" ? CreditCard : HandCoins;
   const isRead = stateKind === "read";
   const clickable = onOpen !== undefined;
+
+  const handleOpen = () => {
+    if (!onOpen) return;
+    triggerSensory("action");
+    onOpen();
+  };
+
   return (
     <article
       className={cn(
-        "flex flex-col sm:flex-row sm:items-start justify-between gap-3 rounded-xl border border-border bg-surface p-4 min-w-0 overflow-hidden",
-        isRead && "opacity-80 bg-surface/60",
-        clickable && "cursor-pointer transition-colors hover:bg-surface-hover",
+        "flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface p-4 shadow-xs min-w-0 overflow-hidden",
+        isRead && "opacity-75 bg-surface-raised/60",
       )}
-      onClick={clickable ? onOpen : undefined}
-      role={clickable ? "button" : undefined}
-      tabIndex={clickable ? 0 : undefined}
-      onKeyDown={
-        clickable
-          ? (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onOpen?.();
-              }
-            }
-          : undefined
-      }
     >
-      <div className="flex items-start gap-3 min-w-0 flex-1">
+      <div
+        role={clickable ? "button" : undefined}
+        tabIndex={clickable ? 0 : undefined}
+        aria-label={clickable ? `Abrir ${item.title}` : undefined}
+        onClick={clickable ? handleOpen : undefined}
+        onKeyDown={
+          clickable
+            ? (event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleOpen();
+                }
+              }
+            : undefined
+        }
+        className={cn(
+          "flex items-start gap-3 min-w-0 flex-1 rounded-lg p-1 -m-1",
+          clickable &&
+            "cursor-pointer transition-colors hover:bg-surface-hover/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        )}
+      >
         <span
           className={cn(
-            "flex size-9 shrink-0 items-center justify-center",
+            "flex size-8 shrink-0 items-center justify-center mt-0.5",
             isRead
               ? "text-muted-foreground"
               : item.kind === "bill"
@@ -71,99 +90,121 @@ export function ReminderItem({ item, onMarkRead, onSnooze, onRestore, onSettle, 
         >
           <Icon className="size-4" aria-hidden="true" />
         </span>
+
         <div className="flex flex-col gap-0.5 min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2 min-w-0">
-            <h3 className={cn("text-sm font-semibold truncate min-w-0", isRead ? "text-muted-foreground" : "text-foreground")}>
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+            <h3
+              className={cn(
+                "text-sm font-semibold line-clamp-2 break-words min-w-0",
+                isRead ? "text-muted-foreground" : "text-foreground",
+              )}
+            >
               {item.title}
             </h3>
-            <Badge variant={isRead ? "muted" : STATUS_VARIANTS[item.status]} className="shrink-0">
+            <Badge
+              variant={isRead ? "muted" : STATUS_VARIANTS[item.status]}
+              size="xs"
+              className="shrink-0 max-w-full truncate"
+            >
               {STATUS_LABELS[item.status]}
             </Badge>
-            {stateKind === "snoozed" ? <Badge variant="muted" className="shrink-0">Adiado</Badge> : null}
-            {isRead ? <Badge variant="muted" className="shrink-0">Lido</Badge> : null}
-          </div>
-          {item.subtitle ? <p className="text-xs text-muted-foreground truncate">{item.subtitle}</p> : null}
-          <p className="text-xs text-muted-foreground truncate">
-            Vence em <span className="num font-medium text-foreground">{item.dueDate}</span>
-            {item.amountCents > 0 ? (
-              <>
-                {" "}· <MoneyText cents={item.amountCents} tone="default" className="text-xs" />
-              </>
+            {stateKind === "snoozed" ? (
+              <Badge variant="muted" size="xs" className="shrink-0">
+                Adiado
+              </Badge>
             ) : null}
-          </p>
+            {isRead ? (
+              <Badge variant="muted" size="xs" className="shrink-0">
+                Lido
+              </Badge>
+            ) : null}
+          </div>
+
+          {item.subtitle ? (
+            <p className="text-xs text-muted-foreground line-clamp-1 break-words">{item.subtitle}</p>
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+            <span>
+              Vence em <span className="num font-medium text-foreground">{formatDateBR(item.dueDate)}</span>
+            </span>
+            {item.amountCents > 0 ? (
+              <span className="inline-flex items-center gap-1.5">
+                <span aria-hidden="true" className="text-muted-foreground/60">·</span>
+                <MoneyText cents={item.amountCents} tone="default" className="text-xs font-semibold" />
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap sm:flex-nowrap shrink-0 items-center gap-1.5 self-end sm:self-auto">
+      <div className="flex flex-wrap sm:flex-nowrap shrink-0 items-center gap-1.5 self-end sm:self-center">
         {stateKind === "snoozed" ? (
-          <button
+          <Button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRestore?.(item.key);
-            }}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            variant="ghost"
+            size="sm"
+            sensoryIntent="action"
+            onClick={() => onRestore?.(item.key)}
+            className="h-8 max-sm:min-h-11 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
             aria-label={`Restaurar lembrete ${item.title}`}
           >
             <Bell className="size-3.5" aria-hidden="true" />
-            Restaurar
-          </button>
+            <span>Restaurar</span>
+          </Button>
         ) : isRead ? (
-          <button
+          <Button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRestore?.(item.key);
-            }}
-            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            variant="ghost"
+            size="sm"
+            sensoryIntent="action"
+            onClick={() => onRestore?.(item.key)}
+            className="h-8 max-sm:min-h-11 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
             aria-label={`Reabrir lembrete ${item.title}`}
           >
             <RotateCcw className="size-3.5" aria-hidden="true" />
-            Reabrir
-          </button>
+            <span>Reabrir</span>
+          </Button>
         ) : (
           <>
-            {onSettle && (
+            {onSettle ? (
               <Button
                 type="button"
                 variant="default"
-                size="xs"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSettle(item);
-                }}
-                className="h-7 px-2.5 text-xs font-semibold gap-1.5 cursor-pointer shrink-0"
+                size="sm"
+                onClick={() => onSettle(item)}
+                className="h-8 max-sm:min-h-11 px-2.5 text-xs font-semibold gap-1.5 shrink-0"
                 aria-label={`${item.kind === "bill" ? "Pagar fatura" : "Dar baixa"} ${item.title}`}
               >
                 <CheckCircle2 className="size-3.5" aria-hidden="true" />
                 <span>{item.kind === "bill" ? "Pagar Fatura" : "Dar Baixa"}</span>
               </Button>
-            )}
-            <button
+            ) : null}
+            <Button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSnooze?.(item.key);
-              }}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              variant="ghost"
+              size="sm"
+              sensoryIntent="selection"
+              onClick={() => onSnooze?.(item.key)}
+              className="h-8 max-sm:min-h-11 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
               aria-label={`Adiar lembrete ${item.title}`}
             >
               <AlarmClock className="size-3.5" aria-hidden="true" />
-              Adiar
-            </button>
-            <button
+              <span>Adiar</span>
+            </Button>
+            <Button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onMarkRead?.(item.key);
-              }}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              variant="ghost"
+              size="sm"
+              sensoryIntent="success"
+              onClick={() => onMarkRead?.(item.key)}
+              className="h-8 max-sm:min-h-11 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
               aria-label={`Marcar como lido ${item.title}`}
               title="Apenas marcar como lido sem liquidar financeiramente"
             >
               <Check className="size-3.5" aria-hidden="true" />
-              Arquivar
-            </button>
+              <span>Arquivar</span>
+            </Button>
           </>
         )}
       </div>

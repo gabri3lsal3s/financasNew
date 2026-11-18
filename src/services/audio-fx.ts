@@ -4,6 +4,12 @@
  * Sons discretos e elegantes para cliques, confirmações e alertas.
  */
 
+import { getVisualCustomization } from "@/hooks/use-visual-customization";
+
+interface WindowWithWebkitAudio extends Window {
+  webkitAudioContext?: typeof AudioContext;
+}
+
 let audioCtx: AudioContext | null = null;
 
 function getAudioContext(): AudioContext | null {
@@ -11,8 +17,7 @@ function getAudioContext(): AudioContext | null {
   if (!audioCtx) {
     const AudioContextClass =
       window.AudioContext ||
-      // @ts-expect-error fallback para navegadores legados
-      window.webkitAudioContext;
+      (window as WindowWithWebkitAudio).webkitAudioContext;
     if (AudioContextClass) {
       try {
         audioCtx = new AudioContextClass();
@@ -202,6 +207,7 @@ export class SoundManager {
 
   public play(effect: SoundEffect, enabled = true, options?: SoundOptions | number): boolean {
     if (this.muted || !enabled || typeof window === "undefined") return false;
+    if (!getVisualCustomization().soundEnabled) return false;
 
     const volume = typeof options === "number" ? options : options?.volume ?? this.defaultVolume;
     const force = typeof options === "object" ? options?.force ?? false : false;

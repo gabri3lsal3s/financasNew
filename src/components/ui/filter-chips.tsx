@@ -22,7 +22,7 @@ export interface FilterChipsProps extends Omit<HTMLAttributes<HTMLDivElement>, "
 const toneActiveStyles: Record<FilterChipTone, string> = {
   default: "bg-primary text-primary-foreground border-primary shadow-xs",
   positive: "bg-positive text-positive-foreground border-positive shadow-xs",
-  warning: "bg-warning-strong text-white border-warning-strong shadow-xs",
+  warning: "bg-warning/15 text-warning-strong border-warning/30 shadow-xs",
   critical: "bg-critical text-critical-foreground border-critical shadow-xs",
 };
 
@@ -71,7 +71,7 @@ export function FilterChips({
               onChange(item.key);
             }}
             className={cn(
-              "inline-flex items-center justify-center shrink-0 rounded-lg border font-medium transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring select-none",
+              "relative inline-flex items-center justify-center shrink-0 rounded-lg border font-medium transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring select-none max-sm:after:absolute max-sm:after:-inset-y-2.5 max-sm:after:inset-x-0",
               isXs ? "h-6 px-2 text-[11px]" : "h-7 sm:h-7.5 px-2.5 sm:px-3 text-xs",
               isActive
                 ? cn(toneActiveStyles[tone], "font-semibold")
@@ -85,7 +85,7 @@ export function FilterChips({
             {item.count !== undefined && (
               <span
                 className={cn(
-                  "ml-1 font-semibold tabular-nums text-[10px]",
+                  "ml-1 font-semibold tabular-nums text-[11px]",
                   isActive ? "opacity-90" : "text-muted-foreground/80",
                 )}
               >

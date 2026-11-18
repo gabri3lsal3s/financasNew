@@ -1,21 +1,15 @@
-import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import { ChevronDown, ChevronRight, PieChart, Printer, TrendingUp, History, ArrowRight } from "lucide-react";
-import { Badge, Button, EmptyState } from "@/components/ui";
+import { useMemo, type Dispatch, type SetStateAction } from "react";
+import { useNavigate } from "react-router";
+import { ArrowRight, History, Printer, TrendingUp } from "lucide-react";
+import { Button, EmptyState } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
-import {
-  ReportAllocationDonuts,
-  ReportFiiBreakdownCard,
-  ReportFixedIncomeBreakdownCard,
-  ReportInternationalBreakdownCard,
-  ReportStocksBreakdownCard,
-} from "@/components/modules";
-import { AllocationBreakdownDialog, AssetDetailSheet } from "@/features/investments/components";
 import { useGroupTargets, usePortfolioAssets, usePortfolioPosition } from "@/state";
 import { numberToCents } from "@/domain/money";
 import { formatPercent } from "@/services/masks";
 import type { AllocationAnalysisResult, ConcentrationRiskResult, AllocationDonutSegment } from "@/domain/reports";
 import type { PositionRow } from "@/components/modules/position-table";
-import { useNavigate } from "react-router";
+import { AllocationGapTreeTable } from "./allocation-gap-tree-table";
+import { InvestmentsDeepBreakdowns } from "./investments-deep-breakdowns";
 
 export interface InvestmentsTabProps {
   totalPatrimonyBRL: number;
@@ -57,6 +51,7 @@ export function InvestmentsTab({
   const assetsQuery = usePortfolioAssets();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
+  const navigate = useNavigate();
 
   const breakdownRows = useMemo(() => {
     if (!rows) return position.rows;
@@ -68,8 +63,8 @@ export function InvestmentsTab({
       currency: (r.currency as "BRL" | "USD") ?? "BRL",
       quantity: r.quantity,
       averageCost: r.averageCost,
-      totalCost: r.totalCost ?? (r.quantity * r.averageCost),
-      totalCostBRL: r.totalCostBRL ?? (r.quantity * r.averageCost),
+      totalCost: r.totalCost ?? r.quantity * r.averageCost,
+      totalCostBRL: r.totalCostBRL ?? r.quantity * r.averageCost,
       averageCostBRL: r.averageCost,
       dividends: r.dividends ?? 0,
       dividendsNative: r.dividends ?? 0,
@@ -90,17 +85,6 @@ export function InvestmentsTab({
     }));
   }, [rows, position.rows]);
 
-  const [breakdownGroup, setBreakdownGroup] = useState<{
-    type: "class" | "sector";
-    name: string;
-  } | null>(null);
-  const [assetDetailId, setAssetDetailId] = useState<string | null>(null);
-  const detailAsset = assetDetailId
-    ? (assetsQuery.data ?? []).find((a) => a.id === assetDetailId) ?? null
-    : null;
-
-  const navigate = useNavigate();
-
   if (!hasDataForPeriod) {
     return (
       <div className="flex flex-col gap-6">
@@ -109,7 +93,7 @@ export function InvestmentsTab({
           title="Nenhum ativo ou custódia cadastrada"
           description="Você ainda não possui ativos ou saldo de caixa cadastrados na sua carteira. Cadastre seus ativos para desbloquear a análise patrimonial e diagnósticos de alocação."
           action={
-            <Button type="button" onClick={() => navigate("/investimentos")}>
+            <Button type="button" onClick={() => navigate("/investments")}>
               Ir para Investimentos
             </Button>
           }
@@ -120,14 +104,11 @@ export function InvestmentsTab({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Banner Informativo & Atalho para Fechamentos / Snapshots Históricos */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface p-4 shadow-xs">
         <div className="flex items-start gap-3 min-w-0">
-          <History className="size-5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+          <History className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
           <div className="flex flex-col gap-0.5 text-xs">
-            <span className="font-semibold text-foreground">
-              Análise e Auditoria de Meses Anteriores
-            </span>
+            <span className="font-semibold text-foreground">Análise e Auditoria de Meses Anteriores</span>
             <p className="text-muted-foreground leading-relaxed m-0 text-[11px]">
               Deseja auditar ou emitir relatórios de fechamento de meses anteriores? Acesse os Fechamentos & Snapshots na página de Investimentos.
             </p>
@@ -137,7 +118,7 @@ export function InvestmentsTab({
           type="button"
           variant="secondary"
           size="sm"
-          onClick={() => navigate("/investimentos")}
+          onClick={() => navigate("/investments")}
           className="gap-1.5 shrink-0 w-full sm:w-auto justify-center text-xs"
         >
           <span>Ir para Fechamentos</span>
@@ -145,12 +126,13 @@ export function InvestmentsTab({
         </Button>
       </div>
 
-      {/* Card Dossiê Executivo A4 */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <TrendingUp className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
-            <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê Executivo da Posição Vigente Consolidada (A4/PDF)</h3>
+            <TrendingUp className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+            <h3 className="text-sm sm:text-base font-bold text-foreground">
+              Dossiê Executivo da Posição Vigente Consolidada (A4/PDF)
+            </h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             Documento de consultoria patrimonial com diagnóstico de defasagem de metas (Target vs. Actual), risco de concentração e custódia.
@@ -167,314 +149,55 @@ export function InvestmentsTab({
         </Button>
       </div>
 
-      {/* Resumo da Alocação, Metas & Concentração Setorial */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+        <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Patrimônio Consolidado</span>
           <MoneyText cents={numberToCents(totalPatrimonyBRL)} tone="portfolio" animated className="text-lg sm:text-xl font-bold font-display whitespace-nowrap" />
         </div>
-
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+        <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Aderência às Metas</span>
-          <span className="text-lg sm:text-xl font-bold font-display text-primary-strong">{allocationAnalysis.alignmentScore}%</span>
+          <span className="num font-mono tabular-nums text-lg sm:text-xl font-bold font-display text-primary-strong">
+            {allocationAnalysis.alignmentScore}%
+          </span>
         </div>
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+        <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Top 5 Concentração</span>
-          <span className="text-lg sm:text-xl font-bold font-display text-foreground">{formatPercent(concentrationRisk.top5Pct)}%</span>
+          <span className="num font-mono tabular-nums text-lg sm:text-xl font-bold font-display text-foreground">
+            {formatPercent(concentrationRisk.top5Pct)}%
+          </span>
         </div>
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+        <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Top Setor Dominante</span>
-          <div className="flex items-center justify-between gap-1 truncate">
-            <span className="text-sm sm:text-base font-bold font-display text-foreground truncate">
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <span className="text-sm sm:text-base font-bold font-display text-foreground line-clamp-2 break-words">
               {concentrationRisk.topSectorDominance?.sector ?? "Nenhum"}
             </span>
-            <span className="text-xs font-bold text-portfolio shrink-0">
+            <span className="num font-mono tabular-nums text-xs font-bold text-portfolio-strong shrink-0 whitespace-nowrap">
               {concentrationRisk.topSectorDominance ? `${formatPercent(concentrationRisk.topSectorDominance.pct)}%` : "0%"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Tabela em Árvore Hierárquica de Gaps (Classe -> Setor -> Ativos) */}
-      <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <PieChart className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-            <h3 className="text-sm font-semibold text-foreground">Defasagem de Metas (Classe / Setor / Ativos)</h3>
-          </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {allocationAnalysis.topDeficitClass ? (
-              <Badge variant="default" size="sm" className="max-w-full truncate inline-block">
-                Prioridade Classe: {allocationAnalysis.topDeficitClass.assetClass.toUpperCase()}
-              </Badge>
-            ) : null}
-            {allocationAnalysis.topDeficitSector ? (
-              <Badge variant="portfolio" size="sm" className="max-w-full truncate inline-block">
-                Prioridade Setor: {allocationAnalysis.topDeficitSector.sectorName}
-              </Badge>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs">
-          <span className="text-muted-foreground text-[11px]">
-            Clique nas linhas para expandir/recolher os setores e ativos vinculados.
-          </span>
-          <div className="flex items-center gap-1 shrink-0 self-end sm:self-auto">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setExpandedTreeClasses(new Set(allocationAnalysis.treeNodes.map((n) => n.assetClass)));
-                setExpandedTreeSectors(
-                  new Set(
-                    allocationAnalysis.treeNodes.flatMap((n) =>
-                      n.sectors.map((s) => `${n.assetClass}::${s.sectorName}`),
-                    ),
-                  ),
-                );
-              }}
-              className="h-7 px-2 text-[11px]"
-            >
-              Expandir tudo
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setExpandedTreeClasses(new Set());
-                setExpandedTreeSectors(new Set());
-              }}
-              className="h-7 px-2 text-[11px]"
-            >
-              Recolher tudo
-            </Button>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto rounded-xl border border-border/80">
-          <table className="w-full min-w-[620px] text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border/80 bg-surface-hover/50 text-muted-foreground font-medium">
-                <th className="py-2.5 px-3">Hierarquia / Nome</th>
-                <th className="py-2.5 px-3 text-right">Atual (R$)</th>
-                <th className="py-2.5 px-3 text-right">Atual (%)</th>
-                <th className="py-2.5 px-3 text-right">Meta (%)</th>
-                <th className="py-2.5 px-3 text-right">Gap (R$)</th>
-                <th className="py-2.5 px-3 text-center">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {allocationAnalysis.treeNodes.map((cNode) => {
-                const isClassExpanded = expandedTreeClasses.has(cNode.assetClass);
-                return (
-                  <Fragment key={cNode.assetClass}>
-                    <tr
-                      onClick={() => {
-                        setExpandedTreeClasses((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(cNode.assetClass)) next.delete(cNode.assetClass);
-                          else next.add(cNode.assetClass);
-                          return next;
-                        });
-                      }}
-                      className="bg-muted/25 hover:bg-muted/40 cursor-pointer font-semibold select-none"
-                    >
-                      <td className="py-2.5 px-3 text-foreground">
-                        <div className="flex items-center gap-1.5">
-                          {isClassExpanded ? (
-                            <ChevronDown className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          ) : (
-                            <ChevronRight className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-                          )}
-                          <span className="capitalize">{cNode.assetClass}</span>
-                          <span className="text-[10px] text-muted-foreground font-normal">
-                            ({cNode.sectors.length} setores)
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono">
-                        <MoneyText cents={numberToCents(cNode.currentBRL)} />
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono">{formatPercent(cNode.currentPct)}%</td>
-                      <td className="py-2.5 px-3 text-right font-mono">
-                        {cNode.targetPct > 0 ? `${formatPercent(cNode.targetPct)}%` : "—"}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono">
-                        {cNode.gapBRL > 0 ? (
-                          <MoneyText cents={numberToCents(cNode.gapBRL)} tone="portfolio" className="font-bold" />
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 text-center">
-                        <span
-                          className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold ${
-                            cNode.status === "deficit"
-                              ? "bg-primary/10 text-primary-strong border border-primary/20"
-                              : cNode.status === "surplus"
-                                ? "bg-surface-hover text-muted-foreground border border-border"
-                                : "bg-positive/10 text-positive-strong border border-positive/20"
-                          }`}
-                        >
-                          {cNode.status === "deficit" ? "Aportar" : cNode.status === "surplus" ? "Acima da Meta" : "Equilibrado"}
-                        </span>
-                      </td>
-                    </tr>
-
-                    {isClassExpanded &&
-                      cNode.sectors.map((sNode) => {
-                        const sectorKey = `${cNode.assetClass}::${sNode.sectorName}`;
-                        const isSectorExpanded = expandedTreeSectors.has(sectorKey);
-
-                        return (
-                          <Fragment key={sectorKey}>
-                            <tr
-                              onClick={() => {
-                                setExpandedTreeSectors((prev) => {
-                                  const next = new Set(prev);
-                                  if (next.has(sectorKey)) next.delete(sectorKey);
-                                  else next.add(sectorKey);
-                                  return next;
-                                });
-                              }}
-                              className="bg-surface hover:bg-muted/15 cursor-pointer font-medium select-none"
-                            >
-                              <td className="py-2 px-3 pl-8 text-foreground">
-                                <div className="flex items-center gap-1.5">
-                                  {isSectorExpanded ? (
-                                    <ChevronDown className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                                  ) : (
-                                    <ChevronRight className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                                  )}
-                                  <span className="text-xs">{sNode.sectorName}</span>
-                                  {sNode.targetPctInClass > 0 ? (
-                                    <span className="text-[10px] text-muted-foreground font-normal">
-                                      (Meta na classe: {sNode.targetPctInClass}%)
-                                    </span>
-                                  ) : null}
-                                </div>
-                              </td>
-                              <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                                <MoneyText cents={numberToCents(sNode.currentBRL)} />
-                              </td>
-                              <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                                {formatPercent(sNode.currentPct)}%
-                              </td>
-                              <td className="py-2 px-3 text-right font-mono text-muted-foreground">
-                                {sNode.effectiveTargetPct > 0 ? `${formatPercent(sNode.effectiveTargetPct)}%` : "—"}
-                              </td>
-                              <td className="py-2 px-3 text-right font-mono">
-                                {sNode.gapBRL > 0 ? (
-                                  <MoneyText cents={numberToCents(sNode.gapBRL)} tone="portfolio" />
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
-                              </td>
-                              <td className="py-2 px-3 text-center">
-                                <Badge
-                                  variant={sNode.status === "deficit" ? "default" : sNode.status === "surplus" ? "muted" : "positive"}
-                                  size="xs"
-                                >
-                                  {sNode.status === "deficit" ? "Aportar" : sNode.status === "surplus" ? "Na Meta" : "Equilibrado"}
-                                </Badge>
-                              </td>
-                            </tr>
-
-                            {isSectorExpanded &&
-                              sNode.assets.map((aNode) => (
-                                <tr key={aNode.id} className="hover:bg-muted/20 text-muted-foreground">
-                                  <td className="py-1.5 px-3 pl-14 font-mono font-semibold text-foreground">
-                                    {aNode.ticker}
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                    <MoneyText cents={numberToCents(aNode.currentBRL)} />
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                    {formatPercent(aNode.currentPct)}%
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                    {aNode.targetPct > 0 ? `${formatPercent(aNode.targetPct)}%` : "—"}
-                                  </td>
-                                  <td className="py-1.5 px-3 text-right font-mono text-xs">
-                                    {aNode.gapBRL > 0 ? (
-                                      <MoneyText cents={numberToCents(aNode.gapBRL)} tone="default" />
-                                    ) : (
-                                      <span>—</span>
-                                    )}
-                                  </td>
-                                  <td className="py-1.5 px-3 text-center text-[10px]">
-                                    {aNode.status === "deficit" ? "Déficit" : aNode.status === "surplus" ? "Excedente" : "Ok"}
-                                  </td>
-                                </tr>
-                              ))}
-                          </Fragment>
-                        );
-                      })}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Detalhamento Gráfico da Alocação & Exposição Setorial (Donuts em Largura Total ao Final) */}
-      {classSegments && classSegments.length > 0 ? (
-        <ReportAllocationDonuts
-          classSegments={classSegments}
-          sectorSegments={sectorSegments ?? []}
-          totalBRL={totalPatrimonyBRL}
-          totalUniqueSectors={totalUniqueSectors}
-          variant="screen"
-          onClassClick={(className) => setBreakdownGroup({ type: "class", name: className })}
-          onSectorClick={(sectorName) => setBreakdownGroup({ type: "sector", name: sectorName })}
-        />
-      ) : null}
-
-      {/* Raios-X de Subalocação Profunda: Ações Brasil, FIIs, Renda Fixa e Internacional */}
-      <div className="flex flex-col gap-4.5 w-full">
-        <ReportStocksBreakdownCard positions={breakdownRows} />
-        <ReportFiiBreakdownCard positions={breakdownRows} />
-        <ReportFixedIncomeBreakdownCard
-          positions={breakdownRows}
-          assetsMetadata={assetsQuery.data ?? []}
-        />
-        <ReportInternationalBreakdownCard positions={breakdownRows} />
-      </div>
-
-      {/* Raio-X Analítico de Classe e Setor */}
-      <AllocationBreakdownDialog
-        open={breakdownGroup !== null}
-        onOpenChange={(open) => {
-          if (!open) setBreakdownGroup(null);
-        }}
-        type={breakdownGroup?.type ?? "class"}
-        groupName={breakdownGroup?.name ?? null}
-        rows={breakdownRows}
-        totalPortfolioBRL={totalPatrimonyBRL > 0 ? totalPatrimonyBRL : position.totalBRL}
-        targetPercent={
-          breakdownGroup?.type === "class"
-            ? classTargetsQuery.data?.find((t) => t.name === breakdownGroup.name)?.target_percentage ?? null
-            : breakdownGroup?.name
-              ? sectorTargetsQuery.data?.find((t) => t.name === breakdownGroup.name)?.target_percentage ?? null
-              : null
-        }
-        onSelectAsset={(assetId) => setAssetDetailId(assetId)}
+      <AllocationGapTreeTable
+        allocationAnalysis={allocationAnalysis}
+        expandedTreeClasses={expandedTreeClasses}
+        setExpandedTreeClasses={setExpandedTreeClasses}
+        expandedTreeSectors={expandedTreeSectors}
+        setExpandedTreeSectors={setExpandedTreeSectors}
       />
 
-      {/* Ficha Completa do Ativo selecionado no Raio-X */}
-      {detailAsset ? (
-        <AssetDetailSheet
-          open={assetDetailId !== null}
-          onOpenChange={(open) => {
-            if (!open) setAssetDetailId(null);
-          }}
-          asset={detailAsset}
-        />
-      ) : null}
+      <InvestmentsDeepBreakdowns
+        classSegments={classSegments}
+        sectorSegments={sectorSegments}
+        totalPatrimonyBRL={totalPatrimonyBRL}
+        fallbackTotalBRL={position.totalBRL}
+        totalUniqueSectors={totalUniqueSectors}
+        breakdownRows={breakdownRows}
+        assetsMetadata={assetsQuery.data ?? []}
+        classTargets={classTargetsQuery.data ?? []}
+        sectorTargets={sectorTargetsQuery.data ?? []}
+      />
     </div>
   );
 }

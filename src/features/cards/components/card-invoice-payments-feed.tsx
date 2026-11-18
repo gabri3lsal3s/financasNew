@@ -1,6 +1,8 @@
 import { Trash2, WalletCards } from "lucide-react";
 import { Button, EmptyState } from "@/components/ui";
 import { TransactionRow } from "@/components/modules";
+import { numberToCents } from "@/domain/money";
+import { formatDateBR } from "@/lib/date";
 import type { CardPayment } from "@/types";
 
 export interface CardInvoicePaymentsFeedProps {
@@ -18,7 +20,7 @@ export function CardInvoicePaymentsFeed({
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Pagamentos e estornos
         </h2>
-        <span className="text-xs text-muted-foreground font-mono">
+        <span className="text-xs text-muted-foreground font-mono tabular-nums">
           {competencePayments.length} {competencePayments.length === 1 ? "registro" : "registros"}
         </span>
       </div>
@@ -32,49 +34,35 @@ export function CardInvoicePaymentsFeed({
         />
       ) : (
         <div className="flex flex-col gap-2 sm:gap-2.5">
-          {competencePayments.map((payment) =>
-            payment.amount < 0 ? (
+          {competencePayments.map((payment) => {
+            const isRefund = payment.amount < 0;
+            const label = payment.note || (isRefund ? "Estorno" : "Pagamento de fatura");
+            const deleteLabel = `${isRefund ? "Excluir estorno" : "Excluir pagamento"} ${payment.note || ""}`.trim();
+
+            return (
               <TransactionRow
                 key={payment.id}
-                title={payment.note || "Estorno"}
-                date={payment.date}
-                amountCents={Math.round(-payment.amount * 100)}
-                kind="income"
+                title={label}
+                date={formatDateBR(payment.date)}
+                amountCents={numberToCents(Math.abs(payment.amount))}
+                kind={isRefund ? "income" : "neutral"}
                 badges={
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
+                    size="icon"
+                    sensoryIntent="selection"
                     onClick={() => onDeletePayment(payment)}
-                    aria-label={`Excluir estorno ${payment.note || ""}`}
-                    className="size-7 p-0 text-muted-foreground hover:text-critical"
+                    aria-label={deleteLabel}
+                    title={deleteLabel}
+                    className="size-8 sm:size-7 text-muted-foreground hover:text-critical-strong max-sm:after:absolute max-sm:after:-inset-2"
                   >
                     <Trash2 className="size-3.5" aria-hidden="true" />
                   </Button>
                 }
               />
-            ) : (
-              <TransactionRow
-                key={payment.id}
-                title={payment.note || "Pagamento de fatura"}
-                date={payment.date}
-                amountCents={Math.round(payment.amount * 100)}
-                kind="expense"
-                badges={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onDeletePayment(payment)}
-                    aria-label={`Excluir pagamento ${payment.note || ""}`}
-                    className="size-7 p-0 text-muted-foreground hover:text-critical"
-                  >
-                    <Trash2 className="size-3.5" aria-hidden="true" />
-                  </Button>
-                }
-              />
-            ),
-          )}
+            );
+          })}
         </div>
       )}
     </section>

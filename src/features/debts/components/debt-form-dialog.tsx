@@ -1,7 +1,21 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Check, RotateCcw, Trash2 } from "lucide-react";
-import { Alert, Button, ConfirmDialog, DatePicker, FormField, Input, Modal, ModalFooter, MoneyInput, RadioGroup, Select } from "@/components/ui";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  DatePicker,
+  FormField,
+  Input,
+  Modal,
+  ModalFooter,
+  MoneyInput,
+  RadioGroup,
+  Select,
+} from "@/components/ui";
+import { formatDateBR } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
+import { triggerSensory } from "@/services/sensory";
 import { useCreateDebt, useUpdateDebt } from "@/state";
 import type { Debt, DebtType, InstallmentDeleteMode } from "@/types";
 
@@ -16,18 +30,12 @@ export interface DebtFormDialogProps {
   debt: Debt | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Chamado quando o usuário confirma a exclusão (apenas em edição).
-   *  Deve rejeitar em falha — o formulário permanece aberto com o erro. */
+  /** Chamado quando o usuário confirma a exclusão (apenas em edição). */
   onDelete?: (debt: Debt, mode?: InstallmentDeleteMode) => Promise<void>;
 }
 
-interface DebtFormContentProps {
-  debt: Debt | null;
-  onClose: () => void;
-  onDelete?: (debt: Debt, mode?: InstallmentDeleteMode) => Promise<void>;
-}
-
-function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
+function DebtFormContent({ debt, open, onOpenChange, onDelete }: DebtFormDialogProps) {
+  const formId = useId();
   const [name, setName] = useState(debt?.name ?? "");
   const [type, setType] = useState<DebtType>(debt?.type ?? "payable");
   const [cents, setCents] = useState(debt ? Math.round(debt.amount * 100) : 0);
@@ -52,13 +60,12 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
       ...(debt?.paid_at ? { paid_at: isPaid ? debt.paid_at : null } : {}),
     };
     try {
-      if (debt) {
-        await updateDebt.mutateAsync({ id: debt.id, input });
-      } else {
-        await createDebt.mutateAsync(input);
-      }
-      onClose();
+      if (debt) await updateDebt.mutateAsync({ id: debt.id, input });
+      else await createDebt.mutateAsync(input);
+      triggerSensory("success");
+      onOpenChange(false);
     } catch (err) {
+      triggerSensory("error");
       setError(getErrorMessage(err));
     }
   };
@@ -66,111 +73,117 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
   const valid = name.trim() !== "" && cents > 0 && dueDate !== "";
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (valid && !pending) {
-          void handleSubmit();
-        }
-      }}
-      className="mt-4 flex flex-col gap-3.5"
-    >
-      {error ? <Alert variant="error">{error}</Alert> : null}
-
-      <FormField label="Nome" htmlFor="debt-name">
-        <Input id="debt-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Conta de luz" />
-      </FormField>
-
-      <RadioGroup
-        value={type}
-        onValueChange={(value) => setType(value as DebtType)}
-        name="debt-type"
-        options={[
-          { value: "payable", label: "A pagar" },
-          { value: "receivable", label: "A receber" },
-        ]}
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <FormField label="Valor" htmlFor="debt-amount">
-          <MoneyInput id="debt-amount" cents={cents} onCentsChange={setCents} aria-label="Valor da dívida" />
-        </FormField>
-
-        <FormField label="Vencimento" htmlFor="debt-due-date">
-          <DatePicker id="debt-due-date" value={dueDate} onValueChange={setDueDate} ariaLabel="Vencimento da dívida" />
-        </FormField>
-      </div>
-
-      {debt?.paid_at ? (
-        isPaid ? (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-positive/30 bg-positive/5 p-3 text-xs text-positive-strong">
-            <div className="flex items-center gap-2">
-              <Check className="size-4" aria-hidden="true" />
-              <span>Quitada em {debt.paid_at.slice(0, 10)}</span>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs border-positive/40 hover:bg-positive/10"
-              onClick={() => setIsPaid(false)}
-            >
-              <RotateCcw className="size-3.5" aria-hidden="true" />
-              Reabrir dívida
+    <>
+      <Modal
+        open={open}
+        onOpenChange={onOpenChange}
+        title={debt ? "Editar dívida" : "Nova dívida"}
+        description="Conta a pagar ou a receber com status derivado (nunca armazenado)."
+        size="lg"
+        showCalculator
+        footer={
+          <ModalFooter
+            borderless
+            destructiveAction={
+              debt && onDelete ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  sensoryIntent="selection"
+                  className="text-critical-strong hover:bg-critical/10 gap-1.5"
+                  onClick={() => setConfirmDelete(true)}
+                  disabled={pending}
+                >
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  Excluir
+                </Button>
+              ) : null
+            }
+          >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
+              Cancelar
             </Button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border/80 p-3 text-xs text-muted-foreground">
-            <span>A dívida será reaberta como pendente ao salvar.</span>
             <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs"
-              onClick={() => setIsPaid(true)}
+              type="submit"
+              form={formId}
+              sensoryIntent={false}
+              disabled={!valid || pending}
+              aria-label={debt ? "Salvar alterações" : "Criar dívida"}
             >
-              Desfazer
+              {pending ? (
+                "Salvando…"
+              ) : (
+                <>
+                  <span className="hidden sm:inline">{debt ? "Salvar alterações" : "Criar dívida"}</span>
+                  <span className="sm:hidden">Salvar</span>
+                </>
+              )}
             </Button>
-          </div>
-        )
-      ) : null}
-
-      <ModalFooter
-        destructiveAction={
-          debt && onDelete ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-critical hover:bg-critical/10"
-              onClick={() => setConfirmDelete(true)}
-            >
-              <Trash2 className="size-4" aria-hidden="true" />
-              Excluir
-            </Button>
-          ) : null
+          </ModalFooter>
         }
       >
-        <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          disabled={!valid || pending}
-          aria-label={debt ? "Salvar alterações" : "Criar dívida"}
+        <form
+          id={formId}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (valid && !pending) void handleSubmit();
+          }}
+          className="mt-2 flex flex-col gap-3.5"
         >
-          {pending ? "Salvando…" : (
-            <>
-              <span className="hidden sm:inline">{debt ? "Salvar alterações" : "Criar dívida"}</span>
-              <span className="sm:hidden">Salvar</span>
-            </>
-          )}
-        </Button>
-      </ModalFooter>
+          {error ? <Alert variant="error">{error}</Alert> : null}
+
+          <FormField label="Nome" htmlFor="debt-name">
+            <Input id="debt-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex.: Conta de luz" />
+          </FormField>
+
+          <RadioGroup
+            value={type}
+            onValueChange={(value) => setType(value as DebtType)}
+            name="debt-type"
+            options={[
+              { value: "payable", label: "A pagar" },
+              { value: "receivable", label: "A receber" },
+            ]}
+          />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <FormField label="Valor" htmlFor="debt-amount">
+              <MoneyInput id="debt-amount" cents={cents} onCentsChange={setCents} aria-label="Valor da dívida" />
+            </FormField>
+            <FormField label="Vencimento" htmlFor="debt-due-date">
+              <DatePicker id="debt-due-date" value={dueDate} onValueChange={setDueDate} ariaLabel="Vencimento da dívida" />
+            </FormField>
+          </div>
+
+          {debt?.paid_at ? (
+            isPaid ? (
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-positive/30 bg-positive/5 p-3 text-xs text-positive-strong">
+                <div className="flex items-center gap-2">
+                  <Check className="size-4" aria-hidden="true" />
+                  <span>Quitada em {formatDateBR(debt.paid_at)}</span>
+                </div>
+                <Button type="button" size="sm" variant="outline" className="h-7 text-xs border-positive/40 hover:bg-positive/10" onClick={() => setIsPaid(false)}>
+                  <RotateCcw className="size-3.5" aria-hidden="true" />
+                  Reabrir dívida
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border/80 p-3 text-xs text-muted-foreground">
+                <span>A dívida será reaberta como pendente ao salvar.</span>
+                <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setIsPaid(true)}>
+                  Desfazer
+                </Button>
+              </div>
+            )
+          ) : null}
+        </form>
+      </Modal>
 
       {debt && onDelete ? (
         <ConfirmDialog
           open={confirmDelete}
           onOpenChange={setConfirmDelete}
+          elevated
           title={isGrouped ? "Excluir parcela da dívida?" : "Excluir dívida?"}
           description={
             isGrouped
@@ -181,51 +194,31 @@ function DebtFormContent({ debt, onClose, onDelete }: DebtFormContentProps) {
           variant="destructive"
           onConfirm={() => {
             setConfirmDelete(false);
-            // Exclusão com falha mantém o formulário aberto com o erro visível
-            // (o toast do hook também avisa) — o usuário não perde a edição.
             void Promise.resolve(onDelete(debt, deleteMode))
-              .then(() => onClose())
-              .catch((err: unknown) => {
-                setError(getErrorMessage(err));
-              });
+              .then(() => onOpenChange(false))
+              .catch((err: unknown) => setError(getErrorMessage(err)));
           }}
         >
           {isGrouped ? (
-            <div className="mt-4 flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-foreground">O que excluir?</span>
-              <Select
-                value={deleteMode}
-                onValueChange={(value) => setDeleteMode(value as InstallmentDeleteMode)}
-                options={MODE_OPTIONS}
-                ariaLabel="Modo de exclusão"
-              />
+            <div className="mt-2">
+              <FormField label="O que excluir?">
+                <Select
+                  value={deleteMode}
+                  onValueChange={(value) => setDeleteMode(value as InstallmentDeleteMode)}
+                  options={MODE_OPTIONS}
+                  ariaLabel="Modo de exclusão"
+                />
+              </FormField>
             </div>
           ) : null}
         </ConfirmDialog>
       ) : null}
-    </form>
+    </>
   );
 }
 
 /** Formulário de dívida (CRUD §3.4) — contas a pagar e a receber. */
 export function DebtFormDialog({ debt, open, onOpenChange, onDelete }: DebtFormDialogProps) {
-  return (
-    <Modal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={debt ? "Editar dívida" : "Nova dívida"}
-      description="Conta a pagar ou a receber com status derivado (nunca armazenado)."
-      size="lg"
-      showCalculator
-    >
-      {open ? (
-        <DebtFormContent
-          key={debt?.id ?? "new-debt"}
-          debt={debt}
-          onClose={() => onOpenChange(false)}
-          onDelete={onDelete}
-        />
-      ) : null}
-    </Modal>
-  );
+  if (!open) return null;
+  return <DebtFormContent key={debt?.id ?? "new-debt"} debt={debt} open={open} onOpenChange={onOpenChange} onDelete={onDelete} />;
 }

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { ModalFooter } from "./modal";
 import { ResponsiveDialog } from "./responsive-dialog";
 import { Button } from "./button";
 
@@ -45,5 +46,38 @@ describe("ResponsiveDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Confirmar" }));
     expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("repassa props completas de Modal sem embrulhar ModalFooter duas vezes", () => {
+    render(
+      <ResponsiveDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Com Ações Completas"
+        dataTour="tour-modal"
+        showCalculator
+        wideHeaderActions
+        headerActions={<span>Extra</span>}
+        destructiveAction={<Button variant="destructive">Excluir</Button>}
+        footer={
+          <ModalFooter>
+            <Button variant="outline">Cancelar</Button>
+            <Button variant="solid">Salvar</Button>
+          </ModalFooter>
+        }
+      >
+        <p>Corpo</p>
+      </ResponsiveDialog>,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveAttribute("data-tour", "tour-modal");
+    expect(screen.getByRole("button", { name: "Abrir calculadora" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Excluir" })).toBeInTheDocument();
+    // Garante que apenas um ModalFooter existe (sem wrapper duplo)
+    const cancelBtn = screen.getByRole("button", { name: "Cancelar" });
+    const actionsGroup = cancelBtn.parentElement;
+    const footerRoot = actionsGroup?.parentElement;
+    expect(footerRoot?.className).toContain("sm:justify-between");
   });
 });

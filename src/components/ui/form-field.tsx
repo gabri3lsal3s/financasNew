@@ -57,9 +57,12 @@ export function FormField({
             {label}
             {required ? <span className="text-critical ml-0.5" aria-hidden="true">*</span> : null}
             {optional ? (
-              <span className="ml-1 text-[11px] font-normal text-muted-foreground">
-                (opcional)
-              </span>
+              <>
+                {" "}
+                <span className="text-[11px] font-normal text-muted-foreground">
+                  (opcional)
+                </span>
+              </>
             ) : null}
           </label>
         </div>

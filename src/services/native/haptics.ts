@@ -1,4 +1,5 @@
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
+import { getVisualCustomization } from "@/hooks/use-visual-customization";
 import { isNativePlatform } from "./platform";
 
 export type NativeHapticPattern =
@@ -17,6 +18,9 @@ export async function triggerNativeHaptic(
   pattern: NativeHapticPattern = "light",
 ): Promise<boolean> {
   if (!isNativePlatform()) return false;
+  if (typeof window !== "undefined" && !getVisualCustomization().hapticEnabled) {
+    return false;
+  }
 
   try {
     switch (pattern) {

@@ -1,72 +1,33 @@
-import {
-  Landmark,
-  PieChart,
-  ReceiptText,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { Landmark } from "lucide-react";
 import { EmptyState } from "@/components/ui";
 import {
   ReportDocumentLayout,
   ReportHeader,
-  ReportExecutiveSummary,
   ReportWaterfallBar,
   ReportFooter,
 } from "@/components/modules";
-import { MoneyText } from "@/components/ui/money-text";
-import { formatPercent } from "@/services/masks/percent";
-import { sanitizeReportText } from "@/domain/reports";
-import { cn } from "@/lib/utils";
+import type {
+  FinancialDREData,
+  FinancialReportCategoryItem,
+  FinancialReportHouseholdSummary,
+  FinancialReportPaidInvoiceItem,
+  FinancialReportPaymentMethodItem,
+} from "./financial-close/financial-close-types";
+import { FinancialCloseSummary } from "./financial-close/FinancialCloseSummary";
+import { FinancialDreTable } from "./financial-close/FinancialDreTable";
+import { FinancialCompositionTables } from "./financial-close/FinancialCompositionTables";
+import {
+  FinancialHouseholdSection,
+  FinancialPaidInvoicesSection,
+} from "./financial-close/FinancialPaidInvoicesSection";
 
-export interface FinancialDREData {
-  grossIncomeCents: number;
-  totalExpensesCents: number;
-  operationalSavingsCents: number;
-  savingsRatePct: number;
-  investedAporteCents: number;
-  netCashFlowCents: number;
-  /** Valor bruto (sem ponderação) de receitas — exibido quando pesos estão ativos. */
-  grossIncomeBrutoCents?: number;
-  /** Valor bruto (sem ponderação) de despesas — exibido quando pesos estão ativos. */
-  totalExpensesBrutoCents?: number;
-}
-
-export interface FinancialReportCategoryItem {
-  name: string;
-  brutoCents?: number;
-  ponderadoCents?: number;
-  totalCents: number;
-  pct: number;
-  /** Limite orçado para o período (em centavos), quando configurado. */
-  budgetLimitCents?: number | null;
-  /** Desvio percentual (+15 para 15% acima, -10 para 10% abaixo). */
-  variancePct?: number | null;
-}
-
-export interface FinancialReportPaymentMethodItem {
-  method: string;
-  label: string;
-  brutoCents?: number;
-  ponderadoCents?: number;
-  totalCents: number;
-  pct: number;
-}
-
-export interface FinancialReportPaidInvoiceItem {
-  cardName: string;
-  competenceMonth: string;
-  amountCents: number;
-  date: string;
-}
-
-export interface FinancialReportHouseholdSummary {
-  familyTitle: string;
-  monthlyCeilingCents: number;
-  totalSpentCents: number;
-  spentPercentage: number;
-  userContributionCents: number;
-  userPercentageOfTotal: number;
-}
+export type {
+  FinancialDREData,
+  FinancialReportCategoryItem,
+  FinancialReportPaymentMethodItem,
+  FinancialReportPaidInvoiceItem,
+  FinancialReportHouseholdSummary,
+};
 
 export interface FinancialCloseReportModalProps {
   open: boolean;
@@ -80,22 +41,12 @@ export interface FinancialCloseReportModalProps {
   paidInvoices?: readonly FinancialReportPaidInvoiceItem[];
   expenseCount: number;
   incomeCount: number;
-  /** Quando true, exibe linha de bruto vs. ponderado na DRE. */
   showWeightedNote?: boolean;
-  /** Resumo do orçamento familiar (quando ativo). */
   householdSummary?: FinancialReportHouseholdSummary | null;
-}
-
-function formatDateBR(isoDate: string): string {
-  const [y, m, d] = isoDate.split("-");
-  if (!y || !m || !d) return isoDate;
-  return `${d}/${m}/${y}`;
 }
 
 /**
  * Modal Executivo de Finanças Pessoais & DRE (F42/F44).
- * Exibe a Demonstração do Resultado do Exercício (DRE Pessoal),
- * composição de despesas e impressão padronizada A4 / PDF.
  */
 export function FinancialCloseReportModal({
   open,
@@ -124,7 +75,6 @@ export function FinancialCloseReportModal({
 
   const hasBudgets = categories.some((c) => c.budgetLimitCents != null && c.budgetLimitCents > 0);
 
-  // Passos para o gráfico visual em cascata de DRE
   const waterfallSteps = [
     {
       key: "income",
@@ -155,7 +105,6 @@ export function FinancialCloseReportModal({
       onOpenChange={onOpenChange}
       title="Relatório Executivo de Finanças Pessoais & DRE"
     >
-      {/* 1. Cabeçalho Institucional */}
       <ReportHeader
         title="Relatório Executivo de Finanças Pessoais & DRE"
         subtitle="Demonstração do Resultado, Fluxo de Caixa & Composição de Gastos"
@@ -175,336 +124,48 @@ export function FinancialCloseReportModal({
         </div>
       ) : (
         <>
-          {/* 2. Síntese Executiva & KPIs em Linha Única */}
-      <ReportExecutiveSummary
-        title="SÍNTESE DO FLUXO CONTÁBIL & RESULTADO"
-        items={[
-          {
-            label: "Receitas Totais",
-            value: <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" />,
-            subtext: hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto ? (
-              <span>Ponderada: <MoneyText cents={dre.grossIncomeCents} className="inline text-[10px]" /></span>
-            ) : "Entradas no Período",
-          },
-          {
-            label: "Despesas Totais",
-            value: <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" />,
-            subtext: hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto ? (
-              <span>Ponderada: <MoneyText cents={dre.totalExpensesCents} className="inline text-[10px]" /></span>
-            ) : "Saídas no Período",
-          },
-          {
-            label: "Resultado Operacional",
-            value: (
-              <MoneyText
-                cents={effectiveGrossSavingsBruto}
-                tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
-              />
-            ),
-            subtext: effectiveGrossSavingsBruto >= 0 ? "Superávit" : "Déficit",
-          },
-          {
-            label: "Taxa de Poupança",
-            value: formatPercent(effectiveGrossSavingsRatePct),
-            subtext: "Eficiência de Renda",
-          },
-        ]}
-        narrative={
-          <span>
-            No período apurado (<strong>{periodLabel}</strong>), a receita operacional bruta totalizou <strong><MoneyText cents={effectiveGrossIncomeBruto} tone="positive" className="inline font-bold" /></strong> frente a despesas realizadas de <strong><MoneyText cents={effectiveTotalExpensesBruto} tone="negative" className="inline font-bold" /></strong>, gerando resultado operacional de <strong><MoneyText cents={effectiveGrossSavingsBruto} tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"} className="inline font-bold" /></strong> (taxa de poupança de <strong>{formatPercent(effectiveGrossSavingsRatePct)}</strong>). Foram direcionados <strong><MoneyText cents={dre.investedAporteCents} className="inline font-bold" /></strong> para investimentos, resultando em variação líquida de caixa de <strong><MoneyText cents={effectiveGrossSavingsBruto - dre.investedAporteCents} tone={effectiveGrossSavingsBruto - dre.investedAporteCents >= 0 ? "positive" : "negative"} className="inline font-bold" /></strong>.
-          </span>
-        }
-      />
+          <FinancialCloseSummary
+            periodLabel={periodLabel}
+            dre={dre}
+            effectiveGrossIncomeBruto={effectiveGrossIncomeBruto}
+            effectiveTotalExpensesBruto={effectiveTotalExpensesBruto}
+            effectiveGrossSavingsBruto={effectiveGrossSavingsBruto}
+            effectiveGrossSavingsRatePct={effectiveGrossSavingsRatePct}
+            hasBrutoRef={hasBrutoRef}
+          />
 
-      {/* 3. Cascata Visual de DRE */}
-      {effectiveGrossIncomeBruto > 0 && (
-        <ReportWaterfallBar
-          title="Fluxo Contábil &amp; Destinação da Renda (Cascata DRE)"
-          grossIncomeCents={effectiveGrossIncomeBruto}
-          steps={waterfallSteps}
-        />
-      )}
-
-      {/* 4. Seção: Demonstração Contábil (DRE Pessoal) */}
-      <section aria-label="Demonstração do Resultado do Exercício" className="break-inside-avoid flex flex-col gap-2">
-        <div className="flex items-center gap-1.5 border-b border-border/70 pb-1">
-          <Landmark className="size-3.5 text-primary-strong" aria-hidden="true" />
-          <h2 className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-            DRE Pessoal — Demonstração do Período
-          </h2>
-        </div>
-
-        <div className="rounded-xl border border-border/80 bg-surface overflow-hidden shadow-2xs">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-                <th className="py-2 px-3">Linha / Estrutura Contábil</th>
-                <th className="py-2 px-3 text-right">Valor Bruto (R$)</th>
-                <th className="py-2 px-3 text-right">% Receita</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              <tr className="bg-positive/5">
-                <td className="py-2 px-3 font-semibold text-positive-strong">
-                  (+) Receita Operacional Bruta ({incomeCount} {incomeCount === 1 ? "lançamento" : "lançamentos"})
-                </td>
-                <td className="py-2 px-3 text-right num font-mono font-bold">
-                  <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" />
-                  {hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto && (
-                    <span className="block text-[10px] text-muted-foreground font-normal">
-                      Ponderada: <MoneyText cents={dre.grossIncomeCents} tone="default" className="inline text-[10px]" />
-                    </span>
-                  )}
-                </td>
-                <td className="py-2 px-3 text-right num font-mono font-semibold">100,0%</td>
-              </tr>
-              <tr>
-                <td className="py-2 px-3 pl-6 text-foreground">
-                  (-) Despesas Operacionais Realizadas ({expenseCount} {expenseCount === 1 ? "gasto" : "gastos"})
-                </td>
-                <td className="py-2 px-3 text-right num font-mono font-semibold">
-                  <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" />
-                  {hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto && (
-                    <span className="block text-[10px] text-muted-foreground font-normal">
-                      Ponderada: <MoneyText cents={dre.totalExpensesCents} tone="default" className="inline text-[10px]" />
-                    </span>
-                  )}
-                </td>
-                <td className="py-2 px-3 text-right num font-mono text-muted-foreground">
-                  {effectiveGrossIncomeBruto > 0
-                    ? `${formatPercent((effectiveTotalExpensesBruto / effectiveGrossIncomeBruto) * 100)}%`
-                    : "—"}
-                </td>
-              </tr>
-              <tr className="bg-muted/20 font-semibold">
-                <td className="py-2 px-3 text-foreground">(=) Resultado Operacional do Período</td>
-                <td className="py-2 px-3 text-right num font-mono font-bold">
-                  <MoneyText
-                    cents={effectiveGrossSavingsBruto}
-                    tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
-                  />
-                  {hasBrutoRef && dre.operationalSavingsCents !== effectiveGrossSavingsBruto && (
-                    <span className="block text-[10px] text-muted-foreground font-normal">
-                      Ponderado: <MoneyText cents={dre.operationalSavingsCents} tone="default" className="inline text-[10px]" />
-                    </span>
-                  )}
-                </td>
-                <td className="py-2 px-3 text-right num font-mono">
-                  {formatPercent(effectiveGrossSavingsRatePct)}%
-                </td>
-              </tr>
-              <tr>
-                <td className="py-2 px-3 pl-6 text-muted-foreground">
-                  (-) Aportes &amp; Investimentos Direcionados
-                </td>
-                <td className="py-2 px-3 text-right num font-mono">
-                  <MoneyText cents={dre.investedAporteCents} tone="default" />
-                </td>
-                <td className="py-2 px-3 text-right num font-mono text-muted-foreground">
-                  {effectiveGrossIncomeBruto > 0
-                    ? `${formatPercent((dre.investedAporteCents / effectiveGrossIncomeBruto) * 100)}%`
-                    : "—"}
-                </td>
-              </tr>
-              <tr className="bg-primary/5 font-bold border-t border-border">
-                <td className="py-2 px-3 text-primary-strong">(=) Fluxo de Caixa Líquido Final</td>
-                <td className="py-2 px-3 text-right num font-mono text-sm font-bold">
-                  <MoneyText
-                    cents={effectiveGrossSavingsBruto - dre.investedAporteCents}
-                    tone={effectiveGrossSavingsBruto - dre.investedAporteCents >= 0 ? "positive" : "negative"}
-                  />
-                </td>
-                <td className="py-2 px-3 text-right num font-mono text-primary-strong">
-                  {effectiveGrossIncomeBruto > 0
-                    ? `${formatPercent(((effectiveGrossSavingsBruto - dre.investedAporteCents) / effectiveGrossIncomeBruto) * 100)}%`
-                    : "—"}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        {hasBrutoRef && (
-          <p className="text-[10px] text-muted-foreground italic">
-            * O valor principal exibido é o valor bruto nominal (100%). Os valores ponderados são informados para fins de consulta analítica.
-          </p>
-        )}
-      </section>
-
-      {/* 5. Seção: Distribuição por Categorias & Formas de Pagamento */}
-      <section aria-label="Composição de Gastos" className="grid grid-cols-1 sm:grid-cols-2 gap-3 break-inside-avoid print:grid-cols-2">
-        {/* Tabela de Categorias */}
-        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 print:bg-white print:border-border shadow-2xs">
-          <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
-            <PieChart className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <span>DESPESAS POR CATEGORIA</span>
-          </div>
-          {categories.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-2 italic">Nenhum gasto registrado no período.</p>
-          ) : (
-            <div className="overflow-x-auto print:overflow-visible">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
-                    <th className="py-1 px-1.5 font-bold">Categoria</th>
-                    {hasBudgets && <th className="py-1 px-1.5 text-right font-bold">Orçado</th>}
-                    <th className="py-1 px-1.5 text-right font-bold">Realizado</th>
-                    <th className="py-1 px-1.5 text-right font-bold">{hasBudgets ? "Desvio" : "%"}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {categories.map((cat) => {
-                    const hasLimit = cat.budgetLimitCents != null && cat.budgetLimitCents > 0;
-                    return (
-                      <tr key={cat.name} className="even:bg-muted/20 print:even:bg-slate-50/50">
-                        <td className="py-1.5 px-1.5 font-medium text-foreground">{sanitizeReportText(cat.name)}</td>
-                        {hasBudgets && (
-                          <td className="py-1.5 px-1.5 text-right num font-mono text-muted-foreground">
-                            {hasLimit ? <MoneyText cents={cat.budgetLimitCents!} /> : "—"}
-                          </td>
-                        )}
-                        <td className="py-1.5 px-1.5 text-right num font-mono">
-                          <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-bold" />
-                          {hasBrutoRef && cat.brutoCents !== undefined && cat.ponderadoCents !== undefined && cat.brutoCents !== cat.ponderadoCents && (
-                            <span className="block text-[10px] text-muted-foreground font-normal">
-                              Ponderado: <MoneyText cents={cat.ponderadoCents} tone="default" className="inline text-[10px]" />
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-1.5 px-1.5 text-right num font-mono">
-                          {hasBudgets ? (
-                            hasLimit && cat.variancePct != null ? (
-                              <span
-                                className={cn(
-                                  "font-semibold tabular-nums text-[11px]",
-                                  cat.variancePct > 0 ? "text-critical-strong" : "text-positive-strong",
-                                )}
-                              >
-                                {cat.variancePct > 0 ? `+${cat.variancePct}%` : `${cat.variancePct}%`}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">{formatPercent(cat.pct)}%</span>
-                            )
-                          ) : (
-                            <span className="text-muted-foreground">{formatPercent(cat.pct)}%</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+          {effectiveGrossIncomeBruto > 0 && (
+            <ReportWaterfallBar
+              title="Fluxo Contábil & Destinação da Renda (Cascata DRE)"
+              grossIncomeCents={effectiveGrossIncomeBruto}
+              steps={waterfallSteps}
+            />
           )}
-        </div>
 
-        {/* Tabela de Formas de Pagamento */}
-        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 print:bg-white print:border-border shadow-2xs">
-          <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
-            <Wallet className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <span>FORMAS DE PAGAMENTO</span>
-          </div>
-          {paymentMethods.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-2 italic">Nenhuma transação registrada no período.</p>
-          ) : (
-            <div className="overflow-x-auto print:overflow-visible">
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
-                    <th className="py-1 px-1.5 font-bold">Meio de Pagamento</th>
-                    <th className="py-1 px-1.5 text-right font-bold">Total Bruto</th>
-                    <th className="py-1 px-1.5 text-right font-bold">%</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {paymentMethods.map((pm) => (
-                    <tr key={pm.method} className="even:bg-muted/20 print:even:bg-slate-50/50">
-                      <td className="py-1.5 px-1.5 font-medium text-foreground">{sanitizeReportText(pm.label)}</td>
-                      <td className="py-1.5 px-1.5 text-right num font-mono">
-                        <MoneyText cents={pm.brutoCents ?? pm.totalCents} tone="default" className="font-bold" />
-                        {hasBrutoRef && pm.brutoCents !== undefined && pm.ponderadoCents !== undefined && pm.brutoCents !== pm.ponderadoCents && (
-                          <span className="block text-[10px] text-muted-foreground font-normal">
-                            Ponderado: <MoneyText cents={pm.ponderadoCents} tone="default" className="inline text-[10px]" />
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-1.5 px-1.5 text-right num font-mono text-muted-foreground">
-                        {formatPercent(pm.pct)}%
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </section>
+          <FinancialDreTable
+            dre={dre}
+            incomeCount={incomeCount}
+            expenseCount={expenseCount}
+            effectiveGrossIncomeBruto={effectiveGrossIncomeBruto}
+            effectiveTotalExpensesBruto={effectiveTotalExpensesBruto}
+            effectiveGrossSavingsBruto={effectiveGrossSavingsBruto}
+            effectiveGrossSavingsRatePct={effectiveGrossSavingsRatePct}
+            hasBrutoRef={hasBrutoRef}
+          />
 
-      {/* 6. Seção: Faturas de Cartão Pagas no Período (se houver) */}
-      {paidInvoices.length > 0 && (
-        <section aria-label="Faturas Pagas" className="break-inside-avoid flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-2xs">
-          <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
-            <ReceiptText className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <span>FATURAS DE CARTÃO QUITADAS NO PERÍODO</span>
-          </div>
-          <div className="overflow-x-auto print:overflow-visible">
-            <table className="w-full text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
-                  <th className="py-1 px-2 font-bold">Cartão</th>
-                  <th className="py-1 px-2 font-bold">Competência</th>
-                  <th className="py-1 px-2 font-bold">Data Pgto</th>
-                  <th className="py-1 px-2 text-right font-bold">Valor Pago</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {paidInvoices.map((inv, idx) => (
-                  <tr key={`${inv.cardName}-${inv.competenceMonth}-${idx}`} className="even:bg-muted/20 print:even:bg-slate-50/50">
-                    <td className="py-1.5 px-2 font-medium text-foreground">{sanitizeReportText(inv.cardName)}</td>
-                    <td className="py-1.5 px-2 text-muted-foreground">{inv.competenceMonth}</td>
-                    <td className="py-1.5 px-2 text-muted-foreground">{formatDateBR(inv.date)}</td>
-                    <td className="py-1.5 px-2 text-right num font-mono font-bold">
-                      <MoneyText cents={inv.amountCents} tone="negative" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
+          <FinancialCompositionTables
+            categories={categories}
+            paymentMethods={paymentMethods}
+            hasBrutoRef={hasBrutoRef}
+            hasBudgets={hasBudgets}
+          />
 
-      {/* 7. Seção: Consolidação Residencial (quando disponível) */}
-      {householdSummary && (
-        <section aria-label="Consolidação Residencial" className="break-inside-avoid flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-2xs">
-          <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
-            <Users className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <span>CONSOLIDAÇÃO RESIDENCIAL ({sanitizeReportText(householdSummary.familyTitle).toUpperCase()})</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-            <div className="p-2.5 rounded-lg bg-muted/20 border border-border/60">
-              <span className="text-[10px] text-muted-foreground block uppercase">Teto Familiar</span>
-              <MoneyText cents={householdSummary.monthlyCeilingCents} className="font-bold text-sm" />
-            </div>
-            <div className="p-2.5 rounded-lg bg-muted/20 border border-border/60">
-              <span className="text-[10px] text-muted-foreground block uppercase">Gasto Total da Casa</span>
-              <MoneyText cents={householdSummary.totalSpentCents} tone={householdSummary.spentPercentage > 100 ? "negative" : "default"} className="font-bold text-sm" />
-            </div>
-            <div className="p-2.5 rounded-lg bg-muted/20 border border-border/60">
-              <span className="text-[10px] text-muted-foreground block uppercase">Consumo do Teto</span>
-              <span className="font-bold text-sm block font-mono">{householdSummary.spentPercentage}%</span>
-            </div>
-            <div className="p-2.5 rounded-lg bg-muted/20 border border-border/60">
-              <span className="text-[10px] text-muted-foreground block uppercase">Sua Participação</span>
-              <MoneyText cents={householdSummary.userContributionCents} className="font-bold text-sm" />
-              <span className="text-[10px] text-muted-foreground ml-1">({formatPercent(householdSummary.userPercentageOfTotal)}%)</span>
-            </div>
-          </div>
-        </section>
-      )}
+          <FinancialPaidInvoicesSection paidInvoices={paidInvoices} />
+
+          {householdSummary && <FinancialHouseholdSection householdSummary={householdSummary} />}
         </>
       )}
 
-      {/* 8. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer="Documento estritamente informativo emitido automaticamente com base nos registros financeiros e contábeis inseridos pelo titular da conta."
@@ -513,4 +174,3 @@ export function FinancialCloseReportModal({
     </ReportDocumentLayout>
   );
 }
-

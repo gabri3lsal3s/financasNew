@@ -1,13 +1,14 @@
 import { useState, type FormEvent } from "react";
-import { Check } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import {
+  Alert,
+  Button,
+  FormField,
+  Input,
   Modal,
   ModalFooter,
-  Button,
-  Input,
-  Alert,
 } from "@/components/ui";
-import { setPinLock, removePinLock } from "@/services/native";
+import { removePinLock, setPinLock } from "@/services/native";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 
@@ -18,6 +19,8 @@ export interface PinSetupDialogProps {
   hasExistingPin?: boolean;
   onSuccess?: () => void;
 }
+
+const PIN_SETUP_FORM_ID = "pin-setup-form";
 
 export function PinSetupDialog({
   open,
@@ -83,7 +86,6 @@ export function PinSetupDialog({
 
   const handleRemove = () => {
     removePinLock(userId);
-    triggerSensory("action");
     pushToast({
       title: "PIN removido",
       description: "O bloqueio por PIN foi removido deste dispositivo.",
@@ -103,66 +105,20 @@ export function PinSetupDialog({
       size="sm"
       title={hasExistingPin ? "Alterar PIN de Acesso" : "Definir PIN de Acesso"}
       description="Configure um código numérico de 4 a 6 dígitos para proteger seus dados financeiros neste navegador."
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <Alert variant="error" className="py-2.5 text-xs">
-            {error}
-          </Alert>
-        )}
-
-        <div className="space-y-1 text-left">
-          <label htmlFor="new-pin-input" className="text-xs font-semibold text-foreground">
-            {hasExistingPin ? "Novo PIN (4 a 6 dígitos)" : "PIN de Acesso (4 a 6 dígitos)"}
-          </label>
-          <Input
-            id="new-pin-input"
-            type="password"
-            inputMode="numeric"
-            maxLength={6}
-            placeholder="••••••"
-            value={pin}
-            onChange={(e) => {
-              setPin(e.target.value.replace(/\D/g, ""));
-              if (error) setError(null);
-            }}
-            className="text-center font-mono tracking-[0.5em] text-lg h-11"
-            disabled={isSubmitting}
-          />
-        </div>
-
-        <div className="space-y-1 text-left">
-          <label htmlFor="confirm-pin-input" className="text-xs font-semibold text-foreground">
-            Confirme o PIN
-          </label>
-          <Input
-            id="confirm-pin-input"
-            type="password"
-            inputMode="numeric"
-            maxLength={6}
-            placeholder="••••••"
-            value={confirmPin}
-            onChange={(e) => {
-              setConfirmPin(e.target.value.replace(/\D/g, ""));
-              if (error) setError(null);
-            }}
-            className="text-center font-mono tracking-[0.5em] text-lg h-11"
-            disabled={isSubmitting}
-          />
-        </div>
-
+      footer={
         <ModalFooter
           borderless
           destructiveAction={
             hasExistingPin ? (
               <Button
                 type="button"
-                variant="ghost"
+                variant="destructive"
                 onClick={handleRemove}
                 disabled={isSubmitting}
-                className="text-critical-strong hover:bg-critical/10"
+                className="gap-1.5"
               >
-                Remover PIN
+                <Trash2 className="size-4" aria-hidden="true" />
+                <span>Remover PIN</span>
               </Button>
             ) : undefined
           }
@@ -177,6 +133,8 @@ export function PinSetupDialog({
           </Button>
           <Button
             type="submit"
+            form={PIN_SETUP_FORM_ID}
+            sensoryIntent={false}
             disabled={pin.length < 4 || confirmPin.length < 4 || isSubmitting}
             className="gap-2"
           >
@@ -184,6 +142,54 @@ export function PinSetupDialog({
             <span>{isSubmitting ? "Salvando..." : "Salvar PIN"}</span>
           </Button>
         </ModalFooter>
+      }
+    >
+      <form id={PIN_SETUP_FORM_ID} onSubmit={handleSubmit} className="space-y-4 py-1">
+        {error ? (
+          <Alert variant="error" className="py-2.5 text-xs">
+            {error}
+          </Alert>
+        ) : null}
+
+        <FormField
+          label={hasExistingPin ? "Novo PIN (4 a 6 dígitos)" : "PIN de Acesso (4 a 6 dígitos)"}
+          htmlFor="new-pin-input"
+          required
+        >
+          <Input
+            id="new-pin-input"
+            type="password"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={6}
+            placeholder="000000"
+            value={pin}
+            onChange={(e) => {
+              setPin(e.target.value.replace(/\D/g, ""));
+              if (error) setError(null);
+            }}
+            className="text-center font-mono tracking-[0.5em] text-lg h-11"
+            disabled={isSubmitting}
+          />
+        </FormField>
+
+        <FormField label="Confirme o PIN" htmlFor="confirm-pin-input" required>
+          <Input
+            id="confirm-pin-input"
+            type="password"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={6}
+            placeholder="000000"
+            value={confirmPin}
+            onChange={(e) => {
+              setConfirmPin(e.target.value.replace(/\D/g, ""));
+              if (error) setError(null);
+            }}
+            className="text-center font-mono tracking-[0.5em] text-lg h-11"
+            disabled={isSubmitting}
+          />
+        </FormField>
       </form>
     </Modal>
   );

@@ -1,16 +1,16 @@
 {
-  "version": "3.9.0",
-  "versionCode": 69,
-  "releaseDate": "2026-11-17T19:17:54Z",
-  "minSupportedVersion": "3.9.0",
+  "version": "3.10.0",
+  "versionCode": 70,
+  "releaseDate": "2026-11-18T04:16:59Z",
+  "minSupportedVersion": "3.10.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "e961c1e24d3aaf3cb15c8ada12f66a29f31f7b2aa56d9376cb05611cef93ae14",
-  "fileSizeBytes": 12132151,
+  "sha256": "f68204aa3ffa98da55d287158662ee95b10b334c15076c9b185f071650a2acca",
+  "fileSizeBytes": 12193651,
   "changelog": [
-    "Axir v3.9.0: Sistema Holístico de Notas (0–10), Quarentenas e Governança de Carteira (Fase 41)",
-    "Portfolio Quality Score (PQS) ponderado por capital e distribuição por níveis de convicção",
-    "Meta Única Oficial por ativo, classe ou setor com cálculo de desvio e recomendação de aporte",
-    "Radar proativo no carrossel de investimentos para revisões vencidas, quarentenas e oportunidades",
-    "Modal de avaliação de tese e critérios por arquétipo com total responsividade mobile/tablet/desktop"
+    "Axir v3.10.0: Padronização Visual Integral, Conforto Ocular e Bíblia Visual Oficial",
+    "Novos tokens semânticos e paletas oficiais para Dark Mode padrão, OLED e Light Mode",
+    "Padronização canônica de 100% dos modais e drawers com rodapé fixo e ergonomia tátil",
+    "Modularização de páginas e componentes com eliminação de ruído e foco na legibilidade",
+    "Blindagem sensorial estrita (100% opt-out) e eliminação de duplos feedbacks hápticos"
   ]
 }

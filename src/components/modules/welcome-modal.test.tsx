@@ -6,6 +6,7 @@ import { WelcomeModal } from "./welcome-modal";
 import { hasSeenWelcomeModal, resetDemoTourStorage } from "@/state/demo-mode";
 
 const mockNavigate = vi.fn();
+const mockUpdateCustomSettingsMutate = vi.fn();
 
 vi.mock("react-router", () => ({
   useNavigate: () => mockNavigate,
@@ -16,7 +17,7 @@ vi.mock("@/state", async (importOriginal) => {
   return {
     ...actual,
     useUpdateCustomSettings: () => ({
-      mutate: vi.fn(),
+      mutate: mockUpdateCustomSettingsMutate,
       mutateAsync: vi.fn().mockResolvedValue({}),
       isPending: false,
     }),
@@ -151,6 +152,10 @@ describe("WelcomeModal — Acolhimento e Escolha de Partida (§3.1)", () => {
     expect(handleStartReal).toHaveBeenCalledTimes(1);
     expect(handleOpenChange).toHaveBeenCalledWith(false);
     expect(hasSeenWelcomeModal()).toBe(true);
+    expect(mockUpdateCustomSettingsMutate).toHaveBeenCalledWith({
+      initialGoal: "family",
+      familyModeEnabled: true,
+    });
     expect(mockNavigate).toHaveBeenCalledWith("/familia");
   });
 

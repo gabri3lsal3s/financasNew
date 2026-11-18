@@ -1,385 +1,44 @@
-import { useNavigate, useSearchParams } from "react-router";
-import { useCallback, useMemo, useState } from "react";
-import { ArrowLeftRight, Calendar, ChevronDown, Download, Plus, Sparkles, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Modal } from "@/components/ui/modal";
-
-import { EmptyState } from "@/components/ui/empty-state";
-import { ErrorState } from "@/components/ui/error-state";
-import { MoneyText } from "@/components/ui/money-text";
-import { Skeleton, SkeletonList } from "@/components/ui/skeleton";
-import { SearchInput, Tabs } from "@/components/ui";
-import { HighlightRow, KpiCard, KpiGrid, MonthPicker, ReadOnlyBanner, SplitPreviewMockupCard, TransactionRow, UpgradeDialog } from "@/components/modules";
+import { Download, Plus } from "lucide-react";
+import { Button, ErrorState } from "@/components/ui";
+import { MonthPicker, ReadOnlyBanner } from "@/components/modules";
 import { PageHeader } from "@/components/layout";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
-import { currentMonth, formatDateBR, isValidMonth, shiftMonth } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
-import { downloadCsv } from "@/services/export-actions";
-import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
-import { useHighlightTarget } from "@/hooks/use-highlight-target";
-import {
-  setStepIndex,
-  startDemo,
-  useCategories,
-  useCreditCards,
-  useExpenses,
-  useFamilyMode,
-  useIncomes,
-  usePermission,
-  useRecurrences,
-} from "@/state";
-import { PAYMENT_METHOD_LABELS, RECEIVE_TYPE_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
-import { sumGrossCents, sumWeightedCents } from "@/domain/money";
-import { buildUnifiedFeedItems, groupFeedByDay, type FeedFilter } from "@/domain/expenses";
-import { serializeUnifiedTransactionsCsv, type ExportUnifiedTransactionRow } from "@/domain/export";
-import { evaluateExpensePriceEvolution, type ExpensePriceEvolution } from "@/domain/insights";
+import { setStepIndex, startDemo } from "@/state";
 import {
   ActiveSplitsCard,
-  ExpenseDetailDialog,
-  IncomeDetailDialog,
-  PriceIncreaseBadge,
+  TransactionSummaryKpis,
 } from "@/features/transactions/components";
-import { SplitExpenseDialog } from "@/components/modules";
-import { todayISO } from "@/domain/debts";
-import type { Category, Expense, Income } from "@/types";
-
-
-function ExpenseRow({
-  expense,
-  category,
-  recurrenceLabel,
-  isFamilyModeEnabled,
-  priceEvolution,
-  onClick,
-}: {
-  expense: Expense;
-  category?: Category | null;
-  /** Rótulo de frequência quando recorrente (Fase 32). */
-  recurrenceLabel?: string;
-  isFamilyModeEnabled?: boolean;
-  priceEvolution?: ExpensePriceEvolution | null;
-  onClick?: () => void;
-}) {
-  const title = expense.description || category?.name || "Despesa";
-  const subtitle =
-    recurrenceLabel ??
-    (expense.installments_total > 1
-      ? `${expense.installment_number}/${expense.installments_total}`
-      : category?.name && expense.description
-        ? category.name
-        : undefined);
-  return (
-    <TransactionRow
-      title={title}
-      subtitle={subtitle}
-      amountCents={Math.round(expense.value * 100)}
-      reportWeight={expense.report_weight}
-      kind="expense"
-      icon={category?.icon}
-      iconColor={category?.color}
-      badges={
-        <div className="hidden sm:flex items-center gap-1.5 shrink-0 flex-wrap">
-          {isFamilyModeEnabled && expense.is_family && (
-            <Badge variant="muted" size="xs" className="shrink-0 font-medium">
-              Familiar
-            </Badge>
-          )}
-          {Boolean(expense.trip_id) && (
-            <Badge variant="default" size="xs" className="shrink-0 font-medium">
-              Viagem
-            </Badge>
-          )}
-          {priceEvolution?.hasPriceIncrease && priceEvolution.deltaPreviousPercent != null && (
-            <PriceIncreaseBadge
-              deltaPercent={priceEvolution.deltaPreviousPercent}
-              annualizedImpactCents={(priceEvolution.deltaPreviousCents ?? 0) * 12}
-              onClick={onClick}
-            />
-          )}
-        </div>
-      }
-      onClick={onClick}
-      variant="flat"
-    />
-  );
-}
-
-
-function IncomeRow({
-  income,
-  category,
-  recurrenceLabel,
-  isFamilyModeEnabled,
-  onClick,
-}: {
-  income: Income;
-  category?: Category | null;
-  /** Rótulo de frequência quando recorrente (Fase 32). */
-  recurrenceLabel?: string;
-  isFamilyModeEnabled?: boolean;
-  onClick?: () => void;
-}) {
-  const title = income.description || category?.name || "Receita";
-  const subtitle =
-    recurrenceLabel ?? (category?.name && income.description ? category.name : undefined);
-  return (
-    <TransactionRow
-      title={title}
-      subtitle={subtitle}
-      amountCents={Math.round(income.value * 100)}
-      reportWeight={income.report_weight}
-      kind="income"
-      icon={category?.icon}
-      iconColor={category?.color}
-      badges={
-        isFamilyModeEnabled && income.is_family ? (
-          <Badge variant="muted" size="xs" className="hidden sm:inline-flex shrink-0 font-medium">
-            Familiar
-          </Badge>
-        ) : undefined
-      }
-      onClick={onClick}
-      variant="flat"
-    />
-  );
-}
-
-const TRANSACTIONS_PAGE_SIZE = 50;
+import {
+  TransactionFeedList,
+  TransactionFilterBar,
+  TransactionListModals,
+  useTransactionList,
+} from "@/features/transactions/components/list";
 
 export function TransactionListPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
-  const [selectedIncome, setSelectedIncome] = useState<Income | null>(null);
-  const { highlightId } = useHighlightTarget("q");
-
-  // Mês derivado: deep-link ?month= (busca §3.9) prevalece; sem param,
-  // usa a escolha manual (MonthPicker) ou o mês corrente. Sem setState em
-  // effect/render — o param é a fonte e o pick manual limpa o param.
-  const paramMonth = searchParams.get("month");
-  const validParamMonth = paramMonth && isValidMonth(paramMonth) ? paramMonth : null;
-  const [pickedMonth, setPickedMonth] = useState<string | null>(null);
-  const month = validParamMonth ?? pickedMonth ?? currentMonth();
-
-  const handleMonthChange = (next: string) => {
-    setPickedMonth(next);
-    setSearchParams(
-      (prev) => {
-        const updated = new URLSearchParams(prev);
-        updated.delete("month");
-        return updated;
-      },
-      { replace: true },
-    );
-  };
-
-  const { isFamilyModeEnabled } = useFamilyMode();
-  const expensesQuery = useExpenses(month);
-  const prevMonth1Query = useExpenses(shiftMonth(month, -1));
-  const prevMonth2Query = useExpenses(shiftMonth(month, -2));
-  const prevMonth3Query = useExpenses(shiftMonth(month, -3));
-  const incomesQuery = useIncomes(month);
-  const categoriesQuery = useCategories();
-  const recurrencesQuery = useRecurrences();
-
-  const loading =
-    expensesQuery.isLoading || incomesQuery.isLoading || categoriesQuery.isLoading || recurrencesQuery.isLoading;
-  const error = expensesQuery.error ?? incomesQuery.error ?? categoriesQuery.error ?? recurrencesQuery.error;
-
-  const categoryById = useMemo(
-    () => new Map((categoriesQuery.data ?? []).map((c) => [c.id, c])),
-    [categoriesQuery.data],
-  );
-
-  const expenses = useMemo(() => expensesQuery.data ?? [], [expensesQuery.data]);
-  const allHistoryExpenses = useMemo(() => [
-    ...(expensesQuery.data ?? []),
-    ...(prevMonth1Query.data ?? []),
-    ...(prevMonth2Query.data ?? []),
-    ...(prevMonth3Query.data ?? []),
-  ], [expensesQuery.data, prevMonth1Query.data, prevMonth2Query.data, prevMonth3Query.data]);
-  const incomes = useMemo(() => incomesQuery.data ?? [], [incomesQuery.data]);
-
-  const incomesTotalCents = useMemo(() => sumGrossCents(incomes), [incomes]);
-  const expensesTotalCents = useMemo(() => sumGrossCents(expenses), [expenses]);
-  const incomesWeightedCents = useMemo(() => sumWeightedCents(incomes), [incomes]);
-  const expensesWeightedCents = useMemo(() => sumWeightedCents(expenses), [expenses]);
-  const balanceCents = incomesTotalCents - expensesTotalCents;
-  const balanceWeightedCents = incomesWeightedCents - expensesWeightedCents;
-
-  const paramFilter = searchParams.get("tipo") ?? searchParams.get("filter");
-  const initialFilter: FeedFilter = useMemo(() => {
-    if (paramFilter === "incomes" || paramFilter === "receitas") return "incomes";
-    if (paramFilter === "expenses" || paramFilter === "despesas") return "expenses";
-    if (paramFilter === "installments" || paramFilter === "parceladas") return "installments";
-    if (paramFilter === "recurring" || paramFilter === "recorrentes") return "recurring";
-    return "all";
-  }, [paramFilter]);
-
-  const [filter, setFilter] = useState<FeedFilter>(initialFilter);
-  const [prevInitialFilter, setPrevInitialFilter] = useState<FeedFilter>(initialFilter);
-  if (prevInitialFilter !== initialFilter) {
-    setPrevInitialFilter(initialFilter);
-    setFilter(initialFilter);
-  }
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [visibleCount, setVisibleCount] = useState(TRANSACTIONS_PAGE_SIZE);
-  const [prevFilterKey, setPrevFilterKey] = useState(() => `${month}-${filter}-${searchQuery}`);
-
-  const priceEvolutionByExpenseId = useMemo(() => {
-    const map = new Map<string, ExpensePriceEvolution>();
-    for (const exp of expenses) {
-      const evo = evaluateExpensePriceEvolution(exp, allHistoryExpenses);
-      if (evo?.hasPriceIncrease) {
-        map.set(exp.id, evo);
-      }
-    }
-    return map;
-  }, [expenses, allHistoryExpenses]);
-
-  // Redefine a paginação durante a renderização se os filtros mudarem (React: adjusting state during render)
-  const currentFilterKey = `${month}-${filter}-${searchQuery}`;
-  if (currentFilterKey !== prevFilterKey) {
-    setPrevFilterKey(currentFilterKey);
-    setVisibleCount(TRANSACTIONS_PAGE_SIZE);
-  }
-
-  const feedItems = useMemo(
-    () => buildUnifiedFeedItems(expenses, incomes, filter),
-    [expenses, incomes, filter],
-  );
-
-  const filteredFeedItems = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return feedItems;
-    return feedItems.filter((item) => {
-      const desc = (item.description ?? "").toLowerCase();
-      const catName = (categoryById.get(item.categoryId)?.name ?? "").toLowerCase();
-      return desc.includes(q) || catName.includes(q);
-    });
-  }, [feedItems, searchQuery, categoryById]);
-
-  // Se houver alvo de highlight via deep-link além da primeira página, expande a visualização efetiva
-  const highlightIndex = useMemo(() => {
-    if (!highlightId) return -1;
-    return filteredFeedItems.findIndex((it) => it.id === highlightId);
-  }, [highlightId, filteredFeedItems]);
-
-  const effectiveVisibleCount = useMemo(() => {
-    if (highlightIndex >= 0 && highlightIndex >= visibleCount) {
-      return Math.ceil((highlightIndex + 1) / TRANSACTIONS_PAGE_SIZE) * TRANSACTIONS_PAGE_SIZE;
-    }
-    return visibleCount;
-  }, [highlightIndex, visibleCount]);
-
-  const visibleFeedItems = useMemo(
-    () => filteredFeedItems.slice(0, effectiveVisibleCount),
-    [filteredFeedItems, effectiveVisibleCount],
-  );
-
-  const feedGroups = useMemo(() => groupFeedByDay(visibleFeedItems), [visibleFeedItems]);
-  const hasMore = filteredFeedItems.length > effectiveVisibleCount;
-  const isSearching = searchQuery.trim().length > 0;
-
-  // Frequência por template (Fase 32) — subtítulo "Mensal", "Semanal", etc.
-  const frequencyById = useMemo(
-    () => new Map((recurrencesQuery.data ?? []).map((recurrence) => [recurrence.id, recurrence.frequency])),
-    [recurrencesQuery.data],
-  );
-  const recurrenceLabel = useCallback(
-    (recurrenceId: string | null | undefined): string | undefined => {
-      const frequency = recurrenceId ? frequencyById.get(recurrenceId) : undefined;
-      return frequency ? RECURRENCE_FREQUENCY_LABELS[frequency] : undefined;
-    },
-    [frequencyById],
-  );
-
-  const { setOpen: setWizardOpen } = useCreateDeepLink("transacao");
-  const permission = usePermission("transactions");
-  const navigate = useNavigate();
-  const [upgradeOpen, setUpgradeOpen] = useState(false);
-  const [upgradeContext, setUpgradeContext] = useState<string | undefined>();
-
-  const handleNewTransaction = () => {
-    if (permission.isReadOnlyMode) {
-      setUpgradeContext("Criar Lançamentos e Despesas");
-      setUpgradeOpen(true);
-      return;
-    }
-    setWizardOpen(true);
-  };
-
-  const cardsQuery = useCreditCards();
-  const cardById = useMemo(
-    () => new Map((cardsQuery.data ?? []).map((c) => [c.id, c.name])),
-    [cardsQuery.data],
-  );
-
-  const handleExportCsv = () => {
-    if (filteredFeedItems.length === 0) return;
-    const rows: ExportUnifiedTransactionRow[] = filteredFeedItems.map((item) => {
-      const isExpense = item.kind === "expense";
-      const exp = item.rawExpense ?? null;
-      const inc = item.rawIncome ?? null;
-
-      const catId = exp?.category_id ?? inc?.category_id ?? item.categoryId;
-      const catName = (catId ? categoryById.get(catId)?.name : null) ?? "Sem categoria";
-
-      const cardName = exp?.card_id ? (cardById.get(exp.card_id) ?? null) : null;
-      const installments =
-        exp && exp.installments_total > 1
-          ? `${exp.installment_number}/${exp.installments_total}`
-          : "—";
-
-      const detailsOrMethod = isExpense
-        ? exp
-          ? (PAYMENT_METHOD_LABELS[exp.payment_method] ?? exp.payment_method)
-          : ""
-        : inc
-          ? (RECEIVE_TYPE_LABELS[inc.receive_type] ?? inc.receive_type)
-          : "";
-
-      const recLabel = recurrenceLabel(exp?.recurrence_id ?? inc?.recurrence_id ?? item.recurrenceId);
-
-      return {
-        date: item.date,
-        type: item.kind,
-        description: item.description,
-        categoryName: catName,
-        valueCents: item.amountCents,
-        reportValueCents: Math.round(item.amountCents * (item.reportWeight ?? 1)),
-        detailsOrMethod,
-        cardName,
-        installments,
-        recurrenceLabel: recLabel,
-      };
-    });
-
-    const filterSlug = filter === "all" ? "todas" : filter;
-    downloadCsv(`transacoes_${month}_${filterSlug}.csv`, serializeUnifiedTransactionsCsv(rows));
-  };
+  const tx = useTransactionList();
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5 sm:gap-6">
       <PageHeader
         title="Transações"
         description="Extrato consolidado de receitas, despesas e transferências por competência"
         actions={
-          <div className="flex items-center gap-2">
+          <>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={handleExportCsv}
-              disabled={filteredFeedItems.length === 0}
+              onClick={tx.handleExportCsv}
+              disabled={tx.filteredFeedItemsCount === 0}
               aria-label="Exportar CSV"
               title={
-                filteredFeedItems.length === 0
+                tx.filteredFeedItemsCount === 0
                   ? "Nenhum lançamento para exportar"
                   : "Exportar lançamentos filtrados em CSV"
               }
-              className="gap-1.5 cursor-pointer"
+              className="gap-1.5"
             >
               <Download className="size-3.5" aria-hidden="true" />
               <span>Exportar CSV</span>
@@ -387,347 +46,97 @@ export function TransactionListPage() {
             <Button
               type="button"
               size="sm"
-              onClick={handleNewTransaction}
-              className="gap-1.5 cursor-pointer shadow-xs"
+              onClick={tx.handleNewTransaction}
+              className="gap-1.5 shadow-xs"
             >
               <Plus className="size-3.5" aria-hidden="true" />
               <span>Nova transação</span>
             </Button>
-          </div>
+          </>
         }
       />
 
-      {permission.isReadOnlyMode && (
+      {tx.permission.isReadOnlyMode && (
         <ReadOnlyBanner
           onActivatePro={() => {
-            setUpgradeContext(undefined);
-            setUpgradeOpen(true);
+            tx.setUpgradeContext(undefined);
+            tx.setUpgradeOpen(true);
           }}
         />
       )}
 
-      <MonthPicker value={month} onValueChange={handleMonthChange} />
+      <MonthPicker value={tx.month} onValueChange={tx.handleMonthChange} />
 
-      <KpiGrid columns={3}>
-        <KpiCard
-          label="Receitas"
-          cents={incomesTotalCents}
-          tone="positive"
-          hint={
-            incomesTotalCents !== incomesWeightedCents ? (
-              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
-                <span className="hidden sm:inline">Ponderada:</span>
-                <span className="sm:hidden">Pond:</span>
-                <MoneyText cents={incomesWeightedCents} tone="default" className="text-[11px] tabular-nums" />
-              </span>
-            ) : undefined
-          }
-        />
-        <KpiCard
-          label="Despesas"
-          cents={expensesTotalCents}
-          tone="negative"
-          hint={
-            expensesTotalCents !== expensesWeightedCents ? (
-              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
-                <span className="hidden sm:inline">Ponderada:</span>
-                <span className="sm:hidden">Pond:</span>
-                <MoneyText cents={expensesWeightedCents} tone="default" className="text-[11px] tabular-nums" />
-              </span>
-            ) : undefined
-          }
-        />
-        <KpiCard
-          label="Saldo do mês"
-          cents={balanceCents}
-          tone={balanceCents >= 0 ? "positive" : "negative"}
-          hint={
-            balanceCents !== balanceWeightedCents ? (
-              <span className="inline-flex items-center gap-1 font-medium text-foreground text-[11px] whitespace-nowrap tabular-nums">
-                <span className="hidden sm:inline">Ponderado:</span>
-                <span className="sm:hidden">Pond:</span>
-                <MoneyText cents={balanceWeightedCents} tone="default" className="text-[11px] tabular-nums" />
-              </span>
-            ) : undefined
-          }
-        />
-      </KpiGrid>
+      <TransactionSummaryKpis
+        incomesTotalCents={tx.incomesTotalCents}
+        incomesWeightedCents={tx.incomesWeightedCents}
+        expensesTotalCents={tx.expensesTotalCents}
+        expensesWeightedCents={tx.expensesWeightedCents}
+        balanceCents={tx.balanceCents}
+        balanceWeightedCents={tx.balanceWeightedCents}
+      />
 
-      <ActiveSplitsCard month={month} />
+      <ActiveSplitsCard month={tx.month} />
 
-      <div className="flex flex-col gap-3">
-        <Tabs
-          value={filter}
-          onValueChange={(val) => setFilter(val as FeedFilter)}
-          fullWidth={false}
-          ariaLabel="Filtro de lançamentos"
-          items={[
-            { value: "all", label: "Tudo" },
-            { value: "incomes", label: "Receitas" },
-            { value: "expenses", label: "Despesas" },
-            { value: "installments", label: "Parceladas" },
-            { value: "recurring", label: "Recorrentes" },
-          ]}
-        />
+      <TransactionFilterBar
+        filter={tx.filter}
+        onFilterChange={tx.setFilter}
+        searchQuery={tx.searchQuery}
+        onSearchChange={tx.setSearchQuery}
+      />
 
-        <SearchInput
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onClear={() => setSearchQuery("")}
-          placeholder="Buscar por descrição ou categoria…"
-          aria-label="Buscar lançamentos"
-          className="h-9.5 text-xs sm:text-sm bg-surface"
-        />
-      </div>
-
-      {error ? (
+      {tx.error ? (
         <ErrorState
-          message={getErrorMessage(error)}
-          onRetry={() => void Promise.all([expensesQuery.refetch(), incomesQuery.refetch(), categoriesQuery.refetch(), recurrencesQuery.refetch()])}
+          message={getErrorMessage(tx.error)}
+          onRetry={tx.handleRetry}
         />
-      ) : loading ? (
-        <div className="flex flex-col gap-3.5 sm:gap-4" data-tour="transactions-content">
-          <div data-tour="transactions-feed-card" className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden">
-            <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 bg-surface-hover/25 border-b border-border/50">
-              <Skeleton className="h-4 w-28 rounded" />
-              <Skeleton className="h-3 w-16 rounded" />
-            </div>
-            <div className="p-3 sm:p-4">
-              <SkeletonList rows={4} />
-            </div>
-          </div>
-        </div>
-      ) : feedGroups.length === 0 ? (
-        <div data-tour="transactions-feed-card" className="w-full">
-          <EmptyState
-            icon={<ArrowLeftRight className="size-6" aria-hidden="true" />}
-            title={isSearching ? "Nenhum resultado encontrado" : "Nenhum lançamento encontrado"}
-            description={
-              isSearching
-                ? `Nenhum lançamento corresponde ao termo "${searchQuery.trim()}". Tente buscar por outro termo ou limpe a busca.`
-                : filter === "incomes"
-                  ? "Nenhuma receita registrada neste mês."
-                  : filter === "expenses"
-                    ? "Nenhuma despesa registrada neste mês."
-                    : filter === "recurring"
-                      ? "Nenhum lançamento recorrente neste mês."
-                      : filter === "installments"
-                        ? "Nenhum lançamento parcelado neste mês."
-                        : "Registre sua primeira transação para acompanhar suas finanças neste mês."
-            }
-            action={
-              isSearching ? (
-                <Button size="sm" variant="outline" onClick={() => setSearchQuery("")} className="mt-2 cursor-pointer gap-1.5">
-                  <X className="size-3.5" aria-hidden="true" />
-                  Limpar busca
-                </Button>
-              ) : (
-                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-                  <Button size="sm" onClick={handleNewTransaction} className="gap-1.5 cursor-pointer">
-                    <Plus className="size-4" aria-hidden="true" />
-                    Novo lançamento
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      startDemo("finances");
-                      setStepIndex(2);
-                    }}
-                    className="gap-1.5 cursor-pointer text-muted-foreground hover:text-foreground"
-                  >
-                    <Sparkles className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    Ver exemplo na Simulação
-                  </Button>
-                </div>
-              )
-            }
-          />
-        </div>
       ) : (
-        <div className="flex flex-col gap-3.5 sm:gap-4" data-tour="transactions-content">
-          {feedGroups.map((group, index) => (
-            <section
-              key={group.date}
-              data-tour={index === 0 ? "transactions-feed-card" : undefined}
-              aria-label={`Lançamentos de ${formatDateBR(group.date)}`}
-              className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden"
-            >
-              <div className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-surface-hover/25 border-b border-border/50">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                  <Calendar className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                  <span>{formatDateBR(group.date)}</span>
-                </div>
-                <span className="text-[11px] font-medium text-muted-foreground">
-                  ({group.items.length} {group.items.length === 1 ? "lançamento" : "lançamentos"})
-                </span>
-              </div>
-              <div className="divide-y divide-border/40">
-                {group.items.map((item) => (
-                  <HighlightRow key={item.id} highlightId={highlightId} id={item.id}>
-                    {item.kind === "income" && item.rawIncome ? (
-                      <IncomeRow
-                        income={item.rawIncome}
-                        category={categoryById.get(item.categoryId)}
-                        recurrenceLabel={recurrenceLabel(item.recurrenceId)}
-                        isFamilyModeEnabled={isFamilyModeEnabled}
-                        onClick={() => setSelectedIncome(item.rawIncome!)}
-                      />
-                    ) : item.rawExpense ? (
-                      <ExpenseRow
-                        expense={item.rawExpense}
-                        category={categoryById.get(item.categoryId)}
-                        recurrenceLabel={recurrenceLabel(item.recurrenceId)}
-                        isFamilyModeEnabled={isFamilyModeEnabled}
-                        priceEvolution={priceEvolutionByExpenseId.get(item.rawExpense.id)}
-                        onClick={() => setSelectedExpense(item.rawExpense!)}
-                      />
-                    ) : null}
-                  </HighlightRow>
-                ))}
-              </div>
-              {/* Barra de rodapé com soma total e soma ponderada */}
-              <div className="flex items-center justify-between gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-surface-hover/20 border-t border-border/50 text-xs">
-                <span className="text-[11px] font-medium text-muted-foreground shrink-0 whitespace-nowrap">
-                  Total do dia
-                </span>
-                <div className="flex items-center gap-2 sm:gap-3 tabular-nums shrink-0">
-                  <MoneyText
-                    cents={group.netCents}
-                    tone={group.netCents > 0 ? "positive" : group.netCents < 0 ? "negative" : "default"}
-                    sign="auto"
-                    className="text-xs font-semibold whitespace-nowrap"
-                  />
-                  {group.netCents !== group.weightedNetCents ? (
-                    <span className="inline-flex items-center gap-1 border-l border-border/60 pl-2 sm:pl-3">
-                      <span className="text-[10px] text-muted-foreground sm:text-[11px]">Pond:</span>
-                      <MoneyText
-                        cents={group.weightedNetCents}
-                        tone={group.weightedNetCents > 0 ? "positive" : group.weightedNetCents < 0 ? "negative" : "default"}
-                        sign="auto"
-                        className="text-xs font-medium text-muted-foreground whitespace-nowrap"
-                      />
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            </section>
-          ))}
-
-          {hasMore ? (
-            <div className="flex flex-col items-center justify-center pt-2 pb-4 gap-2 border-t border-border/40 mt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setVisibleCount((prev) => prev + TRANSACTIONS_PAGE_SIZE)}
-                className="cursor-pointer gap-1.5 text-xs font-medium text-foreground hover:bg-surface-hover"
-                aria-label={`Carregar mais lançamentos. ${filteredFeedItems.length - effectiveVisibleCount} lançamentos restantes`}
-              >
-                <span>Carregar mais lançamentos ({filteredFeedItems.length - effectiveVisibleCount} restantes)</span>
-                <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              </Button>
-              <span className="text-[11px] text-muted-foreground font-mono">
-                Exibindo {effectiveVisibleCount} de {filteredFeedItems.length} lançamentos
-              </span>
-            </div>
-          ) : null}
-        </div>
-      )}
-
-      {(() => {
-        const activeExpense = selectedExpense
-          ? (expensesQuery.data ?? []).find((e) => e.id === selectedExpense.id) ?? selectedExpense
-          : null;
-        return (
-          <ExpenseDetailDialog
-            expense={activeExpense}
-            open={selectedExpense !== null}
-            onOpenChange={(open) => {
-              if (!open) {
-                setSelectedExpense(null);
-              }
-            }}
-          />
-        );
-      })()}
-
-      {(() => {
-        const activeIncome = selectedIncome
-          ? (incomesQuery.data ?? []).find((i) => i.id === selectedIncome.id) ?? selectedIncome
-          : null;
-        return (
-          <IncomeDetailDialog
-            income={activeIncome}
-            open={selectedIncome !== null}
-            onOpenChange={(open) => {
-              if (!open) {
-                setSelectedIncome(null);
-              }
-            }}
-          />
-        );
-      })()}
-
-      {(searchParams.get("racha_preview") === "1" ||
-        (searchParams.get("racha_modal") === "1" && searchParams.get("link") === "1")) && (
-        <Modal
-          open={true}
-          onOpenChange={(next) => {
-            if (!next) {
-              setSearchParams(
-                (prev) => {
-                  const updated = new URLSearchParams(prev);
-                  updated.delete("racha_modal");
-                  updated.delete("racha_preview");
-                  updated.delete("link");
-                  return updated;
-                },
-                { replace: true },
-              );
-            }
+        <TransactionFeedList
+          loading={tx.loading}
+          isSearching={tx.isSearching}
+          searchQuery={tx.searchQuery}
+          filter={tx.filter}
+          feedGroups={tx.feedGroups}
+          categoryById={tx.categoryById}
+          priceEvolutionByExpenseId={tx.priceEvolutionByExpenseId}
+          isFamilyModeEnabled={tx.isFamilyModeEnabled}
+          highlightId={tx.highlightId}
+          hasMore={tx.hasMore}
+          effectiveVisibleCount={tx.effectiveVisibleCount}
+          filteredFeedItemsCount={tx.filteredFeedItemsCount}
+          recurrenceLabel={tx.recurrenceLabel}
+          onSelectExpense={tx.setSelectedExpense}
+          onSelectIncome={tx.setSelectedIncome}
+          onClearSearch={() => tx.setSearchQuery("")}
+          onNewTransaction={tx.handleNewTransaction}
+          onStartDemo={() => {
+            startDemo("finances");
+            setStepIndex(2);
           }}
-          title="Demonstração do Racha com Pix"
-          description="Visualização didática de como amigos visualizam a cobrança compartilhada e efetuam o pagamento."
-          size="md"
-        >
-          <SplitPreviewMockupCard />
-        </Modal>
-      )}
-
-      {searchParams.get("racha_modal") === "1" && searchParams.get("link") !== "1" && (
-        <SplitExpenseDialog
-          open={true}
-          isSimulation={true}
-          onOpenChange={(next) => {
-            if (!next) {
-              setSearchParams(
-                (prev) => {
-                  const updated = new URLSearchParams(prev);
-                  updated.delete("racha_modal");
-                  updated.delete("racha_preview");
-                  updated.delete("link");
-                  return updated;
-                },
-                { replace: true },
-              );
-            }
-          }}
-          initialAmountCents={48000}
-          initialDescription="Churrasco de Confraternização"
-          initialDate={todayISO()}
-          initialPeopleCount={4}
-          categoryName="Lazer & Assinaturas"
-          autoGenerate={false}
+          onLoadMore={tx.loadMore}
         />
       )}
 
-      <UpgradeDialog
-        open={upgradeOpen}
-        onOpenChange={setUpgradeOpen}
-        context={upgradeContext}
-        onProceedToCheckout={(p) => {
-          setUpgradeOpen(false);
-          navigate(buildCheckoutUrl({ plan: p }));
+      <TransactionListModals
+        activeExpense={tx.activeExpense}
+        expenseOpen={tx.selectedExpense !== null}
+        onExpenseOpenChange={(open) => {
+          if (!open) tx.setSelectedExpense(null);
+        }}
+        activeIncome={tx.activeIncome}
+        incomeOpen={tx.selectedIncome !== null}
+        onIncomeOpenChange={(open) => {
+          if (!open) tx.setSelectedIncome(null);
+        }}
+        showRachaPreview={tx.showRachaPreview}
+        showRachaSimulation={tx.showRachaSimulation}
+        onCloseRachaParams={tx.clearRachaParams}
+        upgradeOpen={tx.upgradeOpen}
+        onUpgradeOpenChange={tx.setUpgradeOpen}
+        upgradeContext={tx.upgradeContext}
+        onProceedToCheckout={(plan) => {
+          tx.setUpgradeOpen(false);
+          tx.navigate(buildCheckoutUrl({ plan }));
         }}
       />
     </div>

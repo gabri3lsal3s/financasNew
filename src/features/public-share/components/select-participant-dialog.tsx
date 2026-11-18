@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { UserCheck } from "lucide-react";
-import { Modal, ModalFooter } from "@/components/ui/modal";
-import { Button } from "@/components/ui/button";
-import { MoneyText } from "@/components/ui/money-text";
+import { Button, Modal, ModalFooter, MoneyText } from "@/components/ui";
+import { triggerSensory } from "@/services/sensory";
+import { cn } from "@/lib/utils";
 import type { SplitParticipantItem } from "@/types";
 
 export interface SelectParticipantDialogProps {
@@ -20,12 +20,15 @@ export function SelectParticipantDialog({
   isPending = false,
   onConfirm,
 }: SelectParticipantDialogProps) {
-  const [selectedId, setSelectedId] = useState<string>(() => {
-    return participants[0]?.id ?? "";
-  });
+  const [selectedId, setSelectedId] = useState<string>("");
+
+  const effectiveSelectedId =
+    selectedId && participants.some((p) => p.id === selectedId)
+      ? selectedId
+      : (participants[0]?.id ?? "");
 
   const handleConfirm = () => {
-    const selected = participants.find((p) => p.id === selectedId) || participants[0];
+    const selected = participants.find((p) => p.id === effectiveSelectedId) || participants[0];
     if (selected) {
       onConfirm(selected);
     }
@@ -36,27 +39,48 @@ export function SelectParticipantDialog({
       open={open}
       onOpenChange={onOpenChange}
       size="md"
-      title="Quem e voce no racha?"
-      description="Identifique seu nome para avisarmos o anfitriao que voce registrou a sua parte."
+      title="Quem é você no racha?"
+      description="Identifique seu nome para avisarmos o anfitrião que você registrou a sua parte."
+      footer={
+        <ModalFooter borderless>
+          <Button type="button" variant="outline" disabled={isPending} onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            disabled={!effectiveSelectedId || isPending}
+            loading={isPending}
+            onClick={handleConfirm}
+          >
+            Confirmar e Salvar
+          </Button>
+        </ModalFooter>
+      }
     >
       <div className="space-y-4 py-1">
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-foreground">
+          <span className="text-xs font-semibold text-foreground block">
             Participantes ({participants.length})
-          </label>
+          </span>
           <div className="space-y-2">
             {participants.map((participant) => {
-              const isSelected = selectedId === participant.id;
+              const isSelected = effectiveSelectedId === participant.id;
               return (
                 <button
                   key={participant.id}
                   type="button"
-                  onClick={() => setSelectedId(participant.id || "")}
-                  className={`flex w-full items-center justify-between gap-2.5 rounded-xl border p-3 text-left transition-colors cursor-pointer ${
+                  aria-pressed={isSelected}
+                  onClick={() => {
+                    triggerSensory("selection");
+                    setSelectedId(participant.id || "");
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between gap-2.5 rounded-xl border p-3 text-left transition-colors cursor-pointer",
                     isSelected
                       ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary"
-                      : "border-border/70 bg-surface hover:bg-surface-hover text-muted-foreground"
-                  }`}
+                      : "border-border/80 bg-surface hover:bg-surface-hover text-muted-foreground",
+                  )}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-hover">
@@ -68,8 +92,9 @@ export function SelectParticipantDialog({
                   </div>
                   <MoneyText
                     cents={participant.share_cents}
-                    variant="value"
-                    className="text-xs font-semibold tabular-nums shrink-0"
+                    variant="caption"
+                    tone="default"
+                    className="font-semibold shrink-0"
                   />
                 </button>
               );
@@ -77,25 +102,6 @@ export function SelectParticipantDialog({
           </div>
         </div>
       </div>
-
-      <ModalFooter>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={isPending}
-          onClick={() => onOpenChange(false)}
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="button"
-          variant="default"
-          disabled={!selectedId || isPending}
-          onClick={handleConfirm}
-        >
-          {isPending ? "Salvando..." : "Confirmar e Salvar"}
-        </Button>
-      </ModalFooter>
     </Modal>
   );
 }

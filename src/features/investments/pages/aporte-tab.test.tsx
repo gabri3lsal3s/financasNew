@@ -311,4 +311,28 @@ describe("AporteTab — Calculadora e Aportes", () => {
       }),
     );
   });
+
+  it("ativa automaticamente o switch de Caixa com animação quando recebe usarCaixa=1 sem preencher o campo de aporte novo", async () => {
+    vi.useFakeTimers();
+    render(
+      <MemoryRouter initialEntries={["/investments?tab=rebalancear&view=simulador&usarCaixa=1"]}>
+        <AporteTab />
+      </MemoryRouter>,
+    );
+
+    await vi.runAllTimersAsync();
+    vi.useRealTimers();
+
+    const cashSwitch = screen.getByRole("switch", {
+      name: /Somar saldo em Caixa da corretora/i,
+    });
+    expect(cashSwitch).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByText(/Poder de compra composto:/i)).toBeInTheDocument();
+
+    const aporteInput = screen.getByLabelText("Valor do aporte") as HTMLInputElement;
+    expect(aporteInput.value).toMatch(/0,00/);
+
+    const cashInput = screen.getByLabelText(/Saldo em caixa utilizado/i) as HTMLInputElement;
+    expect(cashInput.value).toMatch(/1\.000,00/);
+  });
 });

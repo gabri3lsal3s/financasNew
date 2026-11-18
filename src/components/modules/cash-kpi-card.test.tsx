@@ -91,6 +91,6 @@ describe("CashKpiCard", () => {
       />,
     );
 
-    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
+    expect(container.querySelector(".animate-shimmer")).toBeInTheDocument();
   });
 });

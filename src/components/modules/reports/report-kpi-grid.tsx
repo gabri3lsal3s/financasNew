@@ -28,11 +28,6 @@ const TONE_STYLES: Record<NonNullable<ReportKpiItem["tone"]>, { iconColor: strin
 
 /**
  * Grade Executiva de KPIs para Relatórios A4 / PDF.
- *
- * Padroniza os blocos de resumo de métricas:
- * - Tipografia mono tabular (.num);
- * - Bordas uniformes de alta definição (print-friendly);
- * - Ícones semânticos com fundo sutil.
  */
 export function ReportKpiGrid({
   items,
@@ -59,16 +54,16 @@ export function ReportKpiGrid({
         return (
           <div
             key={item.key ?? `${item.label}-${index}`}
-            className="rounded-xl border border-border/80 bg-muted/20 p-3.5 flex flex-col justify-between gap-1.5 break-inside-avoid print:bg-white print:border-border print:p-2.5 shadow-2xs"
+            className="rounded-xl border border-border/80 bg-muted/20 p-3 sm:p-3.5 flex flex-col justify-between gap-1.5 break-inside-avoid print:bg-surface print:border-border print:p-2.5 shadow-xs"
           >
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider line-clamp-1 print:text-[10px]">
+            <div className="flex items-center justify-between gap-2 min-w-0">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider line-clamp-2 break-words print:text-[10px]">
                 {item.label}
               </span>
               {Icon && (
                 <span
                   className={cn(
-                    "flex size-6 items-center justify-center rounded-md shrink-0 print:border print:border-border/60",
+                    "flex size-6 items-center justify-center rounded-md shrink-0 print:border print:border-border/80",
                     toneStyle.bgSoft,
                     toneStyle.iconColor,
                   )}
@@ -78,8 +73,8 @@ export function ReportKpiGrid({
               )}
             </div>
 
-            <div className="flex flex-col">
-              <div className="num font-mono text-base sm:text-lg font-bold text-foreground print:text-base">
+            <div className="flex flex-col min-w-0">
+              <div className="num font-mono text-base sm:text-lg font-bold text-foreground print:text-base tabular-nums">
                 {item.value}
               </div>
               {item.subtext && (

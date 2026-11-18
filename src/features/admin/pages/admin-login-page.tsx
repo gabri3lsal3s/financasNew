@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
+import { ArrowLeft, KeyRound, ShieldCheck } from "lucide-react";
 import {
-  ArrowLeft,
-  KeyRound,
-  ShieldCheck,
-} from "lucide-react";
-import { Alert, Badge, Button, Input, PasswordInput, Turnstile } from "@/components/ui";
-import { BrandLogo } from "@/components/layout";
-import { useAuth, signInAdmin } from "@/hooks/use-auth";
+  Alert,
+  Badge,
+  Button,
+  FormField,
+  Input,
+  PasswordInput,
+  Turnstile,
+} from "@/components/ui";
+import { BrandLogo, ThemeToggle } from "@/components/layout";
+import { signInAdmin, useAuth } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
+import { AXIR_APP_VERSION } from "@/services/native/app-links";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { useUserAccess } from "@/state";
@@ -24,30 +29,21 @@ export function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Proteção anti-bot e throttling
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [consecutiveFailures, setConsecutiveFailures] = useState(0);
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
 
-  // Cronômetro regressivo do bloqueio temporário
   useEffect(() => {
     if (lockoutRemaining <= 0) return;
     const timer = setInterval(() => {
-      setLockoutRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setLockoutRemaining((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
     return () => clearInterval(timer);
   }, [lockoutRemaining]);
 
-  // Se já está logado como administrador, redireciona diretamente para o console
   if (session?.user && isAdmin && !accessLoading) {
-    const from = (location.state as { from?: { pathname?: string } })?.from?.pathname || "/admin/dashboard";
+    const from =
+      (location.state as { from?: { pathname?: string } })?.from?.pathname || "/admin/dashboard";
     return <Navigate to={from} replace />;
   }
 
@@ -59,10 +55,7 @@ export function AdminLoginPage() {
     setLoading(true);
 
     try {
-      // 1. Autenticação administrativa com validação atômica de privilégio (Fail-Closed)
       await signInAdmin(email.trim(), password);
-
-      // 2. Sucesso: operador autenticado e autorizado
       triggerSensory("success");
       setConsecutiveFailures(0);
       pushToast({
@@ -72,8 +65,7 @@ export function AdminLoginPage() {
       });
 
       const destination =
-        (location.state as { from?: { pathname?: string } })?.from?.pathname ||
-        "/admin/dashboard";
+        (location.state as { from?: { pathname?: string } })?.from?.pathname || "/admin/dashboard";
       navigate(destination, { replace: true });
     } catch (err) {
       triggerSensory("destructive");
@@ -95,15 +87,18 @@ export function AdminLoginPage() {
   const isButtonLocked = lockoutRemaining > 0;
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-8">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-8 pt-safe pb-safe">
+      <div className="absolute top-4 right-4 pt-safe">
+        <ThemeToggle className="rounded-lg border border-border/80 hover:bg-surface-hover" />
+      </div>
+
       <div className="w-full max-w-md flex flex-col gap-6">
-        {/* Cabeçalho de Identificação */}
         <div className="flex flex-col items-center text-center gap-3">
           <BrandLogo markClassName="size-11 drop-shadow-xs" showWordmark={false} />
           <div className="flex items-center gap-1.5 mt-1">
-            <Badge variant="muted" size="sm" className="font-mono uppercase tracking-wider text-primary-strong border border-primary/30">
-              <ShieldCheck className="size-3.5 mr-1" aria-hidden="true" />
-              Console Administrativo
+            <Badge variant="default" size="sm" className="font-mono uppercase tracking-wider gap-1">
+              <ShieldCheck className="size-3.5" aria-hidden="true" />
+              <span>Console Administrativo</span>
             </Badge>
           </div>
           <div>
@@ -116,7 +111,6 @@ export function AdminLoginPage() {
           </div>
         </div>
 
-        {/* Card do Formulário de Acesso */}
         <div className="rounded-2xl border border-border/80 bg-surface p-6 sm:p-8 shadow-xs flex flex-col gap-5">
           {errorMessage && (
             <Alert variant="error">
@@ -134,10 +128,7 @@ export function AdminLoginPage() {
           )}
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="admin-email" className="text-xs font-semibold text-foreground">
-                E-mail Administrativo
-              </label>
+            <FormField label="E-mail Administrativo" htmlFor="admin-email" required>
               <Input
                 id="admin-email"
                 type="email"
@@ -147,23 +138,19 @@ export function AdminLoginPage() {
                 required
                 disabled={loading || isButtonLocked}
               />
-            </div>
+            </FormField>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="admin-password" className="text-xs font-semibold text-foreground">
-                Senha de Acesso
-              </label>
+            <FormField label="Senha de Acesso" htmlFor="admin-password" required>
               <PasswordInput
                 id="admin-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
+                placeholder="Digite sua senha administrativa"
                 required
                 disabled={loading || isButtonLocked}
               />
-            </div>
+            </FormField>
 
-            {/* Cloudflare Turnstile Anti-Bot */}
             <div className="my-1 flex justify-center">
               <Turnstile onVerify={setTurnstileToken} />
             </div>
@@ -172,8 +159,16 @@ export function AdminLoginPage() {
               type="submit"
               variant="default"
               size="lg"
+              sensoryIntent={false}
+              loading={loading}
               className="w-full mt-2"
-              disabled={loading || isButtonLocked || (!turnstileToken && typeof window !== "undefined" && window.location.hostname !== "localhost")}
+              disabled={
+                loading ||
+                isButtonLocked ||
+                (!turnstileToken &&
+                  typeof window !== "undefined" &&
+                  window.location.hostname !== "localhost")
+              }
             >
               {loading ? (
                 "Validando credenciais…"
@@ -182,13 +177,12 @@ export function AdminLoginPage() {
               ) : (
                 <>
                   <KeyRound className="size-4 mr-2" aria-hidden="true" />
-                  Entrar no Console
+                  <span>Entrar no Console</span>
                 </>
               )}
             </Button>
           </form>
 
-          {/* Rodapé de Segurança e Navegação Reversa */}
           <div className="pt-4 border-t border-border/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
             <Link
               to="/entrar"
@@ -197,7 +191,9 @@ export function AdminLoginPage() {
               <ArrowLeft className="size-3.5" aria-hidden="true" />
               <span>Voltar ao aplicativo de clientes</span>
             </Link>
-            <span className="font-mono text-[11px] text-muted-foreground/80">Axir v3.0 Pro</span>
+            <span className="font-mono text-[11px] text-muted-foreground">
+              Axir v{AXIR_APP_VERSION} Pro
+            </span>
           </div>
         </div>
       </div>

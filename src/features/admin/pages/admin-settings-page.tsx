@@ -20,17 +20,15 @@ export function AdminSettingsPage() {
 
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
-      {/* Cabeçalho */}
       <PageHeader
         title="Sistema & Configurações da Plataforma"
         description="Controle de liberação do APK Android Beta, Kill-Switches globais e bot do Telegram"
       />
 
-      {/* --- SEÇÃO 1: CONTROLE DO APK NATIVO ANDROID (BETA FECHADO) --- */}
       <section aria-label="Controle de Acesso ao APK" className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <Smartphone className="size-4 text-primary-strong" aria-hidden="true" />
+            <Smartphone className="size-4 text-primary-strong shrink-0" aria-hidden="true" />
             <div>
               <h2 className="text-base font-bold text-foreground">
                 Controle de Acesso ao Aplicativo Nativo (APK Android)
@@ -55,7 +53,7 @@ export function AdminSettingsPage() {
         </div>
 
         {bankNotificationFeature && (
-          <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
+          <div className="flex flex-col gap-2 pt-2 border-t border-border/80">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold text-foreground">
                 Assistente de Notificações Bancárias (Captura em Segundo Plano)
@@ -69,16 +67,14 @@ export function AdminSettingsPage() {
         )}
       </section>
 
-      {/* --- SEÇÃO 2: CENTRAL DE ALERTAS & BOT TELEGRAM --- */}
       <section aria-label="Central de Alertas e Bot Telegram">
         <TelegramSettingsCard />
       </section>
 
-      {/* --- SEÇÃO 3: FEATURE FLAGS & KILL-SWITCHES GLOBAIS --- */}
       <section aria-label="Módulos e Feature Flags" className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <Layers className="size-4 text-muted-foreground" aria-hidden="true" />
+            <Layers className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <div>
               <h2 className="text-base font-bold text-foreground">
                 Módulos &amp; Kill-Switches Globais
@@ -101,7 +97,7 @@ export function AdminSettingsPage() {
                 className="flex items-center justify-between gap-3 p-4 rounded-xl border border-border/80 bg-surface shadow-xs"
               >
                 <div className="flex items-center gap-3">
-                  <Skeleton className="size-9 rounded-xl shrink-0" />
+                  <Skeleton className="size-8 rounded-lg shrink-0" />
                   <div className="flex flex-col gap-1.5">
                     <Skeleton className="h-4 w-36 sm:w-48" />
                     <Skeleton className="h-3 w-48 sm:w-64" />

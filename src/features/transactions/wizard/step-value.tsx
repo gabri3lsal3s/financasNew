@@ -62,6 +62,7 @@ export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsCh
 
       <Tabs
         value={state.type}
+        fullWidth
         onValueChange={(value) => {
           onTypeChange(value as EntryType);
         }}
@@ -93,7 +94,7 @@ export function StepValue({ state, onTypeChange, onValueChange, onInstallmentsCh
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Parcelas</span>
-            <span className="num text-sm text-muted-foreground">{state.installments}×</span>
+            <span className="font-mono text-sm tabular-nums text-muted-foreground">{state.installments}×</span>
           </div>
           <NumberStepper
             value={state.installments}

@@ -180,7 +180,7 @@ describe("AppearanceTab - Aparência & Identidade Visual (Fase 1 — Tarefa 1.3)
         headerButtons: {
           logo: true,
           calculatorButton: true,
-          themeToggle: false,
+          themeToggle: true,
           privacyToggle: false,
         },
       }),

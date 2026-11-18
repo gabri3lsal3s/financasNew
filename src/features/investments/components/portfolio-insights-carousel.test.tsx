@@ -5,6 +5,9 @@ import { PortfolioInsightsCarousel } from "./portfolio-insights-carousel";
 const mockUseCorporateDividends = vi.fn();
 const mockMutateAsync = vi.fn();
 const mockUseAssetGovernanceInsights = vi.fn();
+const mockUsePortfolioPosition = vi.fn();
+const mockUseGroupTargets = vi.fn();
+const mockUpdateAssetMutateAsync = vi.fn();
 const mockNavigate = vi.fn();
 
 vi.mock("react-router", () => ({
@@ -15,6 +18,7 @@ vi.mock("@/state", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,
+    useAuth: () => ({ user: { id: "user-1" } }),
     useCorporateDividends: () => mockUseCorporateDividends(),
     useApproveDividendsBatch: () => ({
       mutateAsync: mockMutateAsync,
@@ -25,16 +29,39 @@ vi.mock("@/state", async (importOriginal) => {
       isPending: false,
     }),
     useAssetGovernanceInsights: () => mockUseAssetGovernanceInsights(),
+    usePortfolioPosition: () => mockUsePortfolioPosition(),
+    useGroupTargets: () => mockUseGroupTargets(),
+    useUpdatePortfolioAsset: () => ({
+      mutateAsync: mockUpdateAssetMutateAsync,
+      isPending: false,
+    }),
   };
 });
 
 describe("PortfolioInsightsCarousel (Regra 19)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
     mockUseAssetGovernanceInsights.mockReturnValue({
       overdueReviewsCount: 0,
+      upcomingReviewsCount: 0,
+      unscoredAssetsCount: 0,
       quarantinedCount: 0,
       discountOpportunitiesCount: 0,
+      lowScoreRiskCount: 0,
+      overdueAssets: [],
+      upcomingReviewAssets: [],
+      unscoredAssets: [],
+      isLoading: false,
+    });
+    mockUsePortfolioPosition.mockReturnValue({
+      rows: [],
+      totalBRL: 0,
+      cashBRL: 0,
+      isLoading: false,
+    });
+    mockUseGroupTargets.mockReturnValue({
+      data: [],
       isLoading: false,
     });
   });
@@ -150,7 +177,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     expect(screen.getByText("Revisar Metas")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Revisar Metas"));
-    expect(mockNavigate).toHaveBeenCalledWith("/investimentos?tab=metas&subtab=assets");
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=rebalancear&view=metas&subtab=assets");
   });
 
   it("renderiza o slide de ativos em quarentena com navegação para carteira", () => {
@@ -175,7 +202,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     expect(screen.getByText("Auditar Carteira")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Auditar Carteira"));
-    expect(mockNavigate).toHaveBeenCalledWith("/investimentos?tab=metas&subtab=assets");
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=rebalancear&view=metas&subtab=assets");
   });
 
   it("renderiza o slide de oportunidade em desconto com navegação para aporte", () => {
@@ -200,6 +227,78 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     expect(screen.getByText("Simular Aporte")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Simular Aporte"));
-    expect(mockNavigate).toHaveBeenCalledWith("/investimentos?tab=aporte");
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=rebalancear&view=simulador");
+  });
+
+  it("renderiza o slide de desvio de alocação normalizando 'Ações de Dividendos' sem valores de Gap em R$", () => {
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+    mockUsePortfolioPosition.mockReturnValue({
+      rows: [
+        { assetId: "1", ticker: "RF1", assetClass: "Renda Fixa", valueBRL: 10000, isCash: false },
+      ],
+      totalBRL: 10000,
+      cashBRL: 0,
+      isLoading: false,
+    });
+    mockUseGroupTargets.mockReturnValue({
+      data: [
+        { id: "c1", name: "Renda Fixa", target_percentage: 70 },
+        { id: "c2", name: "Ações de Dividendos", target_percentage: 30 },
+      ],
+      isLoading: false,
+    });
+
+    render(<PortfolioInsightsCarousel />);
+
+    expect(screen.getByText("Desvio de Alocação Detectado")).toBeInTheDocument();
+    expect(screen.getByText(/Ações \(-30 p\.p\.\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/Ações de Dividendos/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Gap:/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Simular Rebalanceamento"));
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=rebalancear&view=simulador");
+  });
+
+  it("exibe tickers em revisão próxima do prazo e permite dispensar por 7 dias", () => {
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+    mockUseAssetGovernanceInsights.mockReturnValue({
+      overdueReviewsCount: 0,
+      upcomingReviewsCount: 1,
+      consolidatedUpcomingAlert: {
+        id: "gov-upcoming-1",
+        kind: "review_upcoming",
+        severity: "info",
+        title: "Reavaliação próxima: WEGE3",
+        description: "Vence em 10 dias.",
+        tickers: ["WEGE3"],
+        daysUntilReview: 10,
+      },
+      upcomingReviewAssets: [
+        { id: "a1", ticker: "WEGE3", asset_class: "Ações", score: 9 },
+      ],
+      isLoading: false,
+    });
+
+    render(<PortfolioInsightsCarousel />);
+
+    expect(screen.getByText("Reavaliação Próxima do Prazo")).toBeInTheDocument();
+    expect(screen.getByText(/WEGE3 vence em até 10 dias/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dispensar alerta" }));
+    fireEvent.click(screen.getByText("Dispensar por 7 dias"));
+
+    expect(screen.queryByText("Reavaliação Próxima do Prazo")).not.toBeInTheDocument();
   });
 });

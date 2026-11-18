@@ -196,9 +196,9 @@ describe("AccountTab", () => {
     const openPasswordModalButton = screen.getByRole("button", { name: "Alterar senha" });
     await user.click(openPasswordModalButton);
 
-    const currentPasswordInput = screen.getByLabelText("Senha atual");
-    const newPasswordInput = screen.getByLabelText("Nova senha");
-    const confirmPasswordInput = screen.getByLabelText("Confirmar nova senha");
+    const currentPasswordInput = screen.getByLabelText(/^Senha atual/i);
+    const newPasswordInput = screen.getByLabelText(/^Nova senha/i);
+    const confirmPasswordInput = screen.getByLabelText(/^Confirmar nova senha/i);
     const updatePasswordButton = screen.getByRole("button", { name: "Atualizar Senha" });
 
     expect(updatePasswordButton).toBeDisabled();
@@ -233,9 +233,9 @@ describe("AccountTab", () => {
     const openPasswordModalButton = screen.getByRole("button", { name: "Alterar senha" });
     await user.click(openPasswordModalButton);
 
-    const currentPasswordInput = screen.getByLabelText("Senha atual");
-    const newPasswordInput = screen.getByLabelText("Nova senha");
-    const confirmPasswordInput = screen.getByLabelText("Confirmar nova senha");
+    const currentPasswordInput = screen.getByLabelText(/^Senha atual/i);
+    const newPasswordInput = screen.getByLabelText(/^Nova senha/i);
+    const confirmPasswordInput = screen.getByLabelText(/^Confirmar nova senha/i);
     const updatePasswordButton = screen.getByRole("button", { name: "Atualizar Senha" });
 
     await user.type(currentPasswordInput, "SenhaAtualValida123");
@@ -257,9 +257,9 @@ describe("AccountTab", () => {
     const openPasswordModalButton = screen.getByRole("button", { name: "Alterar senha" });
     await user.click(openPasswordModalButton);
 
-    const currentPasswordInput = screen.getByLabelText("Senha atual");
-    const newPasswordInput = screen.getByLabelText("Nova senha");
-    const confirmPasswordInput = screen.getByLabelText("Confirmar nova senha");
+    const currentPasswordInput = screen.getByLabelText(/^Senha atual/i);
+    const newPasswordInput = screen.getByLabelText(/^Nova senha/i);
+    const confirmPasswordInput = screen.getByLabelText(/^Confirmar nova senha/i);
     const updatePasswordButton = screen.getByRole("button", { name: "Atualizar Senha" });
 
     await user.type(currentPasswordInput, "SenhaErrada");
@@ -285,9 +285,9 @@ describe("AccountTab", () => {
     const openPasswordModalButton = screen.getByRole("button", { name: "Alterar senha" });
     await user.click(openPasswordModalButton);
 
-    const currentPasswordInput = screen.getByLabelText("Senha atual");
-    const newPasswordInput = screen.getByLabelText("Nova senha");
-    const confirmPasswordInput = screen.getByLabelText("Confirmar nova senha");
+    const currentPasswordInput = screen.getByLabelText(/^Senha atual/i);
+    const newPasswordInput = screen.getByLabelText(/^Nova senha/i);
+    const confirmPasswordInput = screen.getByLabelText(/^Confirmar nova senha/i);
     const updatePasswordButton = screen.getByRole("button", { name: "Atualizar Senha" });
 
     await user.type(currentPasswordInput, "SenhaErrada");
@@ -552,7 +552,7 @@ describe("AccountTab", () => {
 
       await waitFor(() => {
         expect(mockSignOut).toHaveBeenCalledTimes(1);
-        expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("action");
+        expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("success");
         expect(toastModule.pushToast).toHaveBeenCalledWith(
           expect.objectContaining({
             title: "Sessão encerrada",

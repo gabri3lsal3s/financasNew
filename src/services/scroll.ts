@@ -6,6 +6,7 @@
  * respeitando a preferência de acessibilidade `prefers-reduced-motion`.
  */
 
+import { getVisualCustomization } from "@/hooks/use-visual-customization";
 import { triggerSensory } from "./sensory";
 
 export interface ScrollToTopOptions {
@@ -32,7 +33,9 @@ export function scrollToTop(options: ScrollToTopOptions = {}): boolean {
     behavior,
   } = options;
 
-  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  const reducedMotion =
+    (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false) ||
+    getVisualCustomization().motionLevel === "reduced";
   const scrollBehavior: ScrollBehavior = behavior ?? (reducedMotion ? "auto" : "smooth");
 
   const container = document.getElementById(containerId) ?? document.querySelector("main");

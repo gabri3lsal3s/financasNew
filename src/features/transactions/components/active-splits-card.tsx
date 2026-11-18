@@ -1,421 +1,62 @@
-import { useMemo, useState } from "react";
-import {
-  Calendar,
-  Check,
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Copy,
-  ExternalLink,
-  HandCoins,
-  MessageCircle,
-  SlidersHorizontal,
-  Users,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { MoneyText } from "@/components/ui/money-text";
+import { ChevronLeft, ChevronRight, ChevronUp, Users } from "lucide-react";
+import { Badge, Button } from "@/components/ui";
 import { ManageSplitDialog } from "@/components/modules/manage-split-dialog";
 import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
-import { useDebts, useMyPublicShares, useSettleIntegratedReceivable } from "@/state";
-import { triggerSensory } from "@/services/sensory";
-import { pushToast } from "@/services/toast";
-import { getPublicAppUrl, getPublicShareUrl } from "@/services/app-url";
-import { todayISO } from "@/domain/debts";
-import { isParticipantFullySettled, isSplitFullyCompleted } from "@/domain/finance/split-math";
-import type { Debt, PublicShare, SplitSharePayload } from "@/types";
-
-function formatShortDate(isoDate: string): string {
-  const parts = isoDate.split("-");
-  if (parts.length >= 3) {
-    const day = parts[2]!.slice(0, 2);
-    return `${day}/${parts[1]}`;
-  }
-  return isoDate;
-}
+import {
+  ActiveSplitItemCard,
+  ActiveSplitsCollapsedBar,
+  useActiveSplits,
+} from "./splits";
 
 export interface ActiveSplitsCardProps {
   /** Mês em foco (YYYY-MM) para sincronizar visualização */
   month?: string;
-  /** Callback opcional quando o usuário quer abrir o modal de racha completo */
-  onOpenSplitDialog?: (share: PublicShare) => void;
 }
 
 export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
-  const { data: shares, isLoading: isLoadingShares } = useMyPublicShares("split");
-  const { data: debts, isLoading: isLoadingDebts } = useDebts();
-  const settleMutation = useSettleIntegratedReceivable();
-  const [currentBlock, setCurrentBlock] = useState(0);
-  const [copiedToken, setCopiedToken] = useState<string | null>(null);
-  const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
-  const [managingItem, setManagingItem] = useState<{
-    share: PublicShare;
-    linkedDebt: Debt | null;
-  } | null>(null);
-  const [generatingShareFor, setGeneratingShareFor] = useState<{
-    id: string;
-    totalCents: number;
-    receivableExpectedCents: number;
-    peopleCount: number;
-    date: string;
-    payload: SplitSharePayload;
-    linkedDebt: Debt | null;
-  } | null>(null);
+  const {
+    isLoading,
+    activeSplits,
+    visibleSplits,
+    totalBlocks,
+    safeBlock,
+    allFinalized,
+    isExpanded,
+    copiedToken,
+    managingItem,
+    generatingShareFor,
+    isSettlePending,
+    setCurrentBlock,
+    setUserExpanded,
+    setManagingItem,
+    setGeneratingShareFor,
+    handleQuickSettle,
+    handleCopyLink,
+    handleShareWhatsApp,
+  } = useActiveSplits(month);
 
-  // Mapa de dívidas a receber por expense_id e debt_id
-  const receivableDebtsByExpense = useMemo(() => {
-    const map = new Map<string, Debt>();
-    if (!debts) return map;
-    for (const debt of debts) {
-      if (debt.type === "receivable" && debt.expense_id) {
-        map.set(debt.expense_id, debt);
-      }
-    }
-    return map;
-  }, [debts]);
-
-  const debtById = useMemo(() => {
-    const map = new Map<string, Debt>();
-    if (!debts) return map;
-    for (const debt of debts) {
-      map.set(debt.id, debt);
-    }
-    return map;
-  }, [debts]);
-
-  // Rachas ativos vinculados a despesas
-  const activeSplits = useMemo(() => {
-    const hasShares = Boolean(shares && shares.length > 0);
-    const hasDebts = Boolean(debts && debts.length > 0);
-    if (!hasShares && !hasDebts) return [];
-
-    const mappedDebtIds = new Set<string>();
-    const mappedExpenseIds = new Set<string>();
-    const mappedInstallmentGroupIds = new Set<string>();
-
-    const itemsFromShares = (shares ?? []).map((share) => {
-      const payload = (share.payload ?? {}) as unknown as SplitSharePayload;
-      const expenseId = payload.expense_id;
-      const debtId = payload.debt_id;
-      if (debtId) mappedDebtIds.add(debtId);
-      if (expenseId) mappedExpenseIds.add(expenseId);
-
-      // Tenta achar a dívida vinculada diretamente pelo debt_id ou pelo expense_id
-      const linkedDebt =
-        (debtId ? debtById.get(debtId) : null) ||
-        (expenseId ? receivableDebtsByExpense.get(expenseId) : null) ||
-        null;
-      if (linkedDebt) {
-        mappedDebtIds.add(linkedDebt.id);
-        if (linkedDebt.installment_group_id) {
-          mappedInstallmentGroupIds.add(linkedDebt.installment_group_id);
-        }
-      }
-
-      const participants = payload.participants ?? [];
-      const participantInstallments = payload.participant_installments ?? [];
-      const friends = participants.filter((p) => !p.is_host);
-
-      // Se houver parcelas ou participantes estruturados, validação rigorosa de quitação integral
-      const hasStructuredData = participants.length > 0 || participantInstallments.length > 0;
-      const isSettled = hasStructuredData
-        ? isSplitFullyCompleted(participants, participantInstallments)
-        : Boolean(payload.is_completed) || (linkedDebt ? Boolean(linkedDebt.paid_at) : false);
-
-      const totalCents = Number(payload.total_cents ?? 0);
-      const guestShareCents = Number(payload.guest_share_cents ?? 0);
-      const hostShareCents = Number(payload.host_share_cents ?? 0);
-      const peopleCount = Number(payload.people_count ?? 2);
-      const guestCount = Math.max(1, peopleCount - 1);
-      const receivableExpectedCents = guestShareCents * guestCount;
-
-      const settledFriendsCount = friends.filter((f) => {
-        const friendInsts = participantInstallments.filter(
-          (inst) =>
-            inst.participant_id === f.id ||
-            (friends.length === 1 && !participants.find((p) => p.id === inst.participant_id)?.is_host)
-        );
-        return isParticipantFullySettled(f, friendInsts);
-      }).length;
-
-      const signaledFriends = friends.filter((p) => p.has_payment_signal && !p.is_settled);
-      const totalSettledFromFriendsCents = friends.reduce(
-        (acc, f) => acc + (f.is_settled ? Number(f.settled_cents ?? f.share_cents) : 0),
-        0,
-      );
-
-      const dueDate =
-        linkedDebt?.due_date ||
-        ((payload as Record<string, unknown>)?.due_date as string | undefined) ||
-        null;
-      const createdAt = share.created_at || payload.date || "";
-
-      return {
-        id: share.id,
-        share: share as PublicShare | null,
-        payload,
-        linkedDebt,
-        dueDate,
-        createdAt,
-        isSettled,
-        isCompleted: Boolean(payload.is_completed),
-        totalCents,
-        guestShareCents,
-        hostShareCents,
-        peopleCount,
-        guestCount,
-        receivableExpectedCents,
-        settledFriendsCount,
-        signaledFriends,
-        totalSettledFromFriendsCents,
-        date: payload.date || share.created_at.slice(0, 10),
-        needsLinkGeneration: false,
-      };
-    });
-
-    // Coleta todos os installment_group_id de dívidas órfãs de racha para agrupar e exibir apenas a primeira parcela
-    const seenOrphanGroupIds = new Set<string>();
-
-    // Encontra dívidas a receber de racha pendentes que ainda não possuem public_share gerado
-    const orphanRachaDebts = (debts ?? [])
-      .filter((d) => {
-        if (d.type !== "receivable" || d.paid_at) return false;
-        if (mappedDebtIds.has(d.id)) return false;
-        if (d.expense_id && mappedExpenseIds.has(d.expense_id)) return false;
-        if (d.installment_group_id && mappedInstallmentGroupIds.has(d.installment_group_id)) return false;
-
-        const isRacha = d.name.toLowerCase().startsWith("racha:") || d.name.toLowerCase().includes("racha");
-        if (!isRacha) return false;
-
-        // Se a dívida pertence a um grupo de parcelas não mapeado por share, permite apenas a primeira que encontrarmos
-        if (d.installment_group_id) {
-          if (seenOrphanGroupIds.has(d.installment_group_id)) return false;
-          seenOrphanGroupIds.add(d.installment_group_id);
-        }
-
-        // Se o nome contiver padrão de parcela filha (ex: (2/10), (3/5), etc., com número inicial > 1)
-        const installmentMatch = d.name.match(/\((\d+)\/\d+\)/);
-        if (installmentMatch && Number(installmentMatch[1]) > 1) {
-          return false;
-        }
-
-        return true;
-      })
-      .map((d) => {
-        const cleanTitle = d.name.replace(/^racha:\s*/i, "").trim() || "Racha de Despesa";
-        const debtCents = Math.round(d.amount * 100);
-        return {
-          id: `orphan_debt_${d.id}`,
-          share: null as PublicShare | null,
-          payload: {
-            title: cleanTitle,
-            date: d.due_date || d.created_at?.slice(0, 10) || todayISO(),
-            total_cents: debtCents,
-            guest_share_cents: debtCents,
-            host_share_cents: 0,
-            people_count: 2,
-            participants: [],
-            expense_id: d.expense_id ?? undefined,
-            debt_id: d.id,
-          } as unknown as SplitSharePayload,
-          linkedDebt: d,
-          dueDate: d.due_date || null,
-          createdAt: d.created_at || "",
-          isSettled: false,
-          isCompleted: false,
-          totalCents: debtCents,
-          guestShareCents: debtCents,
-          hostShareCents: 0,
-          peopleCount: 2,
-          guestCount: 1,
-          receivableExpectedCents: debtCents,
-          settledFriendsCount: 0,
-          signaledFriends: [],
-          totalSettledFromFriendsCents: 0,
-          date: d.due_date || d.created_at?.slice(0, 10) || todayISO(),
-          needsLinkGeneration: true,
-        };
-      });
-
-    return [...itemsFromShares, ...orphanRachaDebts]
-      .filter((item) => {
-        // Se informado mês, prioriza rachas do mês ou pendentes
-        if (month && item.date && !item.date.startsWith(month) && item.isSettled) {
-          return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        // 1. Rachas pendentes primeiro, arquivados (quitados) por último
-        if (!a.isSettled && b.isSettled) return -1;
-        if (a.isSettled && !b.isSettled) return 1;
-
-        // Se ambos são arquivados/quitados: ordenar por data de quitação mais recente primeiro
-        if (a.isSettled && b.isSettled) {
-          const aPaid = a.linkedDebt?.paid_at ?? a.createdAt;
-          const bPaid = b.linkedDebt?.paid_at ?? b.createdAt;
-          return bPaid.localeCompare(aPaid);
-        }
-
-        // Se ambos são pendentes:
-        // 2. Data de vencimento estipulada mais próxima primeiro
-        if (a.dueDate && b.dueDate) {
-          if (a.dueDate !== b.dueDate) {
-            return a.dueDate.localeCompare(b.dueDate);
-          }
-        }
-        if (a.dueDate && !b.dueDate) return -1;
-        if (!a.dueDate && b.dueDate) return 1;
-
-        // 3. Se não houver data de vencimento estipulada (ou empate): do mais antigo para o mais recente
-        return a.createdAt.localeCompare(b.createdAt);
-      });
-  }, [shares, debts, debtById, receivableDebtsByExpense, month]);
-
-  const ITEMS_PER_BLOCK = 2;
-  const totalBlocks = Math.max(1, Math.ceil(activeSplits.length / ITEMS_PER_BLOCK));
-  const safeBlock = Math.min(currentBlock, totalBlocks - 1);
-  const visibleSplits = activeSplits.slice(
-    safeBlock * ITEMS_PER_BLOCK,
-    (safeBlock + 1) * ITEMS_PER_BLOCK,
-  );
-
-  if (isLoadingShares || isLoadingDebts) {
+  if (isLoading || activeSplits.length === 0) {
     return null;
   }
-
-  if (activeSplits.length === 0) {
-    return null;
-  }
-
-  const allFinalized = activeSplits.length > 0 && activeSplits.every((item) => item.isSettled);
-  const isExpanded = userExpanded !== null ? userExpanded : !allFinalized;
 
   if (allFinalized && !isExpanded) {
     return (
-      <div
-        data-tour="active-splits-card"
-        className="flex items-center justify-between gap-3 rounded-2xl border border-border/80 bg-surface p-3 sm:p-3.5 shadow-xs min-w-0"
-      >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <Users className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <span className="text-xs font-semibold text-foreground whitespace-nowrap">
-              Rachas de Despesa
-            </span>
-            <Badge variant="positive" size="xs" className="gap-1 font-semibold">
-              <Check className="size-3" aria-hidden="true" />
-              <span>Todos quitados</span>
-            </Badge>
-            <span className="text-[11px] text-muted-foreground truncate hidden xs:inline">
-              {activeSplits.length} {activeSplits.length === 1 ? "arquivado" : "arquivados"} neste mês
-            </span>
-          </div>
-        </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          onClick={() => {
-            triggerSensory("action");
-            setUserExpanded(true);
-          }}
-          className="h-7 px-2.5 text-xs gap-1 cursor-pointer shrink-0 text-muted-foreground hover:text-foreground"
-        >
-          <span>Ver arquivados</span>
-          <ChevronDown className="size-3" aria-hidden="true" />
-        </Button>
-      </div>
+      <ActiveSplitsCollapsedBar
+        totalCount={activeSplits.length}
+        onExpand={() => setUserExpanded(true)}
+      />
     );
   }
-
-  const handleQuickSettle = async (item: (typeof activeSplits)[0]) => {
-    const hasInstallments =
-      (item.payload.participant_installments && item.payload.participant_installments.length > 1) ||
-      ((item.payload.installments_count ?? 1) > 1);
-
-    if (hasInstallments && item.share) {
-      setManagingItem({ share: item.share, linkedDebt: item.linkedDebt });
-      return;
-    }
-
-    if (!item.linkedDebt) {
-      pushToast({
-        title: "Cobrança vinculada não encontrada",
-        description: "Você pode registrar a quitação pela página de Contas a Receber.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Ao dar baixa, a despesa no relatório conta com a cota pessoal do anfitrião
-      const hostResultCents = item.hostShareCents;
-      await settleMutation.mutateAsync({
-        debtId: item.linkedDebt.id,
-        result: hostResultCents / 100,
-      });
-
-      triggerSensory("success");
-      pushToast({
-        title: "Racha marcado como recebido!",
-        description: "A cobrança foi baixada e sua despesa considera apenas sua cota.",
-        variant: "success",
-      });
-    } catch {
-      triggerSensory("destructive");
-      pushToast({
-        title: "Não foi possível dar baixa no racha",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCopyLink = async (share: PublicShare) => {
-    const url = getPublicShareUrl(`r/${share.token}`);
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(url);
-        setCopiedToken(share.token);
-        triggerSensory("action");
-        pushToast({
-          title: "Link do racha copiado!",
-          description: "Envie aos amigos para copiar o Pix.",
-          variant: "default",
-        });
-        setTimeout(() => setCopiedToken(null), 2500);
-      } catch {
-        // Fallback
-      }
-    }
-  };
-
-  const handleShareWhatsApp = (share: PublicShare, payload: SplitSharePayload) => {
-    const url = getPublicShareUrl(`r/${share.token}`);
-    const guestFormatted = (payload.guest_share_cents / 100).toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
-    const cleanTitle = payload.title?.trim() || "Despesa";
-    const msg = `Oi! Segue o link para o racha da conta de ${cleanTitle} (${guestFormatted} para cada):\n\n${url}\n\nVocê pode pagar direto copiando o Pix!`;
-    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
-    if (typeof window !== "undefined") {
-      window.open(waUrl, "_blank", "noopener,noreferrer");
-    }
-  };
 
   return (
     <div
       data-tour="active-splits-card"
-      className="flex flex-col gap-2 rounded-2xl border border-border/80 bg-surface p-3 sm:p-3.5 shadow-xs min-w-0"
+      className="flex flex-col gap-2.5 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs min-w-0"
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <Users className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          <div className="min-w-0 flex items-center gap-2">
+          <div className="min-w-0 flex items-center gap-2 flex-wrap">
             <h2 className="text-xs font-semibold text-foreground whitespace-nowrap">
               {allFinalized ? "Rachas de Despesa" : "Rachas de Despesa Ativos"}
             </h2>
@@ -432,21 +73,18 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
             <Button
               type="button"
               variant="ghost"
-              size="xs"
-              onClick={() => {
-                triggerSensory("action");
-                setUserExpanded(false);
-              }}
-              className="h-7 px-2 text-xs gap-1 cursor-pointer text-muted-foreground hover:text-foreground"
+              size="sm"
+              sensoryIntent="selection"
+              onClick={() => setUserExpanded(false)}
+              className="gap-1 text-muted-foreground hover:text-foreground"
             >
               <span>Recolher</span>
-              <ChevronUp className="size-3" aria-hidden="true" />
+              <ChevronUp className="size-3.5" aria-hidden="true" />
             </Button>
           )}
 
-          {/* Setas para transitar entre os blocos (2 por vez) */}
           {totalBlocks > 1 && (
-            <div className="flex items-center rounded-md border border-border/80 bg-surface-hover/50 px-1 py-0.5">
+            <div className="flex items-center rounded-lg border border-border/80 bg-surface-raised/60 p-0.5">
               <Button
                 type="button"
                 variant="ghost"
@@ -454,11 +92,8 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
                 aria-label="Bloco anterior de rachas"
                 sensoryIntent="selection"
                 disabled={safeBlock === 0}
-                onClick={() => {
-                  triggerSensory("action");
-                  setCurrentBlock((prev) => Math.max(0, prev - 1));
-                }}
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer transition-transform active:scale-95 motion-reduce:transform-none"
+                onClick={() => setCurrentBlock((prev) => Math.max(0, prev - 1))}
+                className="w-8 px-0 text-muted-foreground hover:text-foreground disabled:opacity-30"
               >
                 <ChevronLeft className="size-3.5" aria-hidden="true" />
               </Button>
@@ -472,11 +107,8 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
                 aria-label="Próximo bloco de rachas"
                 sensoryIntent="selection"
                 disabled={safeBlock >= totalBlocks - 1}
-                onClick={() => {
-                  triggerSensory("action");
-                  setCurrentBlock((prev) => Math.min(totalBlocks - 1, prev + 1));
-                }}
-                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer transition-transform active:scale-95 motion-reduce:transform-none"
+                onClick={() => setCurrentBlock((prev) => Math.min(totalBlocks - 1, prev + 1))}
+                className="w-8 px-0 text-muted-foreground hover:text-foreground disabled:opacity-30"
               >
                 <ChevronRight className="size-3.5" aria-hidden="true" />
               </Button>
@@ -486,228 +118,19 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3 pt-0.5 items-stretch">
-        {visibleSplits.map((item) => {
-          const isSettled = item.isSettled;
-          const isCopied = item.share ? copiedToken === item.share.token : false;
-
-          return (
-            <div
-              key={item.share?.id ?? item.id}
-              className="flex flex-col justify-between gap-2.5 rounded-xl border border-border/70 bg-surface/80 p-3 sm:p-3.5 shadow-2xs transition-all hover:border-border min-w-0 h-full flex-1"
-            >
-              {/* Linha superior: Título e Vencimento/Data à esquerda | Badge à direita */}
-              <div className="flex items-start justify-between gap-2 min-w-0 min-h-[38px]">
-                <div className="min-w-0 space-y-0.5 flex-1">
-                  <span
-                    className="text-xs font-semibold text-foreground truncate block"
-                    title={item.payload.title || "Racha de Despesa"}
-                  >
-                    {item.payload.title || "Racha de Despesa"}
-                  </span>
-                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    {item.dueDate ? (
-                      <span className="inline-flex items-center gap-1 text-warning-strong font-medium">
-                        <Calendar className="size-3 shrink-0" aria-hidden="true" />
-                        <span>Venc. {formatShortDate(item.dueDate)}</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1">
-                        <span>{formatShortDate(item.date)}</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {item.signaledFriends.length > 0 && !isSettled && (
-                    <Badge size="xs" variant="warning" className="gap-1 animate-pulse">
-                      <HandCoins className="size-3" aria-hidden="true" />
-                      <span>
-                        {item.signaledFriends.length === 1
-                          ? `${item.signaledFriends[0]!.name} avisou`
-                          : `${item.signaledFriends.length} avisos`}
-                      </span>
-                    </Badge>
-                  )}
-                  {item.needsLinkGeneration || !item.share ? (
-                    <Badge size="xs" variant="warning" className="shrink-0">
-                      Link pendente
-                    </Badge>
-                  ) : (
-                    <Badge
-                      size="xs"
-                      variant={isSettled ? "positive" : item.settledFriendsCount > 0 ? "default" : "warning"}
-                      className="shrink-0"
-                    >
-                      {isSettled
-                        ? "Quitado"
-                        : item.settledFriendsCount > 0
-                          ? `Parcial (${item.settledFriendsCount}/${item.guestCount})`
-                          : "Pendente"}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              {/* Faixa compacta horizontal de métricas financeiras com altura harmonizada */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-2 rounded-lg bg-surface/60 border border-border/40 text-[11px] min-h-[50px] sm:min-h-[46px] items-center">
-                <div>
-                  <span className="text-muted-foreground block text-[10px] leading-tight">
-                    A receber ({item.guestCount} {item.guestCount === 1 ? "cota" : "cotas"})
-                  </span>
-                  <MoneyText
-                    cents={item.receivableExpectedCents}
-                    tone="portfolio"
-                    className="text-xs font-semibold tabular-nums"
-                  />
-                </div>
-                <div>
-                  <span className="text-muted-foreground block text-[10px] leading-tight">
-                    Total despesa
-                  </span>
-                  <MoneyText
-                    cents={item.totalCents}
-                    variant="value"
-                    className="text-xs font-medium tabular-nums"
-                  />
-                </div>
-                <div className="col-span-2 sm:col-span-1">
-                  {item.settledFriendsCount > 0 && !isSettled ? (
-                    <>
-                      <span className="text-positive-strong block text-[10px] leading-tight">
-                        Recebido ({item.settledFriendsCount}/{item.guestCount})
-                      </span>
-                      <MoneyText
-                        cents={item.totalSettledFromFriendsCents}
-                        tone="positive"
-                        className="text-xs font-semibold tabular-nums"
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-muted-foreground block text-[10px] leading-tight">
-                        Sua cota
-                      </span>
-                      <MoneyText
-                        cents={item.hostShareCents}
-                        variant="value"
-                        className="text-xs tabular-nums"
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Botões de Ação no Card com altura fixa e alinhamento simétrico */}
-              <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-border/50 min-h-[36px]">
-                {!isSettled ? (
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="default"
-                      disabled={settleMutation.isPending}
-                      onClick={() => void handleQuickSettle(item)}
-                      className="gap-1 px-2.5 h-7 text-xs font-medium cursor-pointer"
-                      aria-label="Dar baixa no racha"
-                    >
-                      <CheckCircle2 className="size-3 text-positive-strong shrink-0" aria-hidden="true" />
-                      <span>Dar Baixa</span>
-                    </Button>
-                    {item.share ? (
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="outline"
-                        onClick={() => setManagingItem({ share: item.share!, linkedDebt: item.linkedDebt })}
-                        className="gap-1 px-2 h-7 text-xs font-medium cursor-pointer"
-                        title="Gerenciar e dar baixa individual por pessoa"
-                        aria-label="Gerenciar racha"
-                      >
-                        <SlidersHorizontal className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
-                        <span>Gerenciar</span>
-                      </Button>
-                    ) : null}
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-between gap-1 min-w-0 h-7">
-                    <div className="flex items-center gap-1 text-[11px] text-positive-strong font-medium truncate">
-                      <CheckCircle2 className="size-3.5 shrink-0" aria-hidden="true" />
-                      <span className="truncate">Reembolso recebido</span>
-                    </div>
-                    {item.share ? (
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="ghost"
-                        onClick={() => setManagingItem({ share: item.share!, linkedDebt: item.linkedDebt })}
-                        className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
-                      >
-                        Ver detalhes
-                      </Button>
-                    ) : null}
-                  </div>
-                )}
-
-                {item.share ? (
-                  <div className="flex items-center gap-1 shrink-0 h-7">
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="outline"
-                      onClick={() => void handleCopyLink(item.share!)}
-                      className="px-2 h-7 cursor-pointer"
-                      title="Copiar link do Pix"
-                      aria-label="Copiar link do racha"
-                    >
-                      <Copy className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
-                      <span className="text-[11px] sr-only sm:not-sr-only">{isCopied ? "Copiado" : "Link"}</span>
-                    </Button>
-
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="outline"
-                      onClick={() => handleShareWhatsApp(item.share!, item.payload)}
-                      className="px-2 h-7 cursor-pointer"
-                      title="Enviar cobrança via WhatsApp"
-                      aria-label="Enviar racha via WhatsApp"
-                    >
-                      <MessageCircle className="size-3 text-positive-strong shrink-0" aria-hidden="true" />
-                    </Button>
-
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="ghost"
-                      onClick={() => {
-                        if (typeof window !== "undefined") {
-                          window.open(getPublicAppUrl(`r/${item.share!.token}`), "_blank", "noopener,noreferrer");
-                        }
-                      }}
-                      className="px-1.5 h-7 text-muted-foreground hover:text-foreground cursor-pointer"
-                      title="Abrir página pública"
-                      aria-label="Abrir página pública do racha"
-                    >
-                      <ExternalLink className="size-3 shrink-0" aria-hidden="true" />
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="outline"
-                    onClick={() => setGeneratingShareFor(item)}
-                    className="gap-1 px-2.5 h-7 text-xs font-medium cursor-pointer border-portfolio/30 text-portfolio hover:bg-portfolio/10 shrink-0"
-                    aria-label="Gerar link Pix para cobrança"
-                  >
-                    <ExternalLink className="size-3 shrink-0" aria-hidden="true" />
-                    <span>Gerar Link Pix</span>
-                  </Button>
-                )}
-              </div>
-            </div>
-          );
-        })}
+        {visibleSplits.map((item) => (
+          <ActiveSplitItemCard
+            key={item.share?.id ?? item.id}
+            item={item}
+            isCopied={item.share ? copiedToken === item.share.token : false}
+            isSettlePending={isSettlePending}
+            onQuickSettle={(target) => void handleQuickSettle(target)}
+            onManage={setManagingItem}
+            onGenerateShare={setGeneratingShareFor}
+            onCopyLink={(share) => void handleCopyLink(share)}
+            onShareWhatsApp={handleShareWhatsApp}
+          />
+        ))}
       </div>
 
       {generatingShareFor && (

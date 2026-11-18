@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, InputHTMLAttributes, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import { extractDigits } from "@/domain/money";
@@ -18,11 +18,13 @@ export interface PercentInputProps
   size?: "sm" | "md" | "lg";
   /** Quantidade máxima de dígitos numéricos (default 8). */
   maxDigits?: number;
+  /** Mensagem de erro padronizada. */
+  error?: string;
 }
 
 const sizeClasses: Record<NonNullable<PercentInputProps["size"]>, { input: string; suffix: string }> = {
   sm: { input: "h-8 px-2.5 text-base sm:text-sm", suffix: "text-xs pr-2.5" },
-  md: { input: "h-10 px-3 text-base", suffix: "text-xs sm:text-sm pr-3" },
+  md: { input: "h-10 px-3.5 text-base sm:text-sm", suffix: "text-xs sm:text-sm pr-3.5" },
   lg: { input: "h-14 px-4 text-2xl font-semibold text-center", suffix: "text-base pr-4" },
 };
 
@@ -39,27 +41,25 @@ function digitsFromValue(val: number | undefined, maxDigits: number): string {
 }
 
 /**
- * PercentInput — Entrada percentual progressiva (padrão MoneyInput/Nubank).
- *
- * O usuário apenas digita os números no teclado numérico e os decimais
- * sobem da direita para a esquerda:
- *   "8"   -> "0,08"
- *   "85"  -> "0,85"
- *   "852" -> "8,52"
- *   "11000" -> "110,00"
- *
- * Backspace recua o último dígito naturalmente.
+ * PercentInput — Entrada percentual progressiva (padrão MoneyInput).
  */
 export function PercentInput({
+  id,
   value = 0,
   onValueChange,
   suffix = "%",
   size = "md",
   maxDigits = 8,
+  error,
   className,
   disabled,
+  "aria-invalid": ariaInvalid,
+  "aria-describedby": ariaDescribedBy,
   ...rest
 }: PercentInputProps) {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const errorId = error ? `${inputId}-error` : undefined;
   const inputRef = useRef<HTMLInputElement>(null);
   const [digits, setDigits] = useState<string>(() => digitsFromValue(value, maxDigits));
 
@@ -70,7 +70,6 @@ export function PercentInput({
 
   const display = useMemo(() => formatPercentDisplay(numericValue), [numericValue]);
 
-  // Sincroniza quando o valor externo muda (reset de form ou carregamento de dados)
   const lastExternalValue = useRef(value);
   useEffect(() => {
     if (lastExternalValue.current !== value) {
@@ -79,7 +78,6 @@ export function PercentInput({
     }
   }, [value, maxDigits]);
 
-  // Mantém a seleção/cursor sempre no fim
   useLayoutEffect(() => {
     const el = inputRef.current;
     if (el) el.setSelectionRange(el.value.length, el.value.length);
@@ -103,26 +101,30 @@ export function PercentInput({
 
   const sizeStyle = sizeClasses[size];
 
-  return (
+  const inputWrapper = (
     <div className="relative flex items-center w-full">
       <input
         ref={inputRef}
+        id={inputId}
         {...rest}
         type="text"
         inputMode="numeric"
         autoComplete="off"
         spellCheck={false}
         disabled={disabled}
+        aria-invalid={Boolean(error) || ariaInvalid}
+        aria-describedby={errorId ?? ariaDescribedBy}
         value={display}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         className={cn(
-          "flex w-full rounded-md border border-input bg-surface font-mono text-foreground shadow-xs transition-colors",
+          "flex w-full rounded-md border border-input bg-surface font-mono tabular-nums text-foreground shadow-xs transition-colors",
           "placeholder:text-muted-foreground",
           "focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20",
           "disabled:cursor-not-allowed disabled:opacity-50",
           sizeStyle.input,
           suffix ? "pr-20 sm:pr-28" : "",
+          error && "border-critical-strong focus-visible:border-critical-strong focus-visible:ring-critical/20",
           className,
         )}
       />
@@ -137,6 +139,17 @@ export function PercentInput({
           {suffix}
         </span>
       ) : null}
+    </div>
+  );
+
+  if (!error) return inputWrapper;
+
+  return (
+    <div className="flex flex-col gap-1 w-full">
+      {inputWrapper}
+      <p id={errorId} role="alert" className="text-[11px] font-medium text-critical-strong leading-tight">
+        {error}
+      </p>
     </div>
   );
 }

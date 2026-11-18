@@ -5,7 +5,6 @@ export { useCreateDeepLink } from "./use-create-deep-link";
 export { useCurrencyInput } from "./use-currency-input";
 export { useDebounce } from "./use-debounce";
 export { useDocumentMeta, type DocumentMetaOptions } from "./use-document-meta";
-export { useFeatureFlag } from "./use-feature-flag";
 export { useHighlightTarget } from "./use-highlight-target";
 export { useMinimumLoading } from "./use-minimum-loading";
 export { usePrivacyMask } from "./use-privacy-mask";
@@ -26,7 +25,6 @@ export { useDynamicAppIcon } from "./use-dynamic-app-icon";
 export { useIsPro } from "./use-is-pro";
 export { useSensory, type SensoryDispatcher } from "./use-sensory";
 export { useAppUpdate, type UseAppUpdateOptions, type UseAppUpdateReturn } from "./use-app-update";
-export { useApkPromo } from "./use-apk-promo";
 export { useActiveOverlays, type ActiveOverlaysResult } from "./use-active-overlays";
 export {
   useIdleSessionTimeout,

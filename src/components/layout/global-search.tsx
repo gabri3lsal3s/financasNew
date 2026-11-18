@@ -25,6 +25,7 @@ import {
   type SearchResult,
 } from "@/domain/search";
 import { todayISO } from "@/domain/debts";
+import { isAppLocked } from "@/services/native";
 import { useGlobalSearchEntries } from "@/state";
 
 const TYPE_ICON: Record<SearchEntryType, typeof ArrowUpRight> = {
@@ -91,9 +92,10 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
   const [query, setQuery] = useState("");
   const { entries, intentContext, isLoading, error } = useGlobalSearchEntries(open);
 
-  // Atalho global: ⌘K / Ctrl+K e tecla '/' quando fora de inputs
+  // Atalho global: ⌘K / Ctrl+K e tecla '/' quando fora de inputs (bloqueado durante AppLock)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isAppLocked()) return;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setOpen((prev) => !prev);
@@ -150,7 +152,7 @@ export function GlobalSearch({ className }: GlobalSearchProps) {
   })).filter((group) => group.items.length > 0);
 
   const instantAnswerSlot = matchedIntent ? (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/10 p-3 sm:p-3.5 transition-all animate-fade-in shadow-2xs">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/10 p-3 sm:p-3.5 transition-all animate-fade-in shadow-xs">
       <div className="flex items-start gap-2.5 min-w-0">
         <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/15 text-primary">
           <Sparkles className="size-3.5" aria-hidden="true" />

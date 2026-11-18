@@ -98,11 +98,11 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       renderNotificationsTab();
       expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
       expect(
-        screen.getByRole("checkbox", { name: "Habilitar Lembretes no Aplicativo" }),
+        screen.getByRole("switch", { name: "Habilitar Lembretes no Aplicativo" }),
       ).toBeInTheDocument();
       expect(screen.getByText("Lembrete de Fechamento Diário")).toBeInTheDocument();
       expect(
-        screen.getByRole("checkbox", { name: "Habilitar Lembrete de Fechamento Diário" }),
+        screen.getByRole("switch", { name: "Habilitar Lembrete de Fechamento Diário" }),
       ).toBeInTheDocument();
     });
 
@@ -110,12 +110,12 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       const user = userEvent.setup();
       renderNotificationsTab();
 
-      const reminderCheckbox = screen.getByRole("checkbox", {
+      const reminderSwitch = screen.getByRole("switch", {
         name: "Habilitar Lembrete de Fechamento Diário",
       });
-      expect(reminderCheckbox).not.toBeChecked();
+      expect(reminderSwitch).toHaveAttribute("aria-checked", "false");
 
-      await user.click(reminderCheckbox);
+      await user.click(reminderSwitch);
 
       expect(nativeServices.requestNotificationPermissions).toHaveBeenCalled();
       expect(nativeServices.scheduleDailyReminder).toHaveBeenCalledWith({ hour: 20, minute: 0 });
@@ -464,16 +464,36 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
   });
 
   describe("Ambiente Web / PWA (Ocultação Condicional)", () => {
-    it("não renderiza o card nem opções do Assistente Passivo de Compras & Bancos na Web/PWA", () => {
+    it("não renderiza o card nem opções do Assistente Passivo de Compras & Bancos na Web Desktop/iOS", () => {
       vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
       renderNotificationsTab();
 
-      expect(screen.getByText("Exclusivo no App Android")).toBeInTheDocument();
+      expect(screen.queryByText("Exclusivo no App Android")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("checkbox", { name: "Habilitar Captura Passiva de Notificações" }),
       ).not.toBeInTheDocument();
       expect(screen.queryByRole("checkbox", { name: "Monitorar Nubank" })).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Baixar App Pro/i })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Baixar App Pro/i })).not.toBeInTheDocument();
+    });
+
+    it("exibe chamada informativa do App Android apenas em navegador Android Web", () => {
+      vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
+      const originalUserAgent = navigator.userAgent;
+      Object.defineProperty(navigator, "userAgent", {
+        value: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36",
+        configurable: true,
+      });
+
+      try {
+        renderNotificationsTab();
+        expect(screen.getByText("Exclusivo no App Android")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Baixar App Pro/i })).toBeInTheDocument();
+      } finally {
+        Object.defineProperty(navigator, "userAgent", {
+          value: originalUserAgent,
+          configurable: true,
+        });
+      }
     });
 
     it("não renderiza qualquer menção ao Assistente quando bank_notification_listener estiver desativado", () => {

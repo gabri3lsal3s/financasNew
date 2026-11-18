@@ -1,23 +1,27 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { KeyRound, Loader2, ShieldCheck } from "lucide-react";
+import { KeyRound, Loader2 } from "lucide-react";
 import {
+  Alert,
+  Button,
+  FormField,
   Modal,
   ModalFooter,
-  Button,
   PasswordInput,
-  Alert,
 } from "@/components/ui";
 import { changeUserPassword } from "@/hooks/use-auth";
 import { checkPasswordRequirements } from "@/domain/validation";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
+import { PasswordRequirementsChecklist } from "@/features/auth/components";
 
 export interface ChangePasswordModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+const CHANGE_PASSWORD_FORM_ID = "change-password-form";
 
 export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalProps) {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -52,14 +56,17 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!currentPassword) {
+      triggerSensory("error");
       setErrorMessage("Informe sua senha atual.");
       return;
     }
     if (!isPasswordSufficient) {
+      triggerSensory("error");
       setErrorMessage("A nova senha deve atender aos critérios de segurança mínimos.");
       return;
     }
     if (!isPasswordMatching) {
+      triggerSensory("error");
       setErrorMessage("As senhas digitadas não coincidem.");
       return;
     }
@@ -84,6 +91,13 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
     }
   };
 
+  const isSubmitDisabled =
+    isUpdating ||
+    !isPasswordSufficient ||
+    !isPasswordMatching ||
+    newPassword.length === 0 ||
+    currentPassword.length === 0;
+
   return (
     <Modal
       open={open}
@@ -91,125 +105,22 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
       title="Alterar Senha de Acesso"
       description="Crie uma nova senha segura para proteger sua conta e suas informações financeiras."
       size="md"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-        {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
-
-        <div className="space-y-3.5">
-          <div className="space-y-1.5">
-            <label
-              htmlFor="modal-current-password"
-              className="text-xs font-semibold text-foreground"
-            >
-              Senha atual
-            </label>
-            <PasswordInput
-              id="modal-current-password"
-              autoComplete="current-password"
-              required
-              value={currentPassword}
-              onChange={(e) => {
-                setCurrentPassword(e.target.value);
-                if (errorMessage) setErrorMessage(null);
-              }}
-              placeholder="Digite sua senha atual"
-              className="h-10 text-sm rounded-xl"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div className="space-y-1.5">
-              <label
-                htmlFor="modal-new-password"
-                className="text-xs font-semibold text-foreground"
-              >
-                Nova senha
-              </label>
-              <PasswordInput
-                id="modal-new-password"
-                autoComplete="new-password"
-                required
-                value={newPassword}
-                onChange={(e) => {
-                  setNewPassword(e.target.value);
-                  if (errorMessage) setErrorMessage(null);
-                }}
-                placeholder="Mínimo 8 caracteres"
-                className="h-10 text-sm rounded-xl"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label
-                htmlFor="modal-confirm-password"
-                className="text-xs font-semibold text-foreground"
-              >
-                Confirmar nova senha
-              </label>
-              <PasswordInput
-                id="modal-confirm-password"
-                autoComplete="new-password"
-                required
-                value={confirmPassword}
-                onChange={(e) => {
-                  setConfirmPassword(e.target.value);
-                  if (errorMessage) setErrorMessage(null);
-                }}
-                placeholder="Repita a nova senha"
-                className="h-10 text-sm rounded-xl"
-              />
-              {showPasswordMismatch && (
-                <span className="text-[11px] text-critical-strong block">
-                  As senhas não coincidem.
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {newPassword.length > 0 && (
-          <div className="rounded-xl bg-muted/20 border border-border/80 p-3 space-y-1.5">
-            <span className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
-              <ShieldCheck className="size-3.5 text-muted-foreground" aria-hidden="true" />
-              <span>Critérios de segurança:</span>
-            </span>
-            <ul className="text-[11px] space-y-1 text-muted-foreground">
-              <li className={passwordRequirements.minLength ? "text-positive-strong font-medium" : ""}>
-                • Pelo menos 8 caracteres
-              </li>
-              <li
-                className={
-                  passwordRequirements.hasUppercase || passwordRequirements.hasNumber
-                    ? "text-positive-strong font-medium"
-                    : ""
-                }
-              >
-                • Letras maiúsculas ou números
-              </li>
-            </ul>
-          </div>
-        )}
-
-        <ModalFooter className="pt-2">
+      footer={
+        <ModalFooter borderless>
           <Button
             type="button"
             variant="outline"
             disabled={isUpdating}
             onClick={() => handleClose(false)}
-            className="rounded-xl cursor-pointer"
           >
             Cancelar
           </Button>
           <Button
             type="submit"
-            disabled={
-              isUpdating ||
-              !isPasswordSufficient ||
-              !isPasswordMatching ||
-              newPassword.length === 0 ||
-              currentPassword.length === 0
-            }
-            className="gap-2 rounded-xl cursor-pointer"
+            form={CHANGE_PASSWORD_FORM_ID}
+            sensoryIntent={false}
+            disabled={isSubmitDisabled}
+            className="gap-2"
           >
             {isUpdating ? (
               <>
@@ -224,6 +135,66 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
             )}
           </Button>
         </ModalFooter>
+      }
+    >
+      <form id={CHANGE_PASSWORD_FORM_ID} onSubmit={handleSubmit} className="space-y-4 pt-2">
+        {errorMessage ? <Alert variant="error">{errorMessage}</Alert> : null}
+
+        <div className="space-y-3.5">
+          <FormField label="Senha atual" htmlFor="modal-current-password" required>
+            <PasswordInput
+              id="modal-current-password"
+              autoComplete="current-password"
+              required
+              value={currentPassword}
+              onChange={(e) => {
+                setCurrentPassword(e.target.value);
+                if (errorMessage) setErrorMessage(null);
+              }}
+              placeholder="Digite sua senha atual"
+              className="text-base sm:text-sm"
+            />
+          </FormField>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <FormField label="Nova senha" htmlFor="modal-new-password" required>
+              <PasswordInput
+                id="modal-new-password"
+                autoComplete="new-password"
+                required
+                value={newPassword}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                placeholder="Mínimo 8 caracteres"
+                className="text-base sm:text-sm"
+              />
+            </FormField>
+
+            <FormField
+              label="Confirmar nova senha"
+              htmlFor="modal-confirm-password"
+              required
+              error={showPasswordMismatch ? "As senhas não coincidem." : undefined}
+            >
+              <PasswordInput
+                id="modal-confirm-password"
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
+                placeholder="Repita a nova senha"
+                className="text-base sm:text-sm"
+              />
+            </FormField>
+          </div>
+        </div>
+
+        {newPassword.length > 0 ? <PasswordRequirementsChecklist password={newPassword} /> : null}
       </form>
     </Modal>
   );

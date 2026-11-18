@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Calendar, Check, Info } from "lucide-react";
 import { Modal, ModalFooter } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -18,22 +18,27 @@ export interface CashCheckpointDialogProps {
   isSaving?: boolean;
 }
 
-interface CashCheckpointFormProps {
-  onOpenChange: (open: boolean) => void;
-  initialBalanceCents: number;
-  onSave?: (data: { date: string; balance_cents: number; notes: string | null }) => Promise<void> | void;
-  isSaving?: boolean;
-}
-
-function CashCheckpointForm({
+export function CashCheckpointDialog({
+  open,
   onOpenChange,
-  initialBalanceCents,
+  currentBalanceCents = 0,
   onSave,
   isSaving,
-}: CashCheckpointFormProps) {
-  const [balanceCents, setBalanceCents] = useState<number>(initialBalanceCents);
+}: CashCheckpointDialogProps) {
+  const formId = useId();
+  const [balanceCents, setBalanceCents] = useState<number>(currentBalanceCents);
   const [date, setDate] = useState<string>(todayISO());
   const [notes, setNotes] = useState<string>("");
+
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setBalanceCents(currentBalanceCents);
+      setDate(todayISO());
+      setNotes("");
+    }
+  }
 
   const createMutation = useCreateCashCheckpoint();
   const isPending = isSaving ?? createMutation.isPending;
@@ -57,74 +62,6 @@ function CashCheckpointForm({
     onOpenChange(false);
   };
 
-
-  return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3.5 pt-2">
-      <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
-        <Info className="size-4 shrink-0 text-primary mt-0.5" aria-hidden="true" />
-        <p className="leading-relaxed">
-          Esta calibração ajusta o saldo em caixa sem criar despesas fictícias e sem poluir seus gráficos de categorias ou relatórios.
-        </p>
-      </div>
-
-      <FormField label="Saldo Real no Banco (Total em Contas)" htmlFor="cash-balance-input">
-        <MoneyInput
-          id="cash-balance-input"
-          cents={balanceCents}
-          onCentsChange={(cents) => setBalanceCents(cents)}
-        />
-      </FormField>
-
-      <FormField
-        label={
-          <span className="flex items-center gap-1.5">
-            <Calendar className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            Data da Aferição
-          </span>
-        }
-      >
-        <DatePicker value={date} onValueChange={setDate} />
-      </FormField>
-
-      <FormField label="Anotação" optional htmlFor="cash-notes-input">
-        <Input
-          id="cash-notes-input"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Ex.: Extrato Nubank + Itaú"
-        />
-      </FormField>
-
-      <ModalFooter>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => onOpenChange(false)}
-          disabled={isPending}
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          variant="default"
-          disabled={isPending}
-          className="gap-1.5"
-        >
-          <Check className="size-4" aria-hidden="true" />
-          {isPending ? "Salvando..." : "Salvar"}
-        </Button>
-      </ModalFooter>
-    </form>
-  );
-}
-
-export function CashCheckpointDialog({
-  open,
-  onOpenChange,
-  currentBalanceCents = 0,
-  onSave,
-  isSaving,
-}: CashCheckpointDialogProps) {
   return (
     <Modal
       open={open}
@@ -132,16 +69,69 @@ export function CashCheckpointDialog({
       title="Calibrar Saldo com o Banco"
       description="Informe a soma real do dinheiro disponível nas suas contas bancárias hoje. O app usará este valor como âncora a partir de agora."
       showCalculator
+      footer={
+        <ModalFooter borderless>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form={formId}
+            variant="default"
+            sensoryIntent={false}
+            disabled={isPending}
+            loading={isPending}
+            className="gap-1.5"
+          >
+            <Check className="size-4" aria-hidden="true" />
+            <span>Salvar</span>
+          </Button>
+        </ModalFooter>
+      }
     >
-      {open ? (
-        <CashCheckpointForm
-          onOpenChange={onOpenChange}
-          initialBalanceCents={currentBalanceCents}
-          onSave={onSave}
-          isSaving={isSaving}
-        />
-      ) : null}
+      <form id={formId} onSubmit={handleSubmit} className="flex flex-col gap-3.5 pt-2">
+        <div className="flex items-start gap-2.5 rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+          <Info className="size-4 shrink-0 text-primary-strong mt-0.5" aria-hidden="true" />
+          <p className="leading-relaxed">
+            Esta calibração ajusta o saldo em caixa sem criar despesas fictícias e sem poluir seus gráficos de categorias ou relatórios.
+          </p>
+        </div>
+
+        <FormField label="Saldo Real no Banco (Total em Contas)" htmlFor={`${formId}-balance`}>
+          <MoneyInput
+            id={`${formId}-balance`}
+            cents={balanceCents}
+            onCentsChange={(cents) => setBalanceCents(cents)}
+          />
+        </FormField>
+
+        <FormField
+          htmlFor={`${formId}-date`}
+          label={
+            <span className="flex items-center gap-1.5">
+              <Calendar className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              Data da Aferição
+            </span>
+          }
+        >
+          <DatePicker id={`${formId}-date`} value={date} onValueChange={setDate} />
+        </FormField>
+
+        <FormField label="Anotação" optional htmlFor={`${formId}-notes`}>
+          <Input
+            id={`${formId}-notes`}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Ex.: Extrato Nubank + Itaú"
+            className="text-base sm:text-sm"
+          />
+        </FormField>
+      </form>
     </Modal>
   );
 }
-

@@ -17,6 +17,8 @@ export {
   markTourCompleted,
   hasSeenWelcomeModal,
   markWelcomeModalSeen,
+  hasSeenWelcomeFeatureModal,
+  markWelcomeFeatureModalSeen,
   hasSeenNativeOnboarding,
   markNativeOnboardingSeen,
   getStoredInitialGoal,

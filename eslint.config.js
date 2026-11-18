@@ -93,6 +93,11 @@ export default tseslint.config(
               message:
                 "Violação arquitetural (AGENTS.md): Features e Components não podem acessar @/data diretamente. Encapsule o acesso em @/state ou use hooks autorizados.",
             },
+            {
+              group: ["@/services/audio-fx", "@/services/haptics", "@/services/native/haptics"],
+              message:
+                "Blindagem Sensorial (DESIGN_RULES §5.2): Componentes e Features não podem chamar audio-fx ou haptics diretamente. Use triggerSensory() ou useSensory() de @/services/sensory.",
+            },
           ],
         },
       ],

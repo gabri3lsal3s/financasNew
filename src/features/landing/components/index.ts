@@ -1,4 +1,4 @@
-export { BackToTop } from "./back-to-top";
+export { BackToTop } from "@/components/layout/back-to-top";
 export { CtaBanner } from "./cta-banner";
 export { FaqSection } from "./faq-section";
 export { FireProjectionCurve } from "./fire-projection-curve";
@@ -18,6 +18,5 @@ export { ScrollRevealContext } from "./scroll-reveal-context-def";
 export type { ScrollRevealContextValue } from "./scroll-reveal-context-def";
 export { SharedFinancesShowcase } from "./shared-finances-showcase";
 export type { SharedFinancesShowcaseProps } from "./shared-finances-showcase";
-export { SpotlightCard } from "./spotlight-card";
 export { ToolsShowcase } from "./tools-showcase";
 

@@ -1,19 +1,9 @@
-/**
- * Modal para adicionar participantes a uma viagem existente.
- * Permite definir se o amigo participa desde o início ou a partir de uma data específica.
- */
-
 import { useState } from "react";
-import {
-  Modal,
-  ModalFooter,
-  Button,
-  Input,
-  Select,
-  DatePicker,
-} from "@/components/ui";
+import { Button, DatePicker, FormField, Input, Modal, ModalFooter, Select } from "@/components/ui";
 import { useAddTripMemberMutation } from "@/state/queries/use-trips";
+import { triggerSensory } from "@/services/sensory";
 import { todayISO } from "@/lib/date";
+import { cn } from "@/lib/utils";
 import type { TripPixKeyType } from "@/types/trips";
 
 export interface AddTripMemberDialogProps {
@@ -42,6 +32,11 @@ export function AddTripMemberDialog({
 
   const addMemberMutation = useAddTripMemberMutation();
 
+  const handleModeChange = (mode: "all" | "from_date") => {
+    triggerSensory("selection");
+    setParticipationMode(mode);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
@@ -60,7 +55,7 @@ export function AddTripMemberDialog({
       setParticipationMode("all");
       onOpenChange(false);
     } catch {
-      // O erro já é tratado e exibido via toast destrutivo no onError do useAddTripMemberMutation
+      // O erro já é tratado via toast destrutivo no useAddTripMemberMutation
     }
   };
 
@@ -72,13 +67,8 @@ export function AddTripMemberDialog({
       title="Adicionar Participante"
       description="Insira o nome do amigo, chave Pix e quando ele ingressa nas despesas da viagem."
       footer={
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={addMemberMutation.isPending}
-          >
+        <ModalFooter borderless>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={addMemberMutation.isPending}>
             Cancelar
           </Button>
           <Button
@@ -93,11 +83,9 @@ export function AddTripMemberDialog({
       }
     >
       <form id="add-trip-member-form" onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-foreground">
-            Nome do Amigo *
-          </label>
+        <FormField label="Nome do Amigo" required htmlFor="add-member-name">
           <Input
+            id="add-member-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Ex.: Mariana, Lucas, Rafael"
@@ -105,58 +93,57 @@ export function AddTripMemberDialog({
             className="text-base sm:text-sm"
             required
           />
-        </div>
+        </FormField>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
-              Tipo da Chave Pix
-            </label>
+          <FormField label="Tipo da Chave Pix" htmlFor="add-member-pix-type">
             <Select
+              id="add-member-pix-type"
               value={pixKeyType}
               onValueChange={(val) => setPixKeyType(val as TripPixKeyType)}
               options={PIX_TYPE_OPTIONS}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
-              Chave Pix <span className="text-muted-foreground font-normal">(opcional)</span>
-            </label>
+          <FormField label="Chave Pix" optional htmlFor="add-member-pix-key">
             <Input
+              id="add-member-pix-key"
               value={pixKey}
               onChange={(e) => setPixKey(e.target.value)}
               placeholder="Para receber transferências"
               className="text-base sm:text-sm font-mono"
             />
-          </div>
+          </FormField>
         </div>
 
-        {/* Participação nas despesas */}
         <div className="space-y-2 pt-2 border-t border-border/80">
-          <label className="text-xs font-semibold text-foreground block">
+          <span className="text-xs font-semibold text-foreground block">
             Participação nos gastos da viagem
-          </label>
+          </span>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => setParticipationMode("all")}
-              className={`p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer ${
+              onClick={() => handleModeChange("all")}
+              aria-pressed={participationMode === "all"}
+              className={cn(
+                "min-h-11 sm:min-h-10 p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer",
                 participationMode === "all"
-                  ? "bg-primary/10 border-primary text-primary"
-                  : "bg-surface-raised border-border text-muted-foreground hover:text-foreground"
-              }`}
+                  ? "bg-primary/10 border-primary text-primary-strong"
+                  : "bg-surface-raised border-border text-muted-foreground hover:text-foreground",
+              )}
             >
               Desde o início (todos os gastos)
             </button>
             <button
               type="button"
-              onClick={() => setParticipationMode("from_date")}
-              className={`p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer ${
+              onClick={() => handleModeChange("from_date")}
+              aria-pressed={participationMode === "from_date"}
+              className={cn(
+                "min-h-11 sm:min-h-10 p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer",
                 participationMode === "from_date"
-                  ? "bg-primary/10 border-primary text-primary"
-                  : "bg-surface-raised border-border text-muted-foreground hover:text-foreground"
-              }`}
+                  ? "bg-primary/10 border-primary text-primary-strong"
+                  : "bg-surface-raised border-border text-muted-foreground hover:text-foreground",
+              )}
             >
               A partir da chegada
             </button>
@@ -164,16 +151,17 @@ export function AddTripMemberDialog({
 
           {participationMode === "from_date" && (
             <div className="space-y-1.5 p-3 rounded-xl bg-surface-raised border border-border/80 mt-2">
-              <label className="text-xs font-semibold text-foreground">
-                Data de chegada do amigo
-              </label>
-              <DatePicker
-                value={joinedDate}
-                onChange={(val) => setJoinedDate(val ?? todayISO())}
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Despesas gerais realizadas antes desta data não serão cobradas deste amigo.
-              </p>
+              <FormField
+                label="Data de chegada do amigo"
+                htmlFor="add-member-joined-date"
+                helperText="Despesas gerais realizadas antes desta data não serão cobradas deste amigo."
+              >
+                <DatePicker
+                  id="add-member-joined-date"
+                  value={joinedDate}
+                  onChange={(val) => setJoinedDate(val ?? todayISO())}
+                />
+              </FormField>
             </div>
           )}
         </div>

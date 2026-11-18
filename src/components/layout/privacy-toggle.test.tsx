@@ -3,12 +3,15 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PrivacyToggle } from "./privacy-toggle";
 import { setPrivacyMasked } from "@/hooks/use-privacy-mask";
+import { setAppLocked } from "@/services/native";
 
 beforeEach(() => {
+  setAppLocked(false);
   setPrivacyMasked(false);
 });
 
 afterEach(() => {
+  setAppLocked(false);
   setPrivacyMasked(false);
 });
 
@@ -50,5 +53,15 @@ describe("PrivacyToggle (F8 — Decisão 5)", () => {
 
     await user.keyboard("p");
     expect(screen.getByRole("button", { name: "Ocultar valores (P)" })).toBeInTheDocument();
+  });
+
+  it("ignora o atalho P quando o aplicativo estiver bloqueado pelo AppLock", async () => {
+    const user = userEvent.setup();
+    setAppLocked(true);
+    render(<PrivacyToggle />);
+
+    await user.keyboard("p");
+    expect(screen.getByRole("button", { name: "Ocultar valores (P)" })).toBeInTheDocument();
+    expect(document.documentElement.hasAttribute("data-privacy")).toBe(false);
   });
 });

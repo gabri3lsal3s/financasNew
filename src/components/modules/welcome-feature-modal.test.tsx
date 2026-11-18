@@ -4,6 +4,8 @@ import { axe } from "vitest-axe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { WelcomeFeatureModal } from "./welcome-feature-modal";
 import { WELCOME_MODAL_STORAGE_KEY } from "./welcome-feature-modal-data";
+import { resetDemoTourStorage } from "@/state/demo-mode";
+import * as appLinksModule from "@/services/native/app-links";
 
 vi.mock("@/services/sensory", () => ({
   triggerSensory: vi.fn(),
@@ -12,7 +14,23 @@ vi.mock("@/services/sensory", () => ({
 describe("WelcomeFeatureModal — Apresentação da Captura Sem Fricção (§6.4)", () => {
   beforeEach(() => {
     localStorage.clear();
+    resetDemoTourStorage();
     vi.clearAllMocks();
+    vi.spyOn(appLinksModule, "shouldOfferAndroidApk").mockReturnValue(true);
+  });
+
+  it("não renderiza automaticamente em Desktop/iOS (M10: shouldOfferAndroidApk() === false)", () => {
+    vi.spyOn(appLinksModule, "shouldOfferAndroidApk").mockReturnValue(false);
+    render(<WelcomeFeatureModal />);
+    expect(screen.queryByText("A Mágica da Captura Sem Fricção")).not.toBeInTheDocument();
+  });
+
+  it("omite o slide exclusivo de notificações Android quando forçado fora do Android", () => {
+    vi.spyOn(appLinksModule, "shouldOfferAndroidApk").mockReturnValue(false);
+    render(<WelcomeFeatureModal forceShow />);
+    expect(screen.getByText("A Mágica da Captura Sem Fricção")).toBeInTheDocument();
+    expect(screen.queryByText("Notificações Automáticas")).not.toBeInTheDocument();
+    expect(screen.getByText("Comprovantes e Cupons Fiscais")).toBeInTheDocument();
   });
 
   it("não renderiza nada se o usuário já tiver visto e dispensado o modal", () => {
@@ -21,7 +39,7 @@ describe("WelcomeFeatureModal — Apresentação da Captura Sem Fricção (§6.4
     expect(screen.queryByText("A Mágica da Captura Sem Fricção")).not.toBeInTheDocument();
   });
 
-  it("renderiza o modal aberto por padrão no primeiro acesso com o Slide 1", () => {
+  it("renderiza o modal aberto por padrão no primeiro acesso Android com o Slide 1", () => {
     render(<WelcomeFeatureModal />);
     expect(screen.getByText("A Mágica da Captura Sem Fricção")).toBeInTheDocument();
     expect(screen.getByText("Notificações Automáticas")).toBeInTheDocument();
@@ -42,23 +60,19 @@ describe("WelcomeFeatureModal — Apresentação da Captura Sem Fricção (§6.4
     const user = userEvent.setup();
     render(<WelcomeFeatureModal forceShow />);
 
-    // Slide 1: Notificações
     expect(screen.getByTestId("slide-notifications")).toBeInTheDocument();
     expect(screen.getByText("Notificações Automáticas")).toBeInTheDocument();
 
-    // Avança para Slide 2: Contingência
     await user.click(screen.getByRole("button", { name: /Próximo/i }));
     expect(screen.getByTestId("slide-contingency")).toBeInTheDocument();
     expect(screen.getByText("Comprovantes e Cupons Fiscais")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Voltar/i })).toBeInTheDocument();
 
-    // Avança para Slide 3: Mágica Semântica
     await user.click(screen.getByRole("button", { name: /Próximo/i }));
     expect(screen.getByTestId("slide-semantic")).toBeInTheDocument();
     expect(screen.getByText("Mágica Semântica Local")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Começar a usar/i })).toBeInTheDocument();
 
-    // Volta para Slide 2
     await user.click(screen.getByRole("button", { name: /Voltar/i }));
     expect(screen.getByTestId("slide-contingency")).toBeInTheDocument();
   });
@@ -79,15 +93,12 @@ describe("WelcomeFeatureModal — Apresentação da Captura Sem Fricção (§6.4
 
     expect(screen.getByTestId("slide-notifications")).toBeInTheDocument();
 
-    // Pressiona seta direita -> vai para slide 2
     fireEvent.keyDown(window, { key: "ArrowRight" });
     expect(screen.getByTestId("slide-contingency")).toBeInTheDocument();
 
-    // Pressiona seta direita -> vai para slide 3
     fireEvent.keyDown(window, { key: "ArrowRight" });
     expect(screen.getByTestId("slide-semantic")).toBeInTheDocument();
 
-    // Pressiona seta esquerda -> volta para slide 2
     fireEvent.keyDown(window, { key: "ArrowLeft" });
     expect(screen.getByTestId("slide-contingency")).toBeInTheDocument();
   });
@@ -117,12 +128,8 @@ describe("WelcomeFeatureModal — Apresentação da Captura Sem Fricção (§6.4
 
     render(<WelcomeFeatureModal onDismiss={onDismissMock} />);
 
-    // Slide 1 -> 2
     await user.click(screen.getByRole("button", { name: /Próximo/i }));
-    // Slide 2 -> 3
     await user.click(screen.getByRole("button", { name: /Próximo/i }));
-
-    // Conclui no botão final
     await user.click(screen.getByRole("button", { name: /Começar a usar/i }));
 
     expect(localStorage.getItem(WELCOME_MODAL_STORAGE_KEY)).toBe("true");

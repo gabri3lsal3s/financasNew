@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { formatDateBR, todayISO } from "@/lib/date";
 import { InitialPocketCostDialog } from "./initial-pocket-cost-dialog";
 import * as stateModule from "@/state";
 
@@ -160,11 +161,14 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
     await waitFor(() => {
       expect(mockCreateMutateAsync).toHaveBeenCalledWith(
         expect.objectContaining({
+          date: todayISO(),
           amount: 3000,
           notes: expect.stringContaining("[Resgate]"),
         }),
       );
     });
+    expect(screen.queryByText("26/02/2024")).not.toBeInTheDocument();
+    expect(screen.getByText(formatDateBR(todayISO()))).toBeInTheDocument();
   });
 
   it("processa extrato e permite importação em lote na aba Assistente de Extrato", async () => {

@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render as rtlRender, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -6,7 +7,14 @@ import { RecurrenceAuditModal } from "./recurrence-audit-modal";
 import type { RecurrenceOccurrence } from "@/domain/insights/recurrences";
 
 function render(ui: React.ReactElement) {
-  return rtlRender(<MemoryRouter>{ui}</MemoryRouter>);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return rtlRender(
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>,
+  );
 }
 
 vi.mock("@/state", () => ({

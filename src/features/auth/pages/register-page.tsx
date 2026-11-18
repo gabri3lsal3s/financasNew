@@ -1,212 +1,40 @@
-import { useMemo, useState } from "react";
-import type { FormEvent } from "react";
-import { Link, Navigate, useSearchParams } from "react-router";
-import { ArrowLeft, ArrowRight, CheckCircle2, Layers, MailCheck, PieChart, Shield, Sparkles } from "lucide-react";
-import { Alert, Badge, Button, Checkbox, Input, PasswordInput, Turnstile, buttonVariants } from "@/components/ui";
-import { AuthShell } from "@/features/auth/components/auth-shell";
-import { useAuth, signUpWithEmail } from "@/hooks/use-auth";
-import { classifyError } from "@/services/errors";
-import { triggerSensory } from "@/services/sensory";
-import { checkPasswordRequirements } from "@/domain/validation";
-import { getPendingSimulation } from "@/domain/share";
-import { BrandLogo } from "@/components/layout/brand-logo";
+import { Link, Navigate } from "react-router";
+import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
+import {
+  Alert,
+  Button,
+  Checkbox,
+  FormField,
+  Input,
+  Turnstile,
+  buttonVariants,
+} from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { AuthShell } from "../components/auth-shell";
+import { RegisterConfirmationCard } from "../components/register-confirmation-card";
+import { RegisterPasswordFields } from "../components/register-password-fields";
+import { RegisterSideHero } from "../components/register-side-hero";
+import { useRegisterForm } from "../hooks/use-register-form";
 
-// ---------------------------------------------------------------------------
-// Painel lateral de marketing (desktop ≥ lg)
-// ---------------------------------------------------------------------------
-const REGISTER_FEATURES = [
-  { icon: Layers, label: "Receitas, despesas e cartões em um só lugar" },
-  { icon: PieChart, label: "Orçamentos, metas e rebalanceamento de carteira" },
-  { icon: Shield, label: "Dados criptografados e protegidos (RLS)" },
-] as const;
-
-function RegisterSideHero({ planoParam }: { planoParam: string | null }) {
-  return (
-    <>
-      <div className="flex flex-col gap-6">
-        <BrandLogo
-          markClassName="size-11 drop-shadow-xs"
-          showWordmark
-          showSubtitle
-        />
-
-        <div className="flex flex-col gap-2 mt-2">
-          <p className="text-lg font-semibold tracking-tight text-foreground leading-snug">
-            {planoParam
-              ? "Crie sua conta para ativar o Plano Pro."
-              : "Controle total das suas finanças em minutos."}
-          </p>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {planoParam
-              ? "Após o cadastro, você será conduzido para concluir a assinatura."
-              : "Comece com 30 dias de acesso Pro completo, sem cartão de crédito."}
-          </p>
-        </div>
-
-        <ul className="flex flex-col gap-3 mt-1">
-          {REGISTER_FEATURES.map(({ icon: Icon, label }) => (
-            <li key={label} className="flex items-center gap-3 text-sm text-foreground/90">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 shrink-0 text-primary-strong">
-                <Icon className="size-3.5" aria-hidden="true" />
-              </span>
-              <span className="leading-snug">{label}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="rounded-2xl bg-surface border border-border/80 p-4.5 shadow-2xs flex flex-col gap-1.5">
-        <Badge size="xs" variant="default" className="w-fit">
-          Período de Avaliação
-        </Badge>
-        <p className="text-sm font-bold text-foreground mt-0.5">30 dias Pro sem custo</p>
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          Cancele quando quiser. Sem cobranças surpresa e sem cartão.
-        </p>
-      </div>
-    </>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Página de cadastro
-// ---------------------------------------------------------------------------
 export function RegisterPage() {
-  const { session, loading, configError } = useAuth();
-  const [searchParams] = useSearchParams();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const [inviteCode, setInviteCode] = useState(
-    searchParams.get("convite") || searchParams.get("invite") || "",
-  );
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [errorKind, setErrorKind] = useState<string | null>(null);
-  const [confirmationSent, setConfirmationSent] = useState(false);
-  const [pending, setPending] = useState(false);
+  const r = useRegisterForm();
 
-  const planoParam = searchParams.get("plano");
-  const metodoParam = searchParams.get("metodo");
-  const isFromSimulator = searchParams.get("from") === "simulador" || !!getPendingSimulation();
-
-  const loginUrl = useMemo(() => {
-    const params = new URLSearchParams();
-    if (email) params.set("email", email);
-    if (planoParam) params.set("plano", planoParam);
-    if (metodoParam) params.set("metodo", metodoParam);
-    const qs = params.toString();
-    return qs ? `/entrar?${qs}` : "/entrar";
-  }, [email, planoParam, metodoParam]);
-
-  const bottomLoginUrl = useMemo(() => {
-    const params = new URLSearchParams();
-    if (planoParam) params.set("plano", planoParam);
-    if (metodoParam) params.set("metodo", metodoParam);
-    const qs = params.toString();
-    return qs ? `/entrar?${qs}` : "/entrar";
-  }, [planoParam, metodoParam]);
-
-  const requirements = useMemo(() => checkPasswordRequirements(password), [password]);
-  const metCount = useMemo(
-    () => Object.values(requirements).filter(Boolean).length,
-    [requirements],
-  );
-
-  if (!loading && session) {
-    if (planoParam) {
-      const checkoutQuery = new URLSearchParams();
-      checkoutQuery.set("plano", planoParam);
-      if (metodoParam) checkoutQuery.set("metodo", metodoParam);
-      return <Navigate to={`/assinatura?${checkoutQuery.toString()}`} replace />;
-    }
-    const redirectParam = searchParams.get("redirect") || searchParams.get("returnUrl");
-    if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")) {
-      return <Navigate to={redirectParam} replace />;
-    }
-    return <Navigate to="/" replace />;
+  if (r.redirectPath) {
+    return <Navigate to={r.redirectPath} replace />;
   }
-
-  const isPasswordSufficient =
-    requirements.minLength && (requirements.hasUppercase || requirements.hasNumber);
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!acceptedTerms) {
-      setError("É obrigatório concordar com os Termos de Uso e a Política de Privacidade para prosseguir.");
-      triggerSensory("destructive");
-      return;
-    }
-    if (!isPasswordSufficient) {
-      setError(
-        "A senha deve atender aos critérios de segurança mínimos (ao menos 8 caracteres com letras e números).",
-      );
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError("As senhas digitadas não coincidem.");
-      triggerSensory("destructive");
-      return;
-    }
-    setError(null);
-    setErrorKind(null);
-    setConfirmationSent(false);
-    setPending(true);
-    try {
-      const result = await signUpWithEmail(
-        email,
-        password,
-        name,
-        inviteCode,
-        captchaToken ?? undefined,
-      );
-      triggerSensory("success");
-      if (result.needsEmailConfirmation) {
-        setConfirmationSent(true);
-      }
-    } catch (err) {
-      triggerSensory("destructive");
-      const classified = classifyError(err);
-      setError(classified.message);
-      setErrorKind(classified.kind);
-
-      const errCode = (err as { code?: string })?.code?.toLowerCase() || "";
-      if (
-        errCode === "user_already_exists" ||
-        errCode === "user-already-exists" ||
-        errCode.includes("already")
-      ) {
-        setErrorKind("user-already-exists");
-      }
-    } finally {
-      setPending(false);
-    }
-  };
-
-  const isAccountExistsError =
-    errorKind === "user-already-exists" ||
-    errorKind === "user_already_exists" ||
-    error?.toLowerCase().includes("já existe") ||
-    error?.toLowerCase().includes("já possui") ||
-    error?.toLowerCase().includes("já está cadastrado") ||
-    error?.toLowerCase().includes("already registered") ||
-    error?.toLowerCase().includes("already exists");
 
   return (
     <AuthShell
       title="Criar conta"
       subtitle={
-        planoParam
+        r.planoParam
           ? "Crie sua conta para concluir a assinatura do Plano Pro."
           : "Comece com 30 dias de acesso Pro gratuito sem cartão de crédito."
       }
-      sideHero={<RegisterSideHero planoParam={planoParam} />}
+      sideHero={<RegisterSideHero planoParam={r.planoParam} />}
     >
       <div className="flex flex-col gap-4">
-        {isFromSimulator ? (
+        {r.isFromSimulator ? (
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-xs text-foreground flex items-center gap-2.5">
             <Sparkles className="size-4 text-primary shrink-0" aria-hidden="true" />
             <p className="leading-relaxed">
@@ -215,69 +43,37 @@ export function RegisterPage() {
           </div>
         ) : null}
 
-        {configError ? <Alert variant="error">{configError}</Alert> : null}
+        {r.configError ? <Alert variant="error">{r.configError}</Alert> : null}
 
-        {error ? (
+        {r.error ? (
           <Alert variant="error">
-            <p>{error}</p>
-            {isAccountExistsError && (
+            <p>{r.error}</p>
+            {r.isAccountExistsError ? (
               <div className="mt-3 pt-2 border-t border-critical/20 flex flex-wrap gap-2.5">
                 <Link
-                  to={`/entrar${email ? `?email=${encodeURIComponent(email)}` : ""}`}
-                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 text-xs font-semibold gap-1.5")}
+                  to={`/entrar${r.email ? `?email=${encodeURIComponent(r.email)}` : ""}`}
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
                 >
-                  Fazer login agora
-                  <ArrowRight className="size-3" aria-hidden="true" />
+                  <span>Fazer login agora</span>
+                  <ArrowRight className="size-3.5" aria-hidden="true" />
                 </Link>
                 <Link
-                  to={`/recuperar-senha${email ? `?email=${encodeURIComponent(email)}` : ""}`}
-                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 text-xs font-semibold gap-1.5")}
+                  to={`/recuperar-senha${r.email ? `?email=${encodeURIComponent(r.email)}` : ""}`}
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "gap-1.5")}
                 >
-                  Recuperar minha senha
-                  <ArrowRight className="size-3" aria-hidden="true" />
+                  <span>Recuperar minha senha</span>
+                  <ArrowRight className="size-3.5" aria-hidden="true" />
                 </Link>
               </div>
-            )}
+            ) : null}
           </Alert>
         ) : null}
 
-        {confirmationSent ? (
-          <div className="rounded-2xl border border-positive/30 bg-surface p-6 shadow-xs flex flex-col items-center text-center space-y-4">
-            <div className="size-12 rounded-2xl bg-positive/10 border border-positive/20 flex items-center justify-center text-positive-strong">
-              <MailCheck className="size-6" aria-hidden="true" />
-            </div>
-            <div className="space-y-1.5">
-              <h3 className="text-base font-semibold text-foreground">
-                Confirme seu endereço de e-mail
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
-                Enviamos um link de ativação para o endereço abaixo. Clique no link recebido para validar sua conta e começar a usar o app.
-              </p>
-              <div className="inline-flex items-center px-3 py-1 rounded-full bg-muted/30 border border-border/80 text-xs font-medium text-foreground">
-                {email}
-              </div>
-            </div>
-
-            <div className="w-full rounded-xl bg-muted/20 border border-border/60 p-3 text-left space-y-1.5">
-              <p className="text-[11px] font-semibold text-foreground">Dicas importantes:</p>
-              <ul className="text-[11px] text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Verifique sua pasta de spam ou lixo eletrônico se não encontrar na caixa de entrada.</li>
-                <li>O link de ativação enviado é seguro e válido por 24 horas.</li>
-              </ul>
-            </div>
-
-            <Link
-              to={loginUrl}
-              className={cn(buttonVariants({ variant: "default" }), "w-full text-xs h-9 font-semibold gap-1.5 rounded-xl")}
-            >
-              <span>Ir para o login</span>
-              <ArrowRight className="size-3.5" aria-hidden="true" />
-            </Link>
-          </div>
+        {r.confirmationSent ? (
+          <RegisterConfirmationCard email={r.email} loginUrl={r.loginUrl} />
         ) : (
           <>
-            {/* Banner Pro — apenas mobile (lg+ vê o painel lateral) */}
-            {!planoParam && (
+            {!r.planoParam ? (
               <div className="flex lg:hidden rounded-xl border border-primary/40 bg-primary/5 p-3.5 items-center gap-3">
                 <div className="flex flex-col gap-0.5 min-w-0">
                   <p className="text-xs font-semibold text-foreground">30 dias Pro grátis</p>
@@ -285,251 +81,134 @@ export function RegisterPage() {
                 </div>
                 <Link
                   to="/assinatura?plano=pro-anual"
-                  className={cn(
-                    buttonVariants({ size: "sm" }),
-                    "shrink-0 text-xs gap-1 ml-auto",
-                  )}
+                  className={cn(buttonVariants({ size: "sm" }), "shrink-0 text-xs gap-1 ml-auto")}
                 >
-                  Ver Plano Pro
-                  <ArrowRight className="size-3" aria-hidden="true" />
+                  <span>Ver Plano Pro</span>
+                  <ArrowRight className="size-3.5" aria-hidden="true" />
                 </Link>
               </div>
-            )}
+            ) : null}
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-          {/* Nome + E-mail em grid responsivo */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="register-name" className="text-xs font-semibold text-foreground">
-                Nome
-              </label>
-              <Input
-                id="register-name"
-                type="text"
-                autoComplete="name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Como quer ser chamado"
-                className="h-10 text-sm rounded-xl"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="register-email" className="text-xs font-semibold text-foreground">
-                E-mail
-              </label>
-              <Input
-                id="register-email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="voce@exemplo.com"
-                className="h-10 text-sm rounded-xl"
-              />
-            </div>
-          </div>
+            <form
+              onSubmit={(e) => {
+                void r.handleSubmit(e);
+              }}
+              className="flex flex-col gap-4"
+              noValidate
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <FormField label="Nome" htmlFor="register-name">
+                  <Input
+                    id="register-name"
+                    type="text"
+                    autoComplete="name"
+                    value={r.name}
+                    onChange={(event) => r.setName(event.target.value)}
+                    placeholder="Como quer ser chamado"
+                    className="text-base sm:text-sm"
+                  />
+                </FormField>
 
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="register-password"
-                className="text-xs font-semibold text-foreground"
-              >
-                Senha
-              </label>
-              {password.length > 0 && (
-                <span
-                  className={cn(
-                    "text-[11px] font-semibold",
-                    metCount <= 2
-                      ? "text-critical-strong"
-                      : metCount === 3
-                        ? "text-warning-strong"
-                        : "text-positive-strong",
-                  )}
-                >
-                  {metCount <= 2 ? "Fraca" : metCount === 3 ? "Média" : "Forte"}
-                </span>
-              )}
-            </div>
-            <PasswordInput
-              id="register-password"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Mínimo de 8 caracteres"
-              className="h-10 text-sm rounded-xl"
-            />
-
-            {password.length > 0 && (
-              <div className="mt-1 flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/30 p-3 text-xs text-muted-foreground animate-in fade-in-50">
-                <div className="grid grid-cols-3 gap-1.5 mb-0.5">
-                  <div
-                    className={cn(
-                      "h-1 rounded-full transition-colors",
-                      metCount >= 1
-                        ? metCount <= 2
-                          ? "bg-critical"
-                          : metCount === 3
-                            ? "bg-warning"
-                            : "bg-positive"
-                        : "bg-border",
-                    )}
+                <FormField label="E-mail" htmlFor="register-email">
+                  <Input
+                    id="register-email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={r.email}
+                    onChange={(event) => r.setEmail(event.target.value)}
+                    placeholder="voce@exemplo.com"
+                    className="text-base sm:text-sm"
                   />
-                  <div
-                    className={cn(
-                      "h-1 rounded-full transition-colors",
-                      metCount >= 3
-                        ? metCount === 3
-                          ? "bg-warning"
-                          : "bg-positive"
-                        : "bg-border",
-                    )}
-                  />
-                  <div
-                    className={cn(
-                      "h-1 rounded-full transition-colors",
-                      metCount >= 4 ? "bg-positive" : "bg-border",
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                  {[
-                    { met: requirements.minLength, label: "Mínimo 8 caracteres" },
-                    { met: requirements.hasUppercase, label: "Letra maiúscula (A-Z)" },
-                    { met: requirements.hasNumber, label: "Número (0-9)" },
-                    { met: requirements.hasSpecialChar, label: "Símbolo especial (!@#$)" },
-                  ].map(({ met, label }) => (
-                    <div
-                      key={label}
-                      className={cn(
-                        "flex items-center gap-1.5",
-                        met ? "text-positive-strong font-medium" : "text-muted-foreground",
-                      )}
-                    >
-                      <CheckCircle2
-                        className={cn(
-                          "size-3 shrink-0",
-                          met ? "text-positive-strong" : "text-border",
-                        )}
-                        aria-hidden="true"
-                      />
-                      <span>{label}</span>
-                    </div>
-                  ))}
-                </div>
+                </FormField>
               </div>
-            )}
-          </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="register-confirm-password"
-              className="text-xs font-semibold text-foreground"
-            >
-              Confirmar Senha
-            </label>
-            <PasswordInput
-              id="register-confirm-password"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              placeholder="Confirme sua senha"
-              className="h-10 text-sm rounded-xl"
-            />
-          </div>
+              <RegisterPasswordFields
+                password={r.password}
+                confirmPassword={r.confirmPassword}
+                metCount={r.metCount}
+                onPasswordChange={r.setPassword}
+                onConfirmPasswordChange={r.setConfirmPassword}
+              />
 
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="register-invite"
-                className="text-xs font-semibold text-foreground"
+              <FormField label="Código de Convite" htmlFor="register-invite" optional>
+                <Input
+                  id="register-invite"
+                  type="text"
+                  value={r.inviteCode}
+                  onChange={(event) => r.setInviteCode(event.target.value.toUpperCase())}
+                  placeholder="Ex: AXIR-XXXX-XXXX"
+                  className="text-base sm:text-sm font-mono uppercase"
+                />
+              </FormField>
+
+              <div className="flex items-start gap-2.5 pt-1">
+                <Checkbox
+                  id="register-terms"
+                  checked={r.acceptedTerms}
+                  onCheckedChange={r.setAcceptedTerms}
+                  disabled={r.pending}
+                  className="mt-0.5"
+                  aria-label="Li e concordo com os Termos de Uso e a Política de Privacidade"
+                />
+                <label
+                  htmlFor="register-terms"
+                  className="cursor-pointer text-xs text-muted-foreground leading-relaxed select-none"
+                >
+                  Li e concordo com os{" "}
+                  <Link
+                    to="/termos"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Termos de Uso
+                  </Link>{" "}
+                  e a{" "}
+                  <Link
+                    to="/privacidade"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Política de Privacidade
+                  </Link>
+                  .
+                </label>
+              </div>
+
+              <Turnstile className="my-0.5" onVerify={(tok) => r.setCaptchaToken(tok)} />
+
+              <Button
+                type="submit"
+                variant="solid"
+                sensoryIntent={false}
+                disabled={r.pending || Boolean(r.configError) || !r.acceptedTerms}
               >
-                Código de Convite
-              </label>
-              <span className="text-[11px] text-muted-foreground font-normal">(opcional)</span>
-            </div>
-            <Input
-              id="register-invite"
-              type="text"
-              value={inviteCode}
-              onChange={(event) => setInviteCode(event.target.value.toUpperCase())}
-              placeholder="Ex: GF-XXXX-XXXX"
-              className="h-10 text-xs font-mono uppercase rounded-xl"
-            />
-          </div>
+                {r.pending ? "Criando conta…" : "Criar conta"}
+              </Button>
+            </form>
 
-          <div className="flex items-start gap-2.5 pt-1">
-            <Checkbox
-              id="register-terms"
-              checked={acceptedTerms}
-              onCheckedChange={setAcceptedTerms}
-              disabled={pending}
-              className="mt-0.5"
-              aria-label="Li e concordo com os Termos de Uso e a Política de Privacidade"
-            />
-            <label
-              htmlFor="register-terms"
-              className="cursor-pointer text-xs text-muted-foreground leading-relaxed select-none"
-            >
-              Li e concordo com os{" "}
+            <div className="mt-2 pt-4 border-t border-border/80 flex flex-col items-center gap-2 text-xs sm:text-sm">
+              <p className="text-muted-foreground">
+                Já tem conta?{" "}
+                <Link
+                  to={r.bottomLoginUrl}
+                  className="text-primary-strong font-semibold hover:text-primary hover:underline transition-colors"
+                >
+                  Entrar
+                </Link>
+              </p>
               <Link
-                to="/termos"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
-                onClick={(e) => e.stopPropagation()}
+                to="/apresentacao"
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-0.5"
               >
-                Termos de Uso
-              </Link>{" "}
-              e a{" "}
-              <Link
-                to="/privacidade"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Política de Privacidade
+                <ArrowLeft className="size-3.5" aria-hidden="true" />
+                <span>Conhecer o Axir e Planos</span>
               </Link>
-              .
-            </label>
-          </div>
-
-          <Turnstile className="my-0.5" onVerify={(tok) => setCaptchaToken(tok)} />
-
-          <Button
-            type="submit"
-            disabled={pending || Boolean(configError) || !acceptedTerms}
-            className="h-10 text-sm font-semibold rounded-xl bg-primary-strong hover:bg-primary text-primary-foreground shadow-xs transition-colors"
-          >
-            {pending ? "Criando conta…" : "Criar conta"}
-          </Button>
-        </form>
-
-        <div className="mt-2 pt-4 border-t border-border/70 flex flex-col items-center gap-2 text-xs sm:text-sm">
-          <p className="text-muted-foreground">
-            Já tem conta?{" "}
-            <Link
-              to={bottomLoginUrl}
-              className="text-primary-strong font-semibold hover:text-primary hover:underline transition-colors"
-            >
-              Entrar
-            </Link>
-          </p>
-          <Link
-            to="/apresentacao"
-            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-0.5"
-          >
-            <ArrowLeft className="size-3.5" aria-hidden="true" />
-            <span>Conhecer o Axir e Planos</span>
-          </Link>
-        </div>
+            </div>
           </>
         )}
       </div>

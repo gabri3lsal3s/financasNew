@@ -228,7 +228,7 @@ describe("AssetDetailSheet (Fase 41 & F57)", () => {
   it("renderiza corretamente para ativo de Renda Fixa com taxa e vencimento formatado pt-BR", () => {
     render(<AssetDetailSheet asset={mockRfAsset} open={true} onOpenChange={vi.fn()} />);
     expect(screen.getByText("CDB-BMG-JAN27")).toBeInTheDocument();
-    expect(screen.getByText(/16[,.]22%\s*a\.a\.\s*•\s*Projetado/i)).toBeInTheDocument();
+    expect(screen.getByText(/16[,.]22%\s*a\.a\.\s*·\s*Projetado/i)).toBeInTheDocument();
     expect(screen.getByText("Valor Aplicado")).toBeInTheDocument();
   });
 
@@ -265,5 +265,38 @@ describe("AssetDetailSheet (Fase 41 & F57)", () => {
     expect(screen.getAllByText("Aportar").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Líder global em logística integrada/i)).toBeInTheDocument();
     expect(screen.getByText("Avaliar Tese & Nota")).toBeInTheDocument();
+  });
+
+  it("não duplica prefixo 'R$ R$' na Custódia Internacional (USD) e formata datas da timeline em pt-BR", () => {
+    const mockUsdAsset: PortfolioAsset = {
+      id: "asset-usd-2",
+      user_id: "user-1",
+      ticker: "MSFT",
+      asset_class: "Internacional",
+      currency: "USD",
+      quantity: 10,
+      average_price: 150.0,
+    };
+    const { container } = render(<AssetDetailSheet asset={mockUsdAsset} open={true} onOpenChange={vi.fn()} />);
+
+    expect(container.ownerDocument.body.textContent).not.toMatch(/R\$\s*R\$/);
+    expect(screen.getByText("20/08/2026")).toBeInTheDocument();
+  });
+
+  it("abre QuickTransactionSheet interno como fallback quando onAction é omitido", () => {
+    render(<AssetDetailSheet asset={mockAsset} open={true} onOpenChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Vender$/i }));
+    expect(screen.getByRole("button", { name: /Confirmar Operação/i })).toBeInTheDocument();
+  });
+
+  it("abre apenas QuickTransactionSheet interno ao clicar em Split sem invocar onAction('split')", () => {
+    const onAction = vi.fn();
+    render(<AssetDetailSheet asset={mockAsset} open={true} onOpenChange={vi.fn()} onAction={onAction} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Desdobramento ou grupamento de cotas/i }));
+    expect(onAction).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Confirmar Operação/i })).toBeInTheDocument();
+    expect(screen.getByText(/Posição Resultante/i)).toBeInTheDocument();
   });
 });

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as clipboardService from "@/services/clipboard";
+import { resolveActiveTripMember } from "@/domain/trips";
 import { LaunchWizard } from "./launch-wizard";
 
 const createExpenseMock = vi.fn();
@@ -47,7 +48,32 @@ let mockTrips: unknown[] = [];
 let mockTripDetails: unknown = null;
 const updateCustomSettingsMock = vi.fn().mockResolvedValue({});
 const addTripExpenseMock = vi.fn().mockResolvedValue({ id: "te-1" });
-const updateExpenseRepoMock = vi.fn().mockResolvedValue({ id: "e-1" });
+const linkPersonalExpenseToTripMock = vi.fn().mockImplementation(async (input: {
+  tripId: string;
+  personalExpenseId: string;
+  tripExpense: {
+    amountCents: number;
+    description: string;
+    categoryName: string;
+    expenseDate: string;
+    currentUserId?: string;
+    hostUserId?: string;
+    members: Array<{ id: string; name: string; is_host: boolean; user_id?: string | null }>;
+  };
+}) => {
+  const member = resolveActiveTripMember(
+    input.tripExpense.members as never,
+    input.tripExpense.currentUserId,
+    input.tripExpense.hostUserId,
+  );
+  return addTripExpenseMock({
+    trip_id: input.tripId,
+    paid_by_member_id: member?.id,
+    amount_cents: input.tripExpense.amountCents,
+    description: input.tripExpense.description,
+    personal_expense_id: input.personalExpenseId,
+  });
+});
 let mockAuthUser: { id: string; email?: string } | null = {
   id: "user-123",
   email: "gabriel@example.com",
@@ -86,6 +112,7 @@ vi.mock("@/state", () => ({
     },
   }),
   useExpense: () => ({ data: null, isLoading: false }),
+  useLinkPersonalExpenseToTripMutation: () => ({ mutateAsync: linkPersonalExpenseToTripMock, isPending: false }),
 }));
 
 vi.mock("@/hooks/use-auth", () => ({
@@ -95,15 +122,6 @@ vi.mock("@/hooks/use-auth", () => ({
     loading: false,
     configError: null,
   }),
-}));
-
-vi.mock("@/data/repositories/trips", () => ({
-  addTripExpense: (...args: unknown[]) => addTripExpenseMock(...args),
-  getTripMembers: vi.fn().mockResolvedValue([]),
-}));
-
-vi.mock("@/data/repositories/expenses", () => ({
-  updateExpense: (...args: unknown[]) => updateExpenseRepoMock(...args),
 }));
 
 vi.mock("@/state/queries/use-user-access", () => ({
@@ -147,6 +165,7 @@ vi.mock("@/state/queries/use-trips", () => ({
     detail: (id: string) => ["trips", id],
   },
   useAddTripExpenseMutation: () => ({ mutateAsync: addTripExpenseMock, isPending: false }),
+  useLinkPersonalExpenseToTripMutation: () => ({ mutateAsync: linkPersonalExpenseToTripMock, isPending: false }),
 }));
 
 const activeCreditCardsMock = vi.fn(() => [] as unknown[]);
@@ -167,7 +186,7 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     extractReceiptTextFromFileMock.mockReset();
     recordTransactionLearningMock.mockReset();
     addTripExpenseMock.mockReset().mockResolvedValue({ id: "te-1" });
-    updateExpenseRepoMock.mockReset().mockResolvedValue({ id: "e-1" });
+    linkPersonalExpenseToTripMock.mockClear();
     updateCustomSettingsMock.mockReset().mockResolvedValue({});
     invalidateQueriesMock.mockReset();
   });
@@ -283,7 +302,8 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     await user.click(screen.getByRole("button", { name: /alimentação/i }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    // Passo 3 — escolhe "Personalizado (definir valor em R$)…" e digita 56250 (R$ 562,50 = 37,5% de R$ 1.500,00)
+    // Passo 3 — abre "Mais detalhes", escolhe "Personalizado (definir valor em R$)…" e digita 56250 (R$ 562,50 = 37,5% de R$ 1.500,00)
+    await user.click(screen.getByRole("button", { name: /mais detalhes/i }));
     await user.click(screen.getByRole("combobox", { name: /Sua Participação \/ Rateio|Peso no relatório/i }));
     await user.click(screen.getByRole("option", { name: /personalizado/i }));
     const customInput = screen.getByRole("textbox", { name: /Sua cota considerada no relatório|Valor considerado no relatório/i });
@@ -316,7 +336,8 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     await user.click(screen.getByRole("option", { name: "Transferência" }));
     expect(screen.getByRole("combobox", { name: "Forma de pagamento" })).toHaveTextContent("Transferência");
 
-    // Passo 3 — altera peso no relatório para 50%
+    // Passo 3 — abre "Mais detalhes" e altera peso no relatório para 50%
+    await user.click(screen.getByRole("button", { name: /mais detalhes/i }));
     await user.click(screen.getByRole("combobox", { name: /Sua Participação \/ Rateio|Peso no relatório/i }));
     await user.click(screen.getByRole("option", { name: "50%" }));
     expect(screen.getByRole("combobox", { name: /Sua Participação \/ Rateio|Peso no relatório/i })).toHaveTextContent("50%");
@@ -433,7 +454,8 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     await user.click(screen.getByRole("button", { name: /alimentação/i }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    // Passo 3 — ativa cobrança vinculada (default: payable)
+    // Passo 3 — abre "Mais detalhes" e ativa cobrança vinculada (default: payable)
+    await user.click(screen.getByRole("button", { name: /mais detalhes/i }));
     const debtCheckbox = screen.getByRole("checkbox", { name: "Criar cobrança vinculada" });
     await user.click(debtCheckbox);
 
@@ -469,7 +491,8 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     await user.click(screen.getByRole("button", { name: /alimentação/i }));
     await user.click(screen.getByRole("button", { name: "Continuar" }));
 
-    // Passo 3 — ativa cobrança vinculada e seleciona "A receber"
+    // Passo 3 — abre "Mais detalhes", ativa cobrança vinculada e seleciona "A receber"
+    await user.click(screen.getByRole("button", { name: /mais detalhes/i }));
     const debtCheckbox = screen.getByRole("checkbox", { name: "Criar cobrança vinculada" });
     await user.click(debtCheckbox);
 
@@ -1273,6 +1296,38 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
         // Segunda renderização sem initialMode explícito deve carregar diretamente em modo rápido
         render(<LaunchWizard />);
         expect(screen.getByRole("button", { name: /Mais opções/i })).toBeInTheDocument();
+      });
+    });
+
+    describe("Ergonomia e controles do wizard (Onda 2)", () => {
+      it("exibe calculadora apenas em passos monetários e colapsa 'Mais detalhes' por padrão", async () => {
+        const user = userEvent.setup();
+        render(<LaunchWizard initialMode="guided" />);
+
+        // Passo 1 (Valor): calculadora ativa
+        expect(screen.getByRole("button", { name: "Abrir calculadora" })).toBeInTheDocument();
+        await user.type(screen.getByRole("textbox", { name: "Valor do lançamento" }), "12000");
+        await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+        // Passo 2 (Categoria): calculadora oculta
+        expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: /alimentação/i }));
+        await user.click(screen.getByRole("button", { name: "Continuar" }));
+
+        // Passo 3 (Detalhes padrão): calculadora oculta e 'Mais detalhes' colapsado
+        expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("checkbox", { name: "Criar cobrança vinculada" })).not.toBeInTheDocument();
+
+        // Ao expandir 'Mais detalhes' e ativar cobrança vinculada, calculadora reaparece
+        await user.click(screen.getByRole("button", { name: /mais detalhes/i }));
+        await user.click(screen.getByRole("checkbox", { name: "Criar cobrança vinculada" }));
+        expect(screen.getByRole("button", { name: "Abrir calculadora" })).toBeInTheDocument();
+        await user.type(screen.getByRole("textbox", { name: "Valor da cobrança vinculada" }), "5000");
+
+        // Passo 4 (Revisão): datas formatadas em PT-BR e calculadora oculta
+        await user.click(screen.getByRole("button", { name: "Continuar" }));
+        expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
+        expect(screen.queryByText(/^\d{4}-\d{2}-\d{2}$/)).not.toBeInTheDocument();
       });
     });
   });

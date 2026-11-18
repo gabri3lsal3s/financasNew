@@ -1,14 +1,17 @@
 import { act, renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { setActiveUserId } from "@/services/user-storage";
 import {
   endDemo,
   getDemoSessionState,
   goToNextStep,
   goToPrevStep,
   hasCompletedDemoTour,
+  hasSeenWelcomeFeatureModal,
   hasSeenWelcomeModal,
   hasSeenNativeOnboarding,
   markTourCompleted,
+  markWelcomeFeatureModalSeen,
   markWelcomeModalSeen,
   markNativeOnboardingSeen,
   resetDemoSession,
@@ -181,5 +184,35 @@ describe("demo-session-store — Máquina de Estados da Simulação & Storage (F
       resetDemoTourStorage();
       expect(hasSeenNativeOnboarding()).toBe(false);
     });
+
+    it("isola sinalizadores de boas-vindas e feature modal por userId evitando vazamento entre contas", () => {
+      localStorage.clear();
+      setActiveUserId("user-a");
+      expect(hasSeenWelcomeModal()).toBe(false);
+      expect(hasSeenWelcomeFeatureModal()).toBe(false);
+
+      markWelcomeModalSeen();
+      markWelcomeFeatureModalSeen();
+      expect(hasSeenWelcomeModal()).toBe(true);
+      expect(hasSeenWelcomeFeatureModal()).toBe(true);
+
+      setActiveUserId("user-b");
+      expect(hasSeenWelcomeModal()).toBe(false);
+      expect(hasSeenWelcomeFeatureModal()).toBe(false);
+    });
+
+    it("mantém fallback para chaves legadas quando não há usuário autenticado", () => {
+      localStorage.clear();
+      setActiveUserId(null);
+      localStorage.setItem("financas:welcome_modal_seen", "true");
+      localStorage.setItem("financas:welcome_feature_modal_seen", "true");
+
+      expect(hasSeenWelcomeModal()).toBe(true);
+      expect(hasSeenWelcomeFeatureModal()).toBe(true);
+    });
+  });
+
+  afterEach(() => {
+    setActiveUserId(null);
   });
 });

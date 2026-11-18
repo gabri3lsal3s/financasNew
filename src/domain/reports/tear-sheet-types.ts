@@ -1,0 +1,137 @@
+import type {
+  PortfolioMonthlySeriesPoint,
+  PositionLikeItem,
+  TwrConsolidatedResult,
+} from "@/domain/portfolio";
+import type { AllocationDonutsResult } from "./allocation-donuts";
+import type { AllocationAnalysisResult } from "./allocation-gaps";
+import type { ConcentrationRiskResult } from "./concentration-risk";
+
+export interface WealthPositionRow {
+  ticker: string;
+  name?: string | null;
+  assetClass: string | null;
+  sector?: string | null;
+  currency: string;
+  quantity: number;
+  averagePrice: number;
+  currentPrice: number;
+  valueBRL: number;
+  totalCostBRL?: number;
+  unrealizedPnlBRL: number;
+  unrealizedPnlPct: number;
+  totalReturnPnlBRL?: number;
+  totalReturnPct?: number;
+  dividendsBRL?: number;
+  yearDividendsBRL?: number;
+  yocPct?: number;
+  isCash?: boolean;
+  score?: number | null;
+  allocationStatus?: string | null;
+}
+
+export interface MonthFlowSummary {
+  buysBRL: number;
+  sellsBRL: number;
+  dividendsBRL: number;
+  netFlowBRL: number;
+  monthLabel: string;
+}
+
+export interface BuildTearSheetModelParams {
+  rows: readonly WealthPositionRow[];
+  totalBRL: number;
+  totalCostBRL: number;
+  totalDividendsBRL?: number;
+  totalReturnPnlBRL?: number;
+  totalReturnPct?: number | null;
+  unrealizedPnlBRL?: number;
+  unrealizedPnlPct?: number | null;
+  cashBRL?: number;
+  allocationAnalysis: AllocationAnalysisResult;
+  concentrationRisk: ConcentrationRiskResult;
+  portfolioTwr?: TwrConsolidatedResult;
+  monthlySeries?: readonly PortfolioMonthlySeriesPoint[];
+  allTimeEconomicPnlBRL?: number;
+  realizedPnlBRL?: number;
+}
+
+export interface TearSheetPerformancePoint {
+  month: string;
+  monthLabel: string;
+  patrimonyBRL: number;
+  ratePct: number;
+  dividendsBRL?: number;
+  costBRL?: number;
+}
+
+export interface TearSheetAllocationRow {
+  assetClass: string;
+  currentBRL: number;
+  currentPct: number;
+  targetPct: number;
+  deviationBRL: number;
+  isDeficit: boolean;
+  isSurplus: boolean;
+}
+
+export interface TearSheetClassGroupItem {
+  ticker: string;
+  name?: string | null;
+  sector?: string | null;
+  quantity: number;
+  avgPriceCents: number;
+  currentPriceCents: number;
+  totalCents: number;
+  pricePnlPct: number;
+  pnlPct: number;
+  dividendsCents: number;
+  yocPct?: number;
+  currency: string;
+  score?: number | null;
+  status: string;
+}
+
+export interface TearSheetClassGroup {
+  className: string;
+  color: string;
+  totalCents: number;
+  sharePct: number;
+  pnlPct: number;
+  subtotalPriceVarPct: number;
+  totalCostCents: number;
+  totalDividendsCents: number;
+  topAssetTicker?: string;
+  topAssetSharePct?: number;
+  items: TearSheetClassGroupItem[];
+}
+
+export interface TearSheetStackedSegment {
+  key: string;
+  label: string;
+  pct: number;
+  color: string;
+}
+
+export interface TearSheetModel {
+  activeInvestmentRows: WealthPositionRow[];
+  totalInvestedValueBRL: number;
+  effectiveCostBRL: number;
+  unrealizedPnlBRL: number;
+  unrealizedPnlPct: number;
+  totalDividendsAllTime: number;
+  totalReturnBRL: number;
+  totalReturnPct: number;
+  effectiveRealizedGainBRL: number;
+  allTimeEconomicValueBRL: number;
+  performanceSeries: TearSheetPerformancePoint[];
+  donutData: AllocationDonutsResult;
+  stackedSegments: TearSheetStackedSegment[];
+  allocationRows: TearSheetAllocationRow[];
+  topDominance: { ticker: string; pct: number };
+  breakdownRows: PositionLikeItem[];
+  classTableGroups: TearSheetClassGroup[];
+  intlPct: number;
+  hasTargets: boolean;
+  surplusClasses: string[];
+}

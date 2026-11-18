@@ -98,7 +98,7 @@ export function Toast({
       ) : null}
       <ToastPrimitive.Close
         aria-label="Fechar"
-        className="size-7 shrink-0 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="relative size-7 shrink-0 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
       >
         <X className="size-4" aria-hidden="true" />
       </ToastPrimitive.Close>

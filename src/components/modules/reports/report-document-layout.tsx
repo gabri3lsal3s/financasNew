@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { Printer } from "lucide-react";
 import { Button, Modal, usePrint, PrintSheet } from "@/components/ui";
 import type { ModalSize } from "@/components/ui";
@@ -25,10 +26,10 @@ export interface ReportDocumentLayoutProps {
 /**
  * Contêiner Mestre Editorial para Relatórios e PDFs do Axir.
  *
- * Garante padrão DRY e visual executivo em 100% dos relatórios do sistema:
- * - Modo Tela: Modal unificado com barra superior de ações no cabeçalho nativo ("Imprimir / Salvar PDF", ações extras e fechar único);
- * - Modo Impressão (@media print): Renderizado via portal PrintSheet no `body`,
- *   suprimindo fundos, overlays e elementos do navegador com margens A4 perfeitas.
+ * - Modo Tela: Modal unificado com barra superior de ações no cabeçalho ("Imprimir / Salvar PDF", ações extras e fechar único);
+ * - Modo Impressão (@media print): Renderizado via portal PrintSheet no `body` sob demanda
+ *   (durante `printing` ou eventos nativos `beforeprint` / `afterprint`), evitando dupla
+ *   renderização pesada do relatório enquanto está apenas em pré-visualização na tela.
  */
 export function ReportDocumentLayout({
   open,
@@ -42,13 +43,44 @@ export function ReportDocumentLayout({
 }: ReportDocumentLayoutProps) {
   const suggestedTitle = documentTitle ?? `${title.replace(/[^a-zA-Z0-9_\u00C0-\u00FF]+/g, "_")}.pdf`;
   const { printing, triggerPrint } = usePrint(suggestedTitle);
+  const [browserPrinting, setBrowserPrinting] = useState(false);
+
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return;
+
+    const handleBeforePrint = () => {
+      flushSync(() => {
+        setBrowserPrinting(true);
+      });
+    };
+
+    const handleAfterPrint = () => {
+      setBrowserPrinting(false);
+    };
+
+    window.addEventListener("beforeprint", handleBeforePrint);
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", handleBeforePrint);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
+  }, [open]);
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next) {
+      setBrowserPrinting(false);
+    }
+    onOpenChange(next);
+  };
+
+  const shouldMountPrintContent = open && (printing || browserPrinting);
 
   return (
     <>
       {/* 1. Pré-visualização Interativa na Tela (Modal Oficial Unificado) */}
       <Modal
         open={open}
-        onOpenChange={onOpenChange}
+        onOpenChange={handleOpenChange}
         title={title}
         hideTitle
         size={size}
@@ -85,13 +117,12 @@ export function ReportDocumentLayout({
         </div>
       </Modal>
 
-      {/* 2. Portal de Impressão Direta A4 (Ativo somente durante @media print) */}
+      {/* 2. Portal de Impressão Direta A4 (Conteúdo montado apenas sob demanda durante impressão) */}
       <PrintSheet open={open} className={className}>
         <div className="print-document flex flex-col gap-5 w-full bg-white text-slate-900">
-          {children}
+          {shouldMountPrintContent ? children : null}
         </div>
       </PrintSheet>
     </>
   );
 }
-

@@ -49,7 +49,6 @@ export function DividendFreedomModal({
   const currentYear = new Date().getFullYear();
   const assetMap = useMemo(() => new Map((assets ?? []).map((a) => [a.id, a])), [assets]);
 
-  // Matriz de 12 meses de proventos do ano corrente para o Sparkline SVG
   const sparklinePoints = Array.from({ length: 12 }, (_, idx) => {
     const monthStr = `${currentYear}-${String(idx + 1).padStart(2, "0")}`;
     const sumBRL = dividends
@@ -73,7 +72,6 @@ export function DividendFreedomModal({
       onOpenChange={onOpenChange}
       title="Dossiê de Proventos & Liberdade Financeira"
     >
-      {/* 1. Cabeçalho Institucional */}
       <ReportHeader
         title="Dossiê de Proventos & Liberdade Financeira"
         subtitle="Fluxo de Renda Passiva, Efeito Bola de Neve & Cobertura do Custo de Vida"
@@ -83,7 +81,6 @@ export function DividendFreedomModal({
         accountHolder={accountHolder}
       />
 
-      {/* 2. Síntese Executiva & KPIs em Linha Única */}
       <ReportExecutiveSummary
         title="SÍNTESE DE PROVENTOS & INDEPENDÊNCIA FINANCEIRA"
         items={[
@@ -110,17 +107,26 @@ export function DividendFreedomModal({
         ]}
         narrative={
           <span>
-            No exercício corrente (<strong>{currentYear}</strong>), o fluxo acumulado de proventos totalizou <strong><MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" className="inline font-bold" /></strong>, perfazendo uma média mensal de <strong><MoneyText cents={numberToCents(freedomAnalysis.monthlyDividendsBRL)} tone="positive" className="inline font-bold" /></strong>. Este fluxo cobre <strong>{formatPercent(freedomAnalysis.freedomPct)}%</strong> do custo de vida mensal (Estágio: <strong>{freedomAnalysis.stageLabel}</strong>). A carteira possui <strong>{freedomAnalysis.totalSnowballAssetsCount} ativo(s) auto-sustentável(is)</strong> operando no Efeito Bola de Neve.
+            No exercício corrente (<strong>{currentYear}</strong>), o fluxo acumulado de proventos totalizou{" "}
+            <strong>
+              <MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" className="inline font-bold" />
+            </strong>
+            , perfazendo uma média mensal de{" "}
+            <strong>
+              <MoneyText cents={numberToCents(freedomAnalysis.monthlyDividendsBRL)} tone="positive" className="inline font-bold" />
+            </strong>
+            . Este fluxo cobre <strong>{formatPercent(freedomAnalysis.freedomPct)}%</strong> do custo de vida mensal
+            (Estágio: <strong>{freedomAnalysis.stageLabel}</strong>). A carteira possui{" "}
+            <strong>{freedomAnalysis.totalSnowballAssetsCount} ativo(s) auto-sustentável(is)</strong> operando no Efeito Bola de Neve.
           </span>
         }
       />
 
-      {/* 3. Termômetro do Estágio de Liberdade Financeira */}
       <section
         aria-label="Termômetro de Liberdade"
-        className="rounded-lg border border-border/80 bg-muted/30 p-3 flex flex-col gap-2 break-inside-avoid print:bg-white print:border-slate-200 shadow-2xs"
+        className="rounded-xl border border-border/80 bg-muted/30 p-3 flex flex-col gap-2 break-inside-avoid print:bg-surface print:border-border shadow-xs"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <Flame className="size-3.5 text-primary-strong" aria-hidden="true" />
             <h3 className="text-[10px] font-bold uppercase tracking-wider text-foreground">
@@ -134,21 +140,20 @@ export function DividendFreedomModal({
 
         <div className="w-full bg-muted/40 rounded-full h-2 overflow-hidden border border-border/80">
           <div
-            className="bg-primary-strong h-full rounded-full transition-all duration-500"
+            className="bg-primary-strong h-full rounded-full transition-all duration-300"
             style={{ width: `${Math.min(100, Math.max(3, freedomAnalysis.freedomPct))}%` }}
           />
         </div>
 
-        <div className="flex justify-between text-[9px] text-muted-foreground font-mono num">
-          <span>0% (Início)</span>
-          <span>25% (1º Quarto)</span>
-          <span>50% (Metade)</span>
-          <span>75% (Segurança)</span>
-          <span>100% (Independência Plena)</span>
+        <div className="flex justify-between gap-2 text-[10px] text-muted-foreground font-mono num overflow-x-auto no-scrollbar">
+          <span className="whitespace-nowrap">0% (Início)</span>
+          <span className="whitespace-nowrap">25% (1º Quarto)</span>
+          <span className="whitespace-nowrap">50% (Metade)</span>
+          <span className="whitespace-nowrap">75% (Segurança)</span>
+          <span className="whitespace-nowrap">100% (Independência Plena)</span>
         </div>
       </section>
 
-      {/* 4. Gráfico de Colunas de 12 Meses de Proventos */}
       <ReportDividendSparkline
         title={`Fluxo Mensal de Rendimentos (${currentYear})`}
         points={sparklinePoints}
@@ -156,10 +161,8 @@ export function DividendFreedomModal({
         projectedAnnualCents={numberToCents(freedomAnalysis.monthlyDividendsBRL * 12)}
       />
 
-
-      {/* 5. Diagnóstico do Efeito Bola de Neve */}
       <section aria-label="Efeito Bola de Neve" className="break-inside-avoid flex flex-col gap-2.5 pt-1">
-        <div className="flex items-center justify-between border-b border-border/80 pb-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
           <div className="flex items-center gap-2">
             <Sparkles className="size-3.5 text-primary-strong" aria-hidden="true" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
@@ -172,8 +175,8 @@ export function DividendFreedomModal({
         </div>
 
         {freedomAnalysis.snowballAssets.length > 0 ? (
-          <div className="rounded-xl border border-border/80 overflow-hidden">
-            <table className="w-full text-left text-xs border-collapse print:table-fixed">
+          <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 print:overflow-visible">
+            <table className="w-full min-w-[540px] sm:min-w-0 text-left text-xs border-collapse print:table-fixed">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
                   <th className="py-2 px-3 print:w-[18%]">Ticker</th>
@@ -185,22 +188,22 @@ export function DividendFreedomModal({
               </thead>
               <tbody className="divide-y divide-border/60">
                 {freedomAnalysis.snowballAssets.map((sb) => (
-                  <tr key={sb.ticker} className="hover:bg-muted/20 break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
-                    <td className="py-1.5 px-3 font-semibold text-foreground truncate">{sanitizeReportText(sb.ticker)}</td>
-                    <td className="py-1.5 px-3 text-right num font-mono">
+                  <tr key={sb.ticker} className="hover:bg-muted/20 break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
+                    <td className="py-1.5 px-3 font-semibold text-foreground whitespace-nowrap">
+                      {sanitizeReportText(sb.ticker)}
+                    </td>
+                    <td className="py-1.5 px-3 text-right num font-mono whitespace-nowrap">
                       <MoneyText cents={numberToCents(sb.currentPriceBRL)} />
                     </td>
-                    <td className="py-1.5 px-3 text-right num font-mono text-positive-strong font-bold">
+                    <td className="py-1.5 px-3 text-right num font-mono text-positive-strong font-bold whitespace-nowrap">
                       <MoneyText cents={numberToCents(sb.monthlyIncomeGeneratedBRL)} />
                     </td>
-                    <td className="py-1.5 px-3 text-right num font-mono font-bold text-foreground">
-                      {sb.newSharesPerMonth.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {sb.newSharesPerMonth === 1 ? "cota" : "cotas"}
+                    <td className="py-1.5 px-3 text-right num font-mono font-bold text-foreground whitespace-nowrap">
+                      {sb.newSharesPerMonth.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                      {sb.newSharesPerMonth === 1 ? "cota" : "cotas"}
                     </td>
-                    <td className="py-1.5 px-3 text-center">
-                      <Badge
-                        variant={sb.isSnowballReached ? "positive" : "muted"}
-                        size="xs"
-                      >
+                    <td className="py-1.5 px-3 text-center whitespace-nowrap">
+                      <Badge variant={sb.isSnowballReached ? "positive" : "muted"} size="xs">
                         {sb.isSnowballReached
                           ? "Bola de Neve Ativa"
                           : `${Math.ceil(sb.monthsToBuyOneShare)} mês(es) p/ 1 cota`}
@@ -212,19 +215,13 @@ export function DividendFreedomModal({
             </table>
           </div>
         ) : (
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 text-xs text-muted-foreground italic print:bg-white print:border-border">
+          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 text-xs text-muted-foreground italic print:bg-surface print:border-border">
             Nenhum ativo com proventos mensais cadastrados no momento.
           </div>
         )}
       </section>
 
-      {/* 6. Rodapé Institucional */}
-      <ReportFooter
-        accountHolder={accountHolder}
-        disclaimer={OFFICIAL_CVM_DISCLAIMER}
-        showQrCode
-      />
+      <ReportFooter accountHolder={accountHolder} disclaimer={OFFICIAL_CVM_DISCLAIMER} showQrCode />
     </ReportDocumentLayout>
   );
 }
-

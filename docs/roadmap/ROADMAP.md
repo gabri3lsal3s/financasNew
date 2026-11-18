@@ -1,6 +1,21 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v3.10.0 (Plano 42)** registra a conclusão da **Unificação Integral da UI/UX, Domínio e Governança de Investimentos** ([`docs/plans/completed/42_PLANO_UNIFICACAO_INTEGRAL_UI_UX_INVESTIMENTOS.md`](../plans/completed/42_PLANO_UNIFICACAO_INTEGRAL_UI_UX_INVESTIMENTOS.md)) (2026-11-17):
+> **v3.10.0 (Ondas 1 a 4 — UI/UX & Investimentos)** registra a conclusão da **Auditoria Integral de UI/UX, Bíblia Visual Oficial, Conforto Ocular e Unificação de Carteira** ([`docs/DESIGN_RULES.md`](../DESIGN_RULES.md) e [`docs/AUDITORIA_UI_UX.md`](../AUDITORIA_UI_UX.md)) (2026-11-18):
+> - **(1) Fundação, Tokens & Blindagem Sensorial (Onda 1)**:
+>   - Instituição dos tokens semânticos oficiais Dark/OLED/Light no `@theme inline`, `@custom-variant dark`, densidade `compact` e flat shadows em `tokens.css`/`globals.css`;
+>   - Blindagem sensorial 100% opt-out em `audio-fx.ts`, `haptics.ts` e `sensory.ts`, eliminando chamadas diretas e disparos simultâneos (*double-haptics*);
+>   - Primitivos UI padronizados (`Modal` unificando `ResponsiveDialog` com Bottom Sheet no mobile vs Diálogo centralizado em md+, `ModalFooter` fixo e borderless, `NumberStepper`, `Accordion` nativo WAI-ARIA, `Switch`, `Checkbox`, `ColorPicker`, `DatePicker`, `Select`, `Button`, `Card`, `Tabs`, `PageHeader`, `BottomNav`, `Sidebar`, `AppErrorBoundary`, `RouteSkeletonFallback`).
+> - **(2) Anatomia Canônica de Modais, Drawers & Formulários (Onda 2)**:
+>   - 100% dos modais e drawers de todos os módulos convertidos para a anatomia canônica com cabeçalho fluido no mobile, rodapé fixo com Cancelar à esquerda e Confirmar à direita, calculadora automática onde há `MoneyInput`, zero `autoFocus` intrusivo e arquivos `< 240` linhas.
+> - **(3) Modularização de Páginas, Cards & Responsividade Multi-Tela (Onda 3)**:
+>   - Modularização completa de todos os módulos (`overview`, `trips`, `family`, `transactions`, `cards`, `debts`, `budgets`, `investments`, `goals`, `insights`, `reports`, `reminders`, `settings`, `auth`, `subscription`, `landing`, `tools`, `legal`, `public-share`, `admin`);
+>   - Responsividade auditada para Mobile (< 768px, alvos >= 44px), Tablet (768px–1024px, grids de 2 colunas) e Desktop (> 1024px, sidebar recolhível e hover consistente);
+>   - Preservação estrita das preferências da Home (sem cabeçalho redundante "Visão Geral" e card de saldo disponível com sombra limpa `shadow-xs`).
+> - **(4) Quality Gates & Build de Produção (Onda 4)**:
+>   - `tsc -b`: 0 erros; `eslint .`: 0 erros e 0 avisos; 100% dos testes Vitest passando;
+>   - Compilação de produção Vite/PWA limpa em 3.21s e compilação do APK Android v3.10.0 (build 70).
+
+> **v3.10.0 (Plano 42 — Prévia)** registra a conclusão da **Unificação Integral da UI/UX, Domínio e Governança de Investimentos** ([`docs/plans/completed/42_PLANO_UNIFICACAO_INTEGRAL_UI_UX_INVESTIMENTOS.md`](../plans/completed/42_PLANO_UNIFICACAO_INTEGRAL_UI_UX_INVESTIMENTOS.md)) (2026-11-17):
 > - **(1) Extinção de `allocation_targets` e Migração Canônica (`000127`)**:
 >   - Remoção definitiva da tabela, RPCs, schemas Zod, hooks e inputs manuais de `%` por ativo (`TargetEditor`), instituindo a cascata estrita em 3 níveis: `Classes %` (excluindo Caixa) -> `Setores %` opcionais escopados por classe (`group_targets.class_name`) -> `Notas (0–10)` + `Status` (`active`, `neutral`, `quarantine`, `exit`), com cálculo derivado único (`calculateEffectiveAssetTargets` / `save_portfolio_hierarchy_targets`) e exibição explícita de `"Sem nota"` (sem fallback falso Nota 8);
 >   - Suporte a **Aporte Composto (`Bolso + Caixa`)** na simulação e no RPC `execute_portfolio_batch_aporte(..., p_cash_used)`, debitando o saldo em Caixa sem distorcer aportes externos (`portfolio_contributions`).

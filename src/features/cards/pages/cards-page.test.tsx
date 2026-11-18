@@ -1,8 +1,33 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CardsPage } from "./cards-page";
 import { shiftMonth } from "@/domain/cards";
+
+function renderCardsPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <CardsPage />
+    </QueryClientProvider>,
+  );
+}
+
+function getAllByMoneyText(expected: string) {
+  const normalized = expected.replace(/\s+/g, " ").trim();
+  return screen.getAllByText(
+    (_content, element) =>
+      element?.tagName.toLowerCase() === "span" &&
+      element.textContent?.replace(/\s+/g, " ").trim() === normalized,
+  );
+}
 
 const searchParamsMock = vi.fn(() => [new URLSearchParams(), vi.fn()]);
 
@@ -226,7 +251,7 @@ vi.mock("@/state", () => ({
 
 describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => {
   it("exibe a carteira de cartões com todas as métricas embutidas no cartão 3D", () => {
-    render(<CardsPage />);
+    renderCardsPage();
     expect(screen.getByText("Sua Carteira")).toBeInTheDocument();
     expect(screen.getAllByText("Nubank").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Fatura Total (Bruto)").length).toBeGreaterThan(0);
@@ -236,18 +261,18 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
   });
 
   it("exibe KPIs da fatura (fatura total bruto, pago, saldo aberto)", () => {
-    render(<CardsPage />);
+    renderCardsPage();
     expect(screen.getAllByText("Fatura Total (Bruto)").length).toBeGreaterThan(0);
     expect(screen.getByText("Pago")).toBeInTheDocument();
     expect(screen.getByText("Saldo aberto (Bruto)")).toBeInTheDocument();
     // Previsto R$ 150,00 · Pago R$ 100,00 · Saldo R$ 50,00
-    expect(screen.getAllByText("R$ 150,00").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("R$ 100,00").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("R$ 50,00").length).toBeGreaterThan(0);
+    expect(getAllByMoneyText("R$ 150,00").length).toBeGreaterThan(0);
+    expect(getAllByMoneyText("R$ 100,00").length).toBeGreaterThan(0);
+    expect(getAllByMoneyText("R$ 50,00").length).toBeGreaterThan(0);
   });
 
   it("lista despesas da competência e pagamentos com botão de exclusão", () => {
-    render(<CardsPage />);
+    renderCardsPage();
     expect(screen.getByText("Supermercado")).toBeInTheDocument();
     expect(screen.getByText("Pagamento de fatura")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /excluir pagamento/i })).toBeInTheDocument();
@@ -256,7 +281,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
   it("permite excluir pagamento com diálogo de confirmação", async () => {
     deleteCardPaymentMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
-    render(<CardsPage />);
+    renderCardsPage();
 
     const deletePayBtn = screen.getByRole("button", { name: /excluir pagamento/i });
     await user.click(deletePayBtn);
@@ -270,7 +295,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
 
   it("permite abrir diálogo de edição do cartão", async () => {
     const user = userEvent.setup();
-    render(<CardsPage />);
+    renderCardsPage();
 
     const cardBtn = screen.getByRole("button", { name: /^cartão nubank/i });
     await user.click(cardBtn);
@@ -282,7 +307,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
   it("permite excluir o cartão através do modal de edição", async () => {
     deleteCardMock.mockResolvedValue(undefined);
     const user = userEvent.setup();
-    render(<CardsPage />);
+    renderCardsPage();
 
     const cardBtn = screen.getByRole("button", { name: /^cartão nubank/i });
     await user.click(cardBtn);
@@ -301,7 +326,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
   it("registra pagamento via diálogo carregando automaticamente o saldo em aberto", async () => {
     paymentMock.mockResolvedValue("p1");
     const user = userEvent.setup();
-    render(<CardsPage />);
+    renderCardsPage();
 
     await user.click(screen.getByRole("button", { name: "Registrar pagamento" }));
     const input = screen.getByRole("textbox", { name: "Valor do pagamento" });
@@ -319,7 +344,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
   it("permite alterar o valor pre-preenchido para pagamento parcial", async () => {
     paymentMock.mockResolvedValue("p2");
     const user = userEvent.setup();
-    render(<CardsPage />);
+    renderCardsPage();
 
     await user.click(screen.getByRole("button", { name: "Registrar pagamento" }));
     const input = screen.getByRole("textbox", { name: "Valor do pagamento" });
@@ -348,7 +373,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
       },
     ];
     try {
-      render(<CardsPage />);
+      renderCardsPage();
 
       await userEvent.click(screen.getByRole("button", { name: "Registrar pagamento" }));
       expect(screen.getByText("Esta fatura não possui saldo pendente no momento ou já foi quitada.")).toBeInTheDocument();
@@ -374,7 +399,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
   it("registra estorno via diálogo (gera renda automática)", async () => {
     refundMock.mockResolvedValue("r1");
     const user = userEvent.setup();
-    render(<CardsPage />);
+    renderCardsPage();
 
     await user.click(screen.getByRole("button", { name: "Estorno" }));
     const input = screen.getByRole("textbox", { name: "Valor do estorno" });
@@ -387,7 +412,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
 
   it("abre o formulário de novo cartão", async () => {
     const user = userEvent.setup();
-    render(<CardsPage />);
+    renderCardsPage();
     await user.click(screen.getByRole("button", { name: /adicionar novo cartão/i }));
     expect(screen.getByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
@@ -395,7 +420,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
 
   it("abre o diálogo de detalhes da despesa ao clicar na linha da fatura", async () => {
     const user = userEvent.setup();
-    render(<CardsPage />);
+    renderCardsPage();
     await user.click(screen.getByText("Supermercado"));
     expect(screen.getByRole("heading", { name: "Detalhes da despesa" })).toBeInTheDocument();
   });
@@ -408,7 +433,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
       { id: "e3", description: "Notebook 3x", date: "2026-08-12", value: 1200, report_weight: 1, bill_competence: "2026-08", installments_total: 3, installment_number: 1 },
     ];
     try {
-      render(<CardsPage />);
+      renderCardsPage();
 
       // Os dois grupos aparecem com os títulos.
       expect(screen.getByText("Parceladas")).toBeInTheDocument();
@@ -431,7 +456,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
 
   it("abre o formulário de criação via deep link direto (?novo=cartao)", () => {
     searchParamsMock.mockReturnValue([new URLSearchParams("novo=cartao"), vi.fn()]);
-    render(<CardsPage />);
+    renderCardsPage();
     expect(screen.getByRole("heading", { name: "Novo cartão" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
     searchParamsMock.mockReturnValue([new URLSearchParams(), vi.fn()]);
@@ -439,7 +464,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
 
   it("exibe estado vazio harmonizado para compras parceladas quando só houver compras à vista", () => {
     // stateMocks.expenses contém apenas 'Supermercado' à vista (installments_total: 1)
-    render(<CardsPage />);
+    renderCardsPage();
     expect(screen.getByText("Nenhuma compra parcelada nesta fatura.")).toBeInTheDocument();
     expect(screen.getByText("Supermercado")).toBeInTheDocument();
   });
@@ -457,27 +482,27 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
         installment_number: 1,
       },
     ];
-    render(<CardsPage />);
+    renderCardsPage();
     expect(screen.getByText("Nenhuma compra à vista nesta fatura.")).toBeInTheDocument();
     expect(screen.getByText("Celular 10x")).toBeInTheDocument();
   });
 
   it("exibe estado vazio harmonizado quando a fatura não possuir despesas", () => {
     stateMocks.expenses = [];
-    render(<CardsPage />);
+    renderCardsPage();
     expect(screen.getByText("Sem despesas nesta fatura")).toBeInTheDocument();
   });
 
   it("exibe estado vazio harmonizado quando não houver pagamentos ou estornos na fatura", () => {
     stateMocks.payments = [];
-    render(<CardsPage />);
+    renderCardsPage();
     expect(screen.getByText("Nenhum pagamento")).toBeInTheDocument();
   });
 
   it("exibe estado vazio harmonizado quando não houver nenhum cartão cadastrado", async () => {
     stateMocks.cards = [];
     const user = userEvent.setup();
-    render(<CardsPage />);
+    renderCardsPage();
     expect(screen.getByText("Nenhum cartão cadastrado")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /adicionar primeiro cartão/i })).toBeInTheDocument();
 
@@ -493,7 +518,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     // defaultExpense = 150 (R$ 150,00)
     // defaultPayment = 100 (R$ 100,00)
     // saldo aberto = R$ 50,00 -> Limite disponível = R$ 4.950,00
-    render(<CardsPage />);
+    renderCardsPage();
     expect(screen.getByText("Limite disponível:")).toBeInTheDocument();
     expect(screen.getByText(/4\.950,00/)).toBeInTheDocument();
   });
@@ -511,7 +536,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
         installment_number: 2,
       },
     ];
-    render(<CardsPage />);
+    renderCardsPage();
     expect(screen.getByText("Notebook 10x")).toBeInTheDocument();
     expect(screen.getByText("2/10")).toBeInTheDocument();
   });
@@ -532,16 +557,16 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
     ];
     stateMocks.payments = [];
 
-    render(<CardsPage />);
+    renderCardsPage();
 
     // Métrica primária destacada (Fatura Total Bruto): R$ 200,00
     expect(screen.getAllByText("Fatura Total (Bruto)").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("R$ 200,00").length).toBeGreaterThan(0);
+    expect(getAllByMoneyText("R$ 200,00").length).toBeGreaterThan(0);
 
     // Métrica analítica secundária: "Ponderada: R$ 100,00" e "Ponderado: R$ 100,00"
     expect(screen.getByText("Ponderada:")).toBeInTheDocument();
     expect(screen.getByText("Ponderado:")).toBeInTheDocument();
-    expect(screen.getAllByText("R$ 100,00").length).toBeGreaterThan(0);
+    expect(getAllByMoneyText("R$ 100,00").length).toBeGreaterThan(0);
 
     // Saldo aberto a pagar no banco: R$ 200,00 (100% nominal do boleto)
     expect(screen.getByText("Saldo aberto (Bruto)")).toBeInTheDocument();
@@ -549,7 +574,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
 
   it("permite alternar rapidamente entre faturas usando os pills de competência", async () => {
     const user = userEvent.setup();
-    render(<CardsPage />);
+    renderCardsPage();
 
     const anteriorBtn = screen.getByRole("button", { name: /^anterior/i });
     const atualBtn = screen.getByRole("button", { name: /^atual/i });
@@ -605,7 +630,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
       },
     ];
 
-    render(<CardsPage />);
+    renderCardsPage();
 
     // Bloco do Radar de Assinaturas deve estar visível com a mensagem canônica
     expect(screen.getByText(/Radar de Assinaturas/i)).toBeInTheDocument();
@@ -648,7 +673,7 @@ describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => 
       },
     ];
 
-    render(<CardsPage />);
+    renderCardsPage();
 
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.getByText("Alerta de Limite Comprometido")).toBeInTheDocument();

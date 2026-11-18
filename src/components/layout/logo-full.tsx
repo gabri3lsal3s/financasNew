@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useIsPro } from "@/hooks/use-is-pro";
+import { Badge } from "@/components/ui/badge";
 import { LogoIcon } from "./logo-icon";
 import type { LogoIconProps } from "./logo-icon";
 
@@ -37,7 +38,7 @@ const SIZE_PRESETS = {
   sm: {
     mark: "size-6",
     wordmark: "text-base font-bold",
-    subtitle: "text-[9px] tracking-wider",
+    subtitle: "text-[10px] tracking-wider",
     gap: "gap-2",
   },
   md: {
@@ -86,8 +87,12 @@ export function LogoFull({
   const isVertical = orientation === "vertical";
 
   const defaultAriaLabel = isProActive
-    ? (showSubtitle && subtitleText ? `Axir PRO • ${subtitleText}` : "Axir PRO")
-    : (showSubtitle && subtitleText ? `Axir • ${subtitleText}` : "Axir");
+    ? showSubtitle && subtitleText
+      ? `Axir PRO - ${subtitleText}`
+      : "Axir PRO"
+    : showSubtitle && subtitleText
+      ? `Axir - ${subtitleText}`
+      : "Axir";
 
   return (
     <span
@@ -118,7 +123,7 @@ export function LogoFull({
           isVertical ? "items-center" : "justify-center",
         )}
       >
-        <div className="inline-flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-1.5">
           <span
             className={cn(
               "font-display leading-tight text-foreground whitespace-nowrap tracking-wide",
@@ -129,14 +134,15 @@ export function LogoFull({
             Axir
           </span>
           {isProActive ? (
-            <span
-              className="inline-flex items-center rounded bg-amber-500/15 px-1 py-0.2 text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 border border-amber-500/30 leading-none select-none"
+            <Badge
+              size="xs"
+              className="rounded bg-accent/15 text-accent-foreground dark:text-accent border border-accent/30 font-bold uppercase tracking-wider select-none"
               title="Plano Pro ativo"
             >
               PRO
-            </span>
+            </Badge>
           ) : null}
-        </div>
+        </span>
         {showSubtitle && subtitleText ? (
           <span
             className={cn(

@@ -1,75 +1,21 @@
-import { useMemo, useState } from "react";
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  Coins,
-  Download,
-  FilterX,
-  History,
-  Layers,
-  Pencil,
-  Sparkles,
-  Trash2,
-  Wallet,
-} from "lucide-react";
-import {
-  Badge,
-  Button,
-  Checkbox,
-  ConfirmDialog,
-  EmptyState,
-  FilterChips,
-  SearchInput,
-  Select,
-  SkeletonTable,
-} from "@/components/ui";
+import { History } from "lucide-react";
+import { EmptyState, SkeletonTable } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
-import { MoneyText } from "@/components/ui/money-text";
-import { numberToCents } from "@/domain/money";
-import { inferSectorFromTicker, isCashAssetClass, isDividendType } from "@/domain/portfolio";
-import { currentMonth, formatDateBR } from "@/lib/date";
-import { cn } from "@/lib/utils";
-import { getErrorMessage } from "@/services/errors";
-import { downloadCsv } from "@/services/export-actions";
-import { formatCentsAsBRL } from "@/services/masks";
-import { serializePortfolioActivitiesCsv, type ExportPortfolioActivityRow } from "@/domain/export";
-import { triggerSensory } from "@/services/sensory";
-import { pushToast } from "@/services/toast";
+import {
+  resolveActivityItemAsset,
+  type ActivityFilterType,
+  type ActivityItem,
+} from "@/domain/portfolio/unified-activity-feed";
+import type { PortfolioAsset, PortfolioContribution, PortfolioDividend } from "@/types";
+import { ActivityDeleteDialog } from "./activity-panel/activity-delete-dialog";
+import { ActivityFilterBar } from "./activity-panel/activity-filter-bar";
+import { ActivityRowItem } from "./activity-panel/activity-row-item";
+import { ActivitySummaryCards } from "./activity-panel/activity-summary-cards";
+import { useActivityFiltersExport } from "./activity-panel/use-activity-filters-export";
 import { ContributionFormDialog } from "./contribution-form-dialog";
 import { QuickTransactionSheet } from "./quick-transaction-sheet";
-import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import {
-  useAllPortfolioTransactions,
-  useDeletePortfolioContribution,
-  useDeletePortfolioDividend,
-  useDeletePortfolioTransaction,
-  usePortfolioAssets,
-  usePortfolioContributions,
-  usePortfolioDividends,
-  usePortfolioPosition,
-  useUpdatePortfolioAsset,
-} from "@/state";
-import type { PortfolioAsset, PortfolioContribution, PortfolioDividend, PortfolioTransaction } from "@/types";
 
-export type ActivityFilterType = "all" | "buy" | "contribution" | "sell" | "dividend";
-
-export interface ActivityItem {
-  id: string;
-  source: "transaction" | "contribution" | "dividend";
-  type: "buy" | "sell" | "dividend" | "split" | "contribution";
-  date: string;
-  ticker: string;
-  assetName?: string;
-  assetClass?: string | null;
-  quantity?: number;
-  price?: number;
-  total: number;
-  notes?: string | null;
-  rawTransaction?: PortfolioTransaction;
-  rawContribution?: PortfolioContribution;
-  rawDividend?: PortfolioDividend;
-  linkedContribution?: PortfolioContribution;
-}
+export type { ActivityFilterType, ActivityItem };
 
 export interface PortfolioActivityPanelProps {
   defaultMonth?: string;
@@ -77,988 +23,151 @@ export interface PortfolioActivityPanelProps {
 
 /**
  * Extrato Completo de Movimentações da Carteira.
- * Unifica compras/aportes, vendas/resgates, proventos e splits com filtros por tipo,
- * resumo de fluxo mensal e visualização de impacto financeiro.
  */
 export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelProps) {
-  const { guardAction, upgradeModal } = useMutationGuard({ moduleKey: "investments" });
-  const [month, setMonth] = useState(() => defaultMonth ?? currentMonth());
-  const [filterType, setFilterType] = useState<ActivityFilterType>("all");
-  const [selectedClass, setSelectedClass] = useState<string>("all");
-  const [selectedSector, setSelectedSector] = useState<string>("all");
-  const [search, setSearch] = useState("");
-  const [itemToDelete, setItemToDelete] = useState<ActivityItem | null>(null);
-  const [rollbackCash, setRollbackCash] = useState(true);
-  const [editingTx, setEditingTx] = useState<{
-    transaction: PortfolioTransaction;
-    asset: PortfolioAsset;
-    linkedContribution?: PortfolioContribution;
-  } | null>(null);
-  const [editingDividend, setEditingDividend] = useState<PortfolioDividend | null>(null);
-  const [editingContribution, setEditingContribution] = useState<PortfolioContribution | null>(null);
+  const vm = useActivityFiltersExport(defaultMonth);
 
-  const transactionsQuery = useAllPortfolioTransactions();
-  const contributionsQuery = usePortfolioContributions();
-  const dividendsQuery = usePortfolioDividends();
-  const assetsQuery = usePortfolioAssets();
-  const positionQuery = usePortfolioPosition();
-  const usdRate = positionQuery.rows.find((r) => r.currency === "USD")?.usdRate ?? 5.25;
-
-  const cashAsset = useMemo(
-    () => (assetsQuery.data ?? []).find((a) => a.ticker.toUpperCase() === "CAIXA" || isCashAssetClass(a.asset_class)),
-    [assetsQuery.data],
-  );
-  const cashBalance = typeof cashAsset?.quantity === "number" ? cashAsset.quantity : 0;
-
-  const deleteTransaction = useDeletePortfolioTransaction();
-  const deleteContribution = useDeletePortfolioContribution();
-  const deleteDividend = useDeletePortfolioDividend();
-  const updateAsset = useUpdatePortfolioAsset();
-
-  const assetMap = useMemo(
-    () => new Map((assetsQuery.data ?? []).map((a) => [a.id, a])),
-    [assetsQuery.data],
-  );
-
-  // Unifica todas as movimentações em uma timeline padronizada
-  const allActivities = useMemo(() => {
-    const list: ActivityItem[] = [];
-
-    // Mapeia notas e aportes vinculados por (asset_id, date)
-    const contributionNotesMap = new Map<string, string>();
-    const contributionByAssetDateMap = new Map<string, PortfolioContribution>();
-    for (const c of contributionsQuery.data ?? []) {
-      if (c.asset_id) {
-        contributionByAssetDateMap.set(`${c.asset_id}_${c.date}`, c);
-        if (c.notes) {
-          contributionNotesMap.set(`${c.asset_id}_${c.date}`, c.notes);
-        }
-      }
+  const handleEditItem = (item: ActivityItem, asset: PortfolioAsset | null) => {
+    if (item.type === "dividend") {
+      vm.guardAction(() => {
+        const divToEdit: PortfolioDividend = item.rawDividend ?? {
+          id: item.id.replace(/^div-/, "").replace(/^tx-/, ""),
+          user_id: item.rawTransaction?.user_id ?? "",
+          asset_id: item.rawTransaction?.asset_id ?? null,
+          ticker: item.ticker,
+          date: item.date,
+          amount: item.total,
+          sync_cash: false,
+        };
+        vm.setEditingDividend(divToEdit);
+      }, "Editar Provento");
+      return;
     }
 
-    // Mapeia proventos por (asset_id, date) para vincular rawDividend às transações
-    const dividendMap = new Map<string, PortfolioDividend>();
-    for (const d of dividendsQuery.data ?? []) {
-      if (d.asset_id) {
-        dividendMap.set(`${d.asset_id}_${d.date}`, d);
-      }
+    if (item.type === "contribution") {
+      vm.guardAction(() => {
+        const contribToEdit: PortfolioContribution = item.rawContribution ?? {
+          id: item.id.replace(/^contrib-/, ""),
+          user_id: "",
+          asset_id: item.rawTransaction?.asset_id ?? null,
+          date: item.date,
+          amount: item.total,
+          notes: item.notes ?? null,
+        };
+        vm.setEditingContribution(contribToEdit);
+      }, "Editar Aporte");
+      return;
     }
 
-    // 1. Transações do Ledger (Compras, Vendas, Splits, etc.)
-    for (const t of transactionsQuery.data ?? []) {
-      const asset = assetMap.get(t.asset_id);
-      if (asset && (isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA")) {
-        continue;
-      }
-      const ticker = asset?.ticker ?? "Ativo";
-      const totalAmount = t.total > 0 ? t.total : (t.quantity > 0 && t.price > 0 ? t.quantity * t.price : 0);
-      const linkedNote = contributionNotesMap.get(`${t.asset_id}_${t.date}`) ?? (t as { notes?: string | null }).notes ?? null;
-      const linkedContrib = t.asset_id ? contributionByAssetDateMap.get(`${t.asset_id}_${t.date}`) : undefined;
-
-      const isDiv = isDividendType(t.type);
-      const linkedDiv = isDiv && t.asset_id ? dividendMap.get(`${t.asset_id}_${t.date}`) : undefined;
-      const activityType: ActivityItem["type"] =
-        t.type === "buy" || t.type === "subscription"
-          ? "buy"
-          : t.type === "sell"
-            ? "sell"
-            : t.type === "split" || t.type === "reverse_split"
-              ? "split"
-              : isDiv
-                ? "dividend"
-                : "buy";
-
-      list.push({
-        id: `tx-${t.id}`,
-        source: "transaction",
-        type: activityType,
-        date: t.date,
-        ticker,
-        assetClass: asset?.asset_class,
-        quantity: t.quantity,
-        price: t.price,
-        total: totalAmount,
-        notes: linkedNote,
-        rawTransaction: t,
-        rawContribution: linkedContrib,
-        rawDividend: linkedDiv,
-        linkedContribution: linkedContrib,
-      });
-    }
-
-    // 2. Proventos Recebidos (Dividendos, JCP, Rendimentos)
-    for (const d of dividendsQuery.data ?? []) {
-      const asset = d.asset_id ? assetMap.get(d.asset_id) : undefined;
-      const ticker = asset?.ticker ?? "Provento";
-
-      // Evita duplicar se a transação do provento já veio pelo ledger
-      const alreadyInList = list.some(
-        (item) =>
-          item.type === "dividend" &&
-          item.date === d.date &&
-          (item.ticker === ticker || ticker === "Provento") &&
-          Math.abs(item.total - d.amount) < 0.01,
-      );
-
-      if (!alreadyInList) {
-        list.push({
-          id: `div-${d.id}`,
-          source: "dividend",
-          type: "dividend",
-          date: d.date,
-          ticker,
-          assetClass: asset?.asset_class,
-          total: d.amount,
-          notes: d.notes,
-          rawDividend: d,
+    if (item.source === "transaction" && item.rawTransaction && asset) {
+      vm.guardAction(() => {
+        vm.setEditingTx({
+          transaction: item.rawTransaction!,
+          asset,
+          linkedContribution: item.linkedContribution,
         });
-      }
-    }
-
-    // 3. Aportes Financeiros / Injeções de Capital
-    for (const c of contributionsQuery.data ?? []) {
-      const asset = c.asset_id ? assetMap.get(c.asset_id) : undefined;
-      const ticker = asset?.ticker ?? "Aporte Financeiro";
-
-      // Evita duplicar se a compra gerada pelo aporte já existe na lista
-      const alreadyCovered = list.some(
-        (item) =>
-          item.source === "transaction" &&
-          item.type === "buy" &&
-          item.date === c.date &&
-          (c.asset_id
-            ? item.rawTransaction?.asset_id === c.asset_id
-            : item.ticker === ticker || ticker === "Aporte Financeiro"),
-      );
-
-      if (!alreadyCovered) {
-        list.push({
-          id: `contrib-${c.id}`,
-          source: "contribution",
-          type: "contribution",
-          date: c.date,
-          ticker,
-          assetClass: asset?.asset_class,
-          total: c.amount,
-          notes: c.notes,
-          rawContribution: c,
-        });
-      }
-    }
-
-    return list.sort((a, b) => b.date.localeCompare(a.date));
-  }, [transactionsQuery.data, contributionsQuery.data, dividendsQuery.data, assetMap]);
-
-  // Filtro por Mês
-  const monthActivities = useMemo(
-    () => allActivities.filter((item) => item.date.startsWith(month)),
-    [allActivities, month],
-  );
-
-  // Métricas do Mês
-  const monthStats = useMemo(() => {
-    let totalBoughtAssets = 0;
-    let totalSoldAssets = 0;
-    let totalDividends = 0;
-
-    for (const item of monthActivities) {
-      const asset = item.rawTransaction
-        ? assetMap.get(item.rawTransaction.asset_id)
-        : item.rawDividend?.asset_id
-          ? assetMap.get(item.rawDividend.asset_id)
-          : item.rawContribution?.asset_id
-            ? assetMap.get(item.rawContribution.asset_id)
-            : null;
-
-      const isCash = asset
-        ? isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA"
-        : item.assetClass
-          ? isCashAssetClass(item.assetClass) || item.ticker.toUpperCase() === "CAIXA"
-          : item.ticker.toUpperCase() === "CAIXA";
-
-      const isUSD = asset?.currency === "USD";
-      const rate = isUSD ? usdRate : 1;
-      const totalBRL = item.total * rate;
-
-      if (item.type === "buy") {
-        if (!isCash) {
-          totalBoughtAssets += totalBRL;
-        }
-      } else if (item.type === "sell") {
-        if (!isCash) {
-          totalSoldAssets += totalBRL;
-        }
-      } else if (item.type === "dividend") {
-        totalDividends += totalBRL;
-      }
-    }
-
-    // Aportes de capital externo do bolso apurados no mês (injetados em Caixa ou direto em ativos)
-    let totalContributions = 0;
-    for (const c of contributionsQuery.data ?? []) {
-      if (c.date && c.date.startsWith(month)) {
-        totalContributions += Number(c.amount) || 0;
-      }
-    }
-
-    const netInvestedCents = numberToCents(totalBoughtAssets - totalSoldAssets);
-
-    return {
-      boughtCents: numberToCents(totalBoughtAssets),
-      contributionsCents: numberToCents(totalContributions),
-      soldCents: numberToCents(totalSoldAssets),
-      dividendsCents: numberToCents(totalDividends),
-      netInvestedCents,
-    };
-  }, [monthActivities, contributionsQuery.data, month, assetMap, usdRate]);
-
-  // Classes e Setores disponíveis nas movimentações da competência
-  const availableClasses = useMemo(() => {
-    const set = new Set<string>();
-    for (const item of monthActivities) {
-      if (item.assetClass) {
-        set.add(item.assetClass);
-      }
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [monthActivities]);
-
-  const availableSectors = useMemo(() => {
-    const set = new Set<string>();
-    for (const item of monthActivities) {
-      const sec = inferSectorFromTicker(item.ticker, item.assetClass ?? undefined);
-      if (sec && sec !== "Outros") {
-        set.add(sec);
-      }
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [monthActivities]);
-
-  // Contadores para os botões de filtro
-  const typeCounts = useMemo(() => {
-    let buys = 0;
-    let sells = 0;
-    let dividends = 0;
-
-    for (const item of monthActivities) {
-      if (item.type === "buy") buys++;
-      else if (item.type === "sell") sells++;
-      else if (item.type === "dividend") dividends++;
-    }
-
-    // Total de aportes externos registrados na competência
-    const contributions = (contributionsQuery.data ?? []).filter(
-      (c) => Boolean(c.date && c.date.startsWith(month)),
-    ).length;
-
-    return { buys, contributions, sells, dividends };
-  }, [monthActivities, contributionsQuery.data, month]);
-
-  // Filtros de Tipo, Classe, Setor e Busca
-  const filteredActivities = useMemo(() => {
-    return monthActivities.filter((item) => {
-      if (filterType === "buy" && item.type !== "buy") return false;
-      if (filterType === "contribution") {
-        const isDirect = item.type === "contribution";
-        const isFunded = item.type === "buy" && Boolean(item.linkedContribution);
-        if (!isDirect && !isFunded) return false;
-      }
-      if (filterType === "sell" && item.type !== "sell") return false;
-      if (filterType === "dividend" && item.type !== "dividend") return false;
-
-      if (selectedClass !== "all" && item.assetClass !== selectedClass) {
-        return false;
-      }
-
-      if (selectedSector !== "all") {
-        const sec = inferSectorFromTicker(item.ticker, item.assetClass ?? undefined);
-        if (sec !== selectedSector) return false;
-      }
-
-      if (search.trim()) {
-        const query = search.toLowerCase().trim();
-        const matchTicker = item.ticker.toLowerCase().includes(query);
-        const matchNotes = item.notes?.toLowerCase().includes(query) ?? false;
-        const matchClass = item.assetClass?.toLowerCase().includes(query) ?? false;
-        const sec = inferSectorFromTicker(item.ticker, item.assetClass ?? undefined);
-        const matchSector = sec?.toLowerCase().includes(query) ?? false;
-        return matchTicker || matchNotes || matchClass || matchSector;
-      }
-
-      return true;
-    });
-  }, [monthActivities, filterType, selectedClass, selectedSector, search]);
-
-  const handleExportCsv = () => {
-    if (filteredActivities.length === 0) return;
-    const rows: ExportPortfolioActivityRow[] = filteredActivities.map((item) => {
-      let typeLabel = "Operação";
-      const isCash = item.ticker.toUpperCase() === "CAIXA" || isCashAssetClass(item.assetClass);
-      if (item.type === "contribution") {
-        typeLabel = isCash ? "Aporte em Caixa" : "Aporte";
-      } else if (item.type === "buy") {
-        typeLabel = "Compra";
-      } else if (item.type === "sell") {
-        typeLabel = "Venda / Resgate";
-      } else if (item.type === "dividend") {
-        typeLabel = "Provento";
-      } else if (item.type === "split") {
-        typeLabel = "Desdobramento";
-      }
-
-      return {
-        date: item.date,
-        type: typeLabel,
-        ticker: item.ticker,
-        assetClass: item.assetClass ?? null,
-        quantity: item.quantity ?? null,
-        price: item.price ?? null,
-        total: item.total,
-        notes: item.notes ?? null,
-      };
-    });
-
-    const filterSlug = filterType === "all" ? "todas" : filterType;
-    downloadCsv(`movimentacoes_carteira_${month}_${filterSlug}.csv`, serializePortfolioActivitiesCsv(rows));
-  };
-
-  const handleDeleteItem = async () => {
-    if (!itemToDelete) return;
-    try {
-      if (itemToDelete.type === "dividend") {
-        if (itemToDelete.rawDividend) {
-          await deleteDividend.mutateAsync({
-            ...itemToDelete.rawDividend,
-            rollbackCash: Boolean(itemToDelete.rawDividend.sync_cash && rollbackCash),
-          });
-        } else if (itemToDelete.rawTransaction) {
-          await deleteDividend.mutateAsync({
-            id: itemToDelete.rawTransaction.id,
-            asset_id: itemToDelete.rawTransaction.asset_id,
-            date: itemToDelete.date,
-            amount: itemToDelete.total,
-            rollbackCash: false,
-          });
-          await deleteTransaction.mutateAsync(itemToDelete.rawTransaction);
-        }
-      } else if (itemToDelete.source === "transaction" && itemToDelete.rawTransaction) {
-        const asset = itemToDelete.rawTransaction.asset_id
-          ? assetMap.get(itemToDelete.rawTransaction.asset_id)
-          : undefined;
-        const rate = asset?.currency === "USD" ? usdRate : 1;
-        const shouldReverseCash = Boolean(
-          rollbackCash &&
-            cashAsset &&
-            itemToDelete.total > 0 &&
-            (itemToDelete.type === "sell" || (itemToDelete.type === "buy" && !itemToDelete.linkedContribution)),
-        );
-
-        await deleteTransaction.mutateAsync({
-          ...itemToDelete.rawTransaction,
-          reverseCash: shouldReverseCash,
-          usdRate: rate,
-        });
-      } else if (itemToDelete.source === "contribution" && itemToDelete.rawContribution) {
-        await deleteContribution.mutateAsync(itemToDelete.rawContribution);
-        // Se o aporte foi direto em Caixa e pediu estorno:
-        const isCashContrib = cashAsset && itemToDelete.rawContribution.asset_id === cashAsset.id;
-        if (isCashContrib && rollbackCash && cashAsset && itemToDelete.total > 0) {
-          const currentCashBalance = Number(cashAsset.quantity ?? 0);
-          const newBal = Math.max(0, Math.round((currentCashBalance - itemToDelete.total) * 100) / 100);
-          await updateAsset.mutateAsync({
-            id: cashAsset.id,
-            patch: {
-              quantity: newBal,
-              average_price: 1,
-            },
-          });
-        }
-      } else if (itemToDelete.source === "dividend" && itemToDelete.rawDividend) {
-        await deleteDividend.mutateAsync({
-          ...itemToDelete.rawDividend,
-          rollbackCash: Boolean(itemToDelete.rawDividend.sync_cash && rollbackCash),
-        });
-      }
-
-      triggerSensory("destructive");
-      pushToast({
-        title: "Lançamento excluído",
-        description: "A movimentação foi removida e os saldos recalculados.",
-      });
-      setItemToDelete(null);
-      setRollbackCash(true);
-    } catch (err) {
-      pushToast({
-        title: "Erro ao excluir movimentação",
-        description: getErrorMessage(err),
-        variant: "destructive",
-      });
+      }, "Editar Operação");
     }
   };
-
-  const isLoading =
-    transactionsQuery.isLoading ||
-    contributionsQuery.isLoading ||
-    dividendsQuery.isLoading ||
-    assetsQuery.isLoading;
 
   return (
     <>
       <div className="flex flex-col gap-4">
-        <MonthPicker value={month} onValueChange={setMonth} aria-label="Mês do extrato" />
+        <MonthPicker value={vm.month} onValueChange={vm.setMonth} />
 
-        {/* Resumo Consolidado de Fluxo no Mês */}
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-2xs">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Compras de Ativos</span>
-              <ArrowDownLeft className="size-3.5 text-positive-strong" aria-hidden="true" />
-            </div>
-            <span className="text-base font-semibold text-foreground">
-              <MoneyText cents={monthStats.boughtCents} tone="default" />
-            </span>
-          </div>
+        <ActivitySummaryCards stats={vm.monthStats} />
 
-          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-2xs">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Vendas / Resgates</span>
-              <ArrowUpRight className="size-3.5 text-negative-strong" aria-hidden="true" />
-            </div>
-            <span className="text-base font-semibold text-foreground">
-              <MoneyText cents={monthStats.soldCents} tone="default" />
-            </span>
-          </div>
+        <ActivityFilterBar
+          search={vm.search}
+          onSearchChange={vm.setSearch}
+          filterType={vm.filterType}
+          onFilterTypeChange={vm.setFilterType}
+          totalCount={vm.monthActivitiesCount}
+          typeCounts={vm.typeCounts}
+          filteredCount={vm.filteredActivities.length}
+          onExportCsv={vm.handleExportCsv}
+          availableClasses={vm.availableClasses}
+          selectedClass={vm.selectedClass}
+          onSelectedClassChange={vm.setSelectedClass}
+          availableSectors={vm.availableSectors}
+          selectedSector={vm.selectedSector}
+          onSelectedSectorChange={vm.setSelectedSector}
+          onClearAuxFilters={() => {
+            vm.setSelectedClass("all");
+            vm.setSelectedSector("all");
+          }}
+        />
 
-          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-2xs">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Proventos do Mês</span>
-              <Coins className="size-3.5 text-portfolio" aria-hidden="true" />
-            </div>
-            <span className="text-base font-semibold text-foreground">
-              <MoneyText cents={monthStats.dividendsCents} tone="positive" />
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface/90 p-3 sm:p-3.5 shadow-2xs">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Aportes do Bolso</span>
-              <Wallet className="size-3.5 text-portfolio" aria-hidden="true" />
-            </div>
-            <span className="text-base font-semibold text-foreground">
-              <MoneyText cents={monthStats.contributionsCents} tone="portfolio" />
-            </span>
-          </div>
-        </div>
-
-        {/* Balanço Líquido de Compras no Mês */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 px-3.5 py-2 rounded-xl border border-border/80 bg-surface/70 text-xs text-muted-foreground shadow-2xs">
-          <div className="flex items-center gap-1.5">
-            <Layers className="size-3.5 text-portfolio" aria-hidden="true" />
-            <span>Compras Líquidas (Compras - Vendas):</span>
-          </div>
-          <span className="font-semibold text-foreground">
-            <MoneyText cents={monthStats.netInvestedCents} tone="default" sign="auto" />
-          </span>
-        </div>
-
-        {/* Barra de Filtros e Busca */}
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between min-w-0">
-          <SearchInput
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onClear={() => setSearch("")}
-            placeholder="Buscar por ativo, setor ou observação…"
-            aria-label="Buscar movimentações"
-            className="w-full"
-          />
-
-          <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-            <FilterChips
-              items={[
-                { key: "all", label: "Todas", count: monthActivities.length },
-                { key: "buy", label: "Compras", count: typeCounts.buys },
-                { key: "contribution", label: "Aportes", count: typeCounts.contributions },
-                { key: "sell", label: "Vendas", count: typeCounts.sells },
-                { key: "dividend", label: "Proventos", count: typeCounts.dividends },
-              ]}
-              activeKey={filterType}
-              onChange={(key) => setFilterType(key as ActivityFilterType)}
-              ariaLabel="Filtrar por tipo de movimentação"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleExportCsv}
-              disabled={filteredActivities.length === 0}
-              className="h-7 text-xs gap-1.5 shrink-0"
-              aria-label="Exportar CSV"
-              title={filteredActivities.length === 0 ? "Nenhuma movimentação para exportar" : "Exportar movimentações filtradas em CSV"}
-            >
-              <Download className="size-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">Exportar </span>CSV
-            </Button>
-          </div>
-        </div>
-
-        {/* Filtros Auxiliares por Classe e Setor */}
-        {(availableClasses.length > 0 || availableSectors.length > 0) && (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-0.5">
-            {availableClasses.length > 0 && (
-              <div className="flex items-center gap-1.5 min-w-0 flex-1 sm:max-w-xs">
-                <span className="text-xs text-muted-foreground shrink-0">Classe:</span>
-                <Select
-                  value={selectedClass}
-                  onValueChange={setSelectedClass}
-                  options={[
-                    { value: "all", label: "Todas as classes" },
-                    ...availableClasses.map((cls) => ({ value: cls, label: cls })),
-                  ]}
-                  ariaLabel="Filtrar por classe de ativo"
-                  className="h-8 text-xs flex-1"
-                />
-              </div>
-            )}
-
-            {availableSectors.length > 0 && (
-              <div className="flex items-center gap-1.5 min-w-0 flex-1 sm:max-w-xs">
-                <span className="text-xs text-muted-foreground shrink-0">Setor:</span>
-                <Select
-                  value={selectedSector}
-                  onValueChange={setSelectedSector}
-                  options={[
-                    { value: "all", label: "Todos os setores" },
-                    ...availableSectors.map((sec) => ({ value: sec, label: sec })),
-                  ]}
-                  ariaLabel="Filtrar por setor de investimento"
-                  className="h-8 text-xs flex-1"
-                />
-              </div>
-            )}
-
-            {(selectedClass !== "all" || selectedSector !== "all") && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSelectedClass("all");
-                  setSelectedSector("all");
-                }}
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground gap-1 self-start sm:self-auto"
-              >
-                <FilterX className="size-3.5" aria-hidden="true" />
-                <span>Limpar filtros</span>
-              </Button>
-            )}
-          </div>
-        )}
-
-        {/* Lista de Movimentações */}
-        {isLoading ? (
+        {vm.isLoading ? (
           <SkeletonTable rows={4} />
-        ) : filteredActivities.length === 0 ? (
+        ) : vm.filteredActivities.length === 0 ? (
           <EmptyState
             icon={<History className="size-6" aria-hidden="true" />}
             title="Nenhuma movimentação registrada no período"
             description="Todas as suas compras, vendas, resgates de renda fixa e proventos aparecem aqui para conferência e auditoria completa."
-            tone="portfolio"
+            tone="default"
             headingLevel="h3"
           />
         ) : (
-          <div className="flex flex-col divide-y divide-border/60 rounded-xl border border-border/80 overflow-hidden bg-surface/70">
-            {filteredActivities.map((item) => {
-              const itemAsset = item.rawTransaction
-                ? assetMap.get(item.rawTransaction.asset_id)
-                : item.rawDividend?.asset_id
-                  ? assetMap.get(item.rawDividend.asset_id)
-                  : item.rawContribution?.asset_id
-                    ? assetMap.get(item.rawContribution.asset_id)
-                    : null;
-
-              const isCash = itemAsset
-                ? isCashAssetClass(itemAsset.asset_class) || itemAsset.ticker.toUpperCase() === "CAIXA"
-                : item.assetClass
-                  ? isCashAssetClass(item.assetClass) || item.ticker.toUpperCase() === "CAIXA"
-                  : item.ticker.toUpperCase() === "CAIXA";
-
-              const isContribution = item.type === "contribution";
-              const isCashContribution = isContribution && isCash;
-              const isRegularContribution = isContribution && !isCash;
-              const isBuy = item.type === "buy";
-              const isSell = item.type === "sell";
-              const isDividend = item.type === "dividend";
-              const isSplit = item.type === "split";
-              const itemCurrency = itemAsset?.currency ?? "BRL";
-              const itemSector = inferSectorFromTicker(item.ticker, item.assetClass ?? undefined);
-              const isSmartAporte =
-                Boolean(item.notes?.toLowerCase().includes("aporte inteligente")) ||
-                Boolean(item.notes?.toLowerCase().includes("rebalanceamento")) ||
-                Boolean(item.notes?.toLowerCase().includes("lote"));
-
-              return (
-                <div
-                  key={item.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 p-3 sm:p-3.5 hover:bg-surface-hover/50 transition-colors"
-                >
-                  {/* Linha 1 no Mobile / Lado Esquerdo no Desktop: Ícone + Ticker + Badge + Data + Valor Total no Mobile */}
-                  <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={cn(
-                          "flex size-8 shrink-0 items-center justify-center rounded-lg ring-1",
-                          (isBuy || isRegularContribution) && "bg-positive/10 text-positive-strong ring-positive/20",
-                          isCashContribution && "bg-portfolio/10 text-portfolio ring-portfolio/20",
-                          isSell && "bg-destructive/10 text-critical-strong ring-destructive/20",
-                          isDividend && "bg-portfolio/10 text-portfolio ring-portfolio/20",
-                          isSplit && "bg-surface-hover text-muted-foreground ring-border/60",
-                        )}
-                      >
-                        {isCashContribution ? (
-                          <Wallet className="size-4" aria-hidden="true" />
-                        ) : isBuy || isRegularContribution ? (
-                          <ArrowDownLeft className="size-4" aria-hidden="true" />
-                        ) : isSell ? (
-                          <ArrowUpRight className="size-4" aria-hidden="true" />
-                        ) : isDividend ? (
-                          <Coins className="size-4" aria-hidden="true" />
-                        ) : (
-                          <Layers className="size-4" aria-hidden="true" />
-                        )}
-                      </div>
-
-                      <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-mono text-xs font-semibold text-foreground">
-                            {item.ticker}
-                          </span>
-                          <Badge
-                            variant={
-                              isCashContribution
-                                ? "portfolio"
-                                : isBuy || isRegularContribution
-                                  ? "positive"
-                                  : isSell
-                                    ? "critical"
-                                    : isDividend
-                                      ? "portfolio"
-                                      : "muted"
-                            }
-                            size="xs"
-                          >
-                            {isCashContribution
-                              ? "Aporte em Caixa"
-                              : item.notes?.toLowerCase().includes("aporte inicial")
-                                ? "Aporte Inicial"
-                                : isRegularContribution
-                                  ? "Aporte"
-                                  : isBuy
-                                    ? "Compra"
-                                    : isSell
-                                      ? "Venda / Resgate"
-                                      : isDividend
-                                        ? "Provento"
-                                        : "Split"}
-                          </Badge>
-                          {isDividend && Boolean(item.rawDividend?.sync_cash) && (
-                            <Badge variant="portfolio" size="xs" className="gap-1 border-portfolio/30 text-portfolio font-medium">
-                              <Wallet className="size-2.5" aria-hidden="true" />
-                              <span>Creditado no Caixa</span>
-                            </Badge>
-                          )}
-                          {isBuy && Boolean(item.linkedContribution) && (
-                            <Badge variant="muted" size="xs" className="gap-1 border-muted-foreground/30 text-muted-foreground font-medium">
-                              <span>Via Aporte</span>
-                            </Badge>
-                          )}
-                          {isSmartAporte && (
-                            <Badge variant="portfolio" size="xs" className="gap-1 border-portfolio/30 text-portfolio font-medium">
-                              <Sparkles className="size-2.5" aria-hidden="true" />
-                              <span>Aporte Inteligente</span>
-                            </Badge>
-                          )}
-                          {itemSector && itemSector !== "Outros" && (
-                            <Badge variant="muted" size="xs" className="text-[10px] text-muted-foreground border-border/80">
-                              {itemSector}
-                            </Badge>
-                          )}
-                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                            {formatDateBR(item.date)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* No mobile, o valor total aparece destacado no canto direito da Linha 1 */}
-                    <div className="sm:hidden shrink-0 text-right">
-                      <span
-                        className={cn(
-                          "text-xs font-bold whitespace-nowrap tabular-nums",
-                          (isBuy || isContribution) && "text-foreground",
-                          isSell && "text-critical-strong",
-                          isDividend && "text-positive-strong",
-                        )}
-                      >
-                        <MoneyText cents={numberToCents(item.total)} currency={itemCurrency} sign={isSell ? "explicit" : "auto"} />
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Linha 2 no Mobile / Lado Direito no Desktop: Quantidade/Preço à esquerda e Ações à direita */}
-                  <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto pl-10.5 sm:pl-0 pt-0.5 sm:pt-0">
-                    {/* Quantidade e Preço Unitário com respiro */}
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono min-w-0">
-                      {!isCashContribution && item.quantity && item.quantity > 0 && item.price && item.price > 0 ? (
-                        <span className="whitespace-nowrap">
-                          {item.quantity} un @ <MoneyText cents={numberToCents(item.price)} currency={itemCurrency} tone="default" />
-                        </span>
-                      ) : null}
-                      {item.notes ? <span className="truncate max-w-[150px] sm:max-w-[200px] text-muted-foreground/80">• {item.notes}</span> : null}
-                    </div>
-
-                    {/* Bloco Desktop com Valor Total + Botões */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <div className="hidden sm:flex flex-col items-end mr-1">
-                        <span
-                          className={cn(
-                            "text-xs font-semibold whitespace-nowrap tabular-nums",
-                            (isBuy || isContribution) && "text-foreground",
-                            isSell && "text-critical-strong",
-                            isDividend && "text-positive-strong",
-                          )}
-                        >
-                          <MoneyText cents={numberToCents(item.total)} currency={itemCurrency} sign={isSell ? "explicit" : "auto"} />
-                        </span>
-                      </div>
-
-                      {item.type === "dividend" ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            guardAction(() => {
-                              const divToEdit: PortfolioDividend = item.rawDividend ?? {
-                                id: item.id.replace(/^div-/, "").replace(/^tx-/, ""),
-                                user_id: item.rawTransaction?.user_id ?? "",
-                                asset_id: item.rawTransaction?.asset_id ?? null,
-                                ticker: item.ticker,
-                                date: item.date,
-                                amount: item.total,
-                                sync_cash: false,
-                              };
-                              setEditingDividend(divToEdit);
-                            }, "Editar Provento");
-                          }}
-                          className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
-                          title="Editar provento"
-                          aria-label={`Editar provento de ${item.ticker}`}
-                        >
-                          <Pencil className="size-3.5" aria-hidden="true" />
-                        </Button>
-                      ) : item.type === "contribution" ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            guardAction(() => {
-                              const contribToEdit: PortfolioContribution = item.rawContribution ?? {
-                                id: item.id.replace(/^contrib-/, ""),
-                                user_id: "",
-                                asset_id: item.rawTransaction?.asset_id ?? null,
-                                date: item.date,
-                                amount: item.total,
-                                notes: item.notes ?? null,
-                              };
-                              setEditingContribution(contribToEdit);
-                            }, "Editar Aporte");
-                          }}
-                          className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
-                          title="Editar aporte"
-                          aria-label={`Editar aporte de ${item.ticker}`}
-                        >
-                          <Pencil className="size-3.5" aria-hidden="true" />
-                        </Button>
-                      ) : item.source === "transaction" && item.rawTransaction && assetMap.get(item.rawTransaction.asset_id) ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            guardAction(() => {
-                              const asset = assetMap.get(item.rawTransaction!.asset_id);
-                              if (asset) {
-                                setEditingTx({
-                                  transaction: item.rawTransaction!,
-                                  asset,
-                                  linkedContribution: item.linkedContribution,
-                                });
-                              }
-                            }, "Editar Operação");
-                          }}
-                          className="size-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
-                          title="Editar movimentação"
-                          aria-label={`Editar movimentação de ${item.ticker}`}
-                        >
-                          <Pencil className="size-3.5" aria-hidden="true" />
-                        </Button>
-                      ) : null}
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => guardAction(() => setItemToDelete(item), "Excluir Movimentação")}
-                        className="size-7 p-0 text-muted-foreground hover:text-negative-strong cursor-pointer"
-                        title="Excluir movimentação"
-                        aria-label={`Excluir movimentação de ${item.ticker}`}
-                      >
-                        <Trash2 className="size-3.5" aria-hidden="true" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="flex flex-col divide-y divide-border/50 rounded-xl border border-border/80 overflow-hidden bg-surface shadow-xs">
+            {vm.filteredActivities.map((item) => (
+              <ActivityRowItem
+                key={item.id}
+                item={item}
+                itemAsset={resolveActivityItemAsset(item, vm.assetMap)}
+                onEdit={handleEditItem}
+                onRequestDelete={(target) =>
+                  vm.guardAction(() => vm.setItemToDelete(target), "Excluir Movimentação")
+                }
+              />
+            ))}
           </div>
         )}
       </div>
 
-      <ConfirmDialog
-        open={itemToDelete !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setItemToDelete(null);
-            setRollbackCash(true);
-          }
+      <ActivityDeleteDialog
+        item={vm.itemToDelete}
+        rollbackCash={vm.rollbackCash}
+        onRollbackCashChange={vm.setRollbackCash}
+        cashAsset={vm.cashAsset}
+        cashBalance={vm.cashBalance}
+        usdRate={vm.usdRate}
+        assetMap={vm.assetMap}
+        confirmPending={vm.isDeleting}
+        onClose={() => {
+          vm.setItemToDelete(null);
+          vm.setRollbackCash(true);
         }}
-        title="Excluir movimentação?"
-        description={`O lançamento de ${itemToDelete?.ticker ?? ""} no valor de ${formatCentsAsBRL(numberToCents(itemToDelete?.total ?? 0))} será excluído permanentemente com recálculo da posição.`}
-        confirmLabel="Excluir movimentação"
-        variant="destructive"
-        confirmPending={deleteTransaction.isPending || deleteContribution.isPending || deleteDividend.isPending}
-        onConfirm={handleDeleteItem}
-      >
-        {itemToDelete?.type === "dividend" && Boolean(itemToDelete.rawDividend?.sync_cash) && (
-          <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/35 p-3 text-xs text-left">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-foreground">Estornar valor do Caixa</span>
-              <Checkbox
-                checked={rollbackCash}
-                onCheckedChange={(checked) => setRollbackCash(Boolean(checked))}
-                aria-label="Estornar valor do Caixa"
-              />
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              {cashBalance < (itemToDelete.rawDividend?.cash_amount ?? itemToDelete.total)
-                ? `Saldo atual em Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}) é menor que o provento. Ao estornar, o saldo do Caixa será ajustado para R$ 0,00.`
-                : `Abaterá ${formatCentsAsBRL(numberToCents(itemToDelete.rawDividend?.cash_amount ?? itemToDelete.total))} do saldo atual de Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}).`}
-            </p>
-          </div>
-        )}
+        onConfirm={vm.handleDeleteItem}
+      />
 
-        {itemToDelete?.source === "transaction" && itemToDelete.type === "buy" && !itemToDelete.linkedContribution && cashAsset && (
-          <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/35 p-3 text-xs text-left">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-foreground">Devolver valor para o Caixa</span>
-              <Checkbox
-                checked={rollbackCash}
-                onCheckedChange={(checked) => setRollbackCash(Boolean(checked))}
-                aria-label="Devolver valor para o Caixa"
-              />
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Esta compra foi liquidada com saldo da corretora. Ao estornar,{" "}
-              {formatCentsAsBRL(
-                numberToCents(
-                  Math.round(
-                    itemToDelete.total *
-                      ((itemToDelete.rawTransaction?.asset_id
-                        ? assetMap.get(itemToDelete.rawTransaction.asset_id)?.currency === "USD"
-                        : false)
-                        ? usdRate
-                        : 1) *
-                      100,
-                  ) / 100,
-                ),
-              )}{" "}
-              retornarão ao seu Ativo Caixa.
-            </p>
-          </div>
-        )}
-
-        {itemToDelete?.source === "transaction" && itemToDelete.type === "sell" && cashAsset && (
-          <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/35 p-3 text-xs text-left">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-foreground">Estornar valor creditado no Caixa</span>
-              <Checkbox
-                checked={rollbackCash}
-                onCheckedChange={(checked) => setRollbackCash(Boolean(checked))}
-                aria-label="Estornar valor creditado no Caixa"
-              />
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              {(() => {
-                const asset = itemToDelete.rawTransaction?.asset_id
-                  ? assetMap.get(itemToDelete.rawTransaction.asset_id)
-                  : undefined;
-                const rate = asset?.currency === "USD" ? usdRate : 1;
-                const totalBRL = Math.round(itemToDelete.total * rate * 100) / 100;
-                return cashBalance < totalBRL
-                  ? `Saldo atual em Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}) é menor que o valor da venda. Ao estornar, o saldo do Caixa será ajustado para R$ 0,00.`
-                  : `Abaterá ${formatCentsAsBRL(numberToCents(totalBRL))} do saldo atual de Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}).`;
-              })()}
-            </p>
-          </div>
-        )}
-
-        {itemToDelete?.source === "contribution" && cashAsset && itemToDelete.rawContribution?.asset_id === cashAsset.id && (
-          <div className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/35 p-3 text-xs text-left">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-foreground">Estornar valor do Caixa</span>
-              <Checkbox
-                checked={rollbackCash}
-                onCheckedChange={(checked) => setRollbackCash(Boolean(checked))}
-                aria-label="Estornar valor do Caixa"
-              />
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              {cashBalance < itemToDelete.total
-                ? `Saldo atual em Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}) é menor que o aporte. Ao estornar, o saldo será zerado.`
-                : `Abaterá ${formatCentsAsBRL(numberToCents(itemToDelete.total))} do saldo atual de Caixa (${formatCentsAsBRL(numberToCents(cashBalance))}).`}
-            </p>
-          </div>
-        )}
-      </ConfirmDialog>
-
-      {editingTx && (
+      {vm.editingTx ? (
         <QuickTransactionSheet
-          open={editingTx !== null}
-          onOpenChange={(open) => !open && setEditingTx(null)}
-          asset={editingTx.asset}
-          editTransaction={editingTx.transaction}
+          open={vm.editingTx !== null}
+          onOpenChange={(open) => !open && vm.setEditingTx(null)}
+          asset={vm.editingTx.asset}
+          editTransaction={vm.editingTx.transaction}
         />
-      )}
+      ) : null}
 
-      {editingDividend && (
+      {vm.editingDividend ? (
         <QuickTransactionSheet
-          open={editingDividend !== null}
-          onOpenChange={(open) => !open && setEditingDividend(null)}
-          asset={assetMap.get(editingDividend.asset_id ?? "") ?? null}
-          editDividend={editingDividend}
+          open={vm.editingDividend !== null}
+          onOpenChange={(open) => !open && vm.setEditingDividend(null)}
+          asset={vm.assetMap.get(vm.editingDividend.asset_id ?? "") ?? null}
+          editDividend={vm.editingDividend}
         />
-      )}
+      ) : null}
 
-      {editingContribution && (
+      {vm.editingContribution ? (
         <ContributionFormDialog
-          open={editingContribution !== null}
-          onOpenChange={(open) => !open && setEditingContribution(null)}
-          contribution={editingContribution}
+          open={vm.editingContribution !== null}
+          onOpenChange={(open) => !open && vm.setEditingContribution(null)}
+          contribution={vm.editingContribution}
         />
-      )}
+      ) : null}
 
-      {upgradeModal}
+      {vm.upgradeModal}
     </>
   );
 }

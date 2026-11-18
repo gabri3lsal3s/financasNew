@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { updateVisualCustomization } from "@/hooks/use-visual-customization";
 import { DemoTourSpotlight } from "./demo-tour-spotlight";
 import {
   getDemoSessionState,
@@ -282,7 +283,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       const aside = container.querySelector("aside");
       expect(aside).not.toBeNull();
       expect(aside?.getAttribute("data-placement")).toBe("bottom");
-      expect(aside?.className).toContain("bottom-[max(env(safe-area-inset-bottom,0px),16px)]");
+      expect(aside?.className).toContain("bottom-[calc(5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))]");
       expect(aside?.className).toContain("max-h-[42vh]");
     });
   });
@@ -1024,7 +1025,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       const aside = container.querySelector("aside");
       expect(aside).not.toBeNull();
       expect(aside?.getAttribute("data-placement")).toBe("bottom");
-      expect(aside?.className).toContain("bottom-[max(env(safe-area-inset-bottom,0px),16px)]");
+      expect(aside?.className).toContain("bottom-[calc(5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))]");
       expect(aside?.className).toContain("max-h-[42vh]");
     });
 
@@ -1094,7 +1095,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       const aside = container.querySelector("aside");
       expect(aside).not.toBeNull();
       expect(aside?.getAttribute("data-placement")).toBe("bottom");
-      expect(aside?.className).toContain("bottom-[max(env(safe-area-inset-bottom,0px),16px)]");
+      expect(aside?.className).toContain("bottom-[calc(5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))]");
     });
   });
 
@@ -1143,11 +1144,11 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
       render(<DemoTourSpotlight />);
 
-      const tablist = screen.getByRole("tablist", { name: "Progresso do tour demonstrativo" });
-      expect(tablist).toBeInTheDocument();
-      expect(tablist.className).toContain("gap-1.5");
+      const progressGroup = screen.getByRole("group", { name: "Progresso do tour demonstrativo" });
+      expect(progressGroup).toBeInTheDocument();
+      expect(progressGroup.className).toContain("gap-1.5");
 
-      const dots = tablist.querySelectorAll("button");
+      const dots = progressGroup.querySelectorAll("button");
       expect(dots).toHaveLength(5);
 
       // Dot ativo: pílula expandida w-3.5
@@ -1205,7 +1206,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
       const backdrop = screen.getByTestId("spotlight-backdrop");
       expect(backdrop).toBeInTheDocument();
-      expect(backdrop).toHaveAttribute("fill", "rgba(0, 0, 0, 0.60)");
+      expect(backdrop).toHaveAttribute("fill", "hsl(var(--overlay))");
     });
 
     it("configura cantos suaves rx=16 e ry=16 (rounded-2xl) na máscara e borda pontilhada", () => {
@@ -2995,6 +2996,42 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
         // O spotlight não mantém o recorte da barra de busca do passo 2
         const border = screen.queryByTestId("spotlight-border");
         expect(border).toBeNull();
+      });
+
+      it("respeita motionLevel='reduced' suprimindo animate-pulse e classes de transição", () => {
+        updateVisualCustomization({ motionLevel: "reduced" });
+        try {
+          startDemo("finances");
+
+          const targetEl = document.createElement("div");
+          targetEl.setAttribute("data-tour", "overview-kpis");
+          document.body.appendChild(targetEl);
+          vi.spyOn(targetEl, "getBoundingClientRect").mockReturnValue({
+            x: 20,
+            y: 40,
+            left: 20,
+            top: 40,
+            right: 360,
+            bottom: 140,
+            width: 340,
+            height: 100,
+            toJSON: () => ({}),
+          });
+
+          const { container } = render(<DemoTourSpotlight />);
+          act(() => {
+            window.dispatchEvent(new Event("resize"));
+          });
+
+          const border = screen.getByTestId("spotlight-border");
+          expect(border.getAttribute("class") ?? "").not.toContain("animate-pulse");
+          expect(border.getAttribute("class") ?? "").not.toContain("transition-all");
+
+          const aside = container.querySelector("aside[data-tour-spotlight-card='true']");
+          expect(aside?.className).not.toContain("animate-fade-in");
+        } finally {
+          updateVisualCustomization({ motionLevel: "fluid" });
+        }
       });
     });
   });

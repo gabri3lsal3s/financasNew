@@ -3,8 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PageShell } from "./page-shell";
+import { resolveNextShellOnboardingStep } from "./use-shell-onboarding-orchestrator";
 import { resetNetworkStatusForTesting } from "@/services/network-status";
 import { resetDemoSession, resetDemoTourStorage, startDemo } from "@/state/demo-mode";
+import * as nativeModule from "@/services/native";
 
 import { getUserStorageKey } from "@/services/user-storage";
 
@@ -41,6 +43,8 @@ const mockUseSmartAdvisorInsights = vi.fn().mockReturnValue({
   totalCount: 0,
   dismiss: vi.fn(),
 });
+
+const mockUpdateCustomSettingsMutate = vi.fn();
 
 vi.mock("@/features/overview/hooks", () => ({
   useSmartAdvisorInsights: () => mockUseSmartAdvisorInsights(),
@@ -84,6 +88,10 @@ vi.mock("@/state", () => ({
     isPro: false,
     isReadOnly: false,
   }),
+  useUpdateCustomSettings: () => ({
+    mutate: mockUpdateCustomSettingsMutate,
+    isPending: false,
+  }),
   useSetReminderState: () => ({ mutate: vi.fn(), isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: vi.fn(), isPending: false }),
   useMySupportTickets: () => ({ data: [], isLoading: false }),
@@ -121,9 +129,11 @@ function contentWrapper() {
 
 beforeEach(() => {
   window.localStorage.clear();
+  mockUpdateCustomSettingsMutate.mockClear();
   resetNetworkStatusForTesting(true);
   resetDemoTourStorage();
   resetDemoSession();
+  nativeModule.setAppLocked(false);
 });
 
 describe("PageShell (F7.2/F7.3)", () => {
@@ -269,6 +279,125 @@ describe("PageShell (F7.2/F7.3)", () => {
 
     expect(screen.queryByRole("dialog", { name: /Tour guiado interativo/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("header-demo-indicator")).not.toBeInTheDocument();
+  });
+
+  it("aplica .pt-safe no cabeçalho e dispara cloud sync silencioso ao alternar o ThemeToggle (M7)", async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    const header = screen.getByRole("banner");
+    expect(header.className).toContain("pt-safe");
+
+    const themeBtn = screen.getByRole("button", { name: /Alternar tema/i });
+    await user.click(themeBtn);
+
+    expect(mockUpdateCustomSettingsMutate).toHaveBeenCalledWith({
+      themePreference: "dark",
+    });
+  });
+
+  it("orquestra onboarding em fila única sem modais simultâneos nem propaganda Android fora do Android", () => {
+    // 1. Bloqueado por AppLock, Tour ou Wizard nunca exibe onboarding
+    expect(
+      resolveNextShellOnboardingStep({
+        isAppLocked: true,
+        isDemoActive: false,
+        isWizardOpen: false,
+        hasExternalDialogOpen: false,
+        isAndroidEligible: true,
+        isAndroidNativeRuntime: true,
+        hasSeenWelcome: false,
+        hasSeenWelcomeFeature: false,
+        hasSeenNativeOnboarding: false,
+        isVirginAccount: true,
+      }),
+    ).toBeNull();
+
+    // 2. Fora do Android (iOS/Desktop), pula welcome_feature e native_onboarding
+    expect(
+      resolveNextShellOnboardingStep({
+        isAppLocked: false,
+        isDemoActive: false,
+        isWizardOpen: false,
+        hasExternalDialogOpen: false,
+        isAndroidEligible: false,
+        isAndroidNativeRuntime: false,
+        hasSeenWelcome: true,
+        hasSeenWelcomeFeature: false,
+        hasSeenNativeOnboarding: false,
+        isVirginAccount: true,
+      }),
+    ).toBeNull();
+
+    // 3. Fila única no Android nativo: welcome -> welcome_feature -> native_onboarding
+    expect(
+      resolveNextShellOnboardingStep({
+        isAppLocked: false,
+        isDemoActive: false,
+        isWizardOpen: false,
+        hasExternalDialogOpen: false,
+        isAndroidEligible: true,
+        isAndroidNativeRuntime: true,
+        hasSeenWelcome: false,
+        hasSeenWelcomeFeature: false,
+        hasSeenNativeOnboarding: false,
+        isVirginAccount: true,
+      }),
+    ).toBe("welcome");
+
+    expect(
+      resolveNextShellOnboardingStep({
+        isAppLocked: false,
+        isDemoActive: false,
+        isWizardOpen: false,
+        hasExternalDialogOpen: false,
+        isAndroidEligible: true,
+        isAndroidNativeRuntime: true,
+        hasSeenWelcome: true,
+        hasSeenWelcomeFeature: false,
+        hasSeenNativeOnboarding: false,
+        isVirginAccount: true,
+      }),
+    ).toBe("welcome_feature");
+
+    expect(
+      resolveNextShellOnboardingStep({
+        isAppLocked: false,
+        isDemoActive: false,
+        isWizardOpen: false,
+        hasExternalDialogOpen: false,
+        isAndroidEligible: true,
+        isAndroidNativeRuntime: true,
+        hasSeenWelcome: true,
+        hasSeenWelcomeFeature: true,
+        hasSeenNativeOnboarding: false,
+        isVirginAccount: true,
+      }),
+    ).toBe("native_onboarding");
+  });
+
+  it("não abre NativeOnboardingDialog simultaneamente quando LaunchWizard está aberto", () => {
+    const isNativeSpy = vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
+    const isAndroidSpy = vi.spyOn(nativeModule, "isAndroidNative").mockReturnValue(true);
+
+    renderShell(["/?novo=transacao"]);
+
+    expect(screen.queryByRole("heading", { name: "Bem-vindo ao App Nativo Android" })).not.toBeInTheDocument();
+
+    isNativeSpy.mockRestore();
+    isAndroidSpy.mockRestore();
+  });
+
+  it("abre NativeOnboardingDialog em Android nativo quando não há modal bloqueante na fila", async () => {
+    const isNativeSpy = vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
+    const isAndroidSpy = vi.spyOn(nativeModule, "isAndroidNative").mockReturnValue(true);
+
+    renderShell(["/"]);
+
+    expect(await screen.findByRole("heading", { name: "Bem-vindo ao App Nativo Android" })).toBeInTheDocument();
+
+    isNativeSpy.mockRestore();
+    isAndroidSpy.mockRestore();
   });
 });
 

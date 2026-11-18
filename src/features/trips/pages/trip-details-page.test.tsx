@@ -202,14 +202,56 @@ describe("TripDetailsPage - Reabertura, Exclusão e Saída de Viagem", () => {
     expect(screen.queryByRole("button", { name: /Excluir Viagem/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Reabrir Viagem/i })).not.toBeInTheDocument();
 
-    // Deve exibir botão Sair da Viagem
+    // Deve exibir botão Sair da Viagem (único na tela)
     const leaveButtons = screen.getAllByRole("button", { name: /Sair da Viagem/i });
-    expect(leaveButtons.length).toBeGreaterThan(0);
+    expect(leaveButtons).toHaveLength(1);
 
     // Clica para abrir o diálogo
     fireEvent.click(leaveButtons[0]!);
 
     expect(screen.getByRole("heading", { name: /Sair da viagem\?/i })).toBeInTheDocument();
     expect(screen.getByText(/Tem certeza de que deseja sair de "Viagem Ubatuba 2026"\?/i)).toBeInTheDocument();
+  });
+
+  it("exige confirmação em ConfirmDialog antes de remover participante na aba Participantes", () => {
+    const removeMutateMock = vi.fn();
+    vi.mocked(tripsQuery.useRemoveTripMemberMutation).mockReturnValue({
+      mutate: removeMutateMock,
+      isPending: false,
+    } as unknown as ReturnType<typeof tripsQuery.useRemoveTripMemberMutation>);
+
+    vi.mocked(authHook.useAuth).mockReturnValue({
+      user: { id: "user-host-1", email: "gabriel@teste.com" } as unknown as User,
+      session: {} as unknown as Session,
+      loading: false,
+      configError: null,
+    } as unknown as ReturnType<typeof authHook.useAuth>);
+
+    vi.mocked(tripsQuery.useTripDetails).mockReturnValue(mockTripReturn);
+
+    renderTripDetailsPage();
+
+    // Formata o período em pt-BR
+    expect(screen.getByText("01/03/2026 até 05/03/2026")).toBeInTheDocument();
+
+    // Vai para a aba Participantes (Radix Tabs ativa via pointerDown/mouseDown ou click)
+    const membersTab = screen.getByRole("tab", { name: /Participantes \(2\)/i });
+    fireEvent.mouseDown(membersTab, { button: 0 });
+    fireEvent.click(membersTab);
+
+    const removeBtn = screen.getByRole("button", { name: /Remover Mariana Convidada/i });
+    fireEvent.click(removeBtn);
+
+    // Não deve remover imediatamente sem confirmação
+    expect(removeMutateMock).not.toHaveBeenCalled();
+    expect(screen.getByRole("heading", { name: /Remover participante\?/i })).toBeInTheDocument();
+
+    const confirmBtn = screen.getByRole("button", { name: /Remover participante/i });
+    fireEvent.click(confirmBtn);
+
+    expect(removeMutateMock).toHaveBeenCalledWith(
+      "m-guest",
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    );
   });
 });

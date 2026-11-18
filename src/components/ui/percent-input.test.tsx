@@ -52,4 +52,12 @@ describe("PercentInput", () => {
     rerender(<PercentInput value={110.5} aria-label="Taxa" />);
     expect(screen.getByLabelText("Taxa")).toHaveValue("110,50");
   });
+
+  it("exibe estado de erro padronizado com role=alert e tabular-nums", () => {
+    render(<PercentInput value={0} aria-label="Taxa" error="Taxa inválida" />);
+    const input = screen.getByLabelText("Taxa");
+    expect(input).toHaveClass("tabular-nums", "border-critical-strong", "text-base", "sm:text-sm");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("alert")).toHaveTextContent("Taxa inválida");
+  });
 });

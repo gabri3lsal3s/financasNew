@@ -27,9 +27,9 @@ export function BudgetProgressBar({ spentCents, limitCents, label, className }: 
             <span className="text-muted-foreground text-[11px]">Sem limite definido</span>
           ) : over ? (
             <>
-              <span className="text-critical font-semibold">+</span>
-              <MoneyText cents={overCents} tone="default" className="text-xs font-semibold text-critical whitespace-nowrap" />
-              <span className="text-critical/90 font-normal">acima do limite</span>
+              <span className="text-critical-strong font-semibold">+</span>
+              <MoneyText cents={overCents} tone="default" className="text-xs font-semibold text-critical-strong whitespace-nowrap" />
+              <span className="text-critical-strong font-normal">acima do limite</span>
             </>
           ) : (
             <>
@@ -39,16 +39,16 @@ export function BudgetProgressBar({ spentCents, limitCents, label, className }: 
             </>
           )}
         </span>
-        <span className={over ? "num shrink-0 text-xs font-semibold text-critical" : "num shrink-0 text-xs font-medium text-muted-foreground"}>
+        <span className={over ? "num shrink-0 text-xs font-semibold text-critical-strong" : "num shrink-0 text-xs font-medium text-muted-foreground"}>
           {limitCents > 0 ? (over ? ">100%" : `${Math.round(percent)}%`) : ""}
         </span>
       </div>
 
       {limitCents > 0 && (
-        <div className="relative mt-0.5 h-1.5 sm:h-2 w-full overflow-hidden rounded-full bg-muted/70">
+        <div className="relative mt-0.5 h-1.5 sm:h-2 w-full overflow-hidden rounded-full bg-surface-hover/80 dark:bg-muted/80 ring-1 ring-inset ring-border/40">
           <div
             className={cn(
-              "h-full rounded-full transition-all duration-300",
+              "h-full rounded-full transition-[width,background-color] duration-200 ease-out motion-reduce:transition-none",
               over ? "bg-critical" : percent >= 85 ? "bg-warning" : "bg-primary",
             )}
             style={{ width: `${percent}%` }}

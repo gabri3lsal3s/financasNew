@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { ThemeProvider } from "@/app/theme-provider";
 import { Toaster } from "@/components/ui/toast";
 import { ToastHost } from "@/components/ui/toast-host";
-import { PWAUpdateToast } from "@/components/modules/pwa-update-toast";
+import { AppUpdateToast } from "@/components/modules/app-update-toast";
 import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 import { getSupabase } from "@/data/client";
 import { resetAppState } from "@/services/auth-cleanup";
@@ -92,7 +92,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <AuthQuerySync>
         <ThemeProvider>
           <Toaster>
-            <PWAUpdateToast />
+            <AppUpdateToast />
             <ToastHost />
             <AppErrorBoundary>{children}</AppErrorBoundary>
           </Toaster>

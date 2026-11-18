@@ -1,18 +1,20 @@
 import { useState, useMemo } from "react";
-import { Check, Copy, Landmark, FileText, PiggyBank } from "lucide-react";
+import { Landmark } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
   ReportFooter,
 } from "@/components/modules";
-import { Alert, Button } from "@/components/ui";
-import { MoneyText } from "@/components/ui/money-text";
-import { numberToCents } from "@/domain/money";
-import { isCashAssetClass, getBensDireitosClassification, calculateTotalCostBRL } from "@/domain/portfolio";
-import { sanitizeReportText } from "@/domain/reports";
+import { Alert } from "@/components/ui";
+import { isCashAssetClass, calculateTotalCostBRL } from "@/domain/portfolio";
 import { OFFICIAL_TAX_FACILITATOR_DISCLAIMER } from "@/lib/institutional";
-
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
+import { TaxBensDireitosSection } from "./tax-facilitator/TaxBensDireitosSection";
+import { TaxRendimentosSection } from "./tax-facilitator/TaxRendimentosSection";
+import {
+  buildExemptDividendsByAsset,
+  buildTaxItemDetails,
+} from "./tax-facilitator/tax-facilitator-utils";
 
 export interface TaxFacilitatorModalProps {
   open: boolean;
@@ -40,11 +42,16 @@ export function TaxFacilitatorModal({
 }: TaxFacilitatorModalProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const currentYear = new Date().getFullYear();
-  const calendarYear = currentYear - 1; // Ano base da declaração
+  const calendarYear = currentYear - 1;
 
   const nonCashAssets = useMemo(
     () => assets.filter((a) => !isCashAssetClass(a.asset_class) && a.quantity > 0),
     [assets],
+  );
+
+  const taxItems = useMemo(
+    () => nonCashAssets.map((asset) => buildTaxItemDetails(asset, usdRate)),
+    [nonCashAssets, usdRate],
   );
 
   const totalCostAllAssetsBRL = useMemo(
@@ -52,30 +59,10 @@ export function TaxFacilitatorModal({
     [nonCashAssets, usdRate],
   );
 
-
-  // Rendimentos isentos calculados por ativo no ano-base
-  const rendimentosPorAtivo = useMemo(() => {
-    return nonCashAssets
-      .map((asset) => {
-        const assetDividends = dividends
-          .filter((d) => d.asset_id === asset.id && d.date.startsWith(String(calendarYear)))
-          .reduce((acc, d) => acc + d.amount, 0);
-
-        if (assetDividends <= 0) return null;
-
-        const tipoRendimento =
-          asset.asset_class === "fiis"
-            ? "Rendimentos Isentos (FII)"
-            : "Dividendos Isentos (Ações)";
-
-        return {
-          asset,
-          tipoRendimento,
-          amountBRL: assetDividends,
-        };
-      })
-      .filter((item): item is NonNullable<typeof item> => item !== null);
-  }, [nonCashAssets, dividends, calendarYear]);
+  const rendimentosPorAtivo = useMemo(
+    () => buildExemptDividendsByAsset(nonCashAssets, dividends, calendarYear),
+    [nonCashAssets, dividends, calendarYear],
+  );
 
   const totalRendimentosBRL = useMemo(
     () => rendimentosPorAtivo.reduce((acc, r) => acc + r.amountBRL, 0),
@@ -92,48 +79,12 @@ export function TaxFacilitatorModal({
     }
   };
 
-  const formatMoneyBR = (cents: number): string =>
-    (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-  const buildTaxItemDetails = (asset: PortfolioAsset) => {
-    const safeTicker = sanitizeReportText(asset.ticker);
-    const classification = getBensDireitosClassification(asset.asset_class, asset.ticker);
-    const isUSD = asset.currency === "USD";
-    const totalCostNative = asset.quantity * asset.average_price;
-    const totalCostBRL = isUSD ? totalCostNative * usdRate : totalCostNative;
-    const qtyStr = asset.quantity.toLocaleString("pt-BR", { maximumFractionDigits: 4 });
-    const cotaWord = asset.quantity === 1 ? "cota" : "cotas";
-
-    let textToCopy: string;
-    if (isUSD) {
-      const unitPriceUSD = asset.average_price.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const totalCostUSD = totalCostNative.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      const totalCostBRLFormatted = formatMoneyBR(numberToCents(totalCostBRL));
-      textToCopy = `${qtyStr} ${cotaWord} de ${safeTicker} (${classification.itemName}), custodiadas no exterior em conta própria, custo médio unitário de US$ ${unitPriceUSD} (total em moeda estrangeira: US$ ${totalCostUSD}), equivalente a R$ ${totalCostBRLFormatted}.`;
-    } else {
-      const unitPriceBRL = formatMoneyBR(numberToCents(asset.average_price));
-      const totalCostBRLFormatted = formatMoneyBR(numberToCents(totalCostBRL));
-      textToCopy = `${qtyStr} ${cotaWord} de ${safeTicker} (${classification.itemName}), custodiadas em conta própria da corretora, custo médio unitário de R$ ${unitPriceBRL}, totalizando R$ ${totalCostBRLFormatted}.`;
-    }
-
-    return {
-      safeTicker,
-      group: classification.groupCode,
-      code: classification.itemCode,
-      label: `${classification.groupCode}-${classification.itemCode} ${classification.itemName}`,
-      itemName: classification.itemName,
-      totalCostBRL,
-      textToCopy,
-    };
-  };
-
   return (
     <ReportDocumentLayout
       open={open}
       onOpenChange={onOpenChange}
       title="Dossiê Fiscal & Facilitador de IRPF"
     >
-      {/* 1. Cabeçalho Institucional */}
       <ReportHeader
         title={`Facilitador de Declaração de IRPF — Ano-Base ${calendarYear}`}
         subtitle="Bens & Direitos (Discriminação Pronta) e Rendimentos Isentos & Exclusivos"
@@ -143,192 +94,26 @@ export function TaxFacilitatorModal({
         accountHolder={accountHolder}
       />
 
-      {/* 2. Alerta Informativo (Apenas tela interativa) */}
       <div className="print:hidden">
         <Alert variant="info">
           Utilize o botão de cópia rápida para preencher o campo &quot;Discriminação&quot; diretamente no programa da Receita Federal. Valores calculados pelo Preço Médio Ponderado. Cálculos de caráter estimativo e auxiliar que não substituem o trabalho de um contador habilitado nem a Declaração de Ajuste Anual.
         </Alert>
       </div>
 
-      {/* 3. Seção: Ficha de Bens e Direitos — VISÃO INTERATIVA EM TELA */}
-      <section aria-label="Bens e Direitos Tela" className="flex flex-col gap-3 print:hidden print:pointer-events-none">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="size-4 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-foreground">
-              Ficha: Bens e Direitos ({nonCashAssets.length} ativos em custódia)
-            </h3>
-          </div>
-          <span className="text-xs text-muted-foreground font-mono num">
-            Total em 31/12: <MoneyText cents={numberToCents(totalCostAllAssetsBRL)} className="font-bold text-foreground inline" />
-          </span>
-        </div>
+      <TaxBensDireitosSection
+        items={taxItems}
+        totalCostAllAssetsBRL={totalCostAllAssetsBRL}
+        calendarYear={calendarYear}
+        copiedKey={copiedKey}
+        onCopy={(key, text) => void handleCopy(key, text)}
+      />
 
-        <div className="flex flex-col gap-2.5">
-          {nonCashAssets.map((asset) => {
-            const item = buildTaxItemDetails(asset);
+      <TaxRendimentosSection
+        items={rendimentosPorAtivo}
+        totalRendimentosBRL={totalRendimentosBRL}
+        calendarYear={calendarYear}
+      />
 
-            return (
-              <div
-                key={asset.id}
-                className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-2 shadow-2xs"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-foreground text-sm">{item.safeTicker}</span>
-                    <span className="rounded-md bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground font-medium border border-border/40">
-                      {item.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Situação em 31/12/{calendarYear}:</span>
-                    <MoneyText
-                      cents={numberToCents(item.totalCostBRL)}
-                      className="font-bold font-mono num text-xs text-foreground"
-                    />
-                  </div>
-                </div>
-                <div className="flex items-start justify-between gap-3 pt-1">
-                  <p className="text-xs text-muted-foreground leading-relaxed flex-1">
-                    {item.textToCopy}
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopy(asset.id, item.textToCopy)}
-                    className="gap-1.5 shrink-0 text-xs"
-                  >
-                    {copiedKey === asset.id ? (
-                      <>
-                        <Check className="size-3.5 text-positive-strong" aria-hidden="true" />
-                        Copiado!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="size-3.5" aria-hidden="true" />
-                        Copiar
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* 3.1. Seção: Ficha de Bens e Direitos — TABELA FISCAL OFICIAL NO PDF / IMPRESSÃO */}
-      <section aria-label="Bens e Direitos Impressão" className="hidden print:flex flex-col gap-2">
-        <div className="flex items-center justify-between border-b border-border/70 pb-1">
-          <div className="flex items-center gap-1.5">
-            <FileText className="size-3.5 text-primary-strong" aria-hidden="true" />
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-foreground">
-              Ficha: Bens e Direitos — Posição em 31/12/{calendarYear} ({nonCashAssets.length} ativos)
-            </h3>
-          </div>
-          <span className="text-[10px] font-mono num text-muted-foreground">
-            Custo Total: <MoneyText cents={numberToCents(totalCostAllAssetsBRL)} className="font-bold text-foreground inline" />
-          </span>
-        </div>
-
-        <div className="rounded-lg border border-border/80 overflow-hidden">
-          <table className="w-full text-left text-xs border-collapse table-fixed">
-            <thead>
-              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
-                <th className="py-1.5 px-2 w-[16%]">Código / Grupo</th>
-                <th className="py-1.5 px-1.5 w-[12%]">Ticker</th>
-                <th className="py-1.5 px-2 w-[56%]">Discriminação para o Programa IRPF</th>
-                <th className="py-1.5 px-2 text-right w-[16%]">Situação em 31/12</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
-              {nonCashAssets.map((asset) => {
-                const item = buildTaxItemDetails(asset);
-
-                return (
-                  <tr key={`print-tax-${asset.id}`} className="break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
-                    <td className="py-1 px-2 text-[9px] font-mono text-muted-foreground">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-foreground leading-tight">
-                          {item.group}-{item.code}
-                        </span>
-                        <span className="text-[8px] text-muted-foreground leading-tight">
-                          {item.itemName}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-1 px-1.5 font-bold text-foreground text-[11px] truncate">
-                      {item.safeTicker}
-                    </td>
-                    <td className="py-1 px-2 text-[9px] text-muted-foreground leading-tight">
-                      {item.textToCopy}
-                    </td>
-                    <td className="py-1 px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap text-[11px]">
-                      <MoneyText cents={numberToCents(item.totalCostBRL)} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-
-      {/* 4. Seção: Ficha de Rendimentos Recebidos */}
-      <section aria-label="Rendimentos Recebidos" className="flex flex-col gap-2.5 pt-1 break-inside-avoid">
-        <div className="flex items-center justify-between border-b border-border/80 pb-1.5">
-          <div className="flex items-center gap-2">
-            <PiggyBank className="size-3.5 text-positive-strong" aria-hidden="true" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Ficha: Rendimentos Isentos &amp; Exclusivos ({calendarYear})
-            </h3>
-          </div>
-          <span className="text-[11px] text-muted-foreground font-mono num">
-            Total Recebido: <MoneyText cents={numberToCents(totalRendimentosBRL)} className="font-bold text-positive-strong inline" />
-          </span>
-        </div>
-
-        {rendimentosPorAtivo.length === 0 ? (
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 text-xs text-muted-foreground italic print:bg-white print:border-border">
-            Nenhum rendimento isento ou tributado exclusivamente na fonte apurado no ano-base {calendarYear}.
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-border/80 print:overflow-visible">
-            <table className="w-full text-left text-xs border-collapse print:table-fixed">
-              <thead>
-                <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-                  <th className="py-2 px-3 print:w-[20%]">Ticker</th>
-                  <th className="py-2 px-3 print:w-[50%]">Tipo / Ficha da Declaração</th>
-                  <th className="py-2 px-3 text-right print:w-[30%]">Total Recebido (R$)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {rendimentosPorAtivo.map(({ asset, tipoRendimento, amountBRL }) => (
-                  <tr key={`div-${asset.id}`} className="hover:bg-muted/20 break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
-                    <td className="py-1.5 px-3 font-semibold text-foreground truncate">{sanitizeReportText(asset.ticker)}</td>
-                    <td className="py-1.5 px-3 text-muted-foreground truncate">{tipoRendimento}</td>
-                    <td className="py-1.5 px-3 text-right num font-mono font-bold text-positive-strong whitespace-nowrap">
-                      <MoneyText cents={numberToCents(amountBRL)} />
-                    </td>
-                  </tr>
-                ))}
-                <tr className="bg-muted/40 border-t border-border/80 font-bold print:bg-slate-100 break-inside-avoid">
-                  <td colSpan={2} className="py-2 px-3 text-foreground uppercase text-[10px] tracking-wider">
-                    Total de Rendimentos no Exercício
-                  </td>
-                  <td className="py-2 px-3 text-right num font-mono text-positive-strong whitespace-nowrap">
-                    <MoneyText cents={numberToCents(totalRendimentosBRL)} />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* 5. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_TAX_FACILITATOR_DISCLAIMER}
@@ -337,4 +122,3 @@ export function TaxFacilitatorModal({
     </ReportDocumentLayout>
   );
 }
-

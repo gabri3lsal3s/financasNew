@@ -222,7 +222,7 @@ describe("TripExpenseDeleteDialog", () => {
   });
 
   describe("estado pendente (loading)", () => {
-    it("desabilita botões e mostra texto 'Excluindo...' durante mutação", () => {
+    it("desabilita botões e exibe indicador de carregamento durante mutação", () => {
       mockIsPending = true;
 
       render(
@@ -234,7 +234,7 @@ describe("TripExpenseDeleteDialog", () => {
         />
       );
 
-      const deleteBtn = screen.getByRole("button", { name: "Excluindo..." });
+      const deleteBtn = screen.getByRole("button", { name: "Carregando..." });
       const cancelBtn = screen.getByRole("button", { name: "Cancelar" });
 
       expect(deleteBtn).toBeDisabled();

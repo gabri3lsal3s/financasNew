@@ -12,6 +12,10 @@ export {
   type SharedLinkHeaderNavProps,
 } from "./shared-link-header-nav";
 export {
+  PublicPwaShortcutCard,
+  type PublicPwaShortcutCardProps,
+} from "./public-pwa-shortcut-card";
+export {
   AddPublicTripExpenseDialog,
   type AddPublicTripExpenseDialogProps,
 } from "./add-public-trip-expense-dialog";

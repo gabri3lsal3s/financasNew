@@ -152,15 +152,14 @@ describe("PortfolioImportDialog — Fase 35 & 36", () => {
     expect(screen.getByText(/Editando ativo #1/i)).toBeInTheDocument();
 
     // Altera a quantidade e preço
-    const inputs = screen.getAllByRole("spinbutton");
-    if (inputs[0]) fireEvent.change(inputs[0], { target: { value: "200" } });
-    if (inputs[1]) fireEvent.change(inputs[1], { target: { value: "40" } });
+    fireEvent.change(screen.getByLabelText(/Quantidade \/ Cotas/i), { target: { value: "200" } });
+    fireEvent.change(screen.getByLabelText(/Preço Unitário/i), { target: { value: "40" } });
 
     // Conclui edição
     fireEvent.click(screen.getByRole("button", { name: /Concluir edição/i }));
 
     expect(screen.getByText(/200 cotas/i)).toBeInTheDocument();
-    expect(screen.getByText(/@ R\$40.00/i)).toBeInTheDocument();
+    expect(screen.getByText(/40,00/i)).toBeInTheDocument();
   });
 
   it("consolida múltiplas compras do mesmo ticker calculando o preço médio ponderado total ao criar o ativo", async () => {

@@ -41,7 +41,11 @@ import {
   calculateMemberBalances,
   calculateSimplifiedSettlements,
   calculateEqualSplits,
+  resolveActiveTripMember,
 } from "@/domain/trips/trip-math";
+import { resolveBillCompetence } from "@/domain/competence";
+import { getExpense, updateExpense } from "@/data/repositories/expenses";
+import { listCreditCards } from "@/data/repositories/credit-cards";
 import { cardExpensesKey } from "@/state/queries/use-card-payments";
 import { STALE_TIMES } from "@/state/cache-policy";
 import { useDemoSession } from "@/state/demo-mode";
@@ -49,6 +53,7 @@ import { useSimulatedTrips, useSimulatedTripDetails } from "./use-simulated-quer
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
+import type { DbUpdate, Expense } from "@/types";
 import type {
   Trip,
   TripMember,
@@ -802,6 +807,156 @@ export function useClaimTripMemberMutation() {
         description: getErrorMessage(err),
         variant: "destructive",
       });
+    },
+  }, queryClient);
+}
+
+export interface LinkPersonalExpenseToTripInput {
+  personalExpenseId: string;
+  tripId: string;
+  /**
+   * Quando informado (ex.: LaunchWizard), cria também a despesa espelhada
+   * no ledger da viagem resolvendo membros e cotas iguais automaticamente.
+   */
+  tripExpense?: {
+    amountCents: number;
+    description: string;
+    categoryName?: string;
+    expenseDate: string;
+    currentUserId?: string;
+    hostUserId?: string | null;
+    members?: TripMember[];
+  };
+}
+
+export interface LinkPersonalExpenseToTripResult {
+  personalExpense: Expense;
+  tripExpense: TripExpense | null;
+}
+
+/**
+ * Vincula uma despesa pessoal existente a uma viagem (`trip_id`) e, opcionalmente,
+ * registra a entrada espelhada no ledger do grupo sem expor `@/data` na UI.
+ */
+export function useLinkPersonalExpenseToTripMutation(defaultTripId?: string) {
+  const queryClient = useSafeQueryClient();
+
+  return useMutation<LinkPersonalExpenseToTripResult, unknown, LinkPersonalExpenseToTripInput>({
+    mutationFn: async ({ personalExpenseId, tripId, tripExpense }) => {
+      const targetTripId = tripId || defaultTripId || "";
+      const personalExpense = await updateExpense(personalExpenseId, { trip_id: targetTripId });
+
+      if (!tripExpense) {
+        return { personalExpense, tripExpense: null };
+      }
+
+      let currentMembers = tripExpense.members ?? [];
+      if (currentMembers.length === 0) {
+        currentMembers = await getTripMembers(targetTripId);
+      }
+
+      const payerMember = resolveActiveTripMember(
+        currentMembers,
+        tripExpense.currentUserId,
+        tripExpense.hostUserId,
+      );
+
+      let createdTripExpense: TripExpense | null = null;
+      if (payerMember && currentMembers.length > 0) {
+        const equalSplits = calculateEqualSplits({
+          totalAmountCents: tripExpense.amountCents,
+          memberIds: currentMembers.map((m) => m.id),
+          payerMemberId: payerMember.id,
+        });
+        createdTripExpense = await addTripExpense({
+          trip_id: targetTripId,
+          paid_by_member_id: payerMember.id,
+          amount_cents: tripExpense.amountCents,
+          description: tripExpense.description || "Despesa da viagem",
+          category_name: tripExpense.categoryName ?? "Geral",
+          expense_date: tripExpense.expenseDate,
+          split_type: "equal",
+          linked_personal_expense_id: personalExpenseId,
+          splits: equalSplits.map((s) => ({
+            member_id: s.memberId,
+            share_cents: s.shareCents,
+          })),
+        });
+      }
+
+      return { personalExpense, tripExpense: createdTripExpense };
+    },
+    onSuccess: (_result, variables) => {
+      const targetTripId = variables.tripId || defaultTripId;
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.all });
+      if (targetTripId) {
+        queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(targetTripId) });
+      }
+      queryClient.invalidateQueries({ queryKey: cardExpensesKey });
+      queryClient.invalidateQueries({ queryKey: ["overview"] });
+    },
+  }, queryClient);
+}
+
+export interface SyncLinkedPersonalExpenseInput {
+  personalExpenseId: string;
+  amountCents: number;
+  description: string;
+  expenseDate: string;
+  reportWeight: number;
+  tripId?: string;
+}
+
+/**
+ * Sincroniza uma despesa pessoal vinculada quando a despesa da viagem é editada,
+ * recalculando competência de fatura de cartão quando aplicável.
+ */
+export function useSyncLinkedPersonalExpenseMutation(defaultTripId?: string) {
+  const queryClient = useSafeQueryClient();
+
+  return useMutation<Expense, unknown, SyncLinkedPersonalExpenseInput>({
+    mutationFn: async ({
+      personalExpenseId,
+      amountCents,
+      description,
+      expenseDate,
+      reportWeight,
+    }) => {
+      const personalExp = await getExpense(personalExpenseId).catch(() => null);
+
+      let billCompetence = personalExp?.bill_competence;
+      if (personalExp && personalExp.payment_method === "credit_card" && personalExp.card_id) {
+        const cards = await listCreditCards().catch(() => []);
+        const card = cards.find((c) => c.id === personalExp.card_id);
+        if (card) {
+          billCompetence = resolveBillCompetence(
+            new Date(`${expenseDate}T12:00:00`),
+            card.closing_day,
+          );
+        }
+      }
+
+      const updatePayload: DbUpdate<Expense> = {
+        value: amountCents / 100,
+        description: description.trim(),
+        date: expenseDate,
+        report_weight: reportWeight,
+        ...(billCompetence !== undefined ? { bill_competence: billCompetence } : {}),
+      };
+
+      return updateExpense(personalExpenseId, updatePayload);
+    },
+    onSuccess: (_updated, variables) => {
+      const targetTripId = variables.tripId || defaultTripId;
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: cardExpensesKey });
+      queryClient.invalidateQueries({ queryKey: ["overview"] });
+      queryClient.invalidateQueries({ queryKey: ["insights"] });
+      queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.all });
+      if (targetTripId) {
+        queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(targetTripId) });
+      }
     },
   }, queryClient);
 }

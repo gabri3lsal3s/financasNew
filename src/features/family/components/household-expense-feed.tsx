@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Receipt } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MoneyText } from "@/components/ui/money-text";
@@ -18,10 +19,12 @@ export interface HouseholdExpenseFeedProps {
 
 type FeedFilter = "all" | "own" | "partner";
 
+const PAGE_SIZE = 50;
+
 /**
  * Extrato Consolidado das Despesas da Casa (/familia).
- * Permite filtrar de forma fluida entre despesas de toda a casa, pagas pelo usuário ou pagas pelo parceiro,
- * mantendo escaneabilidade clara de quem pagou cada item com badges sóbrios.
+ * Permite filtrar entre despesas de toda a casa, pagas pelo usuário ou por demais membros,
+ * com paginação incremental de 50 itens para preservar fluidez.
  */
 export function HouseholdExpenseFeed({
   expenses,
@@ -29,6 +32,7 @@ export function HouseholdExpenseFeed({
   className,
 }: HouseholdExpenseFeedProps) {
   const [filter, setFilter] = useState<FeedFilter>("all");
+  const [visibleLimit, setVisibleLimit] = useState<number>(PAGE_SIZE);
 
   const ownExpenses = useMemo(() => {
     return expenses.filter((e) => (currentUserId ? e.user_id === currentUserId : e.is_own));
@@ -38,7 +42,7 @@ export function HouseholdExpenseFeed({
     return expenses.filter((e) => (currentUserId ? e.user_id !== currentUserId : !e.is_own));
   }, [expenses, currentUserId]);
 
-  const displayedExpenses = useMemo(() => {
+  const sortedExpenses = useMemo(() => {
     const list =
       filter === "own" ? ownExpenses : filter === "partner" ? partnerExpenses : expenses;
     return [...list].sort((a, b) => {
@@ -47,6 +51,14 @@ export function HouseholdExpenseFeed({
       return b.created_at.localeCompare(a.created_at);
     });
   }, [filter, expenses, ownExpenses, partnerExpenses]);
+
+  const visibleExpenses = sortedExpenses.slice(0, visibleLimit);
+  const remainingCount = Math.max(0, sortedExpenses.length - visibleExpenses.length);
+
+  const handleFilterChange = (val: string) => {
+    setFilter(val as FeedFilter);
+    setVisibleLimit(PAGE_SIZE);
+  };
 
   const tabItems = [
     {
@@ -77,7 +89,7 @@ export function HouseholdExpenseFeed({
         <div className="w-full sm:w-auto">
           <Tabs
             value={filter}
-            onValueChange={(val) => setFilter(val as FeedFilter)}
+            onValueChange={handleFilterChange}
             items={tabItems}
             variant="pills"
             fullWidth={true}
@@ -87,7 +99,7 @@ export function HouseholdExpenseFeed({
       </CardHeader>
 
       <CardContent>
-        {displayedExpenses.length === 0 ? (
+        {sortedExpenses.length === 0 ? (
           <EmptyState
             title={
               filter === "own"
@@ -101,56 +113,69 @@ export function HouseholdExpenseFeed({
             className="py-10"
           />
         ) : (
-          <div className="divide-y divide-border/80">
-            {displayedExpenses.map((expense) => {
-              const isOwn = currentUserId ? expense.user_id === currentUserId : expense.is_own;
+          <div className="space-y-3">
+            <div className="divide-y divide-border/80">
+              {visibleExpenses.map((expense) => {
+                const isOwn = currentUserId ? expense.user_id === currentUserId : expense.is_own;
 
-              return (
-                <div
-                  key={expense.id}
-                  className="py-3 sm:py-3.5 flex items-center justify-between gap-3 first:pt-0 last:pb-0"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex size-8 items-center justify-center rounded-xl bg-surface-muted/60 border border-border/80 shrink-0">
+                return (
+                  <div
+                    key={expense.id}
+                    className="py-3 sm:py-3.5 flex items-center justify-between gap-3 first:pt-0 last:pb-0"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
                       <CategoryIcon
                         icon={expense.category_icon}
                         color={expense.category_color}
-                        className="size-4"
+                        className="size-4 shrink-0"
                       />
-                    </div>
 
-                    <div className="min-w-0 space-y-0.5">
-                      <p className="text-xs sm:text-sm font-medium text-foreground truncate">
-                        {expense.description}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <span className="truncate">{expense.category_name}</span>
-                        <span>•</span>
-                        <span className="tabular-nums shrink-0">{formatDateBR(expense.date)}</span>
-                        <span>•</span>
-                        {isOwn ? (
-                          <Badge variant="positive" size="xs">
-                            Você
-                          </Badge>
-                        ) : (
-                          <Badge variant="portfolio" size="xs">
-                            {expense.payer_name || "Membro"}
-                          </Badge>
-                        )}
+                      <div className="min-w-0 space-y-0.5">
+                        <p className="text-xs sm:text-sm font-medium text-foreground line-clamp-2 break-words">
+                          {expense.description}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                          <span className="truncate">{expense.category_name}</span>
+                          <span className="tabular-nums shrink-0">{formatDateBR(expense.date)}</span>
+                          {isOwn ? (
+                            <Badge variant="positive" size="xs">
+                              Você
+                            </Badge>
+                          ) : (
+                            <Badge variant="portfolio" size="xs">
+                              {expense.payer_name || "Membro"}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="shrink-0 text-right">
-                    <MoneyText
-                      cents={expense.amount_cents}
-                      tone="negative"
-                      className="text-xs sm:text-sm font-semibold tabular-nums whitespace-nowrap"
-                    />
+                    <div className="shrink-0 text-right">
+                      <MoneyText
+                        cents={expense.amount_cents}
+                        tone="negative"
+                        className="text-xs sm:text-sm font-semibold"
+                      />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            {remainingCount > 0 && (
+              <div className="pt-2 flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVisibleLimit((prev) => prev + PAGE_SIZE)}
+                  className="w-full sm:w-auto"
+                >
+                  Carregar mais ({remainingCount}{" "}
+                  {remainingCount === 1 ? "restante" : "restantes"})
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

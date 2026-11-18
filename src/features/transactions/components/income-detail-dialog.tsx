@@ -1,56 +1,12 @@
-import { useState } from "react";
-import { Copy, Pencil, Share2, Sparkles, Trash2 } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, DatePicker, FormField, Input, Modal, ModalFooter, MoneyInput, Select, Switch } from "@/components/ui";
-import { MoneyText } from "@/components/ui/money-text";
-import { CategoryIcon } from "@/components/modules/category-icon";
-import { formatCentsAsBRL } from "@/services/masks";
-import { shareText } from "@/services/export-actions";
-import { getErrorMessage } from "@/services/errors";
-import { pushToast } from "@/services/toast";
-import {
-  useCategories,
-  useCreateIncome,
-  useDeleteIncome,
-  useDeleteIncomeGrouped,
-  useDeleteRecurrenceOccurrences,
-  useFamilyMode,
-  useUpdateIncome,
-  useUpdateIncomeGrouped,
-  useUpdateRecurrenceOccurrences,
-} from "@/state";
+import { useRef, useState } from "react";
+import { Copy, Pencil, Share2, Trash2 } from "lucide-react";
+import { Alert, Button, Modal, ModalFooter } from "@/components/ui";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-
-import type { Category, DbInsert, Income, InstallmentDeleteMode, ReceiveType, RecurrenceGroupFields } from "@/types";
-
-import { RECEIVE_TYPE_LABELS } from "@/lib/labels";
-import { todayISO } from "@/domain/debts";
-import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
-import { ReportWeightField } from "./report-weight-field";
-
-
-
-const RECEIVE_OPTIONS = Object.entries(RECEIVE_TYPE_LABELS).map(([value, label]) => ({ value, label }));
-
-/** Modos de exclusão para rendas parceladas (Fase 32). */
-const MODE_OPTIONS = [
-  { value: "single", label: "Apenas esta parcela" },
-  { value: "all", label: "Todas as parcelas" },
-  { value: "subsequent", label: "Esta parcela e as seguintes" },
-];
-
-/** Escopo da edição em grupo (Fase 32) — rótulos genéricos (parcela/ocorrência). */
-const EDIT_SCOPE_OPTIONS = [
-  { value: "single", label: "Apenas este lançamento" },
-  { value: "all", label: "Todos do grupo" },
-  { value: "subsequent", label: "Este e os seguintes" },
-];
-
-/** Modos de exclusão para recorrências (Fase 32). */
-const RECURRENCE_MODE_OPTIONS = [
-  { value: "single", label: "Apenas esta ocorrência" },
-  { value: "all", label: "Todas as ocorrências" },
-  { value: "subsequent", label: "Esta ocorrência e as seguintes" },
-];
+import type { Income, InstallmentDeleteMode } from "@/types";
+import { IncomeDetailView } from "./income-detail-view";
+import { IncomeEditForm } from "./income-edit-form";
+import { TransactionDeleteScopeModal } from "./transaction-delete-scope-modal";
+import { useIncomeDetailActions } from "./use-income-detail-actions";
 
 export interface IncomeDetailDialogProps {
   income: Income | null;
@@ -59,231 +15,18 @@ export interface IncomeDetailDialogProps {
   initialEditing?: boolean;
 }
 
-interface IncomeEditFormProps {
-  income: Income;
-  categories: Category[];
-  isPending: boolean;
-  /** Parcelada ou recorrente — mostra o seletor de escopo (Fase 32). */
-  grouped: boolean;
-  isRecurring: boolean;
-  scope: InstallmentDeleteMode;
-  onScopeChange: (scope: InstallmentDeleteMode) => void;
-  onCancel: () => void;
-  onSave: (payload: {
-    description: string;
-    value: number;
-    date: string;
-    category_id: string;
-    receive_type: ReceiveType;
-    report_weight: number;
-    is_family?: boolean;
-  }) => Promise<void>;
-}
-
-function IncomeEditForm({
-  income,
-  categories,
-  isPending,
-  grouped,
-  isRecurring,
-  scope,
-  onScopeChange,
-  onCancel,
-  onSave,
-}: IncomeEditFormProps) {
-  const [description, setDescription] = useState(income.description || "");
-  const [valueCents, setValueCents] = useState(Math.round(income.value * 100));
-  const [date, setDate] = useState(income.date);
-  const [categoryId, setCategoryId] = useState(income.category_id);
-  const [receiveType, setReceiveType] = useState<ReceiveType>(income.receive_type);
-  const [isFamily, setIsFamily] = useState(Boolean(income.is_family));
-  const isPreset = REPORT_WEIGHT_PRESETS.includes(income.report_weight);
-  const [weightMode, setWeightMode] = useState<string>(isPreset ? String(income.report_weight) : "custom");
-  const [reportCustomAmountCents, setReportCustomAmountCents] = useState(
-    Math.round(income.value * income.report_weight * 100),
-  );
-  const [formError, setFormError] = useState<string | null>(null);
-  const { isFamilyModeEnabled } = useFamilyMode();
-  const isFamilyActive = Boolean(isFamilyModeEnabled);
-
-  const handleSubmit = async () => {
-    if (valueCents <= 0) {
-      setFormError("O valor da receita deve ser maior que zero.");
-      return;
-    }
-    if (!categoryId) {
-      setFormError("Selecione uma categoria.");
-      return;
-    }
-    if (!date) {
-      setFormError("Informe a data da receita.");
-      return;
-    }
-
-    if (weightMode === "custom" && (reportCustomAmountCents < 0 || reportCustomAmountCents > valueCents)) {
-      setFormError("O valor no relatório deve ser entre zero e o valor total da receita.");
-      return;
-    }
-
-    const calculatedWeight =
-      weightMode === "custom"
-        ? Number((reportCustomAmountCents / valueCents).toFixed(4))
-        : Number(weightMode);
-
-    setFormError(null);
-    try {
-      await onSave({
-        description: description.trim(),
-        value: valueCents / 100,
-        date,
-        category_id: categoryId,
-        receive_type: receiveType,
-        report_weight: calculatedWeight,
-        is_family: isFamilyActive ? isFamily : Boolean(income.is_family),
-      });
-    } catch (err) {
-      setFormError(getErrorMessage(err));
-    }
-  };
-
-  const categoryOptions = categories.map((c) => ({
-    value: c.id,
-    label: c.name,
-  }));
-
-  // Parcelada: o valor é editável apenas por lançamento (invariante de soma do
-  // parcelamento). Recorrência: sem invariante de soma, valor editável em grupo.
-  const valueDisabled = grouped && scope !== "single" && !isRecurring;
-
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!isPending) {
-          void handleSubmit();
-        }
-      }}
-      className="flex flex-col gap-3.5"
-    >
-      {formError ? <Alert variant="error">{formError}</Alert> : null}
-
-      {grouped ? (
-        <FormField
-          label="Aplicar a"
-          helperText={
-            !isRecurring && scope !== "single"
-              ? "O valor é editado por lançamento para preservar o total do parcelamento. Para mudar o total, exclua e refaça."
-              : undefined
-          }
-        >
-          <Select
-            value={scope}
-            onValueChange={(value) => onScopeChange(value as InstallmentDeleteMode)}
-            options={EDIT_SCOPE_OPTIONS}
-            ariaLabel="Escopo da edição"
-          />
-        </FormField>
-      ) : null}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-        <FormField label="Descrição" className="sm:col-span-2">
-          <Input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descrição da receita"
-            aria-label="Descrição"
-          />
-        </FormField>
-
-        <FormField label="Valor">
-          <MoneyInput
-            cents={valueCents}
-            onCentsChange={setValueCents}
-            aria-label="Valor da receita"
-            disabled={valueDisabled}
-          />
-        </FormField>
-
-        <FormField label="Data">
-          <DatePicker
-            value={date}
-            onValueChange={setDate}
-            ariaLabel="Data da receita"
-          />
-        </FormField>
-
-        <FormField label="Categoria">
-          <Select
-            value={categoryId}
-            onValueChange={setCategoryId}
-            options={categoryOptions}
-            placeholder="Selecione a categoria"
-            ariaLabel="Categoria da receita"
-          />
-        </FormField>
-
-        <FormField label="Forma de recebimento">
-          <Select
-            value={receiveType}
-            onValueChange={(val) => setReceiveType(val as ReceiveType)}
-            options={RECEIVE_OPTIONS}
-            ariaLabel="Forma de recebimento"
-          />
-        </FormField>
-      </div>
-
-      <ReportWeightField
-        valueCents={valueCents}
-        mode={weightMode}
-        onModeChange={(val) => {
-          setWeightMode(val);
-          if (val === "custom" && reportCustomAmountCents === 0) {
-            setReportCustomAmountCents(valueCents);
-          }
-        }}
-        customAmountCents={reportCustomAmountCents}
-        onCustomAmountChange={setReportCustomAmountCents}
-        customLabel="Sua cota considerada no relatório"
-        ariaLabelCustom="Sua cota considerada no relatório"
-      />
-
-      {isFamilyActive && (
-        <div className="rounded-xl border border-border/80 bg-surface p-3">
-          <Switch
-            id="edit-income-family"
-            checked={isFamily}
-            onCheckedChange={setIsFamily}
-            label="Receita da Casa / Familiar"
-            description="Visível no Painel Familiar compartilhado"
-          />
-        </div>
-      )}
-
-      <ModalFooter>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          disabled={isPending}
-        >
-          {isPending ? "Salvando…" : "Salvar alterações"}
-        </Button>
-      </ModalFooter>
-    </form>
-  );
-}
-
 /**
  * Detalhe da receita + edição completa + exclusão. Rendas automáticas
- * (source_ref, ex.: estorno [REFUND]) são somente-leitura (§3.1) — sem
- * ações de edição/exclusão.
+ * (source_ref, ex.: estorno [REFUND]) são somente-leitura (§3.1).
  */
-export function IncomeDetailDialog({
+export function IncomeDetailDialog(props: IncomeDetailDialogProps) {
+  const [hasOpened, setHasOpened] = useState(props.open);
+  if (props.open && !hasOpened) setHasOpened(true);
+  if (!hasOpened) return null;
+  return <IncomeDetailDialogContent {...props} />;
+}
+
+function IncomeDetailDialogContent({
   income,
   open,
   onOpenChange,
@@ -291,394 +34,171 @@ export function IncomeDetailDialog({
 }: IncomeDetailDialogProps) {
   const [isEditing, setIsEditing] = useState(initialEditing);
   const [prevOpen, setPrevOpen] = useState(open);
-
   const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({ moduleKey: "transactions" });
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");
   const [error, setError] = useState<string | null>(null);
+  const editSubmitRef = useRef<(() => void) | null>(null);
 
   if (open !== prevOpen) {
     setPrevOpen(open);
-    if (open) {
-      setIsEditing(isReadOnlyMode ? false : initialEditing);
-    }
+    if (open) setIsEditing(isReadOnlyMode ? false : initialEditing);
   }
 
-  const categoriesQuery = useCategories("income");
-  const { isFamilyModeEnabled } = useFamilyMode();
-  const isFamilyActive = Boolean(isFamilyModeEnabled);
-  const deleteIncome = useDeleteIncome();
-  const deleteIncomeGrouped = useDeleteIncomeGrouped();
-  const deleteRecurrence = useDeleteRecurrenceOccurrences();
-  const updateIncome = useUpdateIncome();
-  const updateIncomeGrouped = useUpdateIncomeGrouped();
-  const updateRecurrence = useUpdateRecurrenceOccurrences();
-  const createIncome = useCreateIncome();
+  const actions = useIncomeDetailActions({
+    income,
+    onOpenChange,
+    mode,
+    editScope,
+    setError,
+    setConfirmOpen,
+    setIsEditing,
+  });
 
-  const categories = categoriesQuery.data ?? [];
-  const currentCategory = categories.find((c) => c.id === income?.category_id);
-  const isReadOnly = income?.source_ref != null;
-  const isInstallment = income != null && (income.installments_total ?? 1) > 1;
-  const isRecurring = income?.recurrence_id != null;
-  const isGrouped = isInstallment || isRecurring;
-  const editPending = updateIncome.isPending || updateIncomeGrouped.isPending || updateRecurrence.isPending;
-
-  /**
-   * Exclusão otimista (F30): fecha os diálogos e remove a renda da lista na
-   * hora; o hook faz rollback + toast se o servidor rejeitar.
-   */
-  const handleConfirmDelete = async () => {
-    if (!income) return;
+  const resetAndClose = (next: boolean) => {
     setError(null);
-    setConfirmOpen(false);
-    onOpenChange(false);
-    try {
-      if (isRecurring) {
-        await deleteRecurrence.mutateAsync({ occurrenceId: income.id, mode });
-        pushToast({
-          title: mode === "single" ? "Ocorrência excluída com sucesso" : "Recorrências excluídas com sucesso",
-          variant: "success",
-        });
-      } else if (isGrouped) {
-        await deleteIncomeGrouped.mutateAsync({ id: income.id, mode });
-        pushToast({
-          title: mode !== "single" ? "Parcelas excluídas com sucesso" : "Receita excluída com sucesso",
-          variant: "success",
-        });
-      } else {
-        const deletedPayload = {
-          value: income.value,
-          date: income.date,
-          category_id: income.category_id,
-          description: income.description || "",
-          receive_type: income.receive_type,
-          report_weight: income.report_weight ?? 1,
-          is_family: Boolean(income.is_family),
-          source_ref: income.source_ref ?? null,
-        };
-        await deleteIncome.mutateAsync(income.id);
-        pushToast({
-          title: "Receita excluída",
-          variant: "default",
-          duration: 7000,
-          action: {
-            label: "Desfazer",
-            onClick: () => {
-              void createIncome.mutateAsync(deletedPayload);
-              pushToast({
-                title: "Receita restaurada com sucesso",
-                variant: "success",
-              });
-            },
-          },
-        });
-      }
-    } catch {
-      // Falha tratada no onError da mutation com rollback automático e toast de erro
-    }
-  };
-
-  /**
-   * Edição otimista (F30): o cache já reflete os dados novos em `onMutate`;
-   * o modal permanece aberto até a confirmação do servidor — em falha o
-   * formulário mostra o erro com os dados preservados (nada se perde) e o
-   * hook faz rollback + toast. Sucesso → fecha.
-   */
-  const handleSaveEdit = async (payload: {
-    description: string;
-    value: number;
-    date: string;
-    category_id: string;
-    receive_type: ReceiveType;
-    report_weight: number;
-    is_family?: boolean;
-  }) => {
-    if (!income) return;
-    setError(null);
-    if (isGrouped) {
-      // Fase 32 — edição em grupo (single/all/subsequent).
-      const fields: RecurrenceGroupFields = {
-        description: payload.description,
-        value: payload.value,
-        category_id: payload.category_id,
-        receive_type: payload.receive_type,
-        report_weight: payload.report_weight,
-        is_family: payload.is_family,
-      };
-      if (isRecurring) {
-        await updateRecurrence.mutateAsync({ occurrenceId: income.id, mode: editScope, fields });
-      } else {
-        await updateIncomeGrouped.mutateAsync({ id: income.id, mode: editScope, fields });
-      }
-    } else {
-      await updateIncome.mutateAsync({
-        id: income.id,
-        input: payload,
-      });
-    }
-
-    const familyChanged = isFamilyActive && payload.is_family !== undefined && payload.is_family !== income.is_family;
-    if (familyChanged) {
-      pushToast({
-        title: "Receita atualizada com sucesso",
-        description: payload.is_family
-          ? "Esta receita foi marcada como Familiar e agora pertence à visão Familiar."
-          : "Esta receita foi marcada como Individual e agora pertence à visão Pessoal.",
-        variant: "success",
-      });
-    } else {
-      pushToast({
-        title: "Receita atualizada com sucesso",
-        variant: "success",
-      });
-    }
-
     setIsEditing(false);
-    onOpenChange(false);
+    setConfirmOpen(false);
+    setEditScope("single");
+    onOpenChange(next);
   };
 
-  /**
-   * Repetição rápida (F21): clona a receita no mês atual com data ajustada
-   * para hoje — nova renda com os mesmos campos, novos IDs/audit_events.
-   */
-  const handleShare = async (): Promise<void> => {
-    if (!income) return;
-    const text = [
-      `Receita: ${income.description || currentCategory?.name || "Receita"}`,
-      `Valor: ${formatCentsAsBRL(Math.round(income.value * 100))}`,
-      `Data: ${income.date}`,
-      `Categoria: ${currentCategory?.name ?? "Outra"}`,
-    ].join("\n");
-    // Feedback do resultado: share nativo já dá confirmação visual; o fallback
-    // de clipboard e a falta de suporte precisam de aviso explícito.
-    const result = await shareText("Receita — Finanças Pessoais", text);
-    if (result === "copied") {
-      pushToast({ title: "Copiado para a área de transferência", variant: "default" });
-    } else if (result === "unsupported") {
-      pushToast({ title: "Compartilhamento não suportado neste navegador", variant: "default" });
-    }
-  };
-
-  const handleRepeat = async () => {
-    if (!income) return;
-    setError(null);
-    const date = todayISO();
-    try {
-      const input = {
-        value: income.value,
-        date,
-        category_id: income.category_id,
-        receive_type: income.receive_type,
-        description: income.description || null,
-        report_weight: income.report_weight,
-        source_ref: null,
-      } satisfies Omit<DbInsert<Income>, "user_id">;
-      await createIncome.mutateAsync(input);
-      onOpenChange(false);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    }
-  };
+  const footer = !income ? undefined : isEditing ? (
+    <ModalFooter borderless>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          setIsEditing(false);
+          setError(null);
+          setEditScope("single");
+        }}
+      >
+        Cancelar
+      </Button>
+      <Button type="button" disabled={actions.editPending} onClick={() => editSubmitRef.current?.()}>
+        {actions.editPending ? "Salvando…" : "Salvar alterações"}
+      </Button>
+    </ModalFooter>
+  ) : actions.isReadOnly ? (
+    <ModalFooter borderless>
+      <Button type="button" variant="outline" onClick={() => resetAndClose(false)}>
+        Fechar
+      </Button>
+    </ModalFooter>
+  ) : (
+    <ModalFooter
+      borderless
+      destructiveAction={
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-critical hover:bg-critical/10 hover:text-critical gap-1.5"
+          onClick={() => guardAction(() => setConfirmOpen(true), "Excluir Receita")}
+        >
+          <Trash2 className="size-3.5 shrink-0" aria-hidden="true" />
+          <span>Excluir</span>
+        </Button>
+      }
+    >
+      <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="size-8 !min-w-8 !w-8 p-0 shrink-0"
+            onClick={() => void actions.handleShare()}
+            title="Compartilhar comprovante"
+            aria-label="Compartilhar"
+          >
+            <Share2 className="size-3.5" aria-hidden="true" />
+            <span className="sr-only">Compartilhar</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="size-8 !min-w-8 !w-8 p-0 shrink-0"
+            onClick={() => guardAction(() => void actions.handleRepeat(), "Duplicar Receita")}
+            disabled={actions.repeatPending}
+            title="Repetir no mês atual"
+            aria-label="Repetir no mês atual"
+          >
+            <Copy className="size-3.5" aria-hidden="true" />
+            <span className="sr-only">{actions.repeatPending ? "Repetindo…" : "Repetir no mês atual"}</span>
+          </Button>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1.5 shrink-0"
+          onClick={() => guardAction(() => setIsEditing(true), "Editar Receita")}
+        >
+          <Pencil className="size-3.5" aria-hidden="true" />
+          <span>Editar</span>
+        </Button>
+      </div>
+    </ModalFooter>
+  );
 
   return (
     <>
       <Modal
         open={open}
-        onOpenChange={(next) => {
-          setError(null);
-          setIsEditing(false);
-          setConfirmOpen(false);
-          setEditScope("single");
-          onOpenChange(next);
-        }}
+        onOpenChange={resetAndClose}
         title={isEditing ? "Editar receita" : "Detalhes da receita"}
         size={isEditing ? "xl" : "lg"}
         showCalculator={isEditing}
+        footer={footer}
       >
         {income ? (
-          <div className="mt-4 flex flex-col gap-4 min-w-0">
+          <div className="flex flex-col gap-4 min-w-0">
             {error ? <Alert variant="error">{error}</Alert> : null}
-
             {isEditing ? (
               <IncomeEditForm
                 key={income.id}
                 income={income}
-                categories={categories}
-                isPending={editPending}
-                grouped={isGrouped}
-                isRecurring={isRecurring}
+                categories={actions.categories}
+                isPending={actions.editPending}
+                grouped={actions.isGrouped}
+                isRecurring={actions.isRecurring}
                 scope={editScope}
                 onScopeChange={setEditScope}
-                onCancel={() => {
-                  setIsEditing(false);
-                  setError(null);
-                  setEditScope("single");
-                }}
-                onSave={handleSaveEdit}
+                submitRef={editSubmitRef}
+                onSave={actions.handleSaveEdit}
               />
             ) : (
-              <div className="flex flex-col gap-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex flex-col gap-1">
-                    <MoneyText
-                      cents={Math.round(income.value * 100)}
-                      tone="positive"
-                      variant="value"
-                      className="text-3xl font-bold"
-                    />
-                    {income.report_weight < 1 ? (
-                      <span className="text-xs font-mono text-muted-foreground">
-                        Valor no relatório: {formatCentsAsBRL(Math.round(income.value * income.report_weight * 100))} ({Math.round(income.report_weight * 100)}%)
-                      </span>
-                    ) : null}
-                    <p className="text-sm font-medium text-foreground">
-                      {income.description || currentCategory?.name || "Receita"}
-                    </p>
-                  </div>
-                  {!isReadOnly ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => guardAction(() => setIsEditing(true), "Editar Receita")}
-                    >
-                      <Pencil className="size-3.5" aria-hidden="true" />
-                      Editar
-                    </Button>
-                  ) : null}
-                </div>
-
-                <dl className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface/60 p-3.5 text-sm">
-                  <div className="flex items-center justify-between">
-                    <dt className="text-xs text-muted-foreground">Categoria</dt>
-                    <dd className="flex items-center gap-1.5 font-medium text-foreground text-xs">
-                      {currentCategory ? (
-                        <>
-                          <CategoryIcon icon={currentCategory.icon} color={currentCategory.color} className="size-3.5" />
-                          <span>{currentCategory.name}</span>
-                        </>
-                      ) : (
-                        "Outra"
-                      )}
-                    </dd>
-                  </div>
-                  {isFamilyActive && (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-xs text-muted-foreground">Orçamento</dt>
-                      <dd className="font-medium text-foreground text-xs">
-                        {income.is_family ? (
-                          <Badge variant="muted" size="xs">
-                            Familiar
-                          </Badge>
-                        ) : (
-                          "Individual"
-                        )}
-                      </dd>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <dt className="text-xs text-muted-foreground">Data</dt>
-                    <dd className="font-medium text-foreground text-xs">{income.date}</dd>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <dt className="text-xs text-muted-foreground">Recebimento</dt>
-                    <dd className="font-medium text-foreground text-xs">
-                      {RECEIVE_TYPE_LABELS[income.receive_type] ?? income.receive_type}
-                    </dd>
-                  </div>
-                  {income.report_weight < 1 ? (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-xs text-muted-foreground">Valor no relatório</dt>
-                      <dd className="font-medium text-foreground text-xs font-mono">
-                        {formatCentsAsBRL(Math.round(income.value * income.report_weight * 100))} ({Math.round(income.report_weight * 100)}%)
-                      </dd>
-                    </div>
-                  ) : null}
-                  {isReadOnly ? (
-                    <div className="flex items-center justify-between">
-                      <dt className="text-xs text-muted-foreground">Origem</dt>
-                      <dd className="flex items-center gap-1 font-medium text-foreground text-xs">
-                        <Sparkles className="size-3 text-positive-strong" aria-hidden="true" />
-                        Renda automática — somente leitura
-                      </dd>
-                    </div>
-                  ) : null}
-                </dl>
-
-                {!isReadOnly ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-3.5 border-t border-border/80 mt-2">
-                    <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:w-auto sm:items-center">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
-                        onClick={() => void handleShare()}
-                        title="Compartilhar comprovante"
-                        aria-label="Compartilhar"
-                      >
-                        <Share2 className="size-3.5 shrink-0" aria-hidden="true" />
-                        <span className="hidden sm:inline">Compartilhar</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-1.5 px-2 sm:px-3 text-xs justify-center"
-                        onClick={() => guardAction(() => void handleRepeat(), "Duplicar Receita")}
-                        disabled={createIncome.isPending}
-                        title="Repetir no mês atual"
-                        aria-label="Repetir no mês atual"
-                      >
-                        <Copy className="size-3.5 shrink-0" aria-hidden="true" />
-                        <span className="hidden sm:inline">{createIncome.isPending ? "Repetindo…" : "Repetir"}</span>
-                      </Button>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="w-full sm:w-auto text-critical hover:bg-critical/10 hover:text-critical gap-1.5"
-                      onClick={() => guardAction(() => setConfirmOpen(true), "Excluir Receita")}
-                    >
-                      <Trash2 className="size-3.5 shrink-0" aria-hidden="true" />
-                      <span>Excluir</span>
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
+              <IncomeDetailView
+                income={income}
+                currentCategory={actions.currentCategory}
+                isFamilyActive={actions.isFamilyActive}
+                isReadOnly={actions.isReadOnly}
+                isInstallment={actions.isInstallment}
+                isRecurring={actions.isRecurring}
+              />
             )}
           </div>
         ) : null}
       </Modal>
 
-      <ConfirmDialog
+      <TransactionDeleteScopeModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="Excluir receita?"
         description="Esta ação não pode ser desfeita."
-        confirmLabel={
-          deleteIncome.isPending || deleteIncomeGrouped.isPending || deleteRecurrence.isPending ? "Excluindo…" : "Excluir"
-        }
-        variant="destructive"
-        confirmPending={deleteIncome.isPending || deleteIncomeGrouped.isPending || deleteRecurrence.isPending}
-        onConfirm={() => void handleConfirmDelete()}
-      >
-        {isGrouped ? (
-          <div className="mt-4 flex flex-col gap-1.5">
-            <span className="text-sm font-medium">O que excluir?</span>
-            <Select
-              value={mode}
-              onValueChange={(value) => setMode(value as InstallmentDeleteMode)}
-              options={isRecurring ? RECURRENCE_MODE_OPTIONS : MODE_OPTIONS}
-              ariaLabel="Modo de exclusão"
-            />
-          </div>
-        ) : null}
-      </ConfirmDialog>
+        confirmLabel={actions.deletePending ? "Excluindo…" : "Excluir"}
+        confirmPending={actions.deletePending}
+        onConfirm={() => void actions.handleConfirmDelete()}
+        isGrouped={actions.isGrouped}
+        isRecurring={actions.isRecurring}
+        mode={mode}
+        onModeChange={setMode}
+      />
 
       {upgradeModal}
     </>

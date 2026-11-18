@@ -60,14 +60,14 @@ export function PaceAlertBanner({
             "flex size-9 shrink-0 items-center justify-center rounded-xl border",
             isDeficit
               ? "bg-critical/10 border-critical/20 text-critical-strong"
-              : "bg-warning/10 border-warning/20 text-warning-strong",
+              : "bg-warning/15 border-warning/20 text-warning-strong",
           )}
         >
           <TrendingDown className="size-4.5" aria-hidden="true" />
         </span>
         <div className="flex flex-col gap-0.5 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-sm font-semibold text-foreground">
+            <h2 className="text-sm font-semibold text-foreground truncate">
               {isDeficit ? "Projeção de déficit no mês" : "Ritmo de gastos acima do previsto"}
             </h2>
             <Badge
@@ -105,7 +105,7 @@ export function PaceAlertBanner({
           <button
             type="button"
             onClick={handleDismiss}
-            className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors cursor-pointer shrink-0"
+            className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer shrink-0 max-sm:after:absolute max-sm:after:-inset-2"
             aria-label="Dispensar aviso de ritmo de gastos"
             title="Dispensar aviso"
           >

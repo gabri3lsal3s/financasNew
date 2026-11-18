@@ -1,12 +1,20 @@
-import { useState } from "react";
-import { Alert, Button, Modal, ModalFooter, MoneyInput, Select, Skeleton } from "@/components/ui";
+import { useId, useState } from "react";
+import {
+  Alert,
+  Button,
+  FormField,
+  Modal,
+  ModalFooter,
+  MoneyInput,
+  MoneyText,
+  Select,
+  Skeleton,
+} from "@/components/ui";
+import { calculateEarlyAmortization } from "@/domain/loans";
 import { getErrorMessage } from "@/services/errors";
 import { sensory } from "@/services/sensory";
-import { formatCentsAsBRL } from "@/services/masks";
-import { calculateEarlyAmortization } from "@/domain/loans";
 import { useCategories, useEarlyAmortizeLoan } from "@/state";
 import type { Debt, Loan } from "@/types";
-
 
 export interface EarlyAmortizationDialogProps {
   loan: Loan;
@@ -15,9 +23,21 @@ export interface EarlyAmortizationDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: EarlyAmortizationDialogProps) {
+interface EarlyAmortizationContentProps {
+  loan: Loan;
+  debts: Debt[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function EarlyAmortizationContent({
+  loan,
+  debts,
+  open,
+  onOpenChange,
+}: EarlyAmortizationContentProps) {
+  const formId = useId();
   const [budgetCents, setBudgetCents] = useState(100000); // R$ 1.000,00
-  const withExpense = true;
   const [categoryId, setCategoryId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -25,8 +45,9 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
   const amortizeLoan = useEarlyAmortizeLoan();
   const pending = amortizeLoan.isPending;
 
-  // Filtra parcelas pendentes
-  const pendingDebts = debts.filter((d) => d.paid_at === null && d.installment_group_id === loan.installment_group_id);
+  const pendingDebts = debts.filter(
+    (d) => d.paid_at === null && d.installment_group_id === loan.installment_group_id,
+  );
 
   const formattedItems = pendingDebts.map((d, index) => ({
     id: d.id,
@@ -35,21 +56,19 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
     dueDate: d.due_date,
   }));
 
-  const monthlyRatePercent = (loan.interest_rate_monthly || 0) * 100;
+  const monthlyRatePercent = loan.interest_rate_monthly || 0;
 
-  const result = calculateEarlyAmortization(
-    formattedItems,
-    monthlyRatePercent,
-    budgetCents
-  );
+  const result = calculateEarlyAmortization(formattedItems, monthlyRatePercent, budgetCents);
 
   const handleConfirm = async () => {
     setError(null);
     if (result.eliminatedInstallmentIds.length === 0) {
+      sensory.error();
       setError("O valor informado não é suficiente para quitar nenhuma parcela futura.");
       return;
     }
-    if (withExpense && !categoryId) {
+    if (!categoryId) {
+      sensory.error();
       setError("Selecione uma categoria para a despesa de amortização.");
       return;
     }
@@ -58,14 +77,15 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
       await amortizeLoan.mutateAsync({
         loanId: loan.id,
         debtIds: result.eliminatedInstallmentIds,
-        createExpense: withExpense,
-        expenseCategoryId: withExpense ? categoryId : null,
+        createExpense: true,
+        expenseCategoryId: categoryId,
         totalPaid: result.totalPresentValuePaidCents / 100,
         discountTotal: result.totalDiscountCents / 100,
       });
       sensory.success();
       onOpenChange(false);
     } catch (err) {
+      sensory.error();
       setError(getErrorMessage(err));
     }
   };
@@ -78,87 +98,23 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
       onOpenChange={onOpenChange}
       title="Amortização antecipada com desconto"
       description={`Elimine parcelas do final de ${loan.name}`}
-      size="xl"
+      size="md"
       showCalculator
-    >
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!pending && result.eliminatedInstallmentIds.length > 0) {
-            void handleConfirm();
-          }
-        }}
-        className="mt-4 flex flex-col gap-4"
-      >
-        {error ? <Alert variant="error">{error}</Alert> : null}
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="amortize-budget" className="text-xs font-semibold text-foreground">
-            Valor disponível para amortizar
-          </label>
-          <MoneyInput
-            id="amortize-budget"
-            cents={budgetCents}
-            onCentsChange={setBudgetCents}
-            aria-label="Valor para amortização extraordinária"
-          />
-        </div>
-
-        {result.eliminatedInstallmentIds.length > 0 ? (
-          <div className="rounded-xl border border-border/80 p-3.5 bg-surface shadow-xs flex flex-col gap-2">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Parcelas eliminadas do final:</span>
-              <span className="font-semibold text-foreground">
-                {result.eliminatedInstallmentIds.length} parcela(s)
-              </span>
-            </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Valor nominal das parcelas:</span>
-              <span>{formatCentsAsBRL(result.totalOriginalAmountCents)}</span>
-            </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Desconto de juros obtido:</span>
-              <span className="font-semibold text-success">
-                {formatCentsAsBRL(result.totalDiscountCents)}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm font-semibold text-foreground pt-1 border-t border-border/80">
-              <span>Total efetivo a pagar hoje:</span>
-              <span className="text-primary font-bold">
-                {formatCentsAsBRL(result.totalPresentValuePaidCents)}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Aumente o valor para cobrir ao menos uma parcela com desconto a valor presente.
-          </p>
-        )}
-
-        {withExpense && (
-          <div className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-foreground">Categoria da despesa</span>
-            {expenseCategories.isLoading ? (
-              <Skeleton className="h-10 w-full" />
-            ) : (
-              <Select
-                value={categoryId}
-                onValueChange={setCategoryId}
-                options={categories.map((c) => ({ value: c.id, label: c.name }))}
-                placeholder="Selecione categoria"
-                ariaLabel="Categoria da despesa de amortização"
-              />
-            )}
-          </div>
-        )}
-
-        <ModalFooter>
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+      footer={
+        <ModalFooter borderless>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={pending}
+          >
             Cancelar
           </Button>
           <Button
             type="submit"
-            disabled={pending || result.eliminatedInstallmentIds.length === 0 || (withExpense && !categoryId)}
+            form={formId}
+            sensoryIntent={false}
+            disabled={pending || result.eliminatedInstallmentIds.length === 0 || !categoryId}
             aria-label="Confirmar amortização"
           >
             {pending ? (
@@ -171,7 +127,102 @@ export function EarlyAmortizationDialog({ loan, debts, open, onOpenChange }: Ear
             )}
           </Button>
         </ModalFooter>
+      }
+    >
+      <form
+        id={formId}
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!pending && result.eliminatedInstallmentIds.length > 0 && categoryId) {
+            void handleConfirm();
+          }
+        }}
+        className="mt-2 flex flex-col gap-4"
+      >
+        {error ? <Alert variant="error">{error}</Alert> : null}
+
+        <FormField label="Valor disponível para amortizar" htmlFor="amortize-budget">
+          <MoneyInput
+            id="amortize-budget"
+            cents={budgetCents}
+            onCentsChange={setBudgetCents}
+            aria-label="Valor para amortização extraordinária"
+          />
+        </FormField>
+
+        {result.eliminatedInstallmentIds.length > 0 ? (
+          <div className="rounded-xl border border-border/80 p-3.5 bg-surface shadow-xs flex flex-col gap-2">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Parcelas eliminadas do final:</span>
+              <span className="font-semibold text-foreground">
+                {result.eliminatedInstallmentIds.length} parcela(s)
+              </span>
+            </div>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Valor nominal das parcelas:</span>
+              <MoneyText
+                cents={result.totalOriginalAmountCents}
+                tone="default"
+                className="text-xs font-medium"
+              />
+            </div>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Desconto de juros obtido:</span>
+              <MoneyText
+                cents={result.totalDiscountCents}
+                tone="positive"
+                className="text-xs font-semibold text-positive-strong"
+              />
+            </div>
+            <div className="flex justify-between text-sm font-semibold text-foreground pt-2 border-t border-border/80">
+              <span>Total efetivo a pagar hoje:</span>
+              <MoneyText
+                cents={result.totalPresentValuePaidCents}
+                tone="default"
+                className="text-sm font-bold text-primary-strong"
+              />
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Aumente o valor para cobrir ao menos uma parcela com desconto a valor presente.
+          </p>
+        )}
+
+        <FormField label="Categoria da despesa" htmlFor="amortize-category">
+          {expenseCategories.isLoading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : (
+            <Select
+              id="amortize-category"
+              value={categoryId}
+              onValueChange={setCategoryId}
+              options={categories.map((c) => ({ value: c.id, label: c.name }))}
+              placeholder="Selecione categoria"
+              ariaLabel="Categoria da despesa de amortização"
+            />
+          )}
+        </FormField>
       </form>
     </Modal>
+  );
+}
+
+export function EarlyAmortizationDialog({
+  loan,
+  debts,
+  open,
+  onOpenChange,
+}: EarlyAmortizationDialogProps) {
+  if (!open) return null;
+
+  return (
+    <EarlyAmortizationContent
+      key={loan.id}
+      loan={loan}
+      debts={debts}
+      open={open}
+      onOpenChange={onOpenChange}
+    />
   );
 }

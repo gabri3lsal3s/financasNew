@@ -22,11 +22,6 @@ export interface PublicSplitIdentityBannerProps {
 
 /**
  * Banner de identificação do participante no link público de racha (/r/:token).
- *
- * Características:
- * 1. Sem identidade ativa: exibe card "Quem é você neste racha?" e lista de participantes clicáveis;
- * 2. Com identidade ativa: exibe badge "Você é [Nome]" acompanhado do botão "Alterar";
- * 3. Sanitiza nomes: o anfitrião exibe seu nome real com indicador "(Organizador)", nunca "Você (Anfitrião)".
  */
 export function PublicSplitIdentityBanner({
   token,
@@ -42,19 +37,19 @@ export function PublicSplitIdentityBanner({
 
   const activeParticipant = effectiveActiveId
     ? participants.find(
-        (p) => p.id === effectiveActiveId || p.name.trim().toLowerCase() === effectiveActiveId.trim().toLowerCase(),
+        (p) =>
+          p.id === effectiveActiveId ||
+          p.name.trim().toLowerCase() === effectiveActiveId.trim().toLowerCase(),
       ) ?? null
     : null;
 
-  const handleSelect = (id: string | null) => {
-    triggerSensory("selection");
+  const persistParticipant = (id: string | null) => {
     if (onSelectParticipant) {
       onSelectParticipant(id);
     }
     guestIdentity.setActiveParticipantId(id);
   };
 
-  // Estado 1: Nenhuma identidade ativa selecionada
   if (!activeParticipant) {
     return (
       <Card
@@ -91,14 +86,15 @@ export function PublicSplitIdentityBanner({
               <button
                 key={participantKey}
                 type="button"
-                onClick={() => handleSelect(participantKey)}
-                className="px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer bg-surface-raised text-foreground border-border/80 hover:bg-surface-hover hover:border-border active:scale-[0.98]"
+                onClick={() => {
+                  triggerSensory("selection");
+                  persistParticipant(participantKey);
+                }}
+                className="min-h-11 sm:min-h-9 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer bg-surface-raised text-foreground border-border/80 hover:bg-surface-hover hover:border-border active:scale-[0.98]"
               >
                 <span>{displayName}</span>
                 {isHost && (
-                  <span className="text-muted-foreground font-normal ml-1">
-                    (Organizador)
-                  </span>
+                  <span className="text-muted-foreground font-normal ml-1">(Organizador)</span>
                 )}
               </button>
             );
@@ -108,7 +104,6 @@ export function PublicSplitIdentityBanner({
     );
   }
 
-  // Estado 2: Identidade ativa identificada
   const isHost = Boolean(activeParticipant.is_host);
   const cleanHostName = hostName || "Anfitrião";
   const displayActiveName = isHost
@@ -127,7 +122,7 @@ export function PublicSplitIdentityBanner({
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 min-w-0">
           <UserCheck className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
-          <Badge size="sm" variant="positive" className="font-semibold truncate">
+          <Badge size="sm" variant="positive" className="font-semibold max-w-full truncate">
             Você é {displayActiveName}
             {isHost ? " (Organizador)" : ""}
           </Badge>
@@ -137,8 +132,9 @@ export function PublicSplitIdentityBanner({
           type="button"
           variant="outline"
           size="xs"
-          onClick={() => handleSelect(null)}
-          className="h-7 px-2.5 text-xs gap-1 cursor-pointer text-muted-foreground hover:text-foreground"
+          sensoryIntent="selection"
+          onClick={() => persistParticipant(null)}
+          className="px-2.5 text-xs gap-1 text-muted-foreground hover:text-foreground"
         >
           <span>Alterar</span>
         </Button>

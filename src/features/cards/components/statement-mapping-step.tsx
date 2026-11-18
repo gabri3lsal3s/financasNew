@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ArrowRight, RotateCcw } from "lucide-react";
-import { Button, Checkbox, ModalFooter, Select } from "@/components/ui";
+import { Button, Checkbox, FormField, ModalFooter, Select } from "@/components/ui";
 import type { ColumnMapping, RawParsedRow } from "@/domain/reconciliation";
 
-interface StatementMappingStepProps {
+export interface StatementMappingStepProps {
   rows: RawParsedRow[];
   initialMapping: ColumnMapping;
   onConfirmMapping: (mapping: ColumnMapping) => void;
   onBack: () => void;
+  /** Quando definido, vincula a submissão ao `<Modal footer>` do diálogo pai. */
+  formId?: string;
+  /** Suprime o rodapé interno quando o diálogo pai renderiza os botões no `Modal.footer`. */
+  hideFooter?: boolean;
 }
 
 /**
@@ -20,7 +24,11 @@ export function StatementMappingStep({
   initialMapping,
   onConfirmMapping,
   onBack,
+  formId: externalFormId,
+  hideFooter = false,
 }: StatementMappingStepProps) {
+  const generatedId = useId();
+  const formId = externalFormId ?? generatedId;
   const [dateCol, setDateCol] = useState(initialMapping.dateColIndex.toString());
   const [descCol, setDescCol] = useState(initialMapping.descriptionColIndex.toString());
   const [amountCol, setAmountCol] = useState(initialMapping.amountColIndex.toString());
@@ -50,30 +58,41 @@ export function StatementMappingStep({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-border/70 bg-surface/50 p-3">
-        <p className="text-xs font-medium text-foreground mb-2">Prévia das primeiras linhas do extrato:</p>
-        <div className="overflow-x-auto">
+    <form
+      id={formId}
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleApply();
+      }}
+      className="space-y-4"
+    >
+      <div className="rounded-xl border border-border/80 bg-surface-raised p-3">
+        <p className="text-xs font-semibold text-foreground mb-2">
+          Prévia das primeiras linhas do extrato:
+        </p>
+        <div className="overflow-x-auto no-scrollbar scroll-smooth">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="border-b border-border/60 bg-muted/20 text-muted-foreground">
-                <th className="py-1 px-2">#</th>
+              <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground">
+                <th className="py-1.5 px-2">#</th>
                 {Array.from({ length: maxCols }).map((_, c) => (
-                  <th key={c} className="py-1 px-2">
+                  <th key={c} className="py-1.5 px-2">
                     Col {c + 1}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/40">
+            <tbody className="divide-y divide-border/60">
               {previewRows.map((row, idx) => (
                 <tr
                   key={row.rowIndex}
-                  className={idx === 0 && hasHeader ? "opacity-50 italic bg-muted/10" : "hover:bg-muted/10"}
+                  className={
+                    idx === 0 && hasHeader ? "opacity-50 italic bg-muted/20" : "hover:bg-surface-hover/50"
+                  }
                 >
-                  <td className="py-1 px-2 text-muted-foreground font-mono">{idx + 1}</td>
+                  <td className="py-1.5 px-2 text-muted-foreground font-mono">{idx + 1}</td>
                   {Array.from({ length: maxCols }).map((_, c) => (
-                    <td key={c} className="py-1 px-2 truncate max-w-[140px] font-mono text-[11px]">
+                    <td key={c} className="py-1.5 px-2 truncate max-w-[140px] font-mono text-[11px]">
                       {row.cells[c] ?? "—"}
                     </td>
                   ))}
@@ -84,60 +103,38 @@ export function StatementMappingStep({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="space-y-1">
-          <span className="text-xs font-medium text-foreground">Coluna de Data</span>
-          <Select
-            value={dateCol}
-            onValueChange={setDateCol}
-            options={columnOptions}
-          />
-        </div>
-        <div className="space-y-1">
-          <span className="text-xs font-medium text-foreground">Coluna de Descrição</span>
-          <Select
-            value={descCol}
-            onValueChange={setDescCol}
-            options={columnOptions}
-          />
-        </div>
-        <div className="space-y-1">
-          <span className="text-xs font-medium text-foreground">Coluna de Valor</span>
-          <Select
-            value={amountCol}
-            onValueChange={setAmountCol}
-            options={columnOptions}
-          />
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <FormField label="Coluna de Data">
+          <Select value={dateCol} onValueChange={setDateCol} options={columnOptions} ariaLabel="Coluna de Data" />
+        </FormField>
+        <FormField label="Coluna de Descrição">
+          <Select value={descCol} onValueChange={setDescCol} options={columnOptions} ariaLabel="Coluna de Descrição" />
+        </FormField>
+        <FormField label="Coluna de Valor">
+          <Select value={amountCol} onValueChange={setAmountCol} options={columnOptions} ariaLabel="Coluna de Valor" />
+        </FormField>
       </div>
 
-      <ModalFooter className="sm:justify-between">
+      <div className="rounded-xl border border-border/80 bg-surface-raised p-3">
         <Checkbox
           checked={hasHeader}
           onCheckedChange={setHasHeader}
           label="Primeira linha é cabeçalho (ignorar)"
         />
+      </div>
 
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 w-full sm:w-auto">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onBack}
-            className="gap-1.5"
-          >
-            <RotateCcw className="size-4" aria-hidden />
+      {!hideFooter ? (
+        <ModalFooter borderless>
+          <Button type="button" variant="outline" onClick={onBack} className="gap-1.5">
+            <RotateCcw className="size-4" aria-hidden="true" />
             Voltar
           </Button>
-          <Button
-            type="button"
-            onClick={handleApply}
-            className="gap-1.5"
-          >
+          <Button type="submit" className="gap-1.5">
             Avançar para Conferência
-            <ArrowRight className="size-4" aria-hidden />
+            <ArrowRight className="size-4" aria-hidden="true" />
           </Button>
-        </div>
-      </ModalFooter>
-    </div>
+        </ModalFooter>
+      ) : null}
+    </form>
   );
 }

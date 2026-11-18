@@ -13,6 +13,8 @@ export interface ConfirmDialogProps {
   cancelLabel?: string;
   variant?: "default" | "destructive";
   confirmPending?: boolean;
+  /** Sobe o z-index do diálogo de confirmação quando aberto sobre outro modal pai. */
+  elevated?: boolean;
   onConfirm: () => void;
 }
 
@@ -27,6 +29,7 @@ export function ConfirmDialog({
   cancelLabel = "Cancelar",
   variant = "default",
   confirmPending = false,
+  elevated = false,
   onConfirm,
 }: ConfirmDialogProps) {
   return (
@@ -36,8 +39,9 @@ export function ConfirmDialog({
       title={title}
       description={description}
       size="sm"
+      elevated={elevated}
       footer={
-        <ModalFooter className="mt-0 pt-0 border-t-0">
+        <ModalFooter borderless>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             {cancelLabel}
           </Button>

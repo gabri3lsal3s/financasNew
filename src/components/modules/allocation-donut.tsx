@@ -7,6 +7,8 @@ export interface AllocationSlice {
   /** Valor de mercado em centavos. */
   valueCents: number;
   subtitle?: string | null;
+  /** Token CSS opcional (`hsl(var(--cat-*))` ou nome de token `--cat-*`). */
+  color?: string | null;
   onClick?: () => void;
 }
 
@@ -32,8 +34,7 @@ export interface AllocationDonutProps {
 
 /**
  * AllocationDonut — distribuição patrimonial por classe de ativo (§F16).
- * Contrato próprio de alocação (label + centavos); o anel/legenda reusam o
- * `CategoryDonut` (DRY — regra de ouro: zero JSX duplicado entre módulos).
+ * Reutiliza `CategoryDonut` com paleta fechada `hsl(var(--cat-1..10))`.
  */
 export function AllocationDonut({
   slices,
@@ -54,6 +55,7 @@ export function AllocationDonut({
         label: slice.label,
         valueCents: slice.valueCents,
         subtitle: slice.subtitle,
+        color: slice.color,
         onClick: slice.onClick,
       }))}
       centerValue={centerValue}
@@ -68,4 +70,3 @@ export function AllocationDonut({
     />
   );
 }
-

@@ -38,9 +38,8 @@ export function AddContributionDialog({
     onOpenChange(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (amountCents <= 0) return;
+  const handleSubmit = async () => {
+    if (amountCents <= 0 || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
@@ -48,36 +47,36 @@ export function AddContributionDialog({
       const newTotalCents = currentCents + amountCents;
 
       const newContribution: GoalContribution = {
-        id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `contrib-${Date.now()}`,
+        id:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `contrib-${Date.now()}`,
         amount_cents: amountCents,
         contributor_name: contributorName.trim() || undefined,
         date: date || todayISO(),
       };
 
-      const existingContributions = (share.payload?.contributions as GoalContribution[] | undefined) ?? [];
-      const updatedContributions = [...existingContributions, newContribution];
-
-      const updatedPayload = {
-        ...share.payload,
-        current_cents: newTotalCents,
-        contributions: updatedContributions,
-      };
+      const existingContributions =
+        (share.payload?.contributions as GoalContribution[] | undefined) ?? [];
 
       await updateShareMutation.mutateAsync({
         id: share.id,
-        payload: updatedPayload,
+        payload: {
+          ...share.payload,
+          current_cents: newTotalCents,
+          contributions: [...existingContributions, newContribution],
+        },
       });
 
-      triggerSensory("action");
       pushToast({
         title: "Depósito registrado com sucesso!",
-        description: `O valor arrecadado agora é refletido em tempo real no termômetro web.`,
+        description: "O valor arrecadado agora é refletido em tempo real no termômetro web.",
         variant: "success",
       });
 
       handleClose();
     } catch {
-      triggerSensory("destructive");
+      triggerSensory("error");
       pushToast({
         title: "Erro ao registrar depósito",
         description: "Tente novamente em instantes.",
@@ -100,8 +99,40 @@ export function AddContributionDialog({
       title="Registrar Depósito na Vaquinha"
       description={`Adicione um novo valor recebido para a meta "${title}".`}
       size="md"
+      showCalculator
+      footer={
+        <ModalFooter borderless>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            variant="default"
+            sensoryIntent="success"
+            disabled={amountCents <= 0 || isSubmitting}
+            onClick={() => void handleSubmit()}
+            aria-label="Confirmar Depósito"
+            className="gap-1.5"
+          >
+            <Plus className="size-4 shrink-0" aria-hidden="true" />
+            <span className="hidden sm:inline">Confirmar Depósito</span>
+            <span className="sm:hidden">Confirmar</span>
+          </Button>
+        </ModalFooter>
+      }
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleSubmit();
+        }}
+        className="flex flex-col gap-4 py-2"
+      >
         <div className="flex flex-col gap-1.5">
           <label htmlFor="contribution-amount" className="text-xs font-semibold text-foreground">
             Valor Recebido
@@ -128,7 +159,7 @@ export function AddContributionDialog({
               value={contributorName}
               onChange={(e) => setContributorName(e.target.value)}
               placeholder="Ex: Lucas, Mariana, Anônimo..."
-              className="pl-9"
+              className="pl-9 text-base sm:text-sm"
               maxLength={60}
             />
             <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" aria-hidden="true" />
@@ -140,31 +171,11 @@ export function AddContributionDialog({
             Data do Recebimento
           </label>
           <DatePicker
+            id="contribution-date"
             value={date}
             onChange={(next) => setDate(next ?? todayISO())}
           />
         </div>
-
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            disabled={amountCents <= 0 || isSubmitting}
-            aria-label="Confirmar Depósito"
-            className="gap-1.5"
-          >
-            <Plus className="size-4 shrink-0" aria-hidden="true" />
-            <span className="hidden sm:inline">Confirmar Depósito</span>
-            <span className="sm:hidden">Confirmar</span>
-          </Button>
-        </ModalFooter>
       </form>
     </Modal>
   );

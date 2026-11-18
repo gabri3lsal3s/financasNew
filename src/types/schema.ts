@@ -289,6 +289,7 @@ export type AdminMetrics = {
 
 export type UserCustomSettings = {
   experiencePreset?: "dynamic" | "minimal" | "discreet" | "custom";
+  accent?: "teal" | "gold" | "sapphire" | "violet" | "rose" | "mono";
   density?: "comfortable" | "compact";
   surfaceStyle?: "glass" | "flat";
   motionLevel?: "fluid" | "eco" | "reduced";

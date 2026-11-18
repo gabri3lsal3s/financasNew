@@ -86,7 +86,7 @@ export function NetworkStatusBanner({ className }: NetworkStatusBannerProps) {
           type="button"
           onClick={() => void handleRetry()}
           disabled={isRetrying}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-warning-strong/30 bg-surface/80 px-2.5 py-1 text-[11px] font-semibold text-warning-strong shadow-2xs hover:bg-surface active:scale-[0.98] transition-all cursor-pointer"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-warning-strong/30 bg-surface/80 px-2.5 py-1 text-[11px] font-semibold text-warning-strong shadow-xs hover:bg-surface active:scale-[0.98] transition-all cursor-pointer"
           aria-label="Tentar reconectar e sincronizar"
         >
           <RefreshCw className={cn("size-3", isRetrying && "animate-spin")} aria-hidden="true" />

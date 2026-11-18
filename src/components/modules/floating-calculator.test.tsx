@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FloatingCalculator } from "./floating-calculator";
 import {
+  clearCalculatorTargets,
   getCalculatorTarget,
   registerCalculatorTarget,
   unregisterCalculatorTarget,
@@ -22,8 +23,7 @@ beforeEach(() => {
 
 afterEach(() => {
   setCalculatorOpen(false);
-  const target = getCalculatorTarget();
-  if (target) unregisterCalculatorTarget(target);
+  clearCalculatorTargets();
 });
 
 async function openCalculator() {
@@ -260,7 +260,7 @@ describe("FloatingCalculator (F9)", () => {
     await user.click(screen.getByRole("button", { name: "Dígito 2" }));
     await user.click(screen.getByRole("button", { name: "Igual" }));
 
-    expect(screen.getByText("540")).toBeInTheDocument();
+    expect(screen.getAllByText("540").length).toBeGreaterThan(0);
 
     // Injeta de volta no campo
     await user.click(screen.getByRole("button", { name: "Usar valor" }));
@@ -369,6 +369,65 @@ describe("FloatingCalculator (F9)", () => {
 
     await user.click(screen.getByRole("button", { name: "Usar valor" }));
     expect(setter).toHaveBeenCalledWith(7530);
+
+    Object.defineProperty(navigator, "clipboard", {
+      value: originalClipboard,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  it("omite prefixo R$ no histórico quando conectada em modo decimal", async () => {
+    const injectDecimal = vi.fn();
+    registerCalculatorTarget({
+      mode: "decimal",
+      injectDecimal,
+      getDecimalDisplay: () => "10",
+      label: "Quantidade",
+    });
+
+    const user = userEvent.setup();
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    await user.click(screen.getByRole("button", { name: "Multiplicação" }));
+    await user.click(screen.getByRole("button", { name: "Dígito 3" }));
+    await user.click(screen.getByRole("button", { name: "Igual" }));
+
+    const historyButton = screen.getByRole("button", { name: /10 × 3 =/i });
+    expect(historyButton).toHaveTextContent("10 × 3 = 30");
+    expect(historyButton.textContent).not.toContain("R$");
+  });
+
+  it("pausa listener global de teclado quando o diálogo de colagem manual está aberto", async () => {
+    const setter = vi.fn();
+    registerCalculatorTarget(setter);
+    const user = userEvent.setup();
+
+    const originalClipboard = navigator.clipboard;
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        readText: vi.fn().mockRejectedValue(new DOMException("Denied", "NotAllowedError")),
+        writeText: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    render(<FloatingCalculator />);
+    await openCalculator();
+
+    await user.click(screen.getByRole("button", { name: "Colar" }));
+    expect(await screen.findByText("Colar Valor Manualmente")).toBeInTheDocument();
+
+    const pasteInput = screen.getByLabelText("Valor ou texto financeiro");
+    await user.click(pasteInput);
+    await user.type(pasteInput, "1234,56");
+    expect(pasteInput).toHaveValue("1234,56");
+
+    await user.click(screen.getByRole("button", { name: "Aplicar Valor" }));
+    expect(screen.queryByText("Colar Valor Manualmente")).not.toBeInTheDocument();
+    expect(screen.getAllByText("R$ 1.234,56").length).toBeGreaterThan(0);
 
     Object.defineProperty(navigator, "clipboard", {
       value: originalClipboard,

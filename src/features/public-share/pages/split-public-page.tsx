@@ -1,28 +1,9 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { useParams, Link, useSearchParams, useNavigate } from "react-router";
-import {
-  Receipt,
-  Sparkles,
-  ArrowRight,
-  ShieldCheck,
-} from "lucide-react";
-import {
-  Button,
-  Badge,
-  Card,
-  EmptyState,
-  Skeleton,
-} from "@/components/ui";
+import { Link, useNavigate, useParams } from "react-router";
+import { ArrowRight, Receipt, ShieldCheck } from "lucide-react";
+import { Card, EmptyState, Skeleton, buttonVariants } from "@/components/ui";
 import { SplitChargeCard } from "@/components/modules";
-import { usePublicShare } from "@/state/queries/use-public-shares";
-import { useCategories, useSaveSplitExpense, useSignalSplitPayment } from "@/state";
-import { useAuth } from "@/hooks/use-auth";
-import { detectPixKeyType, generatePixBrCode } from "@/domain/pix/pix-br-code";
-import { calculateInstallmentsProgress } from "@/domain/finance/split-math";
 import { sanitizeShareToken } from "@/domain/share/token";
-
-import { pushToast } from "@/services/toast";
-import { triggerSensory } from "@/services/sensory";
+import { cn } from "@/lib/utils";
 import {
   PublicSplitIdentityBanner,
   SelectParticipantDialog,
@@ -30,468 +11,33 @@ import {
   SharedLinkHeaderNav,
   SplitOnboardingModal,
 } from "../components";
-import { usePublicSplitGuestIdentity } from "../hooks";
-import type { SplitParticipantInstallment, SplitParticipantItem, SplitSharePayload } from "@/types";
+import { SplitConversionBanner } from "../components/split-conversion-banner";
+import { usePublicSplitPage } from "../hooks/use-public-split-page";
 
 export function SplitPublicPage() {
   const { token: rawToken } = useParams<{ token: string }>();
   const token = sanitizeShareToken(rawToken);
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { session } = useAuth();
-  const saveSplitMutation = useSaveSplitExpense();
-  const signalSplitPaymentMutation = useSignalSplitPayment();
+  const state = usePublicSplitPage(token, rawToken);
 
-  const { data: share, isLoading, error } = usePublicShare(token);
-
-  useEffect(() => {
-    if (rawToken && token && rawToken !== token && typeof window !== "undefined") {
-      window.history.replaceState(null, "", `/r/${token}${window.location.search}`);
-    }
-  }, [rawToken, token]);
-
-  const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
-  const [isSelectCategoryOpen, setIsSelectCategoryOpen] = useState(false);
-  const [isSelectParticipantOpen, setIsSelectParticipantOpen] = useState(false);
-  const [participantSelectionIntent, setParticipantSelectionIntent] = useState<"save" | "signal">("save");
-  const [selectedParticipant, setSelectedParticipant] = useState<SplitParticipantItem | null>(null);
-  const [selectedInstallmentId, setSelectedInstallmentId] = useState<string | null>(null);
-  const [isPayAllRemaining, setIsPayAllRemaining] = useState(false);
-  const [isSavingDirectly, setIsSavingDirectly] = useState(false);
-  const [isSignalingDirectly, setIsSignalingDirectly] = useState(false);
-  const [justSignaledInstallmentIds, setJustSignaledInstallmentIds] = useState<Set<string>>(new Set());
-  const categoriesQuery = useCategories("expense", { enabled: Boolean(session?.user) });
-
-  const guestIdentity = usePublicSplitGuestIdentity(token);
-
-  // Payload tipado com fallback seguro
-  const payload = (share?.payload ?? null) as SplitSharePayload | null;
-
-  // Normalização de participantes para garantir que cada um possua um id
-  const rawParticipants = payload?.participants;
-  const normalizedParticipants: SplitParticipantItem[] = useMemo(() => {
-    if (!rawParticipants) return [];
-    return rawParticipants.map((p, idx) => ({
-      ...p,
-      id: p.id || `p_${idx + 1}`,
-    }));
-  }, [rawParticipants]);
-
-  // Identidade ativa do participante identificado
-  const activeParticipant = useMemo(() => {
-    if (selectedParticipant) return selectedParticipant;
-    if (guestIdentity.activeParticipantId && normalizedParticipants.length > 0) {
-      const match = normalizedParticipants.find(
-        (p) =>
-          p.id === guestIdentity.activeParticipantId ||
-          p.name.trim().toLowerCase() === guestIdentity.activeParticipantId?.trim().toLowerCase(),
-      );
-      if (match) return match;
-    }
-    return null;
-  }, [selectedParticipant, guestIdentity.activeParticipantId, normalizedParticipants]);
-
-  const currentParticipant = activeParticipant || selectedParticipant;
-
-  const rawInstallments = payload?.participant_installments;
-  const participantInstallments: SplitParticipantInstallment[] = useMemo(() => {
-    if (!rawInstallments || rawInstallments.length === 0) {
-      return [];
-    }
-    if (currentParticipant?.id) {
-      const match = rawInstallments.filter(
-        (i) => i.participant_id === currentParticipant.id,
-      );
-      if (match.length > 0) return match;
-    }
-    const firstGuest = normalizedParticipants.find((p) => !p.is_host);
-    if (firstGuest?.id) {
-      const match = rawInstallments.filter(
-        (i) => i.participant_id === firstGuest.id,
-      );
-      if (match.length > 0) return match;
-    }
-    return rawInstallments;
-  }, [rawInstallments, currentParticipant, normalizedParticipants]);
-
-  const installmentsProgress =
-    participantInstallments.length > 1
-      ? calculateInstallmentsProgress(participantInstallments)
-      : null;
-
-  const selectedInstallment =
-    participantInstallments.length > 1
-      ? participantInstallments.find((i) => i.id === selectedInstallmentId) ||
-        installmentsProgress?.nextPendingInstallment ||
-        participantInstallments[0] ||
-        null
-      : null;
-
-  const effectiveChargeCents = useMemo(() => {
-    if (!payload) return 0;
-    const guestShareCents =
-      currentParticipant?.share_cents ??
-      payload.guest_share_cents ??
-      (payload.people_count > 0
-        ? Math.round(payload.total_cents / payload.people_count)
-        : payload.total_cents);
-
-    if (participantInstallments.length > 1 && installmentsProgress) {
-      if (isPayAllRemaining) return installmentsProgress.remainingCents;
-      if (selectedInstallment) return selectedInstallment.amount_cents;
-    }
-    return guestShareCents;
-  }, [payload, currentParticipant?.share_cents, participantInstallments.length, installmentsProgress, isPayAllRemaining, selectedInstallment]);
-
-  const dynamicPixBrCode = (() => {
-    if (!payload || !payload.pix_key) return payload?.pix_br_code || "";
-    if (participantInstallments.length <= 1) return payload.pix_br_code;
-
-    try {
-      const detectedKeyType = detectPixKeyType(payload.pix_key);
-      const txSuffix = (token || "RACHA").replace(/[^a-zA-Z0-9]/g, "").slice(0, 4).toUpperCase();
-      return generatePixBrCode({
-        pixKey: payload.pix_key,
-        keyType: detectedKeyType === "unknown" ? undefined : detectedKeyType,
-        merchantName: payload.host_name || "Anfitriao",
-        merchantCity: payload.host_city || "SAO PAULO",
-        amountCents: effectiveChargeCents,
-        txId: `RACHA${(selectedInstallment?.installment_number ?? 1).toString().padStart(2, "0")}${txSuffix}`,
-        infoAdicional: `${(payload.title || "Racha").slice(0, 15)} ${selectedInstallment && !isPayAllRemaining ? `${selectedInstallment.installment_number}/${selectedInstallment.total_installments}` : ""}`.trim().slice(0, 25),
-      });
-    } catch {
-      return payload.pix_br_code;
-    }
-  })();
-
-  const hasTriggeredActionRef = useRef(false);
-
-  const executeSaveAndSignal = useCallback(
-    async (participant?: SplitParticipantItem | null, categoryId?: string) => {
-      if (!payload) return;
-      const guestShareCents = effectiveChargeCents;
-
-      setIsSavingDirectly(true);
-      try {
-        await saveSplitMutation.mutateAsync({
-          title: payload.title,
-          amountCents: guestShareCents,
-          date: payload.date,
-          categoryId,
-        });
-
-        if (token) {
-          try {
-            await signalSplitPaymentMutation.mutateAsync({
-              token,
-              participantName:
-                participant?.name ||
-                session?.user?.user_metadata?.name ||
-                session?.user?.user_metadata?.full_name ||
-                session?.user?.email?.split("@")[0] ||
-                "Participante",
-              amountCents: guestShareCents,
-              participantId: participant?.id,
-              installmentId: selectedInstallment?.id ?? null,
-            });
-          } catch (signalErr) {
-            console.warn("Nao foi possivel sinalizar o pagamento:", signalErr);
-          }
-        }
-
-        triggerSensory("success");
-        pushToast({
-          title: "Despesa registrada!",
-          description: "Avisamos o anfitrião sobre o seu pagamento para conferência.",
-          variant: "success",
-        });
-        navigate("/transacoes");
-      } catch {
-        triggerSensory("destructive");
-      } finally {
-        setIsSavingDirectly(false);
-      }
-    },
-    [payload, effectiveChargeCents, selectedInstallment, saveSplitMutation, signalSplitPaymentMutation, token, session, navigate],
-  );
-
-  const handleSaveExpenseClick = useCallback(async () => {
-    if (!payload) return;
-
-    if (!session?.user) {
-      setIsOnboardingModalOpen(true);
-      return;
-    }
-
-    // 1. Identificar participante
-    let targetParticipant: SplitParticipantItem | null = currentParticipant;
-    if (!targetParticipant) {
-      const guestParticipants = normalizedParticipants.filter((p) => !p.is_host);
-      const unsettledGuests = guestParticipants.filter((p) => !p.is_settled);
-
-      if (unsettledGuests.length === 1) {
-        targetParticipant = unsettledGuests[0] ?? null;
-        setSelectedParticipant(targetParticipant);
-        if (targetParticipant?.id) {
-          guestIdentity.setActiveParticipantId(targetParticipant.id);
-        }
-      } else if (unsettledGuests.length > 1) {
-        const userName = (
-          session.user.user_metadata?.name ||
-          session.user.user_metadata?.full_name ||
-          ""
-        ).toLowerCase().trim();
-
-        const matched = userName
-          ? unsettledGuests.find(
-              (p) =>
-                p.name.toLowerCase().includes(userName) ||
-                userName.includes(p.name.toLowerCase()),
-            )
-          : null;
-
-        if (matched) {
-          targetParticipant = matched;
-          setSelectedParticipant(matched);
-          if (matched.id) {
-            guestIdentity.setActiveParticipantId(matched.id);
-          }
-        } else {
-          setParticipantSelectionIntent("save");
-          setIsSelectParticipantOpen(true);
-          return;
-        }
-      }
-    }
-
-    // 2. Resolver categoria
-    const userCategories = categoriesQuery.data ?? [];
-    const sentCategoryName = payload.category_name?.trim().toLowerCase();
-
-    let matchedCategory = null;
-    if (sentCategoryName && userCategories.length > 0) {
-      matchedCategory =
-        userCategories.find((c) => c.name.trim().toLowerCase() === sentCategoryName) ||
-        userCategories.find(
-          (c) =>
-            c.name.toLowerCase().includes(sentCategoryName) ||
-            sentCategoryName.includes(c.name.toLowerCase()),
-        ) ||
-        null;
-    }
-
-    if (matchedCategory) {
-      await executeSaveAndSignal(targetParticipant, matchedCategory.id);
-    } else if (userCategories.length > 0) {
-      setIsSelectCategoryOpen(true);
-    } else {
-      await executeSaveAndSignal(targetParticipant);
-    }
-  }, [
-    payload,
-    session,
-    currentParticipant,
-    normalizedParticipants,
-    guestIdentity,
-    categoriesQuery.data,
-    executeSaveAndSignal,
-  ]);
-
-  const executeSignalOnly = useCallback(
-    async (participant?: SplitParticipantItem | null) => {
-      if (!payload || !token) return;
-      const chargeCents = effectiveChargeCents;
-      const targetInstId = selectedInstallment?.id ?? null;
-
-      setIsSignalingDirectly(true);
-      try {
-        await signalSplitPaymentMutation.mutateAsync({
-          token,
-          participantName:
-            participant?.name ||
-            session?.user?.user_metadata?.name ||
-            session?.user?.user_metadata?.full_name ||
-            session?.user?.email?.split("@")[0] ||
-            "Convidado",
-          amountCents: chargeCents,
-          participantId: participant?.id,
-          installmentId: targetInstId,
-        });
-
-        if (targetInstId) {
-          setJustSignaledInstallmentIds((prev) => new Set(prev).add(targetInstId));
-        }
-
-        triggerSensory("success");
-        pushToast({
-          title: "Aviso enviado ao anfitrião!",
-          description: "Notificamos o anfitrião sobre seu pagamento Pix para conferência.",
-          variant: "success",
-        });
-      } catch {
-        triggerSensory("destructive");
-        pushToast({
-          title: "Não foi possível avisar o anfitrião",
-          description: "Verifique sua conexão ou tente novamente em instantes.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsSignalingDirectly(false);
-      }
-    },
-    [payload, token, effectiveChargeCents, selectedInstallment, session, signalSplitPaymentMutation],
-  );
-
-  const handleSignalPixPayment = useCallback(async () => {
-    if (!payload || !token) return;
-
-    let targetParticipant: SplitParticipantItem | null = currentParticipant;
-    if (!targetParticipant) {
-      const guestParticipants = normalizedParticipants.filter((p) => !p.is_host);
-      const unsettledGuests = guestParticipants.filter((p) => !p.is_settled);
-
-      if (unsettledGuests.length === 1) {
-        targetParticipant = unsettledGuests[0] ?? null;
-        setSelectedParticipant(targetParticipant);
-        if (targetParticipant?.id) {
-          guestIdentity.setActiveParticipantId(targetParticipant.id);
-        }
-      } else if (unsettledGuests.length > 1) {
-        setParticipantSelectionIntent("signal");
-        setIsSelectParticipantOpen(true);
-        return;
-      }
-    }
-
-    await executeSignalOnly(targetParticipant);
-  }, [payload, token, currentParticipant, normalizedParticipants, guestIdentity, executeSignalOnly]);
-
-  const handleConfirmParticipant = useCallback(
-    async (participant: SplitParticipantItem) => {
-      setSelectedParticipant(participant);
-      if (participant.id) {
-        guestIdentity.setActiveParticipantId(participant.id);
-      }
-      setIsSelectParticipantOpen(false);
-
-      if (participantSelectionIntent === "signal") {
-        await executeSignalOnly(participant);
-        return;
-      }
-
-      const userCategories = categoriesQuery.data ?? [];
-      const sentCategoryName = payload?.category_name?.trim().toLowerCase();
-
-      let matchedCategory = null;
-      if (sentCategoryName && userCategories.length > 0) {
-        matchedCategory =
-          userCategories.find((c) => c.name.trim().toLowerCase() === sentCategoryName) ||
-          userCategories.find(
-            (c) =>
-              c.name.toLowerCase().includes(sentCategoryName) ||
-              sentCategoryName.includes(c.name.toLowerCase()),
-          ) ||
-          null;
-      }
-
-      if (matchedCategory) {
-        await executeSaveAndSignal(participant, matchedCategory.id);
-      } else if (userCategories.length > 0) {
-        setIsSelectCategoryOpen(true);
-      } else {
-        await executeSaveAndSignal(participant);
-      }
-    },
-    [participantSelectionIntent, guestIdentity, executeSignalOnly, payload?.category_name, categoriesQuery.data, executeSaveAndSignal],
-  );
-
-  const handleConfirmCategorySave = useCallback(
-    async (chosenCategoryId: string) => {
-      setIsSelectCategoryOpen(false);
-      await executeSaveAndSignal(selectedParticipant, chosenCategoryId);
-    },
-    [executeSaveAndSignal, selectedParticipant],
-  );
-
-  useEffect(() => {
-    if (payload?.title) {
-      document.title = `${payload.title} — Racha de Despesas | Axir`;
-    } else {
-      document.title = "Racha de Despesa — Axir";
-    }
-  }, [payload?.title]);
-
-  useEffect(() => {
-    const action = searchParams.get("action");
-    if (action === "save" && payload && !isLoading && !hasTriggeredActionRef.current) {
-      hasTriggeredActionRef.current = true;
-      const timer = setTimeout(() => {
-        void handleSaveExpenseClick();
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams, payload, isLoading, handleSaveExpenseClick]);
-
-  /* Bloco de Auto-Onboarding & Conversão Viral Padronizado */
-  const adBanner = (
-    <Card className="border-border/80 bg-surface shadow-xs rounded-2xl p-4 sm:p-5 space-y-3.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-primary shrink-0" aria-hidden="true" />
-          <span className="text-xs font-bold text-foreground">
-            Divida despesas com elegância
-          </span>
-        </div>
-        <Badge variant="muted" size="xs">
-          30 Dias Grátis
-        </Badge>
-      </div>
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        Gostou da facilidade da divisão de contas? Organize suas finanças, cartões, metas e Safe-to-Spend em tempo real sem planilhas complicadas.
-      </p>
-      <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
-        <Button
-          type="button"
-          size="default"
-          className="flex-1 h-10 gap-2 font-semibold text-xs sm:text-sm cursor-pointer shadow-xs"
-          onClick={() => navigate("/cadastrar?ref=split")}
-        >
-          <ArrowRight className="size-4" aria-hidden="true" />
-          <span>Testar 30 dias grátis</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="default"
-          className="flex-1 h-10 gap-2 border-border/80 bg-surface hover:bg-surface-hover font-semibold text-xs sm:text-sm text-foreground cursor-pointer"
-          onClick={handleSaveExpenseClick}
-          disabled={isSavingDirectly}
-          sensoryIntent="action"
-          aria-label="Salvar esta despesa no meu controle financeiro"
-        >
-          <Sparkles className="size-4 text-primary" aria-hidden="true" />
-          <span>
-            {isSavingDirectly
-              ? "Salvando despesa…"
-              : "Salvar esta despesa"}
-          </span>
-        </Button>
-      </div>
-    </Card>
-  );
+  const isUnavailable =
+    Boolean(state.error) ||
+    !state.share ||
+    state.share.is_revoked ||
+    state.share.kind !== "split" ||
+    !state.payload ||
+    Boolean(state.payload.is_completed);
 
   return (
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between pb-8">
-      {/* Header Institucional Superior Unificado */}
       <SharedLinkHeaderNav
         badgeLabel="Racha de Conta"
         targetPath={`r/${token || ""}`}
         maxWidth="5xl"
       />
 
-      {/* Conteúdo Central */}
       <main className="w-full max-w-md md:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 py-4 sm:py-6 flex-1 space-y-6">
-        {isLoading ? (
+        {state.isLoading ? (
           <Card className="border-border/80 bg-surface shadow-xs p-5 sm:p-6 space-y-4 rounded-2xl">
             <div className="space-y-2">
               <Skeleton className="h-4 w-24" />
@@ -502,111 +48,104 @@ export function SplitPublicPage() {
             <Skeleton className="h-12 w-full rounded-xl" />
             <Skeleton className="h-9 w-full rounded-xl" />
           </Card>
-        ) : error || !share || share.kind !== "split" || !payload ? (
-          <Card className="border-border/80 bg-surface shadow-xs p-2 rounded-2xl">
-            <EmptyState
-              icon={<Receipt className="size-8 text-muted-foreground" aria-hidden="true" />}
-              title="Racha não encontrado ou expirado"
-              description="Este link de compartilhamento não está mais disponível, foi revogado pelo organizador ou o endereço acessado está incorreto."
-              action={
-                <Link to="/apresentacao">
-                  <Button variant="default" size="sm" className="gap-2">
-                    <span>Conhecer o Axir</span>
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  </Button>
-                </Link>
-              }
-            />
-          </Card>
+        ) : isUnavailable || !state.payload ? (
+          <EmptyState
+            icon={<Receipt className="size-8 text-muted-foreground" aria-hidden="true" />}
+            title="Racha não encontrado ou expirado"
+            description="Este link de compartilhamento não está mais disponível, foi revogado pelo organizador ou o endereço acessado está incorreto."
+            action={
+              <Link
+                to="/apresentacao"
+                className={cn(buttonVariants({ variant: "default", size: "sm" }), "gap-2")}
+              >
+                <span>Conhecer o Axir</span>
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            }
+          />
         ) : (
           <div className="space-y-5">
             <SplitChargeCard
               layout="split-desktop"
-              title={payload.title || "Racha de Despesa"}
-              date={payload.date}
-              hostName={payload.host_name || "Anfitrião"}
-              peopleCount={payload.people_count}
-              totalCents={payload.total_cents}
-              guestShareCents={effectiveChargeCents}
-              pixBrCode={dynamicPixBrCode}
-              pixKey={payload.pix_key}
-              pixKeyType={payload.pix_key_type}
-              participants={normalizedParticipants}
-              activeParticipantId={currentParticipant?.id}
+              title={state.payload.title || "Racha de Despesa"}
+              date={state.payload.date}
+              hostName={state.payload.host_name || "Anfitrião"}
+              peopleCount={state.payload.people_count}
+              totalCents={state.payload.total_cents}
+              guestShareCents={state.effectiveChargeCents}
+              pixBrCode={state.dynamicPixBrCode}
+              pixKey={state.payload.pix_key}
+              pixKeyType={state.payload.pix_key_type}
+              participants={state.normalizedParticipants}
+              activeParticipantId={state.currentParticipant?.id}
               identityBanner={
                 <PublicSplitIdentityBanner
                   token={token || ""}
-                  participants={normalizedParticipants}
-                  hostName={payload.host_name || "Anfitrião"}
-                  activeParticipantId={currentParticipant?.id}
-                  onSelectParticipant={(id: string | null) => {
-                    if (!id) {
-                      setSelectedParticipant(null);
-                      guestIdentity.clearActiveParticipant();
-                    } else {
-                      const match =
-                        normalizedParticipants.find((p) => p.id === id || p.name === id) ?? null;
-                      setSelectedParticipant(match);
-                      guestIdentity.setActiveParticipantId(id);
-                    }
-                  }}
+                  participants={state.normalizedParticipants}
+                  hostName={state.payload.host_name || "Anfitrião"}
+                  activeParticipantId={state.currentParticipant?.id}
+                  onSelectParticipant={state.selectParticipantFromBanner}
                 />
               }
-              installmentsCount={payload.installments_count}
-              installments={participantInstallments}
-              selectedInstallmentId={selectedInstallment?.id ?? null}
+              installmentsCount={state.payload.installments_count}
+              installments={state.participantInstallments}
+              selectedInstallmentId={state.selectedInstallment?.id ?? null}
               onSelectInstallmentId={(id) => {
-                setIsPayAllRemaining(false);
-                setSelectedInstallmentId(id);
+                state.setIsPayAllRemaining(false);
+                state.setSelectedInstallmentId(id);
               }}
-              isPayAllRemaining={isPayAllRemaining}
-              onTogglePayAllRemaining={() => setIsPayAllRemaining((prev) => !prev)}
-              onSignalPayment={handleSignalPixPayment}
-              isSignalingPayment={isSignalingDirectly}
+              isPayAllRemaining={state.isPayAllRemaining}
+              onTogglePayAllRemaining={() => state.setIsPayAllRemaining((prev) => !prev)}
+              onSignalPayment={state.handleSignalPixPayment}
+              isSignalingPayment={state.isSignalingDirectly}
               hasSignaledCurrent={Boolean(
-                (selectedInstallment?.id && justSignaledInstallmentIds.has(selectedInstallment.id)) ||
-                selectedInstallment?.signal_status === "pending_confirmation" ||
-                (!participantInstallments.length && currentParticipant?.has_payment_signal)
+                (state.selectedInstallment?.id &&
+                  state.justSignaledInstallmentIds.has(state.selectedInstallment.id)) ||
+                  state.selectedInstallment?.signal_status === "pending_confirmation" ||
+                  (!state.participantInstallments.length &&
+                    state.currentParticipant?.has_payment_signal),
               )}
             />
 
-            {/* Banner de conversão no rodapé da página após todo o conteúdo do racha e pagamento Pix */}
             <div className="pt-2">
-              {adBanner}
+              <SplitConversionBanner
+                isSavingDirectly={state.isSavingDirectly}
+                onStartTrial={() => navigate("/cadastrar?ref=split")}
+                onSaveExpense={state.handleSaveExpenseClick}
+              />
             </div>
 
             <SplitOnboardingModal
-              open={isOnboardingModalOpen}
-              onOpenChange={setIsOnboardingModalOpen}
-              guestShareCents={effectiveChargeCents}
-              title={payload.title}
-              date={payload.date}
+              open={state.isOnboardingModalOpen}
+              onOpenChange={state.setIsOnboardingModalOpen}
+              guestShareCents={state.effectiveChargeCents}
+              title={state.payload.title}
+              date={state.payload.date}
               token={token || ""}
             />
 
             <SelectSplitCategoryDialog
-              open={isSelectCategoryOpen}
-              onOpenChange={setIsSelectCategoryOpen}
-              title={payload.title}
-              amountCents={effectiveChargeCents}
-              sentCategoryName={payload.category_name}
-              categories={categoriesQuery.data ?? []}
-              isPending={isSavingDirectly}
-              onConfirm={handleConfirmCategorySave}
+              open={state.isSelectCategoryOpen}
+              onOpenChange={state.setIsSelectCategoryOpen}
+              title={state.payload.title}
+              amountCents={state.effectiveChargeCents}
+              sentCategoryName={state.payload.category_name}
+              categories={state.categories}
+              isPending={state.isSavingDirectly}
+              onConfirm={state.handleConfirmCategorySave}
             />
 
             <SelectParticipantDialog
-              open={isSelectParticipantOpen}
-              onOpenChange={setIsSelectParticipantOpen}
-              participants={normalizedParticipants.filter((p) => !p.is_host && !p.is_settled)}
-              isPending={isSavingDirectly}
-              onConfirm={handleConfirmParticipant}
+              open={state.isSelectParticipantOpen}
+              onOpenChange={state.setIsSelectParticipantOpen}
+              participants={state.normalizedParticipants.filter((p) => !p.is_host && !p.is_settled)}
+              isPending={state.isSavingDirectly}
+              onConfirm={state.handleConfirmParticipant}
             />
           </div>
         )}
       </main>
 
-      {/* Rodapé Institucional */}
       <footer className="w-full max-w-md md:max-w-5xl mx-auto pt-6 text-center space-y-2">
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
           <ShieldCheck className="size-3.5 text-positive-strong" aria-hidden="true" />
@@ -614,10 +153,10 @@ export function SplitPublicPage() {
         </div>
         <p className="text-[11px] text-muted-foreground">
           Estruturado via{" "}
-          <Link to="/apresentacao" className="text-primary hover:underline font-medium">
+          <Link to="/apresentacao" className="text-primary-strong hover:underline font-medium">
             Axir
           </Link>{" "}
-          · Gestão Financeira Pessoal & Automação
+          · Gestão Financeira Pessoal &amp; Automação
         </p>
       </footer>
     </div>

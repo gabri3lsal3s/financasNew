@@ -4,9 +4,12 @@
  */
 
 import { Link } from "react-router";
-import { Plane, ArrowRight } from "lucide-react";
-import { Badge, Button } from "@/components/ui";
-import { formatCentsAsBRL } from "@/services/masks/money";
+import { ArrowRight, Plane } from "lucide-react";
+import { Badge, buttonVariants } from "@/components/ui";
+import { MoneyText } from "@/components/ui/money-text";
+import { formatDateBR } from "@/lib/date";
+import { cn } from "@/lib/utils";
+import { triggerSensory } from "@/services/sensory";
 import type { Trip } from "@/types/trips";
 
 export interface ActiveTripBannerProps {
@@ -16,39 +19,64 @@ export interface ActiveTripBannerProps {
 
 export function ActiveTripBanner({
   trip,
-  totalExpensesCents = 0,
+  totalExpensesCents,
 }: ActiveTripBannerProps) {
-  return (
-    <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border bg-primary/10 border-primary/20 text-primary-strong">
-          <Plane className="size-4.5" aria-hidden="true" />
-        </div>
+  const hasExpensesTotal = typeof totalExpensesCents === "number";
 
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-foreground truncate">
+  return (
+    <div className="w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs">
+      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+        <span
+          className="flex size-9 shrink-0 items-center justify-center rounded-xl border bg-primary/10 border-primary/20 text-primary-strong"
+          aria-hidden="true"
+        >
+          <Plane className="size-4.5" />
+        </span>
+
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="text-sm font-semibold text-foreground truncate">
               {trip.title}
-            </span>
-            <Badge size="xs" variant="positive">
+            </h2>
+            <Badge size="xs" variant="positive" className="shrink-0">
               Viagem Ativa
             </Badge>
           </div>
-          <p className="text-[11px] text-muted-foreground truncate">
-            {trip.destination ? `${trip.destination} • ` : ""}
-            Total gasto: {formatCentsAsBRL(totalExpensesCents)}
-          </p>
+
+          <div className="flex items-center gap-1.5 min-w-0 text-xs text-muted-foreground">
+            {trip.destination ? (
+              <span className="truncate">{trip.destination} ·</span>
+            ) : null}
+
+            {hasExpensesTotal ? (
+              <span className="inline-flex items-center gap-1 shrink-0">
+                <span>Total gasto:</span>
+                <MoneyText
+                  cents={totalExpensesCents}
+                  tone="default"
+                  variant="caption"
+                  className="font-semibold text-foreground"
+                />
+              </span>
+            ) : (
+              <span className="truncate">
+                {formatDateBR(trip.start_date)} até {formatDateBR(trip.end_date)}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       <Link
         to={`/viagens/${trip.id}`}
-        className="self-stretch sm:self-center mt-auto sm:mt-0"
+        onClick={() => triggerSensory("selection")}
+        className={cn(
+          buttonVariants({ variant: "default", size: "sm" }),
+          "h-8 text-xs gap-1.5 w-full sm:w-auto shrink-0 self-stretch sm:self-center mt-auto sm:mt-0",
+        )}
       >
-        <Button size="sm" variant="default" className="h-8 text-xs gap-1.5 w-full sm:w-auto">
-          Acessar Viagem
-          <ArrowRight className="size-3" aria-hidden="true" />
-        </Button>
+        <span>Acessar Viagem</span>
+        <ArrowRight className="size-3.5" aria-hidden="true" />
       </Link>
     </div>
   );

@@ -1,23 +1,17 @@
 import { useMemo } from "react";
 import { ShieldCheck } from "lucide-react";
-import { Badge } from "@/components/ui";
-import { MoneyText } from "@/components/ui/money-text";
+import { Badge, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
+import { classifyAssetValuation } from "@/domain/portfolio";
+import { formatDateBR } from "@/lib/date";
+import { cn } from "@/lib/utils";
 import {
-  ALLOCATION_STATUS_META,
-  getScoreConvictionMeta,
-} from "@/domain/portfolio";
-import {
-  getAssetPricingMode,
-  isCashAssetClass,
-  isFixedIncomeClass,
-  isTesouroAsset,
-} from "@/domain/portfolio/valuation";
-import {
-  calculateInvestmentPreview,
-  parseNumber,
-  type InvestmentWizardState,
-} from "./wizard-state";
+  ReviewDividendAndSplitSections,
+  ReviewNewAssetGovernanceSummary,
+  ReviewOrderTotalRow,
+} from "./step-review-sections";
+import { calculateInvestmentPreview, parseNumber, type InvestmentWizardState } from "./wizard-state";
+import { getWizardModeBadge } from "./wizard-step-rules";
 
 export interface StepReviewProps {
   state: InvestmentWizardState;
@@ -33,56 +27,27 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
 
   const mode = state.mode;
   const parsedQty = parseNumber(state.quantityStr);
-  const isCash = state.isCash || isCashAssetClass(state.assetClass);
-  const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
-  const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
-  const pricingMode = getAssetPricingMode(
-    state.selectedAsset ?? { ticker: state.ticker, asset_class: state.assetClass, notes: state.notes },
-  );
-  const isTotalValue = !isCash && (pricingMode === "total_value" || isFixedIncome);
-
-  const getModeBadge = () => {
-    switch (mode) {
-      case "buy":
-      case "existing_aporte":
-        return { label: "Compra / Aporte", variant: "default" as const };
-      case "sell":
-        return { label: "Venda / Resgate", variant: "negative" as const };
-      case "dividend":
-        return { label: "Provento", variant: "positive" as const };
-      case "split":
-        return { label: "Split / Desdobro", variant: "warning" as const };
-      case "reverse_split":
-        return { label: "Grupamento", variant: "warning" as const };
-      case "new_asset":
-        return { label: "Novo Ativo", variant: "default" as const };
-      default:
-        return { label: "Operação", variant: "muted" as const };
-    }
-  };
-
-  const badgeInfo = getModeBadge();
+  const { isCash, isFixedIncome, isTotalValue } = classifyAssetValuation(state);
+  const badgeInfo = getWizardModeBadge(mode);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+      <div className="flex items-center gap-2 text-xs font-semibold text-primary-strong">
         <ShieldCheck className="size-4" aria-hidden="true" />
         <span>Resumo da Operação</span>
       </div>
 
-      <div className="flex flex-col divide-y divide-border/80 rounded-2xl border border-border/90 bg-surface/95 p-4 shadow-sm">
-        {/* Ativo e Tipo */}
-        <div className="flex items-center justify-between pb-3">
-          <div className="flex flex-col">
-            <span className="font-mono text-lg font-bold text-foreground">{state.ticker}</span>
-            <span className="text-xs text-muted-foreground">{state.name || state.assetClass}</span>
+      <div className="flex flex-col divide-y divide-border/80 rounded-2xl border border-border/80 bg-surface p-4 shadow-xs">
+        <div className="flex items-center justify-between gap-2 pb-3">
+          <div className="flex flex-col min-w-0">
+            <span className="font-mono text-lg font-bold text-foreground truncate">{state.ticker}</span>
+            <span className="text-xs text-muted-foreground truncate">{state.name || state.assetClass}</span>
           </div>
-          <Badge variant={badgeInfo.variant} className="text-xs">
+          <Badge variant={badgeInfo.variant} size="sm">
             {badgeInfo.label}
           </Badge>
         </div>
 
-        {/* 1. Revisão de Compra / Novo Ativo */}
         {(mode === "buy" || mode === "existing_aporte" || mode === "new_asset") && (
           <>
             <div className="grid grid-cols-2 gap-3 py-3 text-xs">
@@ -97,11 +62,13 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
                       : "Cotas Adicionadas"}
                 </span>
                 <span className="font-mono text-sm font-semibold text-foreground">
-                  {isTotalValue
-                    ? <MoneyText cents={state.totalCents || state.priceCents} currency={state.currency} />
-                    : state.isCash
-                      ? "—"
-                      : `${parsedQty} cotas`}
+                  {isTotalValue ? (
+                    <MoneyText cents={state.totalCents || state.priceCents} currency={state.currency} />
+                  ) : isCash ? (
+                    "—"
+                  ) : (
+                    `${parsedQty} cotas`
+                  )}
                 </span>
               </div>
 
@@ -113,25 +80,23 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
                       ? "Preço Médio Inicial"
                       : "Preço do Aporte"}
                 </span>
-                <span className="font-mono text-sm font-semibold text-foreground">
-                  {isTotalValue ? (
-                    <MoneyText cents={numberToCents(state.selectedAsset?.average_price ?? 0)} currency={state.currency} />
-                  ) : (
-                    <MoneyText cents={state.priceCents} currency={state.currency} />
-                  )}
-                </span>
+                <MoneyText
+                  cents={isTotalValue ? numberToCents(state.selectedAsset?.average_price ?? 0) : state.priceCents}
+                  currency={state.currency}
+                  className="text-sm font-semibold"
+                />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 py-3 text-xs bg-surface-hover/30 -mx-4 px-4">
+            <div className="grid grid-cols-2 gap-3 py-3 text-xs bg-surface-raised/60 -mx-4 px-4">
               <div className="flex flex-col">
                 <span className="text-muted-foreground">
                   {isTotalValue ? "Novo Saldo Aplicado" : "Nova Quantidade Total"}
                 </span>
-                <span className="font-mono text-sm font-bold text-primary">
+                <span className="font-mono text-sm font-bold text-primary-strong">
                   {isTotalValue ? (
-                    <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
-                  ) : state.isCash ? (
+                    <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} className="font-bold text-primary-strong" />
+                  ) : isCash ? (
                     "—"
                   ) : (
                     `${preview.newQuantity} cotas`
@@ -142,198 +107,112 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
               {!isTotalValue && (
                 <div className="flex flex-col text-right">
                   <span className="text-muted-foreground">Novo Preço Médio</span>
-                  <span className="font-mono text-sm font-bold text-primary">
-                    <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
-                  </span>
+                  <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} className="text-sm font-bold text-primary-strong" />
                 </div>
               )}
             </div>
 
             <div className="pt-3 flex flex-col gap-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Valor Total da Operação:</span>
-                <div className="flex flex-col items-end">
-                  {state.currency === "USD" && preview.totalOrderValueNative !== undefined ? (
-                    <>
-                      <span className="font-mono text-base font-bold text-foreground">
-                        <MoneyText cents={numberToCents(preview.totalOrderValueNative)} currency="USD" />
-                      </span>
-                      <span className="text-[11px] text-muted-foreground font-mono">
-                        (≈ <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />)
-                      </span>
-                    </>
-                  ) : (
-                    <span className="font-mono text-base font-bold text-foreground">
-                      <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />
-                    </span>
-                  )}
-                </div>
+              <ReviewOrderTotalRow label="Valor Total da Operação:" currency={state.currency} preview={preview} />
+              <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                <span>Data da Operação:</span>
+                <span className="font-mono font-medium text-foreground">{formatDateBR(state.date)}</span>
               </div>
-
               {preview.cashDebitBRL > 0 && (
                 <div className="flex items-center justify-between text-muted-foreground text-[11px]">
                   <span>Débito do Caixa (R$):</span>
                   <span className="font-mono text-negative-strong">
-                    - <MoneyText cents={numberToCents(preview.cashDebitBRL)} currency="BRL" />
+                    − <MoneyText cents={numberToCents(preview.cashDebitBRL)} currency="BRL" variant="caption" tone="negative" className="inline" />
                   </span>
                 </div>
               )}
-
               {preview.contributionBRL > 0 && (
                 <div className="flex items-center justify-between text-muted-foreground text-[11px]">
                   <span>Registrado como Aporte do Mês (R$):</span>
                   <span className="font-mono text-positive-strong">
-                    + <MoneyText cents={numberToCents(preview.contributionBRL)} currency="BRL" />
+                    + <MoneyText cents={numberToCents(preview.contributionBRL)} currency="BRL" variant="caption" tone="positive" className="inline" />
                   </span>
                 </div>
               )}
-
               {mode === "new_asset" && !isCash && (
-                <div className="mt-2 pt-2.5 border-t border-border/60 flex flex-col gap-1.5 text-[11px]">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground">Nota de Convicção:</span>
-                    <span className="font-semibold text-foreground">
-                      {state.score !== null
-                        ? `Nota ${state.score}/10 (${getScoreConvictionMeta(state.score).label})`
-                        : "Sem nota (peso neutro 5)"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-muted-foreground">Status na Carteira:</span>
-                    <span className="font-semibold text-foreground">
-                      {ALLOCATION_STATUS_META[state.allocationStatus].label}
-                    </span>
-                  </div>
-                  {isFixedIncome && state.isEmergencyFund && (
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-muted-foreground">Reserva de Emergência:</span>
-                      <span className="font-semibold text-positive-strong">Incluído automaticamente</span>
-                    </div>
-                  )}
-                  {state.thesisSummary.trim().length > 0 && (
-                    <div className="flex flex-col gap-0.5 pt-1">
-                      <span className="text-muted-foreground">Tese resumida:</span>
-                      <span className="text-foreground line-clamp-2">{state.thesisSummary.trim()}</span>
-                    </div>
-                  )}
-                </div>
+                <ReviewNewAssetGovernanceSummary state={state} isFixedIncome={isFixedIncome} />
               )}
             </div>
           </>
         )}
 
-        {/* 2. Revisão de Venda */}
         {mode === "sell" && (
           <>
             <div className="grid grid-cols-2 gap-3 py-3 text-xs">
               <div className="flex flex-col">
-                <span className="text-muted-foreground">
-                  {isTotalValue ? "Valor a Resgatar" : "Cotas Vendidas"}
-                </span>
+                <span className="text-muted-foreground">{isTotalValue ? "Valor a Resgatar" : "Cotas Vendidas"}</span>
                 <span className="font-mono text-sm font-semibold text-foreground">
-                  {isTotalValue ? (
-                    <MoneyText cents={state.totalCents || state.priceCents} currency={state.currency} />
-                  ) : (
-                    `${parsedQty} cotas`
-                  )}
+                  {isTotalValue ? <MoneyText cents={state.totalCents || state.priceCents} currency={state.currency} /> : `${parsedQty} cotas`}
                 </span>
               </div>
 
               <div className="flex flex-col text-right">
-                <span className="text-muted-foreground">
-                  {isTotalValue ? "Saldo Bruto Anterior" : "Preço de Venda"}
-                </span>
-                <span className="font-mono text-sm font-semibold text-foreground">
-                  {isTotalValue ? (
-                    <MoneyText
-                      cents={numberToCents(
-                        preview.remainingGrossValue !== undefined
-                          ? (preview.remainingGrossValue + (state.totalCents || state.priceCents) / 100)
-                          : (state.selectedAsset?.fixed_income_metadata?.base_value ?? state.selectedAsset?.average_price ?? 0),
-                      )}
-                      currency={state.currency}
-                    />
-                  ) : (
-                    <MoneyText cents={state.priceCents} currency={state.currency} />
-                  )}
-                </span>
+                <span className="text-muted-foreground">{isTotalValue ? "Saldo Bruto Anterior" : "Preço de Venda"}</span>
+                <MoneyText
+                  cents={
+                    isTotalValue
+                      ? numberToCents(
+                          preview.remainingGrossValue !== undefined
+                            ? preview.remainingGrossValue + (state.totalCents || state.priceCents) / 100
+                            : (state.selectedAsset?.fixed_income_metadata?.base_value ?? state.selectedAsset?.average_price ?? 0),
+                        )
+                      : state.priceCents
+                  }
+                  currency={state.currency}
+                  className="text-sm font-semibold"
+                />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 py-3 text-xs bg-surface-hover/30 -mx-4 px-4">
+            <div className="grid grid-cols-2 gap-3 py-3 text-xs bg-surface-raised/60 -mx-4 px-4">
               <div className="flex flex-col">
-                <span className="text-muted-foreground">
-                  {isTotalValue ? "Saldo Bruto Restante" : "Custódia Restante"}
-                </span>
+                <span className="text-muted-foreground">{isTotalValue ? "Saldo Bruto Restante" : "Custódia Restante"}</span>
                 <span className="font-mono text-sm font-bold text-foreground">
                   {isTotalValue ? (
-                    <MoneyText
-                      cents={numberToCents(preview.remainingGrossValue ?? preview.newAveragePrice)}
-                      currency={state.currency}
-                    />
+                    <MoneyText cents={numberToCents(preview.remainingGrossValue ?? preview.newAveragePrice)} currency={state.currency} />
                   ) : (
                     `${preview.newQuantity} cotas`
                   )}
                 </span>
               </div>
 
-              {isTotalValue ? (
-                <div className="flex flex-col text-right">
-                  <span className="text-muted-foreground">Custo Original Restante</span>
-                  <span className="font-mono text-sm font-bold text-foreground">
-                    <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
-                  </span>
-                </div>
-              ) : (
-                <div className="flex flex-col text-right">
-                  <span className="text-muted-foreground">Resultado Realizado</span>
-                  <span
-                    className={`font-mono text-sm font-bold ${
-                      (preview.realizedPnl ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong"
-                    }`}
-                  >
+              <div className="flex flex-col text-right">
+                <span className="text-muted-foreground">{isTotalValue ? "Custo Original Restante" : "Resultado Realizado"}</span>
+                {isTotalValue ? (
+                  <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} className="text-sm font-bold" />
+                ) : (
+                  <span className={cn("font-mono text-sm font-bold", (preview.realizedPnl ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong")}>
                     {(preview.realizedPnl ?? 0) >= 0 ? "+" : ""}
-                    <MoneyText cents={numberToCents(preview.realizedPnl ?? 0)} currency={state.currency} />
+                    <MoneyText cents={numberToCents(preview.realizedPnl ?? 0)} currency={state.currency} className="inline text-sm font-bold" />
                   </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             <div className="pt-3 flex flex-col gap-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Valor Total da Venda:</span>
-                <div className="flex flex-col items-end">
-                  {state.currency === "USD" && preview.totalOrderValueNative !== undefined ? (
-                    <>
-                      <span className="font-mono text-base font-bold text-foreground">
-                        <MoneyText cents={numberToCents(preview.totalOrderValueNative)} currency="USD" />
-                      </span>
-                      <span className="text-[11px] text-muted-foreground font-mono">
-                        (≈ <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />)
-                      </span>
-                    </>
-                  ) : (
-                    <span className="font-mono text-base font-bold text-foreground">
-                      <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />
-                    </span>
-                  )}
-                </div>
+              <ReviewOrderTotalRow label="Valor Total da Venda:" currency={state.currency} preview={preview} />
+              <div className="flex items-center justify-between text-muted-foreground text-[11px]">
+                <span>{isTotalValue ? "Data do Resgate:" : "Data da Venda:"}</span>
+                <span className="font-mono font-medium text-foreground">{formatDateBR(state.date)}</span>
               </div>
-
               {preview.taxAmountBRL !== undefined && preview.taxAmountBRL > 0 && (
                 <div className="flex items-center justify-between text-warning-strong text-[11px]">
                   <span>IRRF Retido na Fonte ({preview.taxRatePct ?? 0}%):</span>
                   <span className="font-mono font-medium">
-                    − <MoneyText cents={numberToCents(preview.taxAmountBRL)} currency="BRL" />
+                    − <MoneyText cents={numberToCents(preview.taxAmountBRL)} currency="BRL" variant="caption" className="inline text-warning-strong" />
                   </span>
                 </div>
               )}
-
               {state.syncCash && (
                 <div className="flex items-center justify-between text-muted-foreground text-[11px]">
                   <span>Crédito Líquido em Caixa (R$):</span>
                   <span className="font-mono text-positive-strong">
-                    + <MoneyText cents={numberToCents(preview.cashCreditBRL ?? preview.totalOrderValueBRL)} currency="BRL" />
+                    + <MoneyText cents={numberToCents(preview.cashCreditBRL ?? preview.totalOrderValueBRL)} currency="BRL" variant="caption" tone="positive" className="inline" />
                   </span>
                 </div>
               )}
@@ -341,96 +220,7 @@ export function StepReview({ state, cashAvailableBRL = 0, usdRate }: StepReviewP
           </>
         )}
 
-        {/* 3. Revisão de Provento */}
-        {mode === "dividend" && (
-          <div className="pt-3 flex flex-col gap-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Valor Total Recebido:</span>
-              <div className="flex flex-col items-end">
-                {state.currency === "USD" ? (
-                  <>
-                    <span className="font-mono text-base font-bold text-positive-strong">
-                      <MoneyText cents={state.totalCents} currency="USD" />
-                    </span>
-                    <span className="text-[11px] text-muted-foreground font-mono">
-                      (≈ <MoneyText cents={numberToCents(preview.totalOrderValueBRL)} currency="BRL" />)
-                    </span>
-                  </>
-                ) : (
-                  <span className="font-mono text-base font-bold text-positive-strong">
-                    <MoneyText cents={state.totalCents} currency="BRL" />
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-              <span>Data do Pagamento:</span>
-              <span className="font-mono font-medium text-foreground">{state.date}</span>
-            </div>
-
-            {state.syncCash && (
-              <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                <span>Crédito em Caixa (R$):</span>
-                <span className="font-mono text-positive-strong">
-                  + <MoneyText cents={numberToCents(preview.cashCreditBRL ?? preview.totalOrderValueBRL)} currency="BRL" />
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 4. Revisão de Split */}
-        {mode === "split" && (
-          <div className="pt-3 flex flex-col gap-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Fator do Desdobramento:</span>
-              <span className="font-mono font-bold text-foreground">1 para {state.splitFactor}</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 py-2 text-xs bg-surface-hover/30 -mx-4 px-4 rounded-lg">
-              <div className="flex flex-col">
-                <span className="text-muted-foreground">Nova Quantidade</span>
-                <span className="font-mono font-bold text-primary">
-                  {preview.newQuantity} cotas
-                </span>
-              </div>
-
-              <div className="flex flex-col text-right">
-                <span className="text-muted-foreground">Novo Preço Médio</span>
-                <span className="font-mono font-bold text-primary">
-                  <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 5. Revisão de Grupamento */}
-        {mode === "reverse_split" && (
-          <div className="pt-3 flex flex-col gap-2 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Fator do Grupamento:</span>
-              <span className="font-mono font-bold text-foreground">{state.reverseSplitFactor} para 1</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 py-2 text-xs bg-surface-hover/30 -mx-4 px-4 rounded-lg">
-              <div className="flex flex-col">
-                <span className="text-muted-foreground">Nova Quantidade</span>
-                <span className="font-mono font-bold text-primary">
-                  {preview.newQuantity} cotas
-                </span>
-              </div>
-
-              <div className="flex flex-col text-right">
-                <span className="text-muted-foreground">Novo Preço Médio</span>
-                <span className="font-mono font-bold text-primary">
-                  <MoneyText cents={numberToCents(preview.newAveragePrice)} currency={state.currency} />
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+        <ReviewDividendAndSplitSections state={state} preview={preview} />
       </div>
     </div>
   );

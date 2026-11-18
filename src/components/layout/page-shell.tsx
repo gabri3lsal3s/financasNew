@@ -1,47 +1,65 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Link, Outlet, useLocation, useSearchParams, useNavigate } from "react-router";
-import { Sparkles, BookOpen, ShieldCheck } from "lucide-react";
+import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router";
+import type { ThemePreference } from "@/app/theme-provider";
 import { cn } from "@/lib/utils";
 import { trackFeatureUse } from "@/services/analytics";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { BackToTop } from "@/components/layout/back-to-top";
-import { CalculatorButton } from "@/components/layout/calculator-button";
 import { GlobalSearch } from "@/components/layout/global-search";
-import { LogoProfileButton } from "@/components/layout/logo-profile-button";
-import { NotificationsButton } from "@/components/layout/notifications-button";
 import { NetworkStatusBanner } from "@/components/layout/network-status-banner";
-import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { Sidebar } from "@/components/layout/sidebar";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { Button, RouteSkeletonFallback } from "@/components/ui";
+import { RouteSkeletonFallback } from "@/components/ui";
 import { DemoTourSpotlight } from "@/components/modules/demo-tour-spotlight";
 import { NativeOnboardingDialog } from "@/components/modules/native-onboarding-dialog";
 import { endDemo, useDemoSession } from "@/state/demo-mode";
-import type { LaunchState } from "@/features/transactions/wizard/wizard-state";
-
-const LaunchWizard = lazy(() =>
-  import("@/features/transactions").then((m) => ({ default: m.LaunchWizard }))
-);
 import { useContainerScroll, useOnboardingDismissed } from "@/hooks";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { dismissPendingSuggestion } from "@/services/native";
-import { useOnboardingCounts, useReminders, useMySupportTickets, useUserSubscription, useUserAccess } from "@/state";
+import {
+  useMySupportTickets,
+  useOnboardingCounts,
+  useReminders,
+  useUpdateCustomSettings,
+  useUserAccess,
+  useUserSubscription,
+} from "@/state";
 import { shouldShowOnboardingBanner } from "@/domain/onboarding";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
-import type { PaymentMethod } from "@/types";
+import { DesktopTopbar } from "./desktop-topbar";
+import { MobileTopbar } from "./mobile-topbar";
+import {
+  WIZARD_QUERY_KEYS,
+  isLaunchShortcutQuery,
+  parseLaunchWizardInitialValues,
+  useShellOnboardingOrchestrator,
+} from "./use-shell-onboarding-orchestrator";
 
-/** Fallback de carregamento das rotas lazy — Skeleton contextual da rota correspondente (Zero CLS). */
-function RouteFallback() {
-  return <RouteSkeletonFallback />;
-}
+const LaunchWizard = lazy(() =>
+  import("@/features/transactions").then((m) => ({ default: m.LaunchWizard })),
+);
+
+const PATH_TO_MODULE: Record<string, string> = {
+  "/": "expenses",
+  "/transacoes": "expenses",
+  "/cartoes": "cards",
+  "/dividas": "debts",
+  "/orcamentos": "budgets",
+  "/relatorios": "reports",
+  "/investments": "investments",
+  "/configuracoes": "settings",
+  "/insights": "expenses",
+  "/lembretes": "expenses",
+  "/admin": "settings",
+};
 
 export function PageShell({ children }: { children?: ReactNode } = {}) {
   const navigate = useNavigate();
   const subscription = useUserSubscription();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
   const [headerUpgradeOpen, setHeaderUpgradeOpen] = useState(false);
   const visual = useVisualCustomization();
   const { isCollapsed, toggle } = useSidebarState();
@@ -49,104 +67,24 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isDemoActive } = useDemoSession();
 
-  // Suporte aos atalhos rápidos nativos, sugestões de bancos e launcher (?novo=despesa, ?novo=receita, ?novo=transacao, ?novo=pix, ?modo=rapido)
   const novoParam = searchParams.get("novo");
   const modoParam = searchParams.get("modo");
-  const isShortcutNew =
-    novoParam === "transacao" ||
-    novoParam === "despesa" ||
-    novoParam === "receita" ||
-    novoParam === "expense" ||
-    novoParam === "income" ||
-    novoParam === "pix" ||
-    modoParam === "rapido" ||
-    modoParam === "quick";
+  const isShortcutNew = isLaunchShortcutQuery(novoParam, modoParam);
   const [localWizardOpen, setLocalWizardOpen] = useState(false);
   const wizardOpen = isShortcutNew || localWizardOpen;
   const initialType = novoParam === "receita" || novoParam === "income" ? "income" : "expense";
   const initialMode: "quick" | "guided" =
     novoParam === "pix" || modoParam === "rapido" || modoParam === "quick" ? "quick" : "guided";
 
-  const valorParam = searchParams.get("valor");
-  const descParam = searchParams.get("descricao") || undefined;
-  const dataParam = searchParams.get("data") || undefined;
-  const formaParam =
-    (searchParams.get("forma") as PaymentMethod) || (novoParam === "pix" ? "pix" : undefined);
-  const cartaoParam = searchParams.get("cartao") || undefined;
-  const parcelasParam = searchParams.get("parcelas");
-  const categoriaParam = searchParams.get("categoria") || undefined;
   const sugIdParam = searchParams.get("sug_id") || undefined;
-  const passoParam = searchParams.get("passo") || searchParams.get("step");
-  const rachaParam = searchParams.get("racha") || searchParams.get("split");
-  const pessoasParam = searchParams.get("pessoas") || searchParams.get("participantes");
+  const searchKey = searchParams.toString();
+  const initialValues = useMemo(
+    () => parseLaunchWizardInitialValues(searchKey, novoParam),
+    [searchKey, novoParam],
+  );
 
-  const initialValues = useMemo(() => {
-    const vals: Partial<LaunchState> = {};
-    if (valorParam) {
-      const parsed = parseInt(valorParam, 10);
-      if (Number.isFinite(parsed) && parsed > 0) {
-        vals.valueCents = parsed;
-      }
-    }
-    if (descParam) vals.description = descParam;
-    if (dataParam) vals.date = dataParam;
-    if (formaParam) vals.paymentMethod = formaParam;
-    if (cartaoParam) {
-      vals.cardId = cartaoParam;
-      vals.paymentMethod = "credit_card";
-    }
-    if (categoriaParam) vals.categoryId = categoriaParam;
-    if (parcelasParam) {
-      const parsedParcelas = parseInt(parcelasParam, 10);
-      if (Number.isFinite(parsedParcelas) && parsedParcelas >= 1 && parsedParcelas <= 60) {
-        vals.installments = parsedParcelas;
-      }
-    }
-    if (passoParam) {
-      const parsedStep = parseInt(passoParam, 10);
-      if (Number.isFinite(parsedStep) && parsedStep >= 1 && parsedStep <= 4) {
-        vals.step = parsedStep;
-      }
-    }
-    if (rachaParam === "1" || rachaParam === "true" || rachaParam === "sim") {
-      vals.splitEnabled = true;
-    }
-    if (pessoasParam) {
-      const parsedPessoas = parseInt(pessoasParam, 10);
-      if (Number.isFinite(parsedPessoas) && parsedPessoas >= 2 && parsedPessoas <= 50) {
-        vals.splitPeopleCount = parsedPessoas;
-      }
-    }
-    return Object.keys(vals).length > 0 ? vals : undefined;
-  }, [
-    valorParam,
-    descParam,
-    dataParam,
-    formaParam,
-    cartaoParam,
-    categoriaParam,
-    parcelasParam,
-    passoParam,
-    rachaParam,
-    pessoasParam,
-  ]);
-
-  // Telemetria leve de engajamento para a tela /admin (respeita anonimização e modo simulação)
   useEffect(() => {
-    const pathToModule: Record<string, string> = {
-      "/": "expenses",
-      "/transacoes": "expenses",
-      "/cartoes": "cards",
-      "/dividas": "debts",
-      "/orcamentos": "budgets",
-      "/relatorios": "reports",
-      "/investments": "investments",
-      "/configuracoes": "settings",
-      "/insights": "expenses",
-      "/lembretes": "expenses",
-      "/admin": "settings",
-    };
-    const targetModule = pathToModule[location.pathname];
+    const targetModule = PATH_TO_MODULE[location.pathname];
     if (targetModule && !isDemoActive) {
       trackFeatureUse(targetModule, "view_page");
     }
@@ -155,34 +93,23 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
   const handleWizardOpenChange = (next: boolean) => {
     setLocalWizardOpen(next);
     if (!next) {
-      if (sugIdParam) {
-        dismissPendingSuggestion(sugIdParam);
-      }
+      if (sugIdParam) dismissPendingSuggestion(sugIdParam);
       if (isShortcutNew) {
         setSearchParams(
           (prev) => {
             const updated = new URLSearchParams(prev);
-            updated.delete("novo");
-            updated.delete("modo");
-            updated.delete("valor");
-            updated.delete("descricao");
-            updated.delete("data");
-            updated.delete("forma");
-            updated.delete("cartao");
-            updated.delete("categoria");
-            updated.delete("parcelas");
-            updated.delete("sug_id");
-            updated.delete("passo");
-            updated.delete("step");
-            updated.delete("racha");
-            updated.delete("split");
-            updated.delete("pessoas");
-            updated.delete("participantes");
+            for (const key of WIZARD_QUERY_KEYS) updated.delete(key);
             return updated;
           },
           { replace: true },
         );
       }
+    }
+  };
+
+  const handleThemeChange = (next: ThemePreference) => {
+    if (!isDemoActive) {
+      updateCustomSettingsMutation.mutate({ themePreference: next });
     }
   };
 
@@ -207,25 +134,21 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
     backToTopThreshold: 400,
   });
 
-  // --- Slot logic (máx. 2 entre: calc, tema, privacidade, notificações) ---
-  // Notificações deslocam: privacidade primeiro, depois tema. Calculadora nunca é deslocada.
-  const hasNotifications = remindersTotalCount > 0 || showOnboarding || advisorAlertsCount > 0 || unreadSupportCount > 0;
+  const onboarding = useShellOnboardingOrchestrator({ isWizardOpen: wizardOpen });
+
+  const hasNotifications =
+    remindersTotalCount > 0 || showOnboarding || advisorAlertsCount > 0 || unreadSupportCount > 0;
   const cfg = visual.headerButtons;
   const showCalc = cfg.calculatorButton;
-  let showTheme = cfg.themeToggle;
+  const showTheme = cfg.themeToggle;
   let showPrivacy = cfg.privacyToggle;
 
-  if (hasNotifications) {
-    const controlled = [showCalc, showTheme, showPrivacy].filter(Boolean).length;
-    if (controlled >= 2) {
-      if (showPrivacy) showPrivacy = false;
-      else if (showTheme) showTheme = false;
-    }
+  if (hasNotifications && [showCalc, showTheme, showPrivacy].filter(Boolean).length >= 3) {
+    if (showPrivacy) showPrivacy = false;
   }
 
   return (
     <div className="h-dvh flex flex-col overflow-hidden text-foreground">
-      {/* Wizard contextual em overlay (preserva rota ativa e contexto em qualquer página) */}
       {wizardOpen && (
         <Suspense fallback={null}>
           <LaunchWizard
@@ -238,122 +161,51 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
           />
         </Suspense>
       )}
-      {/* Estado da sidebar vive aqui (fonte única) e a margem acompanha em tempo real. */}
       <Sidebar isCollapsed={isCollapsed} onToggle={toggle} />
-      {/* Margem acompanha o estado da sidebar (F7.2): lg:pl-64 expandida ↔ lg:pl-20 compacta. */}
       <div
         className={cn(
           "flex flex-1 flex-col overflow-hidden transition-[padding] duration-200 ease-out motion-reduce:transition-none",
           isCollapsed ? "lg:pl-20" : "lg:pl-64",
         )}
       >
-        {/* Header fluido com elevação dinâmica de rolagem (F7.3/F56 / DESIGN_SYSTEM §6 e §8).
-            Preserva a borda contínua conectada à Sidebar e eleva com sombra suave e blur.
-            pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))] garante afastamento perfeito da barra de status no mobile. */}
         <header
           className={cn(
-            "sticky top-0 z-sticky flex shrink-0 items-center border-b border-border transition-[background-color,backdrop-filter,box-shadow] duration-200 app-region-drag pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]",
-            isScrolled
-              ? "bg-surface/95 backdrop-blur-md shadow-xs"
-              : "bg-surface/80 backdrop-blur-sm shadow-none",
+            "sticky top-0 z-sticky flex shrink-0 items-center border-b border-border transition-[background-color,backdrop-filter,box-shadow] duration-200 app-region-drag pt-safe",
+            isScrolled ? "bg-surface/95 backdrop-blur-md shadow-xs" : "bg-surface/80 backdrop-blur-sm shadow-none",
           )}
         >
           <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-1.5 px-3 sm:px-6 lg:px-8 app-region-no-drag">
-            {visual.headerButtons.logo && (
-              <div className="flex items-center lg:hidden mr-1 shrink-0">
-                <LogoProfileButton />
-              </div>
-            )}
-            {/* Separador visual entre logo e busca (mobile/tablet) */}
-            {visual.headerButtons.logo && (
-              <div className="h-5 w-px bg-border shrink-0 lg:hidden" aria-hidden="true" />
-            )}
+            <MobileTopbar showLogo={visual.headerButtons.logo} />
             <GlobalSearch className="flex-1 min-w-0" />
-            {/* Pílula de Status do Trial / Leitura no Header */}
-            {subscription?.isTrial && subscription.trialDaysRemaining !== null && (
-              subscription.hasAutoRenew ? (
-                <Link
-                  to="/configuracoes?tab=assinatura"
-                  title="Plano Pro ativo com cobrança automática configurada no cartão."
-                  aria-label="Plano Pro ativo com cobrança automática"
-                  className="hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-full border border-positive/30 bg-positive/10 px-2.5 py-1 text-xs font-semibold text-positive-strong hover:bg-positive/15 transition-colors cursor-pointer select-none"
-                >
-                  <ShieldCheck className="size-3.5" aria-hidden="true" />
-                  <span>Pro Ativo</span>
-                </Link>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setHeaderUpgradeOpen(true)}
-                  title="Período de teste Pro ativo. Clique para conferir os benefícios."
-                  aria-label={`Teste Pro ativo: restam ${subscription.trialDaysRemaining} dias`}
-                  className="hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary-strong hover:bg-primary/15 transition-colors cursor-pointer select-none"
-                >
-                  <Sparkles className="size-3.5" aria-hidden="true" />
-                  <span>Teste Pro: {subscription.trialDaysRemaining}d</span>
-                </button>
-              )
-            )}
-            {subscription?.isReadOnly && (
-              <button
-                type="button"
-                onClick={() => setHeaderUpgradeOpen(true)}
-                title="Modo somente-leitura ativo. Clique para ativar o Pro."
-                aria-label="Modo somente-leitura ativo"
-                className="hidden sm:inline-flex items-center gap-1.5 shrink-0 rounded-full border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning-strong hover:bg-warning/15 transition-colors cursor-pointer select-none"
-              >
-                <BookOpen className="size-3.5" aria-hidden="true" />
-                <span>Modo Leitura</span>
-              </button>
-            )}
-            {isDemoActive && (
-              <div
-                className="flex items-center gap-1.5 shrink-0 animate-fade-in rounded-full border border-primary/30 bg-primary/10 pl-2.5 pr-1 py-0.5 text-xs text-primary-strong shadow-xs"
-                data-testid="header-demo-indicator"
-              >
-                <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
-                <span className="font-semibold text-[11px] sm:text-xs">
-                  <span className="inline sm:hidden">Simulação</span>
-                  <span className="hidden sm:inline">Modo Simulação</span>
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={endDemo}
-                  aria-label="Encerrar demonstração"
-                  className="h-6 px-2 text-[11px] font-medium text-foreground hover:bg-surface hover:text-foreground cursor-pointer rounded-full"
-                >
-                  Sair
-                </Button>
-              </div>
-            )}
-            {showCalc && <CalculatorButton />}
-            {hasNotifications && <NotificationsButton />}
-            <div data-tour="header-privacy-theme" className="flex items-center gap-1.5 shrink-0">
-              {showTheme && <ThemeToggle />}
-              {showPrivacy && <PrivacyToggle />}
-            </div>
+            <DesktopTopbar
+              subscription={subscription}
+              isDemoActive={isDemoActive}
+              onEndDemo={endDemo}
+              onOpenUpgrade={() => setHeaderUpgradeOpen(true)}
+              showCalc={showCalc}
+              hasNotifications={hasNotifications}
+              showTheme={showTheme}
+              showPrivacy={showPrivacy}
+              onThemeChange={handleThemeChange}
+            />
           </div>
         </header>
         <DemoTourSpotlight />
-        <NativeOnboardingDialog />
+        <NativeOnboardingDialog
+          open={onboarding.isNativeOnboardingOpen}
+          onOpenChange={onboarding.onNativeOnboardingOpenChange}
+        />
         <NetworkStatusBanner />
         <main id="main-content" className="flex-1 overflow-y-auto overflow-x-hidden overscroll-none min-h-0 w-full">
           <div className="mx-auto w-full max-w-7xl px-3 sm:px-6 pb-[calc(6.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] lg:pb-10 pt-4 sm:pt-6 lg:px-8 min-w-0">
-            {/* Transição de rota (F8): 150ms, respeita prefers-reduced-motion (globals). */}
             <div key={location.pathname} className="animate-route-in min-w-0 w-full">
-              <Suspense fallback={<RouteFallback />}>
-                {children ?? <Outlet />}
-              </Suspense>
+              <Suspense fallback={<RouteSkeletonFallback />}>{children ?? <Outlet />}</Suspense>
             </div>
           </div>
         </main>
       </div>
 
-      {/* Botão flutuante Voltar ao Topo global (ergonômico acima da BottomNav) */}
       <BackToTop visible={showBackToTop} containerId="main-content" bottomNavOffset />
-
       <BottomNav />
 
       <UpgradeDialog

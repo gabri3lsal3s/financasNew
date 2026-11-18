@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
-import { Calendar, Printer, Trash2, FileText, RotateCcw, SlidersHorizontal } from "lucide-react";
-import { Badge, Button, ConfirmDialog, EmptyState, Modal, usePrint } from "@/components/ui";
-import { ReportFooter } from "@/components/modules/reports";
-import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
-import { MoneyText } from "@/components/ui/money-text";
+import { ReportDocumentLayout, ReportFooter, ReportHeader } from "@/components/modules/reports";
+import { Button, ConfirmDialog } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
-import { formatMonthYear } from "@/lib/date";
-import { cn } from "@/lib/utils";
+import { formatDateBR, formatMonthYear, todayLocalIso } from "@/lib/date";
+import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
+import { formatCentsAsBRL } from "@/services/masks";
 import { useDeletePortfolioSnapshot, useResetManualSnapshotCalibration } from "@/state";
 import { CalibrateSnapshotDialog } from "./calibrate-snapshot-dialog";
+import { SnapshotsEvolutionChart } from "./snapshots/snapshots-evolution-chart";
+import { SnapshotsLedgerTable } from "./snapshots/snapshots-ledger-table";
 
 export interface PortfolioSnapshotsDialogProps {
   open: boolean;
@@ -21,11 +21,8 @@ export interface PortfolioSnapshotsDialogProps {
 }
 
 /**
- * Diálogo modal analítico de evolução patrimonial histórica.
- *
- * Apresenta a auditoria completa mês a mês dos snapshots em formato tabular
- * (padrão CVM/ANBIMA), com filtros por ano, métricas consolidadas do período,
- * opção de impressão/PDF e gestão de snapshots históricos anômalos.
+ * Diálogo modal analítico de evolução patrimonial histórica com suporte
+ * a impressão A4 / PDF oficial via `<ReportDocumentLayout />`.
  */
 export function PortfolioSnapshotsDialog({
   open,
@@ -35,7 +32,6 @@ export function PortfolioSnapshotsDialog({
   onDeleteSnapshot,
   onGenerateReport,
 }: PortfolioSnapshotsDialogProps) {
-  const { printing, triggerPrint } = usePrint("Extrato_Evolucao_Patrimonial.pdf");
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [snapshotToDelete, setSnapshotToDelete] = useState<string | null>(null);
   const [snapshotToCalibrate, setSnapshotToCalibrate] = useState<PortfolioMonthlySeriesPoint | null>(null);
@@ -43,7 +39,6 @@ export function PortfolioSnapshotsDialog({
   const deleteSnapshotMutation = useDeletePortfolioSnapshot();
   const resetCalibrationMutation = useResetManualSnapshotCalibration();
 
-  // Anos únicos presentes na série (ordenados decrescentemente)
   const availableYears = useMemo(() => {
     const yearsSet = new Set<string>();
     for (const point of series) {
@@ -53,460 +48,103 @@ export function PortfolioSnapshotsDialog({
     return Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
   }, [series]);
 
-  // Série filtrada pelo ano selecionado
-  const filteredSeries = useMemo(() => {
-    if (selectedYear === "all") {
-      return series;
-    }
-    return series.filter((pt) => pt.month.startsWith(selectedYear));
-  }, [series, selectedYear]);
+  const filteredSeries = useMemo(
+    () => (selectedYear === "all" ? series : series.filter((pt) => pt.month.startsWith(selectedYear))),
+    [series, selectedYear],
+  );
 
-  // Ordenação cronológica decrescente para tabela (mais recente no topo)
-  const sortedTablePoints = useMemo(() => {
-    return [...filteredSeries].sort((a, b) => b.month.localeCompare(a.month));
-  }, [filteredSeries]);
+  const sortedTablePoints = useMemo(
+    () => [...filteredSeries].sort((a, b) => b.month.localeCompare(a.month)),
+    [filteredSeries],
+  );
 
-  // Métricas de resumo do período filtrado
   const summary = useMemo(() => {
     if (filteredSeries.length === 0) {
-      return {
-        totalMonths: 0,
-        latestValueBRL: 0,
-        latestCostBRL: 0,
-        periodDividendsBRL: 0,
-        latestTwrPct: null,
-      };
+      return { totalMonths: 0, latestValueBRL: 0, latestCostBRL: 0, periodDividendsBRL: 0, latestTwrPct: null };
     }
-
-    // Cronologicamente ordenado (do mais antigo ao mais recente)
     const chronological = [...filteredSeries].sort((a, b) => a.month.localeCompare(b.month));
     const latest = chronological[chronological.length - 1];
     const earliest = chronological[0];
-
-    const latestValueBRL = latest?.valueBRL ?? 0;
-    const latestCostBRL = latest?.costBRL ?? 0;
-
-    // Proventos auferidos no período selecionado
-    const periodDividendsBRL = chronological.reduce(
-      (acc, pt) => acc + (pt.monthDividendsBRL ?? 0),
-      0,
-    );
-
-    // TWR do ponto mais recente do período
-    const latestTwrPct = latest?.twrAccumulatedPct ?? null;
+    const sumMonthDivs = chronological.reduce((acc, pt) => acc + (pt.monthDividendsBRL ?? 0), 0);
 
     return {
       totalMonths: chronological.length,
-      latestValueBRL,
-      latestCostBRL,
+      latestValueBRL: latest?.valueBRL ?? 0,
+      latestCostBRL: latest?.costBRL ?? 0,
       periodDividendsBRL:
-        periodDividendsBRL > 0
-          ? periodDividendsBRL
+        sumMonthDivs > 0
+          ? sumMonthDivs
           : (latest?.accumulatedDividendsBRL ?? 0) - (earliest?.accumulatedDividendsBRL ?? 0),
-      latestTwrPct,
+      latestTwrPct: latest?.twrAccumulatedPct ?? null,
     };
   }, [filteredSeries]);
 
   return (
-    <Modal
-      open={open}
-      onOpenChange={onOpenChange}
-      title="Extrato Analítico de Evolução Patrimonial"
-      description="Auditoria cronológica da evolução de patrimônio, custos, proventos e rentabilidade ponderada (TWR) mês a mês."
-      size="2xl"
-      headerActions={
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => triggerPrint()}
-          disabled={printing || series.length === 0}
-          className="gap-1.5 h-8 text-xs px-2.5 print:hidden cursor-pointer"
-        >
-          <Printer className="size-3.5" aria-hidden="true" />
-          <span className="hidden sm:inline">
-            {printing ? "Preparando..." : "Imprimir / PDF"}
-          </span>
-          <span className="sm:hidden">{printing ? "..." : "PDF"}</span>
-        </Button>
-      }
-    >
-      <div className="mt-4 flex flex-col gap-4">
-        {/* Barra de Filtros por Ano */}
+    <>
+      <ReportDocumentLayout
+        open={open}
+        onOpenChange={onOpenChange}
+        title="Extrato Analítico de Evolução Patrimonial"
+        documentTitle="Extrato_Evolucao_Patrimonial.pdf"
+        size="2xl"
+      >
+        <ReportHeader
+          title="Extrato Analítico de Evolução Patrimonial"
+          subtitle="Auditoria cronológica da evolução de patrimônio, custos, proventos e rentabilidade ponderada (TWR) mês a mês."
+          periodLabel={selectedYear === "all" ? "Histórico Completo" : `Ano ${selectedYear}`}
+          generatedAt={formatDateBR(todayLocalIso())}
+        />
+
         {availableYears.length > 1 ? (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-            <span className="text-xs font-medium text-muted-foreground mr-1 shrink-0">
-              Ano:
-            </span>
-            <button
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 print:hidden">
+            <span className="text-xs font-medium text-muted-foreground mr-1 shrink-0">Ano:</span>
+            <Button
               type="button"
+              size="sm"
+              variant={selectedYear === "all" ? "default" : "outline"}
+              sensoryIntent="selection"
               onClick={() => setSelectedYear("all")}
-              className={cn(
-                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
-                selectedYear === "all"
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "bg-surface text-muted-foreground hover:text-foreground border border-border/80",
-              )}
+              className="shrink-0"
             >
               Todos ({series.length}m)
-            </button>
+            </Button>
             {availableYears.map((yr) => (
-              <button
+              <Button
                 key={yr}
                 type="button"
+                size="sm"
+                variant={selectedYear === yr ? "default" : "outline"}
+                sensoryIntent="selection"
                 onClick={() => setSelectedYear(yr)}
-                className={cn(
-                  "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer shrink-0",
-                  selectedYear === yr
-                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                    : "bg-surface text-muted-foreground hover:text-foreground border border-border/80",
-                )}
+                className="shrink-0"
               >
                 {yr}
-              </button>
+              </Button>
             ))}
           </div>
         ) : null}
 
-        {/* Painel de Resumo do Período Filtrado */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 rounded-xl border border-border/80 bg-surface/70 p-3 sm:p-4 shadow-2xs">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[11px] font-medium text-muted-foreground">Período</span>
-            <span className="text-sm sm:text-base font-semibold text-foreground">
-              {summary.totalMonths} {summary.totalMonths === 1 ? "mês" : "meses"}
-            </span>
-          </div>
+        <SnapshotsEvolutionChart series={filteredSeries} summary={summary} />
 
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[11px] font-medium text-muted-foreground">Patrimônio Final</span>
-            <MoneyText
-              cents={numberToCents(summary.latestValueBRL)}
-              tone="default"
-              className="text-sm sm:text-base font-bold text-foreground tabular-nums whitespace-nowrap"
-            />
-          </div>
-
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[11px] font-medium text-muted-foreground">Custo Aplicado</span>
-            <MoneyText
-              cents={numberToCents(summary.latestCostBRL)}
-              tone="default"
-              className="text-sm sm:text-base font-medium text-muted-foreground tabular-nums whitespace-nowrap"
-            />
-          </div>
-
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[11px] font-medium text-muted-foreground">Proventos no Período</span>
-            <MoneyText
-              cents={numberToCents(summary.periodDividendsBRL)}
-              tone="positive"
-              className="text-sm sm:text-base font-bold tabular-nums whitespace-nowrap"
-            />
-          </div>
-
-          <div className="flex flex-col gap-0.5 col-span-2 sm:col-span-1">
-            <span className="text-[11px] font-medium text-muted-foreground">TWR Acumulado</span>
-            <span
-              className={cn(
-                "font-mono text-sm sm:text-base font-bold tabular-nums whitespace-nowrap",
-                (summary.latestTwrPct ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong",
-              )}
-            >
-              {summary.latestTwrPct !== null
-                ? `${summary.latestTwrPct >= 0 ? "+" : ""}${summary.latestTwrPct.toFixed(1)}%`
-                : "—"}
-            </span>
-          </div>
-        </div>
-
-        {/* Tabela Analítica de Snapshots */}
-        {sortedTablePoints.length === 0 ? (
-          <EmptyState
-            icon={<Calendar className="size-6" />}
-            title="Nenhum mês encontrado"
-            description="Não há registros de snapshots para o período selecionado."
-            headingLevel="h3"
-          />
-        ) : (
-          <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 shadow-xs">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-surface border-b border-border/80 text-muted-foreground font-medium">
-                <tr>
-                  <th scope="col" className="py-2.5 px-3 whitespace-nowrap">
-                    Competência
-                  </th>
-                  <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">
-                    Patrimônio
-                  </th>
-                  <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">
-                    Custo
-                  </th>
-                  <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">
-                    Proventos Mês
-                  </th>
-                  <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">
-                    Proventos Acum.
-                  </th>
-                  <th
-                    scope="col"
-                    className="py-2.5 px-3 text-right whitespace-nowrap font-semibold text-foreground bg-surface-hover/70 border-x border-border/60"
-                  >
-                    Mês (TWR %)
-                  </th>
-                  <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">
-                    Retorno Total
-                  </th>
-                  <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">
-                    TWR Acum.
-                  </th>
-                  <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">
-                    Cota (R$)
-                  </th>
-                  <th scope="col" className="py-2.5 px-3 text-center whitespace-nowrap print:hidden">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60 font-medium">
-                {sortedTablePoints.map((pt) => {
-                  const isCurrent = pt.month === currentMonthStr;
-                  const effectiveGain =
-                    pt.totalReturnPnl !== undefined
-                      ? pt.totalReturnPnl
-                      : pt.valueBRL - pt.costBRL;
-                  const effectivePct =
-                    pt.totalReturnPct !== undefined
-                      ? pt.totalReturnPct
-                      : pt.costBRL > 0
-                        ? ((pt.valueBRL - pt.costBRL) / pt.costBRL) * 100
-                        : 0;
-
-                  return (
-                    <tr
-                      key={pt.month}
-                      className={cn(
-                        "transition-colors",
-                        isCurrent
-                          ? "bg-portfolio/10 font-semibold"
-                          : "hover:bg-surface-hover/70",
-                      )}
-                    >
-                      {/* Competência */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-foreground">
-                            {formatMonthYear(pt.month)}
-                          </span>
-                          {isCurrent ? (
-                            <Badge variant="portfolio" size="xs">
-                              atual
-                            </Badge>
-                          ) : pt.status === "provisional" ? (
-                            <Badge variant="warning" size="xs" title="Snapshot provisório em aberto">
-                              provisório
-                            </Badge>
-                          ) : pt.isManuallyCalibrated ? (
-                            <Badge
-                              variant="warning"
-                              size="xs"
-                              title={
-                                pt.autoTotalValue != null
-                                  ? `Calibrado manualmente. Fechamento original: R$ ${pt.autoTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                  : "Calibrado manualmente pelo usuário"
-                              }
-                            >
-                              calibrado
-                            </Badge>
-                          ) : (
-                            <Badge variant="muted" size="xs" title="Fechamento oficial de mercado">
-                              fechado
-                            </Badge>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Patrimônio */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap font-bold text-foreground">
-                        <MoneyText
-                          cents={numberToCents(pt.valueBRL)}
-                          tone="default"
-                          className="tabular-nums"
-                        />
-                      </td>
-
-                      {/* Custo */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap text-muted-foreground">
-                        <MoneyText
-                          cents={numberToCents(pt.costBRL)}
-                          tone="default"
-                          className="tabular-nums"
-                        />
-                      </td>
-
-                      {/* Proventos do Mês */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                        <MoneyText
-                          cents={numberToCents(pt.monthDividendsBRL ?? 0)}
-                          tone={(pt.monthDividendsBRL ?? 0) > 0 ? "positive" : "default"}
-                          className={cn(
-                            "tabular-nums",
-                            (pt.monthDividendsBRL ?? 0) > 0
-                              ? "font-semibold text-positive-strong"
-                              : "text-muted-foreground font-normal",
-                          )}
-                        />
-                      </td>
-
-                      {/* Proventos Acumulados */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                        <MoneyText
-                          cents={numberToCents(pt.accumulatedDividendsBRL ?? 0)}
-                          tone="positive"
-                          className="tabular-nums font-semibold"
-                        />
-                      </td>
-
-                      {/* Rentabilidade no Mês (TWR %) - DESTACADA */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap font-mono font-bold bg-surface-hover/30 border-x border-border/40">
-                        {pt.twrMonthPct !== null && pt.twrMonthPct !== undefined ? (
-                          <span
-                            className={cn(
-                              "inline-flex items-center justify-end px-2 py-0.5 rounded-md text-xs font-bold font-mono tabular-nums",
-                              pt.twrMonthPct >= 0
-                                ? "bg-positive/10 text-positive-strong"
-                                : "bg-negative/10 text-negative-strong",
-                            )}
-                          >
-                            {pt.twrMonthPct >= 0 ? "+" : ""}
-                            {pt.twrMonthPct.toFixed(2)}%
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground font-sans font-normal">—</span>
-                        )}
-                      </td>
-
-                      {/* Retorno Total % Contábil */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                        <span
-                          className={cn(
-                            "tabular-nums font-semibold",
-                            effectiveGain >= 0 ? "text-positive-strong" : "text-negative-strong",
-                          )}
-                        >
-                          {effectivePct !== null
-                            ? `${effectivePct >= 0 ? "+" : ""}${effectivePct.toFixed(1)}%`
-                            : "—"}
-                        </span>
-                      </td>
-
-                      {/* TWR Acumulado % */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap font-mono font-semibold">
-                        {pt.twrAccumulatedPct !== null && pt.twrAccumulatedPct !== undefined ? (
-                          <span
-                            className={
-                              pt.twrAccumulatedPct >= 0
-                                ? "text-positive-strong"
-                                : "text-negative-strong"
-                            }
-                          >
-                            {pt.twrAccumulatedPct >= 0 ? "+" : ""}
-                            {pt.twrAccumulatedPct.toFixed(1)}%
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground font-sans font-normal">—</span>
-                        )}
-                      </td>
-
-                      {/* Cota da Carteira */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap font-mono text-muted-foreground">
-                        {pt.sharePrice !== null && pt.sharePrice !== undefined ? (
-                          <span>R$&nbsp;{pt.sharePrice.toFixed(2)}</span>
-                        ) : (
-                          <span className="text-muted-foreground font-sans font-normal">—</span>
-                        )}
-                      </td>
-
-                      {/* Ações de Gestão do Snapshot */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap print:hidden">
-                        <div className="flex items-center justify-center gap-1">
-                          {onGenerateReport && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                onOpenChange(false);
-                                onGenerateReport(pt.month);
-                              }}
-                              className="size-7 p-0 text-muted-foreground hover:text-portfolio hover:bg-portfolio/10 cursor-pointer inline-flex items-center justify-center"
-                              aria-label={`Abrir relatório de ${formatMonthYear(pt.month)}`}
-                              title={`Abrir relatório de ${formatMonthYear(pt.month)}`}
-                            >
-                              <FileText className="size-3.5" aria-hidden="true" />
-                            </Button>
-                          )}
-                          {!isCurrent ? (
-                            <>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setSnapshotToCalibrate(pt)}
-                                className="size-7 p-0 text-muted-foreground hover:text-portfolio hover:bg-portfolio/10 cursor-pointer inline-flex items-center justify-center"
-                                aria-label={`Calibrar snapshot de ${formatMonthYear(pt.month)}`}
-                                title={`Calibrar snapshot de ${formatMonthYear(pt.month)}`}
-                              >
-                                <SlidersHorizontal className="size-3.5" aria-hidden="true" />
-                              </Button>
-                              {pt.isManuallyCalibrated && pt.autoTotalValue != null ? (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setSnapshotToRestore(pt)}
-                                  className="size-7 p-0 text-muted-foreground hover:text-portfolio hover:bg-portfolio/10 cursor-pointer inline-flex items-center justify-center"
-                                  aria-label={`Restaurar fechamento oficial de ${formatMonthYear(pt.month)}`}
-                                  title={`Restaurar fechamento oficial de ${formatMonthYear(pt.month)}`}
-                                >
-                                  <RotateCcw className="size-3.5" aria-hidden="true" />
-                                </Button>
-                              ) : null}
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setSnapshotToDelete(pt.month)}
-                                className="size-7 p-0 text-muted-foreground hover:text-negative-strong hover:bg-negative/10 cursor-pointer inline-flex items-center justify-center"
-                                aria-label={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
-                                title={`Excluir snapshot de ${formatMonthYear(pt.month)}`}
-                              >
-                                <Trash2 className="size-3.5" aria-hidden="true" />
-                              </Button>
-                            </>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Rodapé Contábil e Institucional Padronizado */}
-        <ReportFooter
-          disclaimer={OFFICIAL_CVM_DISCLAIMER}
-          showQrCode
-          className="mt-4"
+        <SnapshotsLedgerTable
+          points={sortedTablePoints}
+          currentMonthStr={currentMonthStr}
+          onCloseModal={() => onOpenChange(false)}
+          onGenerateReport={onGenerateReport}
+          onCalibrate={setSnapshotToCalibrate}
+          onRestore={setSnapshotToRestore}
+          onDelete={setSnapshotToDelete}
         />
-      </div>
+
+        <ReportFooter disclaimer={OFFICIAL_CVM_DISCLAIMER} showQrCode className="mt-2" />
+      </ReportDocumentLayout>
 
       <ConfirmDialog
         open={snapshotToDelete !== null}
         onOpenChange={(isOpen) => {
           if (!isOpen) setSnapshotToDelete(null);
         }}
+        elevated
         title="Excluir Snapshot Mensal"
         description={
           snapshotToDelete
@@ -527,16 +165,16 @@ export function PortfolioSnapshotsDialog({
         }}
       />
 
-      {/* Confirmação de restauração ao valor original do fechamento oficial */}
       <ConfirmDialog
         open={snapshotToRestore !== null}
         onOpenChange={(isOpen) => {
           if (!isOpen) setSnapshotToRestore(null);
         }}
+        elevated
         title="Restaurar Fechamento Oficial"
         description={
           snapshotToRestore && snapshotToRestore.autoTotalValue != null
-            ? `Deseja desfazer a calibração manual de ${formatMonthYear(snapshotToRestore.month)} e restaurar o valor gravado originalmente no fechamento oficial de mercado (R$ ${snapshotToRestore.autoTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})?`
+            ? `Deseja desfazer a calibração manual de ${formatMonthYear(snapshotToRestore.month)} e restaurar o valor gravado originalmente no fechamento oficial de mercado (${formatCentsAsBRL(numberToCents(snapshotToRestore.autoTotalValue))})?`
             : "Deseja restaurar o snapshot para o valor original do fechamento?"
         }
         confirmLabel="Restaurar Fechamento"
@@ -549,7 +187,6 @@ export function PortfolioSnapshotsDialog({
         }}
       />
 
-      {/* Modal de Calibração Manual Não Destrutiva */}
       <CalibrateSnapshotDialog
         open={snapshotToCalibrate !== null}
         onOpenChange={(isOpen) => {
@@ -557,6 +194,6 @@ export function PortfolioSnapshotsDialog({
         }}
         snapshot={snapshotToCalibrate}
       />
-    </Modal>
+    </>
   );
 }

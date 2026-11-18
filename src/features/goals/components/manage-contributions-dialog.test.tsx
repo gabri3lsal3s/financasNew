@@ -73,6 +73,8 @@ describe("ManageContributionsDialog", () => {
     expect(screen.getByText("Gestão de Arrecadações & Participantes")).toBeInTheDocument();
     expect(screen.getByText("Mariana")).toBeInTheDocument();
     expect(screen.getByText("Lucas")).toBeInTheDocument();
+    expect(screen.getByText("01/11/2026")).toBeInTheDocument();
+    expect(screen.getByText("02/11/2026")).toBeInTheDocument();
     expect(screen.getByText("2 depósitos")).toBeInTheDocument();
   });
 

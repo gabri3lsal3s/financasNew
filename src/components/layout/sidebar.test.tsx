@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { axe } from "vitest-axe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Sidebar } from "./sidebar";
+import * as scrollModule from "@/services/scroll";
 
 const { mockState, mockSub } = vi.hoisted(() => ({
   mockState: {
@@ -192,7 +193,8 @@ describe("Sidebar colapsável (F7.2)", () => {
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Acesso Rápido")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Segurança & Perfil/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Minha Conta & Perfil/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Segurança & Dados/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Aparência & Tema/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Sair da Conta/i })).toBeInTheDocument();
   });
@@ -255,6 +257,28 @@ describe("Sidebar colapsável (F7.2)", () => {
     renderSidebar();
     expect(screen.getByText("Teste Pro Ativo")).toBeInTheDocument();
     expect(screen.getByText("15d restantes")).toBeInTheDocument();
+    const upgradeBtn = screen.getByRole("button", { name: "Garantir Plano Pro" });
+    expect(upgradeBtn.className).not.toContain("hover:bg-primary-hover");
+    expect(upgradeBtn.className).not.toContain("shadow-2xs");
+  });
+
+  it("aciona scrollToTop ao clicar no link da rota já ativa", async () => {
+    const user = userEvent.setup();
+    const scrollSpy = vi.spyOn(scrollModule, "scrollToTop").mockReturnValue(true);
+    renderSidebar();
+
+    await user.click(screen.getByRole("link", { name: "Início" }));
+    expect(scrollSpy).toHaveBeenCalledTimes(1);
+    scrollSpy.mockRestore();
+  });
+
+  it("usa .pt-safe/.pb-safe e botão Recolher com cursor-pointer", () => {
+    const { container } = renderSidebar();
+    const aside = container.querySelector("aside");
+    expect(aside?.querySelector(".pt-safe")).toBeInTheDocument();
+    expect(aside?.querySelector(".pb-safe")).toBeInTheDocument();
+    const collapseBtn = screen.getByRole("button", { name: "Recolher menu lateral" });
+    expect(collapseBtn.className).toContain("cursor-pointer");
   });
 });
 

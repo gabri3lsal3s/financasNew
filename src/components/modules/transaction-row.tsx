@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "@/components/modules/category-icon";
 import { MoneyText, type MoneyTextProps } from "@/components/ui/money-text";
 import { usePrivacyMask } from "@/hooks/use-privacy-mask";
+import { triggerSensory } from "@/services/sensory";
 
 export interface TransactionRowProps {
   title: string;
@@ -90,10 +91,10 @@ export function TransactionRow({
   const content = (
     <div
       className={cn(
-        "flex w-full items-center gap-3 transition-colors",
+        "flex w-full items-center gap-3 transition-colors duration-150 min-h-12 sm:min-h-11",
         variant === "card"
-          ? "rounded-xl bg-surface px-2 py-2.5 sm:py-2"
-          : "bg-transparent px-3 sm:px-4 py-2.5 sm:py-2",
+          ? "rounded-xl bg-surface px-3 py-2.5 sm:px-3.5 sm:py-2"
+          : "bg-transparent px-3.5 py-2.5 sm:px-4 sm:py-2",
         onClick && (variant === "card" ? "cursor-pointer hover:bg-surface-hover" : "cursor-pointer hover:bg-surface-hover/60"),
         className,
       )}
@@ -136,7 +137,7 @@ export function TransactionRow({
         />
         {hasDifferentWeight && effectiveWeightedCents !== undefined ? (
           <span
-            className="text-[11px] text-muted-foreground font-mono inline-flex items-center gap-1"
+            className="text-[11px] text-muted-foreground inline-flex items-center gap-1"
             title="Valor nominal bruto cobrado integralmente; no relatório é considerado apenas o valor ponderado."
           >
             <span>Relat.:</span>
@@ -149,7 +150,17 @@ export function TransactionRow({
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="w-full text-left focus-visible:outline-none">
+      <button
+        type="button"
+        onClick={() => {
+          triggerSensory("selection");
+          onClick();
+        }}
+        className={cn(
+          "block w-full text-left cursor-pointer transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          variant === "card" ? "rounded-xl" : "focus-visible:ring-inset",
+        )}
+      >
         {content}
       </button>
     );

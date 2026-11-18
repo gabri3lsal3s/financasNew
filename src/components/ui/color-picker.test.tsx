@@ -73,13 +73,31 @@ describe("ColorPicker — seleção de cor (DESIGN_SYSTEM §13)", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it("limpa a cor pelo botão de limpar do trigger", async () => {
+  it("limpa a cor pelo botão de limpar irmão do trigger (sem aninhamento interativo)", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<ColorPicker value="#2A9D8F" onValueChange={onChange} ariaLabel="Cor" />);
 
-    await user.click(screen.getByRole("button", { name: "Limpar cor" }));
+    const triggerBtn = screen.getByRole("button", { name: "Cor" });
+    const clearBtn = screen.getByRole("button", { name: "Limpar cor" });
+    expect(triggerBtn.contains(clearBtn)).toBe(false);
 
+    await user.click(clearBtn);
     expect(onChange).toHaveBeenCalledWith("");
+  });
+
+  it("aplica contraste escuro no Check sobre swatch claro e claro sobre swatch escuro", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<ColorPicker value="#F3C352" onValueChange={() => undefined} ariaLabel="Cor" />);
+
+    await user.click(screen.getByRole("button", { name: "Cor" }));
+    const lightRadio = screen.getByRole("radio", { name: "Cor #F3C352" });
+    const lightCheck = lightRadio.querySelector("svg");
+    expect(lightCheck?.getAttribute("class")).toContain("text-foreground");
+
+    rerender(<ColorPicker value="#142531" onValueChange={() => undefined} ariaLabel="Cor" />);
+    const darkRadio = screen.getByRole("radio", { name: "Cor #142531" });
+    const darkCheck = darkRadio.querySelector("svg");
+    expect(darkCheck?.getAttribute("class")).toContain("text-surface");
   });
 });

@@ -66,4 +66,18 @@ describe("IconPicker — grade de ícones lucide (DESIGN_SYSTEM §13)", () => {
 
     expect(screen.getByText("Nenhum ícone encontrado.")).toBeInTheDocument();
   });
+
+  it("suporta navegação por setas no radiogroup de ícones", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<IconPicker value="moradia" onValueChange={onChange} options={OPTIONS} ariaLabel="Ícone" />);
+
+    await user.click(screen.getByRole("button", { name: "Ícone" }));
+    const firstRadio = screen.getByRole("radio", { name: "moradia" });
+    firstRadio.focus();
+
+    await user.keyboard("{ArrowRight}");
+    expect(onChange).toHaveBeenCalledWith("alimentacao");
+    expect(screen.getByRole("radio", { name: "alimentacao" })).toHaveFocus();
+  });
 });

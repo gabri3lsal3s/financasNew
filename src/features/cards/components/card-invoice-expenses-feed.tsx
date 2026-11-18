@@ -100,7 +100,7 @@ export function CardInvoiceExpensesFeed({
               </span>
             </div>
             {installments.length === 0 ? (
-              <div className="flex items-center justify-center rounded-xl border border-dashed border-border/80 bg-surface/50 py-5 px-4 text-center text-xs text-muted-foreground">
+              <div className="flex items-center justify-center rounded-xl border border-dashed border-border/80 bg-surface-raised/60 py-5 px-4 text-center text-xs text-muted-foreground">
                 Nenhuma compra parcelada nesta fatura.
               </div>
             ) : (
@@ -122,7 +122,7 @@ export function CardInvoiceExpensesFeed({
               </span>
             </div>
             {regular.length === 0 ? (
-              <div className="flex items-center justify-center rounded-xl border border-dashed border-border/80 bg-surface/50 py-5 px-4 text-center text-xs text-muted-foreground">
+              <div className="flex items-center justify-center rounded-xl border border-dashed border-border/80 bg-surface-raised/60 py-5 px-4 text-center text-xs text-muted-foreground">
                 Nenhuma compra à vista nesta fatura.
               </div>
             ) : (

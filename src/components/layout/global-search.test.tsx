@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { GlobalSearch } from "./global-search";
+import { setAppLocked } from "@/services/native";
 import type { SearchEntry } from "@/domain/search";
 
 const navigateMock = vi.fn();
@@ -76,6 +77,20 @@ vi.mock("@/state", () => ({
 }));
 
 describe("GlobalSearch (busca global ⌘K §3.9 & Fase 64)", () => {
+  afterEach(() => {
+    setAppLocked(false);
+  });
+
+  it("ignora atalhos Ctrl+K e / quando o aplicativo estiver bloqueado pelo AppLock", async () => {
+    const user = userEvent.setup();
+    setAppLocked(true);
+    render(<GlobalSearch />);
+
+    await user.keyboard("{Control>}k{/Control}");
+    await user.keyboard("/");
+    expect(screen.queryByPlaceholderText(/Buscar páginas, ações/)).not.toBeInTheDocument();
+  });
+
   it("abre pelo botão e pede ao menos 2 caracteres", async () => {
     const user = userEvent.setup();
     render(<GlobalSearch />);

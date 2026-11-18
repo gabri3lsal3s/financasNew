@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState, useMemo } from "react";
-import { NavLink, useNavigate } from "react-router";
-import { ChevronLeft, ChevronRight, Sparkles, BookOpen, ShieldCheck, AlertTriangle } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { navGroups, filterNavItems } from "@/components/layout/nav-items";
+import { Button } from "@/components/ui/button";
 import { useFamilyMode, useTripMode, useReminders, useUserAccess, useUserSubscription } from "@/state";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
-
+import { SidebarNavGroup } from "./sidebar-nav-group";
+import { SidebarSubscriptionCard } from "./sidebar-subscription-card";
 
 /** Atraso do hover-expand: evita disparos acidentais com mouse rápido (F25). */
 const HOVER_EXPAND_DELAY_MS = 120;
@@ -23,13 +23,7 @@ export interface SidebarProps {
 /**
  * Sidebar desktop colapsável (F7.2): expandida (w-64, logo + texto + ícones) ↔
  * compacta (w-20, apenas ícones centralizados com labels acessíveis via
- * aria-label/title). Transição nativa CSS (zero libs de animação) com suporte
- * a `prefers-reduced-motion`.
- *
- * F25 — Hover-expand em overlay: quando colapsada, passar o mouse expande a
- * sidebar por cima do conteúdo (fixed, sem deslocar a página) após um pequeno
- * atraso (anti-disparo acidental). O toggle manual continua sendo a fonte da
- * persistência (`useSidebarState`).
+ * aria-label/title) com hover-expand assistido (F25).
  */
 export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
@@ -40,7 +34,6 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { totalCount, urgentCount } = useReminders();
 
-  // A limpeza dos timers no unmount evita setState em componente desmontado.
   useEffect(() => {
     return () => {
       if (enterTimer.current !== null) clearTimeout(enterTimer.current);
@@ -53,7 +46,6 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       clearTimeout(leaveTimer.current);
       leaveTimer.current = null;
     }
-    // Só faz sentido expandir por hover se a sidebar estiver persistida colapsada.
     if (isCollapsed && !hoverExpanded) {
       enterTimer.current = setTimeout(() => setHoverExpanded(true), HOVER_EXPAND_DELAY_MS);
     }
@@ -64,7 +56,6 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       clearTimeout(enterTimer.current);
       enterTimer.current = null;
     }
-    // Pequeno atraso também na saída para evitar flicker ao cruzar bordas.
     leaveTimer.current = setTimeout(() => setHoverExpanded(false), HOVER_EXPAND_DELAY_MS);
   };
 
@@ -88,7 +79,6 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       .filter((g) => g.items.length > 0);
   }, [isAdmin, hasFeature, isFamilyActive, isTripActive]);
 
-
   return (
     <aside
       onMouseEnter={handleMouseEnter}
@@ -96,14 +86,12 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
       className={cn(
         "fixed inset-y-0 left-0 z-sidebar hidden flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out motion-reduce:transition-none lg:flex",
         expanded ? "w-64" : "w-20",
-        // Overlay por hover: sombra só quando flutuando sobre o conteúdo.
         hoverExpanded && isCollapsed && "shadow-2xl",
       )}
-
     >
       <div
         className={cn(
-          "flex shrink-0 items-center border-b border-border overflow-hidden pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]",
+          "pt-safe flex shrink-0 items-center border-b border-border overflow-hidden",
           expanded ? "px-4" : "justify-center px-2.5",
         )}
       >
@@ -121,216 +109,25 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
 
       <nav className="flex-1 space-y-4 overflow-y-auto p-2.5" aria-label="Navegação principal">
         {visibleGroups.map((group, groupIndex) => (
-          <div key={group.title} className="space-y-1">
-            {expanded ? (
-              <p className="px-3.5 pt-1 pb-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 animate-fade-slide-in">
-                {group.title}
-              </p>
-            ) : groupIndex > 0 ? (
-              <div className="my-2 mx-auto h-px w-8 bg-border/80" aria-hidden="true" />
-            ) : null}
-
-            {group.items.map((item) => {
-
-              const isReminders = item.path === "/lembretes";
-              const showBadge = isReminders && totalCount > 0;
-
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  end={item.path === "/"}
-                  aria-label={expanded ? undefined : item.label}
-                  title={expanded ? undefined : item.label}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap relative",
-                      !expanded && "justify-center px-2",
-                      isActive
-                        ? "bg-primary/12 text-primary-strong font-semibold"
-                        : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
-                    )
-                  }
-                >
-                  <div className="relative shrink-0">
-                    <item.icon className="size-5 shrink-0" aria-hidden="true" />
-                    {!expanded && showBadge && (
-                      <span
-                        className={cn(
-                          "absolute -top-1 -right-1 size-2 rounded-full ring-2 ring-surface",
-                          urgentCount > 0 ? "bg-critical" : "bg-primary",
-                        )}
-                      />
-                    )}
-                  </div>
-                  {expanded && (
-                    <div className="flex flex-1 items-center justify-between overflow-hidden animate-fade-slide-in">
-                      <span className="overflow-hidden truncate">{item.label}</span>
-                      {showBadge && (
-                        <Badge
-                          size="xs"
-                          variant={urgentCount > 0 ? "critical" : "default"}
-                          className="ml-auto h-5 min-w-5 px-1.5 font-bold"
-                        >
-                          {totalCount > 9 ? "9+" : totalCount}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                </NavLink>
-              );
-            })}
-          </div>
+          <SidebarNavGroup
+            key={group.title}
+            title={group.title}
+            items={group.items}
+            groupIndex={groupIndex}
+            expanded={expanded}
+            totalCount={totalCount}
+            urgentCount={urgentCount}
+          />
         ))}
       </nav>
 
-      {/* Bloco de Status do Plano: exibido apenas para pendências de pagamento */}
-      {isPaymentPending && !subscription.isReadOnly && expanded && (
-        <div className="shrink-0 mx-2.5 mb-2 rounded-xl border border-warning/30 bg-warning/10 p-2.5 flex items-center justify-between text-xs animate-fade-slide-in select-none">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="flex size-6 shrink-0 items-center justify-center rounded-lg bg-warning/20 border border-warning/30 text-warning-strong">
-              <AlertTriangle className="size-3.5" aria-hidden="true" />
-            </span>
-            <div className="flex flex-col min-w-0">
-              <span className="font-semibold text-foreground text-[11px] truncate">
-                Pagamento Pendente
-              </span>
-              <span className="text-[10px] text-muted-foreground truncate">
-                Regularize sua assinatura
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate("/configuracoes?tab=assinatura")}
-            title="Regularizar assinatura nas configurações"
-            className="text-[11px] font-medium text-warning-strong hover:underline transition-colors shrink-0 ml-2 cursor-pointer"
-          >
-            Regularizar
-          </button>
-        </div>
-      )}
-
-      {isPaymentPending && !subscription.isReadOnly && !expanded && (
-        <div className="shrink-0 flex justify-center mb-2">
-          <button
-            type="button"
-            onClick={() => navigate("/configuracoes?tab=assinatura")}
-            title="Pagamento Pendente · Clique para regularizar"
-            aria-label="Pagamento Pendente"
-            className="flex size-9 items-center justify-center rounded-xl border border-warning/30 bg-warning/10 text-warning-strong hover:bg-warning/20 transition-colors cursor-pointer"
-          >
-            <AlertTriangle className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      )}
-
-      {subscription.isTrial && subscription.trialDaysRemaining !== null && expanded && (
-        subscription.hasAutoRenew ? (
-          <div className="shrink-0 mx-2.5 mb-2 rounded-xl border border-positive/30 bg-positive/5 p-3 space-y-2 animate-fade-slide-in select-none">
-            <div className="flex items-center justify-between text-xs font-semibold">
-              <span className="flex items-center gap-1.5 text-positive-strong">
-                <ShieldCheck className="size-3.5" aria-hidden="true" />
-                Plano Pro Configurado
-              </span>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-snug">
-              Cobrança automática ativa no cartão. Degustação de {subscription.trialDaysRemaining}d restantes.
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate("/configuracoes?tab=assinatura")}
-              className="w-full h-7 rounded-lg border border-border/80 bg-surface hover:bg-muted/40 text-foreground text-xs font-medium active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1"
-            >
-              <span>Gerenciar Assinatura</span>
-            </button>
-          </div>
-        ) : (
-          <div className="shrink-0 mx-2.5 mb-2 rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2 animate-fade-slide-in select-none">
-            <div className="flex items-center justify-between text-xs font-semibold">
-              <span className="flex items-center gap-1.5 text-primary-strong">
-                <Sparkles className="size-3.5" aria-hidden="true" />
-                Teste Pro Ativo
-              </span>
-              <span className="text-[11px] text-muted-foreground tabular-nums">
-                {subscription.trialDaysRemaining}d restantes
-              </span>
-            </div>
-            <Progress
-              value={Math.min(100, Math.max(0, ((30 - subscription.trialDaysRemaining) / 30) * 100))}
-              tone="auto"
-              className="h-1.5"
-              aria-label={`Progresso do teste: ${30 - subscription.trialDaysRemaining} de 30 dias`}
-            />
-            <button
-              type="button"
-              onClick={() => setUpgradeOpen(true)}
-              className="w-full h-7 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
-            >
-              <span>Garantir Plano Pro</span>
-            </button>
-          </div>
-        )
-      )}
-
-      {subscription.isTrial && subscription.trialDaysRemaining !== null && !expanded && (
-        <div className="shrink-0 flex justify-center mb-2">
-          <button
-            type="button"
-            onClick={() => subscription.hasAutoRenew ? navigate("/configuracoes?tab=assinatura") : setUpgradeOpen(true)}
-            title={subscription.hasAutoRenew ? "Plano Pro ativo com cobrança automática" : `Teste Pro ativo: restam ${subscription.trialDaysRemaining} dias. Clique para garantir o Pro.`}
-            aria-label={subscription.hasAutoRenew ? "Plano Pro ativo com cobrança automática" : `Teste Pro ativo: restam ${subscription.trialDaysRemaining} dias`}
-            className={cn(
-              "flex size-9 items-center justify-center rounded-xl border transition-colors cursor-pointer",
-              subscription.hasAutoRenew
-                ? "border-positive/30 bg-positive/10 text-positive-strong hover:bg-positive/20"
-                : "border-primary/25 bg-primary/10 text-primary-strong hover:bg-primary/20"
-            )}
-          >
-            {subscription.hasAutoRenew ? (
-              <ShieldCheck className="size-4" aria-hidden="true" />
-            ) : (
-              <Sparkles className="size-4" aria-hidden="true" />
-            )}
-          </button>
-        </div>
-      )}
-
-      {subscription.isReadOnly && expanded && (
-        <div className="shrink-0 mx-2.5 mb-2 rounded-xl border border-warning/30 bg-warning/5 p-3 space-y-2 animate-fade-slide-in select-none">
-          <div className="flex items-center justify-between text-xs font-semibold">
-            <span className="flex items-center gap-1.5 text-warning-strong">
-              <BookOpen className="size-3.5" aria-hidden="true" />
-              Modo Leitura
-            </span>
-          </div>
-          <p className="text-[11px] text-muted-foreground leading-tight">
-            Seus dados estão salvos. Ative o Pro para voltar a lançar.
-          </p>
-          <button
-            type="button"
-            onClick={() => setUpgradeOpen(true)}
-            className="w-full h-7 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
-          >
-            <Sparkles className="size-3" aria-hidden="true" />
-            <span>Reativar Pro</span>
-          </button>
-        </div>
-      )}
-
-      {subscription.isReadOnly && !expanded && (
-        <div className="shrink-0 flex justify-center mb-2">
-          <button
-            type="button"
-            onClick={() => setUpgradeOpen(true)}
-            title="Modo somente-leitura ativo. Clique para reativar o Pro."
-            aria-label="Modo somente-leitura ativo"
-            className="flex size-9 items-center justify-center rounded-xl border border-warning/30 bg-warning/10 text-warning-strong hover:bg-warning/20 transition-colors cursor-pointer"
-          >
-            <BookOpen className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      )}
+      <SidebarSubscriptionCard
+        subscription={subscription}
+        expanded={expanded}
+        isPaymentPending={isPaymentPending}
+        onNavigateBilling={() => navigate("/configuracoes?tab=subscription")}
+        onOpenUpgrade={() => setUpgradeOpen(true)}
+      />
 
       <UpgradeDialog
         open={upgradeOpen}
@@ -341,27 +138,31 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
         }}
       />
 
-      <div className="shrink-0 border-t border-border p-2.5">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={expanded ? "Recolher menu lateral" : "Expandir menu lateral"}
-          className={cn(
-            "flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground overflow-hidden whitespace-nowrap",
-            !expanded && "justify-center px-2",
-          )}
-        >
-          {expanded ? (
-            <>
-              <ChevronLeft className="size-5 shrink-0" aria-hidden="true" />
-              <span className="overflow-hidden whitespace-nowrap animate-fade-slide-in">
-                Recolher
-              </span>
-            </>
-          ) : (
-            <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
-          )}
-        </button>
+      <div className="shrink-0 border-t border-border pb-safe">
+        <div className="p-2.5">
+          <Button
+            type="button"
+            variant="ghost"
+            sensoryIntent="selection"
+            onClick={onToggle}
+            aria-label={expanded ? "Recolher menu lateral" : "Expandir menu lateral"}
+            className={cn(
+              "flex w-full items-center justify-start gap-3 px-3.5 py-2.5 text-sm font-medium text-muted-foreground hover:bg-surface-hover hover:text-foreground overflow-hidden whitespace-nowrap cursor-pointer",
+              !expanded && "justify-center px-2",
+            )}
+          >
+            {expanded ? (
+              <>
+                <ChevronLeft className="size-5 shrink-0" aria-hidden="true" />
+                <span className="overflow-hidden whitespace-nowrap animate-fade-slide-in">
+                  Recolher
+                </span>
+              </>
+            ) : (
+              <ChevronRight className="size-5 shrink-0" aria-hidden="true" />
+            )}
+          </Button>
+        </div>
       </div>
     </aside>
   );

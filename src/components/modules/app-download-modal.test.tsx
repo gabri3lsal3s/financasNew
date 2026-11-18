@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppDownloadModal } from "./app-download-modal";
 import * as pwaInstallHook from "@/hooks/use-pwa-install";
+import * as appLinksService from "@/services/native/app-links";
 import * as platformService from "@/services/native/platform";
 
 describe("AppDownloadModal — Diálogo Unificado de Instalação e Download", () => {
@@ -20,9 +21,10 @@ describe("AppDownloadModal — Diálogo Unificado de Instalação e Download", (
     });
     vi.spyOn(platformService, "isIOSDevice").mockReturnValue(false);
     vi.spyOn(platformService, "isStandaloneDisplay").mockReturnValue(false);
+    vi.spyOn(appLinksService, "shouldOfferAndroidApk").mockReturnValue(true);
   });
 
-  it("renderiza opções de PWA e APK quando o usuário está no navegador tradicional", () => {
+  it("renderiza opções de PWA e APK quando elegível no navegador Android", () => {
     render(<AppDownloadModal open={true} onOpenChange={mockOnOpenChange} />);
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
@@ -31,6 +33,16 @@ describe("AppDownloadModal — Diálogo Unificado de Instalação e Download", (
     expect(screen.getByText("App Android Pro (APK)")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Instalar App Web/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Baixar APK/i })).toBeInTheDocument();
+  });
+
+  it("suprime o card e download de APK em Desktop ou iOS quando shouldOfferAndroidApk() é false", () => {
+    vi.spyOn(appLinksService, "shouldOfferAndroidApk").mockReturnValue(false);
+
+    render(<AppDownloadModal open={true} onOpenChange={mockOnOpenChange} />);
+
+    expect(screen.getByText("Aplicativo Web (PWA)")).toBeInTheDocument();
+    expect(screen.queryByText("App Android Pro (APK)")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Baixar APK/i })).not.toBeInTheDocument();
   });
 
   it("oculta a opção de PWA quando o usuário já está no PWA (modo standalone)", () => {
@@ -78,6 +90,7 @@ describe("AppDownloadModal — Diálogo Unificado de Instalação e Download", (
   it("exibe 'Como instalar no iOS' e abre o guia do Safari em dispositivos Apple", async () => {
     const user = userEvent.setup();
     vi.spyOn(platformService, "isIOSDevice").mockReturnValue(true);
+    vi.spyOn(appLinksService, "shouldOfferAndroidApk").mockReturnValue(false);
 
     render(<AppDownloadModal open={true} onOpenChange={mockOnOpenChange} />);
 

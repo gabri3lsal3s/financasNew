@@ -1,5 +1,5 @@
-import { MoneyInput, Select } from "@/components/ui";
-import { formatCentsAsBRL } from "@/services/masks";
+import { useId } from "react";
+import { FormField, MoneyInput, MoneyText, Select } from "@/components/ui";
 import { REPORT_WEIGHT_OPTIONS } from "./report-weight-constants";
 
 export interface ReportWeightFieldProps {
@@ -29,6 +29,8 @@ export function ReportWeightField({
   customLabel = "Sua cota considerada no relatório",
   ariaLabelCustom = "Valor considerado no relatório",
 }: ReportWeightFieldProps) {
+  const selectId = useId();
+  const customInputId = useId();
   const isSplit = mode !== "1";
   const effectiveCents =
     mode === "custom"
@@ -38,36 +40,48 @@ export function ReportWeightField({
         : valueCents;
 
   return (
-    <div className="flex flex-col gap-2">
-      <label className="flex flex-col gap-1.5 text-xs font-semibold text-foreground">
-        Sua Participação / Rateio
+    <div className="flex flex-col gap-2.5">
+      <FormField label="Sua Participação / Rateio" htmlFor={selectId}>
         <Select
+          id={selectId}
           value={mode}
           onValueChange={onModeChange}
           options={REPORT_WEIGHT_OPTIONS}
           ariaLabel="Sua Participação / Rateio"
         />
-      </label>
+      </FormField>
 
       {isSplit ? (
-        <div className="rounded-md border border-border/80 bg-surface px-2.5 py-2 text-[11px] text-muted-foreground">
-          <span className="font-medium text-foreground">Aviso de Rateio:</span> O valor bancário cobrado permanece 100% ({formatCentsAsBRL(valueCents)}). Nos relatórios e metas entrará apenas a sua cota de {formatCentsAsBRL(effectiveCents)}.
-        </div>
+        <p className="rounded-lg bg-muted/50 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+          <span className="font-medium text-foreground">Aviso de Rateio:</span> O valor bancário cobrado permanece 100% (
+          <MoneyText cents={valueCents} variant="caption" tone="default" className="text-[11px] font-medium" />
+          ). Nos relatórios e metas entrará apenas a sua cota de{" "}
+          <MoneyText cents={effectiveCents} variant="caption" tone="default" className="text-[11px] font-medium" />.
+        </p>
       ) : null}
 
       {mode === "custom" ? (
-        <div className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface-raised p-3">
-          <span className="text-xs font-semibold text-foreground">{customLabel}</span>
-          <MoneyInput
-            cents={customAmountCents}
-            onCentsChange={onCustomAmountChange}
-            aria-label={ariaLabelCustom}
-          />
-          {valueCents > 0 ? (
-            <span className="text-[11px] text-muted-foreground">
-              Equivale a {Math.round((customAmountCents / valueCents) * 100)}% do valor total cobrado ({formatCentsAsBRL(valueCents)}).
-            </span>
-          ) : null}
+        <div className="rounded-xl bg-surface-raised p-3">
+          <FormField
+            label={customLabel}
+            htmlFor={customInputId}
+            helperText={
+              valueCents > 0 ? (
+                <>
+                  Equivale a {Math.round((customAmountCents / valueCents) * 100)}% do valor total cobrado (
+                  <MoneyText cents={valueCents} variant="caption" tone="default" className="text-[11px] font-normal text-muted-foreground" />
+                  ).
+                </>
+              ) : undefined
+            }
+          >
+            <MoneyInput
+              id={customInputId}
+              cents={customAmountCents}
+              onCentsChange={onCustomAmountChange}
+              aria-label={ariaLabelCustom}
+            />
+          </FormField>
         </div>
       ) : null}
     </div>

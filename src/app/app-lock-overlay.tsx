@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { KeyRound, Lock, LogOut, ShieldCheck } from "lucide-react";
 import { Button, Input } from "@/components/ui";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,12 +13,14 @@ import {
   unlockAppWithPin,
 } from "@/services/native";
 
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"]):not([disabled])';
+
 /**
  * Escudo de bloqueio do aplicativo (App Lock).
  * Exibido quando o usuário retorna ao aplicativo após o tempo de tolerância
  * em segundo plano, exigindo autenticação biométrica (impressão digital ou rosto)
- * ou PIN numérico local de 4 a 6 dígitos como fallback quando a biometria falhar
- * ou não estiver disponível no hardware.
+ * ou PIN numérico local de 4 a 6 dígitos quando configurado.
  */
 export function AppLockOverlay() {
   const isLocked = useSyncExternalStore(subscribeAppLock, isAppLocked);
@@ -25,13 +28,20 @@ export function AppLockOverlay() {
   const userId = user?.id ?? null;
   const { signOut } = useSignOut();
 
+  const hasPinConfigured = userId ? isPinLockConfigured(userId) : isPinLockConfigured();
+
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [isPinMode, setIsPinMode] = useState(() => !isNativePlatform() && (userId ? isPinLockConfigured(userId) : isPinLockConfigured()));
+  const [isPinMode, setIsPinMode] = useState(
+    () => !isNativePlatform() && (userId ? isPinLockConfigured(userId) : isPinLockConfigured()),
+  );
   const [pinValue, setPinValue] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
 
+  const effectivePinMode = isPinMode && hasPinConfigured;
+
   const isAuthenticatingRef = useRef(false);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   const handleUnlock = useCallback(async () => {
     if (isAuthenticatingRef.current || isSigningOut) return;
@@ -39,16 +49,18 @@ export function AppLockOverlay() {
     setIsAuthenticating(true);
     try {
       const success = await unlockAppWithBiometrics();
-      if (!success) {
+      if (!success && hasPinConfigured) {
         setIsPinMode(true);
       }
     } catch {
-      setIsPinMode(true);
+      if (hasPinConfigured) {
+        setIsPinMode(true);
+      }
     } finally {
       isAuthenticatingRef.current = false;
       setIsAuthenticating(false);
     }
-  }, [isSigningOut]);
+  }, [hasPinConfigured, isSigningOut]);
 
   const handleUnlockPin = useCallback(async () => {
     if (pinValue.length < 4 || isAuthenticating || isSigningOut) return;
@@ -82,149 +94,242 @@ export function AppLockOverlay() {
 
   // Tenta acionar o prompt biométrico automaticamente ao travar
   useEffect(() => {
-    if (!isLocked || isPinMode) return;
+    if (!isLocked || effectivePinMode) return;
 
     const timer = setTimeout(() => {
       void handleUnlock();
     }, 150);
 
     return () => clearTimeout(timer);
-  }, [isLocked, isPinMode, handleUnlock]);
+  }, [isLocked, effectivePinMode, handleUnlock]);
+
+  // Aplica inert no #root e portais externos, implementa focus trap e restaura foco ao desbloquear
+  useEffect(() => {
+    if (!isLocked || typeof document === "undefined") return;
+
+    const previousFocused =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const inertTargets: HTMLElement[] = [];
+    const rootEl = document.getElementById("root");
+    if (rootEl && !rootEl.hasAttribute("inert")) {
+      rootEl.inert = true;
+      rootEl.setAttribute("inert", "");
+      inertTargets.push(rootEl);
+    }
+
+    const portalEls = document.querySelectorAll<HTMLElement>("[data-radix-portal]");
+    portalEls.forEach((el) => {
+      if (!el.hasAttribute("inert")) {
+        el.inert = true;
+        el.setAttribute("inert", "");
+        inertTargets.push(el);
+      }
+    });
+
+    // Move foco para o contêiner do overlay (sem autoFocus no input para evitar teclado intrusivo no mobile)
+    overlayRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const container = overlayRef.current;
+      if (!container) return;
+
+      const focusables = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      if (focusables.length === 0) {
+        event.preventDefault();
+        container.focus();
+        return;
+      }
+
+      const first = focusables[0]!;
+      const last = focusables[focusables.length - 1]!;
+      const active = document.activeElement as HTMLElement | null;
+
+      if (!active || !container.contains(active)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+        return;
+      }
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+      for (const el of inertTargets) {
+        el.inert = false;
+        el.removeAttribute("inert");
+      }
+      if (
+        previousFocused &&
+        previousFocused !== document.body &&
+        previousFocused.isConnected
+      ) {
+        previousFocused.focus();
+      }
+    };
+  }, [isLocked]);
 
   if (!isLocked) return null;
 
-  return (
+  const content = (
     <div
+      ref={overlayRef}
+      tabIndex={-1}
       role="alertdialog"
       data-lock-overlay="true"
       aria-modal="true"
       aria-label="Aplicativo Bloqueado"
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-md p-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-md pt-safe pb-safe outline-none animate-in fade-in duration-200"
     >
-      <div className="w-full max-w-sm rounded-2xl border border-border/80 bg-surface p-6 sm:p-8 text-center shadow-lg">
-        <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary-strong">
-          <ShieldCheck className="size-7" aria-hidden="true" />
-        </div>
+      <div className="flex h-full w-full items-center justify-center p-4">
+        <div className="w-full max-w-sm rounded-2xl border border-border/80 bg-surface p-6 sm:p-8 text-center shadow-lg">
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary-strong">
+            <ShieldCheck className="size-7" aria-hidden="true" />
+          </div>
 
-        <h2 className="text-lg font-bold tracking-tight text-foreground">
-          Axir
-        </h2>
-        <p className="mt-1 text-sm font-semibold text-muted-foreground">
-          Aplicativo Bloqueado
-        </p>
+          <h2 className="text-lg font-bold tracking-tight text-foreground">Axir</h2>
+          <p className="mt-1 text-sm font-semibold text-muted-foreground">Aplicativo Bloqueado</p>
 
-        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
-          {isPinMode
-            ? "Digite seu PIN local de 4 a 6 dígitos para desbloquear."
-            : "Por motivos de segurança, confirme sua biometria ou senha do dispositivo para acessar seus saldos e lançamentos."}
-        </p>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            {effectivePinMode
+              ? "Digite seu PIN local de 4 a 6 dígitos para desbloquear."
+              : "Por motivos de segurança, confirme sua biometria ou senha do dispositivo para acessar seus saldos e lançamentos."}
+          </p>
 
-        {isPinMode ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void handleUnlockPin();
-            }}
-            className="mt-6 space-y-3"
-          >
-            <div className="space-y-1 text-left">
-              <Input
-                type="password"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                value={pinValue}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "");
-                  setPinValue(val);
+          {effectivePinMode ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void handleUnlockPin();
+              }}
+              className="mt-6 space-y-3"
+            >
+              <div className="space-y-1 text-left">
+                <Input
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={pinValue}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
+                    setPinValue(val);
+                    setPinError(null);
+                  }}
+                  placeholder="PIN (4 a 6 dígitos)"
+                  aria-label="PIN de Acesso"
+                  className="text-center font-mono tracking-widest text-lg h-12"
+                  disabled={isAuthenticating || isSigningOut}
+                />
+                {pinError && (
+                  <p role="alert" className="text-xs text-critical-strong text-center font-medium mt-1">
+                    {pinError}
+                  </p>
+                )}
+              </div>
+
+              <Button
+                type="submit"
+                size="lg"
+                aria-label="Desbloquear com PIN"
+                disabled={pinValue.length < 4 || isAuthenticating || isSigningOut}
+                className="w-full gap-2"
+              >
+                <KeyRound className="size-4" aria-hidden="true" />
+                <span>{isAuthenticating ? "Verificando..." : "Desbloquear com PIN"}</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                sensoryIntent="selection"
+                aria-label="Usar Biometria"
+                onClick={() => {
+                  setIsPinMode(false);
                   setPinError(null);
                 }}
-                placeholder="PIN (4 a 6 dígitos)"
-                aria-label="PIN de Acesso"
-                className="text-center font-mono tracking-widest text-lg h-12"
                 disabled={isAuthenticating || isSigningOut}
-              />
-              {pinError && (
-                <p role="alert" className="text-xs text-destructive text-center font-medium mt-1">
-                  {pinError}
-                </p>
+                className="w-full gap-2 text-xs"
+              >
+                <Lock className="size-3.5" aria-hidden="true" />
+                <span>Usar Biometria</span>
+              </Button>
+            </form>
+          ) : (
+            <div className="mt-6 flex flex-col gap-2.5">
+              <Button
+                type="button"
+                size="lg"
+                aria-label="Desbloquear com Biometria"
+                onClick={handleUnlock}
+                disabled={isAuthenticating || isSigningOut}
+                className="w-full gap-2"
+              >
+                <Lock className="size-4" aria-hidden="true" />
+                <span>{isAuthenticating ? "Autenticando..." : "Desbloquear com Biometria"}</span>
+              </Button>
+
+              {hasPinConfigured && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  sensoryIntent="selection"
+                  aria-label="Usar PIN"
+                  onClick={() => {
+                    setIsPinMode(true);
+                    setPinError(null);
+                  }}
+                  disabled={isAuthenticating || isSigningOut}
+                  className="w-full gap-2 text-xs"
+                >
+                  <KeyRound className="size-3.5" aria-hidden="true" />
+                  <span>Usar PIN</span>
+                </Button>
               )}
             </div>
+          )}
 
-            <Button
-              type="submit"
-              size="lg"
-              aria-label="Desbloquear com PIN"
-              disabled={pinValue.length < 4 || isAuthenticating || isSigningOut}
-              className="w-full gap-2"
-            >
-              <KeyRound className="size-4" aria-hidden="true" />
-              <span>{isAuthenticating ? "Verificando..." : "Desbloquear com PIN"}</span>
-            </Button>
-
+          <div className="mt-3">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              aria-label="Usar Biometria"
-              onClick={() => {
-                setIsPinMode(false);
-                setPinError(null);
-              }}
+              sensoryIntent="destructive"
+              aria-label="Sair da conta e entrar com senha"
+              onClick={handleEmergencySignOut}
               disabled={isAuthenticating || isSigningOut}
-              className="w-full gap-2 text-xs"
+              className="w-full gap-2 text-xs text-muted-foreground hover:text-foreground"
             >
-              <Lock className="size-3.5" aria-hidden="true" />
-              <span>Usar Biometria</span>
-            </Button>
-          </form>
-        ) : (
-          <div className="mt-6 flex flex-col gap-2.5">
-            <Button
-              type="button"
-              size="lg"
-              aria-label="Desbloquear com Biometria"
-              onClick={handleUnlock}
-              disabled={isAuthenticating || isSigningOut}
-              className="w-full gap-2"
-            >
-              <Lock className="size-4" aria-hidden="true" />
-              <span>{isAuthenticating ? "Autenticando..." : "Desbloquear com Biometria"}</span>
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              aria-label="Usar PIN"
-              onClick={() => {
-                setIsPinMode(true);
-                setPinError(null);
-              }}
-              disabled={isAuthenticating || isSigningOut}
-              className="w-full gap-2 text-xs"
-            >
-              <KeyRound className="size-3.5" aria-hidden="true" />
-              <span>Usar PIN</span>
+              <LogOut className="size-3.5" aria-hidden="true" />
+              <span>{isSigningOut ? "Saindo..." : "Sair da conta e entrar com senha"}</span>
             </Button>
           </div>
-        )}
-
-        <div className="mt-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-label="Sair da conta e entrar com senha"
-            onClick={handleEmergencySignOut}
-            disabled={isAuthenticating || isSigningOut}
-            className="w-full gap-2 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <LogOut className="size-3.5" aria-hidden="true" />
-            <span>{isSigningOut ? "Saindo..." : "Sair da conta e entrar com senha"}</span>
-          </Button>
         </div>
       </div>
     </div>
   );
+
+  if (typeof document !== "undefined" && document.body) {
+    return createPortal(content, document.body);
+  }
+  return content;
 }

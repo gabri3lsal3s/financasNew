@@ -1,19 +1,13 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, Copy, QrCode, ShieldAlert } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Modal, ModalFooter } from "@/components/ui/modal";
-import { MoneyText } from "@/components/ui/money-text";
-import {
-  calculateHouseholdSettlement,
-  buildSettlementAuditSnapshot,
-} from "@/domain/family";
+import { CheckCircle2, ShieldAlert } from "lucide-react";
+import { Button, FormField, Input, Modal, ModalFooter, MoneyText } from "@/components/ui";
+import { buildSettlementAuditSnapshot, calculateHouseholdSettlement } from "@/domain/family";
 import { useRecordFamilySettlement } from "@/state";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { formatDateBR } from "@/lib/date";
+import { formatDateBR, monthLabel } from "@/lib/date";
 import type { FamilyConsolidationResult, FamilySettlementPaymentMethod } from "@/types";
+import { FamilySettlementTransferCard } from "./family-settlement-transfer-card";
 
 export interface FamilySettlementDialogProps {
   open: boolean;
@@ -22,11 +16,6 @@ export interface FamilySettlementDialogProps {
   currentUserId?: string;
 }
 
-/**
- * Diálogo de Acerto de Contas Familiar e Compensação via Pix (/familia).
- * Apura a compensação exata calculada pelo motor puro, gera o payload Pix Copia e Cola
- * e registra a liquidação auditada com snapshot imutável.
- */
 export function FamilySettlementDialog({
   open,
   onOpenChange,
@@ -80,6 +69,7 @@ export function FamilySettlementDialog({
           variant: "default",
         });
       } catch {
+        triggerSensory("error");
         pushToast({
           title: "Não foi possível copiar automaticamente.",
           description: "Selecione e copie manualmente o texto.",
@@ -112,19 +102,23 @@ export function FamilySettlementDialog({
       onOpenChange(false);
       setNotes("");
     } catch {
-      // Erro gerenciado globalmente pelo hook com sensory e toast
+      // Erro gerenciado pela mutation
     }
   };
+
+  const canRecord = Boolean(
+    primaryTransfer && (!consolidation.is_settled || consolidation.has_post_settlement_expenses),
+  );
 
   return (
     <Modal
       open={open}
       onOpenChange={onOpenChange}
       title="Acerto de Contas Familiar"
-      description={`Compensação e liquidação dos gastos de ${consolidation.month}.`}
+      description={`Compensação e liquidação dos gastos de ${monthLabel(consolidation.month)}.`}
       size="md"
       footer={
-        <ModalFooter>
+        <ModalFooter borderless>
           <Button
             type="button"
             variant="outline"
@@ -133,22 +127,22 @@ export function FamilySettlementDialog({
           >
             Fechar
           </Button>
-
-          {primaryTransfer && (!consolidation.is_settled || consolidation.has_post_settlement_expenses) ? (
+          {canRecord ? (
             <Button
               type="button"
               variant="default"
+              sensoryIntent={false}
               onClick={handleConfirmSettlement}
               disabled={recordSettlement.isPending}
+              loading={recordSettlement.isPending}
             >
-              {recordSettlement.isPending ? "Registrando..." : "Registrar Acerto Realizado"}
+              Registrar Acerto Realizado
             </Button>
           ) : null}
         </ModalFooter>
       }
     >
       <div className="space-y-4 py-1">
-        {/* Histórico do Acerto Existente (se houver) */}
         {consolidation.settlement && (
           <div className="p-3.5 rounded-xl border border-positive/25 bg-positive/10 space-y-1.5 text-xs">
             <div className="flex items-center gap-1.5 text-positive-strong font-semibold">
@@ -161,121 +155,37 @@ export function FamilySettlementDialog({
               <MoneyText
                 cents={consolidation.settlement.amount_cents}
                 tone="positive"
+                variant="caption"
                 className="font-bold"
               />{" "}
               em {formatDateBR(consolidation.settlement.settled_at.slice(0, 10))}.
             </p>
             {consolidation.settlement.notes && (
-              <p className="text-muted-foreground italic">
-                Obs: {consolidation.settlement.notes}
-              </p>
+              <p className="text-muted-foreground italic">Obs: {consolidation.settlement.notes}</p>
             )}
           </div>
         )}
 
-        {/* Alerta de Despesas Pós-Acerto */}
         {consolidation.has_post_settlement_expenses && (
           <div className="p-3 rounded-xl border border-warning/25 bg-warning/15 space-y-1 text-xs text-warning-strong flex items-start gap-2">
             <ShieldAlert className="size-4 shrink-0 mt-0.5" aria-hidden="true" />
             <div>
               <p className="font-semibold">Despesas adicionais pós-fechamento</p>
               <p className="text-muted-foreground">
-                Novos lançamentos foram detectados após a última liquidação. A compensação
-                complementar abaixo equilibra a nova diferença.
+                Novos lançamentos foram detectados após a última liquidação. A compensação complementar abaixo equilibra a nova diferença.
               </p>
             </div>
           </div>
         )}
 
-        {/* Detalhes da Transferência Proposta */}
         {primaryTransfer ? (
-          <div className="p-4 rounded-xl border border-border/80 bg-surface-muted/30 space-y-3.5">
-            <div>
-              <p className="text-xs font-semibold text-foreground">Proposta de Compensação</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                <span className="font-semibold text-foreground">{primaryTransfer.payer_name}</span>{" "}
-                deve transferir para{" "}
-                <span className="font-semibold text-foreground">{primaryTransfer.receiver_name}</span>
-              </p>
-            </div>
-
-            <div className="p-3 rounded-lg bg-surface border border-border/80 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground font-medium">Valor a compensar</span>
-              <MoneyText
-                cents={primaryTransfer.amount_cents}
-                tone="default"
-                className="text-lg font-bold text-foreground tabular-nums whitespace-nowrap"
-              />
-            </div>
-
-            {/* Chave Pix do Recebedor */}
-            {primaryTransfer.has_pix && primaryTransfer.pix_key ? (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-foreground">
-                    Chave Pix de {primaryTransfer.receiver_name}
-                  </label>
-                  {primaryTransfer.pix_key_type ? (
-                    <Badge variant="muted" size="xs">
-                      {primaryTransfer.pix_key_type}
-                    </Badge>
-                  ) : null}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Input
-                    readOnly
-                    value={primaryTransfer.pix_key}
-                    className="font-mono text-base sm:text-xs bg-surface h-9 select-all"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 shrink-0 gap-1.5"
-                    onClick={() => handleCopy(primaryTransfer.pix_key!, "Chave Pix")}
-                  >
-                    <Copy className="size-3.5" aria-hidden="true" />
-                    <span>Copiar</span>
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="p-2.5 rounded-lg border border-border/80 bg-surface text-xs text-muted-foreground">
-                {primaryTransfer.receiver_name} ainda não cadastrou uma Chave Pix nas configurações
-                da família. A transferência pode ser feita por outro canal acordado entre vocês.
-              </div>
-            )}
-
-            {/* Pix Copia e Cola Payload */}
-            {primaryTransfer.pix_payload && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <QrCode className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                  <span>Pix Copia e Cola (BR Code com valor exato)</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    readOnly
-                    value={primaryTransfer.pix_payload}
-                    className="font-mono text-base sm:text-xs bg-surface h-9 select-all truncate text-muted-foreground"
-                  />
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    className="h-9 shrink-0 gap-1.5"
-                    onClick={() => handleCopy(primaryTransfer.pix_payload!, "Código Pix")}
-                  >
-                    <Copy className="size-3.5" aria-hidden="true" />
-                    <span>Copiar Pix</span>
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+          <FamilySettlementTransferCard
+            transfer={primaryTransfer}
+            month={consolidation.month}
+            onCopy={handleCopy}
+          />
         ) : (
-          <div className="p-4 rounded-xl border border-border/80 bg-surface-muted/30 text-center space-y-1">
+          <div className="p-4 rounded-xl border border-border/80 bg-surface-raised text-center space-y-1">
             <p className="text-xs font-semibold text-foreground">Contas Equilibradas</p>
             <p className="text-xs text-muted-foreground">
               Não há valores pendentes de compensação entre os participantes para este mês.
@@ -283,20 +193,16 @@ export function FamilySettlementDialog({
           </div>
         )}
 
-        {/* Campo de Anotações Opcionais */}
-        {primaryTransfer && (!consolidation.is_settled || consolidation.has_post_settlement_expenses) ? (
-          <div className="space-y-1">
-            <label htmlFor="settlement-notes" className="text-xs font-semibold text-foreground">
-              Observações do acerto <span className="text-[11px] font-normal text-muted-foreground">(opcional)</span>
-            </label>
+        {canRecord ? (
+          <FormField label="Observações do acerto" optional htmlFor="settlement-notes">
             <Input
               id="settlement-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Ex.: Transferência realizada via Nubank"
-              className="h-9 text-base sm:text-sm"
+              className="h-10 text-base sm:text-sm"
             />
-          </div>
+          </FormField>
         ) : null}
       </div>
     </Modal>

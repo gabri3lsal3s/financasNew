@@ -1,4 +1,4 @@
-import { Bot, Bell, GitBranch, Rocket, Activity, UserPlus, VolumeX } from "lucide-react";
+import { Activity, Bell, Bot, GitBranch, Rocket, UserPlus, VolumeX } from "lucide-react";
 import { Badge, Button, Skeleton } from "@/components/ui";
 import {
   useAdminTelegramSettings,
@@ -62,11 +62,11 @@ export function TelegramSettingsCard() {
 
   return (
     <div className="rounded-2xl border border-border/80 bg-surface p-5 sm:p-6 shadow-xs space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/80 pb-3">
         <div className="flex items-center gap-2.5">
           <Bot className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <div>
-            <h3 className="text-sm font-bold text-foreground">Central de Alertas & Bot Telegram</h3>
+            <h3 className="text-sm font-bold text-foreground">Central de Alertas &amp; Bot Telegram</h3>
             <p className="text-xs text-muted-foreground">
               Configure quais eventos e relatórios operacionais o bot do fundador deve despachar.
             </p>
@@ -92,7 +92,7 @@ export function TelegramSettingsCard() {
             return (
               <div
                 key={key}
-                className="flex items-start justify-between gap-3 p-3.5 rounded-xl border border-border/80 bg-surface-subtle/40 hover:bg-surface-hover/20 transition-colors"
+                className="flex items-start justify-between gap-3 p-3.5 rounded-xl bg-surface-raised"
               >
                 <div className="flex items-start gap-3 min-w-0">
                   <Icon className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
@@ -108,6 +108,7 @@ export function TelegramSettingsCard() {
                   type="button"
                   variant={isEnabled ? "default" : "outline"}
                   size="xs"
+                  sensoryIntent="toggle"
                   onClick={() => handleToggle(key, isEnabled)}
                   disabled={updateMutation.isPending}
                   className="shrink-0 font-medium"

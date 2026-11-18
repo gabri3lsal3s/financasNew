@@ -86,7 +86,7 @@ describe("SplitOnboardingModal", () => {
     const openInAppBtn = screen.getByRole("button", { name: /Abrir despesa no aplicativo Axir instalado/i });
     await user.click(openInAppBtn);
 
-    expect(mockLocation.href).toBe("com.guiafinanceiro.app://r/tok12345?action=save");
+    expect(mockLocation.href).toBe("axir://r/tok12345?action=save");
     Object.defineProperty(window, "location", {
       value: originalLocation,
       writable: true,

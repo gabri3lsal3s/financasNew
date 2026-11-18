@@ -1,20 +1,18 @@
 import { useState } from "react";
 import {
-  Sparkles,
-  ShieldCheck,
+  BarChart3,
+  Calculator,
   CheckCircle2,
   CreditCard,
-  BarChart3,
   FileSpreadsheet,
-  TrendingUp,
-  ReceiptText,
-  Users,
-  Calculator,
   Landmark,
+  ReceiptText,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  Users,
 } from "lucide-react";
-import { Modal } from "@/components/ui/modal";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, Button, Modal, ModalFooter } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useUserSubscription } from "@/state";
 import type { SubscriptionPlan } from "@/types";
@@ -34,54 +32,55 @@ const BENEFITS = [
   {
     icon: ReceiptText,
     title: "Leitor OCR de Cupons & Notas Fiscais",
-    description: "Extração item a item de cupons NFC-e/SAT, boletos e comprovantes Pix sem digitação manual.",
+    description:
+      "Extração item a item de cupons NFC-e/SAT, boletos e comprovantes Pix sem digitação manual.",
   },
   {
     icon: CreditCard,
     title: "Multi-Cartões & Parcelas em até 60x",
-    description: "Controle do melhor dia de compra, fechamento e projeção detalhada de faturas futuras.",
+    description:
+      "Controle do melhor dia de compra, fechamento e projeção detalhada de faturas futuras.",
   },
   {
     icon: Landmark,
     title: "Previsibilidade & Safe-to-Spend Diário",
-    description: "Termômetro em tempo real do quanto pode gastar com segurança e Radar de Vencimentos.",
+    description:
+      "Termômetro em tempo real do quanto pode gastar com segurança e Radar de Vencimentos.",
   },
   {
     icon: Users,
     title: "Espaço Família & Viagens",
-    description: "Orçamentos colaborativos em casal com privacidade e racha de contas Pix via link público.",
+    description:
+      "Orçamentos colaborativos em casal com privacidade e racha de contas Pix via link público.",
   },
   {
     icon: Calculator,
     title: "Radar de Dívidas & Simuladores",
-    description: "Estratégias Bola de Neve e Avalanche com cálculo de amortização e economia de juros.",
+    description:
+      "Estratégias Bola de Neve e Avalanche com cálculo de amortização e economia de juros.",
   },
   {
     icon: TrendingUp,
     title: "Rebalanceamento de Carteira",
-    description: "Aportes matemáticos calculados diretamente para o déficit da meta sem gerar DARF.",
+    description:
+      "Aportes matemáticos calculados diretamente para o déficit da meta sem gerar DARF.",
   },
   {
     icon: BarChart3,
     title: "Radar Fiscal IR & DARF",
-    description: "Apuração automática de ganhos líquidos e emissão das guias de recolhimento de investimentos.",
+    description:
+      "Apuração automática de ganhos líquidos e emissão das guias de recolhimento de investimentos.",
   },
   {
     icon: FileSpreadsheet,
     title: "Dossiê Executivo Contábil (.xlsx)",
-    description: "Exportação completa em planilha auditada de 5 abas pronta para o seu contador.",
+    description:
+      "Exportação completa em planilha auditada de 5 abas pronta para o seu contador.",
   },
 ] as const;
 
 /**
- * Diálogo de upgrade / paywall com valor integral das novas funcionalidades.
- *
- * Exibido quando:
- * - O usuário clica no badge/pílula de status no Header ou na Sidebar.
- * - O banner do carrossel da Home ou aba de configurações aciona o upgrade.
- * - O hook useMutationGuard intercepta uma escrita em modo somente-leitura.
- *
- * Regras: zero emojis, zero controles nativos, moeda com `whitespace-nowrap` (AGENTS.md).
+ * Diálogo de upgrade / paywall com valor integral das funcionalidades Pro.
  */
 export function UpgradeDialog({
   open,
@@ -94,7 +93,6 @@ export function UpgradeDialog({
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>("annual");
 
   const isAnnual = selectedPlan === "annual";
-
   const monthlyPrice = "R$\u00a019,99";
   const annualMonthlyPrice = "R$\u00a011,99";
   const annualTotalPrice = "R$\u00a0143,88";
@@ -115,30 +113,27 @@ export function UpgradeDialog({
       }
       size="xl"
       footer={
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 w-full">
+        <ModalFooter borderless>
           <Button
             type="button"
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="w-full sm:w-auto text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+            className="text-xs text-muted-foreground hover:text-foreground"
           >
             Agora não
           </Button>
           <Button
             type="button"
-            onClick={() => {
-              onProceedToCheckout(selectedPlan);
-            }}
-            className="w-full sm:w-auto gap-2 font-semibold cursor-pointer"
+            onClick={() => onProceedToCheckout(selectedPlan)}
+            className="gap-2 font-semibold"
           >
             <Sparkles className="size-4 shrink-0" aria-hidden="true" />
             <span className="sm:hidden">Continuar</span>
             <span className="hidden sm:inline">Continuar para Pagamento Seguro</span>
           </Button>
-        </div>
+        </ModalFooter>
       }
     >
-      {/* Alternador de periodicidade */}
       <div className="mt-4 flex items-center justify-center">
         <div className="inline-flex items-center gap-1 rounded-xl border border-border/80 bg-muted/40 p-1">
           <button
@@ -171,7 +166,6 @@ export function UpgradeDialog({
         </div>
       </div>
 
-      {/* Card de preço e economia */}
       <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
           <div className="flex items-baseline gap-1.5">
@@ -208,21 +202,18 @@ export function UpgradeDialog({
         )}
       </div>
 
-      {/* Lista de benefícios atualizada com as novas funcionalidades */}
       <ul className="mt-5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {BENEFITS.map((benefit) => (
           <li
             key={benefit.title}
-            className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface p-3 shadow-2xs"
+            className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface p-3 shadow-xs"
           >
             <CheckCircle2
               className="mt-0.5 size-4 shrink-0 text-positive-strong"
               aria-hidden="true"
             />
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-foreground">
-                {benefit.title}
-              </p>
+              <p className="text-xs font-semibold text-foreground">{benefit.title}</p>
               <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug">
                 {benefit.description}
               </p>
@@ -231,12 +222,11 @@ export function UpgradeDialog({
         ))}
       </ul>
 
-      {/* Garantia e Confiança */}
       <div className="mt-4 flex items-start gap-2.5 rounded-lg bg-muted/40 p-3">
         <ShieldCheck className="size-4 shrink-0 text-positive-strong mt-0.5" aria-hidden="true" />
         <div className="min-w-0 text-xs text-muted-foreground space-y-0.5">
           <p className="font-semibold text-foreground">
-            Garantia legal de 7 dias com estorno integral • Seus dados nunca são excluídos
+            Garantia legal de 7 dias com estorno integral — Seus dados nunca são excluídos
           </p>
           <p className="text-[11px] leading-relaxed">
             Garantia incondicional (CDC Art. 49). Se optar por não continuar, seu histórico permanece acessível para consulta vitalícia. Cancelamento em 1 clique.
@@ -246,4 +236,3 @@ export function UpgradeDialog({
     </Modal>
   );
 }
-

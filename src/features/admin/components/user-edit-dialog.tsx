@@ -1,39 +1,31 @@
-import { useState, useMemo } from "react";
-import type { FormEvent } from "react";
-import { Check, Copy, Crown, Eye, EyeOff, KeyRound, LogOut, MessageCircle, Phone, RotateCcw, Shield, ShieldAlert, ShieldOff, Sparkles, Trash2, TrendingUp, UserCheck, X } from "lucide-react";
-import { Alert, Badge, Button, ConfirmDialog, Input, Modal, ModalFooter, Select } from "@/components/ui";
-import {
-  ROLE_LABELS,
-  STATUS_LABELS,
-  canManageRole,
-  canManageUserStatus,
-} from "@/domain/admin";
+import { useMemo, useState, type FormEvent } from "react";
+import { UserCheck } from "lucide-react";
+import { Button, ConfirmDialog, Modal, ModalFooter } from "@/components/ui";
+import { canManageRole, canManageUserStatus } from "@/domain/admin";
 import { useAuth } from "@/hooks/use-auth";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
   useAdminDeleteUser,
-  useAdminGenerateRecoveryLink,
   useAdminRemoveUserModulePermission,
-  useAdminResetMFA,
-  useAdminRevokeSessions,
   useAdminSetUserModulePermission,
   useAdminSetUserRole,
   useAdminSetUserSubscription,
   useAdminUpdateUserStatus,
-  useAdminUserContact,
   useAdminUserModulePermissions,
   useAdminUserSubscription,
   useUserAccess,
 } from "@/state";
-import type {
-  AdminUserRow,
-  ModuleAccessLevel,
-  SubscriptionTier,
-  UserModulePermission,
-  UserRole,
-  UserStatus,
-} from "@/types";
+import type { AdminUserRow, ModuleAccessLevel, SubscriptionTier, UserModulePermission, UserRole, UserStatus } from "@/types";
+import {
+  CORE_MODULES,
+  INVESTMENT_ONLY_PRESET,
+  UserAccountStatusSection,
+  UserModulePermissionsMatrix,
+  UserPiiAuditVaultCard,
+  UserSaasPlanSection,
+  UserSuperadminSupportActions,
+} from "./user-edit";
 
 export interface UserEditDialogProps {
   user: AdminUserRow | null;
@@ -41,250 +33,99 @@ export interface UserEditDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const CORE_MODULES = [
-  { key: "overview", label: "Painel Início (Visão Geral)", desc: "Dashboard consolidado, KPIs e fluxo financeiro" },
-  { key: "transactions", label: "Transações & Extrato", desc: "Receitas, despesas e lançamentos" },
-  { key: "cards", label: "Cartões de Crédito", desc: "Faturas, limites e carteira" },
-  { key: "debts", label: "Dívidas & Empréstimos", desc: "Contas a pagar, receber e contratos" },
-  { key: "budgets", label: "Orçamentos & Metas", desc: "Limites de gastos e metas de renda" },
-  { key: "investments", label: "Investimentos & Carteira", desc: "Posição, proventos e rebalanceamento" },
-  { key: "reports", label: "Relatórios Executivos", desc: "DRE, balanço e informes fiscais" },
-  { key: "insights", label: "Inteligência & Insights", desc: "Diagnósticos e recomendações" },
-  { key: "reminders", label: "Central de Lembretes", desc: "Vencimentos e avisos de contas" },
-] as const;
-
-const BETA_MODULES = [
-  { key: "bank_notification_listener", label: "Notificações Bancárias (Beta)", desc: "Captura passiva de compras e Pix no Android nativo" },
-] as const;
-
+/** Diálogo administrativo de edição completa de usuário, plano, permissões e suporte. */
 export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps) {
+  if (!user) return null;
+  return <UserEditDialogContent key={user.id} user={user} open={open} onOpenChange={onOpenChange} />;
+}
+
+function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRow; open: boolean; onOpenChange: (open: boolean) => void }) {
   const { user: authUser } = useAuth();
   const { role: currentUserRole, profile: currentProfile } = useUserAccess();
   const updateStatusMutation = useAdminUpdateUserStatus();
   const setRoleMutation = useAdminSetUserRole();
   const deleteUserMutation = useAdminDeleteUser();
-
-  // Subscriptions & Modular Access
-  const subscriptionQuery = useAdminUserSubscription(user?.id);
-  const modulePermissionsQuery = useAdminUserModulePermissions(user?.id);
+  const subscriptionQuery = useAdminUserSubscription(user.id);
+  const modulePermissionsQuery = useAdminUserModulePermissions(user.id);
   const setSubscriptionMutation = useAdminSetUserSubscription();
   const setModulePermissionMutation = useAdminSetUserModulePermission();
   const removeModulePermissionMutation = useAdminRemoveUserModulePermission();
 
-  const [status, setStatus] = useState<UserStatus>((user?.status as UserStatus) || "active");
-  const [role, setRole] = useState<UserRole>((user?.role as UserRole) || "user");
-  const [reason, setReason] = useState(user?.suspended_reason || "");
+  const [status, setStatus] = useState<UserStatus>((user.status as UserStatus) || "active");
+  const [role, setRole] = useState<UserRole>((user.role as UserRole) || "user");
+  const [reason, setReason] = useState(user.suspended_reason || "");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [revealContact, setRevealContact] = useState(false);
-
-  const contactQuery = useAdminUserContact(user?.id, revealContact);
-
-  // Local state for subscription editing overrides
   const [overrideTier, setOverrideTier] = useState<SubscriptionTier | null>(null);
   const [overridePlanId, setOverridePlanId] = useState<string | null>(null);
   const [overrideSubStatus, setOverrideSubStatus] = useState<string | null>(null);
+  const [isQuickActionPending, setIsQuickActionPending] = useState(false);
+  const [prevKey, setPrevKey] = useState(`${open}:${user.id}`);
+
+  if (prevKey !== `${open}:${user.id}`) {
+    setPrevKey(`${open}:${user.id}`);
+    setStatus((user.status as UserStatus) || "active");
+    setRole((user.role as UserRole) || "user");
+    setReason(user.suspended_reason || "");
+    setRevealContact(false);
+    setOverrideTier(null);
+    setOverridePlanId(null);
+    setOverrideSubStatus(null);
+    setIsDeleteDialogOpen(false);
+  }
 
   const effectiveTier = overrideTier ?? subscriptionQuery.data?.tier ?? "trial";
   const effectivePlanId = overridePlanId ?? subscriptionQuery.data?.plan_id ?? "trial";
   const effectiveSubStatus = overrideSubStatus ?? subscriptionQuery.data?.status ?? "active";
-
-  const userModulePermissions = useMemo(
-    () => modulePermissionsQuery.data ?? [],
-    [modulePermissionsQuery.data],
-  );
-  const hasAnyModuleOverride = userModulePermissions.length > 0;
-  const [isQuickActionPending, setIsQuickActionPending] = useState(false);
-
-  const coreOverrides = useMemo(
-    () =>
-      userModulePermissions.filter((p) =>
-        CORE_MODULES.some((c) => c.key === p.module_key),
-      ),
-    [userModulePermissions],
-  );
-  const hasCoreOverrides = coreOverrides.length > 0;
-
-  // Derivação responsiva em tempo real conforme os selects do formulário
-  const isPlanActive = effectiveSubStatus === "active" || effectiveSubStatus === "trialing";
-  const planDefaultLevel: ModuleAccessLevel = isPlanActive ? "write" : "read";
-  const planStatusLabel =
-    effectiveSubStatus === "active"
-      ? "Plano Ativo"
-      : effectiveSubStatus === "trialing"
-        ? "Trial Vigente"
-        : effectiveSubStatus === "past_due"
-          ? "Inadimplente"
-          : effectiveSubStatus === "canceled"
-            ? "Cancelada"
-            : effectiveSubStatus === "read_only_expired"
-              ? "Expirado"
-              : effectiveSubStatus;
-
+  const userModulePermissions = useMemo(() => modulePermissionsQuery.data ?? [], [modulePermissionsQuery.data]);
+  const coreOverrides = useMemo(() => userModulePermissions.filter((p) => CORE_MODULES.some((c) => c.key === p.module_key)), [userModulePermissions]);
   const modulePermissionsMap = useMemo(() => {
     const map = new Map<string, UserModulePermission>();
-    for (const p of userModulePermissions) {
-      map.set(p.module_key, p);
-    }
+    for (const p of userModulePermissions) map.set(p.module_key, p);
     return map;
   }, [userModulePermissions]);
-
-  // Superadmin Support Actions
-  const resetMfaMutation = useAdminResetMFA();
-  const revokeSessionsMutation = useAdminRevokeSessions();
-  const generateRecoveryMutation = useAdminGenerateRecoveryLink();
-
-  const [isResetMfaOpen, setIsResetMfaOpen] = useState(false);
-  const [isRevokeSessionsOpen, setIsRevokeSessionsOpen] = useState(false);
-  const [generatedRecoveryLink, setGeneratedRecoveryLink] = useState<string | null>(null);
-  const [hasCopiedRecoveryLink, setHasCopiedRecoveryLink] = useState(false);
-
-  if (!user) return null;
 
   const targetRole = user.role as UserRole;
   const isSuperadminActor = currentUserRole === "superadmin";
   const isSelf = user.id === authUser?.id || user.id === currentProfile?.id;
-  const canDeleteUser = isSuperadminActor && !isSelf;
   const canEditStatus = canManageUserStatus(currentUserRole, targetRole);
   const canEditRole = canManageRole(currentUserRole, targetRole);
+  const displayName = user.name || user.email;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-
     try {
       if (status !== user.status && canEditStatus) {
-        await updateStatusMutation.mutateAsync({
-          userId: user.id,
-          status,
-          reason: reason.trim() ? reason.trim() : null,
-        });
+        await updateStatusMutation.mutateAsync({ userId: user.id, status, reason: reason.trim() || null });
       }
-
-      if (role !== user.role && canEditRole) {
-        await setRoleMutation.mutateAsync({
-          userId: user.id,
-          role,
-        });
-      }
-
+      if (role !== user.role && canEditRole) await setRoleMutation.mutateAsync({ userId: user.id, role });
       triggerSensory("success");
-      pushToast({
-        title: "Usuário atualizado",
-        description: `Status e privilégios de ${user.name || user.email} salvos com sucesso.`,
-      });
-
+      pushToast({ title: "Usuário atualizado", description: `Status e privilégios de ${displayName} salvos com sucesso.` });
       onOpenChange(false);
     } catch {
       triggerSensory("destructive");
-      // Erros tratados nos hooks
     }
   };
 
   const handleSaveSubscription = async () => {
     try {
-      await setSubscriptionMutation.mutateAsync({
-        userId: user.id,
-        planId: effectivePlanId,
-        tier: effectiveTier,
-        status: effectiveSubStatus,
-      });
-
-      // Se houver overrides em módulos do core, limpa no cliente para sincronização imediata
+      await setSubscriptionMutation.mutateAsync({ userId: user.id, planId: effectivePlanId, tier: effectiveTier, status: effectiveSubStatus });
       if (coreOverrides.length > 0) {
-        await Promise.all(
-          coreOverrides.map((p) =>
-            removeModulePermissionMutation.mutateAsync({
-              userId: user.id,
-              moduleKey: p.module_key,
-            }),
-          ),
-        );
+        await Promise.all(coreOverrides.map((p) => removeModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey: p.module_key })));
       }
-
       triggerSensory("success");
-      pushToast({
-        title: "Plano SaaS atualizado",
-        description: `Assinatura de ${user.name || user.email} atualizada para ${effectiveTier}. Permissões atualizadas automaticamente.`,
-      });
+      pushToast({ title: "Plano SaaS atualizado", description: `Assinatura de ${displayName} atualizada para ${effectiveTier}. Permissões atualizadas automaticamente.` });
     } catch {
       triggerSensory("destructive");
     }
   };
 
-  const handleSetModulePermission = async (moduleKey: string, accessLevel: ModuleAccessLevel) => {
-    await setModulePermissionMutation.mutateAsync({
-      userId: user.id,
-      moduleKey,
-      accessLevel,
-    });
-  };
-
-  const handleRemoveModulePermission = async (moduleKey: string) => {
-    await removeModulePermissionMutation.mutateAsync({
-      userId: user.id,
-      moduleKey,
-    });
-  };
-
-  const handleQuickOnlyInvestments = async () => {
-    if (!user) return;
+  const runQuickPreset = async (fn: () => Promise<unknown>, title: string, description: string) => {
     setIsQuickActionPending(true);
     try {
-      // Configura Apenas Investimentos:
-      // 1. investments = write (acesso total à carteira de investimentos)
-      // 2. reports = write (acesso aos relatórios exclusivos de investimentos)
-      // 3. Módulos financeiros de despesas = none (restringindo despesas, modo viagem e familiar)
-      const investmentPreset: Array<{ moduleKey: string; accessLevel: ModuleAccessLevel }> = [
-        { moduleKey: "investments", accessLevel: "write" },
-        { moduleKey: "reports", accessLevel: "write" },
-        { moduleKey: "overview", accessLevel: "none" },
-        { moduleKey: "transactions", accessLevel: "none" },
-        { moduleKey: "cards", accessLevel: "none" },
-        { moduleKey: "debts", accessLevel: "none" },
-        { moduleKey: "budgets", accessLevel: "none" },
-        { moduleKey: "reminders", accessLevel: "none" },
-        { moduleKey: "bank_notification_listener", accessLevel: "none" },
-      ];
-
-      await Promise.all(
-        investmentPreset.map((item) =>
-          setModulePermissionMutation.mutateAsync({
-            userId: user.id,
-            moduleKey: item.moduleKey,
-            accessLevel: item.accessLevel,
-          }),
-        ),
-      );
-
+      await fn();
       triggerSensory("success");
-      pushToast({
-        title: "Apenas Investimentos configurado",
-        description: `Usuário ${user.name || user.email} configurado em Apenas Investimentos. Modo Viagem e Familiar restritos; relatórios de carteira liberados.`,
-      });
-    } catch {
-      triggerSensory("destructive");
-    } finally {
-      setIsQuickActionPending(false);
-    }
-  };
-
-  const handleQuickRestorePlanDefaults = async () => {
-    if (!user || userModulePermissions.length === 0) return;
-    setIsQuickActionPending(true);
-    try {
-      await Promise.all(
-        userModulePermissions.map((p) =>
-          removeModulePermissionMutation.mutateAsync({
-            userId: user.id,
-            moduleKey: p.module_key,
-          }),
-        ),
-      );
-
-      triggerSensory("success");
-      pushToast({
-        title: "Padrão do plano restaurado",
-        description: `Todas as permissões modulares de ${user.name || user.email} foram restauradas ao plano base.`,
-      });
+      pushToast({ title, description });
     } catch {
       triggerSensory("destructive");
     } finally {
@@ -297,712 +138,62 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
       open={open}
       onOpenChange={onOpenChange}
       title="Gerenciar Usuário"
-      description={`Configurações de plano SaaS, permissões modulares e status da conta para ${user.name || user.email}.`}
+      description={`Configurações de plano SaaS, permissões modulares e status da conta para ${displayName}.`}
       size="lg"
-    >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {/* Identificação Básica & Contato Protegido (LGPD) */}
-        <div className="rounded-xl border border-border/80 bg-surface-hover/30 p-3.5 flex flex-col gap-2 text-xs">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Nome:</span>
-            <span className="font-semibold text-foreground">{user.name || "Não informado"}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">E-mail:</span>
-            <span className="font-mono text-foreground">{user.email}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Cadastrado em:</span>
-            <span className="text-foreground">{new Date(user.created_at).toLocaleDateString("pt-BR")}</span>
-          </div>
-
-          {/* Seção de Contato e CPF Auditado (LGPD) */}
-          <div className="pt-2 border-t border-border/80 flex flex-col gap-2">
-            {!revealContact ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  triggerSensory("action");
-                  setRevealContact(true);
-                }}
-                className="w-full justify-center gap-1.5 text-xs min-h-[34px] h-auto py-1.5 px-3 border-dashed whitespace-normal text-center"
-              >
-                <Eye className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
-                <span>Revelar Contatos e CPF (Auditoria LGPD)</span>
-              </Button>
-            ) : contactQuery.isLoading ? (
-              <div className="text-[11px] text-muted-foreground animate-pulse py-1">
-                Consultando dados seguros no cofre e registrando auditoria…
-              </div>
-            ) : (
-              <div className="flex flex-col gap-1.5 bg-surface p-2.5 rounded-lg border border-border/60">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Phone className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    <span className="text-muted-foreground">Telefone/WhatsApp:</span>
-                  </div>
-                  {contactQuery.data?.phone ? (
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-semibold text-foreground">{contactQuery.data.phone}</span>
-                      <a
-                        href={`https://wa.me/55${contactQuery.data.phone.replace(/\D/g, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-positive-strong hover:underline"
-                      >
-                        <MessageCircle className="size-3" aria-hidden="true" />
-                        <span>Conversar</span>
-                      </a>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground italic">Não cadastrado</span>
-                  )}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Shield className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    <span className="text-muted-foreground">CPF do Titular:</span>
-                  </div>
-                  <span className="font-mono text-foreground">
-                    {contactQuery.data?.cpf || contactQuery.data?.masked_cpf || "Não informado"}
-                  </span>
-                </div>
-
-                <div className="pt-1 flex items-center justify-between text-[10px] text-muted-foreground border-t border-border/40">
-                  <span className="text-positive-strong">Trilha de auditoria registrada</span>
-                  <button
-                    type="button"
-                    onClick={() => setRevealContact(false)}
-                    className="hover:text-foreground inline-flex items-center gap-1"
-                  >
-                    <EyeOff className="size-2.5" aria-hidden="true" />
-                    <span>Ocultar</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Gestão de Plano & Assinatura SaaS */}
-        <div className="flex flex-col gap-3 p-4 rounded-xl border border-border/80 bg-surface/80 shadow-2xs">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Crown className="size-4 text-portfolio" aria-hidden="true" />
-              <span className="text-xs font-bold text-foreground">
-                Plano SaaS &amp; Assinatura
-              </span>
-            </div>
-            {subscriptionQuery.data?.tier === "lifetime" ? (
-              <Badge variant="portfolio" size="xs" className="gap-1">
-                <Sparkles className="size-3" aria-hidden="true" />
-                Vitalício VIP
-              </Badge>
-            ) : (
-              <Badge variant="muted" size="xs">
-                Tier: {subscriptionQuery.data?.tier || "trial"}
-              </Badge>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="target-tier" className="text-xs font-semibold text-foreground">
-                Tier de Assinatura
-              </label>
-              <Select
-                value={effectiveTier}
-                onValueChange={(val) => {
-                  const newTier = val as SubscriptionTier;
-                  setOverrideTier(newTier);
-                  if (newTier === "lifetime") setOverridePlanId("lifetime");
-                  else if (newTier === "pro_monthly") setOverridePlanId("pro_monthly");
-                  else if (newTier === "pro_annual") setOverridePlanId("pro_annual");
-                  else if (newTier === "trial" || newTier === "read_only") setOverridePlanId("trial");
-                }}
-                options={[
-                  { value: "trial", label: "Trial Pro (Período de Teste)" },
-                  { value: "lifetime", label: "Plano Vitalício VIP" },
-                  { value: "pro_annual", label: "Pro Anual" },
-                  { value: "pro_monthly", label: "Pro Mensal" },
-                  { value: "read_only", label: "Somente Leitura (Expirado)" },
-                ]}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label htmlFor="target-sub-status" className="text-xs font-semibold text-foreground">
-                Status da Assinatura
-              </label>
-              <Select
-                value={effectiveSubStatus}
-                onValueChange={(val) => setOverrideSubStatus(val)}
-                options={[
-                  { value: "active", label: "Ativa (active)" },
-                  { value: "trialing", label: "Em Teste (trialing)" },
-                  { value: "past_due", label: "Inadimplente (past_due)" },
-                  { value: "canceled", label: "Cancelada (canceled)" },
-                  { value: "read_only_expired", label: "Modo Leitura (read_only_expired)" },
-                ]}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end pt-2 border-t border-border/80">
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              onClick={handleSaveSubscription}
-              disabled={setSubscriptionMutation.isPending}
-              className="gap-1.5 text-xs h-8 px-3"
-            >
-              <Crown className="size-3.5" aria-hidden="true" />
-              {setSubscriptionMutation.isPending ? "Salvando…" : "Atualizar Plano / Tier"}
-            </Button>
-          </div>
-        </div>
-
-        {/* Permissões Modulares Granulares */}
-        <div className="flex flex-col gap-3 pt-2 border-t border-border">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-semibold text-foreground">
-                Permissões Modulares Granulares
-              </span>
-              <span className="text-[11px] text-muted-foreground">
-                Módulos do plano base derivam permissões automaticamente do plano selecionado. Funcionalidades beta são concedidas seletivamente.
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleQuickOnlyInvestments}
-                disabled={
-                  isQuickActionPending ||
-                  setModulePermissionMutation.isPending ||
-                  removeModulePermissionMutation.isPending
-                }
-                className="gap-1.5 text-xs h-7 px-2.5 text-portfolio-strong border-portfolio/30 hover:bg-portfolio/10"
-                title="Configurar acesso exclusivo a Investimentos"
-              >
-                <TrendingUp className="size-3.5" aria-hidden="true" />
-                <span>Apenas Investimentos</span>
-              </Button>
-
-              {hasAnyModuleOverride && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleQuickRestorePlanDefaults}
-                  disabled={
-                    isQuickActionPending ||
-                    setModulePermissionMutation.isPending ||
-                    removeModulePermissionMutation.isPending
-                  }
-                  className="gap-1.5 text-xs h-7 px-2.5 text-muted-foreground hover:text-foreground"
-                  title="Remover todos os overrides e restaurar o padrão do plano base"
-                >
-                  <RotateCcw className="size-3.5" aria-hidden="true" />
-                  <span>Restaurar Padrão do Plano</span>
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Funcionalidades Beta (Acesso Selecionado) */}
-          <div className="flex flex-col gap-2 p-3 rounded-xl border border-primary/20 bg-primary/5">
-            <div className="flex items-center gap-1.5 font-semibold text-xs text-primary">
-              <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-              <span>Funcionalidades Beta (Acesso Selecionado)</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Recursos em estágio experimental. O acesso permanece restrito exclusivamente a usuários selecionados com concessão individual do Superadmin.
-            </p>
-
-            <div className="flex flex-col gap-1.5 pt-1">
-              {BETA_MODULES.map((mod) => {
-                const override = modulePermissionsMap.get(mod.key);
-                const hasOverride = Boolean(override);
-                const currentLevel = override?.access_level;
-                const isGranted = currentLevel === "write" || currentLevel === "admin";
-
-                return (
-                  <div
-                    key={mod.key}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-2.5 rounded-lg border border-border/80 bg-surface/90 text-xs shadow-2xs"
-                  >
-                    <div className="flex flex-col gap-1 max-w-sm">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-foreground">{mod.label}</span>
-                        {isGranted ? (
-                          <Badge variant="positive" size="xs">
-                            Liberado para este usuário
-                          </Badge>
-                        ) : (
-                          <Badge variant="muted" size="xs">
-                            Bloqueado (Padrão Beta)
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="text-[11px] text-muted-foreground">{mod.desc}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end shrink-0">
-                      <Button
-                        type="button"
-                        variant={isGranted ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleSetModulePermission(mod.key, "write")}
-                        disabled={setModulePermissionMutation.isPending}
-                        className={`gap-1 text-xs h-7 px-2.5 ${
-                          isGranted
-                            ? "bg-positive text-white hover:bg-positive/90"
-                            : "text-positive-strong hover:bg-positive/10 border-positive/30"
-                        }`}
-                        title="Liberar acesso beta para este usuário"
-                      >
-                        <Check className="size-3.5" aria-hidden="true" />
-                        <span>Liberado</span>
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant={!isGranted && hasOverride ? "destructive" : "outline"}
-                        size="sm"
-                        onClick={() => handleSetModulePermission(mod.key, "none")}
-                        disabled={setModulePermissionMutation.isPending}
-                        className={`gap-1 text-xs h-7 px-2.5 ${
-                          !isGranted && hasOverride
-                            ? "bg-muted text-muted-foreground hover:bg-muted/90"
-                            : "text-critical hover:bg-critical/10 border-critical/30"
-                        }`}
-                        title="Bloquear funcionalidade beta para este usuário"
-                      >
-                        <X className="size-3.5" aria-hidden="true" />
-                        <span>Bloqueado</span>
-                      </Button>
-
-                      {hasOverride && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveModulePermission(mod.key)}
-                          disabled={removeModulePermissionMutation.isPending}
-                          className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground"
-                          title="Restaurar padrão da funcionalidade"
-                        >
-                          <RotateCcw className="size-3.5" aria-hidden="true" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Módulos do Plano Base */}
-          <div className="flex flex-col gap-2 pt-1">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-foreground">
-                  Módulos do Plano Base
-                </span>
-                {hasCoreOverrides && (
-                  <Badge variant="warning" size="xs">
-                    Com Overrides Manuais
-                  </Badge>
-                )}
-              </div>
-              <span className="text-[11px] text-muted-foreground">
-                Respondendo dinamicamente ao status: <strong className="text-foreground">{planStatusLabel}</strong>
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              {CORE_MODULES.map((mod) => {
-                const override = modulePermissionsMap.get(mod.key);
-                const hasOverride = Boolean(override);
-                const currentLevel = override?.access_level ?? planDefaultLevel;
-
-                return (
-                  <div
-                    key={mod.key}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl border border-border/80 bg-surface/80 text-xs shadow-2xs"
-                  >
-                    <div className="flex flex-col gap-1 max-w-sm">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-foreground">{mod.label}</span>
-                        {hasOverride ? (
-                          <Badge
-                            variant={
-                              currentLevel === "write" || currentLevel === "admin"
-                                ? "positive"
-                                : currentLevel === "read"
-                                  ? "warning"
-                                  : "critical"
-                            }
-                            size="xs"
-                          >
-                            Override: {currentLevel === "write" || currentLevel === "admin" ? "Acesso Total" : currentLevel === "read" ? "Somente Leitura" : "Bloqueado"}
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant={isPlanActive ? "positive" : "warning"}
-                            size="xs"
-                          >
-                            {isPlanActive
-                              ? "Acesso Total (Plano Ativo)"
-                              : `Somente Leitura (${planStatusLabel})`}
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="text-[11px] text-muted-foreground">{mod.desc}</span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 w-full sm:w-auto justify-end sm:justify-start shrink-0 pt-1 sm:pt-0">
-                      <Button
-                        type="button"
-                        variant={currentLevel === "write" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleSetModulePermission(mod.key, "write")}
-                        disabled={setModulePermissionMutation.isPending}
-                        className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
-                          currentLevel === "write"
-                            ? "bg-positive text-white hover:bg-positive/90"
-                            : "text-positive-strong hover:bg-positive/10 border-positive/30"
-                        }`}
-                        title="Liberar escrita e leitura neste módulo"
-                      >
-                        <Check className="size-3.5" aria-hidden="true" />
-                        <span>Total</span>
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant={currentLevel === "read" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleSetModulePermission(mod.key, "read")}
-                        disabled={setModulePermissionMutation.isPending}
-                        className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
-                          currentLevel === "read"
-                            ? "bg-warning text-white hover:bg-warning/90"
-                            : "text-warning hover:bg-warning/10 border-warning/30"
-                        }`}
-                        title="Restringir a somente leitura neste módulo"
-                      >
-                        <span>Leitura</span>
-                      </Button>
-
-                      <Button
-                        type="button"
-                        variant={currentLevel === "none" ? "destructive" : "outline"}
-                        size="sm"
-                        onClick={() => handleSetModulePermission(mod.key, "none")}
-                        disabled={setModulePermissionMutation.isPending}
-                        className={`gap-1 text-xs h-7 px-2 flex-1 sm:flex-initial justify-center ${
-                          currentLevel === "none"
-                            ? "bg-critical text-white hover:bg-critical/90"
-                            : "text-critical hover:bg-critical/10 border-critical/30"
-                        }`}
-                        title="Bloquear completamente o módulo para este usuário"
-                      >
-                        <X className="size-3.5" aria-hidden="true" />
-                        <span>Bloquear</span>
-                      </Button>
-
-                      {hasOverride && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveModulePermission(mod.key)}
-                          disabled={removeModulePermissionMutation.isPending}
-                          className="size-7 p-0 shrink-0 text-muted-foreground hover:text-foreground"
-                          title="Restaurar regra padrão do plano"
-                        >
-                          <RotateCcw className="size-3.5" aria-hidden="true" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Status da Conta */}
-        <div className="flex flex-col gap-1.5 pt-2 border-t border-border">
-          <label htmlFor="user-status" className="text-xs font-semibold text-foreground">
-            Status da Conta na Plataforma
-          </label>
-          <Select
-            value={status}
-            onValueChange={(val) => setStatus(val as UserStatus)}
-            disabled={!canEditStatus}
-            options={[
-              { value: "active", label: STATUS_LABELS.active },
-              { value: "pending_approval", label: STATUS_LABELS.pending_approval },
-              { value: "suspended", label: STATUS_LABELS.suspended },
-              { value: "banned", label: STATUS_LABELS.banned },
-            ]}
-          />
-          {!canEditStatus ? (
-            <span className="text-[11px] text-muted-foreground">
-              Você não tem permissão para alterar o status de um Superadministrador.
-            </span>
-          ) : null}
-        </div>
-
-        {/* Justificativa em caso de suspensão/banimento */}
-        {status === "suspended" || status === "banned" ? (
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="user-reason" className="text-xs font-semibold text-critical">
-              Motivo da Suspensão / Banimento
-            </label>
-            <Input
-              id="user-reason"
-              type="text"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Ex: Violação dos termos de uso / Inadimplência"
-              required
-            />
-          </div>
-        ) : null}
-
-        {/* Nível de Acesso (Role) */}
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <Shield className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            <label htmlFor="user-role" className="text-xs font-semibold text-foreground">
-              Nível de Permissão Administrativa (Role)
-            </label>
-          </div>
-          <Select
-            value={role}
-            onValueChange={(val) => setRole(val as UserRole)}
-            disabled={!canEditRole}
-            options={[
-              { value: "user", label: ROLE_LABELS.user },
-              { value: "admin", label: ROLE_LABELS.admin },
-              { value: "superadmin", label: ROLE_LABELS.superadmin },
-            ]}
-          />
-          {!isSuperadminActor ? (
-            <span className="text-[11px] text-muted-foreground">
-              Apenas um Superadministrador pode alterar cargos e privilégios.
-            </span>
-          ) : null}
-        </div>
-
-        {/* Ações Especiais de Suporte (Apenas Superadmin) */}
-        {isSuperadminActor ? (
-          <div className="flex flex-col gap-3 p-3.5 rounded-xl border border-border/80 bg-surface-hover/20 text-xs">
-            <div className="flex items-center gap-1.5 font-semibold text-foreground">
-              <ShieldAlert className="size-4 text-warning-strong" aria-hidden="true" />
-              <span>Ações de Suporte do Superadmin</span>
-            </div>
-
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Ferramentas de resolução rápida de chamados, suporte a 2FA (Incidente 4) e mitigação de segurança.
-            </p>
-
-            {generatedRecoveryLink ? (
-              <Alert variant="info" className="border-primary/30 bg-primary/5 text-xs flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-primary">Link de Acesso Direto Gerado:</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => setGeneratedRecoveryLink(null)}
-                    className="h-6 px-2 text-[11px]"
-                  >
-                    Ocultar
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    readOnly
-                    value={generatedRecoveryLink}
-                    className="text-xs font-mono h-8 bg-surface selection:bg-primary/20"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5 shrink-0"
-                    onClick={async () => {
-                      await navigator.clipboard.writeText(generatedRecoveryLink);
-                      setHasCopiedRecoveryLink(true);
-                      triggerSensory("selection");
-                      pushToast({
-                        title: "Link copiado!",
-                        description: "Link seguro de acesso copiado para a área de transferência.",
-                      });
-                      setTimeout(() => setHasCopiedRecoveryLink(false), 3000);
-                    }}
-                  >
-                    {hasCopiedRecoveryLink ? (
-                      <Check className="size-3.5 text-positive" aria-hidden="true" />
-                    ) : (
-                      <Copy className="size-3.5" aria-hidden="true" />
-                    )}
-                    <span>{hasCopiedRecoveryLink ? "Copiado" : "Copiar"}</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    className="h-8 gap-1.5 shrink-0 bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={() => {
-                      const cleanPhone = (contactQuery.data?.phone || "").replace(/\D/g, "");
-                      const text = encodeURIComponent(
-                        `Olá ${user.name || ""}! Segue o seu link seguro de acesso ao aplicativo Finanças:\n${generatedRecoveryLink}\n\nAbra o link para acessar e redefinir sua senha.`
-                      );
-                      const url = cleanPhone
-                        ? `https://wa.me/55${cleanPhone}?text=${text}`
-                        : `https://wa.me/?text=${text}`;
-                      window.open(url, "_blank", "noopener,noreferrer");
-                    }}
-                  >
-                    <MessageCircle className="size-3.5" aria-hidden="true" />
-                    <span>WhatsApp</span>
-                  </Button>
-                </div>
-              </Alert>
-            ) : null}
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-              {/* Reset 2FA */}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsResetMfaOpen(true)}
-                disabled={resetMfaMutation.isPending}
-                className="gap-1.5 h-8 text-xs justify-start"
-              >
-                <ShieldOff className="size-3.5 text-warning-strong" aria-hidden="true" />
-                <span>Resetar 2FA</span>
-              </Button>
-
-              {/* Revogar Sessões */}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsRevokeSessionsOpen(true)}
-                disabled={revokeSessionsMutation.isPending}
-                className="gap-1.5 h-8 text-xs justify-start"
-              >
-                <LogOut className="size-3.5 text-warning-strong" aria-hidden="true" />
-                <span>Derrubar Sessões</span>
-              </Button>
-
-              {/* Gerar Link de Recuperação */}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  if (!user.email) {
-                    pushToast({
-                      title: "E-mail indisponível",
-                      description: "Este usuário não possui e-mail cadastrado para gerar link de recuperação.",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-                  try {
-                    const recoveryLink = await generateRecoveryMutation.mutateAsync({
-                      userId: user.id,
-                      email: user.email,
-                    });
-                    if (recoveryLink) {
-                      setGeneratedRecoveryLink(recoveryLink);
-                      triggerSensory("success");
-                      pushToast({
-                        title: "Link gerado com sucesso",
-                        description: "Link temporário de recuperação pronto para despacho.",
-                      });
-                    }
-                  } catch {
-                    triggerSensory("destructive");
-                  }
-                }}
-                disabled={generateRecoveryMutation.isPending}
-                className="gap-1.5 h-8 text-xs justify-start"
-              >
-                <KeyRound className="size-3.5 text-primary" aria-hidden="true" />
-                <span>
-                  {generateRecoveryMutation.isPending ? "Gerando..." : "Link Recuperação"}
-                </span>
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        {/* Zona de Perigo: Exclusão Definitiva (apenas Superadmin e não autoexclusão) */}
-        {canDeleteUser ? (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl border border-critical/30 bg-critical/5 text-xs">
-            <div className="space-y-0.5">
-              <span className="font-semibold text-critical-strong block">
-                Zona de Perigo: Exclusão Definitiva
-              </span>
-              <span className="text-[11px] text-muted-foreground block">
-                Remove permanentemente a conta, histórico financeiro e libera o e-mail no sistema.
-              </span>
-            </div>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => setIsDeleteDialogOpen(true)}
-              disabled={deleteUserMutation.isPending}
-              className="gap-1.5 h-8 text-xs shrink-0"
-            >
-              <Trash2 className="size-3.5" aria-hidden="true" />
-              <span>Excluir Usuário do Sistema</span>
-            </Button>
-          </div>
-        ) : null}
-
-        {/* Rodapé */}
-        <ModalFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
-            Fechar
-          </Button>
-          <Button
-            type="submit"
-            variant="default"
-            disabled={updateStatusMutation.isPending || setRoleMutation.isPending}
-            className="gap-1.5 w-full sm:w-auto"
-          >
+      footer={
+        <ModalFooter borderless>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+          <Button type="submit" form="user-edit-form" variant="default" sensoryIntent={false} disabled={updateStatusMutation.isPending || setRoleMutation.isPending} className="gap-1.5">
             <UserCheck className="size-4" aria-hidden="true" />
-            Salvar Status &amp; Cargo
+            <span>Salvar Status &amp; Cargo</span>
           </Button>
         </ModalFooter>
-
+      }
+    >
+      <form id="user-edit-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <UserPiiAuditVaultCard user={user} revealContact={revealContact} onRevealChange={setRevealContact} />
+        <UserSaasPlanSection
+          currentTier={subscriptionQuery.data?.tier}
+          effectiveTier={effectiveTier}
+          effectiveSubStatus={effectiveSubStatus}
+          isSaving={setSubscriptionMutation.isPending}
+          onTierChange={(newTier, planId) => { setOverrideTier(newTier); setOverridePlanId(planId); }}
+          onSubStatusChange={setOverrideSubStatus}
+          onSaveSubscription={handleSaveSubscription}
+        />
+        <UserModulePermissionsMatrix
+          effectiveSubStatus={effectiveSubStatus}
+          hasAnyModuleOverride={userModulePermissions.length > 0}
+          hasCoreOverrides={coreOverrides.length > 0}
+          modulePermissionsMap={modulePermissionsMap}
+          isQuickActionPending={isQuickActionPending}
+          isMutating={setModulePermissionMutation.isPending || removeModulePermissionMutation.isPending}
+          onSetModulePermission={(moduleKey, accessLevel: ModuleAccessLevel) => void setModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey, accessLevel })}
+          onRemoveModulePermission={(moduleKey) => void removeModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey })}
+          onQuickOnlyInvestments={() => void runQuickPreset(() => Promise.all(INVESTMENT_ONLY_PRESET.map((item) => setModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey: item.moduleKey, accessLevel: item.accessLevel }))), "Apenas Investimentos configurado", `Usuário ${displayName} configurado em Apenas Investimentos. Modo Viagem e Familiar restritos; relatórios de carteira liberados.`)}
+          onQuickRestorePlanDefaults={() => userModulePermissions.length > 0 && void runQuickPreset(() => Promise.all(userModulePermissions.map((p) => removeModulePermissionMutation.mutateAsync({ userId: user.id, moduleKey: p.module_key }))), "Padrão do plano restaurado", `Todas as permissões modulares de ${displayName} foram restauradas ao plano base.`)}
+        />
+        <UserAccountStatusSection
+          status={status}
+          reason={reason}
+          role={role}
+          canEditStatus={canEditStatus}
+          canEditRole={canEditRole}
+          canDeleteUser={isSuperadminActor && !isSelf}
+          isSuperadminActor={isSuperadminActor}
+          isDeletePending={deleteUserMutation.isPending}
+          onStatusChange={setStatus}
+          onReasonChange={setReason}
+          onRoleChange={setRole}
+          onOpenDeleteConfirm={() => setIsDeleteDialogOpen(true)}
+        />
+        {isSuperadminActor && <UserSuperadminSupportActions user={user} revealContact={revealContact} />}
       </form>
-
-      {/* Confirmação de Exclusão de Usuário para Superadmin */}
       <ConfirmDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         title="Excluir Usuário do Sistema"
-        description={`Tem certeza que deseja excluir permanentemente o usuário ${user.name || user.email}? Todos os dados financeiros, cartões, dívidas, categorias e histórico deste usuário serão permanentemente apagados e o e-mail será liberado no banco de dados. Esta ação não poderá ser desfeita.`}
+        description={`Tem certeza que deseja excluir permanentemente o usuário ${displayName}? Todos os dados financeiros, cartões, dívidas, categorias e histórico deste usuário serão permanentemente apagados e o e-mail será liberado no banco de dados. Esta ação não poderá ser desfeita.`}
         confirmLabel={deleteUserMutation.isPending ? "Excluindo…" : "Excluir Definitivamente"}
         cancelLabel="Cancelar"
         variant="destructive"
@@ -1010,59 +201,8 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         onConfirm={async () => {
           try {
             await deleteUserMutation.mutateAsync({ targetUserId: user.id });
-            triggerSensory("destructive");
             setIsDeleteDialogOpen(false);
             onOpenChange(false);
-          } catch {
-            triggerSensory("destructive");
-          }
-        }}
-      />
-
-      {/* Confirmação de Reset de 2FA */}
-      <ConfirmDialog
-        open={isResetMfaOpen}
-        onOpenChange={setIsResetMfaOpen}
-        title="Resetar Autenticação em Duas Etapas (2FA)"
-        description={`Deseja remover todos os fatores TOTP configurados para ${user.name || user.email}? O usuário poderá acessar a conta sem 2FA e reconfigurar um novo autenticador no perfil. Esta ação é auditada.`}
-        confirmLabel={resetMfaMutation.isPending ? "Resetando..." : "Resetar 2FA"}
-        cancelLabel="Cancelar"
-        variant="destructive"
-        confirmPending={resetMfaMutation.isPending}
-        onConfirm={async () => {
-          try {
-            await resetMfaMutation.mutateAsync(user.id);
-            triggerSensory("success");
-            pushToast({
-              title: "2FA Resetado com sucesso",
-              description: `Fatores de segundo fator de ${user.name || user.email} foram removidos.`,
-            });
-            setIsResetMfaOpen(false);
-          } catch {
-            triggerSensory("destructive");
-          }
-        }}
-      />
-
-      {/* Confirmação de Revogação de Sessões Ativas */}
-      <ConfirmDialog
-        open={isRevokeSessionsOpen}
-        onOpenChange={setIsRevokeSessionsOpen}
-        title="Encerrar Sessões Ativas (Derrubar Login)"
-        description={`Tem certeza que deseja revogar todas as sessões ativas de ${user.name || user.email}? O usuário será desconectado imediatamente em todos os navegadores e dispositivos móveis (APK).`}
-        confirmLabel={revokeSessionsMutation.isPending ? "Derrubando..." : "Encerrar Sessões"}
-        cancelLabel="Cancelar"
-        variant="destructive"
-        confirmPending={revokeSessionsMutation.isPending}
-        onConfirm={async () => {
-          try {
-            await revokeSessionsMutation.mutateAsync(user.id);
-            triggerSensory("success");
-            pushToast({
-              title: "Sessões revogadas",
-              description: `Todos os acessos ativos de ${user.name || user.email} foram desconectados.`,
-            });
-            setIsRevokeSessionsOpen(false);
           } catch {
             triggerSensory("destructive");
           }

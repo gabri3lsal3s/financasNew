@@ -1,83 +1,32 @@
-import { useState } from "react";
-import {
-  CreditCard,
-  PieChart,
-  Zap,
-  CheckCircle2,
-  Calendar,
-  Share2,
-  Sparkles,
-  ShieldCheck,
-  FileText,
-  Users,
-  Check,
-  Target,
-  ClipboardList,
-  Lightbulb,
-} from "lucide-react";
-import { Badge, Button, Card } from "@/components/ui";
+import { ClipboardList, Lightbulb, Target } from "lucide-react";
+import { Card } from "@/components/ui";
 import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
-import { pushToast } from "@/services/toast";
-import { SharedFinancesShowcase } from "./shared-finances-showcase";
+import { CashAndCardsNarratives } from "./narratives/cash-and-cards-narratives";
+import { PortfolioAndSharedNarratives } from "./narratives/portfolio-and-shared-narratives";
+import { CaptureNarrative } from "./narratives/capture-narrative";
 
-/**
- * Demonstração interativa da aprovação de despesa capturada por OCR/Pix.
- * Ação reversível com confirmação + "Desfazer" (AGENTS.md §32); nada é
- * persistido — é um exemplo em memória.
- */
-function ApproveExpenseButton() {
-  const [approved, setApproved] = useState(false);
-
-  const handleApprove = () => {
-    setApproved(true);
-    pushToast({
-      title: "Despesa aprovada",
-      description: "Padaria Bella · R$ 42,90 · Alimentação · Pix",
-      variant: "success",
-      duration: 5000,
-      action: { label: "Desfazer", onClick: () => setApproved(false) },
-    });
-  };
-
-  return (
-    <div className="pt-1 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2">
-      <span className="sr-only" role="status" aria-live="polite">
-        {approved ? "Despesa aprovada e lançada em Alimentação." : ""}
-      </span>
-      {approved ? (
-        <Badge variant="positive" size="sm" className="self-start sm:self-auto">
-          <Check className="size-3" aria-hidden="true" />
-          Despesa aprovada · Alimentação
-        </Badge>
-      ) : null}
-      <Button
-        type="button"
-        size="sm"
-        variant={approved ? "outline" : "default"}
-        onClick={approved ? () => setApproved(false) : handleApprove}
-        className="self-start sm:self-auto gap-1.5 text-xs h-8 rounded-lg shadow-xs"
-      >
-        {approved ? (
-          <>
-            <Check className="size-3.5" aria-hidden="true" />
-            <span>Aprovada</span>
-          </>
-        ) : (
-          <>
-            <CheckCircle2 className="size-3.5" aria-hidden="true" />
-            <span>Aprovar Despesa</span>
-          </>
-        )}
-      </Button>
-    </div>
-  );
-}
+const SECONDARY_PILLARS = [
+  {
+    icon: Target,
+    title: "Metas com aporte mensal",
+    text: "Cada objetivo tem o aporte necessário e o progresso até a data-alvo.",
+  },
+  {
+    icon: ClipboardList,
+    title: "Relatórios de fechamento",
+    text: "Resumo mensal, divisão patrimonial e relatório em layout A4.",
+  },
+  {
+    icon: Lightbulb,
+    title: "Insights do seu histórico",
+    text: "Alertas de variação fora do padrão e de assinaturas recorrentes.",
+  },
+];
 
 export function ProductNarratives() {
   return (
     <section id="recursos" className="py-14 md:py-32 border-t border-border/60 scroll-mt-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 space-y-16 md:space-y-36">
-        {/* Cabeçalho da Seção de Recursos */}
         <ScrollReveal className="text-center max-w-4xl mx-auto">
           <span className="text-xs sm:text-sm font-bold uppercase tracking-widest text-primary-strong dark:text-primary block">
             Engenharia Financeira com Clareza Absoluta
@@ -86,442 +35,22 @@ export function ProductNarratives() {
             Cinco eixos coordenados para sustentação e expansão do seu patrimônio
           </h2>
           <p className="mt-4 sm:mt-5 text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-            Sem fórmulas frágeis de planilhas e sem relatórios opacos. Uma arquitetura concebida para fornecer estabilidade imediata de caixa, horizonte seguro de compromissos futuros, cooperação financeira sem atrito e disciplina matemática de investimentos.
+            Sem fórmulas frágeis de planilhas e sem relatórios opacos. Uma arquitetura concebida para
+            fornecer estabilidade imediata de caixa, horizonte seguro de compromissos futuros,
+            cooperação financeira sem atrito e disciplina matemática de investimentos.
           </p>
         </ScrollReveal>
 
-        {/* História 1: Caixa Real & Daily Budget */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-16 xl:gap-20 items-center">
-          {/* Texto Explicativo (Esquerda) */}
-          <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary-strong dark:text-primary">
-              <Zap className="size-3.5 sm:size-4" aria-hidden="true" />
-              <span>Eixo 1 · Liquidez & Caixa Real</span>
-            </div>
+        <CashAndCardsNarratives />
+        <PortfolioAndSharedNarratives />
+        <CaptureNarrative />
 
-            <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
-              O fim da ilusão de saldo e da ansiedade de fim de mês
-            </h3>
-
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Olhar o saldo do banco cria uma falsa sensação de dinheiro disponível — esquecendo que o aluguel vence amanhã e a fatura do cartão ainda não fechou.
-            </p>
-
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O Axir calcula o seu <strong>Caixa Real Seguro (Safe-to-Spend)</strong>: desconta dívidas pendentes, faturas abertas e provisões, traduzindo seu dinheiro restante em um <strong>Ritmo Diário</strong> em R$/dia. Você sabe exatamente quanto pode gastar hoje sem estourar o orçamento do mês.
-            </p>
-
-            <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Zero surpresas com contas esquecidas</span>
-              </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Termômetro de orçamentos por categoria</span>
-              </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Detector nativo de assinaturas e gastos ocultos</span>
-              </div>
-            </div>
-          </ScrollReveal>
-
-          {/* Visual Demonstrativo (Direita) */}
-          <ScrollReveal delay={150} className="lg:col-span-6">
-            <Card className="border-border/80 bg-surface/90 shadow-xl p-4.5 sm:p-8 md:p-10 space-y-4 sm:space-y-6 rounded-2xl sm:rounded-3xl">
-              <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-4">
-                <span className="text-xs sm:text-sm font-bold text-foreground">Demonstrativo de Caixa Real</span>
-                <Badge variant="positive" size="xs" className="font-mono">
-                  Safe-to-Spend Ativo
-                </Badge>
-              </div>
-
-              <div className="space-y-2.5 sm:space-y-3 text-xs sm:text-sm font-mono">
-                <div className="flex justify-between p-3 sm:p-3.5 rounded-xl bg-background/50 border border-border/50">
-                  <span className="text-muted-foreground">Saldo Bancário Bruto:</span>
-                  <span className="font-bold text-foreground">R$ 8.900,00</span>
-                </div>
-                <div className="flex justify-between p-3 sm:p-3.5 rounded-xl bg-background/50 border border-border/50 text-negative-strong dark:text-negative">
-                  <span>(-) Faturas Abertas de Cartão:</span>
-                  <span className="font-bold">-R$ 2.480,00</span>
-                </div>
-                <div className="flex justify-between p-3 sm:p-3.5 rounded-xl bg-background/50 border border-border/50 text-warning-strong dark:text-warning">
-                  <span>(-) Dívidas & Contas a Pagar:</span>
-                  <span className="font-bold">-R$ 180,00</span>
-                </div>
-                <div className="flex justify-between p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-primary/10 border border-primary/30 text-sm sm:text-base">
-                  <span className="font-sans font-bold text-primary-strong">Caixa Real Disponível:</span>
-                  <span className="font-extrabold text-foreground">R$ 6.240,00</span>
-                </div>
-              </div>
-
-              <div className="pt-2 sm:pt-3 flex justify-between items-center text-xs sm:text-sm text-muted-foreground border-t border-border/40">
-                <span>Ritmo Sugerido:</span>
-                <span className="font-mono font-bold text-primary-strong text-sm sm:text-lg">R$ 148,00 / dia</span>
-              </div>
-            </Card>
-          </ScrollReveal>
-        </div>
-
-        {/* História 2: Cartões & Faturas Futuras */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-16 xl:gap-20 items-center">
-          {/* Visual Demonstrativo (Esquerda no Desktop) */}
-          <ScrollReveal delay={150} className="lg:col-span-6 order-2 lg:order-1">
-            <Card className="border-border/80 bg-surface/90 shadow-xl p-4.5 sm:p-8 md:p-10 space-y-4 sm:space-y-6 rounded-2xl sm:rounded-3xl">
-              <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-4">
-                <div>
-                  <div className="text-xs sm:text-sm font-bold text-foreground">Mastercard Black Prime</div>
-                  <div className="text-[11px] sm:text-xs text-muted-foreground">Limite Total: R$ 15.000,00</div>
-                </div>
-                <Badge variant="warning" size="xs" className="font-mono">
-                  Fecha em 6 dias
-                </Badge>
-              </div>
-
-              <div className="p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-border/60 bg-background/60">
-                <span className="text-xs text-muted-foreground block font-sans">Fatura Atual Fechando em:</span>
-                <span className="font-mono text-2xl sm:text-3xl font-bold text-foreground block mt-1">
-                  R$ 2.480,50
-                </span>
-                <div className="mt-2.5 sm:mt-3.5 h-2 w-full rounded-full bg-muted/60 overflow-hidden">
-                  <div className="h-full rounded-full bg-warning-strong" style={{ width: "16.5%" }} />
-                </div>
-                <span className="text-xs text-muted-foreground mt-1.5 block">
-                  16.5% do limite total comprometido
-                </span>
-              </div>
-
-              <div className="space-y-2 sm:space-y-2.5 pt-1">
-                <span className="text-xs sm:text-sm font-semibold text-foreground flex items-start gap-1.5 sm:gap-2">
-                  <Calendar className="size-3.5 sm:size-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>Previsão de Parcelas para os Próximos Meses:</span>
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2.5 font-mono">
-                  <div className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-background/40 border border-border/50 flex sm:flex-col justify-between sm:justify-center items-center text-left sm:text-center">
-                    <span className="text-xs text-muted-foreground font-sans">Mês +1</span>
-                    <span className="font-bold text-foreground text-xs sm:text-sm tabular-nums whitespace-nowrap">R$ 1.840,20</span>
-                  </div>
-                  <div className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-background/40 border border-border/50 flex sm:flex-col justify-between sm:justify-center items-center text-left sm:text-center">
-                    <span className="text-xs text-muted-foreground font-sans">Mês +2</span>
-                    <span className="font-bold text-foreground text-xs sm:text-sm tabular-nums whitespace-nowrap">R$ 1.120,00</span>
-                  </div>
-                  <div className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-background/40 border border-border/50 flex sm:flex-col justify-between sm:justify-center items-center text-left sm:text-center">
-                    <span className="text-xs text-muted-foreground font-sans">Mês +3</span>
-                    <span className="font-bold text-foreground text-xs sm:text-sm tabular-nums whitespace-nowrap">R$ 640,00</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </ScrollReveal>
-
-          {/* Texto Explicativo (Direita no Desktop) */}
-          <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6 order-1 lg:order-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-warning/40 bg-warning/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-warning-strong dark:text-warning">
-              <CreditCard className="size-3.5 sm:size-4" aria-hidden="true" />
-              <span>Eixo 2 · Linha Temporal & Cartões</span>
-            </div>
-
-            <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
-              Nunca mais seja pego de surpresa por parcelas esquecidas
-            </h3>
-
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Compras parceladas são o principal motivo de endividamento quando espalhadas em faturas futuras invisíveis.
-            </p>
-
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Com o <strong>Fechamento Determinístico de Competências</strong>, o Axir projeta o cronograma exato de parcelas em até 60x para os próximos 12 meses. Além disso, você <strong>importa e reconcilia faturas completas (PDF, OFX e CSV)</strong> com detecção automática de estornos e pagamentos.
-            </p>
-
-            <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Linha do tempo cronológica de 12 meses com limite comprometido</span>
-              </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Importação e reconciliação automática de faturas completas (PDF, OFX, CSV)</span>
-              </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Parcelamentos em até 60x calculados em centavos exatos sem erros</span>
-              </div>
-            </div>
-          </ScrollReveal>
-        </div>
-
-        {/* História 3: Investimentos, Aportes & Inteligência Fiscal */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-16 xl:gap-20 items-center">
-          {/* Texto Explicativo (Esquerda) */}
-          <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-portfolio/30 bg-portfolio/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-portfolio">
-              <PieChart className="size-3.5 sm:size-4" aria-hidden="true" />
-              <span>Eixo 3 · Vetor Patrimonial & Aportes</span>
-            </div>
-
-            <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
-              Alocação matemática de aportes e blindagem contra impostos
-            </h3>
-
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Investir com disciplina não é tentar acertar o topo ou fundo do mercado, mas alocar capital com consistência sem girar patrimônio desnecessariamente.
-            </p>
-
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O rebalanceamento calcula o destino de cada real do novo aporte para calibrar as classes defasadas sem vender ativos. O <strong>Radar Fiscal</strong> acompanha a tabela regressiva de IR de Renda Fixa, e você exporta o <strong>Dossiê Executivo em planilha Excel (XML Spreadsheet, 5 abas)</strong> em 1 clique.
-            </p>
-
-            <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Rebalanceamento 100% via novos aportes (zero venda de ativos e zero DARF)</span>
-              </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Radar de alíquota regressiva de IR para resgates inteligentes de Renda Fixa</span>
-              </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Dossiê Executivo em planilha Excel (5 abas) e Escudo de Privacidade em 1 clique</span>
-              </div>
-            </div>
-          </ScrollReveal>
-
-          {/* Visual Demonstrativo (Direita) */}
-          <ScrollReveal delay={150} className="lg:col-span-6">
-            <Card className="border-border/80 bg-surface/90 shadow-xl p-4.5 sm:p-8 md:p-10 space-y-4 sm:space-y-6 rounded-2xl sm:rounded-3xl">
-              <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-4">
-                <div>
-                  <div className="text-xs sm:text-sm font-bold text-foreground">Sugestão de Aporte Inteligente</div>
-                  <div className="text-[11px] sm:text-xs text-muted-foreground">Aporte Mensal: R$ 2.000,00</div>
-                </div>
-                <Badge variant="portfolio" size="xs" className="font-mono">
-                  Aporte calculado
-                </Badge>
-              </div>
-
-              <div className="space-y-3 sm:space-y-4 pt-1 text-xs sm:text-sm font-mono">
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-muted-foreground text-xs">
-                    <span className="truncate mr-2">Renda Fixa IPCA+ (Defasada: 25% vs Meta 35%)</span>
-                    <span className="font-bold text-portfolio shrink-0">Aportar R$ 1.400 (70%)</span>
-                  </div>
-                  <div className="h-2 sm:h-2.5 w-full rounded-full bg-muted/60 overflow-hidden">
-                    <div className="h-full rounded-full bg-positive" style={{ width: "70%" }} />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-muted-foreground text-xs">
-                    <span className="truncate mr-2">Fundos Imobiliários FIIs (Defasada: 22% vs Meta 25%)</span>
-                    <span className="font-bold text-portfolio shrink-0">Aportar R$ 600 (30%)</span>
-                  </div>
-                  <div className="h-2 sm:h-2.5 w-full rounded-full bg-muted/60 overflow-hidden">
-                    <div className="h-full rounded-full bg-cat-5" style={{ width: "30%" }} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Box Radar Fiscal */}
-              <div className="mt-3 sm:mt-4 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-warning/30 bg-warning/5 text-xs sm:text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-2">
-                <div>
-                  <div className="font-bold text-foreground">Radar Fiscal (CDB 2024):</div>
-                  <div className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">Alíquota atual de 20.0% cai para 17.5%</div>
-                </div>
-                <Badge variant="warning" size="xs" className="font-mono shrink-0 self-start sm:self-auto">
-                  Faltam 14 dias
-                </Badge>
-              </div>
-            </Card>
-          </ScrollReveal>
-        </div>
-
-        {/* História 4: Finanças Compartilhadas & Pix */}
-        <div id="financas-compartilhadas" className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-16 xl:gap-20 items-center scroll-mt-24">
-          {/* Visual Demonstrativo (Esquerda no Desktop) */}
-          <ScrollReveal delay={150} className="lg:col-span-6 order-2 lg:order-1">
-            <SharedFinancesShowcase />
-          </ScrollReveal>
-
-          {/* Texto Explicativo (Direita no Desktop) */}
-          <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6 order-1 lg:order-2">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary-strong dark:text-primary">
-              <Users className="size-3.5 sm:size-4" aria-hidden="true" />
-              <span>Eixo 4 · Finanças Compartilhadas & Pix</span>
-            </div>
-
-            <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
-              Vida financeira compartilhada sem constrangimento e sem planilhas
-            </h3>
-
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Cobrar amigos após um evento ou alinhar despesas domésticas em casal costuma gerar desconforto, mensagens perdidas e esquecimento de quem pagou o quê.
-            </p>
-
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O Axir transforma finanças compartilhadas em um fluxo natural: <strong>Racha de Despesas com Pix Copia e Cola</strong> e lembretes automáticos no WhatsApp, <strong>Modo Família</strong> com divisão 50/50 sem invasão de privacidade, e o <strong>Modo Viagem</strong> com livro-razão público e liquidação mínima via Pix.
-            </p>
-
-            <div className="space-y-2.5 pt-1 text-xs sm:text-sm lg:text-base text-muted-foreground">
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Racha com Pix Copia e Cola instantâneo e botão de WhatsApp</span>
-              </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Modo Viagem com link público e senha (amigos participam sem login e sem baixar app)</span>
-              </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Liquidação mínima inteligente para zerar saldos com o menor número de transferências Pix</span>
-              </div>
-              <div className="flex items-center gap-2.5 sm:gap-3">
-                <CheckCircle2 className="size-4 sm:size-5 text-positive-strong dark:text-positive shrink-0" aria-hidden="true" />
-                <span>Modo Família com divisão 50/50 e preservação estrita da privacidade individual</span>
-              </div>
-            </div>
-          </ScrollReveal>
-        </div>
-
-        {/* Bloco de Narrativa Editorial: Captura Invisível com Inteligência Local (Fase 6 — Tarefa 6.1) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 lg:gap-16 xl:gap-20 items-center">
-          {/* Texto Explicativo (Esquerda) */}
-          <ScrollReveal delay={50} className="lg:col-span-6 space-y-4 sm:space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary-strong dark:text-primary">
-              <Zap className="size-3.5 sm:size-4" aria-hidden="true" />
-              <span>Eixo 5 · Captura Invisível &amp; OCR Local</span>
-            </div>
-
-            <h3 className="font-display text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-snug">
-              Registro sem esforço com a segurança que seu banco exige
-            </h3>
-
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              O principal motivo para alguém desistir de controlar as finanças é a fricção de ter que lembrar e anotar manualmente cada gasto do dia.
-            </p>
-
-            <p className="text-sm sm:text-base lg:text-lg text-muted-foreground leading-relaxed">
-              Em vez de conexões bancárias frágeis que exigem suas senhas ou quebram a cada atualização, o Axir opera com duas vias integradas de captura local e um motor semântico adaptativo:
-            </p>
-
-            {/* Três Pilares da Hierarquia de Captura */}
-            <div className="space-y-3.5 pt-1 text-xs sm:text-sm text-muted-foreground">
-              <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
-                <div className="flex items-center gap-2 text-foreground font-semibold">
-                  <Share2 className="size-4 text-primary shrink-0" aria-hidden="true" />
-                  <span>Caminho 1 (Rápido): Leitura Instantânea de Pix & Compartilhamento</span>
-                </div>
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
-                  Copie o código Pix ou compartilhe comprovantes diretamente do aplicativo do seu banco pelo menu de compartilhamento. O Axir extrai favorecido, valor e data automaticamente do texto recebido.
-                </p>
-              </div>
-
-              <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
-                <div className="flex items-center gap-2 text-foreground font-semibold">
-                  <FileText className="size-4 text-portfolio shrink-0" aria-hidden="true" />
-                  <span>Caminho 2 (Garantia): Leitura Universal de Comprovantes & Cupons</span>
-                </div>
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
-                  Anexe cupons fiscais (NFC-e/SAT com múltiplos itens), boletos, carnês e slips de cartão parcelado. Nosso OCR local processa na hora no seu dispositivo, sem enviar fotos para a nuvem.
-                </p>
-              </div>
-
-              <div className="p-3 sm:p-3.5 rounded-xl border border-border/70 bg-surface/60 space-y-1">
-                <div className="flex items-center gap-2 text-foreground font-semibold">
-                  <Sparkles className="size-4 text-warning-strong dark:text-warning shrink-0" aria-hidden="true" />
-                  <span>Aprendizado de Comerciantes: memória ativa de CNPJs</span>
-                </div>
-                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed pl-6">
-                  O motor aprende onde você consome (ex.: "Mc" vira "McDonald's" em Alimentação com pagamento no Crédito). Quanto mais você usa, mais inteligente e invisível fica o registro.
-                </p>
-              </div>
-            </div>
-          </ScrollReveal>
-
-          {/* Visual Demonstrativo (Direita) */}
-          <ScrollReveal delay={150} className="lg:col-span-6">
-            <Card className="border-border/80 bg-surface/90 shadow-xl p-4.5 sm:p-8 md:p-10 space-y-4 sm:space-y-6 rounded-2xl sm:rounded-3xl">
-              <div className="flex justify-between items-center border-b border-border/50 pb-3 sm:pb-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="size-4 text-positive-strong dark:text-positive" aria-hidden="true" />
-                  <span className="text-xs sm:text-sm font-bold text-foreground">Captura Local &amp; Privada</span>
-                </div>
-                <Badge variant="positive" size="xs" className="font-mono">
-                  Sem senhas bancárias
-                </Badge>
-              </div>
-
-              {/* Simulação de Comprovante Compartilhado */}
-              <div className="p-3.5 sm:p-4 rounded-xl bg-background/60 border border-border/70 space-y-1.5">
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground flex items-center gap-1.5">
-                    <FileText className="size-3.5 text-primary" aria-hidden="true" />
-                    Comprovante Pix ou Cupom Compartilhado
-                  </span>
-                  <span>Agora mesmo</span>
-                </div>
-                <p className="text-xs sm:text-sm font-mono text-foreground font-medium">
-                  Transferência Pix de R$ 42,90 para Padaria e Confeitaria Bella LTDA
-                </p>
-              </div>
-
-              {/* Sugestão Gerada pelo Motor Semântico */}
-              <div className="p-4 rounded-xl sm:rounded-2xl bg-primary/10 border border-primary/30 space-y-3">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-semibold text-primary-strong">Identificação Semântica Automática:</span>
-                  <Badge variant="default" size="xs">
-                    OCR no dispositivo
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
-                    <span className="text-muted-foreground block text-[11px]">Favorecido</span>
-                    <span className="font-bold text-foreground truncate block">Padaria Bella</span>
-                  </div>
-                  <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
-                    <span className="text-muted-foreground block text-[11px]">Valor</span>
-                    <span className="font-bold text-negative-strong dark:text-negative">R$ 42,90</span>
-                  </div>
-                  <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
-                    <span className="text-muted-foreground block text-[11px]">Categoria</span>
-                    <span className="font-bold text-foreground truncate block">Alimentação</span>
-                  </div>
-                  <div className="p-2 rounded-lg bg-surface/80 border border-border/50">
-                    <span className="text-muted-foreground block text-[11px]">Pagamento</span>
-                    <span className="font-bold text-foreground truncate block">Pix</span>
-                  </div>              </div>
-
-              <ApproveExpenseButton />
-            </div>
-          </Card>
-          </ScrollReveal>
-        </div>
-
-        {/* Cobertura adicional: módulos que sustentam o dia a dia após o primeiro mês */}
         <ScrollReveal delay={100}>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            {[
-              {
-                icon: Target,
-                title: "Metas com aporte mensal",
-                text: "Cada objetivo tem o aporte necessário e o progresso até a data-alvo.",
-              },
-              {
-                icon: ClipboardList,
-                title: "Relatórios de fechamento",
-                text: "Resumo mensal, divisão patrimonial e relatório em layout A4.",
-              },
-              {
-                icon: Lightbulb,
-                title: "Insights do seu histórico",
-                text: "Alertas de variação fora do padrão e de assinaturas recorrentes.",
-              },
-            ].map((item) => (
+            {SECONDARY_PILLARS.map((item) => (
               <Card
                 key={item.title}
-                className="border-border/80 bg-surface/90 shadow-xs p-3.5 sm:p-4 space-y-1.5 rounded-2xl"
+                className="border-border/80 bg-surface shadow-xs p-3.5 sm:p-4 space-y-1.5 rounded-2xl"
               >
                 <div className="flex items-center gap-2">
                   <item.icon className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -538,4 +67,3 @@ export function ProductNarratives() {
     </section>
   );
 }
-

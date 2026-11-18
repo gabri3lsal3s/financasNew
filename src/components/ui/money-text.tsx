@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { formatCentsAsCurrency } from "@/services/masks";
 import type { AssetCurrency } from "@/types";
@@ -10,7 +10,6 @@ import { NumberTicker } from "./number-ticker";
  * Padroniza o escaneamento rápido de dados financeiros: `.num` (mono +
  * tabular-nums — a máscara de privacidade global via CSS também o cobre),
  * escala por contexto e cor semântica automática com sinal explícito.
- * Substitui a formatação ad-hoc (`formatCentsAsBRL` + classes soltas).
  */
 export interface MoneyTextProps extends Omit<HTMLAttributes<HTMLSpanElement>, "children"> {
   /** Valor em centavos (pode ser negativo — o sinal é derivado). */
@@ -22,21 +21,20 @@ export interface MoneyTextProps extends Omit<HTMLAttributes<HTMLSpanElement>, "c
   /**
    * Cor semântica: `auto` deriva do sinal (positivo → positive, negativo →
    * negative, zero → default); `positive`/`negative`/`default`/`portfolio`
-   * forçam o tom (ex.: despesa sempre negative mesmo com valor positivo).
+   * forçam o tom.
    */
   tone?: "auto" | "positive" | "negative" | "default" | "portfolio";
   /**
    * Sinal exibido: `explicit` sempre `+`/`−` · `auto` apenas `−` quando
-   * negativo · `none` nunca (sinal já comunicado pelo contexto).
+   * negativo · `none` nunca.
    */
   sign?: "auto" | "explicit" | "none";
-  /** Quando true, anima a contagem numérica suavemente via NumberTicker (respeita reduced motion e toggle global). */
+  /** Quando true, anima a contagem numérica suavemente via NumberTicker. */
   animated?: boolean;
-  /**
-   * Se true, oculta a fração de centavos (ex: "R$ 1.250").
-   * Padrão false (exibição integral com centavos).
-   */
+  /** Se true, oculta a fração de centavos (ex: "R$ 1.250"). Padrão false. */
   hideCents?: boolean;
+  /** Suaviza visualmente a fração decimal `,XX` (padrão true quando `variant === "hero"`). */
+  deemphasizeCents?: boolean;
 }
 
 const variantClass: Record<NonNullable<MoneyTextProps["variant"]>, string> = {
@@ -61,12 +59,23 @@ function resolveTone(tone: NonNullable<MoneyTextProps["tone"]>, cents: number): 
   return "default";
 }
 
-/** Zero nunca recebe sinal; `explicit` marca ambos os sinais; `auto` só o negativo. */
 function signPrefix(sign: NonNullable<MoneyTextProps["sign"]>, cents: number): string {
   if (cents === 0) return "";
   if (sign === "explicit") return cents > 0 ? "+" : "−";
   if (sign === "auto") return cents < 0 ? "−" : "";
   return "";
+}
+
+function formatMoneyNode(formatted: string, deemphasize: boolean): ReactNode {
+  if (!deemphasize) return formatted;
+  const match = formatted.match(/^(.*?)([,.]\d{2})$/);
+  if (!match) return formatted;
+  return (
+    <>
+      {match[1]}
+      <span className="text-[0.82em] opacity-80">{match[2]}</span>
+    </>
+  );
 }
 
 export function MoneyText({
@@ -77,31 +86,48 @@ export function MoneyText({
   sign = "auto",
   animated = false,
   hideCents = false,
+  deemphasizeCents,
   className,
   ...props
 }: MoneyTextProps) {
   const shouldHideCents = hideCents;
+  const shouldDeemphasizeCents =
+    !shouldHideCents && (deemphasizeCents ?? variant === "hero");
 
   const resolvedTone = resolveTone(tone, cents);
   const prefix = signPrefix(sign, cents);
 
   if (animated) {
     return (
-      <span className={cn("num whitespace-nowrap", variantClass[variant], toneClass[resolvedTone], className)} {...props}>
+      <span
+        className={cn("num whitespace-nowrap", variantClass[variant], toneClass[resolvedTone], className)}
+        {...props}
+      >
         {prefix}
         <NumberTicker
           value={Math.abs(cents)}
           format={(absVal) =>
             formatCentsAsCurrency(Math.round(absVal), currency, { hideCents: shouldHideCents })
           }
+          renderValue={(absVal) =>
+            formatMoneyNode(
+              formatCentsAsCurrency(Math.round(absVal), currency, { hideCents: shouldHideCents }),
+              shouldDeemphasizeCents,
+            )
+          }
         />
       </span>
     );
   }
 
+  const formatted = `${prefix}${formatCentsAsCurrency(Math.abs(cents), currency, { hideCents: shouldHideCents })}`;
+
   return (
-    <span className={cn("num whitespace-nowrap", variantClass[variant], toneClass[resolvedTone], className)} {...props}>
-      {`${prefix}${formatCentsAsCurrency(Math.abs(cents), currency, { hideCents: shouldHideCents })}`}
+    <span
+      className={cn("num whitespace-nowrap", variantClass[variant], toneClass[resolvedTone], className)}
+      {...props}
+    >
+      {formatMoneyNode(formatted, shouldDeemphasizeCents)}
     </span>
   );
 }

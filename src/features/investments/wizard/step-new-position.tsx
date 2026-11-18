@@ -1,10 +1,8 @@
-import { useState } from "react";
-import { Badge, Checkbox, Input, MoneyInput, NumericInput, Select } from "@/components/ui";
+import { Badge } from "@/components/ui";
+import { parseDecimalNumber } from "@/domain/money";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
-import { DEFAULT_SECTORS_BY_CLASS } from "@/domain/portfolio/tickers-catalog";
-import type { AssetCurrency } from "@/types";
 import { useFamilyMode } from "@/state";
-import { FixedIncomeFormFields } from "../components/fixed-income-form-fields";
+import { AssetIdentityPricingFields, AssetMetadataAccordion } from "../components/shared-forms";
 import type { InvestmentWizardState } from "./wizard-state";
 
 export interface StepNewPositionProps {
@@ -12,426 +10,134 @@ export interface StepNewPositionProps {
   onChange: (patch: Partial<InvestmentWizardState>) => void;
 }
 
-const CLASSES_WITH_CURRENCY = new Set(["BDRs", "Internacional"]);
-const CLASSES_WITHOUT_DIVIDENDS = new Set(["Cripto", "Caixa"]);
-
-const CURRENCY_OPTIONS: { value: AssetCurrency; label: string }[] = [
-  { value: "BRL", label: "BRL (Reais)" },
-  { value: "USD", label: "USD (Dólares)" },
-];
-
 export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
   const { isFamilyModeEnabled } = useFamilyMode();
   const isCash = isCashAssetClass(state.assetClass) || state.ticker.toUpperCase() === "CAIXA";
   const isTesouro = isTesouroAsset(state.ticker, state.assetClass);
   const isFixedIncome = isFixedIncomeClass(state.assetClass) || isTesouro;
-  const isCustomValuation = Boolean(state.notes?.includes("[VALUATION:CUSTOM]") || state.notes?.includes("[PRICING:TOTAL]"));
+  const isCustomValuation = Boolean(
+    state.notes?.includes("[VALUATION:CUSTOM]") || state.notes?.includes("[PRICING:TOTAL]"),
+  );
   const isTotalValueMode = !isCash && (isFixedIncome || isCustomValuation);
   const isCrypto = state.assetClass === "Cripto";
-  const needsCurrencyField = CLASSES_WITH_CURRENCY.has(state.assetClass);
-  const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[state.assetClass] ?? [];
+  const cleanNotes = (state.notes ?? "")
+    .replace(/\[VALUATION:CUSTOM\]/g, "")
+    .replace(/\[PRICING:(UNIT|TOTAL)\]/g, "")
+    .trim();
 
   const hasStoredDividends =
-    (state.accumulatedDividendsCents ?? 0) > 0 ||
-    (state.estimatedDividendPerShareCents ?? 0) > 0;
-
-  const [distributesInterest, setDistributesInterest] = useState(
-    isFixedIncome ? hasStoredDividends : false,
-  );
-  const [showDividendPanel, setShowDividendPanel] = useState(hasStoredDividends);
-  const [showNotes, setShowNotes] = useState(Boolean(state.notes && state.notes.trim().length > 0));
+    (state.accumulatedDividendsCents ?? 0) > 0 || (state.estimatedDividendPerShareCents ?? 0) > 0;
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Resumo Compacto da Identificação (Evita repetição de Ticker e Classe) */}
-      <div className="flex items-center justify-between rounded-xl border border-border/80 bg-surface/80 p-3 sm:p-3.5">
+      <div className="flex items-center justify-between rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 shadow-xs">
         <div className="flex items-center gap-2 min-w-0">
           <span className="font-mono text-base font-bold text-foreground truncate">
             {state.ticker || "NOVO ATIVO"}
           </span>
-          <Badge variant="muted" className="text-xs shrink-0 font-medium">
+          <Badge variant="muted" size="sm" className="shrink-0 font-medium">
             {state.assetClass}
           </Badge>
           {state.currency !== "BRL" && (
-            <Badge variant="muted" className="text-xs shrink-0 font-mono">
+            <Badge variant="muted" size="sm" className="shrink-0 font-mono">
               {state.currency}
             </Badge>
           )}
         </div>
-        <span className="text-[11px] text-muted-foreground shrink-0 font-mono">
-          Passo 2 de 4
-        </span>
+        <span className="text-[11px] text-muted-foreground shrink-0 font-mono">Passo 2 de 4</span>
       </div>
 
-      {/* Seletor de Moeda (Apenas para BDRs e Internacional) */}
-      {needsCurrencyField && (
-        <div className="flex flex-col gap-1.5">
-          <span className="text-xs font-semibold text-foreground">
-            Moeda de Negociação
-          </span>
-          <Select
-            value={state.currency}
-            onValueChange={(currency) => onChange({ currency: currency as AssetCurrency })}
-            options={CURRENCY_OPTIONS}
-          />
-        </div>
-      )}
+      <AssetIdentityPricingFields
+        idPrefix="wizard-new"
+        isNewPosition
+        cashInputMode="money"
+        ticker={state.ticker}
+        assetClass={state.assetClass}
+        currency={state.currency}
+        onCurrencyChange={(currency) => onChange({ currency })}
+        sector={state.sector}
+        onSectorChange={(sector) => onChange({ sector })}
+        isCash={isCash}
+        isTesouro={isTesouro}
+        isFixedIncome={isFixedIncome}
+        isCrypto={isCrypto}
+        isCustomValuation={isCustomValuation}
+        onCustomValuationChange={(checked) => {
+          const updated = checked ? [cleanNotes, "[VALUATION:CUSTOM]"].filter(Boolean).join(" ") : cleanNotes;
+          onChange({ notes: updated });
+        }}
+        isTotalValueMode={isTotalValueMode}
+        quantityStr={state.quantityStr}
+        onQuantityStrChange={(quantityStr) => onChange({ quantityStr })}
+        averagePriceCents={state.priceCents}
+        onAveragePriceCentsChange={(priceCents) => onChange({ priceCents })}
+        initialPriceCents={state.priceCents}
+        onInitialPriceCentsChange={(priceCents) => {
+          onChange({
+            priceCents,
+            totalCents: state.totalCents === 0 || state.totalCents === state.priceCents ? priceCents : state.totalCents,
+          });
+        }}
+        currentPriceCents={state.totalCents}
+        onCurrentPriceCentsChange={(totalCents) => onChange({ totalCents })}
+        fixedIncomeValues={{
+          rateType: state.fixedIncomeRateType,
+          rateValue: state.fixedIncomeRateValue,
+          baseDate: state.fixedIncomeBaseDate,
+          initialInvestmentDate: state.fixedIncomeInitialInvestmentDate || null,
+          maturityDate: state.fixedIncomeMaturityDate || null,
+          isTaxExempt: state.fixedIncomeIsTaxExempt,
+          manualTaxRatePct: state.fixedIncomeManualTaxRatePct,
+        }}
+        onFixedIncomeChange={(patch) => {
+          const statePatch: Partial<InvestmentWizardState> = {};
+          if (patch.rateType !== undefined) statePatch.fixedIncomeRateType = patch.rateType;
+          if (patch.rateValue !== undefined) {
+            statePatch.fixedIncomeRateValue =
+              typeof patch.rateValue === "number" ? patch.rateValue : parseDecimalNumber(patch.rateValue);
+          }
+          if (patch.baseDate !== undefined) statePatch.fixedIncomeBaseDate = patch.baseDate;
+          if (patch.initialInvestmentDate !== undefined) {
+            statePatch.fixedIncomeInitialInvestmentDate = patch.initialInvestmentDate ?? "";
+          }
+          if (patch.maturityDate !== undefined) statePatch.fixedIncomeMaturityDate = patch.maturityDate ?? "";
+          if (patch.isTaxExempt !== undefined) statePatch.fixedIncomeIsTaxExempt = patch.isTaxExempt;
+          if (patch.manualTaxRatePct !== undefined) statePatch.fixedIncomeManualTaxRatePct = patch.manualTaxRatePct;
+          onChange(statePatch);
+        }}
+      />
 
-      {/* Setor / Segmento para Renda Variável (Opcional) */}
-      {!isCash && !isFixedIncome && !isCrypto && (
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="wizard-new-sector" className="text-xs font-semibold text-foreground">
-            Setor / Segmento <span className="text-muted-foreground/70 font-normal">(opcional)</span>
-          </label>
-          <Input
-            id="wizard-new-sector"
-            value={state.sector}
-            onChange={(e) => onChange({ sector: e.target.value })}
-            placeholder="Ex: Financeiro / Bancos, Imobiliário / Logística..."
-          />
-          {recommendedSectors.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-              <span className="text-[11px] text-muted-foreground">Sugestões:</span>
-              {recommendedSectors.slice(0, 4).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => onChange({ sector: s })}
-                  className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
-                    state.sector === s
-                      ? "bg-primary text-primary-foreground font-semibold"
-                      : "border border-border/70 bg-surface-hover/50 text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Toggle de Valoração Própria / Ativo Não Cotado em Bolsa (Salvaguarda S7) */}
-      {!isCash && !isFixedIncome && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface/60 p-3">
-          <Checkbox
-            id="wizard-custom-val"
-            checked={isCustomValuation}
-            onCheckedChange={(checked) => {
-              const currentNotes = (state.notes ?? "").replace(/\[VALUATION:CUSTOM\]/g, "").trim();
-              const updatedNotes = checked
-                ? [currentNotes, "[VALUATION:CUSTOM]"].filter(Boolean).join(" ")
-                : currentNotes;
-              onChange({ notes: updatedNotes });
-            }}
-          />
-          <label htmlFor="wizard-custom-val" className="flex flex-col gap-0.5 text-xs text-foreground cursor-pointer select-none">
-            <span className="font-semibold">Valoração Própria / Ativo Não Cotado em Bolsa</span>
-            <span className="text-[11px] text-muted-foreground font-normal">
-              Permite lançar valor aplicado e saldo diretamente (sem cotas ou código B3) e ignora a busca de cotações automáticas.
-            </span>
-          </label>
-        </div>
-      )}
-
-      {/* Bloco de Posição Inicial */}
-      {isCash ? (
-        <div className="rounded-xl border border-border/80 bg-surface/60 p-4 flex flex-col gap-3">
-          <span className="text-xs font-semibold text-foreground">Saldo Inicial em Caixa</span>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="wizard-new-cash" className="text-xs font-semibold text-foreground">
-              Saldo em Conta (R$)
-            </label>
-            <MoneyInput
-              id="wizard-new-cash"
-              cents={state.totalCents}
-              onCentsChange={(totalCents) => onChange({ totalCents })}
-              placeholder="R$ 0,00"
-            />
-          </div>
-        </div>
-      ) : isTotalValueMode ? (
-        <div className="rounded-xl border border-border/80 bg-surface/60 p-4 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">
-              {isTesouro
-                ? "Posição Inicial (Tesouro Direto)"
-                : isFixedIncome
-                  ? "Posição Inicial (Renda Fixa)"
-                  : "Posição Inicial (Valoração Própria)"}
-            </span>
-            <span className="text-[11px] text-muted-foreground">Valor Completo</span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="wizard-new-initial-price" className="text-xs font-semibold text-foreground">
-                Valor Aplicado ({state.currency})
-              </label>
-              <MoneyInput
-                id="wizard-new-initial-price"
-                cents={state.priceCents}
-                currency={state.currency}
-                onCentsChange={(priceCents) => {
-                  onChange({
-                    priceCents,
-                    totalCents: state.totalCents === 0 || state.totalCents === state.priceCents ? priceCents : state.totalCents,
-                  });
-                }}
-                placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
-                aria-label="Preço inicial investido"
-              />
-              <span className="text-[11px] text-muted-foreground">Aporte inicial</span>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="wizard-new-current-price" className="text-xs font-semibold text-foreground">
-                Saldo Atual ({state.currency})
-              </label>
-              <MoneyInput
-                id="wizard-new-current-price"
-                cents={state.totalCents}
-                currency={state.currency}
-                onCentsChange={(totalCents) => onChange({ totalCents })}
-                placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
-                aria-label="Preço atual ou saldo"
-              />
-              <span className="text-[11px] text-muted-foreground">Saldo do extrato bancário</span>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="rounded-xl border border-border/80 bg-surface/60 p-4 flex flex-col gap-4">
-          <span className="text-xs font-semibold text-foreground">Posição Inicial em Carteira</span>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="wizard-new-qty" className="text-xs font-semibold text-foreground">
-                Quantidade Inicial de Cotas
-              </label>
-              <NumericInput
-                id="wizard-new-qty"
-                value={state.quantityStr}
-                onValueChange={(v) => onChange({ quantityStr: v })}
-                placeholder="Ex: 100"
-                aria-label="Quantidade inicial de cotas"
-                showCalculatorAction
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="wizard-new-avgprice" className="text-xs font-semibold text-foreground">
-                Preço Médio por Cota ({state.currency})
-              </label>
-              <MoneyInput
-                id="wizard-new-avgprice"
-                cents={state.priceCents}
-                currency={state.currency}
-                onCentsChange={(priceCents) => onChange({ priceCents })}
-                placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bloco de Parâmetros de Renda Fixa e Tesouro Direto (Fase 63/72) */}
-      {isFixedIncome && !isCash && (
-        <FixedIncomeFormFields
-          values={{
-            rateType: state.fixedIncomeRateType,
-            rateValue: state.fixedIncomeRateValue,
-            baseDate: state.fixedIncomeBaseDate,
-            initialInvestmentDate: state.fixedIncomeInitialInvestmentDate || null,
-            maturityDate: state.fixedIncomeMaturityDate || null,
-            isTaxExempt: state.fixedIncomeIsTaxExempt,
-            manualTaxRatePct: state.fixedIncomeManualTaxRatePct,
-          }}
-          onChange={(patch) => {
-            const statePatch: Partial<InvestmentWizardState> = {};
-            if (patch.rateType !== undefined) statePatch.fixedIncomeRateType = patch.rateType;
-            if (patch.rateValue !== undefined) statePatch.fixedIncomeRateValue = patch.rateValue;
-            if (patch.baseDate !== undefined) statePatch.fixedIncomeBaseDate = patch.baseDate;
-            if (patch.initialInvestmentDate !== undefined)
-              statePatch.fixedIncomeInitialInvestmentDate = patch.initialInvestmentDate ?? "";
-            if (patch.maturityDate !== undefined) statePatch.fixedIncomeMaturityDate = patch.maturityDate ?? "";
-            if (patch.isTaxExempt !== undefined) statePatch.fixedIncomeIsTaxExempt = patch.isTaxExempt;
-            if (patch.manualTaxRatePct !== undefined) statePatch.fixedIncomeManualTaxRatePct = patch.manualTaxRatePct;
-            onChange(statePatch);
-          }}
-          idPrefix="wizard-fi"
-          isTesouro={isTesouro}
-        />
-      )}
-
-      {/* RF / Tesouro: toggles de Reserva de Emergência & Juros/Cupons */}
-      {isFixedIncome && !isCash && (
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5 rounded-xl border border-border/80 bg-surface/80 p-3.5">
-            <Checkbox
-              id="wizard-fi-emergency-fund"
-              checked={state.isEmergencyFund}
-              onCheckedChange={(v) => onChange({ isEmergencyFund: Boolean(v) })}
-              label="Compõe minha Reserva de Emergência"
-            />
-            <p className="pl-6 text-[11px] text-muted-foreground">
-              Inclui automaticamente este título no termômetro de liquidez e reserva da casa.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Checkbox
-              id="wizard-fi-distributes-interest"
-              checked={distributesInterest}
-              onCheckedChange={(v) => {
-                const checked = Boolean(v);
-                setDistributesInterest(checked);
-                setShowDividendPanel(checked);
-                if (!checked) {
-                  onChange({
-                    accumulatedDividendsCents: 0,
-                    estimatedDividendPerShareCents: 0,
-                  });
-                }
-              }}
-              label="Distribui juros / cupons periodicamente (NTN-B, CRI, CRA, debêntures)"
-            />
-            {distributesInterest && (
-              <p className="pl-6 text-[11px] text-muted-foreground">
-                Informe os proventos anteriores ao cadastro para alimentar o Yield on Cost e a Bola de Neve.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Ações / FIIs / ETFs / BDRs: link colapsável para proventos anteriores */}
-      {!isFixedIncome && !isCash && !isCrypto && !showDividendPanel && (
-        <button
-          type="button"
-          onClick={() => setShowDividendPanel(true)}
-          className="self-start text-xs text-muted-foreground hover:text-foreground underline transition-colors cursor-pointer"
-        >
-          + Adicionar proventos anteriores ao cadastro (opcional)
-        </button>
-      )}
-
-      {/* Painel de Proventos Anteriores (se ativo) */}
-      {showDividendPanel && !CLASSES_WITHOUT_DIVIDENDS.has(state.assetClass) && (
-        <div className="flex flex-col gap-3 rounded-xl border border-border/70 bg-surface/50 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">
-              Proventos Anteriores ao Cadastro
-            </span>
-            {!isFixedIncome && (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDividendPanel(false);
-                  onChange({
-                    accumulatedDividendsCents: 0,
-                    estimatedDividendPerShareCents: 0,
-                  });
-                }}
-                className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                Ocultar
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="wizard-accumulated-dividends"
-                className="text-xs font-semibold text-foreground"
-              >
-                Total Acumulado Recebido ({state.currency})
-              </label>
-              <MoneyInput
-                id="wizard-accumulated-dividends"
-                cents={state.accumulatedDividendsCents}
-                currency={state.currency}
-                onCentsChange={(accumulatedDividendsCents) => onChange({ accumulatedDividendsCents })}
-                placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
-                aria-label="Total de proventos acumulados anteriores ao cadastro"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="wizard-estimated-div-per-share"
-                className="text-xs font-semibold text-foreground"
-              >
-                Dividendo Estimado / Cota / Mês ({state.currency})
-              </label>
-              <MoneyInput
-                id="wizard-estimated-div-per-share"
-                cents={state.estimatedDividendPerShareCents}
-                currency={state.currency}
-                onCentsChange={(estimatedDividendPerShareCents) => onChange({ estimatedDividendPerShareCents })}
-                placeholder={state.currency === "USD" ? "$ 0.00" : "R$ 0,00"}
-                aria-label="Dividendo mensal estimado por cota para cálculo da Bola de Neve"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notas / Observações (Colapsável) */}
-      {!showNotes ? (
-        <button
-          type="button"
-          onClick={() => setShowNotes(true)}
-          className="self-start text-xs text-muted-foreground hover:text-foreground underline transition-colors cursor-pointer"
-        >
-          + Adicionar anotações ou descrição (opcional)
-        </button>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-center justify-between">
-            <label htmlFor="wizard-new-notes" className="text-xs font-semibold text-foreground">
-              Observações operacionais <span className="text-muted-foreground/70 font-normal">(opcional)</span>
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                setShowNotes(false);
-                onChange({ notes: "" });
-              }}
-              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              Ocultar
-            </button>
-          </div>
-          <Input
-            id="wizard-new-notes"
-            value={state.notes}
-            onChange={(e) => onChange({ notes: e.target.value })}
-            placeholder="Ex: Corretora, custódia ou regra operacional..."
-          />
-        </div>
-      )}
-
-      {/* Bloco de Compartilhamento Familiar — Contextual ao Modo Familiar */}
-      {isFamilyModeEnabled && (
-        <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface/80">
-          <div className="space-y-0.5">
-            <span className="text-xs font-semibold text-foreground block">
-              Compartilhar com a Família / Reserva
-            </span>
-            <span className="text-[11px] text-muted-foreground block">
-              Inclui esta nova posição no patrimônio familiar e reserva de emergência da casa.
-            </span>
-          </div>
-          <Checkbox
-            id="wizard-asset-is-family"
-            checked={state.isFamily}
-            onCheckedChange={(checked) => onChange({ isFamily: Boolean(checked) })}
-            aria-label="Compartilhar este ativo com o Modo Família"
-          />
-        </div>
-      )}
+      <AssetMetadataAccordion
+        idPrefix="wizard-new"
+        assetClass={state.assetClass}
+        currency={state.currency}
+        isCash={isCash}
+        isFixedIncome={isFixedIncome}
+        isFamilyModeEnabled={isFamilyModeEnabled}
+        isEmergencyFund={state.isEmergencyFund}
+        onEmergencyFundChange={(isEmergencyFund) => onChange({ isEmergencyFund })}
+        isFamily={state.isFamily}
+        onFamilyChange={(isFamily) => onChange({ isFamily })}
+        distributesInterest={isFixedIncome ? hasStoredDividends : false}
+        onDistributesInterestChange={(checked) => {
+          if (!checked) {
+            onChange({ accumulatedDividendsCents: 0, estimatedDividendPerShareCents: 0 });
+          }
+        }}
+        accumulatedDividendsCents={state.accumulatedDividendsCents}
+        onAccumulatedDividendsCentsChange={(accumulatedDividendsCents) =>
+          onChange({ accumulatedDividendsCents })
+        }
+        estimatedDividendPerShareCents={state.estimatedDividendPerShareCents}
+        onEstimatedDividendPerShareCentsChange={(estimatedDividendPerShareCents) =>
+          onChange({ estimatedDividendPerShareCents })
+        }
+        notes={cleanNotes}
+        onNotesChange={(next) => {
+          const updated = isCustomValuation ? [next, "[VALUATION:CUSTOM]"].filter(Boolean).join(" ") : next;
+          onChange({ notes: updated });
+        }}
+      />
     </div>
   );
 }

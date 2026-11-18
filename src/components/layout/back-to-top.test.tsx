@@ -39,6 +39,7 @@ describe("BackToTop (Layout)", () => {
 
     expect(scrollToTopSpy).toHaveBeenCalledWith({
       containerId: "main-content",
+      sensoryFeedback: true,
     });
 
     scrollToTopSpy.mockRestore();

@@ -213,6 +213,8 @@ describe("local-notifications service", () => {
 
       const { syncDueReminderNotifications, setDueNotificationsEnabled } = await import("./local-notifications");
       setDueNotificationsEnabled(true, "u1");
+      const today = new Date().toISOString().slice(0, 10);
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
       const count = await syncDueReminderNotifications(
         [
@@ -220,7 +222,7 @@ describe("local-notifications service", () => {
             key: "bill:c1:2026-10",
             kind: "bill",
             title: "Fatura Nubank · 2026-10",
-            dueDate: "2026-10-20",
+            dueDate: today,
             amountCents: 150000,
             status: "due_today",
             link: { path: "/cartoes", params: { card: "c1" } },
@@ -229,7 +231,7 @@ describe("local-notifications service", () => {
             key: "debt:d1",
             kind: "debt",
             title: "Empréstimo Carro",
-            dueDate: "2026-10-18",
+            dueDate: yesterday,
             amountCents: 80000,
             status: "overdue",
             link: { path: "/dividas" },

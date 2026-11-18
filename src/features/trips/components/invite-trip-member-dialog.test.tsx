@@ -99,10 +99,10 @@ describe("InviteTripMemberDialog Component", () => {
     const qrToggleBtn = screen.getByRole("button", { name: /Exibir QR Code/i });
     fireEvent.click(qrToggleBtn);
 
-    expect(screen.getByText(/Aponte a camera do celular para entrar no grupo da viagem/i)).toBeInTheDocument();
+    expect(screen.getByText(/Aponte a câmera do celular para entrar no grupo da viagem/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Ocultar QR/i }));
-    expect(screen.queryByText(/Aponte a camera do celular para entrar no grupo da viagem/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Aponte a câmera do celular para entrar no grupo da viagem/i)).not.toBeInTheDocument();
   });
 
   it("exibe aviso de link encerrado quando a viagem está finalizada", () => {

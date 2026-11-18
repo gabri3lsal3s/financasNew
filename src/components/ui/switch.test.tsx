@@ -34,7 +34,9 @@ describe("Switch UI Primitive", () => {
     expect(sensorySpy).toHaveBeenCalledWith("toggle");
   });
 
-  it("permite alternar clicando no rótulo de texto", async () => {
+  it("permite alternar clicando no rótulo de texto sem duplo toggle ou duplo disparo sensorial", async () => {
+    const sensorySpy = vi.spyOn(sensoryModule, "triggerSensory");
+    sensorySpy.mockClear();
     const onCheckedChange = vi.fn();
     const user = userEvent.setup();
 
@@ -43,7 +45,10 @@ describe("Switch UI Primitive", () => {
     const labelText = screen.getByText("Despesa Familiar");
     await user.click(labelText);
 
+    expect(onCheckedChange).toHaveBeenCalledTimes(1);
     expect(onCheckedChange).toHaveBeenCalledWith(false);
+    expect(sensorySpy).toHaveBeenCalledTimes(1);
+    expect(sensorySpy).toHaveBeenCalledWith("toggle");
   });
 
   it("não dispara alteração quando desabilitado", async () => {

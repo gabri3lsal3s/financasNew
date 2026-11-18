@@ -82,18 +82,19 @@ export function HouseholdBalanceCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span>{getSplitRuleLabel(splitRule)}</span>
           <span className="tabular-nums">
-            Total da casa: <MoneyText cents={totalSpentCents} tone="default" className="font-medium text-foreground" />
+            Total da casa:{" "}
+            <MoneyText cents={totalSpentCents} tone="default" className="font-medium text-foreground" />
           </span>
         </div>
 
-        {/* Barra Bicolor de Contribuição */}
+        {/* Barra Multi-Segmento de Contribuição */}
         {totalSpentCents > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div
-              className="relative h-2.5 w-full overflow-hidden rounded-full bg-muted/60 flex"
+              className="relative h-2.5 w-full overflow-hidden rounded-full bg-surface-hover/80 dark:bg-muted/70 flex"
               role="img"
               aria-label="Proporção de gastos por participante"
             >
@@ -112,14 +113,14 @@ export function HouseholdBalanceCard({
               })}
             </div>
 
-            {/* Lista de Participantes e Fatias */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            {/* Lista de Participantes e Fatias (M2 sem borda interna dupla) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
               {members.map((member, index) => {
                 const dotColor = MEMBER_COLORS[index % MEMBER_COLORS.length] ?? "bg-primary";
                 return (
                   <div
                     key={member.user_id}
-                    className="flex items-center justify-between gap-2 p-2 rounded-xl bg-surface-subtle/50 border border-border/80 text-xs"
+                    className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-surface-raised text-xs min-w-0"
                   >
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className={cn("size-2 rounded-full shrink-0", dotColor)} aria-hidden="true" />
@@ -127,7 +128,9 @@ export function HouseholdBalanceCard({
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0 text-right">
                       <MoneyText cents={member.spent_cents} tone="default" className="font-semibold text-foreground" />
-                      <span className="text-[11px] text-muted-foreground">({member.percentage_of_total}%)</span>
+                      <span className="text-[11px] text-muted-foreground tabular-nums">
+                        ({member.percentage_of_total}%)
+                      </span>
                     </div>
                   </div>
                 );
@@ -142,7 +145,7 @@ export function HouseholdBalanceCard({
 
         {/* Resumo de Liquidação / Aviso */}
         {settlement && !hasPostSettlementExpenses && (
-          <div className="p-2.5 rounded-xl border border-positive/20 bg-positive/10 text-xs text-foreground">
+          <div className="p-3 rounded-xl border border-positive/20 bg-positive/10 text-xs text-foreground">
             <p className="font-medium text-positive-strong">
               Acerto de contas realizado para esta competência.
             </p>
@@ -154,19 +157,19 @@ export function HouseholdBalanceCard({
         )}
 
         {hasPostSettlementExpenses && (
-          <div className="p-2.5 rounded-xl border border-warning/20 bg-warning/15 text-xs text-warning-strong">
+          <div className="p-3 rounded-xl border border-warning/20 bg-warning/15 text-xs text-warning-strong">
             Novas despesas foram lançadas após o último acerto registrado. Um novo acerto de contas é recomendado.
           </div>
         )}
 
         {/* Botão de Ação CTA */}
-        <div className="pt-2">
+        <div className="pt-1">
           <Button
             type="button"
             variant={isSettled && !hasPostSettlementExpenses ? "outline" : "default"}
-            size="sm"
+            size="default"
             onClick={onOpenSettlement}
-            className="w-full sm:w-auto flex items-center justify-center gap-2"
+            className="w-full sm:w-auto gap-2"
           >
             <ArrowRightLeft className="size-4 shrink-0" aria-hidden="true" />
             <span>

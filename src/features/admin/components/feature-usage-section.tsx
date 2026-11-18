@@ -1,5 +1,5 @@
-import { BarChart3, Activity, ArrowUpRight, Clock } from "lucide-react";
-import { Badge, EmptyState, Skeleton } from "@/components/ui";
+import { Activity, ArrowUpRight, BarChart3, Clock } from "lucide-react";
+import { Badge, EmptyState, Progress, Skeleton } from "@/components/ui";
 import { useFeatureUsageMetrics } from "@/state";
 
 const MODULE_LABELS: Record<string, string> = {
@@ -23,12 +23,11 @@ export function FeatureUsageSection() {
 
   return (
     <div className="rounded-2xl border border-border/80 bg-surface p-5 sm:p-6 shadow-xs space-y-5">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/80 pb-3">
         <div className="flex items-center gap-2.5">
           <BarChart3 className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
           <div>
-            <h3 className="text-sm font-bold text-foreground">Engajamento & Uso de Funcionalidades</h3>
+            <h3 className="text-sm font-bold text-foreground">Engajamento &amp; Uso de Funcionalidades</h3>
             <p className="text-xs text-muted-foreground">
               Módulos mais acessados e frequência de utilização nos últimos 30 dias.
             </p>
@@ -54,7 +53,6 @@ export function FeatureUsageSection() {
         />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Top Funcionalidades Mais Usadas */}
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
               <ArrowUpRight className="size-3.5 text-positive-strong" aria-hidden="true" />
@@ -66,34 +64,34 @@ export function FeatureUsageSection() {
                 return (
                   <div
                     key={item.module}
-                    className="flex flex-col gap-1.5 p-3 rounded-xl border border-border/60 bg-surface-subtle/30"
+                    className="flex flex-col gap-1.5 p-3 rounded-xl bg-surface-raised"
                   >
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="flex size-5 items-center justify-center rounded-full bg-surface-hover text-[10px] font-bold text-foreground">
+                    <div className="flex items-center justify-between text-xs gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-surface-hover text-[10px] font-bold text-foreground">
                           {idx + 1}
                         </span>
-                        <span className="font-semibold text-foreground">{label}</span>
+                        <span className="font-semibold text-foreground truncate">{label}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span className="tabular-nums font-bold text-foreground">{item.count}</span>
-                        <span className="text-[11px] text-muted-foreground">({item.percentage}%)</span>
+                        <span className="text-[11px] text-muted-foreground tabular-nums">
+                          ({item.percentage}%)
+                        </span>
                       </div>
                     </div>
-                    {/* Barra de Progresso Visual */}
-                    <div className="w-full h-1.5 rounded-full bg-surface-hover overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all duration-500"
-                        style={{ width: `${Math.max(item.percentage, 4)}%` }}
-                      />
-                    </div>
+                    <Progress
+                      value={Math.max(item.percentage, 4)}
+                      size="md"
+                      tone="positive"
+                      aria-label={`Uso de ${label}: ${item.percentage}%`}
+                    />
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Menos Utilizadas & Oportunidades */}
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
               <Clock className="size-3.5 text-warning-strong" aria-hidden="true" />
@@ -110,14 +108,16 @@ export function FeatureUsageSection() {
                   return (
                     <div
                       key={item.module}
-                      className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-surface-subtle/20 text-xs"
+                      className="flex items-center justify-between gap-2 p-3 rounded-xl bg-surface-raised text-xs"
                     >
-                      <span className="text-muted-foreground">{label}</span>
-                      <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground truncate">{label}</span>
+                      <div className="flex items-center gap-2 shrink-0">
                         <Badge variant="muted" size="xs">
                           {item.count} acessos
                         </Badge>
-                        <span className="text-[11px] text-muted-foreground">({item.percentage}%)</span>
+                        <span className="text-[11px] text-muted-foreground tabular-nums">
+                          ({item.percentage}%)
+                        </span>
                       </div>
                     </div>
                   );

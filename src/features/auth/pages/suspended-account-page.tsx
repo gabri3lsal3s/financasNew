@@ -1,17 +1,23 @@
 import { Ban, LogOut } from "lucide-react";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui";
-import { useUserAccess } from "@/state";
 import { useSignOut } from "@/hooks/use-sign-out";
+import { useUserAccess } from "@/state";
 
 export function SuspendedAccountPage() {
   const { profile, isBanned } = useUserAccess();
   const { signOut } = useSignOut();
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center p-4 bg-background text-foreground">
+    <div
+      className="flex min-h-dvh w-full flex-col items-center justify-center p-4 bg-background text-foreground pt-[calc(1.5rem+env(safe-area-inset-top,0px))] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
+    >
+      <div className="w-full max-w-md flex justify-end mb-2.5">
+        <ThemeToggle />
+      </div>
       <div className="flex w-full max-w-md flex-col items-center text-center gap-6 rounded-2xl border border-critical/30 bg-surface p-6 sm:p-8 shadow-xs">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-critical/10 border border-critical/20 text-critical">
-          <Ban className="size-7" aria-hidden="true" />
+        <div className="flex size-12 sm:size-14 items-center justify-center rounded-2xl bg-critical/10 border border-critical/20 text-critical-strong">
+          <Ban className="size-6 sm:size-7" aria-hidden="true" />
         </div>
 
         <div className="flex flex-col gap-2">
@@ -27,7 +33,9 @@ export function SuspendedAccountPage() {
 
         {profile?.suspended_reason ? (
           <div className="w-full rounded-xl border border-critical/20 bg-critical/5 p-3.5 flex flex-col gap-1 text-left">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-critical">Motivo informado</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-critical-strong">
+              Motivo informado
+            </span>
             <p className="text-xs text-foreground/90">{profile.suspended_reason}</p>
           </div>
         ) : null}
@@ -40,7 +48,7 @@ export function SuspendedAccountPage() {
             className="w-full gap-2"
           >
             <LogOut className="size-4" aria-hidden="true" />
-            Desconectar
+            <span>Desconectar</span>
           </Button>
         </div>
       </div>

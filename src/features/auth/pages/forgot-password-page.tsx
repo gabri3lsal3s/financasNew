@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router";
 import { ArrowLeft } from "lucide-react";
-import { Alert, Button, Input, Turnstile } from "@/components/ui";
-import { AuthShell } from "@/features/auth/components/auth-shell";
+import { Alert, Button, FormField, Input, Turnstile } from "@/components/ui";
 import { resetPasswordForEmail } from "@/hooks/use-auth";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
+import { AuthShell } from "../components/auth-shell";
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -44,7 +44,10 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <AuthShell title="Recuperar senha" subtitle="Enviaremos um link de redefinição para o seu e-mail.">
+    <AuthShell
+      title="Recuperar senha"
+      subtitle="Enviaremos um link de redefinição para o seu e-mail."
+    >
       <div className="flex flex-col gap-4">
         {error ? <Alert variant="error">{error}</Alert> : null}
         {sent ? (
@@ -53,11 +56,8 @@ export function ForgotPasswordPage() {
           </Alert>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="forgot-email" className="text-xs font-semibold text-foreground">
-              E-mail
-            </label>
+        <form onSubmit={(e) => { void handleSubmit(e); }} className="flex flex-col gap-4" noValidate>
+          <FormField label="E-mail" htmlFor="forgot-email">
             <Input
               id="forgot-email"
               type="email"
@@ -66,15 +66,22 @@ export function ForgotPasswordPage() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="voce@exemplo.com"
+              className="text-base sm:text-sm"
             />
-          </div>
+          </FormField>
+
           <Turnstile
             className="my-0.5"
             onVerify={setCaptchaToken}
             onExpire={() => setCaptchaToken(null)}
           />
 
-          <Button type="submit" disabled={pending || cooldown > 0}>
+          <Button
+            type="submit"
+            variant="solid"
+            sensoryIntent={false}
+            disabled={pending || cooldown > 0}
+          >
             {pending
               ? "Enviando…"
               : cooldown > 0

@@ -27,10 +27,10 @@ export function BalanceTab({
     <div className="flex flex-col gap-6">
       {/* Card Duplo de Dossiês A4 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs">
           <div className="flex flex-col gap-1 min-w-0">
             <div className="flex items-center gap-2">
-              <Scale className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
+              <Scale className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
               <h3 className="text-sm sm:text-base font-bold text-foreground">Balanço 360° & DRE Pessoal</h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -48,10 +48,10 @@ export function BalanceTab({
           </Button>
         </div>
 
-        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col justify-between gap-3 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs">
           <div className="flex flex-col gap-1 min-w-0">
             <div className="flex items-center gap-2">
-              <Flame className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
+              <Flame className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
               <h3 className="text-sm sm:text-base font-bold text-foreground">Dossiê de Liberdade Financeira</h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -72,7 +72,7 @@ export function BalanceTab({
 
       {/* Cards de Patrimônio Líquido Real */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+        <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Patrimônio Líquido Real</span>
             <EquationBreakdownPopover
@@ -120,7 +120,7 @@ export function BalanceTab({
             className="text-lg sm:text-xl font-bold font-display tabular-nums whitespace-nowrap"
           />
         </div>
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+        <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Grau de Liberdade Financeira</span>
             <EquationBreakdownPopover
@@ -147,11 +147,11 @@ export function BalanceTab({
               totalCents={numberToCents(freedomAnalysis.monthlyDividendsBRL)}
             />
           </div>
-          <span className="text-lg sm:text-xl font-bold font-display text-positive-strong">
+          <span className="num font-mono tabular-nums text-lg sm:text-xl font-bold font-display text-positive-strong whitespace-nowrap">
             {formatPercent(freedomAnalysis.freedomPct)}%
           </span>
         </div>
-        <div className="rounded-2xl border border-border/80 bg-surface/90 p-4 shadow-xs flex flex-col gap-1">
+        <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Autonomia de Reserva (Runway)</span>
             <EquationBreakdownPopover
@@ -178,7 +178,7 @@ export function BalanceTab({
               totalCents={numberToCents(freedomAnalysis.liquidReservesBRL)}
             />
           </div>
-          <span className="text-lg sm:text-xl font-bold font-display text-foreground">
+          <span className="num font-mono tabular-nums text-lg sm:text-xl font-bold font-display text-foreground whitespace-nowrap">
             {formatPercent(freedomAnalysis.runwayMonths)} meses
           </span>
         </div>

@@ -134,6 +134,7 @@ vi.mock("@/state", () => ({
   useSyncQuotes: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useSetManualPrice: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
   useExecutePortfolioBatchAporte: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAuth: () => ({ user: { id: "user-1" } }),
   useFamilyMode: () => ({ isFamilyModeEnabled: false }),
   useMyFamily: () => ({ data: null, isLoading: false }),
   useUpdateFamilyMemberShareMode: () => ({ mutateAsync: vi.fn(), isPending: false }),

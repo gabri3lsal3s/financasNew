@@ -70,7 +70,11 @@ describe("AutoRegisteredBanner (§1.6)", () => {
     render(<AutoRegisteredBanner />);
 
     expect(
-      screen.getByText(/Pix de R\$\s*45,00 para Padaria Silva cadastrado!/),
+      screen.getByText(
+        (_content, element) =>
+          element?.tagName.toLowerCase() === "p" &&
+          /Pix de R\$\s*45,00 para Padaria Silva cadastrado!/.test(element.textContent ?? ""),
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Editar Lançamento/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Desfazer/i })).toBeInTheDocument();

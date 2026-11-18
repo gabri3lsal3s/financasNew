@@ -1,7 +1,26 @@
-import { render, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render as originalRender, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TransactionListPage } from "./transaction-list-page";
+
+function render(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  return originalRender(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  );
+}
+
+function getAllByMoneyText(expected: string) {
+  const normalized = expected.replace(/\s+/g, " ").trim();
+  return screen.getAllByText(
+    (_content, element) =>
+      element?.tagName.toLowerCase() === "span" &&
+      element.textContent?.replace(/\s+/g, " ").trim() === normalized,
+  );
+}
 
 const mockDownloadCsv = vi.fn();
 const mockStartDemo = vi.fn();
@@ -109,8 +128,20 @@ vi.mock("@/state", () => ({
   useDeleteIncomeGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateIncomeGrouped: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useMyPublicShares: () => ({ data: [], isLoading: false }),
+  useUpdatePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDebts: () => ({ data: [], isLoading: false }),
   useSettleIntegratedReceivable: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
+vi.mock("@/state/mutations/use-public-share-mutations", () => ({
+  useDeletePublicShareMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
+vi.mock("@/state/queries/use-trips", () => ({
+  useTripDetails: () => ({ data: null, isLoading: false }),
+  useDeleteTripExpenseLinkedMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateTripExpenseLinkedMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  TRIP_QUERY_KEYS: { all: ["trips"] as const, detail: (id: string) => ["trips", "detail", id] },
 }));
 
 describe("TransactionListPage — listagem por mês", () => {
@@ -137,9 +168,9 @@ describe("TransactionListPage — listagem por mês", () => {
     expect(screen.getAllByText("Despesas").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Saldo do mês").length).toBeGreaterThan(0);
     // Receitas 3.500,00 · Despesas 1.500,00 · Saldo 2.000,00
-    expect(screen.getAllByText("R$ 3.500,00").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("R$ 1.500,00").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("R$ 2.000,00").length).toBeGreaterThan(0);
+    expect(getAllByMoneyText("R$ 3.500,00").length).toBeGreaterThan(0);
+    expect(getAllByMoneyText("R$ 1.500,00").length).toBeGreaterThan(0);
+    expect(getAllByMoneyText("R$ 2.000,00").length).toBeGreaterThan(0);
   });
 
   it("exibe as abas de filtro na ordem canonica: Tudo, Receitas, Despesas, Parceladas, Recorrentes", () => {
@@ -361,11 +392,11 @@ describe("TransactionListPage — listagem por mês", () => {
     it("soma todos os lançamentos gerais nos KPIs", () => {
       render(<TransactionListPage />);
       // Despesas: 200 + 800 = 1000
-      expect(screen.getAllByText("R$ 1.000,00").length).toBeGreaterThan(0);
+      expect(getAllByMoneyText("R$ 1.000,00").length).toBeGreaterThan(0);
       // Receitas: 3000 + 1000 = 4000
-      expect(screen.getAllByText("R$ 4.000,00").length).toBeGreaterThan(0);
+      expect(getAllByMoneyText("R$ 4.000,00").length).toBeGreaterThan(0);
       // Saldo: 4000 - 1000 = 3000
-      expect(screen.getAllByText("R$ 3.000,00").length).toBeGreaterThan(0);
+      expect(getAllByMoneyText("R$ 3.000,00").length).toBeGreaterThan(0);
     });
 
     it("exporta CSV unificado sem segmentação por escopo de visão", async () => {

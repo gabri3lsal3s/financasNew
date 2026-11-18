@@ -1,16 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Calendar, ShieldAlert, ShieldCheck } from "lucide-react";
-import { Badge, Modal } from "@/components/ui";
+import { Badge, Modal, MoneyText } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
-import { MoneyText } from "@/components/ui/money-text";
-import {
-  calculateHistoricalLossesCarryover,
-  calculateMonthlyDarf,
-  sortTransactionsChronologically,
-} from "@/domain/portfolio";
+import { computeMonthlyDarfReport } from "@/domain/portfolio/darf-reconstitution";
 import { currentMonth } from "@/lib/date";
 import { OFFICIAL_TAX_DISCLAIMER } from "@/lib/institutional";
 import type { PortfolioAsset, PortfolioTransaction } from "@/types";
+import { DarfCategoryCard } from "./darf-monitor/darf-category-card";
 
 export interface PortfolioDarfMonitorProps {
   open: boolean;
@@ -30,77 +26,23 @@ export function PortfolioDarfMonitor({
 }: PortfolioDarfMonitorProps) {
   const [selectedMonth, setSelectedMonth] = useState(() => currentMonth());
 
-  const assetMap = new Map(assets.map((a) => [a.id, a]));
+  const { darf, salesCount } = useMemo(
+    () =>
+      computeMonthlyDarfReport({
+        month: selectedMonth,
+        assets,
+        transactions,
+      }),
+    [selectedMonth, assets, transactions],
+  );
 
-  // Filtra operações de venda do mês selecionado
-  const monthSales = transactions
-    .filter((t) => t.date.startsWith(selectedMonth) && t.type === "sell")
-    .map((t) => {
-      const asset = assetMap.get(t.asset_id);
-      const ticker = asset?.ticker ?? "Ativo";
-      const assetClass = asset?.asset_class ?? null;
-      const currency = asset?.currency ?? "BRL";
-
-      // Reconstituição do Preço Médio Ponderado histórico até a data da venda (JORNADA360-05)
-      // com desempate determinístico para operações na mesma data (INV-08).
-      const assetTxs = sortTransactionsChronologically(
-        transactions.filter((tx) => tx.asset_id === t.asset_id && tx.date <= t.date),
-      );
-
-      let runningQty = 0;
-      let runningCost = 0;
-      for (const tx of assetTxs) {
-        if (tx.type === "buy" || tx.type === "subscription") {
-          runningQty += tx.quantity;
-          runningCost += tx.quantity * tx.price;
-        } else if (tx.type === "sell" && tx.id !== t.id) {
-          if (runningQty > 0) {
-            const pm = runningCost / runningQty;
-            const soldQty = Math.min(runningQty, tx.quantity);
-            runningQty -= soldQty;
-            runningCost -= soldQty * pm;
-          }
-        } else if (tx.type === "split") {
-          const factor = tx.quantity > 0 ? tx.quantity : 1;
-          runningQty *= factor;
-        } else if (tx.type === "reverse_split") {
-          const factor = tx.quantity > 0 ? tx.quantity : 1;
-          runningQty /= factor;
-        }
-      }
-
-      const historicalPm = runningQty > 0 ? runningCost / runningQty : 0;
-      const averagePrice =
-        historicalPm > 0
-          ? historicalPm
-          : (asset?.average_price && asset.average_price > 0 ? asset.average_price : t.price);
-
-      const costAmountCents = Math.round(t.quantity * averagePrice * 100);
-      const saleAmountCents = Math.round(t.total * 100);
-      const profitCents = saleAmountCents - costAmountCents;
-
-      return {
-        ticker,
-        assetClass,
-        currency,
-        saleAmountCents,
-        costAmountCents,
-        profitCents,
-      };
-    });
-
-  // Apuração de prejuízos acumulados a compensar anteriores ao mês selecionado (INV-09)
-  const previousLosses = calculateHistoricalLossesCarryover({
-    transactions,
-    assets,
-    targetMonth: selectedMonth,
-  });
-
-  const darf = calculateMonthlyDarf({
-    month: selectedMonth,
-    sales: monthSales,
-    previousLosses,
-  });
+  const hasAccumulatedLosses =
+    darf.stockCompensatedLossCents > 0 ||
+    darf.fiiCompensatedLossCents > 0 ||
+    darf.etfCompensatedLossCents > 0 ||
+    darf.remainingAccumulatedLossCents.stockCents > 0 ||
+    darf.remainingAccumulatedLossCents.fiiCents > 0 ||
+    darf.remainingAccumulatedLossCents.etfCents > 0;
 
   return (
     <Modal
@@ -110,20 +52,20 @@ export function PortfolioDarfMonitor({
       description="Apuração de impostos sobre vendas em bolsa de valores e controle de isenções fiscais."
       size="xl"
     >
-      <div className="flex flex-col gap-4 mt-3">
-        {/* Seletor do Mês de Competência */}
-        <div className="flex items-center justify-between gap-3 bg-surface-hover/40 p-3 rounded-xl border border-border">
-          <div className="flex items-center gap-2">
-            <Calendar className="size-4 text-portfolio" aria-hidden="true" />
-            <span className="text-xs font-medium text-foreground">Mês de Apuração:</span>
+      <div className="flex flex-col gap-4 mt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl bg-surface-raised p-3.5">
+          <div className="flex items-center gap-2 shrink-0">
+            <Calendar className="size-4 text-muted-foreground" aria-hidden="true" />
+            <span className="text-xs font-semibold text-foreground">Mês de Apuração:</span>
           </div>
-          <MonthPicker value={selectedMonth} onValueChange={setSelectedMonth} aria-label="Mês de apuração do DARF" />
+          <div className="w-full sm:w-auto sm:min-w-[230px]">
+            <MonthPicker value={selectedMonth} onValueChange={setSelectedMonth} />
+          </div>
         </div>
 
-        {/* Status Geral de DARF */}
         {darf.shouldPayDarf ? (
-          <div className="flex flex-col gap-2 rounded-xl border border-warning/20 bg-warning/10 p-4">
-            <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-col gap-2 rounded-xl border border-warning/25 bg-warning/10 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 font-bold text-warning-strong text-sm">
                 <ShieldAlert className="size-4 shrink-0" aria-hidden="true" />
                 <span>DARF a Recolher neste Mês</span>
@@ -135,12 +77,12 @@ export function PortfolioDarfMonitor({
             </p>
           </div>
         ) : (
-          <div className="flex items-center gap-3 rounded-xl border border-positive/20 bg-positive/10 p-4">
+          <div className="flex items-center gap-3 rounded-xl border border-positive/25 bg-positive/10 p-4">
             <ShieldCheck className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-0.5 min-w-0">
               <strong className="text-xs font-semibold text-foreground">Sem DARF a recolher no período</strong>
               <p className="text-[11px] text-muted-foreground">
-                {monthSales.length === 0
+                {salesCount === 0
                   ? "Nenhuma operação de venda realizada neste mês."
                   : darf.isStockExempt && darf.etfTaxDueCents === 0 && darf.fiiTaxDueCents === 0
                     ? "Vendas de ações dentro do limite de isenção de R$ 20.000/mês e sem outros tributos devidos."
@@ -150,150 +92,83 @@ export function PortfolioDarfMonitor({
           </div>
         )}
 
-        {/* Resumo por Categoria */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {/* Bloco de Ações */}
-          <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
-            <div className="flex items-center justify-between border-b border-border/40 pb-2">
-              <strong className="text-xs font-semibold text-foreground">Ações B3</strong>
-              <Badge variant={darf.isStockExempt ? "positive" : "warning"} size="xs">
-                {darf.isStockExempt ? "Isento (≤ 20k)" : "Tributável (15%)"}
-              </Badge>
-            </div>
-            <div className="flex flex-col gap-1.5 text-xs">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span>Volume de Vendas:</span>
-                <MoneyText cents={darf.stockSalesVolumeCents} tone="default" />
-              </div>
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span>Lucro Bruto:</span>
-                <MoneyText cents={darf.stockGrossProfitCents} tone="auto" />
-              </div>
-              <div className="flex items-center justify-between font-medium pt-1 border-t border-border/30">
-                <span className="text-foreground">Imposto Devido:</span>
-                <MoneyText cents={darf.stockTaxDueCents} tone={darf.stockTaxDueCents > 0 ? "negative" : "default"} />
-              </div>
-            </div>
-          </div>
+          <DarfCategoryCard
+            title="Ações B3"
+            badgeLabel={darf.isStockExempt ? "Isento (≤ 20k)" : "Tributável (15%)"}
+            badgeVariant={darf.isStockExempt ? "positive" : "warning"}
+            salesVolumeCents={darf.stockSalesVolumeCents}
+            grossProfitCents={darf.stockGrossProfitCents}
+            taxDueCents={darf.stockTaxDueCents}
+          />
 
-          {/* Bloco de FIIs */}
-          <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
-            <div className="flex items-center justify-between border-b border-border/40 pb-2">
-              <strong className="text-xs font-semibold text-foreground">Fundos Imobiliários (FIIs)</strong>
-              <Badge variant="muted" size="xs">
-                Alíquota 20%
-              </Badge>
-            </div>
-            <div className="flex flex-col gap-1.5 text-xs">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span>Volume de Vendas:</span>
-                <MoneyText cents={darf.fiiSalesVolumeCents} tone="default" />
-              </div>
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span>Lucro Bruto:</span>
-                <MoneyText cents={darf.fiiGrossProfitCents} tone="auto" />
-              </div>
-              <div className="flex items-center justify-between font-medium pt-1 border-t border-border/30">
-                <span className="text-foreground">Imposto Devido:</span>
-                <MoneyText cents={darf.fiiTaxDueCents} tone={darf.fiiTaxDueCents > 0 ? "negative" : "default"} />
-              </div>
-            </div>
-          </div>
+          <DarfCategoryCard
+            title="Fundos Imobiliários (FIIs)"
+            badgeLabel="Alíquota 20%"
+            badgeVariant="muted"
+            salesVolumeCents={darf.fiiSalesVolumeCents}
+            grossProfitCents={darf.fiiGrossProfitCents}
+            taxDueCents={darf.fiiTaxDueCents}
+          />
 
-          {/* Bloco de ETFs & BDRs (quando houver vendas) */}
-          {darf.etfSalesVolumeCents > 0 && (
-            <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
-              <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                <strong className="text-xs font-semibold text-foreground">ETFs & BDRs B3</strong>
-                <Badge variant="warning" size="xs">
-                  Sem Isenção (15%)
-                </Badge>
-              </div>
-              <div className="flex flex-col gap-1.5 text-xs">
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span>Volume de Vendas:</span>
-                  <MoneyText cents={darf.etfSalesVolumeCents} tone="default" />
-                </div>
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span>Lucro Bruto:</span>
-                  <MoneyText cents={darf.etfGrossProfitCents} tone="auto" />
-                </div>
-                <div className="flex items-center justify-between font-medium pt-1 border-t border-border/30">
-                  <span className="text-foreground">Imposto Devido:</span>
-                  <MoneyText cents={darf.etfTaxDueCents} tone={darf.etfTaxDueCents > 0 ? "negative" : "default"} />
-                </div>
-              </div>
-            </div>
-          )}
+          {darf.etfSalesVolumeCents > 0 ? (
+            <DarfCategoryCard
+              title="ETFs & BDRs B3"
+              badgeLabel="Sem Isenção (15%)"
+              badgeVariant="warning"
+              salesVolumeCents={darf.etfSalesVolumeCents}
+              grossProfitCents={darf.etfGrossProfitCents}
+              taxDueCents={darf.etfTaxDueCents}
+            />
+          ) : null}
 
-          {/* Bloco de Ativos no Exterior (quando houver vendas) */}
-          {darf.foreignSalesVolumeCents > 0 && (
-            <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
-              <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                <strong className="text-xs font-semibold text-foreground">Exterior (Lei 14.754/2023)</strong>
-                <Badge variant="portfolio" size="xs">
-                  IRPF Anual DAA
-                </Badge>
-              </div>
-              <div className="flex flex-col gap-1.5 text-xs">
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span>Volume de Vendas:</span>
-                  <MoneyText cents={darf.foreignSalesVolumeCents} tone="default" />
-                </div>
-                <div className="flex items-center justify-between text-muted-foreground">
-                  <span>Ganho de Capital:</span>
-                  <MoneyText cents={darf.foreignGrossProfitCents} tone="auto" />
-                </div>
-                <div className="flex items-center justify-between font-medium pt-1 border-t border-border/30">
-                  <span className="text-foreground">DARF Mensal:</span>
-                  <span className="text-muted-foreground text-xs">Isento no mês (DAA)</span>
-                </div>
-              </div>
-            </div>
-          )}
+          {darf.foreignSalesVolumeCents > 0 ? (
+            <DarfCategoryCard
+              title="Exterior (Lei 14.754/2023)"
+              badgeLabel="IRPF Anual DAA"
+              badgeVariant="portfolio"
+              salesVolumeCents={darf.foreignSalesVolumeCents}
+              grossProfitLabel="Ganho de Capital:"
+              grossProfitCents={darf.foreignGrossProfitCents}
+              taxDueFallbackText="Isento no mês (DAA)"
+            />
+          ) : null}
         </div>
 
-        {/* Prejuízos Acumulados a Compensar (IN RFB 1.585/2015, art. 56) */}
-        {(darf.stockCompensatedLossCents > 0 ||
-          darf.fiiCompensatedLossCents > 0 ||
-          darf.etfCompensatedLossCents > 0 ||
-          darf.remainingAccumulatedLossCents.stockCents > 0 ||
-          darf.remainingAccumulatedLossCents.fiiCents > 0 ||
-          darf.remainingAccumulatedLossCents.etfCents > 0) && (
-          <div className="flex flex-col gap-2 rounded-xl border border-portfolio-border/80 bg-portfolio-surface/20 p-3.5 shadow-xs">
-            <div className="flex items-center justify-between">
+        {hasAccumulatedLosses ? (
+          <div className="flex flex-col gap-2.5 rounded-xl border border-portfolio/25 bg-portfolio/5 p-3.5 shadow-xs">
+            <div className="flex items-center justify-between gap-2">
               <strong className="text-xs font-semibold text-foreground">
-                Prejuízos Acumulados & Compensações (Art. 56)
+                Prejuízos Acumulados &amp; Compensações (Art. 56)
               </strong>
               <Badge variant="portfolio" size="xs">
                 Crédito Fiscal
               </Badge>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs pt-1">
-              {darf.remainingAccumulatedLossCents.stockCents > 0 && (
-                <div className="flex items-center justify-between sm:flex-col sm:items-start p-2 rounded-lg bg-surface/50 border border-border/50">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+              {darf.remainingAccumulatedLossCents.stockCents > 0 ? (
+                <div className="flex items-center justify-between sm:flex-col sm:items-start p-2.5 rounded-lg bg-surface-raised">
                   <span className="text-muted-foreground text-[11px]">Ações a Compensar:</span>
                   <MoneyText cents={darf.remainingAccumulatedLossCents.stockCents} tone="portfolio" className="font-semibold" />
                 </div>
-              )}
-              {darf.remainingAccumulatedLossCents.fiiCents > 0 && (
-                <div className="flex items-center justify-between sm:flex-col sm:items-start p-2 rounded-lg bg-surface/50 border border-border/50">
+              ) : null}
+              {darf.remainingAccumulatedLossCents.fiiCents > 0 ? (
+                <div className="flex items-center justify-between sm:flex-col sm:items-start p-2.5 rounded-lg bg-surface-raised">
                   <span className="text-muted-foreground text-[11px]">FIIs a Compensar:</span>
                   <MoneyText cents={darf.remainingAccumulatedLossCents.fiiCents} tone="portfolio" className="font-semibold" />
                 </div>
-              )}
-              {darf.remainingAccumulatedLossCents.etfCents > 0 && (
-                <div className="flex items-center justify-between sm:flex-col sm:items-start p-2 rounded-lg bg-surface/50 border border-border/50">
+              ) : null}
+              {darf.remainingAccumulatedLossCents.etfCents > 0 ? (
+                <div className="flex items-center justify-between sm:flex-col sm:items-start p-2.5 rounded-lg bg-surface-raised">
                   <span className="text-muted-foreground text-[11px]">ETFs a Compensar:</span>
                   <MoneyText cents={darf.remainingAccumulatedLossCents.etfCents} tone="portfolio" className="font-semibold" />
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
-        )}
+        ) : null}
 
-        {/* Disclaimer Contábil e Fiscal Oficial (Contrato 5 / CFC / RFB) */}
-        <div className="flex items-start gap-2.5 rounded-xl border border-border/80 bg-surface-hover/30 p-3 text-[11px] text-muted-foreground leading-relaxed">
+        <div className="flex items-start gap-2.5 rounded-xl bg-muted/50 p-3 text-[11px] text-muted-foreground leading-relaxed">
           <ShieldAlert className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
           <span>{OFFICIAL_TAX_DISCLAIMER}</span>
         </div>

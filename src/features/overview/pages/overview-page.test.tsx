@@ -84,6 +84,8 @@ let debtsMock = [
   { id: "d1", name: "A receber", type: "receivable", amount: 1000, due_date: "2026-08-20", paid_at: null },
   { id: "d2", name: "A pagar", type: "payable", amount: 500, due_date: "2026-08-15", paid_at: null },
 ];
+let debtsLoadingMock = false;
+let splitSharesMock: Array<Record<string, unknown>> = [];
 
 const defaultSubscriptionMock: SubscriptionStatus = {
   tier: "pro_annual",
@@ -220,8 +222,8 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useDebts: () => ({
-    data: debtsMock,
-    isLoading: false,
+    data: debtsLoadingMock ? undefined : debtsMock,
+    isLoading: debtsLoadingMock,
     isError: false,
     error: null,
     refetch: vi.fn(),
@@ -283,7 +285,7 @@ vi.mock("@/state", () => ({
   startDemo: vi.fn(),
   endDemo: vi.fn(),
   useMyPublicShares: (kind?: string) => ({
-    data: kind === "goal_tracker" ? publicSharesMock : [],
+    data: kind === "goal_tracker" ? publicSharesMock : kind === "split" ? splitSharesMock : [],
     isLoading: false,
     isError: false,
     error: null,
@@ -338,6 +340,8 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expenseCategories = [...defaultExpenseCategories];
     portfolioContributionsMock = [];
     publicSharesMock = [];
+    splitSharesMock = [];
+    debtsLoadingMock = false;
     localStorage.removeItem("financasnew:dashboard_alert_dismissals");
     onboardingCountsMock = {
       expenseCategories: 2,
@@ -386,9 +390,30 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.getByText("Resultado do mês")).toBeInTheDocument();
     expect(screen.getByText("Saldo Disponível em Conta")).toBeInTheDocument();
     // Receitas 5.000 · Despesas 3.100 · Resultado 1.900 (3.100 também no centro do donut).
-    expect(screen.getByText("R$ 5.000,00")).toBeInTheDocument();
-    expect(screen.getAllByText("R$ 3.100,00").length).toBeGreaterThan(0);
-    expect(screen.getByText("R$ 1.900,00")).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        (_content, el) =>
+          el?.tagName === "SPAN" &&
+          el.classList.contains("num") &&
+          (el.textContent ?? "").replace(/\s+/g, " ").trim() === "R$ 5.000,00",
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        (_content, el) =>
+          el?.tagName === "SPAN" &&
+          el.classList.contains("num") &&
+          (el.textContent ?? "").replace(/\s+/g, " ").trim() === "R$ 3.100,00",
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        (_content, el) =>
+          el?.tagName === "SPAN" &&
+          el.classList.contains("num") &&
+          (el.textContent ?? "").replace(/\s+/g, " ").trim() === "R$ 1.900,00",
+      ).length,
+    ).toBeGreaterThan(0);
   });
 
 
@@ -532,9 +557,23 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     render(<OverviewPage />);
 
     // Investimentos no mês 2026-08: 1.500 + 500 = R$ 2.000,00
-    expect(screen.getAllByText("R$ 2.000,00").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        (_content, el) =>
+          el?.tagName === "SPAN" &&
+          el.classList.contains("num") &&
+          (el.textContent ?? "").replace(/\s+/g, " ").trim() === "R$ 2.000,00",
+      ).length,
+    ).toBeGreaterThan(0);
     // Saldo operacional do mês
-    expect(screen.getAllByText("R$ 1.900,00").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        (_content, el) =>
+          el?.tagName === "SPAN" &&
+          el.classList.contains("num") &&
+          (el.textContent ?? "").replace(/\s+/g, " ").trim() === "R$ 1.900,00",
+      ).length,
+    ).toBeGreaterThan(0);
   });
 
   it("não exibe o card Carteira em Resumo na Home (permanece na Carteira)", () => {
@@ -740,7 +779,14 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
   it("renderiza valores extremos de 8+ dígitos adaptativamente sem reticências", () => {
     incomesMock.data = () => [{ id: "i_huge", value: 2500000, report_weight: 1, date: "2026-08-05" }]; // R$ 2.500.000,00
     render(<OverviewPage />);
-    expect(screen.getByText("R$ 2.500.000,00")).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        (_content, el) =>
+          el?.tagName === "SPAN" &&
+          el.classList.contains("num") &&
+          (el.textContent ?? "").replace(/\s+/g, " ").trim() === "R$ 2.500.000,00",
+      ).length,
+    ).toBeGreaterThan(0);
   });
 
 
@@ -791,11 +837,10 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.queryByText("Configure sua conta")).not.toBeInTheDocument();
   });
 
-  it("renderiza WelcomeFeatureModal na Home no primeiro acesso do usuário (Fase 6 — Tarefa 6.4)", () => {
+  it("não colide com WelcomeFeatureModal na Home Web (regra M10)", () => {
     localStorage.removeItem(WELCOME_MODAL_STORAGE_KEY);
     render(<OverviewPage />);
-    expect(screen.getByText("A Mágica da Captura Sem Fricção")).toBeInTheDocument();
-    expect(screen.getByText("Notificações Automáticas")).toBeInTheDocument();
+    expect(screen.queryByText("A Mágica da Captura Sem Fricção")).not.toBeInTheDocument();
   });
 
   describe("Gatilho do WelcomeModal e Tour Demonstrativo (§4.1)", () => {
@@ -1017,6 +1062,41 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       expect(screen.queryByText(/Meta Conquistada: Investimentos/i)).not.toBeInTheDocument();
       expect(screen.getByText(/(Meta|Aporte Sugerido): Investimentos/)).toBeInTheDocument();
       expect(screen.getAllByText("36% alcançado").length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("não exibe card de racha quando arquivado ou enquanto dívidas ainda estão carregando", () => {
+      splitSharesMock = [
+        {
+          id: "split-1",
+          user_id: "user-1",
+          resource_type: "split",
+          resource_id: "exp-1",
+          permission: "view",
+          token: "tok-split-1",
+          expires_at: null,
+          created_at: "2026-08-10T00:00:00Z",
+          is_revoked: false,
+          revoked_at: null,
+          access_count: 0,
+          last_accessed_at: null,
+          payload: {
+            title: "Jantar",
+            debt_id: "d1",
+            people_count: 2,
+            guest_share_cents: 2500,
+            total_cents: 5000,
+            status: "archived",
+          },
+        },
+      ];
+
+      debtsLoadingMock = true;
+      const { rerender } = render(<OverviewPage />);
+      expect(screen.queryByText("Despesas a Rachar e Receber")).not.toBeInTheDocument();
+
+      debtsLoadingMock = false;
+      rerender(<OverviewPage />);
+      expect(screen.queryByText("Despesas a Rachar e Receber")).not.toBeInTheDocument();
     });
   });
 });

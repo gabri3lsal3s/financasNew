@@ -179,4 +179,32 @@ describe("AssistantMemorySection (F30)", () => {
 
     expect(mockRevokeFeedback).toHaveBeenCalledWith("sub:google_ai");
   });
+
+  it("abre ConfirmDialog ao clicar em Reativar tudo e limpa cooldowns e feedbacks ao confirmar", async () => {
+    const user = userEvent.setup();
+    const mockRevokeFeedback = vi.fn();
+    const mockRevokeDismissal = vi.fn();
+    const futureExpiry = Date.now() + 10 * 24 * 60 * 60 * 1000;
+
+    render(
+      <AssistantMemorySection
+        feedbackMap={{ "sub:netflix": "already_cancelled" }}
+        onRevokeFeedback={mockRevokeFeedback}
+        activeOccurrences={mockOccurrences}
+        dismissals={{ "dup:spotify": futureExpiry }}
+        onRevokeDismissal={mockRevokeDismissal}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Memória de Aprendizado do Assistente/i }));
+    await user.click(screen.getByRole("button", { name: /Reativar tudo/i }));
+
+    expect(screen.getByText("Reativar todo o monitoramento?")).toBeInTheDocument();
+
+    const confirmBtns = screen.getAllByRole("button", { name: /Reativar tudo/i });
+    await user.click(confirmBtns[confirmBtns.length - 1]!);
+
+    expect(mockRevokeDismissal).toHaveBeenCalledWith("dup:spotify");
+    expect(mockRevokeFeedback).toHaveBeenCalledWith("sub:netflix");
+  });
 });

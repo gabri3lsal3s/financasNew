@@ -107,4 +107,29 @@ describe("BatchInvoicePaymentDialog", () => {
     });
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("não sofre duplo toggle ao clicar diretamente no checkbox ou no rótulo da fatura", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <BatchInvoicePaymentDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        card={mockCard}
+        unpaidSummaries={mockUnpaidSummaries}
+      />,
+    );
+
+    const checkboxMarch = screen.getByRole("checkbox", { name: "Fatura 03/2026" });
+    expect(checkboxMarch).toBeChecked();
+
+    await user.click(checkboxMarch);
+    expect(checkboxMarch).not.toBeChecked();
+    expect(screen.getByText("1 de 2 selecionada(s)")).toBeInTheDocument();
+
+    // Clica no rótulo da linha para remarcar sem duplo toggle
+    await user.click(screen.getByText("Fatura 03/2026"));
+    expect(checkboxMarch).toBeChecked();
+    expect(screen.getByText("2 de 2 selecionada(s)")).toBeInTheDocument();
+  });
 });

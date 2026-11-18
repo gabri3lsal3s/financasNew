@@ -1,11 +1,5 @@
-/**
- * Modal de confirmação para exclusão de viagem pelo organizador.
- * Exclui a viagem e seus registros vinculados em cascata.
- * Respeita as diretrizes de governança do AGENTS.md.
- */
-
 import { Trash2 } from "lucide-react";
-import { Modal, ModalFooter, Button } from "@/components/ui";
+import { Button, Modal, ModalFooter } from "@/components/ui";
 import { useDeleteTripMutation } from "@/state/queries/use-trips";
 import type { Trip } from "@/types/trips";
 
@@ -35,7 +29,7 @@ function TripDeleteDialogContent({
       onOpenChange(false);
       onSuccess?.();
     } catch {
-      // Erro tratado pela mutation (toast e feedback sensorial)
+      // Erro tratado pela mutation
     }
   };
 
@@ -47,25 +41,21 @@ function TripDeleteDialogContent({
       title="Excluir viagem?"
       description={`Tem certeza de que deseja excluir "${trip.title}"? Esta ação é definitiva e removerá permanentemente todas as despesas da viagem, participantes e histórico de acertos associados.`}
       footer={
-        <ModalFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={deleteMutation.isPending}
-            onClick={() => onOpenChange(false)}
-          >
+        <ModalFooter borderless>
+          <Button type="button" variant="outline" disabled={deleteMutation.isPending} onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button
             type="button"
             variant="destructive"
+            sensoryIntent={false}
             disabled={deleteMutation.isPending}
-            sensoryIntent="destructive"
+            loading={deleteMutation.isPending}
             onClick={() => void handleConfirm()}
             className="gap-1.5"
           >
             <Trash2 className="size-3.5" aria-hidden="true" />
-            <span>{deleteMutation.isPending ? "Excluindo..." : "Excluir Viagem"}</span>
+            <span>Excluir Viagem</span>
           </Button>
         </ModalFooter>
       }

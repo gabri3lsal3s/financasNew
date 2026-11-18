@@ -73,7 +73,7 @@ export function PlatformsTriptychCard({
                 className={cn(
                   "p-3.5 rounded-xl border space-y-1.5 transition-colors",
                   isActive
-                    ? "border-primary/40 bg-primary/5 shadow-2xs"
+                    ? "border-primary/40 bg-primary/5 shadow-xs"
                     : "border-border/70 bg-background/50",
                 )}
               >

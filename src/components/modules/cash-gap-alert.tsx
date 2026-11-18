@@ -47,21 +47,21 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
       )}
     >
       <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
-        <span
-          className={cn(
-            "flex size-9 shrink-0 items-center justify-center rounded-xl border",
-            isCritical
-              ? "bg-critical/10 border-critical/20 text-critical-strong"
-              : "bg-warning/10 border-warning/20 text-warning-strong",
-          )}
-          aria-hidden="true"
-        >
+          <span
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-xl border",
+              isCritical
+                ? "bg-critical/10 border-critical/20 text-critical-strong"
+                : "bg-warning/15 border-warning/20 text-warning-strong",
+            )}
+            aria-hidden="true"
+          >
             {isCritical ? <ShieldAlert className="size-4.5" /> : <AlertTriangle className="size-4.5" />}
           </span>
 
           <div className="flex flex-col gap-0.5 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-sm font-semibold text-foreground">
+              <h2 className="text-sm font-semibold text-foreground truncate">
                 {isCritical ? "Alerta de Iminência de Saldo Insuficiente" : "Radar de Descasamento de Fluxo"}
               </h2>
               <Badge

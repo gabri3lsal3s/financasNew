@@ -37,7 +37,6 @@ export function GoalProgressAlertBanner({
   const remainingCents = Math.max(0, targetCents - currentCents);
 
   const handleDeposit = () => {
-    triggerSensory("action");
     onOpenDeposit(goalShare);
   };
 
@@ -159,7 +158,7 @@ export function GoalProgressAlertBanner({
           <button
             type="button"
             onClick={handleDismiss}
-            className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors cursor-pointer shrink-0"
+            className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer shrink-0 max-sm:after:absolute max-sm:after:-inset-2"
             aria-label={`Dispensar alerta da meta ${title}`}
             title="Dispensar aviso"
           >

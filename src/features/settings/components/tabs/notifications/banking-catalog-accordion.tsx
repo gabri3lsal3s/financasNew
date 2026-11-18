@@ -1,13 +1,15 @@
 import { useState } from "react";
+import { Building2, TrendingUp, Wallet } from "lucide-react";
 import {
-  Building2,
-  ChevronDown,
-  ChevronUp,
-  TrendingUp,
-  Wallet,
-} from "lucide-react";
-import { Badge, Button, Checkbox, SearchInput } from "@/components/ui";
-import { triggerSensory } from "@/services/sensory";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Badge,
+  Button,
+  Checkbox,
+  SearchInput,
+} from "@/components/ui";
 import {
   HOMOLOGATED_BANKS,
   HOMOLOGATED_INSTITUTIONS,
@@ -34,8 +36,6 @@ export function BankingCatalogAccordion({
   onDeselectAll,
 }: BankingCatalogAccordionProps) {
   const [catalogSearch, setCatalogSearch] = useState("");
-  const [isCatalogOpen, setIsCatalogOpen] = useState(false);
-
   const searchLower = catalogSearch.toLowerCase().trim();
 
   const traditionalBanks = HOMOLOGATED_INSTITUTIONS.filter(
@@ -71,152 +71,129 @@ export function BankingCatalogAccordion({
           (inst.packages.includes(app.packageName) ||
             app.bankName.trim().toLowerCase() === inst.name.trim().toLowerCase()),
       );
+    const checkboxId = `catalog-bank-${inst.id}`;
 
     return (
-      <div
+      <label
         key={inst.id}
-        role="button"
-        tabIndex={0}
-        onClick={() => onToggleBank(inst.name, !isChecked)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onToggleBank(inst.name, !isChecked);
-          }
-        }}
+        htmlFor={checkboxId}
         className={cn(
-          "flex items-center justify-between p-2.5 rounded-lg border text-xs transition-colors cursor-pointer select-none",
+          "flex items-center justify-between gap-2 p-2.5 rounded-lg border text-xs transition-colors cursor-pointer select-none",
           isChecked
             ? "border-primary/40 bg-primary/5 hover:bg-primary/10 font-medium text-foreground"
             : "border-border/80 bg-surface hover:bg-surface-hover text-muted-foreground",
         )}
       >
-        <div className="flex items-center gap-1.5 min-w-0 pr-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
           <span className="truncate">{inst.name}</span>
-          {isInstalled && (
+          {isInstalled ? (
             <Badge variant="positive" size="xs">
               Instalado
             </Badge>
-          )}
+          ) : null}
         </div>
         <Checkbox
+          id={checkboxId}
           checked={isChecked}
           onCheckedChange={(checked) => onToggleBank(inst.name, Boolean(checked))}
           aria-label={`Monitorar ${inst.name}`}
         />
-      </div>
+      </label>
     );
   };
 
   return (
-    <div className="pt-2 border-t border-border/80 space-y-3">
-      <button
-        type="button"
-        onClick={() => {
-          triggerSensory("toggle");
-          setIsCatalogOpen((prev) => !prev);
-        }}
-        className="flex w-full items-center justify-between p-3.5 rounded-xl border border-border/80 bg-surface hover:bg-surface-hover shadow-xs text-xs font-semibold text-foreground transition-colors cursor-pointer select-none"
-        aria-expanded={isCatalogOpen}
-        aria-controls="notification-catalog-content"
-      >
-        <div className="flex items-center gap-2 min-w-0 flex-wrap">
-          <Building2 className="size-4 text-muted-foreground" aria-hidden="true" />
-          <span>Explorar catálogo completo (25+ instituições financeiras)</span>
-          <Badge variant="muted" size="xs">
-            {monitoredBanks.length}/{HOMOLOGATED_BANKS.length} ativos
-          </Badge>
-        </div>
-        {isCatalogOpen ? (
-          <ChevronUp className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-        ) : (
-          <ChevronDown className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-        )}
-      </button>
-
-      {isCatalogOpen && (
-        <div
-          id="notification-catalog-content"
-          className="p-4 rounded-xl border border-border/80 bg-surface shadow-xs space-y-4"
-        >
-          {/* Busca Instantânea e Ações Globais */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-            <SearchInput
-              value={catalogSearch}
-              onChange={(e) => setCatalogSearch(e.target.value)}
-              onClear={() => setCatalogSearch("")}
-              placeholder="Buscar banco, carteira ou corretora…"
-              aria-label="Buscar no catálogo de instituições financeiras"
-              className="flex-1"
-            />
-            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={onSelectAll}
-                className="text-[11px] h-8 px-2"
-              >
-                Marcar todos
-              </Button>
-              <Button
-                variant="ghost"
-                size="xs"
-                onClick={onDeselectAll}
-                className="text-[11px] h-8 px-2 text-muted-foreground hover:text-foreground"
-              >
-                Desmarcar todos
-              </Button>
-            </div>
-          </div>
-
-          {totalMatching === 0 ? (
-            <div className="p-6 text-center text-xs text-muted-foreground">
-              Nenhuma instituição encontrada para &quot;{catalogSearch}&quot;.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Grupo 1: Bancos Digitais e Tradicionais */}
-              {traditionalBanks.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                    <Building2 className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    <span>Bancos Digitais e Tradicionais ({traditionalBanks.length})</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                    {traditionalBanks.map((inst) => renderInstitutionItem(inst))}
-                  </div>
+    <div className="pt-2 border-t border-border/80">
+      <Accordion type="single" collapsible>
+        <AccordionItem value="catalog">
+          <AccordionTrigger className="px-3.5 py-3 text-xs">
+            <span className="flex items-center gap-2 flex-wrap min-w-0">
+              <Building2 className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+              <span>Explorar catálogo completo (25+ instituições financeiras)</span>
+              <Badge variant="muted" size="xs">
+                {monitoredBanks.length}/{HOMOLOGATED_BANKS.length} ativos
+              </Badge>
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="px-3.5 pb-4 pt-1">
+            <div id="notification-catalog-content" className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+                <SearchInput
+                  value={catalogSearch}
+                  onChange={(e) => setCatalogSearch(e.target.value)}
+                  onClear={() => setCatalogSearch("")}
+                  placeholder="Buscar banco, carteira ou corretora…"
+                  aria-label="Buscar no catálogo de instituições financeiras"
+                  className="flex-1"
+                />
+                <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onSelectAll}
+                  >
+                    Marcar todos
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onDeselectAll}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    Desmarcar todos
+                  </Button>
                 </div>
-              )}
+              </div>
 
-              {/* Grupo 2: Carteiras de Pagamento */}
-              {paymentWallets.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-border/40">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                    <Wallet className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    <span>Carteiras de Pagamento ({paymentWallets.length})</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                    {paymentWallets.map((inst) => renderInstitutionItem(inst))}
-                  </div>
+              {totalMatching === 0 ? (
+                <div className="p-6 text-center text-xs text-muted-foreground">
+                  Nenhuma instituição encontrada para &quot;{catalogSearch}&quot;.
                 </div>
-              )}
+              ) : (
+                <div className="space-y-4">
+                  {traditionalBanks.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <Building2 className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                        <span>Bancos Digitais e Tradicionais ({traditionalBanks.length})</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                        {traditionalBanks.map((inst) => renderInstitutionItem(inst))}
+                      </div>
+                    </div>
+                  ) : null}
 
-              {/* Grupo 3: Corretoras e Cripto */}
-              {investmentBrokers.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-border/40">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                    <TrendingUp className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                    <span>Corretoras e Cripto ({investmentBrokers.length})</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                    {investmentBrokers.map((inst) => renderInstitutionItem(inst))}
-                  </div>
+                  {paymentWallets.length > 0 ? (
+                    <div className="space-y-2 pt-2 border-t border-border/80">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <Wallet className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                        <span>Carteiras de Pagamento ({paymentWallets.length})</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                        {paymentWallets.map((inst) => renderInstitutionItem(inst))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {investmentBrokers.length > 0 ? (
+                    <div className="space-y-2 pt-2 border-t border-border/80">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <TrendingUp className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                        <span>Corretoras e Cripto ({investmentBrokers.length})</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                        {investmentBrokers.map((inst) => renderInstitutionItem(inst))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
-          )}
-        </div>
-      )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }

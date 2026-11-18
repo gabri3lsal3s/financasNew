@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatDateBR, monthLabel } from "@/lib/date";
 import { PAYMENT_METHOD_LABELS, RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import { buildRecurrenceOccurrences } from "@/domain/recurrences";
 import {
@@ -22,7 +23,14 @@ export interface StepReviewProps {
 }
 
 /** Passo 4 — revisão antes de confirmar (parcelas calculadas no cliente, D12). */
-export function StepReview({ state, categoryName, closingDay, isFamilyModeEnabled, tripName, tripMemberName }: StepReviewProps) {
+export function StepReview({
+  state,
+  categoryName,
+  closingDay,
+  isFamilyModeEnabled,
+  tripName,
+  tripMemberName,
+}: StepReviewProps) {
   const isExpense = state.type === "expense";
   const installments =
     !state.recurring && state.installments > 1
@@ -39,19 +47,18 @@ export function StepReview({ state, categoryName, closingDay, isFamilyModeEnable
             startDate: state.date,
           })
       : [];
-  // Fase 32 — prévia das ocorrências da recorrência (motor puro, D12).
   const recurrenceRule = recurrenceRuleFromLaunchState(state);
   const recurrenceOccurrences = recurrenceRule ? buildRecurrenceOccurrences(recurrenceRule) : [];
   const recurrencePreview = recurrenceOccurrences.slice(0, 12);
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
+      <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-4 shadow-xs">
         <Row label="Tipo" value={isExpense ? "Despesa" : "Renda"} />
         <Row label="Valor" value={<MoneyText cents={state.valueCents} tone="default" />} />
         <Row label="Sua Participação / Rateio" value={reportWeightLabel(effectiveReportWeight(state), state.valueCents)} />
         <Row label="Categoria" value={categoryName ?? "—"} />
-        {tripName && (
+        {tripName ? (
           <Row
             label="Viagem Vinculada"
             value={
@@ -61,14 +68,14 @@ export function StepReview({ state, categoryName, closingDay, isFamilyModeEnable
                 </Badge>
                 {tripMemberName ? (
                   <span className="text-xs text-muted-foreground">
-                    Pagador: <strong className="text-foreground font-medium">{tripMemberName} (Você)</strong>
+                    Pagador: <strong className="font-medium text-foreground">{tripMemberName} (Você)</strong>
                   </span>
                 ) : null}
               </div>
             }
           />
-        )}
-        {isFamilyModeEnabled && (
+        ) : null}
+        {isFamilyModeEnabled ? (
           <Row
             label="Modo Família"
             value={
@@ -81,8 +88,8 @@ export function StepReview({ state, categoryName, closingDay, isFamilyModeEnable
               )
             }
           />
-        )}
-        <Row label="Data" value={state.date} />
+        ) : null}
+        <Row label="Data" value={formatDateBR(state.date)} />
         {state.recurring ? (
           <Row
             label="Recorrência"
@@ -92,7 +99,7 @@ export function StepReview({ state, categoryName, closingDay, isFamilyModeEnable
               const frequency = RECURRENCE_FREQUENCY_LABELS[rule.frequency];
               const end =
                 rule.endDate != null
-                  ? `até ${rule.endDate}`
+                  ? `até ${formatDateBR(rule.endDate)}`
                   : `${rule.occurrencesTotal ?? 0} ocorrências`;
               return `${frequency} · ${end}`;
             })()}
@@ -134,12 +141,12 @@ export function StepReview({ state, categoryName, closingDay, isFamilyModeEnable
       {installments.length > 1 ? (
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium">Parcelas</p>
-          <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+          <ul className="flex flex-col divide-y divide-border/80 overflow-hidden rounded-xl border border-border/80 bg-surface">
             {installments.map((installment, index) => (
               <li key={installment.date} className="flex items-center justify-between px-4 py-2.5 text-sm">
                 <span className="text-muted-foreground">
-                  {index + 1}/{installments.length} · {installment.date}
-                  {installment.billCompetence ? ` · fatura ${installment.billCompetence}` : ""}
+                  {index + 1}/{installments.length} · {formatDateBR(installment.date)}
+                  {installment.billCompetence ? ` · fatura ${monthLabel(installment.billCompetence)}` : ""}
                 </span>
                 <MoneyText cents={Math.round(installment.value * 100)} tone="default" />
               </li>
@@ -151,11 +158,11 @@ export function StepReview({ state, categoryName, closingDay, isFamilyModeEnable
       {recurrencePreview.length > 0 ? (
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium">Ocorrências da recorrência</p>
-          <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+          <ul className="flex flex-col divide-y divide-border/80 overflow-hidden rounded-xl border border-border/80 bg-surface">
             {recurrencePreview.map((occurrence) => (
               <li key={occurrence.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
                 <span className="text-muted-foreground">
-                  {occurrence.occurrenceNumber}/{recurrenceOccurrences.length} · {occurrence.date}
+                  {occurrence.occurrenceNumber}/{recurrenceOccurrences.length} · {formatDateBR(occurrence.date)}
                 </span>
                 <MoneyText cents={occurrence.valueCents} tone="default" />
               </li>

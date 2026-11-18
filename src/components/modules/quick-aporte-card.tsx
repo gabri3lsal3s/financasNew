@@ -5,35 +5,23 @@ import { ArrowRight, ChevronRight, Sparkles, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MoneyInput } from "@/components/ui/money-input";
 import { MoneyText } from "@/components/ui/money-text";
-import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
+import { triggerSensory } from "@/services/sensory";
 
 export interface QuickAporteCardProps {
   className?: string;
-  /**
-   * Total de aportes já realizados no mês corrente em centavos.
-   */
+  /** Total de aportes já realizados no mês corrente em centavos. */
   currentMonthAporteCents?: number;
-  /**
-   * Sugestão de aporte ou sobra de caixa estimada em centavos (opcional).
-   */
+  /** Sugestão de aporte ou sobra de caixa estimada em centavos (opcional). */
   suggestedAporteCents?: number;
-  /**
-   * Callback customizado ao simular o aporte direcionado (para testes ou modo controlado).
-   */
+  /** Callback customizado ao simular o aporte direcionado (para testes ou modo controlado). */
   onSimulate?: (valorCents: number) => void;
-  /**
-   * Callback customizado ao navegar para a carteira completa.
-   */
+  /** Callback customizado ao navegar para a carteira completa. */
   onViewPortfolio?: () => void;
 }
 
 /**
  * Bloco de Aporte Rápido e Investimentos da Home (Fase 5 — Tarefa 5.4).
- *
- * Permite ao usuário informar o valor pretendido para aporte e navegar
- * diretamente para a calculadora de rebalanceamento hierárquico em lote
- * (`/investments?tab=aporte&valor=...`), com pré-carregamento automático.
  */
 export function QuickAporteCard({
   className,
@@ -79,15 +67,14 @@ export function QuickAporteCard({
     <section
       aria-label="Investimentos e Aportes"
       className={cn(
-        "flex flex-col gap-3.5 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all hover:border-border min-w-0 overflow-hidden",
+        "flex flex-col gap-3.5 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs min-w-0 overflow-hidden",
         className,
       )}
     >
-      {/* Cabeçalho do Bloco: Título à esquerda e Ação na lateral direita */}
-      <div className="flex items-center justify-between gap-2 min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <TrendingUp className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">
+          <h2 className="text-sm font-semibold tracking-tight text-foreground line-clamp-2 break-words min-w-0">
             Investimentos do mês
           </h2>
         </div>
@@ -97,16 +84,15 @@ export function QuickAporteCard({
           size="sm"
           onClick={handleGoToPortfolio}
           aria-label="Ver carteira completa"
-          className="h-7 gap-1 px-2 sm:px-2.5 text-xs font-medium text-foreground hover:bg-surface-hover cursor-pointer border-border/80 shrink-0"
+          className="gap-1 px-2.5 text-xs font-medium text-foreground self-start sm:self-auto shrink-0"
         >
-          <span className="hidden sm:inline">Ver carteira</span>
+          <span>Ver carteira</span>
           <ChevronRight className="size-3.5 text-muted-foreground" aria-hidden="true" />
         </Button>
       </div>
 
-      {/* Conteúdo: Resumo de Aportes Realizados e Aporte Rápido */}
       <div className="flex flex-col gap-3.5">
-        <div className="flex items-end justify-between gap-2 pt-0.5">
+        <div className="flex flex-wrap items-end justify-between gap-2 pt-0.5">
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-[11px] font-medium text-muted-foreground">
               Aportes realizados no período
@@ -123,7 +109,7 @@ export function QuickAporteCard({
               type="button"
               onClick={handleUseSuggested}
               aria-label="Preencher com sugestão de aporte"
-              className="inline-flex items-center gap-1.5 shrink-0 rounded-lg border border-portfolio/20 bg-portfolio/10 px-2 sm:px-2.5 py-1 text-xs font-medium text-portfolio hover:bg-portfolio/15 transition-colors cursor-pointer"
+              className="relative inline-flex min-h-8 items-center gap-1.5 shrink-0 rounded-lg border border-portfolio/20 bg-portfolio/10 px-2.5 py-1 text-xs font-medium text-portfolio hover:bg-portfolio/15 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
               title="Clique para preencher com a capacidade estimada de aporte"
             >
               <Sparkles className="size-3.5 shrink-0" aria-hidden="true" />
@@ -137,7 +123,6 @@ export function QuickAporteCard({
           ) : null}
         </div>
 
-        {/* Formulário de Ação Rápida: Input de Aporte + Botão de Rebalanceamento */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-2 pt-2.5 border-t border-border/80">
           <div className="flex flex-col gap-0.5">
             <label
@@ -168,7 +153,7 @@ export function QuickAporteCard({
               type="submit"
               size="default"
               aria-label="Calcular Rebalanceamento"
-              className="h-10 gap-1.5 px-3 sm:px-4 shrink-0 font-semibold rounded-xl cursor-pointer"
+              className="gap-1.5 px-3 sm:px-4 shrink-0 font-semibold rounded-xl"
             >
               <span className="hidden sm:inline">Calcular Rebalanceamento</span>
               <span className="sm:hidden">Calcular</span>

@@ -1,108 +1,45 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { ClipboardPaste, Paperclip, Zap } from "lucide-react";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Modal, ModalFooter } from "@/components/ui/modal";
-import { Stepper } from "@/components/ui/stepper";
-import { AttachReceiptDialog } from "@/components/modules/attach-receipt-dialog";
-import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
-import { getErrorMessage } from "@/services/errors";
-import { pushToast } from "@/services/toast";
-import { triggerSensory } from "@/services/sensory";
+import { Alert, Modal } from "@/components/ui";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
-import { calculateSplitSummary } from "@/domain/finance/split-math";
 import { todayISO } from "@/domain/debts";
-import {
-  extractLastFourDigits,
-  getReceiptKindLabel,
-  inferCategoryKeyword,
-  matchCategoryBySlug,
-  parseClipboardTransactionCandidate,
-  resolveBestMatchingCard,
-  resolveMerchantIdentity,
-  type CanonicalCategorySlug,
-  type ParsedBankTransaction,
-  type UniversalReceiptData,
-} from "@/domain/notifications";
-import { readClipboardText } from "@/services/clipboard";
-import {
-  getBankAssistantPreferences,
-  storeMerchantCategory,
-} from "@/services/native";
-import {
-  recordTransactionLearning,
-  useBankCardMapping,
-  useCardDigitsMapping,
-  useMerchantLearning,
-} from "@/services/merchant-learning";
-
-import {
-  useActiveCreditCards,
-  useCategories,
-  useCreateExpense,
-  useCreateIncome,
-  useCreateIncomeInstallments,
-  useCreateRecurrence,
-  useFamilyMode,
-  usePredictionHistory,
-  useTripMode,
-  useUpdateCustomSettings,
-  useUserAccess,
-  useUserPreferences,
-} from "@/state";
-import {
-  useUserTrips,
-  useTripDetails,
-  useAddTripExpenseMutation,
-  TRIP_QUERY_KEYS,
-} from "@/state/queries/use-trips";
+import { resolveActiveTripMember } from "@/domain/trips";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { usePixClipboardDetector } from "@/hooks";
-import { calculateEqualSplits, resolveActiveTripMember } from "@/domain/trips";
-import { useDemoSession } from "@/state/demo-mode";
-import type { RecurrenceFrequency } from "@/domain/recurrences";
-import type { DbInsert, Income, PaymentMethod, ReceiveType } from "@/types";
-import { StepCategory } from "./step-category";
-import { StepDetails } from "./step-details";
-import { StepQuick } from "./step-quick";
-import { StepReview } from "./step-review";
-import { StepValue } from "./step-value";
 import {
-  buildExpenseInstallments,
-  buildIncomeInstallments,
-  canProceed,
-  defaultLaunchState,
-  effectiveReportWeight,
-  getStoredWizardMode,
-  isPresetWeight,
-  recurrenceRuleFromLaunchState,
-  setStoredWizardMode,
-  WIZARD_STEPS,
-} from "./wizard-state";
-import type { EntryType, LaunchState } from "./wizard-state";
+  useActiveCreditCards,
+  useCategories,
+  useFamilyMode,
+  usePredictionHistory,
+  useTripMode,
+  useUserAccess,
+  useUserPreferences,
+} from "@/state";
+import { useDemoSession } from "@/state/demo-mode";
+import { useTripDetails, useUserTrips } from "@/state/queries/use-trips";
+import { LaunchWizardFooter } from "./launch-wizard-footer";
+import { LaunchWizardGuidedSteps } from "./launch-wizard-guided-steps";
+import { LaunchWizardHeaderActions } from "./launch-wizard-header";
+import { LaunchWizardModals } from "./launch-wizard-modals";
+import { StepQuick } from "./step-quick";
+import { useLaunchWizardState } from "./use-launch-wizard-state";
+import { useLaunchWizardSubmit } from "./use-launch-wizard-submit";
+import { useReceiptAutofill } from "./use-receipt-autofill";
+import { defaultLaunchState, getStoredWizardMode, isPresetWeight } from "./wizard-state";
+import type { CreatedSplitExpense, EntryType, LaunchState, ReceiptMeta, WizardMode } from "./wizard-types";
 
 export interface LaunchWizardProps {
-  /** Controla a exibição em modal/overlay (padrão true). */
   open?: boolean;
-  /** Modo inicial de exibição: modo rápido em 1 tela ou guiado em 4 passos (padrão "guided"). */
-  initialMode?: "quick" | "guided";
-  /** Tipo de entrada inicial (despesa ou receita). */
+  initialMode?: WizardMode;
   initialType?: EntryType;
-  /** Valores iniciais pré-preenchidos (ex.: atalhos, sugestões nativas). */
   initialValues?: Partial<LaunchState>;
-  /** Notificação de alteração de abertura. */
   onOpenChange?: (open: boolean) => void;
-  /** Callback executado ao fechar/cancelar. */
   onClose?: () => void;
-  /** Callback executado após a criação bem-sucedida. */
   onSuccess?: () => void;
 }
 
-/** Wizard de lançamento guiado (D10) — modal contextual de 4 passos com preservação de rota e suporte ao Modo Rápido (Fase 3). */
+/** Wizard de lançamento guiado (D10) e modo rápido em 1 tela. */
 export function LaunchWizard({
   open = true,
   initialMode = "guided",
@@ -115,1158 +52,188 @@ export function LaunchWizard({
   const { isDemoActive } = useDemoSession();
   const navigate = useNavigate();
   const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({ moduleKey: "transactions" });
-  const [mode, setMode] = useState<"quick" | "guided">(() => {
-    if (initialMode === "quick") return "quick";
-    const stored = getStoredWizardMode();
-    if (stored) return stored;
-    return initialMode;
-  });
-  const [state, setState] = useState<LaunchState>(() => defaultLaunchState(initialType, initialValues));
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+
   const [confirmClose, setConfirmClose] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [isCategoryUnconfirmed, setIsCategoryUnconfirmed] = useState(false);
-  const merchantLearning = useMerchantLearning();
-  const cardDigits = useCardDigitsMapping();
-  const bankCard = useBankCardMapping();
-  const [receiptMeta, setReceiptMeta] = useState<{
-    merchant?: string;
-    cardLastDigits?: string;
-    taxId?: string;
-    packageName?: string;
-    pixKey?: string;
-  } | null>(null);
+  const [receiptMeta, setReceiptMeta] = useState<ReceiptMeta | null>(null);
+  const [createdSplitExpense, setCreatedSplitExpense] = useState<CreatedSplitExpense | null>(null);
+  const [activeType, setActiveType] = useState<EntryType>(initialValues?.type ?? initialType);
 
-  // Transição suave para o modo guiado sem perda de dados
-  const handleSwitchToGuided = () => {
-    triggerSensory("selection");
-    setMode("guided");
-    setStoredWizardMode("guided");
-    setState((prev) => {
-      let nextStep = 1;
-      if (prev.valueCents > 0 && prev.categoryId) {
-        nextStep = 3;
-      } else if (prev.valueCents > 0) {
-        nextStep = 2;
-      }
-      return { ...prev, step: nextStep };
-    });
-  };
-
-  // Transição suave para o modo rápido sem perda de dados
-  const handleSwitchToQuick = () => {
-    triggerSensory("selection");
-    setMode("quick");
-    setStoredWizardMode("quick");
-  };
-
-  // Dados preenchidos no fluxo (valor/categoria/descrição) — fechar com o
-  // formulário em andamento pede confirmação (anti-perda acidental).
-  const isDirty = state.valueCents > 0 || state.categoryId !== "" || state.description.trim() !== "";
-
-  const handleClose = () => {
-    setState(defaultLaunchState(initialType, initialValues));
-    const preferredMode = initialMode === "quick" ? "quick" : (getStoredWizardMode() ?? initialMode);
-    setMode(preferredMode);
-    setError(null);
-    setPending(false);
-    setReceiptMeta(null);
-    onClose?.();
-    onOpenChange?.(false);
-    if (!onClose && !onOpenChange) {
-      navigate(-1);
-    }
-  };
-
-  const requestClose = () => {
-    if (isDirty) {
-      setConfirmClose(true);
-    } else {
-      handleClose();
-    }
-  };
-
-  const categoriesQuery = useCategories(state.type);
+  const categoriesQuery = useCategories(activeType);
   const cardsQuery = useActiveCreditCards();
   const { isTripModeEnabled } = useTripMode();
   const userTripsQuery = useUserTrips();
   const activeTrips = isTripModeEnabled
     ? (userTripsQuery.data ?? []).filter((t) => t.status === "active" || t.status === "planning")
     : [];
-  const selectedTripDetails = useTripDetails(state.tripId ?? "");
-  const queryClient = useQueryClient();
   const { session, user } = useAuth();
   const { profile } = useUserAccess();
   const currentUserId = user?.id ?? session?.user?.id ?? profile?.id;
   const userPreferencesQuery = useUserPreferences();
-  const updateCustomSettingsMutation = useUpdateCustomSettings();
   const { isFamilyModeEnabled } = useFamilyMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
-  const createExpense = useCreateExpense();
-  const createIncome = useCreateIncome();
-  const createIncomeInstallments = useCreateIncomeInstallments();
-  const createRecurrence = useCreateRecurrence();
-  const addTripExpenseMutation = useAddTripExpenseMutation();
   const { detectedPix, clearDetectedPix } = usePixClipboardDetector();
 
-  const tripMembers = useMemo(
-    () => selectedTripDetails.data?.members ?? [],
-    [selectedTripDetails.data?.members],
-  );
-  const currentTrip = selectedTripDetails.data?.trip;
+  const wizard = useLaunchWizardState({
+    initialMode,
+    initialType,
+    initialValues,
+    categories: categoriesQuery.data,
+    preferredTripCategoryId: userPreferencesQuery.data?.custom_settings?.preferredTripCategoryId,
+    isFamilyActive,
+    onSetCategoryUnconfirmed: setIsCategoryUnconfirmed,
+  });
+  const { mode, setMode, state, setState, set } = wizard;
+  if (state.type !== activeType) setActiveType(state.type);
 
-  // Identificação automática do participante associado à conta logada (m.user_id === user.id), evitando imputar no host
+  const selectedTripDetails = useTripDetails(state.tripId ?? "");
+  const tripMembers = useMemo(() => selectedTripDetails.data?.members ?? [], [selectedTripDetails.data?.members]);
+  const currentTrip = selectedTripDetails.data?.trip;
   const activeTripMember = useMemo(() => {
     if (!state.tripId || tripMembers.length === 0) return null;
     return resolveActiveTripMember(tripMembers, currentUserId, currentTrip?.host_user_id);
   }, [state.tripId, tripMembers, currentUserId, currentTrip?.host_user_id]);
 
-  // F21 — histórico preditivo: ativo nos passos de entrada (1 e 3) e no modo rápido (Plano 09).
-  const predictionActive = mode === "quick" || state.step === 1 || state.step === 3;
-  const prediction = usePredictionHistory(predictionActive);
+  const prediction = usePredictionHistory(mode === "quick" || state.step === 1 || state.step === 3);
   const today = todayISO();
-  const selectedCategory = categoriesQuery.data?.find((category) => category.id === state.categoryId);
-  // Etapa 1 — habituais: limite estrito de 3 + ranqueamento temporal contextual 5D
-  // (dia do mês × dia da semana × horário do dia × frequência × recência) +
-  // supressão de contas mensais periódicas já cumpridas no mês (targetMonth).
+  const selectedCategory = categoriesQuery.data?.find((c) => c.id === state.categoryId);
+  const selectedCard = state.paymentMethod === "credit_card" ? cardsQuery.data?.find((c) => c.id === state.cardId) : undefined;
+
   const habits = buildHabitualEntries(prediction.entries, state.type, {
-    limit: 3,
-    referenceDay: dayOfMonth(state.date),
-    todayISO: today,
-    targetMonth: state.date.slice(0, 7),
-    referenceDate: state.date,
-    currentHour: new Date().getHours(),
+    limit: 3, referenceDay: dayOfMonth(state.date), todayISO: today,
+    targetMonth: state.date.slice(0, 7), referenceDate: state.date, currentHour: new Date().getHours(),
   });
-  // Etapa 2 — sugestões de descrição pura: clique preenche SÓ a descrição
-  // (nunca sobrescreve valor/data/forma) e exclui rótulos que sejam apenas o
-  // nome da categoria selecionada (hotfix).
   const descriptionSuggestions = buildDescriptionSuggestions(prediction.entries, state.type, {
-    limit: 3,
-    categoryName: selectedCategory?.name ?? null,
-    query: state.description,
-    todayISO: today,
+    limit: 3, categoryName: selectedCategory?.name ?? null, query: state.description, todayISO: today,
   });
 
-  const [createdSplitExpense, setCreatedSplitExpense] = useState<{
-    id: string;
-    value: number;
-    description?: string | null;
-    date: string;
-    peopleCount: number;
-    installmentsCount?: number;
-    categoryId?: string;
-    categoryName?: string;
-    categoryIcon?: string;
-  } | null>(null);
+  const { handleReceiptParsed, handlePastePixFromClipboard } = useReceiptAutofill({
+    state, setState, setMode, setIsCategoryUnconfirmed, setReceiptMeta,
+    categories: categoriesQuery.data, cards: cardsQuery.data, initialValues,
+    detectedPix, clearDetectedPix, onOpenAttachDialog: () => setAttachOpen(true),
+  });
 
-  const set = <K extends keyof LaunchState>(key: K, value: LaunchState[K]) =>
-    setState((prev) => ({ ...prev, [key]: value }));
+  const { submit, pending, error, setError } = useLaunchWizardSubmit({
+    state, setState, initialType, initialValues, isReadOnlyMode, guardAction,
+    isFamilyActive, categories: categoriesQuery.data, selectedCard, currentUserId,
+    currentTrip, tripMembers, receiptMeta, setReceiptMeta, setCreatedSplitExpense,
+    onSuccess, onOpenChange, onFallbackBack: () => navigate(-1),
+  });
 
-  const handleSplitToggle = (enabled: boolean) => {
-    triggerSensory("selection");
-    setState((prev) => {
-      if (enabled) {
-        const splitMath = calculateSplitSummary(prev.valueCents, prev.splitPeopleCount, {
-          remainderPolicy: "host",
-        });
-        return {
-          ...prev,
-          splitEnabled: true,
-          tripId: null, // Invariante: racha avulso desativa vínculo com viagem
-          reportWeight: 1,
-          reportCustomAmountCents: prev.valueCents,
-          debtEnabled: true,
-          debtType: "receivable",
-          debtAmountCents: splitMath.guestShareCents * splitMath.guestCount,
-          debtDueDate: prev.debtDueDate || prev.date || todayISO(),
-        };
-      }
-      return {
-        ...prev,
-        splitEnabled: false,
-        reportWeight: 1,
-        reportCustomAmountCents: prev.valueCents,
-      };
-    });
-  };
-
-  const handleTripChange = (tripId: string | null) => {
-    triggerSensory("selection");
-    setState((prev) => {
-      if (tripId) {
-        const preferredId = userPreferencesQuery.data?.custom_settings?.preferredTripCategoryId;
-        const validPreferred =
-          preferredId && categoriesQuery.data?.some((c) => c.id === preferredId);
-        const nextCategoryId = prev.categoryId || (validPreferred ? preferredId : prev.categoryId);
-
-        return {
-          ...prev,
-          tripId,
-          categoryId: nextCategoryId,
-          splitEnabled: false, // Invariante: viagem em grupo desativa racha avulso
-          debtEnabled: prev.splitEnabled ? false : prev.debtEnabled,
-          debtAmountCents: prev.splitEnabled ? 0 : prev.debtAmountCents,
-        };
-      }
-      return {
-        ...prev,
-        tripId: null,
-      };
-    });
-  };
-
-  // Ao ativar ou selecionar contexto Viagem, pré-seleciona categoria preferida aprendida de viagem
-  useEffect(() => {
-    if (!state.tripId || state.categoryId) return;
-    const preferredId = userPreferencesQuery.data?.custom_settings?.preferredTripCategoryId;
-    if (preferredId && categoriesQuery.data?.some((c) => c.id === preferredId)) {
-      const timer = setTimeout(() => {
-        setState((prev) => (prev.categoryId ? prev : { ...prev, categoryId: preferredId }));
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [state.tripId, state.categoryId, userPreferencesQuery.data?.custom_settings?.preferredTripCategoryId, categoriesQuery.data]);
-
-  const handleSplitPeopleCountChange = (count: number) => {
-    setState((prev) => {
-      const clamped = Math.max(2, Math.min(count, 50));
-      const splitMath = calculateSplitSummary(prev.valueCents, clamped, {
-        remainderPolicy: "host",
-      });
-      return {
-        ...prev,
-        splitPeopleCount: clamped,
-        reportCustomAmountCents: prev.splitEnabled ? prev.valueCents : prev.reportCustomAmountCents,
-        debtAmountCents: prev.splitEnabled
-          ? splitMath.guestShareCents * splitMath.guestCount
-          : prev.debtAmountCents,
-      };
-    });
-  };
-
-  const handleValueChange = (cents: number) => {
-    setState((prev) => {
-      if (prev.splitEnabled) {
-        const splitMath = calculateSplitSummary(cents, prev.splitPeopleCount, {
-          remainderPolicy: "host",
-        });
-        return {
-          ...prev,
-          valueCents: cents,
-          reportCustomAmountCents: cents,
-          debtAmountCents: splitMath.guestShareCents * splitMath.guestCount,
-        };
-      }
-      return { ...prev, valueCents: cents };
-    });
-  };
-
-  const goTo = (step: number) => {
-    triggerSensory("selection");
+  const handleClose = () => {
+    setState(defaultLaunchState(initialType, initialValues));
+    setMode(initialMode === "quick" ? "quick" : (getStoredWizardMode() ?? initialMode));
     setError(null);
-    setState((prev) => ({ ...prev, step }));
+    setReceiptMeta(null);
+    onClose?.();
+    onOpenChange?.(false);
+    if (!onClose && !onOpenChange) navigate(-1);
   };
 
-  const selectedCard = state.paymentMethod === "credit_card"
-    ? cardsQuery.data?.find((card) => card.id === state.cardId)
-    : undefined;
-
-  // Auto-seleção contextual de categoria e avanço para confirmação rápida em 1 toque (Fase 12 — Tarefa 28)
-  useEffect(() => {
-    if (!categoriesQuery.data || categoriesQuery.data.length === 0) return;
-
-    // Se a categoria selecionada atual já é válida no conjunto de categorias ativas, não sobrescreve
-    const currentValid = categoriesQuery.data.some((c) => c.id === state.categoryId);
-    if (currentValid) return;
-
-    // 1. Tenta resolver por initialValues?.categoryId (pode ser UUID ou slug canônico)
-    const target = initialValues?.categoryId || state.categoryId;
-    let matchedCategory = target
-      ? categoriesQuery.data.find((c) => c.id === target) ||
-        matchCategoryBySlug(categoriesQuery.data, target as CanonicalCategorySlug)
-      : undefined;
-
-    // 2. Se não encontrou por target, mas temos descrição preenchida, infere deterministicamente
-    // se o usuário não tiver desabilitado a auto-categorização nas preferências
-    if (!matchedCategory && state.description) {
-      const prefs = getBankAssistantPreferences();
-      if (prefs.autoCategoryInferenceEnabled) {
-        const slug = inferCategoryKeyword(state.description);
-        if (slug) {
-          matchedCategory = matchCategoryBySlug(categoriesQuery.data, slug);
-        }
-      }
-    }
-
-    if (matchedCategory) {
-      const targetCategoryId = matchedCategory.id;
-      const timer = setTimeout(() => {
-        setState((prev) => {
-          // Se o valor estiver preenchido e a categoria foi resolvida/inferida,
-          // avança o step para 3 ("Detalhes") permitindo confirmação rápida em 1 toque
-          const nextStep = prev.valueCents > 0 && prev.step <= 2 ? 3 : prev.step;
-          return {
-            ...prev,
-            categoryId: targetCategoryId,
-            step: nextStep,
-          };
-        });
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [categoriesQuery.data, initialValues?.categoryId, state.categoryId, state.description]);
-
-  // Resolução inteligente e auto-vínculo de cartão de crédito por emissor/dígitos/fallback (Fase 11 / Tarefa 11.4)
-  useEffect(() => {
-    if (state.type !== "expense" || state.paymentMethod !== "credit_card") return;
-    if (!cardsQuery.data || cardsQuery.data.length === 0) return;
-
-    // Se o state.cardId atual já corresponde a um cartão ativo cadastrado, não sobrescreve
-    const currentValid = cardsQuery.data.some((c) => c.id === state.cardId);
-    if (currentValid) return;
-
-    const rawToken = initialValues?.cardId || state.cardId;
-    const resolvedCard = resolveBestMatchingCard(cardsQuery.data, {
-      cardId: rawToken,
-      cardLastDigits: extractLastFourDigits(rawToken),
-      bankName: rawToken,
-      issuerBank: rawToken,
-    });
-
-    if (resolvedCard) {
-      const targetCardId = resolvedCard.id;
-      const timer = setTimeout(() => {
-        setState((prev) => ({ ...prev, cardId: targetCardId }));
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [state.type, state.paymentMethod, state.cardId, initialValues?.cardId, cardsQuery.data]);
-
-  const handleSubmit = async () => {
-    if (isReadOnlyMode) {
-      guardAction(() => {}, "Criar Lançamento");
-      return;
-    }
-    setError(null);
-    setPending(true);
-    let createdExpenseId: string | null = null;
-    try {
-
-      if (state.recurring) {
-        const rule = recurrenceRuleFromLaunchState(state);
-        if (!rule) {
-          throw new Error("Defina o fim da recorrência (data ou número de ocorrências).");
-        }
-        await createRecurrence.mutateAsync({
-          kind: rule.kind,
-          frequency: rule.frequency,
-          value: rule.valueCents / 100,
-          categoryId: state.categoryId,
-          startDate: rule.startDate,
-          endDate: rule.endDate,
-          occurrencesTotal: rule.occurrencesTotal,
-          paymentMethod: state.type === "expense" ? state.paymentMethod : null,
-          cardId: state.type === "expense" && state.paymentMethod === "credit_card" ? state.cardId : null,
-          receiveType: state.type === "income" ? state.receiveType : null,
-          description: state.description || null,
-          reportWeight: effectiveReportWeight(state),
-          isFamily: state.isFamily,
-        });
-      } else if (state.type === "expense") {
-        createdExpenseId = await createExpense.mutateAsync({
-          value: state.valueCents / 100,
-          date: state.date,
-          categoryId: state.categoryId,
-          paymentMethod: state.paymentMethod,
-          cardId: state.paymentMethod === "credit_card" ? state.cardId : null,
-          description: state.description || null,
-          reportWeight: effectiveReportWeight(state),
-          installments: buildExpenseInstallments({
-            totalCents: state.valueCents,
-            count: state.installments,
-            startDate: state.date,
-            closingDay: state.paymentMethod === "credit_card" ? (selectedCard?.closing_day ?? null) : null,
-          }),
-          debtName: state.debtEnabled
-            ? state.splitEnabled
-              ? `Racha: ${state.description || "Despesa"}`
-              : null
-            : null,
-          debtAmount: state.debtEnabled
-            ? state.splitEnabled && state.installments > 1 && state.splitDebtMode === "per_installment"
-              ? Math.round(state.debtAmountCents / state.installments) / 100
-              : state.debtAmountCents / 100
-            : null,
-          debtDueDate: state.debtEnabled && state.debtDueDate ? state.debtDueDate : null,
-          debtType: state.debtEnabled ? state.debtType : null,
-          isFamily: state.isFamily,
-          debtInstallmentMode: state.debtEnabled
-            ? state.installments > 1 && state.splitEnabled
-              ? state.splitDebtMode
-              : "single_total"
-            : null,
-        });
-
-        // Se uma viagem estiver vinculada, associa a despesa pessoal à viagem e adiciona ao ledger do grupo
-        if (state.tripId && createdExpenseId) {
-          try {
-            const { updateExpense: updateExpenseRepo } = await import("@/data/repositories/expenses");
-            await updateExpenseRepo(createdExpenseId, { trip_id: state.tripId });
-
-            let currentMembers = selectedTripDetails.data?.members ?? [];
-            if (currentMembers.length === 0) {
-              const { getTripMembers } = await import("@/data/repositories/trips");
-              currentMembers = await getTripMembers(state.tripId);
-            }
-
-            const currentTrip = selectedTripDetails.data?.trip;
-
-            // Identificação estrita do membro pagador associado à conta logada (m.user_id === user.id), evitando imputar no host
-            const payerMember = resolveActiveTripMember(
-              currentMembers,
-              currentUserId,
-              currentTrip?.host_user_id,
-            );
-
-            const currentCat = (categoriesQuery.data ?? []).find((c) => c.id === state.categoryId);
-            if (payerMember && currentMembers.length > 0) {
-              const equalSplits = calculateEqualSplits({
-                totalAmountCents: state.valueCents,
-                memberIds: currentMembers.map((m) => m.id),
-                payerMemberId: payerMember.id,
-              });
-              await addTripExpenseMutation.mutateAsync({
-                trip_id: state.tripId,
-                paid_by_member_id: payerMember.id,
-                amount_cents: state.valueCents,
-                description: state.description || "Despesa da viagem",
-                category_name: currentCat?.name ?? "Geral",
-                expense_date: state.date,
-                split_type: "equal",
-                linked_personal_expense_id: createdExpenseId,
-                splits: equalSplits.map((s: { memberId: string; shareCents: number }) => ({
-                  member_id: s.memberId,
-                  share_cents: s.shareCents,
-                })),
-              });
-
-              // Invalidação coordenada das queries de viagem
-              queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.detail(state.tripId) });
-              queryClient.invalidateQueries({ queryKey: TRIP_QUERY_KEYS.all });
-            }
-
-            // Grava a categoria nas preferências do usuário para aprendizado automático de hábitos
-            if (state.categoryId) {
-              void updateCustomSettingsMutation.mutateAsync({
-                preferredTripCategoryId: state.categoryId,
-              }).catch(() => {
-                // Silencia erro para não interromper fluxo de criação de despesa
-              });
-            }
-          } catch {
-            // Continua sem quebrar o fluxo do lançamento principal
-          }
-        }
-      } else if (state.installments > 1) {
-        await createIncomeInstallments.mutateAsync({
-          value: state.valueCents / 100,
-          date: state.date,
-          categoryId: state.categoryId,
-          receiveType: state.receiveType,
-          description: state.description || null,
-          reportWeight: effectiveReportWeight(state),
-          installments: buildIncomeInstallments({
-            totalCents: state.valueCents,
-            count: state.installments,
-            startDate: state.date,
-          }),
-          isFamily: state.isFamily,
-        });
-      } else {
-        const input = {
-          value: state.valueCents / 100,
-          date: state.date,
-          category_id: state.categoryId,
-          receive_type: state.receiveType,
-          description: state.description || null,
-          report_weight: effectiveReportWeight(state),
-          source_ref: null,
-          is_family: state.isFamily,
-        } satisfies Omit<DbInsert<Income>, "user_id">;
-        await createIncome.mutateAsync(input);
-      }
-
-      if (state.description && state.categoryId) {
-        storeMerchantCategory(state.description, state.categoryId);
-        const resolvedLastDigits =
-          receiptMeta?.cardLastDigits ||
-          extractLastFourDigits(initialValues?.cardId) ||
-          extractLastFourDigits(state.cardId);
-        recordTransactionLearning({
-          merchant: receiptMeta?.merchant || state.description,
-          categoryId: state.categoryId,
-          paymentMethod: state.type === "expense" ? state.paymentMethod : "pix",
-          cardId:
-            state.type === "expense" && state.paymentMethod === "credit_card" && state.cardId
-              ? state.cardId
-              : undefined,
-          cardLastDigits: resolvedLastDigits,
-          taxId: receiptMeta?.taxId,
-          packageName: receiptMeta?.packageName,
-          pixKey: receiptMeta?.pixKey,
-          nature: state.type,
-        });
-      }
-
-      triggerSensory("success");
-      const isSplitActive = state.type === "expense" && state.splitEnabled && !state.tripId;
-      const selectedCategory = (categoriesQuery.data ?? []).find((c) => c.id === state.categoryId);
-      const savedExpenseData = isSplitActive
-        ? {
-            id: typeof createdExpenseId === "string" ? createdExpenseId : "",
-            value: state.valueCents / 100,
-            description: state.description || null,
-            date: state.date,
-            peopleCount: state.splitPeopleCount,
-            installmentsCount:
-              state.splitDebtMode === "per_installment" && state.installments > 1
-                ? state.installments
-                : 1,
-            categoryId: state.categoryId,
-            categoryName: selectedCategory?.name,
-            categoryIcon: selectedCategory?.icon ?? undefined,
-          }
-        : null;
-
-      setState(defaultLaunchState(initialType));
-      setReceiptMeta(null);
-      setPending(false);
-
-      if (savedExpenseData) {
-        setCreatedSplitExpense(savedExpenseData);
-      } else {
-        if (isFamilyActive && state.isFamily) {
-          pushToast({
-            title: state.type === "expense" ? "Despesa registrada" : "Receita registrada",
-            description: "Lançamento adicionado à visão Familiar.",
-            variant: "success",
-          });
-        } else {
-          pushToast({
-            title: state.type === "expense" ? "Despesa registrada" : "Receita registrada",
-            variant: "success",
-          });
-        }
-        onSuccess?.();
-        onOpenChange?.(false);
-        if (!onSuccess && !onOpenChange) {
-          navigate(-1);
-        }
-      }
-    } catch (err) {
-      triggerSensory("destructive");
-      setError(getErrorMessage(err));
-      setPending(false);
-    }
+  const requestClose = () => {
+    if (state.valueCents > 0 || state.categoryId !== "" || state.description.trim() !== "") setConfirmClose(true);
+    else handleClose();
   };
 
-  const handleReceiptParsed = (parsed: ParsedBankTransaction | UniversalReceiptData) => {
-    setMode("quick");
-    let isMemorized = false;
-
-    const rawMerchant =
-      ("merchantOrBeneficiary" in parsed ? parsed.merchantOrBeneficiary : undefined) ||
-      ("merchant" in parsed ? parsed.merchant : undefined) ||
-      parsed.description ||
-      "";
-
-    // 1. Resolução em 3 camadas de identidade e categoria via resolveMerchantIdentity
-    const pixKey = "pixKey" in parsed && typeof parsed.pixKey === "string" ? parsed.pixKey : undefined;
-
-    const identity = resolveMerchantIdentity({
-      merchantOrDescription: rawMerchant,
-      pixKey,
-      rawText: "rawText" in parsed ? parsed.rawText : undefined,
-      taxId: parsed.taxId,
-      userMemory: merchantLearning.memory,
-    });
-
-    if (identity.isLearned) {
-      isMemorized = true;
-    }
-
-    // 2. Extração de parcelamento
-    const installmentCount =
-      typeof parsed.installments === "number"
-        ? parsed.installments
-        : parsed.installments?.count;
-
-    // 3. Resolução precisa do cartão de crédito através de 6 camadas e mapa de 4 dígitos / pacote
-    const cardLastDigits = parsed.cardLastDigits;
-    const bankName = parsed.bankName;
-    const packageName = "packageName" in parsed && typeof parsed.packageName === "string" ? parsed.packageName : undefined;
-    const issuerBank = "issuerBank" in parsed && typeof parsed.issuerBank === "string" ? parsed.issuerBank : undefined;
-    const cardBrand = parsed.cardBrand;
-    const cardId = "cardId" in parsed && typeof parsed.cardId === "string" ? parsed.cardId : undefined;
-
-    const matchedCard = resolveBestMatchingCard(cardsQuery.data, {
-      cardId: cardId || identity.preferredCardId,
-      cardLastDigits,
-      bankName,
-      packageName,
-      issuerBank,
-      cardBrand,
-      cardDigitsMapping: cardDigits.cardDigitsMapping,
-      bankCardMapping: bankCard.bankCardMapping,
-    });
-
-    // 4. Salva metadados do comprovante para o aprendizado no submit
-    setReceiptMeta({
-      merchant: identity.friendlyName || rawMerchant,
-      cardLastDigits,
-      taxId: parsed.taxId || identity.taxId,
-      packageName,
-      pixKey: pixKey || identity.pixKey,
-    });
-
-    setState((prev) => {
-      const next = { ...prev };
-
-      // Natureza / Tipo
-      const nature: EntryType =
-        identity.defaultNature ||
-        (("nature" in parsed && (parsed.nature === "expense" || parsed.nature === "income"))
-          ? parsed.nature
-          : ("type" in parsed && (parsed.type === "expense" || parsed.type === "income") ? parsed.type : "expense"));
-      next.type = nature;
-
-      // Valores e Data
-      next.valueCents = parsed.amountCents;
-      if (parsed.date) next.date = parsed.date;
-      next.description = identity.friendlyName || parsed.description;
-
-      // Forma de pagamento inicial
-      const initialMethod =
-        identity.preferredPaymentMethod ||
-        parsed.paymentMethod ||
-        (matchedCard ? "credit_card" : "pix");
-      next.paymentMethod = initialMethod;
-
-      // Se houver parcelamento
-      if (installmentCount && installmentCount > 1) {
-        next.installments = installmentCount;
-        if (nature === "expense") {
-          next.paymentMethod = "credit_card";
-        }
-      }
-
-      // Vínculo do cartão resolvido
-      if (matchedCard) {
-        next.cardId = matchedCard.id;
-        if (nature === "expense") {
-          next.paymentMethod = "credit_card";
-        }
-      } else if (identity.preferredCardId && cardsQuery.data?.some((c) => c.id === identity.preferredCardId)) {
-        next.cardId = identity.preferredCardId;
-        if (nature === "expense") {
-          next.paymentMethod = "credit_card";
-        }
-      }
-
-      // Categoria via slug canônico ou catálogo ou inferência
-      let categoryMatched = false;
-      if (identity.categorySlug && categoriesQuery.data) {
-        const matched = matchCategoryBySlug(
-          categoriesQuery.data,
-          identity.categorySlug as CanonicalCategorySlug,
-        );
-        if (matched) {
-          next.categoryId = matched.id;
-          categoryMatched = true;
-        } else {
-          const found = categoriesQuery.data.find(
-            (c) =>
-              c.name.toLowerCase().includes(identity.categorySlug.toLowerCase()) ||
-              identity.categorySlug.toLowerCase().includes(c.name.toLowerCase()),
-          );
-          if (found) {
-            next.categoryId = found.id;
-            categoryMatched = true;
-          }
-        }
-      }
-
-      // Fallback para categorização preditiva se ainda não vinculou
-      if (!categoryMatched && categoriesQuery.data) {
-        const textToInfer = next.description || rawMerchant;
-        if (textToInfer) {
-          const slug = inferCategoryKeyword(textToInfer);
-          if (slug) {
-            const matched = matchCategoryBySlug(categoriesQuery.data, slug);
-            if (matched) {
-              next.categoryId = matched.id;
-            }
-          }
-        }
-      }
-
-      return next;
-    });
-
-    // Se a categoria foi memorizada previamente pelo usuário, não requer confirmação
-    setIsCategoryUnconfirmed(!isMemorized);
-
-    triggerSensory("success");
-
-    const receiptKind =
-      "receiptKind" in parsed
-        ? parsed.receiptKind
-        : "kind" in parsed
-          ? parsed.kind
-          : undefined;
-    const label = getReceiptKindLabel(receiptKind, installmentCount);
-
-    pushToast({
-      title: `${label} reconhecido`,
-      description: `${identity.friendlyName || parsed.description} preenchido no Wizard Rápido para conferência.`,
-      variant: "success",
-    });
-  };
-
-  const handlePastePixFromClipboard = async () => {
-    try {
-      if (detectedPix && detectedPix.candidate.valueCents > 0) {
-        const candidate = detectedPix.candidate;
-        handleReceiptParsed({
-          id: `pix_clip_${Date.now()}`,
-          bankName: "Pix",
-          nature: candidate.nature,
-          type: candidate.nature,
-          amountCents: candidate.valueCents,
-          description: candidate.description,
-          merchant: candidate.merchant,
-          recipientName: candidate.recipientName,
-          pixKey: candidate.pixKey,
-          taxId: candidate.taxId,
-          date: candidate.date || todayISO(),
-          paymentMethod:
-            candidate.paymentMethod === "debit_card"
-              ? "debit"
-              : candidate.paymentMethod === "boleto"
-                ? "other"
-                : candidate.paymentMethod,
-          timestamp: Date.now(),
-          rawText: detectedPix.rawText,
-        });
-        clearDetectedPix();
-        return;
-      }
-
-      const clipResult = await readClipboardText();
-      if (clipResult.status !== "success" || !clipResult.text) {
-        setAttachOpen(true);
-        return;
-      }
-
-      const text = clipResult.text.trim();
-      const candidate = parseClipboardTransactionCandidate(text);
-      if (candidate && candidate.valueCents > 0) {
-        handleReceiptParsed({
-          id: `pix_clip_${Date.now()}`,
-          bankName: "Pix",
-          nature: candidate.nature,
-          type: candidate.nature,
-          amountCents: candidate.valueCents,
-          description: candidate.description,
-          merchant: candidate.merchant,
-          recipientName: candidate.recipientName,
-          pixKey: candidate.pixKey,
-          taxId: candidate.taxId,
-          date: candidate.date || todayISO(),
-          paymentMethod:
-            candidate.paymentMethod === "debit_card"
-              ? "debit"
-              : candidate.paymentMethod === "boleto"
-                ? "other"
-                : candidate.paymentMethod,
-          timestamp: Date.now(),
-          rawText: text,
-        });
-        clearDetectedPix();
-        return;
-      }
-
-      setAttachOpen(true);
-    } catch {
-      setAttachOpen(true);
-    }
-  };
-
-  const isLastStep = state.step === WIZARD_STEPS.length;
-  const canSubmitQuick =
-    state.valueCents > 0 &&
-    state.categoryId.trim() !== "" &&
-    !(state.type === "expense" && state.paymentMethod === "credit_card" && !state.cardId);
+  const canSubmitQuick = state.valueCents > 0 && state.categoryId.trim() !== "" && !(state.type === "expense" && state.paymentMethod === "credit_card" && !state.cardId);
+  const showCalculator = mode === "quick" || state.step === 1 || (state.step === 3 && (!isPresetWeight(state.reportWeight) || state.debtEnabled));
 
   return (
     <>
       <Modal
         open={open && !createdSplitExpense}
-      data-tour="launch-wizard-dialog"
-      modal={!isDemoActive}
-      onOpenChange={(next) => {
-        if (!next) {
-          requestClose();
-        }
-      }}
-      title={mode === "quick" ? "Lançamento rápido" : "Novo lançamento"}
-      size={mode === "quick" ? "lg" : "xl"}
-      showCalculator
-      wideHeaderActions
-      headerActions={
-        <div className="flex items-center gap-1">
-          {mode === "guided" ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="xs"
-              onClick={handleSwitchToQuick}
-              className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1 px-2 cursor-pointer"
-              aria-label="Alternar para modo rápido"
-            >
-              <Zap className="size-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">Modo rápido</span>
-            </Button>
-          ) : null}
-          {detectedPix && detectedPix.candidate.valueCents > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              onClick={() => void handlePastePixFromClipboard()}
-              className="h-7 text-xs border-primary/30 bg-surface-raised hover:bg-primary/5 text-primary-strong gap-1 px-2.5 font-medium shadow-xs cursor-pointer animate-in fade-in duration-200"
-              aria-label="Colar comprovante Pix"
-            >
-              <ClipboardPaste className="size-3.5 text-primary" aria-hidden="true" />
-              <span className="hidden sm:inline">Colar Pix</span>
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            onClick={() => setAttachOpen(true)}
-            className="h-7 text-xs border-border/80 bg-surface-raised hover:bg-surface-hover text-foreground gap-1.5 px-2.5 font-medium shadow-xs cursor-pointer"
-            aria-label="Anexar comprovante ou cupom fiscal"
-          >
-            <Paperclip className="size-3.5 text-foreground" aria-hidden="true" />
-            <span className="hidden sm:inline">Anexar</span>
-          </Button>
-        </div>
-      }
-      footer={
-        mode === "quick" ? (
-          <ModalFooter className="mt-0 pt-0 border-t-0 sm:justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={requestClose}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={!canSubmitQuick || pending}
-              onClick={() => void handleSubmit()}
-            >
-              {pending ? "Salvando…" : "Salvar Transação"}
-            </Button>
-          </ModalFooter>
-        ) : (
-          <ModalFooter className="mt-0 pt-0 border-t-0 sm:justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={state.step === 1 || pending}
-              onClick={() => goTo(state.step - 1)}
-            >
-              Voltar
-            </Button>
-            {isLastStep ? (
-              <Button
-                type="button"
-                disabled={!canProceed(state) || pending}
-                onClick={() => void handleSubmit()}
-              >
-                {pending ? "Confirmando…" : "Confirmar lançamento"}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                disabled={!canProceed(state)}
-                onClick={() => goTo(state.step + 1)}
-              >
-                Continuar
-              </Button>
-            )}
-          </ModalFooter>
-        )
-      }
-    >
-      <div className="flex flex-col gap-6 pt-2">
-        {error ? <Alert variant="error">{error}</Alert> : null}
-
-        {mode === "quick" ? (
-          <StepQuick
-            state={state}
-            habits={habits}
-            onApplyHabitual={(habit) => {
-              handleValueChange(Math.round(habit.value * 100));
-              set("categoryId", habit.categoryId);
-              set("description", habit.description);
-              if (habit.paymentMethod) {
-                set("paymentMethod", habit.paymentMethod as PaymentMethod);
-                set("cardId", habit.cardId);
-              } else if (habit.receiveType) {
-                set("receiveType", habit.receiveType as ReceiveType);
-              }
-            }}
-            onTypeChange={(type: EntryType) => {
-              set("type", type);
-              set("categoryId", "");
-              set("cardId", null);
-              set("debtEnabled", false);
-              set("debtType", "payable");
-              set("recurring", false);
-              set("recurrenceEndDate", "");
-              set("splitEnabled", false);
-            }}
-            onValueChange={handleValueChange}
-            onCategoryChange={(categoryId) => {
-              set("categoryId", categoryId);
-              setIsCategoryUnconfirmed(false);
-              const cat = categoriesQuery.data?.find((c) => c.id === categoryId);
-              if (isFamilyActive && cat?.is_family) {
-                set("isFamily", true);
-              }
-            }}
-            onPaymentMethodChange={(method: PaymentMethod) => {
-              set("paymentMethod", method);
-              if (method !== "credit_card") set("cardId", null);
-            }}
-            onCardChange={(cardId) => set("cardId", cardId)}
-            onInstallmentsChange={(count) => set("installments", count)}
-            isCategoryUnconfirmed={isCategoryUnconfirmed}
-            onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
-            onDescriptionChange={(description) => set("description", description)}
-            onFamilyChange={(isFamily) => set("isFamily", isFamily)}
-            isFamilyModeEnabled={isFamilyActive}
-            onSplitToggle={handleSplitToggle}
-            onSplitPeopleCountChange={handleSplitPeopleCountChange}
-            onSwitchToGuided={handleSwitchToGuided}
-            categories={categoriesQuery.data}
-            categoriesLoading={categoriesQuery.isLoading}
-            predictionEntries={prediction.entries}
-            cards={cardsQuery.data}
-            cardsLoading={cardsQuery.isLoading}
-            activeTrips={activeTrips}
-            onTripChange={handleTripChange}
-            activeTripMemberName={activeTripMember?.name}
-            onSplitDebtModeChange={(mode) => set("splitDebtMode", mode)}
-            onSubmit={() => {
-              if (canSubmitQuick && !pending) {
-                void handleSubmit();
-              }
-            }}
+        data-tour="launch-wizard-dialog"
+        modal={!isDemoActive}
+        onOpenChange={(next) => { if (!next) requestClose(); }}
+        title={mode === "quick" ? "Lançamento rápido" : "Novo lançamento"}
+        size={mode === "quick" ? "lg" : "xl"}
+        showCalculator={showCalculator}
+        wideHeaderActions={mode === "guided"}
+        headerActions={
+          <LaunchWizardHeaderActions
+            mode={mode}
+            hasDetectedPix={Boolean(detectedPix && detectedPix.candidate.valueCents > 0)}
+            onSwitchToQuick={wizard.switchToQuick}
+            onPastePix={() => void handlePastePixFromClipboard()}
+            onOpenAttach={() => setAttachOpen(true)}
           />
-        ) : (
-          <>
-            <Stepper steps={[...WIZARD_STEPS]} current={state.step} />
+        }
+        footer={
+          <LaunchWizardFooter
+            mode={mode} state={state} pending={pending} canSubmitQuick={canSubmitQuick}
+            onRequestClose={requestClose}
+            onGoToStep={(step) => { setError(null); set("step", step); }}
+            onSubmit={() => void submit()}
+          />
+        }
+      >
+        <div className="flex flex-col gap-6 pt-2">
+          {error ? <Alert variant="error">{error}</Alert> : null}
+          {mode === "quick" ? (
+            <StepQuick
+              state={state} habits={habits} onApplyHabitual={wizard.applyHabitual}
+              onTypeChange={wizard.handleTypeChange} onValueChange={wizard.handleValueChange} onCategoryChange={wizard.handleCategorySelect}
+              onPaymentMethodChange={(m) => { set("paymentMethod", m); if (m !== "credit_card") set("cardId", null); }}
+              onCardChange={(id) => set("cardId", id)} onInstallmentsChange={(c) => set("installments", c)}
+              isCategoryUnconfirmed={isCategoryUnconfirmed} onReceiveTypeChange={(r) => set("receiveType", r)}
+              onDescriptionChange={(d) => set("description", d)} onFamilyChange={(f) => set("isFamily", f)}
+              isFamilyModeEnabled={isFamilyActive} onSplitToggle={wizard.handleSplitToggle}
+              onSplitPeopleCountChange={wizard.handleSplitPeopleCountChange} onSwitchToGuided={wizard.switchToGuided}
+              categories={categoriesQuery.data} categoriesLoading={categoriesQuery.isLoading}
+              predictionEntries={prediction.entries} cards={cardsQuery.data} cardsLoading={cardsQuery.isLoading}
+              activeTrips={activeTrips} onTripChange={wizard.handleTripChange} activeTripMemberName={activeTripMember?.name}
+              onSplitDebtModeChange={(m) => set("splitDebtMode", m)}
+              onSubmit={() => { if (canSubmitQuick && !pending) void submit(); }}
+            />
+          ) : (
+            <LaunchWizardGuidedSteps
+              state={state}
+              set={set}
+              setError={setError}
+              habits={habits}
+              descriptionSuggestions={descriptionSuggestions}
+              categories={categoriesQuery.data}
+              categoriesLoading={categoriesQuery.isLoading}
+              categoriesIsError={categoriesQuery.isError}
+              categoriesError={categoriesQuery.error}
+              cards={cardsQuery.data}
+              cardsLoading={cardsQuery.isLoading}
+              cardsError={cardsQuery.error}
+              activeTrips={activeTrips}
+              activeTripMemberName={activeTripMember?.name}
+              selectedCategoryName={selectedCategory?.name}
+              selectedCardClosingDay={selectedCard?.closing_day}
+              isFamilyActive={isFamilyActive}
+              onTypeChange={wizard.handleTypeChange}
+              onValueChange={wizard.handleValueChange}
+              onCategorySelect={wizard.handleCategorySelect}
+              onApplyHabitual={wizard.applyHabitual}
+              onSplitToggle={wizard.handleSplitToggle}
+              onSplitPeopleCountChange={wizard.handleSplitPeopleCountChange}
+              onTripChange={wizard.handleTripChange}
+            />
+          )}
+        </div>
+      </Modal>
 
-            {state.step === 1 ? (
-              <StepValue
-                state={state}
-                onTypeChange={(type: EntryType) => {
-                  set("type", type);
-                  set("categoryId", "");
-                  set("cardId", null);
-                  set("debtEnabled", false);
-                  set("debtType", "payable");
-                  set("recurring", false);
-                  set("recurrenceEndDate", "");
-                  set("splitEnabled", false);
-                }}
-                onValueChange={handleValueChange}
-                onInstallmentsChange={(count) => set("installments", count)}
-                onApplyHabitual={(habit) => {
-                  handleValueChange(Math.round(habit.value * 100));
-                  set("categoryId", habit.categoryId);
-                  set("description", habit.description);
-                  if (habit.paymentMethod) {
-                    set("paymentMethod", habit.paymentMethod as PaymentMethod);
-                    set("cardId", habit.cardId);
-                  } else if (habit.receiveType) {
-                    set("receiveType", habit.receiveType as ReceiveType);
-                  }
-                }}
-                habits={habits}
-                onNext={() => {
-                  if (canProceed(state)) {
-                    goTo(2);
-                  }
-                }}
-              />
-            ) : null}
-
-            {state.step === 2 ? (
-              <StepCategory
-                categories={categoriesQuery.data}
-                isLoading={categoriesQuery.isLoading}
-                isError={categoriesQuery.isError}
-                error={categoriesQuery.error}
-                selectedId={state.categoryId}
-                isFamilyModeEnabled={isFamilyActive}
-                onSelect={(categoryId) => {
-                  set("categoryId", categoryId);
-                  const cat = categoriesQuery.data?.find((c) => c.id === categoryId);
-                  if (isFamilyActive && cat?.is_family) {
-                    set("isFamily", true);
-                  }
-                }}
-              />
-            ) : null}
-
-            {state.step === 3 ? (
-              <StepDetails
-                state={state}
-                onDateChange={(date) => set("date", date)}
-                onPaymentMethodChange={(method: PaymentMethod) => {
-                  set("paymentMethod", method);
-                  if (method !== "credit_card") set("cardId", null);
-                }}
-                onCardChange={(cardId) => set("cardId", cardId)}
-                onInstallmentsChange={(count) => set("installments", count)}
-                onReceiveTypeChange={(receiveType: ReceiveType) => set("receiveType", receiveType)}
-                onDescriptionChange={(description) => set("description", description)}
-                onFamilyChange={(isFamily) => set("isFamily", isFamily)}
-                isFamilyModeEnabled={isFamilyActive}
-                descriptionSuggestions={descriptionSuggestions}
-                onReportWeightChange={(weight) => {
-                  set("reportWeight", weight);
-                  if (!isPresetWeight(weight) && state.reportCustomAmountCents === 0) {
-                    set("reportCustomAmountCents", state.valueCents);
-                  }
-                }}
-                onReportCustomAmountChange={(cents) => set("reportCustomAmountCents", cents)}
-                onSplitToggle={handleSplitToggle}
-                onSplitPeopleCountChange={handleSplitPeopleCountChange}
-                onDebtToggle={(enabled) => set("debtEnabled", enabled)}
-                onDebtTypeChange={(debtType) => set("debtType", debtType)}
-                onDebtAmountChange={(cents) => set("debtAmountCents", cents)}
-                onDebtDueDateChange={(date) => set("debtDueDate", date)}
-                onRecurringToggle={(enabled) => {
-                  set("recurring", enabled);
-                  // Parcelamento e recorrência são mutuamente exclusivos.
-                  if (enabled) set("installments", 1);
-                }}
-                onRecurrenceFrequencyChange={(frequency: RecurrenceFrequency) => set("recurrenceFrequency", frequency)}
-                onRecurrenceEndModeChange={(mode: "date" | "count") => set("recurrenceEndMode", mode)}
-                onRecurrenceEndDateChange={(date) => set("recurrenceEndDate", date)}
-                onRecurrenceCountChange={(count) => set("recurrenceCount", count)}
-                cards={cardsQuery.data}
-                cardsLoading={cardsQuery.isLoading}
-                cardsError={cardsQuery.error}
-                activeTrips={activeTrips}
-                onTripChange={handleTripChange}
-                activeTripMemberName={activeTripMember?.name}
-                onSplitDebtModeChange={(mode) => set("splitDebtMode", mode)}
-                onNext={() => {
-                  if (canProceed(state)) {
-                    goTo(4);
-                  }
-                }}
-              />
-            ) : null}
-
-            {state.step === 4 ? (
-              <StepReview
-                state={state}
-                categoryName={selectedCategory?.name}
-                closingDay={selectedCard?.closing_day}
-                isFamilyModeEnabled={isFamilyActive}
-                tripName={activeTrips.find((t) => t.id === state.tripId)?.title}
-                tripMemberName={activeTripMember?.name}
-              />
-            ) : null}
-          </>
-        )}
-
-        <ConfirmDialog
-          open={confirmClose}
-          onOpenChange={setConfirmClose}
-          title="Descartar lançamento?"
-          description="Você preencheu dados deste lançamento. Ao sair, as informações digitadas serão perdidas."
-          confirmLabel="Descartar"
-          cancelLabel="Continuar preenchendo"
-          variant="destructive"
-          onConfirm={() => {
-            setConfirmClose(false);
-            handleClose();
-          }}
-        />
-
-        <AttachReceiptDialog
-          open={attachOpen}
-          onOpenChange={setAttachOpen}
-          onParsed={handleReceiptParsed}
-          cards={cardsQuery.data}
-        />
-      </div>
-    </Modal>
-
-    {createdSplitExpense && (
-      <SplitExpenseDialog
-        open={true}
-        fromWizard={true}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            setCreatedSplitExpense(null);
-            void queryClient.invalidateQueries({ queryKey: ["my-public-shares"] });
-            void queryClient.invalidateQueries({ queryKey: ["public-shares"] });
-            void queryClient.invalidateQueries({ queryKey: ["debts"] });
-            void queryClient.invalidateQueries({ queryKey: ["expenses"] });
-            void queryClient.invalidateQueries({ queryKey: ["overview"] });
-            onSuccess?.();
-            onOpenChange?.(false);
-            if (!onSuccess && !onOpenChange) {
-              navigate(-1);
-            }
-          }
+      <LaunchWizardModals
+        confirmClose={confirmClose}
+        onConfirmCloseChange={setConfirmClose}
+        onConfirmDiscard={() => { setConfirmClose(false); handleClose(); }}
+        attachOpen={attachOpen}
+        onAttachOpenChange={setAttachOpen}
+        onReceiptParsed={(parsed) => handleReceiptParsed(parsed, { silentFeedback: true })}
+        cards={cardsQuery.data}
+        createdSplitExpense={createdSplitExpense}
+        onClearCreatedSplit={() => setCreatedSplitExpense(null)}
+        onSplitFinished={() => {
+          onSuccess?.();
+          onOpenChange?.(false);
+          if (!onSuccess && !onOpenChange) navigate(-1);
         }}
-        expense={{
-          id: createdSplitExpense.id,
-          value: createdSplitExpense.value,
-          description: createdSplitExpense.description ?? null,
-          date: createdSplitExpense.date,
-          category_id: createdSplitExpense.categoryId || "",
-          payment_method: "pix",
-          created_at: "",
-          installments_total: createdSplitExpense.installmentsCount ?? undefined,
-        }}
-        initialInstallmentsCount={createdSplitExpense.installmentsCount}
-        categoryName={createdSplitExpense.categoryName}
-        categoryIcon={createdSplitExpense.categoryIcon}
-        initialAmountCents={Math.round(createdSplitExpense.value * 100)}
-        initialDescription={createdSplitExpense.description || ""}
-        initialDate={createdSplitExpense.date}
-        initialPeopleCount={createdSplitExpense.peopleCount}
-        autoGenerate={false}
+        upgradeModal={upgradeModal}
       />
-    )}
-
-    {upgradeModal}
-  </>
+    </>
   );
 }

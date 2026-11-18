@@ -15,6 +15,8 @@ import type { AssetAllocationStatus } from "@/types";
 
 export type GovernanceInsightKind =
   | "review_overdue"
+  | "review_upcoming"
+  | "unscored_asset"
   | "quarantine_followup"
   | "discount_opportunity"
   | "low_score_overweight";
@@ -45,8 +47,11 @@ export interface GovernanceInsight {
   description: string;
   assetId?: string;
   ticker?: string;
+  tickers?: string[];
+  assetIds?: string[];
   assetClass?: string | null;
   daysSinceReview?: number;
+  daysUntilReview?: number;
   daysInQuarantine?: number;
   discountPct?: number;
   allocationPct?: number;
@@ -56,6 +61,8 @@ export interface GovernanceInsight {
 
 export interface ConsolidatedGovernanceSummary {
   overdueCount: number;
+  upcomingReviewCount: number;
+  unscoredCount: number;
   quarantineCount: number;
   opportunityCount: number;
   lowScoreRiskCount: number;
@@ -67,6 +74,21 @@ export interface GovernanceInsightsResult {
   summary: ConsolidatedGovernanceSummary;
   /** Card consolidado para carrossel (Salvaguarda S6) evitando fadiga de múltiplos alertas */
   consolidatedReviewAlert: GovernanceInsight | null;
+  consolidatedUpcomingAlert: GovernanceInsight | null;
+  consolidatedUnscoredAlert: GovernanceInsight | null;
+}
+
+/** Limiar padrão (em dias) para alertar que uma revisão de tese está próxima de vencer. */
+export const UPCOMING_REVIEW_WINDOW_DAYS = 30;
+
+export function formatTickerListSummary(tickers: readonly string[], maxVisible = 2): string {
+  if (tickers.length === 0) return "";
+  if (tickers.length <= maxVisible) {
+    return tickers.join(", ");
+  }
+  const head = tickers.slice(0, maxVisible).join(", ");
+  const remaining = tickers.length - maxVisible;
+  return `${head} e +${remaining} ${remaining === 1 ? "ativo" : "ativos"}`;
 }
 
 export function generateAssetGovernanceInsights(params: {
@@ -83,6 +105,8 @@ export function generateAssetGovernanceInsights(params: {
 
   const insights: GovernanceInsight[] = [];
   const overdueAssets: GovernanceAssetInput[] = [];
+  const upcomingAssets: Array<{ asset: GovernanceAssetInput; daysUntilReview: number }> = [];
+  const unscoredAssets: GovernanceAssetInput[] = [];
 
   for (const asset of assets) {
     const status = asset.allocation_status ?? "active";
@@ -102,7 +126,7 @@ export function generateAssetGovernanceInsights(params: {
 
     const maxAllowedDays = (asset.review_frequency_months ?? 6) * 30;
 
-    // GATILHO 1: Revisão Periódica Vencida
+    // GATILHO 1A: Revisão Periódica Vencida
     if (daysSinceReview > maxAllowedDays && status !== "exit") {
       overdueAssets.push(asset);
       insights.push({
@@ -113,10 +137,56 @@ export function generateAssetGovernanceInsights(params: {
         description: `A tese e nota de ${asset.ticker} não são revisadas há ${daysSinceReview} dias (limite: ${maxAllowedDays} dias).`,
         assetId: asset.id,
         ticker: asset.ticker,
+        tickers: [asset.ticker],
+        assetIds: [asset.id],
         assetClass: asset.assetClass,
         daysSinceReview,
         score,
         actionLabel: "Revisar tese",
+      });
+    } else if (status !== "exit") {
+      // GATILHO 1B: Revisão Próxima do Vencimento (<= 30 dias restantes)
+      const daysUntilReview = maxAllowedDays - daysSinceReview;
+      if (daysUntilReview >= 0 && daysUntilReview <= UPCOMING_REVIEW_WINDOW_DAYS) {
+        upcomingAssets.push({ asset, daysUntilReview });
+        insights.push({
+          id: `gov-upcoming-${asset.id}`,
+          kind: "review_upcoming",
+          severity: "info",
+          title: `Reavaliação próxima: ${asset.ticker}`,
+          description:
+            daysUntilReview === 0
+              ? `A revisão da nota de ${asset.ticker} vence hoje.`
+              : `A revisão da nota de ${asset.ticker} vence em ${daysUntilReview} ${daysUntilReview === 1 ? "dia" : "dias"}.`,
+          assetId: asset.id,
+          ticker: asset.ticker,
+          tickers: [asset.ticker],
+          assetIds: [asset.id],
+          assetClass: asset.assetClass,
+          daysSinceReview,
+          daysUntilReview,
+          score,
+          actionLabel: "Antecipar revisão",
+        });
+      }
+    }
+
+    // GATILHO 1C: Ativo sem nota definida
+    if (score == null && status !== "exit") {
+      unscoredAssets.push(asset);
+      insights.push({
+        id: `gov-unscored-${asset.id}`,
+        kind: "unscored_asset",
+        severity: "info",
+        title: `Ativo sem nota: ${asset.ticker}`,
+        description: `${asset.ticker} ainda não possui nota de convicção para o motor de rebalanceamento.`,
+        assetId: asset.id,
+        ticker: asset.ticker,
+        tickers: [asset.ticker],
+        assetIds: [asset.id],
+        assetClass: asset.assetClass,
+        score: null,
+        actionLabel: "Avaliar agora",
       });
     }
 
@@ -185,6 +255,8 @@ export function generateAssetGovernanceInsights(params: {
   }
 
   const overdueCount = overdueAssets.length;
+  const upcomingReviewCount = upcomingAssets.length;
+  const unscoredCount = unscoredAssets.length;
   const quarantineCount = insights.filter((i) => i.kind === "quarantine_followup").length;
   const opportunityCount = insights.filter((i) => i.kind === "discount_opportunity").length;
   const lowScoreRiskCount = insights.filter((i) => i.kind === "low_score_overweight").length;
@@ -192,28 +264,77 @@ export function generateAssetGovernanceInsights(params: {
   // Consolidação anti-fadiga para o carrossel (Salvaguarda S6)
   let consolidatedReviewAlert: GovernanceInsight | null = null;
   if (overdueCount > 1) {
+    const tickers = overdueAssets.map((a) => a.ticker);
+    const assetIds = overdueAssets.map((a) => a.id);
     consolidatedReviewAlert = {
       id: "gov-consolidated-overdue",
       kind: "review_overdue",
       severity: "warning",
       title: `${overdueCount} ativos com revisão pendente`,
-      description: "Reavalie suas teses e notas para manter as recomendações de aporte calibradas com seus fundamentos.",
+      description: `Prazo expirado em ${formatTickerListSummary(tickers)}. Reavalie as notas para calibrar os aportes.`,
+      tickers,
+      assetIds,
       daysSinceReview: Math.max(...overdueAssets.map((a) => (a.last_reviewed_at ? Math.floor((nowTime - new Date(a.last_reviewed_at).getTime()) / (1000 * 60 * 60 * 24)) : 180))),
-      actionLabel: "Revisar carteira",
+      actionLabel: "Reavaliar agora",
     };
   } else if (overdueCount === 1) {
     consolidatedReviewAlert = insights.find((i) => i.kind === "review_overdue") ?? null;
+  }
+
+  let consolidatedUpcomingAlert: GovernanceInsight | null = null;
+  if (upcomingReviewCount > 0) {
+    const sortedUpcoming = [...upcomingAssets].sort((a, b) => a.daysUntilReview - b.daysUntilReview);
+    const tickers = sortedUpcoming.map((item) => item.asset.ticker);
+    const assetIds = sortedUpcoming.map((item) => item.asset.id);
+    const minDays = sortedUpcoming[0]!.daysUntilReview;
+    if (upcomingReviewCount === 1) {
+      consolidatedUpcomingAlert = insights.find((i) => i.kind === "review_upcoming") ?? null;
+    } else {
+      consolidatedUpcomingAlert = {
+        id: "gov-consolidated-upcoming",
+        kind: "review_upcoming",
+        severity: "info",
+        title: `${upcomingReviewCount} revisões próximas do prazo`,
+        description: `${formatTickerListSummary(tickers)} vencem em até ${minDays === 0 ? "hoje" : `${minDays} dias`}.`,
+        tickers,
+        assetIds,
+        daysUntilReview: minDays,
+        actionLabel: "Antecipar revisão",
+      };
+    }
+  }
+
+  let consolidatedUnscoredAlert: GovernanceInsight | null = null;
+  if (unscoredCount > 1) {
+    const tickers = unscoredAssets.map((a) => a.ticker);
+    const assetIds = unscoredAssets.map((a) => a.id);
+    consolidatedUnscoredAlert = {
+      id: "gov-consolidated-unscored",
+      kind: "unscored_asset",
+      severity: "info",
+      title: `${unscoredCount} ativos sem nota definida`,
+      description: `Avalie ${formatTickerListSummary(tickers)} para incluí-los no motor de rebalanceamento.`,
+      tickers,
+      assetIds,
+      actionLabel: "Avaliar agora",
+    };
+  } else if (unscoredCount === 1) {
+    consolidatedUnscoredAlert = insights.find((i) => i.kind === "unscored_asset") ?? null;
   }
 
   return {
     insights,
     summary: {
       overdueCount,
+      upcomingReviewCount,
+      unscoredCount,
       quarantineCount,
       opportunityCount,
       lowScoreRiskCount,
       totalInsights: insights.length,
     },
     consolidatedReviewAlert,
+    consolidatedUpcomingAlert,
+    consolidatedUnscoredAlert,
   };
 }

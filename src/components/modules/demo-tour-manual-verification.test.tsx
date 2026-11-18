@@ -132,7 +132,7 @@ describe("Teste de Validação Manual: Navegação Bidirecional Mobile (375x667 
         expect(aside?.className).toContain("top-[max(env(safe-area-inset-top,0px),16px)]");
       } else {
         expect(placement).toBe("bottom");
-        expect(aside?.className).toContain("bottom-[max(env(safe-area-inset-bottom,0px),16px)]");
+        expect(aside?.className).toContain("bottom-[calc(5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))]");
       }
 
       // Garante que o card mobile limita altura em 42vh
@@ -291,7 +291,7 @@ describe("Teste Manual Mobile (iPhone/Android Viewport): Passos Longos (Passo 1 
         const aside = container.querySelector("aside");
         expect(aside).not.toBeNull();
         expect(aside?.getAttribute("data-placement")).toBe("bottom");
-        expect(aside?.className).toContain("bottom-[max(env(safe-area-inset-bottom,0px),16px)]");
+        expect(aside?.className).toContain("bottom-[calc(5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))]");
 
         // 2. A borda do spotlight deve recortar o elemento perfeitamente
         const spotlightBorder = container.querySelector('[data-testid="spotlight-border"]');

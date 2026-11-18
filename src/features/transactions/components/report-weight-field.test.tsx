@@ -32,9 +32,16 @@ describe("ReportWeightField", () => {
 
     expect(screen.getByText(/Aviso de Rateio:/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/O valor bancário cobrado permanece 100% \(R\$ 200,00\)/i),
+      screen.getByText(
+        (_content, element) =>
+          element?.tagName.toLowerCase() === "p" &&
+          /O valor bancário cobrado permanece 100% \(R\$\s*200,00\)\. Nos relatórios e metas entrará apenas a sua cota de R\$\s*100,00/i.test(
+            element.textContent?.replace(/\s+/g, " ") ?? "",
+          ),
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/entrará apenas a sua cota de R\$ 100,00/i)).toBeInTheDocument();
+    expect(screen.getByText("R$ 200,00")).toHaveClass("num");
+    expect(screen.getByText("R$ 100,00")).toHaveClass("num");
   });
 
   it("renderiza bloco customizado com aviso proporcional quando modo é custom", async () => {
@@ -53,7 +60,15 @@ describe("ReportWeightField", () => {
     );
 
     expect(screen.getByText("Sua cota considerada no relatório")).toBeInTheDocument();
-    expect(screen.getByText(/Equivale a 33% do valor total cobrado \(R\$ 150,00\)/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_content, element) =>
+          element?.tagName.toLowerCase() === "p" &&
+          /Equivale a 33% do valor total cobrado \(R\$\s*150,00\)/i.test(
+            element.textContent?.replace(/\s+/g, " ") ?? "",
+          ),
+      ),
+    ).toBeInTheDocument();
 
     const input = screen.getByRole("textbox", { name: "Valor considerado no relatório" });
     await user.clear(input);

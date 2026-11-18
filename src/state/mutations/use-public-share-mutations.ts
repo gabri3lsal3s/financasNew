@@ -42,9 +42,16 @@ export function useUpdatePublicShare() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Record<string, unknown> }) =>
-      updatePublicSharePayload(id, payload),
-    onMutate: async ({ id, payload }) => {
+    mutationFn: ({
+      id,
+      payload,
+      isRevoked,
+    }: {
+      id: string;
+      payload: Record<string, unknown>;
+      isRevoked?: boolean;
+    }) => updatePublicSharePayload(id, payload, isRevoked !== undefined ? { isRevoked } : undefined),
+    onMutate: async ({ id, payload, isRevoked }) => {
       await queryClient.cancelQueries({ queryKey: myPublicSharesMutationKey });
       const previous = queryClient.getQueriesData<PublicShare[]>({
         queryKey: myPublicSharesMutationKey,
@@ -55,7 +62,13 @@ export function useUpdatePublicShare() {
         (old) => {
           if (!old) return old;
           return old.map((share) =>
-            share.id === id ? { ...share, payload: { ...share.payload, ...payload } } : share,
+            share.id === id
+              ? {
+                  ...share,
+                  payload: { ...share.payload, ...payload },
+                  ...(isRevoked !== undefined ? { is_revoked: isRevoked } : {}),
+                }
+              : share,
           );
         },
       );
@@ -153,7 +166,7 @@ export function useRestorePublicShare() {
   });
 }
 
-export function useDeletePublicShare() {
+function useDeletePublicShareBase(silentError = false) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -180,13 +193,23 @@ export function useDeletePublicShare() {
           queryClient.setQueryData(key, data);
         }
       }
-      pushToast({ title: getErrorMessage(error), variant: "destructive" });
+      if (!silentError) {
+        pushToast({ title: getErrorMessage(error), variant: "destructive" });
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
     },
   });
+}
+
+export function useDeletePublicShare() {
+  return useDeletePublicShareBase(false);
+}
+
+export function useDeletePublicShareMutation(options?: { silentError?: boolean }) {
+  return useDeletePublicShareBase(Boolean(options?.silentError));
 }
 
 export function useRegeneratePublicShare() {

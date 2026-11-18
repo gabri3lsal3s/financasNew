@@ -56,7 +56,7 @@ export function HouseholdClusteringRanking({
           <div
             className={cn(
               "grid gap-3",
-              clusters.length >= 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
+              clusters.length >= 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1",
             )}
           >
             {clusters.map((cluster) => {
@@ -65,19 +65,17 @@ export function HouseholdClusteringRanking({
               return (
                 <div
                   key={cluster.clusterId}
-                  className="p-3 rounded-xl border border-border/80 bg-surface-subtle/50 space-y-2.5 transition-colors hover:border-border"
+                  className="p-3.5 rounded-xl bg-surface-raised space-y-2.5 min-w-0"
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="flex size-8 items-center justify-center rounded-xl bg-surface-muted/60 border border-border/80 shrink-0">
-                        <CategoryIcon
-                          icon={cluster.icon}
-                          color={cluster.color}
-                          className="size-4"
-                        />
-                      </div>
+                      <CategoryIcon
+                        icon={cluster.icon}
+                        color={cluster.color}
+                        className="size-4 shrink-0"
+                      />
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-foreground truncate">
+                        <p className="text-xs font-semibold text-foreground line-clamp-2 break-words">
                           {cluster.label}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
@@ -90,21 +88,22 @@ export function HouseholdClusteringRanking({
                     <div className="text-right shrink-0">
                       <MoneyText
                         cents={cluster.total_cents}
-                        className="text-xs sm:text-sm font-bold text-foreground tabular-nums whitespace-nowrap"
+                        tone="default"
+                        className="text-xs sm:text-sm font-bold"
                       />
-                      <p className="text-[11px] text-muted-foreground font-medium">
+                      <p className="text-[11px] text-muted-foreground font-medium tabular-nums">
                         {cluster.display_percentage}
                       </p>
                     </div>
                   </div>
 
                   {/* Barra de Progresso Proporcional da Categoria */}
-                  <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
+                  <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-surface-hover/80 dark:bg-muted/70">
                     <div
                       className="h-full rounded-full transition-all duration-300"
                       style={{
                         width: `${clampedPercent}%`,
-                        backgroundColor: cluster.color || "var(--primary)",
+                        backgroundColor: cluster.color || "hsl(var(--primary))",
                       }}
                     />
                   </div>
@@ -115,7 +114,7 @@ export function HouseholdClusteringRanking({
                       {cluster.member_contributions.map((mc) => (
                         <span key={mc.user_id} className="tabular-nums">
                           <span className="font-medium text-foreground">{mc.payer_name}:</span>{" "}
-                          <MoneyText cents={mc.spent_cents} tone="default" className="inline text-muted-foreground" />{" "}
+                          <MoneyText cents={mc.spent_cents} tone="default" variant="caption" className="inline text-muted-foreground" />{" "}
                           ({Math.round(mc.percentage)}%)
                         </span>
                       ))}

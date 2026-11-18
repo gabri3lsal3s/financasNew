@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isAppLocked } from "@/services/native";
 import { triggerSensory } from "@/services/sensory";
 import { togglePrivacyMask, usePrivacyMask } from "@/hooks/use-privacy-mask";
 
@@ -18,9 +19,10 @@ export function PrivacyToggle() {
     togglePrivacyMask();
   };
 
-  // Atalho global: P alterna a máscara (DESIGN_SYSTEM §8 — modo privacidade).
+  // Atalho global: P alterna a máscara (DESIGN_SYSTEM §8 — modo privacidade; inativo durante AppLock).
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isAppLocked()) return;
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target as HTMLElement | null;
       // Não interfere na digitação em campos de texto.

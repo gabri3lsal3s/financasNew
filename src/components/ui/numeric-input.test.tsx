@@ -9,10 +9,12 @@ import {
   injectDecimalValue,
   unregisterCalculatorTarget,
 } from "@/services/calculator-bridge";
+import * as calculatorOpenModule from "@/services/calculator-open";
 
 afterEach(() => {
   const target = getCalculatorTarget();
   if (target) unregisterCalculatorTarget(target);
+  vi.restoreAllMocks();
 });
 
 describe("NumericInput", () => {
@@ -82,5 +84,24 @@ describe("NumericInput", () => {
 
     fireEvent.click(btn);
     expect(handleOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("registra o alvo e chama setCalculatorOpen(true) ao clicar no ícone sem foco prévio", () => {
+    const openSpy = vi.spyOn(calculatorOpenModule, "setCalculatorOpen");
+    render(
+      <NumericInput
+        value="25.5"
+        onValueChange={vi.fn()}
+        aria-label="Cotas FII"
+        showCalculatorAction
+      />,
+    );
+
+    expect(hasActiveTarget()).toBe(false);
+    fireEvent.click(screen.getByLabelText("Abrir calculadora"));
+
+    expect(hasActiveTarget()).toBe(true);
+    expect(getActiveDecimalDisplay()).toBe("25.5");
+    expect(openSpy).toHaveBeenCalledWith(true);
   });
 });

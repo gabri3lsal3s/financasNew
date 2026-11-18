@@ -43,12 +43,10 @@ export function WeeklyDueRadarCard({ summary, className, onOpenItem }: WeeklyDue
   }
 
   const handleNavigateLembretes = () => {
-    triggerSensory("action");
     navigate("/lembretes");
   };
 
   const handleToggleExpand = () => {
-    triggerSensory("toggle");
     setIsExpanded((prev) => !prev);
   };
 
@@ -61,7 +59,7 @@ export function WeeklyDueRadarCard({ summary, className, onOpenItem }: WeeklyDue
       data-tour="weekly-radar-card"
       className={cn(
         "rounded-2xl border border-border/80 bg-surface shadow-xs p-3.5 sm:p-4 transition-all flex flex-col gap-3",
-        summary.isDeficitRisk ? "border-critical/30" : "hover:border-border",
+        summary.isDeficitRisk ? "border-critical/30" : "",
         className,
       )}
     >
@@ -96,28 +94,25 @@ export function WeeklyDueRadarCard({ summary, className, onOpenItem }: WeeklyDue
       </div>
 
       {/* Lista de Contas */}
-      <div className="flex flex-col gap-1.5 pt-1 border-t border-border/60">
+      <div className="flex flex-col gap-1.5 pt-1 border-t border-border/80">
         {displayedItems.map((item) => {
           const Icon = item.kind === "bill" ? CreditCard : HandCoins;
+          const handleActivate = () => {
+            triggerSensory("action");
+            if (onOpenItem) onOpenItem(item);
+            else navigate(item.link.path);
+          };
           return (
             <div
               key={item.key}
-              onClick={() => {
-                triggerSensory("action");
-                if (onOpenItem) {
-                  onOpenItem(item);
-                } else {
-                  navigate(item.link.path);
-                }
-              }}
-              className="group flex items-center justify-between gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-surface-hover cursor-pointer"
+              onClick={handleActivate}
+              className="group flex items-center justify-between gap-3 rounded-xl px-2.5 py-2 min-h-11 sm:min-h-0 transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  if (onOpenItem) onOpenItem(item);
-                  else navigate(item.link.path);
+                  handleActivate();
                 }
               }}
             >
@@ -129,7 +124,7 @@ export function WeeklyDueRadarCard({ summary, className, onOpenItem }: WeeklyDue
                   )}
                   aria-hidden="true"
                 />
-                <span className="text-xs font-medium text-foreground truncate min-w-0 group-hover:text-primary transition-colors">
+                <span className="text-xs font-medium text-foreground truncate min-w-0 group-hover:text-primary-strong transition-colors">
                   {item.name}
                 </span>
                 <Badge
@@ -155,12 +150,13 @@ export function WeeklyDueRadarCard({ summary, className, onOpenItem }: WeeklyDue
       </div>
 
       {/* Rodapé: Expandir ou Ver Todos em Lembretes */}
-      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/60 text-xs">
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/80 text-xs">
         {summary.items.length > 3 ? (
           <Button
             type="button"
             variant="ghost"
             size="xs"
+            sensoryIntent="toggle"
             onClick={handleToggleExpand}
             className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
           >
@@ -187,7 +183,7 @@ export function WeeklyDueRadarCard({ summary, className, onOpenItem }: WeeklyDue
           variant="ghost"
           size="xs"
           onClick={handleNavigateLembretes}
-          className="h-7 px-2 text-xs text-primary hover:text-primary-strong hover:bg-primary/10 gap-1 ml-auto cursor-pointer"
+          className="h-7 px-2 text-xs text-primary-strong hover:text-primary-strong hover:bg-primary/10 gap-1 ml-auto cursor-pointer"
         >
           <span>Central de Lembretes</span>
           <ArrowRight className="size-3" aria-hidden="true" />

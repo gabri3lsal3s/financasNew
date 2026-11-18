@@ -27,10 +27,10 @@ export function TaxTab({
   return (
     <div className="flex flex-col gap-6">
       {/* Card 1: Facilitador de Declaração de IRPF */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <Landmark className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
+            <Landmark className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <h3 className="text-sm sm:text-base font-bold text-foreground">Facilitador de Declaração de IRPF</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -49,10 +49,10 @@ export function TaxTab({
       </div>
 
       {/* Card 2: Monitor Mensal de DARF & Isenção de R$ 20k */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <FileSpreadsheet className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
+            <FileSpreadsheet className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <h3 className="text-sm sm:text-base font-bold text-foreground">Monitor Mensal de DARF & Isenção de R$ 20k</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -79,8 +79,8 @@ export function TaxTab({
       />
 
       {/* Aviso Institucional de Responsabilidade Tributária e Fiscal (Contrato 5 / CFC / RFB) */}
-      <div className="flex items-start gap-3 rounded-2xl border border-border/80 bg-surface/90 p-4 sm:p-5 shadow-xs">
-        <Scale className="size-5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+      <div className="flex items-start gap-3 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs">
+        <Scale className="size-4 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
         <div className="flex flex-col gap-1 min-w-0">
           <span className="text-xs font-semibold text-foreground">
             Aviso de Responsabilidade Tributária e Fiscal

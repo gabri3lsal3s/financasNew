@@ -1,3 +1,4 @@
+import { Children, Fragment, isValidElement } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft } from "lucide-react";
@@ -19,6 +20,21 @@ export interface PageHeaderProps {
   actions?: ReactNode;
   /** Classes extras para o contêiner raiz do cabeçalho */
   className?: string;
+}
+
+function countActionChildren(node: ReactNode): number {
+  let count = 0;
+  Children.forEach(node, (child) => {
+    if (child === null || child === undefined || typeof child === "boolean") {
+      return;
+    }
+    if (isValidElement<{ children?: ReactNode }>(child) && child.type === Fragment) {
+      count += countActionChildren(child.props.children);
+      return;
+    }
+    count += 1;
+  });
+  return count;
 }
 
 /**
@@ -47,6 +63,14 @@ export function PageHeader({
     }
   };
 
+  const actionCount = actions ? countActionChildren(actions) : 0;
+  const actionsLayoutClass =
+    actionCount === 2
+      ? "grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end sm:flex-nowrap shrink-0 w-full sm:w-auto [&>*]:w-full [&>*]:sm:w-auto"
+      : actionCount >= 3
+        ? "flex items-center justify-start sm:justify-end gap-2 overflow-x-auto no-scrollbar sm:flex-nowrap shrink-0 w-full sm:w-auto"
+        : "flex items-center justify-start sm:justify-end gap-2 flex-wrap sm:flex-nowrap shrink-0 w-full sm:w-auto";
+
   return (
     <header
       className={cn(
@@ -60,9 +84,10 @@ export function PageHeader({
             type="button"
             variant="ghost"
             size="icon"
+            sensoryIntent="selection"
             onClick={handleBack}
             aria-label={backLabel}
-            className="size-8 sm:size-8.5 shrink-0 text-muted-foreground hover:text-foreground mt-0.5 cursor-pointer"
+            className="size-11 min-h-11 min-w-11 sm:size-9 sm:min-h-9 sm:min-w-9 shrink-0 text-muted-foreground hover:text-foreground mt-0.5 cursor-pointer"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
           </Button>
@@ -70,7 +95,7 @@ export function PageHeader({
 
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">
+            <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-foreground line-clamp-2 break-words">
               {title}
             </h1>
             {badge && <div className="shrink-0">{badge}</div>}
@@ -84,11 +109,7 @@ export function PageHeader({
         </div>
       </div>
 
-      {actions && (
-        <div className="flex items-center justify-start sm:justify-end gap-2 flex-wrap sm:flex-nowrap shrink-0 w-full sm:w-auto">
-          {actions}
-        </div>
-      )}
+      {actions && <div className={actionsLayoutClass}>{actions}</div>}
     </header>
   );
 }

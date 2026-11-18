@@ -1,27 +1,19 @@
 import { Link } from "react-router";
-import {
-  ArrowRight,
-  ShieldCheck,
-  Sparkles,
-  TrendingUp,
-  ChevronRight,
-  Cloud,
-  Zap,
-  Smartphone,
-  PieChart,
-  Share2,
-  Users,
-} from "lucide-react";
+import { ArrowRight, ChevronRight, Share2, ShieldCheck, Sparkles, TrendingUp, Users } from "lucide-react";
 import { Badge, buttonVariants } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useLandingCta } from "@/features/landing/hooks";
-import { ScrollReveal } from "@/features/landing/components/scroll-reveal";
+import { HeroDashboardMockup } from "./hero-dashboard-mockup";
 
 export function HeroEditorial() {
   const { trialUrl, isLoggedIn } = useLandingCta();
+
+  const scrollToTarget = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <section className="relative overflow-hidden pt-8 pb-14 sm:pt-16 sm:pb-24 md:pt-24 md:pb-32">
-      {/* Luz ambiente suave de fundo */}
       <div
         className="pointer-events-none absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] sm:size-[800px] rounded-full bg-primary/10 blur-[120px] sm:blur-[150px] -z-10"
         aria-hidden="true"
@@ -29,7 +21,6 @@ export function HeroEditorial() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <div className="flex flex-col items-center text-center">
-          {/* Badge de Destaque & Pílulas de Recursos no Topo */}
           <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-primary-strong transition-all duration-200">
               <Sparkles className="size-3.5 sm:size-4" aria-hidden="true" />
@@ -42,7 +33,7 @@ export function HeroEditorial() {
                 data-testid="hero-pill-racha"
                 onClick={(e) => {
                   e.preventDefault();
-                  document.getElementById("financas-compartilhadas")?.scrollIntoView({ behavior: "smooth" });
+                  scrollToTarget("financas-compartilhadas");
                 }}
                 className="group inline-flex min-h-11 items-center focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-pill cursor-pointer"
                 title="Conhecer o Racha de Despesas com Pix"
@@ -62,7 +53,7 @@ export function HeroEditorial() {
                 data-testid="hero-pill-family"
                 onClick={(e) => {
                   e.preventDefault();
-                  document.getElementById("financas-compartilhadas")?.scrollIntoView({ behavior: "smooth" });
+                  scrollToTarget("financas-compartilhadas");
                 }}
                 className="group inline-flex min-h-11 items-center focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-pill cursor-pointer"
                 title="Conhecer o Modo Família Multi-Contas"
@@ -79,25 +70,24 @@ export function HeroEditorial() {
             </div>
           </div>
 
-          {/* Headline Principal Editorial Ampliada */}
           <h1 className="mt-5 sm:mt-8 max-w-4xl font-display text-3xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight text-foreground leading-[1.15] md:leading-[1.1]">
             Do controle de cartões e compromissos ao aporte do mês.{" "}
-            <span className="text-primary-strong">Saiba exatamente quanto gastar hoje e onde investir o que sobrar.</span>
+            <span className="text-primary-strong">
+              Saiba exatamente quanto gastar hoje e onde investir o que sobrar.
+            </span>
           </h1>
 
-          {/* Subtítulo Rico e Persuasivo com Tipografia Editorial */}
           <p className="mt-4 sm:mt-6 max-w-3xl text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed font-normal">
-            Elimine o susto das faturas futuras e a desorganização de anotações soltas. O Axir calcula seu caixa real diário, acompanha o que você deve e tem a receber, e direciona seus aportes com rigor matemático sem vender posições.
+            Elimine o susto das faturas futuras e a desorganização de anotações soltas. O Axir
+            calcula seu caixa real diário, acompanha o que você deve e tem a receber, e direciona
+            seus aportes com rigor matemático sem vender posições.
           </p>
 
-          {/* CTAs de Conversão com Shimmer Reflexivo e Altura Confortável */}
           <div className="mt-7 sm:mt-10 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <Link
               to={trialUrl}
               aria-label={
-                isLoggedIn
-                  ? "Acessar Meu Painel"
-                  : "Começar 30 Dias Grátis — teste sem cartão"
+                isLoggedIn ? "Acessar Meu Painel" : "Começar 30 Dias Grátis — teste sem cartão"
               }
               className={cn(
                 buttonVariants({ size: "lg" }),
@@ -105,20 +95,21 @@ export function HeroEditorial() {
               )}
             >
               <span
-                className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none"
+                className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-primary-foreground/20 to-transparent pointer-events-none"
                 aria-hidden="true"
               />
               <span className="relative z-10 flex items-center gap-2">
                 {isLoggedIn ? "Acessar Meu Painel" : "Começar 30 Dias Grátis"}
-                <ArrowRight className="size-4.5 sm:size-5 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                <ArrowRight
+                  className="size-4.5 sm:size-5 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
               </span>
             </Link>
 
             <button
               type="button"
-              onClick={() => {
-                document.getElementById("recursos")?.scrollIntoView({ behavior: "smooth" });
-              }}
+              onClick={() => scrollToTarget("recursos")}
               className={cn(
                 buttonVariants({ variant: "outline", size: "lg" }),
                 "w-full sm:w-auto px-5 sm:px-7 py-3.5 sm:py-7 text-base sm:text-lg cursor-pointer inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl",
@@ -129,9 +120,10 @@ export function HeroEditorial() {
             </button>
           </div>
 
-          {/* Link Auxiliar: Planos Pro ou Login */}
-          <div className="mt-4 flex items-center justify-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
-            <span>{isLoggedIn ? "Precisa de ajuda ou configurações?" : "Prefere assinar direto?"}</span>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
+            <span>
+              {isLoggedIn ? "Precisa de ajuda ou configurações?" : "Prefere assinar direto?"}
+            </span>
             {isLoggedIn ? (
               <Link
                 to="/configuracoes"
@@ -144,7 +136,7 @@ export function HeroEditorial() {
                 href="#precos"
                 onClick={(e) => {
                   e.preventDefault();
-                  document.getElementById("precos")?.scrollIntoView({ behavior: "smooth" });
+                  scrollToTarget("precos");
                 }}
                 className="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary-strong transition-colors cursor-pointer"
               >
@@ -153,10 +145,12 @@ export function HeroEditorial() {
             )}
           </div>
 
-          {/* Indicadores de Confiança */}
           <div className="mt-7 sm:mt-9 flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs sm:text-sm text-muted-foreground">
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <ShieldCheck className="size-4 sm:size-4.5 text-positive-strong dark:text-positive" aria-hidden="true" />
+              <ShieldCheck
+                className="size-4 sm:size-4.5 text-positive-strong dark:text-positive"
+                aria-hidden="true"
+              />
               <span>30 Dias de Teste sem Compromisso</span>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -170,124 +164,8 @@ export function HeroEditorial() {
           </div>
         </div>
 
-        {/* Visual Mockup Espaçoso e Cinematográfico */}
-        <ScrollReveal delay={120} direction="none" className="mt-10 sm:mt-18 max-w-6xl mx-auto">
-          <div className="relative rounded-2xl sm:rounded-3xl border border-border/80 bg-surface/95 p-4 sm:p-8 md:p-10 shadow-xl sm:shadow-2xl backdrop-blur-2xl">
-            {/* Header da Janela */}
-            <div className="flex items-center justify-between border-b border-border/60 pb-3 sm:pb-4 mb-4 sm:mb-8">
-              <div className="flex items-center gap-2 sm:gap-2.5">
-                <div className="size-2.5 sm:size-3.5 rounded-full bg-critical/70" />
-                <div className="size-2.5 sm:size-3.5 rounded-full bg-warning/70" />
-                <div className="size-2.5 sm:size-3.5 rounded-full bg-positive/70" />
-                <span className="ml-2 sm:ml-3 text-xs sm:text-sm font-mono text-muted-foreground hidden sm:inline">
-                  axir.app / dashboard
-                </span>
-              </div>
-              <Badge variant="default" size="xs" className="font-mono border border-primary/30">
-                Online First
-              </Badge>
-            </div>
-
-            {/* Grid de 3 Métricas Centrais Adaptativas */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-              <div className="p-3.5 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/60 flex flex-col justify-between overflow-hidden">
-                <span className="text-xs sm:text-sm text-muted-foreground block truncate">Caixa Real Disponível</span>
-                <div className="my-1.5 sm:my-2 font-mono text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground tracking-tight whitespace-nowrap tabular-nums">
-                  R$ 6.240,00
-                </div>
-                <span className="text-xs text-positive-strong dark:text-positive font-medium flex items-center gap-1.5 whitespace-nowrap">
-                  <TrendingUp className="size-3.5 shrink-0" aria-hidden="true" />
-                  Livre de dívidas e faturas
-                </span>
-              </div>
-
-              <div className="p-3.5 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/60 flex flex-col justify-between overflow-hidden">
-                <span className="text-xs sm:text-sm text-muted-foreground block truncate">Ritmo Diário</span>
-                <div className="my-1.5 sm:my-2 font-mono text-xl sm:text-2xl lg:text-3xl font-extrabold text-primary-strong tracking-tight whitespace-nowrap tabular-nums flex items-baseline gap-1.5">
-                  <span>R$ 148,00</span>
-                  <span className="text-xs sm:text-sm font-normal text-muted-foreground">/ dia</span>
-                </div>
-                <span className="text-xs text-muted-foreground block whitespace-nowrap">
-                  Para terminar o mês no azul
-                </span>
-              </div>
-
-              <div className="p-3.5 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/60 flex flex-col justify-between overflow-hidden">
-                <span className="text-xs sm:text-sm text-muted-foreground block truncate">Aporte Calibrado do Mês</span>
-                <div className="my-1.5 sm:my-2 font-mono text-xl sm:text-2xl lg:text-3xl font-extrabold text-portfolio tracking-tight whitespace-nowrap tabular-nums">
-                  R$ 1.500,00
-                </div>
-                <span className="text-xs text-portfolio font-medium flex items-center gap-1.5 whitespace-nowrap">
-                  <PieChart className="size-3.5 shrink-0" aria-hidden="true" />
-                  Direcionado: Renda Fixa & FIIs
-                </span>
-              </div>
-            </div>
-
-            {/* Barra Consolidada de Orçamentos Ampliada */}
-            <div className="mt-3.5 sm:mt-6 rounded-xl sm:rounded-2xl border border-border/70 bg-background/40 p-3.5 sm:p-5 lg:p-6">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1 text-xs sm:text-sm mb-2.5 sm:mb-3">
-                <span className="font-semibold text-foreground">Orçamento Mensal Consolidado</span>
-                <span className="font-mono text-muted-foreground text-xs sm:text-sm">R$ 3.820 de R$ 5.500 (69% utilizado · R$ 1.680 livres)</span>
-              </div>
-              <div className="w-full h-3 sm:h-4 rounded-full overflow-hidden bg-muted/60 p-0.5 flex gap-1 border border-border/50">
-                <div className="h-full rounded-full bg-cat-2 transition-all" style={{ width: "35%" }} />
-                <div className="h-full rounded-full bg-cat-1 transition-all" style={{ width: "20%" }} />
-                <div className="h-full rounded-full bg-cat-3 transition-all" style={{ width: "14%" }} />
-              </div>
-              <div className="mt-3 sm:mt-4 flex flex-wrap gap-3 sm:gap-5 text-xs sm:text-sm text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5 sm:gap-2">
-                  <span className="size-2 sm:size-2.5 rounded-full bg-cat-2" /> Moradia (R$ 1.925)
-                </span>
-                <span className="inline-flex items-center gap-1.5 sm:gap-2">
-                  <span className="size-2 sm:size-2.5 rounded-full bg-cat-1" /> Alimentação (R$ 1.100)
-                </span>
-                <span className="inline-flex items-center gap-1.5 sm:gap-2">
-                  <span className="size-2 sm:size-2.5 rounded-full bg-cat-3" /> Transporte (R$ 770)
-                </span>
-              </div>
-            </div>
-          </div>
-        </ScrollReveal>
-
-        {/* Faixa de Confiança & Garantias Técnicas */}
-        <ScrollReveal delay={150} direction="none" className="mt-8 sm:mt-14 border-t border-border/70 pt-8 sm:pt-10">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 text-center">
-            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface/50 border border-border/50">
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-foreground">
-                <ShieldCheck className="size-4 text-positive-strong dark:text-positive" aria-hidden="true" />
-                <span>Isolamento RLS</span>
-              </div>
-              <span className="text-[11px] text-muted-foreground">Criptografia e sigilo de ponta</span>
-            </div>
-
-            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface/50 border border-border/50">
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-foreground">
-                <Cloud className="size-4 text-primary" aria-hidden="true" />
-                <span>100% Online First</span>
-              </div>
-              <span className="text-[11px] text-muted-foreground">Sincronização em tempo real</span>
-            </div>
-
-            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface/50 border border-border/50">
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-foreground">
-                <Zap className="size-4 text-warning-strong dark:text-warning" aria-hidden="true" />
-                <span>Zero Planilhas Frágeis</span>
-              </div>
-              <span className="text-[11px] text-muted-foreground">Cálculos determinísticos</span>
-            </div>
-
-            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface/50 border border-border/50">
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-foreground">
-                <Smartphone className="size-4 text-portfolio" aria-hidden="true" />
-                <span>PWA &amp; Android Pro</span>
-              </div>
-              <span className="text-[11px] text-muted-foreground">Instalável no iOS, Android e Desktop</span>
-            </div>
-          </div>
-        </ScrollReveal>
+        <HeroDashboardMockup />
       </div>
     </section>
   );
 }
-

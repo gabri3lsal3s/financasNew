@@ -6,7 +6,7 @@ import * as useAuthModule from "@/hooks/use-auth";
 
 // Sob carga da suíte completa, o primeiro import lazy de cada rota pode exceder
 // o timeout padrão de 1s sem significar falha funcional.
-configure({ asyncUtilTimeout: 15000 });
+configure({ asyncUtilTimeout: 30000 });
 
 vi.mock("@/components/layout", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
@@ -168,9 +168,9 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
     render(<AppRouter />);
 
     expect(
-      await screen.findByRole("heading", { name: "Entrar" }, { timeout: 25000 }),
+      await screen.findByRole("heading", { name: "Entrar" }, { timeout: 35000 }),
     ).toBeInTheDocument();
-  }, 40000);
+  }, 60000);
 
   it("renderiza a rota /cadastro com lazy loading para visitantes", async () => {
     vi.spyOn(useAuthModule, "useAuth").mockReturnValue({

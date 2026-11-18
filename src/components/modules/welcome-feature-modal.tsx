@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import { Badge, Button, Modal } from "@/components/ui";
-import { triggerSensory } from "@/services/sensory";
+import { Badge, Button, Modal, ModalFooter } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import { shouldOfferAndroidApk } from "@/services/native/app-links";
+import { triggerSensory } from "@/services/sensory";
 import {
-  WELCOME_MODAL_STORAGE_KEY,
-  WELCOME_SLIDES,
-} from "./welcome-feature-modal-data";
+  hasSeenWelcomeFeatureModal,
+  markWelcomeFeatureModalSeen,
+} from "@/state/demo-mode";
+import { WELCOME_SLIDES } from "./welcome-feature-modal-data";
 
 export interface WelcomeFeatureModalProps {
   /** Controle externo de visibilidade (opcional). Se omitido, deriva do localStorage. */
@@ -20,9 +22,8 @@ export interface WelcomeFeatureModalProps {
 }
 
 /**
- * Modal Interativo de Boas-Vindas ("A Mágica da Captura Sem Fricção" — Fase 6).
- * Apresenta a hierarquia de captura (notificações, comprovantes e inteligência semântica)
- * no primeiro login do usuário, com navegação por teclado e persistência de dismiss.
+ * Modal Interativo de Boas-Vindas ("A Mágica da Captura Sem Fricção").
+ * Suprime automaticamente a promoção Android em Desktop e iOS (M10).
  */
 export function WelcomeFeatureModal({
   open,
@@ -30,30 +31,30 @@ export function WelcomeFeatureModal({
   onDismiss,
   forceShow = false,
 }: WelcomeFeatureModalProps) {
+  const canOfferAndroid = shouldOfferAndroidApk();
+
+  const slides = useMemo(
+    () =>
+      canOfferAndroid
+        ? WELCOME_SLIDES
+        : WELCOME_SLIDES.filter((slide) => slide.id !== "notifications"),
+    [canOfferAndroid],
+  );
+
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const [internalOpen, setInternalOpen] = useState<boolean>(() => {
     if (forceShow) return true;
     if (open !== undefined) return open;
-    try {
-      if (typeof window === "undefined" || !window.localStorage) return false;
-      return window.localStorage.getItem(WELCOME_MODAL_STORAGE_KEY) !== "true";
-    } catch {
-      return false;
-    }
+    if (!canOfferAndroid) return false;
+    return !hasSeenWelcomeFeatureModal();
   });
 
   const isVisible = open !== undefined ? open : internalOpen;
+  const safeSlideIndex = Math.min(currentSlide, Math.max(0, slides.length - 1));
 
   const handleComplete = useCallback(() => {
-    triggerSensory("action");
-    try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.setItem(WELCOME_MODAL_STORAGE_KEY, "true");
-      }
-    } catch {
-      // Ignora erro se localStorage inacessível
-    }
+    markWelcomeFeatureModalSeen();
     setInternalOpen(false);
     onOpenChange?.(false);
     onDismiss?.();
@@ -61,23 +62,17 @@ export function WelcomeFeatureModal({
 
   const handleNext = useCallback(() => {
     setCurrentSlide((prev) => {
-      if (prev < WELCOME_SLIDES.length - 1) {
-        triggerSensory("selection");
-        return prev + 1;
+      const clamped = Math.min(prev, Math.max(0, slides.length - 1));
+      if (clamped < slides.length - 1) {
+        return clamped + 1;
       }
       handleComplete();
-      return prev;
+      return clamped;
     });
-  }, [handleComplete]);
+  }, [handleComplete, slides.length]);
 
   const handlePrev = useCallback(() => {
-    setCurrentSlide((prev) => {
-      if (prev > 0) {
-        triggerSensory("selection");
-        return prev - 1;
-      }
-      return prev;
-    });
+    setCurrentSlide((prev) => (prev > 0 ? prev - 1 : prev));
   }, []);
 
   useEffect(() => {
@@ -86,9 +81,11 @@ export function WelcomeFeatureModal({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight") {
         e.preventDefault();
+        triggerSensory("selection");
         handleNext();
       } else if (e.key === "ArrowLeft") {
         e.preventDefault();
+        triggerSensory("selection");
         handlePrev();
       }
     };
@@ -101,8 +98,9 @@ export function WelcomeFeatureModal({
 
   if (!isVisible) return null;
 
-  const slide = WELCOME_SLIDES[currentSlide] ?? WELCOME_SLIDES[0]!;
+  const slide = slides[safeSlideIndex] ?? slides[0]!;
   const Icon = slide.icon;
+  const isLastSlide = safeSlideIndex === slides.length - 1;
 
   return (
     <Modal
@@ -119,78 +117,44 @@ export function WelcomeFeatureModal({
       description="Descubra como o Axir automatiza seu controle financeiro com privacidade local."
       size="md"
       footer={
-        <div className="flex items-center justify-between gap-2 w-full">
-          {/* Botão Voltar ou Pular à esquerda */}
-          <div className="shrink-0">
-            {currentSlide > 0 ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handlePrev}
-                className="gap-1 cursor-pointer h-8 px-2.5 text-xs"
-              >
-                <ArrowLeft className="size-3.5" aria-hidden="true" />
-                <span>Voltar</span>
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleComplete}
-                className="text-xs text-muted-foreground hover:text-foreground cursor-pointer h-8 px-2.5"
-              >
-                Pular
-              </Button>
-            )}
-          </div>
-
-          {/* Indicador de passos (Dots) acessível centralizado */}
-          <div
-            className="flex items-center justify-center gap-1.5"
-            role="tablist"
-            aria-label="Progresso da apresentação de recursos"
-          >
-            {WELCOME_SLIDES.map((s, idx) => (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                aria-selected={idx === currentSlide}
-                aria-label={`Slide ${idx + 1} de ${WELCOME_SLIDES.length}: ${s.title}`}
-                onClick={() => {
-                  triggerSensory("selection");
-                  setCurrentSlide(idx);
-                }}
-                className={cn(
-                  "h-1.5 rounded-full transition-all duration-200 cursor-pointer",
-                  idx === currentSlide
-                    ? "w-6 bg-primary"
-                    : "w-2 bg-border/80 hover:bg-muted-foreground/60",
-                )}
-              />
-            ))}
-          </div>
-
-          {/* Botão de Avanço à direita */}
-          <div className="shrink-0">
+        <ModalFooter borderless>
+          {safeSlideIndex > 0 ? (
             <Button
               type="button"
-              variant="default"
-              size="sm"
-              onClick={handleNext}
-              className="gap-1.5 cursor-pointer font-semibold h-8 px-3 text-xs"
+              variant="outline"
+              sensoryIntent="selection"
+              onClick={handlePrev}
+              className="gap-1.5"
             >
-              <span>{currentSlide === WELCOME_SLIDES.length - 1 ? "Começar a usar" : "Próximo"}</span>
-              {currentSlide === WELCOME_SLIDES.length - 1 ? (
-                <Check className="size-3.5" aria-hidden="true" />
-              ) : (
-                <ArrowRight className="size-3.5" aria-hidden="true" />
-              )}
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              <span>Voltar</span>
             </Button>
-          </div>
-        </div>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleComplete}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              Pular
+            </Button>
+          )}
+
+          <Button
+            type="button"
+            variant="default"
+            sensoryIntent={isLastSlide ? "action" : "selection"}
+            onClick={handleNext}
+            className="gap-1.5 font-semibold"
+          >
+            <span>{isLastSlide ? "Começar a usar" : "Próximo"}</span>
+            {isLastSlide ? (
+              <Check className="size-4" aria-hidden="true" />
+            ) : (
+              <ArrowRight className="size-4" aria-hidden="true" />
+            )}
+          </Button>
+        </ModalFooter>
       }
     >
       <div
@@ -199,7 +163,7 @@ export function WelcomeFeatureModal({
         aria-live="polite"
         data-testid={`slide-${slide.id}`}
       >
-        <div className="flex size-14 items-center justify-center rounded-2xl border border-border/80 bg-surface-hover/80 text-foreground shadow-2xs mb-3.5 transition-transform duration-200">
+        <div className="flex size-14 items-center justify-center rounded-2xl border border-border/80 bg-surface-raised text-foreground shadow-xs mb-3.5 transition-transform duration-200">
           <Icon className="size-6 text-foreground" aria-hidden="true" />
         </div>
 
@@ -211,13 +175,37 @@ export function WelcomeFeatureModal({
           {slide.title}
         </h3>
 
-        <p className="mt-1 text-xs font-semibold text-muted-foreground">
-          {slide.headline}
-        </p>
+        <p className="mt-1 text-xs font-semibold text-muted-foreground">{slide.headline}</p>
 
         <p className="mt-3 text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-md">
           {slide.description}
         </p>
+
+        <div
+          className="mt-5 flex items-center justify-center gap-2"
+          role="tablist"
+          aria-label="Progresso da apresentação de recursos"
+        >
+          {slides.map((s, idx) => (
+            <button
+              key={s.id}
+              type="button"
+              role="tab"
+              aria-selected={idx === safeSlideIndex}
+              aria-label={`Slide ${idx + 1} de ${slides.length}: ${s.title}`}
+              onClick={() => {
+                triggerSensory("selection");
+                setCurrentSlide(idx);
+              }}
+              className={cn(
+                "relative h-1.5 rounded-full transition-all duration-200 cursor-pointer after:absolute after:-inset-2",
+                idx === safeSlideIndex
+                  ? "w-6 bg-primary"
+                  : "w-2 bg-border/80 hover:bg-muted-foreground/60",
+              )}
+            />
+          ))}
+        </div>
       </div>
     </Modal>
   );

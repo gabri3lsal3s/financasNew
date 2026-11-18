@@ -82,33 +82,29 @@ export function TargetAssetsCard({
 
       {/* Filtros de classe */}
       {classes.length > 1 ? (
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/60 pb-3">
-          <button
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-border/80 pb-3">
+          <Button
             type="button"
+            variant={assetClassFilter === null ? "solid" : "outline"}
+            size="sm"
+            sensoryIntent="selection"
             onClick={() => onAssetClassFilterChange(null)}
-            className={cn(
-              "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
-              assetClassFilter === null
-                ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
-            )}
+            className="h-7 px-2.5 text-xs"
           >
             Todas as classes
-          </button>
+          </Button>
           {classes.map((cls) => (
-            <button
+            <Button
               key={cls}
               type="button"
+              variant={assetClassFilter === cls ? "solid" : "outline"}
+              size="sm"
+              sensoryIntent="selection"
               onClick={() => onAssetClassFilterChange(assetClassFilter === cls ? null : cls)}
-              className={cn(
-                "rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
-                assetClassFilter === cls
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "bg-surface-hover/60 text-muted-foreground hover:text-foreground",
-              )}
+              className="h-7 px-2.5 text-xs"
             >
               {cls}
-            </button>
+            </Button>
           ))}
         </div>
       ) : null}

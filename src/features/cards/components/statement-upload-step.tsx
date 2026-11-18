@@ -5,7 +5,7 @@ import { Button, Dropzone, Tabs, Textarea } from "@/components/ui";
 export const STATEMENT_FILE_ACCEPT =
   ".pdf,.csv,.ofx,.txt,.tsv,application/pdf,text/csv,text/plain,text/comma-separated-values,text/tab-separated-values,application/csv,application/vnd.ms-excel,application/x-ofx,application/ofx,text/ofx,application/octet-stream,*/*";
 
-interface StatementUploadStepProps {
+export interface StatementUploadStepProps {
   onFileSelect: (file: File) => void;
   onTextSubmit: (text: string) => void;
 }
@@ -37,11 +37,12 @@ export function StatementUploadStep({ onFileSelect, onTextSubmit }: StatementUpl
       <Tabs
         value={tab}
         onValueChange={setTab}
+        fullWidth
         items={[
           {
             value: "file",
             label: "Arquivo (PDF / CSV / OFX)",
-            icon: <FileSpreadsheet className="size-4" aria-hidden />,
+            icon: <FileSpreadsheet className="size-4" aria-hidden="true" />,
             content: (
               <div className="space-y-2 pt-2">
                 <Dropzone
@@ -56,7 +57,7 @@ export function StatementUploadStep({ onFileSelect, onTextSubmit }: StatementUpl
           {
             value: "paste",
             label: "Colar Extrato",
-            icon: <ClipboardPaste className="size-4" aria-hidden />,
+            icon: <ClipboardPaste className="size-4" aria-hidden="true" />,
             content: (
               <div className="space-y-3 pt-2">
                 <Textarea
@@ -64,7 +65,7 @@ export function StatementUploadStep({ onFileSelect, onTextSubmit }: StatementUpl
                   onChange={(e) => setPastedText(e.target.value)}
                   placeholder={`Cole aqui as linhas copiadas da fatura do seu banco...\nExemplo:\n15/08/2026  Padaria Estrela  R$ 25,00\n16/08/2026  Supermercado Dia  R$ 140,50`}
                   rows={7}
-                  className="font-mono text-xs"
+                  className="font-mono text-base sm:text-sm"
                 />
                 <div className="flex justify-end">
                   <Button
@@ -73,7 +74,7 @@ export function StatementUploadStep({ onFileSelect, onTextSubmit }: StatementUpl
                     onClick={handlePasteSubmit}
                     className="gap-1.5"
                   >
-                    <Upload className="size-4" aria-hidden />
+                    <Upload className="size-4" aria-hidden="true" />
                     Processar Texto
                   </Button>
                 </div>

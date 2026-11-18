@@ -7,11 +7,15 @@ import type { CreditCard } from "@/types/schema";
 
 const mockExtractReceiptTextFromFile = vi.fn();
 
-vi.mock("@/services/native", () => ({
-  extractReceiptTextFromFile: (...args: unknown[]) => mockExtractReceiptTextFromFile(...args),
-  processPixShare: vi.fn(),
-  addPendingSuggestion: vi.fn(),
-}));
+vi.mock("@/services/native", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/native")>();
+  return {
+    ...actual,
+    extractReceiptTextFromFile: (...args: unknown[]) => mockExtractReceiptTextFromFile(...args),
+    processPixShare: vi.fn(),
+    addPendingSuggestion: vi.fn(),
+  };
+});
 
 vi.mock("@/services/sensory", () => ({
   triggerSensory: vi.fn(),
@@ -21,23 +25,28 @@ vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),
 }));
 
-vi.mock("@/services/merchant-learning", () => ({
-  useMerchantLearning: () => ({
-    memory: {
-      name_restaurante_fogao_a_lenha: {
-        friendlyName: "Restaurante Fogão a Lenha",
-        categorySlug: "alimentacao",
-        preferredPaymentMethod: "credit_card",
-        preferredCardId: "card-itau-uuid",
-      },
+vi.mock("@/services/merchant-learning", () => {
+  const memory = {
+    name_restaurante_fogao_a_lenha: {
+      friendlyName: "Restaurante Fogão a Lenha",
+      categorySlug: "alimentacao",
+      preferredPaymentMethod: "credit_card",
+      preferredCardId: "card-itau-uuid",
     },
-  }),
-  useCardDigitsMapping: () => ({
-    cardDigitsMapping: {
-      "4821": "card-itau-uuid",
-    },
-  }),
-}));
+  };
+  const cardDigitsMapping = {
+    "4821": "card-itau-uuid",
+  };
+  const bankCardMapping = {};
+  return {
+    useMerchantLearning: () => ({ memory }),
+    useCardDigitsMapping: () => ({ cardDigitsMapping }),
+    useBankCardMapping: () => ({ bankCardMapping }),
+    getMerchantLearningMemory: () => memory,
+    getCardDigitsMapping: () => cardDigitsMapping,
+    getBankCardMapping: () => bankCardMapping,
+  };
+});
 
 function makeCard(overrides: Partial<CreditCard> & { id: string; name: string }): CreditCard {
   return {

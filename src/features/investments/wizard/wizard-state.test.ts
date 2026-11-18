@@ -489,5 +489,48 @@ describe("wizard-state — Máquina de Estados do Investment Wizard (Fase 41 & M
       // Novo PM: (100 * 30 + 2 * 100) / 102 = 3200 / 102 ≈ 31.37
       expect(preview.newAveragePrice).toBeCloseTo(31.37, 2);
     });
+
+    it("calcula preview de desdobramento (10 para 11) e grupamento (5 para 2) por proporção X:Y", () => {
+      const splitState: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "split",
+        step: 2,
+        selectedAsset: mockAsset, // 100 cotas a 30.00
+        splitFromStr: "10",
+        splitToStr: "11",
+      };
+      expect(canProceed(splitState)).toBe(true);
+      const splitPreview = calculateInvestmentPreview(splitState);
+      expect(splitPreview.newQuantity).toBe(110);
+      expect(splitPreview.newAveragePrice).toBeCloseTo(3000 / 110, 2);
+
+      const reverseState: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "reverse_split",
+        step: 2,
+        selectedAsset: mockAsset, // 100 cotas a 30.00
+        splitFromStr: "5",
+        splitToStr: "2",
+      };
+      expect(canProceed(reverseState)).toBe(true);
+      const reversePreview = calculateInvestmentPreview(reverseState);
+      expect(reversePreview.newQuantity).toBe(40);
+      expect(reversePreview.newAveragePrice).toBeCloseTo(75.0, 2);
+    });
+
+    it("valida provento por cota no modo per_share em canProceed e calculateInvestmentPreview", () => {
+      const divState: InvestmentWizardState = {
+        ...defaultWizardState,
+        mode: "dividend",
+        step: 2,
+        selectedAsset: mockAsset, // 100 cotas
+        dividendCalcMode: "per_share",
+        perShareCents: 125, // R$ 1,25 por cota
+      };
+      expect(canProceed(divState)).toBe(true);
+      const preview = calculateInvestmentPreview(divState);
+      expect(preview.totalOrderValueNative).toBe(125.0);
+      expect(preview.totalOrderValueBRL).toBe(125.0);
+    });
   });
 });

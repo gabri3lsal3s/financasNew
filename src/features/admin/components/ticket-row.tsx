@@ -1,13 +1,14 @@
 import {
-  Clock,
-  MapPin,
-  Settings2,
-  HelpCircle,
   Bug,
+  Clock,
+  HelpCircle,
   Lightbulb,
+  MapPin,
   MessageSquare,
+  Settings2,
 } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
+import { formatDateTimeBR } from "@/lib/date";
 import type { SupportTicket, SupportTicketStatus, SupportTicketType } from "@/types";
 
 const STATUS_CONFIG: Record<
@@ -20,10 +21,7 @@ const STATUS_CONFIG: Record<
   closed: { label: "Encerrado", badgeVariant: "muted" },
 };
 
-const TYPE_CONFIG: Record<
-  SupportTicketType,
-  { label: string; icon: typeof HelpCircle }
-> = {
+const TYPE_CONFIG: Record<SupportTicketType, { label: string; icon: typeof HelpCircle }> = {
   doubt: { label: "Dúvida", icon: HelpCircle },
   bug: { label: "Problema (Bug)", icon: Bug },
   suggestion: { label: "Sugestão", icon: Lightbulb },
@@ -43,14 +41,7 @@ export function TicketRow({ ticket, onOpenManage }: TicketRowProps) {
   const TypeIcon = typeInfo.icon;
   const statusInfo = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.open;
 
-  const formattedDate = new Date(ticket.created_at).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
+  const formattedDate = formatDateTimeBR(ticket.created_at);
   const platformStr =
     ticket.device_info &&
     typeof ticket.device_info === "object" &&
@@ -59,12 +50,11 @@ export function TicketRow({ ticket, onOpenManage }: TicketRowProps) {
       : "Web";
 
   return (
-    <div className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs space-y-3.5 transition-colors hover:border-border">
-      {/* Cabeçalho do Card */}
+    <div className="rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs space-y-3.5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-            <TypeIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+            <TypeIcon className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
             <span>{typeInfo.label}</span>
           </div>
 
@@ -79,7 +69,7 @@ export function TicketRow({ ticket, onOpenManage }: TicketRowProps) {
           )}
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
           <div className="flex items-center gap-1.5">
             <Clock className="size-3.5 shrink-0" aria-hidden="true" />
             <span>{formattedDate}</span>
@@ -88,8 +78,9 @@ export function TicketRow({ ticket, onOpenManage }: TicketRowProps) {
             type="button"
             size="sm"
             variant="outline"
+            sensoryIntent="selection"
             onClick={() => onOpenManage(ticket.id)}
-            className="gap-1.5 h-8 text-xs font-medium cursor-pointer"
+            className="gap-1.5 text-xs font-medium"
           >
             <Settings2 className="size-3.5" aria-hidden="true" />
             <span>Atender Chamado</span>
@@ -97,12 +88,10 @@ export function TicketRow({ ticket, onOpenManage }: TicketRowProps) {
         </div>
       </div>
 
-      {/* Mensagem do Usuário */}
-      <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap bg-surface-subtle/50 rounded-lg p-3 border border-border/50">
+      <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap bg-surface-raised rounded-lg p-3">
         {ticket.message}
       </p>
 
-      {/* Metadados do Cliente e Ambiente */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground pt-0.5">
         <div>
           <span className="font-semibold text-foreground">Cliente: </span>
@@ -112,10 +101,7 @@ export function TicketRow({ ticket, onOpenManage }: TicketRowProps) {
         <div>
           <span className="font-semibold text-foreground">E-mail: </span>
           {ticket.user_email ? (
-            <a
-              href={`mailto:${ticket.user_email}`}
-              className="text-primary hover:underline"
-            >
+            <a href={`mailto:${ticket.user_email}`} className="text-primary-strong hover:underline">
               {ticket.user_email}
             </a>
           ) : (
@@ -135,7 +121,7 @@ export function TicketRow({ ticket, onOpenManage }: TicketRowProps) {
         </div>
 
         {ticket.admin_notes && (
-          <div className="w-full pt-1 text-xs text-primary bg-primary/5 rounded px-2.5 py-1 border border-primary/20">
+          <div className="w-full pt-1 text-xs text-primary-strong bg-primary/5 rounded px-2.5 py-1 border border-primary/20">
             <span className="font-semibold">Nota da equipe: </span>
             <span>{ticket.admin_notes}</span>
           </div>

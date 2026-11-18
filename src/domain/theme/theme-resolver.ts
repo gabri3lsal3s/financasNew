@@ -126,5 +126,5 @@ export function resolveTheme(params: ResolveThemeParams): Theme {
     return nightTheme === "oled" ? "oled" : "dark";
   }
 
-  return "light";
+  return "dark";
 }

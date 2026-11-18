@@ -1,8 +1,8 @@
 import { Link, useLocation } from "react-router";
-import { BrandLogo } from "@/components/layout";
+import { ArrowLeft, Layers, PieChart, ShieldAlert, TrendingUp } from "lucide-react";
+import { BrandLogo, ThemeToggle } from "@/components/layout";
 import { buttonVariants } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Layers, ShieldAlert, PieChart, TrendingUp } from "lucide-react";
 
 export interface ToolNavTab {
   path: string;
@@ -37,10 +37,9 @@ export function ToolsHeader() {
   const location = useLocation();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-md pt-[max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))]">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-        {/* Marca & Início */}
-        <div className="flex items-center gap-4 shrink-0">
+    <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-md pt-safe">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:px-6 min-w-0">
+        <div className="flex items-center gap-4 shrink-0 min-w-0">
           <Link
             to="/apresentacao"
             className="inline-flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
@@ -57,10 +56,10 @@ export function ToolsHeader() {
           </Link>
         </div>
 
-        {/* Abas Centrais de Navegação entre Ferramentas */}
+        {/* Links horizontais apenas em >= 1024px (lg:) — Regra 22 */}
         <nav
           aria-label="Simuladores Financeiros Abertos"
-          className="hidden md:flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth rounded-full border border-border/80 bg-surface/80 p-1"
+          className="hidden lg:flex items-center gap-1 overflow-x-auto no-scrollbar scroll-smooth rounded-full border border-border/80 bg-surface p-1"
         >
           {TOOLS_NAV_TABS.map((tab) => {
             const isActive = location.pathname === tab.path;
@@ -69,9 +68,9 @@ export function ToolsHeader() {
                 key={tab.path}
                 to={tab.path}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                  "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-xs font-semibold"
+                    ? "bg-primary-strong text-primary-foreground dark:bg-primary shadow-xs font-semibold"
                     : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
                 )}
                 aria-current={isActive ? "page" : undefined}
@@ -83,11 +82,14 @@ export function ToolsHeader() {
           })}
         </nav>
 
-        {/* Acesso e Conversão */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <ThemeToggle />
           <Link
             to="/apresentacao"
-            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "text-xs font-medium text-muted-foreground hover:text-foreground md:inline-flex xl:hidden")}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "hidden sm:inline-flex xl:hidden text-xs font-medium text-muted-foreground hover:text-foreground",
+            )}
           >
             Apresentação
           </Link>
@@ -99,15 +101,18 @@ export function ToolsHeader() {
           </Link>
           <Link
             to="/cadastro"
-            className={cn(buttonVariants({ variant: "default", size: "sm" }), "text-xs font-semibold shadow-xs")}
+            className={cn(
+              buttonVariants({ variant: "default", size: "sm" }),
+              "text-xs font-semibold shadow-xs",
+            )}
           >
             Criar Conta
           </Link>
         </div>
       </div>
 
-      {/* Navegação Mobile Inferior do Header */}
-      <div className="flex md:hidden border-t border-border/60 bg-surface/50 px-4 py-2 overflow-x-auto no-scrollbar scroll-smooth gap-1.5">
+      {/* Navegação horizontal rolável em Mobile & Tablet (< lg) */}
+      <div className="flex lg:hidden border-t border-border/60 bg-surface/60 px-4 py-2 overflow-x-auto no-scrollbar scroll-smooth gap-1.5">
         {TOOLS_NAV_TABS.map((tab) => {
           const isActive = location.pathname === tab.path;
           return (
@@ -115,10 +120,10 @@ export function ToolsHeader() {
               key={tab.path}
               to={tab.path}
               className={cn(
-                "shrink-0 min-w-fit inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                "shrink-0 min-w-fit min-h-11 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 isActive
-                  ? "bg-primary text-primary-foreground font-semibold"
-                  : "bg-surface text-muted-foreground hover:text-foreground border border-border/60",
+                  ? "bg-primary-strong text-primary-foreground dark:bg-primary font-semibold"
+                  : "bg-surface text-muted-foreground hover:text-foreground border border-border/80",
               )}
               aria-current={isActive ? "page" : undefined}
             >

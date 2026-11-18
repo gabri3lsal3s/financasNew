@@ -133,16 +133,18 @@ export function ShareTargetPage() {
     <div
       role="region"
       aria-label="Processamento de comprovante compartilhado"
-      className="flex flex-col items-center justify-center min-h-[50vh] p-4 max-w-md mx-auto space-y-4"
+      className="flex min-h-[60dvh] w-full max-w-md mx-auto flex-col items-center justify-center px-4 py-8 sm:px-6"
     >
-      <div className="w-full space-y-3">
-        <Skeleton className="h-6 w-3/4 mx-auto rounded-lg" />
-        <Skeleton className="h-4 w-1/2 mx-auto rounded-md" />
-        <Skeleton className="h-24 w-full rounded-2xl border border-border/80" />
+      <div className="w-full rounded-2xl border border-border/80 bg-surface p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="space-y-3">
+          <Skeleton className="h-5 w-3/4 mx-auto rounded-lg" />
+          <Skeleton className="h-4 w-1/2 mx-auto rounded-md" />
+          <Skeleton className="h-24 w-full rounded-xl" />
+        </div>
+        <p className="text-xs sm:text-sm text-muted-foreground font-medium text-center">
+          Processando comprovante compartilhado...
+        </p>
       </div>
-      <p className="text-xs text-muted-foreground font-medium animate-pulse">
-        Processando comprovante compartilhado...
-      </p>
     </div>
   );
 }

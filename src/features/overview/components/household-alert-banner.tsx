@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
-import { triggerSensory } from "@/services/sensory";
 
 export interface HouseholdAlertBannerProps {
   variant: "ceiling_exceeded" | "ceiling_warning" | "settlement_pending";
@@ -36,7 +35,6 @@ export function HouseholdAlertBanner({
   const navigate = useNavigate();
 
   const handleNavigate = () => {
-    triggerSensory("action");
     navigate("/familia");
   };
 

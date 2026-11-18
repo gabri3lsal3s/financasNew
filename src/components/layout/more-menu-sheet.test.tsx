@@ -147,7 +147,7 @@ describe("MoreMenuSheet", () => {
     standaloneSpy.mockRestore();
   });
 
-  it("exibe o botão unificado 'Baixar aplicativo' na Web e abre o AppDownloadModal ao clicar", async () => {
+  it("exibe o botão de instalação PWA na Web Desktop sem promover APK Android (M10)", async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn();
     const platformModule = await import("@/services/native/platform");
@@ -163,7 +163,10 @@ describe("MoreMenuSheet", () => {
 
     const downloadBtn = screen.getByRole("button", { name: /Baixar aplicativo/i });
     expect(downloadBtn).toBeInTheDocument();
-    expect(screen.getByText("Instale o App Web (PWA) ou baixe o APK Android Pro")).toBeInTheDocument();
+    expect(
+      screen.getByText("Instale o App Web (PWA) no seu dispositivo sem ocupar espaço"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/APK Android/i)).not.toBeInTheDocument();
 
     await user.click(downloadBtn);
 
@@ -173,6 +176,37 @@ describe("MoreMenuSheet", () => {
     nativeSpy.mockRestore();
     iosSpy.mockRestore();
     standaloneSpy.mockRestore();
+  });
+
+  it("exibe opção de APK Android quando o dispositivo for navegador Android Web", async () => {
+    const platformModule = await import("@/services/native/platform");
+    const nativeSpy = vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    const standaloneSpy = vi.spyOn(platformModule, "isStandaloneDisplay").mockReturnValue(false);
+    const originalUa = navigator.userAgent;
+    Object.defineProperty(navigator, "userAgent", {
+      value: "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36",
+      configurable: true,
+    });
+
+    try {
+      render(
+        <BrowserRouter>
+          <MoreMenuSheet open={true} onOpenChange={vi.fn()} />
+        </BrowserRouter>,
+      );
+
+      expect(screen.getByRole("button", { name: /Baixar aplicativo/i })).toBeInTheDocument();
+      expect(
+        screen.getByText("Instale o App Web (PWA) ou baixe o APK Android Pro"),
+      ).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(navigator, "userAgent", {
+        value: originalUa,
+        configurable: true,
+      });
+      nativeSpy.mockRestore();
+      standaloneSpy.mockRestore();
+    }
   });
 });
 

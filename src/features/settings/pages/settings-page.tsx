@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
-  User,
-  Palette,
   Bell,
-  ShieldCheck,
-  Zap,
   LifeBuoy,
+  Palette,
+  ShieldCheck,
+  User,
+  Zap,
 } from "lucide-react";
 import { Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
+import { SupportChatDialog } from "@/components/modules";
 import {
   AccountTab,
   AppearanceTab,
@@ -18,136 +19,19 @@ import {
   SubscriptionTab,
   SupportTab,
 } from "../components/tabs";
-import { DemoTrackSelectModal, HelpModal, SupportChatDialog } from "@/components/modules";
-
-/**
- * Resolve o identificador canônico da aba de configurações a partir do parâmetro
- * de rota (tab, subtab ou aliases comuns de deep-link).
- * Por padrão, abre em "account" (Minha Conta / Perfil).
- */
-function resolveSettingsTab(param: string | null): string {
-  if (!param) return "account";
-  const p = param.toLowerCase().trim();
-
-  if (
-    [
-      "account",
-      "conta",
-      "perfil",
-      "usuario",
-      "usuário",
-      "profile",
-      "minha-conta",
-      "dados-pessoais",
-    ].includes(p)
-  ) {
-    return "account";
-  }
-
-  if (
-    [
-      "appearance",
-      "aparencia",
-      "aparência",
-      "personalizacao",
-      "personalização",
-      "tema",
-      "visual",
-      "customizacao",
-      "customização",
-      "experiencia",
-      "experiência",
-      "sensorial",
-      "modos",
-      "modo",
-      "sons",
-      "som",
-      "audio",
-      "haptic",
-      "widgets",
-      "interface",
-      "dashboard",
-      "family",
-      "familia",
-      "família",
-    ].includes(p)
-  ) {
-    return "appearance";
-  }
-
-  if (
-    [
-      "notifications",
-      "notificacoes",
-      "notificações",
-      "notificacao",
-      "notificação",
-      "lembretes",
-      "lembrete",
-      "bancos",
-      "assistente",
-    ].includes(p)
-  ) {
-    return "notifications";
-  }
-
-  if (
-    [
-      "security",
-      "seguranca",
-      "segurança",
-      "dados",
-      "exportar",
-      "backup",
-      "importar",
-      "privacidade",
-      "devices",
-      "dispositivos",
-      "app",
-      "aplicativo",
-      "instalacao",
-      "instalação",
-      "apk",
-      "download",
-      "versao",
-      "versão",
-    ].includes(p)
-  ) {
-    return "security";
-  }
-
-  if (["subscription", "plano", "assinatura", "upgrade"].includes(p)) {
-    return "subscription";
-  }
-
-  if (
-    [
-      "support",
-      "suporte",
-      "ajuda",
-      "help",
-      "faq",
-      "atendimento",
-      "chamados",
-    ].includes(p)
-  ) {
-    return "support";
-  }
-
-  return "account";
-}
+import { resolveSettingsTab } from "../utils/settings-routes";
 
 export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [helpModalOpen, setHelpModalOpen] = useState(false);
-  const [demoSelectOpen, setDemoSelectOpen] = useState(false);
   const [supportChatOpen, setSupportChatOpen] = useState(false);
 
   const tabParam = searchParams.get("tab");
-  const subTabParam = searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba");
+  const subTabParam =
+    searchParams.get("subtab") || searchParams.get("subTab") || searchParams.get("aba");
 
-  // Abertura automática do modal de criação de chamado via query params dedicados (?modal=suporte ou ?chat=open)
-  const isDirectSupportModal = searchParams.get("modal") === "suporte" || searchParams.get("chat") === "open";
+  // Abertura automática do modal de criação de chamado via query params (?modal=suporte ou ?chat=open)
+  const isDirectSupportModal =
+    searchParams.get("modal") === "suporte" || searchParams.get("chat") === "open";
   const isSupportDialogOpen = supportChatOpen || Boolean(isDirectSupportModal);
 
   const handleSupportOpenChange = (open: boolean) => {
@@ -182,42 +66,42 @@ export function SettingsPage() {
         value: "account",
         label: "Minha Conta",
         shortLabel: "Conta",
-        icon: <User className="size-4" />,
+        icon: <User className="size-4" aria-hidden="true" />,
         content: <AccountTab />,
       },
       {
         value: "appearance",
         label: "Aparência",
         shortLabel: "Aparência",
-        icon: <Palette className="size-4" />,
+        icon: <Palette className="size-4" aria-hidden="true" />,
         content: <AppearanceTab />,
       },
       {
         value: "notifications",
         label: "Notificações",
         shortLabel: "Alertas",
-        icon: <Bell className="size-4" />,
+        icon: <Bell className="size-4" aria-hidden="true" />,
         content: <NotificationsTab />,
       },
       {
         value: "security",
         label: "Dados & Privacidade",
         shortLabel: "Privacidade",
-        icon: <ShieldCheck className="size-4" />,
+        icon: <ShieldCheck className="size-4" aria-hidden="true" />,
         content: <SecurityTab />,
       },
       {
         value: "subscription",
         label: "Plano",
         shortLabel: "Plano",
-        icon: <Zap className="size-4" />,
+        icon: <Zap className="size-4" aria-hidden="true" />,
         content: <SubscriptionTab />,
       },
       {
         value: "support",
         label: "Suporte & Ajuda",
         shortLabel: "Suporte",
-        icon: <LifeBuoy className="size-4" />,
+        icon: <LifeBuoy className="size-4" aria-hidden="true" />,
         content: <SupportTab />,
       },
     ],
@@ -225,13 +109,13 @@ export function SettingsPage() {
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex w-full max-w-4xl flex-col gap-5 sm:gap-6">
       <PageHeader
         title="Configurações"
         description="Gestão de conta, personalização visual, notificações, privacidade e plano"
       />
 
-      <div className="pb-8">
+      <div className="pb-28 sm:pb-10">
         <Tabs
           value={activeTab}
           onValueChange={handleTabChange}
@@ -241,33 +125,12 @@ export function SettingsPage() {
         />
       </div>
 
-      {/* Diálogos modais globais de Ajuda e Suporte */}
-      {helpModalOpen && (
-        <HelpModal
-          open={helpModalOpen}
-          onOpenChange={setHelpModalOpen}
-          onOpenDemoSelect={() => {
-            setHelpModalOpen(false);
-            setDemoSelectOpen(true);
-          }}
-          onOpenSupport={() => {
-            setHelpModalOpen(false);
-            setSupportChatOpen(true);
-          }}
-        />
-      )}
-      {demoSelectOpen && (
-        <DemoTrackSelectModal
-          open={demoSelectOpen}
-          onOpenChange={setDemoSelectOpen}
-        />
-      )}
-      {isSupportDialogOpen && (
+      {isSupportDialogOpen ? (
         <SupportChatDialog
           open={isSupportDialogOpen}
           onOpenChange={handleSupportOpenChange}
         />
-      )}
+      ) : null}
     </div>
   );
 }

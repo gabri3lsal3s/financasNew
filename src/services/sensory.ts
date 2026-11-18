@@ -93,5 +93,3 @@ export const sensory = {
   sound: soundManager,
   haptics: hapticsManager,
 };
-
-export { soundManager, hapticsManager };

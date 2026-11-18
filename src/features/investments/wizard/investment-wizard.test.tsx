@@ -435,4 +435,96 @@ describe("InvestmentWizard (Fase 41 / Plano 42)", () => {
       }),
     );
   });
+
+  it("exibe título Grupamento (Inplit) e calcula proporção X:Y (5 para 2) até a revisão com data BR", async () => {
+    render(
+      <InvestmentWizard
+        open={true}
+        initialAsset={mockAsset}
+        initialMode="reverse_split"
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Grupamento \(Inplit\) · PETR4/i)).toBeInTheDocument();
+
+    const fromInput = screen.getByLabelText(/De \(cotas atuais\)/i);
+    const toInput = screen.getByLabelText(/Para \(novas cotas\)/i);
+    fireEvent.change(fromInput, { target: { value: "5" } });
+    fireEvent.change(toInput, { target: { value: "2" } });
+
+    expect(screen.getByText(/40 cotas a/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar$/i }));
+
+    expect(screen.getByText("5 para 2")).toBeInTheDocument();
+    expect(screen.getByText(/^\d{2}\/\d{2}\/\d{4}$/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar Operação/i }));
+    await waitFor(() => {
+      expect(mockRecordOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "reverse_split",
+          quantity: 2.5,
+        }),
+      );
+    });
+  });
+
+  it("calcula provento por cota (Valor por Cota) e confirma operação em reais", async () => {
+    render(
+      <InvestmentWizard
+        open={true}
+        initialAsset={mockAsset}
+        initialMode="dividend"
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Valor por Cota/i }));
+    const perShareInput = screen.getByLabelText(/Rendimento por Cota \(Líquido\)/i);
+    fireEvent.change(perShareInput, { target: { value: "150" } });
+
+    expect(screen.getAllByText(/150,00/).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: /^Continuar$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar Operação/i }));
+
+    await waitFor(() => {
+      expect(mockRecordOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "dividend",
+          total: 150,
+        }),
+      );
+    });
+  });
+
+  it("permite expandir Accordion de ajuste manual de IRRF na venda de Renda Fixa", () => {
+    const fixedIncomeAsset: PortfolioAsset = {
+      ...secondAsset,
+      fixed_income_metadata: {
+        rate_type: "cdi",
+        rate_value: 100,
+        base_value: 3600,
+        base_date: "2026-01-01",
+        initial_investment_date: "2025-01-01",
+        is_tax_exempt: false,
+      },
+    };
+    mockAssetsList = [mockAsset, fixedIncomeAsset];
+
+    render(
+      <InvestmentWizard
+        open={true}
+        initialAsset={fixedIncomeAsset}
+        initialMode="sell"
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /100% \(Total\)/i }));
+    const toggleBtn = screen.getByRole("button", { name: /Ajustar alíquota e imposto de renda retido na fonte/i });
+    fireEvent.click(toggleBtn);
+    expect(screen.getByText(/Ajuste Fiscal Manual \(Nota de Corretagem\)/i)).toBeInTheDocument();
+  });
 });

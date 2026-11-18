@@ -1,18 +1,19 @@
 import { Link } from "react-router";
 import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
+import { buttonVariants } from "@/components/ui";
 import { useLandingCta } from "@/features/landing/hooks";
+import { cn } from "@/lib/utils";
 import { ScrollReveal } from "./scroll-reveal";
 
 export function CtaBanner() {
   const { freeRegisterUrl, isLoggedIn } = useLandingCta();
 
   return (
-    <section className="py-14 md:py-32 relative overflow-hidden bg-surface/40 border-y border-border/70">
+    <section className="py-14 md:py-32 relative overflow-hidden bg-surface-raised/30 border-y border-border/70">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
-        <ScrollReveal className="relative rounded-2xl sm:rounded-3xl border border-primary/30 bg-gradient-to-b from-primary/10 via-surface/90 to-surface p-6 sm:p-16 lg:p-20 shadow-xl sm:shadow-2xl backdrop-blur-xl overflow-hidden text-center max-w-6xl mx-auto">
-          {/* Ambient background light spheres */}
+        <ScrollReveal className="relative rounded-2xl sm:rounded-3xl border border-primary/30 bg-surface p-6 sm:p-16 lg:p-20 shadow-xl sm:shadow-2xl overflow-hidden text-center max-w-6xl mx-auto">
           <div
-            className="pointer-events-none absolute -top-20 -right-20 size-72 rounded-full bg-primary/20 blur-3xl"
+            className="pointer-events-none absolute -top-20 -right-20 size-72 rounded-full bg-primary/15 blur-3xl"
             aria-hidden="true"
           />
           <div
@@ -31,29 +32,38 @@ export function CtaBanner() {
             </h2>
 
             <p className="mt-3 sm:mt-5 max-w-3xl mx-auto text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-              Junte-se a quem já abandonou o caos das planilhas, das faturas surpresas e dos cálculos manuais de aportes. Crie sua conta gratuita hoje mesmo e assuma o controle definitivo do seu patrimônio.
+              Junte-se a quem já abandonou o caos das planilhas, das faturas surpresas e dos
+              cálculos manuais de aportes. Crie sua conta gratuita hoje mesmo e assuma o controle
+              definitivo do seu patrimônio.
             </p>
 
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 to={isLoggedIn ? "/" : freeRegisterUrl}
-                aria-label={isLoggedIn ? "Acessar Meu Painel Agora" : "Criar conta e começar o teste gratuito"}
-                className="group relative overflow-hidden w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-sm sm:text-base font-bold bg-primary text-primary-foreground hover:bg-primary-strong shadow-lg hover:shadow-xl inline-flex items-center justify-center gap-2 transition-all duration-150 active:scale-95"
+                aria-label={
+                  isLoggedIn ? "Acessar Meu Painel Agora" : "Criar conta e começar o teste gratuito"
+                }
+                className={cn(
+                  buttonVariants({ variant: "solid", size: "lg" }),
+                  "group relative overflow-hidden w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-sm sm:text-base font-bold shadow-lg hover:shadow-xl inline-flex items-center justify-center gap-2",
+                )}
               >
-                {/* Shimmer Sweep Effect */}
                 <span
-                  className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none"
+                  className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-primary-foreground/20 to-transparent pointer-events-none"
                   aria-hidden="true"
                 />
                 <span className="relative z-10 flex items-center gap-2">
                   {isLoggedIn ? "Acessar Meu Painel Agora" : "Começar 30 Dias Grátis"}
-                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                  <ArrowRight
+                    className="size-4 transition-transform group-hover:translate-x-0.5"
+                    aria-hidden="true"
+                  />
                 </span>
               </Link>
             </div>
 
-            {!isLoggedIn && (
-              <div className="mt-4 flex items-center justify-center gap-1 text-xs text-muted-foreground">
+            {!isLoggedIn ? (
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-1 text-xs text-muted-foreground">
                 <span>Deseja assinar o Pro imediatamente?</span>
                 <a
                   href="#precos"
@@ -61,15 +71,18 @@ export function CtaBanner() {
                     e.preventDefault();
                     document.getElementById("precos")?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="font-medium text-foreground underline underline-offset-4 hover:text-primary transition-colors cursor-pointer"
+                  className="inline-flex min-h-11 sm:min-h-0 items-center font-medium text-foreground underline underline-offset-4 hover:text-primary-strong transition-colors cursor-pointer"
                 >
                   Conheça os planos Pro com até 40% de desconto
                 </a>
               </div>
-            )}
+            ) : null}
 
-            <div className="mt-5 sm:mt-6 flex items-center justify-center gap-1.5 sm:gap-2 text-xs text-muted-foreground">
-              <ShieldCheck className="size-3.5 sm:size-4 text-positive-strong dark:text-positive" aria-hidden="true" />
+            <div className="mt-4 sm:mt-6 flex items-center justify-center gap-1.5 sm:gap-2 text-xs text-muted-foreground">
+              <ShieldCheck
+                className="size-3.5 sm:size-4 text-positive-strong dark:text-positive"
+                aria-hidden="true"
+              />
               <span>Garantia legal de 7 dias (CDC) · Histórico preservado após o teste</span>
             </div>
           </div>

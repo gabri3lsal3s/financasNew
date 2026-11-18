@@ -183,7 +183,7 @@ describe("DemoTrackSelectModal — Hub de Aprendizado & Micro-Tours (§3.4)", ()
       />,
     );
 
-    const targetsBtn = screen.getByText("Metas por Classe e Ativo").closest("button");
+    const targetsBtn = screen.getByText("Metas por Classe e Setor").closest("button");
     expect(targetsBtn).not.toBeNull();
     await user.click(targetsBtn!);
 

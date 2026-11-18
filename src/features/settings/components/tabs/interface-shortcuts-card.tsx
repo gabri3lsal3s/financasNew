@@ -30,140 +30,113 @@ export function InterfaceShortcutsCard({
 }: InterfaceShortcutsCardProps) {
   const { isFamilyModeEnabled, toggleFamilyMode, isPending: isUpdatingFamilyMode } = useFamilyMode();
   const { isTripModeEnabled, toggleTripMode, isPending: isUpdatingTripMode } = useTripMode();
+
+  const activeSlots = [
+    headerButtons.calculatorButton,
+    headerButtons.themeToggle,
+    headerButtons.privacyToggle,
+  ].filter(Boolean).length;
+
+  const shortcutItems: {
+    key: keyof HeaderButtonsConfig;
+    label: string;
+    desc: string;
+    icon: typeof Monitor;
+    isChecked: boolean;
+    isDisabled: boolean;
+  }[] = [
+    {
+      key: "logo",
+      label: "Logotipo Oficial",
+      desc: "Exibe o logotipo no topo",
+      icon: ImageIcon,
+      isChecked: headerButtons.logo,
+      isDisabled: false,
+    },
+    {
+      key: "calculatorButton",
+      label: "Calculadora",
+      desc: "Calculadora flutuante rápida",
+      icon: Calculator,
+      isChecked: headerButtons.calculatorButton,
+      isDisabled: !headerButtons.calculatorButton && activeSlots >= 2,
+    },
+    {
+      key: "themeToggle",
+      label: "Alternar Tema",
+      desc: "Troca rápida de tema no topo",
+      icon: Monitor,
+      isChecked: headerButtons.themeToggle,
+      isDisabled: !headerButtons.themeToggle && activeSlots >= 2,
+    },
+    {
+      key: "privacyToggle",
+      label: "Ocultar Valores (Privacidade)",
+      desc: "Botão de privacidade (tecla P)",
+      icon: Eye,
+      isChecked: headerButtons.privacyToggle,
+      isDisabled: !headerButtons.privacyToggle && activeSlots >= 2,
+    },
+  ];
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <PanelTop className="size-4 text-muted-foreground" aria-hidden="true" />
-            <span>Interface &amp; Composição</span>
-          </span>
+        <CardTitle className="text-base flex items-center gap-2">
+          <PanelTop className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+          <span>Interface &amp; Composição</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
         {/* Atalhos do Header */}
         <div className="space-y-3">
-          <div className="text-xs font-semibold text-foreground flex items-center justify-between">
+          <div className="text-xs font-semibold text-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
             <span>Atalhos Rápidos do Cabeçalho</span>
-            <span className="text-[11px] text-muted-foreground font-normal">Máximo de 2 botões de ação</span>
+            <span className="text-[11px] text-muted-foreground font-normal">
+              Máximo de 2 botões de ação
+            </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {/* Logo Oficial */}
-            {(() => {
-              const isChecked = headerButtons.logo;
-              return (
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => onToggleHeaderButton("logo", "Logo no Header", !isChecked)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onToggleHeaderButton("logo", "Logo no Header", !isChecked);
-                    }
-                  }}
-                  className={cn(
-                    "flex items-center justify-between p-3 rounded-xl border transition-colors cursor-pointer select-none",
-                    isChecked
-                      ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                      : "border-border bg-surface hover:bg-surface-hover",
-                  )}
-                >
-                  <div className="flex items-center gap-2.5 pr-2 min-w-0">
-                    <ImageIcon className="size-4 text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-semibold text-xs text-foreground">Logotipo Oficial</div>
-                      <div className="text-[11px] text-muted-foreground">Exibe o logotipo no topo</div>
-                    </div>
-                  </div>
-                  <Checkbox
-                    checked={isChecked}
-                    onCheckedChange={(checked) => onToggleHeaderButton("logo", "Logo no Header", Boolean(checked))}
-                    aria-label="Logotipo Oficial"
-                  />
-                </div>
-              );
-            })()}
-
-            {/* Botões de Ação com limite de 2 */}
-            {(
-              [
-                {
-                  key: "calculatorButton" as const,
-                  label: "Calculadora",
-                  desc: "Calculadora flutuante rápida",
-                  icon: Calculator,
-                },
-                {
-                  key: "themeToggle" as const,
-                  label: "Alternar Tema",
-                  desc: "Troca rápida de tema no topo",
-                  icon: Monitor,
-                },
-                {
-                  key: "privacyToggle" as const,
-                  label: "Ocultar Valores (Privacidade)",
-                  desc: "Botão de privacidade (tecla P)",
-                  icon: Eye,
-                },
-              ] satisfies {
-                key: keyof HeaderButtonsConfig;
-                label: string;
-                desc: string;
-                icon: typeof Monitor;
-              }[]
-            ).map((item) => {
-              const isChecked = headerButtons[item.key];
-              const activeSlots = [
-                headerButtons.calculatorButton,
-                headerButtons.themeToggle,
-                headerButtons.privacyToggle,
-              ].filter(Boolean).length;
-              const isDisabled = !isChecked && activeSlots >= 2;
+            {shortcutItems.map((item) => {
               const Icon = item.icon;
+              const fieldId = `header-shortcut-${item.key}`;
+              const actionName = item.key === "logo" ? "Logo no Header" : item.label;
+
               return (
-                <div
+                <label
                   key={item.key}
-                  role="button"
-                  tabIndex={isDisabled ? -1 : 0}
-                  aria-disabled={isDisabled}
-                  onClick={() => {
-                    if (isDisabled) return;
-                    onToggleHeaderButton(item.key, item.label, !isChecked);
-                  }}
-                  onKeyDown={(e) => {
-                    if (isDisabled) return;
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      onToggleHeaderButton(item.key, item.label, !isChecked);
-                    }
-                  }}
+                  htmlFor={fieldId}
                   className={cn(
-                    "flex items-center justify-between p-3 rounded-xl border transition-colors select-none",
-                    isDisabled
-                      ? "border-border bg-surface opacity-50 cursor-not-allowed"
-                      : isChecked
+                    "flex items-center justify-between gap-3 p-3 rounded-xl border transition-colors duration-150 select-none min-h-11",
+                    item.isDisabled
+                      ? "border-border/80 bg-surface opacity-50 cursor-not-allowed"
+                      : item.isChecked
                         ? "border-primary/40 bg-primary/5 hover:bg-primary/10 cursor-pointer"
-                        : "border-border bg-surface hover:bg-surface-hover cursor-pointer",
+                        : "border-border/80 bg-surface hover:bg-surface-hover cursor-pointer",
                   )}
                 >
-                  <div className="flex items-center gap-2.5 pr-2 min-w-0">
-                    <Icon className="size-4 text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-semibold text-xs text-foreground">{item.label}</div>
-                      <div className="text-[11px] text-muted-foreground truncate">{item.desc}</div>
-                    </div>
-                  </div>
+                  <span className="flex items-center gap-2.5 pr-2 min-w-0">
+                    <Icon className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                    <span className="min-w-0 block">
+                      <span className="font-semibold text-xs text-foreground block">{item.label}</span>
+                      <span className="text-[11px] text-muted-foreground block line-clamp-2 break-words">
+                        {item.desc}
+                      </span>
+                    </span>
+                  </span>
                   <Checkbox
-                    checked={isChecked}
-                    disabled={isDisabled}
+                    id={fieldId}
+                    checked={item.isChecked}
+                    disabled={item.isDisabled}
                     onCheckedChange={(checked) => {
-                      if (!isDisabled) onToggleHeaderButton(item.key, item.label, Boolean(checked));
+                      if (!item.isDisabled) {
+                        onToggleHeaderButton(item.key, actionName, Boolean(checked));
+                      }
                     }}
                     aria-label={item.label}
                   />
-                </div>
+                </label>
               );
             })}
           </div>
@@ -171,36 +144,21 @@ export function InterfaceShortcutsCard({
 
         {/* Divisão: Módulos & Modos de Visualização */}
         <div className="pt-4 border-t border-border/80 space-y-3">
-          <div className="text-xs font-semibold text-foreground flex items-center justify-between">
+          <div className="text-xs font-semibold text-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
             <span>Módulos de Visão &amp; Lançamento</span>
-            <span className="text-[11px] text-muted-foreground font-normal">Personalização do fluxo</span>
+            <span className="text-[11px] text-muted-foreground font-normal">
+              Personalização do fluxo
+            </span>
           </div>
 
           <div className="grid grid-cols-1 gap-2.5">
-            {/* Modo Família */}
             <div
-              role="button"
-              tabIndex={isUpdatingFamilyMode ? -1 : 0}
-              onClick={() => {
-                if (!isUpdatingFamilyMode) {
-                  void toggleFamilyMode(!isFamilyModeEnabled);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (isUpdatingFamilyMode) return;
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  void toggleFamilyMode(!isFamilyModeEnabled);
-                }
-              }}
               className={cn(
-                "flex items-center justify-between p-3.5 rounded-xl border transition-colors select-none cursor-pointer",
-                isFamilyModeEnabled
-                  ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                  : "border-border bg-surface hover:bg-surface-hover",
+                "flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-colors duration-150",
+                isFamilyModeEnabled ? "border-primary/40 bg-primary/5" : "border-border/80 bg-surface",
               )}
             >
-              <div className="flex items-center gap-3 pr-2 min-w-0">
+              <div className="flex items-center gap-3 min-w-0">
                 <Users className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                 <div className="min-w-0">
                   <div className="font-semibold text-xs text-foreground">Modo Família</div>
@@ -221,30 +179,13 @@ export function InterfaceShortcutsCard({
               />
             </div>
 
-            {/* Modo Viagem */}
             <div
-              role="button"
-              tabIndex={isUpdatingTripMode ? -1 : 0}
-              onClick={() => {
-                if (!isUpdatingTripMode) {
-                  void toggleTripMode(!isTripModeEnabled);
-                }
-              }}
-              onKeyDown={(e) => {
-                if (isUpdatingTripMode) return;
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  void toggleTripMode(!isTripModeEnabled);
-                }
-              }}
               className={cn(
-                "flex items-center justify-between p-3.5 rounded-xl border transition-colors select-none cursor-pointer",
-                isTripModeEnabled
-                  ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-                  : "border-border bg-surface hover:bg-surface-hover",
+                "flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-colors duration-150",
+                isTripModeEnabled ? "border-primary/40 bg-primary/5" : "border-border/80 bg-surface",
               )}
             >
-              <div className="flex items-center gap-3 pr-2 min-w-0">
+              <div className="flex items-center gap-3 min-w-0">
                 <Plane className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                 <div className="min-w-0">
                   <div className="font-semibold text-xs text-foreground">Modo Viagem</div>

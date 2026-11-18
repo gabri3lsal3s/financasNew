@@ -5,6 +5,14 @@ export {
 } from "./use-pending-split-expense";
 
 export {
+  useGuestIdentityStore,
+  getGuestIdentityStorageKey,
+  GUEST_IDENTITY_STORAGE_PREFIXES,
+  type GuestIdentityScope,
+  type UseGuestIdentityStoreReturn,
+} from "./use-guest-identity-store";
+
+export {
   usePublicTripGuestIdentity,
   getPublicTripGuestStorageKey,
   GUEST_MEMBER_STORAGE_KEY_PREFIX,
@@ -17,4 +25,3 @@ export {
   GUEST_SPLIT_STORAGE_KEY_PREFIX,
   type UsePublicSplitGuestIdentityReturn,
 } from "./use-public-split-guest-identity";
-

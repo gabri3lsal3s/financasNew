@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Button, Modal, ModalFooter, MoneyInput } from "@/components/ui";
+import { Alert, Button, FormField, Modal, ModalFooter, MoneyInput, MoneyText } from "@/components/ui";
 import { formatMonthYear } from "@/lib/date";
 import { numberToCents } from "@/domain/money";
 import { useCalibratePortfolioSnapshot } from "@/state";
@@ -95,19 +95,17 @@ function CalibrateSnapshotForm({ snapshot, open, onOpenChange, onClose }: Calibr
       }
     >
       <form id="calibrate-snapshot-form" onSubmit={handleSubmit} className="flex flex-col gap-4 pt-1">
-        {error ? (
-          <Alert variant="error">{error}</Alert>
-        ) : null}
+        {error ? <Alert variant="error">{error}</Alert> : null}
 
         {autoVal !== null ? (
           <Alert variant="info">
             Fechamento de mercado oficial:{" "}
-            <span className="font-semibold text-foreground">
-              R$&nbsp;{autoVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </span>
+            <MoneyText cents={numberToCents(autoVal)} tone="default" className="font-semibold" />
             {autoCost !== null ? (
               <span>
-                {" "}(Custo: R$&nbsp;{autoCost.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+                {" "}
+                (Custo:{" "}
+                <MoneyText cents={numberToCents(autoCost)} tone="default" variant="caption" />)
               </span>
             ) : null}
             . A calibração é não destrutiva e pode ser restaurada ao valor original a qualquer momento.
@@ -115,10 +113,11 @@ function CalibrateSnapshotForm({ snapshot, open, onOpenChange, onClose }: Calibr
         ) : null}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="calibrate-total-value" className="text-xs font-semibold text-foreground">
-              Patrimônio Total (R$)
-            </label>
+          <FormField
+            label="Patrimônio Total (R$)"
+            htmlFor="calibrate-total-value"
+            helperText="Valor de mercado total da custódia + caixa."
+          >
             <MoneyInput
               id="calibrate-total-value"
               cents={totalValueCents}
@@ -127,15 +126,13 @@ function CalibrateSnapshotForm({ snapshot, open, onOpenChange, onClose }: Calibr
               placeholder="0,00"
               showCalculatorAction
             />
-            <span className="text-[11px] text-muted-foreground">
-              Valor de mercado total da custódia + caixa.
-            </span>
-          </div>
+          </FormField>
 
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="calibrate-total-cost" className="text-xs font-semibold text-foreground">
-              Custo Total Aplicado (R$)
-            </label>
+          <FormField
+            label="Custo Total Aplicado (R$)"
+            htmlFor="calibrate-total-cost"
+            helperText="Custo de aquisição total dos ativos + caixa."
+          >
             <MoneyInput
               id="calibrate-total-cost"
               cents={totalCostCents}
@@ -144,10 +141,7 @@ function CalibrateSnapshotForm({ snapshot, open, onOpenChange, onClose }: Calibr
               placeholder="0,00"
               showCalculatorAction
             />
-            <span className="text-[11px] text-muted-foreground">
-              Custo de aquisição total dos ativos + caixa.
-            </span>
-          </div>
+          </FormField>
         </div>
       </form>
     </Modal>
@@ -156,7 +150,6 @@ function CalibrateSnapshotForm({ snapshot, open, onOpenChange, onClose }: Calibr
 
 /**
  * Diálogo modal para calibração manual não destrutiva de snapshot patrimonial (§F50/F51).
- * Permite ajustar pontualmente o valor e custo do mês fechado sem sobrescrever o fechamento original.
  */
 export function CalibrateSnapshotDialog({
   open,

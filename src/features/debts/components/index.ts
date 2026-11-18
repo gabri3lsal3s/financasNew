@@ -1,12 +1,20 @@
 export { DebtFormDialog } from "./debt-form-dialog";
+export { DebtPenaltiesFields } from "./debt-penalties-fields";
 export { DebtRow } from "./debt-row";
+export { DebtsUrgencyList } from "./debts-urgency-list";
 export type { DebtRowProps } from "./debt-row";
+export type { DebtsUrgencyListProps } from "./debts-urgency-list";
 export { EarlyAmortizationDialog } from "./early-amortization-dialog";
 export { LoanCard } from "./loan-card";
+export { LoanContractFields } from "./loan-contract-fields";
 export { LoanEditDialog } from "./loan-edit-dialog";
 export { LoanFormDialog } from "./loan-form-dialog";
+export { LoanRenegotiationHistoryCard } from "./loan-renegotiation-history-card";
+export { LoanRenegotiationPreview } from "./loan-renegotiation-preview";
 export { LoanScheduleDialog } from "./loan-schedule-dialog";
+export { LoansTabContent } from "./loans-tab-content";
 export { SettleDialog } from "./settle-dialog";
 
 export type { LoanEditDialogProps } from "./loan-edit-dialog";
 export type { LoanScheduleDialogProps } from "./loan-schedule-dialog";
+export type { LoansTabContentProps } from "./loans-tab-content";

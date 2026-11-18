@@ -1,13 +1,6 @@
 import { Link } from "react-router";
-import {
-  ArrowRight,
-  ExternalLink,
-  PieChart,
-  ShieldAlert,
-  Sparkles,
-  TrendingUp,
-} from "lucide-react";
-import { Badge, buttonVariants, Card, CardTitle } from "@/components/ui";
+import { ArrowRight, ExternalLink, PieChart, ShieldAlert, Sparkles, TrendingUp } from "lucide-react";
+import { Badge, Card, CardTitle, buttonVariants } from "@/components/ui";
 import { ScrollReveal } from "./scroll-reveal";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +29,7 @@ const TOOLS: ToolItem[] = [
       "Simulação de aceleração com aportes extras mensais",
     ],
     path: "/ferramentas/simulador-dividas",
-    icon: <ShieldAlert className="size-5 text-warning-strong" aria-hidden="true" />,
+    icon: <ShieldAlert className="size-4 text-warning-strong" aria-hidden="true" />,
   },
   {
     id: "rebalance",
@@ -51,7 +44,7 @@ const TOOLS: ToolItem[] = [
       "Recomendação de quanto comprar em cada classe",
     ],
     path: "/ferramentas/rebalanceamento",
-    icon: <PieChart className="size-5 text-portfolio" aria-hidden="true" />,
+    icon: <PieChart className="size-4 text-portfolio" aria-hidden="true" />,
   },
   {
     id: "compound",
@@ -66,14 +59,16 @@ const TOOLS: ToolItem[] = [
       "Tabela completa de evolução patrimonial ano a ano",
     ],
     path: "/ferramentas/juros-compostos",
-    icon: <TrendingUp className="size-5 text-positive-strong" aria-hidden="true" />,
+    icon: <TrendingUp className="size-4 text-positive-strong" aria-hidden="true" />,
   },
 ];
 
 export function ToolsShowcase() {
   return (
-    <section id="ferramentas" className="relative py-16 sm:py-24 border-t border-border/60 overflow-hidden">
-      {/* Luz ambiente suave de fundo */}
+    <section
+      id="ferramentas"
+      className="relative py-16 sm:py-24 border-t border-border/60 overflow-hidden scroll-mt-20"
+    >
       <div
         className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-primary/5 blur-[140px] -z-10"
         aria-hidden="true"
@@ -83,7 +78,7 @@ export function ToolsShowcase() {
         <ScrollReveal>
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 pb-12">
             <div className="space-y-3 max-w-2xl">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary-strong dark:text-primary">
                 <Sparkles className="size-3.5" aria-hidden="true" />
                 <span>Ferramentas Gratuitas e Abertas</span>
               </div>
@@ -91,8 +86,8 @@ export function ToolsShowcase() {
                 Simuladores Financeiros Baseados em Matemática
               </h2>
               <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                Tome decisões patrimoniais com rigor técnico e sem achismos. Processamento 100% no seu navegador,
-                com links compartilháveis (Stateful URLs) e custo zero de servidor.
+                Tome decisões patrimoniais com rigor técnico e sem achismos. Processamento 100% no
+                seu navegador, com links compartilháveis (Stateful URLs) e custo zero de servidor.
               </p>
             </div>
 
@@ -109,23 +104,20 @@ export function ToolsShowcase() {
           </div>
         </ScrollReveal>
 
-        {/* Grid dos 3 Simuladores */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {TOOLS.map((tool, idx) => (
             <ScrollReveal key={tool.id} delay={idx * 100}>
-              <Card className="flex flex-col justify-between h-full border-border/80 bg-surface shadow-xs hover:border-primary/40 hover:shadow-sm transition-all rounded-2xl p-5 sm:p-6 group">
+              <Card className="flex flex-col justify-between h-full border-border/80 bg-surface shadow-xs rounded-2xl p-5 sm:p-6">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-surface-hover/80 border border-border/60">
-                      {tool.icon}
-                    </span>
+                  <div className="flex items-center justify-between gap-2">
+                    {tool.icon}
                     <Badge variant={tool.badgeVariant} size="xs">
                       {tool.badge}
                     </Badge>
                   </div>
 
                   <div className="space-y-2">
-                    <CardTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground group-hover:text-primary transition-colors">
+                    <CardTitle className="text-base sm:text-lg font-bold tracking-tight text-foreground">
                       {tool.title}
                     </CardTitle>
                     <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
@@ -134,8 +126,8 @@ export function ToolsShowcase() {
                   </div>
 
                   <ul className="space-y-2 pt-2 border-t border-border/50 text-xs text-muted-foreground">
-                    {tool.highlights.map((h, i) => (
-                      <li key={i} className="flex items-start gap-2">
+                    {tool.highlights.map((h) => (
+                      <li key={h} className="flex items-start gap-2">
                         <span className="size-1 rounded-full bg-primary mt-1.5 shrink-0" aria-hidden="true" />
                         <span>{h}</span>
                       </li>
@@ -143,7 +135,7 @@ export function ToolsShowcase() {
                   </ul>
                 </div>
 
-                <div className="pt-6 mt-4 border-t border-border/40">
+                <div className="pt-6 mt-4 border-t border-border/50">
                   <Link
                     to={tool.path}
                     className={cn(

@@ -1,12 +1,19 @@
 import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { calculateYieldOnCost, inferSectorFromTicker } from "@/domain/portfolio";
+import { inferSectorFromTicker } from "@/domain/portfolio";
+import {
+  calculatePositionRowYoC,
+  formatFixedIncomeRateLabel,
+  getAllocationStatusBadgeMeta,
+  getScoreBadgeMeta,
+} from "@/domain/portfolio/position-grouping";
 import { cn } from "@/lib/utils";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import { formatPercent, formatSignedPct } from "@/services/masks/percent";
+import { triggerSensory } from "@/services/sensory";
+import { PositionMobileCardMetrics } from "./position-mobile-card-metrics";
 import type { PositionRow } from "./position-types";
-import { formatQuantity } from "./position-types";
 
 export interface PositionMobileCardProps {
   row: PositionRow;
@@ -36,119 +43,68 @@ export function PositionMobileCard({
 }: PositionMobileCardProps) {
   const effectivePct = row.totalReturnPct !== undefined ? row.totalReturnPct : row.unrealizedPct;
   const pctLabel = row.isCash || effectivePct === null ? "—" : formatSignedPct(effectivePct);
-  const effectiveDividends = row.currency === "USD" ? (row.dividendsNative ?? row.dividends) : row.dividends;
-  const effectiveCost =
-    row.currency === "USD" ? (row.totalCost ?? row.totalCostBRL) : (row.totalCostBRL ?? row.totalCost);
-  const yoc =
-    effectiveDividends && effectiveDividends > 0 && effectiveCost && effectiveCost > 0
-      ? calculateYieldOnCost(effectiveDividends, effectiveCost)
-      : 0;
+  const yoc = calculatePositionRowYoC(row);
   const isClickable = Boolean(onOpen);
   const resolvedSector = row.sector?.trim() || inferSectorFromTicker(row.ticker, row.assetClass);
+  const rfLabel = formatFixedIncomeRateLabel(row, false);
+  const scoreMeta = getScoreBadgeMeta(row.score);
+  const statusMeta = getAllocationStatusBadgeMeta(row.allocationStatus);
 
   return (
     <li
       id={`asset-card-${row.assetId}`}
-      role={isClickable ? "button" : undefined}
-      tabIndex={isClickable ? 0 : undefined}
-      aria-label={isClickable ? `Ver detalhes de ${row.ticker}` : undefined}
-      onClick={isClickable ? () => onOpen?.(row.assetId, row.ticker) : undefined}
-      onKeyDown={
-        isClickable
-          ? (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onOpen?.(row.assetId, row.ticker);
-              }
-            }
-          : undefined
-      }
       className={cn(
-        "flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs transition-colors scroll-mt-24",
+        "relative flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs transition-colors scroll-mt-24",
         highlightId === row.assetId && "bg-primary/10 ring-2 ring-primary shadow-xs",
-        isClickable &&
-          "cursor-pointer hover:bg-surface-hover active:scale-[0.99] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        isClickable && "hover:bg-surface-hover",
       )}
     >
-      {/* Linha 1: Ticker e Setor | Valor Total, Rentabilidade e YoC */}
-      <div className="flex items-center justify-between gap-2 min-w-0">
-        <div className="flex flex-col min-w-0 gap-0.5">
-          <div className="flex items-center gap-1.5 min-w-0">
+      {isClickable ? (
+        <button
+          type="button"
+          aria-label={`Ver detalhes de ${row.ticker}`}
+          onClick={() => {
+            triggerSensory("selection");
+            onOpen?.(row.assetId, row.ticker);
+          }}
+          className="absolute inset-0 rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+      ) : null}
+
+      {/* Linha 1: Ticker, badges de governança e métricas de retorno */}
+      <div className="flex items-start justify-between gap-2 min-w-0">
+        <div className="flex flex-col min-w-0 gap-1">
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
             <span className="truncate font-mono text-base font-bold text-foreground">{row.ticker}</span>
-            {row.isMatured ? (
-              <Badge variant="critical" size="xs">
-                Vencido
-              </Badge>
-            ) : row.fixedIncomeMetadata ? (
-              <Badge variant="muted" size="xs">
-                {row.fixedIncomeMetadata.rate_type === "cdi"
-                  ? `${row.fixedIncomeMetadata.rate_value}% CDI`
-                  : row.fixedIncomeMetadata.rate_type === "selic"
-                    ? `${row.fixedIncomeMetadata.rate_value}% Selic`
-                    : row.fixedIncomeMetadata.rate_type === "pre"
-                      ? `${row.fixedIncomeMetadata.rate_value}% a.a.`
-                      : `IPCA + ${row.fixedIncomeMetadata.rate_value}%`}
+            {rfLabel ? (
+              <Badge variant={row.isMatured ? "critical" : "muted"} size="xs">
+                {rfLabel}
               </Badge>
             ) : null}
-            {!row.isCash && (row.score !== undefined || Boolean(onEvaluateScore)) && (
+            {!row.isCash && (row.score !== undefined || Boolean(onEvaluateScore)) ? (
               onEvaluateScore ? (
                 <button
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onClick={() => {
+                    triggerSensory("selection");
                     onEvaluateScore(row.assetId, row.ticker);
                   }}
                   aria-label={`Avaliar nota de ${row.ticker}`}
-                  className="shrink-0 cursor-pointer rounded-full focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="relative z-10 inline-flex items-center shrink-0 cursor-pointer rounded-full after:absolute after:-inset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <Badge
-                    variant={
-                      row.score == null
-                        ? "muted"
-                        : row.score >= 7
-                          ? "positive"
-                          : row.score >= 4
-                            ? "warning"
-                            : "negative"
-                    }
-                    size="xs"
-                  >
-                    {row.score != null ? `Nota ${row.score}` : "Sem nota"}
+                  <Badge variant={scoreMeta.variant} size="xs">
+                    {scoreMeta.label}
                   </Badge>
                 </button>
               ) : (
-                <Badge
-                  variant={
-                    row.score == null
-                      ? "muted"
-                      : row.score >= 7
-                        ? "positive"
-                        : row.score >= 4
-                          ? "warning"
-                          : "negative"
-                  }
-                  size="xs"
-                >
-                  {row.score != null ? `Nota ${row.score}` : "Sem nota"}
+                <Badge variant={scoreMeta.variant} size="xs">
+                  {scoreMeta.label}
                 </Badge>
               )
-            )}
-            {!row.isCash && row.allocationStatus && row.allocationStatus !== "active" ? (
-              <Badge
-                variant={
-                  row.allocationStatus === "exit"
-                    ? "negative"
-                    : row.allocationStatus === "quarantine"
-                      ? "warning"
-                      : "muted"
-                }
-                size="xs"
-              >
-                {row.allocationStatus === "exit"
-                  ? "Saída"
-                  : row.allocationStatus === "quarantine"
-                    ? "Quarentena"
-                    : "Manter"}
+            ) : null}
+            {!row.isCash && statusMeta ? (
+              <Badge variant={statusMeta.variant} size="xs">
+                {statusMeta.label}
               </Badge>
             ) : null}
           </div>
@@ -158,163 +114,54 @@ export function PositionMobileCard({
             </span>
           ) : null}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex flex-col items-end gap-0.5">
-            <div className="flex items-center gap-1.5">
-              {row.pricingMode !== "total_value" && (
-                <MoneyText
-                  cents={numberToCents(row.valueBRL)}
-                  tone="default"
-                  className="text-sm font-bold text-foreground"
-                />
-              )}
-              <Badge
-                variant={effectivePct === null || row.isCash ? "muted" : effectivePct >= 0 ? "positive" : "negative"}
-                size="xs"
-                className="font-bold tabular-nums"
-              >
-                {pctLabel}
-              </Badge>
-            </div>
-            {yoc > 0 ? (
-              <div className="flex items-center gap-1.5 text-[10px]">
-                {row.unrealizedPct !== null ? (
-                  <span
-                    className={cn(
-                      "font-medium",
-                      row.unrealizedPct >= 0 ? "text-positive-strong" : "text-negative-strong",
-                    )}
-                    title={`Variação da cotação: ${formatSignedPct(row.unrealizedPct)}`}
-                  >
-                    Cota {formatSignedPct(row.unrealizedPct)}
-                  </span>
-                ) : null}
-                <span
-                  className="text-portfolio font-medium"
-                  title={`Yield on Cost acumulado: ${formatCentsAsBRL(numberToCents(row.dividends ?? 0))}`}
-                >
-                  YoC {formatPercent(yoc)}%
-                </span>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </div>
 
-      {/* Linha 2: Métricas de Custódia em layout adaptativo mobile-first */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-2.5 pt-2.5 border-t border-border/50 text-xs">
-        {/* Coluna 1: Preço Inicial ou Quantidade */}
-        <div className="flex flex-col min-w-0">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-medium whitespace-nowrap">
-            {row.pricingMode === "total_value" ? "Preço Inicial" : "Quantidade"}
-          </span>
-          <span className="font-semibold text-foreground whitespace-nowrap tabular-nums">
-            {row.isCash ? (
-              "—"
-            ) : row.pricingMode === "total_value" ? (
+        <div className="flex flex-col items-end gap-0.5 shrink-0">
+          <div className="flex items-center gap-1.5">
+            {row.pricingMode !== "total_value" ? (
               <MoneyText
-                cents={numberToCents(row.totalCostBRL ?? row.totalCost ?? row.averageCost)}
-                currency={row.currency}
+                cents={numberToCents(row.valueBRL)}
                 tone="default"
+                className="text-sm font-bold text-foreground"
               />
-            ) : (
-              formatQuantity(row.quantity)
-            )}
-          </span>
-        </div>
-
-        {/* Coluna 2: Saldo Atual ou Preço */}
-        <div className="flex flex-col min-w-0">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-medium whitespace-nowrap">
-            {row.pricingMode === "total_value" ? "Saldo Atual" : "Preço"}
-          </span>
-          {row.isCash ? (
-            <span className="font-semibold text-foreground whitespace-nowrap">1:1</span>
-          ) : row.pricingMode === "total_value" && onCalibrateAsset ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCalibrateAsset(row.assetId, row.ticker, numberToCents(row.valueBRL));
-              }}
-              aria-label={`Calibrar saldo de ${row.ticker}`}
-              className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded whitespace-nowrap tabular-nums"
-              title={
-                row.fixedIncomeResult && row.fixedIncomeResult.businessDaysAccrued > 0
-                  ? `Saldo projetado (+${row.fixedIncomeResult.businessDaysAccrued}d úteis) — clique para calibrar`
-                  : "Calibrar saldo com extrato oficial"
-              }
+            ) : null}
+            <Badge
+              variant={effectivePct === null || row.isCash ? "muted" : effectivePct >= 0 ? "positive" : "negative"}
+              size="xs"
+              className="font-bold tabular-nums"
             >
-              <MoneyText cents={numberToCents(row.valueBRL)} tone="default" />
-              {row.source === "manual" ||
-              !row.fixedIncomeMetadata?.rate_value ||
-              row.fixedIncomeMetadata.rate_value <= 0 ? (
+              {pctLabel}
+            </Badge>
+          </div>
+          {yoc > 0 ? (
+            <div className="flex items-center gap-1.5 text-[10px]">
+              {row.unrealizedPct !== null ? (
                 <span
-                  aria-hidden="true"
-                  className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                  title="Saldo cadastrado manual — informe a taxa para cálculo automático"
-                />
+                  className={cn(
+                    "font-medium tabular-nums",
+                    row.unrealizedPct >= 0 ? "text-positive-strong" : "text-negative-strong",
+                  )}
+                  title={`Variação da cotação: ${formatSignedPct(row.unrealizedPct)}`}
+                >
+                  Cota {formatSignedPct(row.unrealizedPct)}
+                </span>
               ) : null}
-            </button>
-          ) : onSetManualPrice ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onSetManualPrice(
-                  row.assetId,
-                  row.ticker,
-                  row.currency,
-                  row.priceBRL,
-                  row.source,
-                  row.priceQuote,
-                  row.pricingMode,
-                  row.usdRate,
-                );
-              }}
-              aria-label={`Cotação de ${row.ticker}`}
-              className="inline-flex items-center gap-1 font-semibold text-foreground cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded whitespace-nowrap tabular-nums"
-            >
-              <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
-              {row.source === "manual" ? (
-                <span
-                  aria-hidden="true"
-                  className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                  title="Preço manual"
-                />
-              ) : null}
-            </button>
-          ) : (
-            <span className="inline-flex items-center gap-1 font-semibold text-foreground whitespace-nowrap tabular-nums">
-              <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
-              {row.source === "manual" ? (
-                <span
-                  aria-hidden="true"
-                  className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                  title="Preço manual"
-                />
-              ) : null}
-            </span>
-          )}
-        </div>
-
-        {/* Coluna 3: Lucro/Prejuízo com span no mobile para nunca esmagar centavos */}
-        <div className="col-span-2 sm:col-span-1 flex items-baseline justify-between sm:flex-col sm:justify-start min-w-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-border/30">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/80 font-medium whitespace-nowrap">
-            Lucro/Prejuízo
-          </span>
-          {row.isCash ? (
-            <span className="font-semibold text-muted-foreground">—</span>
-          ) : (
-            <MoneyText
-              cents={numberToCents(row.unrealizedPnl)}
-              tone="auto"
-              sign="explicit"
-              className="font-semibold whitespace-nowrap tabular-nums"
-            />
-          )}
+              <span
+                className="text-portfolio font-medium tabular-nums"
+                title={`Yield on Cost acumulado: ${formatCentsAsBRL(numberToCents(row.dividends ?? 0))}`}
+              >
+                YoC {formatPercent(yoc)}%
+              </span>
+            </div>
+          ) : null}
         </div>
       </div>
+
+      {/* Linha 2: Métricas de Custódia e ações contextuais agrupadas (M6) */}
+      <PositionMobileCardMetrics
+        row={row}
+        onCalibrateAsset={onCalibrateAsset}
+        onSetManualPrice={onSetManualPrice}
+      />
     </li>
   );
 }

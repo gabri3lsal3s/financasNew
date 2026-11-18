@@ -23,22 +23,35 @@ describe("SharedLinkHeaderNav", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(platformModule.isNativePlatform).mockReturnValue(false);
+    vi.mocked(platformModule.isMobileDevice).mockReturnValue(false);
     vi.mocked(pwaModule.isStandaloneMode).mockReturnValue(false);
     vi.mocked(authHook.useAuth).mockReturnValue({ session: null } as unknown as ReturnType<typeof authHook.useAuth>);
   });
 
-  it("renderiza versão de navegador comum com botão Abrir no App e alternador de tema", () => {
+  it("oculta botão Abrir no App em navegadores Desktop e mantém alternador de tema", () => {
+    renderWithProviders(
+      <SharedLinkHeaderNav badgeLabel="Racha de Conta" targetPath="r/tok123" />
+    );
+
+    expect(screen.getByText("Racha de Conta")).toBeInTheDocument();
+    expect(screen.queryByText("Abrir no App")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /alternar tema/i })).toBeInTheDocument();
+    expect(screen.queryByText("Voltar ao Início")).not.toBeInTheDocument();
+  });
+
+  it("exibe botão Abrir no App em navegador móvel", () => {
+    vi.mocked(platformModule.isMobileDevice).mockReturnValue(true);
+
     renderWithProviders(
       <SharedLinkHeaderNav badgeLabel="Racha de Conta" targetPath="r/tok123" />
     );
 
     expect(screen.getByText("Racha de Conta")).toBeInTheDocument();
     expect(screen.getByText("Abrir no App")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /alternar tema/i })).toBeInTheDocument();
-    expect(screen.queryByText("Voltar ao Início")).not.toBeInTheDocument();
   });
 
   it("renderiza botão Voltar ao Início quando em ambiente PWA standalone", () => {
+    vi.mocked(platformModule.isMobileDevice).mockReturnValue(true);
     vi.mocked(pwaModule.isStandaloneMode).mockReturnValue(true);
 
     renderWithProviders(

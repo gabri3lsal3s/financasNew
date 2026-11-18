@@ -1,8 +1,7 @@
 import { useCallback, useState } from "react";
 import { Layers, Shield, Smartphone, Sparkles } from "lucide-react";
-import { Button, Modal } from "@/components/ui";
+import { Button, Modal, ModalFooter } from "@/components/ui";
 import { isNativePlatform } from "@/services/native/platform";
-import { triggerSensory } from "@/services/sensory";
 import {
   hasSeenNativeOnboarding,
   markNativeOnboardingSeen,
@@ -10,20 +9,18 @@ import {
 } from "@/state/demo-mode";
 
 export interface NativeOnboardingDialogProps {
-  /** Controle externo de visibilidade (opcional). Se omitido, deriva de isNativePlatform() && !hasSeenNativeOnboarding(). */
+  /** Controle externo de visibilidade (opcional). */
   open?: boolean;
   /** Callback acionado ao alterar o estado de abertura. */
   onOpenChange?: (open: boolean) => void;
   /** Callback acionado quando o usuário aceita e inicia o tour nativo. */
   onStartNativeTour?: () => void;
-  /** Força a exibição ignorando localStorage e plataforma (útil para testes unitários ou demonstrações). */
+  /** Força a exibição ignorando localStorage e plataforma. */
   forceShow?: boolean;
 }
 
 /**
  * Diálogo de Onboarding no Primeiro Uso / Instalação do APK Nativo Android.
- * Apresentado quando o aplicativo nativo é inicializado pela primeira vez para sugerir
- * o micro-tour dos recursos nativos (aceleração, captura de notificações bancárias e biometria).
  */
 export function NativeOnboardingDialog({
   open,
@@ -46,7 +43,6 @@ export function NativeOnboardingDialog({
   }, [onOpenChange]);
 
   const handleStartTour = useCallback(() => {
-    triggerSensory("action");
     markNativeOnboardingSeen();
     startDemo("app_native_apk");
     setInternalOpen(false);
@@ -71,12 +67,12 @@ export function NativeOnboardingDialog({
       description="Seu aplicativo foi instalado com sucesso. Conheça as vantagens exclusivas e aceleração nativa."
       size="md"
       footer={
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2.5 w-full">
+        <ModalFooter borderless>
           <Button
             type="button"
             variant="ghost"
             onClick={handleClose}
-            className="w-full sm:w-auto text-muted-foreground hover:text-foreground cursor-pointer"
+            className="text-muted-foreground hover:text-foreground"
           >
             Depois
           </Button>
@@ -85,19 +81,18 @@ export function NativeOnboardingDialog({
             type="button"
             variant="default"
             onClick={handleStartTour}
-            className="w-full sm:w-auto gap-2 cursor-pointer font-semibold"
+            className="gap-2 font-semibold"
           >
             <Sparkles className="size-4 shrink-0" aria-hidden="true" />
             <span>Fazer Tour Rápido (1 min)</span>
           </Button>
-        </div>
+        </ModalFooter>
       }
     >
       <div className="space-y-3 py-2" role="group" aria-label="Recursos nativos exclusivos">
-        {/* Recurso 1: Desempenho Acelerado */}
-        <div className="flex items-start gap-3 rounded-lg border border-border/80 bg-surface/40 p-3 transition-colors">
+        <div className="flex items-start gap-3 rounded-lg border border-border/80 bg-surface p-3 shadow-xs">
           <Smartphone
-            className="size-4 shrink-0 text-primary mt-0.5"
+            className="size-4 shrink-0 text-primary-strong mt-0.5"
             aria-hidden="true"
           />
           <div className="min-w-0 flex-1">
@@ -110,10 +105,9 @@ export function NativeOnboardingDialog({
           </div>
         </div>
 
-        {/* Recurso 2: Biometria Física e Escudo de Privacidade */}
-        <div className="flex items-start gap-3 rounded-lg border border-border/80 bg-surface/40 p-3 transition-colors">
+        <div className="flex items-start gap-3 rounded-lg border border-border/80 bg-surface p-3 shadow-xs">
           <Shield
-            className="size-4 shrink-0 text-positive mt-0.5"
+            className="size-4 shrink-0 text-positive-strong mt-0.5"
             aria-hidden="true"
           />
           <div className="min-w-0 flex-1">
@@ -126,8 +120,7 @@ export function NativeOnboardingDialog({
           </div>
         </div>
 
-        {/* Recurso 3: Atalhos de Launcher e Compartilhamento */}
-        <div className="flex items-start gap-3 rounded-lg border border-border/80 bg-surface/40 p-3 transition-colors">
+        <div className="flex items-start gap-3 rounded-lg border border-border/80 bg-surface p-3 shadow-xs">
           <Layers
             className="size-4 shrink-0 text-portfolio mt-0.5"
             aria-hidden="true"

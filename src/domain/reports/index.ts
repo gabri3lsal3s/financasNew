@@ -374,4 +374,54 @@ export {
   type NormalizedResult,
 } from "./distribution";
 
+export {
+  buildTearSheetModel,
+  resolveAssetClassTokenColor,
+  type WealthPositionRow,
+  type MonthFlowSummary,
+  type BuildTearSheetModelParams,
+  type TearSheetModel,
+  type TearSheetPerformancePoint,
+  type TearSheetAllocationRow,
+  type TearSheetClassGroup,
+  type TearSheetClassGroupItem,
+  type TearSheetStackedSegment,
+} from "./build-tear-sheet-model";
+
+export {
+  buildFinancialDRE,
+  buildReportFreedomAnalysis,
+  buildReportPeriodLabel,
+  mapCategoriesForCloseReport,
+  mapPaymentMethodsForCloseReport,
+  mapPositionRowsToWealthRows,
+  sumContributionsInPeriod,
+  type ReportContributionLike,
+  type ReportPeriodMode,
+  type WealthSourceRowLike,
+} from "./report-mappers";
+
+export {
+  buildReportAllocationAnalysis,
+  buildReportConcentrationAndDonuts,
+  resolvePeriodPatrimonyAndCost,
+  resolveSelectedPortfolioSnapshot,
+  type InvestmentRowInput,
+} from "./build-investment-analytics";
+
+export {
+  buildReportExcelWorkbook,
+  type BuildReportExcelWorkbookParams,
+  type ExcelPositionSourceRow,
+} from "./build-excel-workbook";
+
+
+export {
+  computePeriodInvestmentFlow,
+  computeYearDividendsBRL,
+  mapHistoricalPitPositions,
+  type PeriodInvestmentFlowResult,
+} from "./period-investment-flow";
+
+
 

@@ -70,4 +70,33 @@ describe("HouseholdExpenseFeed", () => {
       screen.getByText("Nenhuma despesa familiar registrada neste mês"),
     ).toBeInTheDocument();
   });
+
+  it("pagina resultados a cada 50 itens e permite carregar mais", async () => {
+    const user = userEvent.setup();
+    const manyExpenses: FamilyConsolidationExpense[] = Array.from({ length: 65 }, (_, i) => ({
+      id: `exp-${i + 1}`,
+      description: `Lançamento Familiar ${String(i + 1).padStart(2, "0")}`,
+      date: "2026-11-04",
+      amount_cents: 1000,
+      category_id: "cat-1",
+      category_name: "Supermercado",
+      category_icon: "shopping-cart",
+      category_color: "#10b981",
+      user_id: "user-1",
+      payer_name: "Gabriel",
+      is_own: true,
+      created_at: `2026-11-04T${String(23 - Math.floor(i / 4)).padStart(2, "0")}:${String((i % 4) * 15).padStart(2, "0")}:00Z`,
+    }));
+
+    render(<HouseholdExpenseFeed expenses={manyExpenses} currentUserId="user-1" />);
+
+    const loadMoreBtn = screen.getByRole("button", { name: /Carregar mais \(15 restantes\)/i });
+    expect(loadMoreBtn).toBeInTheDocument();
+    expect(screen.queryByText("Lançamento Familiar 65")).not.toBeInTheDocument();
+
+    await user.click(loadMoreBtn);
+
+    expect(screen.getByText("Lançamento Familiar 65")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Carregar mais/i })).not.toBeInTheDocument();
+  });
 });

@@ -55,7 +55,7 @@ export function BudgetsGoalsTab({
   onOpenCreateCategory,
 }: BudgetsGoalsTabProps) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5 sm:gap-6">
       <MonthPicker value={month} onValueChange={onMonthChange} />
 
       {/* Banner de Metas & Campanhas Coletivas */}
@@ -77,7 +77,7 @@ export function BudgetsGoalsTab({
         <Button
           size="sm"
           onClick={onOpenNewStandaloneCampaign}
-          className="shrink-0 self-start sm:self-auto gap-1.5 cursor-pointer"
+          className="shrink-0 self-stretch sm:self-center gap-1.5"
         >
           <Plus className="size-4" aria-hidden="true" />
           <span>Nova Meta</span>
@@ -119,8 +119,9 @@ export function BudgetsGoalsTab({
             type="button"
             variant="ghost"
             size="sm"
+            sensoryIntent="selection"
             onClick={onToggleShowArchivedCampaigns}
-            className="self-center text-xs text-muted-foreground hover:text-foreground"
+            className="self-center text-muted-foreground hover:text-foreground"
           >
             {showArchivedCampaigns
               ? "Ocultar metas arquivadas"
@@ -147,7 +148,7 @@ export function BudgetsGoalsTab({
 
       {/* Seção de Metas Mensais por Categoria de Renda */}
       <div className="flex flex-col gap-3 pt-2">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
           <h2 className="text-sm font-semibold text-foreground">Metas Mensais por Categoria de Renda</h2>
           <p className="hidden text-xs text-muted-foreground sm:block">
             Expectativa mensal por categoria para comparar com recebimentos.
@@ -160,7 +161,7 @@ export function BudgetsGoalsTab({
             title="Sem categorias de renda"
             description="Crie categorias de renda para definir metas mensais ou crie uma Meta Coletiva acima."
             action={
-              <Button size="sm" onClick={onOpenCreateCategory}>
+              <Button size="sm" onClick={onOpenCreateCategory} className="gap-1.5">
                 <Plus className="size-4" aria-hidden="true" />
                 Nova categoria
               </Button>

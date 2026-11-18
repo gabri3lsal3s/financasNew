@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { CreditCard, Landmark, ReceiptText, TrendingUp } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
+import { formatDateBR } from "@/lib/date";
 import { ReportHeader, ReportKpiGrid, ReportFooter } from "./reports";
 
 export interface CardInvoiceExpenseRow {
@@ -43,12 +44,6 @@ export interface CardInvoicePrintViewProps {
   accountHolder?: string;
 }
 
-function formatDate(iso: string): string {
-  const [y, m, d] = iso.split("-");
-  if (!y || !m || !d) return iso;
-  return `${d}/${m}/${y}`;
-}
-
 /**
  * Fatura do cartão imprimível (PDF) — documento executivo da competência com
  * APENAS os gastos lançados no cartão (compara com a fatura do banco).
@@ -66,7 +61,7 @@ export function CardInvoicePrintView({
   saldoPonderadoCents,
   expenses,
   payments = [],
-  appName = "Finanças Pessoais",
+  appName = "Axir",
   accountHolder,
 }: CardInvoicePrintViewProps) {
   return (
@@ -120,7 +115,7 @@ export function CardInvoicePrintView({
         {expenses.length === 0 ? (
           <p className="text-sm text-muted-foreground py-1">Nenhum gasto lançado nesta competência.</p>
         ) : (
-          <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
+          <div className="w-full min-w-0 rounded-lg border border-border/80 bg-surface shadow-xs overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
             <table className="w-full min-w-[540px] sm:min-w-full print:min-w-0 print:w-full print:table-fixed border-collapse text-xs">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">
@@ -135,17 +130,17 @@ export function CardInvoicePrintView({
               <tbody className="divide-y divide-border/60">
                 {expenses.map((expense, index) => (
                   <Fragment key={`${expense.date}-${expense.description}-${index}`}>
-                    <tr className="break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
-                      <td className="py-1.5 px-2.5 tabular-nums font-mono text-muted-foreground">{formatDate(expense.date)}</td>
+                    <tr className="break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
+                      <td className="py-1.5 px-2.5 tabular-nums font-mono text-muted-foreground whitespace-nowrap">{formatDateBR(expense.date)}</td>
                       <td className="py-1.5 px-2.5 font-bold text-foreground truncate">{expense.description}</td>
                       <td className="py-1.5 px-2.5 text-[11px] text-muted-foreground truncate">{expense.categoryName}</td>
-                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono">
+                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
                         <MoneyText cents={expense.valueCents} tone="negative" />
                       </td>
-                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono text-muted-foreground">
+                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono text-muted-foreground whitespace-nowrap">
                         <MoneyText cents={expense.reportValueCents} tone="default" />
                       </td>
-                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono text-muted-foreground">{expense.installments}</td>
+                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono text-muted-foreground whitespace-nowrap">{expense.installments}</td>
                     </tr>
                   </Fragment>
                 ))}
@@ -153,10 +148,10 @@ export function CardInvoicePrintView({
                   <td className="py-2 px-2.5 uppercase text-[10px] tracking-wider" colSpan={3}>
                     Total ({expenses.length} {expenses.length === 1 ? "gasto" : "gastos"})
                   </td>
-                  <td className="py-2 px-2.5 text-right tabular-nums font-mono">
+                  <td className="py-2 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
                     <MoneyText cents={totalBrutoCents} tone="negative" />
                   </td>
-                  <td className="py-2 px-2.5 text-right tabular-nums font-mono">
+                  <td className="py-2 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
                     <MoneyText cents={totalPonderadoCents} tone="default" />
                   </td>
                   <td className="py-2 px-2.5 text-right" />
@@ -171,7 +166,7 @@ export function CardInvoicePrintView({
       {payments.length > 0 ? (
         <section aria-label="Pagamentos e estornos" className="flex flex-col gap-2 break-inside-avoid">
           <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Pagamentos e estornos</h2>
-          <div className="rounded-lg border border-border/80 overflow-hidden shadow-2xs">
+          <div className="w-full min-w-0 rounded-lg border border-border/80 bg-surface shadow-xs overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
             <table className="w-full min-w-[440px] sm:min-w-full print:min-w-0 print:w-full print:table-fixed border-collapse text-xs">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">
@@ -183,15 +178,15 @@ export function CardInvoicePrintView({
               </thead>
               <tbody className="divide-y divide-border/60">
                 {payments.map((payment, index) => (
-                  <tr key={`${payment.date}-${payment.note}-${index}`} className="break-inside-avoid even:bg-muted/20 print:even:bg-slate-50/50">
-                    <td className="py-1.5 px-2.5 tabular-nums font-mono text-muted-foreground">{formatDate(payment.date)}</td>
+                  <tr key={`${payment.date}-${payment.note}-${index}`} className="break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
+                    <td className="py-1.5 px-2.5 tabular-nums font-mono text-muted-foreground whitespace-nowrap">{formatDateBR(payment.date)}</td>
                     <td className="py-1.5 px-2.5 font-bold text-foreground">
                       {payment.note || (payment.isRefund ? "Estorno" : "Pagamento de fatura")}
                     </td>
-                    <td className="py-1.5 px-2.5 text-right tabular-nums font-mono">
-                      <MoneyText cents={payment.amountCents} tone={payment.isRefund ? "positive" : "negative"} />
+                    <td className="py-1.5 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
+                      <MoneyText cents={payment.amountCents} tone={payment.isRefund ? "positive" : "default"} />
                     </td>
-                    <td className="py-1.5 px-2.5 text-right text-[11px] text-muted-foreground">
+                    <td className="py-1.5 px-2.5 text-right text-[11px] text-muted-foreground whitespace-nowrap">
                       {payment.isRefund ? "Estorno" : "Pagamento"}
                     </td>
                   </tr>

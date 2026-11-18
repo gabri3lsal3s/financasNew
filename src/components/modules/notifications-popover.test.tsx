@@ -249,7 +249,7 @@ describe("NotificationsPopover", () => {
     // Verifica renderização dos itens e badges
     expect(screen.getByText("Cobrança duplicada Netflix")).toBeInTheDocument();
     expect(screen.getByText("Crítico")).toBeInTheDocument();
-    expect(screen.getByText("• Nubank")).toBeInTheDocument();
+    expect(screen.getByText("Nubank")).toBeInTheDocument();
 
     expect(screen.getByText("Conta de Energia")).toBeInTheDocument();
     expect(screen.getByText("Vence hoje")).toBeInTheDocument();

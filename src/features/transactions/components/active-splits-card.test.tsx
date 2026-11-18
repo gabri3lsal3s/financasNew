@@ -4,6 +4,7 @@ import { ActiveSplitsCard } from "./active-splits-card";
 import type { Debt, PublicShare } from "@/types";
 
 const mockSettleIntegratedReceivable = vi.fn();
+const mockUpdatePublicShare = vi.fn().mockResolvedValue({});
 let mockPublicShares: PublicShare[] = [];
 let mockDebts: Debt[] = [];
 
@@ -18,6 +19,10 @@ vi.mock("@/state", () => ({
   }),
   useSettleIntegratedReceivable: () => ({
     mutateAsync: mockSettleIntegratedReceivable,
+    isPending: false,
+  }),
+  useUpdatePublicShare: () => ({
+    mutateAsync: mockUpdatePublicShare,
     isPending: false,
   }),
 }));
@@ -138,6 +143,13 @@ describe("ActiveSplitsCard", () => {
       expect(mockSettleIntegratedReceivable).toHaveBeenCalledWith({
         debtId: "debt-2",
         result: 100,
+      });
+      expect(mockUpdatePublicShare).toHaveBeenCalledWith({
+        id: "share-1",
+        payload: expect.objectContaining({
+          is_completed: true,
+        }),
+        isRevoked: true,
       });
     });
   });
@@ -380,9 +392,10 @@ describe("ActiveSplitsCard", () => {
     // Clica para expandir
     fireEvent.click(expandBtn);
 
-    // Agora o racha quitado deve estar visível e o botão muda para Recolher
+    // Agora o racha quitado deve estar visível, o botão muda para Recolher e o link público não é exibido
     expect(screen.getByText("Racha Bar Quitado")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Recolher/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Abrir página pública do racha/i })).not.toBeInTheDocument();
 
     // Clica para recolher novamente
     fireEvent.click(screen.getByRole("button", { name: /Recolher/i }));

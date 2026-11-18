@@ -1,27 +1,25 @@
 import { useState } from "react";
-import { Database, Download, FileSpreadsheet, RefreshCcw, Sparkles } from "lucide-react";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { DatePicker } from "@/components/ui/date-picker";
-import { Dropzone } from "@/components/ui/dropzone";
-import { RadioGroup } from "@/components/ui/radio-group";
-import { MonthPicker } from "@/components/modules/month-picker";
-import { getErrorMessage } from "@/services/errors";
-import { triggerSensory } from "@/services/sensory";
-import { currentMonth, monthRange } from "@/lib/date";
 import { addDaysISO } from "@/domain/debts";
 import type { RestoreSummary } from "@/domain/export";
+import { currentMonth, monthRange } from "@/lib/date";
+import { getErrorMessage } from "@/services/errors";
 import { authenticateWithBiometrics, isNativePlatform } from "@/services/native";
+import { triggerSensory } from "@/services/sensory";
+import {
+  CsvExportCard,
+  type CsvExportCardProps,
+  type ExportCsvKind,
+  type ExportRange,
+} from "./reports/csv-export-card";
+import {
+  EXPORT_CSV_ACTIONS,
+  formatRestoreSummaryEntries,
+} from "./reports/export-hub-constants";
+import { JsonBackupCard, type RestoreStep } from "./reports/json-backup-card";
 
-export type ExportCsvKind = "expenses" | "incomes" | "invoices" | "positions";
-
-/** Período de exportação — `end` exclusivo (range [start, end)). */
-export interface ExportRange {
-  start: string;
-  end: string;
-}
+export { CsvExportCard };
+export type { CsvExportCardProps, ExportCsvKind, ExportRange };
 
 export interface ExportDataHubProps {
   /** Gera e baixa o backup JSON completo. */
@@ -39,41 +37,6 @@ export interface ExportDataHubProps {
   /** Exibe exclusivamente o painel de Extratos CSV, ocultando o bloco de backup/restore JSON. */
   csvOnly?: boolean;
 }
-
-
-type RestoreStep =
-  | { step: "idle" }
-  | { step: "validating" }
-  | { step: "preview"; file: File; summary: RestoreSummary }
-  | { step: "restoring"; file: File; summary: RestoreSummary }
-  | { step: "done"; summary: RestoreSummary }
-  | { step: "error"; message: string };
-
-const CSV_ACTIONS: { kind: ExportCsvKind; label: string }[] = [
-  { kind: "expenses", label: "Despesas" },
-  { kind: "incomes", label: "Receitas" },
-  { kind: "invoices", label: "Faturas de cartão" },
-  { kind: "positions", label: "Posições da carteira" },
-];
-
-const SUMMARY_LABELS: Record<string, string> = {
-  categories: "Categorias",
-  credit_cards: "Cartões",
-  incomes: "Receitas",
-  expenses: "Despesas",
-  card_payments: "Pagamentos de fatura",
-  debts: "Dívidas",
-  budgets: "Orçamentos",
-  income_goals: "Metas de renda",
-  insight_feedback: "Feedback de insights",
-  reminder_states: "Lembretes",
-  portfolio_assets: "Ativos",
-  portfolio_transactions: "Lançamentos de ativos",
-  class_targets: "Metas por classe",
-  sector_targets: "Metas por setor",
-  asset_prices: "Cotações manuais",
-  user_preferences: "Preferências",
-};
 
 /** Hub de Exportação e Dados (F22) — composição 100% presentacional. */
 export function ExportDataHub({
@@ -98,19 +61,10 @@ export function ExportDataHub({
 
   const periodValid =
     periodMode === "month" ||
-    (customStart.length === 10 &&
-      customEnd.length === 10 &&
-      customStart <= customEnd);
+    (customStart.length === 10 && customEnd.length === 10 && customStart <= customEnd);
 
-  const getRange = (): ExportRange => {
-    if (periodMode === "month") {
-      return monthRange(month);
-    }
-    return {
-      start: customStart,
-      end: addDaysISO(customEnd, 1),
-    };
-  };
+  const getRange = (): ExportRange =>
+    periodMode === "month" ? monthRange(month) : { start: customStart, end: addDaysISO(customEnd, 1) };
 
   const executeExportJson = async () => {
     if (!onExportJson) return;
@@ -136,20 +90,13 @@ export function ExportDataHub({
         "Confirme sua identidade para exportar seus dados financeiros",
       );
       if (!auth.success) {
-        if (auth.error) {
-          setJsonError(auth.error);
-        }
+        if (auth.error) setJsonError(auth.error);
         return;
       }
       await executeExportJson();
     } else {
       setShowConfirmJsonExport(true);
     }
-  };
-
-  const handleConfirmJsonExport = () => {
-    setShowConfirmJsonExport(false);
-    void executeExportJson();
   };
 
   const handleExportCsv = async (kind: ExportCsvKind) => {
@@ -200,239 +147,51 @@ export function ExportDataHub({
     restore.step === "validating" ||
     restore.step === "restoring";
 
-  const summaryEntries = (summary: RestoreSummary): [string, number][] =>
-    Object.entries(summary)
-      .filter(([, count]) => count > 0)
-      .map(([key, count]) => [SUMMARY_LABELS[key] ?? key, count]);
-
   const previewSummary = restore.step === "preview" ? restore.summary : null;
-
   const renderedCsvActions = availableCsvKinds
-    ? CSV_ACTIONS.filter((action) => availableCsvKinds.includes(action.kind))
-    : CSV_ACTIONS;
+    ? EXPORT_CSV_ACTIONS.filter((action) => availableCsvKinds.includes(action.kind))
+    : EXPORT_CSV_ACTIONS;
+
+  const csvCardProps: CsvExportCardProps = {
+    periodMode,
+    onPeriodModeChange: setPeriodMode,
+    month,
+    onMonthChange: setMonth,
+    customStart,
+    onCustomStartChange: setCustomStart,
+    customEnd,
+    onCustomEndChange: setCustomEnd,
+    periodValid,
+    busy,
+    csvBusy,
+    csvError,
+    actions: renderedCsvActions,
+    onExportCsv: (kind) => void handleExportCsv(kind),
+  };
 
   if (csvOnly) {
-    if (renderedCsvActions.length === 0) return null;
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileSpreadsheet className="size-4 text-muted-foreground" aria-hidden="true" />
-            <span>Extratos CSV</span>
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Exporte relatórios financeiros estruturados por mês ou período customizado para planilhas.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <RadioGroup
-            value={periodMode}
-            onValueChange={(value) => setPeriodMode(value as "month" | "custom")}
-            name="periodo-exportacao"
-            options={[
-              { value: "month", label: "Por mês" },
-              { value: "custom", label: "Intervalo customizado" },
-            ]}
-            className="flex-row gap-4"
-          />
-
-          <div className="flex flex-col gap-3">
-            {periodMode === "month" ? (
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-medium text-muted-foreground">Mês</span>
-                <MonthPicker value={month} onValueChange={setMonth} disabled={busy} />
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">De</span>
-                  <DatePicker value={customStart} onValueChange={setCustomStart} ariaLabel="Data inicial" disabled={busy} />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">Até</span>
-                  <DatePicker value={customEnd} onValueChange={setCustomEnd} ariaLabel="Data final" disabled={busy} />
-                </div>
-              </div>
-            )}
-            {!periodValid ? (
-              <p className="text-xs text-critical">Informe um intervalo válido (início antes ou igual ao fim).</p>
-            ) : null}
-          </div>
-
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {renderedCsvActions.map(({ kind, label }) => (
-              <Button
-                key={kind}
-                type="button"
-                variant="outline"
-                size="sm"
-                loading={csvBusy === kind}
-                disabled={!periodValid || (busy && csvBusy !== kind)}
-                onClick={() => void handleExportCsv(kind)}
-                className="justify-start gap-2"
-              >
-                <Download className="size-4" aria-hidden="true" />
-                <span>CSV de {label}</span>
-              </Button>
-            ))}
-          </div>
-
-          {csvError && <Alert variant="error">{csvError}</Alert>}
-        </CardContent>
-      </Card>
+      <CsvExportCard
+        {...csvCardProps}
+        description="Exporte relatórios financeiros estruturados por mês ou período customizado para planilhas."
+      />
     );
   }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            <Database className="size-4 inline-block mr-2 -mt-0.5 text-muted-foreground" aria-hidden="true" />
-            Backup & Exportação
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl border border-border bg-surface gap-3">
-            <div>
-              <div className="font-semibold text-sm text-foreground">Exportar dados completos (JSON)</div>
-              <div className="text-xs text-muted-foreground mt-0.5">
-                Baixe uma cópia estruturada e versionada de todos os seus dados: transações, cartões, dívidas, orçamentos e carteira.
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              loading={exportingJson}
-              disabled={busy && !exportingJson}
-              onClick={handleExportJsonClick}
-              className="gap-2 shrink-0"
-            >
-              <Download className="size-4" aria-hidden="true" />
-              <span>Exportar JSON</span>
-            </Button>
-          </div>
+      <JsonBackupCard
+        exportingJson={exportingJson}
+        busy={busy}
+        jsonError={jsonError}
+        restore={restore}
+        onExportJsonClick={() => void handleExportJsonClick()}
+        onFiles={(files) => void handleFiles(files)}
+        onResetRestore={() => setRestore({ step: "idle" })}
+        onOpenRestoreWizard={onOpenRestoreWizard}
+      />
 
-          {jsonError && <Alert variant="error">{jsonError}</Alert>}
-
-          <div className="flex flex-col gap-3 p-3.5 rounded-xl border border-border bg-surface">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-              <div>
-                <div className="font-semibold text-sm text-foreground">Restaurar backup</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  Substitui todos os dados atuais pelo conteúdo do arquivo ou utilize o assistente com desduplicação.
-                </div>
-              </div>
-              {onOpenRestoreWizard && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onOpenRestoreWizard}
-                  className="gap-1.5 text-xs font-medium cursor-pointer shrink-0 self-end sm:self-auto"
-                >
-                  <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-                  <span>Restaurar com Assistente</span>
-                </Button>
-              )}
-            </div>
-            {restore.step === "idle" || restore.step === "validating" ? (
-              <Dropzone
-                onFiles={handleFiles}
-                accept="application/json,.json"
-                label="Arraste o arquivo .json aqui ou clique para selecionar"
-                hint="Arquivo gerado em Exportar JSON (formato versionado)."
-                disabled={busy}
-              />
-            ) : null}
-            {restore.step === "validating" ? (
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <RefreshCcw className="size-4 animate-spin" aria-hidden="true" />
-                Validando integridade do backup...
-              </p>
-            ) : null}
-            {restore.step === "done" ? (
-              <Alert variant="success">Backup restaurado com sucesso — os dados foram atualizados.</Alert>
-            ) : null}
-            {restore.step === "error" ? (
-              <Alert variant="error">
-                <div className="flex w-full items-start justify-between gap-3">
-                  <span className="whitespace-pre-line">{restore.message}</span>
-                  <Button type="button" size="sm" variant="outline" onClick={() => setRestore({ step: "idle" })}>
-                    Descartar
-                  </Button>
-                </div>
-              </Alert>
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
-
-      {renderedCsvActions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              <FileSpreadsheet className="size-4 inline-block mr-2 -mt-0.5 text-muted-foreground" aria-hidden="true" />
-              Extratos CSV
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <RadioGroup
-              value={periodMode}
-              onValueChange={(value) => setPeriodMode(value as "month" | "custom")}
-              name="periodo-exportacao"
-              options={[
-                { value: "month", label: "Por mês" },
-                { value: "custom", label: "Intervalo customizado" },
-              ]}
-              className="flex-row gap-4"
-            />
-
-            <div className="flex flex-col gap-3">
-              {periodMode === "month" ? (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-muted-foreground">Mês</span>
-                  <MonthPicker value={month} onValueChange={setMonth} disabled={busy} />
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">De</span>
-                    <DatePicker value={customStart} onValueChange={setCustomStart} ariaLabel="Data inicial" disabled={busy} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">Até</span>
-                    <DatePicker value={customEnd} onValueChange={setCustomEnd} ariaLabel="Data final" disabled={busy} />
-                  </div>
-                </div>
-              )}
-              {!periodValid ? (
-                <p className="text-xs text-critical">Informe um intervalo válido (início antes ou igual ao fim).</p>
-              ) : null}
-            </div>
-
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {renderedCsvActions.map(({ kind, label }) => (
-                <Button
-                  key={kind}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  loading={csvBusy === kind}
-                  disabled={!periodValid || (busy && csvBusy !== kind)}
-                  onClick={() => void handleExportCsv(kind)}
-                  className="justify-start gap-2"
-                >
-                  <Download className="size-4" aria-hidden="true" />
-                  <span>CSV de {label}</span>
-                </Button>
-              ))}
-            </div>
-
-            {csvError && <Alert variant="error">{csvError}</Alert>}
-          </CardContent>
-        </Card>
-      )}
+      <CsvExportCard {...csvCardProps} />
 
       <ConfirmDialog
         open={showConfirmJsonExport}
@@ -442,16 +201,17 @@ export function ExportDataHub({
         confirmLabel="Exportar backup"
         cancelLabel="Cancelar"
         confirmPending={exportingJson}
-        onConfirm={handleConfirmJsonExport}
+        onConfirm={() => {
+          setShowConfirmJsonExport(false);
+          void executeExportJson();
+        }}
       />
 
       {previewSummary && (
         <ConfirmDialog
           open={restore.step === "preview"}
           onOpenChange={(open) => {
-            if (!open && restore.step === "preview") {
-              setRestore({ step: "idle" });
-            }
+            if (!open && restore.step === "preview") setRestore({ step: "idle" });
           }}
           title="Resumo do backup"
           description="Esta ação substituirá todos os seus dados atuais pelo conteúdo do backup. Verifique a contagem de registros:"
@@ -460,12 +220,11 @@ export function ExportDataHub({
           variant="destructive"
           onConfirm={handleConfirmRestore}
         >
-
           <div className="mt-2 space-y-1 text-xs">
-            {summaryEntries(previewSummary).map(([label, count]) => (
+            {formatRestoreSummaryEntries(previewSummary).map(([label, count]) => (
               <div key={label} className="flex justify-between py-0.5 text-muted-foreground">
                 <span>{label}</span>
-                <span className="font-mono text-foreground">{count}</span>
+                <span className="font-mono tabular-nums text-foreground">{count}</span>
               </div>
             ))}
           </div>

@@ -151,5 +151,45 @@ describe("domain/portfolio/asset-governance-insights (§F41)", () => {
     expect(result.insights).toHaveLength(0);
     expect(result.summary.totalInsights).toBe(0);
     expect(result.consolidatedReviewAlert).toBeNull();
+    expect(result.consolidatedUpcomingAlert).toBeNull();
+    expect(result.consolidatedUnscoredAlert).toBeNull();
+  });
+
+  it("detecta revisões próximas do vencimento (≤ 30 dias restantes) e consolida com tickers", () => {
+    const assets: GovernanceAssetInput[] = [
+      makeAsset({
+        id: "u1",
+        ticker: "ITUB4",
+        last_reviewed_at: "2026-06-05T12:00:00Z", // ~165 dias atrás, faltam 15 dias para 180
+        review_frequency_months: 6,
+      }),
+      makeAsset({
+        id: "u2",
+        ticker: "WEGE3",
+        last_reviewed_at: "2026-05-26T12:00:00Z", // ~175 dias atrás, faltam 5 dias para 180
+        review_frequency_months: 6,
+      }),
+    ];
+
+    const result = generateAssetGovernanceInsights({ assets, referenceDate: refDate });
+
+    expect(result.summary.overdueCount).toBe(0);
+    expect(result.summary.upcomingReviewCount).toBe(2);
+    expect(result.consolidatedUpcomingAlert).toBeDefined();
+    expect(result.consolidatedUpcomingAlert?.tickers).toEqual(["WEGE3", "ITUB4"]);
+    expect(result.consolidatedUpcomingAlert?.daysUntilReview).toBe(5);
+  });
+
+  it("detecta ativos sem nota definida e agrupa em consolidatedUnscoredAlert", () => {
+    const assets: GovernanceAssetInput[] = [
+      makeAsset({ id: "n1", ticker: "PETR4", score: null, last_reviewed_at: "2026-11-01T00:00:00Z" }),
+      makeAsset({ id: "n2", ticker: "VALE3", score: null, last_reviewed_at: "2026-11-01T00:00:00Z" }),
+    ];
+
+    const result = generateAssetGovernanceInsights({ assets, referenceDate: refDate });
+
+    expect(result.summary.unscoredCount).toBe(2);
+    expect(result.consolidatedUnscoredAlert).toBeDefined();
+    expect(result.consolidatedUnscoredAlert?.tickers).toEqual(["PETR4", "VALE3"]);
   });
 });

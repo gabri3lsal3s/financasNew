@@ -54,7 +54,7 @@ export function ReportHeader({
         {/* Monograma de Identidade Oficial */}
         <div className="relative flex size-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary-strong shadow-xs shrink-0 print:border-primary/40">
           <Icon className="size-5" aria-hidden="true" />
-          <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-accent border-2 border-surface shadow-xs print:border-white" />
+          <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-accent border-2 border-surface shadow-xs print:border-surface" />
         </div>
 
         <div className="flex flex-col">
