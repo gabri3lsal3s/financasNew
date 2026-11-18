@@ -163,11 +163,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v3.10.0 (Build 71): Polimento visual refinado, responsividade e estabilidade",
-    "Responsividade mobile aprimorada nos rodapés e barras de ações de detalhes de lançamento",
-    "Padronização canônica do gráfico donut de metas e classes de ativos com pill caps",
-    "Uniformização dos botões de ação e estados vazios no Modo Viagem",
-    "Estabilização do foco e rastreamento de holofote no tour guiado em modais e bottom sheets"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Hardening de seguranca, reconciliacao e checkout",
+    "Integracao aprimorada com Asaas e validacao manual de pagamentos via Pix",
+    "Blindagem de ciclo de vida de assinaturas, webhooks idempotentes e politicas de trial",
+    "Governanca de permissoes modulares e seguranca administrativa aprimorada",
+    "Otimizacoes de desempenho, estabilidade e responsividade no Android Pro"
   ]
 }
 EOF
