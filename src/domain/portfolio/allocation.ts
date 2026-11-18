@@ -120,6 +120,31 @@ export function sanitizeGroupTargetsForSave<T extends { name: string; target: nu
 // ---------------------------------------------------------------------------
 
 /**
+ * Normaliza proporcionalmente um conjunto de metas para somar rigorosamente o teto total (padrão 100%).
+ * Preserva as escolhas relativas dos percentuais e notas sem exigir ajustes manuais.
+ */
+export function normalizeGroupTargets<T extends { name: string; target: number }>(
+  items: readonly T[],
+  totalCeiling = 100,
+): Array<T & { normalizedTarget: number }> {
+  const sum = items.reduce((acc, it) => acc + Math.max(0, Number.isFinite(it.target) ? it.target : 0), 0);
+  if (sum <= 0) {
+    return items.map((it) => ({ ...it, normalizedTarget: 0 }));
+  }
+  let accumulated = 0;
+  return items.map((it, idx) => {
+    if (idx === items.length - 1) {
+      const remainder = Math.max(0, Math.round((totalCeiling - accumulated) * 100) / 100);
+      return { ...it, normalizedTarget: remainder };
+    }
+    const ratio = Math.max(0, it.target) / sum;
+    const share = Math.round((ratio * totalCeiling) * 100) / 100;
+    accumulated = Math.round((accumulated + share) * 100) / 100;
+    return { ...it, normalizedTarget: share };
+  });
+}
+
+/**
  * Distribui o teto (`targetTotal`, padrão 100%) igualmente entre os itens (1/N).
  * Trata resíduos de arredondamento no último item para que a soma seja rigorosamente exata.
  */
@@ -426,11 +451,12 @@ export function calculateEffectiveAssetTargets<
   assets: readonly T[];
   classTargets: ClassTargetsInput;
   sectorTargets?: SectorTargetsInput;
+  autoNormalize?: boolean;
 }): EffectiveAssetTargetResult[] {
-  const { assets, classTargets, sectorTargets } = params;
+  const { assets, classTargets, sectorTargets, autoNormalize = false } = params;
   if (assets.length === 0) return [];
 
-  // 1. Normalizar metas por classe
+  // 1. Normalizar metas por classe (com auto-normalização proporcional para 100%)
   const classTargetByNorm = new Map<string, number>();
   if (Array.isArray(classTargets)) {
     for (const ct of classTargets) {
@@ -445,6 +471,35 @@ export function calculateEffectiveAssetTargets<
       if (norm && norm !== "caixa") {
         classTargetByNorm.set(norm, Math.max(0, pct));
       }
+    }
+  }
+
+  // Auto-normalização proporcional das classes para 100% do patrimônio investível
+  const totalClassWeight = Array.from(classTargetByNorm.values()).reduce((acc, v) => acc + v, 0);
+  const normalizedClassTargetByNorm = new Map<string, number>();
+  const shouldNormalizeClasses = (autoNormalize || totalClassWeight > 100.001) && totalClassWeight > 0;
+
+  if (shouldNormalizeClasses) {
+    if (Math.abs(totalClassWeight - 100) < 0.01) {
+      for (const [cls, v] of classTargetByNorm.entries()) {
+        normalizedClassTargetByNorm.set(cls, v);
+      }
+    } else {
+      let accumulated = 0;
+      const entries = Array.from(classTargetByNorm.entries());
+      entries.forEach(([cls, v], idx) => {
+        if (idx === entries.length - 1) {
+          normalizedClassTargetByNorm.set(cls, Math.max(0, Math.round((100 - accumulated) * 100) / 100));
+        } else {
+          const share = Math.round(((v / totalClassWeight) * 100) * 100) / 100;
+          accumulated += share;
+          normalizedClassTargetByNorm.set(cls, share);
+        }
+      });
+    }
+  } else {
+    for (const [cls, v] of classTargetByNorm.entries()) {
+      normalizedClassTargetByNorm.set(cls, v);
     }
   }
 
@@ -517,7 +572,7 @@ export function calculateEffectiveAssetTargets<
 
   for (const [className, classAssets] of assetsByClass.entries()) {
     const normClass = normalizeClassName(className);
-    const classTargetPct = Math.max(0, classTargetByNorm.get(normClass) ?? 0);
+    const classTargetPct = Math.max(0, normalizedClassTargetByNorm.get(normClass) ?? 0);
 
     // Identificar mapa setorial efetivo desta classe
     const classScopedMap = scopedSectors.get(normClass);
@@ -536,6 +591,36 @@ export function calculateEffectiveAssetTargets<
     }
 
     const hasConfiguredSectorTargets = Array.from(effectiveSectorMap.values()).some((v) => v > 0);
+
+    // Auto-normalização proporcional dos setores dentro da classe (somando 100% da classe)
+    const normalizedSectorMap = new Map<string, number>();
+    if (hasConfiguredSectorTargets) {
+      const totalSectorWeight = Array.from(effectiveSectorMap.values()).reduce((acc, v) => acc + v, 0);
+      const shouldNormalizeSectors = (autoNormalize || totalSectorWeight > 100.001) && totalSectorWeight > 0;
+      if (shouldNormalizeSectors) {
+        if (Math.abs(totalSectorWeight - 100) < 0.01) {
+          for (const [secKey, v] of effectiveSectorMap.entries()) {
+            normalizedSectorMap.set(secKey, v);
+          }
+        } else {
+          let accumulated = 0;
+          const positiveEntries = Array.from(effectiveSectorMap.entries()).filter(([, v]) => v > 0);
+          positiveEntries.forEach(([secKey, v], idx) => {
+            if (idx === positiveEntries.length - 1) {
+              normalizedSectorMap.set(secKey, Math.max(0, Math.round((100 - accumulated) * 100) / 100));
+            } else {
+              const share = Math.round(((v / totalSectorWeight) * 100) * 100) / 100;
+              accumulated += share;
+              normalizedSectorMap.set(secKey, share);
+            }
+          });
+        }
+      } else {
+        for (const [secKey, v] of effectiveSectorMap.entries()) {
+          normalizedSectorMap.set(secKey, v);
+        }
+      }
+    }
 
     if (!hasConfiguredSectorTargets) {
       // Salvaguarda S5: Setores não configurados nesta classe -> ponderação direta por Notas na classe
@@ -587,7 +672,7 @@ export function calculateEffectiveAssetTargets<
     const sectorBlocks: SectorComputedBlock[] = [];
     for (const [sectorName, sectorAssets] of assetsBySector.entries()) {
       const secKey = sectorName.trim().toLowerCase();
-      const configuredPct = Math.max(0, effectiveSectorMap.get(secKey) ?? 0);
+      const configuredPct = Math.max(0, normalizedSectorMap.get(secKey) ?? 0);
       const weightedAssets = deriveAssetWeightsFromScores(sectorAssets);
       const hasEligible = weightedAssets.some((w) => w.isEligible);
       sectorBlocks.push({

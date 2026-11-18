@@ -497,8 +497,8 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     render(<OverviewPage />);
     expect(screen.getByText("Distribuição por categoria")).toBeInTheDocument();
     // Moradia 3.000 de 3.100 = 97% · Lazer 100 = 3%
-    expect(screen.getByText("97%")).toBeInTheDocument();
-    expect(screen.getByText("3%")).toBeInTheDocument();
+    expect(screen.getAllByText("97%").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("3%").length).toBeGreaterThan(0);
   });
 
   it("agrupa categorias além do Top 5 em 'Demais categorias' e permite detalhar", () => {

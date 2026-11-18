@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import {
-  inferSectorFromTicker,
-  isCashAssetClass,
+  normalizeGroupTargets,
   validateClassSectorTargetsSum,
   validateTargetsSum,
-} from "@/domain/portfolio";
+} from "@/domain/portfolio/allocation";
+import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
+import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import {
   buildEffectiveTargetsAndScoreRows,
   buildStoredSectorMaps,
@@ -104,11 +105,42 @@ export function useTargetsDerivedData<TRow extends TargetDraftPositionRow>({
   const sectorTargetOf = (sectorName: string, className = activeSectorClass) =>
     resolveDraftSectorTarget(sectorName, className, sectorDraft, storedSectorMaps);
 
-  const classSum = validateTargetsSum(classes.map((c) => ({ target: classTargetOf(c) })));
-  const sectorSum = validateClassSectorTargetsSum(
+  // Metas de classes normalizadas automaticamente para somar rigorosamente 100%
+  const normalizedClassTargets = useMemo(() => {
+    const rawList: Array<{ name: string; target: number }> = classes.map((c) => ({
+      name: c,
+      target: classTargetOf(c),
+    }));
+    return new Map(normalizeGroupTargets(rawList).map((item) => [item.name, item.normalizedTarget]));
+  }, [classes, classDraft, storedClassTargets, classTargetOf]);
+
+  const effectiveClassTargetOf = (className: string) =>
+    normalizedClassTargets.get(className) ?? classTargetOf(className);
+
+  // Metas de setores normalizadas automaticamente dentro da classe ativa para somar 100%
+  const normalizedSectorTargets = useMemo(() => {
+    const rawList: Array<{ name: string; target: number }> = availableSectors.map((s) => ({
+      name: s,
+      target: sectorTargetOf(s, activeSectorClass),
+    }));
+    return new Map(normalizeGroupTargets(rawList).map((item) => [item.name, item.normalizedTarget]));
+  }, [availableSectors, activeSectorClass, sectorDraft, activeClassStoredSectors, sectorTargetOf]);
+
+  const effectiveSectorTargetOf = (sectorName: string, className = activeSectorClass) => {
+    if (className === activeSectorClass) {
+      return normalizedSectorTargets.get(sectorName) ?? sectorTargetOf(sectorName, className);
+    }
+    return sectorTargetOf(sectorName, className);
+  };
+
+  const rawClassSum = validateTargetsSum(classes.map((c) => ({ target: classTargetOf(c) })));
+  const classSum = { sum: rawClassSum.sum, error: null };
+
+  const rawSectorSum = validateClassSectorTargetsSum(
     availableSectors.map((s) => ({ target: sectorTargetOf(s, activeSectorClass) })),
     activeSectorClass,
   );
+  const sectorSum = { sum: rawSectorSum.sum, error: null };
 
   const assetScoreRows: TargetAssetScoreRow[] = useMemo(() => {
     const { assetScoreRows: computed } = buildEffectiveTargetsAndScoreRows({
@@ -147,10 +179,12 @@ export function useTargetsDerivedData<TRow extends TargetDraftPositionRow>({
     storedClassTargets,
     assetMap,
     classTargetOf,
+    effectiveClassTargetOf,
     activeSectorClass,
     availableSectors,
     activeClassStoredSectors,
     sectorTargetOf,
+    effectiveSectorTargetOf,
     classSum,
     sectorSum,
     assetScoreRows,

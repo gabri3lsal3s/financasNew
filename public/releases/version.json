@@ -1,16 +1,16 @@
 {
   "version": "3.10.0",
-  "versionCode": 74,
-  "releaseDate": "2026-11-18T15:35:52Z",
+  "versionCode": 75,
+  "releaseDate": "2026-11-18T16:00:18Z",
   "minSupportedVersion": "3.10.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "9c16b349b8f04f7914979b7df015343802c3f6783b38afcaaa57a02d66351fc5",
-  "fileSizeBytes": 12195659,
+  "sha256": "c25e81c5aa1b4248483cc25e95974a7ad898445879ac5f08feda6daa89ab4bf0",
+  "fileSizeBytes": 12195879,
   "changelog": [
-    "Axir v3.10.0 (Build 74): Responsividade tablet e padronização SegmentedControl",
+    "Axir v3.10.0 (Build 75): Responsividade avançada e refinamentos de UI/UX",
+    "Correção de quebra de sílabas na legenda de categorias e coluna única fluida no desktop",
+    "Card de orçamentos enriquecido no mobile com micro-cards, valores reais e percentual",
     "Toolbar de posições adaptativa com Select em tablets e chips em desktops (zero quebra de linhas)",
-    "Novo primitivo SegmentedControl unificado para modos de agrupamento, distribuição e períodos",
-    "Harmonização de cards de insight e gráficos Donut com proporções balanceadas no tablet",
-    "Erradicação transversal de variantes solid em filtros, empty states e cards"
+    "Novo primitivo SegmentedControl unificado para modos de agrupamento, distribuição e períodos"
   ]
 }

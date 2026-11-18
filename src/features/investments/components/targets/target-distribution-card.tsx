@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
+import { AlertCircle, Check, Loader2 } from "lucide-react";
 import { InteractiveTargetDonut, type TargetDonutItem } from "@/components/modules";
-import { Button, SegmentedControl, Select } from "@/components/ui";
+import { SegmentedControl, Select } from "@/components/ui";
 import { TargetDistributionActions } from "./target-distribution-actions";
 import { TargetDistributionProgress } from "./target-distribution-progress";
 import { TargetDistributionRow } from "./target-distribution-row";
@@ -8,7 +9,8 @@ import { TargetDistributionRow } from "./target-distribution-row";
 export interface TargetDistributionItem {
   name: string;
   target: number;
-  savedTarget: number;
+  savedTarget?: number;
+  effectiveTargetPct?: number;
   currentPct: number;
   currentSuffix?: string;
   secondaryPctText?: string;
@@ -19,12 +21,15 @@ export interface TargetDistributionItem {
   onOpenDetail?: () => void;
 }
 
+export type TargetSyncStatus = "idle" | "saving" | "saved" | "error";
+
 export interface TargetDistributionCardProps {
   ariaLabel: string;
   dataTour?: string;
   title: string;
   description: string;
   headerRight?: ReactNode;
+  syncStatus?: TargetSyncStatus;
   classSelector?: {
     classes: readonly string[];
     activeClass: string;
@@ -37,19 +42,10 @@ export interface TargetDistributionCardProps {
   sumState: { sum: number; error: string | null };
   showProgressBar?: boolean;
   progressLabel?: string;
-  savingItemKey: string | null;
-  normalizeLabel: string;
   resetLabel: string;
-  saveAllLabel: string;
-  savingAllLabel?: string;
-  onDistributeRemaining?: () => void;
-  onNormalize: () => void;
   onDistributeEqually: () => void;
   onResetZero: () => void;
   onTargetChange: (name: string, nextValue: number) => void;
-  onSaveItem: (name: string) => void;
-  onRemoveItem: (name: string) => void;
-  onSaveAll: () => void;
 }
 
 export function TargetDistributionCard({
@@ -58,6 +54,7 @@ export function TargetDistributionCard({
   title,
   description,
   headerRight,
+  syncStatus = "idle",
   classSelector,
   emptyMessage,
   donutTitle,
@@ -66,27 +63,17 @@ export function TargetDistributionCard({
   sumState,
   showProgressBar = false,
   progressLabel = "Total alocado:",
-  savingItemKey,
-  normalizeLabel,
   resetLabel,
-  saveAllLabel,
-  savingAllLabel = "Salvando todos…",
-  onDistributeRemaining,
-  onNormalize,
   onDistributeEqually,
   onResetZero,
   onTargetChange,
-  onSaveItem,
-  onRemoveItem,
-  onSaveAll,
 }: TargetDistributionCardProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const isSavingAny = savingItemKey !== null;
 
   const donutItems: TargetDonutItem[] = items.map((item) => ({
     key: item.name,
     label: item.name,
-    targetPercent: item.target,
+    targetPercent: item.effectiveTargetPct ?? item.target,
     currentPercent: item.currentPct,
     countAssets: item.membersCount,
   }));
@@ -100,7 +87,25 @@ export function TargetDistributionCard({
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-foreground truncate">{title}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-foreground truncate">{title}</h3>
+            {syncStatus === "saving" ? (
+              <span className="flex items-center gap-1 text-[11px] text-muted-foreground animate-pulse font-medium">
+                <Loader2 className="size-3 animate-spin shrink-0" aria-hidden="true" />
+                Salvando…
+              </span>
+            ) : syncStatus === "saved" ? (
+              <span className="flex items-center gap-1 text-[11px] text-positive-strong font-medium">
+                <Check className="size-3 shrink-0" aria-hidden="true" />
+                Salvo
+              </span>
+            ) : syncStatus === "error" ? (
+              <span className="flex items-center gap-1 text-[11px] text-critical-strong font-medium">
+                <AlertCircle className="size-3 shrink-0" aria-hidden="true" />
+                Erro ao salvar
+              </span>
+            ) : null}
+          </div>
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
         {headerRight ? <div className="shrink-0">{headerRight}</div> : null}
@@ -145,26 +150,15 @@ export function TargetDistributionCard({
             onChangeTarget={onTargetChange}
             totalCeiling={100}
             unitLabel={donutUnitLabel}
-            disabled={isSavingAny}
           />
-
-          {sumState.error ? (
-            <div className="rounded-xl border border-critical/40 bg-critical/10 p-3 text-xs text-critical-strong font-medium">
-              {sumState.error}
-            </div>
-          ) : null}
 
           {showProgressBar ? (
             <TargetDistributionProgress label={progressLabel} sum={sumState.sum} />
           ) : null}
 
           <TargetDistributionActions
-            sum={sumState.sum}
-            disabled={isSavingAny}
-            normalizeLabel={normalizeLabel}
+            disabled={syncStatus === "saving"}
             resetLabel={resetLabel}
-            onDistributeRemaining={onDistributeRemaining}
-            onNormalize={onNormalize}
             onDistributeEqually={onDistributeEqually}
             onResetZero={onResetZero}
           />
@@ -175,37 +169,22 @@ export function TargetDistributionCard({
                 key={item.name}
                 name={item.name}
                 target={item.target}
+                effectiveTargetPct={item.effectiveTargetPct}
                 savedTarget={item.savedTarget}
                 currentPct={item.currentPct}
                 currentSuffix={item.currentSuffix}
                 secondaryPctText={item.secondaryPctText}
                 membersCount={item.membersCount}
                 isSelected={selectedKey === item.name}
-                isSavingRow={savingItemKey === item.name}
-                isSavingAny={savingItemKey === "all"}
                 stepperAriaLabel={item.stepperAriaLabel}
                 detailAriaLabel={item.detailAriaLabel}
                 detailIcon={item.detailIcon}
                 onSelectToggle={() => setSelectedKey(selectedKey === item.name ? null : item.name)}
                 onFocusSelect={() => setSelectedKey(item.name)}
                 onTargetChange={(next) => onTargetChange(item.name, next)}
-                onSave={() => onSaveItem(item.name)}
-                onRemove={() => onRemoveItem(item.name)}
                 onOpenDetail={item.onOpenDetail}
               />
             ))}
-          </div>
-
-          <div className="flex items-center justify-end pt-2">
-            <Button
-              type="button"
-              variant="default"
-              onClick={onSaveAll}
-              disabled={isSavingAny || sumState.error !== null}
-              className="shadow-xs"
-            >
-              {savingItemKey === "all" ? savingAllLabel : saveAllLabel}
-            </Button>
           </div>
         </>
       )}

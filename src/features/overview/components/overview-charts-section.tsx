@@ -51,6 +51,7 @@ export function OverviewChartsSection({
           <CategoryDonut
             slices={donutSlices}
             totalCents={grossExpenseCents}
+            legendColumns={1}
             onSliceClick={onSliceSelect}
           />
         </section>

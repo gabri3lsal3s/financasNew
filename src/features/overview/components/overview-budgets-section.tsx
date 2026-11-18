@@ -117,7 +117,7 @@ export function OverviewBudgetsSection({
           {/* Barra Segmentada Única (Estilo Apple / Linear) com clique para Raio-X */}
           <div className="w-full flex flex-col gap-2.5">
             <div
-              className="flex w-full h-2.5 sm:h-3 rounded-full overflow-hidden bg-surface-hover/70 p-0.5 border border-border/40 gap-0.5"
+              className="flex w-full h-3 sm:h-3.5 rounded-full overflow-hidden bg-surface-hover/80 p-0.5 border border-border/60 gap-0.5"
               role="group"
               aria-label={`Uso do orçamento: ${Math.round(globalPercent)}%`}
             >
@@ -144,38 +144,88 @@ export function OverviewBudgetsSection({
               ))}
             </div>
 
-            {/* Legenda Estruturada em 2 Colunas Simétricas no Mobile e Flex no Desktop */}
+            {/* Legenda Estruturada: Micro-cards em 2 colunas no Mobile e Chips fluidos no Desktop */}
             {budgetSegments.length > 0 ? (
-              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-3 sm:gap-x-4 gap-y-2 text-xs pt-0.5 min-w-0">
-                {budgetSegments.map((seg) => (
-                  <button
-                    type="button"
-                    key={seg.id}
-                    onClick={() => {
-                      triggerSensory("selection");
-                      if (seg.id === "others") {
-                        onOpenOthersBudget();
-                      } else {
-                        onSelectCategory(seg.id);
-                      }
-                    }}
-                    className="inline-flex items-center gap-1.5 min-w-0 min-h-11 sm:min-h-0 text-muted-foreground transition-all duration-150 rounded-lg p-1 -m-1 cursor-pointer hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring active:scale-95 text-left"
-                  >
-                    <span
-                      className="size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: seg.color ?? undefined }}
-                      aria-hidden="true"
-                    />
-                    <span className="font-medium text-foreground truncate min-w-0">{seg.label}</span>
-                    <span className="hidden sm:inline font-medium text-foreground">:</span>
-                    <MoneyText
-                      cents={seg.spentCents}
-                      tone="default"
-                      className="hidden sm:inline-block text-muted-foreground shrink-0 tabular-nums font-medium"
-                    />
-                  </button>
-                ))}
-              </div>
+              <>
+                {/* Mobile: Grid de 2 colunas com indicador de cor, valor e porcentagem */}
+                <div className="grid grid-cols-2 gap-2 sm:hidden pt-0.5 min-w-0">
+                  {budgetSegments.map((seg) => (
+                    <button
+                      type="button"
+                      key={seg.id}
+                      onClick={() => {
+                        triggerSensory("selection");
+                        if (seg.id === "others") {
+                          onOpenOthersBudget();
+                        } else {
+                          onSelectCategory(seg.id);
+                        }
+                      }}
+                      className="flex flex-col gap-1 rounded-xl border border-border/70 bg-surface-hover/30 hover:bg-surface-hover/70 p-2 transition-all cursor-pointer active:scale-[0.98] text-left min-w-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      title={`${seg.label} - ver detalhes`}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0 w-full">
+                        <span
+                          className="size-2 rounded-full shrink-0"
+                          style={{ backgroundColor: seg.color ?? undefined }}
+                          aria-hidden="true"
+                        />
+                        <span className="font-semibold text-xs text-foreground truncate min-w-0 flex-1">
+                          {seg.label}
+                        </span>
+                        <span className="text-[10px] font-bold text-muted-foreground tabular-nums shrink-0">
+                          ({Math.round(seg.percent)}%)
+                        </span>
+                      </div>
+                      <div className="pl-3.5 min-w-0">
+                        <MoneyText
+                          cents={seg.spentCents}
+                          tone="default"
+                          className="privacy-mask text-xs font-semibold text-foreground/90 tabular-nums whitespace-nowrap"
+                        />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tablet / Desktop: Chips horizontais fluidos com dados completos */}
+                <div className="hidden sm:flex sm:flex-wrap gap-2 pt-0.5 min-w-0">
+                  {budgetSegments.map((seg) => (
+                    <button
+                      type="button"
+                      key={seg.id}
+                      onClick={() => {
+                        triggerSensory("selection");
+                        if (seg.id === "others") {
+                          onOpenOthersBudget();
+                        } else {
+                          onSelectCategory(seg.id);
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-surface-hover/30 hover:bg-surface-hover hover:border-border/90 px-2.5 py-1 text-xs text-muted-foreground transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-left"
+                      title={`${seg.label} - ver detalhes`}
+                    >
+                      <span
+                        className="size-2 rounded-full shrink-0"
+                        style={{ backgroundColor: seg.color ?? undefined }}
+                        aria-hidden="true"
+                      />
+                      <span className="font-medium text-foreground truncate max-w-[130px]">
+                        {seg.label}
+                      </span>
+                      <span className="text-muted-foreground/50">•</span>
+                      <MoneyText
+                        cents={seg.spentCents}
+                        tone="default"
+                        className="privacy-mask text-foreground/90 font-medium tabular-nums"
+                      />
+                      <span className="text-[10px] font-bold text-muted-foreground tabular-nums">
+                        ({Math.round(seg.percent)}%)
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
             ) : null}
           </div>
         </div>

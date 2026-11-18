@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
   buildEqualDraftPatch,
@@ -10,6 +10,7 @@ import {
 import { pushToast } from "@/services/toast";
 import { useGroupTargets, usePortfolioAssets, usePortfolioPosition } from "@/state";
 import type { PortfolioAsset } from "@/types";
+import type { TargetSyncStatus } from "./target-distribution-card";
 import { useTargetsDerivedData } from "./use-targets-derived-data";
 import { useTargetsMutations } from "./use-targets-mutations";
 
@@ -29,8 +30,31 @@ export function useTargetsDraftState() {
   const [assetDetailId, setAssetDetailId] = useState<string | null>(null);
   const [evaluatingAsset, setEvaluatingAsset] = useState<PortfolioAsset | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<TargetSyncStatus>("idle");
   const [assetClassFilter, setAssetClassFilter] = useState<string | null>(null);
   const [selectedSectorClass, setSelectedSectorClass] = useState<string | null>(null);
+
+  const classDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const sectorDebounceRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const resetSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const classMap = classDebounceRef.current;
+    const sectorMap = sectorDebounceRef.current;
+    return () => {
+      for (const timer of classMap.values()) clearTimeout(timer);
+      for (const timer of sectorMap.values()) clearTimeout(timer);
+      if (resetSyncTimerRef.current) clearTimeout(resetSyncTimerRef.current);
+    };
+  }, []);
+
+  const markSavedWithDelay = () => {
+    setSyncStatus("saved");
+    if (resetSyncTimerRef.current) clearTimeout(resetSyncTimerRef.current);
+    resetSyncTimerRef.current = setTimeout(() => {
+      setSyncStatus("idle");
+    }, 2500);
+  };
 
   const [searchParams, setSearchParams] = useSearchParams();
   const paramSubTab = searchParams.get("subtab");
@@ -83,19 +107,64 @@ export function useTargetsDraftState() {
     setError,
   });
 
+  const setClassTarget = (className: string, value: number) => {
+    setClassDraft((prev) => ({ ...prev, [className]: value }));
+    setSyncStatus("saving");
+
+    const existing = classDebounceRef.current.get(className);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(async () => {
+      try {
+        await mutations.saveClassDirect(className, value);
+        markSavedWithDelay();
+      } catch {
+        setSyncStatus("error");
+      } finally {
+        classDebounceRef.current.delete(className);
+      }
+    }, 600);
+
+    classDebounceRef.current.set(className, timer);
+  };
+
+  const setSectorTarget = (sectorName: string, value: number) => {
+    const key = sectorDraftKey(derived.activeSectorClass, sectorName);
+    setSectorDraft((prev) => ({ ...prev, [key]: value }));
+    setSyncStatus("saving");
+
+    const existing = sectorDebounceRef.current.get(key);
+    if (existing) clearTimeout(existing);
+
+    const currentClass = derived.activeSectorClass;
+    const timer = setTimeout(async () => {
+      try {
+        await mutations.saveSectorDirect(sectorName, value, currentClass);
+        markSavedWithDelay();
+      } catch {
+        setSyncStatus("error");
+      } finally {
+        sectorDebounceRef.current.delete(key);
+      }
+    }, 600);
+
+    sectorDebounceRef.current.set(key, timer);
+  };
+
   return {
     position,
     classTargetsQuery,
     sectorTargetsQuery,
     ...derived,
     ...mutations,
+    syncStatus,
     loading: position.isLoading || classTargetsQuery.isLoading || sectorTargetsQuery.isLoading,
     loadError: position.error ?? classTargetsQuery.error ?? sectorTargetsQuery.error,
     error,
     subTab,
     handleSubTabChange,
     setSelectedSectorClass,
-    setClassTarget: (c: string, v: number) => setClassDraft((prev) => ({ ...prev, [c]: v })),
+    setClassTarget,
     handleNormalizeClasses: () => {
       setError(null);
       setClassDraft((prev) => ({
@@ -103,21 +172,36 @@ export function useTargetsDraftState() {
         ...buildNormalizedDraftPatch(derived.classes, derived.classTargetOf),
       }));
     },
-    handleDistributeClassesEqually: () => {
+    handleDistributeClassesEqually: async () => {
       setError(null);
-      setClassDraft((prev) => ({ ...prev, ...buildEqualDraftPatch(derived.classes) }));
+      setSyncStatus("saving");
+      const patch = buildEqualDraftPatch(derived.classes);
+      setClassDraft((prev) => ({ ...prev, ...patch }));
+      try {
+        await mutations.saveAllClasses();
+        markSavedWithDelay();
+      } catch {
+        setSyncStatus("error");
+      }
     },
     handleDistributeRemainingClasses: () => {
       setError(null);
       const patch = buildRemainingDraftPatch(derived.classes, derived.classTargetOf);
       if (Object.keys(patch).length > 0) setClassDraft((prev) => ({ ...prev, ...patch }));
     },
-    handleResetClassesZero: () => {
+    handleResetClassesZero: async () => {
       setError(null);
-      setClassDraft((prev) => ({ ...prev, ...buildZeroDraftPatch(derived.classes) }));
+      setSyncStatus("saving");
+      const patch = buildZeroDraftPatch(derived.classes);
+      setClassDraft((prev) => ({ ...prev, ...patch }));
+      try {
+        await mutations.saveAllClasses();
+        markSavedWithDelay();
+      } catch {
+        setSyncStatus("error");
+      }
     },
-    setSectorTarget: (s: string, v: number) =>
-      setSectorDraft((prev) => ({ ...prev, [sectorDraftKey(derived.activeSectorClass, s)]: v })),
+    setSectorTarget,
     handleNormalizeSectors: () => {
       setError(null);
       setSectorDraft((prev) => ({
@@ -129,25 +213,35 @@ export function useTargetsDraftState() {
         ),
       }));
     },
-    handleDistributeSectorsEqually: () => {
+    handleDistributeSectorsEqually: async () => {
       setError(null);
-      setSectorDraft((prev) => ({
-        ...prev,
-        ...buildEqualDraftPatch(derived.availableSectors, (s) =>
-          sectorDraftKey(derived.activeSectorClass, s),
-        ),
-      }));
+      setSyncStatus("saving");
+      const patch = buildEqualDraftPatch(derived.availableSectors, (s) =>
+        sectorDraftKey(derived.activeSectorClass, s),
+      );
+      setSectorDraft((prev) => ({ ...prev, ...patch }));
+      try {
+        await mutations.saveAllSectorsForClass();
+        markSavedWithDelay();
+      } catch {
+        setSyncStatus("error");
+      }
     },
-    handleResetSectorsZero: () => {
+    handleResetSectorsZero: async () => {
       setError(null);
-      setSectorDraft((prev) => ({
-        ...prev,
-        ...buildZeroDraftPatch(derived.availableSectors, (s) =>
-          sectorDraftKey(derived.activeSectorClass, s),
-        ),
-      }));
+      setSyncStatus("saving");
+      const patch = buildZeroDraftPatch(derived.availableSectors, (s) =>
+        sectorDraftKey(derived.activeSectorClass, s),
+      );
+      setSectorDraft((prev) => ({ ...prev, ...patch }));
+      try {
+        await mutations.saveAllSectorsForClass();
+        markSavedWithDelay();
+      } catch {
+        setSyncStatus("error");
+      }
     },
-    hasDraftChanges: Object.keys(classDraft).length > 0 || Object.keys(sectorDraft).length > 0,
+    hasDraftChanges: false,
     handleDiscardDraft: () => {
       setClassDraft({});
       setSectorDraft({});

@@ -29,7 +29,7 @@ describe("insights-carousel-drift", () => {
     expect(result.driftSummaryText).not.toContain("Ações de Dividendos");
   });
 
-  it("detecta soma de metas diferente de 100%", () => {
+  it("não dispara alerta de soma inválida pois a alocação é auto-normalizada", () => {
     const result = computePortfolioCarouselDrift({
       classTargets: [
         { id: "c1", user_id: "u1", name: "Ações", group_type: "class", target_percentage: 60 },
@@ -40,6 +40,6 @@ describe("insights-carousel-drift", () => {
     });
 
     expect(result.targetsSumPct).toBe(60);
-    expect(result.hasInvalidTargetsSum).toBe(true);
+    expect(result.hasInvalidTargetsSum).toBe(false);
   });
 });

@@ -122,11 +122,11 @@ vi.mock("@/state", () => ({
         id: "a3",
         user_id: "u1",
         ticker: "MXRF11",
-        name: "Maxi Renda",
+        name: "Maxi Renda FII",
         asset_class: "FIIs",
         sector: "Papel",
         currency: "BRL",
-        score: 6,
+        score: 9,
         allocation_status: "quarantine",
       },
     ],
@@ -139,7 +139,7 @@ vi.mock("@/state", () => ({
   }),
 }));
 
-describe("TargetsTab — Plano 42 Governança em 3 Níveis (Classes %, Setores % escopados, Notas 0-10)", () => {
+describe("TargetsTab — Auto-normalização e Salvamento Otimista (§AutoNormalize)", () => {
   beforeEach(() => {
     saveHierarchyTargetsMock.mockReset();
     saveGroupTargetMock.mockReset();
@@ -154,9 +154,8 @@ describe("TargetsTab — Plano 42 Governança em 3 Níveis (Classes %, Setores %
     );
   }
 
-  it("renderiza a aba Classes como padrão excluindo Caixa e salva via saveHierarchyTargets", async () => {
+  it("renderiza a aba Classes como padrão excluindo Caixa e sem botões burocráticos de salvar/excluir", async () => {
     saveHierarchyTargetsMock.mockResolvedValue(true);
-    const user = userEvent.setup();
     renderTargetsTab();
 
     expect(screen.getByText("Metas por classe de ativo")).toBeInTheDocument();
@@ -165,19 +164,13 @@ describe("TargetsTab — Plano 42 Governança em 3 Níveis (Classes %, Setores %
     expect(screen.getByLabelText("Meta da classe Ações em %")).toBeInTheDocument();
     expect(screen.getByLabelText("Meta da classe FIIs em %")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Distribuir restante \(40\.0%\)/i }));
-    await user.click(screen.getByRole("button", { name: "Salvar todas as classes" }));
-
-    expect(saveHierarchyTargetsMock).toHaveBeenCalledWith({
-      classes: [
-        { name: "Ações", target_percentage: 60 },
-        { name: "FIIs", target_percentage: 40 },
-      ],
-      sectors: [{ class_name: "Ações", name: "Petróleo", target_percentage: 50 }],
-    });
+    // Sem botões de salvar ou lixeira por linha nem botão de salvar todas
+    expect(screen.queryByRole("button", { name: "Salvar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Salvar todas as classes" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Remover meta de/i })).not.toBeInTheDocument();
   });
 
-  it("renderiza sub-aba Setores com aviso de opcionalidade e persiste escopado por className", async () => {
+  it("renderiza sub-aba Setores com aviso de opcionalidade e normalização automática", async () => {
     saveHierarchyTargetsMock.mockResolvedValue(true);
     const user = userEvent.setup();
     renderTargetsTab();
@@ -187,14 +180,8 @@ describe("TargetsTab — Plano 42 Governança em 3 Níveis (Classes %, Setores %
     expect(screen.getByText("Metas setoriais por classe")).toBeInTheDocument();
     expect(screen.getByText(/Opcional: defina a proporção/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Salvar setores de Ações" }));
-
-    expect(saveHierarchyTargetsMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        classes: [{ name: "Ações", target_percentage: 60 }],
-        sectors: [{ class_name: "Ações", name: "Petróleo", target_percentage: 50 }],
-      }),
-    );
+    // Sem botões redundantes de salvar setores
+    expect(screen.queryByRole("button", { name: /Salvar setores/i })).not.toBeInTheDocument();
   });
 
   it("exibe Nível 3 Notas & Status na aba Ativos sem inputs manuais de %, mostrando 'Sem nota' e abrindo avaliação", async () => {
@@ -211,7 +198,7 @@ describe("TargetsTab — Plano 42 Governança em 3 Níveis (Classes %, Setores %
     expect(screen.queryByText(/Salvar metas por ativo/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("spinbutton", { name: /PETR4/i })).not.toBeInTheDocument();
 
-    // Sem nota real para PETR4 (nunca fake Nota 8!), Nota 8/10 para VALE3 e Quarentena para MXRF11
+    // Sem nota real para PETR4, Nota 8/10 para VALE3 e Quarentena para MXRF11
     expect(screen.getByText("Sem nota")).toBeInTheDocument();
     expect(screen.getByText("Nota 8/10")).toBeInTheDocument();
     expect(screen.getByText("Quarentena")).toBeInTheDocument();
@@ -221,31 +208,25 @@ describe("TargetsTab — Plano 42 Governança em 3 Níveis (Classes %, Setores %
     expect(screen.getByText(/Avaliação de Tese: PETR4/i)).toBeInTheDocument();
   });
 
-  it("permite descartar alterações do rascunho de metas em 1 toque (Salvaguarda S24)", async () => {
+  it("permite distribuir igualmente (1/N) de forma otimista", async () => {
+    saveHierarchyTargetsMock.mockResolvedValue(true);
     const user = userEvent.setup();
     renderTargetsTab();
 
-    await user.click(screen.getByRole("button", { name: /Normalizar classes para 100%/i }));
+    const distributeBtn = screen.getByRole("button", { name: /Distribuir igualmente \(1\/N\)/i });
+    expect(distributeBtn).toBeInTheDocument();
 
-    expect(screen.getByText(/Existem alterações não salvas no rascunho de metas/i)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Descartar alterações" }));
+    await user.click(distributeBtn);
 
-    expect(screen.queryByText(/Existem alterações não salvas no rascunho de metas/i)).not.toBeInTheDocument();
+    expect(saveHierarchyTargetsMock).toHaveBeenCalled();
   });
 
-  it("exibe barra de progresso, botão Distribuir Restante e preserva data-tour das classes", async () => {
-    const user = userEvent.setup();
+  it("exibe barra de progresso e preserva data-tour das classes", async () => {
     renderTargetsTab();
 
     const classesCard = screen.getByRole("region", { name: "Metas por classe" });
     expect(classesCard).toHaveAttribute("data-tour", "targets-classes-card");
 
-    expect(screen.getByText("Total alocado em classes:")).toBeInTheDocument();
-    expect(screen.getByText(/Faltam 40\.0%/i)).toBeInTheDocument();
-
-    const distributeRemainingBtn = screen.getByRole("button", { name: /Distribuir restante \(40\.0%\)/i });
-    await user.click(distributeRemainingBtn);
-
-    expect(screen.getByText(/Completo/i)).toBeInTheDocument();
+    expect(screen.getByText("Total de pesos em classes:")).toBeInTheDocument();
   });
 });

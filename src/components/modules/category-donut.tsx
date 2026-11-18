@@ -28,6 +28,7 @@ export interface CategoryDonutProps {
   onSelectKey?: (key: string | null) => void;
   className?: string;
   listClassName?: string;
+  legendColumns?: 1 | 2 | "auto";
   emptyText?: string;
   centerCaption?: string;
   maxVisualSlices?: number;
@@ -65,6 +66,7 @@ export function CategoryDonut({
   maxVisualSlices = 7,
   layout = "auto",
   donutSize = "md",
+  legendColumns,
   onSliceClick,
 }: CategoryDonutProps) {
   const [internalSelectedKey, setInternalSelectedKey] = useState<string | null>(null);
@@ -167,6 +169,7 @@ export function CategoryDonut({
         activeSelectedKey={activeSelectedKey}
         hoveredSliceKey={hoveredSliceKey}
         listClassName={listClassName}
+        legendColumns={legendColumns}
         onHoverSlice={setHoveredSliceKey}
         onSelectSlice={handleItemClick}
       />

@@ -355,6 +355,41 @@ describe("domain/portfolio/allocation (§3.11.1)", () => {
       // Os 40% de Telecom transbordam para Bancos -> 100% da classe Ações (40%)
       expect(itub.effectiveTargetPct).toBe(40);
     });
+
+    it("auto-normaliza proporcionalmente classes quando a soma excede 100% ou autoNormalize: true", () => {
+      const assets = [
+        { id: "a1", ticker: "PETR4", assetClass: "Ações", score: 10, allocation_status: "active" as const },
+        { id: "f1", ticker: "KNRI11", assetClass: "FIIs", score: 10, allocation_status: "active" as const },
+        { id: "rf1", ticker: "Tesouro IPCA", assetClass: "Renda Fixa", score: 10, allocation_status: "active" as const },
+      ];
+
+      // Usuário escolheu 50%, 50% e 100% (soma = 200%). Normalização 1:1:2 -> 25%, 25%, 50%
+      const res = calculateEffectiveAssetTargets({
+        assets,
+        classTargets: { Ações: 50, FIIs: 50, "Renda Fixa": 100 },
+      });
+
+      expect(res.find((r) => r.assetId === "a1")?.effectiveTargetPct).toBe(25);
+      expect(res.find((r) => r.assetId === "f1")?.effectiveTargetPct).toBe(25);
+      expect(res.find((r) => r.assetId === "rf1")?.effectiveTargetPct).toBe(50);
+    });
+
+    it("auto-normaliza setores de uma classe quando a soma dos setores excede 100%", () => {
+      const assets = [
+        { id: "b1", ticker: "ITUB4", assetClass: "Ações", sector: "Bancos", score: 10, allocation_status: "active" as const },
+        { id: "e1", ticker: "EGIE3", assetClass: "Ações", sector: "Energia", score: 10, allocation_status: "active" as const },
+      ];
+
+      // Ações 100%. Setores: Bancos 60% e Energia 60% (soma 120%). Proporção 1:1 -> 50% e 50%
+      const res = calculateEffectiveAssetTargets({
+        assets,
+        classTargets: { Ações: 100 },
+        sectorTargets: { Bancos: 60, Energia: 60 },
+      });
+
+      expect(res.find((r) => r.assetId === "b1")?.effectiveTargetPct).toBe(50);
+      expect(res.find((r) => r.assetId === "e1")?.effectiveTargetPct).toBe(50);
+    });
   });
 
   describe("calculatePortfolioQualityScore (PQS) — Índice Consolidado", () => {

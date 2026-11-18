@@ -2,7 +2,11 @@ import { PieChart } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { inferSectorFromTicker } from "@/domain/portfolio";
 import type { PortfolioPositionRow } from "@/state";
-import { TargetDistributionCard, type TargetDistributionItem } from "./target-distribution-card";
+import {
+  TargetDistributionCard,
+  type TargetDistributionItem,
+  type TargetSyncStatus,
+} from "./target-distribution-card";
 
 export interface TargetSectorsCardProps {
   classes: string[];
@@ -11,16 +15,13 @@ export interface TargetSectorsCardProps {
   storedSectorTargets: Map<string, number>;
   positionRows: PortfolioPositionRow[];
   sectorTargetOf: (sectorName: string) => number;
+  effectiveSectorTargetOf?: (sectorName: string) => number;
   sectorSum: { sum: number; error: string | null };
-  savingSector: string | null;
+  syncStatus?: TargetSyncStatus;
   onSelectSectorClass: (cls: string) => void;
-  onNormalizeSectors: () => void;
   onDistributeSectorsEqually: () => void;
   onResetSectorsZero: () => void;
   onSectorTargetChange: (sectorName: string, val: number) => void;
-  onSaveSector: (sectorName: string) => void;
-  onRemoveSector: (sectorName: string) => void;
-  onSaveAllSectorsForClass: () => void;
   onOpenSectorDetail?: (sectorName: string, parentClass: string) => void;
 }
 
@@ -31,16 +32,13 @@ export function TargetSectorsCard({
   storedSectorTargets,
   positionRows,
   sectorTargetOf,
+  effectiveSectorTargetOf,
   sectorSum,
-  savingSector,
+  syncStatus = "idle",
   onSelectSectorClass,
-  onNormalizeSectors,
   onDistributeSectorsEqually,
   onResetSectorsZero,
   onSectorTargetChange,
-  onSaveSector,
-  onRemoveSector,
-  onSaveAllSectorsForClass,
   onOpenSectorDetail,
 }: TargetSectorsCardProps) {
   if (classes.length === 0) return null;
@@ -55,10 +53,13 @@ export function TargetSectorsCard({
     );
     const sectorBRL = members.reduce((acc, r) => acc + r.valueBRL, 0);
     const pctInPortfolio = totalBRL > 0 ? (sectorBRL / totalBRL) * 100 : 0;
+    const target = sectorTargetOf(sectorName);
+    const effectiveTargetPct = effectiveSectorTargetOf ? effectiveSectorTargetOf(sectorName) : target;
 
     return {
       name: sectorName,
-      target: sectorTargetOf(sectorName),
+      target,
+      effectiveTargetPct,
       savedTarget: storedSectorTargets.get(sectorName) ?? 0,
       currentPct: classTotalBRL > 0 ? (sectorBRL / classTotalBRL) * 100 : 0,
       currentSuffix: "da classe",
@@ -77,7 +78,7 @@ export function TargetSectorsCard({
     <TargetDistributionCard
       ariaLabel="Metas por setor"
       title="Metas setoriais por classe"
-      description={`Opcional: defina a proporção (% dentro de ${activeSectorClass}). Se não configurar setores nesta classe, o peso vai direto para as Notas dos ativos.`}
+      description={`Opcional: defina a proporção (% dentro de ${activeSectorClass}). Se não configurar setores nesta classe, o peso vai direto para as Notas dos ativos. A normalização é 100% automática.`}
       headerRight={
         sectorSum.sum === 0 && availableSectors.length > 0 ? (
           <Badge variant="muted" size="xs">
@@ -85,6 +86,7 @@ export function TargetSectorsCard({
           </Badge>
         ) : undefined
       }
+      syncStatus={syncStatus}
       classSelector={{
         classes,
         activeClass: activeSectorClass,
@@ -100,18 +102,10 @@ export function TargetSectorsCard({
       donutTitle={`Alocação Setorial (${activeSectorClass})`}
       items={items}
       sumState={sectorSum}
-      savingItemKey={savingSector}
-      normalizeLabel="Normalizar setores para 100%"
       resetLabel="Zerar setores"
-      saveAllLabel={`Salvar setores de ${activeSectorClass}`}
-      savingAllLabel="Salvando todos…"
-      onNormalize={onNormalizeSectors}
       onDistributeEqually={onDistributeSectorsEqually}
       onResetZero={onResetSectorsZero}
       onTargetChange={onSectorTargetChange}
-      onSaveItem={onSaveSector}
-      onRemoveItem={onRemoveSector}
-      onSaveAll={onSaveAllSectorsForClass}
     />
   );
 }

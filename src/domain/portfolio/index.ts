@@ -344,6 +344,7 @@ export {
   distributeEquallyTargets,
   groupAssetsByClassAndSector,
   mirrorCurrentPositionTargets,
+  normalizeGroupTargets,
   parseTargetInput,
   sanitizeGroupTargetsForSave,
   targetsSum,

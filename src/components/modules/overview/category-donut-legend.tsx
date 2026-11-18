@@ -10,6 +10,7 @@ export interface CategoryDonutLegendProps {
   activeSelectedKey: string | null;
   hoveredSliceKey: string | null;
   listClassName?: string;
+  legendColumns?: 1 | 2 | "auto";
   onHoverSlice: (key: string | null) => void;
   onSelectSlice: (key: string, slice: DonutSlice) => void;
 }
@@ -23,19 +24,22 @@ export function CategoryDonutLegend({
   activeSelectedKey,
   hoveredSliceKey,
   listClassName,
+  legendColumns = "auto",
   onHoverSlice,
   onSelectSlice,
 }: CategoryDonutLegendProps) {
-  return (
-    <ul
-      className={cn(
-        "w-full min-w-0 overflow-hidden",
-        slices.length > 4 && !listClassName
+  const resolvedListClass = listClassName
+    ? listClassName
+    : legendColumns === 1
+      ? "flex flex-col space-y-1.5 sm:space-y-2"
+      : legendColumns === 2
+        ? "grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2"
+        : slices.length > 4
           ? "grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2"
-          : "flex flex-col space-y-1.5 sm:space-y-2",
-        listClassName,
-      )}
-    >
+          : "flex flex-col space-y-1.5 sm:space-y-2";
+
+  return (
+    <ul className={cn("w-full min-w-0 overflow-hidden", resolvedListClass)}>
       {slices.map((slice, index) => {
         const sliceKey = slice.key ?? `${slice.label}-${index}`;
         const percent = total > 0 ? (slice.valueCents / total) * 100 : 0;
@@ -78,7 +82,7 @@ export function CategoryDonutLegend({
                 <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
                   <span
                     className={cn(
-                      "line-clamp-2 break-words font-semibold transition-colors",
+                      "truncate whitespace-nowrap font-semibold transition-colors min-w-0",
                       isHighlighted ? "text-foreground font-bold" : "text-foreground/90",
                     )}
                     title={slice.label}
@@ -98,7 +102,7 @@ export function CategoryDonutLegend({
                   className="privacy-mask text-right text-xs font-semibold shrink-0 tabular-nums whitespace-nowrap"
                 />
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" aria-hidden="true">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/70" aria-hidden="true">
                 <div
                   className="h-full rounded-full transition-all duration-300"
                   style={{

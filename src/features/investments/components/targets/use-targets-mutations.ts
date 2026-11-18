@@ -76,6 +76,23 @@ export function useTargetsMutations({
     }
   };
 
+  const saveClassDirect = async (className: string, target: number) => {
+    if (runReadOnlyGuard("Definir Metas de Classes")) return;
+    setError(null);
+    try {
+      await saveClassTarget.mutateAsync({ name: className, target });
+      setClassDraft((prev) => {
+        const next = { ...prev };
+        delete next[className];
+        return next;
+      });
+      triggerSensory("success");
+    } catch (err) {
+      setError(getErrorMessage(err));
+      throw err;
+    }
+  };
+
   const removeClass = async (className: string) => {
     if (runReadOnlyGuard("Remover Meta de Classe")) return;
     setError(null);
@@ -141,6 +158,27 @@ export function useTargetsMutations({
     }
   };
 
+  const saveSectorDirect = async (sectorName: string, target: number, className: string) => {
+    if (runReadOnlyGuard("Definir Metas Setoriais")) return;
+    setError(null);
+    try {
+      await saveSectorTarget.mutateAsync({
+        name: sectorName,
+        target,
+        className,
+      });
+      setSectorDraft((prev) => {
+        const next = { ...prev };
+        delete next[sectorDraftKey(className, sectorName)];
+        return next;
+      });
+      triggerSensory("success");
+    } catch (err) {
+      setError(getErrorMessage(err));
+      throw err;
+    }
+  };
+
   const removeSector = async (sectorName: string) => {
     if (runReadOnlyGuard("Remover Meta Setorial")) return;
     setError(null);
@@ -196,9 +234,11 @@ export function useTargetsMutations({
     savingClass,
     savingSector,
     saveClass,
+    saveClassDirect,
     removeClass,
     saveAllClasses,
     saveSector,
+    saveSectorDirect,
     removeSector,
     saveAllSectorsForClass,
   };

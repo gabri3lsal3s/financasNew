@@ -17,6 +17,7 @@ import { useTargetsDraftState } from "../components/targets/use-targets-draft-st
  * 1. Classes: alocação macro (% do patrimônio investível, fora o Caixa);
  * 2. Setores: alocação meso opcional com escopo por classe (% dentro da classe);
  * 3. Ativos: Notas de Tese (0–10) + Status, com meta efetiva derivada automaticamente.
+ * Normalização 100% automática e salvamento otimista contínuo (§AutoNormalize).
  */
 export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) {
   const s = useTargetsDraftState();
@@ -79,18 +80,14 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                   <TargetClassesCard
                     classes={s.classes}
                     classTargetOf={s.classTargetOf}
+                    effectiveClassTargetOf={s.effectiveClassTargetOf}
                     storedClassTargets={s.storedClassTargets}
                     positionRows={s.investableRows}
                     classSum={s.classSum}
-                    savingClass={s.savingClass}
-                    onNormalizeClasses={s.handleNormalizeClasses}
+                    syncStatus={s.syncStatus}
                     onDistributeClassesEqually={s.handleDistributeClassesEqually}
-                    onDistributeRemaining={s.handleDistributeRemainingClasses}
                     onResetClassesZero={s.handleResetClassesZero}
                     onClassTargetChange={s.setClassTarget}
-                    onSaveClass={(c) => void s.saveClass(c)}
-                    onRemoveClass={(c) => void s.removeClass(c)}
-                    onSaveAllClasses={() => void s.saveAllClasses()}
                     onOpenClassDetail={(cls) => s.setBreakdownGroup({ type: "class", name: cls })}
                   />
                 ),
@@ -106,16 +103,13 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                     storedSectorTargets={s.activeClassStoredSectors}
                     positionRows={s.investableRows}
                     sectorTargetOf={(sec) => s.sectorTargetOf(sec, s.activeSectorClass)}
+                    effectiveSectorTargetOf={(sec) => s.effectiveSectorTargetOf(sec, s.activeSectorClass)}
                     sectorSum={s.sectorSum}
-                    savingSector={s.savingSector}
+                    syncStatus={s.syncStatus}
                     onSelectSectorClass={s.setSelectedSectorClass}
-                    onNormalizeSectors={s.handleNormalizeSectors}
                     onDistributeSectorsEqually={s.handleDistributeSectorsEqually}
                     onResetSectorsZero={s.handleResetSectorsZero}
                     onSectorTargetChange={s.setSectorTarget}
-                    onSaveSector={(sec) => void s.saveSector(sec)}
-                    onRemoveSector={(sec) => void s.removeSector(sec)}
-                    onSaveAllSectorsForClass={() => void s.saveAllSectorsForClass()}
                     onOpenSectorDetail={(sec, parentCls) =>
                       s.setBreakdownGroup({ type: "sector", name: sec, parentClass: parentCls })
                     }
@@ -151,9 +145,9 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
         totalPortfolioBRL={s.investableTotalBRL}
         targetPercent={
           s.breakdownGroup?.type === "class"
-            ? s.classTargetOf(s.breakdownGroup.name)
+            ? s.effectiveClassTargetOf(s.breakdownGroup.name)
             : s.breakdownGroup?.name
-              ? s.sectorTargetOf(
+              ? s.effectiveSectorTargetOf(
                   s.breakdownGroup.name,
                   s.breakdownGroup.parentClass ?? s.activeSectorClass,
                 )

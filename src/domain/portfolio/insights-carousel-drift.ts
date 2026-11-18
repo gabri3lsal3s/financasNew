@@ -93,7 +93,7 @@ export function computePortfolioCarouselDrift({
   return {
     allocationDrift,
     targetsSumPct,
-    hasInvalidTargetsSum: allocationDrift.hasTargets && Math.abs(targetsSumPct - 100) > 0.1,
+    hasInvalidTargetsSum: false, // Normalização automática ativa (§AutoNormalize) — sem alertas punitivos
     driftSummaryText,
     driftFingerprint,
     targetsSumFingerprint: String(targetsSumPct),
