@@ -15,6 +15,7 @@ export interface TargetClassesCardProps {
   classSum: { sum: number; error: string | null };
   syncStatus?: TargetSyncStatus;
   onDistributeClassesEqually: () => void;
+  onDistributeRemaining?: () => void;
   onResetClassesZero: () => void;
   onClassTargetChange: (className: string, val: number) => void;
   onOpenClassDetail?: (className: string) => void;
@@ -29,6 +30,7 @@ export function TargetClassesCard({
   classSum,
   syncStatus = "idle",
   onDistributeClassesEqually,
+  onDistributeRemaining,
   onResetClassesZero,
   onClassTargetChange,
   onOpenClassDetail,
@@ -76,6 +78,7 @@ export function TargetClassesCard({
       progressLabel="Total de pesos em classes:"
       resetLabel="Zerar classes"
       onDistributeEqually={onDistributeClassesEqually}
+      onDistributeRemaining={onDistributeRemaining}
       onResetZero={onResetClassesZero}
       onTargetChange={onClassTargetChange}
     />

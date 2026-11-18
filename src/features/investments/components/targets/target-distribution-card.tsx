@@ -43,6 +43,7 @@ export interface TargetDistributionCardProps {
   showProgressBar?: boolean;
   progressLabel?: string;
   resetLabel: string;
+  onDistributeRemaining?: () => void;
   onDistributeEqually: () => void;
   onResetZero: () => void;
   onTargetChange: (name: string, nextValue: number) => void;
@@ -64,6 +65,7 @@ export function TargetDistributionCard({
   showProgressBar = false,
   progressLabel = "Total alocado:",
   resetLabel,
+  onDistributeRemaining,
   onDistributeEqually,
   onResetZero,
   onTargetChange,
@@ -157,8 +159,10 @@ export function TargetDistributionCard({
           ) : null}
 
           <TargetDistributionActions
+            sum={sumState.sum}
             disabled={syncStatus === "saving"}
             resetLabel={resetLabel}
+            onDistributeRemaining={onDistributeRemaining}
             onDistributeEqually={onDistributeEqually}
             onResetZero={onResetZero}
           />

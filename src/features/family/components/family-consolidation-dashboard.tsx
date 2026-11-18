@@ -25,7 +25,7 @@ export function FamilyConsolidationDashboard({
   const isCombinedMode = consolidation.family.split_rule === "combined";
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-5 sm:gap-6">
       {isCombinedMode ? (
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <HouseholdCombinedFlowCard

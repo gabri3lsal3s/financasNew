@@ -52,7 +52,7 @@ export function InsightSlide({
         className,
       )}
     >
-      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1 pr-8 lg:pr-0">
+      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1 pr-8 sm:pr-0">
         <span
           className={cn(
             "flex size-9 shrink-0 items-center justify-center rounded-xl border",
@@ -82,7 +82,7 @@ export function InsightSlide({
           {actions}
         </div>
         {onDismiss ? (
-          <div className="absolute top-3 right-3 lg:static">
+          <div className="absolute top-3 right-3 sm:static">
             <Popover open={dismissOpen} onOpenChange={setDismissOpen}>
               <PopoverTrigger asChild>
                 <Button

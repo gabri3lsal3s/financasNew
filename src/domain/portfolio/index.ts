@@ -346,6 +346,7 @@ export {
   mirrorCurrentPositionTargets,
   normalizeGroupTargets,
   parseTargetInput,
+  rebalanceTargetsOnUserChange,
   sanitizeGroupTargetsForSave,
   targetsSum,
   validateClassSectorTargetsSum,

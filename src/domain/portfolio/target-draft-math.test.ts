@@ -50,6 +50,20 @@ describe("target-draft-math", () => {
     ]);
   });
 
+  it("sanitiza e normaliza setores de outras classes se excederem 100% no banco legado", () => {
+    const existing: GroupTarget[] = [
+      { id: "1", user_id: "u1", group_type: "sector", class_name: "Ações", name: "Bancos", target_percentage: 70 },
+      { id: "2", user_id: "u1", group_type: "sector", class_name: "Ações", name: "Tecnologia", target_percentage: 60 }, // soma 130%
+    ];
+    const payload = buildStoredSectorsPayload(existing, "Internacional", [
+      { name: "Tech Global", target: 100 },
+    ]);
+
+    const acoes = payload.filter((p) => p.class_name === "Ações");
+    const sumAcoes = acoes.reduce((acc, p) => acc + p.target_percentage, 0);
+    expect(sumAcoes).toBeLessThanOrEqual(100.01);
+  });
+
   it("deriva metas efetivas por ativo combinando classes, setores e notas", () => {
     const storedSectorMaps = buildStoredSectorMaps([
       { id: "s1", user_id: "u1", group_type: "sector", class_name: "Ações", name: "Petróleo", target_percentage: 100 },

@@ -152,7 +152,7 @@ export function AccountTab() {
   const accountCreatedAt = profile?.created_at ?? user?.created_at;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-5 sm:gap-6 min-w-0">
       <ProfileCredentialsCard
         roleLabel={getRoleLabel(userAccess.role)}
         name={name}

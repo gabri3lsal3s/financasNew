@@ -4,9 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { MoneyText } from "@/components/ui/money-text";
 import { Tabs } from "@/components/ui/tabs";
-import { CategoryIcon } from "@/components/modules/category-icon";
+import { TransactionRow } from "@/components/modules/transaction-row";
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { FamilyConsolidationExpense } from "@/types";
@@ -92,7 +91,7 @@ export function HouseholdExpenseFeed({
             onValueChange={handleFilterChange}
             items={tabItems}
             variant="pills"
-            fullWidth={true}
+            fullWidth={false}
             ariaLabel="Filtro do extrato familiar"
           />
         </div>
@@ -119,45 +118,28 @@ export function HouseholdExpenseFeed({
                 const isOwn = currentUserId ? expense.user_id === currentUserId : expense.is_own;
 
                 return (
-                  <div
+                  <TransactionRow
                     key={expense.id}
-                    className="py-3 sm:py-3.5 flex items-center justify-between gap-3 first:pt-0 last:pb-0"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <CategoryIcon
-                        icon={expense.category_icon}
-                        color={expense.category_color}
-                        className="size-4 shrink-0"
-                      />
-
-                      <div className="min-w-0 space-y-0.5">
-                        <p className="text-xs sm:text-sm font-medium text-foreground line-clamp-2 break-words">
-                          {expense.description}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-                          <span className="truncate">{expense.category_name}</span>
-                          <span className="tabular-nums shrink-0">{formatDateBR(expense.date)}</span>
-                          {isOwn ? (
-                            <Badge variant="positive" size="xs">
-                              Você
-                            </Badge>
-                          ) : (
-                            <Badge variant="portfolio" size="xs">
-                              {expense.payer_name || "Membro"}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 text-right">
-                      <MoneyText
-                        cents={expense.amount_cents}
-                        tone="negative"
-                        className="text-xs sm:text-sm font-semibold"
-                      />
-                    </div>
-                  </div>
+                    title={expense.description}
+                    subtitle={expense.category_name}
+                    date={formatDateBR(expense.date)}
+                    amountCents={expense.amount_cents}
+                    kind="expense"
+                    icon={expense.category_icon}
+                    iconColor={expense.category_color}
+                    variant="flat"
+                    badges={
+                      isOwn ? (
+                        <Badge variant="positive" size="xs">
+                          Você
+                        </Badge>
+                      ) : (
+                        <Badge variant="portfolio" size="xs">
+                          {expense.payer_name || "Membro"}
+                        </Badge>
+                      )
+                    }
+                  />
                 );
               })}
             </div>

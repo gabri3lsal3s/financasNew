@@ -86,6 +86,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                     classSum={s.classSum}
                     syncStatus={s.syncStatus}
                     onDistributeClassesEqually={s.handleDistributeClassesEqually}
+                    onDistributeRemaining={s.handleDistributeRemainingClasses}
                     onResetClassesZero={s.handleResetClassesZero}
                     onClassTargetChange={s.setClassTarget}
                     onOpenClassDetail={(cls) => s.setBreakdownGroup({ type: "class", name: cls })}
@@ -108,6 +109,7 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
                     syncStatus={s.syncStatus}
                     onSelectSectorClass={s.setSelectedSectorClass}
                     onDistributeSectorsEqually={s.handleDistributeSectorsEqually}
+                    onDistributeRemaining={s.handleDistributeRemainingSectors}
                     onResetSectorsZero={s.handleResetSectorsZero}
                     onSectorTargetChange={s.setSectorTarget}
                     onOpenSectorDetail={(sec, parentCls) =>

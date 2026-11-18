@@ -14,7 +14,7 @@ export function FamilyModeInactiveView({
   onGoHome,
 }: FamilyModeInactiveViewProps) {
   return (
-    <div className="space-y-6" data-testid="family-mode-inactive">
+    <div className="flex flex-col gap-5 sm:gap-6 min-w-0" data-testid="family-mode-inactive">
       <PageHeader
         title="Modo Família"
         description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
@@ -61,7 +61,7 @@ export interface FamilyEmptySetupViewProps {
 
 export function FamilyEmptySetupView({ onOpenCreate }: FamilyEmptySetupViewProps) {
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-5 sm:gap-6 min-w-0">
       <PageHeader
         title="Modo Família"
         description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."

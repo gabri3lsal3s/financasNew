@@ -20,6 +20,7 @@ export interface TargetSectorsCardProps {
   syncStatus?: TargetSyncStatus;
   onSelectSectorClass: (cls: string) => void;
   onDistributeSectorsEqually: () => void;
+  onDistributeRemaining?: () => void;
   onResetSectorsZero: () => void;
   onSectorTargetChange: (sectorName: string, val: number) => void;
   onOpenSectorDetail?: (sectorName: string, parentClass: string) => void;
@@ -37,6 +38,7 @@ export function TargetSectorsCard({
   syncStatus = "idle",
   onSelectSectorClass,
   onDistributeSectorsEqually,
+  onDistributeRemaining,
   onResetSectorsZero,
   onSectorTargetChange,
   onOpenSectorDetail,
@@ -104,6 +106,7 @@ export function TargetSectorsCard({
       sumState={sectorSum}
       resetLabel="Zerar setores"
       onDistributeEqually={onDistributeSectorsEqually}
+      onDistributeRemaining={onDistributeRemaining}
       onResetZero={onResetSectorsZero}
       onTargetChange={onSectorTargetChange}
     />

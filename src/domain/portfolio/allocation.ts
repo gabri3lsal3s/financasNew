@@ -92,14 +92,23 @@ export function parseTargetInput(raw: string): number {
 export function sanitizeGroupTargetsForSave<T extends { name: string; target: number }>(
   targets: readonly T[],
 ): T[] {
-  const result = targets.map((t) => ({
+  let result = targets.map((t) => ({
     ...t,
     target: Math.max(0, Math.round((Number.isFinite(t.target) ? t.target : 0) * 100) / 100),
   }));
 
   const sum = Math.round(result.reduce((acc, t) => acc + t.target, 0) * 100) / 100;
-  if (sum > 100) {
+  if (sum > 100.01) {
+    // Normalização proporcional segura para dados legados ou desbalanceados
+    const normalized = normalizeGroupTargets(result, 100);
+    result = normalized.map((item) => ({
+      ...item,
+      target: item.normalizedTarget,
+    }));
+  } else if (sum > 100) {
+    // Ajuste fino de dízima ou arredondamento (<= 0.01)
     const diff = Math.round((sum - 100) * 100) / 100;
+    let adjusted = false;
     for (let i = result.length - 1; i >= 0; i--) {
       const item = result[i];
       if (item && item.target >= diff) {
@@ -107,8 +116,16 @@ export function sanitizeGroupTargetsForSave<T extends { name: string; target: nu
           ...item,
           target: Math.round((item.target - diff) * 100) / 100,
         };
+        adjusted = true;
         break;
       }
+    }
+    if (!adjusted) {
+      const normalized = normalizeGroupTargets(result, 100);
+      result = normalized.map((item) => ({
+        ...item,
+        target: item.normalizedTarget,
+      }));
     }
   }
 
@@ -118,6 +135,63 @@ export function sanitizeGroupTargetsForSave<T extends { name: string; target: nu
 // ---------------------------------------------------------------------------
 // Ações Rápidas de Alocação (1/N, Espelhamento e Comparativo de Gap)
 // ---------------------------------------------------------------------------
+
+/**
+ * Auto-distribuição em tempo real quando o usuário altera o valor de uma classe ou setor:
+ * Se o novo valor faz a soma dos itens ultrapassar 100%, o excesso é absorvido
+ * proporcionalmente pelas outras classes/setores que possuem meta > 0, garantindo
+ * que a soma total feche sempre em 100.00% e respeitando a escolha do usuário no item alterado.
+ */
+export function rebalanceTargetsOnUserChange(
+  keys: readonly string[],
+  changedKey: string,
+  rawNextValue: number,
+  getCurrentValue: (key: string) => number,
+): Record<string, number> {
+  const nextVal = Math.min(100, Math.max(0, Math.round(rawNextValue * 10) / 10));
+  const otherKeys = keys.filter((k) => k !== changedKey);
+  const patch: Record<string, number> = { [changedKey]: nextVal };
+
+  if (otherKeys.length === 0) {
+    return patch;
+  }
+
+  const currentOthersSum = otherKeys.reduce((acc, k) => acc + Math.max(0, getCurrentValue(k)), 0);
+  const availableForOthers = Math.max(0, Math.round((100 - nextVal) * 10) / 10);
+
+  // Se a nova soma ultrapassar 100%: ajusta os outros proporcionalmente
+  if (nextVal + currentOthersSum > 100.01) {
+    if (availableForOthers === 0) {
+      for (const k of otherKeys) {
+        patch[k] = 0;
+      }
+      return patch;
+    }
+
+    const positiveOthers = otherKeys.filter((k) => getCurrentValue(k) > 0);
+    const poolKeys = positiveOthers.length > 0 ? positiveOthers : otherKeys;
+    const poolSum = poolKeys.reduce((acc, k) => acc + Math.max(0, getCurrentValue(k)), 0);
+
+    let accumulated = 0;
+    poolKeys.forEach((k, idx) => {
+      if (idx === poolKeys.length - 1) {
+        const remainder = Math.max(0, Math.round((availableForOthers - accumulated) * 10) / 10);
+        patch[k] = remainder;
+      } else {
+        const ratio = poolSum > 0 ? getCurrentValue(k) / poolSum : 1 / poolKeys.length;
+        const share = Math.round(ratio * availableForOthers * 10) / 10;
+        accumulated = Math.round((accumulated + share) * 10) / 10;
+        patch[k] = share;
+      }
+    });
+
+    for (const k of otherKeys) {
+      if (!(k in patch)) patch[k] = 0;
+    }
+  }
+
+  return patch;
+}
 
 /**
  * Normaliza proporcionalmente um conjunto de metas para somar rigorosamente o teto total (padrão 100%).

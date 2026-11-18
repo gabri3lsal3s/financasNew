@@ -111,13 +111,18 @@ export function useTargetsMutations({
     }
   };
 
-  const saveAllClasses = async () => {
+  const saveAllClasses = async (overrideTargets?: Record<string, number>) => {
     if (runReadOnlyGuard("Definir Metas de Classes")) return;
     setError(null);
     setSavingClass("all");
     try {
+      const targetMap = (className: string): number =>
+        overrideTargets && className in overrideTargets
+          ? (overrideTargets[className] ?? 0)
+          : classTargetOf(className);
+
       const sanitized = sanitizeGroupTargetsForSave(
-        classes.map((className) => ({ name: className, target: classTargetOf(className) })),
+        classes.map((className) => ({ name: className, target: targetMap(className) ?? 0 })),
       );
       await saveHierarchyTargets.mutateAsync({
         classes: sanitized
@@ -197,20 +202,35 @@ export function useTargetsMutations({
     }
   };
 
-  const saveAllSectorsForClass = async () => {
+  const saveAllSectorsForClass = async (overrideTargets?: Record<string, number>) => {
     if (runReadOnlyGuard("Definir Metas Setoriais")) return;
     setError(null);
     setSavingSector("all");
     try {
+      const targetMap = (sectorName: string): number => {
+        if (overrideTargets && sectorName in overrideTargets) {
+          return overrideTargets[sectorName] ?? 0;
+        }
+        const key = sectorDraftKey(activeSectorClass, sectorName);
+        if (overrideTargets && key in overrideTargets) {
+          return overrideTargets[key] ?? 0;
+        }
+        return sectorTargetOf(sectorName, activeSectorClass);
+      };
+
       const sanitized = sanitizeGroupTargetsForSave(
         availableSectors.map((sectorName) => ({
           name: sectorName,
-          target: sectorTargetOf(sectorName, activeSectorClass),
+          target: targetMap(sectorName) ?? 0,
         })),
       );
-      const storedClasses = (storedClassTargetsData ?? [])
+      const rawStoredClasses = (storedClassTargetsData ?? [])
         .filter((item) => item.target_percentage > 0)
-        .map((item) => ({ name: item.name, target_percentage: item.target_percentage }));
+        .map((item) => ({ name: item.name, target: item.target_percentage }));
+      const storedClasses = sanitizeGroupTargetsForSave(rawStoredClasses).map((item) => ({
+        name: item.name,
+        target_percentage: item.target,
+      }));
 
       await saveHierarchyTargets.mutateAsync({
         classes: storedClasses,

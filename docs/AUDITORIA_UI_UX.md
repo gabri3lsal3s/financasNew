@@ -640,8 +640,28 @@ Em resposta à homologação em telas intermediárias (tablets ~640px a 1024px �
    - **Causa Raiz:** Resquícios de `variant="solid"` em chips de filtro e botões de ação secundária gerando blocos brancos de alto contraste no tema escuro.
    - **Correção Canônica:** Substituídos por `SegmentedControl` ou `variant="default"` com `shadow-xs`, reservando `variant="solid"` exclusivamente para botões de submissão primária de autenticação e checkout.
 4. **Harmonização de Alertas e Rosca Donut no Tablet (`insight-slide.tsx`, `interactive-target-donut.tsx`):**
-   - **`InsightSlide`:** O botão dispensar (`X`) permanece ancorado no canto superior direito no mobile e no tablet (`absolute top-3 right-3 lg:static`) com zona de exclusão `pr-8 lg:pr-0`, liberando toda a largura horizontal da linha para a descrição e os botões de ação.
+   - **`InsightSlide`:** O botão dispensar (`X`) permanece ancorado no canto superior direito exclusivamente no mobile (`absolute top-3 right-3 sm:static`) com zona de exclusão `pr-8 sm:pr-0`, fluindo lado a lado com as ações a partir de `sm:` (tablets e desktop) para evitar sobreposição sobre o botão de ação.
    - **`InteractiveTargetDonut`:** A transição para rosca + legenda lado a lado foi ajustada para `md:flex-row`, mantendo centralização vertical equilibrada em larguras menores e impedindo que a legenda de classes seja espremida lateralmente pela rosca no tablet.
+
+---
+
+## 12. APÊNDICE: PADRONIZAÇÃO DE SHELL (CONFIGURAÇÕES E LEMBRETES), FEED DE FAMÍLIA E SEGREGAÇÃO PWA VS APK (BUILD 76)
+
+Em resposta à auditoria de ergonomia e consistência do aplicativo:
+
+1. **Padronização de Largura e Shell de Páginas (`settings-page.tsx`, `reminders-page.tsx`):**
+   - **Causa Raiz:** O uso de `max-w-4xl` inline nos nós raiz de Lembretes e Configurações gerava colunas estreitas com folgas assimétricas no desktop, destoando do alinhamento `max-w-7xl` provido pelo `PageShell`.
+   - **Correção Canônica:** Removido o `max-w-4xl`; contêineres raiz e abas padronizados para `flex w-full flex-col gap-5 sm:gap-6 min-w-0`. Todas as sub-abas de configurações e esqueletos de rota (`social-settings-skeletons.tsx`) foram alinhados à mesma métrica.
+2. **Harmonização do Modo Família e Feed Canônico (`family-page.tsx`, `household-expense-feed.tsx`, `household-balance-card.tsx`):**
+   - **Causa Raiz:** O feed de despesas familiares utilizava marcação HTML customizada ad-hoc sem integração à máscara de privacidade do usuário, e os botões e badges utilizavam tamanhos e classes manuais de estilo (`text-[10px]`).
+   - **Correção Canônica:** Migrado para o primitivo canônico `<TransactionRow variant="flat" />`, unificando ícones, badges de membro e privacidade (`usePrivacyMask`). Botões padronizados para `size="sm"` com `shadow-xs` e badges para `size="xs"` estrito.
+3. **Segregação Estrita de Atualização PWA vs APK (`app-about-card.tsx`):**
+   - **Causa Raiz:** No PWA e navegadores web, o botão "Atualizar agora" disparava o download do binário `axir-pro.apk`, frustrando usuários web que apenas desejavam carregar a nova versão do Service Worker.
+   - **Correção Canônica:** Lógica de atualização bifurcada estritamente por plataforma (`isNativePlatform()`):
+     - **Web / PWA:** "Atualizar agora" sincroniza o Service Worker e aciona `forceAppUpdate()`, recarregando a versão mais recente sem jamais baixar APK.
+     - **APK Nativo:** "Atualizar agora" invoca o instalador in-app (`installUpdate()`).
+     - **Download Manual:** Preservado o botão secundário dedicado "Baixar APK" para obtenção explícita do pacote de instalação Android quando desejado.
+
 
 
 

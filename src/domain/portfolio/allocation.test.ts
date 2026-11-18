@@ -10,6 +10,8 @@ import {
   groupAssetsByClassAndSector,
   mirrorCurrentPositionTargets,
   parseTargetInput,
+  rebalanceTargetsOnUserChange,
+  sanitizeGroupTargetsForSave,
   targetsSum,
   validateClassSectorTargetsSum,
   validateTargetsSum,
@@ -123,6 +125,45 @@ describe("domain/portfolio/allocation (§3.11.1)", () => {
       ];
       const res = mirrorCurrentPositionTargets(items, 100);
       expect(res.map((r) => r.targetPercentage)).toEqual([50, 50]);
+    });
+  });
+
+  describe("rebalanceTargetsOnUserChange", () => {
+    it("mantém os outros valores inalterados se a nova soma for <= 100", () => {
+      const keys = ["Ações", "FIIs", "Renda Fixa"];
+      const currentValues: Record<string, number> = { Ações: 20, FIIs: 20, "Renda Fixa": 20 };
+      const patch = rebalanceTargetsOnUserChange(keys, "Ações", 30, (k) => currentValues[k] ?? 0);
+
+      expect(patch).toEqual({ Ações: 30 });
+    });
+
+    it("redistribui proporcionalmente os outros itens quando a nova soma ultrapassa 100", () => {
+      // Internacional: 22, ETFs: 5, Ações: 25, Renda Fixa: 25, FIIs: 20 -> soma 97
+      // Usuário altera Internacional de 22 para 26 -> nova soma seria 101
+      const keys = ["Internacional", "ETFs", "Ações", "Renda Fixa", "FIIs"];
+      const currentValues: Record<string, number> = {
+        Internacional: 22,
+        ETFs: 5,
+        Ações: 25,
+        "Renda Fixa": 25,
+        FIIs: 20,
+      };
+
+      const patch = rebalanceTargetsOnUserChange(keys, "Internacional", 26, (k) => currentValues[k] ?? 0);
+
+      // Internacional fica em 26, e os outros 4 itens somam rigorosamente 74 (total 100)
+      expect(patch.Internacional).toBe(26);
+      const newValues = { ...currentValues, ...patch };
+      const total = Object.values(newValues).reduce((a, b) => a + b, 0);
+      expect(Math.round(total * 10) / 10).toBe(100);
+    });
+
+    it("zera os outros itens se o item alterado for definido em 100", () => {
+      const keys = ["Ações", "FIIs"];
+      const currentValues: Record<string, number> = { Ações: 50, FIIs: 50 };
+      const patch = rebalanceTargetsOnUserChange(keys, "Ações", 100, (k) => currentValues[k] ?? 0);
+
+      expect(patch).toEqual({ Ações: 100, FIIs: 0 });
     });
   });
 
@@ -413,6 +454,21 @@ describe("domain/portfolio/allocation (§3.11.1)", () => {
 
     it("retorna fallback 5.0 para carteira vazia", () => {
       expect(calculatePortfolioQualityScore([])).toBe(5.0);
+    });
+  });
+
+  describe("sanitizeGroupTargetsForSave", () => {
+    it("normaliza proporcionalmente quando a soma excede 100% (ex: 197%)", () => {
+      const items = [
+        { name: "Ações", target: 50 },
+        { name: "FIIs", target: 47 },
+        { name: "Renda Fixa", target: 50 },
+        { name: "Internacional", target: 50 },
+      ]; // Soma = 197%
+      const sanitized = sanitizeGroupTargetsForSave(items);
+      const total = sanitized.reduce((acc, it) => acc + it.target, 0);
+      expect(Math.round(total * 100) / 100).toBe(100);
+      expect(sanitized.every((it) => it.target >= 0 && it.target <= 100)).toBe(true);
     });
   });
 });

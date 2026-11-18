@@ -166,7 +166,7 @@ export function FamilyPage() {
           onRetry={() => void refetch()}
         />
       ) : isConsolidationLoading ? (
-        <div className="space-y-6" aria-busy="true">
+        <div className="flex flex-col gap-5 sm:gap-6" aria-busy="true">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <Skeleton className="h-52 w-full rounded-2xl" />
             <Skeleton className="h-52 w-full rounded-2xl" />

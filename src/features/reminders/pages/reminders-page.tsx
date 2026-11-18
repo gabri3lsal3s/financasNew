@@ -117,6 +117,7 @@ export function RemindersPage() {
           }}
           variant="underline"
           swipeable
+          className="w-full"
           items={[
             {
               value: "pending",

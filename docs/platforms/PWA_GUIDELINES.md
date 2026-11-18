@@ -313,6 +313,7 @@ Com o objetivo de oferecer paridade de experiência entre o ambiente nativo Andr
 - [x] Abertura com rede lenta: shell instantâneo + skeletons nos dados (App Shell precached em Workbox + `Skeleton` nos componentes).
 - [x] Abertura offline: shell carrega do cache e a UI exibe estado offline com retry; sem dados falsos (`offline.html` + `pwa-audit.test.ts`).
 - [x] Atualização de versão: toast "Nova versão disponível" + "Atualizar" recarrega sem perda de estado (`pwa.ts` + `pwa-update-toast.tsx`).
+- [x] Segregação PWA vs APK no card de versão (`AppAboutCard`): no ambiente PWA/Web, o botão "Atualizar agora" recarrega o Service Worker de forma atômica via `forceAppUpdate()`, sem iniciar download do APK Android; download de APK fica restrito ao botão secundário dedicado.
 - [x] Safe areas (notch) respeitadas no modo standalone (`viewport-fit=cover` e insets híbridos em `index.html` + `status-bar.ts`).
 - [x] Tema do status bar coerente com light/dark/oled (meta tags theme-color por media query em `index.html`).
 - [x] Rotação bloqueada em retrato (manifest + `screen.orientation.lock`).

@@ -167,11 +167,11 @@ export function HouseholdBalanceCard({
           <Button
             type="button"
             variant={isSettled && !hasPostSettlementExpenses ? "outline" : "default"}
-            size="default"
+            size="sm"
             onClick={onOpenSettlement}
-            className="w-full sm:w-auto gap-2"
+            className="w-full sm:w-auto gap-1.5 shadow-xs"
           >
-            <ArrowRightLeft className="size-4 shrink-0" aria-hidden="true" />
+            <ArrowRightLeft className="size-3.5 shrink-0" aria-hidden="true" />
             <span>
               {isSettled && !hasPostSettlementExpenses
                 ? "Ver Detalhes do Acerto"

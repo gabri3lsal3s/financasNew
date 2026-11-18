@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
+import { rebalanceTargetsOnUserChange } from "@/domain/portfolio/allocation";
 import {
   buildEqualDraftPatch,
   buildNormalizedDraftPatch,
@@ -108,15 +109,30 @@ export function useTargetsDraftState() {
   });
 
   const setClassTarget = (className: string, value: number) => {
-    setClassDraft((prev) => ({ ...prev, [className]: value }));
+    const rebalancedPatch = rebalanceTargetsOnUserChange(
+      derived.classes,
+      className,
+      value,
+      derived.classTargetOf,
+    );
+
+    const nextFullSnapshot: Record<string, number> = {};
+    for (const cls of derived.classes) {
+      nextFullSnapshot[cls] =
+        (cls in rebalancedPatch ? rebalancedPatch[cls] : derived.classTargetOf(cls)) ?? 0;
+    }
+
+    setClassDraft((prev) => ({ ...prev, ...rebalancedPatch }));
     setSyncStatus("saving");
 
-    const existing = classDebounceRef.current.get(className);
-    if (existing) clearTimeout(existing);
+    for (const timer of classDebounceRef.current.values()) {
+      clearTimeout(timer);
+    }
+    classDebounceRef.current.clear();
 
     const timer = setTimeout(async () => {
       try {
-        await mutations.saveClassDirect(className, value);
+        await mutations.saveAllClasses(nextFullSnapshot);
         markSavedWithDelay();
       } catch {
         setSyncStatus("error");
@@ -129,26 +145,49 @@ export function useTargetsDraftState() {
   };
 
   const setSectorTarget = (sectorName: string, value: number) => {
-    const key = sectorDraftKey(derived.activeSectorClass, sectorName);
-    setSectorDraft((prev) => ({ ...prev, [key]: value }));
+    const currentClass = derived.activeSectorClass;
+    const rebalancedPatch = rebalanceTargetsOnUserChange(
+      derived.availableSectors,
+      sectorName,
+      value,
+      (s) => derived.sectorTargetOf(s, currentClass),
+    );
+
+    const nextFullSectorSnapshot: Record<string, number> = {};
+    for (const sec of derived.availableSectors) {
+      nextFullSectorSnapshot[sec] =
+        (sec in rebalancedPatch
+          ? rebalancedPatch[sec]
+          : derived.sectorTargetOf(sec, currentClass)) ?? 0;
+    }
+
+    const scopedPatch: Record<string, number> = {};
+    for (const [sName, val] of Object.entries(rebalancedPatch)) {
+      scopedPatch[sectorDraftKey(currentClass, sName)] = val;
+    }
+
+    setSectorDraft((prev) => ({ ...prev, ...scopedPatch }));
     setSyncStatus("saving");
 
-    const existing = sectorDebounceRef.current.get(key);
-    if (existing) clearTimeout(existing);
+    for (const timer of sectorDebounceRef.current.values()) {
+      clearTimeout(timer);
+    }
+    sectorDebounceRef.current.clear();
 
-    const currentClass = derived.activeSectorClass;
+    const primaryKey = sectorDraftKey(currentClass, sectorName);
+
     const timer = setTimeout(async () => {
       try {
-        await mutations.saveSectorDirect(sectorName, value, currentClass);
+        await mutations.saveAllSectorsForClass(nextFullSectorSnapshot);
         markSavedWithDelay();
       } catch {
         setSyncStatus("error");
       } finally {
-        sectorDebounceRef.current.delete(key);
+        sectorDebounceRef.current.delete(primaryKey);
       }
     }, 600);
 
-    sectorDebounceRef.current.set(key, timer);
+    sectorDebounceRef.current.set(primaryKey, timer);
   };
 
   return {
@@ -178,16 +217,28 @@ export function useTargetsDraftState() {
       const patch = buildEqualDraftPatch(derived.classes);
       setClassDraft((prev) => ({ ...prev, ...patch }));
       try {
-        await mutations.saveAllClasses();
+        await mutations.saveAllClasses(patch);
         markSavedWithDelay();
       } catch {
         setSyncStatus("error");
       }
     },
-    handleDistributeRemainingClasses: () => {
+    handleDistributeRemainingClasses: async () => {
       setError(null);
       const patch = buildRemainingDraftPatch(derived.classes, derived.classTargetOf);
-      if (Object.keys(patch).length > 0) setClassDraft((prev) => ({ ...prev, ...patch }));
+      if (Object.keys(patch).length === 0) return;
+      const fullSnapshot: Record<string, number> = {};
+      for (const cls of derived.classes) {
+        fullSnapshot[cls] = (cls in patch ? patch[cls] : derived.classTargetOf(cls)) ?? 0;
+      }
+      setSyncStatus("saving");
+      setClassDraft((prev) => ({ ...prev, ...patch }));
+      try {
+        await mutations.saveAllClasses(fullSnapshot);
+        markSavedWithDelay();
+      } catch {
+        setSyncStatus("error");
+      }
     },
     handleResetClassesZero: async () => {
       setError(null);
@@ -195,13 +246,37 @@ export function useTargetsDraftState() {
       const patch = buildZeroDraftPatch(derived.classes);
       setClassDraft((prev) => ({ ...prev, ...patch }));
       try {
-        await mutations.saveAllClasses();
+        await mutations.saveAllClasses(patch);
         markSavedWithDelay();
       } catch {
         setSyncStatus("error");
       }
     },
     setSectorTarget,
+    handleDistributeRemainingSectors: async () => {
+      setError(null);
+      const currentClass = derived.activeSectorClass;
+      const rawPatch = buildRemainingDraftPatch(
+        derived.availableSectors,
+        (s: string) => derived.sectorTargetOf(s, currentClass),
+      );
+      if (Object.keys(rawPatch).length === 0) return;
+      const scopedPatch: Record<string, number> = {};
+      const fullSectorSnapshot: Record<string, number> = {};
+      for (const sec of derived.availableSectors) {
+        const val = (sec in rawPatch ? rawPatch[sec] : derived.sectorTargetOf(sec, currentClass)) ?? 0;
+        scopedPatch[sectorDraftKey(currentClass, sec)] = val;
+        fullSectorSnapshot[sec] = val;
+      }
+      setSyncStatus("saving");
+      setSectorDraft((prev) => ({ ...prev, ...scopedPatch }));
+      try {
+        await mutations.saveAllSectorsForClass(fullSectorSnapshot);
+        markSavedWithDelay();
+      } catch {
+        setSyncStatus("error");
+      }
+    },
     handleNormalizeSectors: () => {
       setError(null);
       setSectorDraft((prev) => ({
@@ -216,12 +291,18 @@ export function useTargetsDraftState() {
     handleDistributeSectorsEqually: async () => {
       setError(null);
       setSyncStatus("saving");
-      const patch = buildEqualDraftPatch(derived.availableSectors, (s) =>
-        sectorDraftKey(derived.activeSectorClass, s),
-      );
-      setSectorDraft((prev) => ({ ...prev, ...patch }));
+      const currentClass = derived.activeSectorClass;
+      const rawPatch = buildEqualDraftPatch(derived.availableSectors);
+      const scopedPatch: Record<string, number> = {};
+      const fullSectorSnapshot: Record<string, number> = {};
+      for (const sec of derived.availableSectors) {
+        const val = rawPatch[sec] ?? 0;
+        scopedPatch[sectorDraftKey(currentClass, sec)] = val;
+        fullSectorSnapshot[sec] = val;
+      }
+      setSectorDraft((prev) => ({ ...prev, ...scopedPatch }));
       try {
-        await mutations.saveAllSectorsForClass();
+        await mutations.saveAllSectorsForClass(fullSectorSnapshot);
         markSavedWithDelay();
       } catch {
         setSyncStatus("error");
@@ -230,12 +311,16 @@ export function useTargetsDraftState() {
     handleResetSectorsZero: async () => {
       setError(null);
       setSyncStatus("saving");
-      const patch = buildZeroDraftPatch(derived.availableSectors, (s) =>
-        sectorDraftKey(derived.activeSectorClass, s),
-      );
-      setSectorDraft((prev) => ({ ...prev, ...patch }));
+      const currentClass = derived.activeSectorClass;
+      const scopedPatch: Record<string, number> = {};
+      const fullSectorSnapshot: Record<string, number> = {};
+      for (const sec of derived.availableSectors) {
+        scopedPatch[sectorDraftKey(currentClass, sec)] = 0;
+        fullSectorSnapshot[sec] = 0;
+      }
+      setSectorDraft((prev) => ({ ...prev, ...scopedPatch }));
       try {
-        await mutations.saveAllSectorsForClass();
+        await mutations.saveAllSectorsForClass(fullSectorSnapshot);
         markSavedWithDelay();
       } catch {
         setSyncStatus("error");

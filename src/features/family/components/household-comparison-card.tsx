@@ -151,7 +151,7 @@ export function HouseholdComparisonCard({
                           <MoneyText
                             cents={member.net_balance_cents}
                             tone="positive"
-                            className="inline ml-1 text-[10px] font-semibold text-current"
+                            className="inline ml-1 font-semibold text-current"
                           />
                         </Badge>
                       ) : member.is_debtor ? (
@@ -160,7 +160,7 @@ export function HouseholdComparisonCard({
                           <MoneyText
                             cents={Math.abs(member.net_balance_cents)}
                             tone="default"
-                            className="inline ml-1 text-[10px] font-semibold text-current"
+                            className="inline ml-1 font-semibold text-current"
                           />
                         </Badge>
                       ) : (

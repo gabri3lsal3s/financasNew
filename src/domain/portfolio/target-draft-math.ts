@@ -170,25 +170,37 @@ export function buildStoredSectorsPayload(
   overrideClass?: string,
   overrideSectors?: readonly { name: string; target: number }[],
 ): Array<{ class_name: string; name: string; target_percentage: number }> {
-  const payload: Array<{ class_name: string; name: string; target_percentage: number }> = [];
+  const byClass = new Map<string, Array<{ name: string; target: number }>>();
+
   for (const item of sectorTargets) {
     const cls = item.class_name?.trim();
     if (!cls) continue;
     if (overrideClass && cls === overrideClass) continue;
     if (item.target_percentage > 0) {
-      payload.push({
-        class_name: cls,
-        name: item.name,
-        target_percentage: item.target_percentage,
-      });
+      const list = byClass.get(cls) ?? [];
+      list.push({ name: item.name, target: item.target_percentage });
+      byClass.set(cls, list);
     }
   }
 
   if (overrideClass && overrideSectors) {
-    for (const item of overrideSectors) {
+    const activeList = overrideSectors
+      .filter((item) => item.target > 0)
+      .map((item) => ({ name: item.name, target: item.target }));
+    if (activeList.length > 0) {
+      byClass.set(overrideClass, activeList);
+    } else {
+      byClass.delete(overrideClass);
+    }
+  }
+
+  const payload: Array<{ class_name: string; name: string; target_percentage: number }> = [];
+  for (const [cls, list] of byClass.entries()) {
+    const sanitizedList = sanitizeGroupTargetsForSave(list);
+    for (const item of sanitizedList) {
       if (item.target > 0) {
         payload.push({
-          class_name: overrideClass,
+          class_name: cls,
           name: item.name,
           target_percentage: item.target,
         });
