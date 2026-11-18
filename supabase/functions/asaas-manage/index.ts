@@ -10,6 +10,8 @@ import {
   sanitizePaymentLog,
 } from "../_shared/asaas.ts";
 import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
+import { sendTransactionalEmail } from "../_shared/resend.ts";
+import { renderSubscriptionCanceledEmail } from "../_shared/email-templates.ts";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -55,7 +57,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: userSub } = await supabase
       .from("user_subscriptions")
-      .select("id, user_id, asaas_subscription_id, asaas_payment_id, asaas_customer_id, starts_at, billing_start_at, created_at, status, tier, current_period_end, pending_plan_id")
+      .select("id, user_id, asaas_subscription_id, asaas_payment_id, asaas_customer_id, starts_at, billing_start_at, created_at, status, tier, current_period_end, trial_ends_at, trial_consumed_at, scheduled_plan_id, scheduled_first_charge_at, pending_plan_id")
       .eq("user_id", user.id)
       .single();
 
@@ -161,12 +163,62 @@ Deno.serve(async (req: Request) => {
     }
 
     // -------------------------------------------------------------------------
-    // AÇÃO 3: CANCELAMENTO DE ASSINATURA (COM REGRA CDC DE 7 DIAS)
+    // AÇÃO 3: CANCELAMENTO DE ASSINATURA (COM REGRA CDC DE 7 DIAS E RESPEITO AO TRIAL)
     // -------------------------------------------------------------------------
     if (action === "cancel") {
-      const referenceDateStr = userSub.billing_start_at || userSub.starts_at || userSub.created_at;
-      const startTime = referenceDateStr ? new Date(referenceDateStr).getTime() : 0;
-      const isWithin7Days = startTime > 0 && Date.now() - startTime <= SEVEN_DAYS_MS;
+      // 1. Caso TRIAL AGENDADO (F-09): Usuário em teste gratuito cadastrou cartão para renovação futura,
+      // mas ainda não ocorreu cobrança efetiva
+      const hasNeverBeenCharged = !userSub.billing_start_at && (userSub.tier === "trial" || Boolean(userSub.scheduled_first_charge_at));
+
+      if (hasNeverBeenCharged) {
+        if (userSub.asaas_subscription_id) {
+          try {
+            await cancelAsaasSubscription(userSub.asaas_subscription_id);
+          } catch (err: unknown) {
+            console.warn("[asaas-manage] Aviso ao cancelar agendamento futuro no Asaas:", err);
+          }
+        }
+
+        await supabase
+          .from("user_subscriptions")
+          .update({
+            asaas_subscription_id: null,
+            card_last4: null,
+            scheduled_plan_id: null,
+            scheduled_first_charge_at: null,
+            cancel_at_period_end: false,
+            tier: "trial",
+            status: "active",
+          })
+          .eq("user_id", user.id);
+
+        await supabase.from("audit_events").insert({
+          user_id: user.id,
+          entity_type: "user_subscription",
+          entity_id: userSub.id,
+          action: "trial_schedule_cancelled",
+          payload: { gateway: "asaas" },
+        });
+
+        const trialEndsFormatted = userSub.trial_ends_at
+          ? new Date(userSub.trial_ends_at).toLocaleDateString("pt-BR")
+          : "o encerramento do seu teste";
+
+        return jsonResponse(req, {
+          ok: true,
+          refunded: false,
+          is_trial_scheduled: true,
+          message: `O agendamento de renovação foi cancelado. Seu cartão não será cobrado e você continua aproveitando seu período de testes do Plano Pro até ${trialEndsFormatted}.`,
+        });
+      }
+
+      // 2. Usuário que já foi cobrado: calcula o prazo de 7 dias do CDC estritamente a partir de billing_start_at
+      const billingStartTime = userSub.billing_start_at
+        ? new Date(userSub.billing_start_at).getTime()
+        : userSub.starts_at
+          ? new Date(userSub.starts_at).getTime()
+          : 0;
+      const isWithin7Days = billingStartTime > 0 && Date.now() - billingStartTime <= SEVEN_DAYS_MS;
 
       if (isWithin7Days) {
         let refundRequested = false;
@@ -232,6 +284,27 @@ Deno.serve(async (req: Request) => {
           payload: { gateway: "asaas", refunded: refundRequested },
         });
 
+        // Disparo de e-mail transacional via Resend: Cancelamento CDC 7 dias
+        try {
+          const appUrl = Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br";
+          const emailData = renderSubscriptionCanceledEmail({
+            name: user.email?.split("@")[0] || "Cliente",
+            isCdcRefund: true,
+            reactivateUrl: `${appUrl}/assinatura`,
+          });
+          await sendTransactionalEmail(supabase, {
+            to: user.email || "",
+            subject: emailData.subject,
+            template: "subscription_canceled_cdc",
+            html: emailData.html,
+            text: emailData.text,
+            userId: user.id,
+            idempotencyKey: `cancel_cdc_${userSub.id}_${new Date().toISOString().slice(0, 10)}`,
+          });
+        } catch (emailErr) {
+          console.warn("[asaas-manage] Aviso ao enviar e-mail de cancelamento CDC:", emailErr);
+        }
+
         return jsonResponse(req, {
           ok: true,
           refunded: true,
@@ -265,6 +338,31 @@ Deno.serve(async (req: Request) => {
         action: "cancelled_at_period_end",
         payload: { gateway: "asaas", subscription_id: userSub.asaas_subscription_id },
       });
+
+      // Disparo de e-mail transacional via Resend: Cancelamento com vigência até period_end
+      try {
+        const appUrl = Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br";
+        const formattedEnd = userSub.current_period_end
+          ? new Date(userSub.current_period_end).toLocaleDateString("pt-BR")
+          : "o encerramento do ciclo";
+        const emailData = renderSubscriptionCanceledEmail({
+          name: user.email?.split("@")[0] || "Cliente",
+          isCdcRefund: false,
+          effectiveUntilFormatted: formattedEnd,
+          reactivateUrl: `${appUrl}/assinatura`,
+        });
+        await sendTransactionalEmail(supabase, {
+          to: user.email || "",
+          subject: emailData.subject,
+          template: "subscription_canceled_period_end",
+          html: emailData.html,
+          text: emailData.text,
+          userId: user.id,
+          idempotencyKey: `cancel_period_end_${userSub.id}_${new Date().toISOString().slice(0, 10)}`,
+        });
+      } catch (emailErr) {
+        console.warn("[asaas-manage] Aviso ao enviar e-mail de cancelamento ao fim do período:", emailErr);
+      }
 
       return jsonResponse(req, {
         ok: true,
@@ -300,13 +398,16 @@ Deno.serve(async (req: Request) => {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("name, email, cpf")
+        .select("name, email, cpf, phone, postal_code, address_number")
         .eq("id", user.id)
         .single();
 
-      const customerName = profile?.name || user.email?.split("@")[0] || "Cliente";
+      const customerName = card.holderName || profile?.name || user.email?.split("@")[0] || "Cliente";
       const customerEmail = profile?.email || user.email || "";
-      const customerCpf = profile?.cpf || "";
+      const customerCpf = (profile?.cpf || "").replace(/\D/g, "");
+      const customerPostalCode = (card.postalCode || profile?.postal_code || "").replace(/\D/g, "");
+      const customerAddressNumber = (card.addressNumber || profile?.address_number || "S/N").trim();
+      const customerPhone = (card.phone || profile?.phone || "").replace(/\D/g, "");
       const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
 
       await updateAsaasSubscriptionCreditCard(userSub.asaas_subscription_id, {
@@ -321,9 +422,9 @@ Deno.serve(async (req: Request) => {
           name: customerName,
           email: customerEmail,
           cpfCnpj: customerCpf,
-          postalCode: card.postalCode,
-          addressNumber: card.addressNumber,
-          phone: card.phone,
+          postalCode: customerPostalCode,
+          addressNumber: customerAddressNumber,
+          phone: customerPhone,
         },
         remoteIp: clientIp,
       });
@@ -335,6 +436,18 @@ Deno.serve(async (req: Request) => {
         .from("user_subscriptions")
         .update({ card_last4: cardLast4 })
         .eq("user_id", user.id);
+
+      // Sincroniza campos de contato e endereço no perfil se fornecidos no cartão
+      if (card.phone || card.postalCode || card.addressNumber) {
+        await supabase
+          .from("profiles")
+          .update({
+            phone: customerPhone || profile?.phone,
+            postal_code: customerPostalCode || profile?.postal_code,
+            address_number: customerAddressNumber || profile?.address_number,
+          })
+          .eq("id", user.id);
+      }
 
       await supabase.from("audit_events").insert({
         user_id: user.id,
@@ -366,46 +479,6 @@ Deno.serve(async (req: Request) => {
         console.warn("[asaas-manage] Falha ao listar faturas no Asaas:", err);
         return jsonResponse(req, { invoices: [] });
       }
-    }
-
-    // -------------------------------------------------------------------------
-    // AÇÃO 6: UPGRADE DIRETO ANUAL
-    // -------------------------------------------------------------------------
-    if (action === "upgrade-to-annual") {
-      if (!userSub.asaas_subscription_id) {
-        return jsonResponse(
-          req,
-          { error: "Usuário não possui assinatura recorrente ativa para migração automática." },
-          400,
-        );
-      }
-
-      await updateAsaasSubscriptionCycle(userSub.asaas_subscription_id, {
-        value: 143.88,
-        cycle: "YEARLY",
-      });
-
-      await supabase
-        .from("user_subscriptions")
-        .update({
-          tier: "pro_annual",
-          plan_id: "pro_annual",
-          cancel_at_period_end: false,
-        })
-        .eq("user_id", user.id);
-
-      await supabase.from("audit_events").insert({
-        user_id: user.id,
-        entity_type: "user_subscription",
-        entity_id: userSub.id,
-        action: "upgraded_to_annual",
-        payload: { gateway: "asaas", subscription_id: userSub.asaas_subscription_id },
-      });
-
-      return jsonResponse(req, {
-        ok: true,
-        message: "Assinatura migrada para o Plano Pro Anual com sucesso! O novo valor de R$ 143,88 será aplicado no próximo ciclo anual.",
-      });
     }
 
     return jsonResponse(req, { error: "Ação não suportada" }, 400);

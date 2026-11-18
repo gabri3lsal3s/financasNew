@@ -1,4 +1,5 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { cancelAsaasSubscription } from "../_shared/asaas.ts";
 import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
 
 interface ProvisionUserPayload {
@@ -280,6 +281,122 @@ Deno.serve(async (req: Request) => {
       }
 
       return jsonResponse(req, { success: true });
+    }
+
+    // -------------------------------------------------------------------------
+    // AÇÃO 5: ATUALIZAR ASSINATURA / PLANO DO USUÁRIO (SUPERADMIN COM SEGURANÇA GATEWAY)
+    // -------------------------------------------------------------------------
+    if (action === "admin_update_subscription") {
+      const {
+        target_user_id: targetUserId,
+        tier: targetTier,
+        status: targetStatus,
+        current_period_end: targetPeriodEnd,
+        trial_ends_at: targetTrialEnds,
+        cancel_at_period_end: targetCancelAtEnd,
+        cancel_asaas: shouldCancelAsaas,
+        notes,
+      } = body;
+
+      if (!targetUserId) {
+        return jsonResponse(req, { error: "ID de usuário é obrigatório." }, 400);
+      }
+
+      // 1. Busca a assinatura atual do usuário
+      const { data: userSub, error: subError } = await adminClient
+        .from("user_subscriptions")
+        .select("id, user_id, tier, status, plan_id, asaas_subscription_id, current_period_end, trial_ends_at")
+        .eq("user_id", targetUserId)
+        .maybeSingle();
+
+      if (subError) {
+        return safeErrorResponse(req, 400, `Erro ao consultar assinatura: ${subError.message}`);
+      }
+
+      let asaasCanceled = false;
+      const willBeLifetimeOrReadOnly = targetTier === "lifetime" || targetTier === "read_only" || targetStatus === "canceled";
+
+      // 2. Se o usuário tinha assinatura ativa no Asaas e está sendo promovido para Lifetime,
+      // cancelado ou se solicitado explicitamente, cancela no Asaas prevenindo cobrança fantasma
+      if (userSub?.asaas_subscription_id && (willBeLifetimeOrReadOnly || shouldCancelAsaas)) {
+        try {
+          await cancelAsaasSubscription(userSub.asaas_subscription_id);
+          asaasCanceled = true;
+        } catch (err: unknown) {
+          console.warn("[admin-super-action] Falha ao cancelar assinatura no Asaas ao atualizar para Lifetime/Cancelado:", err);
+        }
+      }
+
+      // 3. Monta payload de atualização
+      const updateData: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+
+      if (targetTier) {
+        updateData.tier = targetTier;
+        updateData.plan_id = targetTier;
+      }
+      if (targetStatus) {
+        updateData.status = targetStatus;
+      }
+      if (targetPeriodEnd !== undefined) {
+        updateData.current_period_end = targetPeriodEnd;
+      }
+      if (targetTrialEnds !== undefined) {
+        updateData.trial_ends_at = targetTrialEnds;
+      }
+      if (targetCancelAtEnd !== undefined) {
+        updateData.cancel_at_period_end = Boolean(targetCancelAtEnd);
+      }
+      if (asaasCanceled || (targetTier === "lifetime" && userSub?.asaas_subscription_id)) {
+        updateData.asaas_subscription_id = null;
+        updateData.scheduled_plan_id = null;
+        updateData.scheduled_first_charge_at = null;
+      }
+
+      if (userSub) {
+        await adminClient
+          .from("user_subscriptions")
+          .update(updateData)
+          .eq("user_id", targetUserId);
+      } else {
+        await adminClient
+          .from("user_subscriptions")
+          .insert({
+            user_id: targetUserId,
+            plan_id: targetTier || "lifetime",
+            tier: targetTier || "lifetime",
+            status: targetStatus || "active",
+            current_period_end: targetPeriodEnd || null,
+            trial_ends_at: targetTrialEnds || null,
+            ...updateData,
+          });
+      }
+
+      // 4. Trilha imutável de auditoria
+      await adminClient.from("audit_events").insert({
+        user_id: callerUser.id,
+        entity_type: "user_subscriptions",
+        entity_id: userSub?.id || targetUserId,
+        action: "ADMIN_UPDATE_SUBSCRIPTION",
+        payload: {
+          updated_by: callerUser.id,
+          target_user_id: targetUserId,
+          previous_tier: userSub?.tier,
+          new_tier: targetTier || userSub?.tier,
+          previous_status: userSub?.status,
+          new_status: targetStatus || userSub?.status,
+          asaas_subscription_canceled: asaasCanceled,
+          notes: notes || null,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      return jsonResponse(req, {
+        success: true,
+        asaasCanceled,
+        message: "Assinatura do usuário atualizada com sucesso.",
+      });
     }
 
     return jsonResponse(req, { error: "Ação não reconhecida." }, 400);

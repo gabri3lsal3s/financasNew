@@ -28,7 +28,7 @@ describe("Credenciais e Configuração Asaas (Edge Functions)", () => {
     });
 
     it("faz fallback para sandbox quando nenhuma URL ou ambiente for especificado", () => {
-      expect(getAsaasBaseUrl()).toBe("https://sandbox.asaas.com/api/v3");
+      expect(getAsaasBaseUrl()).toBe("https://api-sandbox.asaas.com/v3");
     });
 
     it("prioriza ASAAS_API_URL mesmo se ASAAS_ENVIRONMENT estiver configurado", () => {

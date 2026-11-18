@@ -269,7 +269,8 @@ export function useUserAccess(targetUserId?: string): UserAccessResult {
     queryKey: userSubscriptionQueryKey(activeUserId),
     queryFn: getMySubscription,
     enabled: isAuthResolved,
-    staleTime: STALE_TIMES.static, // 5 minutos (300_000 ms)
+    staleTime: 30_000, // 30 segundos para reatividade de faturamento
+    refetchOnWindowFocus: true,
     gcTime: STATIC_GC_TIME,
     retry: 1,
   });

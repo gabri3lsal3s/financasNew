@@ -1,8 +1,8 @@
 # PLANO MESTRE — ASSINATURAS, ONBOARDING, GATEWAY ASAAS E E-MAILS RESEND (AXIR)
 
-> **Classificação de Governança (`AGENTS.md` §10.5):** Fluxo Completo (Feature / Plano Estrutural — SemVer `MINOR`).  
-> **Status do Documento:** Planejamento Definitivo Aprovado para Execução (Código-fonte ainda intacto).  
-> **Escopo:** Ciclo de vida integral do usuário no Axir — Cadastro, Confirmação de E-mail, Trial de 30 dias, Assinatura Mensal e Anual, Antecipação Acumulativa (2 a 11 meses), Upgrade/Cancelamento/Estorno CDC, Webhooks Idempotentes Asaas v3, E-mails Transacionais Resend (`axir.com.br`) e Blindagem de Segurança SaaS.
+> **Classificação de Governança (`AGENTS.md` §10.5):** Fluxo Completo (Feature / Plano Estrutural — SemVer `MINOR` v3.11.0).  
+> **Status do Documento:** CONCLUÍDO COM 100% DE SUCESSO (Fases 1 a 5 Implementadas e Verificadas, Quality Gates 1 a 5 Aprovados).  
+> **Escopo Integral:** Ciclo de vida completo do usuário no Axir — Cadastro, Confirmação de E-mail, Onboarding, Trial de 30 dias, Assinatura Mensal e Anual, Antecipação Acumulativa (2 a 11 meses), Transições Automáticas de Estado sem F5, Upgrade/Cancelamento/Estorno CDC, Webhooks Idempotentes Asaas v3, E-mails Transacionais Resend (`axir.com.br`), Blindagem Modular RLS/RPCs e Painel Superadmin com Salvaguarda de Direitos Adquiridos.
 
 > [!CAUTION]
 > **Governança Estrita de Credenciais:** Nenhuma chave de API, PAT do Supabase, token Cloudflare ou segredo do Resend/Asaas deve jamais ser gravado em arquivos rastreados pelo Git (`docs/`, `src/`, `supabase/config.toml` ou `.env` versionado). Todas as credenciais operam exclusivamente via `supabase secrets set`, painel de SMTP do Supabase e variáveis de ambiente de build/runtime fora do repositório. Recomenda-se rotacionar nos respectivos painéis quaisquer tokens compartilhados em canais de chat após a conclusão do setup.
@@ -70,7 +70,7 @@ Diagnóstico factual obtido por inspeção direta do código-fonte (`src/`, `sup
    - Já configurado em produção apontando para `smtp.resend.com` (porta `465`, usuário `resend`, remetente `Axir <suporte@axir.com.br>`), com assuntos atualizados para `Axir`.
 3. **Onde ficam os templates HTML e quais gatilhos existem:**
    - Documentados apenas para cópia manual em `docs/platforms/EMAIL_TEMPLATES.md` (4 templates do Supabase Auth: `Confirm signup`, `Reset password`, `Invite user`, `Change email address`), auditados por `src/tests/email-templates-integrity.test.ts`.
-   - **Inconsistência de marca:** `docs/platforms/EMAIL_TEMPLATES.md` e `src/tests/email-templates-integrity.test.ts` ainda usam integralmente a marca antiga **`Áxis Finance`** e o domínio fictício `axis.finance`. No painel do Supabase Auth, os 4 templates ativos contêm mistura residual de `Áxis` com `Axir`, e os templates de alerta de segurança (`password_changed`, `email_changed`, `mfa_factor_enrolled`, `mfa_factor_unenrolled`) estão em inglês cru sem layout (`<h2>Your password was changed</h2>`).
+   - **Inconsistência de marca:** `docs/platforms/EMAIL_TEMPLATES.md` e `src/tests/email-templates-integrity.test.ts` ainda usam a marca antiga **`Áxis Finance`** e o domínio fictício `axis.finance`. No painel do Supabase Auth, os templates contêm mistura residual de `Áxis` com `Axir`, e as notificações de segurança (`password_changed`, `email_changed`, `mfa_factor_enrolled`, `mfa_factor_unenrolled`) estão em inglês cru sem layout (`<h2>Your password was changed</h2>`).
    - **Ausência total de Resend nas Edge Functions:** o secret `RESEND_API_KEY` não está cadastrado nas Edge Functions do Supabase e não existe cliente HTTP do Resend em `supabase/functions/_shared/`. Zero e-mails transacionais são enviados para eventos de faturamento (boas-vindas pós-confirmação, cartão agendado no trial, pagamento/renovação confirmada, antecipação acumulativa, falha no cartão `past_due`, aviso de fim de trial, cancelamento ou estorno CDC).
 
 ### 1.4 Brechas de Segurança, Riscos de Cobrança Duplicada, Bugs e Inconsistências de UX
@@ -131,7 +131,7 @@ Com base nas evidências da Etapa 1 e no comportamento real da API v3 do Asaas, 
 - **Diretriz técnica blindada:**
   1. **Desduplicação em duas camadas:**
      - Camada 1 (`provider_event_id`): se o `event.id` já existir em `billing_webhook_logs` com `processed_at IS NOT NULL`, retorna `200 OK` imediato (`duplicate_event`);
-     - Camada 2 (`payment.id`): adiciona tabela/controle de pagamentos liquidados (ou validação `currentSub.asaas_payment_id === payment.id` combinada com busca em `billing_intents` / `billing_processed_payments` com `UNIQUE(provider, provider_payment_id)`). Assim, `PAYMENT_CONFIRMED` liquida `pay_X` uma única vez, `PAYMENT_RECEIVED` de `pay_X` é ignorado com segurança, e `pay_Y` no mês seguinte avança o ciclo normalmente.
+     - Camada 2 (`payment.id`): controle de pagamentos liquidados via `public.billing_processed_payments` com `UNIQUE(provider, provider_payment_id)`. Assim, `PAYMENT_CONFIRMED` liquida `pay_X` uma única vez, `PAYMENT_RECEIVED` de `pay_X` é ignorado com segurança, e `pay_Y` no mês seguinte avança o ciclo normalmente.
   2. **Matemática monotônica de vigência (`current_period_end`):**
      - Em toda ativação/renovação de ciclo (`1 mês` ou `12 meses`), a base de soma será `baseDate = (currentSub.current_period_end && currentSub.current_period_end > now) ? currentSub.current_period_end : referenceDate`, garantindo que renovações nunca reduzam dias já pagos (mesmo em migração imediata de Mensal para Anual via Pix ou pós-antecipação).
   3. **Consulta real da 1ª cobrança no Checkout de Cartão imediato:**
@@ -143,7 +143,7 @@ Com base nas evidências da Etapa 1 e no comportamento real da API v3 do Asaas, 
 - **Padronização de Edge Functions (`verify_jwt = false` no gateway + validação explícita no handler):** tanto `asaas-checkout` quanto `asaas-manage` usarão `verify_jwt = false` no `supabase/config.toml` e no script `deploy:functions`, validando o JWT de forma fail-closed via `userClient.auth.getUser()` dentro do código — eliminando rejeições `401` por rotação de chaves assimétricas (`SUPABASE_JWKS` / `ES256`) ou preflight `OPTIONS`.
 - **Trava anti-mismatch Sandbox vs. Produção:** `_shared/asaas.ts` validará na inicialização a coerência entre o prefixo da `ASAAS_API_KEY` (`hmlg` vs `prod`) e o host resolvido (`api-sandbox.asaas.com` vs `api.asaas.com`), impedindo falhas silenciosas de credencial cruzada.
 
-### 2.4 Transição Reativa Sem F5, Blindagem Modular Completa e Salvaguardas de Direitos no Superadmin
+### 2.4 Transição Reativa Sem F5, Blindagem Modular Completa e Salvaguardas no Superadmin
 - **Transição automática instantânea no cliente (sem depender exclusivamente de WebSocket):**
   1. Reduzir `staleTime` de `user_subscription`, `user_access` e `user_features` para `30s` e ativar revalidação imediata em `visibilitychange === 'visible'` e `window.focus` (com *throttle* de 10s), garantindo atualização instantânea assim que o cliente volta do app bancário no celular ou alterna de aba após uma edição do Superadmin;
   2. Criar hook `useSubscriptionBoundaryTimer` que agenda um `setTimeout` exato para o próximo marco temporal (`trialEndsAt`, `currentPeriodEnd` ou `pendingPlanEffectiveAt`), invalidando `USER_SUBSCRIPTION_KEY` no exato segundo da virada para transicionar badges, banners e permissões sem recarregar a página;
@@ -174,183 +174,632 @@ Todas as ambiguidades de negócio foram resolvidas diretamente com o fundador an
 
 ---
 
-## 4. ETAPA 4: PLANO DE EXECUÇÃO EM 5 ONDAS
+## 4. MATRIZ DE RASTREABILIDADE (FALHAS VS FASES)
 
-A implementação seguirá estritamente a ordem de dependências abaixo, em branch dedicada (`feat/assinaturas-onboarding-axir`), mantendo a `main` íntegra até a aprovação final do Quality Gate (`npm run verify:full`).
+A tabela abaixo garante que nenhuma falha forense ou decisão aprovada fique desamparada na execução:
+
+| Item Diagnóstico | Fase de Execução | Portão de Qualidade | Status Alvo |
+|---|---|---|---|
+| **F-04** (Crash SQL `expired` enum) | **Fase 1** (Etapa 1.7) | Gate 1 (Pass/Fail) | Enum corrigido para `read_only_expired` + `pg_cron` |
+| **F-11** (Grace period 3d divergente) | **Fase 1** (Etapa 1.3) | Gate 1 (Pass/Fail) | `get_user_module_access` alinhado a `can_current_user_write` |
+| **F-16** (Bypass RLS/RPCs sem módulo) | **Fase 1** (Etapa 1.5) | Gate 1 (Pass/Fail) | 100% de tabelas e RPCs com `can_current_user_write_module` |
+| **F-17** (Módulos Beta bloqueados) | **Fase 1** (Etapa 1.4) + **Fase 4** (Etapa 4.1) | Gate 1 & Gate 4 | `get_my_features` respeita permissões do Superadmin |
+| **F-18** (Superadmin apaga datas / Asaas) | **Fase 1** (Etapa 1.6) + **Fase 2** (Etapa 2.4) + **Fase 4** (Etapa 4.5) | Gate 1, Gate 2 & Gate 4 | Defaults seguros + cancelamento Asaas ao virar `lifetime` |
+| **F-22** (RBAC Admin vs Superadmin) | **Fase 1** (Etapa 1.6) | Gate 1 (Pass/Fail) | Trava hierárquica `is_superadmin()` estrita |
+| **F-01** (Quebra de renovação 2º mês) | **Fase 2** (Etapa 2.3) | Gate 2 (Pass/Fail) | Desduplicação por `billing_processed_payments` |
+| **F-02** (Cobrança dupla antecipação Pix) | **Fase 2** (Etapa 2.1 e 2.3) | Gate 2 (Pass/Fail) | Adiamento com `DELETE /payments/{pendingId}` das faturas pendentes |
+| **F-03** (Assinaturas órfãs no Asaas) | **Fase 2** (Etapa 2.1 e 2.2) | Gate 2 (Pass/Fail) | `ensurePreviousSubscriptionCanceled` no checkout e upgrade Pix |
+| **F-05** (Carding / checkout anônimo) | **Fase 2** (Etapa 2.2) + **Fase 4** (Etapa 4.2) | Gate 2 & Gate 4 | Sessão JWT obrigatória + Turnstile ativo |
+| **F-06** (`PAYMENT_DELETED` destrutivo) | **Fase 2** (Etapa 2.3) | Gate 2 (Pass/Fail) | `PAYMENT_DELETED` afeta apenas `billing_intents` pendentes |
+| **F-07** (Webhook cego a estorno) | **Fase 2** (Etapa 2.3) | Gate 2 (Pass/Fail) | `PAYMENT_REFUNDED` e `CHARGEBACK` integrados no webhook |
+| **F-08** (Upgrade anual fake sem cobrança) | **Fase 2** (Etapa 2.4) + **Fase 4** (Etapa 4.4) | Gate 2 & Gate 4 | `upgrade-to-annual` extinto; `schedule-plan-change` + Pix Anual |
+| **F-09** (Perda de trial ao cancelar) | **Fase 2** (Etapa 2.4) | Gate 2 (Pass/Fail) | `trial_scheduled` cancela cartão e mantém dias grátis |
+| **F-10** (Antifraude Asaas dados falsos) | **Fase 2** (Etapa 2.1) + **Fase 4** (Etapa 4.3) | Gate 2 & Gate 4 | Celular, CEP e Número reais validados |
+| **F-12** (Gateway JWT `verify_jwt`) | **Fase 2** (Etapa 2.2 e 2.4) | Gate 2 (Pass/Fail) | `verify_jwt = false` no gateway + `auth.getUser()` fail-closed |
+| **F-13** (Teto 11m e externalReference) | **Fase 2** (Etapa 2.2) | Gate 2 (Pass/Fail) | Trava no backend de teto e `externalReference: intent.id` |
+| **F-14** (Query `full_name`, telegram, dev) | **Fase 2** (Etapa 2.3) + **Fase 4** (Etapa 4.3) | Gate 2 & Gate 4 | `name` correto, zero emojis, dev não engole erro de cartão |
+| **F-19** (Bug visual Plano Vitalício VIP) | **Fase 4** (Etapa 4.1 e 4.4) | Gate 4 (Pass/Fail) | Card exclusivo `isLifetime` + ícone Pro no Provider |
+| **F-20** (Atraso transições / Modal Pix) | **Fase 4** (Etapa 4.1 e 4.4) | Gate 4 (Pass/Fail) | `staleTime 30s` + `visibilitychange` + `useSubscriptionBoundaryTimer` |
+| **F-21** (Vazamento de rotas e presets) | **Fase 4** (Etapa 4.6) | Gate 4 (Pass/Fail) | Preset "Apenas Investimentos" bloqueia `insights`; `/` seguro |
+| **F-23** (Fricções de conforto UX) | **Fase 4** (Etapa 4.2 e 4.3) | Gate 4 (Pass/Fail) | Reenviar e-mail (cooldown 60s), dias trial somados no Pix Anual |
+| **F-15** (Código morto e resíduos Stripe) | **Fase 5** (Etapa 5.1 e 5.2) | Gate 5 (Pass/Fail) | Exclusão de prorata anual, limpeza de referências Stripe |
+| **D-01 a D-05** (Decisões de Negócio) | **Fases 1 a 5** | Gates 1 a 5 | 100% aderentes às regras canônicas do produto |
+
+---
+
+## 5. PLANO MESTRE DE EXECUÇÃO DETALHADO EM FASES, ETAPAS E PORTÕES DE QUALIDADE
+
+A execução é dividida em **5 Fases Sequenciais**, com dependências estritas. É **terminantemente proibido iniciar a Fase N+1 sem que o Portão de Qualidade da Fase N esteja 100% aprovado**.
 
 ```mermaid
-flowchart LR
-  W1["Onda 1: Segurança, Banco e Migrations"] --> W2["Onda 2: Core Asaas v3, Trial e Webhooks"]
-  W2 --> W3["Onda 3: Resend API, SMTP e Templates Axir"]
-  W3 --> W4["Onda 4: UX Onboarding, Checkout e Minha Assinatura"]
-  W4 --> W5["Onda 5: Limpeza, Testes e Quality Gate"]
+flowchart TD
+  subgraph F1["FASE 1: Infraestrutura de Banco, Migrations, RLS e RBAC"]
+    E1_1["1.1: Tabelas de Idempotência e Logs"]
+    E1_2["1.2: Expansão de Perfis e Trigger New User"]
+    E1_3["1.3: Grace Period em get_user_module_access"]
+    E1_4["1.4: Resolução de Features Beta get_my_features"]
+    E1_5["1.5: Fechamento de RLS e RPCs Mutação"]
+    E1_6["1.6: Blindagem RBAC e RPCs Admin"]
+    E1_7["1.7: Correção de reconcile_expired_subscriptions e pg_cron"]
+    E1_1 --> E1_2 --> E1_3 --> E1_4 --> E1_5 --> E1_6 --> E1_7
+  end
+
+  subgraph QG1["PORTÃO DE QUALIDADE 1 (GATE 1)"]
+    G1_Check{"Verificação Gate 1: Banco, RLS e RBAC"}
+  end
+
+  F1 --> QG1
+  QG1 -->|Aprovado 100%| F2
+
+  subgraph F2["FASE 2: Core Asaas v3, Webhooks Idempotentes e Ciclo de Vida"]
+    E2_1["2.1: Módulo _shared/asaas.ts e asaas-plans.ts"]
+    E2_2["2.2: Blindagem de asaas-checkout"]
+    E2_3["2.3: Webhooks Idempotentes e Vigência Monotônica"]
+    E2_4["2.4: Gestão asaas-manage e admin-super-action"]
+    E2_5["2.5: Edge Function billing-lifecycle-cron"]
+    E2_1 --> E2_2 --> E2_3 --> E2_4 --> E2_5
+  end
+
+  subgraph QG2["PORTÃO DE QUALIDADE 2 (GATE 2)"]
+    G2_Check{"Verificação Gate 2: Asaas Engine & Sandbox"}
+  end
+
+  F2 --> QG2
+  QG2 -->|Aprovado 100%| F3
+
+  subgraph F3["FASE 3: Infraestrutura Resend (API + SMTP) e Templates Axir"]
+    E3_1["3.1: Templates Supabase Auth no Painel/API"]
+    E3_2["3.2: Cliente Server _shared/resend.ts Idempotente"]
+    E3_3["3.3: 7 Templates HTML de Ciclo de Vida"]
+    E3_4["3.4: Atualização Documental e Testes de Integridade"]
+    E3_1 --> E3_2 --> E3_3 --> E3_4
+  end
+
+  subgraph QG3["PORTÃO DE QUALIDADE 3 (GATE 3)"]
+    G3_Check{"Verificação Gate 3: E-mails, Branding & Resend"}
+  end
+
+  F3 --> QG3
+  QG3 -->|Aprovado 100%| F4
+
+  subgraph F4["FASE 4: Frontend Reativo, Transições Sem F5 e UX de Assinatura"]
+    E4_1["4.1: Motor Reativo de Transição no Cliente"]
+    E4_2["4.2: Jornada de Entrada, Cadastro e Reenvio"]
+    E4_3["4.3: Refatoração de SubscriptionCheckoutPage"]
+    E4_4["4.4: Refatoração da Aba Minha Assinatura e Cumulative"]
+    E4_5["4.5: Painel Superadmin e Raio-X com DatePicker"]
+    E4_6["4.6: Ajuste de Presets Modulares e Rota Raiz"]
+    E4_1 --> E4_2 --> E4_3 --> E4_4 --> E4_5 --> E4_6
+  end
+
+  subgraph QG4["PORTÃO DE QUALIDADE 4 (GATE 4)"]
+    G4_Check{"Verificação Gate 4: UX/UI, Reatividade & Design System"}
+  end
+
+  F4 --> QG4
+  QG4 -->|Aprovado 100%| F5
+
+  subgraph F5["FASE 5: Limpeza de Código Morto, Atualização Jurídica e Go-Live"]
+    E5_1["5.1: Limpeza de Código Morto e Stripe"]
+    E5_2["5.2: Alinhamento de Termos de Uso (CDC Art. 49)"]
+    E5_3["5.3: Atualização de Runbooks Operacionais"]
+    E5_4["5.4: Testes Automatizados Completos e Playwright"]
+    E5_5["5.5: Homologação dos 8 Cenários Críticos em Sandbox"]
+    E5_6["5.6: Procedimento de Go-Live e Virada de Chaves"]
+    E5_1 --> E5_2 --> E5_3 --> E5_4 --> E5_5 --> E5_6
+  end
+
+  subgraph QG5["PORTÃO DE QUALIDADE 5 (GATE 5 - FINAL)"]
+    G5_Check{"Verificação Gate 5: Homologação Final & Produção"}
+  end
+
+  F5 --> QG5
 ```
 
 ---
 
-### ONDA 1: Segurança de Segredos, Hardening de Banco (Migrations/RPCs) e Governança de Sessão
+### FASE 1: Infraestrutura de Banco de Dados, Migrations, RLS e Governança RBAC
 
-**Objetivo:** Corrigir os bugs estruturais de SQL/RLS, criar a tabela de controle idempotente de pagamentos/e-mails, habilitar agendamento de reconciliação e blindar variáveis de ambiente e Turnstile.
+**Objetivo Central:** Corrigir os bugs estruturais de SQL/RLS, criar o arcabouço de tabelas para desduplicação de pagamentos e e-mails, habilitar rotinas de reconciliação, blindar tabelas contra escrita indevida por usuários expirados e proteger privilégios do Superadmin.  
+**Falhas Cobertas:** `F-04`, `F-11`, `F-16`, `F-17`, `F-18`, `F-22`.  
+**Branch:** `feat/assinaturas-onboarding-axir`.
 
-1. **Nova Migration `supabase/migrations/20260101000128_harden_billing_idempotency_and_trial_lifecycle.sql`:**
-   - **Tabela `public.billing_processed_payments`:** `id uuid PK`, `provider text NOT NULL DEFAULT 'asaas'`, `provider_payment_id text NOT NULL`, `user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE`, `kind text NOT NULL`, `amount_cents integer NOT NULL`, `period_end_applied timestamptz`, `created_at timestamptz NOT NULL DEFAULT now()`, com constraint `UNIQUE (provider, provider_payment_id)` e RLS restrita a `service_role` e admins.
-   - **Tabela `public.transactional_email_logs`:** `id uuid PK`, `user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE`, `template_key text NOT NULL`, `dedup_key text NOT NULL UNIQUE`, `recipient_email text NOT NULL`, `provider_message_id text`, `status text NOT NULL`, `created_at timestamptz NOT NULL DEFAULT now()` — garante que nenhum e-mail transacional (ex: recibo de `pay_X`, aviso de 5 dias do fim do trial, alerta `past_due`) seja disparado em duplicidade.
-   - **Expansão de `public.profiles` (colunas opcionais antifraude de faturamento):** adicionar `phone text`, `postal_code text` e `address_number text` (com privilégios protegidos no mesmo padrão de `cpf` da migration `058`).
-   - **Correção de `public.handle_new_user()`:** gravar explicitamente `starts_at = now()` e `trial_started_at = now()` ao criar a linha inicial de `public.user_subscriptions`.
-   - **Alinhamento do Grace Period de 3 dias em `public.get_user_module_access()`:** incluir o bloco `status = 'past_due' AND current_period_end IS NOT NULL AND current_period_end + interval '3 days' > now()` retornando `'write'::public.access_level`, espelhando 100% `public.can_current_user_write()`.
-   - **Correção de `public.get_my_features()` (`F-17`):** retornar `false` apenas quando `sf.is_globally_enabled = false` (Kill-Switch global) ou `ufo.is_enabled = false`, evitando bloquear features Beta (`default_enabled_for_new_users = false`) que foram liberadas individualmente pelo Superadmin via `user_module_permissions`.
-   - **Fechamento integral de RLS e RPCs de Escrita (`F-16`):**
-     - Adicionar `can_current_user_write_module('transactions')` nas políticas de escrita de `categories`, `families*`, `trips*` e `public_shares`, e `can_current_user_write_module('investments')` em `asset_prices` (mantendo leitura/exportação, suporte, perfil básico e exclusão LGPD sempre acessíveis);
-     - Adicionar guarda explícita `can_current_user_write_module(...)` no topo das RPCs `SECURITY DEFINER`: `refinance_credit_card_bill` (`cards`), `materialize_recurrences` (`transactions`), `allocate_goal_deposit` (`budgets`), `create_family`, `invite_family_member`, `remove_family_member`, `record_family_settlement`, `set_entity_family_id`, `create_trip`, `delete_trip_expense_sync`, `record_trip_settlements` e `unlink_trip_member` (`transactions`).
-   - **Hardening RBAC e Proteção de Datas em RPCs Admin (`F-18`, `F-22`):**
-     - Restringir `admin_toggle_global_feature` exclusivamente a `public.is_superadmin()`;
-     - Bloquear em `admin_set_user_subscription`, `admin_set_user_module_permission` e `admin_remove_user_module_permission` qualquer tentativa de um `admin` comum modificar um alvo `superadmin`;
-     - Em `admin_set_user_subscription`, aplicar defaults defensivos quando datas não forem informadas (`p_trial_ends_at := coalesce(p_trial_ends_at, now() + interval '30 days')` para `trial`; preservação de `current_period_end` vigente ou `+1m/+12m` para `pro_monthly`/`pro_annual`), além de expor os campos completos (`asaas_subscription_id`, `asaas_customer_id`, `payment_method`, `card_last4`, `billing_start_at`, `trial_consumed_at`) para consulta administrativa.
-   - **Correção de `public.reconcile_expired_subscriptions()` (`F-04`):** substituir o literal inválido `'expired'::public.subscription_status` por `'read_only_expired'::public.subscription_status`, além de expirar `past_due` cujo grace period de 3 dias já se encerrou (`current_period_end + interval '3 days' <= now()`) e expirar `billing_intents` pendentes há mais de 24h.
-2. **Extensão `pg_cron` e Job Diário Seguro:**
-   - Habilitar `pg_cron` no banco remoto e agendar job horário para `SELECT public.reconcile_expired_subscriptions();` + job diário para a Edge Function de régua de ciclo de vida (avisos de expiração de trial e resync pendente do Asaas).
-3. **Configuração de Secrets e Gateway de Funções:**
-   - Atualizar `supabase/config.toml`, `supabase/.env.example`, `.env.example` e script `deploy:functions` em `package.json`:
-     - Definir `verify_jwt = false` também para `[functions.asaas-manage]` (mantendo autenticação obrigatória via `userClient.auth.getUser()` no handler);
-     - Documentar `RESEND_API_KEY`, `RESEND_FROM_EMAIL` (`Axir <nao-responda@axir.com.br>`), `RESEND_REPLY_TO` (`suporte@axir.com.br`) e `VITE_TURNSTILE_SITE_KEY` (adicionando `VITE_TURNSTILE_SITE_KEY` em `ALLOWED_CLIENT_ENV_VARS` de `src/tests/security-audit.test.ts`);
-     - Injetar os secrets no projeto Supabase (`lnsfcajcfofgvpvabwbi`) inicialmente apontando o Asaas para Sandbox (`https://api-sandbox.asaas.com/v3` com `ASAAS_ENVIRONMENT=sandbox`) para validação ponta a ponta antes da chave de Produção.
+#### Etapas da Fase 1
 
----
+##### Etapa 1.1: Tabelas de Idempotência e Logs de Auditoria
+- **Arquivo a criar:** `supabase/migrations/20260101000128_harden_billing_idempotency_and_trial_lifecycle.sql`
+- **Tabela `public.billing_processed_payments`:**
+  ```sql
+  CREATE TABLE IF NOT EXISTS public.billing_processed_payments (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    provider text NOT NULL DEFAULT 'asaas',
+    provider_payment_id text NOT NULL,
+    user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    kind text NOT NULL, -- 'subscription_first_charge' | 'subscription_renewal' | 'cumulative_renewal' | 'plan_change'
+    amount_cents integer NOT NULL,
+    period_end_applied timestamptz,
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT uq_billing_processed_payments UNIQUE (provider, provider_payment_id)
+  );
+  ALTER TABLE public.billing_processed_payments ENABLE ROW LEVEL SECURITY;
+  -- RLS: Apenas service_role pode inserir; admins podem visualizar
+  CREATE POLICY "service_role_all_processed_payments" ON public.billing_processed_payments
+    FOR ALL TO service_role USING (true) WITH CHECK (true);
+  CREATE POLICY "admins_read_processed_payments" ON public.billing_processed_payments
+    FOR SELECT TO authenticated USING (public.is_admin());
+  ```
+- **Tabela `public.transactional_email_logs`:**
+  ```sql
+  CREATE TABLE IF NOT EXISTS public.transactional_email_logs (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid REFERENCES public.profiles(id) ON DELETE CASCADE,
+    template_key text NOT NULL,
+    dedup_key text NOT NULL UNIQUE,
+    recipient_email text NOT NULL,
+    provider_message_id text,
+    status text NOT NULL DEFAULT 'sent',
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now()
+  );
+  ALTER TABLE public.transactional_email_logs ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "service_role_all_email_logs" ON public.transactional_email_logs
+    FOR ALL TO service_role USING (true) WITH CHECK (true);
+  CREATE POLICY "admins_read_email_logs" ON public.transactional_email_logs
+    FOR SELECT TO authenticated USING (public.is_admin());
+  ```
 
-### ONDA 2: Core Asaas v3, Máquina de Estados de Trial/Assinatura e Webhooks Idempotentes
+##### Etapa 1.2: Expansão de Perfis e Correção do Trigger de Criação de Usuário
+- **Modificações em `public.profiles`:**
+  ```sql
+  ALTER TABLE public.profiles 
+    ADD COLUMN IF NOT EXISTS phone text,
+    ADD COLUMN IF NOT EXISTS postal_code text,
+    ADD COLUMN IF NOT EXISTS address_number text;
+  ```
+- **Correção em `public.handle_new_user()`:**
+  - Garantir que a linha criada em `public.user_subscriptions` preencha explicitamente:
+    `starts_at = now()`, `trial_started_at = now()`, `trial_ends_at = now() + (v_trial_days || ' days')::interval`.
 
-**Objetivo:** Blindar 100% da comunicação financeira com o Asaas contra cobranças duplicadas, perda de meses antecipados, falhas de renovação e brechas de cancelamento.
+##### Etapa 1.3: Alinhamento do Grace Period de 3 Dias em Funções de Acesso
+- **Modificação em `public.get_user_module_access()`:**
+  - Inserir a condição de tolerância para clientes em inadimplência temporária:
+    ```sql
+    WHEN status = 'past_due' AND current_period_end IS NOT NULL AND current_period_end + interval '3 days' > now() THEN 'write'::public.access_level
+    ```
+  - Garante conformidade idêntica com `public.can_current_user_write()`, evitando que o usuário fique em modo somente-leitura nas primeiras 72h de falha de cartão.
 
-1. **Refatoração de `supabase/functions/_shared/asaas.ts` e `asaas-plans.ts`:**
-   - **Guarda de coerência de ambiente (`assertAsaasEnvironmentMatch`):** detectar incompatibilidade entre chave `$aact_hmlg_...` e URL de produção (ou `$aact_prod_...` e URL sandbox), falhando de forma explícita e segura.
-   - **Gestão segura de Cliente (`findOrCreateAsaasCustomer`):**
-     - Priorizar `existingCustomerId` salvo em `user_subscriptions.asaas_customer_id` (validando via `GET /customers/{id}` e sincronizando `cpfCnpj`, `mobilePhone` e `notificationDisabled: true`);
-     - Exigir CPF válido (`isValidCPF`) antes de qualquer chamada ao Asaas — eliminar definitivamente o fallback `"00000000000"`;
-     - Criar/atualizar clientes sempre com `notificationDisabled: true` (decisão **D-05**).
-   - **Novos métodos atômicos da API Asaas v3:**
-     - `getAsaasSubscriptionPayments(subscriptionId, status?)`: consulta cobranças filhas de uma assinatura (`GET /subscriptions/{id}/payments`);
-     - `deleteAsaasPayment(paymentId)`: remove cobrança `PENDING` avulsa/filha (`DELETE /payments/{id}`);
-     - `postponeAsaasSubscriptionAfterPrepayment(subscriptionId, nextDueDate)`: atualiza `nextDueDate` (`updatePendingPayments: false`) e remove todas as cobranças `PENDING` da assinatura com `dueDate < nextDueDate`;
-     - `ensurePreviousSubscriptionCanceled(subscriptionId)`: cancela com tolerância a `404/already deleted` qualquer assinatura anterior antes de criar uma nova ou ao migrar via Pix Anual;
-     - Envio explícito de `externalReference` em `createAsaasPixCharge` e `createAsaasCreditCardSubscription`;
-     - Remoção dos fallbacks fictícios de CEP (`01310100`) e telefone (`11999999999`), exigindo os dados reais validados do titular.
-2. **Blindagem de `supabase/functions/asaas-checkout/index.ts`:**
-   - **Autenticação estrita:** remover o bloco `registration` (`signUp` anônimo). Exigir `Authorization: Bearer <jwt>` validado por `userClient.auth.getUser()` e `user.email_confirmed_at` presente.
-   - **Fluxo A (`cumulative_months` — 2 a 11 meses via Pix):**
-     - Validar no servidor `isCumulativeRenewalEligible` (incluindo trava de teto máximo de 11 meses acumulados a partir de `now()`);
-     - Reaproveitar `billing_intent` Pix pendente recente (`< 1h`) de mesma metragem/valor para evitar geração de múltiplos QR Codes órfãos;
-     - Passar `externalReference: intent.id` ao Asaas.
-   - **Fluxo B (Contratação Mensal/Anual):**
-     - Validar `status !== 'read_only_expired'` (corrigindo o check `'expired'`) na autoridade de trial único;
-     - Se o usuário já possuir `asaas_subscription_id` anterior (ex: trocando plano durante `trial_scheduled` ou regularizando `past_due`), cancelar a assinatura antiga no Asaas antes de criar a nova;
-     - Em **Pix Anual** para assinante `pro_monthly` ativo (upgrade imediato — decisão **D-02**), registrar `billing_intent` (`kind = 'plan_change'`, `plan_id = 'pro_annual'`) mantendo a assinatura atual intacta até a confirmação efetiva do Pix no webhook;
-     - Em **Cartão imediato** (sem trial), consultar a 1ª cobrança gerada da assinatura: gravar `asaas_payment_id = firstPayment.id`; se `CONFIRMED`/`RECEIVED`, ativar já registrando em `billing_processed_payments`; se `PENDING`, gravar `status = 'incomplete'` aguardando o webhook `PAYMENT_CONFIRMED`.
-3. **Blindagem de `supabase/functions/_shared/asaas-webhook-logic.ts` e `asaas-webhook/index.ts`:**
-   - **Correção definitiva de F-01:** remover `(payment.subscription && currentSub.asaas_subscription_id === payment.subscription)` da condição de duplicidade. Duplicidade de pagamento passa a ser verificada exclusivamente por `billing_processed_payments` (`provider_payment_id = payment.id`) ou `intent.status === 'paid'`.
-   - **Vigência cumulativa monotônica (F-02, F-23 e D-02):** `computeNextPeriodEnd` recebe `currentPeriodEnd` e `trialEndsAt` atuais, somando `+1` ou `+12` meses sobre `max(referenceDate, currentPeriodEnd, trialEndsAt_se_trial_ativo)`. Assim, quem paga Pix Anual durante o Trial soma os dias restantes aos 12 meses sem perder nenhum dia gratuito.
-   - **Pós-Trial e Troca Agendada (F-09):** quando a 1ª cobrança de `trial_scheduled` confirmar, preencher `billing_start_at = now()`, `trial_consumed_at = coalesce(trial_consumed_at, now())`, limpar `scheduled_plan_id` / `scheduled_first_charge_at`, ativar o `targetTier` e iniciar a janela legal de 7 dias do CDC a partir desse pagamento real. Quando uma renovação confirmar `pending_plan_id`, limpar `pending_plan_id` / `pending_plan_effective_at`.
-   - **Upgrade Pix Anual sobre Mensal ativo (D-02):** ao confirmar pagamento Pix Anual de usuário que tinha `asaas_subscription_id` mensal, cancelar imediatamente a assinatura mensal no Asaas e somar `+12 meses` sobre `max(now, current_period_end)`.
-   - **Separação estrita de eventos destrutivos (F-06 e F-07):**
-     - `PAYMENT_DELETED`: cancela apenas `billing_intents` `pending` associadas a `payment.id`; nunca altera `cancel_at_period_end` de assinaturas ativas;
-     - `SUBSCRIPTION_DELETED`: marca `cancel_at_period_end = true` apenas se a `subscriptionId` deletada for exatamente a `currentSub.asaas_subscription_id` vigente;
-     - `PAYMENT_REFUNDED` / `PAYMENT_CHARGEBACK_REQUESTED`: rebaixa para `tier = 'read_only'`, `status = 'canceled'`, `current_period_end = now()`;
-     - Configurar via API do Asaas a inclusão de `PAYMENT_REFUNDED` e `PAYMENT_CHARGEBACK_REQUESTED` no cadastro do webhook.
-   - **Correção da query de perfil no Telegram (F-14):** trocar `select("full_name, email")` por `select("name, email")` e remover emojis/domínio legado em `_shared/telegram.ts`.
-4. **Blindagem de `supabase/functions/asaas-manage/index.ts` e `admin-super-action/index.ts`:**
-   - **Remover `upgrade-to-annual` (F-08 / D-02):** consolidar a mudança via cartão exclusivamente em `schedule-plan-change` (que ajusta a próxima cobrança para `YEARLY` / `R$ 143,88` preservando `nextDueDate = current_period_end` com `updatePendingPayments: false` e registra `pending_plan_id = 'pro_annual'`).
-   - **Cancelamento em `trial_scheduled` (F-09 / D-03):** se `tier === 'trial'` e `billing_start_at IS NULL` (nunca houve cobrança paga), cancelar `asaas_subscription_id` no Asaas, limpar `scheduled_plan_id`, `scheduled_first_charge_at`, `asaas_subscription_id` e `card_last4`, **mantendo `tier = 'trial'`, `status = 'trialing'` e `trial_consumed_at = NULL`** até `trial_ends_at`.
-   - **Cancelamento CDC 7 dias vs Pós-7 dias (D-03):** calcular os 7 dias estritamente sobre `billing_start_at` (data real da 1ª cobrança paga), nunca sobre `created_at` do trial.
-   - **Troca de Cartão (`update-card`):** receber e repassar CEP, número e telefone reais + `card_brand` detectada.
-   - **Sincronização Segura de Superadmin com Asaas (`admin-super-action` — F-18):** adicionar ação `admin_update_subscription` exclusiva para `superadmin` que, ao conceder `lifetime` ou encerrar manualmente uma conta que possua `asaas_subscription_id` ativa, cancela automaticamente a assinatura futura no Asaas (evitando cobrança fantasma no cartão) e protege `current_period_end` já pago pelo cliente (salvo flag explícita de estorno/fraude auditada em `audit_events`).
-   - **Testes unitários obrigatórios:** suíte Vitest cobrindo todas as transições de `asaas-webhook-logic.ts` (1º pagamento, 2º mês recorrente, `PAYMENT_CONFIRMED` + `PAYMENT_RECEIVED` do mesmo ID, antecipação 2–11m, upgrade Pix Anual somando vigência, Pix Anual em trial somando dias restantes, cancelamento em `trial_scheduled`, CDC 7 dias, `PAYMENT_DELETED` inócuo e `PAYMENT_REFUNDED`).
+##### Etapa 1.4: Resolução Correta de Módulos Beta em `public.get_my_features()`
+- **Modificação em `public.get_my_features()`:**
+  - Retornar `false` apenas quando a feature estiver desativada globalmente no sistema (`sf.is_globally_enabled = false`) ou quando o usuário tiver um override explícito desativando-a (`ufo.is_enabled = false`).
+  - Remover a barreira de `default_enabled_for_new_users = false`, permitindo que concessões individuais feitas pelo Superadmin em `public.user_module_permissions` entrem em vigor no frontend.
 
----
+##### Etapa 1.5: Fechamento Integral de Brechas em RLS e RPCs `SECURITY DEFINER`
+- **Políticas RLS nas Tabelas Operacionais:**
+  - Atualizar as políticas de `INSERT`, `UPDATE` e `DELETE` em `public.categories`, `public.families`, `public.family_members`, `public.family_invites`, `public.family_settlements`, `public.trips`, `public.trip_members`, `public.trip_expenses`, `public.trip_settlements` e `public.public_shares` para exigir `public.can_current_user_write_module('transactions')`.
+  - Atualizar `public.asset_prices` para exigir `public.can_current_user_write_module('investments')`.
+  - As operações de `SELECT` (leitura) continuam liberadas para usuários com acesso `read` ou `write`, garantindo o modo somente-leitura integral sem quebra de tela.
+- **Proteção em RPCs `SECURITY DEFINER` de Mutação:**
+  - Injetar validação defensiva no topo de:
+    - `refinance_credit_card_bill` (módulo `cards`);
+    - `materialize_recurrences` (módulo `transactions`);
+    - `allocate_goal_deposit` (módulo `budgets`);
+    - `create_family`, `invite_family_member`, `remove_family_member`, `record_family_settlement`, `set_entity_family_id` (módulo `transactions`);
+    - `create_trip`, `delete_trip_expense_sync`, `record_trip_settlements`, `unlink_trip_member` (módulo `transactions`).
+  - Assinatura da trava defensiva:
+    ```sql
+    IF NOT public.can_current_user_write_module('transactions') THEN
+      RAISE EXCEPTION 'WRITE_NOT_ALLOWED_BY_SUBSCRIPTION_OR_PERMISSION'
+        USING ERRCODE = '42501';
+    END IF;
+    ```
 
-### ONDA 3: Infraestrutura Resend (SMTP + API Edge) e Templates HTML Marca Axir
+##### Etapa 1.6: Blindagem RBAC e Proteção de Datas em RPCs de Administração
+- **Restrição de Kill-Switch Global:**
+  - `public.admin_toggle_global_feature` passa a exigir estritamente `public.is_superadmin()`, impedindo que admins comuns desliguem funcionalidades globais.
+- **Proteção Hierárquica em RPCs Admin:**
+  - Em `admin_set_user_subscription`, `admin_set_user_module_permission` e `admin_remove_user_module_permission`, bloquear qualquer operação se o usuário-alvo for `superadmin` e o executor for apenas `admin` comum.
+- **Defaults Seguros em `admin_set_user_subscription`:**
+  - Se `p_trial_ends_at` não for informado ao setar plano `trial`, aplicar `coalesce(p_trial_ends_at, now() + interval '30 days')`.
+  - Se `p_current_period_end` não for informado ao setar `pro_monthly` ou `pro_annual`, preservar a data já existente ou somar `+1m`/`+12m` se for novo ciclo, impedindo que campos de vigência fiquem `NULL`.
 
-**Objetivo:** Unificar 100% da comunicação transacional de Auth e Faturamento sob a identidade visual **Axir** no domínio autenticado `axir.com.br` (zero emojis, zero marca legada `Áxis Finance`).
-
-1. **Padronização do Remetente no Supabase Auth (via Management API / Painel):**
-   - Atualizar `smtp_admin_email` para `nao-responda@axir.com.br` e `smtp_sender_name` para `Axir` (mantendo `smtp.resend.com:465`).
-   - Atualizar e aplicar os **templates HTML de Autenticação** com design dark/light-safe editorial **Axir** (`https://axir.com.br`, suporte `suporte@axir.com.br`, zero emojis):
-     1. `Confirm signup` — Confirmação de cadastro e início dos 30 dias Pro;
-     2. `Reset password` — Redefinição segura de senha;
-     3. `Invite user` — Convite exclusivo para o Axir;
-     4. `Change email address` — Confirmação de alteração de e-mail;
-     5. Notificações de segurança (`Password changed`, `Email changed`, `MFA factor enrolled/unenrolled`) traduzidas para pt-BR com layout Axir (substituindo o HTML cru em inglês atual).
-   - Atualizar `docs/platforms/EMAIL_TEMPLATES.md`, `docs/platforms/DEPLOYMENT.md` e `src/tests/email-templates-integrity.test.ts` para refletir a marca oficial **Axir** e o domínio `axir.com.br`.
-2. **Módulo Server-Side `supabase/functions/_shared/resend.ts` + `_shared/email-templates.ts`:**
-   - Cliente leve via `fetch("https://api.resend.com/emails")` usando `RESEND_API_KEY`, remetente `Axir <nao-responda@axir.com.br>`, `reply_to: "suporte@axir.com.br"` e cabeçalho `Idempotency-Key: <dedupKey>` nativo do Resend + persistência em `public.transactional_email_logs`.
-   - **Catálogo de 7 Templates Transacionais de Ciclo de Vida (disparados pelas Edge Functions):**
-     1. `trial_card_scheduled`: confirmação de cartão cadastrado no Trial com data exata da 1ª cobrança e lembrete de cancelamento livre em 1 clique;
-     2. `subscription_activated`: recibo de ativação/renovação do Plano Pro (Mensal ou Anual), valor pago, método (Cartão final `••••` ou Pix) e próxima renovação;
-     3. `cumulative_renewal_confirmed`: recibo da antecipação acumulativa (+N meses, desconto obtido e nova data em que a cobrança mensal do cartão voltará a ocorrer);
-     4. `plan_change_scheduled`: confirmação de agendamento de mudança de ciclo para `current_period_end`;
-     5. `payment_past_due`: alerta imediato de falha na renovação do cartão informando os **3 dias de tolerância (grace period)** e botão direto para `/configuracoes?tab=assinatura` para atualizar o cartão sem perder acesso;
-     6. `subscription_canceled_or_refunded`: comprovante de cancelamento (informando manutenção do acesso até `current_period_end` ou confirmação do estorno integral de 100% pelo Art. 49 do CDC);
-     7. `trial_ending_reminder` (5 dias antes e último dia) / `trial_expired_readonly`: lembrete respeitoso (informando que 100% dos dados permanecem seguros para consulta) disparado por Edge Function agendada `billing-lifecycle-cron` (que também reexecuta `reconcile_expired_subscriptions()` e tenta resincronizar registros com `asaas_sync_status = 'pending_resync'`).
-
----
-
-### ONDA 4: UX/UI Confortável, Transições Reativas Automáticas, Checkout e Painel Superadmin
-
-**Objetivo:** Alinhar todas as telas às decisões **D-01 a D-05** e às Regras de Ouro de UI do `AGENTS.md` (zero inputs nativos crus, zero `autoFocus`, fontes `>= 16px` no mobile, zero emojis, modais padronizados), garantindo transições automáticas instantâneas sem F5 e controle ergonômico pelo Superadmin.
-
-1. **Motor Reativo de Transição Automática de Planos, Trial e Módulos (`F-17`, `F-20`, `F-21`):**
-   - Em `src/state/queries/use-user-access.ts` e `use-user-subscription.ts`: reduzir `staleTime` para `30_000 ms`, revalidar automaticamente em `visibilitychange === 'visible'` e `window.focus` (com *throttle* de 10s — capturando imediatamente o retorno do app bancário no mobile ou edições do Superadmin) e corrigir `hasFeature` para delegar módulos Beta (`default_enabled_for_new_users = false`) a `subscription.moduleAccess`.
-   - Criar `useSubscriptionBoundaryTimer` montado em `SubscriptionProvider`: dispara invalidação automática de `USER_SUBSCRIPTION_KEY` no exato milissegundo em que `trialEndsAt`, `currentPeriodEnd` ou `pendingPlanEffectiveAt` é atingido, transicionando banners, badges e bloqueios de escrita em tempo real.
-   - Em `SubscriptionProvider` (`src/state/subscription-context.tsx`): sincronizar o ícone/estado Pro considerando `subscription.isPro || subscription.isLifetime` (corrigindo `F-19`).
-   - Em `src/app/authenticated-root.tsx` e `admin-module-catalog.ts` (`F-21`): incluir `insights: "none"` no preset *"Apenas Investimentos"* e redirecionar `/` via `resolveLandingPath` sempre que `hasFeature("overview")` for `false`.
-2. **Jornada de Entrada Confortável (`/cadastro`, `/entrar` -> `/assinatura`):**
-   - Em `src/features/landing/hooks/use-landing-cta.ts`: quando o visitante **não possui sessão**, `proUrl("pro-anual")` aponta para `/cadastro?plano=pro-anual` (e em `/entrar` preserva `?plano=...`); quando **já possui sessão**, vai direto para `/assinatura?plano=pro-anual`.
-   - Em `src/data/auth.ts#signUpWithEmail` e `resendConfirmationEmail`: aceitar parâmetro opcional `redirectPath` para que cadastros vindos com `?plano=pro-anual` gerem `emailRedirectTo: getPublicAppUrl("/assinatura?plano=pro-anual")` (caindo direto no checkout já logado assim que confirmar o e-mail, sem redigitar senha).
-   - Em `src/features/auth/pages/register-page.tsx` (`F-23`): adicionar na tela de confirmação de e-mail o botão *"Reenviar e-mail de confirmação"* com contador de cooldown de 60s e feedback via Toast.
-   - Em `src/components/ui/turnstile.tsx` e `index.html`: carregar o script oficial do Cloudflare Turnstile sob demanda quando `VITE_TURNSTILE_SITE_KEY` estiver definida em produção, mantendo fallback determinístico apenas em ambiente local/testes.
-3. **Refatoração de `SubscriptionCheckoutPage` (`src/features/subscription/pages/subscription-checkout-page.tsx`):**
-   - Se `!session`, redirecionar de forma limpa para `/cadastro?plano=${planSlug}` (com link rápido para `/entrar?plano=${planSlug}`), removendo o formulário duplicado de criação de conta de dentro da tela de pagamento.
-   - Pré-preencher automaticamente CPF, Celular, CEP e Número caso já existam em `profiles` (persistindo-os na primeira compra para zero retrabalho futuro).
-   - Nos pagamentos com **Cartão de Crédito**, adicionar em grid responsivo (`grid-cols-1 sm:grid-cols-2 gap-3.5`, conforme `AGENTS.md` §4.18) os campos enxutos com máscara em `src/services/masks`: **Celular com DDD**, **CEP (`00000-000`)** e **Número do endereço**, além de enviar `cardBrand` detectada.
-   - **Clareza em `trial_active` (Cartão vs Pix Anual — `F-23`):** no Cartão, exibir `R$ 0,00 hoje` com 1ª cobrança em `trial_ends_at`; ao alternar para **Pix Anual**, atualizar o resumo para `R$ 143,88 hoje via Pix` deixando explícito que **os dias restantes do teste gratuito são somados aos 12 meses** (`12 meses + X dias restantes`).
-   - Na tela do QR Code Pix: incluir contador regressivo de validade e botão secundário *"Já paguei — verificar confirmação"* para checagem instantânea sob demanda, além de remover o `catch` que engolia erros em `import.meta.env.DEV` (`F-14`).
-4. **Refatoração da Aba Plano (`subscription-tab.tsx` e `cumulative-renewal-card.tsx`):**
-   - **Suporte nativo a `Plano Vitalício VIP` (`isLifetime` — `F-19`) e `Inadimplente em Tolerância` (`past_due`):** exibir card dedicado de Acesso Vitalício Permanente (ocultando CTAs de compra/cancelamento) para `lifetime`, e card de alerta claro com botão *"Regularizar Cartão Agora"* mostrando o prazo restante da tolerância de 3 dias em `past_due`.
-   - **Exibição real do meio de pagamento:** mostrar bandeira e final do cartão (`Cartão •••• 1234`) quando `cardLast4` estiver presente, ou `Pix Anual (sem renovação automática em cartão)` quando o plano anual tiver sido pago via Pix (ocultando o botão inaplicável "Alterar Cartão" para quem pagou via Pix sem `asaas_subscription_id`).
-   - **Fechamento automático e celebração no `CumulativeRenewalCard` (`F-20`):** monitorar o avanço de `currentPeriodEnd` enquanto o modal Pix estiver aberto; assim que o webhook confirmar o Pix, fechar o modal automaticamente, acionar `triggerSensory("success")` e exibir Toast com a nova data de vigência.
-   - **Modal de confirmação na migração Mensal -> Anual:** ao clicar em "Mudar para o Anual" no `CumulativeRenewalCard` (ou na aba), abrir `<Modal size="md" />` oferecendo claramente as 2 opções da decisão **D-02**:
-     1. *Agendar no Cartão para a próxima renovação* (`schedulePlanChange("annual")` — sem cobrança hoje);
-     2. *Migrar agora via Pix Anual com 40% OFF* (redireciona para `/assinatura?plano=pro-anual&metodo=pix`, informando que os meses/dias atuais serão somados aos +12 meses e a recorrência mensal será encerrada).
-   - **Modal de Alteração de Cartão (`UpdateCardModal`):** incluir CEP, Número e Celular pré-preenchidos para manter aprovação antifraude no Asaas.
-   - **UX de Cancelamento em `trial_scheduled`:** quando o usuário estiver no período de teste com cartão agendado, exibir cópia específica ("Cancelar Cobrança Agendada — Você continuará aproveitando seus X dias gratuitos restantes sem nenhuma cobrança").
-   - Substituir o `<input>` HTML cru do Copia e Cola Pix em `cumulative-renewal-card.tsx` (L266) pelo primitivo `<Input readOnly />` do Design System (`AGENTS.md` §4.7).
-5. **Evolução do Painel Superadmin (`UserEditDialog` / `UserSaasPlanSection` — `F-18`):**
-   - Exibir **Raio-X da Assinatura** (fase atual, vencimento do trial/período, vínculo ativo com Asaas `asaas_subscription_id` e método de pagamento);
-   - Incluir seletor de data de vigência (`<DatePicker />` canônico) e atalhos rápidos (`+7 dias`, `+15 dias`, `+30 dias`, `+1 ano`) para concessão confortável de extensões de trial ou cortesias Pro;
-   - Exibir aviso de proteção de direitos quando o usuário possuir período pago vigente (`current_period_end > now()`) ou recorrência ativa no Asaas, acionando `admin-super-action` para cancelar automaticamente cobranças futuras no Asaas ao promover para `lifetime` ou encerrar assinatura.
+##### Etapa 1.7: Correção de `reconcile_expired_subscriptions()` e Ativação do `pg_cron`
+- **Correção do Enum Inválido:**
+  - Corrigir a cláusula SQL em `public.reconcile_expired_subscriptions()` de `'expired'::public.subscription_status` para `'read_only_expired'::public.subscription_status`.
+  - Incluir atualização de contas `past_due` cujo grace period de 3 dias já venceu para `read_only_expired`.
+  - Marcar como `expired` registros de `billing_intents` pendentes há mais de 24 horas.
+- **Ativação da Extensão `pg_cron` no Banco Remoto:**
+  - Executar comando de habilitação da extensão e agendar job horário:
+    ```sql
+    SELECT cron.schedule('reconcile-subscriptions-hourly', '0 * * * *', 'SELECT public.reconcile_expired_subscriptions();');
+    ```
 
 ---
 
-### ONDA 5: Limpeza de Código Morto, Alinhamento Documental/Jurídico e Quality Gate
+#### PORTÃO DE QUALIDADE 1 (GATE 1) — BANCO, SEGURANÇA & RBAC
 
-**Objetivo:** Eliminar resíduos legados, atualizar documentação canônica e validar 100% da suíte automatizada + homologação Asaas Sandbox.
+> [!IMPORTANT]
+> **Condição Bloqueante:** A Fase 2 só pode ser iniciada se 100% dos critérios deste portão forem satisfeitos sem exceção.
 
-1. **Remoção de Código Morto e Resíduos Legados:**
-   - Remover o ramo órfão de reembolso pró-rata anual pós-7 dias em `src/domain/subscription/plans.ts#calculateCancellationRefund` (alinhando com **D-03**) e atualizar `src/domain/subscription/plans.test.ts`;
-   - Remover `upgradeToAnnual` / `useUpgradeToAnnualMutation` em favor de `schedulePlanChange` + fluxo Pix Anual;
-   - Limpar menções ao `Stripe` em `src/features/legal/pages/terms-page.tsx`, `src/features/legal/pages/privacy-page.tsx`, `src/vite-env.d.ts`, `.env.example` e `subscription-checkout-page.tsx`, deixando exclusivamente o **Asaas** como instituição de pagamento homologada pelo Banco Central;
-   - Alinhar a cláusula de cancelamento e reembolso em `terms-page.tsx` exatamente à decisão **D-03** (7 dias CDC integral + manutenção de acesso até o fim do período vigente após 7 dias).
-2. **Atualização da Documentação Canônica (`AGENTS.md` §8):**
-   - Atualizar `docs/platforms/EMAIL_TEMPLATES.md`, `docs/platforms/DEPLOYMENT.md`, `docs/operations/GUIA_CONFIGURACAO_MANUAL_GO_LIVE.md` (incluindo `PAYMENT_REFUNDED` e `PAYMENT_CHARGEBACK_REQUESTED` no checklist do webhook Asaas) e `docs/roadmap/ROADMAP.md`.
-3. **Verificação, Build e Homologação Ponta a Ponta (Definition of Done):**
-   - Executar `npm run verify` (`tsc -b` + `eslint .` com `local/no-decorative-unicode` + `vitest run src/domain/`) -> **100% verde**;
-   - Executar `npx vitest run` (toda a suíte de componentes, repositórios, templates de e-mail e auditoria de segurança) -> **100% verde**;
-   - Executar `npm run verify:full` (incluindo smoke tests Playwright E2E desktop/mobile) -> **100% verde**;
-   - Deploy das Edge Functions (`asaas-checkout`, `asaas-manage`, `asaas-webhook`, `admin-super-action`, `billing-lifecycle-cron`) e homologação real no **Asaas Sandbox** validando os **8 cenários críticos**:
-     1. Novo cadastro -> botão de reenvio + e-mail de confirmação Resend (`Axir`) -> redirecionamento autenticado -> Trial 30d ativo;
-     2. Agendamento de Cartão no Trial (`R$ 0,00` hoje) -> cancelamento do agendamento preservando dias restantes de Trial;
-     3. Contratação Pro Mensal no Cartão -> simulação de 2º ciclo no Sandbox avançando `current_period_end` + recibo Resend;
-     4. Antecipação Acumulativa via Pix (ex: +3 meses) -> fechamento automático do modal Pix, avanço de `current_period_end`, atualização de `nextDueDate` e exclusão da fatura `PENDING` do mês atual no Asaas;
-     5. Upgrade Mensal -> Anual (agendado no cartão e imediato via Pix somando +12 meses e cancelando assinatura mensal, além de Pix Anual durante o Trial somando dias restantes);
-     6. Cancelamento dentro de 7 dias (estorno 100% + `read_only`) e após 7 dias (`cancel_at_period_end = true` mantendo acesso até o vencimento);
-     7. Restrições de Módulo e Modo Somente-Leitura -> bloqueio efetivo na UI e no banco (RLS + RPCs `SECURITY DEFINER`, incluindo Família, Viagens, Categorias e Investimentos) e funcionamento real de módulos Beta (`bank_notification_listener`) e preset *"Apenas Investimentos"*;
-     8. Governança Superadmin -> edição de plano (`lifetime` / extensão de trial com `<DatePicker />`) e de permissões modulares refletindo automaticamente na sessão do usuário, cancelando recorrência no Asaas ao promover para `lifetime` e preservando direitos pagos.
-   - Após aprovação em Sandbox, troca única dos secrets `ASAAS_API_KEY` (`$aact_prod_...`), `ASAAS_ENVIRONMENT=production` e `ASAAS_API_URL=https://api.asaas.com/v3` + cadastro do webhook de Produção com todos os eventos obrigatórios.
+##### 1. Critérios de Aceite Pass / Fail
+- [ ] **Critério 1.1:** A migration `20260101000128_harden_billing_idempotency_and_trial_lifecycle.sql` executa e reaplica sem erros (`replay idempotency`).
+- [ ] **Critério 1.2:** As tabelas `billing_processed_payments` e `transactional_email_logs` possuem restrições `UNIQUE` e políticas RLS ativas restritas a `service_role` e admins.
+- [ ] **Critério 1.3:** Chamadas a `reconcile_expired_subscriptions()` executam em 0ms sem disparar erro de enum `22P02`.
+- [ ] **Critério 1.4:** Usuário autenticado com plano `read_only_expired` ou trial vencido é **bloqueado no banco (HTTP 403 / SQL 42501)** ao tentar inserir em `categories`, `families`, `trips` ou chamar a RPC `materialize_recurrences`.
+- [ ] **Critério 1.5:** Leitura e exportação de dados continuam 100% funcionais para usuários em modo `read_only`.
+- [ ] **Critério 1.6:** Usuário em `past_due` há menos de 72h obtém `write` em `get_user_module_access` e consegue gravar transações.
+- [ ] **Critério 1.7:** Um usuário com role `admin` comum não consegue alterar assinatura nem permissões de um `superadmin`.
+
+##### 2. Comandos Automatizados de Verificação
+```bash
+# Validação de Migração e Geração de Tipos
+npx supabase db push --dry-run
+npm run db:types
+
+# Testes Automatizados de Banco e Domínio
+npx vitest run src/tests/database-schema-integrity.test.ts
+npx vitest run src/tests/security-audit.test.ts
+```
+
+##### 3. Roteiro de Inspeção Manual e Simulações
+1. No Supabase SQL Editor, simular chamada a `SELECT public.reconcile_expired_subscriptions();` e verificar se retorna contagem de linhas sem erros.
+2. Inspecionar as permissões da tabela `billing_processed_payments` garantindo que o papel `anon` não possui permissão de leitura nem escrita.
+3. Testar a RPC `admin_toggle_global_feature` com uma conta de admin comum e certificar-se de que a chamada aborta com erro de permissão insuficiente.
+
+---
+
+### FASE 2: Core Asaas v3, Motor de Pagamentos, Webhooks Idempotentes e Ciclo de Vida
+
+**Objetivo Central:** Eliminar os riscos de cobrança indevida/duplicada, garantir a correta antecipação de meses via Pix, corrigir a falha que travava renovações no 2º mês, implementar cancelamento sem perda de trial e estorno integral CDC em até 7 dias.  
+**Falhas Cobertas:** `F-01`, `F-02`, `F-03`, `F-05`, `F-06`, `F-07`, `F-08`, `F-09`, `F-10`, `F-12`, `F-13`, `F-14`.  
+**Decisões Aplicadas:** `D-01`, `D-02`, `D-03`, `D-04`, `D-05`.
+
+#### Etapas da Fase 2
+
+##### Etapa 2.1: Refatoração de Módulos Compartilhados Asaas
+- **Arquivos:** `supabase/functions/_shared/asaas.ts` e `_shared/asaas-plans.ts`
+- **Validação de Coerência de Ambiente (`assertAsaasEnvironmentMatch`):**
+  - Checar se `ASAAS_API_KEY` inicia com `$aact_hmlg_` quando o ambiente for Sandbox (`api-sandbox.asaas.com`) e com `$aact_prod_` quando for Produção (`api.asaas.com`). Falhar imediatamente com mensagem clara se houver divergência.
+- **Criação de Cliente no Asaas (`findOrCreateAsaasCustomer`):**
+  - Buscar primeiro por `existingCustomerId` (salvo em `user_subscriptions.asaas_customer_id`).
+  - Exigir CPF válido via `isValidCPF` (remover o fallback fictício `00000000000`).
+  - Configurar sempre `notificationDisabled: true` (decisão D-05).
+- **Novos Métodos Atômicos Asaas v3:**
+  - `getAsaasSubscriptionPayments(subscriptionId, status?)`: lista faturas filhas de uma assinatura.
+  - `deleteAsaasPayment(paymentId)`: cancela fatura pendente avulsa ou filha.
+  - `postponeAsaasSubscriptionAfterPrepayment(subscriptionId, nextDueDate)`: executa `PUT /subscriptions/{id}` com `nextDueDate` e `updatePendingPayments: false`, consulta as faturas `PENDING` via `getAsaasSubscriptionPayments` e remove todas as parcelas cujo `dueDate < nextDueDate`.
+  - `ensurePreviousSubscriptionCanceled(subscriptionId)`: cancela com segurança assinaturas anteriores no Asaas.
+
+##### Etapa 2.2: Blindagem de `asaas-checkout`
+- **Arquivo:** `supabase/functions/asaas-checkout/index.ts`
+- **Autenticação Fail-Closed:**
+  - Remover criação de usuário anônimo de dentro da Edge Function.
+  - Exigir JWT válido via `userClient.auth.getUser()` e exigir `user.email_confirmed_at IS NOT NULL`.
+  - Configurar `verify_jwt = false` no `supabase/config.toml` e validar explicitamente no handler para prevenir rejeições de preflight CORS e rotação JWKS.
+- **Tratamento de Antecipação Acumulativa (2 a 11 meses):**
+  - Validar no servidor se o usuário é elegível e se a soma dos meses não ultrapassa 11 meses a partir de `now`.
+  - Reutilizar `billing_intent` Pix pendente recente (`< 1h`) para evitar criação de múltiplos QR Codes no Asaas.
+  - Passar `externalReference: intent.id` ao gerar a cobrança Pix.
+- **Tratamento de Contratação Mensal e Anual:**
+  - Se o usuário possuir `asaas_subscription_id` ativa anterior, executar `ensurePreviousSubscriptionCanceled` antes de criar nova assinatura.
+  - Em contratações de Cartão com cobrança imediata (sem trial): consultar a 1ª fatura emitida (`GET /subscriptions/{id}/payments?limit=1`). Se já constar `CONFIRMED`/`RECEIVED`, ativar imediatamente gravando em `billing_processed_payments`; se estiver `PENDING` (análise antifraude), marcar `status = 'incomplete'` aguardando o webhook.
+
+##### Etapa 2.3: Webhooks Idempotentes e Cálculo Monotônico de Vigência
+- **Arquivos:** `supabase/functions/_shared/asaas-webhook-logic.ts` e `supabase/functions/asaas-webhook/index.ts`
+- **Correção da Falha F-01:**
+  - Remover a comparação `currentSub.asaas_subscription_id === payment.subscription` da condição de duplicidade.
+  - A desduplicação passa a consultar exclusivamente `public.billing_processed_payments` (`provider_payment_id = payment.id`) e o status da `billing_intent`. Renovações do 2º mês em diante avançam a vigência perfeitamente.
+- **Cálculo Monotônico de Vigência (F-02, F-23, D-02):**
+  - Toda soma de período (`+1 mês` ou `+12 meses`) toma como base `baseDate = max(referenceDate, current_period_end, trial_ends_at)`.
+  - Usuários em Trial que pagam Pix Anual somam os dias restantes de gratuidade aos 12 meses.
+- **Tratamento Pós-Trial e CDC (F-09, D-03):**
+  - Ao compensar a 1ª cobrança paga de um usuário vindo de `trial_scheduled`, gravar `billing_start_at = now()`, iniciar a janela de 7 dias do CDC e limpar `scheduled_plan_id`.
+- **Separação de Eventos Destrutivos (F-06, F-07):**
+  - `PAYMENT_DELETED`: atualiza apenas `billing_intents` pendentes; nunca altera assinaturas ativas.
+  - `SUBSCRIPTION_DELETED`: só afeta a conta se o ID da assinatura corresponder exatamente à assinatura ativa do usuário.
+  - `PAYMENT_REFUNDED` e `PAYMENT_CHARGEBACK_REQUESTED`: rebaixam imediatamente o usuário para `read_only_expired`.
+- **Limpeza no Telegram (F-14):**
+  - Substituir `full_name` por `name` e remover emojis e domínios antigos em `_shared/telegram.ts`.
+
+##### Etapa 2.4: Gestão da Assinatura (`asaas-manage`) e Operações Administrativas
+- **Arquivos:** `supabase/functions/asaas-manage/index.ts` e `supabase/functions/admin-super-action/index.ts`
+- **Remoção de `upgrade-to-annual` (D-02):**
+  - Consolidar upgrades de Cartão exclusivamente via `schedule-plan-change` (agendado para `current_period_end`).
+- **Cancelamento em `trial_scheduled` (D-03, F-09):**
+  - Se o usuário cancelar durante o período de teste com cartão agendado, deletar a assinatura futura no Asaas, limpar dados do cartão e **manter o trial gratuito ativo até `trial_ends_at`** (sem gravar `trial_consumed_at`).
+- **Cancelamento CDC de 7 Dias vs Pós-7 Dias (D-03):**
+  - Se o cancelamento ocorrer em até 7 dias a contar de `billing_start_at` (1ª cobrança paga), realizar estorno de 100% no Asaas via `POST /payments/{id}/refund` e rebaixar imediatamente para `read_only_expired`.
+  - Após 7 dias, cancelar renovação no Asaas (`cancel_at_period_end = true`) mantendo acesso Pro até `current_period_end`.
+- **Ação Segura de Superadmin (`admin-super-action` — F-18):**
+  - Adicionar ação `admin_update_subscription` que cancela automaticamente a assinatura recorrente no Asaas caso o Superadmin promova o usuário a `lifetime` ou encerre manualmente a assinatura.
+
+##### Etapa 2.5: Edge Function de Ciclo de Vida (`billing-lifecycle-cron`)
+- **Arquivo a criar:** `supabase/functions/billing-lifecycle-cron/index.ts`
+- **Rotinas Diárias:**
+  - Identificar trials que expiram em 5 dias e no último dia, disparando e-mails transacionais de aviso.
+  - Reprocessar assinaturas que ficaram com `asaas_sync_status = 'pending_resync'`.
+  - Executar `reconcile_expired_subscriptions()` defensivamente.
+
+---
+
+#### PORTÃO DE QUALIDADE 2 (GATE 2) — CORE ASAAS & SANDBOX
+
+> [!IMPORTANT]
+> **Condição Bloqueante:** A Fase 3 só pode ser iniciada se 100% dos critérios deste portão forem satisfeitos sem exceção.
+
+##### 1. Critérios de Aceite Pass / Fail
+- [ ] **Critério 2.1:** Suíte de testes unitários `asaas-webhook-logic.test.ts` passa com 100% de cobertura nos cenários: 1º pagamento, renovação do 2º mês, desduplicação de `PAYMENT_CONFIRMED` e `PAYMENT_RECEIVED`, antecipação Pix de 3 meses, upgrade Pix Anual, estorno CDC e cancelamento em `trial_scheduled`.
+- [ ] **Critério 2.2:** Edge Functions compilam sem erros de tipo via Deno check / TypeScript estrito.
+- [ ] **Critério 2.3:** No Asaas Sandbox, contratação com Cartão em `trial_active` agenda a 1ª cobrança para `trial_ends_at` sem cobrar R$ 0,01 hoje.
+- [ ] **Critério 2.4:** Cancelar agendamento em `trial_scheduled` cancela a assinatura no Sandbox e preserva os dias grátis de trial no banco.
+- [ ] **Critério 2.5:** Simulação de pagamento antecipado de 3 meses via Pix avança `current_period_end` em 3 meses civis e deleta a cobrança `PENDING` do mês corrente no Asaas Sandbox.
+- [ ] **Critério 2.6:** O evento `PAYMENT_DELETED` de um Pix expirado não altera o status `active` de assinaturas existentes.
+- [ ] **Critério 2.7:** Promoção para `lifetime` via `admin-super-action` cancela a assinatura recorrente no Asaas Sandbox impedindo cobrança fantasma.
+
+##### 2. Comandos Automatizados de Verificação
+```bash
+# Testes Unitários de Domínio Financeiro e Webhook Logic
+npx vitest run src/tests/asaas-webhook-logic.test.ts
+npx vitest run src/domain/subscription/plans.test.ts
+
+# Validação Sintática das Edge Functions
+npx supabase functions check asaas-checkout
+npx supabase functions check asaas-webhook
+npx supabase functions check asaas-manage
+npx supabase functions check admin-super-action
+```
+
+##### 3. Roteiro de Inspeção Manual e Simulações
+1. Disparar via cURL um webhook simulando `PAYMENT_CONFIRMED` com `payment.id = 'pay_teste_1'` e verificar se registra em `billing_processed_payments`.
+2. Reenviar exatamente o mesmo payload com evento `PAYMENT_RECEIVED` e certificar-se de que o sistema retorna `200 OK` com `ignore_duplicate` sem duplicar vigência.
+3. Simular payload com `payment.id = 'pay_teste_2'` para o mesmo usuário e validar se a vigência avança mais 1 mês.
+
+---
+
+### FASE 3: Infraestrutura Transacional Resend (API + SMTP) e Templates Oficiais Axir
+
+**Objetivo Central:** Unificar 100% da comunicação transacional de Autenticação e Faturamento sob a identidade visual da marca **Axir** no domínio autenticado `axir.com.br`, eliminando qualquer menção legada a `Áxis Finance` e zero emojis.  
+**Falhas Cobertas:** `F-14` (marca residual), `D-05`.
+
+#### Etapas da Fase 3
+
+##### Etapa 3.1: Atualização dos Templates Supabase Auth
+- **Alinhamento de Marca:**
+  - Atualizar o remetente no Supabase Auth para `Axir <nao-responda@axir.com.br>`.
+  - Aplicar nos 4 templates de autenticação (`Confirm signup`, `Reset password`, `Invite user`, `Change email`) o design canônico Dark/Light-safe com tipografia Inter/Plus Jakarta Sans, brand color `#2563EB`, logo oficial Axir, rodapé institucional e ausência de emojis.
+  - Traduzir para pt-BR e padronizar o layout dos alertas de segurança do Auth (`Password changed`, `Email changed`, `MFA factor enrolled`).
+
+##### Etapa 3.2: Cliente Server-Side `_shared/resend.ts`
+- **Arquivo a criar:** `supabase/functions/_shared/resend.ts`
+- **Funcionalidades:**
+  - Envio de e-mails via chamada HTTP `POST https://api.resend.com/emails` usando `RESEND_API_KEY`.
+  - Cabeçalho nativo `Idempotency-Key: <dedupKey>` para evitar envio duplicado em caso de retransmissão de rede.
+  - Registro automático em `public.transactional_email_logs`.
+  - Remetente oficial: `Axir <nao-responda@axir.com.br>`, com `reply_to: "suporte@axir.com.br"`.
+
+##### Etapa 3.3: Catálogo de 7 Templates HTML de Ciclo de Vida
+- **Arquivo a criar:** `supabase/functions/_shared/email-templates.ts`
+- **Templates Implementados:**
+  1. `trial_card_scheduled`: Confirmação de cartão agendado no trial com data da 1ª cobrança.
+  2. `subscription_activated`: Recibo de ativação/renovação do Plano Pro (Mensal ou Anual).
+  3. `cumulative_renewal_confirmed`: Recibo da antecipação acumulativa (+N meses e nova data de renovação).
+  4. `plan_change_scheduled`: Confirmação de troca de plano agendada para o fim do ciclo.
+  5. `payment_past_due`: Alerta de falha no cartão informando o grace period de 3 dias e botão de atualização.
+  6. `subscription_canceled_or_refunded`: Comprovante de cancelamento ou estorno integral CDC de 100%.
+  7. `trial_ending_reminder`: Lembrete respeitoso de término dos 30 dias grátis.
+
+##### Etapa 3.4: Atualização Documental e Testes de Integridade
+- **Arquivos:** `docs/platforms/EMAIL_TEMPLATES.md` e `src/tests/email-templates-integrity.test.ts`
+- **Ações:**
+  - Documentar os novos templates HTML no guia de templates.
+  - Atualizar os testes automatizados para verificar que nenhum template contém a palavra `Áxis` ou caracteres/emojis decorativos.
+
+---
+
+#### PORTÃO DE QUALIDADE 3 (GATE 3) — E-MAILS, BRANDING & RESEND
+
+> [!IMPORTANT]
+> **Condição Bloqueante:** A Fase 4 só pode ser iniciada se 100% dos critérios deste portão forem satisfeitos sem exceção.
+
+##### 1. Critérios de Aceite Pass / Fail
+- [ ] **Critério 3.1:** O teste automatizado `email-templates-integrity.test.ts` passa com 100% de sucesso sem detectar menções a `Áxis Finance` nem emojis.
+- [ ] **Critério 3.2:** Chamadas a `sendTransactionalEmail` gravam registro em `public.transactional_email_logs` com status `sent`.
+- [ ] **Critério 3.3:** Duplo envio com a mesma `dedup_key` não dispara segundo e-mail no Resend e retorna o registro existente.
+- [ ] **Critério 3.4:** E-mail de teste disparado para caixa real chega com remetente `Axir <nao-responda@axir.com.br>` com SPF, DKIM e DMARC com status `PASS`.
+- [ ] **Critério 3.5:** Os templates HTML renderizam perfeitamente em clientes Dark Mode e Light Mode em telas de smartphone e desktop.
+
+##### 2. Comandos Automatizados de Verificação
+```bash
+# Teste de Integridade de Templates de E-mail
+npx vitest run src/tests/email-templates-integrity.test.ts
+
+# Linter Estrito Anti-Emoji em Templates
+npm run lint
+```
+
+##### 3. Roteiro de Inspeção Manual e Simulações
+1. Disparar e-mail de teste através da Edge Function e inspecionar os cabeçalhos da mensagem recebida confirmando `dmarc=pass` e `dkim=pass`.
+2. Verificar visualmente no cliente de e-mail se o logo, cores e botões de ação seguem a estética editorial do Axir.
+
+---
+
+### FASE 4: Frontend Reativo, Transições de Estado Sem F5, Onboarding e UX de Assinatura
+
+**Objetivo Central:** Tornar a transição de planos e permissões instantânea no navegador sem exigir recarregamento de página (F5), eliminar formulários duplicados de cadastro, simplificar o checkout com dados reais antifraude e dar total controle ergonômico ao Superadmin com respeito aos direitos adquiridos.  
+**Falhas Cobertas:** `F-17`, `F-18`, `F-19`, `F-20`, `F-21`, `F-23`.  
+**Regras de UI:** `AGENTS.md` §4.1 a §4.27 (zero inputs nativos crus, zero emojis, zero `autoFocus`, `text-base` no mobile, modais padronizados).
+
+#### Etapas da Fase 4
+
+##### Etapa 4.1: Motor Reativo de Transição no Cliente
+- **Arquivos:** `src/state/queries/use-user-access.ts`, `use-user-subscription.ts`, `src/state/subscription-context.tsx`
+- **Configuração de Cache Reativo:**
+  - Reduzir `staleTime` para `30_000 ms` (30 segundos).
+  - Ativar revalidação em `visibilitychange === 'visible'` e `window.focus` com throttle de 10s (captura o retorno imediato do usuário ao voltar do app do banco no celular).
+- **Criação do Hook `useSubscriptionBoundaryTimer`:**
+  - Arquivo: `src/state/hooks/use-subscription-boundary-timer.ts`.
+  - Agenda um `setTimeout` exato para o marco de expiração (`trialEndsAt`, `currentPeriodEnd` ou `pendingPlanEffectiveAt`). Ao zerar o contador, invalida `USER_SUBSCRIPTION_KEY` instantaneamente, virando o banner e as permissões sem F5.
+- **Sincronização de Estado Pro:**
+  - Tratar `isPro = subscription.isPro || subscription.isLifetime` em `SubscriptionProvider`, corrigindo a exibição indevida de conta gratuita para usuários Vitalícios VIP (`F-19`).
+
+##### Etapa 4.2: Jornada de Entrada, Cadastro e Reenvio de Confirmação
+- **Arquivos:** `src/features/landing/hooks/use-landing-cta.ts`, `src/features/auth/pages/register-page.tsx`, `src/data/auth.ts`
+- **Roteamento de Visitantes:**
+  - Visitantes sem sessão que clicam em assinar são direcionados para `/cadastro?plano=pro-anual` (ou `/entrar?plano=pro-anual`).
+  - O parâmetro `?plano=...` é preservado no `emailRedirectTo`, de modo que ao confirmar o e-mail o usuário é redirecionado diretamente para `/assinatura?plano=pro-anual` já logado.
+- **Botão de Reenvio com Cooldown (`F-23`):**
+  - Na tela de confirmação de cadastro pendente, adicionar botão *"Reenviar e-mail de confirmação"* com contador regressivo de 60 segundos e feedback via Toast.
+- **Cloudflare Turnstile:**
+  - Integrar carregamento condicional do script oficial do Turnstile em produção (`src/components/ui/turnstile.tsx`), com fallback seguro em dev.
+
+##### Etapa 4.3: Refatoração da Página de Checkout (`SubscriptionCheckoutPage`)
+- **Arquivo:** `src/features/subscription/pages/subscription-checkout-page.tsx`
+- **Autenticação Obrigatória:**
+  - Se acessado sem sessão, redirecionar de forma limpa para `/cadastro?plano=${planSlug}`, removendo o formulário duplicado de registro de dentro da tela de pagamento.
+- **Coleta Antifraude em Cartão de Crédito (`F-10`):**
+  - Adicionar campos de **Celular com DDD**, **CEP** e **Número do endereço** em grid responsivo (`grid-cols-1 sm:grid-cols-2 gap-3.5`), utilizando componentes primitivos com máscara (`src/services/masks`).
+  - Pré-preencher automaticamente com dados já existentes em `profiles`.
+- **Transparência no Pix Anual em Trial (`F-23`):**
+  - Exibir com clareza no resumo da compra que os dias restantes de gratuidade do trial serão somados integralmente aos 12 meses comprados.
+- **Melhorias no QR Code Pix:**
+  - Adicionar contador regressivo de validade do QR Code e botão manual *"Já paguei — verificar confirmação"* para validação imediata sob demanda.
+  - Remover bloqueios no ambiente de desenvolvimento que ocultavam erros reais de cartão (`F-14`).
+
+##### Etapa 4.4: Refatoração da Aba Minha Assinatura e Cumulative Renewal
+- **Arquivos:** `src/features/settings/components/tabs/subscription-tab.tsx` e `cumulative-renewal-card.tsx`
+- **Tratamento de Estados Especiais (`F-19`, `F-11`):**
+  - Renderizar card dedicado de **Acesso Vitalício Permanente** para contas `lifetime` (ocultando botões de compra ou cancelamento).
+  - Renderizar alerta com prazo restante dos 3 dias de tolerância para contas em `past_due`, com botão de atalho *"Regularizar Cartão"*.
+- **Identificação do Meio de Pagamento (`F-15`):**
+  - Exibir bandeira e final do cartão (`Cartão •••• 1234`) quando houver `cardLast4`, ou indicar `Pix Anual à vista (sem renovação automática)` quando aplicável.
+- **Fechamento e Celebração no `CumulativeRenewalCard` (`F-20`):**
+  - Fechar o modal Pix automaticamente assim que a vigência `currentPeriodEnd` avançar no cliente, disparando `triggerSensory("success")` e Toast de confirmação.
+- **Modal de Confirmação na Mudança Mensal -> Anual:**
+  - Ao clicar em mudar para o plano Anual, abrir diálogo com as 2 opções da decisão D-02: agendar no cartão para a próxima renovação ou migrar agora via Pix com 40% OFF.
+- **Ajuste de Design System (`AGENTS.md` §4.7):**
+  - Substituir o `<input>` cru da chave Pix Copia e Cola pelo componente `<Input readOnly />`.
+
+##### Etapa 4.5: Painel Superadmin e Raio-X da Assinatura
+- **Arquivos:** `src/features/admin/components/user-edit-dialog.tsx` e componentes derivados
+- **Raio-X de Faturamento (`F-18`):**
+  - Exibir status da assinatura, ID da assinatura no Asaas, método de pagamento e histórico de datas.
+  - Incluir seletor de data canônico (`<DatePicker />`) com atalhos de extensão de vigência (`+7d`, `+15d`, `+30d`, `+1 ano`).
+- **Salvaguarda de Direitos Adquiridos:**
+  - Se o usuário possuir período já pago vigente, exibir aviso preventivo antes de rebaixar a conta.
+  - Ao alterar o plano para `lifetime` ou encerrar conta pagante, chamar `admin-super-action` para cancelar a cobrança futura no Asaas.
+
+##### Etapa 4.6: Ajuste de Presets Modulares e Rota Raiz
+- **Arquivos:** `src/app/authenticated-root.tsx` e `src/features/admin/components/user-edit/admin-module-catalog.ts`
+- **Ajustes:**
+  - Adicionar `insights: "none"` no preset *"Apenas Investimentos"*.
+  - Garantir que a rota raiz `/` redirecione para o módulo permitido mais relevante caso o módulo `overview` esteja configurado como `none`.
+
+---
+
+#### PORTÃO DE QUALIDADE 4 (GATE 4) — UX/UI, REATIVIDADE & DESIGN SYSTEM
+
+> [!IMPORTANT]
+> **Condição Bloqueante:** A Fase 5 só pode ser iniciada se 100% dos critérios deste portão forem satisfeitos sem exceção.
+
+##### 1. Critérios de Aceite Pass / Fail
+- [ ] **Critério 4.1:** Ao simular a expiração do trial ou vigência, o aplicativo transiciona para `read_only` em tempo real sem exigir F5 no navegador.
+- [ ] **Critério 4.2:** Ao pagar um Pix antecipado no `CumulativeRenewalCard`, o modal fecha automaticamente assim que o webhook confirma, emitindo feedback sensorial de sucesso.
+- [ ] **Critério 4.3:** Usuários em Plano Vitalício VIP visualizam o selo Vitalício correto na aba Plano sem mensagem de trial expirado nem botão de assinar.
+- [ ] **Critério 4.4:** O checkout de cartão de crédito coleta Celular, CEP e Número através de componentes do Design System com máscara, sem nenhum `<input>` cru nativo.
+- [ ] **Critério 4.5:** O cadastro público e a tela de confirmação de e-mail possuem botão de reenvio funcional com cooldown de 60s.
+- [ ] **Critério 4.6:** O painel Superadmin permite estender o trial de um usuário via `<DatePicker />` sem apagar datas nem dessincronizar o banco.
+- [ ] **Critério 4.7:** Nenhum elemento de formulário em modais ou telas possui a propriedade `autoFocus`.
+- [ ] **Critério 4.8:** Todos os campos de texto possuem tamanho mínimo de fonte de 16px no mobile (`text-base sm:text-sm`), prevenindo zoom no iOS Safari.
+
+##### 2. Comandos Automatizados de Verificação
+```bash
+# Testes de Componentes e UI
+npx vitest run src/features/subscription/
+npx vitest run src/features/admin/
+npx vitest run src/features/auth/
+
+# Linter de Regras Visuais e Unicode
+npm run lint
+```
+
+##### 3. Roteiro de Inspeção Manual e Simulações
+1. Acessar `/assinatura?plano=pro-anual` em aba anônima e verificar se o redirecionamento para `/cadastro` ocorre de forma suave preservando a intenção do plano.
+2. Abrir o modal de antecipação acumulativa no mobile (375px), inspecionar o layout garantindo ausência de scroll horizontal ou esmagamento de botões.
+3. No painel admin, editar a vigência de um usuário de teste e certificar-se de que a alteração reflete na sessão do usuário em menos de 30 segundos sem recarregar.
+
+---
+
+### FASE 5: Limpeza de Código Morto, Atualização Jurídica, Testes e Go-Live
+
+**Objetivo Central:** Remover resíduos legados de código e menções a gateways descontinuados, alinhar a documentação legal com a legislação e executar a homologação dos 8 cenários críticos em Sandbox antes da virada para Produção.  
+**Falhas Cobertas:** `F-15`, Validação Integrada Ponta a Ponta.
+
+#### Etapas da Fase 5
+
+##### Etapa 5.1: Remoção de Código Morto e Resíduos de Gateways Legados
+- **Arquivos:** `src/domain/subscription/plans.ts`, `src/features/legal/pages/terms-page.tsx`, `src/features/legal/pages/privacy-page.tsx`, `.env.example`, `src/vite-env.d.ts`
+- **Ações:**
+  - Remover a função órfã de reembolso pró-rata anual `calculateCancellationRefund`.
+  - Remover mutations não utilizadas (`useUpgradeToAnnualMutation`).
+  - Remover menções a `Stripe` em páginas legais e variáveis de ambiente, consolidando o **Asaas** como instituição oficial de pagamento.
+
+##### Etapa 5.2: Alinhamento dos Termos de Uso com o CDC
+- **Arquivo:** `src/features/legal/pages/terms-page.tsx`
+- **Ajustes:**
+  - Atualizar a cláusula de cancelamento e reembolso para espelhar a decisão D-03: estorno integral de 100% no prazo de arrependimento legal de 7 dias (Art. 49 do CDC) e cancelamento sem reembolso pró-rata após 7 dias, garantindo o acesso Pro irrestrito até o encerramento do ciclo contratado.
+
+##### Etapa 5.3: Atualização da Documentação Operacional
+- **Arquivos:** `docs/roadmap/ROADMAP.md`, `docs/platforms/DEPLOYMENT.md`, `docs/operations/GUIA_CONFIGURACAO_MANUAL_GO_LIVE.md`
+- **Ações:**
+  - Registrar a entrega da versão `v3.11.0` no Roadmap oficial.
+  - Atualizar a lista de eventos obrigatórios do webhook Asaas no guia de go-live (incluindo `PAYMENT_REFUNDED` e `PAYMENT_CHARGEBACK_REQUESTED`).
+  - Documentar os secrets finais de produção.
+
+##### Etapa 5.4: Testes Automatizados Completos e Testes E2E Playwright
+- **Comandos:**
+  - Executar `npm run verify` (`tsc -b`, `eslint .`, testes de domínio).
+  - Executar `npm run verify:full` (testes de integração e smoke tests E2E no Playwright em resoluções desktop e mobile).
+
+##### Etapa 5.5: Homologação dos 8 Cenários Críticos em Sandbox
+- Execução assistida e validação de logs para os 8 fluxos canônicos:
+  1. Cadastro com e-mail e ativação dos 30 dias de trial;
+  2. Agendamento de cartão no trial (`R$ 0,00` hoje) e cancelamento mantendo os dias grátis;
+  3. Contratação de Plano Mensal com simulação do 2º mês recorrente avançando a vigência;
+  4. Antecipação acumulativa via Pix (+3 meses) excluindo a parcela pendente no Asaas;
+  5. Upgrade de Mensal para Anual (agendado no cartão e imediato via Pix somando dias restantes);
+  6. Cancelamento dentro de 7 dias com estorno integral vs após 7 dias mantendo vigência;
+  7. Bloqueio em modo somente-leitura nas tabelas operacionais e RPCs após expiração;
+  8. Edição de plano e concessão de Vitalício VIP pelo Superadmin com cancelamento no Asaas.
+
+##### Etapa 5.6: Procedimento de Go-Live para Produção
+- Roteiro seguro para troca dos secrets de produção no Supabase (`ASAAS_API_KEY`, `ASAAS_ENVIRONMENT=production`, `ASAAS_API_URL=https://api.asaas.com/v3`), cadastro do webhook de produção no painel Asaas com chave de acesso e verificação pós-deploy.
+
+---
+
+#### PORTÃO DE QUALIDADE 5 (GATE 5 - FINAL) — HOMOLOGAÇÃO & PRODUÇÃO
+
+> [!IMPORTANT]
+> **Condição Bloqueante:** A liberação para Produção só ocorre se todos os 10 critérios forem satisfeitos sem nenhuma falha residual.
+
+##### 1. Critérios de Aceite Pass / Fail (Checklist de Homologação Final)
+- [ ] **Critério 5.1:** `npm run verify` (`tsc -b`, `eslint .`, Vitest) finaliza com **0 erros e 0 avisos**.
+- [ ] **Critério 5.2:** `npm run verify:full` finaliza com 100% dos testes Playwright E2E aprovados.
+- [ ] **Critério 5.3:** O webhook do Asaas Sandbox processa todos os eventos sem nenhum log de erro `500` nas Edge Functions.
+- [ ] **Critério 5.4:** Todos os 8 cenários críticos de homologação foram testados com sucesso e com evidências auditadas.
+- [ ] **Critério 5.5:** Todos os e-mails transacionais disparados durante os testes foram entregues via Resend com remetente oficial `Axir` e zero emojis.
+- [ ] **Critério 5.6:** Nenhuma referência ao `Stripe` ou à marca antiga `Áxis Finance` permanece no repositório.
+- [ ] **Critério 5.7:** Os termos de uso e política de privacidade refletem a política de 7 dias do CDC e o gateway Asaas.
+- [ ] **Critério 5.8:** O banco de dados remoto possui a extensão `pg_cron` ativa e a função `reconcile_expired_subscriptions()` rodando de forma periódica.
+- [ ] **Critério 5.9:** A branch `feat/assinaturas-onboarding-axir` foi revisada e aprovada para merge na `main`.
+- [ ] **Critério 5.10:** Checklist de Go-Live de produção assinado pelo Arquiteto Responsável e pelo Fundador.
+
+---
+
+## 6. CONCLUSÃO E PRÓXIMO PASSO
+
+O diagnóstico forense está concluído, as 23 falhas foram mapeadas, as premissas técnicas foram blindadas e o plano mestre está estruturado em **5 Fases com Portões de Qualidade Canônicos**.
+
+Para iniciar a execução prática no código-fonte, o próximo passo imediato é:
+1. Criar a branch de trabalho: `git checkout -b feat/assinaturas-onboarding-axir`.
+2. Executar as etapas da **Fase 1** (Infraestrutura de Banco, Migrations, RLS e RBAC).
+3. Submeter a Fase 1 à validação do **Portão de Qualidade 1 (Gate 1)** antes de avançar para a Fase 2.

@@ -157,6 +157,10 @@ function UserEditDialogContent({ user, open, onOpenChange }: { user: AdminUserRo
           effectiveTier={effectiveTier}
           effectiveSubStatus={effectiveSubStatus}
           isSaving={setSubscriptionMutation.isPending}
+          currentPeriodEnd={subscriptionQuery.data?.current_period_end}
+          trialEndsAt={subscriptionQuery.data?.trial_ends_at}
+          cardLast4={subscriptionQuery.data?.card_last4}
+          asaasSubscriptionId={subscriptionQuery.data?.asaas_subscription_id}
           onTierChange={(newTier, planId) => { setOverrideTier(newTier); setOverridePlanId(planId); }}
           onSubStatusChange={setOverrideSubStatus}
           onSaveSubscription={handleSaveSubscription}

@@ -93,7 +93,7 @@ export async function getUserSubscription(userId: string): Promise<UserSubscript
     getSupabase()
       .from("user_subscriptions")
       .select(
-        "id, user_id, plan_id, tier, status, starts_at, trial_ends_at, current_period_end, cancel_at_period_end, created_at, updated_at",
+        "id, user_id, plan_id, tier, status, starts_at, trial_ends_at, current_period_end, cancel_at_period_end, card_last4, asaas_subscription_id, asaas_customer_id, created_at, updated_at",
       )
       .eq("user_id", userId)
       .maybeSingle(),

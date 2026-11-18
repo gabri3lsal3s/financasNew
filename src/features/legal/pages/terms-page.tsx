@@ -131,10 +131,10 @@ export function TermsPage() {
             </li>
           </ul>
           <p>
-            <strong>4.2.</strong> Os pagamentos são processados de forma segura através de gateways
-            de pagamento terceirizados devidamente homologados pelo Banco Central do Brasil (Asaas e
-            Stripe), admitindo modalidades de cartão de crédito (com renovação periódica automática)
-            e PIX dinâmico (no plano anual).
+            <strong>4.2.</strong> Os pagamentos são processados de forma segura através de gateway
+            de pagamento devidamente autorizado pelo Banco Central do Brasil (Asaas), admitindo
+            modalidades de cartão de crédito (com renovação periódica automática) e PIX dinâmico
+            oficial do Banco Central (no plano anual).
           </p>
           <p>
             <strong>4.3.</strong> Os preços dos planos poderão sofrer reajustes anuais fundamentados
@@ -174,6 +174,11 @@ export function TermsPage() {
               {INSTITUTIONAL_CONFIG.supportEmail}
             </code>
             ) ou diretamente no fluxo de autoatendimento da plataforma.
+          </p>
+          <p>
+            <strong>5.3.</strong> No caso de cadastro voluntário de cartão durante os 30 dias de teste
+            gratuito (renovação agendada), o cancelamento realizado antes do vencimento do trial não
+            gera cobrança e mantém o acesso de degustação Pro ativo até o término integral dos 30 dias.
           </p>
         </div>
       </section>

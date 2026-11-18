@@ -2,6 +2,7 @@ import type {
   AccessInvite,
   AssetPrice,
   AuditEvent,
+  BillingProcessedPayment,
   Budget,
   CardCompetenceOverride,
   CardPayment,
@@ -53,6 +54,7 @@ import type {
   UserModulePermission,
   UserPreferences,
   UserSubscription,
+  TransactionalEmailLog,
   CorporateDividend,
   PortfolioDividendDismissal,
   ApproveDividendsBatchResult,
@@ -76,6 +78,8 @@ export interface Database {
       profiles: Table<Profile>;
       plans: Table<Plan>;
       user_subscriptions: Table<UserSubscription>;
+      billing_processed_payments: Table<BillingProcessedPayment>;
+      transactional_email_logs: Table<TransactionalEmailLog>;
       user_module_permissions: Table<UserModulePermission>;
       user_preferences: Table<UserPreferences>;
       access_invites: Table<AccessInvite>;

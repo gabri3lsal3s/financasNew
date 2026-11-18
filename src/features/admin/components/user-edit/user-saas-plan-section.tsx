@@ -7,6 +7,10 @@ export interface UserSaasPlanSectionProps {
   effectiveTier: SubscriptionTier;
   effectiveSubStatus: string;
   isSaving: boolean;
+  currentPeriodEnd?: string | null;
+  trialEndsAt?: string | null;
+  cardLast4?: string | null;
+  asaasSubscriptionId?: string | null;
   onTierChange: (tier: SubscriptionTier, planId: string) => void;
   onSubStatusChange: (status: string) => void;
   onSaveSubscription: () => void;
@@ -27,6 +31,10 @@ export function UserSaasPlanSection({
   effectiveTier,
   effectiveSubStatus,
   isSaving,
+  currentPeriodEnd,
+  trialEndsAt,
+  cardLast4,
+  asaasSubscriptionId,
   onTierChange,
   onSubStatusChange,
   onSaveSubscription,
@@ -49,6 +57,27 @@ export function UserSaasPlanSection({
           </Badge>
         )}
       </div>
+
+      {(currentPeriodEnd || trialEndsAt || cardLast4 || asaasSubscriptionId) ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-lg bg-surface-raised/60 text-[11px] text-muted-foreground border border-border/40">
+          <div>
+            <span className="font-semibold text-foreground block">Vencimento / Vigência</span>
+            <span>
+              {currentPeriodEnd
+                ? new Date(currentPeriodEnd).toLocaleDateString("pt-BR")
+                : trialEndsAt
+                  ? `Trial até ${new Date(trialEndsAt).toLocaleDateString("pt-BR")}`
+                  : "Sem data definida"}
+            </span>
+          </div>
+          <div>
+            <span className="font-semibold text-foreground block">Gateway &amp; Cartão</span>
+            <span>
+              {cardLast4 ? `Cartão final ${cardLast4}` : "Sem cartão"} · {asaasSubscriptionId ? "Asaas Ativo" : "Avulso/Direto"}
+            </span>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
         <FormField label="Tier de Assinatura" htmlFor="target-tier">

@@ -408,7 +408,11 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.asaas-manage]
-verify_jwt = true
+verify_jwt = false
+
+# Cron do ciclo de vida de faturamento (reconciliação de expirados, resync de status e alertas)
+[functions.billing-lifecycle-cron]
+verify_jwt = false
 
 # Notificação de suporte (Telegram): acionada via trigger/webhook ou sessão autenticada
 [functions.support-notify]

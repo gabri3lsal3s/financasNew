@@ -189,8 +189,10 @@ export function SubscriptionCheckoutPage() {
                   <div className="space-y-1">
                     <p className="text-sm font-semibold text-foreground">PIX Anual com 40% OFF</p>
                     <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
-                      Ao confirmar, geramos o QR Code dinâmico oficial do Banco Central. A liberação
-                      é instantânea após o pagamento.
+                      Ao confirmar, geramos o QR Code dinâmico oficial do Banco Central.
+                      {c.subscription?.isTrial && (c.subscription?.trialDaysRemaining ?? 0) > 0
+                        ? ` Seus ${c.subscription.trialDaysRemaining} dias restantes de teste gratuito serão integralmente somados aos seus 12 meses de anuidade.`
+                        : " A liberação é instantânea após o pagamento."}
                     </p>
                   </div>
                   <Badge variant="positive" size="sm">

@@ -98,9 +98,8 @@ describe("Domain: CDC & Cancellation Refund Rules", () => {
     expect(refund.isCdcArrependimento).toBe(false);
   });
 
-  it("calcula estorno pró-rata correto para plano anual após o 7º dia", () => {
+  it("mantém vigência ativa sem estorno monetário para plano anual após o 7º dia", () => {
     const paidAt = "2026-01-01T00:00:00Z";
-    // Cancelamento após 65 dias (~2.16 meses -> 3 meses usados, 9 meses restantes)
     const cancelAt = new Date(new Date(paidAt).getTime() + 65 * 24 * 60 * 60 * 1000);
 
     const refund = calculateCancellationRefund({
@@ -109,12 +108,11 @@ describe("Domain: CDC & Cancellation Refund Rules", () => {
       currentDate: cancelAt,
     });
 
-    expect(refund.eligibleForRefund).toBe(true);
+    expect(refund.eligibleForRefund).toBe(false);
+    expect(refund.refundAmountCents).toBe(0);
     expect(refund.isCdcArrependimento).toBe(false);
-    expect(refund.monthsUsed).toBe(3);
-    expect(refund.monthsRemaining).toBe(9);
-    // Preço por mês: Math.floor(14388 / 12) = 1199. 1199 * 9 = 10791 centavos
-    expect(refund.refundAmountCents).toBe(1199 * 9);
+    expect(refund.monthsUsed).toBe(12);
+    expect(refund.monthsRemaining).toBe(0);
   });
 
   it("retorna zero de reembolso quando todo o ciclo anual de 12 meses foi usufruído", () => {

@@ -152,6 +152,23 @@ function getEnv(key: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Trava anti-mismatch Sandbox vs. Produção.
+ */
+export function assertAsaasEnvironmentMatch(apiKey: string, baseUrl: string): void {
+  const isHmlgKey = apiKey.startsWith("$aact_hmlg_");
+  const isProdKey = apiKey.startsWith("$aact_prod_");
+  const isSandboxUrl = baseUrl.includes("sandbox.asaas.com") || baseUrl.includes("api-sandbox.asaas.com");
+  const isProdUrl = baseUrl.includes("api.asaas.com") && !baseUrl.includes("sandbox");
+
+  if (isHmlgKey && isProdUrl) {
+    throw new Error("Incompatibilidade de segurança: Chave Asaas Sandbox ($aact_hmlg_...) configurada com URL de Produção.");
+  }
+  if (isProdKey && isSandboxUrl) {
+    throw new Error("Incompatibilidade de segurança: Chave Asaas Produção ($aact_prod_...) configurada com URL de Sandbox.");
+  }
+}
+
 export function getAsaasBaseUrl(): string {
   const directUrl = getEnv("ASAAS_API_URL");
   if (directUrl && directUrl.trim().length > 0) {
@@ -160,7 +177,7 @@ export function getAsaasBaseUrl(): string {
   const env = getEnv("ASAAS_ENVIRONMENT");
   return env === "production"
     ? "https://api.asaas.com/v3"
-    : "https://sandbox.asaas.com/api/v3";
+    : "https://api-sandbox.asaas.com/v3";
 }
 
 export function getAsaasApiKey(): string {
@@ -174,6 +191,8 @@ export function getAsaasApiKey(): string {
 async function asaasFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const baseUrl = getAsaasBaseUrl();
   const apiKey = getAsaasApiKey();
+
+  assertAsaasEnvironmentMatch(apiKey, baseUrl);
 
   const headers = new Headers(options.headers || {});
   headers.set("access_token", apiKey);
@@ -199,9 +218,29 @@ async function asaasFetch<T>(endpoint: string, options: RequestInit = {}): Promi
 
 /**
  * Localiza ou cria um cliente no Asaas a partir do e-mail ou CPF.
+ * Garante sempre notificationDisabled: true (D-05).
  */
-export async function findOrCreateAsaasCustomer(input: AsaasCustomerInput): Promise<{ id: string }> {
-  const cleanCpf = input.cpfCnpj.replace(/\D/g, "");
+export async function findOrCreateAsaasCustomer(
+  input: AsaasCustomerInput & { existingCustomerId?: string | null },
+): Promise<{ id: string }> {
+  // 0. Se já possuir customerId associado, verifica se ainda existe no Asaas
+  if (input.existingCustomerId && input.existingCustomerId.trim().length > 0) {
+    try {
+      const existing = await asaasFetch<{ id: string; deleted?: boolean }>(
+        `/customers/${encodeURIComponent(input.existingCustomerId.trim())}`,
+      );
+      if (existing && existing.id && !existing.deleted) {
+        return { id: existing.id };
+      }
+    } catch {
+      // Se não encontrou pelo ID antigo, prossegue com busca por CPF/e-mail
+    }
+  }
+
+  const cleanCpf = (input.cpfCnpj || "").replace(/\D/g, "");
+  if (!isValidCPF(cleanCpf)) {
+    throw new Error("CPF inválido ou não informado para cadastro do titular da assinatura.");
+  }
 
   // 1. Tenta buscar por CPF
   if (cleanCpf) {
@@ -223,7 +262,7 @@ export async function findOrCreateAsaasCustomer(input: AsaasCustomerInput): Prom
     }
   }
 
-  // 3. Cria novo cliente
+  // 3. Cria novo cliente (sempre com notificationDisabled: true por decisão D-05)
   const created = await asaasFetch<{ id: string }>("/customers", {
     method: "POST",
     body: JSON.stringify({
@@ -231,7 +270,7 @@ export async function findOrCreateAsaasCustomer(input: AsaasCustomerInput): Prom
       email: input.email,
       cpfCnpj: cleanCpf,
       mobilePhone: input.phone?.replace(/\D/g, "") || undefined,
-      notificationDisabled: false,
+      notificationDisabled: true,
     }),
   });
 
@@ -248,6 +287,7 @@ export async function createAsaasCreditCardSubscription(params: {
   holderInfo: AsaasHolderInfoInput;
   nextDueDate?: string;
   remoteIp?: string;
+  externalReference?: string;
 }): Promise<{ id: string; status: string }> {
   const planMeta = ASAAS_PLAN_CATALOG[params.plan];
   const value = planMeta.value;
@@ -257,14 +297,17 @@ export async function createAsaasCreditCardSubscription(params: {
       ? "Axir — Plano Pro Anual"
       : "Axir — Plano Pro Mensal";
 
-  // Data de vencimento inicial: se fornecida data futura válida (formato YYYY-MM-DD), respeita o período de teste; senão, hoje
   const todayIso = new Date().toISOString().slice(0, 10);
   const nextDueDate =
     params.nextDueDate && params.nextDueDate >= todayIso
       ? params.nextDueDate.slice(0, 10)
       : todayIso;
 
-  const payload = {
+  const cleanPostalCode = (params.holderInfo.postalCode || "").replace(/\D/g, "");
+  const cleanAddressNumber = (params.holderInfo.addressNumber || "").trim();
+  const cleanPhone = (params.holderInfo.phone || "").replace(/\D/g, "");
+
+  const payload: Record<string, unknown> = {
     customer: params.customerId,
     billingType: "CREDIT_CARD",
     value,
@@ -282,12 +325,16 @@ export async function createAsaasCreditCardSubscription(params: {
       name: params.holderInfo.name,
       email: params.holderInfo.email,
       cpfCnpj: params.holderInfo.cpfCnpj.replace(/\D/g, ""),
-      postalCode: params.holderInfo.postalCode?.replace(/\D/g, "") || "01310100",
-      addressNumber: params.holderInfo.addressNumber || "1",
-      phone: params.holderInfo.phone?.replace(/\D/g, "") || "11999999999",
+      postalCode: cleanPostalCode || undefined,
+      addressNumber: cleanAddressNumber || undefined,
+      phone: cleanPhone || undefined,
     },
     remoteIp: params.remoteIp || "127.0.0.1",
   };
+
+  if (params.externalReference) {
+    payload.externalReference = params.externalReference;
+  }
 
   return asaasFetch<{ id: string; status: string }>("/subscriptions", {
     method: "POST",
@@ -296,24 +343,31 @@ export async function createAsaasCreditCardSubscription(params: {
 }
 
 /**
- * Cria uma cobrança avulsa PIX para o Plano Anual (1 ano de Pro).
+ * Cria uma cobrança avulsa PIX para o Plano Anual ou Antecipação Acumulativa.
  */
 export async function createAsaasPixCharge(params: {
   customerId: string;
   value: number;
   description: string;
+  externalReference?: string;
 }): Promise<{ id: string; status: string; value: number }> {
   const dueDate = new Date().toISOString().slice(0, 10);
 
+  const payload: Record<string, unknown> = {
+    customer: params.customerId,
+    billingType: "PIX",
+    value: params.value,
+    dueDate,
+    description: params.description,
+  };
+
+  if (params.externalReference) {
+    payload.externalReference = params.externalReference;
+  }
+
   return asaasFetch<{ id: string; status: string; value: number }>("/payments", {
     method: "POST",
-    body: JSON.stringify({
-      customer: params.customerId,
-      billingType: "PIX",
-      value: params.value,
-      dueDate,
-      description: params.description,
-    }),
+    body: JSON.stringify(payload),
   });
 }
 
@@ -340,13 +394,93 @@ export async function getAsaasPayment(paymentId: string): Promise<{
   status: string;
   value: number;
   dateCreated?: string;
+  dueDate?: string;
+  externalReference?: string | null;
 }> {
   return asaasFetch<{
     id: string;
     status: string;
     value: number;
     dateCreated?: string;
+    dueDate?: string;
+    externalReference?: string | null;
   }>(`/payments/${paymentId}`);
+}
+
+/**
+ * Consulta as cobranças filhas emitidas para uma assinatura.
+ */
+export async function getAsaasSubscriptionPayments(
+  subscriptionId: string,
+  status?: string,
+): Promise<Array<{ id: string; status: string; dueDate: string; value: number }>> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  const result = await asaasFetch<{ data?: Array<{ id: string; status: string; dueDate: string; value: number }> }>(
+    `/subscriptions/${subscriptionId}/payments${query}`,
+  );
+  return result.data || [];
+}
+
+/**
+ * Remove/cancela uma cobrança avulsa ou parcela pendente no Asaas.
+ */
+export async function deleteAsaasPayment(paymentId: string): Promise<{ id: string; deleted: boolean }> {
+  return asaasFetch<{ id: string; deleted: boolean }>(`/payments/${paymentId}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * Atrasa o vencimento da assinatura recorrente e remove as cobranças PENDING
+ * que ficariam dentro do período já antecipado via Pix (evitando cobrança dupla).
+ */
+export async function postponeAsaasSubscriptionAfterPrepayment(
+  subscriptionId: string,
+  nextDueDate: string,
+): Promise<{ success: boolean; deletedPendingPaymentsCount: number }> {
+  const targetDueDate = nextDueDate.slice(0, 10);
+
+  // 1. Atualiza nextDueDate na assinatura do Asaas (updatePendingPayments: false)
+  await asaasFetch(`/subscriptions/${subscriptionId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      nextDueDate: targetDueDate,
+      updatePendingPayments: false,
+    }),
+  });
+
+  // 2. Localiza e exclui cobranças PENDING com vencimento anterior ao novo vencimento
+  let deletedCount = 0;
+  try {
+    const pendingPayments = await getAsaasSubscriptionPayments(subscriptionId, "PENDING");
+    for (const payment of pendingPayments) {
+      if (payment.dueDate < targetDueDate) {
+        try {
+          await deleteAsaasPayment(payment.id);
+          deletedCount++;
+        } catch {
+          // Ignora se já estiver cancelada
+        }
+      }
+    }
+  } catch {
+    // Continua
+  }
+
+  return { success: true, deletedPendingPaymentsCount: deletedCount };
+}
+
+/**
+ * Cancela com tolerância a erro uma assinatura prévia no Asaas.
+ */
+export async function ensurePreviousSubscriptionCanceled(subscriptionId?: string | null): Promise<boolean> {
+  if (!subscriptionId || subscriptionId.trim().length === 0) return false;
+  try {
+    await cancelAsaasSubscription(subscriptionId.trim());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -386,6 +520,10 @@ export async function updateAsaasSubscriptionCreditCard(
     remoteIp?: string;
   },
 ): Promise<{ id: string; status: string }> {
+  const cleanPostalCode = (params.holderInfo.postalCode || "").replace(/\D/g, "");
+  const cleanAddressNumber = (params.holderInfo.addressNumber || "").trim();
+  const cleanPhone = (params.holderInfo.phone || "").replace(/\D/g, "");
+
   const payload = {
     creditCard: {
       holderName: params.creditCard.holderName,
@@ -398,9 +536,9 @@ export async function updateAsaasSubscriptionCreditCard(
       name: params.holderInfo.name,
       email: params.holderInfo.email,
       cpfCnpj: params.holderInfo.cpfCnpj.replace(/\D/g, ""),
-      postalCode: params.holderInfo.postalCode?.replace(/\D/g, "") || "01310100",
-      addressNumber: params.holderInfo.addressNumber || "1",
-      phone: params.holderInfo.phone?.replace(/\D/g, "") || "11999999999",
+      postalCode: cleanPostalCode || undefined,
+      addressNumber: cleanAddressNumber || undefined,
+      phone: cleanPhone || undefined,
     },
     remoteIp: params.remoteIp || "127.0.0.1",
   };
@@ -472,7 +610,7 @@ export async function updateAsaasSubscriptionCycle(
     body: JSON.stringify({
       value: params.value,
       cycle: params.cycle,
-      updatePendingPayments: true,
+      updatePendingPayments: false,
     }),
   });
 }
@@ -507,5 +645,3 @@ export function mapAsaasCardErrorMessage(errorMsg: string): string | null {
 
   return null;
 }
-
-

@@ -30,6 +30,7 @@ export interface UserSubscriptionSnapshot {
   asaas_payment_id?: string | null;
   asaas_subscription_id?: string | null;
   current_period_end?: string | null;
+  trial_ends_at?: string | null;
   cancel_at_period_end?: boolean;
 }
 
@@ -57,12 +58,17 @@ export type WebhookDecision =
       action: "activate";
       targetTier: "pro_monthly" | "pro_annual";
       currentPeriodEnd: string;
+      isUpgradeFromMonthly?: boolean;
     }
   | {
       action: "apply_cumulative_renewal";
       intentId: string;
       monthsCount: number;
       newPeriodEnd: string;
+    }
+  | {
+      action: "delete_pending_payment";
+      paymentId: string;
     }
   | {
       action: "mark_past_due";
@@ -91,8 +97,9 @@ export function decideWebhookAction(params: {
   currentSub: UserSubscriptionSnapshot;
   intent?: BillingIntentSnapshot | null;
   now?: Date;
+  isPaymentAlreadyProcessed?: boolean;
 }): WebhookDecision {
-  const { eventType, payment, currentSub, intent } = params;
+  const { eventType, payment, currentSub, intent, isPaymentAlreadyProcessed } = params;
   const now = params.now ?? new Date();
 
   const referenceDate = payment.confirmedDate || payment.paymentDate || payment.dueDate
@@ -134,23 +141,39 @@ export function decideWebhookAction(params: {
       };
     }
 
-    const isAlreadyActiveForThisPayment =
-      currentSub.status === "active" &&
-      currentSub.tier === targetTier &&
-      (currentSub.asaas_payment_id === payment.id ||
-        (payment.subscription && currentSub.asaas_subscription_id === payment.subscription));
+    // 3. Desduplicação estrita: se este pagamento idêntico já foi processado na assinatura atual
+    // Corrigido F-01: NÃO usa mais currentSub.asaas_subscription_id === payment.subscription,
+    // garantindo que pagamentos de renovação subsequente (2º mês em diante) avancem a vigência normalmente.
+    const isExactPaymentDuplicate =
+      isPaymentAlreadyProcessed ||
+      (currentSub.status === "active" && currentSub.asaas_payment_id === payment.id);
 
-    if (isAlreadyActiveForThisPayment) {
+    if (isExactPaymentDuplicate) {
       return {
         action: "ignore_duplicate",
         reason: "already_active",
       };
     }
 
+    // 4. Vigência Monotônica:
+    // Se o usuário possuir período já pago vigente ou dias de trial restantes,
+    // o novo período é somado à data futura mais distante, preservando 100% dos dias pagos/gratuitos.
+    const baseDate = currentSub.current_period_end && new Date(currentSub.current_period_end) > now
+      ? new Date(currentSub.current_period_end)
+      : (currentSub.trial_ends_at && new Date(currentSub.trial_ends_at) > now)
+      ? new Date(currentSub.trial_ends_at)
+      : referenceDate;
+
+    const isUpgradeFromMonthly =
+      targetTier === "pro_annual" &&
+      currentSub.tier === "pro_monthly" &&
+      currentSub.status === "active";
+
     return {
       action: "activate",
       targetTier,
-      currentPeriodEnd: computeNextPeriodEnd(targetTier, referenceDate),
+      currentPeriodEnd: computeNextPeriodEnd(targetTier, baseDate),
+      isUpgradeFromMonthly,
     };
   }
 
@@ -166,7 +189,7 @@ export function decideWebhookAction(params: {
     };
   }
 
-  if (["PAYMENT_REFUNDED"].includes(eventType)) {
+  if (["PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED"].includes(eventType)) {
     if (currentSub.status === "canceled" && currentSub.tier === "read_only") {
       return {
         action: "ignore_duplicate",
@@ -178,8 +201,23 @@ export function decideWebhookAction(params: {
     };
   }
 
-  if (["SUBSCRIPTION_DELETED", "PAYMENT_DELETED"].includes(eventType)) {
+  // Corrigido F-06: PAYMENT_DELETED afeta apenas faturas/intents pendentes; NUNCA cancela a assinatura inteira.
+  if (eventType === "PAYMENT_DELETED") {
+    return {
+      action: "delete_pending_payment",
+      paymentId: payment.id,
+    };
+  }
+
+  if (eventType === "SUBSCRIPTION_DELETED") {
     if (currentSub.cancel_at_period_end === true) {
+      return {
+        action: "ignore_duplicate",
+        reason: "already_cancelled",
+      };
+    }
+    // Se a assinatura cancelada for diferente da assinatura atualmente ativa, ignora com segurança
+    if (payment.subscription && currentSub.asaas_subscription_id && payment.subscription !== currentSub.asaas_subscription_id) {
       return {
         action: "ignore_duplicate",
         reason: "already_cancelled",

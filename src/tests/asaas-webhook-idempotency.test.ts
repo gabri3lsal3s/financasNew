@@ -102,7 +102,7 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
     expect(decision.action).toBe("ignore_duplicate");
   });
 
-  it("reconhece idempotência para assinaturas de cartão de crédito via subscriptionId", () => {
+  it("reconhece idempotência para pagamentos repetidos da mesma fatura de cartão", () => {
     const activeCardSub: UserSubscriptionSnapshot = {
       ...baseTrialSub,
       status: "active",
@@ -112,10 +112,10 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
       asaas_payment_id: "pay_first_invoice",
     };
 
-    const decision = decideWebhookAction({
+    const duplicateDecision = decideWebhookAction({
       eventType: "PAYMENT_RECEIVED",
       payment: {
-        id: "pay_second_invoice",
+        id: "pay_first_invoice",
         subscription: "sub_card_777",
         billingType: "CREDIT_CARD",
         value: 19.99,
@@ -123,9 +123,44 @@ describe("Webhook Asaas — Lógica de Decisão e Idempotência", () => {
       currentSub: activeCardSub,
     });
 
-    expect(decision.action).toBe("ignore_duplicate");
-    if (decision.action === "ignore_duplicate") {
-      expect(decision.reason).toBe("already_active");
+    expect(duplicateDecision.action).toBe("ignore_duplicate");
+    if (duplicateDecision.action === "ignore_duplicate") {
+      expect(duplicateDecision.reason).toBe("already_active");
+    }
+  });
+
+  it("permite renovação do segundo mês quando nova fatura recorrente chega da mesma assinatura (F-01)", () => {
+    const activeCardSub: UserSubscriptionSnapshot = {
+      ...baseTrialSub,
+      status: "active",
+      tier: "pro_monthly",
+      plan_id: "pro_monthly",
+      asaas_subscription_id: "sub_card_777",
+      asaas_payment_id: "pay_first_invoice",
+      current_period_end: "2026-11-24T12:00:00.000Z",
+    };
+
+    const renewalDecision = decideWebhookAction({
+      eventType: "PAYMENT_CONFIRMED",
+      payment: {
+        id: "pay_second_invoice",
+        subscription: "sub_card_777",
+        billingType: "CREDIT_CARD",
+        value: 19.99,
+        confirmedDate: "2026-11-24T10:00:00.000Z",
+      },
+      currentSub: activeCardSub,
+      now: new Date("2026-11-24T10:00:00.000Z"),
+    });
+
+    expect(renewalDecision.action).toBe("activate");
+    if (renewalDecision.action === "activate") {
+      expect(renewalDecision.targetTier).toBe("pro_monthly");
+      // Deve avançar 1 mês a partir da data de vencimento anterior
+      const nextEnd = new Date(renewalDecision.currentPeriodEnd);
+      expect(nextEnd.getFullYear()).toBe(2026);
+      expect(nextEnd.getMonth()).toBe(11); // Dezembro
+      expect(nextEnd.getDate()).toBe(24);
     }
   });
 

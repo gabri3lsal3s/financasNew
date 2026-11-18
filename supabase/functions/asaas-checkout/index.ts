@@ -5,6 +5,8 @@ import {
   createAsaasPixCharge,
   getAsaasPixQrCode,
   getAsaasPayment,
+  getAsaasSubscriptionPayments,
+  ensurePreviousSubscriptionCanceled,
   shouldReusePendingPixCharge,
   isValidCPF,
   isValidLuhn,
@@ -18,6 +20,8 @@ import {
   addCivilMonthsServer,
 } from "../_shared/asaas-plans.ts";
 import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
+import { sendTransactionalEmail } from "../_shared/resend.ts";
+import { renderTrialCardScheduledEmail } from "../_shared/email-templates.ts";
 
 declare const Deno: {
   env?: {
@@ -46,95 +50,67 @@ Deno?.serve?.(async (req: Request) => {
       return safeErrorResponse(req, 500, "Serviço de pagamento indisponível.");
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const payload = await req.json();
-    const { kind, months, plan, method, cpf, card, phone, registration } = payload;
-
-    let user: { id: string; email?: string; user_metadata?: Record<string, unknown> } | null = null;
-    let isRegistration = false;
-
-    // 1. Resolução do usuário (Registro novo ou Sessão autenticada)
-    if (registration && registration.email && registration.password) {
-      isRegistration = true;
-      const cleanEmail = String(registration.email).trim().toLowerCase();
-      const cleanName = String(registration.name || "").trim();
-
-      const userClient = createClient(supabaseUrl, anonKey);
-      const { data: signUpData, error: signUpError } = await userClient.auth.signUp({
-        email: cleanEmail,
-        password: String(registration.password),
-        options: {
-          data: {
-            name: cleanName,
-            app_mode: "investor",
-          },
-        },
-      });
-
-      if (signUpError) {
-        return jsonResponse(req, { error: signUpError.message }, 400);
-      }
-
-      if (
-        signUpData.user &&
-        Array.isArray(signUpData.user.identities) &&
-        signUpData.user.identities.length === 0
-      ) {
-        return jsonResponse(
-          req,
-          { error: "Este endereço de e-mail já está cadastrado. Faça login para continuar." },
-          400,
-        );
-      }
-
-      if (!signUpData.user) {
-        return jsonResponse(req, { error: "Não foi possível criar a conta. Tente novamente." }, 400);
-      }
-
-      user = signUpData.user;
-    } else {
-      const authHeader = req.headers.get("Authorization");
-      if (!authHeader) {
-        return jsonResponse(req, { error: "Sessão não informada" }, 401);
-      }
-
-      const userClient = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: authHeader } },
-      });
-      const {
-        data: { user: authUser },
-        error: authError,
-      } = await userClient.auth.getUser();
-
-      if (authError || !authUser) {
-        return jsonResponse(req, { error: "Sessão inválida ou expirada" }, 401);
-      }
-
-      user = authUser;
+    // 1. Autenticação obrigatória com sessão JWT (D-04 / F-05)
+    // O checkout exige sessão ativa previamente confirmada por e-mail.
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return jsonResponse(req, { error: "Sessão não informada. Faça login para continuar." }, 401);
     }
 
-    // 2. Busca cadastro do usuário e dados de assinatura atuais
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const {
+      data: { user: authUser },
+      error: userError,
+    } = await userClient.auth.getUser();
+
+    if (userError || !authUser) {
+      return jsonResponse(req, { error: "Sessão inválida ou expirada. Faça login para continuar." }, 401);
+    }
+
+    if (!authUser.email_confirmed_at) {
+      return jsonResponse(
+        req,
+        { error: "Por favor, confirme seu endereço de e-mail antes de contratar uma assinatura." },
+        403,
+      );
+    }
+
+    const user = authUser;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const payload = await req.json();
+    const { kind, months, plan, method, cpf, card, phone, postalCode, addressNumber } = payload;
+
+    // 2. Busca perfil e dados da assinatura atual
     const { data: profile } = await supabase
       .from("profiles")
-      .select("name, email, cpf")
+      .select("name, email, cpf, phone, postal_code, address_number")
       .eq("id", user.id)
       .single();
 
     const cleanCpf = (cpf || profile?.cpf || "").replace(/\D/g, "");
-    if (cleanCpf && isValidCPF(cleanCpf) && cleanCpf !== profile?.cpf) {
-      await supabase.from("profiles").update({ cpf: cleanCpf }).eq("id", user.id);
+    if (!cleanCpf || !isValidCPF(cleanCpf)) {
+      return jsonResponse(req, { error: "CPF inválido ou não informado. Verifique o número digitado." }, 400);
     }
 
-    const customerName =
-      profile?.name || user.user_metadata?.name || user.email?.split("@")[0] || "Cliente";
-    const customerEmail = profile?.email || user.email || "";
+    const cleanPhone = (phone || card?.phone || profile?.phone || "").replace(/\D/g, "");
+    const cleanPostalCode = (postalCode || card?.postalCode || profile?.postal_code || "").replace(/\D/g, "");
+    const cleanAddressNumber = String(addressNumber || card?.addressNumber || profile?.address_number || "").trim();
 
-    const customer = await findOrCreateAsaasCustomer({
-      name: customerName,
-      email: customerEmail,
-      cpfCnpj: cleanCpf || "00000000000",
-      phone,
-    });
+    // Atualiza dados cadastrais em profiles caso tenham sido informados
+    const profileUpdates: Record<string, string> = {};
+    if (cleanCpf && cleanCpf !== profile?.cpf) profileUpdates.cpf = cleanCpf;
+    if (cleanPhone && cleanPhone !== profile?.phone) profileUpdates.phone = cleanPhone;
+    if (cleanPostalCode && cleanPostalCode !== profile?.postal_code) profileUpdates.postal_code = cleanPostalCode;
+    if (cleanAddressNumber && cleanAddressNumber !== profile?.address_number) profileUpdates.address_number = cleanAddressNumber;
+
+    if (Object.keys(profileUpdates).length > 0) {
+      await supabase.from("profiles").update(profileUpdates).eq("id", user.id);
+    }
+
+    const customerName = profile?.name || user.user_metadata?.name || user.email?.split("@")[0] || "Cliente";
+    const customerEmail = profile?.email || user.email || "";
 
     let { data: userSub } = await supabase
       .from("user_subscriptions")
@@ -142,17 +118,20 @@ Deno?.serve?.(async (req: Request) => {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (!userSub && isRegistration) {
-      // Breve respiro caso o trigger handle_new_user esteja concluindo a transação inicial
-      await new Promise((resolve) => setTimeout(resolve, 350));
-      const { data: retriedSub } = await supabase
+    const customer = await findOrCreateAsaasCustomer({
+      existingCustomerId: userSub?.asaas_customer_id,
+      name: customerName,
+      email: customerEmail,
+      cpfCnpj: cleanCpf,
+      phone: cleanPhone || undefined,
+    });
+
+    // Salva o asaas_customer_id na assinatura se ainda não estiver salvo
+    if (userSub && userSub.asaas_customer_id !== customer.id) {
+      await supabase
         .from("user_subscriptions")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (retriedSub) {
-        userSub = retriedSub;
-      }
+        .update({ asaas_customer_id: customer.id })
+        .eq("id", userSub.id);
     }
 
     // =========================================================================
@@ -173,7 +152,7 @@ Deno?.serve?.(async (req: Request) => {
         return jsonResponse(
           req,
           {
-            error: "Limite de 11 meses para antecipação. Para 12 meses, migre para o Plano Anual por R$ 143,88 (40% OFF)!",
+            error: "Limite de 11 meses para antecipação. Para 12 meses, aproveite o Plano Anual com 40% OFF!",
             suggestAnnual: true,
           },
           400,
@@ -183,7 +162,7 @@ Deno?.serve?.(async (req: Request) => {
       if (!userSub || userSub.tier !== "pro_monthly" || userSub.status !== "active") {
         return jsonResponse(
           req,
-          { error: "A antecipação de mensalidades com desconto é exclusiva para assinantes ativos do Plano Pro Mensal." },
+          { error: "A antecipação com desconto é exclusiva para assinantes ativos do Plano Pro Mensal." },
           403,
         );
       }
@@ -196,7 +175,71 @@ Deno?.serve?.(async (req: Request) => {
         );
       }
 
+      // Validação de teto máximo: não permite acumular além de 11 meses no futuro (F-13)
+      const now = new Date();
+      const currentEnd = userSub.current_period_end ? new Date(userSub.current_period_end) : now;
+      const targetEnd = addCivilMonthsServer(currentEnd > now ? currentEnd : now, monthsCount);
+      const maxAllowedFuture = addCivilMonthsServer(now, 11);
+
+      if (targetEnd > maxAllowedFuture) {
+        return jsonResponse(
+          req,
+          {
+            error: "Sua vigência já está antecipada. A soma total de meses acumulados não pode ultrapassar 11 meses no futuro.",
+          },
+          400,
+        );
+      }
+
       const pricing = calculateCumulativePriceServer(monthsCount);
+
+      // Reutiliza cobrança Pix recente (< 1 hora) se já existir uma intenção pendente idêntica
+      const { data: existingIntent } = await supabase
+        .from("billing_intents")
+        .select("id, provider_payment_id, created_at, amount_cents")
+        .eq("user_id", user.id)
+        .eq("kind", "cumulative_renewal")
+        .eq("months_count", monthsCount)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingIntent?.provider_payment_id) {
+        try {
+          const existingPayment = await getAsaasPayment(existingIntent.provider_payment_id);
+          const createdAtMillis = existingPayment.dateCreated
+            ? new Date(existingPayment.dateCreated).getTime()
+            : new Date(existingIntent.created_at).getTime();
+
+          const canReuse = shouldReusePendingPixCharge({
+            paymentStatus: existingPayment.status,
+            paymentValue: existingPayment.value,
+            expectedValue: pricing.totalReais,
+            createdAtMillis,
+          });
+
+          if (canReuse) {
+            const qrCode = await getAsaasPixQrCode(existingPayment.id);
+            return jsonResponse(req, {
+              ok: true,
+              method: "pix",
+              kind: "cumulative_months",
+              intentId: existingIntent.id,
+              paymentId: existingPayment.id,
+              months: monthsCount,
+              totalCents: pricing.totalCents,
+              discountPercentage: pricing.discountPercentage,
+              qrCodeBase64: qrCode.encodedImage,
+              copyPasteKey: qrCode.payload,
+              expirationDate: qrCode.expirationDate,
+              reused: true,
+            });
+          }
+        } catch (reuseErr) {
+          console.warn("[asaas-checkout] Falha ao consultar cobrança acumulativa anterior:", reuseErr);
+        }
+      }
 
       // Cria a intenção de cobrança no banco (billing_intents)
       const { data: intent, error: intentErr } = await supabase
@@ -207,7 +250,7 @@ Deno?.serve?.(async (req: Request) => {
           plan_id: "pro_monthly",
           months_count: monthsCount,
           amount_cents: pricing.totalCents,
-          method: method === "pix" ? "pix" : "credit_card",
+          method: "pix",
           status: "pending",
           provider: "asaas",
           metadata: {
@@ -225,43 +268,40 @@ Deno?.serve?.(async (req: Request) => {
         return safeErrorResponse(req, 500, "Falha ao registrar intenção de cobrança.");
       }
 
-      if (method === "pix") {
-        const payment = await createAsaasPixCharge({
-          customerId: customer.id,
-          value: pricing.totalReais,
-          description: `Axir Pro — Antecipação de ${monthsCount} meses (${pricing.discountPercentage}% OFF)`,
-        });
+      const payment = await createAsaasPixCharge({
+        customerId: customer.id,
+        value: pricing.totalReais,
+        description: `Axir Pro — Antecipação de ${monthsCount} meses (${pricing.discountPercentage}% OFF)`,
+        externalReference: intent.id,
+      });
 
-        const qrCode = await getAsaasPixQrCode(payment.id);
+      const qrCode = await getAsaasPixQrCode(payment.id);
 
-        await supabase
-          .from("billing_intents")
-          .update({
-            provider_payment_id: payment.id,
-            external_reference: intent.id,
-          })
-          .eq("id", intent.id);
+      await supabase
+        .from("billing_intents")
+        .update({
+          provider_payment_id: payment.id,
+          external_reference: intent.id,
+        })
+        .eq("id", intent.id);
 
-        return jsonResponse(req, {
-          ok: true,
-          method: "pix",
-          kind: "cumulative_months",
-          intentId: intent.id,
-          paymentId: payment.id,
-          months: monthsCount,
-          totalCents: pricing.totalCents,
-          discountPercentage: pricing.discountPercentage,
-          qrCodeBase64: qrCode.encodedImage,
-          copyPasteKey: qrCode.payload,
-          expirationDate: qrCode.expirationDate,
-        });
-      }
-
-      return jsonResponse(req, { error: "Método de pagamento para antecipação não suportado no momento." }, 400);
+      return jsonResponse(req, {
+        ok: true,
+        method: "pix",
+        kind: "cumulative_months",
+        intentId: intent.id,
+        paymentId: payment.id,
+        months: monthsCount,
+        totalCents: pricing.totalCents,
+        discountPercentage: pricing.discountPercentage,
+        qrCodeBase64: qrCode.encodedImage,
+        copyPasteKey: qrCode.payload,
+        expirationDate: qrCode.expirationDate,
+      });
     }
 
     // =========================================================================
-    // FLUXO B: CONTRATAÇÃO NORMAL (MENSAL OU ANUAL COM AUTORIDADE DO SERVIDOR)
+    // FLUXO B: CONTRATAÇÃO MENSAL OU ANUAL (COM AUTORIDADE DO SERVIDOR)
     // =========================================================================
     if (!plan || !["monthly", "annual"].includes(plan)) {
       return jsonResponse(req, { error: "Plano inválido (mensal ou anual)" }, 400);
@@ -275,9 +315,9 @@ Deno?.serve?.(async (req: Request) => {
     const planMeta = ASAAS_PLAN_CATALOG[planKey];
     const now = new Date();
 
-    // Garante que o registro de user_subscriptions exista (prevenindo corrida de trigger)
-    const defaultTrialEnds = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    if (!userSub && isRegistration) {
+    // Garante que o registro de user_subscriptions exista
+    if (!userSub) {
+      const defaultTrialEnds = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       const { data: upsertedSub } = await supabase
         .from("user_subscriptions")
         .upsert(
@@ -301,34 +341,33 @@ Deno?.serve?.(async (req: Request) => {
     }
 
     // Autoridade do Servidor sobre Trial e Primeira Cobrança:
-    // O período de teste de 30 dias é estritamente único por usuário/conta.
-    // Qualquer usuário em modo somente leitura (read_only), com status cancelado/expirado/past_due,
-    // com histórico prévio de cobrança (billing_start_at), com trial já consumido (trial_consumed_at),
-    // ou cujo período de teste de 30 dias já se encerrou no tempo NUNCA terá cobrança agendada para 30 dias depois.
-    // Para esses usuários, a cobrança no cartão DEVE ser imediata no ato.
+    // O período de teste é único por usuário. Usuários com histórico de cobrança,
+    // com status cancelado/read_only_expired/past_due, ou cujo trial expirou
+    // são cobrados imediatamente no ato.
     const hasAlreadyConsumedTrial = Boolean(
       userSub?.trial_consumed_at ||
       userSub?.billing_start_at ||
       userSub?.tier === "read_only" ||
       userSub?.status === "canceled" ||
-      userSub?.status === "expired" ||
+      userSub?.status === "read_only_expired" ||
       userSub?.status === "past_due" ||
-      (userSub && userSub.tier !== "trial" && !isRegistration)
+      (userSub && userSub.tier !== "trial")
     );
 
-    const trialEndsDate = userSub?.trial_ends_at
-      ? new Date(userSub.trial_ends_at)
-      : (isRegistration ? defaultTrialEnds : null);
-
+    const trialEndsDate = userSub?.trial_ends_at ? new Date(userSub.trial_ends_at) : null;
     const isTrialActive =
       !hasAlreadyConsumedTrial &&
-      (isRegistration || (userSub?.tier === "trial" && userSub?.status === "trialing")) &&
+      userSub?.tier === "trial" &&
+      userSub?.status === "trialing" &&
       trialEndsDate !== null &&
       trialEndsDate.getTime() > now.getTime();
 
     const serverTrialEnds = isTrialActive ? trialEndsDate : null;
     const isDelayedByTrial = Boolean(serverTrialEnds);
 
+    // =========================================================================
+    // PIX (DISPONÍVEL EXCLUSIVAMENTE NO PLANO ANUAL)
+    // =========================================================================
     if (method === "pix") {
       if (plan !== "annual") {
         return jsonResponse(
@@ -370,10 +409,27 @@ Deno?.serve?.(async (req: Request) => {
         }
       }
 
+      const isUpgradeFromMonthly =
+        userSub?.tier === "pro_monthly" && userSub?.status === "active";
+
+      const { data: intent } = await supabase
+        .from("billing_intents")
+        .insert({
+          user_id: user.id,
+          kind: isUpgradeFromMonthly ? "plan_change" : "subscription_start",
+          plan_id: planMeta.planId,
+          amount_cents: planMeta.valueCents,
+          method: "pix",
+          status: "pending",
+        })
+        .select("id")
+        .single();
+
       const payment = await createAsaasPixCharge({
         customerId: customer.id,
         value: planMeta.value,
         description: "Axir — Plano Pro Anual",
+        externalReference: intent?.id,
       });
 
       const qrCode = await getAsaasPixQrCode(payment.id);
@@ -389,15 +445,15 @@ Deno?.serve?.(async (req: Request) => {
         })
         .eq("user_id", user.id);
 
-      await supabase.from("billing_intents").insert({
-        user_id: user.id,
-        kind: "subscription_start",
-        plan_id: planMeta.planId,
-        amount_cents: planMeta.valueCents,
-        method: "pix",
-        status: "pending",
-        provider_payment_id: payment.id,
-      });
+      if (intent?.id) {
+        await supabase
+          .from("billing_intents")
+          .update({
+            provider_payment_id: payment.id,
+            external_reference: intent.id,
+          })
+          .eq("id", intent.id);
+      }
 
       return jsonResponse(req, {
         ok: true,
@@ -406,27 +462,33 @@ Deno?.serve?.(async (req: Request) => {
         qrCodeBase64: qrCode.encodedImage,
         copyPasteKey: qrCode.payload,
         expirationDate: qrCode.expirationDate,
-        needsEmailConfirmation: isRegistration,
         email: customerEmail,
       });
     }
 
-    // Validação de Cartão de Crédito
+    // =========================================================================
+    // CARTÃO DE CRÉDITO (MENSAL OU ANUAL)
+    // =========================================================================
     if (!card || !card.number || !card.holderName || !card.expiryMonth || !card.expiryYear || !card.ccv) {
-      return jsonResponse(req, { error: "Dados do cartão de crédito incompletos" }, 400);
+      return jsonResponse(req, { error: "Dados do cartão de crédito incompletos." }, 400);
     }
 
     if (!isValidLuhn(card.number)) {
-      return jsonResponse(req, { error: "Número do cartão de crédito inválido" }, 400);
+      return jsonResponse(req, { error: "Número do cartão de crédito inválido." }, 400);
     }
 
     if (!isValidCardExpiry(card.expiryMonth, card.expiryYear)) {
-      return jsonResponse(req, { error: "Cartão de crédito com data de validade vencida ou incorreta" }, 400);
+      return jsonResponse(req, { error: "Cartão de crédito com data de validade vencida ou incorreta." }, 400);
     }
 
     const cleanCcv = (card.ccv || "").replace(/\D/g, "");
     if (cleanCcv.length < 3 || cleanCcv.length > 4) {
-      return jsonResponse(req, { error: "Código de segurança (CVV) inválido" }, 400);
+      return jsonResponse(req, { error: "Código de segurança (CVV) inválido." }, 400);
+    }
+
+    // Cancelamento preventivo de assinatura recorrente anterior no Asaas (F-03)
+    if (userSub?.asaas_subscription_id) {
+      await ensurePreviousSubscriptionCanceled(userSub.asaas_subscription_id);
     }
 
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "127.0.0.1";
@@ -447,10 +509,10 @@ Deno?.serve?.(async (req: Request) => {
       holderInfo: {
         name: customerName,
         email: customerEmail,
-        cpfCnpj: cleanCpf || "00000000000",
-        postalCode: card.postalCode,
-        addressNumber: card.addressNumber,
-        phone,
+        cpfCnpj: cleanCpf,
+        postalCode: cleanPostalCode || card.postalCode,
+        addressNumber: cleanAddressNumber || card.addressNumber,
+        phone: cleanPhone || phone,
       },
       nextDueDate,
       remoteIp: clientIp,
@@ -461,8 +523,8 @@ Deno?.serve?.(async (req: Request) => {
     const rawCardNum = String(card.number).replace(/\D/g, "");
     const cardLast4 = rawCardNum.length >= 4 ? rawCardNum.slice(-4) : "••••";
 
+    // Cenário 1: Cartão agendado para o fim dos 30 dias grátis de Trial
     if (isDelayedByTrial && serverTrialEnds) {
-      // Mantém tier = 'trial' e status = 'trialing', registrando a cobrança agendada
       await supabase
         .from("user_subscriptions")
         .update({
@@ -475,27 +537,70 @@ Deno?.serve?.(async (req: Request) => {
         })
         .eq("user_id", user.id);
 
+      // Disparo de e-mail transacional via Resend: Cartão cadastrado no Trial (Renovação Agendada)
+      try {
+        const appUrl = Deno.env?.get?.("PUBLIC_APP_URL") || "https://axir.com.br";
+        const emailContent = renderTrialCardScheduledEmail({
+          name: customerName,
+          cardLast4,
+          firstChargeDateFormatted: serverTrialEnds.toLocaleDateString("pt-BR"),
+          planName: planMeta.name,
+          planValueFormatted: `R$ ${planMeta.value.toFixed(2).replace(".", ",")}`,
+          appUrl,
+        });
+
+        await sendTransactionalEmail(supabase, {
+          to: customerEmail,
+          subject: emailContent.subject,
+          template: "trial_card_scheduled",
+          html: emailContent.html,
+          text: emailContent.text,
+          userId: user.id,
+          idempotencyKey: `trial_card_scheduled_${user.id}_${subscription.id}`,
+        });
+      } catch (emailErr) {
+        console.warn("[asaas-checkout] Aviso ao disparar e-mail de cartão agendado:", emailErr);
+      }
+
       return jsonResponse(req, {
         ok: true,
         method: "credit_card",
         phase: "trial_scheduled",
         subscriptionId: subscription.id,
         firstChargeAt: serverTrialEnds.toISOString(),
-        needsEmailConfirmation: isRegistration,
         email: customerEmail,
         cardLast4,
       });
     }
 
-    // Cobrança imediata
-    const periodEnd = addCivilMonthsServer(now, planKey === "annual" ? 12 : 1);
+    // Cenário 2: Cobrança imediata
+    let firstPaymentId: string | undefined;
+    let isFirstPaymentConfirmed = confirmed;
+
+    try {
+      const payments = await getAsaasSubscriptionPayments(subscription.id);
+      if (payments && payments.length > 0) {
+        firstPaymentId = payments[0]!.id;
+        const pStatus = (payments[0]!.status || "").toUpperCase();
+        if (CONFIRMED_SUBSCRIPTION_STATUSES.has(pStatus) || pStatus === "RECEIVED") {
+          isFirstPaymentConfirmed = true;
+        }
+      }
+    } catch {
+      // Tolera erro de consulta da primeira fatura
+    }
+
+    const currentPeriodBase = userSub?.current_period_end && new Date(userSub.current_period_end) > now
+      ? new Date(userSub.current_period_end)
+      : now;
+    const periodEnd = addCivilMonthsServer(currentPeriodBase, planKey === "annual" ? 12 : 1);
 
     await supabase
       .from("user_subscriptions")
       .update({
         tier: planMeta.planId,
         plan_id: planMeta.planId,
-        status: confirmed ? "active" : "incomplete",
+        status: isFirstPaymentConfirmed ? "active" : "incomplete",
         starts_at: userSub?.starts_at || now.toISOString(),
         billing_start_at: now.toISOString(),
         trial_consumed_at: userSub?.trial_consumed_at || now.toISOString(),
@@ -503,20 +608,37 @@ Deno?.serve?.(async (req: Request) => {
         cancel_at_period_end: false,
         scheduled_plan_id: null,
         scheduled_first_charge_at: null,
+        pending_plan_id: null,
+        pending_plan_effective_at: null,
         payment_method: "credit_card",
         card_last4: cardLast4,
         asaas_customer_id: customer.id,
         asaas_subscription_id: subscription.id,
+        ...(firstPaymentId ? { asaas_payment_id: firstPaymentId } : {}),
       })
       .eq("user_id", user.id);
+
+    if (firstPaymentId && isFirstPaymentConfirmed) {
+      await supabase.from("billing_processed_payments").upsert(
+        {
+          provider: "asaas",
+          provider_payment_id: firstPaymentId,
+          user_id: user.id,
+          kind: "subscription_first_charge",
+          amount_cents: planMeta.valueCents,
+          period_end_applied: periodEnd.toISOString(),
+          metadata: { subscription_id: subscription.id, tier: planMeta.planId },
+        },
+        { onConflict: "provider,provider_payment_id" },
+      );
+    }
 
     return jsonResponse(req, {
       ok: true,
       method: "credit_card",
       subscriptionId: subscription.id,
       tier: planMeta.planId,
-      status: confirmed ? "active" : "incomplete",
-      needsEmailConfirmation: isRegistration,
+      status: isFirstPaymentConfirmed ? "active" : "incomplete",
       email: customerEmail,
       cardLast4,
     });

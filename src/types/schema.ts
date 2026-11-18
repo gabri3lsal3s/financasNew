@@ -129,6 +129,8 @@ export type Profile = {
   email: string | null;
   cpf?: string | null;
   phone?: string | null;
+  postal_code?: string | null;
+  address_number?: string | null;
   role?: UserRole;
   status?: UserStatus;
   approved_at?: string | null;
@@ -218,9 +220,19 @@ export type UserSubscription = {
   tier: SubscriptionTier;
   status: SubscriptionStatus["tier"] extends "trial" ? "trialing" | "active" | "past_due" | "canceled" | "read_only_expired" : string;
   starts_at: string;
+  trial_started_at?: string | null;
   trial_ends_at?: string | null;
+  trial_consumed_at?: string | null;
+  billing_start_at?: string | null;
   current_period_end?: string | null;
   cancel_at_period_end: boolean;
+  scheduled_plan_id?: string | null;
+  scheduled_first_charge_at?: string | null;
+  pending_plan_id?: string | null;
+  pending_plan_effective_at?: string | null;
+  card_last4?: string | null;
+  card_brand?: string | null;
+  asaas_sync_status?: string | null;
   payment_provider?: BillingProviderName;
   provider_customer_id?: string | null;
   provider_subscription_id?: string | null;
@@ -231,6 +243,30 @@ export type UserSubscription = {
   metadata?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+};
+
+export type BillingProcessedPayment = {
+  id: string;
+  provider: string;
+  provider_payment_id: string;
+  user_id: string;
+  kind: string;
+  amount_cents: number;
+  period_end_applied?: string | null;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+};
+
+export type TransactionalEmailLog = {
+  id: string;
+  user_id?: string | null;
+  template_key: string;
+  dedup_key: string;
+  recipient_email: string;
+  provider_message_id?: string | null;
+  status: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
 };
 
 export type UserModulePermission = {

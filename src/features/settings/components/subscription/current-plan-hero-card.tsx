@@ -64,7 +64,38 @@ export function CurrentPlanHeroCard({ subscription, onUpgrade }: CurrentPlanHero
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        {hasAutoRenew ? (
+        {subscription.isLifetime ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <CheckCircle2 className="size-5 text-positive-strong shrink-0" aria-hidden="true" />
+              <span className="text-sm font-semibold text-foreground">
+                Plano Pro Vitalício
+              </span>
+              <Badge variant="positive" size="sm">
+                Membro Fundador VIP
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <InfoRow
+                icon={Calendar}
+                label="Validade do Acesso"
+                value="Vitalício / Sem expiração"
+              />
+              <InfoRow icon={ShieldCheck} label="Status" value="Acesso completo garantido" />
+              <InfoRow
+                icon={Sparkles}
+                label="Cobrança"
+                value="Isento de mensalidades"
+              />
+              <InfoRow
+                icon={RefreshCw}
+                label="Recursos"
+                value="Todas as ferramentas Pro liberadas"
+              />
+            </div>
+          </div>
+        ) : hasAutoRenew ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2 flex-wrap">
               <CheckCircle2 className="size-5 text-positive-strong shrink-0" aria-hidden="true" />

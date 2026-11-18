@@ -173,8 +173,8 @@ describe("Homologação Transacional Asaas (Go-Live & Portão de Qualidade 2)", 
     };
 
     const decision = decideWebhookAction({
-      eventType: "PAYMENT_DELETED",
-      payment: { id: "pay_monthly_001" },
+      eventType: "SUBSCRIPTION_DELETED",
+      payment: { id: "pay_monthly_001", subscription: currentSub.asaasSubscriptionId },
       currentSub: snapshot,
     });
 

@@ -1,5 +1,22 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.11.0 (Plano Assinaturas, Onboarding & Asaas v3 + Resend)** registra a conclusão integral da **Reestruturação Definitiva do Motor de Assinaturas, Webhooks Idempotentes, Onboarding e Comunicação Transacional Oficial Axir** ([`docs/PLANO_ASSINATURAS_ONBOARDING.md`](../PLANO_ASSINATURAS_ONBOARDING.md)) (2026-11-18):
+> - **(1) Hardening de Banco, Migrations, Idempotência e RBAC (Fase 1)**:
+>   - Migration `20260101000128_harden_billing_idempotency_and_trial_lifecycle.sql` instituindo tabelas `billing_processed_payments` e `transactional_email_logs`, expansão de `profiles` (`phone`, `postal_code`, `address_number`), correção atômica de `handle_new_user()` com `trial_started_at` e `starts_at`, alinhamento do Grace Period de 3 dias em `get_user_module_access()`, fechamento estrito de RLS com subqueries escalares e blindagem RBAC de superadmin.
+> - **(2) Core Gateway Asaas v3, Webhooks Idempotentes e Ciclo de Vida (Fase 2)**:
+>   - Correção atômica do bug F-01 (renovação do 2º mês), eliminação do cancelamento incorreto em `PAYMENT_DELETED` (F-06), adiamento e cancelamento de faturas pendentes anteriores no Asaas via `postponeAsaasSubscriptionAfterPrepayment`, cancelamento preventivo de recorrência prévia em upgrade Anual Pix, teto máximo de 11 meses de antecipação e salvaguarda do período de testes no cancelamento durante o trial (F-09).
+> - **(3) Infraestrutura Resend (API + SMTP) e Templates Oficiais Axir (Fase 3)**:
+>   - Módulo `_shared/resend.ts` com rastreamento persistente, fail-safe e idempotência;
+>   - Módulo `_shared/email-templates.ts` com os 7 templates responsivos canônicos (Boas-vindas ao Trial de 30 dias, Cartão no Trial, Ativação Pro, Falha de Fatura, Cancelamento CDC vs Fim de Período, Lembrete de Fim de Trial 3 dias antes e Somente Leitura);
+>   - Conformidade estrita com `AGENTS.md` §4.8 (Zero emojis) e suíte automatizada `email-templates-integrity.test.ts`.
+> - **(4) Frontend Reativo, Checkout, Onboarding e Gestão Superadmin (Fase 4)**:
+>   - Transição reativa sem F5 com `useSubscriptionBoundaryTimer`, `staleTime: 30s` e revalidação em `visibilitychange`;
+>   - Suporte completo ao Membro Fundador VIP (`isLifetime`) no `SubscriptionProvider`, `CurrentPlanHeroCard` e `SubscriptionTab`;
+>   - Raio-X do Plano SaaS no `UserEditDialog` com visualização de vigência, gateway e final de cartão;
+>   - Redirecionamento seguro de cadastro e transparência integral no somatório de dias restantes no Pix Anual.
+> - **(5) Quality Gates 1 a 5 e Testes Automatizados**:
+>   - 100% dos testes de segurança, integridade de banco, Asaas v3, idempotência, e-mails e checkout aprovados.
+
 > **v3.10.0 (Ondas 1 a 4 — UI/UX & Investimentos)** registra a conclusão da **Auditoria Integral de UI/UX, Bíblia Visual Oficial, Conforto Ocular e Unificação de Carteira** ([`docs/DESIGN_RULES.md`](../DESIGN_RULES.md) e [`docs/AUDITORIA_UI_UX.md`](../AUDITORIA_UI_UX.md)) (2026-11-18):
 > - **(1) Fundação, Tokens & Blindagem Sensorial (Onda 1)**:
 >   - Instituição dos tokens semânticos oficiais Dark/OLED/Light no `@theme inline`, `@custom-variant dark`, densidade `compact` e flat shadows em `tokens.css`/`globals.css`;

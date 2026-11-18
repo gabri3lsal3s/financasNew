@@ -147,46 +147,15 @@ export function calculateCancellationRefund(params: {
     };
   }
 
-  // 2. Plano Mensal após 7 dias: acesso garantido até o fim do ciclo corrente, sem estorno residual
-  if (params.plan === "monthly") {
-    return {
-      eligibleForRefund: false,
-      refundAmountCents: 0,
-      isCdcArrependimento: false,
-      reason: "Cancelamento após o 7º dia. Acesso mantido até o encerramento do ciclo mensal atual.",
-      monthsUsed: 1,
-      monthsRemaining: 0,
-    };
-  }
-
-  // 3. Plano Anual após 7 dias: cálculo pró-rata de meses não utilizados
-  const diffMs = Math.max(0, now.getTime() - paid.getTime());
-  const daysUsed = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  // Considera 30 dias por competência média de mês
-  const monthsUsed = Math.min(12, Math.ceil(daysUsed / 30));
-  const monthsRemaining = Math.max(0, 12 - monthsUsed);
-
-  if (monthsRemaining <= 0) {
-    return {
-      eligibleForRefund: false,
-      refundAmountCents: 0,
-      isCdcArrependimento: false,
-      reason: "Ciclo anual totalmente usufruído.",
-      monthsUsed: 12,
-      monthsRemaining: 0,
-    };
-  }
-
-  // Valor por mês no pacote anual faturado
-  const pricePerMonthCents = Math.floor(defaultPaid / 12);
-  const refundAmountCents = pricePerMonthCents * monthsRemaining;
-
+  // 2. Plano Mensal ou Anual após 7 dias: acesso garantido até o fim do ciclo contratado, sem estorno monetário residual
   return {
-    eligibleForRefund: refundAmountCents > 0,
-    refundAmountCents,
+    eligibleForRefund: false,
+    refundAmountCents: 0,
     isCdcArrependimento: false,
-    reason: `Reembolso pró-rata de ${monthsRemaining} mês(es) não usufruído(s) do plano anual.`,
-    monthsUsed,
-    monthsRemaining,
+    reason: params.plan === "monthly"
+      ? "Cancelamento após o 7º dia. Acesso mantido até o encerramento do ciclo mensal atual."
+      : "Cancelamento após o 7º dia. Acesso mantido até o encerramento dos 12 meses contratados.",
+    monthsUsed: params.plan === "annual" ? 12 : 1,
+    monthsRemaining: 0,
   };
 }

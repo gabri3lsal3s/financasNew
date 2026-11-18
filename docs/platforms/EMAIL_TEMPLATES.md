@@ -648,6 +648,37 @@ Após finalizar o preenchimento:
 | **E-mail chega na pasta SPAM** | Registros DKIM ou SPF ausentes ou não propagados | Verifique na ferramenta `mxtoolbox.com/spf.aspx` se os registros TXT/CNAME do domínio estão válidos. |
 | **535 Authentication Failed** | Chave de API ou senha SMTP incorreta | Gere uma nova chave no Resend/Brevo e atualize o campo Password no painel do Supabase. |
 | **Connection timeout on port 465** | Bloqueio de porta ou conflito de TLS | Alterne a porta para `587` e certifique-se de selecionar `TLS 1.2`. |
-| **Link de confirmação abre página 404** | Rota não mapeada em `Redirect URLs` | Certifique-se de que `https://axis.finance/**` está incluída em **Authentication > URL Configuration > Redirect URLs**. |
+| **Link de confirmação abre página 404** | Rota não mapeada em `Redirect URLs` | Certifique-se de que `https://axir.com.br/**` está incluída em **Authentication > URL Configuration > Redirect URLs**. |
 | **Erro "rate_limit_exceeded"** | Custom SMTP não foi ativado com sucesso | Verifique se o seletor **Enable Custom SMTP** está com o status ligado e salvo no Supabase. |
+
+---
+
+## 8. E-mails Transacionais de Faturamento e Ciclo de Vida (Resend API)
+
+Além dos 4 templates de autenticação do Supabase Auth, o Axir conta com 7 templates programáticos disparados pelas Edge Functions através da API HTTP do Resend (`_shared/resend.ts` e `_shared/email-templates.ts`), com rastreamento persistente em `public.transactional_email_logs` e conformidade estrita com `AGENTS.md` §4.8 (Zero emojis).
+
+### Matriz dos 7 Templates de Cobrança Axir
+
+| Identificador do Template | Gatilho / Origem | Assunto | Propósito e Salvaguardas |
+|---|---|---|---|
+| `trial_welcome` | Signup de novo usuário | `Bem-vindo ao Axir - Seus 30 dias de teste comecaram` | Boas-vindas com prazo de 30 dias de teste e CTA direto para o painel. |
+| `trial_card_scheduled` | Cartão cadastrado no Trial (`asaas-checkout`) | `Cartao cadastrado com sucesso - Renovacao agendada` | Confirma cadastro sem cobrança hoje e informa a data da 1ª cobrança futura. |
+| `pro_activation` | Confirmação de Pagamento (`asaas-webhook`) | `Confirmacao de Pagamento - [Plano Pro]` | Confirma recebimento da anuidade/mensalidade, vigência e link da fatura/NF. |
+| `payment_failed` | Falha na fatura recorrente (`asaas-webhook`) | `Importante: Nao conseguimos processar o pagamento...` | Alerta amigável de falha de cobrança com link para atualizar dados do cartão. |
+| `subscription_canceled` | Cancelamento (`asaas-manage`) | `Confirmacao de cancelamento da assinatura Axir` | Comunica cancelamento: estorno 100% no prazo de 7 dias (CDC) ou manutenção até o final do período vigente. |
+| `trial_ending_reminder` | Cron diário (`billing-lifecycle-cron`) | `Seu teste gratuito no Axir termina em 3 dias` | Alerta a 3 dias do fim do trial com comparativo Mensal vs Anual. |
+| `trial_expired_read_only` | Reconciliação (`reconcile_expired_subscriptions`) | `Seu periodo de testes no Axir terminou` | Informa migração para Somente Leitura garantindo preservação de dados e link de reativação. |
+
+### Configuração de Variáveis de Ambiente (Edge Functions)
+
+- `RESEND_API_KEY`: Chave de API do Resend (`re_...`).
+- `RESEND_FROM_EMAIL`: Remetente canônico (Padrão: `Axir <contato@axir.com.br>`).
+- `PUBLIC_APP_URL`: URL base do frontend (Padrão: `https://axir.com.br`).
+
+### Verificação e Teste Automatizado
+A conformidade do design, ausência de emojis e compatibilidade dos templates é garantida pelo teste de regressão:
+```bash
+npx vitest run src/tests/email-templates-integrity.test.ts
+```
+
 
