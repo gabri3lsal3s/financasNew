@@ -33,12 +33,12 @@ export function ModalFooter({
           className,
         )}
       >
-        <div className="order-last sm:order-first w-full sm:w-auto [&_button]:w-full [&_button]:sm:w-auto">
+        <div className="order-last sm:order-first w-full sm:w-auto [&>button]:w-full [&>button]:sm:w-auto">
           {destructiveAction}
         </div>
         <div
           className={cn(
-            "w-full sm:w-auto [&_button]:w-full [&_button]:sm:w-auto [&_button]:sm:min-w-[110px]",
+            "w-full sm:w-auto [&>button]:w-full [&>button]:sm:w-auto [&>button]:sm:min-w-[110px]",
             actionsLayoutClass,
           )}
         >
@@ -51,7 +51,7 @@ export function ModalFooter({
   return (
     <div
       className={cn(
-        "w-full [&_button]:w-full [&_button]:sm:w-auto [&_button]:sm:min-w-[110px]",
+        "w-full [&>button]:w-full [&>button]:sm:w-auto [&>button]:sm:min-w-[110px]",
         !borderless && "pt-4 mt-6 border-t border-border/80",
         actionsLayoutClass,
         className,

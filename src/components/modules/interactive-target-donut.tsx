@@ -1,8 +1,17 @@
 import { useMemo, useState } from "react";
-import { DonutRing } from "@/components/ui/donut-ring";
-import { resolveDonutSliceColor, type DonutInputSlice } from "@/domain/charts";
+import {
+  buildCategoryDonutArcs,
+  CATEGORY_DONUT_CENTER,
+  CATEGORY_DONUT_CIRCUMFERENCE,
+  CATEGORY_DONUT_RADIUS,
+  CATEGORY_DONUT_SIZE,
+  CATEGORY_DONUT_STROKE_WIDTH,
+  resolveDonutSliceColor,
+  type CategoryVisualRingSlice,
+} from "@/domain/charts";
 import { cn } from "@/lib/utils";
 import { formatPercent } from "@/services/masks/percent";
+import { triggerSensory } from "@/services/sensory";
 import { TargetDonutAdjuster } from "./portfolio/target-donut-adjuster";
 import { TargetDonutLegend } from "./portfolio/target-donut-legend";
 
@@ -30,8 +39,8 @@ export interface InteractiveTargetDonutProps {
 const FREE_SLICE_ID = "__free__";
 
 /**
- * InteractiveTargetDonut — gráfico de rosca interativo para visualização da carteira
- * ideal e ajuste rápido de metas, consumindo o primitivo canônico `<DonutRing />`.
+ * InteractiveTargetDonut — gráfico de rosca canônico para visualização da carteira
+ * ideal e ajuste rápido de metas, padronizado com a arquitetura `CategoryDonut`.
  */
 export function InteractiveTargetDonut({
   items,
@@ -62,29 +71,46 @@ export function InteractiveTargetDonut({
       ? resolveDonutSliceColor(selectedItem.color, selectedIndex)
       : undefined;
 
-  const ringSlices = useMemo<DonutInputSlice[]>(() => {
-    const active: DonutInputSlice[] = items
+  const visualRingSlices = useMemo<CategoryVisualRingSlice[]>(() => {
+    const active: CategoryVisualRingSlice[] = items
       .map((item, idx) => ({
-        id: item.key,
+        key: item.key,
         label: item.label,
-        value: item.targetPercent,
-        color: resolveDonutSliceColor(item.color, idx),
+        valueCents: Math.round(item.targetPercent * 100),
+        colorStyle: resolveDonutSliceColor(item.color, idx),
+        memberKeys: [item.key],
       }))
-      .filter((slice) => Number.isFinite(slice.value) && slice.value > 0);
+      .filter((slice) => slice.valueCents > 0);
 
     if (!isOverflow && freePercent > 0) {
       active.push({
-        id: FREE_SLICE_ID,
+        key: FREE_SLICE_ID,
         label: "Livre",
-        value: freePercent,
-        color: "hsl(var(--muted))",
+        valueCents: Math.round(freePercent * 100),
+        colorStyle: "hsl(var(--muted))",
+        memberKeys: [FREE_SLICE_ID],
       });
     }
     return active;
   }, [items, isOverflow, freePercent]);
 
+  const effectiveTotal = useMemo(() => {
+    const total = visualRingSlices.reduce((sum, s) => sum + s.valueCents, 0);
+    return Math.max(1, total);
+  }, [visualRingSlices]);
+
+  const arcs = useMemo(() => {
+    return buildCategoryDonutArcs({
+      visualRingSlices,
+      total: effectiveTotal,
+      activeSelectedKey: selectedKey,
+      hoveredSliceKey: hoveredKey,
+    });
+  }, [visualRingSlices, effectiveTotal, selectedKey, hoveredKey]);
+
   const handleToggleKey = (key: string) => {
     if (disabled || key === FREE_SLICE_ID) return;
+    triggerSensory("selection");
     onSelectKey?.(selectedKey === key ? null : key);
   };
 
@@ -93,8 +119,6 @@ export function InteractiveTargetDonut({
     const next = Math.max(0, Math.min(100, Math.round((selectedItem.targetPercent + delta) * 10) / 10));
     onChangeTarget(selectedItem.key, next);
   };
-
-  const activeHighlightKey = hoveredKey ?? selectedKey;
 
   const centerContent = (
     <div
@@ -111,12 +135,12 @@ export function InteractiveTargetDonut({
             >
               {selectedItem.label}
             </span>
-            <span className="num font-mono text-sm sm:text-base md:text-lg font-bold text-foreground leading-tight mt-0.5 whitespace-nowrap">
+            <span className="num font-mono text-base sm:text-lg md:text-xl font-extrabold text-foreground tracking-tight leading-tight mt-0.5 whitespace-nowrap">
               {formatPercent(selectedItem.targetPercent)}
               <span className="text-xs text-muted-foreground font-normal ml-0.5">{unitLabel}</span>
             </span>
             {selectedItem.currentPercent !== undefined ? (
-              <span className="text-[10px] sm:text-[11px] text-muted-foreground font-medium mt-0.5 whitespace-nowrap">
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground font-semibold mt-0.5 whitespace-nowrap tabular-nums">
                 Atual:{" "}
                 <strong className="text-foreground">
                   {formatPercent(selectedItem.currentPercent)}
@@ -136,7 +160,7 @@ export function InteractiveTargetDonut({
             </span>
             <span
               className={cn(
-                "num font-mono text-sm sm:text-base md:text-lg font-bold leading-tight mt-0.5 whitespace-nowrap",
+                "num font-mono text-base sm:text-lg md:text-xl font-extrabold tracking-tight leading-tight mt-0.5 whitespace-nowrap",
                 isOverflow ? "text-critical-strong" : "text-foreground",
               )}
             >
@@ -167,33 +191,93 @@ export function InteractiveTargetDonut({
   return (
     <div
       className={cn(
-        "flex flex-col md:flex-row items-center justify-between gap-5 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs",
+        "flex flex-col items-center justify-center gap-5 w-full min-w-0 py-2",
         className,
       )}
       data-swipe-nav-ignore
     >
-      <div className="flex flex-col sm:flex-row items-center gap-5 w-full md:w-auto min-w-0">
-        <DonutRing
-          slices={ringSlices}
-          size={180}
-          strokeWidth={18}
-          gapDegrees={items.length > 1 ? 3 : 0}
-          activeId={activeHighlightKey}
-          ariaLabel={`Gráfico de metas: ${title}`}
-          className="size-40 sm:size-44 md:size-48 shrink-0"
-          centerContent={centerContent}
-          onSliceHover={(slice) => {
-            setHoveredKey(slice && slice.id !== FREE_SLICE_ID ? slice.id : null);
-          }}
-          onSliceSelect={
-            disabled || !onSelectKey
-              ? undefined
-              : (slice) => {
-                  if (slice?.id === FREE_SLICE_ID) return;
-                  onSelectKey(slice ? slice.id : null);
-                }
-          }
-        />
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full min-w-0">
+        <div className="relative shrink-0 flex items-center justify-center py-2 self-center">
+          <svg
+            viewBox={`0 0 ${CATEGORY_DONUT_SIZE} ${CATEGORY_DONUT_SIZE}`}
+            className="size-40 sm:size-44 md:size-48 -rotate-90 transition-transform duration-300"
+            aria-label={`Gráfico de metas: ${title}`}
+            role="img"
+          >
+            {arcs
+              .filter((arc) => arc.dash > 0)
+              .map((arc) => {
+                const isFree = arc.key === FREE_SLICE_ID;
+                const isHighlighted = arc.isHovered || arc.isSelected;
+                const hasAnyActive = hoveredKey !== null || selectedKey !== null;
+                const opacity = hasAnyActive ? (isHighlighted ? 1 : 0.35) : 1;
+                const strokeWidth = isHighlighted
+                  ? CATEGORY_DONUT_STROKE_WIDTH + 2.5
+                  : CATEGORY_DONUT_STROKE_WIDTH;
+
+                const targetPct = items.find((i) => i.key === arc.key)?.targetPercent ?? 0;
+
+                return (
+                  <circle
+                    key={arc.key}
+                    cx={CATEGORY_DONUT_CENTER}
+                    cy={CATEGORY_DONUT_CENTER}
+                    r={CATEGORY_DONUT_RADIUS}
+                    fill="none"
+                    role={!disabled && !isFree ? "button" : undefined}
+                    tabIndex={!disabled && !isFree ? 0 : undefined}
+                    aria-label={!isFree ? `${arc.label}: ${formatPercent(targetPct)}%` : "Livre"}
+                    strokeWidth={strokeWidth}
+                    strokeDasharray={`${arc.dash} ${CATEGORY_DONUT_CIRCUMFERENCE - arc.dash}`}
+                    strokeDashoffset={-arc.offset}
+                    strokeLinecap={arc.strokeLinecap}
+                    style={{
+                      stroke: arc.colorStyle,
+                      opacity,
+                      cursor: disabled || isFree ? "default" : "pointer",
+                    }}
+                    className="transition-all duration-200 focus-visible:outline-none"
+                    onMouseEnter={() => {
+                      if (!disabled && !isFree) setHoveredKey(arc.key);
+                    }}
+                    onMouseLeave={() => {
+                      if (!disabled) setHoveredKey(null);
+                    }}
+                    onClick={() => {
+                      if (!disabled && !isFree) handleToggleKey(arc.key);
+                    }}
+                    onKeyDown={(e) => {
+                      if (!disabled && !isFree && (e.key === "Enter" || e.key === " ")) {
+                        e.preventDefault();
+                        handleToggleKey(arc.key);
+                      }
+                    }}
+                  />
+                );
+              })}
+          </svg>
+
+          <div
+            role={selectedKey ? "button" : undefined}
+            tabIndex={selectedKey ? 0 : undefined}
+            onClick={() => {
+              if (selectedKey) onSelectKey?.(null);
+            }}
+            onKeyDown={(e) => {
+              if ((e.key === "Enter" || e.key === " ") && selectedKey) {
+                e.preventDefault();
+                onSelectKey?.(null);
+              }
+            }}
+            className={cn(
+              "absolute inset-[10%] flex flex-col items-center justify-center text-center p-2 rounded-full transition-all select-none overflow-hidden",
+              selectedKey ? "cursor-pointer group hover:bg-surface-hover/30" : "pointer-events-none",
+            )}
+            aria-live="polite"
+          >
+            {centerContent}
+          </div>
+        </div>
 
         <TargetDonutLegend
           title={title}

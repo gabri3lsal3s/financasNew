@@ -104,8 +104,8 @@ function IncomeDetailDialogContent({
         </Button>
       }
     >
-      <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto min-w-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <Button
             type="button"
             variant="outline"
@@ -136,11 +136,11 @@ function IncomeDetailDialogContent({
           type="button"
           variant="outline"
           size="sm"
-          className="gap-1.5 shrink-0"
+          className="gap-1.5 flex-1 min-w-0 sm:flex-initial sm:w-auto sm:min-w-[100px]"
           onClick={() => guardAction(() => setIsEditing(true), "Editar Receita")}
         >
-          <Pencil className="size-3.5" aria-hidden="true" />
-          <span>Editar</span>
+          <Pencil className="size-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate">Editar</span>
         </Button>
       </div>
     </ModalFooter>

@@ -65,7 +65,7 @@ export function LaunchContextSelector({
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
+    <div data-tour="launch-context-selector" className="flex flex-col gap-3 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-foreground">{title}</span>
         {activeContext === "personal" ? (

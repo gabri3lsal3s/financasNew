@@ -324,25 +324,54 @@ export function useSpotlightTargetRect({
         scrollTarget?.removeEventListener("scrollend", onScrollEnd);
         if (isBottomElement && container) container.scrollTop = container.scrollHeight;
         updateTargetRect();
+        // Garantia de recalibração após animações CSS terminarem (ex: bottom-sheet slide-in 250ms)
+        setTimeout(() => {
+          if (!isCleanedUp) updateTargetRect();
+        }, 300);
+        setTimeout(() => {
+          if (!isCleanedUp) updateTargetRect();
+        }, 550);
       };
 
       const onScrollEnd = () => settleAndMeasure();
-      const maxTimeout = setTimeout(settleAndMeasure, 600);
+      const maxTimeout = setTimeout(settleAndMeasure, 750);
       scrollTarget?.addEventListener("scrollend", onScrollEnd, { once: true });
 
-      let lastScrollTop = container ? container.scrollTop : (typeof window !== "undefined" ? window.scrollY : 0);
+      let lastElementTop = 0;
+      let lastElementLeft = 0;
+      if (element && typeof element.getBoundingClientRect === "function") {
+        const b = element.getBoundingClientRect();
+        lastElementTop = b.top;
+        lastElementLeft = b.left;
+      }
       let stableFrames = 0;
+      const startTime = Date.now();
 
       const checkScrollStabilization = () => {
         if (isSettled || isCleanedUp) return;
-        const currentScrollTop = container ? container.scrollTop : (typeof window !== "undefined" ? window.scrollY : 0);
-        if (Math.abs(currentScrollTop - lastScrollTop) < 1) {
+        let currentTop = 0;
+        let currentLeft = 0;
+        if (element && typeof element.getBoundingClientRect === "function") {
+          const b = element.getBoundingClientRect();
+          currentTop = b.top;
+          currentLeft = b.left;
+        }
+
+        const isElementStationary =
+          Math.abs(currentTop - lastElementTop) < 1 &&
+          Math.abs(currentLeft - lastElementLeft) < 1;
+
+        if (isElementStationary) {
           stableFrames += 1;
         } else {
           stableFrames = 0;
-          lastScrollTop = currentScrollTop;
+          lastElementTop = currentTop;
+          lastElementLeft = currentLeft;
+          updateTargetRect();
         }
-        if (stableFrames >= 2) {
+
+        const elapsed = Date.now() - startTime;
+        if (stableFrames >= 4 && elapsed >= 180) {
           settleAndMeasure();
         } else {
           rafId = requestAnimationFrame(checkScrollStabilization);
@@ -437,12 +466,16 @@ export function useSpotlightTargetRect({
 
     const container = document.getElementById("main-content");
     window.addEventListener("resize", handleResizeOrScroll, { passive: true });
-    window.addEventListener("scroll", handleResizeOrScroll, { passive: true });
+    window.addEventListener("scroll", handleResizeOrScroll, { capture: true, passive: true });
+    window.addEventListener("animationend", handleResizeOrScroll, { capture: true, passive: true });
+    window.addEventListener("transitionend", handleResizeOrScroll, { capture: true, passive: true });
     container?.addEventListener("scroll", handleResizeOrScroll, { passive: true });
 
     return () => {
       window.removeEventListener("resize", handleResizeOrScroll);
-      window.removeEventListener("scroll", handleResizeOrScroll);
+      window.removeEventListener("scroll", handleResizeOrScroll, { capture: true });
+      window.removeEventListener("animationend", handleResizeOrScroll, { capture: true });
+      window.removeEventListener("transitionend", handleResizeOrScroll, { capture: true });
       container?.removeEventListener("scroll", handleResizeOrScroll);
     };
   }, [isDemoActive, updateTargetRect]);
