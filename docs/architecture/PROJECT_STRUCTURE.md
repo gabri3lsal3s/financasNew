@@ -320,7 +320,9 @@
     │   │                          #     allocation-gaps.ts, concentration-risk.ts, consolidated-balance.ts,
     │   │                          #     freedom-index.ts, period-redemptions.ts (F80: resgates da competência),
     │   │                          #     distribution.ts (F51: normalização de percentuais a 100,0% pelo algoritmo do maior resto),
-    │   │                          #     allocation-donuts.ts (F84: distribuição donut classes e setores com reserva de caixa desacoplada)
+    │   │                          #     allocation-donuts.ts (F84: distribuição donut classes e setores com reserva de caixa desacoplada),
+    │   │                          #     unified-payload.ts (SSOT canônico de snapshots de portfólio),
+    │   │                          #     portfolio-report-invariant-validator.ts (auditor pré-emissão de 12 asserções)
     │   ├── insights/              #   advisor.ts (SmartAdvisor proativo e cooldown), intent-semantics.ts (inferência de intenções), habits.ts (hábitos e microvazamentos), recurrences.ts, alertas, assinaturas, feedback.ts
     │   ├── savings/               #   F27: desafios de economia (média mensal típica, corte
     │   │                          #     discricionário 10/20/30% — typicalMonthlySpendCents)

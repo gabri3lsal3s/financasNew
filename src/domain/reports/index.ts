@@ -423,5 +423,24 @@ export {
   type PeriodInvestmentFlowResult,
 } from "./period-investment-flow";
 
+export {
+  buildUnifiedPortfolioReportPayload,
+  type AllocationRowDTO,
+  type BenchmarkComparisonDTO,
+  type BenchmarksAndRiskDTO,
+  type BuildUnifiedPortfolioReportPayloadParams,
+  type CustodyAssetDTO,
+  type CustodyClassGroupDTO,
+  type MonthlyEvolutionRowDTO,
+  type UnifiedPortfolioReportPayload,
+  type XRayGroupDTO,
+  type XRaySegmentDTO,
+} from "./unified-payload";
+
+export {
+  PortfolioReportInvariantValidator,
+  type InvariantValidationResult,
+} from "./portfolio-report-invariant-validator";
+
 
 

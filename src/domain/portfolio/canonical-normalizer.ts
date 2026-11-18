@@ -194,12 +194,20 @@ export interface CanonicalPositionAdjustmentResult {
 export interface CanonicalAssetLedgerState {
   /** Quantidade final de cotas em custódia. */
   quantity: number;
-  /** Custo total acumulado em moeda nativa ou BRL (conservado em desdobramentos). */
+  /** Custo total acumulado em moeda nativa (conservado em desdobramentos). */
   totalCost: number;
-  /** Preço médio ponderado final. */
+  /** Preço médio ponderado final na moeda nativa. */
   averagePrice: number;
+  /** Custo total histórico acumulado em BRL ponderado pela taxa de câmbio de cada compra (Fase 2). */
+  totalCostBRL: number;
+  /** Preço médio ponderado final em BRL (Fase 2). */
+  averageCostBRL: number;
+  /** Taxa de câmbio média histórica implícita da posição (totalCostBRL / totalCost) (Fase 2). */
+  impliedHistoricalFxRate: number | null;
   /** Proventos totais acumulados no histórico. */
   dividendsTotal: number;
+  /** Lucro/prejuízo realizado líquido em operações de venda ou amortização excedente (PnL Realizado). */
+  realizedPnl: number;
   /** Quantidade total de eventos societários (splits / reverse_splits) processados. */
   corporateActionsCount: number;
   /** Quantidade total de transações processadas. */
@@ -1267,10 +1275,17 @@ export function applyCanonicalSplitToPosition(
   };
 }
 
+export interface ComputeCanonicalAssetLedgerOptions {
+  currency?: AssetCurrency;
+  defaultFxRate?: number;
+  monthlyPrices?: readonly PortfolioMonthlyPrice[] | readonly { ticker: string; month?: string; price: number }[] | null;
+}
+
 /**
  * Reconstrói deterministicamente a evolução de custódia e custo de um ativo
  * ao longo de uma sequência cronológica de transações, aplicando a Salvaguarda S17
- * em cada desdobramento ou grupamento e a Salvaguarda S16 em vendas parciais.
+ * em cada desdobramento ou grupamento, a Salvaguarda S16 em vendas parciais e
+ * a segregação estrita entre custo em moeda original e custo histórico em BRL (§Fase 2 / Etapa 2.1).
  */
 export function computeCanonicalAssetLedger(
   transactions: readonly {
@@ -1279,13 +1294,29 @@ export function computeCanonicalAssetLedger(
     quantity?: number | null;
     price?: number | null;
     total?: number | null;
+    fx_rate?: number | null;
+    total_cost_brl?: number | null;
+    total_brl?: number | null;
     notes?: string | null;
   }[],
-  initialPosition?: { quantity: number; totalCost: number; averagePrice?: number },
+  initialPosition?: {
+    quantity: number;
+    totalCost: number;
+    averagePrice?: number;
+    totalCostBRL?: number;
+    averageCostBRL?: number;
+  },
+  options?: ComputeCanonicalAssetLedgerOptions,
 ): CanonicalAssetLedgerState {
   let runningQty = initialPosition ? Math.max(0, initialPosition.quantity) : 0;
   let runningCost = initialPosition ? Math.max(0, round2(initialPosition.totalCost)) : 0;
+  const isUSD = options?.currency === "USD";
+  const defaultFx = options?.defaultFxRate && options.defaultFxRate > 0 ? options.defaultFxRate : 1.0;
+  let runningCostBRL = initialPosition
+    ? Math.max(0, round2(initialPosition.totalCostBRL ?? (isUSD ? runningCost * defaultFx : runningCost)))
+    : 0;
   let dividendsTotal = 0;
+  let realizedPnl = 0;
   let corporateActionsCount = 0;
   let transactionsProcessed = 0;
 
@@ -1321,39 +1352,105 @@ export function computeCanonicalAssetLedger(
       });
       runningQty = adj.newQuantity;
       runningCost = adj.totalCost; // RIGOROSAMENTE INALTERADO
+      // runningCostBRL RIGOROSAMENTE INALTERADO
       continue;
     }
 
+    // Resolução da taxa de câmbio efetiva da transação
+    let txFxRate = 1.0;
+    if (tx.fx_rate != null && Number(tx.fx_rate) > 0) {
+      txFxRate = Number(tx.fx_rate);
+    } else if (isUSD) {
+      if (options?.monthlyPrices) {
+        txFxRate = resolveDynamicPtaxRate(options.monthlyPrices, tx.date, { explicitRate: options?.defaultFxRate });
+      } else {
+        txFxRate = defaultFx;
+      }
+    }
+
+    const getTxTotalBRL = (): number => {
+      if (tx.total_cost_brl != null && Number(tx.total_cost_brl) > 0) {
+        return round2(Number(tx.total_cost_brl));
+      }
+      if (tx.total_brl != null && Number(tx.total_brl) > 0) {
+        return round2(Number(tx.total_brl));
+      }
+      return round2(rawTotal * txFxRate);
+    };
+
     const normType = tx.type.toLowerCase().trim();
-    if (normType === "buy" || normType === "subscription") {
+    if (normType === "buy" || normType === "subscription" || normType === "asset_buy") {
       const buyTotal = round2(rawTotal);
       runningQty = Math.round((runningQty + rawQty) * 10000) / 10000;
       runningCost = round2(runningCost + buyTotal);
-    } else if (normType === "sell") {
+      runningCostBRL = round2(runningCostBRL + getTxTotalBRL());
+    } else if (normType === "sell" || normType === "asset_sell") {
       if (runningQty > 0) {
-        const pm = runningCost / runningQty;
+        const pmNative = runningCost / runningQty;
         const soldQty = Math.min(runningQty, rawQty);
+        const costBasisNative = round2(soldQty * pmNative);
+        const f = soldQty / runningQty;
+        const costBasisBRL = round2(runningCostBRL * f);
+        const proceedsNative = round2(rawTotal > 0 ? rawTotal : soldQty * rawPrice);
+        const proceedsBRL = round2(proceedsNative * txFxRate);
+        realizedPnl += round2(proceedsBRL - costBasisBRL);
+
         runningQty = Math.max(0, Math.round((runningQty - rawQty) * 10000) / 10000);
         if (runningQty === 0) {
           runningCost = 0;
+          runningCostBRL = 0;
         } else {
-          runningCost = Math.max(0, round2(runningCost - soldQty * pm));
+          runningCost = Math.max(0, round2(runningCost - costBasisNative));
+          runningCostBRL = Math.max(0, round2(runningCostBRL - costBasisBRL));
         }
       } else {
         // Venda a descoberto acidental (Salvaguarda S16): mantém custo 0
+        const proceedsNative = round2(rawTotal > 0 ? rawTotal : rawQty * rawPrice);
+        const proceedsBRL = round2(proceedsNative * txFxRate);
+        realizedPnl += proceedsBRL;
         runningQty = 0;
         runningCost = 0;
+        runningCostBRL = 0;
       }
+    } else if (normType === "amortization" || normType === "amortizacao") {
+      const amortAmountNative = round2(rawTotal > 0 ? rawTotal : rawQty * rawPrice);
+      const amortAmountBRL = round2(amortAmountNative * txFxRate);
+      if (amortAmountBRL > runningCostBRL) {
+        realizedPnl += round2(amortAmountBRL - runningCostBRL);
+        runningCostBRL = 0;
+      } else {
+        runningCostBRL = Math.max(0, round2(runningCostBRL - amortAmountBRL));
+      }
+      if (amortAmountNative > runningCost) {
+        runningCost = 0;
+      } else {
+        runningCost = Math.max(0, round2(runningCost - amortAmountNative));
+      }
+    } else if (normType === "bonus_shares" || normType === "bonification" || normType === "bonificacao") {
+      const bonusTotalNative = round2(rawTotal);
+      const bonusTotalBRL = getTxTotalBRL();
+      runningQty = Math.round((runningQty + rawQty) * 10000) / 10000;
+      runningCost = round2(runningCost + bonusTotalNative);
+      runningCostBRL = round2(runningCostBRL + bonusTotalBRL);
     }
   }
 
   const averagePrice = runningQty > 0 ? round4(runningCost / runningQty) : 0;
+  const averageCostBRL = runningQty > 0 ? round4(runningCostBRL / runningQty) : 0;
+  const impliedHistoricalFxRate =
+    runningQty > 0 && runningCost > 0 && runningCostBRL > 0
+      ? round4(runningCostBRL / runningCost)
+      : null;
 
   return {
     quantity: runningQty,
     totalCost: runningCost,
     averagePrice,
+    totalCostBRL: runningCostBRL,
+    averageCostBRL,
+    impliedHistoricalFxRate,
     dividendsTotal: round2(dividendsTotal),
+    realizedPnl: round2(realizedPnl),
     corporateActionsCount,
     transactionsProcessed,
   };

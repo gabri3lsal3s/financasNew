@@ -32,6 +32,7 @@ export function buildTearSheetModel(params: BuildTearSheetModelParams): TearShee
     rows,
     totalBRL,
     totalCostBRL,
+    assetsCostBRL,
     totalDividendsBRL,
     totalReturnPnlBRL,
     totalReturnPct: propTotalReturnPct,
@@ -52,9 +53,13 @@ export function buildTearSheetModel(params: BuildTearSheetModelParams): TearShee
   const totalInvestedValueBRL =
     Math.round(activeInvestmentRows.reduce((acc, r) => acc + r.valueBRL, 0) * 100) / 100;
   const effectiveCostBRL =
-    totalCostBRL > 0
-      ? totalCostBRL
-      : Math.round(activeInvestmentRows.reduce((acc, r) => acc + (r.totalCostBRL ?? 0), 0) * 100) / 100;
+    assetsCostBRL && assetsCostBRL > 0
+      ? assetsCostBRL
+      : totalCostBRL > 0 && cashBRL > 0 && Math.abs(totalCostBRL - (totalInvestedValueBRL + cashBRL)) < 0.05
+        ? Math.round((totalCostBRL - cashBRL) * 100) / 100
+        : totalCostBRL > 0
+          ? totalCostBRL
+          : Math.round(activeInvestmentRows.reduce((acc, r) => acc + (r.totalCostBRL ?? 0), 0) * 100) / 100;
 
   const fallbackUnrealizedPnlBRL = Math.round((totalInvestedValueBRL - effectiveCostBRL) * 100) / 100;
   const fallbackUnrealizedPnlPct = effectiveCostBRL > 0 ? (fallbackUnrealizedPnlBRL / effectiveCostBRL) * 100 : 0;
@@ -178,7 +183,7 @@ export function buildTearSheetModel(params: BuildTearSheetModelParams): TearShee
     allocationRows,
     topDominance,
     breakdownRows,
-    classTableGroups: buildClassTableGroups(activeInvestmentRows, totalBRL),
+    classTableGroups: buildClassTableGroups(activeInvestmentRows, totalBRL, cashBRL, params.usdRate),
     intlPct: totalBRL > 0 ? (intlTotalBRL / totalBRL) * 100 : 0,
     hasTargets: allocationAnalysis.classGaps.some((cg) => cg.targetPct > 0),
     surplusClasses: allocationAnalysis.classGaps

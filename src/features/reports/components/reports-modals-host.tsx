@@ -75,6 +75,8 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
             rows={mapPositionRowsToWealthRows(data.positionRows)}
             totalBRL={data.positionQuery.totalBRL ?? 0}
             totalCostBRL={data.positionQuery.totalCostBRL ?? 0}
+            assetsCostBRL={data.positionQuery.assetsTotalCostBRL}
+            totalAppliedCostBRL={data.positionQuery.totalAppliedCostBRL}
             totalDividendsBRL={data.positionQuery.totalDividendsBRL ?? 0}
             totalReturnPnlBRL={data.positionQuery.totalReturnPnlBRL}
             totalReturnPct={data.positionQuery.totalReturnPct}

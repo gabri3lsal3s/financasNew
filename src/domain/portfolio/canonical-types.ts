@@ -168,6 +168,18 @@ export interface CanonicalAssetHolding {
   averageCostBRL: number;
   /** Custo total de aquisição acumulado convertido para BRL (base contábil para apuração de PnL). */
   totalCostBRL: number;
+  /** Preço médio unitário na moeda estrangeira (USD) para ativos internacionais (alias para averageCost quando currency === 'USD'). */
+  avgPriceUSD?: number;
+  /** Custo total na moeda estrangeira (USD) para ativos internacionais (alias para totalCost quando currency === 'USD'). */
+  totalCostUSD?: number;
+  /** Taxa de câmbio média histórica implícita da posição em USD (Custo BRL / Custo USD). */
+  impliedHistoricalFxRate?: number | null;
+  /** Variação da cota na moeda original em %: ((P_USD / PM_USD) - 1) * 100. */
+  pricePnlPctUSD?: number | null;
+  /** Variação cambial implícita em %: ((PTAX_atual / FX_hist) - 1) * 100. */
+  fxPnlPct?: number | null;
+  /** Variação da cota em BRL em %: ((V_BRL / C_BRL) - 1) * 100. */
+  pricePnlPctBRL?: number | null;
 
   /** Cotação resolvida e auditável com metadados de procedência e câmbio. */
   resolvedPrice: CanonicalResolvedPrice;
@@ -227,6 +239,8 @@ export interface CanonicalAssetHolding {
   pricingMode: CanonicalPricingMode;
   /** Peso percentual da posição frente ao patrimônio total da carteira (0–100%). */
   weightPct: number;
+  /** Lucro/prejuízo realizado em vendas passadas em BRL ou moeda nativa (PnL realizado). */
+  realizedPnl?: number;
   /** Anotações e observações livres salvas pelo investidor. */
   notes?: string | null;
 }
@@ -256,6 +270,7 @@ export interface CreateCanonicalAssetHoldingParams {
   pricingMode?: CanonicalPricingMode;
   isCash?: boolean;
   totalPortfolioValueBRL?: number;
+  realizedPnl?: number;
   notes?: string | null;
 }
 
@@ -320,6 +335,10 @@ export interface CanonicalPortfolioState {
 
   /** Custo total de aquisição acumulado da carteira em BRL (ativos com quantidade > 0). */
   totalCostBRL: number;
+  /** Custo total de aquisição exclusivo dos ativos em custódia (sem caixa) em BRL. */
+  assetsTotalCostBRL: number;
+  /** Custo total consolidado aplicado na carteira (ativos + caixa) em BRL. */
+  totalAppliedCostBRL: number;
 
   /** Saldo de caixa / reserva financeira denominado em moeda nacional BRL. */
   cashBRL: number;
@@ -409,6 +428,10 @@ export interface CreateCanonicalPortfolioStateParams {
   cashBRL?: number;
   /** Saldo de caixa em USD adicional ou explícito. */
   cashUSD?: number;
+  /** Custo total em BRL exclusivo dos ativos em custódia (sem caixa). */
+  assetsTotalCostBRL?: number;
+  /** Custo total consolidado aplicado na carteira (ativos + caixa) em BRL. */
+  totalAppliedCostBRL?: number;
   /** Custo total em BRL da carteira (se omitido, deriva da soma dos holdings ativos). */
   totalCostBRL?: number;
   /** Proventos totais em BRL da carteira (se omitido, deriva da soma dos holdings). */
@@ -611,6 +634,34 @@ export function createCanonicalAssetHolding(
     weightPct = round4((marketValueBRL / params.totalPortfolioValueBRL) * 100);
   }
 
+  // Decomposição Cambial e Retorno Multi-Moeda (§Fase 2 / Etapa 2.2)
+  let avgPriceUSD: number | undefined;
+  let totalCostUSD: number | undefined;
+  let impliedHistoricalFxRate: number | null = null;
+  let pricePnlPctUSD: number | null = null;
+  let fxPnlPct: number | null = null;
+  let pricePnlPctBRL: number | null = null;
+
+  if (currency === "USD") {
+    avgPriceUSD = averageCostNative;
+    totalCostUSD = totalCostNative;
+    if (totalCostNative > 0 && totalCostBRL > 0) {
+      impliedHistoricalFxRate = round4(totalCostBRL / totalCostNative);
+    }
+    if (averageCostNative > 0) {
+      pricePnlPctUSD = round4(((params.resolvedPrice.priceQuote / averageCostNative) - 1) * 100);
+    }
+    if (impliedHistoricalFxRate && impliedHistoricalFxRate > 0) {
+      fxPnlPct = round4(((usdRate / impliedHistoricalFxRate) - 1) * 100);
+    }
+    if (totalCostBRL > 0) {
+      pricePnlPctBRL = round4(((marketValueBRL - totalCostBRL) / totalCostBRL) * 100);
+    }
+  } else {
+    impliedHistoricalFxRate = 1.0;
+    pricePnlPctBRL = unrealizedPct;
+  }
+
   return {
     assetId: params.assetId,
     id: params.assetId,
@@ -623,6 +674,12 @@ export function createCanonicalAssetHolding(
     totalCost: totalCostNative,
     averageCostBRL,
     totalCostBRL,
+    avgPriceUSD,
+    totalCostUSD,
+    impliedHistoricalFxRate,
+    pricePnlPctUSD,
+    fxPnlPct,
+    pricePnlPctBRL,
 
     resolvedPrice: params.resolvedPrice,
     priceQuote: params.resolvedPrice.priceQuote,
@@ -643,6 +700,8 @@ export function createCanonicalAssetHolding(
 
     totalReturnPnl,
     totalReturnPct,
+
+    realizedPnl: params.realizedPnl != null ? round2(params.realizedPnl) : undefined,
 
     fixedIncomeDiagnostic,
     fixedIncomeMetadata: params.fixedIncomeMetadata,
@@ -725,9 +784,14 @@ export function createCanonicalPortfolioState(
       activeAssetsMarketValueBRL += holding.marketValueBRL;
       activeAssetsTotalCostBRL += holding.totalCostBRL;
       derivedActiveDividendsBRL += holding.accumulatedDividendsBRL;
+      if (typeof holding.realizedPnl === "number") {
+        derivedRealizedPnlBRL += holding.realizedPnl;
+      }
     } else {
       derivedClosedDividendsBRL += holding.accumulatedDividendsBRL;
-      if (holding.unrealizedPnl !== 0) {
+      if (typeof holding.realizedPnl === "number") {
+        derivedRealizedPnlBRL += holding.realizedPnl;
+      } else if (holding.unrealizedPnl !== 0) {
         derivedRealizedPnlBRL += holding.unrealizedPnl;
       }
     }
@@ -741,8 +805,17 @@ export function createCanonicalPortfolioState(
   activeAssetsMarketValueBRL = round2(activeAssetsMarketValueBRL);
   const totalBRL = round2(activeAssetsMarketValueBRL + totalCashBRL);
 
+  const assetsTotalCostBRL = round2(
+    params.assetsTotalCostBRL != null ? Math.max(0, params.assetsTotalCostBRL) : activeAssetsTotalCostBRL,
+  );
+  const totalAppliedCostBRL = round2(
+    params.totalAppliedCostBRL != null
+      ? Math.max(0, params.totalAppliedCostBRL)
+      : assetsTotalCostBRL + totalCashBRL,
+  );
+
   const totalCostBRL = round2(
-    params.totalCostBRL != null ? Math.max(0, params.totalCostBRL) : activeAssetsTotalCostBRL,
+    params.totalCostBRL != null ? Math.max(0, params.totalCostBRL) : totalAppliedCostBRL,
   );
 
   const activeDividendsBRL = round2(params.activeDividendsBRL ?? derivedActiveDividendsBRL);
@@ -752,14 +825,15 @@ export function createCanonicalPortfolioState(
   );
 
   // Ganho de Capital Não Realizado em BRL (custódia ativa)
-  const unrealizedPnlBRL = round2(activeAssetsMarketValueBRL - totalCostBRL);
+  // Invariante de Engenharia Financeira: P_total - C_total == V_ativos - C_ativos == Ganho Aberto
+  const unrealizedPnlBRL = round2(totalBRL - totalCostBRL);
   const unrealizedPct =
-    totalCostBRL > 0 ? round4((unrealizedPnlBRL / totalCostBRL) * 100) : null;
+    assetsTotalCostBRL > 0 ? round4((unrealizedPnlBRL / assetsTotalCostBRL) * 100) : null;
 
   // Retorno Total em BRL e % (custódia ativa: valorização + proventos ativos)
   const totalReturnPnlBRL = round2(unrealizedPnlBRL + activeDividendsBRL);
   const totalReturnPct =
-    totalCostBRL > 0 ? round4((totalReturnPnlBRL / totalCostBRL) * 100) : null;
+    assetsTotalCostBRL > 0 ? round4((totalReturnPnlBRL / assetsTotalCostBRL) * 100) : null;
 
   // Lucro Realizado Passado e P&L Econômico Histórico Acumulado em BRL
   const realizedPnlBRL = round2(params.realizedPnlBRL ?? derivedRealizedPnlBRL);
@@ -769,7 +843,7 @@ export function createCanonicalPortfolioState(
 
   // Capital Injetado do Bolso e Ganho Líquido Real
   const netInjectedCapitalBRL = round2(
-    params.netInjectedCapitalBRL ?? totalCostBRL + totalCashBRL,
+    params.netInjectedCapitalBRL ?? totalAppliedCostBRL,
   );
   const netPocketGainBRL = round2(totalBRL - netInjectedCapitalBRL);
 
@@ -795,6 +869,8 @@ export function createCanonicalPortfolioState(
     totalBRL,
     totalValueBRL: totalBRL,
     totalCostBRL,
+    assetsTotalCostBRL,
+    totalAppliedCostBRL,
 
     cashBRL,
     cashUSD,

@@ -34,6 +34,12 @@ export interface WealthSourceRowLike {
   dividendsNative?: number | null;
   score?: number | null;
   allocationStatus?: string | null;
+  avgPriceUSD?: number | null;
+  totalCostUSD?: number | null;
+  impliedHistoricalFxRate?: number | null;
+  pricePnlPctUSD?: number | null;
+  fxPnlPct?: number | null;
+  pricePnlPctBRL?: number | null;
 }
 
 /** Formata o rótulo legível do período selecionado em pt-BR (sem datas ISO cruas). */
@@ -203,6 +209,13 @@ export function mapPositionRowsToWealthRows(
       isCash: isCashAssetClass(r.assetClass),
       score: r.score ?? null,
       allocationStatus: r.allocationStatus ?? null,
+      avgPriceUSD: r.avgPriceUSD,
+      totalCostUSD: r.totalCostUSD,
+      impliedHistoricalFxRate: r.impliedHistoricalFxRate,
+      pricePnlPctUSD: r.pricePnlPctUSD,
+      fxPnlPct: r.fxPnlPct,
+      pricePnlPctBRL: r.pricePnlPctBRL,
+      usdRate: rate > 0 ? rate : undefined,
     };
   });
 }

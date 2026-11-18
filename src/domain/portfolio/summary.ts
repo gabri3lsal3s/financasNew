@@ -292,17 +292,60 @@ export function buildPortfolioMonthlySeries(params: {
     });
   }
 
+  // Geração da Espinha Dorsal Contínua do Calendário (Calendar Spine Table)
+  // Previne buracos cronológicos como a omissão de Ago/2026 (BUG-04 e BUG-05)
+  const rawMonths = Array.from(allMonthsMap.keys()).sort();
+  if (rawMonths.length >= 2) {
+    const minMonth = rawMonths[0]!;
+    const maxMonth = rawMonths[rawMonths.length - 1]!;
+
+    let curM = minMonth;
+    let lastKnownData = allMonthsMap.get(curM)!;
+
+    while (curM.localeCompare(maxMonth) <= 0) {
+      if (!allMonthsMap.has(curM)) {
+        // Interpolação conservadora a partir do mês anterior
+        allMonthsMap.set(curM, {
+          total_value: lastKnownData.total_value,
+          total_cost: lastKnownData.total_cost,
+          auto_total_value: lastKnownData.auto_total_value,
+          auto_total_cost: lastKnownData.auto_total_cost,
+          manual_total_value: null,
+          manual_total_cost: null,
+          is_manually_calibrated: false,
+          calibrated_at: null,
+          status: "closed",
+        });
+      } else {
+        lastKnownData = allMonthsMap.get(curM)!;
+      }
+
+      // Avança para o próximo mês
+      const [yStr, mStr] = curM.split("-");
+      let y = parseInt(yStr ?? "2026", 10);
+      let m = parseInt(mStr ?? "1", 10) + 1;
+      if (m > 12) {
+        m = 1;
+        y += 1;
+      }
+      curM = `${y}-${String(m).padStart(2, "0")}`;
+    }
+  }
+
   const sortedMonths = Array.from(allMonthsMap.entries()).sort((a, b) =>
     a[0].localeCompare(b[0]),
   );
 
   // Calcula a série cronológica completa de TWR antes de aplicar o corte de limite
-  const twrInputs: TwrMonthlyInputPoint[] = sortedMonths.map(([month, data]) => {
+  const twrInputs: TwrMonthlyInputPoint[] = sortedMonths.map(([month, data], idx) => {
     let netExternalCashFlowBRL = 0;
     let explicitRate: number | null = null;
+    let hasContribution = false;
+
     if (contributions) {
       for (const c of contributions) {
-        if (c.date.startsWith(month)) {
+        if (c.date && c.date.startsWith(month)) {
+          hasContribution = true;
           const isWithdrawal = isHistoricalWithdrawal(c);
           netExternalCashFlowBRL += isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
           const r = extractExplicitRateFromNotes(c.notes);
@@ -312,6 +355,17 @@ export function buildPortfolioMonthlySeries(params: {
         }
       }
     }
+
+    // Modalidade B: quando não há registro explícito de aporte no mês mas o custo variou,
+    // infere o fluxo de capital F_t = C_t - C_{t-1} para expurgar do TWR (BUG-02)
+    if (!hasContribution && idx > 0) {
+      const prevCost = sortedMonths[idx - 1]![1].total_cost;
+      const deltaCost = Math.round((data.total_cost - prevCost) * 100) / 100;
+      if (Math.abs(deltaCost) >= 0.01) {
+        netExternalCashFlowBRL = deltaCost;
+      }
+    }
+
     const explicit = explicitRate ?? explicitReturns?.find((r) => r.month === month)?.ratePct ?? null;
     return {
       month,
@@ -329,6 +383,7 @@ export function buildPortfolioMonthlySeries(params: {
   }
 
   const points: PortfolioMonthlySeriesPoint[] = [];
+  let runningAccumulatedDividends = Math.round(initialAccumulatedDividends * 100) / 100;
 
   for (const [month, data] of sortedMonths) {
     const isCurrent = month === currentMonthStr;
@@ -336,20 +391,15 @@ export function buildPortfolioMonthlySeries(params: {
     const costBRL = Math.round(data.total_cost * 100) / 100;
 
     let monthDividends = 0;
-    let periodDividendsUntilMonth = 0;
-
     for (const d of dividends) {
-      if (d.date.startsWith(month)) {
+      if (d.date && d.date.startsWith(month)) {
         monthDividends += d.amount;
-      }
-      if (d.date <= `${month}-31`) {
-        periodDividendsUntilMonth += d.amount;
       }
     }
 
     const monthDividendsBRL = Math.round(monthDividends * 100) / 100;
-    const accumulatedDividendsBRL =
-      Math.round((initialAccumulatedDividends + periodDividendsUntilMonth) * 100) / 100;
+    runningAccumulatedDividends = Math.round((runningAccumulatedDividends + monthDividendsBRL) * 100) / 100;
+    const accumulatedDividendsBRL = runningAccumulatedDividends;
 
     const capitalGainPnl =
       isCurrent && currentMonthPoint?.capital_gain_pnl !== undefined

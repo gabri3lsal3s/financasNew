@@ -734,6 +734,12 @@ export type PortfolioAsset = {
   last_reviewed_at?: string | null;
   review_frequency_months?: number;
   thesis_summary?: string | null;
+  /** Custo total histórico de aquisição em reais (BRL) para ativos em moeda estrangeira (Fase 2). */
+  total_cost_brl?: number | null;
+  /** Custo médio histórico de aquisição em reais (BRL) para ativos em moeda estrangeira (Fase 2). */
+  average_cost_brl?: number | null;
+  /** Taxa de câmbio implícita na compra (USD/BRL) para ativos em moeda estrangeira (Fase 2). */
+  fx_rate_at_purchase?: number | null;
   updated_at?: string;
 };
 
@@ -949,6 +955,14 @@ export type PortfolioTransaction = {
   quantity: number;
   price: number;
   total: number;
+  /** Taxa de câmbio USD/BRL na data da operação para compras/vendas em moeda estrangeira (Fase 2). */
+  fx_rate?: number | null;
+  /** Valor financeiro total convertido em BRL na data da operação (Fase 2). */
+  total_cost_brl?: number | null;
+  /** Alias para total_cost_brl. */
+  total_brl?: number | null;
+  /** Observações livres ou anotações da transação. */
+  notes?: string | null;
 };
 
 export type GroupTarget = {

@@ -89,7 +89,9 @@ function compareWithBenchmark(
   const alphaPct = Math.round((dispPort - dispBench) * 10) / 10;
   
   let pctOfBenchmark: number | null = null;
-  if (benchmarkRatePct > 0) {
+  // Salvaguarda Estatística: Se o benchmark for negativo ou nulo, ou a carteira for negativa,
+  // a razão simples perde significado econômico (Padrão CFA Institute)
+  if (benchmarkRatePct > 0 && portfolioRatePct >= 0) {
     pctOfBenchmark = Math.round((portfolioRatePct / benchmarkRatePct) * 1000) / 10;
   }
 
@@ -170,12 +172,20 @@ export function calculateConsolidatedBenchmarks(
     ipcaPeriodRate,
   );
 
-  // 4. IBOVESPA
-  // Se não fornecido explicitamente, projeta retorno representativo ou neutro da bolsa
-  const ibovRate =
-    ibovPeriodRatePct !== undefined
-      ? ibovPeriodRatePct
-      : compoundAnnualRateToPeriod(12.0, months); // 12% a.a. de referência histórica para a bolsa
+  // 4. IBOVESPA com normalização estrita de escala decimal vs. percentual (BUG-15)
+  let ibovRate: number;
+  if (ibovPeriodRatePct !== undefined) {
+    // Se recebido em escala decimal (ex: 1.00165 para 100,165% em horizontes >= 12 meses):
+    if (months >= 12 && ibovPeriodRatePct > 0 && ibovPeriodRatePct <= 3.0) {
+      ibovRate = Math.round(ibovPeriodRatePct * 100 * 1000) / 1000;
+    } else if (months >= 12 && ibovPeriodRatePct < 0 && ibovPeriodRatePct >= -1.0) {
+      ibovRate = Math.round(ibovPeriodRatePct * 100 * 1000) / 1000;
+    } else {
+      ibovRate = ibovPeriodRatePct;
+    }
+  } else {
+    ibovRate = compoundAnnualRateToPeriod(12.0, months); // 12% a.a. de referência histórica para a bolsa
+  }
   const ibovItem = compareWithBenchmark(
     "ibov",
     "IBOVESPA",

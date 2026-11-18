@@ -18,6 +18,8 @@ export interface ReportInternationalBreakdownCardProps {
 
 const REGION_COLORS: Record<string, ExposureColorToken> = {
   eua: "cat1",
+  commodities_ouro: "cat7",
+  cripto_bitcoin: "cat6",
   desenvolvidos_ex_us: "cat5",
   emergentes: "cat3",
   global: "cat2",

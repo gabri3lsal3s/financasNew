@@ -98,6 +98,8 @@ export function buildPerformanceSeries(
 export function buildClassTableGroups(
   activeInvestmentRows: readonly WealthPositionRow[],
   totalBRL: number,
+  cashBRL?: number,
+  usdRate?: number,
 ): TearSheetClassGroup[] {
   const groups = new Map<string, WealthPositionRow[]>();
   for (const row of activeInvestmentRows) {
@@ -107,7 +109,7 @@ export function buildClassTableGroups(
     groups.set(cls, list);
   }
 
-  return Array.from(groups.entries())
+  const groupsResult = Array.from(groups.entries())
     .sort(([clsA], [clsB]) => {
       const normA = normalizeClassKey(clsA);
       const normB = normalizeClassKey(clsB);
@@ -133,6 +135,25 @@ export function buildClassTableGroups(
       const subtotalUnrealizedPct = subtotalCostBRL > 0 ? (subtotalPnlBRL / subtotalCostBRL) * 100 : 0;
       const pctOfTotal = totalBRL > 0 ? (subtotalBRL / totalBRL) * 100 : 0;
 
+      const isInternacional =
+        assetClass.toLowerCase().includes("internacional") ||
+        assetClass.toLowerCase().includes("global");
+
+      let subtotalPriceVarPctUSD: number | undefined;
+      let effectiveGroupUsdRate: number | undefined = usdRate;
+
+      if (isInternacional) {
+        const usdItems = items.filter((i) => i.currency === "USD");
+        const totalUsdVal = usdItems.reduce((acc, i) => acc + i.quantity * i.currentPrice, 0);
+        const totalUsdCost = usdItems.reduce((acc, i) => acc + (i.totalCostUSD ?? (i.quantity * i.averagePrice)), 0);
+        if (totalUsdCost > 0) {
+          subtotalPriceVarPctUSD = ((totalUsdVal - totalUsdCost) / totalUsdCost) * 100;
+        }
+        if (!effectiveGroupUsdRate) {
+          effectiveGroupUsdRate = usdItems.find((i) => i.usdRate && i.usdRate > 0)?.usdRate;
+        }
+      }
+
       const sortedItems = [...items].sort((a, b) => b.valueBRL - a.valueBRL);
       const topItem = sortedItems[0];
 
@@ -143,6 +164,8 @@ export function buildClassTableGroups(
         sharePct: pctOfTotal,
         pnlPct: subtotalTotalReturnPct,
         subtotalPriceVarPct: subtotalUnrealizedPct,
+        subtotalPriceVarPctUSD,
+        usdRate: effectiveGroupUsdRate,
         totalCostCents: numberToCents(subtotalCostBRL),
         totalDividendsCents: numberToCents(subtotalDividendsBRL),
         topAssetTicker: topItem?.ticker,
@@ -150,9 +173,11 @@ export function buildClassTableGroups(
         items: items.map((r) => {
           const isUsd = r.currency === "USD";
           const nativePriceVarPct =
-            isUsd && r.averagePrice > 0 && r.currentPrice > 0
-              ? ((r.currentPrice - r.averagePrice) / r.averagePrice) * 100
-              : r.unrealizedPnlPct;
+            r.pricePnlPctUSD !== undefined && r.pricePnlPctUSD !== null
+              ? r.pricePnlPctUSD
+              : isUsd && r.averagePrice > 0 && r.currentPrice > 0
+                ? ((r.currentPrice - r.averagePrice) / r.averagePrice) * 100
+                : r.unrealizedPnlPct;
 
           return {
             ticker: r.ticker,
@@ -173,4 +198,41 @@ export function buildClassTableGroups(
         }),
       };
     });
+
+  if (cashBRL && cashBRL > 0) {
+    groupsResult.push({
+      className: "Reserva de Caixa",
+      color: resolveAssetClassTokenColor("Caixa / Reserva"),
+      totalCents: numberToCents(cashBRL),
+      sharePct: totalBRL > 0 ? (cashBRL / totalBRL) * 100 : 0,
+      pnlPct: 0,
+      subtotalPriceVarPct: 0,
+      subtotalPriceVarPctUSD: undefined,
+      usdRate: undefined,
+      totalCostCents: numberToCents(cashBRL),
+      totalDividendsCents: 0,
+      topAssetTicker: "CAIXA",
+      topAssetSharePct: 100,
+      items: [
+        {
+          ticker: "CAIXA",
+          name: "Disponibilidades em Moeda Corrente",
+          sector: "Liquidez Imediata",
+          quantity: cashBRL,
+          avgPriceCents: 100,
+          currentPriceCents: 100,
+          totalCents: numberToCents(cashBRL),
+          pricePnlPct: 0,
+          pnlPct: 0,
+          dividendsCents: 0,
+          yocPct: 0,
+          currency: "BRL",
+          status: "ativo",
+          score: null,
+        },
+      ],
+    });
+  }
+
+  return groupsResult;
 }

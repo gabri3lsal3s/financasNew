@@ -64,10 +64,12 @@ import {
 } from "./historical-quotes";
 import { isHistoricalWithdrawal } from "./irr";
 import { extractExplicitRateFromNotes } from "./statement-parser";
-import type {
-  TwrCashFlowItem,
-  TwrConsolidatedResult,
-  TwrMonthlyInputPoint,
+import {
+  annualizeRateFromMonths,
+  type TwrCashFlowItem,
+  type TwrConsolidatedResult,
+  type TwrMonthlyInputPoint,
+  type TwrMonthlyPointResult,
 } from "./twr";
 import {
   FALLBACK_USD_RATE,
@@ -377,12 +379,42 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
       continue;
     }
 
+    const allAssetTxs = (params.transactions ?? []).filter((t) => t.asset_id === asset.id);
+    const assetLedger = allAssetTxs.length > 0
+      ? computeCanonicalAssetLedger(allAssetTxs, undefined, {
+          currency,
+          monthlyPrices: params.monthlyPrices,
+          defaultFxRate: effectiveUsdRate,
+        })
+      : null;
+    const realizedPnl = assetLedger ? assetLedger.realizedPnl : undefined;
+
     const quantity = Math.max(0, Number(asset.quantity) || 0);
     const averageCost = Math.max(0, Number(asset.average_price) || 0);
     const totalCost = round2(quantity * averageCost);
     const assetUsdRate = currency === "USD" ? effectiveUsdRate : 1.0;
-    const totalCostBRL = round2(totalCost * assetUsdRate);
-    const averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
+
+    let totalCostBRL: number;
+    let averageCostBRL: number;
+
+    if (currency === "USD") {
+      if (assetLedger && assetLedger.quantity > 0 && assetLedger.totalCostBRL > 0) {
+        totalCostBRL = assetLedger.totalCostBRL;
+        averageCostBRL = assetLedger.averageCostBRL;
+      } else if (asset.total_cost_brl != null && asset.total_cost_brl > 0) {
+        totalCostBRL = round2(asset.total_cost_brl);
+        averageCostBRL = quantity > 0 ? (asset.average_cost_brl ?? round4(totalCostBRL / quantity)) : 0;
+      } else if (asset.fx_rate_at_purchase != null && asset.fx_rate_at_purchase > 0) {
+        totalCostBRL = round2(totalCost * asset.fx_rate_at_purchase);
+        averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
+      } else {
+        totalCostBRL = round2(totalCost * effectiveUsdRate);
+        averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
+      }
+    } else {
+      totalCostBRL = totalCost;
+      averageCostBRL = averageCost;
+    }
 
     // Resolução de Preço e Modo de Precificação (§Salvaguardas S5 e S7)
     const fiMeta = asset.fixed_income_metadata;
@@ -472,6 +504,7 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
       totalCostBRL,
       resolvedPrice,
       accumulatedDividendsBRL: Number(asset.accumulated_dividends) || 0,
+      realizedPnl,
       fixedIncomeMetadata: fiMeta,
       fixedIncomeResult,
       pricingMode,
@@ -493,7 +526,57 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     });
   }
 
-  // 3. Montagem do Estado Consolidado
+  // Captura posições totalmente encerradas no passado a partir do ledger de transações
+  const knownAssetIds = new Set(assets.map((a) => a.id));
+  const orphanTxs = (params.transactions ?? []).filter((t) => t.asset_id && !knownAssetIds.has(t.asset_id));
+  if (orphanTxs.length > 0) {
+    const orphanMap = new Map<string, typeof orphanTxs>();
+    for (const tx of orphanTxs) {
+      const list = orphanMap.get(tx.asset_id) ?? [];
+      list.push(tx);
+      orphanMap.set(tx.asset_id, list);
+    }
+    for (const [orphanId, txs] of orphanMap.entries()) {
+      const ledger = computeCanonicalAssetLedger(txs);
+      holdings.push(
+        createCanonicalAssetHolding({
+          assetId: orphanId,
+          ticker: "ENCERRADO",
+          assetClass: "Encerrados",
+          quantity: 0,
+          averageCost: 0,
+          totalCost: 0,
+          averageCostBRL: 0,
+          totalCostBRL: 0,
+          resolvedPrice: {
+            ticker: "ENCERRADO",
+            priceQuote: 0,
+            priceBRL: 0,
+            usdRate: 1.0,
+            source: "fallback",
+            isEstimate: false,
+            asOfDate,
+          },
+          accumulatedDividendsBRL: ledger.dividendsTotal,
+          realizedPnl: ledger.realizedPnl,
+          pricingMode: "unit_price",
+        }),
+      );
+    }
+  }
+
+  // 3. Reconciliação Determinística de Eventos
+  const reconciliation = reconcilePortfolioEvents({
+    transactions: params.transactions ?? [],
+    contributions: params.contributions ?? [],
+    dividends: params.dividends ?? [],
+    assets,
+    asOfDate,
+    usdRate: effectiveUsdRate,
+    monthlyPrices: params.monthlyPrices,
+  });
+
+  // 4. Montagem do Estado Consolidado Inicial
   const baseState = createCanonicalPortfolioState({
     asOfDate,
     mode: "instant",
@@ -503,107 +586,7 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     closedSnapshotsCount: (params.snapshots ?? []).filter((s) => s.month < month).length,
   });
 
-  // 4. Série TWR e TIR
-  let twr: TwrConsolidatedResult = DEFAULT_CANONICAL_TWR;
-  if (params.snapshots && params.snapshots.length > 0) {
-    const contributions = params.contributions ?? [];
-    const monthlyPoints: TwrMonthlyInputPoint[] = params.snapshots.map((s) => {
-      const monthPrefix = s.month.slice(0, 7);
-      const monthContribs = contributions.filter((c) => Boolean(c.date && c.date.startsWith(monthPrefix)));
-
-      let netFlow = 0;
-      const monthFlows: TwrCashFlowItem[] = [];
-      let explicitRate: number | null = null;
-
-      for (const c of monthContribs) {
-        const isWithdrawal = isHistoricalWithdrawal(c);
-        const signed = isWithdrawal ? -Math.abs(c.amount) : Math.abs(c.amount);
-        netFlow += signed;
-        monthFlows.push({ date: c.date.slice(0, 10), amount: signed });
-        const r = extractExplicitRateFromNotes(c.notes);
-        if (r !== null) explicitRate = r;
-      }
-
-      return {
-        month: s.month,
-        totalValueBRL: getSnapshotEffectiveValue(s),
-        totalCostBRL: getSnapshotEffectiveCost(s) ?? undefined,
-        netExternalCashFlowBRL: round2(netFlow),
-        flows: monthFlows.length > 0 ? monthFlows : undefined,
-        explicitRatePct: explicitRate,
-      };
-    });
-
-    twr = calculateCanonicalTwrSeries({
-      monthlyPoints,
-    });
-  }
-
-  const xirrResult = calculateCanonicalXirr({
-    contributions: (params.contributions ?? []).map((c) => ({
-      date: c.date,
-      amount: Number(c.amount) || 0,
-      notes: c.notes,
-    })),
-    currentPortfolioValueBRL: baseState.totalBRL,
-    today: asOfDate,
-  });
-
-  // 5. Extrato Mensal da Competência Atual
-  const monthlyStatement = calculateHomogeneousMonthlyStatement({
-    month,
-    snapshots: params.snapshots,
-    reconstructedEndBalanceBRL: baseState.totalBRL,
-    externalFlows: (params.contributions ?? []).map((c) => ({
-      date: c.date,
-      amount: Number(c.amount) || 0,
-      notes: c.notes,
-    })),
-    dividends: (params.dividends ?? []).map((d) => ({
-      date: d.date,
-      amount: Number(d.amount) || 0,
-      ticker: d.ticker,
-      notes: d.notes,
-    })),
-    transactions: (params.transactions ?? []).map((t) => ({
-      date: t.date,
-      type: t.type,
-      quantity: Number(t.quantity) || 0,
-      price: Number(t.price) || 0,
-      total: Number(t.total) || 0,
-      ticker: null,
-    })),
-    explicitRatePct: params.explicitRatePct,
-  });
-
-  // 6. Fidelidade da Competência
-  const currentSnapshot = (params.snapshots ?? []).find((s) => s.month === month);
-  const fidelity = evaluateCanonicalFidelity({
-    snapshot: currentSnapshot,
-    reconstructedTotalValueBRL: baseState.totalBRL,
-    reconstructedTotalCostBRL: baseState.totalCostBRL,
-    totalAssetsCount: holdings.length,
-    calibratedQuotesCount: (params.monthlyPrices ?? []).filter((p) => p.month === month).length,
-    apiQuotesCount: holdings.filter((h) => h.quoteSource === "api").length,
-    fallbackQuotesCount: holdings.filter((h) => h.resolvedPrice.isEstimate).length,
-  });
-
-  const rawDividendsForSeries = (params.dividends ?? []).map((d) => {
-    const asset = d.asset_id ? (params.assets ?? []).find((a) => a.id === d.asset_id) : null;
-    const isUSD = asset?.currency === "USD";
-    const dRate = isUSD ? effectiveUsdRate : 1;
-    return {
-      date: d.date,
-      amount: Number(d.amount) * dRate,
-    };
-  });
-
-  const rawContributionsForSeries = (params.contributions ?? []).map((c) => ({
-    date: c.date,
-    amount: c.amount,
-    notes: c.notes,
-  }));
-
+  // 5. Preparação da Série Mensal e Espinha Dorsal Contínua do Calendário
   const rawSnapshotsForSeries = (params.snapshots ?? []).map((s) => ({
     month: s.month,
     total_value: Number(s.total_value),
@@ -617,21 +600,32 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     status: s.status ?? "closed",
   }));
 
-  const initialAccumulatedDividends = (params.assets ?? []).reduce(
-    (acc, a) => {
-      const isUSD = a.currency === "USD";
-      const aRate = isUSD ? effectiveUsdRate : 1;
-      return acc + (a.accumulated_dividends ?? 0) * aRate;
-    },
-    0,
-  );
+  const rawDividendsForSeries = reconciliation.dividends.map((d) => ({
+    date: d.date,
+    amount: d.amountBRL,
+  }));
+
+  const rawContributionsForSeries = reconciliation.externalFlows.map((c) => ({
+    date: c.date,
+    amount: c.amount,
+    notes: c.notes,
+  }));
+
+  const firstSnapshotMonth = (params.snapshots ?? []).length > 0
+    ? [...(params.snapshots ?? [])].sort((a, b) => a.month.localeCompare(b.month))[0]?.month
+    : month;
+
+  // Proventos acumulados anteriores ao início da série cronológica
+  const initialAccumulatedDividends = reconciliation.dividends
+    .filter((d) => firstSnapshotMonth && d.date && d.date < `${firstSnapshotMonth}-01`)
+    .reduce((acc, d) => acc + d.amountBRL, 0);
 
   const currentMonthPoint =
     baseState.totalBRL > 0 || (params.assets ?? []).length > 0
       ? {
           month,
           total_value: baseState.totalBRL,
-          total_cost: Math.round((baseState.totalCostBRL + baseState.cashBRL) * 100) / 100,
+          total_cost: baseState.totalCostBRL,
           capital_gain_pnl: baseState.unrealizedPnlBRL,
           capital_gain_pct: baseState.unrealizedPct,
           total_return_pnl: baseState.totalReturnPnlBRL,
@@ -658,10 +652,91 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     limit: 0,
   });
 
+  // 6. Unificação da Fonte Única da Verdade (SSOT) para TWR e Cotas
+  // Garante congruência estrita entre Dossiê Executivo e Extrato Analítico (BUG-03)
+  const unifiedTwrSeries: TwrMonthlyPointResult[] = allMonthlySeries.map((pt) => ({
+    month: pt.month,
+    monthRatePct: pt.twrMonthPct ?? 0,
+    accumulatedRatePct: pt.twrAccumulatedPct ?? 0,
+    sharePrice: pt.sharePrice ?? 100,
+    totalShares: pt.sharePrice && pt.sharePrice > 0 ? pt.valueBRL / pt.sharePrice : 0,
+    totalValueBRL: pt.valueBRL,
+  }));
+
+  const latestUnifiedPoint = unifiedTwrSeries[unifiedTwrSeries.length - 1];
+  const unifiedAccumulatedRatePct = latestUnifiedPoint?.accumulatedRatePct ?? 0;
+  const unifiedMonthsElapsed = unifiedTwrSeries.length;
+  const unifiedCurrentSharePrice = latestUnifiedPoint?.sharePrice ?? 100;
+
+  const twr: TwrConsolidatedResult = {
+    accumulatedRatePct: unifiedAccumulatedRatePct,
+    annualizedRatePct:
+      unifiedMonthsElapsed >= 12
+        ? annualizeRateFromMonths(unifiedAccumulatedRatePct, unifiedMonthsElapsed)
+        : null,
+    monthsElapsed: unifiedMonthsElapsed,
+    currentSharePrice: unifiedCurrentSharePrice,
+    status: unifiedMonthsElapsed < 2 ? "insufficient_history" : "ok",
+    series: unifiedTwrSeries,
+  };
+
+  const closedSnapshotsCount = allMonthlySeries.filter((pt) => pt.month < month).length;
+
+  // 7. TIR / XIRR do Bolso
+  const xirrResult = calculateCanonicalXirr({
+    contributions: reconciliation.externalFlows.map((c) => ({
+      date: c.date,
+      amount: c.amount,
+      notes: c.notes,
+    })),
+    currentPortfolioValueBRL: baseState.totalBRL,
+    today: asOfDate,
+  });
+
+  // 8. Extrato Mensal da Competência Atual
+  const monthlyStatement = calculateHomogeneousMonthlyStatement({
+    month,
+    snapshots: params.snapshots,
+    reconstructedEndBalanceBRL: baseState.totalBRL,
+    externalFlows: reconciliation.externalFlows.map((c) => ({
+      date: c.date,
+      amount: c.amount,
+      notes: c.notes,
+    })),
+    dividends: reconciliation.dividends.map((d) => ({
+      date: d.date,
+      amount: d.amountBRL,
+      ticker: d.ticker,
+      notes: d.notes,
+    })),
+    transactions: (params.transactions ?? []).map((t) => ({
+      date: t.date,
+      type: t.type,
+      quantity: Number(t.quantity) || 0,
+      price: Number(t.price) || 0,
+      total: Number(t.total) || 0,
+      ticker: null,
+    })),
+    explicitRatePct: params.explicitRatePct,
+  });
+
+  // 9. Fidelidade da Competência
+  const currentSnapshot = (params.snapshots ?? []).find((s) => s.month === month);
+  const fidelity = evaluateCanonicalFidelity({
+    snapshot: currentSnapshot,
+    reconstructedTotalValueBRL: baseState.totalBRL,
+    reconstructedTotalCostBRL: baseState.totalCostBRL,
+    totalAssetsCount: holdings.length,
+    calibratedQuotesCount: (params.monthlyPrices ?? []).filter((p) => p.month === month).length,
+    apiQuotesCount: holdings.filter((h) => h.quoteSource === "api").length,
+    fallbackQuotesCount: holdings.filter((h) => h.resolvedPrice.isEstimate).length,
+  });
+
   const finalHoldings = baseState.holdings;
 
   return {
     ...baseState,
+    closedSnapshotsCount,
     twr,
     portfolioTwr: twr,
     irr: xirrResult.xirr,
@@ -820,18 +895,72 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       }
     }
 
-    const pointInTimeLedger = computeCanonicalAssetLedger(eligibleAssetTxs, initialPosition);
+    const pointInTimeLedger = computeCanonicalAssetLedger(eligibleAssetTxs, initialPosition, {
+      currency,
+      monthlyPrices: params.monthlyPrices,
+      defaultFxRate: effectiveUsdRate,
+    });
     const quantity = pointInTimeLedger.quantity;
     const totalCostNative = pointInTimeLedger.totalCost;
 
     if (quantity <= 0 && eligibleAssetTxs.length > 0) {
-      // Posição totalmente liquidada antes da data de corte
+      // Posição totalmente liquidada antes da data de corte:
+      // Preserva PnL realizado e proventos históricos recebidos (§Salvaguarda S17)
+      const holdingDividendsBRL = reconciliation.dividendsByAssetId.get(asset.id) ?? pointInTimeLedger.dividendsTotal;
+      const holding = createCanonicalAssetHolding({
+        assetId: asset.id,
+        ticker: tickerUpper,
+        assetClass: asset.asset_class,
+        sector: asset.sector,
+        currency,
+        quantity: 0,
+        averageCost: 0,
+        totalCost: 0,
+        averageCostBRL: 0,
+        totalCostBRL: 0,
+        resolvedPrice: {
+          ticker: tickerUpper,
+          priceQuote: 0,
+          priceBRL: 0,
+          usdRate: assetUsdRate,
+          source: "fallback",
+          isEstimate: false,
+          asOfDate: cutoffDate,
+        },
+        accumulatedDividendsBRL: holdingDividendsBRL,
+        realizedPnl: pointInTimeLedger.realizedPnl,
+        pricingMode: "unit_price",
+        notes: asset.notes,
+      });
+      holdings.push(holding);
       continue;
     }
 
     const averageCostNative = quantity > 0 ? totalCostNative / quantity : 0;
-    const totalCostBRL = round2(totalCostNative * assetUsdRate);
-    const averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
+
+    let totalCostBRL: number;
+    let averageCostBRL: number;
+
+    if (currency === "USD") {
+      if (pointInTimeLedger.quantity > 0 && pointInTimeLedger.totalCostBRL > 0) {
+        totalCostBRL = pointInTimeLedger.totalCostBRL;
+        averageCostBRL = pointInTimeLedger.averageCostBRL;
+      } else if (asset.total_cost_brl != null && asset.total_cost_brl > 0 && totalCostNative > 0) {
+        const baseCostNative = Math.max(0, Number(asset.quantity) || 0) * Math.max(0, Number(asset.average_price) || 0);
+        const ratio = baseCostNative > 0 ? totalCostNative / baseCostNative : 1;
+        totalCostBRL = round2(asset.total_cost_brl * ratio);
+        averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
+      } else if (asset.fx_rate_at_purchase != null && asset.fx_rate_at_purchase > 0) {
+        totalCostBRL = round2(totalCostNative * asset.fx_rate_at_purchase);
+        averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
+      } else {
+        totalCostBRL = round2(totalCostNative * effectiveUsdRate);
+        averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
+      }
+    } else {
+      totalCostBRL = totalCostNative;
+      averageCostBRL = averageCostNative;
+    }
 
     // Resolução de Preço na Competência Passada (Salvaguardas S5, S7 e S12)
     let resolvedPrice: CanonicalResolvedPrice;
@@ -923,6 +1052,7 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       accumulatedDividendsBRL: holdingDividendsBRL,
       dividendsNative: holdingDividendsNative,
       monthDividendsBRL: round2(assetMonthDividendsBRL),
+      realizedPnl: pointInTimeLedger.realizedPnl,
       fixedIncomeMetadata: fiMeta,
       fixedIncomeResult,
       pricingMode,

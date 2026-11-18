@@ -238,3 +238,45 @@ $$\text{TaxaPoupançaPct} = \text{round2}\left( \frac{\text{PoupançaOperacional
 $$\text{VariaçãoFinalCaixa} = \text{round2}(\text{PoupançaOperacional} - \text{AportesInvestimentos})$$
 
 **Neutralidade Contábil:** Transferências entre contas correntes do próprio usuário e pagamentos de fatura de cartão de crédito não são contabilizados como novas despesas na DRE operacional (o gasto no cartão já foi registrado na competência de compra), impedindo duplicação no fluxo de caixa.
+
+---
+
+## 8. MOTOR CANÔNICO DE INVESTIMENTOS, FX ENGINE E INVARIANTES MATEMÁTICOS DE RELATÓRIO (§Fase 0 a Fase 6)
+
+### 8.1. Fonte Única da Verdade (`UnifiedPortfolioReportPayload`)
+Toda a camada visual (Dashboard, Custódia, Metas, Raios-X e Extratos) e exportadores institucionais em PDF consomem um contrato de dados imutável único:
+- **Conservação de Patrimônio:** $P_{\text{total}} = V_{\text{ativos}} + V_{\text{caixa}}$
+- **Conservação de Custo Aplicado:** $C_{\text{total}} = C_{\text{ativos}} + V_{\text{caixa}}$
+- **Ganho de Capital Aberto:** $\Delta V_{\text{aberto}} = P_{\text{total}} - C_{\text{total}} \equiv V_{\text{ativos}} - C_{\text{ativos}}$
+- **Resultado Contábil Aberto:** $\Delta V_{\text{aberto}} + \text{Proventos}_{\text{ativos\_vivos}}$
+- **Resultado Econômico Total:** $\Delta V_{\text{aberto}} + \text{GanhoRealizado}_{\text{encerrados}} + \text{ProventosTotais}_{\text{históricos}}$
+
+### 8.2. Decomposição Cambial Multi-Moeda (FX Engine)
+Para ativos denominados em moeda estrangeira ($USD$), a valoração decompõe o retorno em três componentes aditivos:
+1. **Ganho do Ativo em Moeda Estrangeira:** $\Delta V_{\text{USD}} = (P_{\text{atual}}^{\text{USD}} - \text{PM}^{\text{USD}}) \times Q \times \text{PTAX}_{\text{compra}}$
+2. **Efeito Cambial em Moeda Nacional:** $\Delta V_{\text{FX}} = (\text{PTAX}_{\text{atual}} - \text{PTAX}_{\text{compra}}) \times \text{PM}^{\text{USD}} \times Q$
+3. **Produto Cruzado:** $\Delta V_{\text{cross}} = (P_{\text{atual}}^{\text{USD}} - \text{PM}^{\text{USD}}) \times (\text{PTAX}_{\text{atual}} - \text{PTAX}_{\text{compra}}) \times Q$
+- **Total P&L em BRL:** $\text{P\&L}_{\text{BRL}} = \Delta V_{\text{USD}} + \Delta V_{\text{FX}} + \Delta V_{\text{cross}}$
+- **Padronização de Arredondamento:** Arredondamento simétrico meio-para-cima com 1 casa decimal para variações percentuais em relatórios (ex.: BITB em -10,9%).
+
+### 8.3. Saneamento de Metas Legadas e Índice de Equilíbrio Geral ($IEG$)
+- **Saneamento Preventivo:** Classes legadas órfãs sem saldo na carteira são expurgadas quando a soma das metas ultrapassa 100%, garantindo $\sum w_c^{\text{meta}} = 100,00\%$.
+- **Invariante de Gap Financeiro:** $\sum \text{Gap}_c \equiv \text{R\$ } 0,00$
+- **Fórmula Canônica do IEG:**
+  $$IEG = 100\% - \frac{1}{2}\sum_{c} |w_c - w_c^{\text{meta}}|$$
+
+### 8.4. Validador Pré-Emissão (*Pre-Flight Invariant Validator*)
+Antes de emitir relatórios ou persistir snapshots de fechamento, o validador audita as 12 asserções fundamentais:
+1. $V_{\text{ativos}} + V_{\text{caixa}} == P_{\text{total}}$
+2. $C_{\text{ativos}} + V_{\text{caixa}} == C_{\text{total}}$
+3. $P_{\text{total}} - C_{\text{total}} == V_{\text{ativos}} - C_{\text{ativos}} == \Delta V_{\text{aberto}}$
+4. $\sum V_i == V_{\text{ativos}}$
+5. $\text{round}(100 \times (1 + \text{TWR}_{\text{acum}}), 2) == \text{Cota}_T$
+6. Continuidade Cronológica estrita (*Calendar Spine* sem meses saltados)
+7. Encadeamento de cotas: $|\text{Cota}_t - \text{Cota}_{t-1} \times (1 + \text{TWR}_t)| \le 0,05$
+8. Reconciliação e monotonicidade de proventos: $\sum \text{ProventosMês}_t == \text{ProventosAcum}_T$ e $\text{ProventosAcum}_t \ge \text{ProventosAcum}_{t-1}$
+9. $\sum w_c^{\text{meta}} == 100,00\%$ e $\sum \text{Gap}_c == \text{R\$ } 0,00$
+10. Reconciliação dos subtotais dos Raios-X com as classes de custódia
+11. Contagem dinâmica de segmentos listados e janela anual de risco de 12 meses fechados
+12. Sanidade de escala decimal de benchmarks (fator 100x em períodos $\ge 12$ meses)
+

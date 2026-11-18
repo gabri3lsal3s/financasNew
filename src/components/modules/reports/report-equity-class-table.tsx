@@ -106,9 +106,15 @@ export function ReportEquityClassTable({
                   : "text-negative-strong",
               )}
             >
-              {subtotalPriceVarPct !== null
-                ? `${formatSignedPct(subtotalPriceVarPct)}${isInternacional ? " (BRL)" : ""}`
-                : "—"}
+              {isInternacional && group.subtotalPriceVarPctUSD !== undefined ? (
+                <span>
+                  {formatSignedPct(group.subtotalPriceVarPctUSD)} (USD) / {formatSignedPct(subtotalPriceVarPct)} (BRL)
+                </span>
+              ) : subtotalPriceVarPct !== null ? (
+                formatSignedPct(subtotalPriceVarPct)
+              ) : (
+                "—"
+              )}
             </td>
             <td
               className={cn(
@@ -122,9 +128,16 @@ export function ReportEquityClassTable({
         </tfoot>
       </table>
       {isInternacional && (
-        <div className="px-2.5 py-1.5 text-[10px] text-muted-foreground bg-muted/20 border-t border-border/80">
-          * <strong>Var. (USD)</strong> refere-se à valorização da cota na moeda original.{" "}
-          <strong>Ret. Total</strong> consolida oscilação em dólar, variação cambial BRL/USD e proventos creditados.
+        <div className="px-2.5 py-1.5 text-[10px] text-muted-foreground bg-muted/20 border-t border-border/80 flex flex-col gap-0.5">
+          <div>
+            * <strong>Var. Cota</strong> refere-se à valorização da cota na moeda original (USD).{" "}
+            <strong>Ret. Total</strong> consolida oscilação em dólar, variação cambial BRL/USD e proventos creditados.
+          </div>
+          {group.usdRate && group.usdRate > 0 && (
+            <div className="font-mono text-[9px] text-muted-foreground/90">
+              Conversão USD/BRL pela PTAX Oficial BCB de referência: R$ {group.usdRate.toFixed(4).replace(".", ",")}
+            </div>
+          )}
         </div>
       )}
     </div>

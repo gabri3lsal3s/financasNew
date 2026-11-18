@@ -77,6 +77,17 @@ export interface TwrConsolidatedResult {
   series: TwrMonthlyPointResult[];
 }
 
+export interface TwrSeriesOptions {
+  /** Quantidade exata de dias corridos transcorridos para anualização CVM/ANBIMA. */
+  daysElapsed?: number;
+  /**
+   * Ponderação temporal para fluxos inferidos por variação de custo (Modalidade B):
+   * - 0.0: convenção de fluxo no fim do período (padrão quando não há data intra-mês);
+   * - 0.5: convenção de fluxo no meio do período (Modified Dietz clássico).
+   */
+  inferredFlowWeight?: number;
+}
+
 const BASE_SHARE_PRICE = 100.0;
 const MIN_MONTHS_FOR_ANNUALIZATION = 12;
 
@@ -155,11 +166,12 @@ export function calculateWeightedCashFlow(
   month: string,
   flows?: readonly TwrCashFlowItem[],
   defaultNetFlow = 0,
+  defaultWeight = 0.5,
 ): { totalFlow: number; weightedFlow: number } {
   if (!flows || flows.length === 0) {
     return {
       totalFlow: defaultNetFlow,
-      weightedFlow: 0.5 * defaultNetFlow,
+      weightedFlow: Math.round(defaultWeight * defaultNetFlow * 100) / 100,
     };
   }
 
@@ -202,7 +214,7 @@ export function calculateWeightedCashFlow(
  */
 export function calculateTwrSeries(
   points: readonly TwrMonthlyInputPoint[],
-  daysElapsed?: number,
+  options?: number | TwrSeriesOptions,
 ): TwrConsolidatedResult {
   if (!points || points.length === 0) {
     return {
@@ -214,6 +226,12 @@ export function calculateTwrSeries(
       series: [],
     };
   }
+
+  const daysElapsed = typeof options === "number" ? options : options?.daysElapsed;
+  const inferredFlowWeight =
+    typeof options === "object" && options?.inferredFlowWeight !== undefined
+      ? options.inferredFlowWeight
+      : 0.5; // Padrão 0.5 (Modified Dietz clássico), ou 0.0 quando informado explicitamente
 
   // Ordena cronologicamente por mês
   const sorted = [...points].sort((a, b) => a.month.localeCompare(b.month));
@@ -227,11 +245,33 @@ export function calculateTwrSeries(
     if (!pt) continue;
 
     const balance = Math.max(0, Math.round(pt.totalValueBRL * 100) / 100);
-    const { totalFlow, weightedFlow } = calculateWeightedCashFlow(
-      pt.month,
-      pt.flows,
-      pt.netExternalCashFlowBRL ?? 0,
-    );
+
+    const hasExplicitFlows =
+      (pt.flows && pt.flows.length > 0) ||
+      (pt.netExternalCashFlowBRL !== undefined && Math.abs(pt.netExternalCashFlowBRL) > 0.0001);
+
+    let totalFlow = 0;
+    let weightedFlow = 0;
+
+    if (hasExplicitFlows) {
+      const flowRes = calculateWeightedCashFlow(
+        pt.month,
+        pt.flows,
+        pt.netExternalCashFlowBRL ?? 0,
+        inferredFlowWeight,
+      );
+      totalFlow = flowRes.totalFlow;
+      weightedFlow = flowRes.weightedFlow;
+    } else if (i > 0 && pt.totalCostBRL !== undefined && sorted[i - 1]?.totalCostBRL !== undefined) {
+      // Modalidade B: Quando não há fluxos externos explícitos passados, infere a variação de capital aplicado
+      // F_t = C_t - C_{t-1}
+      const prevCost = sorted[i - 1]?.totalCostBRL ?? 0;
+      const inferredDelta = Math.round((pt.totalCostBRL - prevCost) * 100) / 100;
+      if (Math.abs(inferredDelta) >= 0.01) {
+        totalFlow = inferredDelta;
+        weightedFlow = Math.round(inferredFlowWeight * inferredDelta * 100) / 100;
+      }
+    }
 
     let monthRatePct: number;
     let totalShares: number;

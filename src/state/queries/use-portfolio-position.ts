@@ -53,6 +53,12 @@ export interface PortfolioPositionRow {
   historicalCostBRL?: number;
   historicalRedeemedBRL?: number;
   finalReturnPct?: number | null;
+  avgPriceUSD?: number;
+  totalCostUSD?: number;
+  impliedHistoricalFxRate?: number | null;
+  pricePnlPctUSD?: number | null;
+  fxPnlPct?: number | null;
+  pricePnlPctBRL?: number | null;
   isCash: boolean;
   pricingMode: AssetPricingMode;
   notes?: string | null;
@@ -76,6 +82,8 @@ export interface PortfolioPosition {
   rows: PortfolioPositionRow[];
   totalBRL: number;
   totalCostBRL: number;
+  assetsTotalCostBRL?: number;
+  totalAppliedCostBRL?: number;
   cashBRL: number;
   totalDividendsBRL: number;
   totalReturnPnlBRL: number;
@@ -153,6 +161,12 @@ function mapCanonicalHoldingToRow(
     historicalCostBRL: holding.totalCostBRL,
     historicalRedeemedBRL: 0,
     finalReturnPct: null,
+    avgPriceUSD: holding.avgPriceUSD,
+    totalCostUSD: holding.totalCostUSD,
+    impliedHistoricalFxRate: holding.impliedHistoricalFxRate,
+    pricePnlPctUSD: holding.pricePnlPctUSD,
+    fxPnlPct: holding.fxPnlPct,
+    pricePnlPctBRL: holding.pricePnlPctBRL,
     isCash: holding.isCash,
     pricingMode,
     notes: holding.notes,
@@ -232,6 +246,8 @@ export function usePortfolioPosition(): PortfolioPosition {
     rows,
     totalBRL: canonicalState.totalBRL,
     totalCostBRL: canonicalState.totalCostBRL,
+    assetsTotalCostBRL: canonicalState.assetsTotalCostBRL,
+    totalAppliedCostBRL: canonicalState.totalAppliedCostBRL,
     cashBRL: canonicalState.cashBRL,
     totalDividendsBRL: canonicalState.totalDividendsBRL,
     totalReturnPnlBRL: canonicalState.totalReturnPnlBRL,

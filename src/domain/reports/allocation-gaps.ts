@@ -114,6 +114,9 @@ export interface AllocationTreeClassNode {
 export interface AllocationAnalysisResult {
   totalBRL: number;
   alignmentScore: number;
+  equilibriumIndexPct: number;
+  totalTargetPct: number;
+  totalGapBRL: number;
   classGaps: ClassAllocationGap[];
   sectorGaps: SectorAllocationGap[];
   assetGaps: AssetAllocationGap[];
@@ -141,6 +144,77 @@ function resolveGapStatus(gapPct: number, hasTarget: boolean): GapStatus {
   return "balanced";
 }
 
+/** Mapeamento de categorias legadas para equivalentes canônicos */
+const LEGACY_TO_CANONICAL_CLASS_MAP: Record<string, string> = {
+  "fundos imobiliarios": "FIIs",
+  "fundo imobiliario": "FIIs",
+  "acoes de dividendos": "Ações",
+  "acoes dividendos": "Ações",
+  "renda fixa cdi": "Renda Fixa",
+  "reits globais": "Internacional",
+  "reits": "Internacional",
+};
+
+/**
+ * Saneia metas de alocação que contenham taxonomias legadas órfãs (BUG-11).
+ * Quando a soma das metas ultrapassa 100% devido a registros legados com saldo R$ 0,00,
+ * expurga as categorias legadas órfãs mantendo o conjunto canônico ativo somando 100,00%.
+ */
+export function sanitizeOrphanLegacyTargets(
+  positions: readonly AllocationPositionInput[],
+  classTargets: readonly ClassTargetInput[],
+): ClassTargetInput[] {
+  if (classTargets.length === 0) return [];
+
+  const rawSum = classTargets.reduce((acc, ct) => acc + (ct.targetPercentage || 0), 0);
+  const classValueMap = new Map<string, number>();
+  for (const pos of positions) {
+    const cls = pos.assetClass || (pos.isCash ? "Caixa" : "Outros");
+    classValueMap.set(cls, (classValueMap.get(cls) ?? 0) + Math.max(0, pos.valueBRL));
+  }
+
+  // Se a soma ultrapassa 100% (ex: 200% em caso de taxonomia legada coexistente)
+  if (rawSum > 100.01) {
+    // 1. Remove classes legadas órfãs com saldo zero
+    const filtered = classTargets.filter((ct) => {
+      const norm = ct.assetClass
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      const isKnownLegacy = norm in LEGACY_TO_CANONICAL_CLASS_MAP;
+      const currentBalance = classValueMap.get(ct.assetClass) ?? 0;
+
+      if (isKnownLegacy && currentBalance <= 0.001) {
+        return false;
+      }
+      return true;
+    });
+
+    const filteredSum = filtered.reduce((acc, ct) => acc + ct.targetPercentage, 0);
+    if (Math.abs(filteredSum - 100) <= 0.05) {
+      return filtered;
+    }
+
+    // Se ainda ultrapassar 100%, filtra classes sem saldo caso as ativas já somem 100%
+    if (filteredSum > 100.01) {
+      const activeOnly = filtered.filter((ct) => (classValueMap.get(ct.assetClass) ?? 0) > 0.001);
+      const activeSum = activeOnly.reduce((acc, ct) => acc + ct.targetPercentage, 0);
+      if (Math.abs(activeSum - 100) <= 0.05) {
+        return activeOnly;
+      }
+      if (activeSum > 0) {
+        return activeOnly.map((ct) => ({
+          assetClass: ct.assetClass,
+          targetPercentage: Math.round((ct.targetPercentage / activeSum) * 10000) / 100,
+        }));
+      }
+    }
+  }
+
+  return classTargets.map((ct) => ({ ...ct }));
+}
+
 export function calculateAllocationGaps(
   positions: readonly AllocationPositionInput[],
   classTargets: readonly ClassTargetInput[] = [],
@@ -148,6 +222,9 @@ export function calculateAllocationGaps(
   sectorTargets: readonly SectorTargetInput[] = [],
 ): AllocationAnalysisResult {
   const totalBRL = positions.reduce((acc, pos) => acc + Math.max(0, pos.valueBRL), 0);
+
+  // Saneamento preventivo de metas legadas órfãs (BUG-11)
+  const sanitizedClassTargets = sanitizeOrphanLegacyTargets(positions, classTargets);
 
   // 1. Agrupar posições por classe e setor
   const classValueMap = new Map<string, number>();
@@ -161,9 +238,9 @@ export function calculateAllocationGaps(
     classPositionsMap.set(cls, list);
   }
 
-  // Coletar todas as classes únicas (das posições e das metas)
-  const allClasses = new Set<string>([...classValueMap.keys(), ...classTargets.map((ct) => ct.assetClass)]);
-  const classTargetMap = new Map<string, number>(classTargets.map((ct) => [ct.assetClass, ct.targetPercentage]));
+  // Coletar todas as classes únicas (das posições e das metas saneadas)
+  const allClasses = new Set<string>([...classValueMap.keys(), ...sanitizedClassTargets.map((ct) => ct.assetClass)]);
+  const classTargetMap = new Map<string, number>(sanitizedClassTargets.map((ct) => [ct.assetClass, ct.targetPercentage]));
 
   const classGaps: ClassAllocationGap[] = [];
   let totalAbsoluteClassDeviations = 0;
@@ -357,11 +434,15 @@ export function calculateAllocationGaps(
     };
   });
 
-  // 5. Score de aderência patrimonial (100% - desvios médios absolutos, limitado entre 0 e 100)
-  const hasTargets = classTargets.length > 0;
-  const alignmentScore = hasTargets && totalBRL > 0
-    ? Math.max(0, Math.min(100, Math.round(100 - totalAbsoluteClassDeviations / 2)))
+  // 5. Score de aderência patrimonial (Índice de Equilíbrio Geral - IEG)
+  const hasTargets = sanitizedClassTargets.length > 0;
+  const rawIeg = hasTargets && totalBRL > 0
+    ? Math.max(0, Math.min(100, 100 - totalAbsoluteClassDeviations / 2))
     : 100;
+  const alignmentScore = Math.round(rawIeg);
+  const equilibriumIndexPct = Math.round(rawIeg * 10) / 10;
+  const totalTargetPct = Math.round(sanitizedClassTargets.reduce((acc, ct) => acc + ct.targetPercentage, 0) * 100) / 100;
+  const totalGapBRL = Math.round(classGaps.reduce((acc, cg) => acc + cg.gapBRL, 0) * 100) / 100;
 
   const topDeficitClass = classGaps.find((c) => c.status === "deficit" && c.gapBRL > 0) ?? null;
   const topDeficitSector = sectorGaps.find((s) => s.status === "deficit" && s.gapBRL > 0) ?? null;
@@ -370,6 +451,9 @@ export function calculateAllocationGaps(
   return {
     totalBRL,
     alignmentScore,
+    equilibriumIndexPct,
+    totalTargetPct,
+    totalGapBRL,
     classGaps,
     sectorGaps,
     assetGaps,

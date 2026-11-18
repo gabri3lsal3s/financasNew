@@ -729,6 +729,14 @@ Após a consolidação canônica do motor de rebalanceamento hierárquico em 3 n
   - *Meta Única Oficial:* hierarquia determinística (`ativo` > `setor` > `classe`) substituindo presets legados, garantindo que ativos em `quarantine` ou `exit` não recebam recomendações de compra no `aporte.ts`.
   - *Radar Proativo de Governança (`src/domain/portfolio/asset-governance-insights.ts` & `useAssetGovernanceInsights`):* alerta no carrossel de investimentos (`PortfolioInsightsCarousel`) e na ficha do ativo (`AssetDetailSheet`) sobre revisões de tese vencidas (`review_frequency_months`), ativos em quarentena e oportunidades com desconto em alta convicção.
   - *Calibração Guiada (`AssetScoreEvaluationDialog`):* diálogo responsivo com estado isolado para avaliação de critérios, tese resumida (`thesis_summary`) e frequência de revisão.
+- **Auditoria e Refatoração Canônica do Motor de Investimentos, SSOT e Invariantes (Plano 43 / v3.12.0):**
+  - *Fonte Única da Verdade (`UnifiedPortfolioReportPayload`):* unificação determinística entre o Dashboard, cards de rentabilidade, tabelas de custódia, matriz de rebalanceamento, gráficos de Raios-X, série de evolução patrimonial histórica e exportadores de relatórios em PDF (*Dossiê Executivo* e *Extrato Analítico*), eliminando recálculos paralelos.
+  - *Saneamento Contábil e Caixa:* reconciliação estrita da reserva de caixa ($C_{\text{total}} = C_{\text{ativos}} + V_{\text{caixa}}$) e de proventos históricos acumulados somando posições vivas e encerradas.
+  - *Motor Multi-Moeda (FX Engine):* conservação do custo histórico de aquisição em BRL com base na PTAX do dia de cada lote, saldo atual a mercado pela PTAX de fechamento e decomposição do ganho em Retorno do Ativo em USD, Efeito Cambial em BRL e Produto Cruzado.
+  - *Rentabilidade TWR Imune a Fluxos (GIPS):* expurgo rigoroso de aportes e resgates nos subperíodos mensais, unificação do retorno MTD e cota da carteira na data-base, série contínua com *Calendar Spine* sem lacunas cronológicas e histórico real de proventos pagos mês a mês.
+  - *Matriz de Alocação e Raios-X:* saneamento preventivo de metas legadas órfãs sem saldo (assegurando $\sum w_c^{\text{meta}} = 100,00\%$ e $\sum \text{Gap}_c \equiv \text{R\$ } 0,00$), recálculo do IEG ($100\% - \frac{1}{2}\sum |w_c - w_c^{\text{meta}}| = 84,9\%$), regex estrito de indexadores de renda fixa (CDB Original como pós-fixado) e categorização granular de commodities e criptoativos internacionais.
+  - *Escala de Benchmarks e Risco:* normalização de escala decimal (fator 100x) em taxas de benchmarks plurianuais $\ge 12$ meses e dimensionamento da janela de volatilidade/Sharpe para exatamente 12 meses fechados.
+  - *Auditor Matemático Pré-Emissão (`PortfolioReportInvariantValidator`):* barreira de proteção de 12 asserções fundamentais que impede a emissão de relatórios inconsistentes antes da renderização visual ou PDF.
 
 ---
 

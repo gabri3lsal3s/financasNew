@@ -5,6 +5,9 @@ import type { AllocationAnalysisResult, ConcentrationRiskResult } from "@/domain
 const mockAllocation: AllocationAnalysisResult = {
   totalBRL: 100000,
   alignmentScore: 95,
+  equilibriumIndexPct: 95,
+  totalTargetPct: 100,
+  totalGapBRL: 0,
   classGaps: [
     {
       assetClass: "Ações",

@@ -317,6 +317,27 @@ export interface ContributionFlowItem {
 }
 
 /**
+ * Verifica se um registro de fluxo representa reinvestimento interno de proventos/dividendos (§Salvaguarda S18 / ANBIMA).
+ * Reinvestimentos internos a partir de saldo existente na carteira são neutros para o bolso do investidor.
+ */
+export function isDividendReinvestment(c: { notes?: string | null }): boolean {
+  const n = (c.notes ?? "").toLowerCase();
+  return (
+    n.includes("[reinvestimento]") ||
+    n.includes("[dividendo]") ||
+    n.includes("[provento]") ||
+    n.includes("(reinvestimento)") ||
+    n.includes("(dividendo)") ||
+    n.includes("(provento)") ||
+    n.includes("reinvestimento de dividendo") ||
+    n.includes("reinvestimento de dividendos") ||
+    n.includes("reinvestimento de provento") ||
+    n.includes("reinvestimento de proventos") ||
+    n.includes("reinvestimento interno")
+  );
+}
+
+/**
  * Verifica se um registro de contribuição representa um resgate histórico do bolso (§Salvaguarda S4).
  */
 export function isHistoricalWithdrawal(c: { amount: number; notes?: string | null }): boolean {
@@ -364,6 +385,11 @@ export function buildPortfolioCashFlows(params: {
   // 1. Aportes externos e Resgates históricos
   for (const c of contributions) {
     if (Math.abs(c.amount) < 0.0001) continue;
+
+    // Salvaguarda: reinvestimento interno de proventos é neutro para o bolso do investidor
+    if (isDividendReinvestment(c)) {
+      continue;
+    }
 
     if (isHistoricalWithdrawal(c)) {
       // Dinheiro que volta ao bolso
@@ -482,6 +508,7 @@ export function calculateNetInjectedCapital(
 
   for (const c of contributions) {
     if (Math.abs(c.amount) < 0.0001) continue;
+    if (isDividendReinvestment(c)) continue;
     if (isHistoricalWithdrawal(c)) {
       totalHistoricOut += Math.abs(c.amount);
     } else {

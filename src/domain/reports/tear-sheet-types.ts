@@ -28,6 +28,13 @@ export interface WealthPositionRow {
   isCash?: boolean;
   score?: number | null;
   allocationStatus?: string | null;
+  avgPriceUSD?: number | null;
+  totalCostUSD?: number | null;
+  impliedHistoricalFxRate?: number | null;
+  pricePnlPctUSD?: number | null;
+  fxPnlPct?: number | null;
+  pricePnlPctBRL?: number | null;
+  usdRate?: number;
 }
 
 export interface MonthFlowSummary {
@@ -42,6 +49,8 @@ export interface BuildTearSheetModelParams {
   rows: readonly WealthPositionRow[];
   totalBRL: number;
   totalCostBRL: number;
+  assetsCostBRL?: number;
+  totalAppliedCostBRL?: number;
   totalDividendsBRL?: number;
   totalReturnPnlBRL?: number;
   totalReturnPct?: number | null;
@@ -54,6 +63,7 @@ export interface BuildTearSheetModelParams {
   monthlySeries?: readonly PortfolioMonthlySeriesPoint[];
   allTimeEconomicPnlBRL?: number;
   realizedPnlBRL?: number;
+  usdRate?: number;
 }
 
 export interface TearSheetPerformancePoint {
@@ -99,6 +109,8 @@ export interface TearSheetClassGroup {
   sharePct: number;
   pnlPct: number;
   subtotalPriceVarPct: number;
+  subtotalPriceVarPctUSD?: number;
+  usdRate?: number;
   totalCostCents: number;
   totalDividendsCents: number;
   topAssetTicker?: string;

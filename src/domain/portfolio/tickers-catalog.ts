@@ -842,15 +842,23 @@ export function inferFixedIncomeCategories(input: {
   ) {
     indexer = "ipca";
   } else if (
-    combined.includes("PREFIXADO") ||
-    combined.includes("PRE") ||
-    combined.includes("LTN") ||
-    combined.includes("NTN-F") ||
-    combined.includes("NTNF")
+    combined.includes("SELIC") ||
+    combined.includes("LFT")
+  ) {
+    indexer = "selic";
+  } else if (
+    combined.includes("PREFIXAD") ||
+    /\b(PRE|PRE-FIXAD[OA]|LTN|NTN-F|NTNF)\b/i.test(combined)
   ) {
     indexer = "pre";
-  } else if (combined.includes("SELIC")) {
-    indexer = "selic";
+  } else if (
+    combined.includes("CDI") ||
+    combined.includes("DI") ||
+    combined.includes("POS-FIXADO") ||
+    combined.includes("POSFIXADO") ||
+    combined.includes("POS")
+  ) {
+    indexer = "cdi";
   }
 
   // 2. Emissor / Risco de Crédito
@@ -929,13 +937,22 @@ export const STOCKS_CAP_SIZE_LABELS: Record<StocksCapSize, string> = {
   small_cap: "Small / Micro Caps",
 };
 
-export type InternationalRegion = "eua" | "desenvolvidos_ex_us" | "emergentes" | "global";
+export type InternationalRegion =
+  | "eua"
+  | "desenvolvidos_ex_us"
+  | "emergentes"
+  | "global"
+  | "commodities_ouro"
+  | "cripto_bitcoin";
+
 export type InternationalVehicle = "moeda_forte_usd" | "bdr_brl";
 
 export const INTERNATIONAL_REGION_LABELS: Record<InternationalRegion, string> = {
   eua: "Estados Unidos (US Equity)",
-  desenvolvidos_ex_us: "Mercados Desenvolvidos Ex-EUA",
-  emergentes: "Mercados Emergentes",
+  commodities_ouro: "Commodities Globais / Ouro",
+  cripto_bitcoin: "Criptoativos Globais / Bitcoin",
+  desenvolvidos_ex_us: "Mercados Desenvolvidos (ex-EUA)",
+  emergentes: "Mercados Emergentes (China & América Latina)",
   global: "Neutro Global (All-World)",
 };
 
@@ -1064,9 +1081,32 @@ export function getInternationalProfile(input: {
     input.currency === "BRL";
   const vehicle: InternationalVehicle = isBdr ? "bdr_brl" : "moeda_forte_usd";
 
-  // 2. Região Geográfica
+  // 2. Região Geográfica & Tema Econômico Subjacente (BUG-14)
   let region: InternationalRegion = "eua";
   if (
+    tickerUpper === "GLD" ||
+    tickerUpper === "IAU" ||
+    tickerUpper === "SLV" ||
+    combined.includes("OURO") ||
+    combined.includes("GOLD") ||
+    combined.includes("COMMODIT")
+  ) {
+    region = "commodities_ouro";
+  } else if (
+    tickerUpper === "BITB" ||
+    tickerUpper === "IBIT" ||
+    tickerUpper === "FBTC" ||
+    tickerUpper === "ARKB" ||
+    tickerUpper === "BITO" ||
+    tickerUpper === "ETHE" ||
+    combined.includes("BITCOIN") ||
+    combined.includes("BTC") ||
+    combined.includes("CRIPTO") ||
+    combined.includes("CRYPTO") ||
+    combined.includes("ETHEREUM")
+  ) {
+    region = "cripto_bitcoin";
+  } else if (
     combined.includes("GLOBAL") ||
     combined.includes("ALL-WORLD") ||
     combined.includes("WORLD") ||
@@ -1081,6 +1121,10 @@ export function getInternationalProfile(input: {
     combined.includes("CHINA") ||
     combined.includes("INDIA") ||
     combined.includes("ASIA") ||
+    combined.includes("ARGENTINA") ||
+    combined.includes("AMERICA LATINA") ||
+    tickerUpper === "ARGT" ||
+    tickerUpper === "MCHI" ||
     tickerUpper === "VWO" ||
     tickerUpper === "EEM"
   ) {
@@ -1095,6 +1139,17 @@ export function getInternationalProfile(input: {
     tickerUpper === "IEFA"
   ) {
     region = "desenvolvidos_ex_us";
+  } else if (
+    tickerUpper === "VOO" ||
+    tickerUpper === "IVV" ||
+    tickerUpper === "SPY" ||
+    tickerUpper === "QQQ" ||
+    tickerUpper === "VTI" ||
+    combined.includes("ESTADOS UNIDOS") ||
+    combined.includes("US EQUITY") ||
+    combined.includes("S&P")
+  ) {
+    region = "eua";
   }
 
   return { region, vehicle };

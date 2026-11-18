@@ -343,7 +343,17 @@ export function calculatePointInTimePosition(
 
     const averagePrice = runningQty > 0 ? runningCost / runningQty : 0;
     const totalCost = runningCost;
-    const totalCostBRL = Math.round(totalCost * fxRate * 100) / 100;
+    const isUSD = assetCurrency === "USD";
+    let totalCostBRL: number;
+    if (isUSD && asset.total_cost_brl && asset.total_cost_brl > 0) {
+      const baseCost = currentAssetQty * currentAvgPrice;
+      const ratio = baseCost > 0 ? totalCost / baseCost : 1;
+      totalCostBRL = Math.round(asset.total_cost_brl * ratio * 100) / 100;
+    } else if (isUSD && asset.fx_rate_at_purchase && asset.fx_rate_at_purchase > 0) {
+      totalCostBRL = Math.round(totalCost * asset.fx_rate_at_purchase * 100) / 100;
+    } else {
+      totalCostBRL = Math.round(totalCost * fxRate * 100) / 100;
+    }
 
     // Resolução de Cotação Histórica
     const savedMonthlyPrice = monthlyPriceMap.get(tickerUpper) ?? null;

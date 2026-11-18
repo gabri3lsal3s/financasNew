@@ -394,6 +394,9 @@ export function calculatePositionSummary(params: {
   currency: AssetCurrency;
   resolvedPrice: ResolvedPrice;
   usdRate?: number;
+  totalCostBRL?: number;
+  averagePriceBRL?: number;
+  fxRateAtPurchase?: number | null;
   ticker?: string;
   notes?: string | null;
   pricingMode?: AssetPricingMode;
@@ -409,6 +412,9 @@ export function calculatePositionSummary(params: {
     currency,
     resolvedPrice,
     usdRate = FALLBACK_USD_RATE,
+    totalCostBRL: explicitTotalCostBRL,
+    averagePriceBRL: explicitAveragePriceBRL,
+    fxRateAtPurchase,
     ticker,
     notes,
     pricingMode: explicitPricingMode,
@@ -607,11 +613,20 @@ export function calculatePositionSummary(params: {
   }
 
   const totalCost = Math.round(quantity * averagePrice * 100) / 100;
-  const totalCostBRL = Math.round(totalCost * rate * 100) / 100;
+  const totalCostBRL =
+    explicitTotalCostBRL != null
+      ? Math.round(explicitTotalCostBRL * 100) / 100
+      : fxRateAtPurchase != null && currency === "USD"
+        ? Math.round(totalCost * fxRateAtPurchase * 100) / 100
+        : Math.round(totalCost * rate * 100) / 100;
   const averagePriceBRL =
-    averagePrice * rate >= 0.01
-      ? Math.round(averagePrice * rate * 100) / 100
-      : Math.round(averagePrice * rate * 100_000_000) / 100_000_000;
+    explicitAveragePriceBRL != null
+      ? explicitAveragePriceBRL
+      : quantity > 0
+        ? Math.round((totalCostBRL / quantity) * 10000) / 10000
+        : (averagePrice * rate >= 0.01
+            ? Math.round(averagePrice * rate * 100) / 100
+            : Math.round(averagePrice * rate * 100_000_000) / 100_000_000);
   const valueBRL = Math.round(quantity * rawPriceBRL * 100) / 100;
   const pnl = positionPnl(valueBRL, totalCostBRL, totalDividendsBRL);
 

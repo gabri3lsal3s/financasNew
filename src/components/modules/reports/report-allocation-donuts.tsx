@@ -49,9 +49,19 @@ export function ReportAllocationDonuts({
     return null;
   }
 
-  const numSectors = totalUniqueSectors ?? sectorSegments.length;
+  // Contagem estritamente vinculada às linhas renderizadas (BUG-16)
+  const numSectors = sectorSegments.length;
+  const isGrouped = Boolean(totalUniqueSectors && totalUniqueSectors > numSectors);
   const totalCents = numberToCents(totalBRL);
   const isPrint = variant === "print";
+
+  const sectorSubtitle = isPrint
+    ? isGrouped
+      ? `Exposição por atividade econômica e indexadores (${numSectors} segmentos agrupados de ${totalUniqueSectors} totais)`
+      : `Exposição por atividade econômica e indexadores (${numSectors} ${numSectors === 1 ? "segmento" : "segmentos"})`
+    : isGrouped
+      ? `Exposição por atividade econômica e indexadores (${numSectors} segmentos agrupados de ${totalUniqueSectors} totais).`
+      : `Exposição por atividade econômica e indexadores (${numSectors} ${numSectors === 1 ? "segmento registrado" : "segmentos registrados"}).`;
 
   return (
     <div className={cn("flex flex-col w-full", isPrint ? "gap-3" : "gap-4", className)}>
@@ -90,11 +100,7 @@ export function ReportAllocationDonuts({
       <ReportAllocationDonutCard
         icon={PieChart}
         title="Diversificação por Segmento & Indexador"
-        subtitle={
-          isPrint
-            ? `Exposição por atividade econômica e indexadores (${numSectors} ${numSectors === 1 ? "segmento" : "segmentos"})`
-            : `Exposição por atividade econômica e indexadores (${numSectors} ${numSectors === 1 ? "segmento registrado" : "segmentos registrados"}).`
-        }
+        subtitle={sectorSubtitle}
         badgeText={`${numSectors} ${numSectors === 1 ? "segmento" : "segmentos"}`}
         columnHeader="Segmento / Indexador"
         centerLabel="Setores"

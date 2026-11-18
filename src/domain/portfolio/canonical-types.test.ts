@@ -498,9 +498,11 @@ describe("canonical-types", () => {
       expect(state.totalBRL).toBe(35200.0);
       expect(state.totalValueBRL).toBe(35200.0);
 
-      // Custo Total dos Ativos Ativos (sem caixa)
+      // Custo Total dos Ativos em Custódia (sem caixa)
       // PETR4 (3000) + AAPL (1500 * 5.5 = 8250) + CDB (10000) = 21250.00
-      expect(state.totalCostBRL).toBe(21250.0);
+      expect(state.assetsTotalCostBRL).toBe(21250.0);
+      expect(state.totalAppliedCostBRL).toBe(31750.0);
+      expect(state.totalCostBRL).toBe(31750.0);
 
       // Ganho de Capital Não Realizado (unrealizedPnlBRL = 24700 - 21250 = 3450.00)
       expect(state.unrealizedPnlBRL).toBe(3450.0);
@@ -585,7 +587,9 @@ describe("canonical-types", () => {
       });
 
       expect(state.totalBRL).toBe(20000.0);
-      expect(state.totalCostBRL).toBe(0);
+      expect(state.totalCostBRL).toBe(20000.0);
+      expect(state.assetsTotalCostBRL).toBe(0);
+      expect(state.totalAppliedCostBRL).toBe(20000.0);
       expect(state.totalCashBRL).toBe(20000.0);
       expect(state.unrealizedPnlBRL).toBe(0);
       expect(state.unrealizedPct).toBeNull();

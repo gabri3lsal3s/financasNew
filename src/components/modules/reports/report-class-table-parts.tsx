@@ -29,6 +29,8 @@ export interface ReportClassGroup {
   sharePct: number;
   pnlPct: number;
   subtotalPriceVarPct?: number;
+  subtotalPriceVarPctUSD?: number;
+  usdRate?: number;
   totalCostCents?: number;
   totalDividendsCents?: number;
   topAssetTicker?: string;

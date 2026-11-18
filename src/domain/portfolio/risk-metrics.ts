@@ -202,10 +202,16 @@ export function calculateSharpeRatio(input: {
  * meses fechados anteriores, mantendo a homogeneidade temporal (Δt = 1/12) e evitando
  * distorções estocásticas por períodos de poucos dias.
  */
+export interface PortfolioRiskSummaryOptions {
+  hasPartialCurrentMonth?: boolean;
+  /** Se true, avalia as métricas anuais estritamente sobre os últimos 12 meses fechados completos (Padrão CFA/ANBIMA). */
+  useTrailing12Months?: boolean;
+}
+
 export function calculatePortfolioRiskSummary(
   points: readonly { patrimonyBRL: number; ratePct: number | null; isMtd?: boolean }[],
   riskFreeRatePct = 10.5,
-  options?: { hasPartialCurrentMonth?: boolean },
+  options?: PortfolioRiskSummaryOptions,
 ): PortfolioRiskSummary {
   const allRates = points.map((p) => p.ratePct ?? 0);
 
@@ -227,22 +233,26 @@ export function calculatePortfolioRiskSummary(
   const closedRates =
     lastPointIsMtd && allRates.length > 1 ? allRates.slice(0, -1) : allRates;
 
-  const volatility = calculateSampleVolatility(closedRates);
-  const consistency = calculateConsistencyMetrics(closedRates);
+  // Janela de avaliação (trailing 12M ou série fechada completa)
+  const evalRates =
+    options?.useTrailing12Months && closedRates.length >= 12
+      ? closedRates.slice(-12)
+      : closedRates;
 
-  const closedMonthsCount = closedRates.length;
+  const volatility = calculateSampleVolatility(evalRates);
+  const consistency = calculateConsistencyMetrics(evalRates);
+
+  const closedMonthsCount = evalRates.length;
 
   // Retorno geométrico acumulado sobre os meses fechados de referência
-  const compoundFactor = closedRates.reduce((acc, r) => acc * (1 + r / 100), 1);
+  const compoundFactor = evalRates.reduce((acc, r) => acc * (1 + r / 100), 1);
   const totalReturnPct = (compoundFactor - 1) * 100;
 
-  // Anualização da rentabilidade sobre os meses fechados homogêneos
+  // Anualização da rentabilidade sobre os meses fechados homogêneos (Padrão CFA & CVM/ANBIMA)
   const annualizedReturnPct =
-    closedMonthsCount >= 12
+    closedMonthsCount > 0
       ? (Math.pow(compoundFactor, 12 / closedMonthsCount) - 1) * 100
-      : closedMonthsCount > 0
-        ? (Math.pow(compoundFactor, 12 / closedMonthsCount) - 1) * 100
-        : totalReturnPct;
+      : totalReturnPct;
 
   const { sharpeRatio, sharpeLabel } = calculateSharpeRatio({
     annualizedReturnPct,

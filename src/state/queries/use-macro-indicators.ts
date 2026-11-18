@@ -55,7 +55,7 @@ export function useMacroIndicators() {
         annualIpcaRate: effIpca,
         monthlyCdiRate: Math.round(monthlyCdi * 100) / 100,
         monthlyPoupancaRate: Math.round(monthlyPoupanca * 100) / 100,
-        ibovPeriodReturnPct: 1.0, // Referência de mercado B3
+        ibovPeriodReturnPct: undefined, // Deixa o motor de benchmarks compor com base no horizonte real (BUG-15)
         ifixPeriodReturnPct: 0.8, // Referência IFIX
         sp500PeriodReturnPct: 1.2, // Referência S&P 500 USD
       };

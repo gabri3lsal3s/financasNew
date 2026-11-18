@@ -101,6 +101,17 @@ export interface FixedIncomeExposureSegment {
   pct: number;
 }
 
+export type FixedIncomeMacroIndexerKey = "pos_fixado" | "ipca" | "pre";
+
+export interface FixedIncomeMacroIndexerGroup {
+  key: FixedIncomeMacroIndexerKey;
+  label: string;
+  valueBRL: number;
+  pct: number;
+  count: number;
+  assets: ExposureAssetItem[];
+}
+
 export interface FixedIncomeExposureResult {
   totalValueBRL: number;
   totalCostBRL: number;
@@ -112,6 +123,9 @@ export interface FixedIncomeExposureResult {
   byIndexer: Record<FixedIncomeRateType, FixedIncomeIndexerGroup>;
   orderedIndexers: FixedIncomeIndexerGroup[];
   indexerSegments: FixedIncomeExposureSegment[];
+  byMacroIndexer: Record<FixedIncomeMacroIndexerKey, FixedIncomeMacroIndexerGroup>;
+  orderedMacroIndexers: FixedIncomeMacroIndexerGroup[];
+  macroIndexerSegments: FixedIncomeExposureSegment[];
   byIssuer: Record<FixedIncomeIssuerType, FixedIncomeIssuerGroup>;
   orderedIssuers: FixedIncomeIssuerGroup[];
   issuerSegments: FixedIncomeExposureSegment[];
@@ -321,6 +335,49 @@ export function calculateFixedIncomeExposure(
     pct: g.pct,
   }));
 
+  // Agregação Canônica por Macro-Indexador (Página 7 unificada com Páginas 4 e 5 — BUG-13)
+  const posFixadoVal = Math.round((byIndexer.cdi.valueBRL + byIndexer.selic.valueBRL) * 100) / 100;
+  const posFixadoAssets = [...byIndexer.cdi.assets, ...byIndexer.selic.assets].sort((a, b) => b.valueBRL - a.valueBRL);
+  const posFixadoPct = totalValueBRL > 0 ? Math.round((posFixadoVal / totalValueBRL) * 1000) / 10 : 0;
+
+  const byMacroIndexer: Record<FixedIncomeMacroIndexerKey, FixedIncomeMacroIndexerGroup> = {
+    pos_fixado: {
+      key: "pos_fixado",
+      label: "Pós-fixado (CDI / Selic)",
+      valueBRL: posFixadoVal,
+      pct: posFixadoPct,
+      count: byIndexer.cdi.count + byIndexer.selic.count,
+      assets: posFixadoAssets,
+    },
+    ipca: {
+      key: "ipca",
+      label: FIXED_INCOME_INDEXER_LABELS.ipca,
+      valueBRL: byIndexer.ipca.valueBRL,
+      pct: byIndexer.ipca.pct,
+      count: byIndexer.ipca.count,
+      assets: byIndexer.ipca.assets,
+    },
+    pre: {
+      key: "pre",
+      label: FIXED_INCOME_INDEXER_LABELS.pre,
+      valueBRL: byIndexer.pre.valueBRL,
+      pct: byIndexer.pre.pct,
+      count: byIndexer.pre.count,
+      assets: byIndexer.pre.assets,
+    },
+  };
+
+  const orderedMacroIndexers = Object.values(byMacroIndexer)
+    .filter((g) => g.valueBRL > 0 || g.count > 0)
+    .sort((a, b) => b.valueBRL - a.valueBRL);
+
+  const macroIndexerSegments: FixedIncomeExposureSegment[] = orderedMacroIndexers.map((g) => ({
+    key: g.key,
+    label: g.label,
+    valueBRL: g.valueBRL,
+    pct: g.pct,
+  }));
+
   // Percentuais por Emissor
   const issuerKeys: FixedIncomeIssuerType[] = ["tesouro", "bancario_fgc", "credito_privado"];
   for (const k of issuerKeys) {
@@ -362,6 +419,9 @@ export function calculateFixedIncomeExposure(
     byIndexer,
     orderedIndexers,
     indexerSegments,
+    byMacroIndexer,
+    orderedMacroIndexers,
+    macroIndexerSegments,
     byIssuer,
     orderedIssuers,
     issuerSegments,
@@ -608,6 +668,8 @@ export function calculateInternationalExposure(
 
   const byRegion: Record<InternationalRegion, InternationalRegionGroup> = {
     eua: { key: "eua", label: INTERNATIONAL_REGION_LABELS.eua, valueBRL: 0, pct: 0, count: 0, assets: [] },
+    commodities_ouro: { key: "commodities_ouro", label: INTERNATIONAL_REGION_LABELS.commodities_ouro, valueBRL: 0, pct: 0, count: 0, assets: [] },
+    cripto_bitcoin: { key: "cripto_bitcoin", label: INTERNATIONAL_REGION_LABELS.cripto_bitcoin, valueBRL: 0, pct: 0, count: 0, assets: [] },
     desenvolvidos_ex_us: { key: "desenvolvidos_ex_us", label: INTERNATIONAL_REGION_LABELS.desenvolvidos_ex_us, valueBRL: 0, pct: 0, count: 0, assets: [] },
     emergentes: { key: "emergentes", label: INTERNATIONAL_REGION_LABELS.emergentes, valueBRL: 0, pct: 0, count: 0, assets: [] },
     global: { key: "global", label: INTERNATIONAL_REGION_LABELS.global, valueBRL: 0, pct: 0, count: 0, assets: [] },
@@ -651,7 +713,14 @@ export function calculateInternationalExposure(
   }
 
   // Percentuais por Região
-  const regionKeys: InternationalRegion[] = ["eua", "desenvolvidos_ex_us", "emergentes", "global"];
+  const regionKeys: InternationalRegion[] = [
+    "eua",
+    "commodities_ouro",
+    "cripto_bitcoin",
+    "desenvolvidos_ex_us",
+    "emergentes",
+    "global",
+  ];
   for (const k of regionKeys) {
     const grp = byRegion[k];
     grp.pct = totalValueBRL > 0 ? Math.round((grp.valueBRL / totalValueBRL) * 1000) / 10 : 0;

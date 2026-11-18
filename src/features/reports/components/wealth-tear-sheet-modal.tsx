@@ -30,6 +30,8 @@ export interface WealthTearSheetModalProps {
   rows: readonly WealthPositionRow[];
   totalBRL: number;
   totalCostBRL: number;
+  assetsCostBRL?: number;
+  totalAppliedCostBRL?: number;
   totalDividendsBRL?: number;
   totalReturnPnlBRL?: number;
   totalReturnPct?: number | null;
@@ -65,6 +67,8 @@ export function WealthTearSheetModal({
   rows,
   totalBRL,
   totalCostBRL,
+  assetsCostBRL,
+  totalAppliedCostBRL,
   totalDividendsBRL,
   totalReturnPnlBRL,
   totalReturnPct: propTotalReturnPct,
@@ -95,6 +99,8 @@ export function WealthTearSheetModal({
         rows,
         totalBRL,
         totalCostBRL,
+        assetsCostBRL,
+        totalAppliedCostBRL,
         totalDividendsBRL,
         totalReturnPnlBRL,
         totalReturnPct: propTotalReturnPct,
@@ -112,6 +118,8 @@ export function WealthTearSheetModal({
       rows,
       totalBRL,
       totalCostBRL,
+      assetsCostBRL,
+      totalAppliedCostBRL,
       totalDividendsBRL,
       totalReturnPnlBRL,
       propTotalReturnPct,

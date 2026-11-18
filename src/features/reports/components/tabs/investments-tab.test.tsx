@@ -63,6 +63,9 @@ describe("InvestmentsTab — Sincronização Temporal e Empty State", () => {
     allocationAnalysis: {
       totalBRL: 50000,
       alignmentScore: 85,
+      equilibriumIndexPct: 85,
+      totalTargetPct: 100,
+      totalGapBRL: 0,
       treeNodes: [],
       classGaps: [],
       sectorGaps: [],

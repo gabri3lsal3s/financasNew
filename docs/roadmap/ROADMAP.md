@@ -1,5 +1,34 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.12.0 (Plano 43 — Auditoria e Refatoração Canônica do Motor de Investimentos Axir)** registra a conclusão integral da **Auditoria Forense e Refatoração Holística do Motor de Cálculos, Custódia, Rentabilidade e Relatórios de Investimentos** ([`planos/completed/43_PLANO_AUDITORIA_E_REFATORACAO_CANONICA_MOTOR_INVESTIMENTOS.md`](../plans/completed/43_PLANO_AUDITORIA_E_REFATORACAO_CANONICA_MOTOR_INVESTIMENTOS.md)) (2026-11-18):
+> - **(1) Saneamento Contábil, Custódia, Caixa e Ledger de Posições (Fase 1)**:
+>   - Reconciliação do Caixa de R$ 0,96 no Custo Total Aplicado (R$ 17.320,90) e Patrimônio Total (R$ 17.503,68), eliminando discrepâncias entre telas e exportadores;
+>   - Reconciliação integral de proventos históricos acumulados (R$ 1.757,57 de ativos vivos + R$ 36,90 de posições encerradas = R$ 1.794,47);
+>   - Reconciliação de P&L contábil aberto (R$ 1.940,35 / +11,20%) e P&L econômico total da carteira (R$ 1.977,25).
+> - **(2) Motor Multi-Moeda / FX Engine e PTAX (Fase 2)**:
+>   - Posições internacionais em USD com conversão cambial histórica no custo de aquisição e PTAX vigente no saldo de mercado;
+>   - Decomposição canônica de retorno em Ganho do Ativo em USD, Efeito Cambial em BRL e Produto Cruzado;
+>   - Padronização de arredondamento meio-para-cima com 1 casa decimal (ex.: variação da cota do BITB em -10,9%).
+> - **(3) Unificação de Rentabilidade — TWR GIPS, TIR/XIRR e P&L Econômico (Fase 3)**:
+>   - Expurgo estrito de fluxos externos de capital no TWR mensal (Set/2026 +2,61% expurgando R$ 368,80; Out/2026 -3,13% expurgando R$ 338,18);
+>   - Unificação do retorno MTD de Nov/2026 em -1,1% e TWR acumulado em +11,5% (Cota R$ 111,50) em todos os relatórios;
+>   - Instituição do *Calendar Spine* contínuo de 26 competências, garantindo exibição de competências sem movimentação (Ago/2026);
+>   - Extrato analítico com valores reais de proventos pagos mês a mês ($\sum = \text{R\$ } 1.794,47$).
+> - **(4) Motor de Alocação, Rebalanceamento e Taxonomia Multi-Dimensional de Raios-X (Fase 4)**:
+>   - Saneamento automático de categorias legadas órfãs com saldo zero, restaurando a soma das metas para 100,00%, eliminando o gap fantasma de -R$ 17.503,68 e alinhando o Índice de Equilíbrio Geral (IEG) para 84,9% (85%);
+>   - Correção do regex de indexadores de renda fixa (CDB Original classificado como pós-fixado 93,3% / R$ 2.965,52, prefixado 0,0%);
+>   - Taxonomia internacional granular (`commodities_ouro` e `cripto_bitcoin`), eliminando o falso alerta de concentração de 95,2%;
+>   - Vinculação dinâmica do contador de segmentos no card de roscas patrimoniais (9 segmentos declarados = 9 segmentos listados).
+> - **(5) Benchmarks, Índices Macroeconômicos e Métricas de Risco CFA/ANBIMA (Fase 5)**:
+>   - Correção de escala decimal de benchmarks acumulados (fator 100x no Ibovespa para períodos plurianuais $\ge 12$ meses: 100,2% acumulado, spread de -88,7 p.p. e razão de 11,5% do índice);
+>   - Alinhamento dimensional da janela de volatilidade e Índice de Sharpe para exatamente os últimos 12 meses fechados (`8/12`).
+> - **(6) Contratos de API, Pre-Flight Invariant Validator e Gate 6 (Fase 6)**:
+>   - `UnifiedPortfolioReportPayload`: Contrato Canônico Único e Fonte Única da Verdade para telas e relatórios em PDF;
+>   - `PortfolioReportInvariantValidator`: Middleware validador auditando 12 asserções matemáticas fundamentais antes da emissão de relatórios;
+>   - Suíte de certificação de auditoria `portfolio-audit-gate6.test.ts` com 11/11 testes aprovados;
+>   - Total de 49/49 testes aprovados nos Quality Gates 1 a 6 e 868/868 testes aprovados no domínio de investimentos e relatórios;
+>   - TypeScript (`tsc -b`) e ESLint 100% limpos (0 erros, 0 avisos).
+
 > **v3.11.0 (Plano Assinaturas, Onboarding & Asaas v3 + Resend)** registra a conclusão integral da **Reestruturação Definitiva do Motor de Assinaturas, Webhooks Idempotentes, Onboarding e Comunicação Transacional Oficial Axir** ([`docs/PLANO_ASSINATURAS_ONBOARDING.md`](../PLANO_ASSINATURAS_ONBOARDING.md)) (2026-11-18):
 > - **(1) Hardening de Banco, Migrations, Idempotência e RBAC (Fase 1)**:
 >   - Migration `20260101000128_harden_billing_idempotency_and_trial_lifecycle.sql` instituindo tabelas `billing_processed_payments` e `transactional_email_logs`, expansão de `profiles` (`phone`, `postal_code`, `address_number`), correção atômica de `handle_new_user()` com `trial_started_at` e `starts_at`, alinhamento do Grace Period de 3 dias em `get_user_module_access()`, fechamento estrito de RLS com subqueries escalares e blindagem RBAC de superadmin.

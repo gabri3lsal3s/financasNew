@@ -19,6 +19,7 @@ export interface ReportFixedIncomeBreakdownCardProps {
 }
 
 const INDEXER_COLORS: Record<string, ExposureColorToken> = {
+  pos_fixado: "cat1",
   cdi: "cat1",
   selic: "cat7",
   ipca: "cat2",
@@ -53,7 +54,7 @@ export function ReportFixedIncomeBreakdownCard({
         columnLabel: "Indexador",
         interactiveColumnLabel: "Indexador / Regime",
         printCenterLabel: "Indexador",
-        items: exposure.orderedIndexers.map((g) => ({ ...g, colorToken: INDEXER_COLORS[g.key] ?? "cat10" })),
+        items: (exposure.orderedMacroIndexers ?? exposure.orderedIndexers).map((g) => ({ ...g, colorToken: INDEXER_COLORS[g.key] ?? "cat10" })),
       },
       {
         id: "issuer",
@@ -66,7 +67,7 @@ export function ReportFixedIncomeBreakdownCard({
         items: exposure.orderedIssuers.map((g) => ({ ...g, colorToken: ISSUER_COLORS[g.key] ?? "cat10" })),
       },
     ],
-    [exposure.orderedIndexers, exposure.orderedIssuers],
+    [exposure.orderedIndexers, exposure.orderedMacroIndexers, exposure.orderedIssuers],
   );
 
   return (
