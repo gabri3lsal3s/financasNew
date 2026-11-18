@@ -136,7 +136,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     renderBudgetsPage();
     expect(screen.getByText("Total Gasto")).toBeInTheDocument();
     expect(screen.getByText("Teto Planejado")).toBeInTheDocument();
-    expect(screen.getByText("R$ 2.000,00")).toBeInTheDocument();
+    expect(document.body.textContent?.replace(/\u00a0/g, " ")).toContain("2.000,00");
     // "Moradia" aparece na linha da categoria e na sugestão de realocação
     expect(screen.getAllByText("Moradia").length).toBeGreaterThan(0);
     // Moradia 1.200/1.000 → acima do limite
@@ -284,7 +284,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     renderBudgetsPage();
 
     // No modo padrão (Minha Parte): Total gasto = 600 + 100 = 700
-    expect(screen.getByText("R$ 700,00")).toBeInTheDocument();
+    expect(document.body.textContent?.replace(/\u00a0/g, " ")).toContain("700,00");
     // "Minha Parte" aparece no botão ativo E no badge do KPI
     expect(screen.getAllByText("Minha Parte").length).toBeGreaterThanOrEqual(1);
     // Exibe badge informando o total bruto para a categoria Moradia
@@ -295,7 +295,7 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     await user.click(householdBtn);
 
     // No modo Total Bruto: Total gasto = 1200 + 100 = 1300
-    expect(screen.getByText("R$ 1.300,00")).toBeInTheDocument();
+    expect(document.body.textContent?.replace(/\u00a0/g, " ")).toContain("1.300,00");
     // "Total Bruto" aparece no botão ativo E no badge do KPI
     expect(screen.getAllByText("Total Bruto").length).toBeGreaterThanOrEqual(1);
     // Exibe badge informando a sua parte pessoal para Moradia

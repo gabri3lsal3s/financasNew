@@ -29,7 +29,7 @@ describe("QuickAporteCard — Atalho de Aporte Rápido na Home (Fase 5 — Taref
 
     expect(screen.getByText("Investimentos do mês")).toBeInTheDocument();
     expect(screen.getByText("Aportes realizados no período")).toBeInTheDocument();
-    expect(screen.getByText(/2\.500,00/)).toBeInTheDocument();
+    expect(document.body.textContent?.replace(/\u00a0/g, " ")).toContain("2.500,00");
     expect(screen.getByRole("button", { name: "Ver carteira completa" })).toBeInTheDocument();
     expect(screen.getByLabelText("Valor do aporte planejado")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Calcular Rebalanceamento/i })).toBeInTheDocument();

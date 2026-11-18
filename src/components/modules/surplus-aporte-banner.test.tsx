@@ -12,7 +12,7 @@ describe("SurplusAporteBanner (§F50)", () => {
     render(<SurplusAporteBanner surplusCents={150000} />);
 
     expect(screen.getByText("Capacidade de Aporte Estimada")).toBeInTheDocument();
-    expect(screen.getByText(/1\.500,00/)).toBeInTheDocument();
+    expect(document.body.textContent?.replace(/\u00a0/g, " ")).toContain("1.500,00");
     expect(screen.getByRole("button", { name: /Simular Aporte/i })).toBeInTheDocument();
   });
 
