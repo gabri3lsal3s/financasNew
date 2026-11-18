@@ -176,7 +176,7 @@ export function GoalCard({
           <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 text-xs text-muted-foreground min-w-0">
             <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 min-w-0">
               <span className="shrink-0">Realizado:</span>
-              <MoneyText cents={realizedCents} tone="default" className="font-semibold text-foreground" />
+              <MoneyText cents={realizedCents} tone="default" deemphasizeCents className="font-semibold text-foreground" />
               {expectedCents > 0 ? (
                 <>
                   <span className="shrink-0">de</span>

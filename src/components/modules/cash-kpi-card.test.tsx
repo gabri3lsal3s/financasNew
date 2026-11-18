@@ -19,7 +19,7 @@ describe("CashKpiCard", () => {
 
     expect(screen.getByText(/Saldo em Caixa & Liquidez/i)).toBeInTheDocument();
     expect(screen.getByText("Pólvora Seca")).toBeInTheDocument();
-    expect(screen.getByText(/5\.000,00/)).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === "P" && (el?.textContent?.includes("5.000,00") ?? false))).toBeInTheDocument();
     expect(screen.getByText(/\(25[,.]0% do patrimônio\)/i)).toBeInTheDocument();
 
     const editBtn = screen.getByRole("button", { name: /Editar saldo em caixa/i });
@@ -72,7 +72,7 @@ describe("CashKpiCard", () => {
     );
 
     expect(screen.getByText("Saldo em caixa")).toBeInTheDocument();
-    expect(screen.getByText(/3\.000,00/)).toBeInTheDocument();
+    expect(screen.getByText((_, el) => el?.tagName === "P" && (el?.textContent?.includes("3.000,00") ?? false))).toBeInTheDocument();
     expect(screen.getByText(/15[,.]0% do patrimônio total/)).toBeInTheDocument();
 
     const editBtn = screen.getByRole("button", { name: /Editar saldo em caixa/i });

@@ -153,6 +153,8 @@ export function CampaignCard({
               <MoneyText
                 cents={metrics.currentCents}
                 tone={metrics.isCompleted ? "positive" : "default"}
+                deemphasizeCents
+                animated
                 className="font-bold text-foreground"
               />
               <span className="text-muted-foreground shrink-0">de</span>

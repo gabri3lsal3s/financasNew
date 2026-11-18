@@ -105,7 +105,7 @@ export function FinancialTab(props: FinancialTabProps) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Receitas Totais</span>
-          <MoneyText cents={grossIncomeBrutoCents} tone="positive" animated className="text-lg sm:text-xl font-bold font-display" />
+          <MoneyText cents={grossIncomeBrutoCents} tone="positive" variant="hero" animated className="text-lg sm:text-xl font-bold font-display" />
           {hasDualMetrics && (
             <span className="text-xs text-muted-foreground">
               Ponderada: <MoneyText cents={currentIncomeCents} tone="positive" className="inline text-xs font-medium" />
@@ -114,7 +114,7 @@ export function FinancialTab(props: FinancialTabProps) {
         </div>
         <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Despesas Totais</span>
-          <MoneyText cents={grossExpenseBrutoCents} tone="negative" animated className="text-lg sm:text-xl font-bold font-display" />
+          <MoneyText cents={grossExpenseBrutoCents} tone="negative" variant="hero" animated className="text-lg sm:text-xl font-bold font-display" />
           {hasDualMetrics && (
             <span className="text-xs text-muted-foreground">
               Ponderada: <MoneyText cents={currentExpenseCents} tone="negative" className="inline text-xs font-medium" />
@@ -127,6 +127,7 @@ export function FinancialTab(props: FinancialTabProps) {
             <MoneyText
               cents={grossSavingsBrutoCents}
               tone={grossSavingsBrutoCents >= 0 ? "positive" : "negative"}
+              variant="hero"
               animated
               className="text-lg sm:text-xl font-bold font-display"
             />

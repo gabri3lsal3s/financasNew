@@ -1,12 +1,10 @@
 import { Coins, Plus, TrendingUp } from "lucide-react";
-import { KpiCard, MonthPicker, SnowballActionCard } from "@/components/modules";
+import { KpiCard, MonthPicker } from "@/components/modules";
 import { Badge, Button, EmptyState, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import type { DividendPositionRef } from "@/domain/portfolio/dividends-analytics";
-import type { ReinvestmentOpportunity } from "@/domain/portfolio/snowball";
 import { monthLabel } from "@/lib/date";
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
-import { ReinvestDividendsBanner } from "..";
 import { DividendsMonthExtractCard } from "./dividends-month-extract-card";
 
 export interface DividendsHistoryPanelProps {
@@ -17,17 +15,13 @@ export interface DividendsHistoryPanelProps {
   monthTotal: number;
   uniqueTickersCount: number;
   topPayer: { ticker: string; amount: number } | null;
-  cashBalance: number;
   projectedCount: number;
   projectedTotal: number;
-  reinvestmentOpportunities: ReinvestmentOpportunity[];
   assetById: ReadonlyMap<string, PortfolioAsset>;
   rowByAssetId: ReadonlyMap<string, DividendPositionRef>;
   onOpenNewDividend: () => void;
   onEditDividend: (entry: PortfolioDividend) => void;
   onDeleteDividend: (entry: PortfolioDividend) => void;
-  onReinvest: (opp: ReinvestmentOpportunity) => void;
-  onReinvestCash: () => void;
   onOpenPendingDividends: () => void;
 }
 
@@ -39,17 +33,13 @@ export function DividendsHistoryPanel({
   monthTotal,
   uniqueTickersCount,
   topPayer,
-  cashBalance,
   projectedCount,
   projectedTotal,
-  reinvestmentOpportunities,
   assetById,
   rowByAssetId,
   onOpenNewDividend,
   onEditDividend,
   onDeleteDividend,
-  onReinvest,
-  onReinvestCash,
   onOpenPendingDividends,
 }: DividendsHistoryPanelProps) {
   return (
@@ -124,14 +114,6 @@ export function DividendsHistoryPanel({
               }
             />
           </div>
-
-          {reinvestmentOpportunities.length > 0 ? (
-            <SnowballActionCard opportunities={reinvestmentOpportunities} onReinvest={onReinvest} />
-          ) : null}
-
-          {cashBalance > 0 ? (
-            <ReinvestDividendsBanner cashBalance={cashBalance} onReinvest={onReinvestCash} />
-          ) : null}
 
           {projectedCount > 0 ? (
             <div className="rounded-2xl border border-portfolio/20 bg-portfolio/5 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">

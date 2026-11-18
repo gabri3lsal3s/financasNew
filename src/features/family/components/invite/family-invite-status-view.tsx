@@ -119,8 +119,9 @@ export function FamilyInviteStatusCardView({
         action={
           <Button
             type="button"
-            variant="solid"
+            variant="default"
             size="default"
+            className="shadow-xs"
             onClick={() => onNavigate(config.ctaPath)}
           >
             {config.ctaLabel}
@@ -200,8 +201,9 @@ export function FamilyInviteCreatorView({
         <div className="pt-1">
           <Button
             type="button"
-            variant="solid"
+            variant="default"
             size="default"
+            className="shadow-xs"
             onClick={onGoToFamily}
           >
             Ir para o Orçamento Familiar

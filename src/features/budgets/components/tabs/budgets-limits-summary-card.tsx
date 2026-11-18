@@ -70,6 +70,7 @@ export function BudgetsLimitsSummaryCard({
           <MoneyText
             cents={hasBudgetLimits ? totalBudgetedExpensesCents : totalExpensesCents}
             tone="default"
+            variant="hero"
             animated
             className="text-base sm:text-lg font-bold text-foreground block mt-0.5"
           />
@@ -102,6 +103,7 @@ export function BudgetsLimitsSummaryCard({
             <MoneyText
               cents={totalLimitsCents}
               tone="default"
+              variant="hero"
               animated
               className="text-base sm:text-lg font-semibold text-muted-foreground block mt-0.5"
             />
@@ -129,6 +131,7 @@ export function BudgetsLimitsSummaryCard({
             <MoneyText
               cents={Math.abs(totalLimitsCents - totalBudgetedExpensesCents)}
               tone={totalLimitsCents >= totalBudgetedExpensesCents ? "positive" : "negative"}
+              variant="hero"
               animated
               className="text-base sm:text-lg font-bold block mt-0.5"
             />

@@ -18,7 +18,7 @@ export function DebtKpiGrid({
         <CardHeader className="pb-2">
           <span className="text-xs font-semibold text-muted-foreground">Saldo Devedor Total</span>
           <CardTitle className="text-xl sm:text-2xl font-bold">
-            <MoneyText cents={totalBalanceCents} tone="default" className="font-bold text-xl sm:text-2xl" />
+            <MoneyText cents={totalBalanceCents} tone="default" variant="hero" animated className="font-bold text-xl sm:text-2xl" />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -51,6 +51,8 @@ export function DebtKpiGrid({
             <MoneyText
               cents={comparison.avalanche.totalInterestCents}
               tone="negative"
+              variant="hero"
+              animated
               className="font-bold text-xl sm:text-2xl"
             />
           </CardTitle>

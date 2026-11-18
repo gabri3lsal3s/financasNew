@@ -71,7 +71,7 @@ export function PermissionsAlertBanner({
               {badgeText}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed truncate">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
             {description}
           </p>
         </div>

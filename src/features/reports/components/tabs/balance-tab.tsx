@@ -116,6 +116,7 @@ export function BalanceTab({
           <MoneyText
             cents={numberToCents(consolidatedBalance.netWorthBRL)}
             tone="portfolio"
+            variant="hero"
             animated
             className="text-lg sm:text-xl font-bold font-display tabular-nums whitespace-nowrap"
           />

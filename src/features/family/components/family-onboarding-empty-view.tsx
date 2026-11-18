@@ -30,12 +30,12 @@ export function FamilyModeInactiveView({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full sm:w-auto">
             <Button
               type="button"
-              variant="solid"
+              variant="default"
               size="default"
               loading={isTogglingMode}
               disabled={isTogglingMode}
               onClick={onActivateMode}
-              className="gap-2"
+              className="gap-2 shadow-xs"
             >
               <Plus className="size-4" aria-hidden="true" />
               <span>{isTogglingMode ? "Ativando..." : "Ativar Modo Família"}</span>
@@ -76,10 +76,10 @@ export function FamilyEmptySetupView({ onOpenCreate }: FamilyEmptySetupViewProps
         action={
           <Button
             type="button"
-            variant="solid"
+            variant="default"
             size="default"
             onClick={onOpenCreate}
-            className="gap-2"
+            className="gap-2 shadow-xs"
           >
             <Plus className="size-4" aria-hidden="true" />
             <span>Criar Família</span>

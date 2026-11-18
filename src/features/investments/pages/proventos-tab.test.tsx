@@ -284,7 +284,7 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
     expect(screen.getByText("Efeito Bola de Neve (Renda Passiva)")).toBeInTheDocument();
   });
 
-  it("exibe o banner de reinvestimento quando há caixa disponível e dispara onOpenWizard ao clicar", async () => {
+  it("não renderiza mais os cards de reinvestimento de caixa e bola de neve no extrato mensal", () => {
     dividendsMock.mockReturnValue(dividends);
     assetsMock.mockReturnValue([
       ...assets,
@@ -297,15 +297,10 @@ describe("ProventosTab — extrato e calendário (F18 e F36)", () => {
         average_price: 1,
       },
     ]);
-    const onOpenWizard = vi.fn();
-    const user = userEvent.setup();
 
-    renderTab(<ProventosTab defaultMonth="2026-08" onOpenWizard={onOpenWizard} />);
+    renderTab(<ProventosTab defaultMonth="2026-08" />);
 
-    expect(screen.getByText("Proventos em Caixa Disponíveis")).toBeInTheDocument();
-    const reinvestBtn = screen.getByRole("button", { name: /Reinvestir no Rebalanceador/i });
-    await user.click(reinvestBtn);
-
-    expect(onOpenWizard).toHaveBeenCalledWith(null, "existing_aporte");
+    expect(screen.queryByText("Proventos em Caixa Disponíveis")).not.toBeInTheDocument();
+    expect(screen.queryByText("Efeito Bola de Neve em Ação")).not.toBeInTheDocument();
   });
 });

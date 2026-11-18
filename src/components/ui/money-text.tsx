@@ -73,7 +73,9 @@ function formatMoneyNode(formatted: string, deemphasize: boolean): ReactNode {
   return (
     <>
       {match[1]}
-      <span className="text-[0.82em] opacity-80">{match[2]}</span>
+      <span className="inline-block text-[0.82em] font-semibold opacity-80 tracking-normal align-baseline tabular-nums">
+        {match[2]}
+      </span>
     </>
   );
 }

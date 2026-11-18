@@ -56,7 +56,7 @@ export function SurplusAporteBanner({
               Capacidade de Aporte Estimada
             </h2>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed truncate">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
             Sobra de caixa calculada disponível para aporte na carteira.
           </p>
         </div>
@@ -70,6 +70,7 @@ export function SurplusAporteBanner({
           <MoneyText
             cents={surplusCents}
             tone="portfolio"
+            variant="hero"
             animated
             className="text-base sm:text-lg font-bold tracking-tight"
           />

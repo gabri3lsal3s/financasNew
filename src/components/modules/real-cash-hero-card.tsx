@@ -81,6 +81,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
           <MoneyText
             cents={cashBalance.currentBalanceCents}
             tone={cashBalance.currentBalanceCents >= 0 ? "default" : "negative"}
+            variant="hero"
             animated
             className={cn(
               "font-bold tracking-tight whitespace-nowrap",
@@ -178,6 +179,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
             <MoneyText
               cents={safeToSpend.safeToSpendCents}
               tone={safeToSpend.safeToSpendCents >= 0 ? "positive" : "negative"}
+              deemphasizeCents
               animated
               className="font-semibold text-xs sm:text-sm shrink-0"
             />

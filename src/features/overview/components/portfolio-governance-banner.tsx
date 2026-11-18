@@ -34,7 +34,7 @@ export function PortfolioGovernanceBanner({
               {overdueReviewsCount} {overdueReviewsCount === 1 ? "ativo pendente" : "ativos pendentes"}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground truncate sm:line-clamp-1">
+          <p className="text-xs text-muted-foreground line-clamp-2 sm:line-clamp-1 break-words">
             {overdueReviewsCount === 1
               ? "1 ativo da sua carteira ultrapassou a periodicidade de governança sem revisão."
               : `${overdueReviewsCount} ativos da sua carteira ultrapassaram a periodicidade de governança sem revisão.`}

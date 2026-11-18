@@ -100,6 +100,8 @@ export function QuickAporteCard({
             <MoneyText
               cents={currentMonthAporteCents}
               tone="portfolio"
+              variant="hero"
+              animated
               className="text-xl sm:text-2xl font-bold tracking-tight whitespace-nowrap tabular-nums"
             />
           </div>

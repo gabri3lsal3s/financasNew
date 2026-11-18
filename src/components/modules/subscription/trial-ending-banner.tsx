@@ -120,9 +120,9 @@ export function TrialEndingBanner({
               {badgeText}
             </Badge>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground leading-relaxed truncate">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
             <ShieldCheck className="size-3.5 shrink-0 text-positive-strong" aria-hidden="true" />
-            <span className="truncate">{descriptionText}</span>
+            <span className="line-clamp-2 sm:line-clamp-1 break-words">{descriptionText}</span>
           </div>
         </div>
       </div>

@@ -163,9 +163,9 @@ export function CreditCard3D({
             </span>
             <MoneyText
               cents={usedLimitCents}
-              variant="value"
+              variant="hero"
               tone="default"
-              deemphasizeCents={false}
+              deemphasizeCents
               animated
               aria-hidden={masked || undefined}
               className="text-sm sm:text-base md:text-lg font-bold text-white drop-shadow-xs tracking-tight"

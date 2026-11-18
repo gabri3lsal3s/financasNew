@@ -62,6 +62,8 @@ export function RebalanceKpiGrid({
             <MoneyText
               cents={Math.round(newTotalPatrimonyBRL * 100)}
               tone="default"
+              variant="hero"
+              animated
               className="font-bold text-xl sm:text-2xl"
             />
           </CardTitle>
@@ -80,6 +82,8 @@ export function RebalanceKpiGrid({
             <MoneyText
               cents={Math.round(monthlyPassiveBRL * 100)}
               tone="positive"
+              variant="hero"
+              animated
               className="font-bold text-xl sm:text-2xl"
             />
           </CardTitle>

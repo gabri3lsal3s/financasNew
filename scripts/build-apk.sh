@@ -163,11 +163,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Hardening de seguranca, reconciliacao e checkout",
-    "Integracao aprimorada com Asaas e validacao manual de pagamentos via Pix",
-    "Blindagem de ciclo de vida de assinaturas, webhooks idempotentes e politicas de trial",
-    "Governanca de permissoes modulares e seguranca administrativa aprimorada",
-    "Otimizacoes de desempenho, estabilidade e responsividade no Android Pro"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Erradicação de truncamentos e ergonomia tátil",
+    "Carrossel e alertas sem corte de texto no mobile com descrição fluida em até 2 linhas",
+    "Botão dispensar reposicionado no topo direito dos insights sem colidir com ações",
+    "Toolbar de posições de ativos com seletor compacto sem rolagem lateral no mobile",
+    "Padronização visual de botões de ação e estados vazios em Proventos e Modo Família"
   ]
 }
 EOF

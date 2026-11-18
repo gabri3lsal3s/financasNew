@@ -195,9 +195,10 @@ export function TargetDistributionCard({
           <div className="flex items-center justify-end pt-2">
             <Button
               type="button"
-              variant="solid"
+              variant="default"
               onClick={onSaveAll}
               disabled={isSavingAny || sumState.error !== null}
+              className="shadow-xs"
             >
               {savingItemKey === "all" ? savingAllLabel : saveAllLabel}
             </Button>

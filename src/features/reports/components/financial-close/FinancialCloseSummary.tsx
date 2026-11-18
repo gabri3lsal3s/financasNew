@@ -30,7 +30,7 @@ export function FinancialCloseSummary({
       items={[
         {
           label: "Receitas Totais",
-          value: <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" />,
+          value: <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" variant="hero" animated className="text-base sm:text-lg font-bold" />,
           subtext:
             hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto ? (
               <span>
@@ -42,7 +42,7 @@ export function FinancialCloseSummary({
         },
         {
           label: "Despesas Totais",
-          value: <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" />,
+          value: <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" variant="hero" animated className="text-base sm:text-lg font-bold" />,
           subtext:
             hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto ? (
               <span>
@@ -58,6 +58,9 @@ export function FinancialCloseSummary({
             <MoneyText
               cents={effectiveGrossSavingsBruto}
               tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
+              variant="hero"
+              animated
+              className="text-base sm:text-lg font-bold"
             />
           ),
           subtext: effectiveGrossSavingsBruto >= 0 ? "Superávit" : "Déficit",

@@ -117,7 +117,7 @@ export function LoanCard({ loan, debts }: LoanCardProps) {
             <span className="text-[11px] text-muted-foreground uppercase tracking-wider block">
               Saldo a pagar
             </span>
-            <MoneyText cents={pendingAmountCents} variant="value" className="text-base font-bold" />
+            <MoneyText cents={pendingAmountCents} variant="hero" animated className="text-base font-bold" />
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">

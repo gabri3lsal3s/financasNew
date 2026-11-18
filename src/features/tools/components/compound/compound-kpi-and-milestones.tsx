@@ -31,6 +31,8 @@ export function CompoundKpiAndMilestones({
               <MoneyText
                 cents={result.finalBalanceCents}
                 tone="default"
+                variant="hero"
+                animated
                 className="font-bold text-xl sm:text-2xl"
               />
             </CardTitle>
@@ -49,6 +51,8 @@ export function CompoundKpiAndMilestones({
               <MoneyText
                 cents={result.monthlyPassiveIncomeCents}
                 tone="positive"
+                variant="hero"
+                animated
                 className="font-bold text-xl sm:text-2xl"
               />
             </CardTitle>
@@ -67,6 +71,8 @@ export function CompoundKpiAndMilestones({
               <MoneyText
                 cents={result.totalInterestCents}
                 tone="positive"
+                variant="hero"
+                animated
                 className="font-bold text-xl sm:text-2xl"
               />
             </CardTitle>
@@ -87,6 +93,8 @@ export function CompoundKpiAndMilestones({
               <MoneyText
                 cents={result.totalContributedCents}
                 tone="default"
+                variant="hero"
+                animated
                 className="font-bold text-xl sm:text-2xl"
               />
             </CardTitle>

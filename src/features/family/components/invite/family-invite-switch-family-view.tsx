@@ -35,8 +35,9 @@ export function FamilyInviteSwitchFamilyView({
           <div className="flex flex-col sm:flex-row gap-2.5 justify-center w-full sm:w-auto">
             <Button
               type="button"
-              variant="solid"
+              variant="default"
               size="default"
+              className="shadow-xs"
               onClick={() => onSwitchModalOpenChange(true)}
             >
               Sair de {currentFamilyName} e Entrar Nesta

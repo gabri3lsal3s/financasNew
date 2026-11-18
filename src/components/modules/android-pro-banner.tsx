@@ -48,7 +48,7 @@ export function AndroidProBanner({ onDismiss, className }: AndroidProBannerProps
               App Android Pro
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed truncate">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
             Biometria física de hardware, escudo de privacidade e navegação fluida em tela cheia.
           </p>
         </div>

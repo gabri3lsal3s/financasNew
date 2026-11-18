@@ -78,7 +78,7 @@ export function PaceAlertBanner({
               Fora do trilho
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed truncate">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
             Consumido {Math.round(spentPercent)}% do orçamento ({Math.round(elapsedPercent)}% do mês decorrido).
             {dailyCents !== null && dailyCents >= 0 && (
               <>

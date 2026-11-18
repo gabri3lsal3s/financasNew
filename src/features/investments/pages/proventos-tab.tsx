@@ -41,17 +41,13 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
           monthTotal={ctrl.monthlySummary.monthTotal}
           uniqueTickersCount={ctrl.monthlySummary.uniqueTickersCount}
           topPayer={ctrl.monthlySummary.topPayer}
-          cashBalance={ctrl.cashBalance}
           projectedCount={ctrl.projectedInSelectedMonth.length}
           projectedTotal={ctrl.projectedTotalInSelectedMonth}
-          reinvestmentOpportunities={ctrl.reinvestmentOpportunities}
           assetById={ctrl.assetById}
           rowByAssetId={ctrl.rowByAssetId}
           onOpenNewDividend={() => ctrl.guardAction(() => ctrl.setDividendFormOpen(true), "Registrar Provento")}
           onEditDividend={(entry) => ctrl.guardAction(() => ctrl.setEditingDividend(entry), "Editar Provento")}
           onDeleteDividend={(entry) => ctrl.guardAction(() => ctrl.setDividendToDelete(entry), "Excluir Provento")}
-          onReinvest={ctrl.handleReinvest}
-          onReinvestCash={ctrl.handleReinvestCash}
           onOpenPendingDividends={() => ctrl.setPendingDividendsDialogOpen(true)}
         />
       ),

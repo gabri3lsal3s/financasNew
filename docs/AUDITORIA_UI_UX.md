@@ -602,3 +602,23 @@ Durante a homologação visual em dispositivos móveis reais, foram identificado
    - **Causa Raiz:** A estabilização de scroll do spotlight monitorava exclusivamente `#main-content.scrollTop`. Em elementos situados dentro de modais/drawers, a rolagem ocorre no container interno (`scrollRef`), mantendo `main-content.scrollTop = 0` e causando medição prematura (em ~32ms) enquanto a animação do bottom sheet (`translateY(100%)` a `0`, 250ms) ainda estava em curso, posicionando o holofote fora da viewport visível.
    - **Correção Canônica:** Implementado rastreamento de centroide por quadros sucessivos em `use-spotlight-target-rect.ts`, medições redundantes de segurança aos 300ms e 550ms, escuta com `{ capture: true }` para rolagens de qualquer container e escuta a `animationend`/`transitionend`. Adicionados seletores canônicos `data-tour="launch-context-selector"` e seletores de fallback em `tour-steps.ts`.
 
+---
+
+## 10. APÊNDICE: ERRADICAÇÃO DE TRUNCAMENTO CEGO, ERGONOMIA DE BANNERS E FILTROS DE ATIVOS
+
+Em complemento às homologações em aparelhos físicos, foram refinados 4 aspectos visuais críticos de leitura e controle tátil:
+
+1. **Erradicação Transversal de Truncamento Cego em Alertas e Banners (`insight-slide.tsx`, `cash-gap-alert.tsx`, `pace-alert-banner.tsx`, `surplus-aporte-banner.tsx`, `permissions-alert-banner.tsx`, `android-pro-banner.tsx`, `trial-ending-banner.tsx`, `portfolio-governance-banner.tsx`):**
+   - **Causa Raiz:** Uso de `truncate` ou `line-clamp-1` rígido na descrição de avisos, cortando o raciocínio explicativo e valores monetários com reticências (`...`) após ~25 caracteres no mobile.
+   - **Correção Canônica:** Unificação com `line-clamp-2 sm:line-clamp-1 text-xs text-muted-foreground leading-relaxed break-words`, permitindo leitura confortável de até 2 linhas completas no smartphone e linha única limpa no desktop.
+2. **Posicionamento Canônico do Botão de Fechar/Dispensar nos Slides de Insight (`insight-slide.tsx`):**
+   - **Causa Raiz:** O botão `X` (com popover de 7/30 dias) era renderizado dentro do contêiner `actions` no rodapé do slide, colado ao lado do botão primário ("Simular com Caixa").
+   - **Correção Canônica:** Mover o botão `X` para o canto superior direito com `absolute top-3 right-3 sm:static`, e adicionar zona de exclusão `pr-8 sm:pr-0` no título. A linha inferior agora pertence exclusivamente ao botão de ação primário com largura de toque completa no mobile (`w-full sm:w-auto`).
+3. **Seletores da Tabela de Posição de Ativos sem Rolagem Lateral no Mobile (`position-toolbar.tsx`):**
+   - **Causa Raiz:** No mobile, uma fita de chips com `overflow-x-auto flex-nowrap` competia com o alternador de agrupamento, forçando rolagem horizontal desajeitada e ocultando classes e o botão de posições encerradas.
+   - **Correção Canônica:** No mobile ($< 640\text{px}$), substituído por um `<Select>` compacto e elegante integrado ao lado do alternador `[Por Classe | Por Setor]` (zero scroll lateral, 100% visível na tela). No desktop, mantidos chips em linha com `variant="default"` e `outline`.
+4. **Erradicação de `variant="solid"` em Empty States e Ações Primárias (`dividends-history-panel.tsx`, `family-onboarding-empty-view.tsx`, `family-invite-*.tsx`, `target-distribution-card.tsx`):**
+   - **Causa Raiz:** Botões de ação em estados vazios utilizando `variant="solid"`, gerando blocos brancos estourados em Dark/OLED mode.
+   - **Correção Canônica:** Substituídos pela variante canônica padrão (`variant="default"` com `shadow-xs`), restabelecendo elegância e conforto ocular em todos os modos de tema.
+
+

@@ -2,6 +2,8 @@ import { Layers, PieChart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
+import { Select, type SelectOption } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 export interface PositionToolbarProps {
   search: string;
@@ -34,6 +36,11 @@ export function PositionToolbar({
   totalCount,
   hasFiltersActive,
 }: PositionToolbarProps) {
+  const classOptions: SelectOption[] = [
+    { value: "all", label: "Todas as classes" },
+    ...availableClasses.map((cls) => ({ value: cls, label: cls })),
+  ];
+
   return (
     <div className="flex flex-col gap-2.5 w-full min-w-0">
       {/* Linha 1: Campo de Busca Full Width */}
@@ -57,65 +64,92 @@ export function PositionToolbar({
         <div
           role="group"
           aria-label="Modo de agrupamento"
-          className="inline-flex items-center gap-1 rounded-lg border border-border/80 bg-muted/50 p-0.5 shadow-xs shrink-0 self-start sm:self-auto"
+          className="inline-flex items-center gap-0.5 sm:gap-1 rounded-lg border border-border/80 bg-muted/50 p-0.5 shadow-xs shrink-0 w-full sm:w-auto"
         >
           <Button
             type="button"
-            variant={groupBy === "class" ? "solid" : "ghost"}
+            variant={groupBy === "class" ? "default" : "ghost"}
             size="sm"
             sensoryIntent="selection"
             onClick={() => onGroupByChange("class")}
             aria-pressed={groupBy === "class"}
             title="Agrupar posições por Classe de Ativo"
-            className="h-7 px-2.5 gap-1.5 text-xs"
+            className={cn(
+              "flex-1 sm:flex-initial h-8 sm:h-7 px-2.5 gap-1.5 text-xs justify-center",
+              groupBy === "class" && "shadow-xs font-semibold",
+            )}
           >
-            <Layers className="size-3.5" aria-hidden="true" />
+            <Layers className="size-3.5 shrink-0" aria-hidden="true" />
             <span>Por Classe</span>
           </Button>
           <Button
             type="button"
-            variant={groupBy === "sector" ? "solid" : "ghost"}
+            variant={groupBy === "sector" ? "default" : "ghost"}
             size="sm"
             sensoryIntent="selection"
             onClick={() => onGroupByChange("sector")}
             aria-pressed={groupBy === "sector"}
             title="Agrupar posições por Setor"
-            className="h-7 px-2.5 gap-1.5 text-xs"
+            className={cn(
+              "flex-1 sm:flex-initial h-8 sm:h-7 px-2.5 gap-1.5 text-xs justify-center",
+              groupBy === "sector" && "shadow-xs font-semibold",
+            )}
           >
-            <PieChart className="size-3.5" aria-hidden="true" />
+            <PieChart className="size-3.5 shrink-0" aria-hidden="true" />
             <span>Por Setor</span>
           </Button>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap py-0.5 min-w-0 max-w-full">
+        {/* Filtros de classe e encerradas */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end min-w-0">
           {availableClasses.length > 1 ? (
             <>
-              <Button
-                type="button"
-                variant={selectedClass === null ? "solid" : "outline"}
-                size="sm"
-                sensoryIntent="selection"
-                onClick={() => onSelectClass(null)}
-                className="h-7 px-2.5 text-xs shrink-0"
-              >
-                Todas
-              </Button>
-              {availableClasses.map((cls) => {
-                const isSelected = selectedClass === cls;
-                return (
-                  <Button
-                    key={cls}
-                    type="button"
-                    variant={isSelected ? "solid" : "outline"}
-                    size="sm"
-                    sensoryIntent="selection"
-                    onClick={() => onSelectClass(isSelected ? null : cls)}
-                    className="h-7 px-2.5 text-xs shrink-0"
-                  >
-                    {cls}
-                  </Button>
-                );
-              })}
+              {/* Mobile (< sm): Select dropdown nativo e limpo — zero rolagem lateral */}
+              <div className="sm:hidden flex-1 min-w-0">
+                <Select
+                  value={selectedClass ?? "all"}
+                  onValueChange={(val) => onSelectClass(val === "all" ? null : val)}
+                  options={classOptions}
+                  ariaLabel="Filtrar por classe de ativo"
+                  className="h-8 text-xs w-full min-w-0"
+                />
+              </div>
+
+              {/* Desktop (sm+): Chips rápidos */}
+              <div className="hidden sm:flex items-center gap-1.5 flex-wrap">
+                <Button
+                  type="button"
+                  variant={selectedClass === null ? "default" : "outline"}
+                  size="sm"
+                  sensoryIntent="selection"
+                  onClick={() => onSelectClass(null)}
+                  className={cn(
+                    "h-7 px-2.5 text-xs shrink-0",
+                    selectedClass === null && "shadow-xs font-semibold",
+                  )}
+                >
+                  Todas
+                </Button>
+                {availableClasses.map((cls) => {
+                  const isSelected = selectedClass === cls;
+                  return (
+                    <Button
+                      key={cls}
+                      type="button"
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      sensoryIntent="selection"
+                      onClick={() => onSelectClass(isSelected ? null : cls)}
+                      className={cn(
+                        "h-7 px-2.5 text-xs shrink-0",
+                        isSelected && "shadow-xs font-semibold",
+                      )}
+                    >
+                      {cls}
+                    </Button>
+                  );
+                })}
+              </div>
             </>
           ) : null}
 
@@ -126,7 +160,7 @@ export function PositionToolbar({
               size="sm"
               sensoryIntent="selection"
               onClick={onToggleHideClosed}
-              className="h-7 px-2.5 gap-1.5 text-xs shrink-0"
+              className="h-8 sm:h-7 px-2.5 gap-1.5 text-xs shrink-0"
               title={hideClosed ? "Exibir posições zeradas/encerradas" : "Ocultar posições zeradas/encerradas"}
             >
               <span>{hideClosed ? "Ver encerradas" : "Ocultar encerradas"}</span>

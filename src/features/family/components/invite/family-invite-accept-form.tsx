@@ -127,13 +127,13 @@ export function FamilyInviteAcceptForm({
         <div className="pt-1">
           <Button
             type="button"
-            variant="solid"
+            variant="default"
             size="lg"
             sensoryIntent={false}
             loading={isPending}
             disabled={isPending}
             onClick={onSubmit}
-            className="w-full gap-2"
+            className="w-full gap-2 shadow-xs"
           >
             <UserPlus className="size-4" aria-hidden="true" />
             <span>
