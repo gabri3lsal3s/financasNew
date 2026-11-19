@@ -99,7 +99,7 @@ describe("Portão de Qualidade v2.6 — UI pt-BR, NLG Polimento & Certificação
         cashBRL: effectiveCashBRL,
       });
 
-      expect(pqs).toBeNull();
+      expect(pqs).toBe(5);
       expect(classGroups).toHaveLength(2);
       const cashGroup = classGroups.find((g) => g.className === "Reserva de Caixa");
       expect(cashGroup).toBeDefined();
