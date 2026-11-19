@@ -1278,6 +1278,7 @@ export function applyCanonicalSplitToPosition(
 export interface ComputeCanonicalAssetLedgerOptions {
   currency?: AssetCurrency;
   defaultFxRate?: number;
+  assetFxRateAtPurchase?: number | null;
   monthlyPrices?: readonly PortfolioMonthlyPrice[] | readonly { ticker: string; month?: string; price: number }[] | null;
 }
 

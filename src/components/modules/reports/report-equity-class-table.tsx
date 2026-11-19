@@ -34,8 +34,8 @@ export function ReportEquityClassTable({
             <th className="py-1.5 px-1.5 text-right print:w-[7%]">Qtd</th>
             <th className="py-1.5 px-1.5 text-right print:w-[14%]">Preço Médio</th>
             <th className="py-1.5 px-1.5 text-right print:w-[14%]">Cotação</th>
-            <th className="py-1.5 px-2 text-right print:w-[17%]">Total (R$)</th>
-            <th className="py-1.5 px-1.5 text-right print:w-[8%]">Var. Cota</th>
+            <th className="py-1.5 px-2 text-right print:w-[15%]">Total (R$)</th>
+            <th className="py-1.5 px-1.5 text-right print:w-[10%]">Var. Cota</th>
             <th className="py-1.5 px-2.5 text-right print:w-[10%]">Ret. Total</th>
           </tr>
         </thead>
@@ -100,18 +100,21 @@ export function ReportEquityClassTable({
             </td>
             <td
               className={cn(
-                "py-1.5 px-1.5 text-right num font-mono tabular-nums text-[10px] whitespace-nowrap",
+                "py-1.5 px-1.5 text-right num font-mono tabular-nums text-[10px]",
                 subtotalPriceVarPct !== null && subtotalPriceVarPct >= 0
                   ? "text-positive-strong"
                   : "text-negative-strong",
               )}
             >
               {isInternacional && group.subtotalPriceVarPctUSD !== undefined ? (
-                <span>
-                  {formatSignedPct(group.subtotalPriceVarPctUSD)} (USD) / {formatSignedPct(subtotalPriceVarPct)} (BRL)
-                </span>
+                <div className="flex flex-col items-end leading-tight whitespace-nowrap">
+                  <span>{formatSignedPct(group.subtotalPriceVarPctUSD)} (USD)</span>
+                  <span className="text-[9px] text-muted-foreground font-normal">
+                    {formatSignedPct(subtotalPriceVarPct)} (BRL)
+                  </span>
+                </div>
               ) : subtotalPriceVarPct !== null ? (
-                formatSignedPct(subtotalPriceVarPct)
+                <span className="whitespace-nowrap">{formatSignedPct(subtotalPriceVarPct)}</span>
               ) : (
                 "—"
               )}
@@ -132,6 +135,7 @@ export function ReportEquityClassTable({
           <div>
             * <strong>Var. Cota</strong> refere-se à valorização da cota na moeda original (USD).{" "}
             <strong>Ret. Total</strong> consolida oscilação em dólar, variação cambial BRL/USD e proventos creditados.
+            Para ativos cadastrados retroativamente sem câmbio médio de aquisição informado, o custo em BRL é estimado pela PTAX oficial do BCB, refletindo a variação na moeda original mais proventos.
           </div>
           {group.usdRate && group.usdRate > 0 && (
             <div className="font-mono text-[9px] text-muted-foreground/90">
