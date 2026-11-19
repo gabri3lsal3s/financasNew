@@ -516,7 +516,7 @@ describe("Quality Gate 6 — Certificação do Motor de Investimentos Axir (Caso
 
     expect(result.isValid).toBe(true);
     expect(result.errors).toHaveLength(0);
-    expect(result.assertionsCheckedCount).toBe(13);
+    expect(result.assertionsCheckedCount).toBe(14);
   });
 
   it("Gate 6.2 — Invariant Guard bloqueia divergência de Caixa ou Patrimônio Total (Asserção 1 e 2)", () => {

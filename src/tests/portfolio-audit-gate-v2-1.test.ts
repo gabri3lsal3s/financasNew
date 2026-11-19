@@ -166,7 +166,7 @@ describe("Portão de Qualidade v2.1 (Gate v2.1) — Sanidade do Motor Híbrido, 
 
       // No Golden Dataset, Ago/2026 está em carry-forward com TWR = 0,00%
       const validation = PortfolioReportInvariantValidator.validate(payload);
-      expect(validation.assertionsCheckedCount).toBe(13);
+      expect(validation.assertionsCheckedCount).toBe(14);
       expect(validation.isValid).toBe(true);
       const asser13Errors = validation.errors.filter((e) => e.includes("Asserção 13"));
       expect(asser13Errors).toHaveLength(0);

@@ -179,6 +179,8 @@ export interface PortfolioMonthlySeriesPoint {
   valueBRL: number;
   /** Custo total aplicado em BRL. */
   costBRL: number;
+  /** Aporte / fluxo externo líquido de capital apurado no mês em BRL. */
+  netContributionBRL?: number;
   /** Proventos recebidos especificamente neste mês em BRL. */
   monthDividendsBRL: number;
   /** Proventos acumulados até o final deste mês em BRL (anteriores + periódicos). */
@@ -419,8 +421,12 @@ export function buildPortfolioMonthlySeries(params: {
 
   const twrConsolidated = calculateTwrSeries(twrInputs);
   const twrMap = new Map<string, (typeof twrConsolidated.series)[number]>();
+  const twrInputMap = new Map<string, TwrMonthlyInputPoint>();
   for (const pt of twrConsolidated.series) {
     twrMap.set(pt.month, pt);
+  }
+  for (const input of twrInputs) {
+    twrInputMap.set(input.month, input);
   }
 
   const points: PortfolioMonthlySeriesPoint[] = [];
@@ -485,6 +491,7 @@ export function buildPortfolioMonthlySeries(params: {
       month,
       valueBRL,
       costBRL,
+      netContributionBRL: twrInputMap.get(month)?.netExternalCashFlowBRL,
       monthDividendsBRL,
       accumulatedDividendsBRL,
       openingDividendsBalanceBRL: isSegregated ? effectiveOpeningDividendsBRL : undefined,

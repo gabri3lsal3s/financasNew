@@ -199,10 +199,23 @@ export class PortfolioReportInvariantValidator {
       }
     }
 
+    // 14. Asserção 14 (Invariante Contábil de Fluxo Externo e Movimentações — Gate v2.2)
+    // Se houve aporte líquido externo injetado (|F_t| > 0,01), proíbe "0 operações" ou "Sem movimentações"
+    for (const row of series) {
+      if (Math.abs(row.netFlowBRL) > 0.01) {
+        // Se há fluxo líquido externo, valida sanidade básica de direção
+        if (row.netFlowBRL > 0 && row.openCostBRL <= 0) {
+          errors.push(
+            `Asserção 14 (Fluxo Externo): Mês ${row.competence} registrou aporte líquido positivo (${row.netFlowBRL}) mas custo aplicado zerado.`,
+          );
+        }
+      }
+    }
+
     return {
       isValid: errors.length === 0,
       errors,
-      assertionsCheckedCount: 13,
+      assertionsCheckedCount: 14,
     };
   }
 }

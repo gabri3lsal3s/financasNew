@@ -8,10 +8,23 @@ export interface TearSheetMovementStripProps {
 }
 
 export function TearSheetMovementStrip({ monthSummary }: TearSheetMovementStripProps) {
+  const hasExternalFlow =
+    Math.abs(monthSummary.netFlowBRL) > 0.001 ||
+    (monthSummary.externalContributionsBRL != null && monthSummary.externalContributionsBRL > 0) ||
+    (monthSummary.cashDepositsBRL != null && monthSummary.cashDepositsBRL > 0);
+
   const isEmpty =
     monthSummary.buysBRL === 0 &&
     monthSummary.sellsBRL === 0 &&
-    monthSummary.dividendsBRL === 0;
+    monthSummary.dividendsBRL === 0 &&
+    !hasExternalFlow;
+
+  const displayAportes =
+    monthSummary.buysBRL > 0
+      ? monthSummary.buysBRL
+      : monthSummary.netFlowBRL > 0
+        ? monthSummary.netFlowBRL
+        : 0;
 
   return (
     <div className="bg-muted/30 rounded-xl border border-border/80 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs print:bg-surface print:border-border shadow-xs">
@@ -28,7 +41,7 @@ export function TearSheetMovementStrip({ monthSummary }: TearSheetMovementStripP
           <span>
             Aportes:{" "}
             <strong className="text-foreground">
-              <MoneyText cents={numberToCents(monthSummary.buysBRL)} />
+              <MoneyText cents={numberToCents(displayAportes)} />
             </strong>
           </span>
           <span>

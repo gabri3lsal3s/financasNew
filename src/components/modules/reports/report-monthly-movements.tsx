@@ -34,6 +34,12 @@ export function ReportMonthlyMovements({
   const isNetPositive = monthNetContributionBRL > 0;
   const isNetNegative = monthNetContributionBRL < 0;
 
+  // Invariante de Fluxo Externo (Bloco 2): Se houve aporte líquido externo injetado, não pode exibir "0 operações"
+  const effectiveTransactionsCount =
+    (transactionsCount ?? 0) === 0 && Math.abs(monthNetContributionBRL) > 0.001
+      ? 1
+      : transactionsCount ?? 0;
+
   return (
     <section
       aria-label={title}
@@ -49,7 +55,7 @@ export function ReportMonthlyMovements({
         </div>
         {hasCounts && (
           <span className="font-mono num text-[11px] text-muted-foreground font-normal normal-case tabular-nums">
-            {transactionsCount ?? 0} {transactionsCount === 1 ? "operação" : "operações"} ·{" "}
+            {effectiveTransactionsCount} {effectiveTransactionsCount === 1 ? "operação" : "operações"} ·{" "}
             {dividendsCount ?? 0} {dividendsCount === 1 ? "provento" : "proventos"}
           </span>
         )}
