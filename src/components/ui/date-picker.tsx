@@ -16,6 +16,7 @@ export interface DatePickerProps {
   placeholder?: string;
   disabled?: boolean;
   ariaLabel?: string;
+  "aria-label"?: string;
   className?: string;
 }
 
@@ -28,6 +29,7 @@ export function DatePicker({
   placeholder = "Selecione a data",
   disabled,
   ariaLabel,
+  "aria-label": ariaLabelProp,
   className,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
@@ -64,7 +66,7 @@ export function DatePicker({
           <button
             id={id}
             type="button"
-            aria-label={ariaLabel}
+            aria-label={ariaLabel ?? ariaLabelProp}
             className={cn(
               "flex h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-input bg-surface px-3.5 text-base sm:text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
               value && !disabled && "pr-10",

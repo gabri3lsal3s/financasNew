@@ -169,6 +169,8 @@ function QuickTransactionSheetContent({
               orderTotalBRL={form.currentOrderTotalBRL}
               creditCash={form.creditCash}
               onCreditCashChange={form.setCreditCash}
+              recordWithdrawal={form.recordWithdrawal}
+              onRecordWithdrawalChange={form.setRecordWithdrawal}
               fxRateBRL={form.fxRateBRL}
               onFxRateBRLChange={form.setFxRateBRL}
             />
@@ -180,9 +182,11 @@ function QuickTransactionSheetContent({
                 currency={currency}
                 customTaxRatePct={form.customTaxRatePct}
                 customTaxAmountCents={form.customTaxAmountCents}
+                customInitialDate={form.customInitialDate}
                 onCustomTaxChange={(patch) => {
                   if (patch.customTaxRatePct !== undefined) form.setCustomTaxRatePct(patch.customTaxRatePct);
                   if (patch.customTaxAmountCents !== undefined) form.setCustomTaxAmountCents(patch.customTaxAmountCents);
+                  if (patch.customInitialDate !== undefined) form.setCustomInitialDate(patch.customInitialDate);
                 }}
               />
             )}

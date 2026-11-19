@@ -158,4 +158,58 @@ describe("filterPeriodRedemptions — Resgates e Vendas no Período com Deduçã
       finalReturnPct: 14.29,
     });
   });
+
+  it("aplica alíquota regressiva de 15,0% para título com rentabilidade >= 25% mesmo com cadastro recente (Gate v6.2)", () => {
+    const rfAssets = [
+      {
+        id: "asset-selic-31",
+        ticker: "TESOURO-SELIC-31",
+        name: "Tesouro Selic 2031",
+        asset_class: "Renda Fixa",
+        sector: "Pós-fixado (Selic / CDI)",
+        currency: "BRL",
+        average_price: 1500,
+        created_at: "2026-11-01T10:00:00Z", // Data recente de cadastro no app
+        fixed_income_metadata: {
+          rate_type: "selic" as const,
+          rate_value: 100,
+          base_date: "",
+          is_tax_exempt: false,
+          maturity_date: "2031-03-01",
+        },
+      },
+    ];
+
+    const rfTransactions = [
+      {
+        id: "tx-sell-selic-1",
+        asset_id: "asset-selic-31",
+        type: "sell",
+        date: "2026-11-10",
+        quantity: 0.5,
+        price: 2019.02,
+        total: 1009.51, // Lucro bruto ~ R$ 245,60 sobre custo R$ 763,91 (+32,15%)
+        total_cost_brl: 763.91,
+      },
+    ];
+
+    const result = filterPeriodRedemptions({
+      transactions: rfTransactions,
+      assets: rfAssets,
+      mode: "month",
+      month: "2026-11",
+    });
+
+    expect(result).toHaveLength(1);
+    const item = result[0]!;
+    expect(item.ticker).toBe("TESOURO-SELIC-31");
+    expect(item.grossRedeemedValueBRL).toBe(1009.51);
+    expect(item.appliedCostBRL).toBe(763.91);
+    // Lucro bruto: 1009.51 - 763.91 = 245.60 (+32,15% > 25%)
+    // Alíquota DEVE ser 15,0% (IR = R$ 36,84) e NUNCA 22,5% (IR = R$ 55,26)
+    expect(item.taxRatePct).toBe(15.0);
+    expect(item.taxAmountBRL).toBe(36.84);
+    expect(item.redeemedValueBRL).toBe(972.67);
+    expect(item.realizedPnlBRL).toBe(208.76);
+  });
 });

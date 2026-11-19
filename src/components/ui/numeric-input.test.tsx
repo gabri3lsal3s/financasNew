@@ -234,4 +234,159 @@ describe("NumericInput", () => {
     rerender(<NumericInput value={null} placeholder="Ex: 5,2500" />);
     expect(input.value).toBe("");
   });
+
+  describe("modo progressivo (preenchimento da direita para a esquerda)", () => {
+    it("preenche os dígitos da direita para a esquerda com 4 casas decimais", () => {
+      const handleNumberChange = vi.fn();
+      const handleValueChange = vi.fn();
+
+      const { rerender } = render(
+        <NumericInput
+          value={null}
+          progressive
+          decimals={4}
+          onNumberChange={handleNumberChange}
+          onValueChange={handleValueChange}
+          placeholder="Ex: 5,2500"
+        />,
+      );
+
+      const input = screen.getByPlaceholderText("Ex: 5,2500") as HTMLInputElement;
+      expect(input.value).toBe("");
+
+      // 1º dígito: '5' -> 0,0005
+      fireEvent.change(input, { target: { value: "5" } });
+      expect(input.value).toBe("0,0005");
+      expect(handleNumberChange).toHaveBeenCalledWith(0.0005);
+      expect(handleValueChange).toHaveBeenCalledWith("0,0005");
+
+      rerender(
+        <NumericInput
+          value={0.0005}
+          progressive
+          decimals={4}
+          onNumberChange={handleNumberChange}
+          onValueChange={handleValueChange}
+          placeholder="Ex: 5,2500"
+        />,
+      );
+
+      // 2º dígito: '2' -> 0,0052
+      fireEvent.change(input, { target: { value: "0,00052" } });
+      expect(input.value).toBe("0,0052");
+      expect(handleNumberChange).toHaveBeenCalledWith(0.0052);
+
+      rerender(
+        <NumericInput
+          value={0.0052}
+          progressive
+          decimals={4}
+          onNumberChange={handleNumberChange}
+          onValueChange={handleValueChange}
+          placeholder="Ex: 5,2500"
+        />,
+      );
+
+      // 3º dígito: '5' -> 0,0525
+      fireEvent.change(input, { target: { value: "0,00525" } });
+      expect(input.value).toBe("0,0525");
+      expect(handleNumberChange).toHaveBeenCalledWith(0.0525);
+
+      rerender(
+        <NumericInput
+          value={0.0525}
+          progressive
+          decimals={4}
+          onNumberChange={handleNumberChange}
+          onValueChange={handleValueChange}
+          placeholder="Ex: 5,2500"
+        />,
+      );
+
+      // 4º dígito: '0' -> 0,5250
+      fireEvent.change(input, { target: { value: "0,05250" } });
+      expect(input.value).toBe("0,5250");
+      expect(handleNumberChange).toHaveBeenCalledWith(0.525);
+
+      rerender(
+        <NumericInput
+          value={0.525}
+          progressive
+          decimals={4}
+          onNumberChange={handleNumberChange}
+          onValueChange={handleValueChange}
+          placeholder="Ex: 5,2500"
+        />,
+      );
+
+      // 5º dígito: '0' -> 5,2500
+      fireEvent.change(input, { target: { value: "0,52500" } });
+      expect(input.value).toBe("5,2500");
+      expect(handleNumberChange).toHaveBeenCalledWith(5.25);
+    });
+
+    it("recua os dígitos no backspace até limpar para o placeholder", () => {
+      const handleNumberChange = vi.fn();
+      render(
+        <NumericInput
+          value={5.25}
+          progressive
+          decimals={4}
+          onNumberChange={handleNumberChange}
+          placeholder="Ex: 5,2500"
+        />,
+      );
+
+      const input = screen.getByPlaceholderText("Ex: 5,2500") as HTMLInputElement;
+      expect(input.value).toBe("5,2500");
+
+      // Backspace remove o último dígito ('0') -> 0,5250
+      fireEvent.change(input, { target: { value: "5,250" } });
+      expect(input.value).toBe("0,5250");
+      expect(handleNumberChange).toHaveBeenCalledWith(0.525);
+
+      // Backspace até o zero limpa para string vazia
+      fireEvent.change(input, { target: { value: "0,000" } });
+      expect(input.value).toBe("");
+      expect(handleNumberChange).toHaveBeenCalledWith(null);
+    });
+
+    it("suporta colar valor formatado com separador decimal", () => {
+      const handleNumberChange = vi.fn();
+      render(
+        <NumericInput
+          value={null}
+          progressive
+          decimals={4}
+          onNumberChange={handleNumberChange}
+          placeholder="Ex: 5,2500"
+        />,
+      );
+
+      const input = screen.getByPlaceholderText("Ex: 5,2500") as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "5,8234" } });
+      expect(input.value).toBe("5,8234");
+      expect(handleNumberChange).toHaveBeenCalledWith(5.8234);
+    });
+
+    it("bloqueia caracteres não numéricos como letras e vírgulas no keydown", () => {
+      render(
+        <NumericInput
+          value={null}
+          progressive
+          decimals={4}
+          placeholder="Ex: 5,2500"
+        />,
+      );
+
+      const input = screen.getByPlaceholderText("Ex: 5,2500") as HTMLInputElement;
+
+      // fireEvent.keyDown retorna false quando preventDefault foi chamado
+      expect(fireEvent.keyDown(input, { key: "," })).toBe(false);
+      expect(fireEvent.keyDown(input, { key: "." })).toBe(false);
+      expect(fireEvent.keyDown(input, { key: "a" })).toBe(false);
+      expect(fireEvent.keyDown(input, { key: "5" })).toBe(true);
+      expect(fireEvent.keyDown(input, { key: "Backspace" })).toBe(true);
+    });
+  });
 });

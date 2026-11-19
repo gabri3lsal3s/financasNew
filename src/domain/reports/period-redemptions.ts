@@ -3,6 +3,7 @@ import {
   countCalendarDays,
   getFixedIncomeTaxRatePct,
   isFixedIncomeClass,
+  parseFixedIncomeSellNotes,
 } from "@/domain/portfolio";
 
 const round2 = (v: number): number => Math.round(v * 100) / 100;
@@ -35,6 +36,7 @@ export interface PeriodRedemptionTxInput {
   price: number;
   total: number;
   total_cost_brl?: number | null;
+  notes?: string | null;
 }
 
 export interface PeriodRedemptionAssetInput {
@@ -46,7 +48,7 @@ export interface PeriodRedemptionAssetInput {
   currency?: string | null;
   quantity?: number | null;
   average_price?: number | null;
-  fixed_income_metadata?: FixedIncomeMetadata | null;
+  fixed_income_metadata?: Partial<FixedIncomeMetadata> | null;
 }
 
 export interface FilterPeriodRedemptionsParams {
@@ -118,9 +120,26 @@ export function filterPeriodRedemptions(
     const isFixedIncome =
       isFixedIncomeClass(assetClass) || Boolean(asset?.fixed_income_metadata);
 
+    const parsedNotes = parseFixedIncomeSellNotes(tx.notes);
     let appliedNative = 0;
-    if (tx.total_cost_brl != null && tx.total_cost_brl > 0) {
+    let appliedCostBRL: number;
+    let grossProfitBRL: number;
+    let taxAmountBRL = 0;
+    let taxRatePct: number | null = null;
+
+    if (parsedNotes) {
+      appliedCostBRL = round2(parsedNotes.appliedCost);
+      grossProfitBRL = round2(parsedNotes.realizedProfit);
+      taxAmountBRL = round2(parsedNotes.taxAmount);
+      taxRatePct = parsedNotes.taxRatePct;
+    } else if (
+      tx.total_cost_brl != null &&
+      tx.total_cost_brl > 0 &&
+      (!isFixedIncome || tx.total_cost_brl < grossRedeemedValueBRL)
+    ) {
       appliedNative = rate > 0 ? tx.total_cost_brl / rate : tx.total_cost_brl;
+      appliedCostBRL = round2(appliedNative * rate);
+      grossProfitBRL = round2(grossRedeemedValueBRL - appliedCostBRL);
     } else if (isFixedIncome) {
       const fiMeta = asset?.fixed_income_metadata;
       const initialCost =
@@ -144,32 +163,51 @@ export function filterPeriodRedemptions(
       } else {
         appliedNative = redeemedNative;
       }
+      appliedCostBRL = round2(appliedNative * rate);
+      grossProfitBRL = round2(grossRedeemedValueBRL - appliedCostBRL);
     } else if (asset?.average_price && asset.average_price > 0) {
       appliedNative = tx.quantity * asset.average_price;
+      appliedCostBRL = round2(appliedNative * rate);
+      grossProfitBRL = round2(grossRedeemedValueBRL - appliedCostBRL);
     } else if (tx.price > 0 && tx.quantity > 0) {
       appliedNative = tx.quantity * tx.price;
+      appliedCostBRL = round2(appliedNative * rate);
+      grossProfitBRL = round2(grossRedeemedValueBRL - appliedCostBRL);
+    } else {
+      appliedCostBRL = round2(appliedNative * rate);
+      grossProfitBRL = round2(grossRedeemedValueBRL - appliedCostBRL);
     }
 
-    const appliedCostBRL = round2(appliedNative * rate);
-    const grossProfitBRL = round2(grossRedeemedValueBRL - appliedCostBRL);
-
-    let taxAmountBRL = 0;
-    let taxRatePct: number | null = null;
-
-    if (isFixedIncome && grossProfitBRL > 0) {
+    if (isFixedIncome && grossProfitBRL > 0 && taxRatePct === null) {
       const isTaxExempt = Boolean(asset?.fixed_income_metadata?.is_tax_exempt);
       if (!isTaxExempt) {
-        const startDate =
+        const earliestBuyTx = transactions.find(
+          (t) =>
+            t.asset_id === tx.asset_id &&
+            (t.type === "buy" || t.type === "compra" || t.type === "asset_buy") &&
+            t.date <= tx.date,
+        );
+
+        const explicitDate =
           asset?.fixed_income_metadata?.initial_investment_date ||
-          asset?.fixed_income_metadata?.base_date ||
           (tx as unknown as { acquisition_date?: string }).acquisition_date ||
+          (tx as unknown as { application_date?: string }).application_date ||
+          earliestBuyTx?.date;
+
+        const isEstimatedFallbackDate = !explicitDate;
+        const startDate =
+          explicitDate ||
+          asset?.fixed_income_metadata?.base_date ||
           (asset as unknown as { created_at?: string }).created_at?.slice(0, 10);
+
         let daysPassed = 0;
         if (startDate && tx.date) {
           daysPassed = countCalendarDays(startDate, tx.date);
         }
-        // Salvaguarda regressiva para títulos antigos cadastrados retroativamente sem data de início
-        if (daysPassed === 0 && appliedCostBRL > 0) {
+        // Salvaguarda econômica regressiva (Bloco 2 v6 / Bloco 1 v7 / FINANCIAL_MATH_SPEC §4.5):
+        // Quando a data é estimada pelo fallback de created_at ou base_date (sem initial_investment_date real),
+        // títulos antigos cadastrados retroativamente com lucro >= 25% devem aplicar 15,0% (> 720 dias).
+        if (isEstimatedFallbackDate && appliedCostBRL > 0) {
           const retRatio = grossProfitBRL / appliedCostBRL;
           if (retRatio >= 0.25) daysPassed = 721; // > 720 dias -> 15,0%
           else if (retRatio >= 0.15) daysPassed = 365; // 361-720 dias -> 17,5%

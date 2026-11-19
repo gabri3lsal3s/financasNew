@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PortfolioAsset } from "@/types";
 import {
+  buildFixedIncomeSellNotes,
   calculateFixedIncomeRedemptionPreview,
   computeEffectiveTaxRateFromAmount,
   getFixedIncomeCurrentGrossBalance,
@@ -177,5 +178,52 @@ describe("fixed-income-redemption-preview", () => {
     expect(preview?.remainingGrossBalance).toBe(7400);
     expect(preview?.remainingCostBasis).toBe(6577.78);
     expect(preview?.isFullRedemption).toBe(false);
+  });
+
+  it("suporta customInitialDate ajustando a alíquota regressiva e countdown de IR", () => {
+    // Ativo cadastrado originalmente há 85 dias (faixa 22,5%)
+    const assetRecent: PortfolioAsset = {
+      ...baseTesouroAsset,
+      fixed_income_metadata: {
+        ...baseTesouroAsset.fixed_income_metadata!,
+        initial_investment_date: "2026-06-09", // ~85 dias em relação a 2026-09-02 -> 22.5%
+      },
+    };
+
+    const previewDefault = calculateFixedIncomeRedemptionPreview({
+      asset: assetRecent,
+      withdrawGross: 500,
+      date: "2026-09-02",
+    });
+    expect(previewDefault?.taxRatePct).toBe(22.5);
+
+    // Usuário altera customInitialDate para 250 dias atrás (faixa 20,0%)
+    const previewWithCustomDate = calculateFixedIncomeRedemptionPreview({
+      asset: assetRecent,
+      withdrawGross: 500,
+      date: "2026-09-02",
+      customInitialDate: "2025-12-26", // ~250 dias -> 20.0%
+    });
+    expect(previewWithCustomDate?.taxRatePct).toBe(20.0);
+    expect(previewWithCustomDate?.initialInvestmentDate).toBe("2025-12-26");
+    expect(previewWithCustomDate?.isCustomized).toBe(true);
+  });
+
+  it("buildFixedIncomeSellNotes formata nota fiscal discriminada para o ledger", () => {
+    const note = buildFixedIncomeSellNotes({
+      appliedCost: 1749.42,
+      realizedProfit: 273.87,
+      taxAmount: 55.11,
+      taxRatePct: 20.12,
+      netCredit: 1968.18,
+      userNotes: "Venda na XP",
+    });
+
+    expect(note).toContain("Resgate Renda Fixa");
+    expect(note).toContain("Custo baixado: R$ 1749.42");
+    expect(note).toContain("Lucro Realizado: +R$ 273.87");
+    expect(note).toContain("IRRF: -R$ 55.11 (20.1%)");
+    expect(note).toContain("Líquido: R$ 1968.18");
+    expect(note).toContain("Venda na XP");
   });
 });

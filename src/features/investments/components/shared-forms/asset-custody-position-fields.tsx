@@ -206,9 +206,10 @@ export function AssetCustodyPositionFields({
               id={`${idPrefix}-fx-buy`}
               value={fxRateAtPurchase}
               onNumberChange={(val) => onFxRateAtPurchaseChange(val && val > 0 ? val : null)}
+              progressive
+              decimals={4}
               placeholder="Ex: 5,2500"
               aria-label="Câmbio médio de compra em reais"
-              maxDecimals={4}
             />
           </FormField>
         )}

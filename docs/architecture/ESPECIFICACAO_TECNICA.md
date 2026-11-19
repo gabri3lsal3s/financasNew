@@ -1394,6 +1394,34 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
       * `TESOURO-IPCA-32` classificado rigorosamente como `IPCA+` em todos os relatórios através de `resolveFixedIncomeIndexer`.
       * Tabela de subtotal internacional com layout de largura fixa (`table-fixed`), eliminando colisões de valores, e formatação pt-BR estrita em toda a aplicação.
 
+24. **Restauração de SSOT, IR Regressivo Real & Certificação Final de Produção (§v6 — ID BR-20261119-6445)**:
+    - **SSOT de Competência Operacional em Tempo Real & Desacoplamento Cambial Total (Gate v6.1)**:
+      * Eliminação da injeção sintética de `diff` provocada por $\Delta C$ cambial de ativos em USD no hook `usePortfolioMonthlyPosition`.
+      * Sincronização direta de `currentStatement` com `curMonthSeriesPoint`: Dossiê (+0,3%), Extrato (+0,34%) e Relatório Executivo leem rigorosamente o mesmo aporte líquido, P&L do mês e TWR.
+      * Congelamento do custo de referência cambial via `cost_fx_rate_snapshot` e `average_cost_brl` em `evaluatePortfolioCanonicalState`.
+    - **IR Regressivo Fiel com Histórico Real de Lotes & Guardrail Econômico (Gate v6.2)**:
+      * Busca cronológica da primeira ordem de compra (`earliestBuyTx.date`) do ativo no ledger de transações para cálculo fidedigno dos dias decorridos na tabela regressiva.
+      * Salvaguarda de maturidade: títulos soberanos antigos (`TESOURO-SELIC-31`) cadastrados com data estimada recente mas com ganho econômico acumulado $\ge 25\%$ recebem a alíquota de 15,0% ($> 720$ dias), prevenindo retenção indevida de 22,5%.
+      * Subtítulo da tabela de resgates da página 5 explícito (`Competência: <Mês/Ano> (Resgates do Mês)`), segregando os resgates pontuais do mês em relação ao P&L total acumulado da página 1.
+    - **Sanidade de Layout Tipográfico e Tabela de Resgates em PDF (Gate v6.3 & Gate v6.4)**:
+      * Reestruturação das colunas 4 (Valor Resgatado, 18%) e 5 (Resultado Líquido, 20%) na tabela de resgates do Dossiê, posicionando retorno líquido na linha 1 e IR retido na linha 2, eliminando sobreposições e cortes de texto.
+      * Alinhamento numérico com `pr-3` e `pl-2` na tabela de classes patrimoniais sob layout `table-fixed`.
+      * Formatação decimal determinística com vírgula pt-BR (`.replace(".", ",")`) em `formatPercent` e `formatSignedPct`, expurgando resíduos de ponto decimal (`+1.00%` $\to$ `+1,00%`).
+
+25. **Ledger Imutável de Resgates, IR Regressivo Real & Certificação Final de Produção (§v7 — ID BR-20261119-6445)**:
+    - **Ledger Imutável de Resgates de Renda Fixa (Gate v7.1)**:
+      * Segregação estrutural entre `appliedCostBasis` (custo proporcional resgatado baixado na operação) e `preRedemptionHoldingCost` (custo total da posição pré-operação) nos fluxos de submissão rápida (`quick-transaction-submit.ts`), no assistente (`wizard-submit-actions.ts`) e nas mutações do ledger (`use-portfolio-order-mutations.ts`).
+      * Persistência de metadados enriquecidos de venda em `tx.notes` via `buildFixedIncomeSellNotes` e recuperação canônica determinística via `parseFixedIncomeSellNotes`, além do armazenamento exato do custo proporcional em `tx.total_cost_brl`.
+      * Resolução do 3º resgate parcial consecutivo de `TESOURO-SELIC-31` (R$ 2.023,29), computando fielmente custo baixado (R$ 1.749,42), lucro bruto (+R$ 273,87), IR retido (R$ 55,11) e lucro líquido (+R$ 218,76), eliminando o resultado espúrio de R$ 0,00 de lucro.
+      * Garantia de imutabilidade sequencial: o recálculo/replay do ledger no extrato de resgates (`period-redemptions.ts`, `canonical-normalizer.ts`) preserva os resgates 1 e 2 centavo por centavo, sem oscilar retroativamente quando novos resgates parciais ocorrem.
+    - **Preservação de Alíquota Regressiva Real de 15,0% (Gate v7.2)**:
+      * Manutenção da alíquota legal de 15,0% para ativos com holding superior a 720 dias ou cadastrados de forma estimada mas com ganho econômico acumulado expressivo ($\ge 25\%$), sem regredir indevidamente para 22,5%.
+      * Alinhamento textual do Dossiê Anual (Pág. 1) com rótulo "resultado realizado de posições encerradas e resgates", assegurando total clareza contábil.
+    - **Rebalanceamento de Tabela Internacional e Unificação de Metas na Pág. 1 (Gate v7.3)**:
+      * Reestruturação das larguras percentuais da tabela de classes (`report-equity-class-table.tsx`): Ticker 11%, Setor 14%, Qtd 5%, Preço Médio 12% (`whitespace-nowrap`), Cotação 11% (`whitespace-nowrap`), Total 18% com `pr-2.5`, Var. Cota 16% com `pl-2`, Ret. Total 13%. Subtotal com colspan 5 a 53%, erradicando a colisão `R$ 22.588,752,0% (USD)`.
+      * Supressão de quebra de linha de "PREÇO MÉDIO" no cabeçalho das tabelas de FIIs e Ações.
+      * Unificação do percentual de Renda Fixa na Pág. 1 do Dossiê (`build-tear-sheet-model.ts`): a tabela `Target vs. Actual` lê diretamente de `donutData.classSegments`, sincronizando 27,1% tanto no gráfico de rosca quanto na tabela de alocação.
+
 ---
 
 ## ANEXO A — GLOSSÁRIO

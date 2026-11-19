@@ -57,7 +57,7 @@ export function computePeriodInvestmentFlow(params: {
 
   // Se o demonstrativo canônico da competência estiver disponível, ele é a SSOT
   if (monthlyStatement) {
-    const netFlowBRL = monthlyStatement.monthNetContributionBRL;
+    const netFlowBRL = reconciledNetFlowBRL != null ? reconciledNetFlowBRL : monthlyStatement.monthNetContributionBRL;
     const buysBRL =
       monthlyStatement.monthBuysBRL > 0
         ? monthlyStatement.monthBuysBRL

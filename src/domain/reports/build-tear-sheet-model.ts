@@ -112,20 +112,37 @@ export function buildTearSheetModel(params: BuildTearSheetModelParams): TearShee
     })),
   };
 
-  const stackedSegments: TearSheetStackedSegment[] = allocationAnalysis.classGaps.map((cg) => ({
-    key: cg.assetClass,
-    label: cg.assetClass.toUpperCase(),
-    pct: cg.currentPct,
-    color: resolveAssetClassTokenColor(cg.assetClass),
-  }));
+  const normKey = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
+  const classSegmentMap = new Map<string, number>();
+  for (const seg of donutData.classSegments) {
+    classSegmentMap.set(normKey(seg.label), seg.pct);
+    classSegmentMap.set(normKey(seg.key), seg.pct);
+  }
+
+  const stackedSegments: TearSheetStackedSegment[] = allocationAnalysis.classGaps.map((cg) => {
+    const matchedPct = classSegmentMap.get(normKey(cg.assetClass)) ?? cg.currentPct;
+    return {
+      key: cg.assetClass,
+      label: cg.assetClass.toUpperCase(),
+      pct: matchedPct,
+      color: resolveAssetClassTokenColor(cg.assetClass),
+    };
+  });
 
   const allocationRows: TearSheetAllocationRow[] = allocationAnalysis.classGaps.map((cg) => {
     const targetIdealBRL = totalBRL * (cg.targetPct / 100);
     const deviationBRL = Math.round((cg.currentBRL - targetIdealBRL) * 100) / 100;
+    const matchedPct = classSegmentMap.get(normKey(cg.assetClass)) ?? cg.currentPct;
     return {
       assetClass: cg.assetClass,
       currentBRL: cg.currentBRL,
-      currentPct: cg.currentPct,
+      currentPct: matchedPct,
       targetPct: cg.targetPct,
       deviationBRL,
       isDeficit: deviationBRL < -1.0,

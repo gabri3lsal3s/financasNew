@@ -91,6 +91,7 @@ export function useQuickTransactionForm({
   );
   const [buyFundingSource, setBuyFundingSource] = useState<FundingSource>("pocket");
   const [creditCash, setCreditCash] = useState<boolean>(() => (editDividend ? Boolean(editDividend.sync_cash) : true));
+  const [recordWithdrawal, setRecordWithdrawal] = useState<boolean>(true);
   const [splitFromStr, setSplitFromStr] = useState<string>(() =>
     editTransaction?.type === "reverse_split" ? String(editTransaction.quantity) : initialType === "reverse_split" ? "2" : "1",
   );
@@ -101,6 +102,7 @@ export function useQuickTransactionForm({
   const [customAppliedCostCents, setCustomAppliedCostCents] = useState<number | null>(null);
   const [customTaxRatePct, setCustomTaxRatePct] = useState<number | null>(null);
   const [customTaxAmountCents, setCustomTaxAmountCents] = useState<number | null>(null);
+  const [customInitialDate, setCustomInitialDate] = useState<string | null>(null);
   const [fxRateBRL, setFxRateBRL] = useState<number | null>(() => editTransaction?.fx_rate ?? null);
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -173,8 +175,9 @@ export function useQuickTransactionForm({
       appliedCostOverride: appliedCostCents > 0 ? appliedCostCents / 100 : null,
       customTaxRatePct,
       customTaxAmount: customTaxAmountCents !== null ? customTaxAmountCents / 100 : null,
+      customInitialDate,
     });
-  }, [type, targetAsset, totalCents, priceCents, appliedCostCents, date, customTaxRatePct, customTaxAmountCents]);
+  }, [type, targetAsset, totalCents, priceCents, appliedCostCents, date, customTaxRatePct, customTaxAmountCents, customInitialDate]);
 
   const isBusy = recordOrder.isPending || updateTx.isPending || updateDividend.isPending || isSubmitting;
 
@@ -182,6 +185,8 @@ export function useQuickTransactionForm({
     setError(null);
     setCustomTaxRatePct(null);
     setCustomTaxAmountCents(null);
+    setCustomInitialDate(null);
+    setRecordWithdrawal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -190,7 +195,8 @@ export function useQuickTransactionForm({
     const payload = {
       targetAsset, cashAsset, type, date, month, dividendEntryMode, parsedQty, priceCents, totalCents,
       effectiveDividendTotalBRL, isCash: valuation.isCash, isTotalValue: valuation.isTotalValue,
-      isDividendType, isCorporateEvent, computedEventFactor, buyFundingSource, creditCash, usdRate,
+      isDividendType, isCorporateEvent, computedEventFactor, buyFundingSource, creditCash,
+      recordWithdrawal, customInitialDate, usdRate,
       fxRateBRL, appliedCostCents, fiSellResult, editDividend, editTransaction,
       recordOrder: recordOrder.mutateAsync, updateTx: updateTx.mutateAsync, updateDividend: updateDividend.mutateAsync,
     };
@@ -218,9 +224,9 @@ export function useQuickTransactionForm({
     date, setDate, month, setMonth, dividendEntryMode, setDividendEntryMode, dividendCalcMode,
     setDividendCalcMode, perShareCents, setPerShareCents, quantityStr, setQuantityStr, priceCents,
     setPriceCents, totalCents, setTotalCents, buyFundingSource, setBuyFundingSource, creditCash,
-    setCreditCash, splitFromStr, setSplitFromStr, splitToStr, setSplitToStr, error, setError,
+    setCreditCash, recordWithdrawal, setRecordWithdrawal, splitFromStr, setSplitFromStr, splitToStr, setSplitToStr, error, setError,
     appliedCostCents, setCustomAppliedCostCents, customTaxRatePct, setCustomTaxRatePct,
-    customTaxAmountCents, setCustomTaxAmountCents, fxRateBRL, setFxRateBRL, isEditMode, isEditingTransaction, isEditingDividend,
+    customTaxAmountCents, setCustomTaxAmountCents, customInitialDate, setCustomInitialDate, fxRateBRL, setFxRateBRL, isEditMode, isEditingTransaction, isEditingDividend,
     ...valuation, isDividendType, isCorporateEvent, custodyQty, currentOrderTotalBRL, buyPreview,
     sellVariablePreview, currentGrossBalance, fiSellResult, isBusy, resetOnClose, handleSubmit,
   };

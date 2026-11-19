@@ -42,6 +42,8 @@ export interface OrderBuySellFieldsProps {
   orderTotalBRL?: number;
   creditCash?: boolean;
   onCreditCashChange?: (checked: boolean) => void;
+  recordWithdrawal?: boolean;
+  onRecordWithdrawalChange?: (record: boolean) => void;
   fxRateBRL?: number | null;
   onFxRateBRLChange?: (rate: number | null) => void;
   idPrefix: string;
@@ -81,6 +83,8 @@ export function OrderBuySellFields({
   orderTotalBRL = 0,
   creditCash = true,
   onCreditCashChange,
+  recordWithdrawal = true,
+  onRecordWithdrawalChange,
   fxRateBRL,
   onFxRateBRLChange,
   idPrefix,
@@ -215,9 +219,10 @@ export function OrderBuySellFields({
               id={`${idPrefix}-fx-rate`}
               value={fxRateBRL}
               onNumberChange={(val) => onFxRateBRLChange(val && val > 0 ? val : null)}
+              progressive
+              decimals={4}
               placeholder="Ex: 5,8230"
               aria-label={`Cotação da moeda ${currency} em reais`}
-              maxDecimals={4}
             />
           </FormField>
         )}
@@ -245,13 +250,26 @@ export function OrderBuySellFields({
       )}
 
       {!isEditing && isSell && onCreditCashChange && (
-        <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface-raised/60 p-3 text-xs">
+        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface-raised/60 p-3 text-xs">
           <Checkbox
             id={`${idPrefix}-sell-sync-cash`}
             checked={creditCash}
             onCheckedChange={(c) => onCreditCashChange(Boolean(c))}
             label="Creditar o valor líquido da venda diretamente no Caixa da carteira"
           />
+          {!creditCash && onRecordWithdrawalChange && (
+            <div className="pt-2 border-t border-border/60 flex flex-col gap-1">
+              <Checkbox
+                id={`${idPrefix}-sell-record-withdrawal`}
+                checked={recordWithdrawal}
+                onCheckedChange={(c) => onRecordWithdrawalChange(Boolean(c))}
+                label="Registrar como retirada da carteira (expurga a saída no cálculo de TWR)"
+              />
+              <p className="text-[11px] text-muted-foreground pl-6">
+                Neutraliza a redução patrimonial no Retorno Ponderado no Tempo (TWR).
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

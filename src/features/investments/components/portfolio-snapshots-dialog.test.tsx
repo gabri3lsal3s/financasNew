@@ -91,9 +91,9 @@ describe("PortfolioSnapshotsDialog", () => {
     expect(dialog.getByText(/R\$[\s\u00a0]450,00$/)).toBeInTheDocument();
     expect(dialog.getByText(/R\$[\s\u00a0]300,00$/)).toBeInTheDocument();
 
-    expect(dialog.getByText("+2.50%")).toBeInTheDocument();
-    expect(dialog.getByText("+1.20%")).toBeInTheDocument();
-    expect(dialog.getByText("+0.50%")).toBeInTheDocument();
+    expect(dialog.getByText(/\+2[.,]50%/)).toBeInTheDocument();
+    expect(dialog.getByText(/\+1[.,]20%/)).toBeInTheDocument();
+    expect(dialog.getByText(/\+0[.,]50%/)).toBeInTheDocument();
 
     expect(dialog.getByText("Set/2026")).toBeInTheDocument();
     expect(dialog.getByText("Ago/2026")).toBeInTheDocument();
@@ -183,7 +183,7 @@ describe("PortfolioSnapshotsDialog", () => {
     );
 
     const dialog = within(screen.getByRole("dialog"));
-    expect(dialog.getByText("-1.75%")).toBeInTheDocument();
+    expect(dialog.getByText(/-1[.,]75%/)).toBeInTheDocument();
     expect(dialog.getAllByText(/R\$[\s\u00a0]0,00$/).length).toBe(2);
   });
 

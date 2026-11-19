@@ -28,6 +28,9 @@ function mapAsset(row: PortfolioAsset): PortfolioAsset {
     average_price: Number(row.average_price ?? 0),
     accumulated_dividends: Number(row.accumulated_dividends ?? 0),
     estimated_monthly_dividend_per_share: Number(row.estimated_monthly_dividend_per_share ?? 0),
+    total_cost_brl: row.total_cost_brl != null ? Number(row.total_cost_brl) : null,
+    average_cost_brl: row.average_cost_brl != null ? Number(row.average_cost_brl) : null,
+    fx_rate_at_purchase: row.fx_rate_at_purchase != null ? Number(row.fx_rate_at_purchase) : null,
     score: row.score != null ? Number(row.score) : null,
     allocation_status: row.allocation_status ?? "active",
     score_criteria: row.score_criteria ?? {},
@@ -43,6 +46,8 @@ function mapTransaction(row: PortfolioTransaction): PortfolioTransaction {
     quantity: Number(row.quantity),
     price: Number(row.price),
     total: Number(row.total),
+    total_cost_brl: row.total_cost_brl != null ? Number(row.total_cost_brl) : null,
+    fx_rate: row.fx_rate != null ? Number(row.fx_rate) : null,
   };
 }
 

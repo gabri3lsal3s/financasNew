@@ -42,7 +42,7 @@ export function ReportRedemptionsTable({
         </div>
         {periodLabel ? (
           <div className="text-[11px] font-normal text-muted-foreground font-mono num">
-            Período: {periodLabel}
+            Competência: {periodLabel} (Resgates do Mês)
           </div>
         ) : null}
       </div>
@@ -51,11 +51,11 @@ export function ReportRedemptionsTable({
         <table className="w-full min-w-[580px] print:min-w-0 text-left text-xs border-collapse print:table-fixed">
           <thead>
             <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-              <th className="py-1.5 px-3 print:w-[32%] w-[32%]">Título / Ativo</th>
-              <th className="py-1.5 px-2 print:w-[24%] w-[24%]">Classe / Categoria</th>
+              <th className="py-1.5 px-3 print:w-[28%] w-[28%]">Título / Ativo</th>
+              <th className="py-1.5 px-2 print:w-[20%] w-[20%]">Classe / Categoria</th>
               <th className="py-1.5 px-2 text-center print:w-[14%] w-[14%]">Data Resgate</th>
-              <th className="py-1.5 px-3 text-right print:w-[16%] w-[16%]">Valor Resgatado</th>
-              <th className="py-1.5 px-3 text-right print:w-[14%] w-[14%]">Resultado Líquido</th>
+              <th className="py-1.5 px-3 text-right print:w-[18%] w-[18%] pr-3">Valor Resgatado</th>
+              <th className="py-1.5 px-3 text-right print:w-[20%] w-[20%] pl-2">Resultado Líquido</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/80">
@@ -82,32 +82,32 @@ export function ReportRedemptionsTable({
                   <td className="py-2 px-2 text-center num font-mono text-muted-foreground text-[11px] whitespace-nowrap tabular-nums">
                     {formatDateBR(item.redemptionDate)}
                   </td>
-                  <td className="py-2 px-3 text-right num font-mono text-foreground font-bold text-[11px] whitespace-nowrap tabular-nums">
-                    <div>
-                      <MoneyText cents={numberToCents(item.redeemedValueBRL)} tone="default" />
-                    </div>
-                    {item.taxAmountBRL > 0 ? (
-                      <span className="block text-[10px] font-normal text-muted-foreground font-mono tracking-tight mt-0.5">
-                        IR: −<MoneyText cents={numberToCents(item.taxAmountBRL)} tone="default" className="inline text-[10px]" /> ({item.taxRatePct !== null ? `${formatPercent(item.taxRatePct)}%` : "0%"})
-                      </span>
-                    ) : null}
+                  <td className="py-2 px-3 text-right num font-mono text-foreground font-bold text-[11px] whitespace-nowrap tabular-nums pr-3">
+                    <MoneyText cents={numberToCents(item.redeemedValueBRL)} tone="default" />
                   </td>
-                  <td className="py-2 px-3 text-right num font-mono font-bold text-[11px] whitespace-nowrap tabular-nums">
-                    <div>
+                  <td className="py-2 px-3 text-right num font-mono font-bold text-[11px] whitespace-nowrap tabular-nums pl-2">
+                    <div className="flex items-center justify-end gap-1.5 flex-wrap">
                       <MoneyText
                         cents={numberToCents(item.realizedPnlBRL)}
                         tone={isPositive ? "positive" : "negative"}
                         sign="explicit"
                       />
+                      {item.finalReturnPct !== null ? (
+                        <span
+                          className={cn(
+                            "text-[10px] font-bold font-mono tracking-tight",
+                            isPositive ? "text-positive-strong" : "text-negative-strong",
+                          )}
+                        >
+                          ({formatSignedPct(item.finalReturnPct, 1)} líq.)
+                        </span>
+                      ) : null}
                     </div>
-                    <span
-                      className={cn(
-                        "block text-[10px] font-bold font-mono tracking-tight mt-0.5",
-                        isPositive ? "text-positive-strong" : "text-negative-strong",
-                      )}
-                    >
-                      {item.finalReturnPct !== null ? `${formatSignedPct(item.finalReturnPct, 1)} líq.` : "—"}
-                    </span>
+                    {item.taxAmountBRL > 0 ? (
+                      <span className="block text-[10px] font-normal text-muted-foreground font-mono tracking-tight mt-0.5">
+                        IR retido: −<MoneyText cents={numberToCents(item.taxAmountBRL)} tone="default" className="inline text-[10px]" /> ({item.taxRatePct !== null ? `${formatPercent(item.taxRatePct)}%` : "15,0%"})
+                      </span>
+                    ) : null}
                   </td>
                 </tr>
               );

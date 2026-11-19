@@ -115,7 +115,7 @@ export function TearSheetExecutiveNarrative({
       em proventos recebidos*
       {Math.abs(model.effectiveRealizedGainBRL) >= 0.01 ? (
         <>
-          . Somado ao resultado {model.effectiveRealizedGainBRL >= 0 ? "bruto realizado" : "realizado"} de posições encerradas (
+          . Somado ao resultado realizado de posições encerradas e resgates (
           <MoneyText
             cents={numberToCents(model.effectiveRealizedGainBRL)}
             tone={model.effectiveRealizedGainBRL >= 0 ? "positive" : "negative"}

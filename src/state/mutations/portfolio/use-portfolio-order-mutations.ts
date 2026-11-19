@@ -40,12 +40,18 @@ export interface RecordOrderParams {
   fxRateBRL?: number;
   /** Custo original aplicado na compra/lote resgatado (especialmente relevante para Renda Fixa). */
   appliedCostBasis?: number;
+  /** Custo total da posição antes do resgate (custo pré-operação). Se omitido, deriva de initial_investment_value ou average_price. */
+  preRedemptionHoldingCost?: number;
   /** Valor de IRRF retido na fonte customizado pelo usuário (em moeda nativa / BRL). */
   customTaxAmount?: number;
   /** Alíquota de IR informada/customizada pelo usuário (em %). */
   customTaxRatePct?: number;
   /** Valor líquido a ser creditado em Caixa (após todas as deduções de IRRF/taxas). */
   netCreditAmount?: number;
+  /** Registrar como retirada da carteira em portfolio_contributions caso não credite Caixa (blinda o TWR). */
+  recordWithdrawal?: boolean;
+  /** Data da primeira aplicação informada/corrigida pelo usuário no resgate (Marco Zero de IR). */
+  customInitialInvestmentDate?: string | null;
 }
 
 /**
@@ -77,8 +83,11 @@ export function useRecordOrder() {
         usdRate,
         fxRateBRL,
         appliedCostBasis,
+        preRedemptionHoldingCost,
         customTaxAmount,
         netCreditAmount,
+        recordWithdrawal,
+        customInitialInvestmentDate,
       } = params;
 
       // Impede ordens de mercado (compra/venda/provento) diretas sobre o ativo de Caixa
@@ -90,14 +99,13 @@ export function useRecordOrder() {
 
       const rate = asset.currency === "USD" ? (fxRateBRL ?? usdRate ?? 5.25) : 1;
       const totalBRL = Math.round(total * rate * 100) / 100;
+      const isCash = isCashAssetClass(asset.asset_class);
+      const pricingMode = getAssetPricingMode(asset);
+      const isTotalValue = !isCash && pricingMode === "total_value";
 
       // 1. Se for Venda: antes de gravar a venda, verifica se o ativo tem compras anteriores no ledger.
       // Se não tiver (ativo cadastrado direto pelo form sem compra explícita), grava a compra inicial com o custo de aquisição.
       if (type === "sell") {
-        const isCash = isCashAssetClass(asset.asset_class);
-        const pricingMode = getAssetPricingMode(asset);
-        const isTotalValue = !isCash && pricingMode === "total_value";
-
         const currentCost =
           asset.quantity > 1 && asset.average_price > 0
             ? Math.round(asset.quantity * asset.average_price * 100) / 100
@@ -121,10 +129,12 @@ export function useRecordOrder() {
           const existingTxs = await listPortfolioTransactions(asset.id);
           const hasPriorBuy = existingTxs.some((t) => t.type === "buy" || t.type === "subscription");
           if (!hasPriorBuy) {
-            const initialDate =
+            const initialDate = (
+              customInitialInvestmentDate ||
               asset.fixed_income_metadata?.initial_investment_date ||
               asset.fixed_income_metadata?.base_date ||
-              date;
+              date
+            ).slice(0, 10);
 
             await createTx.mutateAsync({
               asset_id: asset.id,
@@ -138,6 +148,30 @@ export function useRecordOrder() {
         }
       }
 
+      // Determinação de total_cost_brl na transação:
+      // Para compra: custo total em BRL (totalBRL = total * fx_rate)
+      // Para venda de Renda Fixa / Valor Completo: custo de aquisição da parcela resgatada (SSOT P&L / Gate v5)
+      let txTotalCostBRL = totalBRL;
+      if (type === "sell" && isTotalValue) {
+        if (appliedCostBasis !== undefined && appliedCostBasis > 0) {
+          txTotalCostBRL = appliedCostBasis;
+        } else {
+          const effectiveAppliedCost =
+            asset.fixed_income_metadata?.initial_investment_value !== undefined &&
+            asset.fixed_income_metadata?.initial_investment_value !== null &&
+            asset.fixed_income_metadata.initial_investment_value > 0
+              ? asset.fixed_income_metadata.initial_investment_value
+              : asset.quantity > 1 && asset.average_price > 0
+                ? Math.round(asset.quantity * asset.average_price * 100) / 100
+                : asset.average_price > 0
+                  ? asset.average_price
+                  : (asset.fixed_income_metadata?.base_value ?? asset.quantity);
+          const currentGross = asset.fixed_income_metadata?.base_value ?? effectiveAppliedCost;
+          const prop = currentGross > 0 ? Math.min(1, total / currentGross) : 1;
+          txTotalCostBRL = Math.round(effectiveAppliedCost * prop * 100) / 100;
+        }
+      }
+
       // 2. Grava a transação atual no ledger de transações (na moeda nativa do ativo)
       await createTx.mutateAsync({
         asset_id: asset.id,
@@ -146,8 +180,9 @@ export function useRecordOrder() {
         quantity,
         price,
         total,
+        notes: notes ?? undefined,
         fx_rate: asset.currency === "USD" ? rate : undefined,
-        total_cost_brl: totalBRL,
+        total_cost_brl: txTotalCostBRL,
       });
 
       // 3. Se for Compra ou Subscrição: atualiza o Preço Médio ponderado e quantidade
@@ -278,8 +313,8 @@ export function useRecordOrder() {
           });
         } else if (isTotalValue) {
           const effectiveAppliedCost =
-            appliedCostBasis !== undefined && appliedCostBasis > 0
-              ? appliedCostBasis
+            preRedemptionHoldingCost !== undefined && preRedemptionHoldingCost > 0
+              ? preRedemptionHoldingCost
               : asset.fixed_income_metadata?.initial_investment_value !== undefined &&
                 asset.fixed_income_metadata?.initial_investment_value !== null &&
                 asset.fixed_income_metadata.initial_investment_value > 0
@@ -339,7 +374,7 @@ export function useRecordOrder() {
               : Math.max(0, Math.round((grossBalance - orderAmount) * 100) / 100);
             remainingCost = isFullRedemption
               ? 0
-              : Math.max(0, Math.round(effectiveAppliedCost * (1 - proportion) * 100) / 100);
+              : Math.max(0, Math.round((effectiveAppliedCost - txTotalCostBRL) * 100) / 100);
           } else {
             const currentGrossBalance =
               asset.quantity > 0 && asset.average_price > 0 && asset.quantity !== 1
@@ -359,7 +394,7 @@ export function useRecordOrder() {
               : Math.max(0, Math.round((effectiveGross - orderAmount) * 100) / 100);
             remainingCost = isFullRedemption
               ? 0
-              : Math.max(0, Math.round(effectiveAppliedCost * (1 - proportion) * 100) / 100);
+              : Math.max(0, Math.round((effectiveAppliedCost - txTotalCostBRL) * 100) / 100);
           }
 
           const updatedFiMetadata: FixedIncomeMetadata | null =
@@ -367,6 +402,7 @@ export function useRecordOrder() {
               ? {
                   ...asset.fixed_income_metadata,
                   base_date: asset.fixed_income_metadata.base_date,
+                  ...(customInitialInvestmentDate ? { initial_investment_date: customInitialInvestmentDate.slice(0, 10) } : {}),
                   base_value: isFullRedemption
                     ? null
                     : Math.max(
@@ -426,6 +462,14 @@ export function useRecordOrder() {
               currency: "BRL",
             });
           }
+        } else if (!syncCash && recordWithdrawal && netCreditBRL > 0) {
+          // Registra retirada de recursos em portfolio_contributions quando o recurso não for para o Caixa (blinda o TWR)
+          await createContrib.mutateAsync({
+            amount: -netCreditBRL,
+            date,
+            asset_id: asset.id,
+            notes: notes ? `[Retirada] ${notes}` : `Retirada de recursos em ${asset.ticker}`,
+          });
         }
       }
 

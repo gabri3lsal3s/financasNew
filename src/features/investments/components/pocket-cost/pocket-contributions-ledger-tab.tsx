@@ -2,6 +2,7 @@ import { useMemo, type RefObject } from "react";
 import { AlertCircle, Calendar, Pencil, Trash2 } from "lucide-react";
 import { Badge, Button, EmptyState, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
+import { formatSignedPct } from "@/services/masks";
 import {
   cleanContributionNotes,
   extractExplicitRateFromNotes,
@@ -184,7 +185,7 @@ export function PocketContributionsLedgerTab(props: PocketContributionsLedgerTab
                         ) : null}
                         {explicitRate !== null ? (
                           <Badge variant={explicitRate >= 0 ? "positive" : "negative"} size="xs" className="font-mono">
-                            {explicitRate >= 0 ? `+${explicitRate}%` : `${explicitRate}%`}
+                            {formatSignedPct(explicitRate, 2)}
                           </Badge>
                         ) : null}
                       </div>

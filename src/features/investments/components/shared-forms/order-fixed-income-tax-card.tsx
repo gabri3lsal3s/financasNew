@@ -11,9 +11,11 @@ export interface OrderFixedIncomeTaxCardProps {
   currency?: AssetCurrency;
   customTaxRatePct?: number | null;
   customTaxAmountCents?: number | null;
+  customInitialDate?: string | null;
   onCustomTaxChange: (patch: {
     customTaxRatePct?: number | null;
     customTaxAmountCents?: number | null;
+    customInitialDate?: string | null;
   }) => void;
   showCashCredit?: boolean;
   idPrefix: string;
@@ -24,6 +26,7 @@ export function OrderFixedIncomeTaxCard({
   currency = "BRL",
   customTaxRatePct = null,
   customTaxAmountCents = null,
+  customInitialDate = null,
   onCustomTaxChange,
   showCashCredit = true,
   idPrefix,
@@ -126,6 +129,7 @@ export function OrderFixedIncomeTaxCard({
         currency={currency}
         customTaxRatePct={customTaxRatePct}
         customTaxAmountCents={customTaxAmountCents}
+        customInitialDate={customInitialDate}
         onCustomTaxChange={onCustomTaxChange}
         idPrefix={idPrefix}
       />

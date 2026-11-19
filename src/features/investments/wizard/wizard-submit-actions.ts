@@ -1,4 +1,6 @@
 import {
+  buildFixedIncomeSellNotes,
+  calculateFixedIncomeRedemptionPreview,
   classifyAssetValuation,
   computeDividendTotalFromMode,
   resolveEffectiveSplitFactor,
@@ -67,6 +69,30 @@ export async function executeWizardSubmit(
   if (state.mode === "sell") {
     if (!state.selectedAsset) throw new Error("Selecione um ativo");
     const finalTotal = isTotalValue ? (total > 0 ? total : price) : parsedQty * price;
+
+    const fiPreview = isTotalValue
+      ? calculateFixedIncomeRedemptionPreview({
+          asset: state.selectedAsset,
+          withdrawGross: finalTotal,
+          date: state.date,
+          appliedCostOverride: state.appliedCostCents > 0 ? state.appliedCostCents / 100 : null,
+          customTaxRatePct: state.customTaxRatePct,
+          customTaxAmount: state.customTaxAmountCents != null ? state.customTaxAmountCents / 100 : null,
+        })
+      : null;
+
+    const resolvedNotes =
+      fiPreview
+        ? buildFixedIncomeSellNotes({
+            appliedCost: fiPreview.appliedCostBasis,
+            realizedProfit: fiPreview.realizedProfit,
+            taxAmount: fiPreview.taxAmount,
+            taxRatePct: fiPreview.taxRatePct,
+            netCredit: fiPreview.netCredit,
+            userNotes: state.notes,
+          })
+        : state.notes;
+
     await deps.recordOrder({
       asset: state.selectedAsset,
       type: "sell",
@@ -76,11 +102,13 @@ export async function executeWizardSubmit(
       total: finalTotal,
       syncCash: state.syncCash,
       cashAsset,
-      notes: state.notes,
+      notes: resolvedNotes,
       usdRate,
-      appliedCostBasis: isTotalValue && state.appliedCostCents > 0 ? state.appliedCostCents / 100 : undefined,
-      customTaxAmount: isTotalValue && state.customTaxAmountCents != null ? state.customTaxAmountCents / 100 : undefined,
-      customTaxRatePct: isTotalValue && state.customTaxRatePct != null ? state.customTaxRatePct : undefined,
+      appliedCostBasis: fiPreview ? fiPreview.appliedCostBasis : undefined,
+      preRedemptionHoldingCost: isTotalValue && state.appliedCostCents > 0 ? state.appliedCostCents / 100 : undefined,
+      customTaxAmount: fiPreview ? fiPreview.taxAmount : state.customTaxAmountCents != null ? state.customTaxAmountCents / 100 : undefined,
+      customTaxRatePct: fiPreview ? fiPreview.taxRatePct : state.customTaxRatePct != null ? state.customTaxRatePct : undefined,
+      netCreditAmount: fiPreview ? fiPreview.netCredit : undefined,
     });
     return;
   }

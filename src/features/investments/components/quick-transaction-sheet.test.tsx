@@ -117,6 +117,32 @@ describe("QuickTransactionSheet (Fase 41 / Plano 42)", () => {
     expect(screen.getByText("Ajuste Fiscal Manual (Nota de Corretagem)")).toBeInTheDocument();
     expect(screen.getByLabelText(/Alíquota personalizada de imposto de renda/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Valor de imposto de renda retido na fonte/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Data da Aplicação Original/i)).toBeInTheDocument();
+  });
+
+  it("ao desmarcar creditCash em modo venda exibe opção de registrar retirada da carteira para TWR", async () => {
+    const user = userEvent.setup();
+    render(
+      <QuickTransactionSheet
+        open={true}
+        asset={mockTesouroAsset}
+        initialType="sell"
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    const creditCashCheckbox = screen.getByLabelText(/Creditar o valor líquido da venda diretamente no Caixa da carteira/i);
+    expect(creditCashCheckbox).toBeInTheDocument();
+    expect(creditCashCheckbox).toBeChecked();
+
+    // Desmarca Creditar no Caixa
+    await user.click(creditCashCheckbox);
+    expect(creditCashCheckbox).not.toBeChecked();
+
+    // Sub-checkbox de retirada da carteira para TWR deve aparecer
+    const recordWithdrawalCheckbox = screen.getByLabelText(/Registrar como retirada da carteira \(expurga a saída no cálculo de TWR\)/i);
+    expect(recordWithdrawalCheckbox).toBeInTheDocument();
+    expect(recordWithdrawalCheckbox).toBeChecked();
   });
 
   it("suporta proporção livre X:Y em Grupamento e Desdobro/Bonificação preservando custo total", async () => {

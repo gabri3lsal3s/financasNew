@@ -267,42 +267,30 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
       };
     });
 
-    // Invariante de Fluxo Externo (Bloco 2 / FINANCIAL_MATH_SPEC §4.2):
-    // F_t = Delta C_total quando não há alienações granulares com PnL realizado.
-    // Concilia alterações na reserva de caixa com o fluxo externo apurado.
-    const prevCost =
-      prevSnapshot && prevSnapshot.total_cost !== undefined && prevSnapshot.total_cost !== null
-        ? Number(prevSnapshot.total_cost) || 0
-        : 0;
-    const deltaCost = Math.round((currentPos.totalCostBRL - prevCost) * 100) / 100;
-
-    let netExternalCashFlowOverride: number | undefined;
-    if (prevCost > 0 && Math.abs(deltaCost) >= 0.01) {
-      if (currentExternalFlows.length === 0) {
-        netExternalCashFlowOverride = deltaCost;
-      } else {
-        const flowsSum = Math.round(currentExternalFlows.reduce((acc, f) => acc + f.amount, 0) * 100) / 100;
-        const diff = Math.round((deltaCost - flowsSum) * 100) / 100;
-        if (Math.abs(diff) >= 0.01) {
-          currentExternalFlows.push({
-            date: `${month}-01`,
-            amount: diff,
-            notes: "[Ajuste de Reserva de Caixa / Aporte]",
-          });
-        }
-      }
-    }
+    // Modalidade B: Invariante Contábil de Fluxo Externo (Bloco 1 v6 / FINANCIAL_MATH_SPEC §4.2)
+    // Em competências operacionais vivas (mês corrente MTD), o aporte líquido injetado (F_t)
+    // deriva ESTRITAMENTE dos eventos reais do ledger e aportes externos do bolso,
+    // nunca sendo sobrescrito ou contaminado por Delta C bruto cambial ou ajustes sintéticos.
+    const curMonthSeriesPoint = currentPos.monthlySeries?.find((p) => p.month === month);
 
     const currentStatement = calculateMonthlyStatement({
       month,
       startBalanceBRL: prevStartBalance,
       endBalanceBRL: currentPos.totalBRL,
       externalFlows: currentExternalFlows,
-      netExternalCashFlowBRL: netExternalCashFlowOverride,
       dividends: currentDividends,
       transactions: currentTransactions,
-      explicitRatePct: explicitRateCurrent,
+      explicitRatePct: explicitRateCurrent ?? curMonthSeriesPoint?.twrMonthPct ?? null,
     });
+
+    if (curMonthSeriesPoint?.netContributionBRL != null) {
+      currentStatement.monthNetContributionBRL = curMonthSeriesPoint.netContributionBRL;
+      currentStatement.monthNetPnlBRL =
+        Math.round((currentPos.totalBRL - prevStartBalance - curMonthSeriesPoint.netContributionBRL) * 100) / 100;
+      if (curMonthSeriesPoint.twrMonthPct != null) {
+        currentStatement.monthRatePct = curMonthSeriesPoint.twrMonthPct;
+      }
+    }
 
     // Mapeia usePortfolioPosition para a estrutura unificada PointInTimeResult
     const mappedCurrentResult: PointInTimeResult = {

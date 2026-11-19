@@ -432,9 +432,12 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
         const candidateCostBRL = round2(asset.total_cost_brl);
         // Salvaguarda cambial v5: detecção de custo USD corrompido em BRL (< 3.5x) restaurando PTAX histórica
         const isCorrupted = totalCost > 0 && candidateCostBRL < totalCost * 3.5;
+        const snapshotRate = (asset as unknown as { cost_fx_rate_snapshot?: number }).cost_fx_rate_snapshot;
         const purchaseRate = asset.fx_rate_at_purchase && asset.fx_rate_at_purchase > 1
           ? asset.fx_rate_at_purchase
-          : effectiveUsdRate;
+          : snapshotRate && snapshotRate > 1
+            ? snapshotRate
+            : effectiveUsdRate;
         totalCostBRL = isCorrupted ? round2(totalCost * purchaseRate) : candidateCostBRL;
         averageCostBRL = quantity > 0
           ? (asset.average_cost_brl && asset.average_cost_brl >= averageCost * 3.5 && !isCorrupted
@@ -444,6 +447,13 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
       } else if (asset.fx_rate_at_purchase != null && asset.fx_rate_at_purchase > 0) {
         totalCostBRL = round2(totalCost * asset.fx_rate_at_purchase);
         averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
+      } else if ((asset as unknown as { cost_fx_rate_snapshot?: number }).cost_fx_rate_snapshot != null && (asset as unknown as { cost_fx_rate_snapshot?: number }).cost_fx_rate_snapshot! > 0) {
+        const snapRate = (asset as unknown as { cost_fx_rate_snapshot?: number }).cost_fx_rate_snapshot!;
+        totalCostBRL = round2(totalCost * snapRate);
+        averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
+      } else if (asset.average_cost_brl != null && asset.average_cost_brl > 0) {
+        totalCostBRL = round2(quantity * asset.average_cost_brl);
+        averageCostBRL = asset.average_cost_brl;
       } else {
         totalCostBRL = round2(totalCost * (asset.fx_rate_at_purchase ?? effectiveUsdRate));
         averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
@@ -984,9 +994,12 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
         const ratio = baseCostNative > 0 ? totalCostNative / baseCostNative : 1;
         const candidateCostBRL = round2(asset.total_cost_brl * ratio);
         const isCorrupted = totalCostNative > 0 && candidateCostBRL < totalCostNative * 3.5;
+        const snapshotRate = (asset as unknown as { cost_fx_rate_snapshot?: number }).cost_fx_rate_snapshot;
         const purchaseRate = asset.fx_rate_at_purchase && asset.fx_rate_at_purchase > 1
           ? asset.fx_rate_at_purchase
-          : effectiveUsdRate;
+          : snapshotRate && snapshotRate > 1
+            ? snapshotRate
+            : effectiveUsdRate;
         totalCostBRL = isCorrupted
           ? round2(totalCostNative * purchaseRate)
           : candidateCostBRL;
@@ -994,6 +1007,13 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       } else if (asset.fx_rate_at_purchase != null && asset.fx_rate_at_purchase > 0) {
         totalCostBRL = round2(totalCostNative * asset.fx_rate_at_purchase);
         averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
+      } else if ((asset as unknown as { cost_fx_rate_snapshot?: number }).cost_fx_rate_snapshot != null && (asset as unknown as { cost_fx_rate_snapshot?: number }).cost_fx_rate_snapshot! > 0) {
+        const snapRate = (asset as unknown as { cost_fx_rate_snapshot?: number }).cost_fx_rate_snapshot!;
+        totalCostBRL = round2(totalCostNative * snapRate);
+        averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
+      } else if (asset.average_cost_brl != null && asset.average_cost_brl > 0) {
+        totalCostBRL = round2(quantity * asset.average_cost_brl);
+        averageCostBRL = asset.average_cost_brl;
       } else {
         totalCostBRL = round2(totalCostNative * (asset.fx_rate_at_purchase ?? effectiveUsdRate));
         averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;

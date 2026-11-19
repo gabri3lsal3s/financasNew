@@ -33,6 +33,7 @@ import type {
 import { countCalendarDays } from "./business-days";
 import { isDividendType } from "./dividends";
 import { getFixedIncomeTaxRatePct } from "./fixed-income";
+import { parseFixedIncomeSellNotes } from "./fixed-income-redemption-preview";
 import { isHistoricalWithdrawal } from "./irr";
 import { cleanContributionNotes, extractExplicitRateFromNotes } from "./statement-parser";
 import { FALLBACK_USD_RATE, isCashAssetClass } from "./valuation";
@@ -1409,37 +1410,52 @@ export function computeCanonicalAssetLedger(
         const fiMeta = options.fixedIncomeMetadata;
         const redeemedBRL = round2(rawTotal > 0 ? rawTotal : rawQty * (rawPrice > 0 ? rawPrice : 1));
 
+        const parsedNotes = parseFixedIncomeSellNotes(tx.notes);
         let costBasisBRL: number;
-        if (tx.total_cost_brl != null && Number(tx.total_cost_brl) > 0 && Number(tx.total_cost_brl) <= redeemedBRL) {
-          costBasisBRL = round2(Number(tx.total_cost_brl));
-        } else {
-          const initialCost = fiMeta?.initial_investment_value ?? (runningCostBRL > 0 ? runningCostBRL : runningCost);
-          const currentGross = fiMeta?.base_value ?? (runningQty > 0 && rawPrice > 0 ? runningQty * rawPrice : initialCost);
-          const effectiveGross = Math.max(redeemedBRL, currentGross > 0 ? currentGross : initialCost);
-          const costRatio = effectiveGross > 0 ? Math.min(1, initialCost / effectiveGross) : 1;
-          costBasisBRL = round2(redeemedBRL * costRatio);
-        }
-        const grossProfitBRL = Math.max(0, round2(redeemedBRL - costBasisBRL));
-
+        let grossProfitBRL: number;
         let taxAmountBRL = 0;
-        if (!fiMeta?.is_tax_exempt && grossProfitBRL > 0) {
-          const startDate = fiMeta?.initial_investment_date || fiMeta?.base_date;
-          let daysPassed = 0;
-          if (startDate && tx.date) {
-            daysPassed = countCalendarDays(startDate, tx.date);
+
+        if (parsedNotes) {
+          costBasisBRL = round2(parsedNotes.appliedCost);
+          grossProfitBRL = round2(parsedNotes.realizedProfit);
+          taxAmountBRL = round2(parsedNotes.taxAmount);
+        } else {
+          if (
+            tx.total_cost_brl != null &&
+            Number(tx.total_cost_brl) > 0 &&
+            Number(tx.total_cost_brl) < redeemedBRL
+          ) {
+            costBasisBRL = round2(Number(tx.total_cost_brl));
+          } else {
+            const initialCost = fiMeta?.initial_investment_value ?? (runningCostBRL > 0 ? runningCostBRL : runningCost);
+            const currentGross = fiMeta?.base_value ?? (runningQty > 0 && rawPrice > 0 ? runningQty * rawPrice : initialCost);
+            const effectiveGross = Math.max(redeemedBRL, currentGross > 0 ? currentGross : initialCost);
+            const costRatio = effectiveGross > 0 ? Math.min(1, initialCost / effectiveGross) : 1;
+            costBasisBRL = round2(redeemedBRL * costRatio);
           }
-          if (daysPassed === 0 && costBasisBRL > 0) {
-            const retRatio = grossProfitBRL / costBasisBRL;
-            if (retRatio >= 0.25) daysPassed = 721;
-            else if (retRatio >= 0.15) daysPassed = 365;
-            else if (retRatio >= 0.08) daysPassed = 181;
+          grossProfitBRL = Math.max(0, round2(redeemedBRL - costBasisBRL));
+
+          if (!fiMeta?.is_tax_exempt && grossProfitBRL > 0) {
+            const explicitDate = fiMeta?.initial_investment_date;
+            const isEstimatedFallbackDate = !explicitDate;
+            const startDate = explicitDate || fiMeta?.base_date;
+            let daysPassed = 0;
+            if (startDate && tx.date) {
+              daysPassed = countCalendarDays(startDate, tx.date);
+            }
+            if ((daysPassed === 0 || isEstimatedFallbackDate) && costBasisBRL > 0) {
+              const retRatio = grossProfitBRL / costBasisBRL;
+              if (retRatio >= 0.25) daysPassed = 721;
+              else if (retRatio >= 0.15) daysPassed = 365;
+              else if (retRatio >= 0.08) daysPassed = 181;
+            }
+            const taxRatePct = getFixedIncomeTaxRatePct(
+              daysPassed,
+              false,
+              fiMeta?.manual_tax_rate_pct,
+            );
+            taxAmountBRL = round2(grossProfitBRL * (taxRatePct / 100));
           }
-          const taxRatePct = getFixedIncomeTaxRatePct(
-            daysPassed,
-            false,
-            fiMeta?.manual_tax_rate_pct,
-          );
-          taxAmountBRL = round2(grossProfitBRL * (taxRatePct / 100));
         }
 
         const netRealizedPnlBRL = round2(grossProfitBRL - taxAmountBRL);

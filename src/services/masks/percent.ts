@@ -13,11 +13,11 @@ const percentFormatter = new Intl.NumberFormat("pt-BR", {
 /** 12.345 -> "12,3" · 3 -> "3,0" (pt-BR, padrão 1 casa decimal). */
 export function formatPercent(value: number, fractionDigits = 1): string {
   if (!Number.isFinite(value)) return fractionDigits === 2 ? "0,00" : "0,0";
-  if (fractionDigits === 1) return percentFormatter.format(value);
+  if (fractionDigits === 1) return percentFormatter.format(value).replace(".", ",");
   return new Intl.NumberFormat("pt-BR", {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
-  }).format(value);
+  }).format(value).replace(".", ",");
 }
 
 const signedFormatter = new Intl.NumberFormat("pt-BR", {
@@ -42,7 +42,7 @@ export function formatSignedPct(value: number | null, fractionDigits = 1): strin
           minimumFractionDigits: fractionDigits,
           maximumFractionDigits: fractionDigits,
         });
-  const formatted = formatter.format(value);
+  const formatted = formatter.format(value).replace(".", ",");
   if (formatted === "-0,0" || formatted === "0,0" || formatted === "-0,00" || formatted === "0,00") {
     return fractionDigits === 2 ? "0,00%" : "0,0%";
   }

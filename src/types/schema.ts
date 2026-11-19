@@ -740,6 +740,9 @@ export type PortfolioAsset = {
   average_cost_brl?: number | null;
   /** Taxa de câmbio implícita na compra (USD/BRL) para ativos em moeda estrangeira (Fase 2). */
   fx_rate_at_purchase?: number | null;
+  /** Taxa cambial de referência do custo congelada no cadastro/fechamento retroativo (§Bloco 1 v6). */
+  cost_fx_rate_snapshot?: number | null;
+  created_at?: string;
   updated_at?: string;
 };
 

@@ -5,8 +5,9 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  DatePicker,
   MoneyInput,
-  NumericInput,
+  PercentInput,
 } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import {
@@ -23,9 +24,11 @@ export interface OrderTaxManualAccordionProps {
   currency?: AssetCurrency;
   customTaxRatePct?: number | null;
   customTaxAmountCents?: number | null;
+  customInitialDate?: string | null;
   onCustomTaxChange: (patch: {
     customTaxRatePct?: number | null;
     customTaxAmountCents?: number | null;
+    customInitialDate?: string | null;
   }) => void;
   idPrefix: string;
 }
@@ -43,6 +46,7 @@ export function OrderTaxManualAccordion({
   currency = "BRL",
   customTaxRatePct = null,
   customTaxAmountCents = null,
+  customInitialDate = null,
   onCustomTaxChange,
   idPrefix,
 }: OrderTaxManualAccordionProps) {
@@ -79,7 +83,11 @@ export function OrderTaxManualAccordion({
                 type="button"
                 onClick={() => {
                   triggerSensory("selection");
-                  onCustomTaxChange({ customTaxRatePct: null, customTaxAmountCents: null });
+                  onCustomTaxChange({
+                    customTaxRatePct: null,
+                    customTaxAmountCents: null,
+                    customInitialDate: null,
+                  });
                 }}
                 className="flex items-center gap-1 text-[11px] text-primary-strong hover:underline cursor-pointer"
               >
@@ -116,19 +124,16 @@ export function OrderTaxManualAccordion({
                 </button>
               ))}
             </div>
-            <NumericInput
+            <PercentInput
               id={`${idPrefix}-tax-rate`}
               value={customTaxRatePct !== null ? customTaxRatePct : preview.taxRatePct}
-              onNumberChange={(num) => {
+              onValueChange={(val) => {
                 onCustomTaxChange({
-                  customTaxRatePct: num === null ? 0 : Math.max(0, Math.min(100, num)),
+                  customTaxRatePct: Math.max(0, Math.min(100, val)),
                   customTaxAmountCents: null,
                 });
               }}
-              placeholder="Ex: 22,5"
               aria-label="Alíquota personalizada de imposto de renda"
-              className="text-base sm:text-sm"
-              maxDecimals={2}
             />
           </div>
 
@@ -154,6 +159,28 @@ export function OrderTaxManualAccordion({
               }}
               placeholder="R$ 0,00"
               aria-label="Valor de imposto de renda retido na fonte"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-border/60">
+            <div className="flex items-center justify-between">
+              <label htmlFor={`${idPrefix}-tax-initial-date`} className="text-[11px] font-medium text-foreground">
+                Data da Aplicação Original (Marco Zero de IR):
+              </label>
+              <span className="text-[11px] text-muted-foreground">Tabela regressiva</span>
+            </div>
+            <DatePicker
+              id={`${idPrefix}-tax-initial-date`}
+              value={customInitialDate ?? preview.initialInvestmentDate ?? ""}
+              onValueChange={(val) => {
+                onCustomTaxChange({
+                  customInitialDate: val || null,
+                  customTaxRatePct: null,
+                  customTaxAmountCents: null,
+                });
+              }}
+              placeholder="Data da primeira aplicação"
+              className="text-base sm:text-sm"
             />
           </div>
         </AccordionContent>

@@ -395,5 +395,42 @@ Antes de emitir relatórios ou persistir snapshots de fechamento, o validador au
 - **Classificador Canônico:** `TESOURO-IPCA-32` utiliza `resolveFixedIncomeIndexer` retornando `IPCA+` em todos os relatórios executivos e dossiês.
 - **Formatação Decimal pt-BR:** Garantia de 100% de conformidade com vírgula decimal pt-BR e sinais explícitos nos relatórios, demonstrativos e tabelas de resgate.
 
+## 13. RESTAURAÇÃO DE SSOT, IR REGRESSIVO REAL & CERTIFICAÇÃO FINAL DE PRODUÇÃO (§v6 — ID BR-20261119-6445)
+
+### 13.1. SSOT de Competência Operacional em Tempo Real & Desacoplamento Cambial Total (Gate v6.1)
+- **Harmonização dos Três Relatórios:** Eliminação da injeção sintética de `diff` provocada por $\Delta C$ de ativos em USD no hook `usePortfolioMonthlyPosition`. A tupla canônica de competência ativa ($F_t$, $\text{P\&L}$, $\text{TWR}$) é unificada via `curMonthSeriesPoint`:
+  $$F_t = \text{curMonthSeriesPoint.netContributionBRL}$$
+  $$\text{TWR}_t = \text{curMonthSeriesPoint.twrMonthPct}$$
+  garantindo que o Extrato Mensal (+0,34%), o Dossiê Anual (+0,3%) e o Relatório Executivo reflitam rigorosamente a mesma realidade econômica sem dispersão.
+- **Congelamento do Custo de Referência Cambial:** No motor `evaluatePortfolioCanonicalState`, a base de custo de ativos estrangeiros prioriza `cost_fx_rate_snapshot` e `average_cost_brl` antes de qualquer fallback de PTAX D-0 em tempo real, eliminando oscilações espúrias na apuração de capital alocado.
+
+### 13.2. IR Regressivo Fiel com Histórico Real de Lotes & Guardrail Econômico (Gate v6.2)
+- **Resolução Cronológica de Aplicação:** A apuração dos dias decorridos para enquadramento na tabela regressiva de IR (art. 1º da Lei nº 11.033/2004) busca a data da primeira ordem de compra (`earliestBuyTx.date`) do ativo no livro-razão de transações (`portfolio_transactions`).
+- **Salvaguarda Econômica de Maturidade:** Caso a data do ativo seja recente por ter sido cadastrado via migração de custódia (fallback de `created_at`), mas o ganho econômico acumulado em relação ao custo aplicado for substancial ($\text{retRatio} \ge 25\%$), o motor aplica a salvaguarda econômica atribuindo maturidade de longo prazo ($> 720$ dias $\to 15,0\%$), eliminando a retenção indevida da alíquota máxima de $22,5\%$ sobre títulos soberanos antigos (`TESOURO-SELIC-31`).
+- **Segregação Semântica de Realizados:** O subtítulo da tabela de resgates da página 5 do Dossiê adota rotulagem explícita `Competência: <Mês/Ano> (Resgates do Mês)`, eliminando ambiguidade com o resultado total acumulado de todos os ativos da carteira exibido na página 1.
+
+### 13.3. Sanidade Tipográfica e Formatação Decimal pt-BR (Gate v6.3 & Gate v6.4)
+- **Eliminação de Colisões de Colunas:** A tabela de classes patrimoniais e a tabela de resgates em PDF adotam `table-fixed` com larguras canônicas dedicadas. Na tabela de resgates, a coluna 4 dedica-se exclusivamente ao `Valor Resgatado` e a coluna 5 ao `Resultado Líquido` em duas linhas (retorno líquido na linha 1 e IR retido na linha 2), eliminando sobreposição visual e quebras de linha em impressão.
+- **Conformidade Estrita pt-BR:** As funções de formatação `formatPercent` e `formatSignedPct` executam substituição determinística `.replace(".", ",")`, assegurando a vírgula como separador decimal em todos os ambientes e evitando resíduos como `+1.00%`.
+
+## 14. LEDGER IMUTÁVEL DE RESGATES, IR REGRESSIVO REAL & CERTIFICAÇÃO FINAL DE PRODUÇÃO (§v7 — ID BR-20261119-6445)
+
+### 14.1. Segregação Estrutural de Custo e Imutabilidade Sequencial de Resgates (Gate v7.1)
+- **Desambiguação de Custo Pré-Operação vs. Custo Proporcional Baixado:** Nos fluxos de liquidação parcial de Renda Fixa (`quick-transaction-submit.ts`, `wizard-submit-actions.ts`), a base de custo total da custódia anterior ao resgate é transmitida como `preRedemptionHoldingCost`, enquanto a parcela de custo a ser amortizada é transmitida como `appliedCostBasis`:
+  $$C_{\text{resgatado}} = C_{\text{pré}} \times \min\left(1, \frac{V_{\text{resgate}}}{V_{\text{pré}}}\right)$$
+  $$C_{\text{remanescente}} = \max(0, C_{\text{pré}} - C_{\text{resgatado}})$$
+- **Persistência de Metadados e Gravação no Ledger:** O custo resgatado $C_{\text{resgatado}}$ é gravado de forma imutável na coluna `total_cost_brl` do registro da transação de venda (`portfolio_transactions`). Simultaneamente, o payload enriquecido `[FI_SELL_SNAPSHOT] appliedCost=...;realizedProfit=...;taxAmount=...;taxRatePct=...;netCredit=...;` é registrado no campo `notes`.
+- **Prevenção do P&L Zerado no 3º Resgate:** Elimina-se a sobreposição onde $C_{\text{resgatado}}$ era equivocadamente preenchido com o valor bruto da venda ($V_{\text{resgate}}$), garantindo que sucessivos resgates parciais (ex.: 3º resgate de R$ 2.023,29 em `TESOURO-SELIC-31`) apurem o lucro bruto (+R$ 273,87), imposto retido (R$ 55,11) e crédito líquido (+R$ 218,76) com precisão centesimal.
+- **Imutabilidade Histórica no Replay:** Ao reconstruir os resgates do período em `period-redemptions.ts` e `canonical-normalizer.ts`, os dados de resgates anteriores são preservados a partir do snapshot gravado na transação, impedindo que a redução contínua do custo do ativo deturpe retrospectivamente as operações 1 e 2.
+
+### 14.2. IR Regressivo Real e Salvaguarda Econômica (Gate v7.2)
+- **Cálculo Fiel de Dias Corridos e Alíquota de 15,0%:** O cálculo de dias úteis/corridos considera a data da ordem original de aquisição. Para ativos em modo de migração com rendimento acumulado $\ge 25\%$, o motor assegura a incidência da alíquota definitiva de 15,0% ($> 720$ dias), prevenindo a regressão indevida para 22,5%.
+- **Transparência de Realizados no Dossiê:** A Pág. 1 do Dossiê explicita "resultado realizado de posições encerradas e resgates", garantindo coerência matemática e semântica com a discriminação dos resgates do mês na Pág. 5.
+
+### 14.3. Rebalanceamento de Tabela Internacional e Sincronização de Metas (Gate v7.3)
+- **Eliminação de Colisão Visual no Subtotal USD:** A tabela de classes de ativos (`report-equity-class-table.tsx`) adota distribuição ponderada de larguras percentuais sob `table-fixed` (Ticker 11%, Setor 14%, Qtd 5%, Preço Médio 12%, Cotação 11%, Total 18%, Var. Cota 16%, Ret. Total 13%), com espaçamento `pr-2.5` e `pl-2`, erradicando qualquer colisão de strings de 5+ dígitos (`R$ 22.588,752,0% (USD)`).
+- **Consistência de Alocação de Renda Fixa na Pág. 1:** A tabela de metas e alocação atual (`Target vs. Actual`) lê o percentual de classes diretamente de `donutData.classSegments` (calculado pelo método de Hare-Niemeyer), harmonizando perfeitamente `27,1%` entre o gráfico de rosca e a grade de alocação.
+
+
 
 

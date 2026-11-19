@@ -13,7 +13,7 @@ import {
 } from "./use-portfolio-mutations";
 import * as repo from "@/data/repositories/portfolio";
 import * as rpc from "@/data/rpc";
-import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction } from "@/types";
+import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction, PortfolioContribution } from "@/types";
 
 vi.mock("@/data/rpc", () => ({
   approveDividendsBatchRpc: vi.fn(),
@@ -549,6 +549,124 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
         expect.objectContaining({
           type: "sell",
           total: 1600,
+        }),
+      );
+    });
+
+    it("em resgate de Renda Fixa persiste appliedCostBasis em total_cost_brl no ledger", async () => {
+      vi.mocked(repo.listPortfolioTransactions).mockResolvedValue([
+        { id: "tx-buy-1", asset_id: "rf-td-1", type: "buy", date: "2024-01-01", quantity: 1, price: 6119.93, total: 6119.93 } as PortfolioTransaction,
+      ]);
+      vi.mocked(repo.createPortfolioTransaction).mockResolvedValue({ id: "tx-sell-1" } as unknown as PortfolioTransaction);
+      vi.mocked(repo.updatePortfolioAsset).mockResolvedValue({ id: "rf-td-1" } as unknown as PortfolioAsset);
+
+      const mockFiAsset: PortfolioAsset = {
+        id: "rf-td-1",
+        user_id: "u-1",
+        ticker: "Tesouro Selic 2031",
+        asset_class: "Tesouro Direto",
+        quantity: 1,
+        average_price: 6119.93,
+        currency: "BRL",
+        fixed_income_metadata: {
+          base_value: 7077.98,
+          base_date: "2026-11-19",
+          initial_investment_value: 6119.93,
+          initial_investment_date: "2024-01-01",
+          rate_type: "selic",
+          rate_value: 100,
+          is_tax_exempt: false,
+        },
+      };
+
+      const { result } = renderHook(() => useRecordOrder(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          asset: mockFiAsset,
+          type: "sell",
+          date: "2026-11-19",
+          quantity: 1,
+          price: 2023.29,
+          total: 2023.29,
+          appliedCostBasis: 1749.42,
+          customTaxAmount: 55.11,
+          netCreditAmount: 1968.18,
+          syncCash: true,
+          cashAsset: mockCashAsset,
+        });
+      });
+
+      expect(repo.createPortfolioTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "sell",
+          total: 2023.29,
+          total_cost_brl: 1749.42, // SSOT P&L: custo baixado proporcional e NÃO o valor bruto da venda!
+        }),
+      );
+    });
+
+    it("em resgate com syncCash=false e recordWithdrawal=true registra retirada negativa em portfolio_contributions", async () => {
+      vi.mocked(repo.listPortfolioTransactions).mockResolvedValue([
+        { id: "tx-buy-1", asset_id: "rf-td-1", type: "buy", date: "2024-01-01", quantity: 1, price: 6119.93, total: 6119.93 } as PortfolioTransaction,
+      ]);
+      vi.mocked(repo.createPortfolioTransaction).mockResolvedValue({ id: "tx-sell-1" } as unknown as PortfolioTransaction);
+      vi.mocked(repo.createPortfolioContribution).mockResolvedValue({ id: "contrib-retirada" } as unknown as PortfolioContribution);
+      vi.mocked(repo.updatePortfolioAsset).mockResolvedValue({ id: "rf-td-1" } as unknown as PortfolioAsset);
+
+      const mockFiAsset: PortfolioAsset = {
+        id: "rf-td-1",
+        user_id: "u-1",
+        ticker: "Tesouro Selic 2031",
+        asset_class: "Tesouro Direto",
+        quantity: 1,
+        average_price: 6119.93,
+        currency: "BRL",
+        fixed_income_metadata: {
+          base_value: 7077.98,
+          base_date: "2026-11-19",
+          initial_investment_value: 6119.93,
+          initial_investment_date: "2024-01-01",
+          rate_type: "selic",
+          rate_value: 100,
+          is_tax_exempt: false,
+        },
+      };
+
+      const { result } = renderHook(() => useRecordOrder(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          asset: mockFiAsset,
+          type: "sell",
+          date: "2026-11-19",
+          quantity: 1,
+          price: 2023.29,
+          total: 2023.29,
+          appliedCostBasis: 1749.42,
+          customTaxAmount: 55.11,
+          netCreditAmount: 1968.18,
+          syncCash: false,
+          recordWithdrawal: true,
+          customInitialInvestmentDate: "2023-06-15",
+        });
+      });
+
+      // Deve ter criado contribuição negativa para expurgar a saída de capital no TWR!
+      expect(repo.createPortfolioContribution).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: -1968.18,
+          date: "2026-11-19",
+        }),
+      );
+
+      // Deve ter atualizado a data inicial do ativo com a customInitialInvestmentDate
+      expect(repo.updatePortfolioAsset).toHaveBeenCalledWith(
+        "rf-td-1",
+        expect.objectContaining({
+          fixed_income_metadata: expect.objectContaining({
+            initial_investment_date: "2023-06-15",
+          }),
         }),
       );
     });

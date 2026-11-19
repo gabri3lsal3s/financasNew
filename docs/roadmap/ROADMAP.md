@@ -7514,3 +7514,54 @@ flowchart TD
 > - **Posições Ativas e Sinal de Fluxo (`valuation.ts`, `money-text.tsx`, `TearSheetMovementStrip.tsx`):** Unificação do filtro `getActiveCustodyPositions` em todos os relatórios garantindo exatamente 62 ativos ativos e 20 títulos de RF (excluindo títulos zerados/vencidos); sinal negativo ASCII `-` preservado em impressão PDF;
 > - **Classificador Soberano de Indexador & Higienização de Rótulos (`tickers-catalog.ts`, `fixed-income.ts`, `position-grouping.ts`):** Prevalência soberana de indexador para `TESOURO-IPCA-32` como `Inflação (IPCA+)` antes de fallbacks de formulário; supressão de ruídos de `"0% a.a."` e `"IPCA + 0% a.a."`; alerta não-bloqueante de quedas de custo retroativo anômalas;
 > - **Qualidade e Testes:** Suite `src/tests/portfolio-audit-gate-v4.test.ts` 10/10 aprovada; 831 testes de portfólio e relatórios aprovados; TypeScript e ESLint com zero erros.
+
+---
+
+### Fase 111 — Certificação de Produção v5 do Motor de Investimentos Axir (§v5 — ID BR-20261119-6445)
+
+> **Status:** Concluída e Auditada — **Congelamento Cambial de Custo, SSOT de Realizados e Resoluções Soberanas**:
+> - **Invariância Cambial do Custo e Fim do Aporte Fantasma via PTAX (Gate v5.1):** Custo histórico em BRL (`total_cost_brl`) congelado deterministicamente na taxa da data da transação (`fx_rate_at_purchase`), nunca sofrendo reavaliação diária pela PTAX D-0. O aporte líquido injetado ($F_t$) em competências operacionais vivas decorre estritamente dos eventos do ledger, eliminando substituição por $\Delta C$ bruto e garantindo que altas do dólar reflitam puramente em valorização patrimonial e ganho econômico/TWR.
+> - **SSOT de Realizados, Baixa Proporcional de Renda Fixa e Tabela Regressiva (Gate v5.2):** Narrativa da página 1 do Dossiê e Card 4 unificados com a tabela de resgates da página 5 decorrendo do motor proporcional de baixa de custo ($C_{\text{baixado}} = C_{\text{pré}} \times \min(1, V_{\text{resgate}} / V_{\text{pré}})$). Persistência de custo residual em operações de resgate no banco e tabela regressiva de IR de Renda Fixa considerando datas reais de aplicação ($22,5\%$ a $15,0\%$).
+> - **Sanidade Cambial de Lotes USD e Saneamento de SPHQ (Gate v5.3):** Salvaguarda curando automaticamente lotes estrangeiros corrompidos com razão de custo $< 3,5$, eliminando distorções de retorno (+85,5%) e bloqueando salvamentos com taxa cambial inválida ($\le 1,0$).
+> - **Unicidade de Classificador e Polimento pt-BR (Gate v5.4):** `TESOURO-IPCA-32` classificado rigorosamente como `IPCA+` em todos os relatórios através de `resolveFixedIncomeIndexer`. Tabela de subtotal internacional com layout de largura fixa (`table-fixed`), eliminando colisões de valores, e formatação pt-BR estrita em toda a aplicação.
+> - **Qualidade e Testes:** Suite `src/tests/portfolio-audit-gate-v5.test.ts` 5/5 aprovada; 100% dos testes de regressão anteriores preservados verdes.
+
+---
+
+### Fase 112 — Restauração de SSOT, IR Regressivo Real & Certificação Final de Produção (§v6 — ID BR-20261119-6445)
+
+> **Status:** Concluída e Auditada — **Harmonização Total dos Três Relatórios, Tributação Real de Renda Fixa e Certificação Final de Produção**:
+> - **SSOT de Competência Operacional em Tempo Real & Desacoplamento Cambial Total (Gate v6.1):**
+>   - Eliminação da injeção sintética de `diff` de fluxo externo derivado de $\Delta C$ de ativos em USD em `usePortfolioMonthlyPosition`.
+>   - Sincronização direta de `currentStatement` com `curMonthSeriesPoint`, garantindo que Dossiê (+0,3%), Extrato (+0,34%) e Relatório Executivo leiam rigorosamente a mesma tupla canônica (Aporte Líquido $F_t$, Resultado do Mês P&L e Retorno TWR).
+>   - Congelamento do custo de referência cambial via `cost_fx_rate_snapshot` e `average_cost_brl` em `evaluatePortfolioCanonicalState`.
+> - **IR Regressivo Fiel com Histórico Real de Lotes & Guardrail Econômico (Gate v6.2):**
+>   - Busca cronológica da primeira ordem de compra (`earliestBuyTx.date`) do ativo no ledger de transações para cálculo fidedigno dos dias decorridos.
+>   - Salvaguarda econômica de maturidade: títulos soberanos antigos (`TESOURO-SELIC-31`) cadastrados com data recente/estimada mas com ganhos acumulados substanciais ($\ge 25\%$) recebem automaticamente a faixa legal de 15,0% ($> 720$ dias), prevenindo retenção indevida de 22,5%.
+>   - Rotulagem inequívoca do subtítulo da tabela de resgates da página 5 (`Competência: <Mês/Ano> (Resgates do Mês)`) segregando os resgates pontuais do mês em relação ao P&L total acumulado da página 1.
+> - **Sanidade de Layout Tipográfico e Tabela de Resgates em PDF (Gate v6.3 & Gate v6.4):**
+>   - Reestruturação das colunas 4 (Valor Resgatado, 18%) e 5 (Resultado Líquido, 20%) na tabela de resgates do Dossiê, posicionando retorno líquido na linha 1 e IR retido na linha 2, eliminando sobreposições e cortes de texto.
+>   - Alinhamento numérico com `pr-3` e `pl-2` na tabela de classes patrimoniais sob layout `table-fixed`.
+>   - Formatação decimal determinística com vírgula pt-BR (`.replace(".", ",")`) em `formatPercent` e `formatSignedPct`, expurgando resíduos de ponto decimal (`+1.00%` $\to$ `+1,00%`).
+> - **Qualidade e Testes:** Suite `src/tests/portfolio-audit-gate-v6.test.ts` 6/6 aprovada; 16 suites de auditoria de investimentos (152 testes) 100% verdes; TypeScript, ESLint e build de produção sem erros; APK Release compilado e publicado no Cloudflare R2.
+
+---
+
+### Fase 113 — Certificação Final de Produção Axir v7 (§v7 — ID BR-20261119-6445)
+
+> **Status:** Concluída e Auditada — **Ledger Imutável de Resgates Realizados, Alíquota de 15,0% Preservada, Unificação de Percentuais da Pág. 1 e Tabela Internacional sem Colisões (Score 98+/100)**:
+> - **Ledger Imutável de Resgates de Renda Fixa e Fim do Lucro R$ 0,00 (Gate v7.1):**
+>   - Segregação rigorosa de `preRedemptionHoldingCost` (custo total da custódia anterior ao resgate) e `appliedCostBasis` (custo proporcional a ser abatido no resgate) nos fluxos de submissão rápida (`quick-transaction-submit.ts`), assistente (`wizard-submit-actions.ts`) e mutações (`use-portfolio-order-mutations.ts`).
+>   - Persistência imutável do custo baixado na coluna `total_cost_brl` da transação de venda e dos metadados enriquecidos em `notes` via `buildFixedIncomeSellNotes` / `parseFixedIncomeSellNotes`.
+>   - Resolução definitiva do 3º resgate parcial consecutivo de `TESOURO-SELIC-31` (R$ 2.023,29), apurando fielmente custo baixado (R$ 1.749,42), lucro bruto (+R$ 273,87), IR retido (R$ 55,11) e lucro líquido (+R$ 218,76), eliminando o resultado espúrio de R$ 0,00 de lucro.
+>   - Imutabilidade sequencial estrita: o recálculo/replay do ledger em `period-redemptions.ts` e `canonical-normalizer.ts` preserva os resgates 1 e 2 centavo por centavo, sem oscilar retroativamente quando novos resgates parciais ocorrem.
+> - **Preservação de Alíquota Regressiva Real de 15,0% & Transparência Textual (Gate v7.2):**
+>   - Manutenção da alíquota legal de 15,0% para ativos com holding superior a 720 dias ou cadastrados de forma estimada mas com ganho econômico acumulado expressivo ($\ge 25\%$), sem regredir indevidamente para 22,5%.
+>   - Alinhamento textual do Dossiê Anual (Pág. 1) com rótulo "resultado realizado de posições encerradas e resgates", assegurando total clareza contábil.
+> - **Rebalanceamento de Tabela Internacional e Unificação de Metas na Pág. 1 (Gate v7.3):**
+>   - Reestruturação das larguras percentuais da tabela de classes (`report-equity-class-table.tsx`): Ticker 11%, Setor 14%, Qtd 5%, Preço Médio 12% (`whitespace-nowrap`), Cotação 11% (`whitespace-nowrap`), Total 18% com `pr-2.5`, Var. Cota 16% com `pl-2`, Ret. Total 13%. Subtotal com colspan 5 a 53%, erradicando a colisão `R$ 22.588,752,0% (USD)`.
+>   - Supressão de quebra de linha de "PREÇO MÉDIO" no cabeçalho das tabelas de FIIs e Ações.
+>   - Unificação do percentual de Renda Fixa na Pág. 1 do Dossiê (`build-tear-sheet-model.ts`): a tabela `Target vs. Actual` lê diretamente de `donutData.classSegments`, sincronizando 27,1% tanto no gráfico de rosca quanto na tabela de alocação.
+> - **Qualidade e Testes:** Suite `src/tests/portfolio-audit-gate-v7.test.ts` 4/4 aprovada; 17 suites de auditoria de investimentos (156 testes) 100% verdes; TypeScript, ESLint e build de produção sem erros; APK Release compilado e publicado no Cloudflare R2.
+
+

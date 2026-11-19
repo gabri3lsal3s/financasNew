@@ -1,6 +1,6 @@
 import { numberToCents } from "@/domain/money";
 import { resolveDividendDate, resolveDividendNote, type DividendEntryMode } from "@/domain/portfolio/dividends";
-import type { FixedIncomeRedemptionPreviewResult } from "@/domain/portfolio";
+import { buildFixedIncomeSellNotes, type FixedIncomeRedemptionPreviewResult } from "@/domain/portfolio";
 import { getErrorMessage } from "@/services/errors";
 import { formatCentsAsBRL } from "@/services/masks";
 import { pushToast } from "@/services/toast";
@@ -25,6 +25,8 @@ export interface QuickTransactionSubmitParams {
   computedEventFactor: number;
   buyFundingSource: FundingSource;
   creditCash: boolean;
+  recordWithdrawal?: boolean;
+  customInitialDate?: string | null;
   usdRate: number;
   fxRateBRL?: number | null;
   appliedCostCents: number;
@@ -52,13 +54,16 @@ export interface RecordOrderMutationArg {
   syncCash: boolean;
   cashAsset: PortfolioAsset | null;
   recordContribution: boolean;
+  recordWithdrawal?: boolean;
   notes?: string;
   usdRate: number;
   fxRateBRL?: number;
   appliedCostBasis?: number;
+  preRedemptionHoldingCost?: number;
   customTaxAmount?: number;
   customTaxRatePct?: number;
   netCreditAmount?: number;
+  customInitialInvestmentDate?: string | null;
 }
 
 export function validateQuickTransactionInput(p: QuickTransactionSubmitParams): {
@@ -167,13 +172,32 @@ export async function executeQuickTransactionSubmit(
     const resolvedDate = p.isDividendType
       ? resolveDividendDate(p.dividendEntryMode, p.dividendEntryMode === "monthly" ? p.month : p.date)
       : p.date;
-    const resolvedNotes = p.isDividendType ? resolveDividendNote(p.dividendEntryMode, "", p.type) : undefined;
+    const resolvedNotes = p.isDividendType
+      ? resolveDividendNote(p.dividendEntryMode, "", p.type)
+      : p.type === "sell" && p.isTotalValue && p.fiSellResult
+        ? buildFixedIncomeSellNotes({
+            appliedCost: p.fiSellResult.appliedCostBasis,
+            realizedProfit: p.fiSellResult.realizedProfit,
+            taxAmount: p.fiSellResult.taxAmount,
+            taxRatePct: p.fiSellResult.taxRatePct,
+            netCredit: p.fiSellResult.netCredit,
+          })
+        : undefined;
     const buyFlags = flagsFromFundingSource(p.buyFundingSource);
     const effectiveRate = p.fxRateBRL && p.fxRateBRL > 0
       ? p.fxRateBRL
       : p.targetAsset.currency !== "BRL"
         ? (p.usdRate > 1 ? p.usdRate : 5.25)
         : p.usdRate;
+
+    const proportionalRedeemedCost =
+      p.type === "sell" && p.isTotalValue && p.fiSellResult
+        ? p.fiSellResult.appliedCostBasis
+        : undefined;
+    const preRedemptionCost =
+      p.type === "sell" && p.isTotalValue && p.appliedCostCents > 0
+        ? p.appliedCostCents / 100
+        : undefined;
 
     await p.recordOrder({
       asset: p.targetAsset,
@@ -185,19 +209,27 @@ export async function executeQuickTransactionSubmit(
       syncCash: p.type === "buy" || p.type === "subscription" ? buyFlags.syncCash : p.isCorporateEvent ? false : p.creditCash,
       cashAsset: p.cashAsset,
       recordContribution: p.type === "buy" || p.type === "subscription" ? buyFlags.recordContribution : false,
+      recordWithdrawal: p.type === "sell" ? Boolean(p.recordWithdrawal) : false,
       notes: resolvedNotes,
       usdRate: effectiveRate,
       fxRateBRL: p.fxRateBRL && p.fxRateBRL > 0 ? p.fxRateBRL : undefined,
-      appliedCostBasis: p.isTotalValue && p.appliedCostCents > 0 ? p.appliedCostCents / 100 : undefined,
+      appliedCostBasis: proportionalRedeemedCost,
+      preRedemptionHoldingCost: preRedemptionCost,
       customTaxAmount: p.isTotalValue && p.fiSellResult ? p.fiSellResult.taxAmount : undefined,
       customTaxRatePct: p.isTotalValue && p.fiSellResult ? p.fiSellResult.taxRatePct : undefined,
       netCreditAmount: p.isTotalValue && p.fiSellResult ? p.fiSellResult.netCredit : undefined,
+      customInitialInvestmentDate: p.customInitialDate,
     });
 
     const label = p.type === "buy" || p.type === "subscription"
       ? "Compra / Aporte registrado"
       : p.type === "sell" ? "Venda / Resgate registrado" : p.isDividendType ? "Provento registrado" : "Evento corporativo registrado";
-    pushToast({ title: label, description: `${p.targetAsset.ticker} atualizado na carteira com sucesso.`, variant: "success" });
+    const profitSign = p.fiSellResult && p.fiSellResult.realizedProfit >= 0 ? "+" : "";
+    const description =
+      p.type === "sell" && p.isTotalValue && p.fiSellResult
+        ? `Resgate de ${formatCentsAsBRL(numberToCents(total))} em ${p.targetAsset.ticker}. Lucro realizado: ${profitSign}${formatCentsAsBRL(numberToCents(p.fiSellResult.realizedProfit))} (IRRF: -${formatCentsAsBRL(numberToCents(p.fiSellResult.taxAmount))}).`
+        : `${p.targetAsset.ticker} atualizado na carteira com sucesso.`;
+    pushToast({ title: label, description, variant: "success" });
     return null;
   } catch (err) {
     return getErrorMessage(err);

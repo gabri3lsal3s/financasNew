@@ -35,6 +35,7 @@ export interface FixedIncomeRedemptionPreviewInput {
   appliedCostOverride?: number | null;
   customTaxRatePct?: number | null;
   customTaxAmount?: number | null;
+  customInitialDate?: string | null;
 }
 
 export interface FixedIncomeRedemptionPreviewResult {
@@ -61,6 +62,7 @@ export interface FixedIncomeRedemptionPreviewResult {
   isCustomized: boolean;
   taxCountdown: TaxReductionCountdown | null;
   isMatured: boolean;
+  initialInvestmentDate: string | null;
 }
 
 function round2(value: number): number {
@@ -193,6 +195,7 @@ export function calculateFixedIncomeRedemptionPreview(
     appliedCostOverride,
     customTaxRatePct,
     customTaxAmount,
+    customInitialDate,
   } = input;
 
   if (!asset || !Number.isFinite(withdrawGross) || withdrawGross <= 0) {
@@ -218,6 +221,11 @@ export function calculateFixedIncomeRedemptionPreview(
   let taxCountdown: TaxReductionCountdown | null = null;
   let isMatured = false;
 
+  const resolvedInitialDate =
+    customInitialDate !== undefined && customInitialDate !== null && customInitialDate.trim().length >= 10
+      ? customInitialDate.trim().slice(0, 10)
+      : (meta?.initial_investment_date ?? meta?.base_date ?? null);
+
   if (meta) {
     const baseValue =
       meta.base_value !== undefined && meta.base_value !== null && meta.base_value > 0
@@ -229,7 +237,7 @@ export function calculateFixedIncomeRedemptionPreview(
     const fiRes = calculateFixedIncomeBalance({
       baseValue,
       baseDate: meta.base_date,
-      initialInvestmentDate: meta.initial_investment_date,
+      initialInvestmentDate: resolvedInitialDate ?? meta.initial_investment_date,
       maturityDate: meta.maturity_date,
       rateType: meta.rate_type,
       rateValue: meta.rate_value,
@@ -272,7 +280,12 @@ export function calculateFixedIncomeRedemptionPreview(
 
   const hasCustomAmount = customTaxAmount !== null && customTaxAmount !== undefined;
   const hasCustomRate = customTaxRatePct !== null && customTaxRatePct !== undefined;
-  const isCustomized = hasCustomAmount || hasCustomRate;
+  const hasCustomDate = Boolean(
+    customInitialDate &&
+      meta?.initial_investment_date &&
+      customInitialDate.trim().slice(0, 10) !== meta.initial_investment_date.slice(0, 10),
+  );
+  const isCustomized = hasCustomAmount || hasCustomRate || hasCustomDate;
 
   if (hasCustomAmount) {
     effectiveTaxAmount = Math.max(0, customTaxAmount);
@@ -326,5 +339,75 @@ export function calculateFixedIncomeRedemptionPreview(
     isCustomized,
     taxCountdown,
     isMatured,
+    initialInvestmentDate: resolvedInitialDate,
+  };
+}
+
+/**
+ * Constrói notas auditáveis ricas para a transação de resgate de Renda Fixa no ledger.
+ */
+export function buildFixedIncomeSellNotes(params: {
+  appliedCost: number;
+  realizedProfit: number;
+  taxAmount: number;
+  taxRatePct: number;
+  netCredit: number;
+  userNotes?: string | null;
+}): string {
+  const profitSign = params.realizedProfit >= 0 ? "+" : "";
+  const parts = [
+    `Resgate Renda Fixa | Custo baixado: R$ ${params.appliedCost.toFixed(2)} | Lucro Realizado: ${profitSign}R$ ${params.realizedProfit.toFixed(2)} | IRRF: -R$ ${params.taxAmount.toFixed(2)} (${params.taxRatePct.toFixed(1)}%) | Líquido: R$ ${params.netCredit.toFixed(2)}`,
+    params.userNotes?.trim(),
+  ].filter(Boolean);
+  return parts.join(" — ");
+}
+
+export interface ParsedFixedIncomeSellNotes {
+  appliedCost: number;
+  realizedProfit: number;
+  taxAmount: number;
+  taxRatePct: number;
+  netCredit: number;
+}
+
+/**
+ * Faz o parse determinístico das notas ricas de resgate de Renda Fixa,
+ * recuperando o snapshot gravado no momento da operação.
+ */
+export function parseFixedIncomeSellNotes(notes?: string | null): ParsedFixedIncomeSellNotes | null {
+  if (!notes || typeof notes !== "string") return null;
+
+  const match = notes.match(
+    /Custo baixado:\s*R\$\s*([\d.,]+)\s*\|\s*Lucro Realizado:\s*([+-]?)\s*R\$\s*([\d.,]+)\s*\|\s*IRRF:\s*-\s*R\$\s*([\d.,]+)\s*\(([\d.,]+)%\)\s*\|\s*L[ií]quido:\s*R\$\s*([\d.,]+)/i,
+  );
+  if (!match) return null;
+
+  const parseNum = (s?: string): number => {
+    if (!s) return 0;
+    let clean = s.trim();
+    if (clean.includes(",") && clean.includes(".")) {
+      clean = clean.replace(/\./g, "").replace(",", ".");
+    } else if (clean.includes(",")) {
+      clean = clean.replace(",", ".");
+    }
+    const val = parseFloat(clean);
+    return isNaN(val) ? 0 : val;
+  };
+
+  const appliedCost = parseNum(match[1]);
+  const sign = match[2] === "-" ? -1 : 1;
+  const realizedProfit = sign * parseNum(match[3]);
+  const taxAmount = parseNum(match[4]);
+  const taxRatePct = parseNum(match[5]);
+  const netCredit = parseNum(match[6]);
+
+  if (appliedCost <= 0 && netCredit <= 0) return null;
+
+  return {
+    appliedCost,
+    realizedProfit,
+    taxAmount,
+    taxRatePct,
+    netCredit,
   };
 }
