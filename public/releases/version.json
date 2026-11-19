@@ -1,16 +1,16 @@
 {
-  "version": "3.10.0",
-  "versionCode": 76,
-  "releaseDate": "2026-11-18T18:51:39Z",
-  "minSupportedVersion": "3.10.0",
+  "version": "3.13.0",
+  "versionCode": 77,
+  "releaseDate": "2026-11-19T03:29:32Z",
+  "minSupportedVersion": "3.13.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "65d840e525cdcf93ba6d5ba81ec6e285665796c25d866bcc90f367961ac9a675",
-  "fileSizeBytes": 12198279,
+  "sha256": "e1957e4cd7419608bc8cec4ea4c8352f1847a6457360eac3180c5e23febb1e87",
+  "fileSizeBytes": 12224528,
   "changelog": [
-    "Axir v3.10.0 (Build 76): Responsividade tablet e padronização SegmentedControl",
-    "Toolbar de posições adaptativa com Select em tablets e chips em desktops (zero quebra de linhas)",
-    "Novo primitivo SegmentedControl unificado para modos de agrupamento, distribuição e períodos",
-    "Harmonização de cards de insight e gráficos Donut com proporções balanceadas no tablet",
-    "Erradicação transversal de variantes solid em filtros, empty states e cards"
+    "Axir v3.13.0 (Build 77): Motor de Investimentos v2 certificado e consistente",
+    "Fonte única de verdade matemática para carteira, relatórios executivos e extratos analíticos",
+    "Motor híbrido de custódia e proventos com suporte a cotações em tempo real e histórico auditado",
+    "Decomposição analítica de retorno ponderado pelo tempo (TWR) e Dietz Modificado sem distorções de fluxo",
+    "Acurácia de indexadores de renda fixa (Prefixado, Selic, CDI, IPCA) e segregação cambial fiel"
   ]
 }
