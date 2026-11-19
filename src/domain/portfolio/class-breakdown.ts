@@ -37,7 +37,11 @@ import {
   type InternationalRegion,
   type InternationalVehicle,
 } from "./tickers-catalog";
-import { isFixedIncomeClass, isTesouroAsset, normalizeClassName } from "./valuation";
+import {
+  isFixedIncomeClass,
+  isTesouroAsset,
+  normalizeClassName,
+} from "./valuation";
 
 export interface ExposureAssetItem {
   assetId: string;
@@ -138,6 +142,7 @@ export interface PositionLikeItem {
   ticker: string;
   assetClass?: string | null;
   sector?: string | null;
+  currency?: string | null;
   valueBRL: number;
   totalCostBRL?: number;
   averageCost?: number;
@@ -152,7 +157,11 @@ export function calculateFiiExposure(
 ): FiiExposureResult {
   const fiiPositions = positions.filter((p) => {
     const cls = normalizeClassName(p.assetClass ?? "");
-    return cls === "fiis" || cls === "fii";
+    return (
+      (cls === "fiis" || cls === "fii") &&
+      (p.quantity == null || p.quantity > 0) &&
+      p.valueBRL > 0.001
+    );
   });
 
   let totalValueBRL = 0;
@@ -253,7 +262,11 @@ export function calculateFixedIncomeExposure(
   }
 
   const rfPositions = positions.filter((p) => {
-    return isFixedIncomeClass(p.assetClass) || isTesouroAsset(p.ticker, p.assetClass);
+    return (
+      (isFixedIncomeClass(p.assetClass) || isTesouroAsset(p.ticker, p.assetClass)) &&
+      (p.quantity == null || p.quantity > 0) &&
+      p.valueBRL > 0.001
+    );
   });
 
   let totalValueBRL = 0;
@@ -483,7 +496,11 @@ export function calculateStocksExposure(
 ): StocksExposureResult {
   const stockPositions = positions.filter((p) => {
     const cls = normalizeClassName(p.assetClass ?? "");
-    return cls === "acoes" || cls === "acao" || cls === "stocks";
+    return (
+      (cls === "acoes" || cls === "acao" || cls === "stocks") &&
+      (p.quantity == null || p.quantity > 0) &&
+      p.valueBRL > 0.001
+    );
   });
 
   let totalValueBRL = 0;
@@ -651,7 +668,11 @@ export function calculateInternationalExposure(
 ): InternationalExposureResult {
   const intlPositions = positions.filter((p) => {
     const cls = normalizeClassName(p.assetClass ?? "");
-    return cls === "internacional" || cls === "bdrs" || cls === "bdr";
+    return (
+      (cls === "internacional" || cls === "bdrs" || cls === "bdr") &&
+      (p.quantity == null || p.quantity > 0) &&
+      p.valueBRL > 0.001
+    );
   });
 
   let totalValueBRL = 0;
@@ -684,6 +705,7 @@ export function calculateInternationalExposure(
     const { region, vehicle } = getInternationalProfile({
       ticker: pos.ticker,
       sector: pos.sector,
+      currency: pos.currency ?? undefined,
     });
 
     const val = Math.round(pos.valueBRL * 100) / 100;

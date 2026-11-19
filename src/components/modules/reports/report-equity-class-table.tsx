@@ -29,15 +29,15 @@ export function ReportEquityClassTable({
           <ReportClassTableBanner group={group} colSpan={8} />
           <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider print:[break-after:avoid] print:[break-inside:avoid]">
             <th className="py-1.5 px-2.5 print:w-[12%]">Ticker</th>
-            <th className="py-1.5 px-2 print:w-[17%]">
+            <th className="py-1.5 px-2 print:w-[16%]">
               {isInternacional ? "Classe / Tema" : "Setor / Segmento"}
             </th>
-            <th className="py-1.5 px-1 text-right print:w-[6%]">Qtd</th>
-            <th className="py-1.5 px-1.5 text-right print:w-[13%]">Preço Médio</th>
-            <th className="py-1.5 px-1.5 text-right print:w-[13%]">Cotação</th>
-            <th className="py-1.5 px-2 text-right print:w-[14%]">Total (R$)</th>
-            <th className="py-1.5 px-2 text-right print:w-[13%]">Var. Cota</th>
-            <th className="py-1.5 px-2.5 text-right print:w-[12%]">Ret. Total</th>
+            <th className="py-1.5 px-1 text-right print:w-[5%]">Qtd</th>
+            <th className="py-1.5 px-1.5 text-right print:w-[12%]">Preço Médio</th>
+            <th className="py-1.5 px-1.5 text-right print:w-[12%]">Cotação</th>
+            <th className="py-1.5 px-2 text-right print:w-[16%]">Total (R$)</th>
+            <th className="py-1.5 px-2 text-right print:w-[14%]">Var. Cota</th>
+            <th className="py-1.5 px-2.5 text-right print:w-[13%]">Ret. Total</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/80">
@@ -88,7 +88,7 @@ export function ReportEquityClassTable({
         </tbody>
         <tfoot className="border-t-2 border-border/80 bg-muted/30 font-bold text-foreground print:bg-muted/30 break-inside-avoid">
           <tr>
-            <td colSpan={5} className="py-1.5 px-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-bold">
+            <td colSpan={5} className="py-1.5 px-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-bold print:w-[57%]">
               Subtotal {group.className}
               {group.totalCostCents !== undefined && (
                 <span className="font-normal normal-case text-muted-foreground ml-1.5">
@@ -96,12 +96,12 @@ export function ReportEquityClassTable({
                 </span>
               )}
             </td>
-            <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">
+            <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap print:w-[16%]">
               <MoneyText cents={group.totalCents} tone="default" />
             </td>
             <td
               className={cn(
-                "py-1.5 px-2 text-right num font-mono tabular-nums text-[10px]",
+                "py-1.5 px-2 text-right num font-mono tabular-nums text-[10px] print:w-[14%]",
                 subtotalPriceVarPct !== null && subtotalPriceVarPct >= 0
                   ? "text-positive-strong"
                   : "text-negative-strong",
@@ -122,7 +122,7 @@ export function ReportEquityClassTable({
             </td>
             <td
               className={cn(
-                "py-1.5 px-2.5 text-right num font-mono tabular-nums text-[11px] font-bold whitespace-nowrap",
+                "py-1.5 px-2.5 text-right num font-mono tabular-nums text-[11px] font-bold whitespace-nowrap print:w-[13%]",
                 group.pnlPct >= 0 ? "text-positive-strong" : "text-negative-strong",
               )}
             >

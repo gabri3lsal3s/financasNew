@@ -90,6 +90,14 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
     asset.quantity !== undefined && asset.quantity > 0 ? String(asset.quantity) : isCash ? String(asset.quantity ?? 0) : "",
   );
   const [averagePriceCents, setAveragePriceCents] = useState(asset.average_price !== undefined ? numberToCents(asset.average_price) : 0);
+  const [fxRateAtPurchase, setFxRateAtPurchase] = useState<number | null>(asset.fx_rate_at_purchase ?? null);
+  const [totalCostBRLCents, setTotalCostBRLCents] = useState<number>(() => {
+    if (asset.total_cost_brl != null && asset.total_cost_brl > 0) {
+      return numberToCents(asset.total_cost_brl);
+    }
+    const rate = asset.fx_rate_at_purchase ?? 5.25;
+    return numberToCents((asset.quantity ?? 0) * (asset.average_price ?? 0) * rate);
+  });
 
   const hasStoredDividends = (asset.accumulated_dividends ?? 0) > 0 || (asset.estimated_monthly_dividend_per_share ?? 0) > 0;
   const [distributesInterest, setDistributesInterest] = useState(isFixedIncome ? hasStoredDividends : false);
@@ -146,6 +154,13 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
       estimated_monthly_dividend_per_share: saveDividends ? estimatedDividendPerShareCents / 100 : 0,
       fixed_income_metadata: fiMetadata,
       notes: finalNotes,
+      total_cost_brl: currency !== "BRL" && totalCostBRLCents > 0 ? totalCostBRLCents / 100 : null,
+      average_cost_brl:
+        currency !== "BRL" && totalCostBRLCents > 0 && payloadQuantity > 0
+          ? totalCostBRLCents / 100 / payloadQuantity
+          : null,
+      fx_rate_at_purchase:
+        currency !== "BRL" && fxRateAtPurchase && fxRateAtPurchase > 0 ? fxRateAtPurchase : null,
     });
 
     if (!validation.success) {
@@ -200,7 +215,8 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
     setFixedIncomeManualTaxRatePct, isCustomValuation, setIsCustomValuation, error, isCash, isTesouro,
     isFixedIncome, isCrypto, isTotalValueMode, isClosed, initialPriceCents, setInitialPriceCents,
     currentPriceCents, setCurrentPriceCents, quantityStr, setQuantityStr, averagePriceCents,
-    setAveragePriceCents, distributesInterest, setDistributesInterest,
+    setAveragePriceCents, fxRateAtPurchase, setFxRateAtPurchase, totalCostBRLCents, setTotalCostBRLCents,
+    distributesInterest, setDistributesInterest,
     isBusy: updateAsset.isPending || setManualPrice.isPending || isSubmitting, handleSubmit,
   };
 }

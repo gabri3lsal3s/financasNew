@@ -214,10 +214,17 @@ export function formatFixedIncomeRateLabel(
     return `Selic + ${meta.rate_value}% a.a.`;
   }
   if (requirePositiveRate && !(meta.rate_value > 0)) return null;
+  if (!(meta.rate_value > 0)) {
+    if (isSelicTicker || meta.rate_type === "selic") return "SELIC";
+    if (meta.rate_type === "cdi") return "CDI";
+    if (meta.rate_type === "pre") return "Prefixado";
+    if (meta.rate_type === "ipca") return "IPCA+";
+    return null;
+  }
   if (meta.rate_type === "cdi") return `${meta.rate_value}% CDI`;
   if (meta.rate_type === "selic") return meta.rate_value === 100 ? "SELIC" : `${meta.rate_value}% Selic`;
   if (meta.rate_type === "pre") return `${meta.rate_value}% a.a.`;
-  return `IPCA + ${meta.rate_value}%`;
+  return `IPCA + ${meta.rate_value}% a.a.`;
 }
 
 export function getScoreBadgeMeta(score: number | null | undefined): {

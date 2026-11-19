@@ -169,6 +169,8 @@ function QuickTransactionSheetContent({
               orderTotalBRL={form.currentOrderTotalBRL}
               creditCash={form.creditCash}
               onCreditCashChange={form.setCreditCash}
+              fxRateBRL={form.fxRateBRL}
+              onFxRateBRLChange={form.setFxRateBRL}
             />
 
             {!form.isEditingTransaction && form.type === "sell" && form.fiSellResult && (

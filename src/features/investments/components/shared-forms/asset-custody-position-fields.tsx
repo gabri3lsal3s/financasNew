@@ -1,4 +1,5 @@
 import { Badge, FormField, MoneyInput, MoneyText, NumericInput } from "@/components/ui";
+import { parseDecimalNumber } from "@/domain/money";
 import { formatPercent } from "@/services/masks";
 import { cn } from "@/lib/utils";
 import type { AssetCurrency } from "@/types";
@@ -21,6 +22,10 @@ export interface AssetCustodyPositionFieldsProps {
   onInitialPriceCentsChange: (cents: number) => void;
   currentPriceCents: number;
   onCurrentPriceCentsChange: (cents: number) => void;
+  fxRateAtPurchase?: number | null;
+  onFxRateAtPurchaseChange?: (rate: number | null) => void;
+  totalCostBRLCents?: number;
+  onTotalCostBRLCentsChange?: (cents: number) => void;
 }
 
 export function AssetCustodyPositionFields({
@@ -41,6 +46,10 @@ export function AssetCustodyPositionFields({
   onInitialPriceCentsChange,
   currentPriceCents,
   onCurrentPriceCentsChange,
+  fxRateAtPurchase,
+  onFxRateAtPurchaseChange,
+  totalCostBRLCents,
+  onTotalCostBRLCentsChange,
 }: AssetCustodyPositionFieldsProps) {
   const moneyPlaceholder = currency === "USD" ? "$ 0.00" : "R$ 0,00";
 
@@ -187,6 +196,42 @@ export function AssetCustodyPositionFields({
             aria-label="Preço médio por cota"
           />
         </FormField>
+
+        {currency !== "BRL" && onFxRateAtPurchaseChange && (
+          <FormField
+            label={`Câmbio Médio de Compra (R$ / ${currency})`}
+            htmlFor={`${idPrefix}-fx-buy`}
+            helperText="Cotação do câmbio na data de aquisição do ativo (utilizado para apurar o custo histórico em reais)."
+          >
+            <NumericInput
+              id={`${idPrefix}-fx-buy`}
+              value={fxRateAtPurchase != null ? String(fxRateAtPurchase) : ""}
+              onValueChange={(val) => {
+                const parsed = parseDecimalNumber(val);
+                onFxRateAtPurchaseChange(parsed > 0 ? parsed : null);
+              }}
+              placeholder="Ex: 5,2500"
+              aria-label="Câmbio médio de compra em reais"
+            />
+          </FormField>
+        )}
+
+        {currency !== "BRL" && onTotalCostBRLCentsChange && (
+          <FormField
+            label="Custo Total em Reais (R$)"
+            htmlFor={`${idPrefix}-cost-brl`}
+            helperText="Custo histórico total consolidado em reais (Qtd × PM × Câmbio)."
+          >
+            <MoneyInput
+              id={`${idPrefix}-cost-brl`}
+              cents={totalCostBRLCents ?? 0}
+              currency="BRL"
+              onCentsChange={onTotalCostBRLCentsChange}
+              placeholder="R$ 0,00"
+              aria-label="Custo total em reais"
+            />
+          </FormField>
+        )}
       </div>
     </div>
   );

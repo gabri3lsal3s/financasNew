@@ -48,10 +48,10 @@ describe("MoneyText (F12 — hierarquia tipográfica de valores)", () => {
     expect(container.firstChild?.textContent).toBe("+R$\u00a012,00");
 
     rerender(<MoneyText cents={-1200} sign="explicit" />);
-    expect(container.firstChild?.textContent).toBe("−R$\u00a012,00");
+    expect(container.firstChild?.textContent).toBe("-R$\u00a012,00");
 
     rerender(<MoneyText cents={-1200} sign="auto" />);
-    expect(container.firstChild?.textContent).toBe("−R$\u00a012,00");
+    expect(container.firstChild?.textContent).toBe("-R$\u00a012,00");
 
     rerender(<MoneyText cents={1200} sign="auto" />);
     expect(container.firstChild?.textContent).toBe("R$\u00a012,00");

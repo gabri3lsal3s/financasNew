@@ -77,6 +77,7 @@ import {
   isCashAssetClass,
   isCustomValuationAsset,
   resolvePrice,
+  usdRateFromPrices,
   type PriceCandidate,
 } from "./valuation";
 import {
@@ -246,12 +247,16 @@ export function evaluatePortfolioCanonicalState(
   }
 
   // 1. Resolução Dinâmica de Câmbio PTAX (USDBRL=X) (§Salvaguarda S12)
+  const livePriceUsd = params.assetPrices ? usdRateFromPrices(params.assetPrices) : undefined;
+  const liveRate = livePriceUsd && livePriceUsd !== FALLBACK_USD_RATE ? livePriceUsd : undefined;
+
   const effectiveUsdRate = resolveDynamicPtaxRate(
     params.monthlyPrices,
     month,
     {
       explicitRate: params.usdRate,
       preferExplicitOverSaved: Boolean(params.usdRate && params.usdRate !== FALLBACK_USD_RATE),
+      liveRate,
       fallbackRate: FALLBACK_USD_RATE,
     },
   );
@@ -330,6 +335,17 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     }
   }
 
+  // 1. Reconciliação Determinística de Eventos (instant mode)
+  const reconciliation = reconcilePortfolioEvents({
+    transactions: params.transactions ?? [],
+    contributions: params.contributions ?? [],
+    dividends: params.dividends ?? [],
+    assets,
+    asOfDate,
+    usdRate: effectiveUsdRate,
+    monthlyPrices: params.monthlyPrices,
+  });
+
   const holdings: CanonicalAssetHolding[] = [];
   const candidateAssets: CandidateAssetItem[] = [];
 
@@ -404,8 +420,12 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
         totalCostBRL = assetLedger.totalCostBRL;
         averageCostBRL = assetLedger.averageCostBRL;
       } else if (asset.total_cost_brl != null && asset.total_cost_brl > 0) {
-        totalCostBRL = round2(asset.total_cost_brl);
-        averageCostBRL = quantity > 0 ? (asset.average_cost_brl ?? round4(totalCostBRL / quantity)) : 0;
+        const candidateCostBRL = round2(asset.total_cost_brl);
+        // Salvaguarda cambial: se o custo BRL for inferior a 2.5x o custo USD, indica gravação em USD
+        totalCostBRL = (totalCost > 0 && candidateCostBRL < totalCost * 2.5)
+          ? round2(totalCost * effectiveUsdRate)
+          : candidateCostBRL;
+        averageCostBRL = quantity > 0 ? (asset.average_cost_brl && asset.average_cost_brl >= averageCost * 2.5 ? asset.average_cost_brl : round4(totalCostBRL / quantity)) : 0;
       } else if (asset.fx_rate_at_purchase != null && asset.fx_rate_at_purchase > 0) {
         totalCostBRL = round2(totalCost * asset.fx_rate_at_purchase);
         averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
@@ -505,7 +525,14 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
       averageCostBRL,
       totalCostBRL,
       resolvedPrice,
-      accumulatedDividendsBRL: Number(asset.accumulated_dividends) || 0,
+      accumulatedDividendsBRL:
+        reconciliation.dividendsByAssetId.get(asset.id) ??
+        (currency === "USD"
+          ? round2((Number(asset.accumulated_dividends) || 0) * effectiveUsdRate)
+          : Number(asset.accumulated_dividends) || 0),
+      dividendsNative:
+        reconciliation.dividendsNativeByAssetId.get(asset.id) ??
+        (Number(asset.accumulated_dividends) || 0),
       realizedPnl,
       fixedIncomeMetadata: fiMeta,
       fixedIncomeResult,
@@ -566,17 +593,6 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
       );
     }
   }
-
-  // 3. Reconciliação Determinística de Eventos
-  const reconciliation = reconcilePortfolioEvents({
-    transactions: params.transactions ?? [],
-    contributions: params.contributions ?? [],
-    dividends: params.dividends ?? [],
-    assets,
-    asOfDate,
-    usdRate: effectiveUsdRate,
-    monthlyPrices: params.monthlyPrices,
-  });
 
   // 4. Montagem do Estado Consolidado Inicial
   const baseState = createCanonicalPortfolioState({
@@ -955,7 +971,10 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       } else if (asset.total_cost_brl != null && asset.total_cost_brl > 0 && totalCostNative > 0) {
         const baseCostNative = Math.max(0, Number(asset.quantity) || 0) * Math.max(0, Number(asset.average_price) || 0);
         const ratio = baseCostNative > 0 ? totalCostNative / baseCostNative : 1;
-        totalCostBRL = round2(asset.total_cost_brl * ratio);
+        const candidateCostBRL = round2(asset.total_cost_brl * ratio);
+        totalCostBRL = (totalCostNative > 0 && candidateCostBRL < totalCostNative * 2.5)
+          ? round2(totalCostNative * effectiveUsdRate)
+          : candidateCostBRL;
         averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
       } else if (asset.fx_rate_at_purchase != null && asset.fx_rate_at_purchase > 0) {
         totalCostBRL = round2(totalCostNative * asset.fx_rate_at_purchase);

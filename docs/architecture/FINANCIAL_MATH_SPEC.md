@@ -344,4 +344,34 @@ Antes de emitir relatórios ou persistir snapshots de fechamento, o validador au
 - **Sinal Negativo Explícito:** Formatação com sinal de menos ASCII explícito antes do símbolo monetário (`-R$ 249,42 (-1,4%)`).
 - **Respiro no Subtotal Internacional:** Ajuste de larguras e paddings (`px-2`, `w-[13%]`) eliminando qualquer concorrência visual entre Total e Variação de Cota.
 
+## 11. CERTIFICAÇÃO FORENSE DE EDGE CASES & MOTOR DE PRODUÇÃO (§v4 — Auditoria BR-20261119-6445)
+
+### 11.1. Baixa Proporcional de Custo em Resgate Parcial de Renda Fixa (Gate v4.1)
+- **Causa Raiz Sanada:** O resgate parcial de títulos de renda fixa com preço unitário unificado ($Q = 1$) abatia o valor resgatado diretamente sobre o custo inicial na proporção 1:1, desvinculando o custo baixado da valorização acumulada e gerando prejuízos fictícios em resgates subsequentes.
+- **Fórmula de Abatimento Proporcional Canônica (Padrão Receita Federal / Tesouro Direto):**
+  $$C_{\text{baixado}} = C_{\text{pré}} \times \min\left(1, \frac{V_{\text{resgate}}}{V_{\text{pré}}}\right)$$
+  $$C_{\text{pós}} = C_{\text{pré}} - C_{\text{baixado}}$$
+  $$\text{Lucro Realizado} = V_{\text{resgate}} - C_{\text{baixado}}$$
+  $$\text{Rentabilidade Contábil Pós-Resgate} = \frac{V_{\text{pós}} - C_{\text{pós}}}{C_{\text{pós}}} = \frac{V_{\text{pré}} - C_{\text{pré}}}{C_{\text{pré}}}$$
+  Garante preservação estrita da rentabilidade histórica do título e elimina prejuízos espúrios no Extrato de Resgates do Período.
+
+### 11.2. Motor Cambial Multi-Moeda, PTAX Dinâmica e Edição Retroativa (Gate v4.2)
+- **Captura da Taxa Cambial no Lançamento:** Formulários de compra e venda (`OrderBuySellFields`) aceitam a taxa de câmbio efetiva da operação (`fx_rate_brl`), com preenchimento automático inteligente via PTAX histórica oficial do Banco Central do Brasil para a data selecionada (`fetchPtaxForDate(dateISO)`).
+- **Edição Retroativa de Posições:** Permite ao usuário corrigir o câmbio médio de aquisição histórico (`fx_rate_at_purchase`) e o custo total convertido em reais (`total_cost_brl`) diretamente na ficha de edição do ativo, recalculando o preço médio ponderado em BRL.
+- **Extração Dinâmica de Cotação Cambial:** A taxa USDBRL é resolvida prioritariamente a partir do feed de cotações em tempo real (`usdRateFromPrices`), eliminando dependência estática do fallback `FALLBACK_USD_RATE = 5,2500` quando cotações de mercado estiverem ativas.
+
+### 11.3. Blindagem Internacional: Denominador BRL e Segregação IVVB11 (Gate v4.3)
+- **Salvaguarda Contra Custo em Moeda Cruzada:** Se uma posição internacional tiver custo em moeda nativa ($C_{\text{USD}} > 0$) e seu custo em BRL gravado for inferior a $2,5 \times C_{\text{USD}}$, o motor canônico identifica a contaminação de moeda e recalcula automaticamente o denominador pela taxa cambial vigente ($C_{\text{BRL}} = C_{\text{USD}} \times \text{PTAX}$), erradicando retornos totais matematicamente anômalos (+786,6% em INDA ou +84,1% em SPHQ).
+- **Segregação de Veículo Internacional:** Ativos denominados em BRL e negociados na B3 (como `IVVB11`, `SPXI11`, `WRLD11` e BDRs terminados em 34/35/39) são classificados rigorosamente como `ETF B3 / BDR (Custódia BRL)` ($22,5\%$), reservando `Moeda Forte Direta (USD)` ($77,5\%$) para ativos sob custódia internacional real em moeda estrangeira.
+- **Formatação de Tabela A4:** Ajuste de larguras de coluna no Extrato de Custódia por Classe (`Total (R$)`: 16%, `Var. Cota`: 14%, `Ret. Total`: 13%) com `whitespace-nowrap`, prevenindo sobreposição e colisão visual para patrimônios de 5 ou mais dígitos.
+
+### 11.4. Unificação de Posições Vivas e Sinal de Fluxo (Gate v4.4)
+- **Filtro Canônico de Custódia Ativa (`getActiveCustodyPositions`):** Filtra deterministicamente posições com $\text{Qtd} > 0 \land \text{Valor} > \text{R\$ } 0,001 \land \neg \text{isCash}$, harmonizando a contagem de ativos em exatamente 62 investimentos ativos e 20 títulos de Renda Fixa em todos os relatórios, excluindo títulos vencidos e zerados (`CDB-FACTA`, `CDB-RODOBENS`).
+- **Sinal Negativo Robusto em Headless Print:** Substituição do caractere Unicode `\u2212` por `-` ASCII no primitivo `<MoneyText />` e aplicação de `sign="explicit"` no banner de Movimentação do Período, assegurando a visibilidade perene do sinal negativo em fluxos retirados (`-R$ 1.931,08`).
+
+### 11.5. Classificador Soberano e Higienização de Rótulos de Taxa (Gate v4.5)
+- **Prevalência Soberana de Indexador:** A heurística de resolução de indexador prioriza palavras-chave expressas do ticker (`IPCA`, `NTNB`, `SELIC`, `LFT`) antes de qualquer fallback de formulário (`rate_type: "pre"`), garantindo que títulos como `TESOURO-IPCA-32` sejam classificados indefectivelmente como `Inflação (IPCA+)`.
+- **Eliminação de Ruído de Taxa Zero:** Títulos de renda fixa com taxa não cadastrada (`rate_value <= 0`) têm a exibição de `"0% a.a."` e `"IPCA + 0% a.a."` suprimida, exibindo rótulos limpos (`"Prefixado"`, `"IPCA+"`, `"SELIC"`, `"CDI"`).
+- **Alerta Não-Bloqueante de Queda de Custo Retroativo:** Detecção automática de redução superior a 50% de custo aplicado de uma competência para a seguinte sem redução patrimonial correspondente, alertando o usuário de forma não-bloqueante na tela de fechamento.
+
 

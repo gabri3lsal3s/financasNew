@@ -19,7 +19,9 @@ export const FII_CAPITAL_GAIN_TAX_RATE = 0.2; // 20% sobre o ganho líquido em F
 
 export interface SellAssetInput {
   currentQuantity: number;
-  currentAveragePrice: number;
+  currentAveragePrice?: number;
+  currentTotalCost?: number;
+  isTotalValue?: boolean;
   sellQuantity: number;
   sellPrice: number;
   assetClass?: string | null;
@@ -68,7 +70,16 @@ export interface SellAssetResult {
 
 export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
   const currentQuantity = Math.max(0, input.currentQuantity);
-  const currentAveragePrice = Math.max(0, input.currentAveragePrice);
+  const currentTotalCost = input.currentTotalCost != null
+    ? Math.max(0, input.currentTotalCost)
+    : input.currentAveragePrice != null
+      ? Math.round(currentQuantity * Math.max(0, input.currentAveragePrice) * 100) / 100
+      : 0;
+  const currentAveragePrice = input.currentAveragePrice != null
+    ? Math.max(0, input.currentAveragePrice)
+    : currentQuantity > 0
+      ? currentTotalCost / currentQuantity
+      : 0;
   const sellQuantity = Math.min(currentQuantity, Math.max(0, input.sellQuantity));
   const sellPrice = Math.max(0, input.sellPrice);
 
@@ -78,9 +89,9 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
   const remainingTotalCost = Math.round(remainingQuantity * remainingAveragePrice * 100) / 100;
 
   const grossAmount = Math.round(sellQuantity * sellPrice * 100) / 100;
-  const costOfSoldQuantity = Math.round(sellQuantity * currentAveragePrice * 100) / 100;
-  const realizedPnl = Math.round((grossAmount - costOfSoldQuantity) * 100) / 100;
-  const realizedPnlPct = costOfSoldQuantity > 0 ? (realizedPnl / costOfSoldQuantity) * 100 : 0;
+  let costOfSoldQuantity = Math.round(sellQuantity * currentAveragePrice * 100) / 100;
+  let realizedPnl = Math.round((grossAmount - costOfSoldQuantity) * 100) / 100;
+  let realizedPnlPct = costOfSoldQuantity > 0 ? (realizedPnl / costOfSoldQuantity) * 100 : 0;
 
   const isStock = isStockClass(input.assetClass);
   const isFii = isFiiClass(input.assetClass);
@@ -136,7 +147,7 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
 
   // Para Renda Fixa tributada (ou caso haja retenção na fonte customizada), o IR é retido no resgate e o valor líquido é creditado no caixa.
   // Para Renda Variável padrão sem retenção customizada, o valor bruto é creditado no caixa.
-  const netCreditAmount = isFixedIncome || isCustomized
+  let netCreditAmount = isFixedIncome || isCustomized
     ? Math.max(0, Math.round((grossAmount - estimatedTaxPayable) * 100) / 100)
     : grossAmount;
 
@@ -147,27 +158,43 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
   let adjustedRemainingAveragePrice = remainingAveragePrice;
   let adjustedRemainingTotalCost = remainingTotalCost;
 
-  if (isFixedIncome || input.fixedIncomeMetadata) {
+  if (isFixedIncome || input.fixedIncomeMetadata || input.isTotalValue) {
     const effectiveGrossBalance =
       input.currentGrossBalance !== undefined && input.currentGrossBalance !== null && input.currentGrossBalance > 0
         ? input.currentGrossBalance
         : currentQuantity > 0 && currentAveragePrice > 0 && currentQuantity !== 1
           ? Math.round(currentQuantity * currentAveragePrice * 100) / 100
-          : currentAveragePrice > 0
-            ? currentAveragePrice
+          : currentTotalCost > 0
+            ? currentTotalCost
             : (input.fixedIncomeMetadata?.base_value ?? currentQuantity);
 
     redemptionProportion = effectiveGrossBalance > 0
       ? Math.min(1, Math.max(0, grossAmount / effectiveGrossBalance))
       : 1;
 
-    if (input.fixedIncomeMetadata) {
-      const isFull =
-        redemptionProportion >= 0.9999 ||
-        (effectiveGrossBalance > 0 && grossAmount >= effectiveGrossBalance - 0.01);
-      const currentBase = input.fixedIncomeMetadata.base_value ?? effectiveGrossBalance;
-      const currentInitial = input.fixedIncomeMetadata.initial_investment_value ?? currentBase;
+    const currentBase = input.fixedIncomeMetadata?.base_value ?? (input.currentGrossBalance ?? effectiveGrossBalance);
+    const currentInitial =
+      input.fixedIncomeMetadata?.initial_investment_value ??
+      (currentTotalCost > 0 ? currentTotalCost : currentAveragePrice > 0 ? currentAveragePrice : currentBase);
 
+    const isFull =
+      redemptionProportion >= 0.9999 ||
+      (effectiveGrossBalance > 0 && grossAmount >= effectiveGrossBalance - 0.01);
+
+    // Baixa Proporcional canônica de custo (Padrão Receita Federal / Tesouro Direto):
+    // C_baixado = C_pré * min(1, V_resgate / V_pré)
+    costOfSoldQuantity = isFull
+      ? currentInitial
+      : Math.round(currentInitial * redemptionProportion * 100) / 100;
+    realizedPnl = Math.round((grossAmount - costOfSoldQuantity) * 100) / 100;
+    realizedPnlPct = costOfSoldQuantity > 0 ? (realizedPnl / costOfSoldQuantity) * 100 : 0;
+
+    if (!isTaxExempt && realizedPnl > 0 && !isCustomized) {
+      estimatedTaxPayable = Math.round(realizedPnl * taxRate * 100) / 100;
+      netCreditAmount = Math.max(0, Math.round((grossAmount - estimatedTaxPayable) * 100) / 100);
+    }
+
+    if (input.fixedIncomeMetadata) {
       const newBaseValue = isFull
         ? 0
         : Math.max(0, Math.round(currentBase * (1 - redemptionProportion) * 100) / 100);
@@ -188,6 +215,16 @@ export function sellAssetPosition(input: SellAssetInput): SellAssetResult {
         adjustedRemainingQuantity = currentQuantity <= 1 ? 1 : Math.max(0, currentQuantity - sellQuantity);
         adjustedRemainingAveragePrice = newInitialValue;
         adjustedRemainingTotalCost = newInitialValue;
+      } else {
+        adjustedRemainingQuantity = 0;
+        adjustedRemainingAveragePrice = 0;
+        adjustedRemainingTotalCost = 0;
+      }
+    } else {
+      if (!isFull) {
+        adjustedRemainingQuantity = 1;
+        adjustedRemainingAveragePrice = Math.max(0, Math.round((currentInitial - costOfSoldQuantity) * 100) / 100);
+        adjustedRemainingTotalCost = adjustedRemainingAveragePrice;
       } else {
         adjustedRemainingQuantity = 0;
         adjustedRemainingAveragePrice = 0;
@@ -410,6 +447,7 @@ export interface ReconcileAssetInput {
     quantity: number;
     price: number;
     total: number;
+    total_cost_brl?: number | null;
   };
   remainingTransactions: readonly Pick<LedgerTransaction, "type" | "quantity" | "price" | "total" | "date">[];
 }
@@ -454,26 +492,39 @@ export function calculateReconciledAssetPosition(
 
   // 2. Caso Renda Fixa (modo total_value)
   if (isTotalValue) {
+    const getTxCostDelta = (t: { type: string; total: number; total_cost_brl?: number | null }) => {
+      if (t.type === "buy" || t.type === "subscription") return t.total;
+      if (t.type === "sell") {
+        return -(t.total_cost_brl != null && t.total_cost_brl > 0 ? t.total_cost_brl : t.total);
+      }
+      return 0;
+    };
+
     const allTracked = [
       removedTransaction,
-      ...remainingTransactions.map((t) => ({ type: t.type, total: t.total })),
+      ...remainingTransactions.map((t) => ({
+        type: t.type,
+        total: t.total,
+        total_cost_brl: (t as { total_cost_brl?: number | null }).total_cost_brl,
+      })),
     ];
-    const priorTrackedCost = allTracked.reduce((acc, t) => {
-      if (t.type === "buy" || t.type === "subscription") return acc + t.total;
-      if (t.type === "sell") return Math.max(0, acc - t.total);
-      return acc;
-    }, 0);
+    const priorTrackedCost = allTracked.reduce((acc, t) => acc + getTxCostDelta(t), 0);
 
     const untrackedBaseCost = Math.max(
       0,
       Math.round((currentAveragePrice - priorTrackedCost) * 100) / 100,
     );
 
-    const totalAppliedRemaining = remainingTransactions.reduce((acc, t) => {
-      if (t.type === "buy" || t.type === "subscription") return acc + t.total;
-      if (t.type === "sell") return Math.max(0, acc - t.total);
-      return acc;
-    }, 0);
+    const totalAppliedRemaining = remainingTransactions.reduce(
+      (acc, t) =>
+        acc +
+        getTxCostDelta({
+          type: t.type,
+          total: t.total,
+          total_cost_brl: (t as { total_cost_brl?: number | null }).total_cost_brl,
+        }),
+      0,
+    );
 
     // Se restaram transações registradas no ledger, preserva a base não rastreada + soma restante
     let finalCost = untrackedBaseCost + totalAppliedRemaining;
@@ -481,7 +532,10 @@ export function calculateReconciledAssetPosition(
       if (removedTransaction.type === "buy") {
         finalCost = Math.max(0, Math.round((currentAveragePrice - removedTransaction.total) * 100) / 100);
       } else if (removedTransaction.type === "sell") {
-        finalCost = Math.round((currentAveragePrice + removedTransaction.total) * 100) / 100;
+        const removedCost =
+          (removedTransaction as { total_cost_brl?: number | null }).total_cost_brl ??
+          removedTransaction.total;
+        finalCost = Math.round((currentAveragePrice + removedCost) * 100) / 100;
       }
     }
 

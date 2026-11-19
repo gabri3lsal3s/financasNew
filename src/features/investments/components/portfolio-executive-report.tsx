@@ -2,7 +2,11 @@ import { useMemo, useState } from "react";
 import { ConfirmDialog, ErrorState, Skeleton } from "@/components/ui";
 import type { PositionRow } from "@/components/modules/position-table";
 import { ReportDocumentLayout } from "@/components/modules/reports";
-import type { TwrConsolidatedResult, XIRRResult } from "@/domain/portfolio";
+import {
+  getActiveCustodyPositions,
+  type TwrConsolidatedResult,
+  type XIRRResult,
+} from "@/domain/portfolio";
 import {
   buildExecutiveReportClassGroups,
   buildReportMonthOptions,
@@ -109,7 +113,7 @@ export function PortfolioExecutiveReport({
   );
 
   const investmentRows = useMemo(
-    () => effectiveRows.filter((r) => !r.isCash),
+    () => getActiveCustodyPositions(effectiveRows),
     [effectiveRows],
   );
 

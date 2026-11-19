@@ -40,6 +40,10 @@ export interface AssetIdentityPricingFieldsProps {
   onInitialPriceCentsChange: (cents: number) => void;
   currentPriceCents: number;
   onCurrentPriceCentsChange: (cents: number) => void;
+  fxRateAtPurchase?: number | null;
+  onFxRateAtPurchaseChange?: (rate: number | null) => void;
+  totalCostBRLCents?: number;
+  onTotalCostBRLCentsChange?: (cents: number) => void;
   fixedIncomeValues: FixedIncomeFormFieldsValues;
   onFixedIncomeChange: (patch: Partial<FixedIncomeFormFieldsValues & { rateType: FixedIncomeRateType }>) => void;
 }
@@ -73,6 +77,10 @@ export function AssetIdentityPricingFields({
   onInitialPriceCentsChange,
   currentPriceCents,
   onCurrentPriceCentsChange,
+  fxRateAtPurchase,
+  onFxRateAtPurchaseChange,
+  totalCostBRLCents,
+  onTotalCostBRLCentsChange,
   fixedIncomeValues,
   onFixedIncomeChange,
 }: AssetIdentityPricingFieldsProps) {
@@ -195,6 +203,10 @@ export function AssetIdentityPricingFields({
         onInitialPriceCentsChange={onInitialPriceCentsChange}
         currentPriceCents={currentPriceCents}
         onCurrentPriceCentsChange={onCurrentPriceCentsChange}
+        fxRateAtPurchase={fxRateAtPurchase}
+        onFxRateAtPurchaseChange={onFxRateAtPurchaseChange}
+        totalCostBRLCents={totalCostBRLCents}
+        onTotalCostBRLCentsChange={onTotalCostBRLCentsChange}
       />
 
       {isFixedIncome && !isCash && (

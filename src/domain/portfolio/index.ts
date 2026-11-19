@@ -268,6 +268,7 @@ export {
   calculatePositionSummary,
   fallbackPriceFor,
   getAssetPricingMode,
+  getActiveCustodyPositions,
   inferCurrencyFromTicker,
   isCashAssetClass,
   isCustomValuationAsset,

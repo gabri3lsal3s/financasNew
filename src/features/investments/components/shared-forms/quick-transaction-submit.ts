@@ -26,6 +26,7 @@ export interface QuickTransactionSubmitParams {
   buyFundingSource: FundingSource;
   creditCash: boolean;
   usdRate: number;
+  fxRateBRL?: number | null;
   appliedCostCents: number;
   fiSellResult: FixedIncomeRedemptionPreviewResult | null;
   editDividend: PortfolioDividend | null;
@@ -53,6 +54,7 @@ export interface RecordOrderMutationArg {
   recordContribution: boolean;
   notes?: string;
   usdRate: number;
+  fxRateBRL?: number;
   appliedCostBasis?: number;
   customTaxAmount?: number;
   customTaxRatePct?: number;
@@ -152,6 +154,7 @@ export async function executeQuickTransactionSubmit(
           quantity: resolvedQty,
           price: p.isCorporateEvent ? 0 : p.isTotalValue ? total : price,
           total: p.isCorporateEvent ? 0 : total,
+          ...(p.fxRateBRL && p.fxRateBRL > 0 ? { fx_rate: p.fxRateBRL } : {}),
         },
       });
       return null;
@@ -162,6 +165,7 @@ export async function executeQuickTransactionSubmit(
       : p.date;
     const resolvedNotes = p.isDividendType ? resolveDividendNote(p.dividendEntryMode, "", p.type) : undefined;
     const buyFlags = flagsFromFundingSource(p.buyFundingSource);
+    const effectiveRate = p.fxRateBRL && p.fxRateBRL > 0 ? p.fxRateBRL : p.usdRate;
 
     await p.recordOrder({
       asset: p.targetAsset,
@@ -174,7 +178,8 @@ export async function executeQuickTransactionSubmit(
       cashAsset: p.cashAsset,
       recordContribution: p.type === "buy" || p.type === "subscription" ? buyFlags.recordContribution : false,
       notes: resolvedNotes,
-      usdRate: p.usdRate,
+      usdRate: effectiveRate,
+      fxRateBRL: p.fxRateBRL && p.fxRateBRL > 0 ? p.fxRateBRL : undefined,
       appliedCostBasis: p.isTotalValue && p.appliedCostCents > 0 ? p.appliedCostCents / 100 : undefined,
       customTaxAmount: p.isTotalValue && p.fiSellResult ? p.fiSellResult.taxAmount : undefined,
       customTaxRatePct: p.isTotalValue && p.fiSellResult ? p.fiSellResult.taxRatePct : undefined,

@@ -849,8 +849,48 @@ export function resolveFixedIncomeIndexer(input: {
     };
   }
 
-  // 2. Metadados contratuais explícitos
-  if (rateType === "pre") {
+  // 2. Heurística prioritária de Ticker Soberano / Indexador Explícito (§Bloco 5)
+  // Garante que ativos como TESOURO-IPCA-32 sejam classificados como IPCA mesmo se rateType tiver fallback "pre"
+  const specificStr = `${tickerUpper} ${notesUpper}`;
+
+  if (
+    specificStr.includes("IPCA") ||
+    specificStr.includes("INFLACAO") ||
+    specificStr.includes("RENDA+") ||
+    specificStr.includes("EDUCA+") ||
+    specificStr.includes("NTN-B") ||
+    specificStr.includes("NTNB")
+  ) {
+    return {
+      macroKey: "ipca",
+      macroLabel: "Inflação (IPCA+)",
+      detailKey: "ipca",
+      detailLabel: "IPCA+",
+    };
+  }
+
+  if (specificStr.includes("SELIC") || specificStr.includes("LFT")) {
+    return {
+      macroKey: "pos_fixado",
+      macroLabel: "Pós-fixado (Selic / CDI)",
+      detailKey: "selic",
+      detailLabel: "Selic",
+    };
+  }
+
+  if (specificStr.includes("CDI") || /\bDI\b/.test(specificStr)) {
+    return {
+      macroKey: "pos_fixado",
+      macroLabel: "Pós-fixado (Selic / CDI)",
+      detailKey: "cdi",
+      detailLabel: "CDI",
+    };
+  }
+
+  if (
+    specificStr.includes("PREFIXAD") ||
+    /\b(PRE|PRE-FIXAD[OA]|LTN|NTN-F|NTNF)\b/i.test(specificStr)
+  ) {
     return {
       macroKey: "pre",
       macroLabel: "Prefixado",
@@ -858,6 +898,8 @@ export function resolveFixedIncomeIndexer(input: {
       detailLabel: "Prefixado",
     };
   }
+
+  // 3. Metadados contratuais explícitos
   if (rateType === "ipca") {
     return {
       macroKey: "ipca",
@@ -882,48 +924,7 @@ export function resolveFixedIncomeIndexer(input: {
       detailLabel: "CDI",
     };
   }
-
-  // 3. Heurísticas específicas baseadas em ticker e notas (evita que o rótulo genérico de setor contamine a chave de detalhe)
-  const specificStr = `${tickerUpper} ${notesUpper}`;
-
-  if (
-    specificStr.includes("IPCA") ||
-    specificStr.includes("INFLACAO") ||
-    specificStr.includes("RENDA+") ||
-    specificStr.includes("EDUCA+") ||
-    specificStr.includes("NTN-B") ||
-    specificStr.includes("NTNB")
-  ) {
-    return {
-      macroKey: "ipca",
-      macroLabel: "Inflação (IPCA+)",
-      detailKey: "ipca",
-      detailLabel: "IPCA+",
-    };
-  }
-
-  if (specificStr.includes("CDI") || /\bDI\b/.test(specificStr)) {
-    return {
-      macroKey: "pos_fixado",
-      macroLabel: "Pós-fixado (Selic / CDI)",
-      detailKey: "cdi",
-      detailLabel: "CDI",
-    };
-  }
-
-  if (specificStr.includes("SELIC") || specificStr.includes("LFT")) {
-    return {
-      macroKey: "pos_fixado",
-      macroLabel: "Pós-fixado (Selic / CDI)",
-      detailKey: "selic",
-      detailLabel: "Selic",
-    };
-  }
-
-  if (
-    specificStr.includes("PREFIXAD") ||
-    /\b(PRE|PRE-FIXAD[OA]|LTN|NTN-F|NTNF)\b/i.test(specificStr)
-  ) {
+  if (rateType === "pre") {
     return {
       macroKey: "pre",
       macroLabel: "Prefixado",
@@ -1121,7 +1122,7 @@ export const INTERNATIONAL_REGION_LABELS: Record<InternationalRegion, string> = 
 
 export const INTERNATIONAL_VEHICLE_LABELS: Record<InternationalVehicle, string> = {
   moeda_forte_usd: "Moeda Forte Direta (USD)",
-  bdr_brl: "BDRs Custodiados na B3 (BRL)",
+  bdr_brl: "ETF B3 / BDR (Custódia BRL)",
 };
 
 const KNOWN_LARGE_CAPS = new Set([
@@ -1236,13 +1237,24 @@ export function getInternationalProfile(input: {
   const sectorUpper = norm(input.sector);
   const combined = `${tickerUpper} ${sectorUpper}`;
 
-  // 1. Veículo de Custódia (USD vs BDR)
-  const isBdr =
+  // 1. Veículo de Custódia (USD vs ETF B3 / BDR)
+  const isBdrOrB3 =
+    input.currency === "BRL" ||
     tickerUpper.endsWith("34") ||
     tickerUpper.endsWith("35") ||
     tickerUpper.endsWith("39") ||
-    input.currency === "BRL";
-  const vehicle: InternationalVehicle = isBdr ? "bdr_brl" : "moeda_forte_usd";
+    tickerUpper.endsWith("11") ||
+    tickerUpper.includes("IVVB") ||
+    tickerUpper.includes("SPXI") ||
+    tickerUpper.includes("WRLD") ||
+    tickerUpper.includes("NASD") ||
+    tickerUpper.includes("ACWI");
+  const vehicle: InternationalVehicle =
+    input.currency === "USD"
+      ? "moeda_forte_usd"
+      : isBdrOrB3
+        ? "bdr_brl"
+        : "moeda_forte_usd";
 
   // 2. Região Geográfica & Tema Econômico Subjacente (BUG-14)
   let region: InternationalRegion = "eua";
@@ -1286,6 +1298,7 @@ export function getInternationalProfile(input: {
     combined.includes("ASIA") ||
     combined.includes("ARGENTINA") ||
     combined.includes("AMERICA LATINA") ||
+    tickerUpper === "INDA" ||
     tickerUpper === "ARGT" ||
     tickerUpper === "MCHI" ||
     tickerUpper === "VWO" ||

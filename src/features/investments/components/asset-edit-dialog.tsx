@@ -1,5 +1,5 @@
 import { Alert, Button, Modal, ModalFooter } from "@/components/ui";
-import { parseDecimalNumber } from "@/domain/money";
+import { numberToCents, parseDecimalNumber } from "@/domain/money";
 import type { PortfolioAsset } from "@/types";
 import {
   AssetIdentityPricingFields,
@@ -78,6 +78,19 @@ function AssetEditFormContent({ asset, open, onOpenChange, onClose }: AssetEditF
           }}
           currentPriceCents={form.currentPriceCents}
           onCurrentPriceCentsChange={form.setCurrentPriceCents}
+          fxRateAtPurchase={form.fxRateAtPurchase}
+          onFxRateAtPurchaseChange={(rate) => {
+            form.setFxRateAtPurchase(rate);
+            if (rate && rate > 0) {
+              const qty = parseDecimalNumber(form.quantityStr);
+              const avgPrice = form.averagePriceCents / 100;
+              if (qty > 0 && avgPrice > 0) {
+                form.setTotalCostBRLCents(numberToCents(qty * avgPrice * rate));
+              }
+            }
+          }}
+          totalCostBRLCents={form.totalCostBRLCents}
+          onTotalCostBRLCentsChange={form.setTotalCostBRLCents}
           fixedIncomeValues={{
             rateType: form.fixedIncomeRateType,
             rateValue: form.fixedIncomeRateValue,

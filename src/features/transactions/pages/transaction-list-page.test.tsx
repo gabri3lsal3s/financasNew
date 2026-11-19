@@ -158,7 +158,7 @@ describe("TransactionListPage — listagem por mês", () => {
     expect(screen.getByText("Salário")).toBeInTheDocument();
     expect(screen.getByText("Aluguel")).toBeInTheDocument();
     expect(screen.getAllByText("+R$ 3.500,00").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("−R$ 1.500,00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("-R$ 1.500,00").length).toBeGreaterThan(0);
   });
 
   it("calcula os KPIs de receitas, despesas e saldo", () => {

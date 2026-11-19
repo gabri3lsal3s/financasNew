@@ -157,6 +157,27 @@ export const newAssetSchema = z.object({
   /** Metadados opcionais de títulos de renda fixa privada / parametrizada (Fase 63/72). */
   fixed_income_metadata: fixedIncomeMetadataSchema.nullable().optional(),
   notes: notesSchema,
+  /** Custo total histórico de aquisição em reais (BRL) para ativos em moeda estrangeira. */
+  total_cost_brl: z
+    .number({ message: "Informe um valor válido para custo em BRL" })
+    .min(0, "O custo em BRL não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O custo em BRL ultrapassa o limite monetário permitido")
+    .nullable()
+    .optional(),
+  /** Custo médio histórico de aquisição em reais (BRL) para ativos em moeda estrangeira. */
+  average_cost_brl: z
+    .number({ message: "Informe um valor válido para custo médio em BRL" })
+    .min(0, "O custo médio em BRL não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O custo médio em BRL ultrapassa o limite monetário permitido")
+    .nullable()
+    .optional(),
+  /** Taxa de câmbio média de aquisição (R$ / Moeda) para ativos em moeda estrangeira. */
+  fx_rate_at_purchase: z
+    .number({ message: "Informe uma cotação cambial válida" })
+    .min(0, "A taxa de câmbio não pode ser negativa")
+    .max(1000, "A taxa de câmbio informada é inválida")
+    .nullable()
+    .optional(),
 });
 
 export type NewAssetInput = z.infer<typeof newAssetSchema>;
@@ -262,6 +283,27 @@ export const assetMetadataSchema = z.object({
   /** Metadados opcionais de títulos de renda fixa privada / parametrizada (Fase 63/72). */
   fixed_income_metadata: fixedIncomeMetadataSchema.nullable().optional(),
   notes: notesSchema,
+  /** Custo total histórico de aquisição em reais (BRL) para ativos em moeda estrangeira. */
+  total_cost_brl: z
+    .number({ message: "Informe um valor válido para custo em BRL" })
+    .min(0, "O custo em BRL não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O custo em BRL ultrapassa o limite monetário permitido")
+    .nullable()
+    .optional(),
+  /** Custo médio histórico de aquisição em reais (BRL) para ativos em moeda estrangeira. */
+  average_cost_brl: z
+    .number({ message: "Informe um valor válido para custo médio em BRL" })
+    .min(0, "O custo médio em BRL não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O custo médio em BRL ultrapassa o limite monetário permitido")
+    .nullable()
+    .optional(),
+  /** Taxa de câmbio média de aquisição (R$ / Moeda) para ativos em moeda estrangeira. */
+  fx_rate_at_purchase: z
+    .number({ message: "Informe uma cotação cambial válida" })
+    .min(0, "A taxa de câmbio não pode ser negativa")
+    .max(1000, "A taxa de câmbio informada é inválida")
+    .nullable()
+    .optional(),
 });
 
 export type AssetMetadataInput = z.infer<typeof assetMetadataSchema>;

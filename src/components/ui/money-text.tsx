@@ -61,8 +61,8 @@ function resolveTone(tone: NonNullable<MoneyTextProps["tone"]>, cents: number): 
 
 function signPrefix(sign: NonNullable<MoneyTextProps["sign"]>, cents: number): string {
   if (cents === 0) return "";
-  if (sign === "explicit") return cents > 0 ? "+" : "−";
-  if (sign === "auto") return cents < 0 ? "−" : "";
+  if (sign === "explicit") return cents > 0 ? "+" : "-";
+  if (sign === "auto") return cents < 0 ? "-" : "";
   return "";
 }
 

@@ -432,6 +432,15 @@ export function formatFixedIncomeRateLabel(
     }
   }
 
+  // Elimina ruído de "0% a.a." ou "IPCA + 0% a.a." quando não há taxa cadastrada (§Bloco 5)
+  if (!rate_value || rate_value <= 0) {
+    if (isSelicTicker || rate_type === "selic") return "SELIC";
+    if (rate_type === "cdi") return "CDI";
+    if (rate_type === "pre") return "Prefixado";
+    if (rate_type === "ipca") return "IPCA+";
+    return "Renda Fixa";
+  }
+
   const formatted = Number.isInteger(rate_value)
     ? String(rate_value)
     : rate_value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });

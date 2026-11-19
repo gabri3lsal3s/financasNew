@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useMemo, type RefObject } from "react";
 import { AlertCircle, Calendar, Pencil, Trash2 } from "lucide-react";
 import { Badge, Button, EmptyState, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
@@ -51,8 +51,46 @@ export function PocketContributionsLedgerTab(props: PocketContributionsLedgerTab
     onDelete,
   } = props;
 
+  // Detecção não-bloqueante de anomalia de custo retroativo (§Bloco 5):
+  // Alerta quando o custo cai mais de 50% frente ao mês anterior sem queda patrimonial proporcional
+  const costDropAnomalies = useMemo(() => {
+    const sortedSnaps = Array.from(snapshotsByMonth.values()).sort((a, b) => a.month.localeCompare(b.month));
+    const anomalies: string[] = [];
+    for (let i = 1; i < sortedSnaps.length; i++) {
+      const prev = sortedSnaps[i - 1];
+      const curr = sortedSnaps[i];
+      if (
+        prev &&
+        curr &&
+        prev.total_cost > 0 &&
+        curr.total_cost > 0 &&
+        curr.total_cost < prev.total_cost * 0.5 &&
+        curr.total_value >= prev.total_value * 0.8
+      ) {
+        anomalies.push(curr.month);
+      }
+    }
+    return anomalies;
+  }, [snapshotsByMonth]);
+
   return (
     <div className="flex flex-col gap-4">
+      {costDropAnomalies.length > 0 && (
+        <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 flex items-start gap-2.5">
+          <AlertCircle className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="flex flex-col gap-0.5 text-[11px] leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              Atenção: Queda acentuada de custo detectada
+            </span>
+            <p>
+              Identificamos uma redução superior a 50% no custo aplicado na competência de{" "}
+              <strong>{costDropAnomalies.join(", ")}</strong> sem redução patrimonial correspondente.
+              Verifique se o custo retroativo informado está correto para evitar distorções no cálculo de retorno contábil.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-xl border border-warning/30 bg-warning/5 p-3 flex items-start gap-2.5">
         <AlertCircle className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
         <div className="flex flex-col gap-0.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -134,6 +172,11 @@ export function PocketContributionsLedgerTab(props: PocketContributionsLedgerTab
                         <Badge variant={isWithdrawal ? "warning" : "muted"} size="xs">
                           {isWithdrawal ? "Resgate" : "Aporte"}
                         </Badge>
+                        {costDropAnomalies.includes(marco.date.slice(0, 7)) ? (
+                          <Badge variant="warning" size="xs">
+                            Custo Anômalo
+                          </Badge>
+                        ) : null}
                         {snap && snap.total_value > 0 ? (
                           <span className="font-mono text-[11px] text-muted-foreground">
                             Saldo: <MoneyText cents={numberToCents(snap.total_value)} variant="caption" tone="default" />

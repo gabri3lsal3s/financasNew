@@ -34,6 +34,7 @@ export interface PeriodRedemptionTxInput {
   quantity: number;
   price: number;
   total: number;
+  total_cost_brl?: number | null;
 }
 
 export interface PeriodRedemptionAssetInput {
@@ -43,6 +44,7 @@ export interface PeriodRedemptionAssetInput {
   asset_class?: string | null;
   sector?: string | null;
   currency?: string | null;
+  quantity?: number | null;
   average_price?: number | null;
   fixed_income_metadata?: FixedIncomeMetadata | null;
 }
@@ -113,9 +115,35 @@ export function filterPeriodRedemptions(
     const redeemedNative = tx.total > 0 ? tx.total : tx.quantity * tx.price;
     const grossRedeemedValueBRL = round2(redeemedNative * rate);
 
+    const isFixedIncome =
+      isFixedIncomeClass(assetClass) || Boolean(asset?.fixed_income_metadata);
+
     let appliedNative = 0;
-    if (asset?.fixed_income_metadata?.initial_investment_value) {
-      appliedNative = asset.fixed_income_metadata.initial_investment_value;
+    if (tx.total_cost_brl != null && tx.total_cost_brl > 0) {
+      appliedNative = rate > 0 ? tx.total_cost_brl / rate : tx.total_cost_brl;
+    } else if (isFixedIncome) {
+      const fiMeta = asset?.fixed_income_metadata;
+      const initialCost =
+        fiMeta?.initial_investment_value ??
+        (asset?.average_price && asset.average_price > 0 ? asset.average_price : 0);
+      const currentGross =
+        fiMeta?.base_value ??
+        (asset?.quantity && asset.quantity > 0 && asset.average_price
+          ? asset.quantity * asset.average_price
+          : initialCost);
+
+      if (initialCost > 0) {
+        // Baixa Proporcional Canônica (Receita Federal / Tesouro Direto):
+        // C_baixado = C_pré * min(1, V_resgate / V_pré)
+        const effectiveGross = Math.max(
+          redeemedNative,
+          currentGross > 0 ? currentGross + redeemedNative : initialCost,
+        );
+        const costRatio = effectiveGross > 0 ? Math.min(1, initialCost / effectiveGross) : 1;
+        appliedNative = round2(redeemedNative * costRatio);
+      } else {
+        appliedNative = redeemedNative;
+      }
     } else if (asset?.average_price && asset.average_price > 0) {
       appliedNative = tx.quantity * asset.average_price;
     } else if (tx.price > 0 && tx.quantity > 0) {
@@ -125,12 +153,8 @@ export function filterPeriodRedemptions(
     const appliedCostBRL = round2(appliedNative * rate);
     const grossProfitBRL = round2(grossRedeemedValueBRL - appliedCostBRL);
 
-    // Inteligência Fiscal: cálculo e dedução de IR para Renda Fixa tributável
     let taxAmountBRL = 0;
     let taxRatePct: number | null = null;
-
-    const isFixedIncome =
-      isFixedIncomeClass(assetClass) || Boolean(asset?.fixed_income_metadata);
 
     if (isFixedIncome && grossProfitBRL > 0) {
       const isTaxExempt = Boolean(asset?.fixed_income_metadata?.is_tax_exempt);

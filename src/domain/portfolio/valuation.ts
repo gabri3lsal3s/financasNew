@@ -98,12 +98,21 @@ export function normalizeClassName(name: string): string {
  * Sem cotação disponível → fallback estático (5,25).
  */
 export function usdRateFromPrices(
-  prices: readonly { ticker: string; price: number }[],
+  prices: readonly { ticker: string; price: number }[] | Record<string, number> | null | undefined,
   fallback: number = FALLBACK_USD_RATE,
 ): number {
-  const row = prices.find((p) => p.ticker.toUpperCase() === "USDBRL=X");
-  const rate = row?.price;
-  return rate !== undefined && rate !== null && rate > 0 ? rate : fallback;
+  if (!prices) return fallback;
+  if (Array.isArray(prices)) {
+    const row = prices.find((p) => (p.ticker ?? "").toUpperCase() === "USDBRL=X");
+    const rate = row?.price;
+    return rate !== undefined && rate !== null && rate > 0 ? rate : fallback;
+  }
+  if (typeof prices === "object") {
+    const dict = prices as Record<string, number>;
+    const val = dict["USDBRL=X"] ?? dict["usdbrl=x"] ?? dict["USDBRL"] ?? dict["usdbrl"];
+    return typeof val === "number" && val > 0 ? val : fallback;
+  }
+  return fallback;
 }
 
 const CASH_CLASS_ALIASES = new Set(["caixa", "reserva"]);
@@ -613,12 +622,17 @@ export function calculatePositionSummary(params: {
   }
 
   const totalCost = Math.round(quantity * averagePrice * 100) / 100;
-  const totalCostBRL =
+  let totalCostBRL =
     explicitTotalCostBRL != null
       ? Math.round(explicitTotalCostBRL * 100) / 100
       : fxRateAtPurchase != null && currency === "USD"
         ? Math.round(totalCost * fxRateAtPurchase * 100) / 100
         : Math.round(totalCost * rate * 100) / 100;
+
+  // Salvaguarda cambial: se currency === "USD" e totalCostBRL < totalCost * 2.5, evita distorção de rentabilidade (+700%)
+  if (currency === "USD" && totalCost > 0 && totalCostBRL < totalCost * 2.5) {
+    totalCostBRL = Math.round(totalCost * rate * 100) / 100;
+  }
   const averagePriceBRL =
     explicitAveragePriceBRL != null
       ? explicitAveragePriceBRL
@@ -649,4 +663,20 @@ export function calculatePositionSummary(params: {
     isCash: false,
     pricingMode: "unit_price",
   };
+}
+
+/**
+ * Filtra posições ativas da custódia (§Salvaguarda S18 / Bloco 4).
+ * Exclui posições zeradas (quantidade <= 0 ou valor <= 0) e posições de caixa,
+ * garantindo consistência exata na contagem de ativos em todos os relatórios e raios-X.
+ */
+export function getActiveCustodyPositions<T extends { quantity?: number | null; valueBRL?: number | null; isCash?: boolean }>(
+  positions: readonly T[],
+): T[] {
+  return positions.filter(
+    (p) =>
+      Number(p.quantity ?? 0) > 0 &&
+      Number(p.valueBRL ?? 0) > 0.001 &&
+      !p.isCash,
+  );
 }

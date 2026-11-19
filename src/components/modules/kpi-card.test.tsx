@@ -10,8 +10,8 @@ describe("KpiCard (F12 — valores monetários via NumberTicker)", () => {
     expect(screen.getByText("Saldo aberto")).toBeInTheDocument();
     const value = container.querySelector("p.text-negative-strong");
     expect(value).not.toBeNull();
-    // Sinal “−” prefixado (convenção MoneyText) + valor absoluto formatado.
-    expect(value?.textContent).toBe(`−R$${"\u00A0"}25,00`);
+    // Sinal “-” prefixado (convenção MoneyText) + valor absoluto formatado.
+    expect(value?.textContent).toBe(`-R$${"\u00A0"}25,00`);
     expect(value?.querySelector(".num")).not.toBeNull();
   });
 

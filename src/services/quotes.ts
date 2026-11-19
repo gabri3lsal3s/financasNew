@@ -81,6 +81,59 @@ export async function fetchBcbIndicator(indicator: "CDI" | "SELIC" | "IPCA"): Pr
   return null;
 }
 
+/**
+ * Busca a cotação PTAX oficial do BCB (Série SGS 1) ou AwesomeAPI para uma data específica (YYYY-MM-DD).
+ * Permite preenchimento automático confiável da taxa cambial de aportes/vendas em moeda estrangeira.
+ */
+export async function fetchPtaxForDate(dateISO: string): Promise<number | null> {
+  const cleanDate = dateISO.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) return null;
+
+  const [y, m, d] = cleanDate.split("-");
+  const bcbDate = `${d}/${m}/${y}`;
+
+  // 1. Tenta API oficial do Banco Central (Série SGS 1 - Dólar Comercial Venda / PTAX)
+  try {
+    const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados?formato=json&dataInicial=${bcbDate}&dataFinal=${bcbDate}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (response.ok) {
+      const payload: unknown = await response.json();
+      if (Array.isArray(payload) && payload.length > 0) {
+        const item = payload[payload.length - 1] as { valor?: string };
+        const rate = parseFloat(String(item.valor ?? "").replace(",", "."));
+        if (Number.isFinite(rate) && rate > 0) return Math.round(rate * 10000) / 10000;
+      }
+    }
+  } catch {
+    // Fallback silencioso para AwesomeAPI
+  }
+
+  // 2. Fallback secundário: AwesomeAPI diário
+  try {
+    const ymd = cleanDate.replace(/-/g, "");
+    const url = `https://economia.awesomeapi.com.br/json/daily/USD-BRL/?start_date=${ymd}&end_date=${ymd}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (response.ok) {
+      const payload: unknown = await response.json();
+      if (Array.isArray(payload) && payload.length > 0) {
+        const item = payload[0] as { bid?: string; ask?: string };
+        const rate = parseFloat(String(item.ask ?? item.bid ?? ""));
+        if (Number.isFinite(rate) && rate > 0) return Math.round(rate * 10000) / 10000;
+      }
+    }
+  } catch {
+    // Retorna null
+  }
+
+  return null;
+}
+
 /** Busca cotação na API Brapi (ações/FIIs/BDRs). */
 async function fetchBrapi(ticker: string): Promise<ParsedQuote | null> {
   const cleanTicker = normalizeTickerForBrapi(ticker);

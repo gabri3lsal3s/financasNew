@@ -7481,3 +7481,15 @@ flowchart TD
 >   - *Ativos com Cálculo Automático:* Saldo exibido limpo, sem pontinho permanente. Ação de clique para "Calibrar com Extrato" preservada com affordance no hover e tooltip transparente informando a contagem de dias úteis projetados desde o Marco Zero ($D_0$).
 >   - *Ativos com Fallback Manual:* Exibição deliberada do indicador circular (`bg-portfolio`) com tooltip claro (*"Saldo manual estático — informe a taxa para cálculo automático"*), orientando o usuário sobre quais ativos requerem inserção manual de saldo ou taxa.
 > - **Qualidade e Testes:** Testes unitários dedicados em `position-table.test.tsx` cobrindo cenários de cálculo automático vs fallback manual; 29 testes de carteira e tabela 100% aprovados; typecheck e ESLint com zero erros.
+
+---
+
+### Fase 110 — Certificação Forense de Edge Cases e Produção do Motor Axir (§v4 — ID BR-20261119-6445)
+
+> **Status:** ✅ Concluída e Auditada — **Blindagem Quantitativa de Produção, Resgates Proporcionais e Câmbio Dinâmico**:
+> - **Baixa Proporcional de Custo em Renda Fixa (`operations.ts`, `period-redemptions.ts`):** Aplicação estrita da fórmula canônica $C_{\text{baixado}} = C_{\text{pré}} \times \min(1, V_{\text{resgate}} / V_{\text{pré}})$, preservando rigorosamente a rentabilidade contábil após amortizações parciais e eliminando prejuízos fictícios em títulos soberanos (`TESOURO-SELIC-31`);
+> - **Motor Cambial Multi-Moeda & PTAX Dinâmica (`quotes.ts`, `canonical-engine.ts`, formulários de ativos e ordens):** Captura de `fx_rate_brl` em ordens com preenchimento automático inteligente via PTAX histórica do Banco Central (`fetchPtaxForDate`), edição retroativa de `fx_rate_at_purchase` e `total_cost_brl` na ficha de ativos e resolução de cotação USD em tempo real via `usdRateFromPrices`;
+> - **Internacional Blindado & Segregação IVVB11 (`tickers-catalog.ts`, `canonical-types.ts`, `report-equity-class-table.tsx`):** Salvaguarda contra denominadores corrompidos em moeda nativa ($C_{\text{BRL}} < 2,5 \times C_{\text{USD}}$) eliminando retornos totais anômalos (+786,6% em INDA e +84,1% em SPHQ); classificação estrita de IVVB11 e ETFs B3 como `ETF B3 / BDR (Custódia BRL)` (22,5%) vs `Moeda Forte Direta (USD)` (77,5%); ajuste de colunas para relatórios de 5+ dígitos sem colisão visual;
+> - **Posições Ativas e Sinal de Fluxo (`valuation.ts`, `money-text.tsx`, `TearSheetMovementStrip.tsx`):** Unificação do filtro `getActiveCustodyPositions` em todos os relatórios garantindo exatamente 62 ativos ativos e 20 títulos de RF (excluindo títulos zerados/vencidos); sinal negativo ASCII `-` preservado em impressão PDF;
+> - **Classificador Soberano de Indexador & Higienização de Rótulos (`tickers-catalog.ts`, `fixed-income.ts`, `position-grouping.ts`):** Prevalência soberana de indexador para `TESOURO-IPCA-32` como `Inflação (IPCA+)` antes de fallbacks de formulário; supressão de ruídos de `"0% a.a."` e `"IPCA + 0% a.a."`; alerta não-bloqueante de quedas de custo retroativo anômalas;
+> - **Qualidade e Testes:** Suite `src/tests/portfolio-audit-gate-v4.test.ts` 10/10 aprovada; 831 testes de portfólio e relatórios aprovados; TypeScript e ESLint com zero erros.

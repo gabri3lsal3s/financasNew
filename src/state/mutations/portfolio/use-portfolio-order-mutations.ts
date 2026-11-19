@@ -36,6 +36,8 @@ export interface RecordOrderParams {
   recordContribution?: boolean;
   notes?: string | null;
   usdRate?: number;
+  /** Taxa de câmbio negociada em BRL para ativos em moeda estrangeira (Fase 2). */
+  fxRateBRL?: number;
   /** Custo original aplicado na compra/lote resgatado (especialmente relevante para Renda Fixa). */
   appliedCostBasis?: number;
   /** Valor de IRRF retido na fonte customizado pelo usuário (em moeda nativa / BRL). */
@@ -73,6 +75,7 @@ export function useRecordOrder() {
         recordContribution,
         notes,
         usdRate,
+        fxRateBRL,
         appliedCostBasis,
         customTaxAmount,
         netCreditAmount,
@@ -85,7 +88,7 @@ export function useRecordOrder() {
         );
       }
 
-      const rate = asset.currency === "USD" ? (usdRate ?? 5.25) : 1;
+      const rate = asset.currency === "USD" ? (fxRateBRL ?? usdRate ?? 5.25) : 1;
       const totalBRL = Math.round(total * rate * 100) / 100;
 
       // 1. Se for Venda: antes de gravar a venda, verifica se o ativo tem compras anteriores no ledger.
@@ -143,6 +146,8 @@ export function useRecordOrder() {
         quantity,
         price,
         total,
+        fx_rate: asset.currency === "USD" ? rate : undefined,
+        total_cost_brl: totalBRL,
       });
 
       // 3. Se for Compra ou Subscrição: atualiza o Preço Médio ponderado e quantidade
@@ -196,13 +201,38 @@ export function useRecordOrder() {
             quantity,
             price > 0 ? price : total / (quantity || 1),
           );
-          await updateAsset.mutateAsync({
-            id: asset.id,
-            patch: {
-              quantity: lotCalc.newQuantity,
-              average_price: lotCalc.newAveragePrice,
-            },
-          });
+
+          if (asset.currency === "USD") {
+            const currentTotalCostBRL =
+              asset.total_cost_brl ??
+              Math.round(asset.quantity * asset.average_price * (asset.fx_rate_at_purchase ?? rate) * 100) / 100;
+            const newTotalCostBRL = Math.round((currentTotalCostBRL + totalBRL) * 100) / 100;
+            const newAverageCostBRL =
+              lotCalc.newQuantity > 0 ? Math.round((newTotalCostBRL / lotCalc.newQuantity) * 10000) / 10000 : 0;
+            const newFxRateAtPurchase =
+              lotCalc.newAveragePrice > 0
+                ? Math.round((newAverageCostBRL / lotCalc.newAveragePrice) * 10000) / 10000
+                : rate;
+
+            await updateAsset.mutateAsync({
+              id: asset.id,
+              patch: {
+                quantity: lotCalc.newQuantity,
+                average_price: lotCalc.newAveragePrice,
+                total_cost_brl: newTotalCostBRL,
+                average_cost_brl: newAverageCostBRL,
+                fx_rate_at_purchase: newFxRateAtPurchase,
+              },
+            });
+          } else {
+            await updateAsset.mutateAsync({
+              id: asset.id,
+              patch: {
+                quantity: lotCalc.newQuantity,
+                average_price: lotCalc.newAveragePrice,
+              },
+            });
+          }
         }
 
         // Debita do caixa em BRL se solicitado e disponível

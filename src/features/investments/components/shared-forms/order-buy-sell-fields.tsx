@@ -1,4 +1,5 @@
 import { Checkbox, DatePicker, FormField, MoneyInput, NumericInput } from "@/components/ui";
+import { parseDecimalNumber } from "@/domain/money";
 import { triggerSensory } from "@/services/sensory";
 import type { AssetCurrency } from "@/types";
 import { FundingSourceSelector } from "../funding-source-selector";
@@ -42,6 +43,8 @@ export interface OrderBuySellFieldsProps {
   orderTotalBRL?: number;
   creditCash?: boolean;
   onCreditCashChange?: (checked: boolean) => void;
+  fxRateBRL?: number | null;
+  onFxRateBRLChange?: (rate: number | null) => void;
   idPrefix: string;
 }
 
@@ -79,6 +82,8 @@ export function OrderBuySellFields({
   orderTotalBRL = 0,
   creditCash = true,
   onCreditCashChange,
+  fxRateBRL,
+  onFxRateBRLChange,
   idPrefix,
 }: OrderBuySellFieldsProps) {
   const isSell = mode === "sell";
@@ -195,10 +200,30 @@ export function OrderBuySellFields({
 
         <FormField
           label={isSell ? (isTotalValue ? "Data do Resgate" : "Data da Venda") : "Data da Operação"}
-          className="sm:col-span-2"
+          className={currency !== "BRL" ? "sm:col-span-1" : "sm:col-span-2"}
         >
           <DatePicker value={date} onValueChange={onDateChange} />
         </FormField>
+
+        {currency !== "BRL" && onFxRateBRLChange && (
+          <FormField
+            label={`Cotação da Moeda (R$ / ${currency})`}
+            htmlFor={`${idPrefix}-fx-rate`}
+            helperText="Deixe em branco para preenchimento automático pela PTAX da data."
+            className="sm:col-span-1"
+          >
+            <NumericInput
+              id={`${idPrefix}-fx-rate`}
+              value={fxRateBRL != null ? String(fxRateBRL) : ""}
+              onValueChange={(val) => {
+                const parsed = parseDecimalNumber(val);
+                onFxRateBRLChange(parsed > 0 ? parsed : null);
+              }}
+              placeholder="Ex: 5,8230"
+              aria-label={`Cotação da moeda ${currency} em reais`}
+            />
+          </FormField>
+        )}
       </div>
 
       {!isEditing && (

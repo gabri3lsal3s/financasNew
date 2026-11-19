@@ -571,10 +571,14 @@ export function createCanonicalAssetHolding(
       averageCostBRL = usdRate;
     } else if (params.totalCostBRL != null) {
       totalCostBRL = round2(Math.max(0, params.totalCostBRL));
-      averageCostBRL = rawQuantity > 0 ? (params.averageCostBRL ?? totalCostBRL / rawQuantity) : 0;
+      // Salvaguarda cambial contra dados corrompidos (USD salvo no campo BRL gerando retornos astronômicos)
+      if (totalCostNative > 0 && totalCostBRL < totalCostNative * 2.5) {
+        totalCostBRL = round2(totalCostNative * usdRate);
+      }
+      averageCostBRL = rawQuantity > 0 ? (params.averageCostBRL && params.averageCostBRL >= (averageCostNative * 2.5) ? params.averageCostBRL : round4(totalCostBRL / rawQuantity)) : 0;
     } else {
       totalCostBRL = round2(totalCostNative * usdRate);
-      averageCostBRL = rawQuantity > 0 ? totalCostBRL / rawQuantity : 0;
+      averageCostBRL = rawQuantity > 0 ? round4(totalCostBRL / rawQuantity) : 0;
     }
   } else {
     totalCostBRL = totalCostNative;

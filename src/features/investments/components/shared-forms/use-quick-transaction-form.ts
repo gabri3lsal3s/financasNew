@@ -1,6 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { todayISO } from "@/domain/debts";
 import { numberToCents, parseDecimalNumber } from "@/domain/money";
+import { fetchPtaxForDate } from "@/services/quotes";
 import {
   calculateFixedIncomeRedemptionPreview,
   calculateWeightedAveragePrice,
@@ -98,6 +99,7 @@ export function useQuickTransactionForm({
   const [customAppliedCostCents, setCustomAppliedCostCents] = useState<number | null>(null);
   const [customTaxRatePct, setCustomTaxRatePct] = useState<number | null>(null);
   const [customTaxAmountCents, setCustomTaxAmountCents] = useState<number | null>(null);
+  const [fxRateBRL, setFxRateBRL] = useState<number | null>(() => editTransaction?.fx_rate ?? null);
   const isSubmittingRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -117,6 +119,16 @@ export function useQuickTransactionForm({
     () => isCorporateEvent ? computeCorporateEventFactor(type, parseDecimalNumber(splitFromStr), parseDecimalNumber(splitToStr)) : 0,
     [isCorporateEvent, type, splitFromStr, splitToStr],
   );
+  useEffect(() => {
+    if (targetAsset?.currency !== "BRL" && !editTransaction) {
+      void fetchPtaxForDate(date).then((rate) => {
+        if (rate && !fxRateBRL) {
+          setFxRateBRL(rate);
+        }
+      });
+    }
+  }, [date, targetAsset?.currency, editTransaction, fxRateBRL]);
+
   const custodyQty = Math.max(0, targetAsset?.quantity ?? 0);
   const effectiveDividendTotalBRL = useMemo(
     () => computeDividendTotalFromMode({ calcMode: dividendCalcMode, totalCents, perShareCents, custodyQty, isTotalValue: valuation.isTotalValue }),
@@ -124,11 +136,12 @@ export function useQuickTransactionForm({
   );
   const currentOrderTotalBRL = useMemo(() => {
     const currency = targetAsset?.currency ?? "BRL";
+    const effectiveRate = fxRateBRL && fxRateBRL > 0 ? fxRateBRL : usdRate;
     if (valuation.isCash) return totalCents / 100;
-    if (valuation.isTotalValue) return convertOrderAmountToBRL((totalCents || priceCents) / 100, currency, usdRate);
-    if (isDividendType) return convertOrderAmountToBRL(effectiveDividendTotalBRL, currency, usdRate);
-    return convertOrderAmountToBRL(parsedQty * (priceCents / 100), currency, usdRate);
-  }, [valuation.isCash, valuation.isTotalValue, isDividendType, totalCents, priceCents, effectiveDividendTotalBRL, parsedQty, targetAsset, usdRate]);
+    if (valuation.isTotalValue) return convertOrderAmountToBRL((totalCents || priceCents) / 100, currency, effectiveRate);
+    if (isDividendType) return convertOrderAmountToBRL(effectiveDividendTotalBRL, currency, effectiveRate);
+    return convertOrderAmountToBRL(parsedQty * (priceCents / 100), currency, effectiveRate);
+  }, [valuation.isCash, valuation.isTotalValue, isDividendType, totalCents, priceCents, effectiveDividendTotalBRL, parsedQty, targetAsset, usdRate, fxRateBRL]);
 
   const buyPreview = useMemo(() => {
     if (!targetAsset || valuation.isCash || valuation.isTotalValue || parsedQty <= 0 || priceCents <= 0) return null;
@@ -176,7 +189,7 @@ export function useQuickTransactionForm({
       targetAsset, cashAsset, type, date, month, dividendEntryMode, parsedQty, priceCents, totalCents,
       effectiveDividendTotalBRL, isCash: valuation.isCash, isTotalValue: valuation.isTotalValue,
       isDividendType, isCorporateEvent, computedEventFactor, buyFundingSource, creditCash, usdRate,
-      appliedCostCents, fiSellResult, editDividend, editTransaction,
+      fxRateBRL, appliedCostCents, fiSellResult, editDividend, editTransaction,
       recordOrder: recordOrder.mutateAsync, updateTx: updateTx.mutateAsync, updateDividend: updateDividend.mutateAsync,
     };
     const check = validateQuickTransactionInput(payload);
@@ -205,7 +218,7 @@ export function useQuickTransactionForm({
     setPriceCents, totalCents, setTotalCents, buyFundingSource, setBuyFundingSource, creditCash,
     setCreditCash, splitFromStr, setSplitFromStr, splitToStr, setSplitToStr, error, setError,
     appliedCostCents, setCustomAppliedCostCents, customTaxRatePct, setCustomTaxRatePct,
-    customTaxAmountCents, setCustomTaxAmountCents, isEditMode, isEditingTransaction, isEditingDividend,
+    customTaxAmountCents, setCustomTaxAmountCents, fxRateBRL, setFxRateBRL, isEditMode, isEditingTransaction, isEditingDividend,
     ...valuation, isDividendType, isCorporateEvent, custodyQty, currentOrderTotalBRL, buyPreview,
     sellVariablePreview, currentGrossBalance, fiSellResult, isBusy, resetOnClose, handleSubmit,
   };

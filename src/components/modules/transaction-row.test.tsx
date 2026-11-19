@@ -17,7 +17,7 @@ describe("TransactionRow", () => {
     );
     expect(screen.getByText("Supermercado")).toBeInTheDocument();
     expect(screen.getByText("13/08 · Mercado Central")).toBeInTheDocument();
-    expect(screen.getByText("−R$ 1.500,00")).toBeInTheDocument();
+    expect(screen.getByText("-R$ 1.500,00")).toBeInTheDocument();
   });
 
   it("usa sinal positivo para renda", () => {
@@ -43,7 +43,7 @@ describe("TransactionRow", () => {
         kind="expense"
       />,
     );
-    expect(screen.getByText("−R$ 200,00")).toBeInTheDocument();
+    expect(screen.getByText("-R$ 200,00")).toBeInTheDocument();
     expect(screen.getByText("Relat.:")).toBeInTheDocument();
     expect(screen.getByText("R$ 100,00")).toBeInTheDocument();
     expect(screen.getByText("50% rateio")).toBeInTheDocument();

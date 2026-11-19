@@ -62,6 +62,7 @@ export function TearSheetMovementStrip({ monthSummary }: TearSheetMovementStripP
               <MoneyText
                 cents={numberToCents(monthSummary.netFlowBRL)}
                 tone={monthSummary.netFlowBRL >= 0 ? "positive" : "negative"}
+                sign="explicit"
               />
             </strong>
           </span>
