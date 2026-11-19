@@ -152,6 +152,108 @@ export class HeadlessStateStore {
     this.setProfile(profile);
   }
 
+  public setUserProfile(profile: Partial<HeadlessUserProfile>): void {
+    this.setProfile(profile);
+  }
+
+  public canAccessFeature(featureKey: string): boolean {
+    const { role, tier, isLifetime } = this.state.profile;
+    if (role === "superadmin") return true;
+    if (isLifetime) return true;
+    const isProTier = tier === "pro_monthly" || tier === "pro_annual" || tier === "lifetime";
+    const proOnlyFeatures = new Set([
+      "executive_pdf_reports",
+      "advanced_projections",
+      "bank_notification_listener",
+      "family_budget",
+      "trips_mode",
+      "unlimited_cards",
+    ]);
+    if (proOnlyFeatures.has(featureKey) && !isProTier) {
+      return false;
+    }
+    return true;
+  }
+
+  public getTransactions(): readonly HeadlessTransaction[] {
+    return this.state.transactions;
+  }
+
+  public getCashBalance(): number {
+    return this.state.cashBalanceCents;
+  }
+
+  public updateCashBalance(amountCents: number): void {
+    this.state.cashBalanceCents = amountCents;
+  }
+
+  public getAsset(assetId: string): PortfolioAsset | undefined {
+    return this.state.assets.find((a) => a.id === assetId);
+  }
+
+  public createCategory(input: {
+    name: string;
+    icon: string;
+    color: string;
+    type?: "expense" | "income";
+  }): HeadlessCategory {
+    const category: HeadlessCategory = {
+      id: `cat-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      userId: this.state.profile.id,
+      name: input.name,
+      icon: input.icon,
+      color: input.color,
+      type: input.type ?? "expense",
+    };
+    this.addCategory(category);
+    return category;
+  }
+
+  public createTransaction(input: {
+    description: string;
+    amountCents: number;
+    type: "income" | "expense";
+    date: string;
+    categoryId?: string;
+  }): HeadlessTransaction {
+    const tx: HeadlessTransaction = {
+      id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      userId: this.state.profile.id,
+      description: input.description,
+      amountCents: input.amountCents,
+      type: input.type,
+      date: input.date,
+      competenceMonth: input.date.slice(0, 7),
+      categoryId: input.categoryId ?? "cat-default",
+      isPaid: true,
+      reportWeight: 1,
+      createdAt: new Date().toISOString(),
+    };
+    this.addTransaction(tx);
+    return tx;
+  }
+
+  public createAsset(input: {
+    ticker: string;
+    name?: string;
+    assetClass: "stock" | "fii" | "fixed_income" | "etf_b3" | "etf_global" | "crypto" | "bdr" | "international";
+    currency: "BRL" | "USD";
+    quantity: number;
+    averagePriceCents: number;
+  }): PortfolioAsset {
+    const asset: PortfolioAsset = {
+      id: `asset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      user_id: this.state.profile.id,
+      ticker: input.ticker,
+      asset_class: input.assetClass,
+      currency: input.currency,
+      quantity: input.quantity,
+      average_price: input.averagePriceCents / 100,
+    };
+    this.addAsset(asset);
+    return asset;
+  }
+
   // ---------------------------------------------------------------------------
   // Mutadores de Categorias
   // ---------------------------------------------------------------------------

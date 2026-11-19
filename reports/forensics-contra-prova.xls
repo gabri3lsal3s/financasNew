@@ -67,7 +67,7 @@
  
   <Worksheet ss:Name="Resumo Executivo">
    <Table ss:DefaultColumnWidth="120">
-    <Column ss:Width="220"/>
+    <Column ss:Width="240"/>
     <Column ss:Width="110"/>
     <Column ss:Width="90"/>
     <Column ss:Width="90"/>
@@ -77,10 +77,10 @@
      <Cell ss:StyleID="Title"><Data ss:Type="String">Axir — Laboratório Forense de Auditoria Quantitativa</Data></Cell>
     </Row>
     <Row>
-     <Cell><Data ss:Type="String">ID da Auditoria: AUDIT-MWMWAUUP | Data: 2026-11-19T01:52:34.993Z</Data></Cell>
+     <Cell><Data ss:Type="String">ID da Auditoria: AUDIT-MWN19EDI | Data: 2026-11-19T04:11:25.062Z</Data></Cell>
     </Row>
     <Row>
-     <Cell><Data ss:Type="String">Score Global: 100% | Duração: 5.51ms</Data></Cell>
+     <Cell><Data ss:Type="String">Score Global: 100% | Duração: 18.97ms | Asserções: 39/39</Data></Cell>
     </Row>
     <Row/>
     <Row ss:StyleID="Header">
@@ -171,6 +171,14 @@
      <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
      <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
      <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Ciclo de Vida &amp; Transições de Estado</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">16</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">16</Data></Cell>
     </Row>
    </Table>
   </Worksheet>
@@ -335,6 +343,219 @@
      <Cell ss:StyleID="DeltaOk" ss:Formula="=SUM(R2C:R[-1]C)"><Data ss:Type="Number">0.00</Data></Cell>
      <Cell ss:StyleID="DeltaOk" ss:Formula="=SUM(R2C:R[-1]C)"><Data ss:Type="Number">0.00</Data></Cell>
      <Cell ss:StyleID="DeltaOk" ss:Formula="=SUM(R2C:R[-1]C)"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+   </Table>
+  </Worksheet>
+ 
+  <Worksheet ss:Name="Contra-Prova Ciclo de Vida">
+   <Table ss:DefaultColumnWidth="120">
+    <Column ss:Width="110"/>
+    <Column ss:Width="110"/>
+    <Column ss:Width="260"/>
+    <Column ss:Width="100"/>
+    <Column ss:Width="100"/>
+    <Column ss:Width="110"/>
+    <Column ss:Width="100"/>
+    <Row ss:StyleID="Header">
+     <Cell><Data ss:Type="String">ID da Jornada</Data></Cell>
+     <Cell><Data ss:Type="String">Pilar</Data></Cell>
+     <Cell><Data ss:Type="String">Nome da Jornada</Data></Cell>
+     <Cell><Data ss:Type="String">Status</Data></Cell>
+     <Cell><Data ss:Type="String">Passos Totais</Data></Cell>
+     <Cell><Data ss:Type="String">Passos Aprovados</Data></Cell>
+     <Cell><Data ss:Type="String">Latência (ms)</Data></Cell>
+    </Row>
+    
+    <Row>
+     <Cell><Data ss:Type="String">JRN-AUTH-01</Data></Cell>
+     <Cell><Data ss:Type="String">auth</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Ciclo Completo de Autenticação, Onboarding &amp; Governança</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0.24</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">JRN-SUBS-01</Data></Cell>
+     <Cell><Data ss:Type="String">subscription</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Ciclo de Assinatura, Checkout Pix, CDC 49 &amp; Feature Gates</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0.29</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">JRN-CAT-01</Data></Cell>
+     <Cell><Data ss:Type="String">categories</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Taxonomia, Hierarquia Pai/Filho &amp; Reconciliação de Órfãos</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0.24</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">JRN-CARD-01</Data></Cell>
+     <Cell><Data ss:Type="String">transactions</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Lançamento Multi-Passos, Parcelamentos 60x &amp; Quitação CDC 52</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1.02</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">JRN-INV-01</Data></Cell>
+     <Cell><Data ss:Type="String">portfolio</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Eventos Corporativos, Splits, Apuração Fiscal &amp; Renda Fixa</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0.23</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">JRN-FAM-01</Data></Cell>
+     <Cell><Data ss:Type="String">goals_budgets</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Orçamento Base Zero, Provisões Anuais &amp; Convite Familiar Modular</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1.96</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">JRN-TRIP-01</Data></Cell>
+     <Cell><Data ss:Type="String">trips</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Viagem em Grupo, Câmbio Internacional &amp; Racha Min-Cash-Flow</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0.47</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">JRN-DATA-01</Data></Cell>
+     <Cell><Data ss:Type="String">insights</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Insights SmartAdvisor, Snooze Qualificado &amp; Backup Snapshot</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0.22</Data></Cell>
+    </Row>
+   </Table>
+  </Worksheet>
+ 
+  <Worksheet ss:Name="Contra-Prova Fiscal e CDC">
+   <Table ss:DefaultColumnWidth="120">
+    <Column ss:Width="160"/>
+    <Column ss:Width="300"/>
+    <Column ss:Width="140"/>
+    <Column ss:Width="100"/>
+    <Column ss:Width="140"/>
+    <Column ss:Width="140"/>
+    <Row ss:StyleID="Header">
+     <Cell><Data ss:Type="String">Fundamento Legal</Data></Cell>
+     <Cell><Data ss:Type="String">Cenário de Teste</Data></Cell>
+     <Cell><Data ss:Type="String">Base de Cálculo (R$)</Data></Cell>
+     <Cell><Data ss:Type="String">Alíquota / Razão</Data></Cell>
+     <Cell><Data ss:Type="String">Resultado Final (R$)</Data></Cell>
+     <Cell><Data ss:Type="String">Certificação</Data></Cell>
+    </Row>
+    
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Lei 9.250/95 Art. 22</Data></Cell>
+     <Cell><Data ss:Type="String">Vendas de Ações B3 até R$ 20.000,00 no Mês</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">18000</Data></Cell>
+     <Cell><Data ss:Type="String">15%</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">ISENTO</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">CDC Art. 49</Data></Cell>
+     <Cell><Data ss:Type="String">Direito de Arrependimento de Compra (Até 7 dias)</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">143.88</Data></Cell>
+     <Cell><Data ss:Type="String">100%</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">143.88</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">ESTORNO INTEGRAL</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">CDC Art. 52 § 2º</Data></Cell>
+     <Cell><Data ss:Type="String">Quitação Antecipada de 12 Parcelas com Expurgo de Juros</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">6000</Data></Cell>
+     <Cell><Data ss:Type="String">2.5% a.m.</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">5120.4</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">DESCONTO RACIONAL</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">CDC Art. 52 § 1º</Data></Cell>
+     <Cell><Data ss:Type="String">Teto Legal de Multa por Impontualidade no Rotativo (&lt;= 2%)</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">2500</Data></Cell>
+     <Cell><Data ss:Type="String">2.00%</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">50</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">TETO CONFORME</Data></Cell>
+    </Row>
+   </Table>
+  </Worksheet>
+ 
+  <Worksheet ss:Name="Contra-Prova Fuzzing">
+   <Table ss:DefaultColumnWidth="120">
+    <Column ss:Width="200"/>
+    <Column ss:Width="160"/>
+    <Column ss:Width="220"/>
+    <Column ss:Width="220"/>
+    <Column ss:Width="110"/>
+    <Row ss:StyleID="Header">
+     <Cell><Data ss:Type="String">Schema Zod Auditado</Data></Cell>
+     <Cell><Data ss:Type="String">Vetor de Ataque</Data></Cell>
+     <Cell><Data ss:Type="String">Injeção Adversarial</Data></Cell>
+     <Cell><Data ss:Type="String">Tratamento Fail-Safe</Data></Cell>
+     <Cell><Data ss:Type="String">Status Forense</Data></Cell>
+    </Row>
+    
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">createTransactionSchema</Data></Cell>
+     <Cell><Data ss:Type="String">Monetary Overflow</Data></Cell>
+     <Cell><Data ss:Type="String">R$ 999.999.999.999,00</Data></Cell>
+     <Cell><Data ss:Type="String">Rejeição Zod (max ceiling)</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PROTEGIDO</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">createTransactionSchema</Data></Cell>
+     <Cell><Data ss:Type="String">SQL Injection</Data></Cell>
+     <Cell><Data ss:Type="String">Robert&apos;); DROP TABLE users--</Data></Cell>
+     <Cell><Data ss:Type="String">Sanitização Zod (cleanText)</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PROTEGIDO</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">createCategorySchema</Data></Cell>
+     <Cell><Data ss:Type="String">Unicode Homoglyphs</Data></Cell>
+     <Cell><Data ss:Type="String">Tag com emojis decorativos</Data></Cell>
+     <Cell><Data ss:Type="String">Bloqueio ESLint / Fail-Safe</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PROTEGIDO</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">splitAmountSchema</Data></Cell>
+     <Cell><Data ss:Type="String">Repeating Decimal</Data></Cell>
+     <Cell><Data ss:Type="String">R$ 100,00 em 3 parcelas</Data></Cell>
+     <Cell><Data ss:Type="String">Soma(parcelas) === original</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PROTEGIDO</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">earlyAmortizationSchema</Data></Cell>
+     <Cell><Data ss:Type="String">CDC 52 Discount</Data></Cell>
+     <Cell><Data ss:Type="String">12x R$ 500,00 @ 2.5% a.m.</Data></Cell>
+     <Cell><Data ss:Type="String">VP &lt; Nominal (expurgo de juros)</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PROTEGIDO</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">stockSplitSchema</Data></Cell>
+     <Cell><Data ss:Type="String">Zero / Negative Ratio</Data></Cell>
+     <Cell><Data ss:Type="String">Ratio &lt;= 0 ou NaN</Data></Cell>
+     <Cell><Data ss:Type="String">Rejeição imediata sem crash</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PROTEGIDO</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">backupEnvelopeSchema</Data></Cell>
+     <Cell><Data ss:Type="String">Tampered Hash SHA-256</Data></Cell>
+     <Cell><Data ss:Type="String">Mutação de 1 byte no payload</Data></Cell>
+     <Cell><Data ss:Type="String">Rejeição por integridade</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PROTEGIDO</Data></Cell>
     </Row>
    </Table>
   </Worksheet>
@@ -589,6 +810,166 @@
      <Cell><Data ss:Type="String">Avalanche: 1266570 cts vs Neve: 1423910 cts (Economia = 157340 cts)</Data></Cell>
      <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
      <Cell><Data ss:Type="String">src/domain/debts/payoff-simulator.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-01</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Blindagem Hermetica de Feature Gates em Contas Free</Data></Cell>
+     <Cell><Data ss:Type="String">false (bloqueio estrito)</Data></Cell>
+     <Cell><Data ss:Type="String">false (bloqueio estrito)</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/subscription/plans.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-02</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Idempotencia Estrita de Transicao de Assinatura</Data></Cell>
+     <Cell><Data ss:Type="String">14388</Data></Cell>
+     <Cell><Data ss:Type="String">14388</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/subscription/cumulative-renewal.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-03</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Conformidade do Direito de Arrependimento (CDC Art. 49)</Data></Cell>
+     <Cell><Data ss:Type="String">14388</Data></Cell>
+     <Cell><Data ss:Type="String">14388</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/subscription/plans.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-04</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Invariante Anti-Orfandade na Exclusao de Categorias</Data></Cell>
+     <Cell><Data ss:Type="String">0</Data></Cell>
+     <Cell><Data ss:Type="String">0</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/features/admin/forensics/core/engine/headless-state-store.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-05</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Congruencia Estrita com CATEGORY_ICON_MAP e Isencao de Emojis</Data></Cell>
+     <Cell><Data ss:Type="String">0</Data></Cell>
+     <Cell><Data ss:Type="String">0</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/components/modules/category-icons.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-06</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Conservacao de Centavos na Exclusao Parcial de Parcelamentos</Data></Cell>
+     <Cell><Data ss:Type="String">66666</Data></Cell>
+     <Cell><Data ss:Type="String">66666</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/money/parcelar.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-07</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Desconto a Valor Presente em Amortizacoes (CDC Art. 52 § 2º)</Data></Cell>
+     <Cell><Data ss:Type="String">totalPresentValuePaidCents &lt; totalOriginalAmountCents</Data></Cell>
+     <Cell><Data ss:Type="String">Desconto de 59348 centavos aplicado.</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/loans/index.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-08</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Limite Legal de Multa por Impontualidade no Rotativo (CDC Art. 52 § 1º)</Data></Cell>
+     <Cell><Data ss:Type="String">5000</Data></Cell>
+     <Cell><Data ss:Type="String">5000</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/cards/refinancing.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-09</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Conservacao Patrimonial em Splits e Reverse Splits</Data></Cell>
+     <Cell><Data ss:Type="String">3500</Data></Cell>
+     <Cell><Data ss:Type="String">3500</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/portfolio/operations.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-10</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Estabilidade de Preco Medio Pos-Alienacao Parcial</Data></Cell>
+     <Cell><Data ss:Type="String">20</Data></Cell>
+     <Cell><Data ss:Type="String">20</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/portfolio/tax.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-11</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Isencao de IRPF em Vendas de Acoes ate R$ 20.000,00/mes</Data></Cell>
+     <Cell><Data ss:Type="String">0</Data></Cell>
+     <Cell><Data ss:Type="String">0</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/portfolio/tax.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-12</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Reversibilidade Temporal Estrita de Operacoes (Rollback / Estorno)</Data></Cell>
+     <Cell><Data ss:Type="String">1000000</Data></Cell>
+     <Cell><Data ss:Type="String">1000000</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/features/admin/forensics/core/engine/headless-state-store.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-13</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Fechamento Proporcional da Renda no Orcamento Familiar</Data></Cell>
+     <Cell><Data ss:Type="String">355555</Data></Cell>
+     <Cell><Data ss:Type="String">355555</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/family/settlement.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-14</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Invariante de Reducao Otima do Min-Cash-Flow em Viagens</Data></Cell>
+     <Cell><Data ss:Type="String">&lt;= 4 transferencias</Data></Cell>
+     <Cell><Data ss:Type="String">3 transferencias</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/trips/trip-math.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-15</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Imunidade a Duplicacao de Insights durante Cooldown</Data></Cell>
+     <Cell><Data ss:Type="String">dia8=suprimido, dia35=liberado</Data></Cell>
+     <Cell><Data ss:Type="String">dia8=suprimido, dia35=liberado</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/insights/feedback.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LFC-16</Data></Cell>
+     <Cell><Data ss:Type="String">lifecycle</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Integridade Criptografica SHA-256 e Nao-Colisao de Backups</Data></Cell>
+     <Cell><Data ss:Type="String">valido=true, adulterado=false</Data></Cell>
+     <Cell><Data ss:Type="String">valido=true, adulterado=false</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/export/backup.ts</Data></Cell>
     </Row>
    </Table>
   </Worksheet>

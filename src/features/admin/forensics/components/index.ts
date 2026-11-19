@@ -7,3 +7,4 @@ export * from "./forensics-invariants-list";
 export * from "./forensics-persona-selector";
 export * from "./forensics-snapshot-inspector";
 export * from "./forensics-artifacts-panel";
+export * from "./forensics-journeys-inspector";

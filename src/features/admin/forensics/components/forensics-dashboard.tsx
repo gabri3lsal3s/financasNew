@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Clock,
   FileCheck2,
+  Layers,
   Microscope,
   Play,
   RotateCcw,
@@ -28,6 +29,7 @@ import { ForensicsInvariantsList } from "./forensics-invariants-list";
 import { ForensicsPersonaSelector } from "./forensics-persona-selector";
 import { ForensicsSnapshotInspector } from "./forensics-snapshot-inspector";
 import { ForensicsArtifactsPanel } from "./forensics-artifacts-panel";
+import { ForensicsJourneysInspector } from "./forensics-journeys-inspector";
 
 export function ForensicsDashboard() {
   const [report, setReport] = useState<ForensicAuditReport | null>(null);
@@ -200,10 +202,23 @@ export function ForensicsDashboard() {
             <ForensicsInvariantsList results={allResults} />
           ) : (
             <Card className="border-border/80 bg-surface shadow-xs p-6 text-center text-xs text-muted-foreground">
-              Dispare a auditoria para inspecionar os resultados individuais de cada uma das 23 invariantes.
+              Dispare a auditoria para inspecionar os resultados individuais de cada uma das 39 invariantes.
             </Card>
           )}
         </div>
+      ),
+    },
+    {
+      value: "journeys",
+      label: "Ciclo de Vida & Transições",
+      icon: <Layers className="size-4" aria-hidden="true" />,
+      badge: report?.journeys ? (
+        <Badge variant={report.journeys.every((j) => j.passed) ? "positive" : "critical"} size="xs">
+          {report.journeys.filter((j) => j.passed).length}/{report.journeys.length}
+        </Badge>
+      ) : undefined,
+      content: (
+        <ForensicsJourneysInspector journeys={report?.journeys} />
       ),
     },
     {

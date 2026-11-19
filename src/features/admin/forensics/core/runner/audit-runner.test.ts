@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { calculateModuleScores, runForensicAudit } from "./audit-runner";
 import type { InvariantResult } from "../types";
 
-describe("Laboratório Forense — Orquestrador Isomórfico & Invariantes (Fases 1, 2 e 3)", () => {
-  it("executa a auditoria sintética de todas as 8 personas em menos de 100ms", async () => {
+describe("Laboratório Forense — Orquestrador Isomórfico & Invariantes (Fases 1 a 8)", () => {
+  it("executa a auditoria sintética de todas as 9 personas e 8 jornadas em menos de 100ms", async () => {
     const start = performance.now();
     const report = await runForensicAudit({ environment: "synthetic" });
     const elapsed = performance.now() - start;
@@ -11,13 +11,16 @@ describe("Laboratório Forense — Orquestrador Isomórfico & Invariantes (Fases
     expect(report.auditId).toMatch(/^AUDIT-/);
     expect(report.environment).toBe("synthetic");
     expect(report.overallScore).toBe(100);
-    expect(report.totalAssertions).toBe(23);
-    expect(report.totalPassed).toBe(23);
+    expect(report.totalAssertions).toBe(39);
+    expect(report.totalPassed).toBe(39);
     expect(report.totalFailed).toBe(0);
-    expect(report.personas).toHaveLength(8);
+    expect(report.personas).toHaveLength(9);
+    expect(report.journeys).toHaveLength(8);
+    expect(report.journeys?.every((j) => j.passed)).toBe(true);
     expect(elapsed).toBeLessThan(100);
 
-    // Todos os 10 módulos devem ter score 100%
+    // Todos os 11 módulos devem ter score 100%
+    expect(Object.keys(report.moduleScores)).toHaveLength(11);
     for (const score of Object.values(report.moduleScores)) {
       expect(score.score).toBe(100);
       expect(score.failed).toBe(0);

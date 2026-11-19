@@ -47,7 +47,11 @@ import {
   assertPixCrc16Integrity,
   assertEmergencyRunwayLiquidity,
   assertDebtPayoffOptimality,
+  lifecycleInvariantSuite,
 } from "../invariants";
+import { HeadlessStateStore } from "../engine/headless-state-store";
+import { HeadlessTransactionRouter } from "../engine/headless-transaction-router";
+import { executeAllJourneys } from "../journeys/journey-catalog";
 
 export interface AuditRunnerOptions {
   environment?: "synthetic" | "live_anonymized";
@@ -80,6 +84,7 @@ export function calculateModuleScores(
     budgets: createEmptyModuleScore("budgets"),
     projection: createEmptyModuleScore("projection"),
     auxiliary: createEmptyModuleScore("auxiliary"),
+    lifecycle: createEmptyModuleScore("lifecycle"),
   };
 
   for (const res of results) {
@@ -319,6 +324,32 @@ export async function runForensicAudit(
     allResults.push(...pResults);
   }
 
+  // 9. Ciclo de Vida & Transições de Estado (Portão 8)
+  if (shouldRunPersona("persona-lifecycle-forensics")) {
+    const pStart = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const pResults: InvariantResult[] = lifecycleInvariantSuite.assertions
+      .map((assertion) => assertion.execute(undefined as never))
+      .filter(filterAssertionResult);
+
+    const pDuration = (typeof performance !== "undefined" ? performance.now() : Date.now()) - pStart;
+    activePersonas.push({
+      personaId: "persona-lifecycle-forensics",
+      personaName: "Ciclo de Vida & Transições de Estado",
+      description: "Certificação das 16 invariantes de ciclo de vida cobrindo os 8 pilares da aplicação Axir.",
+      executionTimeMs: Math.round(pDuration * 100) / 100,
+      invariantsCount: pResults.length,
+      passedCount: pResults.filter((r) => r.status === "passed").length,
+      failedCount: pResults.filter((r) => r.status === "failed").length,
+      results: pResults,
+    });
+    allResults.push(...pResults);
+  }
+
+  // Execução das 8 Golden User Journeys em modo Headless
+  const journeyStore = new HeadlessStateStore();
+  const journeyRouter = new HeadlessTransactionRouter(journeyStore);
+  const journeyResults = await executeAllJourneys({ store: journeyStore, router: journeyRouter });
+
   const durationMs =
     Math.round(
       ((typeof performance !== "undefined" ? performance.now() : Date.now()) - startTime) * 100,
@@ -340,5 +371,6 @@ export async function runForensicAudit(
     durationMs,
     personas: activePersonas,
     moduleScores: calculateModuleScores(allResults),
+    journeys: journeyResults,
   };
 }

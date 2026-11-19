@@ -5,6 +5,8 @@
  * Conforme AGENTS.md e FINANCIAL_MATH_SPEC.md.
  */
 
+import type { JourneyExecutionResult } from "./journeys/types";
+
 export type AuditModule =
   | "portfolio"
   | "insights"
@@ -15,7 +17,8 @@ export type AuditModule =
   | "family"
   | "budgets"
   | "projection"
-  | "auxiliary";
+  | "auxiliary"
+  | "lifecycle";
 
 export const AUDIT_MODULE_LABELS: Record<AuditModule, string> = {
   portfolio: "Investimentos & Custódia",
@@ -28,6 +31,7 @@ export const AUDIT_MODULE_LABELS: Record<AuditModule, string> = {
   budgets: "Orçamentos & Provisões",
   projection: "Cash Gap & Pistas de Liquidez",
   auxiliary: "Módulos Auxiliares (Pix, Backup, Cripto)",
+  lifecycle: "Ciclo de Vida & Transições de Estado",
 };
 
 export type InvariantSeverity = "critical" | "warning" | "info";
@@ -79,4 +83,5 @@ export interface ForensicAuditReport {
   durationMs: number;
   personas: PersonaAuditResult[];
   moduleScores: Record<AuditModule, ModuleAuditScore>;
+  journeys?: JourneyExecutionResult[];
 }

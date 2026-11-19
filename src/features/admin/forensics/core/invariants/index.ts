@@ -11,6 +11,7 @@ export * from "./family-budget-invariants";
 export * from "./boundary-zero-invariants";
 export * from "./insights-invariants";
 export * from "./auxiliary-invariants";
+export * from "./lifecycle-invariants";
 
 import type { InvariantSuite } from "./types";
 import { portfolioInvariantSuite } from "./portfolio-invariants";
@@ -20,6 +21,7 @@ import { familyBudgetInvariantSuite } from "./family-budget-invariants";
 import { boundaryZeroInvariantSuite } from "./boundary-zero-invariants";
 import { insightsInvariantSuite } from "./insights-invariants";
 import { auxiliaryInvariantSuite } from "./auxiliary-invariants";
+import { lifecycleInvariantSuite } from "./lifecycle-invariants";
 
 export const ALL_INVARIANT_SUITES: readonly InvariantSuite[] = [
   portfolioInvariantSuite,
@@ -29,6 +31,7 @@ export const ALL_INVARIANT_SUITES: readonly InvariantSuite[] = [
   boundaryZeroInvariantSuite,
   insightsInvariantSuite,
   auxiliaryInvariantSuite,
+  lifecycleInvariantSuite,
 ] as const;
 
 export function getAllInvariantSuites(): readonly InvariantSuite[] {

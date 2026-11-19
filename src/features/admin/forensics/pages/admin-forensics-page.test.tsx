@@ -87,6 +87,12 @@ describe("AdminForensicsPage & Route Guard (Fase 1)", () => {
     await user.click(invariantsTab);
     expect(await screen.findByText("Catálogo de Invariantes & Asserções")).toBeInTheDocument();
 
+    // Alterna para a aba de Ciclo de Vida & Transições
+    const journeysTab = screen.getByRole("tab", { name: /Ciclo de Vida & Transições/i });
+    await user.click(journeysTab);
+    expect(await screen.findByText("Zero Escrita no Supabase")).toBeInTheDocument();
+    expect(screen.getByText("JRN-AUTH-01")).toBeInTheDocument();
+
     // Alterna para a aba de Personas
     const personasTab = screen.getByRole("tab", { name: /Personas Teóricas/i });
     await user.click(personasTab);

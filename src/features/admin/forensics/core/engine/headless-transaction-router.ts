@@ -278,6 +278,29 @@ export class HeadlessTransactionRouter {
     return { asset: updatedAsset, costBRL };
   }
 
+  public executeAssetBuyWithCashDebit(params: {
+    assetId: string;
+    ticker?: string;
+    assetClass?: string;
+    quantity: number;
+    priceCents?: number;
+    unitPriceBRL?: number;
+    executionDate?: string;
+  }): { asset: PortfolioAsset; costBRL: number } {
+    const asset = this.store.getState().assets.find((a) => a.id === params.assetId);
+    const ticker = params.ticker ?? asset?.ticker ?? "UNKNOWN";
+    const assetClass = params.assetClass ?? asset?.asset_class ?? "stock";
+    const unitPriceBRL = params.unitPriceBRL ?? (params.priceCents ? params.priceCents / 100 : 0);
+    return this.recordAssetPurchase({
+      assetId: params.assetId,
+      ticker,
+      assetClass,
+      quantity: params.quantity,
+      unitPriceBRL,
+      transactionDate: params.executionDate ?? new Date().toISOString().slice(0, 10),
+    });
+  }
+
   /**
    * Executa evento corporativo de desdobramento (Split) ou grupamento (Reverse Split),
    * garantindo a conservação estrita do Custo Total da Posição (Q * PM invariante).
@@ -390,16 +413,22 @@ export class HeadlessTransactionRouter {
    */
   public executePartialSale(params: {
     assetId: string;
-    soldQuantity: number;
-    unitSalePriceBRL: number;
-    saleDate: string;
+    soldQuantity?: number;
+    quantitySold?: number;
+    unitSalePriceBRL?: number;
+    salePriceCents?: number;
+    saleDate?: string;
+    executionDate?: string;
     monthlySalesVolumePriorBRL?: number;
   }): StockSaleResult & { asset: PortfolioAsset } {
+    const qty = params.soldQuantity ?? params.quantitySold ?? 0;
+    const price = params.unitSalePriceBRL ?? (params.salePriceCents ? params.salePriceCents / 100 : 0);
+    const date = params.saleDate ?? params.executionDate ?? new Date().toISOString().slice(0, 10);
     const saleResult = this.executeStockSaleWithTax({
       assetId: params.assetId,
-      soldQuantity: params.soldQuantity,
-      salePrice: params.unitSalePriceBRL,
-      saleDate: params.saleDate,
+      soldQuantity: qty,
+      salePrice: price,
+      saleDate: date,
       monthlySalesVolumePriorBRL: params.monthlySalesVolumePriorBRL,
     });
     const asset = this.store.getState().assets.find((a) => a.id === params.assetId)!;
