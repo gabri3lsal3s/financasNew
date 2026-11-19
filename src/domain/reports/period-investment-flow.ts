@@ -1,6 +1,7 @@
 import {
   isCashAssetClass,
   isDividendType,
+  isHistoricalWithdrawal,
   type PointInTimeResult,
   type PriceSource,
 } from "@/domain/portfolio";
@@ -12,11 +13,16 @@ export interface PeriodInvestmentFlowResult {
   dividendsBRL: number;
   netFlowBRL: number;
   monthLabel: string;
+  cashDepositsBRL?: number;
+  cashWithdrawalsBRL?: number;
+  externalContributionsBRL?: number;
+  externalWithdrawalsBRL?: number;
+  operationsCount?: number;
 }
 
 /**
  * Calcula fluxos financeiros da carteira (compras, vendas, proventos e fluxo líquido)
- * estritamente dentro do período ativo, ignorando movimentações de CAIXA.
+ * estritamente dentro do período ativo, contabilizando aportes/resgates em caixa e externos (§Bloco 2).
  */
 export function computePeriodInvestmentFlow(params: {
   transactions: readonly PortfolioTransaction[];
@@ -26,6 +32,7 @@ export function computePeriodInvestmentFlow(params: {
   usdRate: number;
   isDateInPeriod: (dateStr: string) => boolean;
   periodLabel: string;
+  contributions?: readonly { date?: string | null; amount: number; notes?: string | null }[];
 }): PeriodInvestmentFlowResult {
   const {
     transactions,
@@ -35,9 +42,48 @@ export function computePeriodInvestmentFlow(params: {
     usdRate,
     isDateInPeriod,
     periodLabel,
+    contributions,
   } = params;
 
   const assetById = new Map(assets.map((a) => [a.id, a]));
+
+  let cashDepositsBRL = 0;
+  let cashWithdrawalsBRL = 0;
+  let cashOperationsCount = 0;
+
+  for (const t of transactions) {
+    if (!isDateInPeriod(t.date)) continue;
+    const asset = assetById.get(t.asset_id);
+    const isCash = asset ? isCashAssetClass(asset.asset_class) || asset.ticker.toUpperCase() === "CAIXA" : false;
+    if (isCash) {
+      const val = Math.abs(t.total ?? t.quantity * t.price);
+      const type = (t.type || "").toLowerCase().trim();
+      if (type === "buy" || type === "deposit" || type === "deposito" || type === "aporte") {
+        cashDepositsBRL += val;
+        cashOperationsCount++;
+      } else if (type === "sell" || type === "withdrawal" || type === "saque" || type === "retirada") {
+        cashWithdrawalsBRL += val;
+        cashOperationsCount++;
+      }
+    }
+  }
+
+  let externalContributionsBRL = 0;
+  let externalWithdrawalsBRL = 0;
+  let contributionsCount = 0;
+  if (contributions) {
+    for (const c of contributions) {
+      if (c.date && isDateInPeriod(c.date)) {
+        contributionsCount++;
+        if (isHistoricalWithdrawal(c)) {
+          externalWithdrawalsBRL += Math.abs(c.amount);
+        } else {
+          externalContributionsBRL += Math.abs(c.amount);
+        }
+      }
+    }
+  }
+
   const periodTransactions = transactions.filter((t) => {
     if (!isDateInPeriod(t.date)) return false;
     const asset = assetById.get(t.asset_id);
@@ -80,20 +126,51 @@ export function computePeriodInvestmentFlow(params: {
         return acc + totalVal * rate;
       }, 0);
 
-  const buysBRL = sumByTypes(["buy", "subscription"]);
-  const sellsBRL = sumByTypes(["sell"]);
+  const rawBuysBRL = sumByTypes(["buy", "subscription"]);
+  const rawSellsBRL = sumByTypes(["sell"]);
   const dividendsBRL = periodDividendsList.reduce((acc, d) => {
     const curr = d.asset_id ? assetCurrencyMap.get(d.asset_id) : "BRL";
     const rate = curr === "USD" ? usdRate : 1;
     return acc + d.amount * rate;
   }, 0);
 
+  const buysBRL =
+    rawBuysBRL > 0
+      ? rawBuysBRL
+      : cashDepositsBRL > 0
+        ? cashDepositsBRL
+        : externalContributionsBRL;
+
+  const sellsBRL =
+    rawSellsBRL > 0
+      ? rawSellsBRL
+      : cashWithdrawalsBRL > 0
+        ? cashWithdrawalsBRL
+        : externalWithdrawalsBRL;
+
+  const netExternalCashFlow =
+    externalContributionsBRL - externalWithdrawalsBRL + (cashDepositsBRL - cashWithdrawalsBRL);
+
+  const netFlowBRL =
+    rawBuysBRL > 0 || rawSellsBRL > 0
+      ? rawBuysBRL - rawSellsBRL + dividendsBRL
+      : netExternalCashFlow !== 0
+        ? netExternalCashFlow + dividendsBRL
+        : dividendsBRL;
+
+  const operationsCount = periodTransactions.length + cashOperationsCount + contributionsCount;
+
   return {
     buysBRL,
     sellsBRL,
     dividendsBRL,
-    netFlowBRL: buysBRL - sellsBRL + dividendsBRL,
+    netFlowBRL,
     monthLabel: periodLabel,
+    cashDepositsBRL,
+    cashWithdrawalsBRL,
+    externalContributionsBRL,
+    externalWithdrawalsBRL,
+    operationsCount,
   };
 }
 

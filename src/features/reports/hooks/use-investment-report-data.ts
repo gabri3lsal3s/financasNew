@@ -129,9 +129,10 @@ export function useInvestmentReportData({
             usdRate,
             isDateInPeriod,
             periodLabel,
+            contributions,
           })
         : { buysBRL: 0, sellsBRL: 0, dividendsBRL: 0, netFlowBRL: 0, monthLabel: periodLabel },
-    [enabled, transactions, dividends, assets, assetCurrencyMap, usdRate, isDateInPeriod, periodLabel],
+    [enabled, transactions, dividends, assets, assetCurrencyMap, usdRate, isDateInPeriod, periodLabel, contributions],
   );
 
   const selectedSnapshot = useMemo(

@@ -43,6 +43,11 @@ export interface MonthFlowSummary {
   dividendsBRL: number;
   netFlowBRL: number;
   monthLabel: string;
+  cashDepositsBRL?: number;
+  cashWithdrawalsBRL?: number;
+  externalContributionsBRL?: number;
+  externalWithdrawalsBRL?: number;
+  operationsCount?: number;
 }
 
 export interface BuildTearSheetModelParams {
