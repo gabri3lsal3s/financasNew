@@ -96,9 +96,10 @@ export function TearSheetExecutiveNarrative({
       <MoneyText
         cents={numberToCents(model.unrealizedPnlBRL)}
         tone={model.unrealizedPnlBRL >= 0 ? "positive" : "negative"}
+        sign="explicit"
         className="inline font-bold"
       />{" "}
-      ({formatSignedPct(model.unrealizedPnlPct)}) de valorização de cota e{" "}
+      ({formatSignedPct(model.unrealizedPnlPct)}) {model.unrealizedPnlBRL >= 0 ? "de valorização de cota" : "de desvalorização de cota"} e{" "}
       <MoneyText cents={numberToCents(model.totalDividendsAllTime)} tone="positive" className="inline font-bold" />{" "}
       em proventos recebidos*
       {Math.abs(model.effectiveRealizedGainBRL) >= 0.01 ? (
@@ -140,7 +141,7 @@ export function TearSheetExecutiveNarrative({
           <strong>{formatDeficitClassName(topDeficit.assetClass)}</strong> (déficit de{" "}
           <MoneyText cents={numberToCents(topDeficit.gapBRL)} className="inline font-bold text-primary-strong" />)
           {model.surplusClasses.length > 0 ? (
-            <>, enquanto {model.surplusClasses.join(" e ")} encontram-se em patamar superior ao planejado</>
+            <>, enquanto {model.surplusClasses.join(" e ")} {model.surplusClasses.length === 1 ? "encontra-se" : "encontram-se"} em patamar superior ao planejado</>
           ) : (
             <>, com as demais classes alinhadas aos objetivos</>
           )}
@@ -177,7 +178,7 @@ export function TearSheetExecutiveNarrative({
     </span>
   );
 
-  const histValue = allTimeEconomicPnlBRL ?? model.totalReturnBRL;
+  const histValue = allTimeEconomicPnlBRL ?? model.allTimeEconomicValueBRL ?? model.totalReturnBRL;
 
   return (
     <ReportExecutiveSummary

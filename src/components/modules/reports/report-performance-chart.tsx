@@ -95,12 +95,30 @@ export function ReportPerformanceChart({
     return DEFAULT_ANNUAL_CDI_RATE;
   }, [annualCdiRate]);
 
+  // Série de Risco: 12 meses fechados homogêneos (Padrão CFA & ANBIMA)
+  const riskSeries = useMemo(() => {
+    if (!series || series.length < 2) return [];
+    const closed = series.filter((p) => !(p.isMtd ?? p.month === activeMonth));
+    if (closed.length >= 12) {
+      return closed.slice(-12);
+    }
+    return closed.length > 0 ? closed : series;
+  }, [series, activeMonth]);
+
+  const riskPeriodWindowLabel = useMemo(() => {
+    if (riskSeries.length === 0) return periodWindowLabel;
+    const first = riskSeries[0]?.monthLabel?.replace("*", "") ?? "";
+    const last = riskSeries[riskSeries.length - 1]?.monthLabel?.replace("*", "") ?? "";
+    return `${first} a ${last}`;
+  }, [riskSeries, periodWindowLabel]);
+
   const riskSummary = useMemo(() => {
-    const hasPartialCurrentMonth = displaySeries.some((p) => p.isMtd);
-    return calculatePortfolioRiskSummary(displaySeries, effectiveCdiRate, {
-      hasPartialCurrentMonth,
+    return calculatePortfolioRiskSummary(riskSeries, effectiveCdiRate, {
+      hasPartialCurrentMonth: false,
+      useTrailing12Months: true,
+      includeMtdInDrawdown: false,
     });
-  }, [displaySeries, effectiveCdiRate]);
+  }, [riskSeries, effectiveCdiRate]);
 
   const benchmarkComparison = useMemo(
     () =>
@@ -112,10 +130,11 @@ export function ReportPerformanceChart({
         annualIpcaRate,
         ibovPeriodRatePct: ibovPeriodReturnPct,
         portfolio12mRatePct: display12mAccumulatedRatePct,
+        monthsList: series.map((s) => s.month),
       }),
     [
       fullAccumulatedRatePct,
-      series.length,
+      series,
       effectiveCdiRate,
       annualSelicRate,
       annualIpcaRate,
@@ -154,6 +173,7 @@ export function ReportPerformanceChart({
           seriesLength={series.length}
           fullAccumulatedRatePct={fullAccumulatedRatePct}
           periodWindowLabel={periodWindowLabel}
+          riskPeriodWindowLabel={riskPeriodWindowLabel}
           benchmarkComparison={benchmarkComparison}
           riskSummary={riskSummary}
         />

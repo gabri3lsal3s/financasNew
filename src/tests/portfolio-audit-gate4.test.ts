@@ -127,36 +127,26 @@ describe("Portão de Qualidade 4 (Gate 4) — Motor de Alocação e Raios-X", ()
     });
   });
 
-  describe("Critério 3: Raio-X de Renda Fixa e Unificação de Indexadores (BUG-13)", () => {
-    it("infere corretamente CDB Original como pós-fixado CDI e não prefixado", () => {
+  describe("Critério 3: Raio-X de Renda Fixa e Unificação de Indexadores (BUG-13 & Bloco 4 v2)", () => {
+    it("classifica CDB Original como prefixado (13,58% a.a.) e CDB comum com CDI como pós-fixado", () => {
       const cdbInferred = inferFixedIncomeCategories({
         ticker: "CDB ORIGINAL",
-        sector: "Pós-fixado (Selic / CDI)",
-        fixed_income_metadata: {
-          rate_type: "cdi",
-          rate_value: 110,
-          base_value: 1200,
-          base_date: "2024-10-01",
-          initial_investment_date: "2024-10-01",
-          maturity_date: "2027-10-01",
-          is_tax_exempt: false,
-        },
+        notes: "13,58% a.a.",
       });
 
-      expect(cdbInferred.indexer).toBe("cdi");
+      expect(cdbInferred.indexer).toBe("pre");
 
-      // Mesmo sem metadados explícitos, não deve cair em prefixado por conter letras isoladas
-      const cdbFallback = inferFixedIncomeCategories({
-        ticker: "CDB ORIGINAL BANCO",
+      const cdbGenericCdi = inferFixedIncomeCategories({
+        ticker: "CDB BANCO INTER 100% CDI",
         sector: "Pós-fixado (Selic / CDI)",
       });
-      expect(cdbFallback.indexer).toBe("selic"); // Pós-fixado
+      expect(cdbGenericCdi.indexer).toBe("cdi");
     });
 
-    it("unifica o macro-indexador de Renda Fixa em 93,3% pós-fixado e 0,0% prefixado", () => {
+    it("unifica o macro-indexador de Renda Fixa conforme contratos auditados no Caso BR-20261118-6445", () => {
       const rfPositions = [
         { ticker: "TESOURO-SELIC", assetClass: "Renda Fixa", valueBRL: 1617.51, sector: "Pós-fixado" },
-        { ticker: "CDB ORIGINAL", assetClass: "Renda Fixa", valueBRL: 1348.01, sector: "Pós-fixado" },
+        { ticker: "CDB ORIGINAL", assetClass: "Renda Fixa", valueBRL: 1348.01, sector: "Prefixado" },
         { ticker: "TESOURO-IPCA", assetClass: "Renda Fixa", valueBRL: 214.65, sector: "Inflação (IPCA+)" },
       ];
 
@@ -164,21 +154,21 @@ describe("Portão de Qualidade 4 (Gate 4) — Motor de Alocação e Raios-X", ()
 
       expect(exposure.totalValueBRL).toBe(GOLDEN_EXPECTED.fixedIncomeTotalBRL); // R$ 3.180,17
 
-      // Macro-indexadores unificados (Página 7 alinhada com Páginas 4 e 5)
+      // Macro-indexadores unificados (Página 6 alinhada com Páginas 3 e 4)
       const posFixado = exposure.byMacroIndexer.pos_fixado;
-      expect(posFixado.valueBRL).toBe(GOLDEN_EXPECTED.fixedIncomePosFixadoBRL); // R$ 2.965,52
-      expect(posFixado.pct).toBe(93.3);
-      expect(posFixado.count).toBe(2);
+      expect(posFixado.valueBRL).toBe(1617.51); // Tesouro Selic
+      expect(posFixado.pct).toBe(50.9);
+      expect(posFixado.count).toBe(1);
+
+      const pre = exposure.byMacroIndexer.pre;
+      expect(pre.valueBRL).toBe(1348.01); // CDB Original 13,58% a.a.
+      expect(pre.pct).toBe(42.4);
+      expect(pre.count).toBe(1);
 
       const ipca = exposure.byMacroIndexer.ipca;
       expect(ipca.valueBRL).toBe(GOLDEN_EXPECTED.fixedIncomeInflacaoBRL); // R$ 214,65
       expect(ipca.pct).toBe(6.7);
       expect(ipca.count).toBe(1);
-
-      const pre = exposure.byMacroIndexer.pre;
-      expect(pre.valueBRL).toBe(GOLDEN_EXPECTED.fixedIncomePrefixadoBRL); // R$ 0,00
-      expect(pre.pct).toBe(0.0);
-      expect(pre.count).toBe(0);
 
       // Soma das fatias de macro-indexadores bate 100,0%
       expect(posFixado.pct + ipca.pct + pre.pct).toBe(100.0);

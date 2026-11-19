@@ -119,8 +119,9 @@ export function PortfolioExecutiveReport({
         investmentRows,
         effectiveTotalBRL,
         rawAssets: assetsQuery.data ?? [],
+        cashBRL: effectiveCashBRL,
       }),
-    [investmentRows, effectiveTotalBRL, assetsQuery.data],
+    [investmentRows, effectiveTotalBRL, assetsQuery.data, effectiveCashBRL],
   );
 
   const canDeleteSnapshot =

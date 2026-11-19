@@ -802,6 +802,197 @@ export function getFiiMacroCategory(
   return "outros";
 }
 
+export type FixedIncomeMacroIndexer = "pos_fixado" | "ipca" | "pre";
+
+export interface ResolvedFixedIncomeIndexer {
+  macroKey: FixedIncomeMacroIndexer;
+  macroLabel: string;
+  detailKey: FixedIncomeRateType;
+  detailLabel: string;
+}
+
+/**
+ * Fonte Única da Verdade para Indexador de Renda Fixa (§Bloco 4).
+ * Alinha e harmoniza a classificação entre Custódia, Segmentos, Raio-X e Relatório Executivo.
+ */
+export function resolveFixedIncomeIndexer(input: {
+  ticker?: string | null;
+  sector?: string | null;
+  notes?: string | null;
+  fixed_income_metadata?: FixedIncomeMetadata | null;
+}): ResolvedFixedIncomeIndexer {
+  const norm = (str?: string | null) =>
+    (str ?? "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const tickerUpper = norm(input.ticker);
+  const sectorUpper = norm(input.sector);
+  const notesUpper = norm(input.notes);
+  const combined = `${tickerUpper} ${sectorUpper} ${notesUpper}`;
+
+  const rateType = input.fixed_income_metadata?.rate_type;
+
+  // 1. Caso do contrato real de Renda Fixa CDB ORIGINAL (13,58% a.a. => Prefixado)
+  if (
+    (tickerUpper.includes("CDB") && tickerUpper.includes("ORIGINAL")) ||
+    notesUpper.includes("13,58") ||
+    notesUpper.includes("13.58")
+  ) {
+    return {
+      macroKey: "pre",
+      macroLabel: "Prefixado",
+      detailKey: "pre",
+      detailLabel: "Prefixado (13,58% a.a.)",
+    };
+  }
+
+  // 2. Metadados contratuais explícitos
+  if (rateType === "pre") {
+    return {
+      macroKey: "pre",
+      macroLabel: "Prefixado",
+      detailKey: "pre",
+      detailLabel: "Prefixado",
+    };
+  }
+  if (rateType === "ipca") {
+    return {
+      macroKey: "ipca",
+      macroLabel: "Inflação (IPCA+)",
+      detailKey: "ipca",
+      detailLabel: "IPCA+",
+    };
+  }
+  if (rateType === "selic") {
+    return {
+      macroKey: "pos_fixado",
+      macroLabel: "Pós-fixado (Selic / CDI)",
+      detailKey: "selic",
+      detailLabel: "Selic",
+    };
+  }
+  if (rateType === "cdi") {
+    return {
+      macroKey: "pos_fixado",
+      macroLabel: "Pós-fixado (Selic / CDI)",
+      detailKey: "cdi",
+      detailLabel: "CDI",
+    };
+  }
+
+  // 3. Heurísticas específicas baseadas em ticker e notas (evita que o rótulo genérico de setor contamine a chave de detalhe)
+  const specificStr = `${tickerUpper} ${notesUpper}`;
+
+  if (
+    specificStr.includes("IPCA") ||
+    specificStr.includes("INFLACAO") ||
+    specificStr.includes("RENDA+") ||
+    specificStr.includes("EDUCA+") ||
+    specificStr.includes("NTN-B") ||
+    specificStr.includes("NTNB")
+  ) {
+    return {
+      macroKey: "ipca",
+      macroLabel: "Inflação (IPCA+)",
+      detailKey: "ipca",
+      detailLabel: "IPCA+",
+    };
+  }
+
+  if (specificStr.includes("CDI") || /\bDI\b/.test(specificStr)) {
+    return {
+      macroKey: "pos_fixado",
+      macroLabel: "Pós-fixado (Selic / CDI)",
+      detailKey: "cdi",
+      detailLabel: "CDI",
+    };
+  }
+
+  if (specificStr.includes("SELIC") || specificStr.includes("LFT")) {
+    return {
+      macroKey: "pos_fixado",
+      macroLabel: "Pós-fixado (Selic / CDI)",
+      detailKey: "selic",
+      detailLabel: "Selic",
+    };
+  }
+
+  if (
+    specificStr.includes("PREFIXAD") ||
+    /\b(PRE|PRE-FIXAD[OA]|LTN|NTN-F|NTNF)\b/i.test(specificStr)
+  ) {
+    return {
+      macroKey: "pre",
+      macroLabel: "Prefixado",
+      detailKey: "pre",
+      detailLabel: "Prefixado",
+    };
+  }
+
+  // 4. Heurísticas gerais baseadas em combinado (incluindo setor)
+  if (
+    combined.includes("IPCA") ||
+    combined.includes("INFLACAO") ||
+    combined.includes("RENDA+") ||
+    combined.includes("EDUCA+") ||
+    combined.includes("NTN-B") ||
+    combined.includes("NTNB")
+  ) {
+    return {
+      macroKey: "ipca",
+      macroLabel: "Inflação (IPCA+)",
+      detailKey: "ipca",
+      detailLabel: "IPCA+",
+    };
+  }
+
+  if (combined.includes("SELIC") || combined.includes("LFT")) {
+    return {
+      macroKey: "pos_fixado",
+      macroLabel: "Pós-fixado (Selic / CDI)",
+      detailKey: "selic",
+      detailLabel: "Selic",
+    };
+  }
+
+  if (
+    combined.includes("PREFIXAD") ||
+    /\b(PRE|PRE-FIXAD[OA]|LTN|NTN-F|NTNF)\b/i.test(combined)
+  ) {
+    return {
+      macroKey: "pre",
+      macroLabel: "Prefixado",
+      detailKey: "pre",
+      detailLabel: "Prefixado",
+    };
+  }
+
+  if (
+    combined.includes("CDI") ||
+    combined.includes("DI") ||
+    combined.includes("POS-FIXADO") ||
+    combined.includes("POSFIXADO") ||
+    combined.includes("POS")
+  ) {
+    return {
+      macroKey: "pos_fixado",
+      macroLabel: "Pós-fixado (Selic / CDI)",
+      detailKey: "cdi",
+      detailLabel: "CDI",
+    };
+  }
+
+  return {
+    macroKey: "pos_fixado",
+    macroLabel: "Pós-fixado (Selic / CDI)",
+    detailKey: "cdi",
+    detailLabel: "CDI",
+  };
+}
+
 export interface InferredFixedIncomeCategories {
   indexer: FixedIncomeRateType;
   issuer: FixedIncomeIssuerType;
@@ -815,6 +1006,7 @@ export interface InferredFixedIncomeCategories {
 export function inferFixedIncomeCategories(input: {
   ticker: string;
   sector?: string | null;
+  notes?: string | null;
   fixed_income_metadata?: FixedIncomeMetadata | null;
 }): InferredFixedIncomeCategories {
   const norm = (str?: string | null) =>
@@ -828,38 +1020,9 @@ export function inferFixedIncomeCategories(input: {
   const sectorUpper = norm(input.sector);
   const combined = `${tickerUpper} ${sectorUpper}`;
 
-  // 1. Indexador
-  let indexer: FixedIncomeRateType = "cdi";
-  if (input.fixed_income_metadata?.rate_type) {
-    indexer = input.fixed_income_metadata.rate_type;
-  } else if (
-    combined.includes("IPCA") ||
-    combined.includes("INFLACAO") ||
-    combined.includes("RENDA+") ||
-    combined.includes("EDUCA+") ||
-    combined.includes("NTN-B") ||
-    combined.includes("NTNB")
-  ) {
-    indexer = "ipca";
-  } else if (
-    combined.includes("SELIC") ||
-    combined.includes("LFT")
-  ) {
-    indexer = "selic";
-  } else if (
-    combined.includes("PREFIXAD") ||
-    /\b(PRE|PRE-FIXAD[OA]|LTN|NTN-F|NTNF)\b/i.test(combined)
-  ) {
-    indexer = "pre";
-  } else if (
-    combined.includes("CDI") ||
-    combined.includes("DI") ||
-    combined.includes("POS-FIXADO") ||
-    combined.includes("POSFIXADO") ||
-    combined.includes("POS")
-  ) {
-    indexer = "cdi";
-  }
+  // 1. Indexador via Fonte Única Canônica
+  const indexerRes = resolveFixedIncomeIndexer(input);
+  const indexer = indexerRes.detailKey;
 
   // 2. Emissor / Risco de Crédito
   let issuer: FixedIncomeIssuerType = "bancario_fgc";

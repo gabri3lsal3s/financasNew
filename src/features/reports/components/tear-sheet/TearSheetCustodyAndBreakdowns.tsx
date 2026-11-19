@@ -39,6 +39,10 @@ export function TearSheetCustodyAndBreakdowns({
   annualIpcaRate,
   ibovPeriodReturnPct,
 }: TearSheetCustodyAndBreakdownsProps) {
+  const hasCashReserve = model.classTableGroups.some((g) =>
+    g.className.toLowerCase().includes("caixa"),
+  );
+
   return (
     <>
       <section aria-label="Risco e Concentração" className="break-inside-avoid flex flex-col gap-2">
@@ -58,7 +62,7 @@ export function TearSheetCustodyAndBreakdowns({
           <div className="flex items-center gap-1.5">
             <Layers className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
             <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
-              Custódia Consolidada de Ativos por Classe ({model.activeInvestmentRows.length} ativos)
+              Custódia Consolidada de Ativos por Classe ({model.activeInvestmentRows.length} ativos{hasCashReserve ? " + Reserva de Caixa" : ""})
             </h3>
           </div>
           <span className="text-[10px] text-muted-foreground font-mono num">

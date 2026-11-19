@@ -9,11 +9,10 @@ import { cleanTextSchema, moneyAmountSchema } from "@/domain/validation";
  */
 export const creditCardFormSchema = z.object({
   name: cleanTextSchema(50, { min: 1, requiredMessage: "Informe o nome do cartão." }),
-  brand: z
-    .string()
+  brand: cleanTextSchema(30)
     .nullable()
     .optional()
-    .transform((val) => (val && val.trim().length > 0 ? val.trim().slice(0, 30) : null)),
+    .transform((val) => (val && val.length > 0 ? val : null)),
   credit_limit: moneyAmountSchema({ allowZero: true })
     .nullable()
     .optional()
@@ -28,11 +27,10 @@ export const creditCardFormSchema = z.object({
     .int("O dia de vencimento deve ser um número inteiro.")
     .min(1, "O dia de vencimento deve ser entre 1 e 31.")
     .max(31, "O dia de vencimento deve ser entre 1 e 31."),
-  color: z
-    .string()
+  color: cleanTextSchema(30)
     .nullable()
     .optional()
-    .transform((val) => (val && val.trim().length > 0 ? val.trim().slice(0, 30) : null)),
+    .transform((val) => (val && val.length > 0 ? val : null)),
   is_active: z.boolean().default(true),
   last_four_digits: z
     .string()

@@ -26,6 +26,41 @@
 >   - Download direto no navegador dos artefatos Markdown e Excel gerados em memória;
 >   - Dupla execução 100% homologada via terminal (`npm run audit:forensics`) e painel web.
 
+> **v3.13.0 (Plano de Fechamento Cirúrgico do Motor de Investimentos Axir v2)** registra a conclusão integral do **Fechamento Cirúrgico e Homologação de Produção do Motor de Investimentos Axir** ([`docs/plans/prompt_v2_correcao_cirurgica_axir.md`](../plans/prompt_v2_correcao_cirurgica_axir.md)) (2026-11-19):
+> - **(1) Motor Híbrido, Sanidade de Ago/2026 e Segregação de Proventos Retroativos (Fase 1-v2 / Portão v2.1)**:
+>   - Tipagem explícita de origem da competência (`snapshot_origin?: "retroativo_manual" | "marco_zero" | "calculado_ledger" | "carry_forward"`);
+>   - Erradicação da perda fantasma de -1,10% em Ago/2026: em competências sem movimentação (|ΔP| < 0,01 e |ΔC| < 0,01), o TWR é estritamente 0,00% e a cota teórica é rigorosamente preservada;
+>   - Segregação de saldo inicial retroativo de proventos (`opening_dividends_balance`) eliminando distorções na coluna de Retorno Total do Extrato;
+>   - Invariante Asserção 13 integrada ao `PortfolioReportInvariantValidator`.
+> - **(2) Identidade Contábil de Fluxo Externo e Nov/2026 (Fase 2-v2 / Portão v2.2)**:
+>   - Unificação da equação contábil $F_t \equiv \Delta C_{\text{total}, t} + \Delta \text{PnL}^{\text{real}}_t$ (onde $C_{\text{total}} = C_{\text{ativos}} + V_{\text{caixa}}$);
+>   - Eliminação da tripla contradição de Nov/2026: $\Delta C = +\text{R\$ } 100,38$ reconciliado com $F_t = +\text{R\$ } 100,38$;
+>   - Rastreabilidade de movimentações na Reserva de Caixa, proibindo a declaração "Sem movimentações / 0 operações" quando $|F_t| > 0$;
+>   - Invariante Asserção 14 integrada ao `PortfolioReportInvariantValidator`.
+> - **(3) Motor Cambial (FX Engine) Híbrido & Layout PDF (Fase 3-v2 / Portão v2.3)**:
+>   - Congelamento do custo histórico em BRL (`assetFxRateAtPurchase`) para operações operacionais;
+>   - Suporte transparente para ativos cadastrados retroativamente com rodapé metodológico da PTAX estimada;
+>   - Correção do layout da tabela de custódia internacional (Pág. 3 do Dossiê) com quebra em duas linhas no subtotal da cota, erradicando a colisão visual com a coluna de Total em R$.
+> - **(4) Fonte Única Canônica de Indexador de Renda Fixa (Fase 4-v2 / Portão v2.4)**:
+>   - Criação de `resolveFixedIncomeIndexer`: classificação canônica de `CDB ORIGINAL` (13,58% a.a.) como Prefixado (R$ 1.348,01 / 42,4%) e `TESOURO-SELIC` como Selic (R$ 1.617,51 / 50,9%) em todos os relatórios;
+>   - Alinhamento da Custódia (pág. 3), Segmentos (pág. 4), Raio-X de Renda Fixa (pág. 6) e Relatório Executivo.
+> - **(5) Benchmarks Reais por Séries Mensais Oficiais e Janela de Risco 12M (Fase 5-v2 / Portão v2.5)**:
+>   - Encadeamento geométrico real das séries mensais do CDI (SGS 4391), IPCA (SGS 433), Poupança (SGS 195) e Ibovespa (^BVSP), eliminando taxas planas sintéticas;
+>   - Cálculo do Juro Real Líquido de Fisher atrelado ao IPCA real encadeado;
+>   - Janela homogênea de $N = 12$ meses fechados para Sharpe, Volatilidade e Consistência (exibindo `X/12 meses` e eliminando o defeito `4/11`);
+>   - Simetria do Max Drawdown avaliado sobre a mesma janela de 12 meses fechados.
+> - **(6) UI pt-BR, NLG Polimento & Reserva de Caixa na Custódia (Fase 6-v2 / Portão v2.6)**:
+>   - Formatação do sinal negativo explícito (`-R$ 251,03`) e alternância dinâmica ("de valorização" vs "de desvalorização de cota");
+>   - Concordância verbal correta no NLG ("encontra-se" para 1 classe vs "encontram-se" para 2+ classes);
+>   - Inclusão da Reserva de Caixa na tabela de custódia do Relatório Executivo, fechando a soma ao centavo com o Patrimônio Total (`R$ 17.358,36`);
+>   - Cabeçalho do Dossiê atualizado para `(26 ATIVOS + RESERVA DE CAIXA)`;
+>   - Padronização rigorosa em pt-BR com vírgula decimal (`8,2 / 10`, `+1,3%`, `-5,54%`, `+2,58%`);
+>   - Consolidação de Card 4 com P&L Econômico Total incluindo posições encerradas.
+> - **(7) Certificação Total**:
+>   - 115/115 testes aprovados em 12 suítes de auditoria (`src/tests/portfolio-audit-gate*`);
+>   - 764/764 testes aprovados no domínio de investimentos (`src/domain/portfolio/`);
+>   - 14/14 asserções aprovadas no validador inviolável `PortfolioReportInvariantValidator`.
+>
 > **v3.12.0 (Plano 43 — Auditoria e Refatoração Canônica do Motor de Investimentos Axir)** registra a conclusão integral da **Auditoria Forense e Refatoração Holística do Motor de Cálculos, Custódia, Rentabilidade e Relatórios de Investimentos** ([`planos/completed/43_PLANO_AUDITORIA_E_REFATORACAO_CANONICA_MOTOR_INVESTIMENTOS.md`](../plans/completed/43_PLANO_AUDITORIA_E_REFATORACAO_CANONICA_MOTOR_INVESTIMENTOS.md)) (2026-11-18):
 > - **(1) Saneamento Contábil, Custódia, Caixa e Ledger de Posições (Fase 1)**:
 >   - Reconciliação do Caixa de R$ 0,96 no Custo Total Aplicado (R$ 17.320,90) e Patrimônio Total (R$ 17.503,68), eliminando discrepâncias entre telas e exportadores;

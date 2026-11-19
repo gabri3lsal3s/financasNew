@@ -167,10 +167,12 @@ export function buildExecutiveReportClassGroups({
   investmentRows,
   effectiveTotalBRL,
   rawAssets,
+  cashBRL,
 }: {
   investmentRows: readonly PositionRow[];
   effectiveTotalBRL: number;
   rawAssets: readonly PortfolioAsset[];
+  cashBRL?: number;
 }): { classGroups: ReportClassGroup[]; pqs: number | null } {
   const rawAssetMap = new Map(rawAssets.map((a) => [a.id, a]));
   const findRaw = (row: PositionRow) =>
@@ -247,8 +249,39 @@ export function buildExecutiveReportClassGroups({
           };
         }),
       };
-    })
-    .sort((a, b) => b.totalCents - a.totalCents);
+    });
+
+  if (cashBRL && cashBRL > 0) {
+    classGroups.push({
+      className: "Reserva de Caixa",
+      totalCents: numberToCents(cashBRL),
+      totalCostCents: numberToCents(cashBRL),
+      totalDividendsCents: 0,
+      sharePct: effectiveTotalBRL > 0 ? (cashBRL / effectiveTotalBRL) * 100 : 0,
+      pnlPct: 0,
+      subtotalPriceVarPct: 0,
+      items: [
+        {
+          ticker: "CAIXA",
+          sector: "Liquidez Imediata",
+          quantity: cashBRL,
+          avgPriceCents: 100,
+          currentPriceCents: 100,
+          totalCents: numberToCents(cashBRL),
+          pricePnlPct: 0,
+          pnlPct: 0,
+          dividendsCents: 0,
+          currency: "BRL",
+          indexType: null,
+          maturityDate: null,
+          score: null,
+          status: "active",
+        },
+      ],
+    });
+  }
+
+  classGroups.sort((a, b) => b.totalCents - a.totalCents);
 
   return { classGroups, pqs };
 }

@@ -266,7 +266,7 @@ Para ativos denominados em moeda estrangeira ($USD$), a valoração decompõe o 
   $$IEG = 100\% - \frac{1}{2}\sum_{c} |w_c - w_c^{\text{meta}}|$$
 
 ### 8.4. Validador Pré-Emissão (*Pre-Flight Invariant Validator*)
-Antes de emitir relatórios ou persistir snapshots de fechamento, o validador audita as 12 asserções fundamentais:
+Antes de emitir relatórios ou persistir snapshots de fechamento, o validador audita as asserções fundamentais:
 1. $V_{\text{ativos}} + V_{\text{caixa}} == P_{\text{total}}$
 2. $C_{\text{ativos}} + V_{\text{caixa}} == C_{\text{total}}$
 3. $P_{\text{total}} - C_{\text{total}} == V_{\text{ativos}} - C_{\text{ativos}} == \Delta V_{\text{aberto}}$
@@ -279,4 +279,33 @@ Antes de emitir relatórios ou persistir snapshots de fechamento, o validador au
 10. Reconciliação dos subtotais dos Raios-X com as classes de custódia
 11. Contagem dinâmica de segmentos listados e janela anual de risco de 12 meses fechados
 12. Sanidade de escala decimal de benchmarks (fator 100x em períodos $\ge 12$ meses)
+13. Sanidade de TWR em meses sem movimentação / *carry-forward*: $|P_t - P_{t-1}| < 0,01$, $|C_t - C_{t-1}| < 0,01 \implies \text{TWR}_t \ge 0$
+14. Invariante contábil de fluxo externo: $|F_t| > 0,01 \implies F_t = \Delta C_{\text{total}, t} + \Delta \text{PnL}^{\text{real}}_t$ e proíbe "0 operações / sem movimentações"
+
+---
+
+## 9. MOTOR HÍBRIDO (MARCO ZERO VS. CADASTRO RETROATIVO), SANIDADE DE CARRY-FORWARD E BENCHMARKS REAIS (§Fase 0-v2 a Fase 6-v2)
+
+### 9.1. Invariantes de Snapshots Híbridos e Carry-Forward (Asserção 13)
+- Quando uma competência mensal não possui movimentações ativas ou resulta de interpolação (*carry-forward*), isto é, $|P_t - P_{t-1}| < 0,01$, $|C_t - C_{t-1}| < 0,01$ e $\text{Proventos}_t \ge 0$, o $\text{TWR}_t$ é estritamente $0,00\%$ (nunca negativo). A cota teórica é preservada: $\text{Cota}_t = \text{Cota}_{t-1}$.
+- Na transição entre o modo `retroativo_manual` e o modo `calculado_ledger`, a cota é herdada com continuidade contábil sem recalcular nem sobrescrever o passado cadastrado pelo usuário.
+- **Segregação de Proventos:** Saldo inicial retroativo sem data mensal é armazenado separadamente (`opening_dividends_balance`) e não contamina o retorno de competências mensais passadas.
+
+### 9.2. Identidade Fundamental de Fluxo de Caixa Externo (Asserção 14)
+- Em competências operacionais (incluindo MTD), o Aporte Líquido Injetado ($F_t$) obedece estritamente à identidade:
+  $$F_t = \Delta C_{\text{total}, t} + \Delta \text{PnL}^{\text{real}}_t$$
+  onde $C_{\text{total}, t} = C_{\text{ativos}, t} + V_{\text{caixa}, t}$. Se não houve alienações no período ($\Delta \text{PnL}^{\text{real}}_t = 0$), então $F_t \equiv \Delta C_{\text{total}, t}$.
+- O rótulo "Sem movimentações" ou "0 operações" é proibido sempre que $|F_t| > 0,01$. Variações na Reserva de Caixa contam como movimentação financeira externa.
+
+### 9.3. Motor Cambial Híbrido (FX Engine v2)
+- Ativos com histórico transacional congelam o custo médio em BRL na data da compra: $C_i^{\text{BRL}} = \sum (q_k \cdot p_k^{\text{USD}} + \tau_k^{\text{USD}}) \times FX_k^{\text{compra}}$.
+- Posições cadastradas retroativamente sem data de compra suportam o campo `cambio_medio_aquisicao`. Na sua ausência, o sistema aplica transparência metodológica explicitando em nota de rodapé a estimativa pela PTAX atual.
+
+### 9.4. Fonte Única Canônica de Indexador de Renda Fixa (`resolveFixedIncomeIndexer`)
+- Títulos são classificados de forma canônica e determinística em `FixedIncomeIndexer { POS_FIXADO_CDI_SELIC, PREFIXADO, INFLACAO_IPCA, HIBRIDO_OUTROS }` com prioridade para taxa contratual estruturada (ex: `13,58% a.a.` $\implies$ Prefixado). Todos os relatórios consomem essa única fonte da verdade.
+
+### 9.5. Benchmarks Reais por Produtório Geométrico & Janela de Risco 12M
+- Séries de CDI (SGS 4391), IPCA (SGS 433), Poupança (SGS 195) e Ibovespa (^BVSP) são encadeadas geometricamente:
+  $$R_{\text{Bench}}(t_0, t_1) = \left[ \prod_{t=t_0}^{t_1} (1 + b_t) \right] - 1$$
+- Métricas anuais de risco (Sharpe, Volatilidade, Consistência e Drawdown) operam estritamente sobre $N = 12$ meses fechados homogêneos, desacopladas da série visual (que exibe MTD parcial com asterisco).
 

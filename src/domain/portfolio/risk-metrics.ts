@@ -206,6 +206,8 @@ export interface PortfolioRiskSummaryOptions {
   hasPartialCurrentMonth?: boolean;
   /** Se true, avalia as métricas anuais estritamente sobre os últimos 12 meses fechados completos (Padrão CFA/ANBIMA). */
   useTrailing12Months?: boolean;
+  /** Se false, calcula o drawdown estritamente sobre os meses fechados/avaliados (simetria com Sharpe e Volatilidade). */
+  includeMtdInDrawdown?: boolean;
 }
 
 export function calculatePortfolioRiskSummary(
@@ -214,17 +216,6 @@ export function calculatePortfolioRiskSummary(
   options?: PortfolioRiskSummaryOptions,
 ): PortfolioRiskSummary {
   const allRates = points.map((p) => p.ratePct ?? 0);
-
-  // Constrói a curva de cota acumulada (base 1.0) a partir dos retornos do período,
-  // isolando resgates e aportes de capital que distorceriam o Drawdown nominal em reais.
-  const unitCurve: number[] = [1.0];
-  let accumulatedUnit = 1.0;
-  for (const r of allRates) {
-    accumulatedUnit *= 1 + r / 100;
-    unitCurve.push(accumulatedUnit);
-  }
-
-  const maxDrawdown = calculateMaxDrawdown(unitCurve);
 
   // Identifica se o último mês é parcial (MTD)
   const lastPointIsMtd =
@@ -238,6 +229,25 @@ export function calculatePortfolioRiskSummary(
     options?.useTrailing12Months && closedRates.length >= 12
       ? closedRates.slice(-12)
       : closedRates;
+
+  // Constrói a curva de cota acumulada (base 1.0) a partir dos retornos do período,
+  // isolando resgates e aportes de capital que distorceriam o Drawdown nominal em reais.
+  // Por padrão CFA/ANBIMA, em janelas de 12M homogêneas, o drawdown avalia a mesma janela fechada.
+  const drawdownRates =
+    options?.includeMtdInDrawdown === true
+      ? allRates
+      : options?.useTrailing12Months || options?.includeMtdInDrawdown === false
+        ? evalRates
+        : allRates;
+
+  const unitCurve: number[] = [1.0];
+  let accumulatedUnit = 1.0;
+  for (const r of drawdownRates) {
+    accumulatedUnit *= 1 + r / 100;
+    unitCurve.push(accumulatedUnit);
+  }
+
+  const maxDrawdown = calculateMaxDrawdown(unitCurve);
 
   const volatility = calculateSampleVolatility(evalRates);
   const consistency = calculateConsistencyMetrics(evalRates);

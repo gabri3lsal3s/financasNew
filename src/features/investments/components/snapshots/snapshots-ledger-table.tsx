@@ -4,7 +4,7 @@ import { numberToCents } from "@/domain/money";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
 import { formatMonthYear } from "@/lib/date";
 import { cn } from "@/lib/utils";
-import { formatCentsAsBRL } from "@/services/masks";
+import { formatCentsAsBRL, formatSignedPct } from "@/services/masks";
 
 export interface SnapshotsLedgerTableProps {
   points: readonly PortfolioMonthlySeriesPoint[];
@@ -134,8 +134,7 @@ export function SnapshotsLedgerTable({
                           : "bg-negative/10 text-negative-strong",
                       )}
                     >
-                      {pt.twrMonthPct >= 0 ? "+" : ""}
-                      {pt.twrMonthPct.toFixed(2)}%
+                      {formatSignedPct(pt.twrMonthPct, 2)}
                     </span>
                   ) : (
                     <span className="text-muted-foreground font-sans font-normal">—</span>
@@ -144,15 +143,14 @@ export function SnapshotsLedgerTable({
 
                 <td className="py-2.5 px-3 text-right whitespace-nowrap">
                   <span className={cn("num font-semibold", effectiveGain >= 0 ? "text-positive-strong" : "text-negative-strong")}>
-                    {effectivePct !== null ? `${effectivePct >= 0 ? "+" : ""}${effectivePct.toFixed(1)}%` : "—"}
+                    {effectivePct !== null ? formatSignedPct(effectivePct, 1) : "—"}
                   </span>
                 </td>
 
                 <td className="py-2.5 px-3 text-right whitespace-nowrap font-mono font-semibold">
                   {pt.twrAccumulatedPct !== null && pt.twrAccumulatedPct !== undefined ? (
                     <span className={cn("num", pt.twrAccumulatedPct >= 0 ? "text-positive-strong" : "text-negative-strong")}>
-                      {pt.twrAccumulatedPct >= 0 ? "+" : ""}
-                      {pt.twrAccumulatedPct.toFixed(1)}%
+                      {formatSignedPct(pt.twrAccumulatedPct, 1)}
                     </span>
                   ) : (
                     <span className="text-muted-foreground font-sans font-normal">—</span>

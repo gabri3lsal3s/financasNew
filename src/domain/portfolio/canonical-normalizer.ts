@@ -1362,7 +1362,9 @@ export function computeCanonicalAssetLedger(
     if (tx.fx_rate != null && Number(tx.fx_rate) > 0) {
       txFxRate = Number(tx.fx_rate);
     } else if (isUSD) {
-      if (options?.monthlyPrices) {
+      if (options?.assetFxRateAtPurchase != null && options.assetFxRateAtPurchase > 0) {
+        txFxRate = options.assetFxRateAtPurchase;
+      } else if (options?.monthlyPrices) {
         txFxRate = resolveDynamicPtaxRate(options.monthlyPrices, tx.date, { explicitRate: options?.defaultFxRate });
       } else {
         txFxRate = defaultFx;

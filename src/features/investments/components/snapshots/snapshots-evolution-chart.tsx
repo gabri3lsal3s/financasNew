@@ -4,6 +4,7 @@ import { numberToCents } from "@/domain/money";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
 import { formatMonthYear, monthLabel } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { formatSignedPct } from "@/services/masks";
 
 export interface SnapshotsPeriodSummary {
   totalMonths: number;
@@ -88,7 +89,7 @@ export function SnapshotsEvolutionChart({
             )}
           >
             {summary.latestTwrPct !== null
-              ? `${summary.latestTwrPct >= 0 ? "+" : ""}${summary.latestTwrPct.toFixed(1)}%`
+              ? formatSignedPct(summary.latestTwrPct, 1)
               : "—"}
           </span>
         </div>

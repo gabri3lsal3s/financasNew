@@ -83,6 +83,7 @@ import {
   buildPortfolioMonthlySeries,
   type PortfolioMonthlySeriesPoint,
 } from "./summary";
+import { resolveFixedIncomeIndexer } from "./tickers-catalog";
 
 // ---------------------------------------------------------------------------
 // Arredondamentos e Auxiliares
@@ -385,6 +386,7 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
           currency,
           monthlyPrices: params.monthlyPrices,
           defaultFxRate: effectiveUsdRate,
+          assetFxRateAtPurchase: asset.fx_rate_at_purchase,
         })
       : null;
     const realizedPnl = assetLedger ? assetLedger.realizedPnl : undefined;
@@ -495,7 +497,7 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
       assetId: asset.id,
       ticker: tickerUpper,
       assetClass: asset.asset_class,
-      sector: asset.sector,
+      sector: isFixedIncome ? resolveFixedIncomeIndexer(asset).macroLabel : asset.sector,
       currency,
       quantity,
       averageCost,
@@ -903,6 +905,7 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       currency,
       monthlyPrices: params.monthlyPrices,
       defaultFxRate: effectiveUsdRate,
+      assetFxRateAtPurchase: asset.fx_rate_at_purchase,
     });
     const quantity = pointInTimeLedger.quantity;
     const totalCostNative = pointInTimeLedger.totalCost;
@@ -915,7 +918,7 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
         assetId: asset.id,
         ticker: tickerUpper,
         assetClass: asset.asset_class,
-        sector: asset.sector,
+        sector: isFixedIncome ? resolveFixedIncomeIndexer(asset).macroLabel : asset.sector,
         currency,
         quantity: 0,
         averageCost: 0,
@@ -1045,7 +1048,7 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       assetId: asset.id,
       ticker: tickerUpper,
       assetClass: asset.asset_class,
-      sector: asset.sector,
+      sector: isFixedIncome ? resolveFixedIncomeIndexer(asset).macroLabel : asset.sector,
       currency,
       quantity,
       averageCost: averageCostNative,

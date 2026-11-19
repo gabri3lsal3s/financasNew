@@ -10,9 +10,14 @@ const percentFormatter = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 1,
 });
 
-/** 12.345 -> "12,3" · 3 -> "3,0" (pt-BR, 1 casa decimal). */
-export function formatPercent(value: number): string {
-  return percentFormatter.format(Number.isFinite(value) ? value : 0);
+/** 12.345 -> "12,3" · 3 -> "3,0" (pt-BR, padrão 1 casa decimal). */
+export function formatPercent(value: number, fractionDigits = 1): string {
+  if (!Number.isFinite(value)) return fractionDigits === 2 ? "0,00" : "0,0";
+  if (fractionDigits === 1) return percentFormatter.format(value);
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(value);
 }
 
 const signedFormatter = new Intl.NumberFormat("pt-BR", {
@@ -26,13 +31,20 @@ const signedFormatter = new Intl.NumberFormat("pt-BR", {
  * duplicada em position-table.tsx e resumo-tab.tsx (idênticas).
  * `null` (indisponível) -> "—".
  */
-export function formatSignedPct(value: number | null): string {
+export function formatSignedPct(value: number | null, fractionDigits = 1): string {
   if (value === null || !Number.isFinite(value)) {
     return "—";
   }
-  const formatted = signedFormatter.format(value);
-  if (formatted === "-0,0" || formatted === "0,0") {
-    return "0,0%";
+  const formatter =
+    fractionDigits === 1
+      ? signedFormatter
+      : new Intl.NumberFormat("pt-BR", {
+          minimumFractionDigits: fractionDigits,
+          maximumFractionDigits: fractionDigits,
+        });
+  const formatted = formatter.format(value);
+  if (formatted === "-0,0" || formatted === "0,0" || formatted === "-0,00" || formatted === "0,00") {
+    return fractionDigits === 2 ? "0,00%" : "0,0%";
   }
   return `${value > 0 ? "+" : ""}${formatted}%`;
 }

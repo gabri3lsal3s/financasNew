@@ -8,6 +8,7 @@ export interface PerformanceBenchmarksPanelProps {
   seriesLength: number;
   fullAccumulatedRatePct: number;
   periodWindowLabel: string;
+  riskPeriodWindowLabel?: string;
   benchmarkComparison: ConsolidatedBenchmarksResult;
   riskSummary: PortfolioRiskSummary;
 }
@@ -20,6 +21,7 @@ export function PerformanceBenchmarksPanel({
   seriesLength,
   fullAccumulatedRatePct,
   periodWindowLabel,
+  riskPeriodWindowLabel,
   benchmarkComparison,
   riskSummary,
 }: PerformanceBenchmarksPanelProps) {
@@ -100,7 +102,7 @@ export function PerformanceBenchmarksPanel({
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-foreground uppercase tracking-wider">
             <ShieldCheck className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            <span>Métricas de Risco &amp; Consistência ({periodWindowLabel})</span>
+            <span>Métricas de Risco &amp; Consistência ({riskPeriodWindowLabel ?? periodWindowLabel})</span>
           </div>
           <span className="text-[10px] text-muted-foreground font-mono">Padrão CFA &amp; ANBIMA</span>
         </div>

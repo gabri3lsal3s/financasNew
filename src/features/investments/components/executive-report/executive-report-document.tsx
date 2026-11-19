@@ -162,13 +162,13 @@ export function ExecutiveReportDocument({
               className="inline font-bold text-muted-foreground"
             />
             ), distribuídos em{" "}
-            <strong>{investmentCount} ativos</strong> e{" "}
-            <strong>{classGroups.length} classes de investimento</strong>.
+            <strong>{investmentCount} ativos{effectiveCashBRL > 0 ? " + Reserva de Caixa" : ""}</strong> e{" "}
+            <strong>{classGroups.length} classes patrimoniais</strong>.
             {pqs !== null && pqs !== undefined ? (
               <>
                 {" "}
                 O Índice de Qualidade da Carteira (PQS ponderado) situa-se em{" "}
-                <strong className="text-foreground">{pqs.toFixed(1)} / 10</strong>.
+                <strong className="text-foreground">{pqs.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} / 10</strong>.
               </>
             ) : null}{" "}
             O saldo em reserva de liquidez é de{" "}
