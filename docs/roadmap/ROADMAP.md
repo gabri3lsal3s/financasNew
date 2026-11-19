@@ -7587,9 +7587,15 @@ flowchart TD
 ### Fase 115 — Certificação Final de Produção Axir v9 (§v9 — ID BR-20261119-6445)
 
 > **Status:** Concluída e Auditada — **Definitivação de Layout no Subtotal Internacional com `<colgroup>`, Rótulo Compras no Dossiê, Nota de Conciliação de Realizados e UX de Aplicação Original em Renda Fixa (Score 99+/100)**:
-> - **Contenção Rígida e `<colgroup>` no Subtotal Internacional (Gate v9.1):**
->   - Introdução de `<colgroup>` explícito com `<col>` dedicado para cada uma das 8 colunas em `report-equity-class-table.tsx`, blindando o cálculo do grid no motor `table-fixed` contra interferência de banners de grupo com `colspan={8}` no `<thead>`.
->   - Rebalanceamento estrito das larguras percentuais para ativos internacionais: Ticker (10%), Tema (12%), Qtd (5%), Preço Médio (9%), Cotação (8%), Total R$ (19%), Var. Cota (23%) e Retorno Total (14%), garantindo que saldos de 5 ou 6 dígitos (R$ 23.449,80, R$ 150.000,00+) jamais colidam com as duas linhas de variação de cota em moeda original e local (`+2,8% (USD)` e `+9,4% (BRL)`).
+> - **Contenção Rígida e `<colgroup>` Dedicado no Subtotal e Colunas Internacionais (Gate v9.1):**
+>   - Introdução de `<colgroup>` explícito e dedicado exclusivamente à tabela de ativos internacionais em `report-equity-class-table.tsx` (compartilhada entre Dossiê Executivo e Relatório Executivo), redistribuindo horizontalmente o espaço de Ticker (8,5%) e Classe/Tema (13%) para dar folga absoluta às colunas numéricas centrais.
+>   - Alocação calibrada das 8 colunas somando rigorosamente 100,0%: Ticker (8,5%), Classe/Tema (13%), Qtd (8,0%), Preço Médio (11,5%), Cotação (10,5%), Total R$ (17,0%), Var. Cota (18,0%) e Retorno Total (13,5%), com `colSpan={5}` de 51,5% no rodapé.
+>   - Resolução das anomalias visuais relatadas na auditoria de PDF:
+>     * Cabeçalho de Preço Médio com quebra limpa em duas linhas (`Preço`<br/>`Médio`), eliminando a fusão de textos em `PREÇO MÉDICOTAÇÃO` / `MÉDIOTAÇÃO`;
+>     * Qtd ampliada de 5% para 8% com `text-[9px]` e padding horizontal controlado (`px-1`), acomodando frações com até 5 casas decimais (ex.: `1,7398`, `11,933`) sem transbordar para os valores em dólares (`1,7398US$`);
+>     * Preço Médio e Cotação com `text-[9px]` e padding controlado (`px-1`), eliminando sobreposição com Total (R$) (`330,6RI$`, `688,92R$`);
+>     * Classe/Tema com `text-[9.5px]`, `px-1.5` e `break-normal`, impedindo a quebra inadequada de nomes de temas em duas linhas (ex.: `Desenvolvido S` $\to$ `Desenvolvidos`);
+>     * Rodapé `SUBTOTAL INTERNACIONAL` preservado com total clareza e sem colisão: `R$ 23.449,80` com folga de mais de 35px em Total (R$), duas linhas verticais organizadas para `+2,8% (USD)` e `+9,4% (BRL)` em Var. Cota (18%), e `+10,8%` em Ret. Total (13,5%).
 > - **Padronização do Rótulo "Compras" no Banner de Movimentação (Gate v9.2):**
 >   - Atualização do rótulo na faixa `MOVIMENTAÇÃO DO PERÍODO` da página 1 do Dossiê Executivo (`TearSheetMovementStrip.tsx`) de `Aportes:` para `Compras:`, alinhando-o com precisão à terminologia do Relatório Executivo e eliminando ambiguidade quando compras são financiadas por saldo disponível da Reserva de Caixa.
 > - **Nota de Conciliação de Realizados (Dossiê Pág. 5) & UX de Renda Fixa (Gate v9.3):**

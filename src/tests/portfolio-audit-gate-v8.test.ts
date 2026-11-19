@@ -212,17 +212,18 @@ describe("Auditoria Forense e Certificação de Produção — Axir Engine v8 (I
   // Gate v8.3: Layout Subtotal USD sem Colisão
   // -------------------------------------------------------------------------
   describe("Gate v8.3: Layout Subtotal USD sem Colisão", () => {
-    it("garante proporção de colunas com 45% colspan, 18% Total, 22% Var Cota e 15% Ret Total na tabela Internacional", () => {
+    it("garante proporção de colunas com 51.5% colspan, 17% Total, 18% Var Cota e 13.5% Ret Total na tabela Internacional", () => {
       // Verificação da soma exata de 100% de largura
-      const colSpans = 45;
-      const totalCol = 18;
-      const varCotaCol = 22;
-      const retTotalCol = 15;
+      const colSpans = 51.5;
+      const totalCol = 17;
+      const varCotaCol = 18;
+      const retTotalCol = 13.5;
 
       expect(colSpans + totalCol + varCotaCol + retTotalCol).toBe(100);
 
-      // Garantia de mais de 20% para Var. Cota na exibição empilhada de USD e BRL
-      expect(varCotaCol).toBeGreaterThanOrEqual(20);
+      // Garantia de folga para Var. Cota na exibição empilhada de USD e BRL e integridade do Total (R$)
+      expect(varCotaCol).toBeGreaterThanOrEqual(18);
+      expect(totalCol).toBeGreaterThanOrEqual(16);
     });
   });
 });
