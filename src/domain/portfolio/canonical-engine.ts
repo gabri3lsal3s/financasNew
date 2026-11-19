@@ -640,6 +640,8 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     dividends: rawDividendsForSeries,
     contributions: rawContributionsForSeries,
     initialAccumulatedDividends,
+    openingDividendsBalance: initialAccumulatedDividends,
+    segregateOpeningDividends: true,
     limit: 6,
   });
 
@@ -649,6 +651,8 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     dividends: rawDividendsForSeries,
     contributions: rawContributionsForSeries,
     initialAccumulatedDividends,
+    openingDividendsBalance: initialAccumulatedDividends,
+    segregateOpeningDividends: true,
     limit: 0,
   });
 

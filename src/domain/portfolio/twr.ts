@@ -46,6 +46,14 @@ export interface TwrMonthlyInputPoint {
    * Se fornecida pelo extrato/relatório da corretora, tem precedência sobre o cálculo derivado.
    */
   explicitRatePct?: number | null;
+  /**
+   * Origem da competência no Motor Híbrido:
+   * - 'marco_zero': mês de inauguração da carteira (base cota 100);
+   * - 'retroativo_manual': snapshot histórico calibrado manualmente pelo investidor;
+   * - 'carry_forward': competência sem movimentação interpolada pela espinha dorsal;
+   * - 'calculado_ledger': apuração operacional via lançamentos de mercado e cotações.
+   */
+  snapshotOrigin?: "retroativo_manual" | "marco_zero" | "calculado_ledger" | "carry_forward";
 }
 
 export interface TwrMonthlyPointResult {
@@ -296,14 +304,29 @@ export function calculateTwrSeries(
       } else {
         // Cálculo via saldo e fluxo externo (Modified Dietz com dias corridos exatos ANBIMA ou peso médio W = 0.5):
         if (prevBalance > 0) {
-          const gain = balance - prevBalance - totalFlow;
-          const capitalBase = prevBalance + weightedFlow;
-          if (capitalBase > 0) {
-            const rawRate = gain / capitalBase;
-            const clampedRate = Math.max(-1.0, Math.min(10.0, rawRate));
-            monthRatePct = Math.round(clampedRate * 10000) / 100;
-          } else {
+          const isZeroDeltaAndFlow = Math.abs(balance - prevBalance) < 0.01 && Math.abs(totalFlow) < 0.01;
+          const isCarryForward = pt.snapshotOrigin === "carry_forward";
+
+          if (isCarryForward || isZeroDeltaAndFlow) {
+            // Salvaguarda Canônica de Carry-Forward / Variação Nula:
+            // Competências herdadas sem movimentação preservam rigorosamente TWR = 0,00% e cota inalterada
             monthRatePct = 0;
+          } else {
+            const gain = balance - prevBalance - totalFlow;
+            const capitalBase = prevBalance + weightedFlow;
+            if (capitalBase > 0) {
+              const rawRate = gain / capitalBase;
+              const clampedRate = Math.max(-1.0, Math.min(10.0, rawRate));
+              monthRatePct = Math.round(clampedRate * 10000) / 100;
+            } else {
+              monthRatePct = 0;
+            }
+
+            // Invariante ANBIMA / Gate v2.1:
+            // Se a variação patrimonial e o fluxo líquido forem nulos, a taxa nunca pode ser negativa
+            if (Math.abs(balance - prevBalance) < 0.01 && Math.abs(totalFlow) < 0.01 && monthRatePct < 0) {
+              monthRatePct = 0;
+            }
           }
         } else if (balance > 0) {
           // Carteira estava zerada e recebeu aporte inicial ou retorno de capital neste mês

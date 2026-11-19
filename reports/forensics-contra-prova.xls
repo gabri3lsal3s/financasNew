@@ -1,0 +1,595 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ 
+  <Styles>
+   <Style ss:ID="Default" ss:Name="Normal">
+    <Alignment ss:Vertical="Center"/>
+    <Borders/>
+    <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#1E293B"/>
+    <Interior/>
+    <NumberFormat/>
+    <Protection/>
+   </Style>
+   <Style ss:ID="Title">
+    <Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1" ss:Color="#0F172A"/>
+    <Alignment ss:Vertical="Center"/>
+   </Style>
+   <Style ss:ID="Header">
+    <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
+    <Interior ss:Color="#0F172A" ss:Pattern="Solid"/>
+    <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+    <Borders>
+     <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#334155"/>
+    </Borders>
+   </Style>
+   <Style ss:ID="TextBold">
+    <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/>
+   </Style>
+   <Style ss:ID="Currency">
+    <NumberFormat ss:Format="&quot;R$&quot; #,##0.00"/>
+    <Alignment ss:Horizontal="Right"/>
+   </Style>
+   <Style ss:ID="Percent">
+    <NumberFormat ss:Format="0.00%"/>
+    <Alignment ss:Horizontal="Right"/>
+   </Style>
+   <Style ss:ID="NumberDec">
+    <NumberFormat ss:Format="#,##0.00"/>
+    <Alignment ss:Horizontal="Right"/>
+   </Style>
+   <Style ss:ID="DeltaOk">
+    <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#166534" ss:Bold="1"/>
+    <NumberFormat ss:Format="&quot;R$&quot; #,##0.00"/>
+    <Alignment ss:Horizontal="Right"/>
+   </Style>
+   <Style ss:ID="DeltaError">
+    <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#991B1B" ss:Bold="1"/>
+    <Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/>
+    <NumberFormat ss:Format="&quot;R$&quot; #,##0.00"/>
+    <Alignment ss:Horizontal="Right"/>
+   </Style>
+   <Style ss:ID="StatusPass">
+    <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#166534" ss:Bold="1"/>
+    <Interior ss:Color="#DCFCE7" ss:Pattern="Solid"/>
+    <Alignment ss:Horizontal="Center"/>
+   </Style>
+   <Style ss:ID="StatusFail">
+    <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#991B1B" ss:Bold="1"/>
+    <Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/>
+    <Alignment ss:Horizontal="Center"/>
+   </Style>
+  </Styles>
+ 
+  <Worksheet ss:Name="Resumo Executivo">
+   <Table ss:DefaultColumnWidth="120">
+    <Column ss:Width="220"/>
+    <Column ss:Width="110"/>
+    <Column ss:Width="90"/>
+    <Column ss:Width="90"/>
+    <Column ss:Width="90"/>
+    <Column ss:Width="90"/>
+    <Row>
+     <Cell ss:StyleID="Title"><Data ss:Type="String">Axir — Laboratório Forense de Auditoria Quantitativa</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">ID da Auditoria: AUDIT-MWMWAUUP | Data: 2026-11-19T01:52:34.993Z</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">Score Global: 100% | Duração: 5.51ms</Data></Cell>
+    </Row>
+    <Row/>
+    <Row ss:StyleID="Header">
+     <Cell><Data ss:Type="String">Módulo de Negócio</Data></Cell>
+     <Cell><Data ss:Type="String">Status</Data></Cell>
+     <Cell><Data ss:Type="String">Score (%)</Data></Cell>
+     <Cell><Data ss:Type="String">Aprovadas</Data></Cell>
+     <Cell><Data ss:Type="String">Falhas</Data></Cell>
+     <Cell><Data ss:Type="String">Total</Data></Cell>
+    </Row>
+    
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Investimentos &amp; Custódia</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Inteligência &amp; SmartAdvisor</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">3</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">3</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Cartões &amp; Faturas</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Contratos de Crédito (Price/SAC)</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Dívidas &amp; Quitações</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Modo Viagem &amp; Racha</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Orçamento Familiar</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Orçamentos &amp; Provisões</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Cash Gap &amp; Pistas de Liquidez</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Módulos Auxiliares (Pix, Backup, Cripto)</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">APROVADO</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">0</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">2</Data></Cell>
+    </Row>
+   </Table>
+  </Worksheet>
+ 
+  <Worksheet ss:Name="Contra-Prova Investimentos">
+   <Table ss:DefaultColumnWidth="120">
+    <Column ss:Width="160"/>
+    <Column ss:Width="90"/>
+    <Column ss:Width="110"/>
+    <Column ss:Width="140"/>
+    <Column ss:Width="140"/>
+    <Column ss:Width="110"/>
+    <Row ss:StyleID="Header">
+     <Cell><Data ss:Type="String">Ativo</Data></Cell>
+     <Cell><Data ss:Type="String">Quantidade</Data></Cell>
+     <Cell><Data ss:Type="String">Cotação (R$)</Data></Cell>
+     <Cell><Data ss:Type="String">Valor Calculado Axir</Data></Cell>
+     <Cell><Data ss:Type="String">Fórmula Excel (Qtd * Cot)</Data></Cell>
+     <Cell><Data ss:Type="String">Diferença (|Axir - Excel|)</Data></Cell>
+    </Row>
+    
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">TESOURO-SELIC</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">1617.51</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">1617.51</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]*RC[-2]"><Data ss:Type="Number">1617.51</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">CDB ORIGINAL</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">1348.01</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">1348.01</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]*RC[-2]"><Data ss:Type="Number">1348.01</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">TESOURO-IPCA</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">214.65</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">214.65</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]*RC[-2]"><Data ss:Type="Number">214.65</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">VOO (USD)</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1.378</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">2625</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">3617.25</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]*RC[-2]"><Data ss:Type="Number">3617.25</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">GLD (USD)</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">1.554</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">1204.72</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">1872.13</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]*RC[-2]"><Data ss:Type="Number">1872.13</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+   </Table>
+  </Worksheet>
+ 
+  <Worksheet ss:Name="Contra-Prova Parcelas">
+   <Table ss:DefaultColumnWidth="120">
+    <Column ss:Width="230"/>
+    <Column ss:Width="110"/>
+    <Column ss:Width="80"/>
+    <Column ss:Width="140"/>
+    <Column ss:Width="140"/>
+    <Column ss:Width="110"/>
+    <Row ss:StyleID="Header">
+     <Cell><Data ss:Type="String">Cenário de Compra</Data></Cell>
+     <Cell><Data ss:Type="String">Valor Original (R$)</Data></Cell>
+     <Cell><Data ss:Type="String">Parcelas</Data></Cell>
+     <Cell><Data ss:Type="String">Soma das Parcelas Axir</Data></Cell>
+     <Cell><Data ss:Type="String">Fórmula Excel (Original)</Data></Cell>
+     <Cell><Data ss:Type="String">Diferença (|Axir - Excel|)</Data></Cell>
+    </Row>
+    
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Compra R$ 100,00 em 3x (Dízima)</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">3</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]"><Data ss:Type="Number">100</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Compra R$ 10.000,00 em 7x</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">10000</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">7</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">10000</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]"><Data ss:Type="Number">10000</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Compra R$ 1.000,00 em 60x</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">1000</Data></Cell>
+     <Cell ss:StyleID="NumberDec"><Data ss:Type="Number">60</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">1000</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]"><Data ss:Type="Number">1000</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+   </Table>
+  </Worksheet>
+ 
+  <Worksheet ss:Name="Contra-Prova Racha">
+   <Table ss:DefaultColumnWidth="120">
+    <Column ss:Width="140"/>
+    <Column ss:Width="110"/>
+    <Column ss:Width="110"/>
+    <Column ss:Width="130"/>
+    <Column ss:Width="130"/>
+    <Column ss:Width="110"/>
+    <Row ss:StyleID="Header">
+     <Cell><Data ss:Type="String">Participante</Data></Cell>
+     <Cell><Data ss:Type="String">Total Pago (R$)</Data></Cell>
+     <Cell><Data ss:Type="String">Total Devido (R$)</Data></Cell>
+     <Cell><Data ss:Type="String">Saldo Líquido Axir</Data></Cell>
+     <Cell><Data ss:Type="String">Fórmula Excel (Pago - Devido)</Data></Cell>
+     <Cell><Data ss:Type="String">Diferença (|Axir - Excel|)</Data></Cell>
+    </Row>
+    
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Alice</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">1200</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">700</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">500</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]-RC[-2]"><Data ss:Type="Number">500</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Bob</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">450</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">490</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">-40</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]-RC[-2]"><Data ss:Type="Number">-40</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Carol</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">1200</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">623.33</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">576.67</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]-RC[-2]"><Data ss:Type="Number">576.67</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">David</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">500</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">1536.67</Data></Cell>
+     <Cell ss:StyleID="Currency"><Data ss:Type="Number">-1036.67</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=RC[-3]-RC[-2]"><Data ss:Type="Number">-1036.67</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=ABS(RC[-2]-RC[-1])"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+    <Row>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Total Geral (Soma Zero)</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=SUM(R2C:R[-1]C)"><Data ss:Type="Number">3350.00</Data></Cell>
+     <Cell ss:StyleID="Currency" ss:Formula="=SUM(R2C:R[-1]C)"><Data ss:Type="Number">3350.00</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=SUM(R2C:R[-1]C)"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=SUM(R2C:R[-1]C)"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell ss:StyleID="DeltaOk" ss:Formula="=SUM(R2C:R[-1]C)"><Data ss:Type="Number">0.00</Data></Cell>
+    </Row>
+   </Table>
+  </Worksheet>
+ 
+  <Worksheet ss:Name="Todas Invariantes">
+   <Table ss:DefaultColumnWidth="120">
+    <Column ss:Width="90"/>
+    <Column ss:Width="100"/>
+    <Column ss:Width="80"/>
+    <Column ss:Width="250"/>
+    <Column ss:Width="160"/>
+    <Column ss:Width="160"/>
+    <Column ss:Width="90"/>
+    <Column ss:Width="220"/>
+    <Row ss:StyleID="Header">
+     <Cell><Data ss:Type="String">ID</Data></Cell>
+     <Cell><Data ss:Type="String">Módulo</Data></Cell>
+     <Cell><Data ss:Type="String">Status</Data></Cell>
+     <Cell><Data ss:Type="String">Invariante</Data></Cell>
+     <Cell><Data ss:Type="String">Esperado</Data></Cell>
+     <Cell><Data ss:Type="String">Encontrado</Data></Cell>
+     <Cell><Data ss:Type="String">Divergência</Data></Cell>
+     <Cell><Data ss:Type="String">Origem no Código</Data></Cell>
+    </Row>
+    
+    <Row>
+     <Cell><Data ss:Type="String">INV-PORT-01</Data></Cell>
+     <Cell><Data ss:Type="String">portfolio</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Partida Dobrada e Balanço Econômico</Data></Cell>
+     <Cell><Data ss:Type="String">1977.25</Data></Cell>
+     <Cell><Data ss:Type="String">1977.25</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/portfolio/valuation.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-PORT-02</Data></Cell>
+     <Cell><Data ss:Type="String">portfolio</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Custódia Total (Ativos + Caixa)</Data></Cell>
+     <Cell><Data ss:Type="String">17503.68</Data></Cell>
+     <Cell><Data ss:Type="String">17503.68</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/portfolio/valuation.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-PORT-03</Data></Cell>
+     <Cell><Data ss:Type="String">portfolio</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Custo com PTAX Histórica (USD ETFs)</Data></Cell>
+     <Cell><Data ss:Type="String">Diferente de CustoUSD * PTAX_atual (preservação cambial)</Data></Cell>
+     <Cell><Data ss:Type="String">Custo histórico preservado</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/portfolio/valuation.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-PORT-05</Data></Cell>
+     <Cell><Data ss:Type="String">portfolio</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Metas 100% e Soma de Gaps R$ 0,00</Data></Cell>
+     <Cell><Data ss:Type="String">100</Data></Cell>
+     <Cell><Data ss:Type="String">100</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/portfolio/rebalanceamento.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-PORT-04</Data></Cell>
+     <Cell><Data ss:Type="String">portfolio</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Continuidade de Espinha Temporal (Mês em Branco)</Data></Cell>
+     <Cell><Data ss:Type="String">5</Data></Cell>
+     <Cell><Data ss:Type="String">5</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/portfolio/twr.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-CARD-01</Data></Cell>
+     <Cell><Data ss:Type="String">cards</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Conservação Estrita de Centavos em Parcelamentos</Data></Cell>
+     <Cell><Data ss:Type="String">1110000</Data></Cell>
+     <Cell><Data ss:Type="String">1110000</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/money/parcelar.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-CARD-02</Data></Cell>
+     <Cell><Data ss:Type="String">cards</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Corte de Competência de Fatura (Closing Day)</Data></Cell>
+     <Cell><Data ss:Type="String">2026-10 | 2026-11</Data></Cell>
+     <Cell><Data ss:Type="String">2026-10 | 2026-11</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/competence/index.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LOAN-01</Data></Cell>
+     <Cell><Data ss:Type="String">loans</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Desconto a Valor Presente em Quitação Antecipada (CDC art. 52)</Data></Cell>
+     <Cell><Data ss:Type="String">Valor pago &lt; Original (2995452 cts)</Data></Cell>
+     <Cell><Data ss:Type="String">Valor pago = 2682505 cts (desconto = 312947 cts)</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/loans/index.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-LOAN-02</Data></Cell>
+     <Cell><Data ss:Type="String">loans</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Saldo Devedor Final Rigorosamente R$ 0,00</Data></Cell>
+     <Cell><Data ss:Type="String">Saldo final SAC = 0 e Price = 0</Data></Cell>
+     <Cell><Data ss:Type="String">Saldo final SAC = 0 cts e Price = 0 cts</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/loans/index.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-TRIP-01</Data></Cell>
+     <Cell><Data ss:Type="String">trips</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Conservação Contábil de Soma Zero</Data></Cell>
+     <Cell><Data ss:Type="String">0</Data></Cell>
+     <Cell><Data ss:Type="String">0</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/trips/trip-math.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-TRIP-02</Data></Cell>
+     <Cell><Data ss:Type="String">trips</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Liquidação Ótima Min-Cash-Flow</Data></Cell>
+     <Cell><Data ss:Type="String">&lt;= 3 transferências</Data></Cell>
+     <Cell><Data ss:Type="String">3 transferências geradas</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/trips/trip-math.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-FAM-01</Data></Cell>
+     <Cell><Data ss:Type="String">family</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Rateio Proporcional à Renda &amp; Conservação</Data></Cell>
+     <Cell><Data ss:Type="String">Soma das partes === Valor da despesa</Data></Cell>
+     <Cell><Data ss:Type="String">Conservação estrita de 100%</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/family/settlement.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-BUD-01</Data></Cell>
+     <Cell><Data ss:Type="String">budgets</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Fechamento da Matriz Orçamentária 50/30/20</Data></Cell>
+     <Cell><Data ss:Type="String">1500000</Data></Cell>
+     <Cell><Data ss:Type="String">1500000</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/budgets/proportional.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-BUD-02</Data></Cell>
+     <Cell><Data ss:Type="String">budgets</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Provisão Anual 1/12 (IPVA/IPTU)</Data></Cell>
+     <Cell><Data ss:Type="String">1/12 do alvo anual para cada provisão</Data></Cell>
+     <Cell><Data ss:Type="String">Alinhamento exato de 1/12</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/insights/extended-periodicity.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-BND-01</Data></Cell>
+     <Cell><Data ss:Type="String">portfolio</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Blindagem contra Divisão por Zero (Sharpe/Volatilidade)</Data></Cell>
+     <Cell><Data ss:Type="String">Valores numéricos finitos (0.00), null seguro e não-NaN</Data></Cell>
+     <Cell><Data ss:Type="String">volEmpty=0, volSingle=0, sharpe=null</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/portfolio/risk-metrics.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-BND-02</Data></Cell>
+     <Cell><Data ss:Type="String">auxiliary</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Imutabilidade de Timestamp Local em Ano Bissexto</Data></Cell>
+     <Cell><Data ss:Type="String">2028-02-29</Data></Cell>
+     <Cell><Data ss:Type="String">2028-02-29</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/lib/date.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-BND-03</Data></Cell>
+     <Cell><Data ss:Type="String">portfolio</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Precisão Numérica de 8 Decimais em Criptoativos</Data></Cell>
+     <Cell><Data ss:Type="String">666</Data></Cell>
+     <Cell><Data ss:Type="String">666</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/portfolio/valuation.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-INS-01</Data></Cell>
+     <Cell><Data ss:Type="String">insights</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Ordenação Estrita por Severidade (SmartAdvisor)</Data></Cell>
+     <Cell><Data ss:Type="String">critical &gt;= warning &gt;= info &gt;= success</Data></Cell>
+     <Cell><Data ss:Type="String">Ordenação hierárquica respeitada</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/insights/advisor.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-INS-02</Data></Cell>
+     <Cell><Data ss:Type="String">insights</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Cooldown de 30 Dias em Dispensas de Insights</Data></Cell>
+     <Cell><Data ss:Type="String">Tópicos 0 e 1 ativos no cooldown; tópico 2 liberado</Data></Cell>
+     <Cell><Data ss:Type="String">Filtro temporal de cooldown íntegro</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/insights/smart-advisor-rules.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-INS-03</Data></Cell>
+     <Cell><Data ss:Type="String">insights</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Radar Preventivo de Limite de Cartão (&gt;= 90%)</Data></Cell>
+     <Cell><Data ss:Type="String">Alerta preventivo ativado para uso &gt;= 90%</Data></Cell>
+     <Cell><Data ss:Type="String">Uso = 93% (Alerta acionado)</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/insights/card-radar.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-AUX-01</Data></Cell>
+     <Cell><Data ss:Type="String">auxiliary</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Checksum CRC-16 BACEN do Pix BR Code</Data></Cell>
+     <Cell><Data ss:Type="String">3600</Data></Cell>
+     <Cell><Data ss:Type="String">3600</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/pix/pix-br-code.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-AUX-02</Data></Cell>
+     <Cell><Data ss:Type="String">projection</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Pista de Liquidez Imediata (Reserva D+0/D+1)</Data></Cell>
+     <Cell><Data ss:Type="String">6</Data></Cell>
+     <Cell><Data ss:Type="String">6</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/projection/emergency-fund.ts</Data></Cell>
+    </Row>
+    <Row>
+     <Cell><Data ss:Type="String">INV-AUX-03</Data></Cell>
+     <Cell><Data ss:Type="String">debts</Data></Cell>
+     <Cell ss:StyleID="StatusPass"><Data ss:Type="String">PASSED</Data></Cell>
+     <Cell ss:StyleID="TextBold"><Data ss:Type="String">Otimização Financeira da Quitação Avalanche</Data></Cell>
+     <Cell><Data ss:Type="String">Juros Avalanche &lt;= Juros Bola de Neve</Data></Cell>
+     <Cell><Data ss:Type="String">Avalanche: 1266570 cts vs Neve: 1423910 cts (Economia = 157340 cts)</Data></Cell>
+     <Cell ss:StyleID="DeltaOk"><Data ss:Type="Number">0.00</Data></Cell>
+     <Cell><Data ss:Type="String">src/domain/debts/payoff-simulator.ts</Data></Cell>
+    </Row>
+   </Table>
+  </Worksheet>
+</Workbook>

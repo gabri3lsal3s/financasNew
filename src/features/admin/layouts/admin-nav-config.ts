@@ -4,6 +4,7 @@ import {
   KeyRound,
   LayoutDashboard,
   LifeBuoy,
+  Microscope,
   Receipt,
   ShieldAlert,
   SlidersHorizontal,
@@ -26,5 +27,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { to: "/admin/convites", label: "Convites & Allowlist", icon: KeyRound },
   { to: "/admin/backups", label: "Backups & DRP", icon: Database },
   { to: "/admin/seguranca", label: "Auditoria & LGPD", icon: ShieldAlert },
+  { to: "/admin/laboratorio-forense", label: "Laboratório Forense", icon: Microscope },
   { to: "/admin/configuracoes", label: "Sistema & APK Beta", icon: SlidersHorizontal },
 ];

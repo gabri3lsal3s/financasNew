@@ -385,6 +385,11 @@ O console operacional administrativo do Áxis Finance foi completamente segregad
 5. **Central de Backups do Sistema, Hashing SHA-256 e DRP:**
    - Geração de snapshots JSON on-demand no navegador com cálculo de hash criptográfico SHA-256;
    - Registro em `public.system_backups`, verificador de integridade contra adulteração e plano de contingência DRP.
+6. **Laboratório Forense de Auditoria Quantitativa, Sintética e Contínua (`/admin/laboratorio-forense`):**
+   - Núcleo isomórfico desacoplado em `src/features/admin/forensics/` com 8 personas determinísticas e 23 asserções contábeis e matemáticas (cobertura de 100% em investimentos, cartões, dívidas, viagens, orçamento familiar e provisões);
+   - Dupla execução: CLI (`npm run audit:forensics`) e interface administrativa web com download de artefatos (Dossiê Markdown executivo e Planilha Excel SpreadsheetML com fórmulas nativas e formatação condicional);
+   - Inspetor de snapshot de usuário real em modo somente leitura com anonimização de PII (LGPD) e garantia de zero mutações no Supabase;
+   - Impacto zero de bundle no usuário final (chunk isolado `admin-forensics-page-*.js` e exclusão total do precache PWA Workbox).
 
 ### 5.9 Fronteira Pública x Autenticada, SEO Técnico e Navegação Agêntica (v3.3)
 

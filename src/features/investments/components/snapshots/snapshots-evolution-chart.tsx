@@ -10,6 +10,8 @@ export interface SnapshotsPeriodSummary {
   latestValueBRL: number;
   latestCostBRL: number;
   periodDividendsBRL: number;
+  openingDividendsBalanceBRL?: number;
+  totalHistoricalDividendsBRL?: number;
   latestTwrPct: number | null;
 }
 
@@ -67,6 +69,14 @@ export function SnapshotsEvolutionChart({
             tone="positive"
             className="text-sm sm:text-base font-bold"
           />
+          {summary.openingDividendsBalanceBRL !== undefined && summary.openingDividendsBalanceBRL > 0 && (
+            <span
+              className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight"
+              title={`Saldo inicial retroativo: R$ ${summary.openingDividendsBalanceBRL.toFixed(2)} | Total consolidado: R$ ${(summary.totalHistoricalDividendsBRL ?? (summary.periodDividendsBRL + summary.openingDividendsBalanceBRL)).toFixed(2)}`}
+            >
+              +{numberToCents(summary.openingDividendsBalanceBRL) ? " saldo inicial retroativo" : ""}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-col gap-0.5 col-span-2 sm:col-span-1">

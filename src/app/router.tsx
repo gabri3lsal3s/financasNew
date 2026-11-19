@@ -153,6 +153,11 @@ const AdminBackupsPage = lazy(() =>
 const AdminSecurityPage = lazy(() =>
   import("@/features/admin/pages/admin-security-page").then((m) => ({ default: m.AdminSecurityPage })),
 );
+const AdminForensicsPage = lazy(() =>
+  import("@/features/admin/forensics/pages/admin-forensics-page").then((m) => ({
+    default: m.AdminForensicsPage,
+  })),
+);
 const AdminSettingsPage = lazy(() =>
   import("@/features/admin/pages/admin-settings-page").then((m) => ({ default: m.AdminSettingsPage })),
 );
@@ -314,6 +319,7 @@ export function AppRouter() {
               <Route path="/admin/convites" element={<AdminInvitesPage />} />
               <Route path="/admin/backups" element={<AdminBackupsPage />} />
               <Route path="/admin/seguranca" element={<AdminSecurityPage />} />
+              <Route path="/admin/laboratorio-forense" element={<AdminForensicsPage />} />
               <Route path="/admin/configuracoes" element={<AdminSettingsPage />} />
             </Route>
           </Route>

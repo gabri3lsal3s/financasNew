@@ -166,6 +166,12 @@ export function portfolioReturnPct(
 // Série Mensal de Snapshots com Proventos Integrados (F36 / F37)
 // ---------------------------------------------------------------------------
 
+export type PortfolioSnapshotOrigin =
+  | "retroativo_manual"
+  | "marco_zero"
+  | "calculado_ledger"
+  | "carry_forward";
+
 export interface PortfolioMonthlySeriesPoint {
   /** Mês de competência (YYYY-MM). */
   month: string;
@@ -177,6 +183,12 @@ export interface PortfolioMonthlySeriesPoint {
   monthDividendsBRL: number;
   /** Proventos acumulados até o final deste mês em BRL (anteriores + periódicos). */
   accumulatedDividendsBRL: number;
+  /** Saldo inicial de proventos cadastrado retroativamente / anterior à série cronológica. */
+  openingDividendsBalanceBRL?: number;
+  /** Total histórico consolidado de proventos (acumulado no período + saldo inicial retroativo). */
+  totalHistoricalDividendsBRL?: number;
+  /** Origem e natureza contábil do snapshot no Motor Híbrido. */
+  snapshotOrigin?: PortfolioSnapshotOrigin;
   /** Ganho de capital não realizado em BRL (valor − custo). */
   capitalGainPnl: number;
   /** Variação da cotação % sobre o custo. */
@@ -234,12 +246,15 @@ export function buildPortfolioMonthlySeries(params: {
     is_manually_calibrated?: boolean;
     calibrated_at?: string | null;
     status?: "provisional" | "closed";
+    snapshotOrigin?: PortfolioSnapshotOrigin;
   }[];
   currentMonthPoint?: CurrentMonthSeriesPoint | null;
   dividends: readonly { date: string; amount: number }[];
   contributions?: readonly { date: string; amount: number; notes?: string | null }[];
   explicitReturns?: readonly { month: string; ratePct: number }[];
   initialAccumulatedDividends?: number;
+  openingDividendsBalance?: number;
+  segregateOpeningDividends?: boolean;
   limit?: number;
 }): PortfolioMonthlySeriesPoint[] {
   const {
@@ -249,6 +264,8 @@ export function buildPortfolioMonthlySeries(params: {
     contributions,
     explicitReturns,
     initialAccumulatedDividends = 0,
+    openingDividendsBalance,
+    segregateOpeningDividends = false,
     limit = 6,
   } = params;
 
@@ -265,11 +282,14 @@ export function buildPortfolioMonthlySeries(params: {
       is_manually_calibrated?: boolean;
       calibrated_at?: string | null;
       status?: "provisional" | "closed";
+      snapshotOrigin?: PortfolioSnapshotOrigin;
     }
   >();
 
   for (const snap of rawSnapshots) {
     if (snap.month < currentMonthStr || !currentMonthStr) {
+      const isManual = Boolean(snap.is_manually_calibrated || snap.manual_total_value != null);
+      const snapOrigin: PortfolioSnapshotOrigin = snap.snapshotOrigin ?? (isManual ? "retroativo_manual" : "calculado_ledger");
       allMonthsMap.set(snap.month, {
         total_value: Number(snap.total_value),
         total_cost: Number(snap.total_cost),
@@ -280,6 +300,7 @@ export function buildPortfolioMonthlySeries(params: {
         is_manually_calibrated: Boolean(snap.is_manually_calibrated),
         calibrated_at: snap.calibrated_at ?? null,
         status: snap.status ?? "closed",
+        snapshotOrigin: snapOrigin,
       });
     }
   }
@@ -289,6 +310,7 @@ export function buildPortfolioMonthlySeries(params: {
       total_value: Number(currentMonthPoint.total_value),
       total_cost: Number(currentMonthPoint.total_cost),
       status: currentMonthPoint.status ?? "provisional",
+      snapshotOrigin: "calculado_ledger",
     });
   }
 
@@ -315,6 +337,7 @@ export function buildPortfolioMonthlySeries(params: {
           is_manually_calibrated: false,
           calibrated_at: null,
           status: "closed",
+          snapshotOrigin: "carry_forward",
         });
       } else {
         lastKnownData = allMonthsMap.get(curM)!;
@@ -356,14 +379,31 @@ export function buildPortfolioMonthlySeries(params: {
       }
     }
 
-    // Modalidade B: quando não há registro explícito de aporte no mês mas o custo variou,
-    // infere o fluxo de capital F_t = C_t - C_{t-1} para expurgar do TWR (BUG-02)
-    if (!hasContribution && idx > 0) {
+    // Modalidade B: Invariante Contábil de Fluxo Externo (Bloco 2 / FINANCIAL_MATH_SPEC §4.2)
+    // F_t = Delta C_total + Delta PnL_real. Se não há alienações granulares, F_t = Delta C_total.
+    // Garante congruência estrita entre variação do custo aplicado e o aporte líquido do mês.
+    if (idx > 0) {
       const prevCost = sortedMonths[idx - 1]![1].total_cost;
       const deltaCost = Math.round((data.total_cost - prevCost) * 100) / 100;
       if (Math.abs(deltaCost) >= 0.01) {
-        netExternalCashFlowBRL = deltaCost;
+        if (!hasContribution || Math.abs(netExternalCashFlowBRL - deltaCost) >= 0.01) {
+          netExternalCashFlowBRL = deltaCost;
+        }
       }
+    }
+
+    const origin: PortfolioSnapshotOrigin =
+      data.snapshotOrigin ??
+      (idx === 0
+        ? "marco_zero"
+        : data.is_manually_calibrated
+          ? "retroativo_manual"
+          : "calculado_ledger");
+
+    // No modo carry_forward (lacuna sem movimentação):
+    // Impede atribuição espúria de fluxo que geraria perda fantasma (BUG Ago/2026)
+    if (origin === "carry_forward") {
+      netExternalCashFlowBRL = 0;
     }
 
     const explicit = explicitRate ?? explicitReturns?.find((r) => r.month === month)?.ratePct ?? null;
@@ -373,6 +413,7 @@ export function buildPortfolioMonthlySeries(params: {
       totalCostBRL: data.total_cost,
       netExternalCashFlowBRL: Math.round(netExternalCashFlowBRL * 100) / 100,
       explicitRatePct: explicit,
+      snapshotOrigin: origin,
     };
   });
 
@@ -383,7 +424,17 @@ export function buildPortfolioMonthlySeries(params: {
   }
 
   const points: PortfolioMonthlySeriesPoint[] = [];
-  let runningAccumulatedDividends = Math.round(initialAccumulatedDividends * 100) / 100;
+  const isSegregated = Boolean(
+    segregateOpeningDividends ||
+    (openingDividendsBalance !== undefined && openingDividendsBalance > 0),
+  );
+  const effectiveOpeningDividendsBRL = Math.round(
+    (openingDividendsBalance ?? (isSegregated ? initialAccumulatedDividends : 0)) * 100,
+  ) / 100;
+
+  let runningAccumulatedDividends = isSegregated
+    ? 0
+    : Math.round(initialAccumulatedDividends * 100) / 100;
 
   for (const [month, data] of sortedMonths) {
     const isCurrent = month === currentMonthStr;
@@ -400,6 +451,9 @@ export function buildPortfolioMonthlySeries(params: {
     const monthDividendsBRL = Math.round(monthDividends * 100) / 100;
     runningAccumulatedDividends = Math.round((runningAccumulatedDividends + monthDividendsBRL) * 100) / 100;
     const accumulatedDividendsBRL = runningAccumulatedDividends;
+    const totalHistoricalDividendsBRL = isSegregated
+      ? Math.round((accumulatedDividendsBRL + effectiveOpeningDividendsBRL) * 100) / 100
+      : accumulatedDividendsBRL;
 
     const capitalGainPnl =
       isCurrent && currentMonthPoint?.capital_gain_pnl !== undefined
@@ -433,6 +487,9 @@ export function buildPortfolioMonthlySeries(params: {
       costBRL,
       monthDividendsBRL,
       accumulatedDividendsBRL,
+      openingDividendsBalanceBRL: isSegregated ? effectiveOpeningDividendsBRL : undefined,
+      totalHistoricalDividendsBRL: isSegregated ? totalHistoricalDividendsBRL : undefined,
+      snapshotOrigin: data.snapshotOrigin ?? (month === sortedMonths[0]?.[0] ? "marco_zero" : "calculado_ledger"),
       capitalGainPnl,
       capitalGainPct,
       totalReturnPnl,

@@ -1354,8 +1354,6 @@ export function createCanonicalMonthlyStatement(
       if (!tx.date || tx.date.slice(0, 7) !== month) continue;
 
       const ticker = (tx.ticker || "").toUpperCase().trim();
-      if (ticker === "CAIXA") continue;
-
       const type = (tx.type || "").toLowerCase().trim();
       const val = Math.abs(tx.total || (tx.quantity || 0) * (tx.price || 0));
 
@@ -1370,6 +1368,17 @@ export function createCanonicalMonthlyStatement(
         type === "sell" ||
         type === "venda" ||
         type === "resgate";
+
+      if (ticker === "CAIXA") {
+        if (isBuy || type === "deposit" || type === "deposito" || type === "aporte") {
+          monthBuysBRL += val;
+          transactionsCount++;
+        } else if (isSell || type === "withdrawal" || type === "saque" || type === "retirada") {
+          monthSellsBRL += val;
+          transactionsCount++;
+        }
+        continue;
+      }
 
       if (isBuy) {
         monthBuysBRL += val;
@@ -1387,6 +1396,17 @@ export function createCanonicalMonthlyStatement(
       } else if (isDividendType(type) && (!params.dividends || params.dividends.length === 0)) {
         transactionsCount++;
       }
+    }
+  }
+
+  // Se não houve trades de ativos na custódia mas houve fluxo externo líquido (ex: aporte/depósito em caixa),
+  // contabiliza como movimentação financeira para evitar a contradição de "0 operações" com aporte não-nulo (Bloco 2)
+  if (transactionsCount === 0 && Math.abs(netExternalCashFlowBRL) > 0.001) {
+    transactionsCount = eligibleFlows.length > 0 ? eligibleFlows.length : 1;
+    if (monthBuysBRL === 0 && netExternalCashFlowBRL > 0) {
+      monthBuysBRL = round2(netExternalCashFlowBRL);
+    } else if (monthSellsBRL === 0 && netExternalCashFlowBRL < 0) {
+      monthSellsBRL = round2(Math.abs(netExternalCashFlowBRL));
     }
   }
 

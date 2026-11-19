@@ -31,7 +31,7 @@ import {
  * Cria a série histórica canônica de 26 competências para o caso BR-20261118-6445.
  * Out/2024 até Nov/2026 (incluindo explicitamente Ago/2026).
  */
-function createGoldenMonthlySeries(): MonthlyEvolutionRowDTO[] {
+export function createGoldenMonthlySeries(): MonthlyEvolutionRowDTO[] {
   const months = [
     "2024-10", "2024-11", "2024-12",
     "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06",
@@ -115,7 +115,7 @@ function createGoldenMonthlySeries(): MonthlyEvolutionRowDTO[] {
 /**
  * Constrói o Golden Payload canônico e unificado do caso BR-20261118-6445.
  */
-function createGoldenPayload(): UnifiedPortfolioReportPayload {
+export function createGoldenPayload(): UnifiedPortfolioReportPayload {
   const positions = GOLDEN_ALLOCATION_POSITIONS.map((p) => ({ ...p }));
   const rawTargets = GOLDEN_TARGETS_CORRUPTED.map((t) => ({ ...t }));
   const sanitizedTargets = sanitizeOrphanLegacyTargets(positions, rawTargets);
@@ -516,7 +516,7 @@ describe("Quality Gate 6 — Certificação do Motor de Investimentos Axir (Caso
 
     expect(result.isValid).toBe(true);
     expect(result.errors).toHaveLength(0);
-    expect(result.assertionsCheckedCount).toBe(12);
+    expect(result.assertionsCheckedCount).toBe(13);
   });
 
   it("Gate 6.2 — Invariant Guard bloqueia divergência de Caixa ou Patrimônio Total (Asserção 1 e 2)", () => {

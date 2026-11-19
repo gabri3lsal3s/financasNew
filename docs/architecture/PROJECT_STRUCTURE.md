@@ -38,6 +38,7 @@
 │   ├── architecture/              # Arquitetura de software, especificações técnicas e matemática
 │   │   ├── ARCHITECTURE.md        #   Camadas, dependências, convenções e estado
 │   │   ├── ESPECIFICACAO_TECNICA.md # Spec executável: regras de negócio, schema, UI/UX
+│   │   ├── LABORATORIO_FORENSE.md #   Laboratório Forense de Auditoria Quantitativa, Sintética e Contínua
 │   │   ├── RECONSTRUCAO.md        #   Spec funcional original (fonte histórica)
 │   │   ├── FINANCIAL_MATH_SPEC.md #   Especificação canônica de engenharia e precisão matemática
 │   │   ├── DATA_MIGRATION_GUIDE.md #  Guia de migração e batimento de dados legados
@@ -240,6 +241,10 @@
     │   │                          #     pages: admin-login-page, admin-dashboard-page, admin-users-page, admin-billing-page,
     │   │                          #            admin-settings-page, admin-notifications-page, admin-backups-page, admin-invites-page,
     │   │                          #            admin-tickets-page, admin-security-page
+    │   │                          #     forensics/ (Laboratório Forense de Auditoria Quantitativa, Sintética e Contínua /admin/laboratorio-forense):
+    │   │                          #       core/ (núcleo isomórfico puro TS: personas determinísticas, motor de invariantes, relatórios, runner)
+    │   │                          #       components/ (forensics-dashboard, invariants-list, persona-selector, snapshot-inspector, artifacts-panel)
+    │   │                          #       pages/ (admin-forensics-page — lazy-loaded, zero precache overhead)
     │   ├── subscription/          #   Fluxos de Assinatura & Checkout (/assinatura, /assinar, /assinatura/sucesso)
     │   │                          #     pages: subscription-checkout-page, subscription-success-page
     │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40+F72):

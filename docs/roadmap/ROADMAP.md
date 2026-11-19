@@ -1,5 +1,31 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.13.0 (Laboratório Forense de Auditoria Quantitativa, Sintética e Contínua)** registra a conclusão integral do **Laboratório Forense de Auditoria Quantitativa, Sintética e Contínua do Axir** ([`docs/architecture/LABORATORIO_FORENSE.md`](../architecture/LABORATORIO_FORENSE.md)) (2026-11-18):
+> - **(1) Fundação do Núcleo Isomórfico & Isolamento Modular (Fase 1)**:
+>   - Todo o código do laboratório isolado em `src/features/admin/forensics/`, desacoplado do aplicativo de usuário comum;
+>   - Núcleo isomórfico puro em TypeScript (0 DOM, 0 React, 0 chamadas de rede no runtime sintético);
+>   - Zero impacto de bundle: rota `/admin/laboratorio-forense` carregada sob demanda (`admin-forensics-page-*.js`) e expressamente excluída do Service Worker precache do PWA.
+> - **(2) Fábrica de Personas Teóricas Determinísticas — 8 Golden Seeds (Fase 2)**:
+>   - Persona Investidor 6445 (caso forense com 26 ativos, 6 ETFs em USD com PTAX histórica e R$ 1.794,47 em proventos segregados);
+>   - Estresse Temporal (meses vazios em carry-forward estrito, fluxos intra-mês ponderados e resgate extremo de 98% com proteção contra colapso de denominador);
+>   - Cartões & Empréstimos (dízimas periódicas de parcelamento, competência de corte de fatura, estornos futuros, juros rotativos com multa de 2% e tabelas SAC vs Price com saldo final zero e amortização antecipada CDC art. 52 § 2º);
+>   - Viagens & Racha de Despesas (4 participantes, multimoeda BRL/USD/EUR e simplificação ótima Min-Cash-Flow);
+>   - Orçamento Familiar & Provisões (rateio de despesas proporcional à renda, envelope 50/30/20 e acúmulo contábil 1/12 ao mês);
+>   - Limites & Casos Extremos (usuário com patrimônio R$ 0,00 blindado contra divisão por zero em Sharpe, volatilidade, CDI e equilíbrio, anos bissextos e criptoativos com 8 decimais);
+>   - Sobrecarga de Insights (100 eventos simultâneos com triagem por severidade, cooldown de 30 dias em dispensas e radar de limite de cartão >= 90%);
+>   - Módulos Auxiliares (Pix com EMV TLV e CRC-16 BACEN, pista de liquidez D+0/D+1, comparador Avalanche vs Bola de Neve e hash SHA-256).
+> - **(3) Motor de Invariantes Matemáticas e Contábeis — 23 Asserções (Fase 3)**:
+>   - Suíte de 23 asserções estritas com tolerância zero de erro (desvio de R$ 0,00);
+>   - 100% de score global e 100% em todos os 10 módulos de negócio auditados.
+> - **(4) Exportador Duplo de Contra-Prova (Fase 4)**:
+>   - Dossiê Executivo estruturado em Markdown (`reports/forensics-audit-dossier.md`);
+>   - Planilha Excel SpreadsheetML (`reports/forensics-contra-prova.xls`) contendo fórmulas nativas do Excel (`=RC[-3]*RC[-2]`, `=ABS(...)`, `=SUM(...)`) e formatação condicional automática para desvios > 1 centavo.
+> - **(5) Interface Visual no Painel Admin & Auditoria Read-Only (Fase 5)**:
+>   - Painel interativo com visualização de scorecards, lista pesquisável de invariantes e seletor de personas;
+>   - Inspetor de snapshot de usuário real com anonimização de PII (LGPD) e garantia de zero mutações no banco;
+>   - Download direto no navegador dos artefatos Markdown e Excel gerados em memória;
+>   - Dupla execução 100% homologada via terminal (`npm run audit:forensics`) e painel web.
+
 > **v3.12.0 (Plano 43 — Auditoria e Refatoração Canônica do Motor de Investimentos Axir)** registra a conclusão integral da **Auditoria Forense e Refatoração Holística do Motor de Cálculos, Custódia, Rentabilidade e Relatórios de Investimentos** ([`planos/completed/43_PLANO_AUDITORIA_E_REFATORACAO_CANONICA_MOTOR_INVESTIMENTOS.md`](../plans/completed/43_PLANO_AUDITORIA_E_REFATORACAO_CANONICA_MOTOR_INVESTIMENTOS.md)) (2026-11-18):
 > - **(1) Saneamento Contábil, Custódia, Caixa e Ledger de Posições (Fase 1)**:
 >   - Reconciliação do Caixa de R$ 0,96 no Custo Total Aplicado (R$ 17.320,90) e Patrimônio Total (R$ 17.503,68), eliminando discrepâncias entre telas e exportadores;

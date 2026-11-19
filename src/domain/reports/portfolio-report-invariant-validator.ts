@@ -184,10 +184,25 @@ export class PortfolioReportInvariantValidator {
       }
     }
 
+    // 13. Asserção 13 (Sanidade de TWR em Carry-Forward / Variação Nula — Gate v2.1)
+    // Se DeltaP < 0.01 e DeltaC < 0.01 e Proventos >= 0, TWR não pode ser negativo
+    for (let t = 1; t < series.length; t++) {
+      const prev = series[t - 1];
+      const curr = series[t];
+      if (!prev || !curr) continue;
+      const deltaP = Math.abs(curr.endEquityBRL - prev.endEquityBRL);
+      const deltaC = Math.abs(curr.openCostBRL - prev.openCostBRL);
+      if (deltaP < 0.01 && deltaC < 0.01 && curr.monthTwrPct < -0.001) {
+        errors.push(
+          `Asserção 13 (Sanidade TWR): Mês ${curr.competence} com patrimônio e custo inalterados produziu TWR negativo (${curr.monthTwrPct}%).`,
+        );
+      }
+    }
+
     return {
       isValid: errors.length === 0,
       errors,
-      assertionsCheckedCount: 12,
+      assertionsCheckedCount: 13,
     };
   }
 }

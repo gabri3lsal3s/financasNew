@@ -60,12 +60,13 @@ export function PortfolioSnapshotsDialog({
 
   const summary = useMemo(() => {
     if (filteredSeries.length === 0) {
-      return { totalMonths: 0, latestValueBRL: 0, latestCostBRL: 0, periodDividendsBRL: 0, latestTwrPct: null };
+      return { totalMonths: 0, latestValueBRL: 0, latestCostBRL: 0, periodDividendsBRL: 0, openingDividendsBalanceBRL: 0, totalHistoricalDividendsBRL: 0, latestTwrPct: null };
     }
     const chronological = [...filteredSeries].sort((a, b) => a.month.localeCompare(b.month));
     const latest = chronological[chronological.length - 1];
     const earliest = chronological[0];
     const sumMonthDivs = chronological.reduce((acc, pt) => acc + (pt.monthDividendsBRL ?? 0), 0);
+    const openingDivs = latest?.openingDividendsBalanceBRL ?? 0;
 
     return {
       totalMonths: chronological.length,
@@ -75,6 +76,8 @@ export function PortfolioSnapshotsDialog({
         sumMonthDivs > 0
           ? sumMonthDivs
           : (latest?.accumulatedDividendsBRL ?? 0) - (earliest?.accumulatedDividendsBRL ?? 0),
+      openingDividendsBalanceBRL: openingDivs,
+      totalHistoricalDividendsBRL: sumMonthDivs + openingDivs,
       latestTwrPct: latest?.twrAccumulatedPct ?? null,
     };
   }, [filteredSeries]);
