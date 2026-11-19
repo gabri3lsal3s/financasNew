@@ -55,7 +55,7 @@ export function ExecutiveReportDocument({
   const isPositivePnl = monthNetPnlBRL >= 0;
 
   return (
-    <div className="flex flex-col gap-4 w-full">
+    <div className="flex flex-col gap-4 w-full print:block print:space-y-4">
       <ReportHeader
         title="Relatório Executivo de Acompanhamento da Carteira"
         subtitle="Posição Patrimonial Consolidada & Custódia de Ativos"
@@ -192,7 +192,7 @@ export function ExecutiveReportDocument({
         dividendsCount={stmt?.dividendsCount}
       />
 
-      <section aria-label="Detalhamento das Posições" className="flex flex-col gap-3 pt-1">
+      <section aria-label="Detalhamento das Posições" className="flex flex-col gap-3 pt-1 print:block print:space-y-3">
         <ReportClassTables groups={classGroups} />
       </section>
 

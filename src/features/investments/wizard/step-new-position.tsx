@@ -1,8 +1,14 @@
+import { useEffect } from "react";
 import { Badge } from "@/components/ui";
 import { parseDecimalNumber } from "@/domain/money";
+import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
 import { useFamilyMode } from "@/state";
-import { AssetIdentityPricingFields, AssetMetadataAccordion } from "../components/shared-forms";
+import {
+  AssetIdentityPricingFields,
+  AssetMetadataAccordion,
+  CLASSES_WITH_EDITABLE_CURRENCY,
+} from "../components/shared-forms";
 import type { InvestmentWizardState } from "./wizard-state";
 
 export interface StepNewPositionProps {
@@ -24,6 +30,27 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
     .replace(/\[VALUATION:CUSTOM\]/g, "")
     .replace(/\[PRICING:(UNIT|TOTAL)\]/g, "")
     .trim();
+
+  // Pré-carrega cotação de mercado em segundo plano se o ativo iniciar com preço zerado
+  useEffect(() => {
+    if (!state.ticker || state.priceCents > 0 || isCash) return;
+    let active = true;
+    void import("@/services/quotes")
+      .then(({ fetchOnlineQuote }) => fetchOnlineQuote(state.ticker))
+      .then((quote) => {
+        if (active && quote && quote.price > 0) {
+          const cents = Math.round(quote.price * 100);
+          onChange({
+            priceCents: cents,
+            appliedCostCents: cents,
+          });
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [state.ticker, isCash, state.priceCents, onChange]);
 
   const hasStoredDividends =
     (state.accumulatedDividendsCents ?? 0) > 0 || (state.estimatedDividendPerShareCents ?? 0) > 0;
@@ -50,6 +77,16 @@ export function StepNewPosition({ state, onChange }: StepNewPositionProps) {
       <AssetIdentityPricingFields
         idPrefix="wizard-new"
         isNewPosition
+        showAssetClassSelector
+        onAssetClassChange={(newClass) => {
+          const newSector = inferSectorFromTicker(state.ticker, newClass);
+          const newCurrency = CLASSES_WITH_EDITABLE_CURRENCY.has(newClass) ? state.currency : "BRL";
+          onChange({
+            assetClass: newClass,
+            sector: newSector,
+            currency: newCurrency,
+          });
+        }}
         cashInputMode="money"
         ticker={state.ticker}
         assetClass={state.assetClass}

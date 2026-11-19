@@ -337,6 +337,37 @@ describe("AporteResult", () => {
     expect(petrTreeRow).toBeDefined();
     expect(petrTreeRow?.textContent).toContain("0,00");
   });
+
+  it("aciona onInspectAsset ao clicar no badge de nota ou no botão de inspeção", async () => {
+    const onInspectAsset = vi.fn();
+    const user = userEvent.setup();
+    const routesWithScore: AporteRouteRow[] = [
+      {
+        ...mockRoutes[0]!,
+        rawScore: 8,
+        reasonKind: "asset_conviction",
+        reasonLabel: "Destaque por Nota",
+      },
+    ];
+
+    render(
+      <AporteResult
+        mode="asset"
+        aporte={1000}
+        totalAllocated={1000}
+        leftover={0}
+        routes={routesWithScore}
+        onInspectAsset={onInspectAsset}
+      />,
+    );
+
+    expect(screen.getAllByText("Destaque por Nota").length).toBeGreaterThan(0);
+    const inspectBtn = screen.getAllByRole("button", { name: "Inspecionar tese e nota de PETR4" })[0];
+    expect(inspectBtn).toBeDefined();
+    await user.click(inspectBtn!);
+
+    expect(onInspectAsset).toHaveBeenCalledWith("PETR4");
+  });
 });
 
 

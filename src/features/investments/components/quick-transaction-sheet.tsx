@@ -4,6 +4,7 @@ import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import { formatCentsAsBRL } from "@/services/masks";
 import type {
   PortfolioAsset,
+  PortfolioContribution,
   PortfolioDividend,
   PortfolioTransaction,
   PortfolioTransactionType,
@@ -25,6 +26,7 @@ export interface QuickTransactionSheetProps {
   initialType?: PortfolioTransactionType;
   editTransaction?: PortfolioTransaction | null;
   editDividend?: PortfolioDividend | null;
+  linkedContribution?: PortfolioContribution | null;
   onClose?: () => void;
   onSuccess?: () => void;
 }
@@ -38,6 +40,7 @@ function QuickTransactionSheetContent({
   initialType = "buy",
   editTransaction = null,
   editDividend = null,
+  linkedContribution,
   onClose,
   onSuccess,
 }: QuickTransactionSheetProps) {
@@ -54,6 +57,7 @@ function QuickTransactionSheetContent({
     initialType,
     editTransaction,
     editDividend,
+    linkedContribution,
     onCloseComplete: () => handleOpenChange(false),
     onSuccess,
   });

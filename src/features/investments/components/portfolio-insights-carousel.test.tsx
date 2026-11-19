@@ -301,4 +301,45 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
 
     expect(screen.queryByText("Reavaliação Próxima do Prazo")).not.toBeInTheDocument();
   });
+
+  it("renderiza o slide de ativos sem nota definida para avaliação inicial sem exibir revisão de teses pendente", () => {
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+    mockUseAssetGovernanceInsights.mockReturnValue({
+      overdueReviewsCount: 0,
+      upcomingReviewsCount: 0,
+      unscoredAssetsCount: 1,
+      quarantinedCount: 0,
+      discountOpportunitiesCount: 0,
+      lowScoreRiskCount: 0,
+      overdueAssets: [],
+      upcomingReviewAssets: [],
+      unscoredAssets: [{ id: "a-bbas3", ticker: "BBAS3", asset_class: "Ações", score: null }],
+      consolidatedUnscoredAlert: {
+        id: "gov-unscored-1",
+        kind: "unscored_asset",
+        severity: "info",
+        title: "Ativo sem nota: BBAS3",
+        description: "BBAS3 ainda não possui nota de convicção para o motor de rebalanceamento.",
+        tickers: ["BBAS3"],
+      },
+      isLoading: false,
+    });
+
+    render(<PortfolioInsightsCarousel />);
+
+    expect(screen.getByText("Ativos sem Nota Definida")).toBeInTheDocument();
+    expect(screen.getByText("1 ativo")).toBeInTheDocument();
+    expect(screen.getByText("Avaliar Agora")).toBeInTheDocument();
+    expect(screen.getByText(/Defina a nota de BBAS3 para incluí-los no rebalanceamento/)).toBeInTheDocument();
+
+    // NÃO deve exibir revisão periódica de teses
+    expect(screen.queryByText("Revisão de Teses Pendente")).not.toBeInTheDocument();
+    expect(screen.queryByText("Reavaliação Próxima do Prazo")).not.toBeInTheDocument();
+  });
 });

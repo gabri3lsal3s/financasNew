@@ -15,6 +15,7 @@ export interface AssetIdentityPricingFieldsProps {
   idPrefix: string;
   isNewPosition?: boolean;
   showIdentityFields?: boolean;
+  showAssetClassSelector?: boolean;
   cashInputMode?: "numeric" | "money";
   ticker: string;
   onTickerChange?: (value: string) => void;
@@ -52,6 +53,7 @@ export function AssetIdentityPricingFields({
   idPrefix,
   isNewPosition = false,
   showIdentityFields = false,
+  showAssetClassSelector = false,
   cashInputMode = "money",
   ticker,
   onTickerChange,
@@ -121,7 +123,31 @@ export function AssetIdentityPricingFields({
         </>
       )}
 
-      {!showIdentityFields && needsCurrencyField && (
+      {showAssetClassSelector && !showIdentityFields && onAssetClassChange && (
+        <div className={cn("grid grid-cols-1 gap-3.5", needsCurrencyField && "sm:grid-cols-2")}>
+          <FormField label="Classe de Ativo" htmlFor={`${idPrefix}-class-select`}>
+            <Select
+              id={`${idPrefix}-class-select`}
+              value={assetClass}
+              onValueChange={onAssetClassChange}
+              options={PORTFOLIO_ASSET_CLASS_OPTIONS}
+            />
+          </FormField>
+
+          {needsCurrencyField && (
+            <FormField label="Moeda" htmlFor={`${idPrefix}-currency-select`}>
+              <Select
+                id={`${idPrefix}-currency-select`}
+                value={currency}
+                onValueChange={(val) => onCurrencyChange(val as AssetCurrency)}
+                options={PORTFOLIO_CURRENCY_OPTIONS}
+              />
+            </FormField>
+          )}
+        </div>
+      )}
+
+      {!showIdentityFields && !showAssetClassSelector && needsCurrencyField && (
         <FormField label="Moeda de Negociação">
           <Select
             value={currency}

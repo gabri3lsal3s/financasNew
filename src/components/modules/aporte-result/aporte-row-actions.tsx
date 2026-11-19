@@ -1,4 +1,4 @@
-import { Check, ShoppingCart } from "lucide-react";
+import { Check, ShoppingCart, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -9,11 +9,12 @@ export interface AporteRowActionsProps {
   allocatedBRL: number;
   onToggleDone: (ticker: string) => void;
   onOpenWizard?: (ticker: string, quantity: number, allocatedBRL?: number) => void;
+  onInspect?: () => void;
   compact?: boolean;
 }
 
 /**
- * Ações padronizadas por ativo sugerido: atalho para Wizard de Compra e marcação de execução.
+ * Ações padronizadas por ativo sugerido: atalho para Wizard de Compra, inspeção de tese e marcação de execução.
  */
 export function AporteRowActions({
   ticker,
@@ -22,10 +23,29 @@ export function AporteRowActions({
   allocatedBRL,
   onToggleDone,
   onOpenWizard,
+  onInspect,
   compact = false,
 }: AporteRowActionsProps) {
   return (
     <div className="flex items-center justify-end gap-1.5 shrink-0">
+      {onInspect ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onInspect}
+          className={cn(
+            "size-8 p-0 shrink-0 text-muted-foreground hover:text-foreground hover:bg-surface-raised",
+            compact && "size-7",
+          )}
+          title={`Inspecionar tese e nota de ${ticker}`}
+          aria-label={`Inspecionar tese e nota de ${ticker}`}
+        >
+          <SlidersHorizontal className="size-3.5" aria-hidden="true" />
+          <span className="sr-only">Inspecionar tese</span>
+        </Button>
+      ) : null}
+
       {onOpenWizard ? (
         <Button
           type="button"

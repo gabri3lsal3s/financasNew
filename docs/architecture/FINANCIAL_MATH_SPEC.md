@@ -431,6 +431,42 @@ Antes de emitir relatórios ou persistir snapshots de fechamento, o validador au
 - **Eliminação de Colisão Visual no Subtotal USD:** A tabela de classes de ativos (`report-equity-class-table.tsx`) adota distribuição ponderada de larguras percentuais sob `table-fixed` (Ticker 11%, Setor 14%, Qtd 5%, Preço Médio 12%, Cotação 11%, Total 18%, Var. Cota 16%, Ret. Total 13%), com espaçamento `pr-2.5` e `pl-2`, erradicando qualquer colisão de strings de 5+ dígitos (`R$ 22.588,752,0% (USD)`).
 - **Consistência de Alocação de Renda Fixa na Pág. 1:** A tabela de metas e alocação atual (`Target vs. Actual`) lê o percentual de classes diretamente de `donutData.classSegments` (calculado pelo método de Hare-Niemeyer), harmonizando perfeitamente `27,1%` entre o gráfico de rosca e a grade de alocação.
 
+## 15. CORREÇÃO ALGÉBRICA DE RESGATES SEM DUPLO DESCONTO, PAGINAÇÃO CHROMIUM & CERTIFICAÇÃO DE PRODUÇÃO (§v8 — ID BR-20261119-6445)
+
+### 15.1. Prova Algébrica e Eliminação do Duplo Desconto na Reconstrução de Resgates (Gate v8.1)
+- **Causa-Raiz do Duplo Desconto:** Na reconstrução histórica de resgates a partir da custódia remanescente ($C_{\text{atual}}, S_{\text{atual}}$), a fórmula recursiva anteriormente utilizada:
+  $$C_i = C_{\text{atual}} \times \frac{V_i}{S_{\text{atual}} + V_i}$$
+  incorporava indevidamente o valor resgatado $V_i$ no denominador enquanto $C_{\text{atual}}$ já se encontrava amortizado pelos resgates anteriores, provocando uma diluição artificial do custo baixado nos primeiros resgates e gerando rentabilidades brutas infladas (como $+48\%$ em vez de $+15,65\%$).
+- **Equação Canônica Direta sem Duplo Desconto:** A proporção de custo em qualquer resgate parcial de Renda Fixa corresponde à razão de custo unitária vigente na posição:
+  $$r_{\text{custo}} = \min\left(1, \frac{C_{\text{atual}}}{S_{\text{atual}}}\right)$$
+  $$C_{\text{baixado}, i} = V_i \times r_{\text{custo}}$$
+  $$\text{LucroBruto}_i = V_i - C_{\text{baixado}, i} = V_i \times (1 - r_{\text{custo}})$$
+  $$\text{RentabilidadeBruta}_i = \frac{1 - r_{\text{custo}}}{r_{\text{custo}}}$$
+  Essa formulação garante que, a partir de uma posição remanescente com saldo $S = \text{R\$}~5.054,69$ e custo $C = \text{R\$}~4.370,51$ ($r_{\text{custo}} \approx 0,864645$), múltiplos resgates sucessivos ($V_A = \text{R\$}~1.653,17$, $V_B = \text{R\$}~1.009,51$, $V_C = \text{R\$}~2.023,29$) mantenham de forma invariante a rentabilidade real bruta de $+15,65\%$.
+
+### 15.2. SSOT de Realizados entre Dossiê Pág. 1 e Pág. 5 (Gate v8.1)
+- O total líquido realizado acumulado da Página 1 do Dossiê (+R$ 768,84) consolida de forma estrita a soma dos lucros líquidos dos resgates do período com os resultados de posições encerradas passadas:
+  $$\text{RealizadoTotal} = \sum_{i} \text{LucroLíquido}_i + \text{ResultadoEncerradasPassadas}$$
+- A tabela POSIÇÕES ENCERRADAS & RESGATES REALIZADOS da Página 5 reflete exatamente os mesmos valores centavo por centavo, lendo prioritariamente os campos canônicos imutáveis da transação (`cost_basis_realized`, `gross_realized_pnl`, `ir_withheld`, `net_realized_pnl`) e as notas `[FI_SELL_SNAPSHOT]`.
+
+### 15.3. Tabela Regressiva de IR e Preservação de Data Explícita
+- Quando o ativo possuir `initial_investment_date` definido explicitamente pelo usuário ou pela instituição custodiante, o cálculo de dias decorridos é estritamente soberano:
+  $$\text{dias} = \text{diasEntre}(\text{initial\_investment\_date}, \text{data\_resgate})$$
+  respeitando as faixas legais de IR (art. 1º da Lei nº 11.033/2004):
+  - $\le 180$ dias: $22,5\%$
+  - $181$ a $360$ dias: $20,0\%$
+  - $361$ a $720$ dias: $17,5\%$
+  - $> 720$ dias: $15,0\%$
+- Somente quando a data de aquisição for desconhecida ou estimada (modo Marco Zero com fallback de data de cadastro) e o ativo apresentar rendimento econômico acumulado característico de longo prazo ($\ge 15\%$), aplica-se a salvaguarda de $15,0\%$ ($> 720$ dias).
+
+### 15.4. Arquitetura de Paginação Multi-Página no Chromium Print Engine (Gate v8.2)
+- No motor de renderização Blink/Chromium, contêineres pai estilizados com `display: flex` ou `display: grid` desabilitam a capacidade do paginador de fragmentar tabelas HTML ao longo de quebras de página A4, forçando o corte seco do documento na primeira página.
+- A arquitetura de impressão foi corrigida definindo `display: block !important`, `width: 100% !important` e `overflow: visible !important` em todas as cascas de impressão (`.print-sheet > div`, `.print-document`, `.print-area`), desativando raios de borda e sombras decorativas durante o evento `@media print`. Com isso, tabelas extensas com $\ge 20$ ativos paginam com fluidez e naturalidade ao longo de 5 páginas A4.
+
+### 15.5. Rebalanceamento de Colunas da Tabela de Renda Variável Internacional (Gate v8.3)
+- Na tabela de ativos internacionais (`report-equity-class-table.tsx`), a coluna de Variação da Cota foi rebalanceada de $16\%$ para $22\%$ ($> 150\text{px}$ de largura útil física), acomodando os valores duplos `+X,X% (USD)` e `+Y,Y% (BRL)` com espaçamento `pl-2`.
+- No subtotal (`tfoot`), os valores consolidados utilizam `font-mono tabular-nums text-[10px]` com quebra em duas linhas, eliminando permanentemente colisões tipográficas com a coluna de Total em R$.
+
 
 
 

@@ -4,7 +4,13 @@ import { buildFixedIncomeSellNotes, type FixedIncomeRedemptionPreviewResult } fr
 import { getErrorMessage } from "@/services/errors";
 import { formatCentsAsBRL } from "@/services/masks";
 import { pushToast } from "@/services/toast";
-import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction, PortfolioTransactionType } from "@/types";
+import type {
+  PortfolioAsset,
+  PortfolioContribution,
+  PortfolioDividend,
+  PortfolioTransaction,
+  PortfolioTransactionType,
+} from "@/types";
 import { flagsFromFundingSource, type FundingSource } from "../funding-source-utils";
 
 export interface QuickTransactionSubmitParams {
@@ -33,6 +39,8 @@ export interface QuickTransactionSubmitParams {
   fiSellResult: FixedIncomeRedemptionPreviewResult | null;
   editDividend: PortfolioDividend | null;
   editTransaction: PortfolioTransaction | null;
+  linkedContribution?: PortfolioContribution | null;
+  initialFundingSource?: FundingSource;
   recordOrder: (payload: RecordOrderMutationArg) => Promise<unknown>;
   updateTx: (payload: { id: string; patch: Partial<PortfolioTransaction> }) => Promise<unknown>;
   updateDividend: (payload: {
@@ -42,6 +50,20 @@ export interface QuickTransactionSubmitParams {
     previousSyncCash: boolean;
     previousCashAmount: number;
   }) => Promise<unknown>;
+  deleteContribution?: (payload: { id: string; skipTransactionCascade?: boolean; suppressToast?: boolean }) => Promise<unknown>;
+  createContribution?: (payload: {
+    amount: number;
+    date: string;
+    asset_id?: string | null;
+    notes?: string | null;
+    suppressToast?: boolean;
+  }) => Promise<unknown>;
+  updateContribution?: (payload: {
+    id: string;
+    input: Partial<PortfolioContribution>;
+    suppressToast?: boolean;
+  }) => Promise<unknown>;
+  updateAsset?: (payload: { id: string; patch: { quantity: number; average_price: number } }) => Promise<unknown>;
 }
 
 export interface RecordOrderMutationArg {
@@ -151,6 +173,112 @@ export async function executeQuickTransactionSubmit(
       const resolvedQty = p.isCorporateEvent
         ? Math.round(p.computedEventFactor * 1000000) / 1000000
         : p.isTotalValue ? 1 : p.parsedQty;
+
+      const effectiveRate = p.fxRateBRL && p.fxRateBRL > 0
+        ? p.fxRateBRL
+        : p.targetAsset.currency !== "BRL"
+          ? (p.usdRate > 1 ? p.usdRate : 5.25)
+          : 1;
+
+      const newTotalBRL = Math.round(total * effectiveRate * 100) / 100;
+
+      const prevTotalNative = p.editTransaction.total > 0
+        ? p.editTransaction.total
+        : p.editTransaction.quantity > 0 && p.editTransaction.price > 0
+          ? Math.round(p.editTransaction.quantity * p.editTransaction.price * 100) / 100
+          : 0;
+
+      const prevFxRate = p.editTransaction.fx_rate && p.editTransaction.fx_rate > 0
+        ? p.editTransaction.fx_rate
+        : p.targetAsset.currency !== "BRL"
+          ? (p.usdRate > 1 ? p.usdRate : 5.25)
+          : 1;
+
+      const prevTotalBRL = Math.round(prevTotalNative * prevFxRate * 100) / 100;
+
+      // Reconciliação retroativa da origem dos recursos (Caixa vs Dinheiro Novo/Aporte) para compras
+      if (p.type === "buy" || p.type === "subscription") {
+        const initialSource = p.initialFundingSource ?? (p.linkedContribution ? "pocket" : "cash");
+        const currentSource = p.buyFundingSource;
+
+        if (initialSource === "pocket" && currentSource === "cash") {
+          // Transição: Dinheiro Novo (Bolso) -> Saldo em Caixa
+          // 1. Remove o aporte vinculado (evita que continue constando como aporte do mês)
+          if (p.linkedContribution && p.deleteContribution) {
+            await p.deleteContribution({
+              id: p.linkedContribution.id,
+              skipTransactionCascade: true,
+              suppressToast: true,
+            });
+          }
+          // 2. Debita o valor atualizado do Caixa
+          if (p.cashAsset && p.updateAsset && newTotalBRL > 0) {
+            const newCashQty = Math.max(0, Math.round((p.cashAsset.quantity - newTotalBRL) * 100) / 100);
+            await p.updateAsset({
+              id: p.cashAsset.id,
+              patch: {
+                quantity: newCashQty,
+                average_price: 1,
+              },
+            });
+          }
+        } else if (initialSource === "cash" && currentSource === "pocket") {
+          // Transição: Saldo em Caixa -> Dinheiro Novo (Bolso)
+          // 1. Devolve o montante previamente debitado ao Caixa
+          if (p.cashAsset && p.updateAsset && prevTotalBRL > 0) {
+            const newCashQty = Math.round((p.cashAsset.quantity + prevTotalBRL) * 100) / 100;
+            await p.updateAsset({
+              id: p.cashAsset.id,
+              patch: {
+                quantity: newCashQty,
+                average_price: 1,
+              },
+            });
+          }
+          // 2. Cria o registro de aporte externo
+          if (p.createContribution && newTotalBRL > 0) {
+            await p.createContribution({
+              amount: newTotalBRL,
+              date: p.date,
+              asset_id: p.targetAsset.id,
+              notes: p.targetAsset.currency === "USD"
+                ? `Aporte em ${p.targetAsset.ticker} ($${total.toFixed(2)})`
+                : `Aporte em ${p.targetAsset.ticker}`,
+              suppressToast: true,
+            });
+          }
+        } else if (initialSource === "cash" && currentSource === "cash") {
+          // Permanece vindo do Caixa: ajusta eventual diferença de valor no saldo do Caixa
+          const delta = Math.round((newTotalBRL - prevTotalBRL) * 100) / 100;
+          if (Math.abs(delta) > 0.001 && p.cashAsset && p.updateAsset) {
+            const newCashQty = Math.max(0, Math.round((p.cashAsset.quantity - delta) * 100) / 100);
+            await p.updateAsset({
+              id: p.cashAsset.id,
+              patch: {
+                quantity: newCashQty,
+                average_price: 1,
+              },
+            });
+          }
+        } else if (initialSource === "pocket" && currentSource === "pocket") {
+          // Permanece Dinheiro Novo (Bolso): atualiza o aporte vinculado caso o valor ou a data tenham sido alterados
+          if (p.linkedContribution && p.updateContribution) {
+            const amountChanged = Math.abs(newTotalBRL - p.linkedContribution.amount) > 0.001;
+            const dateChanged = p.date !== p.linkedContribution.date;
+            if (amountChanged || dateChanged) {
+              await p.updateContribution({
+                id: p.linkedContribution.id,
+                input: {
+                  amount: newTotalBRL,
+                  date: p.date,
+                },
+                suppressToast: true,
+              });
+            }
+          }
+        }
+      }
+
       await p.updateTx({
         id: p.editTransaction.id,
         patch: {

@@ -192,4 +192,65 @@ describe("domain/portfolio/asset-governance-insights (§F41)", () => {
     expect(result.consolidatedUnscoredAlert).toBeDefined();
     expect(result.consolidatedUnscoredAlert?.tickers).toEqual(["PETR4", "VALE3"]);
   });
+
+  it("ativo sem nota inicial NÃO deve disparar revisão periódica vencida ou próxima (isolamento de avaliação inicial)", () => {
+    // Cenário do usuário: BBAS3 cadastrado com 'Avaliar depois' (score = null, last_reviewed_at = null)
+    const assets: GovernanceAssetInput[] = [
+      makeAsset({
+        id: "bbas3",
+        ticker: "BBAS3",
+        score: null,
+        last_reviewed_at: null,
+        review_frequency_months: 6,
+      }),
+    ];
+
+    const result = generateAssetGovernanceInsights({ assets, referenceDate: refDate });
+
+    // Deve disparar APENAS o alerta de avaliação inicial (unscored)
+    expect(result.summary.unscoredCount).toBe(1);
+    expect(result.consolidatedUnscoredAlert).toBeDefined();
+    expect(result.consolidatedUnscoredAlert?.ticker).toBe("BBAS3");
+
+    // NÃO pode disparar revisão de teses pendente (overdue) nem próxima (upcoming)
+    expect(result.summary.overdueCount).toBe(0);
+    expect(result.consolidatedReviewAlert).toBeNull();
+    expect(result.summary.upcomingReviewCount).toBe(0);
+    expect(result.consolidatedUpcomingAlert).toBeNull();
+  });
+
+  it("respeita periodicidades configuradas (trimestral 3m, semestral 6m, anual 12m) para ativos com nota", () => {
+    const assets: GovernanceAssetInput[] = [
+      // Trimestral (3 meses = 90 dias): revisado há 100 dias -> VENCIDO
+      makeAsset({
+        id: "t1",
+        ticker: "TRIM3",
+        score: 8,
+        last_reviewed_at: "2026-08-09T12:00:00Z", // 100 dias atrás
+        review_frequency_months: 3,
+      }),
+      // Semestral (6 meses = 180 dias): revisado há 100 dias -> EM DIA
+      makeAsset({
+        id: "s1",
+        ticker: "SEM6",
+        score: 8,
+        last_reviewed_at: "2026-08-09T12:00:00Z", // 100 dias atrás
+        review_frequency_months: 6,
+      }),
+      // Anual (12 meses = 360 dias): revisado há 200 dias -> EM DIA
+      makeAsset({
+        id: "a1",
+        ticker: "ANU12",
+        score: 8,
+        last_reviewed_at: "2026-05-01T12:00:00Z", // 200 dias atrás
+        review_frequency_months: 12,
+      }),
+    ];
+
+    const result = generateAssetGovernanceInsights({ assets, referenceDate: refDate });
+
+    expect(result.summary.overdueCount).toBe(1);
+    expect(result.consolidatedReviewAlert?.ticker).toBe("TRIM3");
+    expect(result.summary.unscoredCount).toBe(0);
+  });
 });

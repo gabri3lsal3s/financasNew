@@ -20,6 +20,7 @@ export interface PeriodRedemptionItem {
   quantity: number;
   appliedCostBRL: number;
   grossRedeemedValueBRL: number;
+  grossProfitBRL?: number;
   taxAmountBRL: number;
   taxRatePct: number | null;
   redeemedValueBRL: number; // Líquido após dedução de IR (quando houver)
@@ -120,6 +121,13 @@ export function filterPeriodRedemptions(
     const isFixedIncome =
       isFixedIncomeClass(assetClass) || Boolean(asset?.fixed_income_metadata);
 
+    const txRealized = tx as unknown as {
+      cost_basis_realized?: number | null;
+      gross_realized_pnl?: number | null;
+      ir_withheld?: number | null;
+      net_realized_pnl?: number | null;
+    };
+
     const parsedNotes = parseFixedIncomeSellNotes(tx.notes);
     let appliedNative = 0;
     let appliedCostBRL: number;
@@ -127,7 +135,17 @@ export function filterPeriodRedemptions(
     let taxAmountBRL = 0;
     let taxRatePct: number | null = null;
 
-    if (parsedNotes) {
+    if (txRealized.cost_basis_realized != null && txRealized.net_realized_pnl != null) {
+      appliedCostBRL = round2(txRealized.cost_basis_realized);
+      grossProfitBRL = round2(
+        txRealized.gross_realized_pnl ?? (grossRedeemedValueBRL - appliedCostBRL),
+      );
+      taxAmountBRL = round2(txRealized.ir_withheld ?? 0);
+      taxRatePct =
+        grossProfitBRL > 0 && taxAmountBRL > 0
+          ? round2((taxAmountBRL / grossProfitBRL) * 100)
+          : null;
+    } else if (parsedNotes) {
       appliedCostBRL = round2(parsedNotes.appliedCost);
       grossProfitBRL = round2(parsedNotes.realizedProfit);
       taxAmountBRL = round2(parsedNotes.taxAmount);
@@ -149,17 +167,16 @@ export function filterPeriodRedemptions(
         fiMeta?.base_value ??
         (asset?.quantity && asset.quantity > 0 && asset.average_price
           ? asset.quantity * asset.average_price
-          : initialCost);
+          : 0);
 
-      if (initialCost > 0) {
-        // Baixa Proporcional Canônica (Receita Federal / Tesouro Direto):
-        // C_baixado = C_pré * min(1, V_resgate / V_pré)
-        const effectiveGross = Math.max(
-          redeemedNative,
-          currentGross > 0 ? currentGross + redeemedNative : initialCost,
-        );
-        const costRatio = effectiveGross > 0 ? Math.min(1, initialCost / effectiveGross) : 1;
+      if (initialCost > 0 && currentGross > 0) {
+        // Reconstrução Algébrica Canônica sem Duplo Desconto (Auditoria v8 / Gate v8.1):
+        // Posição parcialmente aberta: C_baixado = V_resgate * min(1, custo_atual / saldo_atual)
+        const costRatio = Math.min(1, initialCost / currentGross);
         appliedNative = round2(redeemedNative * costRatio);
+      } else if (initialCost > 0) {
+        // Posição totalmente liquidada (saldo residual = 0): custo baixado é o custo inicial registrado
+        appliedNative = Math.min(redeemedNative, initialCost);
       } else {
         appliedNative = redeemedNative;
       }
@@ -181,20 +198,26 @@ export function filterPeriodRedemptions(
     if (isFixedIncome && grossProfitBRL > 0 && taxRatePct === null) {
       const isTaxExempt = Boolean(asset?.fixed_income_metadata?.is_tax_exempt);
       if (!isTaxExempt) {
-        const earliestBuyTx = transactions.find(
-          (t) =>
-            t.asset_id === tx.asset_id &&
-            (t.type === "buy" || t.type === "compra" || t.type === "asset_buy") &&
-            t.date <= tx.date,
-        );
+        const sortedBuyTxs = transactions
+          .filter(
+            (t) =>
+              t.asset_id === tx.asset_id &&
+              (t.type === "buy" || t.type === "compra" || t.type === "asset_buy") &&
+              t.date <= tx.date,
+          )
+          .sort((a, b) => a.date.localeCompare(b.date));
+        const earliestBuyTx = sortedBuyTxs[0];
 
+        const hasExplicitAssetDate = Boolean(
+          asset?.fixed_income_metadata?.initial_investment_date,
+        );
         const explicitDate =
           asset?.fixed_income_metadata?.initial_investment_date ||
           (tx as unknown as { acquisition_date?: string }).acquisition_date ||
           (tx as unknown as { application_date?: string }).application_date ||
           earliestBuyTx?.date;
 
-        const isEstimatedFallbackDate = !explicitDate;
+        const isEstimatedFallbackDate = !hasExplicitAssetDate && !explicitDate;
         const startDate =
           explicitDate ||
           asset?.fixed_income_metadata?.base_date ||
@@ -204,15 +227,19 @@ export function filterPeriodRedemptions(
         if (startDate && tx.date) {
           daysPassed = countCalendarDays(startDate, tx.date);
         }
-        // Salvaguarda econômica regressiva (Bloco 2 v6 / Bloco 1 v7 / FINANCIAL_MATH_SPEC §4.5):
-        // Quando a data é estimada pelo fallback de created_at ou base_date (sem initial_investment_date real),
-        // títulos antigos cadastrados retroativamente com lucro >= 25% devem aplicar 15,0% (> 720 dias).
+
+        // Salvaguarda econômica regressiva (Bloco 2 v6 / Bloco 1 v7 / Bloco 1 v8):
+        // Quando a data de aquisição for estimada ou ausente (ex.: Marco Zero), mas a rentabilidade acumulada
+        // for característica de longo prazo, calibra a alíquota pelo retorno histórico do ativo:
         if (isEstimatedFallbackDate && appliedCostBRL > 0) {
           const retRatio = grossProfitBRL / appliedCostBRL;
-          if (retRatio >= 0.25) daysPassed = 721; // > 720 dias -> 15,0%
-          else if (retRatio >= 0.15) daysPassed = 365; // 361-720 dias -> 17,5%
-          else if (retRatio >= 0.08) daysPassed = 181; // 181-360 dias -> 20,0%
+          if (retRatio >= 0.15) {
+            daysPassed = 721; // > 720 dias -> 15,0%
+          } else if (retRatio >= 0.08) {
+            daysPassed = 181; // 181-360 dias -> 20,0%
+          }
         }
+
         taxRatePct = getFixedIncomeTaxRatePct(
           daysPassed,
           false,
@@ -239,6 +266,7 @@ export function filterPeriodRedemptions(
       quantity: tx.quantity,
       appliedCostBRL,
       grossRedeemedValueBRL,
+      grossProfitBRL,
       taxAmountBRL,
       taxRatePct,
       redeemedValueBRL,

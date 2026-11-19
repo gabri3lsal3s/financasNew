@@ -18,6 +18,13 @@ export interface AporteRouteRow {
   rawScore?: number | null;
   effectiveTargetPct?: number;
   formulaLabel?: string;
+  reasonKind?: "class_deficit" | "sector_deficit" | "asset_conviction";
+  reasonLabel?: string;
+  reasonDescription?: string;
+  hasQualityConflict?: boolean;
+  qualityConflictDetail?: string;
+  lastReviewedAt?: string | null;
+  reviewFrequencyMonths?: number;
 }
 
 export interface CustomAporteExecutionItem {
@@ -64,5 +71,7 @@ export interface AporteResultProps {
   onExecuteAporte?: (items?: CustomAporteExecutionItem[]) => void;
   /** Ação para abrir o Wizard de Compra para um ativo específico com quantidade sugerida. */
   onOpenWizard?: (ticker: string, quantity: number, allocatedBRL?: number) => void;
+  /** Ação para inspecionar ou reavaliar tese e nota de um ativo sem sair do fluxo de aporte. */
+  onInspectAsset?: (ticker: string) => void;
   executing?: boolean;
 }

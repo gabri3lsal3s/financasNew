@@ -112,67 +112,13 @@ export function generateAssetGovernanceInsights(params: {
     const status = asset.allocation_status ?? "active";
     const score = asset.score;
 
-    // 1. Cálculo de tempo desde a última revisão
-    let daysSinceReview = 0;
-    if (asset.last_reviewed_at) {
-      const reviewedTime = new Date(asset.last_reviewed_at).getTime();
-      if (!Number.isNaN(reviewedTime)) {
-        daysSinceReview = Math.max(0, Math.floor((nowTime - reviewedTime) / (1000 * 60 * 60 * 24)));
-      }
-    } else {
-      // Se nunca foi revisado formalmente, assume 181 dias para disparar avaliação inicial
-      daysSinceReview = 181;
-    }
+    // Se o ativo não possui nota definida (avaliação inicial pendente),
+    // ele pertence estritamente ao gatilho de Ativos sem Nota Definida (GATILHO 1C),
+    // e NÃO deve disparar revisão periódica vencida ou próxima (GATILHO 1A / 1B).
+    const hasInitialEvaluation = score !== null && score !== undefined;
 
-    const maxAllowedDays = (asset.review_frequency_months ?? 6) * 30;
-
-    // GATILHO 1A: Revisão Periódica Vencida
-    if (daysSinceReview > maxAllowedDays && status !== "exit") {
-      overdueAssets.push(asset);
-      insights.push({
-        id: `gov-overdue-${asset.id}`,
-        kind: "review_overdue",
-        severity: "warning",
-        title: `Revisão pendente: ${asset.ticker}`,
-        description: `A tese e nota de ${asset.ticker} não são revisadas há ${daysSinceReview} dias (limite: ${maxAllowedDays} dias).`,
-        assetId: asset.id,
-        ticker: asset.ticker,
-        tickers: [asset.ticker],
-        assetIds: [asset.id],
-        assetClass: asset.assetClass,
-        daysSinceReview,
-        score,
-        actionLabel: "Revisar tese",
-      });
-    } else if (status !== "exit") {
-      // GATILHO 1B: Revisão Próxima do Vencimento (<= 30 dias restantes)
-      const daysUntilReview = maxAllowedDays - daysSinceReview;
-      if (daysUntilReview >= 0 && daysUntilReview <= UPCOMING_REVIEW_WINDOW_DAYS) {
-        upcomingAssets.push({ asset, daysUntilReview });
-        insights.push({
-          id: `gov-upcoming-${asset.id}`,
-          kind: "review_upcoming",
-          severity: "info",
-          title: `Reavaliação próxima: ${asset.ticker}`,
-          description:
-            daysUntilReview === 0
-              ? `A revisão da nota de ${asset.ticker} vence hoje.`
-              : `A revisão da nota de ${asset.ticker} vence em ${daysUntilReview} ${daysUntilReview === 1 ? "dia" : "dias"}.`,
-          assetId: asset.id,
-          ticker: asset.ticker,
-          tickers: [asset.ticker],
-          assetIds: [asset.id],
-          assetClass: asset.assetClass,
-          daysSinceReview,
-          daysUntilReview,
-          score,
-          actionLabel: "Antecipar revisão",
-        });
-      }
-    }
-
-    // GATILHO 1C: Ativo sem nota definida
-    if (score == null && status !== "exit") {
+    if (!hasInitialEvaluation && status !== "exit") {
+      // GATILHO 1C: Ativo sem nota definida (Avaliação inicial pendente)
       unscoredAssets.push(asset);
       insights.push({
         id: `gov-unscored-${asset.id}`,
@@ -188,11 +134,78 @@ export function generateAssetGovernanceInsights(params: {
         score: null,
         actionLabel: "Avaliar agora",
       });
+    } else if (hasInitialEvaluation && status !== "exit") {
+      // GATILHO 1A / 1B: Revisão Periódica de Teses
+      // Só é executado quando a avaliação inicial já tiver sido feita (score != null)
+      let daysSinceReview = 0;
+      if (asset.last_reviewed_at) {
+        const reviewedTime = new Date(asset.last_reviewed_at).getTime();
+        if (!Number.isNaN(reviewedTime)) {
+          daysSinceReview = Math.max(0, Math.floor((nowTime - reviewedTime) / (1000 * 60 * 60 * 24)));
+        }
+      } else {
+        // Ativo possui nota definida, mas ainda não tem data formal registrada:
+        // assume vencido para que o usuário confirme/reavalie a nota e registre a data formal.
+        daysSinceReview = (asset.review_frequency_months ?? 6) * 30 + 1;
+      }
+
+      const maxAllowedDays = (asset.review_frequency_months ?? 6) * 30;
+
+      // GATILHO 1A: Revisão Periódica Vencida
+      if (daysSinceReview > maxAllowedDays) {
+        overdueAssets.push(asset);
+        insights.push({
+          id: `gov-overdue-${asset.id}`,
+          kind: "review_overdue",
+          severity: "warning",
+          title: `Revisão pendente: ${asset.ticker}`,
+          description: `A tese e nota de ${asset.ticker} não são revisadas há ${daysSinceReview} dias (limite: ${maxAllowedDays} dias).`,
+          assetId: asset.id,
+          ticker: asset.ticker,
+          tickers: [asset.ticker],
+          assetIds: [asset.id],
+          assetClass: asset.assetClass,
+          daysSinceReview,
+          score,
+          actionLabel: "Revisar tese",
+        });
+      } else {
+        // GATILHO 1B: Revisão Próxima do Vencimento (<= 30 dias restantes)
+        const daysUntilReview = maxAllowedDays - daysSinceReview;
+        if (daysUntilReview >= 0 && daysUntilReview <= UPCOMING_REVIEW_WINDOW_DAYS) {
+          upcomingAssets.push({ asset, daysUntilReview });
+          insights.push({
+            id: `gov-upcoming-${asset.id}`,
+            kind: "review_upcoming",
+            severity: "info",
+            title: `Reavaliação próxima: ${asset.ticker}`,
+            description:
+              daysUntilReview === 0
+                ? `A revisão da nota de ${asset.ticker} vence hoje.`
+                : `A revisão da nota de ${asset.ticker} vence em ${daysUntilReview} ${daysUntilReview === 1 ? "dia" : "dias"}.`,
+            assetId: asset.id,
+            ticker: asset.ticker,
+            tickers: [asset.ticker],
+            assetIds: [asset.id],
+            assetClass: asset.assetClass,
+            daysSinceReview,
+            daysUntilReview,
+            score,
+            actionLabel: "Antecipar revisão",
+          });
+        }
+      }
     }
 
     // GATILHO 2: Acompanhamento de Quarentena (> 90 dias)
     if (status === "quarantine") {
-      const daysInQuarantine = daysSinceReview; // Usando last_reviewed_at como marco da quarentena
+      let daysInQuarantine = 0;
+      if (asset.last_reviewed_at) {
+        const reviewedTime = new Date(asset.last_reviewed_at).getTime();
+        if (!Number.isNaN(reviewedTime)) {
+          daysInQuarantine = Math.max(0, Math.floor((nowTime - reviewedTime) / (1000 * 60 * 60 * 24)));
+        }
+      }
       if (daysInQuarantine >= 90) {
         insights.push({
           id: `gov-quarantine-${asset.id}`,

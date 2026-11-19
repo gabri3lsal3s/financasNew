@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { AlertTriangle, ArrowRight, Ban, ShieldCheck, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowRight, Ban, Clock, ShieldCheck, Sparkles } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -14,6 +14,7 @@ import {
   CRITERIA_BY_ARCHETYPE,
   getScoreArchetypeKey,
   getScoreConvictionMeta,
+  REVIEW_FREQUENCY_OPTIONS,
 } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
@@ -184,6 +185,56 @@ export function AssetGovernanceForm({
         </p>
       </section>
 
+      <section aria-label="Periodicidade de reavaliação" className="flex flex-col gap-2">
+        <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="text-xs font-semibold text-foreground">Lembrete de Reavaliação</span>
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            Quando ser lembrado para reavaliar a tese
+          </span>
+        </div>
+
+        <div
+          role={isWizard ? "radiogroup" : undefined}
+          aria-label="Frequência do lembrete de reavaliação"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-2"
+        >
+          {REVIEW_FREQUENCY_OPTIONS.map((opt) => {
+            const months = Number(opt.value);
+            const isSelected = (reviewFrequencyMonths ?? 6) === months;
+            const isRecommended = months === 6;
+            return (
+              <ChoiceCard
+                key={opt.value}
+                role={isWizard ? "radio" : "button"}
+                aria-pressed={!isWizard ? isSelected : undefined}
+                selected={isSelected}
+                onClick={() => onReviewFrequencyMonthsChange(months)}
+                className="p-3"
+                title={months === 3 ? "Trimestral" : months === 6 ? "Semestral" : "Anual"}
+                badge={isRecommended ? "Recomendado" : undefined}
+                badgeVariant={isRecommended ? "default" : "muted"}
+                description={
+                  months === 3
+                    ? "A cada 3 meses"
+                    : months === 6
+                      ? "A cada 6 meses"
+                      : "A cada 12 meses"
+                }
+              />
+            );
+          })}
+        </div>
+
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          {score === null
+            ? "Como a nota ainda não foi definida, o lembrete de revisão periódica só começará a contar após você realizar a primeira avaliação."
+            : `Você será lembrado no carrossel de governança a cada ${reviewFrequencyMonths ?? 6} meses para reavaliar a tese e calibrar a nota deste ativo.`}
+        </p>
+      </section>
+
       <section aria-label="Status de alocação" className="flex flex-col gap-2">
         <span className="text-xs font-semibold text-foreground">Status de Governança na Carteira</span>
         <div
@@ -219,7 +270,7 @@ export function AssetGovernanceForm({
           <AccordionItem value="governance-details">
             <AccordionTrigger className="px-4 py-3 text-xs font-semibold">
               <span>
-                Checklist de critérios, revisão e tese{" "}
+                Critérios da tese e anotações{" "}
                 <span className="text-muted-foreground font-normal">
                   (opcional{metCount > 0 ? ` · ${metCount}/${availableCriteria.length}` : ""})
                 </span>

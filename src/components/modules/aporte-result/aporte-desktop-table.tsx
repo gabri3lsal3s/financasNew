@@ -8,6 +8,7 @@ import { numberToCents } from "@/domain/money";
 import { cn } from "@/lib/utils";
 import { formatAssetQuantity } from "@/services/formatting";
 import { formatPercent } from "@/services/masks";
+import { AporteReasonBadge } from "./aporte-reason-badge";
 import { AporteRowActions } from "./aporte-row-actions";
 import type { AporteRouteRow, EffectiveAporteRouteState } from "./aporte-result-types";
 
@@ -21,6 +22,7 @@ export interface AporteDesktopTableProps {
   onQuantityChange: (assetId: string, rawStr: string) => void;
   onToggleTicker: (ticker: string) => void;
   onOpenWizard?: (ticker: string, quantity: number, allocatedBRL?: number) => void;
+  onInspectAsset?: (ticker: string) => void;
 }
 
 export function AporteDesktopTable({
@@ -33,6 +35,7 @@ export function AporteDesktopTable({
   onQuantityChange,
   onToggleTicker,
   onOpenWizard,
+  onInspectAsset,
 }: AporteDesktopTableProps) {
   const columns: DataListColumn<AporteRouteRow>[] = [
     {
@@ -54,7 +57,7 @@ export function AporteDesktopTable({
     {
       key: "ticker",
       header: "Ativo",
-      className: "flex-[1.8] min-w-[190px]",
+      className: "flex-[1.8] min-w-[180px]",
       cell: (row) => {
         const isDone = completedTickers.has(row.ticker);
         const metaLine = [
@@ -66,14 +69,32 @@ export function AporteDesktopTable({
         ]
           .filter(Boolean)
           .join(" · ");
+
         return (
           <div className={cn("flex min-w-0 flex-col gap-0.5 transition-opacity duration-150", isDone && "opacity-60")}>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
               {row.rawScore !== undefined ? (
-                <Badge variant={row.rawScore === null ? "warning" : "muted"} size="xs">
-                  {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
-                </Badge>
+                onInspectAsset ? (
+                  <button
+                    type="button"
+                    onClick={() => onInspectAsset(row.ticker)}
+                    className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-md"
+                    title={`Ver tese e reavaliar nota de ${row.ticker}`}
+                  >
+                    <Badge
+                      variant={row.rawScore === null ? "warning" : "muted"}
+                      size="xs"
+                      className="cursor-pointer hover:border-primary/50 transition-colors"
+                    >
+                      {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
+                    </Badge>
+                  </button>
+                ) : (
+                  <Badge variant={row.rawScore === null ? "warning" : "muted"} size="xs">
+                    {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
+                  </Badge>
+                )
               ) : null}
             </div>
             {metaLine ? (
@@ -89,19 +110,22 @@ export function AporteDesktopTable({
       },
     },
     {
-      key: "target",
-      header: "Valor alvo",
-      align: "right",
-      className: "flex-1 min-w-[105px]",
-      cell: (row) => <MoneyText cents={numberToCents(row.targetValueBRL)} tone="default" />,
-    },
-    {
-      key: "current",
-      header: "Atual",
-      align: "right",
-      className: "flex-1 min-w-[95px]",
+      key: "reason",
+      header: "Motivo da Sugestão",
+      className: "flex-[1.4] min-w-[150px]",
       cell: (row) => (
-        <MoneyText cents={numberToCents(row.currentValueBRL)} tone="default" className="text-muted-foreground" />
+        <div className="flex items-center min-w-0">
+          <AporteReasonBadge
+            ticker={row.ticker}
+            reasonKind={row.reasonKind}
+            reasonLabel={row.reasonLabel}
+            reasonDescription={row.reasonDescription}
+            hasQualityConflict={row.hasQualityConflict}
+            qualityConflictDetail={row.qualityConflictDetail}
+            rawScore={row.rawScore}
+            onInspect={onInspectAsset ? () => onInspectAsset(row.ticker) : undefined}
+          />
+        </div>
       ),
     },
     {
@@ -174,6 +198,7 @@ export function AporteDesktopTable({
             allocatedBRL={eff?.effectiveAllocatedBRL ?? row.allocatedBRL}
             onToggleDone={onToggleTicker}
             onOpenWizard={onOpenWizard}
+            onInspect={onInspectAsset ? () => onInspectAsset(row.ticker) : undefined}
           />
         );
       },
@@ -187,7 +212,7 @@ export function AporteDesktopTable({
         rows={routes}
         rowKey={(row, index) => `${row.ticker}:${index}`}
         density="compact"
-        className="border-none shadow-none min-w-[960px]"
+        className="border-none shadow-none min-w-[860px]"
         emptyMessage="Sem sugestão de aporte."
       />
     </div>

@@ -20,19 +20,32 @@ import type {
 import { PORTFOLIO_QUERY_KEYS, invalidatePortfolioSuite } from "./portfolio-keys";
 import { reconcileAssetCustody } from "./use-portfolio-transaction-mutations";
 
+export type CreatePortfolioContributionInput = Omit<DbInsert<PortfolioContribution>, "user_id" | "asset_id"> & {
+  asset_id?: string | null;
+  suppressToast?: boolean;
+};
+
 export function useCreatePortfolioContribution() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Omit<DbInsert<PortfolioContribution>, "user_id">) =>
-      createPortfolioContribution(input),
-    onSuccess: () => {
+    mutationFn: ({ suppressToast, ...dbPayload }: CreatePortfolioContributionInput) => {
+      void suppressToast;
+      const normalizedPayload = {
+        ...dbPayload,
+        asset_id: dbPayload.asset_id ?? null,
+      };
+      return createPortfolioContribution(normalizedPayload);
+    },
+    onSuccess: (_, variables) => {
       void invalidatePortfolioSuite(queryClient);
-      pushToast({
-        title: "Aporte financeiro registrado",
-        description: "O valor foi contabilizado nos aportes do mês.",
-        variant: "success",
-      });
-      triggerSensory("success");
+      if (!variables?.suppressToast) {
+        pushToast({
+          title: "Aporte financeiro registrado",
+          description: "O valor foi contabilizado nos aportes do mês.",
+          variant: "success",
+        });
+        triggerSensory("success");
+      }
     },
     onError: (err) => {
       pushToast({
@@ -107,6 +120,7 @@ export type DeletePortfolioContributionInput =
       date?: string | null;
       amount?: number | null;
       skipTransactionCascade?: boolean;
+      suppressToast?: boolean;
     };
 
 export function useDeletePortfolioContribution() {
@@ -148,14 +162,17 @@ export function useDeletePortfolioContribution() {
         }
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       void invalidatePortfolioSuite(queryClient);
-      pushToast({
-        title: "Aporte excluído",
-        description: "O lançamento de aporte e a operação vinculada foram removidos.",
-        variant: "info",
-      });
-      triggerSensory("destructive");
+      const suppressToast = typeof variables !== "string" && Boolean(variables?.suppressToast);
+      if (!suppressToast) {
+        pushToast({
+          title: "Aporte excluído",
+          description: "O lançamento de aporte e a operação vinculada foram removidos.",
+          variant: "info",
+        });
+        triggerSensory("destructive");
+      }
     },
     onError: (err) => {
       pushToast({
@@ -168,6 +185,12 @@ export function useDeletePortfolioContribution() {
   });
 }
 
+export type UpdatePortfolioContributionInput = {
+  id: string;
+  input: DbUpdate<PortfolioContribution>;
+  suppressToast?: boolean;
+};
+
 /**
  * Atualiza um aporte existente (data, valor ou notas).
  * Invalida os caches de contribuições e snapshots para recalcular imediatamente a TIR e métricas.
@@ -175,16 +198,20 @@ export function useDeletePortfolioContribution() {
 export function useUpdatePortfolioContribution() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { id: string; input: DbUpdate<PortfolioContribution> }) =>
-      updatePortfolioContribution(params.id, params.input),
-    onSuccess: () => {
+    mutationFn: ({ id, input, suppressToast }: UpdatePortfolioContributionInput) => {
+      void suppressToast;
+      return updatePortfolioContribution(id, input);
+    },
+    onSuccess: (_, variables) => {
       void invalidatePortfolioSuite(queryClient);
-      pushToast({
-        title: "Marco Histórico atualizado!",
-        description: "O valor foi calibrado e a TIR recalculada com sucesso.",
-        variant: "success",
-      });
-      triggerSensory("success");
+      if (!variables?.suppressToast) {
+        pushToast({
+          title: "Marco Histórico atualizado!",
+          description: "O valor foi calibrado e a TIR recalculada com sucesso.",
+          variant: "success",
+        });
+        triggerSensory("success");
+      }
     },
     onError: (err) => {
       pushToast({

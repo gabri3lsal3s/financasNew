@@ -86,6 +86,27 @@ describe("aporte-execution-mapper", () => {
     expect(vm.result).not.toBeNull();
     expect(vm.eligibleRoutes.length).toBeGreaterThanOrEqual(1);
     expect(vm.routes[0]?.rawScore).toBeDefined();
+    expect(vm.routes[0]?.reasonKind).toBeDefined();
+    expect(vm.routes[0]?.reasonLabel).toBeDefined();
+  });
+
+  it("detecta conflito de qualidade vs alocação para ativo com nota baixa", () => {
+    const lowScoreAssets: PortfolioAsset[] = [
+      {
+        ...rawAssets[0]!,
+        score: 3,
+      },
+    ];
+    const vm = buildAporteSimulationViewModel({
+      totalPurchasingCents: 50_000,
+      positionRows: [baseRows[0]!],
+      rawAssets: lowScoreAssets,
+      rawClassTargets: [{ id: "c1", user_id: "u1", name: "Ações", group_type: "class", target_percentage: 100 }],
+      rawSectorTargets: [],
+    });
+
+    expect(vm.routes[0]?.hasQualityConflict).toBe(true);
+    expect(vm.routes[0]?.qualityConflictDetail).toContain("Nota de convicção baixa (3/10)");
   });
 
   it("converte itens USD pela cotação do ativo e segrega cashUsed no lote", () => {

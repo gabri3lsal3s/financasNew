@@ -1422,6 +1422,19 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
       * Supressão de quebra de linha de "PREÇO MÉDIO" no cabeçalho das tabelas de FIIs e Ações.
       * Unificação do percentual de Renda Fixa na Pág. 1 do Dossiê (`build-tear-sheet-model.ts`): a tabela `Target vs. Actual` lê diretamente de `donutData.classSegments`, sincronizando 27,1% tanto no gráfico de rosca quanto na tabela de alocação.
 
+26. **Correção Algébrica de Resgates sem Duplo Desconto, Paginação Chromium & Certificação de Produção (§v8 — ID BR-20261119-6445)**:
+    - **Correção Algébrica Canônica de Resgates sem Duplo Desconto & SSOT (Gate v8.1)**:
+      * Eliminação da fórmula recursiva com duplo desconto $C_{\text{atual}} \times (V_i / (S_{\text{atual}} + V_i))$ na reconstrução de resgates passados em `period-redemptions.ts` e `canonical-normalizer.ts`.
+      * Adoção da razão canônica pura direta $C = V \times \min(1, C_{\text{atual}} / S_{\text{atual}})$, assegurando rentabilidade uniforme e estável (+15,65%) em múltiplos resgates parciais a partir do snapshot remanescente de custódia aberta.
+      * Sincronização inviolável de SSOT entre a narrativa da Página 1 do Dossiê (+R$ 768,84 de resultado realizado) e a tabela analítica de resgates da Página 5.
+      * Alinhamento da tabela regressiva de IR de Renda Fixa: respeito integral à data de aquisição explícita (`initial_investment_date`) em todas as faixas (100d = 22,5%, 250d = 20,0%, 500d = 17,5%, 800d = 15,0%) com salvaguarda de 15,0% para ativos de longo prazo com datas estimadas no Marco Zero.
+    - **Restauração da Paginação Natural de 5 Páginas no Relatório Executivo (Gate v8.2)**:
+      * Diagnóstico da causa-raiz do Chromium print engine: remoção de `display: flex !important` nos contêineres de impressão (`.print-sheet > div`, `.print-document`, `.print-area`) em `globals.css` e substituição por `display: block !important; width: 100% !important; overflow: visible !important;`.
+      * Supressão de overflow interno e bordas nas tabelas densas de custódia durante a impressão, permitindo ao motor de layout do Chromium paginar e fragmentar naturalmente as 20 linhas de Renda Fixa ao longo de 5 páginas A4 sem truncamento após CDB-BTG-AGO27.
+    - **Respiro Tipográfico e Alinhamento Internacional sem Colisão (Gate v8.3)**:
+      * Rebalanceamento estrito das colunas da tabela de ativos internacionais (`report-equity-class-table.tsx`): ampliação da coluna de Variação da Cota de 16% para 22% (> 150px de largura física para acomodar `+X,X% (USD)` e `+Y,Y% (BRL)` sem sobreposição de caracteres), compensada por ajustes milimétricos em Ticker (10%), Classe (13%), PM (10%) e Cotação (7%).
+      * Formatação em duas linhas com `tabular-nums` e `font-mono text-[10px]` no subtotal, erradicando a colisão `R$ 23.449,802,8% (USD) (BRL)`.
+
 ---
 
 ## ANEXO A — GLOSSÁRIO

@@ -15,7 +15,15 @@ describe("domain/portfolio/import-parser — Fase 35 & 36", () => {
       expect(inferAssetClassFromTicker("PETR4")).toBe("Ações");
       expect(inferAssetClassFromTicker("VALE3")).toBe("Ações");
       expect(inferAssetClassFromTicker("ITUB4")).toBe("Ações");
-      expect(inferAssetClassFromTicker("TAEE11")).toBe("FIIs"); // 11 cai em FIIs/Units
+      expect(inferAssetClassFromTicker("TAEE11")).toBe("Ações"); // Units de ações locais
+      expect(inferAssetClassFromTicker("BPAC11")).toBe("Ações"); // Banco BTG Pactual Unit
+      expect(inferAssetClassFromTicker("SANB11")).toBe("Ações"); // Banco Santander Unit
+    });
+
+    it("identifica ETFs da B3", () => {
+      expect(inferAssetClassFromTicker("BOVA11")).toBe("ETFs");
+      expect(inferAssetClassFromTicker("SMAL11")).toBe("ETFs");
+      expect(inferAssetClassFromTicker("IVVB11")).toBe("ETFs");
     });
 
     it("identifica FIIs", () => {
@@ -337,7 +345,7 @@ Total Geral;;625;;15550,00;;16800,00`;
         quantity: 25,
         price: 280,
         total: 7000,
-        assetClass: "FIIs",
+        assetClass: "ETFs",
       });
     });
 

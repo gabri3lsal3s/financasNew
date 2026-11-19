@@ -834,13 +834,16 @@ html[data-density="compact"] {
     letter-spacing: -0.01em !important;
   }
 
-  /* Ritmo vertical fluido e sem estrangulamento */
+  /* Ritmo vertical fluido e sem estrangulamento para fluxo contínuo e paginação A4 */
+  .print-sheet,
   .print-sheet .print-document,
   .print-sheet .print-area,
-  .print-sheet > div {
-    display: flex !important;
-    flex-direction: column !important;
+  .print-sheet > div,
+  .print-sheet section {
+    display: block !important;
     width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
   }
 
   /* Reforço explícito das cores-chave do Design System */
@@ -920,8 +923,13 @@ html[data-density="compact"] {
     break-inside: auto !important;
   }
 
-  .print-sheet .overflow-x-auto {
+  .print-sheet .overflow-x-auto,
+  .print-sheet div:has(> table),
+  .print-sheet [class*="overflow-x-auto"] {
     overflow: visible !important;
+    display: block !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
   }
 
   /* Rodapé institucional posicionado no fim do fluxo */

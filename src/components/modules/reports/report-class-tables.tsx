@@ -15,7 +15,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
   if (!groups || groups.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-4 w-full">
+    <div className="flex flex-col gap-4 w-full print:block print:space-y-4">
       {groups.map((group) => {
         const lowerClass = group.className.toLowerCase();
         const isRendaFixa = lowerClass.includes("fixa") || lowerClass.includes("tesouro");
@@ -32,7 +32,7 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
           <section
             key={group.className}
             aria-label={`Posições de ${group.className}`}
-            className="flex flex-col gap-1.5 break-inside-auto print:break-inside-auto"
+            className="flex flex-col gap-1.5 break-inside-auto print:break-inside-auto print:block print:mb-4"
           >
             {isRendaFixa ? (
               <ReportFixedIncomeClassTable group={group} />

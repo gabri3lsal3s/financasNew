@@ -19,7 +19,7 @@ function formatMaturityMonth(isoDate: string): string {
 /** Tabela de custódia especializada para Renda Fixa & Tesouro Direto. */
 export function ReportFixedIncomeClassTable({ group }: { group: ReportClassGroup }) {
   return (
-    <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs print:overflow-visible">
+    <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs print:overflow-visible print:border-none print:shadow-none print:rounded-none print:block">
       <table className="w-full min-w-[560px] print:min-w-0 text-left text-xs border-collapse print:table-fixed">
         <thead className="print:[break-inside:avoid] print:[break-after:avoid]">
           <ReportClassTableBanner group={group} colSpan={5} />

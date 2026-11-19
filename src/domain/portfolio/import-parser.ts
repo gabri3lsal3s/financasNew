@@ -8,6 +8,7 @@
 
 import { addDaysISO, todayISO } from "@/domain/debts";
 import { inferCurrencyFromTicker } from "./valuation";
+import { KNOWN_B3_ETFS, KNOWN_STOCK_UNITS } from "./tax";
 import type { AssetCurrency, PortfolioTransactionType } from "@/types";
 
 export interface ParsedPortfolioImportRow {
@@ -100,7 +101,15 @@ export function inferAssetClassFromTicker(ticker: string): string | null {
   if (/^[A-Z]{4}(?:32|33|34|35|39)$/.test(t)) {
     return "BDRs";
   }
-  // FIIs e FIAGROs B3 (terminação 11)
+  // Units de Ações B3 (terminação 11 que representam ações locais)
+  if (KNOWN_STOCK_UNITS.has(t)) {
+    return "Ações";
+  }
+  // Fundos de Índice / ETFs B3 (terminação 11)
+  if (KNOWN_B3_ETFS.has(t)) {
+    return "ETFs";
+  }
+  // FIIs e FIAGROs B3 (terminação 11 residual)
   if (/^[A-Z]{4}11$/.test(t)) {
     return "FIIs";
   }

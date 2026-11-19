@@ -527,4 +527,31 @@ describe("InvestmentWizard (Fase 41 / Plano 42)", () => {
     fireEvent.click(toggleBtn);
     expect(screen.getByText(/Ajuste Fiscal Manual \(Nota de Corretagem\)/i)).toBeInTheDocument();
   });
+
+  it("identifica BPAC11 como Ações no catálogo e exibe seletor de classe no Passo 2", async () => {
+    mockAssetsList = [mockAsset];
+    render(
+      <InvestmentWizard
+        open={true}
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    const searchInput = screen.getByPlaceholderText(/Ex: PETR4, MXRF11, O, Tesouro Selic, Apple.../i);
+    fireEvent.change(searchInput, { target: { value: "BPAC11" } });
+
+    await waitFor(() => {
+      expect(screen.getByText("BPAC11")).toBeInTheDocument();
+      expect(screen.getByText("Banco BTG Pactual S.A. Unit")).toBeInTheDocument();
+      expect(screen.getByText("Ações")).toBeInTheDocument();
+    });
+
+    // Clica para cadastrar / selecionar BPAC11
+    fireEvent.click(screen.getByText("BPAC11"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Novo Ativo · BPAC11/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Classe de Ativo/i)).toBeInTheDocument();
+    });
+  });
 });

@@ -37,6 +37,7 @@ export function AporteResult({
   skippedAssets = [],
   onExecuteAporte,
   onOpenWizard,
+  onInspectAsset,
   executing = false,
 }: AporteResultProps) {
   const [viewMode, setViewMode] = useState<"list" | "tree">("list");
@@ -150,6 +151,7 @@ export function AporteResult({
                 onQuantityChange={handleQuantityChange}
                 onToggleTicker={toggleTicker}
                 onOpenWizard={onOpenWizard}
+                onInspectAsset={onInspectAsset}
               />
               <AporteMobileCardList
                 routes={sortedRoutes}
@@ -161,6 +163,7 @@ export function AporteResult({
                 onQuantityChange={handleQuantityChange}
                 onToggleTicker={toggleTicker}
                 onOpenWizard={onOpenWizard}
+                onInspectAsset={onInspectAsset}
               />
             </>
           ) : (
@@ -170,6 +173,7 @@ export function AporteResult({
               completedTickers={completedTickers}
               onToggleTicker={toggleTicker}
               onOpenWizard={onOpenWizard}
+              onInspectAsset={onInspectAsset}
             />
           )}
         </>

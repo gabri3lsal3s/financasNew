@@ -119,7 +119,7 @@ export function ReportDocumentLayout({
 
       {/* 2. Portal de Impressão Direta A4 (Conteúdo montado apenas sob demanda durante impressão) */}
       <PrintSheet open={open} className={className}>
-        <div className="print-document flex flex-col gap-5 w-full bg-white text-slate-900">
+        <div className="print-document flex flex-col gap-5 w-full bg-white text-slate-900 print:block print:space-y-4">
           {shouldMountPrintContent ? children : null}
         </div>
       </PrintSheet>

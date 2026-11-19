@@ -28,6 +28,8 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
     it("reconhece setores de ações B3 do catálogo", () => {
       expect(inferSectorFromTicker("PETR4", "Ações")).toBe("Petróleo, Gás e Combustíveis");
       expect(inferSectorFromTicker("ITUB4", "Ações")).toBe("Financeiro / Bancos");
+      expect(inferSectorFromTicker("BPAC11", "Ações")).toBe("Financeiro / Bancos");
+      expect(inferSectorFromTicker("SANB11", "Ações")).toBe("Financeiro / Bancos");
       expect(inferSectorFromTicker("TAEE11", "Ações")).toBe("Energia Elétrica");
       expect(inferSectorFromTicker("WEGE3", "Ações")).toBe("Bens de Capital / Máquinas");
     });
@@ -88,6 +90,16 @@ describe("tickers-catalog — Autocomplete e Sugestões Preditivas (Fase 41)", (
       expect(results[0]!.isExisting).toBe(true);
       expect(results[0]!.existingAssetId).toBe("asset-1");
       expect(results[0]!.currentQuantity).toBe(100);
+    });
+
+    it("busca e identifica corretamente BPAC11 como Ações no setor Bancos", () => {
+      const results = searchTickers("BPAC11", mockExistingAssets);
+      expect(results.length).toBeGreaterThan(0);
+      const hit = results.find((r) => r.ticker === "BPAC11");
+      expect(hit).toBeDefined();
+      expect(hit?.assetClass).toBe("Ações");
+      expect(hit?.sector).toBe("Financeiro / Bancos");
+      expect(hit?.name).toContain("BTG Pactual");
     });
 
     it("busca por nome da empresa / fundo", () => {

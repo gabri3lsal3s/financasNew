@@ -1,4 +1,3 @@
-import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MoneyText } from "@/components/ui/money-text";
@@ -7,6 +6,7 @@ import { numberToCents } from "@/domain/money";
 import { cn } from "@/lib/utils";
 import { formatAssetQuantity } from "@/services/formatting";
 import { formatPercent } from "@/services/masks";
+import { AporteReasonBadge } from "./aporte-reason-badge";
 import { AporteRowActions } from "./aporte-row-actions";
 import type { AporteRouteRow, EffectiveAporteRouteState } from "./aporte-result-types";
 
@@ -20,6 +20,7 @@ export interface AporteMobileCardListProps {
   onQuantityChange: (assetId: string, rawStr: string) => void;
   onToggleTicker: (ticker: string) => void;
   onOpenWizard?: (ticker: string, quantity: number, allocatedBRL?: number) => void;
+  onInspectAsset?: (ticker: string) => void;
 }
 
 export function AporteMobileCardList({
@@ -32,6 +33,7 @@ export function AporteMobileCardList({
   onQuantityChange,
   onToggleTicker,
   onOpenWizard,
+  onInspectAsset,
 }: AporteMobileCardListProps) {
   if (routes.length === 0) {
     return (
@@ -61,11 +63,15 @@ export function AporteMobileCardList({
           <div
             key={`${row.ticker}:${index}`}
             className={cn(
-              "flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 shadow-xs transition-opacity",
+              "flex flex-col gap-2.5 rounded-xl border bg-surface p-3.5 shadow-xs transition-opacity",
+              row.hasQualityConflict
+                ? "border-warning/40 bg-warning/5"
+                : "border-border/80",
               isDone && "opacity-75",
             )}
           >
-            <div className="flex flex-wrap items-start justify-between gap-2 min-w-0">
+            {/* Cabeçalho do Card: Identidade, Tags e Ações */}
+            <div className="flex items-start justify-between gap-2 min-w-0">
               <div className="flex items-start gap-2.5 min-w-0 flex-1">
                 <Checkbox
                   checked={eff?.isSelected ?? false}
@@ -74,7 +80,7 @@ export function AporteMobileCardList({
                   aria-label={`Selecionar ${row.ticker} para aporte`}
                   className="mt-0.5 shrink-0"
                 />
-                <div className="flex flex-col gap-0.5 min-w-0">
+                <div className="flex flex-col gap-1 min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="font-mono text-sm font-bold text-foreground truncate">
                       {row.ticker}
@@ -85,16 +91,46 @@ export function AporteMobileCardList({
                       </Badge>
                     ) : null}
                     {row.rawScore !== undefined ? (
-                      <Badge variant={row.rawScore === null ? "warning" : "muted"} size="xs" className="shrink-0">
-                        {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
-                      </Badge>
+                      onInspectAsset ? (
+                        <button
+                          type="button"
+                          onClick={() => onInspectAsset(row.ticker)}
+                          className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-md"
+                          title={`Ver tese e reavaliar nota de ${row.ticker}`}
+                        >
+                          <Badge
+                            variant={row.rawScore === null ? "warning" : "muted"}
+                            size="xs"
+                            className="cursor-pointer hover:border-primary/50 transition-colors"
+                          >
+                            {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
+                          </Badge>
+                        </button>
+                      ) : (
+                        <Badge variant={row.rawScore === null ? "warning" : "muted"} size="xs" className="shrink-0">
+                          {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
+                        </Badge>
+                      )
                     ) : null}
                   </div>
-                  {metaLine ? (
-                    <span className="text-[11px] text-muted-foreground font-medium truncate" title={row.formulaLabel}>
-                      {metaLine}
-                    </span>
-                  ) : null}
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <AporteReasonBadge
+                      ticker={row.ticker}
+                      reasonKind={row.reasonKind}
+                      reasonLabel={row.reasonLabel}
+                      reasonDescription={row.reasonDescription}
+                      hasQualityConflict={row.hasQualityConflict}
+                      qualityConflictDetail={row.qualityConflictDetail}
+                      rawScore={row.rawScore}
+                      onInspect={onInspectAsset ? () => onInspectAsset(row.ticker) : undefined}
+                    />
+                    {metaLine ? (
+                      <span className="text-[11px] text-muted-foreground truncate" title={row.formulaLabel}>
+                        {metaLine}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 
@@ -105,19 +141,25 @@ export function AporteMobileCardList({
                 allocatedBRL={eff?.effectiveAllocatedBRL ?? row.allocatedBRL}
                 onToggleDone={onToggleTicker}
                 onOpenWizard={onOpenWizard}
+                onInspect={onInspectAsset ? () => onInspectAsset(row.ticker) : undefined}
+                compact
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 pt-2.5 border-t border-border/50">
-              <div className="flex flex-col gap-1.5 min-w-0">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Aporte Sugerido
+            {/* Bloco de Execução de Compra: Aporte Sugerido, Cotas e Preço Unitário */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2.5 border-t border-border/50">
+              <div className="flex items-baseline gap-2 min-w-0">
+                <span className="text-[11px] font-medium text-muted-foreground shrink-0">
+                  Aporte Sugerido:
                 </span>
                 <MoneyText
                   cents={numberToCents(eff?.effectiveAllocatedBRL ?? row.allocatedBRL)}
                   tone="portfolio"
-                  className="text-sm font-bold"
+                  className="text-base font-bold tabular-nums"
                 />
+              </div>
+
+              <div className="flex items-center justify-between sm:justify-end gap-2.5">
                 <div className="flex items-center gap-1.5">
                   <label htmlFor={`mobile-qty-${row.assetId}`} className="text-xs font-semibold text-foreground shrink-0">
                     Cotas:
@@ -128,44 +170,27 @@ export function AporteMobileCardList({
                     value={draftValue}
                     onValueChange={(raw) => onQuantityChange(row.assetId, raw)}
                     aria-label={`Quantidade de cotas para ${row.ticker}`}
-                    className="w-20 px-2 text-right"
+                    className="w-20 px-2 text-right text-base sm:text-sm"
                   />
                 </div>
-                <div className="flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground font-mono tabular-nums">
+
+                <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-mono tabular-nums shrink-0">
                   <span>@</span>
                   <MoneyText
                     cents={numberToCents(row.priceBRL)}
                     variant="caption"
                     tone="default"
-                    className="text-[10px] text-muted-foreground font-normal"
+                    className="text-[11px] text-muted-foreground font-normal"
                   />
-                  {eff?.isQuantityCustom ? (
-                    <span>(sug: {formatAssetQuantity(row.quantity, row.assetClass ?? undefined)})</span>
-                  ) : null}
                 </div>
               </div>
-
-              <div className="flex flex-col gap-1 items-end text-right min-w-0">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                  Atual <ArrowRight className="size-2.5 inline-block" aria-hidden="true" /> Alvo
-                </span>
-                <MoneyText
-                  cents={numberToCents(row.currentValueBRL)}
-                  variant="caption"
-                  tone="default"
-                  className="text-muted-foreground font-medium"
-                />
-                <span className="text-[10px] font-medium text-foreground inline-flex items-center gap-1 whitespace-nowrap">
-                  <span>Alvo:</span>
-                  <MoneyText
-                    cents={numberToCents(row.targetValueBRL)}
-                    variant="caption"
-                    tone="default"
-                    className="text-[10px] font-medium text-foreground"
-                  />
-                </span>
-              </div>
             </div>
+
+            {eff?.isQuantityCustom ? (
+              <span className="text-[10px] text-muted-foreground font-mono text-right">
+                (sugestão original: {formatAssetQuantity(row.quantity, row.assetClass ?? undefined)})
+              </span>
+            ) : null}
           </div>
         );
       })}

@@ -239,13 +239,13 @@ export function OrderBuySellFields({
         />
       )}
 
-      {!isEditing && !isSell && !isCash && onFundingSourceChange && (
+      {!isSell && !isCash && onFundingSourceChange && (
         <FundingSourceSelector
           value={fundingSource}
           onChange={onFundingSourceChange}
           cashBalanceBRL={cashBalanceBRL}
           orderTotalBRL={orderTotalBRL}
-          label="Origem dos recursos desta compra"
+          label={isEditing ? "Origem dos recursos (ajuste retroativo)" : "Origem dos recursos desta compra"}
         />
       )}
 

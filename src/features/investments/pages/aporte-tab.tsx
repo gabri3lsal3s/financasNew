@@ -14,6 +14,7 @@ import { formatCentsAsBRL } from "@/services/masks";
 import { AporteInputCard } from "../components/aporte/aporte-input-card";
 import { CvmDisclaimerBanner } from "../components/aporte/cvm-disclaimer-banner";
 import { useAporteAllocator } from "../components/aporte/use-aporte-allocator";
+import { AssetScoreEvaluationDialog } from "../components/asset-score-evaluation-dialog";
 import { InvestmentWizard } from "../wizard";
 
 /**
@@ -110,6 +111,7 @@ export function AporteTab({
                 skippedAssets={simulation.result.skippedAssets}
                 onExecuteAporte={allocator.handleTriggerAporte}
                 onOpenWizard={allocator.handleOpenWizardForAsset}
+                onInspectAsset={allocator.handleOpenEvaluationForAsset}
                 executing={allocator.isApplying}
               />
             </div>
@@ -143,6 +145,14 @@ export function AporteTab({
         initialQuantity={allocator.wizardQuantity}
         initialTotalCents={allocator.wizardTotalCents}
         onSuccess={allocator.refetchAll}
+      />
+
+      <AssetScoreEvaluationDialog
+        open={Boolean(allocator.evaluationAsset)}
+        onOpenChange={(open) => {
+          if (!open) allocator.setEvaluationAsset(null);
+        }}
+        asset={allocator.evaluationAsset}
       />
 
       {allocator.upgradeModal}

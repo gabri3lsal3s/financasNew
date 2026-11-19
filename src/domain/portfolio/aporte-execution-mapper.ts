@@ -7,13 +7,17 @@ import { formatCentsAsBRL } from "@/services/masks";
 import type { AssetCurrency, GroupTarget, PortfolioAsset } from "@/types";
 import { calculateEffectiveAssetTargets } from "./allocation";
 import {
+  deriveAporteSuggestionReason,
+  type AporteReasonKind,
+} from "./aporte-reasons";
+import {
   simulateCombinedAporte,
   type AporteAssetInput,
   type ClassTargetInput,
   type SectorTargetInput,
 } from "./aporte";
 import { inferSectorFromTicker } from "./tickers-catalog";
-import { FALLBACK_USD_RATE } from "./valuation";
+import { FALLBACK_USD_RATE, normalizeClassName } from "./valuation";
 
 export interface AportePositionRowInput {
   assetId: string;
@@ -41,6 +45,13 @@ export interface MappedAporteRoute {
   rawScore?: number | null;
   effectiveTargetPct?: number;
   formulaLabel?: string;
+  reasonKind?: AporteReasonKind;
+  reasonLabel?: string;
+  reasonDescription?: string;
+  hasQualityConflict?: boolean;
+  qualityConflictDetail?: string;
+  lastReviewedAt?: string | null;
+  reviewFrequencyMonths?: number;
 }
 
 export interface BatchAporteItemInput {
@@ -142,10 +153,87 @@ export function buildAporteSimulationViewModel({
         })
       : null;
 
+  const classSummaryMap = new Map(
+    (result?.classSummaries ?? []).map((cs) => [normalizeClassName(cs.className), cs]),
+  );
+  const sectorSummaryMap = new Map(
+    (result?.sectorSummaries ?? []).map((ss) => [
+      `${normalizeClassName(ss.className)}::${(ss.sectorName ?? "").trim().toLowerCase()}`,
+      ss,
+    ]),
+  );
+
+  const eligibleAssetsBySector = new Map<string, AporteAssetInput[]>();
+  const eligibleAssetsByClass = new Map<string, AporteAssetInput[]>();
+
+  for (const asset of assets) {
+    if (
+      asset.allocation_status === "quarantine" ||
+      asset.allocation_status === "exit" ||
+      asset.allocation_status === "neutral"
+    ) {
+      continue;
+    }
+    const normClass = normalizeClassName(asset.assetClass ?? "");
+    const normSector = (asset.sector ?? "").trim().toLowerCase();
+    const sectorKey = `${normClass}::${normSector}`;
+
+    const secList = eligibleAssetsBySector.get(sectorKey) ?? [];
+    secList.push(asset);
+    eligibleAssetsBySector.set(sectorKey, secList);
+
+    const clsList = eligibleAssetsByClass.get(normClass) ?? [];
+    clsList.push(asset);
+    eligibleAssetsByClass.set(normClass, clsList);
+  }
+
   const routes: MappedAporteRoute[] =
     result?.routes.map((r) => {
       const eff = effectiveTargetsMap.get(r.assetId);
       const raw = rawAssetMap.get(r.assetId);
+      const rawScore = eff?.rawScore ?? raw?.score ?? null;
+
+      const normClass = normalizeClassName(r.assetClass ?? "");
+      const normSector = (r.sector ?? "").trim().toLowerCase();
+      const sectorKey = `${normClass}::${normSector}`;
+
+      const classSum = classSummaryMap.get(normClass);
+      const sectorSum = sectorSummaryMap.get(sectorKey);
+
+      const sectorEligible = eligibleAssetsBySector.get(sectorKey) ?? [];
+      const classEligible = eligibleAssetsByClass.get(normClass) ?? [];
+      const groupEligible = sectorEligible.length > 0 ? sectorEligible : classEligible;
+
+      const scoresInGroup = groupEligible
+        .map((a) => a.score)
+        .filter((s): s is number => s !== null && s !== undefined);
+      const maxScoreInGroup = scoresInGroup.length > 0 ? Math.max(...scoresInGroup) : null;
+
+      const classDeficitRel =
+        classSum && classSum.targetValueBRL > 0
+          ? Math.max(0, (classSum.targetValueBRL - classSum.currentValueBRL) / classSum.targetValueBRL)
+          : 0;
+
+      const sectorDeficitRel =
+        sectorSum && sectorSum.targetValueBRL > 0
+          ? Math.max(0, (sectorSum.targetValueBRL - sectorSum.currentValueBRL) / sectorSum.targetValueBRL)
+          : 0;
+
+      const reason = deriveAporteSuggestionReason({
+        ticker: r.ticker,
+        rawScore,
+        assetClass: r.assetClass,
+        sector: r.sector,
+        classDeficitRel,
+        classGapBRL: classSum?.gapBRL,
+        sectorDeficitRel,
+        sectorGapBRL: sectorSum?.gapBRL,
+        weightInSector: r.weightInSector ?? eff?.weightInSector,
+        effectiveTargetPct: eff?.effectiveTargetPct,
+        groupEligibleCount: groupEligible.length,
+        maxScoreInGroup,
+      });
+
       return {
         assetId: r.assetId,
         ticker: r.ticker,
@@ -157,9 +245,16 @@ export function buildAporteSimulationViewModel({
         allocatedBRL: r.allocatedBRL,
         quantity: r.quantity,
         priceBRL: r.priceBRL,
-        rawScore: eff?.rawScore ?? raw?.score ?? null,
+        rawScore,
         effectiveTargetPct: eff?.effectiveTargetPct,
         formulaLabel: eff?.formulaLabel,
+        reasonKind: reason.kind,
+        reasonLabel: reason.label,
+        reasonDescription: reason.shortDescription,
+        hasQualityConflict: reason.hasQualityConflict,
+        qualityConflictDetail: reason.qualityConflictDetail,
+        lastReviewedAt: raw?.last_reviewed_at ?? null,
+        reviewFrequencyMonths: raw?.review_frequency_months ?? 6,
       };
     }) ?? [];
 

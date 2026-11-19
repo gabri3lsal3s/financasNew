@@ -518,5 +518,6 @@ export * from "./canonical-engine";
 export * from "./asset-governance-insights";
 export * from "./fixed-income-redemption-preview";
 export * from "./wizard-calculations";
+export * from "./aporte-reasons";
 
 

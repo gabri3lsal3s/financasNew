@@ -1410,12 +1410,24 @@ export function computeCanonicalAssetLedger(
         const fiMeta = options.fixedIncomeMetadata;
         const redeemedBRL = round2(rawTotal > 0 ? rawTotal : rawQty * (rawPrice > 0 ? rawPrice : 1));
 
+        const txRealized = tx as unknown as {
+          cost_basis_realized?: number | null;
+          gross_realized_pnl?: number | null;
+          ir_withheld?: number | null;
+          net_realized_pnl?: number | null;
+        };
         const parsedNotes = parseFixedIncomeSellNotes(tx.notes);
         let costBasisBRL: number;
         let grossProfitBRL: number;
         let taxAmountBRL = 0;
 
-        if (parsedNotes) {
+        if (txRealized.cost_basis_realized != null && txRealized.net_realized_pnl != null) {
+          costBasisBRL = round2(txRealized.cost_basis_realized);
+          grossProfitBRL = round2(
+            txRealized.gross_realized_pnl ?? (redeemedBRL - costBasisBRL),
+          );
+          taxAmountBRL = round2(txRealized.ir_withheld ?? 0);
+        } else if (parsedNotes) {
           costBasisBRL = round2(parsedNotes.appliedCost);
           grossProfitBRL = round2(parsedNotes.realizedProfit);
           taxAmountBRL = round2(parsedNotes.taxAmount);
@@ -1428,10 +1440,15 @@ export function computeCanonicalAssetLedger(
             costBasisBRL = round2(Number(tx.total_cost_brl));
           } else {
             const initialCost = fiMeta?.initial_investment_value ?? (runningCostBRL > 0 ? runningCostBRL : runningCost);
-            const currentGross = fiMeta?.base_value ?? (runningQty > 0 && rawPrice > 0 ? runningQty * rawPrice : initialCost);
-            const effectiveGross = Math.max(redeemedBRL, currentGross > 0 ? currentGross : initialCost);
-            const costRatio = effectiveGross > 0 ? Math.min(1, initialCost / effectiveGross) : 1;
-            costBasisBRL = round2(redeemedBRL * costRatio);
+            const currentGross = fiMeta?.base_value ?? (runningQty > 0 && rawPrice > 0 ? runningQty * rawPrice : 0);
+            if (initialCost > 0 && currentGross > 0) {
+              const costRatio = Math.min(1, initialCost / currentGross);
+              costBasisBRL = round2(redeemedBRL * costRatio);
+            } else if (initialCost > 0) {
+              costBasisBRL = Math.min(redeemedBRL, initialCost);
+            } else {
+              costBasisBRL = redeemedBRL;
+            }
           }
           grossProfitBRL = Math.max(0, round2(redeemedBRL - costBasisBRL));
 
@@ -1443,11 +1460,13 @@ export function computeCanonicalAssetLedger(
             if (startDate && tx.date) {
               daysPassed = countCalendarDays(startDate, tx.date);
             }
-            if ((daysPassed === 0 || isEstimatedFallbackDate) && costBasisBRL > 0) {
+            if (isEstimatedFallbackDate && costBasisBRL > 0) {
               const retRatio = grossProfitBRL / costBasisBRL;
-              if (retRatio >= 0.25) daysPassed = 721;
-              else if (retRatio >= 0.15) daysPassed = 365;
-              else if (retRatio >= 0.08) daysPassed = 181;
+              if (retRatio >= 0.15) {
+                daysPassed = 721;
+              } else if (retRatio >= 0.08) {
+                daysPassed = 181;
+              }
             }
             const taxRatePct = getFixedIncomeTaxRatePct(
               daysPassed,

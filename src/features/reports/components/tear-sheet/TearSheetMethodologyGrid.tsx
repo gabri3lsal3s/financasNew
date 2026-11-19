@@ -194,7 +194,7 @@ export function TearSheetMethodologyGrid({
               Riqueza Efetiva Produzida
             </span>
             <p className="text-[11px] leading-relaxed text-muted-foreground m-0">
-              Consolida em reais todo o ganho líquido acumulado pela carteira desde o primeiro investimento. Soma os lucros brutos realizados em operações encerradas no passado, o ganho de capital aberto de hoje e a totalidade dos proventos já recebidos.
+              Consolida em reais todo o ganho líquido acumulado pela carteira desde o primeiro investimento. Soma os resultados líquidos realizados em operações encerradas no passado, o ganho de capital aberto de hoje e a totalidade dos proventos já recebidos.
             </p>
           </div>
           <div className="pt-1.5 border-t border-border/40 flex items-center justify-between">

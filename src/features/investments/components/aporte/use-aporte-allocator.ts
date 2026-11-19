@@ -28,6 +28,7 @@ export function useAporteAllocator(onGoToPosition?: () => void) {
   const [wizardAsset, setWizardAsset] = useState<PortfolioAsset | null>(null);
   const [wizardQuantity, setWizardQuantity] = useState<number | undefined>(undefined);
   const [wizardTotalCents, setWizardTotalCents] = useState<number | undefined>(undefined);
+  const [evaluationAsset, setEvaluationAsset] = useState<PortfolioAsset | null>(null);
   const [confirmBatchOpen, setConfirmBatchOpen] = useState(false);
   const [pendingCustomItems, setPendingCustomItems] = useState<CustomAporteExecutionItem[] | null>(null);
   const [batchError, setBatchError] = useState<string | null>(null);
@@ -67,6 +68,17 @@ export function useAporteAllocator(onGoToPosition?: () => void) {
         setWizardQuantity(quantity > 0 ? quantity : undefined);
         setWizardTotalCents(allocatedBRL && allocatedBRL > 0 ? Math.round(allocatedBRL * 100) : undefined);
         setWizardOpen(true);
+      }
+    },
+    [assetsQuery.data],
+  );
+
+  const handleOpenEvaluationForAsset = useCallback(
+    (ticker: string) => {
+      const asset =
+        (assetsQuery.data ?? []).find((a) => a.ticker.toUpperCase() === ticker.toUpperCase()) ?? null;
+      if (asset) {
+        setEvaluationAsset(asset);
       }
     },
     [assetsQuery.data],
@@ -154,5 +166,8 @@ export function useAporteAllocator(onGoToPosition?: () => void) {
     wizardQuantity,
     wizardTotalCents,
     handleOpenWizardForAsset,
+    evaluationAsset,
+    setEvaluationAsset,
+    handleOpenEvaluationForAsset,
   };
 }

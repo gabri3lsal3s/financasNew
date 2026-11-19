@@ -125,7 +125,7 @@ export function buildTearSheetModel(params: BuildTearSheetModelParams): TearShee
     classSegmentMap.set(normKey(seg.key), seg.pct);
   }
 
-  const stackedSegments: TearSheetStackedSegment[] = allocationAnalysis.classGaps.map((cg) => {
+  const stackedSegments: TearSheetStackedSegment[] = (allocationAnalysis?.classGaps ?? []).map((cg) => {
     const matchedPct = classSegmentMap.get(normKey(cg.assetClass)) ?? cg.currentPct;
     return {
       key: cg.assetClass,
@@ -135,7 +135,7 @@ export function buildTearSheetModel(params: BuildTearSheetModelParams): TearShee
     };
   });
 
-  const allocationRows: TearSheetAllocationRow[] = allocationAnalysis.classGaps.map((cg) => {
+  const allocationRows: TearSheetAllocationRow[] = (allocationAnalysis?.classGaps ?? []).map((cg) => {
     const targetIdealBRL = totalBRL * (cg.targetPct / 100);
     const deviationBRL = Math.round((cg.currentBRL - targetIdealBRL) * 100) / 100;
     const matchedPct = classSegmentMap.get(normKey(cg.assetClass)) ?? cg.currentPct;
@@ -150,7 +150,7 @@ export function buildTearSheetModel(params: BuildTearSheetModelParams): TearShee
     };
   });
 
-  const topDominance = concentrationRisk.singleAssetDominance ?? {
+  const topDominance = concentrationRisk?.singleAssetDominance ?? {
     ticker: investmentRows[0]?.ticker ?? "N/A",
     pct: investmentRows[0] && totalBRL > 0 ? (investmentRows[0].valueBRL / totalBRL) * 100 : 0,
   };
@@ -202,8 +202,8 @@ export function buildTearSheetModel(params: BuildTearSheetModelParams): TearShee
     breakdownRows,
     classTableGroups: buildClassTableGroups(activeInvestmentRows, totalBRL, cashBRL, params.usdRate),
     intlPct: totalBRL > 0 ? (intlTotalBRL / totalBRL) * 100 : 0,
-    hasTargets: allocationAnalysis.classGaps.some((cg) => cg.targetPct > 0),
-    surplusClasses: allocationAnalysis.classGaps
+    hasTargets: (allocationAnalysis?.classGaps ?? []).some((cg) => cg.targetPct > 0),
+    surplusClasses: (allocationAnalysis?.classGaps ?? [])
       .filter((cg) => cg.currentPct > cg.targetPct + 0.5 && cg.targetPct > 0)
       .map((cg) => cg.assetClass),
   };

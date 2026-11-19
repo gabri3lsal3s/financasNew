@@ -45,7 +45,17 @@ export function getBensDireitosClassification(assetClass: string | null, ticker:
   itemName: string;
 } {
   const normClass = (assetClass ?? "").toLowerCase().trim();
-  const upperTicker = ticker.toUpperCase();
+  const upperTicker = ticker.toUpperCase().trim();
+
+  // Units de ações são participações societárias mesmo com classificação imprecisa na origem
+  if (KNOWN_STOCK_UNITS.has(upperTicker)) {
+    return {
+      groupCode: "03",
+      groupName: "Participações Societárias",
+      itemCode: "01",
+      itemName: "Ações (inclusive as listadas em bolsa)",
+    };
+  }
 
   if (normClass.includes("fii") || normClass.includes("imobili")) {
     return {
@@ -415,12 +425,18 @@ export function isForeignAsset(
 /** Units de ações locais B3 (compostas por ON + PN) que mantêm isenção de R$ 20.000,00. */
 export const KNOWN_STOCK_UNITS = new Set([
   "KLBN11", "SANB11", "TAEE11", "BPAC11", "SAPR11", "ALUP11", "TIET11", "ENGI11", "SULA11", "CPLE11",
+  "RANI11", "MODL11", "ALLD11", "BIDI11", "PSSA11",
 ]);
 
 /**
  * Identifica se o ativo é um FII, FIAGRO ou FI-Infra negociado na B3 (tributado a 20%).
  */
 export function isFiiAsset(ticker: string, assetClass?: string | null): boolean {
+  const upperTicker = ticker.trim().toUpperCase();
+  // Units de ações e ETFs jamais são tributados como FIIs
+  if (KNOWN_STOCK_UNITS.has(upperTicker) || KNOWN_B3_ETFS.has(upperTicker)) {
+    return false;
+  }
   if (isFiiClass(assetClass)) return true;
   const normClass = normalizeClassName(assetClass ?? "");
   if (
@@ -431,11 +447,8 @@ export function isFiiAsset(ticker: string, assetClass?: string | null): boolean 
   ) {
     return true;
   }
-  const upperTicker = ticker.trim().toUpperCase();
   if (
     (upperTicker.endsWith("11") || upperTicker.endsWith("11B")) &&
-    !KNOWN_B3_ETFS.has(upperTicker) &&
-    !KNOWN_STOCK_UNITS.has(upperTicker) &&
     !isBdrAsset(upperTicker, assetClass)
   ) {
     return true;

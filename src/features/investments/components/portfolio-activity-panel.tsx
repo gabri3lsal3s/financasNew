@@ -147,6 +147,7 @@ export function PortfolioActivityPanel({ defaultMonth }: PortfolioActivityPanelP
           onOpenChange={(open) => !open && vm.setEditingTx(null)}
           asset={vm.editingTx.asset}
           editTransaction={vm.editingTx.transaction}
+          linkedContribution={vm.editingTx.linkedContribution}
         />
       ) : null}
 

@@ -19,13 +19,24 @@ import type { DividendEntryMode } from "@/domain/portfolio/dividends";
 import { isCashAssetClass } from "@/domain/portfolio/valuation";
 import { currentMonth } from "@/lib/date";
 import {
+  useCreatePortfolioContribution,
+  useDeletePortfolioContribution,
   usePortfolioAssets,
+  usePortfolioContributions,
   usePortfolioPosition,
   useRecordOrder,
+  useUpdatePortfolioAsset,
+  useUpdatePortfolioContribution,
   useUpdatePortfolioDividend,
   useUpdatePortfolioTransaction,
 } from "@/state";
-import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction, PortfolioTransactionType } from "@/types";
+import type {
+  PortfolioAsset,
+  PortfolioContribution,
+  PortfolioDividend,
+  PortfolioTransaction,
+  PortfolioTransactionType,
+} from "@/types";
 import type { FundingSource } from "../funding-source-utils";
 import { executeQuickTransactionSubmit, validateQuickTransactionInput } from "./quick-transaction-submit";
 
@@ -34,6 +45,7 @@ export interface UseQuickTransactionFormParams {
   initialType?: PortfolioTransactionType;
   editTransaction?: PortfolioTransaction | null;
   editDividend?: PortfolioDividend | null;
+  linkedContribution?: PortfolioContribution | null;
   onCloseComplete: () => void;
   onSuccess?: () => void;
 }
@@ -43,19 +55,42 @@ export function useQuickTransactionForm({
   initialType = "buy",
   editTransaction = null,
   editDividend = null,
+  linkedContribution,
   onCloseComplete,
   onSuccess,
 }: UseQuickTransactionFormParams) {
   const assetsQuery = usePortfolioAssets();
+  const contributionsQuery = usePortfolioContributions();
   const recordOrder = useRecordOrder();
   const updateTx = useUpdatePortfolioTransaction();
   const updateDividend = useUpdatePortfolioDividend();
+  const deleteContribution = useDeletePortfolioContribution();
+  const createContribution = useCreatePortfolioContribution();
+  const updateContribution = useUpdatePortfolioContribution();
+  const updateAsset = useUpdatePortfolioAsset();
   const position = usePortfolioPosition();
   const usdRate = resolvePortfolioUsdRate(position.rows);
 
   const isEditingTransaction = Boolean(editTransaction);
   const isEditingDividend = Boolean(editDividend);
   const isEditMode = isEditingTransaction || isEditingDividend;
+
+  const resolvedLinkedContribution = useMemo(() => {
+    if (linkedContribution !== undefined) return linkedContribution;
+    if (!editTransaction) return null;
+    const allContribs = contributionsQuery.data ?? [];
+    const txDate = editTransaction.date.slice(0, 10);
+    return (
+      allContribs.find(
+        (c) => c.asset_id === editTransaction.asset_id && c.date.slice(0, 10) === txDate,
+      ) ?? null
+    );
+  }, [linkedContribution, editTransaction, contributionsQuery.data]);
+
+  const initialFundingSource: FundingSource = useMemo(() => {
+    if (!editTransaction) return "pocket";
+    return resolvedLinkedContribution ? "pocket" : "cash";
+  }, [editTransaction, resolvedLinkedContribution]);
 
   const allAssets = useMemo(() => assetsQuery.data ?? [], [assetsQuery.data]);
   const cashAsset = useMemo(
@@ -89,7 +124,28 @@ export function useQuickTransactionForm({
   const [totalCents, setTotalCents] = useState(() =>
     editDividend ? numberToCents(editDividend.amount) : editTransaction ? numberToCents(editTransaction.total) : 0,
   );
-  const [buyFundingSource, setBuyFundingSource] = useState<FundingSource>("pocket");
+  const [buyFundingSource, setBuyFundingSource] = useState<FundingSource>(() => {
+    if (editTransaction) {
+      if (linkedContribution !== undefined) {
+        return linkedContribution ? "pocket" : "cash";
+      }
+      return "cash";
+    }
+    return "pocket";
+  });
+  const hasManuallyChangedFundingSource = useRef(false);
+
+  useEffect(() => {
+    if (editTransaction && !hasManuallyChangedFundingSource.current && resolvedLinkedContribution) {
+      setBuyFundingSource("pocket");
+    }
+  }, [editTransaction, resolvedLinkedContribution]);
+
+  const handleBuyFundingSourceChange = (next: FundingSource) => {
+    hasManuallyChangedFundingSource.current = true;
+    setBuyFundingSource(next);
+  };
+
   const [creditCash, setCreditCash] = useState<boolean>(() => (editDividend ? Boolean(editDividend.sync_cash) : true));
   const [recordWithdrawal, setRecordWithdrawal] = useState<boolean>(true);
   const [splitFromStr, setSplitFromStr] = useState<string>(() =>
@@ -179,7 +235,15 @@ export function useQuickTransactionForm({
     });
   }, [type, targetAsset, totalCents, priceCents, appliedCostCents, date, customTaxRatePct, customTaxAmountCents, customInitialDate]);
 
-  const isBusy = recordOrder.isPending || updateTx.isPending || updateDividend.isPending || isSubmitting;
+  const isBusy =
+    recordOrder.isPending ||
+    updateTx.isPending ||
+    updateDividend.isPending ||
+    deleteContribution.isPending ||
+    createContribution.isPending ||
+    updateContribution.isPending ||
+    updateAsset.isPending ||
+    isSubmitting;
 
   const resetOnClose = () => {
     setError(null);
@@ -198,7 +262,15 @@ export function useQuickTransactionForm({
       isDividendType, isCorporateEvent, computedEventFactor, buyFundingSource, creditCash,
       recordWithdrawal, customInitialDate, usdRate,
       fxRateBRL, appliedCostCents, fiSellResult, editDividend, editTransaction,
-      recordOrder: recordOrder.mutateAsync, updateTx: updateTx.mutateAsync, updateDividend: updateDividend.mutateAsync,
+      linkedContribution: resolvedLinkedContribution,
+      initialFundingSource,
+      recordOrder: recordOrder.mutateAsync,
+      updateTx: updateTx.mutateAsync,
+      updateDividend: updateDividend.mutateAsync,
+      deleteContribution: deleteContribution.mutateAsync,
+      createContribution: createContribution.mutateAsync,
+      updateContribution: updateContribution.mutateAsync,
+      updateAsset: updateAsset.mutateAsync,
     };
     const check = validateQuickTransactionInput(payload);
     if (check.error) {
@@ -223,7 +295,7 @@ export function useQuickTransactionForm({
     allAssets, cashAsset, targetAsset, selectedAssetId, setSelectedAssetId, type, setType,
     date, setDate, month, setMonth, dividendEntryMode, setDividendEntryMode, dividendCalcMode,
     setDividendCalcMode, perShareCents, setPerShareCents, quantityStr, setQuantityStr, priceCents,
-    setPriceCents, totalCents, setTotalCents, buyFundingSource, setBuyFundingSource, creditCash,
+    setPriceCents, totalCents, setTotalCents, buyFundingSource, setBuyFundingSource: handleBuyFundingSourceChange, creditCash,
     setCreditCash, recordWithdrawal, setRecordWithdrawal, splitFromStr, setSplitFromStr, splitToStr, setSplitToStr, error, setError,
     appliedCostCents, setCustomAppliedCostCents, customTaxRatePct, setCustomTaxRatePct,
     customTaxAmountCents, setCustomTaxAmountCents, customInitialDate, setCustomInitialDate, fxRateBRL, setFxRateBRL, isEditMode, isEditingTransaction, isEditingDividend,

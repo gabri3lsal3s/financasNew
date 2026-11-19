@@ -62,8 +62,8 @@ export interface BuildTearSheetModelParams {
   unrealizedPnlBRL?: number;
   unrealizedPnlPct?: number | null;
   cashBRL?: number;
-  allocationAnalysis: AllocationAnalysisResult;
-  concentrationRisk: ConcentrationRiskResult;
+  allocationAnalysis?: AllocationAnalysisResult;
+  concentrationRisk?: ConcentrationRiskResult;
   portfolioTwr?: TwrConsolidatedResult;
   monthlySeries?: readonly PortfolioMonthlySeriesPoint[];
   allTimeEconomicPnlBRL?: number;

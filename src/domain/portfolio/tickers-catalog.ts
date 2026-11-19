@@ -164,6 +164,12 @@ export const CURATED_TICKERS_CATALOG: readonly CatalogTickerItem[] = [
   { ticker: "LREN3", name: "Lojas Renner S.A. ON", assetClass: "Ações", sector: "Consumo / Varejo", currency: "BRL" },
   { ticker: "MGLU3", name: "Magazine Luiza S.A. ON", assetClass: "Ações", sector: "Consumo / Varejo", currency: "BRL" },
   { ticker: "B3SA3", name: "B3 S.A. Brasil, Bolsa, Balcão ON", assetClass: "Ações", sector: "Financeiro / Bancos", currency: "BRL" },
+  { ticker: "BPAC11", name: "Banco BTG Pactual S.A. Unit", assetClass: "Ações", sector: "Financeiro / Bancos", currency: "BRL" },
+  { ticker: "SANB11", name: "Banco Santander (Brasil) S.A. Unit", assetClass: "Ações", sector: "Financeiro / Bancos", currency: "BRL" },
+  { ticker: "SAPR11", name: "Sanepar Unit", assetClass: "Ações", sector: "Saneamento e Utilidades", currency: "BRL" },
+  { ticker: "ALUP11", name: "Alupar Investimento S.A. Unit", assetClass: "Ações", sector: "Energia Elétrica", currency: "BRL" },
+  { ticker: "CPLE11", name: "Copel Unit", assetClass: "Ações", sector: "Energia Elétrica", currency: "BRL" },
+  { ticker: "ENGI11", name: "Energisa S.A. Unit", assetClass: "Ações", sector: "Energia Elétrica", currency: "BRL" },
 
   // FIIs e FIAGROs B3 (IFIX Top 25)
   { ticker: "MXRF11", name: "Maxi Renda FII", assetClass: "FIIs", sector: "Imobiliário / Papel e CRI", currency: "BRL" },
@@ -199,6 +205,8 @@ export const CURATED_TICKERS_CATALOG: readonly CatalogTickerItem[] = [
   { ticker: "GOLD11", name: "Trend ETF Ouro Fundo de Índice", assetClass: "ETFs", sector: "Commodities / Ouro", currency: "BRL" },
   { ticker: "NASD11", name: "Trend ETF Nasdaq 100", assetClass: "ETFs", sector: "Índice Internacional (S&P 500 / Nasdaq)", currency: "BRL" },
   { ticker: "BDEF11", name: "Trend ETF Dólar Fundo de Índice", assetClass: "ETFs", sector: "Commodities / Ouro", currency: "BRL" },
+  { ticker: "BRAX11", name: "iShares IBrX 100 ETF", assetClass: "ETFs", sector: "Índice Brasil (Ibovespa / Small Caps)", currency: "BRL" },
+  { ticker: "DIVO11", name: "It Now IDIV ETF", assetClass: "ETFs", sector: "Índice Brasil (Ibovespa / Small Caps)", currency: "BRL" },
 
   // BDRs B3
   { ticker: "AAPL34", name: "Apple Inc. BDR", assetClass: "BDRs", sector: "Tecnologia & Software", currency: "BRL" },
@@ -314,6 +322,20 @@ export function inferSectorFromTicker(ticker: string, assetClass?: string | null
   // Busca primeiro no catálogo
   const catalogMatch = CURATED_TICKERS_CATALOG.find((c) => c.ticker === t);
   if (catalogMatch?.sector) return catalogMatch.sector;
+
+  // Heurísticas de Units e Ações B3
+  if (t.startsWith("BPAC") || t.startsWith("SANB")) {
+    return "Financeiro / Bancos";
+  }
+  if (t.startsWith("TAEE") || t.startsWith("ALUP") || t.startsWith("CPLE") || t.startsWith("ENGI")) {
+    return "Energia Elétrica";
+  }
+  if (t.startsWith("SAPR")) {
+    return "Saneamento e Utilidades";
+  }
+  if (t.startsWith("KLBN")) {
+    return "Papel e Celulose";
+  }
 
   // Heurísticas de Títulos Públicos e Renda Fixa
   if (t.includes("SELIC") || t.includes("CDI") || t.includes("DI") || t === "LFT") {
@@ -1129,7 +1151,7 @@ const KNOWN_LARGE_CAPS = new Set([
   "PETR4", "PETR3", "VALE3", "ITUB4", "BBDC4", "BBAS3", "WEGE3", "ABEV3",
   "RENT3", "ELET3", "ELET6", "ITSA4", "PRIO3", "GGBR4", "CSNA3", "SUZB3",
   "JBSS3", "RADL3", "VIVT3", "EQTL3", "SBSP3", "CPLE6", "CMIG4", "TAEE11",
-  "EGIE3", "BBSE3", "CXSE3", "KLBN11", "TOTS3", "B3SA3", "BOVA11",
+  "EGIE3", "BBSE3", "CXSE3", "KLBN11", "TOTS3", "B3SA3", "BOVA11", "BPAC11", "SANB11",
 ]);
 
 /**

@@ -1,9 +1,9 @@
-import { AlertCircle } from "lucide-react";
-import { Checkbox, FormField, Select, Textarea } from "@/components/ui";
+import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Badge, Checkbox, FormField, Textarea } from "@/components/ui";
 import {
+  calculateAssetReviewStatus,
   CRITERIA_BY_ARCHETYPE,
   getScoreArchetypeKey,
-  REVIEW_FREQUENCY_OPTIONS,
 } from "@/domain/portfolio";
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,6 @@ export function AssetGovernanceDetailsSection({
   thesisSummary,
   onThesisSummaryChange,
   reviewFrequencyMonths,
-  onReviewFrequencyMonthsChange,
   lastReviewedAt,
   showLastReviewed = false,
   isWizard = false,
@@ -86,12 +85,12 @@ export function AssetGovernanceDetailsSection({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+      <div className={cn("grid gap-3.5", showLastReviewed ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1")}>
         <FormField
           label="Resumo da Tese de Investimento"
           htmlFor={`${idPrefix}-thesis`}
           optional={isWizard}
-          className="sm:col-span-2"
+          className={showLastReviewed ? "sm:col-span-2" : "col-span-1"}
         >
           <Textarea
             id={`${idPrefix}-thesis`}
@@ -103,28 +102,44 @@ export function AssetGovernanceDetailsSection({
           />
         </FormField>
 
-        <div className="flex flex-col gap-1.5">
-          <FormField label="Periodicidade de Revisão">
-            <Select
-              value={String(reviewFrequencyMonths ?? 6)}
-              onValueChange={(val) => onReviewFrequencyMonthsChange(Number(val) || 6)}
-              options={[...REVIEW_FREQUENCY_OPTIONS]}
-            />
-          </FormField>
+        {showLastReviewed && (() => {
+          const reviewStatus = calculateAssetReviewStatus({
+            lastReviewedAt,
+            reviewFrequencyMonths,
+          });
 
-          {showLastReviewed &&
-            (lastReviewedAt ? (
-              <span className="text-[11px] text-muted-foreground mt-1">
-                Última revisão formal:{" "}
-                <strong className="text-foreground">{formatDateBR(lastReviewedAt)}</strong>
-              </span>
-            ) : (
-              <span className="text-[11px] text-warning-strong mt-1 flex items-center gap-1">
-                <AlertCircle className="size-3 shrink-0" aria-hidden="true" />
-                Nunca revisado formalmente
-              </span>
-            ))}
-        </div>
+          return (
+            <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface-raised/40 p-2.5">
+              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  Status da Revisão:
+                </span>
+                <Badge size="xs" variant={reviewStatus.badgeVariant} className="gap-1">
+                  {reviewStatus.status === "ok" ? (
+                    <CheckCircle2 className="size-3" aria-hidden="true" />
+                  ) : reviewStatus.status === "upcoming" ? (
+                    <Clock className="size-3" aria-hidden="true" />
+                  ) : (
+                    <AlertCircle className="size-3" aria-hidden="true" />
+                  )}
+                  <span>{reviewStatus.statusLabel}</span>
+                </Badge>
+              </div>
+
+              {lastReviewedAt ? (
+                <span className="text-[11px] text-muted-foreground">
+                  Última revisão formal: <strong className="text-foreground">{formatDateBR(lastReviewedAt)}</strong>
+                </span>
+              ) : null}
+
+              {reviewStatus.nextReviewDate ? (
+                <span className="text-[11px] text-muted-foreground">
+                  Próxima prevista: <strong className="text-foreground">{formatDateBR(reviewStatus.nextReviewDate.toISOString())}</strong>
+                </span>
+              ) : null}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuickTransactionSheet } from "./quick-transaction-sheet";
-import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction } from "@/types";
+import type { PortfolioAsset, PortfolioContribution, PortfolioDividend, PortfolioTransaction } from "@/types";
 
 const mockAsset: PortfolioAsset = {
   id: "asset-1",
@@ -46,10 +46,19 @@ const mockTesouroAsset: PortfolioAsset = {
 const mockRecordOrder = vi.fn().mockResolvedValue({ success: true });
 const mockUpdateTx = vi.fn().mockResolvedValue({ id: "tx-1" });
 const mockUpdateDividend = vi.fn().mockResolvedValue({ id: "div-1" });
+const mockDeleteContribution = vi.fn().mockResolvedValue(undefined);
+const mockCreateContribution = vi.fn().mockResolvedValue({ id: "contrib-new" });
+const mockUpdateContribution = vi.fn().mockResolvedValue({ id: "contrib-1" });
+const mockUpdateAsset = vi.fn().mockResolvedValue({ id: "cash-1" });
 
 vi.mock("@/state", () => ({
   usePortfolioAssets: () => ({
     data: [mockAsset, mockTesouroAsset, mockCashAsset],
+    isLoading: false,
+    error: null,
+  }),
+  usePortfolioContributions: () => ({
+    data: [],
     isLoading: false,
     error: null,
   }),
@@ -63,6 +72,22 @@ vi.mock("@/state", () => ({
   }),
   useUpdatePortfolioDividend: () => ({
     mutateAsync: mockUpdateDividend,
+    isPending: false,
+  }),
+  useDeletePortfolioContribution: () => ({
+    mutateAsync: mockDeleteContribution,
+    isPending: false,
+  }),
+  useCreatePortfolioContribution: () => ({
+    mutateAsync: mockCreateContribution,
+    isPending: false,
+  }),
+  useUpdatePortfolioContribution: () => ({
+    mutateAsync: mockUpdateContribution,
+    isPending: false,
+  }),
+  useUpdatePortfolioAsset: () => ({
+    mutateAsync: mockUpdateAsset,
     isPending: false,
   }),
   usePortfolioPosition: () => ({
@@ -265,6 +290,145 @@ describe("QuickTransactionSheet (Fase 41 / Plano 42)", () => {
             cash_amount: 250,
             sync_cash: true,
           }),
+        }),
+      );
+    });
+  });
+
+  it("permite ajustar retroativamente a origem dos recursos de Dinheiro Novo (Bolso) para Caixa ao editar compra", async () => {
+    const user = userEvent.setup();
+    const editTx: PortfolioTransaction = {
+      id: "tx-bpac-1",
+      user_id: "user-1",
+      asset_id: "asset-1",
+      type: "buy",
+      quantity: 10,
+      price: 49.9,
+      total: 499.0,
+      date: "2026-11-19",
+    };
+
+    const linkedContrib: PortfolioContribution = {
+      id: "contrib-bpac-1",
+      user_id: "user-1",
+      asset_id: "asset-1",
+      amount: 499.0,
+      date: "2026-11-19",
+      notes: "Aporte em BPAC11",
+    };
+
+    render(
+      <QuickTransactionSheet
+        open={true}
+        asset={mockAsset}
+        editTransaction={editTx}
+        linkedContribution={linkedContrib}
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Editar Movimentação · VALE3")).toBeInTheDocument();
+    expect(screen.getByText("Origem dos recursos (ajuste retroativo)")).toBeInTheDocument();
+
+    // Bolso deve estar selecionado inicialmente pois há aporte vinculado
+    const pocketRadio = screen.getByRole("radio", { name: /Dinheiro Novo \(Bolso\)/i });
+    expect(pocketRadio).toHaveAttribute("aria-checked", "true");
+
+    // Seleciona Saldo em Caixa
+    const cashRadio = screen.getByRole("radio", { name: /Saldo da Corretora \(Caixa\)/i });
+    await user.click(cashRadio);
+    expect(cashRadio).toHaveAttribute("aria-checked", "true");
+
+    await user.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    await waitFor(() => {
+      // 1. Deve deletar o aporte vinculado com skipTransactionCascade e suppressToast
+      expect(mockDeleteContribution).toHaveBeenCalledWith({
+        id: "contrib-bpac-1",
+        skipTransactionCascade: true,
+        suppressToast: true,
+      });
+
+      // 2. Deve debitar do Caixa (1500 - 499 = 1001)
+      expect(mockUpdateAsset).toHaveBeenCalledWith({
+        id: "cash-1",
+        patch: {
+          quantity: 1001,
+          average_price: 1,
+        },
+      });
+
+      // 3. Deve salvar a transação
+      expect(mockUpdateTx).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "tx-bpac-1",
+          patch: expect.objectContaining({
+            quantity: 10,
+            price: 49.9,
+            total: 499.0,
+          }),
+        }),
+      );
+    });
+  });
+
+  it("permite ajustar retroativamente a origem dos recursos de Caixa para Dinheiro Novo (Bolso) ao editar compra", async () => {
+    const user = userEvent.setup();
+    const editTx: PortfolioTransaction = {
+      id: "tx-vale-2",
+      user_id: "user-1",
+      asset_id: "asset-1",
+      type: "buy",
+      quantity: 5,
+      price: 60.0,
+      total: 300.0,
+      date: "2026-11-19",
+    };
+
+    render(
+      <QuickTransactionSheet
+        open={true}
+        asset={mockAsset}
+        editTransaction={editTx}
+        linkedContribution={null}
+        onOpenChange={vi.fn()}
+      />,
+    );
+
+    // Sem aporte vinculado, Caixa deve estar selecionado por padrão
+    const cashRadio = screen.getByRole("radio", { name: /Saldo da Corretora \(Caixa\)/i });
+    expect(cashRadio).toHaveAttribute("aria-checked", "true");
+
+    // Seleciona Dinheiro Novo (Bolso)
+    const pocketRadio = screen.getByRole("radio", { name: /Dinheiro Novo \(Bolso\)/i });
+    await user.click(pocketRadio);
+    expect(pocketRadio).toHaveAttribute("aria-checked", "true");
+
+    await user.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    await waitFor(() => {
+      // 1. Deve estornar ao Caixa (1500 + 300 = 1800)
+      expect(mockUpdateAsset).toHaveBeenCalledWith({
+        id: "cash-1",
+        patch: {
+          quantity: 1800,
+          average_price: 1,
+        },
+      });
+
+      // 2. Deve criar aporte financeiro externo com suppressToast
+      expect(mockCreateContribution).toHaveBeenCalledWith({
+        amount: 300,
+        date: "2026-11-19",
+        asset_id: "asset-1",
+        notes: "Aporte em VALE3",
+        suppressToast: true,
+      });
+
+      // 3. Deve salvar a transação
+      expect(mockUpdateTx).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "tx-vale-2",
         }),
       );
     });

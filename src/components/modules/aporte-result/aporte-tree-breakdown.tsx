@@ -1,10 +1,12 @@
 import { Fragment, useState, type KeyboardEvent } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { cn } from "@/lib/utils";
 import { formatAssetQuantity } from "@/services/formatting";
 import { triggerSensory } from "@/services/sensory";
+import { AporteReasonBadge } from "./aporte-reason-badge";
 import { AporteRowActions } from "./aporte-row-actions";
 import type { AporteTreeClassGroup, EffectiveAporteRouteState } from "./aporte-result-types";
 
@@ -14,6 +16,7 @@ export interface AporteTreeBreakdownProps {
   completedTickers: ReadonlySet<string>;
   onToggleTicker: (ticker: string) => void;
   onOpenWizard?: (ticker: string, quantity: number, allocatedBRL?: number) => void;
+  onInspectAsset?: (ticker: string) => void;
 }
 
 function handleRowKeyDown(e: KeyboardEvent<HTMLTableRowElement>, action: () => void) {
@@ -29,6 +32,7 @@ export function AporteTreeBreakdown({
   completedTickers,
   onToggleTicker,
   onOpenWizard,
+  onInspectAsset,
 }: AporteTreeBreakdownProps) {
   const [collapsedClasses, setCollapsedClasses] = useState<Set<string>>(() => new Set());
   const [collapsedSectors, setCollapsedSectors] = useState<Set<string>>(() => new Set());
@@ -55,12 +59,10 @@ export function AporteTreeBreakdown({
 
   return (
     <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs w-full">
-      <table className="w-full min-w-[660px] text-left text-xs border-collapse">
+      <table className="w-full min-w-[620px] text-left text-xs border-collapse">
         <thead>
           <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-medium">
             <th className="py-2.5 px-3">Hierarquia / Ativo</th>
-            <th className="py-2.5 px-3 text-right">Alvo</th>
-            <th className="py-2.5 px-3 text-right">Atual</th>
             <th className="py-2.5 px-3 text-right">Aporte Sugerido</th>
             <th className="py-2.5 px-3 text-right">Qtd</th>
             <th className="py-2.5 px-3 text-right">Preço</th>
@@ -79,7 +81,7 @@ export function AporteTreeBreakdown({
                   onKeyDown={(e) => handleRowKeyDown(e, () => toggleClass(cGroup.className))}
                   className="bg-surface-raised hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset cursor-pointer font-semibold transition-colors"
                 >
-                  <td className="py-2.5 px-3 text-foreground" colSpan={3}>
+                  <td className="py-2.5 px-3 text-foreground">
                     <div className="flex items-center gap-1.5">
                       {isClassExpanded ? (
                         <ChevronDown className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -124,7 +126,7 @@ export function AporteTreeBreakdown({
                           onKeyDown={(e) => handleRowKeyDown(e, () => toggleSector(sectorKey))}
                           className="bg-surface hover:bg-surface-hover/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset cursor-pointer font-medium transition-colors"
                         >
-                          <td className="py-2 px-3 pl-8 text-foreground" colSpan={3}>
+                          <td className="py-2 px-3 pl-8 text-foreground">
                             <div className="flex items-center gap-1.5">
                               {isSectorExpanded ? (
                                 <ChevronDown className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -162,17 +164,48 @@ export function AporteTreeBreakdown({
                                 key={r.assetId}
                                 className={cn(
                                   "hover:bg-surface-hover/40 transition-opacity",
+                                  r.hasQualityConflict && "bg-warning/5",
                                   (isDone || !isSelected) && "opacity-60",
                                 )}
                               >
-                                <td className="py-2 px-3 pl-14 font-mono font-semibold text-foreground">
-                                  {r.ticker}
-                                </td>
-                                <td className="py-2 px-3 text-right num font-mono">
-                                  <MoneyText cents={numberToCents(r.targetValueBRL)} tone="default" />
-                                </td>
-                                <td className="py-2 px-3 text-right num font-mono text-muted-foreground">
-                                  <MoneyText cents={numberToCents(r.currentValueBRL)} tone="default" />
+                                <td className="py-2 px-3 pl-14">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-mono font-semibold text-foreground text-xs">
+                                      {r.ticker}
+                                    </span>
+                                    {r.rawScore !== undefined ? (
+                                      onInspectAsset ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => onInspectAsset(r.ticker)}
+                                          className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-md"
+                                          title={`Ver tese e reavaliar nota de ${r.ticker}`}
+                                        >
+                                          <Badge
+                                            variant={r.rawScore === null ? "warning" : "muted"}
+                                            size="xs"
+                                            className="cursor-pointer hover:border-primary/50 transition-colors"
+                                          >
+                                            {r.rawScore === null ? "Sem nota" : `Nota ${r.rawScore}/10`}
+                                          </Badge>
+                                        </button>
+                                      ) : (
+                                        <Badge variant={r.rawScore === null ? "warning" : "muted"} size="xs">
+                                          {r.rawScore === null ? "Sem nota" : `Nota ${r.rawScore}/10`}
+                                        </Badge>
+                                      )
+                                    ) : null}
+                                    <AporteReasonBadge
+                                      ticker={r.ticker}
+                                      reasonKind={r.reasonKind}
+                                      reasonLabel={r.reasonLabel}
+                                      reasonDescription={r.reasonDescription}
+                                      hasQualityConflict={r.hasQualityConflict}
+                                      qualityConflictDetail={r.qualityConflictDetail}
+                                      rawScore={r.rawScore}
+                                      onInspect={onInspectAsset ? () => onInspectAsset(r.ticker) : undefined}
+                                    />
+                                  </div>
                                 </td>
                                 <td className="py-2 px-3 text-right num font-mono font-semibold text-portfolio">
                                   <MoneyText cents={numberToCents(effectiveAllocated)} tone="portfolio" />
@@ -191,6 +224,7 @@ export function AporteTreeBreakdown({
                                     allocatedBRL={effectiveAllocated}
                                     onToggleDone={onToggleTicker}
                                     onOpenWizard={onOpenWizard}
+                                    onInspect={onInspectAsset ? () => onInspectAsset(r.ticker) : undefined}
                                     compact
                                   />
                                 </td>
