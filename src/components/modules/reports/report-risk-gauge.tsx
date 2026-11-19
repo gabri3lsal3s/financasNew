@@ -92,7 +92,7 @@ export function ReportRiskGauge({
       <p className="text-[11px] text-muted-foreground leading-snug pt-0.5 print:text-foreground">
         Maior ativo na carteira: <strong className="font-semibold text-foreground">{topItemName || "N/A"}</strong> representando{" "}
         <strong className="num font-mono font-bold text-foreground tabular-nums">{formatPercent(topItemPct)}%</strong> do patrimônio total.
-        {isSafe && " Concentração individual dentro do parâmetro de referência (≤ 15%)."}
+        {isSafe && " Concentração individual dentro do parâmetro de referência (até 15%)."}
         {isWarning && " Posição individual acima do patamar de referência de 15% do patrimônio total."}
         {isCritical && " Posição individual acima de 25% do patrimônio total."}
       </p>

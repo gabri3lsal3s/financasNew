@@ -78,7 +78,7 @@ export function InsightSlide({
       </div>
 
       <div className="flex items-center gap-2 self-stretch sm:self-center mt-auto sm:mt-0 shrink-0">
-        <div className="w-full sm:w-auto [&>button]:w-full [&>button]:sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto [&>button]:flex-1 [&>button]:sm:flex-initial [&>button]:w-full [&>button]:sm:w-auto">
           {actions}
         </div>
         {onDismiss ? (

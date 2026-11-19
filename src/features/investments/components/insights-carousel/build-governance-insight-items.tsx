@@ -1,4 +1,4 @@
-import { CalendarClock, Check, Clock, Sparkles } from "lucide-react";
+import { CalendarClock, Check, Clock, Loader2, Sparkles } from "lucide-react";
 import type { DashboardAlertItem } from "@/components/modules/dashboard-alerts-carousel";
 import { Button } from "@/components/ui/button";
 import { formatTickerListSummary, type GovernanceInsight } from "@/domain/portfolio";
@@ -80,7 +80,9 @@ export function buildGovernanceInsightItems({
             badgeVariant="warning"
             description={
               overdueTickersText
-                ? `Prazo expirado em ${overdueTickersText}. Reavalie notas e critérios.`
+                ? overdueAssets.length === 1
+                  ? `Prazo expirado em ${overdueTickersText}. Reavalie a nota e critérios.`
+                  : `Prazo expirado em ${overdueTickersText}. Reavalie notas e critérios.`
                 : consolidatedReviewAlert?.description ??
                   "Existem teses com prazo de revisão expirado. Reavalie suas notas."
             }
@@ -97,7 +99,11 @@ export function buildGovernanceInsightItems({
                     onClick={() => onQuickConfirmScore(singleOverdueAsset)}
                     className="gap-1"
                   >
-                    <Check className="size-3.5" aria-hidden="true" />
+                    {isUpdatingAsset ? (
+                      <Loader2 className="size-3.5 animate-spin mr-1" aria-hidden="true" />
+                    ) : (
+                      <Check className="size-3.5" aria-hidden="true" />
+                    )}
                     Manter nota ({singleOverdueAsset.score})
                   </Button>
                 ) : null}
@@ -128,7 +134,11 @@ export function buildGovernanceInsightItems({
             badgeVariant="muted"
             description={
               upcomingTickersText
-                ? `${upcomingTickersText} ${upcomingReviewsCount === 1 ? "vence" : "vencem"} em até ${consolidatedUpcomingAlert?.daysUntilReview ?? 30} dias.`
+                ? (consolidatedUpcomingAlert?.daysUntilReview ?? 30) === 0
+                  ? `${upcomingTickersText} ${upcomingReviewsCount === 1 ? "vence hoje" : "vencem hoje"}.`
+                  : (consolidatedUpcomingAlert?.daysUntilReview ?? 30) === 1
+                    ? `${upcomingTickersText} ${upcomingReviewsCount === 1 ? "vence amanhã" : "vencem em 1 dia"}.`
+                    : `${upcomingTickersText} ${upcomingReviewsCount === 1 ? "vence" : "vencem"} em até ${consolidatedUpcomingAlert?.daysUntilReview ?? 30} dias.`
                 : "Alguns ativos estão próximos da data de reavaliação periódica."
             }
             onDismiss={(days) => dismissAlert("upcoming-reviews-alert", days, upcomingFp)}
@@ -159,7 +169,9 @@ export function buildGovernanceInsightItems({
             badgeText={`${unscoredAssetsCount} ${unscoredAssetsCount === 1 ? "ativo" : "ativos"}`}
             description={
               unscoredTickersText
-                ? `Defina a nota de ${unscoredTickersText} para incluí-los no rebalanceamento.`
+                ? unscoredAssetsCount === 1
+                  ? `Defina a nota de ${unscoredTickersText} para incluí-lo no rebalanceamento.`
+                  : `Defina as notas de ${unscoredTickersText} para incluí-los no rebalanceamento.`
                 : "Avalie os ativos recém-cadastrados para calibrar os aportes."
             }
             onDismiss={(days) => dismissAlert("unscored-assets-alert", days, unscoredFp)}

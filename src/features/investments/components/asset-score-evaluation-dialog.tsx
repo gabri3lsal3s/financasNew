@@ -122,6 +122,17 @@ function AssetScoreEvaluationDialogContent({
           >
             Cancelar
           </Button>
+          {onSavedAndNext ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onSavedAndNext}
+              disabled={updateMutation.isPending}
+            >
+              Pular
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="default"

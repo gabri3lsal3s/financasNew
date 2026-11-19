@@ -19,7 +19,7 @@ export function TearSheetMovementStrip({ monthSummary }: TearSheetMovementStripP
     monthSummary.dividendsBRL === 0 &&
     !hasExternalFlow;
 
-  const displayAportes =
+  const displayCompras =
     monthSummary.buysBRL > 0
       ? monthSummary.buysBRL
       : monthSummary.netFlowBRL > 0
@@ -39,9 +39,9 @@ export function TearSheetMovementStrip({ monthSummary }: TearSheetMovementStripP
       ) : (
         <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-4 font-mono text-[11px] num w-full sm:w-auto">
           <span>
-            Aportes:{" "}
+            Compras:{" "}
             <strong className="text-foreground">
-              <MoneyText cents={numberToCents(displayAportes)} />
+              <MoneyText cents={numberToCents(displayCompras)} />
             </strong>
           </span>
           <span>

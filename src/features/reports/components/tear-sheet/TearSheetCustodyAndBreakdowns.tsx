@@ -73,7 +73,11 @@ export function TearSheetCustodyAndBreakdowns({
         <ReportClassTables groups={model.classTableGroups} />
 
         {periodRedemptions && periodRedemptions.length > 0 ? (
-          <ReportRedemptionsTable items={periodRedemptions} periodLabel={periodLabel} />
+          <ReportRedemptionsTable
+            items={periodRedemptions}
+            periodLabel={periodLabel}
+            historicalRealizedPnlBRL={model.effectiveRealizedGainBRL}
+          />
         ) : null}
       </section>
 

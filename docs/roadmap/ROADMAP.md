@@ -7582,5 +7582,23 @@ flowchart TD
 >   - Formatação em duas linhas com `tabular-nums` e `font-mono text-[10px]` no subtotal, erradicando a colisão `R$ 23.449,802,8% (USD) (BRL)`.
 > - **Qualidade, Invariantes e Testes:** Suite `src/tests/portfolio-audit-gate-v8.test.ts` 4/4 aprovada; 19 suites de auditoria de investimentos (164 testes) 100% verdes; TypeScript (`tsc -b`), ESLint e build de produção sem erros; conformidade estrita com `AGENTS.md` (zero emojis, pt-BR rigoroso).
 
+---
+
+### Fase 115 — Certificação Final de Produção Axir v9 (§v9 — ID BR-20261119-6445)
+
+> **Status:** Concluída e Auditada — **Definitivação de Layout no Subtotal Internacional com `<colgroup>`, Rótulo Compras no Dossiê, Nota de Conciliação de Realizados e UX de Aplicação Original em Renda Fixa (Score 99+/100)**:
+> - **Contenção Rígida e `<colgroup>` no Subtotal Internacional (Gate v9.1):**
+>   - Introdução de `<colgroup>` explícito com `<col>` dedicado para cada uma das 8 colunas em `report-equity-class-table.tsx`, blindando o cálculo do grid no motor `table-fixed` contra interferência de banners de grupo com `colspan={8}` no `<thead>`.
+>   - Rebalanceamento estrito das larguras percentuais para ativos internacionais: Ticker (10%), Tema (12%), Qtd (5%), Preço Médio (9%), Cotação (8%), Total R$ (19%), Var. Cota (23%) e Retorno Total (14%), garantindo que saldos de 5 ou 6 dígitos (R$ 23.449,80, R$ 150.000,00+) jamais colidam com as duas linhas de variação de cota em moeda original e local (`+2,8% (USD)` e `+9,4% (BRL)`).
+> - **Padronização do Rótulo "Compras" no Banner de Movimentação (Gate v9.2):**
+>   - Atualização do rótulo na faixa `MOVIMENTAÇÃO DO PERÍODO` da página 1 do Dossiê Executivo (`TearSheetMovementStrip.tsx`) de `Aportes:` para `Compras:`, alinhando-o com precisão à terminologia do Relatório Executivo e eliminando ambiguidade quando compras são financiadas por saldo disponível da Reserva de Caixa.
+> - **Nota de Conciliação de Realizados (Dossiê Pág. 5) & UX de Renda Fixa (Gate v9.3):**
+>   - Exibição de nota explicativa discreta no rodapé da tabela `POSIÇÕES ENCERRADAS & RESGATES REALIZADOS` (`report-redemptions-table.tsx` e `TearSheetCustodyAndBreakdowns.tsx`) sempre que o realizado acumulado histórico da síntese (Pág. 1) diferir do total dos resgates da competência corrente, esclarecendo que o consolidado histórico inclui também títulos liquidados em meses anteriores.
+>   - Promoção do campo `Data de Aplicação Original` para a seção visível direta do formulário de Renda Fixa e Tesouro Direto (`fixed-income-form-fields.tsx`), com aviso auxiliar orientando que ela define a faixa da tabela regressiva de IR (22,5% a 15,0%) nos resgates.
+> - **Glifo Suportado no Termômetro de Concentração (Gate v9.4):**
+>   - Substituição do caractere `≤` por `até 15%` em `report-risk-gauge.tsx`, eliminando glifos não renderizados no motor PDF e garantindo leitura límpida em conformidade com as regras de governança visual do `AGENTS.md`.
+> - **Qualidade e Testes:** Suíte completa de testes de relatórios e carteiras de estresse 100% verde; TypeScript (`tsc --noEmit`) e ESLint sem erros.
+
+
 
 

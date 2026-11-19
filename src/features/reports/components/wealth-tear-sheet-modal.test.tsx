@@ -122,7 +122,7 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
 
     // Verifica que a frase de reconciliação está presente no texto da síntese
     expect(
-      screen.getAllByText(/Somado ao resultado bruto realizado de posições encerradas/i).length,
+      screen.getAllByText(/Somado ao resultado (bruto )?realizado de posições encerradas/i).length,
     ).toBeGreaterThan(0);
     expect(
       screen.getAllByText(/Resultado Econômico Histórico Consolidado totaliza/i).length,
@@ -175,7 +175,7 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
 
     // Não deve conter a frase de posições encerradas
     expect(
-      screen.queryByText(/Somado ao resultado bruto realizado/i),
+      screen.queryByText(/Somado ao resultado (bruto )?realizado/i),
     ).not.toBeInTheDocument();
   });
 

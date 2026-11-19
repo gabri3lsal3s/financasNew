@@ -336,7 +336,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     expect(screen.getByText("Ativos sem Nota Definida")).toBeInTheDocument();
     expect(screen.getByText("1 ativo")).toBeInTheDocument();
     expect(screen.getByText("Avaliar Agora")).toBeInTheDocument();
-    expect(screen.getByText(/Defina a nota de BBAS3 para incluí-los no rebalanceamento/)).toBeInTheDocument();
+    expect(screen.getByText(/Defina a nota de BBAS3 para incluí-lo no rebalanceamento/)).toBeInTheDocument();
 
     // NÃO deve exibir revisão periódica de teses
     expect(screen.queryByText("Revisão de Teses Pendente")).not.toBeInTheDocument();

@@ -308,7 +308,10 @@ export function generateAssetGovernanceInsights(params: {
         kind: "review_upcoming",
         severity: "info",
         title: `${upcomingReviewCount} revisões próximas do prazo`,
-        description: `${formatTickerListSummary(tickers)} vencem em até ${minDays === 0 ? "hoje" : `${minDays} dias`}.`,
+        description:
+          minDays === 0
+            ? `${formatTickerListSummary(tickers)} vencem hoje.`
+            : `${formatTickerListSummary(tickers)} vencem em até ${minDays} ${minDays === 1 ? "dia" : "dias"}.`,
         tickers,
         assetIds,
         daysUntilReview: minDays,

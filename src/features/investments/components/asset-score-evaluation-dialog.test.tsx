@@ -138,4 +138,27 @@ describe("AssetScoreEvaluationDialog (§F41)", () => {
       );
     });
   });
+
+  it("exibe progresso da fila e botão Pular quando há múltiplos ativos na fila", () => {
+    const handleSavedAndNext = vi.fn();
+    render(
+      <AssetScoreEvaluationDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        asset={mockAsset}
+        queueProgress={{ current: 1, total: 3 }}
+        onSavedAndNext={handleSavedAndNext}
+      />,
+    );
+
+    expect(screen.getByText("1 de 3")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Salvar e Próximo" })).toBeInTheDocument();
+
+    const pularBtn = screen.getByRole("button", { name: "Pular" });
+    expect(pularBtn).toBeInTheDocument();
+
+    fireEvent.click(pularBtn);
+    expect(handleSavedAndNext).toHaveBeenCalledTimes(1);
+    expect(mockUpdateAsset).not.toHaveBeenCalled();
+  });
 });

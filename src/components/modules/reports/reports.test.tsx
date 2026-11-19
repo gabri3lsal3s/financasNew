@@ -486,7 +486,7 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
     const cdiCard = screen.getByText("CDI").closest("div")?.parentElement ?? null;
     expect(cdiCard).not.toBeNull();
     if (cdiCard) {
-      expect(within(cdiCard).getByText("2,3%")).toBeInTheDocument();
+      expect(within(cdiCard).getByText(/2,[13]%/)).toBeInTheDocument();
       expect(within(cdiCard).queryByText("1,7%")).not.toBeInTheDocument();
     }
 

@@ -10,7 +10,6 @@ import {
   Select,
 } from "@/components/ui";
 import { parseDecimalNumber } from "@/domain/money";
-import { todayISO } from "@/domain/debts";
 import type { FixedIncomeRateType } from "@/types";
 
 export interface FixedIncomeFormFieldsValues {
@@ -69,10 +68,8 @@ export function FixedIncomeFormFields({
   idPrefix = "fi",
   isTesouro = false,
 }: FixedIncomeFormFieldsProps) {
-  const hasAdvancedData =
-    Boolean(values.initialInvestmentDate) ||
-    (Boolean(values.baseDate) && values.baseDate !== todayISO()) ||
-    (values.manualTaxRatePct !== undefined && values.manualTaxRatePct !== null);
+  const hasManualTaxRate =
+    values.manualTaxRatePct !== undefined && values.manualTaxRatePct !== null;
 
   const rateSuffix = RATE_SUFFIX_MAP[values.rateType] ?? "%";
   const rateLabel = RATE_LABEL_MAP[values.rateType] ?? "Taxa Contratada";
@@ -162,6 +159,25 @@ export function FixedIncomeFormFields({
           />
         </FormField>
 
+        {!values.isTaxExempt ? (
+          <FormField
+            label="Data de Aplicação Original"
+            htmlFor={`${idPrefix}-initial-investment-date`}
+            optional
+            helperText="Define a faixa da tabela regressiva de IR (22,5% a 15,0%) nos resgates"
+          >
+            <DatePicker
+              id={`${idPrefix}-initial-investment-date`}
+              value={values.initialInvestmentDate ?? ""}
+              onValueChange={(initialInvestmentDate) =>
+                onChange({ initialInvestmentDate: initialInvestmentDate || null })
+              }
+              placeholder="dd/mm/aaaa"
+              ariaLabel="Data da aplicação original para contagem regressiva de IR"
+            />
+          </FormField>
+        ) : null}
+
         {!isTesouro ? (
           <div className="flex flex-col justify-center gap-1 sm:col-span-2 sm:pt-1">
             <Checkbox
@@ -177,52 +193,33 @@ export function FixedIncomeFormFields({
         ) : null}
       </div>
 
-      <Accordion type="single" collapsible defaultValue={hasAdvancedData ? "advanced" : undefined}>
-        <AccordionItem value="advanced" className="border-border/80 bg-surface">
-          <AccordionTrigger className="px-3.5 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground">
-            Configurações avançadas de tributação
-          </AccordionTrigger>
-          <AccordionContent className="px-3.5 pb-3.5 pt-1">
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+      {!values.isTaxExempt ? (
+        <Accordion type="single" collapsible defaultValue={hasManualTaxRate ? "advanced" : undefined}>
+          <AccordionItem value="advanced" className="border-border/80 bg-surface">
+            <AccordionTrigger className="px-3.5 py-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground">
+              Ajuste manual da alíquota de IR (exceção à tabela regressiva)
+            </AccordionTrigger>
+            <AccordionContent className="px-3.5 pb-3.5 pt-1">
               <FormField
-                label="Aplicação Original para IR"
-                htmlFor={`${idPrefix}-initial-investment-date`}
+                label="Alíquota Vigente de IR"
+                htmlFor={`${idPrefix}-manual-tax-rate`}
                 optional
-                helperText="Base para a tabela regressiva de IR (22,5% a 15%)"
+                helperText="Fixe a alíquota caso deseje sobrepor a contagem regressiva automática"
               >
-                <DatePicker
-                  id={`${idPrefix}-initial-investment-date`}
-                  value={values.initialInvestmentDate ?? ""}
-                  onValueChange={(initialInvestmentDate) =>
-                    onChange({ initialInvestmentDate: initialInvestmentDate || null })
+                <Select
+                  id={`${idPrefix}-manual-tax-rate`}
+                  value={selectedTaxRateValue}
+                  onValueChange={(val) =>
+                    onChange({ manualTaxRatePct: val === "auto" ? null : Number(val) })
                   }
-                  placeholder="dd/mm/aaaa"
-                  ariaLabel="Data da primeira aplicação para contagem de IR"
+                  options={TAX_RATE_OPTIONS}
+                  ariaLabel="Alíquota vigente de IR"
                 />
               </FormField>
-
-              {!values.isTaxExempt ? (
-                <FormField
-                  label="Alíquota Vigente de IR"
-                  htmlFor={`${idPrefix}-manual-tax-rate`}
-                  optional
-                  helperText="Fixe a alíquota caso não saiba a data exata de aplicação"
-                >
-                  <Select
-                    id={`${idPrefix}-manual-tax-rate`}
-                    value={selectedTaxRateValue}
-                    onValueChange={(val) =>
-                      onChange({ manualTaxRatePct: val === "auto" ? null : Number(val) })
-                    }
-                    options={TAX_RATE_OPTIONS}
-                    ariaLabel="Alíquota vigente de IR"
-                  />
-                </FormField>
-              ) : null}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      ) : null}
     </div>
   );
 }

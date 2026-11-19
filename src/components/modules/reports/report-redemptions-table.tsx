@@ -9,6 +9,7 @@ import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 export interface ReportRedemptionsTableProps {
   items: readonly PeriodRedemptionItem[];
   periodLabel?: string;
+  historicalRealizedPnlBRL?: number;
 }
 
 /**
@@ -17,6 +18,7 @@ export interface ReportRedemptionsTableProps {
 export function ReportRedemptionsTable({
   items,
   periodLabel,
+  historicalRealizedPnlBRL,
 }: ReportRedemptionsTableProps) {
   if (!items || items.length === 0) return null;
 
@@ -148,6 +150,33 @@ export function ReportRedemptionsTable({
             </tr>
           </tfoot>
         </table>
+        {historicalRealizedPnlBRL !== undefined &&
+          Math.abs(historicalRealizedPnlBRL - totalNetRealizedPnlBRL) >= 0.01 && (
+            <div className="px-3 py-2 text-[10px] text-muted-foreground bg-muted/20 border-t border-border/80 flex items-start gap-1.5 leading-relaxed">
+              <span className="text-muted-foreground/80 font-bold">*</span>
+              <span>
+                Resultado líquido de resgates na competência {periodLabel ? `(${periodLabel})` : "atual"}:{" "}
+                <strong className={totalNetRealizedPnlBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                  <MoneyText
+                    cents={numberToCents(totalNetRealizedPnlBRL)}
+                    tone={totalNetRealizedPnlBRL >= 0 ? "positive" : "negative"}
+                    sign="explicit"
+                    className="inline font-bold"
+                  />
+                </strong>
+                . O consolidado histórico de{" "}
+                <strong className={historicalRealizedPnlBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                  <MoneyText
+                    cents={numberToCents(historicalRealizedPnlBRL)}
+                    tone={historicalRealizedPnlBRL >= 0 ? "positive" : "negative"}
+                    sign="explicit"
+                    className="inline font-bold"
+                  />
+                </strong>{" "}
+                na síntese executiva inclui também posições encerradas e resgates de competências anteriores.
+              </span>
+            </div>
+          )}
       </div>
     </section>
   );
