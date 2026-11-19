@@ -1,5 +1,32 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.13.1 (Certificação de Produção do Motor de Investimentos Axir — Portão Final v3 $\ge 98/100$)** registra a conclusão e certificação formal dos 5 blocos cirúrgicos e da melhoria de arquitetura de snapshots ([`docs/plans/prompt_v3_certificacao_final_axir.md`](../plans/prompt_v3_certificacao_final_axir.md)) sobre o caso-base `BR-20261119-6445` (2026-11-19):
+> - **(1) Sincronização do Fluxo Líquido em Todos os Relatórios (Gate v3.1)**:
+>   - Unificação do fluxo financeiro do mês corrente via `computePeriodInvestmentFlow` e demonstrativo mensal (`monthlyStatement`);
+>   - Dossiê Executivo (faixa MOVIMENTAÇÃO DO PERÍODO), Relatório Executivo e Extrato Analítico (coluna Aporte TWR) exibem rigorosamente o mesmo aporte líquido (`R$ 100,38`).
+> - **(2) Continuidade Matemática da Coluna Retorno Total no Extrato (Gate v3.2)**:
+>   - Aplicação da mesma formulação contínua de período da série histórica (Out/24 a Out/26) na linha corrente (MTD), calculando `-1,4%` e eliminando o salto artificial de `+4,7%` para `+8,7%`;
+>   - Preservação da métrica all-time da custódia aberta no contrato em `allTimeTotalReturnPct` (`+8,7%`).
+> - **(3) Consistência Estritamente Positiva ($r > 0$), sem_snapshot e Alinhamento Sharpe/CDI 12M (Gate v3.3)**:
+>   - Predicado de consistência estritamente positivo ($r > 0,0001$), contabilizando $0,00\%$ como neutro e corrigindo a proporção para $5/12$ ($41,7\%$) quando houver mês inalterado (Ago/2026);
+>   - Introdução do tipo formal `sem_snapshot` para meses ausentes no calendário (evitando contaminação estatística por preenchimento sintético);
+>   - Convergência do CDI 12M anualizado com a taxa livre de risco do Índice de Sharpe.
+> - **(4) Transparência Cambial PTAX / Fallback (Gate v3.4)**:
+>   - Rodapé de ativos internacionais identifica transparentemente quando a conversão utiliza o câmbio estimado (`FALLBACK_USD_RATE = 5,2500`), reservando `"PTAX Oficial BCB"` exclusivamente para dados homologados da API do Banco Central.
+> - **(5) Reconciliação do Card 4 e Duplo Custo da Narrativa (Gate v3.5)**:
+>   - Card 4 (Resultado Histórico / P&L Total) consolida ganho não realizado, proventos acumulados (ativos e encerrados) e lucros realizados de posições encerradas;
+>   - Narrativa da página 1 do Dossiê reconcilia explicitamente o custo de ativos aplicados (`R$ 17.319,94`) com o custo consolidado com reserva de caixa (`R$ 17.609,39`), justificando os retornos contábeis de $+8,7\%$ e $+8,6\%$.
+> - **(6) Polimento Visual e Prevenção de Cabeçalhos Órfãos (Gate v3.6)**:
+>   - Typo sanado no Raio-X de Ações Brasil (`"Ciclicidade & Porte"`);
+>   - Rótulo de Tesouro Selic padronizado para `"SELIC"` (ou `"Selic + X,XX% a.a."` com taxa);
+>   - Prevenção de quebras e cabeçalhos órfãos em tabelas de custódia (`print:[break-after:avoid] print:[break-inside:avoid]`);
+>   - Formatação com sinal de menos ASCII explícito antes do símbolo monetário (`-R$ 249,42 (-1,4%)`);
+>   - Respiro e ajuste de largura de colunas no subtotal internacional do PDF.
+> - **(7) Certificação Total v3**:
+>   - 126/126 testes aprovados em 13 suítes de auditoria (`src/tests/portfolio-audit-gate*`);
+>   - Suíte dedicada `src/tests/portfolio-audit-gate-v3.test.ts` validando os Gates v3.1 a v3.6;
+>   - TypeScript (`tsc -b`) e ESLint 100% limpos (0 erros, 0 avisos).
+
 > **v3.13.0 (Laboratório Forense de Auditoria Quantitativa, Sintética e Contínua — Expansão v2.0.0 Holística de Ciclo de Vida)** registra a conclusão integral do **Laboratório Forense de Auditoria Quantitativa, Sintética e Contínua do Axir** ([`docs/architecture/LABORATORIO_FORENSE.md`](../architecture/LABORATORIO_FORENSE.md)) cobrindo todos os 8 pilares funcionais da plataforma (2026-11-19):
 > - **(1) Fundação do Núcleo Isomórfico & Isolamento Modular (Fases 1 e 6)**:
 >   - Todo o código do laboratório isolado em `src/features/admin/forensics/`, desacoplado do aplicativo de usuário comum;

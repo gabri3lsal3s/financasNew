@@ -1,4 +1,5 @@
 import { MoneyText } from "@/components/ui/money-text";
+import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
 import { sanitizeReportText } from "@/domain/reports";
 import { cn } from "@/lib/utils";
 import { formatAssetQuantity } from "@/services/formatting";
@@ -24,19 +25,19 @@ export function ReportEquityClassTable({
   return (
     <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs print:overflow-visible">
       <table className="w-full min-w-[600px] print:min-w-0 text-left text-xs border-collapse print:table-fixed">
-        <thead>
+        <thead className="print:[break-inside:avoid] print:[break-after:avoid]">
           <ReportClassTableBanner group={group} colSpan={8} />
-          <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
+          <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider print:[break-after:avoid] print:[break-inside:avoid]">
             <th className="py-1.5 px-2.5 print:w-[12%]">Ticker</th>
-            <th className="py-1.5 px-2 print:w-[18%]">
+            <th className="py-1.5 px-2 print:w-[17%]">
               {isInternacional ? "Classe / Tema" : "Setor / Segmento"}
             </th>
-            <th className="py-1.5 px-1.5 text-right print:w-[7%]">Qtd</th>
-            <th className="py-1.5 px-1.5 text-right print:w-[14%]">Preço Médio</th>
-            <th className="py-1.5 px-1.5 text-right print:w-[14%]">Cotação</th>
-            <th className="py-1.5 px-2 text-right print:w-[15%]">Total (R$)</th>
-            <th className="py-1.5 px-1.5 text-right print:w-[10%]">Var. Cota</th>
-            <th className="py-1.5 px-2.5 text-right print:w-[10%]">Ret. Total</th>
+            <th className="py-1.5 px-1 text-right print:w-[6%]">Qtd</th>
+            <th className="py-1.5 px-1.5 text-right print:w-[13%]">Preço Médio</th>
+            <th className="py-1.5 px-1.5 text-right print:w-[13%]">Cotação</th>
+            <th className="py-1.5 px-2 text-right print:w-[14%]">Total (R$)</th>
+            <th className="py-1.5 px-2 text-right print:w-[13%]">Var. Cota</th>
+            <th className="py-1.5 px-2.5 text-right print:w-[12%]">Ret. Total</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/80">
@@ -58,7 +59,7 @@ export function ReportEquityClassTable({
                 <td className="py-1.5 px-2 text-muted-foreground whitespace-normal break-words leading-tight text-[10px]">
                   {sanitizeReportText(item.sector || " — ")}
                 </td>
-                <td className="py-1.5 px-1.5 text-right num font-mono tabular-nums text-muted-foreground text-[10px] whitespace-nowrap">
+                <td className="py-1.5 px-1 text-right num font-mono tabular-nums text-muted-foreground text-[10px] whitespace-nowrap">
                   {formatAssetQuantity(item.quantity, group.className)}
                 </td>
                 <td className="py-1.5 px-1.5 text-right num font-mono tabular-nums text-muted-foreground text-[10px] whitespace-nowrap">
@@ -70,7 +71,7 @@ export function ReportEquityClassTable({
                 <td className="py-1.5 px-2 text-right num font-mono tabular-nums font-bold text-foreground text-[11px] whitespace-nowrap">
                   <MoneyText cents={item.totalCents} tone="default" />
                 </td>
-                <td className="py-1.5 px-1.5 text-right num font-mono tabular-nums text-muted-foreground text-[10px] whitespace-nowrap">
+                <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-muted-foreground text-[10px] whitespace-nowrap">
                   {formatSignedPct(priceVarPct)}
                 </td>
                 <td
@@ -100,7 +101,7 @@ export function ReportEquityClassTable({
             </td>
             <td
               className={cn(
-                "py-1.5 px-1.5 text-right num font-mono tabular-nums text-[10px]",
+                "py-1.5 px-2 text-right num font-mono tabular-nums text-[10px]",
                 subtotalPriceVarPct !== null && subtotalPriceVarPct >= 0
                   ? "text-positive-strong"
                   : "text-negative-strong",
@@ -139,7 +140,9 @@ export function ReportEquityClassTable({
           </div>
           {group.usdRate && group.usdRate > 0 && (
             <div className="font-mono text-[9px] text-muted-foreground/90">
-              Conversão USD/BRL pela PTAX Oficial BCB de referência: R$ {group.usdRate.toFixed(4).replace(".", ",")}
+              {Math.abs(group.usdRate - FALLBACK_USD_RATE) < 0.0001
+                ? `Conversão USD/BRL pelo câmbio de referência estimado (fallback): R$ ${group.usdRate.toFixed(4).replace(".", ",")}`
+                : `Conversão USD/BRL pela PTAX Oficial BCB de referência: R$ ${group.usdRate.toFixed(4).replace(".", ",")}`}
             </div>
           )}
         </div>

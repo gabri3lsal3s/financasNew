@@ -170,7 +170,8 @@ export type PortfolioSnapshotOrigin =
   | "retroativo_manual"
   | "marco_zero"
   | "calculado_ledger"
-  | "carry_forward";
+  | "carry_forward"
+  | "sem_snapshot";
 
 export interface PortfolioMonthlySeriesPoint {
   /** Mês de competência (YYYY-MM). */
@@ -195,10 +196,13 @@ export interface PortfolioMonthlySeriesPoint {
   capitalGainPnl: number;
   /** Variação da cotação % sobre o custo. */
   capitalGainPct: number | null;
-  /** Resultado Total em BRL: (valor − custo) + proventos acumulados. */
+  /** Resultado Total em BRL: (valor − custo) + proventos acumulados no período da série. */
   totalReturnPnl: number;
-  /** Retorno Total % sobre o custo. */
+  /** Retorno Total % sobre o custo no período contínuo da série. */
   totalReturnPct: number | null;
+  /** Retorno contábil all-time da custódia aberta incluindo proventos retroativos (se segregados). */
+  allTimeTotalReturnPct?: number | null;
+  allTimeTotalReturnPnl?: number | null;
   /** Rentabilidade TWR isolada deste mês (% sem contaminação de aportes/resgates). */
   twrMonthPct: number | null;
   /** Rentabilidade TWR acumulada da carteira até este mês (% por cotas). */
@@ -251,7 +255,7 @@ export function buildPortfolioMonthlySeries(params: {
     snapshotOrigin?: PortfolioSnapshotOrigin;
   }[];
   currentMonthPoint?: CurrentMonthSeriesPoint | null;
-  dividends: readonly { date: string; amount: number }[];
+  dividends?: readonly { date: string; amount: number }[];
   contributions?: readonly { date: string; amount: number; notes?: string | null }[];
   explicitReturns?: readonly { month: string; ratePct: number }[];
   initialAccumulatedDividends?: number;
@@ -262,8 +266,8 @@ export function buildPortfolioMonthlySeries(params: {
   const {
     rawSnapshots,
     currentMonthPoint,
-    dividends,
-    contributions,
+    dividends = [],
+    contributions = [],
     explicitReturns,
     initialAccumulatedDividends = 0,
     openingDividendsBalance,
@@ -328,7 +332,7 @@ export function buildPortfolioMonthlySeries(params: {
 
     while (curM.localeCompare(maxMonth) <= 0) {
       if (!allMonthsMap.has(curM)) {
-        // Interpolação conservadora a partir do mês anterior
+        // Interpolação conservadora a partir do mês anterior (marcação explícita de mês sem snapshot cadastrado)
         allMonthsMap.set(curM, {
           total_value: lastKnownData.total_value,
           total_cost: lastKnownData.total_cost,
@@ -339,7 +343,7 @@ export function buildPortfolioMonthlySeries(params: {
           is_manually_calibrated: false,
           calibrated_at: null,
           status: "closed",
-          snapshotOrigin: "carry_forward",
+          snapshotOrigin: "sem_snapshot",
         });
       } else {
         lastKnownData = allMonthsMap.get(curM)!;
@@ -402,9 +406,9 @@ export function buildPortfolioMonthlySeries(params: {
           ? "retroativo_manual"
           : "calculado_ledger");
 
-    // No modo carry_forward (lacuna sem movimentação):
+    // No modo carry_forward / sem_snapshot (lacuna sem movimentação):
     // Impede atribuição espúria de fluxo que geraria perda fantasma (BUG Ago/2026)
-    if (origin === "carry_forward") {
+    if (origin === "carry_forward" || origin === "sem_snapshot") {
       netExternalCashFlowBRL = 0;
     }
 
@@ -473,17 +477,19 @@ export function buildPortfolioMonthlySeries(params: {
           ? Math.round((capitalGainPnl / costBRL) * 10000) / 100
           : null;
 
+    const periodContinuousTotalReturnPnl = Math.round((capitalGainPnl + accumulatedDividendsBRL) * 100) / 100;
+    const periodContinuousTotalReturnPct =
+      costBRL > 0 ? Math.round((periodContinuousTotalReturnPnl / costBRL) * 10000) / 100 : null;
+
     const totalReturnPnl =
-      isCurrent && currentMonthPoint?.total_return_pnl !== undefined
+      isCurrent && currentMonthPoint?.total_return_pnl !== undefined && !isSegregated
         ? currentMonthPoint.total_return_pnl
-        : Math.round((capitalGainPnl + accumulatedDividendsBRL) * 100) / 100;
+        : periodContinuousTotalReturnPnl;
 
     const totalReturnPct =
-      isCurrent && currentMonthPoint?.total_return_pct !== undefined
+      isCurrent && currentMonthPoint?.total_return_pct !== undefined && !isSegregated
         ? currentMonthPoint.total_return_pct
-        : costBRL > 0
-          ? Math.round((totalReturnPnl / costBRL) * 10000) / 100
-          : null;
+        : periodContinuousTotalReturnPct;
 
     const twrPt = twrMap.get(month);
 
@@ -501,6 +507,8 @@ export function buildPortfolioMonthlySeries(params: {
       capitalGainPct,
       totalReturnPnl,
       totalReturnPct,
+      allTimeTotalReturnPnl: isCurrent ? currentMonthPoint?.total_return_pnl : undefined,
+      allTimeTotalReturnPct: isCurrent ? currentMonthPoint?.total_return_pct : undefined,
       twrMonthPct: twrPt ? twrPt.monthRatePct : null,
       twrAccumulatedPct: twrPt ? twrPt.accumulatedRatePct : null,
       sharePrice: twrPt ? twrPt.sharePrice : null,

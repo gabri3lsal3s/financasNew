@@ -431,7 +431,7 @@ export function calculateFixedIncomeExposure(
 }
 
 // ---------------------------------------------------------------------------
-// Raio-X de Ações Brasil (Ciclismo Econômico & Capitalização)
+// Raio-X de Ações Brasil (Ciclicidade Econômica & Capitalização)
 // ---------------------------------------------------------------------------
 
 export interface StocksProfileGroup {
@@ -476,7 +476,7 @@ export interface StocksExposureResult {
 }
 
 /**
- * Calcula a decomposição da carteira de Ações Brasil (Ciclismo BESST vs. Commodities vs. Domésticos e Porte).
+ * Calcula a decomposição da carteira de Ações Brasil (Ciclicidade BESST vs. Commodities vs. Domésticos e Porte).
  */
 export function calculateStocksExposure(
   positions: readonly PositionLikeItem[],

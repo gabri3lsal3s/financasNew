@@ -31,7 +31,7 @@ const CAP_SIZE_COLORS: Record<string, ExposureColorToken> = {
 export function ReportStocksBreakdownCard({
   positions,
   className,
-  title = "Raio-X de Ações Brasil (Ciclismo & Porte)",
+  title = "Raio-X de Ações Brasil (Ciclicidade & Porte)",
   mode = "interactive",
 }: ReportStocksBreakdownCardProps) {
   const exposure = useMemo(() => calculateStocksExposure(positions), [positions]);

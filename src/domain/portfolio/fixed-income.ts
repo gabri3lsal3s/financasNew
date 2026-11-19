@@ -410,17 +410,35 @@ export function estimateInitialInvestmentFromRedemption(input: EstimateInitialIn
  *
  * Função pura — sem import de UI ou Supabase.
  */
-export function formatFixedIncomeRateLabel(metadata: {
-  rate_type: FixedIncomeRateType;
-  rate_value: number;
-}): string {
+export function formatFixedIncomeRateLabel(
+  metadata: {
+    rate_type: FixedIncomeRateType;
+    rate_value: number;
+  },
+  ticker?: string,
+): string {
   const { rate_type, rate_value } = metadata;
+  const isSelicTicker = ticker?.toUpperCase().includes("SELIC");
+
+  if (isSelicTicker || rate_type === "selic") {
+    if (isSelicTicker && (rate_value === 100 || rate_value === 0 || rate_type === "cdi")) {
+      return "SELIC";
+    }
+    if (rate_value > 0 && rate_value < 10) {
+      const formatted = Number.isInteger(rate_value)
+        ? String(rate_value)
+        : rate_value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+      return `Selic + ${formatted}% a.a.`;
+    }
+  }
+
   const formatted = Number.isInteger(rate_value)
     ? String(rate_value)
     : rate_value.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
   switch (rate_type) {
     case "cdi":
+      if (isSelicTicker) return "SELIC";
       return `${formatted}% CDI`;
     case "selic":
       return `${formatted}% Selic`;

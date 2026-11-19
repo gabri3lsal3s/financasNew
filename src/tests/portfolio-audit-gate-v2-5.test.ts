@@ -127,10 +127,10 @@ describe("Portão de Qualidade v2.5 — Benchmarks Reais & Janela 12M de Risco",
       });
 
       expect(summary.consistency.totalMonths).toBe(12);
-      // No dataset acima: meses >= 0: 1.2, 1.5, 2.1, 1.8, 2.5, 1.0, 0.9, 0.0, 2.58 (9 meses)
-      expect(summary.consistency.positiveMonths).toBe(9);
+      // No dataset acima: meses estritamente > 0: 1.2, 1.5, 2.1, 1.8, 2.5, 1.0, 0.9, 2.58 (8 meses; 0.0 é neutro)
+      expect(summary.consistency.positiveMonths).toBe(8);
       expect(summary.consistency.negativeMonths).toBe(3);
-      expect(summary.consistency.winRatePct).toBe(75.0);
+      expect(summary.consistency.winRatePct).toBe(66.7);
     });
 
     it("mantém simetria de Max Drawdown na janela fechada sem contaminação pelo MTD", () => {

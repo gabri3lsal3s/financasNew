@@ -80,8 +80,17 @@ export function TearSheetExecutiveNarrative({
       <MoneyText cents={numberToCents(model.totalInvestedValueBRL)} className="inline font-medium" /> em ativos e{" "}
       <MoneyText cents={numberToCents(cashBRL)} className="inline font-medium" /> em reserva de caixa) frente a um custo de aquisição de{" "}
       <strong>
-        <MoneyText cents={numberToCents(totalCostBRL)} className="inline font-bold" />
-      </strong>
+        <MoneyText cents={numberToCents(model.effectiveCostBRL)} className="inline font-bold" />
+      </strong>{" "}
+      em ativos aplicados{cashBRL > 0 ? (
+        <>
+          {" "}(totalizando{" "}
+          <strong>
+            <MoneyText cents={numberToCents(totalCostBRL)} className="inline font-bold" />
+          </strong>{" "}
+          com a reserva de caixa)
+        </>
+      ) : ""}
       , acumulando{" "}
       <strong>
         Retorno Total de{" "}
@@ -93,12 +102,14 @@ export function TearSheetExecutiveNarrative({
         ({formatSignedPct(model.totalReturnPct)})
       </strong>{" "}
       — composto por{" "}
-      <MoneyText
-        cents={numberToCents(model.unrealizedPnlBRL)}
-        tone={model.unrealizedPnlBRL >= 0 ? "positive" : "negative"}
-        sign="explicit"
-        className="inline font-bold"
-      />{" "}
+      <span className={model.unrealizedPnlBRL < 0 ? "text-negative-strong font-bold" : "text-positive-strong font-bold"}>
+        {model.unrealizedPnlBRL < 0 ? "-" : ""}
+        <MoneyText
+          cents={numberToCents(Math.abs(model.unrealizedPnlBRL))}
+          tone={model.unrealizedPnlBRL >= 0 ? "positive" : "negative"}
+          className="inline font-bold"
+        />
+      </span>{" "}
       ({formatSignedPct(model.unrealizedPnlPct)}) {model.unrealizedPnlBRL >= 0 ? "de valorização de cota" : "de desvalorização de cota"} e{" "}
       <MoneyText cents={numberToCents(model.totalDividendsAllTime)} tone="positive" className="inline font-bold" />{" "}
       em proventos recebidos*

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { BarChart3 } from "lucide-react";
 import {
+  calculateChainedHistoricalBenchmarks,
   calculateConsolidatedBenchmarks,
   calculatePortfolioRiskSummary,
   DEFAULT_ANNUAL_CDI_RATE,
@@ -112,13 +113,25 @@ export function ReportPerformanceChart({
     return `${first} a ${last}`;
   }, [riskSeries, periodWindowLabel]);
 
+  const riskMonths = useMemo(() => riskSeries.map((s) => s.month), [riskSeries]);
+  const riskChainedBenchmarks = useMemo(
+    () => (riskMonths.length >= 2 ? calculateChainedHistoricalBenchmarks(riskMonths) : null),
+    [riskMonths],
+  );
+  const riskFreeRatePct = useMemo(() => {
+    if (riskChainedBenchmarks?.hasRealSeries && riskChainedBenchmarks.cdiRatePct > 0) {
+      return riskChainedBenchmarks.cdiRatePct;
+    }
+    return effectiveCdiRate;
+  }, [riskChainedBenchmarks, effectiveCdiRate]);
+
   const riskSummary = useMemo(() => {
-    return calculatePortfolioRiskSummary(riskSeries, effectiveCdiRate, {
+    return calculatePortfolioRiskSummary(riskSeries, riskFreeRatePct, {
       hasPartialCurrentMonth: false,
       useTrailing12Months: true,
       includeMtdInDrawdown: false,
     });
-  }, [riskSeries, effectiveCdiRate]);
+  }, [riskSeries, riskFreeRatePct]);
 
   const benchmarkComparison = useMemo(
     () =>

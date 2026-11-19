@@ -21,9 +21,9 @@ export function ReportFixedIncomeClassTable({ group }: { group: ReportClassGroup
   return (
     <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs print:overflow-visible">
       <table className="w-full min-w-[560px] print:min-w-0 text-left text-xs border-collapse print:table-fixed">
-        <thead>
+        <thead className="print:[break-inside:avoid] print:[break-after:avoid]">
           <ReportClassTableBanner group={group} colSpan={5} />
-          <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
+          <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider print:[break-after:avoid] print:[break-inside:avoid]">
             <th className="py-1.5 px-2.5 print:w-[35%]">Título / Emissor</th>
             <th className="py-1.5 px-2 print:w-[27%]">Indexador / Vencimento</th>
             <th className="py-1.5 px-1.5 text-right print:w-[7%]">Qtd</th>

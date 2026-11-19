@@ -86,6 +86,15 @@ export function SnapshotsLedgerTable({
                       <Badge variant="portfolio" size="xs">atual</Badge>
                     ) : pt.status === "provisional" ? (
                       <Badge variant="warning" size="xs" title="Snapshot provisório em aberto">provisório</Badge>
+                    ) : pt.snapshotOrigin === "sem_snapshot" || pt.snapshotOrigin === "carry_forward" ? (
+                      <Badge
+                        variant="muted"
+                        size="xs"
+                        className="opacity-75"
+                        title="Competência sem fechamento cadastrado pelo usuário"
+                      >
+                        sem snapshot
+                      </Badge>
                     ) : pt.isManuallyCalibrated ? (
                       <Badge
                         variant="warning"

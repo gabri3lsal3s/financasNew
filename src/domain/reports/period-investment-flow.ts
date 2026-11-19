@@ -25,25 +25,59 @@ export interface PeriodInvestmentFlowResult {
  * estritamente dentro do período ativo, contabilizando aportes/resgates em caixa e externos (§Bloco 2).
  */
 export function computePeriodInvestmentFlow(params: {
-  transactions: readonly PortfolioTransaction[];
-  dividends: readonly PortfolioDividend[];
-  assets: readonly PortfolioAsset[];
-  assetCurrencyMap: ReadonlyMap<string, string>;
-  usdRate: number;
-  isDateInPeriod: (dateStr: string) => boolean;
-  periodLabel: string;
+  transactions?: readonly PortfolioTransaction[];
+  dividends?: readonly PortfolioDividend[];
+  assets?: readonly PortfolioAsset[];
+  assetCurrencyMap?: ReadonlyMap<string, string>;
+  usdRate?: number;
+  isDateInPeriod?: (dateStr: string) => boolean;
+  periodLabel?: string;
   contributions?: readonly { date?: string | null; amount: number; notes?: string | null }[];
+  monthlyStatement?: {
+    monthBuysBRL: number;
+    monthSellsBRL: number;
+    monthDividendsBRL: number;
+    monthNetContributionBRL: number;
+    transactionsCount?: number;
+  } | null;
+  reconciledNetFlowBRL?: number | null;
 }): PeriodInvestmentFlowResult {
   const {
-    transactions,
-    dividends,
-    assets,
-    assetCurrencyMap,
-    usdRate,
-    isDateInPeriod,
-    periodLabel,
-    contributions,
+    transactions = [],
+    dividends = [],
+    assets = [],
+    assetCurrencyMap = new Map(),
+    usdRate = 1.0,
+    isDateInPeriod = () => true,
+    periodLabel = "Período Atual",
+    contributions = [],
+    monthlyStatement,
+    reconciledNetFlowBRL,
   } = params;
+
+  // Se o demonstrativo canônico da competência estiver disponível, ele é a SSOT
+  if (monthlyStatement) {
+    const netFlowBRL = monthlyStatement.monthNetContributionBRL;
+    const buysBRL =
+      monthlyStatement.monthBuysBRL > 0
+        ? monthlyStatement.monthBuysBRL
+        : (netFlowBRL > 0 ? netFlowBRL : 0);
+    const sellsBRL = monthlyStatement.monthSellsBRL;
+    const dividendsBRL = monthlyStatement.monthDividendsBRL;
+    const operationsCount = monthlyStatement.transactionsCount ?? (buysBRL > 0 || sellsBRL > 0 ? 1 : 0);
+    return {
+      buysBRL,
+      sellsBRL,
+      dividendsBRL,
+      netFlowBRL,
+      monthLabel: periodLabel,
+      cashDepositsBRL: 0,
+      cashWithdrawalsBRL: 0,
+      externalContributionsBRL: netFlowBRL > 0 ? netFlowBRL : 0,
+      externalWithdrawalsBRL: netFlowBRL < 0 ? Math.abs(netFlowBRL) : 0,
+      operationsCount,
+    };
+  }
 
   const assetById = new Map(assets.map((a) => [a.id, a]));
 
@@ -134,7 +168,7 @@ export function computePeriodInvestmentFlow(params: {
     return acc + d.amount * rate;
   }, 0);
 
-  const buysBRL =
+  let buysBRL =
     rawBuysBRL > 0
       ? rawBuysBRL
       : cashDepositsBRL > 0
@@ -151,12 +185,23 @@ export function computePeriodInvestmentFlow(params: {
   const netExternalCashFlow =
     externalContributionsBRL - externalWithdrawalsBRL + (cashDepositsBRL - cashWithdrawalsBRL);
 
-  const netFlowBRL =
+  let netFlowBRL =
     rawBuysBRL > 0 || rawSellsBRL > 0
       ? rawBuysBRL - rawSellsBRL + dividendsBRL
       : netExternalCashFlow !== 0
         ? netExternalCashFlow + dividendsBRL
         : dividendsBRL;
+
+  // Se houver fluxo externo líquido reconciliado da série de snapshots (F_t = Delta C_total),
+  // ele prevalece sobre contribuições parciais ou descoladas (§Gate v3.1)
+  if (reconciledNetFlowBRL != null && Math.abs(reconciledNetFlowBRL) > 0.001) {
+    if (rawBuysBRL === 0 && rawSellsBRL === 0) {
+      if (reconciledNetFlowBRL > 0) {
+        buysBRL = Math.round(reconciledNetFlowBRL * 100) / 100;
+      }
+      netFlowBRL = Math.round((reconciledNetFlowBRL + dividendsBRL) * 100) / 100;
+    }
+  }
 
   const operationsCount = periodTransactions.length + cashOperationsCount + contributionsCount;
 

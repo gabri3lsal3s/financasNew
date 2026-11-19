@@ -1,13 +1,13 @@
 {
   "version": "3.13.0",
-  "versionCode": 78,
-  "releaseDate": "2026-11-19T04:23:15Z",
+  "versionCode": 79,
+  "releaseDate": "2026-11-19T13:04:43Z",
   "minSupportedVersion": "3.13.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "63a42685d7a9e840280823c24a164fc17f0fe86d5855a0cfc1ba5f7704888ebc",
-  "fileSizeBytes": 12245377,
+  "sha256": "4fb5cc6b9ff57639a0d60dfdf2e60be1794321c8852c0fe527138127a70b6477",
+  "fileSizeBytes": 12246185,
   "changelog": [
-    "Axir v3.13.0 (Build 78): Laboratorio Forense v2 e Motor de Investimentos",
+    "Axir v3.13.0 (Build 79): Laboratorio Forense v2 e Motor de Investimentos",
     "Auditoria Holistica de Ciclo de Vida: 39 invariantes financeiras e 8 Golden Journeys de ponta a ponta",
     "Fonte unica de verdade matematica para carteira de investimentos, relatorios executivos e extratos",
     "Motor hibrido de custodia e proventos com suporte a cotacoes em tempo real e historico auditado",

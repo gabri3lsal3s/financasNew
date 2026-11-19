@@ -92,7 +92,7 @@ export function ReportClassTableBanner({
   const classColor = group.color ?? resolveAssetClassTokenColor(group.className);
 
   return (
-    <tr className="border-b border-border/80 bg-muted/60 text-foreground font-bold text-[10px] uppercase tracking-wider print:bg-muted/40">
+    <tr className="border-b border-border/80 bg-muted/60 text-foreground font-bold text-[10px] uppercase tracking-wider print:bg-muted/40 print:[break-after:avoid] print:[break-inside:avoid]">
       <th colSpan={colSpan} className="py-2 px-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">

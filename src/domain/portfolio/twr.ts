@@ -51,9 +51,15 @@ export interface TwrMonthlyInputPoint {
    * - 'marco_zero': mês de inauguração da carteira (base cota 100);
    * - 'retroativo_manual': snapshot histórico calibrado manualmente pelo investidor;
    * - 'carry_forward': competência sem movimentação interpolada pela espinha dorsal;
+   * - 'sem_snapshot': competência sem snapshot cadastrado;
    * - 'calculado_ledger': apuração operacional via lançamentos de mercado e cotações.
    */
-  snapshotOrigin?: "retroativo_manual" | "marco_zero" | "calculado_ledger" | "carry_forward";
+  snapshotOrigin?:
+    | "retroativo_manual"
+    | "marco_zero"
+    | "calculado_ledger"
+    | "carry_forward"
+    | "sem_snapshot";
 }
 
 export interface TwrMonthlyPointResult {
@@ -305,7 +311,8 @@ export function calculateTwrSeries(
         // Cálculo via saldo e fluxo externo (Modified Dietz com dias corridos exatos ANBIMA ou peso médio W = 0.5):
         if (prevBalance > 0) {
           const isZeroDeltaAndFlow = Math.abs(balance - prevBalance) < 0.01 && Math.abs(totalFlow) < 0.01;
-          const isCarryForward = pt.snapshotOrigin === "carry_forward";
+          const isCarryForward =
+            pt.snapshotOrigin === "carry_forward" || pt.snapshotOrigin === "sem_snapshot";
 
           if (isCarryForward || isZeroDeltaAndFlow) {
             // Salvaguarda Canônica de Carry-Forward / Variação Nula:

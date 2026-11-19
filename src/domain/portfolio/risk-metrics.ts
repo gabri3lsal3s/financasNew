@@ -139,12 +139,12 @@ export function calculateConsistencyMetrics(ratesPct: readonly number[]): Consis
   let worstMonthPct = validRates[0] ?? 0;
 
   for (const rate of validRates) {
-    if (rate >= 0) positiveMonths++;
+    if (rate > 0.0001) positiveMonths++;
     if (rate > bestMonthPct) bestMonthPct = rate;
     if (rate < worstMonthPct) worstMonthPct = rate;
   }
 
-  const negativeMonths = totalMonths - positiveMonths;
+  const negativeMonths = validRates.filter((r) => r < -0.0001).length;
   const winRatePct = Math.round((positiveMonths / totalMonths) * 1000) / 10;
 
   return {

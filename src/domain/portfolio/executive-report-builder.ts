@@ -242,7 +242,9 @@ export function buildExecutiveReportClassGroups({
             pnlPct: itemTotalReturnPct,
             dividendsCents: numberToCents(i.dividends ?? 0),
             currency: i.currency,
-            indexType: i.fixedIncomeMetadata ? formatFixedIncomeRateLabel(i.fixedIncomeMetadata) : null,
+            indexType: i.fixedIncomeMetadata
+              ? formatFixedIncomeRateLabel(i.fixedIncomeMetadata, i.ticker)
+              : (i.ticker.toUpperCase().includes("SELIC") ? "SELIC" : null),
             maturityDate: i.fixedIncomeMetadata?.maturity_date ?? i.maturityDate ?? null,
             score: raw?.score ?? null,
             status: raw?.allocation_status ?? "active",

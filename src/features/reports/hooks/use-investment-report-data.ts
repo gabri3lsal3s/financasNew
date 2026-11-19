@@ -118,6 +118,10 @@ export function useInvestmentReportData({
     [enabled, dividends, selectedYearNum, assetCurrencyMap, usdRate, positionQuery.totalDividendsBRL],
   );
 
+  const activeMonthStr = mode === "month" ? month : currentMonth();
+  const activeSeriesPoint = positionQuery.monthlySeries?.find((p) => p.month === activeMonthStr);
+  const reconciledNetFlowBRL = activeSeriesPoint?.netContributionBRL ?? null;
+
   const periodFlowSummary = useMemo(
     () =>
       enabled
@@ -130,9 +134,23 @@ export function useInvestmentReportData({
             isDateInPeriod,
             periodLabel,
             contributions,
+            monthlyStatement: monthlyPositionQuery.data?.monthlyStatement,
+            reconciledNetFlowBRL,
           })
         : { buysBRL: 0, sellsBRL: 0, dividendsBRL: 0, netFlowBRL: 0, monthLabel: periodLabel },
-    [enabled, transactions, dividends, assets, assetCurrencyMap, usdRate, isDateInPeriod, periodLabel, contributions],
+    [
+      enabled,
+      transactions,
+      dividends,
+      assets,
+      assetCurrencyMap,
+      usdRate,
+      isDateInPeriod,
+      periodLabel,
+      contributions,
+      monthlyPositionQuery.data?.monthlyStatement,
+      reconciledNetFlowBRL,
+    ],
   );
 
   const selectedSnapshot = useMemo(

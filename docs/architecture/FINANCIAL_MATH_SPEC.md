@@ -309,3 +309,39 @@ Antes de emitir relatórios ou persistir snapshots de fechamento, o validador au
   $$R_{\text{Bench}}(t_0, t_1) = \left[ \prod_{t=t_0}^{t_1} (1 + b_t) \right] - 1$$
 - Métricas anuais de risco (Sharpe, Volatilidade, Consistência e Drawdown) operam estritamente sobre $N = 12$ meses fechados homogêneos, desacopladas da série visual (que exibe MTD parcial com asterisco).
 
+---
+
+## 10. CERTIFICAÇÃO FINAL DE PRODUÇÃO DO MOTOR DE INVESTIMENTOS (§v3 — Auditoria Forense BR-20261119-6445)
+
+### 10.1. Sincronização Estrita de Fluxo Líquido (Gate v3.1)
+- O fluxo financeiro líquido no mês corrente é derivado de fonte única da verdade (`computePeriodInvestmentFlow`), alimentado prioritariamente pelo demonstrativo homogêneo da competência (`monthlyStatement`) e reconciliado com a espinha dorsal de snapshots (`reconciledNetFlowBRL = \Delta C_{\text{total}}`).
+- Fita de movimentação do Dossiê Executivo, bloco de movimentações do Relatório Executivo e coluna de aporte do Extrato Analítico exibem rigorosamente o mesmo valor consolidado (R$ 100,38 no caso auditado).
+
+### 10.2. Continuidade da Coluna Retorno Total no Extrato Analítico (Gate v3.2)
+- Quando o saldo inicial retroativo de proventos está segregado (`segregateOpeningDividends: true`), a coluna `Retorno Total` da linha corrente (MTD) aplica a fórmula contínua do período:
+  $$\text{RetornoTotal}_{\text{MTD}} = \frac{\Delta V_{\text{aberto, MTD}} + \text{Proventos}_{\text{MTD}}}{C_{\text{total, MTD}}}$$
+  calculando $-1,4\%$ na mesma base temporal das competências anteriores (Out/24 a Out/26), eliminando o salto espúrio para $+8,7\%$. A métrica histórica all-time da custódia aberta é preservada no contrato em `allTimeTotalReturnPct`.
+
+### 10.3. Consistência Estritamente Positiva ($r > 0$) e Tratamento de Gaps de Snapshot (Gate v3.3)
+- **Predicado Estritamente Positivo:** A apuração de consistência mensal adota a definição matemática estrita $r_t > 0,0001$. Meses com variação nula ($r_t = 0,00\%$) são contabilizados como neutros, corrigindo a proporção de meses positivos para $5/12$ ($41,7\%$) quando houver mês inalterado como Ago/2026.
+- **Tratamento de Meses Sem Dados (`sem_snapshot`):** Competências sem dados cadastrados recebem a classificação formal de origem `sem_snapshot`. O motor não inventa nem interpola taxas sintéticas fictícias, preservando o histórico auditável com badge `sem snapshot` e isolando o cálculo de risco de contaminações estocásticas.
+- **Harmonização do Sharpe com CDI 12M:** A taxa livre de risco utilizada no cálculo do Índice de Sharpe converge com o CDI anualizado encadeado da janela fechada de 12 meses observada.
+
+### 10.4. Transparência Cambial de Fallback PTAX (Gate v3.4)
+- Em ativos internacionais onde a taxa PTAX oficial do BCB não puder ser consultada online ou coincidir com o valor base estimado do sistema (`FALLBACK_USD_RATE = 5,2500`), o rodapé técnico explicita transparentemente:
+  `"Conversão USD/BRL pelo câmbio de referência estimado (fallback): R$ 5,2500"`,
+  reservando a denominação `"PTAX Oficial BCB"` exclusivamente para boletins diários homologados.
+
+### 10.5. Reconciliação do P&L Total e Duplo Custo da Narrativa (Gate v3.5)
+- **Card 4 (Resultado Histórico / P&L Total):** Consolida ganho não realizado da custódia viva, a totalidade de proventos recebidos (ativos e encerrados) e o resultado realizado apurado em vendas passadas:
+  $$\text{P&L}_{\text{Econômico Total}} = \text{P&L}_{\text{Não Realizado}} + \text{Proventos}_{\text{Total}} + \text{P&L}_{\text{Realizado Encerrados}}$$
+- **Duplo Denominador na Narrativa:** A narrativa executiva explicita tanto o custo em ativos aplicados ($\text{R\$ } 17.319,94$) quanto o custo total com reserva de caixa ($\text{R\$ } 17.609,39$), justificando matematicamente o Retorno Contábil de $+8,7\%$ sobre ativos e $+8,6\%$ sobre o capital consolidado.
+
+### 10.6. Polimento Tipográfico e Impressão sem Cabeçalhos Órfãos (Gate v3.6)
+- **Typo Sanado:** Título do Raio-X de Ações Brasil corrigido para `"Raio-X de Ações Brasil (Ciclicidade & Porte)"`.
+- **Rótulo Canônico Selic:** Títulos do Tesouro indexados à Selic sem taxa adicional exibem `"SELIC"` (ou `"Selic + X,XX% a.a."` quando houver taxa contratada), eliminando o equívoco de `"100% CDI"`.
+- **Proteção Contra Cabeçalhos Órfãos:** Blocos de tabela de custódia e cabeçalhos de classe (`AÇÕES`, `RENDA FIXA`) recebem `print:[break-after:avoid] print:[break-inside:avoid]`, impedindo que fiquem isolados no rodapé de páginas A4.
+- **Sinal Negativo Explícito:** Formatação com sinal de menos ASCII explícito antes do símbolo monetário (`-R$ 249,42 (-1,4%)`).
+- **Respiro no Subtotal Internacional:** Ajuste de larguras e paddings (`px-2`, `w-[13%]`) eliminando qualquer concorrência visual entre Total e Variação de Cota.
+
+
