@@ -11,6 +11,7 @@ import type { PortfolioAsset, PortfolioSnapshot } from "@/types";
 import { calculatePortfolioQualityScore } from "./allocation";
 import { formatFixedIncomeRateLabel } from "./fixed-income";
 import type { PointInTimeResult } from "./point-in-time";
+import { resolveFixedIncomeIndexer } from "./tickers-catalog";
 
 export interface ReportMonthOption {
   value: string;
@@ -242,9 +243,21 @@ export function buildExecutiveReportClassGroups({
             pnlPct: itemTotalReturnPct,
             dividendsCents: numberToCents(i.dividends ?? 0),
             currency: i.currency,
-            indexType: i.fixedIncomeMetadata
-              ? formatFixedIncomeRateLabel(i.fixedIncomeMetadata, i.ticker)
-              : (i.ticker.toUpperCase().includes("SELIC") ? "SELIC" : null),
+            indexType: (() => {
+              const fiIndexer = resolveFixedIncomeIndexer({
+                ticker: i.ticker,
+                sector: i.sector,
+                fixed_income_metadata: i.fixedIncomeMetadata,
+              });
+              if (i.fixedIncomeMetadata) {
+                const baseLabel = formatFixedIncomeRateLabel(i.fixedIncomeMetadata, i.ticker);
+                if (fiIndexer.detailLabel === "IPCA+" && baseLabel.toLowerCase().includes("pre")) {
+                  return "IPCA+";
+                }
+                return baseLabel;
+              }
+              return fiIndexer.detailLabel !== "Outros" ? fiIndexer.detailLabel : (i.ticker.toUpperCase().includes("SELIC") ? "SELIC" : null);
+            })(),
             maturityDate: i.fixedIncomeMetadata?.maturity_date ?? i.maturityDate ?? null,
             score: raw?.score ?? null,
             status: raw?.allocation_status ?? "active",

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { todayISO } from "@/domain/debts";
-import { numberToCents, parseDecimalNumber } from "@/domain/money";
+import { formatDecimalNumber, numberToCents, parseDecimalNumber } from "@/domain/money";
 import { fetchPtaxForDate } from "@/services/quotes";
 import {
   calculateFixedIncomeRedemptionPreview,
@@ -79,7 +79,9 @@ export function useQuickTransactionForm({
   const [dividendCalcMode, setDividendCalcMode] = useState<DividendCalculationMode>("total");
   const [perShareCents, setPerShareCents] = useState(0);
   const [quantityStr, setQuantityStr] = useState(() =>
-    editTransaction && editTransaction.type !== "split" && editTransaction.type !== "reverse_split" ? String(editTransaction.quantity) : "",
+    editTransaction && editTransaction.type !== "split" && editTransaction.type !== "reverse_split"
+      ? formatDecimalNumber(editTransaction.quantity)
+      : "",
   );
   const [priceCents, setPriceCents] = useState(() =>
     editTransaction && editTransaction.type !== "split" && editTransaction.type !== "reverse_split" ? numberToCents(editTransaction.price) : 0,

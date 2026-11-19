@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { todayISO } from "@/domain/debts";
-import { numberToCents, parseDecimalNumber } from "@/domain/money";
+import { formatDecimalNumber, numberToCents, parseDecimalNumber } from "@/domain/money";
 import { assetMetadataSchema } from "@/domain/portfolio/schemas";
 import { inferSectorFromTicker } from "@/domain/portfolio/tickers-catalog";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset } from "@/domain/portfolio/valuation";
@@ -87,7 +87,11 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
   const [initialPriceCents, setInitialPriceCents] = useState(numberToCents(existingInitialPrice));
   const [currentPriceCents, setCurrentPriceCents] = useState(numberToCents(existingCurrentPrice));
   const [quantityStr, setQuantityStr] = useState(
-    asset.quantity !== undefined && asset.quantity > 0 ? String(asset.quantity) : isCash ? String(asset.quantity ?? 0) : "",
+    asset.quantity !== undefined && asset.quantity > 0
+      ? formatDecimalNumber(asset.quantity)
+      : isCash
+        ? formatDecimalNumber(asset.quantity ?? 0)
+        : "",
   );
   const [averagePriceCents, setAveragePriceCents] = useState(asset.average_price !== undefined ? numberToCents(asset.average_price) : 0);
   const [fxRateAtPurchase, setFxRateAtPurchase] = useState<number | null>(asset.fx_rate_at_purchase ?? null);

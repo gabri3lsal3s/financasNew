@@ -154,7 +154,11 @@ export async function executeQuickTransactionSubmit(
           quantity: resolvedQty,
           price: p.isCorporateEvent ? 0 : p.isTotalValue ? total : price,
           total: p.isCorporateEvent ? 0 : total,
-          ...(p.fxRateBRL && p.fxRateBRL > 0 ? { fx_rate: p.fxRateBRL } : {}),
+          ...(p.targetAsset?.currency !== "BRL"
+            ? { fx_rate: p.fxRateBRL && p.fxRateBRL > 0 ? p.fxRateBRL : (p.usdRate > 1 ? p.usdRate : 5.25) }
+            : p.fxRateBRL && p.fxRateBRL > 0
+              ? { fx_rate: p.fxRateBRL }
+              : {}),
         },
       });
       return null;
@@ -165,7 +169,11 @@ export async function executeQuickTransactionSubmit(
       : p.date;
     const resolvedNotes = p.isDividendType ? resolveDividendNote(p.dividendEntryMode, "", p.type) : undefined;
     const buyFlags = flagsFromFundingSource(p.buyFundingSource);
-    const effectiveRate = p.fxRateBRL && p.fxRateBRL > 0 ? p.fxRateBRL : p.usdRate;
+    const effectiveRate = p.fxRateBRL && p.fxRateBRL > 0
+      ? p.fxRateBRL
+      : p.targetAsset.currency !== "BRL"
+        ? (p.usdRate > 1 ? p.usdRate : 5.25)
+        : p.usdRate;
 
     await p.recordOrder({
       asset: p.targetAsset,

@@ -385,10 +385,26 @@ export function buildPortfolioMonthlySeries(params: {
       }
     }
 
-    // Modalidade B: Invariante Contábil de Fluxo Externo (Bloco 2 / FINANCIAL_MATH_SPEC §4.2)
-    // F_t = Delta C_total + Delta PnL_real. Se não há alienações granulares, F_t = Delta C_total.
-    // Garante congruência estrita entre variação do custo aplicado e o aporte líquido do mês.
-    if (idx > 0) {
+    const origin: PortfolioSnapshotOrigin =
+      data.snapshotOrigin ??
+      (idx === 0
+        ? "marco_zero"
+        : data.is_manually_calibrated
+          ? "retroativo_manual"
+          : "calculado_ledger");
+
+    const isOperationalLiveMonth = Boolean(
+      (currentMonthStr && month === currentMonthStr) ||
+      (currentMonthPoint && currentMonthPoint.month === month)
+    );
+
+    // Modalidade B: Invariante Contábil de Fluxo Externo (Bloco 1 v5 / FINANCIAL_MATH_SPEC §4.2)
+    // Em competências operacionais vivas (mês corrente MTD ou derivado do ledger vivo),
+    // o aporte líquido injetado (F_t) deriva ESTRITAMENTE dos eventos reais do ledger
+    // (Compras - Vendas + Depósitos - Saques), nunca sendo sobrescrito por Delta C bruto.
+    // Em snapshots históricos consolidados (rawSnapshots passados), reconcilia com Delta C
+    // caso haja descolamento por ausência ou parcialidade de eventos granulares (Gate v2.2).
+    if (idx > 0 && !isOperationalLiveMonth) {
       const prevCost = sortedMonths[idx - 1]![1].total_cost;
       const deltaCost = Math.round((data.total_cost - prevCost) * 100) / 100;
       if (Math.abs(deltaCost) >= 0.01) {
@@ -397,14 +413,6 @@ export function buildPortfolioMonthlySeries(params: {
         }
       }
     }
-
-    const origin: PortfolioSnapshotOrigin =
-      data.snapshotOrigin ??
-      (idx === 0
-        ? "marco_zero"
-        : data.is_manually_calibrated
-          ? "retroativo_manual"
-          : "calculado_ledger");
 
     // No modo carry_forward / sem_snapshot (lacuna sem movimentação):
     // Impede atribuição espúria de fluxo que geraria perda fantasma (BUG Ago/2026)

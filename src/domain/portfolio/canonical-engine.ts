@@ -396,6 +396,13 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
       continue;
     }
 
+    // Resolução de Preço e Modo de Precificação (§Salvaguardas S5 e S7)
+    const fiMeta = asset.fixed_income_metadata;
+    const isFixedIncome =
+      rawClass.includes("renda fixa") ||
+      rawClass.includes("tesouro") ||
+      Boolean(fiMeta);
+
     const allAssetTxs = (params.transactions ?? []).filter((t) => t.asset_id === asset.id);
     const assetLedger = allAssetTxs.length > 0
       ? computeCanonicalAssetLedger(allAssetTxs, undefined, {
@@ -403,6 +410,8 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
           monthlyPrices: params.monthlyPrices,
           defaultFxRate: effectiveUsdRate,
           assetFxRateAtPurchase: asset.fx_rate_at_purchase,
+          isFixedIncome,
+          fixedIncomeMetadata: fiMeta,
         })
       : null;
     const realizedPnl = assetLedger ? assetLedger.realizedPnl : undefined;
@@ -421,28 +430,28 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
         averageCostBRL = assetLedger.averageCostBRL;
       } else if (asset.total_cost_brl != null && asset.total_cost_brl > 0) {
         const candidateCostBRL = round2(asset.total_cost_brl);
-        // Salvaguarda cambial: se o custo BRL for inferior a 2.5x o custo USD, indica gravação em USD
-        totalCostBRL = (totalCost > 0 && candidateCostBRL < totalCost * 2.5)
-          ? round2(totalCost * effectiveUsdRate)
-          : candidateCostBRL;
-        averageCostBRL = quantity > 0 ? (asset.average_cost_brl && asset.average_cost_brl >= averageCost * 2.5 ? asset.average_cost_brl : round4(totalCostBRL / quantity)) : 0;
+        // Salvaguarda cambial v5: detecção de custo USD corrompido em BRL (< 3.5x) restaurando PTAX histórica
+        const isCorrupted = totalCost > 0 && candidateCostBRL < totalCost * 3.5;
+        const purchaseRate = asset.fx_rate_at_purchase && asset.fx_rate_at_purchase > 1
+          ? asset.fx_rate_at_purchase
+          : effectiveUsdRate;
+        totalCostBRL = isCorrupted ? round2(totalCost * purchaseRate) : candidateCostBRL;
+        averageCostBRL = quantity > 0
+          ? (asset.average_cost_brl && asset.average_cost_brl >= averageCost * 3.5 && !isCorrupted
+              ? asset.average_cost_brl
+              : round4(totalCostBRL / quantity))
+          : 0;
       } else if (asset.fx_rate_at_purchase != null && asset.fx_rate_at_purchase > 0) {
         totalCostBRL = round2(totalCost * asset.fx_rate_at_purchase);
         averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
       } else {
-        totalCostBRL = round2(totalCost * effectiveUsdRate);
+        totalCostBRL = round2(totalCost * (asset.fx_rate_at_purchase ?? effectiveUsdRate));
         averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
       }
     } else {
       totalCostBRL = totalCost;
       averageCostBRL = averageCost;
     }
-
-    // Resolução de Preço e Modo de Precificação (§Salvaguardas S5 e S7)
-    const fiMeta = asset.fixed_income_metadata;
-    const isFixedIncome =
-      rawClass.includes("renda fixa") ||
-      rawClass.includes("tesouro") ||
       Boolean(fiMeta);
 
     let resolvedPrice: CanonicalResolvedPrice;
@@ -922,6 +931,8 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       monthlyPrices: params.monthlyPrices,
       defaultFxRate: effectiveUsdRate,
       assetFxRateAtPurchase: asset.fx_rate_at_purchase,
+      isFixedIncome,
+      fixedIncomeMetadata: fiMeta,
     });
     const quantity = pointInTimeLedger.quantity;
     const totalCostNative = pointInTimeLedger.totalCost;
@@ -972,15 +983,19 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
         const baseCostNative = Math.max(0, Number(asset.quantity) || 0) * Math.max(0, Number(asset.average_price) || 0);
         const ratio = baseCostNative > 0 ? totalCostNative / baseCostNative : 1;
         const candidateCostBRL = round2(asset.total_cost_brl * ratio);
-        totalCostBRL = (totalCostNative > 0 && candidateCostBRL < totalCostNative * 2.5)
-          ? round2(totalCostNative * effectiveUsdRate)
+        const isCorrupted = totalCostNative > 0 && candidateCostBRL < totalCostNative * 3.5;
+        const purchaseRate = asset.fx_rate_at_purchase && asset.fx_rate_at_purchase > 1
+          ? asset.fx_rate_at_purchase
+          : effectiveUsdRate;
+        totalCostBRL = isCorrupted
+          ? round2(totalCostNative * purchaseRate)
           : candidateCostBRL;
         averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
       } else if (asset.fx_rate_at_purchase != null && asset.fx_rate_at_purchase > 0) {
         totalCostBRL = round2(totalCostNative * asset.fx_rate_at_purchase);
         averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
       } else {
-        totalCostBRL = round2(totalCostNative * effectiveUsdRate);
+        totalCostBRL = round2(totalCostNative * (asset.fx_rate_at_purchase ?? effectiveUsdRate));
         averageCostBRL = quantity > 0 ? round4(totalCostBRL / quantity) : 0;
       }
     } else {

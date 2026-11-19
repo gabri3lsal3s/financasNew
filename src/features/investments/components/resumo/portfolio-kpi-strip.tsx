@@ -81,12 +81,12 @@ export function PortfolioKpiStrip({
                   ? "text-negative-strong"
                   : "text-foreground",
             )}
-            title={`Retorno Contábil da Custódia Aberta: ${(performance.totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(performance.totalReturnCents)}${performance.totalReturnPct != null ? ` (${performance.totalReturnPct >= 0 ? "+" : ""}${performance.totalReturnPct.toFixed(1)}%)` : ""} | Cotação: ${performance.unrealizedPnlBRL >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(performance.unrealizedPnlBRL))}${performance.capitalGainPct != null ? ` (${performance.capitalGainPct >= 0 ? "+" : ""}${performance.capitalGainPct.toFixed(1)}%)` : ""} | Proventos Ativos: +${formatCentsAsBRL(numberToCents(totalDividendsBRL))}`}
+            title={`Retorno Contábil da Custódia Aberta: ${(performance.totalReturnPnlBRL ?? 0) >= 0 ? "+" : ""}${formatCentsAsBRL(performance.totalReturnCents)}${performance.totalReturnPct != null ? ` (${performance.totalReturnPct >= 0 ? "+" : ""}${performance.totalReturnPct.toFixed(1).replace(".", ",")}%)` : ""} | Cotação: ${performance.unrealizedPnlBRL >= 0 ? "+" : ""}${formatCentsAsBRL(numberToCents(performance.unrealizedPnlBRL))}${performance.capitalGainPct != null ? ` (${performance.capitalGainPct >= 0 ? "+" : ""}${performance.capitalGainPct.toFixed(1).replace(".", ",")}%)` : ""} | Proventos Ativos: +${formatCentsAsBRL(numberToCents(totalDividendsBRL))}`}
           >
             <span className="text-muted-foreground font-normal">Retorno contábil:</span>
             <span className="tabular-nums font-semibold">
               {performance.totalReturnPct != null
-                ? `${performance.totalReturnPct >= 0 ? "+" : ""}${performance.totalReturnPct.toFixed(1)}%`
+                ? `${performance.totalReturnPct >= 0 ? "+" : ""}${performance.totalReturnPct.toFixed(1).replace(".", ",")}%`
                 : "0,0%"}
             </span>
           </span>

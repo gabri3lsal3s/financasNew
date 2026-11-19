@@ -152,9 +152,9 @@ export function buildPortfolioPerformanceSummary(
     isIrrReady || hasPeriodRate ? ((irrRate ?? 0) >= 0 ? "positive" : "negative") : "default";
 
   const irrLabel = isIrrReady
-    ? `${(irr?.annualizedRatePct ?? 0) >= 0 ? "+" : ""}${(irr?.annualizedRatePct ?? 0).toFixed(1)}% a.a.`
+    ? `${(irr?.annualizedRatePct ?? 0) >= 0 ? "+" : ""}${(irr?.annualizedRatePct ?? 0).toFixed(1).replace(".", ",")}% a.a.`
     : hasPeriodRate && (irr?.daysElapsed ?? 0) >= 30
-      ? `${(irr?.periodRatePct ?? 0) >= 0 ? "+" : ""}${(irr?.periodRatePct ?? 0).toFixed(1)}% no período`
+      ? `${(irr?.periodRatePct ?? 0) >= 0 ? "+" : ""}${(irr?.periodRatePct ?? 0).toFixed(1).replace(".", ",")}% no período`
       : "Em formação";
 
   const irrHint =
@@ -179,13 +179,13 @@ export function buildPortfolioPerformanceSummary(
   const isCustodyActive = !isTwrActive && totalReturnPct !== null && totalReturnPct !== undefined;
 
   const twrLabel = isTwrActive
-    ? `${(twrRate ?? 0) >= 0 ? "+" : ""}${(twrRate ?? 0).toFixed(1)}%`
+    ? `${(twrRate ?? 0) >= 0 ? "+" : ""}${(twrRate ?? 0).toFixed(1).replace(".", ",")}%`
     : "Em formação";
 
   const rentabilidadeValue = isTwrActive
     ? twrLabel
     : isCustodyActive
-      ? `${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1)}%`
+      ? `${totalReturnPct >= 0 ? "+" : ""}${totalReturnPct.toFixed(1).replace(".", ",")}%`
       : "Em formação";
 
   const rentabilidadeTone: "positive" | "negative" | "default" = isTwrActive
@@ -206,7 +206,7 @@ export function buildPortfolioPerformanceSummary(
 
   const twrHintText = isTwrActive
     ? twr?.annualizedRatePct !== null && twr?.annualizedRatePct !== undefined
-      ? `${twr.annualizedRatePct >= 0 ? "+" : ""}${twr.annualizedRatePct.toFixed(1)}% a.a. (${twr.monthsElapsed}m)`
+      ? `${twr.annualizedRatePct >= 0 ? "+" : ""}${twr.annualizedRatePct.toFixed(1).replace(".", ",")}% a.a. (${twr.monthsElapsed}m)`
       : `Por cotas (${twr?.monthsElapsed ?? 0}m)`
     : "";
 

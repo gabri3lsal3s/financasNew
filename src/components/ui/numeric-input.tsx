@@ -1,7 +1,8 @@
-import { useLayoutEffect, useMemo, useRef } from "react";
-import type { InputHTMLAttributes } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent, FocusEvent, InputHTMLAttributes } from "react";
 import { Calculator } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDecimalNumber, parseDecimalNumber } from "@/domain/money";
 import {
   registerCalculatorTarget,
   unregisterCalculatorTarget,
@@ -11,16 +12,20 @@ import { setCalculatorOpen } from "@/services/calculator-open";
 
 export interface NumericInputProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "onChange" | "value" | "size"> {
-  /** Valor atual como string (permite "" para vazio e decimais como "12.5"). */
-  value: string | number;
-  /** Callback quando o valor muda (sempre string normalizada). */
-  onValueChange: (value: string) => void;
+  /** Valor atual como string ("10", "10,5"), número (10.5) ou null/undefined (""). */
+  value?: string | number | null;
+  /** Callback quando o valor textual muda (sempre string normalizada). */
+  onValueChange?: (value: string) => void;
+  /** Callback opcional quando o valor numérico parsed muda (ou null se vazio). */
+  onNumberChange?: (value: number | null) => void;
   /** Rótulo exibido na calculadora ao abrir ("Campo: Quantidade de cotas"). */
   calculatorLabel?: string;
   /** Exibe botão inline para abrir a calculadora flutuante. Padrão: false. */
   showCalculatorAction?: boolean;
   /** Callback opcional ao clicar no botão da calculadora. */
   onCalculatorOpen?: () => void;
+  /** Limite de casas decimais permitidas (opcional). */
+  maxDecimals?: number;
   /** Variante de tamanho. */
   size?: "sm" | "md" | "lg";
 }
@@ -46,28 +51,69 @@ const sizeClasses: Record<
   },
 };
 
+function toDisplayString(val: string | number | null | undefined): string {
+  if (val === null || val === undefined || val === "") return "";
+  if (typeof val === "number") {
+    return formatDecimalNumber(val);
+  }
+  return String(val);
+}
+
 /**
  * NumericInput — Primitivo para campos numéricos decimais livres
- * com integração bidirecional à calculadora flutuante.
+ * com integração bidirecional à calculadora flutuante e suporte a decimais pt-BR.
  */
 export function NumericInput({
-  value,
+  value = "",
   onValueChange,
+  onNumberChange,
   calculatorLabel,
   showCalculatorAction = false,
   onCalculatorOpen,
+  maxDecimals,
   size = "md",
   className,
   "aria-label": ariaLabel,
+  onFocus,
+  onBlur,
   ...rest
 }: NumericInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const label = calculatorLabel ?? ariaLabel;
 
+  const [draft, setDraft] = useState<string>(() => toDisplayString(value));
+  const isFocusedRef = useRef(false);
+  const lastExternalValueRef = useRef(value);
+
+  // Sincroniza draft com prop externa apenas quando houver mudança real externa
+  useEffect(() => {
+    if (value === lastExternalValueRef.current) return;
+
+    const currentNum = draft === "" ? null : parseDecimalNumber(draft);
+    const incomingNum =
+      value === null || value === undefined || value === "" ? null : parseDecimalNumber(value);
+
+    // Se ambos são vazios
+    if (draft === "" && incomingNum === null) {
+      lastExternalValueRef.current = value;
+      return;
+    }
+
+    // Se o usuário está com foco no campo e o valor numérico parsed é idêntico (ex: digitou "5," ou "5,20"),
+    // preservamos o draft digitado pelo usuário para não perder a vírgula nem os zeros à direita!
+    if (isFocusedRef.current && incomingNum !== null && currentNum !== null && currentNum === incomingNum) {
+      lastExternalValueRef.current = value;
+      return;
+    }
+
+    lastExternalValueRef.current = value;
+    setDraft(toDisplayString(value));
+  }, [value, draft]);
+
   const calculatorTargetRef = useRef<CalculatorDecimalTarget>({
     mode: "decimal",
     injectDecimal: () => {},
-    getDecimalDisplay: () => String(value ?? ""),
+    getDecimalDisplay: () => String(draft ?? ""),
     label,
   });
 
@@ -75,10 +121,13 @@ export function NumericInput({
     calculatorTargetRef.current = {
       mode: "decimal",
       injectDecimal: (display: string) => {
-        const normalized = display.replace(",", ".");
-        onValueChange(normalized);
+        setDraft(display);
+        onValueChange?.(display);
+        if (onNumberChange) {
+          onNumberChange(display === "" ? null : parseDecimalNumber(display));
+        }
       },
-      getDecimalDisplay: () => String(value ?? ""),
+      getDecimalDisplay: () => String(draft ?? ""),
       label,
     };
   });
@@ -101,18 +150,75 @@ export function NumericInput({
     };
   }, [decimalTarget]);
 
-  const handleFocus = () => {
-    registerCalculatorTarget(decimalTarget);
-  };
+  const handleFocus = useCallback(
+    (e: FocusEvent<HTMLInputElement>) => {
+      isFocusedRef.current = true;
+      registerCalculatorTarget(decimalTarget);
+      onFocus?.(e);
+    },
+    [decimalTarget, onFocus],
+  );
 
-  const handleOpenCalculator = () => {
+  const handleBlur = useCallback(
+    (e: FocusEvent<HTMLInputElement>) => {
+      isFocusedRef.current = false;
+      if (draft.endsWith(",") || draft.endsWith(".")) {
+        const cleaned = draft.slice(0, -1);
+        setDraft(cleaned);
+        onValueChange?.(cleaned);
+        if (onNumberChange) {
+          onNumberChange(cleaned === "" ? null : parseDecimalNumber(cleaned));
+        }
+      }
+      onBlur?.(e);
+    },
+    [draft, onBlur, onNumberChange, onValueChange],
+  );
+
+  const handleChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      let raw = e.target.value.replace(/[^0-9.,-]/g, "");
+
+      // Permite apenas um sinal de menos no início
+      if (raw.includes("-")) {
+        const isNeg = raw.startsWith("-");
+        raw = (isNeg ? "-" : "") + raw.replace(/-/g, "");
+      }
+
+      // Isola o primeiro separador decimal (, ou .) e remove os subsequentes
+      const firstSepIdx = raw.search(/[.,]/);
+      if (firstSepIdx !== -1) {
+        const sep = raw[firstSepIdx];
+        const intPart = raw.slice(0, firstSepIdx);
+        let decPart = raw.slice(firstSepIdx + 1).replace(/[.,]/g, "");
+        if (maxDecimals !== undefined) {
+          decPart = decPart.slice(0, maxDecimals);
+        }
+        raw = `${intPart}${sep}${decPart}`;
+      }
+
+      setDraft(raw);
+      onValueChange?.(raw);
+
+      if (onNumberChange) {
+        if (raw === "" || raw === "-" || raw === "," || raw === ".") {
+          onNumberChange(null);
+        } else {
+          onNumberChange(parseDecimalNumber(raw));
+        }
+      }
+    },
+    [maxDecimals, onNumberChange, onValueChange],
+  );
+
+  const handleOpenCalculator = useCallback(() => {
     registerCalculatorTarget(decimalTarget);
     if (onCalculatorOpen) {
       onCalculatorOpen();
     } else {
       setCalculatorOpen(true);
     }
-  };
+  }, [decimalTarget, onCalculatorOpen]);
 
   const sizeStyle = sizeClasses[size];
   const hasAction = showCalculatorAction;
@@ -126,12 +232,10 @@ export function NumericInput({
         autoComplete="off"
         spellCheck={false}
         aria-label={ariaLabel}
-        value={value}
-        onChange={(e) => {
-          const raw = e.target.value.replace(/[^0-9.,-]/g, "");
-          onValueChange(raw);
-        }}
+        value={draft}
+        onChange={handleChange}
         onFocus={handleFocus}
+        onBlur={handleBlur}
         className={cn(
           "flex w-full rounded-md border border-input bg-surface px-3.5 py-2 font-mono tabular-nums text-foreground shadow-xs transition-colors",
           "placeholder:text-muted-foreground",

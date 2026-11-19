@@ -24,20 +24,20 @@ export function ReportEquityClassTable({
 }) {
   return (
     <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs print:overflow-visible">
-      <table className="w-full min-w-[600px] print:min-w-0 text-left text-xs border-collapse print:table-fixed">
+      <table className="w-full min-w-[640px] print:min-w-0 text-left text-xs border-collapse table-fixed">
         <thead className="print:[break-inside:avoid] print:[break-after:avoid]">
           <ReportClassTableBanner group={group} colSpan={8} />
           <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider print:[break-after:avoid] print:[break-inside:avoid]">
-            <th className="py-1.5 px-2.5 print:w-[12%]">Ticker</th>
-            <th className="py-1.5 px-2 print:w-[16%]">
+            <th className="py-1.5 px-2.5 w-[12%]">Ticker</th>
+            <th className="py-1.5 px-2 w-[15%]">
               {isInternacional ? "Classe / Tema" : "Setor / Segmento"}
             </th>
-            <th className="py-1.5 px-1 text-right print:w-[5%]">Qtd</th>
-            <th className="py-1.5 px-1.5 text-right print:w-[12%]">Preço Médio</th>
-            <th className="py-1.5 px-1.5 text-right print:w-[12%]">Cotação</th>
-            <th className="py-1.5 px-2 text-right print:w-[16%]">Total (R$)</th>
-            <th className="py-1.5 px-2 text-right print:w-[14%]">Var. Cota</th>
-            <th className="py-1.5 px-2.5 text-right print:w-[13%]">Ret. Total</th>
+            <th className="py-1.5 px-1 text-right w-[5%]">Qtd</th>
+            <th className="py-1.5 px-1.5 text-right w-[11%]">Preço Médio</th>
+            <th className="py-1.5 px-1.5 text-right w-[11%]">Cotação</th>
+            <th className="py-1.5 px-2 text-right w-[18%]">Total (R$)</th>
+            <th className="py-1.5 px-2 text-right w-[15%]">Var. Cota</th>
+            <th className="py-1.5 px-2.5 text-right w-[13%]">Ret. Total</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/80">
@@ -88,7 +88,7 @@ export function ReportEquityClassTable({
         </tbody>
         <tfoot className="border-t-2 border-border/80 bg-muted/30 font-bold text-foreground print:bg-muted/30 break-inside-avoid">
           <tr>
-            <td colSpan={5} className="py-1.5 px-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-bold print:w-[57%]">
+            <td colSpan={5} className="py-1.5 px-2.5 text-left text-[10px] uppercase tracking-wider text-muted-foreground font-bold w-[54%]">
               Subtotal {group.className}
               {group.totalCostCents !== undefined && (
                 <span className="font-normal normal-case text-muted-foreground ml-1.5">
@@ -96,20 +96,20 @@ export function ReportEquityClassTable({
                 </span>
               )}
             </td>
-            <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap print:w-[16%]">
+            <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap w-[18%]">
               <MoneyText cents={group.totalCents} tone="default" />
             </td>
             <td
               className={cn(
-                "py-1.5 px-2 text-right num font-mono tabular-nums text-[10px] print:w-[14%]",
+                "py-1.5 px-2 text-right num font-mono tabular-nums text-[10px] w-[15%]",
                 subtotalPriceVarPct !== null && subtotalPriceVarPct >= 0
                   ? "text-positive-strong"
                   : "text-negative-strong",
               )}
             >
               {isInternacional && group.subtotalPriceVarPctUSD !== undefined ? (
-                <div className="flex flex-col items-end leading-tight whitespace-nowrap">
-                  <span>{formatSignedPct(group.subtotalPriceVarPctUSD)} (USD)</span>
+                <div className="flex flex-col items-end leading-tight whitespace-nowrap pl-1">
+                  <span className="font-semibold text-foreground">{formatSignedPct(group.subtotalPriceVarPctUSD)} (USD)</span>
                   <span className="text-[9px] text-muted-foreground font-normal">
                     {formatSignedPct(subtotalPriceVarPct)} (BRL)
                   </span>
@@ -122,7 +122,7 @@ export function ReportEquityClassTable({
             </td>
             <td
               className={cn(
-                "py-1.5 px-2.5 text-right num font-mono tabular-nums text-[11px] font-bold whitespace-nowrap print:w-[13%]",
+                "py-1.5 px-2.5 text-right num font-mono tabular-nums text-[11px] font-bold whitespace-nowrap w-[13%]",
                 group.pnlPct >= 0 ? "text-positive-strong" : "text-negative-strong",
               )}
             >

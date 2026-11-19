@@ -286,7 +286,7 @@ export function parseBrokerStatement(rawText: string): StatementParseResult {
     }
 
     if (item.ratePct !== undefined) {
-      const formattedRate = item.ratePct > 0 ? `+${item.ratePct}` : `${item.ratePct}`;
+      const formattedRate = (item.ratePct > 0 ? `+${item.ratePct}` : `${item.ratePct}`).replace(".", ",");
       suggestedNotes += ` [Rent: ${formattedRate}%]`;
     }
 

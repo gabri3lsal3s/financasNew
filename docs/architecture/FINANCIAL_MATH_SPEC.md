@@ -374,4 +374,26 @@ Antes de emitir relatórios ou persistir snapshots de fechamento, o validador au
 - **Eliminação de Ruído de Taxa Zero:** Títulos de renda fixa com taxa não cadastrada (`rate_value <= 0`) têm a exibição de `"0% a.a."` e `"IPCA + 0% a.a."` suprimida, exibindo rótulos limpos (`"Prefixado"`, `"IPCA+"`, `"SELIC"`, `"CDI"`).
 - **Alerta Não-Bloqueante de Queda de Custo Retroativo:** Detecção automática de redução superior a 50% de custo aplicado de uma competência para a seguinte sem redução patrimonial correspondente, alertando o usuário de forma não-bloqueante na tela de fechamento.
 
+## 12. FECHAMENTO DEFINITIVO DE CORE BUGS & CERTIFICAÇÃO DE PRODUÇÃO (§v5 — Auditoria BR-20261119-6445)
+
+### 12.1. Invariância Cambial do Custo e Isolamento Estrito do Fluxo Externo (Gate v5.1)
+- **Congelamento do Custo Histórico em BRL:** O custo de ativos internacionais em BRL ($C_i^{\text{BRL}}$) é fixado deterministicamente no momento de aquisição através de `fx_rate_at_purchase` ou pelo custo do lote registrado, nunca flutuando com a cotação PTAX D-0 de fechamento diário. Toda a valorização do dólar impacta exclusivamente o valor de mercado BRL ($V_t^{\text{BRL}}$) e o ganho econômico/TWR.
+- **Isolamento de Fluxo Externo ($F_t$) em Competências Operacionais:** Em meses operacionais (`calculado_ledger` e MTD), o aporte líquido injetado deriva estritamente dos eventos transacionais reais do ledger:
+  $$F_t = \sum \text{Compras Externas}_t - \sum \text{Vendas Externas}_t + \sum \text{Depósitos Caixa}_t - \sum \text{Saques Caixa}_t$$
+  sendo proibido substituir $F_t$ por $\Delta C_{\text{total}}$ bruto em competências com ledger ativo (eliminando vazamentos de reavaliação cambial).
+
+### 12.2. Fonte Única de Resultado Realizado e Tabela Regressiva de IR (Gate v5.2)
+- **SSOT de P&L Realizado:** O resultado realizado exibido no resumo da página 1 do Dossiê, no Card 4 (P&L Econômico) e na tabela da página 5 decorre do mesmo motor de baixa proporcional de custos.
+- **Persistência de Custo Baixado:** A mutação de resgate parcial de Renda Fixa persiste o custo residual no banco (`total_cost_brl: remainingCost`), sincronizando a base de cálculo contábil.
+- **Tabela Regressiva de IR Auditável:** O cálculo de dias decorridos para enquadramento nas alíquotas regressivas ($22,5\%$ a $15,0\%$) utiliza a data de aplicação original do título (`initial_investment_date ?? base_date ?? created_at`) com salvaguarda de maturidade ($> 720$ dias para retornos acumulados $\ge 25\%$).
+
+### 12.3. Sanidade Cambial em Lotes USD e Guardrail Defensivo de SPHQ (Gate v5.3)
+- **Salvaguarda de Saneamento de Custo USD:** Ativos em moeda estrangeira que apresentem razão $\text{Custo}_{\text{BRL}} / \text{Custo}_{\text{Nativo}} < 3,5$ têm o custo em reais curado automaticamente pela taxa cambial histórica/de referência, eliminando retornos anômalos espúrios (como $+85,5\%$ em SPHQ).
+- **Validação de Entrada:** Formulários bloqueiam o cadastro ou atualização de ordens em moedas estrangeiras com taxa de câmbio $\le 1,0$.
+
+### 12.4. Unicidade de Classificador e Polimento pt-BR (Gate v5.4)
+- **Classificador Canônico:** `TESOURO-IPCA-32` utiliza `resolveFixedIncomeIndexer` retornando `IPCA+` em todos os relatórios executivos e dossiês.
+- **Formatação Decimal pt-BR:** Garantia de 100% de conformidade com vírgula decimal pt-BR e sinais explícitos nos relatórios, demonstrativos e tabelas de resgate.
+
+
 

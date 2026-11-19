@@ -73,7 +73,7 @@ export function SnapshotsEvolutionChart({
           {summary.openingDividendsBalanceBRL !== undefined && summary.openingDividendsBalanceBRL > 0 && (
             <span
               className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight"
-              title={`Saldo inicial retroativo: R$ ${summary.openingDividendsBalanceBRL.toFixed(2)} | Total consolidado: R$ ${(summary.totalHistoricalDividendsBRL ?? (summary.periodDividendsBRL + summary.openingDividendsBalanceBRL)).toFixed(2)}`}
+              title={`Saldo inicial retroativo: R$ ${summary.openingDividendsBalanceBRL.toFixed(2).replace(".", ",")} | Total consolidado: R$ ${(summary.totalHistoricalDividendsBRL ?? (summary.periodDividendsBRL + summary.openingDividendsBalanceBRL)).toFixed(2).replace(".", ",")}`}
             >
               +{numberToCents(summary.openingDividendsBalanceBRL) ? " saldo inicial retroativo" : ""}
             </span>

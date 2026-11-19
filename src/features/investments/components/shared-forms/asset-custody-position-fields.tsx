@@ -1,5 +1,4 @@
 import { Badge, FormField, MoneyInput, MoneyText, NumericInput } from "@/components/ui";
-import { parseDecimalNumber } from "@/domain/money";
 import { formatPercent } from "@/services/masks";
 import { cn } from "@/lib/utils";
 import type { AssetCurrency } from "@/types";
@@ -205,13 +204,11 @@ export function AssetCustodyPositionFields({
           >
             <NumericInput
               id={`${idPrefix}-fx-buy`}
-              value={fxRateAtPurchase != null ? String(fxRateAtPurchase) : ""}
-              onValueChange={(val) => {
-                const parsed = parseDecimalNumber(val);
-                onFxRateAtPurchaseChange(parsed > 0 ? parsed : null);
-              }}
+              value={fxRateAtPurchase}
+              onNumberChange={(val) => onFxRateAtPurchaseChange(val && val > 0 ? val : null)}
               placeholder="Ex: 5,2500"
               aria-label="Câmbio médio de compra em reais"
+              maxDecimals={4}
             />
           </FormField>
         )}

@@ -104,4 +104,134 @@ describe("NumericInput", () => {
     expect(getActiveDecimalDisplay()).toBe("25.5");
     expect(openSpy).toHaveBeenCalledWith(true);
   });
+
+  it("permite digitar vírgula e valores decimais sem que a vírgula seja apagada", () => {
+    const handleNumberChange = vi.fn();
+    const handleValueChange = vi.fn();
+
+    const { rerender } = render(
+      <NumericInput
+        value={null}
+        onValueChange={handleValueChange}
+        onNumberChange={handleNumberChange}
+        placeholder="Ex: 5,2500"
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Ex: 5,2500") as HTMLInputElement;
+    fireEvent.focus(input);
+
+    // Digita '5'
+    fireEvent.change(input, { target: { value: "5" } });
+    expect(input.value).toBe("5");
+    expect(handleNumberChange).toHaveBeenCalledWith(5);
+
+    // Simula re-render do componente pai com o novo estado numérico
+    rerender(
+      <NumericInput
+        value={5}
+        onValueChange={handleValueChange}
+        onNumberChange={handleNumberChange}
+        placeholder="Ex: 5,2500"
+      />,
+    );
+    expect(input.value).toBe("5");
+
+    // Digita a vírgula ',' -> "5,"
+    fireEvent.change(input, { target: { value: "5," } });
+    expect(input.value).toBe("5,");
+    expect(handleNumberChange).toHaveBeenCalledWith(5);
+
+    // Simula re-render do pai com value={5} (pois 5, ainda é 5 numericamente)
+    rerender(
+      <NumericInput
+        value={5}
+        onValueChange={handleValueChange}
+        onNumberChange={handleNumberChange}
+        placeholder="Ex: 5,2500"
+      />,
+    );
+    // A VÍRGULA DEVE PERMANECER NO INPUT!
+    expect(input.value).toBe("5,");
+
+    // Digita '2' -> "5,2"
+    fireEvent.change(input, { target: { value: "5,2" } });
+    expect(input.value).toBe("5,2");
+    expect(handleNumberChange).toHaveBeenCalledWith(5.2);
+
+    rerender(
+      <NumericInput
+        value={5.2}
+        onValueChange={handleValueChange}
+        onNumberChange={handleNumberChange}
+        placeholder="Ex: 5,2500"
+      />,
+    );
+    expect(input.value).toBe("5,2");
+
+    // Digita '500' -> "5,2500"
+    fireEvent.change(input, { target: { value: "5,2500" } });
+    expect(input.value).toBe("5,2500");
+    expect(handleNumberChange).toHaveBeenCalledWith(5.25);
+
+    rerender(
+      <NumericInput
+        value={5.25}
+        onValueChange={handleValueChange}
+        onNumberChange={handleNumberChange}
+        placeholder="Ex: 5,2500"
+      />,
+    );
+    // Zeros à direita preservados enquanto o usuário digita
+    expect(input.value).toBe("5,2500");
+  });
+
+  it("formata valor numérico prop para exibição amigável pt-BR com vírgula", () => {
+    render(<NumericInput value={5.25} onValueChange={vi.fn()} placeholder="Ex: 5,2500" />);
+    const input = screen.getByPlaceholderText("Ex: 5,2500") as HTMLInputElement;
+    expect(input.value).toBe("5,25");
+  });
+
+  it("respeita maxDecimals limitando as casas decimais", () => {
+    const handleValueChange = vi.fn();
+    render(
+      <NumericInput
+        value={null}
+        onValueChange={handleValueChange}
+        maxDecimals={2}
+        placeholder="Ex: 22,5"
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Ex: 22,5") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "22,555" } });
+    expect(input.value).toBe("22,55");
+    expect(handleValueChange).toHaveBeenCalledWith("22,55");
+  });
+
+  it("normaliza vírgula solta ao perder foco (onBlur)", () => {
+    const handleBlur = vi.fn();
+    render(<NumericInput value={null} onBlur={handleBlur} placeholder="Ex: 5,2500" />);
+
+    const input = screen.getByPlaceholderText("Ex: 5,2500") as HTMLInputElement;
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "5," } });
+    expect(input.value).toBe("5,");
+
+    fireEvent.blur(input);
+    expect(input.value).toBe("5");
+    expect(handleBlur).toHaveBeenCalled();
+  });
+
+  it("sincroniza display quando o valor prop muda externamente para outro número", () => {
+    const { rerender } = render(<NumericInput value={5.25} placeholder="Ex: 5,2500" />);
+    const input = screen.getByPlaceholderText("Ex: 5,2500") as HTMLInputElement;
+    expect(input.value).toBe("5,25");
+
+    rerender(<NumericInput value={6.1} placeholder="Ex: 5,2500" />);
+    expect(input.value).toBe("6,1");
+
+    rerender(<NumericInput value={null} placeholder="Ex: 5,2500" />);
+    expect(input.value).toBe("");
+  });
 });

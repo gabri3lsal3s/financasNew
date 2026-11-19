@@ -1,5 +1,4 @@
 import { Checkbox, DatePicker, FormField, MoneyInput, NumericInput } from "@/components/ui";
-import { parseDecimalNumber } from "@/domain/money";
 import { triggerSensory } from "@/services/sensory";
 import type { AssetCurrency } from "@/types";
 import { FundingSourceSelector } from "../funding-source-selector";
@@ -214,13 +213,11 @@ export function OrderBuySellFields({
           >
             <NumericInput
               id={`${idPrefix}-fx-rate`}
-              value={fxRateBRL != null ? String(fxRateBRL) : ""}
-              onValueChange={(val) => {
-                const parsed = parseDecimalNumber(val);
-                onFxRateBRLChange(parsed > 0 ? parsed : null);
-              }}
+              value={fxRateBRL}
+              onNumberChange={(val) => onFxRateBRLChange(val && val > 0 ? val : null)}
               placeholder="Ex: 5,8230"
               aria-label={`Cotação da moeda ${currency} em reais`}
+              maxDecimals={4}
             />
           </FormField>
         )}

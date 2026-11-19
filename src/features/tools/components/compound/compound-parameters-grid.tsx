@@ -78,11 +78,14 @@ export function CompoundParametersGrid({
             <NumericInput
               id={`${baseId}-years`}
               value={periodYears}
-              onValueChange={(val) =>
-                onPeriodYearsChange(Math.max(1, Math.min(50, Number(val) || 1)))
-              }
+              onNumberChange={(val) => {
+                if (val !== null && val > 0) {
+                  onPeriodYearsChange(Math.max(1, Math.min(50, Math.round(val))));
+                }
+              }}
               size="md"
               aria-label="Período em anos"
+              maxDecimals={0}
             />
           </FormField>
         </CardHeader>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, Pencil } from "lucide-react";
 import { Button, DatePicker, FormField, Input, NumericInput, Select } from "@/components/ui";
-import { parseDecimalNumber } from "@/domain/money";
+import { formatDecimalNumber, parseDecimalNumber } from "@/domain/money";
 import type { ParsedPortfolioImportRow } from "@/domain/portfolio/b3-csv-parser";
 import type { PortfolioTransactionType } from "@/types";
 
@@ -42,13 +42,13 @@ export function ImportInlineRowEditor({
   onUpdate,
   onDone,
 }: ImportInlineRowEditorProps) {
-  const [qtyText, setQtyText] = useState(() => (row.quantity ? String(row.quantity) : ""));
-  const [priceText, setPriceText] = useState(() => (row.price ? String(row.price) : ""));
-  const [totalText, setTotalText] = useState(() => (row.total ? String(row.total) : ""));
+  const [qtyText, setQtyText] = useState(() => (row.quantity ? formatDecimalNumber(row.quantity) : ""));
+  const [priceText, setPriceText] = useState(() => (row.price ? formatDecimalNumber(row.price) : ""));
+  const [totalText, setTotalText] = useState(() => (row.total ? formatDecimalNumber(row.total) : ""));
 
   const syncTotal = (nextQty: number, nextPrice: number) => {
     if (nextQty > 0 && nextPrice > 0) {
-      setTotalText(String(Math.round(nextQty * nextPrice * 100) / 100));
+      setTotalText(formatDecimalNumber(Math.round(nextQty * nextPrice * 100) / 100));
     }
   };
 
@@ -148,7 +148,7 @@ export function ImportInlineRowEditor({
               const total = Math.max(0, parseDecimalNumber(val) ?? 0);
               onUpdate({ total });
               if (row.quantity > 0 && total > 0) {
-                setPriceText(String(Math.round((total / row.quantity) * 10000) / 10000));
+                setPriceText(formatDecimalNumber(Math.round((total / row.quantity) * 10000) / 10000));
               }
             }}
             aria-label="Valor Total (R$)"

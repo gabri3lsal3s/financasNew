@@ -32,7 +32,7 @@ describe("resumo-metrics", () => {
       unrealizedPct: 16.67,
     });
     expect(custody.rentabilidadeMode).toBe("custody");
-    expect(custody.rentabilidadeValue).toBe("+16.7%");
+    expect(custody.rentabilidadeValue).toBe("+16,7%");
     expect(custody.irrLabel).toBe("Em formação");
 
     const twrActive = buildPortfolioPerformanceSummary({
@@ -44,8 +44,8 @@ describe("resumo-metrics", () => {
       portfolioIrr: { isEligible: true, annualizedRatePct: 14.5, daysElapsed: 400 },
     });
     expect(twrActive.rentabilidadeMode).toBe("twr");
-    expect(twrActive.rentabilidadeValue).toBe("+18.4%");
-    expect(twrActive.irrLabel).toBe("+14.5% a.a.");
+    expect(twrActive.rentabilidadeValue).toBe("+18,4%");
+    expect(twrActive.irrLabel).toBe("+14,5% a.a.");
     expect(twrActive.irrTone).toBe("positive");
   });
 });

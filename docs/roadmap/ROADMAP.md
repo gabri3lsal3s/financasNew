@@ -1,5 +1,26 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.13.2 (Certificação Definitiva de Produção do Motor de Investimentos Axir — Portão Final v5 $\ge 98/100$)** registra a conclusão e certificação formal dos 4 blocos de fechamento de core bugs e edge cases de estresse ([`docs/plans/prompt_v5_fechamento_definitivo_e_certifica_o_de_produ_o_axir.md`](../plans/prompt_v5_fechamento_definitivo_e_certifica_o_de_produ_o_axir.md)) sobre a carteira de teste de estresse `BR-20261119-6445` (62 ativos ativos, R$ 106.377,43, 34 meses):
+> - **(1) Invariância Cambial do Custo e Fim do Aporte Fantasma via PTAX (Gate v5.1)**:
+>   - Congelamento estrito do custo histórico em BRL (`total_cost_brl`) de ativos em moeda estrangeira no momento da compra (`fx_rate_at_purchase`), eliminando flutuações artificiais de custo causadas pela PTAX D-0;
+>   - Isolamento do aporte líquido ($F_t$) em competências operacionais vivas (`calculado_ledger` e MTD), derivando exclusivamente dos eventos do ledger (Compras - Vendas + Depósitos - Saques) e nunca de $\Delta C$ bruto;
+>   - A valorização cambial de ativos internacionais reflete 100% no valor patrimonial de mercado e no TWR positivo, sem contaminação como aporte fictício.
+> - **(2) SSOT de Resultado Realizado, Baixa Proporcional e IR Regressivo de Renda Fixa (Gate v5.2)**:
+>   - Unificação do Resultado Realizado de Posições Encerradas da narrativa da Página 1 do Dossiê e do Card 4 (P&L Econômico) com a tabela de resgates da Página 5 via motor canônico único;
+>   - Baixa proporcional canônica de custo de Renda Fixa ($C_{\text{baixado}} = C_{\text{pré}} \times \min(1, V_{\text{resgate}} / V_{\text{pré}})$) persistida na base do Supabase (`total_cost_brl: remainingCost`);
+>   - Cálculo dos dias decorridos para enquadramento na tabela regressiva de IR (22,5% a 15,0%) utilizando data de aplicação original com salvaguarda de maturidade para títulos antigos sem data explícita.
+> - **(3) Saneamento Cambial de Lotes USD e Guardrail Defensivo de SPHQ (Gate v5.3)**:
+>   - Salvaguarda automática curando custos em BRL corrompidos (razão custo BRL / nativo $< 3,5$) em ativos estrangeiros como SPHQ, restaurando o retorno real de mercado e eliminando anomalia de $+85,5\%$;
+>   - Validação bloqueante no formulário de movimentações e edições impedindo salvamento de transações em moeda estrangeira com taxa de câmbio $\le 1,0$.
+> - **(4) Unicidade do Classificador RF (TESOURO-IPCA-32) e Polimento pt-BR (Gate v5.4)**:
+>   - Unificação de `TESOURO-IPCA-32` como `IPCA+` em todos os relatórios através de `resolveFixedIncomeIndexer`;
+>   - Contenção e layout com largura fixa (`table-fixed`) no subtotal de ativos internacionais do Dossiê, eliminando colisão visual de percentuais USD/BRL;
+>   - Formatação pt-BR estrita em todos os relatórios, tabelas de resgates e demonstrativos com vírgula decimal e sinais explícitos.
+> - **(5) Certificação Total v5 (Gate v5.5)**:
+>   - 146/146 testes aprovados em 15 suítes de auditoria (`src/tests/portfolio-audit-gate*`);
+>   - Suíte dedicada `src/tests/portfolio-audit-gate-v5.test.ts` aprovada com 10/10 testes;
+>   - Tipagem TypeScript (`tsc -b`), ESLint e build de produção 100% aprovados sem erros.
+
 > **v3.13.1 (Certificação de Produção do Motor de Investimentos Axir — Portão Final v3 $\ge 98/100$)** registra a conclusão e certificação formal dos 5 blocos cirúrgicos e da melhoria de arquitetura de snapshots ([`docs/plans/prompt_v3_certificacao_final_axir.md`](../plans/prompt_v3_certificacao_final_axir.md)) sobre o caso-base `BR-20261119-6445` (2026-11-19):
 > - **(1) Sincronização do Fluxo Líquido em Todos os Relatórios (Gate v3.1)**:
 >   - Unificação do fluxo financeiro do mês corrente via `computePeriodInvestmentFlow` e demonstrativo mensal (`monthlyStatement`);

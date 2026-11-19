@@ -22,6 +22,7 @@
 import { numberToCents } from "@/domain/money";
 import type {
   AssetCurrency,
+  FixedIncomeMetadata,
   PortfolioAsset,
   PortfolioContribution,
   PortfolioDividend,
@@ -29,7 +30,9 @@ import type {
   PortfolioTransaction,
   PortfolioTransactionType,
 } from "@/types";
+import { countCalendarDays } from "./business-days";
 import { isDividendType } from "./dividends";
+import { getFixedIncomeTaxRatePct } from "./fixed-income";
 import { isHistoricalWithdrawal } from "./irr";
 import { cleanContributionNotes, extractExplicitRateFromNotes } from "./statement-parser";
 import { FALLBACK_USD_RATE, isCashAssetClass } from "./valuation";
@@ -1280,6 +1283,8 @@ export interface ComputeCanonicalAssetLedgerOptions {
   defaultFxRate?: number;
   assetFxRateAtPurchase?: number | null;
   monthlyPrices?: readonly PortfolioMonthlyPrice[] | readonly { ticker: string; month?: string; price: number }[] | null;
+  isFixedIncome?: boolean;
+  fixedIncomeMetadata?: FixedIncomeMetadata | null;
 }
 
 /**
@@ -1359,19 +1364,30 @@ export function computeCanonicalAssetLedger(
 
     // Resolução da taxa de câmbio efetiva da transação
     let txFxRate = 1.0;
-    if (tx.fx_rate != null && Number(tx.fx_rate) > 0) {
-      txFxRate = Number(tx.fx_rate);
-    } else if (isUSD) {
-      if (options?.assetFxRateAtPurchase != null && options.assetFxRateAtPurchase > 0) {
+    if (isUSD) {
+      if (tx.fx_rate != null && Number(tx.fx_rate) > 1.0) {
+        txFxRate = Number(tx.fx_rate);
+      } else if (options?.assetFxRateAtPurchase != null && options.assetFxRateAtPurchase > 1.0) {
         txFxRate = options.assetFxRateAtPurchase;
       } else if (options?.monthlyPrices) {
         txFxRate = resolveDynamicPtaxRate(options.monthlyPrices, tx.date, { explicitRate: options?.defaultFxRate });
       } else {
-        txFxRate = defaultFx;
+        txFxRate = defaultFx > 1.0 ? defaultFx : 5.25;
       }
+    } else if (tx.fx_rate != null && Number(tx.fx_rate) > 0) {
+      txFxRate = Number(tx.fx_rate);
     }
 
     const getTxTotalBRL = (): number => {
+      if (isUSD) {
+        if (tx.total_cost_brl != null && Number(tx.total_cost_brl) >= rawTotal * 2.0) {
+          return round2(Number(tx.total_cost_brl));
+        }
+        if (tx.total_brl != null && Number(tx.total_brl) >= rawTotal * 2.0) {
+          return round2(Number(tx.total_brl));
+        }
+        return round2(rawTotal * txFxRate);
+      }
       if (tx.total_cost_brl != null && Number(tx.total_cost_brl) > 0) {
         return round2(Number(tx.total_cost_brl));
       }
@@ -1388,7 +1404,51 @@ export function computeCanonicalAssetLedger(
       runningCost = round2(runningCost + buyTotal);
       runningCostBRL = round2(runningCostBRL + getTxTotalBRL());
     } else if (normType === "sell" || normType === "asset_sell") {
-      if (runningQty > 0) {
+      if (options?.isFixedIncome) {
+        // Baixa Proporcional Canônica de Renda Fixa (Padrão Tesouro Direto / Receita Federal - Bloco 2 v5)
+        const fiMeta = options.fixedIncomeMetadata;
+        const redeemedBRL = round2(rawTotal > 0 ? rawTotal : rawQty * (rawPrice > 0 ? rawPrice : 1));
+
+        let costBasisBRL: number;
+        if (tx.total_cost_brl != null && Number(tx.total_cost_brl) > 0 && Number(tx.total_cost_brl) <= redeemedBRL) {
+          costBasisBRL = round2(Number(tx.total_cost_brl));
+        } else {
+          const initialCost = fiMeta?.initial_investment_value ?? (runningCostBRL > 0 ? runningCostBRL : runningCost);
+          const currentGross = fiMeta?.base_value ?? (runningQty > 0 && rawPrice > 0 ? runningQty * rawPrice : initialCost);
+          const effectiveGross = Math.max(redeemedBRL, currentGross > 0 ? currentGross : initialCost);
+          const costRatio = effectiveGross > 0 ? Math.min(1, initialCost / effectiveGross) : 1;
+          costBasisBRL = round2(redeemedBRL * costRatio);
+        }
+        const grossProfitBRL = Math.max(0, round2(redeemedBRL - costBasisBRL));
+
+        let taxAmountBRL = 0;
+        if (!fiMeta?.is_tax_exempt && grossProfitBRL > 0) {
+          const startDate = fiMeta?.initial_investment_date || fiMeta?.base_date;
+          let daysPassed = 0;
+          if (startDate && tx.date) {
+            daysPassed = countCalendarDays(startDate, tx.date);
+          }
+          if (daysPassed === 0 && costBasisBRL > 0) {
+            const retRatio = grossProfitBRL / costBasisBRL;
+            if (retRatio >= 0.25) daysPassed = 721;
+            else if (retRatio >= 0.15) daysPassed = 365;
+            else if (retRatio >= 0.08) daysPassed = 181;
+          }
+          const taxRatePct = getFixedIncomeTaxRatePct(
+            daysPassed,
+            false,
+            fiMeta?.manual_tax_rate_pct,
+          );
+          taxAmountBRL = round2(grossProfitBRL * (taxRatePct / 100));
+        }
+
+        const netRealizedPnlBRL = round2(grossProfitBRL - taxAmountBRL);
+        realizedPnl += netRealizedPnlBRL;
+
+        runningCost = Math.max(0, round2(runningCost - costBasisBRL));
+        runningCostBRL = Math.max(0, round2(runningCostBRL - costBasisBRL));
+        runningQty = runningCostBRL > 0 ? 1 : 0;
+      } else if (runningQty > 0) {
         const pmNative = runningCost / runningQty;
         const soldQty = Math.min(runningQty, rawQty);
         const costBasisNative = round2(soldQty * pmNative);

@@ -125,12 +125,12 @@ export function buildPocketContributionNotes({
   if (ratePctText.trim()) {
     const parsedRate = parseBRLNumber(ratePctText);
     if (parsedRate !== null && !Number.isNaN(parsedRate)) {
-      rateTag = ` [Rent: ${parsedRate > 0 ? "+" : ""}${parsedRate.toFixed(2)}%]`;
+      rateTag = ` [Rent: ${parsedRate > 0 ? "+" : ""}${parsedRate.toFixed(2).replace(".", ",")}%]`;
     }
   } else if (existingNotes) {
     const existingRate = extractExplicitRateFromNotes(existingNotes);
     if (existingRate !== null) {
-      rateTag = ` [Rent: ${existingRate > 0 ? "+" : ""}${existingRate}%]`;
+      rateTag = ` [Rent: ${existingRate > 0 ? "+" : ""}${String(existingRate).replace(".", ",")}%]`;
     }
   }
 

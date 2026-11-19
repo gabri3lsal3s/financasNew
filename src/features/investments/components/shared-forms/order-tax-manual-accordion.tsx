@@ -8,7 +8,7 @@ import {
   MoneyInput,
   NumericInput,
 } from "@/components/ui";
-import { numberToCents, parseDecimalNumber } from "@/domain/money";
+import { numberToCents } from "@/domain/money";
 import {
   computeEffectiveTaxRateFromAmount,
   type FixedIncomeRedemptionPreviewResult,
@@ -118,17 +118,17 @@ export function OrderTaxManualAccordion({
             </div>
             <NumericInput
               id={`${idPrefix}-tax-rate`}
-              value={customTaxRatePct !== null ? String(customTaxRatePct) : String(preview.taxRatePct)}
-              onValueChange={(val) => {
-                const num = parseDecimalNumber(val);
+              value={customTaxRatePct !== null ? customTaxRatePct : preview.taxRatePct}
+              onNumberChange={(num) => {
                 onCustomTaxChange({
-                  customTaxRatePct: Number.isNaN(num) ? 0 : Math.max(0, Math.min(100, num)),
+                  customTaxRatePct: num === null ? 0 : Math.max(0, Math.min(100, num)),
                   customTaxAmountCents: null,
                 });
               }}
               placeholder="Ex: 22,5"
               aria-label="Alíquota personalizada de imposto de renda"
               className="text-base sm:text-sm"
+              maxDecimals={2}
             />
           </div>
 

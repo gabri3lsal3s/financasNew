@@ -1381,6 +1381,19 @@ A Central de Configurações unifica as preferências e gestão da conta do usu�
     - **Dismiss Automático e Ativação Inteligente (`isUserActive`)**:
       * Usuários que já realizam movimentações em investimentos (`portfolioAssets >= 1 || portfolioTransactions >= 1`) são reconhecidos como ativos, suprimindo o banner intrusivo da Home (`OnboardingBanner`) enquanto mantêm o checklist acessível a qualquer momento pelo menu de notificações (`NotificationsPopover`).
 
+23. **Certificação Definitiva do Motor de Investimentos Axir em Produção (v3.13.2)**:
+    - **Invariância Cambial do Custo e Fim do Aporte Fantasma via PTAX (Gate v5.1)**:
+      * Custo histórico em BRL (`total_cost_brl`) congelado deterministicamente na taxa da data da transação (`fx_rate_at_purchase`), nunca sofrendo reavaliação diária pela PTAX D-0.
+      * O aporte líquido injetado ($F_t$) em competências operacionais vivas decorre estritamente dos eventos do ledger, eliminando substituição por $\Delta C$ bruto e garantindo que altas do dólar reflitam puramente em valorização patrimonial e ganho econômico/TWR.
+    - **SSOT de Realizados, Baixa Proporcional de Renda Fixa e Tabela Regressiva (Gate v5.2)**:
+      * Narrativa da página 1 do Dossiê e Card 4 unificados com a tabela de resgates da página 5 decorrendo do motor proporcional de baixa de custo ($C_{\text{baixado}} = C_{\text{pré}} \times \min(1, V_{\text{resgate}} / V_{\text{pré}})$).
+      * Persistência de custo residual em operações de resgate no banco e tabela regressiva de IR de Renda Fixa considerando datas reais de aplicação ($22,5\%$ a $15,0\%$).
+    - **Sanidade Cambial de Lotes USD e Saneamento de SPHQ (Gate v5.3)**:
+      * Salvaguarda curando automaticamente lotes estrangeiros corrompidos com razão de custo $< 3,5$, eliminando distorções de retorno (+85,5%) e bloqueando salvamentos com taxa cambial inválida ($\le 1,0$).
+    - **Unicidade de Classificador e Polimento pt-BR (Gate v5.4)**:
+      * `TESOURO-IPCA-32` classificado rigorosamente como `IPCA+` em todos os relatórios através de `resolveFixedIncomeIndexer`.
+      * Tabela de subtotal internacional com layout de largura fixa (`table-fixed`), eliminando colisões de valores, e formatação pt-BR estrita em toda a aplicação.
+
 ---
 
 ## ANEXO A — GLOSSÁRIO

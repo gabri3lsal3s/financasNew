@@ -4,7 +4,7 @@ import { numberToCents } from "@/domain/money";
 import { sanitizeReportText, type PeriodRedemptionItem } from "@/domain/reports";
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
-import { formatSignedPct } from "@/services/masks/percent";
+import { formatPercent, formatSignedPct } from "@/services/masks/percent";
 
 export interface ReportRedemptionsTableProps {
   items: readonly PeriodRedemptionItem[];
@@ -87,8 +87,8 @@ export function ReportRedemptionsTable({
                       <MoneyText cents={numberToCents(item.redeemedValueBRL)} tone="default" />
                     </div>
                     {item.taxAmountBRL > 0 ? (
-                      <span className="block text-[10px] font-normal text-muted-foreground font-mono tracking-tight">
-                        IR: −<MoneyText cents={numberToCents(item.taxAmountBRL)} tone="default" className="inline text-[10px]" /> ({item.taxRatePct}%)
+                      <span className="block text-[10px] font-normal text-muted-foreground font-mono tracking-tight mt-0.5">
+                        IR: −<MoneyText cents={numberToCents(item.taxAmountBRL)} tone="default" className="inline text-[10px]" /> ({item.taxRatePct !== null ? `${formatPercent(item.taxRatePct)}%` : "0%"})
                       </span>
                     ) : null}
                   </td>
@@ -102,11 +102,11 @@ export function ReportRedemptionsTable({
                     </div>
                     <span
                       className={cn(
-                        "block text-[10px] font-bold font-mono tracking-tight",
+                        "block text-[10px] font-bold font-mono tracking-tight mt-0.5",
                         isPositive ? "text-positive-strong" : "text-negative-strong",
                       )}
                     >
-                      {item.finalReturnPct !== null ? `${formatSignedPct(item.finalReturnPct)} líq.` : "—"}
+                      {item.finalReturnPct !== null ? `${formatSignedPct(item.finalReturnPct, 1)} líq.` : "—"}
                     </span>
                   </td>
                 </tr>

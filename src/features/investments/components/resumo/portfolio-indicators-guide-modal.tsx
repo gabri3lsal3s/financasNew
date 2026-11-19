@@ -47,7 +47,7 @@ export function PortfolioIndicatorsGuideModal({
             className="font-mono font-bold"
           >
             {performance.totalReturnPct !== null
-              ? `${performance.totalReturnPct >= 0 ? "+" : ""}${performance.totalReturnPct.toFixed(1)}%`
+              ? `${performance.totalReturnPct >= 0 ? "+" : ""}${performance.totalReturnPct.toFixed(1).replace(".", ",")}%`
               : "—"}
           </Badge>
           <span className="font-mono text-xs font-semibold text-foreground">
@@ -78,7 +78,7 @@ export function PortfolioIndicatorsGuideModal({
         >
           {performance.twrLabel}
           {twrAnnualizedRatePct !== null && twrAnnualizedRatePct !== undefined
-            ? ` (${twrAnnualizedRatePct >= 0 ? "+" : ""}${twrAnnualizedRatePct.toFixed(1)}% a.a.)`
+            ? ` (${twrAnnualizedRatePct >= 0 ? "+" : ""}${twrAnnualizedRatePct.toFixed(1).replace(".", ",")}% a.a.)`
             : ""}
         </Badge>
       ),

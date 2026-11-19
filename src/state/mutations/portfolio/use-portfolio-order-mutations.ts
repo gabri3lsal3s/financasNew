@@ -384,6 +384,7 @@ export function useRecordOrder() {
             patch: {
               quantity: remainingGrossBalance > 0 ? 1 : 0,
               average_price: remainingCost,
+              total_cost_brl: remainingCost,
               ...(updatedFiMetadata ? { fixed_income_metadata: updatedFiMetadata } : {}),
             },
           });
@@ -394,11 +395,13 @@ export function useRecordOrder() {
             sellQuantity: quantity,
             sellPrice: price > 0 ? price : total / (quantity || 1),
           });
+          const remainingCostBRL = Math.round(sellResult.remainingQuantity * sellResult.remainingAveragePrice * 100) / 100;
           await updateAsset.mutateAsync({
             id: asset.id,
             patch: {
               quantity: sellResult.remainingQuantity,
               average_price: sellResult.remainingAveragePrice,
+              total_cost_brl: remainingCostBRL,
             },
           });
         }

@@ -159,12 +159,21 @@ export function filterPeriodRedemptions(
     if (isFixedIncome && grossProfitBRL > 0) {
       const isTaxExempt = Boolean(asset?.fixed_income_metadata?.is_tax_exempt);
       if (!isTaxExempt) {
+        const startDate =
+          asset?.fixed_income_metadata?.initial_investment_date ||
+          asset?.fixed_income_metadata?.base_date ||
+          (tx as unknown as { acquisition_date?: string }).acquisition_date ||
+          (asset as unknown as { created_at?: string }).created_at?.slice(0, 10);
         let daysPassed = 0;
-        if (asset?.fixed_income_metadata?.initial_investment_date && tx.date) {
-          daysPassed = countCalendarDays(
-            asset.fixed_income_metadata.initial_investment_date,
-            tx.date,
-          );
+        if (startDate && tx.date) {
+          daysPassed = countCalendarDays(startDate, tx.date);
+        }
+        // Salvaguarda regressiva para títulos antigos cadastrados retroativamente sem data de início
+        if (daysPassed === 0 && appliedCostBRL > 0) {
+          const retRatio = grossProfitBRL / appliedCostBRL;
+          if (retRatio >= 0.25) daysPassed = 721; // > 720 dias -> 15,0%
+          else if (retRatio >= 0.15) daysPassed = 365; // 361-720 dias -> 17,5%
+          else if (retRatio >= 0.08) daysPassed = 181; // 181-360 dias -> 20,0%
         }
         taxRatePct = getFixedIncomeTaxRatePct(
           daysPassed,

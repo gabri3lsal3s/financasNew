@@ -54,16 +54,16 @@ Dez. 2023\t13.527,62\t14.221,47`;
       ratePctText: "1,24",
       isFirstMarco: false,
     });
-    expect(note).toBe("[Resgate] Saque parcial [Rent: +1.24%]");
+    expect(note).toBe("[Resgate] Saque parcial [Rent: +1,24%]");
 
     const preserved = buildPocketContributionNotes({
       entryType: "aporte",
       notes: "",
       ratePctText: "",
-      existingNotes: "Anterior [Rent: -0.5%]",
+      existingNotes: "Anterior [Rent: -0,5%]",
       isFirstMarco: true,
     });
-    expect(preserved).toBe("Marco Histórico · Início da Carteira [Rent: -0.5%]");
+    expect(preserved).toBe("Marco Histórico · Início da Carteira [Rent: -0,5%]");
   });
 
   it("constrói payloads de contribuições e snapshots TWR a partir das linhas parseadas", () => {

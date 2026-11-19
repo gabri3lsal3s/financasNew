@@ -171,7 +171,7 @@ Set.	2026	94.532,22	100.095,95	0,81
     expect(res.netCapital).toBe(94532.22);
     expect(res.finalGrossBalance).toBe(100095.95);
     // Verifica que as notas dos marcos gerados trazem a tag de rentabilidade
-    expect(res.actionableRows[0]?.suggestedNotes).toContain("[Rent: +0.43%]");
+    expect(res.actionableRows[0]?.suggestedNotes).toContain("[Rent: +0,43%]");
   });
 
   it("extractExplicitRateFromNotes extrai rentabilidades positivas e negativas", () => {
