@@ -163,11 +163,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Motor de Investimentos v2 certificado e consistente",
-    "Fonte única de verdade matemática para carteira, relatórios executivos e extratos analíticos",
-    "Motor híbrido de custódia e proventos com suporte a cotações em tempo real e histórico auditado",
-    "Decomposição analítica de retorno ponderado pelo tempo (TWR) e Dietz Modificado sem distorções de fluxo",
-    "Acurácia de indexadores de renda fixa (Prefixado, Selic, CDI, IPCA) e segregação cambial fiel"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Laboratorio Forense v2 e Motor de Investimentos",
+    "Auditoria Holistica de Ciclo de Vida: 39 invariantes financeiras e 8 Golden Journeys de ponta a ponta",
+    "Fonte unica de verdade matematica para carteira de investimentos, relatorios executivos e extratos",
+    "Motor hibrido de custodia e proventos com suporte a cotacoes em tempo real e historico auditado",
+    "Decomposicao analitica de retorno ponderado (TWR/Dietz Modificado) e conformidade CDC e fiscal"
   ]
 }
 EOF

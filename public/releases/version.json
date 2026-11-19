@@ -1,16 +1,16 @@
 {
   "version": "3.13.0",
-  "versionCode": 77,
-  "releaseDate": "2026-11-19T03:29:32Z",
+  "versionCode": 78,
+  "releaseDate": "2026-11-19T04:23:15Z",
   "minSupportedVersion": "3.13.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "e1957e4cd7419608bc8cec4ea4c8352f1847a6457360eac3180c5e23febb1e87",
-  "fileSizeBytes": 12224528,
+  "sha256": "63a42685d7a9e840280823c24a164fc17f0fe86d5855a0cfc1ba5f7704888ebc",
+  "fileSizeBytes": 12245377,
   "changelog": [
-    "Axir v3.13.0 (Build 77): Motor de Investimentos v2 certificado e consistente",
-    "Fonte única de verdade matemática para carteira, relatórios executivos e extratos analíticos",
-    "Motor híbrido de custódia e proventos com suporte a cotações em tempo real e histórico auditado",
-    "Decomposição analítica de retorno ponderado pelo tempo (TWR) e Dietz Modificado sem distorções de fluxo",
-    "Acurácia de indexadores de renda fixa (Prefixado, Selic, CDI, IPCA) e segregação cambial fiel"
+    "Axir v3.13.0 (Build 78): Laboratorio Forense v2 e Motor de Investimentos",
+    "Auditoria Holistica de Ciclo de Vida: 39 invariantes financeiras e 8 Golden Journeys de ponta a ponta",
+    "Fonte unica de verdade matematica para carteira de investimentos, relatorios executivos e extratos",
+    "Motor hibrido de custodia e proventos com suporte a cotacoes em tempo real e historico auditado",
+    "Decomposicao analitica de retorno ponderado (TWR/Dietz Modificado) e conformidade CDC e fiscal"
   ]
 }
