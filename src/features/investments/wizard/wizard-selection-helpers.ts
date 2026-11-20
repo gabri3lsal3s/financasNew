@@ -25,9 +25,10 @@ export function expandWizardSectorTargets(
       return [{ className: st.class_name, sectorName: st.name, target_percentage: st.target_percentage }];
     }
     const matched = classes.filter((cls) =>
-      positionRows.some(
-        (r) => r.assetClass === cls && (r.sector === st.name || inferSectorFromTicker(r.ticker, cls) === st.name),
-      ),
+      positionRows.some((r) => {
+        const resolvedSector = r.sector?.trim() || inferSectorFromTicker(r.ticker, cls);
+        return r.assetClass === cls && resolvedSector === st.name;
+      }),
     );
     return (matched.length === 0 ? ["Ações"] : matched).map((className) => ({
       className,

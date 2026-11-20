@@ -7,6 +7,7 @@ const mockMutateAsync = vi.fn();
 const mockUseAssetGovernanceInsights = vi.fn();
 const mockUsePortfolioPosition = vi.fn();
 const mockUseGroupTargets = vi.fn();
+const mockUsePortfolioAssets = vi.fn();
 const mockUpdateAssetMutateAsync = vi.fn();
 const mockNavigate = vi.fn();
 
@@ -30,6 +31,7 @@ vi.mock("@/state", async (importOriginal) => {
     }),
     useAssetGovernanceInsights: () => mockUseAssetGovernanceInsights(),
     usePortfolioPosition: () => mockUsePortfolioPosition(),
+    usePortfolioAssets: () => mockUsePortfolioAssets(),
     useGroupTargets: () => mockUseGroupTargets(),
     useUpdatePortfolioAsset: () => ({
       mutateAsync: mockUpdateAssetMutateAsync,
@@ -61,6 +63,10 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
       isLoading: false,
     });
     mockUseGroupTargets.mockReturnValue({
+      data: [],
+      isLoading: false,
+    });
+    mockUsePortfolioAssets.mockReturnValue({
       data: [],
       isLoading: false,
     });
@@ -341,5 +347,202 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     // NÃO deve exibir revisão periódica de teses
     expect(screen.queryByText("Revisão de Teses Pendente")).not.toBeInTheDocument();
     expect(screen.queryByText("Reavaliação Próxima do Prazo")).not.toBeInTheDocument();
+  });
+
+  it("renderiza o slide de hiperconcentração em ativo único quando ultrapassa limite", () => {
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+    mockUsePortfolioAssets.mockReturnValue({
+      data: [
+        {
+          id: "p1",
+          ticker: "PETR4",
+          asset_class: "Ações",
+          quantity: 1000,
+          average_price: 40, // 40.000 BRL
+        },
+        {
+          id: "v1",
+          ticker: "VALE3",
+          asset_class: "Ações",
+          quantity: 100,
+          average_price: 60, // 6.000 BRL
+        },
+      ],
+      isLoading: false,
+    });
+    mockUsePortfolioPosition.mockReturnValue({
+      rows: [],
+      totalBRL: 46000,
+      cashBRL: 0,
+      isLoading: false,
+    });
+
+    render(<PortfolioInsightsCarousel />);
+
+    expect(screen.getByText("Alta concentração em PETR4")).toBeInTheDocument();
+    expect(screen.getByText("87.0% do total")).toBeInTheDocument();
+    expect(screen.getByText("Simular Rebalanceamento")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Simular Rebalanceamento"));
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=rebalancear&view=simulador");
+  });
+
+  it("renderiza o slide de teto de emissor FGC na Renda Fixa", () => {
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+    // Carteira de 1.500.000 BRL onde BMG tem 300.000 (> 250k FGC) distribuído em 2 CDBs (150k cada = 10% <= 25%)
+    mockUsePortfolioAssets.mockReturnValue({
+      data: [
+        {
+          id: "cdb1",
+          ticker: "CDB-BMG-2027",
+          asset_class: "Renda Fixa",
+          quantity: 150,
+          average_price: 1000, // 150.000 BRL (10%)
+        },
+        {
+          id: "cdb2",
+          ticker: "CDB-BMG-2028",
+          asset_class: "Renda Fixa",
+          quantity: 150,
+          average_price: 1000, // 150.000 BRL (10%)
+        },
+        {
+          id: "tesouro1",
+          ticker: "TESOURO-SELIC-29",
+          asset_class: "Renda Fixa",
+          quantity: 300,
+          average_price: 1000, // 300.000 BRL (20%)
+        },
+        {
+          id: "tesouro2",
+          ticker: "TESOURO-IPCA-35",
+          asset_class: "Renda Fixa",
+          quantity: 300,
+          average_price: 1000, // 300.000 BRL (20%)
+        },
+        {
+          id: "tesouro3",
+          ticker: "TESOURO-PREFIXADO-31",
+          asset_class: "Renda Fixa",
+          quantity: 300,
+          average_price: 1000, // 300.000 BRL (20%)
+        },
+        {
+          id: "cdb-itau",
+          ticker: "CDB-ITAU-2029",
+          asset_class: "Renda Fixa",
+          quantity: 300,
+          average_price: 1000, // 300.000 BRL (20%)
+        },
+      ],
+      isLoading: false,
+    });
+    mockUsePortfolioPosition.mockReturnValue({
+      rows: [],
+      totalBRL: 1500000,
+      cashBRL: 0,
+      isLoading: false,
+    });
+
+    render(<PortfolioInsightsCarousel />);
+
+    expect(screen.getAllByText(/Exposição concentrada em.*BMG/)[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Teto FGC")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Ver Renda Fixa")[0]).toBeInTheDocument();
+
+    const btn = screen.getAllByText("Ver Renda Fixa")[0];
+    expect(btn).toBeInTheDocument();
+    fireEvent.click(btn!);
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=posicao");
+  });
+
+  it("renderiza o slide de sobreposição excessiva de ETFs do mesmo benchmark", () => {
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+    // Carteira de 1.000.000 BRL com IVVB11 (175k = 17.5%) + VOO (175k = 17.5%) = 35% S&P 500 (> 30% teto)
+    // Nenhum ativo passa do teto individual de 25%
+    mockUsePortfolioAssets.mockReturnValue({
+      data: [
+        {
+          id: "etf1",
+          ticker: "IVVB11",
+          asset_class: "Internacional",
+          quantity: 583.333,
+          average_price: 300, // ~175.000 BRL
+        },
+        {
+          id: "etf2",
+          ticker: "VOO",
+          asset_class: "Internacional",
+          currency: "USD",
+          quantity: 70,
+          average_price: 500, // 70 * 500 * 5 = 175.000 BRL
+        },
+        {
+          id: "a1",
+          ticker: "PETR4",
+          asset_class: "Ações",
+          quantity: 4000,
+          average_price: 40, // 160.000 BRL (16%)
+        },
+        {
+          id: "a2",
+          ticker: "VALE3",
+          asset_class: "Ações",
+          quantity: 2666,
+          average_price: 60, // ~160.000 BRL (16%)
+        },
+        {
+          id: "a3",
+          ticker: "ITUB4",
+          asset_class: "Ações",
+          quantity: 4571,
+          average_price: 35, // ~160.000 BRL (16%)
+        },
+        {
+          id: "a4",
+          ticker: "WEGE3",
+          asset_class: "Ações",
+          quantity: 3404,
+          average_price: 47, // ~160.000 BRL (16%)
+        },
+      ],
+      isLoading: false,
+    });
+    mockUsePortfolioPosition.mockReturnValue({
+      rows: [],
+      totalBRL: 990000,
+      cashBRL: 0,
+      usdRate: 5.0,
+      isLoading: false,
+    });
+
+    render(<PortfolioInsightsCarousel />);
+
+    expect(screen.getAllByText("Sobreposição de ETFs em S&P 500")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("2 ETFs sobrepostos")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Ver Carteira")[0]).toBeInTheDocument();
+
+    const btn = screen.getAllByText("Ver Carteira")[0];
+    expect(btn).toBeInTheDocument();
+    fireEvent.click(btn!);
+    expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=posicao");
   });
 });

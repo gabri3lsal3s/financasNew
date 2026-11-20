@@ -7,6 +7,9 @@ import {
   useDeletePortfolioContribution,
   useDeletePortfolioDividend,
   useRecordOrder,
+  useExecutePortfolioBatchAporte,
+  useRevertPortfolioBatchAporte,
+  LAST_BATCH_APORTE_STORAGE_KEY,
   useApproveDividendsBatch,
   useDismissCorporateDividend,
   PORTFOLIO_QUERY_KEYS,
@@ -18,6 +21,7 @@ import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction, Portfolio
 vi.mock("@/data/rpc", () => ({
   approveDividendsBatchRpc: vi.fn(),
   executePortfolioBatchAporte: vi.fn(),
+  revertPortfolioBatchAporte: vi.fn(),
   deletePortfolioTransactionAtomic: vi.fn().mockResolvedValue(true),
 }));
 
@@ -830,6 +834,66 @@ describe("use-portfolio-mutations (Sincronização em Cascata)", () => {
       });
 
       expect(repo.dismissCorporateDividend).toHaveBeenCalledWith("corp-1", "manual_ignore");
+    });
+
+    it("deve executar useExecutePortfolioBatchAporte com batchId, salvar em sessionStorage e permitir Undo", async () => {
+      vi.mocked(rpc.executePortfolioBatchAporte).mockResolvedValueOnce(true);
+      const pushToastMock = vi.mocked((await import("@/services/toast")).pushToast);
+      pushToastMock.mockClear();
+
+      const { result } = renderHook(() => useExecutePortfolioBatchAporte(), { wrapper });
+
+      let execResult: { success: boolean; batchId: string } | undefined;
+      await act(async () => {
+        execResult = await result.current.mutateAsync({
+          items: [{ asset_id: "a1", quantity: 10, price: 50, total: 500 }],
+          date: "2026-11-20",
+          totalAmount: 500,
+        });
+      });
+
+      expect(execResult?.success).toBe(true);
+      expect(execResult?.batchId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      expect(rpc.executePortfolioBatchAporte).toHaveBeenCalledWith(
+        expect.objectContaining({
+          batchId: execResult?.batchId,
+          totalAmount: 500,
+        }),
+      );
+
+      // Verifica gravação no sessionStorage
+      const savedSession = sessionStorage.getItem(LAST_BATCH_APORTE_STORAGE_KEY);
+      expect(savedSession).not.toBeNull();
+      const parsed = JSON.parse(savedSession!);
+      expect(parsed.batchId).toBe(execResult?.batchId);
+      expect(parsed.itemsCount).toBe(1);
+
+      // Verifica toast com ação de desfazer
+      expect(pushToastMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Aportes aplicados à carteira",
+          action: expect.objectContaining({
+            label: "Desfazer",
+          }),
+        }),
+      );
+    });
+
+    it("deve executar useRevertPortfolioBatchAporte, invalidar queries e limpar sessionStorage", async () => {
+      vi.mocked(rpc.revertPortfolioBatchAporte).mockResolvedValueOnce(true);
+      sessionStorage.setItem(
+        LAST_BATCH_APORTE_STORAGE_KEY,
+        JSON.stringify({ batchId: "b1", executedAt: Date.now(), itemsCount: 2, totalAmount: 1000 }),
+      );
+
+      const { result } = renderHook(() => useRevertPortfolioBatchAporte(), { wrapper });
+
+      await act(async () => {
+        await result.current.mutateAsync("b1");
+      });
+
+      expect(rpc.revertPortfolioBatchAporte).toHaveBeenCalledWith("b1");
+      expect(sessionStorage.getItem(LAST_BATCH_APORTE_STORAGE_KEY)).toBeNull();
     });
   });
 });

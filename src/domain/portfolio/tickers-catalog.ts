@@ -1353,6 +1353,526 @@ export function getInternationalProfile(input: {
   return { region, vehicle };
 }
 
+// ---------------------------------------------------------------------------
+// Inferência Canônica de Emissor, Macro-Setores e Benchmarks
+// ---------------------------------------------------------------------------
 
+export interface InferredIssuer {
+  /** Chave normalizada para agrupamento de risco de crédito (ex: "banco_do_brasil", "btg", "tesouro_nacional"). */
+  issuerKey: string;
+  /** Rótulo formatado para exibição visual ao usuário. */
+  issuerLabel: string;
+  /** Indica se o emissor é soberano público federal (Tesouro Nacional). */
+  isSovereign: boolean;
+}
 
+const ISSUER_ALIAS_MAP: Record<string, { key: string; label: string }> = {
+  "DO BRASIL": { key: "banco_do_brasil", label: "Banco do Brasil" },
+  "BB": { key: "banco_do_brasil", label: "Banco do Brasil" },
+  "BANCO DO BRASIL": { key: "banco_do_brasil", label: "Banco do Brasil" },
+  "BTG": { key: "btg", label: "BTG Pactual" },
+  "BTG PACTUAL": { key: "btg", label: "BTG Pactual" },
+  "INTER": { key: "banco_inter", label: "Banco Inter" },
+  "BANCO INTER": { key: "banco_inter", label: "Banco Inter" },
+  "BMG": { key: "banco_bmg", label: "Banco BMG" },
+  "BANCO BMG": { key: "banco_bmg", label: "Banco BMG" },
+  "MASTER": { key: "banco_master", label: "Banco Master" },
+  "BANCO MASTER": { key: "banco_master", label: "Banco Master" },
+  "MAXIMA": { key: "banco_master", label: "Banco Master" },
+  "BANCO MAXIMA": { key: "banco_master", label: "Banco Master" },
+  "ORIGINAL": { key: "banco_original", label: "Banco Original" },
+  "BANCO ORIGINAL": { key: "banco_original", label: "Banco Original" },
+  "PINE": { key: "banco_pine", label: "Banco Pine" },
+  "BANCO PINE": { key: "banco_pine", label: "Banco Pine" },
+  "FACTA": { key: "facta_financeira", label: "Facta Financeira" },
+  "FACTA FINANCEIRA": { key: "facta_financeira", label: "Facta Financeira" },
+  "ITAU": { key: "itau", label: "Itaú" },
+  "BANCO ITAU": { key: "itau", label: "Itaú" },
+  "BRADESCO": { key: "bradesco", label: "Bradesco" },
+  "BANCO BRADESCO": { key: "bradesco", label: "Bradesco" },
+  "SANTANDER": { key: "santander", label: "Santander" },
+  "BANCO SANTANDER": { key: "santander", label: "Santander" },
+  "SAFRA": { key: "banco_safra", label: "Banco Safra" },
+  "BANCO SAFRA": { key: "banco_safra", label: "Banco Safra" },
+  "C6": { key: "c6_bank", label: "C6 Bank" },
+  "C6 BANK": { key: "c6_bank", label: "C6 Bank" },
+  "DAYCOVAL": { key: "banco_daycoval", label: "Banco Daycoval" },
+  "BANCO DAYCOVAL": { key: "banco_daycoval", label: "Banco Daycoval" },
+  "ABC": { key: "banco_abc_brasil", label: "Banco ABC Brasil" },
+  "ABC BRASIL": { key: "banco_abc_brasil", label: "Banco ABC Brasil" },
+  "BANCO ABC": { key: "banco_abc_brasil", label: "Banco ABC Brasil" },
+  "XP": { key: "xp_investimentos", label: "XP Investimentos" },
+  "XP INVESTIMENTOS": { key: "xp_investimentos", label: "XP Investimentos" },
+  "PAN": { key: "banco_pan", label: "Banco Pan" },
+  "BANCO PAN": { key: "banco_pan", label: "Banco Pan" },
+  "NUBANK": { key: "nubank", label: "Nubank" },
+  "NU": { key: "nubank", label: "Nubank" },
+  "SICOOB": { key: "sicoob", label: "Sicoob" },
+  "SICREDI": { key: "sicredi", label: "Sicredi" },
+};
+
+/**
+ * Infere o emissor de títulos de Renda Fixa com blindagem contra concatenação indevida,
+ * suporte a hífens em nomes compostos e separação de chave canônica e rótulo amigável.
+ */
+export function parseIssuerFromTicker(ticker: string, name?: string | null): InferredIssuer {
+  const normTicker = (ticker ?? "")
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const normName = (name ?? "")
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  // 1. Títulos Públicos Soberanos Federais
+  if (
+    normTicker.includes("TESOURO") ||
+    normTicker.startsWith("LFT") ||
+    normTicker.startsWith("LTN") ||
+    normTicker.startsWith("NTN") ||
+    normName.includes("TESOURO") ||
+    normName.startsWith("LFT") ||
+    normName.startsWith("LTN") ||
+    normName.startsWith("NTN")
+  ) {
+    return { issuerKey: "tesouro_nacional", issuerLabel: "Tesouro Nacional", isSovereign: true };
+  }
+
+  // 2. Extrai miolo do ticker primeiro; se falhar, tenta o name (nunca concatenar antes)
+  const GENERIC_PRODUCT_TERMS = new Set([
+    "POS",
+    "PRE",
+    "PREFIXADO",
+    "POSFIXADO",
+    "IPCA",
+    "SELIC",
+    "CDI",
+    "DI",
+    "LIQUIDEZ",
+    "DIARIA",
+    "TITULO",
+    "TITULOS",
+    "RENDA",
+    "FIXA",
+    "CREDITO",
+    "PRIVADO",
+  ]);
+
+  const extractCandidate = (source: string): string | null => {
+    if (!source) return null;
+    const match = source.match(
+      /\b(?:CDB|LCI|LCA|RDB|LC|DEB[EÊ]NTURE|CRI|CRA)[-_ ]+([A-Z0-9À-ÿ]+(?:[-_ ][A-Z0-9À-ÿ]+)*?)(?=[-_ ]+(?:\d+(?:[.,]\d+)?%|\bCDI\b|\bIPCA\b|\bPRE\b|\bPREFIXADO\b|\bPOSFIXADO\b|\bSELIC\b|\bDI\b|\bLIQUIDEZ\b|\bBANCO\b|\d{4}\b)|[-_ ](?:JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)?\d{2,4}|$)/i,
+    );
+    if (!match?.[1]) return null;
+    let text = match[1].replace(/[-_]/g, " ").trim();
+    text = text.replace(/^BANCO\s+/i, "").replace(/\s+BANCO$/i, "").trim();
+    text = text.replace(/\s+(?:POS|PRE|PREFIXADO|POSFIXADO|IPCA|SELIC|CDI|DI|LIQUIDEZ|DIARIA)$/i, "").trim();
+    if (GENERIC_PRODUCT_TERMS.has(text.toUpperCase())) return null;
+    return text.length >= 2 ? text : null;
+  };
+
+  let candidate = extractCandidate(normTicker);
+  if (!candidate && normName) {
+    candidate = extractCandidate(normName);
+  }
+
+  if (!candidate) {
+    // Fallback de detecção por palavras-chave institucionais
+    const checkKeyword = (str: string): string | null => {
+      if (str.includes("DO BRASIL")) return "DO BRASIL";
+      if (str.includes("BTG")) return "BTG";
+      if (str.includes("INTER")) return "INTER";
+      if (str.includes("BMG")) return "BMG";
+      if (str.includes("MASTER") || str.includes("MAXIMA")) return "MASTER";
+      if (str.includes("ORIGINAL")) return "ORIGINAL";
+      if (str.includes("PINE")) return "PINE";
+      if (str.includes("FACTA")) return "FACTA";
+      if (str.includes("ITAU")) return "ITAU";
+      if (str.includes("BRADESCO")) return "BRADESCO";
+      if (str.includes("SANTANDER")) return "SANTANDER";
+      if (str.includes("SAFRA")) return "SAFRA";
+      if (str.includes("C6")) return "C6";
+      if (str.includes("DAYCOVAL")) return "DAYCOVAL";
+      if (str.includes("ABC")) return "ABC";
+      if (str.includes("XP")) return "XP";
+      if (str.includes("PAN")) return "PAN";
+      if (str.includes("NUBANK")) return "NUBANK";
+      if (str.includes("SICOOB")) return "SICOOB";
+      if (str.includes("SICREDI")) return "SICREDI";
+      return null;
+    };
+    candidate = checkKeyword(normTicker) ?? (normName ? checkKeyword(normName) : null);
+  }
+
+  if (candidate) {
+    const candUpper = candidate.toUpperCase();
+    if (ISSUER_ALIAS_MAP[candUpper]) {
+      return {
+        issuerKey: ISSUER_ALIAS_MAP[candUpper].key,
+        issuerLabel: ISSUER_ALIAS_MAP[candUpper].label,
+        isSovereign: false,
+      };
+    }
+
+    // Procura por token de alias dentro do candidato (ex: "MASTER PREFIXADO" -> "MASTER")
+    for (const [aliasKey, aliasVal] of Object.entries(ISSUER_ALIAS_MAP)) {
+      if (
+        candUpper === aliasKey ||
+        candUpper.startsWith(`${aliasKey} `) ||
+        candUpper.endsWith(` ${aliasKey}`) ||
+        candUpper.includes(` ${aliasKey} `)
+      ) {
+        return {
+          issuerKey: aliasVal.key,
+          issuerLabel: aliasVal.label,
+          isSovereign: false,
+        };
+      }
+    }
+  }
+
+  if (candidate) {
+    const safeKey = candidate.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    if (safeKey.length >= 2) {
+      const formattedLabel = candidate
+        .toLowerCase()
+        .split(" ")
+        .map((w) => (w.length > 2 ? w.charAt(0).toUpperCase() + w.slice(1) : w.toUpperCase()))
+        .join(" ");
+      return {
+        issuerKey: safeKey,
+        issuerLabel: formattedLabel,
+        isSovereign: false,
+      };
+    }
+  }
+
+  return {
+    issuerKey: "emissor_privado",
+    issuerLabel: "Emissor Privado",
+    isSovereign: false,
+  };
+}
+
+/**
+ * Mapeia setores e ativos para clusters macro-setoriais fundamentais.
+ * Permite travas de correlação sistêmica em camadas (ex: Bancos + Seguros).
+ */
+export function inferMacroSector(asset: {
+  assetClass?: string | null;
+  sector?: string | null;
+  ticker?: string | null;
+}): string | undefined {
+  const norm = (str?: string | null) =>
+    (str ?? "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const sectorUpper = norm(asset.sector);
+  const tickerUpper = norm(asset.ticker);
+  const classUpper = norm(asset.assetClass);
+
+  // Se for Renda Fixa ou Caixa, não agrupa em macro-setores de renda variável
+  if (classUpper.includes("RENDA FIXA") || classUpper.includes("CAIXA") || classUpper.includes("CRIPTO")) {
+    return undefined;
+  }
+
+  // 1. Macro-Financeiro (Bancos, Financeiras, Meios de Pagamento, Seguros e Previdência)
+  if (
+    sectorUpper.includes("BANCO") ||
+    sectorUpper.includes("FINANCEIR") ||
+    sectorUpper.includes("SEGURO") ||
+    sectorUpper.includes("PREVIDENCIA") ||
+    sectorUpper.includes("PAGAMENTO") ||
+    /^(ITUB|BBDC|BBAS|SANB|BPAC|CXSE|BBSE|PSSA|CIEL|BRSR|ABCB|MODL|BIDI|INBR)/.test(tickerUpper)
+  ) {
+    return "macro_financeiro";
+  }
+
+  // 2. Commodities Cíclicas (Petróleo, Gás, Mineração, Siderurgia, Papel/Celulose, Agro/Proteína)
+  if (
+    sectorUpper.includes("PETROLEO") ||
+    sectorUpper.includes("GAS") ||
+    sectorUpper.includes("COMBUSTIV") ||
+    sectorUpper.includes("MINERACAO") ||
+    sectorUpper.includes("SIDERURGIA") ||
+    sectorUpper.includes("PAPEL") ||
+    sectorUpper.includes("CELULOSE") ||
+    sectorUpper.includes("AGRO") ||
+    sectorUpper.includes("FIAGRO") ||
+    sectorUpper.includes("COMMODIT") ||
+    /^(PETR|VALE|CSNA|USIM|GGBR|SUZB|KLBN|JBSS|BRFS|BEEF|MRFG|SLCE|RECV|PRIO|BRAV|ENAT|UGPA|CSAN)/.test(tickerUpper)
+  ) {
+    return "macro_commodities";
+  }
+
+  // 3. Utilidades Públicas / Defensivo (Energia Elétrica, Saneamento, Telecomunicações)
+  if (
+    sectorUpper.includes("ENERGIA ELETRICA") ||
+    sectorUpper.includes("SANEAMENTO") ||
+    sectorUpper.includes("UTILIDADES") ||
+    sectorUpper.includes("TELECOM") ||
+    /^(TAEE|EGIE|CPLE|CMIG|TRPL|ENGI|EQTL|ALUP|SBSP|SAPR|CSMG|COPASA|VIVT|TIMS)/.test(tickerUpper)
+  ) {
+    return "macro_utilities";
+  }
+
+  // 4. Setor Imobiliário & Construção (FIIs e Incorporação)
+  if (
+    sectorUpper.includes("IMOBILIARIO") ||
+    sectorUpper.includes("REIT") ||
+    sectorUpper.includes("CONSTRUCAO") ||
+    sectorUpper.includes("INCORPORACAO") ||
+    classUpper.includes("FII") ||
+    /^(HGLG|KNRI|MXRF|XPML|BTLG|VISC|VILG|TGAR|CYRE|EZTC|MRVE)/.test(tickerUpper)
+  ) {
+    return "macro_real_estate";
+  }
+
+  // 5. Tecnologia & Comunicação
+  if (
+    sectorUpper.includes("TECNOLOGIA") ||
+    sectorUpper.includes("SOFTWARE") ||
+    sectorUpper.includes("COMUNICACAO") ||
+    sectorUpper.includes("MIDIA") ||
+    /^(TOTS|LWSA|CASH|POSI|INTB|AAPL|MSFT|GOOG|NVDA|META)/.test(tickerUpper)
+  ) {
+    return "macro_tech";
+  }
+
+  // 6. Consumo, Varejo & Saúde
+  if (
+    sectorUpper.includes("CONSUMO") ||
+    sectorUpper.includes("VAREJO") ||
+    sectorUpper.includes("SAUDE") ||
+    sectorUpper.includes("FARMACIA") ||
+    /^(MGLU|VIIA|BHIA|LREN|ARZZ|SOMA|RADL|RDOR|FLRY|HAPV)/.test(tickerUpper)
+  ) {
+    return "macro_consumo_saude";
+  }
+
+  return undefined;
+}
+
+/**
+ * Detecta o benchmark ou índice subjacente replicado por um ETF para fins de correlação e sobreposição.
+ */
+export function inferEtfBenchmark(asset: {
+  assetClass?: string | null;
+  ticker?: string | null;
+  name?: string | null;
+}): string | undefined {
+  const norm = (str?: string | null) =>
+    (str ?? "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const ticker = norm(asset.ticker);
+  const name = norm(asset.name);
+  const combined = `${ticker} ${name}`;
+
+  // S&P 500
+  if (
+    ticker === "IVVB11" ||
+    ticker === "SPXI11" ||
+    ticker === "SPXB11" ||
+    ticker === "VOO" ||
+    ticker === "IVV" ||
+    ticker === "SPY" ||
+    combined.includes("S&P 500") ||
+    combined.includes("SP500") ||
+    combined.includes("S&P500")
+  ) {
+    return "sp500";
+  }
+
+  // Nasdaq 100
+  if (
+    ticker === "NASD11" ||
+    ticker === "QQQ" ||
+    ticker === "QQQI11" ||
+    combined.includes("NASDAQ 100") ||
+    combined.includes("NASDAQ100")
+  ) {
+    return "nasdaq100";
+  }
+
+  // All-World / Global Amplo
+  if (
+    ticker === "WRLD11" ||
+    ticker === "VT" ||
+    ticker === "ACWI" ||
+    ticker === "VTI" ||
+    combined.includes("ALL-WORLD") ||
+    combined.includes("ALL WORLD") ||
+    combined.includes("MSCI WORLD") ||
+    combined.includes("FTSE ALL")
+  ) {
+    return "all_world";
+  }
+
+  // Ibovespa
+  if (
+    ticker === "BOVA11" ||
+    ticker === "BOVV11" ||
+    ticker === "BOVB11" ||
+    ticker === "XBOV11" ||
+    ticker === "IBOV11" ||
+    combined.includes("IBOVESPA") ||
+    combined.includes("IBOV")
+  ) {
+    return "ibovespa";
+  }
+
+  // IBrX-100
+  if (
+    ticker === "BRAX11" ||
+    ticker === "IBXX11" ||
+    combined.includes("IBRX 100") ||
+    combined.includes("IBRX100")
+  ) {
+    return "ibrx100";
+  }
+
+  // Small Caps Brasil
+  if (
+    ticker === "SMAL11" ||
+    ticker === "SMLL11" ||
+    ticker === "XMAL11" ||
+    combined.includes("SMALL CAP")
+  ) {
+    return "smal_cap_br";
+  }
+
+  // IFIX (Fundos Imobiliários)
+  if (
+    ticker === "IFIX11" ||
+    ticker === "XFIX11" ||
+    combined.includes("IFIX")
+  ) {
+    return "ifix";
+  }
+
+  // Tesouro Selic / DI
+  if (
+    ticker === "LFTS11" ||
+    combined.includes("TESOURO SELIC") ||
+    ticker.startsWith("LFT")
+  ) {
+    return "tesouro_selic";
+  }
+
+  // Tesouro IPCA / IMA-B
+  if (
+    ticker === "IMAB11" ||
+    ticker === "B5P211" ||
+    ticker === "IB5M11" ||
+    ticker === "NTNB11" ||
+    combined.includes("TESOURO IPCA") ||
+    ticker.startsWith("NTN-B") ||
+    ticker.startsWith("NTNB")
+  ) {
+    return "tesouro_ipca";
+  }
+
+  // Bitcoin
+  if (
+    ticker === "BITB" ||
+    ticker === "IBIT" ||
+    ticker === "FBTC" ||
+    ticker === "ARKB" ||
+    ticker === "BITO" ||
+    ticker === "BITH11" ||
+    ticker === "QBTC11" ||
+    combined.includes("BITCOIN") ||
+    combined.includes("BTC")
+  ) {
+    return "bitcoin";
+  }
+
+  // Ethereum
+  if (
+    ticker === "ETHE" ||
+    ticker === "ETHR11" ||
+    ticker === "QETH11" ||
+    combined.includes("ETHEREUM") ||
+    combined.includes("ETH")
+  ) {
+    return "ethereum";
+  }
+
+  return undefined;
+}
+
+/**
+ * Identifica se o ativo é um veículo estruturalmente diversificado
+ * (como Tesouro Soberano ou ETFs de índices amplos).
+ * Veículos diversificados utilizam tetos diferenciados (ex: 40% global ou 100% da classe).
+ */
+export function isDiversifiedVehicle(asset: {
+  assetClass?: string | null;
+  ticker?: string | null;
+  name?: string | null;
+}): boolean {
+  const norm = (str?: string | null) =>
+    (str ?? "")
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+
+  const ticker = norm(asset.ticker);
+
+  // 1. Títulos Públicos Soberanos Federais
+  const issuer = parseIssuerFromTicker(asset.ticker ?? "", asset.name);
+  if (issuer.isSovereign) {
+    return true;
+  }
+
+  // 2. ETFs de Mercado Amplo
+  const benchmark = inferEtfBenchmark(asset);
+  if (
+    benchmark === "sp500" ||
+    benchmark === "all_world" ||
+    benchmark === "ibovespa" ||
+    benchmark === "ibrx100" ||
+    benchmark === "nasdaq100" ||
+    benchmark === "tesouro_selic" ||
+    benchmark === "tesouro_ipca"
+  ) {
+    return true;
+  }
+
+  // Lista canônica de tickers de diversificação ampla
+  const DIVERSIFIED_TICKERS = new Set([
+    "VT",
+    "ACWI",
+    "WRLD11",
+    "VOO",
+    "IVV",
+    "SPY",
+    "VTI",
+    "BOVA11",
+    "BRAX11",
+    "IVVB11",
+    "SPXI11",
+    "VEA",
+    "VWO",
+    "IEFA",
+    "QQQ",
+  ]);
+
+  if (DIVERSIFIED_TICKERS.has(ticker)) {
+    return true;
+  }
+
+  return false;
+}
 

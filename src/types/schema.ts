@@ -374,6 +374,22 @@ export type UserCustomSettings = {
   darkThemeVariant?: DarkThemeVariant;
   themeSchedule?: ThemeScheduleConfig;
   hasDismissedAndroidProBanner?: boolean;
+  portfolioRiskPolicy?: PortfolioRiskPolicySettings;
+};
+
+export type PortfolioRiskPolicySettings = {
+  defaultAssetCeilingPct?: number;
+  diversifiedAssetCeilingPct?: number;
+  defaultSectorInClassCeilingPct?: number;
+  defaultSectorGlobalCeilingPct?: number;
+  macroSectorInClassCeilingPct?: number;
+  macroSectorGlobalCeilingPct?: number;
+  maxPrivateIssuerInFixedIncomePct?: number;
+  maxPrivateIssuerPct?: number;
+  maxPrivateIssuerFgcBRL?: number;
+  lowScoreThreshold?: number;
+  minTicketBRL?: number;
+  benchmarkOverlapCeilingPct?: number;
 };
 
 export type OnboardingGoalId = "cards" | "ocr" | "debts" | "family";
@@ -933,6 +949,7 @@ export type PortfolioContribution = {
   date: string;
   amount: number;
   notes?: string | null;
+  batch_id?: string | null;
   created_at?: string;
 };
 
@@ -966,6 +983,8 @@ export type PortfolioTransaction = {
   total_brl?: number | null;
   /** Observações livres ou anotações da transação. */
   notes?: string | null;
+  /** Identificador único do lote de aporte inteligente vinculado (Fase 3). */
+  batch_id?: string | null;
 };
 
 export type GroupTarget = {

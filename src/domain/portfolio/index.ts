@@ -372,16 +372,24 @@ export {
   resolveAssetPrecision,
   simulateAporte,
   simulateCombinedAporte,
+  simulateConstrainedAporte,
   simulateRebalanceAporte,
   simulateSmartAporte,
 } from "./aporte";
 export type {
   AporteAssetInput,
   AporteMode,
+  AporteOverflowEvent,
+  AporteOverridesMap,
   AporteResult,
   AporteRoute,
+  AporteStrategy,
+  AssetAporteOverride,
   ClassAporteSummary,
   ClassTargetInput,
+  ConstrainedAporteOptions,
+  ConstrainedAporteResult,
+  PausedAssetDiagnostic,
   RebalanceMode,
   SectorAporteGroup,
   SectorAporteSummary,
@@ -519,5 +527,9 @@ export * from "./asset-governance-insights";
 export * from "./fixed-income-redemption-preview";
 export * from "./wizard-calculations";
 export * from "./aporte-reasons";
+export * from "./portfolio-risk-policy";
+export * from "./diversification-metrics";
+export * from "./fixed-income-diagnostics";
+export * from "./aporte-execution-mapper";
 
 

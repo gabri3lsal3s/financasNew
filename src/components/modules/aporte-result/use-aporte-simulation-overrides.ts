@@ -34,6 +34,8 @@ export function useAporteSimulationOverrides({
   const [excludedAssetIds, setExcludedAssetIds] = useState<Set<string>>(() => new Set());
   const [quantityOverrides, setQuantityOverrides] = useState<Map<string, number>>(() => new Map());
   const [quantityDrafts, setQuantityDrafts] = useState<Map<string, string>>(() => new Map());
+  const [priceOverrides, setPriceOverrides] = useState<Map<string, number>>(() => new Map());
+  const [priceDrafts, setPriceDrafts] = useState<Map<string, string>>(() => new Map());
 
   const toggleAssetSelection = (assetId: string, isChecked: boolean) => {
     setExcludedAssetIds((prev) => {
@@ -67,6 +69,56 @@ export function useAporteSimulationOverrides({
     }
   };
 
+  const handlePriceChange = (assetId: string, rawStr: string) => {
+    setPriceDrafts((prev) => {
+      const next = new Map(prev);
+      next.set(assetId, rawStr);
+      return next;
+    });
+    const parsed = parseDecimalNumber(rawStr);
+    const price = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    setPriceOverrides((prev) => {
+      const next = new Map(prev);
+      if (price > 0) next.set(assetId, price);
+      else next.delete(assetId);
+      return next;
+    });
+  };
+
+  const handleResetAsset = (assetId: string) => {
+    setQuantityOverrides((prev) => {
+      if (!prev.has(assetId)) return prev;
+      const next = new Map(prev);
+      next.delete(assetId);
+      return next;
+    });
+    setQuantityDrafts((prev) => {
+      if (!prev.has(assetId)) return prev;
+      const next = new Map(prev);
+      next.delete(assetId);
+      return next;
+    });
+    setPriceOverrides((prev) => {
+      if (!prev.has(assetId)) return prev;
+      const next = new Map(prev);
+      next.delete(assetId);
+      return next;
+    });
+    setPriceDrafts((prev) => {
+      if (!prev.has(assetId)) return prev;
+      const next = new Map(prev);
+      next.delete(assetId);
+      return next;
+    });
+    setExcludedAssetIds((prev) => {
+      if (!prev.has(assetId)) return prev;
+      const next = new Set(prev);
+      next.delete(assetId);
+      return next;
+    });
+    triggerSensory("selection");
+  };
+
   const toggleTicker = (ticker: string) => {
     setCompletedTickers((prev) => {
       const next = new Set(prev);
@@ -81,7 +133,8 @@ export function useAporteSimulationOverrides({
     });
   };
 
-  const hasCustomizations = excludedAssetIds.size > 0 || quantityOverrides.size > 0;
+  const hasCustomizations =
+    excludedAssetIds.size > 0 || quantityOverrides.size > 0 || priceOverrides.size > 0;
 
   const effectiveRouteMap = useMemo(() => {
     const map = new Map<string, EffectiveAporteRouteState>();
@@ -90,19 +143,26 @@ export function useAporteSimulationOverrides({
       const customQty = quantityOverrides.get(r.assetId);
       const isQuantityCustom = customQty !== undefined && customQty !== r.quantity;
       const effectiveQty = customQty !== undefined ? customQty : r.quantity;
+
+      const customPrice = priceOverrides.get(r.assetId);
+      const isPriceCustom = customPrice !== undefined && customPrice !== r.priceBRL;
+      const effectivePrice = customPrice !== undefined && customPrice > 0 ? customPrice : r.priceBRL;
+
       const isSelected = !isExcluded && effectiveQty > 0;
       const quantityToApply = isSelected ? effectiveQty : 0;
-      const effectiveAllocatedBRL = Math.round(quantityToApply * r.priceBRL * 100) / 100;
+      const effectiveAllocatedBRL = Math.round(quantityToApply * effectivePrice * 100) / 100;
 
       map.set(r.assetId, {
         isSelected,
         effectiveQuantity: quantityToApply,
+        effectivePrice,
         effectiveAllocatedBRL,
         isQuantityCustom,
+        isPriceCustom,
       });
     }
     return map;
-  }, [routes, excludedAssetIds, quantityOverrides]);
+  }, [routes, excludedAssetIds, quantityOverrides, priceOverrides]);
 
   const effectiveTotalAllocated = useMemo(() => {
     if (!hasCustomizations && typeof initialTotalAllocated === "number") {
@@ -132,7 +192,7 @@ export function useAporteSimulationOverrides({
           assetId: r.assetId,
           ticker: r.ticker,
           quantity: eff.effectiveQuantity,
-          priceBRL: r.priceBRL,
+          priceBRL: eff.effectivePrice,
           allocatedBRL: eff.effectiveAllocatedBRL,
         });
       }
@@ -198,6 +258,8 @@ export function useAporteSimulationOverrides({
     completedCount: completedTickers.size,
     quantityOverrides,
     quantityDrafts,
+    priceOverrides,
+    priceDrafts,
     effectiveRouteMap,
     effectiveTotalAllocated,
     effectiveLeftover,
@@ -206,6 +268,8 @@ export function useAporteSimulationOverrides({
     treeGroups,
     toggleAssetSelection,
     handleQuantityChange,
+    handlePriceChange,
+    handleResetAsset,
     toggleTicker,
   };
 }

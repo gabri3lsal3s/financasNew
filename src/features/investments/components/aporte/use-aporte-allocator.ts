@@ -33,6 +33,7 @@ export function useAporteAllocator(onGoToPosition?: () => void) {
   const [pendingCustomItems, setPendingCustomItems] = useState<CustomAporteExecutionItem[] | null>(null);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
+  const [strategy, setStrategy] = useState<"optimized" | "proportional">("optimized");
 
   const availableCashCents = Math.max(0, Math.round(position.cashBRL * 100));
 
@@ -55,8 +56,9 @@ export function useAporteAllocator(onGoToPosition?: () => void) {
         rawAssets: assetsQuery.data ?? [],
         rawClassTargets: classTargetsQuery.data ?? [],
         rawSectorTargets: sectorTargetsQuery.data ?? [],
+        strategy,
       }),
-    [totalPurchasingCents, position.rows, assetsQuery.data, classTargetsQuery.data, sectorTargetsQuery.data],
+    [totalPurchasingCents, position.rows, assetsQuery.data, classTargetsQuery.data, sectorTargetsQuery.data, strategy],
   );
 
   const handleOpenWizardForAsset = useCallback(
@@ -151,7 +153,12 @@ export function useAporteAllocator(onGoToPosition?: () => void) {
     effectiveCashSelectedCents,
     totalPurchasingCents,
     cashHighlight: urlAnim.cashHighlight,
+    strategy,
+    setStrategy,
     simulation,
+    positionRows: position.rows,
+    rawClassTargets: classTargetsQuery.data ?? [],
+    rawSectorTargets: sectorTargetsQuery.data ?? [],
     batchError,
     isApplying,
     confirmBatchOpen,

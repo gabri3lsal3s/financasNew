@@ -14,7 +14,8 @@ export interface AporteRowActionsProps {
 }
 
 /**
- * Ações padronizadas por ativo sugerido: atalho para Wizard de Compra, inspeção de tese e marcação de execução.
+ * Ações padronizadas por ativo sugerido (§Fase 3):
+ * Atalho para Wizard de Compra, inspeção de tese e marcação sutil de execução (sem pílula pendente agressiva).
  */
 export function AporteRowActions({
   ticker,
@@ -35,7 +36,7 @@ export function AporteRowActions({
           size="sm"
           onClick={onInspect}
           className={cn(
-            "size-8 p-0 shrink-0 text-muted-foreground hover:text-foreground hover:bg-surface-raised",
+            "size-8 p-0 shrink-0 text-muted-foreground hover:text-foreground hover:bg-surface-raised cursor-pointer",
             compact && "size-7",
           )}
           title={`Inspecionar tese e nota de ${ticker}`}
@@ -53,8 +54,8 @@ export function AporteRowActions({
           size="sm"
           onClick={() => onOpenWizard(ticker, quantity, allocatedBRL)}
           className={cn(
-            "px-2.5 text-xs gap-1 font-medium text-foreground",
-            compact && "px-2 text-[11px]",
+            "px-2.5 text-xs gap-1 font-medium text-foreground cursor-pointer h-7",
+            compact && "px-2 text-[11px] h-6",
           )}
           title={`Comprar ${ticker} no Wizard`}
           aria-label={`Comprar ${ticker} no Wizard`}
@@ -69,20 +70,15 @@ export function AporteRowActions({
         onClick={() => onToggleDone(ticker)}
         aria-label={isDone ? `Marcar ${ticker} como pendente` : `Marcar ${ticker} como executado`}
         className={cn(
-          "relative inline-flex min-h-8 items-center justify-center gap-1 rounded-pill px-2.5 py-1 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0 max-sm:after:absolute max-sm:after:-inset-2",
+          "relative inline-flex h-7 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium transition-colors cursor-pointer shrink-0 max-sm:after:absolute max-sm:after:-inset-2",
           isDone
-            ? "border border-positive/30 bg-positive/10 text-positive-strong"
-            : "border border-border bg-surface text-muted-foreground hover:border-primary/40 hover:text-foreground active:scale-[0.98]",
+            ? "border border-positive/30 bg-positive/10 text-positive-strong font-semibold"
+            : "border border-transparent hover:border-border/80 text-muted-foreground hover:text-foreground hover:bg-surface-raised",
+          compact && "h-6 px-1.5 text-[11px]",
         )}
       >
-        {isDone ? (
-          <>
-            <Check className="size-3.5" aria-hidden="true" />
-            <span>Feito</span>
-          </>
-        ) : (
-          <span>Pendente</span>
-        )}
+        <Check className={cn("size-3.5", isDone ? "text-positive-strong" : "opacity-40 hover:opacity-100")} aria-hidden="true" />
+        <span>{isDone ? "Feito" : "Marcar"}</span>
       </button>
     </div>
   );

@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   executePortfolioBatchAporte,
+  revertPortfolioBatchAporte,
   type ExecutePortfolioBatchAporteParams,
 } from "@/data/rpc";
+import { generateBatchId } from "@/domain/portfolio/aporte-execution-mapper";
 import { listPortfolioTransactions } from "@/data/repositories/portfolio";
 import { calculateWeightedAveragePrice } from "@/domain/portfolio/summary";
 import { sellAssetPosition } from "@/domain/portfolio/operations";
@@ -549,26 +551,103 @@ export function useRecordOrder() {
   });
 }
 
+export const LAST_BATCH_APORTE_STORAGE_KEY = "axir_last_batch_aporte";
+
+export interface LastBatchAporteSession {
+  batchId: string;
+  executedAt: number;
+  itemsCount: number;
+  totalAmount: number;
+}
+
 /**
- * Executa o aporte inteligente em lote via RPC transacional (§F36).
- * Atualiza posições, lança as compras em portfolio_transactions e registra a contribuição.
+ * Executa o aporte inteligente em lote via RPC transacional (§F36 + Fase 3).
+ * Atualiza posições, lança as compras em portfolio_transactions com batch_id e registra a contribuição.
+ * Permite Undo atômico via toast de ação e armazena o lote recente em sessionStorage.
  */
 export function useExecutePortfolioBatchAporte() {
   const queryClient = useQueryClient();
+  const revertMutation = useRevertPortfolioBatchAporte();
+
   return useMutation({
-    mutationFn: (params: ExecutePortfolioBatchAporteParams) => executePortfolioBatchAporte(params),
-    onSuccess: (_, params) => {
+    mutationFn: async (params: ExecutePortfolioBatchAporteParams) => {
+      const batchId =
+        params.batchId && params.batchId.trim().length > 0 ? params.batchId.trim() : generateBatchId();
+      const enrichedParams: ExecutePortfolioBatchAporteParams = {
+        ...params,
+        batchId,
+      };
+      const ok = await executePortfolioBatchAporte(enrichedParams);
+      return { success: ok, batchId };
+    },
+    onSuccess: (result, params) => {
       void invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
+      if (typeof window !== "undefined" && window.sessionStorage) {
+        try {
+          const sessionData: LastBatchAporteSession = {
+            batchId: result.batchId,
+            executedAt: Date.now(),
+            itemsCount: params.items.length,
+            totalAmount: params.totalAmount,
+          };
+          window.sessionStorage.setItem(LAST_BATCH_APORTE_STORAGE_KEY, JSON.stringify(sessionData));
+        } catch {
+          // No-op para ambientes sem sessionStorage
+        }
+      }
+
       pushToast({
         title: "Aportes aplicados à carteira",
         description: `Posições de ${params.items.length} ativos atualizadas e compras lançadas com sucesso.`,
         variant: "success",
+        duration: 10000,
+        action: {
+          label: "Desfazer",
+          onClick: () => {
+            revertMutation.mutate(result.batchId);
+          },
+        },
       });
       triggerSensory("success");
     },
     onError: (err) => {
       pushToast({
         title: "Erro ao aplicar aportes",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+      triggerSensory("destructive");
+    },
+  });
+}
+
+/**
+ * Reverte de forma transacional e atômica um lote de aportes executado (Undo ACID - Fase 3).
+ * Restaura quantidade e preço médio anteriores, cancela débito de Caixa e apaga compras do lote.
+ */
+export function useRevertPortfolioBatchAporte() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (batchId: string) => revertPortfolioBatchAporte(batchId),
+    onSuccess: () => {
+      void invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
+      if (typeof window !== "undefined" && window.sessionStorage) {
+        try {
+          window.sessionStorage.removeItem(LAST_BATCH_APORTE_STORAGE_KEY);
+        } catch {
+          // No-op
+        }
+      }
+      pushToast({
+        title: "Lote de aportes revertido",
+        description: "As compras e posições foram restauradas com sucesso.",
+        variant: "info",
+      });
+      triggerSensory("success");
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Não foi possível desfazer o lote",
         description: getErrorMessage(err),
         variant: "destructive",
       });

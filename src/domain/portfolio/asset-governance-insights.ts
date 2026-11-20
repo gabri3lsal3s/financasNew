@@ -354,3 +354,25 @@ export function generateAssetGovernanceInsights(params: {
     consolidatedUnscoredAlert,
   };
 }
+
+/**
+ * Determina de forma pura e determinística se a revisão de tese de um ativo está vencida.
+ * - Se tem nota mas não possui last_reviewed_at, considera vencido (para incentivar registro formal);
+ * - Se decorreram mais dias que a periodicidade configurada (reviewFrequencyMonths * 30), está vencida.
+ */
+export function isAssetReviewOverdue(
+  lastReviewedAt?: string | null,
+  reviewFrequencyMonths: number = 6,
+  nowTime: number = Date.now(),
+): boolean {
+  if (!lastReviewedAt || lastReviewedAt.trim() === "") {
+    return true;
+  }
+  const reviewedTime = new Date(lastReviewedAt).getTime();
+  if (Number.isNaN(reviewedTime)) {
+    return true;
+  }
+  const daysSince = Math.max(0, Math.floor((nowTime - reviewedTime) / (1000 * 60 * 60 * 24)));
+  return daysSince > (reviewFrequencyMonths || 6) * 30;
+}
+

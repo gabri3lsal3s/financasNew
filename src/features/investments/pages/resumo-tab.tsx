@@ -7,7 +7,6 @@ import type { PortfolioAsset } from "@/types";
 import { PortfolioSnapshotsCarousel } from "../components";
 import { CustodySectionCard } from "../components/resumo/custody-section-card";
 import { PortfolioAllocationCard } from "../components/resumo/portfolio-allocation-card";
-import { PortfolioConcentrationAlert } from "../components/resumo/portfolio-concentration-alert";
 import { PortfolioKpiStrip } from "../components/resumo/portfolio-kpi-strip";
 import { ResumoModalsHost } from "../components/resumo/resumo-modals-host";
 import type { OpenWizardOptions } from "../components/resumo/use-investments-page-controller";
@@ -30,7 +29,7 @@ export interface ResumoTabProps {
  */
 export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabProps = {}) {
   const ctrl = useResumoTabController({ onOpenWizard, onOpenCash, onSelectTab });
-  const { position, concentration } = ctrl;
+  const { position } = ctrl;
 
   return (
     <div className="flex flex-col gap-6">
@@ -61,13 +60,6 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
           }
         }}
       />
-
-      {concentration.isConcentrated ? (
-        <PortfolioConcentrationAlert
-          ticker={concentration.concentratedAssets[0]?.ticker}
-          pct={concentration.concentratedAssets[0]?.pct ?? 0}
-        />
-      ) : null}
 
       {!position.isLoading && !ctrl.hasInvestments ? (
         <EmptyState

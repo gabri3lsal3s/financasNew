@@ -28,6 +28,15 @@ export { PositionTable } from "./position-table";
 export type { PositionRow, PositionTableProps } from "./position-table";
 export { AporteResult } from "./aporte-result";
 export type { AporteResultProps, AporteRouteRow, CustomAporteExecutionItem } from "./aporte-result";
+export { ConcentricAllocationDonut } from "./aporte-result/concentric-allocation-donut";
+export type {
+  ConcentricAllocationDonutProps,
+  ConcentricDonutClassItem,
+} from "./aporte-result/concentric-allocation-donut";
+export { AllocationCard } from "./aporte-result/allocation-card";
+export type { AllocationCardProps } from "./aporte-result/allocation-card";
+export { AporteCockpitCommandCard } from "./aporte-result/aporte-cockpit-command-card";
+export type { AporteCockpitCommandCardProps } from "./aporte-result/aporte-cockpit-command-card";
 export { HighlightRow } from "./highlight-row";
 export type { HighlightRowProps } from "./highlight-row";
 export { OnboardingBanner } from "./onboarding-banner";

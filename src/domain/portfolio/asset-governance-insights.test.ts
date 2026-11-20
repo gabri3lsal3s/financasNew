@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   generateAssetGovernanceInsights,
+  isAssetReviewOverdue,
   type GovernanceAssetInput,
 } from "./asset-governance-insights";
 
@@ -252,5 +253,27 @@ describe("domain/portfolio/asset-governance-insights (§F41)", () => {
     expect(result.summary.overdueCount).toBe(1);
     expect(result.consolidatedReviewAlert?.ticker).toBe("TRIM3");
     expect(result.summary.unscoredCount).toBe(0);
+  });
+
+  describe("isAssetReviewOverdue", () => {
+    const fixedNow = new Date("2026-11-17T12:00:00Z").getTime();
+
+    it("considera vencido se lastReviewedAt for nulo, indefinido ou vazio", () => {
+      expect(isAssetReviewOverdue(null, 6, fixedNow)).toBe(true);
+      expect(isAssetReviewOverdue(undefined, 6, fixedNow)).toBe(true);
+      expect(isAssetReviewOverdue("", 6, fixedNow)).toBe(true);
+    });
+
+    it("considera em dia se a data for recente dentro da periodicidade", () => {
+      // 30 dias atrás com periodicidade de 6 meses (180 dias)
+      const recent = "2026-10-17T12:00:00Z";
+      expect(isAssetReviewOverdue(recent, 6, fixedNow)).toBe(false);
+    });
+
+    it("considera vencido se o prazo decorrido exceder a periodicidade", () => {
+      // 200 dias atrás com periodicidade de 6 meses (180 dias)
+      const old = "2026-05-01T12:00:00Z";
+      expect(isAssetReviewOverdue(old, 6, fixedNow)).toBe(true);
+    });
   });
 });

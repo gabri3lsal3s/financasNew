@@ -11,13 +11,34 @@ import {
   type AporteReasonKind,
 } from "./aporte-reasons";
 import {
-  simulateCombinedAporte,
+  simulateConstrainedAporte,
   type AporteAssetInput,
+  type AporteOverflowEvent,
+  type AporteOverridesMap,
+  type AporteStrategy,
   type ClassTargetInput,
+  type ConstrainedAporteResult,
+  type PausedAssetDiagnostic,
   type SectorTargetInput,
 } from "./aporte";
+import { calculatePortfolioDiversification } from "./diversification-metrics";
+import type { PortfolioRiskPolicy } from "./portfolio-risk-policy";
 import { inferSectorFromTicker } from "./tickers-catalog";
 import { FALLBACK_USD_RATE, normalizeClassName } from "./valuation";
+
+/**
+ * Gera um identificador único de lote (UUID v4) seguro para persistência e Undo.
+ */
+export function generateBatchId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 export interface AportePositionRowInput {
   assetId: string;
@@ -52,6 +73,9 @@ export interface MappedAporteRoute {
   qualityConflictDetail?: string;
   lastReviewedAt?: string | null;
   reviewFrequencyMonths?: number;
+  headroomBRL?: number;
+  isConstrainedByCeiling?: boolean;
+  ceilingReason?: string;
 }
 
 export interface BatchAporteItemInput {
@@ -62,19 +86,36 @@ export interface BatchAporteItemInput {
   allocatedBRL: number;
 }
 
+export interface DiversificationImpactSummary {
+  currentNef: number | null;
+  projectedNef: number | null;
+  deltaNefPct: number | null;
+  currentNefStocks: number | null;
+  projectedNefStocks: number | null;
+  topAssetTicker: string | null;
+  currentTopAssetSharePct: number | null;
+  projectedTopAssetSharePct: number | null;
+}
+
 export interface BuildAporteSimulationInput {
   totalPurchasingCents: number;
   positionRows: readonly AportePositionRowInput[];
   rawAssets: readonly PortfolioAsset[];
   rawClassTargets: readonly GroupTarget[];
   rawSectorTargets: readonly GroupTarget[];
+  policy?: Partial<PortfolioRiskPolicy>;
+  strategy?: AporteStrategy;
+  overrides?: AporteOverridesMap;
 }
 
 export interface AporteSimulationViewModel {
   nonCashRows: AportePositionRowInput[];
-  result: ReturnType<typeof simulateCombinedAporte> | null;
+  result: ConstrainedAporteResult | null;
   routes: MappedAporteRoute[];
   eligibleRoutes: MappedAporteRoute[];
+  pausedAssets: PausedAssetDiagnostic[];
+  overflowEvents: AporteOverflowEvent[];
+  diversificationImpact: DiversificationImpactSummary | null;
 }
 
 /**
@@ -87,6 +128,9 @@ export function buildAporteSimulationViewModel({
   rawAssets,
   rawClassTargets,
   rawSectorTargets,
+  policy,
+  strategy,
+  overrides,
 }: BuildAporteSimulationInput): AporteSimulationViewModel {
   const nonCashRows = positionRows.filter((r) => !r.isCash);
   const classes = [
@@ -105,11 +149,10 @@ export function buildAporteSimulationViewModel({
       return [{ className: scopedClass, sectorName: st.name, targetPercentage: st.target_percentage }];
     }
     const matchedClasses = classes.filter((cls) =>
-      nonCashRows.some(
-        (r) =>
-          r.assetClass === cls &&
-          (r.sector === st.name || inferSectorFromTicker(r.ticker, cls) === st.name),
-      ),
+      nonCashRows.some((r) => {
+        const resolvedSector = r.sector?.trim() || inferSectorFromTicker(r.ticker, cls);
+        return r.assetClass === cls && resolvedSector === st.name;
+      }),
     );
     if (matchedClasses.length === 0) {
       return [{ className: "Ações", sectorName: st.name, targetPercentage: st.target_percentage }];
@@ -126,6 +169,7 @@ export function buildAporteSimulationViewModel({
     return {
       id: row.assetId,
       ticker: row.ticker,
+      name: raw?.notes ?? null,
       assetClass: row.assetClass,
       sector: row.sector ?? raw?.sector ?? inferSectorFromTicker(row.ticker, row.assetClass),
       currency: row.currency,
@@ -133,6 +177,8 @@ export function buildAporteSimulationViewModel({
       priceBRL: row.priceBRL,
       score: raw?.score ?? null,
       allocation_status: raw?.allocation_status ?? "active",
+      last_reviewed_at: raw?.last_reviewed_at ?? null,
+      score_criteria: (raw?.score_criteria as Record<string, unknown> | null) ?? null,
     };
   });
 
@@ -145,11 +191,14 @@ export function buildAporteSimulationViewModel({
 
   const result =
     totalPurchasingCents > 0 && assets.length > 0
-      ? simulateCombinedAporte({
+      ? simulateConstrainedAporte({
           aporte: totalPurchasingCents / 100,
+          strategy,
+          overrides,
           assets,
           classTargets,
           sectorTargets,
+          policy,
         })
       : null;
 
@@ -255,14 +304,71 @@ export function buildAporteSimulationViewModel({
         qualityConflictDetail: reason.qualityConflictDetail,
         lastReviewedAt: raw?.last_reviewed_at ?? null,
         reviewFrequencyMonths: raw?.review_frequency_months ?? 6,
+        headroomBRL: r.headroomBRL,
+        isConstrainedByCeiling: r.isConstrainedByCeiling,
+        ceilingReason: r.ceilingReason,
       };
     }) ?? [];
+
+  const rawUsdRate = nonCashRows.find((r) => r.currency === "USD")?.usdRate ?? FALLBACK_USD_RATE;
+  let diversificationImpact: DiversificationImpactSummary | null = null;
+
+  if (rawAssets.length > 0) {
+    const currentDiv = calculatePortfolioDiversification(rawAssets, { fxRateUSD: rawUsdRate });
+
+    const routeAllocMap = new Map((result?.routes ?? []).map((r) => [r.assetId, r]));
+    const projectedAssets: PortfolioAsset[] = rawAssets.map((a) => {
+      const alloc = routeAllocMap.get(a.id);
+      if (!alloc || alloc.quantity <= 0) return a;
+      return {
+        ...a,
+        quantity: a.quantity + alloc.quantity,
+      };
+    });
+
+    const projectedDiv = calculatePortfolioDiversification(projectedAssets, { fxRateUSD: rawUsdRate });
+
+    const currentNef = currentDiv.globalNef;
+    const projectedNef = projectedDiv.globalNef;
+    const deltaNefPct =
+      currentNef !== null && projectedNef !== null && currentNef > 0
+        ? Math.round(((projectedNef - currentNef) / currentNef) * 1000) / 10
+        : null;
+
+    const currentNefStocks = currentDiv.byClass["Ações"]?.classNef ?? null;
+    const projectedNefStocks = projectedDiv.byClass["Ações"]?.classNef ?? null;
+
+    const currentTop = currentDiv.consolidatedVectors?.find(
+      (v) => !v.key.startsWith("cluster_") && !v.key.startsWith("etf_benchmark_")
+    );
+    const currentTopShare = currentTop?.weightPct ?? null;
+    const currentTopTicker = currentTop?.label ?? null;
+
+    const projectedTop =
+      projectedDiv.consolidatedVectors?.find((v) => v.label === currentTopTicker) ??
+      projectedDiv.consolidatedVectors?.[0];
+    const projectedTopShare = projectedTop?.weightPct ?? null;
+
+    diversificationImpact = {
+      currentNef,
+      projectedNef,
+      deltaNefPct,
+      currentNefStocks,
+      projectedNefStocks,
+      topAssetTicker: currentTopTicker,
+      currentTopAssetSharePct: currentTopShare,
+      projectedTopAssetSharePct: projectedTopShare,
+    };
+  }
 
   return {
     nonCashRows,
     result,
     routes,
     eligibleRoutes: routes.filter((r) => r.quantity > 0),
+    pausedAssets: result?.pausedAssets ?? [],
+    overflowEvents: result?.overflowEvents ?? [],
+    diversificationImpact,
   };
 }
 
@@ -272,9 +378,15 @@ export interface BuildBatchAportePayloadInput {
   cashSelectedCents: number;
   positionCashBRL: number;
   date: string;
+  batchId?: string;
+  quantityOverrides?: Record<string, number>;
+  priceOverrides?: Record<string, number>;
+  fxRateOverrides?: Record<string, number>;
+  notes?: string;
 }
 
 export interface BatchAporteExecutionPayload {
+  batchId: string;
   items: {
     asset_id: string;
     quantity: number;
@@ -290,6 +402,7 @@ export interface BatchAporteExecutionPayload {
 /**
  * Monta o payload atômico para `execute_portfolio_batch_aporte`, convertendo
  * ordens em USD pela cotação do ativo (ou FALLBACK_USD_RATE) e segregando Caixa.
+ * Suporta overrides de quantidade, preço e taxa cambial da edição inline.
  */
 export function buildBatchAportePayload({
   items,
@@ -297,34 +410,73 @@ export function buildBatchAportePayload({
   cashSelectedCents,
   positionCashBRL,
   date,
+  batchId,
+  quantityOverrides,
+  priceOverrides,
+  fxRateOverrides,
+  notes,
 }: BuildBatchAportePayloadInput): BatchAporteExecutionPayload {
-  const mappedItems = items.map((r) => {
+  const finalBatchId = batchId && batchId.trim().length > 0 ? batchId.trim() : generateBatchId();
+
+  const mappedItems: {
+    asset_id: string;
+    quantity: number;
+    price: number;
+    total: number;
+    totalBRL: number;
+  }[] = [];
+
+  for (const r of items) {
+    const overrideQty = quantityOverrides ? quantityOverrides[r.assetId] : undefined;
+    const rawQty = overrideQty !== undefined ? overrideQty : r.quantity;
+    const qty = Math.max(0, rawQty);
+    if (qty <= 0) continue;
+
     const row = positionRows.find((p) => p.assetId === r.assetId);
     const isUSD = row?.currency === "USD";
-    const rate = isUSD ? (row?.usdRate || FALLBACK_USD_RATE) : 1;
-    return {
-      asset_id: r.assetId,
-      quantity: r.quantity,
-      price: isUSD ? Math.round((r.priceBRL / rate) * 100) / 100 : r.priceBRL,
-      total: isUSD ? Math.round((r.allocatedBRL / rate) * 100) / 100 : r.allocatedBRL,
-    };
-  });
+    const overridePrice = priceOverrides ? priceOverrides[r.assetId] : undefined;
+    const effectivePriceBRL =
+      overridePrice !== undefined && overridePrice > 0
+        ? overridePrice
+        : r.priceBRL;
+    const overrideFx = fxRateOverrides ? fxRateOverrides[r.assetId] : undefined;
+    const rate = isUSD ? (overrideFx ?? row?.usdRate ?? FALLBACK_USD_RATE) : 1;
+    const priceInCurrency = isUSD ? Math.round((effectivePriceBRL / rate) * 100) / 100 : effectivePriceBRL;
+    const totalInCurrency = Math.round(qty * priceInCurrency * 100) / 100;
+    const itemAllocatedBRL = Math.round(qty * effectivePriceBRL * 100) / 100;
 
-  const totalAmount = items.reduce((acc, r) => acc + r.allocatedBRL, 0);
+    mappedItems.push({
+      asset_id: r.assetId,
+      quantity: qty,
+      price: priceInCurrency,
+      total: totalInCurrency,
+      totalBRL: itemAllocatedBRL,
+    });
+  }
+
+  const totalAmount = Math.round(mappedItems.reduce((acc, r) => acc + r.totalBRL, 0) * 100) / 100;
   const cashUsedBRL =
     cashSelectedCents > 0
-      ? Math.min(cashSelectedCents / 100, totalAmount, positionCashBRL)
+      ? Math.min(cashSelectedCents / 100, totalAmount, Math.max(0, positionCashBRL))
       : 0;
   const roundedCashUsed =
     cashUsedBRL > 0 ? Math.round(cashUsedBRL * 100) / 100 : undefined;
 
+  const defaultNotes = roundedCashUsed
+    ? `Aporte composto (${mappedItems.length} ativos · Caixa ${formatCentsAsBRL(Math.round(roundedCashUsed * 100))})`
+    : `Aporte inteligente (${mappedItems.length} ativos)`;
+
   return {
-    items: mappedItems,
+    batchId: finalBatchId,
+    items: mappedItems.map(({ asset_id, quantity, price, total }) => ({
+      asset_id,
+      quantity,
+      price,
+      total,
+    })),
     date,
     totalAmount,
     cashUsed: roundedCashUsed,
-    notes: roundedCashUsed
-      ? `Aporte composto (${items.length} ativos · Caixa ${formatCentsAsBRL(Math.round(roundedCashUsed * 100))})`
-      : `Aporte inteligente (${items.length} ativos)`,
+    notes: notes ?? defaultNotes,
   };
 }

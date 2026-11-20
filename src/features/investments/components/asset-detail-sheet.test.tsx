@@ -53,6 +53,10 @@ vi.mock("@/state", () => ({
     data: [mockAsset],
     isLoading: false,
   }),
+  usePortfolioContributions: () => ({
+    data: [],
+    isLoading: false,
+  }),
   usePortfolioPosition: () => ({
     rows: [
       {
@@ -125,6 +129,26 @@ vi.mock("@/state", () => ({
     isPending: false,
   }),
   useUpdatePortfolioDividend: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  }),
+  useDeletePortfolioDividend: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  }),
+  useCreatePortfolioDividend: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  }),
+  useDeletePortfolioContribution: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  }),
+  useCreatePortfolioContribution: () => ({
+    mutateAsync: vi.fn().mockResolvedValue(true),
+    isPending: false,
+  }),
+  useUpdatePortfolioContribution: () => ({
     mutateAsync: vi.fn().mockResolvedValue(true),
     isPending: false,
   }),

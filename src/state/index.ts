@@ -111,6 +111,8 @@ export {
   useDeletePortfolioTransaction,
   useRecordOrder,
   useExecutePortfolioBatchAporte,
+  useRevertPortfolioBatchAporte,
+  LAST_BATCH_APORTE_STORAGE_KEY,
   useApproveDividendsBatch,
   useDismissCorporateDividend,
   reconcileAssetCustody,

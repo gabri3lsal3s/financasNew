@@ -112,7 +112,7 @@ describe("AporteResult", () => {
     expect(onExecuteAporte).toHaveBeenCalledTimes(1);
   });
 
-  it("renderiza a distribuição macro por classe e diagnóstico de ativos ignorados", async () => {
+  it("renderiza diagnóstico de ativos ignorados e faixa métrica densa", async () => {
     const user = userEvent.setup();
     render(
       <AporteResult
@@ -144,7 +144,8 @@ describe("AporteResult", () => {
       />,
     );
 
-    expect(screen.getByText("Distribuição Macro por Classe")).toBeInTheDocument();
+    expect(screen.getByText("Aporte informado")).toBeInTheDocument();
+    expect(screen.getByText("Alocado em ativos")).toBeInTheDocument();
     expect(screen.getByText("Ativos não contemplados neste aporte (1)")).toBeInTheDocument();
 
     await user.click(screen.getByText("Ativos não contemplados neste aporte (1)"));
@@ -152,7 +153,7 @@ describe("AporteResult", () => {
     expect(screen.getByText("Na meta")).toBeInTheDocument();
   });
 
-  it("renderiza a distribuição meso por setor e permite alternar para o modo Árvore", async () => {
+  it("permite alternar para o modo Árvore e visualizar a hierarquia", async () => {
     const user = userEvent.setup();
     const routesWithSector: AporteRouteRow[] = [
       {
@@ -192,53 +193,28 @@ describe("AporteResult", () => {
       />,
     );
 
-    expect(screen.getByText("Distribuição Meso por Setor")).toBeInTheDocument();
-    expect(screen.getAllByText("Petróleo & Gás").length).toBeGreaterThanOrEqual(1);
-
     const treeBtn = screen.getByRole("button", { name: "Árvore" });
     expect(treeBtn).toBeInTheDocument();
     await user.click(treeBtn);
 
     expect(screen.getByText("Hierarquia / Ativo")).toBeInTheDocument();
+    expect(screen.getAllByText("Petróleo & Gás").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("permite colapsar e expandir classes e setores destacando os itens com aporte", async () => {
-    const user = userEvent.setup();
-    const classSummaries = [
-      { className: "Ações", targetPct: 25, targetValueBRL: 5000, currentValueBRL: 4000, gapBRL: 1000, budgetAllocatedBRL: 500, actualAllocatedBRL: 500 },
-      { className: "FIIs", targetPct: 25, targetValueBRL: 5000, currentValueBRL: 4500, gapBRL: 500, budgetAllocatedBRL: 0, actualAllocatedBRL: 0 },
-      { className: "Renda Fixa", targetPct: 25, targetValueBRL: 5000, currentValueBRL: 4600, gapBRL: 400, budgetAllocatedBRL: 0, actualAllocatedBRL: 0 },
-      { className: "Internacional", targetPct: 25, targetValueBRL: 5000, currentValueBRL: 4700, gapBRL: 300, budgetAllocatedBRL: 0, actualAllocatedBRL: 0 },
-    ];
-
+  it("renderiza layout de 2 colunas com controlSlot fornecido", () => {
     render(
       <AporteResult
         mode="both"
-        aporte={500}
-        totalAllocated={500}
+        aporte={2000}
+        totalAllocated={2000}
         leftover={0}
         routes={mockRoutes}
-        classSummaries={classSummaries}
+        controlSlot={<div data-testid="custom-control-slot">Comando Aporte</div>}
       />,
     );
 
-    // Inicialmente mostra apenas a classe com aporte (Ações)
-    expect(screen.getAllByText("Ações").length).toBeGreaterThan(0);
-    expect(screen.queryByText("Internacional")).not.toBeInTheDocument();
-
-    // Botão de expandir exibe todas as classes
-    const expandBtn = screen.getByRole("button", { name: /Ver todas \(4\)/i });
-    expect(expandBtn).toBeInTheDocument();
-    await user.click(expandBtn);
-
-    // Todas as 4 classes agora estão visíveis
-    expect(screen.getByText("Internacional")).toBeInTheDocument();
-    expect(screen.getAllByText("FIIs").length).toBeGreaterThan(0);
-
-    // Clicar em Recolher volta ao modo compacto
-    const collapseBtn = screen.getByRole("button", { name: /Recolher/i });
-    await user.click(collapseBtn);
-    expect(screen.queryByText("Internacional")).not.toBeInTheDocument();
+    expect(screen.getByTestId("custom-control-slot")).toBeInTheDocument();
+    expect(screen.getByText("Detalhamento dos aportes")).toBeInTheDocument();
   });
 
   it("renderiza o botão CTA 'Comprar no Wizard' e dispara onOpenWizard com parâmetros corretos", async () => {

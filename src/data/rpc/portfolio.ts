@@ -75,6 +75,7 @@ export interface ExecutePortfolioBatchAporteParams {
   totalAmount: number;
   cashUsed?: number;
   notes?: string | null;
+  batchId?: string | null;
 }
 
 /**
@@ -90,6 +91,20 @@ export async function executePortfolioBatchAporte(params: ExecutePortfolioBatchA
       p_total_amount: params.totalAmount,
       p_notes: params.notes ?? null,
       p_cash_used: params.cashUsed ?? 0,
+      p_batch_id: params.batchId ?? null,
+    }),
+  );
+}
+
+/**
+ * Reverte de forma transacional e atômica um lote de aporte executado (Undo ACID).
+ * Valida que nenhum ativo do lote teve movimentações posteriores, restaura a posição
+ * (quantidade e preço médio) anterior, reverte o débito de Caixa e exclui as transações.
+ */
+export async function revertPortfolioBatchAporte(batchId: string): Promise<boolean> {
+  return unwrapRpc(
+    callRpc("revert_portfolio_batch_aporte", {
+      p_batch_id: batchId,
     }),
   );
 }

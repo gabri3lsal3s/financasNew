@@ -50,9 +50,10 @@ export function TargetSectorsCard({
   const classTotalBRL = classRows.reduce((acc, r) => acc + r.valueBRL, 0);
 
   const items: TargetDistributionItem[] = availableSectors.map((sectorName) => {
-    const members = classRows.filter(
-      (r) => r.sector === sectorName || inferSectorFromTicker(r.ticker, activeSectorClass) === sectorName,
-    );
+    const members = classRows.filter((r) => {
+      const resolvedSector = r.sector?.trim() || inferSectorFromTicker(r.ticker, activeSectorClass);
+      return resolvedSector === sectorName;
+    });
     const sectorBRL = members.reduce((acc, r) => acc + r.valueBRL, 0);
     const pctInPortfolio = totalBRL > 0 ? (sectorBRL / totalBRL) * 100 : 0;
     const target = sectorTargetOf(sectorName);

@@ -590,6 +590,13 @@ export interface Database {
           p_total_amount: number;
           p_notes?: string | null;
           p_cash_used?: number;
+          p_batch_id?: string | null;
+        };
+        Returns: boolean;
+      };
+      revert_portfolio_batch_aporte: {
+        Args: {
+          p_batch_id: string;
         };
         Returns: boolean;
       };

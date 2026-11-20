@@ -1,5 +1,5 @@
-import { Sparkles, Wallet } from "lucide-react";
-import { Button, FormField, MoneyInput, MoneyText, Switch } from "@/components/ui";
+import { SlidersHorizontal, Sparkles, Wallet } from "lucide-react";
+import { Button, FormField, MoneyInput, MoneyText, SegmentedControl, Switch } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { formatCentsAsBRL } from "@/services/masks";
 
@@ -14,6 +14,8 @@ export interface AporteInputCardProps {
   onUseOnlyCash: () => void;
   totalPurchasingCents: number;
   cashHighlight: boolean;
+  strategy?: "optimized" | "proportional";
+  onStrategyChange?: (strategy: "optimized" | "proportional") => void;
 }
 
 export function AporteInputCard({
@@ -27,12 +29,14 @@ export function AporteInputCard({
   onUseOnlyCash,
   totalPurchasingCents,
   cashHighlight,
+  strategy = "optimized",
+  onStrategyChange,
 }: AporteInputCardProps) {
   return (
     <section
       aria-label="Parâmetros da simulação"
       data-tour="investments-rebalance"
-      className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs min-w-0 overflow-hidden"
+      className="flex flex-col gap-3.5 rounded-2xl border border-border/80 bg-surface p-4 sm:p-4.5 shadow-xs min-w-0"
     >
       <FormField label="Valor do aporte (dinheiro novo)" htmlFor="aporte-value-input">
         <MoneyInput
@@ -46,13 +50,44 @@ export function AporteInputCard({
         />
       </FormField>
 
+      {onStrategyChange ? (
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <SlidersHorizontal className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <span>Estratégia de Alocação</span>
+            </span>
+            <span className="text-[11px] font-normal text-muted-foreground">
+              {strategy === "optimized" ? "Reconcentra nos mais defasados" : "Espalha proporcional aos gaps"}
+            </span>
+          </label>
+          <SegmentedControl
+            value={strategy}
+            onChange={(val) => onStrategyChange(val as "optimized" | "proportional")}
+            options={[
+              {
+                value: "optimized",
+                label: "Menos Movimentações",
+                title: "Prioriza ativos mais deficitários e evita ordens de micro-valor",
+              },
+              {
+                value: "proportional",
+                label: "Proporcional",
+                title: "Distribui verba entre todos os ativos com gap positivo",
+              },
+            ]}
+            ariaLabel="Estratégia de distribuição de aporte"
+          />
+        </div>
+      ) : null}
+
       {availableCashCents > 0 ? (
         <div
           className={cn(
-            "flex flex-col gap-3 rounded-xl p-3.5 transition-colors duration-200",
+            "flex flex-col gap-3 rounded-xl p-3 sm:p-3.5 transition-colors duration-200",
             cashHighlight
               ? "border border-primary/40 bg-primary/5 ring-2 ring-primary/20"
-              : "bg-surface-raised",
+              : "bg-surface-raised border border-border/40",
           )}
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
@@ -78,15 +113,17 @@ export function AporteInputCard({
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onUseOnlyCash}
-              className="self-start sm:self-center shrink-0"
-            >
-              Usar apenas o Caixa
-            </Button>
+            <div className="flex items-center gap-1.5 shrink-0 self-start sm:self-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onUseOnlyCash}
+                className="text-xs h-7 px-2.5"
+              >
+                Usar apenas o Caixa
+              </Button>
+            </div>
           </div>
 
           {useBrokerageCash ? (
@@ -124,8 +161,8 @@ export function AporteInputCard({
         </div>
       ) : null}
 
-      <div className="flex items-start sm:items-center gap-2 rounded-xl bg-muted/50 px-3.5 py-2.5 text-xs text-muted-foreground">
-        <Sparkles className="size-4 text-muted-foreground shrink-0 mt-0.5 sm:mt-0" aria-hidden="true" />
+      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pt-0.5">
+        <Sparkles className="size-3.5 text-primary shrink-0" aria-hidden="true" />
         <span>
           <strong className="font-semibold text-foreground">Motor Hierárquico:</strong> Estabiliza primeiro a classe e o setor mais defasados e distribui pelos pesos das Notas (0 a 10) dos ativos elegíveis.
         </span>

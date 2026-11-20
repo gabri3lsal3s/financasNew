@@ -113,7 +113,70 @@ describe("AllocationBreakdownDialog", () => {
     expect(screen.getByText("50,0%")).toBeInTheDocument();
   });
 
-  it("renderiza o raio-x de um setor com os ativos daquele setor", () => {
+  it("exibe na classe os setores que a compõem e suas respectivas exposições", () => {
+    render(
+      <AllocationBreakdownDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        type="class"
+        groupName="Ações"
+        rows={mockRows}
+        totalPortfolioBRL={12950}
+      />,
+    );
+
+    // Seção de setores da classe
+    expect(
+      screen.getByText(/Setores que compõem a classe \(2\)/i),
+    ).toBeInTheDocument();
+
+    // Setores presentes (tanto no card de setor quanto nos badges dos ativos)
+    expect(screen.getAllByText("Petróleo e Gás").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Mineração").length).toBeGreaterThanOrEqual(1);
+
+    // Exposições dos setores calculadas em relação à classe Ações (R$ 6.900 total da classe)
+    // PETR4: R$ 3.800 / R$ 6.900 = 55.1%
+    // VALE3: R$ 3.100 / R$ 6.900 = 44.9%
+    expect(screen.getByText("55,1%")).toBeInTheDocument();
+    expect(screen.getByText("44,9%")).toBeInTheDocument();
+  });
+
+  it("permite filtrar ativos pelo setor ao clicar no card do setor na classe", async () => {
+    const user = userEvent.setup();
+
+    render(
+      <AllocationBreakdownDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        type="class"
+        groupName="Ações"
+        rows={mockRows}
+        totalPortfolioBRL={12950}
+      />,
+    );
+
+    // Ambos os ativos estão visíveis inicialmente
+    expect(screen.getByText("PETR4")).toBeInTheDocument();
+    expect(screen.getByText("VALE3")).toBeInTheDocument();
+
+    // Clica no card do setor "Petróleo e Gás" para filtrar (primeiro elemento encontrado)
+    const petroleoCards = screen.getAllByText("Petróleo e Gás");
+    expect(petroleoCards[0]).toBeDefined();
+    await user.click(petroleoCards[0]!);
+
+    // Apenas PETR4 deve estar na lista de ativos exibida
+    expect(screen.getByText("PETR4")).toBeInTheDocument();
+    expect(screen.queryByText("VALE3")).not.toBeInTheDocument();
+
+    // Clica no botão "Limpar filtro"
+    await user.click(screen.getByText("Limpar filtro"));
+
+    // Ambos voltam a aparecer
+    expect(screen.getByText("PETR4")).toBeInTheDocument();
+    expect(screen.getByText("VALE3")).toBeInTheDocument();
+  });
+
+  it("renderiza o raio-x de um setor com os ativos daquele setor e suas respectivas exposições", () => {
     render(
       <AllocationBreakdownDialog
         open={true}
@@ -129,6 +192,9 @@ describe("AllocationBreakdownDialog", () => {
     expect(screen.getByText("Setor")).toBeInTheDocument();
     expect(screen.getByText("VALE3")).toBeInTheDocument();
     expect(screen.queryByText("PETR4")).not.toBeInTheDocument();
+
+    // Exposição do ativo no setor (VALE3 é 100% do setor Mineração)
+    expect(screen.getByText(/100,0% setor/i)).toBeInTheDocument();
   });
 
   it("chama onSelectAsset quando um ativo é clicado", async () => {

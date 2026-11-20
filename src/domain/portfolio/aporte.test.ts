@@ -6,6 +6,7 @@ import {
   simulateCombinedAporte,
   simulateRebalanceAporte,
   simulateSmartAporte,
+  simulateConstrainedAporte,
   type AporteAssetInput,
   type ClassTargetInput,
   type SectorTargetInput,
@@ -1440,6 +1441,336 @@ describe("Auditoria de Invariantes & Teste de Estresse Multi-Nível (Classe -> S
       expect(result.routes.map((r) => r.ticker)).toEqual(["ITUB4"]);
       expect(result.routes[0]).toMatchObject({ targetValueBRL: 2000, gapBRL: 1000, allocatedBRL: 1000 });
       expect(result.skippedAssets.some((s) => s.ticker === "CAIXA")).toBe(false);
+    });
+  });
+
+  describe("Fase 2 — simulateConstrainedAporte & Headroom em Camadas", () => {
+    it("respeita o teto de concentracao individual do ativo (15%) em carteiras com mais de 6 ativos", () => {
+      // 8 ativos para ativar as travas prudenciais (> 6 ativos)
+      const assets: AporteAssetInput[] = [
+        asset({ id: "a1", ticker: "PETR4", assetClass: "Ações", sector: "Petróleo", currentValueBRL: 100, priceBRL: 10, score: 10 }),
+        asset({ id: "a2", ticker: "VALE3", assetClass: "Ações", sector: "Mineração", currentValueBRL: 100, priceBRL: 10, score: 1 }),
+        asset({ id: "a3", ticker: "ITUB4", assetClass: "Ações", sector: "Bancos", currentValueBRL: 100, priceBRL: 10, score: 1 }),
+        asset({ id: "a4", ticker: "BBDC4", assetClass: "Ações", sector: "Bancos", currentValueBRL: 100, priceBRL: 10, score: 1 }),
+        asset({ id: "a5", ticker: "WEGE3", assetClass: "Ações", sector: "Industrial", currentValueBRL: 100, priceBRL: 10, score: 1 }),
+        asset({ id: "a6", ticker: "RENT3", assetClass: "Ações", sector: "Locação", currentValueBRL: 100, priceBRL: 10, score: 1 }),
+        asset({ id: "a7", ticker: "ELET3", assetClass: "Ações", sector: "Elétricas", currentValueBRL: 100, priceBRL: 10, score: 1 }),
+        asset({ id: "a8", ticker: "EGIE3", assetClass: "Ações", sector: "Elétricas", currentValueBRL: 300, priceBRL: 10, score: 1 }),
+      ];
+
+      // Total atual = 1000. Aporte = 1000. Patrimonio alvo = 2000.
+      // Teto de 15% de 2000 = R$ 300,00.
+      // PETR4 tem nota 10 e os demais nota 1 -> meta derivada de PETR4 seria ~58.8% = 1176.
+      // Porém o teto de 15% limita o valor total de PETR4 a R$ 300,00.
+      // Como PETR4 já tem R$ 100, o headroom máximo é R$ 200,00 (20 cotas).
+      const result = simulateConstrainedAporte({
+        aporte: 1000,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        strategy: "optimized",
+      });
+
+      const petr = result.routes.find((r) => r.ticker === "PETR4");
+      expect(petr).toBeDefined();
+      expect(petr!.allocatedBRL).toBe(200);
+      expect(petr!.isConstrainedByCeiling).toBe(true);
+      expect(petr!.ceilingReason).toBe("asset_ceiling");
+      expect(result.totalAllocated + result.leftover).toBe(1000);
+    });
+
+    it("respeita o teto setorial na classe (35%) e registra overflow para outro setor", () => {
+      // 8 ativos divididos em 3 setores na classe Ações (> 2 setores ativa trava setorial)
+      const assets: AporteAssetInput[] = [
+        // Setor Bancos (já tem R$ 400 de 1000 atuais)
+        asset({ id: "b1", ticker: "ITUB4", assetClass: "Ações", sector: "Bancos", currentValueBRL: 200, priceBRL: 20, score: 8 }),
+        asset({ id: "b2", ticker: "BBDC4", assetClass: "Ações", sector: "Bancos", currentValueBRL: 200, priceBRL: 20, score: 8 }),
+        // Setor Elétricas (tem R$ 200)
+        asset({ id: "e1", ticker: "TAEE11", assetClass: "Ações", sector: "Elétricas", currentValueBRL: 100, priceBRL: 20, score: 8 }),
+        asset({ id: "e2", ticker: "EGIE3", assetClass: "Ações", sector: "Elétricas", currentValueBRL: 100, priceBRL: 20, score: 8 }),
+        // Setor Saneamento (tem R$ 400)
+        asset({ id: "s1", ticker: "SBSP3", assetClass: "Ações", sector: "Saneamento", currentValueBRL: 100, priceBRL: 20, score: 8 }),
+        asset({ id: "s2", ticker: "CSMG3", assetClass: "Ações", sector: "Saneamento", currentValueBRL: 100, priceBRL: 20, score: 8 }),
+        asset({ id: "s3", ticker: "SAPR11", assetClass: "Ações", sector: "Saneamento", currentValueBRL: 100, priceBRL: 20, score: 8 }),
+        asset({ id: "s4", ticker: "SANB11", assetClass: "Ações", sector: "Saneamento", currentValueBRL: 100, priceBRL: 20, score: 8 }),
+      ];
+
+      // Aporte R$ 1000 -> Patrimonio Alvo = R$ 2000.
+      // Se configurarmos policy com defaultSectorInClassCeilingPct = 20%:
+      // 20% de 2000 = 400. Bancos já tem 400 -> headroom 0!
+      const result = simulateConstrainedAporte({
+        aporte: 1000,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        policy: { defaultSectorInClassCeilingPct: 20 },
+      });
+
+      const itub = result.routes.find((r) => r.ticker === "ITUB4");
+      const bbdc = result.routes.find((r) => r.ticker === "BBDC4");
+      expect(itub).toBeUndefined();
+      expect(bbdc).toBeUndefined();
+
+      // Bancos foi bloqueado por teto setorial
+      expect(result.pausedAssets.some((p) => (p.ticker === "ITUB4" || p.ticker === "BBDC4") && p.reason === "sector_ceiling")).toBe(true);
+      expect(result.totalAllocated).toBeGreaterThan(0);
+    });
+
+    it("respeita o teto macro-setorial de Bancos e Seguros (macroSectorInClassCeilingPct)", () => {
+      // Carteira com 8 ativos onde Bancos + Seguros formam o cluster macro "financials"
+      const assets: AporteAssetInput[] = [
+        asset({ id: "b1", ticker: "ITUB4", assetClass: "Ações", sector: "Bancos", currentValueBRL: 250, priceBRL: 10, score: 8 }),
+        asset({ id: "s1", ticker: "BBSE3", assetClass: "Ações", sector: "Seguros", currentValueBRL: 200, priceBRL: 10, score: 8 }),
+        asset({ id: "e1", ticker: "TAEE11", assetClass: "Ações", sector: "Elétricas", currentValueBRL: 100, priceBRL: 10, score: 8 }),
+        asset({ id: "e2", ticker: "EGIE3", assetClass: "Ações", sector: "Elétricas", currentValueBRL: 100, priceBRL: 10, score: 8 }),
+        asset({ id: "m1", ticker: "VALE3", assetClass: "Ações", sector: "Mineração", currentValueBRL: 100, priceBRL: 10, score: 8 }),
+        asset({ id: "p1", ticker: "PETR4", assetClass: "Ações", sector: "Petróleo", currentValueBRL: 100, priceBRL: 10, score: 8 }),
+        asset({ id: "t1", ticker: "WEGE3", assetClass: "Ações", sector: "Industrial", currentValueBRL: 75, priceBRL: 10, score: 8 }),
+        asset({ id: "t2", ticker: "RENT3", assetClass: "Ações", sector: "Locação", currentValueBRL: 75, priceBRL: 10, score: 8 }),
+      ];
+
+      // Total = 1000. Aporte = 1000 -> Alvo = 2000.
+      // Macro financeiro (Bancos + Seguros) tem 450 atuais.
+      // Se teto macro na classe = 25%: 25% de 2000 = 500.
+      // Headroom total do macro financeiro = 500 - 450 = 50.
+      const result = simulateConstrainedAporte({
+        aporte: 1000,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        policy: { macroSectorInClassCeilingPct: 25 },
+      });
+
+      const allocB1 = result.routes.find((r) => r.ticker === "ITUB4")?.allocatedBRL ?? 0;
+      const allocS1 = result.routes.find((r) => r.ticker === "BBSE3")?.allocatedBRL ?? 0;
+      expect(allocB1 + allocS1).toBeLessThanOrEqual(50);
+    });
+
+    it("respeita o teto de emissor de Renda Fixa privada (30% da RF) quando ha 3 ou mais emissores", () => {
+      const assets: AporteAssetInput[] = [
+        asset({ id: "rf1", ticker: "CDB BANCO PINE 120% CDI", name: "CDB Banco Pine", assetClass: "Renda Fixa", currentValueBRL: 100, priceBRL: 1, score: 10 }),
+        asset({ id: "rf2", ticker: "CDB BANCO MASTER IPCA+7", name: "CDB Banco Master", assetClass: "Renda Fixa", currentValueBRL: 200, priceBRL: 1, score: 1 }),
+        asset({ id: "rf3", ticker: "CDB BANCO BMG PRE 13%", name: "CDB Banco BMG", assetClass: "Renda Fixa", currentValueBRL: 200, priceBRL: 1, score: 1 }),
+        asset({ id: "a1", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 100, priceBRL: 10 }),
+        asset({ id: "a2", ticker: "VALE3", assetClass: "Ações", currentValueBRL: 100, priceBRL: 10 }),
+        asset({ id: "a3", ticker: "ITUB4", assetClass: "Ações", currentValueBRL: 100, priceBRL: 10 }),
+        asset({ id: "a4", ticker: "WEGE3", assetClass: "Ações", currentValueBRL: 200, priceBRL: 10 }),
+      ];
+
+      // RF total atual = 500. Ações atual = 500. Total = 1000.
+      // Aporte de 500 -> Alvo total = 1500.
+      // RF com meta de 66.67% -> Alvo RF = 1000.
+      // Teto de emissor na RF (30% de 1000) = 300.
+      // Pine tem 100 atuais.
+      // Teto na RF: 30% de 1000 = 300 (folga 200).
+      // Teto Global: 15% de 1500 = 225 (folga 125).
+      // A trava mais restritiva (dupla trava) limita Pine a 125 BRL.
+      const result = simulateConstrainedAporte({
+        aporte: 500,
+        assets,
+        classTargets: [
+          { className: "Renda Fixa", targetPercentage: 66.6667 },
+          { className: "Ações", targetPercentage: 33.3333 },
+        ],
+        strategy: "optimized",
+        policy: { defaultAssetCeilingPct: 50 },
+      });
+
+      const pine = result.routes.find((r) => r.ticker.includes("PINE"));
+      expect(pine).toBeDefined();
+      expect(pine!.allocatedBRL).toBe(125);
+      expect(pine!.isConstrainedByCeiling).toBe(true);
+      expect(pine!.ceilingReason).toBe("issuer_ceiling");
+    });
+
+    it("piso de viabilidade matematica: nao bloqueia carteira pequena (1 a 6 ativos)", () => {
+      // Carteira em formação com apenas 3 ativos
+      const assets: AporteAssetInput[] = [
+        asset({ id: "a1", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 100, priceBRL: 10 }),
+        asset({ id: "f1", ticker: "HGLG11", assetClass: "FIIs", currentValueBRL: 100, priceBRL: 10 }),
+        asset({ id: "r1", ticker: "CDB BANCO INTER", assetClass: "Renda Fixa", currentValueBRL: 100, priceBRL: 10 }),
+      ];
+
+      // Aporte de 600 distribuído igualmente (200 para cada classe)
+      const result = simulateConstrainedAporte({
+        aporte: 600,
+        assets,
+        classTargets: [
+          { className: "Ações", targetPercentage: 33.3333 },
+          { className: "FIIs", targetPercentage: 33.3333 },
+          { className: "Renda Fixa", targetPercentage: 33.3334 },
+        ],
+      });
+
+      // Em carteira <= 6 ativos, PETR4 não é limitado pelo teto de 15% (que daria apenas 35 BRL)
+      const petr = result.routes.find((r) => r.ticker === "PETR4");
+      expect(petr).toBeDefined();
+      expect(petr!.allocatedBRL).toBeGreaterThanOrEqual(190);
+      expect(result.totalAllocated).toBeGreaterThanOrEqual(570);
+    });
+
+    it("protecao de onboarding: nota <= 5 sem avaliacao formal nao pausa o ativo", () => {
+      const assets: AporteAssetInput[] = [
+        // Ativo com nota 4 padrão mas nunca avaliado (sem last_reviewed_at nem score_criteria)
+        asset({ id: "a1", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 100, priceBRL: 10, score: 4 }),
+        asset({ id: "a2", ticker: "VALE3", assetClass: "Ações", currentValueBRL: 100, priceBRL: 10, score: 8 }),
+      ];
+
+      const result = simulateConstrainedAporte({
+        aporte: 200,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      });
+
+      // PETR4 não deve ser pausado porque não foi avaliado formalmente
+      expect(result.pausedAssets).toHaveLength(0);
+      expect(result.routes.some((r) => r.ticker === "PETR4")).toBe(true);
+    });
+
+    it("protecao de onboarding: nota <= 5 avaliada formalmente pausa o ativo em pausedAssets", () => {
+      const assets: AporteAssetInput[] = [
+        // Ativo com nota 3 avaliado explicitamente
+        asset({
+          id: "a1",
+          ticker: "PETR4",
+          assetClass: "Ações",
+          currentValueBRL: 100,
+          priceBRL: 10,
+          score: 3,
+          last_reviewed_at: "2026-01-15T10:00:00Z",
+        }),
+        asset({ id: "a2", ticker: "VALE3", assetClass: "Ações", currentValueBRL: 0, priceBRL: 10, score: 8 }),
+      ];
+
+      const result = simulateConstrainedAporte({
+        aporte: 200,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      });
+
+      // PETR4 deve ser pausado e registrado em pausedAssets
+      expect(result.pausedAssets.some((p) => p.ticker === "PETR4" && p.reason === "quality_lock")).toBe(true);
+      expect(result.routes.find((r) => r.ticker === "PETR4")).toBeUndefined();
+      // Verba canalizada para VALE3
+      expect(result.routes.find((r) => r.ticker === "VALE3")?.allocatedBRL).toBe(200);
+    });
+
+    it("falso headroom B3: zera alocacao quando headroom livre e menor que o preco da cota inteira", () => {
+      const assets: AporteAssetInput[] = [
+        // Ticker B3 cotado a R$ 150,00 com gap teórico de R$ 50,00 (preço > gap)
+        asset({ id: "a1", ticker: "CARO3", assetClass: "Ações", currentValueBRL: 100, priceBRL: 150, score: 7 }),
+        asset({ id: "a2", ticker: "BARATO3", assetClass: "Ações", currentValueBRL: 0, priceBRL: 10, score: 7 }),
+      ];
+
+      const result = simulateConstrainedAporte({
+        aporte: 200,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        strategy: "optimized",
+      });
+
+      // CARO3 não pode comprar cota fracionária na B3, logo não recebe nada
+      expect(result.routes.find((r) => r.ticker === "CARO3")).toBeUndefined();
+      expect(result.routes.find((r) => r.ticker === "BARATO3")?.allocatedBRL).toBe(150);
+    });
+
+    it("reconcentracao anti-pulverizacao no modo proporcional quando parcela unitaria e menor que minTicketBRL", () => {
+      // 5 ativos elegíveis onde A1 tem déficit dominante e nota superior
+      const assets: AporteAssetInput[] = [
+        asset({ id: "a1", ticker: "A1", assetClass: "Ações", currentValueBRL: 0, priceBRL: 10, score: 9 }),
+        asset({ id: "a2", ticker: "A2", assetClass: "Ações", currentValueBRL: 100, priceBRL: 10, score: 5 }),
+        asset({ id: "a3", ticker: "A3", assetClass: "Ações", currentValueBRL: 100, priceBRL: 10, score: 5 }),
+        asset({ id: "a4", ticker: "A4", assetClass: "Ações", currentValueBRL: 100, priceBRL: 10, score: 5 }),
+        asset({ id: "a5", ticker: "A5", assetClass: "Ações", currentValueBRL: 100, priceBRL: 10, score: 5 }),
+      ];
+
+      // minTicketBRL = 100 -> maxK = floor(150 / 100) = 1 ativo selecionado no lote
+      const result = simulateConstrainedAporte({
+        aporte: 150,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        policy: { minTicketBRL: 100 },
+        strategy: "proportional",
+      });
+
+      // Deve concentrar em apenas 1 ativo (o de maior convicção A1) em vez de pulverizar em cotas residuais
+      expect(result.routes).toHaveLength(1);
+      expect(result.routes[0]?.ticker).toBe("A1");
+      expect(result.routes[0]?.allocatedBRL).toBe(150);
+    });
+
+    it("overrides granulares destravam os tetos e bloqueios de qualidade sob comando do investidor", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "a1",
+          ticker: "PETR4",
+          assetClass: "Ações",
+          currentValueBRL: 0,
+          priceBRL: 10,
+          score: 3,
+          last_reviewed_at: "2026-01-10T00:00:00Z",
+        }),
+        asset({ id: "a2", ticker: "VALE3", assetClass: "Ações", currentValueBRL: 0, priceBRL: 10, score: 8 }),
+      ];
+
+      // Com override ignoreQualityLock no PETR4
+      const result = simulateConstrainedAporte({
+        aporte: 200,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        overrides: {
+          a1: { ignoreQualityLock: true },
+        },
+      });
+
+      // PETR4 foi destravado e recebe aporte
+      expect(result.pausedAssets).toHaveLength(0);
+      expect(result.routes.some((r) => r.ticker === "PETR4")).toBe(true);
+    });
+
+    it("reconcentra em no maximo K ativos quando orcamento por elegivel < minTicketBRL no modo optimized", () => {
+      // 5 ativos elegíveis na mesma classe, cada um com preço ~R$ 30
+      // a3, a4, a5 já possuem patrimônio, a1 e a2 estão defasados com gap amplo
+      // Aporte modesto de R$ 250: com minTicketBRL = 100, maxK = floor(250 / 100) = 2 ativos
+      const assets: AporteAssetInput[] = [
+        asset({ id: "a1", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 0, priceBRL: 30, score: 9 }),
+        asset({ id: "a2", ticker: "VALE3", assetClass: "Ações", currentValueBRL: 0, priceBRL: 30, score: 8 }),
+        asset({ id: "a3", ticker: "BBAS3", assetClass: "Ações", currentValueBRL: 500, priceBRL: 30, score: 7 }),
+        asset({ id: "a4", ticker: "ITUB4", assetClass: "Ações", currentValueBRL: 500, priceBRL: 30, score: 6 }),
+        asset({ id: "a5", ticker: "BBDC4", assetClass: "Ações", currentValueBRL: 500, priceBRL: 30, score: 6 }),
+      ];
+
+      const result = simulateConstrainedAporte({
+        aporte: 250,
+        strategy: "optimized",
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        policy: { minTicketBRL: 100 },
+      });
+
+      const activeRoutes = result.routes.filter((r) => r.quantity > 0);
+      // Não deve pulverizar nos 5 ativos gerando compras de R$ 30 ou R$ 40
+      expect(activeRoutes.length).toBeLessThanOrEqual(2);
+      for (const route of activeRoutes) {
+        expect(route.allocatedBRL).toBeGreaterThanOrEqual(90); // 3 cotas x 30 = 90 ou mais
+      }
+      expect(result.totalAllocated + result.leftover).toBe(250);
+    });
+
+    it("conservacao estrita de capital e invariantes gerais", () => {
+      const assets: AporteAssetInput[] = [
+        asset({ id: "a1", ticker: "PETR4", assetClass: "Ações", currentValueBRL: 500, priceBRL: 32.5 }),
+        asset({ id: "a2", ticker: "VALE3", assetClass: "Ações", currentValueBRL: 600, priceBRL: 68.2 }),
+      ];
+
+      const result = simulateConstrainedAporte({
+        aporte: 500,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      });
+
+      expect(result.totalAllocated + result.leftover).toBe(500);
+      expect(result.totalAllocated).toBeLessThanOrEqual(500);
+      expect(result.leftover).toBeGreaterThanOrEqual(0);
+      expect(Array.isArray(result.overflowEvents)).toBe(true);
+      expect(Array.isArray(result.pausedAssets)).toBe(true);
     });
   });
 });

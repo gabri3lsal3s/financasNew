@@ -134,6 +134,8 @@ vi.mock("@/state", () => ({
   useSyncQuotes: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useSetManualPrice: () => ({ mutateAsync: vi.fn().mockResolvedValue(true), isPending: false }),
   useExecutePortfolioBatchAporte: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRevertPortfolioBatchAporte: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  LAST_BATCH_APORTE_STORAGE_KEY: "axir_last_batch_aporte",
   useAuth: () => ({ user: { id: "user-1" } }),
   useFamilyMode: () => ({ isFamilyModeEnabled: false }),
   useMyFamily: () => ({ data: null, isLoading: false }),

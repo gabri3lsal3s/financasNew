@@ -1,5 +1,8 @@
 import type {
+  AporteOverflowEvent,
   ClassAporteSummary,
+  DiversificationImpactSummary,
+  PausedAssetDiagnostic,
   SectorAporteSummary,
   SkippedAssetDiagnostic,
 } from "@/domain/portfolio";
@@ -25,6 +28,9 @@ export interface AporteRouteRow {
   qualityConflictDetail?: string;
   lastReviewedAt?: string | null;
   reviewFrequencyMonths?: number;
+  headroomBRL?: number;
+  isConstrainedByCeiling?: boolean;
+  ceilingReason?: string;
 }
 
 export interface CustomAporteExecutionItem {
@@ -38,8 +44,10 @@ export interface CustomAporteExecutionItem {
 export interface EffectiveAporteRouteState {
   isSelected: boolean;
   effectiveQuantity: number;
+  effectivePrice: number;
   effectiveAllocatedBRL: number;
   isQuantityCustom: boolean;
+  isPriceCustom: boolean;
 }
 
 export interface AporteTreeSectorGroup {
@@ -74,4 +82,11 @@ export interface AporteResultProps {
   /** Ação para inspecionar ou reavaliar tese e nota de um ativo sem sair do fluxo de aporte. */
   onInspectAsset?: (ticker: string) => void;
   executing?: boolean;
+  showDriftBars?: boolean;
+  overflowEvents?: readonly AporteOverflowEvent[];
+  pausedAssets?: readonly PausedAssetDiagnostic[];
+  /** Slot opcional para encaixar o card de comando na coluna esquerda do layout de 2 colunas. */
+  controlSlot?: React.ReactNode;
+  /** Impacto quantitativo do aporte na descentralização e diluição de risco da carteira. */
+  diversificationImpact?: DiversificationImpactSummary | null;
 }

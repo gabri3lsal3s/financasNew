@@ -1,113 +1,12 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { ArrowDownToLine, ChevronDown, ChevronUp, Layers, PieChart, PiggyBank, Wallet } from "lucide-react";
+import { useMemo } from "react";
+import { Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
-import { KpiCard } from "@/components/modules/kpi-card";
 import { numberToCents } from "@/domain/money";
-import type { ClassAporteSummary, SectorAporteSummary } from "@/domain/portfolio";
-
-interface DistributionTileItem {
-  key: string;
-  title: string;
-  subtitle: string;
-  allocatedBRL: number;
-  gapBRL: number;
-}
-
-function AporteDistributionSection({
-  icon,
-  title,
-  countUnitLabel,
-  items,
-}: {
-  icon: ReactNode;
-  title: string;
-  countUnitLabel: string;
-  items: DistributionTileItem[];
-}) {
-  const [showAll, setShowAll] = useState(false);
-
-  const allocatedCount = useMemo(
-    () => items.filter((item) => item.allocatedBRL > 0).length,
-    [items],
-  );
-
-  const displayedItems = useMemo(() => {
-    if (showAll) return items;
-    const withAlloc = items.filter((item) => item.allocatedBRL > 0);
-    return withAlloc.length > 0 ? withAlloc : items.slice(0, 3);
-  }, [showAll, items]);
-
-  if (items.length === 0) return null;
-
-  const canToggle = items.length > displayedItems.length || showAll;
-
-  return (
-    <div className="flex flex-col gap-2.5 rounded-xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-xs font-semibold text-foreground uppercase tracking-wider min-w-0">
-          {icon}
-          <span className="truncate">{title}</span>
-        </div>
-        {canToggle ? (
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[11px] text-muted-foreground font-medium hidden sm:inline">
-              {allocatedCount > 0
-                ? `${allocatedCount} com aporte de ${items.length}`
-                : `${items.length} ${countUnitLabel}`}
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              sensoryIntent="selection"
-              onClick={() => setShowAll((prev) => !prev)}
-              className="px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground gap-1"
-            >
-              <span>{showAll ? "Recolher" : `Ver todas (${items.length})`}</span>
-              {showAll ? (
-                <ChevronUp className="size-3.5" aria-hidden="true" />
-              ) : (
-                <ChevronDown className="size-3.5" aria-hidden="true" />
-              )}
-            </Button>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-0.5">
-        {displayedItems.map((item) => (
-          <div
-            key={item.key}
-            className="flex items-center justify-between gap-2 rounded-lg bg-surface-raised px-3 py-2.5 text-xs"
-          >
-            <div className="flex flex-col min-w-0">
-              <span className="font-medium text-foreground truncate">{item.title}</span>
-              <span className="text-[11px] text-muted-foreground truncate">{item.subtitle}</span>
-            </div>
-            <div className="flex flex-col items-end shrink-0">
-              <MoneyText
-                cents={numberToCents(item.allocatedBRL)}
-                tone={item.allocatedBRL > 0 ? "portfolio" : "default"}
-                variant="caption"
-                className="font-semibold"
-              />
-              <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1 whitespace-nowrap">
-                <span>Gap:</span>
-                <MoneyText
-                  cents={numberToCents(item.gapBRL)}
-                  variant="caption"
-                  tone="default"
-                  className="text-[10px] text-muted-foreground font-normal"
-                />
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+import type { ClassAporteSummary, DiversificationImpactSummary, SectorAporteSummary } from "@/domain/portfolio";
+import { cn } from "@/lib/utils";
+import { HorizontalAllocationDriftBars, type DriftBarItem } from "./allocation-drift-bars";
 
 export interface AporteSummarySectionProps {
   aporte: number;
@@ -117,8 +16,17 @@ export interface AporteSummarySectionProps {
   totalRoutesCount: number;
   classSummaries: ClassAporteSummary[];
   sectorSummaries: SectorAporteSummary[];
+  showDriftBars?: boolean;
+  overflowEventsCount?: number;
+  onOpenOverflowLedger?: () => void;
+  diversificationImpact?: DiversificationImpactSummary | null;
 }
 
+/**
+ * Faixa Métrica Densa & Resumo de Rebalanceamento (§Fase 2).
+ * Exibe Total · Alocado · Sobra em 1 linha compacta com chips de impacto (Nef e Diluição)
+ * e barras horizontais de drift antes vs pós-aporte.
+ */
 export function AporteSummarySection({
   aporte,
   effectiveTotalAllocated,
@@ -127,80 +35,176 @@ export function AporteSummarySection({
   totalRoutesCount,
   classSummaries,
   sectorSummaries,
+  showDriftBars = false,
+  overflowEventsCount,
+  onOpenOverflowLedger,
+  diversificationImpact,
 }: AporteSummarySectionProps) {
-  const sortedClasses = useMemo(
-    () =>
-      classSummaries
-        .filter((c) => c.actualAllocatedBRL > 0 || c.gapBRL > 0)
-        .sort((a, b) =>
-          b.actualAllocatedBRL !== a.actualAllocatedBRL
-            ? b.actualAllocatedBRL - a.actualAllocatedBRL
-            : b.gapBRL - a.gapBRL,
-        )
-        .map<DistributionTileItem>((cls) => ({
-          key: cls.className,
-          title: cls.className || "Sem classe",
-          subtitle: `Meta: ${cls.targetPct}%`,
-          allocatedBRL: cls.actualAllocatedBRL,
-          gapBRL: cls.gapBRL,
-        })),
+  const totalCurrentBRL = useMemo(
+    () => classSummaries.reduce((sum, cs) => sum + cs.currentValueBRL, 0),
     [classSummaries],
   );
 
-  const sortedSectors = useMemo(
+  const classDriftItems = useMemo<DriftBarItem[]>(
     () =>
-      sectorSummaries
-        .filter((s) => s.actualAllocatedBRL > 0 || s.gapBRL > 0)
-        .sort((a, b) =>
-          b.actualAllocatedBRL !== a.actualAllocatedBRL
-            ? b.actualAllocatedBRL - a.actualAllocatedBRL
-            : b.gapBRL - a.gapBRL,
-        )
-        .map<DistributionTileItem>((sec) => ({
-          key: `${sec.className}::${sec.sectorName}`,
-          title: sec.sectorName,
-          subtitle: sec.targetPctInClass > 0 ? `${sec.className} · Meta: ${sec.targetPctInClass}%` : sec.className,
-          allocatedBRL: sec.actualAllocatedBRL,
-          gapBRL: sec.gapBRL,
-        })),
+      classSummaries.map((cs) => ({
+        id: cs.className,
+        name: cs.className,
+        currentValueBRL: cs.currentValueBRL,
+        allocatedBRL: cs.actualAllocatedBRL,
+        targetPct: cs.targetPct,
+        ceilingPct: cs.targetPct > 0 ? Math.min(100, cs.targetPct * 1.5) : undefined,
+      })),
+    [classSummaries],
+  );
+
+  const sectorDriftItems = useMemo<DriftBarItem[]>(
+    () =>
+      sectorSummaries.map((ss) => ({
+        id: `${ss.className}::${ss.sectorName}`,
+        name: ss.sectorName,
+        className: ss.className,
+        currentValueBRL: ss.currentValueBRL,
+        allocatedBRL: ss.actualAllocatedBRL,
+        targetPct: ss.targetPctInClass,
+      })),
     [sectorSummaries],
   );
 
   return (
     <div className="flex flex-col gap-3 min-w-0">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 min-w-0">
-        <KpiCard
-          icon={<PiggyBank className="size-4" aria-hidden="true" />}
-          label="Aporte informado"
-          cents={numberToCents(aporte)}
-        />
-        <KpiCard
-          icon={<ArrowDownToLine className="size-4" aria-hidden="true" />}
-          label={completedCount > 0 ? `Alocado (${completedCount}/${totalRoutesCount} feitos)` : "Alocado em ativos"}
-          cents={numberToCents(effectiveTotalAllocated)}
-          tone="portfolio"
-        />
-        <KpiCard
-          icon={<Wallet className="size-4" aria-hidden="true" />}
-          label="Sobra para caixa"
-          cents={numberToCents(effectiveLeftover)}
-          hint={effectiveLeftover > 0 ? "Residual mantido em liquidez" : undefined}
-        />
+      {/* Faixa Métrica Densa de 1 Linha */}
+      <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 shadow-xs min-w-0">
+        <div className="grid grid-cols-3 divide-x divide-border/60 text-center">
+          <div className="flex flex-col px-2 min-w-0">
+            <span className="text-[11px] font-medium text-muted-foreground truncate" title="Aporte informado">
+              Aporte informado
+            </span>
+            <MoneyText
+              cents={numberToCents(aporte)}
+              variant="value"
+              className="font-bold text-foreground text-xs sm:text-sm tabular-nums truncate"
+            />
+          </div>
+          <div className="flex flex-col px-2 min-w-0">
+            <span
+              className="text-[11px] font-medium text-muted-foreground truncate"
+              title={completedCount > 0 ? `Alocado (${completedCount}/${totalRoutesCount} feitos)` : "Alocado em ativos"}
+            >
+              {completedCount > 0 ? `Alocado (${completedCount}/${totalRoutesCount} feitos)` : "Alocado em ativos"}
+            </span>
+            <MoneyText
+              cents={numberToCents(effectiveTotalAllocated)}
+              tone="portfolio"
+              variant="value"
+              className="font-bold text-xs sm:text-sm tabular-nums truncate"
+            />
+          </div>
+          <div className="flex flex-col px-2 min-w-0">
+            <span className="text-[11px] font-medium text-muted-foreground truncate" title="Sobra para caixa">
+              Sobra para caixa
+            </span>
+            <MoneyText
+              cents={numberToCents(effectiveLeftover)}
+              variant="value"
+              className="font-bold text-foreground text-xs sm:text-sm tabular-nums truncate"
+            />
+          </div>
+        </div>
+
+        {/* Chips de Impacto na Descentralização e Diluição */}
+        {diversificationImpact ? (
+          <div className="flex flex-wrap items-center justify-between gap-1.5 pt-2 border-t border-border/50 text-[11px]">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {diversificationImpact.currentNef !== null && diversificationImpact.projectedNef !== null ? (
+                <div className="inline-flex items-center gap-1 rounded-md bg-surface-raised px-2 py-0.5 text-muted-foreground">
+                  <span>Nef:</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {diversificationImpact.currentNef.toFixed(1)} → {diversificationImpact.projectedNef.toFixed(1)}
+                  </span>
+                  {diversificationImpact.deltaNefPct !== null && diversificationImpact.deltaNefPct !== 0 ? (
+                    <span
+                      className={cn(
+                        "font-medium",
+                        diversificationImpact.deltaNefPct > 0 ? "text-positive-strong" : "text-muted-foreground",
+                      )}
+                    >
+                      ({diversificationImpact.deltaNefPct > 0 ? "+" : ""}
+                      {diversificationImpact.deltaNefPct.toFixed(1)}%)
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {diversificationImpact.projectedTopAssetSharePct !== null ? (
+                <div className="inline-flex items-center gap-1 rounded-md bg-surface-raised px-2 py-0.5 text-muted-foreground">
+                  <span>Maior Ativo:</span>
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {diversificationImpact.projectedTopAssetSharePct.toFixed(1)}%
+                  </span>
+                  {diversificationImpact.currentTopAssetSharePct !== null &&
+                  diversificationImpact.currentTopAssetSharePct > diversificationImpact.projectedTopAssetSharePct ? (
+                    <span className="text-positive-strong font-medium">
+                      (-
+                      {(
+                        diversificationImpact.currentTopAssetSharePct -
+                        diversificationImpact.projectedTopAssetSharePct
+                      ).toFixed(1)}
+                      %)
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+
+            {onOpenOverflowLedger ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onOpenOverflowLedger}
+                className="text-muted-foreground hover:text-foreground text-[11px] gap-1 h-6 px-1.5 cursor-pointer ml-auto"
+              >
+                <Sparkles className="size-3 text-primary" aria-hidden="true" />
+                <span>Overflow Ledger</span>
+                {overflowEventsCount !== undefined && overflowEventsCount > 0 ? (
+                  <Badge variant="warning" size="xs">
+                    {overflowEventsCount}
+                  </Badge>
+                ) : null}
+              </Button>
+            ) : null}
+          </div>
+        ) : onOpenOverflowLedger ? (
+          <div className="flex items-center justify-end pt-1 border-t border-border/40">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onOpenOverflowLedger}
+              className="text-muted-foreground hover:text-foreground text-xs gap-1.5 h-6 px-2 cursor-pointer"
+            >
+              <Sparkles className="size-3 text-primary" aria-hidden="true" />
+              <span>Trilha de Decisão (Overflow Ledger)</span>
+              {overflowEventsCount !== undefined && overflowEventsCount > 0 ? (
+                <Badge variant="warning" size="xs">
+                  {overflowEventsCount}
+                </Badge>
+              ) : null}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
-      <AporteDistributionSection
-        icon={<Layers className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />}
-        title="Distribuição Macro por Classe"
-        countUnitLabel="classes"
-        items={sortedClasses}
-      />
-
-      <AporteDistributionSection
-        icon={<PieChart className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />}
-        title="Distribuição Meso por Setor"
-        countUnitLabel="setores"
-        items={sortedSectors}
-      />
+      {/* Gráfico de Drift Antes vs Pós-Aporte */}
+      {showDriftBars && classDriftItems.length > 0 ? (
+        <HorizontalAllocationDriftBars
+          classItems={classDriftItems}
+          sectorItems={sectorDriftItems}
+          totalCurrentBRL={totalCurrentBRL}
+          totalAllocatedBRL={effectiveTotalAllocated}
+        />
+      ) : null}
     </div>
   );
 }

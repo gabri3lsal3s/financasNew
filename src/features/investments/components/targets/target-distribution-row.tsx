@@ -54,11 +54,17 @@ export function TargetDistributionRow({
       )}
     >
       <div
-        className="flex min-w-0 flex-1 flex-col gap-1 cursor-pointer"
-        onClick={onSelectToggle}
+        className="flex min-w-0 flex-1 flex-col gap-1 cursor-pointer group"
+        onClick={() => {
+          onSelectToggle();
+          onOpenDetail?.();
+        }}
+        title={onOpenDetail ? detailAriaLabel : undefined}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <p className="truncate text-sm font-semibold text-foreground">{name}</p>
+          <p className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+            {name}
+          </p>
           {onOpenDetail && detailIcon ? (
             <Button
               type="button"

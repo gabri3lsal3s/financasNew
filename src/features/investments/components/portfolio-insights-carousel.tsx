@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { DashboardAlertsCarousel, type DashboardAlertItem } from "@/components/modules/dashboard-alerts-carousel";
 import { computePortfolioCarouselDrift } from "@/domain/portfolio/insights-carousel-drift";
+import { evaluatePortfolioStructuralRisk } from "@/domain/portfolio/portfolio-risk-policy";
+import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
 import { usePortfolioAlertDismissals } from "@/hooks/use-portfolio-alert-dismissals";
 import { pushToast } from "@/services/toast";
 import {
@@ -9,6 +11,7 @@ import {
   useAssetGovernanceInsights,
   useCorporateDividends,
   useGroupTargets,
+  usePortfolioAssets,
   usePortfolioPosition,
   useUpdatePortfolioAsset,
 } from "@/state";
@@ -17,6 +20,7 @@ import { AssetScoreEvaluationDialog } from "./asset-score-evaluation-dialog";
 import { buildAllocationInsightItems } from "./insights-carousel/build-allocation-insight-items";
 import { buildDividendInsightItems } from "./insights-carousel/build-dividend-insight-items";
 import { buildGovernanceInsightItems } from "./insights-carousel/build-governance-insight-items";
+import { buildStructuralRiskItems } from "./insights-carousel/build-structural-risk-items";
 import { PendingDividendsDialog } from "./pending-dividends-dialog";
 
 export interface PortfolioInsightsCarouselProps {
@@ -35,6 +39,7 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
 
   const gov = useAssetGovernanceInsights();
   const position = usePortfolioPosition();
+  const assetsQuery = usePortfolioAssets();
   const classTargetsQuery = useGroupTargets("class");
   const approveMutation = useApproveDividendsBatch();
   const updateAssetMutation = useUpdatePortfolioAsset();
@@ -97,7 +102,29 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
     [classTargetsQuery?.data, position?.rows, position?.totalBRL, position?.cashBRL],
   );
 
+  const usdRate = useMemo(
+    () => position?.rows?.find((r) => r.currency === "USD")?.usdRate ?? FALLBACK_USD_RATE,
+    [position?.rows],
+  );
+
+  const structuralAlerts = useMemo(
+    () =>
+      evaluatePortfolioStructuralRisk(
+        assetsQuery?.data ?? [],
+        null,
+        { fxRateUSD: usdRate },
+      ),
+    [assetsQuery?.data, usdRate],
+  );
+
   const items: (DashboardAlertItem | false)[] = [
+    ...buildStructuralRiskItems({
+      alerts: structuralAlerts,
+      isAlertDismissed,
+      dismissAlert,
+      onNavigate: (to) => navigate(to),
+      className,
+    }),
     ...buildDividendInsightItems({
       availableCount: available.length,
       projectedCount: projected.length,

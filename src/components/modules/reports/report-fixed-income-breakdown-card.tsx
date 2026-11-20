@@ -1,7 +1,12 @@
 import { useMemo } from "react";
-import { Landmark, Percent, Shield, Sparkles } from "lucide-react";
+import { Calendar, Landmark, Percent, Shield, ShieldAlert, Sparkles } from "lucide-react";
 import { numberToCents } from "@/domain/money";
-import { calculateFixedIncomeExposure, type PositionLikeItem } from "@/domain/portfolio";
+import {
+  calculateFixedIncomeDiagnostics,
+  calculateFixedIncomeExposure,
+  type FixedIncomePositionInput,
+  type PositionLikeItem,
+} from "@/domain/portfolio";
 import { formatPercent } from "@/services/masks";
 import type { PortfolioAsset } from "@/types";
 import {
@@ -32,17 +37,48 @@ const ISSUER_COLORS: Record<string, ExposureColorToken> = {
   credito_privado: "cat3",
 };
 
+const MATURITY_COLORS: Record<string, ExposureColorToken> = {
+  up_to_1y: "cat1",
+  "1y_to_2y": "cat2",
+  "2y_to_5y": "cat3",
+  above_5y: "cat4",
+  liquid_or_none: "cat7",
+};
+
 export function ReportFixedIncomeBreakdownCard({
   positions,
   assetsMetadata = [],
   className,
-  title = "Raio-X de Renda Fixa (Indexadores & Emissores)",
+  title = "Raio-X de Renda Fixa (Indexadores, Emissores & Prazos)",
   mode = "interactive",
 }: ReportFixedIncomeBreakdownCardProps) {
   const exposure = useMemo(
     () => calculateFixedIncomeExposure(positions, assetsMetadata),
     [positions, assetsMetadata],
   );
+
+  const fiDiagnostics = useMemo(() => {
+    const metadataMap = new Map<string, PortfolioAsset>();
+    for (const a of assetsMetadata) {
+      metadataMap.set(a.id, a);
+      metadataMap.set(a.ticker.trim().toUpperCase(), a);
+    }
+
+    const inputRows: FixedIncomePositionInput[] = positions.map((p) => {
+      const meta = (p.assetId ? metadataMap.get(p.assetId) : null) ?? metadataMap.get(p.ticker.trim().toUpperCase());
+      return {
+        assetId: p.assetId ?? p.ticker,
+        ticker: p.ticker,
+        name: meta?.notes ?? p.ticker,
+        assetClass: p.assetClass ?? meta?.asset_class ?? null,
+        valueBRL: p.valueBRL,
+        maturityDate: meta?.fixed_income_metadata?.maturity_date,
+        fixedIncomeMetadata: meta?.fixed_income_metadata,
+      };
+    });
+
+    return calculateFixedIncomeDiagnostics(inputRows);
+  }, [positions, assetsMetadata]);
 
   const views = useMemo<ExposureBreakdownView[]>(
     () => [
@@ -66,20 +102,48 @@ export function ReportFixedIncomeBreakdownCard({
         printCenterLabel: "Emissor",
         items: exposure.orderedIssuers.map((g) => ({ ...g, colorToken: ISSUER_COLORS[g.key] ?? "cat10" })),
       },
+      {
+        id: "maturity",
+        label: "Por Vencimento",
+        icon: Calendar,
+        printTitle: "Cronograma de Vencimento & Liquidez",
+        columnLabel: "Prazo de Vencimento",
+        interactiveColumnLabel: "Faixa de Vencimento / Liquidez",
+        printCenterLabel: "Vencimento",
+        items: fiDiagnostics.maturities.map((m) => ({
+          key: m.bucketKey,
+          label: m.label,
+          valueBRL: m.totalBRL,
+          pct: m.shareInFixedIncomePct,
+          count: m.count,
+          colorToken: MATURITY_COLORS[m.bucketKey] ?? "cat10",
+        })),
+      },
     ],
-    [exposure.orderedIndexers, exposure.orderedMacroIndexers, exposure.orderedIssuers],
+    [exposure.orderedIndexers, exposure.orderedMacroIndexers, exposure.orderedIssuers, fiDiagnostics.maturities],
   );
 
   return (
     <ReportExposureBreakdownCard
       title={title}
-      subtitle="Análise de risco de taxa de juros (indexador) e risco de crédito (emissor/garantia FGC)."
+      subtitle="Análise de risco de taxa de juros (indexador), risco de crédito (emissor/garantia FGC) e cronograma de vencimento."
       icon={Landmark}
       emptyMessage="Nenhum título de renda fixa cadastrado na carteira para análise de indexadores."
       totalAssetsCount={exposure.totalAssetsCount}
       totalValueBRL={exposure.totalValueBRL}
       interactiveCenterLabel="Renda Fixa"
       itemUnitLabel="título(s)"
+      statusBadge={
+        fiDiagnostics.fgcExceededCount > 0
+          ? {
+              label: `${fiDiagnostics.fgcExceededCount} ${
+                fiDiagnostics.fgcExceededCount === 1 ? "emissor excede" : "emissores excedem"
+              } o teto FGC (R$ 250k)`,
+              variant: "warning",
+              icon: ShieldAlert,
+            }
+          : undefined
+      }
       highlightCallout={{
         icon: Sparkles,
         tone: "positive",

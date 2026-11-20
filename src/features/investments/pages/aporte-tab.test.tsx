@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AporteTab } from "./aporte-tab";
 
 const mockExecuteBatch = vi.fn().mockResolvedValue({ success: true, count: 1 });
+const mockRevertBatch = vi.fn().mockResolvedValue({ success: true, count: 1 });
 
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
@@ -17,6 +18,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 });
 
 vi.mock("@/state", () => ({
+  LAST_BATCH_APORTE_STORAGE_KEY: "axir_last_batch_aporte",
   useUserSubscription: () => ({
     canWrite: true,
     isReadOnly: false,
@@ -75,6 +77,14 @@ vi.mock("@/state", () => ({
   }),
   useExecutePortfolioBatchAporte: () => ({
     mutateAsync: mockExecuteBatch,
+    isPending: false,
+  }),
+  useRevertPortfolioBatchAporte: () => ({
+    mutate: (id: string, opts?: { onSuccess?: () => void }) => {
+      mockRevertBatch(id);
+      opts?.onSuccess?.();
+    },
+    mutateAsync: mockRevertBatch,
     isPending: false,
   }),
   useCreatePortfolioTransaction: () => ({
@@ -158,6 +168,8 @@ vi.mock("@/state", () => ({
 describe("AporteTab — Calculadora e Aportes", () => {
   beforeEach(() => {
     mockExecuteBatch.mockClear();
+    mockRevertBatch.mockClear();
+    sessionStorage.clear();
   });
 
   it("renderiza a calculadora e os campos de simulação corretamente", () => {
@@ -168,7 +180,7 @@ describe("AporteTab — Calculadora e Aportes", () => {
     );
 
     expect(screen.getByText(/Valor do aporte/i)).toBeInTheDocument();
-    expect(screen.getByText(/Motor Hierárquico:/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Sobre o motor hierárquico/i)).toBeInTheDocument();
   });
 
   it("inicia por padrão com valor zerado (R$ 0,00) e sem sugestões antes de digitar", () => {
@@ -289,7 +301,7 @@ describe("AporteTab — Calculadora e Aportes", () => {
     });
     await user.click(cashSwitch);
 
-    expect(screen.getByText(/Poder de compra composto:/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Saldo em caixa utilizado/i)).toBeInTheDocument();
 
     const submitBtn = screen.getByRole("button", { name: /Lançar compras no extrato/i });
     await user.click(submitBtn);
@@ -327,12 +339,85 @@ describe("AporteTab — Calculadora e Aportes", () => {
       name: /Somar saldo em Caixa da corretora/i,
     });
     expect(cashSwitch).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByText(/Poder de compra composto:/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Saldo em caixa utilizado/i)).toBeInTheDocument();
 
     const aporteInput = screen.getByLabelText("Valor do aporte") as HTMLInputElement;
     expect(aporteInput.value).toMatch(/0,00/);
 
     const cashInput = screen.getByLabelText(/Saldo em caixa utilizado/i) as HTMLInputElement;
     expect(cashInput.value).toMatch(/1\.000,00/);
+  });
+
+  it("renderiza o banner de desfazer recente quando há lote na sessionStorage e dispara revert", async () => {
+    const user = userEvent.setup();
+    sessionStorage.setItem(
+      "axir_last_batch_aporte",
+      JSON.stringify({
+        batchId: "batch-123",
+        executedAt: Date.now() - 60_000, // 1 minuto atrás
+        itemsCount: 3,
+        totalAmount: 1500,
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/investments?tab=rebalancear"]}>
+        <AporteTab />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/Aporte recente executado/i)).toBeInTheDocument();
+    expect(screen.getByText(/3 ativos/i)).toBeInTheDocument();
+
+    const undoButton = screen.getByRole("button", { name: /Desfazer Aporte/i });
+    await user.click(undoButton);
+
+    expect(mockRevertBatch).toHaveBeenCalledWith("batch-123");
+  });
+
+  it("ignora lote recente na sessionStorage se expirado além da janela de 5 minutos", () => {
+    sessionStorage.setItem(
+      "axir_last_batch_aporte",
+      JSON.stringify({
+        batchId: "batch-expired",
+        executedAt: Date.now() - 360_000, // 6 minutos atrás (expirado)
+        itemsCount: 2,
+        totalAmount: 1000,
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/investments?tab=rebalancear"]}>
+        <AporteTab />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText(/Aporte recente executado/i)).toBeNull();
+  });
+
+  it("permite fechar manualmente o banner de desfazer recente e remove da sessionStorage", async () => {
+    const user = userEvent.setup();
+    sessionStorage.setItem(
+      "axir_last_batch_aporte",
+      JSON.stringify({
+        batchId: "batch-456",
+        executedAt: Date.now() - 30_000,
+        itemsCount: 1,
+        totalAmount: 500,
+      }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/investments?tab=rebalancear"]}>
+        <AporteTab />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/Aporte recente executado/i)).toBeInTheDocument();
+    const closeBtn = screen.getByRole("button", { name: /Fechar/i });
+    await user.click(closeBtn);
+
+    expect(screen.queryByText(/Aporte recente executado/i)).toBeNull();
+    expect(sessionStorage.getItem("axir_last_batch_aporte")).toBeNull();
   });
 });

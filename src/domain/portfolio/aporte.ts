@@ -26,11 +26,20 @@
 
 import type { AssetAllocationStatus, AssetCurrency } from "@/types";
 import { isCashAssetClass, isFixedIncomeClass, isTesouroAsset, normalizeClassName } from "./valuation";
-import { inferSectorFromTicker } from "./tickers-catalog";
+import {
+  inferSectorFromTicker,
+  inferMacroSector,
+  isDiversifiedVehicle,
+  parseIssuerFromTicker,
+} from "./tickers-catalog";
 import { calculateEffectiveAssetTargets } from "./allocation";
+import {
+  type PortfolioRiskPolicy,
+  resolvePortfolioRiskPolicy,
+} from "./portfolio-risk-policy";
 
 // ---------------------------------------------------------------------------
-// Tipos
+// Tipos & Overrides de Rebalanceamento em Camadas (Fase 2)
 // ---------------------------------------------------------------------------
 
 export type AporteMode = "asset" | "class" | "both";
@@ -41,6 +50,44 @@ export type AporteMode = "asset" | "class" | "both";
  * - "proportional": Rateia proporcionalmente a verba entre todos os ativos abaixo da meta.
  */
 export type AporteStrategy = "optimized" | "proportional";
+
+export interface AssetAporteOverride {
+  /** Destrava ativo com nota <= 5 em soft lock de qualidade. */
+  ignoreQualityLock?: boolean;
+  /** Destrava teto de concentração individual do ativo (15%). */
+  ignoreAssetCeiling?: boolean;
+  /** Destrava teto setorial na classe (35%) e global (25%). */
+  ignoreSectorCeiling?: boolean;
+  /** Destrava teto macro-setorial na classe (45%) e global (35%). */
+  ignoreMacroSectorCeiling?: boolean;
+  /** Destrava teto de emissor de Renda Fixa privada (30% da RF / R$ 250k FGC). */
+  ignoreIssuerCeiling?: boolean;
+}
+
+export type AporteOverridesMap = Record<string, AssetAporteOverride>;
+
+export interface AporteOverflowEvent {
+  type: "sector_saturated" | "class_saturated" | "asset_ceiling" | "issuer_ceiling" | "macro_sector_ceiling";
+  sourceId: string;
+  sourceLabel: string;
+  targetId?: string;
+  targetLabel?: string;
+  amountBRL: number;
+  reason: string;
+}
+
+export interface PausedAssetDiagnostic {
+  assetId: string;
+  ticker: string;
+  name?: string | null;
+  assetClass: string | null;
+  sector?: string | null;
+  reason: "quality_lock" | "asset_ceiling" | "sector_ceiling" | "macro_sector_ceiling" | "issuer_ceiling";
+  score?: number | null;
+  currentValueBRL: number;
+  targetValueBRL: number;
+  detail: string;
+}
 
 export type SkippedReason =
   | "no_price"
@@ -104,6 +151,10 @@ export interface AporteAssetInput {
   allocation_status?: AssetAllocationStatus;
   /** Indica se aceita compra fracionária (override manual). */
   isFractional?: boolean;
+  /** Data da última revisão/análise da tese (para proteção de onboarding). */
+  last_reviewed_at?: string | null;
+  /** Critérios de pontuação fundamentalista preenchidos. */
+  score_criteria?: Record<string, unknown> | null;
 }
 
 export type RebalanceMode = "sector_oriented" | "asset_prescriptive";
@@ -149,6 +200,10 @@ export interface UnifiedAporteOptions {
   sectorTargets?: readonly SectorTargetInput[];
   strategy?: AporteStrategy;
   totalPortfolioBRL?: number;
+  /** Política de risco prudencial e limites de concentração em camadas. */
+  policy?: Partial<PortfolioRiskPolicy>;
+  /** Mapa de exceções (overrides) ativadas pelo investidor para destravar limites. */
+  overrides?: AporteOverridesMap;
 }
 
 export interface UnifiedAporteResult {
@@ -159,6 +214,10 @@ export interface UnifiedAporteResult {
   sectorGroups: SectorAporteGroup[];
   prescriptiveRoutes: AporteRoute[];
   skippedAssets: SkippedAssetDiagnostic[];
+  /** Eventos de transbordamento de verba registrados durante o cálculo. */
+  overflowEvents?: AporteOverflowEvent[];
+  /** Ativos pausados por soft lock de qualidade ou teto de concentração. */
+  pausedAssets?: PausedAssetDiagnostic[];
 }
 
 export interface ClassTargetInput {
@@ -199,6 +258,12 @@ export interface AporteRoute {
   classTargetPct?: number;
   sectorTargetPctInClass?: number | null;
   weightInSector?: number;
+  /** Headroom efetivo máximo permitido pelas travas em camadas (BRL). */
+  headroomBRL?: number;
+  /** Indica se o aporte neste ativo foi comprimido por algum teto prudencial. */
+  isConstrainedByCeiling?: boolean;
+  /** Motivo do teto restritivo caso tenha sido comprimido. */
+  ceilingReason?: string;
 }
 
 export interface AporteResult {
@@ -218,6 +283,26 @@ export interface AporteResult {
   sectorSummaries: SectorAporteSummary[];
   /** Diagnóstico de ativos que não receberam aporte. */
   skippedAssets: SkippedAssetDiagnostic[];
+  /** Eventos de transbordamento de verba registrados durante o cálculo. */
+  overflowEvents?: AporteOverflowEvent[];
+  /** Ativos pausados por soft lock de qualidade ou teto de concentração. */
+  pausedAssets?: PausedAssetDiagnostic[];
+}
+
+export interface ConstrainedAporteOptions {
+  aporte: number;
+  assets: readonly AporteAssetInput[];
+  classTargets: readonly ClassTargetInput[];
+  sectorTargets?: readonly SectorTargetInput[];
+  strategy?: AporteStrategy;
+  totalPortfolioBRL?: number;
+  policy?: Partial<PortfolioRiskPolicy>;
+  overrides?: AporteOverridesMap;
+}
+
+export interface ConstrainedAporteResult extends AporteResult {
+  overflowEvents: AporteOverflowEvent[];
+  pausedAssets: PausedAssetDiagnostic[];
 }
 
 // ---------------------------------------------------------------------------
@@ -345,6 +430,209 @@ interface InternalClassMacro {
   deficitRel: number;
 }
 
+interface CalculateHeadroomParams {
+  mode: AporteMode;
+  asset: AporteAssetInput;
+  patrimonioAlvo: number;
+  classTargetValueBRL: number;
+  classTargetPct: number;
+  currentSectorValBRL: number;
+  allocatedSectorBRL: number;
+  currentMacroValBRL: number;
+  allocatedMacroBRL: number;
+  currentIssuerValBRL: number;
+  allocatedIssuerBRL: number;
+  allocatedAssetBRL: number;
+  policy: PortfolioRiskPolicy;
+  override?: AssetAporteOverride;
+  totalEligibleAssetsInPortfolio: number;
+  sectorCountInClass: number;
+  rfAssetsCount: number;
+  targetValueBRL: number;
+}
+
+interface HeadroomCalculationResult {
+  headroomBRL: number;
+  isConstrainedByCeiling: boolean;
+  ceilingReason?: string;
+  gapMeta: number;
+  capAtivo: number;
+  capSetorNaClasse: number;
+  capSetorGlobal: number;
+  capMacroSetor: number;
+  capEmissorRF: number;
+}
+
+/**
+ * Calcula o headroom efetivo em 6 camadas com dupla trava e piso de viabilidade matemática.
+ */
+function calculateAssetEffectiveHeadroom(params: CalculateHeadroomParams): HeadroomCalculationResult {
+  const {
+    mode,
+    asset,
+    patrimonioAlvo,
+    classTargetValueBRL,
+    classTargetPct,
+    currentSectorValBRL,
+    allocatedSectorBRL,
+    currentMacroValBRL,
+    allocatedMacroBRL,
+    currentIssuerValBRL,
+    allocatedIssuerBRL,
+    allocatedAssetBRL,
+    policy,
+    override,
+    totalEligibleAssetsInPortfolio,
+    sectorCountInClass,
+    rfAssetsCount,
+    targetValueBRL,
+  } = params;
+
+  // 1. Gap até a meta teórica derivada
+  const gapMeta = Math.max(0, targetValueBRL - nonNegative(asset.currentValueBRL) - allocatedAssetBRL);
+
+  // No modo unitário legado ("asset"), as restrições globais/setoriais não sobrepõem a meta manual do ativo
+  if (mode === "asset") {
+    return {
+      headroomBRL: round2(gapMeta),
+      isConstrainedByCeiling: false,
+      gapMeta: round2(gapMeta),
+      capAtivo: Infinity,
+      capSetorNaClasse: Infinity,
+      capSetorGlobal: Infinity,
+      capMacroSetor: Infinity,
+      capEmissorRF: Infinity,
+    };
+  }
+
+  // 2. Cap do Ativo
+  let capAtivo = Infinity;
+  if (!override?.ignoreAssetCeiling) {
+    // Piso de viabilidade matemática: carteiras pequenas (<= 6 ativos) não sofrem bloqueio rígido
+    if (totalEligibleAssetsInPortfolio > 6) {
+      const isDiv = isDiversifiedVehicle(asset);
+      const tetoPct = isDiv
+        ? Math.max(policy.diversifiedAssetCeilingPct, classTargetPct)
+        : policy.defaultAssetCeilingPct;
+      const tetoAtivoBRL = (tetoPct / 100) * patrimonioAlvo;
+      capAtivo = Math.max(0, tetoAtivoBRL - nonNegative(asset.currentValueBRL) - allocatedAssetBRL);
+    }
+  }
+
+  // 3. Cap do Setor na Classe (35% da classe)
+  let capSetorNaClasse = Infinity;
+  if (!override?.ignoreSectorCeiling) {
+    // Piso de viabilidade setorial: classes com 1 ou 2 setores não são estranguladas
+    if (sectorCountInClass > 2 && classTargetValueBRL > 0) {
+      const tetoSetorInClassBRL = (policy.defaultSectorInClassCeilingPct / 100) * classTargetValueBRL;
+      capSetorNaClasse = Math.max(0, tetoSetorInClassBRL - currentSectorValBRL - allocatedSectorBRL);
+    }
+  }
+
+  // 4. Cap do Setor Global (25% da carteira total)
+  let capSetorGlobal = Infinity;
+  if (!override?.ignoreSectorCeiling) {
+    if (totalEligibleAssetsInPortfolio > 6) {
+      const tetoSetorGlobalBRL = (policy.defaultSectorGlobalCeilingPct / 100) * patrimonioAlvo;
+      capSetorGlobal = Math.max(0, tetoSetorGlobalBRL - currentSectorValBRL - allocatedSectorBRL);
+    }
+  }
+
+  // 5. Cap do Macro-Setor (Bancos+Seguros 45% classe / 35% global)
+  let capMacroSetor = Infinity;
+  if (!override?.ignoreMacroSectorCeiling) {
+    const macroKey = inferMacroSector(asset);
+    if (macroKey && totalEligibleAssetsInPortfolio > 6) {
+      const tetoMacroInClass = classTargetValueBRL > 0
+        ? (policy.macroSectorInClassCeilingPct / 100) * classTargetValueBRL
+        : Infinity;
+      const tetoMacroGlobal = (policy.macroSectorGlobalCeilingPct / 100) * patrimonioAlvo;
+      const tetoMacroBRL = Math.min(tetoMacroInClass, tetoMacroGlobal);
+      capMacroSetor = Math.max(0, tetoMacroBRL - currentMacroValBRL - allocatedMacroBRL);
+    }
+  }
+
+  // 6. Cap de Emissor Privado de Renda Fixa (30% RF / 15% Global / R$ 250k FGC)
+  let capEmissorRF = Infinity;
+  if (!override?.ignoreIssuerCeiling && isFixedIncomeClass(asset.assetClass)) {
+    const issuer = parseIssuerFromTicker(asset.ticker, asset.name);
+    if (!issuer.isSovereign && issuer.issuerKey !== "tesouro_nacional") {
+      // Trava de 30% da classe só se aplica quando houver pelo menos 3 ativos/emissores de RF na carteira
+      const tetoInRf = rfAssetsCount >= 3 && classTargetValueBRL > 0
+        ? (policy.maxPrivateIssuerInFixedIncomePct / 100) * classTargetValueBRL
+        : Infinity;
+      // Piso de viabilidade matemática: trava global só se aplica a carteiras com mais de 6 ativos
+      const tetoGlobal = totalEligibleAssetsInPortfolio > 6
+        ? (policy.maxPrivateIssuerPct / 100) * patrimonioAlvo
+        : Infinity;
+      const tetoFgc = policy.maxPrivateIssuerFgcBRL;
+      const tetoEmissorBRL = Math.min(tetoInRf, tetoGlobal, tetoFgc);
+      capEmissorRF = Math.max(0, tetoEmissorBRL - currentIssuerValBRL - allocatedIssuerBRL);
+    }
+  }
+
+  const constraints = [
+    { reason: "meta", val: gapMeta },
+    { reason: "asset_ceiling", val: capAtivo },
+    { reason: "sector_in_class_ceiling", val: capSetorNaClasse },
+    { reason: "sector_global_ceiling", val: capSetorGlobal },
+    { reason: "macro_sector_ceiling", val: capMacroSetor },
+    { reason: "issuer_ceiling", val: capEmissorRF },
+  ];
+
+  constraints.sort((a, b) => a.val - b.val);
+  const binding = constraints[0] ?? { reason: "meta" as const, val: gapMeta };
+  let headroomBRL = Math.max(0, binding.val);
+
+  // Falso Headroom B3: se o headroom não permite comprar nem 1 cota inteira, trunca para 0
+  const precision = resolveAssetPrecision(asset);
+  if (precision === 0 && asset.priceBRL > 0 && headroomBRL < asset.priceBRL) {
+    headroomBRL = 0;
+  }
+
+  const isConstrainedByCeiling = binding.reason !== "meta" && binding.val < gapMeta;
+  const ceilingReason = isConstrainedByCeiling ? binding.reason : undefined;
+
+  return {
+    headroomBRL: round2(headroomBRL),
+    isConstrainedByCeiling,
+    ceilingReason,
+    gapMeta: round2(gapMeta),
+    capAtivo: round2(capAtivo),
+    capSetorNaClasse: round2(capSetorNaClasse),
+    capSetorGlobal: round2(capSetorGlobal),
+    capMacroSetor: round2(capMacroSetor),
+    capEmissorRF: round2(capEmissorRF),
+  };
+}
+
+/**
+ * Avalia se o ativo está pausado por corte de qualidade (score <= 5)
+ * com salvaguarda de onboarding (não pausa se não foi avaliado ou se for único na classe).
+ */
+function isAssetQualityLocked(
+  asset: AporteAssetInput,
+  classMembers: readonly AporteAssetInput[],
+  policy: PortfolioRiskPolicy,
+  override?: AssetAporteOverride
+): boolean {
+  if (override?.ignoreQualityLock) return false;
+  if (asset.score === null || asset.score === undefined) return false;
+  if (asset.score > policy.lowScoreThreshold) return false;
+
+  const hasBeenReviewed = Boolean(
+    asset.last_reviewed_at ||
+    (asset.score_criteria && Object.keys(asset.score_criteria).length > 0)
+  );
+  if (!hasBeenReviewed) return false;
+
+  const hasBetterAlternativeInClass = classMembers.some(
+    (m) => m.id !== asset.id && m.score !== null && m.score !== undefined && m.score > policy.lowScoreThreshold
+  );
+
+  return hasBetterAlternativeInClass;
+}
+
 export function simulateAporte(opts: {
   mode: AporteMode;
   strategy?: AporteStrategy;
@@ -353,10 +641,17 @@ export function simulateAporte(opts: {
   classTargets: readonly ClassTargetInput[];
   sectorTargets?: readonly SectorTargetInput[];
   totalPortfolioBRL?: number;
+  policy?: Partial<PortfolioRiskPolicy>;
+  overrides?: AporteOverridesMap;
 }): AporteResult {
   const strategy: AporteStrategy = opts.strategy ?? "proportional";
   const aporte = round2(nonNegative(opts.aporte));
+  const policy = resolvePortfolioRiskPolicy(opts.policy);
+  const overrides = opts.overrides ?? {};
   const skippedAssets: SkippedAssetDiagnostic[] = [];
+  const overflowEvents: AporteOverflowEvent[] = [];
+  const pausedAssets: PausedAssetDiagnostic[] = [];
+  const assetHeadroomMap = new Map<string, HeadroomCalculationResult>();
 
   if (!(aporte > 0)) {
     return {
@@ -702,62 +997,331 @@ export function simulateAporte(opts: {
   const classSummaries: ClassAporteSummary[] = [];
   const sectorSummaries: SectorAporteSummary[] = [];
   const allocatedMap = new Map<string, { quantity: number; allocatedBRL: number }>();
+  const allocatedSectorMap = new Map<string, number>();
+  const allocatedMacroMap = new Map<string, number>();
+  const allocatedIssuerMap = new Map<string, number>();
 
-  // Helper interno de alocação ponderada a uma lista de ativos
+  const totalEligibleCount = investableAssets.filter((a) => {
+    if (a.allocation_status === "quarantine" || a.allocation_status === "exit" || a.allocation_status === "neutral") return false;
+    const eff = effectiveAssetMap.get(a.id);
+    return Boolean(eff && eff.targetPct > 0 && a.priceBRL > 0);
+  }).length;
+
+  // Helper interno de alocação ponderada a uma lista de ativos com suporte a headroom em camadas
   const allocateBudgetToMembers = (
     members: readonly AporteAssetInput[],
     budget: number,
+    sectorName?: string,
+    className?: string,
   ): number => {
     if (!(budget > 0) || members.length === 0) {
       return 0;
     }
 
-    const eligible = members.filter((m) => {
-      const eff = effectiveAssetMap.get(m.id);
-      if (!eff || !(eff.gapBRL > 0) || !(eff.targetPct > 0) || !(m.priceBRL > 0)) return false;
-      const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
-      return eff.gapBRL - currentAlloc > 0;
-    });
-
-    if (eligible.length === 0) {
-      return 0;
-    }
-
-    const sumGaps = eligible.reduce((acc, m) => {
-      const eff = effectiveAssetMap.get(m.id)!;
-      const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
-      return acc + Math.max(0, eff.gapBRL - currentAlloc);
-    }, 0);
-
-    if (!(sumGaps > 0)) {
-      return 0;
-    }
-
-    let remainingBudget = budget;
-
-    if (strategy === "optimized") {
-      // Modo Otimizado (Menos Movimentações):
-      // Concentra os recursos no ativo com maior defasagem restante
-      const sortedByDeficit = [...eligible].sort((a, b) => {
-        const effA = effectiveAssetMap.get(a.id)!;
-        const allocA = allocatedMap.get(a.id)?.allocatedBRL ?? 0;
-        const remA = Math.max(0, effA.gapBRL - allocA);
-
-        const effB = effectiveAssetMap.get(b.id)!;
-        const allocB = allocatedMap.get(b.id)?.allocatedBRL ?? 0;
-        const remB = Math.max(0, effB.gapBRL - allocB);
-
-        return remB - remA;
+    // Modo unitário legado puro ("asset"): preserva compatibilidade sem restrições macro/setoriais
+    if (opts.mode === "asset") {
+      const eligible = members.filter((m) => {
+        const eff = effectiveAssetMap.get(m.id);
+        if (!eff || !(eff.gapBRL > 0) || !(eff.targetPct > 0) || !(m.priceBRL > 0)) return false;
+        const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
+        return eff.gapBRL - currentAlloc > 0;
       });
 
-      for (const m of sortedByDeficit) {
-        if (!(remainingBudget > 0)) break;
+      if (eligible.length === 0) return 0;
+
+      const sumGaps = eligible.reduce((acc, m) => {
         const eff = effectiveAssetMap.get(m.id)!;
         const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
-        const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
-        if (!(remainingGap > 0)) continue;
+        return acc + Math.max(0, eff.gapBRL - currentAlloc);
+      }, 0);
 
-        const canAfford = Math.min(remainingGap, remainingBudget);
+      if (!(sumGaps > 0)) return 0;
+
+      let remainingBudget = budget;
+
+      if (strategy === "optimized") {
+        // Modo Otimizado (Menos Movimentações):
+        // Concentra os recursos no ativo com maior defasagem restante
+        const sortedByDeficit = [...eligible].sort((a, b) => {
+          const effA = effectiveAssetMap.get(a.id)!;
+          const allocA = allocatedMap.get(a.id)?.allocatedBRL ?? 0;
+          const remA = Math.max(0, effA.gapBRL - allocA);
+
+          const effB = effectiveAssetMap.get(b.id)!;
+          const allocB = allocatedMap.get(b.id)?.allocatedBRL ?? 0;
+          const remB = Math.max(0, effB.gapBRL - allocB);
+
+          return remB - remA;
+        });
+
+        for (const m of sortedByDeficit) {
+          if (!(remainingBudget > 0)) break;
+          const eff = effectiveAssetMap.get(m.id)!;
+          const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
+          const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
+          if (!(remainingGap > 0)) continue;
+
+          const canAfford = Math.min(remainingGap, remainingBudget);
+          const precision = resolveAssetPrecision(m);
+
+          let qty: number;
+          let alloc: number;
+
+          if (precision > 0) {
+            const multiplier = Math.pow(10, precision);
+            qty = Math.floor((canAfford / m.priceBRL) * multiplier) / multiplier;
+            alloc = round2(qty * m.priceBRL);
+          } else {
+            qty = Math.floor(canAfford / m.priceBRL);
+            alloc = round2(qty * m.priceBRL);
+          }
+
+          if (alloc > remainingBudget) {
+            alloc = remainingBudget;
+            qty = precision > 0 ? Math.floor((alloc / m.priceBRL) * Math.pow(10, precision)) / Math.pow(10, precision) : Math.floor(alloc / m.priceBRL);
+            alloc = round2(qty * m.priceBRL);
+          }
+
+          if (alloc > 0 && qty > 0) {
+            const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
+            const newQty = precision > 0 ? Math.round((existing.quantity + qty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + qty;
+            allocatedMap.set(m.id, {
+              quantity: newQty,
+              allocatedBRL: round2(existing.allocatedBRL + alloc),
+            });
+            remainingBudget = Math.max(0, round2(remainingBudget - alloc));
+          }
+        }
+      } else {
+        for (const m of eligible) {
+          if (!(remainingBudget > 0)) break;
+          const eff = effectiveAssetMap.get(m.id)!;
+          const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
+          const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
+          if (!(remainingGap > 0)) continue;
+
+          const share = Math.min(remainingGap, remainingBudget, (remainingGap / sumGaps) * budget);
+          const precision = resolveAssetPrecision(m);
+          const multiplier = Math.pow(10, precision);
+
+          let qty = precision > 0 ? Math.floor((share / m.priceBRL) * multiplier) / multiplier : Math.floor(share / m.priceBRL);
+          let alloc = round2(qty * m.priceBRL);
+
+          const cap = Math.min(remainingGap, remainingBudget);
+          if (alloc > cap) {
+            qty = precision > 0 ? Math.floor((cap / m.priceBRL) * multiplier) / multiplier : Math.floor(cap / m.priceBRL);
+            alloc = round2(qty * m.priceBRL);
+          }
+
+          if (alloc > 0 && qty > 0 && alloc <= remainingBudget) {
+            const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
+            const newQty = precision > 0 ? Math.round((existing.quantity + qty) * multiplier) / multiplier : existing.quantity + qty;
+            allocatedMap.set(m.id, {
+              quantity: newQty,
+              allocatedBRL: round2(existing.allocatedBRL + alloc),
+            });
+            remainingBudget = Math.max(0, round2(remainingBudget - alloc));
+          }
+        }
+      }
+      return round2(budget - remainingBudget);
+    }
+
+    // Modo avançado: Cálculo com Headroom em Camadas & Cascata (Fase 2)
+    const normClass = className ? normalizeClassName(className) : "outros";
+    const sectorKey = sectorName ? `${normClass}::${sectorName.trim()}` : undefined;
+    const classMacro = classMacros.find((c) => normalizeClassName(c.className) === normClass);
+    const classTargetVal = classMacro?.targetValueBRL ?? 0;
+    const classTargetPct = classMacro?.targetPct ?? 0;
+    const sectorCount = assetsByClassAndSector.get(className ?? "")?.size ?? 1;
+
+    type EvaluatedMember = {
+      asset: AporteAssetInput;
+      eff: InternalEffectiveAssetTarget;
+      headroom: HeadroomCalculationResult;
+    };
+
+    const evaluated: EvaluatedMember[] = [];
+
+    for (const m of members) {
+      const eff = effectiveAssetMap.get(m.id);
+      if (!eff || !(eff.targetPct > 0) || !(m.priceBRL > 0)) continue;
+      if (
+        m.allocation_status === "quarantine" ||
+        m.allocation_status === "exit" ||
+        m.allocation_status === "neutral"
+      ) {
+        continue;
+      }
+      if (isAssetQualityLocked(m, members, policy, overrides[m.id])) {
+        if (!pausedAssets.some((p) => p.assetId === m.id)) {
+          pausedAssets.push({
+            assetId: m.id,
+            ticker: m.ticker,
+            name: m.name ?? m.ticker,
+            assetClass: m.assetClass,
+            sector: m.sector ?? sectorName,
+            reason: "quality_lock",
+            score: m.score,
+            currentValueBRL: round2(nonNegative(m.currentValueBRL)),
+            targetValueBRL: eff.targetValueBRL,
+            detail: `Tese com nota de convicção ${m.score ?? 0}/10 (limiar <= ${policy.lowScoreThreshold}). Novos aportes pausados para proteger a carteira.`,
+          });
+        }
+        continue;
+      }
+
+      const allocatedAssetBRL = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
+      const mSector = m.sector?.trim() || inferSectorFromTicker(m.ticker, m.assetClass);
+      const effectiveSectorKey = `${normClass}::${mSector}`;
+      const allocatedSectorBRL = allocatedSectorMap.get(effectiveSectorKey) ?? 0;
+      const macroKey = inferMacroSector(m);
+      const allocatedMacroBRL = macroKey ? allocatedMacroMap.get(macroKey) ?? 0 : 0;
+      const issuer = parseIssuerFromTicker(m.ticker, m.name);
+      const allocatedIssuerBRL = !issuer.isSovereign ? allocatedIssuerMap.get(issuer.issuerKey) ?? 0 : 0;
+
+      const currentSectorVal = round2(
+        investableAssets
+          .filter((item) => (item.sector?.trim() || inferSectorFromTicker(item.ticker, item.assetClass)) === mSector && normalizeClassName(item.assetClass ?? "") === normClass)
+          .reduce((sum, item) => sum + nonNegative(item.currentValueBRL), 0)
+      );
+      const currentMacroVal = macroKey
+        ? round2(investableAssets.filter((item) => inferMacroSector(item) === macroKey).reduce((sum, item) => sum + nonNegative(item.currentValueBRL), 0))
+        : 0;
+      const currentIssuerVal = !issuer.isSovereign
+        ? round2(investableAssets.filter((item) => parseIssuerFromTicker(item.ticker, item.name).issuerKey === issuer.issuerKey).reduce((sum, item) => sum + nonNegative(item.currentValueBRL), 0))
+        : 0;
+
+      const headroom = calculateAssetEffectiveHeadroom({
+        mode: opts.mode,
+        asset: m,
+        patrimonioAlvo,
+        classTargetValueBRL: classTargetVal,
+        classTargetPct,
+        currentSectorValBRL: currentSectorVal,
+        allocatedSectorBRL,
+        currentMacroValBRL: currentMacroVal,
+        allocatedMacroBRL,
+        currentIssuerValBRL: currentIssuerVal,
+        allocatedIssuerBRL,
+        allocatedAssetBRL,
+        policy,
+        override: overrides[m.id],
+        totalEligibleAssetsInPortfolio: totalEligibleCount,
+        sectorCountInClass: sectorCount,
+        rfAssetsCount: investableAssets.filter((a) => isFixedIncomeClass(a.assetClass)).length,
+        targetValueBRL: eff.targetValueBRL,
+      });
+
+      if (headroom.headroomBRL > 0) {
+        evaluated.push({ asset: m, eff, headroom });
+      } else if (headroom.isConstrainedByCeiling && eff.gapBRL > 0) {
+        if (!pausedAssets.some((p) => p.assetId === m.id)) {
+          let reasonKey: PausedAssetDiagnostic["reason"] = "asset_ceiling";
+          if (headroom.ceilingReason === "sector_in_class_ceiling" || headroom.ceilingReason === "sector_global_ceiling") {
+            reasonKey = "sector_ceiling";
+          } else if (headroom.ceilingReason === "macro_sector_ceiling") {
+            reasonKey = "macro_sector_ceiling";
+          } else if (headroom.ceilingReason === "issuer_ceiling") {
+            reasonKey = "issuer_ceiling";
+          }
+
+          pausedAssets.push({
+            assetId: m.id,
+            ticker: m.ticker,
+            name: m.name ?? m.ticker,
+            assetClass: m.assetClass,
+            sector: m.sector ?? sectorName,
+            reason: reasonKey,
+            score: m.score,
+            currentValueBRL: round2(nonNegative(m.currentValueBRL)),
+            targetValueBRL: eff.targetValueBRL,
+            detail: `Ativo atingiu o teto prudencial (${headroom.ceilingReason}). Aporte congelado para evitar sobreconcentração.`,
+          });
+        }
+      }
+    }
+
+    if (evaluated.length === 0) {
+      if (sectorName && budget > 0) {
+        overflowEvents.push({
+          type: "sector_saturated",
+          sourceId: sectorName,
+          sourceLabel: sectorName,
+          amountBRL: budget,
+          reason: `Setor ${sectorName} saturado ou sem headroom livre. Orçamento transbordado.`,
+        });
+      }
+      return 0;
+    }
+
+    let eligible = evaluated;
+
+    // Reconcentração anti-pulverização: se o orçamento médio por elegível for < minTicketBRL,
+    // concentra nos top K ativos mais deficitários para evitar ordens minúsculas.
+    const effectiveMinTicket = Math.min(policy.minTicketBRL, opts.aporte);
+    if (eligible.length > 1 && budget / eligible.length < effectiveMinTicket) {
+      const maxK = Math.max(1, Math.floor(budget / effectiveMinTicket));
+      const sortedPrioritized = [...eligible].sort((a, b) => {
+        const defRelA = a.eff.targetValueBRL > 0 ? (a.eff.targetValueBRL - a.asset.currentValueBRL) / a.eff.targetValueBRL : 0;
+        const defRelB = b.eff.targetValueBRL > 0 ? (b.eff.targetValueBRL - b.asset.currentValueBRL) / b.eff.targetValueBRL : 0;
+        if (Math.abs(defRelB - defRelA) > 0.001) return defRelB - defRelA;
+        return (b.asset.score ?? 5) - (a.asset.score ?? 5);
+      });
+      eligible = sortedPrioritized.slice(0, maxK);
+    }
+
+    const sumHeadrooms = eligible.reduce((acc, item) => acc + item.headroom.headroomBRL, 0);
+    if (!(sumHeadrooms > 0)) return 0;
+
+    let remainingBudget = budget;
+    const allocThisCallMap = new Map<string, number>();
+
+    const commitAlloc = (m: AporteAssetInput, qty: number, alloc: number, hResult: HeadroomCalculationResult) => {
+      const precision = resolveAssetPrecision(m);
+      const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
+      const newQty = precision > 0 ? Math.round((existing.quantity + qty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + qty;
+      allocatedMap.set(m.id, {
+        quantity: newQty,
+        allocatedBRL: round2(existing.allocatedBRL + alloc),
+      });
+      allocThisCallMap.set(m.id, round2((allocThisCallMap.get(m.id) ?? 0) + alloc));
+
+      const mSector = m.sector?.trim() || inferSectorFromTicker(m.ticker, m.assetClass);
+      const effectiveSectorKey = `${normClass}::${mSector}`;
+      allocatedSectorMap.set(effectiveSectorKey, round2((allocatedSectorMap.get(effectiveSectorKey) ?? 0) + alloc));
+      if (sectorKey && sectorKey !== effectiveSectorKey) {
+        allocatedSectorMap.set(sectorKey, round2((allocatedSectorMap.get(sectorKey) ?? 0) + alloc));
+      }
+      const macroKey = inferMacroSector(m);
+      if (macroKey) {
+        allocatedMacroMap.set(macroKey, round2((allocatedMacroMap.get(macroKey) ?? 0) + alloc));
+      }
+      const issuer = parseIssuerFromTicker(m.ticker, m.name);
+      if (!issuer.isSovereign) {
+        allocatedIssuerMap.set(issuer.issuerKey, round2((allocatedIssuerMap.get(issuer.issuerKey) ?? 0) + alloc));
+      }
+
+      assetHeadroomMap.set(m.id, hResult);
+      remainingBudget = Math.max(0, round2(remainingBudget - alloc));
+    };
+
+    if (strategy === "optimized") {
+      // Prioridade: Maior déficit relativo -> Maior convicção fundamentalista -> Menor peso atual
+      const sortedByPriority = [...eligible].sort((a, b) => {
+        const defRelA = a.eff.targetValueBRL > 0 ? (a.eff.targetValueBRL - a.asset.currentValueBRL) / a.eff.targetValueBRL : 0;
+        const defRelB = b.eff.targetValueBRL > 0 ? (b.eff.targetValueBRL - b.asset.currentValueBRL) / b.eff.targetValueBRL : 0;
+        if (Math.abs(defRelB - defRelA) > 0.001) return defRelB - defRelA;
+        const scoreA = a.asset.score ?? 5;
+        const scoreB = b.asset.score ?? 5;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return a.asset.currentValueBRL - b.asset.currentValueBRL;
+      });
+
+      for (const item of sortedByPriority) {
+        if (!(remainingBudget > 0)) break;
+        const m = item.asset;
+        const canAfford = Math.min(item.headroom.headroomBRL, remainingBudget);
         const precision = resolveAssetPrecision(m);
 
         let qty: number;
@@ -779,45 +1343,34 @@ export function simulateAporte(opts: {
         }
 
         if (alloc > 0 && qty > 0) {
-          const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
-          const newQty = precision > 0 ? Math.round((existing.quantity + qty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + qty;
-          allocatedMap.set(m.id, {
-            quantity: newQty,
-            allocatedBRL: round2(existing.allocatedBRL + alloc),
-          });
-          remainingBudget = Math.max(0, round2(remainingBudget - alloc));
+          const isNewOrderInBatch = (allocatedMap.get(m.id)?.allocatedBRL ?? 0) === 0;
+          if (
+            isNewOrderInBatch &&
+            precision === 0 &&
+            alloc < effectiveMinTicket &&
+            remainingBudget >= effectiveMinTicket &&
+            sortedByPriority.length > 1
+          ) {
+            continue;
+          }
+          commitAlloc(m, qty, alloc, item.headroom);
         }
       }
     } else {
-      // Pass 1: Proporcional ponderado por déficit restante
-      for (const m of eligible) {
+      // Modo Proporcional com Sweep
+      for (const item of eligible) {
         if (!(remainingBudget > 0)) break;
-        const eff = effectiveAssetMap.get(m.id)!;
-        const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
-        const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
-        if (!(remainingGap > 0)) continue;
-
-        const share = Math.min(remainingGap, remainingBudget, (remainingGap / sumGaps) * budget);
+        const m = item.asset;
+        const share = Math.min(item.headroom.headroomBRL, remainingBudget, (item.headroom.headroomBRL / sumHeadrooms) * budget);
         const precision = resolveAssetPrecision(m);
         const multiplier = Math.pow(10, precision);
 
-        let qty: number;
-        let alloc: number;
+        let qty = precision > 0 ? Math.floor((share / m.priceBRL) * multiplier) / multiplier : Math.floor(share / m.priceBRL);
+        let alloc = round2(qty * m.priceBRL);
 
-        if (precision > 0) {
-          qty = Math.floor((share / m.priceBRL) * multiplier) / multiplier;
-          alloc = round2(qty * m.priceBRL);
-        } else {
-          qty = Math.floor(share / m.priceBRL);
-          alloc = round2(qty * m.priceBRL);
-        }
-
-        const cap = Math.min(remainingGap, remainingBudget);
+        const cap = Math.min(item.headroom.headroomBRL, remainingBudget);
         if (alloc > cap) {
-          qty =
-            precision > 0
-              ? Math.floor((cap / m.priceBRL) * multiplier) / multiplier
-              : Math.floor(cap / m.priceBRL);
+          qty = precision > 0 ? Math.floor((cap / m.priceBRL) * multiplier) / multiplier : Math.floor(cap / m.priceBRL);
           alloc = round2(qty * m.priceBRL);
           if (alloc > cap && qty > 0) {
             const step = precision > 0 ? 1 / multiplier : 1;
@@ -827,66 +1380,34 @@ export function simulateAporte(opts: {
         }
 
         if (alloc > 0 && qty > 0 && alloc <= remainingBudget) {
-          const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
-          const newQty = precision > 0 ? Math.round((existing.quantity + qty) * multiplier) / multiplier : existing.quantity + qty;
-          allocatedMap.set(m.id, {
-            quantity: newQty,
-            allocatedBRL: round2(existing.allocatedBRL + alloc),
-          });
-          remainingBudget = Math.max(0, round2(remainingBudget - alloc));
+          commitAlloc(m, qty, alloc, item.headroom);
         }
       }
 
-      // Pass 2: Sweep de resíduos dentro dos membros elegíveis
+      // Sweep de resíduos
       if (remainingBudget > 0) {
-        const sortedForResiduals = [...eligible].sort((a, b) => {
-          const remA = Math.max(0, (effectiveAssetMap.get(a.id)?.gapBRL ?? 0) - (allocatedMap.get(a.id)?.allocatedBRL ?? 0));
-          const remB = Math.max(0, (effectiveAssetMap.get(b.id)?.gapBRL ?? 0) - (allocatedMap.get(b.id)?.allocatedBRL ?? 0));
-          return remB - remA;
-        });
-
-        for (const m of sortedForResiduals) {
+        const sortedForResiduals = [...eligible].sort((a, b) => b.headroom.headroomBRL - a.headroom.headroomBRL);
+        for (const item of sortedForResiduals) {
           if (!(remainingBudget > 0)) break;
-          const eff = effectiveAssetMap.get(m.id)!;
-          const currentAlloc = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
-          const remainingGap = Math.max(0, eff.gapBRL - currentAlloc);
-          if (!(remainingGap > 0)) continue;
+          const m = item.asset;
+          const curAllocThisCall = allocThisCallMap.get(m.id) ?? 0;
+          const remHeadroom = Math.max(0, item.headroom.headroomBRL - curAllocThisCall);
+          if (!(remHeadroom > 0)) continue;
 
           const precision = resolveAssetPrecision(m);
-          const canAfford = Math.min(remainingGap, remainingBudget);
+          const canAfford = Math.min(remHeadroom, remainingBudget);
 
-          let addQty: number;
-          let addAlloc: number;
-
-          if (precision > 0) {
-            const multiplier = Math.pow(10, precision);
-            addQty = Math.floor((canAfford / m.priceBRL) * multiplier) / multiplier;
-            addAlloc = round2(addQty * m.priceBRL);
-          } else {
-            addQty = Math.floor(canAfford / m.priceBRL);
-            addAlloc = round2(addQty * m.priceBRL);
-          }
+          let addQty = precision > 0 ? Math.floor((canAfford / m.priceBRL) * Math.pow(10, precision)) / Math.pow(10, precision) : Math.floor(canAfford / m.priceBRL);
+          let addAlloc = round2(addQty * m.priceBRL);
 
           if (addAlloc > remainingBudget) {
             addAlloc = remainingBudget;
-            if (precision > 0) {
-              const multiplier = Math.pow(10, precision);
-              addQty = Math.floor((addAlloc / m.priceBRL) * multiplier) / multiplier;
-              addAlloc = round2(addQty * m.priceBRL);
-            } else {
-              addQty = Math.floor(addAlloc / m.priceBRL);
-              addAlloc = round2(addQty * m.priceBRL);
-            }
+            addQty = precision > 0 ? Math.floor((addAlloc / m.priceBRL) * Math.pow(10, precision)) / Math.pow(10, precision) : Math.floor(addAlloc / m.priceBRL);
+            addAlloc = round2(addQty * m.priceBRL);
           }
 
           if (addAlloc > 0 && addQty > 0) {
-            const existing = allocatedMap.get(m.id) ?? { quantity: 0, allocatedBRL: 0 };
-            const newQty = precision > 0 ? Math.round((existing.quantity + addQty) * Math.pow(10, precision)) / Math.pow(10, precision) : existing.quantity + addQty;
-            allocatedMap.set(m.id, {
-              quantity: newQty,
-              allocatedBRL: round2(existing.allocatedBRL + addAlloc),
-            });
-            remainingBudget = Math.max(0, round2(remainingBudget - addAlloc));
+            commitAlloc(m, addQty, addAlloc, item.headroom);
           }
         }
       }
@@ -930,14 +1451,16 @@ export function simulateAporte(opts: {
         if (!(classRemainingBudget > 0)) break;
 
         const sectorTargetBudget =
-          totalSectorsGap > 0
-            ? Math.min(sectorMacro.gapBRL, round2((sectorMacro.gapBRL / totalSectorsGap) * classBudget))
-            : Math.min(sectorMacro.gapBRL, classRemainingBudget);
+          strategy === "optimized"
+            ? Math.min(sectorMacro.gapBRL, classRemainingBudget)
+            : totalSectorsGap > 0
+              ? Math.min(sectorMacro.gapBRL, round2((sectorMacro.gapBRL / totalSectorsGap) * classBudget))
+              : Math.min(sectorMacro.gapBRL, classRemainingBudget);
 
         const sectorBudget = Math.min(sectorTargetBudget, classRemainingBudget);
         const sectorMembers = assetsByClassAndSector.get(classMacro.className)?.get(sectorMacro.sectorName) ?? [];
 
-        const allocated = allocateBudgetToMembers(sectorMembers, sectorBudget);
+        const allocated = allocateBudgetToMembers(sectorMembers, sectorBudget, sectorMacro.sectorName, classMacro.className);
 
         actualClassAllocated = round2(actualClassAllocated + allocated);
         classRemainingBudget = Math.max(0, round2(classRemainingBudget - allocated));
@@ -955,12 +1478,12 @@ export function simulateAporte(opts: {
         });
       }
 
-      // Pass 2 nos setores: se sobrou orçamento da classe, oferta aos setores que ainda possuem gap
+      // Pass 2 nos setores: se sobrou orçamento da classe, oferta aos setores com folga (Guarda Anti-Loop)
       if (classRemainingBudget > 0) {
         for (const sectorMacro of sectorMacros) {
           if (!(classRemainingBudget > 0)) break;
           const sectorMembers = assetsByClassAndSector.get(classMacro.className)?.get(sectorMacro.sectorName) ?? [];
-          const allocated = allocateBudgetToMembers(sectorMembers, classRemainingBudget);
+          const allocated = allocateBudgetToMembers(sectorMembers, classRemainingBudget, sectorMacro.sectorName, classMacro.className);
 
           if (allocated > 0) {
             actualClassAllocated = round2(actualClassAllocated + allocated);
@@ -974,9 +1497,9 @@ export function simulateAporte(opts: {
         }
       }
     } else {
-      // Sem metas setoriais: distribui diretamente e proporcionalmente nos membros da classe
+      // Sem metas setoriais: distribui diretamente nos membros da classe
       const classMembers = assetsByClass.get(classMacro.className) ?? [];
-      const allocated = allocateBudgetToMembers(classMembers, classBudget);
+      const allocated = allocateBudgetToMembers(classMembers, classBudget, undefined, classMacro.className);
 
       actualClassAllocated = round2(actualClassAllocated + allocated);
     }
@@ -994,12 +1517,12 @@ export function simulateAporte(opts: {
     });
   }
 
-  // Pass 2 Global: se sobrou pool após todas as classes (por arredondamentos B3), oferta às classes com gap
+  // Pass 3 Global: se sobrou pool após todas as classes, oferta às classes com gap (Guarda Anti-Loop)
   if (globalRemainingPool > 0) {
     for (const classMacro of sortedClasses) {
       if (!(globalRemainingPool > 0)) break;
       const classMembers = assetsByClass.get(classMacro.className) ?? [];
-      const allocated = allocateBudgetToMembers(classMembers, globalRemainingPool);
+      const allocated = allocateBudgetToMembers(classMembers, globalRemainingPool, undefined, classMacro.className);
 
       if (allocated > 0) {
         globalRemainingPool = Math.max(0, round2(globalRemainingPool - allocated));
@@ -1007,6 +1530,72 @@ export function simulateAporte(opts: {
         const cSummary = classSummaries.find((cs) => cs.className === classMacro.className);
         if (cSummary) {
           cSummary.actualAllocatedBRL = round2(cSummary.actualAllocatedBRL + allocated);
+        }
+      }
+    }
+  }
+
+  // Pass 4: Residual Greedy Pack Seguro (restrito aos ativos já selecionados no lote deste aporte)
+  if (globalRemainingPool > 0) {
+    const selectedAssetIds = Array.from(allocatedMap.keys()).filter((id) => (allocatedMap.get(id)?.allocatedBRL ?? 0) > 0);
+    const candidateAssets = selectedAssetIds
+      .map((id) => investableAssets.find((a) => a.id === id))
+      .filter((a): a is AporteAssetInput => Boolean(a && a.priceBRL > 0 && a.priceBRL <= globalRemainingPool))
+      .sort((a, b) => (b.score ?? 5) - (a.score ?? 5));
+
+    for (const cand of candidateAssets) {
+      const curAlloc = allocatedMap.get(cand.id)?.allocatedBRL ?? 0;
+      const candEff = effectiveAssetMap.get(cand.id);
+      const candGap = candEff?.gapBRL ?? 0;
+      const candH = assetHeadroomMap.get(cand.id);
+      const limit = candH ? Math.min(candGap, candH.headroomBRL) : candGap;
+      const remLimit = Math.max(0, limit - curAlloc);
+      if (remLimit < cand.priceBRL || globalRemainingPool < cand.priceBRL) continue;
+
+      const precision = resolveAssetPrecision(cand);
+      const cost = cand.priceBRL;
+      const maxCanAfford = Math.min(remLimit, globalRemainingPool);
+      const addedQty = precision > 0 ? Math.floor((maxCanAfford / cost) * Math.pow(10, precision)) / Math.pow(10, precision) : Math.floor(maxCanAfford / cost);
+      const addedBRL = round2(addedQty * cost);
+      if (addedBRL > 0 && addedBRL <= globalRemainingPool) {
+        const existing = allocatedMap.get(cand.id)!;
+        existing.quantity = precision > 0 ? round2(existing.quantity + addedQty) : existing.quantity + addedQty;
+        existing.allocatedBRL = round2(existing.allocatedBRL + addedBRL);
+        globalRemainingPool = round2(globalRemainingPool - addedBRL);
+        break; // Incrementa e encerra o greedy sweep com segurança
+      }
+    }
+
+    // Se ainda sobrar resíduo e houver veículo neutro fracionário (Tesouro Selic ou Cripto), absorve
+    if (globalRemainingPool > 0) {
+      const neutralFractional = investableAssets.find(
+        (a) =>
+          (isTesouroAsset(a.ticker, a.assetClass) || a.assetClass === "Cripto") &&
+          a.priceBRL > 0 &&
+          a.allocation_status === "active"
+      );
+      if (neutralFractional) {
+        const curAlloc = allocatedMap.get(neutralFractional.id)?.allocatedBRL ?? 0;
+        const eff = effectiveAssetMap.get(neutralFractional.id);
+        const gap = eff?.gapBRL ?? 0;
+        const h = assetHeadroomMap.get(neutralFractional.id);
+        const limit = h ? Math.min(gap, h.headroomBRL) : gap;
+        const remLimit = Math.max(0, limit - curAlloc);
+        if (remLimit > 0) {
+          const precision = resolveAssetPrecision(neutralFractional);
+          if (precision > 0) {
+            const factor = 10 ** precision;
+            const maxCanAfford = Math.min(remLimit, globalRemainingPool);
+            const addQty = Math.floor((maxCanAfford / neutralFractional.priceBRL) * factor) / factor;
+            const addBRL = round2(addQty * neutralFractional.priceBRL);
+            if (addBRL > 0 && addBRL <= globalRemainingPool) {
+              const existing = allocatedMap.get(neutralFractional.id) ?? { quantity: 0, allocatedBRL: 0 };
+              existing.quantity = round2(existing.quantity + addQty);
+              existing.allocatedBRL = round2(existing.allocatedBRL + addBRL);
+              allocatedMap.set(neutralFractional.id, existing);
+              globalRemainingPool = round2(globalRemainingPool - addBRL);
+            }
+          }
         }
       }
     }
@@ -1040,6 +1629,7 @@ export function simulateAporte(opts: {
 
           const eff = effectiveAssetMap.get(asset.id)!;
           const sector = asset.sector?.trim() || sectorMacro.sectorName || inferSectorFromTicker(asset.ticker, asset.assetClass);
+          const hResult = assetHeadroomMap.get(asset.id);
 
           routes.push({
             assetId: asset.id,
@@ -1058,6 +1648,9 @@ export function simulateAporte(opts: {
             classTargetPct: eff.classTargetPct,
             sectorTargetPctInClass: eff.sectorTargetPctInClass,
             weightInSector: eff.weightInSector,
+            headroomBRL: hResult?.headroomBRL,
+            isConstrainedByCeiling: hResult?.isConstrainedByCeiling,
+            ceilingReason: hResult?.ceilingReason,
           });
         }
       }
@@ -1075,6 +1668,7 @@ export function simulateAporte(opts: {
 
         const eff = effectiveAssetMap.get(asset.id)!;
         const sector = asset.sector?.trim() || inferSectorFromTicker(asset.ticker, asset.assetClass);
+        const hResult = assetHeadroomMap.get(asset.id);
 
         routes.push({
           assetId: asset.id,
@@ -1093,6 +1687,9 @@ export function simulateAporte(opts: {
           classTargetPct: eff.classTargetPct,
           sectorTargetPctInClass: eff.sectorTargetPctInClass,
           weightInSector: eff.weightInSector,
+          headroomBRL: hResult?.headroomBRL,
+          isConstrainedByCeiling: hResult?.isConstrainedByCeiling,
+          ceilingReason: hResult?.ceilingReason,
         });
       }
     }
@@ -1168,6 +1765,33 @@ export function simulateAporte(opts: {
     classSummaries,
     sectorSummaries,
     skippedAssets,
+    overflowEvents,
+    pausedAssets,
+  };
+}
+
+/**
+ * Motor Canônico de Aporte com Headroom em Camadas & Cascata (Fase 2).
+ * Executa rebalanceamento com travas em 6 camadas, transbordamento de setores
+ * saturados e salvaguardas de onboarding e carteiras em formação.
+ */
+export function simulateConstrainedAporte(opts: ConstrainedAporteOptions): ConstrainedAporteResult {
+  const sim = simulateAporte({
+    mode: "both",
+    strategy: opts.strategy ?? "optimized",
+    aporte: opts.aporte,
+    assets: opts.assets,
+    classTargets: opts.classTargets,
+    sectorTargets: opts.sectorTargets,
+    totalPortfolioBRL: opts.totalPortfolioBRL,
+    policy: opts.policy,
+    overrides: opts.overrides,
+  });
+
+  return {
+    ...sim,
+    overflowEvents: sim.overflowEvents ?? [],
+    pausedAssets: sim.pausedAssets ?? [],
   };
 }
 
@@ -1215,6 +1839,8 @@ export function simulateCombinedAporte(opts: {
   sectorTargets?: readonly SectorTargetInput[];
   strategy?: AporteStrategy;
   totalPortfolioBRL?: number;
+  policy?: Partial<PortfolioRiskPolicy>;
+  overrides?: AporteOverridesMap;
 }): AporteResult {
   return simulateAporte({
     mode: "both",
@@ -1224,6 +1850,8 @@ export function simulateCombinedAporte(opts: {
     classTargets: opts.classTargets,
     sectorTargets: opts.sectorTargets,
     totalPortfolioBRL: opts.totalPortfolioBRL,
+    policy: opts.policy,
+    overrides: opts.overrides,
   });
 }
 
@@ -1299,6 +1927,8 @@ export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteR
     sectorTargets: opts.sectorTargets,
     strategy,
     totalPortfolioBRL: portfolioBase,
+    policy: opts.policy,
+    overrides: opts.overrides,
   });
 
   const skippedAssets: SkippedAssetDiagnostic[] = [...simResult.skippedAssets];
@@ -1443,17 +2073,29 @@ export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteR
         });
       }
 
-      // Ordenação de ativos dentro do setor:
-      // 1. Ativos com desconto frente ao PM (diffVsAveragePct < 0), mais descontados primeiro
-      // 2. Demais ativos ordenados pelo menor peso na carteira
+      // Ordenação de ativos dentro do setor (§Plano Mestre 3.5 — Eliminação do Falling Knife):
+      // Prioridade Primária: Maior déficit relativo de meta
+      // Desempate Secundário: Maior convicção fundamentalista (score 0-10)
+      // Desempate Terciário: Menor peso percentual atual
       opportunityItems.sort((a, b) => {
-        const aDiscount = a.diffVsAveragePct < 0;
-        const bDiscount = b.diffVsAveragePct < 0;
-        if (aDiscount && bDiscount) {
-          return a.diffVsAveragePct - b.diffVsAveragePct; // Mais negativo primeiro
+        const memA = members.find((m) => m.id === a.assetId);
+        const memB = members.find((m) => m.id === b.assetId);
+        const routeA = simResult.routes.find((r) => r.assetId === a.assetId);
+        const routeB = simResult.routes.find((r) => r.assetId === b.assetId);
+
+        const defRelA = routeA && routeA.targetValueBRL > 0 ? (routeA.targetValueBRL - a.currentValueBRL) / routeA.targetValueBRL : 0;
+        const defRelB = routeB && routeB.targetValueBRL > 0 ? (routeB.targetValueBRL - b.currentValueBRL) / routeB.targetValueBRL : 0;
+
+        if (Math.abs(defRelB - defRelA) > 0.001) {
+          return defRelB - defRelA;
         }
-        if (aDiscount) return -1;
-        if (bDiscount) return 1;
+
+        const scoreA = memA?.score ?? 5;
+        const scoreB = memB?.score ?? 5;
+        if (scoreB !== scoreA) {
+          return scoreB - scoreA;
+        }
+
         return a.currentWeightPct - b.currentWeightPct;
       });
 
@@ -1488,5 +2130,7 @@ export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteR
     sectorGroups,
     prescriptiveRoutes: simResult.routes,
     skippedAssets,
+    overflowEvents: simResult.overflowEvents,
+    pausedAssets: simResult.pausedAssets,
   };
 }
