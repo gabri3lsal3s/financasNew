@@ -1,141 +1,151 @@
 # Arquitetura e Plano Diretor Editorial de Relatórios — Axir
+## Tratado Unificado: Auditoria Visual, Engenharia de Design System e Governança Editorial
 
-> **Status:** Concluído (Fase 0 — Validação Arquitetural, Metanálise e Árvore de Relatórios)  
-> **Escopo:** Árvore Completa de Relatórios Gerados (PDF/A4, Excel XML, CSV) e Modais de Extrato/Conciliação  
-> **Data:** 20 de Novembro de 2026  
-> **Autor:** Arquiteto Frontend Sênior & Especialista em Design Editorial de Fintechs  
-
----
-
-## 1. Parecer de Metanálise e Validação Arquitetural (Fase 0)
-
-Em cumprimento ao protocolo de metanálise, confrontamos a auditoria visual externa com o código-fonte, a arquitetura de dados e o Design System real do Axir.
-
-### 1.1 Diagnóstico do Motor de Geração e Tecnologias
-- **Motor Atual de Impressão/PDF:** O aplicativo utiliza renderização nativa web A4 via navegador (`window.print()` e headless print do Chromium) combinada com o portal React `PrintSheet` ([print-sheet.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/ui/print-sheet.tsx)) e regras de mídia `@media print` em [globals.css](file:///home/gabrielsales/meus_apps/financasnew/src/styles/globals.css#L711-L963). Não há dependência externa de `@react-pdf/renderer` ou `jsPDF`.
-- **Causa Raiz da Quebra de Moeda (`R$` e `US$` separados da cifra):** Ocorre pela ausência de `white-space: nowrap` e falta de espaço não-quebrável (`\u00A0`) nos formatadores de moeda, permitindo que o motor de renderização do navegador quebre a linha entre o símbolo monetário e os dígitos.
-- **Causa Raiz do Glitch de Centavos Soltos (`",66 ,42 ,24"` no DRE / PDF 5):** No componente [money-text.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/ui/money-text.tsx#L69-L81), a função `formatMoneyNode` (ativada quando `variant="hero"` ou `deemphasizeCents=true`) divide o valor em dois nós React: o inteiro e `<span className="inline-block text-[0.82em] ...">{match[2]}</span>`. Por ser `inline-block`, em motores de PDF e sob restrição de altura, o span de centavos quebra de linha ou cai para fora do contêiner flex/grid, caindo no fundo da página como resíduo solto.
-- **Causa Raiz dos Glifos Corrompidos (`لا`, `☐`, `A`, `%`, `$` soltos):** Decorrem de ícones inline que não tiveram fontes ou SVGs carregados a tempo do snapshot de impressão, bem como caracteres de escape ou ícones decorativos dentro de botões/headers. A solução é adotar SVG puro via `lucide-react` ou remover ícones decorativos nos documentos impressos.
-- **Causa Raiz do Espaço após a Vírgula (`R$ 19.455, 28`):** É consequência direta da divisão do número em dois elementos DOM (`formatMoneyNode`), onde o parser do navegador e leitores de OCR interpretam o espaço entre nós HTML adjacentes como um caractere de espaço.
-
-### 1.2 Auditoria de Congruência com o Design System Oficial
-- **Paleta Oficial do App:** A identidade visual canônica do Axir (definida em [DESIGN_SYSTEM.md](file:///home/gabrielsales/meus_apps/financasnew/docs/design/DESIGN_SYSTEM.md) e [tokens.css](file:///home/gabrielsales/meus_apps/financasnew/src/styles/tokens.css)) baseia-se em:
-  - *Petróleo Institucional (Primária):* `--primary-strong: #1B6B62` (Teal Petróleo).
-  - *Marinho de Carteira (Portfolio):* `--portfolio: #1B3A4B` (Deep Navy).
-  - *Ouro Âmbar (Acento):* `--accent: #DDA726`.
-  - *Neutros de Alta Legibilidade:* Fundo branco puro `#FFFFFF`, texto quase preto `#0F172A`, texto secundário `#475569`, bordas sutis `#E2E8F0` (`border-border/80`).
-  - *Semântica Contida (Regra 90/8/2):* Verde positivo `--positive-strong: #1B6B62` e Vermelho negativo `--negative-strong: #B23A2A`, usados estritamente em variações percentuais e desvios de orçamento.
-- **Confronto com os Relatórios Atuais:** O gráfico de rosca do *Balanço Patrimonial 360°* utiliza com perfeição a paleta proprietária (petróleo, azul-aço e marinho). Em contrapartida, os *Raios-X do Dossiê da Posição Vigente* aplicam uma paleta externa saturada ("arco-íris" com roxo, magenta e verde-limão) que rompe a sobriedade. A paleta do Balanço 360° deve ser adotada como o **padrão cromático único para 100% dos relatórios**.
-
-### 1.3 Resolução das Anomalias Conceituais e Semânticas
-1. **Cronograma de Vencimento & Liquidez (*Dossiê da Posição*, p. 6):** O donut exibia R$ 3.181,78 (total de Renda Fixa), mas a tabela somava R$ 18.292,27 (25 ativos de toda a carteira, incluindo ações e FIIs classificados como "Liquidez"). **Correção arquitetural:** A seção de Vencimento pertence exclusivamente à Renda Fixa e deve analisar apenas os títulos de renda fixa e tesouro, totalizando rigorosamente os mesmos R$ 3.181,78 no gráfico e na tabela.
-2. **Sinal dos Benchmarks 12M (*Dossiê da Posição*, p. 8):** O componente [performance-benchmarks-panel.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/performance-benchmarks-panel.tsx) utilizava badges com o percentual de superação sem rótulo, causando confusão entre retorno e razão. A conversão para tabela comparativa de 5 colunas resolve em definitivo a ambiguidade de sinais.
-3. **Arredondamento de FIIs (`20,0%` vs. `20,1%`):** Unificar a formatação em todo o sistema utilizando a biblioteca de máscaras canônica [formatPercent](file:///home/gabrielsales/meus_apps/financasnew/src/services/masks/percent.ts) com precisão padronizada de 1 casa decimal.
-4. **Base da DRE no *Balanço 360°* vs. *Finanças Pessoais*:** O Balanço 360° passa a estampar explicitamente a etiqueta `(Base Ponderada)` ao lado do título da DRE resumida, garantindo congruência com o relatório de Finanças Pessoais que apresenta o valor nominal bruto com nota analítica.
-5. **Padronização de IDs de Autenticação:** A chancela oficial passa a utilizar identificadores com prefixos mnemônicos funcionais: `IRPF-`, `FIRE-`, `BAL-`, `DOS-`, `DRE-`, `EXT-`, `CART-` e `FAT-`.
+> **Status:** Ativo / Fase 0 (Planejamento, Metanálise e Validação Arquitetural Concluídos)  
+> **Versão:** 8.0 (Convergência Canônica: Auditoria Visual Externa + Auditoria Técnica de Código + Plano Mestre de UX)  
+> **Documentos de Referência Integrados:**  
+> - `docs/plans/PLANO_MESTRE_AUDITORIA_VISUAL_UX_E_PADRONIZACAO.md` (Governança Global de UI e 20 Dimensões)  
+> - `docs/design/DESIGN_SYSTEM.md` e `src/styles/tokens.css` (Design Tokens e Paleta Canônica)  
+> - `docs/architecture/FINANCIAL_MATH_SPEC.md` e `docs/architecture/ESPECIFICACAO_TECNICA.md` (SSOT e Precisão Contábil)  
+> - `AGENTS.md` (§4 Regras de Ouro 1 a 27)  
+> **Escopo:** Árvore Completa de Relatórios Gerados (8 Relatórios A4 / 22 Páginas, Caderno Excel XML e Extrato CSV) + Modais de Extrato e Conciliação Bancária  
 
 ---
 
-## 2. A Árvore de Relatórios do Axir
+## 1. Visão Geral do Cenário: O Abismo entre Matemática e Entrega Visual
 
-A árvore de relatórios foi estruturada em **3 Pilares Estratégicos**, abrangendo 8 Relatórios Executivos A4, 1 Pasta de Trabalho Excel XML viva e 1 Extrato Analítico CSV:
+O **Axir** atingiu um patamar de maturidade matemática e contábil comparável ao de grandes consultorias e gestoras de patrimônio (*Family Offices* e *Private Banking*):
+- O motor de investimentos apura a rentabilidade real ponderada por cotas (**TWR**) no rigoroso padrão CVM/ANBIMA, o retorno do fluxo pessoal do investidor (**TIR / XIRR**), o resultado econômico fechado (**P&L**), a conformidade de diversificação por classes e a apuração de DARF de renda variável.
+- O motor de finanças pessoais processa a Demonstração do Resultado do Exercício (**DRE**) com segregação de receitas brutas e ponderadas, apura o índice de poupança líquida, gerencia orçamentos por competência e aplica o fator de rateio de despesas familiares (**report_weight**).
+- O motor fiscal compila a totalidade da carteira em discriminações pré-formatadas para as Fichas de Bens e Direitos e Rendimentos Isentos e Exclusivos da Receita Federal do Brasil.
 
-```mermaid
-graph TD
-    AxirReports["Central de Relatórios & Extratos Axir"]
+Contudo, a inspeção aprofundada revelou uma **fratura crítica entre a sofisticação dos cálculos e a experiência visual entregue ao usuário**:
+1. **O Ponto Cego da Auditoria Web Anterior:**  
+   O plano pré-existente ([PLANO_MESTRE_AUDITORIA_VISUAL_UX_E_PADRONIZACAO.md](file:///home/gabrielsales/meus_apps/financasnew/docs/plans/PLANO_MESTRE_AUDITORIA_VISUAL_UX_E_PADRONIZACAO.md)), embora brilhante ao formular as **20 Dimensões Canônicas da Interface**, auditou a Central de Relatórios (`src/features/reports/*`) exclusivamente pela ótica dos componentes web e do React (`ReportDocumentLayout`, `Modal`, `Tabs`). Por não ter inspecionado o **resultado impresso dos PDFs na folha física A4**, deixou passar anomalias severas de paginação, quebras de linha e colapsos tipográficos.
+2. **A Revelação da Auditoria Visual Externa (Caixa-Preta):**  
+   Ao exportar e analisar os 8 documentos reais gerados (22 páginas), a auditoria visual externa capturou exatamente o que o usuário e o contador enxergam: **moedas separadas do valor (`R$` solto)**, **centavos vazados no rodapé da folha (`",66 ,42 ,24"`)**, **páginas fantasmas em branco contendo apenas 3 linhas de disclaimer**, **truncamentos perigosos de títulos públicos para a Receita Federal (`TESOURO-...`, `CDB ORIGI...`)**, **mini-donuts de Raios-X espremidos com paleta arco-íris saturada** e **ambiguidade em cartões de benchmarks**.
+3. **O Diagnóstico Técnico de Código:**  
+   Nossa investigação nos arquivos-fonte descobriu que essas falhas decorrem de mecanismos conhecidos do motor de renderização do navegador (`@media print` no Blink/Chromium): uso de `inline-block` em spans de centavos dentro do `formatMoneyNode`, ausência de `white-space: nowrap` e `\u00A0` em formatadores de moeda, banners de tabela inseridos indevidamente dentro do `<thead>` (gerando cabeçalhos órfãos na quebra de folha) e cálculo volumétrico excessivo que empurra o `<ReportFooter />` para páginas em branco adicionais.
 
-    subgraph P1["Pilar 1: Contábil, Caixa & Orçamento (Gestão Pessoal)"]
-        R1["Relatório 1: Relatório Executivo de Finanças Pessoais & DRE (A4)"]
-        R2["Relatório 2: Fatura de Cartão de Crédito Impressa (A4)"]
-        R10["Exportação 1: Extrato Analítico de Lançamentos (CSV)"]
-    end
+A missão deste Tratado Unificado é **fundir essas três visões em uma única arquitetura de classe mundial**, integrando as 20 Dimensões de UI com um **Design Editorial Executivo Impecável**.
 
-    subgraph P2["Pilar 2: Patrimônio, Custódia & Investimentos (Gestão de Portfólio)"]
-        R3["Relatório 3: Balanço Patrimonial 360° & Visão Consolidada (One-Pager A4)"]
-        R4["Relatório 4: Dossiê Executivo da Posição Vigente Consolidada (A4 Multipage)"]
-        R5["Relatório 5: Relatório de Acompanhamento da Carteira Mensal (A4 2-Pager)"]
-        R6["Relatório 6: Extrato Analítico de Evolução Patrimonial (Livro-Razão A4)"]
-        R7["Relatório 7: Dossiê de Proventos & Liberdade Financeira FIRE (A4)"]
-        R9["Exportação 2: Caderno de Relatórios & Consolidação (Excel XML)"]
-    end
+---
 
-    subgraph P3["Pilar 3: Fiscal, Tributário & Declaração (Conformidade RFB)"]
-        R8["Relatório 8: Facilitador de Declaração de IRPF (A4)"]
-    end
+## 2. A Tríplice Convergência: Confronto Analítico Cruzado
 
-    AxirReports --> P1
-    AxirReports --> P2
-    AxirReports --> P3
+A tabela abaixo cruza a percepção visual do usuário, as regras do Plano Mestre existente e a causa técnica no código-fonte:
+
+| Item Auditado | Percepção da Auditoria Visual (Sua Análise) | Regra do Plano Mestre Existente (UX/DS) | Causa Raiz Técnica no Código-Fonte | Solução Arquitetural Definitiva |
+|---|---|---|---|---|
+| **Quebra de Moeda e Centavos Vazados** | `R$` e `US$` separados do número em quase todas as tabelas; centavos soltos caídos no rodapé da p. 1 da DRE (`",66 ,42 ,24"`). | **Dimensão 03 & Regra 11:** Zero reticências em valores monetários e blindagem com `.num` e `tabular-nums`. | Em [money-text.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/ui/money-text.tsx#L69-L81), `formatMoneyNode` divide o valor em `<span className="inline-block text-[0.82em]">`. Na quebra de linha de PDF, o span dos centavos quebra ou é ejetado do fluxo. | **Fix Atômico no Primitivo:** Forçar `<span className="inline whitespace-nowrap tabular-nums">` sem separação de nó em relatórios; atrelar a moeda por `\u00A0`; desativar animações (`NumberTicker`) na impressão. |
+| **Páginas Fantasmas com Disclaimer Órfão** | Balanço 360° e Extrato Patrimonial gerando página 2 vazia com apenas 3 linhas de disclaimer no topo. | **Dimensão 10 & Dimensão 08:** Viewport contido, hierarquia de superfícies e eliminação de ruído. | A altura somada de cabeçalho, donut, tabelas e DRE atinge ~820px. Somada às margens de 14mm, passa dos 1016px úteis do A4. O `ReportFooter` tem `break-inside: avoid !important` e é empurrado sozinho para a folha 2. | **Orçamento de Pixels (Budget de 1016px):** Compactar Balanço 360° para grid de 2 colunas (55%/45%), economizando 180px e consolidando em **1 folha One-Pager exata**; no Extrato, suprimir zeros e tags repetitivas. |
+| **Truncamento de Tickers no IRPF** | Tickers cortados com reticências (`CDB ORIGI...`, `TESOURO-...`), impedindo identificação contábil dos bens. | **Dimensão 03 & Regra 23:** Prevenção de truncamento cego e quebra controlada em títulos. | Em [TaxBensDireitosSection.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/tax-facilitator/TaxBensDireitosSection.tsx#L106-L125), a coluna Ticker tem largura de apenas 12% com `truncate` estático, enquanto a coluna Código/Grupo gasta 16%. | **Agrupamento por Código da Receita:** Agrupar bens por seções (`Grupo 03 - Ações`, `Grupo 04 - Renda Fixa`). Isso **elimina a coluna Código/Grupo inteira**, liberando 22% de largura horizontal e zerando truncamentos. |
+| **Mini-Donuts e Truncamentos nos Raios-X** | 7 mini-donuts espremidos com reticências (`Estados Unidos (US...`, `Liquidez / Sem...`), donut inútil de 100% e cores arco-íris. | **Dimensão 02:** Proibição de cores aleatórias em dados financeiros; adoção de paleta proprietária e regra 90/8/2. | [ReportExposureBreakdownCard.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-exposure-breakdown-card.tsx) força donuts de 112px com tabelas de colunas estreitas. Na base de vencimento, computa os 25 ativos da carteira como liquidez. | **Matriz de Barras Horizontais Proporcionais:** Substituir mini-donuts por barras lineares proporcionais em 2 colunas. Rótulos 100% legíveis sem reticências, donut de 100% vira linha de destaque e redução de 9 para 6 páginas no dossiê. |
+| **Ambiguidade em Cards de Benchmarks** | Badges com porcentagens (`28,3%`, `185,0%`) colados aos benchmarks sem rótulo, gerando confusão com o retorno do índice. | **Dimensão 06 & Dimensão 09:** Alinhamento tabular e calma cognitiva sem sobrecarga de badges. | Em [performance-benchmarks-panel.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/performance-benchmarks-panel.tsx#L62-L68), `pctOfBenchmark` é estampado em badge sem rótulo textual e perde o sinal negativo. | **Tabela Comparativa de 5 Colunas:** `BENCHMARK | ACUMULADO | SPREAD (P.P.) | % DO ÍNDICE | ÚLTIMOS 12M`. Erradica qualquer hesitação do leitor. |
+| **Estouro de Viewport no Mobile (Modais)** | Não aplicável (sua análise focou nos PDFs gerados). | **Dimensão 01 & Dimensão 10:** Governança de modais, abas fluidas e contenção estrita de 100vw. | Em [statement-reconcile-rows.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/cards/components/statement-reconcile-rows.tsx#L148-L192), a linha força `pl-7` + Select (160px) + Valor (80px) + botões na mesma linha horizontal, ultrapassando 330px em telas de 320-375px. | **Layout Mobile Nativo Empilhado:** No mobile (< sm), reestruturar a linha em 3 níveis verticais (Linha 1: Check + Título + Valor; Linha 2: Data + Categoria full width; Linha 3: Ações). Zero rolagem horizontal. |
+| **SSOT e Divergência de Nomenclatura** | `Valor p/ Relatório` na Fatura vs. `Ponderada` na DRE; Balanço 360° omite que a DRE é ponderada. | **Dimensão 03 & AGENTS.md §3:** Contratos de domínio unificados e vocabulário semântico padronizado. | Campos de ponderação (`report_weight`) operam matematicamente corretos no domínio, mas são renderizados com strings manuais diferentes em cada tela. | **Unificação Vocabular Canônica:** Padronizar `PONDERADO (R$)` em todos os documentos e explicitar a etiqueta `(Base Ponderada)` no Balanço 360°. |
+
+---
+
+## 3. A Árvore de Relatórios do Axir & Elementos Visuais Exclusivos
+
+Para que cada relatório cumpra um objetivo analítico único sem duplicidades, organizamos a árvore de produtos em **3 Pilares Estratégicos**, definindo o **diferenciador visual exclusivo** de cada um:
+
+```
+Central de Relatórios & Extratos Axir
+│
+├── PILAR 1: GESTÃO PESSOAL, CAIXA & ORÇAMENTO
+│   ├── R1: Relatório Executivo de Finanças Pessoais & DRE (A4)
+│   │   ├── Objetivo: Apuração do resultado contábil, eficiência de poupança e cumprimento orçamentário.
+│   │   └── Diferenciador Visual Exclusivo: Cascata DRE em Barra Única Empilhada (Despesas 41,2% + Aportes 1,3% + Poupança 57,5% = 100%) + Tabela com coluna dedicada PONDERADO (R$).
+│   ├── R2: Fatura de Cartão de Crédito Impressa (A4)
+│   │   ├── Objetivo: Conferência dos lançamentos bancários frente ao valor ponderado rateado no orçamento.
+│   │   └── Diferenciador Visual Exclusivo: Barra Linear de Rateio & Liquidação (Bruto vs. Pago vs. Pessoal) + Tabela de gastos com badges de parcelas e competência.
+│   └── R10: Extrato Analítico de Transações (CSV)
+│       ├── Objetivo: Exportação bruta de movimentações para conciliação bancária externa e planilhas.
+│       └── Diferenciador Visual Exclusivo: Arquivo sanitizado com UTF-8 BOM, separador ponto e vírgula e coluna explicativa de pesos.
+│
+├── PILAR 2: GESTÃO PATRIMONIAL, CUSTÓDIA & CARTEIRA
+│   ├── R3: Balanço Patrimonial 360° & Visão Consolidada (One-Pager A4)
+│   │   ├── Objetivo: Fotografia executiva holística da riqueza líquida, endividamento e liquidez.
+│   │   └── Diferenciador Visual Exclusivo: Rosca Patrimonial Tripartida em Grid 2 Colunas (55%/45%) integrando Ativos, Passivos e DRE Resumida em 1 folha exata.
+│   ├── R4: Dossiê Executivo da Posição Vigente Consolidada (A4 Multipage)
+│   │   ├── Objetivo: Dossiê estratégico completo de alocação, concentração, risco e métricas quantitativas.
+│   │   └── Diferenciador Visual Exclusivo: Matriz de Barras Horizontais Proporcionais (Raios-X) sem truncamentos + Tabela Comparativa de Benchmarks de 5 Colunas.
+│   ├── R5: Relatório de Acompanhamento da Carteira Mensal (A4 2-Pager)
+│   │   ├── Objetivo: Fechamento ágil da competência com movimentações do mês e governança da custódia.
+│   │   └── Diferenciador Visual Exclusivo: Faixa Sintética Linear de Movimentações (Compras, Vendas, Aporte + Score PQS 8,2/10) + Tabela com taxas e vencimentos de Renda Fixa.
+│   ├── R6: Extrato Analítico de Evolução Patrimonial (Livro-Razão A4)
+│   │   ├── Objetivo: Livro-razão cronológico auditável mês a mês de patrimônio, aportes e cota TWR.
+│   │   └── Diferenciador Visual Exclusivo: Gráfico Bicolor de Abertura Patrimônio vs. Custo + Tabela analítica com zeros suprimidos por travessão fino (—).
+│   ├── R7: Dossiê de Proventos & Liberdade Financeira FIRE (A4)
+│   │   ├── Objetivo: Monitoramento de renda passiva, autonomia financeira (runway) e efeito bola de neve.
+│   │   └── Diferenciador Visual Exclusivo: Régua de Alta Precisão FIRE (0-100%) com 5 marcos uniformes + Painel Projetivo de Aportes para a 1ª Cota Autossustentável.
+│   └── R9: Caderno de Relatórios & Consolidação (Excel XML)
+│       ├── Objetivo: Modelagem patrimonial viva para simulações e auditoria avançada.
+│       └── Diferenciador Visual Exclusivo: Pasta de trabalho multi-abas viva com fórmulas nativas do Excel (=SUM) e cabeçalhos corporativos na cor petróleo.
+│
+└── PILAR 3: FISCAL, TRIBUTÁRIO & REGULATÓRIO
+    └── R8: Facilitador de Declaração de IRPF (A4)
+        ├── Objetivo: Transcrição operacional direta e segura para o Programa Gerador da Declaração da Receita Federal.
+        └── Diferenciador Visual Exclusivo: Árvore de Bens e Direitos agrupada por Código da Receita Federal (Grupo 03, 04, 07) com subtotais por grupo e valores neutros contábeis.
 ```
 
 ---
 
-## 3. Matriz de Identidade Comum vs. Elemento Visual Exclusivo
+## 4. O Design Editorial Canônico Axir (Identidade Comum)
 
-Para que todos os relatórios façam parte da mesma família institucional, mas cada um possua uma ferramenta visual sob medida para seu objetivo:
+Todos os 8 documentos impressos operam sob uma **linguagem editorial única, elegante e sóbria**, inspirada no rigor visual dos bancos privados de investimentos internacionais (*J.P. Morgan Private Bank*, *Goldman Sachs Wealth Management* e *BTG Pactual*):
 
-| Relatório | Objetivo Funcional Primário | Elemento Visual Exclusivo (Diferenciador) | Elementos de Identidade Comum |
-|---|---|---|---|
-| **R1. Finanças & DRE** | Demonstração do resultado operacional, taxa de poupança e cumprimento orçamentário | **Cascata DRE em Barra Única Empilhada** (`Despesas 41% + Aportes 1% + Caixa 58% = 100%`) + Tabela com coluna dedicada `PONDERADO (R$)` | Cabeçalho Axir 70/30, KPI Strip, Rodapé com autenticação digital, QR Code 32px e paleta 90/8/2 |
-| **R2. Fatura de Cartão** | Conferência de gastos do cartão bancário vs. valor ponderado considerado no orçamento | **Barra Linear de Rateio & Liquidação** (Fatura Bruta vs. Pago vs. Ponderado Pessoal) + Tabela com tag de parcelas | Cabeçalho Axir 70/30, tipografia tabular, rodapé institucional com ID `FAT-` |
-| **R3. Balanço 360°** | Fotografia holística da saúde financeira, ativos, passivos e alavancagem (*One-Pager*) | **Rosca Patrimonial Tripartida em Grid 2 Colunas (55%/45%)** integrando Ativos, Passivos e DRE Pessoal em 1 única folha | Cabeçalho Axir 70/30, KPI Strip de 4 colunas, paleta verde-petróleo/marinho |
-| **R4. Dossiê da Posição** | Dossiê estratégico completo de alocação, concentração, risco e métricas quantitativas | **Matriz de Barras Horizontais Proporcionais (Raios-X)** sem truncamentos + **Tabela de Benchmarks de 5 Colunas** | Cabeçalho de continuação nas páginas 2+, tabela de custódia com unidades no `thead` |
-| **R5. Carteira Mensal** | Fechamento ágil da competência com movimentações do mês e índice PQS de qualidade | **Faixa Sintética Linear de Movimentações** (Compras, Vendas, Proventos, Aporte + Score PQS 8,2/10) | Tabela de custódia padronizada com R4, cabeçalho 70/30, rodapé oficial |
-| **R6. Extrato Patrimonial** | Livro-razão cronológico auditável mês a mês de patrimônio, aportes e cota TWR | **Gráfico de Evolução Bicolor (Patrimônio vs. Custo)** + Tabela densa com zeros suprimidos (`—`) | KPI Strip de 4 colunas (sem grade 3+2), cabeçalho e rodapé oficial |
-| **R7. Proventos & FIRE** | Monitoramento de renda passiva, autonomia financeira (runway) e reinvestimento | **Régua de Alta Precisão FIRE (0% a 100%)** com 5 marcos equilibrados + Gráfico de Barras Mensais sóbrio | Cabeçalho Axir 70/30, KPI Strip, rodapé com ID `FIRE-` |
-| **R8. Facilitador IRPF** | Apoio operacional direto à transcrição de dados no programa da Receita Federal | **Árvore de Bens e Direitos Agrupada por Código da RFB** (sem truncamentos de tickers e com valores neutros) | Cabeçalho fiscal Axir, subtotais por grupo, rodapé oficial com ID `IRPF-` |
-| **R9. Caderno Excel** | Consolidação analítica multi-abas viva para modelagem patrimonial | **Planilha Viva com Fórmulas Nativas (`=SUM`)** e linhas de empty state explicativas | Cores corporativas nos cabeçalhos, tipografia Calibri/Segoe UI, 6 abas |
-| **R10. Extrato CSV** | Exportação de dados brutos para conciliação contábil e importadores externos | **CSV Formatado com Ponto e Vírgula e UTF-8 BOM**, sem descrições vazias | Sanitização de dados, compatibilidade total com Excel Windows/Mac |
-
----
-
-## 4. Diretrizes Globais do Design Editorial Axir
-
-### 4.1 Arquitetura de Folha A4 e Paginação
+### 4.1 Anatomia da Página e Grid Físico
 - **Margens:** `14mm 16mm 16mm 16mm` no `@page`.
-- **Cabeçalho de Página 1 (Anatomia 70/30):**
-  - *Esquerda (70%):* Monograma institucional Axir sóbrio em SVG vetorial (sem caixas decorativas com sombras ou bolinhas de app mobile) + Título do Documento H1 (`16pt font-bold`) + Subtítulo descritivo em tom neutro (`8.5pt text-muted-foreground`).
-  - *Direita (30%):* Bloco de metadados alinhado à direita com Competência formatada por extenso (ex.: `Novembro de 2026`) e data de emissão.
-  - *Fechamento:* Filete horizontal único contínuo de `1pt` em `border-border/80`.
-- **Cabeçalho de Continuação (*Running Header*, páginas 2+):** Linha discreta de `7.5pt` no topo contendo `AXIR · [Título do Relatório]` à esquerda e `[Competência]` à direita, com filete inferior de `0.5pt`.
-- **Rodapé e Paginação:** Em todas as páginas, linha inferior de `7pt` com chancela `axir.com.br`, identificador criptográfico com prefixo funcional e numeração formal `Página X de Y`.
-- **Prevenção Estrita de Elementos Órfãos:**
-  - `break-inside: avoid` em linhas de tabela, blocos de KPI, gráficos e rodapé contábil.
-  - `break-after: avoid` em títulos H2/H3 e banners de grupo.
-  - Subtotais de tabela estritamente vinculados às últimas linhas de dados.
-  - Proibição absoluta de páginas finais contendo apenas o rodapé e o disclaimer.
+- **Cabeçalho de Página 1 (Proporção 70/30):**
+  - *Esquerda (70%):* Monograma institucional Axir sóbrio em SVG vetorial (sem caixas decorativas de celular) + Título H1 (`16pt font-bold text-foreground`) + Subtítulo descritivo (`8.5pt text-muted-foreground`).
+  - *Direita (30%, alinhado à direita):* Competência formatada por extenso (`Novembro de 2026`) + Data de emissão (`Emitido em DD/MM/AAAA`) + Titular da conta.
+  - *Fechamento:* Filete horizontal único contínuo de `1pt` em tom neutro suave (`border-border/80`).
+- **Cabeçalho de Continuação (*Running Header*, Páginas 2+):**
+  - Linha discreta de `7.5pt` no topo contendo `AXIR · [Título do Relatório]` à esquerda e `[Competência]` à direita, separada por hairline de `0.5pt`.
+- **Rodapé Oficial em Todas as Páginas:**
+  - Linha contínua com chancela `axir.com.br`, identificador criptográfico com prefixo funcional (`IRPF-`, `FIRE-`, `BAL-`, `DOS-`, `DRE-`, `EXT-`, `FAT-`), numeração formal `Página X de Y` e QR Code vetorial compacto (32x32px).
+- **Orçamento de Altura Útil (Pixel Budget):**
+  - Área útil de **269mm (~1016px a 96dpi)**. Toda página One-Pager (Balanço 360°, Extrato Patrimonial de até 26 meses, Fatura) deve somar no máximo 960px de conteúdo para garantir que o rodapé permaneça na folha 1 com margem de segurança.
 
 ### 4.2 Tipografia e Disciplina Numérica
-- **Família Tipográfica:** Única família sans-serif de alta legibilidade (`Inter` / `system-ui`).
+- **Família Tipográfica Única:** `Inter` / `system-ui`.
 - **Algarismos Tabulares:** 100% dos valores numéricos com `font-variant-numeric: tabular-nums` e alinhamento à direita.
 - **Proibição de Quebra de Moeda:** Símbolos monetários e sinais vinculados aos números via `white-space: nowrap` e `\u00A0`.
-- **Unidade no Cabeçalho:** Em tabelas com 6 ou mais colunas, mover `(R$)` e `(US$)` para o cabeçalho (`thead`), exibindo apenas o valor numérico limpo nas células para eliminar repetições poluídas.
-- **Higiene de Zeros:** Substituição de valores nulos e zeros repetitivos por travessão fino (`—`) em cinza médio.
+- **Unidade no Cabeçalho:** Em tabelas com 6 ou mais colunas, mover `(R$)` e `(US$)` para os títulos das colunas (`thead`), exibindo apenas o valor numérico limpo nas células.
+- **Higiene de Zeros:** Substituição de `0,00` por travessão fino (`—`) em cinza médio.
 - **Texto Alinhado à Esquerda:** Proibição de justificação de texto em parágrafos narrativos, prevenindo espaçamentos artificiais entre pontuações e números.
 
 ### 4.3 Primitivo Universal `KPI Strip`
-- Faixa horizontal limpa e contínua de 3 ou 4 colunas simétricas (abolindo grades assimétricas como 3+2).
+- Faixa horizontal limpa e contínua de 3 ou 4 colunas simétricas (eliminando grades assimétricas como 3+2).
 - Delimitação por linhas horizontais superior e inferior sutis (`0.75pt`), sem fundos escuros e sem bordas arredondadas externas.
 - Três camadas verticais fixas garantindo alinhamento óptico rigoroso da linha de base:
   1. Rótulo `UPPERCASE` de 1 linha curta (`7–7.5pt`).
   2. Valor Principal em destaque (`15–18pt font-bold tabular-nums font-mono`).
   3. Metadado de apoio em 1 linha (`7.5–8pt text-muted-foreground`).
 
+### 4.4 A Paleta Executiva 90 / 8 / 2
+- **90% Neutros Nobres:** Fundo branco puro `#FFFFFF`, grafite profundo `#0F172A` para dados e títulos, cinza médio `#475569` para rótulos/metadados e divisórias sutis `#E2E8F0`.
+- **8% Identidade Axir:** Verde-Petróleo Institucional `--primary-strong: #1B6B62` e Azul-Marinho de Carteira `--portfolio: #1B3A4B` para destaques de seção, barras de alocação e roscas patrimoniais.
+- **2% Semântica Funcional Estrita:** Verde positivo e vermelho negativo reservados exclusivamente para variações percentuais, retornos e desvios de orçamento. Custos de aquisição de bens, saldos patrimoniais e valores nominais utilizam **sempre tom neutro escuro**.
+
 ---
 
-## 5. Plano de Refatoração Faseado (Uma Fase por Arquivo)
+## 5. Plano Diretor de Refatoração Faseado (Uma Fase por Arquivo)
 
-O plano de implementação é estruturado em **26 Fases Exclusivas**, respeitando estritamente a ordem de dependências da infraestrutura para os relatórios:
+O plano de execução está estruturado em **26 Fases Exclusivas**, organizadas em 5 Blocos interdependentes:
 
 ```mermaid
 flowchart TD
-    subgraph Bloco0["Bloco 0: Infraestrutura & Fundação Editorial"]
+    subgraph B0["Bloco 0: Infraestrutura Crítica de Impressão e Primitivos"]
         F01["Fase 1: globals.css (Regras @media print e Resets de Página)"]
         F02["Fase 2: report-document-layout.tsx (Contêiner Mestre A4)"]
         F03["Fase 3: money-text.tsx (Fix Atômico de Centavos e Nowrap)"]
     end
 
-    subgraph Bloco1["Bloco 1: Primitivos Editoriais Compartilhados"]
+    subgraph B1["Bloco 1: Componentes Editoriais Compartilhados"]
         F04["Fase 4: report-header.tsx (Cabeçalho Institucional 70/30)"]
         F05["Fase 5: report-footer.tsx (Rodapé Compacto Anti-Órfão e IDs)"]
         F06["Fase 6: report-executive-summary.tsx (Faixa Limpa de Síntese)"]
@@ -144,7 +154,7 @@ flowchart TD
         F09["Fase 9: report-class-tables.tsx (Banner Fora do Thead Anti-Órfão)"]
     end
 
-    subgraph Bloco2["Bloco 2: Relatórios Executivos A4"]
+    subgraph B2["Bloco 2: A Árvore de Relatórios Executivos A4"]
         F10["Fase 10: financial-close-report-modal.tsx (DRE - PDF 5)"]
         F11["Fase 11: tax-facilitator-modal.tsx (IRPF - PDF 1)"]
         F12["Fase 12: consolidated-wealth-modal.tsx (Balanço 360° One-Pager - PDF 3)"]
@@ -155,7 +165,7 @@ flowchart TD
         F17["Fase 17: card-invoice-print-view.tsx (Fatura de Cartão - PDF 7)"]
     end
 
-    subgraph Bloco3["Bloco 3: Modais de Interface & Conciliação"]
+    subgraph B3["Bloco 3: Modais de Interface & Conciliação"]
         F18["Fase 18: statement-reconcile-rows.tsx (Layout Mobile Vertical Sem Estouro)"]
         F19["Fase 19: statement-reconcile-step.tsx (Toolbar de Filtros Fluidos)"]
         F20["Fase 20: statement-import-dialog.tsx (Modal 3xl no Desktop)"]
@@ -164,226 +174,66 @@ flowchart TD
         F23["Fase 23: export-data-hub.tsx (Hub de Exportação de Dados)"]
     end
 
-    subgraph Bloco4["Bloco 4: Motores de Exportação de Dados"]
+    subgraph B4["Bloco 4: Motores de Exportação de Dados"]
         F24["Fase 24: excel-export.ts (Fórmulas Nativas =SUM e Empty States)"]
         F25["Fase 25: build-excel-workbook.ts (DRE Rica e Segregação de Passivos)"]
         F26["Fase 26: export-actions.ts (CSV Sanitizado com UTF-8 BOM)"]
     end
 
-    Bloco0 --> Bloco1
-    Bloco1 --> Bloco2
-    Bloco2 --> Bloco3
-    Bloco3 --> Bloco4
+    B0 --> B1
+    B1 --> B2
+    B2 --> B3
+    B3 --> B4
 ```
 
 ---
 
 ### Detalhamento das 26 Fases de Execução
 
-#### Fase 1: Fundação do Mecanismo de Impressão e Resets de Viewport
-- **Arquivo Alvo:** [src/styles/globals.css](file:///home/gabrielsales/meus_apps/financasnew/src/styles/globals.css)
-- **Ações:**
-  1. Configurar `@page { size: A4 portrait; margin: 14mm 16mm 16mm 16mm; }` com supressão de cabeçalhos nativos do navegador.
-  2. Aplicar regras estritas para `.print-sheet table`: `table-layout: fixed; width: 100%; border-collapse: collapse;`.
-  3. Configurar `.print-sheet footer, .print-sheet .report-footer` com `break-inside: avoid; margin-top: 10px;`, impedindo o empurrão do rodapé para uma página em branco isolada.
-  4. Adicionar classes utilitárias para quebra programática: `.print-page-break-after`, `.print-avoid-break-inside` e `.print-table-condensed`.
+#### Bloco 0: Infraestrutura Crítica de Impressão e Primitivos
+- **Fase 1:** [globals.css](file:///home/gabrielsales/meus_apps/financasnew/src/styles/globals.css) — Resets de `@media print`, margens de 14x16mm, tabelas com `table-layout: fixed; width: 100%`, contenção de footers e classes utilitárias anti-quebra.
+- **Fase 2:** [report-document-layout.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-document-layout.tsx) — Expansão para `size="3xl"` no desktop (aproveitando até 1280px) e portal de impressão limpo e sem margens duplicadas.
+- **Fase 3:** [money-text.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/ui/money-text.tsx) — Fix atômico no helper `formatMoneyNode` (eliminando centavos soltos no rodapé e quebras de moeda via `whitespace-nowrap` e `\u00A0`), e desativação de animações em relatórios.
 
-#### Fase 2: Contêiner Mestre Editorial A4
-- **Arquivo Alvo:** [src/components/modules/reports/report-document-layout.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-document-layout.tsx)
-- **Ações:**
-  1. Atualizar o tamanho padrão do modal no desktop de `"2xl"` para `"3xl"` para relatórios densos, aproveitando viewports de até 1280px.
-  2. No modo tela, aplicar prancheta editorial centrada com fundo suave e largura contida proporcionalmente.
-  3. No modo impressão, garantir que `PrintSheet` limpe margens externas e entregue fluxo contínuo ao mecanismo de paginação.
+#### Bloco 1: Componentes Editoriais Compartilhados
+- **Fase 4:** [report-header.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-header.tsx) — Cabeçalho institucional 70/30 com SVG vetorial, metadados por extenso e filete horizontal contínuo.
+- **Fase 5:** [report-footer.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-footer.tsx) — Rodapé compacto anti-órfão, prefixos funcionais nos IDs (`IRPF-`, `FIRE-`, etc.) e numeração `Página X de Y`.
+- **Fase 6:** [report-executive-summary.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-executive-summary.tsx) — Faixa de resumo com alinhamento óptico de linha de base e remoção de fundos pesados.
+- **Fase 7:** [report-kpi-grid.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-kpi-grid.tsx) — `KPI Strip` universal de 3 ou 4 colunas sem caixas decorativas em ícones.
+- **Fase 8:** [report-equity-class-table.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-equity-class-table.tsx) — Resolução da colagem de valores em dólar, expansão de padding para 12px e moedas no cabeçalho.
+- **Fase 9:** [report-class-tables.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-class-tables.tsx) — Extração do banner de classe de dentro do `thead`, erradicando cabeçalhos órfãos no fim da folha.
 
-#### Fase 3: Primitivo Monetário e Tratamento Atômico de Centavos
-- **Arquivo Alvo:** [src/components/ui/money-text.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/ui/money-text.tsx)
-- **Ações:**
-  1. No helper `formatMoneyNode`, substituir a divisão por `inline-block` por estrutura atômica estrita em linha: `<span className="inline whitespace-nowrap tabular-nums">{formatted}</span>`. Eliminar quebras entre inteiro e centavos.
-  2. Assegurar que o sinal e símbolo da moeda estejam vinculados por espaço não-quebrável (`\u00A0`).
-  3. Desativar sumariamente animações (`NumberTicker`) em contexto de relatório impresso.
+#### Bloco 2: A Árvore de Relatórios Executivos A4
+- **Fase 10:** [financial-close-report-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/financial-close-report-modal.tsx) — Cascata DRE em barra única empilhada, coluna dedicada `PONDERADO (R$)` e linhas de totalizadores.
+- **Fase 11:** [tax-facilitator-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/tax-facilitator-modal.tsx) — Árvore de Bens e Direitos agrupada por Código da Receita Federal, sem truncamento de tickers e com valores em tom neutro contábil.
+- **Fase 12:** [consolidated-wealth-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/consolidated-wealth-modal.tsx) — Compactação em grade 2 colunas para consolidar o Balanço 360° em **1 folha única perfeita (One-Pager)**.
+- **Fase 13:** [dividend-freedom-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/dividend-freedom-modal.tsx) — Régua FIRE minimalista de 5 marcos uniformes, correção gramatical e projeção para a primeira cota na Bola de Neve.
+- **Fase 14:** [wealth-tear-sheet-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/wealth-tear-sheet-modal.tsx) — Matriz de barras horizontais nos Raios-X, tabela comparativa de benchmarks de 5 colunas e condensação de 9 para 6 páginas.
+- **Fase 15:** [portfolio-executive-report.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/components/portfolio-executive-report.tsx) — Faixa linear de movimentações + PQS (8,2/10) e custódia em 2 páginas.
+- **Fase 16:** [portfolio-snapshots-dialog.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/components/portfolio-snapshots-dialog.tsx) — Extrato de 26 competências contido em 1 folha, travessões em zeros e supressão de tags redundantes.
+- **Fase 17:** [card-invoice-print-view.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/card-invoice-print-view.tsx) — Barra de síntese linear e tabela com coluna `Ponderado (R$)`.
 
-#### Fase 4: Cabeçalho Institucional dos Relatórios
-- **Arquivo Alvo:** [src/components/modules/reports/report-header.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-header.tsx)
-- **Ações:**
-  1. Redesenhar o monograma institucional Axir em SVG vetorial limpo, suprimindo bolinhas coloridas e fundos pesados de app mobile na impressão.
-  2. Implementar layout 70/30: Marca + H1 + Subtítulo à esquerda; Competência por extenso + data de emissão à direita.
-  3. Adicionar filete horizontal contínuo de `1pt` na base do cabeçalho.
+#### Bloco 3: Modais de Interface e Conciliação
+- **Fase 18:** [statement-reconcile-rows.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/cards/components/statement-reconcile-rows.tsx) — Layout mobile vertical empilhado eliminando o estouro horizontal de tela em smartphones.
+- **Fase 19:** [statement-reconcile-step.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/cards/components/statement-reconcile-step.tsx) — Toolbar de filtros fluidos com rolagem suave no mobile.
+- **Fase 20:** [statement-import-dialog.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/cards/components/statement-import-dialog.tsx) — Modal expandido para `size="3xl"` no desktop.
+- **Fase 21:** [report-detail-dialog.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/report-detail-dialog.tsx) — Rodapé com botão de fechar no mobile e virtualização de listas longas.
+- **Fase 22:** [trip-member-statement-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/trips/components/trip-member-statement-modal.tsx) — Padronização editorial do extrato de participante sem cards aninhados.
+- **Fase 23:** [export-data-hub.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/export-data-hub.tsx) — Unificação do seletor de períodos e feedback sensorial.
 
-#### Fase 5: Rodapé Contábil e Prevenção de Páginas Órfãs
-- **Arquivo Alvo:** [src/components/modules/reports/report-footer.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-footer.tsx)
-- **Ações:**
-  1. Reduzir a altura intrínseca do rodapé impresso (`print:pt-2 print:mt-3 print:gap-1.5`) e enxugar o texto do disclaimer para 2 linhas compactas.
-  2. Implementar prefixos funcionais padronizados nos IDs de chancela (`IRPF-`, `FIRE-`, `BAL-`, `DOS-`, `DRE-`, `EXT-`, `FAT-`).
-  3. Inserir numeração formal `Página X de Y` e otimizar o QR Code para dimensão de 32x32px.
-
-#### Fase 6: Resumo Executivo e Faixa de Síntese
-- **Arquivo Alvo:** [src/components/modules/reports/report-executive-summary.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-executive-summary.tsx)
-- **Ações:**
-  1. Remover o fundo cinza denso (`bg-muted/30`) na impressão, adotando linha divisória superior sutil e respiro em branco.
-  2. Padronizar o alinhamento óptico de linha de base para as 4 métricas principais.
-  3. Eliminar parágrafos narrativos que apenas leiam os 4 números, mantendo apenas frases analíticas reais quando fornecidas.
-
-#### Fase 7: Grade Universal de Indicadores (`KPI Strip`)
-- **Arquivo Alvo:** [src/components/modules/reports/report-kpi-grid.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-kpi-grid.tsx)
-- **Ações:**
-  1. Eliminar caixas com fundos coloridos ao redor de ícones nos documentos impressos, passando a exibir ícones sóbrios (`Icon-Only`, 16px).
-  2. Substituir cartões com bordas grossas por grade editorial limpa com divisórias sutis.
-  3. Assegurar auto-fit tipográfico impedindo truncamento em números com mais de 7 dígitos.
-
-#### Fase 8: Tabela Densa de Ativos e Prevenção de Colagem em Moeda Estrangeira
-- **Arquivo Alvo:** [src/components/modules/reports/report-equity-class-table.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-equity-class-table.tsx)
-- **Ações:**
-  1. Expandir a largura das colunas de "Preço Médio" e "Cotação" em ativos internacionais no `<colgroup>` para 13% cada.
-  2. Aumentar o padding horizontal mínimo das células monetárias de `px-1` para `px-2`.
-  3. Mover `(R$)` e `(US$)` para os cabeçalhos das colunas, eliminando repetição excessiva de símbolos monetários nas linhas.
-  4. Tratar nomes de ativos e tickers para quebra suave de linha sem reticências.
-
-#### Fase 9: Orquestrador de Custódia e Banner Anti-Órfão
-- **Arquivo Alvo:** [src/components/modules/reports/report-class-tables.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/reports/report-class-tables.tsx)
-- **Ações:**
-  1. Extrair o `ReportClassTableBanner` de dentro do `<thead>` da tabela, renderizando-o como cabeçalho de seção com `break-after: avoid;`.
-  2. Assegurar que se uma tabela de classe não couber com pelo menos duas linhas de dados na página, o cabeçalho seja quebrado junto com a tabela para a página seguinte.
-  3. Vincular a linha de subtotal da classe às linhas precedentes de ativos.
-
-#### Fase 10: Relatório Executivo de Finanças Pessoais & DRE (PDF 5)
-- **Arquivo Alvo:** [src/features/reports/components/financial-close-report-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/financial-close-report-modal.tsx)
-- **Ações:**
-  1. Remover `animated` e `variant="hero"` do `MoneyText` em [FinancialCloseSummary.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/financial-close/FinancialCloseSummary.tsx), garantindo tipografia estável e eliminando centavos vazados.
-  2. Substituir a cascata de 3 linhas por uma **barra horizontal única empilhada** de destinação da receita (`Despesas` + `Aportes` + `Poupança`).
-  3. Criar coluna dedicada `PONDERADO (R$)` na DRE, Despesas por Categoria e Formas de Pagamento, eliminando empilhamento de números dentro de células.
-  4. Ordenar categorias em ordem decrescente pelo valor realizado e adicionar linha de `TOTAL` em negrito.
-  5. Unificar os 4 cards da Consolidação Residencial em grade compacta 2x2.
-
-#### Fase 11: Facilitador de Declaração de IRPF (PDF 1)
-- **Arquivo Alvo:** [src/features/reports/components/tax-facilitator-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/tax-facilitator-modal.tsx)
-- **Ações:**
-  1. Reestruturar a tabela de Bens e Direitos em [TaxBensDireitosSection.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/tax-facilitator/TaxBensDireitosSection.tsx) agrupando os ativos por Grupo/Código da Receita Federal (`Grupo 03 · Código 01 — Ações`, `Grupo 04 · Código 02 — Renda Fixa`, etc.).
-  2. Eliminar a coluna redundante "Código/Grupo", redistribuindo a largura para o Ticker (zero truncamentos como "CDB ORIGI...") e Discriminação.
-  3. Alterar o tom da coluna "Situação em 31/12" para neutro contábil escuro (`tone="default"`), eliminando a cor verde indevida.
-  4. Incluir linha de Subtotal por Grupo e Total Geral ao final da tabela na última página.
-  5. Converter o card vazio de Rendimentos Isentos em uma linha descritiva serena.
-
-#### Fase 12: Balanço Patrimonial 360° & Visão Consolidada (PDF 3)
-- **Arquivo Alvo:** [src/features/reports/components/consolidated-wealth-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/consolidated-wealth-modal.tsx)
-- **Ações:**
-  1. Consolidar todo o documento em **1 única página executiva (One-Pager)**, eliminando a Página 2 fantasma.
-  2. Diagramar o miolo em grade de 2 colunas (55%/45%):
-     - *Esquerda:* Rosca de Ativos (paleta proprietária petróleo/marinho) com tabela de 3 linhas de Ativos.
-     - *Direita:* Tabela de Passivos e Alavancagem.
-  3. Na seção inferior da DRE resumida, adicionar etiqueta `(Base Ponderada)` e formatar com linhas contábeis limpas.
-  4. Ajustar margens e respiros verticais para acomodar o rodapé com chancela na folha 1.
-
-#### Fase 13: Dossiê de Proventos & Liberdade Financeira FIRE (PDF 2)
-- **Arquivo Alvo:** [src/features/reports/components/dividend-freedom-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/dividend-freedom-modal.tsx)
-- **Ações:**
-  1. Redesenhar o Termômetro FIRE como régua de precisão minimalista com 5 marcos uniformes (`0%`, `25%`, `50%`, `75%`, `100%`) sem colisão de textos.
-  2. Corrigir deslizes gramaticais na narrativa (`"o fluxo acumulado"`, `"autossustentáveis"`).
-  3. Otimizar a altura do gráfico mensal de proventos e converter o estado vazio de Bola de Neve em uma faixa editorial de 1 linha.
-  4. Preencher a página com harmonia e proporção visual nobre.
-
-#### Fase 14: Dossiê Executivo da Posição Vigente Consolidada (PDF 4)
-- **Arquivo Alvo:** [src/features/reports/components/wealth-tear-sheet-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/wealth-tear-sheet-modal.tsx)
-- **Ações:**
-  1. Reorganizar a paginação do dossiê, reduzindo de 9 páginas fragmentadas para 6 páginas ricas e densas.
-  2. **Substituir mini-donuts de Raios-X por barras horizontais proporcionais em 2 colunas**, eliminando 100% dos truncamentos (`Estados Unidos (US...`, `Liquidez / Sem...`).
-  3. Suprimir o donut de 100% em veículo de custódia, convertendo em linha de destaque analítico.
-  4. Corrigir o universo da tabela de Vencimento de Renda Fixa, restringindo aos títulos de renda fixa (R$ 3.181,78).
-  5. **Converter os 4 cards de Benchmarks em tabela comparativa de 5 colunas** (`BENCHMARK | ACUMULADO | SPREAD | % DO ÍNDICE | 12M`).
-  6. Reescalar o termômetro de concentração para `0%–40%` com marcadores limpos de 15% e 25%.
-  7. Diagramar os conceitos metodológicos em grade editorial `2x2`.
-
-#### Fase 15: Relatório Executivo de Acompanhamento da Carteira Mensal
-- **Arquivo Alvo:** [src/features/investments/components/portfolio-executive-report.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/components/portfolio-executive-report.tsx)
-- **Ações:**
-  1. Remover artefato visual (`W`) do cabeçalho.
-  2. Padronizar rótulos de 1 linha no KPI Strip, alinhando a linha de base.
-  3. Condensar as Movimentações da Competência em uma faixa sintética horizontal de 1 linha com o score PQS (8,2/10).
-  4. Compartilhar a mesma tabela de custódia padronizada com o Dossiê da Posição (ordenação canônica por peso, detalhamento de taxas de Renda Fixa e Caixa em linha resumo).
-  5. Aplicar governança anti-órfão em subtotais, reduzindo o documento para 2 páginas perfeitas.
-
-#### Fase 16: Extrato Analítico de Evolução Patrimonial (PDF 6)
-- **Arquivo Alvo:** [src/features/investments/components/portfolio-snapshots-dialog.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/investments/components/portfolio-snapshots-dialog.tsx)
-- **Ações:**
-  1. Padronizar o topo para `KPI Strip` simétrico de 4 colunas (`PATRIMÔNIO FINAL`, `CUSTO APLICADO`, `PROVENTOS NO PERÍODO`, `TWR ACUMULADO`).
-  2. Corrigir ortografia no subtítulo (`mês a mês`).
-  3. Otimizar a tabela de 9 colunas: mover `(R$)` e `(%)` para o `<thead>`, substituir `0,00` por travessão fino (`—`) e remover o selo repetitivo `fechado`.
-  4. Reduzir a altura da tabela em ~35%, acomodando todo o extrato de até ~26 competências em 1 página única sem expulsar o rodapé.
-
-#### Fase 17: Fatura de Cartão de Crédito Impressa (PDF 7)
-- **Arquivo Alvo:** [src/components/modules/card-invoice-print-view.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/card-invoice-print-view.tsx)
-- **Ações:**
-  1. Alinhar ao cabeçalho padrão Axir: `Fatura de Cartão de Crédito — Rico` com metadados estruturados.
-  2. Substituir a grade de 3 KPIs grandes por uma barra de síntese equilibrada.
-  3. Renomear o cabeçalho da tabela de `Valor p/ Relatório` para `Ponderado (R$)`, eliminando quebra de linha feia.
-  4. Preencher parcelas avulsas com `—` e pontuar corretamente o texto do rodapé.
-
-#### Fase 18: Linhas de Conciliação de Extrato no Mobile & Desktop
-- **Arquivo Alvo:** [src/features/cards/components/statement-reconcile-rows.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/cards/components/statement-reconcile-rows.tsx)
-- **Ações:**
-  1. No mobile (`< sm`), reestruturar a linha de conciliação para layout vertical empilhado limpo: Checkbox + Título + Status na Linha 1; Data + Categoria em largura total na Linha 2; Ações compactas na Linha 3.
-  2. Eliminar 100% do estouro horizontal em telas estreitas de 320px a 375px.
-  3. No desktop (`sm:`), manter o alinhamento horizontal perfeitamente proporcional.
-
-#### Fase 19: Toolbar e Filtros da Staging Area de Conciliação
-- **Arquivo Alvo:** [src/features/cards/components/statement-reconcile-step.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/cards/components/statement-reconcile-step.tsx)
-- **Ações:**
-  1. Padronizar as abas de filtro com rolagem horizontal suave no mobile (`Tabs fullWidth={false}`).
-  2. Adicionar contadores em cada aba e botão adaptativo de seleção em lote.
-
-#### Fase 20: Modal de Importação de Fatura e Extratos
-- **Arquivo Alvo:** [src/features/cards/components/statement-import-dialog.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/cards/components/statement-import-dialog.tsx)
-- **Ações:**
-  1. Expandir o tamanho do modal para `size="3xl"` no desktop, aproveitando a largura da viewport.
-  2. No mobile, adotar gaveta de tela cheia com rodapé de confirmação seguro.
-
-#### Fase 21: Modal de Detalhamento de Despesas (Drilldown Analítico)
-- **Arquivo Alvo:** [src/features/reports/components/report-detail-dialog.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/reports/components/report-detail-dialog.tsx)
-- **Ações:**
-  1. Inserir rodapé padronizado (`ModalFooter`) com botão "Concluir / Fechar" para ergonomia no mobile.
-  2. Otimizar a renderização da lista de lançamentos para categorias com dezenas de itens.
-
-#### Fase 22: Modal de Extrato de Participante em Viagens e Rachas
-- **Arquivo Alvo:** [src/features/trips/components/trip-member-statement-modal.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/features/trips/components/trip-member-statement-modal.tsx)
-- **Ações:**
-  1. Eliminar cards dentro de cards na síntese de acerto do participante.
-  2. Alinhar o semáforo de saldo líquido com `MoneyText` e sinal explícito.
-  3. No mobile, converter despesas em lista empilhada sem cortes.
-
-#### Fase 23: Hub Central de Exportação de Dados e Lançamentos
-- **Arquivo Alvo:** [src/components/modules/export-data-hub.tsx](file:///home/gabrielsales/meus_apps/financasnew/src/components/modules/export-data-hub.tsx)
-- **Ações:**
-  1. Padronizar os controles de seleção de período com a interface geral.
-  2. Unificar mensagens de feedback sensorial (`triggerSensory`).
-
-#### Fase 24: Caderno de Relatórios em Excel XML (Motor de Planilha)
-- **Arquivo Alvo:** [src/services/excel-export.ts](file:///home/gabrielsales/meus_apps/financasnew/src/services/excel-export.ts)
-- **Ações:**
-  1. Substituir valores literais em linhas de totalização por fórmulas dinâmicas do Excel (`=SUM(G2:G20)`).
-  2. Na aba de Proventos, quando vazia, inserir linha explicativa ("Nenhum provento registrado no período selecionado") em vez de tabela vazia.
-  3. Configurar larguras auto-adaptativas de colunas para prevenir cortes ao abrir no Excel ou Numbers.
-
-#### Fase 25: Consolidador de Dados do Caderno Excel
-- **Arquivo Alvo:** [src/domain/reports/build-excel-workbook.ts](file:///home/gabrielsales/meus_apps/financasnew/src/domain/reports/build-excel-workbook.ts)
-- **Ações:**
-  1. Consumir YoC e rentabilidade diretamente dos contratos de domínio sem recálculo ad-hoc.
-  2. Enriquecer a aba de DRE com histórico de competências e composição de categorias.
-  3. Segregar passivos ativos de dívidas quitadas na aba de Passivos.
-
-#### Fase 26: Serviço de Exportação de Extratos CSV
-- **Arquivo Alvo:** [src/services/export-actions.ts](file:///home/gabrielsales/meus_apps/financasnew/src/services/export-actions.ts)
-- **Ações:**
-  1. Sanitizar lançamentos importados sem descrição, aplicando fallback explícito do nome da categoria.
-  2. Adicionar coluna com o fator de ponderação de relatório (`report_weight`).
-  3. Garantir encoding UTF-8 com BOM (`\uFEFF`) para abertura sem caracteres corrompidos no Excel em Windows.
+#### Bloco 4: Motores de Exportação de Dados
+- **Fase 24:** [excel-export.ts](file:///home/gabrielsales/meus_apps/financasnew/src/services/excel-export.ts) — Introdução de fórmulas dinâmicas do Excel (`=SUM`) e linhas explicativas de empty state.
+- **Fase 25:** [build-excel-workbook.ts](file:///home/gabrielsales/meus_apps/financasnew/src/domain/reports/build-excel-workbook.ts) — Enriquecimento da DRE no Excel e segregação de dívidas ativas vs. quitadas.
+- **Fase 26:** [export-actions.ts](file:///home/gabrielsales/meus_apps/financasnew/src/services/export-actions.ts) — Sanitização de campos vazios e encoding UTF-8 com BOM.
 
 ---
 
-## 6. Critérios de Aceite e Definition of Done (DoD)
+## 6. Governança de Validação e Critérios de Aceite (DoD)
 
-Para cada fase concluída, a validação técnica exigirá:
-1. **Zero Quebra de Moeda:** Símbolo `R$` ou `US$` jamais separado de sua respectiva cifra em qualquer relatório.
-2. **Zero Centavos Soltos:** Centavos rigorosamente integrados ao corpo do número em todos os KPIs e tabelas.
-3. **Zero Páginas Órfãs:** Balanço 360°, Extrato Patrimonial e Dossiê Fiscal contidos exatamente em suas respectivas páginas úteis, sem páginas em branco contendo apenas disclaimer.
-4. **Zero Truncamentos de Ativos:** Tickers e nomes de classes legíveis sem reticências arbitrárias.
-5. **Zero Recálculo (SSOT):** Congruência matemática absoluta entre o aplicativo, os modais de pré-visualização, os PDFs impressos e a planilha Excel.
-6. **Bateria de Testes Automatizados:** Execução de `npm run test` com 100% de aprovação e sem regressões na suite de testes.
+Para cada fase concluída, os seguintes critérios inegociáveis serão aferidos:
+1. **Zero Quebra de Moeda:** Símbolos monetários `R$` e `US$` rigorosamente atrelados à cifra.
+2. **Zero Centavos Soltos:** Reais e centavos renderizados no mesmo nó visual contínuo.
+3. **Zero Páginas Órfãs:** Balanço 360°, Extrato Patrimonial e Fatura contidos exatamente em 1 página útil, sem folhas em branco com disclaimer isolado.
+4. **Zero Truncamentos de Ativos:** Tickers da Receita Federal e nomes de setores 100% legíveis sem reticências.
+5. **Fidelidade SSOT:** Zero recálculos na camada de relatório ou modal; consumo estrito dos dados normalizados de `domain/portfolio` e `domain/reports`.
+6. **Suíte Automatizada 100% Verde:** `npm run test` executado e aprovado sem qualquer quebra de regressão.
