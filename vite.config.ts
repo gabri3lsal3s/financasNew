@@ -11,7 +11,7 @@ const pkg = JSON.parse(
 
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(pkg.version || "3.13.0"),
+    __APP_VERSION__: JSON.stringify(pkg.version || "3.14.0"),
     __BUILD_TIMESTAMP__: JSON.stringify(new Date().toISOString()),
   },
   plugins: [

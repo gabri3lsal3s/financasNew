@@ -467,6 +467,28 @@ Antes de emitir relatórios ou persistir snapshots de fechamento, o validador au
 - Na tabela de ativos internacionais (`report-equity-class-table.tsx`), a coluna de Variação da Cota foi rebalanceada de $16\%$ para $22\%$ ($> 150\text{px}$ de largura útil física), acomodando os valores duplos `+X,X% (USD)` e `+Y,Y% (BRL)` com espaçamento `pl-2`.
 - No subtotal (`tfoot`), os valores consolidados utilizam `font-mono tabular-nums text-[10px]` com quebra em duas linhas, eliminando permanentemente colisões tipográficas com a coluna de Total em R$.
 
+## 16. EXPLICABILIDADE MATEMÁTICA ATIVA E MEMÓRIA DE CÁLCULO CANÔNICA (`src/domain/calculation-memory/`)
+
+Em estrito cumprimento da Regra 33 do `AGENTS.md`, todo indicador financeiro derivado, composto, rateado ou projetado possui uma representação estruturada de sua equação matemática gerada exclusivamente pelo domínio puro.
+
+### 16.1. Contrato Canônico de Memória de Cálculo (`types.ts`)
+1. **Estrutura de Decomposição (`CalculationBreakdown`):**
+   - `id`: identificador estável da métrica;
+   - `title`: nome humano descritivo (ex.: "Saldo Livre Real (Safe-to-Spend)");
+   - `description`: definição em uma frase do objetivo da medição;
+   - `periodLabel`: escopo temporal estrito (ex.: "Novembro/2026", "Últimos 12 meses");
+   - `formulaExpression`: representação simbólica inteligível (ex.: `Saldo em Contas + A Receber − Faturas − Pendências`);
+   - `unit`: unidade canônica de apresentação (`currency`, `percent`, `months`, `count`, `ratio`);
+   - `steps`: array ordenado de parcelas operacionais (`BreakdownStep`) com operador (`+`, `-`, `=`, `/`, `*`), valor bruto, dica explicativa e tonalidade semântica (`default`, `positive`, `negative`, `muted`, `portfolio`);
+   - `result`: valor final computado com formatação e unidade;
+   - `inclusions` e `exclusions`: critérios explícitos de fronteira contábil;
+   - `copyText`: versão estruturada em texto plano para exportação e auditoria.
+
+### 16.2. SSOT & Isolamento de Camadas
+- É expressamente proibido calcular valores ou passos de decomposição matemática dentro de componentes React de UI.
+- O mesmo módulo de domínio puro (`src/domain/`) que alimenta os KPIs da tela fornece o builder estruturado da memória de cálculo correspondente.
+- Todos os formatadores (`formatters.ts`) tratam valores especiais com neutralização matemática: $\text{NaN}$, $\pm\infty$ e denominadores nulos retornam formatações seguras de zero com alertas contextuais.
+
 
 
 

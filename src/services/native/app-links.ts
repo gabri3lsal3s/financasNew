@@ -6,7 +6,7 @@ declare const __APP_VERSION__: string | undefined;
  * Versão oficial vigente do aplicativo Axir (sincronizada dinamicamente com package.json via Vite define).
  */
 export const AXIR_APP_VERSION =
-  typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "3.13.0";
+  typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "3.14.0";
 
 /**
  * Nome canônico do produto.

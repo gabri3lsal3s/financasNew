@@ -48,6 +48,32 @@
 >   - Suíte dedicada `src/tests/portfolio-audit-gate-v3.test.ts` validando os Gates v3.1 a v3.6;
 >   - TypeScript (`tsc -b`) e ESLint 100% limpos (0 erros, 0 avisos).
 
+> **v3.14.0 (Memória de Cálculo, Auditoria Matemática Forense & Explicabilidade Ativa — Fases 1 a 6 Concluídas)** registra a conclusão integral do **Plano Mestre de Memória de Cálculo e Auditoria Matemática** ([`docs/plans/PLANO_MESTRE_MEMORIA_CALCULO_E_AUDITORIA_MATEMATICA.md`](../plans/PLANO_MESTRE_MEMORIA_CALCULO_E_AUDITORIA_MATEMATICA.md)) cumprindo a Regra 33 do `AGENTS.md` em toda a plataforma (2026-11-20):
+> - **(1) Infraestrutura Canônica de Domínio & Tipagem Multi-Unidade (`src/domain/calculation-memory/`)**:
+>   - Contratos de domínio puros (`CalculationBreakdown`, `BreakdownStep`, `BreakdownResult`, `actionLinks`, `copyText`);
+>   - Suporte nativo e tipado a 5 unidades financeiras: `currency` (centavos BRL), `percent` (taxas e rentabilidade), `months` (runway e autonomia), `count` (cotas, parcelas e lançamentos) e `ratio` (múltiplos);
+>   - Utilitários puros `formatters.ts` com proteção estrita contra divisão por zero, `NaN` e `Infinity`;
+>   - Cópia estruturada da memória de cálculo em texto plano formatado em 1 clique para exportação ou auditoria externa.
+> - **(2) Suíte de UI Canônica & Ergonomia Responsiva (`src/components/modules/calculation-memory/`)**:
+>   - `CalculationMemoryTrigger`: botão `?` acessível com área de toque mínima de $44 \times 44\text{px}$ no mobile (`after:-inset-2.5`), anéis de foco visíveis e barreira com 7 handlers de eventos para isolamento total;
+>   - `CalculationMemoryModal`: orquestrador adaptativo com Bottom Sheet nativa deslizante com alça de arraste no mobile (`<Modal />`) e Diálogo centralizado proporcional no desktop;
+>   - `CalculationMemoryView`: visor tabular de passos com operadores matemáticos alinhados, totais com destaque visual e critérios transparentes de inclusão/exclusão.
+> - **(3) Saneamento Forense de Incongruências Matemáticas (Bugs AUD-01 a AUD-10)**:
+>   - `AUD-01`: Reconciliação exata da fórmula e total do Saldo Livre Real (*Safe-to-Spend*) em `RealCashHeroCard`;
+>   - `AUD-02`: Correção de unidade na metodologia TWR do Relatório Executivo (exibição como percentual anualizado em vez de moeda);
+>   - `AUD-04` e `AUD-05`: Padronização de tooltips antigos em `BudgetsLimitsSummaryCard` e agregação de burn rate diário e dias equivalentes comparados nos alertas do `SmartAdvisor`;
+>   - `AUD-06`: Injeção do saldo bancário real em contas e faturas abertas no Balanço Patrimonial 360°;
+>   - `AUD-07`: Memórias de conciliação de acerto de contas mútuo para Modo Família e Modo Viagem;
+>   - `AUD-08`: Seção de diagnóstico com justificativas de corte para ativos preteridos no algoritmo de aporte inteligente.
+> - **(4) Blindagem Arquitetural de Propagação de Eventos (Fase 4.5)**:
+>   - Resolução definitiva de bugs de click-through em mobile touchscreen e abertura múltipla de modais sobrepostos;
+>   - Interceptação e isolamento em `modal.tsx`, `modal-header-bar.tsx`, `calculation-memory-trigger.tsx`, `calculation-memory-modal.tsx` e `kpi-card.tsx`;
+>   - Padronização de estruturas antigas e substituição de popovers instáveis pelo modal canônico.
+> - **(5) Quality Gate & Homologação de Produção**:
+>   - 213 arquivos e 3.043 testes de domínio aprovados com 100% de sucesso (`npm run verify`);
+>   - Testes de regressão dedicados para isolamento de navegação e acionamento de modais;
+>   - TypeScript (`tsc -b`), ESLint e build de produção Vite PWA 100% limpos.
+
 > **v3.13.0 (Laboratório Forense de Auditoria Quantitativa, Sintética e Contínua — Expansão v2.0.0 Holística de Ciclo de Vida)** registra a conclusão integral do **Laboratório Forense de Auditoria Quantitativa, Sintética e Contínua do Axir** ([`docs/architecture/LABORATORIO_FORENSE.md`](../architecture/LABORATORIO_FORENSE.md)) cobrindo todos os 8 pilares funcionais da plataforma (2026-11-19):
 > - **(1) Fundação do Núcleo Isomórfico & Isolamento Modular (Fases 1 e 6)**:
 >   - Todo o código do laboratório isolado em `src/features/admin/forensics/`, desacoplado do aplicativo de usuário comum;

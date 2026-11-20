@@ -1,16 +1,16 @@
 {
-  "version": "3.13.0",
-  "versionCode": 88,
-  "releaseDate": "2026-11-20T12:25:53Z",
-  "minSupportedVersion": "3.13.0",
+  "version": "3.14.0",
+  "versionCode": 89,
+  "releaseDate": "2026-11-20T20:51:50Z",
+  "minSupportedVersion": "3.14.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "91c15f9f2413ba5023ce30e7cb9488d3a347498e367865fe59a70cb760de162e",
-  "fileSizeBytes": 12278513,
+  "sha256": "65a5cc3b21a6d296ca82ce97775086b89c2556ab0ca6452e63833e1c8b25a8bb",
+  "fileSizeBytes": 12298534,
   "changelog": [
-    "Axir v3.13.0 (Build 88): Padronizacao Visual, Acessibilidade & Ergonomia",
-    "Conformidade estrita de acessibilidade WCAG 2.4.7 AA com aneis de foco em 100% dos controles e links",
-    "Decomposicao arquitetural completa: zero arquivos monoliticos (teto rigoroso de 250 linhas em UI)",
-    "Unificacao de tokens de Z-Index e trinca canonica de superficies (border-border/80 bg-surface shadow-xs)",
-    "Laboratorio Forense de Auditoria Quantitativa com 39 invariantes e 8 Golden Journeys homologadas"
+    "Axir v3.14.0 (Build 89): Memoria de Calculo, Auditoria Matematica Forense e Explicabilidade Ativa",
+    "Explicabilidade matematica ativa com gatilhos (?) em todos os KPIs compostos (Dashboard, Contas, Cartoes, Dividas, Investimentos, Aportes, Orcamentos, Relatorios)",
+    "Blindagem arquitetural completa contra duplo disparo e event bubbling em modais no mobile e desktop",
+    "Saneamento matematico forense dos calculos de Safe-to-Spend, TWR %, Balanco Patrimonial 360, taxa de queima (burn rate) e acertos familiares",
+    "Suporte nativo a 5 unidades financeiras (Moeda, Percentual, Meses de Runway, Contadores e Indices) com copia em 1 toque"
   ]
 }
