@@ -128,7 +128,7 @@ export function CaptureNarrative() {
             </Badge>
           </div>
 
-          <div className="p-3.5 sm:p-4 rounded-xl bg-surface-raised/60 border border-border/70 space-y-1.5">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-surface-raised/60 border border-border/80 space-y-1.5">
             <div className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
               <span className="font-semibold text-foreground flex items-center gap-1.5">
                 <FileText className="size-3.5 text-primary" aria-hidden="true" />
@@ -152,19 +152,19 @@ export function CaptureNarrative() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
-              <div className="p-2.5 rounded-lg bg-surface border border-border/60 min-w-0">
+              <div className="p-2.5 rounded-lg bg-surface border border-border/80 min-w-0">
                 <span className="text-muted-foreground block text-[11px] font-sans">Favorecido</span>
                 <span className="font-bold text-foreground block break-words">Padaria Bella</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-surface border border-border/60 min-w-0">
+              <div className="p-2.5 rounded-lg bg-surface border border-border/80 min-w-0">
                 <span className="text-muted-foreground block text-[11px] font-sans">Valor</span>
                 <MoneyText cents={4290} tone="negative" className="font-bold text-xs" />
               </div>
-              <div className="p-2.5 rounded-lg bg-surface border border-border/60 min-w-0">
+              <div className="p-2.5 rounded-lg bg-surface border border-border/80 min-w-0">
                 <span className="text-muted-foreground block text-[11px] font-sans">Categoria</span>
                 <span className="font-bold text-foreground block break-words">Alimentação</span>
               </div>
-              <div className="p-2.5 rounded-lg bg-surface border border-border/60 min-w-0">
+              <div className="p-2.5 rounded-lg bg-surface border border-border/80 min-w-0">
                 <span className="text-muted-foreground block text-[11px] font-sans">Pagamento</span>
                 <span className="font-bold text-foreground block">Pix</span>
               </div>

@@ -44,7 +44,7 @@ export function AuthShell({ title, subtitle, children, sideHero, className }: Au
                   className="pointer-events-none absolute -bottom-24 -right-24 size-64 rounded-full bg-accent/10 blur-3xl"
                   aria-hidden="true"
                 />
-                <div className="relative z-1 flex flex-col justify-between h-full gap-8">
+                <div className="relative flex flex-col justify-between h-full gap-8">
                   {sideHero}
                 </div>
               </div>

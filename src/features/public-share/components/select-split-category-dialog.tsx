@@ -95,7 +95,7 @@ export function SelectSplitCategoryDialog({
                     setSelectedId(category.id);
                   }}
                   className={cn(
-                    "flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors cursor-pointer",
+                    "flex items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                     isSelected
                       ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary"
                       : "border-border/80 bg-surface hover:bg-surface-hover text-muted-foreground",

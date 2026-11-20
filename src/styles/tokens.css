@@ -100,17 +100,22 @@ html[data-theme="light"] {
   /* Ícones Lucide — Espessura única de traço (unificada em 1.85px) */
   --icon-stroke-width: 1.85px;
 
-  /* Escala centralizada e padronizada de Z-Index (dropdowns < tooltips < bottom bar < modais < toasts) */
+  /* Escala centralizada e padronizada de Z-Index (fundos < base < sticky < docks < sidebar < modais < popovers < toasts < spotlight) */
+  --z-deep-background: -10;
+  --z-card-raised: 1;
   --z-base: 10;
   --z-sticky: 20;
   --z-dropdown: 20;
   --z-page-floating: 24;
   --z-tooltip: 25;
   --z-bottom-nav: 30;
+  --z-dock: 30;
   --z-sidebar: 40;
   --z-modal: 50;
   --z-floating-tools: 60;
+  --z-popover: 60;
   --z-toast: 70;
+  --z-spotlight: 80;
 }
 
 /* ----------------------------------------------------------------

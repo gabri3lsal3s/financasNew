@@ -35,8 +35,9 @@ export function PricingSection() {
                 triggerSensory("selection");
                 setIsAnnual(false);
               }}
+              aria-pressed={!isAnnual}
               className={cn(
-                "min-h-11 px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors cursor-pointer inline-flex items-center justify-center",
+                "min-h-11 px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors cursor-pointer inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 !isAnnual
                   ? "bg-primary-strong text-primary-foreground dark:bg-primary shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
@@ -50,8 +51,9 @@ export function PricingSection() {
                 triggerSensory("selection");
                 setIsAnnual(true);
               }}
+              aria-pressed={isAnnual}
               className={cn(
-                "min-h-11 px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5",
+                "min-h-11 px-4 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 isAnnual
                   ? "bg-primary-strong text-primary-foreground dark:bg-primary shadow-sm"
                   : "text-muted-foreground hover:text-foreground",

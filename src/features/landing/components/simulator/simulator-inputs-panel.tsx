@@ -47,8 +47,9 @@ export function SimulatorInputsPanel({
                 triggerSensory("selection", { skipSound: true });
                 onStrategyChange(key);
               }}
+              aria-pressed={strategy === key}
               className={cn(
-                "min-h-11 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer border text-center whitespace-nowrap",
+                "min-h-11 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer border text-center whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 strategy === key
                   ? "bg-primary-strong text-primary-foreground border-primary-strong dark:bg-primary dark:border-primary shadow-xs font-bold"
                   : "bg-surface border-border/80 text-muted-foreground hover:text-foreground hover:border-border",
@@ -88,8 +89,9 @@ export function SimulatorInputsPanel({
                   triggerSensory("selection", { skipSound: true });
                   onPatrimonyBaseChange(val);
                 }}
+                aria-pressed={patrimonyBase === val}
                 className={cn(
-                  "min-h-11 py-2 px-2 rounded-xl text-xs font-mono font-semibold transition-colors cursor-pointer border text-center whitespace-nowrap tabular-nums",
+                  "min-h-11 py-2 px-2 rounded-xl text-xs font-mono font-semibold transition-colors cursor-pointer border text-center whitespace-nowrap tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   patrimonyBase === val
                     ? "bg-primary-strong text-primary-foreground border-primary-strong dark:bg-primary dark:border-primary shadow-xs font-bold"
                     : "bg-surface border-border/80 text-muted-foreground hover:text-foreground hover:border-border",
@@ -128,8 +130,9 @@ export function SimulatorInputsPanel({
                   triggerSensory("selection", { skipSound: true });
                   onAporteAmountChange(val);
                 }}
+                aria-pressed={aporteAmount === val}
                 className={cn(
-                  "min-h-11 py-2 px-2 rounded-xl text-xs font-mono font-semibold transition-colors cursor-pointer border text-center whitespace-nowrap tabular-nums",
+                  "min-h-11 py-2 px-2 rounded-xl text-xs font-mono font-semibold transition-colors cursor-pointer border text-center whitespace-nowrap tabular-nums focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   aporteAmount === val
                     ? "bg-primary-strong text-primary-foreground border-primary-strong dark:bg-primary dark:border-primary shadow-xs font-bold"
                     : "bg-surface border-border/80 text-muted-foreground hover:text-foreground hover:border-border",

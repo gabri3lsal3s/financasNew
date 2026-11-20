@@ -77,7 +77,7 @@ export function FamilyShareAssetsContent({
                   onToggleClass(cls);
                 }}
                 className={cn(
-                  "flex items-center justify-between p-2.5 rounded-xl border text-xs font-medium transition-all text-left cursor-pointer",
+                  "flex items-center justify-between min-h-11 sm:min-h-10 p-2.5 rounded-xl border text-xs font-medium transition-all text-left cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   isSelected
                     ? "border-primary/40 bg-primary/10 text-primary-strong"
                     : "border-border/80 bg-surface hover:border-border text-foreground",

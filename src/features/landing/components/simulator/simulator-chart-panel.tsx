@@ -60,7 +60,7 @@ export function SimulatorChartPanel({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="relative cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
+                  className="relative cursor-pointer max-sm:after:absolute max-sm:after:-inset-2 rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   aria-label="Como calculamos a rentabilidade da projeção"
                 >
                   <Badge variant="default" size="xs" className="font-mono">

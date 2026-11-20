@@ -72,7 +72,7 @@ export function FireProjectionMetrics({
           type="button"
           onClick={() => onSelectMilestone(0)}
           className={cn(
-            "min-h-11 sm:min-h-9 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border text-center font-semibold",
+            "min-h-11 sm:min-h-9 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border text-center font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
             activePoint.year === 0
               ? "bg-primary-strong text-primary-foreground border-primary-strong dark:bg-primary dark:border-primary"
               : "bg-surface border-border/80 text-muted-foreground hover:text-foreground",
@@ -86,7 +86,7 @@ export function FireProjectionMetrics({
             type="button"
             onClick={() => onSelectMilestone(fireCrossover.year)}
             className={cn(
-              "min-h-11 sm:min-h-9 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border text-center font-semibold flex items-center gap-1.5",
+              "min-h-11 sm:min-h-9 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border text-center font-semibold flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               activePoint.year === fireCrossover.year
                 ? "bg-positive/15 border-positive-strong text-positive-strong shadow-xs"
                 : "bg-surface border-positive-strong/40 text-positive-strong hover:bg-positive/10",

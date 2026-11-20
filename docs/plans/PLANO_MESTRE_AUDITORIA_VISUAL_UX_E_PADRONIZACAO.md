@@ -1,12 +1,12 @@
 # PLANO MESTRE DE AUDITORIA VISUAL, UI/UX E PADRONIZAÇÃO ARQUITETURAL
 
 > **Documento Canônico de Governança, Engenharia de Design System e Auditoria de Interface**  
-> **Status:** Ativo / Fase 0 Aprimorada, Blindada e Consolidada  
-> **Versão:** 2.0 (Revisão Técnica Profunda)  
+> **Status:** Ativo / Fase 0 Concluída, Blindada e 100% Validada  
+> **Versão:** 7.0 (Tratado Operacional Completo: 20 Dimensões Canônicas + 9 Partes Balanceadas + Ciclo de Vida dos Relatórios)  
 > **Arquivo:** `docs/plans/PLANO_MESTRE_AUDITORIA_VISUAL_UX_E_PADRONIZACAO.md`  
-> **Escopo:** 100% da camada de interface do Axir (`src/styles/`, `src/components/`, `src/features/`, `src/pages/`, `src/app/`)  
+> **Escopo:** 100% da camada de interface do Axir (Todas as 22 Features, 35+ Rotas, 860+ Arquivos)  
 > **Diretório Oficial de Relatórios:** `docs/reports/auditoria-visual/`  
-> **Meta Final:** Emissão de 7 Relatórios Fragmentados + Plano Mestre de Implementação e Correção
+> **Meta Final:** Emissão de 9 Relatórios Fragmentados + Plano Mestre de Implementação e Correção
 
 ---
 
@@ -14,22 +14,107 @@
 
 Este Plano Mestre rege a auditoria técnica mais abrangente já executada no **Axir**. Seu propósito é transformar a interface do produto em um padrão de referência de classe mundial em finanças pessoais e inteligência patrimonial, eliminando desvios ergonômicos, assimetrias visuais, poluição cognitiva e códigos duplicados.
 
-### Os 5 Pilares de Excelência Deste Plano:
+### Os 5 Pilares Estratégicos:
 1. **Padronização Visual Absoluta:** Unificar alturas, superfícies, sombras, raios de borda, tipografia e espaçamentos em uma régua rítmica coesa baseada em tokens.
-2. **Componentização Atômica & Princípio DRY Estrito:** Garantir que elementos repetidos 2+ vezes sejam extraídos para componentes reutilizáveis, pequenos (teto de 150 a 250 linhas) e altamente especializados, permitindo manutenções rápidas na raiz sem duplicar JSX.
-3. **Ergonomia Móvel e Conforto de Uso:** Erradicar o "efeito visor estreito" (*viewport squeeze*), cortes secos de cabeçalhos, botões que rolam fora do alcance, desalinhamentos em grids (*staircase effect*) e conflitos com o teclado virtual e a safe area do iOS.
-4. **Governança de Temas e Integridade Cromática:** Blindar o sistema contra aberrações cromáticas em todas as 18 combinações de temas (`light`, `dark`, `oled`) e acentos (`teal`, `gold`, `sapphire`, `violet`, `rose`, `mono`), garantindo que cores semânticas financeiras (receita, despesa, aporte) jamais sejam confundidas com a cor de destaque da marca.
-5. **Expurgo Sistemático de Código Morto:** Mapear e eliminar componentes zumbis, variantes não utilizadas, estilos CSS obsoletos e redundâncias arquiteturais.
+2. **Matriz Oficial da Cor de Destaque & Pirâmide de Botões:** Definir com precisão matemática quais elementos herdam e quais são proibidos de herdar o acento customizável do usuário, e estruturar a hierarquia de botões em 5 níveis de peso visual.
+3. **Componentização Atômica & Princípio DRY Estrito:** Garantir que elementos repetidos 2+ vezes sejam extraídos para componentes reutilizáveis, pequenos (teto de 150 a 250 linhas) e altamente especializados, permitindo manutenções rápidas na raiz sem duplicar JSX.
+4. **Ergonomia Móvel e Conforto de Uso:** Erradicar o "efeito visor estreito" (*viewport squeeze*), cortes secos de cabeçalhos, botões que rolam fora do alcance, desalinhamentos em grids (*staircase effect*) e conflitos com o teclado virtual e a safe area do iOS.
+5. **Acessibilidade, Privacidade e Desempenho 60/120fps:** Garantir conformidade WCAG AA (foco visível unificado, botões de ícone com descrição acessível), blindagem do escudo de privacidade contra vazamento de dados e animações leves (*zero layout reflow*).
 
 ---
 
-## 2. FASE 0: CONSOLIDAÇÃO CANÔNICA DAS REGRAS DE DESIGN & UI/UX
+## 2. MATRIZ OFICIAL DE HERANÇA DA COR DE DESTAQUE (`primary` / `data-accent`)
 
-Todas as regras descritas no `AGENTS.md`, `DESIGN_RULES.md` e `DESIGN_SYSTEM.md` foram integradas e aprofundadas com critérios geométricos avançados. A auditoria fragmentada utilizará as **14 Dimensões de Avaliação Técnica** a seguir como régua inflexível:
+O Axir permite ao usuário escolher sua cor de destaque preferida nas Configurações de Aparência (`data-accent="teal|gold|sapphire|violet|rose|mono"`). Essa seleção muta dinamicamente as variáveis `--primary`, `--primary-strong` e `--ring`. 
+
+Para garantir congruência e evitar aberrações cromáticas (ex.: receitas ficarem vermelhas quando o acento for `rose`, ou o botão de fechar sumir em `mono`), estabelecemos a **Matriz Oficial de Herança**:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   AS 14 DIMENSÕES TÉCNICAS DA AUDITORIA                │
+│              MATRIZ DE HERANÇA DA COR DE DESTAQUE (ACCENT)             │
+├────────────────────────────────────────────────────────────────────────┤
+│ ONDE É OBRIGATÓRIO HERDAR A COR DE DESTAQUE                            │
+│  1. Botão CTA Primário Sólido (`variant="solid"`): bg-primary-strong   │
+│  2. Botão de Destaque Secundário (`variant="default"`): bg-primary/10  │
+│  3. Links interativos e âncoras de ação rápida (text-primary-strong)   │
+│  4. Aba ativa (Tabs): borda inferior border-primary ou bg-primary/15   │
+│  5. Item ativo na navegação lateral (Sidebar) e móvel (BottomNav)      │
+│  6. Controles checados/ativos: Switch, Checkbox, RadioGroup            │
+│  7. Chips de filtro ativos e ChoiceCard selecionado                    │
+│  8. Anel de foco acessível (:focus-visible:ring-ring)                  │
+│  9. Borda ativa de campos em digitação (focus:border-primary)          │
+│ 10. Alça deslizante (pill handle) no topo de modais mobile             │
+│ 11. Círculo do passo ativo em Steppers e Wizards                       │
+├────────────────────────────────────────────────────────────────────────┤
+│ ONDE É EXPRESSAMENTE PROIBIDO HERDAR A COR DE DESTAQUE                 │
+│  1. Dados e Valores Monetários Financeiros:                            │
+│     - Receitas / Saldo Positivo: SEMPRE token fixo --positive (Teal)   │
+│     - Despesas / Saldo Negativo: SEMPRE token fixo --negative (Coral)  │
+│     - Metas / Atenção / Prazos: SEMPRE token fixo --warning (Âmbar)    │
+│     - Inadimplência / Estouro: SEMPRE token fixo --critical (Vermelho) │
+│     - Investimentos / Aportes: SEMPRE token fixo --portfolio (Azul)    │
+│  2. Badges de Status Financeiro:                                       │
+│     - Pago (positive), Aberto (muted), Atrasado (critical)             │
+│     - PROIBIDO usar variant="default" (accent) em status financeiro    │
+│  3. Ícones Descritivos Estáticos (Regra 13 Nível 1):                   │
+│     - Ícones em cabeçalhos de cards comuns usam text-muted-foreground  │
+│  4. Superfícies e Fundos de Tela:                                      │
+│     - Fundo é sempre --surface ou --background (nunca bg-primary)      │
+│  5. Paleta de Categorias de Orçamento (--cat-1 a --cat-10)             │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. PIRÂMIDE DE HIERARQUIA VISUAL E PADRONIZAÇÃO DE BOTÕES (`<Button />`)
+
+Padronizamos o uso de botões em uma pirâmide rigorosa de 5 níveis de peso visual, eliminando disputas óticas e hesitação do usuário:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                   PIRÂMIDE DE HIERARQUIA VISUAL DE BOTÕES              │
+├────────────────────────────────────────────────────────────────────────┤
+│ NÍVEL 1: CTA Primário Sólido (`variant="solid"`)                       │
+│          - bg-primary-strong text-primary-foreground                   │
+│          - Teto estrito: 1 único botão por viewport                    │
+│          - Papel: Concluir, Salvar, Confirmar Aporte, Finalizar        │
+│                                                                        │
+│ NÍVEL 2: Destaque Secundário Tinted (`variant="default"`)              │
+│          - bg-primary/10 border-primary/25 text-primary-strong         │
+│          - Papel: Ações contextuais de destaque secundário na tela     │
+│                                                                        │
+│ NÍVEL 3: Neutro Estrutural (`variant="outline"`)                       │
+│          - border-border bg-surface text-foreground                    │
+│          - Papel: Cancelar, Voltar, Exportar, Fechar secundário        │
+│                                                                        │
+│ NÍVEL 4: Baixo Peso / Minimalista (`variant="ghost"`)                  │
+│          - 100% transparente com hover suave text-foreground           │
+│          - Papel: Botão fechar (X), ações em linhas de tabela, abas    │
+│                                                                        │
+│ NÍVEL 5: Ação Destrutiva Isolada (`variant="destructive"`)             │
+│          - bg-critical/10 border-critical/40 text-critical-strong      │
+│          - Papel: Excluir, Deletar, Resetar, Desvincular               │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Regras de Combinação e Ergonomia de Rodapés:
+1. **Em Diálogos e Modais de Formulário:**
+   - Desktop: Cancelar (`variant="outline"`) à esquerda, Salvar/Confirmar (`variant="solid"`) à direita (`sm:justify-end`).
+   - Mobile: Par de 2 botões em grid simétrico `grid grid-cols-2 gap-2` (Cancelar à esquerda, Confirmar à direita).
+2. **Em Modais com Ação Destrutiva (prop `destructiveAction`):**
+   - Desktop: Excluir (`variant="destructive"`) alinhado à extrema esquerda (`mr-auto`), Cancelar (`variant="outline"`) e Salvar (`variant="solid"`) à direita.
+   - Mobile: Cancelar e Salvar no grid horizontal superior, e Excluir isolado abaixo (`order-last w-full mt-2`), prevenindo toques acidentais e colunas desiguais.
+3. **Proibição de Disputa Primária:** É proibido renderizar dois botões `variant="solid"` na mesma seção. Apenas uma ação deve ser o foco primário.
+
+---
+
+## 4. CONSOLIDAÇÃO CANÔNICA DAS 20 DIMENSÕES DE AUDITORIA
+
+Avaliamos e adicionamos apenas regras leves, de alto retorno e zero sobrecarga de engenharia. A régua de avaliação passa a contar com **20 Dimensões Canônicas**:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                   AS 20 DIMENSÕES TÉCNICAS DA AUDITORIA                │
 ├────────────────────────────────────────────────────────────────────────┤
 │ 01. Governança Canônica de Modais & Drawers (Primitivo Único)          │
 │ 02. Matriz de Temas e Cor de Destaque (18 Combinações Sem Conflito)    │
@@ -45,12 +130,18 @@ Todas as regras descritas no `AGENTS.md`, `DESIGN_RULES.md` e `DESIGN_SYSTEM.md`
 │ 12. Hierarquia Centralizada de Z-Index (Tokens de 10 a 70)             │
 │ 13. Governança Sensorial, Tátil e Acessibilidade de Movimento          │
 │ 14. Componentização Atômica, DRY Estrito e Expurgo de Código Morto     │
+│ 15. Acessibilidade A11y, Foco Visível Canônico e Botões de Ícone       │
+│ 16. Estados Tríplices (Loading, Error, Empty) & Defesa de Forms        │
+│ 17. Semáforo Cognitivo Padronizado em Badges de Status                 │
+│ 18. Feedback de Cópia (Clipboard Micro-UX) & Zero CLS em Imagens       │
+│ 19. Blindagem do Escudo de Privacidade (Zero Vazamento em .num)        │
+│ 20. Anatomia de Navegação Temporal (Mês / Ano / Período)               │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### 2.1 Detalhamento Técnico das 14 Dimensões
+### 4.1 Detalhamento Operacional das 20 Dimensões
 
 #### Dimensão 01: Governança Canônica de Modais & Drawers
 - **Primitivo Único Obrigatório:** Todo modal ou gaveta do sistema utiliza o primitivo canônico `src/components/ui/modal.tsx` (ou o alias `ResponsiveDialog`). É proibido recriar drawers ou modais usando `fixed inset-0` manuais (caso de `LandingMobileDrawer` e `AdminMobileDrawer`, que devem ser convertidos ou padronizados).
@@ -134,9 +225,39 @@ Todas as regras descritas no `AGENTS.md`, `DESIGN_RULES.md` e `DESIGN_SYSTEM.md`
 - **Princípio DRY Absoluto:** Todo padrão visual ou marcação JSX repetida em 2 ou mais locais deve ser extraído para `components/ui/` (primitivo) ou `components/modules/` (domínio).
 - **Mapeamento de Código Morto:** Rastreamento sistemático de componentes não importados, variantes zumbis e utilitários obsoletos para remoção no Plano de Execução.
 
+#### Dimensão 15: Acessibilidade A11y, Foco Visível Canônico e Botões de Ícone
+- **Anel de Foco Unificado (WCAG 2.4.7):** Todo elemento focável utiliza obrigatoriamente `focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring`. É proibido aplicar cores arbitrárias de ring (`ring-primary/40`, `ring-positive/30`).
+- **Botões de Ícone com Descrição Acessível Obrigatória:** Todo `<Button size="icon">` deve conter obrigatoriamente `aria-label="..."` e `title="..."`, ou um nó filho `<span className="sr-only">...</span>`. Ícones decorativos em botões com texto devem possuir `aria-hidden="true"`.
+- **Régua de Contraste Tipográfico:** Textos secundários devem atingir no mínimo relação de contraste de 4.5:1 (WCAG AA).
+
+#### Dimensão 16: Estados Tríplices (Loading, Error, Empty) & Defesa de Forms
+- **Telas e Cards com 3 Estados Obrigatórios:** Loading com skeleton espelhado (Zero CLS), ErrorState canônico com retry, EmptyState calmo.
+- **Defesa contra Descarte Acidental em Formulários:** Formulários densos em modais ($\ge 3$ campos) com dados preenchidos (`isDirty`) devem prevenir fechamento acidental por clique externo no backdrop (`onPointerDownOutside={(e) => e.preventDefault()}`).
+- **Performance de Animações (Zero Layout Reflow):** Transições interativas devem utilizar propriedades aceleradas por GPU (`transform`, `opacity`), evitando `transition-[width,height,margin]`.
+
+#### Dimensão 17: Semáforo Cognitivo Padronizado em Badges de Status
+- **Pago / Concluído / Positivo:** `variant="positive"` (`bg-positive/12 text-positive-strong`).
+- **Atenção / Próximo / Prazo Curto:** `variant="warning"` (`bg-warning/15 text-warning-strong`).
+- **Atrasado / Excedido / Rejeitado:** `variant="critical"` (`bg-critical/12 text-critical-strong`).
+- **Neutro / Aberto / Pendente:** `variant="muted"` (`bg-muted text-muted-foreground`).
+- **Proibição Expressa:** Nunca utilizar `variant="default"` (que herda a cor de destaque da marca) para status financeiro.
+
+#### Dimensão 18: Feedback de Cópia (Clipboard Micro-UX) & Zero CLS em Imagens
+- **Micro-feedback de Cópia:** Todo botão de cópia deve alternar temporariamente o ícone de `Copy` para `Check` por 1.8 segundos com micro-feedback tátil `sensory.selection()`.
+- **Zero CLS em Imagens e Avatares:** Bandeiras de cartão, logos e avatares assíncronos possuem dimensões geométricas pré-reservadas (`size-7`, `size-8`, etc.) com contêiner neutro para evitar saltos visuais.
+- **Alívio de Filtros CSS no Mobile (60fps Lisos):** Barras fixas e modais móveis adotam teto de `backdrop-blur-xs` ou `backdrop-blur-sm` (4px a 8px) com alta opacidade (`bg-surface/95`), eliminando superaquecimento ou dreno de bateria.
+
+#### Dimensão 19: Blindagem do Escudo de Privacidade (Zero Vazamento em .num)
+- **Princípio da Proteção Ativa:** O modo privacidade ofusca valores através do seletor CSS `html[data-privacy="masked"] .num, html[data-privacy="masked"] .privacy-mask`.
+- **Proibição de Strings Financeiras Cruas:** É expressamente proibido renderizar valores monetários ou patrimoniais como strings literais sem o componente `<MoneyText />` ou sem a classe `.num`. Qualquer número monetário sem essa proteção vaza dados visíveis mesmo quando o usuário ativa o Modo Privacidade em locais públicos.
+
+#### Dimensão 20: Anatomia Canônica de Navegação Temporal (Mês / Ano / Período)
+- **Seletor de Competência Padronizado:** Seletores de mês (`MonthPicker`) e ano (`YearPicker`) devem utilizar navegação simétrica com botões de ícone compactos (`size="sm"`), setas `ChevronLeft` e `ChevronRight` de traço único, label centralizado legível em caixa alta discreta e atalho para o mês vigente ("Mês Atual"), sem o uso de controles `<select>` nativos.
+- **Datas em Timezone Local (Regra AGENTS.md §5):** Proibido utilizar `toISOString()` para manipulação ou exibição de datas de competência, prevenindo deslocamento indevido de fuso horário UTC (bug do dia anterior).
+
 ---
 
-### 2.2 Matriz Canônica de Raio de Borda (Border Radius)
+### 4.2 Matriz Canônica de Raio de Borda (Border Radius)
 
 | Nível Arquitetural | Token / Classe | Valor Pixels | Onde Deve Ser Aplicado | Proibições Expressas |
 |---|---|---|---|---|
@@ -148,85 +269,48 @@ Todas as regras descritas no `AGENTS.md`, `DESIGN_RULES.md` e `DESIGN_SYSTEM.md`
 
 ---
 
-### 2.3 Matriz de Intenção e Variantes de Botões (`<Button />`)
+## 5. O CRONOGRAMA REBALANCEADO DAS 9 PARTES DA AUDITORIA
 
-| Variante | Estilo Visual | Papel no Sistema | Onde É Permitido | Onde É Proibido |
-|---|---|---|---|---|
-| `solid` | `bg-primary-strong text-primary-foreground` | **CTA Primário Único de Conclusão** | Botão principal de "Salvar" no modal, "Concluir Lançamento", "Confirmar Aporte" | Proibido ter 2 botões `solid` na mesma viewport |
-| `default` | `bg-primary/10 border-primary/25 text-primary-strong` | Destaque secundário com tom suave | Botões de ação em cabeçalhos de card, atalhos de filtro, links de ação rápida | Proibido usar como botão de cancelamento |
-| `outline` | `border-border bg-surface text-foreground` | Ação secundária neutra | Botão "Cancelar" em diálogos, "Voltar", "Exportar Relatório" | Proibido usar quando a ação for destrutiva |
-| `ghost` | Transparente com hover suave | Ação de baixo peso visual | Botão fechar (`X`), ícones de tabela, navegação em abas, links discretos | Proibido usar como único botão de submissão de formulário |
-| `destructive` | `bg-critical/10 border-critical/40 text-critical-strong` | Ação destrutiva ou remoção | "Excluir Conta", "Remover Cartão", "Excluir Transação" | Proibido usar em cancelamentos simples |
+Com a separação equilibrada, todas as partes possuem carga homogênea de arquivos e foco claro:
 
----
-
-### 2.4 Matriz de Defesa contra Casos Extremos de Conteúdo (Edge Cases)
-
-| Cenário Extremo | Comportamento Proibido (Bug Visual) | Comportamento Canônico Obrigatório |
-|---|---|---|
-| **Valor Monetário Astronômico** (ex: `R$ 14.850.230,45`) | Truncar com `...` escondendo centavos ou empurrar botões vizinhos para fora da tela | Tipografia adaptativa com auto-fit (`text-base sm:text-lg lg:text-xl`), `tabular-nums whitespace-nowrap` e desênfase de centavos (`M6`) |
-| **Nome de Transação / Ativo Gigante** (ex: 50+ caracteres) | Estourar a largura do card em 1 linha ou quebrar uma única letra na linha de baixo | `line-clamp-2 break-words` com contêiner pai `min-w-0 flex-1`, garantindo leitura íntegra em até 2 linhas |
-| **Tela Super-Estreita (iPhone SE / Galaxy Fold 320px–375px)** | Esmagamento de botões de rodapé ou corte de ações à direita | Grid `grid-cols-2 gap-2` em rodapés de 2 botões; rolagem horizontal suave (`overflow-x-auto`) em abas e filtros |
-| **Teclado Virtual Aberto no Mobile** | Cabeçalho e rodapé fixos esmagam o formulário para uma fresta de 50px | Cabeçalho móvel integrado ao scroll livre; inputs com scroll automático garantido |
-| **Conta Virgem (Zero Dados Registrados)** | Home cheia de cards vazios com `R$ 0,00` e gráficos zerados (*cold-start anxiety*) | Renderização acolhedora do `<VirginAccountHero />` com 3 ações claras de partida |
+| Parte | Domínio de Auditoria | Features e Escopo Auditado | Relatório Gerado |
+|---|---|---|---|
+| **Parte 1** | **Fundação, Tokens, Primitivos de UI e App Shell** | `src/styles/*`, `src/components/ui/*`, `src/components/layout/*`, `src/app/app-lock-overlay.tsx` | `docs/reports/auditoria-visual/PARTE_1_FUNDACAO_TOKENS_PRIMITIVOS_E_SHELL.md` |
+| **Parte 2** | **Módulos Compartilhados de Domínio e Gráficos SVG** | `src/components/modules/*`, motores SVG em `src/domain/charts/` | `docs/reports/auditoria-visual/PARTE_2_MODULOS_COMPARTILHADOS_E_GRAFICOS.md` |
+| **Parte 3** | **Núcleo Transacional & Cartões de Crédito** | `src/features/transactions/*` (incluindo `share-target-page`), `src/features/cards/*` | `docs/reports/auditoria-visual/PARTE_3_NUCLEO_TRANSACIONAL_E_CARTOES.md` |
+| **Parte 4** | **Orçamentos, Dívidas, Financiamentos, Metas e Lembretes** | `src/features/budgets/*`, `src/features/debts/*`, `src/features/goals/*`, `src/features/reminders/*` | `docs/reports/auditoria-visual/PARTE_4_ORCAMENTOS_DIVIDAS_E_METAS.md` |
+| **Parte 5** | **Inteligência Patrimonial, Aportes & Relatórios** | `src/features/investments/*`, `src/features/reports/*` (incluindo Tear Sheet e exportação A4) | `docs/reports/auditoria-visual/PARTE_5_PATRIMONIO_APORTES_E_RELATORIOS.md` |
+| **Parte 6** | **Visão Geral (Home / Dashboard), Insights & Tools** | `src/features/overview/*`, `src/features/insights/*`, `src/features/tools/*` (simuladores abertos) | `docs/reports/auditoria-visual/PARTE_6_HOME_DASHBOARD_E_INSIGHTS.md` |
+| **Parte 7** | **Módulos Colaborativos & Links Públicos Compartilhados** | `src/features/family/*`, `src/features/trips/*`, `src/features/public-share/*` | `docs/reports/auditoria-visual/PARTE_7_MODULOS_COLABORATIVOS_E_PUBLICOS.md` |
+| **Parte 8** | **Configurações, Faturamento (Asaas) e Onboarding** | `src/features/settings/*`, `src/features/subscription/*`, `src/features/onboarding/*`, `src/features/demo-tour/*` | `docs/reports/auditoria-visual/PARTE_8_CONFIGURACOES_ASSINATURAS_E_ONBOARDING.md` |
+| **Parte 9** | **Casca Pública, Autenticação, Legal e Painel Admin** | `src/features/landing/*`, `src/features/auth/*`, `src/features/legal/*`, `src/features/admin/*` | `docs/reports/auditoria-visual/PARTE_9_LANDING_AUTH_LEGAL_E_ADMIN.md` |
 
 ---
 
-## 3. ARQUITETURA DE COMPONENTIZAÇÃO ATÔMICA & DECOMPOSIÇÃO DRY
+## 6. PROTOCOLO OPERACIONAL & CICLO DE VIDA DE CADA PARTE
 
-Para que as futuras refatorações sejam sustentáveis e o código permaneça limpo, estabelecemos as diretrizes de decomposição:
+Para garantir execução cirúrgica, cada uma das 9 partes cumprirá rigorosamente o seguinte ciclo de vida em 4 passos:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   DIRETRIZ DE ARQUITETURA DE COMPONENTES               │
+│                   CICLO DE VIDA OPERACIONAL DE CADA PARTE              │
+├────────────────────────────────────────────────────────────────────────┤
+│ 1. Varredura Heurística Automatizada (Terminal / Scripts)              │
+│    Execução dos 11 comandos de detecção de anomalias na pasta-alvo.    │
+│                                                                        │
+│ 2. Inspeção Manual Código a Código (Auditoria Humana Aprofundada)      │
+│    Verificação de cada arquivo contra as 20 Dimensões Canônicas.       │
+│                                                                        │
+│ 3. Emissão do Relatório Técnico Fragmentado (.md)                      │
+│    Gravação em docs/reports/auditoria-visual/PARTE_X_...md             │
+│                                                                        │
+│ 4. Apresentação Executiva & Portão de Bloqueio                         │
+│    Apresentação do resumo ao usuário e parada obrigatória aguardando   │
+│    aprovação formal antes de iniciar a próxima parte.                  │
 └────────────────────────────────────────────────────────────────────────┘
-
-    src/components/ui/                Primitivos puros e agnósticos
-    ├── modal.tsx                     (Apenas tokens CSS e eventos Radix)
-    ├── button.tsx                    Zero regras de negócio / Zero dados
-    └── money-text.tsx
-
-    src/components/modules/           Componentes compartilhados de domínio
-    ├── transaction-row.tsx           (Recebem dados tipados por props)
-    ├── cash-kpi-card.tsx             Zero fetch direto / Formatação via services
-    └── position-table.tsx
-
-    src/features/<nome>/              Componentes especialistas de tela
-    ├── pages/                        Orquestradores de estado e mutações
-    └── components/                   Decompostos em arquivos atômicos (<200 linhas)
-        └── asset-detail/             Subpasta colocalizada para partes do componente
-            ├── asset-hero-summary.tsx
-            ├── asset-position-metrics-grid.tsx
-            └── asset-allocation-card.tsx
 ```
 
-### Regras de Ouro da Decomposição:
-1. **Regra dos 250 Linhas:** Se um componente ultrapassar 250 linhas, ele DEVE ser dividido em sub-blocos lógicos colocados em uma subpasta com o mesmo nome (ex.: `features/transactions/components/split/`).
-2. **Componentes sem Acesso Direto a Dados:** Componentes em `src/components/modules/` não fazem chamadas a `src/data/` nem executam queries do Supabase diretamente. Eles recebem propriedades tipadas e usam formatadores de `src/services/`.
-3. **Limpeza Sistemática de Código Zumbi:** Ao refatorar componentes, qualquer arquivo que perca suas referências ou exportação morta deve ser imediatamente listado para remoção.
-
----
-
-## 4. O CRONOGRAMA DAS 7 PARTES DA AUDITORIA
-
-A execução da auditoria foi particionada para cobrir o aplicativo de ponta a ponta. Cada parte gerará um relatório técnico `.md` independente no diretório `docs/reports/auditoria-visual/`:
-
-| Parte | Domínio de Auditoria | Arquivos Auditados | Relatório Gerado |
-|---|---|---|---|
-| **Parte 1** | **Fundação, Tokens, Primitivos de UI e App Shell** | `src/styles/*`, `src/components/ui/*`, `src/components/layout/*` | `docs/reports/auditoria-visual/PARTE_1_FUNDACAO_TOKENS_PRIMITIVOS_E_SHELL.md` |
-| **Parte 2** | **Módulos Compartilhados de Domínio e Gráficos SVG** | `src/components/modules/*`, motores SVG em `src/domain/charts/` | `docs/reports/auditoria-visual/PARTE_2_MODULOS_COMPARTILHADOS_E_GRAFICOS.md` |
-| **Parte 3** | **Núcleo Transacional & Cartões de Crédito** | `src/features/transactions/*`, `src/features/cards/*` | `docs/reports/auditoria-visual/PARTE_3_NUCLEO_TRANSACIONAL_E_CARTOES.md` |
-| **Parte 4** | **Orçamentos, Dívidas, Financiamentos & Metas** | `src/features/budgets/*`, `src/features/debts/*`, `src/features/goals/*` | `docs/reports/auditoria-visual/PARTE_4_ORCAMENTOS_DIVIDAS_E_METAS.md` |
-| **Parte 5** | **Inteligência Patrimonial, Aportes & Relatórios** | `src/features/investments/*`, `src/features/reports/*` | `docs/reports/auditoria-visual/PARTE_5_PATRIMONIO_APORTES_E_RELATORIOS.md` |
-| **Parte 6** | **Visão Geral (Home / Dashboard), Insights & Tools** | `src/features/overview/*`, `src/features/insights/*`, `src/features/tools/*` | `docs/reports/auditoria-visual/PARTE_6_HOME_DASHBOARD_E_INSIGHTS.md` |
-| **Parte 7** | **Colaboração, Cascas Externas, Admin & Onboarding** | `family`, `trips`, `public-share`, `settings`, `admin`, `landing`, `auth` | `docs/reports/auditoria-visual/PARTE_7_COLABORACAO_ADMIN_AUTH_E_LANDING.md` |
-
----
-
-## 5. PROTOCOLO DE VARREDURA AUTOMATIZADA DE CADA PARTE
-
-Cada uma das 7 partes da auditoria executará um script automatizado de heurísticas com comandos específicos para identificar anomalias antes da análise visual humana:
-
+### Comandos de Varredura Automatizada da Parte:
 ```bash
 # 1. Rastrear ModalFooter aninhado no children
 python3 -c '...detect_nested_modal_footers...'
@@ -249,19 +333,22 @@ grep -rn "truncate" <pasta> | grep -iE "cents|money|format|saldo|total|r\$"
 # 7. Rastrear chamadas de formatação monetária sem tabular-nums / MoneyText
 python3 -c '...detect_unformatted_currency...'
 
-# 8. Rastrear z-index soltos fora dos tokens
+# 8. Rastrear botões de ícone sem aria-label ou title
+python3 -c '...detect_missing_icon_aria...'
+
+# 9. Rastrear anéis de foco arbitrários (fora do ring-ring)
+grep -rnE "focus-visible:ring-(primary|positive|warning|critical)" <pasta>
+
+# 10. Rastrear z-index soltos fora dos tokens
 grep -rnE "\bz-[0-9]{2,3}\b|\bz-\[[^\]]+\]" <pasta>
 
-# 9. Rastrear botões sem shrink-0 ao lado de textos em flex
-grep -rn "<[A-Z][a-zA-Z]* className=" <pasta> | grep -v "shrink-0"
-
-# 10. Rastrear arquivos com mais de 250 linhas
+# 11. Rastrear arquivos com mais de 250 linhas
 find <pasta> -type f -name "*.tsx" -exec wc -l {} + | awk '$1 > 250'
 ```
 
 ---
 
-## 6. MODELO OFICIAL DO RELATÓRIO DE CADA PARTE
+## 7. MODELO OFICIAL DO RELATÓRIO DE CADA PARTE
 
 Cada relatório técnico em `docs/reports/auditoria-visual/` seguirá rigorosamente a seguinte estrutura analítica:
 
@@ -293,9 +380,9 @@ Cada relatório técnico em `docs/reports/auditoria-visual/` seguirá rigorosame
 
 ---
 
-## 7. O PLANO FINAL: CONSOLIDAÇÃO NO PLANO MESTRE DE EXECUÇÃO
+## 8. O PLANO FINAL: CONSOLIDAÇÃO NO PLANO MESTRE DE EXECUÇÃO
 
-Concluídas as 7 partes da auditoria e emitidos todos os 7 relatórios em `docs/reports/auditoria-visual/`, criaremos o documento executivo:
+Concluídas as 9 partes da auditoria e emitidos todos os 9 relatórios em `docs/reports/auditoria-visual/`, criaremos o documento executivo:
 
 `docs/plans/PLANO_MESTRE_REFATORACAO_E_PADRONIZACAO_VISUAL.md`
 

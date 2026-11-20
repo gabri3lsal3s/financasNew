@@ -96,7 +96,7 @@ export function ExperiencePresetsCard({
                   {preset.description}
                 </span>
 
-                <div className="mt-auto space-y-1.5 pt-2 border-t border-border/60 w-full">
+                <div className="mt-auto space-y-1.5 pt-2 border-t border-border/80 w-full">
                   {preset.highlights.map((h) => (
                     <div key={h} className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                       <span className="size-1 rounded-full bg-primary/60 shrink-0" />

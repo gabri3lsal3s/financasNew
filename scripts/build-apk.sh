@@ -163,11 +163,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Laboratorio Forense v2 e Motor de Investimentos",
-    "Auditoria Holistica de Ciclo de Vida: 39 invariantes financeiras e 8 Golden Journeys de ponta a ponta",
-    "Fonte unica de verdade matematica para carteira de investimentos, relatorios executivos e extratos",
-    "Motor hibrido de custodia e proventos com suporte a cotacoes em tempo real e historico auditado",
-    "Decomposicao analitica de retorno ponderado (TWR/Dietz Modificado) e conformidade CDC e fiscal"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Padronizacao Visual, Acessibilidade & Ergonomia",
+    "Conformidade estrita de acessibilidade WCAG 2.4.7 AA com aneis de foco em 100% dos controles e links",
+    "Decomposicao arquitetural completa: zero arquivos monoliticos (teto rigoroso de 250 linhas em UI)",
+    "Unificacao de tokens de Z-Index e trinca canonica de superficies (border-border/80 bg-surface shadow-xs)",
+    "Laboratorio Forense de Auditoria Quantitativa com 39 invariantes e 8 Golden Journeys homologadas"
   ]
 }
 EOF

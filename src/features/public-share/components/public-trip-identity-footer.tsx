@@ -21,7 +21,7 @@ export function PublicTripIdentityFooter({
       <div className="pt-2 border-t border-border/80">
         <Link
           to={loginRedirectUrl}
-          className="group flex items-center justify-between min-h-11 p-2.5 rounded-xl bg-surface-raised border border-border/80 hover:bg-surface-hover hover:border-border transition-colors text-xs"
+          className="group flex items-center justify-between min-h-11 p-2.5 rounded-xl bg-surface-raised border border-border/80 hover:bg-surface-hover hover:border-border transition-colors text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <div className="flex items-center gap-2 min-w-0">
             <LogIn
@@ -53,7 +53,7 @@ export function PublicTripIdentityFooter({
       <button
         type="button"
         onClick={onClaimAccount}
-        className="group flex w-full items-center justify-between min-h-11 p-2.5 rounded-xl bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors text-xs cursor-pointer text-left"
+        className="group flex w-full items-center justify-between min-h-11 p-2.5 rounded-xl bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors text-xs cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         <div className="flex items-center gap-2 min-w-0">
           <UserCheck

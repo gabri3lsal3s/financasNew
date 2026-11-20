@@ -48,7 +48,7 @@ export function SimulatorAllocationResults({
                 onClick={() => onSelectClass(selectedClass === cls.key ? null : cls.key)}
                 aria-pressed={selectedClass === cls.key}
                 className={cn(
-                  "min-h-11 w-full text-left p-3 sm:p-3.5 rounded-xl border border-positive/40 bg-positive/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-colors cursor-pointer hover:border-positive/60",
+                  "min-h-11 w-full text-left p-3 sm:p-3.5 rounded-xl border border-positive/40 bg-positive/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-colors cursor-pointer hover:border-positive/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   dimWhenUnselected(cls.key),
                 )}
               >
@@ -85,7 +85,7 @@ export function SimulatorAllocationResults({
               onClick={() => onSelectClass(selectedClass === cls.key ? null : cls.key)}
               aria-pressed={selectedClass === cls.key}
               className={cn(
-                "min-h-11 w-full text-left p-3 sm:p-3.5 rounded-xl border border-border/80 bg-surface-raised/50 flex items-center justify-between gap-2 cursor-pointer transition-colors hover:border-border",
+                "min-h-11 w-full text-left p-3 sm:p-3.5 rounded-xl border border-border/80 bg-surface-raised/50 flex items-center justify-between gap-2 cursor-pointer transition-colors hover:border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 dimWhenUnselected(cls.key),
               )}
             >
@@ -119,7 +119,7 @@ export function SimulatorAllocationResults({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="relative inline-flex items-center gap-1 text-[11px] text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
+                  className="relative inline-flex items-center gap-1 text-[11px] text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors cursor-pointer max-sm:after:absolute max-sm:after:-inset-2 rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <Info className="size-3 shrink-0" aria-hidden="true" />
                   <span>Yield ponderado de {formatPercent(annualYieldPct)}% a.a.</span>

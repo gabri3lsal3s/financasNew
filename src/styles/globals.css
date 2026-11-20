@@ -82,16 +82,21 @@
   --icon-stroke-width: var(--icon-stroke-width);
 
   /* Escala centralizada e padronizada de Z-Index */
+  --z-deep-background: var(--z-deep-background);
+  --z-card-raised: var(--z-card-raised);
   --z-base: var(--z-base);
   --z-sticky: var(--z-sticky);
   --z-dropdown: var(--z-dropdown);
   --z-page-floating: var(--z-page-floating);
   --z-tooltip: var(--z-tooltip);
   --z-bottom-nav: var(--z-bottom-nav);
+  --z-dock: var(--z-dock);
   --z-sidebar: var(--z-sidebar);
   --z-modal: var(--z-modal);
   --z-floating-tools: var(--z-floating-tools);
+  --z-popover: var(--z-popover);
   --z-toast: var(--z-toast);
+  --z-spotlight: var(--z-spotlight);
 
   /* Animações dos primitivos (Radix) */
   --animate-accordion-down: accordion-down 0.2s ease-out;
@@ -606,7 +611,13 @@ html[data-density="compact"] {
     scroll-behavior: auto !important;
   }
 
-  /* Utilitários de camada Z-Index padronizados (dropdowns < tooltips < bottom bar < modais < toasts) */
+  /* Utilitários de camada Z-Index padronizados (fundos < base < sticky < docks < sidebar < modais < popovers < toasts < spotlight) */
+  .z-deep-background {
+    z-index: var(--z-deep-background);
+  }
+  .z-card-raised {
+    z-index: var(--z-card-raised);
+  }
   .z-sticky {
     z-index: var(--z-sticky);
   }
@@ -622,6 +633,9 @@ html[data-density="compact"] {
   .z-bottom-nav {
     z-index: var(--z-bottom-nav);
   }
+  .z-dock {
+    z-index: var(--z-dock);
+  }
   .z-sidebar {
     z-index: var(--z-sidebar);
   }
@@ -631,8 +645,14 @@ html[data-density="compact"] {
   .z-floating-tools {
     z-index: var(--z-floating-tools);
   }
+  .z-popover {
+    z-index: var(--z-popover);
+  }
   .z-toast {
     z-index: var(--z-toast);
+  }
+  .z-spotlight {
+    z-index: var(--z-spotlight);
   }
 
   /* Portais de popovers e dropdowns (Radix Select/Popover/DropdownMenu):

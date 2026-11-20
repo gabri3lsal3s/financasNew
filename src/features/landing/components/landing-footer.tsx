@@ -61,39 +61,39 @@ export function LandingFooter() {
               </span>
               <Link
                 to={isLoggedIn ? "/" : "/entrar"}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 {isLoggedIn ? "Acessar o App" : "Entrar na Conta"}
               </Link>
               {!isLoggedIn ? (
                 <Link
                   to={trialUrl}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   Cadastre-se Grátis
                 </Link>
               ) : null}
               <a
                 href="#recursos"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 Funcionalidades
               </a>
               <a
                 href="#investimentos"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 Investimentos & Dossiês
               </a>
               <a
                 href="#simulador"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 Simulador Patrimonial
               </a>
               <a
                 href="#precos"
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 Planos & Preços
               </a>
@@ -103,25 +103,25 @@ export function LandingFooter() {
                 </span>
                 <Link
                   to="/ferramentas"
-                  className="text-xs text-primary-strong dark:text-primary font-medium hover:underline py-1.5 sm:py-0.5 inline-flex items-center"
+                  className="text-xs text-primary-strong dark:text-primary font-medium hover:underline py-1.5 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   Hub de Simuladores
                 </Link>
                 <Link
                   to="/ferramentas/simulador-dividas"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1.5 sm:py-0.5 inline-flex items-center"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1.5 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   Simulador de Dívidas
                 </Link>
                 <Link
                   to="/ferramentas/rebalanceamento"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1.5 sm:py-0.5 inline-flex items-center"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1.5 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   Simulador de Rebalanceamento
                 </Link>
                 <Link
                   to="/ferramentas/juros-compostos"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1.5 sm:py-0.5 inline-flex items-center"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors py-1.5 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   Juros Compostos & Independência
                 </Link>
@@ -168,13 +168,13 @@ export function LandingFooter() {
                 <div className="flex flex-wrap gap-x-4 gap-y-1">
                   <Link
                     to="/termos"
-                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors py-1.5 sm:py-0.5 inline-flex items-center"
+                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors py-1.5 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     Termos de Serviço
                   </Link>
                   <Link
                     to="/privacidade"
-                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors py-1.5 sm:py-0.5 inline-flex items-center"
+                    className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors py-1.5 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     Privacidade (LGPD)
                   </Link>

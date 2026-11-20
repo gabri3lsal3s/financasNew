@@ -126,10 +126,10 @@ export function AddTripMemberDialog({
               onClick={() => handleModeChange("all")}
               aria-pressed={participationMode === "all"}
               className={cn(
-                "min-h-11 sm:min-h-10 p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer",
+                "min-h-11 sm:min-h-10 p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 participationMode === "all"
                   ? "bg-primary/10 border-primary text-primary-strong"
-                  : "bg-surface-raised border-border text-muted-foreground hover:text-foreground",
+                  : "bg-surface-raised border-border/80 text-muted-foreground hover:text-foreground",
               )}
             >
               Desde o início (todos os gastos)
@@ -139,10 +139,10 @@ export function AddTripMemberDialog({
               onClick={() => handleModeChange("from_date")}
               aria-pressed={participationMode === "from_date"}
               className={cn(
-                "min-h-11 sm:min-h-10 p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer",
+                "min-h-11 sm:min-h-10 p-2.5 rounded-xl text-xs font-medium text-center border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                 participationMode === "from_date"
                   ? "bg-primary/10 border-primary text-primary-strong"
-                  : "bg-surface-raised border-border text-muted-foreground hover:text-foreground",
+                  : "bg-surface-raised border-border/80 text-muted-foreground hover:text-foreground",
               )}
             >
               A partir da chegada

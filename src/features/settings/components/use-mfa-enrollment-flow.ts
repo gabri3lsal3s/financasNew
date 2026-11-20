@@ -3,15 +3,14 @@ import type { FormEvent } from "react";
 import {
   enrollMfaTotp,
   listVerifiedMfaFactors,
-  refreshMfaState,
-  unenrollMfaFactor,
-  verifyCurrentPassword,
   verifyMfaEnrollment,
-  verifyMfaTotpCode,
 } from "@/hooks/use-auth";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getErrorMessage } from "@/services/errors";
+import { useMfaSecurityGate } from "./use-mfa-security-gate";
+
+export type { MfaAuthMethod, MfaConfirmAction } from "./use-mfa-security-gate";
 
 export interface MfaFactor {
   id: string;
@@ -26,9 +25,6 @@ export interface MfaEnrollData {
   totpUri: string;
 }
 
-export type MfaConfirmAction = "none" | "deactivate" | "reconfigure";
-export type MfaAuthMethod = "totp" | "password";
-
 export function useMfaEnrollmentFlow(
   open: boolean,
   onOpenChange: (open: boolean) => void,
@@ -41,11 +37,6 @@ export function useMfaEnrollmentFlow(
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copiedSecret, setCopiedSecret] = useState(false);
-
-  const [confirmAction, setConfirmAction] = useState<MfaConfirmAction>("none");
-  const [authMethod, setAuthMethod] = useState<MfaAuthMethod>("totp");
-  const [authInputValue, setAuthInputValue] = useState("");
-  const [isVerifyingSecurity, setIsVerifyingSecurity] = useState(false);
 
   const refreshFactors = useCallback(async () => {
     setIsLoading(true);
@@ -103,22 +94,6 @@ export function useMfaEnrollmentFlow(
     };
   }, [open]);
 
-  const handleModalOpenChange = useCallback(
-    (nextOpen: boolean) => {
-      onOpenChange(nextOpen);
-      if (!nextOpen) {
-        setIsEnrolling(false);
-        setEnrollData(null);
-        setVerificationCode("");
-        setErrorMessage(null);
-        setConfirmAction("none");
-        setAuthInputValue("");
-        setIsVerifyingSecurity(false);
-      }
-    },
-    [onOpenChange],
-  );
-
   const handleStartEnrollment = useCallback(async () => {
     setIsLoading(true);
     setErrorMessage(null);
@@ -138,6 +113,27 @@ export function useMfaEnrollmentFlow(
       setIsLoading(false);
     }
   }, []);
+
+  const handleModalOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      onOpenChange(nextOpen);
+      if (!nextOpen) {
+        setIsEnrolling(false);
+        setEnrollData(null);
+        setVerificationCode("");
+        setErrorMessage(null);
+      }
+    },
+    [onOpenChange],
+  );
+
+  const securityGate = useMfaSecurityGate({
+    activeFactor,
+    setActiveFactor,
+    onDeactivateSuccess: () => handleModalOpenChange(false),
+    onReconfigureSuccess: handleStartEnrollment,
+    setErrorMessage,
+  });
 
   const handleVerifyEnrollment = useCallback(
     async (e: FormEvent) => {
@@ -173,83 +169,6 @@ export function useMfaEnrollmentFlow(
     [enrollData, refreshFactors, verificationCode],
   );
 
-  const handleExecuteConfirmedAction = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      if (!activeFactor || isVerifyingSecurity) return;
-      setIsVerifyingSecurity(true);
-      setErrorMessage(null);
-
-      try {
-        if (authMethod === "totp") {
-          const cleanCode = authInputValue.trim();
-          if (cleanCode.length !== 6) {
-            triggerSensory("error");
-            setErrorMessage("Informe o código de 6 dígitos gerado pelo aplicativo autenticador.");
-            setIsVerifyingSecurity(false);
-            return;
-          }
-          const isValidMfa = await verifyMfaTotpCode(activeFactor.id, cleanCode);
-          if (!isValidMfa) {
-            triggerSensory("error");
-            setErrorMessage("Código de autenticação incorreto ou expirado. Tente novamente.");
-            setIsVerifyingSecurity(false);
-            return;
-          }
-        } else {
-          if (!authInputValue) {
-            triggerSensory("error");
-            setErrorMessage("Informe sua senha de acesso para autorizar.");
-            setIsVerifyingSecurity(false);
-            return;
-          }
-          const isValidPassword = await verifyCurrentPassword(authInputValue);
-          if (!isValidPassword) {
-            triggerSensory("error");
-            setErrorMessage("Senha incorreta. Não foi possível autorizar a operação.");
-            setIsVerifyingSecurity(false);
-            return;
-          }
-        }
-
-        await unenrollMfaFactor(activeFactor.id);
-
-        if (confirmAction === "deactivate") {
-          triggerSensory("selection");
-          pushToast({
-            title: "2FA Desativado",
-            description: "A verificação em duas etapas foi desativada com sucesso.",
-            variant: "success",
-          });
-          setActiveFactor(null);
-          setConfirmAction("none");
-          setAuthInputValue("");
-          handleModalOpenChange(false);
-          if (typeof refreshMfaState === "function") void refreshMfaState();
-        } else if (confirmAction === "reconfigure") {
-          setActiveFactor(null);
-          setConfirmAction("none");
-          setAuthInputValue("");
-          await handleStartEnrollment();
-        }
-      } catch (err) {
-        triggerSensory("destructive");
-        setErrorMessage(getErrorMessage(err));
-      } finally {
-        setIsVerifyingSecurity(false);
-      }
-    },
-    [
-      activeFactor,
-      authInputValue,
-      authMethod,
-      confirmAction,
-      handleModalOpenChange,
-      handleStartEnrollment,
-      isVerifyingSecurity,
-    ],
-  );
-
   const handleCopySecret = useCallback(async () => {
     if (!enrollData?.secret) return;
     try {
@@ -272,17 +191,20 @@ export function useMfaEnrollmentFlow(
     errorMessage,
     setErrorMessage,
     copiedSecret,
-    confirmAction,
-    setConfirmAction,
-    authMethod,
-    setAuthMethod,
-    authInputValue,
-    setAuthInputValue,
-    isVerifyingSecurity,
-    handleModalOpenChange,
+    confirmAction: securityGate.confirmAction,
+    setConfirmAction: securityGate.setConfirmAction,
+    authMethod: securityGate.authMethod,
+    setAuthMethod: securityGate.setAuthMethod,
+    authInputValue: securityGate.authInputValue,
+    setAuthInputValue: securityGate.setAuthInputValue,
+    isVerifyingSecurity: securityGate.isVerifyingSecurity,
+    handleModalOpenChange: (nextOpen: boolean) => {
+      handleModalOpenChange(nextOpen);
+      if (!nextOpen) securityGate.resetSecurityGate();
+    },
     handleStartEnrollment,
     handleVerifyEnrollment,
-    handleExecuteConfirmedAction,
+    handleExecuteConfirmedAction: securityGate.handleExecuteConfirmedAction,
     handleCopySecret,
     cancelEnrollment: () => {
       setIsEnrolling(false);

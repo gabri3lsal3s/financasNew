@@ -117,7 +117,7 @@ export function OverviewBudgetsSection({
           {/* Barra Segmentada Única (Estilo Apple / Linear) com clique para Raio-X */}
           <div className="w-full flex flex-col gap-2.5">
             <div
-              className="flex w-full h-3 sm:h-3.5 rounded-full overflow-hidden bg-surface-hover/80 p-0.5 border border-border/60 gap-0.5"
+              className="flex w-full h-3 sm:h-3.5 rounded-full overflow-hidden bg-surface-hover/80 p-0.5 border border-border/80 gap-0.5"
               role="group"
               aria-label={`Uso do orçamento: ${Math.round(globalPercent)}%`}
             >
@@ -161,7 +161,7 @@ export function OverviewBudgetsSection({
                           onSelectCategory(seg.id);
                         }
                       }}
-                      className="flex flex-col gap-1 rounded-xl border border-border/70 bg-surface-hover/30 hover:bg-surface-hover/70 p-2 transition-all cursor-pointer active:scale-[0.98] text-left min-w-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex flex-col gap-1 rounded-xl border border-border/80 bg-surface-hover/30 hover:bg-surface-hover/70 p-2 transition-all cursor-pointer active:scale-[0.98] text-left min-w-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       title={`${seg.label} - ver detalhes`}
                     >
                       <div className="flex items-center gap-1.5 min-w-0 w-full">
@@ -202,7 +202,7 @@ export function OverviewBudgetsSection({
                           onSelectCategory(seg.id);
                         }
                       }}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-surface-hover/30 hover:bg-surface-hover hover:border-border/90 px-2.5 py-1 text-xs text-muted-foreground transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-left"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-surface-hover/30 hover:bg-surface-hover hover:border-border/90 px-2.5 py-1 text-xs text-muted-foreground transition-all cursor-pointer active:scale-95 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-left"
                       title={`${seg.label} - ver detalhes`}
                     >
                       <span

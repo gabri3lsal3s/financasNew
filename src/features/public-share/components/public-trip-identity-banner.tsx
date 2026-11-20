@@ -88,7 +88,7 @@ export function PublicTripIdentityBanner({
                 triggerSensory("selection");
                 persistMember(member.id);
               }}
-              className="min-h-11 sm:min-h-9 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer bg-surface-raised text-foreground border-border/80 hover:bg-surface-hover hover:border-border active:scale-[0.98]"
+              className="min-h-11 sm:min-h-9 px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer bg-surface-raised text-foreground border-border/80 hover:bg-surface-hover hover:border-border active:scale-[0.98] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <span>{member.name}</span>
               {member.is_host && (

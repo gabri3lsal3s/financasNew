@@ -12,11 +12,11 @@ export function LegalHeader({ activeTab }: LegalHeaderProps) {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/90 backdrop-blur-md shadow-xs pt-safe">
+    <header className="sticky top-0 z-sticky w-full border-b border-border/80 bg-background/90 backdrop-blur-md shadow-xs pt-safe">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6 lg:px-8 min-w-0">
         <Link
           to="/"
-          className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shrink-0"
+          className="flex items-center gap-2 rounded-lg focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0"
           aria-label="Axir - Ir para a página inicial"
         >
           <BrandLogo markClassName="size-8" showWordmark wordmarkClassName="text-base sm:text-lg" />
@@ -31,7 +31,7 @@ export function LegalHeader({ activeTab }: LegalHeaderProps) {
             to="/termos"
             aria-current={activeTab === "terms" ? "page" : undefined}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               activeTab === "terms"
                 ? "bg-surface text-foreground font-semibold shadow-xs border border-border/80"
                 : "text-muted-foreground hover:text-foreground",
@@ -44,7 +44,7 @@ export function LegalHeader({ activeTab }: LegalHeaderProps) {
             to="/privacidade"
             aria-current={activeTab === "privacy" ? "page" : undefined}
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               activeTab === "privacy"
                 ? "bg-surface text-foreground font-semibold shadow-xs border border-border/80"
                 : "text-muted-foreground hover:text-foreground",

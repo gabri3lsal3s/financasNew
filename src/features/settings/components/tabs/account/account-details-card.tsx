@@ -85,7 +85,7 @@ export function AccountDetailsCard({
               </span>
               <Link
                 to="/configuracoes?tab=subscription"
-                className="text-[11px] text-primary-strong hover:underline font-medium inline-flex items-center gap-0.5"
+                className="text-[11px] text-primary-strong hover:underline font-medium inline-flex items-center gap-0.5 rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 <span>Gerenciar</span>
                 <ExternalLink className="size-2.5" aria-hidden="true" />

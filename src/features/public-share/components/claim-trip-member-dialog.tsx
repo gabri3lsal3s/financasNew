@@ -127,7 +127,7 @@ export function ClaimTripMemberDialog({
                     onClick={() => handleSelectMember(member.id)}
                     aria-pressed={isSelected}
                     className={cn(
-                      "flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition-colors cursor-pointer",
+                      "flex w-full items-center justify-between gap-3 rounded-xl border p-3 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       isSelected
                         ? "border-primary bg-primary/10 text-foreground ring-1 ring-primary"
                         : "border-border/80 bg-surface hover:bg-surface-hover text-muted-foreground",

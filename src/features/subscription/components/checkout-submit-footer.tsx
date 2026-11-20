@@ -53,7 +53,7 @@ export function CheckoutSubmitFooter({
           to="/termos"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
+          className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           Termos de Uso
         </Link>{" "}
@@ -62,7 +62,7 @@ export function CheckoutSubmitFooter({
           to="/privacidade"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors"
+          className="text-primary-strong font-medium hover:text-primary hover:underline transition-colors rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           Política de Privacidade
         </Link>

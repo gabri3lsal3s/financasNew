@@ -76,7 +76,7 @@ export function LandingHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 w-full transition-all duration-300 pt-safe",
+        "sticky top-0 z-sticky w-full transition-all duration-300 pt-safe",
         isScrolled
           ? "border-b border-border/80 bg-background/90 backdrop-blur-md shadow-xs"
           : "border-b border-border/30 bg-background/70 backdrop-blur-xs",

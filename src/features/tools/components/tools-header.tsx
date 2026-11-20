@@ -37,7 +37,7 @@ export function ToolsHeader() {
   const location = useLocation();
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/95 backdrop-blur-md pt-safe">
+    <header className="sticky top-0 z-sticky w-full border-b border-border/80 bg-background/95 backdrop-blur-md pt-safe">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 py-3 sm:px-6 min-w-0">
         <div className="flex items-center gap-4 shrink-0 min-w-0">
           <Link
@@ -49,7 +49,7 @@ export function ToolsHeader() {
           </Link>
           <Link
             to="/apresentacao"
-            className="hidden xl:inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium px-2 py-1 rounded-lg hover:bg-surface-hover/70 transition-colors"
+            className="hidden xl:inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground font-medium px-2 py-1 rounded-lg hover:bg-surface-hover/70 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <ArrowLeft className="size-3 text-muted-foreground" aria-hidden="true" />
             <span>Conhecer a Plataforma</span>
@@ -112,7 +112,7 @@ export function ToolsHeader() {
       </div>
 
       {/* Navegação horizontal rolável em Mobile & Tablet (< lg) */}
-      <div className="flex lg:hidden border-t border-border/60 bg-surface/60 px-4 py-2 overflow-x-auto no-scrollbar scroll-smooth gap-1.5">
+      <div className="flex lg:hidden border-t border-border/80 bg-surface/60 px-4 py-2 overflow-x-auto no-scrollbar scroll-smooth gap-1.5">
         {TOOLS_NAV_TABS.map((tab) => {
           const isActive = location.pathname === tab.path;
           return (
