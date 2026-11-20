@@ -37,7 +37,7 @@ export function Switch({
   };
 
   return (
-    <div className={cn("flex items-start gap-2.5", className)}>
+    <div className={cn("flex items-center gap-2.5", className)}>
       <button
         type="button"
         role="switch"
@@ -47,7 +47,7 @@ export function Switch({
         aria-label={ariaLabel ?? (typeof label === "string" ? label : undefined)}
         onClick={handleToggle}
         className={cn(
-          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 mt-0.5 max-sm:after:absolute max-sm:after:-inset-2",
+          "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 max-sm:after:absolute max-sm:after:-inset-2",
           checked ? "bg-primary" : "bg-input",
         )}
       >

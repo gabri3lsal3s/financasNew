@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui";
 import { BrandLogo } from "@/components/layout/brand-logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -15,9 +15,16 @@ export interface AuthShellProps {
 
 /**
  * Casca das telas de autenticação — Card centralizado com identidade oficial Axir.
+ * Força estritamente a cor oficial de destaque Teal Vital (sem data-accent).
  * No desktop (≥ lg) com `sideHero`, ativa um layout split harmônico e reativo ao tema ativo.
  */
 export function AuthShell({ title, subtitle, children, sideHero, className }: AuthShellProps) {
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.removeAttribute("data-accent");
+    }
+  }, []);
+
   if (sideHero) {
     return (
       <div
@@ -41,7 +48,7 @@ export function AuthShell({ title, subtitle, children, sideHero, className }: Au
                   aria-hidden="true"
                 />
                 <div
-                  className="pointer-events-none absolute -bottom-24 -right-24 size-64 rounded-full bg-accent/10 blur-3xl"
+                  className="pointer-events-none absolute -bottom-24 -right-24 size-64 rounded-full bg-primary/10 blur-3xl"
                   aria-hidden="true"
                 />
                 <div className="relative flex flex-col justify-between h-full gap-8">

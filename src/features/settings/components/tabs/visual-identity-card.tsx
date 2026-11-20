@@ -18,6 +18,7 @@ export interface VisualIdentityCardProps {
   onSelectDarkThemeVariant?: (variant: DarkThemeVariant, label: string) => void;
   scheduleConfig?: ThemeScheduleConfig;
   onUpdateScheduleConfig?: (patch: Partial<ThemeScheduleConfig>) => void;
+  isPro?: boolean;
 }
 
 export function VisualIdentityCard({
@@ -29,6 +30,7 @@ export function VisualIdentityCard({
   onSelectDarkThemeVariant,
   scheduleConfig,
   onUpdateScheduleConfig,
+  isPro,
 }: VisualIdentityCardProps) {
   return (
     <Card data-tour="settings-visual-identity">
@@ -47,7 +49,11 @@ export function VisualIdentityCard({
           scheduleConfig={scheduleConfig}
           onUpdateScheduleConfig={onUpdateScheduleConfig}
         />
-        <AccentPaletteSelector accent={accent} onSelectAccent={onSelectAccent} />
+        <AccentPaletteSelector
+          accent={accent}
+          onSelectAccent={onSelectAccent}
+          isPro={isPro}
+        />
       </CardContent>
     </Card>
   );

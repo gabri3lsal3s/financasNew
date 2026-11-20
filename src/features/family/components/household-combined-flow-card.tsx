@@ -63,9 +63,9 @@ export function HouseholdCombinedFlowCard({
       </CardHeader>
 
       <CardContent className="space-y-4 pt-1">
-        {/* Grid de métricas financeiras mobile-first (M2 sem bordas/sombras redundantes) */}
+        {/* Grid de métricas financeiras mobile-first (sem caixas cinzas aninhadas) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <div className="p-3 rounded-xl bg-surface-raised space-y-1 min-w-0">
+          <div className="p-3 rounded-xl border border-border/80 bg-surface space-y-1 min-w-0">
             <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
               <ArrowUpRight className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
               <span>Receitas da Casa</span>
@@ -79,7 +79,7 @@ export function HouseholdCombinedFlowCard({
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-surface-raised space-y-1 min-w-0">
+          <div className="p-3 rounded-xl border border-border/80 bg-surface space-y-1 min-w-0">
             <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
               <ArrowDownRight className="size-3.5 text-negative-strong shrink-0" aria-hidden="true" />
               <span>Gastos Realizados</span>
@@ -95,7 +95,7 @@ export function HouseholdCombinedFlowCard({
         </div>
 
         {/* Saldo Líquido do Mês (Sobra / Aporte Coletivo) */}
-        <div className="p-3.5 rounded-xl bg-surface-raised flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+        <div className="p-3.5 rounded-xl border border-border/80 bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
           <div className="space-y-0.5 min-w-0">
             <span className="text-xs font-semibold text-foreground block">
               {isPositiveNet ? "Sobra para Aporte / Reserva" : "Déficit Líquido do Mês"}

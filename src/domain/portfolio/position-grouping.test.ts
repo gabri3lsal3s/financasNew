@@ -52,23 +52,44 @@ describe("position-grouping", () => {
     const list = [
       makeRow({ assetId: "1", ticker: "PETR4", assetClass: "Ações", sector: "Petróleo" }),
       makeRow({ assetId: "2", ticker: "MXRF11", assetClass: "FIIs", sector: "Papel" }),
+      makeRow({ assetId: "3", ticker: "VALE3", assetClass: "Ações", sector: "Mineração" }),
     ];
 
     expect(filterPositionRows(list, { search: "petr", selectedClass: null })).toHaveLength(1);
     expect(filterPositionRows(list, { search: "papel", selectedClass: null })).toHaveLength(1);
     expect(filterPositionRows(list, { search: "", selectedClass: "FIIs" })).toHaveLength(1);
     expect(filterPositionRows(list, { search: "petr", selectedClass: "FIIs" })).toHaveLength(0);
+    expect(filterPositionRows(list, { search: "", selectedClass: "Ações", selectedSector: "Mineração" })).toHaveLength(1);
+    expect(filterPositionRows(list, { search: "", selectedClass: null, selectedSector: "Petróleo" })).toHaveLength(1);
+
+    const govList = [
+      makeRow({ assetId: "1", ticker: "PETR4", allocationStatus: "active" }),
+      makeRow({ assetId: "2", ticker: "IRBR3", allocationStatus: "quarantine" }),
+      makeRow({ assetId: "3", ticker: "OIBR3", allocationStatus: "exit" }),
+    ];
+    expect(filterPositionRows(govList, { search: "", selectedClass: null, governanceStatus: "core" })).toHaveLength(1);
+    expect(filterPositionRows(govList, { search: "", selectedClass: null, governanceStatus: "quarantine" })).toHaveLength(1);
+    expect(filterPositionRows(govList, { search: "", selectedClass: null, governanceStatus: "exit" })).toHaveLength(1);
+    expect(filterPositionRows(govList, { search: "", selectedClass: null, governanceStatus: "all" })).toHaveLength(3);
   });
 
   it("ordena linhas por diferentes chaves e direções de forma determinística", () => {
-    const a = makeRow({ assetId: "1", ticker: "VALE3", valueBRL: 1000, unrealizedPct: 5 });
-    const b = makeRow({ assetId: "2", ticker: "BBAS3", valueBRL: 3000, unrealizedPct: 15 });
+    const a = makeRow({ assetId: "1", ticker: "VALE3", valueBRL: 1000, unrealizedPnl: -50, unrealizedPct: 5 });
+    const b = makeRow({ assetId: "2", ticker: "BBAS3", valueBRL: 3000, unrealizedPnl: 200, unrealizedPct: 15 });
 
     expect(sortPositionRows([a, b], { key: "ticker", direction: "asc" }).map((r) => r.ticker)).toEqual([
       "BBAS3",
       "VALE3",
     ]);
     expect(sortPositionRows([a, b], { key: "value", direction: "desc" }).map((r) => r.ticker)).toEqual([
+      "BBAS3",
+      "VALE3",
+    ]);
+    expect(sortPositionRows([a, b], { key: "unrealizedPnl", direction: "asc" }).map((r) => r.ticker)).toEqual([
+      "VALE3",
+      "BBAS3",
+    ]);
+    expect(sortPositionRows([a, b], { key: "unrealizedPnl", direction: "desc" }).map((r) => r.ticker)).toEqual([
       "BBAS3",
       "VALE3",
     ]);

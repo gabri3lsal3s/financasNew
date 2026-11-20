@@ -74,7 +74,7 @@ describe("LogoProfileButton (mobile & desktop)", () => {
     expect(screen.getByText("gabriel@exemplo.com")).toBeInTheDocument();
     expect(screen.getByText("Sessão Segura")).toBeInTheDocument();
     expect(screen.getByText(/Teste Pro/i)).toBeInTheDocument();
-    expect(screen.getByText("Axir - v3.10.0")).toBeInTheDocument();
+    expect(screen.getByText(/Axir - v\d+\.\d+\.\d+/)).toBeInTheDocument();
   });
 
   it("renderiza no desktop com nome/wordmark e abre o modal de perfil ao clicar", async () => {

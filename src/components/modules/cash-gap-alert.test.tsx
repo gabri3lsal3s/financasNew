@@ -30,13 +30,13 @@ describe("CashGapAlert (§F51)", () => {
     expect(screen.getByText(/1\.500,00/)).toBeInTheDocument();
   });
 
-  it("navega para /dividas ao clicar no botão de ação", () => {
+  it("navega para /dividas?type=payable ao clicar no botão de ação", () => {
     render(<CashGapAlert result={mockResult} />);
 
     const button = screen.getByRole("button", { name: /Ver Contas e Vencimentos/i });
     fireEvent.click(button);
 
-    expect(navigateMock).toHaveBeenCalledWith("/dividas");
+    expect(navigateMock).toHaveBeenCalledWith("/dividas?type=payable");
   });
 
   it("não renderiza nada quando isCashGapDetected é false", () => {

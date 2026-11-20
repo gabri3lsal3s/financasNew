@@ -180,4 +180,51 @@ describe("FamilySettingsDialog", () => {
       targetUserId: "user-2",
     });
   });
+
+  it("salva a Regra de Divisão dos Gastos imediatamente ao alterar a opção no seletor", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+
+    const selectTrigger = screen.getByRole("combobox", { name: "Regra de rateio familiar" });
+    await user.click(selectTrigger);
+
+    const option = await screen.findByRole("option", { name: /Finanças Conjuntas/i });
+    await user.click(option);
+
+    expect(mockUpdateFamily).toHaveBeenCalledWith({
+      familyId: "fam-1",
+      updates: {
+        split_rule: "combined",
+      },
+    });
+    expect(sensoryService.triggerSensory).toHaveBeenCalledWith("selection");
+  });
+
+  it("intercepta o fechamento do modal e exibe confirm de descarte quando há alterações no nome da família", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    renderDialog({ onOpenChange });
+
+    const nameInput = screen.getByLabelText(/Nome da Família/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, "Nome Modificado Não Salvo");
+
+    // Tenta fechar o modal clicando no botão Fechar
+    const closeButtons = screen.getAllByRole("button", { name: "Fechar" });
+    const closeBtn = closeButtons[0];
+    expect(closeBtn).toBeDefined();
+    if (closeBtn) await user.click(closeBtn);
+
+    // Não fecha diretamente
+    expect(onOpenChange).not.toHaveBeenCalled();
+
+    // Exibe diálogo de confirmação de descarte
+    expect(screen.getByText("Descartar alterações?")).toBeInTheDocument();
+
+    // Confirma descarte
+    const discardBtn = screen.getByRole("button", { name: "Descartar" });
+    await user.click(discardBtn);
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
 });

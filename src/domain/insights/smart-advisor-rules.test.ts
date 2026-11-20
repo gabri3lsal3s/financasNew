@@ -164,6 +164,32 @@ describe("smart-advisor-rules (regras puras do SmartAdvisor)", () => {
     expect(res.eligibleInsights[0]?.priority).toBe(1);
   });
 
+  it("evaluateSmartAdvisorInsights suprime candidatos com base em suppressedThemeKeys", () => {
+    const res = evaluateSmartAdvisorInsights({
+      allExpenses: [
+        { id: "e1", description: "Netflix", date: "2026-10-05", month: "2026-10", valueCents: 5590, categoryId: "c1" },
+        { id: "e2", description: "Netflix", date: "2026-10-18", month: "2026-10", valueCents: 5590, categoryId: "c1" },
+        { id: "e3", description: "Netflix", date: "2026-09-05", month: "2026-09", valueCents: 5590, categoryId: "c1" },
+      ],
+      allIncomes: [],
+      refMonth: "2026-10",
+      todayISO: "2026-10-22",
+      monthlyIncomeCents: 0,
+      categoryBudgetsMap: new Map(),
+      feedbackMap: {},
+      month0Incomes: [],
+      cards: [],
+      household: null,
+      incomeGoals: [],
+      effectiveSurplusCents: 0,
+      effectiveDismissals: {},
+      nowMs: 1_000_000,
+      suppressedThemeKeys: ["dup:sub:netflix"],
+    });
+
+    expect(res.eligibleInsights.some((i) => i.themeKey === "dup:sub:netflix")).toBe(false);
+  });
+
   it("resolveIgnoreRecurrenceToast e builders de confirmação produzem payloads exatos", () => {
     expect(resolveIgnoreRecurrenceToast("already_cancelled").sensory).toBe("success");
     expect(resolveIgnoreRecurrenceToast("not_subscription").variant).toBe("info");

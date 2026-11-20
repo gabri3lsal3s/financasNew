@@ -1,6 +1,8 @@
 import { ChevronLeft, ChevronRight, ShieldCheck, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import type { CalculationBreakdown } from "@/domain/calculation-memory/types";
 import { AdvisorCategoryIcon } from "./smart-advisor-category-icon";
 import type { SmartAdvisorPresentation } from "./smart-advisor-routing";
 
@@ -15,6 +17,7 @@ export interface SmartAdvisorCardHeaderProps {
   onMarkEssential: () => void;
   onDismiss: () => void;
   hasExternalMarkEssential: boolean;
+  breakdown?: CalculationBreakdown;
 }
 
 /**
@@ -31,6 +34,7 @@ export function SmartAdvisorCardHeader({
   onMarkEssential,
   onDismiss,
   hasExternalMarkEssential,
+  breakdown,
 }: SmartAdvisorCardHeaderProps) {
   return (
     <div className="flex items-center justify-between gap-3 min-w-0">
@@ -44,6 +48,12 @@ export function SmartAdvisorCardHeader({
         <Badge variant={presentation.badgeVariant} size="xs" className="shrink-0 font-medium">
           {presentation.badgeLabel}
         </Badge>
+        {breakdown ? (
+          <CalculationMemoryModal
+            breakdown={breakdown}
+            label={`Memória de cálculo de ${presentation.badgeLabel}`}
+          />
+        ) : null}
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">

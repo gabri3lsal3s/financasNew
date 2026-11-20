@@ -46,8 +46,8 @@ describe("auth-cleanup", () => {
     setCachedIconTier("PRO");
     expect(getCachedIconTier()).toBe("PRO");
 
-    updateVisualCustomization({ accent: "rose", surfaceStyle: "flat", motionLevel: "reduced" });
-    expect(document.documentElement.getAttribute("data-accent")).toBe("rose");
+    updateVisualCustomization({ accent: "gold", surfaceStyle: "flat", motionLevel: "reduced" });
+    expect(document.documentElement.getAttribute("data-accent")).toBe("gold");
     expect(document.documentElement.getAttribute("data-surface-style")).toBe("flat");
     expect(document.documentElement.getAttribute("data-motion")).toBe("reduced");
 
@@ -132,7 +132,7 @@ describe("auth-cleanup", () => {
     });
 
     // Configura usuário B
-    setUserStorageItem("accent_theme", "violet", "user-b");
+    setUserStorageItem("accent_theme", "mono", "user-b");
 
     // Estado ativo inicial: Usuário A
     updateVisualCustomization({ accent: "gold" }, "user-a");
@@ -145,8 +145,8 @@ describe("auth-cleanup", () => {
     expect(getRecentReceipts()).toHaveLength(0);
     expect(window.sessionStorage.getItem("user_a_transient")).toBeNull();
     expect(getActiveUserId()).toBe("user-b");
-    expect(getVisualCustomization().accent).toBe("violet");
-    expect(document.documentElement.getAttribute("data-accent")).toBe("violet");
+    expect(getVisualCustomization().accent).toBe("mono");
+    expect(document.documentElement.getAttribute("data-accent")).toBe("mono");
   });
 
   it("trata defensivamente falhas de desconexão realtime e sessionStorage sem interromper o fluxo", () => {

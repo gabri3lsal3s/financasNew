@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { CheckCircle2, ShieldAlert } from "lucide-react";
 import { Button, FormField, Input, Modal, ModalFooter, MoneyText } from "@/components/ui";
+import { buildFamilySettlementBreakdown } from "@/domain/calculation-memory/builders/family-breakdown";
 import { buildSettlementAuditSnapshot, calculateHouseholdSettlement } from "@/domain/family";
 import { useRecordFamilySettlement } from "@/state";
 import { triggerSensory } from "@/services/sensory";
@@ -57,6 +58,29 @@ export function FamilySettlementDialog({
   }, [consolidation]);
 
   const primaryTransfer = plan.transfers[0] ?? null;
+
+  const settlementBreakdown = useMemo(() => {
+    if (!primaryTransfer) return undefined;
+    const payer = plan.members.find((m) => m.user_id === primaryTransfer.payer_id);
+    if (!payer) return undefined;
+    return buildFamilySettlementBreakdown(
+      {
+        userId: payer.user_id,
+        displayName: payer.display_name,
+        spentCents: payer.spent_cents,
+        fairShareCents: payer.fair_share_cents,
+        netBalanceCents: payer.net_balance_cents,
+      },
+      {
+        householdTotalSpentCents: consolidation.total_spent_cents,
+        splitRuleDescription:
+          consolidation.family.split_rule === "proportional"
+            ? "Proporcional à renda declarada"
+            : "Divisão 50/50 igualitária",
+        periodLabel: monthLabel(consolidation.month),
+      },
+    );
+  }, [primaryTransfer, plan.members, consolidation]);
 
   const handleCopy = async (text: string, label: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
@@ -183,6 +207,7 @@ export function FamilySettlementDialog({
             transfer={primaryTransfer}
             month={consolidation.month}
             onCopy={handleCopy}
+            breakdown={settlementBreakdown}
           />
         ) : (
           <div className="p-4 rounded-xl border border-border/80 bg-surface-raised text-center space-y-1">

@@ -15,8 +15,6 @@ import { usePortfolioImportConfirm } from "./use-portfolio-import-confirm";
 
 export function usePortfolioCsvImport(onOpenChange: (open: boolean) => void) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [activeTab, setActiveTab] = useState("text");
-  const [rawText, setRawText] = useState("");
   const [rawRows, setRawRows] = useState<RawPortfolioRow[]>([]);
   const [columnMapping, setColumnMapping] = useState<PortfolioColumnMapping | null>(null);
   const [parsedRows, setParsedRows] = useState<ParsedPortfolioImportRow[]>([]);
@@ -31,7 +29,6 @@ export function usePortfolioCsvImport(onOpenChange: (open: boolean) => void) {
 
   const handleClose = () => {
     setStep(1);
-    setRawText("");
     setRawRows([]);
     setColumnMapping(null);
     setParsedRows([]);
@@ -99,7 +96,6 @@ export function usePortfolioCsvImport(onOpenChange: (open: boolean) => void) {
         return;
       }
 
-      setRawText(content);
       handleProcessInput(content);
     } catch {
       pushToast({
@@ -193,10 +189,6 @@ export function usePortfolioCsvImport(onOpenChange: (open: boolean) => void) {
   return {
     step,
     setStep,
-    activeTab,
-    setActiveTab,
-    rawText,
-    setRawText,
     rawRows,
     columnMapping,
     parsedRows,

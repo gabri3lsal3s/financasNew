@@ -64,7 +64,7 @@ export function AppLockCard({
           <div className="shrink-0 self-start sm:self-auto">
             {showBiometrics ? (
               biometricsAvailable || isDemoActive ? (
-                <Badge variant="positive" size="xs">
+                <Badge variant="default" size="xs">
                   {biometryType === "face"
                     ? "Reconhecimento Facial"
                     : biometryType === "iris"
@@ -77,7 +77,7 @@ export function AppLockCard({
                 </Badge>
               ) : null
             ) : (
-              <Badge variant={hasPinConfigured ? "positive" : "muted"} size="xs">
+              <Badge variant={hasPinConfigured ? "default" : "muted"} size="xs">
                 {hasPinConfigured ? "PIN Ativo" : "PIN Não Configurado"}
               </Badge>
             )}

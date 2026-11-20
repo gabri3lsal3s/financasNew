@@ -6,7 +6,7 @@ import {
   extractExplicitRateFromNotes,
   isHistoricalWithdrawal,
 } from "@/domain/portfolio/pocket-statement-parser";
-import { todayISO } from "@/lib/date";
+import { nextConsecutiveMonthDate, todayISO } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -57,10 +57,40 @@ export function usePocketCostManual(params: {
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const initialLastAporte = () => {
+    for (const c of historicalContributions) {
+      if (!isHistoricalWithdrawal(c) && Number(c.amount) > 0) {
+        return numberToCents(Number(c.amount));
+      }
+    }
+    return 0;
+  };
+  const [lastAporteCents, setLastAporteCents] = useState<number>(initialLastAporte);
+
   const [quickDate, setQuickDate] = useState<string>(() => todayISO());
   const [quickAmountCents, setQuickAmountCents] = useState<number>(() =>
     defaultCostBRL > 0 ? numberToCents(defaultCostBRL) : 0,
   );
+
+  const handleZeroAporte = () => {
+    setEntryType("aporte");
+    setNewAmountCents(0);
+    setFormError(null);
+  };
+
+  const handleRepeatLastAporte = () => {
+    if (lastAporteCents > 0) {
+      setEntryType("aporte");
+      setNewAmountCents(lastAporteCents);
+      setFormError(null);
+    }
+  };
+
+  const handleSelectDate = (date: string) => {
+    setNewDate(date);
+    setFormError(null);
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  };
 
   const handleStartEdit = (marco: PortfolioContribution) => {
     setEditingMarco(marco);
@@ -94,8 +124,8 @@ export function usePocketCostManual(params: {
 
   const handleSubmitManual = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newAmountCents <= 0) {
-      setFormError("Informe um valor maior que zero.");
+    if (newAmountCents <= 0 && newGrossBalanceCents <= 0) {
+      setFormError("Informe o valor do aporte/resgate ou o saldo da carteira no fim do mês.");
       return;
     }
     if (!newDate) {
@@ -113,25 +143,29 @@ export function usePocketCostManual(params: {
         isFirstMarco: historicalContributions.length === 0,
       });
 
-      if (editingMarco) {
-        await updateHistorical.mutateAsync({
-          id: editingMarco.id,
-          input: { date: newDate, amount: newAmountCents / 100, notes: finalNotes },
-        });
-        setEditingMarco(null);
-      } else {
-        await createHistorical.mutateAsync({
-          date: newDate,
-          amount: newAmountCents / 100,
-          notes: finalNotes,
-        });
+      if (newAmountCents > 0) {
+        if (editingMarco) {
+          await updateHistorical.mutateAsync({
+            id: editingMarco.id,
+            input: { date: newDate, amount: newAmountCents / 100, notes: finalNotes },
+          });
+        } else {
+          await createHistorical.mutateAsync({
+            date: newDate,
+            amount: newAmountCents / 100,
+            notes: finalNotes,
+          });
+          if (entryType === "aporte") {
+            setLastAporteCents(newAmountCents);
+          }
+        }
       }
 
       if (newGrossBalanceCents > 0) {
         await upsertSnapshot.mutateAsync({
           month: newDate.slice(0, 7),
           total_value: newGrossBalanceCents / 100,
-          total_cost: newAmountCents / 100,
+          total_cost: newAmountCents > 0 ? newAmountCents / 100 : 0,
           status: "closed",
           closing_date: newDate,
         });
@@ -139,6 +173,14 @@ export function usePocketCostManual(params: {
       }
 
       await refetchContributions?.();
+
+      if (editingMarco) {
+        setEditingMarco(null);
+      } else {
+        // Avanço temporal sequencial inteligente (§Ergonomia):
+        setNewDate((prev) => nextConsecutiveMonthDate(prev));
+      }
+
       setNewAmountCents(0);
       setNewGrossBalanceCents(0);
       setNewRatePctText("");
@@ -211,6 +253,10 @@ export function usePocketCostManual(params: {
     setNewNotes,
     formError,
     deletingId,
+    lastAporteCents,
+    handleZeroAporte,
+    handleRepeatLastAporte,
+    handleSelectDate,
     isPendingManual: createHistorical.isPending || updateHistorical.isPending,
     handleStartEdit,
     handleCancelEdit,

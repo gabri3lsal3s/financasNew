@@ -151,3 +151,33 @@ export function yearRange(year: number): YearRange {
   }
   return { start: `${year}-01-01`, end: `${year + 1}-01-01` };
 }
+
+/**
+ * Calcula a data do próximo mês consecutivo a partir de uma data ISO (YYYY-MM-DD).
+ * Se a data original for o último dia do mês (ex: 31/01 ou 28/02), projeta o último
+ * dia do próximo mês (ex: 29/02 em ano bissexto, 31/03, 30/04). Caso contrário,
+ * projeta o mesmo dia ou o limite máximo do mês subsequente.
+ */
+export function nextConsecutiveMonthDate(isoDate: string): string {
+  const datePart = isoDate.split("T")[0] ?? "";
+  if (!DATE_ONLY_PATTERN.test(datePart)) {
+    return todayLocalIso();
+  }
+  const [yStr, mStr, dStr] = datePart.split("-");
+  const y = Number(yStr);
+  const m = Number(mStr);
+  const d = Number(dStr);
+
+  const daysInCurrentMonth = new Date(y, m, 0).getDate();
+  const isEndOfMonth = d >= 28 && d === daysInCurrentMonth;
+
+  const nextMonthStr = shiftMonth(`${yStr}-${mStr}`, 1);
+  const [nextYStr, nextMStr] = nextMonthStr.split("-");
+  const nextY = Number(nextYStr);
+  const nextM = Number(nextMStr);
+
+  const daysInNextMonth = new Date(nextY, nextM, 0).getDate();
+  const nextDay = isEndOfMonth ? daysInNextMonth : Math.min(d, daysInNextMonth);
+
+  return `${nextYStr}-${nextMStr}-${String(nextDay).padStart(2, "0")}`;
+}

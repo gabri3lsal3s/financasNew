@@ -47,14 +47,35 @@ export function useFamilySettingsState({
     enabled: Boolean(family),
   });
 
+  const resetDrafts = () => {
+    if (family) {
+      setEditName(family.name);
+      setEditBudgetCents(family.monthly_budget ?? null);
+      setEditSplitRule(family.split_rule);
+    }
+    if (currentMember) {
+      setMemberDisplayName(currentMember.display_name || "");
+      setMemberPixKeyType(currentMember.pix_key_type || "cpf");
+      setMemberPixKey(currentMember.pix_key || "");
+      setMemberSplitRatioPercent(Math.round((currentMember.split_ratio ?? 0.5) * 100));
+    }
+    setIsFamilyDirty(false);
+    setIsMemberDirty(false);
+  };
+
   const [lastOpen, setLastOpen] = useState(open);
   if (open !== lastOpen) {
     setLastOpen(open);
-    if (open) setActiveTab(initialTab);
+    if (open) {
+      setActiveTab(initialTab);
+      resetDrafts();
+    } else {
+      resetDrafts();
+    }
   }
 
   const [syncedFamilyId, setSyncedFamilyId] = useState<string | null>(null);
-  if (family && family.id !== syncedFamilyId && !isFamilyDirty) {
+  if (family && (family.id !== syncedFamilyId || !open) && !isFamilyDirty) {
     setSyncedFamilyId(family.id);
     setEditName(family.name);
     setEditBudgetCents(family.monthly_budget ?? null);
@@ -62,7 +83,7 @@ export function useFamilySettingsState({
   }
 
   const [syncedMemberId, setSyncedMemberId] = useState<string | null>(null);
-  if (currentMember && currentMember.id !== syncedMemberId && !isMemberDirty) {
+  if (currentMember && (currentMember.id !== syncedMemberId || !open) && !isMemberDirty) {
     setSyncedMemberId(currentMember.id);
     setMemberDisplayName(currentMember.display_name || "");
     setMemberPixKeyType(currentMember.pix_key_type || "cpf");
@@ -143,6 +164,11 @@ export function useFamilySettingsState({
       e.preventDefault();
       return actions.saveFamilyParams(editName, editBudgetCents, editSplitRule);
     },
+    handleSplitRuleChange: (val: FamilySplitRule) => {
+      setEditSplitRule(val);
+      void actions.saveSplitRule(val);
+    },
+    handleResetDrafts: resetDrafts,
     handleSaveMemberPix: (e: FormEvent) => {
       e.preventDefault();
       return actions.saveMemberPix(memberDisplayName, memberPixKey, memberPixKeyType, memberSplitRatioPercent, editSplitRule);

@@ -1,30 +1,19 @@
 import { useState } from "react";
-import { serializeCardInvoiceCsv } from "@/domain/export";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
 import { getErrorMessage } from "@/services/errors";
-import { downloadCsv } from "@/services/export-actions";
 import { useDeleteCardPayment, useUpdateCard } from "@/state";
-import type { CardPayment, Category, CreditCard, Expense } from "@/types";
-import { buildInvoiceExpenseRows, slugifyCardFilename } from "./cards-page-selectors";
+import type { CardPayment, CreditCard, Expense } from "@/types";
 
 export type CardPaymentDialogMode = "payment" | "refund" | null;
 
 export interface UseCardsActionsOptions {
   isReadOnlyMode: boolean;
-  selectedCard: CreditCard | null;
-  competenceExpenses: readonly Expense[];
-  categoryById: Map<string, Category>;
-  effectiveMonth: string;
   onRefetchAll: () => void;
 }
 
 /** Gerencia estados de modais, guardas read-only e mutações de cartões e faturas. */
 export function useCardsActions({
   isReadOnlyMode,
-  selectedCard,
-  competenceExpenses,
-  categoryById,
-  effectiveMonth,
   onRefetchAll,
 }: UseCardsActionsOptions) {
   const updateCardMutation = useUpdateCard();
@@ -124,12 +113,6 @@ export function useCardsActions({
     void Promise.resolve(deleteCardPaymentMutation.mutateAsync(deletingPayment.id)).catch(() => undefined);
   };
 
-  const handleExportInvoice = () => {
-    if (!selectedCard || competenceExpenses.length === 0) return;
-    const rows = buildInvoiceExpenseRows(competenceExpenses, categoryById);
-    downloadCsv(`fatura_${slugifyCardFilename(selectedCard.name)}_${effectiveMonth}.csv`, serializeCardInvoiceCsv(rows));
-  };
-
   const refetchAll = () => {
     setActionError(null);
     onRefetchAll();
@@ -166,7 +149,6 @@ export function useCardsActions({
     handleDeletePaymentClick,
     handleDeactivateCard,
     handleConfirmDeletePayment,
-    handleExportInvoice,
     refetchAll,
   };
 }

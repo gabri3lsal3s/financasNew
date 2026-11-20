@@ -20,6 +20,7 @@ import {
   useIncomes,
   useIncomesByRange,
   useMyFamily,
+  useRealCashBalance,
 } from "@/state";
 
 export interface UseFinanceReportDataParams {
@@ -63,6 +64,7 @@ export function useFinanceReportData({
   const rangeExpenses = useExpensesByRange(range.start, range.end, { enabled: isCustom && customValid && enabled });
   const rangeIncomes = useIncomesByRange(range.start, range.end, { enabled: isCustom && customValid && enabled });
   const debtsQuery = useDebts({ enabled });
+  const realCashQuery = useRealCashBalance();
   const categoriesQuery = useCategories(undefined, { enabled });
   const budgetsQuery = useBudgets();
   const { isFamilyModeEnabled } = useFamilyMode();
@@ -202,8 +204,9 @@ export function useFinanceReportData({
       yearIncomes.refetch(),
       debtsQuery.refetch(),
       categoriesQuery.refetch(),
+      realCashQuery.refetch(),
     ]);
-  }, [enabled, monthlyExpenses, monthlyIncomes, prevExpenses, prevIncomes, yearExpenses, yearIncomes, debtsQuery, categoriesQuery]);
+  }, [enabled, monthlyExpenses, monthlyIncomes, prevExpenses, prevIncomes, yearExpenses, yearIncomes, debtsQuery, categoriesQuery, realCashQuery]);
 
   return {
     loading,
@@ -213,6 +216,8 @@ export function useFinanceReportData({
     monthlyExpensesData: enabled ? monthlyExpenses.data : undefined,
     categories,
     debts,
+    realCashBalanceCents: realCashQuery.cashBalance.currentBalanceCents,
+    openInvoicesCents: realCashQuery.cycleBreakdown.openInvoicesCents,
     expenseEntries,
     incomeEntries,
     byCategory,

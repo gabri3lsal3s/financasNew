@@ -1,16 +1,23 @@
-import { HelpCircle, User, Users } from "lucide-react";
-import { Button, Popover, PopoverContent, PopoverTrigger, SegmentedControl } from "@/components/ui";
+import { useMemo } from "react";
+import { User, Users } from "lucide-react";
+import { SegmentedControl } from "@/components/ui";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import { buildBudgetSpendModeExplanationBreakdown } from "@/domain/calculation-memory";
 
 export interface BudgetsMetricToggleProps {
   spendMetric: "personal" | "household";
   onSpendMetricChange: (metric: "personal" | "household") => void;
 }
 
-/** Alternador de visualização de gastos (Minha Parte vs Total Bruto) com popover explicativo. */
+/** Alternador de visualização de gastos (Minha Parte vs Total Bruto) com memória explicativa padronizada. */
 export function BudgetsMetricToggle({
   spendMetric,
   onSpendMetricChange,
 }: BudgetsMetricToggleProps) {
+  const explanationBreakdown = useMemo(() => {
+    return buildBudgetSpendModeExplanationBreakdown({ currentMetric: spendMetric });
+  }, [spendMetric]);
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
@@ -38,36 +45,10 @@ export function BudgetsMetricToggle({
           ariaLabel="Modo de cálculo dos gastos"
         />
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              sensoryIntent="selection"
-              className="w-8 px-0 text-muted-foreground hover:text-foreground shrink-0"
-              aria-label="Informações sobre os modos de visualização"
-              title="Informações sobre os modos de visualização"
-            >
-              <HelpCircle className="size-3.5" aria-hidden="true" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] text-xs">
-            <div className="flex flex-col gap-2">
-              <p className="font-semibold text-foreground">Modos de Visualização do Orçamento</p>
-              <div className="flex flex-col gap-1.5 text-muted-foreground text-[11px] leading-relaxed">
-                <p>
-                  <strong className="text-foreground font-medium">Minha Parte (Ponderado):</strong>{" "}
-                  Considera exclusivamente a sua cota ou responsabilidade pessoal nos gastos compartilhados (despesas com taxa de rateio menor que 100% ou reembolsos). Ideal para o controle do seu consumo individual.
-                </p>
-                <p>
-                  <strong className="text-foreground font-medium">Total Bruto (Nominal):</strong>{" "}
-                  Considera 100% do valor nominal de cada compra, mesmo quando rateada com terceiros. Ideal para o controle do orçamento global de todas as despesas.
-                </p>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+        <CalculationMemoryModal
+          breakdown={explanationBreakdown}
+          align="end"
+        />
       </div>
     </div>
   );

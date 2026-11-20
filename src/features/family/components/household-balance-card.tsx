@@ -113,16 +113,16 @@ export function HouseholdBalanceCard({
               })}
             </div>
 
-            {/* Lista de Participantes e Fatias (M2 sem borda interna dupla) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+            {/* Lista de Participantes e Fatias em divide-y limpo (sem caixas cinzas aninhadas) */}
+            <div className="divide-y divide-border/80 pt-1">
               {members.map((member, index) => {
                 const dotColor = MEMBER_COLORS[index % MEMBER_COLORS.length] ?? "bg-primary";
                 return (
                   <div
                     key={member.user_id}
-                    className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-surface-raised text-xs min-w-0"
+                    className="flex items-center justify-between gap-2 py-2 first:pt-1 last:pb-0 text-xs min-w-0"
                   >
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span className={cn("size-2 rounded-full shrink-0", dotColor)} aria-hidden="true" />
                       <span className="font-medium text-foreground truncate">{member.display_name}</span>
                     </div>

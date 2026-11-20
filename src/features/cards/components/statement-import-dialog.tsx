@@ -87,7 +87,7 @@ function StatementImportContent({
       open={open}
       onOpenChange={onOpenChange}
       title={`Importar Fatura — ${card.name}`}
-      description={`Competência de ${monthLabel(competenceMonth)} · Importe arquivos CSV, OFX ou cole o extrato para conciliação automática.`}
+      description={`Competência de ${monthLabel(competenceMonth)} · Importe arquivos CSV ou OFX para conciliação automática.`}
       size="2xl"
       footer={footer}
     >
@@ -102,10 +102,7 @@ function StatementImportContent({
         ) : null}
 
         {state.step === "upload" ? (
-          <StatementUploadStep
-            onFileSelect={state.handleFileSelect}
-            onTextSubmit={state.handleTextSubmit}
-          />
+          <StatementUploadStep onFileSelect={state.handleFileSelect} />
         ) : state.step === "mapping" && state.columnMapping ? (
           <StatementMappingStep
             rows={state.parsedRows}

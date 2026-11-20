@@ -29,7 +29,7 @@ export async function readStatementFileContent(file: File): Promise<string | Arr
     const fullText = Array.isArray(text) ? text.join("\n") : (text ?? "");
     if (!fullText.trim()) {
       throw new Error(
-        "Não foi possível extrair o texto da fatura em PDF. Se o arquivo for protegido ou escaneado (imagem), copie o texto da fatura e cole na aba 'Colar Extrato'.",
+        "Não foi possível extrair os dados da fatura em PDF. Se o arquivo for protegido ou escaneado (imagem), utilize o arquivo CSV ou OFX exportado pelo seu banco.",
       );
     }
     return fullText;

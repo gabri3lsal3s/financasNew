@@ -81,46 +81,60 @@ export function PositionMobileCardMetrics({
             ) : null}
           </Button>
         ) : onSetManualPrice ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            sensoryIntent="selection"
-            onClick={() =>
-              onSetManualPrice(
-                row.assetId,
-                row.ticker,
-                row.currency,
-                row.priceBRL,
-                row.source,
-                row.priceQuote,
-                row.pricingMode,
-                row.usdRate,
-              )
-            }
-            aria-label={`Cotação de ${row.ticker}`}
-            className="relative z-10 h-auto min-h-11 sm:min-h-6 py-1 px-1.5 -mx-1.5 justify-start font-semibold text-foreground whitespace-nowrap tabular-nums w-fit"
-          >
-            <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
-            {row.source === "manual" ? (
-              <span
-                aria-hidden="true"
-                className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                title="Preço manual"
-              />
+          <div className="flex flex-col">
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              sensoryIntent="selection"
+              onClick={() =>
+                onSetManualPrice(
+                  row.assetId,
+                  row.ticker,
+                  row.currency,
+                  row.priceBRL,
+                  row.source,
+                  row.priceQuote,
+                  row.pricingMode,
+                  row.usdRate,
+                )
+              }
+              aria-label={`Cotação de ${row.ticker}`}
+              className="relative z-10 h-auto min-h-11 sm:min-h-6 py-1 px-1.5 -mx-1.5 justify-start font-semibold text-foreground whitespace-nowrap tabular-nums w-fit"
+            >
+              <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
+              {row.source === "manual" ? (
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                  title="Preço manual"
+                />
+              ) : null}
+            </Button>
+            {row.currency === "USD" && row.priceQuote ? (
+              <span className="text-[10px] text-muted-foreground font-mono tabular-nums -mt-0.5">
+                US$ {row.priceQuote.toFixed(2)}
+              </span>
             ) : null}
-          </Button>
+          </div>
         ) : (
-          <span className="inline-flex items-center gap-1 font-semibold text-foreground whitespace-nowrap tabular-nums">
-            <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
-            {row.source === "manual" ? (
-              <span
-                aria-hidden="true"
-                className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
-                title="Preço manual"
-              />
+          <div className="flex flex-col">
+            <span className="inline-flex items-center gap-1 font-semibold text-foreground whitespace-nowrap tabular-nums">
+              <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
+              {row.source === "manual" ? (
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
+                  title="Preço manual"
+                />
+              ) : null}
+            </span>
+            {row.currency === "USD" && row.priceQuote ? (
+              <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
+                US$ {row.priceQuote.toFixed(2)}
+              </span>
             ) : null}
-          </span>
+          </div>
         )}
       </div>
 

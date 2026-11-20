@@ -31,7 +31,7 @@ export function CashGapAlert({ result, className, onResolve }: CashGapAlertProps
     if (onResolve) {
       onResolve();
     } else {
-      navigate("/dividas");
+      navigate("/dividas?type=payable");
     }
   };
 

@@ -208,5 +208,30 @@ describe("MoreMenuSheet", () => {
       standaloneSpy.mockRestore();
     }
   });
+
+  it("exibe o card de atualização disponível no lugar de baixar aplicativo quando houver nova versão", async () => {
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    const pwaModule = await import("@/app/pwa");
+    const applySpy = vi.spyOn(pwaModule, "applyPWAUpdate").mockResolvedValue(undefined);
+    const updateAvailableSpy = vi.spyOn(pwaModule, "getPWAUpdateAvailable").mockReturnValue(true);
+
+    render(
+      <BrowserRouter>
+        <MoreMenuSheet open={true} onOpenChange={onOpenChange} />
+      </BrowserRouter>,
+    );
+
+    const updateBtn = screen.getByRole("button", { name: /Atualização disponível/i });
+    expect(updateBtn).toBeInTheDocument();
+    expect(screen.getByText("Nova versão")).toBeInTheDocument();
+
+    await user.click(updateBtn);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(applySpy).toHaveBeenCalledTimes(1);
+
+    applySpy.mockRestore();
+    updateAvailableSpy.mockRestore();
+  });
 });
 

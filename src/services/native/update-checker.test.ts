@@ -43,7 +43,8 @@ describe("update-checker service", () => {
     global.fetch = originalFetch;
   });
 
-  it("detecta quando existe versão mais recente disponível", async () => {
+  it("detecta quando existe versão mais recente disponível em plataforma nativa", async () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -63,6 +64,26 @@ describe("update-checker service", () => {
     expect(result.latestVersionCode).toBe(2);
     expect(result.currentVersionCode).toBe(1);
     expect(result.manifest?.apkUrl).toBe("/releases/guia-financeiro-release.apk");
+  });
+
+  it("no ambiente Web / PWA, detecta nova versão quando SemVer for superior", async () => {
+    vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        version: "4.0.0",
+        versionCode: 99,
+        releaseDate: "2026-11-20T16:00:00Z",
+        apkUrl: "/releases/guia-financeiro-release.apk",
+        changelog: ["Nova versao Web"],
+      }),
+    });
+
+    const result = await checkAppUpdate();
+
+    expect(result.hasUpdate).toBe(true);
+    expect(result.latestVersion).toBe("4.0.0");
   });
 
   it("identifica quando o app já está atualizado (versionCode igual)", async () => {

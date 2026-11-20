@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { notifyPWAUpdate, _resetPWAStateForTesting } from "@/app/pwa";
 import { Toaster } from "@/components/ui/toast";
 import {
-  TWELVE_HOURS_MS,
   UPDATE_DISMISSED_SESSION_KEY,
   isUpdateDismissedForSession,
   resetUpdateDismissedForSession,
@@ -70,7 +69,7 @@ describe("AppUpdateToast", () => {
     });
   });
 
-  it("na Web (PWA), respeita a janela de supressão de 12 horas ao fechar o toast", async () => {
+  it("na Web (PWA), respeita a supressão na sessão atual ao fechar o toast", async () => {
     const user = userEvent.setup();
     vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
 
@@ -90,11 +89,11 @@ describe("AppUpdateToast", () => {
 
     expect(screen.queryByText("Nova versão disponível")).not.toBeInTheDocument();
     expect(isUpdateDismissedForSession()).toBe(true);
-    expect(localStorage.getItem(UPDATE_DISMISSED_SESSION_KEY)).not.toBeNull();
+    expect(sessionStorage.getItem(UPDATE_DISMISSED_SESSION_KEY)).toBe("true");
 
     unmount();
 
-    // Mesmo que uma atualização seja anunciada novamente dentro das 12h, permanece suprimido
+    // Mesmo que uma atualização seja anunciada novamente dentro da mesma sessão, permanece suprimido
     act(() => {
       notifyPWAUpdate();
     });
@@ -108,10 +107,10 @@ describe("AppUpdateToast", () => {
     expect(screen.queryByText("Nova versão disponível")).not.toBeInTheDocument();
   });
 
-  it("na Web (PWA), volta a anunciar após expirar a janela de 12 horas", async () => {
+  it("na Web (PWA), volta a anunciar ao iniciar nova sessão no app", async () => {
     vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
-    const expiredTs = Date.now() - (TWELVE_HOURS_MS + 60_000);
-    localStorage.setItem(UPDATE_DISMISSED_SESSION_KEY, String(expiredTs));
+    sessionStorage.clear();
+    resetUpdateDismissedForSession();
 
     render(
       <Toaster>

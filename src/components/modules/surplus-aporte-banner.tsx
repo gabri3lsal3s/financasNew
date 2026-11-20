@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router";
 import { ArrowRight, Sparkles, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
@@ -51,37 +52,29 @@ export function SurplusAporteBanner({
           <Sparkles className="size-4.5" />
         </span>
         <div className="flex flex-col gap-0.5 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <h2 className="text-sm font-semibold tracking-tight text-foreground truncate">
               Capacidade de Aporte Estimada
             </h2>
+            <Badge variant="portfolio" size="xs">
+              Disponível
+            </Badge>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
-            Sobra de caixa calculada disponível para aporte na carteira.
+            Sobra calculada de{" "}
+            <MoneyText cents={surplusCents} tone="portfolio" className="font-semibold text-foreground" />{" "}
+            disponível para aporte na carteira.
           </p>
         </div>
       </div>
 
-      <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
-        <div className="flex flex-col sm:items-end">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-            Disponível
-          </span>
-          <MoneyText
-            cents={surplusCents}
-            tone="portfolio"
-            variant="hero"
-            animated
-            className="text-base sm:text-lg font-bold tracking-tight"
-          />
-        </div>
-
+      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
         <Button
           type="button"
           variant="portfolio"
           size="sm"
           onClick={handleAction}
-          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer"
+          className="gap-1.5 text-xs h-8 shrink-0 font-medium cursor-pointer flex-1 sm:flex-initial justify-center"
         >
           <span>Simular Aporte</span>
           <ArrowRight className="size-3.5" aria-hidden="true" />

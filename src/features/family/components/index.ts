@@ -1,6 +1,9 @@
 export { HouseholdCeilingCard } from "./household-ceiling-card";
 export type { HouseholdCeilingCardProps } from "./household-ceiling-card";
 
+export { HouseholdKpisGrid } from "./household-kpis-grid";
+export type { HouseholdKpisGridProps } from "./household-kpis-grid";
+
 export { HouseholdBalanceCard } from "./household-balance-card";
 export type { HouseholdBalanceCardProps } from "./household-balance-card";
 

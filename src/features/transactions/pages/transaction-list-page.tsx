@@ -68,6 +68,7 @@ export function TransactionListPage() {
       <MonthPicker value={tx.month} onValueChange={tx.handleMonthChange} />
 
       <TransactionSummaryKpis
+        month={tx.month}
         incomesTotalCents={tx.incomesTotalCents}
         incomesWeightedCents={tx.incomesWeightedCents}
         expensesTotalCents={tx.expensesTotalCents}

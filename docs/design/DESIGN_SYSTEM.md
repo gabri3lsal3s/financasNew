@@ -50,7 +50,7 @@
 
 > **Regra de contraste (AA):** em Light, texto pequeno **não** usa `--primary` (3.0:1 — gráficos/fills) — usa `--primary-strong` (5.7:1). `--accent` (ouro) é decorativo/grande (glow, órbita); texto sobre ouro usa `--accent-foreground` (AA). Em Dark, `--primary` já é claro e o foreground escuro garante 8:1.
 
-> **Acentos personalizáveis (F11/F13):** o root aceita `data-accent="gold|rose|sapphire|violet|mono"` (teal é o padrão, sem atributo) — sobrescreve `--primary`/`--primary-strong`/`--ring` nos 3 temas, aplicado via `use-visual-customization` (persistido em `localStorage`). `mono` oferece a opção Monocromático Preto & Branco puro de alto contraste. Regra de contraste: o mesmo princípio acima vale por paleta (texto pequeno usa a variante *strong*).
+> **Acentos personalizáveis oficiais (F11/F13/Curadoria):** o root aceita `data-accent="gold|mono"` (Teal Vital é o padrão raiz oficial, sem atributo) — sobrescreve `--primary`/`--primary-strong`/`--ring` nos 3 temas (Light, Dark e OLED), aplicado via `use-visual-customization` (persistido em `localStorage` e nuvem). `gold` ativa o Ouro Nobre da identidade Axir, e `mono` oferece a opção Monocromático Preto & Branco puro de alto contraste para OLED/foco minimalista. As 3 paletas oficiais garantem conformidade com WCAG AA sem conflitos com cores semânticas financeiras.
 
 ### 2.3 Semânticas financeiras
 

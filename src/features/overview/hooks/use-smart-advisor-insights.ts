@@ -46,6 +46,7 @@ export interface UseSmartAdvisorInsightsOptions {
   safeToSpendCents?: number;
   committedObligationsCents?: number;
   spendingHabits?: readonly SpendingHabit[];
+  suppressedThemeKeys?: readonly string[];
 }
 
 export interface UseSmartAdvisorInsightsResult {
@@ -171,6 +172,8 @@ export function useSmartAdvisorInsights(
       effectiveDismissals: cooldown.effectiveDismissals,
       effectiveLastDismissedDay: cooldown.effectiveLastDismissedDay,
       nowMs,
+      categories: queries.categories,
+      suppressedThemeKeys: options.suppressedThemeKeys,
     });
   }, [
     queries,
@@ -180,6 +183,7 @@ export function useSmartAdvisorInsights(
     options.plannedAporteCents,
     options.currentMonthAportesCents,
     options.spendingHabits,
+    options.suppressedThemeKeys,
     cooldown.effectiveDismissals,
     cooldown.effectiveLastDismissedDay,
     nowMs,

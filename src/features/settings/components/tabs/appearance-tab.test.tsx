@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppearanceTab } from "./appearance-tab";
 import * as nativeServices from "@/services/native";
@@ -9,6 +10,12 @@ import { ThemeProvider } from "@/app/theme-provider";
 const mockMutate = vi.fn();
 
 vi.mock("@/state", () => ({
+  useUserSubscription: () => ({
+    tier: "pro_annual",
+    isPro: true,
+    canWrite: true,
+    isReadOnly: false,
+  }),
   useUpdateCustomSettings: () => ({ mutate: mockMutate, isPending: false }),
   useUserAccess: () => ({
     role: "admin",
@@ -43,6 +50,10 @@ vi.mock("@/state", () => ({
   }),
 }));
 
+vi.mock("@/hooks/use-is-pro", () => ({
+  useIsPro: () => true,
+}));
+
 vi.mock("@/services/native", async () => {
   const actual = await vi.importActual<typeof nativeServices>("@/services/native");
   return {
@@ -56,11 +67,13 @@ function renderAppearanceTab() {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <AppearanceTab />
-      </ThemeProvider>
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AppearanceTab />
+        </ThemeProvider>
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -148,7 +161,11 @@ describe("AppearanceTab - Aparência & Identidade Visual (Fase 1 — Tarefa 1.3)
     const goldBtn = screen.getByRole("button", { name: /^Ouro Âmbar/i });
     await user.click(goldBtn);
 
-    expect(document.documentElement.dataset.accent).toBe("gold");
+    expect(mockMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accent: "gold",
+      }),
+    );
   });
 
   it("permite configurar atalhos do cabeçalho", async () => {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { inferSectorFromTicker } from "@/domain/portfolio";
 import {
   filterPositionRows,
   groupPositionsByClass,
@@ -14,6 +15,10 @@ export function usePositionTableState(rows: readonly PositionRow[], highlightId?
   const [sort, setSort] = useState<SortState | null>(null);
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
+  const [selectedSector, setSelectedSector] = useState<string | null>(null);
+  const [governanceFilter, setGovernanceFilter] = useState<"all" | "core" | "quarantine" | "exit">("core");
+  const [quarantineSectionOpen, setQuarantineSectionOpen] = useState(false);
+  const [exitSectionOpen, setExitSectionOpen] = useState(false);
   const [groupBy, setGroupBy] = useState<"class" | "sector">("class");
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
   const [expandedSectors, setExpandedSectors] = useState<Record<string, boolean>>({});
@@ -27,7 +32,31 @@ export function usePositionTableState(rows: readonly PositionRow[], highlightId?
   const effectiveRows = useMemo(() => rows.filter((r) => !r.isCash), [rows]);
   const activeRows = useMemo(() => effectiveRows.filter((r) => !isPositionRowClosed(r)), [effectiveRows]);
   const closedRows = useMemo(() => effectiveRows.filter((r) => isPositionRowClosed(r)), [effectiveRows]);
-  const displaySourceRows = hideClosed ? activeRows : effectiveRows;
+
+  const quarantineRows = useMemo(
+    () => activeRows.filter((r) => r.allocationStatus === "quarantine"),
+    [activeRows],
+  );
+  const exitRows = useMemo(
+    () => activeRows.filter((r) => r.allocationStatus === "exit"),
+    [activeRows],
+  );
+  const coreRows = useMemo(
+    () => activeRows.filter((r) => r.allocationStatus !== "quarantine" && r.allocationStatus !== "exit"),
+    [activeRows],
+  );
+
+  const displaySourceRows = useMemo(() => {
+    let source = activeRows;
+    if (governanceFilter === "core") {
+      source = coreRows;
+    } else if (governanceFilter === "quarantine") {
+      source = quarantineRows;
+    } else if (governanceFilter === "exit") {
+      source = exitRows;
+    }
+    return hideClosed ? source : effectiveRows;
+  }, [activeRows, coreRows, quarantineRows, exitRows, governanceFilter, hideClosed, effectiveRows]);
 
   useEffect(() => {
     if (!highlightId) return;
@@ -45,21 +74,35 @@ export function usePositionTableState(rows: readonly PositionRow[], highlightId?
     [displaySourceRows],
   );
 
+  const availableSectors = useMemo(() => {
+    const rowsToInspect = selectedClass
+      ? displaySourceRows.filter((r) => r.assetClass === selectedClass)
+      : displaySourceRows;
+
+    const sectors = rowsToInspect.map(
+      (r) => r.sector?.trim() || inferSectorFromTicker(r.ticker, r.assetClass) || "Outros",
+    );
+    return [...new Set(sectors)].sort((a, b) => a.localeCompare(b));
+  }, [displaySourceRows, selectedClass]);
+
+  const effectiveSelectedSector =
+    selectedSector && availableSectors.includes(selectedSector) ? selectedSector : null;
+
   const filteredRows = useMemo(
-    () => filterPositionRows(displaySourceRows, { search, selectedClass }),
-    [displaySourceRows, search, selectedClass],
+    () => filterPositionRows(displaySourceRows, { search, selectedClass, selectedSector: effectiveSelectedSector }),
+    [displaySourceRows, search, selectedClass, effectiveSelectedSector],
   );
 
   const sortedRows = useMemo(() => sortPositionRows(filteredRows, sort), [filteredRows, sort]);
-  const isGroupedMode = selectedClass === null;
+  const isGroupedMode = groupBy === "sector" ? true : selectedClass === null;
 
   const classGroups = useMemo(
-    () => (isGroupedMode && groupBy === "class" ? groupPositionsByClass(filteredRows, sort) : []),
-    [isGroupedMode, groupBy, filteredRows, sort],
+    () => (groupBy === "class" && selectedClass === null ? groupPositionsByClass(filteredRows, sort) : []),
+    [groupBy, selectedClass, filteredRows, sort],
   );
   const sectorGroups = useMemo(
-    () => (isGroupedMode && groupBy === "sector" ? groupPositionsBySector(filteredRows, sort) : []),
-    [isGroupedMode, groupBy, filteredRows, sort],
+    () => (groupBy === "sector" ? groupPositionsBySector(filteredRows, sort) : []),
+    [groupBy, filteredRows, sort],
   );
 
   const autoExpandedClass = useMemo(
@@ -74,8 +117,11 @@ export function usePositionTableState(rows: readonly PositionRow[], highlightId?
   const isClassExpanded = (clsName: string) =>
     expandedClasses[clsName] !== undefined ? expandedClasses[clsName] : autoExpandedClass === clsName;
 
-  const isSectorExpanded = (sectorKey: string) =>
-    expandedSectors[sectorKey] !== undefined ? expandedSectors[sectorKey] : autoExpandedSector === sectorKey;
+  const isSectorExpanded = (sectorKey: string) => {
+    if (expandedSectors[sectorKey] !== undefined) return expandedSectors[sectorKey];
+    if (effectiveSelectedSector !== null) return true;
+    return autoExpandedSector === sectorKey;
+  };
 
   const toggleSort = (key: SortKey) => {
     setSort((current) => {
@@ -90,7 +136,47 @@ export function usePositionTableState(rows: readonly PositionRow[], highlightId?
     [sortedRows, page, pageSize],
   );
 
-  const hasFiltersActive = search.trim() !== "" || selectedClass !== null;
+  const allClassKeys = useMemo(() => classGroups.map((g) => g.className), [classGroups]);
+  const allSectorKeys = useMemo(
+    () => sectorGroups.map((g) => `${g.className}__${g.sectorName}`),
+    [sectorGroups],
+  );
+
+  const activeGroupKeys = groupBy === "class" ? allClassKeys : allSectorKeys;
+  const areAllExpanded =
+    activeGroupKeys.length > 0 &&
+    activeGroupKeys.every((key) => (groupBy === "class" ? isClassExpanded(key) : isSectorExpanded(key)));
+
+  const toggleExpandAll = () => {
+    const nextState = !areAllExpanded;
+    if (groupBy === "class") {
+      const nextMap: Record<string, boolean> = {};
+      allClassKeys.forEach((k) => {
+        nextMap[k] = nextState;
+      });
+      setExpandedClasses(nextMap);
+    } else {
+      const nextMap: Record<string, boolean> = {};
+      allSectorKeys.forEach((k) => {
+        nextMap[k] = nextState;
+      });
+      setExpandedSectors(nextMap);
+    }
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setSelectedClass(null);
+    setSelectedSector(null);
+    setGovernanceFilter("core");
+    setPage(1);
+  };
+
+  const hasFiltersActive =
+    search.trim() !== "" ||
+    selectedClass !== null ||
+    effectiveSelectedSector !== null ||
+    governanceFilter !== "core";
 
   return {
     sort,
@@ -105,14 +191,39 @@ export function usePositionTableState(rows: readonly PositionRow[], highlightId?
       setSelectedClass(cls);
       setPage(1);
     },
+    selectedSector: effectiveSelectedSector,
+    setSelectedSector: (sec: string | null) => {
+      setSelectedSector(sec);
+      setPage(1);
+    },
     groupBy,
-    setGroupBy,
+    setGroupBy: (mode: "class" | "sector") => {
+      setGroupBy(mode);
+      if (mode === "class") {
+        setSelectedSector(null);
+      }
+      setPage(1);
+    },
     isClassExpanded,
     toggleClass: (cls: string) =>
       setExpandedClasses((prev) => ({ ...prev, [cls]: !isClassExpanded(cls) })),
     isSectorExpanded,
     toggleSector: (key: string) =>
       setExpandedSectors((prev) => ({ ...prev, [key]: !isSectorExpanded(key) })),
+    toggleExpandAll,
+    areAllExpanded,
+    clearFilters,
+    governanceFilter,
+    setGovernanceFilter: (status: "all" | "core" | "quarantine" | "exit") => {
+      setGovernanceFilter(status);
+      setPage(1);
+    },
+    quarantineRows,
+    exitRows,
+    quarantineSectionOpen,
+    toggleQuarantineSection: () => setQuarantineSectionOpen((prev) => !prev),
+    exitSectionOpen,
+    toggleExitSection: () => setExitSectionOpen((prev) => !prev),
     hideClosed,
     toggleHideClosed: () => setHideClosed((prev) => !prev),
     closedSectionOpen,
@@ -125,6 +236,7 @@ export function usePositionTableState(rows: readonly PositionRow[], highlightId?
     setPage,
     closedRows,
     availableClasses,
+    availableSectors,
     filteredRows,
     sortedRows,
     isGroupedMode,

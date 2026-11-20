@@ -208,6 +208,11 @@ export function AporteTab({
                   totalRoutesCount={simulation.routes.length}
                   diversificationImpact={simulation.diversificationImpact}
                   overflowEventsCount={simulation.overflowEvents?.length}
+                  classSummaries={effectiveClassSummaries}
+                  sectorSummaries={effectiveSectorSummaries}
+                  skippedAssets={simulation.result?.skippedAssets ?? []}
+                  pausedAssets={simulation.pausedAssets}
+                  overflowEvents={simulation.overflowEvents}
                 />
               }
             />

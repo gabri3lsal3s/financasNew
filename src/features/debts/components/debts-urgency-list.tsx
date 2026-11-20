@@ -1,6 +1,9 @@
+import { useMemo } from "react";
 import { AlertCircle, Check, ChevronDown, ChevronUp, HandCoins, Plus } from "lucide-react";
 import { Badge, Button, EmptyState, Skeleton } from "@/components/ui";
 import { HighlightRow, KpiCard, KpiGrid } from "@/components/modules";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import { buildDebtsSummaryBreakdown } from "@/domain/calculation-memory";
 import { debtStatus, type DebtsSummary } from "@/domain/debts";
 import { monthLabel } from "@/lib/date";
 import type { Debt } from "@/types";
@@ -77,6 +80,22 @@ export function DebtsUrgencyList({
     </div>
   );
 
+  const debtsBreakdown = useMemo(() => {
+    return buildDebtsSummaryBreakdown({
+      payablePendingCents: debtsSummary.payablePendingCents,
+      receivablePendingCents: debtsSummary.receivablePendingCents,
+      netPendingCents: debtsSummary.netPendingCents,
+      pendingCount: debtsSummary.pendingCount,
+      paidCount: debtsSummary.paidCount,
+    });
+  }, [
+    debtsSummary.netPendingCents,
+    debtsSummary.paidCount,
+    debtsSummary.payablePendingCents,
+    debtsSummary.pendingCount,
+    debtsSummary.receivablePendingCents,
+  ]);
+
   return (
     <div
       data-tour={type === "payable" ? "debts-payable-section" : "debts-receivable-section"}
@@ -84,12 +103,23 @@ export function DebtsUrgencyList({
     >
       {!isLoading && totalDebtsCount > 0 && (
         <KpiGrid columns={3}>
-          <KpiCard label="A pagar" cents={debtsSummary.payablePendingCents} tone="negative" />
-          <KpiCard label="A receber" cents={debtsSummary.receivablePendingCents} tone="positive" />
+          <KpiCard
+            label="A pagar"
+            cents={debtsSummary.payablePendingCents}
+            tone="negative"
+            action={<CalculationMemoryModal breakdown={debtsBreakdown} />}
+          />
+          <KpiCard
+            label="A receber"
+            cents={debtsSummary.receivablePendingCents}
+            tone="positive"
+            action={<CalculationMemoryModal breakdown={debtsBreakdown} />}
+          />
           <KpiCard
             label="Saldo pendente"
             cents={debtsSummary.netPendingCents}
             tone={debtsSummary.netPendingCents >= 0 ? "positive" : "negative"}
+            action={<CalculationMemoryModal breakdown={debtsBreakdown} />}
           />
         </KpiGrid>
       )}

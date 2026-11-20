@@ -2,6 +2,9 @@ import { App } from "@capacitor/app";
 import { CapacitorHttp, registerPlugin } from "@capacitor/core";
 import { isNativePlatform } from "./platform";
 import { AppVersionManifestSchema } from "./update-schema";
+import { AXIR_APP_VERSION } from "./app-links";
+import { isNewerVersion } from "@/domain/version/semver";
+import { getPWAUpdateAvailable } from "@/app/pwa";
 import type { AppUpdateCheckResult, AppVersionManifest } from "@/types/app-update";
 
 export interface AppUpdatePluginInterface {
@@ -37,23 +40,26 @@ export const DEFAULT_MANIFEST_PATH = "/releases/version.json";
 export interface CheckUpdateOptions {
   manifestUrl?: string;
   forceCheck?: boolean;
+  currentVersion?: string;
+  currentVersionCode?: number;
 }
 
 /**
  * Consulta o manifesto de versão remoto e compara com o app instalado.
  */
 export async function checkAppUpdate(options?: CheckUpdateOptions): Promise<AppUpdateCheckResult> {
-  const defaultUrl = isNativePlatform() ? REMOTE_MANIFEST_URL : DEFAULT_MANIFEST_PATH;
+  const isNative = isNativePlatform();
+  const defaultUrl = isNative ? REMOTE_MANIFEST_URL : DEFAULT_MANIFEST_PATH;
   const url = options?.manifestUrl || defaultUrl;
 
-  let currentVersion = "1.0.0";
-  let currentVersionCode = 1;
+  let currentVersion = options?.currentVersion || AXIR_APP_VERSION;
+  let currentVersionCode = options?.currentVersionCode || 1;
 
-  if (isNativePlatform()) {
+  if (isNative) {
     try {
       const info = await App.getInfo();
-      currentVersion = info.version || "1.0.0";
-      currentVersionCode = parseInt(info.build, 10) || 1;
+      currentVersion = options?.currentVersion || info.version || AXIR_APP_VERSION;
+      currentVersionCode = options?.currentVersionCode || parseInt(info.build, 10) || 1;
     } catch {
       // Fallback gracioso
     }
@@ -63,7 +69,7 @@ export async function checkAppUpdate(options?: CheckUpdateOptions): Promise<AppU
     let rawData: unknown;
     let statusCode = 200;
 
-    if (isNativePlatform()) {
+    if (isNative) {
       try {
         const response = await CapacitorHttp.get({
           url,
@@ -130,8 +136,13 @@ export async function checkAppUpdate(options?: CheckUpdateOptions): Promise<AppU
     }
 
     const manifest = parseResult.data;
-    const hasUpdate = manifest.versionCode > currentVersionCode;
-    const isMandatory = false; // Pode ser estendido se minSupportedVersion > currentVersion
+    // No ambiente nativo (Capacitor Android), a governança se dá estritamente por versionCode.
+    // No ambiente Web / PWA, baseia-se no Service Worker ativo ou em SemVer estrito (manifest.version > currentVersion).
+    const hasUpdate = isNative
+      ? manifest.versionCode > currentVersionCode
+      : getPWAUpdateAvailable() || isNewerVersion(manifest.version, currentVersion);
+
+    const isMandatory = false;
 
     return {
       hasUpdate,

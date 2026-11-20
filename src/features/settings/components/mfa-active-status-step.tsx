@@ -8,11 +8,11 @@ export function MfaActiveStatusStep() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 p-3.5 rounded-xl border border-border/80 bg-surface-raised">
-        <Smartphone className="size-4.5 shrink-0 text-positive-strong" aria-hidden="true" />
+        <Smartphone className="size-4.5 shrink-0 text-primary-strong" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground">App Autenticador</span>
-            <Badge variant="positive" size="xs">
+            <Badge variant="default" size="xs">
               Ativo
             </Badge>
           </div>

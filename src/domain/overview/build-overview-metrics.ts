@@ -500,30 +500,60 @@ export function filterEligibleGoalShares(params: {
   );
   if (activeList.length === 0) return [];
 
-  return activeList.filter((s) => {
-    const pld = (s.payload as Record<string, unknown> | null) ?? {};
-    const targetCents = Number(pld.target_cents ?? 0);
-    const live = liveGoalProgress.get(s.id)?.currentCents;
-    const currentCents = live !== undefined ? live : Number(pld.current_cents ?? 0);
-    const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
-    const isCompleted = targetCents > 0 ? currentCents >= targetCents : pld.status === "completed";
-    const isFinalStretch = percentage >= 80 && !isCompleted;
-    const stage: "completed" | "final_stretch" | "has_surplus" | "regular" = isCompleted
-      ? "completed"
-      : isFinalStretch
-        ? "final_stretch"
-        : hasSurplus
-          ? "has_surplus"
-          : "regular";
+  const candidates = activeList
+    .map((s) => {
+      const pld = (s.payload as Record<string, unknown> | null) ?? {};
+      const targetCents = Number(pld.target_cents ?? 0);
+      const live = liveGoalProgress.get(s.id)?.currentCents;
+      const currentCents = live !== undefined ? live : Number(pld.current_cents ?? 0);
+      const percentage = targetCents > 0 ? Math.round((currentCents / targetCents) * 100) : 0;
+      const isCompleted = targetCents > 0 ? currentCents >= targetCents : pld.status === "completed";
+      const isFinalStretch = percentage >= 80 && !isCompleted;
+      const stage: "completed" | "final_stretch" | "has_surplus" | "regular" = isCompleted
+        ? "completed"
+        : isFinalStretch
+          ? "final_stretch"
+          : hasSurplus
+            ? "has_surplus"
+            : "regular";
 
-    return shouldShowGoalAlert(goalDismissals?.[s.id], {
-      goalId: s.id,
-      currentCents,
-      targetCents,
-      percentage,
-      stage,
-    });
-  });
+      // Apenas metas com marcos relevantes geram alerta no carrossel da Home
+      const isAlertWorthy = isCompleted || isFinalStretch || hasSurplus;
+
+      const shouldShow =
+        isAlertWorthy &&
+        shouldShowGoalAlert(goalDismissals?.[s.id], {
+          goalId: s.id,
+          currentCents,
+          targetCents,
+          percentage,
+          stage,
+        });
+
+      return {
+        share: s,
+        percentage,
+        isCompleted,
+        isFinalStretch,
+        shouldShow,
+      };
+    })
+    .filter((c) => c.shouldShow);
+
+  // Metas concluídas ou em reta final possuem relevância máxima de celebração/urgência
+  const milestoneGoals = candidates
+    .filter((c) => c.isCompleted || c.isFinalStretch)
+    .map((c) => c.share);
+
+  // Havendo metas apenas elegíveis por sobra de caixa, prioriza no máximo 1 (a mais adiantada)
+  // para evitar duplicar múltiplas sugestões de aporte sobre o mesmo capital
+  const surplusOnlyCandidates = candidates
+    .filter((c) => !c.isCompleted && !c.isFinalStretch)
+    .sort((a, b) => b.percentage - a.percentage);
+
+  const topSurplusGoal = surplusOnlyCandidates[0]?.share ? [surplusOnlyCandidates[0].share] : [];
+
+  return [...milestoneGoals, ...topSurplusGoal];
 }
 
 export interface OverviewBudgetRow {

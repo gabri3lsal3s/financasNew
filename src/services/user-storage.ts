@@ -45,7 +45,7 @@ export function setActiveUserId(userId: string | null): void {
     // para que a interface não sofra alterações bruscas de tema ou cor durante login/checkout.
     if (!prevUserId && userId && typeof window !== "undefined") {
       try {
-        SYNCED_BOOT_KEYS.forEach((key) => {
+        [...SYNCED_BOOT_KEYS, "accent_theme"].forEach((key) => {
           const userKey = `financas_${userId}_${key}`;
           if (window.localStorage.getItem(userKey) === null) {
             const activeVal =
@@ -62,7 +62,8 @@ export function setActiveUserId(userId: string | null): void {
     }
 
     // Se estiver deslogando (prevUserId para null):
-    // Preserva as preferências visuais no estado guest/active para manter continuidade na tela de login
+    // Preserva as preferências ergonômicas de exibição (tema, movimento) no estado guest/active,
+    // mas limpa a cor de destaque (accent) da conta anterior para manter a marca oficial Axir (Teal Vital) nas telas de login/cadastro.
     if (prevUserId && !userId && typeof window !== "undefined") {
       try {
         SYNCED_BOOT_KEYS.forEach((key) => {
@@ -72,6 +73,11 @@ export function setActiveUserId(userId: string | null): void {
             window.localStorage.setItem(`financas_active_${key}`, userVal);
           }
         });
+        window.localStorage.removeItem("financas_guest_accent_theme");
+        window.localStorage.removeItem("financas_active_accent_theme");
+        if (typeof document !== "undefined") {
+          document.documentElement.removeAttribute("data-accent");
+        }
       } catch {
         // no-op
       }
@@ -92,7 +98,6 @@ const SYNCED_BOOT_KEYS = [
   "theme",
   "dark_theme_variant",
   "theme_schedule",
-  "accent_theme",
   "surface_style",
   "motion_level",
 ];

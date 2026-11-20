@@ -24,6 +24,8 @@ export interface KpiCardProps {
    * card é apenas informativo (padrão atual).
    */
   onClick?: () => void;
+  /** Ação ou gatilho opcional no cabeçalho do card (ex.: memória de cálculo ?). */
+  action?: ReactNode;
 }
 
 const toneValue: Record<NonNullable<KpiCardProps["tone"]>, string> = {
@@ -69,7 +71,7 @@ function getDynamicKpiSize(cents?: number): string {
   return "text-lg sm:text-xl lg:text-2xl";
 }
 
-export function KpiCard({ label, ariaLabel, value, cents, tone = "default", hint, icon, spark, onClick }: KpiCardProps) {
+export function KpiCard({ label, ariaLabel, value, cents, tone = "default", hint, icon, spark, onClick, action }: KpiCardProps) {
   const dynamicSize = getDynamicKpiSize(cents);
   const accessibleName = ariaLabel ?? (typeof label === "string" ? label : undefined);
 
@@ -95,7 +97,20 @@ export function KpiCard({ label, ariaLabel, value, cents, tone = "default", hint
       <div>
         <div className="flex items-start justify-between gap-1.5 min-w-0">
           <span className="line-clamp-2 min-h-[2rem] leading-snug break-words text-xs font-medium text-muted-foreground flex-1">{label}</span>
-          {icon ? <span className={cn("shrink-0 mt-0.5", toneIcon[tone])}>{icon}</span> : null}
+          <div
+            className="flex items-center gap-1 shrink-0 mt-0.5"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onMouseUp={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            {action}
+            {icon ? <span className={cn("shrink-0", toneIcon[tone])}>{icon}</span> : null}
+          </div>
         </div>
         {/* A máscara de privacidade é global (html[data-privacy] → .num em globals.css). */}
         <p className={cn("num mt-1 sm:mt-1.5 tabular-nums tracking-tight whitespace-nowrap font-bold overflow-x-auto no-scrollbar", toneValue[tone], dynamicSize)}>

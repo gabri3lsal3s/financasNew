@@ -18,6 +18,7 @@ export interface HouseholdClusteringRankingProps {
  * Ranking de Consumo Familiar Agrupado por Categorias e Clusters Semânticos.
  * Consolida as despesas da casa usando o motor puro `clusterFamilyExpenses`,
  * exibindo percentuais de representatividade e fatias de quem pagou cada categoria.
+ * Estrutura limpa em divide-y, padronizada com o restante do aplicativo (sem caixas cinzas aninhadas).
  */
 export function HouseholdClusteringRanking({
   expenses,
@@ -53,19 +54,14 @@ export function HouseholdClusteringRanking({
             className="py-8"
           />
         ) : (
-          <div
-            className={cn(
-              "grid gap-3",
-              clusters.length >= 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1",
-            )}
-          >
+          <div className="divide-y divide-border/80">
             {clusters.map((cluster) => {
               const clampedPercent = Math.min(100, Math.max(0, cluster.percentage));
 
               return (
                 <div
                   key={cluster.clusterId}
-                  className="p-3.5 rounded-xl bg-surface-raised space-y-2.5 min-w-0"
+                  className="py-3.5 first:pt-0 last:pb-0 space-y-2.5 min-w-0"
                 >
                   <div className="flex items-center justify-between gap-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -75,13 +71,13 @@ export function HouseholdClusteringRanking({
                         className="size-4 shrink-0"
                       />
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-foreground line-clamp-2 break-words">
+                        <span className="text-xs font-semibold text-foreground line-clamp-1 break-words">
                           {cluster.label}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
+                        </span>
+                        <span className="text-[11px] text-muted-foreground ml-2">
                           {cluster.expenses_count}{" "}
                           {cluster.expenses_count === 1 ? "lançamento" : "lançamentos"}
-                        </p>
+                        </span>
                       </div>
                     </div>
 
@@ -91,14 +87,14 @@ export function HouseholdClusteringRanking({
                         tone="default"
                         className="text-xs sm:text-sm font-bold"
                       />
-                      <p className="text-[11px] text-muted-foreground font-medium tabular-nums">
+                      <span className="text-[11px] text-muted-foreground font-medium tabular-nums ml-2">
                         {cluster.display_percentage}
-                      </p>
+                      </span>
                     </div>
                   </div>
 
                   {/* Barra de Progresso Proporcional da Categoria */}
-                  <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-surface-hover/80 dark:bg-muted/70">
+                  <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full transition-all duration-300"
                       style={{
@@ -110,7 +106,7 @@ export function HouseholdClusteringRanking({
 
                   {/* Contribuição por participante na categoria */}
                   {cluster.member_contributions.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-[11px] text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                       {cluster.member_contributions.map((mc) => (
                         <span key={mc.user_id} className="tabular-nums">
                           <span className="font-medium text-foreground">{mc.payer_name}:</span>{" "}

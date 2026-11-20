@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Check, Clock, Edit3, RotateCcw } from "lucide-react";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MoneyText } from "@/components/ui/money-text";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { buildAporteAssetRouteBreakdown } from "@/domain/calculation-memory";
 import { isAssetReviewOverdue } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { cn } from "@/lib/utils";
@@ -83,6 +85,21 @@ export function AporteMobileCardList({
         const hasCustom = eff?.isQuantityCustom || eff?.isPriceCustom;
         const isExpanded = expandedIds.has(row.assetId) || hasCustom;
 
+        const routeBreakdown = buildAporteAssetRouteBreakdown({
+          ticker: row.ticker,
+          assetClass: row.assetClass,
+          sector: row.sector,
+          currentValueBRL: row.currentValueBRL,
+          targetValueBRL: row.targetValueBRL,
+          gapBRL: row.gapBRL,
+          priceBRL: row.priceBRL,
+          quantity: eff?.effectiveQuantity ?? row.quantity,
+          allocatedBRL: eff?.effectiveAllocatedBRL ?? row.allocatedBRL,
+          effectiveTargetPct: row.effectiveTargetPct,
+          reasonLabel: row.reasonLabel,
+          ceilingReason: row.ceilingReason,
+        });
+
         const metaLine = [
           row.sector,
           row.effectiveTargetPct !== undefined && row.effectiveTargetPct > 0
@@ -101,9 +118,9 @@ export function AporteMobileCardList({
               isDone && "opacity-75",
             )}
           >
-            {/* Cabeçalho do Card: Identidade, Badges e Ações */}
+            {/* 1. LINHA SUPERIOR: Identidade do Ativo & Valor do Aporte */}
             <div className="flex items-start justify-between gap-2 min-w-0">
-              <div className="flex items-start gap-2.5 min-w-0 flex-1">
+              <div className="flex items-start gap-2 min-w-0 flex-1">
                 <Checkbox
                   checked={eff?.isSelected ?? false}
                   disabled={row.quantity <= 0}
@@ -111,213 +128,232 @@ export function AporteMobileCardList({
                   aria-label={`Selecionar ${row.ticker} para aporte`}
                   className="mt-0.5 shrink-0"
                 />
-                <div className="flex flex-col gap-1 min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-mono text-sm font-bold text-foreground truncate">
-                      {row.ticker}
-                    </span>
-                    {row.isConstrainedByCeiling ? (
-                      <Badge variant="muted" size="xs" className="text-[10px] font-mono" title={row.ceilingReason}>
-                        {row.ceilingReason === "asset_ceiling"
-                          ? "Teto Ativo"
-                          : row.ceilingReason === "sector_ceiling"
-                          ? "Teto Setor"
-                          : row.ceilingReason === "macro_sector_ceiling"
-                          ? "Teto Macro"
-                          : row.ceilingReason === "issuer_ceiling"
-                          ? "Teto Emissor"
-                          : "Teto"}
-                      </Badge>
-                    ) : null}
-                    {row.assetClass ? (
-                      <Badge variant="muted" size="xs" className="shrink-0 font-medium max-w-full truncate text-[10px]">
-                        {row.assetClass}
-                      </Badge>
-                    ) : null}
-                    {row.rawScore !== undefined ? (
-                      onInspectAsset ? (
-                        <button
-                          type="button"
-                          onClick={() => onInspectAsset(row.ticker)}
-                          className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-md cursor-pointer"
-                          title={`Ver tese e reavaliar nota de ${row.ticker}`}
-                        >
-                          <Badge
-                            variant="muted"
-                            size="xs"
-                            className="cursor-pointer hover:border-primary/50 transition-colors font-mono text-[10px]"
-                          >
-                            {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
-                          </Badge>
-                        </button>
-                      ) : (
-                        <Badge variant="muted" size="xs" className="shrink-0 font-mono text-[10px]">
-                          {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
-                        </Badge>
-                      )
-                    ) : null}
-                    {row.rawScore !== null && isAssetReviewOverdue(row.lastReviewedAt, row.reviewFrequencyMonths) ? (
-                      onInspectAsset ? (
-                        <button
-                          type="button"
-                          onClick={() => onInspectAsset(row.ticker)}
-                          className="inline-flex items-center gap-1 text-[10px] text-warning-strong bg-warning/10 hover:bg-warning/20 border border-warning/25 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
-                          title="Tese de investimento pendente de revisão periódica. Clique para revisar critérios."
-                        >
-                          <Clock className="size-2.5 shrink-0" aria-hidden="true" />
-                          <span>Revisão pendente</span>
-                        </button>
-                      ) : (
-                        <span
-                          className="inline-flex items-center gap-1 text-[10px] text-warning-strong bg-warning/10 border border-warning/25 px-1.5 py-0.5 rounded"
-                          title="Tese de investimento pendente de revisão periódica."
-                        >
-                          <Clock className="size-2.5 shrink-0" aria-hidden="true" />
-                          <span>Revisão pendente</span>
-                        </span>
-                      )
-                    ) : null}
-                  </div>
-
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <AporteReasonBadge
-                      ticker={row.ticker}
-                      reasonKind={row.reasonKind}
-                      reasonLabel={row.reasonLabel}
-                      reasonDescription={row.reasonDescription}
-                      hasQualityConflict={row.hasQualityConflict}
-                      qualityConflictDetail={row.qualityConflictDetail}
-                      rawScore={row.rawScore}
-                      onInspect={onInspectAsset ? () => onInspectAsset(row.ticker) : undefined}
-                    />
-                    {metaLine ? (
-                      <span className="text-[11px] text-muted-foreground truncate" title={row.formulaLabel}>
-                        {metaLine}
-                      </span>
-                    ) : null}
-                  </div>
+                <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                  <span className="font-mono text-sm font-bold text-foreground break-words">
+                    {row.ticker}
+                  </span>
+                  <CalculationMemoryModal breakdown={routeBreakdown} />
+                  {row.assetClass ? (
+                    <Badge variant="muted" size="xs" className="shrink-0 font-medium max-w-full truncate">
+                      {row.assetClass}
+                    </Badge>
+                  ) : null}
+                  {row.isConstrainedByCeiling ? (
+                    <Badge variant="muted" size="xs" className="font-mono shrink-0" title={row.ceilingReason}>
+                      {row.ceilingReason === "asset_ceiling"
+                        ? "Teto Ativo"
+                        : row.ceilingReason === "sector_ceiling"
+                        ? "Teto Setor"
+                        : row.ceilingReason === "macro_sector_ceiling"
+                        ? "Teto Macro"
+                        : row.ceilingReason === "issuer_ceiling"
+                        ? "Teto Emissor"
+                        : "Teto"}
+                    </Badge>
+                  ) : null}
                 </div>
               </div>
 
-              <AporteRowActions
-                ticker={row.ticker}
-                isDone={isDone}
-                quantity={eff?.effectiveQuantity ?? row.quantity}
-                allocatedBRL={eff?.effectiveAllocatedBRL ?? row.allocatedBRL}
-                onToggleDone={onToggleTicker}
-                onOpenWizard={onOpenWizard}
-                onInspect={onInspectAsset ? () => onInspectAsset(row.ticker) : undefined}
-                compact
-              />
+              {/* Valor do Aporte Sugerido no Topo Direito */}
+              <div className="flex flex-col items-end shrink-0 text-right">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Aporte
+                </span>
+                <MoneyText
+                  cents={numberToCents(eff?.effectiveAllocatedBRL ?? row.allocatedBRL)}
+                  tone="portfolio"
+                  className="text-sm font-bold tabular-nums"
+                />
+              </div>
             </div>
 
-            {/* Bloco de Valores & Cotas: Modo Leitura vs. Modo Edição */}
-            <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
-              <div className="flex items-center justify-between gap-2 min-w-0">
-                <div className="flex items-baseline gap-1.5 min-w-0">
-                  <span className="text-[11px] font-medium text-muted-foreground shrink-0">
-                    Aporte:
+            {/* 2. LINHA DE CONTEXTO: Diagnóstico, Nota e Setor */}
+            <div className="flex items-center justify-between gap-2 flex-wrap text-xs text-muted-foreground min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+                <AporteReasonBadge
+                  ticker={row.ticker}
+                  reasonKind={row.reasonKind}
+                  reasonLabel={row.reasonLabel}
+                  reasonDescription={row.reasonDescription}
+                  hasQualityConflict={row.hasQualityConflict}
+                  qualityConflictDetail={row.qualityConflictDetail}
+                  rawScore={row.rawScore}
+                  onInspect={onInspectAsset ? () => onInspectAsset(row.ticker) : undefined}
+                />
+                {metaLine ? (
+                  <span className="text-[11px] text-muted-foreground truncate" title={row.formulaLabel}>
+                    {metaLine}
                   </span>
-                  <MoneyText
-                    cents={numberToCents(eff?.effectiveAllocatedBRL ?? row.allocatedBRL)}
-                    tone="portfolio"
-                    className="text-sm font-bold tabular-nums"
-                  />
-                </div>
+                ) : null}
+              </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {hasCustom && onResetAsset ? (
+              <div className="flex items-center gap-1.5 shrink-0">
+                {row.rawScore !== undefined ? (
+                  onInspectAsset ? (
+                    <button
+                      type="button"
+                      onClick={() => onInspectAsset(row.ticker)}
+                      className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-md cursor-pointer shrink-0"
+                      title={`Ver tese e reavaliar nota de ${row.ticker}`}
+                    >
+                      <Badge
+                        variant="muted"
+                        size="xs"
+                        className="cursor-pointer hover:border-primary/50 transition-colors font-mono"
+                      >
+                        {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
+                      </Badge>
+                    </button>
+                  ) : (
+                    <Badge variant="muted" size="xs" className="shrink-0 font-mono">
+                      {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
+                    </Badge>
+                  )
+                ) : null}
+
+                {row.rawScore !== null && isAssetReviewOverdue(row.lastReviewedAt, row.reviewFrequencyMonths) ? (
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] text-warning-strong bg-warning/10 border border-warning/25 px-1.5 py-0.5 rounded shrink-0"
+                    title="Tese de investimento pendente de revisão periódica."
+                  >
+                    <Clock className="size-2.5 shrink-0" aria-hidden="true" />
+                    <span>Revisar</span>
+                  </span>
+                ) : null}
+              </div>
+            </div>
+
+            {/* 3. LINHA DE EXECUÇÃO: Barra de Cotas & Ações Compactas */}
+            <div className="flex flex-col gap-2 pt-1.5 border-t border-border/40">
+              {/* Modo Leitura */}
+              {!isExpanded ? (
+                <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                  {/* Bloco de Cotas & Preço */}
+                  <div className="flex items-center gap-2 bg-surface-raised/70 border border-border/40 px-2.5 py-1.5 rounded-lg font-mono text-xs tabular-nums flex-1 min-w-[140px] shadow-2xs">
+                    <span className="truncate text-foreground font-medium">
+                      {formatAssetQuantity(currentQty, row.assetClass ?? undefined)} cotas
+                    </span>
+                    <span className="text-[11px] text-muted-foreground shrink-0">
+                      × R$ {currentPrice.toFixed(2)}
+                    </span>
+                    {hasCustom ? (
+                      <Badge variant="warning" size="xs" className="font-mono ml-auto shrink-0">
+                        Editado
+                      </Badge>
+                    ) : null}
+                  </div>
+
+                  {/* Ações Compactas à Direita */}
+                  <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                    {hasCustom && onResetAsset ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onResetAsset(row.assetId)}
+                        title={`Restaurar cotação e quantidade sugeridas para ${row.ticker}`}
+                        aria-label={`Restaurar valores sugeridos para ${row.ticker}`}
+                        className="size-7 p-0 text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+                      >
+                        <RotateCcw className="size-3" aria-hidden="true" />
+                      </Button>
+                    ) : null}
+
                     <Button
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => onResetAsset(row.assetId)}
-                      title={`Restaurar cotação e quantidade sugeridas para ${row.ticker}`}
-                      aria-label={`Restaurar valores sugeridos para ${row.ticker}`}
-                      className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
+                      onClick={() => toggleExpand(row.assetId)}
+                      className="h-7 px-2 text-[11px] text-muted-foreground hover:text-foreground gap-1 cursor-pointer rounded-md border border-border/40 hover:border-border/80 bg-surface-raised/40 shrink-0"
+                      title="Editar quantidade ou preço manualmente"
                     >
-                      <RotateCcw className="size-3" aria-hidden="true" />
-                      <span>Resetar</span>
+                      <Edit3 className="size-3" aria-hidden="true" />
+                      <span>Ajustar</span>
                     </Button>
-                  ) : null}
 
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleExpand(row.assetId)}
-                    className="h-6 px-1.5 text-[11px] text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
-                  >
-                    {isExpanded ? (
-                      <>
-                        <Check className="size-3" aria-hidden="true" />
-                        <span>Pronto</span>
-                      </>
-                    ) : (
-                      <>
-                        <Edit3 className="size-3" aria-hidden="true" />
-                        <span>Ajustar</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Modo Leitura: Exibição Compacta em 1 Linha */}
-              {!isExpanded ? (
-                <div className="flex items-center justify-between text-xs text-muted-foreground bg-surface-raised px-2.5 py-1.5 rounded-lg font-mono tabular-nums">
-                  <span className="truncate">
-                    {formatAssetQuantity(currentQty, row.assetClass ?? undefined)} cotas
-                  </span>
-                  <span className="text-[11px] shrink-0">
-                    × R$ {currentPrice.toFixed(2)}
-                  </span>
+                    <AporteRowActions
+                      ticker={row.ticker}
+                      isDone={isDone}
+                      quantity={eff?.effectiveQuantity ?? row.quantity}
+                      allocatedBRL={eff?.effectiveAllocatedBRL ?? row.allocatedBRL}
+                      onToggleDone={onToggleTicker}
+                      onOpenWizard={onOpenWizard}
+                      compact
+                    />
+                  </div>
                 </div>
               ) : (
-                /* Modo Edição Expandido: Inputs com proteção 16px anti auto-zoom */
-                <div className="grid grid-cols-2 gap-2 pt-1 animate-fade-in">
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor={`mobile-qty-${row.assetId}`} className="text-[11px] font-semibold text-foreground">
-                      Cotas:
-                    </label>
-                    <NumericInput
-                      id={`mobile-qty-${row.assetId}`}
-                      size="sm"
-                      value={draftValue}
-                      onValueChange={(raw) => onQuantityChange(row.assetId, raw)}
-                      aria-label={`Quantidade de cotas para ${row.ticker}`}
-                      className="w-full px-2 text-right font-mono tabular-nums text-base sm:text-sm h-8"
-                    />
-                    {eff?.isQuantityCustom ? (
-                      <span className="text-[10px] text-muted-foreground font-mono truncate">
-                        sug: {formatAssetQuantity(row.quantity, row.assetClass ?? undefined)}
-                      </span>
-                    ) : null}
+                /* Modo Edição Expandido */
+                <div className="flex flex-col gap-2 animate-fade-in">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor={`mobile-qty-${row.assetId}`} className="text-[11px] font-semibold text-foreground">
+                        Cotas:
+                      </label>
+                      <NumericInput
+                        id={`mobile-qty-${row.assetId}`}
+                        size="sm"
+                        value={draftValue}
+                        onValueChange={(raw) => onQuantityChange(row.assetId, raw)}
+                        aria-label={`Quantidade de cotas para ${row.ticker}`}
+                        className="w-full px-2 text-right font-mono tabular-nums text-base sm:text-sm h-8 border border-border/50 focus:border-primary bg-surface"
+                      />
+                      {eff?.isQuantityCustom ? (
+                        <span className="text-[10px] text-muted-foreground font-mono truncate">
+                          sug: {formatAssetQuantity(row.quantity, row.assetClass ?? undefined)}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label htmlFor={`mobile-price-${row.assetId}`} className="text-[11px] font-semibold text-foreground">
+                        Preço (R$):
+                      </label>
+                      {onPriceChange ? (
+                        <NumericInput
+                          id={`mobile-price-${row.assetId}`}
+                          size="sm"
+                          value={priceDrafts?.get(row.assetId) ?? String(currentPrice)}
+                          onValueChange={(raw) => onPriceChange(row.assetId, raw)}
+                          aria-label={`Preço unitário para ${row.ticker}`}
+                          className="w-full px-2 text-right font-mono tabular-nums text-base sm:text-sm h-8 border border-border/50 focus:border-primary bg-surface"
+                        />
+                      ) : (
+                        <div className="h-8 flex items-center justify-end px-2 rounded-md bg-surface-raised border border-border/60">
+                          <MoneyText cents={numberToCents(row.priceBRL)} tone="default" className="text-xs font-mono" />
+                        </div>
+                      )}
+                      {eff?.isPriceCustom ? (
+                        <span className="text-[10px] text-muted-foreground font-mono truncate">
+                          sug: R$ {row.priceBRL.toFixed(2)}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                    <label htmlFor={`mobile-price-${row.assetId}`} className="text-[11px] font-semibold text-foreground">
-                      Preço (R$):
-                    </label>
-                    {onPriceChange ? (
-                      <NumericInput
-                        id={`mobile-price-${row.assetId}`}
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    {hasCustom && onResetAsset ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
                         size="sm"
-                        value={priceDrafts?.get(row.assetId) ?? String(currentPrice)}
-                        onValueChange={(raw) => onPriceChange(row.assetId, raw)}
-                        aria-label={`Preço unitário para ${row.ticker}`}
-                        className="w-full px-2 text-right font-mono tabular-nums text-base sm:text-sm h-8"
-                      />
-                    ) : (
-                      <div className="h-8 flex items-center justify-end px-2 rounded-md bg-surface-raised border border-border/60">
-                        <MoneyText cents={numberToCents(row.priceBRL)} tone="default" className="text-xs font-mono" />
-                      </div>
-                    )}
-                    {eff?.isPriceCustom ? (
-                      <span className="text-[10px] text-muted-foreground font-mono truncate">
-                        sug: R$ {row.priceBRL.toFixed(2)}
-                      </span>
+                        onClick={() => onResetAsset(row.assetId)}
+                        className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
+                      >
+                        <RotateCcw className="size-3" aria-hidden="true" />
+                        <span>Restaurar original</span>
+                      </Button>
                     ) : null}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => toggleExpand(row.assetId)}
+                      className="h-7 px-3 text-xs font-semibold gap-1"
+                    >
+                      <Check className="size-3.5" aria-hidden="true" />
+                      <span>Concluir</span>
+                    </Button>
                   </div>
                 </div>
               )}

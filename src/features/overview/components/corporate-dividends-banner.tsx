@@ -1,4 +1,4 @@
-import { Coins } from "lucide-react";
+import { ChevronRight, Coins } from "lucide-react";
 import { Badge, Button, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 
@@ -36,10 +36,10 @@ export function CorporateDividendsBanner({
             <span className="text-xs font-semibold text-foreground truncate">
               {hasAvailable ? "Proventos Creditados na Corretora" : "Proventos Previstos no Mês"}
             </span>
-            <Badge variant="muted" size="xs" className="shrink-0">
+            <Badge variant="portfolio" size="xs" className="shrink-0">
               {hasAvailable
                 ? `${availableCount} ${availableCount === 1 ? "disponível" : "disponíveis"}`
-                : "PROVISIONADO"}
+                : "Provisionado"}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground truncate">
@@ -63,9 +63,10 @@ export function CorporateDividendsBanner({
           type="button"
           size="sm"
           onClick={onInspect}
-          className="shrink-0 w-full sm:w-auto font-semibold cursor-pointer"
+          className="shrink-0 w-full sm:w-auto font-semibold cursor-pointer gap-1.5"
         >
-          Conferir
+          <span>Conferir</span>
+          <ChevronRight className="size-3.5" aria-hidden="true" />
         </Button>
       </div>
     </div>

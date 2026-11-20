@@ -32,7 +32,7 @@ export function DailyClosingReminderCard({
                   !dailyReminderActive
                     ? "muted"
                     : postNotificationsGranted
-                      ? "positive"
+                      ? "default"
                       : "warning"
                 }
                 size="xs"

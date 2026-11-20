@@ -1,7 +1,8 @@
-import { Info, SlidersHorizontal } from "lucide-react";
+import { useMemo } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import { Badge, Button, MoneyText } from "@/components/ui";
-import { usePrivacyMask } from "@/hooks/use-privacy-mask";
-import { formatCentsAsBRL } from "@/services/masks";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import { buildBudgetSpendWeightBreakdown } from "@/domain/calculation-memory";
 import { cn } from "@/lib/utils";
 
 export interface BudgetsLimitsSummaryCardProps {
@@ -34,15 +35,16 @@ export function BudgetsLimitsSummaryCard({
   categoriesCount,
   onOpenAdjustBudget,
 }: BudgetsLimitsSummaryCardProps) {
-  const masked = usePrivacyMask();
   const ratio = totalLimitsCents > 0 ? totalBudgetedExpensesCents / totalLimitsCents : 0;
   const percent = Math.min(100, ratio * 100);
 
-  const metricTooltip = masked
-    ? undefined
-    : spendMetric === "personal"
-      ? `Total nominal bruto das despesas: ${formatCentsAsBRL(totalExpensesGrossCents)}`
-      : `Sua parte proporcional líquida: ${formatCentsAsBRL(totalExpensesWeightedCents)}`;
+  const spendWeightBreakdown = useMemo(() => {
+    return buildBudgetSpendWeightBreakdown({
+      spendMetric,
+      totalGrossCents: totalExpensesGrossCents,
+      totalWeightedCents: totalExpensesWeightedCents,
+    });
+  }, [spendMetric, totalExpensesGrossCents, totalExpensesWeightedCents]);
 
   return (
     <div
@@ -58,14 +60,7 @@ export function BudgetsLimitsSummaryCard({
             <Badge variant="muted" size="xs" className="max-w-full truncate">
               {spendMetric === "personal" ? "Minha Parte" : "Total Bruto"}
             </Badge>
-            {totalExpensesGrossCents !== totalExpensesWeightedCents && (
-              <span
-                className="text-muted-foreground/80 hover:text-foreground cursor-help"
-                title={metricTooltip}
-              >
-                <Info className="size-3.5 inline" aria-hidden="true" />
-              </span>
-            )}
+            <CalculationMemoryModal breakdown={spendWeightBreakdown} />
           </div>
           <MoneyText
             cents={hasBudgetLimits ? totalBudgetedExpensesCents : totalExpensesCents}

@@ -73,7 +73,7 @@ export function InsightListActions({
           </Button>
         ) : null}
         <div
-          className="inline-flex items-center rounded-lg border border-positive/30 bg-positive/10 p-0.5"
+          className="inline-flex items-center rounded-lg border border-primary/30 bg-primary/10 p-0.5"
           role="group"
           aria-label={`Ações para ${title}`}
         >
@@ -83,7 +83,7 @@ export function InsightListActions({
             size="sm"
             sensoryIntent="action"
             onClick={() => onRestore?.(itemKey)}
-            className="h-8 px-2.5 max-sm:min-h-11 text-xs font-medium text-positive-strong hover:bg-positive/20 hover:text-positive-strong gap-1.5"
+            className="h-8 px-2.5 max-sm:min-h-11 text-xs font-medium text-primary-strong hover:bg-primary/20 hover:text-primary-strong gap-1.5"
             aria-label={`Confirmada (${title}) — clique para desmarcar`}
             title={`Confirmada (${title}) — clique para desmarcar`}
           >

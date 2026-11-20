@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, Coins, Download, Landmark, Plus } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Coins, Landmark, Plus } from "lucide-react";
 import { Button, ErrorState, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
@@ -24,19 +24,6 @@ export function DebtsPage() {
         description="Gestão de contas a pagar, a receber e contratos"
         actions={
           <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={state.handleExportDebtsCsv}
-              disabled={state.isExportDisabled}
-              className="shrink-0 gap-1.5"
-              aria-label="Exportar CSV"
-              title="Exportar contas em CSV"
-            >
-              <Download className="size-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Exportar </span>CSV
-            </Button>
             <Button
               type="button"
               variant="outline"

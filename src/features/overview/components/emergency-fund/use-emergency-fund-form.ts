@@ -142,7 +142,28 @@ export function useEmergencyFundForm({
     }
   };
 
+  const isDirty =
+    includeCheckingAccounts !== (config.includeCheckingAccounts ?? true) ||
+    selectionMode !== (config.selectionMode ?? "selected_assets") ||
+    JSON.stringify(selectedAssetIds.slice().sort()) !==
+      JSON.stringify((config.selectedAssetIds ?? []).slice().sort()) ||
+    JSON.stringify(selectedClasses.slice().sort()) !==
+      JSON.stringify((config.selectedClasses ?? []).slice().sort()) ||
+    useNetValue !== (config.useNetValue ?? true) ||
+    targetMonths !== (config.targetMonths ?? 6);
+
+  const resetToConfig = () => {
+    setIncludeCheckingAccounts(config.includeCheckingAccounts ?? true);
+    setSelectionMode(config.selectionMode ?? "selected_assets");
+    setSelectedAssetIds(config.selectedAssetIds ?? []);
+    setSelectedClasses(config.selectedClasses ?? []);
+    setUseNetValue(config.useNetValue ?? true);
+    setTargetMonths(config.targetMonths ?? 6);
+  };
+
   return {
+    isDirty,
+    resetToConfig,
     includeCheckingAccounts,
     setIncludeCheckingAccounts,
     selectionMode,

@@ -76,7 +76,7 @@ export function buildPositionColumns(params: BuildPositionColumnsParams): {
 
   const pnlColumn = (headerLabel: string): PositionColumnDef => ({
     key: "unrealizedPnl",
-    header: headerLabel,
+    header: headerFor("unrealizedPnl", headerLabel),
     align: "right",
     className: "flex-1 min-w-[110px]",
     cell: (row) => <MoneyText cents={numberToCents(row.unrealizedPnl)} tone="auto" sign="explicit" />,
@@ -190,15 +190,25 @@ export function buildPositionColumns(params: BuildPositionColumnsParams): {
       align: "right",
       className: "flex-1 min-w-[105px]",
       cell: (row) => (
-        <PositionActionMoneyCell
-          cents={numberToCents(row.priceBRL)}
-          ariaLabel={`Cotação de ${row.ticker}`}
-          tooltipTitle={`${PRICE_SOURCE_LABEL[row.source].title} — clique para alterar`}
-          onAction={onSetManualPrice ? () => triggerManualPrice(row) : undefined}
-          dotTone={row.source === "manual" ? "manual" : row.source === "fallback" ? "fallback" : "auto"}
-          manualTitle="Preço manual"
-          fallbackTitle="Preço estimado (fallback)"
-        />
+        <div className="flex flex-col items-end">
+          <PositionActionMoneyCell
+            cents={numberToCents(row.priceBRL)}
+            ariaLabel={`Cotação de ${row.ticker}`}
+            tooltipTitle={`${PRICE_SOURCE_LABEL[row.source].title} — clique para alterar`}
+            onAction={onSetManualPrice ? () => triggerManualPrice(row) : undefined}
+            dotTone={row.source === "manual" ? "manual" : row.source === "fallback" ? "fallback" : "auto"}
+            manualTitle="Preço manual"
+            fallbackTitle="Preço estimado (fallback)"
+          />
+          {row.currency === "USD" && row.priceQuote ? (
+            <span
+              className="text-[10.5px] text-muted-foreground font-mono tabular-nums pr-1.5"
+              title={`Cotação em Dólar: US$ ${row.priceQuote.toFixed(2)}`}
+            >
+              US$ {row.priceQuote.toFixed(2)}
+            </span>
+          ) : null}
+        </div>
       ),
     },
     {

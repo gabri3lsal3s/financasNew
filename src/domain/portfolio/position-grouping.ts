@@ -6,6 +6,7 @@
  */
 
 import type { AssetAllocationStatus, AssetCurrency, FixedIncomeMetadata } from "@/types";
+import type { PriceSource } from "./valuation";
 import {
   calculatePositionClassGroups,
   calculatePositionSectorGroups,
@@ -22,6 +23,7 @@ export type PositionSortKey =
   | "price"
   | "averageCost"
   | "value"
+  | "unrealizedPnl"
   | "unrealizedPct"
   | "pct"
   | "maturityDate";
@@ -41,6 +43,10 @@ export interface PositionGroupableRow extends PositionSectorCalculationRow {
   priceBRL: number;
   unrealizedPct: number | null;
   totalReturnPct?: number | null;
+  totalReturnPnl?: number | null;
+  allocationStatus?: AssetAllocationStatus | null;
+  score?: number | null;
+  source?: PriceSource;
   dividendsNative?: number;
   isCash: boolean;
   isMatured?: boolean;
@@ -56,21 +62,40 @@ export function isPositionRowClosed(row: Pick<PositionGroupableRow, "quantity" |
 export interface PositionFilterOptions {
   search: string;
   selectedClass: string | null;
+  selectedSector?: string | null;
+  governanceStatus?: "all" | "core" | "quarantine" | "exit" | null;
 }
 
-export function filterPositionRows<T extends Pick<PositionGroupableRow, "ticker" | "assetClass" | "sector">>(
+export function filterPositionRows<T extends Pick<PositionGroupableRow, "ticker" | "assetClass" | "sector"> & { allocationStatus?: AssetAllocationStatus | null }>(
   rows: readonly T[],
   options: PositionFilterOptions,
 ): T[] {
   const normalizedSearch = options.search.trim().toLowerCase();
+  const normalizedSector = options.selectedSector?.trim().toLowerCase();
+  const governance = options.governanceStatus;
+
   return rows.filter((row) => {
+    const rowSector = row.sector?.trim() || inferSectorFromTicker(row.ticker, row.assetClass);
     const matchesSearch =
       normalizedSearch === "" ||
       row.ticker.toLowerCase().includes(normalizedSearch) ||
       (row.assetClass?.toLowerCase().includes(normalizedSearch) ?? false) ||
-      (row.sector?.toLowerCase().includes(normalizedSearch) ?? false);
+      (rowSector ? rowSector.toLowerCase().includes(normalizedSearch) : false);
     const matchesClass = options.selectedClass === null || row.assetClass === options.selectedClass;
-    return matchesSearch && matchesClass;
+    const matchesSector =
+      !normalizedSector ||
+      (rowSector ? rowSector.toLowerCase() === normalizedSector : false);
+
+    let matchesGovernance = true;
+    if (governance === "quarantine") {
+      matchesGovernance = row.allocationStatus === "quarantine";
+    } else if (governance === "exit") {
+      matchesGovernance = row.allocationStatus === "exit";
+    } else if (governance === "core") {
+      matchesGovernance = row.allocationStatus !== "quarantine" && row.allocationStatus !== "exit";
+    }
+
+    return matchesSearch && matchesClass && matchesSector && matchesGovernance;
   });
 }
 
@@ -96,6 +121,10 @@ export function comparePositionRows(
     cmp = a.valueBRL - b.valueBRL;
   } else if (key === "pct") {
     cmp = a.pct - b.pct;
+  } else if (key === "unrealizedPnl") {
+    const pnlA = a.totalReturnPnl ?? a.unrealizedPnl ?? 0;
+    const pnlB = b.totalReturnPnl ?? b.unrealizedPnl ?? 0;
+    cmp = pnlA - pnlB;
   } else if (key === "unrealizedPct") {
     const aVal = a.totalReturnPct ?? a.unrealizedPct ?? -Infinity;
     const bVal = b.totalReturnPct ?? b.unrealizedPct ?? -Infinity;

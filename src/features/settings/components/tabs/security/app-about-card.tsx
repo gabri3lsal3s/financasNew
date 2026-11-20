@@ -28,12 +28,12 @@ export interface AppAboutCardProps {
 
 export function AppAboutCard({ isNative }: AppAboutCardProps) {
   const { isChecking, hasUpdate, updateInfo, checkForUpdates, installUpdate } = useAppUpdate({
-    autoCheck: false,
+    autoCheck: true,
   });
   const [showApkGuide, setShowApkGuide] = useState(false);
   const [pwaUpdateReady, setPwaUpdateReady] = useState(() => getPWAUpdateAvailable());
   const [isUpdatingPwa, setIsUpdatingPwa] = useState(false);
-  const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
+  const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(() => new Date());
 
   useEffect(() => {
     return subscribePWAUpdate(() => {
@@ -55,8 +55,11 @@ export function AppAboutCard({ isNative }: AppAboutCardProps) {
 
   const showAndroidApkActions = isNative || shouldOfferAndroidApk();
   const activeApkUrl = updateInfo?.manifest?.apkUrl || AXIR_APK_DOWNLOAD_URL;
-  const displayVersion = updateInfo?.manifest?.version || AXIR_APP_VERSION;
-  const displayBuild = updateInfo?.manifest?.versionCode;
+  // A versão exibida é rigorosamente a versão local atualmente em execução
+  const displayVersion = isNative
+    ? (updateInfo?.currentVersion || AXIR_APP_VERSION)
+    : AXIR_APP_VERSION;
+  const displayBuild = isNative ? updateInfo?.currentVersionCode : undefined;
 
   // No nativo, depende do manifesto APK; no PWA/Web, depende do SW ou manifesto web
   const hasEffectiveUpdate = isNative ? hasUpdate : hasUpdate || pwaUpdateReady;

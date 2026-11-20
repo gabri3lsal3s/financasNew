@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { SmartAdvisorCardSkeleton } from "@/components/modules/smart-advisor-card-skeleton";
+import { buildSmartAdvisorBreakdown } from "@/domain/calculation-memory/builders/insights-breakdown";
 import type { SmartAdvisorCardContext, SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type { CalibrationDecision } from "@/domain/insights/feedback";
 import { useSmartAdvisorInsights } from "@/features/overview/hooks";
@@ -36,6 +37,7 @@ export interface SmartAdvisorCardProps {
   savingsSurplusCents?: number;
   safeToSpendCents?: number;
   committedObligationsCents?: number;
+  suppressedThemeKeys?: readonly string[];
 }
 
 /**
@@ -59,6 +61,7 @@ export function SmartAdvisorCard({
   savingsSurplusCents,
   safeToSpendCents,
   committedObligationsCents,
+  suppressedThemeKeys,
 }: SmartAdvisorCardProps) {
   const navigate = useNavigate();
   const isCurrentMonth = month ? month === currentMonth() : true;
@@ -68,6 +71,7 @@ export function SmartAdvisorCard({
     savingsSurplusCents,
     safeToSpendCents,
     committedObligationsCents,
+    suppressedThemeKeys,
   });
 
   const activeInsight = controlledInsight !== undefined ? controlledInsight : hook.insight;
@@ -75,6 +79,13 @@ export function SmartAdvisorCard({
   const totalCount = controlledTotalCount ?? hook.totalCount;
   const cardContext = controlledCardContext ?? activeInsight?.cardContext ?? activeInsight?.metadata?.cardContext;
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const breakdown = useMemo(() => {
+    if (!activeInsight) return undefined;
+    return buildSmartAdvisorBreakdown(activeInsight, {
+      referenceMonthLabel: month,
+    });
+  }, [activeInsight, month]);
 
   if (!isCurrentMonth) return null;
   if (controlledInsight === undefined && hook.isLoading) return <SmartAdvisorCardSkeleton className={className} />;
@@ -151,6 +162,7 @@ export function SmartAdvisorCard({
         onMarkEssential={() => void handleMarkEssential()}
         onDismiss={handleDismiss}
         hasExternalMarkEssential={Boolean(onMarkEssential)}
+        breakdown={breakdown}
       />
 
       <div

@@ -57,8 +57,11 @@ export function useResumoTabController({
   const [quickTxType, setQuickTxType] = useState<PortfolioTransactionType>("buy");
   const [assetEditing, setAssetEditing] = useState<PortfolioAsset | null>(null);
   const [scoreEvaluatingAsset, setScoreEvaluatingAsset] = useState<PortfolioAsset | null>(null);
-  const [explainModalOpen, setExplainModalOpen] = useState(false);
   const [initialCostDialogOpen, setInitialCostDialogOpen] = useState(false);
+  const setExplainModalOpen = useCallback((open: boolean) => {
+    setInitialCostDialogOpen(open);
+  }, []);
+  const explainModalOpen = initialCostDialogOpen;
   const [allocationMode, setAllocationMode] = useState<"class" | "sector" | "asset">("class");
   const [breakdownGroup, setBreakdownGroup] = useState<{
     type: "class" | "sector";

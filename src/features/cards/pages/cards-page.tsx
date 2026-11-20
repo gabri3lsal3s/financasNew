@@ -151,6 +151,7 @@ export function CardsPage() {
             />
 
             <InvoiceKpisSection
+              cardName={state.selectedCard?.name}
               summary={state.summary}
               cardSubscriptionImpact={state.cardSubscriptionImpact}
               onIgnoreSubscriptionItem={state.ignoreSubscriptionItem}
@@ -165,7 +166,6 @@ export function CardsPage() {
             selectedCard={state.selectedCard}
             onOpenImport={state.handleOpenImport}
             onOpenPrint={() => state.setPrintOpen(true)}
-            onExportCsv={state.handleExportInvoice}
             renderInvoiceRow={renderInvoiceRow}
           />
 

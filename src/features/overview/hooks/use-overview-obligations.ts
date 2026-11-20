@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTripDetails } from "@/state/queries/use-trips";
 import {
   buildOverviewCashGapResult,
   buildOverviewWeeklyRadarSummary,
@@ -148,6 +149,10 @@ export function useOverviewObligations({
     [trips],
   );
 
+  const firstActiveTripId = activeTrips[0]?.id;
+  const activeTripDetailsQuery = useTripDetails(firstActiveTripId);
+  const activeTripExpensesTotalCents = activeTripDetailsQuery.data?.totalExpensesCents;
+
   return {
     cashGapResult,
     weeklyRadarSummary,
@@ -155,5 +160,6 @@ export function useOverviewObligations({
     liveGoalProgress,
     eligibleGoalShares,
     activeTrips,
+    activeTripExpensesTotalCents,
   };
 }

@@ -1,4 +1,4 @@
-import { ArrowRight, Check, RotateCcw } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
 import { Button, Modal, ModalFooter } from "@/components/ui";
 import { ImportPreviewTableStep } from "./import-dialog/import-preview-table-step";
 import { ImportUploadStep } from "./import-dialog/import-upload-step";
@@ -14,10 +14,6 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
   const {
     step,
     setStep,
-    activeTab,
-    setActiveTab,
-    rawText,
-    setRawText,
     rawRows,
     columnMapping,
     parsedRows,
@@ -27,7 +23,6 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
     isProcessing,
     existingTickerMap,
     handleClose,
-    handleProcessInput,
     handleFileUpload,
     handleConfirmMapping,
     toggleSelectAll,
@@ -40,7 +35,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
 
   const description =
     step === 1
-      ? "Cadastre ativos e operações via texto em linguagem natural ou relatórios de corretoras e B3."
+      ? "Importe relatórios de custódia e movimentações da B3 (Área do Investidor) ou da sua corretora em Excel (.xlsx) ou CSV."
       : step === 2
         ? "Verifique o tipo de planilha (Posição Atual ou Movimentações) e ajuste as colunas identificadas."
         : "Confira e edite os valores identificados antes de gravar na sua carteira.";
@@ -51,17 +46,6 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
         <Button type="button" variant="outline" onClick={handleClose}>
           Cancelar
         </Button>
-        {activeTab === "text" ? (
-          <Button
-            type="button"
-            onClick={() => handleProcessInput(rawText)}
-            disabled={!rawText.trim()}
-            className="gap-1.5"
-          >
-            Processar texto
-            <ArrowRight aria-hidden="true" className="size-3.5" />
-          </Button>
-        ) : null}
       </ModalFooter>
     ) : step === 3 ? (
       <ModalFooter borderless className="sm:justify-between">
@@ -101,13 +85,7 @@ export function PortfolioImportDialog({ open, onOpenChange }: PortfolioImportDia
       footer={footer}
     >
       {step === 1 ? (
-        <ImportUploadStep
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          rawText={rawText}
-          onRawTextChange={setRawText}
-          onFileUpload={handleFileUpload}
-        />
+        <ImportUploadStep onFileUpload={handleFileUpload} />
       ) : null}
 
       {step === 2 && columnMapping ? (

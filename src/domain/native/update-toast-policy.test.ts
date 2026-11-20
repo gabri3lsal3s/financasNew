@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   UPDATE_DISMISSED_SESSION_KEY,
-  TWELVE_HOURS_MS,
   dismissUpdateForSession,
   isUpdateDismissedForSession,
   resetUpdateDismissedForSession,
@@ -24,34 +23,26 @@ describe("update-toast-policy — Política e Persistência de Dispensa de Atual
     expect(isUpdateDismissedForSession()).toBe(false);
   });
 
-  it("grava flag no sessionStorage e timestamp no localStorage ao dispensar", () => {
-    const fixedNow = 1700000000000;
-    dismissUpdateForSession(fixedNow);
+  it("grava flag no sessionStorage ao dispensar", () => {
+    dismissUpdateForSession();
 
     expect(sessionStorage.getItem(UPDATE_DISMISSED_SESSION_KEY)).toBe("true");
-    expect(localStorage.getItem(UPDATE_DISMISSED_SESSION_KEY)).toBe(String(fixedNow));
-    expect(isUpdateDismissedForSession(fixedNow)).toBe(true);
+    expect(isUpdateDismissedForSession()).toBe(true);
   });
 
-  it("reconhece dispensa quando apenas o sessionStorage contém 'true'", () => {
+  it("reconhece dispensa quando o sessionStorage contém 'true'", () => {
     sessionStorage.setItem(UPDATE_DISMISSED_SESSION_KEY, "true");
     expect(isUpdateDismissedForSession()).toBe(true);
   });
 
-  it("reconhece dispensa quando localStorage tem timestamp dentro da janela de 12 horas", () => {
-    const fixedNow = 1700000000000;
-    const sixHoursAgo = fixedNow - 6 * 60 * 60 * 1000;
-    localStorage.setItem(UPDATE_DISMISSED_SESSION_KEY, String(sixHoursAgo));
+  it("permite reexibição ao iniciar nova sessão (sessionStorage limpo)", () => {
+    dismissUpdateForSession();
+    expect(isUpdateDismissedForSession()).toBe(true);
 
-    expect(isUpdateDismissedForSession(fixedNow)).toBe(true);
-  });
-
-  it("expira e retorna falso quando o timestamp no localStorage for superior a 12 horas", () => {
-    const fixedNow = 1700000000000;
-    const thirteenHoursAgo = fixedNow - (TWELVE_HOURS_MS + 1000);
-    localStorage.setItem(UPDATE_DISMISSED_SESSION_KEY, String(thirteenHoursAgo));
-
-    expect(isUpdateDismissedForSession(fixedNow)).toBe(false);
+    // Simula encerramento e nova inicialização de sessão
+    sessionStorage.clear();
+    resetUpdateDismissedForSession();
+    expect(isUpdateDismissedForSession()).toBe(false);
   });
 
   it("limpa storage adequadamente com resetUpdateDismissedForSession", () => {

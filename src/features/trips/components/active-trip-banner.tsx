@@ -38,7 +38,7 @@ export function ActiveTripBanner({
             <h2 className="text-sm font-semibold text-foreground truncate">
               {trip.title}
             </h2>
-            <Badge size="xs" variant="positive" className="shrink-0">
+            <Badge size="xs" variant="default" className="shrink-0">
               Viagem Ativa
             </Badge>
           </div>

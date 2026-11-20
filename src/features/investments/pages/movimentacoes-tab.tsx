@@ -5,6 +5,7 @@ import { currentMonth } from "@/lib/date";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { useAllPortfolioTransactions, usePortfolioAssets, usePortfolioPosition } from "@/state";
 import {
+  InitialPocketCostDialog,
   PortfolioActivityPanel,
   PortfolioDarfMonitor,
   PortfolioImportDialog,
@@ -16,6 +17,7 @@ import {
  * marcos históricos mensais, importação de planilha em lote e apuração fiscal DARF 6015.
  */
 export function MovimentacoesTab() {
+  const [pocketCostOpen, setPocketCostOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [darfOpen, setDarfOpen] = useState(false);
@@ -41,19 +43,30 @@ export function MovimentacoesTab() {
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="text-xs font-semibold text-foreground">Marcos Históricos & TWR</span>
             <span className="text-xs text-muted-foreground">
-              Audite e calibre fechamentos mensais, patrimônio histórico e evolução da cota.
+              Cadastre aportes do bolso anteriores ao app e audite fechamentos mensais e evolução de cotas.
             </span>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setSnapshotsOpen(true)}
-            className="h-8 text-xs gap-1.5 self-start"
-          >
-            <History className="size-3.5 text-portfolio" aria-hidden="true" />
-            <span>Marcos Históricos</span>
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              onClick={() => setPocketCostOpen(true)}
+              className="h-8 text-xs gap-1.5"
+            >
+              <History className="size-3.5" aria-hidden="true" />
+              <span>Marcos do Bolso</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSnapshotsOpen(true)}
+              className="h-8 text-xs gap-1.5"
+            >
+              <span>Auditar Fechamentos</span>
+            </Button>
+          </div>
         </section>
 
         <section
@@ -101,11 +114,18 @@ export function MovimentacoesTab() {
         </section>
       </div>
 
+      <InitialPocketCostDialog
+        open={pocketCostOpen}
+        onOpenChange={setPocketCostOpen}
+        defaultCostBRL={position.totalCostBRL}
+        onOpenSnapshotsDialog={() => setSnapshotsOpen(true)}
+      />
       <PortfolioSnapshotsDialog
         open={snapshotsOpen}
         onOpenChange={setSnapshotsOpen}
         series={allSeries}
         currentMonthStr={currentMonth()}
+        onOpenPocketCostDialog={() => setPocketCostOpen(true)}
       />
       <PortfolioImportDialog open={importOpen} onOpenChange={setImportOpen} />
       <PortfolioDarfMonitor

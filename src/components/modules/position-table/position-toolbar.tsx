@@ -14,12 +14,23 @@ export interface PositionToolbarProps {
   availableClasses: readonly string[];
   selectedClass: string | null;
   onSelectClass: (cls: string | null) => void;
+  availableSectors?: readonly string[];
+  selectedSector?: string | null;
+  onSelectSector?: (sec: string | null) => void;
   closedCount: number;
   hideClosed: boolean;
   onToggleHideClosed: () => void;
   filteredCount: number;
   totalCount: number;
   hasFiltersActive: boolean;
+  onClearFilters?: () => void;
+  isGroupedMode?: boolean;
+  areAllExpanded?: boolean;
+  onToggleExpandAll?: () => void;
+  quarantineCount?: number;
+  exitCount?: number;
+  governanceFilter?: "all" | "core" | "quarantine" | "exit";
+  onSelectGovernanceFilter?: (status: "all" | "core" | "quarantine" | "exit") => void;
 }
 
 export function PositionToolbar({
@@ -30,17 +41,31 @@ export function PositionToolbar({
   availableClasses,
   selectedClass,
   onSelectClass,
+  availableSectors = [],
+  selectedSector = null,
+  onSelectSector,
   closedCount,
   hideClosed,
   onToggleHideClosed,
-  filteredCount,
-  totalCount,
-  hasFiltersActive,
+  isGroupedMode = false,
+  areAllExpanded = false,
+  onToggleExpandAll,
+  quarantineCount = 0,
+  exitCount = 0,
+  governanceFilter = "core",
+  onSelectGovernanceFilter,
 }: PositionToolbarProps) {
   const classOptions: SelectOption[] = [
     { value: "all", label: "Todas as classes" },
     ...availableClasses.map((cls) => ({ value: cls, label: cls })),
   ];
+
+  const sectorOptions: SelectOption[] = [
+    { value: "all", label: "Todos os setores" },
+    ...availableSectors.map((sec) => ({ value: sec, label: sec })),
+  ];
+
+  const hasGovernanceAssets = quarantineCount > 0 || exitCount > 0;
 
   return (
     <div className="flex flex-col gap-2.5 w-full min-w-0">
@@ -53,14 +78,76 @@ export function PositionToolbar({
           placeholder="Buscar por ticker ou classe…"
           aria-label="Buscar ativo"
         />
-        {hasFiltersActive ? (
-          <Badge variant="muted" size="xs" className="shrink-0 tabular-nums">
-            {filteredCount}/{totalCount}
-          </Badge>
-        ) : null}
       </div>
 
-      {/* Linha 2: Seletores de Agrupamento, Filtros de Classe e Encerradas */}
+      {/* Linha de Governança (divulgação progressiva: só aparece se houver quarentena ou saída) */}
+      {hasGovernanceAssets ? (
+        <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+          <span className="text-[11px] font-semibold text-muted-foreground mr-1">Foco:</span>
+          <Button
+            type="button"
+            variant={governanceFilter === "core" ? "default" : "outline"}
+            size="xs"
+            sensoryIntent="selection"
+            onClick={() => onSelectGovernanceFilter?.("core")}
+            className={cn("h-6 px-2 text-[11px] shrink-0", governanceFilter === "core" && "shadow-xs font-semibold")}
+          >
+            Carteira em Aporte
+          </Button>
+          {quarantineCount > 0 ? (
+            <Button
+              type="button"
+              variant={governanceFilter === "quarantine" ? "default" : "outline"}
+              size="xs"
+              sensoryIntent="selection"
+              onClick={() => onSelectGovernanceFilter?.("quarantine")}
+              className={cn(
+                "h-6 px-2 gap-1.5 text-[11px] shrink-0",
+                governanceFilter === "quarantine"
+                  ? "shadow-xs font-semibold"
+                  : "text-warning-strong border-warning/40",
+              )}
+            >
+              <span>Quarentena</span>
+              <Badge variant="warning" size="xs">
+                {quarantineCount}
+              </Badge>
+            </Button>
+          ) : null}
+          {exitCount > 0 ? (
+            <Button
+              type="button"
+              variant={governanceFilter === "exit" ? "default" : "outline"}
+              size="xs"
+              sensoryIntent="selection"
+              onClick={() => onSelectGovernanceFilter?.("exit")}
+              className={cn(
+                "h-6 px-2 gap-1.5 text-[11px] shrink-0",
+                governanceFilter === "exit"
+                  ? "shadow-xs font-semibold"
+                  : "text-negative-strong border-negative/40",
+              )}
+            >
+              <span>Em Saída</span>
+              <Badge variant="negative" size="xs">
+                {exitCount}
+              </Badge>
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant={governanceFilter === "all" ? "default" : "outline"}
+            size="xs"
+            sensoryIntent="selection"
+            onClick={() => onSelectGovernanceFilter?.("all")}
+            className={cn("h-6 px-2 text-[11px] shrink-0", governanceFilter === "all" && "shadow-xs font-semibold")}
+          >
+            Todos
+          </Button>
+        </div>
+      ) : null}
+
+      {/* Linha 2: Seletores de Agrupamento, Filtros e Encerradas */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 w-full min-w-0">
         {/* Controle Segmentado Canônico de Agrupamento */}
         <SegmentedControl
@@ -85,57 +172,100 @@ export function PositionToolbar({
           className="sm:w-auto"
         />
 
-        {/* Filtros de classe e encerradas com adaptação simétrica para Tablet */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end min-w-0">
-          {availableClasses.length > 1 ? (
-            <>
-              {/* Mobile (< sm) & Tablet (sm a lg): Select dropdown compacto sem quebra de linhas */}
-              <div className="lg:hidden flex-1 sm:flex-initial sm:w-44 md:w-48 min-w-0">
-                <Select
-                  value={selectedClass ?? "all"}
-                  onValueChange={(val) => onSelectClass(val === "all" ? null : val)}
-                  options={classOptions}
-                  ariaLabel="Filtrar por classe de ativo"
-                  className="h-8 sm:h-7 text-xs w-full min-w-0"
-                />
-              </div>
+        {/* Filtros e Ações Secundárias */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end min-w-0 flex-wrap sm:flex-nowrap">
+          {groupBy === "class" ? (
+            availableClasses.length > 1 ? (
+              <>
+                {/* Mobile & Tablet (< lg): Select dropdown compacto */}
+                <div className="lg:hidden flex-1 sm:flex-initial sm:w-44 md:w-48 min-w-0">
+                  <Select
+                    value={selectedClass ?? "all"}
+                    onValueChange={(val) => onSelectClass(val === "all" ? null : val)}
+                    options={classOptions}
+                    ariaLabel="Filtrar por classe de ativo"
+                    className="h-8 sm:h-7 text-xs w-full min-w-0"
+                  />
+                </div>
 
-              {/* Desktop (lg+): Chips rápidos completos com espaço garantido */}
-              <div className="hidden lg:flex items-center gap-1.5 flex-wrap">
-                <Button
-                  type="button"
-                  variant={selectedClass === null ? "default" : "outline"}
-                  size="sm"
-                  sensoryIntent="selection"
-                  onClick={() => onSelectClass(null)}
-                  className={cn(
-                    "h-7 px-2.5 text-xs shrink-0",
-                    selectedClass === null && "shadow-xs font-semibold",
-                  )}
-                >
-                  Todas
-                </Button>
-                {availableClasses.map((cls) => {
-                  const isSelected = selectedClass === cls;
-                  return (
-                    <Button
-                      key={cls}
-                      type="button"
-                      variant={isSelected ? "default" : "outline"}
-                      size="sm"
-                      sensoryIntent="selection"
-                      onClick={() => onSelectClass(isSelected ? null : cls)}
-                      className={cn(
-                        "h-7 px-2.5 text-xs shrink-0",
-                        isSelected && "shadow-xs font-semibold",
-                      )}
-                    >
-                      {cls}
-                    </Button>
-                  );
-                })}
-              </div>
-            </>
+                {/* Desktop (lg+): Chips rápidos completos com espaço garantido */}
+                <div className="hidden lg:flex items-center gap-1.5 flex-wrap">
+                  <Button
+                    type="button"
+                    variant={selectedClass === null ? "default" : "outline"}
+                    size="sm"
+                    sensoryIntent="selection"
+                    onClick={() => onSelectClass(null)}
+                    className={cn(
+                      "h-7 px-2.5 text-xs shrink-0",
+                      selectedClass === null && "shadow-xs font-semibold",
+                    )}
+                  >
+                    Todas
+                  </Button>
+                  {availableClasses.map((cls) => {
+                    const isSelected = selectedClass === cls;
+                    return (
+                      <Button
+                        key={cls}
+                        type="button"
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        sensoryIntent="selection"
+                        onClick={() => onSelectClass(isSelected ? null : cls)}
+                        className={cn(
+                          "h-7 px-2.5 text-xs shrink-0",
+                          isSelected && "shadow-xs font-semibold",
+                        )}
+                      >
+                        {cls}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : null
+          ) : (
+            /* Modo "Por Setor" — Filtros limpos e confortáveis com Select sem quebras de linha */
+            <div className="flex items-center gap-2 flex-1 sm:flex-initial min-w-0">
+              {availableClasses.length > 1 ? (
+                <div className="flex-1 sm:flex-initial sm:w-44 md:w-48 min-w-0">
+                  <Select
+                    value={selectedClass ?? "all"}
+                    onValueChange={(val) => onSelectClass(val === "all" ? null : val)}
+                    options={classOptions}
+                    ariaLabel="Filtrar por classe de ativo"
+                    className="h-8 sm:h-7 text-xs w-full min-w-0"
+                  />
+                </div>
+              ) : null}
+
+              {availableSectors.length > 0 ? (
+                <div className="flex-1 sm:flex-initial sm:w-52 md:w-56 min-w-0">
+                  <Select
+                    value={selectedSector ?? "all"}
+                    onValueChange={(val) => onSelectSector?.(val === "all" ? null : val)}
+                    options={sectorOptions}
+                    ariaLabel="Filtrar por setor"
+                    className="h-8 sm:h-7 text-xs w-full min-w-0"
+                  />
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {isGroupedMode && onToggleExpandAll ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              sensoryIntent="selection"
+              onClick={onToggleExpandAll}
+              className="hidden sm:inline-flex h-8 sm:h-7 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
+              title={areAllExpanded ? "Recolher todos os grupos" : "Expandir todos os grupos"}
+            >
+              <span>{areAllExpanded ? "Recolher todos" : "Expandir todos"}</span>
+            </Button>
           ) : null}
 
           {closedCount > 0 ? (

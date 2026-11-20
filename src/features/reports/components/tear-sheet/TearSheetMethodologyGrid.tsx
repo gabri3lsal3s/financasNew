@@ -1,7 +1,13 @@
+import { useMemo } from "react";
 import { Activity, Briefcase, CircleDollarSign, Scale, TrendingUp } from "lucide-react";
-import { EquationBreakdownPopover } from "@/components/modules";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
+import {
+  buildAllTimePnlBreakdown,
+  buildIrrBreakdown,
+  buildTwrBreakdown,
+} from "@/domain/calculation-memory";
 import { numberToCents } from "@/domain/money";
 import type { TwrConsolidatedResult, XIRRResult } from "@/domain/portfolio";
 import { formatSignedPct } from "@/services/masks/percent";
@@ -19,6 +25,33 @@ export function TearSheetMethodologyGrid({
   totalReturnPct,
   historicalPnlBRL,
 }: TearSheetMethodologyGridProps) {
+  const twrBreakdown = useMemo(() => {
+    return buildTwrBreakdown({
+      accumulatedRatePct: portfolioTwr?.accumulatedRatePct ?? null,
+      annualizedRatePct: portfolioTwr?.annualizedRatePct,
+      monthsElapsed: portfolioTwr?.monthsElapsed,
+      currentSharePrice: portfolioTwr?.currentSharePrice,
+      status: portfolioTwr?.status,
+    });
+  }, [portfolioTwr]);
+
+  const irrBreakdown = useMemo(() => {
+    return buildIrrBreakdown({
+      annualizedRatePct: portfolioIrr?.annualizedRatePct ?? null,
+      periodRatePct: portfolioIrr?.periodRatePct ?? null,
+      daysElapsed: portfolioIrr?.daysElapsed ?? 0,
+      isEligible: portfolioIrr?.isEligible ?? false,
+      status: portfolioIrr?.status ?? "ok",
+      capitalCoveragePct: portfolioIrr?.capitalCoveragePct,
+    });
+  }, [portfolioIrr]);
+
+  const allTimeBreakdown = useMemo(() => {
+    return buildAllTimePnlBreakdown({
+      allTimePnlBRL: historicalPnlBRL,
+    });
+  }, [historicalPnlBRL]);
+
   return (
     <section
       aria-label="Metodologias de Rentabilidade"
@@ -60,33 +93,7 @@ export function TearSheetMethodologyGrid({
                   : "Em formação"}
               </Badge>
               {portfolioTwr?.status === "ok" && (
-                <EquationBreakdownPopover
-                  title="Rentabilidade Ponderada pelo Tempo (TWR)"
-                  description="Métrica oficial de fundos de investimento (ANBIMA/CVM) que apura a performance dos ativos isolando o efeito de aportes e resgates via sistema de cotas."
-                  formula="R_acum = ∏(1 + r_t) − 1 | R_anual = (1 + R_acum)^(12/N) − 1"
-                  items={[
-                    {
-                      label: "Valor Atual da Cota",
-                      cents: numberToCents(portfolioTwr.currentSharePrice),
-                      sign: "=",
-                      tone: "portfolio",
-                      hint: `Base inicial 100,00 (${portfolioTwr.monthsElapsed} ${portfolioTwr.monthsElapsed === 1 ? "mês" : "meses"} de histórico)`,
-                    },
-                    ...(portfolioTwr.annualizedRatePct !== null
-                      ? [
-                          {
-                            label: "Taxa Anualizada CVM",
-                            cents: numberToCents(portfolioTwr.annualizedRatePct),
-                            sign: "+" as const,
-                            tone: portfolioTwr.annualizedRatePct >= 0 ? ("positive" as const) : ("negative" as const),
-                            hint: `${formatSignedPct(portfolioTwr.annualizedRatePct)} a.a. (composto anual)`,
-                          },
-                        ]
-                      : []),
-                  ]}
-                  totalLabel="Rentabilidade Acumulada"
-                  totalCents={numberToCents(portfolioTwr.accumulatedRatePct)}
-                />
+                <CalculationMemoryModal breakdown={twrBreakdown} />
               )}
             </div>
           </div>
@@ -111,21 +118,26 @@ export function TearSheetMethodologyGrid({
               <Activity className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <span className="truncate">2. Retorno do Bolso (TIR / XIRR)</span>
             </span>
-            <Badge
-              variant={
-                portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
-                  ? portfolioIrr.annualizedRatePct >= 0
-                    ? "positive"
-                    : "negative"
-                  : "muted"
-              }
-              size="xs"
-              className="font-mono font-bold tracking-tight shrink-0"
-            >
-              {portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
-                ? `${formatSignedPct(portfolioIrr.annualizedRatePct)} a.a.`
-                : "Em formação"}
-            </Badge>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Badge
+                variant={
+                  portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
+                    ? portfolioIrr.annualizedRatePct >= 0
+                      ? "positive"
+                      : "negative"
+                    : "muted"
+                }
+                size="xs"
+                className="font-mono font-bold tracking-tight shrink-0"
+              >
+                {portfolioIrr?.isEligible && portfolioIrr.annualizedRatePct !== null
+                  ? `${formatSignedPct(portfolioIrr.annualizedRatePct)} a.a.`
+                  : "Em formação"}
+              </Badge>
+              {portfolioIrr?.isEligible && (
+                <CalculationMemoryModal breakdown={irrBreakdown} />
+              )}
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">
@@ -177,17 +189,20 @@ export function TearSheetMethodologyGrid({
               <CircleDollarSign className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <span className="truncate">4. Resultado Histórico (P&amp;L Total em R$)</span>
             </span>
-            <Badge
-              variant={historicalPnlBRL >= 0 ? "positive" : "negative"}
-              size="xs"
-              className="font-mono font-bold tracking-tight shrink-0"
-            >
-              <MoneyText
-                cents={numberToCents(historicalPnlBRL)}
-                tone={historicalPnlBRL >= 0 ? "positive" : "negative"}
-                sign="explicit"
-              />
-            </Badge>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Badge
+                variant={historicalPnlBRL >= 0 ? "positive" : "negative"}
+                size="xs"
+                className="font-mono font-bold tracking-tight shrink-0"
+              >
+                <MoneyText
+                  cents={numberToCents(historicalPnlBRL)}
+                  tone={historicalPnlBRL >= 0 ? "positive" : "negative"}
+                  sign="explicit"
+                />
+              </Badge>
+              <CalculationMemoryModal breakdown={allTimeBreakdown} />
+            </div>
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-bold text-muted-foreground tracking-wider uppercase">

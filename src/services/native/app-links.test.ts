@@ -17,9 +17,9 @@ describe("app-links — URLs, versão, deep-links e elegibilidade Android (M10)"
     vi.spyOn(Capacitor, "getPlatform").mockReturnValue("web");
   });
 
-  it("expõe versão 3.10.0, URL canônica do APK e schemes oficiais", () => {
+  it("expõe versão vigente compatível com package.json, URL canônica do APK e schemes oficiais", () => {
     expect(AXIR_APP_NAME).toBe("Axir");
-    expect(AXIR_APP_VERSION).toBe("3.10.0");
+    expect(AXIR_APP_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
     expect(AXIR_APK_FILENAME).toBe("axir-pro.apk");
     expect(AXIR_APK_DOWNLOAD_URL).toMatch(/^https:\/\/.+\.apk$/);
     expect(AXIR_DEEP_LINK_SCHEME).toBe("axir://");

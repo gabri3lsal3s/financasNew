@@ -76,6 +76,11 @@ function ExpenseDetailDialogContent({
       <Modal
         open={open}
         onOpenChange={resetAndClose}
+        confirmDiscard={isEditing}
+        isDirty={isEditing}
+        onDiscard={() => resetAndClose(false)}
+        discardTitle="Descartar edição da despesa?"
+        discardDescription="Você está no modo de edição deste lançamento. Se sair agora, as alterações não salvas serão descartadas."
         title={isEditing ? "Editar despesa" : "Detalhes da despesa"}
         size={isEditing ? "xl" : "lg"}
         showCalculator={isEditing}

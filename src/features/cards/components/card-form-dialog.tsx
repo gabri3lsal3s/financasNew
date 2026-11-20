@@ -56,6 +56,10 @@ function CardFormContent({ card, open, onOpenChange, onDeleted }: CardFormConten
             : "Preencha os dados do cartão de crédito."
         }
         size="xl"
+        confirmDiscard
+        isDirty={state.isDirty}
+        discardTitle="Descartar alterações do cartão?"
+        discardDescription="Você possui informações modificadas no formulário. Se fechar agora, as alterações serão descartadas."
         showCalculator
         footer={
           <ModalFooter

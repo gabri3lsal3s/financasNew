@@ -112,7 +112,7 @@ export function BankingAssistantCard() {
                 !bankPrefs.passiveCaptureEnabled
                   ? "muted"
                   : listenerGranted
-                    ? "positive"
+                    ? "default"
                     : "warning"
               }
               size="xs"

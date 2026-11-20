@@ -15,7 +15,7 @@ import { detectAnnualCommitments, detectWeeklyCommitments } from "./extended-per
 import { getNextInvoiceClosingDate } from "./card-radar";
 import { detectSpendingHabits, type SpendingHabit } from "./habits";
 import { findMatchingServiceKey } from "./subscriptions";
-import type { FamilyConsolidationResult, IncomeGoal } from "@/types";
+import type { Category, FamilyConsolidationResult, IncomeGoal } from "@/types";
 
 export type SmartAdvisorCategory = "critical" | "income" | "savings" | "calibration";
 
@@ -132,6 +132,8 @@ export interface GenerateSmartAdvisorInsightsInput {
   committedObligationsCents?: number;
   /** Hábitos de consumo frequentes e microvazamentos pré-calculados (F30). */
   spendingHabits?: readonly SpendingHabit[];
+  /** Catálogo de categorias para validação de status e enriquecimento contextual. */
+  categories?: readonly Category[];
 }
 
 /**
@@ -239,6 +241,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     safeToSpendCents,
     committedObligationsCents,
     spendingHabits,
+    categories = [],
   } = input;
   const candidates: SmartAdvisorInsight[] = [];
 
@@ -275,6 +278,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
 
   // 1.2 Cobranças duplicadas no mês
   for (const occ of occurrences) {
+    if (occ.lifecycle === "lapsed") continue;
     if (isOccurrenceIgnored(feedbackMap[`dup:${occ.key}`]) || isOccurrenceIgnored(feedbackMap[occ.key])) {
       continue;
     }
@@ -528,38 +532,79 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
     });
   }
 
-  // 2.3 Metas de receita em atraso no fim do mês
+  // 2.3 Metas de receita em atraso no fim do mês (§3.5.3)
   if (incomeGoals && incomeGoals.length > 0 && realizedIncomeByCategory) {
     const day = Number(todayISO.slice(8, 10));
     if (day >= 20) {
+      const currentMonth = todayISO.slice(0, 7);
+      const eligibleGoals: Array<{
+        themeKey: string;
+        expectedCents: number;
+        realizedCents: number;
+        deficitCents: number;
+        pct: number;
+        categoryName?: string;
+        categoryId: string;
+      }> = [];
+
       for (const goal of incomeGoals) {
+        // Ignora metas de meses anteriores ou futuros
+        if (goal.month !== currentMonth) continue;
+
+        const cat = categories.find((c) => c.id === goal.category_id);
+        // Desconsidera categorias inativas ou de outro tipo se o catálogo estiver presente
+        if (cat && (!cat.is_active || cat.type !== "income")) continue;
+
         const expectedCents = Math.round(goal.expected * 100);
         const realizedCents = realizedIncomeByCategory.get(goal.category_id) ?? 0;
         const themeKey = `income_goal:${goal.id}`;
+
         if (expectedCents > 0 && realizedCents < expectedCents * 0.7 && !isOccurrenceIgnored(feedbackMap[themeKey])) {
           const pct = Math.round((realizedCents / expectedCents) * 100);
-          candidates.push({
-            id: themeKey,
+          eligibleGoals.push({
             themeKey,
-            priority: 2,
-            category: "income",
-            title: "Meta de receita abaixo do ritmo",
-            description: `Realizado ${formatBRL(realizedCents)} de ${formatBRL(expectedCents)} (${pct}% da meta).`,
-            iconName: "arrow-down-left",
-            primaryAction: {
-              label: "Ver orçamentos",
-              kind: "open_income_goals",
-            },
-            secondaryAction: {
-              label: "Dispensar por 30 dias",
-              kind: "dismiss",
-            },
-            metadata: {
-              valueCents: expectedCents - realizedCents,
-            },
+            expectedCents,
+            realizedCents,
+            deficitCents: expectedCents - realizedCents,
+            pct,
+            categoryName: cat?.name,
+            categoryId: goal.category_id,
           });
-          break; // exibe no máximo 1 meta para não inundar
         }
+      }
+
+      // Prioriza a meta com maior déficit financeiro absoluto
+      eligibleGoals.sort((a, b) => b.deficitCents - a.deficitCents);
+
+      const top = eligibleGoals[0];
+      if (top) {
+        const desc = top.categoryName
+          ? `Realizado ${formatBRL(top.realizedCents)} de ${formatBRL(top.expectedCents)} em ${top.categoryName} (${top.pct}% da meta).`
+          : `Realizado ${formatBRL(top.realizedCents)} de ${formatBRL(top.expectedCents)} (${top.pct}% da meta).`;
+
+        candidates.push({
+          id: top.themeKey,
+          themeKey: top.themeKey,
+          priority: 2,
+          category: "income",
+          title: "Meta de receita abaixo do ritmo",
+          description: desc,
+          iconName: "arrow-down-left",
+          primaryAction: {
+            label: "Ver orçamentos",
+            kind: "open_income_goals",
+            payload: {
+              categoryId: top.categoryId,
+            },
+          },
+          secondaryAction: {
+            label: "Dispensar por 30 dias",
+            kind: "dismiss",
+          },
+          metadata: {
+            valueCents: top.deficitCents,
+          },
+        });
       }
     }
   }
@@ -684,6 +729,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
   }
 
   for (const occ of occurrences) {
+    if (occ.lifecycle === "lapsed") continue;
     if (isOccurrenceIgnored(feedbackMap[occ.key])) continue;
     if (candidates.some((c) => c.themeKey.includes(occ.key))) continue;
 
@@ -865,6 +911,8 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
 
   // 4. PRIORIDADE 4: CALIBRAÇÃO (Pergunta simples para ensinar o motor)
   for (const occ of occurrences) {
+    if (occ.lifecycle === "lapsed") continue;
+
     // Se esta ocorrência pertence a uma categoria com hábito consolidado já ativo e não for assinatura de serviço único,
     // não polui com perguntas de calibração para gastos pontuais de rotina
     if (

@@ -87,7 +87,12 @@ export function buildOverviewAlertItems(
       ? {
           id: `active-trip-${activeTrips[0].id}`,
           priority: 2,
-          content: <ActiveTripBanner trip={activeTrips[0]} />,
+          content: (
+            <ActiveTripBanner
+              trip={activeTrips[0]}
+              totalExpensesCents={data.activeTripExpensesTotalCents}
+            />
+          ),
         }
       : false,
     hasHouseholdSettlement && {

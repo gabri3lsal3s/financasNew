@@ -293,14 +293,14 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     });
   });
 
-  it("permite acessar a aba Dados & Privacidade e visualizar backup e sobre o app", async () => {
+  it("permite acessar a aba Dados & Privacidade e visualizar bloqueio e sobre o app", async () => {
     const user = userEvent.setup();
     renderSettings();
 
     const securityTab = screen.getByRole("tab", { name: "Dados & Privacidade" });
     await user.click(securityTab);
 
-    expect(screen.getByText("Extratos CSV")).toBeInTheDocument();
+    expect(screen.getByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
     expect(screen.getByText("Sobre o Aplicativo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Verificar atualizações/i })).toBeInTheDocument();
     expect(screen.queryByText("Conta & Sessão")).not.toBeInTheDocument();
@@ -340,12 +340,12 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
 
   it("ativa a aba Dados & Privacidade quando acessado via ?subtab=dados ou ?tab=seguranca", () => {
     renderSettings(["/configuracoes?subtab=dados"]);
-    expect(screen.getByText("Extratos CSV")).toBeInTheDocument();
+    expect(screen.getByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
 
     cleanup();
 
     renderSettings(["/configuracoes?tab=seguranca"]);
-    expect(screen.getByText("Extratos CSV")).toBeInTheDocument();
+    expect(screen.getByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
   });
 
   it("ativa a aba Dados & Privacidade quando acessado via ?tab=devices ou ?tab=app", () => {

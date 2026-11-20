@@ -179,7 +179,7 @@ export function CurrentPlanHeroCard({ subscription, onUpgrade }: CurrentPlanHero
               <span className="text-sm font-semibold text-foreground">
                 Plano {plan === "annual" ? "Pro Anual" : "Pro Mensal"}
               </span>
-              <Badge variant="positive" size="sm">
+              <Badge variant="default" size="sm">
                 Ativo
               </Badge>
             </div>

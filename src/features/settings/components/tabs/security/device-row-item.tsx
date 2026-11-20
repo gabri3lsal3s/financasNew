@@ -53,7 +53,7 @@ export function DeviceRowItem({
               {device.device_name}
             </span>
             {isCurrent ? (
-              <Badge variant="positive" size="xs">
+              <Badge variant="default" size="xs">
                 Dispositivo Atual
               </Badge>
             ) : null}

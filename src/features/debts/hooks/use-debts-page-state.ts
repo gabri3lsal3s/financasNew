@@ -6,7 +6,6 @@ import { useHighlightTarget } from "@/hooks/use-highlight-target";
 import { currentMonth } from "@/lib/date";
 import { useDebts, useDeleteDebt, useLoans, usePermission, useUpdateDebt } from "@/state";
 import type { Debt, InstallmentDeleteMode } from "@/types";
-import { useExportDebtsCsv } from "./use-export-debts-csv";
 
 export type DebtsTabKey = "payable" | "receivable" | "loans";
 
@@ -20,7 +19,6 @@ export function useDebtsPageState() {
   const loansQuery = useLoans();
   const deleteDebt = useDeleteDebt();
   const updateDebt = useUpdateDebt();
-  const exportCsv = useExportDebtsCsv();
 
   const { highlightId } = useHighlightTarget("q");
   const { open: formOpen, setOpen: setFormOpen } = useCreateDeepLink("divida");
@@ -107,18 +105,9 @@ export function useDebtsPageState() {
   const thisMonth = currentMonth();
   const error = debtsQuery.error || loansQuery.error;
 
-  const handleExportDebtsCsv = () => {
-    exportCsv({ tab, loans, payableDebts, receivableDebts, showPaid, today });
-  };
-
   const refetchAll = () => {
     void Promise.all([debtsQuery.refetch(), loansQuery.refetch()]);
   };
-
-  const isExportDisabled =
-    tab === "loans"
-      ? loans.length === 0
-      : (tab === "payable" ? payableDebts : receivableDebts).length === 0;
 
   return {
     navigate,
@@ -155,8 +144,6 @@ export function useDebtsPageState() {
     handleSettle,
     handleUnsettle,
     handleDeleteDebt,
-    handleExportDebtsCsv,
-    isExportDisabled,
     refetchAll,
   };
 }

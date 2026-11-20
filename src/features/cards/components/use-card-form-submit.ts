@@ -155,7 +155,24 @@ export function useCardFormSubmit({ card, onClose, onDeleted }: UseCardFormSubmi
     }
   };
 
+  const isDirty = card
+    ? name !== card.name ||
+      brand !== (card.brand ?? "") ||
+      limitCents !== (card.credit_limit ? Math.round(card.credit_limit * 100) : 0) ||
+      closingDay !== card.closing_day ||
+      dueDay !== card.due_day ||
+      color !== (card.color ?? "") ||
+      lastFourDigits !== (card.last_four_digits ?? "") ||
+      isActive !== card.is_active ||
+      isPrimary !== (card.id === primaryCardId)
+    : name.trim() !== "" ||
+      brand.trim() !== "" ||
+      limitCents > 0 ||
+      color.trim() !== "" ||
+      lastFourDigits.trim() !== "";
+
   return {
+    isDirty,
     name,
     setName,
     brand,

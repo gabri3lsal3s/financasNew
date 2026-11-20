@@ -63,6 +63,10 @@ function CategoryFormContent({
         }
         size="md"
         elevated={elevated}
+        confirmDiscard
+        isDirty={state.isDirty}
+        discardTitle="Descartar alterações da categoria?"
+        discardDescription="Você possui informações modificadas no formulário. Se sair agora, as alterações serão descartadas."
         footer={
           <ModalFooter
             borderless

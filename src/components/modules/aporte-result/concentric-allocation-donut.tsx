@@ -140,13 +140,13 @@ export function ConcentricAllocationDonut({
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row items-center gap-4 sm:gap-6 min-w-0 w-full",
+        "flex flex-col sm:flex-row items-center justify-center gap-5 sm:gap-6 lg:gap-8 min-w-0 w-full h-full my-auto",
         className,
       )}
     >
       {/* Container do Donut SVG + Centro Interativo */}
-      <div className="flex flex-col items-center shrink-0">
-        <div className="relative size-[180px] sm:size-[196px] shrink-0">
+      <div className="flex flex-col items-center justify-center shrink-0">
+        <div className="relative size-[190px] sm:size-[210px] md:size-[230px] lg:size-[245px] xl:size-[270px] 2xl:size-[285px] shrink-0 transition-all duration-300">
           <svg
             viewBox={`0 0 ${size} ${size}`}
             className="w-full h-full transform -rotate-90 origin-center"
@@ -236,18 +236,18 @@ export function ConcentricAllocationDonut({
           {/* Centro Interativo Flutuante (HTML sobre o SVG) */}
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-2 pointer-events-none select-none">
             {activeHovered ? (
-              <div className="flex flex-col items-center justify-center animate-fade-in max-w-[124px]">
-                <span className="text-[11px] font-semibold text-foreground truncate w-full">
+              <div className="flex flex-col items-center justify-center animate-fade-in max-w-[130px] sm:max-w-[150px] lg:max-w-[170px]">
+                <span className="text-[11px] sm:text-xs font-semibold text-foreground truncate w-full">
                   {activeHovered.item.name}
                 </span>
-                <span className="text-sm font-bold font-mono text-foreground tabular-nums">
+                <span className="text-base sm:text-lg lg:text-xl font-bold font-mono text-foreground tabular-nums">
                   {formatPercent(activeHovered.activeOuterPct)}%
                 </span>
-                <span className="text-[10px] text-muted-foreground font-mono">
+                <span className="text-[10px] sm:text-[11px] text-muted-foreground font-mono">
                   Meta {formatPercent(activeHovered.targetPct)}%
                 </span>
                 {hasAporte && activeHovered.item.allocatedBRL > 0 ? (
-                  <span className="text-[10px] font-semibold text-portfolio tabular-nums">
+                  <span className="text-[10px] sm:text-[11px] font-semibold text-portfolio tabular-nums">
                     +R${" "}
                     {activeHovered.item.allocatedBRL.toLocaleString("pt-BR", {
                       maximumFractionDigits: 0,
@@ -257,10 +257,10 @@ export function ConcentricAllocationDonut({
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center">
-                <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                   Ativos efetivos
                 </span>
-                <span className="text-lg font-bold font-mono text-foreground tabular-nums">
+                <span className="text-xl sm:text-2xl lg:text-3xl font-bold font-mono text-foreground tabular-nums my-0.5">
                   {hasAporte && diversificationImpact?.projectedNef !== null
                     ? diversificationImpact?.projectedNef?.toFixed(1)
                     : diversificationImpact?.currentNef?.toFixed(1) ?? "—"}
@@ -271,7 +271,7 @@ export function ConcentricAllocationDonut({
                 diversificationImpact.deltaNefPct !== 0 ? (
                   <span
                     className={cn(
-                      "text-[10px] font-semibold tabular-nums",
+                      "text-[10px] sm:text-[11px] font-semibold tabular-nums",
                       diversificationImpact.deltaNefPct > 0
                         ? "text-positive-strong"
                         : "text-muted-foreground",
@@ -281,7 +281,7 @@ export function ConcentricAllocationDonut({
                     {diversificationImpact.deltaNefPct.toFixed(1)}%
                   </span>
                 ) : (
-                  <span className="text-[10px] text-muted-foreground font-mono">Nef</span>
+                  <span className="text-[10px] sm:text-[11px] text-muted-foreground font-mono">Nef</span>
                 )}
               </div>
             )}
@@ -289,7 +289,7 @@ export function ConcentricAllocationDonut({
         </div>
 
         {/* Micro-legenda discreta abaixo do SVG */}
-        <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground pt-1.5 select-none">
+        <div className="flex items-center justify-center gap-3.5 text-[11px] text-muted-foreground pt-2 select-none">
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2 rounded-full bg-foreground shrink-0" aria-hidden="true" />
             <span>{hasAporte ? "Pós-aporte" : "Atual"}</span>
@@ -301,8 +301,8 @@ export function ConcentricAllocationDonut({
         </div>
       </div>
 
-      {/* Legenda Interativa Sincronizada */}
-      <div className="flex-1 w-full min-w-0 flex flex-col gap-1.5">
+      {/* Legenda Interativa Sincronizada em Colunas Tabulares */}
+      <div className="flex-1 w-full min-w-0 flex flex-col justify-center gap-1.5 sm:gap-2 lg:gap-2.5">
         {processedSegments.map((seg) => {
           const isHovered = hoveredIndex === seg.index;
           const hasHover = hoveredIndex !== null;
@@ -316,7 +316,7 @@ export function ConcentricAllocationDonut({
               onFocus={() => setHoveredIndex(seg.index)}
               onBlur={() => setHoveredIndex(null)}
               className={cn(
-                "flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-all duration-150 cursor-pointer text-left w-full",
+                "grid grid-cols-[1fr_auto] gap-x-2 gap-y-0.5 sm:flex sm:items-center sm:justify-between sm:gap-2.5 px-3 py-1.5 sm:py-2 rounded-lg text-xs transition-all duration-150 cursor-pointer text-left w-full",
                 isHovered
                   ? "bg-surface-raised ring-1 ring-border shadow-xs"
                   : hasHover
@@ -324,7 +324,8 @@ export function ConcentricAllocationDonut({
                   : "hover:bg-surface-raised/70",
               )}
             >
-              <div className="flex items-center gap-2 min-w-0">
+              {/* Linha 1 no Mobile / Esquerda no Desktop: Ponto + Nome da Classe */}
+              <div className="col-start-1 row-start-1 flex items-center gap-2 min-w-0 sm:flex-1">
                 <span
                   className="size-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: seg.color }}
@@ -333,32 +334,44 @@ export function ConcentricAllocationDonut({
                 <span className="font-medium text-foreground truncate">{seg.item.name}</span>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0 font-mono text-[11px] tabular-nums">
-                {hasAporte ? (
-                  <span className="text-foreground">
-                    <span className="text-muted-foreground">{formatPercent(seg.currentPct)}%</span>
-                    <span className="mx-1 text-muted-foreground/60 font-sans">{"->"}</span>
-                    <span className="font-semibold">{formatPercent(seg.projectedPct)}%</span>
-                  </span>
-                ) : (
-                  <span className="font-semibold text-foreground">
-                    {formatPercent(seg.currentPct)}%
-                  </span>
-                )}
+              {/* Linha 2 no Mobile / Meio no Desktop: Percentuais e Metas */}
+              <div className="col-start-1 row-start-2 sm:col-auto sm:row-auto flex items-center gap-2 pl-4.5 sm:pl-0 font-mono text-[11px] sm:text-xs tabular-nums">
+                {/* Coluna Percentual: Atual ou Atual -> Pós */}
+                <div className="text-left sm:text-right whitespace-nowrap">
+                  {hasAporte ? (
+                    <span className="text-foreground">
+                      <span className="text-muted-foreground">{formatPercent(seg.currentPct)}%</span>
+                      <span className="mx-1 text-muted-foreground/60 font-sans">{"->"}</span>
+                      <span className="font-semibold">{formatPercent(seg.projectedPct)}%</span>
+                    </span>
+                  ) : (
+                    <span className="font-semibold text-foreground">
+                      {formatPercent(seg.currentPct)}%
+                    </span>
+                  )}
+                </div>
 
-                <span className="text-muted-foreground" title="Meta definida">
+                {/* Coluna Meta */}
+                <div className="text-left sm:text-right text-muted-foreground whitespace-nowrap min-w-[65px]" title="Meta definida">
                   (meta {formatPercent(seg.targetPct)}%)
-                </span>
-
-                {hasAporte && seg.item.allocatedBRL > 0 ? (
-                  <span className="text-portfolio font-semibold text-[11px]">
-                    +R${" "}
-                    {seg.item.allocatedBRL.toLocaleString("pt-BR", {
-                      maximumFractionDigits: 0,
-                    })}
-                  </span>
-                ) : null}
+                </div>
               </div>
+
+              {/* Coluna 2 no Mobile (abrange as 2 linhas) / Direita no Desktop: Aporte Adicional */}
+              {hasAporte ? (
+                <div className="col-start-2 row-start-1 row-span-2 self-center text-right font-mono text-[11px] sm:text-xs font-bold text-portfolio tabular-nums whitespace-nowrap min-w-[58px]">
+                  {seg.item.allocatedBRL > 0 ? (
+                    <span>
+                      +R${" "}
+                      {seg.item.allocatedBRL.toLocaleString("pt-BR", {
+                        maximumFractionDigits: 0,
+                      })}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground/40 font-normal">—</span>
+                  )}
+                </div>
+              ) : null}
             </button>
           );
         })}

@@ -1,34 +1,30 @@
 export const UPDATE_DISMISSED_SESSION_KEY = "financas:update_dismissed_session";
 export const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
+let inMemoryDismissed = false;
+
 /**
- * Avalia se o aviso de atualização nativa foi dispensado pelo usuário
- * na sessão atual (sessionStorage) ou dentro da janela de tolerância de 12 horas (localStorage).
+ * Avalia se o aviso de atualização foi dispensado pelo usuário na sessão atual (sessionStorage).
+ * Garante que o pop-up não volte a incomodar durante o uso contínuo do app na mesma sessão,
+ * mas reapareça caso o usuário feche e entre no aplicativo novamente em uma nova sessão.
  */
-export function isUpdateDismissedForSession(now: number = Date.now()): boolean {
+export function isUpdateDismissedForSession(): boolean {
+  if (inMemoryDismissed) return true;
   if (typeof window === "undefined") return false;
   try {
-    if (window.sessionStorage?.getItem(UPDATE_DISMISSED_SESSION_KEY) === "true") {
-      return true;
-    }
-    const stored = window.localStorage?.getItem(UPDATE_DISMISSED_SESSION_KEY);
-    if (stored) {
-      const ts = Number(stored);
-      if (!Number.isNaN(ts) && now - ts < TWELVE_HOURS_MS) {
-        return true;
-      }
-    }
+    return window.sessionStorage?.getItem(UPDATE_DISMISSED_SESSION_KEY) === "true";
   } catch {
-    // Storage inacessível
+    return false;
   }
-  return false;
 }
 
 /**
  * Persiste a dispensa da notificação de atualização para a sessão atual
- * gravando flag no sessionStorage e timestamp no localStorage.
+ * gravando flag no sessionStorage (e em memória para WebView nativa)
+ * e registrando o timestamp no localStorage para auditoria/telemetria.
  */
 export function dismissUpdateForSession(now: number = Date.now()): void {
+  inMemoryDismissed = true;
   if (typeof window === "undefined") return;
   try {
     window.sessionStorage?.setItem(UPDATE_DISMISSED_SESSION_KEY, "true");
@@ -39,9 +35,10 @@ export function dismissUpdateForSession(now: number = Date.now()): void {
 }
 
 /**
- * Reseta o estado de dispensa da notificação de atualização (útil para testes).
+ * Reseta o estado de dispensa da notificação de atualização (útil para testes ou logout).
  */
 export function resetUpdateDismissedForSession(): void {
+  inMemoryDismissed = false;
   if (typeof window === "undefined") return;
   try {
     window.sessionStorage?.removeItem(UPDATE_DISMISSED_SESSION_KEY);

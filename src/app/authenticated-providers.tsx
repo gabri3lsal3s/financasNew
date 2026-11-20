@@ -9,7 +9,7 @@ import {
   syncBankCardMappingFromCloud,
 } from "@/services/merchant-learning";
 import { useUserPreferences } from "@/state/queries/use-user-preferences";
-import { syncVisualWithCloud } from "@/hooks/use-visual-customization";
+import { syncVisualWithCloud, useVisualCustomization } from "@/hooks/use-visual-customization";
 import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
 import { useDynamicAppIcon } from "@/hooks/use-dynamic-app-icon";
 import {
@@ -69,6 +69,14 @@ function DynamicBrandSync() {
   const isPro = useIsPro();
   useDynamicFavicon(isPro);
   useDynamicAppIcon(isPro);
+  const { accent, setAccent } = useVisualCustomization();
+
+  useEffect(() => {
+    if (!isPro && accent === "gold") {
+      setAccent("teal");
+    }
+  }, [isPro, accent, setAccent]);
+
   return null;
 }
 

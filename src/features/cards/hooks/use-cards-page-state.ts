@@ -120,10 +120,6 @@ export function useCardsPageState() {
 
   const actions = useCardsActions({
     isReadOnlyMode: permission.isReadOnlyMode,
-    selectedCard,
-    competenceExpenses,
-    categoryById,
-    effectiveMonth,
     onRefetchAll: () => {
       void Promise.all([cardsQuery.refetch(), expensesQuery.refetch(), paymentsQuery.refetch()]);
     },

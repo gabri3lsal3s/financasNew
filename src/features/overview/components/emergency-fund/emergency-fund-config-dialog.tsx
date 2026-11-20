@@ -45,6 +45,11 @@ export function EmergencyFundConfigDialog({
       size="xl"
       title="Composição da Reserva de Emergência"
       description="Personalize quais contas e ativos de investimentos garantem a sua autonomia financeira."
+      confirmDiscard
+      isDirty={form.isDirty}
+      onDiscard={form.resetToConfig}
+      discardTitle="Descartar alterações?"
+      discardDescription="Você possui alterações não salvas na composição da reserva. Se sair agora, todas as informações modificadas serão descartadas."
       footer={
         <ModalFooter borderless>
           <Button

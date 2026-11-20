@@ -24,12 +24,17 @@ export interface SplitPendingBannerProps {
 export function SplitPendingBanner({
   pendingCents,
   activeCount,
+  items,
   className,
 }: SplitPendingBannerProps) {
   const navigate = useNavigate();
 
   const handleNavigate = () => {
-    navigate("/transacoes");
+    if (items && items.length === 1 && items[0]?.id) {
+      navigate(`/transacoes?id=${items[0].id}&racha_modal=1`);
+    } else {
+      navigate("/transacoes?filtro=all");
+    }
   };
 
   return (

@@ -46,7 +46,7 @@ export function InstalledBankingAppsSection({
             Aplicativos no seu Dispositivo
           </span>
           {installedBanks.length > 0 ? (
-            <Badge variant="positive" size="xs">
+            <Badge variant="default" size="xs">
               {installedBanks.length} detectado{installedBanks.length > 1 ? "s" : ""}
             </Badge>
           ) : null}

@@ -258,6 +258,11 @@ vi.mock("@/state", () => ({
     isLoading: false,
     error: null,
   }),
+  useRealCashBalance: () => ({
+    cashBalance: { currentBalanceCents: 1500000 },
+    cycleBreakdown: { openInvoicesCents: 0 },
+    refetch: vi.fn(),
+  }),
 }));
 
 

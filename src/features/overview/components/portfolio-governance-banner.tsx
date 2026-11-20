@@ -1,4 +1,4 @@
-import { ShieldAlert } from "lucide-react";
+import { ChevronRight, ShieldAlert } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 
 export interface PortfolioGovernanceBannerProps {
@@ -27,9 +27,9 @@ export function PortfolioGovernanceBanner({
         </span>
         <div className="flex flex-col min-w-0 flex-1 gap-0.5">
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <h4 className="text-xs sm:text-sm font-semibold tracking-tight text-foreground truncate">
+            <h2 className="text-sm font-semibold tracking-tight text-foreground truncate">
               Revisão de Teses de Carteira
-            </h4>
+            </h2>
             <Badge size="xs" variant="warning">
               {overdueReviewsCount} {overdueReviewsCount === 1 ? "ativo pendente" : "ativos pendentes"}
             </Badge>
@@ -48,9 +48,10 @@ export function PortfolioGovernanceBanner({
           variant="outline"
           size="sm"
           onClick={onReview}
-          className="w-full sm:w-auto h-8 text-xs font-medium cursor-pointer"
+          className="w-full sm:w-auto h-8 text-xs font-medium cursor-pointer gap-1.5"
         >
-          Revisar Teses
+          <span>Revisar Teses</span>
+          <ChevronRight className="size-3.5" aria-hidden="true" />
         </Button>
       </div>
     </div>

@@ -1,12 +1,15 @@
 import { ShieldCheck } from "lucide-react";
 import { EmptyState } from "@/components/ui";
+import { buildTripSettlementBreakdown } from "@/domain/calculation-memory/builders/trips-breakdown";
 import type { Category } from "@/types";
-import type { SuggestedSettlement, TripMember, TripSettlement } from "@/types/trips";
+import type { SuggestedSettlement, TripMember, TripMemberBalance, TripSettlement } from "@/types/trips";
 import { TripSettlementRowCard } from "./trip-settlement-row-card";
 
 export interface TripSettlementPlanListProps {
   suggestedSettlements: readonly SuggestedSettlement[];
   existingSettlements: TripSettlement[];
+  memberBalances?: readonly TripMemberBalance[];
+  totalTripExpensesCents?: number;
   currentMember?: TripMember;
   hasSessionUser: boolean;
   isHost: boolean;
@@ -37,6 +40,8 @@ export interface TripSettlementPlanListProps {
 export function TripSettlementPlanList({
   suggestedSettlements,
   existingSettlements,
+  memberBalances,
+  totalTripExpensesCents,
   currentMember,
   hasSessionUser,
   isHost,
@@ -80,6 +85,13 @@ export function TripSettlementPlanList({
           (es) => es.from_member_id === s.fromMemberId && es.to_member_id === s.toMemberId,
         );
         const key = `${s.fromMemberId}-${s.toMemberId}`;
+        const memberBalance = memberBalances?.find((b) => b.memberId === s.fromMemberId);
+        const breakdown = memberBalance
+          ? buildTripSettlementBreakdown(memberBalance, {
+              tripTitle,
+              totalTripExpensesCents,
+            })
+          : undefined;
 
         return (
           <TripSettlementRowCard
@@ -87,6 +99,7 @@ export function TripSettlementPlanList({
             settlement={s}
             settlementKey={key}
             matchedExisting={matchedExisting}
+            breakdown={breakdown}
             isDebtor={Boolean(currentMember && s.fromMemberId === currentMember.id)}
             isCreditor={Boolean(currentMember && s.toMemberId === currentMember.id)}
             isHost={isHost}

@@ -61,7 +61,7 @@ As cores semânticas financeiras possuem significado imutável em todo o aplicat
 
 *\*Contrato Obrigatório de Token:* todo token semântico usado em texto (`primary`, `positive`, `negative`, `warning`, `critical`, `portfolio`) **deve** expor o par `<token>` e `<token>-strong` em `tokens.css` e `@theme inline` (`globals.css`), garantindo contraste mínimo **4.5:1 (WCAG AA)** para textos pequenos no Light Mode.
 - **Categorias (`--cat-1` a `--cat-10`):** escala fechada de 10 cores harmônicas (`bg-cat-1`..`bg-cat-10`). Proibido criar cores avulsas fora desta escala para gráficos ou categorias.
-- **Acentos personalizáveis (`data-accent`):** `teal` (padrão), `gold`, `sapphire`, `violet`, `rose` e `mono` devem ser persistidos tanto no `localStorage` quanto em `user_preferences.custom_settings`.
+- **Acentos personalizáveis oficiais (`data-accent`):** `teal` (padrão oficial), `gold` (ouro nobre) e `mono` (monocromático) devem ser persistidos tanto no `localStorage` quanto em `user_preferences.custom_settings`. Paletas que colidem com semântica de receitas/despesas foram permanentemente removidas para assegurar consistência visual executiva.
 
 ### 1.4 Elevação, Sombras, Backdrop e Escala Z-Index
 

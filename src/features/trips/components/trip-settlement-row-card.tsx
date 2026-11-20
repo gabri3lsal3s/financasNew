@@ -1,5 +1,7 @@
 import { ArrowDownLeft, ArrowRight, Check, Undo2, Wallet } from "lucide-react";
 import { Badge, Button, Card, MoneyText, Select } from "@/components/ui";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import type { CalculationBreakdown } from "@/domain/calculation-memory/types";
 import type { Category } from "@/types";
 import type { SuggestedSettlement, TripSettlement } from "@/types/trips";
 import { TripPixPaymentPanel } from "./trip-pix-payment-panel";
@@ -34,6 +36,7 @@ export interface TripSettlementRowCardProps {
   onReopenSingleSettlement: (settlementId: string) => void;
   onPayAndSyncExpense: () => void;
   onSyncToIncome: () => void;
+  breakdown?: CalculationBreakdown;
 }
 
 export function TripSettlementRowCard({
@@ -66,6 +69,7 @@ export function TripSettlementRowCard({
   onReopenSingleSettlement,
   onPayAndSyncExpense,
   onSyncToIncome,
+  breakdown,
 }: TripSettlementRowCardProps) {
   const isConfirmed = matchedExisting?.status === "confirmed";
 
@@ -86,6 +90,12 @@ export function TripSettlementRowCard({
 
         <div className="flex items-center gap-2">
           <MoneyText cents={s.amountCents} tone="default" className="font-bold" />
+          {breakdown ? (
+            <CalculationMemoryModal
+              breakdown={breakdown}
+              label={`Memória do acerto de ${s.fromMemberName}`}
+            />
+          ) : null}
           {isConfirmed ? (
             <Badge size="xs" variant="positive" className="gap-1 font-semibold">
               <Check className="size-3" aria-hidden="true" />

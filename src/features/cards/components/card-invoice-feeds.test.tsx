@@ -51,7 +51,6 @@ describe("Card Invoice Feeds", () => {
   it("renders CardInvoiceExpensesFeed with action buttons and empty state", async () => {
     const onOpenImport = vi.fn();
     const onOpenPrint = vi.fn();
-    const onExportCsv = vi.fn();
 
     render(
       <CardInvoiceExpensesFeed
@@ -62,7 +61,6 @@ describe("Card Invoice Feeds", () => {
         selectedCard={mockCard}
         onOpenImport={onOpenImport}
         onOpenPrint={onOpenPrint}
-        onExportCsv={onExportCsv}
         renderInvoiceRow={() => null}
       />
     );
@@ -86,7 +84,6 @@ describe("Card Invoice Feeds", () => {
         selectedCard={mockCard}
         onOpenImport={vi.fn()}
         onOpenPrint={vi.fn()}
-        onExportCsv={vi.fn()}
         renderInvoiceRow={(e) => <div key={e.id}>{e.description}</div>}
       />
     );

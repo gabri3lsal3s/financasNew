@@ -9,6 +9,7 @@ import {
   isValidYear,
   monthLabel,
   monthRange,
+  nextConsecutiveMonthDate,
   shiftMonth,
   todayLocalIso,
   toLocalIsoDate,
@@ -118,6 +119,31 @@ describe("lib/date (§4.1 — meses e anos em timezone local, sem toISOString)",
       const now = new Date();
       const expected = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       expect(todayLocalIso()).toBe(expected);
+    });
+  });
+
+  describe("nextConsecutiveMonthDate", () => {
+    it("projeta o último dia do mês seguinte quando o mês atual está no último dia", () => {
+      // Janeiro (31 dias) -> Fevereiro 2024 (29 dias, bissexto)
+      expect(nextConsecutiveMonthDate("2024-01-31")).toBe("2024-02-29");
+      // Fevereiro 2024 (29 dias) -> Março (31 dias)
+      expect(nextConsecutiveMonthDate("2024-02-29")).toBe("2024-03-31");
+      // Março (31 dias) -> Abril (30 dias)
+      expect(nextConsecutiveMonthDate("2024-03-31")).toBe("2024-04-30");
+      // Dezembro -> Janeiro do próximo ano
+      expect(nextConsecutiveMonthDate("2024-12-31")).toBe("2025-01-31");
+    });
+
+    it("projeta o mesmo dia para datas no meio do mês", () => {
+      expect(nextConsecutiveMonthDate("2024-01-15")).toBe("2024-02-15");
+      expect(nextConsecutiveMonthDate("2024-05-10")).toBe("2024-06-10");
+    });
+
+    it("ajusta o dia caso o próximo mês tenha menos dias que o dia informado", () => {
+      // 30 de janeiro em ano não bissexto -> 28 de fevereiro
+      expect(nextConsecutiveMonthDate("2025-01-30")).toBe("2025-02-28");
+      // 31 de março -> 30 de abril
+      expect(nextConsecutiveMonthDate("2025-03-31")).toBe("2025-04-30");
     });
   });
 });

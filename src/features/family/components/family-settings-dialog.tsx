@@ -39,10 +39,7 @@ export function FamilySettingsDialog({
             s.setIsFamilyDirty(true);
           }}
           editSplitRule={s.editSplitRule}
-          onEditSplitRuleChange={(val) => {
-            s.setEditSplitRule(val);
-            s.setIsFamilyDirty(true);
-          }}
+          onEditSplitRuleChange={s.handleSplitRuleChange}
           isDirty={s.isFamilyDirty}
           isPending={s.updateFamilyPending}
           onSubmit={s.handleSaveFamilyParams}
@@ -120,6 +117,11 @@ export function FamilySettingsDialog({
         title="Configurações da Família"
         description="Gestão de membros, parâmetros de rateio, chaves Pix e regras do lar."
         size="xl"
+        confirmDiscard
+        isDirty={s.isFamilyDirty || s.isMemberDirty}
+        onDiscard={s.handleResetDrafts}
+        discardTitle="Descartar alterações?"
+        discardDescription="Você possui alterações não salvas nas configurações da família. Se sair agora, todas as informações modificadas serão descartadas."
         showCalculator={s.activeTab === "general" && s.isOwner}
         footer={
           <ModalFooter borderless>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { History } from "lucide-react";
 import { ReportDocumentLayout, ReportFooter, ReportHeader } from "@/components/modules/reports";
 import { Button, ConfirmDialog } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
@@ -18,6 +19,7 @@ export interface PortfolioSnapshotsDialogProps {
   currentMonthStr?: string;
   onDeleteSnapshot?: (month: string) => Promise<void> | void;
   onGenerateReport?: (month: string) => void;
+  onOpenPocketCostDialog?: () => void;
 }
 
 /**
@@ -31,6 +33,7 @@ export function PortfolioSnapshotsDialog({
   currentMonthStr,
   onDeleteSnapshot,
   onGenerateReport,
+  onOpenPocketCostDialog,
 }: PortfolioSnapshotsDialogProps) {
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [snapshotToDelete, setSnapshotToDelete] = useState<string | null>(null);
@@ -98,34 +101,54 @@ export function PortfolioSnapshotsDialog({
           generatedAt={formatDateBR(todayLocalIso())}
         />
 
-        {availableYears.length > 1 ? (
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 print:hidden">
-            <span className="text-xs font-medium text-muted-foreground mr-1 shrink-0">Ano:</span>
+        <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-1 print:hidden">
+          {availableYears.length > 1 ? (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-xs font-medium text-muted-foreground mr-1 shrink-0">Ano:</span>
+              <Button
+                type="button"
+                size="sm"
+                variant={selectedYear === "all" ? "default" : "outline"}
+                sensoryIntent="selection"
+                onClick={() => setSelectedYear("all")}
+                className="shrink-0"
+              >
+                Todos ({series.length}m)
+              </Button>
+              {availableYears.map((yr) => (
+                <Button
+                  key={yr}
+                  type="button"
+                  size="sm"
+                  variant={selectedYear === yr ? "default" : "outline"}
+                  sensoryIntent="selection"
+                  onClick={() => setSelectedYear(yr)}
+                  className="shrink-0"
+                >
+                  {yr}
+                </Button>
+              ))}
+            </div>
+          ) : (
+            <div />
+          )}
+
+          {onOpenPocketCostDialog ? (
             <Button
               type="button"
               size="sm"
-              variant={selectedYear === "all" ? "default" : "outline"}
-              sensoryIntent="selection"
-              onClick={() => setSelectedYear("all")}
-              className="shrink-0"
+              variant="outline"
+              onClick={() => {
+                onOpenChange(false);
+                onOpenPocketCostDialog();
+              }}
+              className="shrink-0 gap-1.5 text-xs ml-auto"
             >
-              Todos ({series.length}m)
+              <History className="size-3.5 text-portfolio" aria-hidden="true" />
+              <span>Marcos do Bolso</span>
             </Button>
-            {availableYears.map((yr) => (
-              <Button
-                key={yr}
-                type="button"
-                size="sm"
-                variant={selectedYear === yr ? "default" : "outline"}
-                sensoryIntent="selection"
-                onClick={() => setSelectedYear(yr)}
-                className="shrink-0"
-              >
-                {yr}
-              </Button>
-            ))}
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         <SnapshotsEvolutionChart series={filteredSeries} summary={summary} />
 

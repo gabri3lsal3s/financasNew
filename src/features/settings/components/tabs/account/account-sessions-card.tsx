@@ -62,7 +62,7 @@ export function AccountSessionsCard({
                 <span className="text-xs font-semibold text-foreground">
                   Este Dispositivo
                 </span>
-                <Badge variant="positive" size="xs">
+                <Badge variant="default" size="xs">
                   Sessão Ativa
                 </Badge>
               </div>

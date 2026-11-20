@@ -112,6 +112,15 @@ export function FamilyPage() {
             <Badge variant="muted" size="sm">
               {activeMembersCount} de 6 membros
             </Badge>
+            {consolidation?.family.split_rule && (
+              <Badge variant="muted" size="sm">
+                {consolidation.family.split_rule === "combined"
+                  ? "Caixa Único"
+                  : consolidation.family.split_rule === "proportional"
+                    ? "Divisão Proporcional"
+                    : "Divisão 50/50"}
+              </Badge>
+            )}
           </div>
         }
         actions={

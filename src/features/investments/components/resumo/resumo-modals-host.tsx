@@ -13,7 +13,6 @@ import {
   QuickTransactionSheet,
 } from "..";
 import { InvestmentWizard } from "../../wizard";
-import { PortfolioIndicatorsGuideModal } from "./portfolio-indicators-guide-modal";
 import type { useResumoTabController } from "./use-resumo-tab-controller";
 
 export interface ResumoModalsHostProps {
@@ -148,19 +147,11 @@ export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
         }
       />
 
-      <PortfolioIndicatorsGuideModal
-        open={ctrl.explainModalOpen}
-        onOpenChange={ctrl.setExplainModalOpen}
-        hasMarcoZeroContribution={position.hasMarcoZeroContribution}
-        onOpenInitialCostDialog={() => ctrl.setInitialCostDialogOpen(true)}
-        performance={ctrl.performance}
-        twrAnnualizedRatePct={position.portfolioTwr?.annualizedRatePct}
-      />
-
       <InitialPocketCostDialog
         open={ctrl.initialCostDialogOpen}
         onOpenChange={ctrl.setInitialCostDialogOpen}
         defaultCostBRL={position.totalCostBRL}
+        onOpenSnapshotsDialog={() => ctrl.setSnapshotsDialogOpen(true)}
       />
 
       <PortfolioExecutiveReport
@@ -186,6 +177,7 @@ export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
         onOpenChange={ctrl.setSnapshotsDialogOpen}
         series={ctrl.allSeries}
         currentMonthStr={ctrl.month}
+        onOpenPocketCostDialog={() => ctrl.setInitialCostDialogOpen(true)}
         onGenerateReport={(targetMonth) => {
           ctrl.setSnapshotsDialogOpen(false);
           ctrl.setReportSelectedMonth(targetMonth);

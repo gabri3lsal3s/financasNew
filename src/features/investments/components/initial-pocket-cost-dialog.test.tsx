@@ -1,8 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { formatDateBR, todayISO } from "@/lib/date";
+import { formatDateBR, nextConsecutiveMonthDate, todayISO } from "@/lib/date";
 import { InitialPocketCostDialog } from "./initial-pocket-cost-dialog";
 import * as stateModule from "@/state";
 
@@ -67,7 +66,7 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
     } as unknown as ReturnType<typeof stateModule.useUpsertMarcoZero>);
   });
 
-  it("renderiza o diálogo com as 3 abas e estado inicial vazio", () => {
+  it("renderiza o diálogo com as 2 abas canônicas e estado inicial vazio", () => {
     vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
       data: [],
       isLoading: false,
@@ -82,8 +81,8 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
 
     expect(screen.getByText("Linha do Tempo de Aportes Históricos")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Lançamento Individual/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /Assistente de Extrato/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Modo Rápido/i })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Assistente de Extrato/i })).not.toBeInTheDocument();
     expect(screen.getByText("Nenhum marco cadastrado")).toBeInTheDocument();
   });
 
@@ -168,12 +167,35 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
       );
     });
     expect(screen.queryByText("26/02/2024")).not.toBeInTheDocument();
-    expect(screen.getByText(formatDateBR(todayISO()))).toBeInTheDocument();
+    // Avanço temporal sequencial: o campo de data avança automaticamente para o próximo mês
+    expect(screen.getByText(formatDateBR(nextConsecutiveMonthDate(todayISO())))).toBeInTheDocument();
   });
 
-  it("processa extrato e permite importação em lote na aba Assistente de Extrato", async () => {
-    const user = userEvent.setup();
+  it("permite acionar o diálogo de fechamentos a partir do rodapé", () => {
+    vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
+      data: [],
+      isLoading: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof stateModule.usePortfolioContributions>);
 
+    const mockOpenSnapshots = vi.fn();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <InitialPocketCostDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          onOpenSnapshotsDialog={mockOpenSnapshots}
+        />
+      </QueryClientProvider>,
+    );
+
+    const btn = screen.getByRole("button", { name: /Auditar Fechamentos/i });
+    expect(btn).toBeInTheDocument();
+    fireEvent.click(btn);
+    expect(mockOpenSnapshots).toHaveBeenCalledTimes(1);
+  });
+
+  it("oferece atalho de 'Sem aporte (R$ 0)' para registrar fechamento puro", () => {
     vi.mocked(stateModule.usePortfolioContributions).mockReturnValue({
       data: [],
       isLoading: false,
@@ -186,41 +208,8 @@ describe("InitialPocketCostDialog (Linha do Tempo de Aportes Históricos)", () =
       </QueryClientProvider>,
     );
 
-    // Alterna para aba Assistente de Extrato via userEvent
-    const tabExtrato = screen.getByRole("tab", { name: /Assistente de Extrato/i });
-    await user.click(tabExtrato);
-
-    expect(screen.getByText("Cálculo Automático de Aportes e Resgates")).toBeInTheDocument();
-
-    const textarea = screen.getByPlaceholderText(/Cole o extrato aqui/i);
-    const sample = `
-      Out. 2023 6.187,37 6.147,97
-      Nov. 2023 8.678,16 8.745,74
-      Dez. 2023 13.527,62 14.221,47
-    `;
-    fireEvent.change(textarea, { target: { value: sample } });
-
-    const processBtn = screen.getByRole("button", { name: /Processar Extrato/i });
-    await user.click(processBtn);
-
-    // Deve exibir preview
-    await waitFor(() => {
-      expect(screen.getByText("Pré-visualização dos Marcos Detectados")).toBeInTheDocument();
-      expect(screen.getByText("3 movimentações")).toBeInTheDocument();
-    });
-
-    // Clica em gravar marcos
-    const saveAllBtn = screen.getByRole("button", { name: /Gravar 3 Marcos/i });
-    await user.click(saveAllBtn);
-
-    await waitFor(() => {
-      expect(mockBatchMutateAsync).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ date: "2023-10-31", amount: 6187.37 }),
-          expect.objectContaining({ date: "2023-11-30", amount: 2490.79 }),
-          expect.objectContaining({ date: "2023-12-31", amount: 4849.46 }),
-        ]),
-      );
-    });
+    const zeroBtn = screen.getByRole("button", { name: /Sem aporte \(R\$ 0\)/i });
+    expect(zeroBtn).toBeInTheDocument();
+    fireEvent.click(zeroBtn);
   });
 });

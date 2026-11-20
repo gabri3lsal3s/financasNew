@@ -36,27 +36,33 @@ function FamilyShareAssetsInnerModal({
   const [selectedClasses, setSelectedClasses] = useState<string[]>(
     () => currentMember.shared_asset_classes ?? [],
   );
-  const [isSaving, setIsSaving] = useState(false);
 
-  const handleToggleClass = (cls: string) => {
-    setSelectedClasses((prev) =>
-      prev.includes(cls) ? prev.filter((c) => c !== cls) : [...prev, cls],
-    );
-  };
-
-  const handleSavePreferences = async () => {
-    setIsSaving(true);
+  const handleToggleClass = async (cls: string) => {
+    const nextClasses = selectedClasses.includes(cls)
+      ? selectedClasses.filter((c) => c !== cls)
+      : [...selectedClasses, cls];
+    setSelectedClasses(nextClasses);
     try {
       await updateWealthSharing.mutateAsync({
         memberId: currentMember.id,
         shareAllPortfolio: shareAll,
+        sharedAssetClasses: nextClasses,
+      });
+    } catch {
+      // Toast e rollback tratados na mutation
+    }
+  };
+
+  const handleShareAllChange = async (checked: boolean) => {
+    setShareAll(checked);
+    try {
+      await updateWealthSharing.mutateAsync({
+        memberId: currentMember.id,
+        shareAllPortfolio: checked,
         sharedAssetClasses: selectedClasses,
       });
-      onOpenChange(false);
     } catch {
-      // Toast tratado na mutation
-    } finally {
-      setIsSaving(false);
+      // Toast e rollback tratados na mutation
     }
   };
 
@@ -84,32 +90,21 @@ function FamilyShareAssetsInnerModal({
         <ModalFooter borderless>
           <Button
             type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSaving}
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
             variant="default"
-            sensoryIntent={false}
-            onClick={handleSavePreferences}
-            disabled={isSaving}
-            loading={isSaving}
+            onClick={() => onOpenChange(false)}
           >
-            Salvar Preferências
+            Concluir
           </Button>
         </ModalFooter>
       }
     >
       <FamilyShareAssetsContent
         shareAll={shareAll}
-        onShareAllChange={setShareAll}
+        onShareAllChange={(val) => void handleShareAllChange(val)}
         selectedClasses={selectedClasses}
-        onToggleClass={handleToggleClass}
+        onToggleClass={(cls) => void handleToggleClass(cls)}
         userAssets={userAssets}
-        isTogglePending={toggleAssetFamily.isPending}
+        isTogglePending={toggleAssetFamily.isPending || updateWealthSharing.isPending}
         onToggleSingleAsset={handleToggleSingleAsset}
       />
     </Modal>
@@ -119,6 +114,8 @@ function FamilyShareAssetsInnerModal({
 export function FamilyShareAssetsDialog({ open, onOpenChange }: FamilyShareAssetsDialogProps) {
   const { data: myFamilyData } = useMyFamily();
   const currentMember = myFamilyData?.currentMember;
+
+  if (!open) return null;
 
   if (!currentMember) {
     return (
@@ -134,7 +131,7 @@ export function FamilyShareAssetsDialog({ open, onOpenChange }: FamilyShareAsset
 
   return (
     <FamilyShareAssetsInnerModal
-      key={currentMember.id}
+      key={`${currentMember.id}-${open}`}
       open={open}
       onOpenChange={onOpenChange}
       currentMember={currentMember}

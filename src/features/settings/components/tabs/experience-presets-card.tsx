@@ -40,7 +40,7 @@ export function ExperiencePresetsCard({
             <span>Modo de Experiência do Aplicativo</span>
           </span>
           <Badge
-            variant={activePreset === "custom" ? "warning" : "positive"}
+            variant={activePreset === "custom" ? "warning" : "default"}
             size="sm"
             className="self-start sm:self-center shrink-0"
           >
@@ -81,7 +81,7 @@ export function ExperiencePresetsCard({
                     <span className="font-semibold text-sm text-foreground">{preset.title}</span>
                   </div>
                   {isSelected ? (
-                    <Badge variant="positive" size="xs" className="shrink-0">
+                    <Badge variant="default" size="xs" className="shrink-0">
                       <Check className="size-3 mr-1" aria-hidden="true" />
                       Ativo
                     </Badge>

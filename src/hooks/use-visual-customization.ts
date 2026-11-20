@@ -20,6 +20,7 @@ import {
 import {
   applyVisualDomAttributes,
   readStoredVisualConfig,
+  triggerThemeTransition,
   writeThemeCloudStorage,
   writeVisualStorageDiff,
 } from "@/services/visual-storage";
@@ -102,6 +103,9 @@ export function syncVisualWithCloud(
 export function resetVisualCustomization(userId?: string | null): void {
   const uid = userId !== undefined ? userId : getActiveUserId();
   currentConfig = uid ? readStoredVisualConfig(uid) : DEFAULT_CONFIG;
+  if (uid && typeof window !== "undefined") {
+    triggerThemeTransition(600);
+  }
   applyVisualDomAttributes(currentConfig);
   listeners.forEach((listener) => listener());
 }

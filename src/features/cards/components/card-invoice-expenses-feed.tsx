@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Download, FileUp, Printer, Repeat, WalletCards, Zap } from "lucide-react";
+import { FileUp, Printer, Repeat, WalletCards, Zap } from "lucide-react";
 import { Button, EmptyState } from "@/components/ui";
 import type { CreditCard, Expense } from "@/types";
 
@@ -11,7 +11,6 @@ export interface CardInvoiceExpensesFeedProps {
   selectedCard: CreditCard | null;
   onOpenImport: () => void;
   onOpenPrint: () => void;
-  onExportCsv: () => void;
   renderInvoiceRow: (expense: Expense) => ReactNode;
 }
 
@@ -23,7 +22,6 @@ export function CardInvoiceExpensesFeed({
   selectedCard,
   onOpenImport,
   onOpenPrint,
-  onExportCsv,
   renderInvoiceRow,
 }: CardInvoiceExpensesFeedProps) {
   return (
@@ -62,17 +60,6 @@ export function CardInvoiceExpensesFeed({
           >
             <Printer className="size-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">Imprimir / Salvar </span>PDF
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onExportCsv}
-            disabled={competenceExpenses.length === 0 || !selectedCard}
-            className="gap-1.5 flex-1 sm:flex-none justify-center"
-          >
-            <Download className="size-3.5" aria-hidden="true" />
-            <span className="hidden sm:inline">Exportar </span>CSV
           </Button>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Landmark, Scale, ShieldCheck, ArrowDownRight, ArrowUpRight, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
@@ -7,9 +7,13 @@ import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import type { UseRealCashBalanceResult } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
+import {
+  buildRealCashBreakdown,
+  buildSafeToSpendBreakdown,
+} from "@/domain/calculation-memory";
 import { CashCheckpointDialog } from "./cash-checkpoint-dialog";
 import { CycleObligationsDialog } from "./cycle-obligations-dialog";
-import { EquationBreakdownPopover } from "./equation-breakdown-popover";
+import { CalculationMemoryModal } from "./calculation-memory";
 
 export interface RealCashHeroCardProps {
   realCashData: UseRealCashBalanceResult;
@@ -41,6 +45,29 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
   const hasCheckpoint = latestCheckpoint !== null;
   const hasReceivables = (safeToSpend.receivablePendingCents ?? 0) > 0;
 
+  const realCashBreakdown = useMemo(() => {
+    return buildRealCashBreakdown({
+      currentBalanceCents: cashBalance.currentBalanceCents,
+      latestCheckpoint: cashBalance.latestCheckpoint,
+      checkpointBalanceCents: cashBalance.checkpointBalanceCents,
+      inflowSinceCheckpointCents: cashBalance.inflowSinceCheckpointCents,
+      outflowSinceCheckpointCents: cashBalance.outflowSinceCheckpointCents,
+    });
+  }, [cashBalance]);
+
+  const safeToSpendBreakdown = useMemo(() => {
+    return buildSafeToSpendBreakdown({
+      realCashBalanceCents: cashBalance.currentBalanceCents,
+      committedObligationsCents: safeToSpend.committedObligationsCents,
+      openInvoicesCents: safeToSpend.openInvoicesCents,
+      payablePendingCents: safeToSpend.payablePendingCents,
+      receivablePendingCents: safeToSpend.receivablePendingCents,
+      safeToSpendCents: safeToSpend.safeToSpendCents,
+      safeToSpendWithReceivablesCents: safeToSpend.safeToSpendWithReceivablesCents,
+      includeReceivablesInTotal: false, // Modo conservador prudencial condizente com a métrica do card
+    });
+  }, [cashBalance.currentBalanceCents, safeToSpend]);
+
   return (
     <>
       <div
@@ -56,6 +83,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
             <h2 className="text-sm font-semibold tracking-tight text-foreground break-words min-w-0">
               Saldo Disponível em Conta
             </h2>
+            <CalculationMemoryModal breakdown={realCashBreakdown} />
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -144,37 +172,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
             <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
               <ShieldCheck className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <span className="truncate text-muted-foreground">Saldo Livre Real:</span>
-              <EquationBreakdownPopover
-                title="Saldo Livre Real (Safe-to-Spend)"
-                description="Quantia verdadeiramente disponível para gastar ou investir sem comprometer as contas e faturas do mês."
-                formula="Saldo em Conta + Recebíveis Previstos − Obrigações do Ciclo"
-                items={[
-                  {
-                    label: "Saldo Atual em Contas",
-                    cents: cashBalance.currentBalanceCents,
-                    sign: "+",
-                    tone: cashBalance.currentBalanceCents >= 0 ? "positive" : "negative",
-                  },
-                  ...(hasReceivables
-                    ? [
-                        {
-                          label: "A Receber Previsto",
-                          cents: safeToSpend.receivablePendingCents,
-                          sign: "+" as const,
-                          tone: "positive" as const,
-                        },
-                      ]
-                    : []),
-                  {
-                    label: "Faturas e Contas a Pagar (Ciclo)",
-                    cents: safeToSpend.committedObligationsCents,
-                    sign: "-",
-                    tone: "negative",
-                  },
-                ]}
-                totalLabel="Saldo Livre Real"
-                totalCents={safeToSpend.safeToSpendCents}
-              />
+              <CalculationMemoryModal breakdown={safeToSpendBreakdown} />
             </div>
             <MoneyText
               cents={safeToSpend.safeToSpendCents}

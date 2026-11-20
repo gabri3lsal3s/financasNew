@@ -226,9 +226,56 @@
             m.setAttribute('content', themeColor);
           });
 
-          var accent = getStoredValue('accent_theme');
-          if (accent && accent !== 'teal') {
-            document.documentElement.setAttribute('data-accent', accent);
+          var path = window.location.pathname || '';
+          var isPublicOrAuthPath =
+            path === '/' ||
+            path.indexOf('/entrar') === 0 ||
+            path.indexOf('/cadastro') === 0 ||
+            path.indexOf('/cadastrar') === 0 ||
+            path.indexOf('/criar-conta') === 0 ||
+            path.indexOf('/recuperar-senha') === 0 ||
+            path.indexOf('/redefinir-senha') === 0 ||
+            path.indexOf('/atualizar-senha') === 0 ||
+            path.indexOf('/apresentacao') === 0 ||
+            path.indexOf('/landing') === 0 ||
+            path.indexOf('/precos') === 0 ||
+            path.indexOf('/planos') === 0 ||
+            path.indexOf('/vendas') === 0 ||
+            path.indexOf('/termos') === 0 ||
+            path.indexOf('/privacidade') === 0 ||
+            path.indexOf('/r/') === 0 ||
+            path.indexOf('/orcamento-familiar/') === 0 ||
+            path.indexOf('/meta/') === 0 ||
+            path.indexOf('/convite-familiar/') === 0 ||
+            path.indexOf('/viagem/') === 0 ||
+            path.indexOf('/ferramentas') === 0 ||
+            path.indexOf('/admin/login') === 0;
+
+          var hasActiveSession = (function() {
+            try {
+              for (var i = 0; i < localStorage.length; i++) {
+                var k = localStorage.key(i);
+                if (k && k.indexOf('sb-') === 0 && k.indexOf('-auth-token') !== -1) {
+                  var item = localStorage.getItem(k);
+                  if (item && item.indexOf('access_token') !== -1) return true;
+                }
+              }
+            } catch (e) {}
+            return false;
+          })();
+
+          // Só aplica cor de destaque personalizada (accent) quando o usuário estiver em rota autenticada
+          // com sessão confirmada. Telas públicas e de auth usam sempre o Teal Vital oficial (sem data-accent).
+          if (!isPublicOrAuthPath && hasActiveSession) {
+            var activeUid = localStorage.getItem('financas_active_user_id');
+            var accent = activeUid
+              ? localStorage.getItem('financas_' + activeUid + '_accent_theme')
+              : getStoredValue('accent_theme');
+            if (accent && accent !== 'teal') {
+              document.documentElement.setAttribute('data-accent', accent);
+            }
+          } else {
+            document.documentElement.removeAttribute('data-accent');
           }
           var surface = getStoredValue('surface_style');
           if (surface && surface !== 'glass') {

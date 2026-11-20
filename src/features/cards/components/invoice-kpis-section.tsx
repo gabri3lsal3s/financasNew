@@ -1,9 +1,13 @@
+import { useMemo } from "react";
 import { MoneyText } from "@/components/ui";
 import { CardSubscriptionRadar, KpiCard, KpiGrid } from "@/components/modules";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import { buildInvoiceBreakdown } from "@/domain/calculation-memory";
 import type { CompetenceSummary } from "@/domain/cards";
 import type { CardSubscriptionImpact } from "@/domain/insights/card-radar";
 
 export interface InvoiceKpisSectionProps {
+  cardName?: string;
   summary: CompetenceSummary | undefined;
   cardSubscriptionImpact: CardSubscriptionImpact | null;
   onIgnoreSubscriptionItem: (key: string) => void;
@@ -11,16 +15,34 @@ export interface InvoiceKpisSectionProps {
 
 /** KPIs da competência (Bruto vs. Ponderado) e radar de assinaturas previstas. */
 export function InvoiceKpisSection({
+  cardName = "Cartão",
   summary,
   cardSubscriptionImpact,
   onIgnoreSubscriptionItem,
 }: InvoiceKpisSectionProps) {
+  const invoiceBreakdown = useMemo(() => {
+    if (!summary) return null;
+    return buildInvoiceBreakdown({
+      cardName,
+      month: summary.month,
+      previstoBrutoCents: summary.previstoBrutoCents,
+      previstoPonderadoCents: summary.previstoPonderadoCents,
+      pagoCents: summary.pagoCents,
+      estornoCents: summary.estornoCents,
+      creditoAnteriorCents: summary.creditoAnteriorCents,
+      creditoRestanteCents: summary.creditoRestanteCents,
+      saldoBrutoCents: summary.saldoBrutoCents,
+      saldoPonderadoCents: summary.saldoPonderadoCents,
+    });
+  }, [cardName, summary]);
+
   return (
     <>
       <KpiGrid columns={3} data-tour="cards-invoice-summary">
         <KpiCard
           label="Fatura Total (Bruto)"
           cents={summary?.previstoBrutoCents ?? 0}
+          action={invoiceBreakdown ? <CalculationMemoryModal breakdown={invoiceBreakdown} /> : undefined}
           hint={
             summary && summary.previstoBrutoCents !== summary.previstoPonderadoCents ? (
               <span className="inline-flex flex-wrap items-center gap-1 font-medium text-foreground text-[11px] tabular-nums">
@@ -59,6 +81,7 @@ export function InvoiceKpisSection({
           label="Saldo aberto (Bruto)"
           cents={summary?.saldoBrutoCents ?? 0}
           tone={summary && summary.saldoBrutoCents > 0 ? "negative" : "positive"}
+          action={invoiceBreakdown ? <CalculationMemoryModal breakdown={invoiceBreakdown} /> : undefined}
           hint={
             summary && summary.creditoRestanteCents > 0 ? (
               <span className="inline-flex flex-wrap items-center gap-1 font-medium text-positive-strong text-[11px] tabular-nums">

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { CheckCheck, ChevronDown, ChevronUp, FolderTree, ListOrdered, ShieldAlert } from "lucide-react";
+import { Calculator, CheckCheck, ChevronDown, ChevronUp, FolderTree, ListOrdered, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { AporteDesktopTable } from "./aporte-result/aporte-desktop-table";
@@ -146,9 +146,12 @@ export function AporteResult({
   const executionBlock = (
     <div key="execution-block" className="flex flex-col gap-4 min-w-0 w-full animate-fade-in">
       {!hasAportePlan ? (
-        <div className="rounded-xl border border-dashed border-border/80 bg-surface/60 p-6 sm:p-8 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-1.5 shadow-xs">
+        <div className="rounded-xl border border-dashed border-border/80 bg-surface/60 p-6 sm:p-8 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-2 shadow-xs">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-surface-raised border border-border/60 text-muted-foreground">
+            <Calculator className="size-4.5" aria-hidden="true" />
+          </div>
           <span className="font-semibold text-foreground text-sm">Pronto para simular</span>
-          <span>Informe um valor de aporte ou utilize o saldo em Caixa para gerar o plano de compras recomendado.</span>
+          <span className="max-w-md">Informe um valor de aporte ou utilize o saldo em Caixa para gerar o plano de compras recomendado.</span>
         </div>
       ) : routes.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/80 bg-surface p-6 sm:p-8 text-center text-xs text-muted-foreground shadow-xs">
@@ -187,10 +190,10 @@ export function AporteResult({
               <Button
                 type="button"
                 size="sm"
-                variant="secondary"
+                variant="default"
                 onClick={() => onExecuteAporte(selectedExecutionItems)}
                 disabled={executing || selectedExecutionItems.length === 0}
-                className="gap-1.5 shrink-0 h-8 px-3 text-xs font-semibold cursor-pointer"
+                className="gap-1.5 shrink-0 h-8 px-3 text-xs font-semibold cursor-pointer hidden sm:inline-flex"
               >
                 <CheckCheck className="size-4" aria-hidden="true" />
                 <span>
@@ -385,7 +388,7 @@ export function AporteResult({
           <Button
             type="button"
             size="sm"
-            variant="secondary"
+            variant="default"
             onClick={() => onExecuteAporte(selectedExecutionItems)}
             disabled={executing || selectedExecutionItems.length === 0}
             className="gap-1.5 shrink-0 h-9 px-3.5 text-xs font-semibold cursor-pointer"

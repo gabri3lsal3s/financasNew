@@ -36,6 +36,22 @@ export function resolveSmartAdvisorPresentation(
     };
   }
 
+  if (insight.themeKey.startsWith("income_goal:")) {
+    return {
+      iconKind: "income",
+      badgeVariant: "warning",
+      badgeLabel: "Meta de Receita",
+    };
+  }
+
+  if (insight.themeKey.startsWith("annual:")) {
+    return {
+      iconKind: "critical",
+      badgeVariant: "warning",
+      badgeLabel: "Compromisso Anual",
+    };
+  }
+
   switch (insight.category) {
     case "critical":
       return { iconKind: "critical", badgeVariant: "critical", badgeLabel: "Atenção" };
@@ -135,7 +151,10 @@ export function resolveSmartAdvisorActionRoute(
   }
 
   if (insight.primaryAction?.kind === "open_income_goals") {
-    return "/orcamentos?tab=goals";
+    const payload = insight.primaryAction?.payload as { categoryId?: string } | undefined;
+    return payload?.categoryId
+      ? `/orcamentos?tab=goals&categoria=${encodeURIComponent(payload.categoryId)}`
+      : "/orcamentos?tab=goals";
   }
 
   return null;

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CheckCircle2, History, Lock, RotateCcw, Scale, Share2 } from "lucide-react";
 import { Badge, Button, Modal, ModalFooter, Progress, Tabs } from "@/components/ui";
+import { calculateMemberBalances } from "@/domain/trips";
 import type {
   SuggestedSettlement,
   TripExpense,
@@ -51,6 +52,15 @@ export function TripSettlementDialog({
     members,
     expenses,
   });
+
+  const memberBalances = useMemo(() => {
+    if (!members || members.length === 0) return [];
+    return calculateMemberBalances(members, expenses ?? [], existingSettlements);
+  }, [members, expenses, existingSettlements]);
+
+  const totalTripExpensesCents = useMemo(() => {
+    return (expenses ?? []).reduce((acc, e) => acc + e.amount_cents, 0);
+  }, [expenses]);
 
   const confirmedCount = suggestedSettlements.filter((s) => {
     const matched = existingSettlements.find(
@@ -135,6 +145,8 @@ export function TripSettlementDialog({
       <TripSettlementPlanList
         suggestedSettlements={suggestedSettlements}
         existingSettlements={existingSettlements}
+        memberBalances={memberBalances}
+        totalTripExpensesCents={totalTripExpensesCents}
         currentMember={actions.currentMember}
         hasSessionUser={Boolean(actions.session?.user)}
         isHost={isHost}

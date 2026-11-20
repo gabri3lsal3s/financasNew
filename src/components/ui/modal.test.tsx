@@ -278,7 +278,7 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
     }
   });
 
-  it("renderiza título como sr-only e barra de topo dedicada quando hideTitle=true", () => {
+  it("renderiza título como sr-only e barra de topo dedicada apenas com ações quando hideTitle=true", () => {
     render(
       <Modal
         open
@@ -292,6 +292,7 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
     );
 
     const heading = screen.getByRole("heading", { name: "Relatório Executivo" });
+    expect(heading).toBeInTheDocument();
     expect(heading).toHaveClass("sr-only");
     expect(screen.getByRole("button", { name: "Ação" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Fechar" })).toBeInTheDocument();
@@ -368,7 +369,7 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
     }
   });
 
-  it("mantém barra superior transparente em hideTitle=true mesmo após rolagem", () => {
+  it("mantém barra superior estilizada em hideTitle=true com alívio adaptativo de borda", () => {
     render(
       <Modal open onOpenChange={vi.fn()} title="Relatório" hideTitle>
         <div style={{ height: "1000px" }}>Folha A4</div>
@@ -377,13 +378,11 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
 
     const scrollContainer = screen.getByText("Folha A4").parentElement;
     const hideTitleBar = scrollContainer?.previousElementSibling;
-    expect(hideTitleBar).toHaveClass("bg-transparent");
-    expect(hideTitleBar?.className).not.toMatch(/\bbg-surface/);
+    expect(hideTitleBar).toHaveClass("bg-surface");
 
     if (scrollContainer) {
       fireEvent.scroll(scrollContainer, { target: { scrollTop: 12 } });
-      expect(hideTitleBar).toHaveClass("bg-transparent", "border-border/80");
-      expect(hideTitleBar?.className).not.toMatch(/\bbg-surface/);
+      expect(hideTitleBar).toHaveClass("bg-surface", "border-border/80");
     }
   });
 
@@ -438,6 +437,113 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
 
     updateVisualCustomization({ motionLevel: "fluid" });
+  });
+
+  describe("Guarda de descarte (confirmDiscard & isDirty)", () => {
+    it("intercepta tentativa de fechamento quando isDirty=true e exibe confirm de descarte", async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      render(
+        <Modal
+          open
+          onOpenChange={onOpenChange}
+          title="Formulário"
+          confirmDiscard
+          isDirty
+        >
+          <p>Conteúdo com rascunho</p>
+        </Modal>,
+      );
+
+      // Clica no botão X para fechar
+      const closeBtn = screen.getByRole("button", { name: "Fechar" });
+      await user.click(closeBtn);
+
+      // Não fecha diretamente
+      expect(onOpenChange).not.toHaveBeenCalled();
+
+      // Exibe diálogo de confirmação de descarte
+      expect(screen.getByText("Descartar alterações?")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Você possui alterações não salvas. Se sair agora, todas as informações modificadas serão descartadas.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("chama onDiscard e fecha quando o usuário confirma o descarte", async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      const onDiscard = vi.fn();
+      render(
+        <Modal
+          open
+          onOpenChange={onOpenChange}
+          title="Formulário"
+          confirmDiscard
+          isDirty
+          onDiscard={onDiscard}
+        >
+          <p>Conteúdo</p>
+        </Modal>,
+      );
+
+      const closeBtn = screen.getByRole("button", { name: "Fechar" });
+      await user.click(closeBtn);
+
+      const confirmBtn = screen.getByRole("button", { name: "Descartar" });
+      await user.click(confirmBtn);
+
+      expect(onDiscard).toHaveBeenCalledTimes(1);
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("mantém o modal aberto quando o usuário escolhe continuar editando", async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      render(
+        <Modal
+          open
+          onOpenChange={onOpenChange}
+          title="Formulário"
+          confirmDiscard
+          isDirty
+        >
+          <p>Conteúdo</p>
+        </Modal>,
+      );
+
+      const closeBtn = screen.getByRole("button", { name: "Fechar" });
+      await user.click(closeBtn);
+
+      const cancelBtn = screen.getByRole("button", { name: "Continuar editando" });
+      await user.click(cancelBtn);
+
+      expect(onOpenChange).not.toHaveBeenCalled();
+      expect(screen.queryByText("Descartar alterações?")).not.toBeInTheDocument();
+    });
+
+    it("fecha diretamente sem confirmação quando isDirty=false", async () => {
+      const user = userEvent.setup();
+      const onOpenChange = vi.fn();
+      render(
+        <Modal
+          open
+          onOpenChange={onOpenChange}
+          title="Formulário"
+          confirmDiscard
+          isDirty={false}
+        >
+          <p>Conteúdo</p>
+        </Modal>,
+      );
+
+      const closeBtn = screen.getByRole("button", { name: "Fechar" });
+      await user.click(closeBtn);
+
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+      expect(screen.queryByText("Descartar alterações?")).not.toBeInTheDocument();
+    });
   });
 });
 

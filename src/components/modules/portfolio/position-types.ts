@@ -94,6 +94,7 @@ export type SortKey =
   | "price"
   | "averageCost"
   | "value"
+  | "unrealizedPnl"
   | "unrealizedPct"
   | "pct"
   | "maturityDate";

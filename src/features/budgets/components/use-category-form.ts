@@ -95,7 +95,16 @@ export function useCategoryForm({ category, defaultType, onClose, onSuccess }: U
     }
   };
 
+  const isDirty = category
+    ? name !== category.name ||
+      type !== category.type ||
+      icon !== (category.icon ?? "") ||
+      color !== (category.color ?? "") ||
+      isFamily !== Boolean(category.is_family)
+    : name.trim() !== "" || icon !== "" || color !== "";
+
   return {
+    isDirty,
     name,
     type,
     setType,

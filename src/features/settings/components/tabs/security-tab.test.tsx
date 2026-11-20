@@ -174,13 +174,11 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
     expect(nativeServices.setAppLockGraceMinutes).toHaveBeenCalledWith(5);
   });
 
-  it("renderiza o painel de Extratos CSV com foco em exportação de dados", () => {
+  it("mantém a aba Segurança focada estritamente em proteção sem painéis redundantes de exportação de dados", () => {
     renderSecurityTab();
 
-    expect(screen.getByRole("heading", { name: "Extratos CSV" })).toBeInTheDocument();
-    expect(screen.getByText("CSV de Despesas")).toBeInTheDocument();
-    expect(screen.getByText("CSV de Receitas")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Restaurar com Assistente/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Extratos CSV" })).not.toBeInTheDocument();
+    expect(screen.queryByText("CSV de Despesas")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Exportar JSON" })).not.toBeInTheDocument();
   });
 

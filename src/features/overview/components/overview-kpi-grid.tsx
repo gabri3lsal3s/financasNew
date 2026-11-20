@@ -1,6 +1,14 @@
+import { useMemo } from "react";
 import { DollarSign, TrendingDown, TrendingUp } from "lucide-react";
 import { DeltaHint, KpiCard, KpiGrid } from "@/components/modules";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { MoneyText, SkeletonChart, SkeletonHeroCard, SkeletonKpi } from "@/components/ui";
+import {
+  buildInvestmentsOverviewBreakdown,
+  buildMonthlyExpensesBreakdown,
+  buildMonthlyIncomeBreakdown,
+  buildOperatingBalanceBreakdown,
+} from "@/domain/calculation-memory";
 import type { DailySeriesAccumulator, OverviewTotals } from "@/domain/overview";
 
 export interface OverviewKpiGridProps {
@@ -50,6 +58,48 @@ export function OverviewKpiGrid({
   dailySeries,
   onNavigate,
 }: OverviewKpiGridProps) {
+  const incomeBreakdown = useMemo(() => {
+    return buildMonthlyIncomeBreakdown({
+      month,
+      grossIncomeCents,
+      weightedIncomeCents: incomeCents,
+      previousIncomeCents: prevTotals.incomeCents,
+    });
+  }, [grossIncomeCents, incomeCents, month, prevTotals.incomeCents]);
+
+  const expenseBreakdown = useMemo(() => {
+    return buildMonthlyExpensesBreakdown({
+      month,
+      grossExpenseCents,
+      weightedExpenseCents: expenseCents,
+      previousExpenseCents: prevTotals.expenseCents,
+    });
+  }, [expenseCents, grossExpenseCents, month, prevTotals.expenseCents]);
+
+  const investmentBreakdown = useMemo(() => {
+    return buildInvestmentsOverviewBreakdown({
+      month,
+      investmentCents: totals.investmentCents,
+      previousInvestmentCents: prevTotals.investmentCents,
+    });
+  }, [month, prevTotals.investmentCents, totals.investmentCents]);
+
+  const balanceBreakdown = useMemo(() => {
+    return buildOperatingBalanceBreakdown({
+      month,
+      incomeCents: totals.incomeCents,
+      expenseCents: totals.expenseCents,
+      investmentCents: totals.investmentCents,
+      operatingBalanceCents: totals.operatingBalanceCents,
+    });
+  }, [
+    month,
+    totals.expenseCents,
+    totals.incomeCents,
+    totals.investmentCents,
+    totals.operatingBalanceCents,
+  ]);
+
   return (
     <KpiGrid columns={4} data-tour="overview-kpis">
       <KpiCard
@@ -57,6 +107,7 @@ export function OverviewKpiGrid({
         cents={totals.incomeCents}
         tone="positive"
         icon={<TrendingUp className="size-4" aria-hidden="true" />}
+        action={<CalculationMemoryModal breakdown={incomeBreakdown} />}
         hint={
           <div className="flex flex-col gap-0.5 min-w-0">
             <DeltaHint currentCents={totals.incomeCents} previousCents={prevTotals.incomeCents} />
@@ -77,6 +128,7 @@ export function OverviewKpiGrid({
         cents={totals.expenseCents}
         tone="negative"
         icon={<TrendingDown className="size-4" aria-hidden="true" />}
+        action={<CalculationMemoryModal breakdown={expenseBreakdown} />}
         hint={
           <div className="flex flex-col gap-0.5 min-w-0">
             <DeltaHint currentCents={totals.expenseCents} previousCents={prevTotals.expenseCents} invert />
@@ -97,6 +149,7 @@ export function OverviewKpiGrid({
         cents={totals.investmentCents}
         tone="portfolio"
         icon={<TrendingUp className="size-4" aria-hidden="true" />}
+        action={<CalculationMemoryModal breakdown={investmentBreakdown} />}
         spark={dailySeries.investmentSeries}
         onClick={() => onNavigate("/investments")}
       />
@@ -111,6 +164,7 @@ export function OverviewKpiGrid({
         cents={totals.operatingBalanceCents}
         tone={totals.operatingBalanceCents >= 0 ? "positive" : "negative"}
         icon={<DollarSign className="size-4" aria-hidden="true" />}
+        action={<CalculationMemoryModal breakdown={balanceBreakdown} />}
         spark={dailySeries.balanceSeries}
         onClick={() => onNavigate("/relatorios")}
       />

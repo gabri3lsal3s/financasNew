@@ -27,7 +27,7 @@ export function DueNotificationsPrefsCard({
                   !dueNotificationsActive
                     ? "muted"
                     : postNotificationsGranted
-                      ? "positive"
+                      ? "default"
                       : "warning"
                 }
                 size="xs"

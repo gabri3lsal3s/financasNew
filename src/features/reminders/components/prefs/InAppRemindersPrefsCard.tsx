@@ -36,7 +36,7 @@ export function InAppRemindersPrefsCard({
             <span className="font-semibold text-sm text-foreground">
               Lembretes no Aplicativo
             </span>
-            <Badge variant={remindersEnabled ? "positive" : "muted"} size="xs">
+            <Badge variant={remindersEnabled ? "default" : "muted"} size="xs">
               {remindersEnabled ? "Ativado" : "Desativado"}
             </Badge>
           </div>

@@ -10,7 +10,7 @@ import {
   type SensoryIntent,
 } from "./index";
 
-export type AccentTheme = "teal" | "gold" | "sapphire" | "violet" | "rose" | "mono";
+export type AccentTheme = "teal" | "gold" | "mono";
 export type SurfaceStyle = "glass" | "flat";
 export type MotionLevel = "fluid" | "eco" | "reduced";
 export type DensityLevel = "comfortable" | "compact";
@@ -63,9 +63,6 @@ export const VISUAL_STORAGE_KEYS = {
 export const VALID_ACCENT_THEMES: readonly AccentTheme[] = [
   "teal",
   "gold",
-  "sapphire",
-  "violet",
-  "rose",
   "mono",
 ];
 export const VALID_MOTION_LEVELS: readonly MotionLevel[] = ["fluid", "eco", "reduced"];

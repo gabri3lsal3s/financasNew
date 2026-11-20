@@ -26,8 +26,10 @@ vi.mock("@/state", () => ({
 
 vi.mock("../components", () => ({
   PortfolioActivityPanel: () => <div data-testid="portfolio-activity-panel">Extrato de Movimentações</div>,
+  InitialPocketCostDialog: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="pocket-cost-dialog">Diálogo de Marcos do Bolso</div> : null,
   PortfolioSnapshotsDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="snapshots-dialog">Diálogo de Marcos Históricos</div> : null,
+    open ? <div data-testid="snapshots-dialog">Diálogo de Fechamentos</div> : null,
   PortfolioImportDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="import-dialog">Diálogo de Importação</div> : null,
   PortfolioDarfMonitor: ({ open }: { open: boolean }) =>
@@ -39,17 +41,26 @@ describe("MovimentacoesTab — Extrato, Marcos, Importação e DARF", () => {
     render(<MovimentacoesTab />);
 
     expect(screen.getByTestId("portfolio-activity-panel")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Marcos Históricos/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Marcos do Bolso/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Auditar Fechamentos/i })).toBeInTheDocument();
     expect(screen.getByText("Posição ou histórico desatualizado?")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Importar Planilha/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Consultar DARF Mensal/i })).toBeInTheDocument();
   });
 
-  it("abre o diálogo de Marcos Históricos ao clicar no botão correspondente", async () => {
+  it("abre o diálogo de Marcos do Bolso ao clicar no botão correspondente", async () => {
     const user = userEvent.setup();
     render(<MovimentacoesTab />);
 
-    await user.click(screen.getByRole("button", { name: /Marcos Históricos/i }));
+    await user.click(screen.getByRole("button", { name: /Marcos do Bolso/i }));
+    expect(screen.getByTestId("pocket-cost-dialog")).toBeInTheDocument();
+  });
+
+  it("abre o diálogo de fechamentos ao clicar em Auditar Fechamentos", async () => {
+    const user = userEvent.setup();
+    render(<MovimentacoesTab />);
+
+    await user.click(screen.getByRole("button", { name: /Auditar Fechamentos/i }));
     expect(screen.getByTestId("snapshots-dialog")).toBeInTheDocument();
   });
 

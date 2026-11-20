@@ -1,6 +1,12 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-pwa/client" />
 
+/** Versão oficial vigente do aplicativo (injetada pelo Vite a partir do package.json). */
+declare const __APP_VERSION__: string;
+
+/** Data e hora UTC da compilação do bundle (injetada pelo Vite). */
+declare const __BUILD_TIMESTAMP__: string;
+
 interface ImportMetaEnv {
   /** URL pública oficial da aplicação (ex.: https://axir.com.br). */
   readonly VITE_PUBLIC_SITE_URL?: string;

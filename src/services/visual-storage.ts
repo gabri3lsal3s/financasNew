@@ -23,11 +23,62 @@ import {
 import { getUserStorageItem, setUserStorageItem } from "@/services/user-storage";
 import type { UserCustomSettings } from "@/types";
 
+/**
+ * Detecta se o caminho atual pertence a uma rota pública de apresentação ou tela de autenticação.
+ * Nestas rotas, o app exibe estritamente a identidade oficial Axir (Teal Vital, sem data-accent).
+ */
+export function isPublicOrAuthPath(pathname?: string): boolean {
+  if (typeof window === "undefined") return false;
+  const path = pathname ?? window.location.pathname;
+  if (!path) return false;
+  return (
+    path.startsWith("/entrar") ||
+    path.startsWith("/cadastro") ||
+    path.startsWith("/cadastrar") ||
+    path.startsWith("/criar-conta") ||
+    path.startsWith("/recuperar-senha") ||
+    path.startsWith("/redefinir-senha") ||
+    path.startsWith("/atualizar-senha") ||
+    path.startsWith("/apresentacao") ||
+    path.startsWith("/landing") ||
+    path.startsWith("/precos") ||
+    path.startsWith("/planos") ||
+    path.startsWith("/vendas") ||
+    path.startsWith("/termos") ||
+    path.startsWith("/privacidade") ||
+    path.startsWith("/r/") ||
+    path.startsWith("/orcamento-familiar/") ||
+    path.startsWith("/meta/") ||
+    path.startsWith("/convite-familiar/") ||
+    path.startsWith("/viagem/") ||
+    path.startsWith("/ferramentas") ||
+    path.startsWith("/admin/login")
+  );
+}
+
+let transitionTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Ativa uma transição CSS suave nas cores do aplicativo (500ms),
+ * permitindo passagem fluida da tela de loading para a cor de destaque do usuário autenticado.
+ */
+export function triggerThemeTransition(durationMs = 500): void {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  root.classList.add("theme-transition");
+  if (transitionTimer) clearTimeout(transitionTimer);
+  transitionTimer = setTimeout(() => {
+    root.classList.remove("theme-transition");
+    transitionTimer = null;
+  }, durationMs);
+}
+
 export function applyVisualDomAttributes(config: VisualCustomization): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
 
-  if (config.accent === "teal") {
+  // Telas públicas e de autenticação mantêm estritamente a identidade oficial Axir (Teal Vital)
+  if (config.accent === "teal" || isPublicOrAuthPath()) {
     root.removeAttribute("data-accent");
   } else {
     root.setAttribute("data-accent", config.accent);

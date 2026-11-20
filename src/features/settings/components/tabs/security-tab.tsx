@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ExportDataHub, PlatformsTriptychCard } from "@/components/modules";
+import { PlatformsTriptychCard } from "@/components/modules";
 import { useAuth } from "@/hooks/use-auth";
 import {
   authenticateWithBiometrics,
@@ -18,7 +18,6 @@ import {
 import { pushToast } from "@/services/toast";
 import {
   useUpdateCustomSettings,
-  useUserAccess,
   useUserPreferences,
 } from "@/state";
 import { useDemoSession } from "@/state/demo-mode";
@@ -27,15 +26,12 @@ import { ActiveDevicesCard } from "./active-devices-card";
 import { DeleteAccountCard } from "./delete-account-card";
 import { AppAboutCard } from "./security/app-about-card";
 import { AppLockCard } from "./security/app-lock-card";
-import { useSettingsCsvExport } from "./security/use-settings-csv-export";
 
 export function SecurityTab() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const userAccess = useUserAccess();
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
-  const { handleExportCsv } = useSettingsCsvExport();
 
   const [biometricsAvailable, setBiometricsAvailable] = useState<boolean | null>(null);
   const [biometryType, setBiometryType] = useState<string>("none");
@@ -180,16 +176,6 @@ export function SecurityTab() {
       />
 
       <ActiveDevicesCard />
-
-      <ExportDataHub
-        csvOnly
-        onExportCsv={handleExportCsv}
-        availableCsvKinds={[
-          ...(userAccess.hasFeature("transactions") ? (["expenses", "incomes"] as const) : []),
-          ...(userAccess.hasFeature("cards") ? (["invoices"] as const) : []),
-          ...(userAccess.hasFeature("investments") ? (["positions"] as const) : []),
-        ]}
-      />
 
       <PlatformsTriptychCard />
 

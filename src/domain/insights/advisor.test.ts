@@ -748,6 +748,97 @@ describe("filterAndRankAdvisorInsights", () => {
     expect(goalInsight?.title).toBe("Meta de receita abaixo do ritmo");
   });
 
+  it("não gera insight para meta de receita pertencente a outro mês (isolamento estrito de competência)", () => {
+    const realizedMap = new Map([["cat-pj", 0]]);
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-11-20",
+      incomeGoals: [
+        { id: "g1", user_id: "u1", category_id: "cat-pj", month: "2026-10", expected: 1000 },
+      ],
+      realizedIncomeByCategory: realizedMap,
+    });
+
+    const goalInsight = insights.find((i) => i.id === "income_goal:g1");
+    expect(goalInsight).toBeUndefined();
+  });
+
+  it("não gera insight se a categoria estiver inativa ou não for do tipo income", () => {
+    const realizedMap = new Map([["cat-pj", 0]]);
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-11-20",
+      categories: [
+        {
+          id: "cat-pj",
+          name: "Serviços PJ",
+          is_active: false,
+          type: "income",
+          user_id: "u1",
+          icon: null,
+          color: null,
+          is_reserved: false,
+        },
+      ],
+      incomeGoals: [
+        { id: "g1", user_id: "u1", category_id: "cat-pj", month: "2026-11", expected: 1000 },
+      ],
+      realizedIncomeByCategory: realizedMap,
+    });
+
+    expect(insights.find((i) => i.id === "income_goal:g1")).toBeUndefined();
+  });
+
+  it("inclui nome da categoria na descrição e payload contextual de navegação", () => {
+    const realizedMap = new Map([["cat-pj", 50000]]);
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-11-25",
+      categories: [
+        {
+          id: "cat-pj",
+          name: "Consultoria PJ",
+          is_active: true,
+          type: "income",
+          user_id: "u1",
+          icon: null,
+          color: null,
+          is_reserved: false,
+        },
+      ],
+      incomeGoals: [
+        { id: "g1", user_id: "u1", category_id: "cat-pj", month: "2026-11", expected: 2000 },
+      ],
+      realizedIncomeByCategory: realizedMap,
+    });
+
+    const goalInsight = insights.find((i) => i.id === "income_goal:g1");
+    expect(goalInsight).toBeDefined();
+    expect(goalInsight?.description).toContain("Consultoria PJ");
+    expect(goalInsight?.primaryAction?.payload).toEqual({ categoryId: "cat-pj" });
+  });
+
+  it("prioriza a meta de receita com maior déficit financeiro absoluto", () => {
+    const realizedMap = new Map([
+      ["cat-a", 10000], // 100 de 500 -> déficit R$ 400
+      ["cat-b", 50000], // 500 de 3000 -> déficit R$ 2500
+    ]);
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-11-25",
+      incomeGoals: [
+        { id: "g1", user_id: "u1", category_id: "cat-a", month: "2026-11", expected: 500 },
+        { id: "g2", user_id: "u1", category_id: "cat-b", month: "2026-11", expected: 3000 },
+      ],
+      realizedIncomeByCategory: realizedMap,
+    });
+
+    const goalInsights = insights.filter((i) => i.id.startsWith("income_goal:"));
+    expect(goalInsights).toHaveLength(1);
+    expect(goalInsights[0]?.id).toBe("income_goal:g2");
+    expect(goalInsights[0]?.metadata?.valueCents).toBe(250000);
+  });
+
   it("gera insight de prioridade 3 (Economia) para teto familiar em ritmo acelerado", () => {
     const insights = generateSmartAdvisorInsights({
       occurrences: [],
@@ -864,6 +955,49 @@ describe("filterAndRankAdvisorInsights", () => {
     const gloriaCard = insights.find((i) => i.id.includes("gloria"));
     expect(cajuCard).toBeUndefined();
     expect(gloriaCard).toBeUndefined();
+  });
+
+  it("ignora ocorrências com lifecycle 'lapsed' para corte, reajuste e calibração", () => {
+    const occurrences: RecurrenceOccurrence[] = [
+      {
+        key: "old-gym",
+        name: "Academia Antiga",
+        level: "subscription",
+        lifecycle: "lapsed",
+        tier: "can_cut",
+        months: ["2026-06", "2026-07"],
+        averageCents: 15000,
+        confidence: 0.9,
+        priceAdjustment: {
+          oldCents: 10000,
+          newCents: 15000,
+          percentIncrease: 50,
+          kind: "plan_change",
+          isInflationary: false,
+          isPlanChange: true,
+          label: "Mudança de plano",
+        },
+      },
+      {
+        key: "old-streaming",
+        name: "Streaming Cancelado",
+        level: "recurring",
+        lifecycle: "lapsed",
+        tier: "can_cut",
+        months: ["2026-06", "2026-07"],
+        averageCents: 4500,
+        confidence: 0.8,
+      },
+    ];
+
+    const insights = generateSmartAdvisorInsights({
+      occurrences,
+      allExpenses: [],
+      todayISO: "2026-11-20",
+    });
+
+    expect(insights.some((i) => i.id.includes("old-gym"))).toBe(false);
+    expect(insights.some((i) => i.id.includes("old-streaming"))).toBe(false);
   });
 });
 

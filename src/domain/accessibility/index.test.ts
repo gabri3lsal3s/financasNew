@@ -143,7 +143,7 @@ describe("contraste AA dos tokens (DESIGN_SYSTEM §2)", () => {
 });
 
 /**
- * F11 DoD (fechado na F12) — contraste AA das 6 paletas de acento nos 3 temas.
+ * Contraste AA das 3 paletas oficiais de acento nos 3 temas (Teal, Gold, Mono).
  * Valores hex espelhando `tokens.css` (blocos `data-accent`). Regras:
  * 1. `primary-strong` sobre o fundo ≥ 4.5:1 — texto de botões/links (os botões
  *    pós-F10 são borda + texto colorido, sem fundo sólido);
@@ -151,9 +151,7 @@ describe("contraste AA dos tokens (DESIGN_SYSTEM §2)", () => {
  *    sólidos (Stepper/DatePicker selecionados);
  * 3. `primary` sobre o fundo ≥ 3:1 — não-texto (ring de foco, progresso,
  *    seleção, checkmark).
- * Ajustes da F12: gold light primary 42 73 40 (#B0841C) + strong 38 92 30 (#935F06),
- * violet dark/oled 258 92 72 (#9D76F9). O ouro decorativo (--accent #DDA726) é exceção
- * documentada (glow/órbitas) — não é requisito de texto (teste acima).
+ * Ouro decorativo (--accent #DDA726) é exceção documentada (glow/órbitas).
  */
 const ACCENTS = {
   teal: {
@@ -165,21 +163,6 @@ const ACCENTS = {
     light: { primary: "#B0841C", strong: "#935F06" },
     dark: { primary: "#F3C353", strong: "#F3C353" },
     oled: { primary: "#F3C353", strong: "#F3C353" },
-  },
-  sapphire: {
-    light: { primary: "#0369A0", strong: "#075783" },
-    dark: { primary: "#0DA2E7", strong: "#0DA2E7" },
-    oled: { primary: "#0DA2E7", strong: "#0DA2E7" },
-  },
-  violet: {
-    light: { primary: "#7C3BED", strong: "#6B26D9" },
-    dark: { primary: "#9D76F9", strong: "#9D76F9" },
-    oled: { primary: "#9D76F9", strong: "#9D76F9" },
-  },
-  rose: {
-    light: { primary: "#E21D48", strong: "#B51739" },
-    dark: { primary: "#FB6F84", strong: "#FB6F84" },
-    oled: { primary: "#FB6F84", strong: "#FB6F84" },
   },
   mono: {
     light: { primary: "#1F1F1F", strong: "#000000" },
@@ -195,7 +178,7 @@ const ACCENT_CONTEXT = {
   oled: { background: "#000000", foreground: "#022C22" },
 } as const;
 
-describe("contraste AA das 6 paletas de acento × 3 temas (F11 DoD — F12)", () => {
+describe("contraste AA das 3 paletas de acento × 3 temas (Teal, Gold, Mono)", () => {
   for (const [accent, themes] of Object.entries(ACCENTS)) {
     describe(`acento ${accent}`, () => {
       for (const [theme, colors] of Object.entries(themes)) {

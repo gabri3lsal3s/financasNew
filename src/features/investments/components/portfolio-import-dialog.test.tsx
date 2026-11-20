@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PortfolioImportDialog } from "./portfolio-import-dialog";
 
@@ -25,64 +26,36 @@ vi.mock("@/state", () => ({
   }),
 }));
 
-describe("PortfolioImportDialog — Fase 35 & 36", () => {
+async function uploadMockPortfolioFile(
+  user: ReturnType<typeof userEvent.setup>,
+  content: string,
+  fileName = "negociacoes.csv",
+) {
+  const file = new File([content], fileName, { type: "text/csv" });
+  const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+  expect(input).toBeInTheDocument();
+  await user.upload(input, file);
+}
+
+describe("PortfolioImportDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renderiza o modal quando aberto no passo 1", () => {
+  it("renderiza o modal quando aberto no passo 1 com a dropzone de planilha", () => {
     render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
 
     expect(screen.getByText("Importar Carteira de Investimentos")).toBeInTheDocument();
-    expect(screen.getByText(/Linguagem Natural \/ Texto/i)).toBeInTheDocument();
-    expect(screen.getByText(/Planilha \(Excel \/ CSV\)/i)).toBeInTheDocument();
-  });
-
-  it("avança para conferência ao interpretar texto colado válido", async () => {
-    render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
-
-    const textarea = screen.getByRole("textbox");
-    fireEvent.change(textarea, { target: { value: "15/08 comprei 100 PETR4 a 38,50" } });
-
-    const processBtn = screen.getByRole("button", { name: /Processar texto/i });
-    fireEvent.click(processBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText("PETR4")).toBeInTheDocument();
-      expect(screen.getByText("Compra")).toBeInTheDocument();
-      expect(screen.getByText("Novo ativo")).toBeInTheDocument();
-    });
-  });
-
-  it("interpreta múltiplas linhas de linguagem natural com vírgulas decimais diretamente para conferência sem passar por mapeamento", async () => {
-    render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
-
-    const textarea = screen.getByRole("textbox");
-    const multiline = `15/08 comprei 100 PETR4 a 38,50
-16/08 comprei 50 MXRF11 a 10,20`;
-    fireEvent.change(textarea, { target: { value: multiline } });
-
-    const processBtn = screen.getByRole("button", { name: /Processar texto/i });
-    fireEvent.click(processBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText("PETR4")).toBeInTheDocument();
-      expect(screen.getByText("MXRF11")).toBeInTheDocument();
-      expect(screen.queryByText(/Coluna de Código \/ Ticker/i)).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Confirmar importação \(2\)/i })).toBeInTheDocument();
-    });
+    expect(screen.getByText(/Selecione sua planilha de custódia ou movimentações/i)).toBeInTheDocument();
   });
 
   it("avança para o passo de Mapeamento de Colunas ao processar planilha CSV com cabeçalhos", async () => {
+    const user = userEvent.setup();
     render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
 
-    const textarea = screen.getByRole("textbox");
     const csv = `Data do Negócio;Tipo de Movimentação;Código de Negociação;Quantidade;Preço;Valor Total
 15/08/2026;Compra;PETR4;100;38,50;3850,00`;
-    fireEvent.change(textarea, { target: { value: csv } });
-
-    const processBtn = screen.getByRole("button", { name: /Processar texto/i });
-    fireEvent.click(processBtn);
+    await uploadMockPortfolioFile(user, csv);
 
     await waitFor(() => {
       expect(screen.getByText(/Linhas identificadas/i)).toBeInTheDocument();
@@ -90,7 +63,7 @@ describe("PortfolioImportDialog — Fase 35 & 36", () => {
     });
 
     const advanceBtn = screen.getByRole("button", { name: /Avançar para conferência/i });
-    fireEvent.click(advanceBtn);
+    await user.click(advanceBtn);
 
     await waitFor(() => {
       expect(screen.getByText("PETR4")).toBeInTheDocument();
@@ -99,19 +72,47 @@ describe("PortfolioImportDialog — Fase 35 & 36", () => {
     });
   });
 
-  it("executa a criação de ativos e batch de transações ao confirmar", async () => {
+  it("interpreta múltiplas linhas de negociação da B3 avançando pelo mapeamento para conferência", async () => {
+    const user = userEvent.setup();
     render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
 
-    const textarea = screen.getByRole("textbox");
-    fireEvent.change(textarea, { target: { value: "15/08 comprei 100 PETR4 a 38,50" } });
+    const multilineCsv = `Data do Negócio;Tipo de Movimentação;Código de Negociação;Quantidade;Preço;Valor Total
+15/08/2026;Compra;PETR4;100;38,50;3850,00
+16/08/2026;Compra;MXRF11;50;10,20;510,00`;
+    await uploadMockPortfolioFile(user, multilineCsv);
 
-    fireEvent.click(screen.getByRole("button", { name: /Processar texto/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Linhas identificadas/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /Avançar para conferência/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("PETR4")).toBeInTheDocument();
+      expect(screen.getByText("MXRF11")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Confirmar importação \(2\)/i })).toBeInTheDocument();
+    });
+  });
+
+  it("executa a criação de ativos e batch de transações ao confirmar", async () => {
+    const user = userEvent.setup();
+    render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
+
+    const csv = `Data do Negócio;Tipo de Movimentação;Código de Negociação;Quantidade;Preço;Valor Total
+15/08/2026;Compra;PETR4;100;38,50;3850,00`;
+    await uploadMockPortfolioFile(user, csv);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Linhas identificadas/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /Avançar para conferência/i }));
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /Confirmar importação \(1\)/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Confirmar importação \(1\)/i }));
+    await user.click(screen.getByRole("button", { name: /Confirmar importação \(1\)/i }));
 
     await waitFor(() => {
       expect(mockCreateAsset).toHaveBeenCalledWith(
@@ -134,12 +135,18 @@ describe("PortfolioImportDialog — Fase 35 & 36", () => {
   });
 
   it("permite editar valores de células diretamente no passo de conferência", async () => {
+    const user = userEvent.setup();
     render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
 
-    const textarea = screen.getByRole("textbox");
-    fireEvent.change(textarea, { target: { value: "15/08 comprei 100 PETR4 a 38,50" } });
+    const csv = `Data do Negócio;Tipo de Movimentação;Código de Negociação;Quantidade;Preço;Valor Total
+15/08/2026;Compra;PETR4;100;38,50;3850,00`;
+    await uploadMockPortfolioFile(user, csv);
 
-    fireEvent.click(screen.getByRole("button", { name: /Processar texto/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/Linhas identificadas/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: /Avançar para conferência/i }));
 
     await waitFor(() => {
       expect(screen.getByText("PETR4")).toBeInTheDocument();
@@ -147,16 +154,21 @@ describe("PortfolioImportDialog — Fase 35 & 36", () => {
 
     // Clica no botão de editar (Pencil)
     const editBtn = screen.getByTitle(/Editar valores desta linha/i);
-    fireEvent.click(editBtn);
+    await user.click(editBtn);
 
     expect(screen.getByText(/Editando ativo #1/i)).toBeInTheDocument();
 
     // Altera a quantidade e preço
-    fireEvent.change(screen.getByLabelText(/Quantidade \/ Cotas/i), { target: { value: "200" } });
-    fireEvent.change(screen.getByLabelText(/Preço Unitário/i), { target: { value: "40" } });
+    const qtyInput = screen.getByLabelText(/Quantidade \/ Cotas/i);
+    await user.clear(qtyInput);
+    await user.type(qtyInput, "200");
+
+    const priceInput = screen.getByLabelText(/Preço Unitário/i);
+    await user.clear(priceInput);
+    await user.type(priceInput, "40");
 
     // Conclui edição
-    fireEvent.click(screen.getByRole("button", { name: /Concluir edição/i }));
+    await user.click(screen.getByRole("button", { name: /Concluir edição/i }));
 
     expect(screen.getByText(/200 cotas/i)).toBeInTheDocument();
     expect(screen.getByText(/40,00/i)).toBeInTheDocument();
@@ -165,23 +177,26 @@ describe("PortfolioImportDialog — Fase 35 & 36", () => {
   it("consolida múltiplas compras do mesmo ticker calculando o preço médio ponderado total ao criar o ativo", async () => {
     mockCreateAsset.mockClear();
     mockCreateBatch.mockClear();
+    const user = userEvent.setup();
 
     render(<PortfolioImportDialog open={true} onOpenChange={vi.fn()} />);
 
-    const textarea = screen.getByRole("textbox");
-    fireEvent.change(textarea, {
-      target: {
-        value: "10/08 comprei 100 BBAS3 a 20,00\n15/08 comprei 100 BBAS3 a 30,00",
-      },
+    const csv = `Data do Negócio;Tipo de Movimentação;Código de Negociação;Quantidade;Preço;Valor Total
+10/08/2026;Compra;BBAS3;100;20,00;2000,00
+15/08/2026;Compra;BBAS3;100;30,00;3000,00`;
+    await uploadMockPortfolioFile(user, csv);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Linhas identificadas/i)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Processar texto/i }));
+    await user.click(screen.getByRole("button", { name: /Avançar para conferência/i }));
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /Confirmar importação \(2\)/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Confirmar importação \(2\)/i }));
+    await user.click(screen.getByRole("button", { name: /Confirmar importação \(2\)/i }));
 
     await waitFor(() => {
       expect(mockCreateAsset).toHaveBeenCalledWith(

@@ -1,24 +1,17 @@
-import { useState } from "react";
-import { ClipboardPaste, FileSpreadsheet, Upload } from "lucide-react";
-import { Button, Dropzone, Tabs, Textarea } from "@/components/ui";
+import { Dropzone } from "@/components/ui";
 
 export const STATEMENT_FILE_ACCEPT =
   ".pdf,.csv,.ofx,.txt,.tsv,application/pdf,text/csv,text/plain,text/comma-separated-values,text/tab-separated-values,application/csv,application/vnd.ms-excel,application/x-ofx,application/ofx,text/ofx,application/octet-stream,*/*";
 
 export interface StatementUploadStepProps {
   onFileSelect: (file: File) => void;
-  onTextSubmit: (text: string) => void;
 }
 
 /**
  * Passo 1 do Diálogo de Importação de Fatura:
- * Permite selecionar um arquivo (.pdf, .csv, .ofx, .txt) via Dropzone
- * ou colar diretamente o texto do extrato/fatura via Textarea.
+ * Permite selecionar um arquivo (.csv, .ofx, .pdf) via Dropzone oficial.
  */
-export function StatementUploadStep({ onFileSelect, onTextSubmit }: StatementUploadStepProps) {
-  const [tab, setTab] = useState<string>("file");
-  const [pastedText, setPastedText] = useState("");
-
+export function StatementUploadStep({ onFileSelect }: StatementUploadStepProps) {
   const handleDrop = (files: File[]) => {
     const file = files[0];
     if (file) {
@@ -26,62 +19,14 @@ export function StatementUploadStep({ onFileSelect, onTextSubmit }: StatementUpl
     }
   };
 
-  const handlePasteSubmit = () => {
-    if (pastedText.trim()) {
-      onTextSubmit(pastedText);
-    }
-  };
-
   return (
-    <div className="space-y-4">
-      <Tabs
-        value={tab}
-        onValueChange={setTab}
-        fullWidth
-        items={[
-          {
-            value: "file",
-            label: "Arquivo (PDF / CSV / OFX)",
-            icon: <FileSpreadsheet className="size-4" aria-hidden="true" />,
-            content: (
-              <div className="space-y-2 pt-2">
-                <Dropzone
-                  accept={STATEMENT_FILE_ACCEPT}
-                  maxSizeBytes={10 * 1024 * 1024}
-                  onFiles={handleDrop}
-                  hint="Formatos suportados: Fatura em PDF, CSV (Nubank, Inter, C6, Itaú, Bradesco) e OFX nativo"
-                />
-              </div>
-            ),
-          },
-          {
-            value: "paste",
-            label: "Colar Extrato",
-            icon: <ClipboardPaste className="size-4" aria-hidden="true" />,
-            content: (
-              <div className="space-y-3 pt-2">
-                <Textarea
-                  value={pastedText}
-                  onChange={(e) => setPastedText(e.target.value)}
-                  placeholder={`Cole aqui as linhas copiadas da fatura do seu banco...\nExemplo:\n15/08/2026  Padaria Estrela  R$ 25,00\n16/08/2026  Supermercado Dia  R$ 140,50`}
-                  rows={7}
-                  className="font-mono text-base sm:text-sm"
-                />
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    disabled={!pastedText.trim()}
-                    onClick={handlePasteSubmit}
-                    className="gap-1.5"
-                  >
-                    <Upload className="size-4" aria-hidden="true" />
-                    Processar Texto
-                  </Button>
-                </div>
-              </div>
-            ),
-          },
-        ]}
+    <div className="space-y-3 pt-1">
+      <Dropzone
+        accept={STATEMENT_FILE_ACCEPT}
+        maxSizeBytes={10 * 1024 * 1024}
+        onFiles={handleDrop}
+        label="Selecione o arquivo da fatura (CSV, OFX ou PDF)"
+        hint="Formatos suportados: CSV (Nubank, Inter, C6, Itaú, Bradesco), OFX e Fatura em PDF"
       />
     </div>
   );

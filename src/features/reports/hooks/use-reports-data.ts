@@ -66,10 +66,15 @@ export function useReportsData(params: UseReportsDataParams) {
 
   const consolidatedBalance = useMemo(() => {
     const totalInvestmentsOnlyBRL = Math.max(0, investments.totalPatrimonyBRL - investments.cashBalanceBRL);
+    const bankCashBRL = (finance.realCashBalanceCents ?? 0) / 100;
+    const totalCashBRL = Math.round((investments.cashBalanceBRL + bankCashBRL) * 100) / 100;
+    const creditCardInvoicesBRL = Math.round(finance.openInvoicesCents ?? 0) / 100;
+
     return computeConsolidatedBalanceSheet({
       investmentsMarketValueBRL: totalInvestmentsOnlyBRL,
       investmentsTotalCostBRL: investments.totalInvestedCostBRL,
-      cashBalanceBRL: investments.cashBalanceBRL,
+      cashBalanceBRL: totalCashBRL,
+      creditCardInvoicesBRL,
       debts: finance.debts.map((d) => ({
         id: d.id, type: d.type, remainingAmountBRL: d.amount, description: d.name,
       })),
@@ -79,6 +84,7 @@ export function useReportsData(params: UseReportsDataParams) {
     });
   }, [
     investments.totalPatrimonyBRL, investments.cashBalanceBRL, investments.totalInvestedCostBRL,
+    finance.realCashBalanceCents, finance.openInvoicesCents,
     finance.debts, finance.currentIncomeCents, finance.currentExpenseCents, periodContribBRL,
   ]);
 

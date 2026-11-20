@@ -788,10 +788,14 @@ export function detectRecurrences(
       subscription !== null &&
       subscription.segment !== "utilities" &&
       (subscription.signs.knownName || subscription.signs.subscriptionCategory);
-    const duplicateChargesThisMonth = detectDuplicateChargesInMonth(
+    const duplicateChargesInLatest = detectDuplicateChargesInMonth(
       latestExpenses,
       isFixedValueSubscription,
     );
+    // Isolamento temporal de competência: apenas sinaliza cobranças duplicadas se a última competência for o mês corrente
+    const currentMonth = todayISO ? todayISO.slice(0, 7) : undefined;
+    const duplicateChargesThisMonth =
+      !currentMonth || latestMonth === currentMonth ? duplicateChargesInLatest : undefined;
 
     const sortedExpenses = [...group].sort((a, b) => {
       const dateA = a.date ?? `${a.month}-01`;

@@ -187,7 +187,7 @@ export function ThemeModeSelector({
                 Defina o início do período diurno (Claro) e noturno ({nightLabel}).
               </p>
             </div>
-            <Badge size="sm" variant={currentIsDay ? "positive" : "portfolio"} className="self-start sm:self-center shrink-0">
+            <Badge size="sm" variant="default" className="self-start sm:self-center shrink-0">
               {currentIsDay ? "Agora: Período Diurno (Claro)" : `Agora: Período Noturno (${nightLabel})`}
             </Badge>
           </div>

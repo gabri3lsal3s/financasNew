@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Inbox, Plus } from "lucide-react";
 import type { NavigateFunction } from "react-router";
 import {
@@ -49,6 +50,42 @@ export function OverviewDashboardContent({
   guardAction,
   navigate,
 }: OverviewDashboardContentProps) {
+  const suppressedAdvisorThemeKeys = useMemo(() => {
+    const keys: string[] = [];
+    const hasHouseholdExceeded = Boolean(
+      data.householdData &&
+        data.householdData.monthly_ceiling_cents > 0 &&
+        data.householdData.spent_percentage >= 100,
+    );
+    const hasHouseholdSettlement = Boolean(
+      data.householdData &&
+        !data.householdData.is_settled &&
+        data.householdData.settlement &&
+        data.householdData.settlement.amount_cents > 0,
+    );
+    const hasSurplusBanner = Boolean(
+      data.surplusCapacity.hasSurplus &&
+        data.isCurrentMonth &&
+        data.isSurplusEligible,
+    );
+
+    if (hasHouseholdExceeded) {
+      keys.push("household:ceiling_exceeded");
+    }
+    if (hasHouseholdSettlement) {
+      keys.push("household:settlement_pending");
+    }
+    if (hasSurplusBanner) {
+      keys.push("aporte:rebalance", "aporte:habit");
+    }
+    return keys;
+  }, [
+    data.householdData,
+    data.surplusCapacity.hasSurplus,
+    data.isCurrentMonth,
+    data.isSurplusEligible,
+  ]);
+
   if (data.error) {
     return (
       <ErrorState
@@ -109,6 +146,7 @@ export function OverviewDashboardContent({
               savingsSurplusCents={data.surplusCapacity.suggestedAporteCents}
               safeToSpendCents={data.realCashData.safeToSpend.safeToSpendCents}
               committedObligationsCents={data.realCashData.safeToSpend.committedObligationsCents}
+              suppressedThemeKeys={suppressedAdvisorThemeKeys}
             />
           ) : null}
 

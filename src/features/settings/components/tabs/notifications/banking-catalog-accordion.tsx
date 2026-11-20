@@ -87,7 +87,7 @@ export function BankingCatalogAccordion({
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="truncate">{inst.name}</span>
           {isInstalled ? (
-            <Badge variant="positive" size="xs">
+            <Badge variant="default" size="xs">
               Instalado
             </Badge>
           ) : null}

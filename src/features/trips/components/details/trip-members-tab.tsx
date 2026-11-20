@@ -79,7 +79,7 @@ export function TripMembersTab({
                     </Badge>
                   )}
                   {member.user_id && (
-                    <Badge size="xs" variant="positive">
+                    <Badge size="xs" variant="default">
                       Conta Axir
                     </Badge>
                   )}

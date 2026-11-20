@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import { Clock, RotateCcw } from "lucide-react";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DataList, type DataListColumn } from "@/components/ui/data-list";
 import { MoneyText } from "@/components/ui/money-text";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { buildAporteAssetRouteBreakdown } from "@/domain/calculation-memory";
 import { isAssetReviewOverdue } from "@/domain/portfolio";
 import { numberToCents } from "@/domain/money";
 import { cn } from "@/lib/utils";
@@ -77,6 +79,22 @@ export function AporteDesktopTable({
       className: "flex-[1.8] min-w-[180px]",
       cell: (row) => {
         const isDone = completedTickers.has(row.ticker);
+        const eff = effectiveRouteMap.get(row.assetId);
+        const routeBreakdown = buildAporteAssetRouteBreakdown({
+          ticker: row.ticker,
+          assetClass: row.assetClass,
+          sector: row.sector,
+          currentValueBRL: row.currentValueBRL,
+          targetValueBRL: row.targetValueBRL,
+          gapBRL: row.gapBRL,
+          priceBRL: row.priceBRL,
+          quantity: eff?.effectiveQuantity ?? row.quantity,
+          allocatedBRL: eff?.effectiveAllocatedBRL ?? row.allocatedBRL,
+          effectiveTargetPct: row.effectiveTargetPct,
+          reasonLabel: row.reasonLabel,
+          ceilingReason: row.ceilingReason,
+        });
+
         const metaLine = [
           row.assetClass,
           row.sector,
@@ -88,14 +106,15 @@ export function AporteDesktopTable({
           .join(" · ");
 
         return (
-          <div className={cn("flex min-w-0 flex-col gap-0.5 transition-opacity duration-150", isDone && "opacity-60")}>
+          <div className={cn("flex min-w-0 flex-col gap-0.5 transition-opacity duration-150 py-0.5", isDone && "opacity-60")}>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="truncate font-mono text-sm font-semibold text-foreground">{row.ticker}</span>
+              <span className="truncate font-mono text-sm font-bold text-foreground">{row.ticker}</span>
+              <CalculationMemoryModal breakdown={routeBreakdown} />
               {row.isConstrainedByCeiling ? (
                 <Badge
                   variant="muted"
                   size="xs"
-                  className="border-border/80 bg-surface-raised text-muted-foreground font-mono text-[10px]"
+                  className="border-border/80 bg-surface-raised text-muted-foreground font-mono text-[10px] shrink-0"
                   title={row.ceilingReason}
                 >
                   {row.ceilingReason === "asset_ceiling"
@@ -114,19 +133,19 @@ export function AporteDesktopTable({
                   <button
                     type="button"
                     onClick={() => onInspectAsset(row.ticker)}
-                    className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-md"
+                    className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-md cursor-pointer shrink-0"
                     title={`Ver tese e reavaliar nota de ${row.ticker}`}
                   >
                     <Badge
                       variant="muted"
                       size="xs"
-                      className="cursor-pointer hover:border-primary/50 transition-colors font-mono"
+                      className="cursor-pointer hover:border-primary/50 transition-colors font-mono text-[10px]"
                     >
                       {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
                     </Badge>
                   </button>
                 ) : (
-                  <Badge variant="muted" size="xs" className="font-mono">
+                  <Badge variant="muted" size="xs" className="font-mono text-[10px] shrink-0">
                     {row.rawScore === null ? "Sem nota" : `Nota ${row.rawScore}/10`}
                   </Badge>
                 )
@@ -136,7 +155,7 @@ export function AporteDesktopTable({
                   <button
                     type="button"
                     onClick={() => onInspectAsset(row.ticker)}
-                    className="inline-flex items-center gap-1 text-[10px] text-warning-strong bg-warning/10 hover:bg-warning/20 border border-warning/25 px-1.5 py-0.5 rounded cursor-pointer transition-colors"
+                    className="inline-flex items-center gap-1 text-[10px] text-warning-strong bg-warning/10 hover:bg-warning/20 border border-warning/25 px-1.5 py-0.5 rounded cursor-pointer transition-colors shrink-0"
                     title="Tese de investimento pendente de revisão periódica. Clique para revisar critérios."
                   >
                     <Clock className="size-2.5 shrink-0" aria-hidden="true" />
@@ -144,7 +163,7 @@ export function AporteDesktopTable({
                   </button>
                 ) : (
                   <span
-                    className="inline-flex items-center gap-1 text-[10px] text-warning-strong bg-warning/10 border border-warning/25 px-1.5 py-0.5 rounded"
+                    className="inline-flex items-center gap-1 text-[10px] text-warning-strong bg-warning/10 border border-warning/25 px-1.5 py-0.5 rounded shrink-0"
                     title="Tese de investimento pendente de revisão periódica."
                   >
                     <Clock className="size-2.5 shrink-0" aria-hidden="true" />
@@ -216,7 +235,7 @@ export function AporteDesktopTable({
               value={draftValue}
               onValueChange={(raw) => onQuantityChange(row.assetId, raw)}
               aria-label={`Quantidade de cotas para ${row.ticker}`}
-              className="w-24 sm:w-28 px-2 text-right font-mono tabular-nums border-transparent hover:border-border/80 focus:border-primary bg-transparent hover:bg-surface-raised focus:bg-surface transition-colors shadow-none text-xs"
+              className="w-24 sm:w-28 h-7.5 px-2 text-right font-mono tabular-nums border border-border/40 hover:border-border/80 focus:border-primary/80 bg-surface-raised/40 hover:bg-surface-raised/70 focus:bg-surface transition-colors shadow-xs rounded-md text-xs"
             />
             {eff?.isQuantityCustom ? (
               <span
@@ -247,7 +266,7 @@ export function AporteDesktopTable({
                 value={draftValue}
                 onValueChange={(raw) => onPriceChange(row.assetId, raw)}
                 aria-label={`Preço unitário para ${row.ticker}`}
-                className="w-24 sm:w-28 px-2 text-right font-mono tabular-nums border-transparent hover:border-border/80 focus:border-primary bg-transparent hover:bg-surface-raised focus:bg-surface transition-colors shadow-none text-xs"
+                className="w-24 sm:w-28 h-7.5 px-2 text-right font-mono tabular-nums border border-border/40 hover:border-border/80 focus:border-primary/80 bg-surface-raised/40 hover:bg-surface-raised/70 focus:bg-surface transition-colors shadow-xs rounded-md text-xs"
               />
             ) : (
               <MoneyText cents={numberToCents(row.priceBRL)} tone="default" className="text-muted-foreground font-mono tabular-nums" />

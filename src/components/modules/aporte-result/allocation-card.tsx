@@ -71,59 +71,58 @@ export function AllocationCard({
     <section
       aria-label="Alocação e diversificação"
       className={cn(
-        "flex flex-col justify-between h-full rounded-2xl border border-border/80 bg-surface p-4 sm:p-4.5 shadow-xs min-w-0",
+        "flex flex-col h-full rounded-2xl border border-border/80 bg-surface p-4 sm:p-4.5 shadow-xs min-w-0",
         className,
       )}
     >
-      <div className="flex flex-col gap-3 min-w-0 w-full">
-        {/* Cabeçalho com Título Adaptativo & Alternador de Abas */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1 border-b border-border/40">
-          <div className="flex items-center gap-2 min-w-0">
-            <PieChart className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground truncate transition-all duration-200">
-              {hasAporte ? "Alocação: Antes vs. Pós-Aporte" : "Alocação Atual vs. Meta"}
-            </h3>
-          </div>
-
-          <div className="shrink-0 self-start sm:self-center">
-            <SegmentedControl
-              value={activeTab}
-              onChange={(val) => setActiveTab(val as AllocationTabMode)}
-              options={tabOptions}
-              ariaLabel="Visualização da alocação de ativos"
-            />
-          </div>
+      {/* Cabeçalho com Título Adaptativo & Alternador de Abas */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-border/40 shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <PieChart className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground truncate transition-all duration-200">
+            {hasAporte ? "Alocação: Antes vs. Pós-Aporte" : "Alocação Atual vs. Meta"}
+          </h3>
         </div>
 
-        {/* Corpo do Card: Classes (Donut Concêntrico) ou Setores (Drift Bars) */}
-        <div className="min-w-0 w-full flex-1 flex flex-col justify-center">
-          {activeTab === "classes" ? (
-            <ConcentricAllocationDonut
-              items={classItems}
-              totalCurrentBRL={totalCurrentBRL}
-              totalAllocatedBRL={totalAllocatedBRL}
-              diversificationImpact={diversificationImpact}
-            />
-          ) : (
-            <HorizontalAllocationDriftBars
-              classItems={classItems.map((c) => ({
-                id: c.id,
-                name: c.name,
-                currentValueBRL: c.currentValueBRL,
-                allocatedBRL: c.allocatedBRL,
-                targetPct: c.targetPct,
-                ceilingPct: c.targetPct > 0 ? Math.min(100, c.targetPct * 1.5) : undefined,
-              }))}
-              sectorItems={sectorItems}
-              macroItems={macroItems}
-              totalCurrentBRL={totalCurrentBRL}
-              totalAllocatedBRL={totalAllocatedBRL}
-              hideHeader={true}
-              scrollable={true}
-              activeViewMode={activeTab === "macro" ? "macro" : "sectors"}
-            />
-          )}
+        <div className="shrink-0 self-start sm:self-center">
+          <SegmentedControl
+            value={activeTab}
+            onChange={(val) => setActiveTab(val as AllocationTabMode)}
+            options={tabOptions}
+            ariaLabel="Visualização da alocação de ativos"
+          />
         </div>
+      </div>
+
+      {/* Corpo do Card: Classes (Donut Concêntrico) ou Setores (Drift Bars) */}
+      <div className="min-w-0 w-full flex-1 flex flex-col justify-center pt-2 sm:pt-3">
+        {activeTab === "classes" ? (
+          <ConcentricAllocationDonut
+            items={classItems}
+            totalCurrentBRL={totalCurrentBRL}
+            totalAllocatedBRL={totalAllocatedBRL}
+            diversificationImpact={diversificationImpact}
+            className="h-full"
+          />
+        ) : (
+          <HorizontalAllocationDriftBars
+            classItems={classItems.map((c) => ({
+              id: c.id,
+              name: c.name,
+              currentValueBRL: c.currentValueBRL,
+              allocatedBRL: c.allocatedBRL,
+              targetPct: c.targetPct,
+              ceilingPct: c.targetPct > 0 ? Math.min(100, c.targetPct * 1.5) : undefined,
+            }))}
+            sectorItems={sectorItems}
+            macroItems={macroItems}
+            totalCurrentBRL={totalCurrentBRL}
+            totalAllocatedBRL={totalAllocatedBRL}
+            hideHeader={true}
+            scrollable={true}
+            activeViewMode={activeTab === "macro" ? "macro" : "sectors"}
+          />
+        )}
       </div>
     </section>
   );

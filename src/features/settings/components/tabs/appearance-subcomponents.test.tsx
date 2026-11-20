@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { ExperiencePresetsCard } from "./experience-presets-card";
 import { VisualIdentityCard } from "./visual-identity-card";
@@ -17,9 +18,11 @@ function renderWithProviders(ui: ReactElement) {
   });
 
   return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        {ui}
+      </QueryClientProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -70,17 +73,18 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
   });
 
   describe("VisualIdentityCard", () => {
-    it("permite selecionar tema e cor de destaque", async () => {
+    it("permite selecionar tema e cor de destaque para usuário Pro", async () => {
       const user = userEvent.setup();
       const onSelectTheme = vi.fn();
       const onSelectAccent = vi.fn();
 
-      render(
+      renderWithProviders(
         <VisualIdentityCard
           themePref="dark"
           onSelectTheme={onSelectTheme}
           accent="teal"
           onSelectAccent={onSelectAccent}
+          isPro={true}
         />,
       );
 
@@ -96,10 +100,35 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
       await user.click(goldOption);
       expect(onSelectAccent).toHaveBeenCalledWith("gold", "Ouro Âmbar");
 
-      const monoOption = screen.getByRole("button", { name: /^Monocromático \(Recomendado para OLED\)/i });
+      const monoOption = screen.getByRole("button", { name: /^Monocromático/i });
       expect(monoOption).toBeInTheDocument();
       await user.click(monoOption);
-      expect(onSelectAccent).toHaveBeenCalledWith("mono", "Monocromático (Recomendado para OLED)");
+      expect(onSelectAccent).toHaveBeenCalledWith("mono", "Monocromático");
+    });
+
+    it("ao ser usuário Free, clicar em Ouro Âmbar intercepta com o diálogo de Upgrade Pro", async () => {
+      const user = userEvent.setup();
+      const onSelectTheme = vi.fn();
+      const onSelectAccent = vi.fn();
+
+      renderWithProviders(
+        <VisualIdentityCard
+          themePref="light"
+          onSelectTheme={onSelectTheme}
+          accent="teal"
+          onSelectAccent={onSelectAccent}
+          isPro={false}
+        />,
+      );
+
+      const goldOption = screen.getByRole("button", { name: /^Ouro Âmbar/i });
+      await user.click(goldOption);
+
+      // Não seleciona a cor diretamente
+      expect(onSelectAccent).not.toHaveBeenCalled();
+
+      // Dispara o diálogo de upgrade do Axir Pro
+      expect(screen.getByText(/Ouro Âmbar \(Exclusivo Pro\)/i)).toBeInTheDocument();
     });
   });
 

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router";
-import { Compass, Download, HelpCircle } from "lucide-react";
+import { Compass, Download, HelpCircle, Sparkles } from "lucide-react";
 import { navGroups, filterNavItems, navItems } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
 import { AppDownloadModal } from "@/components/modules/app-download-modal";
@@ -10,6 +10,8 @@ import { isNativePlatform, isStandaloneDisplay } from "@/services/native/platfor
 import { shouldOfferAndroidApk } from "@/services/native/app-links";
 import { triggerSensory } from "@/services/sensory";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
+import { useAppUpdate } from "@/hooks/use-app-update";
+import { applyPWAUpdate, getPWAUpdateAvailable, subscribePWAUpdate } from "@/app/pwa";
 import { useFamilyMode, useTripMode, useReminders, useUserAccess } from "@/state";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
@@ -27,6 +29,10 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
   const isNative = isNativePlatform();
   const isPwaActive = isInstalled || isStandaloneDisplay();
   const canOfferAndroidApk = shouldOfferAndroidApk();
+
+  const pwaUpdateReady = useSyncExternalStore(subscribePWAUpdate, getPWAUpdateAvailable, () => false);
+  const { hasUpdate, updateInfo, installUpdate } = useAppUpdate({ autoCheck: open });
+  const hasEffectiveUpdate = isNative ? hasUpdate : (hasUpdate || pwaUpdateReady);
 
   // No app nativo, ou quando já estiver usando PWA em plataforma sem APK (iOS/Desktop), oculta a opção.
   const showDownloadAppOption = !isNative && (canOfferAndroidApk || !isPwaActive);
@@ -163,7 +169,40 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                 </div>
               </button>
 
-              {showDownloadAppOption && (
+              {hasEffectiveUpdate ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    triggerSensory("action");
+                    onOpenChange(false);
+                    if (isNative) {
+                      await installUpdate();
+                    } else {
+                      await applyPWAUpdate();
+                    }
+                  }}
+                  className="flex min-h-11 w-full items-center justify-between rounded-xl border border-warning/30 bg-warning/10 p-3.5 text-left transition-colors hover:bg-warning/15 cursor-pointer shadow-xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-warning/20 text-warning-strong">
+                      <Sparkles className="size-4" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <span>Atualização disponível</span>
+                        <Badge variant="warning" size="xs">
+                          Nova versão
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        {updateInfo?.latestVersion
+                          ? `Versão v${updateInfo.latestVersion} pronta. Toque para atualizar.`
+                          : "Uma nova versão do Axir está pronta. Toque para atualizar."}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ) : showDownloadAppOption ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -191,7 +230,7 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                     </div>
                   </div>
                 </button>
-              )}
+              ) : null}
             </div>
           </section>
         </div>

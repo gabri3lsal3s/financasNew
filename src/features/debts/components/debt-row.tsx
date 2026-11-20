@@ -72,7 +72,7 @@ export function DebtRow({ debt, onSettle, onUnsettle, onEdit }: DebtRowProps) {
             <Button
               type="button"
               size="sm"
-              variant="positive"
+              variant="default"
               onClick={() => onUnsettle(debt)}
               className="text-xs"
               aria-label={`Quitada (${debt.name}) — clique para desmarcar`}

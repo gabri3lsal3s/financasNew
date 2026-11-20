@@ -1,9 +1,8 @@
-import { ArrowDownRight, ArrowUpRight, History, Sparkles, Zap } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, FileSpreadsheet, History, Zap } from "lucide-react";
 import { Badge, Button, Modal, ModalFooter, MoneyText, Tabs } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import { PocketContributionsLedgerTab } from "./pocket-cost/pocket-contributions-ledger-tab";
 import { PocketQuickModeTab } from "./pocket-cost/pocket-quick-mode-tab";
-import { PocketStatementImportTab } from "./pocket-cost/pocket-statement-import-tab";
 import { usePocketCostImport } from "./pocket-cost/use-pocket-cost-import";
 
 export interface InitialPocketCostDialogProps {
@@ -11,6 +10,7 @@ export interface InitialPocketCostDialogProps {
   onOpenChange: (open: boolean) => void;
   defaultCostBRL?: number;
   onSuccess?: () => void;
+  onOpenSnapshotsDialog?: () => void;
 }
 
 export function InitialPocketCostDialog({
@@ -18,6 +18,7 @@ export function InitialPocketCostDialog({
   onOpenChange,
   defaultCostBRL = 0,
   onSuccess,
+  onOpenSnapshotsDialog,
 }: InitialPocketCostDialogProps) {
   const pocket = usePocketCostImport({ open, onOpenChange, defaultCostBRL, onSuccess });
 
@@ -28,10 +29,27 @@ export function InitialPocketCostDialog({
       title="Linha do Tempo de Aportes Históricos"
       description="Calibre com precisão as entradas e saídas do seu bolso anteriores ao app para cálculo exato da TIR (XIRR)."
       size="xl"
-      showCalculator={pocket.activeTab !== "extrato"}
+      showCalculator
       footer={
-        <ModalFooter borderless>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <ModalFooter borderless className="flex items-center justify-between gap-2">
+          {onOpenSnapshotsDialog ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onOpenChange(false);
+                onOpenSnapshotsDialog();
+              }}
+              className="text-xs gap-1.5"
+            >
+              <FileSpreadsheet className="size-3.5 text-portfolio" aria-hidden="true" />
+              <span>Auditar Fechamentos (PDF)</span>
+            </Button>
+          ) : (
+            <div />
+          )}
+          <Button type="button" variant="default" size="sm" onClick={() => onOpenChange(false)}>
             Concluir
           </Button>
         </ModalFooter>
@@ -81,30 +99,12 @@ export function InitialPocketCostDialog({
               icon: <History className="size-3.5" aria-hidden="true" />,
             },
             {
-              value: "extrato",
-              label: "Assistente de Extrato",
-              icon: <Sparkles className="size-3.5" aria-hidden="true" />,
-            },
-            {
               value: "rapido",
               label: "Modo Rápido",
               icon: <Zap className="size-3.5" aria-hidden="true" />,
             },
           ]}
         />
-
-        {pocket.activeTab === "extrato" ? (
-          <PocketStatementImportTab
-            statementText={pocket.statementText}
-            onStatementTextChange={pocket.setStatementText}
-            parseResult={pocket.parseResult}
-            replaceExisting={pocket.replaceExisting}
-            onReplaceExistingChange={pocket.setReplaceExisting}
-            isImporting={pocket.isImporting}
-            onProcessStatement={pocket.handleProcessStatement}
-            onConfirmImport={() => void pocket.handleConfirmImportStatement()}
-          />
-        ) : null}
 
         {pocket.activeTab === "manual" ? (
           <PocketContributionsLedgerTab
@@ -129,6 +129,10 @@ export function InitialPocketCostDialog({
             formError={pocket.formError}
             deletingId={pocket.deletingId}
             isPending={pocket.isPendingManual}
+            lastAporteCents={pocket.lastAporteCents}
+            onZeroAporte={pocket.handleZeroAporte}
+            onRepeatLastAporte={pocket.handleRepeatLastAporte}
+            onSelectDate={pocket.handleSelectDate}
             onSubmit={(e) => void pocket.handleSubmitManual(e)}
             onStartEdit={pocket.handleStartEdit}
             onCancelEdit={pocket.handleCancelEdit}

@@ -48,6 +48,31 @@ describe("SplitPendingBanner", () => {
     const ctaBtn = screen.getByRole("button", { name: /ver e cobrar/i });
     expect(ctaBtn).toBeInTheDocument();
     fireEvent.click(ctaBtn);
-    expect(mockNavigate).toHaveBeenCalledWith("/transacoes");
+    expect(mockNavigate).toHaveBeenCalledWith("/transacoes?filtro=all");
+  });
+
+  it("navega direto para o modal do racha quando ha apenas 1 item pendente", () => {
+    mockNavigate.mockClear();
+    const singleItem = [
+      {
+        id: "s-solo",
+        title: "Almoco",
+        pendingCents: 5000,
+        pendingFriendsCount: 1,
+        totalFriendsCount: 2,
+      },
+    ];
+
+    render(
+      <SplitPendingBanner
+        pendingCents={5000}
+        activeCount={1}
+        items={singleItem}
+      />,
+    );
+
+    const ctaBtn = screen.getByRole("button", { name: /ver e cobrar/i });
+    fireEvent.click(ctaBtn);
+    expect(mockNavigate).toHaveBeenCalledWith("/transacoes?id=s-solo&racha_modal=1");
   });
 });

@@ -70,6 +70,33 @@ export function useFamilySettingsActions({
     }
   };
 
+  const saveSplitRule = async (newRule: FamilySplitRule) => {
+    if (!family) return;
+    if (newRule === family.split_rule) return;
+    try {
+      await updateFamilyMutation.mutateAsync({
+        familyId: family.id,
+        updates: {
+          split_rule: newRule,
+        },
+      });
+      triggerSensory("selection");
+      pushToast({
+        title: "Regra atualizada",
+        description: `Regra de divisão alterada para ${
+          newRule === "combined"
+            ? "Caixa Único"
+            : newRule === "equal"
+              ? "Divisão 50% / 50%"
+              : "Divisão Proporcional à Renda"
+        }.`,
+        variant: "success",
+      });
+    } catch {
+      // Gerenciado pela mutation
+    }
+  };
+
   const saveMemberPix = async (
     displayName: string,
     pixKey: string,
@@ -176,6 +203,7 @@ export function useFamilySettingsActions({
     leaveFamilyPending: leaveFamilyMutation.isPending,
     deleteFamilyPending: deleteFamilyMutation.isPending,
     saveFamilyParams,
+    saveSplitRule,
     saveMemberPix,
     sendInvite,
     copyLink,

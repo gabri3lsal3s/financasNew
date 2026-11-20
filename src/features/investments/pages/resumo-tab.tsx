@@ -41,7 +41,11 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
         isLoading={position.isLoading}
         totalBRL={position.totalBRL}
         totalDividendsBRL={position.totalDividendsBRL}
+        cashBRL={position.cashBRL}
         performance={ctrl.performance}
+        portfolioTwr={position.portfolioTwr}
+        portfolioIrr={position.portfolioIrr}
+        totalCostBRL={position.totalCostBRL}
         onOpenExplainModal={() => ctrl.setExplainModalOpen(true)}
       />
 

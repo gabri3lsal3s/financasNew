@@ -37,9 +37,10 @@ const MEMBER_PROGRESS_TONES = [
 ] as const;
 
 /**
- * Card de Gráfico Comparativo entre Participantes (/familia).
+ * Card de Comparativo de Cotas e Contribuição entre Participantes (/familia).
  * Apura o valor realizado de cada parceiro contra a cota devida calculada
  * pelo motor puro de reconciliação familiar, exibindo barras comparativas e saldos líquidos.
+ * Formatação canônica limpa com divide-y, sem caixas cinzas aninhadas.
  */
 export function HouseholdComparisonCard({
   members,
@@ -106,12 +107,7 @@ export function HouseholdComparisonCard({
             className="py-8"
           />
         ) : (
-          <div
-            className={cn(
-              "grid gap-3.5",
-              reconciliation.members.length >= 2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1",
-            )}
-          >
+          <div className="divide-y divide-border/80">
             {reconciliation.members.map((member, index) => {
               const dotClass =
                 MEMBER_DOT_COLORS[index % MEMBER_DOT_COLORS.length] ?? "bg-primary";
@@ -125,7 +121,7 @@ export function HouseholdComparisonCard({
               return (
                 <div
                   key={member.user_id}
-                  className="p-3.5 rounded-xl bg-surface-raised space-y-3 min-w-0"
+                  className="py-4 first:pt-0 last:pb-0 space-y-3 min-w-0"
                 >
                   {/* Cabeçalho do Participante */}
                   <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -134,7 +130,7 @@ export function HouseholdComparisonCard({
                         className={cn("size-2.5 rounded-full shrink-0", dotClass)}
                         aria-hidden="true"
                       />
-                      <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                      <span className="font-semibold text-sm text-foreground truncate">
                         {member.display_name}
                       </span>
                       {member.is_top_spender && (
@@ -171,48 +167,48 @@ export function HouseholdComparisonCard({
                     </div>
                   </div>
 
-                  {/* Comparativo Realizado vs Cota Alvo */}
-                  <div className="grid grid-cols-2 xl:grid-cols-3 gap-2 text-xs">
-                    <div className="p-2.5 rounded-lg bg-surface min-w-0">
-                      <p className="text-[11px] text-muted-foreground">Pago no mês</p>
+                  {/* Comparativo Realizado vs Cota Alvo (Métricas em linha limpa, sem caixas cinzas!) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="min-w-0">
+                      <span className="text-[11px] text-muted-foreground block">Pago no mês</span>
                       <MoneyText
                         cents={member.spent_cents}
                         tone="default"
-                        className="font-bold mt-0.5 block"
+                        className="font-bold text-sm mt-0.5 block tabular-nums"
                       />
-                      <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
+                      <span className="text-[11px] text-muted-foreground mt-0.5 tabular-nums block">
                         {member.percentage_of_spent}% do total
-                      </p>
+                      </span>
                     </div>
 
-                    <div className="p-2.5 rounded-lg bg-surface min-w-0">
-                      <p className="text-[11px] text-muted-foreground">Cota devida</p>
+                    <div className="min-w-0">
+                      <span className="text-[11px] text-muted-foreground block">Cota devida</span>
                       <MoneyText
                         cents={member.fair_share_cents}
                         tone="default"
-                        className="font-semibold mt-0.5 block"
+                        className="font-semibold text-sm mt-0.5 block tabular-nums"
                       />
-                      <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
+                      <span className="text-[11px] text-muted-foreground mt-0.5 tabular-nums block">
                         Meta: {member.target_percentage}%
-                      </p>
+                      </span>
                     </div>
 
-                    <div className="p-2.5 rounded-lg bg-surface col-span-2 xl:col-span-1 min-w-0">
-                      <p className="text-[11px] text-muted-foreground">Ticket médio</p>
+                    <div className="col-span-2 sm:col-span-1 min-w-0">
+                      <span className="text-[11px] text-muted-foreground block">Ticket médio</span>
                       <MoneyText
                         cents={member.average_ticket_cents}
                         tone="default"
-                        className="font-medium mt-0.5 block"
+                        className="font-medium text-sm mt-0.5 block tabular-nums"
                       />
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                      <span className="text-[11px] text-muted-foreground mt-0.5 block">
                         {member.expenses_count}{" "}
                         {member.expenses_count === 1 ? "lançamento" : "lançamentos"}
-                      </p>
+                      </span>
                     </div>
                   </div>
 
                   {/* Barra Visual Comparativa */}
-                  <div className="space-y-1">
+                  <div className="space-y-1.5 pt-1">
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                       <span className="tabular-nums">
                         Participação efetiva: {member.percentage_of_spent}%

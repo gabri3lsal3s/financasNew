@@ -1,5 +1,7 @@
 import { Copy, QrCode } from "lucide-react";
 import { Badge, Button, Input, MoneyText, QrCodeCanvas } from "@/components/ui";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import type { CalculationBreakdown } from "@/domain/calculation-memory/types";
 import { buildPixTransferCode } from "@/domain/pix";
 import type { SettlementTransfer } from "@/domain/family";
 
@@ -7,12 +9,14 @@ export interface FamilySettlementTransferCardProps {
   transfer: SettlementTransfer;
   month: string;
   onCopy: (text: string, label: string) => void;
+  breakdown?: CalculationBreakdown;
 }
 
 export function FamilySettlementTransferCard({
   transfer,
   month,
   onCopy,
+  breakdown,
 }: FamilySettlementTransferCardProps) {
   const pixPayload =
     transfer.pix_payload ||
@@ -27,12 +31,20 @@ export function FamilySettlementTransferCard({
 
   return (
     <div className="p-4 rounded-xl border border-border/80 bg-surface-raised space-y-3.5">
-      <div>
-        <p className="text-xs font-semibold text-foreground">Proposta de Compensação</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          <span className="font-semibold text-foreground">{transfer.payer_name}</span> deve transferir para{" "}
-          <span className="font-semibold text-foreground">{transfer.receiver_name}</span>
-        </p>
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold text-foreground">Proposta de Compensação</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            <span className="font-semibold text-foreground">{transfer.payer_name}</span> deve transferir para{" "}
+            <span className="font-semibold text-foreground">{transfer.receiver_name}</span>
+          </p>
+        </div>
+        {breakdown ? (
+          <CalculationMemoryModal
+            breakdown={breakdown}
+            label={`Memória do acerto de ${transfer.payer_name}`}
+          />
+        ) : null}
       </div>
 
       <div className="p-3 rounded-lg bg-surface border border-border/80 flex items-center justify-between gap-2">

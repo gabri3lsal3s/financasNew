@@ -21,7 +21,7 @@ export function RemindersCard() {
             <Bell className="size-4 text-muted-foreground" aria-hidden="true" />
             <span>Lembretes &amp; Notificações</span>
           </span>
-          <Badge variant={remindersEnabled ? "positive" : "muted"} size="xs">
+          <Badge variant={remindersEnabled ? "default" : "muted"} size="xs">
             {remindersEnabled ? "Ativado" : "Desativado"}
           </Badge>
         </CardTitle>

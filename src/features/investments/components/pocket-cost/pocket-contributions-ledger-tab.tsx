@@ -1,5 +1,5 @@
 import { useMemo, type RefObject } from "react";
-import { AlertCircle, Calendar, Pencil, Trash2 } from "lucide-react";
+import { AlertCircle, Calendar, History, Pencil, Plus, Trash2 } from "lucide-react";
 import { Badge, Button, EmptyState, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import { formatSignedPct } from "@/services/masks";
@@ -8,7 +8,7 @@ import {
   extractExplicitRateFromNotes,
   isHistoricalWithdrawal,
 } from "@/domain/portfolio/pocket-statement-parser";
-import { formatDateBR } from "@/lib/date";
+import { formatDateBR, formatMonthYear, shiftMonth } from "@/lib/date";
 import type { PortfolioContribution, PortfolioSnapshot } from "@/types";
 import { PocketContributionFormCard } from "./pocket-contribution-form-card";
 
@@ -34,6 +34,10 @@ export interface PocketContributionsLedgerTabProps {
   formError: string | null;
   deletingId: string | null;
   isPending: boolean;
+  lastAporteCents?: number;
+  onZeroAporte?: () => void;
+  onRepeatLastAporte?: () => void;
+  onSelectDate?: (date: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   onStartEdit: (marco: PortfolioContribution) => void;
   onCancelEdit: () => void;
@@ -74,6 +78,24 @@ export function PocketContributionsLedgerTab(props: PocketContributionsLedgerTab
     return anomalies;
   }, [snapshotsByMonth]);
 
+  // Detecção proativa de meses sem registro no intervalo histórico:
+  const missingTimelineMonths = useMemo(() => {
+    if (historicalContributions.length < 2) return [];
+    const months = Array.from(new Set(historicalContributions.map((c) => c.date.slice(0, 7)))).sort();
+    if (months.length < 2) return [];
+    const earliest = months[0]!;
+    const latest = months[months.length - 1]!;
+    const missing: string[] = [];
+    let cur = shiftMonth(earliest, 1);
+    while (cur < latest) {
+      if (!months.includes(cur)) {
+        missing.push(cur);
+      }
+      cur = shiftMonth(cur, 1);
+    }
+    return missing;
+  }, [historicalContributions]);
+
   return (
     <div className="flex flex-col gap-4">
       {costDropAnomalies.length > 0 && (
@@ -92,17 +114,19 @@ export function PocketContributionsLedgerTab(props: PocketContributionsLedgerTab
         </div>
       )}
 
-      <div className="rounded-xl border border-warning/30 bg-warning/5 p-3 flex items-start gap-2.5">
-        <AlertCircle className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
-        <div className="flex flex-col gap-0.5 text-[11px] leading-relaxed text-muted-foreground">
-          <span className="font-semibold text-foreground">
-            Informe apenas as movimentações do mês (Deltas)
-          </span>
-          <p>
-            Cadastre apenas o dinheiro que <strong>entrou (Aporte)</strong> ou <strong>saiu (Resgate)</strong> da sua conta. Se tiver o extrato bancário com o valor acumulado mês a mês, utilize a aba <strong>Assistente de Extrato</strong> para calcular tudo automaticamente.
-          </p>
+      {historicalContributions.length === 0 ? (
+        <div className="rounded-xl border border-border/80 bg-surface p-3 flex items-start gap-2.5 shadow-xs">
+          <AlertCircle className="size-4 text-portfolio shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="flex flex-col gap-0.5 text-[11px] leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              Aportes do Bolso & Fechamento Mensal da Carteira
+            </span>
+            <p>
+              Cadastre os aportes e retiradas reais anteriores ao uso do app para cálculo exato da TIR. Ao preencher o <strong>Saldo da Carteira no Fim do Mês</strong>, o app gera automaticamente os snapshots de fechamento para apuração da rentabilidade oficial por cotas (TWR).
+            </p>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <PocketContributionFormCard
         formRef={props.formRef}
@@ -121,9 +145,48 @@ export function PocketContributionsLedgerTab(props: PocketContributionsLedgerTab
         onNotesChange={props.onNotesChange}
         formError={props.formError}
         isPending={props.isPending}
+        lastAporteCents={props.lastAporteCents}
+        onZeroAporte={props.onZeroAporte}
+        onRepeatLastAporte={props.onRepeatLastAporte}
         onSubmit={props.onSubmit}
         onCancelEdit={props.onCancelEdit}
       />
+
+      {missingTimelineMonths.length > 0 && (
+        <div className="rounded-xl border border-border/80 bg-surface p-3 flex flex-col gap-1.5 shadow-xs">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <History className="size-3.5 text-portfolio" aria-hidden="true" />
+            <span>Meses sem registro no intervalo histórico</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Identificamos competências sem lançamento entre o primeiro e o último marco. Para maior fidelidade no TWR, você pode adicionar esses meses:
+          </p>
+          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+            {missingTimelineMonths.slice(0, 8).map((m) => {
+              const lastDay = new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0).getDate();
+              const targetDate = `${m}-${String(lastDay).padStart(2, "0")}`;
+              return (
+                <Button
+                  key={m}
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  onClick={() => props.onSelectDate?.(targetDate)}
+                  className="h-6 text-[11px] gap-1 px-2"
+                >
+                  <Plus className="size-3" aria-hidden="true" />
+                  <span>{formatMonthYear(m)}</span>
+                </Button>
+              );
+            })}
+            {missingTimelineMonths.length > 8 ? (
+              <span className="text-[11px] text-muted-foreground">
+                e mais {missingTimelineMonths.length - 8} meses
+              </span>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -145,7 +208,7 @@ export function PocketContributionsLedgerTab(props: PocketContributionsLedgerTab
         {historicalContributions.length === 0 ? (
           <EmptyState
             title="Nenhum marco cadastrado"
-            description="Cadastre o seu primeiro marco acima ou importe pelo Assistente de Extrato para que a TIR calcule o retorno sobre o capital real."
+            description="Cadastre o seu primeiro marco acima informando a data inicial e os valores para que a TIR e o TWR considerem seu histórico real."
             headingLevel="h3"
           />
         ) : (

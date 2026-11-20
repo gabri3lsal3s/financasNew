@@ -294,9 +294,9 @@ export function HorizontalAllocationDriftBars({
             type="button"
             onClick={() => setSelectedClassFilter("all")}
             className={cn(
-              "px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors cursor-pointer shrink-0 border",
+              "px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors cursor-pointer shrink-0 border",
               selectedClassFilter === "all"
-                ? "bg-surface-raised text-foreground border-border shadow-xs"
+                ? "bg-surface-raised text-foreground border-border shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground border-transparent hover:border-border/50",
             )}
           >
@@ -313,9 +313,9 @@ export function HorizontalAllocationDriftBars({
                 type="button"
                 onClick={() => setSelectedClassFilter(cls)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors cursor-pointer shrink-0 border",
+                  "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-colors cursor-pointer shrink-0 border",
                   isSelected
-                    ? "bg-surface-raised text-foreground border-border shadow-xs"
+                    ? "bg-surface-raised text-foreground border-border shadow-xs font-semibold"
                     : "text-muted-foreground hover:text-foreground border-transparent hover:border-border/50",
                 )}
               >
@@ -325,7 +325,7 @@ export function HorizontalAllocationDriftBars({
                   aria-hidden="true"
                 />
                 <span>{cls}</span>
-                <span className="text-[10px] opacity-70">({count})</span>
+                <span className="text-[10px] opacity-70 font-mono">({count})</span>
               </button>
             );
           })}
@@ -333,14 +333,14 @@ export function HorizontalAllocationDriftBars({
       ) : null}
 
       {/* Legenda visual sutil */}
-      <div className="flex items-center gap-4 text-[11px] text-muted-foreground flex-wrap pt-0.5">
+      <div className="flex items-center gap-4 text-[11px] text-muted-foreground flex-wrap pt-0.5 border-b border-border/40 pb-2">
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-2 rounded-xs bg-primary/70 shrink-0" aria-hidden="true" />
+          <span className="size-2 rounded-full bg-primary/70 shrink-0" aria-hidden="true" />
           <span>Posição Atual</span>
         </span>
         {hasAporte ? (
           <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-xs bg-portfolio shrink-0" aria-hidden="true" />
+            <span className="size-2 rounded-full bg-portfolio shrink-0" aria-hidden="true" />
             <span>Expansão do Aporte</span>
           </span>
         ) : null}

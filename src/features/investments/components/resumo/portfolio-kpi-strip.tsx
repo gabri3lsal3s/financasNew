@@ -1,7 +1,16 @@
-import { Info } from "lucide-react";
+import { useMemo } from "react";
 import { KpiCard } from "@/components/modules";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { Badge, MoneyText, SkeletonKpi } from "@/components/ui";
+import {
+  buildAllTimePnlBreakdown,
+  buildIrrBreakdown,
+  buildPortfolioTotalBreakdown,
+  buildTwrBreakdown,
+  buildUnrealizedPnlBreakdown,
+} from "@/domain/calculation-memory";
 import { numberToCents } from "@/domain/money";
+import type { TwrConsolidatedResult, XIRRResult } from "@/domain/portfolio";
 import type { PortfolioPerformanceSummary } from "@/domain/portfolio/resumo-metrics";
 import { cn } from "@/lib/utils";
 import { formatCentsAsBRL } from "@/services/masks/money";
@@ -12,6 +21,12 @@ export interface PortfolioKpiStripProps {
   totalDividendsBRL?: number;
   performance: PortfolioPerformanceSummary;
   onOpenExplainModal: () => void;
+  brlAssetsTotal?: number;
+  usdAssetsTotalBRL?: number;
+  cashBRL?: number;
+  portfolioTwr?: TwrConsolidatedResult;
+  portfolioIrr?: XIRRResult;
+  totalCostBRL?: number;
 }
 
 export function PortfolioKpiStrip({
@@ -20,7 +35,84 @@ export function PortfolioKpiStrip({
   totalDividendsBRL = 0,
   performance,
   onOpenExplainModal,
+  brlAssetsTotal,
+  usdAssetsTotalBRL,
+  cashBRL = 0,
+  portfolioTwr,
+  portfolioIrr,
+  totalCostBRL,
 }: PortfolioKpiStripProps) {
+  const patrimonioBreakdown = useMemo(() => {
+    return buildPortfolioTotalBreakdown({
+      totalBRL,
+      brlAssetsTotal: brlAssetsTotal ?? (totalBRL - cashBRL - (usdAssetsTotalBRL ?? 0)),
+      usdAssetsTotalBRL: usdAssetsTotalBRL ?? 0,
+      cashBRL,
+    });
+  }, [brlAssetsTotal, cashBRL, totalBRL, usdAssetsTotalBRL]);
+
+  const rentabilidadeBreakdown = useMemo(() => {
+    if (performance.rentabilidadeMode === "twr") {
+      return buildTwrBreakdown({
+        accumulatedRatePct: portfolioTwr?.accumulatedRatePct ?? null,
+        annualizedRatePct: portfolioTwr?.annualizedRatePct,
+        monthsElapsed: portfolioTwr?.monthsElapsed,
+        currentSharePrice: portfolioTwr?.currentSharePrice,
+        status: portfolioTwr?.status,
+      });
+    }
+    return buildUnrealizedPnlBreakdown({
+      currentValueBRL: Math.max(0, totalBRL - cashBRL),
+      totalCostBRL: totalCostBRL ?? Math.max(0, totalBRL - cashBRL - performance.unrealizedPnlBRL),
+      unrealizedPnlBRL: performance.unrealizedPnlBRL,
+      unrealizedPnlPct: performance.capitalGainPct,
+      totalDividendsBRL,
+      totalReturnPnlBRL: performance.totalReturnPnlBRL,
+      totalReturnPct: performance.totalReturnPct,
+    });
+  }, [
+    cashBRL,
+    performance.capitalGainPct,
+    performance.rentabilidadeMode,
+    performance.totalReturnPct,
+    performance.totalReturnPnlBRL,
+    performance.unrealizedPnlBRL,
+    portfolioTwr,
+    totalBRL,
+    totalCostBRL,
+    totalDividendsBRL,
+  ]);
+
+  const resultadoHistoricoBreakdown = useMemo(() => {
+    return buildAllTimePnlBreakdown({
+      allTimePnlBRL: performance.allTimePnlBRL,
+      realizedPnlBRL: performance.realizedPnlBRL,
+      unrealizedPnlBRL: performance.unrealizedPnlBRL,
+      totalDividendsBRL,
+      appliedCostBRL: totalCostBRL,
+      currentValueBRL: totalBRL,
+    });
+  }, [
+    performance.allTimePnlBRL,
+    performance.realizedPnlBRL,
+    performance.unrealizedPnlBRL,
+    totalBRL,
+    totalCostBRL,
+    totalDividendsBRL,
+  ]);
+
+  const tirBreakdown = useMemo(() => {
+    return buildIrrBreakdown({
+      annualizedRatePct: portfolioIrr?.annualizedRatePct ?? null,
+      periodRatePct: portfolioIrr?.periodRatePct ?? null,
+      daysElapsed: portfolioIrr?.daysElapsed ?? 0,
+      isEligible: portfolioIrr?.isEligible ?? false,
+      status: portfolioIrr?.status ?? "ok",
+      capitalCoveragePct: portfolioIrr?.capitalCoveragePct,
+      currentValueBRL: totalBRL,
+    });
+  }, [portfolioIrr, totalBRL]);
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3" data-tour="investments-summary">
@@ -44,7 +136,6 @@ export function PortfolioKpiStrip({
           Custódia Aberta
         </Badge>
       ) : null}
-      <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
     </div>
   );
 
@@ -71,6 +162,7 @@ export function PortfolioKpiStrip({
       <KpiCard
         label="Patrimônio Total"
         cents={numberToCents(totalBRL)}
+        action={<CalculationMemoryModal breakdown={patrimonioBreakdown} />}
         hint={
           <span
             className={cn(
@@ -100,19 +192,16 @@ export function PortfolioKpiStrip({
         value={performance.rentabilidadeValue}
         tone={performance.rentabilidadeTone}
         hint={rentabilidadeHint}
+        action={<CalculationMemoryModal breakdown={rentabilidadeBreakdown} />}
         onClick={onOpenExplainModal}
       />
 
       <KpiCard
-        label={
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="truncate">Resultado Histórico</span>
-            <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
-          </div>
-        }
+        label="Resultado Histórico"
         ariaLabel="Resultado Histórico"
         cents={performance.allTimePnlCents}
         tone={performance.allTimePnlBRL >= 0 ? "positive" : "negative"}
+        action={<CalculationMemoryModal breakdown={resultadoHistoricoBreakdown} />}
         hint={
           <span
             className="inline-flex items-center gap-1 text-[11px] font-mono text-muted-foreground whitespace-nowrap tabular-nums"
@@ -133,16 +222,12 @@ export function PortfolioKpiStrip({
       />
 
       <KpiCard
-        label={
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="truncate">TIR (Fluxo do Bolso)</span>
-            <Info className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
-          </div>
-        }
+        label="TIR (Fluxo do Bolso)"
         ariaLabel="TIR (Fluxo do Bolso)"
         value={performance.irrLabel}
         tone={performance.irrTone}
         hint={performance.irrHint}
+        action={<CalculationMemoryModal breakdown={tirBreakdown} />}
         onClick={onOpenExplainModal}
       />
     </div>

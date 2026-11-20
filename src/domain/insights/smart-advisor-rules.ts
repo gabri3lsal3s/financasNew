@@ -180,6 +180,8 @@ export interface EvaluateSmartAdvisorParams {
   effectiveDismissals: Record<string, number>;
   effectiveLastDismissedDay?: string | null;
   nowMs: number;
+  categories?: readonly Category[];
+  suppressedThemeKeys?: readonly string[];
 }
 
 export function evaluateSmartAdvisorInsights(params: EvaluateSmartAdvisorParams): {
@@ -228,9 +230,20 @@ export function evaluateSmartAdvisorInsights(params: EvaluateSmartAdvisorParams)
     safeToSpendCents: params.effectiveSafeToSpendCents,
     committedObligationsCents: params.effectiveCommittedObligationsCents,
     spendingHabits: params.spendingHabits,
+    categories: params.categories,
   });
 
-  const eligible = filterAndRankAllAdvisorInsights(candidates, {
+  const activeCandidates =
+    params.suppressedThemeKeys && params.suppressedThemeKeys.length > 0
+      ? candidates.filter(
+          (c) =>
+            !params.suppressedThemeKeys!.some(
+              (k) => c.themeKey === k || c.themeKey.startsWith(`${k}:`),
+            ),
+        )
+      : candidates;
+
+  const eligible = filterAndRankAllAdvisorInsights(activeCandidates, {
     dismissals: params.effectiveDismissals,
     lastDismissedDay: params.effectiveLastDismissedDay ?? undefined,
     currentDayISO: params.todayISO,

@@ -435,4 +435,83 @@ describe("PositionTable (F17 — ordenação por coluna e agrupamento por classe
     const manualDots = screen.getAllByTitle(/Saldo cadastrado manual — informe a taxa para cálculo automático/i);
     expect(manualDots.length).toBeGreaterThanOrEqual(1);
   });
+
+  it("mantém agrupamento por setor mesmo quando uma classe está filtrada", async () => {
+    const user = userEvent.setup();
+    render(<PositionTable rows={rows} />);
+
+    // Filtra pela classe Ações via botão de desktop
+    const acoesBtn = screen.getByRole("button", { name: "Ações" });
+    await user.click(acoesBtn);
+
+    // Alterna para 'Por Setor'
+    const sectorToggleBtn = screen.getByRole("button", { name: /Por Setor/i });
+    await user.click(sectorToggleBtn);
+
+    // Deve agrupar por setor (Setor Petróleo...), e NÃO exibir ativos soltos diretamente
+    const petroSector = screen.getAllByRole("button", { name: /Setor Petróleo/i });
+    expect(petroSector.length).toBeGreaterThanOrEqual(1);
+
+    // O ativo PETR4 deve estar contido no grupo recolhido inicialmente
+    // Ao expandir o setor, PETR4 aparece
+    await user.click(petroSector[0]!);
+    expect(screen.getAllByText("PETR4").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("isola ativos em quarentena e em saída em seções dedicadas sem misturar na carteira de aportes", async () => {
+    const user = userEvent.setup();
+    const rowsWithQuarantine: PositionRow[] = [
+      ...rows,
+      {
+        assetId: "quarantine-asset",
+        ticker: "TEST3",
+        assetClass: "Ações",
+        currency: "BRL",
+        quantity: 100,
+        averageCost: 10,
+        totalCostBRL: 1000,
+        priceBRL: 8,
+        source: "api",
+        valueBRL: 800,
+        pct: 10,
+        unrealizedPnl: -200,
+        unrealizedPct: -20,
+        isCash: false,
+        allocationStatus: "quarantine",
+      },
+      {
+        assetId: "exit-asset",
+        ticker: "EXIT3",
+        assetClass: "Ações",
+        currency: "BRL",
+        quantity: 50,
+        averageCost: 20,
+        totalCostBRL: 1000,
+        priceBRL: 15,
+        source: "api",
+        valueBRL: 750,
+        pct: 5,
+        unrealizedPnl: -250,
+        unrealizedPct: -25,
+        isCash: false,
+        allocationStatus: "exit",
+      },
+    ];
+
+    render(<PositionTable rows={rowsWithQuarantine} />);
+
+    // Seções de governança dedicadas surgem no rodapé
+    expect(screen.getByText("Ativos em Quarentena")).toBeInTheDocument();
+    expect(screen.getByText("Ativos em Saída / Desinvestimento")).toBeInTheDocument();
+
+    // Ao expandir a quarentena, o ativo TEST3 é visível
+    const quarantineToggle = screen.getByRole("button", { name: /Ativos em Quarentena/i });
+    await user.click(quarantineToggle);
+    expect(screen.getByText("TEST3")).toBeInTheDocument();
+
+    // Ao expandir a saída, o ativo EXIT3 é visível
+    const exitToggle = screen.getByRole("button", { name: /Ativos em Saída/i });
+    await user.click(exitToggle);
+    expect(screen.getByText("EXIT3")).toBeInTheDocument();
+  });
 });

@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Shield, SlidersHorizontal } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import { buildEmergencyFundBreakdown } from "@/domain/calculation-memory";
 import {
   EMERGENCY_HEALTH_LABELS,
   calculateEmergencyFund,
@@ -61,6 +63,21 @@ export function EmergencyThermometer({
     referenceMonth,
   });
 
+  const emergencyBreakdown = useMemo(() => {
+    return buildEmergencyFundBreakdown({
+      liquidReserveCents: effectiveReserve,
+      monthlyExpensesCents: effectiveExpenses,
+      targetMonths: 6,
+      targetCents: result.milestone6m.targetCents,
+      monthlySavingsVelocityCents: effectiveVelocity,
+    });
+  }, [
+    effectiveExpenses,
+    effectiveReserve,
+    effectiveVelocity,
+    result.milestone6m.targetCents,
+  ]);
+
   return (
     <section
       aria-label="Termômetro da reserva de emergência"
@@ -73,6 +90,7 @@ export function EmergencyThermometer({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-foreground">Reserva de Emergência & Autonomia</h2>
+            <CalculationMemoryModal breakdown={emergencyBreakdown} />
             {composition && composition.portfolioReserveCents > 0 ? (
               <Badge variant="muted" size="xs">
                 Sincronizada

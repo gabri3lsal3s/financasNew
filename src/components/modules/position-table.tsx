@@ -7,6 +7,7 @@ import {
 } from "@/components/modules/portfolio";
 import { buildPositionColumns } from "./position-table/position-columns";
 import { PositionDesktopHeader, PositionDesktopRow } from "./position-table/position-desktop-row";
+import { PositionGovernanceSection } from "./position-table/position-governance-section";
 import { PositionGroupSection } from "./position-table/position-group-section";
 import { PositionPagination } from "./position-table/position-pagination";
 import { PositionToolbar } from "./position-table/position-toolbar";
@@ -126,12 +127,23 @@ export function PositionTable({
           availableClasses={state.availableClasses}
           selectedClass={state.selectedClass}
           onSelectClass={state.setSelectedClass}
+          availableSectors={state.availableSectors}
+          selectedSector={state.selectedSector}
+          onSelectSector={state.setSelectedSector}
           closedCount={state.closedRows.length}
           hideClosed={state.hideClosed}
           onToggleHideClosed={state.toggleHideClosed}
           filteredCount={state.filteredRows.length}
           totalCount={rows.length}
           hasFiltersActive={state.hasFiltersActive}
+          onClearFilters={state.clearFilters}
+          isGroupedMode={state.isGroupedMode}
+          areAllExpanded={state.areAllExpanded}
+          onToggleExpandAll={state.toggleExpandAll}
+          quarantineCount={state.quarantineRows.length}
+          exitCount={state.exitRows.length}
+          governanceFilter={state.governanceFilter}
+          onSelectGovernanceFilter={state.setGovernanceFilter}
         />
       ) : null}
 
@@ -197,6 +209,27 @@ export function PositionTable({
             scrollToTop();
           }}
         />
+      ) : null}
+
+      {state.governanceFilter === "core" ? (
+        <>
+          <PositionGovernanceSection
+            mode="quarantine"
+            rows={state.quarantineRows}
+            isOpen={state.quarantineSectionOpen}
+            onToggle={state.toggleQuarantineSection}
+            onOpen={handleOpen}
+            onEvaluateScore={onEvaluateScore}
+          />
+          <PositionGovernanceSection
+            mode="exit"
+            rows={state.exitRows}
+            isOpen={state.exitSectionOpen}
+            onToggle={state.toggleExitSection}
+            onOpen={handleOpen}
+            onEvaluateScore={onEvaluateScore}
+          />
+        </>
       ) : null}
 
       {state.hideClosed ? (

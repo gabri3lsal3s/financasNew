@@ -94,10 +94,10 @@ export function FamilyRulesTab({
                 htmlFor="family-settings-split-rule"
                 helperText={
                   editSplitRule === "combined"
-                    ? "Caixa Único: Orçamento e despesas consolidados sem cálculo de rateios ou dívidas individuais."
+                    ? "Caixa Único: Orçamento e despesas consolidados sem cálculo de rateios ou dívidas individuais. (Salvo automaticamente ao escolher)"
                     : editSplitRule === "equal"
-                      ? "Divisão 50/50: Metade das despesas para cada um, com liquidação de diferenças via Pix."
-                      : "Proporcional: Divisão calculada com base na renda declarada ou percentual de cada participante."
+                      ? "Divisão 50/50: Metade das despesas para cada um, com liquidação de diferenças via Pix. (Salvo automaticamente ao escolher)"
+                      : "Proporcional: Divisão calculada com base na renda declarada ou percentual de cada participante. (Salvo automaticamente ao escolher)"
                 }
               >
                 <Select

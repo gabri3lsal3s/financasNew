@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { useTheme } from "@/app/theme-provider";
+import { useIsPro } from "@/hooks/use-is-pro";
 import type {
   ThemePreference,
   DarkThemeVariant,
@@ -24,6 +25,7 @@ import { VisualIdentityCard } from "./visual-identity-card";
 import { InterfaceShortcutsCard } from "./interface-shortcuts-card";
 
 export function AppearanceTab() {
+  const isPro = useIsPro();
   const {
     preference: themePref,
     setPreference: setThemePref,
@@ -178,6 +180,7 @@ export function AppearanceTab() {
         onUpdateScheduleConfig={handleUpdateScheduleConfig}
         accent={visual.accent}
         onSelectAccent={handleSelectAccent}
+        isPro={isPro}
       />
 
       {/* --- CARD 3: INTERFACE, HEADER & COMPOSIÇÃO --- */}

@@ -1,4 +1,11 @@
+import { useMemo } from "react";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { MoneyText } from "@/components/ui";
+import {
+  buildAssetCostBreakdown,
+  buildUnrealizedPnlBreakdown,
+  buildYieldBreakdown,
+} from "@/domain/calculation-memory";
 import { numberToCents } from "@/domain/money";
 import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -38,6 +45,60 @@ export function AssetPositionMetricsGrid({ metrics }: AssetPositionMetricsGridPr
     irrLabel,
     irrSub,
   } = metrics;
+
+  const costBreakdown = useMemo(() => {
+    return buildAssetCostBreakdown({
+      ticker: currentAsset.ticker,
+      quantity,
+      averagePrice: averageCost,
+      currency: currentAsset.currency,
+      totalCostBRL: totalCost,
+      isTotalValue,
+    });
+  }, [averageCost, currentAsset.currency, currentAsset.ticker, isTotalValue, quantity, totalCost]);
+
+  const pnlBreakdown = useMemo(() => {
+    return buildUnrealizedPnlBreakdown({
+      ticker: currentAsset.ticker,
+      currentValueBRL: currentValue,
+      totalCostBRL: totalCost,
+      unrealizedPnlBRL: currentValue - totalCost,
+      unrealizedPnlPct,
+      totalDividendsBRL,
+      totalReturnPnlBRL: totalReturnPnl ?? 0,
+      totalReturnPct,
+    });
+  }, [
+    currentAsset.ticker,
+    currentValue,
+    totalCost,
+    totalDividendsBRL,
+    totalReturnPct,
+    totalReturnPnl,
+    unrealizedPnlPct,
+  ]);
+
+  const yieldBreakdown = useMemo(() => {
+    return buildYieldBreakdown({
+      ticker: currentAsset.ticker,
+      currency: currentAsset.currency,
+      dividendsAmount: totalDividendsNative,
+      totalCost,
+      currentValue,
+      yieldOnCostPct,
+      periodicDividends: periodicDividendsNative,
+      accumulatedDividends: accumulatedDividendsNative,
+    });
+  }, [
+    accumulatedDividendsNative,
+    currentAsset.currency,
+    currentAsset.ticker,
+    currentValue,
+    periodicDividendsNative,
+    totalCost,
+    totalDividendsNative,
+    yieldOnCostPct,
+  ]);
 
   if (isClosed) {
     return (
@@ -103,9 +164,12 @@ export function AssetPositionMetricsGrid({ metrics }: AssetPositionMetricsGridPr
       </div>
 
       <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
-        <span className="text-[11px] font-medium text-muted-foreground">
-          {isTotalValue ? "Valor Aplicado" : "Preço Médio (PM)"}
-        </span>
+        <div className="flex items-center justify-between gap-1 min-w-0">
+          <span className="text-[11px] font-medium text-muted-foreground truncate">
+            {isTotalValue ? "Valor Aplicado" : "Preço Médio (PM)"}
+          </span>
+          <CalculationMemoryModal breakdown={costBreakdown} />
+        </div>
         <MoneyText
           cents={numberToCents(isTotalValue ? totalCost : averageCost)}
           currency={isTotalValue ? "BRL" : currentAsset.currency}
@@ -118,9 +182,12 @@ export function AssetPositionMetricsGrid({ metrics }: AssetPositionMetricsGridPr
       </div>
 
       <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
-        <span className="text-[11px] font-medium text-muted-foreground">
-          {isTotalValue ? "Rendimento Total" : "Resultado Total"}
-        </span>
+        <div className="flex items-center justify-between gap-1 min-w-0">
+          <span className="text-[11px] font-medium text-muted-foreground truncate">
+            {isTotalValue ? "Rendimento Total" : "Resultado Total"}
+          </span>
+          <CalculationMemoryModal breakdown={pnlBreakdown} />
+        </div>
         <MoneyText
           cents={numberToCents(totalReturnPnl ?? 0)}
           sign="explicit"
@@ -177,7 +244,10 @@ export function AssetPositionMetricsGrid({ metrics }: AssetPositionMetricsGridPr
         </div>
       ) : (
         <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
-          <span className="text-[11px] font-medium text-muted-foreground">Yield on Cost (YoC)</span>
+          <div className="flex items-center justify-between gap-1.5 min-w-0">
+            <span className="text-[11px] font-medium text-muted-foreground">Yield on Cost (YoC)</span>
+            <CalculationMemoryModal breakdown={yieldBreakdown} />
+          </div>
           <span className="num font-mono text-sm sm:text-base font-bold text-positive-strong whitespace-nowrap">
             {formatPercent(yieldOnCostPct)}%
           </span>

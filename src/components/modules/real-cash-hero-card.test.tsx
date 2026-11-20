@@ -153,11 +153,16 @@ describe("RealCashHeroCard", () => {
     expect(screen.getByText(/850,00/)).toBeInTheDocument();
   });
 
-  it("renderiza o gatilho de explicabilidade matemática do Saldo Livre Real (Regra 33)", () => {
+  it("renderiza os gatilhos de memória de cálculo do Saldo Disponível e Saldo Livre Real (Regra 33)", () => {
     render(<RealCashHeroCard realCashData={mockRealCashData} />);
     expect(
       screen.getByRole("button", {
-        name: "Ver fórmula e explicabilidade de Saldo Livre Real (Safe-to-Spend)",
+        name: "Ver memória de cálculo de Saldo Disponível em Conta",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Ver memória de cálculo de Saldo Livre Real (Safe-to-Spend)",
       }),
     ).toBeInTheDocument();
   });

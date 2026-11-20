@@ -16,6 +16,26 @@ const updateListeners = new Set<() => void>();
 let updateAvailable = false;
 let isUpdating = false;
 let updateSWFn: ((reloadPage?: boolean) => Promise<void>) | null = null;
+const appBootTime = typeof Date !== "undefined" ? Date.now() : 0;
+const BOOT_AUTO_UPDATE_WINDOW_MS = 6000;
+
+/**
+ * Trata o anúncio de nova versão emitido pelo Service Worker.
+ * - Durante a inicialização/loading (primeiros 6s) ou com a aba oculta em segundo plano:
+ *   aplica a atualização silenciosamente e profissionalmente;
+ * - Durante o uso ativo em primeiro plano: notifica a interface (toast, menu Mais e Configurações).
+ */
+export function handleSWNeedReload(): void {
+  const isBootWindow = Date.now() - appBootTime < BOOT_AUTO_UPDATE_WINDOW_MS;
+  const isBackgroundTab = typeof document !== "undefined" && document.visibilityState === "hidden";
+
+  if (isBootWindow || isBackgroundTab) {
+    void applyPWAUpdate();
+    return;
+  }
+
+  notifyPWAUpdate();
+}
 
 /** Assina mudanças no estado "nova versão disponível" ou "atualização em andamento". */
 export function subscribePWAUpdate(listener: () => void): () => void {
@@ -293,13 +313,57 @@ export function registerPWA(): void {
     return;
   }
 
+  // Se já houver um Service Worker novo aguardando na inicialização, aplica atualização atômica no loading
+  if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+    navigator.serviceWorker
+      .getRegistration()
+      .then((reg) => {
+        if (reg?.waiting) {
+          void applyPWAUpdate();
+        } else if (reg) {
+          void reg.update();
+        }
+      })
+      .catch(() => {});
+  }
+
   updateSWFn = registerSW({
     immediate: true,
-    onNeedReload: notifyPWAUpdate,
+    onNeedReload: handleSWNeedReload,
     onRegisterError: () => {
       // SW indisponível (navegador sem suporte) — o app segue Online First sem toast.
     },
   });
+
+  // Verificação periódica a cada 30 minutos em background
+  if (typeof window !== "undefined") {
+    setInterval(() => {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistration().then((reg) => reg?.update()).catch(() => {});
+      }
+    }, 30 * 60 * 1000);
+
+    // Verificação no retorno do usuário à aba após inatividade (> 15 min)
+    let lastCheckAt = Date.now();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        const now = Date.now();
+        if (now - lastCheckAt > 15 * 60 * 1000) {
+          lastCheckAt = now;
+          if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.getRegistration().then((reg) => reg?.update()).catch(() => {});
+          }
+        }
+      }
+    });
+
+    // Verificação na reconexão de rede
+    window.addEventListener("online", () => {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.getRegistration().then((reg) => reg?.update()).catch(() => {});
+      }
+    });
+  }
 
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();

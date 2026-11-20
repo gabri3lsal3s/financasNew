@@ -97,7 +97,7 @@ export function ProfileCredentialsCard({
                   <Mail className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                   <span>Endereço de e-mail</span>
                 </label>
-                <Badge variant="positive" size="xs" className="gap-1">
+                <Badge variant="default" size="xs" className="gap-1">
                   <Check className="size-3" aria-hidden="true" />
                   <span>Verificado</span>
                 </Badge>

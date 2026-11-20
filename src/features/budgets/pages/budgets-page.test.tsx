@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -255,22 +255,29 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     expect(screen.getByRole("heading", { name: "Ajustar Orçamento" })).toBeInTheDocument();
   });
 
-  it("exibe os seletores de métrica Minha Parte e Total Bruto com Popover informativo", async () => {
+  it("exibe os seletores de métrica Minha Parte e Total Bruto com Modal informativo", async () => {
     const user = userEvent.setup();
     renderBudgetsPage();
 
     const personalBtn = screen.getByRole("button", { name: "Minha Parte" });
     const householdBtn = screen.getByRole("button", { name: "Total Bruto" });
-    const infoBtn = screen.getByRole("button", { name: "Informações sobre os modos de visualização" });
+    const infoBtn = screen.getByRole("button", {
+      name: /memória de cálculo de Modos de Visualiz/i,
+    });
 
     expect(personalBtn).toBeInTheDocument();
     expect(householdBtn).toBeInTheDocument();
     expect(infoBtn).toBeInTheDocument();
 
     await user.click(infoBtn);
-    expect(screen.getByText("Modos de Visualização do Orçamento")).toBeInTheDocument();
-    expect(screen.getByText(/Minha Parte \(Ponderado\):/)).toBeInTheDocument();
-    expect(screen.getByText(/Total Bruto \(Nominal\):/)).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Modo Ativo: Minha Parte (Ponderado)")
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Modo Alternativo: Total Bruto (Nominal)")
+    ).toBeInTheDocument();
   });
 
   it("alterna entre Minha Parte (ponderado) e Total Bruto (bruto) atualizando os valores e badges", async () => {

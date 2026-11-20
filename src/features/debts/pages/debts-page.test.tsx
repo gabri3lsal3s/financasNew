@@ -325,19 +325,12 @@ describe("DebtsPage — contas a pagar e receber (§3.4)", () => {
     expect((screen.getByRole("textbox", { name: "Valor da dívida" }) as HTMLInputElement).value).toMatch(/200,00/);
   });
 
-  it("exporta as dívidas ativas em CSV respeitando o filtro da aba", async () => {
-    const user = userEvent.setup();
+  it("renderiza o cabeçalho despoluído sem botão secundário de exportar CSV", () => {
     render(<DebtsPage />);
 
-    const exportBtn = screen.getByRole("button", { name: "Exportar CSV" });
-    await user.click(exportBtn);
-
-    expect(mockDownloadCsv).toHaveBeenCalledTimes(1);
-    const [filename, content] = mockDownloadCsv.mock.calls[0] as [string, string];
-    expect(filename).toMatch(/^contas_a_pagar_pendentes_\d{4}-\d{2}-\d{2}\.csv$/);
-    expect(content).toContain("Nome / Descrição;Tipo;Status;Valor (R$);Vencimento;Data de quitação;Observações");
-    expect(content).toContain("Conta de luz");
-    expect(content).toContain("Pendente");
+    expect(screen.queryByRole("button", { name: "Exportar CSV" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Novo contrato" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nova dívida" })).toBeInTheDocument();
   });
 
   it("exibe contratos de empréstimo e financiamento na aba Financiamentos com progresso e saldo a pagar", async () => {

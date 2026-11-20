@@ -157,3 +157,13 @@ export { VirginAccountHero } from "./virgin-account-hero";
 export type { VirginAccountHeroProps } from "./virgin-account-hero";
 export { EquationBreakdownPopover } from "./equation-breakdown-popover";
 export type { EquationBreakdownPopoverProps, EquationItem } from "./equation-breakdown-popover";
+export {
+  CalculationMemoryTrigger,
+  CalculationMemoryView,
+  CalculationMemoryModal,
+} from "./calculation-memory";
+export type {
+  CalculationMemoryTriggerProps,
+  CalculationMemoryViewProps,
+  CalculationMemoryModalProps,
+} from "./calculation-memory";
