@@ -4,6 +4,7 @@ import {
   ReportDocumentLayout,
   ReportHeader,
   ReportFooter,
+  ReportRunningHeader,
 } from "@/components/modules";
 import { Alert } from "@/components/ui";
 import { isCashAssetClass, calculateTotalCostBRL } from "@/domain/portfolio";
@@ -94,6 +95,11 @@ export function TaxFacilitatorModal({
         accountHolder={accountHolder}
       />
 
+      <ReportRunningHeader
+        title={`Facilitador de Declaração de IRPF — Ano-Base ${calendarYear}`}
+        periodLabel={`Exercício ${currentYear}`}
+      />
+
       <div className="print:hidden">
         <Alert variant="info">
           Utilize o botão de cópia rápida para preencher o campo &quot;Discriminação&quot; diretamente no programa da Receita Federal. Valores calculados pelo Preço Médio Ponderado. Cálculos de caráter estimativo e auxiliar que não substituem o trabalho de um contador habilitado nem a Declaração de Ajuste Anual.
@@ -117,6 +123,7 @@ export function TaxFacilitatorModal({
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_TAX_FACILITATOR_DISCLAIMER}
+        reportType="irpf"
         showQrCode
       />
     </ReportDocumentLayout>

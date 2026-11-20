@@ -6,6 +6,7 @@ import {
   ReportFooter,
   ReportHeader,
   ReportMonthlyMovements,
+  ReportRunningHeader,
 } from "@/components/modules/reports";
 import type { ReportClassGroup } from "@/components/modules/reports/report-class-tables";
 import { numberToCents } from "@/domain/money";
@@ -63,6 +64,11 @@ export function ExecutiveReportDocument({
         appName={appName}
         icon={TrendingUp}
         accountHolder={accountHolder}
+      />
+
+      <ReportRunningHeader
+        title="Relatório Executivo da Carteira"
+        periodLabel={periodLabel}
       />
 
       {showDiscrepancyAlert && fidelity && discrepancyPct != null ? (
@@ -164,32 +170,19 @@ export function ExecutiveReportDocument({
             ), distribuídos em{" "}
             <strong>{investmentCount} ativos{effectiveCashBRL > 0 ? " + Reserva de Caixa" : ""}</strong> e{" "}
             <strong>{classGroups.length} classes patrimoniais</strong>.
-            {pqs !== null && pqs !== undefined ? (
-              <>
-                {" "}
-                O Índice de Qualidade da Carteira (PQS ponderado) situa-se em{" "}
-                <strong className="text-foreground">{pqs.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} / 10</strong>.
-              </>
-            ) : null}{" "}
-            O saldo em reserva de liquidez é de{" "}
-            <MoneyText cents={numberToCents(effectiveCashBRL)} className="inline font-bold" />{" "}
-            e os proventos creditados na competência somam{" "}
-            <MoneyText
-              cents={numberToCents(monthDividendsBRL)}
-              className="inline font-bold text-positive-strong"
-            />
-            .
           </span>
         }
       />
 
       <ReportMonthlyMovements
+        variant="strip"
         monthBuysBRL={stmt?.monthBuysBRL ?? 0}
         monthSellsBRL={stmt?.monthSellsBRL ?? 0}
         monthDividendsBRL={monthDividendsBRL}
         monthNetContributionBRL={stmt?.monthNetContributionBRL ?? 0}
         transactionsCount={stmt?.transactionsCount}
         dividendsCount={stmt?.dividendsCount}
+        pqs={pqs}
       />
 
       <section aria-label="Detalhamento das Posições" className="flex flex-col gap-3 pt-1 print:block print:space-y-3">
@@ -199,6 +192,7 @@ export function ExecutiveReportDocument({
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_CVM_DISCLAIMER}
+        reportType="carteira"
         showQrCode
       />
     </div>

@@ -36,11 +36,18 @@ export function FinancialDreTable({
       </div>
 
       <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 bg-surface shadow-xs print:overflow-visible">
-        <table className="w-full min-w-[460px] sm:min-w-0 text-left text-xs border-collapse">
+        <table className="w-full min-w-[460px] sm:min-w-0 text-left text-xs border-collapse table-fixed">
+          <colgroup>
+            <col className={hasBrutoRef ? "w-[45%]" : "w-[60%]"} />
+            <col className={hasBrutoRef ? "w-[20%]" : "w-[25%]"} />
+            {hasBrutoRef && <col className="w-[20%]" />}
+            <col className="w-[15%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
               <th className="py-2 px-3">Linha / Estrutura Contábil</th>
               <th className="py-2 px-3 text-right">Valor Bruto (R$)</th>
+              {hasBrutoRef && <th className="py-2 px-3 text-right">Ponderado (R$)</th>}
               <th className="py-2 px-3 text-right">% Receita</th>
             </tr>
           </thead>
@@ -51,12 +58,12 @@ export function FinancialDreTable({
               </td>
               <td className="py-2 px-3 text-right num font-mono font-bold whitespace-nowrap">
                 <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" />
-                {hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto && (
-                  <span className="block text-[10px] text-muted-foreground font-normal">
-                    Ponderada: <MoneyText cents={dre.grossIncomeCents} tone="default" className="inline text-[10px]" />
-                  </span>
-                )}
               </td>
+              {hasBrutoRef && (
+                <td className="py-2 px-3 text-right num font-mono font-semibold text-foreground whitespace-nowrap">
+                  <MoneyText cents={dre.grossIncomeCents} tone="default" />
+                </td>
+              )}
               <td className="py-2 px-3 text-right num font-mono font-semibold whitespace-nowrap">100,0%</td>
             </tr>
             <tr>
@@ -65,12 +72,12 @@ export function FinancialDreTable({
               </td>
               <td className="py-2 px-3 text-right num font-mono font-semibold whitespace-nowrap">
                 <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" />
-                {hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto && (
-                  <span className="block text-[10px] text-muted-foreground font-normal">
-                    Ponderada: <MoneyText cents={dre.totalExpensesCents} tone="default" className="inline text-[10px]" />
-                  </span>
-                )}
               </td>
+              {hasBrutoRef && (
+                <td className="py-2 px-3 text-right num font-mono font-semibold text-foreground whitespace-nowrap">
+                  <MoneyText cents={dre.totalExpensesCents} tone="default" />
+                </td>
+              )}
               <td className="py-2 px-3 text-right num font-mono text-muted-foreground whitespace-nowrap">
                 {effectiveGrossIncomeBruto > 0
                   ? `${formatPercent((effectiveTotalExpensesBruto / effectiveGrossIncomeBruto) * 100)}%`
@@ -84,12 +91,12 @@ export function FinancialDreTable({
                   cents={effectiveGrossSavingsBruto}
                   tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
                 />
-                {hasBrutoRef && dre.operationalSavingsCents !== effectiveGrossSavingsBruto && (
-                  <span className="block text-[10px] text-muted-foreground font-normal">
-                    Ponderado: <MoneyText cents={dre.operationalSavingsCents} tone="default" className="inline text-[10px]" />
-                  </span>
-                )}
               </td>
+              {hasBrutoRef && (
+                <td className="py-2 px-3 text-right num font-mono font-bold text-foreground whitespace-nowrap">
+                  <MoneyText cents={dre.operationalSavingsCents} tone="default" />
+                </td>
+              )}
               <td className="py-2 px-3 text-right num font-mono whitespace-nowrap">
                 {formatPercent(effectiveGrossSavingsRatePct)}%
               </td>
@@ -98,21 +105,42 @@ export function FinancialDreTable({
               <td className="py-2 px-3 pl-6 text-muted-foreground">
                 (-) Aportes &amp; Investimentos Direcionados
               </td>
-              <td className="py-2 px-3 text-right num font-mono whitespace-nowrap">
-                <MoneyText cents={dre.investedAporteCents} tone="default" />
-              </td>
               <td className="py-2 px-3 text-right num font-mono text-muted-foreground whitespace-nowrap">
-                {effectiveGrossIncomeBruto > 0
+                {dre.investedAporteCents > 0 ? (
+                  <MoneyText cents={dre.investedAporteCents} tone="default" />
+                ) : (
+                  "—"
+                )}
+              </td>
+              {hasBrutoRef && (
+                <td className="py-2 px-3 text-right num font-mono text-muted-foreground whitespace-nowrap">
+                  {dre.investedAporteCents > 0 ? (
+                    <MoneyText cents={dre.investedAporteCents} tone="default" />
+                  ) : (
+                    "—"
+                  )}
+                </td>
+              )}
+              <td className="py-2 px-3 text-right num font-mono text-muted-foreground whitespace-nowrap">
+                {effectiveGrossIncomeBruto > 0 && dre.investedAporteCents > 0
                   ? `${formatPercent((dre.investedAporteCents / effectiveGrossIncomeBruto) * 100)}%`
                   : "—"}
               </td>
             </tr>
-            <tr className="bg-primary/5 font-bold border-t border-border">
-              <td className="py-2 px-3 text-primary-strong">(=) Fluxo de Caixa Líquido Final</td>
-              <td className="py-2 px-3 text-right num font-mono text-sm font-bold whitespace-nowrap">
-                <MoneyText cents={netCashFlow} tone={netCashFlow >= 0 ? "positive" : "negative"} />
+            <tr className="border-t-2 border-border/80 font-bold bg-muted/30">
+              <td className="py-2.5 px-3 text-foreground font-bold">(=) Saldo Líquido de Caixa Final</td>
+              <td className="py-2.5 px-3 text-right num font-mono font-bold whitespace-nowrap text-sm">
+                <MoneyText
+                  cents={netCashFlow}
+                  tone={netCashFlow >= 0 ? "positive" : "negative"}
+                />
               </td>
-              <td className="py-2 px-3 text-right num font-mono text-primary-strong whitespace-nowrap">
+              {hasBrutoRef && (
+                <td className="py-2.5 px-3 text-right num font-mono font-bold whitespace-nowrap text-sm text-foreground">
+                  <MoneyText cents={dre.netCashFlowCents} tone="default" />
+                </td>
+              )}
+              <td className="py-2.5 px-3 text-right num font-mono font-bold whitespace-nowrap text-xs">
                 {effectiveGrossIncomeBruto > 0
                   ? `${formatPercent((netCashFlow / effectiveGrossIncomeBruto) * 100)}%`
                   : "—"}

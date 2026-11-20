@@ -177,18 +177,19 @@ export function Modal({
   const [hasScrolled, setHasScrolled] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
+  const { resetDrag, dragHandlers, dragStyle } = useBottomSheetDrag({
+    scrollRef,
+    onClose: () => handleOpenChange(false),
+  });
+
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (!open) {
       setShowDiscardConfirm(false);
+      resetDrag();
     }
   }
-
-  const { dragY, isDragging, resetDrag, dragHandlers } = useBottomSheetDrag({
-    scrollRef,
-    onClose: () => handleOpenChange(false),
-  });
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
@@ -196,10 +197,10 @@ export function Modal({
         setShowDiscardConfirm(true);
         return;
       }
-      resetDrag();
       setIsScrolled(false);
       setHasScrolled(false);
     } else {
+      resetDrag();
       setIsScrolled(false);
       setHasScrolled(false);
       if (scrollRef.current) scrollRef.current.scrollTop = 0;
@@ -247,13 +248,6 @@ export function Modal({
       <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange} modal={modal}>
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onMouseUp={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => e.stopPropagation()}
             className={cn(
               "fixed inset-0 bg-overlay backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200",
               z,
@@ -263,21 +257,11 @@ export function Modal({
             data-tour={resolvedDataTour}
             onPointerDownOutside={preventPortalOutsideDismiss}
             onInteractOutside={preventPortalOutsideDismiss}
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onMouseUp={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => e.stopPropagation()}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => e.preventDefault()}
-            style={{
-              transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-              transition: isDragging ? "none" : dragY > 0 ? "transform 200ms cubic-bezier(0.16, 1, 0.3, 1)" : undefined,
-            }}
+            style={dragStyle}
             className={cn(
-              "fixed inset-x-0 bottom-0 w-full max-h-[calc(92dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] flex flex-col overflow-hidden rounded-t-2xl border border-primary/25 bg-surface shadow-2xl focus:outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 animate-sheet-in",
+              "fixed inset-x-0 bottom-0 w-full max-h-[calc(92dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] flex flex-col overflow-hidden rounded-t-2xl border border-primary/25 bg-surface shadow-2xl focus:outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-sheet-in data-[state=closed]:animate-sheet-out duration-200",
               "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:max-h-[calc(100dvh-3rem)] md:rounded-2xl md:-translate-x-1/2 md:-translate-y-1/2 md:animate-none md:data-[state=open]:animate-in md:data-[state=closed]:animate-out md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95 md:duration-200",
               SIZE_MAX_W[size],
               z,
@@ -300,7 +284,7 @@ export function Modal({
               ref={scrollRef}
               onScroll={handleScroll}
               className={cn(
-                "flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 sm:px-6",
+                "flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-4 sm:px-6",
                 resolvedFooter
                   ? "pb-3 sm:pb-4"
                   : "pb-[calc(1.25rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] sm:pb-6",

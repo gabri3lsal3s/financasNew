@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import { Landmark } from "lucide-react";
-import { ReportDocumentLayout, ReportFooter, ReportHeader } from "@/components/modules";
+import {
+  ReportDocumentLayout,
+  ReportFooter,
+  ReportHeader,
+  ReportRunningHeader,
+} from "@/components/modules";
 import {
   buildTearSheetModel,
   type AllocationAnalysisResult,
@@ -150,6 +155,11 @@ export function WealthTearSheetModal({
         accountHolder={accountHolder}
       />
 
+      <ReportRunningHeader
+        title="Dossiê Executivo da Posição Vigente"
+        periodLabel={periodLabel}
+      />
+
       <TearSheetExecutiveNarrative
         model={model}
         totalBRL={totalBRL}
@@ -191,6 +201,7 @@ export function WealthTearSheetModal({
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER}
+        reportType="dossier"
         showQrCode
       />
     </ReportDocumentLayout>

@@ -22,19 +22,17 @@ export function FinancialCloseSummary({
   effectiveGrossSavingsRatePct,
   hasBrutoRef,
 }: FinancialCloseSummaryProps) {
-  const netCashFlow = effectiveGrossSavingsBruto - dre.investedAporteCents;
-
   return (
     <ReportExecutiveSummary
       title="SÍNTESE DO FLUXO CONTÁBIL & RESULTADO"
       items={[
         {
           label: "Receitas Totais",
-          value: <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" variant="hero" animated className="text-base sm:text-lg font-bold" />,
+          value: <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" className="text-base sm:text-lg font-bold" />,
           subtext:
             hasBrutoRef && dre.grossIncomeCents !== effectiveGrossIncomeBruto ? (
               <span>
-                Ponderada: <MoneyText cents={dre.grossIncomeCents} className="inline text-[10px]" />
+                Ponderado: <MoneyText cents={dre.grossIncomeCents} className="inline text-[10px]" />
               </span>
             ) : (
               "Entradas no Período"
@@ -42,11 +40,11 @@ export function FinancialCloseSummary({
         },
         {
           label: "Despesas Totais",
-          value: <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" variant="hero" animated className="text-base sm:text-lg font-bold" />,
+          value: <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" className="text-base sm:text-lg font-bold" />,
           subtext:
             hasBrutoRef && dre.totalExpensesCents !== effectiveTotalExpensesBruto ? (
               <span>
-                Ponderada: <MoneyText cents={dre.totalExpensesCents} className="inline text-[10px]" />
+                Ponderado: <MoneyText cents={dre.totalExpensesCents} className="inline text-[10px]" />
               </span>
             ) : (
               "Saídas no Período"
@@ -58,12 +56,10 @@ export function FinancialCloseSummary({
             <MoneyText
               cents={effectiveGrossSavingsBruto}
               tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
-              variant="hero"
-              animated
               className="text-base sm:text-lg font-bold"
             />
           ),
-          subtext: effectiveGrossSavingsBruto >= 0 ? "Superávit" : "Déficit",
+          subtext: effectiveGrossSavingsBruto >= 0 ? "Superávit do Período" : "Déficit do Período",
         },
         {
           label: "Taxa de Poupança",
@@ -89,19 +85,17 @@ export function FinancialCloseSummary({
               className="inline font-bold"
             />
           </strong>{" "}
-          (taxa de poupança de <strong>{formatPercent(effectiveGrossSavingsRatePct)}%</strong>). Foram direcionados{" "}
-          <strong>
-            <MoneyText cents={dre.investedAporteCents} className="inline font-bold" />
-          </strong>{" "}
-          para investimentos, resultando em variação líquida de caixa de{" "}
-          <strong>
-            <MoneyText
-              cents={netCashFlow}
-              tone={netCashFlow >= 0 ? "positive" : "negative"}
-              className="inline font-bold"
-            />
-          </strong>
-          .
+          (taxa de poupança líquida de{" "}
+          <strong className="text-foreground">{formatPercent(effectiveGrossSavingsRatePct)}%</strong>
+          {dre.investedAporteCents > 0 && (
+            <>
+              , com aportes patrimoniais direcionados de{" "}
+              <strong>
+                <MoneyText cents={dre.investedAporteCents} tone="default" className="inline font-bold" />
+              </strong>
+            </>
+          )}
+          ).
         </span>
       }
     />

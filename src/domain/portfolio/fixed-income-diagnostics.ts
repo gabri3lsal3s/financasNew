@@ -10,7 +10,7 @@
  */
 
 import type { FixedIncomeIssuerType, FixedIncomeMetadata, FixedIncomeRateType } from "@/types";
-import { isFixedIncomeClass } from "./valuation";
+import { isFixedIncomeClass, isTesouroAsset } from "./valuation";
 import { parseIssuerFromTicker } from "./tickers-catalog";
 
 export interface FixedIncomePositionInput {
@@ -157,7 +157,11 @@ export function calculateFixedIncomeDiagnostics(
   refDateISO: string = new Date().toISOString().slice(0, 10),
 ): FixedIncomeDiagnosticResult {
   const fiRows = rows.filter(
-    (r) => !r.isCash && (isFixedIncomeClass(r.assetClass) || r.fixedIncomeMetadata !== undefined),
+    (r) =>
+      !r.isCash &&
+      (isFixedIncomeClass(r.assetClass) ||
+        isTesouroAsset(r.ticker, r.assetClass) ||
+        r.fixedIncomeMetadata !== undefined),
   );
 
   const totalFixedIncomeBRL = Math.round(fiRows.reduce((acc, r) => acc + Math.max(0, r.valueBRL), 0) * 100) / 100;

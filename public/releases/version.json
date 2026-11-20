@@ -7,10 +7,10 @@
   "sha256": "78353b80f2e7afc693e1efa4265078f9ec78a4ad2de9304f7f75cc0321cfbe36",
   "fileSizeBytes": 12298914,
   "changelog": [
-    "Axir v3.14.0 (Build 90): Padronizacao Visual, Acessibilidade & Ergonomia",
-    "Conformidade estrita de acessibilidade WCAG 2.4.7 AA com aneis de foco em 100% dos controles e links",
-    "Decomposicao arquitetural completa: zero arquivos monoliticos (teto rigoroso de 250 linhas em UI)",
-    "Unificacao de tokens de Z-Index e trinca canonica de superficies (border-border/80 bg-surface shadow-xs)",
-    "Laboratorio Forense de Auditoria Quantitativa com 39 invariantes e 8 Golden Journeys homologadas"
+    "Axir v3.14.0 (Build 91): Refinamento de Ergonomia Mobile & Rolagem de Modais",
+    "Desbloqueio definitivo da rolagem touch vertical interna em todos os modais no mobile",
+    "Alca do Bottom Sheet ampliada e ergonomica com rastreamento 1:1 direto do dedo",
+    "Animacao continua de saida (sheet-out) e retorno por mola (spring-back) sem solavancos",
+    "Conformidade estrita de design system mobile e testes automatizados de física tátil"
   ]
 }

@@ -27,7 +27,7 @@ export function PerformanceBenchmarksPanel({
 }: PerformanceBenchmarksPanelProps) {
   return (
     <>
-      <div className="flex flex-col gap-2 pt-1">
+      <div className="flex flex-col gap-2 pt-1 break-inside-avoid">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
           <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-foreground uppercase tracking-wider">
             <Compass className="size-3.5 text-muted-foreground" aria-hidden="true" />
@@ -50,55 +50,78 @@ export function PerformanceBenchmarksPanel({
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 print:grid-cols-4 gap-2.5">
-          {benchmarkComparison.items.map((bm) => (
-            <div
-              key={bm.key}
-              className="rounded-lg border border-border/80 bg-surface p-3 flex flex-col justify-between gap-1.5 shadow-xs"
-            >
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[11px] font-bold text-foreground line-clamp-2 break-words">{bm.name}</span>
-                {bm.pctOfBenchmark !== null ? (
-                  <Badge
-                    variant={bm.status === "outperforming" ? "positive" : "muted"}
-                    size="xs"
-                    className="font-mono font-bold shrink-0"
+        {/* Tabela Institucional de Benchmarks de 5 Colunas */}
+        <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-lg border border-border/80 print:overflow-visible">
+          <table className="w-full text-left text-xs border-collapse table-fixed">
+            <colgroup>
+              <col style={{ width: "28%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "18%" }} />
+            </colgroup>
+            <thead>
+              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
+                <th className="py-1 px-2.5">Benchmark</th>
+                <th className="py-1 px-2 text-right">Acumulado ({seriesLength}M)</th>
+                <th className="py-1 px-2 text-right">Spread (p.p.)</th>
+                <th className="py-1 px-2 text-right">% do Índice</th>
+                <th className="py-1 px-2 text-right">Últimos 12M</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/60">
+              {benchmarkComparison.items.map((bm) => (
+                <tr key={bm.key} className="break-inside-avoid even:bg-muted/10">
+                  <td className="py-1.5 px-2.5">
+                    <span className="font-bold text-foreground text-[10.5px] block">{bm.name}</span>
+                    <span className="text-[9px] text-muted-foreground block truncate">{bm.description}</span>
+                  </td>
+                  <td className="py-1.5 px-2 text-right font-mono num tabular-nums text-foreground text-[10.5px]">
+                    {formatPercent(bm.benchmarkRatePct)}%
+                  </td>
+                  <td
+                    className={cn(
+                      "py-1.5 px-2 text-right font-mono font-bold num tabular-nums text-[10.5px]",
+                      bm.alphaPct >= 0 ? "text-positive-strong" : "text-negative-strong",
+                    )}
                   >
-                    {formatPercent(bm.pctOfBenchmark)}%
-                  </Badge>
-                ) : null}
-              </div>
-
-              <div className="flex items-baseline justify-between gap-1">
-                <span className="text-[11px] font-mono text-muted-foreground num tabular-nums whitespace-nowrap">
-                  {formatPercent(bm.benchmarkRatePct)}%
-                </span>
-                <span
-                  className={cn(
-                    "text-[11px] font-mono font-bold num tabular-nums whitespace-nowrap",
-                    bm.alphaPct >= 0 ? "text-positive-strong" : "text-negative-strong",
-                  )}
-                >
-                  {bm.alphaPct >= 0 ? `+${formatPercent(bm.alphaPct)}` : formatPercent(bm.alphaPct)} p.p.
-                </span>
-              </div>
-
-              <p className="text-[10px] text-muted-foreground font-mono leading-tight line-clamp-2 break-words m-0">
-                {bm.sub12m ? (
-                  <span>
-                    12M: {formatSignedPct(bm.sub12m.portfolio12mRatePct)} vs {formatPercent(bm.sub12m.benchmark12mRatePct)}%
-                    {bm.sub12m.pctOf12mBenchmark !== null ? ` (${formatPercent(bm.sub12m.pctOf12mBenchmark)}%)` : ""}
-                  </span>
-                ) : (
-                  bm.description
-                )}
-              </p>
-            </div>
-          ))}
+                    {bm.alphaPct >= 0 ? `+${formatPercent(bm.alphaPct)}` : formatPercent(bm.alphaPct)} p.p.
+                  </td>
+                  <td className="py-1.5 px-2 text-right">
+                    {bm.pctOfBenchmark !== null ? (
+                      <Badge
+                        variant={bm.status === "outperforming" ? "positive" : "muted"}
+                        size="xs"
+                        className="font-mono font-bold"
+                      >
+                        {formatPercent(bm.pctOfBenchmark)}%
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground font-mono text-[10px]">—</span>
+                    )}
+                  </td>
+                  <td className="py-1.5 px-2 text-right font-mono num text-[10px] text-muted-foreground">
+                    {bm.sub12m ? (
+                      <span>
+                        {formatPercent(bm.sub12m.benchmark12mRatePct)}%
+                        {bm.sub12m.pctOf12mBenchmark !== null && (
+                          <span className="ml-1 text-[9px] font-bold text-foreground">
+                            ({formatPercent(bm.sub12m.pctOf12mBenchmark)}%)
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 pt-1">
+      <div className="flex flex-col gap-2 pt-1 break-inside-avoid">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
           <div className="flex items-center gap-1.5 text-[10px] font-bold text-foreground uppercase tracking-wider">
             <ShieldCheck className="size-3.5 text-muted-foreground" aria-hidden="true" />
@@ -107,10 +130,11 @@ export function PerformanceBenchmarksPanel({
           <span className="text-[10px] text-muted-foreground font-mono">Padrão CFA &amp; ANBIMA</span>
         </div>
 
+        {/* KPI Strip Institucional de 4 Colunas */}
         <div className="grid grid-cols-2 sm:grid-cols-4 print:grid-cols-4 gap-2.5">
-          <div className="rounded-lg border border-border/80 bg-surface p-3 flex flex-col justify-between gap-1 shadow-xs">
+          <div className="rounded-lg border border-border/80 bg-surface p-2.5 flex flex-col justify-between gap-1 shadow-xs">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[11px] font-bold text-foreground">Índice Sharpe</span>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Índice Sharpe</span>
               <Gauge className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
             </div>
             <div className="flex items-baseline gap-1.5 flex-wrap">
@@ -135,51 +159,51 @@ export function PerformanceBenchmarksPanel({
                 {riskSummary.sharpeLabel}
               </span>
             </div>
-            <p className="text-[10px] text-muted-foreground leading-tight m-0">
-              Eficiência do retorno excedente sobre o CDI
+            <p className="text-[9px] text-muted-foreground leading-tight m-0">
+              Excedente sobre CDI / Volatilidade
             </p>
           </div>
 
-          <div className="rounded-lg border border-border/80 bg-surface p-3 flex flex-col justify-between gap-1 shadow-xs">
+          <div className="rounded-lg border border-border/80 bg-surface p-2.5 flex flex-col justify-between gap-1 shadow-xs">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[11px] font-bold text-foreground">Max Drawdown</span>
-              <span className="text-[10px] font-mono text-muted-foreground">Pico-Fundo</span>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Max Drawdown</span>
+              <span className="text-[9px] font-mono text-muted-foreground">Pico-Fundo</span>
             </div>
             <span className="text-sm font-mono font-bold text-negative-strong num tabular-nums">
               {formatSignedPct(riskSummary.maxDrawdown.maxDrawdownPct)}
             </span>
-            <p className="text-[10px] text-muted-foreground leading-tight m-0">
-              Maior retração histórica suportada no período (TWR)
+            <p className="text-[9px] text-muted-foreground leading-tight m-0">
+              Maior retração histórica suportada (TWR)
             </p>
           </div>
 
-          <div className="rounded-lg border border-border/80 bg-surface p-3 flex flex-col justify-between gap-1 shadow-xs">
+          <div className="rounded-lg border border-border/80 bg-surface p-2.5 flex flex-col justify-between gap-1 shadow-xs">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[11px] font-bold text-foreground">Volatilidade (σ)</span>
-              <span className="text-[10px] font-mono text-muted-foreground">Anualizada</span>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Volatilidade (σ)</span>
+              <span className="text-[9px] font-mono text-muted-foreground">Anualizada</span>
             </div>
             <span className="text-sm font-mono font-bold text-foreground num tabular-nums">
               {formatPercent(riskSummary.volatility.annualizedStdDevPct)}% a.a.
             </span>
-            <p className="text-[10px] text-muted-foreground leading-tight m-0">
-              Desvio padrão amostral ({formatPercent(riskSummary.volatility.monthlyStdDevPct)}% a.m.)
+            <p className="text-[9px] text-muted-foreground leading-tight m-0">
+              Desvio amostral ({formatPercent(riskSummary.volatility.monthlyStdDevPct)}% a.m.)
             </p>
           </div>
 
-          <div className="rounded-lg border border-border/80 bg-surface p-3 flex flex-col justify-between gap-1 shadow-xs">
+          <div className="rounded-lg border border-border/80 bg-surface p-2.5 flex flex-col justify-between gap-1 shadow-xs">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[11px] font-bold text-foreground">Consistência</span>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Consistência</span>
               <TrendingUp className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
             </div>
             <div className="flex items-baseline justify-between gap-1">
               <span className="text-sm font-mono font-bold text-positive-strong num tabular-nums">
                 {formatPercent(riskSummary.consistency.winRatePct)}%
               </span>
-              <span className="text-[10px] font-mono text-muted-foreground tabular-nums">
-                {riskSummary.consistency.positiveMonths}/{riskSummary.consistency.totalMonths} meses
+              <span className="text-[9px] font-mono text-muted-foreground tabular-nums">
+                {riskSummary.consistency.positiveMonths}/{riskSummary.consistency.totalMonths}m
               </span>
             </div>
-            <div className="flex items-center justify-between text-[10px] font-mono pt-0.5 tabular-nums">
+            <div className="flex items-center justify-between text-[9px] font-mono pt-0.5 tabular-nums">
               <span className="text-positive-strong font-bold">
                 Max: {formatSignedPct(riskSummary.consistency.bestMonthPct)}
               </span>

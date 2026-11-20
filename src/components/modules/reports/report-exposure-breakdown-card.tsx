@@ -174,20 +174,44 @@ export function ReportExposureBreakdownCard({
       ) : null}
 
       {mode === "print_all" && views.length > 1 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:grid-cols-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 print:grid-cols-2">
           {views.map((view) => {
             const ViewIcon = view.icon;
+            const isSingleFull = view.items.length === 1 && view.items[0] && view.items[0].pct >= 99.9;
             return (
-              <div key={view.id} className="flex flex-col gap-2.5 rounded-xl border border-border/80 p-3 bg-surface-raised print:bg-surface print:border-border">
-                <div className="flex items-center gap-1.5 pb-1.5 border-b border-border/80">
-                  <ViewIcon className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
-                  <span className="text-xs font-semibold text-foreground">{view.printTitle}</span>
+              <div key={view.id} className="flex flex-col gap-2 rounded-xl border border-border/80 p-3 bg-surface-raised print:bg-surface print:border-border">
+                <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-border/70">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <ViewIcon className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+                    <span className="text-xs font-semibold text-foreground truncate">{view.printTitle}</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-mono">
+                    <MoneyText cents={totalCents} tone="default" className="font-bold text-foreground" />
+                  </span>
                 </div>
-                <div className="flex flex-col items-center gap-2.5">
-                  <ReportDonutChart segments={toDonutSegments(view.items)} centerLabel={view.printCenterLabel}
-                    centerValue={<MoneyText cents={totalCents} tone="default" className="text-[11px] font-bold" />} size={112} strokeWidth={10} showLegend={false} />
-                  <ExposureBreakdownTable items={view.items} columnLabel={view.columnLabel} unitLabel={itemUnitLabel} compact />
-                </div>
+                {isSingleFull && view.items[0] ? (
+                  <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-xs flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: resolveItemColor(view.items[0]) }} />
+                      <span className="font-semibold text-foreground">100% {view.items[0].label}</span>
+                    </div>
+                    <MoneyText cents={numberToCents(view.items[0].valueBRL)} className="font-bold font-mono text-foreground" />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <div className="w-full bg-muted/30 rounded-md h-2 overflow-hidden flex border border-border/60">
+                      {view.items.map((item) => (
+                        <div
+                          key={item.key}
+                          style={{ width: `${item.pct}%`, backgroundColor: resolveItemColor(item) }}
+                          className="h-full"
+                          title={`${item.label}: ${formatPercent(item.pct)}%`}
+                        />
+                      ))}
+                    </div>
+                    <ExposureBreakdownTable items={view.items} columnLabel={view.columnLabel} unitLabel={itemUnitLabel} compact />
+                  </div>
+                )}
               </div>
             );
           })}

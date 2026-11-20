@@ -1,9 +1,10 @@
+import { useMemo } from "react";
 import { Scale } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
+  ReportRunningHeader,
   ReportExecutiveSummary,
-  ReportDonutChart,
   ReportFooter,
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
@@ -25,6 +26,7 @@ export interface ConsolidatedWealthModalProps {
 /**
  * Balanço Patrimonial 360° & DRE Pessoal Integrada (F42/F44).
  * Visão holística de Ativos, Passivos, Patrimônio Líquido Real e Alavancagem.
+ * Projetado para ajuste em 1 página A4 com aproveitamento de 2 colunas.
  */
 export function ConsolidatedWealthModal({
   open,
@@ -37,32 +39,36 @@ export function ConsolidatedWealthModal({
   const totalAssets = balanceSheet.totalAssetsBRL;
   const pctOfAssets = (v: number) => (totalAssets > 0 ? (v / totalAssets) * 100 : 0);
 
-  const assetSegments = [
-    {
-      key: "investments",
-      label: "Investimentos em Custódia",
-      value: balanceSheet.totalInvestmentsBRL,
-      pct: pctOfAssets(balanceSheet.totalInvestmentsBRL),
-      color: "hsl(var(--primary-strong))",
-      formattedValue: <MoneyText cents={numberToCents(balanceSheet.totalInvestmentsBRL)} />,
-    },
-    {
-      key: "cash",
-      label: "Reserva de Caixa (Liquidez)",
-      value: balanceSheet.cashBalanceBRL,
-      pct: pctOfAssets(balanceSheet.cashBalanceBRL),
-      color: "hsl(var(--cat-7))",
-      formattedValue: <MoneyText cents={numberToCents(balanceSheet.cashBalanceBRL)} />,
-    },
-    {
-      key: "receivables",
-      label: "Contas a Receber",
-      value: balanceSheet.receivablesBRL,
-      pct: pctOfAssets(balanceSheet.receivablesBRL),
-      color: "hsl(var(--portfolio))",
-      formattedValue: <MoneyText cents={numberToCents(balanceSheet.receivablesBRL)} />,
-    },
-  ];
+  const assetSegments = useMemo(
+    () => [
+      {
+        key: "investments",
+        label: "Investimentos em Custódia",
+        value: balanceSheet.totalInvestmentsBRL,
+        pct: pctOfAssets(balanceSheet.totalInvestmentsBRL),
+        color: "hsl(var(--primary-strong))",
+        formattedValue: <MoneyText cents={numberToCents(balanceSheet.totalInvestmentsBRL)} />,
+      },
+      {
+        key: "cash",
+        label: "Reserva de Caixa (Liquidez)",
+        value: balanceSheet.cashBalanceBRL,
+        pct: pctOfAssets(balanceSheet.cashBalanceBRL),
+        color: "hsl(var(--cat-7))",
+        formattedValue: <MoneyText cents={numberToCents(balanceSheet.cashBalanceBRL)} />,
+      },
+      {
+        key: "receivables",
+        label: "Contas a Receber",
+        value: balanceSheet.receivablesBRL,
+        pct: pctOfAssets(balanceSheet.receivablesBRL),
+        color: "hsl(var(--portfolio))",
+        formattedValue: <MoneyText cents={numberToCents(balanceSheet.receivablesBRL)} />,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [totalAssets, balanceSheet.totalInvestmentsBRL, balanceSheet.cashBalanceBRL, balanceSheet.receivablesBRL],
+  );
 
   return (
     <ReportDocumentLayout
@@ -77,6 +83,11 @@ export function ConsolidatedWealthModal({
         appName={appName}
         icon={Scale}
         accountHolder={accountHolder}
+      />
+
+      <ReportRunningHeader
+        title="Balanço Patrimonial 360°"
+        periodLabel={periodLabel}
       />
 
       <ReportExecutiveSummary
@@ -103,40 +114,19 @@ export function ConsolidatedWealthModal({
             subtext: "Dívida / Ativos",
           },
         ]}
-        narrative={
-          <span>
-            O patrimônio líquido consolidado totaliza{" "}
-            <strong>
-              <MoneyText cents={numberToCents(balanceSheet.netWorthBRL)} tone="portfolio" className="inline font-bold" />
-            </strong>
-            , composto por{" "}
-            <strong>
-              <MoneyText cents={numberToCents(balanceSheet.totalAssetsBRL)} tone="positive" className="inline font-bold" />
-            </strong>{" "}
-            em ativos totais (investimentos em custódia, reserva de liquidez e direitos a receber) e{" "}
-            <strong>
-              <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="inline font-bold" />
-            </strong>{" "}
-            em passivos exigíveis, resultando em um grau de alavancagem de{" "}
-            <strong>{formatPercent(balanceSheet.debtToAssetRatioPct)}%</strong> dos ativos.
-          </span>
-        }
       />
 
-      {totalAssets > 0 && (
-        <ReportDonutChart
-          title="Composição dos Ativos Patrimoniais"
-          segments={assetSegments}
-          centerLabel="Ativos"
-          centerValue={<MoneyText cents={numberToCents(totalAssets)} />}
-          size={136}
-          strokeWidth={12}
-        />
-      )}
+      <ConsolidatedBalanceSection
+        balanceSheet={balanceSheet}
+        assetSegments={assetSegments}
+      />
 
-      <ConsolidatedBalanceSection balanceSheet={balanceSheet} />
-
-      <ReportFooter accountHolder={accountHolder} disclaimer={OFFICIAL_CVM_DISCLAIMER} showQrCode />
+      <ReportFooter
+        accountHolder={accountHolder}
+        disclaimer={OFFICIAL_CVM_DISCLAIMER}
+        reportType="balance"
+        showQrCode
+      />
     </ReportDocumentLayout>
   );
 }

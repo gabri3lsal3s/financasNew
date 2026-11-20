@@ -4,6 +4,9 @@ import { numberToCents } from "@/domain/money";
 import {
   calculateFixedIncomeDiagnostics,
   calculateFixedIncomeExposure,
+  isCashAssetClass,
+  isFixedIncomeClass,
+  isTesouroAsset,
   type FixedIncomePositionInput,
   type PositionLikeItem,
 } from "@/domain/portfolio";
@@ -64,21 +67,32 @@ export function ReportFixedIncomeBreakdownCard({
       metadataMap.set(a.ticker.trim().toUpperCase(), a);
     }
 
-    const inputRows: FixedIncomePositionInput[] = positions.map((p) => {
-      const meta = (p.assetId ? metadataMap.get(p.assetId) : null) ?? metadataMap.get(p.ticker.trim().toUpperCase());
-      return {
-        assetId: p.assetId ?? p.ticker,
-        ticker: p.ticker,
-        name: meta?.notes ?? p.ticker,
-        assetClass: p.assetClass ?? meta?.asset_class ?? null,
-        valueBRL: p.valueBRL,
-        maturityDate: meta?.fixed_income_metadata?.maturity_date,
-        fixedIncomeMetadata: meta?.fixed_income_metadata,
-      };
-    });
+    const inputRows: FixedIncomePositionInput[] = positions
+      .filter((p) => {
+        const meta = (p.assetId ? metadataMap.get(p.assetId) : null) ?? metadataMap.get(p.ticker.trim().toUpperCase());
+        const assetClass = p.assetClass ?? meta?.asset_class ?? null;
+        return (
+          !isCashAssetClass(assetClass) &&
+          (isFixedIncomeClass(assetClass) ||
+            isTesouroAsset(p.ticker, assetClass) ||
+            meta?.fixed_income_metadata !== undefined)
+        );
+      })
+      .map((p) => {
+        const meta = (p.assetId ? metadataMap.get(p.assetId) : null) ?? metadataMap.get(p.ticker.trim().toUpperCase());
+        return {
+          assetId: p.assetId ?? p.ticker,
+          ticker: p.ticker,
+          name: meta?.notes ?? p.ticker,
+          assetClass: p.assetClass ?? meta?.asset_class ?? null,
+          valueBRL: p.valueBRL,
+          maturityDate: meta?.fixed_income_metadata?.maturity_date,
+          fixedIncomeMetadata: meta?.fixed_income_metadata,
+        };
+      });
 
-    return calculateFixedIncomeDiagnostics(inputRows);
-  }, [positions, assetsMetadata]);
+    return calculateFixedIncomeDiagnostics(inputRows, exposure.totalValueBRL);
+  }, [positions, assetsMetadata, exposure.totalValueBRL]);
 
   const views = useMemo<ExposureBreakdownView[]>(
     () => [

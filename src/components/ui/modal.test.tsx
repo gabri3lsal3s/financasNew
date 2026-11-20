@@ -570,6 +570,77 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
       expect(screen.queryByText("Descartar alterações?")).not.toBeInTheDocument();
     });
   });
+
+  describe("Ergonomia tátil, rolagem interna e física suave do Bottom Sheet mobile", () => {
+    it("inclui classes de animação de entrada e saída mobile e suporte a touch-pan-y no corpo rolável", () => {
+      render(
+        <Modal open onOpenChange={vi.fn()} title="Visualização de Detalhes">
+          <p>Conteúdo extenso para rolagem</p>
+        </Modal>,
+      );
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.className).toContain("data-[state=open]:animate-sheet-in");
+      expect(dialog.className).toContain("data-[state=closed]:animate-sheet-out");
+
+      const scrollBody = screen.getByText("Conteúdo extenso para rolagem").parentElement;
+      expect(scrollBody?.className).toContain("touch-pan-y");
+      expect(scrollBody?.className).toContain("overflow-y-auto");
+    });
+
+    it("aplica efeito de mola (spring-back) com transição suave ao soltar a alça abaixo do threshold", () => {
+      render(
+        <Modal open onOpenChange={vi.fn()} title="Visualização de Detalhes">
+          <p>Conteúdo</p>
+        </Modal>,
+      );
+      const dialog = screen.getByRole("dialog");
+      const handle = screen.getByTestId("modal-sheet-handle");
+
+      fireEvent.pointerDown(handle, {
+        pointerId: 1,
+        pointerType: "touch",
+        clientY: 100,
+        clientX: 50,
+        isPrimary: true,
+      });
+      // Arrastar 40px para baixo (abaixo de 72px)
+      fireEvent.pointerMove(handle, { pointerId: 1, pointerType: "touch", clientY: 140, clientX: 50 });
+      expect(dialog.style.transform).toBe("translateY(40px)");
+      expect(dialog.style.transition).toBe("none");
+
+      // Ao soltar, deve animar de volta para 0px com cubic-bezier
+      fireEvent.pointerUp(handle, { pointerId: 1, pointerType: "touch", clientY: 140, clientX: 50 });
+      expect(dialog.style.transform).toBe("translateY(0px)");
+      expect(dialog.style.transition).toContain("cubic-bezier");
+    });
+
+    it("mantém a posição de arrasto em --sheet-drag-y para continuidade da animação ao fechar", () => {
+      const onOpenChange = vi.fn();
+      render(
+        <Modal open onOpenChange={onOpenChange} title="Visualização de Detalhes">
+          <p>Conteúdo</p>
+        </Modal>,
+      );
+      const dialog = screen.getByRole("dialog");
+      const handle = screen.getByTestId("modal-sheet-handle");
+
+      fireEvent.pointerDown(handle, {
+        pointerId: 1,
+        pointerType: "touch",
+        clientY: 100,
+        clientX: 50,
+        isPrimary: true,
+      });
+      // Arrastar 80px para baixo (acima do threshold de 72px)
+      fireEvent.pointerMove(handle, { pointerId: 1, pointerType: "touch", clientY: 180, clientX: 50 });
+      expect(dialog.style.getPropertyValue("--sheet-drag-y")).toBe("80px");
+
+      fireEvent.pointerUp(handle, { pointerId: 1, pointerType: "touch", clientY: 180, clientX: 50 });
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+      // Mantém --sheet-drag-y para que @keyframes sheet-out comece exatamente na posição atual
+      expect(dialog.style.getPropertyValue("--sheet-drag-y")).toBe("80px");
+    });
+  });
 });
 
 

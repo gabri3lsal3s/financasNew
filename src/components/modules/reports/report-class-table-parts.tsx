@@ -81,49 +81,54 @@ export function ReportAssetGovernanceBadges({
   );
 }
 
-/** Linha superior do thead identificando a classe de ativo, total e retorno. */
+/**
+ * Faixa de identificação da classe de ativos com totalizador e percentual da carteira.
+ * Renderizada fora do thead para evitar repetições espúrias em quebras de página.
+ */
 export function ReportClassTableBanner({
   group,
-  colSpan,
+  className,
 }: {
   group: ReportClassGroup;
-  colSpan: number;
+  colSpan?: number;
+  className?: string;
 }) {
   const classColor = group.color ?? resolveAssetClassTokenColor(group.className);
 
   return (
-    <tr className="border-b border-border/80 bg-muted/60 text-foreground font-bold text-[10px] uppercase tracking-wider print:bg-muted/40 print:[break-after:avoid] print:[break-inside:avoid]">
-      <th colSpan={colSpan} className="py-2 px-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <span
-              className="w-1 h-3 rounded-full shrink-0"
-              style={{ backgroundColor: classColor }}
-              aria-hidden="true"
-            />
-            <span className="font-bold tracking-wider text-foreground">
-              {group.className} ({group.items.length}{" "}
-              {group.items.length === 1 ? "ativo" : "ativos"})
-            </span>
-          </div>
-          <div className="flex items-center gap-2 font-mono num tabular-nums text-[10px] whitespace-nowrap">
-            <span className="font-bold text-foreground">
-              <MoneyText cents={group.totalCents} tone="default" />
-            </span>
-            <span className="text-muted-foreground font-normal">
-              ({formatPercent(group.sharePct)}% da carteira)
-            </span>
-            <span
-              className={cn(
-                "font-bold font-mono ml-1",
-                group.pnlPct >= 0 ? "text-positive-strong" : "text-negative-strong",
-              )}
-            >
-              {formatSignedPct(group.pnlPct)}
-            </span>
-          </div>
-        </div>
-      </th>
-    </tr>
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-border/80 bg-muted/60 text-foreground font-bold text-[10px] uppercase tracking-wider print:bg-muted/40 print:break-after-avoid break-after-avoid",
+        className,
+      )}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <span
+          className="w-1.5 h-3.5 rounded-full shrink-0"
+          style={{ backgroundColor: classColor }}
+          aria-hidden="true"
+        />
+        <span className="font-bold tracking-wider text-foreground">
+          {group.className} ({group.items.length}{" "}
+          {group.items.length === 1 ? "ativo" : "ativos"})
+        </span>
+      </div>
+      <div className="flex items-center gap-2 font-mono num tabular-nums text-[10px] whitespace-nowrap">
+        <span className="font-bold text-foreground">
+          <MoneyText cents={group.totalCents} tone="default" />
+        </span>
+        <span className="text-muted-foreground font-normal">
+          ({formatPercent(group.sharePct)}% da carteira)
+        </span>
+        <span
+          className={cn(
+            "font-bold font-mono ml-1",
+            group.pnlPct >= 0 ? "text-positive-strong" : "text-negative-strong",
+          )}
+        >
+          {formatSignedPct(group.pnlPct)}
+        </span>
+      </div>
+    </div>
   );
 }

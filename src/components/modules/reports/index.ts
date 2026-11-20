@@ -1,9 +1,16 @@
 export { ReportDocumentLayout, type ReportDocumentLayoutProps } from "./report-document-layout";
-export { ReportHeader, type ReportHeaderProps } from "./report-header";
+export {
+  ReportHeader,
+  ReportRunningHeader,
+  AxirMonogram,
+  type ReportHeaderProps,
+  type ReportRunningHeaderProps,
+} from "./report-header";
 export {
   OFFICIAL_REPORT_FOOTER_CREDIT,
   ReportFooter,
   type ReportFooterProps,
+  type ReportTypePrefix,
 } from "./report-footer";
 export { ReportKpiGrid, type ReportKpiGridProps, type ReportKpiItem } from "./report-kpi-grid";
 export {

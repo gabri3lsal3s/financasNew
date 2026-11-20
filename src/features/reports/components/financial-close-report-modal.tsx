@@ -3,6 +3,7 @@ import { EmptyState } from "@/components/ui";
 import {
   ReportDocumentLayout,
   ReportHeader,
+  ReportRunningHeader,
   ReportWaterfallBar,
   ReportFooter,
 } from "@/components/modules";
@@ -47,6 +48,12 @@ export interface FinancialCloseReportModalProps {
 
 /**
  * Modal Executivo de Finanças Pessoais & DRE (F42/F44).
+ *
+ * Características canônicas:
+ * - Página 1: Cabeçalho 70/30, Síntese de Fluxo, Cascata DRE e Demonstração do Resultado;
+ * - Página 2: Running Header, Despesas por Categoria (ordenada com totais) e Formas de Pagamento;
+ * - Zero centavos soltos e coluna dedicada Ponderado (R$) quando aplicável;
+ * - Rodapé com prefixo funcional DRE- e chancela criptográfica.
  */
 export function FinancialCloseReportModal({
   open,
@@ -104,6 +111,7 @@ export function FinancialCloseReportModal({
       open={open}
       onOpenChange={onOpenChange}
       title="Relatório Executivo de Finanças Pessoais & DRE"
+      documentTitle={`Relatorio_Executivo_Financas_Pessoais_DRE_${periodLabel.replace(/[^a-zA-Z0-9_-]+/g, "_")}.pdf`}
     >
       <ReportHeader
         title="Relatório Executivo de Finanças Pessoais & DRE"
@@ -153,6 +161,13 @@ export function FinancialCloseReportModal({
             hasBrutoRef={hasBrutoRef}
           />
 
+          {/* Quebra controlada para a Página 2 em Impressão */}
+          <div className="print-page-break-after print:hidden" />
+          <ReportRunningHeader
+            title="Relatório Executivo de Finanças Pessoais & DRE"
+            periodLabel={periodLabel}
+          />
+
           <FinancialCompositionTables
             categories={categories}
             paymentMethods={paymentMethods}
@@ -168,6 +183,7 @@ export function FinancialCloseReportModal({
 
       <ReportFooter
         accountHolder={accountHolder}
+        reportType="dre"
         disclaimer="Documento estritamente informativo emitido automaticamente com base nos registros financeiros e contábeis inseridos pelo titular da conta."
         showQrCode
       />

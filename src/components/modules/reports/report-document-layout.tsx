@@ -18,7 +18,7 @@ export interface ReportDocumentLayoutProps {
   customActions?: ReactNode;
   /** Conteúdo editorial do relatório (usado tanto no preview de tela quanto na impressão). */
   children: ReactNode;
-  /** Tamanho do modal no desktop (padrão: "2xl" = lg:max-w-5xl). */
+  /** Tamanho do modal no desktop (padrão: "3xl" = max-w-7xl / 1280px para máxima escaneabilidade de dados tabulares). */
   size?: ModalSize;
   className?: string;
 }
@@ -38,7 +38,7 @@ export function ReportDocumentLayout({
   documentTitle,
   customActions,
   children,
-  size = "2xl",
+  size = "3xl",
   className,
 }: ReportDocumentLayoutProps) {
   const suggestedTitle = documentTitle ?? `${title.replace(/[^a-zA-Z0-9_\u00C0-\u00FF]+/g, "_")}.pdf`;

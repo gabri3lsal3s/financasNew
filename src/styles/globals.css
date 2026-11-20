@@ -113,6 +113,7 @@
   --animate-live-pulse: live-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-spring-pop: spring-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   --animate-sheet-in: sheet-in 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-sheet-out: sheet-out 0.2s cubic-bezier(0.32, 0.72, 0, 1);
   --animate-fade-in: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-fade-slide-in: fade-slide-in 0.2s cubic-bezier(0, 0, 0.2, 1);
   --animate-card-slide-left: card-slide-left 0.28s cubic-bezier(0.16, 1, 0.3, 1);
@@ -267,8 +268,7 @@
     }
   }
 
-  /* F25 — Bottom Sheet mobile: slide-up suave do rodapé. O fade permanece no
-     nível "Econômica" (eco); o nível "Reduzida" zera via regra global. */
+  /* F25 — Bottom Sheet mobile: slide-up suave do rodapé na abertura. */
   @keyframes sheet-in {
     from {
       transform: translateY(100%);
@@ -277,6 +277,19 @@
     to {
       transform: translateY(0);
       opacity: 1;
+    }
+  }
+
+  /* F25 — Bottom Sheet mobile: slide-down suave para o rodapé no fechamento.
+     Suporta continuar a partir da posição de arrasto (--sheet-drag-y) se o usuário estava arrastando. */
+  @keyframes sheet-out {
+    from {
+      transform: translateY(var(--sheet-drag-y, 0px));
+      opacity: 1;
+    }
+    to {
+      transform: translateY(100%);
+      opacity: 0.4;
     }
   }
 }
@@ -711,19 +724,7 @@ html[data-density="compact"] {
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm 12mm 12mm 12mm;
-    @bottom-right {
-      content: "Página " counter(page) " de " counter(pages);
-      font-family: var(--font-sans);
-      font-size: 7.5pt;
-      color: #64748b;
-    }
-    @bottom-left {
-      content: "Axir · Dossiê Oficial";
-      font-family: var(--font-sans);
-      font-size: 7.5pt;
-      color: #64748b;
-    }
+    margin: 14mm 16mm 16mm 16mm;
   }
 
   /* 1. Reset total de fundo e cores para impressão nítida em papel branco */
@@ -839,19 +840,35 @@ html[data-density="compact"] {
     page-break-before: always !important;
   }
 
+  .print-page-break-after,
+  .print\:page-break-after {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+
+  .print-avoid-break-inside,
+  .print\:avoid-break-inside,
+  .break-inside-avoid,
+  .print-sheet .break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
   /* Tipografia padrão Inter */
   .print-sheet,
   .print-sheet * {
     font-family: var(--font-sans) !important;
   }
 
-  /* Números e colunas tabulares mono no PDF */
+  /* Números e colunas tabulares mono no PDF com blindagem de nowrap */
   .print-sheet .num,
   .print-sheet .font-mono,
-  .print-sheet [data-mono="true"] {
+  .print-sheet [data-mono="true"],
+  .print-sheet .tabular-nums {
     font-family: var(--font-mono, monospace) !important;
     font-variant-numeric: tabular-nums !important;
     letter-spacing: -0.01em !important;
+    white-space: nowrap !important;
   }
 
   /* Ritmo vertical fluido e sem estrangulamento para fluxo contínuo e paginação A4 */
@@ -938,6 +955,7 @@ html[data-density="compact"] {
   .print-sheet table {
     width: 100% !important;
     max-width: 100% !important;
+    table-layout: fixed !important;
     border-collapse: collapse !important;
     page-break-inside: auto !important;
     break-inside: auto !important;
@@ -957,7 +975,7 @@ html[data-density="compact"] {
   .print-sheet .report-footer {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-    margin-top: 14px !important;
+    margin-top: 10px !important;
   }
 }
 

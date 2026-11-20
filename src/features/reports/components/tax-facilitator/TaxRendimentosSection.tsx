@@ -19,7 +19,7 @@ export function TaxRendimentosSection({
     <section aria-label="Rendimentos Recebidos" className="flex flex-col gap-2.5 pt-1 break-inside-avoid">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
         <div className="flex items-center gap-2">
-          <PiggyBank className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
+          <PiggyBank className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
             Ficha: Rendimentos Isentos &amp; Exclusivos ({calendarYear})
           </h3>
@@ -28,8 +28,7 @@ export function TaxRendimentosSection({
           Total Recebido:{" "}
           <MoneyText
             cents={numberToCents(totalRendimentosBRL)}
-            tone="positive"
-            className="font-bold inline"
+            className="font-bold text-foreground inline"
           />
         </span>
       </div>
@@ -40,12 +39,17 @@ export function TaxRendimentosSection({
         </div>
       ) : (
         <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 print:overflow-visible">
-          <table className="w-full min-w-[440px] sm:min-w-0 text-left text-xs border-collapse print:table-fixed">
+          <table className="w-full min-w-[440px] sm:min-w-0 text-left text-xs border-collapse table-fixed">
+            <colgroup>
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "50%" }} />
+              <col style={{ width: "30%" }} />
+            </colgroup>
             <thead>
               <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-                <th className="py-2 px-3 print:w-[20%]">Ticker</th>
-                <th className="py-2 px-3 print:w-[50%]">Tipo / Ficha da Declaração</th>
-                <th className="py-2 px-3 text-right print:w-[30%]">Total Recebido (R$)</th>
+                <th className="py-2 px-3">Ticker</th>
+                <th className="py-2 px-3">Tipo / Ficha da Declaração</th>
+                <th className="py-2 px-3 text-right">Total Recebido (R$)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -55,8 +59,8 @@ export function TaxRendimentosSection({
                     {sanitizeReportText(asset.ticker)}
                   </td>
                   <td className="py-1.5 px-3 text-muted-foreground">{tipoRendimento}</td>
-                  <td className="py-1.5 px-3 text-right num font-mono font-bold text-positive-strong whitespace-nowrap">
-                    <MoneyText cents={numberToCents(amountBRL)} tone="positive" />
+                  <td className="py-1.5 px-3 text-right num font-mono font-bold text-foreground whitespace-nowrap">
+                    <MoneyText cents={numberToCents(amountBRL)} />
                   </td>
                 </tr>
               ))}
@@ -64,8 +68,8 @@ export function TaxRendimentosSection({
                 <td colSpan={2} className="py-2 px-3 text-foreground uppercase text-[10px] tracking-wider">
                   Total de Rendimentos no Exercício
                 </td>
-                <td className="py-2 px-3 text-right num font-mono text-positive-strong whitespace-nowrap">
-                  <MoneyText cents={numberToCents(totalRendimentosBRL)} tone="positive" />
+                <td className="py-2 px-3 text-right num font-mono text-foreground whitespace-nowrap">
+                  <MoneyText cents={numberToCents(totalRendimentosBRL)} />
                 </td>
               </tr>
             </tbody>

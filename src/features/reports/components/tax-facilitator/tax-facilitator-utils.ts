@@ -7,6 +7,7 @@ export interface TaxAssetItemDetails {
   id: string;
   safeTicker: string;
   group: string;
+  groupName: string;
   code: string;
   label: string;
   itemName: string;
@@ -58,6 +59,7 @@ export function buildTaxItemDetails(asset: PortfolioAsset, usdRate: number): Tax
     id: asset.id,
     safeTicker,
     group: classification.groupCode,
+    groupName: classification.groupName,
     code: classification.itemCode,
     label: `${classification.groupCode}-${classification.itemCode} ${classification.itemName}`,
     itemName: classification.itemName,

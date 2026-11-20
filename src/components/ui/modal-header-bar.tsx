@@ -63,24 +63,6 @@ export function ModalHeaderBar({
           onClick={(e) => {
             e.stopPropagation();
           }}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-          }}
-          onPointerUp={(e) => {
-            e.stopPropagation();
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation();
-          }}
-          onMouseUp={(e) => {
-            e.stopPropagation();
-          }}
-          onTouchStart={(e) => {
-            e.stopPropagation();
-          }}
-          onTouchEnd={(e) => {
-            e.stopPropagation();
-          }}
         >
           <X className="size-4" aria-hidden="true" />
         </Button>
@@ -94,13 +76,13 @@ export function ModalHeaderBar({
       data-sheet-handle="true"
       aria-label="Arrastar para fechar"
       {...dragHandlers}
-      className="pt-2.5 pb-2 px-6 flex items-center justify-center shrink-0 md:hidden pointer-events-auto touch-none select-none cursor-grab active:cursor-grabbing"
+      className="pt-3 pb-3 px-6 w-full flex items-center justify-center shrink-0 md:hidden pointer-events-auto touch-none select-none cursor-grab active:cursor-grabbing"
     >
       <div
         aria-hidden="true"
         className={cn(
-          "h-1 w-10 shrink-0 rounded-full bg-primary/30 transition-opacity duration-200 md:hidden",
-          isCompressed ? "opacity-30" : "opacity-100",
+          "h-1.25 w-10 shrink-0 rounded-full bg-muted-foreground/30 transition-all duration-150 md:hidden active:bg-primary/50 active:scale-105",
+          isCompressed ? "opacity-40" : "opacity-100",
         )}
       />
     </div>

@@ -3,6 +3,7 @@ import { Flame, PiggyBank, Sparkles } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
+  ReportRunningHeader,
   ReportExecutiveSummary,
   ReportDividendSparkline,
   ReportFooter,
@@ -49,22 +50,26 @@ export function DividendFreedomModal({
   const currentYear = new Date().getFullYear();
   const assetMap = useMemo(() => new Map((assets ?? []).map((a) => [a.id, a])), [assets]);
 
-  const sparklinePoints = Array.from({ length: 12 }, (_, idx) => {
-    const monthStr = `${currentYear}-${String(idx + 1).padStart(2, "0")}`;
-    const sumBRL = dividends
-      .filter((d) => d.date.startsWith(monthStr))
-      .reduce((acc, d) => {
-        const asset = d.asset_id ? assetMap.get(d.asset_id) : undefined;
-        const rate = asset?.currency === "USD" ? usdRate : 1;
-        return acc + d.amount * rate;
-      }, 0);
+  const sparklinePoints = useMemo(() => {
+    return Array.from({ length: 12 }, (_, idx) => {
+      const monthStr = `${currentYear}-${String(idx + 1).padStart(2, "0")}`;
+      const sumBRL = dividends
+        .filter((d) => d.date.startsWith(monthStr))
+        .reduce((acc, d) => {
+          const asset = d.asset_id ? assetMap.get(d.asset_id) : undefined;
+          const rate = asset?.currency === "USD" ? usdRate : 1;
+          return acc + d.amount * rate;
+        }, 0);
 
-    return {
-      month: monthStr,
-      label: MONTH_NAMES[idx] ?? `M${idx + 1}`,
-      amountCents: numberToCents(sumBRL),
-    };
-  });
+      return {
+        month: monthStr,
+        label: MONTH_NAMES[idx] ?? `M${idx + 1}`,
+        amountCents: numberToCents(sumBRL),
+      };
+    });
+  }, [currentYear, dividends, assetMap, usdRate]);
+
+  const progressPct = Math.min(100, Math.max(0, freedomAnalysis.freedomPct));
 
   return (
     <ReportDocumentLayout
@@ -79,6 +84,11 @@ export function DividendFreedomModal({
         appName={appName}
         icon={PiggyBank}
         accountHolder={accountHolder}
+      />
+
+      <ReportRunningHeader
+        title="Dossiê de Proventos & Liberdade Financeira"
+        periodLabel={periodLabel}
       />
 
       <ReportExecutiveSummary
@@ -117,40 +127,60 @@ export function DividendFreedomModal({
             </strong>
             . Este fluxo cobre <strong>{formatPercent(freedomAnalysis.freedomPct)}%</strong> do custo de vida mensal
             (Estágio: <strong>{freedomAnalysis.stageLabel}</strong>). A carteira possui{" "}
-            <strong>{freedomAnalysis.totalSnowballAssetsCount} ativo(s) auto-sustentável(is)</strong> operando no Efeito Bola de Neve.
+            <strong>{freedomAnalysis.totalSnowballAssetsCount} ativo(s) autossustentável(is)</strong> operando no Efeito Bola de Neve.
           </span>
         }
       />
 
+      {/* Régua Milimétrica Minimalista de Alta Precisão (FIRE) */}
       <section
         aria-label="Termômetro de Liberdade"
-        className="rounded-xl border border-border/80 bg-muted/30 p-3 flex flex-col gap-2 break-inside-avoid print:bg-surface print:border-border shadow-xs"
+        className="rounded-xl border border-border/80 bg-muted/15 p-3 flex flex-col gap-2.5 break-inside-avoid print:bg-surface print:border-border shadow-xs"
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
-            <Flame className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <Flame className="size-3.5 text-muted-foreground" aria-hidden="true" />
             <h3 className="text-[10px] font-bold uppercase tracking-wider text-foreground">
               Estágio de Independência Financeira (FIRE)
             </h3>
           </div>
-          <Badge size="xs" variant="default">
-            {freedomAnalysis.stageLabel}
+          <Badge size="xs" variant="default" className="font-mono">
+            {freedomAnalysis.stageLabel} · {formatPercent(freedomAnalysis.freedomPct)}%
           </Badge>
         </div>
 
-        <div className="w-full bg-muted/40 rounded-full h-2 overflow-hidden border border-border/80">
-          <div
-            className="bg-primary-strong h-full rounded-full transition-all duration-300"
-            style={{ width: `${Math.min(100, Math.max(3, freedomAnalysis.freedomPct))}%` }}
-          />
+        {/* Trilha e cursor de precisão */}
+        <div className="relative pt-1 pb-1">
+          <div className="w-full bg-muted/50 rounded-sm h-2 overflow-hidden border border-border/80">
+            <div
+              className="bg-primary-strong h-full rounded-sm transition-all duration-300"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
         </div>
 
-        <div className="flex justify-between gap-2 text-[10px] text-muted-foreground font-mono num overflow-x-auto no-scrollbar">
-          <span className="whitespace-nowrap">0% (Início)</span>
-          <span className="whitespace-nowrap">25% (1º Quarto)</span>
-          <span className="whitespace-nowrap">50% (Metade)</span>
-          <span className="whitespace-nowrap">75% (Segurança)</span>
-          <span className="whitespace-nowrap">100% (Independência Plena)</span>
+        {/* 5 Marcos Equidistantes */}
+        <div className="grid grid-cols-5 gap-1 text-[9px] text-muted-foreground font-mono num border-t border-border/50 pt-1.5">
+          <div className="text-left">
+            <span className="block font-bold text-foreground">0%</span>
+            <span>Início</span>
+          </div>
+          <div className="text-center">
+            <span className="block font-bold text-foreground">25%</span>
+            <span>1º Quarto</span>
+          </div>
+          <div className="text-center">
+            <span className="block font-bold text-foreground">50%</span>
+            <span>Metade</span>
+          </div>
+          <div className="text-center">
+            <span className="block font-bold text-foreground">75%</span>
+            <span>Segurança</span>
+          </div>
+          <div className="text-right">
+            <span className="block font-bold text-foreground">100%</span>
+            <span>Independência</span>
+          </div>
         </div>
       </section>
 
@@ -164,26 +194,33 @@ export function DividendFreedomModal({
       <section aria-label="Efeito Bola de Neve" className="break-inside-avoid flex flex-col gap-2.5 pt-1">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-3.5 text-primary-strong" aria-hidden="true" />
+            <Sparkles className="size-3.5 text-muted-foreground" aria-hidden="true" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
               Ativos no Efeito Bola de Neve (Reinvestimento Próprio)
             </h3>
           </div>
           <span className="text-[11px] text-muted-foreground font-mono num">
-            {freedomAnalysis.totalSnowballAssetsCount} ativo(s) auto-sustentável(is)
+            {freedomAnalysis.totalSnowballAssetsCount} ativo(s) autossustentável(is)
           </span>
         </div>
 
         {freedomAnalysis.snowballAssets.length > 0 ? (
           <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 print:overflow-visible">
-            <table className="w-full min-w-[540px] sm:min-w-0 text-left text-xs border-collapse print:table-fixed">
+            <table className="w-full min-w-[540px] sm:min-w-0 text-left text-xs border-collapse table-fixed">
+              <colgroup>
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "22%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "20%" }} />
+              </colgroup>
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-                  <th className="py-2 px-3 print:w-[18%]">Ticker</th>
-                  <th className="py-2 px-3 text-right print:w-[18%]">Preço Atual</th>
-                  <th className="py-2 px-3 text-right print:w-[22%]">Renda Mensal Gerada</th>
-                  <th className="py-2 px-3 text-right print:w-[20%]">Cotas Compradas / Mês</th>
-                  <th className="py-2 px-3 text-center print:w-[22%]">Status da Bola de Neve</th>
+                  <th className="py-2 px-3">Ticker</th>
+                  <th className="py-2 px-3 text-right">Preço Atual</th>
+                  <th className="py-2 px-3 text-right">Renda Mensal Gerada</th>
+                  <th className="py-2 px-3 text-right">Cotas Compradas / Mês</th>
+                  <th className="py-2 px-3 text-center">Status da Bola de Neve</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -215,13 +252,18 @@ export function DividendFreedomModal({
             </table>
           </div>
         ) : (
-          <div className="rounded-xl border border-border/80 bg-muted/10 p-3 text-xs text-muted-foreground italic print:bg-surface print:border-border">
-            Nenhum ativo com proventos mensais cadastrados no momento.
+          <div className="rounded-lg border border-border/70 p-2.5 text-[11px] text-muted-foreground italic print:bg-surface print:border-border">
+            Nenhum ativo com proventos suficientes para reinvestimento autônomo (efeito bola de neve) registrado no exercício.
           </div>
         )}
       </section>
 
-      <ReportFooter accountHolder={accountHolder} disclaimer={OFFICIAL_CVM_DISCLAIMER} showQrCode />
+      <ReportFooter
+        accountHolder={accountHolder}
+        disclaimer={OFFICIAL_CVM_DISCLAIMER}
+        reportType="fire"
+        showQrCode
+      />
     </ReportDocumentLayout>
   );
 }
