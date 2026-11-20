@@ -67,60 +67,60 @@ describe("Modal", () => {
     expect(handle?.className).toContain("md:hidden");
   });
 
-  it("F25: arrastar para baixo além do threshold fecha o modal (drag-to-close)", () => {
+  it("F25: arrastar para baixo na alça além do threshold fecha o modal (drag-to-close)", () => {
     const onOpenChange = vi.fn();
     render(
       <Modal open onOpenChange={onOpenChange} title="Nova despesa">
         <p>Formulário</p>
       </Modal>,
     );
-    const dialog = screen.getByRole("dialog");
+    const handle = screen.getByTestId("modal-sheet-handle");
 
-    fireEvent.pointerDown(dialog, {
+    fireEvent.pointerDown(handle, {
       pointerId: 1,
       pointerType: "touch",
       clientY: 100,
       clientX: 50,
       isPrimary: true,
     });
-    fireEvent.pointerMove(dialog, { pointerId: 1, pointerType: "touch", clientY: 240, clientX: 50 });
-    fireEvent.pointerUp(dialog, { pointerId: 1, pointerType: "touch", clientY: 240, clientX: 50 });
+    fireEvent.pointerMove(handle, { pointerId: 1, pointerType: "touch", clientY: 240, clientX: 50 });
+    fireEvent.pointerUp(handle, { pointerId: 1, pointerType: "touch", clientY: 240, clientX: 50 });
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("F25: arrasto curto (abaixo do threshold) não fecha o modal", () => {
+  it("F25: arrasto curto na alça (abaixo do threshold) não fecha o modal", () => {
     const onOpenChange = vi.fn();
     render(
       <Modal open onOpenChange={onOpenChange} title="Nova despesa">
         <p>Formulário</p>
       </Modal>,
     );
-    const dialog = screen.getByRole("dialog");
+    const handle = screen.getByTestId("modal-sheet-handle");
 
-    fireEvent.pointerDown(dialog, {
+    fireEvent.pointerDown(handle, {
       pointerId: 1,
       pointerType: "touch",
       clientY: 100,
       clientX: 50,
       isPrimary: true,
     });
-    fireEvent.pointerMove(dialog, { pointerId: 1, pointerType: "touch", clientY: 130, clientX: 50 });
-    fireEvent.pointerUp(dialog, { pointerId: 1, pointerType: "touch", clientY: 130, clientX: 50 });
+    fireEvent.pointerMove(handle, { pointerId: 1, pointerType: "touch", clientY: 130, clientX: 50 });
+    fireEvent.pointerUp(handle, { pointerId: 1, pointerType: "touch", clientY: 130, clientX: 50 });
 
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 
-  it("F25: toque com mouse (desktop) não inicia o drag-to-close", () => {
+  it("F25: toque com mouse (desktop) na alça não inicia o drag-to-close", () => {
     const onOpenChange = vi.fn();
     render(
       <Modal open onOpenChange={onOpenChange} title="Nova despesa">
         <p>Formulário</p>
       </Modal>,
     );
-    const dialog = screen.getByRole("dialog");
+    const handle = screen.getByTestId("modal-sheet-handle");
 
-    fireEvent.pointerDown(dialog, {
+    fireEvent.pointerDown(handle, {
       pointerId: 1,
       pointerType: "mouse",
       clientY: 100,
@@ -128,10 +128,34 @@ describe("Modal", () => {
       button: 0,
       isPrimary: true,
     });
-    fireEvent.pointerMove(dialog, { pointerId: 1, pointerType: "mouse", clientY: 300, clientX: 50 });
-    fireEvent.pointerUp(dialog, { pointerId: 1, pointerType: "mouse", clientY: 300, clientX: 50 });
+    fireEvent.pointerMove(handle, { pointerId: 1, pointerType: "mouse", clientY: 300, clientX: 50 });
+    fireEvent.pointerUp(handle, { pointerId: 1, pointerType: "mouse", clientY: 300, clientX: 50 });
 
     expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("arrastar ou puxar dentro do corpo do modal (conteúdo) não ativa drag-to-close nem move o modal", () => {
+    const onOpenChange = vi.fn();
+    render(
+      <Modal open onOpenChange={onOpenChange} title="Nova despesa">
+        <p>Formulário com elementos internos</p>
+      </Modal>,
+    );
+    const content = screen.getByText("Formulário com elementos internos");
+    const dialog = screen.getByRole("dialog");
+
+    fireEvent.pointerDown(content, {
+      pointerId: 1,
+      pointerType: "touch",
+      clientY: 100,
+      clientX: 50,
+      isPrimary: true,
+    });
+    fireEvent.pointerMove(content, { pointerId: 1, pointerType: "touch", clientY: 260, clientX: 50 });
+    fireEvent.pointerUp(content, { pointerId: 1, pointerType: "touch", clientY: 260, clientX: 50 });
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(dialog.style.transform).toBe("");
   });
   it("adota ancoragem na base com safe areas inferiores e centralização com margens adequadas no desktop", () => {
     render(
@@ -410,7 +434,7 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
     expect(slotWrapper?.className).toContain("[&>*]:border-t-0");
   });
 
-  it("suprime rubber-band visual quando motionLevel !== fluid mas preserva drag-to-close", async () => {
+  it("suprime rubber-band visual quando motionLevel !== fluid mas preserva drag-to-close na alça", async () => {
     const { updateVisualCustomization } = await import("@/hooks/use-visual-customization");
     updateVisualCustomization({ motionLevel: "eco" });
 
@@ -422,18 +446,19 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
     );
 
     const dialog = screen.getByRole("dialog");
-    fireEvent.pointerDown(dialog, {
+    const handle = screen.getByTestId("modal-sheet-handle");
+    fireEvent.pointerDown(handle, {
       pointerId: 1,
       pointerType: "touch",
       clientY: 100,
       clientX: 50,
       isPrimary: true,
     });
-    fireEvent.pointerMove(dialog, { pointerId: 1, pointerType: "touch", clientY: 160, clientX: 50 });
+    fireEvent.pointerMove(handle, { pointerId: 1, pointerType: "touch", clientY: 160, clientX: 50 });
     expect(dialog.style.transform).toBe("");
 
-    fireEvent.pointerMove(dialog, { pointerId: 1, pointerType: "touch", clientY: 250, clientX: 50 });
-    fireEvent.pointerUp(dialog, { pointerId: 1, pointerType: "touch", clientY: 250, clientX: 50 });
+    fireEvent.pointerMove(handle, { pointerId: 1, pointerType: "touch", clientY: 250, clientX: 50 });
+    fireEvent.pointerUp(handle, { pointerId: 1, pointerType: "touch", clientY: 250, clientX: 50 });
     expect(onOpenChange).toHaveBeenCalledWith(false);
 
     updateVisualCustomization({ motionLevel: "fluid" });

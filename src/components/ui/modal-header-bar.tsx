@@ -1,6 +1,6 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Calculator, X } from "lucide-react";
-import type { ReactNode } from "react";
+import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { setCalculatorOpen } from "@/services/calculator-open";
@@ -13,6 +13,12 @@ interface ModalHeaderBarProps {
   hasScrolled: boolean;
   displayCalculator: boolean;
   headerActions?: ReactNode;
+  dragHandlers?: {
+    onPointerDown?: (e: ReactPointerEvent<HTMLDivElement>) => void;
+    onPointerMove?: (e: ReactPointerEvent<HTMLDivElement>) => void;
+    onPointerUp?: (e: ReactPointerEvent<HTMLDivElement>) => void;
+    onPointerCancel?: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  };
 }
 
 /**
@@ -27,6 +33,7 @@ export function ModalHeaderBar({
   hasScrolled,
   displayCalculator,
   headerActions,
+  dragHandlers,
 }: ModalHeaderBarProps) {
   const actionButtons = (
     <>
@@ -82,7 +89,13 @@ export function ModalHeaderBar({
   );
 
   const sheetHandle = (isCompressed: boolean) => (
-    <div className="pt-2.5 pb-1 flex items-center justify-center shrink-0 md:hidden pointer-events-none select-none">
+    <div
+      data-testid="modal-sheet-handle"
+      data-sheet-handle="true"
+      aria-label="Arrastar para fechar"
+      {...dragHandlers}
+      className="pt-2.5 pb-2 px-6 flex items-center justify-center shrink-0 md:hidden pointer-events-auto touch-none select-none cursor-grab active:cursor-grabbing"
+    >
       <div
         aria-hidden="true"
         className={cn(

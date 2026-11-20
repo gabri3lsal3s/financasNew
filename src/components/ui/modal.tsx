@@ -185,7 +185,7 @@ export function Modal({
     }
   }
 
-  const { dragY, resetDrag, dragHandlers } = useBottomSheetDrag({
+  const { dragY, isDragging, resetDrag, dragHandlers } = useBottomSheetDrag({
     scrollRef,
     onClose: () => handleOpenChange(false),
   });
@@ -242,8 +242,6 @@ export function Modal({
     return footer;
   })();
 
-  const { onPointerDown: handleDragPointerDown, ...restDragHandlers } = dragHandlers;
-
   return (
     <>
       <DialogPrimitive.Root open={open} onOpenChange={handleOpenChange} modal={modal}>
@@ -265,12 +263,8 @@ export function Modal({
             data-tour={resolvedDataTour}
             onPointerDownOutside={preventPortalOutsideDismiss}
             onInteractOutside={preventPortalOutsideDismiss}
-            {...restDragHandlers}
             onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              handleDragPointerDown?.(e);
-            }}
+            onPointerDown={(e) => e.stopPropagation()}
             onPointerUp={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             onMouseUp={(e) => e.stopPropagation()}
@@ -278,7 +272,10 @@ export function Modal({
             onTouchEnd={(e) => e.stopPropagation()}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => e.preventDefault()}
-            style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined }}
+            style={{
+              transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
+              transition: isDragging ? "none" : dragY > 0 ? "transform 200ms cubic-bezier(0.16, 1, 0.3, 1)" : undefined,
+            }}
             className={cn(
               "fixed inset-x-0 bottom-0 w-full max-h-[calc(92dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] flex flex-col overflow-hidden rounded-t-2xl border border-primary/25 bg-surface shadow-2xl focus:outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 animate-sheet-in",
               "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:max-h-[calc(100dvh-3rem)] md:rounded-2xl md:-translate-x-1/2 md:-translate-y-1/2 md:animate-none md:data-[state=open]:animate-in md:data-[state=closed]:animate-out md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95 md:duration-200",
@@ -295,6 +292,7 @@ export function Modal({
               hasScrolled={hasScrolled}
               displayCalculator={displayCalculator}
               headerActions={headerActions}
+              dragHandlers={dragHandlers}
             />
 
             {/* Corpo rolável isolado */}

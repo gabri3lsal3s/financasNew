@@ -32,30 +32,33 @@ function shouldSuppressRubberBand(): boolean {
 }
 
 export interface UseBottomSheetDragOptions {
-  scrollRef: RefObject<HTMLDivElement | null>;
+  scrollRef?: RefObject<HTMLDivElement | null>;
   onClose: () => void;
 }
 
 /**
  * Física de drag-to-close para o Bottom Sheet mobile do `<Modal />`.
+ * O gesto de arrastar para baixo é restrito à alça física superior do modal (handle),
+ * assegurando que a rolagem interna e elementos do corpo do modal nunca sejam
+ * capturados ou movidos indevidamente durante a navegação.
  * Respeita `prefers-reduced-motion` e `getVisualCustomization().motionLevel !== "fluid"`
  * desativando o rubber-band visual sem impedir o fechamento por arrasto acessível.
  */
-export function useBottomSheetDrag({ scrollRef, onClose }: UseBottomSheetDragOptions) {
+export function useBottomSheetDrag({ onClose }: UseBottomSheetDragOptions) {
   const dragRef = useRef<DragState | null>(null);
   const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   const resetDrag = () => {
     dragRef.current = null;
     setDragY(0);
+    setIsDragging(false);
   };
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse") return;
-    const el = scrollRef.current;
-    if (el && el.scrollTop > 0) return;
     const target = event.target as HTMLElement;
-    if (target.closest(INTERACTIVE_SELECTOR)) return;
+    if (!target.closest("[data-sheet-handle]") && target.closest(INTERACTIVE_SELECTOR)) return;
 
     dragRef.current = {
       startY: event.clientY,
@@ -63,7 +66,9 @@ export function useBottomSheetDrag({ scrollRef, onClose }: UseBottomSheetDragOpt
       lastTime: performance.now(),
       dy: 0,
     };
+    setIsDragging(true);
     event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.stopPropagation();
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -74,6 +79,7 @@ export function useBottomSheetDrag({ scrollRef, onClose }: UseBottomSheetDragOpt
     drag.lastTime = now;
     drag.lastY = event.clientY;
     drag.dy = dy;
+    event.stopPropagation();
 
     if (shouldSuppressRubberBand()) {
       return;
@@ -87,6 +93,13 @@ export function useBottomSheetDrag({ scrollRef, onClose }: UseBottomSheetDragOpt
   const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     dragRef.current = null;
+    setIsDragging(false);
+    try {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    } catch {
+      // Ignora falhas de pointer capture em navegadores antigos ou ambientes de teste
+    }
+    event.stopPropagation();
     if (!drag) return;
 
     const now = performance.now();
@@ -100,12 +113,19 @@ export function useBottomSheetDrag({ scrollRef, onClose }: UseBottomSheetDragOpt
     }
   };
 
-  const onPointerCancel = () => {
+  const onPointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    try {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    } catch {
+      // Ignora falhas de pointer capture
+    }
+    event.stopPropagation();
     resetDrag();
   };
 
   return {
     dragY,
+    isDragging,
     resetDrag,
     dragHandlers: {
       onPointerDown,
