@@ -1,16 +1,17 @@
 {
   "version": "3.14.0",
-  "versionCode": 91,
-  "releaseDate": "2026-11-20T22:26:21Z",
+  "versionCode": 92,
+  "releaseDate": "2026-11-20T23:03:00Z",
   "minSupportedVersion": "3.14.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
   "sha256": "7057eb592410b028302d09b6c7374fdec5ade3804b0ae428f71641b07fdf5876",
   "fileSizeBytes": 12300986,
   "changelog": [
-    "Axir v3.14.0 (Build 91): Refinamento de Ergonomia Mobile & Rolagem de Modais",
-    "Desbloqueio definitivo da rolagem touch vertical interna em todos os modais no mobile",
-    "Alca do Bottom Sheet ampliada e ergonomica com rastreamento 1:1 direto do dedo",
-    "Animacao continua de saida (sheet-out) e retorno por mola (spring-back) sem solavancos",
-    "Conformidade estrita de design system mobile e testes automatizados de fisica tatil"
+    "Axir v3.14.0 (Build 92): Auditoria e Padronização Editorial de Documentos & UI/UX de Modais",
+    "Padronização visual e editorial institucional nos 8 relatórios executivos A4 (DRE, IRPF, Balanço 360, FIRE, Dossiê, Carteira, Extrato e Fatura)",
+    "Caderno de Relatórios em Excel XML com paleta Axir Teal, precisão centesimal e unidades analíticas",
+    "Extratos CSV com delimitador pt-BR, UTF-8 BOM e unificação da coluna Valor Ponderado",
+    "Erradicação de rolagem horizontal desconfortável e adoção de layout móvel adaptativo nos modais de conciliação e extrato",
+    "Expansão dos modais ricos para size 3xl no desktop e inclusão de rodapés táteis no mobile"
   ]
 }

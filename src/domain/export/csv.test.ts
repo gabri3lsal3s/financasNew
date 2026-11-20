@@ -67,7 +67,7 @@ describe("domain/export — CSV", () => {
     ]);
 
     expect(csv.startsWith("\uFEFF")).toBe(true);
-    expect(csv).toContain("Data;Descrição;Categoria;Valor (R$);Valor p/ relatório (R$);Forma de pagamento;Cartão;Parcelas");
+    expect(csv).toContain("Data;Descrição;Categoria;Valor (R$);Valor Ponderado (R$);Forma de pagamento;Cartão;Parcelas");
     expect(csv).toContain("10/08/2026;Supermercado;Alimentação;250,50;250,50;Débito;;—");
     expect(csv).toContain('12/08/2026;"Celular; novo";Eletrônicos;1000,00;800,00;Cartão de crédito;Nubank;1/10');
   });
@@ -105,14 +105,14 @@ describe("domain/export — CSV", () => {
         installments: "1/10",
       },
     ]);
-    expect(csv.startsWith("\uFEFFData;Descrição;Categoria;Valor (R$);Valor p/ relatório (R$);Parcelas\r\n")).toBe(true);
+    expect(csv.startsWith("\uFEFFData;Descrição;Categoria;Valor (R$);Valor Ponderado (R$);Parcelas\r\n")).toBe(true);
     expect(csv).toContain("03/08/2026;\"Mercado; semana\";Alimentação;180,50;180,50;—\r\n");
     expect(csv).toContain("15/08/2026;Celular;Eletrônicos;1000,00;800,00;1/10\r\n");
   });
 
   it("serializa a fatura vazia apenas com o cabeçalho (BOM incluído)", () => {
     const csv = serializeCardInvoiceCsv([]);
-    expect(csv).toBe("\uFEFFData;Descrição;Categoria;Valor (R$);Valor p/ relatório (R$);Parcelas\r\n");
+    expect(csv).toBe("\uFEFFData;Descrição;Categoria;Valor (R$);Valor Ponderado (R$);Parcelas\r\n");
   });
 
   it("serializa faturas com pagamento e estorno", () => {
@@ -220,7 +220,7 @@ describe("domain/export — CSV", () => {
     ]);
 
     expect(csv.startsWith("\uFEFF")).toBe(true);
-    expect(csv).toContain("Data;Tipo;Descrição;Categoria;Valor (R$);Valor p/ relatório (R$);Forma / Detalhes;Cartão;Parcelas;Recorrência");
+    expect(csv).toContain("Data;Tipo;Descrição;Categoria;Valor (R$);Valor Ponderado (R$);Forma / Detalhes;Cartão;Parcelas;Recorrência");
     expect(csv).toContain("05/10/2026;Receita;Salário Mensal;Trabalho;8500,00;8500,00;Pix;;—;Mensal");
     expect(csv).toContain("12/10/2026;Despesa;Supermercado Pão de Açúcar;Alimentação;450,30;450,30;Cartão de Crédito;Nubank Ultravioleta;1/3;");
   });

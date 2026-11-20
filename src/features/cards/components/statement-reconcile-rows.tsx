@@ -12,25 +12,32 @@ export function StatementAppOnlyRow({ expense, categoryName }: StatementAppOnlyR
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 gap-2 bg-warning/10">
       <div className="flex items-start gap-3 flex-1 min-w-0">
-        <div className="pt-0.5 text-warning-strong">
+        <div className="pt-0.5 text-warning-strong shrink-0">
           <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
         </div>
 
         <div className="space-y-0.5 min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-xs text-foreground truncate">
-              {expense.description || "Despesa sem descrição"}
-            </span>
+          <div className="flex items-start sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+              <span className="font-medium text-xs text-foreground truncate">
+                {expense.description || "Despesa sem descrição"}
+              </span>
 
-            {expense.installmentNumber && expense.installmentsTotal ? (
-              <Badge variant="muted" size="xs" className="font-mono">
-                {expense.installmentNumber}/{expense.installmentsTotal}
+              {expense.installmentNumber && expense.installmentsTotal ? (
+                <Badge variant="muted" size="xs" className="font-mono">
+                  {expense.installmentNumber}/{expense.installmentsTotal}
+                </Badge>
+              ) : null}
+
+              <Badge variant="warning" size="xs">
+                Ausente no Extrato
               </Badge>
-            ) : null}
+            </div>
 
-            <Badge variant="warning" size="xs">
-              Ausente no Extrato
-            </Badge>
+            {/* Valor no mobile alinhado no topo à direita */}
+            <div className="sm:hidden text-right shrink-0">
+              <MoneyText cents={expense.valueCents} tone="negative" className="font-semibold text-xs" />
+            </div>
           </div>
 
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -43,7 +50,8 @@ export function StatementAppOnlyRow({ expense, categoryName }: StatementAppOnlyR
       <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pl-7 sm:pl-0">
         <span className="text-xs text-muted-foreground">{categoryName}</span>
 
-        <div className="text-right min-w-[80px]">
+        {/* Valor no desktop */}
+        <div className="hidden sm:block text-right min-w-[80px]">
           <MoneyText cents={expense.valueCents} tone="negative" className="font-medium text-xs" />
         </div>
       </div>
@@ -72,12 +80,12 @@ export function StatementReconcileItemRow({
 
   return (
     <div
-      className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 gap-2 transition-colors ${
+      className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 gap-2.5 sm:gap-2 transition-colors ${
         item.selected ? "bg-primary/10" : "opacity-75 hover:opacity-100"
       }`}
     >
       <div className="flex items-start gap-3 flex-1 min-w-0">
-        <div className="pt-0.5">
+        <div className="pt-0.5 shrink-0">
           <Checkbox
             checked={item.selected}
             onCheckedChange={() => onToggleItem(tx.id)}
@@ -86,43 +94,54 @@ export function StatementReconcileItemRow({
         </div>
 
         <div className="space-y-0.5 min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-xs text-foreground truncate">
-              {tx.cleanDescription}
-            </span>
+          <div className="flex items-start sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+              <span className="font-medium text-xs text-foreground truncate">
+                {tx.cleanDescription}
+              </span>
 
-            {tx.installment ? (
-              <Badge variant="muted" size="xs" className="font-mono">
-                {tx.installment.current}/{tx.installment.total}
-              </Badge>
-            ) : null}
+              {tx.installment ? (
+                <Badge variant="muted" size="xs" className="font-mono">
+                  {tx.installment.current}/{tx.installment.total}
+                </Badge>
+              ) : null}
 
-            {item.isInternalDuplicate ? (
-              <Badge variant="warning" size="xs">
-                <Copy className="size-3" aria-hidden="true" />
-                Duplicata no Arquivo
-              </Badge>
-            ) : null}
+              {item.isInternalDuplicate ? (
+                <Badge variant="warning" size="xs">
+                  <Copy className="size-3" aria-hidden="true" />
+                  Duplicata no Arquivo
+                </Badge>
+              ) : null}
 
-            {item.status === "exact_match" ? (
-              <Badge variant="positive" size="xs">
-                <CheckCheck className="size-3" aria-hidden="true" />
-                Conciliado ({item.score}%)
-              </Badge>
-            ) : item.status === "probable_match" ? (
-              <Badge variant="warning" size="xs">
-                <Sparkles className="size-3" aria-hidden="true" />
-                Sugestão ({item.score}%)
-              </Badge>
-            ) : item.ignoredByDefault ? (
-              <Badge variant="muted" size="xs">
-                Pagamento / Ignorado
-              </Badge>
-            ) : (
-              <Badge variant="default" size="xs">
-                Novo
-              </Badge>
-            )}
+              {item.status === "exact_match" ? (
+                <Badge variant="positive" size="xs">
+                  <CheckCheck className="size-3" aria-hidden="true" />
+                  Conciliado ({item.score}%)
+                </Badge>
+              ) : item.status === "probable_match" ? (
+                <Badge variant="warning" size="xs">
+                  <Sparkles className="size-3" aria-hidden="true" />
+                  Sugestão ({item.score}%)
+                </Badge>
+              ) : item.ignoredByDefault ? (
+                <Badge variant="muted" size="xs">
+                  Pagamento / Ignorado
+                </Badge>
+              ) : (
+                <Badge variant="default" size="xs">
+                  Novo
+                </Badge>
+              )}
+            </div>
+
+            {/* Valor no mobile exibido na linha superior à direita */}
+            <div className="sm:hidden text-right shrink-0">
+              <MoneyText
+                cents={tx.amountCents}
+                tone={tx.isRefund ? "positive" : "negative"}
+                className="font-semibold text-xs"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -145,8 +164,8 @@ export function StatementReconcileItemRow({
         </div>
       </div>
 
-      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pl-7 sm:pl-0">
-        <div className="w-40 sm:w-44">
+      <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 shrink-0 pl-7 sm:pl-0 w-full sm:w-auto">
+        <div className="flex-1 sm:flex-initial sm:w-44 min-w-0">
           <Select
             value={item.selectedCategoryId}
             onValueChange={(val) => onChangeCategory(tx.id, val)}
@@ -155,7 +174,8 @@ export function StatementReconcileItemRow({
           />
         </div>
 
-        <div className="text-right min-w-[80px]">
+        {/* Valor no desktop */}
+        <div className="hidden sm:block text-right min-w-[80px]">
           <MoneyText
             cents={tx.amountCents}
             tone={tx.isRefund ? "positive" : "negative"}
@@ -163,7 +183,7 @@ export function StatementReconcileItemRow({
           />
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           {onEdit ? (
             <Button
               type="button"

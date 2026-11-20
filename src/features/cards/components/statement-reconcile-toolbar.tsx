@@ -104,8 +104,8 @@ export function StatementReconcileToolbar({
         </Alert>
       ) : null}
 
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-        <div className="min-w-0 flex-1 overflow-hidden">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        <div className="w-full min-w-0 flex-1">
           <Tabs
             value={filter}
             onValueChange={(val) => onFilterChange(val as ReconcileFilterTab)}
@@ -113,7 +113,7 @@ export function StatementReconcileToolbar({
           />
         </div>
         {filter !== "app_only" ? (
-          <div className="flex items-center justify-end gap-1.5 shrink-0">
+          <div className="flex items-center justify-between sm:justify-end gap-1.5 shrink-0 pt-0.5 sm:pt-0">
             {canAddManual ? (
               <Button
                 type="button"

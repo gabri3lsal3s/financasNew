@@ -98,7 +98,7 @@ export function TripMemberStatementModal({
       }
     >
       <div className="space-y-4">
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-surface-raised border border-border/80 space-y-3">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-surface border border-border/80 shadow-xs space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-foreground">{member.name}</span>
@@ -116,20 +116,20 @@ export function TripMemberStatementModal({
             </Badge>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-border/80">
-            <div className="p-2.5 rounded-xl bg-surface border border-border/80 shadow-xs">
-              <span className="text-[11px] text-muted-foreground block font-medium">Total Pago</span>
-              <MoneyText cents={statement.totalPaidCents} tone="default" className="font-bold" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-border/80">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Total Pago</span>
+              <MoneyText cents={statement.totalPaidCents} tone="default" className="text-sm sm:text-base font-bold tabular-nums" />
             </div>
 
-            <div className="p-2.5 rounded-xl bg-surface border border-border/80 shadow-xs">
-              <span className="text-[11px] text-muted-foreground block font-medium">{owedLabel}</span>
-              <MoneyText cents={statement.totalOwedCents} tone="default" className="font-bold" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{owedLabel}</span>
+              <MoneyText cents={statement.totalOwedCents} tone="default" className="text-sm sm:text-base font-bold tabular-nums" />
             </div>
 
-            <div className="p-2.5 rounded-xl bg-surface border border-border/80 shadow-xs">
-              <span className="text-[11px] text-muted-foreground block font-medium">{netLabel}</span>
-              <MoneyText cents={statement.netBalanceCents} tone="auto" sign="explicit" className="font-bold" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{netLabel}</span>
+              <MoneyText cents={statement.netBalanceCents} tone="auto" sign="explicit" className="text-sm sm:text-base font-bold tabular-nums" />
             </div>
           </div>
         </div>

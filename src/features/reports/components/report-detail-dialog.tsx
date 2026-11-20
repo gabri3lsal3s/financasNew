@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ReceiptText, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/modal";
+import { Modal, ModalFooter } from "@/components/ui/modal";
 import { MoneyText } from "@/components/ui/money-text";
 import { EmptyState } from "@/components/ui/empty-state";
 import { TransactionRow } from "@/components/modules/transaction-row";
@@ -69,6 +69,18 @@ export function ReportDetailDialog({
       title={title}
       description={subtitle}
       size="xl"
+      footer={
+        <ModalFooter borderless>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={() => onOpenChange(false)}
+          >
+            Fechar
+          </Button>
+        </ModalFooter>
+      }
     >
       <div className="flex flex-col gap-4 mt-2">
         <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface shadow-xs p-3.5">

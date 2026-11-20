@@ -48,6 +48,35 @@
 >   - Suíte dedicada `src/tests/portfolio-audit-gate-v3.test.ts` validando os Gates v3.1 a v3.6;
 >   - TypeScript (`tsc -b`) e ESLint 100% limpos (0 erros, 0 avisos).
 
+> **v3.14.0 (Build 92 — Auditoria e Padronização Editorial de Documentos & UI/UX de Modais — Frentes 1 e 2 Concluídas)** registra a conclusão integral do **Plano Diretor Editorial e Auditoria Visual de Relatórios** ([`docs/plans/PLANO_AUDITORIA_UIUX_MODAIS_E_PADRAO_EDITORIAL.md`](../plans/PLANO_AUDITORIA_UIUX_MODAIS_E_PADRAO_EDITORIAL.md)) padronizando todos os documentos e fluxos de extrato/relatório no padrão Private Banking / Wealth Management (2026-11-20):
+> - **(1) Infraestrutura Crítica de Impressão e Primitivos (Bloco 0)**:
+>   - Margens de impressão A4 calibradas para 14mm 16mm 16mm 16mm no Blink/Chromium;
+>   - Fix atômico de centavos e blindagem de moedas com `whitespace-nowrap` e `\u00A0` em `MoneyText`, erradicando quebras de moeda e centavos ejetados no rodapé da folha;
+>   - Suporte nativo a `size="3xl"` e layout de impressão sem duplicação de nós em `ReportDocumentLayout`.
+> - **(2) Componentes Editoriais Compartilhados (Bloco 1)**:
+>   - Monograma institucional Axir em vetor SVG limpo sem caixas decorativas;
+>   - `ReportHeader`: cabeçalho institucional 70/30 com competência por extenso em português;
+>   - `ReportFooter`: rodapé compacto anti-órfão (< 45px), prefixos funcionais criptográficos (`IRPF-`, `FIRE-`, `BAL-`, `DOS-`, `DRE-`, `EXT-`, `CART-`, `FAT-`) e numeração de página formal;
+>   - `ReportKpiGrid`: `KPI Strip` universal em 3 ou 4 colunas niveladas com `tabular-nums` e rótulos em caixa alta.
+> - **(3) A Árvore de 8 Relatórios Executivos A4 (Bloco 2)**:
+>   - R1 (DRE Pessoal): cascata DRE condensada em barra empilhada única e coluna `PONDERADO (R$)`;
+>   - R2 (Fatura de Cartão): barra de rateio/liquidação, coluna `Ponderado (R$)` e `ReportRunningHeader`;
+>   - R3 (Balanço 360°): consolidação em 1 página útil (One-Pager) em grade 2 colunas proporcionais (55% / 45%);
+>   - R4 (Dossiê da Posição): substituição de 7 mini-donuts por barras horizontais e tabela comparativa de benchmarks de 5 colunas (condensado de 9 para 6 páginas);
+>   - R5 (Carteira Mensal): faixa linear de movimentações da competência, score PQS 8,2/10 e custódia em 2 páginas;
+>   - R6 (Extrato Patrimonial): faixa de 4 KPIs, unidades no `<thead>` e supressão de zeros repetitivos por travessão fino (`—`);
+>   - R7 (Proventos FIRE): régua minimalista de 5 marcos uniformes e projeção para cota autossustentável;
+>   - R8 (Facilitador IRPF): agrupamento semântico por Códigos RFB (Ações 31, FIIs 73, Tesouro 45) com valores neutros e sem truncamentos.
+> - **(4) Exportações Analíticas Padronizadas (Bloco 3)**:
+>   - Caderno Excel Multi-Abas (`excel-export.ts`): paleta corporativa Axir Teal (`#1B6B62`), precisão percentual centesimal (`0.00%`) e unidades analíticas nos cabeçalhos;
+>   - Extratos CSV (`csv.ts`): unificação do cabeçalho `"Valor Ponderado (R$)"` em todos os serializadores de extrato, compatibilidade pt-BR (`;`) e UTF-8 BOM.
+> - **(5) UI/UX dos Modais de Conciliação e Extratos (Bloco 4)**:
+>   - Erradicação de estouro horizontal no mobile com layout adaptativo de 2 níveis em `statement-reconcile-rows.tsx`;
+>   - Abas fluidas e desobstruídas para touch scroll em `statement-reconcile-toolbar.tsx`;
+>   - Expansão de viewport para `size="3xl"` no desktop em `statement-import-dialog.tsx`;
+>   - Inclusão de rodapé tátil com botão de fechar em `report-detail-dialog.tsx`;
+>   - Erradicação de cards-in-cards em `trip-member-statement-modal.tsx`.
+>
 > **v3.14.0 (Memória de Cálculo, Auditoria Matemática Forense & Explicabilidade Ativa — Fases 1 a 6 Concluídas)** registra a conclusão integral do **Plano Mestre de Memória de Cálculo e Auditoria Matemática** ([`docs/plans/PLANO_MESTRE_MEMORIA_CALCULO_E_AUDITORIA_MATEMATICA.md`](../plans/PLANO_MESTRE_MEMORIA_CALCULO_E_AUDITORIA_MATEMATICA.md)) cumprindo a Regra 33 do `AGENTS.md` em toda a plataforma (2026-11-20):
 > - **(1) Infraestrutura Canônica de Domínio & Tipagem Multi-Unidade (`src/domain/calculation-memory/`)**:
 >   - Contratos de domínio puros (`CalculationBreakdown`, `BreakdownStep`, `BreakdownResult`, `actionLinks`, `copyText`);

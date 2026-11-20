@@ -88,7 +88,7 @@ function StatementImportContent({
       onOpenChange={onOpenChange}
       title={`Importar Fatura — ${card.name}`}
       description={`Competência de ${monthLabel(competenceMonth)} · Importe arquivos CSV ou OFX para conciliação automática.`}
-      size="2xl"
+      size="3xl"
       footer={footer}
     >
       <div className="space-y-4">

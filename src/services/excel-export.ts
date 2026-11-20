@@ -163,20 +163,20 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
  <Styles>
   <Style ss:ID="Default" ss:Name="Normal">
    <Alignment ss:Vertical="Center"/>
-   <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#000000"/>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Color="#0F172A"/>
   </Style>
   <Style ss:ID="Title">
-   <Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1" ss:Color="#0F3D39"/>
+   <Font ss:FontName="Calibri" ss:Size="14" ss:Bold="1" ss:Color="#1B6B62"/>
   </Style>
   <Style ss:ID="Subtitle">
-   <Font ss:FontName="Calibri" ss:Size="10" ss:Italic="1" ss:Color="#666666"/>
+   <Font ss:FontName="Calibri" ss:Size="10" ss:Italic="1" ss:Color="#475569"/>
   </Style>
   <Style ss:ID="Header">
    <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
    <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
-   <Interior ss:Color="#0F3D39" ss:Pattern="Solid"/>
+   <Interior ss:Color="#1B6B62" ss:Pattern="Solid"/>
    <Borders>
-    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#0B2B28"/>
+    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#134E48"/>
    </Borders>
   </Style>
   <Style ss:ID="Currency">
@@ -185,18 +185,18 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
   </Style>
   <Style ss:ID="Percent">
    <Alignment ss:Horizontal="Right"/>
-   <NumberFormat ss:Format="0.0%"/>
+   <NumberFormat ss:Format="0.00%"/>
   </Style>
   <Style ss:ID="Quantity">
    <Alignment ss:Horizontal="Right"/>
    <NumberFormat ss:Format="#,##0.0000"/>
   </Style>
   <Style ss:ID="TextBold">
-   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1"/>
+   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#0F172A"/>
   </Style>
   <Style ss:ID="Disclaimer">
    <Alignment ss:Vertical="Top" ss:WrapText="1"/>
-   <Font ss:FontName="Calibri" ss:Size="9" ss:Italic="1" ss:Color="#555555"/>
+   <Font ss:FontName="Calibri" ss:Size="9" ss:Italic="1" ss:Color="#64748B"/>
   </Style>
  </Styles>`;
 
@@ -326,12 +326,12 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
     <Cell><Data ss:Type="String">Setor</Data></Cell>
     <Cell><Data ss:Type="String">Moeda</Data></Cell>
     <Cell><Data ss:Type="String">Quantidade</Data></Cell>
-    <Cell><Data ss:Type="String">Preço Médio</Data></Cell>
-    <Cell><Data ss:Type="String">Cotação Atual</Data></Cell>
+    <Cell><Data ss:Type="String">Preço Médio (R$)</Data></Cell>
+    <Cell><Data ss:Type="String">Cotação Atual (R$)</Data></Cell>
     <Cell><Data ss:Type="String">Valor Total (R$)</Data></Cell>
     <Cell><Data ss:Type="String">Lucro / Prejuízo (R$)</Data></Cell>
     <Cell><Data ss:Type="String">PnL (%)</Data></Cell>
-    <Cell><Data ss:Type="String">Proventos no Ano</Data></Cell>
+    <Cell><Data ss:Type="String">Proventos no Ano (R$)</Data></Cell>
     <Cell><Data ss:Type="String">YoC (%)</Data></Cell>
     <Cell><Data ss:Type="String">Nota (0-10)</Data></Cell>
     <Cell><Data ss:Type="String">Status Governança</Data></Cell>
@@ -399,12 +399,12 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
    <Column ss:Width="120"/>
    <Row ss:StyleID="Header">
     <Cell><Data ss:Type="String">Competência</Data></Cell>
-    <Cell><Data ss:Type="String">Receitas Brutas</Data></Cell>
-    <Cell><Data ss:Type="String">Despesas Totais</Data></Cell>
-    <Cell><Data ss:Type="String">Poupança Gerada</Data></Cell>
-    <Cell><Data ss:Type="String">Taxa Poupança</Data></Cell>
-    <Cell><Data ss:Type="String">Aportes Investimentos</Data></Cell>
-    <Cell><Data ss:Type="String">Fluxo Líquido Caixa</Data></Cell>
+    <Cell><Data ss:Type="String">Receitas Brutas (R$)</Data></Cell>
+    <Cell><Data ss:Type="String">Despesas Totais (R$)</Data></Cell>
+    <Cell><Data ss:Type="String">Poupança Gerada (R$)</Data></Cell>
+    <Cell><Data ss:Type="String">Taxa Poupança (%)</Data></Cell>
+    <Cell><Data ss:Type="String">Aportes Investimentos (R$)</Data></Cell>
+    <Cell><Data ss:Type="String">Fluxo Líquido Caixa (R$)</Data></Cell>
    </Row>${dreRowsXml}
   </Table>
  </Worksheet>`;

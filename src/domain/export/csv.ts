@@ -151,7 +151,7 @@ const EXPENSE_HEADERS = [
   "Descrição",
   "Categoria",
   "Valor (R$)",
-  "Valor p/ relatório (R$)",
+  "Valor Ponderado (R$)",
   "Forma de pagamento",
   "Cartão",
   "Parcelas",
@@ -177,7 +177,7 @@ const INCOME_HEADERS = [
   "Descrição",
   "Categoria",
   "Valor (R$)",
-  "Valor p/ relatório (R$)",
+  "Valor Ponderado (R$)",
   "Forma de recebimento",
 ];
 
@@ -214,7 +214,7 @@ const CARD_INVOICE_HEADERS = [
   "Descrição",
   "Categoria",
   "Valor (R$)",
-  "Valor p/ relatório (R$)",
+  "Valor Ponderado (R$)",
   "Parcelas",
 ];
 
@@ -293,7 +293,7 @@ const UNIFIED_TRANSACTION_HEADERS = [
   "Descrição",
   "Categoria",
   "Valor (R$)",
-  "Valor p/ relatório (R$)",
+  "Valor Ponderado (R$)",
   "Forma / Detalhes",
   "Cartão",
   "Parcelas",
