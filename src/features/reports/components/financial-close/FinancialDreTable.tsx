@@ -46,7 +46,7 @@ export function FinancialDreTable({
           <thead>
             <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
               <th className="py-2 px-3">Linha / Estrutura Contábil</th>
-              <th className="py-2 px-3 text-right">Valor Bruto (R$)</th>
+              <th className="py-2 px-3 text-right">{hasBrutoRef ? "Valor Bruto (R$)" : "Valor (R$)"}</th>
               {hasBrutoRef && <th className="py-2 px-3 text-right">Ponderado (R$)</th>}
               <th className="py-2 px-3 text-right">% Receita</th>
             </tr>
@@ -90,11 +90,16 @@ export function FinancialDreTable({
                 <MoneyText
                   cents={effectiveGrossSavingsBruto}
                   tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
+                  sign="explicit"
                 />
               </td>
               {hasBrutoRef && (
                 <td className="py-2 px-3 text-right num font-mono font-bold text-foreground whitespace-nowrap">
-                  <MoneyText cents={dre.operationalSavingsCents} tone="default" />
+                  <MoneyText
+                    cents={dre.operationalSavingsCents}
+                    tone={dre.operationalSavingsCents >= 0 ? "positive" : "negative"}
+                    sign="explicit"
+                  />
                 </td>
               )}
               <td className="py-2 px-3 text-right num font-mono whitespace-nowrap">
@@ -133,11 +138,16 @@ export function FinancialDreTable({
                 <MoneyText
                   cents={netCashFlow}
                   tone={netCashFlow >= 0 ? "positive" : "negative"}
+                  sign="explicit"
                 />
               </td>
               {hasBrutoRef && (
                 <td className="py-2.5 px-3 text-right num font-mono font-bold whitespace-nowrap text-sm text-foreground">
-                  <MoneyText cents={dre.netCashFlowCents} tone="default" />
+                  <MoneyText
+                    cents={dre.netCashFlowCents}
+                    tone={dre.netCashFlowCents >= 0 ? "positive" : "negative"}
+                    sign="explicit"
+                  />
                 </td>
               )}
               <td className="py-2.5 px-3 text-right num font-mono font-bold whitespace-nowrap text-xs">

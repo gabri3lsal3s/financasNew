@@ -1,9 +1,9 @@
 import { useMemo } from "react";
+import { ReportKpiGrid } from "@/components/modules/reports/report-kpi-grid";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
 import { formatMonthYear, monthLabel } from "@/lib/date";
-import { cn } from "@/lib/utils";
 import { formatSignedPct } from "@/services/masks";
 
 export interface SnapshotsPeriodSummary {
@@ -38,70 +38,36 @@ export function SnapshotsEvolutionChart({
   return (
     <div className="flex flex-col gap-3">
       {/* KPI Strip Institucional de 4 Colunas */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 print:grid-cols-4 gap-2.5 rounded-xl border border-border/80 bg-surface p-3 sm:p-4 shadow-xs">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-            Patrimônio Final
-          </span>
-          <MoneyText
-            cents={numberToCents(summary.latestValueBRL)}
-            tone="default"
-            className="text-sm sm:text-base font-bold"
-          />
-          <span className="text-[10px] text-muted-foreground">
-            {summary.totalMonths} {summary.totalMonths === 1 ? "mês" : "meses"}
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-            Custo Aplicado
-          </span>
-          <MoneyText
-            cents={numberToCents(summary.latestCostBRL)}
-            tone="default"
-            className="text-sm sm:text-base font-semibold text-muted-foreground"
-          />
-          <span className="text-[10px] text-muted-foreground">
-            Capital investido líquido
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-            Proventos no Período
-          </span>
-          <MoneyText
-            cents={numberToCents(summary.periodDividendsBRL)}
-            tone="positive"
-            className="text-sm sm:text-base font-bold"
-          />
-          <span className="text-[10px] text-muted-foreground truncate">
-            {summary.openingDividendsBalanceBRL && summary.openingDividendsBalanceBRL > 0
-              ? `+ R$ ${summary.openingDividendsBalanceBRL.toFixed(2).replace(".", ",")} saldo retroativo`
-              : "Renda passiva creditada"}
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-            TWR Acumulado
-          </span>
-          <span
-            className={cn(
-              "num font-mono text-sm sm:text-base font-bold whitespace-nowrap",
-              (summary.latestTwrPct ?? 0) >= 0 ? "text-positive-strong" : "text-negative-strong",
-            )}
-          >
-            {summary.latestTwrPct !== null
-              ? formatSignedPct(summary.latestTwrPct, 1)
-              : "—"}
-          </span>
-          <span className="text-[10px] text-muted-foreground">
-            Retorno por cotas (Padrão CVM)
-          </span>
-        </div>
-      </div>
+      <ReportKpiGrid
+        columns={4}
+        items={[
+          {
+            label: "Patrimônio Final",
+            value: <MoneyText cents={numberToCents(summary.latestValueBRL)} tone="default" />,
+            subtext: `${summary.totalMonths} ${summary.totalMonths === 1 ? "mês" : "meses"}`,
+          },
+          {
+            label: "Custo Aplicado",
+            value: <MoneyText cents={numberToCents(summary.latestCostBRL)} tone="default" />,
+            subtext: "Capital investido líquido",
+          },
+          {
+            label: "Proventos no Período",
+            value: <MoneyText cents={numberToCents(summary.periodDividendsBRL)} tone="positive" />,
+            subtext:
+              summary.openingDividendsBalanceBRL && summary.openingDividendsBalanceBRL > 0
+                ? `+ R$ ${summary.openingDividendsBalanceBRL.toFixed(2).replace(".", ",")} retroativo`
+                : "Renda passiva creditada",
+            tone: "positive",
+          },
+          {
+            label: "TWR Acumulado",
+            value: summary.latestTwrPct !== null ? formatSignedPct(summary.latestTwrPct, 1) : "—",
+            subtext: "Retorno por cotas (Padrão CVM)",
+            tone: (summary.latestTwrPct ?? 0) >= 0 ? "positive" : "negative",
+          },
+        ]}
+      />
 
       {chronological.length >= 2 ? (
         <div className="rounded-xl border border-border/80 bg-surface p-3 sm:p-4 shadow-xs">

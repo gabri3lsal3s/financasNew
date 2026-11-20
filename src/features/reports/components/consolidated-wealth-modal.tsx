@@ -75,6 +75,7 @@ export function ConsolidatedWealthModal({
       open={open}
       onOpenChange={onOpenChange}
       title="Balanço Patrimonial 360° & Evolução Líquida"
+      documentTitle="Balanco_Patrimonial_360_Consolidado.pdf"
     >
       <ReportHeader
         title="Balanço Patrimonial 360° & Visão Consolidada"

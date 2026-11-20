@@ -163,11 +163,12 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Padronizacao Visual, Acessibilidade & Ergonomia",
-    "Conformidade estrita de acessibilidade WCAG 2.4.7 AA com aneis de foco em 100% dos controles e links",
-    "Decomposicao arquitetural completa: zero arquivos monoliticos (teto rigoroso de 250 linhas em UI)",
-    "Unificacao de tokens de Z-Index e trinca canonica de superficies (border-border/80 bg-surface shadow-xs)",
-    "Laboratorio Forense de Auditoria Quantitativa com 39 invariantes e 8 Golden Journeys homologadas"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Refinamento Editorial Avancado & Integridade de Documentos",
+    "Padronizacao de nomes de arquivo de download institucional (ASCII sem espacos e carimbo temporal)",
+    "Unidades monetarias explicitas (R$) e semantica formal em todas as colunas de demonstrativos",
+    "Eliminacao de truncamento cego em faturas e alinhamento milimetrico de colunas em ledgers",
+    "Semantica contabil estruturada thead na DRE consolidada e sinalizacao explicita para impressao PB",
+    "Expansao do modal de extrato patrimonial para size 3xl no desktop"
   ]
 }
 EOF

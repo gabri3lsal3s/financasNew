@@ -85,6 +85,7 @@ export function TaxFacilitatorModal({
       open={open}
       onOpenChange={onOpenChange}
       title="Dossiê Fiscal & Facilitador de IRPF"
+      documentTitle={`Facilitador_IRPF_AnoBase_${calendarYear}.pdf`}
     >
       <ReportHeader
         title={`Facilitador de Declaração de IRPF — Ano-Base ${calendarYear}`}

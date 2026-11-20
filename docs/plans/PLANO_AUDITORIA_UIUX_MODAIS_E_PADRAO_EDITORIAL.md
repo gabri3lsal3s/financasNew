@@ -1,8 +1,8 @@
 # Arquitetura e Plano Diretor Editorial de Relatórios — Axir
 ## Tratado Unificado: Auditoria Visual, Engenharia de Design System e Governança Editorial
 
-> **Status:** 100% Concluído e Homologado (Blocos 0 a 4 — Todas as Fases Implementadas e Validadas em Produção)  
-> **Versão:** 9.0 (Convergência Canônica: Auditoria Visual Externa + Auditoria Técnica de Código + Plano Mestre de UX)  
+> **Status:** Blocos 0 a 5 Concluídos e Homologados (v3.14.0 - Build 93)  
+> **Versão:** 11.0 (Extensão Pós-Auditoria de Relatórios Gerados: Integridade Estrutural, Acessibilidade e Resiliência Concluída)  
 > **Documentos de Referência Integrados:**  
 > - `docs/plans/PLANO_MESTRE_AUDITORIA_VISUAL_UX_E_PADRONIZACAO.md` (Governança Global de UI e 20 Dimensões)  
 > - `docs/design/DESIGN_SYSTEM.md` e `src/styles/tokens.css` (Design Tokens e Paleta Canônica)  
@@ -284,13 +284,25 @@ flowchart TD
         F26["Fase 26: export-actions.ts (CSV Sanitizado com UTF-8 BOM)"]
     end
 
+    subgraph B5["Bloco 5: Extensão — Refinamento Editorial Avançado & Integridade"]
+        F27["Fase 27: documentTitle e Nomes Canônicos de PDF em Todos os Modais"]
+        F28["Fase 28: Unidades Monetárias (R$) e Nomenclatura na DRE"]
+        F29["Fase 29: Erradicação de Truncamento Cego e colgroup na Fatura"]
+        F30["Fase 30: Integridade de Colunas e size='3xl' no Extrato de Snapshots"]
+        F31["Fase 31: Unificação do KPI Strip de Snapshots com ReportKpiGrid"]
+        F32["Fase 32: DRE Acessível no Balanço 360° e Marcadores Vetoriais"]
+        F33["Fase 33: Sinais Explícitos e Fidelidade Monocromática P&B"]
+        F34["Fase 34: Testes de Regressão e Validação Integral dos Documentos"]
+    end
+
     B0 --> B1
     B1 --> B2
     B2 --> B3
     B3 --> B4
+    B4 --> B5
 ```
 
-### Detalhamento das 26 Fases
+### Detalhamento das 34 Fases (26 Originais + 8 de Extensão)
 
 #### Bloco 0: Infraestrutura Crítica de Impressão e Primitivos
 - **Fase 1:** `src/styles/globals.css` — Ajuste de margens `@page` para `14mm 16mm 16mm 16mm`, resets de tabela com `table-layout: fixed; width: 100%`, blindagem de footers com `break-inside: avoid; margin-top: 10px;` e classes utilitárias `.print-avoid-break-inside` e `.print-page-break-after`.
@@ -328,6 +340,16 @@ flowchart TD
 - **Fase 25:** `src/domain/reports/build-excel-workbook.ts` — Enriquecimento da DRE no Excel e segregação de dívidas ativas vs. quitadas.
 - **Fase 26:** `src/services/export-actions.ts` — Sanitização de campos vazios e encoding UTF-8 com BOM.
 
+#### Bloco 5: Extensão — Refinamento Editorial Avançado, Integridade Estrutural e Resiliência a Dados Extremos [CONCLUÍDO - Build 93]
+- **Fase 27 (Nomes Canônicos de Exportação PDF em Todos os Modais) [CONCLUÍDO]:** Injeção de `documentTitle` limpo, sem caracteres acentuados ou caracteres de substituição espúrios (`_`), nos 5 modais restantes (`ConsolidatedWealthModal`, `TaxFacilitatorModal`, `DividendFreedomModal`, `WealthTearSheetModal`, `PortfolioExecutiveReport`).
+- **Fase 28 (Unidades Monetárias e Nomenclatura na DRE) [CONCLUÍDO]:** Inclusão de `(R$)` nos cabeçalhos de coluna de `FinancialCompositionTables.tsx` (`Orçado (R$)`, `Realizado (R$)`, `Ponderado (R$)`, `Total (R$)`) e alteração condicional da coluna da `FinancialDreTable.tsx` para `Valor (R$)` quando pesos estiverem desativados ou idênticos aos brutos.
+- **Fase 29 (Fatura de Cartão: Erradicação de Truncamento e colgroup Paritário) [CONCLUÍDO]:** Remoção de `truncate` cego nas descrições e categorias de `CardInvoicePrintView.tsx` (adoção de `break-words leading-tight line-clamp-2`), adição de `<colgroup>` canônico com percentuais estritos e migração dos totalizadores para `<tfoot>`.
+- **Fase 30 (Extrato Patrimonial: Consistência Estrutural de Colunas e Viewport 3xl) [CONCLUÍDO]:** Correção da discrepância de colunas em `SnapshotsLedgerTable.tsx` (alinhamento dos 10 `<th>`/`<td>` com 10 elementos `<col>` somando 100%) e expansão do modal em `PortfolioSnapshotsDialog.tsx` de `size="2xl"` para `size="3xl"` (1280px).
+- **Fase 31 (Extrato Patrimonial: Migração para o Primitivo ReportKpiGrid) [CONCLUÍDO]:** Substituição do grid ad-hoc de 4 KPIs em `SnapshotsEvolutionChart.tsx` pelo primitivo canônico `<ReportKpiGrid columns={4} />`, garantindo padronização tipográfica e visual 100% DRY.
+- **Fase 32 (Balanço 360°: DRE Acessível e Marcadores Vetoriais) [CONCLUÍDO]:** Inclusão de `<thead>` com escopo de coluna acessível (`scope="col"`) na DRE compacta de `ConsolidatedBalanceSection.tsx` e adição de micro-borda vetorial nos marcadores de cor de ativos para impressão nítida em impressoras laser P&B.
+- **Fase 33 (Fidelidade Monocromática e Sinais Explícitos em Impressão P&B) [CONCLUÍDO]:** Padronização de sinais explícitos (`sign="explicit"` no `MoneyText`) e peso semântico contábil para deltas e resultados operacionais, garantindo legibilidade perfeita mesmo em impressões sem cor.
+- **Fase 34 (Validação, Regressão Automatizada e Re-geração dos PDFs de Amostra) [CONCLUÍDO]:** Execução da suíte completa de testes (`vitest`), checagem estrita de lint (`eslint .`), compilação (`tsc -b`), testes E2E (`playwright`), empacotamento do Android APK (Build 93 - v3.14.0) e publicação no Cloudflare R2.
+
 ---
 
 ## 8. Governança de Validação e Critérios de Aceite (DoD)
@@ -339,3 +361,51 @@ Para cada fase implementada, os seguintes critérios inegociáveis serão aferid
 4. **Zero Truncamentos de Ativos:** Tickers da Receita Federal e nomes de setores 100% legíveis sem reticências.
 5. **Fidelidade SSOT:** Zero recálculos na camada de relatório ou modal; consumo estrito dos dados normalizados de `domain/portfolio` e `domain/reports`.
 6. **Suíte Automatizada 100% Verde:** `npm run test` executado e aprovado sem qualquer quebra de regressão.
+
+---
+
+## 9. Bloco 5: Detalhamento Técnico da Extensão de Refinamento Editorial
+
+### 9.1 Diagnóstico Forense Pós-Geração das Amostras Físicas
+
+A geração bem-sucedida das primeiras 5 amostras reais de PDF A4 (`RELATORIO_EXEMPLO_*.pdf`) e suas capturas em alta resolução (`preview_*.png`) confirmou a robustez da infraestrutura criada nos Blocos 0 a 4 (margens A4 perfeitas, zero centavos órfãos, cabeçalhos 70/30 e ausência de emojis). No entanto, uma auditoria forense aprofundada revelou 8 fragilidades pontuais e oportunidades de refinamento estrutural:
+
+1. **Nomes de Arquivo de Download (`documentTitle`):**
+   - *Causa Raiz:* Quando `documentTitle` não é passado explicitamente ao `<ReportDocumentLayout>`, o fallback higieniza o título visual do modal. Caracteres acentuados como "ç", "ã", "é" viram underscores duplos (`Balan_o_Patrimonial_360__.pdf`, `Dossi__FIRE___Liberdade_Financeira.pdf`).
+   - *Impacto:* Experiência de download confusa para clientes de alta renda / Wealth Management.
+   - *Solução:* Definir `documentTitle` canônico em ASCII em todos os modais.
+
+2. **Unidades de Moeda nos Cabeçalhos da DRE:**
+   - *Causa Raiz:* Em `FinancialCompositionTables.tsx`, as colunas de "Despesas por Categoria" e "Formas de Pagamento" utilizam rótulos simples como `Realizado`, `Orçado`, `Total Bruto`.
+   - *Impacto:* Falta de clareza formal em auditorias contábeis. Todos os relatórios do Bloco 3 e o Excel já utilizam `(R$)` nos títulos das colunas.
+   - *Solução:* Padronizar `Orçado (R$)`, `Realizado (R$)`, `Ponderado (R$)` e `Total (R$)`.
+
+3. **Truncamento Cego na Fatura de Cartão:**
+   - *Causa Raiz:* `CardInvoicePrintView.tsx` aplica a classe `truncate` diretamente nas células de descrição e categoria.
+   - *Impacto:* Estabelecimentos com descrições longas têm seu nome cortado no PDF impresso, impossibilitando conferência precisa pelo usuário.
+   - *Solução:* Substituir por `break-words whitespace-normal leading-tight line-clamp-2`.
+
+4. **Inconsistência de Colunas no Ledger de Snapshots:**
+   - *Causa Raiz:* `SnapshotsLedgerTable.tsx` possui 10 colunas no cabeçalho e corpo no modo tela, mas o `<colgroup>` define apenas 9 elementos `<col>`.
+   - *Impacto:* Quebra do algoritmo de largura `table-layout: fixed` no navegador, gerando colunas instáveis no preview interativo.
+   - *Solução:* Adicionar `<col className="print:hidden w-16" />` e calibrar percentuais para 100%.
+
+5. **Grids Ad-hoc de KPIs no Extrato:**
+   - *Causa Raiz:* `SnapshotsEvolutionChart.tsx` reimplementa o layout de 4 KPIs com tags `<div className="grid ...">` ao invés de consumir `<ReportKpiGrid columns={4} />`.
+   - *Impacto:* Violação da Regra 4 de DRY e inconsistência sutil de padding e tipografia.
+   - *Solução:* Migrar para `<ReportKpiGrid columns={4} />`.
+
+6. **Semântica da Tabela DRE no Balanço 360°:**
+   - *Causa Raiz:* `ConsolidatedBalanceSection.tsx` monta a tabela da DRE sem elemento `<thead>`.
+   - *Impacto:* Não-conformidade com diretrizes de acessibilidade semântica (WCAG 2.1 AA) e ausência de repetição de cabeçalho em casos de quebra de página.
+   - *Solução:* Adicionar `<thead>` semântico acessível com cabeçalhos estruturados.
+
+7. **Impressão em Tons de Cinza (Black & White Fidelity):**
+   - *Causa Raiz:* Variações de resultado operacional positivo vs negativo dependem primariamente da cor verde (`text-positive-strong`) ou vermelha (`text-negative-strong`).
+   - *Impacto:* Em impressões laser P&B, ambos aparecem em cinza escuro similar.
+   - *Solução:* Inserir sinal explícito contábil `(+)` e `(-)` em todos os saldos e deltas via `sign="explicit"`.
+
+8. **Tamanho de Janela do Extrato Patrimonial:**
+   - *Causa Raiz:* `PortfolioSnapshotsDialog.tsx` está fixado em `size="2xl"` (1024px).
+   - *Impacto:* Compressão das 10 colunas analíticas em telas normais de desktop.
+   - *Solução:* Migrar para `size="3xl"` (1280px), em conformidade estrita com a Regra 18 do `AGENTS.md`.

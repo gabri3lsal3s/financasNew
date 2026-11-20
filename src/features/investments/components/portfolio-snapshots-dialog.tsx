@@ -97,7 +97,7 @@ export function PortfolioSnapshotsDialog({
         onOpenChange={onOpenChange}
         title="Extrato Analítico de Evolução Patrimonial"
         documentTitle="Extrato_Evolucao_Patrimonial.pdf"
-        size="2xl"
+        size="3xl"
       >
         <ReportHeader
           title="Extrato Analítico de Evolução Patrimonial"

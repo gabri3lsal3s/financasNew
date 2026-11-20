@@ -136,7 +136,8 @@ export function PortfolioExecutiveReport({
       open={open}
       onOpenChange={onOpenChange}
       title="Relatório Executivo da Carteira"
-      size="2xl"
+      documentTitle={`Relatorio_Executivo_Carteira_${selectedMonth}.pdf`}
+      size="3xl"
     >
       <div className="flex flex-col gap-4 w-full">
         <ExecutiveReportPeriodBar

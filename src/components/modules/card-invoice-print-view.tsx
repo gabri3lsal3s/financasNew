@@ -122,15 +122,23 @@ export function CardInvoicePrintView({
           <p className="text-sm text-muted-foreground py-1">Nenhum gasto lançado nesta competência.</p>
         ) : (
           <div className="w-full min-w-0 rounded-lg border border-border/80 bg-surface shadow-xs overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
-            <table className="w-full min-w-[540px] sm:min-w-full print:min-w-0 print:w-full print:table-fixed border-collapse text-xs">
+            <table className="w-full min-w-[540px] sm:min-w-full print:min-w-0 print:w-full table-fixed border-collapse text-xs">
+              <colgroup>
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "33%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "10%" }} />
+              </colgroup>
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">
-                  <th className="py-2 px-2.5 print:w-[15%]">Data</th>
-                  <th className="py-2 px-2.5 print:w-[33%]">Descrição</th>
-                  <th className="py-2 px-2.5 print:w-[18%]">Categoria</th>
-                  <th className="py-2 px-2.5 text-right print:w-[12%]">Valor (R$)</th>
-                  <th className="py-2 px-2.5 text-right print:w-[12%]">Ponderado (R$)</th>
-                  <th className="py-2 px-2.5 text-right print:w-[10%]">Parcelas</th>
+                  <th className="py-2 px-2.5">Data</th>
+                  <th className="py-2 px-2.5">Descrição</th>
+                  <th className="py-2 px-2.5">Categoria</th>
+                  <th className="py-2 px-2.5 text-right">Valor (R$)</th>
+                  <th className="py-2 px-2.5 text-right">Ponderado (R$)</th>
+                  <th className="py-2 px-2.5 text-right">Parcelas</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
@@ -138,8 +146,8 @@ export function CardInvoicePrintView({
                   <Fragment key={`${expense.date}-${expense.description}-${index}`}>
                     <tr className="break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
                       <td className="py-1.5 px-2.5 tabular-nums font-mono text-muted-foreground whitespace-nowrap">{formatDateBR(expense.date)}</td>
-                      <td className="py-1.5 px-2.5 font-bold text-foreground truncate">{expense.description}</td>
-                      <td className="py-1.5 px-2.5 text-[11px] text-muted-foreground truncate">{expense.categoryName}</td>
+                      <td className="py-1.5 px-2.5 font-bold text-foreground break-words whitespace-normal leading-tight line-clamp-2">{expense.description}</td>
+                      <td className="py-1.5 px-2.5 text-[11px] text-muted-foreground break-words whitespace-normal leading-tight line-clamp-2">{expense.categoryName}</td>
                       <td className="py-1.5 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
                         <MoneyText cents={expense.valueCents} tone="negative" />
                       </td>
@@ -150,7 +158,9 @@ export function CardInvoicePrintView({
                     </tr>
                   </Fragment>
                 ))}
-                <tr className="font-bold bg-muted/40 border-t border-border/80 text-foreground break-inside-avoid">
+              </tbody>
+              <tfoot className="border-t-2 border-border/80 bg-muted/40 font-bold text-foreground break-inside-avoid">
+                <tr>
                   <td className="py-2 px-2.5 uppercase text-[10px] tracking-wider" colSpan={3}>
                     Total ({expenses.length} {expenses.length === 1 ? "gasto" : "gastos"})
                   </td>
@@ -162,7 +172,7 @@ export function CardInvoicePrintView({
                   </td>
                   <td className="py-2 px-2.5 text-right" />
                 </tr>
-              </tbody>
+              </tfoot>
             </table>
           </div>
         )}
@@ -173,20 +183,26 @@ export function CardInvoicePrintView({
         <section aria-label="Pagamentos e estornos" className="flex flex-col gap-2 break-inside-avoid">
           <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Pagamentos e estornos</h2>
           <div className="w-full min-w-0 rounded-lg border border-border/80 bg-surface shadow-xs overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
-            <table className="w-full min-w-[440px] sm:min-w-full print:min-w-0 print:w-full print:table-fixed border-collapse text-xs">
+            <table className="w-full min-w-[440px] sm:min-w-full print:min-w-0 print:w-full table-fixed border-collapse text-xs">
+              <colgroup>
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "55%" }} />
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "15%" }} />
+              </colgroup>
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">
-                  <th className="py-2 px-2.5 print:w-[15%]">Data</th>
-                  <th className="py-2 px-2.5 print:w-[55%]">Descrição</th>
-                  <th className="py-2 px-2.5 text-right print:w-[15%]">Valor (R$)</th>
-                  <th className="py-2 px-2.5 text-right print:w-[15%]">Tipo</th>
+                  <th className="py-2 px-2.5">Data</th>
+                  <th className="py-2 px-2.5">Descrição</th>
+                  <th className="py-2 px-2.5 text-right">Valor (R$)</th>
+                  <th className="py-2 px-2.5 text-right">Tipo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
                 {payments.map((payment, index) => (
                   <tr key={`${payment.date}-${payment.note}-${index}`} className="break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
                     <td className="py-1.5 px-2.5 tabular-nums font-mono text-muted-foreground whitespace-nowrap">{formatDateBR(payment.date)}</td>
-                    <td className="py-1.5 px-2.5 font-bold text-foreground">
+                    <td className="py-1.5 px-2.5 font-bold text-foreground break-words whitespace-normal leading-tight line-clamp-2">
                       {payment.note || (payment.isRefund ? "Estorno" : "Pagamento de fatura")}
                     </td>
                     <td className="py-1.5 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">

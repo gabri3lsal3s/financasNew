@@ -71,9 +71,9 @@ export function FinancialCompositionTables({
               <thead>
                 <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
                   <th className="py-1.5 px-2 font-bold">Categoria</th>
-                  {hasBudgets && <th className="py-1.5 px-2 text-right font-bold">Orçado</th>}
-                  <th className="py-1.5 px-2 text-right font-bold">Realizado</th>
-                  {hasBrutoRef && <th className="py-1.5 px-2 text-right font-bold">Ponderado</th>}
+                  {hasBudgets && <th className="py-1.5 px-2 text-right font-bold">Orçado (R$)</th>}
+                  <th className="py-1.5 px-2 text-right font-bold">Realizado (R$)</th>
+                  {hasBrutoRef && <th className="py-1.5 px-2 text-right font-bold">Ponderado (R$)</th>}
                   <th className="py-1.5 px-2 text-right font-bold">{hasBudgets ? "Desvio" : "%"}</th>
                 </tr>
               </thead>
@@ -158,7 +158,7 @@ export function FinancialCompositionTables({
               <thead>
                 <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
                   <th className="py-1.5 px-2 font-bold">Meio de Pagamento</th>
-                  <th className="py-1.5 px-2 text-right font-bold">Total Bruto</th>
+                  <th className="py-1.5 px-2 text-right font-bold">{hasBrutoRef ? "Valor Bruto (R$)" : "Total (R$)"}</th>
                   <th className="py-1.5 px-2 text-right font-bold">%</th>
                 </tr>
               </thead>

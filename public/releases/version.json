@@ -1,17 +1,17 @@
 {
   "version": "3.14.0",
-  "versionCode": 92,
-  "releaseDate": "2026-11-20T23:03:00Z",
+  "versionCode": 93,
+  "releaseDate": "2026-11-20T23:49:16Z",
   "minSupportedVersion": "3.14.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "7057eb592410b028302d09b6c7374fdec5ade3804b0ae428f71641b07fdf5876",
-  "fileSizeBytes": 12300986,
+  "sha256": "5306b3b7c3449519fd91f9d8a482f6098ea1252e73a7800fafc96518ef460992",
+  "fileSizeBytes": 12301626,
   "changelog": [
-    "Axir v3.14.0 (Build 92): Auditoria e Padronização Editorial de Documentos & UI/UX de Modais",
-    "Padronização visual e editorial institucional nos 8 relatórios executivos A4 (DRE, IRPF, Balanço 360, FIRE, Dossiê, Carteira, Extrato e Fatura)",
-    "Caderno de Relatórios em Excel XML com paleta Axir Teal, precisão centesimal e unidades analíticas",
-    "Extratos CSV com delimitador pt-BR, UTF-8 BOM e unificação da coluna Valor Ponderado",
-    "Erradicação de rolagem horizontal desconfortável e adoção de layout móvel adaptativo nos modais de conciliação e extrato",
-    "Expansão dos modais ricos para size 3xl no desktop e inclusão de rodapés táteis no mobile"
+    "Axir v3.14.0 (Build 93): Refinamento Editorial Avancado & Integridade de Documentos",
+    "Padronizacao de nomes de arquivo de download institucional (ASCII sem espacos e carimbo temporal)",
+    "Unidades monetarias explicitas (R$) e semantica formal em todas as colunas de demonstrativos",
+    "Eliminacao de truncamento cego em faturas e alinhamento milimetrico de colunas em ledgers",
+    "Semantica contabil estruturada thead na DRE consolidada e sinalizacao explicita para impressao PB",
+    "Expansao do modal de extrato patrimonial para size 3xl no desktop"
   ]
 }

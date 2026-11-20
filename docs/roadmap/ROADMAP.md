@@ -76,6 +76,15 @@
 >   - Expansão de viewport para `size="3xl"` no desktop em `statement-import-dialog.tsx`;
 >   - Inclusão de rodapé tátil com botão de fechar em `report-detail-dialog.tsx`;
 >   - Erradicação de cards-in-cards em `trip-member-statement-modal.tsx`.
+> - **(6) Extensão de Refinamento Editorial Avançado & Integridade Estrutural (Bloco 5 — Fases 27 a 34 — Concluído — Build 93 - v3.14.0)**:
+>   - Fase 27: Injeção de `documentTitle` canônico em ASCII em todos os modais restantes para download limpo de PDFs;
+>   - Fase 28: Padronização de unidades `(R$)` nos cabeçalhos de composição da DRE e `Valor (R$)` condicional;
+>   - Fase 29: Erradicação de `truncate` cego na fatura de cartão e `<colgroup>` paritário tela/impressão;
+>   - Fase 30: Correção estrutural do `<colgroup>` (10 colunas) e viewport `size="3xl"` no extrato de snapshots;
+>   - Fase 31: Migração do grid de KPIs de snapshots para o primitivo universal `<ReportKpiGrid>`;
+>   - Fase 32: Inclusão de `<thead>` com escopo acessível na DRE do Balanço 360° e micro-bordas em marcadores vetoriais;
+>   - Fase 33: Sinais explícitos contábeis (`sign="explicit"`) para fidelidade total em impressões monocromáticas P&B;
+>   - Fase 34: Bateria integral de testes, linting, testes E2E Playwright, compilação do APK Android (Build 93) e upload no R2.
 >
 > **v3.14.0 (Memória de Cálculo, Auditoria Matemática Forense & Explicabilidade Ativa — Fases 1 a 6 Concluídas)** registra a conclusão integral do **Plano Mestre de Memória de Cálculo e Auditoria Matemática** ([`docs/plans/PLANO_MESTRE_MEMORIA_CALCULO_E_AUDITORIA_MATEMATICA.md`](../plans/PLANO_MESTRE_MEMORIA_CALCULO_E_AUDITORIA_MATEMATICA.md)) cumprindo a Regra 33 do `AGENTS.md` em toda a plataforma (2026-11-20):
 > - **(1) Infraestrutura Canônica de Domínio & Tipagem Multi-Unidade (`src/domain/calculation-memory/`)**:

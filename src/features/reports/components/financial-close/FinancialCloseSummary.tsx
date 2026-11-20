@@ -56,6 +56,7 @@ export function FinancialCloseSummary({
             <MoneyText
               cents={effectiveGrossSavingsBruto}
               tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
+              sign="explicit"
               className="text-base sm:text-lg font-bold"
             />
           ),
@@ -82,6 +83,7 @@ export function FinancialCloseSummary({
             <MoneyText
               cents={effectiveGrossSavingsBruto}
               tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
+              sign="explicit"
               className="inline font-bold"
             />
           </strong>{" "}

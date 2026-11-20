@@ -45,21 +45,21 @@ export function ConsolidatedBalanceSection({
             <div className="flex flex-col gap-1.5 text-xs flex-1 w-full">
               <div className="flex justify-between items-center gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="size-2 rounded-full shrink-0 bg-primary-strong" />
+                  <span className="size-2 rounded-full shrink-0 bg-primary-strong border border-border/80" />
                   <span className="text-muted-foreground truncate">Investimentos:</span>
                 </div>
                 <MoneyText cents={numberToCents(balanceSheet.totalInvestmentsBRL)} className="font-bold text-foreground" />
               </div>
               <div className="flex justify-between items-center gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="size-2 rounded-full shrink-0 bg-[hsl(var(--cat-7))]" />
+                  <span className="size-2 rounded-full shrink-0 bg-[hsl(var(--cat-7))] border border-border/80" />
                   <span className="text-muted-foreground truncate">Reserva de Caixa:</span>
                 </div>
                 <MoneyText cents={numberToCents(balanceSheet.cashBalanceBRL)} className="font-bold text-foreground" />
               </div>
               <div className="flex justify-between items-center gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="size-2 rounded-full shrink-0 bg-portfolio" />
+                  <span className="size-2 rounded-full shrink-0 bg-portfolio border border-border/80" />
                   <span className="text-muted-foreground truncate">Contas a Receber:</span>
                 </div>
                 <MoneyText cents={numberToCents(balanceSheet.receivablesBRL)} className="font-bold text-foreground" />
@@ -119,6 +119,12 @@ export function ConsolidatedBalanceSection({
               <col style={{ width: "70%" }} />
               <col style={{ width: "30%" }} />
             </colgroup>
+            <thead>
+              <tr className="border-b border-border/80 bg-muted/40 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <th scope="col" className="py-1.5 px-3">Linha / Estrutura Contábil</th>
+                <th scope="col" className="py-1.5 px-3 text-right">Valor (R$)</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-border/60">
               <tr className="bg-muted/30 font-bold text-foreground">
                 <td className="py-1.5 px-3">(+) Receitas Brutas Totais</td>
@@ -138,6 +144,7 @@ export function ConsolidatedBalanceSection({
                   <MoneyText
                     cents={numberToCents(balanceSheet.dre.operationalSavingsBRL)}
                     tone={balanceSheet.dre.operationalSavingsBRL >= 0 ? "positive" : "negative"}
+                    sign="explicit"
                     className="font-bold"
                   />
                 </td>
@@ -154,6 +161,7 @@ export function ConsolidatedBalanceSection({
                   <MoneyText
                     cents={numberToCents(balanceSheet.dre.netCashFlowBRL)}
                     tone={balanceSheet.dre.netCashFlowBRL >= 0 ? "positive" : "negative"}
+                    sign="explicit"
                     className="font-bold"
                   />
                 </td>

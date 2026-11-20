@@ -76,6 +76,7 @@ export function DividendFreedomModal({
       open={open}
       onOpenChange={onOpenChange}
       title="Dossiê de Proventos & Liberdade Financeira"
+      documentTitle={`Dossie_FIRE_Liberdade_Financeira_${currentYear}.pdf`}
     >
       <ReportHeader
         title="Dossiê de Proventos & Liberdade Financeira"

@@ -40,15 +40,16 @@ export function SnapshotsLedgerTable({
     <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 shadow-xs w-full print:overflow-visible">
       <table className="w-full text-left text-xs border-collapse table-fixed">
         <colgroup>
-          <col style={{ width: "16%" }} />
-          <col style={{ width: "12%" }} />
-          <col style={{ width: "12%" }} />
-          <col style={{ width: "10%" }} />
+          <col style={{ width: "14%" }} />
           <col style={{ width: "11%" }} />
+          <col style={{ width: "11%" }} />
+          <col style={{ width: "10%" }} />
+          <col style={{ width: "10%" }} />
           <col style={{ width: "10%" }} />
           <col style={{ width: "9%" }} />
           <col style={{ width: "9%" }} />
-          <col style={{ width: "11%" }} />
+          <col style={{ width: "10%" }} />
+          <col className="print:hidden" style={{ width: "6%" }} />
         </colgroup>
         <thead className="bg-surface border-b border-border/80 text-muted-foreground font-semibold text-[10px] uppercase tracking-wider">
           <tr>

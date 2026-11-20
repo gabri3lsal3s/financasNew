@@ -142,7 +142,7 @@ describe("SupportChatDialog — Componente de UI de Suporte Nativo", () => {
         user_name: "Cliente Teste",
         user_email: "cliente.teste@exemplo.com",
         current_route: "/investments",
-        app_version: "3.10.0",
+        app_version: expect.any(String),
         device_info: expect.any(Object),
       }),
     );

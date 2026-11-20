@@ -151,7 +151,7 @@ describe("FinancialCloseReportModal (F42)", () => {
       />,
     );
 
-    expect(screen.getAllByText("Orçado")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("Orçado (R$)")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Desvio")[0]).toBeInTheDocument();
     expect(screen.getAllByText("+17%")[0]).toBeInTheDocument();
     expect(screen.getAllByText("-25%")[0]).toBeInTheDocument();
