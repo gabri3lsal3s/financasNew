@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { CreditCard, Landmark, ReceiptText, TrendingUp } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
 import { formatDateBR } from "@/lib/date";
-import { ReportHeader, ReportKpiGrid, ReportFooter } from "./reports";
+import { ReportHeader, ReportRunningHeader, ReportKpiGrid, ReportFooter } from "./reports";
 
 export interface CardInvoiceExpenseRow {
   /** YYYY-MM-DD. */
@@ -76,6 +76,11 @@ export function CardInvoicePrintView({
         accountHolder={accountHolder}
       />
 
+      <ReportRunningHeader
+        title={`${cardName} · ${competenceLabel}`}
+        periodLabel={`Competência ${competenceMonth}`}
+      />
+
       {/* 2. Grade de 3 KPIs da Fatura */}
       <ReportKpiGrid
         columns={3}
@@ -93,6 +98,7 @@ export function CardInvoicePrintView({
           {
             label: "Pago",
             value: <MoneyText cents={pagoCents} tone="positive" />,
+            subtext: pagoCents > 0 ? "Pagamento liquidado" : "Nenhum pagamento registrado",
             icon: Landmark,
             tone: "positive",
           },
@@ -123,7 +129,7 @@ export function CardInvoicePrintView({
                   <th className="py-2 px-2.5 print:w-[33%]">Descrição</th>
                   <th className="py-2 px-2.5 print:w-[18%]">Categoria</th>
                   <th className="py-2 px-2.5 text-right print:w-[12%]">Valor (R$)</th>
-                  <th className="py-2 px-2.5 text-right print:w-[12%]">Valor p/ Relatório</th>
+                  <th className="py-2 px-2.5 text-right print:w-[12%]">Ponderado (R$)</th>
                   <th className="py-2 px-2.5 text-right print:w-[10%]">Parcelas</th>
                 </tr>
               </thead>
@@ -197,12 +203,13 @@ export function CardInvoicePrintView({
         </section>
       ) : null}
 
-
       {/* 5. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer="Documento gerado automaticamente — valores em reais (BRL). Confira com a fatura enviada pelo banco."
+        reportType="invoice"
         documentId={`FAT-${competenceMonth.replace("-", "")}-${cardName.slice(0, 3).toUpperCase()}`}
+        showQrCode
       />
     </div>
   );

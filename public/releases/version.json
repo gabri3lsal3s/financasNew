@@ -1,16 +1,16 @@
 {
   "version": "3.14.0",
-  "versionCode": 90,
-  "releaseDate": "2026-11-20T21:35:51Z",
+  "versionCode": 91,
+  "releaseDate": "2026-11-20T22:26:21Z",
   "minSupportedVersion": "3.14.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "78353b80f2e7afc693e1efa4265078f9ec78a4ad2de9304f7f75cc0321cfbe36",
-  "fileSizeBytes": 12298914,
+  "sha256": "7057eb592410b028302d09b6c7374fdec5ade3804b0ae428f71641b07fdf5876",
+  "fileSizeBytes": 12300986,
   "changelog": [
     "Axir v3.14.0 (Build 91): Refinamento de Ergonomia Mobile & Rolagem de Modais",
     "Desbloqueio definitivo da rolagem touch vertical interna em todos os modais no mobile",
     "Alca do Bottom Sheet ampliada e ergonomica com rastreamento 1:1 direto do dedo",
     "Animacao continua de saida (sheet-out) e retorno por mola (spring-back) sem solavancos",
-    "Conformidade estrita de design system mobile e testes automatizados de física tátil"
+    "Conformidade estrita de design system mobile e testes automatizados de fisica tatil"
   ]
 }

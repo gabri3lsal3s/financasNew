@@ -37,25 +37,46 @@ export function SnapshotsLedgerTable({
   }
 
   return (
-    <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 shadow-xs w-full">
-      <table className="w-full text-left text-xs border-collapse">
-        <thead className="bg-surface border-b border-border/80 text-muted-foreground font-medium">
+    <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 shadow-xs w-full print:overflow-visible">
+      <table className="w-full text-left text-xs border-collapse table-fixed">
+        <colgroup>
+          <col style={{ width: "16%" }} />
+          <col style={{ width: "12%" }} />
+          <col style={{ width: "12%" }} />
+          <col style={{ width: "10%" }} />
+          <col style={{ width: "11%" }} />
+          <col style={{ width: "10%" }} />
+          <col style={{ width: "9%" }} />
+          <col style={{ width: "9%" }} />
+          <col style={{ width: "11%" }} />
+        </colgroup>
+        <thead className="bg-surface border-b border-border/80 text-muted-foreground font-semibold text-[10px] uppercase tracking-wider">
           <tr>
-            <th scope="col" className="py-2.5 px-3 whitespace-nowrap">Competência</th>
-            <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">Patrimônio</th>
-            <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">Custo</th>
-            <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">Proventos Mês</th>
-            <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">Proventos Acum.</th>
+            <th scope="col" className="py-2 px-2.5 whitespace-nowrap print:py-1 print:px-1.5">Competência</th>
+            <th scope="col" aria-label="Patrimônio" className="py-2 px-2 text-right whitespace-nowrap print:py-1 print:px-1.5">
+              <span>Patrimônio</span> <span className="hidden print:inline text-[9px] font-normal text-muted-foreground">(R$)</span>
+            </th>
+            <th scope="col" aria-label="Custo" className="py-2 px-2 text-right whitespace-nowrap print:py-1 print:px-1.5">
+              <span>Custo</span> <span className="hidden print:inline text-[9px] font-normal text-muted-foreground">(R$)</span>
+            </th>
+            <th scope="col" aria-label="Proventos Mês" className="py-2 px-2 text-right whitespace-nowrap print:py-1 print:px-1.5">
+              <span>Proventos Mês</span> <span className="hidden print:inline text-[9px] font-normal text-muted-foreground">(R$)</span>
+            </th>
+            <th scope="col" aria-label="Proventos Acum." className="py-2 px-2 text-right whitespace-nowrap print:py-1 print:px-1.5">
+              <span>Proventos Acum.</span> <span className="hidden print:inline text-[9px] font-normal text-muted-foreground">(R$)</span>
+            </th>
             <th
               scope="col"
-              className="py-2.5 px-3 text-right whitespace-nowrap font-semibold text-foreground bg-surface-hover/70 border-x border-border/80"
+              className="py-2 px-2 text-right whitespace-nowrap font-bold text-foreground bg-surface-hover/70 border-x border-border/80 print:py-1 print:px-1.5"
             >
               Mês (TWR %)
             </th>
-            <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">Retorno Total</th>
-            <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">TWR Acum.</th>
-            <th scope="col" className="py-2.5 px-3 text-right whitespace-nowrap">Cota (R$)</th>
-            <th scope="col" className="py-2.5 px-3 text-center whitespace-nowrap print:hidden">Ações</th>
+            <th scope="col" className="py-2 px-2 text-right whitespace-nowrap print:py-1 print:px-1.5">Retorno Total</th>
+            <th scope="col" className="py-2 px-2 text-right whitespace-nowrap print:py-1 print:px-1.5">TWR Acum.</th>
+            <th scope="col" aria-label="Cota (R$)" className="py-2 px-2 text-right whitespace-nowrap print:py-1 print:px-1.5">
+              <span>Cota (R$)</span>
+            </th>
+            <th scope="col" className="py-2 px-2 text-center whitespace-nowrap print:hidden w-16">Ações</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/60 font-medium">
@@ -70,16 +91,17 @@ export function SnapshotsLedgerTable({
                   ? ((pt.valueBRL - pt.costBRL) / pt.costBRL) * 100
                   : 0;
             const formattedLabel = formatMonthYear(pt.month);
+            const hasMonthDividends = (pt.monthDividendsBRL ?? 0) > 0.001;
 
             return (
               <tr
                 key={pt.month}
                 className={cn(
-                  "transition-colors",
+                  "transition-colors break-inside-avoid even:bg-muted/10 print:even:bg-muted/10",
                   isCurrent ? "bg-portfolio/10 font-semibold" : "hover:bg-surface-hover/70",
                 )}
               >
-                <td className="py-2.5 px-3 whitespace-nowrap">
+                <td className="py-1.5 px-2.5 whitespace-nowrap print:py-0.5 print:px-1.5">
                   <div className="flex items-center gap-1.5">
                     <span className="text-foreground">{formattedLabel}</span>
                     {isCurrent ? (
@@ -107,37 +129,50 @@ export function SnapshotsLedgerTable({
                       >
                         calibrado
                       </Badge>
-                    ) : (
-                      <Badge variant="muted" size="xs" title="Fechamento oficial de mercado">fechado</Badge>
-                    )}
+                    ) : null}
                   </div>
                 </td>
 
-                <td className="py-2.5 px-3 text-right whitespace-nowrap font-bold text-foreground">
+                <td className="py-1.5 px-2 text-right whitespace-nowrap font-bold text-foreground print:py-0.5 print:px-1.5">
                   <MoneyText cents={numberToCents(pt.valueBRL)} tone="default" />
                 </td>
 
-                <td className="py-2.5 px-3 text-right whitespace-nowrap text-muted-foreground">
+                <td className="py-1.5 px-2 text-right whitespace-nowrap text-muted-foreground print:py-0.5 print:px-1.5">
                   <MoneyText cents={numberToCents(pt.costBRL)} tone="default" />
                 </td>
 
-                <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                  <MoneyText
-                    cents={numberToCents(pt.monthDividendsBRL ?? 0)}
-                    tone={(pt.monthDividendsBRL ?? 0) > 0 ? "positive" : "default"}
-                    className={(pt.monthDividendsBRL ?? 0) > 0 ? "font-semibold" : "text-muted-foreground font-normal"}
-                  />
+                <td className="py-1.5 px-2 text-right whitespace-nowrap print:py-0.5 print:px-1.5">
+                  {hasMonthDividends ? (
+                    <MoneyText
+                      cents={numberToCents(pt.monthDividendsBRL ?? 0)}
+                      tone="positive"
+                      className="font-semibold"
+                    />
+                  ) : (
+                    <>
+                      <MoneyText
+                        cents={0}
+                        tone="default"
+                        className="text-muted-foreground font-normal print:hidden"
+                      />
+                      <span className="hidden print:inline text-muted-foreground font-mono">—</span>
+                    </>
+                  )}
                 </td>
 
-                <td className="py-2.5 px-3 text-right whitespace-nowrap">
-                  <MoneyText cents={numberToCents(pt.accumulatedDividendsBRL ?? 0)} tone="positive" className="font-semibold" />
+                <td className="py-1.5 px-2 text-right whitespace-nowrap print:py-0.5 print:px-1.5">
+                  {(pt.accumulatedDividendsBRL ?? 0) > 0.001 ? (
+                    <MoneyText cents={numberToCents(pt.accumulatedDividendsBRL ?? 0)} tone="positive" className="font-semibold" />
+                  ) : (
+                    <span className="text-muted-foreground font-mono">—</span>
+                  )}
                 </td>
 
-                <td className="py-2.5 px-3 text-right whitespace-nowrap font-mono font-bold bg-surface-hover/30 border-x border-border/60">
+                <td className="py-1.5 px-2 text-right whitespace-nowrap font-mono font-bold bg-surface-hover/30 border-x border-border/60 print:py-0.5 print:px-1.5">
                   {pt.twrMonthPct !== null && pt.twrMonthPct !== undefined ? (
                     <span
                       className={cn(
-                        "num inline-flex items-center justify-end px-2 py-0.5 rounded-md text-xs font-bold font-mono",
+                        "num inline-flex items-center justify-end px-1.5 py-0.5 rounded text-xs font-bold font-mono print:text-[9.5px]",
                         pt.twrMonthPct >= 0
                           ? "bg-positive/10 text-positive-strong"
                           : "bg-negative/10 text-negative-strong",
@@ -150,13 +185,13 @@ export function SnapshotsLedgerTable({
                   )}
                 </td>
 
-                <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                <td className="py-1.5 px-2 text-right whitespace-nowrap print:py-0.5 print:px-1.5">
                   <span className={cn("num font-semibold", effectiveGain >= 0 ? "text-positive-strong" : "text-negative-strong")}>
                     {effectivePct !== null ? formatSignedPct(effectivePct, 1) : "—"}
                   </span>
                 </td>
 
-                <td className="py-2.5 px-3 text-right whitespace-nowrap font-mono font-semibold">
+                <td className="py-1.5 px-2 text-right whitespace-nowrap font-mono font-semibold print:py-0.5 print:px-1.5">
                   {pt.twrAccumulatedPct !== null && pt.twrAccumulatedPct !== undefined ? (
                     <span className={cn("num", pt.twrAccumulatedPct >= 0 ? "text-positive-strong" : "text-negative-strong")}>
                       {formatSignedPct(pt.twrAccumulatedPct, 1)}
@@ -166,7 +201,7 @@ export function SnapshotsLedgerTable({
                   )}
                 </td>
 
-                <td className="py-2.5 px-3 text-right whitespace-nowrap text-muted-foreground">
+                <td className="py-1.5 px-2 text-right whitespace-nowrap text-muted-foreground print:py-0.5 print:px-1.5">
                   {pt.sharePrice !== null && pt.sharePrice !== undefined ? (
                     <MoneyText cents={numberToCents(pt.sharePrice)} tone="default" />
                   ) : (
@@ -174,7 +209,7 @@ export function SnapshotsLedgerTable({
                   )}
                 </td>
 
-                <td className="py-2.5 px-3 text-center whitespace-nowrap print:hidden">
+                <td className="py-1.5 px-2 text-center whitespace-nowrap print:hidden">
                   <div className="flex items-center justify-center gap-1">
                     {onGenerateReport ? (
                       <Button

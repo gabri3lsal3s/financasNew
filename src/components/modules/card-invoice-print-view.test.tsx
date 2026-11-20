@@ -37,7 +37,7 @@ describe("CardInvoicePrintView (fatura do cartão)", () => {
 
     expect(screen.getAllByText("Axir").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Fatura de cartão de crédito")).toBeInTheDocument();
-    expect(screen.getByText(/Nubank · Agosto de 2026/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Nubank · Agosto de 2026/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Fatura total (bruto)")).toBeInTheDocument();
     expect(screen.getByText("Pago")).toBeInTheDocument();
     expect(screen.getByText("Saldo aberto (bruto)")).toBeInTheDocument();

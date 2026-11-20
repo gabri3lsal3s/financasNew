@@ -37,51 +37,56 @@ export function SnapshotsEvolutionChart({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 rounded-xl border border-border/80 bg-surface p-3 sm:p-4 shadow-xs">
+      {/* KPI Strip Institucional de 4 Colunas */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 print:grid-cols-4 gap-2.5 rounded-xl border border-border/80 bg-surface p-3 sm:p-4 shadow-xs">
         <div className="flex flex-col gap-0.5">
-          <span className="text-[11px] font-medium text-muted-foreground">Período</span>
-          <span className="text-sm sm:text-base font-semibold text-foreground">
-            {summary.totalMonths} {summary.totalMonths === 1 ? "mês" : "meses"}
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            Patrimônio Final
           </span>
-        </div>
-
-        <div className="flex flex-col gap-0.5">
-          <span className="text-[11px] font-medium text-muted-foreground">Patrimônio Final</span>
           <MoneyText
             cents={numberToCents(summary.latestValueBRL)}
             tone="default"
             className="text-sm sm:text-base font-bold"
           />
+          <span className="text-[10px] text-muted-foreground">
+            {summary.totalMonths} {summary.totalMonths === 1 ? "mês" : "meses"}
+          </span>
         </div>
 
         <div className="flex flex-col gap-0.5">
-          <span className="text-[11px] font-medium text-muted-foreground">Custo Aplicado</span>
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            Custo Aplicado
+          </span>
           <MoneyText
             cents={numberToCents(summary.latestCostBRL)}
             tone="default"
-            className="text-sm sm:text-base font-medium text-muted-foreground"
+            className="text-sm sm:text-base font-semibold text-muted-foreground"
           />
+          <span className="text-[10px] text-muted-foreground">
+            Capital investido líquido
+          </span>
         </div>
 
         <div className="flex flex-col gap-0.5">
-          <span className="text-[11px] font-medium text-muted-foreground">Proventos no Período</span>
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            Proventos no Período
+          </span>
           <MoneyText
             cents={numberToCents(summary.periodDividendsBRL)}
             tone="positive"
             className="text-sm sm:text-base font-bold"
           />
-          {summary.openingDividendsBalanceBRL !== undefined && summary.openingDividendsBalanceBRL > 0 && (
-            <span
-              className="text-[10px] text-muted-foreground whitespace-nowrap leading-tight"
-              title={`Saldo inicial retroativo: R$ ${summary.openingDividendsBalanceBRL.toFixed(2).replace(".", ",")} | Total consolidado: R$ ${(summary.totalHistoricalDividendsBRL ?? (summary.periodDividendsBRL + summary.openingDividendsBalanceBRL)).toFixed(2).replace(".", ",")}`}
-            >
-              +{numberToCents(summary.openingDividendsBalanceBRL) ? " saldo inicial retroativo" : ""}
-            </span>
-          )}
+          <span className="text-[10px] text-muted-foreground truncate">
+            {summary.openingDividendsBalanceBRL && summary.openingDividendsBalanceBRL > 0
+              ? `+ R$ ${summary.openingDividendsBalanceBRL.toFixed(2).replace(".", ",")} saldo retroativo`
+              : "Renda passiva creditada"}
+          </span>
         </div>
 
-        <div className="flex flex-col gap-0.5 col-span-2 sm:col-span-1">
-          <span className="text-[11px] font-medium text-muted-foreground">TWR Acumulado</span>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            TWR Acumulado
+          </span>
           <span
             className={cn(
               "num font-mono text-sm sm:text-base font-bold whitespace-nowrap",
@@ -91,6 +96,9 @@ export function SnapshotsEvolutionChart({
             {summary.latestTwrPct !== null
               ? formatSignedPct(summary.latestTwrPct, 1)
               : "—"}
+          </span>
+          <span className="text-[10px] text-muted-foreground">
+            Retorno por cotas (Padrão CVM)
           </span>
         </div>
       </div>

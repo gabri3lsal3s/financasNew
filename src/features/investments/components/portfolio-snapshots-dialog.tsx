@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 import { History } from "lucide-react";
-import { ReportDocumentLayout, ReportFooter, ReportHeader } from "@/components/modules/reports";
+import {
+  ReportDocumentLayout,
+  ReportFooter,
+  ReportHeader,
+  ReportRunningHeader,
+} from "@/components/modules/reports";
 import { Button, ConfirmDialog } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
@@ -101,6 +106,11 @@ export function PortfolioSnapshotsDialog({
           generatedAt={formatDateBR(todayLocalIso())}
         />
 
+        <ReportRunningHeader
+          title="Extrato Analítico de Evolução Patrimonial"
+          periodLabel={selectedYear === "all" ? "Histórico Completo" : `Ano ${selectedYear}`}
+        />
+
         <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-1 print:hidden">
           {availableYears.length > 1 ? (
             <div className="flex items-center gap-1.5 shrink-0">
@@ -162,7 +172,12 @@ export function PortfolioSnapshotsDialog({
           onDelete={setSnapshotToDelete}
         />
 
-        <ReportFooter disclaimer={OFFICIAL_CVM_DISCLAIMER} showQrCode className="mt-2" />
+        <ReportFooter
+          disclaimer={OFFICIAL_CVM_DISCLAIMER}
+          reportType="ledger"
+          showQrCode
+          className="mt-2"
+        />
       </ReportDocumentLayout>
 
       <ConfirmDialog
