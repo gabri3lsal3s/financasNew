@@ -946,10 +946,21 @@ O módulo de compartilhamento e crescimento orgânico foi projetado para permiti
 - **Motor de Stateful URLs (`src/domain/share/stateful-url.ts`):** serialização e compressão de parâmetros de simulação em formato Base64 URL-safe compacto (`?s=...`), gerando links imutáveis compartilháveis entre usuários sem gravar nada em tabelas do banco de dados.
 - **CTA Sóbrio de Conversão & Transporte de Simulação (`ToolsFooterCta` & `simulation-transport.ts`):** rodapé integrado nos simuladores com convite para gestão automatizada no Áxis Finance. Ao clicar para criar conta, os dados simulados são preservados via `usePendingSimulation` e hidratados na conta do usuário no primeiro login via `hydrateSimulationToUser()`.
 
-#### 3.13.5 Chancela Institucional em Relatórios e Extratos PDF
-- **Rodapé Contábil Padronizado (`ReportFooter`):** aplicado em todas as exportações e relatórios analíticos impressos com tipografia sóbria:
-  `Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app`
-- **Chancela Oficial com Link Discreto de Apresentação:** hiperlink elegante na chancela oficial direcionando o leitor do PDF digital para a página de apresentação da plataforma (`/apresentacao` via `getPublicAppUrl`), preservando acabamento executivo sem poluição visual (micro QR Code mantido apenas como prop opcional desativada por padrão).
+#### 3.13.5 Chancela Institucional, Arquitetura Multipágina & Suíte de 8 Relatórios Executivos A4 (Release v1.0 Gold)
+- **Suíte Canônica de 8 Relatórios Físicos A4:**
+  1. *DRE Pessoal:* Demonstração contábil do resultado, cascata DRE e conciliação de faturas quitadas no período;
+  2. *Balanço Patrimonial 360°:* Balanço consolidado one-pager com separação estrita de DRE e Base Ponderada;
+  3. *Facilitador IRPF:* Ficha de Bens & Direitos (Grupos 03, 04 e 07) e Rendimentos Isentos/Exclusivos com discriminação pronta para a Receita Federal;
+  4. *Dossiê FIRE:* Curva de proventos de 12 meses, efeito bola de neve e taxa de independência financeira;
+  5. *Fatura de Cartão:* Demonstrativo analítico de lançamentos com alinhamento tabular micrométrico e suporte a compras à vista;
+  6. *Dossiê Executivo da Posição Vigente (Tear Sheet):* Documento de 7 páginas com custódia consolidada, 5 cores institucionais no Donut de Classes, diagnósticos setoriais e raios-X de alocação;
+  7. *Carteira Mensal:* Acompanhamento mensal com totalizadores derivados estritamente por agregação funcional das linhas da tabela (`rows.reduce`), eliminando descompassos de custo ou caixa;
+  8. *Extrato de Snapshots:* Ledger patrimonial histórico analítico, retorno pessoal e TWR.
+- **Arquitetura Multipágina e Rodapé Contábil (`ReportFooter`):**
+  - Variante contínua (`variant="running"`): linha fina com paginação padronizada (`Página X de Y`) e chancela institucional para páginas intermediárias;
+  - Variante de encerramento (`variant="full"`): bloco jurídico institucional completo (QR Code, chancela oficial `axir.com.br`, disclaimer regulatório CVM/LGPD e paginação final) renderizado com exclusividade na última página de cada relatório (`page === totalPages`), eliminando poluição visual em páginas intermediárias.
+- **Blindagem Permanente Automatizada (`npm run qa:reports`):**
+  - Validador contínuo em `scripts/qa-reports-integrity.ts` auditando automaticamente invariantes matemáticas ($\pm 0,01$), regras de higiene textual por regex (zero glifos corrompidos, zero decimais em ponto inglês, zero plurais mecânicos e controle de cláusula CVM) e paginação física exata.
 
 #### 3.13.6 Deep Links Universais, PWA Launch Handler, Fila de Salvamento com Tolerância Biométrica & Navegação Ergonômica
 - **Deep Links Universais no APK Nativo (`AndroidManifest.xml`):**

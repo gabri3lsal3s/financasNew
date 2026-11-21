@@ -872,11 +872,14 @@ A arquitetura de compartilhamento e ferramentas abertas foi construída sobre tr
    - CTA no rodapé convida o usuário a acompanhar suas metas e carteira no Áxis Finance.
    - Ao iniciar o cadastro a partir de uma simulação, os parâmetros são preservados via `usePendingSimulation` e transferidos para o banco no primeiro login com a função `hydrateSimulationToUser()`.
 
-### 16.6 Chancela Institucional em Relatórios e Extratos PDF
-- **Padronização Visual:**
+### 16.6 Chancela Institucional, Arquitetura Multipágina e Suite de Relatórios A4 (Release v1.0 Gold)
+- **Padronização Visual & Arquitetura Multipágina:**
   - Componente `ReportFooter` integrado às visualizações de impressão e relatórios A4 (`financial-close-report-modal.tsx`, `consolidated-wealth-modal.tsx`, `dividend-freedom-modal.tsx`, `tax-facilitator-modal.tsx`, `wealth-tear-sheet-modal.tsx`, `portfolio-executive-report.tsx`).
-  - Assinatura discreta: `Relatório estruturado via Áxis Finance · Gestão Financeira Pessoal & Automação | axis.app`.
-  - Chancela oficial com hyperlink sutil direcionando para a página de apresentação (`/apresentacao`), garantindo acabamento executivo, divulgação orgânica e zero ruído de códigos de barra (com micro QR Code opcional desativado por padrão).
+  - Assinatura discreta: `Relatório estruturado via Axir · Gestão Financeira Inteligente & Automação | axir.com.br`.
+  - Separação estrita em duas variantes: `variant="running"` (rodapé contínuo de 1 linha com `Página X de Y` para páginas intermediárias) e `variant="full"` (bloco jurídico completo, QR Code e chancela institucional exclusivo na última página: `page === totalPages`).
+  - Suíte de 8 relatórios homologados no padrão Private Banking / Wealth Management com tipografia tabular rigorosa, paleta de 5 cores semânticas no Donut de Classes e SSOT contábil.
+- **Blindagem Contínua de QA (`npm run qa:reports`):**
+  - Script `scripts/qa-reports-integrity.ts` validando matematicamente fechamentos contábeis ($\pm 0,01$), conformidade de paginação e zero ocorrência de regexes proibidas (glifos corrompidos, decimais em inglês e plurais mecânicos).
 
 ---
 

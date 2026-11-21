@@ -1,5 +1,26 @@
-# 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
+# ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.14.0 (Build 98 — Selo Definitivo de Release v1.0 Gold do Motor de Relatórios Axir — Scorecard 10/10 Homologado)** registra a certificação definitiva da **Release v1.0 Gold** dos 8 relatórios executivos Axir com blindagem contínua automatizada e zero regressão (2026-11-21):
+> - **(1) Erradicação da Dupla Contagem de Caixa na Carteira Mensal (Relatório 7, Pág. 1)**:
+>   - Aplicação estrita do princípio SSOT: totalizadores do rodapé de `SÍNTESE DA ALOCAÇÃO POR CLASSE DE ATIVOS` calculados diretamente a partir da soma das linhas renderizadas via `rows.reduce(...)`;
+>   - Custo Consolidado fechado em R$ 100.318,93 e Retorno P&L Consolidado fechado em +6,0%, com travessão fino (`—`) em Ativos e Retorno da Reserva de Caixa;
+> - **(2) Alinhamento Micrométrico da Fatura de Cartão (Fatura 5)**:
+>   - Correção estrutural do CSS na coluna `CATEGORIA`: transição de `line-clamp-2` no `<td>` para container interno `<div>`, preservando `display: table-cell` e alinhando perfeitamente cabeçalho e dados em $x = 317,6\text{pt}$;
+>   - Renderização de travessão fino (`—`) em parcelas para compras à vista;
+> - **(3) Paleta Semântica de 5 Cores Distintas no Donut de Classes (Dossiê 6, Pág. 3)**:
+>   - Mapeamento robusto com chaves compostas e fallbacks contextuais em `resolveDonutColor`, garantindo 5 cores institucionais não repetitivas (FIIs `#dda726`, Ações `#1b6b62`, Internacional `#38bdf8`, Renda Fixa `#2dd4bf`, Caixa `#10b981`);
+> - **(4) Separação de Cabeçalhos e Micro-Polimento Tipográfico (Balanço 360°, IRPF 3 e DRE 1)**:
+>   - Separação com `justify-between` entre `DRE PESSOAL` ($x = 20,0\text{pt}$) e `BASE PONDERADA` ($x = 594,8\text{pt}$) no Balanço 360°;
+>   - Subtotal atômico do Grupo 07 no Facilitador IRPF alinhado com precisão a $x = 517,0\text{pt}$;
+>   - Espaçamento de mais de 130pt entre `COMPETÊNCIA` e `DATA PGTO` na tabela de faturas quitadas do DRE Pessoal (pág. 2);
+>   - Inserção de `{" "}` antes e depois de `<MoneyText>` na narrativa executiva do Dossiê 6 e `whitespace-nowrap` em valores de Raio-X;
+> - **(5) Blindagem Permanente Automatizada do Motor (npm run qa:reports)**:
+>   - Criação de `scripts/qa-reports-integrity.ts` integrado ao pipeline de exportação e ao `package.json`, validando matematicamente os 8 relatórios ($\pm 0,01$), conferindo 7 regras de higiene textual por regex e auditando 100% da paginação `Página X de Y` ($1 \le X \le Y$);
+> - **(6) Qualidade & Homologação de Produção**:
+>   - 213 arquivos e 3.048 testes de domínio Vitest 100% aprovados;
+>   - APK Release Build 98 compilado, verificado com zipalign/apksigner e distribuído via Cloudflare R2;
+>   - Documento de homologação emitido em `RELATORIO_FINAL_CERTIFICACAO_MOTOR_RELEASE_V1_GOLD.md`.
+>
 > **v3.14.0 (Build 97 — Fechamento Release v1.0 do Motor de Relatórios Axir — Scorecard 9,9/10 Homologado)** registra a conclusão integral dos 7 micro-ajustes cirúrgicos finais da **Release v1.0** dos 8 relatórios executivos Axir (2026-11-21):
 > - **(1) Paleta Semântica Exclusiva de 5 Cores no Donut de Classes (Dossiê 6, Pág. 3)**:
 >   - Heurística canônica em `resolveAssetClassTokenColor` mapeando nomes compostos de classes para seus respectivos tokens do Design System (Ações em Teal, FIIs em Âmbar, Internacional em Azul Céu, Caixa em Esmeralda e Renda Fixa em Menta), eliminando a colisão de 4 classes no mesmo tom cinza;
@@ -7799,6 +7820,30 @@ flowchart TD
 >   - 0 ocorrências de cortes de status, 0 caracteres não resolvidos, 0 quebras de `R$`, 0 espaços após vírgula decimal;
 >   - 213 arquivos e 3.048 testes de domínio Vitest 100% aprovados;
 >   - APK Release Build 97 compilado e distribuído via Cloudflare R2.
+
+---
+
+### Fase 119 — Selo Definitivo de Release v1.0 Gold do Motor de Relatórios Axir (Build 98 — ID BR-20261121-1145)
+
+> **Status:** Concluída, Auditada e Homologada — **Certificação Técnica 10 / 10 com Blindagem Permanente Automatizada**:
+> - **SSOT na Carteira Mensal (Carteira 7, Pág. 1):**
+>   - Erradicação da dupla contagem da Reserva de Caixa no Custo Consolidado: totalizadores do rodapé derivados diretamente por agregação funcional das linhas renderizadas (`rows.reduce(...)`);
+>   - Custo Consolidado fechado em R$ 100.318,93, Retorno P&L em +6,0% e travessão fino (`—`) em Ativos e Retorno da Reserva de Caixa (mantendo 6 ativos totais);
+> - **Alinhamento Micrométrico da Fatura (Fatura 5):**
+>   - Transição do `line-clamp-2` no `<td>` para container interno `<div>`, preservando `display: table-cell` e alinhando com perfeição cabeçalho e dados em $x = 317,6\text{pt}$; travessão fino (`—`) em compras à vista;
+> - **Paleta Semântica no Donut de Classes (Dossiê 6, Pág. 3):**
+>   - Resolução das 5 cores com chaves compostas e fallback contextual, garantindo 5 fatias cromáticas distintas (FIIs `#dda726`, Ações `#1b6b62`, Internacional `#38bdf8`, Renda Fixa `#2dd4bf`, Caixa `#10b981`);
+> - **Separação de Cabeçalhos e Polimento Visual (Balanço 360°, IRPF 3 e DRE 1):**
+>   - `DRE PESSOAL` ($x = 20,0\text{pt}$) e `BASE PONDERADA` ($x = 594,8\text{pt}$) separados com `justify-between`;
+>   - Subtotal do Grupo 07 no IRPF encapsulado em container atômico alinhado a $x = 517,0\text{pt}$;
+>   - Espaçamento horizontal superior a 130pt entre `COMPETÊNCIA` e `DATA PGTO` no DRE 1;
+>   - Narrativa executiva do Dossiê 6 com espaçamento seguro (`{" "}`) antes/depois de `<MoneyText>`, restauração do artigo `"o"` e `whitespace-nowrap` em valores de Raio-X;
+> - **Blindagem Permanente Automatizada (npm run qa:reports):**
+>   - Script `scripts/qa-reports-integrity.ts` integrado ao pipeline de exportação e ao `package.json`: validação matemática dos 8 relatórios ($\pm 0,01$), 7 regras de higiene textual por regex com zero tolerância e integridade de paginação `Página X de Y` ($1 \le X \le Y$);
+> - **Qualidade e Homologação de Produção:**
+>   - 213 arquivos e 3.048 testes de domínio Vitest 100% aprovados; `npm run verify` e `npm run qa:reports` com 0 erros;
+>   - APK Release Build 98 assinado e publicado no Cloudflare R2 com hash SHA-256 verificado (`c401c74026...`).
+
 
 
 
