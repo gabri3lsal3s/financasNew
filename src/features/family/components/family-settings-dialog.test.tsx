@@ -227,4 +227,10 @@ describe("FamilySettingsDialog", () => {
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it("não entra em loop de re-renders quando montado fechado (open=false)", () => {
+    expect(() => {
+      renderDialog({ open: false });
+    }).not.toThrow();
+  });
 });

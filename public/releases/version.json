@@ -1,13 +1,13 @@
 {
   "version": "3.14.0",
-  "versionCode": 97,
-  "releaseDate": "2026-11-21T13:49:16Z",
+  "versionCode": 98,
+  "releaseDate": "2026-11-21T14:50:41Z",
   "minSupportedVersion": "3.14.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "d048bb9f2b0ee5302436a5e8eb8455235b2fe0d11975c9b20c493501de0fd69b",
-  "fileSizeBytes": 12306846,
+  "sha256": "c401c74026def448240f1a323acb8e04d0c2af543418c19130b0cdf9de2e2f3d",
+  "fileSizeBytes": 12307074,
   "changelog": [
-    "Axir v3.14.0 (Build 97): Fechamento Release v1.0 do Motor de Relatorios (v6)",
+    "Axir v3.14.0 (Build 98): Fechamento Release v1.0 do Motor de Relatorios (v6)",
     "Paleta institucional rica com 5 cores semanticas no Donut de Classes do Dossie 6",
     "Badge BASE PONDERADA reposicionado inline no cabecalho da DRE Pessoal do Balanco 360",
     "Erradicacao de corte na coluna STATUS (w-18%) na matriz de alocacao do Dossie da Posicao",

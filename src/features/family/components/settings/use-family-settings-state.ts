@@ -75,7 +75,7 @@ export function useFamilySettingsState({
   }
 
   const [syncedFamilyId, setSyncedFamilyId] = useState<string | null>(null);
-  if (family && (family.id !== syncedFamilyId || !open) && !isFamilyDirty) {
+  if (family && family.id !== syncedFamilyId && !isFamilyDirty) {
     setSyncedFamilyId(family.id);
     setEditName(family.name);
     setEditBudgetCents(family.monthly_budget ?? null);
@@ -83,7 +83,7 @@ export function useFamilySettingsState({
   }
 
   const [syncedMemberId, setSyncedMemberId] = useState<string | null>(null);
-  if (currentMember && (currentMember.id !== syncedMemberId || !open) && !isMemberDirty) {
+  if (currentMember && currentMember.id !== syncedMemberId && !isMemberDirty) {
     setSyncedMemberId(currentMember.id);
     setMemberDisplayName(currentMember.display_name || "");
     setMemberPixKeyType(currentMember.pix_key_type || "cpf");
