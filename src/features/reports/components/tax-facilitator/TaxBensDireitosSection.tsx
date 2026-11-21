@@ -156,11 +156,9 @@ export function TaxBensDireitosSection({
                 <span className="flex-1 min-w-0 leading-tight">
                   Grupo {group.groupCode} - {group.groupName} · Código {group.itemCode} - {group.itemName}
                 </span>
-                <span className="font-mono num whitespace-nowrap shrink-0 text-right text-[8.5px]">
-                  Subtotal:{" "}
-                  <span className="whitespace-nowrap inline-flex font-bold text-foreground">
-                    <MoneyText cents={numberToCents(group.subtotalBRL)} className="inline font-bold text-foreground" />
-                  </span>
+                <span className="font-mono num whitespace-nowrap shrink-0 text-right text-[8.5px] inline-flex items-center gap-1 font-bold text-foreground">
+                  <span className="font-normal text-muted-foreground">Subtotal:</span>
+                  <MoneyText cents={numberToCents(group.subtotalBRL)} className="inline font-bold text-foreground whitespace-nowrap" />
                 </span>
               </header>
 

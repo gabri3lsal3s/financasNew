@@ -87,13 +87,13 @@ function ExposureHorizontalBars({
                   · {countLabel}
                 </span>
               </div>
-              <div className="font-mono text-xs text-right whitespace-nowrap shrink-0">
+              <div className="font-mono text-xs text-right whitespace-nowrap shrink-0 inline-flex items-baseline justify-end gap-1">
                 <MoneyText
                   cents={numberToCents(item.valueBRL)}
                   tone="default"
-                  className="font-bold text-foreground"
+                  className="font-bold text-foreground inline whitespace-nowrap"
                 />
-                <span className="text-[11px] font-semibold text-muted-foreground ml-1">
+                <span className="text-[11px] font-semibold text-muted-foreground whitespace-nowrap">
                   ({formatPercent(item.pct)}%)
                 </span>
               </div>

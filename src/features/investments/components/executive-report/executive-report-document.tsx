@@ -60,10 +60,25 @@ export function ExecutiveReportDocument({
     return norm.includes("caixa") || norm.includes("liquidez");
   });
   const hasSeparateCash = effectiveCashBRL > 0 && !hasCashGroup;
-  const totalConsolidatedCostBRL = hasSeparateCash
-    ? effectiveCostBRL + effectiveCashBRL
-    : effectiveCostBRL;
-  const totalPnlBRL = effectiveTotalBRL - totalConsolidatedCostBRL;
+
+  // SSOT: Totalizador consolidado derivado estritamente da soma das linhas renderizadas
+  const sumRenderedCostCents =
+    classGroups.reduce((acc, g) => acc + (g.totalCostCents ?? 0), 0) +
+    (hasSeparateCash ? numberToCents(effectiveCashBRL) : 0);
+  const sumRenderedTotalCents =
+    classGroups.reduce((acc, g) => acc + (g.totalCents ?? 0), 0) +
+    (hasSeparateCash ? numberToCents(effectiveCashBRL) : 0);
+
+  const totalConsolidatedCostBRL =
+    sumRenderedCostCents > 0
+      ? sumRenderedCostCents / 100
+      : hasSeparateCash
+        ? effectiveCostBRL + effectiveCashBRL
+        : effectiveCostBRL;
+  const totalConsolidatedTotalBRL =
+    sumRenderedTotalCents > 0 ? sumRenderedTotalCents / 100 : effectiveTotalBRL;
+
+  const totalPnlBRL = totalConsolidatedTotalBRL - totalConsolidatedCostBRL;
   const consolidatedPnlPct =
     totalConsolidatedCostBRL > 0 ? (totalPnlBRL / totalConsolidatedCostBRL) * 100 : 0;
 
@@ -276,7 +291,7 @@ export function ExecutiveReportDocument({
                     {investmentCount}
                   </td>
                   <td className="py-1.5 px-2 text-right font-mono">
-                    <MoneyText cents={numberToCents(effectiveTotalBRL)} hideCurrency />
+                    <MoneyText cents={numberToCents(totalConsolidatedTotalBRL)} hideCurrency />
                   </td>
                   <td className="py-1.5 px-2 text-right font-mono text-foreground">100,0%</td>
                   <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">

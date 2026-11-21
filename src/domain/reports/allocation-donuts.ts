@@ -32,15 +32,24 @@ export interface BuildAllocationDonutsParams {
 export const DONUT_CLASS_COLORS: Record<string, string> = {
   acao: "#1b6b62",
   acoes: "#1b6b62",
+  "acoes brasil": "#1b6b62",
   fii: "#dda726",
   fiis: "#dda726",
+  "fundos imobiliarios": "#dda726",
   etf: "#0284c7",
   etfs: "#0284c7",
   "renda fixa": "#2dd4bf",
   renda_fixa: "#2dd4bf",
+  "renda fixa & titulos publicos": "#2dd4bf",
+  tesouro: "#2dd4bf",
   internacional: "#38bdf8",
+  "internacional global": "#38bdf8",
+  "internacional & etfs globais": "#38bdf8",
+  global: "#38bdf8",
   cripto: "#a855f7",
   caixa: "#10b981",
+  "reserva de caixa": "#10b981",
+  "caixa / reserva": "#10b981",
   outros: "#64748b",
 };
 
@@ -115,8 +124,27 @@ export function buildAllocationDonutSegments(
   // Ordena decrescente por valor
   classList.sort((a, b) => b.value - a.value);
 
+  const resolveDonutColor = (key: string, label: string): string => {
+    const directColor = DONUT_CLASS_COLORS[key];
+    if (directColor) return directColor;
+    const norm = (label || key)
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+    const normColor = DONUT_CLASS_COLORS[norm];
+    if (normColor) return normColor;
+    if (norm.includes("fii") || norm.includes("imobili")) return DONUT_CLASS_COLORS.fii ?? "#dda726";
+    if (norm.includes("acao") || norm.includes("acoes")) return DONUT_CLASS_COLORS.acoes ?? "#1b6b62";
+    if (norm.includes("internac") || norm.includes("global") || norm.includes("etf")) return DONUT_CLASS_COLORS.internacional ?? "#38bdf8";
+    if (norm.includes("caixa") || norm.includes("liquidez") || norm.includes("cash") || norm.includes("reserva")) return DONUT_CLASS_COLORS.caixa ?? "#10b981";
+    if (norm.includes("fixa") || norm.includes("tesouro") || norm.includes("cdb")) return DONUT_CLASS_COLORS["renda fixa"] ?? "#2dd4bf";
+    if (norm.includes("cripto") || norm.includes("crypto") || norm.includes("btc")) return DONUT_CLASS_COLORS.cripto ?? "#a855f7";
+    return DONUT_CLASS_COLORS.outros ?? "#64748b";
+  };
+
   const rawClassSegments = classList.map((item) => {
-    const color = DONUT_CLASS_COLORS[item.key] ?? DONUT_CLASS_COLORS.outros ?? "#64748b";
+    const color = resolveDonutColor(item.key, item.label);
     const rawPct = (item.value / totalBRL) * 100;
     return {
       key: item.key,

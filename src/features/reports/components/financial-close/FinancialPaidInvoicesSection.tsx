@@ -32,8 +32,8 @@ export function FinancialPaidInvoicesSection({ paidInvoices }: FinancialPaidInvo
           <thead>
             <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
               <th className="py-1.5 px-3 font-bold">Cartão</th>
-              <th className="py-1.5 px-2 font-bold">Competência</th>
-              <th className="py-1.5 px-2 font-bold">Data Pgto</th>
+              <th className="py-1.5 pl-2 pr-4 font-bold">Competência</th>
+              <th className="py-1.5 pl-3 pr-2 font-bold">Data Pgto</th>
               <th className="py-1.5 px-3 text-right font-bold">Valor Pago (R$)</th>
             </tr>
           </thead>
@@ -56,10 +56,10 @@ export function FinancialPaidInvoicesSection({ paidInvoices }: FinancialPaidInvo
                   <td className="py-1.5 px-3 font-medium text-foreground whitespace-nowrap truncate">
                     {sanitizeReportText(inv.cardName)}
                   </td>
-                  <td className="py-1.5 px-2 text-muted-foreground whitespace-nowrap">
+                  <td className="py-1.5 pl-2 pr-4 text-muted-foreground whitespace-nowrap">
                     {comp ? formatMonthYear(comp) : "—"}
                   </td>
-                  <td className="py-1.5 px-2 text-muted-foreground whitespace-nowrap">
+                  <td className="py-1.5 pl-3 pr-2 text-muted-foreground whitespace-nowrap">
                     {pDate ? formatDateBR(pDate) : "—"}
                   </td>
                   <td className="py-1.5 px-3 text-right num font-mono font-bold whitespace-nowrap">

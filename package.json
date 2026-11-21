@@ -14,6 +14,7 @@
     "lint": "eslint .",
     "verify": "npm run typecheck && npm run lint && vitest run src/domain/",
     "verify:full": "npm run verify && npm run test:e2e",
+    "qa:reports": "tsx scripts/qa-reports-integrity.ts",
     "audit:forensics": "tsx --tsconfig tsconfig.app.json scripts/run-forensics-audit.ts",
     "preflight": "tsx scripts/preflight-check.ts",
     "test": "vitest run",

@@ -1303,7 +1303,7 @@ function RenderCarteiraMensal() {
         appName={appName}
         accountHolder={accountHolder}
         effectiveTotalBRL={106377.43}
-        effectiveCostBRL={100318.93}
+        effectiveCostBRL={90000.00}
         effectiveCashBRL={10318.93}
         investmentCount={6}
         classGroups={mockClassGroups}

@@ -83,14 +83,16 @@ export function TearSheetExecutiveNarrative({
   const totalCostWithCash = Math.max(totalCostBRL, model.effectiveCostBRL + cashBRL);
 
   const narrative = (
-    <span>
+    <span className="text-left">
       A carteira totaliza{" "}
       <strong>
         <MoneyText cents={numberToCents(totalBRL)} className="inline font-bold" />
       </strong>{" "}
       sob custódia (sendo{" "}
-      <MoneyText cents={numberToCents(model.totalInvestedValueBRL)} className="inline font-medium" /> em ativos e{" "}
-      <MoneyText cents={numberToCents(cashBRL)} className="inline font-medium" /> em reserva de caixa) frente a um custo de aquisição de{" "}
+      <MoneyText cents={numberToCents(model.totalInvestedValueBRL)} className="inline font-medium" />
+      {" "}em ativos e{" "}
+      <MoneyText cents={numberToCents(cashBRL)} className="inline font-medium" />
+      {" "}em reserva de caixa) frente a um custo de aquisição de{" "}
       <strong>
         <MoneyText cents={numberToCents(model.effectiveCostBRL)} className="inline font-bold" />
       </strong>{" "}

@@ -123,7 +123,11 @@ async function main() {
 
   await browser.close();
   await vite.close();
-  console.log("Exportação de todos os 8 relatórios concluída com sucesso!");
+  console.log("Exportação de todos os 8 relatórios concluída com sucesso!\n");
+
+  console.log("Executando bateria de QA de integridade e blindagem permanente...");
+  const { execSync } = await import("child_process");
+  execSync("npx tsx scripts/qa-reports-integrity.ts", { stdio: "inherit" });
 }
 
 main().catch((err) => {

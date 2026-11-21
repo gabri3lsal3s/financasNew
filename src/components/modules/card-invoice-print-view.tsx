@@ -125,12 +125,12 @@ export function CardInvoicePrintView({
           <div className="w-full min-w-0 rounded-lg border border-border/80 bg-surface shadow-xs overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
             <table className="w-full min-w-[540px] sm:min-w-full print:min-w-0 print:w-full table-fixed border-collapse text-xs">
               <colgroup>
-                <col style={{ width: "14%" }} />
-                <col style={{ width: "32%" }} />
-                <col style={{ width: "20%" }} />
+                <col style={{ width: "13%" }} />
+                <col style={{ width: "33%" }} />
+                <col style={{ width: "21%" }} />
                 <col style={{ width: "12%" }} />
                 <col style={{ width: "12%" }} />
-                <col style={{ width: "10%" }} />
+                <col style={{ width: "9%" }} />
               </colgroup>
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">
@@ -147,8 +147,12 @@ export function CardInvoicePrintView({
                   <Fragment key={`${expense.date}-${expense.description}-${index}`}>
                     <tr className="break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
                       <td className="py-1.5 px-2.5 tabular-nums font-mono text-muted-foreground whitespace-nowrap">{formatDateBR(expense.date)}</td>
-                      <td className="py-1.5 pl-2.5 pr-3.5 font-bold text-foreground break-words whitespace-normal leading-tight line-clamp-2">{expense.description}</td>
-                      <td className="py-1.5 px-2 text-[11px] text-muted-foreground break-words whitespace-normal leading-tight line-clamp-2">{expense.categoryName}</td>
+                      <td className="py-1.5 pl-2.5 pr-3.5 font-bold text-foreground align-middle">
+                        <div className="break-words whitespace-normal leading-tight line-clamp-2">{expense.description}</div>
+                      </td>
+                      <td className="py-1.5 px-2 text-[11px] text-muted-foreground align-middle">
+                        <div className="break-words whitespace-normal leading-tight line-clamp-2">{expense.categoryName}</div>
+                      </td>
                       <td className="py-1.5 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
                         <MoneyText cents={expense.valueCents} tone="negative" hideCurrency />
                       </td>
@@ -213,8 +217,10 @@ export function CardInvoicePrintView({
                 {payments.map((payment, index) => (
                   <tr key={`${payment.date}-${payment.note}-${index}`} className="break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
                     <td className="py-1.5 px-2.5 tabular-nums font-mono text-muted-foreground whitespace-nowrap">{formatDateBR(payment.date)}</td>
-                    <td className="py-1.5 px-2.5 font-bold text-foreground break-words whitespace-normal leading-tight line-clamp-2">
-                      {payment.note || (payment.isRefund ? "Estorno" : "Pagamento de fatura")}
+                    <td className="py-1.5 px-2.5 font-bold text-foreground align-middle">
+                      <div className="break-words whitespace-normal leading-tight line-clamp-2">
+                        {payment.note || (payment.isRefund ? "Estorno" : "Pagamento de fatura")}
+                      </div>
                     </td>
                     <td className="py-1.5 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
                       <MoneyText cents={payment.amountCents} tone={payment.isRefund ? "positive" : "default"} hideCurrency />
