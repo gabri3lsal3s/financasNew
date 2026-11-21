@@ -192,6 +192,9 @@ export function PortfolioSnapshotsDialog({
         <SnapshotsLedgerTable
           points={sortedTablePoints}
           currentMonthStr={currentMonthStr}
+          openingDividendsBalanceBRL={summary.openingDividendsBalanceBRL}
+          periodDividendsBRL={summary.periodDividendsBRL}
+          totalHistoricalDividendsBRL={summary.totalHistoricalDividendsBRL}
           onCloseModal={() => onOpenChange(false)}
           onGenerateReport={onGenerateReport}
           onCalibrate={setSnapshotToCalibrate}

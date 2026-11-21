@@ -9,6 +9,9 @@ import { formatCentsAsBRL, formatSignedPct } from "@/services/masks";
 export interface SnapshotsLedgerTableProps {
   points: readonly PortfolioMonthlySeriesPoint[];
   currentMonthStr?: string;
+  openingDividendsBalanceBRL?: number;
+  periodDividendsBRL?: number;
+  totalHistoricalDividendsBRL?: number;
   onCloseModal: () => void;
   onGenerateReport?: (month: string) => void;
   onCalibrate: (point: PortfolioMonthlySeriesPoint) => void;
@@ -19,6 +22,9 @@ export interface SnapshotsLedgerTableProps {
 export function SnapshotsLedgerTable({
   points,
   currentMonthStr,
+  openingDividendsBalanceBRL,
+  periodDividendsBRL,
+  totalHistoricalDividendsBRL,
   onCloseModal,
   onGenerateReport,
   onCalibrate,
@@ -37,7 +43,8 @@ export function SnapshotsLedgerTable({
   }
 
   return (
-    <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 shadow-xs w-full print:overflow-visible print:border-none print:shadow-none print:rounded-none">
+    <>
+      <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 shadow-xs w-full print:overflow-visible print:border-none print:shadow-none print:rounded-none">
       <table className="w-full text-left text-xs border-collapse table-auto sm:table-fixed min-w-[840px] print:min-w-0 print:table-fixed">
         <colgroup>
           <col style={{ width: "13%" }} />
@@ -186,9 +193,11 @@ export function SnapshotsLedgerTable({
                 </td>
 
                 <td className="py-1.5 px-1.5 text-right whitespace-nowrap print:py-0.5 print:px-1.5 text-[11px] print:text-[7.5pt]">
-                  {(pt.accumulatedDividendsBRL ?? 0) > 0.001 ? (
+                  {((pt.totalHistoricalDividendsBRL ?? pt.accumulatedDividendsBRL) ?? 0) > 0.001 ? (
                     <MoneyText
-                      cents={numberToCents(pt.accumulatedDividendsBRL ?? 0)}
+                      cents={numberToCents(
+                        (pt.totalHistoricalDividendsBRL ?? pt.accumulatedDividendsBRL) ?? 0,
+                      )}
                       hideCurrency
                       tone="positive"
                       className="font-semibold"
@@ -320,5 +329,40 @@ export function SnapshotsLedgerTable({
         </tbody>
       </table>
     </div>
+
+    {openingDividendsBalanceBRL && openingDividendsBalanceBRL > 0.001 ? (
+      <div className="mt-2.5 px-3 py-2 rounded-xl border border-border/80 bg-surface/60 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px] text-muted-foreground shadow-xs print:text-[7pt] print:py-1">
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold text-foreground">Reconciliação de Proventos:</span>
+          <span>
+            Recebido no período:{" "}
+            <strong className="font-mono text-positive-strong">
+              {formatCentsAsBRL(numberToCents(periodDividendsBRL ?? 0))}
+            </strong>
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span>
+            Histórico prévio dos ativos:{" "}
+            <strong className="font-mono text-foreground">
+              {formatCentsAsBRL(numberToCents(openingDividendsBalanceBRL))}
+            </strong>
+          </span>
+          <span className="hidden sm:inline opacity-40">•</span>
+          <span>
+            Total acumulado:{" "}
+            <strong className="font-mono text-positive-strong">
+              {formatCentsAsBRL(
+                numberToCents(
+                  totalHistoricalDividendsBRL ??
+                    (periodDividendsBRL ?? 0) + openingDividendsBalanceBRL,
+                ),
+              )}
+            </strong>
+          </span>
+        </div>
+      </div>
+    ) : null}
+  </>
   );
 }

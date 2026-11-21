@@ -637,7 +637,9 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     status: s.status ?? "closed",
   }));
 
-  const rawDividendsForSeries = reconciliation.dividends.map((d) => ({
+  const rawDividendsForSeries = reconciliation.dividends
+    .filter((d) => !d.isAccumulatedBallast)
+    .map((d) => ({
     date: d.date,
     amount: d.amountBRL,
   }));
@@ -654,7 +656,11 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
 
   // Proventos acumulados anteriores ao início da série cronológica
   const initialAccumulatedDividends = reconciliation.dividends
-    .filter((d) => firstSnapshotMonth && d.date && d.date < `${firstSnapshotMonth}-01`)
+    .filter(
+      (d) =>
+        d.isAccumulatedBallast ||
+        (firstSnapshotMonth && d.date && d.date < `${firstSnapshotMonth}-01`),
+    )
     .reduce((acc, d) => acc + d.amountBRL, 0);
 
   const currentMonthPoint =

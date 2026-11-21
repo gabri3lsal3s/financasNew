@@ -328,4 +328,41 @@ describe("PortfolioSnapshotsDialog", () => {
     // NÃO deve possuir botão de excluir para linha sem snapshot
     expect(dialog.queryByRole("button", { name: "Excluir snapshot de Ago/2026" })).not.toBeInTheDocument();
   });
+
+  it("exibe proventos acumulados históricos e faixa de reconciliação quando há proventos prévios", () => {
+    const seriesWithRetroDividends: PortfolioMonthlySeriesPoint[] = [
+      {
+        month: "2026-08",
+        valueBRL: 80000,
+        costBRL: 75000,
+        monthDividendsBRL: 4.60,
+        accumulatedDividendsBRL: 4.60,
+        openingDividendsBalanceBRL: 1792.79,
+        totalHistoricalDividendsBRL: 1797.39,
+        capitalGainPnl: 5000,
+        capitalGainPct: 6.67,
+        totalReturnPnl: 5004.60,
+        totalReturnPct: 6.67,
+        twrMonthPct: 0.5,
+        twrAccumulatedPct: 12.0,
+        sharePrice: 112.0,
+        status: "closed",
+      },
+    ];
+
+    renderWithClient(
+      <PortfolioSnapshotsDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        series={seriesWithRetroDividends}
+        currentMonthStr="2026-09"
+      />,
+    );
+
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("Reconciliação de Proventos:")).toBeInTheDocument();
+    expect(dialog.getByText("Histórico prévio dos ativos:")).toBeInTheDocument();
+    expect(dialog.getAllByText(/1\.792,79/).length).toBeGreaterThanOrEqual(1);
+    expect(dialog.getAllByText(/1\.797,39/).length).toBeGreaterThanOrEqual(1);
+  });
 });
