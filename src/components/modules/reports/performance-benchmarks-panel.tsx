@@ -179,7 +179,9 @@ export function PerformanceBenchmarksPanel({
 
           <div className="rounded-lg border border-border/80 bg-surface p-2.5 flex flex-col justify-between gap-1 shadow-xs">
             <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Volatilidade (σ)</span>
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                Volatilidade <span className="normal-case font-serif">(σ)</span>
+              </span>
               <span className="text-[9px] font-mono text-muted-foreground">Anualizada</span>
             </div>
             <span className="text-sm font-mono font-bold text-foreground num tabular-nums">

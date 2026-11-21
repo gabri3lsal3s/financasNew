@@ -11,7 +11,9 @@ export interface MonthlyDividendPoint {
 
 export interface ReportDividendSparklineProps {
   title?: string;
-  points: readonly MonthlyDividendPoint[];
+  points?: readonly MonthlyDividendPoint[];
+  monthlyDividends?: readonly { month?: string; label?: string; amountCents?: number }[];
+  referenceYear?: number;
   averageMonthlyCents?: number;
   projectedAnnualCents?: number;
   className?: string;
@@ -23,13 +25,24 @@ export interface ReportDividendSparklineProps {
 export function ReportDividendSparkline({
   title = "Evolução dos Proventos & Renda Passiva (Últimos 12 Meses)",
   points,
+  monthlyDividends,
   averageMonthlyCents,
   projectedAnnualCents,
   className,
 }: ReportDividendSparklineProps) {
-  const maxAmount = Math.max(...points.map((p) => p.amountCents), 1);
-  const totalCents = points.reduce((acc, p) => acc + p.amountCents, 0);
-  const avgCents = averageMonthlyCents ?? (points.length > 0 ? Math.round(totalCents / points.length) : 0);
+  const safePoints: readonly MonthlyDividendPoint[] = points
+    ? points
+    : monthlyDividends
+      ? monthlyDividends.map((m, idx) => ({
+          month: m.month ?? `2026-${String(idx + 1).padStart(2, "0")}`,
+          label: m.label ?? `M${idx + 1}`,
+          amountCents: m.amountCents ?? 0,
+        }))
+      : [];
+
+  const maxAmount = Math.max(...safePoints.map((p) => p.amountCents), 1);
+  const totalCents = safePoints.reduce((acc, p) => acc + p.amountCents, 0);
+  const avgCents = averageMonthlyCents ?? (safePoints.length > 0 ? Math.round(totalCents / safePoints.length) : 0);
 
   return (
     <div
@@ -60,7 +73,7 @@ export function ReportDividendSparkline({
 
       <div className="pt-1">
         <div className="grid grid-cols-12 gap-1 items-end h-16 w-full">
-          {points.map((point) => {
+          {safePoints.map((point) => {
             const heightPct = Math.max(Math.round((point.amountCents / maxAmount) * 100), 4);
             const isZero = point.amountCents <= 0;
 

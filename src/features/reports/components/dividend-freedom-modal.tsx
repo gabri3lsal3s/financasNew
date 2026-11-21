@@ -3,7 +3,6 @@ import { Flame, PiggyBank, Sparkles } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
-  ReportRunningHeader,
   ReportExecutiveSummary,
   ReportDividendSparkline,
   ReportFooter,
@@ -87,11 +86,6 @@ export function DividendFreedomModal({
         accountHolder={accountHolder}
       />
 
-      <ReportRunningHeader
-        title="Dossiê de Proventos & Liberdade Financeira"
-        periodLabel={periodLabel}
-      />
-
       <ReportExecutiveSummary
         title="SÍNTESE DE PROVENTOS & INDEPENDÊNCIA FINANCEIRA"
         items={[
@@ -128,7 +122,11 @@ export function DividendFreedomModal({
             </strong>
             . Este fluxo cobre <strong>{formatPercent(freedomAnalysis.freedomPct)}%</strong> do custo de vida mensal
             (Estágio: <strong>{freedomAnalysis.stageLabel}</strong>). A carteira possui{" "}
-            <strong>{freedomAnalysis.totalSnowballAssetsCount} ativo(s) autossustentável(is)</strong> operando no Efeito Bola de Neve.
+            <strong>
+              {freedomAnalysis.totalSnowballAssetsCount}{" "}
+              {freedomAnalysis.totalSnowballAssetsCount === 1 ? "ativo autossustentável" : "ativos autossustentáveis"}
+            </strong>{" "}
+            operando no Efeito Bola de Neve.
           </span>
         }
       />
@@ -201,7 +199,8 @@ export function DividendFreedomModal({
             </h3>
           </div>
           <span className="text-[11px] text-muted-foreground font-mono num">
-            {freedomAnalysis.totalSnowballAssetsCount} ativo(s) autossustentável(is)
+            {freedomAnalysis.totalSnowballAssetsCount}{" "}
+            {freedomAnalysis.totalSnowballAssetsCount === 1 ? "ativo autossustentável" : "ativos autossustentáveis"}
           </span>
         </div>
 

@@ -27,6 +27,14 @@ export function ReportEquityClassTable({
   isInternacional: boolean;
   subtotalPriceVarPct: number | null;
 }) {
+  const isAllUsd =
+    isInternacional &&
+    group.items.length > 0 &&
+    group.items.every((item) => (item.currency ?? "BRL") === "USD");
+  const hasUsdAssets =
+    isInternacional &&
+    group.items.some((item) => (item.currency ?? "BRL") === "USD");
+
   return (
     <div className="w-full min-w-0 rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden print:overflow-visible print:border-none print:shadow-none print:rounded-none print:block">
       {/* Banner de Identificação da Classe (Fora do Thead para prevenir cabeçalhos órfãos) */}
@@ -35,14 +43,14 @@ export function ReportEquityClassTable({
       <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
         <table className="w-full min-w-[640px] print:min-w-0 text-left text-xs border-collapse table-fixed">
           <colgroup>
-            <col className={isInternacional ? "w-[12%]" : "w-[12%]"} />
+            <col className={isInternacional ? "w-[12%]" : "w-[13%]"} />
+            <col className={isInternacional ? "w-[15%]" : "w-[16%]"} />
+            <col className={isInternacional ? "w-[9%]" : "w-[9%]"} />
+            <col className={isInternacional ? "w-[12%]" : "w-[11%]"} />
+            <col className={isInternacional ? "w-[12%]" : "w-[11%]"} />
             <col className={isInternacional ? "w-[16%]" : "w-[16%]"} />
-            <col className={isInternacional ? "w-[7%]" : "w-[6%]"} />
-            <col className={isInternacional ? "w-[13%]" : "w-[12%]"} />
-            <col className={isInternacional ? "w-[13%]" : "w-[11%]"} />
-            <col className={isInternacional ? "w-[16%]" : "w-[17%]"} />
-            <col className={isInternacional ? "w-[11%]" : "w-[12%]"} />
-            <col className={isInternacional ? "w-[12%]" : "w-[14%]"} />
+            <col className={isInternacional ? "w-[11%]" : "w-[11%]"} />
+            <col className={isInternacional ? "w-[13%]" : "w-[13%]"} />
           </colgroup>
           <thead className="print:[break-inside:avoid] print:[break-after:avoid]">
             <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider print:[break-after:avoid] print:[break-inside:avoid]">
@@ -50,19 +58,19 @@ export function ReportEquityClassTable({
               <th className="py-2 px-2">
                 {isInternacional ? "Classe / Tema" : "Setor / Segmento"}
               </th>
-              <th className="py-2 px-1 text-right">Qtd</th>
+              <th className="py-2 px-1.5 text-right">Qtd</th>
               <th className="py-2 px-2 text-right whitespace-nowrap">
-                {isInternacional ? "PM (US$)" : "Preço Médio"}
+                {isAllUsd ? "PM (US$)" : "Preço Médio"}
               </th>
               <th className="py-2 px-2 text-right whitespace-nowrap">
-                {isInternacional ? "Cotação (US$)" : "Cotação"}
+                {isAllUsd ? "Cotação (US$)" : "Cotação"}
               </th>
               <th className="py-2 px-2.5 text-right whitespace-nowrap">Total (R$)</th>
               <th className="py-2 px-2 text-right whitespace-nowrap">
-                {isInternacional ? "Var. (USD)" : "Var. Cota"}
+                {isAllUsd ? "Var. (USD)" : "Var. Cota"}
               </th>
               <th className="py-2 px-2.5 text-right whitespace-nowrap">
-                {isInternacional ? "Ret. (BRL)" : "Ret. Total"}
+                {isAllUsd ? "Ret. (BRL)" : "Ret. Total"}
               </th>
             </tr>
           </thead>
@@ -70,9 +78,7 @@ export function ReportEquityClassTable({
             {group.items.map((item) => {
               const priceVarPct = item.pricePnlPct ?? item.pnlPct;
               const totalRetPct = item.pnlPct;
-              const currency = isInternacional
-                ? ((item.currency as "BRL" | "USD") ?? "BRL")
-                : "BRL";
+              const currency = (item.currency as "BRL" | "USD") ?? "BRL";
 
               return (
                 <tr key={item.ticker} className="even:bg-muted/20 print:even:bg-muted/20 break-inside-avoid">
@@ -85,7 +91,7 @@ export function ReportEquityClassTable({
                   <td className="py-1.5 px-2 leading-tight text-muted-foreground text-[10px] whitespace-normal break-words">
                     {sanitizeReportText(item.sector || " — ")}
                   </td>
-                  <td className="py-1.5 px-1 text-right num font-mono tabular-nums text-muted-foreground whitespace-nowrap text-[10px]">
+                  <td className="py-1.5 px-1.5 text-right num font-mono tabular-nums text-muted-foreground whitespace-nowrap text-[10px]">
                     {formatAssetQuantity(item.quantity, group.className)}
                   </td>
                   <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-muted-foreground whitespace-nowrap text-[10.5px]">
@@ -163,7 +169,7 @@ export function ReportEquityClassTable({
           </tfoot>
         </table>
       </div>
-      {isInternacional && (
+      {hasUsdAssets && (
         <div className="px-3 py-1.5 text-[10px] text-muted-foreground bg-muted/20 border-t border-border/80 flex flex-col gap-0.5">
           <div>
             * <strong>Var. (USD)</strong> refere-se à valorização da cota na moeda original (USD).{" "}

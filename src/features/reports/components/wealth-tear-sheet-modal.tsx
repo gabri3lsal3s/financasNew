@@ -4,7 +4,6 @@ import {
   ReportDocumentLayout,
   ReportFooter,
   ReportHeader,
-  ReportRunningHeader,
 } from "@/components/modules";
 import {
   buildTearSheetModel,
@@ -156,11 +155,6 @@ export function WealthTearSheetModal({
         accountHolder={accountHolder}
       />
 
-      <ReportRunningHeader
-        title="Dossiê Executivo da Posição Vigente"
-        periodLabel={periodLabel}
-      />
-
       <TearSheetExecutiveNarrative
         model={model}
         totalBRL={totalBRL}
@@ -197,6 +191,7 @@ export function WealthTearSheetModal({
         portfolioIrr={portfolioIrr}
         totalReturnPct={model.totalReturnPct}
         historicalPnlBRL={allTimeEconomicPnlBRL ?? model.totalReturnBRL}
+        periodLabel={periodLabel}
       />
 
       <ReportFooter

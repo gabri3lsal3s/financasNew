@@ -83,12 +83,41 @@ export function getBensDireitosClassification(assetClass: string | null, ticker:
     };
   }
 
-  if (normClass.includes("renda fixa") || normClass.includes("tesouro") || normClass.includes("cdb") || normClass.includes("lci") || normClass.includes("lca")) {
+  if (
+    isTesouroAsset(ticker, assetClass) ||
+    isFixedIncomeClass(assetClass) ||
+    normClass.includes("renda fixa") ||
+    normClass.includes("tesouro") ||
+    normClass.includes("cdb") ||
+    normClass.includes("lci") ||
+    normClass.includes("lca") ||
+    normClass.includes("debênture") ||
+    normClass.includes("debenture") ||
+    normClass.includes("cri") ||
+    normClass.includes("cra") ||
+    normClass.includes("ipca") ||
+    normClass.includes("selic") ||
+    upperTicker.startsWith("TESOURO") ||
+    upperTicker.includes("TESOURO") ||
+    upperTicker.startsWith("CDB") ||
+    upperTicker.startsWith("LCI") ||
+    upperTicker.startsWith("LCA") ||
+    upperTicker.startsWith("CRI") ||
+    upperTicker.startsWith("CRA") ||
+    upperTicker.includes("IPCA") ||
+    upperTicker.includes("SELIC") ||
+    upperTicker === "LFT" ||
+    upperTicker === "NTNB" ||
+    upperTicker === "LTN"
+  ) {
+    const isTesouro = isTesouroAsset(ticker, assetClass);
     return {
       groupCode: "04",
       groupName: "Aplicações e Investimentos",
       itemCode: "02",
-      itemName: "Títulos Públicos e Privados (Tesouro, CDB, LCI, LCA)",
+      itemName: isTesouro
+        ? "Títulos Públicos (Tesouro Direto, Tesouro Selic, IPCA+, Prefixado)"
+        : "Títulos Públicos e Privados (Tesouro, CDB, LCI, LCA)",
     };
   }
 

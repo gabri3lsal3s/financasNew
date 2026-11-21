@@ -136,7 +136,7 @@ export function TaxBensDireitosSection({
         </div>
       </section>
 
-      <section aria-label="Bens e Direitos Impressão" className="hidden print:flex flex-col gap-3">
+      <section aria-label="Bens e Direitos Impressão" className="hidden print:flex flex-col gap-2">
         <div className="flex items-center justify-between border-b border-border/80 pb-1">
           <div className="flex items-center gap-1.5">
             <FileText className="size-3.5 text-muted-foreground" aria-hidden="true" />
@@ -149,10 +149,10 @@ export function TaxBensDireitosSection({
           </span>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           {groupedItems.map((group) => (
-            <div key={`print-group-${group.key}`} className="flex flex-col gap-1 break-inside-avoid">
-              <header className="flex items-center justify-between bg-muted/30 border border-border/80 px-2.5 py-1 text-[10px] font-bold text-foreground uppercase tracking-wider break-after-avoid rounded-t">
+            <div key={`print-group-${group.key}`} className="flex flex-col gap-0.5 break-inside-avoid">
+              <header className="flex items-center justify-between bg-muted/30 border border-border/80 px-2 py-0.5 text-[9px] font-bold text-foreground uppercase tracking-wider break-after-avoid rounded-t">
                 <span>
                   Grupo {group.groupCode} - {group.groupName} · Código {group.itemCode} - {group.itemName}
                 </span>
@@ -164,29 +164,29 @@ export function TaxBensDireitosSection({
               <div className="border-x border-b border-border/80 rounded-b overflow-hidden">
                 <table className="w-full text-left text-xs border-collapse table-fixed">
                   <colgroup>
-                    <col style={{ width: "20%" }} />
-                    <col style={{ width: "60%" }} />
+                    <col style={{ width: "18%" }} />
+                    <col style={{ width: "62%" }} />
                     <col style={{ width: "20%" }} />
                   </colgroup>
                   <thead>
-                    <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
-                      <th className="py-1 px-2">Ticker</th>
-                      <th className="py-1 px-2">Discriminação para o Programa IRPF</th>
-                      <th className="py-1 px-2 text-right">Situação em 31/12 (R$)</th>
+                    <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[8.5px] uppercase tracking-wider">
+                      <th className="py-0.5 px-2">Ticker</th>
+                      <th className="py-0.5 px-2">Discriminação para o Programa IRPF</th>
+                      <th className="py-0.5 px-2 text-right">Situação em 31/12 (R$)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
                     {group.items.map((item) => (
                       <tr key={`print-tax-${item.id}`} className="break-inside-avoid even:bg-muted/10">
-                        <td className="py-1.5 px-2 font-bold text-foreground text-[10.5px] align-top">
+                        <td className="py-1 px-2 font-bold text-foreground text-[10px] align-top">
                           <span className="break-words whitespace-normal leading-tight block">
                             {item.safeTicker}
                           </span>
                         </td>
-                        <td className="py-1.5 px-2 text-[9.5px] text-muted-foreground leading-snug align-top">
+                        <td className="py-1 px-2 text-[9px] text-muted-foreground leading-tight align-top">
                           {item.textToCopy}
                         </td>
-                        <td className="py-1.5 px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap text-[10.5px] align-top">
+                        <td className="py-1 px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap text-[10px] align-top">
                           <MoneyText cents={numberToCents(item.totalCostBRL)} />
                         </td>
                       </tr>

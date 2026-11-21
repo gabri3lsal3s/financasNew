@@ -4,7 +4,6 @@ import {
   ReportDocumentLayout,
   ReportHeader,
   ReportFooter,
-  ReportRunningHeader,
 } from "@/components/modules";
 import { Alert } from "@/components/ui";
 import { isCashAssetClass, calculateTotalCostBRL } from "@/domain/portfolio";
@@ -86,6 +85,7 @@ export function TaxFacilitatorModal({
       onOpenChange={onOpenChange}
       title="Dossiê Fiscal & Facilitador de IRPF"
       documentTitle={`AXIR_Facilitador_IRPF_AnoBase_${calendarYear}.pdf`}
+      className="print:space-y-2.5"
     >
       <ReportHeader
         title={`Facilitador de Declaração de IRPF — Ano-Base ${calendarYear}`}
@@ -94,11 +94,6 @@ export function TaxFacilitatorModal({
         appName={appName}
         icon={Landmark}
         accountHolder={accountHolder}
-      />
-
-      <ReportRunningHeader
-        title={`Facilitador de Declaração de IRPF — Ano-Base ${calendarYear}`}
-        periodLabel={`Exercício ${currentYear}`}
       />
 
       <div className="print:hidden">

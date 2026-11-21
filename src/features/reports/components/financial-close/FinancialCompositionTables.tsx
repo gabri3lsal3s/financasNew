@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { PieChart, Wallet } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
-import { formatPercent } from "@/services/masks/percent";
+import { formatPercent, formatSignedPct } from "@/services/masks";
 import { sanitizeReportText } from "@/domain/reports";
 import { cn } from "@/lib/utils";
 import type {
@@ -43,6 +43,11 @@ export function FinancialCompositionTables({
     return categories.reduce((acc, c) => acc + (c.ponderadoCents ?? c.totalCents), 0);
   }, [categories]);
 
+  const totalCatDeviationPct = useMemo(() => {
+    if (totalCatBudget <= 0) return null;
+    return Math.round(((totalCatRealizado - totalCatBudget) / totalCatBudget) * 1000) / 10;
+  }, [totalCatRealizado, totalCatBudget]);
+
   const sortedPaymentMethods = useMemo(() => {
     return [...paymentMethods].sort((a, b) => {
       const valA = a.brutoCents ?? a.totalCents;
@@ -74,7 +79,7 @@ export function FinancialCompositionTables({
                   {hasBudgets && <th className="py-1.5 px-2 text-right font-bold">Orçado (R$)</th>}
                   <th className="py-1.5 px-2 text-right font-bold">Realizado (R$)</th>
                   {hasBrutoRef && <th className="py-1.5 px-2 text-right font-bold">Ponderado (R$)</th>}
-                  <th className="py-1.5 px-2 text-right font-bold">{hasBudgets ? "Desvio" : "%"}</th>
+                  <th className="py-1.5 px-2 text-right font-bold">{hasBudgets ? "Desvio" : "% do Total"}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
@@ -85,31 +90,43 @@ export function FinancialCompositionTables({
                       <td className="py-1.5 px-2 font-medium text-foreground">{sanitizeReportText(cat.name)}</td>
                       {hasBudgets && (
                         <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground whitespace-nowrap">
-                          {hasLimit ? <MoneyText cents={cat.budgetLimitCents!} tone="default" /> : "—"}
+                          {hasLimit ? <MoneyText cents={cat.budgetLimitCents!} tone="default" hideCurrency /> : "—"}
                         </td>
                       )}
                       <td className="py-1.5 px-2 text-right num font-mono whitespace-nowrap">
-                        <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-bold" />
+                        <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-bold" hideCurrency={hasBudgets} />
                       </td>
                       {hasBrutoRef && (
                         <td className="py-1.5 px-2 text-right num font-mono whitespace-nowrap text-muted-foreground">
                           {cat.ponderadoCents !== undefined ? (
-                            <MoneyText cents={cat.ponderadoCents} tone="default" />
+                            <MoneyText cents={cat.ponderadoCents} tone="default" hideCurrency />
                           ) : (
                             "—"
                           )}
                         </td>
                       )}
                       <td className="py-1.5 px-2 text-right num font-mono whitespace-nowrap">
-                        {hasBudgets && hasLimit && cat.variancePct != null ? (
-                          <span
-                            className={cn(
-                              "font-semibold tabular-nums text-[11px]",
-                              cat.variancePct > 0 ? "text-critical-strong" : "text-positive-strong",
-                            )}
-                          >
-                            {cat.variancePct > 0 ? `+${cat.variancePct}%` : `${cat.variancePct}%`}
-                          </span>
+                        {hasBudgets ? (
+                          hasLimit ? (
+                            (() => {
+                              const vPct =
+                                cat.variancePct != null
+                                  ? cat.variancePct
+                                  : Math.round(((cat.totalCents - cat.budgetLimitCents!) / cat.budgetLimitCents!) * 1000) / 10;
+                              return (
+                                <span
+                                  className={cn(
+                                    "font-semibold tabular-nums text-[11px]",
+                                    vPct > 0 ? "text-critical-strong" : "text-positive-strong",
+                                  )}
+                                >
+                                  {formatSignedPct(vPct)}
+                                </span>
+                              );
+                            })()
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )
                         ) : (
                           <span className="text-muted-foreground">{formatPercent(cat.pct)}%</span>
                         )}
@@ -123,19 +140,34 @@ export function FinancialCompositionTables({
                   <td className="py-1.5 px-2 uppercase text-[10px] font-bold text-muted-foreground">Total</td>
                   {hasBudgets && (
                     <td className="py-1.5 px-2 text-right num font-mono font-bold whitespace-nowrap">
-                      {totalCatBudget > 0 ? <MoneyText cents={totalCatBudget} tone="default" /> : "—"}
+                      {totalCatBudget > 0 ? <MoneyText cents={totalCatBudget} tone="default" hideCurrency /> : "—"}
                     </td>
                   )}
                   <td className="py-1.5 px-2 text-right num font-mono font-bold whitespace-nowrap">
-                    <MoneyText cents={totalCatRealizado} tone="negative" />
+                    <MoneyText cents={totalCatRealizado} tone="negative" hideCurrency={hasBudgets} />
                   </td>
                   {hasBrutoRef && (
                     <td className="py-1.5 px-2 text-right num font-mono font-bold whitespace-nowrap">
-                      <MoneyText cents={totalCatPonderado} tone="default" />
+                      <MoneyText cents={totalCatPonderado} tone="default" hideCurrency />
                     </td>
                   )}
                   <td className="py-1.5 px-2 text-right num font-mono font-bold text-muted-foreground whitespace-nowrap">
-                    100,0%
+                    {hasBudgets ? (
+                      totalCatDeviationPct !== null ? (
+                        <span
+                          className={cn(
+                            "tabular-nums text-[11px]",
+                            totalCatDeviationPct > 0 ? "text-critical-strong" : "text-positive-strong",
+                          )}
+                        >
+                          {formatSignedPct(totalCatDeviationPct)}
+                        </span>
+                      ) : (
+                        "—"
+                      )
+                    ) : (
+                      "100,0%"
+                    )}
                   </td>
                 </tr>
               </tfoot>

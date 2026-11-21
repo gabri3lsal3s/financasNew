@@ -33,6 +33,13 @@ describe("domain/portfolio/tax — Apuração Fiscal e IRPF", () => {
       expect(result.groupCode).toBe("04");
       expect(result.itemCode).toBe("02");
     });
+
+    it("classifica Tesouro IPCA+ no Grupo 04 / Código 02 mesmo com classe genérica", () => {
+      const result = getBensDireitosClassification("Outros", "Tesouro IPCA+ 2035");
+      expect(result.groupCode).toBe("04");
+      expect(result.itemCode).toBe("02");
+      expect(result.itemName).toContain("Tesouro Direto");
+    });
   });
 
   describe("generateAnnualBensDireitosReport", () => {

@@ -96,7 +96,7 @@ function ExposureBreakdownTable({
 /** Card paramétrico de Raio-X patrimonial (tokens `--cat-1..10`, alvos >= 44px no mobile e `MoneyText`). */
 export function ReportExposureBreakdownCard({
   title, subtitle, icon: HeaderIcon, emptyMessage, totalAssetsCount, totalValueBRL,
-  interactiveCenterLabel, itemUnitLabel = "ativo(s)", statusBadge, highlightCallout, views,
+  interactiveCenterLabel, itemUnitLabel = "ativos", statusBadge, highlightCallout, views,
   mode = "interactive", className,
 }: ReportExposureBreakdownCardProps) {
   const [selectedViewId, setSelectedViewId] = useState<string>(() => views[0]?.id ?? "");

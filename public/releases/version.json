@@ -1,19 +1,19 @@
 {
   "version": "3.14.0",
-  "versionCode": 94,
-  "releaseDate": "2026-11-21T01:10:00Z",
+  "versionCode": 95,
+  "releaseDate": "2026-11-21T02:35:00Z",
   "minSupportedVersion": "3.14.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
   "sha256": "5306b3b7c3449519fd91f9d8a482f6098ea1252e73a7800fafc96518ef460992",
   "fileSizeBytes": 12301626,
   "changelog": [
-    "Axir v3.14.0 (Build 94): Excelencia Visual, Identidade Institucional Axir e Otimizacao A4",
-    "Restauracao da marca oficial orbital Axir 3D em vetor SVG nos cabecalhos e running headers",
-    "Conquista de One-Pager perfeito no Extrato de Snapshots (1 pagina exata sem folha orfa)",
-    "Condensacao dos Raios-X no Dossie da Posicao Vigente em grade 2x2 responsiva (6 paginas)",
-    "Introducao de hideCurrency em MoneyText e alinhamento numerico tabular estrito em tabelas",
-    "Separadores vetoriais em graficos de barras e gauges de risco para fidelidade de impressao PB",
-    "Padronizacao canonica dos nomes de download de PDF (AXIR_TIPO_TITULAR_COMPETENCIA.pdf)",
-    "Re-geracao fisica de todos os 8 relatorios A4 de amostra com selo de certificacao visual"
+    "Axir v3.14.0 (Build 95): Execucao Integral do Plano Mestre Unificado v3.0 dos Relatorios Executivos",
+    "Governanca estrita de running headers: supressao na capa de One-Pagers e continuidade na pag 2+ com micro-logo",
+    "Erradicacao de truncamento de valores no Donut do Balanco 360 (Regra 11 de Ouro)",
+    "Conquista de One-Pager no Facilitador IRPF (1 pagina fisica unica) e classificacao canônica de Tesouro Direto (Cod. 02)",
+    "Normalizacao e desbloqueio dos Raios-X analiticos do Dossie da Posicao Vigente (Acoes, FIIs, Renda Fixa e Internacional)",
+    "Recalibracao de colunas de custodia (Qtd 9%, colisoes eliminadas e sensibilidade de moeda BRL vs USD)",
+    "Quadro-Sintese de Alocacao na Pagina 1 da Carteira Mensal e DRE com calculo real de desvios orcamentarios",
+    "Preservacao da tipografia do sigma minusculo (σ) em volatilidade e pluralizacao gramatical natural"
   ]
 }

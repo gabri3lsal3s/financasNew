@@ -107,6 +107,14 @@ describe("Motor Puro de Exposição de FIIs (calculateFiiExposure)", () => {
     expect(result.topCategory?.key).toBe("papel");
   });
 
+  it("aceita variações canônicas de classe como 'Fundos Imobiliários'", () => {
+    const result = calculateFiiExposure([
+      { assetId: "f1", ticker: "HGLG11", assetClass: "Fundos Imobiliários", valueBRL: 5000 },
+    ]);
+    expect(result.totalValueBRL).toBe(5000);
+    expect(result.totalAssetsCount).toBe(1);
+  });
+
   it("trata lista vazia com segurança", () => {
     const result = calculateFiiExposure([]);
     expect(result.totalValueBRL).toBe(0);
@@ -321,6 +329,14 @@ describe("Motor Puro de Exposição de Ações Brasil (calculateStocksExposure)"
     expect(result.isConcentrated).toBe(true);
     expect(result.topProfile?.key).toBe("commodities");
   });
+
+  it("aceita variações canônicas de classe como 'Ações Brasil'", () => {
+    const result = calculateStocksExposure([
+      { assetId: "s1", ticker: "ITUB4", assetClass: "Ações Brasil", valueBRL: 8000 },
+    ]);
+    expect(result.totalValueBRL).toBe(8000);
+    expect(result.totalAssetsCount).toBe(1);
+  });
 });
 
 describe("Motor Puro de Exposição Internacional (calculateInternationalExposure)", () => {
@@ -381,6 +397,14 @@ describe("Motor Puro de Exposição Internacional (calculateInternationalExposur
     // Alerta de concentração >= 70%
     expect(result.topRegion?.key).toBe("eua");
     expect(result.isConcentrated).toBe(true);
+  });
+
+  it("aceita variações canônicas de classe como 'Internacional Global'", () => {
+    const result = calculateInternationalExposure([
+      { assetId: "i1", ticker: "VT", assetClass: "Internacional Global", valueBRL: 15000 },
+    ]);
+    expect(result.totalValueBRL).toBe(15000);
+    expect(result.totalAssetsCount).toBe(1);
   });
 });
 

@@ -162,7 +162,7 @@ describe("Fase 44 — Primitivos Editoriais e Gráficos de Relatórios A4", () =
       />,
     );
 
-    const centerContainer = container.querySelector(".inset-\\[10\\%\\]");
+    const centerContainer = container.querySelector(".rounded-full");
     expect(centerContainer).toBeInTheDocument();
     expect(centerContainer).toHaveClass("rounded-full");
     expect(screen.getAllByText("Ativos")).toHaveLength(2);

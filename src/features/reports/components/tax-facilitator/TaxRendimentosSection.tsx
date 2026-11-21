@@ -46,29 +46,29 @@ export function TaxRendimentosSection({
               <col style={{ width: "30%" }} />
             </colgroup>
             <thead>
-              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-                <th className="py-2 px-3">Ticker</th>
-                <th className="py-2 px-3">Tipo / Ficha da Declaração</th>
-                <th className="py-2 px-3 text-right">Total Recebido (R$)</th>
+              <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] print:text-[8.5px] uppercase tracking-wider">
+                <th className="py-2 px-3 print:py-1 print:px-2">Ticker</th>
+                <th className="py-2 px-3 print:py-1 print:px-2">Tipo / Ficha da Declaração</th>
+                <th className="py-2 px-3 print:py-1 print:px-2 text-right">Total Recebido (R$)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {items.map(({ asset, tipoRendimento, amountBRL }) => (
                 <tr key={`div-${asset.id}`} className="hover:bg-muted/20 break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
-                  <td className="py-1.5 px-3 font-semibold text-foreground whitespace-nowrap">
+                  <td className="py-1.5 px-3 print:py-1 print:px-2 font-semibold text-foreground whitespace-nowrap print:text-[10px]">
                     {sanitizeReportText(asset.ticker)}
                   </td>
-                  <td className="py-1.5 px-3 text-muted-foreground">{tipoRendimento}</td>
-                  <td className="py-1.5 px-3 text-right num font-mono font-bold text-foreground whitespace-nowrap">
+                  <td className="py-1.5 px-3 print:py-1 print:px-2 text-muted-foreground print:text-[9.5px]">{tipoRendimento}</td>
+                  <td className="py-1.5 px-3 print:py-1 print:px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap print:text-[10px]">
                     <MoneyText cents={numberToCents(amountBRL)} />
                   </td>
                 </tr>
               ))}
               <tr className="bg-muted/40 border-t border-border/80 font-bold break-inside-avoid">
-                <td colSpan={2} className="py-2 px-3 text-foreground uppercase text-[10px] tracking-wider">
+                <td colSpan={2} className="py-2 px-3 print:py-1 print:px-2 text-foreground uppercase text-[10px] print:text-[8.5px] tracking-wider">
                   Total de Rendimentos no Exercício
                 </td>
-                <td className="py-2 px-3 text-right num font-mono text-foreground whitespace-nowrap">
+                <td className="py-2 px-3 print:py-1 print:px-2 text-right num font-mono text-foreground whitespace-nowrap print:text-[10px]">
                   <MoneyText cents={numberToCents(totalRendimentosBRL)} />
                 </td>
               </tr>

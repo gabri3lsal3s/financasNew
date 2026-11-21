@@ -3,7 +3,6 @@ import { Scale } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportHeader,
-  ReportRunningHeader,
   ReportExecutiveSummary,
   ReportFooter,
 } from "@/components/modules";
@@ -84,11 +83,6 @@ export function ConsolidatedWealthModal({
         appName={appName}
         icon={Scale}
         accountHolder={accountHolder}
-      />
-
-      <ReportRunningHeader
-        title="Balanço Patrimonial 360°"
-        periodLabel={periodLabel}
       />
 
       <ReportExecutiveSummary

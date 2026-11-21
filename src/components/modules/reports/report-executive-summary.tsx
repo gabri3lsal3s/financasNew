@@ -44,7 +44,7 @@ export function ReportExecutiveSummary({
       <div className="grid grid-cols-2 sm:grid-cols-4 print:grid-cols-4 gap-3 sm:gap-4 print:gap-4 py-0.5">
         {items.map((item) => (
           <div key={item.label} className="flex flex-col gap-0.5 min-w-0">
-            <span className="text-[9.5pt] uppercase font-bold tracking-tight text-muted-foreground truncate">
+            <span className="text-[7.5pt] sm:text-[8pt] uppercase font-bold tracking-wider text-muted-foreground truncate">
               {item.label}
             </span>
             <div className="text-sm sm:text-base font-bold font-mono num tabular-nums tracking-tight text-foreground leading-snug">

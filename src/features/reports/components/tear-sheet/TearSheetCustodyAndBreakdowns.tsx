@@ -8,6 +8,7 @@ import {
   ReportPerformanceChart,
   ReportRedemptionsTable,
   ReportRiskGauge,
+  ReportRunningHeader,
   ReportStocksBreakdownCard,
 } from "@/components/modules";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -58,6 +59,10 @@ export function TearSheetCustodyAndBreakdowns({
         aria-label="Custódia de Ativos"
         className="flex flex-col gap-3 pt-1 print:pt-0 print-break-before-page print:break-before-page"
       >
+        <ReportRunningHeader
+          title="Dossiê Executivo da Posição Vigente"
+          periodLabel={periodLabel}
+        />
         <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
           <div className="flex items-center gap-1.5">
             <Layers className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
@@ -86,6 +91,10 @@ export function TearSheetCustodyAndBreakdowns({
           aria-label="Detalhamento Gráfico de Alocação e Setores"
           className="flex flex-col gap-3 pt-2 print:pt-1 break-inside-avoid print:break-inside-avoid print:break-before-page break-before-page"
         >
+          <ReportRunningHeader
+            title="Dossiê Executivo da Posição Vigente"
+            periodLabel={periodLabel}
+          />
           <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
             <div className="flex items-center gap-1.5">
               <PieChart className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
@@ -112,6 +121,10 @@ export function TearSheetCustodyAndBreakdowns({
         aria-label="Raios-X Analíticos de Subalocação por Classe"
         className="flex flex-col gap-3 pt-2 print:pt-1 print-break-before-page print:break-before-page break-inside-avoid print:break-inside-avoid"
       >
+        <ReportRunningHeader
+          title="Dossiê Executivo da Posição Vigente"
+          periodLabel={periodLabel}
+        />
         <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
           <div className="flex items-center gap-1.5">
             <PieChart className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
@@ -150,15 +163,21 @@ export function TearSheetCustodyAndBreakdowns({
       </section>
 
       {model.performanceSeries.length >= 2 ? (
-        <ReportPerformanceChart
+        <div className="flex flex-col gap-3 pt-2 print:pt-1 print-break-before-page print:break-before-page print-break-inside-avoid">
+          <ReportRunningHeader
+            title="Dossiê Executivo da Posição Vigente"
+            periodLabel={periodLabel}
+          />
+          <ReportPerformanceChart
           series={model.performanceSeries}
           title="Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"
-          className="print-break-before-page print:break-before-page print-break-inside-avoid"
+          className="print-break-inside-avoid"
           annualCdiRate={annualCdiRate}
           annualSelicRate={annualSelicRate}
           annualIpcaRate={annualIpcaRate}
           ibovPeriodReturnPct={ibovPeriodReturnPct}
         />
+        </div>
       ) : (
         <section
           aria-label="Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"

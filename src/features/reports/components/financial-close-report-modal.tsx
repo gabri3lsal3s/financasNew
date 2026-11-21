@@ -161,23 +161,24 @@ export function FinancialCloseReportModal({
             hasBrutoRef={hasBrutoRef}
           />
 
-          {/* Quebra controlada para a Página 2 em Impressão */}
-          <div className="print-page-break-after print:hidden" />
-          <ReportRunningHeader
-            title="Relatório Executivo de Finanças Pessoais & DRE"
-            periodLabel={periodLabel}
-          />
+          {/* Seção Página 2 em Impressão */}
+          <div className="print-break-before-page flex flex-col gap-4">
+            <ReportRunningHeader
+              title="Relatório Executivo de Finanças Pessoais & DRE"
+              periodLabel={periodLabel}
+            />
 
-          <FinancialCompositionTables
-            categories={categories}
-            paymentMethods={paymentMethods}
-            hasBrutoRef={hasBrutoRef}
-            hasBudgets={hasBudgets}
-          />
+            <FinancialCompositionTables
+              categories={categories}
+              paymentMethods={paymentMethods}
+              hasBrutoRef={hasBrutoRef}
+              hasBudgets={hasBudgets}
+            />
 
-          <FinancialPaidInvoicesSection paidInvoices={paidInvoices} />
+            <FinancialPaidInvoicesSection paidInvoices={paidInvoices} />
 
-          {householdSummary && <FinancialHouseholdSection householdSummary={householdSummary} />}
+            {householdSummary && <FinancialHouseholdSection householdSummary={householdSummary} />}
+          </div>
         </>
       )}
 

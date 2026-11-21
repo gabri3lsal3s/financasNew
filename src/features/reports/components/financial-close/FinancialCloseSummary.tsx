@@ -51,7 +51,7 @@ export function FinancialCloseSummary({
             ),
         },
         {
-          label: "Resultado Operacional",
+          label: "Res. Operacional",
           value: (
             <MoneyText
               cents={effectiveGrossSavingsBruto}

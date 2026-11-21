@@ -40,7 +40,7 @@ describe("FinancialCloseReportModal (F42)", () => {
     expect(screen.getAllByText("Agosto de 2026")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Receitas Totais")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Despesas Totais")[0]).toBeInTheDocument();
-    expect(screen.getAllByText("Resultado Operacional")[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Res\. Operacional|Resultado Operacional/)[0]).toBeInTheDocument();
     expect(screen.getAllByText(/Alimentação/)[0]).toBeInTheDocument();
     expect(screen.getAllByText(/Cartão de Crédito/)[0]).toBeInTheDocument();
   });
@@ -153,8 +153,8 @@ describe("FinancialCloseReportModal (F42)", () => {
 
     expect(screen.getAllByText("Orçado (R$)")[0]).toBeInTheDocument();
     expect(screen.getAllByText("Desvio")[0]).toBeInTheDocument();
-    expect(screen.getAllByText("+17%")[0]).toBeInTheDocument();
-    expect(screen.getAllByText("-25%")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("+17,0%")[0]).toBeInTheDocument();
+    expect(screen.getAllByText("-25,0%")[0]).toBeInTheDocument();
   });
 
   it("renderiza seção de Consolidação Residencial quando householdSummary for fornecido", () => {

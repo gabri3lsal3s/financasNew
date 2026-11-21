@@ -1,4 +1,4 @@
-import { AlertCircle, SlidersHorizontal, TrendingUp } from "lucide-react";
+import { AlertCircle, Layers, SlidersHorizontal, TrendingUp } from "lucide-react";
 import { Button, MoneyText } from "@/components/ui";
 import {
   ReportClassTables,
@@ -12,7 +12,7 @@ import type { ReportClassGroup } from "@/components/modules/reports/report-class
 import { numberToCents } from "@/domain/money";
 import type { PointInTimeFidelity, PointInTimeResult } from "@/domain/portfolio/point-in-time";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
-import { formatSignedPct } from "@/services/masks";
+import { formatPercent, formatSignedPct } from "@/services/masks";
 
 export interface ExecutiveReportDocumentProps {
   periodLabel: string;
@@ -64,11 +64,6 @@ export function ExecutiveReportDocument({
         appName={appName}
         icon={TrendingUp}
         accountHolder={accountHolder}
-      />
-
-      <ReportRunningHeader
-        title="Relatório Executivo da Carteira"
-        periodLabel={periodLabel}
       />
 
       {showDiscrepancyAlert && fidelity && discrepancyPct != null ? (
@@ -185,7 +180,97 @@ export function ExecutiveReportDocument({
         pqs={pqs}
       />
 
-      <section aria-label="Detalhamento das Posições" className="flex flex-col gap-3 pt-1 print:block print:space-y-3">
+      {/* Quadro-Síntese de Alocação por Classe de Ativos (Página 1) */}
+      {classGroups.length > 0 ? (
+        <section
+          aria-label="Síntese da Alocação Patrimonial"
+          className="rounded-xl border border-border/80 bg-surface shadow-xs p-3.5 print:p-3 break-inside-avoid"
+        >
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/60">
+            <div className="flex items-center gap-1.5">
+              <Layers className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                Síntese da Alocação por Classe de Ativos
+              </span>
+            </div>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              {classGroups.length} {classGroups.length === 1 ? "classe" : "classes"} sob custódia
+            </span>
+          </div>
+
+          <div className="w-full overflow-x-auto no-scrollbar">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
+                  <th className="py-1 px-2 font-bold">Classe de Ativo</th>
+                  <th className="py-1 px-2 font-bold text-center">Ativos</th>
+                  <th className="py-1 px-2 text-right font-bold">Posição Atual (R$)</th>
+                  <th className="py-1 px-2 text-right font-bold">% Portfólio</th>
+                  <th className="py-1 px-2 text-right font-bold">Custo Aquisição (R$)</th>
+                  <th className="py-1 px-2 text-right font-bold">Retorno P&amp;L</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {classGroups.map((g) => {
+                  const totalCents = g.totalCents;
+                  const costCents = g.totalCostCents ?? 0;
+                  const pct = effectiveTotalBRL > 0 ? (totalCents / numberToCents(effectiveTotalBRL)) * 100 : 0;
+                  const returnPct = costCents > 0 ? ((totalCents - costCents) / costCents) * 100 : 0;
+                  return (
+                    <tr key={g.className} className="even:bg-muted/20">
+                      <td className="py-1.5 px-2 font-semibold text-foreground">{g.className}</td>
+                      <td className="py-1.5 px-2 text-center text-muted-foreground font-mono">{g.items.length}</td>
+                      <td className="py-1.5 px-2 text-right font-mono font-bold">
+                        <MoneyText cents={totalCents} hideCurrency />
+                      </td>
+                      <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                        {formatPercent(pct)}%
+                      </td>
+                      <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                        <MoneyText cents={costCents} hideCurrency />
+                      </td>
+                      <td className="py-1.5 px-2 text-right font-mono font-bold">
+                        <span className={returnPct >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                          {formatSignedPct(returnPct)}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border/80 font-bold bg-muted/30">
+                  <td className="py-1.5 px-2 uppercase tracking-wider text-[10px]">Total Consolidado</td>
+                  <td className="py-1.5 px-2 text-center font-mono">{investmentCount}</td>
+                  <td className="py-1.5 px-2 text-right font-mono">
+                    <MoneyText cents={numberToCents(effectiveTotalBRL)} hideCurrency />
+                  </td>
+                  <td className="py-1.5 px-2 text-right font-mono text-foreground">100,0%</td>
+                  <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                    <MoneyText cents={numberToCents(effectiveCostBRL)} hideCurrency />
+                  </td>
+                  <td className="py-1.5 px-2 text-right font-mono font-bold">
+                    {effectiveCostBRL > 0 ? (
+                      <span className={(effectiveTotalBRL - effectiveCostBRL) >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                        {formatSignedPct(((effectiveTotalBRL - effectiveCostBRL) / effectiveCostBRL) * 100)}
+                      </span>
+                    ) : "—"}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+      ) : null}
+
+      <section
+        aria-label="Detalhamento das Posições"
+        className="flex flex-col gap-3 pt-1 print:block print:space-y-3 print-break-before-page print:break-before-page"
+      >
+        <ReportRunningHeader
+          title="Relatório Executivo da Carteira"
+          periodLabel={periodLabel}
+        />
         <ReportClassTables groups={classGroups} />
       </section>
 

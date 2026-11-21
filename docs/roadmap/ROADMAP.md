@@ -7678,6 +7678,32 @@ flowchart TD
 >   - Substituição do caractere `≤` por `até 15%` em `report-risk-gauge.tsx`, eliminando glifos não renderizados no motor PDF e garantindo leitura límpida em conformidade com as regras de governança visual do `AGENTS.md`.
 > - **Qualidade e Testes:** Suíte completa de testes de relatórios e carteiras de estresse 100% verde; TypeScript (`tsc --noEmit`) e ESLint sem erros.
 
+---
+
+### Fase 116 — Excelência Editorial, Governança de Layout e Integridade de Relatórios Executivos (Build 95 — ID BR-20261121-0235)
+
+> **Status:** Concluída, Auditada e Homologada — **Plano Mestre Unificado v3.0 do Motor de Relatórios Axir (Fases 1 a 5)**:
+> - **Governança Estrita de Running Headers (Fase 1 / Tarefa 44):**
+>   - Supressão física de `<ReportRunningHeader />` na Página 1 em todos os One-Pagers (`ConsolidatedWealthModal`, `DividendFreedomModal`, `CardInvoicePrintView`, `PortfolioSnapshotsDialog`, `TaxFacilitatorModal`), eliminando duplicidade de cabeçalhos na capa.
+>   - Injeção controlada de `<ReportRunningHeader />` com micro-logo oficial Axir orbital no topo de cada quebra de página física (`print-break-before-page`) nos documentos multi-páginas (DRE Pág 2, Carteira Mensal Pág 2, Dossiê Posição Vigente Págs 2 a 7).
+> - **Erradicação de Truncamento no Donut do Balanço 360° (Fase 1 / Tarefa 43):**
+>   - Remoção de `max-w-[80px] truncate` em `report-donut-chart.tsx` (Regra 11 de Ouro do `AGENTS.md`).
+>   - Adoção de microtipografia adaptativa auto-fit (`text-[8.5pt]` para `size <= 112`), garantindo exibição límpida de `R$ 485.000,00` e valores de 7 dígitos.
+> - **Conquista de One-Pager Perfeito no Facilitador IRPF & Tesouro Direto (Fase 2 / Tarefa 45):**
+>   - Erradicação da 2ª folha física órfã no Facilitador Fiscal: orçamento vertical restrito $\le 940\text{px}$, compressão de paddings verticais de linhas para `print:py-0.5 print:px-1.5`.
+>   - Correção em `tax.ts`: reconhecimento canônico de títulos públicos federais (Tesouro Selic, IPCA+, Prefixado) sob o **Grupo 04 - Código 02**, eliminando a classificação indevida em Código 99 (Outras Aplicações).
+> - **Normalização e Desbloqueio dos Raios-X no Dossiê 6 (Fase 4 / Tarefas 46 e 49):**
+>   - Substituição de checagens frágeis de igualdade estrita (`cls === "acoes"`) pelos predicados canônicos `isStockClass`, `isFiiClass` e normalização internacional em `class-breakdown.ts`.
+>   - Desbloqueio de 100% dos 4 cards de Raios-X (Ações Brasil, FIIs, Renda Fixa e Internacional) com alocação setorial rica.
+> - **Recalibração de Colunas de Custódia e Sensibilidade Cambial (Fase 2 / Tarefa 47):**
+>   - Expansão da coluna `Qtd` para 9% em `report-equity-class-table.tsx` e 10% em `report-fixed-income-class-table.tsx` com `px-1.5`, erradicando a colisão `10.318,93R$ 1,00`.
+>   - Sensibilidade dinâmica cambial: neutralização de cabeçalhos para `Preço Médio` e `Cotação` com símbolo nativo via `MoneyText` quando o grupo contiver ativos cotados em BRL (ex.: `IVVB11`).
+> - **Quadro-Síntese na Carteira Mensal & DRE com Desvios Reais (Fase 3 / Tarefa 48):**
+>   - Introdução do Quadro-Síntese de Alocação por Classe de Ativos na Página 1 da Carteira Mensal (`ExecutiveReportDocument`), equilibrando as páginas 1 e 2 (~700px cada).
+>   - Correção da coluna de desvio orçamentário na DRE (`FinancialCompositionTables.tsx`): cálculo real da variância vs limite, formatação pt-BR com vírgula decimal via `formatSignedPct` e aplicação de `hideCurrency` sob cabeçalhos monetários.
+>   - Preservação do símbolo de volatilidade grega minúscula `(σ)` contra transformação indesejada por `uppercase`, e pluralização gramatical natural em proventos autossustentáveis.
+> - **QA & Validação:** Todos os 8 relatórios A4 re-gerados fisicamente; suítes Vitest (`src/features/reports/`, `src/components/modules/reports/`, `src/domain/portfolio/`) 100% verdes (63/63 testes); `npx tsc -b` 0 erros; `npm run lint` 0 erros; Build 95 homologado.
+
 
 
 

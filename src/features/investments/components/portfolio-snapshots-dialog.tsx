@@ -4,7 +4,6 @@ import {
   ReportDocumentLayout,
   ReportFooter,
   ReportHeader,
-  ReportRunningHeader,
 } from "@/components/modules/reports";
 import { Button, ConfirmDialog } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
@@ -108,11 +107,6 @@ export function PortfolioSnapshotsDialog({
           subtitle="Auditoria cronológica da evolução de patrimônio, custos, proventos e rentabilidade ponderada (TWR) mês a mês."
           periodLabel={selectedYear === "all" ? "Histórico Completo" : `Ano ${selectedYear}`}
           generatedAt={formatDateBR(todayLocalIso())}
-        />
-
-        <ReportRunningHeader
-          title="Extrato Analítico de Evolução Patrimonial"
-          periodLabel={selectedYear === "all" ? "Histórico Completo" : `Ano ${selectedYear}`}
         />
 
         <div className="flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pb-1 print:hidden">

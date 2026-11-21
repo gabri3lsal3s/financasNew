@@ -26,9 +26,9 @@ export function ReportFixedIncomeClassTable({ group }: { group: ReportClassGroup
       <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
         <table className="w-full min-w-[560px] print:min-w-0 text-left text-xs border-collapse table-fixed">
           <colgroup>
-            <col className="w-[34%]" />
-            <col className="w-[28%]" />
-            <col className="w-[8%]" />
+            <col className="w-[33%]" />
+            <col className="w-[27%]" />
+            <col className="w-[10%]" />
             <col className="w-[17%]" />
             <col className="w-[13%]" />
           </colgroup>
@@ -36,7 +36,7 @@ export function ReportFixedIncomeClassTable({ group }: { group: ReportClassGroup
             <tr className="border-b border-border/80 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider print:[break-after:avoid] print:[break-inside:avoid]">
               <th className="py-2 px-2.5">Título / Emissor</th>
               <th className="py-2 px-2">Indexador / Vencimento</th>
-              <th className="py-2 px-1 text-right">Qtd</th>
+              <th className="py-2 px-1.5 text-right">Qtd</th>
               <th className="py-2 px-2 text-right whitespace-nowrap">Saldo Atual</th>
               <th className="py-2 px-2.5 text-right whitespace-nowrap">Rendimento</th>
             </tr>
@@ -66,7 +66,7 @@ export function ReportFixedIncomeClassTable({ group }: { group: ReportClassGroup
                     </span>
                   )}
                 </td>
-                <td className="py-1.5 px-1 text-right num font-mono tabular-nums text-muted-foreground text-[10px] whitespace-nowrap">
+                <td className="py-1.5 px-1.5 text-right num font-mono tabular-nums text-muted-foreground text-[10px] whitespace-nowrap">
                   {formatAssetQuantity(item.quantity, group.className)}
                 </td>
                 <td className="py-1.5 px-2 text-right num font-mono tabular-nums font-bold text-foreground text-[11px] whitespace-nowrap">

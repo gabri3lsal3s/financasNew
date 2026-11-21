@@ -73,15 +73,16 @@ const MONTH_NAMES_SHORT = [
 ] as const;
 
 /** Formata YYYY-MM para formato amigável pt-BR: "Set/2026". */
-export function formatMonthYear(monthStr: string): string {
-  if (!isValidMonth(monthStr)) return monthStr;
+export function formatMonthYear(monthStr?: string | null): string {
+  if (!monthStr || !isValidMonth(monthStr)) return monthStr ?? "";
   const [year, monthNum] = monthStr.split("-").map(Number);
   const name = MONTH_NAMES_SHORT[(monthNum ?? 1) - 1] ?? "";
   return `${name}/${year}`;
 }
 
 /** Rótulo curto pt-BR com inicial maiúscula gramatical ("ago. de 2026" → "Ago. de 2026"). */
-export function monthLabel(month: string): string {
+export function monthLabel(month?: string | null): string {
+  if (!month) return "";
   const [year, monthNum] = month.split("-").map(Number);
   const raw = new Date(year ?? 0, (monthNum ?? 1) - 1, 1).toLocaleDateString("pt-BR", {
     month: "short",
@@ -104,7 +105,8 @@ const DATE_ONLY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
  * hora (a parte antes de "T" é usada); entradas fora do padrão retornam o
  * próprio valor (fallback seguro, sem lançar).
  */
-export function formatDateBR(iso: string): string {
+export function formatDateBR(iso?: string | null): string {
+  if (!iso) return "";
   const datePart = iso.split("T")[0] ?? "";
   if (!DATE_ONLY_PATTERN.test(datePart)) {
     return iso;

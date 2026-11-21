@@ -48,15 +48,15 @@ export function ReportDonutChart({
   const centerContent =
     centerLabel || centerValue ? (
       <div
-        className="absolute inset-[10%] flex flex-col items-center justify-center text-center p-1 rounded-full pointer-events-none select-none overflow-hidden"
+        className="absolute inset-0 flex flex-col items-center justify-center text-center p-0.5 rounded-full pointer-events-none select-none"
         aria-hidden="true"
       >
-        <div className="flex flex-col items-center justify-center w-full max-w-[88%] min-w-0">
+        <div className="flex flex-col items-center justify-center w-full max-w-[96%] min-w-0">
           {centerLabel && (
             <span
               className={cn(
                 "uppercase font-semibold text-muted-foreground tracking-wider leading-none truncate max-w-full",
-                size <= 112 ? "text-[10px]" : "text-[10px] sm:text-[11px]",
+                size <= 112 ? "text-[9px]" : "text-[10px] sm:text-[11px]",
               )}
             >
               {centerLabel}
@@ -65,12 +65,12 @@ export function ReportDonutChart({
           {centerValue && (
             <span
               className={cn(
-                "num font-mono font-bold text-foreground mt-0.5 leading-tight tracking-tight whitespace-nowrap",
+                "num font-mono font-bold text-foreground mt-0.5 leading-none whitespace-nowrap",
                 size <= 112
-                  ? "text-[10px]"
+                  ? "text-[8.5px] tracking-tighter"
                   : size <= 125
-                    ? "text-[11px]"
-                    : "text-xs sm:text-sm",
+                    ? "text-[10px] tracking-tight"
+                    : "text-xs sm:text-sm tracking-tight",
               )}
             >
               {centerValue}

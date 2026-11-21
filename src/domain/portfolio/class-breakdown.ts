@@ -38,7 +38,9 @@ import {
   type InternationalVehicle,
 } from "./tickers-catalog";
 import {
+  isFiiClass,
   isFixedIncomeClass,
+  isStockClass,
   isTesouroAsset,
   normalizeClassName,
 } from "./valuation";
@@ -156,9 +158,8 @@ export function calculateFiiExposure(
   positions: readonly PositionLikeItem[],
 ): FiiExposureResult {
   const fiiPositions = positions.filter((p) => {
-    const cls = normalizeClassName(p.assetClass ?? "");
     return (
-      (cls === "fiis" || cls === "fii") &&
+      isFiiClass(p.assetClass) &&
       (p.quantity == null || p.quantity > 0) &&
       p.valueBRL > 0.001
     );
@@ -496,8 +497,15 @@ export function calculateStocksExposure(
 ): StocksExposureResult {
   const stockPositions = positions.filter((p) => {
     const cls = normalizeClassName(p.assetClass ?? "");
+    const isIntl =
+      cls.includes("internacional") ||
+      cls.includes("bdr") ||
+      cls.includes("global") ||
+      cls.includes("offshore") ||
+      p.currency === "USD";
     return (
-      (cls === "acoes" || cls === "acao" || cls === "stocks") &&
+      !isIntl &&
+      isStockClass(p.assetClass) &&
       (p.quantity == null || p.quantity > 0) &&
       p.valueBRL > 0.001
     );
@@ -668,8 +676,17 @@ export function calculateInternationalExposure(
 ): InternationalExposureResult {
   const intlPositions = positions.filter((p) => {
     const cls = normalizeClassName(p.assetClass ?? "");
+    const isIntl =
+      cls.includes("internacional") ||
+      cls.includes("bdr") ||
+      cls.includes("global") ||
+      cls.includes("offshore") ||
+      cls === "stocks us" ||
+      cls === "etfs us" ||
+      cls === "reits" ||
+      p.currency === "USD";
     return (
-      (cls === "internacional" || cls === "bdrs" || cls === "bdr") &&
+      isIntl &&
       (p.quantity == null || p.quantity > 0) &&
       p.valueBRL > 0.001
     );

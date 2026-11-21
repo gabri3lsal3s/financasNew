@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Activity, Briefcase, CircleDollarSign, Scale, TrendingUp } from "lucide-react";
 import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import { ReportRunningHeader } from "@/components/modules";
 import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
 import {
@@ -17,6 +18,7 @@ export interface TearSheetMethodologyGridProps {
   portfolioIrr?: XIRRResult;
   totalReturnPct: number;
   historicalPnlBRL: number;
+  periodLabel?: string;
 }
 
 export function TearSheetMethodologyGrid({
@@ -24,6 +26,7 @@ export function TearSheetMethodologyGrid({
   portfolioIrr,
   totalReturnPct,
   historicalPnlBRL,
+  periodLabel,
 }: TearSheetMethodologyGridProps) {
   const twrBreakdown = useMemo(() => {
     return buildTwrBreakdown({
@@ -55,8 +58,12 @@ export function TearSheetMethodologyGrid({
   return (
     <section
       aria-label="Metodologias de Rentabilidade"
-      className="flex flex-col gap-3 pt-2 print:pt-1 break-inside-avoid print:break-inside-avoid w-full"
+      className="flex flex-col gap-3 pt-2 print:pt-1 break-inside-avoid print:break-inside-avoid print-break-before-page print:break-before-page w-full"
     >
+      <ReportRunningHeader
+        title="Dossiê Executivo da Posição Vigente"
+        periodLabel={periodLabel}
+      />
       <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
         <div className="flex items-center gap-1.5">
           <Scale className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />

@@ -2,7 +2,7 @@ import { Fragment } from "react";
 import { CreditCard, Landmark, ReceiptText, TrendingUp } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
 import { formatDateBR } from "@/lib/date";
-import { ReportHeader, ReportRunningHeader, ReportKpiGrid, ReportFooter } from "./reports";
+import { ReportHeader, ReportKpiGrid, ReportFooter } from "./reports";
 
 export interface CardInvoiceExpenseRow {
   /** YYYY-MM-DD. */
@@ -74,11 +74,6 @@ export function CardInvoicePrintView({
         appName={appName}
         icon={CreditCard}
         accountHolder={accountHolder}
-      />
-
-      <ReportRunningHeader
-        title={`${cardName} · ${competenceLabel}`}
-        periodLabel={`Competência ${competenceMonth}`}
       />
 
       {/* 2. Grade de 3 KPIs da Fatura */}
