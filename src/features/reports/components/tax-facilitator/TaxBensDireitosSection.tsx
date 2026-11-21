@@ -71,68 +71,74 @@ export function TaxBensDireitosSection({
         </div>
 
         <div className="flex flex-col gap-4">
-          {groupedItems.map((group) => (
-            <div key={`screen-group-${group.key}`} className="flex flex-col gap-2">
-              <div className="flex items-center justify-between px-1 border-b border-border/60 pb-1">
-                <span className="text-xs font-bold text-foreground uppercase tracking-wider">
-                  Grupo {group.groupCode} - {group.groupName} · Código {group.itemCode} - {group.itemName}
-                </span>
-                <span className="text-xs font-mono num text-muted-foreground">
-                  Subtotal: <MoneyText cents={numberToCents(group.subtotalBRL)} className="font-bold text-foreground inline" />
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                {group.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-2 shadow-xs"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
-                      <div className="flex flex-wrap items-center gap-2 min-w-0">
-                        <span className="font-bold text-foreground text-sm">{item.safeTicker}</span>
-                        <span className="rounded-md bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground font-medium border border-border/40">
-                          {item.label}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Situação em 31/12/{calendarYear}:</span>
-                        <MoneyText
-                          cents={numberToCents(item.totalCostBRL)}
-                          className="font-bold text-xs text-foreground"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pt-1">
-                      <p className="text-xs text-muted-foreground leading-relaxed flex-1">
-                        {item.textToCopy}
-                      </p>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        sensoryIntent="selection"
-                        onClick={() => onCopy(item.id, item.textToCopy)}
-                        className="gap-1.5 shrink-0 text-xs self-end sm:self-start"
-                      >
-                        {copiedKey === item.id ? (
-                          <>
-                            <Check className="size-3.5 text-positive-strong" aria-hidden="true" />
-                            Copiado!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="size-3.5" aria-hidden="true" />
-                            Copiar
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+          {groupedItems.length === 0 ? (
+            <div className="rounded-xl border border-border/80 bg-muted/10 p-3 text-xs text-muted-foreground italic">
+              Nenhum ativo com posição em custódia apurada em 31/12/{calendarYear}.
             </div>
-          ))}
+          ) : (
+            groupedItems.map((group) => (
+              <div key={`screen-group-${group.key}`} className="flex flex-col gap-2">
+                <div className="flex items-center justify-between px-1 border-b border-border/60 pb-1">
+                  <span className="text-xs font-bold text-foreground uppercase tracking-wider">
+                    Grupo {group.groupCode} - {group.groupName} · Código {group.itemCode} - {group.itemName}
+                  </span>
+                  <span className="text-xs font-mono num text-muted-foreground">
+                    Subtotal: <MoneyText cents={numberToCents(group.subtotalBRL)} className="font-bold text-foreground inline" />
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  {group.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-border/80 bg-muted/10 p-3.5 flex flex-col gap-2 shadow-xs"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
+                          <span className="font-bold text-foreground text-sm">{item.safeTicker}</span>
+                          <span className="rounded-md bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground font-medium border border-border/40">
+                            {item.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Situação em 31/12/{calendarYear}:</span>
+                          <MoneyText
+                            cents={numberToCents(item.totalCostBRL)}
+                            className="font-bold text-xs text-foreground"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pt-1">
+                        <p className="text-xs text-muted-foreground leading-relaxed flex-1">
+                          {item.textToCopy}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          sensoryIntent="selection"
+                          onClick={() => onCopy(item.id, item.textToCopy)}
+                          className="gap-1.5 shrink-0 text-xs self-end sm:self-start"
+                        >
+                          {copiedKey === item.id ? (
+                            <>
+                              <Check className="size-3.5 text-positive-strong" aria-hidden="true" />
+                              Copiado!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="size-3.5" aria-hidden="true" />
+                              Copiar
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </section>
 
@@ -150,53 +156,59 @@ export function TaxBensDireitosSection({
         </div>
 
         <div className="flex flex-col gap-2">
-          {groupedItems.map((group) => (
-            <div key={`print-group-${group.key}`} className="flex flex-col gap-0.5 break-inside-avoid">
-              <header className="grid grid-cols-[75%_25%] items-center bg-muted/30 border border-border/80 px-2 py-1 text-[8.5px] font-bold text-foreground uppercase tracking-wider break-after-avoid rounded-t">
-                <span className="truncate leading-tight">
-                  Grupo {group.groupCode} - {group.groupName} · Código {group.itemCode} - {group.itemName}
-                </span>
-                <span className="font-mono num whitespace-nowrap text-right text-[8.5px] inline-flex items-center justify-end gap-1 font-bold text-foreground">
-                  <span className="font-normal text-muted-foreground">Subtotal:</span>
-                  <MoneyText cents={numberToCents(group.subtotalBRL)} className="inline font-bold text-foreground whitespace-nowrap" />
-                </span>
-              </header>
-
-              <div className="border-x border-b border-border/80 rounded-b overflow-hidden">
-                <table className="w-full text-left text-xs border-collapse table-fixed">
-                  <colgroup>
-                    <col style={{ width: "18%" }} />
-                    <col style={{ width: "62%" }} />
-                    <col style={{ width: "20%" }} />
-                  </colgroup>
-                  <thead>
-                    <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[8.5px] uppercase tracking-wider">
-                      <th className="py-0.5 px-2">Ticker</th>
-                      <th className="py-0.5 px-2">Discriminação para o Programa IRPF</th>
-                      <th className="py-0.5 px-2 text-right">Situação em 31/12 (R$)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/60">
-                    {group.items.map((item) => (
-                      <tr key={`print-tax-${item.id}`} className="break-inside-avoid even:bg-muted/10">
-                        <td className="py-1 px-2 font-bold text-foreground text-[10px] align-top">
-                          <span className="break-words whitespace-normal leading-tight block">
-                            {item.safeTicker}
-                          </span>
-                        </td>
-                        <td className="py-1 px-2 text-[9px] text-muted-foreground leading-tight align-top">
-                          {item.textToCopy}
-                        </td>
-                        <td className="py-1 px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap text-[10px] align-top">
-                          <MoneyText cents={numberToCents(item.totalCostBRL)} hideCurrency />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+          {groupedItems.length === 0 ? (
+            <div className="rounded-lg border border-border/70 p-2 text-[9px] text-muted-foreground italic">
+              Nenhum ativo com posição em custódia apurada em 31/12/{calendarYear}.
             </div>
-          ))}
+          ) : (
+            groupedItems.map((group) => (
+              <div key={`print-group-${group.key}`} className="flex flex-col gap-0.5 break-inside-avoid">
+                <header className="grid grid-cols-[75%_25%] items-center bg-muted/30 border border-border/80 px-2 py-1 text-[8.5px] font-bold text-foreground uppercase tracking-wider break-after-avoid rounded-t">
+                  <span className="truncate leading-tight">
+                    Grupo {group.groupCode} - {group.groupName} · Código {group.itemCode} - {group.itemName}
+                  </span>
+                  <span className="font-mono num whitespace-nowrap text-right text-[8.5px] inline-flex items-center justify-end gap-1 font-bold text-foreground">
+                    <span className="font-normal text-muted-foreground">Subtotal:</span>
+                    <MoneyText cents={numberToCents(group.subtotalBRL)} className="inline font-bold text-foreground whitespace-nowrap" />
+                  </span>
+                </header>
+
+                <div className="border-x border-b border-border/80 rounded-b overflow-hidden">
+                  <table className="w-full text-left text-xs border-collapse table-fixed">
+                    <colgroup>
+                      <col style={{ width: "18%" }} />
+                      <col style={{ width: "62%" }} />
+                      <col style={{ width: "20%" }} />
+                    </colgroup>
+                    <thead>
+                      <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[8.5px] uppercase tracking-wider">
+                        <th className="py-0.5 px-2">Ticker</th>
+                        <th className="py-0.5 px-2">Discriminação para o Programa IRPF</th>
+                        <th className="py-0.5 px-2 text-right">Situação em 31/12 (R$)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {group.items.map((item) => (
+                        <tr key={`print-tax-${item.id}`} className="break-inside-avoid even:bg-muted/10">
+                          <td className="py-1 px-2 font-bold text-foreground text-[10px] align-top">
+                            <span className="break-words whitespace-normal leading-tight block">
+                              {item.safeTicker}
+                            </span>
+                          </td>
+                          <td className="py-1 px-2 text-[9px] text-muted-foreground leading-tight align-top">
+                            {item.textToCopy}
+                          </td>
+                          <td className="py-1 px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap text-[10px] align-top">
+                            <MoneyText cents={numberToCents(item.totalCostBRL)} hideCurrency />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </section>
     </>

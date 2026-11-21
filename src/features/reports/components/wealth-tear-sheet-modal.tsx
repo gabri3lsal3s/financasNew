@@ -14,6 +14,9 @@ import {
   type MonthFlowSummary,
   type PeriodRedemptionItem,
   type WealthPositionRow,
+  type DossiePosicaoSections,
+  type ReportReadinessResult,
+  computeTearSheetPagination,
 } from "@/domain/reports";
 import type {
   PortfolioMonthlySeriesPoint,
@@ -62,6 +65,7 @@ export interface WealthTearSheetModalProps {
   periodLabel?: string;
   appName?: string;
   accountHolder?: string;
+  readiness?: ReportReadinessResult<DossiePosicaoSections>;
 }
 
 /**
@@ -141,6 +145,11 @@ export function WealthTearSheetModal({
     ],
   );
 
+  const pagination = useMemo(
+    () => computeTearSheetPagination(model, assetsMetadata),
+    [model, assetsMetadata],
+  );
+
   return (
     <ReportDocumentLayout
       open={open}
@@ -185,11 +194,10 @@ export function WealthTearSheetModal({
 
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer={OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER}
         reportType="dossier"
         currentPage={1}
-        totalPages={7}
-        showQrCode
+        totalPages={pagination.totalPages}
+        variant="running"
         className="hidden print:flex"
       />
 
@@ -203,6 +211,8 @@ export function WealthTearSheetModal({
         annualSelicRate={annualSelicRate}
         annualIpcaRate={annualIpcaRate}
         ibovPeriodReturnPct={ibovPeriodReturnPct}
+        totalPages={pagination.totalPages}
+        pageNumbers={pagination.pageNumbers}
       />
 
       <TearSheetMethodologyGrid
@@ -217,8 +227,8 @@ export function WealthTearSheetModal({
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER}
         reportType="dossier"
-        currentPage={7}
-        totalPages={7}
+        currentPage={pagination.totalPages}
+        totalPages={pagination.totalPages}
         showQrCode
       />
     </ReportDocumentLayout>

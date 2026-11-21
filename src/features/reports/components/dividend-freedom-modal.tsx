@@ -10,7 +10,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import { sanitizeReportText, type FreedomAnalysisResult } from "@/domain/reports";
+import {
+  type FireSections,
+  type FreedomAnalysisResult,
+  type ReportReadinessResult,
+  sanitizeReportText,
+} from "@/domain/reports";
 import { formatPercent } from "@/services/masks";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
@@ -27,6 +32,7 @@ export interface DividendFreedomModalProps {
   referenceYear?: number;
   appName?: string;
   accountHolder?: string;
+  readiness?: ReportReadinessResult<FireSections>;
 }
 
 const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -110,13 +116,25 @@ export function DividendFreedomModal({
           },
           {
             label: "Cobertura de Gastos",
-            value: `${formatPercent(freedomAnalysis.freedomPct)}%`,
-            subtext: "Custo de Vida Pago",
+            value:
+              freedomAnalysis.monthlyExpensesBRL > 0
+                ? `${formatPercent(freedomAnalysis.freedomPct)}%`
+                : "—",
+            subtext:
+              freedomAnalysis.monthlyExpensesBRL > 0
+                ? "Custo de Vida Pago"
+                : "Não parametrizado",
           },
           {
             label: "Autonomia Patrimonial",
-            value: `${freedomAnalysis.runwayMonths.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} meses`,
-            subtext: "Runway de Reserva",
+            value:
+              freedomAnalysis.monthlyExpensesBRL > 0
+                ? `${freedomAnalysis.runwayMonths.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} meses`
+                : "—",
+            subtext:
+              freedomAnalysis.monthlyExpensesBRL > 0
+                ? "Runway de Reserva"
+                : "Sem gastos base",
           },
         ]}
         narrative={
@@ -127,8 +145,15 @@ export function DividendFreedomModal({
             </strong>, perfazendo uma média mensal de{" "}
             <strong>
               <MoneyText cents={numberToCents(freedomAnalysis.monthlyDividendsBRL)} tone="positive" className="inline font-bold" />
-            </strong>. Este fluxo cobre <strong>{formatPercent(freedomAnalysis.freedomPct)}%</strong> do custo de vida mensal
-            (Estágio: <strong>{freedomAnalysis.stageLabel}</strong>). A carteira possui{" "}
+            </strong>.{" "}
+            {freedomAnalysis.monthlyExpensesBRL > 0 ? (
+              <>
+                Este fluxo cobre <strong>{formatPercent(freedomAnalysis.freedomPct)}%</strong> do custo de vida mensal (Estágio: <strong>{freedomAnalysis.stageLabel}</strong>).
+              </>
+            ) : (
+              <>Custo de vida mensal não parametrizado nas configurações financeiras.</>
+            )}{" "}
+            A carteira possui{" "}
             <strong>
               {freedomAnalysis.totalSnowballAssetsCount}{" "}
               {freedomAnalysis.totalSnowballAssetsCount === 1 ? "ativo autossustentável" : "ativos autossustentáveis"}

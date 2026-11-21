@@ -6,6 +6,10 @@ import {
   ReportFooter,
 } from "@/components/modules";
 import { Alert } from "@/components/ui";
+import {
+  type IrpfSections,
+  type ReportReadinessResult,
+} from "@/domain/reports";
 import { isCashAssetClass, calculateTotalCostBRL } from "@/domain/portfolio";
 import { OFFICIAL_TAX_FACILITATOR_DISCLAIMER } from "@/lib/institutional";
 import type { PortfolioAsset, PortfolioDividend } from "@/types";
@@ -24,6 +28,7 @@ export interface TaxFacilitatorModalProps {
   usdRate?: number;
   appName?: string;
   accountHolder?: string;
+  readiness?: ReportReadinessResult<IrpfSections>;
 }
 
 /**

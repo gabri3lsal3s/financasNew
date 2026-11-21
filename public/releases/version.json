@@ -1,18 +1,18 @@
 {
   "version": "3.14.0",
-  "versionCode": 100,
-  "releaseDate": "2026-11-21T15:56:49Z",
+  "versionCode": 101,
+  "releaseDate": "2026-11-21T17:48:01Z",
   "minSupportedVersion": "3.14.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "d850092283169ba93fcb93845b622d22c0888a82a0e51c132ae42d3de8dc1369",
-  "fileSizeBytes": 12308254,
+  "sha256": "06303186a2e16548f528b555fc2ffa7bf7f5809eba39fe1c218ebab880648151",
+  "fileSizeBytes": 12315069,
   "changelog": [
-    "Axir v3.14.0 (Build 100): Fechamento Release v1.0 do Motor de Relatorios (v6)",
-    "Paleta institucional rica com 5 cores semanticas no Donut de Classes do Dossie 6",
-    "Badge BASE PONDERADA reposicionado inline no cabecalho da DRE Pessoal do Balanco 360",
-    "Erradicacao de corte na coluna STATUS (w-18%) na matriz de alocacao do Dossie da Posicao",
-    "Substituicao do icone da Fatura de Cartao por CreditCard limpo e travessao fino em parcelas a vista",
-    "Unificacao do indexador Tesouro IPCA+ com taxa completa e contador 4 classes + Caixa na Carteira Mensal",
-    "Blindagem estrita whitespace-nowrap contra quebra de R$ em cascatas DRE e saldos de caixa"
+    "Axir v3.14.0 (Build 101): Arquitetura SSOT de Elegibilidade e Renderizacao Condicional (3 Niveis)",
+    "Dominio SSOT em evaluateReportReadiness centralizando regras de integridade e prontidao dos 8 relatorios",
+    "Nivel 1: Bloqueio amigavel com ReportInsufficientDataModal e acao direta para cadastros pendentes",
+    "Nivel 2: Omissao limpa de secoes e paginas com recalculacao dinamica de paginacao (computeTearSheetPagination)",
+    "Nivel 3: Zero informativo elegante sem caixas de empty state ou titulos orfaos em PDFs A4",
+    "Protecao defensiva dupla via interceptor onBeforePrint em ReportDocumentLayout",
+    "Blindagem permanente automatizada 10/10 com 100% de aprovacao no qa-reports-integrity"
   ]
 }

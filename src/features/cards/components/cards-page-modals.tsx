@@ -1,13 +1,15 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { ConfirmDialog } from "@/components/ui";
 import {
   CardInvoicePrintView,
   ReportDocumentLayout,
+  ReportInsufficientDataModal,
   UpgradeDialog,
   type CardInvoiceExpenseRow,
   type CardInvoicePaymentRow,
 } from "@/components/modules";
 import type { CompetenceSummary } from "@/domain/cards";
+import { evaluateFaturaReadiness } from "@/domain/reports";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { monthLabel } from "@/lib/date";
 import { useAuth } from "@/hooks";
@@ -92,6 +94,28 @@ export function CardsPageModals({
   const { user } = useAuth();
   const accountHolder = user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "Titular";
 
+  const faturaReadiness = useMemo(
+    () =>
+      evaluateFaturaReadiness({
+        hasCard: Boolean(selectedCard),
+        expenseCount: printExpenseRows.length,
+        totalBrutoCents: summary?.previstoBrutoCents ?? 0,
+        paymentCount: printPaymentRows.length,
+        totalPaidCents: summary?.pagoCents ?? 0,
+        isWeightedIdentical:
+          (summary?.previstoBrutoCents ?? 0) === (summary?.previstoPonderadoCents ?? 0) &&
+          printExpenseRows.every((e) => e.valueCents === e.reportValueCents),
+        hasInstallments: printExpenseRows.some(
+          (e) =>
+            e.installments &&
+            e.installments !== "—" &&
+            e.installments !== "1/1" &&
+            !e.installments.toLowerCase().includes("vista"),
+        ),
+      }),
+    [selectedCard, printExpenseRows, printPaymentRows, summary],
+  );
+
   return (
     <>
       <CardFormDialog
@@ -160,7 +184,17 @@ export function CardsPageModals({
         }}
       />
 
-      {selectedCard && summary ? (
+      {printOpen && faturaReadiness.status === "blocked" && (
+        <ReportInsufficientDataModal
+          open={printOpen}
+          onOpenChange={onPrintOpenChange}
+          reportTitle={`Fatura — ${selectedCard?.name ?? "Cartão de Crédito"}`}
+          periodLabel={monthLabel(effectiveMonth)}
+          blockingReasons={faturaReadiness.blockingReasons}
+        />
+      )}
+
+      {printOpen && faturaReadiness.canGenerate && selectedCard && summary ? (
         <ReportDocumentLayout
           open={printOpen}
           onOpenChange={onPrintOpenChange}

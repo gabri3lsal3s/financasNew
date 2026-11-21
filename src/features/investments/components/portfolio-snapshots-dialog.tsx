@@ -4,10 +4,12 @@ import {
   ReportDocumentLayout,
   ReportFooter,
   ReportHeader,
+  ReportInsufficientDataModal,
 } from "@/components/modules/reports";
 import { Button, ConfirmDialog } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
+import { evaluateExtratoSnapshotsReadiness } from "@/domain/reports";
 import { formatDateBR, formatMonthYear, todayLocalIso } from "@/lib/date";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -48,6 +50,7 @@ export function PortfolioSnapshotsDialog({
     PortfolioMonthlySeriesPoint | SnapshotCalibrationData | null
   >(null);
   const [snapshotToRestore, setSnapshotToRestore] = useState<PortfolioMonthlySeriesPoint | null>(null);
+  const [insufficientModalOpen, setInsufficientModalOpen] = useState(false);
   const deleteSnapshotMutation = useDeletePortfolioSnapshot();
   const resetCalibrationMutation = useResetManualSnapshotCalibration();
 
@@ -104,11 +107,39 @@ export function PortfolioSnapshotsDialog({
     };
   }, [filteredSeries]);
 
+  const snapshotsReadiness = useMemo(
+    () =>
+      evaluateExtratoSnapshotsReadiness({
+        snapshotCount: series.length,
+        totalDividendsInPeriodBRL: summary.periodDividendsBRL,
+      }),
+    [series.length, summary.periodDividendsBRL],
+  );
+
+  const handleBeforePrint = () => {
+    if (snapshotsReadiness.status === "blocked") {
+      setInsufficientModalOpen(true);
+      return false;
+    }
+    return true;
+  };
+
   return (
     <>
+      {insufficientModalOpen && (
+        <ReportInsufficientDataModal
+          open={insufficientModalOpen}
+          onOpenChange={setInsufficientModalOpen}
+          reportTitle="Extrato Analítico de Evolução Patrimonial"
+          periodLabel={selectedYear === "all" ? "Histórico Completo" : `Ano ${selectedYear}`}
+          blockingReasons={snapshotsReadiness.blockingReasons}
+        />
+      )}
+
       <ReportDocumentLayout
         open={open}
         onOpenChange={onOpenChange}
+        onBeforePrint={handleBeforePrint}
         title="Extrato Analítico de Evolução Patrimonial"
         documentTitle={
           selectedYear === "all"

@@ -82,6 +82,8 @@ export function ExecutiveReportDocument({
   const consolidatedPnlPct =
     totalConsolidatedCostBRL > 0 ? (totalPnlBRL / totalConsolidatedCostBRL) * 100 : 0;
 
+  const hasPage2 = classGroups.length > 0;
+
   return (
     <div className="flex flex-col gap-4 w-full print:block print:space-y-3">
       <ReportHeader
@@ -199,7 +201,7 @@ export function ExecutiveReportDocument({
                 />{" "}
                 com a reserva de caixa),
               </>
-            ) : (
+            ) : appliedAssetsCostCents > 0 ? (
               <>
                 (custo de aquisição de{" "}
                 <MoneyText
@@ -208,10 +210,19 @@ export function ExecutiveReportDocument({
                 />
                 ),
               </>
-            )}{" "}
+            ) : null}{" "}
             distribuídos em{" "}
-            <strong>{investmentCount} ativos{effectiveCashBRL > 0 ? " + Reserva de Caixa" : ""}</strong> e{" "}
-            <strong>{classGroups.length} classes patrimoniais</strong>.
+            {investmentCount > 0 ? (
+              <>
+                <strong>
+                  {investmentCount} {investmentCount === 1 ? "ativo" : "ativos"}
+                  {effectiveCashBRL > 0 ? " + Reserva de Caixa" : ""}
+                </strong>{" "}
+                e <strong>{classGroups.length} {classGroups.length === 1 ? "classe patrimonial" : "classes patrimoniais"}</strong>.
+              </>
+            ) : (
+              <strong>Reserva de Caixa (Disponibilidades).</strong>
+            )}
           </span>
         }
       />
@@ -331,62 +342,75 @@ export function ExecutiveReportDocument({
         </section>
       ) : null}
 
-      <ReportFooter
-        accountHolder={accountHolder}
-        disclaimer={OFFICIAL_CVM_DISCLAIMER}
-        reportType="carteira"
-        currentPage={1}
-        totalPages={2}
-        variant="running"
-        className="hidden print:flex"
-      />
-
-      <section
-        aria-label="Detalhamento das Posições"
-        className="flex flex-col justify-between gap-3 pt-1 min-h-[960px] print:min-h-0 print:block print:space-y-3 print-break-before-page print:break-before-page"
-      >
-        <div className="flex flex-col gap-3">
-          <ReportRunningHeader
-            title="Relatório Executivo da Carteira"
-            periodLabel={periodLabel}
-          />
-          <ReportClassTables groups={classGroups} />
-          {hasSeparateCash && (
-            <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-border/80 bg-muted/20 text-xs">
-              <div className="flex items-center gap-2">
-                <span
-                  className="size-2 rounded-full shrink-0 bg-[hsl(var(--cat-7))]"
-                  aria-hidden="true"
-                />
-                <span className="font-bold text-foreground">
-                  Reserva de Caixa
-                </span>
-                <span className="text-muted-foreground text-[11px] hidden sm:inline print:inline">
-                  · Disponibilidades &amp; Liquidez Imediata
-                </span>
-              </div>
-              <div className="flex items-center gap-2 font-mono num">
-                <span className="font-bold text-foreground">
-                  <MoneyText cents={numberToCents(effectiveCashBRL)} />
-                </span>
-                <span className="text-muted-foreground font-semibold text-[11px]">
-                  ({formatPercent(effectiveTotalBRL > 0 ? (effectiveCashBRL / effectiveTotalBRL) * 100 : 0)}%)
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
+      {hasPage2 ? (
+        <ReportFooter
+          accountHolder={accountHolder}
+          reportType="carteira"
+          currentPage={1}
+          totalPages={2}
+          variant="running"
+          className="hidden print:flex"
+        />
+      ) : (
         <ReportFooter
           accountHolder={accountHolder}
           disclaimer={OFFICIAL_CVM_DISCLAIMER}
           reportType="carteira"
-          currentPage={2}
-          totalPages={2}
+          currentPage={1}
+          totalPages={1}
           variant="full"
           showQrCode
         />
-      </section>
+      )}
+
+      {hasPage2 && (
+        <section
+          aria-label="Detalhamento das Posições"
+          className="flex flex-col justify-between gap-3 pt-1 min-h-[960px] print:min-h-0 print:block print:space-y-3 print-break-before-page print:break-before-page"
+        >
+          <div className="flex flex-col gap-3">
+            <ReportRunningHeader
+              title="Relatório Executivo da Carteira"
+              periodLabel={periodLabel}
+            />
+            <ReportClassTables groups={classGroups} />
+            {hasSeparateCash && (
+              <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-border/80 bg-muted/20 text-xs">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="size-2 rounded-full shrink-0 bg-[hsl(var(--cat-7))]"
+                    aria-hidden="true"
+                  />
+                  <span className="font-bold text-foreground">
+                    Reserva de Caixa
+                  </span>
+                  <span className="text-muted-foreground text-[11px] hidden sm:inline print:inline">
+                    · Disponibilidades &amp; Liquidez Imediata
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 font-mono num">
+                  <span className="font-bold text-foreground">
+                    <MoneyText cents={numberToCents(effectiveCashBRL)} />
+                  </span>
+                  <span className="text-muted-foreground font-semibold text-[11px]">
+                    ({formatPercent(effectiveTotalBRL > 0 ? (effectiveCashBRL / effectiveTotalBRL) * 100 : 0)}%)
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <ReportFooter
+            accountHolder={accountHolder}
+            disclaimer={OFFICIAL_CVM_DISCLAIMER}
+            reportType="carteira"
+            currentPage={2}
+            totalPages={2}
+            variant="full"
+            showQrCode
+          />
+        </section>
+      )}
     </div>
   );
 }

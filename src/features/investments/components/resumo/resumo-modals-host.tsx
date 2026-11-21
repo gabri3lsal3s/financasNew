@@ -1,3 +1,7 @@
+import { useMemo } from "react";
+import { ReportInsufficientDataModal } from "@/components/modules/reports";
+import { evaluateCarteiraMensalReadiness } from "@/domain/reports";
+import { formatMonthYear } from "@/lib/date";
 import type { PortfolioTransactionType } from "@/types";
 import {
   AllocationBreakdownDialog,
@@ -34,6 +38,17 @@ export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
                 t.class_name === breakdownGroup.parentClass),
           )?.target_percentage ?? null)
         : null;
+
+  const carteiraReadiness = useMemo(
+    () =>
+      evaluateCarteiraMensalReadiness({
+        activeAssetCount: position.rows.length,
+        totalBRL: position.totalBRL,
+        cashBRL: position.cashBRL,
+        hasScoresPQS: position.rows.some((r) => r.scoreCriteria != null),
+      }),
+    [position.rows, position.totalBRL, position.cashBRL],
+  );
 
   return (
     <>
@@ -154,23 +169,38 @@ export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
         onOpenSnapshotsDialog={() => ctrl.setSnapshotsDialogOpen(true)}
       />
 
-      <PortfolioExecutiveReport
-        open={ctrl.executiveReportOpen}
-        onOpenChange={(next) => {
-          ctrl.setExecutiveReportOpen(next);
-          if (!next) ctrl.setReportSelectedMonth(undefined);
-        }}
-        rows={position.rows}
-        totalBRL={position.totalBRL}
-        cashBRL={position.cashBRL}
-        yearDividendsBRL={position.totalDividendsBRL}
-        portfolioIrr={position.portfolioIrr}
-        portfolioTwr={position.portfolioTwr}
-        totalReturnPct={position.totalReturnPct}
-        totalReturnPnlBRL={position.totalReturnPnlBRL}
-        allTimeEconomicPnlBRL={position.allTimeEconomicPnlBRL}
-        initialMonth={ctrl.reportSelectedMonth}
-      />
+      {ctrl.executiveReportOpen && carteiraReadiness.status === "blocked" && (
+        <ReportInsufficientDataModal
+          open={ctrl.executiveReportOpen}
+          onOpenChange={(next) => {
+            ctrl.setExecutiveReportOpen(next);
+            if (!next) ctrl.setReportSelectedMonth(undefined);
+          }}
+          reportTitle="Relatório Executivo da Carteira"
+          periodLabel={formatMonthYear(ctrl.reportSelectedMonth ?? ctrl.month)}
+          blockingReasons={carteiraReadiness.blockingReasons}
+        />
+      )}
+
+      {ctrl.executiveReportOpen && carteiraReadiness.canGenerate && (
+        <PortfolioExecutiveReport
+          open={ctrl.executiveReportOpen}
+          onOpenChange={(next) => {
+            ctrl.setExecutiveReportOpen(next);
+            if (!next) ctrl.setReportSelectedMonth(undefined);
+          }}
+          rows={position.rows}
+          totalBRL={position.totalBRL}
+          cashBRL={position.cashBRL}
+          yearDividendsBRL={position.totalDividendsBRL}
+          portfolioIrr={position.portfolioIrr}
+          portfolioTwr={position.portfolioTwr}
+          totalReturnPct={position.totalReturnPct}
+          totalReturnPnlBRL={position.totalReturnPnlBRL}
+          allTimeEconomicPnlBRL={position.allTimeEconomicPnlBRL}
+          initialMonth={ctrl.reportSelectedMonth}
+        />
+      )}
 
       <PortfolioSnapshotsDialog
         open={ctrl.snapshotsDialogOpen}

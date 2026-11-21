@@ -163,13 +163,13 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Fechamento Release v1.0 do Motor de Relatorios (v6)",
-    "Paleta institucional rica com 5 cores semanticas no Donut de Classes do Dossie 6",
-    "Badge BASE PONDERADA reposicionado inline no cabecalho da DRE Pessoal do Balanco 360",
-    "Erradicacao de corte na coluna STATUS (w-18%) na matriz de alocacao do Dossie da Posicao",
-    "Substituicao do icone da Fatura de Cartao por CreditCard limpo e travessao fino em parcelas a vista",
-    "Unificacao do indexador Tesouro IPCA+ com taxa completa e contador 4 classes + Caixa na Carteira Mensal",
-    "Blindagem estrita whitespace-nowrap contra quebra de R$ em cascatas DRE e saldos de caixa"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Arquitetura SSOT de Elegibilidade e Renderizacao Condicional (3 Niveis)",
+    "Dominio SSOT em evaluateReportReadiness centralizando regras de integridade e prontidao dos 8 relatorios",
+    "Nivel 1: Bloqueio amigavel com ReportInsufficientDataModal e acao direta para cadastros pendentes",
+    "Nivel 2: Omissao limpa de secoes e paginas com recalculacao dinamica de paginacao (computeTearSheetPagination)",
+    "Nivel 3: Zero informativo elegante sem caixas de empty state ou titulos orfaos em PDFs A4",
+    "Protecao defensiva dupla via interceptor onBeforePrint em ReportDocumentLayout",
+    "Blindagem permanente automatizada 10/10 com 100% de aprovacao no qa-reports-integrity"
   ]
 }
 EOF

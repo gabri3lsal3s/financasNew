@@ -7,6 +7,11 @@ import {
   ReportWaterfallBar,
   ReportFooter,
 } from "@/components/modules";
+import {
+  evaluateDreReadiness,
+  type DreSections,
+  type ReportReadinessResult,
+} from "@/domain/reports";
 import type {
   FinancialDREData,
   FinancialReportCategoryItem,
@@ -41,6 +46,7 @@ export interface FinancialCloseReportModalProps {
   incomeCount: number;
   showWeightedNote?: boolean;
   householdSummary?: FinancialReportHouseholdSummary | null;
+  readiness?: ReportReadinessResult<DreSections>;
 }
 
 /**
@@ -48,7 +54,8 @@ export interface FinancialCloseReportModalProps {
  *
  * Características canônicas:
  * - Página 1: Cabeçalho 70/30, Síntese de Fluxo, Cascata DRE e Demonstração do Resultado;
- * - Página 2: Running Header, Despesas por Categoria (ordenada com totais) e Formas de Pagamento;
+ * - Página 2: Running Header, Despesas por Categoria e Formas de Pagamento (omitida se despesas === 0);
+ * - Recalcula dinamicamente totalPages (1 ou 2) eliminando páginas em branco;
  * - Zero centavos soltos e coluna dedicada Ponderado (R$) quando aplicável;
  * - Rodapé com prefixo funcional DRE- e chancela criptográfica.
  */
@@ -66,6 +73,7 @@ export function FinancialCloseReportModal({
   incomeCount,
   showWeightedNote = false,
   householdSummary = null,
+  readiness: propReadiness,
 }: FinancialCloseReportModalProps) {
   const effectiveGrossIncomeBruto = dre.grossIncomeBrutoCents ?? dre.grossIncomeCents;
   const effectiveTotalExpensesBruto = dre.totalExpensesBrutoCents ?? dre.totalExpensesCents;
@@ -78,6 +86,22 @@ export function FinancialCloseReportModal({
     (dre.grossIncomeBrutoCents !== undefined || dre.totalExpensesBrutoCents !== undefined);
 
   const hasBudgets = categories.some((c) => c.budgetLimitCents != null && c.budgetLimitCents > 0);
+
+  const readiness =
+    propReadiness ??
+    evaluateDreReadiness({
+      grossIncomeCents: effectiveGrossIncomeBruto,
+      totalExpensesCents: effectiveTotalExpensesBruto,
+      expenseCount,
+      incomeCount,
+      paidInvoicesCount: paidInvoices.length,
+      hasWeightedDiscrepancy: hasBrutoRef,
+      hasHousehold: Boolean(householdSummary),
+    });
+
+  const { sections } = readiness;
+  const hasPage2 = sections.hasPage2;
+  const totalPages = hasPage2 ? 2 : 1;
 
   const waterfallSteps = [
     {
@@ -139,7 +163,7 @@ export function FinancialCloseReportModal({
             hasBrutoRef={hasBrutoRef}
           />
 
-          {effectiveGrossIncomeBruto > 0 && (
+          {sections.waterfall && (
             <ReportWaterfallBar
               title="Fluxo Contábil & Destinação da Renda (Cascata DRE)"
               grossIncomeCents={effectiveGrossIncomeBruto}
@@ -158,41 +182,45 @@ export function FinancialCloseReportModal({
             hasBrutoRef={hasBrutoRef}
           />
 
-          <ReportFooter
-            accountHolder={accountHolder}
-            reportType="dre"
-            currentPage={1}
-            totalPages={2}
-            disclaimer="Documento estritamente informativo emitido automaticamente com base nos registros financeiros e contábeis inseridos pelo titular da conta."
-            showQrCode
-            className="hidden print:flex"
-          />
+          {hasPage2 ? (
+            <>
+              <ReportFooter
+                accountHolder={accountHolder}
+                reportType="dre"
+                currentPage={1}
+                totalPages={totalPages}
+                disclaimer="Documento estritamente informativo emitido automaticamente com base nos registros financeiros e contábeis inseridos pelo titular da conta."
+                showQrCode
+                className="hidden print:flex"
+              />
 
-          {/* Seção Página 2 em Impressão */}
-          <div className="print-break-before-page flex flex-col gap-4">
-            <ReportRunningHeader
-              title="Relatório Executivo de Finanças Pessoais & DRE"
-              periodLabel={periodLabel}
-            />
+              {/* Seção Página 2 em Impressão */}
+              <div className="print-break-before-page flex flex-col gap-4">
+                <ReportRunningHeader
+                  title="Relatório Executivo de Finanças Pessoais & DRE"
+                  periodLabel={periodLabel}
+                />
 
-            <FinancialCompositionTables
-              categories={categories}
-              paymentMethods={paymentMethods}
-              paidInvoices={paidInvoices}
-              hasBrutoRef={hasBrutoRef}
-              hasBudgets={hasBudgets}
-            />
+                <FinancialCompositionTables
+                  categories={categories}
+                  paymentMethods={paymentMethods}
+                  paidInvoices={paidInvoices}
+                  hasBrutoRef={hasBrutoRef}
+                  hasBudgets={hasBudgets}
+                />
 
-            {householdSummary && <FinancialHouseholdSection householdSummary={householdSummary} />}
-          </div>
+                {householdSummary && <FinancialHouseholdSection householdSummary={householdSummary} />}
+              </div>
+            </>
+          ) : null}
         </>
       )}
 
       <ReportFooter
         accountHolder={accountHolder}
         reportType="dre"
-        currentPage={2}
-        totalPages={2}
+        currentPage={totalPages}
+        totalPages={totalPages}
         disclaimer="Documento estritamente informativo emitido automaticamente com base nos registros financeiros e contábeis inseridos pelo titular da conta."
         showQrCode
       />

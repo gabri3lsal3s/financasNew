@@ -97,3 +97,7 @@ export {
   type ExportRange,
 } from "./csv-export-card";
 export { JsonBackupCard, type JsonBackupCardProps, type RestoreStep } from "./json-backup-card";
+export {
+  ReportInsufficientDataModal,
+  type ReportInsufficientDataModalProps,
+} from "./report-insufficient-data-modal";

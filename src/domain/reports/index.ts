@@ -442,5 +442,44 @@ export {
   type InvariantValidationResult,
 } from "./portfolio-report-invariant-validator";
 
+export {
+  InsufficientReportDataError,
+  evaluateReportReadiness,
+  evaluateDreReadiness,
+  evaluateBalancoReadiness,
+  evaluateIrpfReadiness,
+  evaluateFireReadiness,
+  evaluateFaturaReadiness,
+  evaluateDossiePosicaoReadiness,
+  evaluateCarteiraMensalReadiness,
+  evaluateExtratoSnapshotsReadiness,
+  type ReportId,
+  type ReadinessStatus,
+  type MissingRequirement,
+  type OmittedSectionInfo,
+  type ReportReadinessResult,
+  type DreReadinessInput,
+  type DreSections,
+  type BalancoReadinessInput,
+  type BalancoSections,
+  type IrpfReadinessInput,
+  type IrpfSections,
+  type FireReadinessInput,
+  type FireSections,
+  type FaturaReadinessInput,
+  type FaturaSections,
+  type DossiePosicaoReadinessInput,
+  type DossiePosicaoSections,
+  type CarteiraMensalReadinessInput,
+  type CarteiraMensalSections,
+  type ExtratoSnapshotsReadinessInput,
+  type ExtratoSnapshotsSections,
+  type ReportReadinessInputMap,
+  type ReportSectionsMap,
+} from "./report-readiness";
+
+export * from "./tear-sheet-pagination";
+
+
 
 

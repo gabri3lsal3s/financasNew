@@ -8,7 +8,12 @@ import {
 } from "@/components/modules";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
-import type { ConsolidatedBalanceSheetResult } from "@/domain/reports";
+import {
+  type BalancoSections,
+  type ConsolidatedBalanceSheetResult,
+  evaluateBalancoReadiness,
+  type ReportReadinessResult,
+} from "@/domain/reports";
 import { formatPercent } from "@/services/masks";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
 import { ConsolidatedBalanceSection } from "./consolidated-wealth/ConsolidatedBalanceSection";
@@ -20,6 +25,7 @@ export interface ConsolidatedWealthModalProps {
   periodLabel?: string;
   appName?: string;
   accountHolder?: string;
+  readiness?: ReportReadinessResult<BalancoSections>;
 }
 
 /**
@@ -34,7 +40,30 @@ export function ConsolidatedWealthModal({
   periodLabel = "Fechamento Consolidado",
   appName = "Axir",
   accountHolder,
+  readiness: propReadiness,
 }: ConsolidatedWealthModalProps) {
+  const readiness = useMemo(() => {
+    if (propReadiness) return propReadiness;
+    const totalAssets = balanceSheet.totalAssetsBRL;
+    const totalLiabilities = balanceSheet.totalLiabilitiesBRL;
+    const dre = balanceSheet.dre;
+    const hasDre = Boolean(
+      dre && (dre.grossIncomeBRL > 0 || dre.totalExpensesBRL > 0 || dre.investedAporteBRL > 0),
+    );
+    const assetComponents = [
+      balanceSheet.totalInvestmentsBRL,
+      balanceSheet.cashBalanceBRL,
+      balanceSheet.receivablesBRL,
+    ].filter((v) => (v ?? 0) > 0).length;
+
+    return evaluateBalancoReadiness({
+      totalAssetsBRL: totalAssets,
+      totalLiabilitiesBRL: totalLiabilities,
+      hasDreActivity: hasDre,
+      assetComponentCount: assetComponents,
+    });
+  }, [propReadiness, balanceSheet]);
+
   const totalAssets = balanceSheet.totalAssetsBRL;
   const pctOfAssets = (v: number) => (totalAssets > 0 ? (v / totalAssets) * 100 : 0);
 
@@ -114,6 +143,8 @@ export function ConsolidatedWealthModal({
       <ConsolidatedBalanceSection
         balanceSheet={balanceSheet}
         assetSegments={assetSegments}
+        showDonut={readiness.sections.donutChart}
+        showDreStatement={readiness.sections.dreBottomBlock}
       />
 
       <ReportFooter

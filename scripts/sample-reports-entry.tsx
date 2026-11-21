@@ -1,5 +1,5 @@
 
-import { buildTearSheetModel } from '@/domain/reports';
+import { buildTearSheetModel, computeTearSheetPagination } from '@/domain/reports';
 import { OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER } from '@/lib/institutional';
 import { TearSheetExecutiveNarrative } from '@/features/reports/components/tear-sheet/TearSheetExecutiveNarrative';
 import { TearSheetMovementStrip } from '@/features/reports/components/tear-sheet/TearSheetMovementStrip';
@@ -391,8 +391,7 @@ function RenderDRE() {
         reportType="dre"
         currentPage={1}
         totalPages={2}
-        disclaimer="Documento estritamente informativo emitido automaticamente com base nos registros financeiros e contábeis inseridos pelo titular da conta."
-        showQrCode
+        variant="running"
         className="hidden print:flex"
       />
 
@@ -1098,6 +1097,8 @@ function RenderTearSheet() {
     realizedPnlBRL: 4890.00,
   });
 
+  const pagination = computeTearSheetPagination(model, []);
+
   return (
     <div className='flex flex-col gap-4 print:gap-2.5 w-full bg-white text-slate-900'>
       <ReportHeader
@@ -1140,11 +1141,10 @@ function RenderTearSheet() {
       />
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer={OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER}
         reportType='dossier'
         currentPage={1}
-        totalPages={7}
-        showQrCode
+        totalPages={pagination.totalPages}
+        variant="running"
         className="hidden print:flex"
       />
       <TearSheetCustodyAndBreakdowns
@@ -1153,6 +1153,8 @@ function RenderTearSheet() {
         periodLabel={periodLabel}
         accountHolder={accountHolder}
         assetsMetadata={[]}
+        totalPages={pagination.totalPages}
+        pageNumbers={pagination.pageNumbers}
       />
       <TearSheetMethodologyGrid
         portfolioTwr={mockTwr}
@@ -1164,8 +1166,8 @@ function RenderTearSheet() {
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER}
         reportType='dossier'
-        currentPage={7}
-        totalPages={7}
+        currentPage={pagination.totalPages}
+        totalPages={pagination.totalPages}
         showQrCode
       />
     </div>

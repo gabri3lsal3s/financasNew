@@ -1,5 +1,20 @@
 # ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.14.0 (Build 101 — Arquitetura SSOT de Elegibilidade e Renderização Condicional no Motor de Relatórios — Scorecard 10/10 Homologado)** registra a conclusão da arquitetura de resiliência e elegibilidade de relatórios para dados parciais ou insuficientes, homologando 100% dos testes e selando o padrão executivo Private Banking (2026-11-21):
+> - **(1) Domínio SSOT de Elegibilidade e Integridade (`src/domain/reports/report-readiness.ts`)**:
+>   - Centralização canônica de regras de negócio de prontidão em funções puras (`evaluateReportReadiness` e avaliadores dedicados para cada um dos 8 relatórios);
+> - **(2) Nível 1 — Bloqueio Amigável na UI (`ReportInsufficientDataModal`)**:
+>   - Bloqueio amigável via modal `size="sm"` exibindo motivos humanos para ausência de dados essenciais e CTA direto de navegação para as rotas correspondentes (`/transacoes`, `/cartoes`, `/investments`);
+>   - Proteção defensiva dupla via interceptor `onBeforePrint` no layout de impressão, prevenindo impressões em branco acidentais;
+> - **(3) Nível 2 — Omissão Limpa de Seções & Recálculo Dinâmico de Páginas**:
+>   - Supressão integral de cards e páginas quando métricas secundárias não atingem amostragem mínima ($< 2$ classes no Donut patrimonial, $< 2$ cartões em raios-X analíticos, $< 2$ meses para TWR mensal no Tear Sheet);
+>   - Recomputação dinâmica da paginação (`computeTearSheetPagination`), com numeração contínua e garantia da cláusula CVM/LGPD exclusivamente na última página;
+>   - Zero caixas de empty state em documentos A4;
+> - **(4) Nível 3 — Zero Informativo Elegante**:
+>   - Tratamento de estados nulos legítimos com travessão fino (`—`) ou totalizadores zerados sem tabelas vazias ou títulos órfãos;
+> - **(5) Blindagem Automatizada e Zero Regressão**:
+>   - 100% de aprovação na suíte de testes unitários Vitest e no script de blindagem contínua `qa-reports-integrity.ts`.
+>
 > **v3.14.0 (Build 99 — Selo Definitivo de Release v1.0 Gold do Motor de Relatórios Axir — Scorecard 10/10 Homologado)** registra a certificação definitiva da **Release v1.0 Gold** dos 8 relatórios executivos Axir com padronização visual SSOT, blindagem contínua automatizada e zero regressão (2026-11-21):
 > - **(1) Padronização Global de Cabeçalhos e Escala de Espaçamento SSOT (`REPORT_SPACING`)**:
 >   - Formalização de `ReportCoverHeader` e `RunningHeader` com barra divisória única de 1pt, `padding-bottom` fixo e margens canônicas (`mb-3.5 print:mb-3.5` e `mb-3 print:mb-3`);
@@ -7844,6 +7859,26 @@ flowchart TD
 > - **Qualidade e Homologação de Produção:**
 >   - 213 arquivos e 3.048 testes de domínio Vitest 100% aprovados; `npm run verify` e `npm run qa:reports` com 0 erros;
 >   - APK Release Build 99 assinado e publicado no Cloudflare R2 com hash SHA-256 verificado (`1b84034a58dbb661c3ccc146cd1c6bff680a49a5aa78f29edf973b5b0983c463`).
+
+---
+
+### Fase 120 — Arquitetura SSOT de Elegibilidade e Renderização Condicional no Motor de Relatórios (Build 101 — ID BR-20261121-1445)
+
+> **Status:** Concluída, Auditada e Homologada — **Resiliência a Dados Insuficientes e Blindagem de Renderização em 3 Níveis**:
+> - **Domínio SSOT (`src/domain/reports/report-readiness.ts`):**
+>   - Centralização canônica de todas as regras de integridade e visibilidade em funções puras de domínio (`evaluateReportReadiness` e avaliadores dedicados para cada um dos 8 relatórios);
+> - **Nível 1 — Bloqueio Amigável na UI (`ReportInsufficientDataModal`):**
+>   - Modal executivo `size="sm"` acionado quando dados fundamentais estão ausentes (DRE sem lançamentos, fatura zerada, IRPF sem posições), apresentando motivo em linguagem humana e CTA direto com navegação para a rota correspondente (`/transacoes`, `/cartoes`, `/investments`);
+>   - Proteção dupla via interceptor `onBeforePrint` em `ReportDocumentLayout`, cancelando a impressão e disparando o modal defensivo caso os dados sejam insuficientes;
+> - **Nível 2 — Omissão Limpa de Seções:**
+>   - Supressão integral de cards e páginas quando métricas secundárias não atingem amostragem mínima ($< 2$ classes no Donut patrimonial, $< 2$ cartões em raios-X analíticos, $< 2$ meses para TWR mensal no Tear Sheet);
+>   - Zero caixas de empty state nos PDFs impressos; cálculo dinâmico da paginação contínua (`computeTearSheetPagination`), garantindo preservação do layout e disclaimer CVM/LGPD exclusivamente na última página;
+> - **Nível 3 — Zero Informativo:**
+>   - Tratamento sóbrio de estados nulos legítimos com travessão fino (`—`) ou totalizadores zerados (dívidas quitadas, compras parceladas ausentes, custo de vida não configurado), sem tabelas vazias ou títulos órfãos;
+> - **Blindagem e Qualidade:**
+>   - 100% dos testes unitários e de integração de relatórios aprovados;
+>   - Reexportação dos 8 PDFs de exemplo e aprovação com nota 10/10 no script de integridade `qa-reports-integrity.ts`;
+>   - APK Release Build 101 compilado, assinado e publicado no Cloudflare R2 com hash SHA-256 verificado (`06303186a2e16548f528b555fc2ffa7bf7f5809eba39fe1c218ebab880648151`).
 
 
 

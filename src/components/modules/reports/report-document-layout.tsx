@@ -16,6 +16,8 @@ export interface ReportDocumentLayoutProps {
   documentTitle?: string;
   /** Ações customizadas adicionais no cabeçalho do modal (ex.: botão de copiar, exportar Excel). */
   customActions?: ReactNode;
+  /** Interceptador executado antes de disparar a impressão nativa/PDF. Retornar false cancela a impressão. */
+  onBeforePrint?: () => boolean | void;
   /** Conteúdo editorial do relatório (usado tanto no preview de tela quanto na impressão). */
   children: ReactNode;
   /** Tamanho do modal no desktop (padrão: "3xl" = max-w-7xl / 1280px para máxima escaneabilidade de dados tabulares). */
@@ -40,10 +42,18 @@ export function ReportDocumentLayout({
   children,
   size = "3xl",
   className,
+  onBeforePrint,
 }: ReportDocumentLayoutProps) {
   const suggestedTitle = documentTitle ?? `${title.replace(/[^a-zA-Z0-9_\u00C0-\u00FF]+/g, "_")}.pdf`;
   const { printing, triggerPrint } = usePrint(suggestedTitle);
   const [browserPrinting, setBrowserPrinting] = useState(false);
+
+  const handlePrintClick = () => {
+    if (onBeforePrint && onBeforePrint() === false) {
+      return;
+    }
+    triggerPrint(suggestedTitle);
+  };
 
   useEffect(() => {
     if (!open || typeof window === "undefined") return;
@@ -93,7 +103,7 @@ export function ReportDocumentLayout({
               type="button"
               variant="default"
               size="sm"
-              onClick={() => triggerPrint(suggestedTitle)}
+              onClick={handlePrintClick}
               disabled={printing}
               className="gap-1.5 shadow-xs h-8 text-xs px-2.5 sm:px-3"
             >
