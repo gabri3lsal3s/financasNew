@@ -349,7 +349,7 @@ function RenderDRE() {
   ];
 
   return (
-    <div className="flex flex-col gap-5 w-full bg-white text-slate-900">
+    <div className="flex flex-col gap-4 print:gap-3 w-full bg-white text-slate-900">
       <ReportHeader
         title="Relatório Executivo de Finanças Pessoais & DRE"
         subtitle="Demonstração do Resultado, Fluxo de Caixa & Composição de Gastos"
@@ -458,7 +458,7 @@ function RenderBalanco() {
   ];
 
   return (
-    <div className="flex flex-col gap-4 w-full bg-white text-slate-900">
+    <div className="flex flex-col gap-4 print:gap-3 w-full bg-white text-slate-900">
       <ReportHeader
         title="Balanço Patrimonial 360° & Visão Consolidada"
         subtitle="Ativos Totais, Passivos Exigíveis, Patrimônio Líquido & Alavancagem"
@@ -524,7 +524,7 @@ function RenderIRPF() {
   const totalRendimentosBRL = rendimentosPorAtivo.reduce((acc, r) => acc + r.amountBRL, 0);
 
   return (
-    <div className="flex flex-col gap-4 w-full bg-white text-slate-900">
+    <div className="flex flex-col gap-4 print:gap-3 w-full bg-white text-slate-900">
       <ReportHeader
         title={`Facilitador de Declaração de IRPF — Ano-Base ${calendarYear}`}
         subtitle="Bens & Direitos (Discriminação Pronta) e Rendimentos Isentos & Exclusivos"
@@ -573,7 +573,7 @@ function RenderFIRE() {
   ];
 
   return (
-    <div className="flex flex-col gap-4 w-full bg-white text-slate-900">
+    <div className="flex flex-col gap-4 print:gap-3 w-full bg-white text-slate-900">
       <ReportHeader
         title="Dossiê de Proventos & Liberdade Financeira (FIRE)"
         subtitle="Fluxo de Dividendos, Estágio de Independência & Efeito Bola de Neve"
@@ -726,7 +726,7 @@ function RenderFIRE() {
 
 function RenderFatura() {
   return (
-    <div className="flex flex-col gap-4 w-full bg-white text-slate-900">
+    <div className="flex flex-col gap-4 print:gap-3 w-full bg-white text-slate-900">
       <CardInvoicePrintView {...cardInvoiceProps} />
     </div>
   );
@@ -1099,7 +1099,7 @@ function RenderTearSheet() {
   });
 
   return (
-    <div className='flex flex-col gap-5 print:gap-2.5 w-full bg-white text-slate-900'>
+    <div className='flex flex-col gap-4 print:gap-2.5 w-full bg-white text-slate-900'>
       <ReportHeader
         title='Dossiê Executivo da Posição Vigente Consolidada'
         subtitle='Posição Patrimonial Consolidada & Diagnóstico de Metas'
@@ -1344,7 +1344,7 @@ function RenderExtratoSnapshots() {
   };
 
   return (
-    <div className='flex flex-col gap-5 print:gap-2.5 w-full bg-white text-slate-900'>
+    <div className='flex flex-col gap-4 print:gap-2.5 w-full bg-white text-slate-900'>
       <ReportHeader
         title='Extrato Analítico de Snapshots Patrimoniais'
         subtitle='Histórico Mensal Consolidado · Evolução Patrimonial, Retorno Pessoal & TWR'

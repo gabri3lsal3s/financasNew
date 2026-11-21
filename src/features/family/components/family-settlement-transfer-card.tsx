@@ -30,7 +30,7 @@ export function FamilySettlementTransferCard({
     });
 
   return (
-    <div className="p-4 rounded-xl border border-border/80 bg-surface-raised space-y-3.5">
+    <div className="group p-4 rounded-xl border border-border/80 bg-surface-raised space-y-3.5">
       <div className="flex items-center justify-between gap-2">
         <div>
           <p className="text-xs font-semibold text-foreground">Proposta de Compensação</p>
@@ -43,6 +43,7 @@ export function FamilySettlementTransferCard({
           <CalculationMemoryModal
             breakdown={breakdown}
             label={`Memória do acerto de ${transfer.payer_name}`}
+            priority="p0"
           />
         ) : null}
       </div>

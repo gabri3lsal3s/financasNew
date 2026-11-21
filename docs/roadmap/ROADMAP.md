@@ -1,25 +1,26 @@
 # ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v3.14.0 (Build 99 — Selo Definitivo de Release v1.0 Gold do Motor de Relatórios Axir — Scorecard 10/10 Homologado)** registra a certificação definitiva da **Release v1.0 Gold** dos 8 relatórios executivos Axir com blindagem contínua automatizada e zero regressão (2026-11-21):
-> - **(1) Erradicação da Dupla Contagem de Caixa na Carteira Mensal (Relatório 7, Pág. 1)**:
+> **v3.14.0 (Build 99 — Selo Definitivo de Release v1.0 Gold do Motor de Relatórios Axir — Scorecard 10/10 Homologado)** registra a certificação definitiva da **Release v1.0 Gold** dos 8 relatórios executivos Axir com padronização visual SSOT, blindagem contínua automatizada e zero regressão (2026-11-21):
+> - **(1) Padronização Global de Cabeçalhos e Escala de Espaçamento SSOT (`REPORT_SPACING`)**:
+>   - Formalização de `ReportCoverHeader` e `RunningHeader` com barra divisória única de 1pt, `padding-bottom` fixo e margens canônicas (`mb-3.5 print:mb-3.5` e `mb-3 print:mb-3`);
+>   - Escala `REPORT_SPACING` em `src/components/modules/reports/report-tokens.ts` e normalização do ritmo vertical nos 8 relatórios (`gap-4 print:gap-3`), erradicando o descompasso de 24px da Fatura de Cartão;
+> - **(2) Erradicação da Dupla Contagem e Conciliação Narrativa da Carteira Mensal (Relatório 7)**:
 >   - Aplicação estrita do princípio SSOT: totalizadores do rodapé de `SÍNTESE DA ALOCAÇÃO POR CLASSE DE ATIVOS` calculados diretamente a partir da soma das linhas renderizadas via `rows.reduce(...)`;
->   - Custo Consolidado fechado em R$ 100.318,93 e Retorno P&L Consolidado fechado em +6,0%, com travessão fino (`—`) em Ativos e Retorno da Reserva de Caixa;
-> - **(2) Alinhamento Micrométrico da Fatura de Cartão (Fatura 5)**:
->   - Correção estrutural do CSS na coluna `CATEGORIA`: transição de `line-clamp-2` no `<td>` para container interno `<div>`, preservando `display: table-cell` e alinhando perfeitamente cabeçalho e dados em $x = 317,6\text{pt}$;
->   - Renderização de travessão fino (`—`) em parcelas para compras à vista;
-> - **(3) Paleta Semântica de 5 Cores Distintas no Donut de Classes (Dossiê 6, Pág. 3)**:
->   - Mapeamento robusto com chaves compostas e fallbacks contextuais em `resolveDonutColor`, garantindo 5 cores institucionais não repetitivas (FIIs `#dda726`, Ações `#1b6b62`, Internacional `#38bdf8`, Renda Fixa `#2dd4bf`, Caixa `#10b981`);
-> - **(4) Separação de Cabeçalhos e Micro-Polimento Tipográfico (Balanço 360°, IRPF 3 e DRE 1)**:
->   - Separação com `justify-between` entre `DRE PESSOAL` ($x = 20,0\text{pt}$) e `BASE PONDERADA` ($x = 594,8\text{pt}$) no Balanço 360°;
->   - Subtotal atômico do Grupo 07 no Facilitador IRPF alinhado com precisão a $x = 517,0\text{pt}$;
->   - Espaçamento de mais de 130pt entre `COMPETÊNCIA` e `DATA PGTO` na tabela de faturas quitadas do DRE Pessoal (pág. 2);
->   - Inserção de `{" "}` antes e depois de `<MoneyText>` na narrativa executiva do Dossiê 6 e `whitespace-nowrap` em valores de Raio-X;
-> - **(5) Blindagem Permanente Automatizada do Motor (npm run qa:reports)**:
->   - Criação de `scripts/qa-reports-integrity.ts` integrado ao pipeline de exportação e ao `package.json`, validando matematicamente os 8 relatórios ($\pm 0,01$), conferindo 7 regras de higiene textual por regex e auditando 100% da paginação `Página X de Y` ($1 \le X \le Y$);
-> - **(6) Qualidade & Homologação de Produção**:
+>   - Narrativa executiva atualizada com discriminação transparente do custo de aquisição (R$ 90.000,00 aplicados, totalizando R$ 100.318,93 com a reserva de caixa), batendo literalmente com o total da tabela;
+>   - Custo Consolidado fechado em R$ 100.318,93, Retorno P&L em +6,0% e travessão fino (`—`) em Ativos e Retorno da Reserva de Caixa;
+> - **(3) Micro-Polimentos Cirúrgicos nos Relatórios (Balanço 360°, IRPF 3, Fatura 5, FIRE 4 e Dossiê 6)**:
+>   - Ancoragem inline inseparável de `BASE PONDERADA` junto ao título `DRE PESSOAL` e valor monetário horizontal inline no centro do donut no Balanço 360°;
+>   - Subtotais dos Grupos 03, 04 e 07 no Facilitador IRPF unificados em grid simétrico `grid-cols-[75%_25%]` com alinhamento à direita e `whitespace-nowrap`;
+>   - `TOTAL (5 GASTOS)` com `whitespace-nowrap` no rodapé da tabela da Fatura de Cartão e colunas equilibradas (Descrição 32% e Categoria 22%);
+>   - Legendas do sparkline no Dossiê FIRE (`Média Mensal` e `Projeção 12m`) com `inline-flex items-baseline gap-1` e `whitespace-nowrap`;
+>   - Eliminação de colapso de espaço no texto do Termômetro do Dossiê 6 (`representando 13,7%`) e 5 cores harmônicas distintas no Donut de Classes;
+>   - Espaçamento horizontal superior a 130pt entre `COMPETÊNCIA` e `DATA PGTO` na tabela de faturas quitadas do DRE Pessoal (pág. 2);
+> - **(4) Blindagem Permanente Automatizada do Motor (`npm run qa:reports` e `npm run export:sample-pdfs`)**:
+>   - Validação contínua dos 8 relatórios ($\pm 0,01$), conferência de regras de higiene por regex (incluindo proibição de quebra após `R$` e colapso de espaços) e auditoria 100% da paginação `Página X de Y` ($1 \le X \le Y$);
+> - **(5) Qualidade & Homologação de Produção**:
 >   - 213 arquivos e 3.048 testes de domínio Vitest 100% aprovados;
 >   - APK Release Build 99 compilado, verificado com zipalign/apksigner e distribuído via Cloudflare R2 (SHA-256: 1b84034a58dbb661c3ccc146cd1c6bff680a49a5aa78f29edf973b5b0983c463);
->   - Documento de homologação emitido em `RELATORIO_FINAL_CERTIFICACAO_MOTOR_RELEASE_V1_GOLD.md`.
+>   - Documentos de homologação emitidos em `RELATORIO_FINAL_CERTIFICACAO_MOTOR_RELEASE_V1_GOLD.md` e `RELATORIO_FINAL_MICROPOLIMENTO_SELO_10_AXIR.md`.
 >
 > **v3.14.0 (Build 97 — Fechamento Release v1.0 do Motor de Relatórios Axir — Scorecard 9,9/10 Homologado)** registra a conclusão integral dos 7 micro-ajustes cirúrgicos finais da **Release v1.0** dos 8 relatórios executivos Axir (2026-11-21):
 > - **(1) Paleta Semântica Exclusiva de 5 Cores no Donut de Classes (Dossiê 6, Pág. 3)**:

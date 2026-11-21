@@ -72,12 +72,12 @@ export function ReportDividendSparkline({
         </div>
 
         <div className="flex flex-wrap items-center gap-3 text-[11px]">
-          <span className="text-muted-foreground whitespace-nowrap">
-            Média Mensal: <MoneyText cents={avgCents} className="font-bold text-foreground" />
+          <span className="text-muted-foreground whitespace-nowrap inline-flex items-baseline gap-1">
+            <span>Média Mensal:</span> <MoneyText cents={avgCents} className="font-bold text-foreground inline" />
           </span>
           {projectedAnnualCents !== undefined && (
-            <span className="text-muted-foreground whitespace-nowrap">
-              Projeção 12m: <MoneyText cents={projectedAnnualCents} className="font-bold text-primary-strong" />
+            <span className="text-muted-foreground whitespace-nowrap inline-flex items-baseline gap-1">
+              <span>Projeção 12m:</span> <MoneyText cents={projectedAnnualCents} className="font-bold text-primary-strong inline" />
             </span>
           )}
         </div>

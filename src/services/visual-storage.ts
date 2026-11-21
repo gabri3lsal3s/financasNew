@@ -173,6 +173,9 @@ export function readStoredVisualConfig(userId?: string | null): VisualCustomizat
     );
 
     const rawPreset = getUserStorageItem(VISUAL_STORAGE_KEYS.experiencePreset, userId);
+    const calcMemRaw = getUserStorageItem(VISUAL_STORAGE_KEYS.showCalculationMemory, userId);
+    const showCalculationMemory = calcMemRaw !== null ? calcMemRaw !== "false" : true;
+
     const experiencePreset: ExperiencePreset =
       rawPreset && VALID_EXPERIENCE_PRESETS.includes(rawPreset as ExperiencePreset)
         ? (rawPreset as ExperiencePreset)
@@ -197,6 +200,7 @@ export function readStoredVisualConfig(userId?: string | null): VisualCustomizat
       numberTickerEnabled,
       dashboardWidgets,
       headerButtons,
+      showCalculationMemory,
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -260,6 +264,13 @@ export function writeVisualStorageDiff(
       setUserStorageItem(
         VISUAL_STORAGE_KEYS.headerButtons,
         JSON.stringify(next.headerButtons),
+        userId,
+      );
+    }
+    if (partial.showCalculationMemory !== undefined || next.showCalculationMemory !== prev.showCalculationMemory) {
+      setUserStorageItem(
+        VISUAL_STORAGE_KEYS.showCalculationMemory,
+        String(next.showCalculationMemory),
         userId,
       );
     }

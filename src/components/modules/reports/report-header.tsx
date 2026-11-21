@@ -80,7 +80,7 @@ export function ReportRunningHeader({
   return (
     <div
       className={cn(
-        "hidden print:flex items-center justify-between border-b border-border/80 pb-1 text-[7.5pt] font-mono text-muted-foreground w-full mb-3",
+        "hidden print:flex items-center justify-between border-b border-border/80 pb-1.5 text-[7.5pt] font-mono text-muted-foreground w-full mb-3 print:mb-3",
         className,
       )}
       aria-hidden="true"
@@ -198,3 +198,11 @@ export function ReportHeader({
     </header>
   );
 }
+
+/** Alias canônico SSOT para o cabeçalho institucional de capa (Página 1). */
+export const ReportCoverHeader = ReportHeader;
+export type ReportCoverHeaderProps = ReportHeaderProps;
+
+/** Alias canônico SSOT para o cabeçalho contínuo de páginas subsequentes (Páginas > 1). */
+export const RunningHeader = ReportRunningHeader;
+

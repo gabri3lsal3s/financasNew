@@ -123,7 +123,7 @@ export function AporteCockpitCommandCard({
       aria-label="Comando e síntese do aporte"
       data-tour="investments-rebalance"
       className={cn(
-        "flex flex-col justify-between h-full rounded-2xl border border-border/80 bg-surface p-4 sm:p-4.5 shadow-xs min-w-0",
+        "group flex flex-col justify-between h-full rounded-2xl border border-border/80 bg-surface p-4 sm:p-4.5 shadow-xs min-w-0",
         className,
       )}
     >
@@ -145,7 +145,7 @@ export function AporteCockpitCommandCard({
             ) : (
               <span className="text-[11px] font-normal text-muted-foreground">Pronto</span>
             )}
-            <CalculationMemoryModal breakdown={aporteBreakdown} />
+            <CalculationMemoryModal breakdown={aporteBreakdown} priority="p0" />
           </div>
         </div>
 

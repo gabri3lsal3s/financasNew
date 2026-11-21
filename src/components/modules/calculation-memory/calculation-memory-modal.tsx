@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { CalculationBreakdown } from "@/domain/calculation-memory";
+import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import { CalculationMemoryTrigger } from "./calculation-memory-trigger";
@@ -25,6 +26,13 @@ export interface CalculationMemoryModalProps {
   /** Callback acionado na mudança de abertura (opcional). */
   onOpenChange?: (open: boolean) => void;
   className?: string;
+  /**
+   * Nível de relevância mobile para conforto e curadoria visual:
+   * - "p0": métricas complexas/sintéticas (visíveis suavemente no mobile).
+   * - "p1": métricas complementares (ocultas no mobile, visíveis no hover no desktop).
+   * Default: "p1".
+   */
+  priority?: "p0" | "p1";
 }
 
 /**
@@ -45,7 +53,9 @@ export function CalculationMemoryModal({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
   className,
+  priority = "p1",
 }: CalculationMemoryModalProps) {
+  const { showCalculationMemory } = useVisualCustomization();
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const isOpen = isControlled ? controlledOpen : internalOpen;
@@ -80,6 +90,8 @@ export function CalculationMemoryModal({
     );
   }, [activeBreakdown]);
 
+  // Se o usuário optou por ocultar a memória de cálculo nas preferências, não renderiza nada
+  if (!showCalculationMemory) return null;
   if (!activeBreakdown) return null;
 
   // Por padrão canônico (Regra 18 e 33 do AGENTS.md), memórias de cálculo utilizam
@@ -90,6 +102,7 @@ export function CalculationMemoryModal({
   const triggerNode = trigger ?? (
     <CalculationMemoryTrigger
       metricTitle={label ?? activeBreakdown.title}
+      priority={priority}
       onClick={() => handleOpenChange(true)}
     />
   );
@@ -98,7 +111,7 @@ export function CalculationMemoryModal({
   if (resolvedDisplayMode === "popover") {
     return (
       <div
-        className="inline-flex"
+        className={cn("items-center", priority === "p0" ? "inline-flex" : "hidden md:inline-flex")}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onPointerUp={(e) => e.stopPropagation()}
@@ -163,7 +176,7 @@ export function CalculationMemoryModal({
   // - Zero duplicação de triggers no DOM
   return (
     <div
-      className="inline-flex"
+      className={cn("items-center", priority === "p0" ? "inline-flex" : "hidden md:inline-flex")}
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
       onPointerUp={(e) => e.stopPropagation()}

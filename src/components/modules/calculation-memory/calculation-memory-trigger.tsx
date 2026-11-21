@@ -14,6 +14,13 @@ export interface CalculationMemoryTriggerProps {
   className?: string;
   /** Elemento customizado para atuar como gatilho. */
   children?: ReactNode;
+  /**
+   * Nível de relevância mobile para conforto e curadoria visual:
+   * - "p0": métricas complexas/sintéticas (visíveis suavemente no mobile).
+   * - "p1": métricas complementares (ocultas no mobile, visíveis no hover no desktop).
+   * Default: "p1".
+   */
+  priority?: "p0" | "p1";
 }
 
 /**
@@ -32,6 +39,7 @@ export function CalculationMemoryTrigger({
   onClick,
   className,
   children,
+  priority = "p1",
 }: CalculationMemoryTriggerProps) {
   const handleClick = (e: MouseEvent<HTMLElement>) => {
     e.preventDefault();
@@ -71,6 +79,11 @@ export function CalculationMemoryTrigger({
     }
   };
 
+  const visibilityClass =
+    priority === "p0"
+      ? "inline-flex text-muted-foreground/50 hover:text-foreground md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 focus-visible:opacity-100 hover:opacity-100 transition-opacity duration-150"
+      : "hidden md:inline-flex md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 focus-visible:opacity-100 hover:opacity-100 transition-opacity duration-150";
+
   if (children) {
     return (
       <span
@@ -84,7 +97,7 @@ export function CalculationMemoryTrigger({
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onKeyDown={handleKeyDown}
-        className={cn("inline-flex cursor-pointer items-center", className)}
+        className={cn(visibilityClass, "cursor-pointer items-center", className)}
       >
         {children}
       </span>
@@ -110,8 +123,9 @@ export function CalculationMemoryTrigger({
       aria-label={`Ver memória de cálculo de ${metricTitle}`}
       title={`Como ${metricTitle} é calculado`}
       className={cn(
-        "relative size-6 shrink-0 rounded-full p-0 text-muted-foreground/70 hover:text-foreground hover:bg-surface-hover/80 transition-colors cursor-pointer",
+        "relative size-6 shrink-0 rounded-full p-0 transition-all cursor-pointer",
         "max-sm:after:absolute max-sm:after:-inset-2.5 max-sm:after:content-['']",
+        visibilityClass,
         className,
       )}
     >

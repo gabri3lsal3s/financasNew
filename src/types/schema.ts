@@ -370,6 +370,7 @@ export type UserCustomSettings = {
   tripModeEnabled?: boolean;
   preferredTripCategoryId?: string;
   initialGoal?: OnboardingGoalId;
+  showCalculationMemory?: boolean;
   themePreference?: ThemePreference;
   darkThemeVariant?: DarkThemeVariant;
   themeSchedule?: ThemeScheduleConfig;

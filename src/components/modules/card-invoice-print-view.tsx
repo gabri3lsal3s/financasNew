@@ -65,7 +65,7 @@ export function CardInvoicePrintView({
   accountHolder,
 }: CardInvoicePrintViewProps) {
   return (
-    <div className="print-area flex flex-col gap-6 bg-surface text-foreground w-full max-w-full overflow-hidden print:overflow-visible">
+    <div className="print-area flex flex-col gap-4 print:gap-3 bg-surface text-foreground w-full max-w-full overflow-hidden print:overflow-visible">
       {/* 1. Cabeçalho Institucional */}
       <ReportHeader
         title={`Fatura de Cartão de Crédito — ${cardName}`}
@@ -126,8 +126,8 @@ export function CardInvoicePrintView({
             <table className="w-full min-w-[540px] sm:min-w-full print:min-w-0 print:w-full table-fixed border-collapse text-xs">
               <colgroup>
                 <col style={{ width: "13%" }} />
-                <col style={{ width: "33%" }} />
-                <col style={{ width: "21%" }} />
+                <col style={{ width: "32%" }} />
+                <col style={{ width: "22%" }} />
                 <col style={{ width: "12%" }} />
                 <col style={{ width: "12%" }} />
                 <col style={{ width: "9%" }} />
@@ -176,7 +176,7 @@ export function CardInvoicePrintView({
               </tbody>
               <tfoot className="border-t-2 border-border/80 bg-muted/40 font-bold text-foreground break-inside-avoid">
                 <tr>
-                  <td className="py-2 px-2.5 uppercase text-[10px] tracking-wider" colSpan={3}>
+                  <td className="py-2 px-2.5 uppercase text-[10px] tracking-wider whitespace-nowrap" colSpan={3}>
                     Total ({expenses.length} {expenses.length === 1 ? "gasto" : "gastos"})
                   </td>
                   <td className="py-2 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">

@@ -150,6 +150,7 @@ export function AppearanceTab() {
       themePreference: "system",
       darkThemeVariant: "dark",
       themeSchedule: DEFAULT_THEME_SCHEDULE,
+      showCalculationMemory: true,
     });
     pushToast({
       title: "Personalização redefinida",

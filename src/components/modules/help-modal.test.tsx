@@ -100,57 +100,6 @@ describe("HelpModal", () => {
     expect(getDemoSessionState().activeTrack).toBe("finances");
   });
 
-  it("renderiza o atalho direto para o tour compartilhado", () => {
-    render(
-      <MemoryRouter>
-        <HelpModal open={true} onOpenChange={vi.fn()} />
-      </MemoryRouter>,
-    );
-
-    const sharedTourBtn = screen.getByRole("button", { name: /Tour Compartilhado/i });
-    expect(sharedTourBtn).toBeInTheDocument();
-  });
-
-  it("chama onStartSharedTour e fecha o modal ao clicar no atalho do tour compartilhado", async () => {
-    const user = userEvent.setup();
-    const onOpenChange = vi.fn();
-    const onStartSharedTour = vi.fn();
-
-    render(
-      <MemoryRouter>
-        <HelpModal
-          open={true}
-          onOpenChange={onOpenChange}
-          onStartSharedTour={onStartSharedTour}
-        />
-      </MemoryRouter>,
-    );
-
-    const sharedTourBtn = screen.getByRole("button", { name: /Tour Compartilhado/i });
-    await user.click(sharedTourBtn);
-
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(onStartSharedTour).toHaveBeenCalledTimes(1);
-  });
-
-  it("inicia a trilha de finanças compartilhadas (shared_finances) via fallback quando onStartSharedTour não é fornecido", async () => {
-    const user = userEvent.setup();
-    const onOpenChange = vi.fn();
-
-    render(
-      <MemoryRouter>
-        <HelpModal open={true} onOpenChange={onOpenChange} />
-      </MemoryRouter>,
-    );
-
-    const sharedTourBtn = screen.getByRole("button", { name: /Tour Compartilhado/i });
-    await user.click(sharedTourBtn);
-
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(getDemoSessionState().isDemoActive).toBe(true);
-    expect(getDemoSessionState().activeTrack).toBe("shared_finances");
-  });
-
   it("permite expandir o tópico de dúvidas frequentes sobre finanças compartilhadas", async () => {
     const user = userEvent.setup();
     render(

@@ -72,7 +72,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
     <>
       <div
         className={cn(
-          "flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all min-w-0",
+          "group flex flex-col gap-4 rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all min-w-0",
           className,
         )}
       >
@@ -172,7 +172,7 @@ export function RealCashHeroCard({ realCashData, className, onCalibrate }: RealC
             <div className="flex items-center gap-1.5 text-muted-foreground min-w-0">
               <ShieldCheck className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <span className="truncate text-muted-foreground">Saldo Livre Real:</span>
-              <CalculationMemoryModal breakdown={safeToSpendBreakdown} />
+              <CalculationMemoryModal breakdown={safeToSpendBreakdown} priority="p0" />
             </div>
             <MoneyText
               cents={safeToSpend.safeToSpendCents}

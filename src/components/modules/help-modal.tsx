@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Compass, HelpCircle, MessageSquare, Users } from "lucide-react";
+import { Compass, HelpCircle, MessageSquare } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, Badge, Button, Modal, ModalFooter } from "@/components/ui";
 import { SupportChatDialog } from "@/components/modules/support";
-import { getTourTrackMeta } from "@/domain/demo-simulation";
 import { startDemo } from "@/state/demo-mode";
 import { FAQ_ITEMS } from "./help-faq-data";
 
@@ -12,7 +11,6 @@ export interface HelpModalProps {
   onOpenChange: (open: boolean) => void;
   onOpenDemoSelect?: () => void;
   onOpenSupport?: () => void;
-  onStartSharedTour?: () => void;
 }
 
 /**
@@ -23,7 +21,6 @@ export function HelpModal({
   onOpenChange,
   onOpenDemoSelect,
   onOpenSupport,
-  onStartSharedTour,
 }: HelpModalProps) {
   const navigate = useNavigate();
   const [supportChatOpen, setSupportChatOpen] = useState(false);
@@ -35,17 +32,6 @@ export function HelpModal({
     } else {
       startDemo("finances");
       navigate("/");
-    }
-  };
-
-  const handleStartSharedTour = () => {
-    onOpenChange(false);
-    if (onStartSharedTour) {
-      onStartSharedTour();
-    } else {
-      startDemo("shared_finances");
-      const meta = getTourTrackMeta("shared_finances");
-      navigate(meta?.startRoute ?? "/");
     }
   };
 
@@ -91,12 +77,8 @@ export function HelpModal({
                   compartilhadas sem alterar nenhum dos seus registros reais.
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-                <Button type="button" size="sm" variant="outline" onClick={handleStartSharedTour} className="gap-2 shrink-0 font-medium">
-                  <Users className="size-4 text-primary-strong" aria-hidden="true" />
-                  <span>Tour Compartilhado</span>
-                </Button>
-                <Button type="button" size="sm" onClick={handleStartTour} className="gap-2 shrink-0 font-medium">
+              <div className="shrink-0">
+                <Button type="button" size="sm" onClick={handleStartTour} className="gap-2 shrink-0 font-medium w-full sm:w-auto">
                   <Compass className="size-4" aria-hidden="true" />
                   <span>Rever Tour Guiado</span>
                 </Button>

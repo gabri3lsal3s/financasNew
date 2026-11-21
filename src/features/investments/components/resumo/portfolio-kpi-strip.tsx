@@ -192,7 +192,7 @@ export function PortfolioKpiStrip({
         value={performance.rentabilidadeValue}
         tone={performance.rentabilidadeTone}
         hint={rentabilidadeHint}
-        action={<CalculationMemoryModal breakdown={rentabilidadeBreakdown} />}
+        action={<CalculationMemoryModal breakdown={rentabilidadeBreakdown} priority="p0" />}
         onClick={onOpenExplainModal}
       />
 
@@ -227,7 +227,7 @@ export function PortfolioKpiStrip({
         value={performance.irrLabel}
         tone={performance.irrTone}
         hint={performance.irrHint}
-        action={<CalculationMemoryModal breakdown={tirBreakdown} />}
+        action={<CalculationMemoryModal breakdown={tirBreakdown} priority="p0" />}
         onClick={onOpenExplainModal}
       />
     </div>

@@ -44,6 +44,7 @@ export interface VisualCustomization {
   numberTickerEnabled: boolean;
   dashboardWidgets: DashboardWidgetsConfig;
   headerButtons: HeaderButtonsConfig;
+  showCalculationMemory: boolean;
 }
 
 export const VISUAL_STORAGE_KEYS = {
@@ -58,6 +59,7 @@ export const VISUAL_STORAGE_KEYS = {
   numberTickerEnabled: "number_ticker_enabled",
   dashboardWidgets: "dashboard_widgets",
   headerButtons: "header_buttons",
+  showCalculationMemory: "show_calculation_memory",
 } as const;
 
 export const VALID_ACCENT_THEMES: readonly AccentTheme[] = [
@@ -111,6 +113,7 @@ export const DEFAULT_CONFIG: VisualCustomization = {
   numberTickerEnabled: true,
   dashboardWidgets: DEFAULT_WIDGETS,
   headerButtons: DEFAULT_HEADER_BUTTONS,
+  showCalculationMemory: true,
 };
 
 export function isValidAccentTheme(value: unknown): value is AccentTheme {
@@ -191,6 +194,9 @@ export function normalizeCloudVisualPartial(
       ...DEFAULT_HEADER_BUTTONS,
       ...customSettings.headerButtons,
     };
+  }
+  if (customSettings.showCalculationMemory !== undefined) {
+    partial.showCalculationMemory = customSettings.showCalculationMemory;
   }
 
   return partial;

@@ -15,8 +15,12 @@ import {
   Checkbox,
   Switch,
 } from "@/components/ui";
-import { useFamilyMode, useTripMode } from "@/state";
-import type { HeaderButtonsConfig } from "@/hooks/use-visual-customization";
+import { useFamilyMode, useTripMode, useUpdateCustomSettings } from "@/state";
+import {
+  useVisualCustomization,
+  type HeaderButtonsConfig,
+} from "@/hooks/use-visual-customization";
+import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
 
 export interface InterfaceShortcutsCardProps {
@@ -30,6 +34,8 @@ export function InterfaceShortcutsCard({
 }: InterfaceShortcutsCardProps) {
   const { isFamilyModeEnabled, toggleFamilyMode, isPending: isUpdatingFamilyMode } = useFamilyMode();
   const { isTripModeEnabled, toggleTripMode, isPending: isUpdatingTripMode } = useTripMode();
+  const { showCalculationMemory, setShowCalculationMemory } = useVisualCustomization();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
 
   const activeSlots = [
     headerButtons.calculatorButton,
@@ -203,6 +209,37 @@ export function InterfaceShortcutsCard({
                   void toggleTripMode(checked);
                 }}
                 aria-label="Modo Viagem"
+              />
+            </div>
+
+            <div
+              className={cn(
+                "flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-colors duration-150",
+                showCalculationMemory ? "border-primary/40 bg-primary/5" : "border-border/80 bg-surface",
+              )}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Calculator className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                <div className="min-w-0">
+                  <div className="font-semibold text-xs text-foreground">
+                    Memória de Cálculo e Explicabilidade
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {showCalculationMemory
+                      ? "Ativo. Exibe atalhos informativos com a fórmula matemática dos indicadores (no computador, visíveis ao passar o mouse)."
+                      : "Oculto. Mantém a interface limpa e minimalista sem os ícones de memória de cálculo."}
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={showCalculationMemory}
+                disabled={updateCustomSettingsMutation.isPending}
+                onCheckedChange={(checked) => {
+                  triggerSensory("toggle");
+                  setShowCalculationMemory(checked);
+                  updateCustomSettingsMutation.mutate({ showCalculationMemory: checked });
+                }}
+                aria-label="Memória de Cálculo e Explicabilidade"
               />
             </div>
           </div>

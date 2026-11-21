@@ -163,6 +163,8 @@ export function useVisualCustomization() {
       updateVisualCustomization({
         headerButtons: { ...config.headerButtons, [button]: visible },
       }),
+    setShowCalculationMemory: (showCalculationMemory: boolean) =>
+      updateVisualCustomization({ showCalculationMemory }),
     resetToDefaults: () => updateVisualCustomization(DEFAULT_CONFIG),
   };
 }

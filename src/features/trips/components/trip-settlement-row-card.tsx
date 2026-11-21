@@ -75,7 +75,7 @@ export function TripSettlementRowCard({
 
   return (
     <Card
-      className={`p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs space-y-3 transition-colors ${
+      className={`group p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs space-y-3 transition-colors ${
         isConfirmed ? "bg-surface/50 border-positive/30" : ""
       }`}
     >
@@ -94,6 +94,7 @@ export function TripSettlementRowCard({
             <CalculationMemoryModal
               breakdown={breakdown}
               label={`Memória do acerto de ${s.fromMemberName}`}
+              priority="p0"
             />
           ) : null}
           {isConfirmed ? (

@@ -157,5 +157,26 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
       const privacyCheckbox = screen.getByRole("checkbox", { name: /Ocultar Valores/i });
       expect(privacyCheckbox).toBeDisabled();
     });
+
+    it("renderiza a opção de Memória de Cálculo e Explicabilidade", async () => {
+      renderWithProviders(
+        <InterfaceShortcutsCard
+          headerButtons={{
+            logo: true,
+            calculatorButton: false,
+            themeToggle: false,
+            privacyToggle: false,
+          }}
+          onToggleHeaderButton={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText("Memória de Cálculo e Explicabilidade")).toBeInTheDocument();
+      const calcMemorySwitch = screen.getByRole("switch", {
+        name: "Memória de Cálculo e Explicabilidade",
+      });
+      expect(calcMemorySwitch).toBeInTheDocument();
+      expect(calcMemorySwitch).toBeChecked();
+    });
   });
 });

@@ -1,12 +1,16 @@
 export { ReportDocumentLayout, type ReportDocumentLayoutProps } from "./report-document-layout";
 export {
   ReportHeader,
+  ReportCoverHeader,
   ReportRunningHeader,
+  RunningHeader,
   AxirBrandLogo,
   AxirMonogram,
   type ReportHeaderProps,
+  type ReportCoverHeaderProps,
   type ReportRunningHeaderProps,
 } from "./report-header";
+export { REPORT_SPACING, type ReportSpacing } from "./report-tokens";
 export {
   OFFICIAL_REPORT_FOOTER_CREDIT,
   ReportFooter,

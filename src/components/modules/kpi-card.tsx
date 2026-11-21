@@ -93,7 +93,7 @@ export function KpiCard({ label, ariaLabel, value, cents, tone = "default", hint
           : undefined
       }
       onClick={!hasAction ? onClick : undefined}
-      className="flex flex-col justify-between overflow-hidden p-3 sm:p-4 lg:p-5 h-full rounded-2xl border-border/80 bg-surface shadow-xs transition-all hover:border-border relative"
+      className="group flex flex-col justify-between overflow-hidden p-3 sm:p-4 lg:p-5 h-full rounded-2xl border-border/80 bg-surface shadow-xs transition-all hover:border-border relative"
     >
       <div>
         <div className="flex items-start justify-between gap-1.5 min-w-0">

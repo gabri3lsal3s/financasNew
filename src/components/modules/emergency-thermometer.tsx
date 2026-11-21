@@ -82,7 +82,7 @@ export function EmergencyThermometer({
     <section
       aria-label="Termômetro da reserva de emergência"
       className={cn(
-        "flex flex-col gap-4 rounded-xl border border-border/80 bg-surface p-4 sm:p-5 min-w-0 shadow-xs",
+        "group flex flex-col gap-4 rounded-xl border border-border/80 bg-surface p-4 sm:p-5 min-w-0 shadow-xs",
         className,
       )}
     >
@@ -90,7 +90,7 @@ export function EmergencyThermometer({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-foreground">Reserva de Emergência & Autonomia</h2>
-            <CalculationMemoryModal breakdown={emergencyBreakdown} />
+            <CalculationMemoryModal breakdown={emergencyBreakdown} priority="p0" />
             {composition && composition.portfolioReserveCents > 0 ? (
               <Badge variant="muted" size="xs">
                 Sincronizada

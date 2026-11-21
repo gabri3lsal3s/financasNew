@@ -62,9 +62,9 @@ export function ExecutiveReportDocument({
   const hasSeparateCash = effectiveCashBRL > 0 && !hasCashGroup;
 
   // SSOT: Totalizador consolidado derivado estritamente da soma das linhas renderizadas
+  const appliedAssetsCostCents = classGroups.reduce((acc, g) => acc + (g.totalCostCents ?? 0), 0);
   const sumRenderedCostCents =
-    classGroups.reduce((acc, g) => acc + (g.totalCostCents ?? 0), 0) +
-    (hasSeparateCash ? numberToCents(effectiveCashBRL) : 0);
+    appliedAssetsCostCents + (hasSeparateCash ? numberToCents(effectiveCashBRL) : 0);
   const sumRenderedTotalCents =
     classGroups.reduce((acc, g) => acc + (g.totalCents ?? 0), 0) +
     (hasSeparateCash ? numberToCents(effectiveCashBRL) : 0);
@@ -83,7 +83,7 @@ export function ExecutiveReportDocument({
     totalConsolidatedCostBRL > 0 ? (totalPnlBRL / totalConsolidatedCostBRL) * 100 : 0;
 
   return (
-    <div className="flex flex-col gap-4 w-full print:block print:space-y-4">
+    <div className="flex flex-col gap-4 w-full print:block print:space-y-3">
       <ReportHeader
         title="Relatório Executivo de Acompanhamento da Carteira"
         subtitle="Posição Patrimonial Consolidada & Custódia de Ativos"
@@ -184,12 +184,32 @@ export function ExecutiveReportDocument({
             <strong>
               <MoneyText cents={numberToCents(effectiveTotalBRL)} className="inline font-bold" />
             </strong>{" "}
-            sob custódia (custo de aquisição de{" "}
-            <MoneyText
-              cents={numberToCents(effectiveCostBRL)}
-              className="inline font-bold text-muted-foreground"
-            />
-            ), distribuídos em{" "}
+            sob custódia{" "}
+            {hasSeparateCash && appliedAssetsCostCents > 0 ? (
+              <>
+                (custo de aquisição de{" "}
+                <MoneyText
+                  cents={appliedAssetsCostCents}
+                  className="inline font-bold text-muted-foreground"
+                />{" "}
+                em ativos aplicados, totalizando{" "}
+                <MoneyText
+                  cents={numberToCents(totalConsolidatedCostBRL)}
+                  className="inline font-bold text-muted-foreground"
+                />{" "}
+                com a reserva de caixa),
+              </>
+            ) : (
+              <>
+                (custo de aquisição de{" "}
+                <MoneyText
+                  cents={numberToCents(effectiveCostBRL)}
+                  className="inline font-bold text-muted-foreground"
+                />
+                ),
+              </>
+            )}{" "}
+            distribuídos em{" "}
             <strong>{investmentCount} ativos{effectiveCashBRL > 0 ? " + Reserva de Caixa" : ""}</strong> e{" "}
             <strong>{classGroups.length} classes patrimoniais</strong>.
           </span>
@@ -246,7 +266,7 @@ export function ExecutiveReportDocument({
                   const returnPct = costCents > 0 ? ((totalCents - costCents) / costCents) * 100 : 0;
                   return (
                     <tr key={className} className="even:bg-muted/20">
-                      <td className="py-1.5 px-2 font-semibold text-foreground">{className}</td>
+                      <td className="py-1.5 px-2 font-semibold text-foreground whitespace-nowrap">{className}</td>
                       <td className="py-1.5 px-2 text-center text-muted-foreground font-mono">{g.items?.length ?? 0}</td>
                       <td className="py-1.5 px-2 text-right font-mono font-bold">
                         <MoneyText cents={totalCents} hideCurrency />
@@ -267,7 +287,7 @@ export function ExecutiveReportDocument({
                 })}
                 {hasSeparateCash && (
                   <tr key="reserva-caixa-sintese" className="even:bg-muted/20">
-                    <td className="py-1.5 px-2 font-semibold text-foreground">Reserva de Caixa</td>
+                    <td className="py-1.5 px-2 font-semibold text-foreground whitespace-nowrap">Reserva de Caixa</td>
                     <td className="py-1.5 px-2 text-center text-muted-foreground font-mono">—</td>
                     <td className="py-1.5 px-2 text-right font-mono font-bold">
                       <MoneyText cents={numberToCents(effectiveCashBRL)} hideCurrency />

@@ -103,12 +103,13 @@ const REPORTS_SPECS: ReportSpec[] = [
       // Lançamentos somam Bruto R$ 4.850,00 e Ponderado R$ 4.200,00
       const hasBruto = fullText.includes("4.850,00");
       const hasPonderado = fullText.includes("4.200,00");
-      const passed = hasBruto && hasPonderado;
+      const hasTotalGastos = fullText.toUpperCase().includes("TOTAL (5 GASTOS)");
+      const passed = hasBruto && hasPonderado && hasTotalGastos;
       return {
         passed,
         message: passed
-          ? "Total de lançamentos da fatura validado: Bruto R$ 4.850,00 e Ponderado R$ 4.200,00"
-          : "Total da fatura de cartão divergiu",
+          ? "Total de lançamentos da fatura validado: Bruto R$ 4.850,00, Ponderado R$ 4.200,00 e Total (5 gastos)"
+          : `Total da fatura de cartão divergiu: hasBruto=${hasBruto}, hasPonderado=${hasPonderado}, hasTotalGastos=${hasTotalGastos}`,
       };
     },
   },
@@ -140,6 +141,8 @@ const REPORTS_SPECS: ReportSpec[] = [
       const hasPatrimonio = fullText.includes("106.377,43");
       const hasCustoConsolidado = fullText.includes("100.318,93");
       const hasRetornoConsolidado = fullText.includes("+6,0%");
+      const hasAppliedCostNarrative = fullText.includes("90.000,00");
+      const hasReservaCaixaNarrative = fullText.includes("reserva de caixa");
       // Checa se a antiga dupla contagem não existe no documento
       const hasOldDoubleCountCost = fullText.includes("110.637,86");
       const hasOldNegativeReturn = fullText.includes("-3,9%");
@@ -148,14 +151,16 @@ const REPORTS_SPECS: ReportSpec[] = [
         hasPatrimonio &&
         hasCustoConsolidado &&
         hasRetornoConsolidado &&
+        hasAppliedCostNarrative &&
+        hasReservaCaixaNarrative &&
         !hasOldDoubleCountCost &&
         !hasOldNegativeReturn;
 
       return {
         passed,
         message: passed
-          ? "Invariante Matemática da Carteira Mensal aprovada (Custo R$ 100.318,93, Retorno +6,0%, zero dupla contagem)"
-          : `Falha na invariante da Carteira: hasPatrimonio=${hasPatrimonio}, hasCustoConsolidado=${hasCustoConsolidado}, hasRetorno=${hasRetornoConsolidado}, hasOldDoubleCountCost=${hasOldDoubleCountCost}`,
+          ? "Invariante Matemática da Carteira Mensal aprovada (Custo R$ 100.318,93, Retorno +6,0%, narrativa transparente com R$ 90.000,00 + Caixa)"
+          : `Falha na invariante da Carteira: hasPatrimonio=${hasPatrimonio}, hasCustoConsolidado=${hasCustoConsolidado}, hasRetorno=${hasRetornoConsolidado}, hasAppliedCostNarrative=${hasAppliedCostNarrative}`,
       };
     },
   },
@@ -214,6 +219,16 @@ const TEXT_HYGIENE_RULES = [
     id: "kpi_ellipsis",
     regex: /\b[A-ZÁÉÍÓÚÂÊÔÃÕÇ\s]{4,}\.\.\./g,
     description: "Reticências espúrias em títulos de cartões ou KPIs",
+  },
+  {
+    id: "currency_symbol_linebreak",
+    regex: /[+-]?(?:R\$|US\$)\s*\n/g,
+    description: "Quebra de linha imediata após símbolo monetário (R$ ou US$)",
+  },
+  {
+    id: "space_collapse_text_num",
+    regex: /\b(representando|totaliza|acumulando)\d/gi,
+    description: "Colapso de espaço entre palavra e valor numérico",
   },
 ];
 
