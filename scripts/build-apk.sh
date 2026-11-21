@@ -163,12 +163,12 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Refinamento Editorial Avancado & Integridade de Documentos",
-    "Padronizacao de nomes de arquivo de download institucional (ASCII sem espacos e carimbo temporal)",
-    "Unidades monetarias explicitas (R$) e semantica formal em todas as colunas de demonstrativos",
-    "Eliminacao de truncamento cego em faturas e alinhamento milimetrico de colunas em ledgers",
-    "Semantica contabil estruturada thead na DRE consolidada e sinalizacao explicita para impressao PB",
-    "Expansao do modal de extrato patrimonial para size 3xl no desktop"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Polimento Final v5 dos Relatórios e Logo Oficial Axir",
+    "Logo oficial do aplicativo integrada com status de nível reativo (PRO, Teste PRO e Padrão)",
+    "Arquitetura de rodapé multipágina SSOT com disclaimer legal CVM exclusivo na página final",
+    "Reconciliação matemática do Dossiê da Posição Vigente e Carteira Mensal (+6,0%)",
+    "Restituição completa de faturas de cartão quitadas na DRE e série histórica de 12 meses no Dossiê FIRE",
+    "Eliminação de truncamento no Balanço 360°, Facilitador IRPF e Painel de Benchmarks"
   ]
 }
 EOF

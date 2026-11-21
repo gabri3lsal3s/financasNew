@@ -1,19 +1,17 @@
 {
   "version": "3.14.0",
-  "versionCode": 95,
-  "releaseDate": "2026-11-21T02:35:00Z",
+  "versionCode": 96,
+  "releaseDate": "2026-11-21T06:54:13Z",
   "minSupportedVersion": "3.14.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "5306b3b7c3449519fd91f9d8a482f6098ea1252e73a7800fafc96518ef460992",
-  "fileSizeBytes": 12301626,
+  "sha256": "0b9d2245a3874f547ac63af2d6c4af3b4d423a198a8856c87bbc43e4ce92833d",
+  "fileSizeBytes": 12306766,
   "changelog": [
-    "Axir v3.14.0 (Build 95): Execucao Integral do Plano Mestre Unificado v3.0 dos Relatorios Executivos",
-    "Governanca estrita de running headers: supressao na capa de One-Pagers e continuidade na pag 2+ com micro-logo",
-    "Erradicacao de truncamento de valores no Donut do Balanco 360 (Regra 11 de Ouro)",
-    "Conquista de One-Pager no Facilitador IRPF (1 pagina fisica unica) e classificacao canônica de Tesouro Direto (Cod. 02)",
-    "Normalizacao e desbloqueio dos Raios-X analiticos do Dossie da Posicao Vigente (Acoes, FIIs, Renda Fixa e Internacional)",
-    "Recalibracao de colunas de custodia (Qtd 9%, colisoes eliminadas e sensibilidade de moeda BRL vs USD)",
-    "Quadro-Sintese de Alocacao na Pagina 1 da Carteira Mensal e DRE com calculo real de desvios orcamentarios",
-    "Preservacao da tipografia do sigma minusculo (σ) em volatilidade e pluralizacao gramatical natural"
+    "Axir v3.14.0 (Build 96): Polimento Final v5 dos Relatórios e Logo Oficial Axir",
+    "Logo oficial do aplicativo integrada com status de nível reativo (PRO, Teste PRO e Padrão)",
+    "Arquitetura de rodapé multipágina SSOT com disclaimer legal CVM exclusivo na página final",
+    "Reconciliação matemática do Dossiê da Posição Vigente e Carteira Mensal (+6,0%)",
+    "Restituição completa de faturas de cartão quitadas na DRE e série histórica de 12 meses no Dossiê FIRE",
+    "Eliminação de truncamento no Balanço 360°, Facilitador IRPF e Painel de Benchmarks"
   ]
 }
