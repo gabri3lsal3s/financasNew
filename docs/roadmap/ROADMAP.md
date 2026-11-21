@@ -1,6 +1,6 @@
 # ROADMAP.md — Roadmap Executável de Desenvolvimento
 
-> **v3.14.0 (Build 98 — Selo Definitivo de Release v1.0 Gold do Motor de Relatórios Axir — Scorecard 10/10 Homologado)** registra a certificação definitiva da **Release v1.0 Gold** dos 8 relatórios executivos Axir com blindagem contínua automatizada e zero regressão (2026-11-21):
+> **v3.14.0 (Build 99 — Selo Definitivo de Release v1.0 Gold do Motor de Relatórios Axir — Scorecard 10/10 Homologado)** registra a certificação definitiva da **Release v1.0 Gold** dos 8 relatórios executivos Axir com blindagem contínua automatizada e zero regressão (2026-11-21):
 > - **(1) Erradicação da Dupla Contagem de Caixa na Carteira Mensal (Relatório 7, Pág. 1)**:
 >   - Aplicação estrita do princípio SSOT: totalizadores do rodapé de `SÍNTESE DA ALOCAÇÃO POR CLASSE DE ATIVOS` calculados diretamente a partir da soma das linhas renderizadas via `rows.reduce(...)`;
 >   - Custo Consolidado fechado em R$ 100.318,93 e Retorno P&L Consolidado fechado em +6,0%, com travessão fino (`—`) em Ativos e Retorno da Reserva de Caixa;
@@ -18,7 +18,7 @@
 >   - Criação de `scripts/qa-reports-integrity.ts` integrado ao pipeline de exportação e ao `package.json`, validando matematicamente os 8 relatórios ($\pm 0,01$), conferindo 7 regras de higiene textual por regex e auditando 100% da paginação `Página X de Y` ($1 \le X \le Y$);
 > - **(6) Qualidade & Homologação de Produção**:
 >   - 213 arquivos e 3.048 testes de domínio Vitest 100% aprovados;
->   - APK Release Build 98 compilado, verificado com zipalign/apksigner e distribuído via Cloudflare R2;
+>   - APK Release Build 99 compilado, verificado com zipalign/apksigner e distribuído via Cloudflare R2 (SHA-256: 1b84034a58dbb661c3ccc146cd1c6bff680a49a5aa78f29edf973b5b0983c463);
 >   - Documento de homologação emitido em `RELATORIO_FINAL_CERTIFICACAO_MOTOR_RELEASE_V1_GOLD.md`.
 >
 > **v3.14.0 (Build 97 — Fechamento Release v1.0 do Motor de Relatórios Axir — Scorecard 9,9/10 Homologado)** registra a conclusão integral dos 7 micro-ajustes cirúrgicos finais da **Release v1.0** dos 8 relatórios executivos Axir (2026-11-21):
@@ -7823,7 +7823,7 @@ flowchart TD
 
 ---
 
-### Fase 119 — Selo Definitivo de Release v1.0 Gold do Motor de Relatórios Axir (Build 98 — ID BR-20261121-1145)
+### Fase 119 — Selo Definitivo de Release v1.0 Gold do Motor de Relatórios Axir (Build 99 — ID BR-20261121-1145)
 
 > **Status:** Concluída, Auditada e Homologada — **Certificação Técnica 10 / 10 com Blindagem Permanente Automatizada**:
 > - **SSOT na Carteira Mensal (Carteira 7, Pág. 1):**
@@ -7842,7 +7842,7 @@ flowchart TD
 >   - Script `scripts/qa-reports-integrity.ts` integrado ao pipeline de exportação e ao `package.json`: validação matemática dos 8 relatórios ($\pm 0,01$), 7 regras de higiene textual por regex com zero tolerância e integridade de paginação `Página X de Y` ($1 \le X \le Y$);
 > - **Qualidade e Homologação de Produção:**
 >   - 213 arquivos e 3.048 testes de domínio Vitest 100% aprovados; `npm run verify` e `npm run qa:reports` com 0 erros;
->   - APK Release Build 98 assinado e publicado no Cloudflare R2 com hash SHA-256 verificado (`c401c74026...`).
+>   - APK Release Build 99 assinado e publicado no Cloudflare R2 com hash SHA-256 verificado (`1b84034a58dbb661c3ccc146cd1c6bff680a49a5aa78f29edf973b5b0983c463`).
 
 
 
