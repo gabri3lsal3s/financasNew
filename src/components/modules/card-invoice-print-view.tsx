@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { CreditCard, Landmark, ReceiptText, TrendingUp } from "lucide-react";
+import { CreditCard, Landmark, TrendingUp } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
 import { formatDateBR } from "@/lib/date";
 import { ReportHeader, ReportKpiGrid, ReportFooter } from "./reports";
@@ -89,7 +89,7 @@ export function CardInvoicePrintView({
               ) : (
                 "Total consolidado"
               ),
-            icon: ReceiptText,
+            icon: CreditCard,
             tone: "negative",
           },
           {
@@ -125,9 +125,9 @@ export function CardInvoicePrintView({
           <div className="w-full min-w-0 rounded-lg border border-border/80 bg-surface shadow-xs overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
             <table className="w-full min-w-[540px] sm:min-w-full print:min-w-0 print:w-full table-fixed border-collapse text-xs">
               <colgroup>
-                <col style={{ width: "15%" }} />
-                <col style={{ width: "33%" }} />
-                <col style={{ width: "18%" }} />
+                <col style={{ width: "14%" }} />
+                <col style={{ width: "32%" }} />
+                <col style={{ width: "20%" }} />
                 <col style={{ width: "12%" }} />
                 <col style={{ width: "12%" }} />
                 <col style={{ width: "10%" }} />
@@ -135,8 +135,8 @@ export function CardInvoicePrintView({
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left">
                   <th className="py-2 px-2.5">Data</th>
-                  <th className="py-2 px-2.5">Descrição</th>
-                  <th className="py-2 px-2.5">Categoria</th>
+                  <th className="py-2 pl-2.5 pr-3.5">Descrição</th>
+                  <th className="py-2 px-2">Categoria</th>
                   <th className="py-2 px-2.5 text-right">Valor (R$)</th>
                   <th className="py-2 px-2.5 text-right">Ponderado (R$)</th>
                   <th className="py-2 px-2.5 text-right">Parcelas</th>
@@ -147,8 +147,8 @@ export function CardInvoicePrintView({
                   <Fragment key={`${expense.date}-${expense.description}-${index}`}>
                     <tr className="break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
                       <td className="py-1.5 px-2.5 tabular-nums font-mono text-muted-foreground whitespace-nowrap">{formatDateBR(expense.date)}</td>
-                      <td className="py-1.5 px-2.5 font-bold text-foreground break-words whitespace-normal leading-tight line-clamp-2">{expense.description}</td>
-                      <td className="py-1.5 px-2.5 text-[11px] text-muted-foreground break-words whitespace-normal leading-tight line-clamp-2">{expense.categoryName}</td>
+                      <td className="py-1.5 pl-2.5 pr-3.5 font-bold text-foreground break-words whitespace-normal leading-tight line-clamp-2">{expense.description}</td>
+                      <td className="py-1.5 px-2 text-[11px] text-muted-foreground break-words whitespace-normal leading-tight line-clamp-2">{expense.categoryName}</td>
                       <td className="py-1.5 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
                         <MoneyText cents={expense.valueCents} tone="negative" hideCurrency />
                       </td>
@@ -158,9 +158,10 @@ export function CardInvoicePrintView({
                       <td className="py-1.5 px-2.5 text-right tabular-nums font-mono text-muted-foreground whitespace-nowrap">
                         {expense.installments &&
                         expense.installments.trim() !== "" &&
-                        expense.installments !== "1/1" &&
-                        expense.installments !== "1x" &&
-                        expense.installments !== "1" &&
+                        expense.installments.trim() !== "—" &&
+                        expense.installments.trim() !== "1/1" &&
+                        expense.installments.trim() !== "1x" &&
+                        expense.installments.trim() !== "1" &&
                         !expense.installments.toLowerCase().includes("vista")
                           ? expense.installments
                           : "—"}

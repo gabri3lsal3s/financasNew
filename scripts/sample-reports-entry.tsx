@@ -1261,7 +1261,7 @@ const mockClassGroups = [
         totalCents: numberToCents(19202.50),
         pricePnlPct: 3.80,
         pnlPct: 3.80,
-        indexType: 'IPCA+',
+        indexType: 'IPCA + 6,24% a.a.',
         maturityDate: '2032-08-15',
       },
     ],
@@ -1303,7 +1303,7 @@ function RenderCarteiraMensal() {
         appName={appName}
         accountHolder={accountHolder}
         effectiveTotalBRL={106377.43}
-        effectiveCostBRL={90000.00}
+        effectiveCostBRL={100318.93}
         effectiveCashBRL={10318.93}
         investmentCount={6}
         classGroups={mockClassGroups}

@@ -67,9 +67,9 @@ export function ReportWaterfallBar({
                   <MoneyText
                     cents={step.amountCents}
                     tone={isIncome || isSavings ? "positive" : "negative"}
-                    className="font-bold font-mono num tabular-nums"
+                    className="font-bold font-mono num tabular-nums whitespace-nowrap"
                   />
-                  <span className="num font-mono text-[11px] text-muted-foreground w-12 text-right tabular-nums">
+                  <span className="num font-mono text-[11px] text-muted-foreground w-12 text-right tabular-nums whitespace-nowrap">
                     {formatPercent(step.pctOfTotal)}%
                   </span>
                 </div>

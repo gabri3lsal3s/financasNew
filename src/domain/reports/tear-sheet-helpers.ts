@@ -9,17 +9,25 @@ import type {
 const CLASS_TOKEN_COLORS: Record<string, string> = {
   acao: "hsl(var(--primary-strong))",
   acoes: "hsl(var(--primary-strong))",
+  "acoes brasil": "hsl(var(--primary-strong))",
   fii: "hsl(var(--accent))",
   fiis: "hsl(var(--accent))",
+  "fundos imobiliarios": "hsl(var(--accent))",
   etf: "hsl(var(--cat-1))",
   etfs: "hsl(var(--cat-1))",
   "renda fixa": "hsl(var(--cat-7))",
   renda_fixa: "hsl(var(--cat-7))",
+  "renda fixa & titulos publicos": "hsl(var(--cat-7))",
   tesouro: "hsl(var(--cat-7))",
+  "tesouro direto": "hsl(var(--cat-7))",
   internacional: "hsl(var(--portfolio))",
+  "internacional global": "hsl(var(--portfolio))",
+  "internacional & etfs globais": "hsl(var(--portfolio))",
   global: "hsl(var(--portfolio))",
   cripto: "hsl(var(--cat-5))",
   caixa: "hsl(var(--cat-2))",
+  "reserva de caixa": "hsl(var(--cat-2))",
+  "caixa / reserva": "hsl(var(--cat-2))",
   outros: "hsl(var(--cat-10))",
 };
 
@@ -57,9 +65,46 @@ function normalizeClassKey(name: string): string {
 }
 
 export function resolveAssetClassTokenColor(assetClass: string): string {
+  if (!assetClass) return "hsl(var(--cat-10))";
   const lower = assetClass.toLowerCase().trim();
   const norm = normalizeClassKey(assetClass);
-  return CLASS_TOKEN_COLORS[lower] ?? CLASS_TOKEN_COLORS[norm] ?? "hsl(var(--cat-10))";
+
+  if (CLASS_TOKEN_COLORS[lower]) return CLASS_TOKEN_COLORS[lower];
+  if (CLASS_TOKEN_COLORS[norm]) return CLASS_TOKEN_COLORS[norm];
+
+  // Heurística de correspondência canônica por família de ativo
+  if (norm.includes("fii") || norm.includes("imobili")) {
+    return "hsl(var(--accent))";
+  }
+  if (norm.includes("acao") || norm.includes("acoes") || norm.includes("stock_br") || norm.includes("equity")) {
+    return "hsl(var(--primary-strong))";
+  }
+  if (norm.includes("internac") || norm.includes("global") || norm.includes("exterior") || norm.includes("stock_intl")) {
+    return "hsl(var(--portfolio))";
+  }
+  if (norm.includes("caixa") || norm.includes("reserva") || norm.includes("liquidez") || norm.includes("cash")) {
+    return "hsl(var(--cat-2))";
+  }
+  if (
+    norm.includes("fixa") ||
+    norm.includes("tesouro") ||
+    norm.includes("cdb") ||
+    norm.includes("lci") ||
+    norm.includes("lca") ||
+    norm.includes("cri") ||
+    norm.includes("cra") ||
+    norm.includes("debenture")
+  ) {
+    return "hsl(var(--cat-7))";
+  }
+  if (norm.includes("cripto") || norm.includes("btc") || norm.includes("crypto") || norm.includes("bitcoin")) {
+    return "hsl(var(--cat-5))";
+  }
+  if (norm.includes("etf")) {
+    return "hsl(var(--cat-1))";
+  }
+
+  return "hsl(var(--cat-10))";
 }
 
 export function buildPerformanceSeries(

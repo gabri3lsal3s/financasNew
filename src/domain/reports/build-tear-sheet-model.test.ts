@@ -56,8 +56,13 @@ const mockConcentration: ConcentrationRiskResult = {
 describe("buildTearSheetModel", () => {
   it("mapeia cores semânticas CSS sem literais hex", () => {
     expect(resolveAssetClassTokenColor("Ações")).toBe("hsl(var(--primary-strong))");
+    expect(resolveAssetClassTokenColor("Ações Brasil")).toBe("hsl(var(--primary-strong))");
     expect(resolveAssetClassTokenColor("FIIs")).toBe("hsl(var(--accent))");
+    expect(resolveAssetClassTokenColor("Fundos Imobiliários")).toBe("hsl(var(--accent))");
     expect(resolveAssetClassTokenColor("Internacional")).toBe("hsl(var(--portfolio))");
+    expect(resolveAssetClassTokenColor("Internacional Global")).toBe("hsl(var(--portfolio))");
+    expect(resolveAssetClassTokenColor("Reserva de Caixa")).toBe("hsl(var(--cat-2))");
+    expect(resolveAssetClassTokenColor("Renda Fixa")).toBe("hsl(var(--cat-7))");
     expect(resolveAssetClassTokenColor("Desconhecida")).toBe("hsl(var(--cat-10))");
   });
 

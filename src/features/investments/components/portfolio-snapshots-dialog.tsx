@@ -119,7 +119,7 @@ export function PortfolioSnapshotsDialog({
       >
         <ReportHeader
           title="Extrato Analítico de Evolução Patrimonial"
-          subtitle="Auditoria cronológica da evolução de patrimônio, custos, proventos e rentabilidade ponderada (TWR) mês a mês."
+          subtitle="Histórico Mensal Consolidado · Evolução Patrimonial, Retorno Pessoal & TWR"
           periodLabel={selectedYear === "all" ? "Histórico Completo" : `Ano ${selectedYear}`}
           generatedAt={formatDateBR(todayLocalIso())}
         />

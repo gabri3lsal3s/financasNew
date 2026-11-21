@@ -37,12 +37,12 @@ export function TearSheetAllocationSection({
       <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 shadow-xs print:overflow-visible">
         <table className="w-full min-w-[560px] sm:min-w-0 text-left text-xs border-collapse table-fixed">
           <colgroup>
-            <col className="w-[30%] min-w-[140px]" />
+            <col className="w-[26%] min-w-[120px]" />
+            <col className="w-[17%]" />
+            <col className="w-[11%]" />
+            <col className="w-[11%]" />
+            <col className="w-[17%]" />
             <col className="w-[18%]" />
-            <col className="w-[13%]" />
-            <col className="w-[13%]" />
-            <col className="w-[14%]" />
-            <col className="w-[12%]" />
           </colgroup>
           <thead>
             <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
@@ -96,7 +96,7 @@ export function TearSheetAllocationSection({
                     <Badge
                       variant={row.isDeficit ? "default" : row.isSurplus ? "muted" : "positive"}
                       size="xs"
-                      className="font-bold font-sans"
+                      className="font-bold font-sans whitespace-nowrap"
                     >
                       {row.isDeficit ? "Abaixo da Meta" : row.isSurplus ? "Acima da Meta" : "Equilibrado"}
                     </Badge>

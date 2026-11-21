@@ -1,5 +1,24 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.14.0 (Build 97 — Fechamento Release v1.0 do Motor de Relatórios Axir — Scorecard 9,9/10 Homologado)** registra a conclusão integral dos 7 micro-ajustes cirúrgicos finais da **Release v1.0** dos 8 relatórios executivos Axir (2026-11-21):
+> - **(1) Paleta Semântica Exclusiva de 5 Cores no Donut de Classes (Dossiê 6, Pág. 3)**:
+>   - Heurística canônica em `resolveAssetClassTokenColor` mapeando nomes compostos de classes para seus respectivos tokens do Design System (Ações em Teal, FIIs em Âmbar, Internacional em Azul Céu, Caixa em Esmeralda e Renda Fixa em Menta), eliminando a colisão de 4 classes no mesmo tom cinza;
+> - **(2) Erradicação de Corte na Coluna Status (Dossiê 6, Pág. 1)**:
+>   - Rebalanceamento do `<colgroup>` da matriz de diagnóstico de alocação expandindo `Status` de 12% para 18% com `whitespace-nowrap`, eliminando corte em `Abaixo da Meta` e `Acima da Meta`;
+> - **(3) Reposicionamento de Base Ponderada (Balanço 360°)**:
+>   - Badge `BASE PONDERADA` agrupado inline diretamente após o título `DRE Pessoal` no cabeçalho da seção, erradicando qualquer colisão com a margem direita da página;
+> - **(4) Polimento da Fatura de Cartão (Fatura 5)**:
+>   - Substituição do ícone de fatura bruta por `CreditCard` vetorial limpo, renderização de travessão fino (`—`) em parcelas para compras à vista e expansão de padding entre Descrição e Categoria;
+> - **(5) Unificação de Renda Fixa e Caixa na Carteira Mensal (Carteira 7)**:
+>   - Sincronização do indexador com taxa completa (`IPCA + 6,24% a.a. · Venc. Ago/2032`), alinhamento de custo consolidado (R$ 100.318,93) e contador reativo do cabeçalho (`4 classes + Caixa`);
+> - **(6) Blindagem Anti-Quebra de Moedas e Acentuação CUSTÓDIA (Dossiê 6 e DRE 1)**:
+>   - Blindagem com `whitespace-nowrap` estrito na faixa de Caixa e nos montantes da Cascata DRE (`R$ 8.940,00` e `R$ 9.560,00`), impedindo ejeção isolada do símbolo `R$`;
+>   - Acentuação física de `CUSTÓDIA CONSOLIDADA DE ATIVOS POR CLASSE` no Dossiê 6;
+> - **(7) Verificação Automatizada e Zero Regressões (QA Release v1.0)**:
+>   - 0 ocorrências de cortes de status, 0 caracteres não resolvidos, 0 quebras de `R$`, 0 espaços após vírgula decimal;
+>   - 213 arquivos e 3.048 testes de domínio Vitest 100% aprovados;
+>   - APK Release Build 97 compilado e distribuído via Cloudflare R2.
+>
 > **v3.14.0 (Build 96 — Polimento Final do Motor de Relatórios, Logo Oficial e Arquitetura Multipágina SSOT — Scorecard 9,7/10 Homologado)** registra a conclusão integral do **Plano Mestre de Refinamento e Polimento Final (v5)** dos 8 relatórios executivos Axir (2026-11-21):
 > - **(1) Logo Oficial & Coerência Visual de Nível (PRO / Teste PRO / Padrão)**:
 >   - Substituição do SVG legado pelo componente canônico `<LogoIcon />` com suporte a `priority` e modo claro institucional;
@@ -7757,6 +7776,30 @@ flowchart TD
 >   - Scorecard final de auditoria externa emitido em `RELATORIO_FINAL_CERTIFICACAO_MOTOR_V5.md` com nota **9,7 / 10**;
 >   - Suíte Playwright E2E 8/8 aprovada; 213 arquivos e 3.048 testes de domínio Vitest aprovados;
 >   - Build Android Release 96 (`dist-apk/guia-financeiro-release.apk`) compilado e publicado no Cloudflare R2 (`axis-releases`).
+
+---
+
+### Fase 118 — Fechamento Release v1.0 do Motor de Relatórios Axir (Build 97 — ID BR-20261121-1045)
+
+> **Status:** Concluída, Auditada e Homologada — **7 Micro-Ajustes Cirúrgicos Finais e Certificação de Release v1.0 (Scorecard 9,9/10)**:
+> - **Paleta Semântica de 5 Cores no Donut de Classes (Dossiê 6, Pág. 3):**
+>   - Heurística canônica em `resolveAssetClassTokenColor` mapeando nomes compostos de classes para seus respectivos tokens do Design System (Ações em Teal, FIIs em Âmbar, Internacional em Azul Céu, Caixa em Esmeralda e Renda Fixa em Menta), eliminando a colisão de 4 classes no mesmo tom cinza;
+> - **Erradicação de Corte na Coluna Status (Dossiê 6, Pág. 1):**
+>   - Rebalanceamento do `<colgroup>` da matriz de diagnóstico de alocação expandindo `Status` de 12% para 18% com `whitespace-nowrap`, eliminando corte em `Abaixo da Meta` e `Acima da Meta`;
+> - **Reposicionamento de Base Ponderada (Balanço 360°):**
+>   - Badge `BASE PONDERADA` agrupado inline diretamente após o título `DRE Pessoal` no cabeçalho da seção, erradicando qualquer colisão com a margem direita da página;
+> - **Polimento da Fatura de Cartão (Fatura 5):**
+>   - Substituição do ícone de fatura bruta por `CreditCard` vetorial limpo, renderização de travessão fino (`—`) em parcelas para compras à vista e expansão de padding entre Descrição e Categoria;
+> - **Unificação de Renda Fixa e Caixa na Carteira Mensal (Carteira 7):**
+>   - Sincronização do indexador com taxa completa (`IPCA + 6,24% a.a. · Venc. Ago/2032`), alinhamento de custo consolidado (R$ 100.318,93) e contador reativo do cabeçalho (`4 classes + Caixa`);
+> - **Blindagem Anti-Quebra de Moedas e Acentuação CUSTÓDIA (Dossiê 6 e DRE 1):**
+>   - Blindagem com `whitespace-nowrap` estrito na faixa de Caixa e nos montantes da Cascata DRE (`R$ 8.940,00` e `R$ 9.560,00`), impedindo ejeção isolada do símbolo `R$`;
+>   - Acentuação física de `CUSTÓDIA CONSOLIDADA DE ATIVOS POR CLASSE` no Dossiê 6;
+> - **Verificação Automatizada e Zero Regressões (QA Release v1.0):**
+>   - 0 ocorrências de cortes de status, 0 caracteres não resolvidos, 0 quebras de `R$`, 0 espaços após vírgula decimal;
+>   - 213 arquivos e 3.048 testes de domínio Vitest 100% aprovados;
+>   - APK Release Build 97 compilado e distribuído via Cloudflare R2.
+
 
 
 

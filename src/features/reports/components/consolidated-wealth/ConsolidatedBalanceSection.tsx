@@ -120,15 +120,17 @@ export function ConsolidatedBalanceSection({
       {/* DRE Pessoal */}
       <section aria-label="DRE Pessoal" className="flex flex-col gap-2 break-inside-avoid">
         <div className="flex items-center justify-between border-b border-border/80 pb-1">
-          <div className="flex items-center gap-1.5">
-            <Landmark className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              DRE Pessoal
-            </h3>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <Landmark className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                DRE Pessoal
+              </h3>
+            </div>
+            <span className="rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 text-[8px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0 font-mono">
+              Base Ponderada
+            </span>
           </div>
-          <span className="rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 text-[8.5px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0 font-mono">
-            Base Ponderada
-          </span>
         </div>
         <div className="rounded-lg border border-border/80 overflow-hidden text-xs">
           <table className="w-full text-left border-collapse table-fixed">

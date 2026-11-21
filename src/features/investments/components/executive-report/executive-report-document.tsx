@@ -206,7 +206,7 @@ export function ExecutiveReportDocument({
               </span>
             </div>
             <span className="text-[10px] font-mono text-muted-foreground">
-              {classGroups.length} {classGroups.length === 1 ? "classe" : "classes"} sob custódia
+              {classGroups.length} {classGroups.length === 1 ? "classe" : "classes"}{hasSeparateCash ? " + Caixa" : " sob custódia"}
             </span>
           </div>
 

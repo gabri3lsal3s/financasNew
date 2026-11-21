@@ -52,11 +52,11 @@ export function ReportClassTables({ groups }: ReportClassTablesProps) {
                     · Disponibilidades &amp; Liquidez Imediata
                   </span>
                 </div>
-                <div className="flex items-center gap-2 font-mono num">
-                  <span className="font-bold text-foreground">
+                <div className="flex items-center gap-1.5 font-mono num whitespace-nowrap shrink-0">
+                  <span className="font-bold text-foreground whitespace-nowrap">
                     <MoneyText cents={group.totalCents} />
                   </span>
-                  <span className="text-muted-foreground font-semibold text-[11px]">
+                  <span className="text-muted-foreground font-semibold text-[11px] whitespace-nowrap">
                     ({formatPercent(group.sharePct)}%)
                   </span>
                 </div>
