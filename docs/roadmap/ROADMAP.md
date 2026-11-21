@@ -7726,6 +7726,39 @@ flowchart TD
 >   - Preservação do símbolo de volatilidade grega minúscula `(σ)` contra transformação indesejada por `uppercase`, e pluralização gramatical natural em proventos autossustentáveis.
 > - **QA & Validação:** Todos os 8 relatórios A4 re-gerados fisicamente; suítes Vitest (`src/features/reports/`, `src/components/modules/reports/`, `src/domain/portfolio/`) 100% verdes (63/63 testes); `npx tsc -b` 0 erros; `npm run lint` 0 erros; Build 95 homologado.
 
+---
+
+### Fase 117 — Polimento Final do Motor de Relatórios, Logo Oficial e Arquitetura Multipágina SSOT (Build 96 — ID BR-20261121-0354)
+
+> **Status:** Concluída, Auditada e Homologada — **Plano Mestre de Polimento Final (v5) e Padronização Institucional Axir**:
+> - **Logo Oficial e Status de Assinatura Reativo (P0):**
+>   - Substituição do SVG legado de ~140 linhas em `report-header.tsx` pelo componente canônico oficial `<LogoIcon priority themeMode="light" isProTier={isPro} />`.
+>   - Coerência visual estrita por tier de assinatura:
+>     * Badge `PRO` em âmbar e logo âmbar para assinantes Pro ativos;
+>     * Badge `TESTE PRO` em âmbar para usuários em período de teste (*trial* de 30 dias);
+>     * Logo institucional Teal canônica para o nível Free.
+>   - Cabeçalhos contínuos de repetição (`report-running-header.tsx`) integrando o micro-logo oficial (`size-3.5`) sem interferência no fluxo de impressão.
+> - **Arquitetura Única de Rodapé Multipágina SSOT (Bloco 2):**
+>   - Refatoração do componente primitivo `<ReportFooter />` com suporte a duas variantes funcionais explícitas:
+>     * `variant="running"`: rodapé contínuo de 1 linha com titular, ID e paginação (`Página X de Y`) para páginas intermediárias (DRE Pág. 2, Carteira Mensal Pág. 1, Dossiê Págs. 2 a 6);
+>     * `variant="full"`: bloco jurídico institucional completo (QR Code, chancela de encerramento, disclaimer CVM / LGPD e paginação final) exibido com exclusividade na última folha de cada relatório (`page === totalPages`).
+> - **Fechamento Matemático e Alinhamento Aritmético (Bloco 1):**
+>   - Dossiê 6 (Alocação): base de alocação unificada (`allocationBaseBRL`), alinhando a narrativa executiva com a tabela (Ações Brasil com déficit de -R$ 684,63 e Internacional com superávit de +R$ 1.251,22) e fechamento estrito em 100,00%.
+>   - Carteira 7: reconciliação de custo somando Caixa (R$ 100.318,93), total de R$ 106.377,43 e retorno consolidado exato de +6,0%.
+>   - DRE 1: restauração defensiva de competência e datas na tabela de faturas de cartão quitadas (Nubank Ago/2026, 10/08/2026, R$ 5.280,00).
+>   - FIRE 4: série histórica completa de 12 meses nos dividendos mensais (`fireMonthlyDividendsMock`) com R$ 878,00 no último mês.
+> - **Acabamento Visual e Erradicação de Truncamentos (Bloco 3):**
+>   - Balanço 360°: Donut com `R$` empilhado sobre o valor monetário (`text-[7.5px]` sobre `text-[9.5pt] font-mono font-bold`), respiro lateral perfeito e zero clipping.
+>   - Facilitador IRPF: títulos dos grupos fiscais sem truncamento `TES...` e subtotais com `whitespace-nowrap`.
+>   - Benchmarks (Dossiê 6): alinhamento dos 4 cards de risco (`SHARPE`, `MAX DRAWDOWN`, `VOLATILIDADE (σ)`, `CONSISTÊNCIA`) em 1 linha única sem quebras e supressão de reticências `…` na impressão.
+>   - Higienização de Ícones: aplicação de `print:hidden` em ícones decorativos, garantindo extração de texto 100% limpa sem resíduos de caracteres ASCII.
+> - **Homologação, QA e Distribuição:**
+>   - 8/8 PDFs e previews PNG re-gerados em alta resolução e arquivados;
+>   - Scorecard final de auditoria externa emitido em `RELATORIO_FINAL_CERTIFICACAO_MOTOR_V5.md` com nota **9,7 / 10**;
+>   - Suíte Playwright E2E 8/8 aprovada; 213 arquivos e 3.048 testes de domínio Vitest aprovados;
+>   - Build Android Release 96 (`dist-apk/guia-financeiro-release.apk`) compilado e publicado no Cloudflare R2 (`axis-releases`).
+
+
 
 
 
