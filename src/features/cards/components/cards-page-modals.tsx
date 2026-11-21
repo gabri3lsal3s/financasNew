@@ -161,7 +161,7 @@ export function CardsPageModals({
           open={printOpen}
           onOpenChange={onPrintOpenChange}
           title={`Fatura — ${selectedCard.name}`}
-          documentTitle={`Fatura_${selectedCard.name.replace(/[^a-zA-Z0-9_\u00C0-\u00FF]+/g, "_")}_${effectiveMonth}.pdf`}
+          documentTitle={`AXIR_Fatura_${selectedCard.name.replace(/[^a-zA-Z0-9_\u00C0-\u00FF]+/g, "_")}_${effectiveMonth}.pdf`}
           size="2xl"
         >
           <CardInvoicePrintView

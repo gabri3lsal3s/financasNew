@@ -57,11 +57,15 @@ export function ReportRiskGauge({
       </div>
 
       <div className="relative flex flex-col gap-1.5 pt-4 pb-1">
-        <div className="relative h-2 w-full rounded-full overflow-hidden flex border border-border/80">
-          <div style={{ width: `${warningThresholdPct}%` }} className="h-full bg-positive-strong" title="Zona Segura" />
+        <div className="relative h-2 w-full rounded-full overflow-hidden flex border border-border/80 bg-muted/20">
+          <div
+            style={{ width: `${warningThresholdPct}%` }}
+            className="h-full bg-positive-strong border-r-2 border-white dark:border-surface"
+            title="Zona Segura"
+          />
           <div
             style={{ width: `${criticalThresholdPct - warningThresholdPct}%` }}
-            className="h-full bg-warning-strong"
+            className="h-full bg-warning-strong border-r-2 border-white dark:border-surface"
             title="Zona de Atenção"
           />
           <div

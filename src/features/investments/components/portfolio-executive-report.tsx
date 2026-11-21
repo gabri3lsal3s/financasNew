@@ -136,7 +136,7 @@ export function PortfolioExecutiveReport({
       open={open}
       onOpenChange={onOpenChange}
       title="Relatório Executivo da Carteira"
-      documentTitle={`Relatorio_Executivo_Carteira_${selectedMonth}.pdf`}
+      documentTitle={`AXIR_Relatorio_Executivo_Carteira_${selectedMonth}.pdf`}
       size="3xl"
     >
       <div className="flex flex-col gap-4 w-full">

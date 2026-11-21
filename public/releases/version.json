@@ -1,17 +1,19 @@
 {
   "version": "3.14.0",
-  "versionCode": 93,
-  "releaseDate": "2026-11-20T23:49:16Z",
+  "versionCode": 94,
+  "releaseDate": "2026-11-21T01:10:00Z",
   "minSupportedVersion": "3.14.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
   "sha256": "5306b3b7c3449519fd91f9d8a482f6098ea1252e73a7800fafc96518ef460992",
   "fileSizeBytes": 12301626,
   "changelog": [
-    "Axir v3.14.0 (Build 93): Refinamento Editorial Avancado & Integridade de Documentos",
-    "Padronizacao de nomes de arquivo de download institucional (ASCII sem espacos e carimbo temporal)",
-    "Unidades monetarias explicitas (R$) e semantica formal em todas as colunas de demonstrativos",
-    "Eliminacao de truncamento cego em faturas e alinhamento milimetrico de colunas em ledgers",
-    "Semantica contabil estruturada thead na DRE consolidada e sinalizacao explicita para impressao PB",
-    "Expansao do modal de extrato patrimonial para size 3xl no desktop"
+    "Axir v3.14.0 (Build 94): Excelencia Visual, Identidade Institucional Axir e Otimizacao A4",
+    "Restauracao da marca oficial orbital Axir 3D em vetor SVG nos cabecalhos e running headers",
+    "Conquista de One-Pager perfeito no Extrato de Snapshots (1 pagina exata sem folha orfa)",
+    "Condensacao dos Raios-X no Dossie da Posicao Vigente em grade 2x2 responsiva (6 paginas)",
+    "Introducao de hideCurrency em MoneyText e alinhamento numerico tabular estrito em tabelas",
+    "Separadores vetoriais em graficos de barras e gauges de risco para fidelidade de impressao PB",
+    "Padronizacao canonica dos nomes de download de PDF (AXIR_TIPO_TITULAR_COMPETENCIA.pdf)",
+    "Re-geracao fisica de todos os 8 relatorios A4 de amostra com selo de certificacao visual"
   ]
 }

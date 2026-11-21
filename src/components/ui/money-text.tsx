@@ -33,6 +33,8 @@ export interface MoneyTextProps extends Omit<HTMLAttributes<HTMLSpanElement>, "c
   animated?: boolean;
   /** Se true, oculta a fração de centavos (ex: "R$ 1.250"). Padrão false. */
   hideCents?: boolean;
+  /** Se true, omite o prefixo da moeda (ex: exibe "1.250,00" em vez de "R$ 1.250,00"). Padrão false. */
+  hideCurrency?: boolean;
   /** Suaviza visualmente a fração decimal `,XX` (padrão true quando `variant === "hero"`). */
   deemphasizeCents?: boolean;
 }
@@ -88,6 +90,7 @@ export function MoneyText({
   sign = "auto",
   animated = false,
   hideCents = false,
+  hideCurrency = false,
   deemphasizeCents,
   className,
   ...props
@@ -99,6 +102,9 @@ export function MoneyText({
   const resolvedTone = resolveTone(tone, cents);
   const prefix = signPrefix(sign, cents);
 
+  const cleanCurrencyPrefix = (str: string) =>
+    hideCurrency ? str.replace(/^(R\$|US\$)\s*/, "") : str;
+
   if (animated) {
     return (
       <span
@@ -109,11 +115,15 @@ export function MoneyText({
         <NumberTicker
           value={Math.abs(cents)}
           format={(absVal) =>
-            formatCentsAsCurrency(Math.round(absVal), currency, { hideCents: shouldHideCents })
+            cleanCurrencyPrefix(
+              formatCentsAsCurrency(Math.round(absVal), currency, { hideCents: shouldHideCents }),
+            )
           }
           renderValue={(absVal) =>
             formatMoneyNode(
-              formatCentsAsCurrency(Math.round(absVal), currency, { hideCents: shouldHideCents }),
+              cleanCurrencyPrefix(
+                formatCentsAsCurrency(Math.round(absVal), currency, { hideCents: shouldHideCents }),
+              ),
               shouldDeemphasizeCents,
             )
           }
@@ -122,7 +132,8 @@ export function MoneyText({
     );
   }
 
-  const formatted = `${prefix}${formatCentsAsCurrency(Math.abs(cents), currency, { hideCents: shouldHideCents })}`;
+  const rawFormatted = formatCentsAsCurrency(Math.abs(cents), currency, { hideCents: shouldHideCents });
+  const formatted = `${prefix}${cleanCurrencyPrefix(rawFormatted)}`;
 
   return (
     <span

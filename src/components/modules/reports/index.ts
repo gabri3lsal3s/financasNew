@@ -2,6 +2,7 @@ export { ReportDocumentLayout, type ReportDocumentLayoutProps } from "./report-d
 export {
   ReportHeader,
   ReportRunningHeader,
+  AxirBrandLogo,
   AxirMonogram,
   type ReportHeaderProps,
   type ReportRunningHeaderProps,

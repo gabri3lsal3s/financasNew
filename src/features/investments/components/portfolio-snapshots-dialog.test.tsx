@@ -81,15 +81,15 @@ describe("PortfolioSnapshotsDialog", () => {
     expect(dialog.getByRole("columnheader", { name: "Custo" })).toBeInTheDocument();
     expect(dialog.getByRole("columnheader", { name: "Proventos Mês" })).toBeInTheDocument();
     expect(dialog.getByRole("columnheader", { name: "Proventos Acum." })).toBeInTheDocument();
-    expect(dialog.getByRole("columnheader", { name: "Mês (TWR %)" })).toBeInTheDocument();
-    expect(dialog.getByRole("columnheader", { name: "Retorno Total" })).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "TWR Mês" })).toBeInTheDocument();
+    expect(dialog.getByRole("columnheader", { name: "Ret. Total" })).toBeInTheDocument();
     expect(dialog.getByRole("columnheader", { name: "TWR Acum." })).toBeInTheDocument();
     expect(dialog.getByRole("columnheader", { name: "Cota (R$)" })).toBeInTheDocument();
     expect(dialog.getByRole("columnheader", { name: "Ações" })).toBeInTheDocument();
 
-    expect(dialog.getByText(/R\$[\s\u00a0]500,00$/)).toBeInTheDocument();
-    expect(dialog.getByText(/R\$[\s\u00a0]450,00$/)).toBeInTheDocument();
-    expect(dialog.getByText(/R\$[\s\u00a0]300,00$/)).toBeInTheDocument();
+    expect(dialog.getByText(/^500,00$/)).toBeInTheDocument();
+    expect(dialog.getByText(/^450,00$/)).toBeInTheDocument();
+    expect(dialog.getByText(/^300,00$/)).toBeInTheDocument();
 
     expect(dialog.getByText(/\+2[.,]50%/)).toBeInTheDocument();
     expect(dialog.getByText(/\+1[.,]20%/)).toBeInTheDocument();
@@ -184,7 +184,9 @@ describe("PortfolioSnapshotsDialog", () => {
 
     const dialog = within(screen.getByRole("dialog"));
     expect(dialog.getByText(/-1[.,]75%/)).toBeInTheDocument();
-    expect(dialog.getAllByText(/R\$[\s\u00a0]0,00$/).length).toBe(2);
+    // Proventos no período no card de KPI exibe R$ 0,00 e a célula da tabela com hideCurrency exibe 0,00
+    expect(dialog.getByText(/R\$[\s\u00a0]0,00$/)).toBeInTheDocument();
+    expect(dialog.getByText(/^0,00$/)).toBeInTheDocument();
   });
 
   it("exibe badge provisório para competência histórica com status provisional", () => {

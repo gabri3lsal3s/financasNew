@@ -874,9 +874,7 @@ html[data-density="compact"] {
   /* Ritmo vertical fluido e sem estrangulamento para fluxo contínuo e paginação A4 */
   .print-sheet,
   .print-sheet .print-document,
-  .print-sheet .print-area,
-  .print-sheet > div,
-  .print-sheet section {
+  .print-sheet .print-area {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;

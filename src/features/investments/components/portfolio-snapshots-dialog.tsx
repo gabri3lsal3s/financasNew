@@ -96,7 +96,11 @@ export function PortfolioSnapshotsDialog({
         open={open}
         onOpenChange={onOpenChange}
         title="Extrato Analítico de Evolução Patrimonial"
-        documentTitle="Extrato_Evolucao_Patrimonial.pdf"
+        documentTitle={
+          selectedYear === "all"
+            ? "AXIR_Extrato_Snapshots_Consolidado.pdf"
+            : `AXIR_Extrato_Snapshots_${selectedYear}.pdf`
+        }
         size="3xl"
       >
         <ReportHeader

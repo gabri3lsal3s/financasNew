@@ -1,8 +1,8 @@
 # Arquitetura e Plano Diretor Editorial de Relatórios — Axir
 ## Tratado Unificado: Auditoria Visual, Engenharia de Design System e Governança Editorial
 
-> **Status:** Blocos 0 a 5 Concluídos e Homologados (v3.14.0 - Build 93)  
-> **Versão:** 11.0 (Extensão Pós-Auditoria de Relatórios Gerados: Integridade Estrutural, Acessibilidade e Resiliência Concluída)  
+> **Status:** Blocos 0 a 6 Concluídos e Homologados (v3.14.0 - Build 94)  
+> **Versão:** 12.0 (Excelência Visual, Identidade Institucional Axir, Otimização Tipográfica e Orçamento de Página A4 Concluída)  
 > **Documentos de Referência Integrados:**  
 > - `docs/plans/PLANO_MESTRE_AUDITORIA_VISUAL_UX_E_PADRONIZACAO.md` (Governança Global de UI e 20 Dimensões)  
 > - `docs/design/DESIGN_SYSTEM.md` e `src/styles/tokens.css` (Design Tokens e Paleta Canônica)  
@@ -350,6 +350,16 @@ flowchart TD
 - **Fase 33 (Fidelidade Monocromática e Sinais Explícitos em Impressão P&B) [CONCLUÍDO]:** Padronização de sinais explícitos (`sign="explicit"` no `MoneyText`) e peso semântico contábil para deltas e resultados operacionais, garantindo legibilidade perfeita mesmo em impressões sem cor.
 - **Fase 34 (Validação, Regressão Automatizada e Re-geração dos PDFs de Amostra) [CONCLUÍDO]:** Execução da suíte completa de testes (`vitest`), checagem estrita de lint (`eslint .`), compilação (`tsc -b`), testes E2E (`playwright`), empacotamento do Android APK (Build 93 - v3.14.0) e publicação no Cloudflare R2.
 
+#### Bloco 6: Excelência Visual, Identidade Institucional Axir, Otimização Tipográfica e Orçamento de Página A4 [CONCLUÍDO - Build 94]
+- **Fase 35 (Restauração da Marca Oficial Axir) [CONCLUÍDO]:** Substituição do monograma improvisado simplificado pelo logo oficial e canônico da Axir (`AxirBrandLogo`), renderizado em vetor SVG de alta fidelidade com anéis orbitais e esferas concêntricas 3D em gradientes Teal (`#1B6B62`, `#0F443E`) e Ouro/Âmbar (`#F59E0B`, `#DDA726`). Integrado no cabeçalho institucional (`ReportHeader`) e nos micro-logos de repetição multi-página (`ReportRunningHeader`), mantendo `AxirMonogram` como alias retrocompatível.
+- **Fase 36 (Orçamento de Página A4 & One-Pager no Extrato de Snapshots) [CONCLUÍDO]:** Diagnóstico e saneamento da anomalia de CSS em `globals.css` (`.print-sheet section { display: block !important }`) que desconstruía o `ReportKpiGrid` horizontal em 4 linhas empilhadas na impressão. Ajuste proporcional do gráfico em `snapshots-evolution-chart.tsx` (`print:h-16`), alcançando um documento One-Pager de 1 folha exata (204.7 KB) e erradicando a página órfã 2.
+- **Fase 37 (Condensação dos Raios-X no Dossiê da Posição Vigente) [CONCLUÍDO]:** Substituição de quebras duras de página entre classes em `TearSheetCustodyAndBreakdowns.tsx` por uma grade responsiva 2x2 (`print:grid-cols-2 gap-3.5`) para Ações, FIIs, Renda Fixa e Internacional, reduzindo a extensão do relatório de 7 para 6 páginas ricas e densas.
+- **Fase 38 (Micro-Tipografia Contábil: Propriedade hideCurrency no MoneyText) [CONCLUÍDO]:** Adição da prop `hideCurrency?: boolean` no primitivo `<MoneyText />`, suprimindo o prefixo `R$` / `US$` mantendo formatação inteira/centavos para tabelas onde o cabeçalho da coluna já declara a unidade contábil.
+- **Fase 39 (Alinhamento Numérico Tabular e Erradicação de Colisão) [CONCLUÍDO]:** Aplicação de `hideCurrency` nas colunas de valores monetários de `snapshots-ledger-table.tsx` (`Patrimônio (R$)`, `Custo (R$)`, `Prov. Mês (R$)`, `Prov. Acum. (R$)`, `Cota (R$)`), enxugamento dos rótulos de cabeçalho (`Prov. Mês (R$)`, `Prov. Acum. (R$)`, `TWR Mês`, `Ret. Total`, `TWR Acum.`) e alinhamento milimétrico estrito à direita com algarismos tabulares (`tabular-nums`), erradicando sobreposição de textos.
+- **Fase 40 (Gráficos com Separadores Vetoriais e Fidelidade P&B) [CONCLUÍDO]:** Inclusão de micro-divisores vetoriais de 2px (`border-r-2 border-surface dark:border-background`) nos segmentos de `ReportStackedBar.tsx` e no velocímetro de risco segmentado `ReportRiskGauge.tsx`, garantindo separação óptica nítida e fidelidade em impressoras monocromáticas.
+- **Fase 41 (Nomenclatura Canônica Institucional de Downloads de PDF) [CONCLUÍDO]:** Padronização estrita de `documentTitle` em todos os modais de relatórios para o formato estruturado `AXIR_[TIPO]_[TITULAR]_[COMPETENCIA].pdf`, eliminando caracteres especiais e gerando arquivos com nomenclatura institucional uniforme para arquivamento digital.
+- **Fase 42 (Re-geração Física e Certificação dos 8 Relatórios A4) [CONCLUÍDO]:** Re-geração e validação integral de todos os 8 PDFs físicos de amostra e PNGs de visualização em alta resolução no diretório de artefatos.
+
 ---
 
 ## 8. Governança de Validação e Critérios de Aceite (DoD)
@@ -409,3 +419,20 @@ A geração bem-sucedida das primeiras 5 amostras reais de PDF A4 (`RELATORIO_EX
    - *Causa Raiz:* `PortfolioSnapshotsDialog.tsx` está fixado em `size="2xl"` (1024px).
    - *Impacto:* Compressão das 10 colunas analíticas em telas normais de desktop.
    - *Solução:* Migrar para `size="3xl"` (1280px), em conformidade estrita com a Regra 18 do `AGENTS.md`.
+
+---
+
+## 10. Bloco 6: Detalhamento Técnico da Excelência Visual e Identidade da Marca
+
+### 10.1 Restauração da Identidade Visual Canônica (AxirBrandLogo)
+- **Monograma vs. Logo Oficial:** O monograma SVG simplificado utilizado provisoriamente no Bloco 1 foi substituído pela marca orbital autêntica da Axir (`AxirBrandLogo`).
+- **Engenharia Vetorial SVG:** Composto por esferas e anéis orbitais tridimensionais com gradientes lineares e radiais de alta precisão (`axir-rpt-core`, `axir-rpt-orbit-teal`, `axir-rpt-orbit-gold`).
+- **Proteção de Namespace de IDs:** O uso do prefixo `axir-rpt-*` impede conflitos de estilização de SVG quando renderizado em conjunto com outros ícones ou gráficos na mesma página web ou documento de impressão.
+
+### 10.2 Orçamento de Altura A4 e Erradicação de Páginas Fantasma
+- **Quebra Involuntária de Grids:** A regra legada `.print-sheet section { display: block !important; }` forçava tags `<section>` a perderem a formatação `display: grid`, convertendo faixas de 4 KPIs em 4 linhas empilhadas de altura total (~210px desperdiçados). A remoção seletiva dessa regra restaurou a linha horizontal canônica do `ReportKpiGrid`.
+- **One-Pager no Extrato Analítico:** Com o gráfico de evolução compactado para `print:h-16` e a faixa de 4 KPIs preservada em 1 linha horizontal, o Extrato de 26 Competências coube perfeitamente nos 1016px úteis da folha física A4, alcançando um One-Pager impecável (1 página / 204.7 KB).
+
+### 10.3 Disciplina Micro-Tipográfica e Algarismos Tabulares
+- **Propriedade `hideCurrency`:** A redundância da sigla `R$` em tabelas densas com cabeçalhos explícitos `(R$)` foi eliminada no primitivo `<MoneyText hideCurrency />`.
+- **Largura e Alinhamento:** Sem a largura ocupada pelo prefixo `R$ `, os números monetários contam com espaço livre para tipografia tabular pura (`font-mono tabular-nums text-right`), prevenindo qualquer colisão visual com as colunas adjacentes mesmo em valores de 7 dígitos.

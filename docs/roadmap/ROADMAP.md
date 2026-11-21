@@ -85,6 +85,15 @@
 >   - Fase 32: Inclusão de `<thead>` com escopo acessível na DRE do Balanço 360° e micro-bordas em marcadores vetoriais;
 >   - Fase 33: Sinais explícitos contábeis (`sign="explicit"`) para fidelidade total em impressões monocromáticas P&B;
 >   - Fase 34: Bateria integral de testes, linting, testes E2E Playwright, compilação do APK Android (Build 93) e upload no R2.
+> - **(7) Excelência Visual, Identidade Institucional Axir, Otimização Tipográfica e Orçamento de Página A4 (Bloco 6 — Fases 35 a 42 — Concluído — Build 94 - v3.14.0)**:
+>   - Fase 35: Restauração da marca oficial Axir (`AxirBrandLogo`) em vetor orbital 3D de alta fidelidade nos cabeçalhos primários e de repetição;
+>   - Fase 36: Saneamento da quebra de grid em impressão no `globals.css` e conquista do One-Pager perfeito no Extrato de Snapshots (1 página / 204.7 KB);
+>   - Fase 37: Condensação dos Raios-X no Dossiê da Posição Vigente em grade 2x2 responsiva, reduzindo de 7 para 6 páginas;
+>   - Fase 38: Propriedade `hideCurrency` em `<MoneyText />` para supressão do prefixo `R$` em células onde a coluna já declara a unidade contábil;
+>   - Fase 39: Alinhamento numérico tabular estrito à direita no ledger de snapshots, eliminando sobreposições e truncamentos;
+>   - Fase 40: Divisores vetoriais de 2px em barras empilhadas e medidores de risco para contraste impecável em impressão P&B;
+>   - Fase 41: Padronização canônica de nomenclatura de download de PDFs (`AXIR_[TIPO]_[TITULAR]_[COMPETENCIA].pdf`);
+>   - Fase 42: Re-geração e validação integral de todos os 8 relatórios físicos A4 e PNGs de visualização em alta resolução no diretório de artefatos.
 >
 > **v3.14.0 (Memória de Cálculo, Auditoria Matemática Forense & Explicabilidade Ativa — Fases 1 a 6 Concluídas)** registra a conclusão integral do **Plano Mestre de Memória de Cálculo e Auditoria Matemática** ([`docs/plans/PLANO_MESTRE_MEMORIA_CALCULO_E_AUDITORIA_MATEMATICA.md`](../plans/PLANO_MESTRE_MEMORIA_CALCULO_E_AUDITORIA_MATEMATICA.md)) cumprindo a Regra 33 do `AGENTS.md` em toda a plataforma (2026-11-20):
 > - **(1) Infraestrutura Canônica de Domínio & Tipagem Multi-Unidade (`src/domain/calculation-memory/`)**:

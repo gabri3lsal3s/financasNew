@@ -36,7 +36,7 @@ export function SnapshotsEvolutionChart({
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 print:gap-2 break-inside-avoid print:break-inside-avoid">
       {/* KPI Strip Institucional de 4 Colunas */}
       <ReportKpiGrid
         columns={4}
@@ -70,13 +70,13 @@ export function SnapshotsEvolutionChart({
       />
 
       {chronological.length >= 2 ? (
-        <div className="rounded-xl border border-border/80 bg-surface p-3 sm:p-4 shadow-xs">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <span className="text-xs font-semibold text-foreground">
+        <div className="rounded-xl border border-border/80 bg-surface p-3 sm:p-4 shadow-xs print:p-2 print:border-border/60">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2 print:mb-1">
+            <span className="text-xs font-semibold text-foreground print:text-[10px]">
               Evolução Patrimônio vs. Custo ({monthLabel(chronological[0]!.month)} a{" "}
               {monthLabel(chronological[chronological.length - 1]!.month)})
             </span>
-            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground print:text-[9px]">
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-2.5 rounded-sm bg-portfolio" aria-hidden="true" />
                 Patrimônio
@@ -90,7 +90,7 @@ export function SnapshotsEvolutionChart({
 
           <svg
             viewBox={`0 0 ${chronological.length * 48} 88`}
-            className="w-full h-24 overflow-visible"
+            className="w-full h-24 print:h-16 overflow-visible"
             role="img"
             aria-label="Gráfico comparativo de evolução patrimonial versus custo aplicado"
           >

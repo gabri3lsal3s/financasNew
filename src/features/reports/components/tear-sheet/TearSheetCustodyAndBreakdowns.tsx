@@ -109,7 +109,7 @@ export function TearSheetCustodyAndBreakdowns({
       )}
 
       <section
-        aria-label="Raios-X de Renda Variável"
+        aria-label="Raios-X Analíticos de Subalocação por Classe"
         className="flex flex-col gap-3 pt-2 print:pt-1 print-break-before-page print:break-before-page break-inside-avoid print:break-inside-avoid"
       >
         <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
@@ -120,11 +120,11 @@ export function TearSheetCustodyAndBreakdowns({
             </h3>
           </div>
           <span className="text-[10px] text-muted-foreground font-mono">
-            Renda Variável (Ações B3 &amp; Fundos Imobiliários)
+            Renda Variável, Renda Fixa &amp; Ativos Internacionais
           </span>
         </div>
 
-        <div className="flex flex-col gap-3.5 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-3.5 w-full">
           <ReportStocksBreakdownCard
             positions={model.breakdownRows}
             mode="print_all"
@@ -135,26 +135,6 @@ export function TearSheetCustodyAndBreakdowns({
             mode="print_all"
             className="print:border-border print:bg-surface print:p-3 print:shadow-none break-inside-avoid print:break-inside-avoid"
           />
-        </div>
-      </section>
-
-      <section
-        aria-label="Raios-X de Renda Fixa e Internacional"
-        className="flex flex-col gap-3 pt-2 print:pt-1 print-break-before-page print:break-before-page break-inside-avoid print:break-inside-avoid"
-      >
-        <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
-          <div className="flex items-center gap-1.5">
-            <Layers className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
-            <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
-              Raios-X de Renda Fixa &amp; Exposição Internacional
-            </h3>
-          </div>
-          <span className="text-[10px] text-muted-foreground font-mono">
-            Indexadores, Emissores, Geografia e Veículos de Dólar
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-3.5 w-full">
           <ReportFixedIncomeBreakdownCard
             positions={model.breakdownRows}
             assetsMetadata={assetsMetadata}

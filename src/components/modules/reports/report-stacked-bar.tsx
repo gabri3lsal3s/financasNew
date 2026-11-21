@@ -62,7 +62,7 @@ export function ReportStackedBar({
               backgroundColor: segment.color,
             }}
             title={`${segment.label}: ${formatPercent(segment.pct)}%`}
-            className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full border-r border-surface/80 last:border-r-0"
+            className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full border-r-2 border-surface dark:border-background last:border-r-0"
           />
         ))}
       </div>

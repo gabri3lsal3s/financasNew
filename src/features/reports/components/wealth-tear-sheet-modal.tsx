@@ -145,7 +145,7 @@ export function WealthTearSheetModal({
       open={open}
       onOpenChange={onOpenChange}
       title="Dossiê Executivo da Posição Vigente Consolidada"
-      documentTitle="Dossie_Executivo_Posicao_Vigente.pdf"
+      documentTitle="AXIR_Dossie_Posicao_Vigente.pdf"
     >
       <ReportHeader
         title="Dossiê Executivo da Posição Vigente Consolidada"

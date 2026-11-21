@@ -111,7 +111,7 @@ export function FinancialCloseReportModal({
       open={open}
       onOpenChange={onOpenChange}
       title="Relatório Executivo de Finanças Pessoais & DRE"
-      documentTitle={`Relatorio_Executivo_Financas_Pessoais_DRE_${periodLabel.replace(/[^a-zA-Z0-9_-]+/g, "_")}.pdf`}
+      documentTitle={`AXIR_DRE_Pessoal_${periodLabel.replace(/[^a-zA-Z0-9_-]+/g, "_")}.pdf`}
     >
       <ReportHeader
         title="Relatório Executivo de Finanças Pessoais & DRE"
