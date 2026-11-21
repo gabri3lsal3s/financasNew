@@ -346,7 +346,7 @@ export function AporteMobileCardList({
                     ) : null}
                     <Button
                       type="button"
-                      variant="secondary"
+                      variant="default"
                       size="sm"
                       onClick={() => toggleExpand(row.assetId)}
                       className="h-7 px-3 text-xs font-semibold gap-1"

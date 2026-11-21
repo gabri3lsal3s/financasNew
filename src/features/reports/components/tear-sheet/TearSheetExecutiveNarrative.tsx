@@ -57,7 +57,7 @@ export function TearSheetExecutiveNarrative({
         subtext:
           portfolioTwr?.annualizedRatePct !== null && portfolioTwr?.annualizedRatePct !== undefined
             ? `${formatSignedPct(portfolioTwr.annualizedRatePct)} a.a. (Padrão CVM)`
-            : `Por cotas (${portfolioTwr?.monthsElapsed ?? 0}m)`,
+            : `TWR Histórico Consolidado (${portfolioTwr?.monthsElapsed ?? 0}m)`,
       }
     : {
         label: "Rentabilidade da Carteira",
@@ -70,6 +70,18 @@ export function TearSheetExecutiveNarrative({
       };
 
   const topDeficit = allocationAnalysis.topDeficitClass;
+  const deficitRows = [...model.allocationRows].filter((r) => r.isDeficit);
+  deficitRows.sort((a, b) => a.deviationBRL - b.deviationBRL);
+  const derivedTopDeficit = deficitRows[0]
+    ? { assetClass: deficitRows[0].assetClass, gapBRL: Math.abs(deficitRows[0].deviationBRL) }
+    : undefined;
+  const effectiveTopDeficit =
+    topDeficit && topDeficit.gapBRL > 0 && topDeficit.assetClass
+      ? topDeficit
+      : derivedTopDeficit;
+
+  const totalCostWithCash = Math.max(totalCostBRL, model.effectiveCostBRL + cashBRL);
+
   const narrative = (
     <span>
       A carteira totaliza{" "}
@@ -86,12 +98,11 @@ export function TearSheetExecutiveNarrative({
         <>
           {" "}(totalizando{" "}
           <strong>
-            <MoneyText cents={numberToCents(totalCostBRL)} className="inline font-bold" />
+            <MoneyText cents={numberToCents(totalCostWithCash)} className="inline font-bold" />
           </strong>{" "}
           com a reserva de caixa)
         </>
-      ) : ""}
-      , acumulando{" "}
+      ) : ""}, acumulando{" "}
       <strong>
         Retorno Total de{" "}
         <MoneyText
@@ -112,7 +123,7 @@ export function TearSheetExecutiveNarrative({
       </span>{" "}
       ({formatSignedPct(model.unrealizedPnlPct)}) {model.unrealizedPnlBRL >= 0 ? "de valorização de cota" : "de desvalorização de cota"} e{" "}
       <MoneyText cents={numberToCents(model.totalDividendsAllTime)} tone="positive" className="inline font-bold" />{" "}
-      em proventos recebidos*
+      em proventos recebidos
       {Math.abs(model.effectiveRealizedGainBRL) >= 0.01 ? (
         <>
           . Somado ao resultado realizado de posições encerradas e resgates (
@@ -132,25 +143,21 @@ export function TearSheetExecutiveNarrative({
             />
           </strong>
           {model.hasTargets ? (
-            <>
-              , com índice de equilíbrio geral de <strong>{allocationAnalysis.alignmentScore}%</strong>.{" "}
-            </>
+            <>, com índice de equilíbrio geral de <strong>{allocationAnalysis.alignmentScore}%</strong>.{" "}</>
           ) : (
             <>.{" "}</>
           )}
         </>
       ) : model.hasTargets ? (
-        <>
-          , com índice de equilíbrio geral de <strong>{allocationAnalysis.alignmentScore}%</strong>.{" "}
-        </>
+        <>, com índice de equilíbrio geral de <strong>{allocationAnalysis.alignmentScore}%</strong>.{" "}</>
       ) : (
         <>.{" "}</>
       )}
-      {model.hasTargets && topDeficit && topDeficit.gapBRL > 0 && topDeficit.assetClass ? (
+      {model.hasTargets && effectiveTopDeficit && effectiveTopDeficit.gapBRL > 0 && effectiveTopDeficit.assetClass ? (
         <>
           Conforme a matriz de alocação definida pelo titular, a classe com maior distanciamento negativo da meta é{" "}
-          <strong>{formatDeficitClassName(topDeficit.assetClass)}</strong> (déficit de{" "}
-          <MoneyText cents={numberToCents(topDeficit.gapBRL)} className="inline font-bold text-primary-strong" />)
+          <strong>{formatDeficitClassName(effectiveTopDeficit.assetClass)}</strong> (déficit de{" "}
+          <MoneyText cents={numberToCents(effectiveTopDeficit.gapBRL)} className="inline font-bold text-primary-strong" />)
           {model.surplusClasses.length > 0 ? (
             <>, enquanto {model.surplusClasses.join(" e ")} {model.surplusClasses.length === 1 ? "encontra-se" : "encontram-se"} em patamar superior ao planejado</>
           ) : (
@@ -172,19 +179,14 @@ export function TearSheetExecutiveNarrative({
         </>
       )}
       {model.intlPct > 0 ? (
-        <>
-          O portfólio mantém <strong>{formatPercent(model.intlPct)}%</strong> de exposição internacional
-        </>
+        <span>O portfólio mantém <strong>{formatPercent(model.intlPct)}%</strong> de exposição internacional</span>
       ) : (
-        <>A totalidade dos ativos está alocada no mercado doméstico</>
+        <span>A totalidade dos ativos está alocada no mercado doméstico</span>
       )}
       {model.topDominance.ticker && model.topDominance.ticker !== "N/A" && model.topDominance.pct > 0 ? (
-        <>
-          , e a posição de maior peso individual é <strong>{sanitizeReportText(model.topDominance.ticker)}</strong>,
-          respondendo por <strong>{formatPercent(model.topDominance.pct)}%</strong> do patrimônio total.
-        </>
+        <span>, e a posição de maior peso individual é <strong>{sanitizeReportText(model.topDominance.ticker)}</strong>, respondendo por <strong>{formatPercent(model.topDominance.pct)}%</strong> do patrimônio total.</span>
       ) : (
-        <>.</>
+        <span>.</span>
       )}
     </span>
   );

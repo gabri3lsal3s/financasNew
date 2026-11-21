@@ -114,6 +114,34 @@ export function inferFixedIncomeRateType(
 }
 
 /**
+ * Infere a data canônica de vencimento do título a partir do ticker ou nome.
+ * Reconhece formatos de 4 dígitos (ex.: "TESOURO-IPCA-2035", "NTN-B 2032")
+ * e de 2 dígitos (ex.: "TESOURO-IPCA-32", "TESOURO-IPCA-35", "PRE-29").
+ */
+export function inferMaturityDateFromTicker(
+  ticker: string,
+  name?: string | null,
+): string | null {
+  const clean = `${ticker} ${name ?? ""}`.toUpperCase();
+
+  // 1. Quatro dígitos (ano completo >= 2024 e <= 2099)
+  const fourDigitMatch = clean.match(/(?:IPCA|PRE|PRÉ|SELIC|TESOURO|NTN|LFT|CDB|LCI|LCA)[^\d]*\b(20[2-9]\d)\b/);
+  if (fourDigitMatch?.[1]) {
+    return `${fourDigitMatch[1]}-08-15`;
+  }
+
+  // 2. Dois dígitos no final ou após o indexador (ex.: "TESOURO-IPCA-32" -> ano 2032)
+  const twoDigitMatch = clean.match(/(?:IPCA|PRE|PRÉ|SELIC|TESOURO|NTN|LFT)[^\d]*(\d{2})\b/);
+  if (twoDigitMatch?.[1]) {
+    const yr = parseInt(twoDigitMatch[1], 10);
+    const fullYear = yr < 50 ? 2000 + yr : 1900 + yr;
+    return `${fullYear}-08-15`;
+  }
+
+  return null;
+}
+
+/**
  * Classifica a faixa de vencimento em dias a partir da data de corte.
  */
 export function classifyMaturityBucket(
@@ -210,7 +238,10 @@ export function calculateFixedIncomeDiagnostics(
   let hasOverdueMaturity = false;
 
   for (const row of fiRows) {
-    const effectiveMaturityDate = row.fixedIncomeMetadata?.maturity_date ?? row.maturityDate;
+    const effectiveMaturityDate =
+      row.fixedIncomeMetadata?.maturity_date ??
+      row.maturityDate ??
+      inferMaturityDateFromTicker(row.ticker, row.name);
     const bucket = classifyMaturityBucket(effectiveMaturityDate, refDateISO);
     if (bucket.isOverdue) {
       hasOverdueMaturity = true;

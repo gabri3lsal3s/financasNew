@@ -128,8 +128,8 @@ export function AssetQuickPickGrid({
                 className={cn(
                   "flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] cursor-pointer",
                   isSelected
-                    ? "border-primary bg-primary/15 ring-2 ring-primary/40 shadow-xs"
-                    : "border-primary/20 bg-primary/5 hover:border-primary/40 hover:bg-primary/10",
+                    ? "border-primary bg-primary/10 ring-1 ring-primary/30 shadow-xs"
+                    : "border-border/80 bg-surface hover:border-primary/40 hover:bg-surface-hover",
                 )}
               >
                 <div className="flex flex-col gap-1 min-w-0">
@@ -139,7 +139,7 @@ export function AssetQuickPickGrid({
                       Na carteira
                     </Badge>
                     {isSelected && (
-                      <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground shrink-0">
+                      <Badge variant="default" size="xs" className="gap-1 shrink-0">
                         <Check className="size-3" aria-hidden="true" />
                         Selecionado
                       </Badge>

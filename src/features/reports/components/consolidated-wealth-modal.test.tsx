@@ -41,6 +41,7 @@ describe("ConsolidatedWealthModal (Fase 12)", () => {
     expect(screen.getByText(/SÍNTESE PATRIMONIAL & GRAU DE ALAVANCAGEM/i)).toBeInTheDocument();
     expect(screen.getAllByText(/ATIVOS TOTAIS/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/PASSIVOS EXIGÍVEIS/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Demonstração do Resultado do Exercício \(DRE Pessoal — Base Ponderada\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/DRE Pessoal/i)).toBeInTheDocument();
+    expect(screen.getByText(/Base Ponderada/i)).toBeInTheDocument();
   });
 });

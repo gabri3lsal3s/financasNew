@@ -37,7 +37,7 @@ export function ReportFixedIncomeClassTable({ group }: { group: ReportClassGroup
               <th className="py-2 px-2.5">Título / Emissor</th>
               <th className="py-2 px-2">Indexador / Vencimento</th>
               <th className="py-2 px-1.5 text-right">Qtd</th>
-              <th className="py-2 px-2 text-right whitespace-nowrap">Saldo Atual</th>
+              <th className="py-2 px-2 text-right whitespace-nowrap">Saldo Atual (R$)</th>
               <th className="py-2 px-2.5 text-right whitespace-nowrap">Rendimento</th>
             </tr>
           </thead>
@@ -70,7 +70,7 @@ export function ReportFixedIncomeClassTable({ group }: { group: ReportClassGroup
                   {formatAssetQuantity(item.quantity, group.className)}
                 </td>
                 <td className="py-1.5 px-2 text-right num font-mono tabular-nums font-bold text-foreground text-[11px] whitespace-nowrap">
-                  <MoneyText cents={item.totalCents} tone="default" />
+                  <MoneyText cents={item.totalCents} tone="default" hideCurrency />
                 </td>
                 <td
                   className={cn(
@@ -94,7 +94,7 @@ export function ReportFixedIncomeClassTable({ group }: { group: ReportClassGroup
                 )}
               </td>
               <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">
-                <MoneyText cents={group.totalCents} tone="default" />
+                <MoneyText cents={group.totalCents} tone="default" hideCurrency />
               </td>
               <td
                 className={cn(

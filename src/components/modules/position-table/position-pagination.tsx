@@ -41,7 +41,7 @@ export function PositionPagination({
             <Button
               key={size}
               type="button"
-              variant={pageSize === size ? "secondary" : "ghost"}
+              variant={pageSize === size ? "default" : "ghost"}
               size="xs"
               sensoryIntent="selection"
               onClick={() => onPageSizeChange(size)}
@@ -52,7 +52,7 @@ export function PositionPagination({
           ))}
           <Button
             type="button"
-            variant={pageSize === Infinity ? "secondary" : "ghost"}
+            variant={pageSize === Infinity ? "default" : "ghost"}
             size="xs"
             sensoryIntent="selection"
             onClick={() => onPageSizeChange(Infinity)}

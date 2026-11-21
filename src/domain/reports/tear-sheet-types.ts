@@ -35,6 +35,8 @@ export interface WealthPositionRow {
   fxPnlPct?: number | null;
   pricePnlPctBRL?: number | null;
   usdRate?: number;
+  indexType?: string | null;
+  maturityDate?: string | null;
 }
 
 export interface MonthFlowSummary {
@@ -69,6 +71,8 @@ export interface BuildTearSheetModelParams {
   allTimeEconomicPnlBRL?: number;
   realizedPnlBRL?: number;
   usdRate?: number;
+  indexType?: string | null;
+  maturityDate?: string | null;
 }
 
 export interface TearSheetPerformancePoint {

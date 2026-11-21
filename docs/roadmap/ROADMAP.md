@@ -1,5 +1,27 @@
 # 🗺️ ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.14.0 (Build 96 — Polimento Final do Motor de Relatórios, Logo Oficial e Arquitetura Multipágina SSOT — Scorecard 9,7/10 Homologado)** registra a conclusão integral do **Plano Mestre de Refinamento e Polimento Final (v5)** dos 8 relatórios executivos Axir (2026-11-21):
+> - **(1) Logo Oficial & Coerência Visual de Nível (PRO / Teste PRO / Padrão)**:
+>   - Substituição do SVG legado pelo componente canônico `<LogoIcon />` com suporte a `priority` e modo claro institucional;
+>   - Diferenciação reativa: logo âmbar com badge `PRO` para assinantes ativos, logo âmbar com badge `TESTE PRO` para usuários em período de avaliação, e logo Teal para o nível Free;
+>   - Monograma micro oficial (`size-3.5`) no cabeçalho contínuo de páginas subsequentes.
+> - **(2) Arquitetura Única de Rodapé Multipágina (SSOT)**:
+>   - Primitivo `<ReportFooter />` com separação explícita entre rodapé contínuo de 1 linha (`variant="running"`) e bloco jurídico completo + QR code + chancela (`variant="full"`);
+>   - Exclusividade absoluta do disclaimer legal na última página (`page === totalPages`), com cobertura de 100% da paginação em todas as páginas de todos os relatórios.
+> - **(3) Fechamento Matemático & Integridade Aritmética (P0)**:
+>   - Alocação do Dossiê 6: base única ponderada (`allocationBaseBRL`), alinhando a narrativa executiva com a tabela (Ações Brasil em déficit e Internacional em superávit);
+>   - Carteira 7: reconciliação de custo somando Caixa (R$ 100.318,93), total de R$ 106.377,43 e retorno consolidado exato de +6,0%;
+>   - DRE 1: restauração completa dos dados e colunas da tabela de faturas de cartão quitadas (competência, data de pagamento e valor).
+> - **(4) Acabamento Visual & Eliminação de Truncamentos**:
+>   - Balanço 360°: Donut com prefixo `R$` empilhado sobre o montante, respiro perfeito sem cortes laterais;
+>   - FIRE 4: série histórica completa de 12 meses no gráfico de proventos e tabela Bola de Neve padronizada sem `R$` nas células;
+>   - Benchmarks (Dossiê 6): padronização dos 4 cards de risco (`SHARPE`, `MAX DRAWDOWN`, `VOLATILIDADE (σ)`, `CONSISTÊNCIA`) em 1 linha com alinhamento na mesma base horizontal e zero reticências;
+>   - IRPF 3: títulos dos grupos fiscais sem truncamento `TES...` e subtotais protegidos com `whitespace-nowrap`.
+> - **(5) Certificação de Qualidade**:
+>   - 100% dos 8 PDFs aprovados na varredura automatizada de integridade textual;
+>   - 90/90 testes unitários de relatórios aprovados;
+>   - Compilação TypeScript (`tsc -b`) e ESLint 100% limpos sem erros.
+>
 > **v3.13.2 (Certificação Definitiva de Produção do Motor de Investimentos Axir — Portão Final v5 $\ge 98/100$)** registra a conclusão e certificação formal dos 4 blocos de fechamento de core bugs e edge cases de estresse ([`docs/plans/prompt_v5_fechamento_definitivo_e_certifica_o_de_produ_o_axir.md`](../plans/prompt_v5_fechamento_definitivo_e_certifica_o_de_produ_o_axir.md)) sobre a carteira de teste de estresse `BR-20261119-6445` (62 ativos ativos, R$ 106.377,43, 34 meses):
 > - **(1) Invariância Cambial do Custo e Fim do Aporte Fantasma via PTAX (Gate v5.1)**:
 >   - Congelamento estrito do custo histórico em BRL (`total_cost_brl`) de ativos em moeda estrangeira no momento da compra (`fx_rate_at_purchase`), eliminando flutuações artificiais de custo causadas pela PTAX D-0;

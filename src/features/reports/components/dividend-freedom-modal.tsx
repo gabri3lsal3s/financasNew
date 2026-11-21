@@ -24,6 +24,7 @@ export interface DividendFreedomModalProps {
   assets?: readonly PortfolioAsset[];
   usdRate?: number;
   periodLabel?: string;
+  referenceYear?: number;
   appName?: string;
   accountHolder?: string;
 }
@@ -43,10 +44,18 @@ export function DividendFreedomModal({
   assets,
   usdRate = 5.25,
   periodLabel = "Exercício Anual",
+  referenceYear,
   appName = "Axir",
   accountHolder,
 }: DividendFreedomModalProps) {
-  const currentYear = new Date().getFullYear();
+  const currentYear = useMemo(() => {
+    if (referenceYear) return referenceYear;
+    for (const d of dividends) {
+      const yr = parseInt(d.date?.slice(0, 4), 10);
+      if (yr >= 2020 && yr <= 2050) return yr;
+    }
+    return new Date().getFullYear();
+  }, [dividends, referenceYear]);
   const assetMap = useMemo(() => new Map((assets ?? []).map((a) => [a.id, a])), [assets]);
 
   const sparklinePoints = useMemo(() => {
@@ -115,12 +124,10 @@ export function DividendFreedomModal({
             No exercício corrente (<strong>{currentYear}</strong>), o fluxo acumulado de proventos totalizou{" "}
             <strong>
               <MoneyText cents={numberToCents(yearDividendsBRL)} tone="positive" className="inline font-bold" />
-            </strong>
-            , perfazendo uma média mensal de{" "}
+            </strong>, perfazendo uma média mensal de{" "}
             <strong>
               <MoneyText cents={numberToCents(freedomAnalysis.monthlyDividendsBRL)} tone="positive" className="inline font-bold" />
-            </strong>
-            . Este fluxo cobre <strong>{formatPercent(freedomAnalysis.freedomPct)}%</strong> do custo de vida mensal
+            </strong>. Este fluxo cobre <strong>{formatPercent(freedomAnalysis.freedomPct)}%</strong> do custo de vida mensal
             (Estágio: <strong>{freedomAnalysis.stageLabel}</strong>). A carteira possui{" "}
             <strong>
               {freedomAnalysis.totalSnowballAssetsCount}{" "}
@@ -217,37 +224,42 @@ export function DividendFreedomModal({
               <thead>
                 <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
                   <th className="py-2 px-3">Ticker</th>
-                  <th className="py-2 px-3 text-right">Preço Atual</th>
-                  <th className="py-2 px-3 text-right">Renda Mensal Gerada</th>
-                  <th className="py-2 px-3 text-right">Cotas Compradas / Mês</th>
-                  <th className="py-2 px-3 text-center">Status da Bola de Neve</th>
+                  <th className="py-2 px-3 text-right">Preço (R$)</th>
+                  <th className="py-2 px-3 text-right">Renda Mensal (R$)</th>
+                  <th className="py-2 px-3 text-right">Cotas / Mês</th>
+                  <th className="py-2 px-3 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {freedomAnalysis.snowballAssets.map((sb) => (
-                  <tr key={sb.ticker} className="hover:bg-muted/20 break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
-                    <td className="py-1.5 px-3 font-semibold text-foreground whitespace-nowrap">
-                      {sanitizeReportText(sb.ticker)}
-                    </td>
-                    <td className="py-1.5 px-3 text-right num font-mono whitespace-nowrap">
-                      <MoneyText cents={numberToCents(sb.currentPriceBRL)} />
-                    </td>
-                    <td className="py-1.5 px-3 text-right num font-mono text-positive-strong font-bold whitespace-nowrap">
-                      <MoneyText cents={numberToCents(sb.monthlyIncomeGeneratedBRL)} />
-                    </td>
-                    <td className="py-1.5 px-3 text-right num font-mono font-bold text-foreground whitespace-nowrap">
-                      {sb.newSharesPerMonth.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
-                      {sb.newSharesPerMonth === 1 ? "cota" : "cotas"}
-                    </td>
-                    <td className="py-1.5 px-3 text-center whitespace-nowrap">
-                      <Badge variant={sb.isSnowballReached ? "positive" : "muted"} size="xs">
-                        {sb.isSnowballReached
-                          ? "Bola de Neve Ativa"
-                          : `${Math.ceil(sb.monthsToBuyOneShare)} mês(es) p/ 1 cota`}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
+                {freedomAnalysis.snowballAssets.map((sb) => {
+                  const monthsToCota = Math.ceil(sb.monthsToBuyOneShare);
+                  return (
+                    <tr key={sb.ticker} className="hover:bg-muted/20 break-inside-avoid even:bg-muted/20 print:even:bg-muted/20">
+                      <td className="py-1.5 px-3 font-semibold text-foreground whitespace-nowrap">
+                        {sanitizeReportText(sb.ticker)}
+                      </td>
+                      <td className="py-1.5 px-3 text-right num font-mono whitespace-nowrap">
+                        <MoneyText cents={numberToCents(sb.currentPriceBRL)} hideCurrency />
+                      </td>
+                      <td className="py-1.5 px-3 text-right num font-mono text-positive-strong font-bold whitespace-nowrap">
+                        <MoneyText cents={numberToCents(sb.monthlyIncomeGeneratedBRL)} hideCurrency />
+                      </td>
+                      <td className="py-1.5 px-3 text-right num font-mono font-bold text-foreground whitespace-nowrap">
+                        {sb.newSharesPerMonth.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                        {sb.newSharesPerMonth === 1 ? "cota" : "cotas"}
+                      </td>
+                      <td className="py-1.5 px-3 text-center whitespace-nowrap">
+                        <Badge variant={sb.isSnowballReached ? "positive" : "muted"} size="xs">
+                          {sb.isSnowballReached
+                            ? "Bola de Neve Ativa"
+                            : monthsToCota === 1
+                              ? "1 mês p/ 1 cota"
+                              : `${monthsToCota} meses p/ 1 cota`}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -262,6 +274,8 @@ export function DividendFreedomModal({
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_CVM_DISCLAIMER}
         reportType="fire"
+        currentPage={1}
+        totalPages={1}
         showQrCode
       />
     </ReportDocumentLayout>

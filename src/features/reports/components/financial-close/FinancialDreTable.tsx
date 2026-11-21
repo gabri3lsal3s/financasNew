@@ -57,11 +57,11 @@ export function FinancialDreTable({
                 (+) Receita Operacional Bruta ({incomeCount} {incomeCount === 1 ? "lançamento" : "lançamentos"})
               </td>
               <td className="py-2 px-3 text-right num font-mono font-bold whitespace-nowrap">
-                <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" />
+                <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" hideCurrency />
               </td>
               {hasBrutoRef && (
                 <td className="py-2 px-3 text-right num font-mono font-semibold text-foreground whitespace-nowrap">
-                  <MoneyText cents={dre.grossIncomeCents} tone="default" />
+                  <MoneyText cents={dre.grossIncomeCents} tone="default" hideCurrency />
                 </td>
               )}
               <td className="py-2 px-3 text-right num font-mono font-semibold whitespace-nowrap">100,0%</td>
@@ -71,11 +71,11 @@ export function FinancialDreTable({
                 (-) Despesas Operacionais Realizadas ({expenseCount} {expenseCount === 1 ? "gasto" : "gastos"})
               </td>
               <td className="py-2 px-3 text-right num font-mono font-semibold whitespace-nowrap">
-                <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" />
+                <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" hideCurrency />
               </td>
               {hasBrutoRef && (
                 <td className="py-2 px-3 text-right num font-mono font-semibold text-foreground whitespace-nowrap">
-                  <MoneyText cents={dre.totalExpensesCents} tone="default" />
+                  <MoneyText cents={dre.totalExpensesCents} tone="default" hideCurrency />
                 </td>
               )}
               <td className="py-2 px-3 text-right num font-mono text-muted-foreground whitespace-nowrap">
@@ -91,6 +91,7 @@ export function FinancialDreTable({
                   cents={effectiveGrossSavingsBruto}
                   tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
                   sign="explicit"
+                  hideCurrency
                 />
               </td>
               {hasBrutoRef && (
@@ -99,6 +100,7 @@ export function FinancialDreTable({
                     cents={dre.operationalSavingsCents}
                     tone={dre.operationalSavingsCents >= 0 ? "positive" : "negative"}
                     sign="explicit"
+                    hideCurrency
                   />
                 </td>
               )}
@@ -112,7 +114,7 @@ export function FinancialDreTable({
               </td>
               <td className="py-2 px-3 text-right num font-mono text-muted-foreground whitespace-nowrap">
                 {dre.investedAporteCents > 0 ? (
-                  <MoneyText cents={dre.investedAporteCents} tone="default" />
+                  <MoneyText cents={dre.investedAporteCents} tone="default" hideCurrency />
                 ) : (
                   "—"
                 )}
@@ -120,7 +122,7 @@ export function FinancialDreTable({
               {hasBrutoRef && (
                 <td className="py-2 px-3 text-right num font-mono text-muted-foreground whitespace-nowrap">
                   {dre.investedAporteCents > 0 ? (
-                    <MoneyText cents={dre.investedAporteCents} tone="default" />
+                    <MoneyText cents={dre.investedAporteCents} tone="default" hideCurrency />
                   ) : (
                     "—"
                   )}
@@ -139,6 +141,7 @@ export function FinancialDreTable({
                   cents={netCashFlow}
                   tone={netCashFlow >= 0 ? "positive" : "negative"}
                   sign="explicit"
+                  hideCurrency
                 />
               </td>
               {hasBrutoRef && (
@@ -147,6 +150,7 @@ export function FinancialDreTable({
                     cents={dre.netCashFlowCents}
                     tone={dre.netCashFlowCents >= 0 ? "positive" : "negative"}
                     sign="explicit"
+                    hideCurrency
                   />
                 </td>
               )}

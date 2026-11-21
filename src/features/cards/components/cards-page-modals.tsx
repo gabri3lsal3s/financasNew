@@ -10,6 +10,7 @@ import {
 import type { CompetenceSummary } from "@/domain/cards";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { monthLabel } from "@/lib/date";
+import { useAuth } from "@/hooks";
 import { ExpenseDetailDialog } from "@/features/transactions/components/expense-detail-dialog";
 import type { CardPayment, CreditCard, Expense } from "@/types";
 import type { CardPaymentDialogMode } from "../hooks/use-cards-page-state";
@@ -88,6 +89,9 @@ export function CardsPageModals({
   upgradeContext,
   onProceedToCheckout,
 }: CardsPageModalsProps) {
+  const { user } = useAuth();
+  const accountHolder = user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "Titular";
+
   return (
     <>
       <CardFormDialog
@@ -175,6 +179,7 @@ export function CardsPageModals({
             saldoPonderadoCents={summary.saldoPonderadoCents}
             expenses={printExpenseRows}
             payments={printPaymentRows}
+            accountHolder={accountHolder}
           />
         </ReportDocumentLayout>
       ) : null}

@@ -3,6 +3,7 @@ import {
   calculateFixedIncomeDiagnostics,
   classifyMaturityBucket,
   inferFixedIncomeRateType,
+  inferMaturityDateFromTicker,
   type FixedIncomePositionInput,
 } from "./fixed-income-diagnostics";
 
@@ -166,6 +167,31 @@ describe("Fixed Income Diagnostics (Fase 6)", () => {
       expect(tesouroIssuer?.isFgcExceeded).toBe(false); // Soberano
 
       expect(res.fgcExceededCount).toBe(1);
+    });
+
+    it("infere maturidade de TESOURO-IPCA-32 automaticamente como Acima de 5 anos (above_5y)", () => {
+      expect(inferMaturityDateFromTicker("TESOURO-IPCA-32")).toBe("2032-08-15");
+      expect(inferMaturityDateFromTicker("TESOURO-IPCA-2035")).toBe("2035-08-15");
+
+      const res = calculateFixedIncomeDiagnostics(
+        [
+          {
+            assetId: "tipca32",
+            ticker: "TESOURO-IPCA-32",
+            assetClass: "Renda Fixa",
+            valueBRL: 19202.5,
+            // maturity_date omitida deliberadamente
+          },
+        ],
+        19202.5,
+        "2026-06-01",
+      );
+
+      const above5yBucket = res.maturities.find((m) => m.bucketKey === "above_5y");
+      expect(above5yBucket).toBeDefined();
+      expect(above5yBucket?.totalBRL).toBe(19202.5);
+      expect(above5yBucket?.label).toBe("Acima de 5 anos");
+      expect(res.maturities.find((m) => m.bucketKey === "liquid_or_none")).toBeUndefined();
     });
   });
 });

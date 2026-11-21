@@ -120,6 +120,8 @@ export function ConsolidatedWealthModal({
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_CVM_DISCLAIMER}
         reportType="balance"
+        currentPage={1}
+        totalPages={1}
         showQrCode
       />
     </ReportDocumentLayout>

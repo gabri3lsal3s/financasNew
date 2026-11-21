@@ -455,7 +455,7 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
     expect(screen.queryByText(/Comparativo por Tipo de Ativo vs. Benchmarks/i)).not.toBeInTheDocument();
 
     // Deve renderizar o título da seção de Raios-X
-    expect(screen.getAllByText(/Raios-X de Subalocação Setorial, Cíclica & Risco de Emissão/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Raios-X de Subalocação/i).length).toBeGreaterThan(0);
 
     // Deve renderizar os cards de Raio-X
     expect(screen.getAllByText(/Raio-X de Ações Brasil/i).length).toBeGreaterThan(0);

@@ -31,12 +31,18 @@ export function PerformanceBenchmarksPanel({
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
           <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold text-foreground uppercase tracking-wider">
             <Compass className="size-3.5 text-muted-foreground" aria-hidden="true" />
-            <span>Benchmarks de Comparação (Desde o Início: {seriesLength} meses)</span>
+            <span>
+              Benchmarks de Comparação (
+              {seriesLength === 12
+                ? `Últimos 12 Meses Fechados${periodWindowLabel ? ` · ${periodWindowLabel}` : ""}`
+                : `Histórico: ${seriesLength} meses${periodWindowLabel ? ` · ${periodWindowLabel}` : ""}`}
+              )
+            </span>
             <span className="text-positive-strong font-mono font-bold tabular-nums">
               Carteira: {formatSignedPct(fullAccumulatedRatePct)}
             </span>
           </div>
-          <span className="text-[10px] text-muted-foreground font-mono tabular-nums">
+          <span className="text-[10px] text-muted-foreground font-mono tabular-nums whitespace-nowrap shrink-0 pl-1">
             Ganho Real s/ Inflação:{" "}
             <strong
               className={cn(
@@ -50,15 +56,15 @@ export function PerformanceBenchmarksPanel({
           </span>
         </div>
 
-        {/* Tabela Institucional de Benchmarks de 5 Colunas */}
+        {/* Tabela Institucional de Benchmarks */}
         <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-lg border border-border/80 print:overflow-visible">
           <table className="w-full text-left text-xs border-collapse table-fixed">
             <colgroup>
-              <col style={{ width: "28%" }} />
-              <col style={{ width: "18%" }} />
-              <col style={{ width: "18%" }} />
-              <col style={{ width: "18%" }} />
-              <col style={{ width: "18%" }} />
+              <col style={{ width: seriesLength === 12 ? "34%" : "28%" }} />
+              <col style={{ width: seriesLength === 12 ? "22%" : "18%" }} />
+              <col style={{ width: seriesLength === 12 ? "22%" : "18%" }} />
+              <col style={{ width: seriesLength === 12 ? "22%" : "18%" }} />
+              {seriesLength !== 12 && <col style={{ width: "18%" }} />}
             </colgroup>
             <thead>
               <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[9px] uppercase tracking-wider">
@@ -66,7 +72,7 @@ export function PerformanceBenchmarksPanel({
                 <th className="py-1 px-2 text-right">Acumulado ({seriesLength}M)</th>
                 <th className="py-1 px-2 text-right">Spread (p.p.)</th>
                 <th className="py-1 px-2 text-right">% do Índice</th>
-                <th className="py-1 px-2 text-right">Últimos 12M</th>
+                {seriesLength !== 12 && <th className="py-1 px-2 text-right">Últimos 12M</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
@@ -100,20 +106,22 @@ export function PerformanceBenchmarksPanel({
                       <span className="text-muted-foreground font-mono text-[10px]">—</span>
                     )}
                   </td>
-                  <td className="py-1.5 px-2 text-right font-mono num text-[10px] text-muted-foreground">
-                    {bm.sub12m ? (
-                      <span>
-                        {formatPercent(bm.sub12m.benchmark12mRatePct)}%
-                        {bm.sub12m.pctOf12mBenchmark !== null && (
-                          <span className="ml-1 text-[9px] font-bold text-foreground">
-                            ({formatPercent(bm.sub12m.pctOf12mBenchmark)}%)
-                          </span>
-                        )}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
+                  {seriesLength !== 12 && (
+                    <td className="py-1.5 px-2 text-right font-mono num text-[10px] text-muted-foreground">
+                      {bm.sub12m ? (
+                        <span>
+                          {formatPercent(bm.sub12m.benchmark12mRatePct)}%
+                          {bm.sub12m.pctOf12mBenchmark !== null && (
+                            <span className="ml-1 text-[9px] font-bold text-foreground">
+                              ({formatPercent(bm.sub12m.pctOf12mBenchmark)}%)
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -133,11 +141,11 @@ export function PerformanceBenchmarksPanel({
         {/* KPI Strip Institucional de 4 Colunas */}
         <div className="grid grid-cols-2 sm:grid-cols-4 print:grid-cols-4 gap-2.5">
           <div className="rounded-lg border border-border/80 bg-surface p-2.5 flex flex-col justify-between gap-1 shadow-xs">
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Índice Sharpe</span>
-              <Gauge className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+            <div className="flex items-center justify-between gap-1 h-4.5">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">SHARPE</span>
+              <Gauge className="size-3.5 text-muted-foreground shrink-0 print:hidden" aria-hidden="true" />
             </div>
-            <div className="flex items-baseline gap-1.5 flex-wrap">
+            <div className="h-6 flex items-baseline gap-1.5 flex-wrap">
               <span
                 className={cn(
                   "text-sm font-mono font-bold num tabular-nums",
@@ -165,39 +173,41 @@ export function PerformanceBenchmarksPanel({
           </div>
 
           <div className="rounded-lg border border-border/80 bg-surface p-2.5 flex flex-col justify-between gap-1 shadow-xs">
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Max Drawdown</span>
-              <span className="text-[9px] font-mono text-muted-foreground">Pico-Fundo</span>
+            <div className="flex items-center justify-between gap-1 h-4.5">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">MAX DRAWDOWN</span>
             </div>
-            <span className="text-sm font-mono font-bold text-negative-strong num tabular-nums">
-              {formatSignedPct(riskSummary.maxDrawdown.maxDrawdownPct)}
-            </span>
+            <div className="h-6 flex items-baseline gap-1.5">
+              <span className="text-sm font-mono font-bold text-negative-strong num tabular-nums">
+                {formatSignedPct(riskSummary.maxDrawdown.maxDrawdownPct)}
+              </span>
+            </div>
             <p className="text-[9px] text-muted-foreground leading-tight m-0">
-              Maior retração histórica suportada (TWR)
+              Retração histórica pico-a-fundo (TWR)
             </p>
           </div>
 
           <div className="rounded-lg border border-border/80 bg-surface p-2.5 flex flex-col justify-between gap-1 shadow-xs">
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                Volatilidade <span className="normal-case font-serif">(σ)</span>
+            <div className="flex items-center justify-between gap-1 h-4.5">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                VOLATILIDADE <span className="normal-case font-serif">(σ)</span>
               </span>
-              <span className="text-[9px] font-mono text-muted-foreground">Anualizada</span>
             </div>
-            <span className="text-sm font-mono font-bold text-foreground num tabular-nums">
-              {formatPercent(riskSummary.volatility.annualizedStdDevPct)}% a.a.
-            </span>
+            <div className="h-6 flex items-baseline gap-1.5">
+              <span className="text-sm font-mono font-bold text-foreground num tabular-nums">
+                {formatPercent(riskSummary.volatility.annualizedStdDevPct)}% a.a.
+              </span>
+            </div>
             <p className="text-[9px] text-muted-foreground leading-tight m-0">
               Desvio amostral ({formatPercent(riskSummary.volatility.monthlyStdDevPct)}% a.m.)
             </p>
           </div>
 
           <div className="rounded-lg border border-border/80 bg-surface p-2.5 flex flex-col justify-between gap-1 shadow-xs">
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Consistência</span>
-              <TrendingUp className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+            <div className="flex items-center justify-between gap-1 h-4.5">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider whitespace-nowrap">CONSISTÊNCIA</span>
+              <TrendingUp className="size-3.5 text-muted-foreground shrink-0 print:hidden" aria-hidden="true" />
             </div>
-            <div className="flex items-baseline justify-between gap-1">
+            <div className="h-6 flex items-baseline justify-between gap-1">
               <span className="text-sm font-mono font-bold text-positive-strong num tabular-nums">
                 {formatPercent(riskSummary.consistency.winRatePct)}%
               </span>

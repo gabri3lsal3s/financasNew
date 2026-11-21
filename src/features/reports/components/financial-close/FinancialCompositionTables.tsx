@@ -6,12 +6,15 @@ import { sanitizeReportText } from "@/domain/reports";
 import { cn } from "@/lib/utils";
 import type {
   FinancialReportCategoryItem,
+  FinancialReportPaidInvoiceItem,
   FinancialReportPaymentMethodItem,
 } from "./financial-close-types";
+import { FinancialPaidInvoicesSection } from "./FinancialPaidInvoicesSection";
 
 export interface FinancialCompositionTablesProps {
   categories: readonly FinancialReportCategoryItem[];
   paymentMethods: readonly FinancialReportPaymentMethodItem[];
+  paidInvoices?: readonly FinancialReportPaidInvoiceItem[];
   hasBrutoRef: boolean;
   hasBudgets: boolean;
 }
@@ -19,6 +22,7 @@ export interface FinancialCompositionTablesProps {
 export function FinancialCompositionTables({
   categories,
   paymentMethods,
+  paidInvoices,
   hasBrutoRef,
   hasBudgets,
 }: FinancialCompositionTablesProps) {
@@ -61,9 +65,9 @@ export function FinancialCompositionTables({
   }, [paymentMethods]);
 
   return (
-    <section aria-label="Composição de Gastos" className="grid grid-cols-1 sm:grid-cols-2 gap-3 break-inside-avoid print:grid-cols-2">
-      {/* 1. Despesas por Categoria */}
-      <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 print:bg-surface print:border-border shadow-xs min-w-0">
+    <div className="flex flex-col gap-3 break-inside-avoid">
+      {/* 1. Despesas por Categoria (100% de largura útil para evitar quebras em 3 linhas) */}
+      <section aria-label="Despesas por Categoria" className="w-full flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 print:bg-surface print:border-border shadow-xs min-w-0">
         <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
           <PieChart className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
           <span>DESPESAS POR CATEGORIA</span>
@@ -94,7 +98,7 @@ export function FinancialCompositionTables({
                         </td>
                       )}
                       <td className="py-1.5 px-2 text-right num font-mono whitespace-nowrap">
-                        <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-bold" hideCurrency={hasBudgets} />
+                        <MoneyText cents={cat.brutoCents ?? cat.totalCents} tone="negative" className="font-bold" hideCurrency />
                       </td>
                       {hasBrutoRef && (
                         <td className="py-1.5 px-2 text-right num font-mono whitespace-nowrap text-muted-foreground">
@@ -144,7 +148,7 @@ export function FinancialCompositionTables({
                     </td>
                   )}
                   <td className="py-1.5 px-2 text-right num font-mono font-bold whitespace-nowrap">
-                    <MoneyText cents={totalCatRealizado} tone="negative" hideCurrency={hasBudgets} />
+                    <MoneyText cents={totalCatRealizado} tone="negative" hideCurrency />
                   </td>
                   {hasBrutoRef && (
                     <td className="py-1.5 px-2 text-right num font-mono font-bold whitespace-nowrap">
@@ -174,57 +178,65 @@ export function FinancialCompositionTables({
             </table>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* 2. Formas de Pagamento */}
-      <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 print:bg-surface print:border-border shadow-xs min-w-0">
-        <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
-          <Wallet className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
-          <span>FORMAS DE PAGAMENTO</span>
-        </div>
-        {sortedPaymentMethods.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2 italic">Nenhuma transação registrada no período.</p>
-        ) : (
-          <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
-            <table className="w-full min-w-[300px] sm:min-w-0 text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
-                  <th className="py-1.5 px-2 font-bold">Meio de Pagamento</th>
-                  <th className="py-1.5 px-2 text-right font-bold">{hasBrutoRef ? "Valor Bruto (R$)" : "Total (R$)"}</th>
-                  <th className="py-1.5 px-2 text-right font-bold">%</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {sortedPaymentMethods.map((pm, idx) => {
-                  const label = pm.label ?? pm.method;
-                  return (
-                    <tr key={label ?? `pm-${idx}`} className="even:bg-muted/20 print:even:bg-muted/20">
-                      <td className="py-1.5 px-2 font-medium text-foreground">{sanitizeReportText(label)}</td>
-                      <td className="py-1.5 px-2 text-right num font-mono font-bold whitespace-nowrap">
-                        <MoneyText cents={pm.brutoCents ?? pm.totalCents} tone="default" />
-                      </td>
-                      <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground whitespace-nowrap">
-                        {formatPercent(pm.pct)}%
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot className="border-t-2 border-border/80 bg-muted/30 font-bold text-foreground">
-                <tr>
-                  <td className="py-1.5 px-2 uppercase text-[10px] font-bold text-muted-foreground">Total</td>
-                  <td className="py-1.5 px-2 text-right num font-mono font-bold whitespace-nowrap">
-                    <MoneyText cents={totalPaymentRealizado} tone="default" />
-                  </td>
-                  <td className="py-1.5 px-2 text-right num font-mono font-bold text-muted-foreground whitespace-nowrap">
-                    100,0%
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+      {/* Linha Inferior: Formas de Pagamento e Faturas de Cartão Quitadas */}
+      <div className={cn("grid gap-3 break-inside-avoid", paidInvoices && paidInvoices.length > 0 ? "grid-cols-1 sm:grid-cols-2 print:grid-cols-2" : "grid-cols-1")}>
+        {/* 2. Formas de Pagamento */}
+        <section aria-label="Formas de Pagamento" className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface p-3.5 print:bg-surface print:border-border shadow-xs min-w-0">
+          <div className="flex items-center gap-1.5 pb-1 border-b border-border/80 text-xs font-bold text-foreground">
+            <Wallet className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
+            <span>FORMAS DE PAGAMENTO</span>
           </div>
+          {sortedPaymentMethods.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2 italic">Nenhuma transação registrada no período.</p>
+          ) : (
+            <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
+              <table className="w-full min-w-[300px] sm:min-w-0 text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
+                    <th className="py-1.5 px-2 font-bold">Meio de Pagamento</th>
+                    <th className="py-1.5 px-2 text-right font-bold">{hasBrutoRef ? "Valor Bruto (R$)" : "Total (R$)"}</th>
+                    <th className="py-1.5 px-2 text-right font-bold">%</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {sortedPaymentMethods.map((pm, idx) => {
+                    const label = pm.label ?? pm.method;
+                    return (
+                      <tr key={label ?? `pm-${idx}`} className="even:bg-muted/20 print:even:bg-muted/20">
+                        <td className="py-1.5 px-2 font-medium text-foreground">{sanitizeReportText(label)}</td>
+                        <td className="py-1.5 px-2 text-right num font-mono font-bold whitespace-nowrap">
+                          <MoneyText cents={pm.brutoCents ?? pm.totalCents} tone="default" hideCurrency />
+                        </td>
+                        <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground whitespace-nowrap">
+                          {formatPercent(pm.pct)}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot className="border-t-2 border-border/80 bg-muted/30 font-bold text-foreground">
+                  <tr>
+                    <td className="py-1.5 px-2 uppercase text-[10px] font-bold text-muted-foreground">Total</td>
+                    <td className="py-1.5 px-2 text-right num font-mono font-bold whitespace-nowrap">
+                      <MoneyText cents={totalPaymentRealizado} tone="default" hideCurrency />
+                    </td>
+                    <td className="py-1.5 px-2 text-right num font-mono font-bold text-muted-foreground whitespace-nowrap">
+                      100,0%
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {/* 3. Faturas Quitadas no Período */}
+        {paidInvoices && paidInvoices.length > 0 && (
+          <FinancialPaidInvoicesSection paidInvoices={paidInvoices} />
         )}
       </div>
-    </section>
+    </div>
   );
 }

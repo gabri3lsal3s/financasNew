@@ -152,12 +152,15 @@ export function TaxBensDireitosSection({
         <div className="flex flex-col gap-2">
           {groupedItems.map((group) => (
             <div key={`print-group-${group.key}`} className="flex flex-col gap-0.5 break-inside-avoid">
-              <header className="flex items-center justify-between bg-muted/30 border border-border/80 px-2 py-0.5 text-[9px] font-bold text-foreground uppercase tracking-wider break-after-avoid rounded-t">
-                <span>
+              <header className="flex items-center justify-between gap-2 bg-muted/30 border border-border/80 px-2 py-1 text-[8.5px] font-bold text-foreground uppercase tracking-wider break-after-avoid rounded-t">
+                <span className="flex-1 min-w-0 leading-tight">
                   Grupo {group.groupCode} - {group.groupName} · Código {group.itemCode} - {group.itemName}
                 </span>
-                <span className="font-mono num">
-                  Subtotal: <MoneyText cents={numberToCents(group.subtotalBRL)} className="font-bold text-foreground inline" />
+                <span className="font-mono num whitespace-nowrap shrink-0 text-right text-[8.5px]">
+                  Subtotal:{" "}
+                  <span className="whitespace-nowrap inline-flex font-bold text-foreground">
+                    <MoneyText cents={numberToCents(group.subtotalBRL)} className="inline font-bold text-foreground" />
+                  </span>
                 </span>
               </header>
 
@@ -187,7 +190,7 @@ export function TaxBensDireitosSection({
                           {item.textToCopy}
                         </td>
                         <td className="py-1 px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap text-[10px] align-top">
-                          <MoneyText cents={numberToCents(item.totalCostBRL)} />
+                          <MoneyText cents={numberToCents(item.totalCostBRL)} hideCurrency />
                         </td>
                       </tr>
                     ))}

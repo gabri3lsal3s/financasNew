@@ -22,26 +22,52 @@ export function FinancialPaidInvoicesSection({ paidInvoices }: FinancialPaidInvo
         <span>FATURAS DE CARTÃO QUITADAS NO PERÍODO</span>
       </div>
       <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
-        <table className="w-full min-w-[420px] sm:min-w-0 text-xs border-collapse">
+        <table className="w-full min-w-[440px] sm:min-w-0 text-xs border-collapse table-fixed">
+          <colgroup>
+            <col className="w-[40%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
-              <th className="py-1 px-2 font-bold">Cartão</th>
-              <th className="py-1 px-2 font-bold">Competência</th>
-              <th className="py-1 px-2 font-bold">Data Pgto</th>
-              <th className="py-1 px-2 text-right font-bold">Valor Pago</th>
+              <th className="py-1.5 px-3 font-bold">Cartão</th>
+              <th className="py-1.5 px-2 font-bold">Competência</th>
+              <th className="py-1.5 px-2 font-bold">Data Pgto</th>
+              <th className="py-1.5 px-3 text-right font-bold">Valor Pago (R$)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
-            {paidInvoices.map((inv, idx) => (
-              <tr key={`${inv.cardName}-${inv.competenceMonth}-${idx}`} className="even:bg-muted/20 print:even:bg-muted/20">
-                <td className="py-1.5 px-2 font-medium text-foreground">{sanitizeReportText(inv.cardName)}</td>
-                <td className="py-1.5 px-2 text-muted-foreground whitespace-nowrap">{formatMonthYear(inv.competenceMonth)}</td>
-                <td className="py-1.5 px-2 text-muted-foreground whitespace-nowrap">{formatDateBR(inv.date)}</td>
-                <td className="py-1.5 px-2 text-right num font-mono font-bold whitespace-nowrap">
-                  <MoneyText cents={inv.amountCents} tone="negative" />
-                </td>
-              </tr>
-            ))}
+            {paidInvoices.map((inv, idx) => {
+              const comp =
+                inv.competenceMonth ||
+                (inv as unknown as { competence?: string }).competence ||
+                (inv.date ? inv.date.slice(0, 7) : undefined) ||
+                ((inv as unknown as { paidAt?: string }).paidAt
+                  ? (inv as unknown as { paidAt: string }).paidAt.slice(0, 7)
+                  : undefined);
+              const pDate =
+                inv.date ||
+                (inv as unknown as { paidAt?: string }).paidAt ||
+                (inv as unknown as { paymentDate?: string }).paymentDate;
+
+              return (
+                <tr key={`${inv.cardName}-${comp}-${idx}`} className="even:bg-muted/20 print:even:bg-muted/20">
+                  <td className="py-1.5 px-3 font-medium text-foreground whitespace-nowrap truncate">
+                    {sanitizeReportText(inv.cardName)}
+                  </td>
+                  <td className="py-1.5 px-2 text-muted-foreground whitespace-nowrap">
+                    {comp ? formatMonthYear(comp) : "—"}
+                  </td>
+                  <td className="py-1.5 px-2 text-muted-foreground whitespace-nowrap">
+                    {pDate ? formatDateBR(pDate) : "—"}
+                  </td>
+                  <td className="py-1.5 px-3 text-right num font-mono font-bold whitespace-nowrap">
+                    <MoneyText cents={inv.amountCents} tone="negative" hideCurrency />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

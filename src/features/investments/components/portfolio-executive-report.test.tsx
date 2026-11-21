@@ -250,22 +250,22 @@ describe("PortfolioExecutiveReport — Ausência de Flash e Estado de Carregamen
         />,
       );
 
-      // KPI 1: Patrimônio no Fechamento
-      expect(screen.getAllByText("Patrimônio no Fechamento").length).toBeGreaterThan(0);
+      // KPI 1: Patrimônio Total
+      expect(screen.getAllByText("Patrimônio Total").length).toBeGreaterThan(0);
       expect(screen.getAllByText("1 ativo em custódia").length).toBeGreaterThan(0);
 
-      // KPI 2: Rentabilidade da Competência (TWR)
-      expect(screen.getAllByText("Rentabilidade da Competência (TWR)").length).toBeGreaterThan(0);
+      // KPI 2: TWR do Mês
+      expect(screen.getAllByText("TWR do Mês").length).toBeGreaterThan(0);
       expect(screen.getAllByText("+3,3%").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("Variação isolada do mês (Padrão CVM)").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Padrão CVM (isolado)").length).toBeGreaterThan(0);
 
-      // KPI 3: Resultado Líquido do Mês (P&L)
-      expect(screen.getAllByText("Resultado Líquido do Mês (P&L)").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("P&L líquido da competência").length).toBeGreaterThan(0);
+      // KPI 3: Resultado (P&L)
+      expect(screen.getAllByText("Resultado (P&L)").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Líquido da competência").length).toBeGreaterThan(0);
 
-      // KPI 4: Proventos da Competência
-      expect(screen.getAllByText("Proventos da Competência").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("Recebidos no mês").length).toBeGreaterThan(0);
+      // KPI 4: Proventos do Mês
+      expect(screen.getAllByText("Proventos do Mês").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Recebidos no período").length).toBeGreaterThan(0);
     });
 
     it("renderiza rentabilidade e resultado líquido negativos com semântica de alerta quando o mês é de queda", () => {
@@ -333,7 +333,7 @@ describe("PortfolioExecutiveReport — Ausência de Flash e Estado de Carregamen
       expect(rateElements[0]?.className).toContain("text-negative-strong");
 
       // P&L negativo (-R$ 3.000,00)
-      expect(screen.getAllByText("Resultado Líquido do Mês (P&L)").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Resultado (P&L)").length).toBeGreaterThan(0);
       expect(screen.getAllByText(/[−-]\s*R\$[\s\u00a0]*3\.000,00/i).length).toBeGreaterThan(0);
     });
   });

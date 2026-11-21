@@ -68,9 +68,9 @@ export function CardInvoicePrintView({
     <div className="print-area flex flex-col gap-6 bg-surface text-foreground w-full max-w-full overflow-hidden print:overflow-visible">
       {/* 1. Cabeçalho Institucional */}
       <ReportHeader
-        title={`${cardName} · ${competenceLabel}`}
-        subtitle="Fatura de cartão de crédito"
-        periodLabel={`Competência ${competenceMonth}`}
+        title={`Fatura de Cartão de Crédito — ${cardName}`}
+        subtitle="Demonstrativo Analítico de Lançamentos, Rateio & Pagamentos"
+        periodLabel={competenceLabel || `Competência ${competenceMonth}`}
         appName={appName}
         icon={CreditCard}
         accountHolder={accountHolder}
@@ -86,7 +86,9 @@ export function CardInvoicePrintView({
             subtext:
               totalBrutoCents !== totalPonderadoCents ? (
                 <span>Ponderada: <MoneyText cents={totalPonderadoCents} className="inline text-[10px]" /></span>
-              ) : undefined,
+              ) : (
+                "Total consolidado"
+              ),
             icon: ReceiptText,
             tone: "negative",
           },
@@ -101,9 +103,13 @@ export function CardInvoicePrintView({
             label: "Saldo aberto (bruto)",
             value: <MoneyText cents={saldoAbertoCents} tone={saldoAbertoCents > 0 ? "negative" : "positive"} />,
             subtext:
-              saldoPonderadoCents !== saldoAbertoCents ? (
+              saldoAbertoCents === 0 ? (
+                <span className="text-positive-strong font-medium">Fatura quitada</span>
+              ) : saldoPonderadoCents !== saldoAbertoCents ? (
                 <span>Ponderado: <MoneyText cents={saldoPonderadoCents} className="inline text-[10px]" /></span>
-              ) : undefined,
+              ) : (
+                "Aguardando liquidação"
+              ),
             icon: TrendingUp,
             tone: saldoAbertoCents > 0 ? "negative" : "positive",
           },
@@ -112,7 +118,7 @@ export function CardInvoicePrintView({
 
       {/* 3. Gastos da fatura (apenas o cartão da competência) */}
       <section aria-label="Gastos da fatura" className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold text-foreground">Gastos da fatura</h2>
+        <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">LANÇAMENTOS DA FATURA</h2>
         {expenses.length === 0 ? (
           <p className="text-sm text-muted-foreground py-1">Nenhum gasto lançado nesta competência.</p>
         ) : (
@@ -144,12 +150,21 @@ export function CardInvoicePrintView({
                       <td className="py-1.5 px-2.5 font-bold text-foreground break-words whitespace-normal leading-tight line-clamp-2">{expense.description}</td>
                       <td className="py-1.5 px-2.5 text-[11px] text-muted-foreground break-words whitespace-normal leading-tight line-clamp-2">{expense.categoryName}</td>
                       <td className="py-1.5 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
-                        <MoneyText cents={expense.valueCents} tone="negative" />
+                        <MoneyText cents={expense.valueCents} tone="negative" hideCurrency />
                       </td>
                       <td className="py-1.5 px-2.5 text-right tabular-nums font-mono text-muted-foreground whitespace-nowrap">
-                        <MoneyText cents={expense.reportValueCents} tone="default" />
+                        <MoneyText cents={expense.reportValueCents} tone="default" hideCurrency />
                       </td>
-                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono text-muted-foreground whitespace-nowrap">{expense.installments}</td>
+                      <td className="py-1.5 px-2.5 text-right tabular-nums font-mono text-muted-foreground whitespace-nowrap">
+                        {expense.installments &&
+                        expense.installments.trim() !== "" &&
+                        expense.installments !== "1/1" &&
+                        expense.installments !== "1x" &&
+                        expense.installments !== "1" &&
+                        !expense.installments.toLowerCase().includes("vista")
+                          ? expense.installments
+                          : "—"}
+                      </td>
                     </tr>
                   </Fragment>
                 ))}
@@ -160,10 +175,10 @@ export function CardInvoicePrintView({
                     Total ({expenses.length} {expenses.length === 1 ? "gasto" : "gastos"})
                   </td>
                   <td className="py-2 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
-                    <MoneyText cents={totalBrutoCents} tone="negative" />
+                    <MoneyText cents={totalBrutoCents} tone="negative" hideCurrency />
                   </td>
                   <td className="py-2 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
-                    <MoneyText cents={totalPonderadoCents} tone="default" />
+                    <MoneyText cents={totalPonderadoCents} tone="default" hideCurrency />
                   </td>
                   <td className="py-2 px-2.5 text-right" />
                 </tr>
@@ -201,7 +216,7 @@ export function CardInvoicePrintView({
                       {payment.note || (payment.isRefund ? "Estorno" : "Pagamento de fatura")}
                     </td>
                     <td className="py-1.5 px-2.5 text-right tabular-nums font-mono whitespace-nowrap">
-                      <MoneyText cents={payment.amountCents} tone={payment.isRefund ? "positive" : "default"} />
+                      <MoneyText cents={payment.amountCents} tone={payment.isRefund ? "positive" : "default"} hideCurrency />
                     </td>
                     <td className="py-1.5 px-2.5 text-right text-[11px] text-muted-foreground whitespace-nowrap">
                       {payment.isRefund ? "Estorno" : "Pagamento"}
@@ -217,9 +232,11 @@ export function CardInvoicePrintView({
       {/* 5. Rodapé Institucional */}
       <ReportFooter
         accountHolder={accountHolder}
-        disclaimer="Documento gerado automaticamente — valores em reais (BRL). Confira com a fatura enviada pelo banco."
+        disclaimer="Documento gerado automaticamente. Valores expressos em reais (BRL). Confira com a fatura enviada pelo banco."
         reportType="invoice"
         documentId={`FAT-${competenceMonth.replace("-", "")}-${cardName.slice(0, 3).toUpperCase()}`}
+        currentPage={1}
+        totalPages={1}
         showQrCode
       />
     </div>

@@ -19,8 +19,8 @@ export function TearSheetAllocationSection({
   allocationRows,
 }: TearSheetAllocationSectionProps) {
   return (
-    <section aria-label="Matriz de Rebalanceamento" className="break-inside-avoid flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
+    <section aria-label="Matriz de Rebalanceamento" className="break-inside-avoid flex flex-col gap-3 print:gap-1.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5 print:pb-1">
         <div className="flex items-center gap-1.5">
           <PieChart className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
           <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
@@ -32,61 +32,78 @@ export function TearSheetAllocationSection({
         </span>
       </div>
 
-      <ReportStackedBar title="Distribuição Atual da Carteira" segments={stackedSegments} height={10} />
+      <ReportStackedBar title="Distribuição Atual da Carteira" segments={stackedSegments} height={8} />
 
       <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 shadow-xs print:overflow-visible">
-        <table className="w-full min-w-[540px] sm:min-w-0 text-left text-xs border-collapse">
+        <table className="w-full min-w-[560px] sm:min-w-0 text-left text-xs border-collapse table-fixed">
+          <colgroup>
+            <col className="w-[30%] min-w-[140px]" />
+            <col className="w-[18%]" />
+            <col className="w-[13%]" />
+            <col className="w-[13%]" />
+            <col className="w-[14%]" />
+            <col className="w-[12%]" />
+          </colgroup>
           <thead>
             <tr className="border-b border-border/70 bg-muted/40 text-muted-foreground font-bold text-[10px] uppercase tracking-wider">
-              <th className="py-1.5 px-3">Classe</th>
-              <th className="py-1.5 px-2.5 text-right">Atual (R$)</th>
-              <th className="py-1.5 px-2 text-right">Atual (%)</th>
-              <th className="py-1.5 px-2 text-right">Meta (%)</th>
-              <th className="py-1.5 px-2.5 text-right">Gap (R$)</th>
-              <th className="py-1.5 px-3 text-center">Status</th>
+              <th className="py-1.5 px-3 print:py-1 print:px-2">Classe</th>
+              <th className="py-1.5 px-2.5 text-right print:py-1 print:px-2">Atual (R$)</th>
+              <th className="py-1.5 px-2 text-right print:py-1 print:px-1.5">Atual (%)</th>
+              <th className="py-1.5 px-2 text-right print:py-1 print:px-1.5">Meta (%)</th>
+              <th className="py-1.5 px-2.5 text-right print:py-1 print:px-2">Gap (R$)</th>
+              <th className="py-1.5 px-3 text-center print:py-1 print:px-2">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
-            {allocationRows.map((row) => (
-              <tr key={row.assetClass} className="even:bg-muted/20 print:even:bg-muted/20">
-                <td className="py-1.5 px-3 font-semibold text-foreground capitalize whitespace-nowrap">
-                  {row.assetClass}
-                </td>
-                <td className="py-1.5 px-2.5 text-right num font-mono font-bold text-foreground whitespace-nowrap">
-                  <MoneyText cents={numberToCents(row.currentBRL)} tone="default" />
-                </td>
-                <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground whitespace-nowrap">
-                  {formatPercent(row.currentPct)}%
-                </td>
-                <td className="py-1.5 px-2 text-right num font-mono text-muted-foreground whitespace-nowrap">
-                  {formatPercent(row.targetPct)}%
-                </td>
-                <td className="py-1.5 px-2.5 text-right num font-mono whitespace-nowrap">
-                  <MoneyText
-                    cents={numberToCents(row.deviationBRL)}
-                    sign="explicit"
-                    tone={row.isDeficit || row.isSurplus ? "default" : "positive"}
-                    className={cn(
-                      "font-bold",
-                      row.isDeficit
-                        ? "text-primary-strong"
-                        : row.isSurplus
-                          ? "text-muted-foreground"
-                          : "",
-                    )}
-                  />
-                </td>
-                <td className="py-1.5 px-3 text-center whitespace-nowrap">
-                  <Badge
-                    variant={row.isDeficit ? "default" : row.isSurplus ? "muted" : "positive"}
-                    size="xs"
-                    className="font-bold font-sans"
-                  >
-                    {row.isDeficit ? "Abaixo da Meta" : row.isSurplus ? "Acima da Meta" : "Equilibrado"}
-                  </Badge>
+            {allocationRows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-4 text-center text-xs text-muted-foreground">
+                  Nenhuma classe de ativo sob custódia para diagnóstico.
                 </td>
               </tr>
-            ))}
+            ) : (
+              allocationRows.map((row) => (
+                <tr key={row.assetClass} className="even:bg-muted/20 print:even:bg-muted/20">
+                  <td className="py-1.5 px-3 print:py-0.5 print:px-2 font-semibold text-foreground whitespace-nowrap">
+                    {row.assetClass}
+                  </td>
+                  <td className="py-1.5 px-2.5 print:py-0.5 print:px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap">
+                    <MoneyText cents={numberToCents(row.currentBRL)} tone="default" hideCurrency />
+                  </td>
+                  <td className="py-1.5 px-2 print:py-0.5 print:px-1.5 text-right num font-mono text-muted-foreground whitespace-nowrap">
+                    {formatPercent(row.currentPct)}%
+                  </td>
+                  <td className="py-1.5 px-2 print:py-0.5 print:px-1.5 text-right num font-mono text-muted-foreground whitespace-nowrap">
+                    {formatPercent(row.targetPct)}%
+                  </td>
+                  <td className="py-1.5 px-2.5 print:py-0.5 print:px-2 text-right num font-mono whitespace-nowrap">
+                    <MoneyText
+                      cents={numberToCents(row.deviationBRL)}
+                      sign="explicit"
+                      hideCurrency
+                      tone={row.isDeficit || row.isSurplus ? "default" : "positive"}
+                      className={cn(
+                        "font-bold",
+                        row.isDeficit
+                          ? "text-primary-strong"
+                          : row.isSurplus
+                            ? "text-muted-foreground"
+                            : "",
+                      )}
+                    />
+                  </td>
+                  <td className="py-1.5 px-3 print:py-0.5 print:px-2 text-center whitespace-nowrap">
+                    <Badge
+                      variant={row.isDeficit ? "default" : row.isSurplus ? "muted" : "positive"}
+                      size="xs"
+                      className="font-bold font-sans"
+                    >
+                      {row.isDeficit ? "Abaixo da Meta" : row.isSurplus ? "Acima da Meta" : "Equilibrado"}
+                    </Badge>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

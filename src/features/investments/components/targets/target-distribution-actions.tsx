@@ -25,7 +25,7 @@ export function TargetDistributionActions({
       {onDistributeRemaining && remaining > 0.05 && remaining < 100 ? (
         <Button
           type="button"
-          variant="secondary"
+          variant="default"
           size="sm"
           sensoryIntent="selection"
           onClick={onDistributeRemaining}

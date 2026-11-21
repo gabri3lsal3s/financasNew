@@ -43,13 +43,13 @@ export function ReportEquityClassTable({
       <div className="w-full min-w-0 overflow-x-auto no-scrollbar scroll-smooth print:overflow-visible">
         <table className="w-full min-w-[640px] print:min-w-0 text-left text-xs border-collapse table-fixed">
           <colgroup>
-            <col className={isInternacional ? "w-[12%]" : "w-[13%]"} />
+            <col className={isInternacional ? "w-[12%]" : "w-[12%]"} />
             <col className={isInternacional ? "w-[15%]" : "w-[16%]"} />
             <col className={isInternacional ? "w-[9%]" : "w-[9%]"} />
             <col className={isInternacional ? "w-[12%]" : "w-[11%]"} />
             <col className={isInternacional ? "w-[12%]" : "w-[11%]"} />
             <col className={isInternacional ? "w-[16%]" : "w-[16%]"} />
-            <col className={isInternacional ? "w-[11%]" : "w-[11%]"} />
+            <col className={isInternacional ? "w-[11%]" : "w-[12%]"} />
             <col className={isInternacional ? "w-[13%]" : "w-[13%]"} />
           </colgroup>
           <thead className="print:[break-inside:avoid] print:[break-after:avoid]">
@@ -60,10 +60,10 @@ export function ReportEquityClassTable({
               </th>
               <th className="py-2 px-1.5 text-right">Qtd</th>
               <th className="py-2 px-2 text-right whitespace-nowrap">
-                {isAllUsd ? "PM (US$)" : "Preço Médio"}
+                {isAllUsd ? "PM (US$)" : "PM (R$)"}
               </th>
               <th className="py-2 px-2 text-right whitespace-nowrap">
-                {isAllUsd ? "Cotação (US$)" : "Cotação"}
+                {isAllUsd ? "Cotação (US$)" : "Cotação (R$)"}
               </th>
               <th className="py-2 px-2.5 text-right whitespace-nowrap">Total (R$)</th>
               <th className="py-2 px-2 text-right whitespace-nowrap">
@@ -95,16 +95,16 @@ export function ReportEquityClassTable({
                     {formatAssetQuantity(item.quantity, group.className)}
                   </td>
                   <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-muted-foreground whitespace-nowrap text-[10.5px]">
-                    <MoneyText cents={item.avgPriceCents} currency={currency} tone="default" />
+                    <MoneyText cents={item.avgPriceCents} currency={currency} tone="default" hideCurrency />
                   </td>
                   <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-foreground whitespace-nowrap text-[10.5px]">
-                    <MoneyText cents={item.currentPriceCents} currency={currency} tone="default" />
+                    <MoneyText cents={item.currentPriceCents} currency={currency} tone="default" hideCurrency />
                   </td>
                   <td className="py-1.5 px-2.5 text-right num font-mono tabular-nums font-bold text-foreground whitespace-nowrap text-[11px]">
-                    <MoneyText cents={item.totalCents} tone="default" />
+                    <MoneyText cents={item.totalCents} tone="default" hideCurrency />
                   </td>
                   <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-muted-foreground whitespace-nowrap text-[10.5px]">
-                    {formatSignedPct(priceVarPct)}
+                    <span className="whitespace-nowrap tabular-nums">{formatSignedPct(priceVarPct)}</span>
                   </td>
                   <td
                     className={cn(
@@ -112,7 +112,7 @@ export function ReportEquityClassTable({
                       totalRetPct >= 0 ? "text-positive-strong" : "text-negative-strong",
                     )}
                   >
-                    {formatSignedPct(totalRetPct)}
+                    <span className="whitespace-nowrap tabular-nums">{formatSignedPct(totalRetPct)}</span>
                   </td>
                 </tr>
               );
@@ -132,7 +132,7 @@ export function ReportEquityClassTable({
                 )}
               </td>
               <td className="py-1.5 px-2.5 text-right num font-mono tabular-nums text-[11px] font-bold text-foreground whitespace-nowrap">
-                <MoneyText cents={group.totalCents} tone="default" />
+                <MoneyText cents={group.totalCents} tone="default" hideCurrency />
               </td>
               <td
                 className={cn(

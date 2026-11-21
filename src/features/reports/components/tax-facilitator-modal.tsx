@@ -120,6 +120,8 @@ export function TaxFacilitatorModal({
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_TAX_FACILITATOR_DISCLAIMER}
         reportType="irpf"
+        currentPage={1}
+        totalPages={1}
         showQrCode
       />
     </ReportDocumentLayout>

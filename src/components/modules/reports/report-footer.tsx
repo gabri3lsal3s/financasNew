@@ -43,6 +43,12 @@ export interface ReportFooterProps {
   currentPage?: number;
   totalPages?: number;
   className?: string;
+  /**
+   * "running": Filete fino contínuo de 1 linha (altura < 22px) para páginas intermediárias.
+   * "full": Bloco jurídico oficial CVM + QR Code + Chancela + Rodapé fino integrado.
+   * Se omitido, deriva automaticamente: se currentPage < totalPages -> "running"; caso contrário -> "full".
+   */
+  variant?: "full" | "running";
 }
 
 function generateReportAuthId(accountHolder?: string, reportType: ReportTypePrefix = "general"): string {
@@ -63,10 +69,11 @@ function generateReportAuthId(accountHolder?: string, reportType: ReportTypePref
  * Rodapé Institucional e Contábil Padronizado de Relatórios A4 / PDF.
  *
  * Características canônicas:
- * - Anti-órfão (break-inside: avoid e contenção volumétrica estrita < 45px);
+ * - Anti-órfão (break-inside: avoid e contenção volumétrica estrita);
+ * - Suporta "running" (1 linha em páginas intermediárias) e "full" (última página com disclaimer jurídico);
  * - Identificador criptográfico com prefixo funcional por tipo de documento;
  * - Paginação explícita "Página X de Y";
- * - QR Code vetorial compacto de 32px para autenticação digital imediata.
+ * - QR Code vetorial compacto de 32px para autenticação digital imediata na última página.
  */
 export function ReportFooter({
   disclaimer = "Documento estritamente confidencial emitido pelo titular da conta via Axir. As informações refletem a posição consolidada na data de emissão.",
@@ -81,6 +88,7 @@ export function ReportFooter({
   currentPage,
   totalPages,
   className,
+  variant,
 }: ReportFooterProps) {
   const authCode = documentId ?? generateReportAuthId(accountHolder, reportType);
   const targetValidationUrl =
@@ -92,10 +100,50 @@ export function ReportFooter({
       ? `Página ${currentPage} de ${totalPages}`
       : undefined;
 
+  // Auto-derivação de variante: páginas intermediárias usam "running" para não roubar área útil
+  const effectiveVariant =
+    variant ??
+    (currentPage !== undefined && totalPages !== undefined && currentPage < totalPages
+      ? "running"
+      : "full");
+
+  // 1. Variante Running: Filete contínuo fino de 1 linha (< 22px)
+  if (effectiveVariant === "running") {
+    return (
+      <footer
+        className={cn(
+          "mt-auto pt-2 pb-0.5 border-t border-border/80 flex items-center justify-between text-[7.5pt] font-mono text-muted-foreground break-inside-avoid w-full print:pt-1.5 print:pb-0 print:border-border/80",
+          className,
+        )}
+      >
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="font-semibold text-foreground/85 tracking-tight">
+            Axir Gestão Patrimonial
+          </span>
+          {accountHolder && (
+            <span className="text-muted-foreground truncate hidden sm:inline print:inline">
+              · Titular: <strong className="font-medium text-foreground/90">{accountHolder}</strong>
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="num whitespace-nowrap">ID: {authCode}</span>
+          {paginationLabel && (
+            <span className="font-semibold text-foreground/90 whitespace-nowrap">
+              {paginationLabel}
+            </span>
+          )}
+        </div>
+      </footer>
+    );
+  }
+
+  // 2. Variante Full: Bloco Jurídico Oficial + QR Code + Chancela + Rodapé integrado
   return (
     <footer
       className={cn(
-        "mt-auto pt-3 border-t border-border/80 flex flex-col gap-2 text-[9.5pt] text-muted-foreground break-inside-avoid print:pt-2.5 print:mt-3 print:border-border/80",
+        "mt-auto pt-3 border-t border-border/80 flex flex-col gap-2 text-[9.5pt] text-muted-foreground break-inside-avoid print:pt-2.5 print:mt-3 print:border-border/80 w-full",
         className,
       )}
     >
@@ -159,8 +207,7 @@ export function ReportFooter({
           href={targetPresentationUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-mono text-[7.5pt] text-muted-foreground hover:text-foreground hover:underline transition-colors decoration-muted-foreground/40 print:no-underline"
-          title="Acesse a apresentação do Axir"
+          className="font-medium hover:text-foreground hover:underline transition-colors decoration-muted-foreground/40 text-muted-foreground/80 print:no-underline"
         >
           {chancelaText}
         </a>

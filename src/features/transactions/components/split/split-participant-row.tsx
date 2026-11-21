@@ -66,7 +66,7 @@ export function SplitParticipantRow({
               </Button>
               <Button
                 type="button" size="xs"
-                variant={isCustomInputOpen ? "secondary" : "outline"}
+                variant={isCustomInputOpen ? "default" : "outline"}
                 onClick={onToggleCustomSettle}
                 className="gap-1 h-7 text-xs"
               >

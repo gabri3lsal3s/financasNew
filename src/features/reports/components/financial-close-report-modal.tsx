@@ -17,10 +17,7 @@ import type {
 import { FinancialCloseSummary } from "./financial-close/FinancialCloseSummary";
 import { FinancialDreTable } from "./financial-close/FinancialDreTable";
 import { FinancialCompositionTables } from "./financial-close/FinancialCompositionTables";
-import {
-  FinancialHouseholdSection,
-  FinancialPaidInvoicesSection,
-} from "./financial-close/FinancialPaidInvoicesSection";
+import { FinancialHouseholdSection } from "./financial-close/FinancialPaidInvoicesSection";
 
 export type {
   FinancialDREData,
@@ -161,6 +158,16 @@ export function FinancialCloseReportModal({
             hasBrutoRef={hasBrutoRef}
           />
 
+          <ReportFooter
+            accountHolder={accountHolder}
+            reportType="dre"
+            currentPage={1}
+            totalPages={2}
+            disclaimer="Documento estritamente informativo emitido automaticamente com base nos registros financeiros e contábeis inseridos pelo titular da conta."
+            showQrCode
+            className="hidden print:flex"
+          />
+
           {/* Seção Página 2 em Impressão */}
           <div className="print-break-before-page flex flex-col gap-4">
             <ReportRunningHeader
@@ -171,11 +178,10 @@ export function FinancialCloseReportModal({
             <FinancialCompositionTables
               categories={categories}
               paymentMethods={paymentMethods}
+              paidInvoices={paidInvoices}
               hasBrutoRef={hasBrutoRef}
               hasBudgets={hasBudgets}
             />
-
-            <FinancialPaidInvoicesSection paidInvoices={paidInvoices} />
 
             {householdSummary && <FinancialHouseholdSection householdSummary={householdSummary} />}
           </div>
@@ -185,6 +191,8 @@ export function FinancialCloseReportModal({
       <ReportFooter
         accountHolder={accountHolder}
         reportType="dre"
+        currentPage={2}
+        totalPages={2}
         disclaimer="Documento estritamente informativo emitido automaticamente com base nos registros financeiros e contábeis inseridos pelo titular da conta."
         showQrCode
       />

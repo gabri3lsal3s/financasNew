@@ -55,6 +55,18 @@ export function ExecutiveReportDocument({
     stmt?.monthDividendsBRL ?? monthlyData?.monthDividendsTotalBRL ?? 0;
   const isPositivePnl = monthNetPnlBRL >= 0;
 
+  const hasCashGroup = classGroups.some((g) => {
+    const norm = g.className.toLowerCase();
+    return norm.includes("caixa") || norm.includes("liquidez");
+  });
+  const hasSeparateCash = effectiveCashBRL > 0 && !hasCashGroup;
+  const totalConsolidatedCostBRL = hasSeparateCash
+    ? effectiveCostBRL + effectiveCashBRL
+    : effectiveCostBRL;
+  const totalPnlBRL = effectiveTotalBRL - totalConsolidatedCostBRL;
+  const consolidatedPnlPct =
+    totalConsolidatedCostBRL > 0 ? (totalPnlBRL / totalConsolidatedCostBRL) * 100 : 0;
+
   return (
     <div className="flex flex-col gap-4 w-full print:block print:space-y-4">
       <ReportHeader
@@ -113,12 +125,12 @@ export function ExecutiveReportDocument({
         title="SÍNTESE PATRIMONIAL & DESEMPENHO"
         items={[
           {
-            label: "Patrimônio no Fechamento",
+            label: "Patrimônio Total",
             value: <MoneyText cents={numberToCents(effectiveTotalBRL)} tone="portfolio" />,
             subtext: `${investmentCount} ${investmentCount === 1 ? "ativo" : "ativos"} em custódia`,
           },
           {
-            label: "Rentabilidade da Competência (TWR)",
+            label: "TWR do Mês",
             value:
               monthRatePct !== null && monthRatePct !== undefined ? (
                 <span className={monthRatePct >= 0 ? "text-positive-strong" : "text-negative-strong"}>
@@ -127,10 +139,10 @@ export function ExecutiveReportDocument({
               ) : (
                 "0,0%"
               ),
-            subtext: "Variação isolada do mês (Padrão CVM)",
+            subtext: "Padrão CVM (isolado)",
           },
           {
-            label: "Resultado Líquido do Mês (P&L)",
+            label: "Resultado (P&L)",
             value: (
               <MoneyText
                 cents={numberToCents(monthNetPnlBRL)}
@@ -138,17 +150,17 @@ export function ExecutiveReportDocument({
                 sign="explicit"
               />
             ),
-            subtext: "P&L líquido da competência",
+            subtext: "Líquido da competência",
           },
           {
-            label: "Proventos da Competência",
+            label: "Proventos do Mês",
             value: (
               <MoneyText
                 cents={numberToCents(monthDividendsBRL)}
                 tone={monthDividendsBRL > 0 ? "positive" : "portfolio"}
               />
             ),
-            subtext: "Recebidos no mês",
+            subtext: "Recebidos no período",
           },
         ]}
         narrative={
@@ -212,14 +224,15 @@ export function ExecutiveReportDocument({
               </thead>
               <tbody className="divide-y divide-border/40">
                 {classGroups.map((g) => {
-                  const totalCents = g.totalCents;
+                  const className = g.className;
+                  const totalCents = g.totalCents ?? 0;
                   const costCents = g.totalCostCents ?? 0;
                   const pct = effectiveTotalBRL > 0 ? (totalCents / numberToCents(effectiveTotalBRL)) * 100 : 0;
                   const returnPct = costCents > 0 ? ((totalCents - costCents) / costCents) * 100 : 0;
                   return (
-                    <tr key={g.className} className="even:bg-muted/20">
-                      <td className="py-1.5 px-2 font-semibold text-foreground">{g.className}</td>
-                      <td className="py-1.5 px-2 text-center text-muted-foreground font-mono">{g.items.length}</td>
+                    <tr key={className} className="even:bg-muted/20">
+                      <td className="py-1.5 px-2 font-semibold text-foreground">{className}</td>
+                      <td className="py-1.5 px-2 text-center text-muted-foreground font-mono">{g.items?.length ?? 0}</td>
                       <td className="py-1.5 px-2 text-right font-mono font-bold">
                         <MoneyText cents={totalCents} hideCurrency />
                       </td>
@@ -237,22 +250,42 @@ export function ExecutiveReportDocument({
                     </tr>
                   );
                 })}
+                {hasSeparateCash && (
+                  <tr key="reserva-caixa-sintese" className="even:bg-muted/20">
+                    <td className="py-1.5 px-2 font-semibold text-foreground">Reserva de Caixa</td>
+                    <td className="py-1.5 px-2 text-center text-muted-foreground font-mono">—</td>
+                    <td className="py-1.5 px-2 text-right font-mono font-bold">
+                      <MoneyText cents={numberToCents(effectiveCashBRL)} hideCurrency />
+                    </td>
+                    <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                      {formatPercent(effectiveTotalBRL > 0 ? (effectiveCashBRL / effectiveTotalBRL) * 100 : 0)}%
+                    </td>
+                    <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                      <MoneyText cents={numberToCents(effectiveCashBRL)} hideCurrency />
+                    </td>
+                    <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                      —
+                    </td>
+                  </tr>
+                )}
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-border/80 font-bold bg-muted/30">
                   <td className="py-1.5 px-2 uppercase tracking-wider text-[10px]">Total Consolidado</td>
-                  <td className="py-1.5 px-2 text-center font-mono">{investmentCount}</td>
+                  <td className="py-1.5 px-2 text-center font-mono">
+                    {investmentCount}
+                  </td>
                   <td className="py-1.5 px-2 text-right font-mono">
                     <MoneyText cents={numberToCents(effectiveTotalBRL)} hideCurrency />
                   </td>
                   <td className="py-1.5 px-2 text-right font-mono text-foreground">100,0%</td>
                   <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
-                    <MoneyText cents={numberToCents(effectiveCostBRL)} hideCurrency />
+                    <MoneyText cents={numberToCents(totalConsolidatedCostBRL)} hideCurrency />
                   </td>
                   <td className="py-1.5 px-2 text-right font-mono font-bold">
-                    {effectiveCostBRL > 0 ? (
-                      <span className={(effectiveTotalBRL - effectiveCostBRL) >= 0 ? "text-positive-strong" : "text-negative-strong"}>
-                        {formatSignedPct(((effectiveTotalBRL - effectiveCostBRL) / effectiveCostBRL) * 100)}
+                    {totalConsolidatedCostBRL > 0 ? (
+                      <span className={totalPnlBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                        {formatSignedPct(consolidatedPnlPct)}
                       </span>
                     ) : "—"}
                   </td>
@@ -263,23 +296,62 @@ export function ExecutiveReportDocument({
         </section>
       ) : null}
 
-      <section
-        aria-label="Detalhamento das Posições"
-        className="flex flex-col gap-3 pt-1 print:block print:space-y-3 print-break-before-page print:break-before-page"
-      >
-        <ReportRunningHeader
-          title="Relatório Executivo da Carteira"
-          periodLabel={periodLabel}
-        />
-        <ReportClassTables groups={classGroups} />
-      </section>
-
       <ReportFooter
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_CVM_DISCLAIMER}
         reportType="carteira"
-        showQrCode
+        currentPage={1}
+        totalPages={2}
+        variant="running"
+        className="hidden print:flex"
       />
+
+      <section
+        aria-label="Detalhamento das Posições"
+        className="flex flex-col justify-between gap-3 pt-1 min-h-[960px] print:min-h-0 print:block print:space-y-3 print-break-before-page print:break-before-page"
+      >
+        <div className="flex flex-col gap-3">
+          <ReportRunningHeader
+            title="Relatório Executivo da Carteira"
+            periodLabel={periodLabel}
+          />
+          <ReportClassTables groups={classGroups} />
+          {hasSeparateCash && (
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg border border-border/80 bg-muted/20 text-xs">
+              <div className="flex items-center gap-2">
+                <span
+                  className="size-2 rounded-full shrink-0 bg-[hsl(var(--cat-7))]"
+                  aria-hidden="true"
+                />
+                <span className="font-bold text-foreground">
+                  Reserva de Caixa
+                </span>
+                <span className="text-muted-foreground text-[11px] hidden sm:inline print:inline">
+                  · Disponibilidades &amp; Liquidez Imediata
+                </span>
+              </div>
+              <div className="flex items-center gap-2 font-mono num">
+                <span className="font-bold text-foreground">
+                  <MoneyText cents={numberToCents(effectiveCashBRL)} />
+                </span>
+                <span className="text-muted-foreground font-semibold text-[11px]">
+                  ({formatPercent(effectiveTotalBRL > 0 ? (effectiveCashBRL / effectiveTotalBRL) * 100 : 0)}%)
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <ReportFooter
+          accountHolder={accountHolder}
+          disclaimer={OFFICIAL_CVM_DISCLAIMER}
+          reportType="carteira"
+          currentPage={2}
+          totalPages={2}
+          variant="full"
+          showQrCode
+        />
+      </section>
     </div>
   );
 }

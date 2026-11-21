@@ -72,12 +72,12 @@ export function AporteRowActions({
         className={cn(
           "relative inline-flex h-7 items-center justify-center gap-1 rounded-md px-2 text-xs font-medium transition-colors cursor-pointer shrink-0 max-sm:after:absolute max-sm:after:-inset-2",
           isDone
-            ? "border border-positive/30 bg-positive/10 text-positive-strong font-semibold"
+            ? "border border-primary/30 bg-primary/10 text-primary-strong font-semibold"
             : "border border-transparent hover:border-border/80 text-muted-foreground hover:text-foreground hover:bg-surface-raised",
           compact && "h-6 px-1.5 text-[11px]",
         )}
       >
-        <Check className={cn("size-3.5", isDone ? "text-positive-strong" : "opacity-40 hover:opacity-100")} aria-hidden="true" />
+        <Check className={cn("size-3.5", isDone ? "text-primary-strong" : "opacity-40 hover:opacity-100")} aria-hidden="true" />
         <span>{isDone ? "Feito" : "Marcar"}</span>
       </button>
     </div>

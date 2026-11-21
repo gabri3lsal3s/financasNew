@@ -22,6 +22,11 @@ export interface ReportDividendSparklineProps {
 /**
  * Gráfico de Colunas de Proventos (12 Meses) para Relatórios A4 / PDF.
  */
+const CANONICAL_MONTH_NAMES = [
+  "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+  "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+];
+
 export function ReportDividendSparkline({
   title = "Evolução dos Proventos & Renda Passiva (Últimos 12 Meses)",
   points,
@@ -31,11 +36,18 @@ export function ReportDividendSparkline({
   className,
 }: ReportDividendSparklineProps) {
   const safePoints: readonly MonthlyDividendPoint[] = points
-    ? points
+    ? points.map((p, idx) => ({
+        ...p,
+        label: !p.label || /^M\d+$/i.test(p.label)
+          ? CANONICAL_MONTH_NAMES[idx % 12] ?? p.label
+          : p.label,
+      }))
     : monthlyDividends
       ? monthlyDividends.map((m, idx) => ({
           month: m.month ?? `2026-${String(idx + 1).padStart(2, "0")}`,
-          label: m.label ?? `M${idx + 1}`,
+          label: !m.label || /^M\d+$/i.test(m.label)
+            ? CANONICAL_MONTH_NAMES[idx % 12] ?? `M${idx + 1}`
+            : m.label,
           amountCents: m.amountCents ?? 0,
         }))
       : [];

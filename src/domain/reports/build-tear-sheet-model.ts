@@ -125,30 +125,70 @@ export function buildTearSheetModel(params: BuildTearSheetModelParams): TearShee
     classSegmentMap.set(normKey(seg.key), seg.pct);
   }
 
-  const stackedSegments: TearSheetStackedSegment[] = (allocationAnalysis?.classGaps ?? []).map((cg) => {
-    const matchedPct = classSegmentMap.get(normKey(cg.assetClass)) ?? cg.currentPct;
+  const rawClassGaps: Array<{
+    assetClass: string;
+    currentBRL: number;
+    currentPct: number;
+    targetPct: number;
+  }> =
+    allocationAnalysis?.classGaps && allocationAnalysis.classGaps.length > 0
+      ? allocationAnalysis.classGaps
+      : (allocationAnalysis as unknown as { classes?: Array<{ label?: string; assetClass?: string; classKey?: string; currentValueBRL?: number; currentBRL?: number; currentPct?: number; targetPct?: number }> })?.classes &&
+        ((allocationAnalysis as unknown as { classes: Array<{ label?: string; assetClass?: string; classKey?: string; currentValueBRL?: number; currentBRL?: number; currentPct?: number; targetPct?: number }> }).classes.length > 0)
+        ? (allocationAnalysis as unknown as { classes: Array<{ label?: string; assetClass?: string; classKey?: string; currentValueBRL?: number; currentBRL?: number; currentPct?: number; targetPct?: number }> }).classes.map((c) => ({
+            assetClass: c.label || c.assetClass || c.classKey || "Geral",
+            currentBRL: c.currentValueBRL ?? c.currentBRL ?? Math.round((((c.currentPct ?? 0) / 100) * totalBRL) * 100) / 100,
+            currentPct: c.currentPct ?? 0,
+            targetPct: c.targetPct ?? 0,
+          }))
+        : donutData.classSegments.map((seg) => ({
+            assetClass: seg.label,
+            currentBRL: Math.round(((seg.pct / 100) * totalBRL) * 100) / 100,
+            currentPct: seg.pct,
+            targetPct: 0,
+          }));
+
+  const sumRawGapsBRL = rawClassGaps.reduce((acc, cg) => acc + cg.currentBRL, 0);
+  const analysisTotal =
+    (allocationAnalysis as unknown as { totalPortfolioBRL?: number })?.totalPortfolioBRL ??
+    allocationAnalysis?.totalBRL;
+  const allocationBaseBRL =
+    analysisTotal && analysisTotal > 0
+      ? analysisTotal
+      : sumRawGapsBRL > 0
+        ? sumRawGapsBRL
+        : totalBRL;
+
+  const toleranceBRL = Math.max(50, allocationBaseBRL * 0.005);
+
+  const allocationRows: TearSheetAllocationRow[] = rawClassGaps.map((cg) => {
+    const currentBRL = cg.currentBRL;
+    const currentPct =
+      allocationBaseBRL > 0
+        ? Math.round(((currentBRL / allocationBaseBRL) * 100) * 10) / 10
+        : cg.currentPct;
+    const targetIdealBRL = Math.round((allocationBaseBRL * (cg.targetPct / 100)) * 100) / 100;
+    const deviationBRL = Math.round((currentBRL - targetIdealBRL) * 100) / 100;
+    const isDeficit = cg.targetPct > 0 && deviationBRL < -toleranceBRL;
+    const isSurplus = cg.targetPct > 0 && deviationBRL > toleranceBRL;
+
     return {
-      key: cg.assetClass,
-      label: cg.assetClass.toUpperCase(),
-      pct: matchedPct,
-      color: resolveAssetClassTokenColor(cg.assetClass),
+      assetClass: cg.assetClass,
+      currentBRL,
+      currentPct,
+      targetPct: cg.targetPct,
+      deviationBRL,
+      isDeficit,
+      isSurplus,
     };
   });
 
-  const allocationRows: TearSheetAllocationRow[] = (allocationAnalysis?.classGaps ?? []).map((cg) => {
-    const targetIdealBRL = totalBRL * (cg.targetPct / 100);
-    const deviationBRL = Math.round((cg.currentBRL - targetIdealBRL) * 100) / 100;
-    const matchedPct = classSegmentMap.get(normKey(cg.assetClass)) ?? cg.currentPct;
-    return {
-      assetClass: cg.assetClass,
-      currentBRL: cg.currentBRL,
-      currentPct: matchedPct,
-      targetPct: cg.targetPct,
-      deviationBRL,
-      isDeficit: deviationBRL < -1.0,
-      isSurplus: deviationBRL > 1.0,
-    };
-  });
+  const stackedSegments: TearSheetStackedSegment[] = allocationRows.map((row) => ({
+    key: row.assetClass,
+    label: row.assetClass.toUpperCase(),
+    pct: row.currentPct,
+    color: resolveAssetClassTokenColor(row.assetClass),
+  }));
 
   const topDominance = concentrationRisk?.singleAssetDominance ?? {
     ticker: investmentRows[0]?.ticker ?? "N/A",
@@ -202,9 +242,9 @@ export function buildTearSheetModel(params: BuildTearSheetModelParams): TearShee
     breakdownRows,
     classTableGroups: buildClassTableGroups(activeInvestmentRows, totalBRL, cashBRL, params.usdRate),
     intlPct: totalBRL > 0 ? (intlTotalBRL / totalBRL) * 100 : 0,
-    hasTargets: (allocationAnalysis?.classGaps ?? []).some((cg) => cg.targetPct > 0),
-    surplusClasses: (allocationAnalysis?.classGaps ?? [])
-      .filter((cg) => cg.currentPct > cg.targetPct + 0.5 && cg.targetPct > 0)
+    hasTargets: allocationRows.some((cg) => cg.targetPct > 0),
+    surplusClasses: allocationRows
+      .filter((cg) => cg.isSurplus)
       .map((cg) => cg.assetClass),
   };
 }

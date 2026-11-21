@@ -133,10 +133,10 @@ export function SplitParticipantsEditor({
             <span className="text-xs font-semibold text-foreground">Divisão entre Participantes</span>
           </div>
           <div className="flex items-center gap-1">
-            <Button type="button" variant={!isCustomMode ? "secondary" : "ghost"} size="xs" onClick={() => onCustomModeChange(false)}>
+            <Button type="button" variant={!isCustomMode ? "default" : "ghost"} size="xs" onClick={() => onCustomModeChange(false)}>
               Quantidade
             </Button>
-            <Button type="button" variant={isCustomMode ? "secondary" : "ghost"} size="xs" onClick={() => onCustomModeChange(true)}>
+            <Button type="button" variant={isCustomMode ? "default" : "ghost"} size="xs" onClick={() => onCustomModeChange(true)}>
               Nomes Customizados
             </Button>
           </div>

@@ -129,7 +129,7 @@ export function AssetGovernanceForm({
             </Badge>
             <Button
               type="button"
-              variant={score === null ? "secondary" : "outline"}
+              variant={score === null ? "default" : "outline"}
               size="xs"
               sensoryIntent="selection"
               onClick={() => onScoreChange(null)}

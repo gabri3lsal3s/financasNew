@@ -27,7 +27,7 @@ export function TearSheetMovementStrip({ monthSummary }: TearSheetMovementStripP
         : 0;
 
   return (
-    <div className="bg-muted/30 rounded-xl border border-border/80 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5 text-xs print:bg-surface print:border-border shadow-xs">
+    <div className="bg-muted/30 rounded-xl border border-border/80 px-4 py-2.5 print:py-1.5 print:px-3 flex flex-wrap items-center justify-between gap-2.5 print:gap-1.5 text-xs print:bg-surface print:border-border shadow-xs">
       <div className="flex items-center gap-1.5 text-foreground font-bold uppercase tracking-wider text-[10px]">
         <Calendar className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
         <span>Movimentação do Período ({monthSummary.monthLabel}):</span>

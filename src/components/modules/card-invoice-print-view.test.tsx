@@ -36,8 +36,9 @@ describe("CardInvoicePrintView (fatura do cartão)", () => {
     render(<CardInvoicePrintView {...baseProps} />);
 
     expect(screen.getAllByText("Axir").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Fatura de cartão de crédito")).toBeInTheDocument();
-    expect(screen.getAllByText(/Nubank · Agosto de 2026/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Fatura de Cartão de Crédito — Nubank")).toBeInTheDocument();
+    expect(screen.getByText("Demonstrativo Analítico de Lançamentos, Rateio & Pagamentos")).toBeInTheDocument();
+    expect(screen.getAllByText("Agosto de 2026").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Fatura total (bruto)")).toBeInTheDocument();
     expect(screen.getByText("Pago")).toBeInTheDocument();
     expect(screen.getByText("Saldo aberto (bruto)")).toBeInTheDocument();

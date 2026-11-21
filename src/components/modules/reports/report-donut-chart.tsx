@@ -51,12 +51,12 @@ export function ReportDonutChart({
         className="absolute inset-0 flex flex-col items-center justify-center text-center p-0.5 rounded-full pointer-events-none select-none"
         aria-hidden="true"
       >
-        <div className="flex flex-col items-center justify-center w-full max-w-[96%] min-w-0">
+        <div className="flex flex-col items-center justify-center w-full max-w-[80%] min-w-0">
           {centerLabel && (
             <span
               className={cn(
                 "uppercase font-semibold text-muted-foreground tracking-wider leading-none truncate max-w-full",
-                size <= 112 ? "text-[9px]" : "text-[10px] sm:text-[11px]",
+                size <= 116 ? "text-[8px]" : "text-[9px] sm:text-[10px]",
               )}
             >
               {centerLabel}
@@ -66,7 +66,7 @@ export function ReportDonutChart({
             <span
               className={cn(
                 "num font-mono font-bold text-foreground mt-0.5 leading-none whitespace-nowrap",
-                size <= 112
+                size <= 116
                   ? "text-[8.5px] tracking-tighter"
                   : size <= 125
                     ? "text-[10px] tracking-tight"

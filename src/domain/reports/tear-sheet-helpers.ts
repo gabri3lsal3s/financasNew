@@ -119,16 +119,34 @@ export function buildClassTableGroups(
     })
     .map(([assetClass, items]) => {
       const subtotalBRL = items.reduce((acc, i) => acc + i.valueBRL, 0);
-      const subtotalCostBRL = items.reduce((acc, i) => {
-        const cost =
-          i.totalCostBRL !== undefined && i.totalCostBRL !== null && i.totalCostBRL > 0
-            ? i.totalCostBRL
-            : i.currency === "USD"
-              ? i.valueBRL - i.unrealizedPnlBRL
-              : i.averagePrice * i.quantity;
-        return acc + Math.max(0, cost);
+
+      const resolveItemCost = (i: WealthPositionRow): number => {
+        if (i.totalCostBRL !== undefined && i.totalCostBRL !== null && i.totalCostBRL > 0) {
+          return i.totalCostBRL;
+        }
+        const anyCost = (i as unknown as { costBRL?: number }).costBRL;
+        if (anyCost !== undefined && anyCost !== null && anyCost > 0) {
+          return anyCost;
+        }
+        if (i.currency === "USD") {
+          return Math.max(0, i.valueBRL - (i.unrealizedPnlBRL ?? 0));
+        }
+        const avg = i.averagePrice || (i as unknown as { avgPriceBRL?: number }).avgPriceBRL;
+        if (avg && avg > 0 && i.quantity > 0) {
+          return avg * i.quantity;
+        }
+        if (i.unrealizedPnlBRL !== undefined) {
+          return Math.max(0, i.valueBRL - i.unrealizedPnlBRL);
+        }
+        return i.valueBRL;
+      };
+
+      const subtotalCostBRL = items.reduce((acc, i) => acc + Math.max(0, resolveItemCost(i)), 0);
+      const subtotalPnlBRL = items.reduce((acc, i) => {
+        if (i.unrealizedPnlBRL !== undefined) return acc + i.unrealizedPnlBRL;
+        const cost = resolveItemCost(i);
+        return acc + (i.valueBRL - cost);
       }, 0);
-      const subtotalPnlBRL = items.reduce((acc, i) => acc + i.unrealizedPnlBRL, 0);
       const subtotalDividendsBRL = items.reduce((acc, i) => acc + (i.dividendsBRL ?? 0), 0);
       const subtotalTotalReturnBRL = subtotalPnlBRL + subtotalDividendsBRL;
       const subtotalTotalReturnPct = subtotalCostBRL > 0 ? (subtotalTotalReturnBRL / subtotalCostBRL) * 100 : 0;
@@ -144,8 +162,14 @@ export function buildClassTableGroups(
 
       if (isInternacional) {
         const usdItems = items.filter((i) => i.currency === "USD");
-        const totalUsdVal = usdItems.reduce((acc, i) => acc + i.quantity * i.currentPrice, 0);
-        const totalUsdCost = usdItems.reduce((acc, i) => acc + (i.totalCostUSD ?? (i.quantity * i.averagePrice)), 0);
+        const totalUsdVal = usdItems.reduce((acc, i) => {
+          const pr = i.currentPrice || (i as unknown as { priceBRL?: number }).priceBRL || (i.quantity > 0 ? i.valueBRL / i.quantity : 0);
+          return acc + (i.quantity * pr);
+        }, 0);
+        const totalUsdCost = usdItems.reduce((acc, i) => {
+          const avg = i.averagePrice || (i as unknown as { avgPriceBRL?: number }).avgPriceBRL || 0;
+          return acc + (i.totalCostUSD ?? (i.quantity * avg));
+        }, 0);
         if (totalUsdCost > 0) {
           subtotalPriceVarPctUSD = ((totalUsdVal - totalUsdCost) / totalUsdCost) * 100;
         }
@@ -172,28 +196,53 @@ export function buildClassTableGroups(
         topAssetSharePct: subtotalBRL > 0 && topItem ? (topItem.valueBRL / subtotalBRL) * 100 : undefined,
         items: items.map((r) => {
           const isUsd = r.currency === "USD";
+          const effectiveCost = resolveItemCost(r);
+          const effectiveCurrentPrice =
+            r.currentPrice ||
+            (r as unknown as { priceBRL?: number }).priceBRL ||
+            (r.quantity > 0 ? r.valueBRL / r.quantity : 0);
+          const effectiveAvgPrice =
+            r.averagePrice ||
+            (r as unknown as { avgPriceBRL?: number }).avgPriceBRL ||
+            (r.quantity > 0 && effectiveCost > 0 ? effectiveCost / r.quantity : 0);
+
           const nativePriceVarPct =
             r.pricePnlPctUSD !== undefined && r.pricePnlPctUSD !== null
               ? r.pricePnlPctUSD
-              : isUsd && r.averagePrice > 0 && r.currentPrice > 0
-                ? ((r.currentPrice - r.averagePrice) / r.averagePrice) * 100
-                : r.unrealizedPnlPct;
+              : isUsd && effectiveAvgPrice > 0 && effectiveCurrentPrice > 0
+                ? ((effectiveCurrentPrice - effectiveAvgPrice) / effectiveAvgPrice) * 100
+                : r.unrealizedPnlPct !== undefined
+                  ? r.unrealizedPnlPct
+                  : effectiveCost > 0
+                    ? ((r.valueBRL - effectiveCost) / effectiveCost) * 100
+                    : 0;
+
+          const itemTotalReturnPct =
+            r.totalReturnPct !== undefined && r.totalReturnPct !== null
+              ? r.totalReturnPct
+              : r.unrealizedPnlPct !== undefined
+                ? r.unrealizedPnlPct
+                : effectiveCost > 0
+                  ? ((r.valueBRL - effectiveCost + (r.dividendsBRL ?? r.yearDividendsBRL ?? 0)) / effectiveCost) * 100
+                  : 0;
 
           return {
             ticker: r.ticker,
             name: r.name,
             sector: r.sector,
             quantity: r.quantity,
-            avgPriceCents: numberToCents(r.averagePrice),
-            currentPriceCents: numberToCents(r.currentPrice),
+            avgPriceCents: numberToCents(effectiveAvgPrice),
+            currentPriceCents: numberToCents(effectiveCurrentPrice),
             totalCents: numberToCents(r.valueBRL),
             pricePnlPct: nativePriceVarPct,
-            pnlPct: r.totalReturnPct !== undefined ? r.totalReturnPct : r.unrealizedPnlPct,
+            pnlPct: itemTotalReturnPct,
             dividendsCents: numberToCents(r.dividendsBRL ?? r.yearDividendsBRL ?? 0),
             yocPct: r.yocPct,
             currency: r.currency,
             score: r.score,
             status: r.allocationStatus ?? "active",
+            indexType: r.indexType,
+            maturityDate: r.maturityDate,
           };
         }),
       };
@@ -229,6 +278,8 @@ export function buildClassTableGroups(
           currency: "BRL",
           status: "ativo",
           score: null,
+          indexType: null,
+          maturityDate: null,
         },
       ],
     });

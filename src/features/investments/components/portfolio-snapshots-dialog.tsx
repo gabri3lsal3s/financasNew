@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { History } from "lucide-react";
+import { History, Plus } from "lucide-react";
 import {
   ReportDocumentLayout,
   ReportFooter,
@@ -12,7 +12,10 @@ import { formatDateBR, formatMonthYear, todayLocalIso } from "@/lib/date";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
 import { formatCentsAsBRL } from "@/services/masks";
 import { useDeletePortfolioSnapshot, useResetManualSnapshotCalibration } from "@/state";
-import { CalibrateSnapshotDialog } from "./calibrate-snapshot-dialog";
+import {
+  CalibrateSnapshotDialog,
+  type SnapshotCalibrationData,
+} from "./calibrate-snapshot-dialog";
 import { SnapshotsEvolutionChart } from "./snapshots/snapshots-evolution-chart";
 import { SnapshotsLedgerTable } from "./snapshots/snapshots-ledger-table";
 
@@ -41,10 +44,22 @@ export function PortfolioSnapshotsDialog({
 }: PortfolioSnapshotsDialogProps) {
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [snapshotToDelete, setSnapshotToDelete] = useState<string | null>(null);
-  const [snapshotToCalibrate, setSnapshotToCalibrate] = useState<PortfolioMonthlySeriesPoint | null>(null);
+  const [snapshotToCalibrate, setSnapshotToCalibrate] = useState<
+    PortfolioMonthlySeriesPoint | SnapshotCalibrationData | null
+  >(null);
   const [snapshotToRestore, setSnapshotToRestore] = useState<PortfolioMonthlySeriesPoint | null>(null);
   const deleteSnapshotMutation = useDeletePortfolioSnapshot();
   const resetCalibrationMutation = useResetManualSnapshotCalibration();
+
+  const handleOpenAddMonth = () => {
+    const today = todayLocalIso().slice(0, 7);
+    setSnapshotToCalibrate({
+      month: today,
+      valueBRL: 0,
+      costBRL: 0,
+      isNew: true,
+    });
+  };
 
   const availableYears = useMemo(() => {
     const yearsSet = new Set<string>();
@@ -141,21 +156,35 @@ export function PortfolioSnapshotsDialog({
             <div />
           )}
 
-          {onOpenPocketCostDialog ? (
+          <div className="flex items-center gap-2 shrink-0 ml-auto">
             <Button
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => {
-                onOpenChange(false);
-                onOpenPocketCostDialog();
-              }}
-              className="shrink-0 gap-1.5 text-xs ml-auto"
+              sensoryIntent="selection"
+              onClick={handleOpenAddMonth}
+              className="shrink-0 gap-1.5 text-xs text-portfolio border-portfolio/30 hover:bg-portfolio/10 hover:border-portfolio/50"
             >
-              <History className="size-3.5 text-portfolio" aria-hidden="true" />
-              <span>Marcos do Bolso</span>
+              <Plus className="size-3.5 text-portfolio" aria-hidden="true" />
+              <span>Adicionar Mês</span>
             </Button>
-          ) : null}
+
+            {onOpenPocketCostDialog ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  onOpenChange(false);
+                  onOpenPocketCostDialog();
+                }}
+                className="shrink-0 gap-1.5 text-xs"
+              >
+                <History className="size-3.5 text-portfolio" aria-hidden="true" />
+                <span>Marcos do Bolso</span>
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <SnapshotsEvolutionChart series={filteredSeries} summary={summary} />
@@ -173,6 +202,8 @@ export function PortfolioSnapshotsDialog({
         <ReportFooter
           disclaimer={OFFICIAL_CVM_DISCLAIMER}
           reportType="ledger"
+          currentPage={1}
+          totalPages={1}
           showQrCode
           className="mt-2"
         />
@@ -187,7 +218,7 @@ export function PortfolioSnapshotsDialog({
         title="Excluir Snapshot Mensal"
         description={
           snapshotToDelete
-            ? `Tem certeza que deseja excluir o snapshot patrimonial de ${formatMonthYear(snapshotToDelete)}? Esta ação removerá o registro consolidado do banco de dados.`
+            ? `Tem certeza que deseja excluir o snapshot patrimonial de ${formatMonthYear(snapshotToDelete)}? A competência permanecerá no histórico como 'sem snapshot' com rentabilidade neutra (0,00%), sem perda de ativos ou movimentações. Você poderá preencher o saldo novamente quando quiser.`
             : ""
         }
         confirmLabel="Excluir Snapshot"
@@ -232,6 +263,13 @@ export function PortfolioSnapshotsDialog({
           if (!isOpen) setSnapshotToCalibrate(null);
         }}
         snapshot={snapshotToCalibrate}
+        onDelete={async (month) => {
+          if (onDeleteSnapshot) {
+            await onDeleteSnapshot(month);
+          } else {
+            await deleteSnapshotMutation.mutateAsync(month);
+          }
+        }}
       />
     </>
   );

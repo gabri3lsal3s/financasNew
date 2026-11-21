@@ -35,9 +35,18 @@ export function ConsolidatedBalanceSection({
                 <ReportDonutChart
                   segments={assetSegments}
                   centerLabel="Ativos"
-                  centerValue={<MoneyText cents={numberToCents(totalAssets)} />}
-                  size={104}
-                  strokeWidth={10}
+                  centerValue={
+                    <div className="flex flex-col items-center justify-center leading-none">
+                      <span className="text-[7.5px] font-mono font-medium text-muted-foreground">R$</span>
+                      <MoneyText
+                        cents={numberToCents(totalAssets)}
+                        hideCurrency
+                        className="text-[9.5pt] font-mono font-bold text-foreground tracking-tight leading-none whitespace-nowrap"
+                      />
+                    </div>
+                  }
+                  size={114}
+                  strokeWidth={9}
                   showLegend={false}
                 />
               </div>
@@ -48,21 +57,24 @@ export function ConsolidatedBalanceSection({
                   <span className="size-2 rounded-full shrink-0 bg-primary-strong border border-border/80" />
                   <span className="text-muted-foreground truncate">Investimentos:</span>
                 </div>
-                <MoneyText cents={numberToCents(balanceSheet.totalInvestmentsBRL)} className="font-bold text-foreground" />
+                <MoneyText cents={numberToCents(balanceSheet.totalInvestmentsBRL)} className="font-bold text-foreground whitespace-nowrap" />
               </div>
               <div className="flex justify-between items-center gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="size-2 rounded-full shrink-0 bg-[hsl(var(--cat-7))] border border-border/80" />
+                  <span
+                    className="size-2 rounded-full shrink-0 border border-border/80"
+                    style={{ backgroundColor: assetSegments.find((s) => s.key === "cash")?.color ?? "#10b981" }}
+                  />
                   <span className="text-muted-foreground truncate">Reserva de Caixa:</span>
                 </div>
-                <MoneyText cents={numberToCents(balanceSheet.cashBalanceBRL)} className="font-bold text-foreground" />
+                <MoneyText cents={numberToCents(balanceSheet.cashBalanceBRL)} className="font-bold text-foreground whitespace-nowrap" />
               </div>
               <div className="flex justify-between items-center gap-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="size-2 rounded-full shrink-0 bg-portfolio border border-border/80" />
                   <span className="text-muted-foreground truncate">Contas a Receber:</span>
                 </div>
-                <MoneyText cents={numberToCents(balanceSheet.receivablesBRL)} className="font-bold text-foreground" />
+                <MoneyText cents={numberToCents(balanceSheet.receivablesBRL)} className="font-bold text-foreground whitespace-nowrap" />
               </div>
             </div>
           </div>
@@ -82,22 +94,22 @@ export function ConsolidatedBalanceSection({
               <>
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-muted-foreground">Empréstimos / Dívidas:</span>
-                  <MoneyText cents={numberToCents(balanceSheet.debtsPayableBRL)} className="font-bold text-foreground" />
+                  <MoneyText cents={numberToCents(balanceSheet.debtsPayableBRL)} className="font-bold text-foreground whitespace-nowrap" />
                 </div>
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-muted-foreground">Faturas em Aberto:</span>
-                  <MoneyText cents={numberToCents(balanceSheet.creditCardInvoicesBRL)} className="font-bold text-foreground" />
+                  <MoneyText cents={numberToCents(balanceSheet.creditCardInvoicesBRL)} className="font-bold text-foreground whitespace-nowrap" />
                 </div>
               </>
             ) : (
               <div className="flex justify-between items-center gap-2">
                 <span className="text-muted-foreground">Saldo Devedor Total:</span>
-                <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="font-bold" />
+                <MoneyText cents={numberToCents(balanceSheet.totalLiabilitiesBRL)} tone="negative" className="font-bold whitespace-nowrap" />
               </div>
             )}
             <div className="flex justify-between items-center gap-2 pt-1 border-t border-border/40">
               <span className="text-muted-foreground">Alavancagem s/ Ativos:</span>
-              <span className="num font-mono font-bold text-foreground">
+              <span className="num font-mono font-bold text-foreground whitespace-nowrap">
                 {formatPercent(balanceSheet.debtToAssetRatioPct)}%
               </span>
             </div>
@@ -107,11 +119,16 @@ export function ConsolidatedBalanceSection({
 
       {/* DRE Pessoal */}
       <section aria-label="DRE Pessoal" className="flex flex-col gap-2 break-inside-avoid">
-        <div className="flex items-center gap-2 border-b border-border/80 pb-1">
-          <Landmark className="size-3.5 text-muted-foreground" aria-hidden="true" />
-          <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-            Demonstração do Resultado do Exercício (DRE Pessoal — Base Ponderada)
-          </h3>
+        <div className="flex items-center justify-between border-b border-border/80 pb-1">
+          <div className="flex items-center gap-1.5">
+            <Landmark className="size-3.5 text-muted-foreground" aria-hidden="true" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+              DRE Pessoal
+            </h3>
+          </div>
+          <span className="rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 text-[8.5px] font-semibold text-muted-foreground uppercase tracking-wider shrink-0 font-mono">
+            Base Ponderada
+          </span>
         </div>
         <div className="rounded-lg border border-border/80 overflow-hidden text-xs">
           <table className="w-full text-left border-collapse table-fixed">
@@ -129,13 +146,13 @@ export function ConsolidatedBalanceSection({
               <tr className="bg-muted/30 font-bold text-foreground">
                 <td className="py-1.5 px-3">(+) Receitas Brutas Totais</td>
                 <td className="py-1.5 px-3 text-right num font-mono text-positive-strong">
-                  <MoneyText cents={numberToCents(balanceSheet.dre.grossIncomeBRL)} tone="positive" className="font-bold" />
+                  <MoneyText cents={numberToCents(balanceSheet.dre.grossIncomeBRL)} tone="positive" className="font-bold" hideCurrency />
                 </td>
               </tr>
               <tr className="text-foreground">
                 <td className="py-1.5 px-3">(-) Despesas Operacionais e Custo de Vida</td>
                 <td className="py-1.5 px-3 text-right num font-mono text-negative-strong">
-                  <MoneyText cents={numberToCents(balanceSheet.dre.totalExpensesBRL)} tone="negative" className="font-bold" />
+                  <MoneyText cents={numberToCents(balanceSheet.dre.totalExpensesBRL)} tone="negative" className="font-bold" hideCurrency />
                 </td>
               </tr>
               <tr className="bg-muted/15 font-semibold text-foreground">
@@ -146,13 +163,14 @@ export function ConsolidatedBalanceSection({
                     tone={balanceSheet.dre.operationalSavingsBRL >= 0 ? "positive" : "negative"}
                     sign="explicit"
                     className="font-bold"
+                    hideCurrency
                   />
                 </td>
               </tr>
               <tr className="text-foreground">
                 <td className="py-1.5 px-3">(-) Aportes Destinados a Investimentos</td>
                 <td className="py-1.5 px-3 text-right num font-mono">
-                  <MoneyText cents={numberToCents(balanceSheet.dre.investedAporteBRL)} tone="default" className="font-bold" />
+                  <MoneyText cents={numberToCents(balanceSheet.dre.investedAporteBRL)} tone="default" className="font-bold" hideCurrency />
                 </td>
               </tr>
               <tr className="bg-primary/5 font-bold text-foreground border-t border-border/80">
@@ -163,6 +181,7 @@ export function ConsolidatedBalanceSection({
                     tone={balanceSheet.dre.netCashFlowBRL >= 0 ? "positive" : "negative"}
                     sign="explicit"
                     className="font-bold"
+                    hideCurrency
                   />
                 </td>
               </tr>

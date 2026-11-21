@@ -24,7 +24,7 @@ export function TaxRendimentosSection({
             Ficha: Rendimentos Isentos &amp; Exclusivos ({calendarYear})
           </h3>
         </div>
-        <span className="text-[11px] text-muted-foreground font-mono num">
+        <span className="text-[11px] text-muted-foreground font-mono num print:hidden">
           Total Recebido:{" "}
           <MoneyText
             cents={numberToCents(totalRendimentosBRL)}
@@ -60,7 +60,7 @@ export function TaxRendimentosSection({
                   </td>
                   <td className="py-1.5 px-3 print:py-1 print:px-2 text-muted-foreground print:text-[9.5px]">{tipoRendimento}</td>
                   <td className="py-1.5 px-3 print:py-1 print:px-2 text-right num font-mono font-bold text-foreground whitespace-nowrap print:text-[10px]">
-                    <MoneyText cents={numberToCents(amountBRL)} />
+                    <MoneyText cents={numberToCents(amountBRL)} hideCurrency />
                   </td>
                 </tr>
               ))}
@@ -69,7 +69,7 @@ export function TaxRendimentosSection({
                   Total de Rendimentos no Exercício
                 </td>
                 <td className="py-2 px-3 print:py-1 print:px-2 text-right num font-mono text-foreground whitespace-nowrap print:text-[10px]">
-                  <MoneyText cents={numberToCents(totalRendimentosBRL)} />
+                  <MoneyText cents={numberToCents(totalRendimentosBRL)} hideCurrency />
                 </td>
               </tr>
             </tbody>

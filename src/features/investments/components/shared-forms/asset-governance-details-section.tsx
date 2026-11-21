@@ -59,7 +59,7 @@ export function AssetGovernanceDetailsSection({
                 className={cn(
                   "flex items-start gap-2.5 rounded-xl border p-2.5 transition-colors",
                   isChecked
-                    ? "border-positive/40 bg-positive/5 text-foreground"
+                    ? "border-primary/40 bg-primary/10 text-foreground"
                     : "border-border/80 bg-surface-raised/40 text-muted-foreground",
                 )}
               >

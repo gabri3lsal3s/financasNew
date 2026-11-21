@@ -74,7 +74,7 @@ describe("PortfolioSnapshotsDialog", () => {
 
     expect(dialog.getByText("3 meses")).toBeInTheDocument();
     expect(dialog.getAllByText(/108\.000,00/).length).toBeGreaterThan(0);
-    expect(dialog.getByText("Proventos no Período")).toBeInTheDocument();
+    expect(dialog.getByText("Proventos")).toBeInTheDocument();
 
     expect(dialog.getByRole("columnheader", { name: "Competência" })).toBeInTheDocument();
     expect(dialog.getByRole("columnheader", { name: "Patrimônio" })).toBeInTheDocument();
@@ -268,5 +268,64 @@ describe("PortfolioSnapshotsDialog", () => {
     expect(
       screen.getByText(/Deseja desfazer a calibração manual de Ago\/2026 e restaurar o valor gravado originalmente no fechamento oficial/),
     ).toBeInTheDocument();
+  });
+
+  it("permite abrir o diálogo de Adicionar Mês pelo botão no cabeçalho", () => {
+    renderWithClient(
+      <PortfolioSnapshotsDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        series={mockSeries}
+        currentMonthStr="2026-09"
+      />,
+    );
+
+    const dialog = within(screen.getByRole("dialog"));
+    const addMonthBtn = dialog.getByRole("button", { name: /Adicionar Mês/i });
+    expect(addMonthBtn).toBeInTheDocument();
+
+    fireEvent.click(addMonthBtn);
+    expect(screen.getByText("Adicionar Fechamento Mensal")).toBeInTheDocument();
+    expect(screen.getByText("Mês de Competência")).toBeInTheDocument();
+    expect(screen.getByText("Ano de Competência")).toBeInTheDocument();
+  });
+
+  it("renderiza ação de preencher e omite exclusão para meses sem snapshot", () => {
+    const seriesWithGap: PortfolioMonthlySeriesPoint[] = [
+      {
+        month: "2026-08",
+        valueBRL: 80000,
+        costBRL: 75000,
+        monthDividendsBRL: 0,
+        accumulatedDividendsBRL: 2000,
+        capitalGainPnl: 5000,
+        capitalGainPct: 6.67,
+        totalReturnPnl: 7000,
+        totalReturnPct: 9.33,
+        twrMonthPct: 0,
+        twrAccumulatedPct: 12.0,
+        sharePrice: 112.0,
+        status: "closed",
+        snapshotOrigin: "sem_snapshot",
+      },
+    ];
+
+    renderWithClient(
+      <PortfolioSnapshotsDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        series={seriesWithGap}
+        currentMonthStr="2026-09"
+      />,
+    );
+
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText("sem snapshot")).toBeInTheDocument();
+
+    // Deve possuir botão de preencher fechamento
+    expect(dialog.getByRole("button", { name: "Preencher fechamento de Ago/2026" })).toBeInTheDocument();
+
+    // NÃO deve possuir botão de excluir para linha sem snapshot
+    expect(dialog.queryByRole("button", { name: "Excluir snapshot de Ago/2026" })).not.toBeInTheDocument();
   });
 });

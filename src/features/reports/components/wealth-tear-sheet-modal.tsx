@@ -4,9 +4,11 @@ import {
   ReportDocumentLayout,
   ReportFooter,
   ReportHeader,
+  ReportRiskGauge,
 } from "@/components/modules";
 import {
   buildTearSheetModel,
+  sanitizeReportText,
   type AllocationAnalysisResult,
   type ConcentrationRiskResult,
   type MonthFlowSummary,
@@ -174,6 +176,23 @@ export function WealthTearSheetModal({
         allocationRows={model.allocationRows}
       />
 
+      <ReportRiskGauge
+        topItemName={sanitizeReportText(model.topDominance.ticker)}
+        topItemPct={model.topDominance.pct}
+        warningThresholdPct={15}
+        criticalThresholdPct={25}
+      />
+
+      <ReportFooter
+        accountHolder={accountHolder}
+        disclaimer={OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER}
+        reportType="dossier"
+        currentPage={1}
+        totalPages={7}
+        showQrCode
+        className="hidden print:flex"
+      />
+
       <TearSheetCustodyAndBreakdowns
         model={model}
         totalBRL={totalBRL}
@@ -198,6 +217,8 @@ export function WealthTearSheetModal({
         accountHolder={accountHolder}
         disclaimer={OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER}
         reportType="dossier"
+        currentPage={7}
+        totalPages={7}
         showQrCode
       />
     </ReportDocumentLayout>

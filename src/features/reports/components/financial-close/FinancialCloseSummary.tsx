@@ -4,7 +4,7 @@ import { formatPercent } from "@/services/masks/percent";
 import type { FinancialDREData } from "./financial-close-types";
 
 export interface FinancialCloseSummaryProps {
-  periodLabel: string;
+  periodLabel?: string;
   dre: FinancialDREData;
   effectiveGrossIncomeBruto: number;
   effectiveTotalExpensesBruto: number;
@@ -14,7 +14,6 @@ export interface FinancialCloseSummaryProps {
 }
 
 export function FinancialCloseSummary({
-  periodLabel,
   dre,
   effectiveGrossIncomeBruto,
   effectiveTotalExpensesBruto,
@@ -68,38 +67,6 @@ export function FinancialCloseSummary({
           subtext: "Eficiência de Renda",
         },
       ]}
-      narrative={
-        <span>
-          No período apurado (<strong>{periodLabel}</strong>), a receita operacional bruta totalizou{" "}
-          <strong>
-            <MoneyText cents={effectiveGrossIncomeBruto} tone="positive" className="inline font-bold" />
-          </strong>{" "}
-          frente a despesas realizadas de{" "}
-          <strong>
-            <MoneyText cents={effectiveTotalExpensesBruto} tone="negative" className="inline font-bold" />
-          </strong>
-          , gerando resultado operacional de{" "}
-          <strong>
-            <MoneyText
-              cents={effectiveGrossSavingsBruto}
-              tone={effectiveGrossSavingsBruto >= 0 ? "positive" : "negative"}
-              sign="explicit"
-              className="inline font-bold"
-            />
-          </strong>{" "}
-          (taxa de poupança líquida de{" "}
-          <strong className="text-foreground">{formatPercent(effectiveGrossSavingsRatePct)}%</strong>
-          {dre.investedAporteCents > 0 && (
-            <>
-              , com aportes patrimoniais direcionados de{" "}
-              <strong>
-                <MoneyText cents={dre.investedAporteCents} tone="default" className="inline font-bold" />
-              </strong>
-            </>
-          )}
-          ).
-        </span>
-      }
     />
   );
 }

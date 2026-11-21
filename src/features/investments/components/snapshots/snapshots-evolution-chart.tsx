@@ -49,21 +49,21 @@ export function SnapshotsEvolutionChart({
           {
             label: "Custo Aplicado",
             value: <MoneyText cents={numberToCents(summary.latestCostBRL)} tone="default" />,
-            subtext: "Capital investido líquido",
+            subtext: "Capital líquido aplicado",
           },
           {
-            label: "Proventos no Período",
+            label: "Proventos",
             value: <MoneyText cents={numberToCents(summary.periodDividendsBRL)} tone="positive" />,
             subtext:
               summary.openingDividendsBalanceBRL && summary.openingDividendsBalanceBRL > 0
                 ? `+ R$ ${summary.openingDividendsBalanceBRL.toFixed(2).replace(".", ",")} retroativo`
-                : "Renda passiva creditada",
+                : "Renda passiva no período",
             tone: "positive",
           },
           {
             label: "TWR Acumulado",
             value: summary.latestTwrPct !== null ? formatSignedPct(summary.latestTwrPct, 1) : "—",
-            subtext: "Retorno por cotas (Padrão CVM)",
+            subtext: "Retorno por cotas (CVM)",
             tone: (summary.latestTwrPct ?? 0) >= 0 ? "positive" : "negative",
           },
         ]}

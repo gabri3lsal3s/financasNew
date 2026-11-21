@@ -1,4 +1,4 @@
-import { Calendar, FileText, RotateCcw, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Calendar, FileText, Plus, RotateCcw, SlidersHorizontal, Trash2 } from "lucide-react";
 import { Badge, Button, EmptyState, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import type { PortfolioMonthlySeriesPoint } from "@/domain/portfolio";
@@ -38,44 +38,59 @@ export function SnapshotsLedgerTable({
 
   return (
     <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-xl border border-border/80 shadow-xs w-full print:overflow-visible print:border-none print:shadow-none print:rounded-none">
-      <table className="w-full text-left text-xs border-collapse table-auto sm:table-fixed min-w-[760px] print:min-w-0 print:table-fixed">
+      <table className="w-full text-left text-xs border-collapse table-auto sm:table-fixed min-w-[840px] print:min-w-0 print:table-fixed">
         <colgroup>
-          <col style={{ width: "14%" }} />
+          <col style={{ width: "13%" }} />
           <col style={{ width: "12%" }} />
           <col style={{ width: "11%" }} />
           <col style={{ width: "10%" }} />
-          <col style={{ width: "11%" }} />
           <col style={{ width: "10%" }} />
-          <col style={{ width: "10%" }} />
-          <col style={{ width: "10%" }} />
-          <col style={{ width: "8%" }} />
-          <col className="print:hidden" style={{ width: "4%" }} />
+          <col style={{ width: "9%" }} />
+          <col style={{ width: "9%" }} />
+          <col style={{ width: "9%" }} />
+          <col style={{ width: "9%" }} />
+          <col className="print:hidden" style={{ width: "8%" }} />
         </colgroup>
-        <thead className="bg-surface border-b border-border/80 text-muted-foreground font-semibold text-[10px] uppercase tracking-wider print:text-[8pt]">
+        <thead className="bg-surface border-b border-border/80 text-muted-foreground font-semibold text-[10px] uppercase tracking-wider print:text-[7.25pt] print:leading-tight">
           <tr>
-            <th scope="col" className="py-2 px-2 whitespace-nowrap print:py-1 print:px-1">Competência</th>
-            <th scope="col" aria-label="Patrimônio" className="py-2 px-1.5 text-right whitespace-nowrap print:py-1 print:px-1">
-              <span>Patrimônio (R$)</span>
+            <th scope="col" className="py-2 px-2 whitespace-nowrap print:py-1 print:px-1.5 print:align-bottom text-left">
+              <span>Competência</span>
             </th>
-            <th scope="col" aria-label="Custo" className="py-2 px-1.5 text-right whitespace-nowrap print:py-1 print:px-1">
-              <span>Custo (R$)</span>
+            <th scope="col" aria-label="Patrimônio" className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
+              <span className="block leading-tight">PATRIMÔNIO</span>
+              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
             </th>
-            <th scope="col" aria-label="Proventos Mês" className="py-2 px-1.5 text-right whitespace-nowrap print:py-1 print:px-1">
-              <span>Prov. Mês (R$)</span>
+            <th scope="col" aria-label="Custo" className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
+              <span className="block leading-tight">CUSTO</span>
+              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
             </th>
-            <th scope="col" aria-label="Proventos Acum." className="py-2 px-1.5 text-right whitespace-nowrap print:py-1 print:px-1">
-              <span>Prov. Acum. (R$)</span>
+            <th scope="col" aria-label="Proventos Mês" className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
+              <span className="block leading-tight">PROV. MÊS</span>
+              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
+            </th>
+            <th scope="col" aria-label="Proventos Acum." className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
+              <span className="block leading-tight">PROV. ACUM.</span>
+              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
             </th>
             <th
               scope="col"
-              className="py-2 px-1.5 text-right whitespace-nowrap font-bold text-foreground bg-surface-hover/70 border-x border-border/80 print:py-1 print:px-1"
+              aria-label="TWR Mês"
+              className="py-2 px-1.5 text-right font-bold text-foreground bg-surface-hover/70 border-x border-border/80 print:py-1 print:px-1.5 print:align-bottom"
             >
-              TWR Mês
+              <span className="block leading-tight">TWR</span>
+              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">MÊS</span>
             </th>
-            <th scope="col" className="py-2 px-1.5 text-right whitespace-nowrap print:py-1 print:px-1">Ret. Total</th>
-            <th scope="col" className="py-2 px-1.5 text-right whitespace-nowrap print:py-1 print:px-1">TWR Acum.</th>
-            <th scope="col" aria-label="Cota (R$)" className="py-2 px-1.5 text-right whitespace-nowrap print:py-1 print:px-1">
-              <span>Cota (R$)</span>
+            <th scope="col" aria-label="Ret. Total" className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
+              <span className="block leading-tight">RET.</span>
+              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">TOTAL</span>
+            </th>
+            <th scope="col" aria-label="TWR Acum." className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
+              <span className="block leading-tight">TWR</span>
+              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">ACUM.</span>
+            </th>
+            <th scope="col" aria-label="Cota (R$)" className="py-2 px-1.5 text-right print:py-1 print:px-1.5 print:align-bottom">
+              <span className="block leading-tight">COTA</span>
+              <span className="block text-[9px] print:text-[6.5pt] font-normal text-muted-foreground">(R$)</span>
             </th>
             <th scope="col" className="py-2 px-1 text-center whitespace-nowrap print:hidden w-10">Ações</th>
           </tr>
@@ -102,7 +117,7 @@ export function SnapshotsLedgerTable({
                   isCurrent ? "bg-portfolio/10 font-semibold" : "hover:bg-surface-hover/70",
                 )}
               >
-                <td className="py-1.5 px-2 whitespace-nowrap print:py-0.5 print:px-1 text-[11px] print:text-[8.5pt]">
+                <td className="py-1.5 px-2 whitespace-nowrap print:py-0.5 print:px-1.5 text-[11px] print:text-[7.5pt]">
                   <div className="flex items-center gap-1.5">
                     <span className="text-foreground">{formattedLabel}</span>
                     {isCurrent ? (
@@ -110,14 +125,21 @@ export function SnapshotsLedgerTable({
                     ) : pt.status === "provisional" ? (
                       <Badge variant="warning" size="xs" title="Snapshot provisório em aberto">provisório</Badge>
                     ) : pt.snapshotOrigin === "sem_snapshot" || pt.snapshotOrigin === "carry_forward" ? (
-                      <Badge
-                        variant="muted"
-                        size="xs"
-                        className="opacity-75"
-                        title="Competência sem fechamento cadastrado pelo usuário"
+                      <button
+                        type="button"
+                        onClick={() => onCalibrate(pt)}
+                        className="inline-flex cursor-pointer focus:outline-none focus:ring-1 focus:ring-portfolio rounded"
+                        title="Competência sem fechamento cadastrado. Clique para preencher o saldo deste mês."
                       >
-                        sem snapshot
-                      </Badge>
+                        <Badge
+                          variant="muted"
+                          size="xs"
+                          className="opacity-80 hover:bg-portfolio/15 hover:text-portfolio hover:border-portfolio/30 transition-colors gap-1"
+                        >
+                          <Plus className="size-2.5 text-portfolio" aria-hidden="true" />
+                          sem snapshot
+                        </Badge>
+                      </button>
                     ) : pt.isManuallyCalibrated ? (
                       <Badge
                         variant="warning"
@@ -134,15 +156,15 @@ export function SnapshotsLedgerTable({
                   </div>
                 </td>
 
-                <td className="py-1.5 px-1.5 text-right whitespace-nowrap font-bold text-foreground print:py-0.5 print:px-1 text-[11px] print:text-[8.5pt]">
+                <td className="py-1.5 px-1.5 text-right whitespace-nowrap font-bold text-foreground print:py-0.5 print:px-1.5 text-[11px] print:text-[7.5pt]">
                   <MoneyText cents={numberToCents(pt.valueBRL)} hideCurrency tone="default" />
                 </td>
 
-                <td className="py-1.5 px-1.5 text-right whitespace-nowrap text-muted-foreground print:py-0.5 print:px-1 text-[11px] print:text-[8.5pt]">
+                <td className="py-1.5 px-1.5 text-right whitespace-nowrap text-muted-foreground print:py-0.5 print:px-1.5 text-[11px] print:text-[7.5pt]">
                   <MoneyText cents={numberToCents(pt.costBRL)} hideCurrency tone="default" />
                 </td>
 
-                <td className="py-1.5 px-1.5 text-right whitespace-nowrap print:py-0.5 print:px-1 text-[11px] print:text-[8.5pt]">
+                <td className="py-1.5 px-1.5 text-right whitespace-nowrap print:py-0.5 print:px-1.5 text-[11px] print:text-[7.5pt]">
                   {hasMonthDividends ? (
                     <MoneyText
                       cents={numberToCents(pt.monthDividendsBRL ?? 0)}
@@ -163,7 +185,7 @@ export function SnapshotsLedgerTable({
                   )}
                 </td>
 
-                <td className="py-1.5 px-1.5 text-right whitespace-nowrap print:py-0.5 print:px-1 text-[11px] print:text-[8.5pt]">
+                <td className="py-1.5 px-1.5 text-right whitespace-nowrap print:py-0.5 print:px-1.5 text-[11px] print:text-[7.5pt]">
                   {(pt.accumulatedDividendsBRL ?? 0) > 0.001 ? (
                     <MoneyText
                       cents={numberToCents(pt.accumulatedDividendsBRL ?? 0)}
@@ -176,14 +198,14 @@ export function SnapshotsLedgerTable({
                   )}
                 </td>
 
-                <td className="py-1.5 px-1.5 text-right whitespace-nowrap font-mono font-bold bg-surface-hover/30 border-x border-border/60 print:py-0.5 print:px-1 text-[11px] print:text-[8.5pt]">
+                <td className="py-1.5 px-1.5 text-right whitespace-nowrap font-mono font-bold bg-surface-hover/30 border-x border-border/60 print:py-0.5 print:px-1.5 text-[11px] print:text-[7.5pt]">
                   {pt.twrMonthPct !== null && pt.twrMonthPct !== undefined ? (
                     <span
                       className={cn(
-                        "num inline-flex items-center justify-end px-1.5 py-0.5 rounded text-xs font-bold font-mono print:text-[8.5pt]",
+                        "num inline-flex items-center justify-end px-1.5 py-0.5 rounded text-xs font-bold font-mono print:text-[7.5pt] print:p-0 print:bg-transparent",
                         pt.twrMonthPct >= 0
-                          ? "bg-positive/10 text-positive-strong"
-                          : "bg-negative/10 text-negative-strong",
+                          ? "bg-positive/10 text-positive-strong print:text-positive-strong"
+                          : "bg-negative/10 text-negative-strong print:text-negative-strong",
                       )}
                     >
                       {formatSignedPct(pt.twrMonthPct, 2)}
@@ -193,13 +215,13 @@ export function SnapshotsLedgerTable({
                   )}
                 </td>
 
-                <td className="py-1.5 px-1.5 text-right whitespace-nowrap print:py-0.5 print:px-1 text-[11px] print:text-[8.5pt]">
+                <td className="py-1.5 px-1.5 text-right whitespace-nowrap print:py-0.5 print:px-1.5 text-[11px] print:text-[7.5pt]">
                   <span className={cn("num font-semibold", effectiveGain >= 0 ? "text-positive-strong" : "text-negative-strong")}>
                     {effectivePct !== null ? formatSignedPct(effectivePct, 1) : "—"}
                   </span>
                 </td>
 
-                <td className="py-1.5 px-1.5 text-right whitespace-nowrap font-mono font-semibold print:py-0.5 print:px-1 text-[11px] print:text-[8.5pt]">
+                <td className="py-1.5 px-1.5 text-right whitespace-nowrap font-mono font-semibold print:py-0.5 print:px-1.5 text-[11px] print:text-[7.5pt]">
                   {pt.twrAccumulatedPct !== null && pt.twrAccumulatedPct !== undefined ? (
                     <span className={cn("num", pt.twrAccumulatedPct >= 0 ? "text-positive-strong" : "text-negative-strong")}>
                       {formatSignedPct(pt.twrAccumulatedPct, 1)}
@@ -209,7 +231,7 @@ export function SnapshotsLedgerTable({
                   )}
                 </td>
 
-                <td className="py-1.5 px-1.5 text-right whitespace-nowrap text-muted-foreground print:py-0.5 print:px-1 text-[11px] print:text-[8.5pt]">
+                <td className="py-1.5 px-1.5 text-right whitespace-nowrap text-muted-foreground print:py-0.5 print:px-1.5 text-[11px] print:text-[7.5pt]">
                   {pt.sharePrice !== null && pt.sharePrice !== undefined ? (
                     <MoneyText cents={numberToCents(pt.sharePrice)} hideCurrency tone="default" />
                   ) : (
@@ -237,41 +259,57 @@ export function SnapshotsLedgerTable({
                     ) : null}
                     {!isCurrent ? (
                       <>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onCalibrate(pt)}
-                          className="size-8 p-0 shrink-0 text-muted-foreground hover:text-portfolio hover:bg-portfolio/10"
-                          aria-label={`Calibrar snapshot de ${formattedLabel}`}
-                          title={`Calibrar snapshot de ${formattedLabel}`}
-                        >
-                          <SlidersHorizontal className="size-3.5" aria-hidden="true" />
-                        </Button>
-                        {pt.isManuallyCalibrated && pt.autoTotalValue != null ? (
+                        {pt.snapshotOrigin === "sem_snapshot" || pt.snapshotOrigin === "carry_forward" ? (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => onRestore(pt)}
-                            className="size-8 p-0 shrink-0 text-muted-foreground hover:text-portfolio hover:bg-portfolio/10"
-                            aria-label={`Restaurar fechamento oficial de ${formattedLabel}`}
-                            title={`Restaurar fechamento oficial de ${formattedLabel}`}
+                            onClick={() => onCalibrate(pt)}
+                            className="size-8 p-0 shrink-0 text-portfolio hover:text-portfolio hover:bg-portfolio/15"
+                            aria-label={`Preencher fechamento de ${formattedLabel}`}
+                            title={`Preencher fechamento de ${formattedLabel}`}
                           >
-                            <RotateCcw className="size-3.5" aria-hidden="true" />
+                            <Plus className="size-3.5" aria-hidden="true" />
                           </Button>
-                        ) : null}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onDelete(pt.month)}
-                          className="size-8 p-0 shrink-0 text-muted-foreground hover:text-negative-strong hover:bg-negative/10"
-                          aria-label={`Excluir snapshot de ${formattedLabel}`}
-                          title={`Excluir snapshot de ${formattedLabel}`}
-                        >
-                          <Trash2 className="size-3.5" aria-hidden="true" />
-                        </Button>
+                        ) : (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onCalibrate(pt)}
+                              className="size-8 p-0 shrink-0 text-muted-foreground hover:text-portfolio hover:bg-portfolio/10"
+                              aria-label={`Calibrar snapshot de ${formattedLabel}`}
+                              title={`Calibrar snapshot de ${formattedLabel}`}
+                            >
+                              <SlidersHorizontal className="size-3.5" aria-hidden="true" />
+                            </Button>
+                            {pt.isManuallyCalibrated && pt.autoTotalValue != null ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onRestore(pt)}
+                                className="size-8 p-0 shrink-0 text-muted-foreground hover:text-portfolio hover:bg-portfolio/10"
+                                aria-label={`Restaurar fechamento oficial de ${formattedLabel}`}
+                                title={`Restaurar fechamento oficial de ${formattedLabel}`}
+                              >
+                                <RotateCcw className="size-3.5" aria-hidden="true" />
+                              </Button>
+                            ) : null}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onDelete(pt.month)}
+                              className="size-8 p-0 shrink-0 text-muted-foreground hover:text-negative-strong hover:bg-negative/10"
+                              aria-label={`Excluir snapshot de ${formattedLabel}`}
+                              title={`Excluir snapshot de ${formattedLabel}`}
+                            >
+                              <Trash2 className="size-3.5" aria-hidden="true" />
+                            </Button>
+                          </>
+                        )}
                       </>
                     ) : null}
                   </div>

@@ -74,15 +74,16 @@ function getDynamicKpiSize(cents?: number): string {
 export function KpiCard({ label, ariaLabel, value, cents, tone = "default", hint, icon, spark, onClick, action }: KpiCardProps) {
   const dynamicSize = getDynamicKpiSize(cents);
   const accessibleName = ariaLabel ?? (typeof label === "string" ? label : undefined);
+  const hasAction = Boolean(action);
 
   return (
     <Card
       variant={onClick ? "interactive" : "default"}
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      aria-label={onClick ? accessibleName : undefined}
+      role={onClick && !hasAction ? "button" : undefined}
+      tabIndex={onClick && !hasAction ? 0 : undefined}
+      aria-label={onClick && !hasAction ? accessibleName : undefined}
       onKeyDown={
-        onClick
+        onClick && !hasAction
           ? (event) => {
               if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
@@ -91,43 +92,59 @@ export function KpiCard({ label, ariaLabel, value, cents, tone = "default", hint
             }
           : undefined
       }
-      onClick={onClick}
-      className="flex flex-col justify-between overflow-hidden p-3 sm:p-4 lg:p-5 h-full rounded-2xl border-border/80 bg-surface shadow-xs transition-all hover:border-border"
+      onClick={!hasAction ? onClick : undefined}
+      className="flex flex-col justify-between overflow-hidden p-3 sm:p-4 lg:p-5 h-full rounded-2xl border-border/80 bg-surface shadow-xs transition-all hover:border-border relative"
     >
       <div>
         <div className="flex items-start justify-between gap-1.5 min-w-0">
-          <span className="line-clamp-2 min-h-[2rem] leading-snug break-words text-xs font-medium text-muted-foreground flex-1">{label}</span>
           <div
-            className="flex items-center gap-1 shrink-0 mt-0.5"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onMouseUp={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            onTouchEnd={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
+            role={onClick && hasAction ? "button" : undefined}
+            tabIndex={onClick && hasAction ? 0 : undefined}
+            aria-label={onClick && hasAction ? accessibleName : undefined}
+            onKeyDown={
+              onClick && hasAction
+                ? (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onClick();
+                    }
+                  }
+                : undefined
+            }
+            onClick={hasAction ? onClick : undefined}
+            className={cn("flex-1 min-w-0", onClick && hasAction && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded")}
           >
+            <span className="line-clamp-2 min-h-[2rem] leading-snug break-words text-xs font-medium text-muted-foreground block">{label}</span>
+          </div>
+          <div className="flex items-center gap-1 shrink-0 mt-0.5">
             {action}
             {icon ? <span className={cn("shrink-0", toneIcon[tone])}>{icon}</span> : null}
           </div>
         </div>
         {/* A máscara de privacidade é global (html[data-privacy] → .num em globals.css). */}
-        <p className={cn("num mt-1 sm:mt-1.5 tabular-nums tracking-tight whitespace-nowrap font-bold overflow-x-auto no-scrollbar", toneValue[tone], dynamicSize)}>
-          {cents !== undefined ? (
-            <MoneyText
-              cents={cents}
-              tone={tone}
-              variant="hero"
-              animated
-              className={cn("!font-bold block tracking-tight tabular-nums", dynamicSize)}
-            />
-          ) : (
-            value
-          )}
-        </p>
+        <div
+          onClick={hasAction && onClick ? onClick : undefined}
+          className={cn(hasAction && onClick && "cursor-pointer")}
+        >
+          <p className={cn("num mt-1 sm:mt-1.5 tabular-nums tracking-tight whitespace-nowrap font-bold overflow-x-auto no-scrollbar", toneValue[tone], dynamicSize)}>
+            {cents !== undefined ? (
+              <MoneyText
+                cents={cents}
+                tone={tone}
+                variant="hero"
+                animated
+                className={cn("!font-bold block tracking-tight tabular-nums", dynamicSize)}
+              />
+            ) : (
+              value
+            )}
+          </p>
+        </div>
       </div>
-      <div className="min-w-0">
+      <div
+        onClick={hasAction && onClick ? onClick : undefined}
+        className={cn("min-w-0", hasAction && onClick && "cursor-pointer")}
+      >
         {spark && spark.length > 0 ? (
           <div className="mt-1.5" aria-hidden="true">
             <Sparkline

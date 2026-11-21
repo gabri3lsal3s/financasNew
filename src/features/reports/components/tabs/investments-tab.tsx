@@ -116,7 +116,7 @@ export function InvestmentsTab({
         </div>
         <Button
           type="button"
-          variant="secondary"
+          variant="default"
           size="sm"
           onClick={() => navigate("/investments")}
           className="gap-1.5 shrink-0 w-full sm:w-auto justify-center text-xs"

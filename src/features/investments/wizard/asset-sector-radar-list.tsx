@@ -53,7 +53,7 @@ export function AssetSectorRadarList({
                 <Badge variant="muted" size="xs">
                   {group.className}
                 </Badge>
-                <Badge variant="positive" size="xs">
+                <Badge variant="default" size="xs">
                   Defasado
                 </Badge>
               </div>
@@ -61,8 +61,8 @@ export function AssetSectorRadarList({
                 <span>Orçamento estimado:</span>
                 <MoneyText
                   cents={numberToCents(group.budgetAllocatedBRL)}
-                  tone="positive"
-                  className="font-bold text-positive-strong"
+                  tone="default"
+                  className="font-bold text-foreground"
                 />
               </div>
             </div>
@@ -80,10 +80,8 @@ export function AssetSectorRadarList({
                     className={cn(
                       "flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-xl border p-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99] cursor-pointer",
                       isSelected
-                        ? "border-primary bg-primary/15 ring-2 ring-primary/40 shadow-xs"
-                        : isDiscounted
-                          ? "border-positive/30 bg-positive/5 hover:border-positive/50 hover:bg-positive/10"
-                          : "border-border/80 bg-surface hover:border-border hover:bg-surface-hover",
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/30 shadow-xs"
+                        : "border-border/80 bg-surface hover:border-primary/40 hover:bg-surface-hover",
                     )}
                   >
                     <div className="flex flex-col gap-1 min-w-0">
@@ -95,7 +93,7 @@ export function AssetSectorRadarList({
                             : `+${opp.diffVsAveragePct.toFixed(1)}% vs PM`}
                         </Badge>
                         {isSelected && (
-                          <Badge variant="default" size="xs" className="gap-1 bg-primary text-primary-foreground shrink-0">
+                          <Badge variant="default" size="xs" className="gap-1 shrink-0">
                             <Check className="size-3" aria-hidden="true" />
                             Selecionado
                           </Badge>

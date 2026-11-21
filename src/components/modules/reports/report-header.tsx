@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoIcon } from "@/components/layout/brand-logo";
+import { SubscriptionContext } from "@/state/subscription-context-def";
 
 export interface ReportHeaderProps {
   /** Título principal do relatório (ex.: "Dossiê Executivo de Investimentos & Custódia"). */
@@ -20,158 +22,40 @@ export interface ReportHeaderProps {
   className?: string;
   /** Ações ou badges adicionais no cabeçalho. */
   actions?: ReactNode;
+  /** Força status Pro (Âmbar/Dourado). Se omitido, consulta SubscriptionContext. */
+  isPro?: boolean;
+  /** Força status em Período de Teste (Trial). Se omitido, consulta SubscriptionContext. */
+  isTrial?: boolean;
 }
 
 export interface ReportRunningHeaderProps {
   title: string;
   periodLabel?: string;
   className?: string;
+  isPro?: boolean;
+  isTrial?: boolean;
 }
 
 /**
- * Símbolo Oficial da Marca Axir em Vetor SVG de Alta Definição para Relatórios.
+ * Símbolo Oficial da Marca Axir para Relatórios e Impressão A4.
  *
- * Utiliza a geometria canônica oficial ("A" tridimensional com órbita dinâmica
- * em gradiente Ouro/Âmbar e facetas Verde-Petróleo/Esmeralda).
- * Zero dependência de rasterização, nitidez infinita para impressão e exportação PDF.
+ * Utiliza o componente oficial `LogoIcon` com canal alfa e alta definição Retina,
+ * garantindo compatibilidade com o Brand Design System e reatividade Pro / Teal.
  */
-export function AxirBrandLogo({ className }: { className?: string }) {
+export function AxirBrandLogo({
+  className,
+  isPro,
+}: {
+  className?: string;
+  isPro?: boolean;
+}) {
   return (
-    <svg
-      viewBox="0 0 512 512"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
+    <LogoIcon
       className={cn("size-8 shrink-0 select-none", className)}
-      aria-label="Axir"
-      role="img"
-    >
-      <defs>
-        <linearGradient
-          id="axir-rpt-primary-grad"
-          x1="100"
-          y1="420"
-          x2="260"
-          y2="92"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#0D9488" />
-          <stop offset="50%" stopColor="#14B8A6" />
-          <stop offset="100%" stopColor="#2DD4BF" />
-        </linearGradient>
-
-        <linearGradient
-          id="axir-rpt-primary-depth-grad"
-          x1="160"
-          y1="420"
-          x2="295"
-          y2="92"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#0F766E" />
-          <stop offset="100%" stopColor="#115E59" />
-        </linearGradient>
-
-        <linearGradient
-          id="axir-rpt-gold-grad"
-          x1="280"
-          y1="92"
-          x2="430"
-          y2="420"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#FDE68A" />
-          <stop offset="25%" stopColor="#F59E0B" />
-          <stop offset="85%" stopColor="#D97706" />
-          <stop offset="100%" stopColor="#B45309" />
-        </linearGradient>
-
-        <linearGradient
-          id="axir-rpt-gold-depth-grad"
-          x1="260"
-          y1="92"
-          x2="350"
-          y2="420"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#D97706" />
-          <stop offset="100%" stopColor="#78350F" />
-        </linearGradient>
-
-        <linearGradient
-          id="axir-rpt-orbit-grad"
-          x1="40"
-          y1="360"
-          x2="470"
-          y2="140"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#92400E" />
-          <stop offset="15%" stopColor="#B45309" />
-          <stop offset="35%" stopColor="#D97706" />
-          <stop offset="65%" stopColor="#F59E0B" />
-          <stop offset="85%" stopColor="#FBBF24" />
-          <stop offset="100%" stopColor="#D97706" />
-        </linearGradient>
-
-        <linearGradient
-          id="axir-rpt-specular"
-          x1="60"
-          y1="360"
-          x2="440"
-          y2="150"
-          gradientUnits="userSpaceOnUse"
-        >
-          <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-          <stop offset="25%" stopColor="#FFFFFF" stopOpacity="0.8" />
-          <stop offset="55%" stopColor="#FFFBEB" stopOpacity="0.95" />
-          <stop offset="80%" stopColor="#FEF3C7" stopOpacity="0.85" />
-          <stop offset="100%" stopColor="#FDE68A" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-
-      {/* 1. Arco Traseiro da Órbita */}
-      <path
-        d="M 40 347 C 45 295 100 230 190 185 C 275 142 360 115 422 108 C 450 105 470 120 472 148 C 460 130 430 125 395 135 C 335 152 255 190 185 235 C 115 280 65 325 40 347 Z"
-        fill="url(#axir-rpt-orbit-grad)"
-        opacity="0.92"
-      />
-
-      {/* 2. Perna Esquerda — Face de Profundidade 3D */}
-      <polygon
-        points="231,92 281,92 161,421 118,421 216,215"
-        fill="url(#axir-rpt-primary-depth-grad)"
-      />
-
-      {/* 3. Perna Esquerda — Face Frontal Cromática */}
-      <polygon
-        points="231,92 281,92 133,421 82,421"
-        fill="url(#axir-rpt-primary-grad)"
-      />
-
-      {/* 4. Perna Direita — Face Frontal Dourada */}
-      <polygon
-        points="281,92 295,92 431,421 380,421"
-        fill="url(#axir-rpt-gold-grad)"
-      />
-
-      {/* 5. Perna Direita — Bevel 3D */}
-      <polygon
-        points="281,92 349,421 380,421"
-        fill="url(#axir-rpt-gold-depth-grad)"
-      />
-
-      {/* 6. Órbita Frontal Dinâmica */}
-      <path
-        d="M 40 347 C 48 375 105 402 195 398 C 290 394 380 345 440 255 C 468 212 478 172 472 148 C 470 170 452 210 422 252 C 365 335 280 376 195 380 C 118 384 68 362 40 347 Z"
-        fill="url(#axir-rpt-orbit-grad)"
-      />
-
-      {/* 7. Filete Luminoso Interno da Órbita */}
-      <path
-        d="M 58 354 C 110 380 190 383 275 365 C 355 348 420 300 452 238 C 462 218 468 190 468 172 C 462 192 450 220 422 255 C 380 308 322 348 250 366 C 180 380 110 378 68 360 C 62 357 58 354 58 354 Z"
-        fill="url(#axir-rpt-specular)"
-      />
-    </svg>
+      isPro={isPro}
+      themeMode="light"
+      priority
+    />
   );
 }
 
@@ -185,7 +69,14 @@ export function ReportRunningHeader({
   title,
   periodLabel,
   className,
+  isPro,
+  isTrial,
 }: ReportRunningHeaderProps) {
+  const ctx = useContext(SubscriptionContext);
+  const isProEffective = typeof isPro === "boolean" ? isPro : ctx?.isPro ?? false;
+  const isTrialEffective = typeof isTrial === "boolean" ? isTrial : ctx?.isTrial ?? false;
+  const isProTier = isProEffective || isTrialEffective;
+
   return (
     <div
       className={cn(
@@ -195,10 +86,15 @@ export function ReportRunningHeader({
       aria-hidden="true"
     >
       <div className="flex items-center gap-1.5 min-w-0">
-        <AxirBrandLogo className="size-3.5 shrink-0" />
+        <LogoIcon
+          className="size-3.5 shrink-0"
+          isPro={isProTier}
+          themeMode="light"
+          priority
+        />
         <span className="font-semibold text-foreground/85 tracking-tight">AXIR · {title}</span>
       </div>
-      {periodLabel && <span>{periodLabel} · Posição Consolidada</span>}
+      {periodLabel && <span>{periodLabel}</span>}
     </div>
   );
 }
@@ -207,7 +103,8 @@ export function ReportRunningHeader({
  * Cabeçalho Institucional de Relatório A4 / PDF (Anatomia 70 / 30).
  *
  * Padroniza a identidade oficial em 100% dos documentos impressos:
- * - Monograma oficial Axir em SVG vetorial de alta definição;
+ * - Símbolo oficial Axir via `LogoIcon` oficial Retina do Design System;
+ * - Reatividade ao status Pro (Âmbar) e Período de Teste (Trial);
  * - Tipografia font-display para títulos editoriais com tracking balanceado;
  * - Metadados de emissão (competência, data/hora e titular) alinhados à direita;
  * - Filete horizontal único contínuo de 1pt.
@@ -221,8 +118,14 @@ export function ReportHeader({
   accountHolder,
   className,
   actions,
+  isPro,
+  isTrial,
 }: ReportHeaderProps) {
   const emitDate = generatedAt ?? new Date().toLocaleDateString("pt-BR");
+  const ctx = useContext(SubscriptionContext);
+  const isProEffective = typeof isPro === "boolean" ? isPro : ctx?.isPro ?? false;
+  const isTrialEffective = typeof isTrial === "boolean" ? isTrial : ctx?.isTrial ?? false;
+  const isProTier = isProEffective || isTrialEffective;
 
   return (
     <header
@@ -233,13 +136,34 @@ export function ReportHeader({
     >
       {/* 1. Lado Esquerdo (70%): Marca e Identificação do Relatório */}
       <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
-        <AxirBrandLogo className="size-8.5 print:size-8" />
+        <LogoIcon
+          className="size-8.5 print:size-8 shrink-0"
+          isPro={isProTier}
+          themeMode="light"
+          priority
+        />
 
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-primary-strong">
+            <span
+              className={cn(
+                "text-[10px] font-bold uppercase tracking-widest",
+                isProTier ? "text-portfolio" : "text-primary-strong",
+              )}
+            >
               {appName}
             </span>
+
+            {isTrialEffective ? (
+              <span className="rounded-md border border-warning/30 bg-warning/15 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-warning-strong leading-none">
+                Teste Pro
+              </span>
+            ) : isProEffective ? (
+              <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-primary-strong leading-none">
+                Pro
+              </span>
+            ) : null}
+
             <span className="text-muted-foreground/30 font-mono text-xs hidden sm:inline print:inline">|</span>
             <span className="text-[9.5pt] uppercase font-semibold tracking-wider text-muted-foreground/80 hidden sm:inline print:inline">
               Gestão Patrimonial
