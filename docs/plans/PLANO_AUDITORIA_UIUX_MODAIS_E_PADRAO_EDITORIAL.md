@@ -360,6 +360,16 @@ flowchart TD
 - **Fase 41 (Nomenclatura Canônica Institucional de Downloads de PDF) [CONCLUÍDO]:** Padronização estrita de `documentTitle` em todos os modais de relatórios para o formato estruturado `AXIR_[TIPO]_[TITULAR]_[COMPETENCIA].pdf`, eliminando caracteres especiais e gerando arquivos com nomenclatura institucional uniforme para arquivamento digital.
 - **Fase 42 (Re-geração Física e Certificação dos 8 Relatórios A4) [CONCLUÍDO]:** Re-geração e validação integral de todos os 8 PDFs físicos de amostra e PNGs de visualização em alta resolução no diretório de artefatos.
 
+#### Bloco 7: Orçamento Perfeito de Páginas A4, Integridade de Running Headers e Excelência Micro-Tipográfica [PLANEJADO]
+- **Fase 43 (Erradicação de Truncamento em Gráficos Donut):** Em `report-donut-chart.tsx`, remoção estrita de `truncate` e `max-w-[80px]` em `centerValue`, adotando escala proporcional (`text-[8.5pt]` ou auto-fit com `whitespace-nowrap tabular-nums`) em cumprimento absoluto da Regra 11 do `AGENTS.md`.
+- **Fase 44 (Governança Estrita de Running Headers):** Remoção de `<ReportRunningHeader />` de todos os documentos One-Pager (`ConsolidatedWealthModal`, `DividendFreedomModal`, `CardInvoicePrintView`, `PortfolioSnapshotsDialog`) para eliminar cabeçalho duplo na Página 1; injeção consistente de `<ReportRunningHeader />` nas seções com quebra de página (Páginas 2 a 6) do Dossiê Tear Sheet (`TearSheetCustodyAndBreakdowns.tsx`).
+- **Fase 45 (Orçamento de Altura e One-Pager Perfeito no Facilitador IRPF):** Remoção do running header espúrio e calibração milimétrica de espaçamentos em impressão (`print:py-0.5`, `print:gap-1.5`) em `TaxBensDireitosSection.tsx` e `TaxRendimentosSection.tsx`, consolidando o Facilitador Fiscal IRPF em **1 folha única A4 (One-Pager)** e erradicando a folha 2 órfã (que continha apenas o rodapé).
+- **Fase 46 (Equilíbrio Editorial em 2 Páginas no Relatório Mensal da Carteira):** Reestruturação arquitetural de `executive-report-document.tsx`: Página 1 focada na Síntese Estratégica (Header, 4 KPIs, Narrativa, Movimentações e Quadro-Resumo de Alocação por Classe); Página 2 com quebra explícita (`print-break-before-page`), `ReportRunningHeader` institucional, Custódia Analítica Completa (`ReportClassTables`) e `ReportFooter`.
+- **Fase 47 (Cura de Colisão Numérica em Tabelas de Custódia):** Recalibração de larguras de `<colgroup>` em `report-equity-class-table.tsx` (`Qtd` expandida de 6% para 9%), garantindo respiro e separação estrita entre quantidades e preços médios em ativos com saldos altos ou reserva de caixa.
+- **Fase 48 (Saneamento de Truncamento de KPI e Desvio Orçamentário na DRE):** Padronização do rótulo do 3º KPI da DRE para `"RES. OPERACIONAL"` em `FinancialCloseSummary.tsx` sem truncamento cego; cálculo dinâmico do desvio orçamentário real `((realizado - orçado) / orçado) * 100` e aplicação de `hideCurrency` em `FinancialCompositionTables.tsx`.
+- **Fase 49 (Homologação da Suíte de Testes, Lint e Tipos):** Atualização dos testes unitários correspondentes e execução de `tsc -b`, `npm run lint` e Vitest.
+- **Fase 50 (Re-geração Física dos 8 Relatórios A4, Documentação e Build 95):** Re-geração e validação integral dos 8 PDFs físicos oficiais e PNGs de visualização em alta resolução no diretório de artefatos; bumping de versão para o Build 95 (v3.14.0).
+
 ---
 
 ## 8. Governança de Validação e Critérios de Aceite (DoD)
@@ -436,3 +446,29 @@ A geração bem-sucedida das primeiras 5 amostras reais de PDF A4 (`RELATORIO_EX
 ### 10.3 Disciplina Micro-Tipográfica e Algarismos Tabulares
 - **Propriedade `hideCurrency`:** A redundância da sigla `R$` em tabelas densas com cabeçalhos explícitos `(R$)` foi eliminada no primitivo `<MoneyText hideCurrency />`.
 - **Largura e Alinhamento:** Sem a largura ocupada pelo prefixo `R$ `, os números monetários contam com espaço livre para tipografia tabular pura (`font-mono tabular-nums text-right`), prevenindo qualquer colisão visual com as colunas adjacentes mesmo em valores de 7 dígitos.
+
+---
+
+## 11. Bloco 7: Detalhamento Técnico do Orçamento A4, Running Headers e Micro-Tipografia
+
+### 11.1 Erradicação do Truncamento em Gráficos Donut (Regra 11 de Ouro)
+- **Causa Raiz:** O componente `ReportDonutChart` aplicava `max-w-[80px] truncate` em `centerValue` para tamanhos de anel compactos (`size <= 112`), provocando o corte cego de centavos e dígitos monetários (`R$ 485.000,00` cortado para ` $ 485.000,0`).
+- **Engenharia de Cura:** Remoção irrestrita da classe `truncate`. Aplicação de auto-fit proporcional e tipografia `font-mono tabular-nums text-[8.5pt] tracking-tighter whitespace-nowrap`, garantindo integridade numérica absoluta em qualquer resolução.
+
+### 11.2 Governança de Running Headers (One-Pagers vs. Multi-Páginas)
+- **Eliminação de Duplicidade na Página 1:** Em documentos One-Pager (`ConsolidatedWealthModal`, `DividendFreedomModal`, `CardInvoicePrintView`, `PortfolioSnapshotsDialog`), `<ReportRunningHeader />` renderizava um segundo cabeçalho redundante logo abaixo do cabeçalho institucional principal, desperdiçando ~28px de altura útil.
+- **Injeção nas Quebras Multi-Página:** Em documentos extensos (`TearSheetCustodyAndBreakdowns.tsx`), o running header foi introduzido no topo de cada seção com quebra física de página (Páginas 2 a 6), assegurando que todas as folhas subsequentes exibam a chancela Axir, micro-logo oficial e identificação da competência.
+
+### 11.3 Conquista do One-Pager no Facilitador IRPF
+- **Orçamento de Altura:** A soma de Bens e Direitos e Rendimentos Isentos excedia a folha em 129px, ejetando apenas o rodapé e disclaimer para a folha 2.
+- **Compactação Cirúrgica:** A supressão do running header espúrio economiza 28px; a redução de paddings de tabela (`print:py-0.5 print:px-1.5`) e espaçamento entre fichas (`print:gap-1.5`) economiza outros 100px, consolidando o Facilitador IRPF em **1 página física única contínua**.
+
+### 11.4 Arquitetura Editorial Balanceada em 2 Páginas da Carteira Mensal
+- **Separação Estratégica vs. Operacional:**
+  - *Página 1 (Síntese Estratégica):* Header 70/30, 4 KPIs, Narrativa Executiva, Faixa Linear de Movimentações (Compras, Vendas, Dividendos, Aporte Líquido, PQS) e Quadro-Resumo de Alocação por Classe de Ativos.
+  - *Página 2 (Custódia Analítica):* Quebra explícita de página (`print-break-before-page`), Running Header institucional com micro-logo no topo da folha 2, Tabelas Especializadas de Custódia (`ReportClassTables`) e Rodapé Regulatório CVM.
+  - *Resultado:* Eliminação de páginas com sobras vazias (Página 2 anterior tinha apenas 1 ativo com 67% de área em branco).
+
+### 11.5 Recalibração de Colunas e Micro-Tipografia da DRE
+- **Custódia:** Expansão da coluna `Qtd` de 6% para 9% em `report-equity-class-table.tsx`, erradicando colisões entre quantidades extensas (`10.318,93`) e preços médios (`R$ 1,00`).
+- **DRE:** Rótulo curto `"RES. OPERACIONAL"` sem truncamento; cálculo dinâmico da coluna `Desvio (%)` comparando realizado com orçado, e supressão de `R$` repetitivo via `hideCurrency`.
