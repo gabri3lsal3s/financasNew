@@ -163,7 +163,7 @@ export function AssetPositionMetricsGrid({ metrics }: AssetPositionMetricsGridPr
         </span>
       </div>
 
-      <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
+      <div className="group flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
         <div className="flex items-center justify-between gap-1 min-w-0">
           <span className="text-[11px] font-medium text-muted-foreground truncate">
             {isTotalValue ? "Valor Aplicado" : "Preço Médio (PM)"}
@@ -181,7 +181,7 @@ export function AssetPositionMetricsGrid({ metrics }: AssetPositionMetricsGridPr
         </span>
       </div>
 
-      <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
+      <div className="group flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
         <div className="flex items-center justify-between gap-1 min-w-0">
           <span className="text-[11px] font-medium text-muted-foreground truncate">
             {isTotalValue ? "Rendimento Total" : "Resultado Total"}
@@ -243,7 +243,7 @@ export function AssetPositionMetricsGrid({ metrics }: AssetPositionMetricsGridPr
           </span>
         </div>
       ) : (
-        <div className="flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
+        <div className="group flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">
           <div className="flex items-center justify-between gap-1.5 min-w-0">
             <span className="text-[11px] font-medium text-muted-foreground">Yield on Cost (YoC)</span>
             <CalculationMemoryModal breakdown={yieldBreakdown} />

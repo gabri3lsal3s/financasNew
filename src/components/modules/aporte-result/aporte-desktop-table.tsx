@@ -106,7 +106,7 @@ export function AporteDesktopTable({
           .join(" · ");
 
         return (
-          <div className={cn("flex min-w-0 flex-col gap-0.5 transition-opacity duration-150 py-0.5", isDone && "opacity-60")}>
+          <div className={cn("group flex min-w-0 flex-col gap-0.5 transition-opacity duration-150 py-0.5", isDone && "opacity-60")}>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="truncate font-mono text-sm font-bold text-foreground">{row.ticker}</span>
               <CalculationMemoryModal breakdown={routeBreakdown} />

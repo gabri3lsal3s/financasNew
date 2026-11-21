@@ -77,7 +77,7 @@ export function TearSheetMethodologyGrid({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs w-full">
-        <div className="rounded-xl border border-border/80 bg-surface p-3 print:border-border shadow-xs w-full flex flex-col justify-between gap-2.5">
+        <div className="group rounded-xl border border-border/80 bg-surface p-3 print:border-border shadow-xs w-full flex flex-col justify-between gap-2.5">
           <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
             <span className="font-semibold text-foreground text-[11px] flex items-center gap-1.5 min-w-0">
               <TrendingUp className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -100,7 +100,7 @@ export function TearSheetMethodologyGrid({
                   : "Em formação"}
               </Badge>
               {portfolioTwr?.status === "ok" && (
-                <CalculationMemoryModal breakdown={twrBreakdown} />
+                <CalculationMemoryModal breakdown={twrBreakdown} priority="p0" />
               )}
             </div>
           </div>
@@ -119,7 +119,7 @@ export function TearSheetMethodologyGrid({
           </div>
         </div>
 
-        <div className="rounded-xl border border-border/80 bg-surface p-3 print:border-border shadow-xs w-full flex flex-col justify-between gap-2.5">
+        <div className="group rounded-xl border border-border/80 bg-surface p-3 print:border-border shadow-xs w-full flex flex-col justify-between gap-2.5">
           <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
             <span className="font-semibold text-foreground text-[11px] flex items-center gap-1.5 min-w-0">
               <Activity className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -142,7 +142,7 @@ export function TearSheetMethodologyGrid({
                   : "Em formação"}
               </Badge>
               {portfolioIrr?.isEligible && (
-                <CalculationMemoryModal breakdown={irrBreakdown} />
+                <CalculationMemoryModal breakdown={irrBreakdown} priority="p0" />
               )}
             </div>
           </div>
@@ -161,7 +161,7 @@ export function TearSheetMethodologyGrid({
           </div>
         </div>
 
-        <div className="rounded-xl border border-border/80 bg-surface p-3 print:border-border shadow-xs w-full flex flex-col justify-between gap-2.5">
+        <div className="group rounded-xl border border-border/80 bg-surface p-3 print:border-border shadow-xs w-full flex flex-col justify-between gap-2.5">
           <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
             <span className="font-semibold text-foreground text-[11px] flex items-center gap-1.5 min-w-0">
               <Briefcase className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -190,7 +190,7 @@ export function TearSheetMethodologyGrid({
           </div>
         </div>
 
-        <div className="rounded-xl border border-border/80 bg-surface p-3 print:border-border shadow-xs w-full flex flex-col justify-between gap-2.5">
+        <div className="group rounded-xl border border-border/80 bg-surface p-3 print:border-border shadow-xs w-full flex flex-col justify-between gap-2.5">
           <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
             <span className="font-semibold text-foreground text-[11px] flex items-center gap-1.5 min-w-0">
               <CircleDollarSign className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />

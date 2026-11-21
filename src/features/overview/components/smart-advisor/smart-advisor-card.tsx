@@ -147,7 +147,7 @@ export function SmartAdvisorCard({
       role="region"
       aria-label="Assistente Proativo de Insights"
       className={cn(
-        "w-full flex flex-col justify-between gap-3 min-h-[148px] sm:min-h-[140px] rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all motion-reduce:transition-none",
+        "group w-full flex flex-col justify-between gap-3 min-h-[148px] sm:min-h-[140px] rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs transition-all motion-reduce:transition-none",
         className,
       )}
     >

@@ -113,7 +113,7 @@ export function AporteMobileCardList({
           <div
             key={`${row.ticker}:${index}`}
             className={cn(
-              "flex flex-col gap-2.5 rounded-xl border bg-surface p-3 sm:p-3.5 shadow-xs transition-opacity min-w-0",
+              "group flex flex-col gap-2.5 rounded-xl border bg-surface p-3 sm:p-3.5 shadow-xs transition-opacity min-w-0",
               row.hasQualityConflict ? "border-warning/40 bg-warning/5" : "border-border/80",
               isDone && "opacity-75",
             )}

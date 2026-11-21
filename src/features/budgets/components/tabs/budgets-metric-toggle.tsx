@@ -24,7 +24,7 @@ export function BudgetsMetricToggle({
         Acompanhe os gastos por categoria e defina o teto mensal.
       </p>
 
-      <div className="flex items-center gap-1.5 self-start sm:self-auto">
+      <div className="group flex items-center gap-1.5 self-start sm:self-auto">
         <SegmentedControl
           value={spendMetric}
           onChange={onSpendMetricChange}

@@ -76,7 +76,7 @@ export function BalanceTab({
 
       {/* Cards de Patrimônio Líquido Real */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-        <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
+        <div className="group rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Patrimônio Líquido Real</span>
             <CalculationMemoryModal
@@ -92,7 +92,7 @@ export function BalanceTab({
             className="text-lg sm:text-xl font-bold font-display tabular-nums whitespace-nowrap"
           />
         </div>
-        <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
+        <div className="group rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Grau de Liberdade Financeira</span>
             <CalculationMemoryModal
@@ -104,12 +104,13 @@ export function BalanceTab({
             {formatPercent(freedomAnalysis.freedomPct)}%
           </span>
         </div>
-        <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
+        <div className="group rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">Autonomia de Reserva (Runway)</span>
             <CalculationMemoryModal
               getBreakdown={() => buildFreedomIndexBreakdown(freedomAnalysis)}
               label="Memória da Autonomia de Reserva"
+              priority="p0"
             />
           </div>
           <span className="num font-mono tabular-nums text-lg sm:text-xl font-bold font-display text-foreground whitespace-nowrap">
