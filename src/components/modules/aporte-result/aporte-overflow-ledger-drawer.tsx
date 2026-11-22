@@ -43,6 +43,7 @@ const PAUSED_REASON_LABELS: Record<PausedAssetDiagnostic["reason"], string> = {
   sector_ceiling: "Teto Setorial (35%)",
   macro_sector_ceiling: "Teto Macro-Setor (45%)",
   issuer_ceiling: "Teto Emissor RF (FGC / 30%)",
+  price_above_ceiling: "Acima do Preço Teto",
 };
 
 export function AporteOverflowLedgerDrawer({

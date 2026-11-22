@@ -323,4 +323,26 @@ describe("AssetDetailSheet (Fase 41 & F57)", () => {
     expect(screen.getByRole("button", { name: /Confirmar Operação/i })).toBeInTheDocument();
     expect(screen.getByText(/Posição Resultante/i)).toBeInTheDocument();
   });
+
+  it("renderiza o Preço Teto e permite abrir o modal de valuation diretamente da ficha do ativo", () => {
+    const assetWithCeiling: PortfolioAsset = {
+      ...mockAsset,
+      id: "asset-ceiling-1",
+      ceiling_price: 45.0,
+      ceiling_method: "bazin",
+    };
+
+    render(<AssetDetailSheet asset={assetWithCeiling} open={true} onOpenChange={vi.fn()} />);
+
+    // Deve exibir o Preço Teto no card de governança
+    expect(screen.getByText("Preço Teto de Compra")).toBeInTheDocument();
+    expect(screen.getByText(/Método: bazin/i)).toBeInTheDocument();
+
+    const adjustBtn = screen.getByRole("button", { name: /Ajustar Teto/i });
+    expect(adjustBtn).toBeInTheDocument();
+    fireEvent.click(adjustBtn);
+
+    // Deve abrir o CeilingValuationDialog
+    expect(screen.getByText("Calculadora de Preço Teto & Valuation")).toBeInTheDocument();
+  });
 });

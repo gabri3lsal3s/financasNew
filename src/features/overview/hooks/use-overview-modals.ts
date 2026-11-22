@@ -70,29 +70,41 @@ export function useOverviewModals({
     [clearDetectedPix, navigate],
   );
 
-  const handleDismissPace = useCallback(() => {
-    updateAlertDismissals((prev) => ({
-      ...prev,
-      pace: createPaceDismissalCheckpoint({
-        month,
-        spentPercent: paceSpentPercent,
-        surplusCents: projectionSurplusCents,
-      }),
-    }));
-  }, [month, paceSpentPercent, projectionSurplusCents, updateAlertDismissals]);
+  const handleDismissPace = useCallback(
+    (days: 7 | 30 = 7) => {
+      updateAlertDismissals((prev) => ({
+        ...prev,
+        pace: createPaceDismissalCheckpoint(
+          {
+            month,
+            spentPercent: paceSpentPercent,
+            surplusCents: projectionSurplusCents,
+          },
+          days,
+        ),
+      }));
+    },
+    [month, paceSpentPercent, projectionSurplusCents, updateAlertDismissals],
+  );
 
-  const handleDismissSurplus = useCallback(() => {
-    updateAlertDismissals((prev) => ({
-      ...prev,
-      surplus: createSurplusDismissalCheckpoint({
-        month,
-        surplusCents: surplusSuggestedAporteCents,
-      }),
-    }));
-  }, [month, surplusSuggestedAporteCents, updateAlertDismissals]);
+  const handleDismissSurplus = useCallback(
+    (days: 7 | 30 = 7) => {
+      updateAlertDismissals((prev) => ({
+        ...prev,
+        surplus: createSurplusDismissalCheckpoint(
+          {
+            month,
+            surplusCents: surplusSuggestedAporteCents,
+          },
+          days,
+        ),
+      }));
+    },
+    [month, surplusSuggestedAporteCents, updateAlertDismissals],
+  );
 
   const handleDismissGoal = useCallback(
-    (share: PublicShare) => {
+    (share: PublicShare, days: 7 | 30 = 30) => {
       const pld = (share.payload as Record<string, unknown> | null) ?? {};
       const targetCents = Number(pld.target_cents ?? 0);
       const live = liveGoalProgress.get(share.id)?.currentCents;
@@ -112,17 +124,34 @@ export function useOverviewModals({
         ...prev,
         goals: {
           ...prev.goals,
-          [share.id]: createGoalDismissalCheckpoint({
-            goalId: share.id,
-            currentCents,
-            targetCents,
-            percentage,
-            stage,
-          }),
+          [share.id]: createGoalDismissalCheckpoint(
+            {
+              goalId: share.id,
+              currentCents,
+              targetCents,
+              percentage,
+              stage,
+            },
+            days,
+          ),
         },
       }));
     },
     [liveGoalProgress, hasSurplus, updateAlertDismissals],
+  );
+
+  const handleDismissGovernance = useCallback(
+    (days: 7 | 30 = 7) => {
+      const now = Date.now();
+      updateAlertDismissals((prev) => ({
+        ...prev,
+        governance: {
+          dismissedUntil: now + days * 24 * 60 * 60 * 1000,
+          dismissedAt: new Date(now).toISOString(),
+        },
+      }));
+    },
+    [updateAlertDismissals],
   );
 
   return {
@@ -146,5 +175,6 @@ export function useOverviewModals({
     handleDismissPace,
     handleDismissSurplus,
     handleDismissGoal,
+    handleDismissGovernance,
   };
 }

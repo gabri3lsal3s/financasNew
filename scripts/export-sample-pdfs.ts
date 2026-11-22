@@ -73,6 +73,7 @@ async function main() {
   const context = await browser.newContext({
     viewport: { width: 1200, height: 1800 },
     deviceScaleFactor: 2, // Retina 2x para previews cristalinos
+    locale: "pt-BR",
   });
 
   for (const report of REPORTS) {

@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button, ConfirmDialog, Modal, ModalFooter } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
+import { formatCeilingCurrency } from "@/domain/portfolio/ceiling-valuation";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
-import { useDeletePortfolioAsset, useDeletePortfolioTransaction } from "@/state";
+import { useDeletePortfolioAsset, useDeletePortfolioTransaction, useUpdatePortfolioAsset } from "@/state";
+import { pushToast } from "@/services/toast";
 import type { PortfolioAsset, PortfolioTransaction, PortfolioTransactionType } from "@/types";
 import { AssetAllocationCard } from "./asset-detail/asset-allocation-card";
 import { AssetGovernanceCard } from "./asset-detail/asset-governance-card";
@@ -16,6 +18,7 @@ import { AssetEditDialog } from "./asset-edit-dialog";
 import { AssetScoreEvaluationDialog } from "./asset-score-evaluation-dialog";
 import { CalibrateFixedIncomeDialog } from "./calibrate-fixed-income-dialog";
 import { QuickTransactionSheet } from "./quick-transaction-sheet";
+import { CeilingValuationDialog } from "./valuation";
 
 export interface AssetDetailSheetProps {
   asset: PortfolioAsset | null;
@@ -35,6 +38,7 @@ export function AssetDetailSheet({
   const { guardAction, upgradeModal } = useMutationGuard();
   const deleteAsset = useDeletePortfolioAsset();
   const deleteTx = useDeletePortfolioTransaction();
+  const updateAsset = useUpdatePortfolioAsset();
   const metrics = useAssetDetailMetrics(asset);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -44,6 +48,7 @@ export function AssetDetailSheet({
   const [txToEdit, setTxToEdit] = useState<PortfolioTransaction | null>(null);
   const [quickTxType, setQuickTxType] = useState<PortfolioTransactionType | null>(null);
   const [evaluationOpen, setEvaluationOpen] = useState(false);
+  const [valuationOpen, setValuationOpen] = useState(false);
 
   if (!asset || !metrics) return null;
 
@@ -111,7 +116,11 @@ export function AssetDetailSheet({
 
           <AssetPositionMetricsGrid metrics={metrics} />
           <AssetAllocationCard metrics={metrics} onAporteClick={handleAporteClick} />
-          <AssetGovernanceCard metrics={metrics} onOpenEvaluation={() => setEvaluationOpen(true)} />
+          <AssetGovernanceCard
+            metrics={metrics}
+            onOpenEvaluation={() => setEvaluationOpen(true)}
+            onOpenValuation={() => setValuationOpen(true)}
+          />
           <AssetUsdCustodyCard metrics={metrics} />
 
           <AssetTransactionsTimeline
@@ -176,6 +185,35 @@ export function AssetDetailSheet({
       />
 
       <AssetScoreEvaluationDialog asset={currentAsset} open={evaluationOpen} onOpenChange={setEvaluationOpen} />
+
+      <CeilingValuationDialog
+        open={valuationOpen}
+        onOpenChange={setValuationOpen}
+        onClose={() => setValuationOpen(false)}
+        assetClass={currentAsset.asset_class}
+        ticker={currentAsset.ticker}
+        currency={currentAsset.currency}
+        currentPrice={metrics.currentPrice}
+        initialCeilingPrice={metrics.ceilingPriceNum ?? undefined}
+        initialCeilingMethod={currentAsset.ceiling_method ?? undefined}
+        initialCeilingMetadata={currentAsset.ceiling_metadata as Record<string, unknown> | undefined}
+        onApply={async ({ price, method, metadata }) => {
+          await updateAsset.mutateAsync({
+            id: currentAsset.id,
+            patch: {
+              ceiling_price: price,
+              ceiling_method: method,
+              ceiling_metadata: metadata,
+            },
+          });
+          pushToast({
+            title: "Preço Teto atualizado",
+            description: `Preço teto de ${currentAsset.ticker} definido para ${formatCeilingCurrency(price, currentAsset.currency)}.`,
+            variant: "default",
+          });
+        }}
+      />
+
       {upgradeModal}
     </>
   );

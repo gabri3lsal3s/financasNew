@@ -15,6 +15,9 @@
 import type { SubscriptionTier, SubscriptionStatus, ModuleAccessLevel } from "./subscription";
 import type { BillingProviderName } from "./billing";
 import type { GoalCompositionConfig, GoalSourceMode } from "./goals";
+import type { AssetCeilingMethod, AssetCeilingMetadata } from "@/domain/portfolio/ceiling-types";
+
+export type { AssetCeilingMethod, AssetCeilingMetadata };
 
 export const PAYMENT_METHODS = ["cash", "debit", "credit_card", "pix", "transfer", "other"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -376,6 +379,7 @@ export type UserCustomSettings = {
   themeSchedule?: ThemeScheduleConfig;
   hasDismissedAndroidProBanner?: boolean;
   portfolioRiskPolicy?: PortfolioRiskPolicySettings;
+  portfolioAlertDismissals?: PortfolioAlertDismissalsMap;
 };
 
 export type PortfolioRiskPolicySettings = {
@@ -395,10 +399,19 @@ export type PortfolioRiskPolicySettings = {
 
 export type OnboardingGoalId = "cards" | "ocr" | "debts" | "family";
 
+export type PortfolioAlertDismissalEntry = {
+  dismissedUntil: number;
+  fingerprint?: string;
+  dismissedAt?: string;
+};
+
+export type PortfolioAlertDismissalsMap = Record<string, PortfolioAlertDismissalEntry>;
+
 export type GoalAlertStage = "completed" | "final_stretch" | "has_surplus" | "regular";
 
 export type GoalAlertDismissalCheckpoint = {
   dismissedAt: string;
+  dismissedUntil?: number;
   currentCents: number;
   targetCents: number;
   stage: GoalAlertStage;
@@ -408,6 +421,7 @@ export type GoalAlertDismissalCheckpoint = {
 
 export type PaceAlertDismissalCheckpoint = {
   dismissedAt: string;
+  dismissedUntil?: number;
   month: string;
   spentPercent: number;
   surplusCents: number | null;
@@ -415,6 +429,7 @@ export type PaceAlertDismissalCheckpoint = {
 
 export type SurplusAlertDismissalCheckpoint = {
   dismissedAt: string;
+  dismissedUntil?: number;
   month: string;
   surplusCents: number;
 };
@@ -428,6 +443,10 @@ export type DashboardAlertDismissals = {
   pace?: PaceAlertDismissalCheckpoint;
   surplus?: SurplusAlertDismissalCheckpoint;
   zeroGuilt?: ZeroGuiltDismissalCheckpoint;
+  governance?: {
+    dismissedUntil: number;
+    dismissedAt: string;
+  };
 };
 
 export type DeviceNotificationsCustomSettings = {
@@ -751,6 +770,12 @@ export type PortfolioAsset = {
   last_reviewed_at?: string | null;
   review_frequency_months?: number;
   thesis_summary?: string | null;
+  /** Preço Teto calculado ou estipulado manualmente na moeda nativa do ativo. */
+  ceiling_price?: number | null;
+  /** Método de valuation vigente utilizado para compor o Preço Teto. */
+  ceiling_method?: AssetCeilingMethod | null;
+  /** Snapshot auditável da memória de cálculo e modelos da Mesa de Consenso. */
+  ceiling_metadata?: AssetCeilingMetadata | null;
   /** Custo total histórico de aquisição em reais (BRL) para ativos em moeda estrangeira (Fase 2). */
   total_cost_brl?: number | null;
   /** Custo médio histórico de aquisição em reais (BRL) para ativos em moeda estrangeira (Fase 2). */

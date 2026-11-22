@@ -724,11 +724,7 @@ function RenderFIRE() {
 }
 
 function RenderFatura() {
-  return (
-    <div className="flex flex-col gap-4 print:gap-3 w-full bg-white text-slate-900">
-      <CardInvoicePrintView {...cardInvoiceProps} />
-    </div>
-  );
+  return <CardInvoicePrintView {...cardInvoiceProps} />;
 }
 
 

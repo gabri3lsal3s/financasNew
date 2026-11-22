@@ -163,13 +163,12 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Arquitetura SSOT de Elegibilidade e Renderizacao Condicional (3 Niveis)",
-    "Dominio SSOT em evaluateReportReadiness centralizando regras de integridade e prontidao dos 8 relatorios",
-    "Nivel 1: Bloqueio amigavel com ReportInsufficientDataModal e acao direta para cadastros pendentes",
-    "Nivel 2: Omissao limpa de secoes e paginas com recalculacao dinamica de paginacao (computeTearSheetPagination)",
-    "Nivel 3: Zero informativo elegante sem caixas de empty state ou titulos orfaos em PDFs A4",
-    "Protecao defensiva dupla via interceptor onBeforePrint em ReportDocumentLayout",
-    "Blindagem permanente automatizada 10/10 com 100% de aprovacao no qa-reports-integrity"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Polimento Final 10/10 dos Relatorios PDF e Motor de Preco Teto & Valuation",
+    "Carteira Mensal: cabecalhos compactos, largura fixa de colunas sem invasao de texto e travessoes em Reserva de Caixa",
+    "Fatura de Cartao: padrao visual unificado, respiro vertical calibrado, separacao de colunas e rodape ancorado na base A4",
+    "IRPF & DRE: rotulo limpo sem truncamento no Grupo 04 e icones vetoriais financeiros consistentes na Cascata DRE",
+    "Preco Teto & Valuation Multimodelo: Bazin, Graham, Gordon, FIIs e mesa de consenso com persistencia no Supabase",
+    "Governanca de alertas do carrossel de patrimonio e integracao no alocador de aportes"
   ]
 }
 EOF

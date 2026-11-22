@@ -23,15 +23,17 @@ export interface BuildOverviewAlertItemsParams {
   onPermissionsAction: () => void;
   onPermissionsDismiss: () => void;
   onNavigateInsights: () => void;
-  onDismissPace: () => void;
+  onDismissPace: (days: 7 | 30) => void;
   onOpenGoalDeposit: (share: PublicShare) => void;
   onNavigateGoal: (shareId: string) => void;
-  onDismissGoal: (share: PublicShare) => void;
-  onDismissSurplus: () => void;
+  onDismissGoal: (share: PublicShare, days: 7 | 30) => void;
+  onDismissSurplus: (days: 7 | 30) => void;
   onInspectDividends: () => void;
   canViewInvestments: boolean;
   overdueReviewsCount: number;
   onReviewGovernance: () => void;
+  onDismissGovernance?: (days: 7 | 30) => void;
+  isGovernanceDismissed?: boolean;
 }
 
 /**
@@ -147,7 +149,7 @@ export function buildOverviewAlertItems(
           surplusCents={surplusCapacity.hasSurplus ? surplusCapacity.suggestedAporteCents : null}
           onOpenDeposit={params.onOpenGoalDeposit}
           onNavigateGoals={() => params.onNavigateGoal(share.id)}
-          onDismiss={() => params.onDismissGoal(share)}
+          onDismiss={(days) => params.onDismissGoal(share, days)}
         />
       ),
     })),
@@ -174,16 +176,19 @@ export function buildOverviewAlertItems(
         />
       ),
     },
-    params.canViewInvestments && params.overdueReviewsCount > 0 && {
-      id: "portfolio-governance-review-alert",
-      priority: 3,
-      content: (
-        <PortfolioGovernanceBanner
-          overdueReviewsCount={params.overdueReviewsCount}
-          onReview={params.onReviewGovernance}
-        />
-      ),
-    },
+    params.canViewInvestments &&
+      params.overdueReviewsCount > 0 &&
+      !params.isGovernanceDismissed && {
+        id: "portfolio-governance-review-alert",
+        priority: 3,
+        content: (
+          <PortfolioGovernanceBanner
+            overdueReviewsCount={params.overdueReviewsCount}
+            onReview={params.onReviewGovernance}
+            onDismiss={params.onDismissGovernance}
+          />
+        ),
+      },
     subscription.isTrial &&
       !subscription.hasAutoRenew &&
       subscription.trialDaysRemaining !== null && {

@@ -283,7 +283,7 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
     expect(screen.getAllByText(/Max Drawdown/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Consistência/i).length).toBeGreaterThan(0);
 
-    // Rerenderiza com apenas 1 competência (deve exibir empty state calmo informando a necessidade de histórico)
+    // Rerenderiza com apenas 1 competência (a seção é omitida dinamicamente conforme arquitetura SSOT Nível 2)
     rerender(
       <WealthTearSheetModal
         open={true}
@@ -315,12 +315,9 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
 
     // O gráfico SVG e as métricas de risco avançadas não devem ser renderizados
     expect(screen.queryByText("Índice Sharpe")).not.toBeInTheDocument();
-
-    // Deve exibir o empty state calmo com aviso de necessidade de histórico mensal
-    expect(screen.getAllByText("Histórico Mensal em Formação").length).toBeGreaterThan(0);
     expect(
-      screen.getAllByText(/São necessários ao menos 2 fechamentos mensais registrados/i).length,
-    ).toBeGreaterThan(0);
+      screen.queryByText("Comparativo Histórico de Rentabilidade & Patrimônio Mês a Mês"),
+    ).not.toBeInTheDocument();
   });
 
   it("utiliza estritamente twrMonthPct no fallback de monthlySeries e nunca atribui totalReturnPct acumulado", () => {
@@ -443,9 +440,43 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
             totalReturnPct: 10.67,
             isCash: false,
           },
+          {
+            ticker: "CDB-DI-100",
+            name: "CDB Banco Inter 100% CDI",
+            assetClass: "Renda Fixa",
+            sector: "Bancário",
+            currency: "BRL",
+            quantity: 10,
+            averagePrice: 1000,
+            currentPrice: 1050,
+            valueBRL: 10500,
+            totalCostBRL: 10000,
+            unrealizedPnlBRL: 500,
+            unrealizedPnlPct: 5,
+            totalReturnPnlBRL: 500,
+            totalReturnPct: 5,
+            isCash: false,
+          },
+          {
+            ticker: "IVVB11",
+            name: "iShares S&P 500",
+            assetClass: "Internacional",
+            sector: "Índice Global",
+            currency: "BRL",
+            quantity: 20,
+            averagePrice: 280,
+            currentPrice: 300,
+            valueBRL: 6000,
+            totalCostBRL: 5600,
+            unrealizedPnlBRL: 400,
+            unrealizedPnlPct: 7.14,
+            totalReturnPnlBRL: 400,
+            totalReturnPct: 7.14,
+            isCash: false,
+          },
         ]}
-        totalBRL={11500}
-        totalCostBRL={10500}
+        totalBRL={28000}
+        totalCostBRL={26100}
         allocationAnalysis={mockAllocation}
         concentrationRisk={mockConcentration}
       />,

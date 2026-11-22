@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { CustomAporteExecutionItem } from "@/components/modules/aporte-result";
 import { todayISO } from "@/domain/debts";
+import type { CeilingAporteSensitivity } from "@/domain/portfolio";
 import {
   buildAporteSimulationViewModel,
   buildBatchAportePayload,
@@ -34,6 +35,7 @@ export function useAporteAllocator(onGoToPosition?: () => void) {
   const [batchError, setBatchError] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [strategy, setStrategy] = useState<"optimized" | "proportional">("optimized");
+  const [ceilingSensitivity, setCeilingSensitivity] = useState<CeilingAporteSensitivity>("balanced");
 
   const availableCashCents = Math.max(0, Math.round(position.cashBRL * 100));
 
@@ -57,8 +59,9 @@ export function useAporteAllocator(onGoToPosition?: () => void) {
         rawClassTargets: classTargetsQuery.data ?? [],
         rawSectorTargets: sectorTargetsQuery.data ?? [],
         strategy,
+        ceilingSensitivity,
       }),
-    [totalPurchasingCents, position.rows, assetsQuery.data, classTargetsQuery.data, sectorTargetsQuery.data, strategy],
+    [totalPurchasingCents, position.rows, assetsQuery.data, classTargetsQuery.data, sectorTargetsQuery.data, strategy, ceilingSensitivity],
   );
 
   const handleOpenWizardForAsset = useCallback(
@@ -155,6 +158,8 @@ export function useAporteAllocator(onGoToPosition?: () => void) {
     cashHighlight: urlAnim.cashHighlight,
     strategy,
     setStrategy,
+    ceilingSensitivity,
+    setCeilingSensitivity,
     simulation,
     positionRows: position.rows,
     rawClassTargets: classTargetsQuery.data ?? [],

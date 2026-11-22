@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Coins, Info, SlidersHorizontal, Sparkles } from "lucide-react";
+import { Coins, Info, Scale, SlidersHorizontal, Sparkles } from "lucide-react";
 import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { buildAporteBreakdown } from "@/domain/calculation-memory";
 import { numberToCents } from "@/domain/money";
 import type {
   AporteOverflowEvent,
+  CeilingAporteSensitivity,
   ClassAporteSummary,
   DiversificationImpactSummary,
   PausedAssetDiagnostic,
@@ -33,6 +34,8 @@ export interface AporteCockpitCommandCardProps {
   onUseOnlyCash: () => void;
   strategy?: "optimized" | "proportional";
   onStrategyChange?: (strategy: "optimized" | "proportional") => void;
+  ceilingSensitivity?: CeilingAporteSensitivity;
+  onCeilingSensitivityChange?: (sensitivity: CeilingAporteSensitivity) => void;
   cashHighlight?: boolean;
 
   // Síntese
@@ -70,6 +73,8 @@ export function AporteCockpitCommandCard({
   onUseOnlyCash,
   strategy = "optimized",
   onStrategyChange,
+  ceilingSensitivity,
+  onCeilingSensitivityChange,
   cashHighlight = false,
 
   effectiveTotalAllocated,
@@ -231,6 +236,73 @@ export function AporteCockpitCommandCard({
                 },
               ]}
               ariaLabel="Estratégia de distribuição de aporte"
+            />
+          </div>
+        ) : null}
+
+        {/* Sensibilidade ao Preço Teto / Valuation (§Plano Preço Teto) */}
+        {ceilingSensitivity && onCeilingSensitivityChange ? (
+          <div className="flex flex-col gap-1.5 pt-0.5">
+            <div className="flex items-center justify-between text-xs font-medium text-foreground">
+              <span className="flex items-center gap-1.5">
+                <span>Preço Teto / Valuation</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Explicação da sensibilidade ao Preço Teto"
+                      className="inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <Info className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-80 p-3.5 flex flex-col gap-2.5 text-left">
+                    <div className="flex items-start gap-2.5">
+                      <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface-raised border border-border/80 text-primary">
+                        <Scale className="size-3.5" aria-hidden="true" />
+                      </div>
+                      <div className="flex flex-col gap-1 min-w-0 flex-1">
+                        <span className="text-xs font-semibold text-foreground leading-tight">
+                          Sensibilidade ao Preço Teto
+                        </span>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Define como o motor de aporte reage quando ativos cadastrados possuem Preço Teto:
+                        </p>
+                      </div>
+                    </div>
+                    <ul className="flex flex-col gap-1.5 text-[11px] text-muted-foreground border-t border-border/50 pt-2 pl-1">
+                      <li className="flex items-start gap-1.5">
+                        <span className="font-semibold text-foreground shrink-0">Equilibrado:</span>
+                        <span>Prioriza ativos com maior margem de segurança no desempate, preservando as metas da carteira.</span>
+                      </li>
+                      <li className="flex items-start gap-1.5">
+                        <span className="font-semibold text-foreground shrink-0">Oportunidade Estrita:</span>
+                        <span>Suspende novos aportes em ativos negociando acima do Preço Teto e transborda o valor para ativos descontados ou caixa.</span>
+                      </li>
+                    </ul>
+                  </PopoverContent>
+                </Popover>
+              </span>
+              <span className="text-[11px] font-normal text-muted-foreground hidden sm:inline">
+                {ceilingSensitivity === "balanced" ? "Desempate favorável" : "Bloqueia acima do teto"}
+              </span>
+            </div>
+            <SegmentedControl
+              value={ceilingSensitivity}
+              onChange={(val) => onCeilingSensitivityChange(val as CeilingAporteSensitivity)}
+              options={[
+                {
+                  value: "balanced",
+                  label: "Equilibrado",
+                  title: "Prioriza ativos descontados mantendo a meta de diversificação",
+                },
+                {
+                  value: "strict_opportunity",
+                  label: "Oportunidade Estrita",
+                  title: "Pausa compras em ativos cujo preço de mercado superou o Preço Teto",
+                },
+              ]}
+              ariaLabel="Sensibilidade ao Preço Teto nos aportes"
             />
           </div>
         ) : null}

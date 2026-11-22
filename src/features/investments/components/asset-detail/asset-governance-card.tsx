@@ -1,14 +1,16 @@
-import { Clock, SlidersHorizontal } from "lucide-react";
+import { Calculator, Clock, SlidersHorizontal, TrendingUp } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
+import { CeilingPriceBadge } from "@/components/modules/portfolio";
 import { formatDateBR } from "@/lib/date";
 import type { AssetDetailMetrics } from "./use-asset-detail-metrics";
 
 export interface AssetGovernanceCardProps {
   metrics: AssetDetailMetrics;
   onOpenEvaluation: () => void;
+  onOpenValuation?: () => void;
 }
 
-export function AssetGovernanceCard({ metrics, onOpenEvaluation }: AssetGovernanceCardProps) {
+export function AssetGovernanceCard({ metrics, onOpenEvaluation, onOpenValuation }: AssetGovernanceCardProps) {
   const {
     currentAsset,
     effectiveResult,
@@ -20,6 +22,10 @@ export function AssetGovernanceCard({ metrics, onOpenEvaluation }: AssetGovernan
     metCriteriaCount,
     reviewFreqMonths,
     isReviewOverdue,
+    ceilingPriceNum,
+    hasCeilingPrice,
+    currentPrice,
+    isCash,
   } = metrics;
 
   const statusBadgeVariant =
@@ -81,6 +87,49 @@ export function AssetGovernanceCard({ metrics, onOpenEvaluation }: AssetGovernan
           </p>
         </div>
       ) : null}
+
+      {/* Preço Teto & Valuation */}
+      {!isCash && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-lg border border-border/80 bg-surface-hover/30 p-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <Calculator className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+            <div className="flex flex-col min-w-0">
+              <span className="text-[11px] font-semibold text-foreground">
+                Preço Teto de Compra
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                {hasCeilingPrice
+                  ? `Método: ${currentAsset.ceiling_method ?? "manual"}`
+                  : "Nenhum preço teto cadastrado para este ativo"}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {hasCeilingPrice && ceilingPriceNum !== null ? (
+              <CeilingPriceBadge
+                ceilingPrice={ceilingPriceNum}
+                currentPrice={currentPrice}
+                currency={currentAsset.currency}
+                showCeilingValue
+              />
+            ) : null}
+
+            {onOpenValuation && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={onOpenValuation}
+                className="gap-1 text-xs text-primary-strong h-7"
+              >
+                <TrendingUp className="size-3" aria-hidden="true" />
+                <span>{hasCeilingPrice ? "Ajustar Teto" : "Calcular Preço Teto"}</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-xs pt-1">
         <div className="flex flex-col min-w-0">

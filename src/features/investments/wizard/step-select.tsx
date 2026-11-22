@@ -76,6 +76,7 @@ export function StepSelect({
         currentValueBRL: row?.valueBRL ?? 0,
         priceBRL: row?.priceBRL ?? Number(asset.average_price ?? 0),
         averageCost: Number(asset.average_price ?? 0),
+        ceilingPrice: asset.ceiling_price ?? null,
         score: asset.score ?? null,
         allocationStatus: asset.allocation_status ?? "active",
       };

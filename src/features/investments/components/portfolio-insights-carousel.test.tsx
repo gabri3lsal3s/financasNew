@@ -37,6 +37,14 @@ vi.mock("@/state", async (importOriginal) => {
       mutateAsync: mockUpdateAssetMutateAsync,
       isPending: false,
     }),
+    useUserPreferences: () => ({
+      data: { custom_settings: {} },
+      isLoading: false,
+    }),
+    useUpdateCustomSettings: () => ({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn(),
+    }),
   };
 });
 

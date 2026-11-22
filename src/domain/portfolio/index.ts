@@ -367,6 +367,7 @@ export type {
   TargetValidation,
 } from "./allocation";
 export {
+  compareCeilingOpportunity,
   getAporteSuggestions,
   isFractionalAsset,
   resolveAssetPrecision,
@@ -385,6 +386,7 @@ export type {
   AporteRoute,
   AporteStrategy,
   AssetAporteOverride,
+  CeilingAporteSensitivity,
   ClassAporteSummary,
   ClassTargetInput,
   ConstrainedAporteOptions,
@@ -531,5 +533,7 @@ export * from "./portfolio-risk-policy";
 export * from "./diversification-metrics";
 export * from "./fixed-income-diagnostics";
 export * from "./aporte-execution-mapper";
+export * from "./ceiling-types";
+export * from "./ceiling-valuation";
 
 

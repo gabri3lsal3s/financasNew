@@ -79,6 +79,18 @@ const fixedIncomeRateTypeSchema = z.enum(["cdi", "selic", "pre", "ipca"] as cons
   message: "Indexador inválido (escolha CDI, Selic, Pré ou IPCA)",
 });
 
+const ceilingMethodSchema = z.enum([
+  "manual",
+  "bazin",
+  "graham",
+  "gordon",
+  "multiple",
+  "pvp",
+  "hybrid_fii",
+  "conservative",
+  "average",
+] as const).nullable().optional();
+
 /** Schema para validação de metadados de títulos de Renda Fixa parametrizada (Fase 63/72). */
 export const fixedIncomeMetadataSchema = z.object({
   rate_type: fixedIncomeRateTypeSchema,
@@ -156,6 +168,17 @@ export const newAssetSchema = z.object({
     .default(0),
   /** Metadados opcionais de títulos de renda fixa privada / parametrizada (Fase 63/72). */
   fixed_income_metadata: fixedIncomeMetadataSchema.nullable().optional(),
+  /** Preço Teto calculado ou estipulado pelo investidor (moeda nativa). */
+  ceiling_price: z
+    .number({ message: "Informe um valor válido para o Preço Teto" })
+    .min(0, "O Preço Teto não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O Preço Teto ultrapassa o limite monetário permitido")
+    .nullable()
+    .optional(),
+  /** Método de valuation vigente para o Preço Teto. */
+  ceiling_method: ceilingMethodSchema,
+  /** Memória de cálculo e modelos da Mesa de Consenso. */
+  ceiling_metadata: z.record(z.string(), z.unknown()).nullable().optional(),
   notes: notesSchema,
   /** Custo total histórico de aquisição em reais (BRL) para ativos em moeda estrangeira. */
   total_cost_brl: z
@@ -282,6 +305,17 @@ export const assetMetadataSchema = z.object({
     .default(0),
   /** Metadados opcionais de títulos de renda fixa privada / parametrizada (Fase 63/72). */
   fixed_income_metadata: fixedIncomeMetadataSchema.nullable().optional(),
+  /** Preço Teto calculado ou estipulado pelo investidor (moeda nativa). */
+  ceiling_price: z
+    .number({ message: "Informe um valor válido para o Preço Teto" })
+    .min(0, "O Preço Teto não pode ser negativo")
+    .max(MAX_MONEY_AMOUNT, "O Preço Teto ultrapassa o limite monetário permitido")
+    .nullable()
+    .optional(),
+  /** Método de valuation vigente para o Preço Teto. */
+  ceiling_method: ceilingMethodSchema,
+  /** Memória de cálculo e modelos da Mesa de Consenso. */
+  ceiling_metadata: z.record(z.string(), z.unknown()).nullable().optional(),
   notes: notesSchema,
   /** Custo total histórico de aquisição em reais (BRL) para ativos em moeda estrangeira. */
   total_cost_brl: z

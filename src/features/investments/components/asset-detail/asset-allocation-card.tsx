@@ -1,4 +1,5 @@
-import { Sparkles, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { Sparkles, Target } from "lucide-react";
+import { CeilingPriceBadge } from "@/components/modules/portfolio";
 import { Badge, Button, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import { formatAssetQuantity } from "@/services/formatting";
@@ -19,8 +20,6 @@ export function AssetAllocationCard({ metrics, onAporteClick }: AssetAllocationC
     assetTargetPct,
     sectorTargetPct,
     classTargetPct,
-    hasDiscountVsPM,
-    diffVsPMPct,
     currentPctInPortfolio,
     totalPortfolioValue,
     targetValueBRL,
@@ -48,17 +47,12 @@ export function AssetAllocationCard({ metrics, onAporteClick }: AssetAllocationC
           ) : null}
         </div>
 
-        {hasDiscountVsPM ? (
-          <Badge variant="positive" size="xs" className="self-start sm:self-auto gap-1">
-            <TrendingDown className="size-3" aria-hidden="true" />
-            <span>Desconto de {formatPercent(Math.abs(diffVsPMPct))}% vs PM</span>
-          </Badge>
-        ) : diffVsPMPct > 0 ? (
-          <Badge variant="muted" size="xs" className="self-start sm:self-auto gap-1">
-            <TrendingUp className="size-3" aria-hidden="true" />
-            <span>+{formatPercent(diffVsPMPct)}% acima do PM</span>
-          </Badge>
-        ) : null}
+        <CeilingPriceBadge
+          ceilingPrice={currentAsset.ceiling_price}
+          currentPrice={metrics.currentPrice}
+          currency={currentAsset.currency}
+          showCeilingValue
+        />
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 text-xs">
@@ -126,7 +120,7 @@ export function AssetAllocationCard({ metrics, onAporteClick }: AssetAllocationC
           <Button
             type="button"
             size="sm"
-            variant={gapBRL > 0 || hasDiscountVsPM ? "default" : "outline"}
+            variant={gapBRL > 0 ? "default" : "outline"}
             onClick={onAporteClick}
             className="gap-1.5 text-xs font-semibold w-full"
           >

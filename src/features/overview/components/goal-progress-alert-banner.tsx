@@ -1,8 +1,8 @@
-import { ArrowRight, CheckCircle2, Plus, Sparkles, Target, X } from "lucide-react";
+import { ArrowRight, CheckCircle2, Plus, Sparkles, Target } from "lucide-react";
+import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
 import { Badge, Button } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
-import { triggerSensory } from "@/services/sensory";
 import type { PublicShare } from "@/types";
 
 export interface GoalProgressAlertBannerProps {
@@ -11,7 +11,7 @@ export interface GoalProgressAlertBannerProps {
   surplusCents?: number | null;
   onOpenDeposit: (share: PublicShare) => void;
   onNavigateGoals?: () => void;
-  onDismiss?: () => void;
+  onDismiss?: (days: 7 | 30) => void;
   className?: string;
 }
 
@@ -38,12 +38,6 @@ export function GoalProgressAlertBanner({
 
   const handleDeposit = () => {
     onOpenDeposit(goalShare);
-  };
-
-  const handleDismiss = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    triggerSensory("action");
-    onDismiss?.();
   };
 
   return (
@@ -155,15 +149,12 @@ export function GoalProgressAlertBanner({
         )}
 
         {onDismiss && (
-          <button
-            type="button"
-            onClick={handleDismiss}
-            className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer shrink-0 max-sm:after:absolute max-sm:after:-inset-2"
-            aria-label={`Dispensar alerta da meta ${title}`}
-            title="Dispensar aviso"
-          >
-            <X className="size-4" aria-hidden="true" />
-          </button>
+          <div className="absolute top-3 right-3 sm:static">
+            <CarouselDismissPopover
+              onDismiss={onDismiss}
+              label={`Dispensar alerta da meta ${title}`}
+            />
+          </div>
         )}
       </div>
     </div>

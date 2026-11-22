@@ -13,7 +13,14 @@ import {
   useSetManualPrice,
   useUpdatePortfolioAsset,
 } from "@/state";
-import type { AssetCurrency, FixedIncomeMetadata, FixedIncomeRateType, PortfolioAsset } from "@/types";
+import type {
+  AssetCeilingMetadata,
+  AssetCeilingMethod,
+  AssetCurrency,
+  FixedIncomeMetadata,
+  FixedIncomeRateType,
+  PortfolioAsset,
+} from "@/types";
 import { buildEmergencyConfigWithAssetToggle, isAssetInEmergencyConfig } from "../emergency-fund-sync";
 import { CLASSES_WITH_EDITABLE_CURRENCY } from "./asset-form-constants";
 
@@ -39,6 +46,9 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
   const [assetClass, setAssetClass] = useState(asset.asset_class ?? "Ações");
   const [sector, setSector] = useState(asset.sector ?? inferSectorFromTicker(asset.ticker, asset.asset_class));
   const [currency, setCurrency] = useState<AssetCurrency>(asset.currency ?? "BRL");
+  const [ceilingPrice, setCeilingPrice] = useState<number | null>(asset.ceiling_price ?? null);
+  const [ceilingMethod, setCeilingMethod] = useState<AssetCeilingMethod | null>(asset.ceiling_method ?? null);
+  const [ceilingMetadata, setCeilingMetadata] = useState<AssetCeilingMetadata | null>(asset.ceiling_metadata ?? null);
   const [notes, setNotes] = useState(() =>
     asset.notes ? asset.notes.replace(/\[PRICING:(UNIT|TOTAL)\]/g, "").replace(/\[VALUATION:CUSTOM\]/g, "").trim() : "",
   );
@@ -165,6 +175,9 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
           : null,
       fx_rate_at_purchase:
         currency !== "BRL" && fxRateAtPurchase && fxRateAtPurchase > 0 ? fxRateAtPurchase : null,
+      ceiling_price: !isCash && !isFixedIncome && ceilingPrice && ceilingPrice > 0 ? ceilingPrice : null,
+      ceiling_method: !isCash && !isFixedIncome && ceilingPrice && ceilingPrice > 0 ? ceilingMethod : null,
+      ceiling_metadata: !isCash && !isFixedIncome && ceilingMetadata ? (ceilingMetadata as unknown as Record<string, unknown>) : null,
     });
 
     if (!validation.success) {
@@ -210,7 +223,9 @@ export function useAssetEditForm(asset: PortfolioAsset, onClose: () => void) {
 
   return {
     isFamilyModeEnabled, isFamily, setIsFamily, isEmergencyFund, setIsEmergencyFund, ticker, setTicker,
-    assetClass, handleClassChange, sector, setSector, currency, setCurrency, notes, setNotes,
+    assetClass, handleClassChange, sector, setSector, currency, setCurrency,
+    ceilingPrice, setCeilingPrice, ceilingMethod, setCeilingMethod, ceilingMetadata, setCeilingMetadata,
+    notes, setNotes,
     accumulatedDividendsCents, setAccumulatedDividendsCents, estimatedDividendPerShareCents,
     setEstimatedDividendPerShareCents, fixedIncomeRateType, setFixedIncomeRateType, fixedIncomeRateValue,
     setFixedIncomeRateValue, fixedIncomeBaseDate, setFixedIncomeBaseDate, fixedIncomeInitialInvestmentDate,

@@ -57,7 +57,15 @@ export function useDashboardAlertDismissals() {
   const updateAlertDismissals = useCallback(
     (updater: (prev: DashboardAlertDismissals) => DashboardAlertDismissals) => {
       setLocalAlertDismissals((prev) => {
-        const next = updater(prev);
+        const mergedBase: DashboardAlertDismissals = {
+          ...cloudAlertDismissals,
+          ...prev,
+          goals: {
+            ...(cloudAlertDismissals?.goals ?? {}),
+            ...(prev.goals ?? {}),
+          },
+        };
+        const next = updater(mergedBase);
         saveLocalAlertDismissals(next);
         updateCustomSettingsMutation.mutate({
           dashboardAlertDismissals: next,
@@ -65,7 +73,7 @@ export function useDashboardAlertDismissals() {
         return next;
       });
     },
-    [updateCustomSettingsMutation],
+    [cloudAlertDismissals, updateCustomSettingsMutation],
   );
 
   return { alertDismissals, updateAlertDismissals };

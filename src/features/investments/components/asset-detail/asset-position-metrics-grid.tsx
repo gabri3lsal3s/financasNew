@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import { CeilingPriceBadge } from "@/components/modules/portfolio";
 import { MoneyText } from "@/components/ui";
 import {
   buildAssetCostBreakdown,
@@ -27,7 +28,9 @@ export function AssetPositionMetricsGrid({ metrics }: AssetPositionMetricsGridPr
     quantity,
     averageCost,
     totalCost,
+    currentPrice,
     currentValue,
+    ceilingPriceNum,
     unrealizedPnlPct,
     totalDividendsNative,
     totalDividendsBRL,
@@ -176,9 +179,16 @@ export function AssetPositionMetricsGrid({ metrics }: AssetPositionMetricsGridPr
           tone="default"
           className="text-sm sm:text-base font-bold"
         />
-        <span className="text-[11px] text-muted-foreground font-mono whitespace-nowrap">
-          {isTotalValue ? "Aporte inicial" : <>Custo: <MoneyText cents={numberToCents(totalCost)} currency="BRL" variant="caption" tone="default" /></>}
-        </span>
+        <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-muted-foreground font-mono">
+          <span>{isTotalValue ? "Aporte inicial" : <>Custo: <MoneyText cents={numberToCents(totalCost)} currency="BRL" variant="caption" tone="default" /></>}</span>
+          {ceilingPriceNum !== null && !isTotalValue && (
+            <CeilingPriceBadge
+              ceilingPrice={ceilingPriceNum}
+              currentPrice={currentPrice}
+              currency={currentAsset.currency}
+            />
+          )}
+        </div>
       </div>
 
       <div className="group flex flex-col justify-between gap-1 rounded-xl border border-border/80 bg-surface p-3 sm:p-3.5 min-w-0 shadow-xs">

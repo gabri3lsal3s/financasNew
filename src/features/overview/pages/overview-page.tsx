@@ -82,6 +82,8 @@ export function OverviewPage() {
     canViewInvestments: hasFeature("investments"),
     overdueReviewsCount: govInsights.overdueReviewsCount,
     onReviewGovernance: () => navigate("/investments?tab=metas"),
+    onDismissGovernance: modals.handleDismissGovernance,
+    isGovernanceDismissed: data.isGovernanceDismissed,
   });
 
   const hasFinance =

@@ -198,9 +198,43 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
       expect(shouldShowPaceAlert(checkpoint, { ...basePace, surplusCents: -5000 })).toBe(true);
     });
 
-    it("reativa quando ritmo de gastos piora em 5% ou mais", () => {
+    it("reativa quando ritmo de gastos piora em 5% ou mais no modo legado", () => {
       const checkpoint = createPaceDismissalCheckpoint(basePace);
       expect(shouldShowPaceAlert(checkpoint, { ...basePace, spentPercent: 75 })).toBe(true);
+    });
+
+    it("respeita o período de 7 dias de dispensa mesmo com aumento no ritmo de gastos", () => {
+      const checkpoint = createPaceDismissalCheckpoint(basePace, 7, "2026-11-01T12:00:00Z");
+      // 3 dias depois: ritmo piorou de 70% para 78%, mas ainda dentro dos 7 dias
+      expect(
+        shouldShowPaceAlert(checkpoint, { ...basePace, spentPercent: 78 }, {
+          nowMs: new Date("2026-11-04T12:00:00Z").getTime(),
+        }),
+      ).toBe(false);
+
+      // 8 dias depois: expirou o período de 7 dias e ritmo continua acelerado -> reexibe!
+      expect(
+        shouldShowPaceAlert(checkpoint, { ...basePace, spentPercent: 78 }, {
+          nowMs: new Date("2026-11-09T13:00:00Z").getTime(),
+        }),
+      ).toBe(true);
+    });
+
+    it("respeita o período de 30 dias de dispensa", () => {
+      const checkpoint = createPaceDismissalCheckpoint(basePace, 30, "2026-11-01T12:00:00Z");
+      // 25 dias depois dentro do mesmo mês: continua silenciado
+      expect(
+        shouldShowPaceAlert(checkpoint, { ...basePace, spentPercent: 80 }, {
+          nowMs: new Date("2026-11-26T12:00:00Z").getTime(),
+        }),
+      ).toBe(false);
+
+      // 31 dias depois: expirou os 30 dias
+      expect(
+        shouldShowPaceAlert(checkpoint, { ...basePace, spentPercent: 80 }, {
+          nowMs: new Date("2026-12-02T13:00:00Z").getTime(),
+        }),
+      ).toBe(true);
     });
   });
 
@@ -229,12 +263,58 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
       expect(shouldShowSurplusAlert(checkpoint, { ...baseSurplus, month: "2026-12" })).toBe(true);
     });
 
-    it("reativa quando a sobra varia em R$ 50,00 ou mais", () => {
+    it("reativa quando a sobra varia em R$ 50,00 ou mais no modo legado", () => {
       const checkpoint = createSurplusDismissalCheckpoint(baseSurplus);
       expect(
         shouldShowSurplusAlert(checkpoint, {
           ...baseSurplus,
           surplusCents: 156000, // +R$ 60
+        }),
+      ).toBe(true);
+    });
+
+    it("respeita o período de 7 dias de dispensa mesmo com grande variação de sobra", () => {
+      const checkpoint = createSurplusDismissalCheckpoint(baseSurplus, 7, "2026-11-01T12:00:00Z");
+      // 4 dias depois: sobra variou R$ 100, mas está dentro dos 7 dias
+      expect(
+        shouldShowSurplusAlert(checkpoint, {
+          ...baseSurplus,
+          surplusCents: 160000,
+        }, {
+          nowMs: new Date("2026-11-05T12:00:00Z").getTime(),
+        }),
+      ).toBe(false);
+
+      // 8 dias depois: expirou o período de 7 dias
+      expect(
+        shouldShowSurplusAlert(checkpoint, {
+          ...baseSurplus,
+          surplusCents: 160000,
+        }, {
+          nowMs: new Date("2026-11-09T13:00:00Z").getTime(),
+        }),
+      ).toBe(true);
+    });
+
+    it("respeita o período de 30 dias de dispensa da sobra", () => {
+      const checkpoint = createSurplusDismissalCheckpoint(baseSurplus, 30, "2026-11-01T12:00:00Z");
+      // 20 dias depois
+      expect(
+        shouldShowSurplusAlert(checkpoint, {
+          ...baseSurplus,
+          surplusCents: 200000,
+        }, {
+          nowMs: new Date("2026-11-21T12:00:00Z").getTime(),
+        }),
+      ).toBe(false);
+
+      // 31 dias depois
+      expect(
+        shouldShowSurplusAlert(checkpoint, {
+          ...baseSurplus,
+          surplusCents: 200000,
+        }, {
+          nowMs: new Date("2026-12-02T13:00:00Z").getTime(),
         }),
       ).toBe(true);
     });

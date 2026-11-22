@@ -65,14 +65,21 @@ describe("domain/portfolio/asset-governance-insights (§F41)", () => {
     expect(qInsight?.title).toContain("Quarentena prolongada");
   });
 
-  it("Gatilho 3: detecta oportunidade em ativo de nota alta com desconto ≥ 20% do PM", () => {
+  it("Gatilho 3: detecta oportunidade em ativo de nota alta com margem de segurança ≥ 15% do Preço Teto", () => {
     const assets: GovernanceAssetInput[] = [
       makeAsset({
         id: "op1",
         ticker: "VALE3",
         score: 9, // Nota alta
-        averageCost: 80,
-        currentPrice: 60, // 25% de desconto frente ao PM (60 vs 80)
+        ceilingPrice: 80,
+        currentPrice: 60, // 25% de margem de segurança frente ao Preço Teto (60 vs 80)
+      }),
+      makeAsset({
+        id: "no-ceiling",
+        ticker: "PETR4",
+        score: 9,
+        averageCost: 50,
+        currentPrice: 30, // Sem ceilingPrice definido: não gera falso sinal de oportunidade com Preço Médio
       }),
     ];
 
@@ -81,6 +88,7 @@ describe("domain/portfolio/asset-governance-insights (§F41)", () => {
     expect(result.summary.opportunityCount).toBe(1);
     const opInsight = result.insights.find((i) => i.kind === "discount_opportunity");
     expect(opInsight).toBeDefined();
+    expect(opInsight?.ticker).toBe("VALE3");
     expect(opInsight?.discountPct).toBe(25);
     expect(opInsight?.severity).toBe("positive");
   });

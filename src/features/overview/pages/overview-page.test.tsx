@@ -967,6 +967,9 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       });
       fireEvent.click(dismissBtn);
 
+      const dismissOption = screen.getByRole("button", { name: "Dispensar por 7 dias" });
+      fireEvent.click(dismissOption);
+
       expect(screen.queryByText("Meta Conquistada: Reserva de Emergência")).not.toBeInTheDocument();
     });
 
@@ -1026,6 +1029,9 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
         hidden: true,
       });
       fireEvent.click(dismissBtn);
+
+      const dismissOption = screen.getByRole("button", { name: "Dispensar por 7 dias" });
+      fireEvent.click(dismissOption);
 
       // Viagem Europa é removida do carrossel, mantendo Carro Novo
       expect(screen.queryByText("Reta Final: Viagem Europa")).not.toBeInTheDocument();

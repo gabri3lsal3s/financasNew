@@ -1,9 +1,9 @@
-import { ArrowRight, TrendingDown, X } from "lucide-react";
+import { ArrowRight, TrendingDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
-import { triggerSensory } from "@/services/sensory";
+import { CarouselDismissPopover } from "./carousel-dismiss-popover";
 
 export interface PaceAlertBannerProps {
   /** % do orçamento já gasto (0–100+). */
@@ -18,7 +18,7 @@ export interface PaceAlertBannerProps {
   surplusCents: number | null;
   /** Callback para navegar à tela de Insights/Projeção. */
   onNavigateInsights: () => void;
-  onDismiss?: () => void;
+  onDismiss?: (days: 7 | 30) => void;
   className?: string;
 }
 
@@ -36,12 +36,6 @@ export function PaceAlertBanner({
   className,
 }: PaceAlertBannerProps) {
   const isDeficit = surplusCents !== null && surplusCents < 0;
-
-  const handleDismiss = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    triggerSensory("action");
-    onDismiss?.();
-  };
 
   return (
     <section
@@ -102,15 +96,9 @@ export function PaceAlertBanner({
         </Button>
 
         {onDismiss && (
-          <button
-            type="button"
-            onClick={handleDismiss}
-            className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer shrink-0 max-sm:after:absolute max-sm:after:-inset-2"
-            aria-label="Dispensar aviso de ritmo de gastos"
-            title="Dispensar aviso"
-          >
-            <X className="size-4" aria-hidden="true" />
-          </button>
+          <div className="absolute top-3 right-3 sm:static">
+            <CarouselDismissPopover onDismiss={onDismiss} label="Dispensar aviso de ritmo de gastos" />
+          </div>
         )}
       </div>
     </section>

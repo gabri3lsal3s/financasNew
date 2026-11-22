@@ -257,59 +257,74 @@ export function ExecutiveReportDocument({
           </div>
 
           <div className="w-full overflow-x-auto no-scrollbar">
-            <table className="w-full text-xs border-collapse">
+            <table className="w-full text-xs border-collapse table-fixed">
+              <colgroup>
+                <col className="w-[30%]" />
+                <col className="w-[8%]" />
+                <col className="w-[17%]" />
+                <col className="w-[13%]" />
+                <col className="w-[18%]" />
+                <col className="w-[14%]" />
+              </colgroup>
               <thead>
                 <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
-                  <th className="py-1 px-2 font-bold">Classe de Ativo</th>
-                  <th className="py-1 px-2 font-bold text-center">Ativos</th>
-                  <th className="py-1 px-2 text-right font-bold">Posição Atual (R$)</th>
-                  <th className="py-1 px-2 text-right font-bold">% Portfólio</th>
-                  <th className="py-1 px-2 text-right font-bold">Custo Aquisição (R$)</th>
-                  <th className="py-1 px-2 text-right font-bold">Retorno P&amp;L</th>
+                  <th className="py-1 px-2 font-bold pr-2">Classe de Ativo</th>
+                  <th className="py-1 px-2 font-bold text-center whitespace-nowrap">Ativos</th>
+                  <th className="py-1 px-2 text-right font-bold whitespace-nowrap">Posição (R$)</th>
+                  <th className="py-1 px-2 text-right font-bold whitespace-nowrap">% Cart.</th>
+                  <th className="py-1 px-2 text-right font-bold whitespace-nowrap">Custo (R$)</th>
+                  <th className="py-1 px-2 text-right font-bold whitespace-nowrap">P&amp;L</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
                 {classGroups.map((g) => {
                   const className = g.className;
+                  const isCashClass = className.toLowerCase().includes("caixa");
                   const totalCents = g.totalCents ?? 0;
                   const costCents = g.totalCostCents ?? 0;
                   const pct = effectiveTotalBRL > 0 ? (totalCents / numberToCents(effectiveTotalBRL)) * 100 : 0;
                   const returnPct = costCents > 0 ? ((totalCents - costCents) / costCents) * 100 : 0;
                   return (
                     <tr key={className} className="even:bg-muted/20">
-                      <td className="py-1.5 px-2 font-semibold text-foreground whitespace-nowrap">{className}</td>
-                      <td className="py-1.5 px-2 text-center text-muted-foreground font-mono">{g.items?.length ?? 0}</td>
-                      <td className="py-1.5 px-2 text-right font-mono font-bold">
+                      <td className="py-1.5 px-2 font-semibold text-foreground break-words leading-tight pr-2">{className}</td>
+                      <td className="py-1.5 px-2 text-center text-muted-foreground font-mono whitespace-nowrap">
+                        {isCashClass ? "—" : (g.items?.length ?? 0)}
+                      </td>
+                      <td className="py-1.5 px-2 text-right font-mono font-bold whitespace-nowrap">
                         <MoneyText cents={totalCents} hideCurrency />
                       </td>
-                      <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                      <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
                         {formatPercent(pct)}%
                       </td>
-                      <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                      <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
                         <MoneyText cents={costCents} hideCurrency />
                       </td>
-                      <td className="py-1.5 px-2 text-right font-mono font-bold">
-                        <span className={returnPct >= 0 ? "text-positive-strong" : "text-negative-strong"}>
-                          {formatSignedPct(returnPct)}
-                        </span>
+                      <td className="py-1.5 px-2 text-right font-mono font-bold whitespace-nowrap">
+                        {isCashClass ? (
+                          <span className="text-muted-foreground font-normal">—</span>
+                        ) : (
+                          <span className={returnPct >= 0 ? "text-positive-strong" : "text-negative-strong"}>
+                            {formatSignedPct(returnPct)}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
                 })}
                 {hasSeparateCash && (
                   <tr key="reserva-caixa-sintese" className="even:bg-muted/20">
-                    <td className="py-1.5 px-2 font-semibold text-foreground whitespace-nowrap">Reserva de Caixa</td>
-                    <td className="py-1.5 px-2 text-center text-muted-foreground font-mono">—</td>
-                    <td className="py-1.5 px-2 text-right font-mono font-bold">
+                    <td className="py-1.5 px-2 font-semibold text-foreground break-words leading-tight pr-2">Reserva de Caixa</td>
+                    <td className="py-1.5 px-2 text-center text-muted-foreground font-mono whitespace-nowrap">—</td>
+                    <td className="py-1.5 px-2 text-right font-mono font-bold whitespace-nowrap">
                       <MoneyText cents={numberToCents(effectiveCashBRL)} hideCurrency />
                     </td>
-                    <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                    <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
                       {formatPercent(effectiveTotalBRL > 0 ? (effectiveCashBRL / effectiveTotalBRL) * 100 : 0)}%
                     </td>
-                    <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                    <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
                       <MoneyText cents={numberToCents(effectiveCashBRL)} hideCurrency />
                     </td>
-                    <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                    <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
                       —
                     </td>
                   </tr>
@@ -317,18 +332,18 @@ export function ExecutiveReportDocument({
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-border/80 font-bold bg-muted/30">
-                  <td className="py-1.5 px-2 uppercase tracking-wider text-[10px]">Total Consolidado</td>
-                  <td className="py-1.5 px-2 text-center font-mono">
+                  <td className="py-1.5 px-2 uppercase tracking-wider text-[10px] break-words leading-tight pr-2">Total Consolidado</td>
+                  <td className="py-1.5 px-2 text-center font-mono whitespace-nowrap">
                     {investmentCount}
                   </td>
-                  <td className="py-1.5 px-2 text-right font-mono">
+                  <td className="py-1.5 px-2 text-right font-mono whitespace-nowrap">
                     <MoneyText cents={numberToCents(totalConsolidatedTotalBRL)} hideCurrency />
                   </td>
-                  <td className="py-1.5 px-2 text-right font-mono text-foreground">100,0%</td>
-                  <td className="py-1.5 px-2 text-right font-mono text-muted-foreground">
+                  <td className="py-1.5 px-2 text-right font-mono text-foreground whitespace-nowrap">100,0%</td>
+                  <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
                     <MoneyText cents={numberToCents(totalConsolidatedCostBRL)} hideCurrency />
                   </td>
-                  <td className="py-1.5 px-2 text-right font-mono font-bold">
+                  <td className="py-1.5 px-2 text-right font-mono font-bold whitespace-nowrap">
                     {totalConsolidatedCostBRL > 0 ? (
                       <span className={totalPnlBRL >= 0 ? "text-positive-strong" : "text-negative-strong"}>
                         {formatSignedPct(consolidatedPnlPct)}

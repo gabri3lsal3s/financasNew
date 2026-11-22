@@ -207,6 +207,14 @@ export function buildAporteBreakdown(params: AporteBreakdownParams): Calculation
         `${ceilings.length} ativo(s) atingiram tetos prudenciais de concentração máxima (individual 15%, setor 35% ou emissor de RF).`,
       );
     }
+
+    const priceCeilings = pausedAssets.filter((a) => a.reason === "price_above_ceiling");
+    if (priceCeilings.length > 0) {
+      const tickers = priceCeilings.slice(0, 3).map((a) => a.ticker).join(", ");
+      diagnosticNotes.push(
+        `Estratégia de oportunidade: ${tickers} estão com cotação acima do Preço Teto e novos aportes foram suspensos preventivamente.`,
+      );
+    }
   }
 
   const breakdown: CalculationBreakdown = {

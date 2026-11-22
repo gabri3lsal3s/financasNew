@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  compareCeilingOpportunity,
   getAporteSuggestions,
   isFractionalAsset,
   resolveAssetPrecision,
@@ -1771,6 +1772,196 @@ describe("Auditoria de Invariantes & Teste de Estresse Multi-Nível (Classe -> S
       expect(result.leftover).toBeGreaterThanOrEqual(0);
       expect(Array.isArray(result.overflowEvents)).toBe(true);
       expect(Array.isArray(result.pausedAssets)).toBe(true);
+    });
+  });
+
+  describe("Preço Teto / Valuation no Motor de Aporte (§Fase 4)", () => {
+    it("compareCeilingOpportunity desempata favoravelmente por margem de segurança", () => {
+      // Caso 1: Ambos têm teto. Ticker A: Preço 20, Teto 30 (+50% margem). Ticker B: Preço 20, Teto 24 (+20% margem).
+      // A deve vir antes de B (retorno < 0)
+      expect(compareCeilingOpportunity(20, 30, 20, 24)).toBeLessThan(0);
+      // Inverso: B antes de A (retorno > 0)
+      expect(compareCeilingOpportunity(20, 24, 20, 30)).toBeGreaterThan(0);
+
+      // Caso 2: A tem teto com desconto (Preço 20, Teto 25). B não tem teto (null).
+      // A deve ter preferência sobre B (retorno < 0)
+      expect(compareCeilingOpportunity(20, 25, 20, null)).toBe(-1);
+
+      // Caso 3: A tem teto esticado (Preço 35, Teto 30). B não tem teto (null).
+      // B (neutro) deve ter preferência sobre A (esticado) (retorno > 0)
+      expect(compareCeilingOpportunity(35, 30, 20, null)).toBe(1);
+
+      // Caso 4: Nenhum tem teto
+      expect(compareCeilingOpportunity(20, null, 20, null)).toBe(0);
+    });
+
+    it("desempata a reconcentração anti-pulverização favorecendo o ativo abaixo do Preço Teto", () => {
+      // a1 (ALFA3) e a2 (BETA3) são os 2 únicos defasados, ambos nota 8 e saldo 0.
+      // a3, a4 e a5 já possuem R$ 500 de patrimônio cada.
+      // Com minTicketBRL = 150 e aporte de 200, maxK = floor(200 / 150) = 1 ativo selecionado no lote.
+      // ALFA3 (Teto R$ 40) vs BETA3 (Teto R$ 30): ALFA3 vence o desempate e é o único a receber compras.
+      const assets: AporteAssetInput[] = [
+        asset({ id: "a1", ticker: "ALFA3", assetClass: "Ações", currentValueBRL: 0, priceBRL: 30, ceilingPrice: 40, score: 8 }),
+        asset({ id: "a2", ticker: "BETA3", assetClass: "Ações", currentValueBRL: 0, priceBRL: 30, ceilingPrice: 30, score: 8 }),
+        asset({ id: "a3", ticker: "BBAS3", assetClass: "Ações", currentValueBRL: 500, priceBRL: 30, score: 6 }),
+        asset({ id: "a4", ticker: "ITUB4", assetClass: "Ações", currentValueBRL: 500, priceBRL: 30, score: 6 }),
+        asset({ id: "a5", ticker: "BBDC4", assetClass: "Ações", currentValueBRL: 500, priceBRL: 30, score: 6 }),
+      ];
+
+      const result = simulateConstrainedAporte({
+        aporte: 200,
+        strategy: "optimized",
+        policy: { minTicketBRL: 150 },
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      });
+
+      const activeTickers = result.routes.filter((r) => r.quantity > 0).map((r) => r.ticker);
+      expect(activeTickers).toEqual(["ALFA3"]);
+    });
+
+    it("garante a Soberania Estrita do Quality Lock mesmo com Preço Teto altamente atrativo", () => {
+      // Ativo com Nota 3 (avaliado) e teto R$ 50 frente a preço R$ 10 (desconto de 400%)
+      // Não pode furar a barreira de qualidade!
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "a1",
+          ticker: "TRAP3",
+          assetClass: "Ações",
+          currentValueBRL: 0,
+          priceBRL: 10,
+          ceilingPrice: 50,
+          score: 3,
+          last_reviewed_at: "2026-01-10T00:00:00Z",
+        }),
+        asset({
+          id: "a2",
+          ticker: "GOOD3",
+          assetClass: "Ações",
+          currentValueBRL: 0,
+          priceBRL: 10,
+          score: 9,
+        }),
+      ];
+
+      const result = simulateConstrainedAporte({
+        aporte: 100,
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      });
+
+      // TRAP3 continua travado por quality lock
+      expect(result.pausedAssets.some((p) => p.ticker === "TRAP3" && p.reason === "quality_lock")).toBe(true);
+      // TRAP3 não recebe aporte
+      expect(result.routes.find((r) => r.ticker === "TRAP3")).toBeUndefined();
+      // GOOD3 recebe a alocação disponível
+      expect(result.routes.find((r) => r.ticker === "GOOD3")?.allocatedBRL).toBeGreaterThan(0);
+    });
+
+    it("no modo strict_opportunity, pausa ativos com preço acima do teto e transborda o aporte", () => {
+      // EXP3 está negociando a R$ 35 com Teto R$ 30 (esticado)
+      // CHEAP3 está negociando a R$ 20 com Teto R$ 25 (descontado)
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "a1",
+          ticker: "EXP3",
+          assetClass: "Ações",
+          currentValueBRL: 0,
+          priceBRL: 35,
+          ceilingPrice: 30,
+          score: 8,
+        }),
+        asset({
+          id: "a2",
+          ticker: "CHEAP3",
+          assetClass: "Ações",
+          currentValueBRL: 0,
+          priceBRL: 20,
+          ceilingPrice: 25,
+          score: 8,
+        }),
+      ];
+
+      const result = simulateConstrainedAporte({
+        aporte: 200,
+        strategy: "optimized",
+        ceilingSensitivity: "strict_opportunity",
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+      });
+
+      // EXP3 é pausado por price_above_ceiling
+      expect(result.pausedAssets.some((p) => p.ticker === "EXP3" && p.reason === "price_above_ceiling")).toBe(true);
+      expect(result.routes.find((r) => r.ticker === "EXP3")).toBeUndefined();
+      // CHEAP3 recebe a alocação do seu gap de meta
+      const cheapRoute = result.routes.find((r) => r.ticker === "CHEAP3");
+      expect(cheapRoute?.allocatedBRL).toBe(100);
+    });
+
+    it("permite destravar ativo acima do teto no modo strict_opportunity com override ignorePriceCeiling", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "a1",
+          ticker: "EXP3",
+          assetClass: "Ações",
+          currentValueBRL: 0,
+          priceBRL: 35,
+          ceilingPrice: 30,
+          score: 8,
+        }),
+      ];
+
+      const result = simulateConstrainedAporte({
+        aporte: 140,
+        strategy: "optimized",
+        ceilingSensitivity: "strict_opportunity",
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        overrides: {
+          a1: { ignorePriceCeiling: true },
+        },
+      });
+
+      // Com o override, não pausa
+      expect(result.pausedAssets).toHaveLength(0);
+      expect(result.routes.find((r) => r.ticker === "EXP3")?.allocatedBRL).toBe(140);
+    });
+
+    it("getAporteSuggestions posiciona ativo com maior margem de segurança no topo do radar setorial", () => {
+      const assets: AporteAssetInput[] = [
+        asset({
+          id: "a1",
+          ticker: "BETA3",
+          assetClass: "Ações",
+          sector: "Financeiro",
+          currentValueBRL: 500,
+          priceBRL: 20,
+          ceilingPrice: 22,
+          score: 8,
+        }),
+        asset({
+          id: "a2",
+          ticker: "ALFA3",
+          assetClass: "Ações",
+          sector: "Financeiro",
+          currentValueBRL: 500,
+          priceBRL: 20,
+          ceilingPrice: 30,
+          score: 8,
+        }),
+      ];
+
+      const suggestions = getAporteSuggestions({
+        assets,
+        classTargets: [{ className: "Ações", targetPercentage: 100 }],
+        sectorTargets: [{ className: "Ações", sectorName: "Financeiro", targetPercentage: 100 }],
+      });
+
+      const sector = suggestions.sectorGroups.find((g) => g.sectorName === "Financeiro");
+      expect(sector).toBeDefined();
+      // ALFA3 tem margem de segurança de 50% vs BETA3 de 10%, portanto ALFA3 vem em primeiro
+      expect(sector?.assets[0]?.ticker).toBe("ALFA3");
+      expect(sector?.assets[1]?.ticker).toBe("BETA3");
     });
   });
 });

@@ -81,9 +81,20 @@ export function shouldShowGoalAlert(
     return true;
   }
 
-  // Avaliação temporal do Cooldown (padrão 30 dias corridos)
-  const cooldownDays = options?.cooldownDays ?? GOAL_ALERT_DEFAULT_COOLDOWN_DAYS;
+  // Avaliação temporal do Cooldown (padrão 30 dias corridos ou dismissedUntil explícito)
   const now = options?.nowIso ? new Date(options.nowIso) : new Date();
+  const nowMs = now.getTime();
+
+  if (checkpoint.dismissedUntil !== undefined) {
+    if (nowMs < checkpoint.dismissedUntil) {
+      // Dentro da janela de 7 ou 30 dias: permanece dispensado
+      return false;
+    }
+    // Cooldown expirou: reexibe o alerta
+    return true;
+  }
+
+  const cooldownDays = options?.cooldownDays ?? GOAL_ALERT_DEFAULT_COOLDOWN_DAYS;
   const dismissedDate = new Date(checkpoint.dismissedAt);
   const isDateValid = !isNaN(dismissedDate.getTime()) && !isNaN(now.getTime());
 
@@ -94,7 +105,7 @@ export function shouldShowGoalAlert(
       // Dentro do período de cooldown: permanece dispensado mesmo com oscilações diárias
       return false;
     }
-    // Cooldown expirou (passaram-se 30 dias): reexibe o alerta como check-in de progresso
+    // Cooldown expirou: reexibe o alerta como check-in de progresso
     return true;
   }
 
@@ -106,10 +117,16 @@ export function shouldShowGoalAlert(
  */
 export function createGoalDismissalCheckpoint(
   goal: GoalAlertEvaluation,
+  durationDaysOrNowIso?: 7 | 30 | string,
   nowIso?: string,
 ): GoalAlertDismissalCheckpoint {
+  const durationDays = typeof durationDaysOrNowIso === "number" ? durationDaysOrNowIso : 30;
+  const actualNowIso = typeof durationDaysOrNowIso === "string" ? durationDaysOrNowIso : nowIso;
+  const now = actualNowIso ? new Date(actualNowIso) : new Date();
+  const dismissedUntil = now.getTime() + durationDays * 24 * 60 * 60 * 1000;
   return {
-    dismissedAt: nowIso ?? new Date().toISOString(),
+    dismissedAt: now.toISOString(),
+    dismissedUntil,
     currentCents: goal.currentCents,
     targetCents: goal.targetCents,
     stage: goal.stage,
@@ -120,7 +137,8 @@ export function createGoalDismissalCheckpoint(
 
 /**
  * Avalia se o alerta de ritmo de gastos (PaceAlertBanner) deve ser exibido.
- * Retorna true se houver virada de mês, agravamento de >= 5% no % gasto ou entrada em déficit.
+ * Retorna true se houver virada de mês, se expirou o cooldown de 7 ou 30 dias,
+ * ou (no modo legado sem prazo) se houver agravamento de >= 5% no % gasto ou entrada em déficit.
  */
 export function shouldShowPaceAlert(
   checkpoint: PaceAlertDismissalCheckpoint | null | undefined,
@@ -129,6 +147,7 @@ export function shouldShowPaceAlert(
     spentPercent: number;
     surplusCents: number | null;
   },
+  options?: { nowMs?: number },
 ): boolean {
   if (!checkpoint) {
     return true;
@@ -146,7 +165,19 @@ export function shouldShowPaceAlert(
     return true;
   }
 
-  // 3. Agravamento do ritmo de gastos em 5% ou mais
+  // 3. Avaliação temporal de Cooldown (7 dias ou 30 dias)
+  const nowMs = options?.nowMs ?? Date.now();
+  if (checkpoint.dismissedUntil !== undefined) {
+    if (nowMs < checkpoint.dismissedUntil) {
+      // Dentro da janela de 7 ou 30 dias: permanece silenciado!
+      return false;
+    }
+    // Expirou o cooldown de 7 ou 30 dias: reavalia
+    return true;
+  }
+
+  // Fallback legado (caso venha checkpoint antigo sem dismissedUntil):
+  // 4. Agravamento do ritmo de gastos em 5% ou mais
   if (current.spentPercent - checkpoint.spentPercent >= 5) {
     return true;
   }
@@ -163,19 +194,27 @@ export function createPaceDismissalCheckpoint(
     spentPercent: number;
     surplusCents: number | null;
   },
+  durationDaysOrNowIso?: 7 | 30 | string,
   nowIso?: string,
 ): PaceAlertDismissalCheckpoint {
-  return {
-    dismissedAt: nowIso ?? new Date().toISOString(),
+  const hasDuration = typeof durationDaysOrNowIso === "number";
+  const actualNowIso = typeof durationDaysOrNowIso === "string" ? durationDaysOrNowIso : nowIso;
+  const now = actualNowIso ? new Date(actualNowIso) : new Date();
+  const checkpoint: PaceAlertDismissalCheckpoint = {
+    dismissedAt: now.toISOString(),
     month: current.month,
     spentPercent: current.spentPercent,
     surplusCents: current.surplusCents,
   };
+  if (hasDuration) {
+    checkpoint.dismissedUntil = now.getTime() + durationDaysOrNowIso * 24 * 60 * 60 * 1000;
+  }
+  return checkpoint;
 }
 
 /**
  * Avalia se o banner de capacidade de aporte (SurplusAporteBanner) deve ser exibido.
- * Retorna true se houver virada de mês ou variação de >= R$ 50,00 (5000 centavos) na sobra.
+ * Retorna true se houver virada de mês ou se expirou o cooldown de 7 ou 30 dias.
  */
 export function shouldShowSurplusAlert(
   checkpoint: SurplusAlertDismissalCheckpoint | null | undefined,
@@ -183,6 +222,7 @@ export function shouldShowSurplusAlert(
     month: string;
     surplusCents: number;
   },
+  options?: { nowMs?: number },
 ): boolean {
   if (!checkpoint) {
     return true;
@@ -193,7 +233,18 @@ export function shouldShowSurplusAlert(
     return true;
   }
 
-  // 2. Variação significativa de sobra estimada (>= R$ 50,00)
+  // 2. Avaliação temporal de Cooldown (7 dias ou 30 dias)
+  const nowMs = options?.nowMs ?? Date.now();
+  if (checkpoint.dismissedUntil !== undefined) {
+    if (nowMs < checkpoint.dismissedUntil) {
+      // Dentro da janela de 7 ou 30 dias: permanece silenciado!
+      return false;
+    }
+    // Expirou o cooldown de 7 ou 30 dias
+    return true;
+  }
+
+  // Fallback legado (sem prazo definido): variação significativa de sobra estimada (>= R$ 50,00)
   if (Math.abs(current.surplusCents - checkpoint.surplusCents) >= 5000) {
     return true;
   }
@@ -209,13 +260,33 @@ export function createSurplusDismissalCheckpoint(
     month: string;
     surplusCents: number;
   },
+  durationDaysOrNowIso?: 7 | 30 | string,
   nowIso?: string,
 ): SurplusAlertDismissalCheckpoint {
-  return {
-    dismissedAt: nowIso ?? new Date().toISOString(),
+  const hasDuration = typeof durationDaysOrNowIso === "number";
+  const actualNowIso = typeof durationDaysOrNowIso === "string" ? durationDaysOrNowIso : nowIso;
+  const now = actualNowIso ? new Date(actualNowIso) : new Date();
+  const checkpoint: SurplusAlertDismissalCheckpoint = {
+    dismissedAt: now.toISOString(),
     month: current.month,
     surplusCents: current.surplusCents,
   };
+  if (hasDuration) {
+    checkpoint.dismissedUntil = now.getTime() + durationDaysOrNowIso * 24 * 60 * 60 * 1000;
+  }
+  return checkpoint;
+}
+
+/**
+ * Avalia se o banner de governança de teses está em período de dispensa ativa (7 ou 30 dias).
+ */
+export function isGovernanceAlertDismissed(
+  checkpoint: { dismissedUntil?: number } | null | undefined,
+  nowMs?: number,
+): boolean {
+  if (!checkpoint?.dismissedUntil) return false;
+  const currentNow = nowMs ?? Date.now();
+  return currentNow < checkpoint.dismissedUntil;
 }
 
 /**

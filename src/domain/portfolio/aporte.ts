@@ -33,6 +33,7 @@ import {
   parseIssuerFromTicker,
 } from "./tickers-catalog";
 import { calculateEffectiveAssetTargets } from "./allocation";
+import { calculateMarginOfSafety } from "./ceiling-valuation";
 import {
   type PortfolioRiskPolicy,
   resolvePortfolioRiskPolicy,
@@ -51,6 +52,9 @@ export type AporteMode = "asset" | "class" | "both";
  */
 export type AporteStrategy = "optimized" | "proportional";
 
+/** Sensibilidade ao Preço Teto no motor de aporte. */
+export type CeilingAporteSensitivity = "balanced" | "strict_opportunity";
+
 export interface AssetAporteOverride {
   /** Destrava ativo com nota <= 5 em soft lock de qualidade. */
   ignoreQualityLock?: boolean;
@@ -62,6 +66,8 @@ export interface AssetAporteOverride {
   ignoreMacroSectorCeiling?: boolean;
   /** Destrava teto de emissor de Renda Fixa privada (30% da RF / R$ 250k FGC). */
   ignoreIssuerCeiling?: boolean;
+  /** Destrava compra mesmo se cotação estiver acima do Preço Teto no modo strict_opportunity. */
+  ignorePriceCeiling?: boolean;
 }
 
 export type AporteOverridesMap = Record<string, AssetAporteOverride>;
@@ -82,7 +88,13 @@ export interface PausedAssetDiagnostic {
   name?: string | null;
   assetClass: string | null;
   sector?: string | null;
-  reason: "quality_lock" | "asset_ceiling" | "sector_ceiling" | "macro_sector_ceiling" | "issuer_ceiling";
+  reason:
+    | "quality_lock"
+    | "asset_ceiling"
+    | "sector_ceiling"
+    | "macro_sector_ceiling"
+    | "issuer_ceiling"
+    | "price_above_ceiling";
   score?: number | null;
   currentValueBRL: number;
   targetValueBRL: number;
@@ -143,6 +155,8 @@ export interface AporteAssetInput {
   priceBRL: number;
   /** Custo médio unitário (BRL) para cálculo de desconto frente ao PM. */
   averageCost?: number;
+  /** Preço Teto calculado ou definido manualmente pelo investidor. */
+  ceilingPrice?: number | null;
   /** Meta individual (% do patrimônio) — usada apenas no modo unitário legado ("asset"). */
   targetPercentage?: number | null;
   /** Nota de governança fundamentalista (0 a 10). */
@@ -172,7 +186,9 @@ export interface SectorOpportunityItem {
   currentWeightPct: number;
   currentValueBRL: number;
   bazinTargetPrice?: number | null;
+  ceilingPrice?: number | null;
   marginOfSafetyPct?: number | null;
+  diffVsCeilingPct?: number | null;
   /** Cotas sugeridas caso este ativo absorva o orçamento do setor. */
   suggestedQty: number;
   suggestedTotalBRL: number;
@@ -199,6 +215,8 @@ export interface UnifiedAporteOptions {
   classTargets: readonly ClassTargetInput[];
   sectorTargets?: readonly SectorTargetInput[];
   strategy?: AporteStrategy;
+  /** Sensibilidade ao Preço Teto ("balanced" por padrão ou "strict_opportunity"). */
+  ceilingSensitivity?: CeilingAporteSensitivity;
   totalPortfolioBRL?: number;
   /** Política de risco prudencial e limites de concentração em camadas. */
   policy?: Partial<PortfolioRiskPolicy>;
@@ -295,6 +313,7 @@ export interface ConstrainedAporteOptions {
   classTargets: readonly ClassTargetInput[];
   sectorTargets?: readonly SectorTargetInput[];
   strategy?: AporteStrategy;
+  ceilingSensitivity?: CeilingAporteSensitivity;
   totalPortfolioBRL?: number;
   policy?: Partial<PortfolioRiskPolicy>;
   overrides?: AporteOverridesMap;
@@ -315,6 +334,39 @@ function round2(value: number): number {
 }
 
 const nonNegative = (value: number): number => (Number.isFinite(value) ? Math.max(0, value) : 0);
+
+/**
+ * Desempate sutil por Preço Teto / Margem de Segurança.
+ * Retorna < 0 se A tem maior prioridade que B; > 0 se B tem maior prioridade; 0 se empatam.
+ */
+export function compareCeilingOpportunity(
+  priceA: number,
+  ceilingA: number | null | undefined,
+  priceB: number,
+  ceilingB: number | null | undefined,
+): number {
+  const hasCeilingA = ceilingA != null && ceilingA > 0;
+  const hasCeilingB = ceilingB != null && ceilingB > 0;
+
+  if (hasCeilingA && hasCeilingB) {
+    const mosA = priceA > 0 ? (ceilingA - priceA) / priceA : 0;
+    const mosB = priceB > 0 ? (ceilingB - priceB) / priceB : 0;
+    if (Math.abs(mosB - mosA) > 0.005) {
+      return mosB - mosA;
+    }
+    return 0;
+  }
+
+  if (hasCeilingA && !hasCeilingB) {
+    return priceA <= ceilingA ? -1 : 1;
+  }
+
+  if (!hasCeilingA && hasCeilingB) {
+    return priceB <= ceilingB ? 1 : -1;
+  }
+
+  return 0;
+}
 
 const CRYPTO_CLASS_ALIASES = new Set([
   "cripto",
@@ -636,6 +688,7 @@ function isAssetQualityLocked(
 export function simulateAporte(opts: {
   mode: AporteMode;
   strategy?: AporteStrategy;
+  ceilingSensitivity?: CeilingAporteSensitivity;
   aporte: number;
   assets: readonly AporteAssetInput[];
   classTargets: readonly ClassTargetInput[];
@@ -645,6 +698,7 @@ export function simulateAporte(opts: {
   overrides?: AporteOverridesMap;
 }): AporteResult {
   const strategy: AporteStrategy = opts.strategy ?? "proportional";
+  const ceilingSensitivity: CeilingAporteSensitivity = opts.ceilingSensitivity ?? "balanced";
   const aporte = round2(nonNegative(opts.aporte));
   const policy = resolvePortfolioRiskPolicy(opts.policy);
   const overrides = opts.overrides ?? {};
@@ -1171,6 +1225,30 @@ export function simulateAporte(opts: {
         continue;
       }
 
+      if (
+        ceilingSensitivity === "strict_opportunity" &&
+        m.ceilingPrice != null &&
+        m.ceilingPrice > 0 &&
+        m.priceBRL > m.ceilingPrice &&
+        !overrides[m.id]?.ignorePriceCeiling
+      ) {
+        if (!pausedAssets.some((p) => p.assetId === m.id)) {
+          pausedAssets.push({
+            assetId: m.id,
+            ticker: m.ticker,
+            name: m.name ?? m.ticker,
+            assetClass: m.assetClass,
+            sector: m.sector ?? sectorName,
+            reason: "price_above_ceiling",
+            score: m.score,
+            currentValueBRL: round2(nonNegative(m.currentValueBRL)),
+            targetValueBRL: eff.targetValueBRL,
+            detail: `Cotação atual (R$ ${m.priceBRL.toFixed(2)}) supera o Preço Teto (R$ ${m.ceilingPrice.toFixed(2)}). Aporte pausado no modo estrito de oportunidade.`,
+          });
+        }
+        continue;
+      }
+
       const allocatedAssetBRL = allocatedMap.get(m.id)?.allocatedBRL ?? 0;
       const mSector = m.sector?.trim() || inferSectorFromTicker(m.ticker, m.assetClass);
       const effectiveSectorKey = `${normClass}::${mSector}`;
@@ -1266,7 +1344,17 @@ export function simulateAporte(opts: {
         const defRelA = a.eff.targetValueBRL > 0 ? (a.eff.targetValueBRL - a.asset.currentValueBRL) / a.eff.targetValueBRL : 0;
         const defRelB = b.eff.targetValueBRL > 0 ? (b.eff.targetValueBRL - b.asset.currentValueBRL) / b.eff.targetValueBRL : 0;
         if (Math.abs(defRelB - defRelA) > 0.001) return defRelB - defRelA;
-        return (b.asset.score ?? 5) - (a.asset.score ?? 5);
+        const scoreA = a.asset.score ?? 5;
+        const scoreB = b.asset.score ?? 5;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        const ceilingDiff = compareCeilingOpportunity(
+          a.asset.priceBRL,
+          a.asset.ceilingPrice,
+          b.asset.priceBRL,
+          b.asset.ceilingPrice,
+        );
+        if (ceilingDiff !== 0) return ceilingDiff;
+        return a.asset.currentValueBRL - b.asset.currentValueBRL;
       });
       eligible = sortedPrioritized.slice(0, maxK);
     }
@@ -1307,7 +1395,7 @@ export function simulateAporte(opts: {
     };
 
     if (strategy === "optimized") {
-      // Prioridade: Maior déficit relativo -> Maior convicção fundamentalista -> Menor peso atual
+      // Prioridade: Maior déficit relativo -> Maior convicção fundamentalista -> Preço Teto / Margem de Segurança -> Menor valor atual
       const sortedByPriority = [...eligible].sort((a, b) => {
         const defRelA = a.eff.targetValueBRL > 0 ? (a.eff.targetValueBRL - a.asset.currentValueBRL) / a.eff.targetValueBRL : 0;
         const defRelB = b.eff.targetValueBRL > 0 ? (b.eff.targetValueBRL - b.asset.currentValueBRL) / b.eff.targetValueBRL : 0;
@@ -1315,6 +1403,13 @@ export function simulateAporte(opts: {
         const scoreA = a.asset.score ?? 5;
         const scoreB = b.asset.score ?? 5;
         if (scoreB !== scoreA) return scoreB - scoreA;
+        const ceilingDiff = compareCeilingOpportunity(
+          a.asset.priceBRL,
+          a.asset.ceilingPrice,
+          b.asset.priceBRL,
+          b.asset.ceilingPrice,
+        );
+        if (ceilingDiff !== 0) return ceilingDiff;
         return a.asset.currentValueBRL - b.asset.currentValueBRL;
       });
 
@@ -1541,7 +1636,11 @@ export function simulateAporte(opts: {
     const candidateAssets = selectedAssetIds
       .map((id) => investableAssets.find((a) => a.id === id))
       .filter((a): a is AporteAssetInput => Boolean(a && a.priceBRL > 0 && a.priceBRL <= globalRemainingPool))
-      .sort((a, b) => (b.score ?? 5) - (a.score ?? 5));
+      .sort((a, b) => {
+        const scoreDiff = (b.score ?? 5) - (a.score ?? 5);
+        if (scoreDiff !== 0) return scoreDiff;
+        return compareCeilingOpportunity(a.priceBRL, a.ceilingPrice, b.priceBRL, b.ceilingPrice);
+      });
 
     for (const cand of candidateAssets) {
       const curAlloc = allocatedMap.get(cand.id)?.allocatedBRL ?? 0;
@@ -1779,6 +1878,7 @@ export function simulateConstrainedAporte(opts: ConstrainedAporteOptions): Const
   const sim = simulateAporte({
     mode: "both",
     strategy: opts.strategy ?? "optimized",
+    ceilingSensitivity: opts.ceilingSensitivity,
     aporte: opts.aporte,
     assets: opts.assets,
     classTargets: opts.classTargets,
@@ -1800,10 +1900,12 @@ export function simulateSmartAporte(opts: {
   aporte: number;
   assets: readonly AporteAssetInput[];
   strategy?: AporteStrategy;
+  ceilingSensitivity?: CeilingAporteSensitivity;
 }): AporteResult {
   return simulateAporte({
     mode: "asset",
     strategy: opts.strategy,
+    ceilingSensitivity: opts.ceilingSensitivity,
     aporte: opts.aporte,
     assets: opts.assets,
     classTargets: [],
@@ -1817,10 +1919,12 @@ export function simulateRebalanceAporte(opts: {
   classTargets: readonly ClassTargetInput[];
   sectorTargets?: readonly SectorTargetInput[];
   strategy?: AporteStrategy;
+  ceilingSensitivity?: CeilingAporteSensitivity;
 }): AporteResult {
   return simulateAporte({
     mode: "class",
     strategy: opts.strategy,
+    ceilingSensitivity: opts.ceilingSensitivity,
     aporte: opts.aporte,
     assets: opts.assets,
     classTargets: opts.classTargets,
@@ -1838,6 +1942,7 @@ export function simulateCombinedAporte(opts: {
   classTargets: readonly ClassTargetInput[];
   sectorTargets?: readonly SectorTargetInput[];
   strategy?: AporteStrategy;
+  ceilingSensitivity?: CeilingAporteSensitivity;
   totalPortfolioBRL?: number;
   policy?: Partial<PortfolioRiskPolicy>;
   overrides?: AporteOverridesMap;
@@ -1845,6 +1950,7 @@ export function simulateCombinedAporte(opts: {
   return simulateAporte({
     mode: "both",
     strategy: opts.strategy,
+    ceilingSensitivity: opts.ceilingSensitivity,
     aporte: opts.aporte,
     assets: opts.assets,
     classTargets: opts.classTargets,
@@ -1926,6 +2032,7 @@ export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteR
     classTargets: opts.classTargets,
     sectorTargets: opts.sectorTargets,
     strategy,
+    ceilingSensitivity: opts.ceilingSensitivity,
     totalPortfolioBRL: portfolioBase,
     policy: opts.policy,
     overrides: opts.overrides,
@@ -2055,6 +2162,12 @@ export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteR
 
         const suggestedTotalBRL = round2(suggestedQty * currentPrice);
 
+        const ceilingPrice = member.ceilingPrice ?? null;
+        const { marginOfSafetyPct, diffVsCeilingPct } = calculateMarginOfSafety(
+          ceilingPrice,
+          currentPrice,
+        );
+
         opportunityItems.push({
           assetId: member.id,
           ticker: member.ticker,
@@ -2066,17 +2179,20 @@ export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteR
           diffVsAveragePct,
           currentWeightPct,
           currentValueBRL: round2(member.currentValueBRL),
-          bazinTargetPrice: null,
-          marginOfSafetyPct: null,
+          bazinTargetPrice: ceilingPrice,
+          ceilingPrice,
+          marginOfSafetyPct,
+          diffVsCeilingPct,
           suggestedQty,
           suggestedTotalBRL,
         });
       }
 
-      // Ordenação de ativos dentro do setor (§Plano Mestre 3.5 — Eliminação do Falling Knife):
+      // Ordenação de ativos dentro do setor (§Plano Mestre 3.5 — Eliminação do Falling Knife & Preço Teto):
       // Prioridade Primária: Maior déficit relativo de meta
       // Desempate Secundário: Maior convicção fundamentalista (score 0-10)
-      // Desempate Terciário: Menor peso percentual atual
+      // Desempate Terciário: Preço Teto / Margem de Segurança
+      // Desempate Quaternário: Menor peso percentual atual
       opportunityItems.sort((a, b) => {
         const memA = members.find((m) => m.id === a.assetId);
         const memB = members.find((m) => m.id === b.assetId);
@@ -2094,6 +2210,16 @@ export function getAporteSuggestions(opts: UnifiedAporteOptions): UnifiedAporteR
         const scoreB = memB?.score ?? 5;
         if (scoreB !== scoreA) {
           return scoreB - scoreA;
+        }
+
+        const ceilingDiff = compareCeilingOpportunity(
+          a.currentPrice,
+          a.ceilingPrice,
+          b.currentPrice,
+          b.ceilingPrice,
+        );
+        if (ceilingDiff !== 0) {
+          return ceilingDiff;
         }
 
         return a.currentWeightPct - b.currentWeightPct;

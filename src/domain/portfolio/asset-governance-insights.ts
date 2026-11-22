@@ -32,6 +32,7 @@ export interface GovernanceAssetInput {
   currentValueBRL: number;
   currentPrice: number;
   averageCost: number;
+  ceilingPrice?: number | null;
   score?: number | null;
   allocation_status?: AssetAllocationStatus;
   last_reviewed_at?: string | null;
@@ -223,17 +224,17 @@ export function generateAssetGovernanceInsights(params: {
       }
     }
 
-    // GATILHO 3: Oportunidade com Desconto (Nota ≥ 8 e Preço ≤ PM - 20%)
+    // GATILHO 3: Oportunidade com Margem de Segurança (Nota ≥ 8 e Preço ≤ Preço Teto - 15%)
     if (status === "active" && (score ?? 5) >= 8) {
-      if (asset.averageCost > 0 && asset.currentPrice > 0 && asset.currentPrice < asset.averageCost) {
-        const discountPct = Math.round(((asset.averageCost - asset.currentPrice) / asset.averageCost) * 100);
-        if (discountPct >= 20) {
+      if (asset.ceilingPrice != null && asset.ceilingPrice > 0 && asset.currentPrice > 0 && asset.currentPrice < asset.ceilingPrice) {
+        const discountPct = Math.round(((asset.ceilingPrice - asset.currentPrice) / asset.ceilingPrice) * 100);
+        if (discountPct >= 15) {
           insights.push({
             id: `gov-discount-${asset.id}`,
             kind: "discount_opportunity",
             severity: "positive",
             title: `Oportunidade em ${asset.ticker} (-${discountPct}%)`,
-            description: `Ativo com Nota ${score}/10 está cotado com ${discountPct}% de desconto em relação ao seu Preço Médio.`,
+            description: `Ativo com Nota ${score}/10 está cotado com ${discountPct}% de margem de segurança frente ao Preço Teto.`,
             assetId: asset.id,
             ticker: asset.ticker,
             assetClass: asset.assetClass,

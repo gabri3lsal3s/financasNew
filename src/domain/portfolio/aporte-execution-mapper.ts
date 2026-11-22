@@ -16,6 +16,7 @@ import {
   type AporteOverflowEvent,
   type AporteOverridesMap,
   type AporteStrategy,
+  type CeilingAporteSensitivity,
   type ClassTargetInput,
   type ConstrainedAporteResult,
   type PausedAssetDiagnostic,
@@ -105,6 +106,7 @@ export interface BuildAporteSimulationInput {
   rawSectorTargets: readonly GroupTarget[];
   policy?: Partial<PortfolioRiskPolicy>;
   strategy?: AporteStrategy;
+  ceilingSensitivity?: CeilingAporteSensitivity;
   overrides?: AporteOverridesMap;
 }
 
@@ -130,6 +132,7 @@ export function buildAporteSimulationViewModel({
   rawSectorTargets,
   policy,
   strategy,
+  ceilingSensitivity,
   overrides,
 }: BuildAporteSimulationInput): AporteSimulationViewModel {
   const nonCashRows = positionRows.filter((r) => !r.isCash);
@@ -175,6 +178,8 @@ export function buildAporteSimulationViewModel({
       currency: row.currency,
       currentValueBRL: row.valueBRL,
       priceBRL: row.priceBRL,
+      averageCost: raw?.average_price != null ? Number(raw.average_price) : row.priceBRL,
+      ceilingPrice: raw?.ceiling_price ?? null,
       score: raw?.score ?? null,
       allocation_status: raw?.allocation_status ?? "active",
       last_reviewed_at: raw?.last_reviewed_at ?? null,
@@ -194,6 +199,7 @@ export function buildAporteSimulationViewModel({
       ? simulateConstrainedAporte({
           aporte: totalPurchasingCents / 100,
           strategy,
+          ceilingSensitivity,
           overrides,
           assets,
           classTargets,

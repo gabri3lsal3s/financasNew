@@ -139,6 +139,18 @@ export function useAssetDetailMetrics(asset: PortfolioAsset | null) {
   const targetValueBRL = hasAssetTarget ? (totalPortfolioValue * (targets.assetTargetPct ?? 0)) / 100 : 0;
   const gapBRL = hasAssetTarget ? targetValueBRL - currentValue : 0;
   const gapCents = numberToCents(gapBRL);
+
+  const ceilingPriceNum =
+    currentAsset.ceiling_price != null && Number(currentAsset.ceiling_price) > 0
+      ? Number(currentAsset.ceiling_price)
+      : null;
+  const hasCeilingPrice = ceilingPriceNum !== null;
+  const marginOfSafetyPct =
+    hasCeilingPrice && currentPrice > 0
+      ? ((ceilingPriceNum - currentPrice) / ceilingPriceNum) * 100
+      : null;
+  const hasOpportunityZone = hasCeilingPrice && currentPrice <= ceilingPriceNum;
+
   const hasDiscountVsPM = !isTotalValue && !isCash && averageCost > 0 && currentPrice < averageCost;
   const diffVsPMPct =
     !isTotalValue && !isCash && averageCost > 0
@@ -147,6 +159,10 @@ export function useAssetDetailMetrics(asset: PortfolioAsset | null) {
 
   return {
     currentAsset,
+    ceilingPriceNum,
+    hasCeilingPrice,
+    marginOfSafetyPct,
+    hasOpportunityZone,
     txs: txs ?? [],
     txLoading,
     positionRow,

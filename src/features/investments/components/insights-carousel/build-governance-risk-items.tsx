@@ -94,7 +94,7 @@ export function buildGovernanceRiskItems({
             title="Oportunidade em Desconto"
             badgeText={`${discountOpportunitiesCount} ${discountOpportunitiesCount === 1 ? "ativo" : "ativos"}`}
             badgeVariant="positive"
-            description="Ativos de alta convicção (Nota ≥ 8) cotados abaixo do seu preço médio histórico."
+            description="Ativos de alta convicção (Nota ≥ 8) com margem de segurança frente ao Preço Teto."
             onDismiss={(days) =>
               dismissAlert("discount-opportunity-alert", days, String(discountOpportunitiesCount))
             }

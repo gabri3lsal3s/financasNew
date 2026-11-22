@@ -163,11 +163,11 @@ export function TaxBensDireitosSection({
           ) : (
             groupedItems.map((group) => (
               <div key={`print-group-${group.key}`} className="flex flex-col gap-0.5 break-inside-avoid">
-                <header className="grid grid-cols-[75%_25%] items-center bg-muted/30 border border-border/80 px-2 py-1 text-[8.5px] font-bold text-foreground uppercase tracking-wider break-after-avoid rounded-t">
-                  <span className="truncate leading-tight">
+                <header className="flex items-center justify-between gap-2 bg-muted/30 border border-border/80 px-2 py-1 text-[8.5px] font-bold text-foreground uppercase tracking-wider break-after-avoid rounded-t">
+                  <span className="leading-tight truncate">
                     Grupo {group.groupCode} - {group.groupName} · Código {group.itemCode} - {group.itemName}
                   </span>
-                  <span className="font-mono num whitespace-nowrap text-right text-[8.5px] inline-flex items-center justify-end gap-1 font-bold text-foreground">
+                  <span className="font-mono num whitespace-nowrap text-right text-[8.5px] inline-flex items-center justify-end gap-1 font-bold text-foreground shrink-0">
                     <span className="font-normal text-muted-foreground">Subtotal:</span>
                     <MoneyText cents={numberToCents(group.subtotalBRL)} className="inline font-bold text-foreground whitespace-nowrap" />
                   </span>

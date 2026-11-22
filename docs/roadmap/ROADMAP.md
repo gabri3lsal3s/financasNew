@@ -7880,6 +7880,28 @@ flowchart TD
 >   - Reexportação dos 8 PDFs de exemplo e aprovação com nota 10/10 no script de integridade `qa-reports-integrity.ts`;
 >   - APK Release Build 101 compilado, assinado e publicado no Cloudflare R2 com hash SHA-256 verificado (`06303186a2e16548f528b555fc2ffa7bf7f5809eba39fe1c218ebab880648151`).
 
+---
+
+### Fase 121 — Polimento Cirúrgico Final 10/10 dos Relatórios PDF & Motor de Preço Teto / Valuation (Build 102 — ID BR-20261121-2245)
+
+> **Status:** Concluída, Auditada e Homologada — **Fechamento 10/10 dos 8 Relatórios + Preço Teto Multimodelo + Governança de Alertas**:
+> - **Carteira Mensal (Pág. 1):**
+>   - Aplicação de `table-fixed` com `<colgroup>` explícito e `break-words` na coluna `CLASSE DE ATIVO`, eliminando vazamento de largura sobre `ATIVOS` (`2, 2, 1, 1, —, 6`);
+>   - Encurtamento ergonômico dos cabeçalhos numéricos (`POSIÇÃO (R$)`, `% CART.`, `CUSTO (R$)`, `P&L`) e preenchimento de `—` nas células de `Reserva de Caixa` (colunas `ATIVOS` e `P&L`), mantendo custo consolidado em R$ 100.318,93 e retorno em +6,0%;
+> - **Fatura de Cartão de Crédito:**
+>   - Centralização da coluna `PARCELAS` com `—` para compras à vista, respiro ampliado entre `DATA` e `DESCRIÇÃO` e separação clara entre `PONDERADO (R$)` e `PARCELAS`;
+>   - Respiro vertical calibrado (22px após KPIs, 26px antes de `PAGAMENTOS E ESTORNOS`), remoção de tensão de linha dupla antes das tabelas e ancoragem do rodapé institucional na base da folha A4 (`Página 1 de 1`);
+> - **Facilitador de Declaração de IRPF & DRE Pessoal:**
+>   - Padronização do rótulo do Grupo 04 para `Títulos Públicos (Tesouro Direto)` sem truncamento com reticências (`1 de 1`), e ícones vetoriais financeiros Lucide (`TrendingUp`/`TrendingDown`) na Cascata DRE;
+>   - Exportação Playwright/Chromium padronizada com `locale: "pt-BR"` e 100% de aprovação no `qa-reports-integrity.ts`;
+> - **Motor de Preço Teto, Valuation Multimodelo & Governança de Alertas:**
+>   - Especificação canônica (`docs/architecture/ESPECIFICACAO_PRECO_TETO_VALUATION.md`) e implementação dos modelos Bazin, Graham, Gordon, P/VP, Múltiplos, FII Híbrido e mesa de consenso/prudência com calculadora integrada e badges de oportunidade;
+>   - Persistência em banco via migração `20260101000133_portfolio_asset_ceiling_price.sql` aplicada em produção;
+>   - Governança de dispensa de alertas no carrossel (`usePortfolioAlertDismissals`) e integração com o alocador de aportes;
+> - **Qualidade e Distribuição Android:**
+>   - `npm run typecheck` e `npm run lint` com 0 erros;
+>   - APK Release Build 102 compilado, assinado e publicado no Cloudflare R2 com hash SHA-256 verificado (`9cee98e69428b069bcfaccefa1b6464b195359ea49d1a027c00895e6cc897faf`).
+
 
 
 

@@ -73,6 +73,22 @@ export function useUpdateCustomSettings() {
                     ...patch.emergencyFundConfig,
                   }
                 : old.custom_settings?.emergencyFundConfig,
+              dashboardAlertDismissals: patch.dashboardAlertDismissals !== undefined
+                ? {
+                    ...(old.custom_settings?.dashboardAlertDismissals ?? {}),
+                    ...patch.dashboardAlertDismissals,
+                    goals: {
+                      ...(old.custom_settings?.dashboardAlertDismissals?.goals ?? {}),
+                      ...(patch.dashboardAlertDismissals?.goals ?? {}),
+                    },
+                  }
+                : old.custom_settings?.dashboardAlertDismissals,
+              portfolioAlertDismissals: patch.portfolioAlertDismissals !== undefined
+                ? {
+                    ...(old.custom_settings?.portfolioAlertDismissals ?? {}),
+                    ...patch.portfolioAlertDismissals,
+                  }
+                : old.custom_settings?.portfolioAlertDismissals,
             },
           };
         });

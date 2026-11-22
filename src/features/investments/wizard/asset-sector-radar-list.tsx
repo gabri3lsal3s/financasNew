@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { Badge, MoneyText } from "@/components/ui";
+import { CeilingPriceBadge } from "@/components/modules/portfolio";
 import { numberToCents } from "@/domain/money";
 import type { SectorOpportunityItem, SectorAporteGroup } from "@/domain/portfolio";
 import type { AporteSuggestionItem } from "@/domain/portfolio/tickers-catalog";
@@ -70,7 +71,6 @@ export function AssetSectorRadarList({
             <div className="flex flex-col gap-1.5">
               {displayAssets.map((opp) => {
                 const isSelected = currentCleanTicker === cleanTicker(opp.ticker);
-                const isDiscounted = opp.diffVsAveragePct < 0;
 
                 return (
                   <button
@@ -87,11 +87,12 @@ export function AssetSectorRadarList({
                     <div className="flex flex-col gap-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-mono text-sm font-bold text-foreground">{opp.ticker}</span>
-                        <Badge variant={isDiscounted ? "positive" : "muted"} size="xs" className="max-w-full truncate inline-flex">
-                          {isDiscounted
-                            ? `-${Math.abs(opp.diffVsAveragePct).toFixed(1)}% vs PM`
-                            : `+${opp.diffVsAveragePct.toFixed(1)}% vs PM`}
-                        </Badge>
+                        {opp.ceilingPrice && opp.ceilingPrice > 0 ? (
+                          <CeilingPriceBadge
+                            ceilingPrice={opp.ceilingPrice}
+                            currentPrice={opp.currentPrice}
+                          />
+                        ) : null}
                         {isSelected && (
                           <Badge variant="default" size="xs" className="gap-1 shrink-0">
                             <Check className="size-3" aria-hidden="true" />

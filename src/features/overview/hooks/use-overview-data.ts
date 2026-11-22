@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { todayISO } from "@/domain/debts";
 import { isFirstUse, shouldShowOnboardingBanner } from "@/domain/onboarding";
-import { shouldShowPaceAlert, shouldShowSurplusAlert } from "@/domain/overview";
+import { isGovernanceAlertDismissed, shouldShowPaceAlert, shouldShowSurplusAlert } from "@/domain/overview";
 import { useOnboardingDismissed } from "@/hooks";
 import { currentMonth, shiftMonth } from "@/lib/date";
 import {
@@ -142,6 +142,8 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     surplusCents: cashflow.surplusCapacity.suggestedAporteCents,
   });
 
+  const isGovernanceDismissed = isGovernanceAlertDismissed(alertDismissals.governance);
+
   return {
     month,
     prevMonth,
@@ -155,6 +157,7 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     ...cashflow,
     isPaceEligible,
     isSurplusEligible,
+    isGovernanceDismissed,
     ...obligations,
     hasFamily,
     householdData,

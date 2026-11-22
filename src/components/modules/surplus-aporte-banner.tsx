@@ -1,16 +1,16 @@
 import { useNavigate } from "react-router";
-import { ArrowRight, Sparkles, X } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { cn } from "@/lib/utils";
-import { triggerSensory } from "@/services/sensory";
+import { CarouselDismissPopover } from "./carousel-dismiss-popover";
 
 export interface SurplusAporteBannerProps {
   surplusCents: number;
   className?: string;
   onSimulate?: () => void;
-  onDismiss?: () => void;
+  onDismiss?: (days: 7 | 30) => void;
 }
 
 /**
@@ -29,12 +29,6 @@ export function SurplusAporteBanner({
   const handleAction = () => {
     if (onSimulate) onSimulate();
     else navigate(`/investments?tab=aporte&valor=${surplusCents}`);
-  };
-
-  const handleDismiss = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    triggerSensory("action");
-    onDismiss?.();
   };
 
   return (
@@ -81,15 +75,9 @@ export function SurplusAporteBanner({
         </Button>
 
         {onDismiss ? (
-          <button
-            type="button"
-            onClick={handleDismiss}
-            className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer shrink-0 max-sm:after:absolute max-sm:after:-inset-2"
-            aria-label="Dispensar aviso de capacidade de aporte"
-            title="Dispensar aviso"
-          >
-            <X className="size-4" aria-hidden="true" />
-          </button>
+          <div className="absolute top-3 right-3 sm:static">
+            <CarouselDismissPopover onDismiss={onDismiss} label="Dispensar aviso de capacidade de aporte" />
+          </div>
         ) : null}
       </div>
     </div>

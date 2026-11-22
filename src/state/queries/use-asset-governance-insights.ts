@@ -80,6 +80,7 @@ export function useAssetGovernanceInsights(): UseAssetGovernanceInsightsResult {
         currentValueBRL: row?.valueBRL ?? 0,
         currentPrice: row?.priceBRL ?? 0,
         averageCost: row?.averageCostBRL ?? 0,
+        ceilingPrice: asset.ceiling_price ?? null,
         score: asset.score ?? null,
         allocation_status: asset.allocation_status ?? "active",
         last_reviewed_at: asset.last_reviewed_at ?? null,

@@ -91,6 +91,12 @@ function AssetEditFormContent({ asset, open, onOpenChange, onClose }: AssetEditF
           }}
           totalCostBRLCents={form.totalCostBRLCents}
           onTotalCostBRLCentsChange={form.setTotalCostBRLCents}
+          ceilingPrice={form.ceilingPrice}
+          onCeilingPriceChange={form.setCeilingPrice}
+          ceilingMethod={form.ceilingMethod}
+          onCeilingMethodChange={form.setCeilingMethod}
+          ceilingMetadata={form.ceilingMetadata}
+          onCeilingMetadataChange={form.setCeilingMetadata}
           fixedIncomeValues={{
             rateType: form.fixedIncomeRateType,
             rateValue: form.fixedIncomeRateValue,

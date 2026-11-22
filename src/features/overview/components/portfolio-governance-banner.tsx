@@ -1,9 +1,11 @@
 import { ChevronRight, ShieldAlert } from "lucide-react";
+import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
 import { Badge, Button } from "@/components/ui";
 
 export interface PortfolioGovernanceBannerProps {
   overdueReviewsCount: number;
   onReview: () => void;
+  onDismiss?: (days: 7 | 30) => void;
 }
 
 /**
@@ -12,6 +14,7 @@ export interface PortfolioGovernanceBannerProps {
 export function PortfolioGovernanceBanner({
   overdueReviewsCount,
   onReview,
+  onDismiss,
 }: PortfolioGovernanceBannerProps) {
   return (
     <div
@@ -53,6 +56,12 @@ export function PortfolioGovernanceBanner({
           <span>Revisar Teses</span>
           <ChevronRight className="size-3.5" aria-hidden="true" />
         </Button>
+
+        {onDismiss ? (
+          <div className="absolute top-3 right-3 sm:static">
+            <CarouselDismissPopover onDismiss={onDismiss} label="Dispensar aviso de revisão de teses" />
+          </div>
+        ) : null}
       </div>
     </div>
   );

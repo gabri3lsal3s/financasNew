@@ -201,6 +201,8 @@ export function AporteTab({
                   }}
                   strategy={allocator.strategy}
                   onStrategyChange={allocator.setStrategy}
+                  ceilingSensitivity={allocator.ceilingSensitivity}
+                  onCeilingSensitivityChange={allocator.setCeilingSensitivity}
                   cashHighlight={allocator.cashHighlight}
                   effectiveTotalAllocated={simulation.result?.totalAllocated ?? 0}
                   effectiveLeftover={simulation.result?.leftover ?? 0}

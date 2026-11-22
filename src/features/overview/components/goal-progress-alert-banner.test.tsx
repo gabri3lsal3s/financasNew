@@ -64,7 +64,7 @@ describe("GoalProgressAlertBanner", () => {
     expect(screen.getByRole("button", { name: /Ver Meta/i })).toBeInTheDocument();
   });
 
-  it("renderiza botão de descarte (X) e chama onDismiss ao clicar", () => {
+  it("renderiza botão de descarte (X) e permite dispensar por 7 ou 30 dias", () => {
     const handleDismiss = vi.fn();
 
     render(
@@ -82,7 +82,12 @@ describe("GoalProgressAlertBanner", () => {
     expect(dismissButton).toBeInTheDocument();
 
     fireEvent.click(dismissButton);
-    expect(handleDismiss).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Ocultar este aviso")).toBeInTheDocument();
+
+    const opt7 = screen.getByRole("button", { name: "Dispensar por 7 dias" });
+    fireEvent.click(opt7);
+
+    expect(handleDismiss).toHaveBeenCalledWith(7);
   });
 
   it("não renderiza botão de descarte quando onDismiss não é fornecido", () => {

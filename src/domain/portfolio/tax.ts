@@ -116,7 +116,7 @@ export function getBensDireitosClassification(assetClass: string | null, ticker:
       groupName: "Aplicações e Investimentos",
       itemCode: "02",
       itemName: isTesouro
-        ? "Títulos Públicos (Tesouro Direto, Tesouro Selic, IPCA+, Prefixado)"
+        ? "Títulos Públicos (Tesouro Direto)"
         : "Títulos Públicos e Privados (Tesouro, CDB, LCI, LCA)",
     };
   }

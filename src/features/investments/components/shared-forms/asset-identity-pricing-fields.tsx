@@ -1,8 +1,17 @@
-import { Checkbox, FormField, Input, Select } from "@/components/ui";
+import { useState } from "react";
+import { Calculator } from "lucide-react";
+import { Button, Checkbox, FormField, Input, Select } from "@/components/ui";
+import { CeilingPriceBadge } from "@/components/modules/portfolio";
 import { DEFAULT_SECTORS_BY_CLASS } from "@/domain/portfolio/tickers-catalog";
 import { triggerSensory } from "@/services/sensory";
 import { cn } from "@/lib/utils";
-import type { AssetCurrency, FixedIncomeRateType } from "@/types";
+import type {
+  AssetCeilingMetadata,
+  AssetCeilingMethod,
+  AssetCurrency,
+  FixedIncomeRateType,
+} from "@/types";
+import { CeilingValuationDialog } from "../valuation";
 import { FixedIncomeFormFields, type FixedIncomeFormFieldsValues } from "../fixed-income-form-fields";
 import { AssetCustodyPositionFields } from "./asset-custody-position-fields";
 import {
@@ -45,6 +54,12 @@ export interface AssetIdentityPricingFieldsProps {
   onFxRateAtPurchaseChange?: (rate: number | null) => void;
   totalCostBRLCents?: number;
   onTotalCostBRLCentsChange?: (cents: number) => void;
+  ceilingPrice?: number | null;
+  onCeilingPriceChange?: (price: number | null) => void;
+  ceilingMethod?: AssetCeilingMethod | null;
+  onCeilingMethodChange?: (method: AssetCeilingMethod | null) => void;
+  ceilingMetadata?: AssetCeilingMetadata | null;
+  onCeilingMetadataChange?: (metadata: AssetCeilingMetadata | null) => void;
   fixedIncomeValues: FixedIncomeFormFieldsValues;
   onFixedIncomeChange: (patch: Partial<FixedIncomeFormFieldsValues & { rateType: FixedIncomeRateType }>) => void;
 }
@@ -83,9 +98,16 @@ export function AssetIdentityPricingFields({
   onFxRateAtPurchaseChange,
   totalCostBRLCents,
   onTotalCostBRLCentsChange,
+  ceilingPrice,
+  onCeilingPriceChange,
+  ceilingMethod,
+  onCeilingMethodChange,
+  ceilingMetadata,
+  onCeilingMetadataChange,
   fixedIncomeValues,
   onFixedIncomeChange,
 }: AssetIdentityPricingFieldsProps) {
+  const [valuationModalOpen, setValuationModalOpen] = useState(false);
   const needsCurrencyField = CLASSES_WITH_EDITABLE_CURRENCY.has(assetClass);
   const recommendedSectors = DEFAULT_SECTORS_BY_CLASS[assetClass] ?? [];
   const isSectorChipsOnly = isFixedIncome && !isCash;
@@ -209,6 +231,94 @@ export function AssetIdentityPricingFields({
             Permite lançar valor aplicado e saldo diretamente (sem cotas) e ignora cotações automáticas.
           </p>
         </div>
+      )}
+
+      {!isCash && !isFixedIncome && onCeilingPriceChange && (
+        <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-surface-raised/40 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs font-semibold text-foreground">Preço Teto de Compra</span>
+              {ceilingPrice && ceilingPrice > 0 && currentPriceCents > 0 && (
+                <CeilingPriceBadge
+                  ceilingPrice={ceilingPrice}
+                  currentPrice={currentPriceCents / 100}
+                  currency={currency}
+                />
+              )}
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => {
+                triggerSensory("action");
+                setValuationModalOpen(true);
+              }}
+              className="gap-1.5 shrink-0"
+            >
+              <Calculator className="size-3.5" aria-hidden="true" />
+              <span>Calcular Teto</span>
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <Input
+                id={`${idPrefix}-ceiling-price`}
+                type="text"
+                inputMode="decimal"
+                placeholder="Ex: 45,00 (Opcional)"
+                value={ceilingPrice ? String(ceilingPrice) : ""}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(",", ".");
+                  const num = Number(raw);
+                  onCeilingPriceChange(Number.isFinite(num) && num > 0 ? num : null);
+                }}
+              />
+            </div>
+            {ceilingPrice && ceilingPrice > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={() => {
+                  onCeilingPriceChange(null);
+                  onCeilingMethodChange?.(null);
+                  onCeilingMetadataChange?.(null);
+                }}
+                className="text-muted-foreground hover:text-foreground text-[11px]"
+              >
+                Limpar
+              </Button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {ceilingMethod
+              ? `Método vigente: ${ceilingMethod}. `
+              : "Defina o preço máximo para compras disciplinadas ou use a calculadora integrada."}
+          </p>
+        </div>
+      )}
+
+      {valuationModalOpen && (
+        <CeilingValuationDialog
+          open={valuationModalOpen}
+          onOpenChange={setValuationModalOpen}
+          ticker={ticker}
+          assetClass={assetClass}
+          currency={currency}
+          currentPrice={currentPriceCents > 0 ? currentPriceCents / 100 : initialPriceCents / 100}
+          initialCeilingPrice={ceilingPrice}
+          initialCeilingMethod={ceilingMethod}
+          initialCeilingMetadata={ceilingMetadata}
+          onApply={({ price, method, metadata }) => {
+            onCeilingPriceChange?.(price);
+            onCeilingMethodChange?.(method);
+            onCeilingMetadataChange?.(metadata);
+          }}
+          onClose={() => setValuationModalOpen(false)}
+        />
       )}
 
       <AssetCustodyPositionFields

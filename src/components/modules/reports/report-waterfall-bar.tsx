@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, PiggyBank } from "lucide-react";
+import { PiggyBank, TrendingDown, TrendingUp } from "lucide-react";
 import { MoneyText } from "@/components/ui/money-text";
 import { formatPercent } from "@/services/masks/percent";
 import { cn } from "@/lib/utils";
@@ -54,11 +54,11 @@ export function ReportWaterfallBar({
               <div className="flex items-center justify-between gap-2 text-xs">
                 <div className="flex items-center gap-1.5 font-medium min-w-0">
                   {isIncome ? (
-                    <ArrowUpRight className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
+                    <TrendingUp className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
                   ) : isSavings ? (
                     <PiggyBank className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
                   ) : (
-                    <ArrowDownRight className="size-3.5 text-negative-strong shrink-0" aria-hidden="true" />
+                    <TrendingDown className="size-3.5 text-negative-strong shrink-0" aria-hidden="true" />
                   )}
                   <span className="text-foreground truncate">{step.label}</span>
                 </div>

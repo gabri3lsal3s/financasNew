@@ -1,10 +1,7 @@
-import { useState, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { type ReactNode } from "react";
+import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { triggerSensory } from "@/services/sensory";
 
 export type InsightTone = "positive" | "warning" | "critical" | "primary" | "portfolio";
 
@@ -42,8 +39,6 @@ export function InsightSlide({
   onDismiss,
   className,
 }: InsightSlideProps) {
-  const [dismissOpen, setDismissOpen] = useState(false);
-
   return (
     <div
       role="alert"
@@ -83,49 +78,7 @@ export function InsightSlide({
         </div>
         {onDismiss ? (
           <div className="absolute top-3 right-3 sm:static">
-            <Popover open={dismissOpen} onOpenChange={setDismissOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Dispensar alerta"
-                  title="Dispensar alerta"
-                  className="size-7 sm:size-8 shrink-0 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="size-3.5" aria-hidden="true" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-52 p-1.5">
-                <div className="flex flex-col gap-0.5">
-                  <span className="px-2 py-1 text-[11px] font-semibold text-muted-foreground">
-                    Ocultar este aviso
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerSensory("selection");
-                      setDismissOpen(false);
-                      onDismiss(7);
-                    }}
-                    className="flex min-h-11 sm:min-h-8 items-center justify-between rounded-lg px-2.5 py-2 sm:py-1.5 text-xs text-foreground hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-left cursor-pointer"
-                  >
-                    <span>Dispensar por 7 dias</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerSensory("selection");
-                      setDismissOpen(false);
-                      onDismiss(30);
-                    }}
-                    className="flex min-h-11 sm:min-h-8 items-center justify-between rounded-lg px-2.5 py-2 sm:py-1.5 text-xs text-foreground hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-left cursor-pointer"
-                  >
-                    <span>Lembrar no próximo mês</span>
-                  </button>
-                </div>
-              </PopoverContent>
-            </Popover>
+            <CarouselDismissPopover onDismiss={onDismiss} label="Dispensar alerta" />
           </div>
         ) : null}
       </div>

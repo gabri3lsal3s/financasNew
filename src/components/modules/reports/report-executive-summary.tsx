@@ -12,6 +12,7 @@ export interface ReportExecutiveSummaryProps {
   narrative?: string | ReactNode;
   title?: string;
   className?: string;
+  columns?: 2 | 3 | 4;
 }
 
 /**
@@ -20,7 +21,7 @@ export interface ReportExecutiveSummaryProps {
  * Adota a anatomia editorial canônica:
  * - Em tela: card elevado suave com border-border/80;
  * - Em impressão: contêiner limpo delimitado por filetes horizontais superior e inferior (sem caixas pesadas);
- * - Alinhamento óptico absoluto da linha de base dos 4 KPIs com algarismos tabulares;
+ * - Alinhamento óptico absoluto da linha de base dos KPIs com algarismos tabulares;
  * - Texto narrativo explicativo alinhado estritamente à esquerda (nunca justificado).
  */
 export function ReportExecutiveSummary({
@@ -28,7 +29,15 @@ export function ReportExecutiveSummary({
   narrative,
   title = "SÍNTESE PATRIMONIAL & DESEMPENHO",
   className,
+  columns = 4,
 }: ReportExecutiveSummaryProps) {
+  const colClass =
+    columns === 2
+      ? "grid-cols-2 print:grid-cols-2"
+      : columns === 3
+        ? "grid-cols-1 sm:grid-cols-3 print:grid-cols-3"
+        : "grid-cols-2 sm:grid-cols-4 print:grid-cols-4";
+
   return (
     <section
       aria-label={title}
@@ -41,7 +50,7 @@ export function ReportExecutiveSummary({
         <span>{title}</span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 print:grid-cols-4 gap-3 sm:gap-4 print:gap-4 py-0.5">
+      <div className={cn("grid gap-3 sm:gap-4 print:gap-4 py-0.5", colClass)}>
         {items.map((item) => (
           <div key={item.label} className="flex flex-col gap-0.5 min-w-0">
             <span className="text-[7.5pt] sm:text-[8pt] uppercase font-bold tracking-wider text-muted-foreground truncate print:text-[7.5pt] print:leading-tight">

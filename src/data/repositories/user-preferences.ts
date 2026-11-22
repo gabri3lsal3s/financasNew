@@ -124,6 +124,12 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
           },
         }
       : current?.custom_settings?.dashboardAlertDismissals,
+    portfolioAlertDismissals: patch.portfolioAlertDismissals !== undefined
+      ? {
+          ...(current?.custom_settings?.portfolioAlertDismissals ?? {}),
+          ...patch.portfolioAlertDismissals,
+        }
+      : current?.custom_settings?.portfolioAlertDismissals,
   };
 
   const input: DbUpdate<UserPreferences> = {

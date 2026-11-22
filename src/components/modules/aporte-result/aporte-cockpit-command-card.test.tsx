@@ -147,4 +147,34 @@ describe("AporteCockpitCommandCard", () => {
     expect(screen.getByText(/Alocação na Classe: Ações Brasil/i)).toBeInTheDocument();
     expect(screen.getByText(/Sobra Não Alocada/i)).toBeInTheDocument();
   });
+
+  it("renderiza o controle de sensibilidade ao Preço Teto e dispara callback na troca", async () => {
+    const user = userEvent.setup();
+    const onCeilingSensitivityChange = vi.fn();
+
+    render(
+      <MemoryRouter>
+        <AporteCockpitCommandCard
+          aporteCents={50000}
+          onAporteCentsChange={vi.fn()}
+          availableCashCents={0}
+          useBrokerageCash={false}
+          onToggleBrokerageCash={vi.fn()}
+          effectiveCashSelectedCents={0}
+          onCashSelectedChange={vi.fn()}
+          onUseOnlyCash={vi.fn()}
+          effectiveTotalAllocated={500}
+          effectiveLeftover={0}
+          ceilingSensitivity="balanced"
+          onCeilingSensitivityChange={onCeilingSensitivityChange}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Preço Teto / Valuation")).toBeInTheDocument();
+    const strictBtn = screen.getByRole("button", { name: "Oportunidade Estrita" });
+    await user.click(strictBtn);
+
+    expect(onCeilingSensitivityChange).toHaveBeenCalledWith("strict_opportunity");
+  });
 });
