@@ -67,7 +67,7 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
 
       {!position.isLoading && !ctrl.hasInvestments ? (
         <EmptyState
-          icon={<TrendingUp className="size-6" />}
+          icon={<TrendingUp className="size-6" aria-hidden="true" />}
           title="Nenhum ativo cadastrado"
           headingLevel="h2"
           description="Adicione seus investimentos ou registre seu saldo em caixa para iniciar o acompanhamento patrimonial."

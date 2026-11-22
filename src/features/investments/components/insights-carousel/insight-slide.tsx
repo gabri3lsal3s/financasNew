@@ -41,7 +41,8 @@ export function InsightSlide({
 }: InsightSlideProps) {
   return (
     <div
-      role="alert"
+      role={tone === "critical" ? "alert" : "region"}
+      aria-label={title}
       className={cn(
         "relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs",
         className,

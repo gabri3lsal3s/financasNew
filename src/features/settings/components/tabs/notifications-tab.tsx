@@ -1,18 +1,26 @@
-import { RemindersCard, BankingAssistantCard } from "./notifications";
+import {
+  BankingAssistantCard,
+  DevicePushCard,
+  EmailDigestPrefsCard,
+  RemindersCard,
+} from "./notifications";
 
 /**
- * Aba "Notificações & Automações" em Configurações.
+ * Aba "Notificações & Automações" em Configurações (§3.10).
  *
- * Centraliza os canais de notificação e automações passivas:
- * 1. Lembretes de Vencimento de Contas (faturas e dívidas) e Fechamento Diário
- * 2. Assistente Passivo de Compras & Notificações Bancárias (Android nativo / Vitrine Web)
+ * Estruturada em 4 blocos claros e sem duplicidade:
+ * 1. Central de Notificações (No App) — antecedência e filtros por categoria
+ * 2. Notificações no Dispositivo — push local, push remoto VAPID, fechamento diário, horário silencioso e teste
+ * 3. Assistente Passivo de Compras & Bancos (Android Nativo / Vitrine Android Web)
+ * 4. E-mails e Resumos — essenciais + Resumo Semanal de Domingo (opt-in, padrão desativado)
  */
 export function NotificationsTab() {
   return (
     <div className="flex flex-col gap-5 sm:gap-6 min-w-0">
       <RemindersCard />
+      <DevicePushCard />
       <BankingAssistantCard />
+      <EmailDigestPrefsCard />
     </div>
   );
 }
-

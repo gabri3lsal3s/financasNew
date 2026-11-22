@@ -118,6 +118,8 @@ export function useSmartAdvisorActions({
       pushToast({
         title: "Entrada confirmada",
         description: `Renda de ${payload.name} registrada com sucesso.`,
+        duration: 5000,
+        variant: "success",
         action: {
           label: "Desfazer",
           onClick: () => {
@@ -127,6 +129,7 @@ export function useSmartAdvisorActions({
               pushToast({
                 title: "Entrada desfeita",
                 description: `Renda de ${payload.name} foi removida.`,
+                variant: "info",
               });
             }
           },

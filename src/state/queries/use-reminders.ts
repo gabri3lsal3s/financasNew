@@ -1,22 +1,34 @@
 import { useMemo } from "react";
 import { buildCompetenceSummaries, invoiceDueDate } from "@/domain/cards";
 import { todayISO } from "@/domain/debts";
-import { applyReminderState, deriveReminderItems, sortReminders, type ReminderItem } from "@/domain/reminders";
+import { formatCompetenceMonthPtBr } from "@/domain/notifications/hub";
+import {
+  applyReminderState,
+  deriveReminderItems,
+  isDebtLinkedToSplit,
+  sortReminders,
+  type ReminderItem,
+} from "@/domain/reminders";
 import { formatCentsAsBRL } from "@/services/masks";
 import { useCreditCards } from "@/state/queries/use-credit-cards";
 import { useAllCardExpenses, useAllCardPayments } from "@/state/queries/use-overview";
 import { useDebts } from "@/state/queries/use-debts";
+import { useMyPublicShares } from "@/state/queries/use-public-shares";
 import { useReminderStates } from "@/state/queries/use-reminder-states";
 import { useUserPreferences } from "@/state/queries/use-user-preferences";
 
 export interface RemindersData {
   items: ReminderItem[];
   allItems: ReminderItem[];
+  payableItems: ReminderItem[];
+  scheduledPayableItems: ReminderItem[];
+  receivableItems: ReminderItem[];
   readHistoryItems: ReminderItem[];
   totalCount: number;
   overdueCount: number;
   dueTodayCount: number;
   dueSoonCount: number;
+  receivableCount: number;
   urgentCount: number;
   readCount: number;
   preferences: {
@@ -38,6 +50,7 @@ export function useReminders(today: string = todayISO()): RemindersData {
   const cardExpensesQuery = useAllCardExpenses();
   const cardPaymentsQuery = useAllCardPayments();
   const debtsQuery = useDebts();
+  const splitSharesQuery = useMyPublicShares("split");
   const statesQuery = useReminderStates();
   const prefsQuery = useUserPreferences();
 
@@ -46,6 +59,7 @@ export function useReminders(today: string = todayISO()): RemindersData {
     cardExpensesQuery.isLoading ||
     cardPaymentsQuery.isLoading ||
     debtsQuery.isLoading ||
+    splitSharesQuery.isLoading ||
     statesQuery.isLoading ||
     prefsQuery.isLoading;
 
@@ -53,6 +67,7 @@ export function useReminders(today: string = todayISO()): RemindersData {
     cardExpensesQuery.error ??
     cardPaymentsQuery.error ??
     debtsQuery.error ??
+    splitSharesQuery.error ??
     statesQuery.error ??
     prefsQuery.error) as Error | null;
 
@@ -65,9 +80,15 @@ export function useReminders(today: string = todayISO()): RemindersData {
     };
   }, [prefsQuery.data]);
 
-  const { allItems, items, readHistoryItems, readCount } = useMemo(() => {
+  const { allItems, items, scheduledPayableItems, readHistoryItems, readCount } = useMemo(() => {
     if (!preferences.enabled) {
-      return { allItems: [], items: [], readHistoryItems: [], readCount: 0 };
+      return {
+        allItems: [],
+        items: [],
+        scheduledPayableItems: [],
+        readHistoryItems: [],
+        readCount: 0,
+      };
     }
 
     // Salvaguarda estrita: nunca deriva lembretes enquanto as queries essenciais
@@ -78,18 +99,28 @@ export function useReminders(today: string = todayISO()): RemindersData {
       cardExpensesQuery.isLoading ||
       cardPaymentsQuery.isLoading ||
       debtsQuery.isLoading ||
+      splitSharesQuery.isLoading ||
+      statesQuery.isLoading ||
+      prefsQuery.isLoading ||
       !cardsQuery.data ||
       !cardExpensesQuery.data ||
       !cardPaymentsQuery.data ||
       !debtsQuery.data
     ) {
-      return { allItems: [], items: [], readHistoryItems: [], readCount: 0 };
+      return {
+        allItems: [],
+        items: [],
+        scheduledPayableItems: [],
+        readHistoryItems: [],
+        readCount: 0,
+      };
     }
 
     const cards = cardsQuery.data;
     const allExpenses = cardExpensesQuery.data;
     const allPayments = cardPaymentsQuery.data;
     const allDebts = debtsQuery.data;
+    const splitShares = splitSharesQuery.data ?? [];
     const states = statesQuery.data ?? [];
 
     const bills = cards
@@ -101,7 +132,7 @@ export function useReminders(today: string = todayISO()): RemindersData {
           .filter((summary) => summary.saldoCents > 0)
           .map((summary) => ({
             key: `bill:${card.id}:${summary.month}`,
-            title: `Fatura ${card.name} · ${summary.month}`,
+            title: `Fatura ${card.name} · ${formatCompetenceMonthPtBr(summary.month)}`,
             subtitle: `Saldo de ${formatCentsAsBRL(summary.saldoCents)}`,
             competenceMonth: summary.month,
             dueDay: card.due_day,
@@ -116,6 +147,8 @@ export function useReminders(today: string = todayISO()): RemindersData {
         key: `debt:${d.id}`,
         title: d.name,
         subtitle: d.type === "payable" ? "A pagar" : "A receber",
+        direction: d.type,
+        isSplitLinked: isDebtLinkedToSplit(d, splitShares, allDebts),
         dueDate: d.due_date,
         amountCents: Math.round(d.amount * 100),
         paidAt: null,
@@ -124,6 +157,19 @@ export function useReminders(today: string = todayISO()): RemindersData {
 
     const derived = deriveReminderItems({ bills, debts, preferences, today });
     const unread = sortReminders(applyReminderState(derived, states, today));
+    const derivedFor7dSchedule = deriveReminderItems({
+      bills,
+      debts,
+      preferences: {
+        enabled: true,
+        billDaysBefore: Math.max(preferences.billDaysBefore, 7),
+        debtDaysBefore: Math.max(preferences.debtDaysBefore, 7),
+      },
+      today,
+    });
+    const scheduledPayableItems = sortReminders(
+      applyReminderState(derivedFor7dSchedule, states, today),
+    ).filter((i) => (i.direction ?? "payable") === "payable");
     const stateMap = new Map(states.map((s) => [s.key, s.kind]));
     const activeRead = derived.filter((item) => stateMap.get(item.key) === "read");
 
@@ -154,7 +200,8 @@ export function useReminders(today: string = todayISO()): RemindersData {
         historicalRead.push({
           key: state.key,
           kind: "bill",
-          title: `Fatura ${card.name} · ${month}`,
+          direction: "payable",
+          title: `Fatura ${card.name} · ${formatCompetenceMonthPtBr(month)}`,
           subtitle: balanceCents === 0 ? "Fatura quitada" : `Saldo de ${formatCentsAsBRL(balanceCents)}`,
           dueDate,
           amountCents,
@@ -165,15 +212,24 @@ export function useReminders(today: string = todayISO()): RemindersData {
         const debtId = state.key.replace(/^debt:/, "");
         const debt = allDebts.find((d) => d.id === debtId);
         if (!debt) continue;
+        if (isDebtLinkedToSplit(debt, splitShares, allDebts)) continue;
 
         historicalRead.push({
           key: state.key,
           kind: "debt",
+          direction: debt.type,
           title: debt.name,
           subtitle: debt.paid_at ? "Dívida quitada" : debt.type === "payable" ? "A pagar" : "A receber",
           dueDate: debt.due_date,
           amountCents: Math.round(debt.amount * 100),
-          status: debt.paid_at ? "pending" : debt.due_date < today ? "overdue" : "due_soon",
+          status:
+            debt.paid_at || debt.type === "receivable"
+              ? "pending"
+              : debt.due_date < today
+                ? "overdue"
+                : debt.due_date === today
+                  ? "due_today"
+                  : "due_soon",
           link: { path: "/dividas", params: { q: debt.id } },
         });
       }
@@ -182,34 +238,58 @@ export function useReminders(today: string = todayISO()): RemindersData {
     const readHistoryItems = [...activeRead, ...historicalRead].sort((a, b) => b.dueDate.localeCompare(a.dueDate));
     const read = readHistoryItems.length;
 
-    return { allItems: derived, items: unread, readHistoryItems, readCount: read };
+    return {
+      allItems: derived,
+      items: unread,
+      scheduledPayableItems,
+      readHistoryItems,
+      readCount: read,
+    };
   }, [
     preferences,
     cardsQuery.isLoading,
     cardExpensesQuery.isLoading,
     cardPaymentsQuery.isLoading,
     debtsQuery.isLoading,
+    splitSharesQuery.isLoading,
+    statesQuery.isLoading,
+    prefsQuery.isLoading,
     cardsQuery.data,
     cardExpensesQuery.data,
     cardPaymentsQuery.data,
     debtsQuery.data,
+    splitSharesQuery.data,
     statesQuery.data,
     today,
   ]);
 
-  const overdueCount = items.filter((i) => i.status === "overdue").length;
-  const dueTodayCount = items.filter((i) => i.status === "due_today").length;
-  const dueSoonCount = items.filter((i) => i.status === "due_soon").length;
+  const payableItems = useMemo(
+    () => items.filter((i) => (i.direction ?? "payable") === "payable"),
+    [items],
+  );
+  const receivableItems = useMemo(
+    () => items.filter((i) => i.direction === "receivable"),
+    [items],
+  );
+
+  const overdueCount = payableItems.filter((i) => i.status === "overdue").length;
+  const dueTodayCount = payableItems.filter((i) => i.status === "due_today").length;
+  const dueSoonCount = payableItems.filter((i) => i.status === "due_soon").length;
+  const receivableCount = receivableItems.length;
   const urgentCount = overdueCount + dueTodayCount;
 
   return {
     items,
     allItems,
+    payableItems,
+    scheduledPayableItems,
+    receivableItems,
     readHistoryItems,
     totalCount: items.length,
     overdueCount,
     dueTodayCount,
     dueSoonCount,
+    receivableCount,
     urgentCount,
     readCount,
     preferences,

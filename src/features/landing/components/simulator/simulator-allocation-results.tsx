@@ -32,7 +32,7 @@ export function SimulatorAllocationResults({
   return (
     <div className="lg:col-span-6 space-y-4 sm:space-y-5 min-w-0">
       <h3 className="flex items-center gap-2 text-base sm:text-xl font-bold text-foreground">
-        <Sparkles className="size-4 text-primary shrink-0" aria-hidden="true" />
+        <Sparkles className="size-4 text-portfolio shrink-0" aria-hidden="true" />
         <span className="tabular-nums">Seu próximo aporte de {formattedAporte}</span>
       </h3>
 
@@ -69,7 +69,7 @@ export function SimulatorAllocationResults({
                   size="xs"
                   className="font-mono font-bold shrink-0 self-start sm:self-center"
                 >
-                  +<MoneyText cents={numberToCents(cls.allocatedAmount)} hideCents tone="positive" className="text-[10px]" />{" "}
+                  +<MoneyText cents={numberToCents(cls.allocatedAmount)} hideCents tone="positive" />{" "}
                   ({shareOfAporte}%)
                 </Badge>
               </button>

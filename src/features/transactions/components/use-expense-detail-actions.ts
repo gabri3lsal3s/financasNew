@@ -12,8 +12,8 @@ import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
   useCategories, useCreateExpense, useCreditCards, useDebts, useDeleteExpense,
-  useDeleteRecurrenceOccurrences, useExpenses, useFamilyMode, useMyFamily,
-  useMyPublicShares, useUpdateExpense, useUpdateExpenseGrouped, useUpdateRecurrenceOccurrences,
+  useDeleteRecurrenceOccurrences, useExpenses, useExpensesByInstallmentGroup, useFamilyMode, useMyFamily,
+  useMyPublicShares, useSyncSplitFromExpenseEdit, useUpdateDebt, useUpdateExpense, useUpdateExpenseGrouped, useUpdateRecurrenceOccurrences,
 } from "@/state";
 import { useDeletePublicShareMutation } from "@/state/mutations/use-public-share-mutations";
 import {
@@ -37,10 +37,11 @@ export interface UseExpenseDetailActionsParams {
   setError: (err: string | null) => void;
   setConfirmOpen: (open: boolean) => void;
   setIsEditing: (editing: boolean) => void;
+  onRequestOpenSplit?: (updatedExpense: Expense) => void;
 }
 
 export function useExpenseDetailActions({
-  expense, open, onOpenChange, mode, editScope, tripDeleteMode, setError, setConfirmOpen, setIsEditing,
+  expense, open, onOpenChange, mode, editScope, tripDeleteMode, setError, setConfirmOpen, setIsEditing, onRequestOpenSplit,
 }: UseExpenseDetailActionsParams) {
   const queryClient = useSafeQueryClient();
   const categories = useCategories("expense").data ?? [];
@@ -55,6 +56,8 @@ export function useExpenseDetailActions({
   const updateRecurrence = useUpdateRecurrenceOccurrences();
   const createExpense = useCreateExpense();
   const deletePublicShare = useDeletePublicShareMutation({ silentError: true });
+  const syncSplitFromExpenseEdit = useSyncSplitFromExpenseEdit();
+  const updateDebt = useUpdateDebt();
   const deleteTripExpenseLinked = useDeleteTripExpenseLinkedMutation(expense?.trip_id ?? "");
   const updateTripExpenseLinked = useUpdateTripExpenseLinkedMutation(expense?.trip_id ?? "");
 
@@ -68,24 +71,55 @@ export function useExpenseDetailActions({
   const p3 = useExpenses(shiftMonth(expenseMonth, -3), { enabled: isDetailOpen && Boolean(expenseMonth) });
   const { data: splitShares } = useMyPublicShares("split", { enabled: isDetailOpen });
   const { data: debts } = useDebts({ enabled: isDetailOpen });
+  const { data: groupExpensesRaw } = useExpensesByInstallmentGroup(
+    isDetailOpen ? expense?.installment_group_id : null,
+  );
+
+  const groupExpenses = useMemo(() => {
+    if (groupExpensesRaw && groupExpensesRaw.length > 0) return groupExpensesRaw;
+    return expense ? [expense] : [];
+  }, [groupExpensesRaw, expense]);
+
+  const groupTotalCents = useMemo(() => {
+    if (!expense) return 0;
+    if (groupExpenses.length > 1) {
+      return groupExpenses.reduce((acc, item) => acc + Math.round(Number(item.value) * 100), 0);
+    }
+    if (expense.installments_total > 1) {
+      return Math.round(Number(expense.value) * 100) * expense.installments_total;
+    }
+    return Math.round(Number(expense.value) * 100);
+  }, [groupExpenses, expense]);
 
   const linkedSplitShare = useMemo(() => {
     if (!expense || !splitShares) return null;
     return splitShares.find((s) => {
       const p = (s.payload ?? {}) as unknown as SplitSharePayload;
-      return p.expense_id === expense.id || Boolean(expense.installment_group_id && p.installment_group_id === expense.installment_group_id);
+      return (
+        s.expense_id === expense.id ||
+        p.expense_id === expense.id ||
+        Boolean(
+          expense.installment_group_id &&
+            (s.installment_group_id === expense.installment_group_id ||
+              p.installment_group_id === expense.installment_group_id),
+        )
+      );
     }) ?? null;
   }, [expense, splitShares]);
 
   const linkedRachaDebt = useMemo(() => {
     if (!expense || !debts) return null;
+    const shareDebtId = linkedSplitShare?.debt_id || (linkedSplitShare?.payload as Record<string, unknown> | undefined)?.debt_id;
     return debts.find((d) =>
-      d.type === "receivable" &&
-      (d.expense_id === expense.id || (expense.installment_group_id && d.installment_group_id === expense.installment_group_id)) &&
-      (d.name.toLowerCase().startsWith("racha:") || d.name.toLowerCase().includes("racha")),
+      (typeof shareDebtId === "string" && d.id === shareDebtId) ||
+      (d.type === "receivable" &&
+        (d.expense_id === expense.id ||
+          (expense.installment_group_id && d.installment_group_id === expense.installment_group_id)) &&
+        (d.name.toLowerCase().startsWith("racha:") || d.name.toLowerCase().includes("racha"))),
     ) ?? null;
-  }, [expense, debts]);
+  }, [expense, debts, linkedSplitShare]);
 
+  const hasLinkedSplit = Boolean(linkedSplitShare);
   const isRachaExpense = Boolean(linkedSplitShare || linkedRachaDebt || (expense && expense.report_weight < 1));
   const priceEvolution = useMemo(() => {
     if (!expense) return null;
@@ -95,7 +129,12 @@ export function useExpenseDetailActions({
   const isInstallment = expense != null && expense.installments_total > 1;
   const isRecurring = expense?.recurrence_id != null;
   const isGrouped = isInstallment || isRecurring;
-  const editPending = updateExpense.isPending || updateExpenseGrouped.isPending || updateRecurrence.isPending;
+  const editPending =
+    updateExpense.isPending ||
+    updateExpenseGrouped.isPending ||
+    updateRecurrence.isPending ||
+    syncSplitFromExpenseEdit.isPending ||
+    updateDebt.isPending;
   const deletePending = deleteExpense.isPending || deleteRecurrence.isPending || deleteTripExpenseLinked.isPending;
 
   const deleteBaseExpense = async () => {
@@ -135,7 +174,7 @@ export function useExpenseDetailActions({
           installments: [{ date: expense.date, value: expense.value, billCompetence: expense.bill_competence ?? null }],
         };
         await deleteExpense.mutateAsync({ expenseId: expense.id, mode });
-        ["my-public-shares", "public-shares", "debts", "expenses", "overview"].forEach((k) => queryClient?.invalidateQueries({ queryKey: [k] }));
+        ["my-public-shares", "public-share", "public-shares", "debts", "expenses", "overview"].forEach((k) => queryClient?.invalidateQueries({ queryKey: [k] }));
         if (!isInstallment) {
           pushToast({
             title: isRachaExpense ? "Despesa e racha vinculado excluídos" : "Despesa excluída",
@@ -172,7 +211,49 @@ export function useExpenseDetailActions({
       if (isRecurring) await updateRecurrence.mutateAsync({ occurrenceId: expense.id, mode: editScope, fields: { ...fields, family_id: resolvedFamilyId } });
       else await updateExpenseGrouped.mutateAsync({ id: expense.id, mode: editScope, fields: { ...fields, family_id: resolvedFamilyId } });
     } else {
-      await updateExpense.mutateAsync({ id: expense.id, input: { ...payload, family_id: resolvedFamilyId, charge_kind: expense.charge_kind ?? "regular" } });
+      await updateExpense.mutateAsync({
+        id: expense.id,
+        input: {
+          description: payload.description,
+          value: payload.value,
+          base_amount: payload.value,
+          date: payload.date,
+          category_id: payload.category_id,
+          payment_method: payload.payment_method,
+          card_id: payload.card_id,
+          bill_competence: payload.bill_competence,
+          report_weight: payload.report_weight,
+          is_family: payload.is_family,
+          family_id: resolvedFamilyId,
+          charge_kind: expense.charge_kind ?? "regular",
+        },
+      });
+    }
+    if (linkedSplitShare) {
+      const editedCents = Math.round(payload.value * 100);
+      const nextTotalCents =
+        isInstallment && groupExpenses.length > 1
+          ? editScope === "single"
+            ? groupExpenses
+                .filter((item) => item.id !== expense.id)
+                .reduce((acc, item) => acc + Math.round(Number(item.value) * 100), 0) + editedCents
+            : groupTotalCents
+          : editedCents;
+      await syncSplitFromExpenseEdit.mutateAsync({
+        share: linkedSplitShare,
+        expense,
+        nextTitle: payload.description,
+        nextTotalCents,
+        nextDate: payload.date,
+        linkedDebt: linkedRachaDebt,
+      });
+    } else if (linkedRachaDebt) {
+      const nextDebtName = `Racha: ${payload.description.trim() || "Despesa"}`;
+      if (linkedRachaDebt.name !== nextDebtName) {
+        try {
+          await updateDebt.mutateAsync({ id: linkedRachaDebt.id, input: { name: nextDebtName } });
+        } catch { /* segue */ }
+      }
     }
     if (expense.trip_id) {
       const catName = categories.find((c) => c.id === payload.category_id)?.name;
@@ -180,13 +261,33 @@ export function useExpenseDetailActions({
     }
     const familyChanged = isFamilyActive && payload.is_family !== undefined && payload.is_family !== expense.is_family;
     pushToast({
-      title: expense.trip_id && !familyChanged ? "Despesa atualizada no extrato e na viagem" : "Despesa atualizada com sucesso",
+      title: linkedSplitShare
+        ? "Despesa e racha sincronizados com sucesso"
+        : expense.trip_id && !familyChanged
+          ? "Despesa atualizada no extrato e na viagem"
+          : "Despesa atualizada com sucesso",
       description: familyChanged
         ? payload.is_family ? "Esta despesa foi marcada como Familiar e agora pertence à visão Familiar." : "Esta despesa foi marcada como Individual e agora pertence à visão Pessoal."
         : expense.trip_id ? "Os valores e a divisão na viagem foram sincronizados." : undefined,
       variant: "success",
     });
     setIsEditing(false);
+    if (payload.convertToSplit && !linkedSplitShare && !expense.trip_id) {
+      onRequestOpenSplit?.({
+        ...expense,
+        description: payload.description || null,
+        value: payload.value,
+        base_amount: payload.value,
+        date: payload.date,
+        category_id: payload.category_id,
+        payment_method: payload.payment_method,
+        card_id: payload.card_id,
+        bill_competence: payload.bill_competence,
+        report_weight: payload.report_weight,
+        is_family: Boolean(payload.is_family),
+      });
+      return;
+    }
     onOpenChange(false);
   };
 
@@ -226,6 +327,7 @@ export function useExpenseDetailActions({
 
   return {
     categories, cards, currentCategory, isFamilyActive, tripName, priceEvolution, isRachaExpense,
+    hasLinkedSplit, linkedSplitShare, linkedRachaDebt, groupExpenses, groupTotalCents,
     isInstallment, isRecurring, isGrouped, editPending, deletePending, repeatPending: createExpense.isPending,
     handleConfirmDelete, handleSaveEdit, handleShare, handleRepeat,
   };

@@ -1,8 +1,12 @@
 import { Badge, Button, Switch } from "@/components/ui";
+import { cn } from "@/lib/utils";
 
 export interface DueNotificationsPrefsCardProps {
   dueNotificationsActive: boolean;
   postNotificationsGranted: boolean;
+  remindersEnabled?: boolean;
+  isNative?: boolean;
+  showTopDivider?: boolean;
   onToggleDueNotifications: (enabled: boolean) => void;
   onRequestPermission: () => void;
 }
@@ -10,11 +14,14 @@ export interface DueNotificationsPrefsCardProps {
 export function DueNotificationsPrefsCard({
   dueNotificationsActive,
   postNotificationsGranted,
+  remindersEnabled = true,
+  isNative = true,
+  showTopDivider = true,
   onToggleDueNotifications,
   onRequestPermission,
 }: DueNotificationsPrefsCardProps) {
   return (
-    <div className="pt-2 border-t border-border/80 space-y-3">
+    <div className={cn("space-y-3", showTopDivider && "pt-2 border-t border-border/80")}>
       <div className="p-3.5 rounded-xl border border-border/80 bg-surface shadow-xs space-y-3">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-0.5 min-w-0">
@@ -40,7 +47,9 @@ export function DueNotificationsPrefsCard({
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Receba alertas do sistema operacional (Android ou navegador) no dia do vencimento de faturas e dívidas.
+              {isNative
+                ? "Agende alertas locais no Android com até 7 dias de antecedência, respeitando seu Horário Silencioso."
+                : "Receba avisos locais no navegador enquanto o aplicativo estiver aberto para contas a pagar e faturas próximas."}
             </p>
           </div>
           <Switch
@@ -50,13 +59,20 @@ export function DueNotificationsPrefsCard({
           />
         </div>
 
+        {dueNotificationsActive && !remindersEnabled && (
+          <div className="p-2.5 rounded-lg border border-border/80 bg-surface-raised/60 text-[11px] text-muted-foreground leading-relaxed">
+            Os lembretes no aplicativo estão pausados. Reative{" "}
+            <strong className="font-medium text-foreground">Lembretes no Aplicativo</strong> acima para voltar a disparar alertas de vencimento neste dispositivo.
+          </div>
+        )}
+
         {dueNotificationsActive && !postNotificationsGranted && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl border border-warning/30 bg-warning/5 gap-2.5">
             <div className="text-[11px] text-muted-foreground leading-relaxed">
               <span className="font-semibold text-foreground block">
                 Permissão de notificações pendente
               </span>
-              O recurso está marcado como ativo, mas o sistema operacional bloqueou notificações para o app.
+              O recurso está marcado como ativo, mas o sistema ainda precisa da sua autorização para exibir avisos.
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Button

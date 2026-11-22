@@ -197,6 +197,7 @@ export {
   useAdminSendBroadcast,
   useAdminLogBackup,
   useMarkBroadcastAsRead,
+  useDismissBroadcastNotification,
   useAdminProvisionUser,
   useAdminResetMFA,
   useAdminRevokeSessions,
@@ -300,9 +301,21 @@ export {
   useSignalSplitPayment,
   useDismissSplitPaymentSignal,
   useAllocateGoalDeposit,
+  publicShareQueryKey,
   publicSharesQueryKey,
 } from "./mutations/use-public-share-mutations";
 export {
+  useCreateLinkedSplit,
+  useApplySplitSettlement,
+  useUpdateSplitComprehensive,
+  useSyncSplitFromExpenseEdit,
+  useSyncSplitFromDebtSettle,
+  useDeleteLinkedSplit,
+  invalidateSplitEcosystem,
+  SPLIT_SYNC_INVALIDATION_KEYS,
+} from "./mutations/use-split-sync-mutations";
+export {
+  useUserTrips,
   useLinkPersonalExpenseToTripMutation,
   useSyncLinkedPersonalExpenseMutation,
   type LinkPersonalExpenseToTripInput,
@@ -353,4 +366,10 @@ export {
 } from "./mutations/use-billing-mutations";
 export { useDevices, userDevicesKey } from "./queries/use-devices";
 export { useRevokeDevice, useDeleteDevice } from "./mutations/use-device-mutations";
+export { useMyPushSubscriptions, pushSubscriptionsKey } from "./queries/use-push-subscriptions";
+export {
+  useEnableWebPushSubscription,
+  useDisableWebPushSubscription,
+  useRegisterFcmToken,
+} from "./mutations/use-push-subscription-mutations";
 

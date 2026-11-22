@@ -60,6 +60,7 @@ import type {
   ApproveDividendsBatchResult,
   MonthlyClosingResult,
   UserDevice,
+  UserPushSubscription,
 } from "./schema";
 
 /**
@@ -121,6 +122,7 @@ export interface Database {
       corporate_dividends: Table<CorporateDividend>;
       portfolio_dividend_dismissals: Table<PortfolioDividendDismissal>;
       user_devices: Table<UserDevice>;
+      user_push_subscriptions: Table<UserPushSubscription>;
     };
 
     Views: Record<string, never>;
@@ -171,6 +173,7 @@ export interface Database {
           p_amount_cents: number;
           p_participant_id?: string | null;
           p_installment_id?: string | null;
+          p_installment_ids?: string[] | null;
         };
         Returns: {
           success: boolean;

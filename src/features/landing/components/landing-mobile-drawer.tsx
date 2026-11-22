@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { ArrowLeft, Download } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui";
@@ -27,21 +28,20 @@ export function LandingMobileDrawer({
   onSelectSection,
   onInstall,
 }: LandingMobileDrawerProps) {
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <>
       <div
-        className="fixed inset-0 top-[calc(4rem+max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] bg-background/75 backdrop-blur-xs z-30 lg:hidden animate-fade-in cursor-pointer"
+        className="fixed inset-0 top-[calc(4rem+max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] bg-background/75 backdrop-blur-xs z-40 lg:hidden animate-fade-in cursor-pointer touch-none"
         onClick={onClose}
-        onTouchStart={onClose}
         aria-hidden="true"
       />
       <div
         role="dialog"
         aria-label="Menu principal"
         data-mobile-menu="open"
-        className="relative z-40 border-b border-border bg-background p-4 shadow-xl lg:hidden animate-fade-slide-in"
+        className="fixed inset-x-0 top-[calc(4rem+max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] z-40 max-h-[calc(100dvh-4rem-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] overflow-y-auto overscroll-contain border-b border-border bg-background p-4 shadow-xl lg:hidden animate-fade-slide-in"
       >
         <nav className="flex flex-col gap-1.5 text-sm font-medium" aria-label="Menu móvel">
           {isSubpage ? (
@@ -58,21 +58,25 @@ export function LandingMobileDrawer({
             </button>
           ) : null}
 
-          {LANDING_NAV_LINKS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onSelectSection(item.id)}
-              className={cn(
-                "flex items-center py-2.5 px-3 min-h-11 rounded-lg text-left transition-colors cursor-pointer",
-                activeSection === item.id
-                  ? "bg-primary/10 text-primary-strong font-semibold"
-                  : "text-foreground hover:text-primary-strong hover:bg-surface-hover/60",
-              )}
-            >
-              {item.mobileLabel}
-            </button>
-          ))}
+          {LANDING_NAV_LINKS.map((item) => {
+            const isActive = activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={isActive ? "location" : undefined}
+                onClick={() => onSelectSection(item.id)}
+                className={cn(
+                  "flex items-center py-2.5 px-3 min-h-11 rounded-lg border text-left transition-colors cursor-pointer",
+                  isActive
+                    ? "border-primary/30 bg-primary/12 text-primary-strong dark:text-primary font-semibold"
+                    : "border-transparent text-foreground hover:text-primary-strong hover:bg-surface-hover/60",
+                )}
+              >
+                {item.mobileLabel}
+              </button>
+            );
+          })}
 
           <div className="mt-2 flex flex-col gap-2 pt-3 border-t border-border">
             {isLoggedIn ? (
@@ -122,6 +126,7 @@ export function LandingMobileDrawer({
           </div>
         </nav>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

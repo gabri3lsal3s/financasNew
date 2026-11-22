@@ -1,11 +1,12 @@
 import { useEffect, useState, type MutableRefObject } from "react";
-import { Plane } from "lucide-react";
+import { Plane, Users } from "lucide-react";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-  Alert, DatePicker, FormField, Input, MoneyInput, Select, Switch,
+  Alert, Button, DatePicker, FormField, Input, MoneyInput, Select, Switch,
 } from "@/components/ui";
 import { resolveBillCompetence } from "@/domain/competence";
 import { getErrorMessage } from "@/services/errors";
+import { formatCentsAsBRL } from "@/services/masks";
 import { useFamilyMode } from "@/state";
 import type { Category, CreditCard, Expense, InstallmentDeleteMode, PaymentMethod } from "@/types";
 import { REPORT_WEIGHT_PRESETS } from "./report-weight-constants";
@@ -22,6 +23,7 @@ export interface ExpenseEditSavePayload {
   bill_competence: string | null;
   report_weight: number;
   is_family?: boolean;
+  convertToSplit?: boolean;
 }
 
 export interface ExpenseEditFormProps {
@@ -35,11 +37,16 @@ export interface ExpenseEditFormProps {
   onScopeChange: (scope: InstallmentDeleteMode) => void;
   submitRef: MutableRefObject<(() => void) | null>;
   onSave: (payload: ExpenseEditSavePayload) => Promise<void>;
+  hasLinkedSplit?: boolean;
+  onManageSplit?: () => void;
+  convertToSplit?: boolean;
+  onConvertToSplitChange?: (val: boolean) => void;
 }
 
 /** Formulário de edição da despesa com seção avançada recolhível (M9). */
 export function ExpenseEditForm({
   expense, categories, cards, isPending, grouped, isRecurring, scope, onScopeChange, submitRef, onSave,
+  hasLinkedSplit, onManageSplit, convertToSplit, onConvertToSplitChange,
 }: ExpenseEditFormProps) {
   const [description, setDescription] = useState(expense.description || "");
   const [valueCents, setValueCents] = useState(Math.round(expense.value * 100));
@@ -95,7 +102,9 @@ export function ExpenseEditForm({
       await onSave({
         description: description.trim(), value: valueCents / 100, date, category_id: categoryId, payment_method: paymentMethod,
         card_id: paymentMethod === "credit_card" ? cardId || null : null, bill_competence: effectiveCompetence,
-        report_weight: weight, is_family: isFamilyActive ? isFamily : Boolean(expense.is_family),
+        report_weight: weight,
+        is_family: convertToSplit ? false : isFamilyActive ? isFamily : Boolean(expense.is_family),
+        convertToSplit: Boolean(convertToSplit),
       });
     } catch (err) { setFormError(getErrorMessage(err)); }
   };
@@ -122,6 +131,22 @@ export function ExpenseEditForm({
         <div className="flex items-center gap-2 p-2.5 rounded-xl border border-portfolio/20 bg-portfolio/5 text-xs text-portfolio">
           <Plane className="size-4 shrink-0" aria-hidden="true" />
           <span>Vinculada ao Modo Viagem. As alterações de valor, descrição e data serão sincronizadas automaticamente com os participantes da viagem.</span>
+        </div>
+      ) : null}
+
+      {hasLinkedSplit ? (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded-xl border border-portfolio/20 bg-portfolio/5 text-xs text-foreground">
+          <div className="flex items-center gap-2 min-w-0">
+            <Users className="size-4 shrink-0 text-portfolio" aria-hidden="true" />
+            <span>
+              Vinculada a um Racha ativo. Título, valor e data serão sincronizados automaticamente com o rateio e o link Pix.
+            </span>
+          </div>
+          {onManageSplit ? (
+            <Button type="button" variant="outline" size="sm" onClick={onManageSplit} className="shrink-0">
+              Gerenciar Racha
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
@@ -181,20 +206,56 @@ export function ExpenseEditForm({
         <AccordionItem value="advanced">
           <AccordionTrigger className="text-xs py-2.5">Mais detalhes · Rateio e orçamento</AccordionTrigger>
           <AccordionContent className="flex flex-col gap-3.5">
-            <ReportWeightField
-              valueCents={valueCents} mode={weightMode}
-              onModeChange={(val) => {
-                setWeightMode(val);
-                if (val === "custom" && reportCustomAmountCents === 0) setReportCustomAmountCents(valueCents);
-              }}
-              customAmountCents={reportCustomAmountCents} onCustomAmountChange={setReportCustomAmountCents}
-              customLabel="Sua cota considerada no relatório" ariaLabelCustom="Sua cota considerada no relatório"
-            />
+            {hasLinkedSplit ? (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-xl border border-border/80 bg-surface p-3 text-xs">
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="font-semibold text-foreground">Rateio controlado pelo Racha</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Sua cota líquida atual: {formatCentsAsBRL(Math.round(expense.value * expense.report_weight * 100))} ({Math.round(expense.report_weight * 100)}%).
+                  </span>
+                </div>
+                {onManageSplit ? (
+                  <Button type="button" variant="outline" size="sm" onClick={onManageSplit} className="shrink-0">
+                    Ajustar no Racha
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              <ReportWeightField
+                valueCents={valueCents} mode={weightMode}
+                onModeChange={(val) => {
+                  setWeightMode(val);
+                  if (val === "custom" && reportCustomAmountCents === 0) setReportCustomAmountCents(valueCents);
+                }}
+                customAmountCents={reportCustomAmountCents} onCustomAmountChange={setReportCustomAmountCents}
+                customLabel="Sua cota considerada no relatório" ariaLabelCustom="Sua cota considerada no relatório"
+              />
+            )}
+            {!expense.trip_id && !hasLinkedSplit && !isRecurring ? (
+              <div className="rounded-xl border border-border/80 bg-surface p-3">
+                <Switch
+                  id="edit-expense-convert-split"
+                  checked={Boolean(convertToSplit)}
+                  onCheckedChange={(checked) => {
+                    onConvertToSplitChange?.(checked);
+                    if (checked && isFamily) setIsFamily(false);
+                  }}
+                  label="Rachar esta despesa com amigos"
+                  description="Ao salvar, abre a configuração de participantes e link Pix"
+                />
+              </div>
+            ) : null}
             {isFamilyActive ? (
               <div className="rounded-xl border border-border/80 bg-surface p-3">
                 <Switch
-                  id="edit-expense-family" checked={isFamily} onCheckedChange={setIsFamily}
-                  label="Despesa da Casa / Familiar" description="Visível no Painel Familiar compartilhado"
+                  id="edit-expense-family"
+                  checked={isFamily}
+                  onCheckedChange={(checked) => {
+                    setIsFamily(checked);
+                    if (checked && convertToSplit) onConvertToSplitChange?.(false);
+                  }}
+                  label="Despesa da Casa / Familiar"
+                  description="Visível no Painel Familiar compartilhado"
                 />
               </div>
             ) : null}

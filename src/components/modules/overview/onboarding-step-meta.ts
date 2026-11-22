@@ -1,49 +1,42 @@
-import { Briefcase, Bell, CreditCard, Receipt, Tag, TrendingUp } from "lucide-react";
+import { Bell, Briefcase, CreditCard, Landmark, Receipt, TrendingUp } from "lucide-react";
 import type { OnboardingStepId } from "@/domain/onboarding";
 
 export const ONBOARDING_STEP_META: Record<
   OnboardingStepId,
-  { label: string; description: string; href?: string; icon: typeof Tag }
+  { label: string; description: string; href?: string; icon: typeof Landmark }
 > = {
-  "expense-category": {
-    label: "Crie categorias de despesa",
-    description: "Classifique seus gastos desde o início.",
-    href: "/orcamentos?tab=categories&novo=categoria",
-    icon: Tag,
-  },
-  "income-category": {
-    label: "Crie categorias de renda",
-    description: "Separe salário, freelas e outras entradas.",
-    href: "/orcamentos?tab=categories&novo=categoria",
-    icon: TrendingUp,
-  },
-  card: {
-    label: "Adicione um cartão de crédito",
-    description: "Acompanhe faturas, pagamentos e limites.",
-    href: "/cartoes",
-    icon: CreditCard,
+  "cash-checkpoint": {
+    label: "Informar saldo inicial",
+    description: "Calibre o saldo do banco para calcular seu Caixa Real Seguro.",
+    icon: Landmark,
   },
   "first-transaction": {
-    label: "Registre o primeiro lançamento",
-    description: "Despesas e rendas alimentam os relatórios e insights.",
+    label: "Registrar primeiro lançamento",
+    description: "Anote uma despesa ou receita para ativar seu ritmo diário.",
     href: "/transacoes?novo=transacao",
     icon: Receipt,
   },
+  card: {
+    label: "Adicionar um cartão de crédito",
+    description: "Acompanhe faturas futuras, limite livre e melhor dia de compra.",
+    href: "/cartoes",
+    icon: CreditCard,
+  },
   "portfolio-asset": {
-    label: "Cadastre seu primeiro ativo",
-    description: "Ações, FIIs, renda fixa ou fundos na sua carteira.",
+    label: "Cadastrar primeiro ativo na carteira",
+    description: "Ações, FIIs, renda fixa ou ativos em dólar sob suas metas.",
     href: "/investments?novo=ativo",
     icon: Briefcase,
   },
   "portfolio-transaction": {
-    label: "Registre o primeiro aporte ou compra",
-    description: "Alimente o motor de rebalanceamento patrimonial.",
+    label: "Registrar primeiro aporte ou compra",
+    description: "Alimente o rebalanceamento e a memória de rentabilidade.",
     href: "/investments?novo=investimento",
     icon: TrendingUp,
   },
   "bank-notifications": {
-    label: "Ativar Leitor Automático de Notificações",
-    description: "Captura de compras de cartão e Pix em segundo plano.",
+    label: "Ativar leitor automático de notificações",
+    description: "Captura prática de compras no cartão e Pix no celular.",
     icon: Bell,
   },
 };

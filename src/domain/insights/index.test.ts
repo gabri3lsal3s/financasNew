@@ -80,6 +80,7 @@ describe("criticalAlerts (§3.7.1 — prioridade)", () => {
     const alerts = criticalAlerts({ ...base, overspentBudgets: 2, burnRatePercent: 90 });
     expect(alerts.find((a) => a.id === "limites_estourados")?.priority).toBe(3);
     expect(alerts.find((a) => a.id === "burn_rate")?.priority).toBe(4);
+    expect(alerts.find((a) => a.id === "burn_rate")?.title).toBe("Gastos acima de 85% da renda");
     expect(alerts.find((a) => a.id === "limites_estourados")?.description).toContain("2 categorias");
   });
 

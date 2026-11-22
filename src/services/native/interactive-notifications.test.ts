@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ParsedBankTransaction } from "@/domain/notifications";
 import type { Category, CreditCard } from "@/types";
 import * as platformModule from "./platform";
+import * as prefsModule from "./bank-assistant-preferences";
 import * as categoriesRepo from "@/data/repositories/categories";
 import * as creditCardsRepo from "@/data/repositories/credit-cards";
 import * as rpcData from "@/data/rpc";
@@ -324,6 +325,27 @@ describe("interactive-notifications service", () => {
           }),
         ],
       });
+    });
+
+    it("retorna requiresWizard=true quando categoria for desconhecida e unknownCategoryHandling=open_quick_wizard", async () => {
+      vi.spyOn(prefsModule, "getBankAssistantPreferences").mockReturnValueOnce({
+        passiveCaptureEnabled: true,
+        interactiveNotificationsEnabled: true,
+        autoInstallmentsEnabled: true,
+        autoCategoryInferenceEnabled: true,
+        unknownCategoryHandling: "open_quick_wizard",
+        monitoredBanks: ["Nubank"],
+      });
+      vi.spyOn(categoriesRepo, "listCategories").mockResolvedValueOnce(mockCategories);
+
+      const result = await quickAddTransaction({
+        ...sampleExpense,
+        description: "Estabelecimento Aleatório XYZ",
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.requiresWizard).toBe(true);
+      expect(rpcData.createExpenseWithDebt).not.toHaveBeenCalled();
     });
   });
 

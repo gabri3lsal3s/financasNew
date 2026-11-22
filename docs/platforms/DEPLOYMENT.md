@@ -24,7 +24,7 @@
   - **Defesa em Profundidade:** `Strict-Transport-Security` (HSTS preload), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`;
   - **CORS das Edge Functions:** allowlist (`ALLOWED_ORIGINS` + `*.workers.dev` + `*.pages.dev` + localhost/Capacitor); webhook Asaas sem CORS de browser; `quotes` só grava cache global com service role.
   - **Estratégia de Cache de Borda:** assets estáticos versionados (`/assets/*`) com cache imutável de 1 ano (`max-age=31536000, immutable`), e artefatos dinâmicos de ciclo de vida (`/index.html`, `/sw.js`, `/pwa/*`) com validação imediata (`max-age=0, must-revalidate`).
-- **Backend:** Supabase — migrations em `supabase/migrations/` (sequência canônica estrita 0001–0122: schema, RLS, RPCs, quotas, planos, conciliação, colaboração familiar/viagens, faturamento, auditoria, calibração não-destrutiva de snapshots e saneamento integral de RPCs/índices).
+- **Backend:** Supabase — migrations em `supabase/migrations/` (sequência canônica estrita 0001–0138: schema, RLS, RPCs, quotas, planos, conciliação, colaboração familiar/viagens, faturamento, auditoria, calibração não-destrutiva de snapshots, Notification Hub, subscriptions Web Push/FCM, preferências de resumo semanal e hardening `FORCE RLS` / RPCs de broadcasts e ciclo de vida).
 - **Auth:** Supabase Auth (email/senha) + trigger `handle_new_user` (cria `profiles` e `user_preferences` automaticamente).
 - **Cotações:** tabela `asset_prices` com cache global (`user_id NULL`) + override manual do usuário. O cache global é escrito pela **edge function `quotes`** (implementada em `supabase/functions/quotes/`).
 
@@ -46,7 +46,7 @@
 ### 3.1 Supabase: criar o projeto e aplicar o schema
 
 1. Crie o projeto em [supabase.com/dashboard](https://supabase.com/dashboard) (anote `Project URL` e `anon key` em **Settings → API**).
-2. Aplique as migrations **na ordem** (0001 → 0122) via `supabase db push` ou console SQL.
+2. Aplique as migrations **na ordem** (0001 → 0138) via `supabase db push` ou console SQL.
 3. **Auth — configurar URLs de redirect** (Settings → Auth → URL Configuration):
    - `Site URL`: `https://axir.com.br`
    - `Redirect URLs`: adicionar `https://axir.com.br/**`, `https://www.axir.com.br/**`, `https://*.pages.dev/**` e `http://localhost:5173/**`
@@ -96,6 +96,7 @@ Para assegurar a prontidão para campanhas de aquisição e tráfego massivo (1k
    | `NODE_VERSION` | `22.23.4` | **Obrigatório** pin patchado (não use só `22`) — ver security releases Node.js 21/out/2026 |
    | `VITE_SUPABASE_URL` | `https://<ref>.supabase.co` | Supabase → Settings → API → Project URL |
    | `VITE_SUPABASE_ANON_KEY` | `eyJ...` | Supabase → Settings → API → anon public key |
+   | `VITE_VAPID_PUBLIC_KEY` | *(opcional)* | Chave pública VAPID (base64url) para habilitar assinaturas Web Push no PWA |
    | `VITE_SENTRY_DSN` | *(opcional)* | Sentry → Settings → Projects → Client Keys |
 
 > **Atenção:** Evite colocar `npm test` no Build command da Cloudflare Pages, pois executar a suíte completa de ~2.000 testes consome muita memória em runners de 1 vCPU e pode causar timeout/estrangulamento. Use `npm run build`.
@@ -284,6 +285,13 @@ npx supabase secrets set \
 | `ASAAS_WEBHOOK_TOKEN` | Token secreto estático para autenticar webhooks | Gerar string de alta entropia (ex.: `openssl rand -hex 24`) e cadastrar no painel do Asaas |
 | `TELEGRAM_BOT_TOKEN` | Token do bot de suporte no Telegram | Criado via `@BotFather` no Telegram |
 | `TELEGRAM_CHAT_ID` | Identificador do canal/chat de suporte | Obtido via `@userinfobot` ou API do Telegram |
+| `VAPID_PUBLIC_KEY` | *(opcional)* Chave pública VAPID do Push Web | Gerada via `npx web-push generate-vapid-keys` (pareada com `VITE_VAPID_PUBLIC_KEY`) |
+| `VAPID_PRIVATE_KEY` | *(opcional)* Chave privada VAPID (exclusiva servidor) | Gerada via `npx web-push generate-vapid-keys` (nunca expor no frontend) |
+| `VAPID_SUBJECT` | *(opcional)* Identificador de contato VAPID | Ex.: `mailto:suporte@axir.com.br` |
+| `FCM_PROJECT_ID` | *(opcional)* ID do projeto Firebase para push nativo Android | Firebase Console → Project Settings → General |
+| `FCM_SERVICE_ACCOUNT_JSON` | *(opcional)* JSON da Service Account Firebase (FCM HTTP v1) | Firebase Console → Service Accounts → Generate new private key |
+
+> **Comportamento gracioso sem secrets de Push Remoto:** caso `VAPID_*` / `FCM_*` não estejam configurados, a Edge Function `push-dispatcher` registra `skipped_unconfigured` em `push_delivery_logs` e retorna HTTP 200 sem quebrar fluxos chamadores; notificações locais agendadas no Android Pro continuam operando offline normalmente.
 
 #### 3. Auditoria de Secrets Cadastrados
 ```bash
@@ -295,20 +303,40 @@ npx supabase secrets list
 O ecossistema de Edge Functions do projeto conta com políticas de segurança estritas e fail-closed:
 
 ```bash
+# Deploy completo de todas as 9 Edge Functions (via --use-api):
+npm run deploy:functions
+
+# Ou individualmente (todas usam --no-verify-jwt --use-api e validação fail-closed interna):
 # 1. Checkout (criação de cobranças Pix e assinaturas de cartão)
-# --no-verify-jwt permite tratamento próprio de CORS no preflight e validação fail-closed via getUser()
-npx supabase functions deploy asaas-checkout --no-verify-jwt
+npx supabase functions deploy asaas-checkout --no-verify-jwt --use-api
 
 # 2. Gestão de Assinatura (cancelamento e atualização de cartão pelo assinante)
-npx supabase functions deploy asaas-manage
+npx supabase functions deploy asaas-manage --no-verify-jwt --use-api
 
 # 3. Webhook Asaas (recebimento e ativação automática de pagamentos)
 # --no-verify-jwt pois o tráfego é server-to-server com autenticação timing-safe via asaas-access-token
-npx supabase functions deploy asaas-webhook --no-verify-jwt
+npx supabase functions deploy asaas-webhook --no-verify-jwt --use-api
 
 # 4. Notificações de Suporte (envio em tempo real de chamados ao Telegram)
-npx supabase functions deploy support-notify --no-verify-jwt
+npx supabase functions deploy support-notify --no-verify-jwt --use-api
+
+# 5. Cotações e Fechamento Mensal (cache global + proventos)
+npx supabase functions deploy quotes --no-verify-jwt --use-api
+
+# 6. Ciclo de Vida SaaS (reconciliação + aviso de fim de trial 48h–76h)
+npx supabase functions deploy billing-lifecycle-cron --no-verify-jwt --use-api
+
+# 7. Dispatcher Híbrido de Push Remoto (Web Push VAPID + FCM HTTP v1)
+npx supabase functions deploy push-dispatcher --no-verify-jwt --use-api
+
+# 8. Resumo Dominical Opt-In (e-mail via Resend + push remoto opcional)
+npx supabase functions deploy sunday-digest --no-verify-jwt --use-api
+
+# 9. Ações Privilegiadas de Superadmin (provisionamento e ajuste de planos)
+npx supabase functions deploy admin-super-action --no-verify-jwt --use-api
 ```
+
+> Para os passos manuais complementares pós-automação (Cloudflare Pages, Resend DNS/SMTP, `pg_cron` via `npm run notifications:cron`, Firebase FCM e validação ponta a ponta), consulte [`CONFIGURACAO_STACKS_E_PASSOS_MANUAIS.md`](./CONFIGURACAO_STACKS_E_PASSOS_MANUAIS.md).
 
 #### Blindagem e Idempotência no Webhook Asaas (`asaas-webhook`)
 1. **Autenticação Timing-Safe:** O token enviado pelo Asaas no cabeçalho `asaas-access-token` é comparado com `ASAAS_WEBHOOK_TOKEN` em tempo constante bit-a-bit (`timingSafeEqualString`), descartando requisições ilegítimas com HTTP 403 sem vazamento de timing.
@@ -434,8 +462,9 @@ npm run preflight    # auditoria automatizada de prontidão e saúde (Node, Supa
 npm run test         # vitest — testes automatizados 100% verde
 npm run build        # tsc -b && vite build (gera dist/ + Service Worker)
 npm run preview      # serve dist/ localmente (testa o build de produção)
-npm run build:apk    # compila os APKs Debug e Release (assinado) para dist-apk/
-npm run quotes:cron  # gera o script SQL preenchido para o pg_cron do Supabase
+npm run build:apk         # compila os APKs Debug e Release (assinado) para dist-apk/
+npm run quotes:cron        # gera o script SQL preenchido para o pg_cron de cotações
+npm run notifications:cron # gera o script SQL preenchido para os crons de billing e sunday-digest
 ```
 
 ---

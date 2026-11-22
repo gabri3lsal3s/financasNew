@@ -82,21 +82,25 @@ export function PermissionsAlertBanner({
           size="sm"
           variant="outline"
           onClick={onAction}
-          className="w-full sm:w-auto gap-1 text-xs font-medium cursor-pointer border-warning/40 hover:bg-warning/10 text-foreground"
+          className="w-full sm:w-auto h-8 gap-1 text-xs font-medium cursor-pointer border-warning/40 hover:bg-warning/10 text-foreground"
         >
           <span>Habilitar</span>
           <ChevronRight className="size-3.5" aria-hidden="true" />
         </Button>
 
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="absolute top-3 right-3 sm:static flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors cursor-pointer"
-          aria-label="Não ativar agora (dispensar aviso)"
-          title="Não ativar agora"
-        >
-          <X className="size-4" aria-hidden="true" />
-        </button>
+        <div className="absolute top-3 right-3 sm:static">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onDismiss}
+            className="relative size-7 sm:size-8 shrink-0 text-muted-foreground hover:bg-surface-hover hover:text-foreground cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
+            aria-label="Não ativar agora (dispensar aviso)"
+            title="Não ativar agora"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
       </div>
     </div>
   );

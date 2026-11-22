@@ -30,7 +30,7 @@ export const MONTH_NAMES_FULL_PTBR = [
 ] as const;
 
 export const DAY_OF_WEEK_LABELS_PTBR = [
-  "Toda domingo",
+  "Todo domingo",
   "Toda segunda-feira",
   "Toda terça-feira",
   "Toda quarta-feira",

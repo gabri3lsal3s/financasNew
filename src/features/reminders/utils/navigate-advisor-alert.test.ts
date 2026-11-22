@@ -80,4 +80,47 @@ describe("navigateAdvisorAlert", () => {
     expect(url).toContain("forma=credit_card");
     expect(url).toContain("cartao=card-7");
   });
+
+  it("direciona alertas familiares e metas de receita para suas páginas corretas", () => {
+    const navigate = vi.fn();
+    navigateAdvisorAlert(
+      makeInsight({
+        id: "household:ceiling_exceeded",
+        themeKey: "household:ceiling_exceeded",
+        category: "critical",
+        primaryAction: { label: "Ver gastos", kind: "navigate_family" },
+      }),
+      navigate,
+      "",
+    );
+    expect(navigate).toHaveBeenCalledWith("/familia");
+
+    navigate.mockClear();
+    navigateAdvisorAlert(
+      makeInsight({
+        id: "household:settlement_pending",
+        themeKey: "household:settlement_pending",
+        priority: 2,
+        category: "income",
+        primaryAction: { label: "Ver acerto", kind: "open_family_settlement" },
+      }),
+      navigate,
+      "",
+    );
+    expect(navigate).toHaveBeenCalledWith("/familia");
+
+    navigate.mockClear();
+    navigateAdvisorAlert(
+      makeInsight({
+        id: "income_goal:g1",
+        themeKey: "income_goal:g1",
+        priority: 2,
+        category: "income",
+        primaryAction: { label: "Ver orçamentos", kind: "open_income_goals", payload: { categoryId: "cat-sal" } },
+      }),
+      navigate,
+      "",
+    );
+    expect(navigate).toHaveBeenCalledWith("/orcamentos?tab=goals&categoria=cat-sal");
+  });
 });

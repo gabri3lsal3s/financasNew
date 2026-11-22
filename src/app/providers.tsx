@@ -9,6 +9,9 @@ import { AppErrorBoundary } from "@/components/layout/app-error-boundary";
 import { getSupabase } from "@/data/client";
 import { resetAppState } from "@/services/auth-cleanup";
 import { initAppLockListener } from "@/services/native/app-lock";
+import { clearNativeBankMonitoring } from "@/services/native/bank-listener";
+import { cancelDailyReminder, clearAllDueNotifications } from "@/services/native/local-notifications";
+import { unsubscribeBrowserWebPush } from "@/services/push/web-push";
 
 /**
  * Sincroniza o ciclo de vida do TanStack Query e das stores locais
@@ -32,10 +35,25 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
 
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
       const newUserId = session?.user?.id ?? null;
+      const previousUserId = activeUserIdRef.current;
 
       if (event === "SIGNED_OUT") {
+        void Promise.allSettled([
+          Promise.resolve(clearNativeBankMonitoring()),
+          Promise.resolve(clearAllDueNotifications(previousUserId)),
+          Promise.resolve(cancelDailyReminder()),
+          Promise.resolve(unsubscribeBrowserWebPush()),
+        ]);
         resetAppState(queryClient, null);
-      } else if (activeUserIdRef.current !== newUserId) {
+      } else if (previousUserId !== newUserId) {
+        if (previousUserId && previousUserId !== newUserId) {
+          void Promise.allSettled([
+            Promise.resolve(clearNativeBankMonitoring()),
+            Promise.resolve(clearAllDueNotifications(previousUserId)),
+            Promise.resolve(cancelDailyReminder()),
+            Promise.resolve(unsubscribeBrowserWebPush()),
+          ]);
+        }
         resetAppState(queryClient, newUserId);
         void queryClient.invalidateQueries();
       } else if (event === "SIGNED_IN") {

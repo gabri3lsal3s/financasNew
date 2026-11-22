@@ -8,6 +8,7 @@
 
 import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import { downloadTextFile } from "@/services/export-actions";
 import {
   generateMarkdownDossier,
   generateExcelProofWorkbook,
@@ -21,26 +22,16 @@ interface ForensicsArtifactsPanelProps {
 export function ForensicsArtifactsPanel({ report }: ForensicsArtifactsPanelProps) {
   const handleDownloadMarkdown = () => {
     const mdContent = generateMarkdownDossier(report);
-    const blob = new Blob([mdContent], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `dossie-forense-${report.auditId}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    void downloadTextFile(`dossie-forense-${report.auditId}.md`, mdContent, "text/markdown;charset=utf-8");
   };
 
   const handleDownloadExcel = () => {
     const excelContent = generateExcelProofWorkbook(report);
-    const blob = new Blob([excelContent], {
-      type: "application/vnd.ms-excel;charset=utf-8",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `contra-prova-forense-${report.auditId}.xls`;
-    a.click();
-    URL.revokeObjectURL(url);
+    void downloadTextFile(
+      `contra-prova-forense-${report.auditId}.xls`,
+      excelContent,
+      "application/vnd.ms-excel;charset=utf-8",
+    );
   };
 
   return (

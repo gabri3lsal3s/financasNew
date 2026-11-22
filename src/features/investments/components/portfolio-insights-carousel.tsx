@@ -173,7 +173,7 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
 
   return (
     <>
-      <DashboardAlertsCarousel items={items} className={className} />
+      <DashboardAlertsCarousel items={items} maxItems={5} className={className} />
 
       {isDetailsOpen ? (
         <PendingDividendsDialog

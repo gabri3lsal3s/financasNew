@@ -1,7 +1,8 @@
 import { ChevronLeft, ChevronRight, ShieldCheck, X } from "lucide-react";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import type { CalculationBreakdown } from "@/domain/calculation-memory/types";
 import { AdvisorCategoryIcon } from "./smart-advisor-category-icon";
 import type { SmartAdvisorPresentation } from "./smart-advisor-routing";
@@ -15,9 +16,10 @@ export interface SmartAdvisorCardHeaderProps {
   onPrev: () => void;
   onNext: () => void;
   onMarkEssential: () => void;
-  onDismiss: () => void;
+  onDismiss: (days?: 7 | 30) => void;
   hasExternalMarkEssential: boolean;
   breakdown?: CalculationBreakdown;
+  embeddedInCarousel?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export function SmartAdvisorCardHeader({
   onDismiss,
   hasExternalMarkEssential,
   breakdown,
+  embeddedInCarousel = false,
 }: SmartAdvisorCardHeaderProps) {
   return (
     <div className="flex items-center justify-between gap-3 min-w-0">
@@ -57,7 +60,7 @@ export function SmartAdvisorCardHeader({
       </div>
 
       <div className="flex items-center gap-1.5 shrink-0">
-        {totalCount > 1 ? (
+        {!embeddedInCarousel && totalCount > 1 ? (
           <div className="flex items-center rounded-md border border-border/80 bg-surface-hover/50 px-1 py-0.5">
             <Button
               variant="ghost"
@@ -88,18 +91,27 @@ export function SmartAdvisorCardHeader({
         {isTopSavingsEssential ? (
           <Button
             variant="ghost"
-            size="xs"
+            size={embeddedInCarousel ? "sm" : "xs"}
             aria-label="Manter como essencial"
             title="Manter como essencial"
             sensoryIntent={hasExternalMarkEssential ? "action" : false}
             onClick={onMarkEssential}
             disabled={isSubmitting}
-            className="relative h-7 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0 gap-1 cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
+            className={
+              embeddedInCarousel
+                ? "relative h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground shrink-0 gap-1 cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
+                : "relative h-7 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0 gap-1 cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
+            }
           >
             <ShieldCheck className="size-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">Manter como essencial</span>
             <span className="sr-only sm:hidden">Manter como essencial</span>
           </Button>
+        ) : embeddedInCarousel ? (
+          <CarouselDismissPopover
+            onDismiss={(days) => onDismiss(days)}
+            label="Dispensar sugestão"
+          />
         ) : (
           <Button
             variant="ghost"
@@ -107,7 +119,7 @@ export function SmartAdvisorCardHeader({
             aria-label="Dispensar por 30 dias"
             title="Dispensar por 30 dias"
             sensoryIntent="action"
-            onClick={onDismiss}
+            onClick={() => onDismiss()}
             className="relative h-7 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0 gap-1 cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
           >
             <X className="size-3.5" aria-hidden="true" />

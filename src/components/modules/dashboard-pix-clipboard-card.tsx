@@ -42,7 +42,8 @@ export function DashboardPixClipboardCard({
 
   return (
     <div
-      role="alert"
+      role="region"
+      aria-label="Sugestão de Pix detectado"
       className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full min-h-[72px] p-3.5 sm:p-4 rounded-2xl border border-positive/30 bg-surface shadow-xs transition-all ring-1 ring-positive/10"
     >
       <div className="flex items-center gap-3 min-w-0 pr-6 sm:pr-0">
@@ -56,7 +57,7 @@ export function DashboardPixClipboardCard({
               PIX DETECTADO
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
             <MoneyText cents={candidate.valueCents} tone="default" className="font-semibold" /> ·{" "}
             {identity.isLearned ? `Categoria: ${identity.categorySlug}` : "Toque para confirmar lançamento"}
           </p>
@@ -79,9 +80,9 @@ export function DashboardPixClipboardCard({
         <Button
           type="button"
           variant="ghost"
-          size="xs"
+          size="icon"
           onClick={onDismiss}
-          className="relative size-7 p-0 text-muted-foreground hover:text-foreground shrink-0 max-sm:after:absolute max-sm:after:-inset-2"
+          className="relative size-7 sm:size-8 p-0 text-muted-foreground hover:text-foreground shrink-0 max-sm:after:absolute max-sm:after:-inset-2"
           aria-label="Dispensar sugestão de Pix"
         >
           <X className="size-3.5" aria-hidden="true" />

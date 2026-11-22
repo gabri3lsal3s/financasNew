@@ -62,7 +62,7 @@ describe("Templates de E-mail Transacionais Axir (Fase 3 - Qualidade e Integrida
       appUrl: "https://axir.com.br",
     });
 
-    expect(res.subject).toContain("Cartao cadastrado");
+    expect(res.subject).toContain("Cartão cadastrado");
     expect(res.html).toContain("4242");
     expect(res.html).toContain("Plano Pro Mensal");
     expect(res.html).toContain("R$ 19,99");
@@ -82,7 +82,7 @@ describe("Templates de E-mail Transacionais Axir (Fase 3 - Qualidade e Integrida
       appUrl: "https://axir.com.br",
     });
 
-    expect(res.subject).toContain("Confirmacao de Pagamento");
+    expect(res.subject).toContain("Confirmação de Pagamento");
     expect(res.html).toContain("Plano Pro Anual");
     expect(res.html).toContain("R$ 143,88");
     expect(res.html).toContain("18/11/2027");
@@ -98,7 +98,7 @@ describe("Templates de E-mail Transacionais Axir (Fase 3 - Qualidade e Integrida
       updateCardUrl: "https://axir.com.br/assinatura",
     });
 
-    expect(res.subject).toContain("Nao conseguimos processar");
+    expect(res.subject).toContain("não conseguimos processar");
     expect(res.html).toContain("Ana");
     expect(res.html).toContain("https://axir.com.br/assinatura");
     expect(FORBIDDEN_EMOJI_OR_DECORATIVE_REGEX.test(res.subject)).toBe(false);
@@ -150,9 +150,10 @@ describe("Templates de E-mail Transacionais Axir (Fase 3 - Qualidade e Integrida
       reactivateUrl: "https://axir.com.br/assinatura",
     });
 
-    expect(res.subject).toContain("Seu periodo de testes no Axir terminou");
+    expect(res.subject).toContain("Seu período de testes no Axir terminou");
     expect(res.html).toContain("Somente Leitura");
-    expect(res.html).toContain("100% seguros");
+    expect(res.html).toContain("100% salvos e intactos");
+    expect(res.html).toContain("Seus dados continuam seguros");
     expect(FORBIDDEN_EMOJI_OR_DECORATIVE_REGEX.test(res.subject)).toBe(false);
     expect(FORBIDDEN_EMOJI_OR_DECORATIVE_REGEX.test(res.html)).toBe(false);
   });

@@ -1,6 +1,15 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback } from "react";
 import { useNavigate } from "react-router";
-import { Badge, Button, Modal, ModalFooter, Tabs, type TabItem } from "@/components/ui";
+import { Compass } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Button,
+  Modal,
+  ModalFooter,
+} from "@/components/ui";
 import { triggerSensory } from "@/services/sensory";
 import { isNativePlatform } from "@/services/native/platform";
 import { getTourTrackMeta, type TourTrackId } from "@/domain/demo-simulation";
@@ -8,6 +17,8 @@ import { startDemo } from "@/state/demo-mode";
 import {
   DEMO_TRACK_CATEGORIES,
   NATIVE_APK_TRACK,
+  PRIMARY_DEMO_TRACKS,
+  type TrackOptionMeta,
 } from "./demo-tracks-metadata";
 import { TrackOptionCard } from "./track-option-card";
 
@@ -16,7 +27,7 @@ export interface DemoTrackSelectModalProps {
   open: boolean;
   /** Callback acionado ao alterar a visibilidade do modal. */
   onOpenChange: (open: boolean) => void;
-  /** Aba inicialmente ativa no hub de demonstração (padrão: "finances"). */
+  /** Mantido por compatibilidade de assinatura. */
   defaultTab?: string;
   /** Callback opcional acionado quando o usuário seleciona e inicia uma trilha. */
   onSelectTrack?: (track: TourTrackId) => void;
@@ -24,18 +35,22 @@ export interface DemoTrackSelectModalProps {
   onSkipToReal?: () => void;
 }
 
+const SPECIFIC_MICRO_TRACKS: readonly TrackOptionMeta[] = [
+  ...DEMO_TRACK_CATEGORIES.flatMap((category) => category.microTracks),
+  DEMO_TRACK_CATEGORIES.find((c) => c.value === "settings")?.primaryTrack,
+].filter((item): item is TrackOptionMeta => Boolean(item));
+
 /**
- * Hub de Tours Guiados e Demonstração Interativa (DemoTrackSelectModal).
+ * Hub Simplificado de Tours Guiados e Demonstração Interativa (DemoTrackSelectModal).
+ * Destaca 3 jornadas principais e recolhe os micro-tours específicos em Accordion.
  */
 export function DemoTrackSelectModal({
   open,
   onOpenChange,
-  defaultTab,
   onSelectTrack,
   onSkipToReal,
 }: DemoTrackSelectModalProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<string>(defaultTab ?? "finances");
   const isNative = isNativePlatform();
 
   const handleSelectTrack = useCallback(
@@ -60,49 +75,8 @@ export function DemoTrackSelectModal({
     onOpenChange(false);
     if (onSkipToReal) {
       onSkipToReal();
-    } else {
-      navigate("/?novo=despesa");
     }
-  }, [navigate, onOpenChange, onSkipToReal]);
-
-  const tabItems: TabItem[] = useMemo(
-    () =>
-      DEMO_TRACK_CATEGORIES.map((category) => {
-        const CategoryIcon = category.icon;
-        return {
-          value: category.value,
-          label: category.label,
-          shortLabel: category.shortLabel,
-          icon: <CategoryIcon className={`size-4 ${category.iconClass}`} aria-hidden="true" />,
-          content: (
-            <div className="space-y-4 pt-3 pb-1">
-              <TrackOptionCard track={category.primaryTrack} onSelect={handleSelectTrack} />
-
-              {category.microTracks.length > 0 ? (
-                <div>
-                  <div className="flex items-center justify-between gap-2 mb-2.5 px-0.5">
-                    <h5 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      Micro-Tours Específicos
-                    </h5>
-                    {category.microHeaderBadge ? (
-                      <Badge variant="default" size="xs">
-                        {category.microHeaderBadge}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {category.microTracks.map((track) => (
-                      <TrackOptionCard key={track.id} track={track} onSelect={handleSelectTrack} />
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          ),
-        };
-      }),
-    [handleSelectTrack],
-  );
+  }, [onOpenChange, onSkipToReal]);
 
   return (
     <Modal
@@ -124,20 +98,39 @@ export function DemoTrackSelectModal({
         </ModalFooter>
       }
     >
-      <div className="py-1">
+      <div className="space-y-4 py-1">
         {isNative ? (
-          <div className="mb-4">
-            <TrackOptionCard track={NATIVE_APK_TRACK} onSelect={handleSelectTrack} />
-          </div>
+          <TrackOptionCard track={NATIVE_APK_TRACK} onSelect={handleSelectTrack} />
         ) : null}
 
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          variant="pills"
-          forceMount={true}
-          items={tabItems}
-        />
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2 px-0.5">
+            <Compass className="size-4 text-muted-foreground" aria-hidden="true" />
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Jornadas Guiadas Principais
+            </h4>
+          </div>
+          <div className="space-y-2.5">
+            {PRIMARY_DEMO_TRACKS.map((track) => (
+              <TrackOptionCard key={track.id} track={track} onSelect={handleSelectTrack} />
+            ))}
+          </div>
+        </div>
+
+        <Accordion type="single" collapsible>
+          <AccordionItem value="micro-tours" className="border-border/80 rounded-xl bg-surface-raised/40">
+            <AccordionTrigger className="px-3.5 py-2.5 text-xs font-semibold text-foreground">
+              Explorar por recurso específico ({SPECIFIC_MICRO_TRACKS.length} micro-tours)
+            </AccordionTrigger>
+            <AccordionContent className="px-3.5 pb-3.5 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {SPECIFIC_MICRO_TRACKS.map((track) => (
+                  <TrackOptionCard key={track.id} track={track} onSelect={handleSelectTrack} />
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
     </Modal>
   );

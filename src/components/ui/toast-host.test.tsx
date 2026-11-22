@@ -1,6 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Toaster } from "./toast";
 import { ToastHost } from "./toast-host";
 import { clearToasts, dismissToast, pushToast } from "@/services/toast";
@@ -134,6 +134,35 @@ describe("ToastHost (bus de toasts imperativos)", () => {
 
     const closeBtn = screen.getByRole("button", { name: "Fechar" });
     expect(closeBtn).toHaveClass("size-7", "rounded-full");
+  });
+
+  it("aplica duração mínima de 5000ms automaticamente quando possui ação (ex.: Desfazer)", () => {
+    vi.useFakeTimers();
+    try {
+      renderHost();
+
+      act(() => {
+        pushToast({
+          title: "Entrada confirmada",
+          variant: "success",
+          action: { label: "Desfazer", onClick: vi.fn() },
+        });
+      });
+
+      expect(screen.getByText("Entrada confirmada")).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(3500);
+      });
+      expect(screen.getByText("Entrada confirmada")).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(screen.queryByText("Entrada confirmada")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

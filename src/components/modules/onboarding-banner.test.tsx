@@ -20,21 +20,19 @@ vi.mock("@/services/sensory", () => ({
   triggerSensory: vi.fn(),
 }));
 
-vi.mock("@/state", () => ({
-  useUserPreferences: () => ({ data: null }),
-}));
-
 const empty: OnboardingCounts = {
-  expenseCategories: 0,
-  incomeCategories: 0,
+  expenseCategories: 11,
+  incomeCategories: 3,
+  cashCheckpoints: 0,
   cards: 0,
   transactions: 0,
   notificationsEnabled: false,
 };
 
 const partial: OnboardingCounts = {
-  expenseCategories: 1,
-  incomeCategories: 0,
+  expenseCategories: 11,
+  incomeCategories: 3,
+  cashCheckpoints: 1,
   cards: 0,
   transactions: 0,
   notificationsEnabled: false,
@@ -49,7 +47,7 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
     const hasFinances = (k: string) => k === "budgets" || k === "cards" || k === "transactions";
     render(<OnboardingBanner counts={empty} hasFeature={hasFinances} onDismiss={vi.fn()} />);
     expect(screen.getByText("Configure sua conta")).toBeInTheDocument();
-    expect(screen.getByText("0/4")).toBeInTheDocument();
+    expect(screen.getByText("0/3")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Continuar/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Dispensar aviso/i })).toBeInTheDocument();
   });
@@ -60,26 +58,26 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
     expect(screen.getByText("0/2")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
-    expect(screen.getByText("Cadastre seu primeiro ativo")).toBeInTheDocument();
-    expect(screen.getByText("Registre o primeiro aporte ou compra")).toBeInTheDocument();
-    expect(screen.queryByText("Crie categorias de despesa")).not.toBeInTheDocument();
-    expect(screen.queryByText("Adicione um cartão de crédito")).not.toBeInTheDocument();
+    expect(screen.getByText("Cadastrar primeiro ativo na carteira")).toBeInTheDocument();
+    expect(screen.getByText("Registrar primeiro aporte ou compra")).toBeInTheDocument();
+    expect(screen.queryByText("Informar saldo inicial")).not.toBeInTheDocument();
+    expect(screen.queryByText("Adicionar um cartão de crédito")).not.toBeInTheDocument();
   });
 
   it("progresso parcial reflete contagem correta de passos core", () => {
     const hasFinances = (k: string) => k === "budgets" || k === "cards" || k === "transactions";
     render(<OnboardingBanner counts={partial} hasFeature={hasFinances} onDismiss={vi.fn()} />);
-    expect(screen.getByText("1/4")).toBeInTheDocument();
+    expect(screen.getByText("1/3")).toBeInTheDocument();
   });
 
-  it("botão Continuar abre o modal com o checklist completo", () => {
+  it("botão Continuar abre o modal com o checklist completo sem passos redundantes de categorias", () => {
     render(<OnboardingBanner counts={empty} onDismiss={vi.fn()} />);
-    expect(screen.queryByText("Crie categorias de despesa")).not.toBeInTheDocument();
+    expect(screen.queryByText("Informar saldo inicial")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
 
-    expect(screen.getByText("Crie categorias de despesa")).toBeInTheDocument();
-    expect(screen.getByText("Ativar Leitor Automático de Notificações")).toBeInTheDocument();
+    expect(screen.getByText("Informar saldo inicial")).toBeInTheDocument();
+    expect(screen.getByText("Ativar leitor automático de notificações")).toBeInTheDocument();
   });
 
   it("botão 'Explorar com Simulação' abre o modal de seleção de trilha", () => {
@@ -91,8 +89,6 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
 
     fireEvent.click(simBtn);
     expect(screen.getByText("Escolha sua Trilha de Demonstração")).toBeInTheDocument();
-    expect(screen.getByText("Finanças Diárias & Cartões")).toBeInTheDocument();
-    expect(screen.getByText("Investimentos & Rebalanceamento")).toBeInTheDocument();
   });
 
   it("botão de dismiss chama onDismiss e não abre o modal", () => {
@@ -102,7 +98,7 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
     fireEvent.click(screen.getByRole("button", { name: /Dispensar aviso/i }));
 
     expect(dismissMock).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText("Crie categorias de despesa")).not.toBeInTheDocument();
+    expect(screen.queryByText("Informar saldo inicial")).not.toBeInTheDocument();
   });
 
   it("modal exibe a dica de contingência", () => {
@@ -119,7 +115,7 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
       ...screen.queryAllByRole("link", { name: "Configurar" }),
       ...screen.queryAllByRole("button", { name: "Configurar" }),
     ];
-    expect(configurarActions.length).toBeLessThan(4);
+    expect(configurarActions.length).toBeLessThan(3);
   });
 
   it("ativa permissões de notificação ao clicar em Configurar no passo de notificações", () => {

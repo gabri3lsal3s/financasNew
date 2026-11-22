@@ -102,6 +102,30 @@ describe("LogoIcon — Componente Gráfico Axir", () => {
     const { container } = render(<LogoIcon variant="monochrome" />);
     expect(container.firstChild).toHaveClass("grayscale");
   });
+
+  it("embute WebP inline em data URI para todas as variantes (zero latência e sem sizes quebrado)", () => {
+    const cases: Array<{ themeMode: "light" | "dark"; isPro: boolean }> = [
+      { themeMode: "light", isPro: false },
+      { themeMode: "dark", isPro: false },
+      { themeMode: "light", isPro: true },
+      { themeMode: "dark", isPro: true },
+    ];
+
+    const dataUris = new Set<string>();
+    for (const c of cases) {
+      const { container } = render(<LogoIcon themeMode={c.themeMode} isPro={c.isPro} />);
+      const source = container.querySelector("source");
+      const img = container.querySelector("img");
+      const srcSet = source?.getAttribute("srcset") ?? source?.getAttribute("srcSet") ?? "";
+      expect(srcSet.startsWith("data:image/webp;base64,")).toBe(true);
+      expect(source).not.toHaveAttribute("sizes");
+      expect(img).not.toHaveAttribute("sizes");
+      expect(img).toHaveAttribute("decoding", "sync");
+      expect(img).toHaveClass("text-transparent", "text-[0px]", "leading-none");
+      dataUris.add(srcSet);
+    }
+    expect(dataUris.size).toBe(4);
+  });
 });
 
 describe("LogoFull — Lockup Corporativo Completo", () => {
@@ -137,5 +161,16 @@ describe("LogoFull — Lockup Corporativo Completo", () => {
   it("não renderiza o micro-badge 'PRO' quando isPro={false}", () => {
     render(<LogoFull isPro={false} />);
     expect(screen.queryByText("PRO")).toBeNull();
+  });
+
+  it("repassa priority (fetchpriority='high') em BrandLogo e LogoFull", () => {
+    const { container: brandOnly } = render(<BrandLogo priority />);
+    expect(brandOnly.querySelector("img")).toHaveAttribute("fetchpriority", "high");
+
+    const { container: brandFull } = render(<BrandLogo showWordmark priority />);
+    expect(brandFull.querySelector("img")).toHaveAttribute("fetchpriority", "high");
+
+    const { container: fullDirect } = render(<LogoFull priority />);
+    expect(fullDirect.querySelector("img")).toHaveAttribute("fetchpriority", "high");
   });
 });

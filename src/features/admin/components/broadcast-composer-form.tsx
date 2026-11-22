@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { ExternalLink, Megaphone, Radio, Send } from "lucide-react";
-import { Badge, Button, FormField, Input, Select, Textarea } from "@/components/ui";
+import { AlertTriangle, ExternalLink, Info, Megaphone, Radio, Send, Sparkles, Terminal } from "lucide-react";
+import { Badge, Button, ConfirmDialog, FormField, Input, Select, Textarea } from "@/components/ui";
+import { cn } from "@/lib/utils";
 import type { BroadcastAudience, BroadcastType } from "@/types";
 
 const BROADCAST_TYPES: { value: BroadcastType; label: string }[] = [
@@ -18,6 +19,88 @@ const AUDIENCE_OPTIONS: { value: BroadcastAudience; label: string }[] = [
   { value: "free", label: "Apenas Usuários Free / Em Teste" },
 ];
 
+type ExpirationPreset = "none" | "7d" | "14d" | "30d";
+
+const EXPIRATION_OPTIONS: { value: ExpirationPreset; label: string }[] = [
+  { value: "none", label: "Sem expiração" },
+  { value: "7d", label: "Expira em 7 dias" },
+  { value: "14d", label: "Expira em 14 dias" },
+  { value: "30d", label: "Expira em 30 dias" },
+];
+
+const PREVIEW_STYLE_BY_TYPE: Record<
+  BroadcastType,
+  {
+    container: string;
+    iconTone: string;
+    badgeVariant: "default" | "warning" | "critical" | "portfolio" | "muted";
+    badgeLabel: string;
+    Icon: typeof Megaphone;
+  }
+> = {
+  info: {
+    container: "border-primary/20 bg-primary/5",
+    iconTone: "text-primary-strong",
+    badgeVariant: "default",
+    badgeLabel: "Comunicado",
+    Icon: Info,
+  },
+  system: {
+    container: "border-border/80 bg-surface-hover/40",
+    iconTone: "text-muted-foreground",
+    badgeVariant: "muted",
+    badgeLabel: "Sistema",
+    Icon: Terminal,
+  },
+  warning: {
+    container: "border-warning/30 bg-warning/10",
+    iconTone: "text-warning-strong",
+    badgeVariant: "warning",
+    badgeLabel: "Atenção",
+    Icon: AlertTriangle,
+  },
+  critical: {
+    container: "border-critical/30 bg-critical/10",
+    iconTone: "text-critical-strong",
+    badgeVariant: "critical",
+    badgeLabel: "Urgente",
+    Icon: AlertTriangle,
+  },
+  promotion: {
+    container: "border-portfolio/30 bg-portfolio/10",
+    iconTone: "text-portfolio",
+    badgeVariant: "portfolio",
+    badgeLabel: "Novidade",
+    Icon: Sparkles,
+  },
+};
+
+function resolveExpiresAtIso(preset: ExpirationPreset): string | null {
+  if (preset === "none") return null;
+  const days = preset === "7d" ? 7 : preset === "14d" ? 14 : 30;
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function validateActionUrl(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("/")) {
+    if (trimmed.startsWith("//")) {
+      return "Caminhos relativos não podem começar com '//'.";
+    }
+    return null;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "https:") {
+      return "Use um caminho interno (ex: /configuracoes) ou uma URL HTTPS.";
+    }
+    return null;
+  } catch {
+    return "Informe um caminho interno começando com '/' ou uma URL HTTPS válida.";
+  }
+}
+
 export interface BroadcastComposerFormProps {
   isPending: boolean;
   onSubmit: (payload: {
@@ -26,6 +109,7 @@ export interface BroadcastComposerFormProps {
     type: BroadcastType;
     actionUrl: string | null;
     targetAudience: BroadcastAudience;
+    expiresAt: string | null;
   }) => Promise<void>;
 }
 
@@ -37,21 +121,51 @@ export function BroadcastComposerForm({ isPending, onSubmit }: BroadcastComposer
   const [message, setMessage] = useState("");
   const [type, setType] = useState<BroadcastType>("info");
   const [actionUrl, setActionUrl] = useState("");
+  const [actionUrlError, setActionUrlError] = useState<string | null>(null);
   const [targetAudience, setTargetAudience] = useState<BroadcastAudience>("all");
+  const [expirationPreset, setExpirationPreset] = useState<ExpirationPreset>("none");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const previewMeta = PREVIEW_STYLE_BY_TYPE[type];
+  const PreviewIcon = previewMeta.Icon;
+  const selectedTypeLabel = BROADCAST_TYPES.find((t) => t.value === type)?.label ?? type;
+  const selectedAudienceLabel =
+    AUDIENCE_OPTIONS.find((a) => a.value === targetAudience)?.label ?? targetAudience;
+  const selectedExpirationLabel =
+    EXPIRATION_OPTIONS.find((e) => e.value === expirationPreset)?.label ?? "Sem expiração";
+
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !message.trim()) return;
-    await onSubmit({
-      title: title.trim(),
-      message: message.trim(),
-      type,
-      actionUrl: actionUrl.trim() || null,
-      targetAudience,
-    });
-    setTitle("");
-    setMessage("");
-    setActionUrl("");
+    const urlValidationError = validateActionUrl(actionUrl);
+    if (urlValidationError) {
+      setActionUrlError(urlValidationError);
+      return;
+    }
+    setActionUrlError(null);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmSend = async () => {
+    try {
+      await onSubmit({
+        title: title.trim(),
+        message: message.trim(),
+        type,
+        actionUrl: actionUrl.trim() || null,
+        targetAudience,
+        expiresAt: resolveExpiresAtIso(expirationPreset),
+      });
+      setConfirmOpen(false);
+      setTitle("");
+      setMessage("");
+      setActionUrl("");
+      setActionUrlError(null);
+      setExpirationPreset("none");
+    } catch {
+      // Erro já notificado via toast pela mutation; preserva os campos preenchidos
+      setConfirmOpen(false);
+    }
   };
 
   return (
@@ -59,7 +173,7 @@ export function BroadcastComposerForm({ isPending, onSubmit }: BroadcastComposer
       <div className="lg:col-span-7 flex flex-col gap-4">
         <div className="rounded-xl border border-border/80 bg-surface p-5 shadow-xs flex flex-col gap-4">
           <div className="flex items-center gap-2">
-            <Megaphone className="size-4 text-primary-strong" aria-hidden="true" />
+            <Megaphone className="size-4 text-muted-foreground" aria-hidden="true" />
             <h2 className="text-sm font-bold text-foreground">Compor Novo Comunicado</h2>
           </div>
 
@@ -107,14 +221,34 @@ export function BroadcastComposerForm({ isPending, onSubmit }: BroadcastComposer
               </FormField>
             </div>
 
-            <FormField label="Link de Ação Rápida" htmlFor="broadcast-action" optional>
-              <Input
-                id="broadcast-action"
-                value={actionUrl}
-                onChange={(e) => setActionUrl(e.target.value)}
-                placeholder="Ex: /ferramentas ou /configuracoes"
-              />
-            </FormField>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <FormField label="Expiração" htmlFor="broadcast-expiration">
+                <Select
+                  id="broadcast-expiration"
+                  ariaLabel="Expiração do comunicado"
+                  value={expirationPreset}
+                  onValueChange={(val) => setExpirationPreset(val as ExpirationPreset)}
+                  options={EXPIRATION_OPTIONS}
+                />
+              </FormField>
+
+              <FormField
+                label="Link de Ação Rápida"
+                htmlFor="broadcast-action"
+                optional
+                error={actionUrlError ?? undefined}
+              >
+                <Input
+                  id="broadcast-action"
+                  value={actionUrl}
+                  onChange={(e) => {
+                    setActionUrl(e.target.value);
+                    if (actionUrlError) setActionUrlError(null);
+                  }}
+                  placeholder="Ex: /ferramentas ou https://..."
+                />
+              </FormField>
+            </div>
 
             <Button
               type="submit"
@@ -139,18 +273,18 @@ export function BroadcastComposerForm({ isPending, onSubmit }: BroadcastComposer
             </h3>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Como a mensagem aparecerá no popover de notificações dos clientes:
+            Como a mensagem aparecerá no popover de notificações ({selectedAudienceLabel}):
           </p>
 
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 flex items-start gap-3 mt-1">
-            <Megaphone className="size-4 text-primary-strong shrink-0 mt-0.5" aria-hidden="true" />
+          <div className={cn("rounded-xl border p-3.5 flex items-start gap-3 mt-1", previewMeta.container)}>
+            <PreviewIcon className={cn("size-4 shrink-0 mt-0.5", previewMeta.iconTone)} aria-hidden="true" />
             <div className="flex-1 min-w-0 space-y-1">
               <div className="flex items-center justify-between gap-1">
                 <span className="text-xs font-semibold text-foreground truncate">
                   {title.trim() || "Título do Comunicado"}
                 </span>
-                <Badge variant="default" size="xs">
-                  Comunicado
+                <Badge variant={previewMeta.badgeVariant} size="xs">
+                  {previewMeta.badgeLabel}
                 </Badge>
               </div>
               <p className="text-[11px] text-muted-foreground line-clamp-3 leading-relaxed">
@@ -163,10 +297,42 @@ export function BroadcastComposerForm({ isPending, onSubmit }: BroadcastComposer
                   <span className="truncate">{actionUrl.trim()}</span>
                 </div>
               )}
+              {expirationPreset !== "none" ? (
+                <p className="text-[10px] text-muted-foreground pt-0.5">{selectedExpirationLabel}</p>
+              ) : null}
             </div>
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Confirmar disparo de comunicado"
+        description="Este comunicado será exibido na Central de Notificações dos clientes selecionados."
+        confirmLabel={isPending ? "Disparando…" : "Confirmar envio"}
+        confirmPending={isPending}
+        onConfirm={() => void handleConfirmSend()}
+      >
+        <div className="rounded-xl border border-border/80 bg-surface-hover/40 p-3 text-xs space-y-1.5">
+          <div>
+            <span className="font-semibold text-foreground">Título:</span>{" "}
+            <span className="text-muted-foreground">{title.trim()}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-foreground">Categoria:</span>{" "}
+            <span className="text-muted-foreground">{selectedTypeLabel}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-foreground">Público:</span>{" "}
+            <span className="text-muted-foreground">{selectedAudienceLabel}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-foreground">Validade:</span>{" "}
+            <span className="text-muted-foreground">{selectedExpirationLabel}</span>
+          </div>
+        </div>
+      </ConfirmDialog>
     </div>
   );
 }

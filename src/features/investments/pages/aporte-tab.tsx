@@ -133,7 +133,7 @@ export function AporteTab({
         />
       ) : simulation.nonCashRows.length === 0 ? (
         <EmptyState
-          icon={<Calculator className="size-6" />}
+          icon={<Calculator className="size-6" aria-hidden="true" />}
           title="Nenhum ativo investido para simular aporte"
           description="Cadastre ativos e defina suas metas na aba de Metas para que o motor distribua seu aporte de forma ideal."
           action={

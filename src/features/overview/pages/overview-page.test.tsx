@@ -27,12 +27,14 @@ vi.mock("react-router", () => ({
 }));
 
 const navigateMock = vi.fn();
+const startDemoMock = vi.fn();
 let mockAppMode = "investor";
 let portfolioContributionsMock: { id: string; asset_id: string | null; date: string; amount: number; notes: string | null }[] = [];
 let publicSharesMock: unknown[] = [];
 let onboardingCountsMock = {
   expenseCategories: 2,
   incomeCategories: 1,
+  cashCheckpoints: 1,
   cards: 1,
   transactions: 3,
   notificationsEnabled: true,
@@ -282,7 +284,7 @@ vi.mock("@/state", () => ({
     }
   },
   useDemoSession: () => ({ isDemoActive: false, activeTrack: null, currentStepIndex: 0 }),
-  startDemo: vi.fn(),
+  startDemo: (...args: unknown[]) => startDemoMock(...args),
   endDemo: vi.fn(),
   useMyPublicShares: (kind?: string) => ({
     data: kind === "goal_tracker" ? publicSharesMock : kind === "split" ? splitSharesMock : [],
@@ -292,6 +294,7 @@ vi.mock("@/state", () => ({
   }),
   useSaveSplitExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSignalSplitPayment: () => ({ mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false }),
+  useApplySplitSettlement: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSaveSimulationToAccount: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdatePublicShare: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useUpdateExpense: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
@@ -318,6 +321,7 @@ vi.mock("@/state", () => ({
     reason: null,
   }),
   useUserAccess: () => ({
+    profile: { name: "Gabriel Sales" },
     isFullAccess: true,
     isTrial: false,
     isReadOnly: false,
@@ -335,7 +339,10 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     resetVisualCustomization(null);
     localStorage.setItem(WELCOME_MODAL_STORAGE_KEY, "true");
     localStorage.setItem("financas:welcome_modal_seen", "true");
+    localStorage.removeItem("financas:onboarding_dismissed");
+    localStorage.removeItem("financas:initial_onboarding_goal");
     navigateMock.mockReset();
+    startDemoMock.mockReset();
     mockAppMode = "investor";
     expenseCategories = [...defaultExpenseCategories];
     portfolioContributionsMock = [];
@@ -346,6 +353,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     onboardingCountsMock = {
       expenseCategories: 2,
       incomeCategories: 1,
+      cashCheckpoints: 1,
       cards: 1,
       transactions: 3,
       notificationsEnabled: true,
@@ -676,7 +684,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
     // Déficit bruto: 50 - 160 = -110 (R$ 110,00)
     // Se fosse ponderado: 50 - (100 - 40) = -10 (R$ 10,00)
-    expect(screen.getByText("Radar de Descasamento de Fluxo")).toBeInTheDocument();
+    expect(screen.getByText("Fluxo de caixa apertado")).toBeInTheDocument();
     expect(screen.getByText("R$ 110,00")).toBeInTheDocument();
   });
 
@@ -807,34 +815,56 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(navigateMock).toHaveBeenCalledWith("/investments?tab=aporte&valor=150000");
   });
 
-  it("renderiza OnboardingBanner na Home quando checklist estiver incompleto e abre modal ao clicar Continuar", async () => {
+  it("exibe o card de primeiros passos no Carrossel da Home (Fase 2) após a 1ª ação real e abre checklist ao clicar Continuar", async () => {
     const user = userEvent.setup();
     onboardingCountsMock = {
-      expenseCategories: 1,
-      incomeCategories: 0,
+      expenseCategories: 11,
+      incomeCategories: 3,
+      cashCheckpoints: 1,
       cards: 0,
       transactions: 0,
       notificationsEnabled: false,
     };
     render(<OverviewPage />);
-    expect(screen.getByText("Configure sua conta")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Continuar/i })).toBeInTheDocument();
+    expect(screen.getAllByText("Primeiros passos no Axir").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1/3 concluídos").length).toBeGreaterThan(0);
+    const continueBtn = screen.getAllByRole("button", { name: /Continuar/i })[0]!;
+    expect(continueBtn).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: /Continuar/i }));
-    expect(screen.getByText("Ativar Leitor Automático de Notificações")).toBeInTheDocument();
+    await user.click(continueBtn);
+    expect(screen.getByText("Ativar leitor automático de notificações")).toBeInTheDocument();
     expect(screen.getByText("Comprovantes e Cupons Fiscais")).toBeInTheDocument();
   });
 
-  it("não renderiza OnboardingBanner quando o usuário já for ativo (smart dismiss)", () => {
+  it("permite dispensar o card do carrossel na Fase 2 com 1 clique", async () => {
+    const user = userEvent.setup();
     onboardingCountsMock = {
-      expenseCategories: 1,
-      incomeCategories: 0,
-      cards: 1,
+      expenseCategories: 11,
+      incomeCategories: 3,
+      cashCheckpoints: 1,
+      cards: 0,
       transactions: 0,
       notificationsEnabled: false,
     };
     render(<OverviewPage />);
-    expect(screen.queryByText("Configure sua conta")).not.toBeInTheDocument();
+    const dismissBtn = screen.getAllByRole("button", {
+      name: /Dispensar guia de primeiros passos/i,
+    })[0]!;
+    await user.click(dismissBtn);
+    expect(screen.queryByText("Primeiros passos no Axir")).not.toBeInTheDocument();
+  });
+
+  it("não renderiza o card de primeiros passos quando os 3 passos essenciais estiverem concluídos", () => {
+    onboardingCountsMock = {
+      expenseCategories: 11,
+      incomeCategories: 3,
+      cashCheckpoints: 1,
+      cards: 1,
+      transactions: 1,
+      notificationsEnabled: false,
+    };
+    render(<OverviewPage />);
+    expect(screen.queryByText("Primeiros passos no Axir")).not.toBeInTheDocument();
   });
 
   it("não colide com WelcomeFeatureModal na Home Web (regra M10)", () => {
@@ -843,75 +873,70 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.queryByText("A Mágica da Captura Sem Fricção")).not.toBeInTheDocument();
   });
 
-  describe("Gatilho do WelcomeModal e Tour Demonstrativo (§4.1)", () => {
-    it("dispara WelcomeModal automaticamente quando a conta for virgem e o acolhimento não tiver sido visto", () => {
+  describe("Onboarding 100% Inline (Fase 1) & Tour Express", () => {
+    it("em conta virgem renderiza assistente inline sem abrir WelcomeModal bloqueante", () => {
       onboardingCountsMock = {
-        expenseCategories: 0,
-        incomeCategories: 0,
+        expenseCategories: 11,
+        incomeCategories: 3,
+        cashCheckpoints: 0,
         cards: 0,
         transactions: 0,
         notificationsEnabled: false,
       };
       localStorage.removeItem("financas:welcome_modal_seen");
-
-      render(<OverviewPage />);
-
-      expect(
-        screen.getByText("Boas-vindas ao seu novo centro financeiro"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Explorar Sozinho" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: /Personalizar Meu Início/i }),
-      ).toBeInTheDocument();
-    });
-
-    it("ao avançar pelo WelcomeModal e clicar em 'Fazer Tour Rápido', fecha o acolhimento e abre o DemoTrackSelectModal", () => {
-      onboardingCountsMock = {
-        expenseCategories: 0,
-        incomeCategories: 0,
-        cards: 0,
-        transactions: 0,
-        notificationsEnabled: false,
-      };
-      localStorage.removeItem("financas:welcome_modal_seen");
-
-      render(<OverviewPage />);
-
-      // Passo 1 -> Passo 2 -> Passo 3
-      fireEvent.click(screen.getByRole("button", { name: /Personalizar Meu Início/i }));
-      fireEvent.click(screen.getByRole("button", { name: /Continuar/i }));
-
-      const tourBtn = screen.getByRole("button", { name: /Fazer Tour Rápido \(1 min\)/i });
-      fireEvent.click(tourBtn);
-
-      expect(
-        screen.getByText("Escolha sua Trilha de Demonstração"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Finanças Diárias & Cartões"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Investimentos & Rebalanceamento"),
-      ).toBeInTheDocument();
-    });
-
-    it("não dispara WelcomeModal se o usuário já tiver visto anteriormente", () => {
-      onboardingCountsMock = {
-        expenseCategories: 0,
-        incomeCategories: 0,
-        cards: 0,
-        transactions: 0,
-        notificationsEnabled: false,
-      };
-      localStorage.setItem("financas:welcome_modal_seen", "true");
 
       render(<OverviewPage />);
 
       expect(
         screen.queryByText("Boas-vindas ao seu novo centro financeiro"),
       ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/Olá, Gabriel — bem-vindo ao seu centro financeiro/i),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Explorar sozinho" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Fazer Tour Rápido \(1 min\)/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("permite dispensar o assistente inline para explorar o dashboard imediatamente", async () => {
+      const user = userEvent.setup();
+      onboardingCountsMock = {
+        expenseCategories: 11,
+        incomeCategories: 3,
+        cashCheckpoints: 0,
+        cards: 0,
+        transactions: 0,
+        notificationsEnabled: false,
+      };
+
+      render(<OverviewPage />);
+      await user.click(screen.getByRole("button", { name: "Explorar sozinho" }));
+
+      expect(
+        screen.queryByText(/Olá, Gabriel — bem-vindo ao seu centro financeiro/i),
+      ).not.toBeInTheDocument();
+      expect(screen.getAllByText("Receitas").length).toBeGreaterThan(0);
+    });
+
+    it("inicia o tour expresso diretamente no foco escolhido ao clicar em 'Fazer Tour Rápido (1 min)'", () => {
+      onboardingCountsMock = {
+        expenseCategories: 11,
+        incomeCategories: 3,
+        cashCheckpoints: 0,
+        cards: 0,
+        transactions: 0,
+        notificationsEnabled: false,
+      };
+
+      render(<OverviewPage />);
+      fireEvent.click(screen.getByRole("button", { name: /Investimentos & Metas/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Fazer Tour Rápido \(1 min\)/i }));
+
+      expect(startDemoMock).toHaveBeenCalledWith("investments");
+      expect(navigateMock).toHaveBeenCalledWith("/investments");
     });
   });
 
@@ -1020,14 +1045,14 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       render(<OverviewPage />);
 
       // Ambas as metas estão organizadas nos slides do carrossel
-      expect(screen.getByText("Reta Final: Viagem Europa")).toBeInTheDocument();
-      expect(screen.getByText("Reta Final: Carro Novo")).toBeInTheDocument();
+      expect(screen.getAllByText("Reta Final: Viagem Europa").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Reta Final: Carro Novo").length).toBeGreaterThanOrEqual(1);
 
       // Clica em dispensar Viagem Europa
-      const dismissBtn = screen.getByRole("button", {
+      const dismissBtn = screen.getAllByRole("button", {
         name: /Dispensar alerta da meta Viagem Europa/i,
         hidden: true,
-      });
+      })[0]!;
       fireEvent.click(dismissBtn);
 
       const dismissOption = screen.getByRole("button", { name: "Dispensar por 7 dias" });
@@ -1035,7 +1060,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
       // Viagem Europa é removida do carrossel, mantendo Carro Novo
       expect(screen.queryByText("Reta Final: Viagem Europa")).not.toBeInTheDocument();
-      expect(screen.getByText("Reta Final: Carro Novo")).toBeInTheDocument();
+      expect(screen.getAllByText("Reta Final: Carro Novo").length).toBeGreaterThanOrEqual(1);
     });
 
     it("responde ao real estado da meta: exibe percentual real e não Meta Conquistada se saldo < alvo", () => {
@@ -1103,6 +1128,76 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       debtsLoadingMock = false;
       rerender(<OverviewPage />);
       expect(screen.queryByText("Despesas a Rachar e Receber")).not.toBeInTheDocument();
+    });
+
+    it("suprime SplitPendingBanner do carrossel quando há sinalização Pix pendente em PendingSplitSignalsCard", () => {
+      splitSharesMock = [
+        {
+          id: "split-sig-1",
+          user_id: "user-1",
+          kind: "split",
+          resource_type: "split",
+          resource_id: "exp-sig-1",
+          permission: "view",
+          token: "tok-split-sig-1",
+          expires_at: null,
+          created_at: "2026-08-10T00:00:00Z",
+          updated_at: "2026-08-14T12:00:00Z",
+          is_revoked: false,
+          revoked_at: null,
+          access_count: 0,
+          last_accessed_at: null,
+          payload: {
+            title: "Churrasco",
+            debt_id: "d1",
+            people_count: 2,
+            guest_share_cents: 5000,
+            host_share_cents: 5000,
+            total_cents: 10000,
+            date: "2026-08-10",
+            participants: [
+              { id: "p1", name: "Carlos", share_cents: 5000, is_host: false, settled_at: null },
+            ],
+            remainder_policy: "host",
+            host_name: "Gabriel",
+            host_city: "SP",
+            pix_key: "123",
+            pix_key_type: "cpf",
+            pix_br_code: "000201",
+            payment_signals: [
+              {
+                id: "sig-1",
+                participant_name: "Carlos",
+                amount_cents: 5000,
+                status: "pending",
+                created_at: "2026-08-14T12:00:00Z",
+              },
+            ],
+          },
+        },
+      ];
+
+      render(<OverviewPage />);
+
+      expect(screen.getByText("Pagamento de Racha Sinalizado")).toBeInTheDocument();
+      expect(screen.queryByText("Despesas a Rachar e Receber")).not.toBeInTheDocument();
+    });
+
+    it("integra o SmartAdvisor dentro do carrossel único sem renderizar um segundo bloco separado", () => {
+      // Conta vencida hoje ou superávit + sem duplicação em bloco standalone
+      render(<OverviewPage />);
+
+      const advisorRegions = screen.queryAllByRole("region", {
+        name: /Assistente Proativo de Insights/i,
+      });
+      const carousel = screen.queryByRole("region", {
+        name: /Alertas e avisos contextuais/i,
+      });
+
+      expect(advisorRegions.length).toBeLessThanOrEqual(1);
+      if (advisorRegions.length === 1 && carousel) {
+        expect(carousel.contains(advisorRegions[0]!)).toBe(true);
+      }
     });
   });
 });

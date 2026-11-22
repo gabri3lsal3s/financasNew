@@ -64,6 +64,7 @@ export function LaunchWizardModals({
             if (!nextOpen) {
               onClearCreatedSplit();
               void queryClient.invalidateQueries({ queryKey: ["my-public-shares"] });
+              void queryClient.invalidateQueries({ queryKey: ["public-share"] });
               void queryClient.invalidateQueries({ queryKey: ["public-shares"] });
               void queryClient.invalidateQueries({ queryKey: ["debts"] });
               void queryClient.invalidateQueries({ queryKey: ["expenses"] });
@@ -82,6 +83,7 @@ export function LaunchWizardModals({
             installments_total: createdSplitExpense.installmentsCount ?? undefined,
           }}
           initialInstallmentsCount={createdSplitExpense.installmentsCount}
+          initialInstallmentsMode={createdSplitExpense.installmentsMode}
           categoryName={createdSplitExpense.categoryName}
           categoryIcon={createdSplitExpense.categoryIcon}
           initialAmountCents={Math.round(createdSplitExpense.value * 100)}

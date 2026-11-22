@@ -1,6 +1,18 @@
 import { Capacitor } from "@capacitor/core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { getPlatform, getActivePlatform, isAndroidNative, isIOSDevice, isIOSNative, isMobileDevice, isNativePlatform, isStandaloneDisplay, isWebPlatform } from "./platform";
+import {
+  getPlatform,
+  getActivePlatform,
+  hasNativeBrowserBackToTop,
+  isAndroidNative,
+  isIOSDevice,
+  isIOSNative,
+  isMobileDevice,
+  isNativePlatform,
+  isSamsungInternetBrowser,
+  isStandaloneDisplay,
+  isWebPlatform,
+} from "./platform";
 
 describe("Gateway Nativo — platform", () => {
   beforeEach(() => {
@@ -108,6 +120,75 @@ describe("Gateway Nativo — platform", () => {
     }));
 
     expect(isStandaloneDisplay()).toBe(true);
+  });
+
+  it("detecta isSamsungInternetBrowser apenas quando o userAgent contém SamsungBrowser", () => {
+    const originalUa = navigator.userAgent;
+
+    try {
+      Object.defineProperty(navigator, "userAgent", {
+        value:
+          "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36",
+        configurable: true,
+      });
+      expect(isSamsungInternetBrowser()).toBe(true);
+
+      Object.defineProperty(navigator, "userAgent", {
+        value:
+          "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36",
+        configurable: true,
+      });
+      expect(isSamsungInternetBrowser()).toBe(false);
+    } finally {
+      Object.defineProperty(navigator, "userAgent", {
+        value: originalUa,
+        configurable: true,
+      });
+    }
+  });
+
+  it("hasNativeBrowserBackToTop retorna true apenas no Samsung Internet fora de standalone e fora do app nativo", () => {
+    const originalUa = navigator.userAgent;
+    const samsungUa =
+      "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/25.0 Chrome/121.0.0.0 Mobile Safari/537.36";
+    const chromeUa =
+      "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Mobile Safari/537.36";
+
+    try {
+      // 1. Samsung Internet em navegador comum (não standalone, não nativo) -> true
+      Object.defineProperty(navigator, "userAgent", { value: samsungUa, configurable: true });
+      vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(false);
+      vi.spyOn(window, "matchMedia").mockReturnValue({ matches: false } as MediaQueryList);
+      expect(hasNativeBrowserBackToTop()).toBe(true);
+
+      // 2. Samsung Internet rodando como PWA standalone -> false
+      vi.spyOn(window, "matchMedia").mockImplementation((query) => ({
+        matches: query === "(display-mode: standalone)",
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+      expect(hasNativeBrowserBackToTop()).toBe(false);
+
+      // 3. Plataforma nativa Capacitor -> false
+      vi.spyOn(window, "matchMedia").mockReturnValue({ matches: false } as MediaQueryList);
+      vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+      expect(hasNativeBrowserBackToTop()).toBe(false);
+
+      // 4. Chrome Android / outros navegadores -> false
+      vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(false);
+      Object.defineProperty(navigator, "userAgent", { value: chromeUa, configurable: true });
+      expect(hasNativeBrowserBackToTop()).toBe(false);
+    } finally {
+      Object.defineProperty(navigator, "userAgent", {
+        value: originalUa,
+        configurable: true,
+      });
+    }
   });
 });
 

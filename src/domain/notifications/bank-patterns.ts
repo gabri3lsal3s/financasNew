@@ -2,58 +2,18 @@
  * Padrões semânticos, dicionários e listas estáticas para o motor de parsing bancário.
  * Extraído de bank-parser.ts para modularização e manutenibilidade.
  */
+import { HOMOLOGATED_INSTITUTIONS } from "./preferences";
 
-export const BANK_PACKAGE_MAP: Record<string, string> = {
-  // Principais fintechs e bancos digitais
-  "com.nu.production": "Nubank",
-  "br.com.intermedium": "Inter",
-  "com.c6bank.app": "C6 Bank",
-  "com.mercadopago.wallet": "Mercado Pago",
-  "com.picpay": "PicPay",
-  "br.com.uol.ps.myaccount": "PagBank",
-  "br.com.uol.ps": "PagBank",
-  "br.com.neon": "Neon",
-  "br.com.bradesco.next": "Next",
-  "com.btg.pactual.banking": "BTG Pactual",
-  "com.btgpactual.investimentos": "BTG Investimentos",
-  "br.com.btg.pactual.digital": "BTG Investimentos",
-  "br.com.xp.carteira": "XP Investimentos",
-  "com.xpinc.investments": "XP Investimentos",
-  "br.com.xp.investimentos": "XP Investimentos",
-  "br.com.rico": "Rico",
-  "br.com.rico.investimentos": "Rico",
-  "br.com.rico.rico": "Rico",
-  "com.binance.dev": "Binance",
-  "com.nomadfinancial.app": "Nomad",
-  "com.nomadglobal.app": "Nomad",
-  "com.transferwise.android": "Wise",
-  "us.avenue.app": "Avenue",
-  "br.com.sofisa.direto": "Sofisa Direto",
-  "br.com.bancopan.app": "Banco Pan",
-  "br.com.bv.banco": "Banco BV",
-  "com.cora.app": "Cora",
-  "br.com.intermedium.pj": "Inter Empresas",
-  "com.c6bank.empresa": "C6 Empresas",
-  "com.btgpactual.empresas": "BTG Empresas",
-  "br.com.uol.ps.seller": "PagBank Vendedor",
-
-  // Grandes bancos tradicionais
-  "com.itau": "Itaú",
+const PACKAGE_BANK_NAME_OVERRIDES: Record<string, string> = {
   "com.itau.personnalite": "Itaú Personnalité",
-  "com.bradesco": "Bradesco",
-  "com.bradesco.cartoes": "Bradesco",
-  "com.santander.app": "Santander",
-  "br.com.santander.way": "Santander",
   "br.gov.caixa.tem": "Caixa Tem",
-  "br.com.gabba.Caixa": "Caixa",
-  "br.com.bb.android": "Banco do Brasil",
-
-  // Carteiras digitais
-  "com.google.android.apps.walletnfcrel": "Carteira Google",
-  "com.samsung.android.spay": "Samsung Pay",
-  "com.samsung.android.raja.spay": "Samsung Pay",
-  "com.samsung.android.app.spay": "Samsung Pay",
 };
+
+export const BANK_PACKAGE_MAP: Record<string, string> = Object.fromEntries(
+  HOMOLOGATED_INSTITUTIONS.flatMap((inst) =>
+    inst.packages.map((pkg) => [pkg, PACKAGE_BANK_NAME_OVERRIDES[pkg] ?? inst.name]),
+  ),
+);
 
 /**
  * Expressões da Blacklist Semântica para descarte imediato de notificações

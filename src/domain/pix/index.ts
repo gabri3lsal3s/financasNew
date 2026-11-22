@@ -22,6 +22,13 @@ export {
 } from "./build-pix-transfer-code";
 
 export {
+  isValidBrazilianPhoneDigits,
+  isValidCNPJ,
+  validateAndClassifyPixKey,
+  type PixKeyValidationResult,
+} from "./pix-key-validation";
+
+export {
   drawQrCodeToCanvas,
   drawQrMatrixToCanvas,
   generateQrCodeMatrix,

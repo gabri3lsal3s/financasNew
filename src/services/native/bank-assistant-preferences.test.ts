@@ -56,18 +56,18 @@ describe("Native Service — BankAssistantPreferences", () => {
   it("integra de forma reativa com o hook useBankAssistantPreferences", () => {
     const { result } = renderHook(() => useBankAssistantPreferences());
 
-    expect(result.current.preferences.passiveCaptureEnabled).toBe(true);
+    expect(result.current.preferences.passiveCaptureEnabled).toBe(false);
 
     act(() => {
-      result.current.updatePreferences({ passiveCaptureEnabled: false });
+      result.current.updatePreferences({ passiveCaptureEnabled: true });
     });
 
-    expect(result.current.preferences.passiveCaptureEnabled).toBe(false);
+    expect(result.current.preferences.passiveCaptureEnabled).toBe(true);
 
     act(() => {
       result.current.resetPreferences();
     });
 
-    expect(result.current.preferences.passiveCaptureEnabled).toBe(true);
+    expect(result.current.preferences.passiveCaptureEnabled).toBe(false);
   });
 });

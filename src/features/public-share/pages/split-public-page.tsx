@@ -20,13 +20,27 @@ export function SplitPublicPage() {
   const navigate = useNavigate();
   const state = usePublicSplitPage(token, rawToken);
 
+  const isPaused = Boolean(state.payload?.public_page_paused);
   const isUnavailable =
     Boolean(state.error) ||
     !state.share ||
     state.share.is_revoked ||
     state.share.kind !== "split" ||
     !state.payload ||
-    Boolean(state.payload.is_completed);
+    Boolean(state.payload.is_completed) ||
+    isPaused;
+
+  const hasSignaledCurrent = Boolean(
+    state.isPayAllRemaining
+      ? state.participantInstallments
+          .filter((i) => !i.is_settled)
+          .some((i) => state.justSignaledInstallmentIds.has(i.id) || i.signal_status === "pending_confirmation")
+      : (state.selectedInstallment?.id &&
+          state.justSignaledInstallmentIds.has(state.selectedInstallment.id)) ||
+          state.selectedInstallment?.signal_status === "pending_confirmation" ||
+          (!state.participantInstallments.length &&
+            state.currentParticipant?.has_payment_signal),
+  );
 
   return (
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between pb-8">
@@ -77,6 +91,12 @@ export function SplitPublicPage() {
               pixKey={state.payload.pix_key}
               pixKeyType={state.payload.pix_key_type}
               participants={state.normalizedParticipants}
+              customNote={state.payload.custom_note}
+              showParticipantsList={state.payload.show_participants_list}
+              isCurrentSettled={state.isCurrentParticipantSettled}
+              participantTotalShareCents={state.participantTotalShareCents}
+              participantSettledCents={state.participantSettledCents}
+              isHostViewing={state.isHostViewing}
               activeParticipantId={state.currentParticipant?.id}
               identityBanner={
                 <PublicSplitIdentityBanner
@@ -85,6 +105,7 @@ export function SplitPublicPage() {
                   hostName={state.payload.host_name || "Anfitrião"}
                   activeParticipantId={state.currentParticipant?.id}
                   onSelectParticipant={state.selectParticipantFromBanner}
+                  isHostPreview={state.isHostViewing}
                 />
               }
               installmentsCount={state.payload.installments_count}
@@ -98,13 +119,7 @@ export function SplitPublicPage() {
               onTogglePayAllRemaining={() => state.setIsPayAllRemaining((prev) => !prev)}
               onSignalPayment={state.handleSignalPixPayment}
               isSignalingPayment={state.isSignalingDirectly}
-              hasSignaledCurrent={Boolean(
-                (state.selectedInstallment?.id &&
-                  state.justSignaledInstallmentIds.has(state.selectedInstallment.id)) ||
-                  state.selectedInstallment?.signal_status === "pending_confirmation" ||
-                  (!state.participantInstallments.length &&
-                    state.currentParticipant?.has_payment_signal),
-              )}
+              hasSignaledCurrent={hasSignaledCurrent}
             />
 
             <div className="pt-2">

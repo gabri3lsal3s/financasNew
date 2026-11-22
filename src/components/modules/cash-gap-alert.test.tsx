@@ -24,10 +24,25 @@ describe("CashGapAlert (§F51)", () => {
   it("renderiza o alerta quando houver descasamento de caixa detectado", () => {
     render(<CashGapAlert result={mockResult} />);
 
-    expect(screen.getByRole("alert")).toBeInTheDocument();
-    expect(screen.getByText("Radar de Descasamento de Fluxo")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /Alerta de descasamento de fluxo/i })).toBeInTheDocument();
+    expect(screen.getByText("Fluxo de caixa apertado")).toBeInTheDocument();
     expect(screen.getByText(/05\/09/)).toBeInTheDocument();
     expect(screen.getByText(/1\.500,00/)).toBeInTheDocument();
+  });
+
+  it("usa role='alert' apenas em severidade crítica e permite dispensar por 7/30 dias", () => {
+    const onDismiss = vi.fn();
+    render(
+      <CashGapAlert
+        result={{ ...mockResult, severity: "critical" }}
+        onDismiss={onDismiss}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Dispensar alerta de descasamento de fluxo/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Lembrar no próximo mês/i }));
+    expect(onDismiss).toHaveBeenCalledWith(30);
   });
 
   it("navega para /dividas?type=payable ao clicar no botão de ação", () => {

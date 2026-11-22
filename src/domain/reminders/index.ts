@@ -13,7 +13,7 @@
  */
 
 import { invoiceDueDate, invoiceStatus } from "@/domain/cards";
-import { addDaysISO, debtStatus, todayISO } from "@/domain/debts";
+import { addDaysISO, todayISO } from "@/domain/debts";
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -21,12 +21,18 @@ import { addDaysISO, debtStatus, todayISO } from "@/domain/debts";
 
 export type ReminderKind = "bill" | "debt";
 
+export type ReminderDirection = "payable" | "receivable";
+
 export type ReminderStatus = "overdue" | "due_today" | "due_soon" | "pending";
 
 export interface ReminderSource {
   /** Chave estável persistida em `reminder_states`. */
   key: string;
   kind: ReminderKind;
+  /** Direção financeira do compromisso (a pagar vs a receber). */
+  direction?: ReminderDirection;
+  /** Indica se a dívida está vinculada a um racha compartilhado. */
+  isSplitLinked?: boolean;
   /** Título exibível (ex.: "Fatura Nubank · Ago/2026"). */
   title: string;
   /** Subtítulo exibível (ex.: "Saldo de R$ 1.234,56"). */
@@ -49,7 +55,7 @@ export type ReminderStateKind = "read" | "snoozed";
 export interface ReminderState {
   key: string;
   kind: ReminderStateKind;
-  /** Snooze até esta data (YYYY-MM-DD) — expira ao vencer/atrasar. */
+  /** Snooze até esta data (YYYY-MM-DD) — oculta enquanto today < snoozeUntil. */
   snoozeUntil?: string;
 }
 
@@ -61,11 +67,81 @@ export interface ReminderPreferences {
   billDaysBefore: number;
 }
 
+export interface SplitShareLinkCandidate {
+  debt_id?: string | null;
+  expense_id?: string | null;
+  installment_group_id?: string | null;
+  is_revoked?: boolean | null;
+  payload?: {
+    debt_id?: string | null;
+    expense_id?: string | null;
+    installment_group_id?: string | null;
+  } | null;
+}
+
+/**
+ * Identifica se uma dívida a receber pertence a um racha compartilhado,
+ * evitando duplicação com o módulo de Rachas na Central e no Push.
+ */
+export function isDebtLinkedToSplit(
+  debt: {
+    id: string;
+    name: string;
+    type: ReminderDirection;
+    expense_id?: string | null;
+    installment_group_id?: string | null;
+  },
+  splitShares: readonly SplitShareLinkCandidate[] = [],
+  allDebts: readonly {
+    id: string;
+    expense_id?: string | null;
+    installment_group_id?: string | null;
+  }[] = [],
+): boolean {
+  if (debt.type !== "receivable") return false;
+  const normalizedName = debt.name.trim().toLowerCase();
+  if (normalizedName.startsWith("racha:") || /(?:^|[\s:_-])racha(?:$|[\s:_-])/.test(normalizedName)) {
+    return true;
+  }
+
+  const mappedDebtIds = new Set<string>();
+  const mappedExpenseIds = new Set<string>();
+
+  for (const share of splitShares) {
+    const shareDebtId = share.debt_id ?? share.payload?.debt_id;
+    if (shareDebtId) {
+      mappedDebtIds.add(shareDebtId);
+      if (shareDebtId === debt.id) return true;
+    }
+
+    const shareExpenseId = share.expense_id ?? share.payload?.expense_id;
+    if (shareExpenseId) {
+      mappedExpenseIds.add(shareExpenseId);
+      if (debt.expense_id && shareExpenseId === debt.expense_id) return true;
+    }
+
+    const shareGroupId = share.installment_group_id ?? share.payload?.installment_group_id;
+    if (debt.installment_group_id && shareGroupId && shareGroupId === debt.installment_group_id) {
+      return true;
+    }
+  }
+
+  if (debt.installment_group_id && allDebts.length > 0 && (mappedDebtIds.size > 0 || mappedExpenseIds.size > 0)) {
+    for (const candidate of allDebts) {
+      if (candidate.installment_group_id !== debt.installment_group_id) continue;
+      if (mappedDebtIds.has(candidate.id)) return true;
+      if (candidate.expense_id && mappedExpenseIds.has(candidate.expense_id)) return true;
+    }
+  }
+
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Derivação de itens (§3.10)
 // ---------------------------------------------------------------------------
 
-/** Alerta de fatura: saldo aberto > 0 e status `overdue` ou `near_due`. */
+/** Alerta de fatura: saldo aberto > 0 e status `overdue`, `due_today` ou `due_soon`. */
 export function billReminder(
   source: Omit<ReminderSource, "kind">,
   balanceCents: number,
@@ -75,15 +151,18 @@ export function billReminder(
 ): ReminderItem | null {
   const status = invoiceStatus(source.dueDate.slice(0, 7), dueDay, balanceCents, today, nearDueDays);
   if (status === "closed" || status === "open") return null;
+  const resolvedStatus: ReminderStatus =
+    status === "overdue" ? "overdue" : source.dueDate === today ? "due_today" : "due_soon";
   return {
     ...source,
     kind: "bill",
+    direction: "payable",
     amountCents: balanceCents,
-    status: status === "overdue" ? "overdue" : "due_soon",
+    status: resolvedStatus,
   };
 }
 
-/** Alerta de dívida: pendente e dentro da janela (ou vencida). */
+/** Alerta de dívida: pendente e dentro da janela (ou vencida para contas a pagar). */
 export function debtReminder(
   source: Omit<ReminderSource, "kind">,
   paidAt: string | null,
@@ -91,26 +170,41 @@ export function debtReminder(
   daysBefore = 3,
 ): ReminderItem | null {
   if (paidAt) return null;
-  const status = debtStatus(source.dueDate, null, today);
-  if (status === "paid" || status === "pending") {
-    // "pending" sem janela: ativa apenas dentro dos dias antes configurados.
-    if (status === "pending" && source.dueDate > addDaysISO(today, daysBefore)) return null;
-    if (status === "pending") {
-      return { ...source, kind: "debt", status: "due_soon" };
-    }
+  const direction: ReminderDirection = source.direction ?? "payable";
+  const horizonEnd = addDaysISO(today, Math.max(0, daysBefore));
+
+  if (direction === "receivable") {
+    if (source.dueDate > horizonEnd) return null;
+    return {
+      ...source,
+      kind: "debt",
+      direction: "receivable",
+      status: "pending",
+    };
+  }
+
+  let resolvedStatus: ReminderStatus;
+  if (source.dueDate < today) {
+    resolvedStatus = "overdue";
+  } else if (source.dueDate === today) {
+    resolvedStatus = "due_today";
+  } else if (source.dueDate <= horizonEnd) {
+    resolvedStatus = "due_soon";
+  } else {
     return null;
   }
+
   return {
     ...source,
     kind: "debt",
-    status: status === "due_today" ? "due_today" : status === "due_soon" ? "due_soon" : "overdue",
+    direction: "payable",
+    status: resolvedStatus,
   };
 }
 
 /**
  * Aplica o estado persistido: itens lidos saem da lista; snoozados ficam
- * ocultos até `snoozeUntil` — que EXPIRA quando o item vence ou atrasa
- * (o alerta volta). Itens vencidos com snooze ativo sempre reaparecem.
+ * ocultos enquanto `today < snoozeUntil` e reaparecem quando `today >= snoozeUntil`.
  */
 export function applyReminderState(
   items: readonly ReminderItem[],
@@ -122,29 +216,36 @@ export function applyReminderState(
     const state = map.get(item.key);
     if (!state) return true;
     if (state.kind === "read") return false;
-    // Snooze expira ao vencer ou atrasar.
-    if (state.snoozeUntil != null && item.dueDate > state.snoozeUntil) return true;
-    if (item.dueDate <= today) return true;
-    return false;
+    return isSnoozeExpired(state, item.dueDate, today);
   });
 }
 
-/** Snooze está expirado (item venceu/atrasou ou a data passou)? */
-export function isSnoozeExpired(state: ReminderState, dueDate: string, today: string = todayISO()): boolean {
+/** Snooze expira quando a data atual atinge ou ultrapassa `snoozeUntil`. */
+export function isSnoozeExpired(
+  state: ReminderState,
+  _dueDate: string,
+  today: string = todayISO(),
+): boolean {
   if (state.kind !== "snoozed") return false;
-  if (dueDate <= today) return true;
-  return state.snoozeUntil != null && dueDate > state.snoozeUntil;
+  if (state.snoozeUntil != null) return today >= state.snoozeUntil;
+  return false;
 }
 
 // ---------------------------------------------------------------------------
-// Ordenação (§3.10 — atrasados primeiro; depois por vencimento)
+// Ordenação (§3.10 — atrasados primeiro; depois hoje, em breve, informativo)
 // ---------------------------------------------------------------------------
 
-/** Ordena: atrasados primeiro, depois por data de vencimento crescente. */
+const REMINDER_STATUS_RANK: Record<ReminderStatus, number> = {
+  overdue: 0,
+  due_today: 1,
+  due_soon: 2,
+  pending: 3,
+};
+
+/** Ordena: atrasados primeiro, depois vence hoje, em breve e informativo, por vencimento. */
 export function sortReminders(items: readonly ReminderItem[]): ReminderItem[] {
-  const rank = (item: ReminderItem) => (item.status === "overdue" ? 0 : 1);
   return [...items].sort((a, b) => {
-    const rankDiff = rank(a) - rank(b);
+    const rankDiff = REMINDER_STATUS_RANK[a.status] - REMINDER_STATUS_RANK[b.status];
     if (rankDiff !== 0) return rankDiff;
     if (a.dueDate !== b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
     return a.title.localeCompare(b.title, "pt-BR");
@@ -171,6 +272,8 @@ export interface RemindersInput {
     key: string;
     title: string;
     subtitle?: string;
+    direction?: ReminderDirection;
+    isSplitLinked?: boolean;
     dueDate: string;
     amountCents: number;
     paidAt: string | null;
@@ -210,11 +313,14 @@ export function deriveReminderItems(input: RemindersInput): ReminderItem[] {
   }
 
   for (const debt of input.debts) {
+    if (debt.isSplitLinked) continue;
     const item = debtReminder(
       {
         key: debt.key,
         title: debt.title,
         subtitle: debt.subtitle,
+        direction: debt.direction ?? "payable",
+        isSplitLinked: debt.isSplitLinked,
         dueDate: debt.dueDate,
         amountCents: debt.amountCents,
         link: debt.link,

@@ -4,6 +4,7 @@ import { Alert, Button } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { formatDateTimeBR } from "@/lib/date";
 import { fetchUserDataExport, useAdminLogBackup, useAdminSystemBackups } from "@/state";
+import { downloadBlob } from "@/services/export-actions";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { BackupIntegrityVerifier } from "../components/backup-integrity-verifier";
@@ -51,14 +52,14 @@ export function AdminBackupsPage() {
       });
 
       const blob = new Blob([payloadString], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `axir_operator_snapshot_${new Date().toISOString().slice(0, 10)}_${checksumSha256.slice(0, 8)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const exported = await downloadBlob(
+        `axir_operator_snapshot_${new Date().toISOString().slice(0, 10)}_${checksumSha256.slice(0, 8)}.json`,
+        blob,
+        { silentToast: true },
+      );
+      if (!exported) {
+        throw new Error("Falha ao exportar snapshot no dispositivo.");
+      }
 
       triggerSensory("success");
       pushToast({

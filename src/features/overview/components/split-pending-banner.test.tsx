@@ -48,7 +48,7 @@ describe("SplitPendingBanner", () => {
     const ctaBtn = screen.getByRole("button", { name: /ver e cobrar/i });
     expect(ctaBtn).toBeInTheDocument();
     fireEvent.click(ctaBtn);
-    expect(mockNavigate).toHaveBeenCalledWith("/transacoes?filtro=all");
+    expect(mockNavigate).toHaveBeenCalledWith("/transacoes?gerenciar_racha=s1");
   });
 
   it("navega direto para o modal do racha quando ha apenas 1 item pendente", () => {
@@ -73,6 +73,22 @@ describe("SplitPendingBanner", () => {
 
     const ctaBtn = screen.getByRole("button", { name: /ver e cobrar/i });
     fireEvent.click(ctaBtn);
-    expect(mockNavigate).toHaveBeenCalledWith("/transacoes?id=s-solo&racha_modal=1");
+    expect(mockNavigate).toHaveBeenCalledWith("/transacoes?gerenciar_racha=s-solo");
+  });
+
+  it("faz fallback para /transacoes?tab=splits quando não há lista de itens", () => {
+    mockNavigate.mockClear();
+    render(<SplitPendingBanner pendingCents={5000} activeCount={1} />);
+    fireEvent.click(screen.getByRole("button", { name: /ver e cobrar/i }));
+    expect(mockNavigate).toHaveBeenCalledWith("/transacoes?tab=splits");
+  });
+
+  it("permite dispensar o aviso de racha por 7 ou 30 dias", () => {
+    const onDismiss = vi.fn();
+    render(<SplitPendingBanner pendingCents={5000} activeCount={1} onDismiss={onDismiss} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Dispensar aviso de despesas a rachar/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Dispensar por 7 dias/i }));
+    expect(onDismiss).toHaveBeenCalledWith(7);
   });
 });

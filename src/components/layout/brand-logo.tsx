@@ -32,6 +32,8 @@ export interface BrandLogoProps {
   variant?: LogoIconProps["variant"];
   /** Ação de clique opcional. */
   onClick?: () => void;
+  /** Prioriza decodificação síncrona imediata e alta prioridade de fetch. */
+  priority?: boolean;
 }
 
 /**
@@ -53,6 +55,7 @@ export function BrandLogo({
   accentReactive = true,
   variant = "default",
   onClick,
+  priority = false,
 }: BrandLogoProps) {
   if (showWordmark) {
     return (
@@ -68,6 +71,7 @@ export function BrandLogo({
         accentReactive={accentReactive}
         variant={variant}
         onClick={onClick}
+        priority={priority}
       />
     );
   }
@@ -92,6 +96,7 @@ export function BrandLogo({
         themeMode={themeMode}
         accentReactive={accentReactive}
         variant={variant}
+        priority={priority}
         title="Axir"
         aria-hidden={false}
       />

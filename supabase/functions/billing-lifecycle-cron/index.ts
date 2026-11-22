@@ -1,6 +1,11 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { getAsaasSubscription, postponeAsaasSubscriptionAfterPrepayment } from "../_shared/asaas.ts";
-import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
+import {
+  buildCorsHeaders,
+  jsonResponse,
+  safeErrorResponse,
+  timingSafeEqualString,
+} from "../_shared/http.ts";
 import { sendTransactionalEmail } from "../_shared/resend.ts";
 import { renderTrialEndingReminderEmail } from "../_shared/email-templates.ts";
 
@@ -24,9 +29,13 @@ Deno.serve(async (req: Request) => {
 
     const auth = req.headers.get("authorization") ?? "";
     const token = auth.replace(/^Bearer\s+/i, "").trim();
-    const isAuthorized =
-      (token.length > 0 && token === supabaseServiceKey) ||
-      (Boolean(cronSecret) && token === cronSecret);
+    const isServiceKey =
+      token.length > 0 && (await timingSafeEqualString(token, supabaseServiceKey));
+    const isCronSecret =
+      token.length > 0 &&
+      Boolean(cronSecret) &&
+      (await timingSafeEqualString(token, cronSecret!));
+    const isAuthorized = isServiceKey || isCronSecret;
 
     if (!isAuthorized) {
       return jsonResponse(req, { error: "unauthorized" }, 401);
@@ -82,20 +91,28 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // 3. Identifica trials prestes a expirar em 3 dias e dispara lembretes via Resend
+    // 3. Identifica trials prestes a expirar (janela segura de 28h: 48h a 76h antes do vencimento)
+    // A deduplicacao estrita via idempotencyKey evita reenvios mesmo se o cron rodar multiplas vezes no dia.
     const now = new Date();
-    const threeDaysAheadStart = new Date(now.getTime() + 70 * 60 * 60 * 1000).toISOString();
-    const threeDaysAheadEnd = new Date(now.getTime() + 74 * 60 * 60 * 1000).toISOString();
+    const windowStart = new Date(now.getTime() + 48 * 60 * 60 * 1000).toISOString();
+    const windowEnd = new Date(now.getTime() + 76 * 60 * 60 * 1000).toISOString();
 
-    const { data: expiringTrials } = await supabaseAdmin
+    const { data: expiringTrials, error: expiringTrialsError } = await supabaseAdmin
       .from("user_subscriptions")
-      .select("id, user_id, trial_ends_at, profiles(id, email, name)")
+      .select("id, user_id, trial_ends_at, profiles!inner(id, email, name, status)")
       .eq("tier", "trial")
-      .gte("trial_ends_at", threeDaysAheadStart)
-      .lte("trial_ends_at", threeDaysAheadEnd);
+      .eq("status", "trialing")
+      .is("scheduled_plan_id", null)
+      .eq("profiles.status", "active")
+      .gte("trial_ends_at", windowStart)
+      .lte("trial_ends_at", windowEnd);
+
+    if (expiringTrialsError) {
+      console.error("[billing-lifecycle-cron] Erro ao buscar trials prestes a expirar:", expiringTrialsError);
+    }
 
     let remindersSent = 0;
-    const appUrl = Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br";
+    const appUrl = (Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br").replace(/\/+$/, "");
 
     for (const sub of expiringTrials || []) {
       const profile = Array.isArray(sub.profiles) ? sub.profiles[0] : sub.profiles;
@@ -103,12 +120,29 @@ Deno.serve(async (req: Request) => {
 
       try {
         const trialEndDate = new Date(sub.trial_ends_at);
+        const rawDaysRemaining = Math.ceil(
+          (trialEndDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000),
+        );
+        const daysRemaining = Math.max(1, Math.min(3, rawDaysRemaining));
+        const trialEndsFormatted = new Intl.DateTimeFormat("pt-BR", {
+          timeZone: "America/Sao_Paulo",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }).format(trialEndDate);
         const emailData = renderTrialEndingReminderEmail({
           name: profile.name || "Cliente",
-          daysRemaining: 3,
-          trialEndsFormatted: trialEndDate.toLocaleDateString("pt-BR"),
+          daysRemaining,
+          trialEndsFormatted,
           checkoutUrl: `${appUrl}/assinatura`,
         });
+
+        const brtDateKey = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Sao_Paulo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(trialEndDate);
 
         const result = await sendTransactionalEmail(supabaseAdmin, {
           to: profile.email,
@@ -117,7 +151,7 @@ Deno.serve(async (req: Request) => {
           html: emailData.html,
           text: emailData.text,
           userId: sub.user_id,
-          idempotencyKey: `trial_ending_3d_${sub.user_id}_${trialEndDate.toISOString().slice(0, 10)}`,
+          idempotencyKey: `trial_ending_3d_${sub.user_id}_${brtDateKey}`,
         });
 
         if (result.success && !result.skipped) {

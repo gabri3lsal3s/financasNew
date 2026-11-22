@@ -22,6 +22,7 @@ export default defineConfig({
       manifest: false, // manifest próprio em public/pwa/manifest.webmanifest (PWA_GUIDELINES)
       workbox: {
         cleanupOutdatedCaches: true,
+        importScripts: ["/sw-push.js"],
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
         // logo-full.png (lockup da marca, ~5 MB) é asset estático fora do runtime:
         // fica fora do precache para não estourar o limite do Workbox (2 MiB).
@@ -30,6 +31,7 @@ export default defineConfig({
           "**/pdfjs-*",
           "**/vendor-sentry-*",
           "**/admin-*",
+          "**/sw-push.js",
         ],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // SPA: rotas client-side sempre carregam o App Shell do cache (instante);

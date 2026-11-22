@@ -34,7 +34,7 @@ export function CarouselDismissPopover({
           aria-label={label}
           title={label}
           className={cn(
-            "size-7 sm:size-8 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer",
+            "relative size-7 sm:size-8 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer max-sm:after:absolute max-sm:after:-inset-2",
             className,
           )}
         >

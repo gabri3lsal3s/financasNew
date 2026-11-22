@@ -19,6 +19,7 @@ export interface SmartAdvisorCardFooterProps {
   onConfirmExpense: () => void;
   onActionClick: () => void;
   onDismiss: () => void;
+  embeddedInCarousel?: boolean;
 }
 
 /**
@@ -37,6 +38,7 @@ export function SmartAdvisorCardFooter({
   onConfirmExpense,
   onActionClick,
   onDismiss,
+  embeddedInCarousel = false,
 }: SmartAdvisorCardFooterProps) {
   const isSavingsAction =
     insight.category === "savings" &&
@@ -45,7 +47,13 @@ export function SmartAdvisorCardFooter({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 pt-0.5">
+      <div
+        className={
+          embeddedInCarousel
+            ? "flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap [&>button]:flex-1 [&>button]:sm:flex-initial"
+            : "flex flex-wrap items-center gap-2 pt-0.5"
+        }
+      >
         {insight.category === "calibration" ? (
           <>
             <Button
@@ -139,7 +147,7 @@ export function SmartAdvisorCardFooter({
         ) : null}
       </div>
 
-      {cardContext ? (
+      {!embeddedInCarousel && cardContext ? (
         <div
           data-testid="smart-advisor-card-context"
           className={cn(

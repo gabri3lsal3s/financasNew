@@ -1,7 +1,14 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { todayISO } from "@/domain/debts";
+import { extractPendingSplitSignals } from "@/domain/notifications/hub";
 import { isFirstUse, shouldShowOnboardingBanner } from "@/domain/onboarding";
-import { isGovernanceAlertDismissed, shouldShowPaceAlert, shouldShowSurplusAlert } from "@/domain/overview";
+import {
+  isGovernanceAlertDismissed,
+  isTimedAlertDismissed,
+  shouldShowPaceAlert,
+  shouldShowSurplusAlert,
+  shouldShowTrialBanner,
+} from "@/domain/overview";
 import { useOnboardingDismissed } from "@/hooks";
 import { currentMonth, shiftMonth } from "@/lib/date";
 import {
@@ -22,11 +29,14 @@ import {
   usePortfolioContributions,
   usePortfolioPosition,
   useRealCashBalance,
+  useUpdateCustomSettings,
   useUserAccess,
+  useUserPreferences,
   useUserSubscription,
 } from "@/state";
+import { getStoredInitialGoal, setStoredInitialGoal } from "@/state/demo-mode";
 import { useUserTrips } from "@/state/queries/use-trips";
-import type { DashboardAlertDismissals } from "@/types";
+import type { DashboardAlertDismissals, OnboardingGoalId } from "@/types";
 import { useOverviewCashflow } from "./use-overview-cashflow";
 import { useOverviewObligations } from "./use-overview-obligations";
 
@@ -71,16 +81,48 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
   const portfolioPositionQuery = usePortfolioPosition();
   const rawPositionRows = portfolioPositionQuery?.rows;
   const positionRows = useMemo(() => rawPositionRows ?? [], [rawPositionRows]);
-  const { hasFeature } = useUserAccess();
+  const { hasFeature, profile } = useUserAccess();
+  const userPreferencesQuery = useUserPreferences();
+  const updateCustomSettingsMutation = useUpdateCustomSettings();
   const onboardingQuery = useOnboardingCounts();
   const corporateDividends = useCorporateDividends();
   const subscription = useUserSubscription();
   const { isDismissed: isOnboardingDismissed, dismiss: dismissOnboarding } = useOnboardingDismissed();
+  const [virginGuideDismissed, setVirginGuideDismissed] = useState(false);
+  const [localInitialGoal, setLocalInitialGoal] = useState<OnboardingGoalId | null>(() =>
+    getStoredInitialGoal(),
+  );
+
+  const initialGoal =
+    localInitialGoal ??
+    userPreferencesQuery.data?.custom_settings?.initialGoal ??
+    getStoredInitialGoal();
+
+  const setInitialFocus = useCallback(
+    (goal: OnboardingGoalId) => {
+      setLocalInitialGoal(goal);
+      setStoredInitialGoal(goal);
+      try {
+        updateCustomSettingsMutation.mutate({
+          initialGoal: goal,
+          ...(goal === "family" ? { familyModeEnabled: true } : {}),
+        });
+      } catch {
+        // Falha silenciosa caso offline
+      }
+    },
+    [updateCustomSettingsMutation],
+  );
+
+  const dismissVirginGuide = useCallback(() => {
+    setVirginGuideDismissed(true);
+  }, []);
 
   const isVirginAccount = Boolean(onboardingQuery?.data && isFirstUse(onboardingQuery.data));
+  const showVirginGuide = isVirginAccount && !virginGuideDismissed && !isOnboardingDismissed;
   const showOnboarding =
-    !isOnboardingDismissed && onboardingQuery?.data
-      ? shouldShowOnboardingBanner(onboardingQuery.data, hasFeature)
+    !showVirginGuide && !isOnboardingDismissed && onboardingQuery?.data
+      ? shouldShowOnboardingBanner(onboardingQuery.data, hasFeature, initialGoal)
       : false;
 
   const loading =
@@ -143,6 +185,19 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
   });
 
   const isGovernanceDismissed = isGovernanceAlertDismissed(alertDismissals.governance);
+  const hasPendingSplitSignals = useMemo(
+    () => extractPendingSplitSignals(splitSharesQuery.data ?? []).length > 0,
+    [splitSharesQuery.data],
+  );
+  const isCardDismissed = useCallback(
+    (cardKey: string) => isTimedAlertDismissed(alertDismissals.cards?.[cardKey]),
+    [alertDismissals.cards],
+  );
+  const isTrialBannerEligible = shouldShowTrialBanner(
+    subscription.trialDaysRemaining,
+    Boolean(subscription.hasAutoRenew),
+    alertDismissals.cards?.["trial-ending"],
+  );
 
   return {
     month,
@@ -158,12 +213,20 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     isPaceEligible,
     isSurplusEligible,
     isGovernanceDismissed,
+    hasPendingSplitSignals,
+    isCardDismissed,
+    isTrialBannerEligible,
     ...obligations,
     hasFamily,
     householdData,
     currentUserId,
+    userName: profile?.name ?? null,
+    initialGoal,
+    setInitialFocus,
     isVirginAccount,
+    showVirginGuide,
     showOnboarding,
+    dismissVirginGuide,
     dismissOnboarding,
     corporateDividends,
     subscription,

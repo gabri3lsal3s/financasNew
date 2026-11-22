@@ -63,6 +63,7 @@ export interface CreatedSplitExpense {
   date: string;
   peopleCount: number;
   installmentsCount?: number;
+  installmentsMode?: "single_total" | "per_installment";
   categoryId?: string;
   categoryName?: string;
   categoryIcon?: string;

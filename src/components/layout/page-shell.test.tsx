@@ -65,7 +65,14 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useOnboardingCounts: () => ({
-    data: { expenseCategories: 5, incomeCategories: 5, cards: 1, transactions: 1, notificationsEnabled: true },
+    data: {
+      expenseCategories: 5,
+      incomeCategories: 5,
+      cashCheckpoints: 1,
+      cards: 1,
+      transactions: 1,
+      notificationsEnabled: true,
+    },
     isLoading: false,
   }),
   useUserAccess: () => ({
@@ -254,7 +261,7 @@ describe("PageShell (F7.2/F7.3)", () => {
     });
 
     renderShell();
-    expect(screen.getByRole("button", { name: /Notificações: 1 pendências/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Notificações: 1 pendência/i })).toBeInTheDocument();
   });
 
   it("não renderiza DemoTourSpotlight nem indicador no header quando a simulação não está ativa", () => {
@@ -388,13 +395,13 @@ describe("PageShell (F7.2/F7.3)", () => {
     isAndroidSpy.mockRestore();
   });
 
-  it("abre NativeOnboardingDialog em Android nativo quando não há modal bloqueante na fila", async () => {
+  it("silencia disparo automático do NativeOnboardingDialog na entrada do Android nativo (onboarding 100% não-bloqueante)", () => {
     const isNativeSpy = vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(true);
     const isAndroidSpy = vi.spyOn(nativeModule, "isAndroidNative").mockReturnValue(true);
 
     renderShell(["/"]);
 
-    expect(await screen.findByRole("heading", { name: "Bem-vindo ao App Nativo Android" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Bem-vindo ao App Nativo Android" })).not.toBeInTheDocument();
 
     isNativeSpy.mockRestore();
     isAndroidSpy.mockRestore();

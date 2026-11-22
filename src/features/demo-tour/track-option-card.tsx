@@ -26,15 +26,13 @@ export function TrackOptionCard({ track, onSelect }: TrackOptionCardProps) {
           : "border-border/80 bg-surface hover:bg-surface-hover/70 hover:border-primary/50",
       )}
     >
-      <div
+      <Icon
         className={cn(
-          "size-9 rounded-lg border bg-surface-raised flex items-center justify-center shrink-0 transition-transform group-hover:scale-105",
-          track.isPrimary ? "border-primary/30" : "border-border/80",
+          "size-4 shrink-0 mt-0.5 transition-colors",
           track.iconColorClass ?? "text-muted-foreground",
         )}
-      >
-        <Icon className="size-5" aria-hidden="true" />
-      </div>
+        aria-hidden="true"
+      />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">

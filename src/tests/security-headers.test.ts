@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -24,8 +25,16 @@ describe("Tarefa 1.3 — Content-Security-Policy (CSP) & Segurança de Borda em 
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'");
     expect(csp).toContain("https://challenges.cloudflare.com");
-    // Verifica o hash do script inline de tema/splash do index.html
-    expect(csp).toContain("'sha256-jvmQZvz40KC4MXFgSyfpQANZKBjT6X3sYOFZPe+jDq4='");
+    // Verifica o hash exato do script inline de tema/splash em index.html
+    const indexHtml = readFileSync(resolve(root, "index.html"), "utf8");
+    const inlineScriptMatch = indexHtml.match(
+      /<script(?![^>]*src=)(?![^>]*application\/ld\+json)[^>]*>([\s\S]*?)<\/script>/,
+    );
+    expect(inlineScriptMatch).not.toBeNull();
+    const expectedHash = createHash("sha256")
+      .update(inlineScriptMatch?.[1] ?? "", "utf8")
+      .digest("base64");
+    expect(csp).toContain(`'sha256-${expectedHash}'`);
     expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     expect(csp).toContain("img-src 'self' data: blob: https://*.supabase.co");
     expect(csp).toContain(

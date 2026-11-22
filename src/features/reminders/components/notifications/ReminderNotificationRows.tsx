@@ -1,7 +1,22 @@
-import { AlertTriangle, ArrowDownLeft, Check, CreditCard, HandCoins, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDownLeft,
+  Check,
+  CreditCard,
+  HandCoins,
+  HelpCircle,
+  TrendingDown,
+  TrendingUp,
+  Users,
+  X,
+} from "lucide-react";
 import { Badge, Button, MoneyText } from "@/components/ui";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type { ReminderItem, ReminderStatus } from "@/domain/reminders";
+import {
+  resolveSmartAdvisorPresentation,
+  type AdvisorIconKind,
+} from "@/features/overview/components/smart-advisor/smart-advisor-routing";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 
@@ -19,6 +34,26 @@ const STATUS_LABELS: Record<ReminderStatus, string> = {
   pending: "Pendente",
 };
 
+const ADVISOR_ICON_MAP: Record<AdvisorIconKind, typeof AlertTriangle> = {
+  household: Users,
+  aporte: TrendingUp,
+  critical: AlertTriangle,
+  income: ArrowDownLeft,
+  savings: TrendingDown,
+  calibration: HelpCircle,
+};
+
+const BADGE_CONTAINER_TONES: Record<
+  "critical" | "muted" | "portfolio" | "positive" | "warning",
+  string
+> = {
+  critical: "border-critical/20 bg-critical/10 text-critical-strong",
+  positive: "border-positive/20 bg-positive/10 text-positive-strong",
+  portfolio: "border-portfolio/20 bg-portfolio/10 text-portfolio",
+  warning: "border-warning/20 bg-warning/15 text-warning-strong",
+  muted: "border-border/80 bg-surface text-muted-foreground",
+};
+
 export function AdvisorNotificationRow({
   advisorItem,
   onOpen,
@@ -28,10 +63,8 @@ export function AdvisorNotificationRow({
   onOpen: () => void;
   onDismiss: () => void;
 }) {
-  const isCritical = advisorItem.priority === 1;
-  const isIncome = advisorItem.category === "income";
-  const badgeVariant = isCritical ? "critical" : isIncome ? "positive" : "warning";
-  const badgeLabel = isCritical ? "Crítico" : isIncome ? "Entrada" : "Vence hoje";
+  const presentation = resolveSmartAdvisorPresentation(advisorItem);
+  const Icon = ADVISOR_ICON_MAP[presentation.iconKind];
   const cardName = advisorItem.cardContext?.cardName ?? advisorItem.metadata?.cardName;
 
   const handleActivate = () => {
@@ -56,20 +89,10 @@ export function AdvisorNotificationRow({
         <span
           className={cn(
             "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border",
-            isCritical
-              ? "border-critical/20 bg-critical/10 text-critical-strong"
-              : isIncome
-                ? "border-positive/20 bg-positive/10 text-positive-strong"
-                : "border-warning/20 bg-warning/15 text-warning-strong",
+            BADGE_CONTAINER_TONES[presentation.badgeVariant],
           )}
         >
-          {isCritical ? (
-            <AlertTriangle className="size-3.5" aria-hidden="true" />
-          ) : isIncome ? (
-            <ArrowDownLeft className="size-3.5" aria-hidden="true" />
-          ) : (
-            <CreditCard className="size-3.5" aria-hidden="true" />
-          )}
+          <Icon className="size-3.5" aria-hidden="true" />
         </span>
 
         <div className="min-w-0 flex-1">
@@ -77,8 +100,8 @@ export function AdvisorNotificationRow({
             <span className="font-medium text-xs text-foreground line-clamp-1 break-words">
               {advisorItem.title}
             </span>
-            <Badge variant={badgeVariant} size="xs" className="shrink-0">
-              {badgeLabel}
+            <Badge variant={presentation.badgeVariant} size="xs" className="shrink-0">
+              {presentation.badgeLabel}
             </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[11px] text-muted-foreground">
@@ -132,6 +155,9 @@ export function ReminderNotificationRow({
   onMarkRead: () => void;
 }) {
   const Icon = item.kind === "bill" ? CreditCard : HandCoins;
+  const isReceivable = item.direction === "receivable";
+  const badgeVariant = isReceivable ? "portfolio" : STATUS_VARIANTS[item.status];
+  const badgeLabel = isReceivable ? "A receber" : STATUS_LABELS[item.status];
 
   const handleActivate = () => {
     triggerSensory("action");
@@ -155,9 +181,11 @@ export function ReminderNotificationRow({
         <span
           className={cn(
             "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border",
-            item.status === "overdue"
-              ? "border-critical/20 bg-critical/10 text-critical-strong"
-              : "border-border/80 bg-surface text-muted-foreground",
+            isReceivable
+              ? "border-portfolio/20 bg-portfolio/10 text-portfolio"
+              : item.status === "overdue"
+                ? "border-critical/20 bg-critical/10 text-critical-strong"
+                : "border-border/80 bg-surface text-muted-foreground",
           )}
         >
           <Icon className="size-3.5" aria-hidden="true" />
@@ -168,8 +196,8 @@ export function ReminderNotificationRow({
             <span className="font-medium text-xs text-foreground line-clamp-1 break-words">
               {item.title}
             </span>
-            <Badge variant={STATUS_VARIANTS[item.status]} size="xs" className="shrink-0">
-              {STATUS_LABELS[item.status]}
+            <Badge variant={badgeVariant} size="xs" className="shrink-0">
+              {badgeLabel}
             </Badge>
           </div>
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5 text-[11px] text-muted-foreground">

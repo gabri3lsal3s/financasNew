@@ -63,7 +63,7 @@ export function syncBankAssistantWithCloud(
   const next: Partial<BankAssistantPreferences> = {
     ...cloudPrefs,
   };
-  if (cloudPrefs.monitoredBanks && cloudPrefs.monitoredBanks.length > 0) {
+  if (Array.isArray(cloudPrefs.monitoredBanks)) {
     next.monitoredBanks = cloudPrefs.monitoredBanks;
   } else if (current.monitoredBanks && current.monitoredBanks.length > 0) {
     next.monitoredBanks = current.monitoredBanks;

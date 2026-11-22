@@ -4,9 +4,9 @@ import { Badge } from "@/components/ui";
 import { BrandLogo } from "@/components/layout/brand-logo";
 
 const LOGIN_BENEFITS = [
-  { icon: BarChart3, label: "Visão consolidada de receitas e despesas" },
-  { icon: CreditCard, label: "Cartões, parcelas e faturas sob controle" },
-  { icon: Lock, label: "Conexão segura com criptografia de ponta a ponta" },
+  { icon: BarChart3, label: "Caixa diário, cartões, dívidas, grupo e carteira sincronizados" },
+  { icon: CreditCard, label: "Modo Família, viagens e cobranças Pix em tempo real" },
+  { icon: Lock, label: "Zero senhas bancárias · proteção RLS e autenticação 2FA" },
 ] as const;
 
 export function LoginSideHero() {
@@ -17,6 +17,7 @@ export function LoginSideHero() {
           markClassName="size-11 drop-shadow-xs"
           showWordmark
           showSubtitle
+          priority
         />
 
         <div className="flex flex-col gap-2 mt-2">
@@ -24,16 +25,14 @@ export function LoginSideHero() {
             Bem-vindo de volta.
           </p>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Continue de onde parou e mantenha suas finanças sempre organizadas.
+            Continue de onde parou e acompanhe toda a sua vida financeira em um só lugar.
           </p>
         </div>
 
-        <ul className="flex flex-col gap-3 mt-1">
+        <ul className="flex flex-col gap-3.5 mt-1">
           {LOGIN_BENEFITS.map(({ icon: Icon, label }) => (
-            <li key={label} className="flex items-center gap-3 text-sm text-foreground/90">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 shrink-0 text-primary-strong">
-                <Icon className="size-3.5" aria-hidden="true" />
-              </span>
+            <li key={label} className="flex items-start gap-2.5 text-sm text-foreground/90">
+              <Icon className="size-4 text-primary-strong shrink-0 mt-0.5" aria-hidden="true" />
               <span className="leading-snug">{label}</span>
             </li>
           ))}

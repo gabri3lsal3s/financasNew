@@ -21,6 +21,7 @@ export interface TransactionFeedListProps {
   effectiveVisibleCount: number;
   filteredFeedItemsCount: number;
   recurrenceLabel: (recurrenceId: string | null | undefined) => string | undefined;
+  isExpenseSplit?: (expense: Expense) => boolean;
   onSelectExpense: (expense: Expense) => void;
   onSelectIncome: (income: Income) => void;
   onClearSearch: () => void;
@@ -55,6 +56,7 @@ export function TransactionFeedList({
   effectiveVisibleCount,
   filteredFeedItemsCount,
   recurrenceLabel,
+  isExpenseSplit,
   onSelectExpense,
   onSelectIncome,
   onClearSearch,
@@ -160,6 +162,7 @@ export function TransactionFeedList({
                     category={categoryById.get(item.categoryId)}
                     recurrenceLabel={recurrenceLabel(item.recurrenceId)}
                     isFamilyModeEnabled={isFamilyModeEnabled}
+                    hasLinkedSplit={isExpenseSplit?.(item.rawExpense)}
                     priceEvolution={priceEvolutionByExpenseId.get(item.rawExpense.id)}
                     onClick={() => onSelectExpense(item.rawExpense!)}
                   />

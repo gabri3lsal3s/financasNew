@@ -67,7 +67,7 @@ export function ToolsShowcase() {
   return (
     <section
       id="ferramentas"
-      className="relative py-16 sm:py-24 border-t border-border/60 overflow-hidden scroll-mt-20"
+      className="relative py-12 sm:py-16 border-t border-border/60 overflow-hidden scroll-mt-20"
     >
       <div
         className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 size-[600px] rounded-full bg-primary/5 blur-[140px] -z-10"
@@ -76,7 +76,7 @@ export function ToolsShowcase() {
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <ScrollReveal>
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 pb-12">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 pb-8 sm:pb-10">
             <div className="space-y-3 max-w-2xl">
               <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary-strong dark:text-primary">
                 <Sparkles className="size-3.5" aria-hidden="true" />
@@ -86,8 +86,8 @@ export function ToolsShowcase() {
                 Simuladores Financeiros Baseados em Matemática
               </h2>
               <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                Tome decisões patrimoniais com rigor técnico e sem achismos. Processamento 100% no
-                seu navegador, com links compartilháveis (Stateful URLs) e custo zero de servidor.
+                Experimente nossas calculadoras abertas antes mesmo de criar conta — o mesmo motor
+                determinístico usado dentro do ecossistema Axir, direto no navegador.
               </p>
             </div>
 

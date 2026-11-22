@@ -105,7 +105,7 @@ export function GoalMockupPreview({ active }: GoalMockupPreviewProps) {
         </div>
 
         <div className="flex items-center gap-2 pt-0.5 text-xs text-muted-foreground">
-          <Calendar className="size-3.5 text-primary shrink-0" aria-hidden="true" />
+          <Calendar className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
           <span>
             Restam 14 dias para encerrar · Faltam{" "}
             <MoneyText cents={200000} tone="default" className="font-semibold text-foreground" /> para a meta

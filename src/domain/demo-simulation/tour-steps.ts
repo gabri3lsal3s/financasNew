@@ -9,7 +9,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       order: 1,
       title: "Dashboard & Saldo Livre Real",
       description:
-        "Monitore seu saldo livre real descontando faturas e despesas já comprometidas no mês, com visão patrimonial de caixa clara.",
+        "Veja seu saldo livre real já descontando faturas abertas e contas comprometidas no mês, com memória de cálculo transparente.",
       targetRoute: "/",
       targetSelector: '[data-tour="overview-kpis"]',
       fallbackSelectors: ['[data-tour="overview-hero"]'],
@@ -22,10 +22,10 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       id: "finances-wizard-btn",
       track: "finances",
       order: 2,
-      title: "O Botão Wizard (+) e Atalhos",
+      title: "Botão de Lançamento Rápido (+)",
       titleDesktop: "Comandos Rápidos & Atalho (Ctrl+K)",
       description:
-        "O botão de destaque central na barra inferior (ou atalhos no topo) permite registrar despesas, receitas ou transferências com agilidade.",
+        "O botão central na barra inferior abre o lançamento rápido para anotar despesas, receitas, Pix ou compras parceladas em segundos.",
       contentDesktop:
         "No desktop, acione a barra de comandos ou utilize o atalho Ctrl+K para registrar despesas, receitas ou navegar rapidamente por qualquer recurso.",
       targetRoute: "/",
@@ -44,7 +44,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       order: 3,
       title: "Extrato Unificado & Filtros",
       description:
-        "Visão cronológica com separação de parcelas, conciliação e filtros detalhados por período e categoria.",
+        "Visão cronológica com separação de parcelas, recibos de Pix e filtros detalhados por período e categoria.",
       targetRoute: "/transacoes",
       targetSelector: '[data-tour="transactions-feed-card"]',
       fallbackSelectors: ['[data-tour="transactions-content"]'],
@@ -59,7 +59,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       order: 4,
       title: "Cartões, Faturas e Limites",
       description:
-        "Visualize faturas abertas, limite disponível, melhor dia de compra e acompanhe as competências de cada cartão.",
+        "Visualize faturas abertas, limite disponível, melhor dia de compra e as parcelas dos próximos meses em cada cartão.",
       targetRoute: "/cartoes",
       targetSelector: '[data-tour="cards-invoice-summary"]',
       fallbackSelectors: ['[data-tour="cards-content"]'],
@@ -74,7 +74,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       order: 5,
       title: "Categorias & Tetos Mensais",
       description:
-        "Defina limites por categoria e acompanhe barras de ritmo para saber se o consumo diário está dentro do planejado.",
+        "Defina limites por categoria e acompanhe barras de ritmo para saber na hora se o consumo diário está dentro do planejado.",
       targetRoute: "/orcamentos",
       targetSelector: '[data-tour="budgets-content"]',
       fallbackSelectors: ['[data-tour="budgets-card"]'],
@@ -85,7 +85,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
     },
   ],
 
-  // Trilha Principal 2: Investimentos & Rebalanceamento Consolidado (5 passos integrados)
+  // Trilha Principal 2: Investimentos, Preço Teto & Rebalanceamento Consolidado (5 passos integrados)
   investments: [
     {
       id: "investments-overview",
@@ -93,7 +93,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       order: 1,
       title: "Visão Patrimonial Global",
       description:
-        "Acompanhe a distribuição global por classes (Renda Fixa, Ações, FIIs, Cripto), saldo em corretora e evolução patrimonial.",
+        "Acompanhe a distribuição global por classes (Renda Fixa, Ações, FIIs, Cripto), rentabilidade TWR/TIR vs CDI/IBOV, custódia em dólar e memória de cálculo.",
       targetRoute: "/investments",
       targetSelector: '[data-tour="investments-summary"]',
       preferredPlacement: "bottom",
@@ -107,7 +107,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       order: 2,
       title: "Cadastro de Ativo (Nova Operação)",
       description:
-        "Cadastre novos ativos informando quantidade, preço médio e corretora para manter sua carteira sempre atualizada.",
+        "Cadastre novos ativos com quantidade, preço médio e corretora, importe extratos da B3 e avalie preço teto por Bazin, Graham, Gordon e FIIs.",
       targetRoute: "/investments",
       targetSelector: '[data-tour="investments-new-op"]',
       preferredPlacement: "bottom",
@@ -121,7 +121,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       order: 3,
       title: "Metas Estratégicas de Alocação",
       description:
-        "Defina os percentuais ideais para cada classe e ativo para calibrar a exposição e guiar seus aportes sem viés emocional.",
+        "Defina os percentuais ideais por classe e por ativo, monitore desvios em árvore e acompanhe a nota de governança e revisão das suas teses.",
       targetRoute: "/investments?tab=metas",
       targetSelector: '[data-tour="investments-targets"]',
       preferredPlacement: "top",
@@ -135,7 +135,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       order: 4,
       title: "Calculadora de Aporte Inteligente",
       description:
-        "Informe quanto deseja investir e o motor matemático calcula exatamente onde alocar para rebalancear sem vender posições.",
+        "Informe quanto deseja investir e o motor indica quanto comprar em cada ativo com justificativa transparente para rebalancear sem vender posições.",
       targetRoute: "/investments?tab=aporte",
       targetSelector: '[data-tour="investments-rebalance"]',
       preferredPlacement: "top",
@@ -149,7 +149,7 @@ export const TOUR_STEPS: Record<TourTrackId, TourStep[]> = {
       order: 5,
       title: "Proventos & Renda Passiva",
       description:
-        "Acompanhe dividendos, JCP e rendimentos de FIIs recebidos e provisionados para medir o efeito bola de neve da carteira.",
+        "Acompanhe dividendos, JCP e rendimentos de FIIs recebidos e provisionados e exporte relatórios executivos (DRE, Lâmina Patrimonial e Excel).",
       targetRoute: "/investments?tab=proventos",
       targetSelector: '[data-tour="investments-dividends"]',
       preferredPlacement: "top",

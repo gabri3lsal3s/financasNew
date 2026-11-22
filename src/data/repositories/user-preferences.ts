@@ -39,6 +39,7 @@ export type ReminderPreferencesInput = {
   remindersEnabled?: boolean;
   reminderDaysBeforeDebt?: number;
   reminderDaysBeforeBill?: number;
+  weeklyDigestEnabled?: boolean;
 };
 
 /** Atualiza as preferências de lembretes e notificações (§3.10). */
@@ -53,6 +54,9 @@ export async function updateReminderPreferences(prefs: ReminderPreferencesInput)
   }
   if (prefs.reminderDaysBeforeBill !== undefined) {
     input.reminder_days_before_bill = prefs.reminderDaysBeforeBill;
+  }
+  if (prefs.weeklyDigestEnabled !== undefined) {
+    input.weekly_digest_enabled = prefs.weeklyDigestEnabled;
   }
 
   const { error } = await getSupabase().from("user_preferences").update(input).eq("user_id", user_id);
@@ -85,11 +89,27 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
     deviceNotifications: {
       ...(current?.custom_settings?.deviceNotifications ?? {}),
       ...(patch.deviceNotifications ?? {}),
+      quietHours:
+        patch.deviceNotifications?.quietHours !== undefined ||
+        current?.custom_settings?.deviceNotifications?.quietHours !== undefined
+          ? {
+              ...(current?.custom_settings?.deviceNotifications?.quietHours ?? {}),
+              ...(patch.deviceNotifications?.quietHours ?? {}),
+            }
+          : undefined,
       dismissedPermissionAlerts: {
         ...(current?.custom_settings?.deviceNotifications?.dismissedPermissionAlerts ?? {}),
         ...(patch.deviceNotifications?.dismissedPermissionAlerts ?? {}),
       },
     },
+    notificationCategories:
+      patch.notificationCategories !== undefined ||
+      current?.custom_settings?.notificationCategories !== undefined
+        ? {
+            ...(current?.custom_settings?.notificationCategories ?? {}),
+            ...(patch.notificationCategories ?? {}),
+          }
+        : undefined,
     merchantLearning: {
       ...(current?.custom_settings?.merchantLearning ?? {}),
       ...(patch.merchantLearning ?? {}),
@@ -121,6 +141,10 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
           goals: {
             ...(current?.custom_settings?.dashboardAlertDismissals?.goals ?? {}),
             ...(patch.dashboardAlertDismissals?.goals ?? {}),
+          },
+          cards: {
+            ...(current?.custom_settings?.dashboardAlertDismissals?.cards ?? {}),
+            ...(patch.dashboardAlertDismissals?.cards ?? {}),
           },
         }
       : current?.custom_settings?.dashboardAlertDismissals,

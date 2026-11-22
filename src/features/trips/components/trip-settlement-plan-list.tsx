@@ -71,7 +71,7 @@ export function TripSettlementPlanList({
   if (suggestedSettlements.length === 0) {
     return (
       <EmptyState
-        icon={<ShieldCheck className="size-6" />}
+        icon={<ShieldCheck className="size-6" aria-hidden="true" />}
         title="Contas 100% equilibradas"
         description="Todos os gastos foram compensados e ninguém deve nada para ninguém."
       />

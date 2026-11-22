@@ -124,7 +124,7 @@ export function QualifiedDismissPopover({
                 É despesa pontual
               </span>
               <span className="text-[11px] text-muted-foreground leading-snug">
-                Silencia apenas no ciclo corrente sem penalizar o motor.
+                Silencia apenas no ciclo corrente sem afetar suas outras recomendações.
               </span>
             </div>
           </button>
@@ -142,7 +142,7 @@ export function QualifiedDismissPopover({
                 Não é assinatura
               </span>
               <span className="text-[11px] text-muted-foreground leading-snug">
-                Rebaixa de imediato a probabilidade deste fornecedor virar recorrência.
+                Evita que esse estabelecimento volte a ser sugerido como assinatura.
               </span>
             </div>
           </button>

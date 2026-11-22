@@ -16,6 +16,7 @@ export function useCreateCashCheckpoint() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: cashCheckpointsKey });
       void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["onboarding"] });
       pushToast({ title: "Saldo calibrado com sucesso!", variant: "success" });
     },
     onError: (error) => {
@@ -32,6 +33,7 @@ export function useDeleteCashCheckpoint() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: cashCheckpointsKey });
       void queryClient.invalidateQueries({ queryKey: ["overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["onboarding"] });
       pushToast({ title: "Checkpoint removido.", variant: "default" });
     },
     onError: (error) => {

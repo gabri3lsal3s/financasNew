@@ -116,7 +116,7 @@ export const TOUR_TRACK_TITLES: Record<AnyTourTrackId, string> = {
   // Finanças Diárias e Pessoais
   finances: "Finanças Diárias & Cartões",
   finances_overview: "Visão Geral Finanças & Saldo Livre",
-  finances_wizard: "Botão Wizard (+) e Lançamento Rápido",
+  finances_wizard: "Lançamento Rápido (+)",
   finances_cards: "Cartões, Faturas e Limites",
   finances_debts: "Contas, Dívidas e Contratos",
   finances_budgets: "Categorias e Tetos de Gastos",
@@ -150,7 +150,7 @@ export const TOUR_TRACK_SHORT_TITLES: Record<AnyTourTrackId, string> = {
   // Finanças Diárias e Pessoais
   finances: "Finanças Completo",
   finances_overview: "Visão Geral",
-  finances_wizard: "Wizard (+)",
+  finances_wizard: "Lançamento (+)",
   finances_cards: "Cartões & Faturas",
   finances_debts: "Contas & Dívidas",
   finances_budgets: "Tetos & Orçamentos",
@@ -183,7 +183,7 @@ export const TOUR_TRACK_SHORT_TITLES: Record<AnyTourTrackId, string> = {
 export const TOUR_TRACK_DESCRIPTIONS: Record<AnyTourTrackId, string> = {
   // Finanças Diárias e Pessoais
   finances:
-    "Jornada sequencial completa com saldo livre, botão wizard, lançamentos, extrato, faturas, parcelamentos, tetos e relatórios.",
+    "Jornada essencial com saldo livre seguro, lançamento rápido (+), extrato unificado, faturas, parcelamentos e tetos mensais.",
   finances_overview:
     "Monitore o saldo livre real, ritmo de gastos do mês e indicadores consolidados.",
   finances_wizard:

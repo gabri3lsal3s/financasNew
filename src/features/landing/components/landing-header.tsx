@@ -34,12 +34,12 @@ export function LandingHeader() {
 
   useEffect(() => {
     return () => {
-      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
     };
   }, []);
 
   useEffect(() => {
-    document.body.style.overflow = mobileMenuOpen ? "hidden" : "";
+    document.documentElement.style.overflow = mobileMenuOpen ? "hidden" : "";
   }, [mobileMenuOpen]);
 
   useEffect(() => {
@@ -74,14 +74,16 @@ export function LandingHeader() {
   };
 
   return (
-    <header
-      className={cn(
-        "sticky top-0 z-sticky w-full transition-all duration-300 pt-safe",
-        isScrolled
-          ? "border-b border-border/80 bg-background/90 backdrop-blur-md shadow-xs"
-          : "border-b border-border/30 bg-background/70 backdrop-blur-xs",
-      )}
-    >
+    <>
+      <header
+        className={cn(
+          "fixed top-0 inset-x-0 w-full transition-all duration-300 pt-safe",
+          mobileMenuOpen ? "z-50" : "z-sticky",
+          isScrolled
+            ? "border-b border-border/80 bg-background/90 backdrop-blur-md shadow-xs"
+            : "border-b border-border/30 bg-background/70 backdrop-blur-xs",
+        )}
+      >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6 lg:px-8 xl:px-12 min-w-0">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
           <Link
@@ -97,21 +99,25 @@ export function LandingHeader() {
           className="hidden items-center gap-1.5 text-sm font-medium lg:flex"
           aria-label="Navegação Principal"
         >
-          {LANDING_NAV_LINKS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => scrollToSection(item.id)}
-              className={cn(
-                "px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap",
-                activeSection === item.id
-                  ? "bg-primary/10 text-primary-strong font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
+          {LANDING_NAV_LINKS.map((item) => {
+            const isActive = activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={isActive ? "location" : undefined}
+                onClick={() => scrollToSection(item.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg border transition-colors cursor-pointer whitespace-nowrap",
+                  isActive
+                    ? "border-primary/30 bg-primary/12 text-primary-strong dark:text-primary font-semibold shadow-2xs"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-surface-hover/60",
+                )}
+              >
+                {item.label}
+              </button>
+            );
+          })}
         </nav>
 
         {/* CTAs Desktop apenas em >= 1024px (lg:) para evitar colisão em Tablets */}
@@ -196,6 +202,10 @@ export function LandingHeader() {
         aria-valuemax={100}
       />
 
+      </header>
+
+      <div className="h-16 pt-safe box-content shrink-0" aria-hidden="true" />
+
       <LandingMobileDrawer
         open={mobileMenuOpen}
         isSubpage={isSubpage}
@@ -207,6 +217,6 @@ export function LandingHeader() {
         onSelectSection={scrollToSection}
         onInstall={() => void install()}
       />
-    </header>
+    </>
   );
 }

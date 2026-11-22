@@ -1,5 +1,6 @@
 import { ArrowRight, HandCoins, Users } from "lucide-react";
 import { useNavigate } from "react-router";
+import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
@@ -16,6 +17,7 @@ export interface HouseholdAlertBannerProps {
   isCurrentUserPayer?: boolean;
   isCurrentUserReceiver?: boolean;
   daysRemaining?: number;
+  onDismiss?: (days: 7 | 30) => void;
   className?: string;
 }
 
@@ -30,6 +32,7 @@ export function HouseholdAlertBanner({
   isCurrentUserPayer,
   isCurrentUserReceiver,
   daysRemaining,
+  onDismiss,
   className,
 }: HouseholdAlertBannerProps) {
   const navigate = useNavigate();
@@ -61,12 +64,12 @@ export function HouseholdAlertBanner({
       role="region"
       aria-label={isSettlement ? "Alerta de Acerto Familiar" : "Alerta de Teto Familiar"}
       className={cn(
-        "w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
+        "relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
         containerBorderBg,
         className,
       )}
     >
-      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+      <div className={cn("flex items-start sm:items-center gap-3 min-w-0 flex-1", onDismiss && "pr-6 sm:pr-0")}>
         <span
           className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl border", iconContainerClass)}
           aria-hidden="true"
@@ -88,7 +91,7 @@ export function HouseholdAlertBanner({
             </Badge>
           </div>
 
-          <p className="text-xs text-muted-foreground leading-relaxed truncate">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
             {isSettlement ? (
               isCurrentUserPayer ? (
                 <>
@@ -120,23 +123,38 @@ export function HouseholdAlertBanner({
         </div>
       </div>
 
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        onClick={handleNavigate}
-        className={cn(
-          "gap-1.5 shrink-0 self-stretch sm:self-center mt-auto sm:mt-0 text-xs font-medium cursor-pointer",
-          isExceeded
-            ? "border-critical/30 hover:bg-critical/10 text-critical-strong"
-            : isWarning
-              ? "border-warning/30 hover:bg-warning/10 text-warning-strong"
-              : "border-primary/30 hover:bg-primary/10 text-primary-strong",
-        )}
-      >
-        <span>{isSettlement ? "Fazer Acerto" : "Ver Família"}</span>
-        <ArrowRight className="size-3.5" aria-hidden="true" />
-      </Button>
+      <div className="flex shrink-0 items-center gap-2 w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={handleNavigate}
+          className={cn(
+            "gap-1.5 shrink-0 flex-1 sm:flex-initial justify-center text-xs font-medium cursor-pointer",
+            isExceeded
+              ? "border-critical/30 hover:bg-critical/10 text-critical-strong"
+              : isWarning
+                ? "border-warning/30 hover:bg-warning/10 text-warning-strong"
+                : "border-primary/30 hover:bg-primary/10 text-primary-strong",
+          )}
+        >
+          <span>{isSettlement ? "Fazer Acerto" : "Ver Família"}</span>
+          <ArrowRight className="size-3.5" aria-hidden="true" />
+        </Button>
+
+        {onDismiss ? (
+          <div className="absolute top-3 right-3 sm:static">
+            <CarouselDismissPopover
+              onDismiss={onDismiss}
+              label={
+                isSettlement
+                  ? "Dispensar aviso de acerto familiar"
+                  : "Dispensar aviso de teto familiar"
+              }
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -65,4 +65,23 @@ describe("ReminderItem", () => {
     await user.click(screen.getByRole("button", { name: /Reabrir lembrete Fatura Nubank/i }));
     expect(onRestore).toHaveBeenCalledWith("bill:c1:2026-08");
   });
+
+  it("exibe tom e rótulos informativos (A receber / Registrar Recebimento) para recebíveis", () => {
+    const receivableItem: ReminderItemData = {
+      key: "debt:r1",
+      kind: "debt",
+      direction: "receivable",
+      title: "Reembolso Viagem",
+      subtitle: "A receber",
+      dueDate: "2026-08-05",
+      amountCents: 18000,
+      status: "pending",
+    };
+
+    render(<ReminderItem item={receivableItem} onSettle={vi.fn()} />);
+
+    expect(screen.getByText("A receber")).toBeInTheDocument();
+    expect(screen.getByText(/Previsto para/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Registrar recebimento Reembolso Viagem/i })).toBeInTheDocument();
+  });
 });

@@ -21,14 +21,15 @@ export function SelectParticipantDialog({
   onConfirm,
 }: SelectParticipantDialogProps) {
   const [selectedId, setSelectedId] = useState<string>("");
+  const guestOptions = participants.filter((p) => !p.is_host);
 
   const effectiveSelectedId =
-    selectedId && participants.some((p) => p.id === selectedId)
+    selectedId && guestOptions.some((p) => p.id === selectedId)
       ? selectedId
-      : (participants[0]?.id ?? "");
+      : (guestOptions[0]?.id ?? "");
 
   const handleConfirm = () => {
-    const selected = participants.find((p) => p.id === effectiveSelectedId) || participants[0];
+    const selected = guestOptions.find((p) => p.id === effectiveSelectedId) || guestOptions[0];
     if (selected) {
       onConfirm(selected);
     }
@@ -61,10 +62,10 @@ export function SelectParticipantDialog({
       <div className="space-y-4 py-1">
         <div className="space-y-1.5">
           <span className="text-xs font-semibold text-foreground block">
-            Participantes ({participants.length})
+            Participantes ({guestOptions.length})
           </span>
           <div className="space-y-2">
-            {participants.map((participant) => {
+            {guestOptions.map((participant) => {
               const isSelected = effectiveSelectedId === participant.id;
               return (
                 <button

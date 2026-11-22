@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Archive, Plane, Plus } from "lucide-react";
+import { Archive, Compass, Plane, Plus } from "lucide-react";
 import {
   Button,
   EmptyState,
@@ -13,6 +13,7 @@ import {
   TripsSkeleton,
 } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
+import { startDemo } from "@/state/demo-mode";
 import { useUserTrips } from "@/state/queries/use-trips";
 import { useTripMode } from "@/state";
 import { useAuth } from "@/hooks/use-auth";
@@ -95,15 +96,27 @@ export function TripListPage() {
               title="Nenhuma viagem em andamento"
               description="Crie um novo grupo de viagem para dividir despesas em conjunto."
               action={
-                <Button
-                  type="button"
-                  size="default"
-                  onClick={() => setIsCreateOpen(true)}
-                  className="gap-1.5 shadow-xs"
-                >
-                  <Plus className="size-4" aria-hidden="true" />
-                  <span>Criar Primeira Viagem</span>
-                </Button>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button
+                    type="button"
+                    size="default"
+                    onClick={() => setIsCreateOpen(true)}
+                    className="gap-1.5 shadow-xs"
+                  >
+                    <Plus className="size-4" aria-hidden="true" />
+                    <span>Criar Primeira Viagem</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="default"
+                    onClick={() => startDemo("finances_trips")}
+                    className="gap-1.5 text-muted-foreground hover:text-foreground"
+                  >
+                    <Compass className="size-4" aria-hidden="true" />
+                    <span>Ver exemplo na Simulação</span>
+                  </Button>
+                </div>
               }
             />
           ) : (

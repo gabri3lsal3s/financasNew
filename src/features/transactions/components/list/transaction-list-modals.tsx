@@ -1,7 +1,7 @@
 import { Modal } from "@/components/ui";
-import { SplitExpenseDialog, SplitPreviewMockupCard, UpgradeDialog } from "@/components/modules";
+import { ManageSplitDialog, SplitExpenseDialog, SplitPreviewMockupCard, UpgradeDialog } from "@/components/modules";
 import { todayISO } from "@/domain/debts";
-import type { Expense, Income, SubscriptionPlan } from "@/types";
+import type { Debt, Expense, Income, PublicShare, SubscriptionPlan } from "@/types";
 import { ExpenseDetailDialog } from "../expense-detail-dialog";
 import { IncomeDetailDialog } from "../income-detail-dialog";
 
@@ -15,6 +15,9 @@ export interface TransactionListModalsProps {
   showRachaPreview: boolean;
   showRachaSimulation: boolean;
   onCloseRachaParams: () => void;
+  managedSplitShare?: PublicShare | null;
+  managedSplitDebt?: Debt | null;
+  onCloseManagedSplit?: () => void;
   upgradeOpen: boolean;
   onUpgradeOpenChange: (open: boolean) => void;
   upgradeContext?: string;
@@ -32,6 +35,9 @@ export function TransactionListModals({
   showRachaPreview,
   showRachaSimulation,
   onCloseRachaParams,
+  managedSplitShare,
+  managedSplitDebt,
+  onCloseManagedSplit,
   upgradeOpen,
   onUpgradeOpenChange,
   upgradeContext,
@@ -80,6 +86,17 @@ export function TransactionListModals({
           autoGenerate={false}
         />
       )}
+
+      {managedSplitShare ? (
+        <ManageSplitDialog
+          open={true}
+          onOpenChange={(next) => {
+            if (!next) onCloseManagedSplit?.();
+          }}
+          share={managedSplitShare}
+          linkedDebt={managedSplitDebt ?? null}
+        />
+      ) : null}
 
       <UpgradeDialog
         open={upgradeOpen}

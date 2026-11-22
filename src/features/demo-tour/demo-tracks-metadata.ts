@@ -45,13 +45,49 @@ export const NATIVE_APK_TRACK: TrackOptionMeta = {
   id: "app_native_apk",
   title: "Bem-vindo ao App Nativo Android",
   description:
-    "O Tripé de Plataformas, biometria física de hardware, escudo anti-print e atualizações diretas.",
+    "Biometria física de hardware, escudo anti-captura de tela e atalhos rápidos no celular.",
   icon: Smartphone,
   iconColorClass: "text-primary-strong",
   isPrimary: true,
   badge: "Exclusivo APK",
   badgeVariant: "default",
 };
+
+export const PRIMARY_DEMO_TRACKS: readonly TrackOptionMeta[] = [
+  {
+    id: "finances",
+    title: "Dia a dia, Cartões & Contas",
+    description:
+      "Saldo livre seguro, lançamento rápido, extrato unificado, faturas de cartão e tetos mensais.",
+    icon: Wallet,
+    iconColorClass: "text-positive-strong",
+    isPrimary: true,
+    badge: "5 passos · 1 min",
+    badgeVariant: "default",
+  },
+  {
+    id: "shared_finances",
+    title: "Família, Viagens & Racha Pix",
+    description:
+      "Divisão de despesas e parcelas via Pix, Modo Viagem, Modo Família e vaquinhas coletivas.",
+    icon: Users,
+    iconColorClass: "text-primary-strong",
+    isPrimary: true,
+    badge: "4 passos",
+    badgeVariant: "muted",
+  },
+  {
+    id: "investments",
+    title: "Investimentos, Preço Teto & Relatórios",
+    description:
+      "Carteira global, metas e governança, preço teto (Bazin, Graham, Gordon e FIIs), aportes e proventos.",
+    icon: TrendingUp,
+    iconColorClass: "text-portfolio",
+    isPrimary: true,
+    badge: "5 passos",
+    badgeVariant: "muted",
+  },
+] as const;
 
 export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
   {
@@ -60,20 +96,12 @@ export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
     shortLabel: "Finanças",
     icon: Wallet,
     iconClass: "text-positive-strong",
-    primaryTrack: {
-      id: "finances",
-      title: "Finanças Diárias & Cartões",
-      description:
-        "Jornada sequencial completa com saldo livre, wizard, lançamentos, cartões, parcelas, tetos e relatórios.",
-      icon: Wallet,
-      iconColorClass: "text-positive-strong",
-      isPrimary: true,
-    },
+    primaryTrack: PRIMARY_DEMO_TRACKS[0]!,
     microTracks: [
       {
         id: "finances_wizard",
-        title: "Lançamentos",
-        description: "Registro rápido de despesas, receitas, Pix e parcelamentos inteligentes.",
+        title: "Lançamento Rápido (+)",
+        description: "Registro rápido de despesas, receitas, Pix e parcelamentos em até 60x.",
         icon: PlusCircle,
         iconColorClass: "text-primary-strong",
       },
@@ -87,21 +115,21 @@ export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
       {
         id: "finances_debts",
         title: "Contas, Dívidas e Contratos",
-        description: "Controle de contas a pagar, recebíveis e contratos de crédito Price/SAC.",
+        description: "Contas a pagar, contas a receber e contratos Price/SAC com amortização.",
         icon: Coins,
         iconColorClass: "text-negative-strong",
       },
       {
         id: "finances_budgets",
         title: "Categorias e Tetos de Gastos",
-        description: "Definição de tetos por categoria e alertas automáticos de ritmo de consumo.",
+        description: "Limites por categoria e alertas de ritmo para não estourar o mês.",
         icon: PieChart,
         iconColorClass: "text-negative-strong",
       },
       {
         id: "finances_insights",
         title: "Smart Advisor e Relatórios",
-        description: "Recomendações automáticas de economia, radar de assinaturas e fechamento do mês.",
+        description: "Alertas de economia, radar de assinaturas e fechamento mensal DRE.",
         icon: Lightbulb,
         iconColorClass: "text-primary-strong",
       },
@@ -114,21 +142,13 @@ export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
     icon: Users,
     iconClass: "text-primary-strong",
     microHeaderBadge: "Finanças Compartilhadas",
-    primaryTrack: {
-      id: "shared_finances",
-      title: "Finanças Compartilhadas & Modo Família",
-      description:
-        "Jornada completa de finanças colaborativas, divisão de despesas via Pix, termômetro de metas e orçamento familiar unificado.",
-      icon: Users,
-      iconColorClass: "text-primary-strong",
-      isPrimary: true,
-    },
+    primaryTrack: PRIMARY_DEMO_TRACKS[1]!,
     microTracks: [
       {
         id: "finances_split",
         title: "Racha de Despesas com Pix",
         description:
-          "Divisão inteligente de contas e eventos com amigos, cobrança por Pix e recibos automáticos via WhatsApp.",
+          "Divisão de contas e parcelas com amigos, cobrança por Pix e recibos via WhatsApp.",
         icon: Share2,
         iconColorClass: "text-positive-strong",
       },
@@ -136,7 +156,7 @@ export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
         id: "finances_family",
         title: "Modo Família Multi-Contas",
         description:
-          "Gestão orçamentária para casais e famílias com cartões independentes, teto conjunto e equilíbrio sem atrito.",
+          "Orçamento para casais e famílias com cartões independentes e teto conjunto.",
         icon: Users,
         iconColorClass: "text-primary-strong",
       },
@@ -144,7 +164,7 @@ export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
         id: "finances_goals",
         title: "Metas Coletivas & Vaquinha Pix",
         description:
-          "Vaquinha colaborativa com termômetro em tempo real, chave Pix para arrecadação e prestação de contas pública.",
+          "Vaquinha colaborativa com termômetro em tempo real, chave Pix e link público.",
         icon: Target,
         iconColorClass: "text-portfolio",
       },
@@ -152,7 +172,7 @@ export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
         id: "finances_trips",
         title: "Modo Viagem & Rateio em Grupo",
         description:
-          "Controle compartilhado de viagens com amigos, múltiplos pagadores, compensação mínima de saldos e acerto via Pix sem atrito.",
+          "Viagens com múltiplos pagadores, compensação mínima e acerto via Pix.",
         icon: Plane,
         iconColorClass: "text-warning-strong",
       },
@@ -164,34 +184,26 @@ export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
     shortLabel: "Investimentos",
     icon: TrendingUp,
     iconClass: "text-portfolio",
-    primaryTrack: {
-      id: "investments",
-      title: "Investimentos & Rebalanceamento",
-      description:
-        "Jornada patrimonial completa com visão geral, nova operação, metas de alocação, aportes e proventos.",
-      icon: TrendingUp,
-      iconColorClass: "text-portfolio",
-      isPrimary: true,
-    },
+    primaryTrack: PRIMARY_DEMO_TRACKS[2]!,
     microTracks: [
       {
         id: "investments_assets",
         title: "Cadastro de Ativos / Nova Operação",
-        description: "Cadastre ativos, registre operações e controle saldo em caixa.",
+        description: "Cadastre ativos BRL/USD, registre operações e controle o saldo em caixa.",
         icon: Briefcase,
         iconColorClass: "text-portfolio",
       },
       {
         id: "investments_targets",
-        title: "Metas por Classe e Setor",
-        description: "Percentuais ideais por classe e setor para calibrar a exposição ao risco.",
+        title: "Metas por Classe e Ativo",
+        description: "Percentuais ideais em árvore e governança para calibrar a carteira.",
         icon: Target,
         iconColorClass: "text-positive-strong",
       },
       {
         id: "investments_aporte",
         title: "Calculadora de Aporte Inteligente",
-        description: "Motor matemático que calcula onde alocar cada centavo para rebalancear.",
+        description: "Indica onde alocar cada centavo sem vender posições e com justificativa.",
         icon: Calculator,
         iconColorClass: "text-primary-strong",
       },
@@ -205,9 +217,9 @@ export const DEMO_TRACK_CATEGORIES: readonly TourCategoryMeta[] = [
     iconClass: "text-muted-foreground",
     primaryTrack: {
       id: "settings_support",
-      title: "Personalização, Modos Visuais e Suporte",
+      title: "Personalização, Privacidade e Suporte",
       description:
-        "Atalhos de privacidade, modos de experiência, identidade visual, notificações e canal direto de atendimento.",
+        "Escudo de privacidade, temas, identidade visual, notificações e suporte direto.",
       icon: Settings,
       iconColorClass: "text-muted-foreground",
       isPrimary: true,

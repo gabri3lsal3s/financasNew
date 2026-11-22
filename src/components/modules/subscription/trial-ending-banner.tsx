@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { getTrialLifecycleMetadata } from "@/domain/subscription";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
+import { CarouselDismissPopover } from "../carousel-dismiss-popover";
 
 export interface TrialEndingBannerProps {
   daysRemaining: number;
   hasAutoRenew?: boolean;
   className?: string;
   onActivatePro?: () => void;
+  onDismiss?: (days: 7 | 30) => void;
 }
 
 /**
@@ -31,6 +33,7 @@ export function TrialEndingBanner({
   hasAutoRenew,
   className,
   onActivatePro,
+  onDismiss,
 }: TrialEndingBannerProps) {
   const navigate = useNavigate();
 
@@ -60,7 +63,7 @@ export function TrialEndingBanner({
     : daysRemaining === 0
       ? "Último dia"
       : daysRemaining === 1
-        ? "1d restantes"
+        ? "1 dia restante"
         : meta.badgeLabel;
 
   const descriptionText = hasAutoRenew
@@ -99,12 +102,12 @@ export function TrialEndingBanner({
       role="region"
       aria-label="Aviso do Período de Teste Pro"
       className={cn(
-        "w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
+        "relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border p-3.5 sm:p-4 shadow-xs transition-all",
         containerClasses,
         className,
       )}
     >
-      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+      <div className={cn("flex items-start sm:items-center gap-3 min-w-0 flex-1", onDismiss && "pr-6 sm:pr-0")}>
         <div
           className={cn(
             "flex size-9 shrink-0 items-center justify-center rounded-xl border",
@@ -120,18 +123,18 @@ export function TrialEndingBanner({
               {badgeText}
             </Badge>
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground leading-relaxed">
             <ShieldCheck className="size-3.5 shrink-0 text-positive-strong" aria-hidden="true" />
-            <span className="line-clamp-2 sm:line-clamp-1 break-words">{descriptionText}</span>
+            <span className="line-clamp-2 sm:line-clamp-1 break-words min-w-0">{descriptionText}</span>
           </div>
         </div>
       </div>
 
-      <div className="shrink-0 self-stretch sm:self-center mt-auto sm:mt-0">
+      <div className="flex shrink-0 items-center gap-2 w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
         <Button
           size="sm"
           onClick={handleActivate}
-          className="w-full sm:w-auto gap-1.5 text-xs font-medium cursor-pointer"
+          className="flex-1 sm:flex-initial justify-center gap-1.5 text-xs font-medium cursor-pointer"
         >
           {hasAutoRenew ? (
             <ShieldCheck className="size-3.5" aria-hidden="true" />
@@ -140,6 +143,15 @@ export function TrialEndingBanner({
           )}
           {hasAutoRenew ? "Gerenciar Assinatura" : daysRemaining <= 7 ? "Ativar Plano Pro" : meta.ctaText}
         </Button>
+
+        {onDismiss ? (
+          <div className="absolute top-3 right-3 sm:static">
+            <CarouselDismissPopover
+              onDismiss={onDismiss}
+              label="Dispensar aviso do período de teste"
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

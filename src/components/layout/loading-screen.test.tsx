@@ -8,8 +8,14 @@ describe("LoadingScreen", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
     // O wordmark textual foi removido em prol do minimalismo puro
     expect(screen.queryByText("Axir")).not.toBeInTheDocument();
-    // A logo oficial monograma está presente via imagem acessível
-    expect(screen.getByRole("img", { name: "Axir" })).toBeInTheDocument();
+    // A logo oficial monograma está presente via imagem acessível, inline WebP e blindada contra flash de alt
+    const img = screen.getByRole("img", { name: "Axir" });
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute("decoding", "sync");
+    expect(img).toHaveAttribute("fetchpriority", "high");
+    expect(img).toHaveClass("text-transparent", "text-[0px]");
+    const source = document.querySelector("picture source[type='image/webp']");
+    expect(source?.getAttribute("srcset")?.startsWith("data:image/webp;base64,")).toBe(true);
     expect(screen.getByText("Carregando…")).toBeInTheDocument();
   });
 

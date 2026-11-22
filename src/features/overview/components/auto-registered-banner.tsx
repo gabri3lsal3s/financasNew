@@ -114,7 +114,7 @@ export function AutoRegisteredBanner({ className }: AutoRegisteredBannerProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+        <div className="flex flex-wrap items-center gap-2 shrink-0 self-stretch sm:self-center justify-end">
           <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)} className="gap-1.5">
             <Edit3 className="size-3.5" aria-hidden="true" />
             <span>Editar Lançamento</span>

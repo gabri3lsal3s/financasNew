@@ -197,6 +197,14 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useApplySplitSettlement: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateLinkedSplit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateSplitComprehensive: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSyncSplitFromExpenseEdit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSyncSplitFromDebtSettle: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteLinkedSplit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useExpensesByInstallmentGroup: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  myPublicSharesMutationKey: ["public-shares"],
 }));
 
 /** Foco inicial é o primeiro campo (auth) — ordem de tabulação natural. */

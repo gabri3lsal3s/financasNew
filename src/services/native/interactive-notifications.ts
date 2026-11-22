@@ -25,10 +25,34 @@ export const ACTION_UNDO = "undo_quick_add";
 
 export interface QuickAddResult {
   success: boolean;
+  requiresWizard?: boolean;
   createdId?: string;
   categoryName?: string;
   type: "expense" | "income";
   error?: string;
+}
+
+/**
+ * Constrói a rota com query parameters para abrir o Wizard Rápido pré-preenchido.
+ */
+export function buildReviewRoute(parsed: ParsedBankTransaction): string {
+  const params = new URLSearchParams();
+  params.set("novo", parsed.type);
+  params.set("modo", "rapido");
+  params.set("valor", parsed.amountCents.toString());
+  params.set("descricao", parsed.description);
+  params.set("data", parsed.date);
+  params.set("origem", "notificacao");
+  if (parsed.categorySlug) params.set("categoria", parsed.categorySlug);
+  if (parsed.paymentMethod) params.set("forma", parsed.paymentMethod);
+  const cardToken = parsed.cardLastDigits || parsed.issuerBank || parsed.bankName;
+  if (cardToken) {
+    params.set("cartao", cardToken);
+  }
+  if (parsed.installments && parsed.installments > 1) {
+    params.set("parcelas", parsed.installments.toString());
+  }
+  return `/transacoes?${params.toString()}`;
 }
 
 /**
@@ -269,22 +293,25 @@ export async function quickAddTransaction(suggestion: ParsedBankTransaction): Pr
     // 2. Busca categorias do usuário para inferir categoria ou adotar fallback seguro
     const categories = await listCategories(suggestion.type).catch(() => []);
     let targetCategory = findMatchingCategory(categories, suggestion.description);
-    if (!targetCategory && categories.length > 0) {
+    if (!targetCategory) {
       const prefs = getBankAssistantPreferences();
       if (prefs.unknownCategoryHandling === "open_quick_wizard") {
         return {
           success: false,
+          requiresWizard: true,
           type: suggestion.type,
           error: "Categoria desconhecida. Abrindo para conferência no Wizard Rápido.",
         };
       }
-      targetCategory =
-        categories.find(
-          (c) =>
-            c.name.toLowerCase().includes("outros") ||
-            c.name.toLowerCase().includes("diversos") ||
-            c.name.toLowerCase().includes("geral"),
-        ) || categories[0];
+      if (categories.length > 0) {
+        targetCategory =
+          categories.find(
+            (c) =>
+              c.name.toLowerCase().includes("outros") ||
+              c.name.toLowerCase().includes("diversos") ||
+              c.name.toLowerCase().includes("geral"),
+          ) || categories[0];
+      }
     }
 
     const categoryId = targetCategory?.id ?? "";

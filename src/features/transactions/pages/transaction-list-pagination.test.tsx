@@ -89,7 +89,16 @@ vi.mock("@/state", () => ({
   useMyPublicShares: () => ({ data: [], isLoading: false }),
   useUpdatePublicShare: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDebts: () => ({ data: [], isLoading: false }),
+  useUpdateDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSettleIntegratedReceivable: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useExpensesByInstallmentGroup: () => ({ data: undefined, isLoading: false }),
+  useApplySplitSettlement: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateLinkedSplit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateSplitComprehensive: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteLinkedSplit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSyncSplitFromExpenseEdit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDismissSplitPaymentSignal: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useExpense: () => ({ data: null, isLoading: false, isFetched: true }),
 }));
 
 describe("TransactionListPage — Paginação Progressiva (Fase 6 — 60 FPS)", () => {

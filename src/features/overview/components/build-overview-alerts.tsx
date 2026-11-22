@@ -1,22 +1,28 @@
 import {
   CashGapAlert,
   type DashboardAlertItem,
+  OnboardingCarouselBanner,
   PaceAlertBanner,
   PermissionsAlertBanner,
+  SubscriptionPastDueBanner,
   SurplusAporteBanner,
   TrialEndingBanner,
 } from "@/components/modules";
 import type { PermissionAlertBannerType } from "@/components/modules/permissions-alert-banner";
+import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
+import type { CalibrationDecision } from "@/domain/insights/feedback";
 import { ActiveTripBanner } from "@/features/trips/components";
-import type { PublicShare } from "@/types";
+import type { OnboardingGoalId, PublicShare } from "@/types";
 import type { useOverviewData } from "../hooks/use-overview-data";
 import { CorporateDividendsBanner } from "./corporate-dividends-banner";
 import { GoalProgressAlertBanner } from "./goal-progress-alert-banner";
 import { HouseholdAlertBanner } from "./household-alert-banner";
 import { PortfolioGovernanceBanner } from "./portfolio-governance-banner";
+import { SmartAdvisorCard } from "./smart-advisor";
 import { SplitPendingBanner } from "./split-pending-banner";
 
 export interface BuildOverviewAlertItemsParams {
+  month?: string;
   data: ReturnType<typeof useOverviewData>;
   shouldShowPermissionsBanner: boolean;
   permissionBannerType: PermissionAlertBannerType | null;
@@ -34,10 +40,34 @@ export interface BuildOverviewAlertItemsParams {
   onReviewGovernance: () => void;
   onDismissGovernance?: (days: 7 | 30) => void;
   isGovernanceDismissed?: boolean;
+  showOnboardingCarousel?: boolean;
+  initialGoal?: OnboardingGoalId | null;
+  onOpenOnboardingChecklist?: () => void;
+  onDismissOnboarding?: () => void;
+  onDismissCard?: (cardKey: string, days: 7 | 30) => void;
+  advisorInsights?: SmartAdvisorInsight[];
+  onDismissAdvisor?: (themeKey?: string, days?: number) => void;
+  onConfirmRecurrence?: (occurrenceKey: string) => void | Promise<void>;
+  onIgnoreRecurrence?: (occurrenceKey: string, reason?: CalibrationDecision) => void | Promise<void>;
+  onMarkEssential?: (occurrenceKey: string, displayName?: string) => void | Promise<void>;
+  onConfirmIncome?: (payload: {
+    name: string;
+    valueCents: number;
+    categoryId: string;
+    date?: string;
+  }) => void | Promise<void>;
+  onConfirmExpense?: (payload: {
+    name: string;
+    valueCents: number;
+    categoryId: string;
+    date?: string;
+    forma?: string;
+    cardId?: string;
+  }) => void | Promise<void>;
 }
 
 /**
- * Monta e prioriza os alertas exibidos no carrossel da Visão Geral.
+ * Monta e prioriza os alertas exibidos no carrossel único inteligente da Visão Geral.
  */
 export function buildOverviewAlertItems(
   params: BuildOverviewAlertItemsParams,
@@ -53,8 +83,18 @@ export function buildOverviewAlertItems(
   const hasHouseholdSettlement = Boolean(
     householdData && !householdData.is_settled && householdData.settlement && householdData.settlement.amount_cents > 0,
   );
+  const trip = activeTrips[0];
+  const isPastDueBannerActive =
+    subscription.status === "past_due" ||
+    subscription.status === "unpaid" ||
+    subscription.billingPhase === "past_due";
 
-  return [
+  const rawOperationalItems: (DashboardAlertItem | null | undefined | false)[] = [
+    isPastDueBannerActive && {
+      id: "subscription-past-due",
+      priority: 0,
+      content: <SubscriptionPastDueBanner />,
+    },
     params.shouldShowPermissionsBanner &&
       params.permissionBannerType && {
         id: "permissions-alert",
@@ -67,62 +107,91 @@ export function buildOverviewAlertItems(
           />
         ),
       },
-    hasHouseholdExceeded && {
-      id: "household-ceiling-exceeded",
-      priority: 1,
-      content: (
-        <HouseholdAlertBanner
-          variant="ceiling_exceeded"
-          totalSpentCents={householdData!.total_spent_cents}
-          ceilingCents={householdData!.monthly_ceiling_cents}
-          spentPercentage={householdData!.spent_percentage}
-          daysRemaining={daily.daysRemaining ?? undefined}
-        />
-      ),
-    },
-    isCurrentMonth && cashGapResult.isCashGapDetected && {
-      id: "cash-gap-alert",
-      priority: cashGapResult.severity === "critical" ? 1 : 3,
-      content: <CashGapAlert result={cashGapResult} />,
-    },
-    activeTrips[0]
+    hasHouseholdExceeded &&
+      !data.isCardDismissed("household-ceiling-exceeded") && {
+        id: "household-ceiling-exceeded",
+        priority: 1,
+        content: (
+          <HouseholdAlertBanner
+            variant="ceiling_exceeded"
+            totalSpentCents={householdData!.total_spent_cents}
+            ceilingCents={householdData!.monthly_ceiling_cents}
+            spentPercentage={householdData!.spent_percentage}
+            daysRemaining={daily.daysRemaining ?? undefined}
+            onDismiss={(days) => params.onDismissCard?.("household-ceiling-exceeded", days)}
+          />
+        ),
+      },
+    isCurrentMonth &&
+      cashGapResult.isCashGapDetected &&
+      !data.isCardDismissed("cash-gap-alert") && {
+        id: "cash-gap-alert",
+        priority: cashGapResult.severity === "critical" ? 1 : 3,
+        content: (
+          <CashGapAlert
+            result={cashGapResult}
+            onDismiss={(days) => params.onDismissCard?.("cash-gap-alert", days)}
+          />
+        ),
+      },
+    params.showOnboardingCarousel &&
+      data.onboardingQuery?.data && {
+        id: "onboarding-progress-banner",
+        priority: 2,
+        content: (
+          <OnboardingCarouselBanner
+            counts={data.onboardingQuery.data}
+            hasFeature={data.hasFeature}
+            initialGoal={params.initialGoal}
+            onContinue={() => params.onOpenOnboardingChecklist?.()}
+            onDismiss={() => params.onDismissOnboarding?.()}
+          />
+        ),
+      },
+    trip && !data.isCardDismissed(`active-trip-${trip.id}`)
       ? {
-          id: `active-trip-${activeTrips[0].id}`,
+          id: `active-trip-${trip.id}`,
           priority: 2,
           content: (
             <ActiveTripBanner
-              trip={activeTrips[0]}
+              trip={trip}
               totalExpensesCents={data.activeTripExpensesTotalCents}
+              onDismiss={(days) => params.onDismissCard?.(`active-trip-${trip.id}`, days)}
             />
           ),
         }
       : false,
-    hasHouseholdSettlement && {
-      id: "household-settlement-pending",
-      priority: 2,
-      content: (
-        <HouseholdAlertBanner
-          variant="settlement_pending"
-          settlementAmountCents={householdData!.settlement!.amount_cents}
-          settlementPayerName={householdData!.settlement!.payer_name}
-          settlementReceiverName={householdData!.settlement!.receiver_name}
-          isCurrentUserPayer={currentUserId ? householdData!.settlement!.payer_id === currentUserId : false}
-          isCurrentUserReceiver={currentUserId ? householdData!.settlement!.receiver_id === currentUserId : false}
-        />
-      ),
-    },
-    splitPendingData.count > 0 && {
-      id: "split-pending-banner",
-      priority: 2,
-      content: (
-        <SplitPendingBanner
-          pendingCents={splitPendingData.pendingCents}
-          activeCount={splitPendingData.count}
-          totalExpensesCents={splitPendingData.totalExpensesCents}
-          items={splitPendingData.items}
-        />
-      ),
-    },
+    hasHouseholdSettlement &&
+      !data.isCardDismissed("household-settlement-pending") && {
+        id: "household-settlement-pending",
+        priority: 2,
+        content: (
+          <HouseholdAlertBanner
+            variant="settlement_pending"
+            settlementAmountCents={householdData!.settlement!.amount_cents}
+            settlementPayerName={householdData!.settlement!.payer_name}
+            settlementReceiverName={householdData!.settlement!.receiver_name}
+            isCurrentUserPayer={currentUserId ? householdData!.settlement!.payer_id === currentUserId : false}
+            isCurrentUserReceiver={currentUserId ? householdData!.settlement!.receiver_id === currentUserId : false}
+            onDismiss={(days) => params.onDismissCard?.("household-settlement-pending", days)}
+          />
+        ),
+      },
+    splitPendingData.count > 0 &&
+      !data.hasPendingSplitSignals &&
+      !data.isCardDismissed("split-pending-banner") && {
+        id: "split-pending-banner",
+        priority: 2,
+        content: (
+          <SplitPendingBanner
+            pendingCents={splitPendingData.pendingCents}
+            activeCount={splitPendingData.count}
+            totalExpensesCents={splitPendingData.totalExpensesCents}
+            items={splitPendingData.items}
+            onDismiss={(days) => params.onDismissCard?.("split-pending-banner", days)}
+          />
+        ),
+      },
     showPaceAlert && isPaceEligible && {
       id: "pace-alert-banner",
       priority: projection.surplusCents !== null && projection.surplusCents < 0 ? 2 : 3,
@@ -163,19 +232,21 @@ export function buildOverviewAlertItems(
         />
       ),
     },
-    (corporateDividends.available.length > 0 || corporateDividends.projected.length > 0) && {
-      id: "corporate-dividends-alert",
-      priority: corporateDividends.available.length > 0 ? 2 : 3,
-      content: (
-        <CorporateDividendsBanner
-          availableCount={corporateDividends.available.length}
-          projectedCount={corporateDividends.projected.length}
-          totalAvailableAmount={corporateDividends.totalAvailableAmount}
-          totalProjectedAmount={corporateDividends.totalProjectedAmount}
-          onInspect={params.onInspectDividends}
-        />
-      ),
-    },
+    (corporateDividends.available.length > 0 || corporateDividends.projected.length > 0) &&
+      !data.isCardDismissed("corporate-dividends-alert") && {
+        id: "corporate-dividends-alert",
+        priority: corporateDividends.available.length > 0 ? 2 : 3,
+        content: (
+          <CorporateDividendsBanner
+            availableCount={corporateDividends.available.length}
+            projectedCount={corporateDividends.projected.length}
+            totalAvailableAmount={corporateDividends.totalAvailableAmount}
+            totalProjectedAmount={corporateDividends.totalProjectedAmount}
+            onInspect={params.onInspectDividends}
+            onDismiss={(days) => params.onDismissCard?.("corporate-dividends-alert", days)}
+          />
+        ),
+      },
     params.canViewInvestments &&
       params.overdueReviewsCount > 0 &&
       !params.isGovernanceDismissed && {
@@ -190,11 +261,75 @@ export function buildOverviewAlertItems(
         ),
       },
     subscription.isTrial &&
-      !subscription.hasAutoRenew &&
+      data.isTrialBannerEligible &&
       subscription.trialDaysRemaining !== null && {
         id: "trial-ending-banner",
         priority: subscription.trialDaysRemaining <= 7 ? 2 : 4,
-        content: <TrialEndingBanner daysRemaining={subscription.trialDaysRemaining} />,
+        content: (
+          <TrialEndingBanner
+            daysRemaining={subscription.trialDaysRemaining}
+            hasAutoRenew={subscription.hasAutoRenew}
+            onDismiss={
+              subscription.trialDaysRemaining > 3
+                ? (days) => params.onDismissCard?.("trial-ending", days)
+                : undefined
+            }
+          />
+        ),
       },
   ];
+
+  const operationalItems = rawOperationalItems.filter(
+    (item): item is DashboardAlertItem => Boolean(item && item.content),
+  );
+  const maxAdvisorSlides = operationalItems.length >= 3 ? 1 : 2;
+  const advisorSlides: DashboardAlertItem[] = (params.advisorInsights ?? [])
+    .slice(0, maxAdvisorSlides)
+    .map((insight) => ({
+      id: `smart-advisor-${insight.id}`,
+      priority: insight.priority === 1 ? 1.5 : insight.priority === 2 ? 2.5 : 3.5,
+      content: (
+        <SmartAdvisorCard
+          embeddedInCarousel
+          month={params.month}
+          insight={insight}
+          onDismiss={params.onDismissAdvisor}
+          onConfirmRecurrence={
+            params.onConfirmRecurrence
+              ? async (key) => {
+                  await params.onConfirmRecurrence!(key);
+                  params.onDismissAdvisor?.(insight.themeKey);
+                }
+              : undefined
+          }
+          onIgnoreRecurrence={
+            params.onIgnoreRecurrence
+              ? async (key, reason) => {
+                  await params.onIgnoreRecurrence!(key, reason);
+                  params.onDismissAdvisor?.(insight.themeKey);
+                }
+              : undefined
+          }
+          onMarkEssential={params.onMarkEssential}
+          onConfirmIncome={
+            params.onConfirmIncome
+              ? async (payload) => {
+                  await params.onConfirmIncome!(payload);
+                  params.onDismissAdvisor?.(insight.themeKey);
+                }
+              : undefined
+          }
+          onConfirmExpense={
+            params.onConfirmExpense
+              ? async (payload) => {
+                  await params.onConfirmExpense!(payload);
+                  params.onDismissAdvisor?.(insight.themeKey);
+                }
+              : undefined
+          }
+        />
+      ),
+    }));
+
+  return [...operationalItems, ...advisorSlides];
 }

@@ -19,15 +19,21 @@ interface CountQuery {
   then<TResult>(onfulfilled?: (value: CountResult) => TResult | PromiseLike<TResult>): Promise<TResult>;
 }
 
+type OnboardingCountTable =
+  | "categories"
+  | "cash_checkpoints"
+  | "credit_cards"
+  | "expenses"
+  | "incomes"
+  | "portfolio_assets"
+  | "portfolio_transactions";
+
 /**
  * Conta de forma leve (head: true) as linhas de uma tabela do usuário.
  * O `count` vem no topo do resultado do builder (mesmo padrão de
  * `getCategoryUsage` em categories.ts) — sem passar por resolveQuery.
  */
-async function count(
-  table: "categories" | "credit_cards" | "expenses" | "incomes" | "portfolio_assets" | "portfolio_transactions",
-  filters: CountFilter[] = [],
-): Promise<number> {
+async function count(table: OnboardingCountTable, filters: CountFilter[] = []): Promise<number> {
   let query = getSupabase()
     .from(table)
     .select("id", { count: "exact", head: true }) as unknown as CountQuery;
@@ -42,14 +48,15 @@ async function count(
 
 /**
  * Snapshot de dados para o onboarding de primeiro uso (§5.7): contagens
- * paralelas de categorias do usuário (is_reserved = false — as reservadas
- * são do sistema), cartões, lançamentos e posições/transações de investimento.
+ * paralelas de categorias do usuário (is_reserved = false), checkpoints de caixa,
+ * cartões, lançamentos e posições/transações de investimento.
  * Falha de rede propaga como AppError (a UI trata via gateway + retry).
  */
 export async function getOnboardingCounts(): Promise<OnboardingCounts> {
   const [
     expenseCategories,
     incomeCategories,
+    cashCheckpoints,
     cards,
     expenses,
     incomes,
@@ -64,6 +71,7 @@ export async function getOnboardingCounts(): Promise<OnboardingCounts> {
       { column: "type", value: "income" },
       { column: "is_reserved", value: false },
     ]),
+    count("cash_checkpoints"),
     count("credit_cards"),
     count("expenses"),
     count("incomes"),
@@ -74,6 +82,7 @@ export async function getOnboardingCounts(): Promise<OnboardingCounts> {
   return {
     expenseCategories,
     incomeCategories,
+    cashCheckpoints,
     cards,
     transactions: expenses + incomes,
     portfolioAssets,

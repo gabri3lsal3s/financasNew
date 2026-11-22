@@ -25,8 +25,12 @@ interface UsePublicSplitActionsParams {
   currentParticipant: SplitParticipantItem | null;
   selectedParticipant: SplitParticipantItem | null;
   setSelectedParticipant: (p: SplitParticipantItem | null) => void;
+  participantInstallments?: SplitParticipantInstallment[];
   selectedInstallment: SplitParticipantInstallment | null;
+  isPayAllRemaining?: boolean;
   effectiveChargeCents: number;
+  isHostViewing?: boolean;
+  isCurrentParticipantSettled?: boolean;
   guestIdentity: UsePublicSplitGuestIdentityReturn;
 }
 
@@ -42,8 +46,12 @@ export function usePublicSplitActions({
   currentParticipant,
   selectedParticipant,
   setSelectedParticipant,
+  participantInstallments = [],
   selectedInstallment,
+  isPayAllRemaining = false,
   effectiveChargeCents,
+  isHostViewing = false,
+  isCurrentParticipantSettled = false,
   guestIdentity,
 }: UsePublicSplitActionsParams) {
   const navigate = useNavigate();
@@ -88,18 +96,26 @@ export function usePublicSplitActions({
       try {
         await saveSplitMutation.mutateAsync({
           title: payload.title,
-          amountCents: effectiveChargeCents,
+          amountCents: effectiveChargeCents > 0 ? effectiveChargeCents : payload.guest_share_cents,
           date: payload.date,
           categoryId,
         });
-        if (token) {
+        const targetInstIds =
+          isPayAllRemaining && participantInstallments.length > 0
+            ? participantInstallments.filter((i) => !i.is_settled).map((i) => i.id)
+            : selectedInstallment?.id
+              ? [selectedInstallment.id]
+              : [];
+
+        if (token && !isHostViewing && !isCurrentParticipantSettled && effectiveChargeCents > 0 && !participant?.is_host) {
           try {
             await signalSplitPaymentMutation.mutateAsync({
               token,
               participantName: resolveGuestActorName(participant, session?.user, "Participante"),
               amountCents: effectiveChargeCents,
               participantId: participant?.id,
-              installmentId: selectedInstallment?.id ?? null,
+              installmentId: targetInstIds[0] ?? null,
+              ...(targetInstIds.length > 0 ? { installmentIds: targetInstIds } : {}),
             });
           } catch (signalErr) {
             console.warn("Não foi possível sinalizar o pagamento:", signalErr);
@@ -108,7 +124,9 @@ export function usePublicSplitActions({
         triggerSensory("success");
         pushToast({
           title: "Despesa registrada!",
-          description: "Avisamos o anfitrião sobre o seu pagamento para conferência.",
+          description: isCurrentParticipantSettled
+            ? "Lançamento salvo na sua conta."
+            : "Avisamos o anfitrião sobre o seu pagamento para conferência.",
           variant: "success",
         });
         navigate("/transacoes");
@@ -118,7 +136,20 @@ export function usePublicSplitActions({
         setIsSavingDirectly(false);
       }
     },
-    [payload, effectiveChargeCents, selectedInstallment, saveSplitMutation, signalSplitPaymentMutation, token, session, navigate],
+    [
+      payload,
+      effectiveChargeCents,
+      isPayAllRemaining,
+      participantInstallments,
+      selectedInstallment,
+      isHostViewing,
+      isCurrentParticipantSettled,
+      saveSplitMutation,
+      signalSplitPaymentMutation,
+      token,
+      session,
+      navigate,
+    ],
   );
 
   const handleSaveExpenseClick = useCallback(async () => {
@@ -142,8 +173,17 @@ export function usePublicSplitActions({
 
   const executeSignalOnly = useCallback(
     async (participant?: SplitParticipantItem | null) => {
-      if (!payload || !token) return;
-      const targetInstId = selectedInstallment?.id ?? null;
+      if (!payload || !token || isHostViewing || isCurrentParticipantSettled || participant?.is_host || effectiveChargeCents <= 0) {
+        return;
+      }
+      const targetInstIds =
+        isPayAllRemaining && participantInstallments.length > 0
+          ? participantInstallments.filter((i) => !i.is_settled).map((i) => i.id)
+          : selectedInstallment?.id
+            ? [selectedInstallment.id]
+            : [];
+      const targetInstId = targetInstIds[0] ?? null;
+
       setIsSignalingDirectly(true);
       try {
         await signalSplitPaymentMutation.mutateAsync({
@@ -152,9 +192,14 @@ export function usePublicSplitActions({
           amountCents: effectiveChargeCents,
           participantId: participant?.id,
           installmentId: targetInstId,
+          ...(targetInstIds.length > 0 ? { installmentIds: targetInstIds } : {}),
         });
-        if (targetInstId) {
-          setJustSignaledInstallmentIds((prev) => new Set(prev).add(targetInstId));
+        if (targetInstIds.length > 0) {
+          setJustSignaledInstallmentIds((prev) => {
+            const next = new Set(prev);
+            for (const id of targetInstIds) next.add(id);
+            return next;
+          });
         }
         triggerSensory("success");
         pushToast({
@@ -173,15 +218,35 @@ export function usePublicSplitActions({
         setIsSignalingDirectly(false);
       }
     },
-    [payload, token, effectiveChargeCents, selectedInstallment, session, signalSplitPaymentMutation],
+    [
+      payload,
+      token,
+      isHostViewing,
+      isCurrentParticipantSettled,
+      effectiveChargeCents,
+      isPayAllRemaining,
+      participantInstallments,
+      selectedInstallment,
+      session,
+      signalSplitPaymentMutation,
+    ],
   );
 
   const handleSignalPixPayment = useCallback(async () => {
     if (!payload || !token) return;
+    if (isHostViewing) {
+      pushToast({
+        title: "Prévia do anfitrião",
+        description: "Apenas convidados sinalizam pagamentos pelo link público.",
+        variant: "default",
+      });
+      return;
+    }
+    if (isCurrentParticipantSettled) return;
     const resolved = resolveUnsettledGuest("signal");
     if (resolved === "prompted") return;
     await executeSignalOnly(resolved);
-  }, [payload, token, resolveUnsettledGuest, executeSignalOnly]);
+  }, [payload, token, isHostViewing, isCurrentParticipantSettled, resolveUnsettledGuest, executeSignalOnly]);
 
   const handleConfirmParticipant = useCallback(
     async (participant: SplitParticipantItem) => {

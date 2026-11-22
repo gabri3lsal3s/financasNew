@@ -8,9 +8,11 @@ import { RECURRENCE_FREQUENCY_LABELS } from "@/lib/labels";
 import {
   useCategories,
   useCreditCards,
+  useDebts,
   useExpenses,
   useFamilyMode,
   useIncomes,
+  useMyPublicShares,
   usePermission,
   useRecurrences,
 } from "@/state";
@@ -57,6 +59,8 @@ export function useTransactionList() {
   const categoriesQuery = useCategories();
   const recurrencesQuery = useRecurrences();
   const cardsQuery = useCreditCards();
+  const splitSharesQuery = useMyPublicShares("split");
+  const debtsQuery = useDebts();
 
   const loading =
     expensesQuery.isLoading ||
@@ -172,6 +176,69 @@ export function useTransactionList() {
     ]);
   };
 
+  const { splitExpenseIds, splitGroupIds } = useMemo(() => {
+    const expenseIds = new Set<string>();
+    const groupIds = new Set<string>();
+    for (const share of splitSharesQuery.data ?? []) {
+      const p = (share.payload ?? {}) as Record<string, unknown>;
+      const expId = share.expense_id || (typeof p.expense_id === "string" ? p.expense_id : null);
+      const grpId =
+        share.installment_group_id ||
+        (typeof p.installment_group_id === "string" ? p.installment_group_id : null);
+      if (expId) expenseIds.add(expId);
+      if (grpId) groupIds.add(grpId);
+    }
+    for (const debt of debtsQuery.data ?? []) {
+      if (debt.type === "receivable" && debt.name.toLowerCase().includes("racha")) {
+        if (debt.expense_id) expenseIds.add(debt.expense_id);
+        if (debt.installment_group_id) groupIds.add(debt.installment_group_id);
+      }
+    }
+    return { splitExpenseIds: expenseIds, splitGroupIds: groupIds };
+  }, [splitSharesQuery.data, debtsQuery.data]);
+
+  const isExpenseSplit = useCallback(
+    (expense: Expense) =>
+      splitExpenseIds.has(expense.id) ||
+      Boolean(expense.installment_group_id && splitGroupIds.has(expense.installment_group_id)),
+    [splitExpenseIds, splitGroupIds],
+  );
+
+  const gerenciarRachaId = searchParams.get("gerenciar_racha");
+  const managedSplitShare = useMemo(() => {
+    if (!gerenciarRachaId || !splitSharesQuery.data) return null;
+    return splitSharesQuery.data.find((s) => s.id === gerenciarRachaId) ?? null;
+  }, [gerenciarRachaId, splitSharesQuery.data]);
+
+  const managedSplitDebt = useMemo(() => {
+    if (!managedSplitShare || !debtsQuery.data) return null;
+    const p = (managedSplitShare.payload ?? {}) as Record<string, unknown>;
+    const debtId = managedSplitShare.debt_id || (typeof p.debt_id === "string" ? p.debt_id : null);
+    const expId = managedSplitShare.expense_id || (typeof p.expense_id === "string" ? p.expense_id : null);
+    const grpId =
+      managedSplitShare.installment_group_id ||
+      (typeof p.installment_group_id === "string" ? p.installment_group_id : null);
+    return (
+      debtsQuery.data.find(
+        (d) =>
+          (debtId && d.id === debtId) ||
+          (d.type === "receivable" &&
+            ((expId && d.expense_id === expId) || (grpId && d.installment_group_id === grpId))),
+      ) ?? null
+    );
+  }, [managedSplitShare, debtsQuery.data]);
+
+  const clearManagedSplitParam = () => {
+    setSearchParams(
+      (prev) => {
+        const updated = new URLSearchParams(prev);
+        updated.delete("gerenciar_racha");
+        return updated;
+      },
+      { replace: true },
+    );
+  };
+
   const clearRachaParams = () => {
     setSearchParams(
       (prev) => {
@@ -222,6 +289,10 @@ export function useTransactionList() {
     showRachaSimulation:
       searchParams.get("racha_modal") === "1" && searchParams.get("link") !== "1",
     clearRachaParams,
+    isExpenseSplit,
+    managedSplitShare,
+    managedSplitDebt,
+    clearManagedSplitParam,
     handleNewTransaction,
     handleExportCsv,
     handleRetry,

@@ -47,6 +47,13 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
+  useSyncSplitFromExpenseEdit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useExpensesByInstallmentGroup: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  useUpdateDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateLinkedSplit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useApplySplitSettlement: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateSplitComprehensive: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteLinkedSplit: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 const baseOccurrence: RecurrenceOccurrence = {

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Clock, Copy, QrCode } from "lucide-react";
-import { Button, MoneyText } from "@/components/ui";
+import { Check, CheckCircle2, Clock, Copy, QrCode } from "lucide-react";
+import { Button, Input, MoneyText } from "@/components/ui";
 import type { InstallmentsProgressSummary } from "@/domain/finance/split-math";
-import { formatCentsAsCurrency } from "@/services/masks";
 import { formatDateBR } from "@/lib/date";
+import { cn } from "@/lib/utils";
+import { copyTextToClipboard } from "@/services/export-actions";
+import { formatCentsAsCurrency } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { cn } from "@/lib/utils";
 import type { SplitParticipantInstallment } from "@/types";
 import { SplitChargeQrBox } from "./split-charge-qr-box";
 
@@ -22,6 +23,10 @@ export interface SplitChargePixPanelProps {
   installmentsProgress: InstallmentsProgressSummary | null;
   selectedInstallment: SplitParticipantInstallment | null;
   isPayAllRemaining: boolean;
+  isCurrentSettled?: boolean;
+  participantTotalShareCents?: number;
+  participantSettledCents?: number;
+  isHostViewing?: boolean;
   onCopyPix?: () => void;
   onCopyPixKey?: () => void;
   onSignalPayment?: () => void;
@@ -30,7 +35,7 @@ export interface SplitChargePixPanelProps {
 }
 
 /**
- * Painel hero de pagamento Pix (valor da cota, botão Copia e Cola, sinalização e toggle QR).
+ * Painel hero de pagamento Pix (valor exato restante, Copia e Cola resiliente, sinalização e QR SVG).
  */
 export function SplitChargePixPanel({
   pixBoxTourId,
@@ -44,6 +49,10 @@ export function SplitChargePixPanel({
   installmentsProgress,
   selectedInstallment,
   isPayAllRemaining,
+  isCurrentSettled = false,
+  participantTotalShareCents,
+  participantSettledCents = 0,
+  isHostViewing = false,
   onCopyPix,
   onCopyPixKey,
   onSignalPayment,
@@ -53,6 +62,7 @@ export function SplitChargePixPanel({
   const [copiedPix, setCopiedPix] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
   const [showQrCode, setShowQrCode] = useState(defaultShowQrCode);
+  const [manualCopyCode, setManualCopyCode] = useState<string | null>(null);
   const pixTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const keyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -63,6 +73,28 @@ export function SplitChargePixPanel({
     };
   }, []);
 
+  if (isCurrentSettled) {
+    return (
+      <div className="rounded-xl border border-positive/30 bg-positive/10 p-5 text-center space-y-2.5">
+        <div className="flex justify-center">
+          <CheckCircle2 className="size-8 text-positive-strong" aria-hidden="true" />
+        </div>
+        <h3 className="text-sm font-semibold text-foreground">
+          Sua parte já foi confirmada pelo anfitrião
+        </h3>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Não há saldo pendente para pagamento neste racha.
+        </p>
+        {participantTotalShareCents !== undefined && participantTotalShareCents > 0 ? (
+          <div className="inline-flex items-center gap-1.5 rounded-lg border border-positive/20 bg-surface px-3 py-1.5 text-xs">
+            <span className="text-muted-foreground">Valor quitado:</span>
+            <MoneyText cents={participantSettledCents || participantTotalShareCents} tone="positive" variant="caption" className="font-semibold" />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   const handleCopyPix = async () => {
     if (onCopyPix) {
       triggerSensory("action");
@@ -71,24 +103,24 @@ export function SplitChargePixPanel({
     }
     const codeToCopy = pixBrCode || pixKey;
     if (!codeToCopy) return;
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(codeToCopy);
-        setCopiedPix(true);
-        triggerSensory("success");
-        pushToast({
-          title: "Código Pix copiado!",
-          description: "Abra o aplicativo do seu banco para colar e pagar.",
-          variant: "success",
-        });
-        if (pixTimerRef.current) clearTimeout(pixTimerRef.current);
-        pixTimerRef.current = setTimeout(() => setCopiedPix(false), 3000);
-      }
-    } catch {
+    const copied = await copyTextToClipboard(codeToCopy);
+    if (copied) {
+      setManualCopyCode(null);
+      setCopiedPix(true);
+      triggerSensory("success");
+      pushToast({
+        title: "Código Pix copiado!",
+        description: "Abra o aplicativo do seu banco para colar e pagar.",
+        variant: "success",
+      });
+      if (pixTimerRef.current) clearTimeout(pixTimerRef.current);
+      pixTimerRef.current = setTimeout(() => setCopiedPix(false), 3000);
+    } else {
+      setManualCopyCode(codeToCopy);
       triggerSensory("destructive");
       pushToast({
-        title: "Não foi possível copiar automaticamente.",
-        description: "Selecione e copie o código Pix manualmente.",
+        title: "Copie o código abaixo manualmente.",
+        description: "Este navegador restringiu a cópia automática. Toque no campo abaixo para selecionar.",
         variant: "destructive",
       });
     }
@@ -101,29 +133,37 @@ export function SplitChargePixPanel({
       return;
     }
     if (!pixKey) return;
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(pixKey);
-        setCopiedKey(true);
-        triggerSensory("success");
-        pushToast({
-          title: "Chave Pix copiada!",
-          description: "Chave direta copiada para a área de transferência.",
-          variant: "default",
-        });
-        if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
-        keyTimerRef.current = setTimeout(() => setCopiedKey(false), 3000);
-      }
-    } catch {
+    const copied = await copyTextToClipboard(pixKey);
+    if (copied) {
+      setManualCopyCode(null);
+      setCopiedKey(true);
+      triggerSensory("success");
+      pushToast({
+        title: "Chave Pix copiada!",
+        description: "Chave direta copiada para a área de transferência.",
+        variant: "default",
+      });
+      if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
+      keyTimerRef.current = setTimeout(() => setCopiedKey(false), 3000);
+    } else {
+      setManualCopyCode(pixKey);
       triggerSensory("destructive");
-      pushToast({ title: "Não foi possível copiar a chave.", variant: "destructive" });
+      pushToast({ title: "Não foi possível copiar a chave automaticamente.", variant: "destructive" });
     }
   };
+
+  const showPartialBreakdown =
+    !hasInstallments &&
+    participantSettledCents > 0 &&
+    participantTotalShareCents !== undefined &&
+    participantTotalShareCents > participantSettledCents;
 
   const heroSubtitle =
     hasInstallments && selectedInstallment && !isPayAllRemaining
       ? `Vencimento da fatura: ${formatDateBR(selectedInstallment.due_date)} · Total do racha: ${formatCentsAsCurrency(totalCents)}`
       : `Valor total da conta: ${formatCentsAsCurrency(totalCents)}`;
+
+  const hasValidCopyTarget = Boolean(pixBrCode || pixKey);
 
   return (
     <div className="space-y-4">
@@ -133,7 +173,9 @@ export function SplitChargePixPanel({
             ? isPayAllRemaining
               ? `Total Restante (${installmentsProgress?.pendingCount} parcelas)`
               : `Sua parte a pagar — Parcela ${selectedInstallment.installment_number} de ${selectedInstallment.total_installments}`
-            : "Sua parte a pagar"}
+            : showPartialBreakdown
+              ? "Saldo restante a pagar"
+              : "Sua parte a pagar"}
         </span>
         <div className="tabular-nums font-bold text-foreground tracking-tight whitespace-nowrap">
           <MoneyText
@@ -144,6 +186,16 @@ export function SplitChargePixPanel({
           />
         </div>
         <span className="num text-xs text-muted-foreground block">{heroSubtitle}</span>
+        {showPartialBreakdown && participantTotalShareCents !== undefined ? (
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1.5 text-[11px] text-muted-foreground">
+            <span>
+              Total da cota: <strong className="text-foreground">{formatCentsAsCurrency(participantTotalShareCents)}</strong>
+            </span>
+            <span>
+              Já pago: <strong className="text-positive-strong">{formatCentsAsCurrency(participantSettledCents)}</strong>
+            </span>
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-3">
@@ -152,6 +204,7 @@ export function SplitChargePixPanel({
           variant="default"
           size="lg"
           sensoryIntent={false}
+          disabled={!hasValidCopyTarget}
           className="w-full gap-2 text-base font-semibold shadow-sm"
           onClick={handleCopyPix}
           aria-label={`Copiar código Pix no valor de ${formatCentsAsCurrency(effectiveChargeCents)}`}
@@ -171,7 +224,22 @@ export function SplitChargePixPanel({
           )}
         </Button>
 
-        {onSignalPayment && (
+        {manualCopyCode ? (
+          <div className="rounded-lg border border-border/80 bg-surface p-2.5 space-y-1">
+            <span className="text-[11px] font-medium text-muted-foreground block">
+              Toque no código abaixo para selecionar e copiar manualmente:
+            </span>
+            <Input
+              readOnly
+              value={manualCopyCode}
+              onFocus={(e) => e.currentTarget.select()}
+              aria-label="Código Pix para cópia manual"
+              className="font-mono text-xs"
+            />
+          </div>
+        ) : null}
+
+        {onSignalPayment && !isHostViewing ? (
           <Button
             type="button"
             variant="outline"
@@ -197,15 +265,21 @@ export function SplitChargePixPanel({
                 <Check className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
                 <span>
                   {isSignalingPayment
-                    ? "Enviando aviso…"
-                    : hasInstallments && selectedInstallment && !isPayAllRemaining
-                      ? `Já fiz o Pix da Parcela ${selectedInstallment.installment_number}`
-                      : "Já fiz o Pix"}
+                    ? "Enviando aviso..."
+                    : isPayAllRemaining
+                      ? "Já fiz o Pix de todas as pendentes"
+                      : hasInstallments && selectedInstallment
+                        ? `Já fiz o Pix da Parcela ${selectedInstallment.installment_number}`
+                        : "Já fiz o Pix"}
                 </span>
               </>
             )}
           </Button>
-        )}
+        ) : isHostViewing ? (
+          <p className="text-[11px] text-center text-muted-foreground">
+            Prévia do anfitrião: botão de aviso habilitado apenas para convidados.
+          </p>
+        ) : null}
 
         <Button
           type="button"

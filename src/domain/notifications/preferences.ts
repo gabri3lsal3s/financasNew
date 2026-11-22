@@ -31,7 +31,7 @@ export const HOMOLOGATED_INSTITUTIONS: readonly HomologatedInstitution[] = [
     id: "bradesco",
     name: "Bradesco",
     category: "traditional_digital",
-    packages: ["com.bradesco"],
+    packages: ["com.bradesco", "com.bradesco.cartoes"],
     supportsCardPurchases: true,
     supportsInvestments: false,
   },
@@ -179,6 +179,30 @@ export const HOMOLOGATED_INSTITUTIONS: readonly HomologatedInstitution[] = [
     supportsCardPurchases: true,
     supportsInvestments: false,
   },
+  {
+    id: "will-bank",
+    name: "Will Bank",
+    category: "traditional_digital",
+    packages: ["com.willbank.app", "br.com.willbank"],
+    supportsCardPurchases: true,
+    supportsInvestments: false,
+  },
+  {
+    id: "banco-original",
+    name: "Banco Original",
+    category: "traditional_digital",
+    packages: ["br.com.original.bank"],
+    supportsCardPurchases: true,
+    supportsInvestments: false,
+  },
+  {
+    id: "agibank",
+    name: "Agibank",
+    category: "traditional_digital",
+    packages: ["br.com.agibank"],
+    supportsCardPurchases: true,
+    supportsInvestments: false,
+  },
 
   // Carteiras Digitais & Pagamentos
   {
@@ -193,7 +217,11 @@ export const HOMOLOGATED_INSTITUTIONS: readonly HomologatedInstitution[] = [
     id: "samsung-pay",
     name: "Samsung Pay",
     category: "payment_wallets",
-    packages: ["com.samsung.android.spay", "com.samsung.android.raja.spay"],
+    packages: [
+      "com.samsung.android.spay",
+      "com.samsung.android.raja.spay",
+      "com.samsung.android.app.spay",
+    ],
     supportsCardPurchases: true,
     supportsInvestments: false,
   },
@@ -242,6 +270,14 @@ export const HOMOLOGATED_INSTITUTIONS: readonly HomologatedInstitution[] = [
     name: "Stone",
     category: "payment_wallets",
     packages: ["co.stone.stone"],
+    supportsCardPurchases: true,
+    supportsInvestments: false,
+  },
+  {
+    id: "recargapay",
+    name: "RecargaPay",
+    category: "payment_wallets",
+    packages: ["com.recargapay"],
     supportsCardPurchases: true,
     supportsInvestments: false,
   },
@@ -305,46 +341,15 @@ export const HOMOLOGATED_INSTITUTIONS: readonly HomologatedInstitution[] = [
   },
 ] as const;
 
-export const HOMOLOGATED_BANKS = [
-  "Nubank",
-  "Itaú",
-  "Bradesco",
-  "Santander",
-  "Banco do Brasil",
-  "Inter",
-  "Inter Empresas",
-  "C6 Bank",
-  "C6 Empresas",
-  "Caixa",
-  "Neon",
-  "Next",
-  "Sofisa Direto",
-  "Banco Pan",
-  "Banco BV",
-  "Cora",
-  "BTG Pactual",
-  "BTG Investimentos",
-  "BTG Empresas",
-  "Carteira Google",
-  "Samsung Pay",
-  "Mercado Pago",
-  "PicPay",
-  "PagBank",
-  "PagBank Vendedor",
-  "XP Investimentos",
-  "Rico",
-  "Binance",
-  "Nomad",
-  "Wise",
-  "Avenue",
-  "Sicoob",
-  "Sicredi",
-  "Banco Safra",
-  "Ton",
-  "Stone",
-] as const;
+export const HOMOLOGATED_BANKS: readonly string[] = HOMOLOGATED_INSTITUTIONS.map(
+  (inst) => inst.name,
+);
 
 export type HomologatedBankName = (typeof HOMOLOGATED_BANKS)[number];
+
+export const ALL_HOMOLOGATED_PACKAGES: readonly string[] = Array.from(
+  new Set(HOMOLOGATED_INSTITUTIONS.flatMap((inst) => inst.packages)),
+);
 
 export type UnknownCategoryStrategy = "assign_generic_and_prompt" | "open_quick_wizard";
 
@@ -364,7 +369,7 @@ export interface BankAssistantPreferences {
 }
 
 export const DEFAULT_BANK_ASSISTANT_PREFERENCES: BankAssistantPreferences = {
-  passiveCaptureEnabled: true,
+  passiveCaptureEnabled: false,
   interactiveNotificationsEnabled: true,
   autoInstallmentsEnabled: true,
   autoCategoryInferenceEnabled: true,
@@ -427,44 +432,9 @@ export function normalizeBankPreferences(raw?: unknown): BankAssistantPreference
   };
 }
 
-export const BANK_NAME_TO_PACKAGES: Record<string, string[]> = {
-  Nubank: ["com.nu.production"],
-  Inter: ["br.com.intermedium"],
-  "C6 Bank": ["com.c6bank.app"],
-  Neon: ["br.com.neon"],
-  Next: ["br.com.bradesco.next"],
-  Itaú: ["com.itau", "com.itau.personnalite"],
-  Bradesco: ["com.bradesco"],
-  Santander: ["com.santander.app", "br.com.santander.way"],
-  Caixa: ["br.gov.caixa.tem", "br.com.gabba.Caixa"],
-  "Banco do Brasil": ["br.com.bb.android"],
-  "Carteira Google": ["com.google.android.apps.walletnfcrel"],
-  "Samsung Pay": ["com.samsung.android.spay", "com.samsung.android.raja.spay", "com.samsung.android.app.spay"],
-  "Mercado Pago": ["com.mercadopago.wallet"],
-  PicPay: ["com.picpay"],
-  PagBank: ["br.com.uol.ps", "br.com.uol.ps.myaccount"],
-  "PagBank Vendedor": ["br.com.uol.ps.seller"],
-  "Sofisa Direto": ["br.com.sofisa.direto"],
-  "Banco Pan": ["br.com.bancopan.app"],
-  "Banco BV": ["br.com.bv.banco"],
-  Cora: ["com.cora.app"],
-  "Inter Empresas": ["br.com.intermedium.pj"],
-  "C6 Empresas": ["com.c6bank.empresa"],
-  "BTG Pactual": ["com.btg.pactual.banking"],
-  "BTG Investimentos": ["com.btgpactual.investimentos", "br.com.btg.pactual.digital"],
-  "BTG Empresas": ["com.btgpactual.empresas"],
-  "XP Investimentos": ["br.com.xp.carteira", "com.xpinc.investments", "br.com.xp.investimentos"],
-  Rico: ["br.com.rico", "br.com.rico.investimentos", "br.com.rico.rico"],
-  Binance: ["com.binance.dev"],
-  Nomad: ["com.nomadfinancial.app", "com.nomadglobal.app"],
-  Wise: ["com.transferwise.android"],
-  Avenue: ["us.avenue.app"],
-  Sicoob: ["br.com.sicoob.net"],
-  Sicredi: ["br.com.sicredi.mobile"],
-  "Banco Safra": ["br.com.safra.mobile"],
-  Ton: ["br.com.stone.ton"],
-  Stone: ["co.stone.stone"],
-};
+export const BANK_NAME_TO_PACKAGES: Record<string, string[]> = Object.fromEntries(
+  HOMOLOGATED_INSTITUTIONS.map((inst) => [inst.name, [...inst.packages]]),
+);
 
 /**
  * Retorna instituições homologadas pertencentes a uma categoria específica.

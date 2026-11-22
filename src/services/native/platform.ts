@@ -84,6 +84,37 @@ export function isStandaloneDisplay(): boolean {
   return window.matchMedia("(display-mode: standalone)").matches || nav?.standalone === true;
 }
 
+/**
+ * Verifica se o acesso ocorre pelo navegador Samsung Internet.
+ * Útil exclusivamente para contornar comportamentos nativos de UI próprios desse navegador.
+ */
+export function isSamsungInternetBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return /\bSamsungBrowser\b/i.test(ua);
+}
+
+/**
+ * Indica se o navegador já exibe um botão flutuante nativo de "Ir para o topo"
+ * sobre páginas cuja rolagem ocorre no `window` (caso da `LandingPage`).
+ *
+ * - Contexto: o Samsung Internet (fora do modo PWA standalone) injeta nativamente um botão
+ *   "Ir para o topo" (Go to top) fora do DOM sempre que o `window` rola. No app interno
+ *   (`PageShell`), isso não acontece porque a rolagem ocorre dentro do contêiner `#main-content`.
+ * - Limitação da plataforma: não há API web ou CSS para detectar se o usuário desativou
+ *   o botão nativo nas configurações do navegador nem para ocultá-lo sem abrir mão do
+ *   `window` scroll (e da barra de endereço retrátil).
+ * - Trade-off conhecido: usuários que desligaram manualmente o recurso nas configurações
+ *   do Samsung Internet também não verão o `<BackToTop />` na `LandingPage`.
+ * - Como reverter: remover a checagem `hasNativeBrowserBackToTop()` em
+ *   `src/features/landing/pages/landing-page.tsx`, remover estes helpers em
+ *   `src/services/native/platform.ts` (e seus testes) e remover o registro em
+ *   `docs/platforms/PWA_GUIDELINES.md` (§9).
+ */
+export function hasNativeBrowserBackToTop(): boolean {
+  return isSamsungInternetBrowser() && !isStandaloneDisplay() && !isNativePlatform();
+}
+
 export type ActivePlatform = "web_desktop" | "mobile_pwa" | "android_pro";
 
 /**

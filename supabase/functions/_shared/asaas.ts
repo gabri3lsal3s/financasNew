@@ -408,6 +408,23 @@ export async function getAsaasPayment(paymentId: string): Promise<{
 }
 
 /**
+ * Consulta os dados de uma assinatura recorrente pelo ID no Asaas.
+ */
+export async function getAsaasSubscription(subscriptionId: string): Promise<{
+  id: string;
+  status: string;
+  nextDueDate?: string;
+  value?: number;
+}> {
+  return asaasFetch<{
+    id: string;
+    status: string;
+    nextDueDate?: string;
+    value?: number;
+  }>(`/subscriptions/${subscriptionId}`);
+}
+
+/**
  * Consulta as cobranças filhas emitidas para uma assinatura.
  */
 export async function getAsaasSubscriptionPayments(

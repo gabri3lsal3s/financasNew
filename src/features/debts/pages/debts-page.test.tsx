@@ -119,6 +119,8 @@ vi.mock("@/state", () => ({
   useCreateLoanContract: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useEarlyAmortizeLoan: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteLoan: () => ({ mutateAsync: deleteLoanMock, isPending: false }),
+  useMyPublicShares: () => ({ data: [], isLoading: false }),
+  useSyncSplitFromDebtSettle: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("DebtsPage — contas a pagar e receber (§3.4)", () => {

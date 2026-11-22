@@ -418,6 +418,18 @@ verify_jwt = false
 [functions.support-notify]
 verify_jwt = false
 
+# Dispatcher híbrido de Push Remoto (Web Push VAPID + FCM HTTP v1 com Quiet Hours/idempotência)
+[functions.push-dispatcher]
+verify_jwt = false
+
+# Resumo semanal dominical opt-in via Resend (+ push remoto opcional)
+[functions.sunday-digest]
+verify_jwt = false
+
+# Ações administrativas superadmin (validação própria via getUser() + role admin)
+[functions.admin-super-action]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

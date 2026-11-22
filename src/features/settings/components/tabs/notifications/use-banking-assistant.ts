@@ -35,8 +35,15 @@ export function useBankingAssistant() {
     });
     void syncMonitoredBanksWithNative(
       bankPrefs.passiveCaptureEnabled ? bankPrefs.monitoredBanks : [],
+      bankPrefs.interactiveNotificationsEnabled,
     );
-  }, [isNative, isBankListenerAllowed, bankPrefs.passiveCaptureEnabled, bankPrefs.monitoredBanks]);
+  }, [
+    isNative,
+    isBankListenerAllowed,
+    bankPrefs.passiveCaptureEnabled,
+    bankPrefs.monitoredBanks,
+    bankPrefs.interactiveNotificationsEnabled,
+  ]);
 
   const commitPrefs = (patch: Partial<typeof bankPrefs>, syncNativeList?: string[]) => {
     updateBankPrefs(patch);
@@ -130,6 +137,10 @@ export function useBankingAssistant() {
 
   const handleToggleInteractiveNotifications = (enabled: boolean) => {
     commitPrefs({ interactiveNotificationsEnabled: enabled });
+    void syncMonitoredBanksWithNative(
+      bankPrefs.passiveCaptureEnabled ? bankPrefs.monitoredBanks : [],
+      enabled,
+    );
     pushToast({
       title: "Preferências salvas",
       description: enabled

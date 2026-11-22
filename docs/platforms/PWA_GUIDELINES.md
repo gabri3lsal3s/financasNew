@@ -317,3 +317,24 @@ Com o objetivo de oferecer paridade de experiência entre o ambiente nativo Andr
 - [x] Safe areas (notch) respeitadas no modo standalone (`viewport-fit=cover` e insets híbridos em `index.html` + `status-bar.ts`).
 - [x] Tema do status bar coerente com light/dark/oled (meta tags theme-color por media query em `index.html`).
 - [x] Rotação bloqueada em retrato (manifest + `screen.orientation.lock`).
+
+---
+
+## 9. COMPATIBILIDADE E EXCEÇÕES CONHECIDAS DE NAVEGADORES
+
+### 9.1 Samsung Internet — Supressão do `BackToTop` duplicado na Landing Page
+
+- **Data de introdução:** 2026-11-22.
+- **Sintoma / Problema:** no navegador **Samsung Internet** (fora do modo PWA `standalone`), o próprio aplicativo do navegador injeta na camada nativa (fora do DOM) um botão flutuante *"Ir para o topo"* (*Go to top*) sempre que a rolagem ocorre no `window`, gerando duplicidade visual com o `<BackToTop />` da aplicação na `LandingPage`.
+- **Por que só ocorre na Landing Page:** o app interno (`PageShell`) realiza a rolagem em contêiner dedicado (`#main-content` sob `h-dvh overflow-hidden`), mantendo `window.scrollY === 0` (logo, o navegador nunca ativa o botão nativo). Já a `LandingPage` preserva intencionalmente a rolagem no `window` para manter a barra de endereço retrátil e os gestos nativos em todos os navegadores.
+- **Decisão aplicada:** omitir a renderização do `<BackToTop />` apenas na `LandingPage` quando `hasNativeBrowserBackToTop()` retornar `true` (`isSamsungInternetBrowser() && !isStandaloneDisplay() && !isNativePlatform()`).
+- **Trade-off aceito:** não existe API web ou CSS capaz de detectar se o usuário desabilitou manualmente o botão *"Ir para o topo"* nas configurações do Samsung Internet. Nesse cenário específico, o botão flutuante também não é exibido na `LandingPage` (mas continua funcionando normalmente no app interno e no PWA instalado em modo `standalone`).
+- **Arquivos envolvidos:**
+  - `src/services/native/platform.ts` (`isSamsungInternetBrowser`, `hasNativeBrowserBackToTop`)
+  - `src/features/landing/pages/landing-page.tsx` (supressão condicional de `<BackToTop />`)
+  - `src/services/native/platform.test.ts` (testes unitários de detecção)
+  - `src/features/landing/pages/landing-page.test.tsx` (testes de renderização condicional)
+- **Passos para reversão rápida:**
+  1. Remover a importação e a checagem `hasNativeBrowserBackToTop()` em `src/features/landing/pages/landing-page.tsx`, voltando a renderizar `<BackToTop visible={showBackToTop} hasBottomDock={isDockVisible} />` incondicionalmente.
+  2. Remover as funções `isSamsungInternetBrowser` e `hasNativeBrowserBackToTop` de `src/services/native/platform.ts` e seus respectivos testes em `src/services/native/platform.test.ts` e `src/features/landing/pages/landing-page.test.tsx`.
+  3. Remover esta subseção `9.1` de `docs/platforms/PWA_GUIDELINES.md`.

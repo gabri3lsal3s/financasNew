@@ -136,18 +136,20 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
       {generatingShareFor && (
         <SplitExpenseDialog
           open={Boolean(generatingShareFor)}
-          fromWizard={true}
+          fromWizard={false}
           onOpenChange={(open) => {
             if (!open) setGeneratingShareFor(null);
           }}
           expense={{
             id: generatingShareFor.linkedDebt?.expense_id ?? undefined,
+            installment_group_id: generatingShareFor.linkedDebt?.installment_group_id ?? undefined,
             value: (generatingShareFor.totalCents || generatingShareFor.receivableExpectedCents) / 100,
             description: generatingShareFor.payload.title ?? null,
             date: generatingShareFor.date,
             payment_method: "pix",
             created_at: "",
           }}
+          linkedDebtId={generatingShareFor.linkedDebt?.id ?? null}
           initialAmountCents={generatingShareFor.totalCents || generatingShareFor.receivableExpectedCents}
           initialDescription={generatingShareFor.payload.title || ""}
           initialDate={generatingShareFor.date}

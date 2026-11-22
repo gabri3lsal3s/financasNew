@@ -8,8 +8,7 @@ import {
   type OnboardingCounts,
 } from "@/domain/onboarding";
 import { cn } from "@/lib/utils";
-import { useUserPreferences } from "@/state";
-import { getStoredInitialGoal } from "@/state/demo-mode";
+import type { OnboardingGoalId } from "@/types";
 import { DemoTrackSelectModal } from "./demo-track-select-modal";
 import {
   ONBOARDING_STEP_META,
@@ -19,6 +18,8 @@ import {
 export interface OnboardingBannerProps {
   counts: OnboardingCounts;
   hasFeature?: FeaturePredicate;
+  /** Foco inicial do usuário para priorizar a ordem dos 3 passos essenciais. */
+  initialGoal?: OnboardingGoalId | null;
   onDismiss: () => void;
   onEnableNotifications?: () => void | Promise<void>;
   className?: string;
@@ -30,15 +31,13 @@ export interface OnboardingBannerProps {
 export function OnboardingBanner({
   counts,
   hasFeature,
+  initialGoal,
   onDismiss,
   onEnableNotifications,
   className,
 }: OnboardingBannerProps) {
   const [open, setOpen] = useState(false);
   const [demoTrackModalOpen, setDemoTrackModalOpen] = useState(false);
-  const userPreferencesQuery = useUserPreferences();
-  const initialGoal =
-    userPreferencesQuery.data?.custom_settings?.initialGoal ?? getStoredInitialGoal();
   const progress = coreOnboardingProgress(counts, hasFeature, initialGoal);
   const pendingSteps = coreOnboardingSteps(counts, hasFeature, initialGoal).filter((s) => !s.done);
 

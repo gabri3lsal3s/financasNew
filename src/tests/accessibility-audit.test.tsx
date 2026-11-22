@@ -187,11 +187,13 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useOnboardingCounts: () => ({
-    data: { expenseCategories: 2, incomeCategories: 1, cards: 1, transactions: 3 },
+    data: { expenseCategories: 2, incomeCategories: 1, cashCheckpoints: 1, cards: 1, transactions: 3 },
     isLoading: false,
     isError: false,
     error: null,
   }),
+  useApplySplitSettlement: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  startDemo: vi.fn(),
   usePortfolioPosition: () => ({
     rows: (portfolioAssetsMock() as Array<{ id: string; ticker: string; asset_class?: string; currency: "BRL" | "USD" }>).map((a) => ({
       assetId: a.id,

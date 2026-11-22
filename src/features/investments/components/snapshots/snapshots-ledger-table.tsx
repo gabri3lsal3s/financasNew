@@ -34,7 +34,7 @@ export function SnapshotsLedgerTable({
   if (points.length === 0) {
     return (
       <EmptyState
-        icon={<Calendar className="size-6" />}
+        icon={<Calendar className="size-6" aria-hidden="true" />}
         title="Nenhum mês encontrado"
         description="Não há registros de snapshots para o período selecionado."
         headingLevel="h3"

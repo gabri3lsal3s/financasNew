@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Inbox, Plus } from "lucide-react";
 import type { NavigateFunction } from "react-router";
 import {
@@ -6,11 +5,10 @@ import {
   type DashboardAlertItem,
   DashboardPixClipboardCard,
   type DonutSlice,
-  OnboardingBanner,
+  type OnboardingQuickTourTrack,
   QuickAporteCard,
   ReadOnlyBanner,
   RealCashHeroCard,
-  SmartAdvisorCard,
   VirginAccountHero,
   WeeklyDueRadarCard,
 } from "@/components/modules";
@@ -33,6 +31,7 @@ export interface OverviewDashboardContentProps {
   detectedPix: DetectedPixTransaction | null;
   onDismissDetectedPix: () => void;
   guardAction: (action: () => void, label: string) => void;
+  onStartQuickTour: (track: OnboardingQuickTourTrack) => void;
   navigate: NavigateFunction;
 }
 
@@ -48,44 +47,9 @@ export function OverviewDashboardContent({
   detectedPix,
   onDismissDetectedPix,
   guardAction,
+  onStartQuickTour,
   navigate,
 }: OverviewDashboardContentProps) {
-  const suppressedAdvisorThemeKeys = useMemo(() => {
-    const keys: string[] = [];
-    const hasHouseholdExceeded = Boolean(
-      data.householdData &&
-        data.householdData.monthly_ceiling_cents > 0 &&
-        data.householdData.spent_percentage >= 100,
-    );
-    const hasHouseholdSettlement = Boolean(
-      data.householdData &&
-        !data.householdData.is_settled &&
-        data.householdData.settlement &&
-        data.householdData.settlement.amount_cents > 0,
-    );
-    const hasSurplusBanner = Boolean(
-      data.surplusCapacity.hasSurplus &&
-        data.isCurrentMonth &&
-        data.isSurplusEligible,
-    );
-
-    if (hasHouseholdExceeded) {
-      keys.push("household:ceiling_exceeded");
-    }
-    if (hasHouseholdSettlement) {
-      keys.push("household:settlement_pending");
-    }
-    if (hasSurplusBanner) {
-      keys.push("aporte:rebalance", "aporte:habit");
-    }
-    return keys;
-  }, [
-    data.householdData,
-    data.surplusCapacity.hasSurplus,
-    data.isCurrentMonth,
-    data.isSurplusEligible,
-  ]);
-
   if (data.error) {
     return (
       <ErrorState
@@ -110,20 +74,17 @@ export function OverviewDashboardContent({
 
   return (
     <>
-      {data.showOnboarding && data.onboardingQuery?.data ? (
-        <OnboardingBanner
-          counts={data.onboardingQuery.data}
-          hasFeature={data.hasFeature}
-          onDismiss={data.dismissOnboarding}
-        />
-      ) : null}
-
-      {data.isVirginAccount ? (
+      {data.showVirginGuide ? (
         <VirginAccountHero
+          userName={data.userName}
+          selectedFocus={data.initialGoal}
+          onSelectFocus={data.setInitialFocus}
+          onDismiss={data.dismissVirginGuide}
           onCalibrate={() =>
             guardAction(() => modals.setCheckpointOpen(true), "Calibrar Saldo com o Banco")
           }
           onOpenNewTransaction={() => navigate({ pathname: "/", search: "novo=transacao" })}
+          onStartQuickTour={onStartQuickTour}
           onOpenDemo={() => modals.setDemoTrackModalOpen(true)}
         />
       ) : (
@@ -138,17 +99,7 @@ export function OverviewDashboardContent({
             </div>
           ) : null}
 
-          <DashboardAlertsCarousel items={alertItems} />
-
-          {data.isCurrentMonth ? (
-            <SmartAdvisorCard
-              month={month}
-              savingsSurplusCents={data.surplusCapacity.suggestedAporteCents}
-              safeToSpendCents={data.realCashData.safeToSpend.safeToSpendCents}
-              committedObligationsCents={data.realCashData.safeToSpend.committedObligationsCents}
-              suppressedThemeKeys={suppressedAdvisorThemeKeys}
-            />
-          ) : null}
+          <DashboardAlertsCarousel items={alertItems} maxItems={5} />
 
           {data.subscription.isReadOnly ? <ReadOnlyBanner /> : null}
 

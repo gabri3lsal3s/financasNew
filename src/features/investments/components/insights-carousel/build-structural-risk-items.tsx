@@ -2,6 +2,7 @@ import { AlertTriangle, Copy, Layers, PieChart, ShieldAlert } from "lucide-react
 import type { DashboardAlertItem } from "@/components/modules/dashboard-alerts-carousel";
 import { Button } from "@/components/ui/button";
 import type { StructuralRiskAlert } from "@/domain/portfolio/portfolio-risk-policy";
+import { formatPercent } from "@/services/masks";
 import { InsightSlide, type InsightTone } from "./insight-slide";
 
 export interface BuildStructuralRiskItemsParams {
@@ -33,7 +34,7 @@ export function buildStructuralRiskItems({
       case "single_asset_concentration": {
         icon = <AlertTriangle className="size-4.5" />;
         const weight = Number(alert.metadata?.weightPct ?? 0);
-        badgeText = `${weight.toFixed(1)}% do total`;
+        badgeText = `${formatPercent(weight)}% do total`;
         badgeVariant = "critical";
         break;
       }
@@ -46,14 +47,14 @@ export function buildStructuralRiskItems({
       case "macro_sector_concentration": {
         icon = <Layers className="size-4.5" />;
         const macroPct = Number(alert.metadata?.macroInClassPct ?? 0);
-        badgeText = `${macroPct.toFixed(1)}% das Ações`;
+        badgeText = `${formatPercent(macroPct)}% das Ações`;
         badgeVariant = "warning";
         break;
       }
       case "low_diversification_nef": {
         icon = <PieChart className="size-4.5" />;
         const nef = Number(alert.metadata?.classNef ?? 0);
-        badgeText = `Nef = ${nef.toFixed(1)}`;
+        badgeText = `Nef = ${formatPercent(nef)}`;
         badgeVariant = "muted";
         break;
       }

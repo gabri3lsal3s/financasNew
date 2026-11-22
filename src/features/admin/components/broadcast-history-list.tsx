@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BellRing } from "lucide-react";
 import { Badge, EmptyState, Skeleton } from "@/components/ui";
 import { formatDateTimeBR } from "@/lib/date";
@@ -12,6 +13,8 @@ export interface BroadcastHistoryListProps {
  * Histórico de notificações broadcast enviadas aos usuários pelo painel administrativo.
  */
 export function BroadcastHistoryList({ broadcasts, isLoading }: BroadcastHistoryListProps) {
+  const [nowMs] = useState(() => Date.now());
+
   return (
     <section aria-label="Histórico de Comunicados" className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-2">
@@ -49,37 +52,50 @@ export function BroadcastHistoryList({ broadcasts, isLoading }: BroadcastHistory
         />
       ) : (
         <div className="rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden divide-y divide-border/80">
-          {broadcasts.map((b) => (
-            <div
-              key={b.id}
-              className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-hover/20 transition-colors"
-            >
-              <div className="flex flex-col min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-foreground truncate">{b.title}</span>
-                  <Badge variant="muted" size="xs" className="font-mono">
-                    {b.target_audience === "all"
-                      ? "Todos"
-                      : b.target_audience === "pro"
-                        ? "Pro"
-                        : "Free"}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
-                  {b.message}
-                </p>
-                {b.action_url && (
-                  <span className="text-[11px] text-primary-strong font-mono mt-1">
-                    Ação: {b.action_url}
-                  </span>
-                )}
-              </div>
+          {broadcasts.map((b) => {
+            const isExpired = Boolean(b.expires_at && new Date(b.expires_at).getTime() <= nowMs);
+            const audienceLabel =
+              b.target_audience === "all"
+                ? "Todos"
+                : b.target_audience === "pro"
+                  ? "Pro"
+                  : b.target_audience === "specific_users"
+                    ? "Usuários específicos"
+                    : "Free";
 
-              <div className="shrink-0 text-right text-xs text-muted-foreground font-mono">
-                {formatDateTimeBR(b.created_at)}
+            return (
+              <div
+                key={b.id}
+                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface-hover/20 transition-colors"
+              >
+                <div className="flex flex-col min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-foreground truncate">{b.title}</span>
+                    <Badge variant="muted" size="xs" className="font-mono">
+                      {audienceLabel}
+                    </Badge>
+                    {b.expires_at ? (
+                      <Badge variant={isExpired ? "warning" : "default"} size="xs">
+                        {isExpired ? "Expirado" : `Expira ${formatDateTimeBR(b.expires_at)}`}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-relaxed">
+                    {b.message}
+                  </p>
+                  {b.action_url && (
+                    <span className="text-[11px] text-primary-strong font-mono mt-1">
+                      Ação: {b.action_url}
+                    </span>
+                  )}
+                </div>
+
+                <div className="shrink-0 text-right text-xs text-muted-foreground font-mono">
+                  {formatDateTimeBR(b.created_at)}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </section>

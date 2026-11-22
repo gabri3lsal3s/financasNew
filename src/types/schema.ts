@@ -160,6 +160,8 @@ export type AdminBroadcastNotification = {
   message: string;
   type: BroadcastType;
   action_url?: string | null;
+  action_label?: string | null;
+  expires_at?: string | null;
   target_audience: BroadcastAudience;
   target_user_ids?: string[] | null;
   created_by?: string | null;
@@ -172,9 +174,11 @@ export type UserBroadcastNotification = {
   message: string;
   type: BroadcastType;
   action_url?: string | null;
+  action_label?: string | null;
+  expires_at?: string | null;
   created_at: string;
   is_read: boolean;
-  is_dismissed: boolean;
+  is_dismissed?: boolean;
 };
 
 export type SystemBackup = {
@@ -358,6 +362,7 @@ export type UserCustomSettings = {
     monitoredBanks?: string[];
   };
   deviceNotifications?: DeviceNotificationsCustomSettings;
+  notificationCategories?: NotificationCategoryPreferences;
   merchantLearning?: Record<string, unknown>;
   cardDigitsMapping?: Record<string, string>;
   bankCardMapping?: Record<string, string>;
@@ -397,7 +402,7 @@ export type PortfolioRiskPolicySettings = {
   benchmarkOverlapCeilingPct?: number;
 };
 
-export type OnboardingGoalId = "cards" | "ocr" | "debts" | "family";
+export type OnboardingGoalId = "cards" | "ocr" | "debts" | "family" | "investments";
 
 export type PortfolioAlertDismissalEntry = {
   dismissedUntil: number;
@@ -438,6 +443,11 @@ export type ZeroGuiltDismissalCheckpoint = {
   dismissedAtDate: string;
 };
 
+export type TimedAlertDismissalCheckpoint = {
+  dismissedAt: string;
+  dismissedUntil: number;
+};
+
 export type DashboardAlertDismissals = {
   goals?: Record<string, GoalAlertDismissalCheckpoint>;
   pace?: PaceAlertDismissalCheckpoint;
@@ -447,16 +457,38 @@ export type DashboardAlertDismissals = {
     dismissedUntil: number;
     dismissedAt: string;
   };
+  cards?: Record<string, TimedAlertDismissalCheckpoint>;
+};
+
+export type QuietHoursSettings = {
+  enabled?: boolean;
+  start?: string;
+  end?: string;
 };
 
 export type DeviceNotificationsCustomSettings = {
   dueNotificationsEnabled?: boolean;
   dailyReminderEnabled?: boolean;
   dailyReminderTime?: string;
+  remotePushEnabled?: boolean;
+  quietHours?: QuietHoursSettings;
   dismissedPermissionAlerts?: {
     pushDue?: boolean;
     passiveBankListener?: boolean;
   };
+};
+
+export type NotificationCategoryPreferences = {
+  /** Fechamento de fatura de cartão (opt-in explícito; padrão: false). */
+  billClosing?: boolean;
+  /** Rachas e contas a receber (padrão: true). */
+  receivablesAndSplits?: boolean;
+  /** Orçamentos excedidos e ritmo de gastos (padrão: true). */
+  budgetsAndPace?: boolean;
+  /** Sugestões do Assistente (SmartAdvisor) (padrão: true). */
+  advisorInsights?: boolean;
+  /** Família e Viagens (convites e acertos pendentes) (padrão: true). */
+  familyAndTrips?: boolean;
 };
 
 export type SplitPreferences = {
@@ -494,6 +526,7 @@ export type UserPreferences = {
   reminders_enabled: boolean;
   reminder_days_before_debt: number;
   reminder_days_before_bill: number;
+  weekly_digest_enabled?: boolean;
   report_weights_enabled: boolean;
   max_sector_acoes: number | null;
   max_sector_fiis: number | null;
@@ -1189,6 +1222,7 @@ export type SplitPaymentSignal = {
   id: string;
   participant_id?: string | null;
   installment_id?: string | null;
+  installment_ids?: string[] | null;
   participant_name: string;
   amount_cents: number;
   status: "pending" | "confirmed" | "dismissed";
@@ -1207,6 +1241,7 @@ export type SplitSharePayload = {
   host_share_cents: number;
   participants: SplitParticipantItem[];
   remainder_policy: "host" | "balanced";
+  split_mode?: "equal" | "custom";
   host_name: string;
   host_city: string;
   pix_key: string;
@@ -1224,6 +1259,10 @@ export type SplitSharePayload = {
   installments_count?: number;
   installments_mode?: "single_total" | "per_installment";
   participant_installments?: SplitParticipantInstallment[];
+  custom_note?: string | null;
+  show_participants_list?: boolean;
+  public_page_paused?: boolean;
+  due_date?: string | null;
 };
 
 export type PublicShare = {
@@ -1236,6 +1275,9 @@ export type PublicShare = {
   expires_at: string | null;
   is_revoked: boolean;
   updated_at: string;
+  expense_id?: string | null;
+  installment_group_id?: string | null;
+  debt_id?: string | null;
 };
 
 export type SharedFamilyExpenseItem = {
@@ -1550,4 +1592,26 @@ export type DeviceRegistrationInput = {
   browser: string;
   os: string;
   ipAddress?: string | null;
+};
+
+// ===========================================================================
+// Assinaturas de Push Remoto (Web Push VAPID + FCM Nativo)
+// ===========================================================================
+
+export type PushSubscriptionPlatform = "web_push" | "fcm";
+
+export type UserPushSubscription = {
+  id: string;
+  user_id: string;
+  platform: PushSubscriptionPlatform;
+  endpoint: string | null;
+  p256dh: string | null;
+  auth: string | null;
+  fcm_token: string | null;
+  device_label: string | null;
+  user_agent: string | null;
+  is_active: boolean;
+  last_used_at: string | null;
+  created_at: string;
+  updated_at: string;
 };

@@ -12,7 +12,7 @@ let isListenerActive = false;
  */
 export function parseAppUrl(rawUrl: string): string {
   if (!rawUrl || typeof rawUrl !== "string") return "/";
-  if (rawUrl.startsWith("/")) return rawUrl;
+  if (rawUrl.startsWith("/")) return rawUrl.startsWith("//") ? "/" : rawUrl;
 
   try {
     let normalized = rawUrl;

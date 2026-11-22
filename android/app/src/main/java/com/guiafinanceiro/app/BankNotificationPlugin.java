@@ -61,17 +61,24 @@ public class BankNotificationPlugin extends Plugin {
         // Bancos Tradicionais & Digitais
         BANK_PACKAGES.put("com.nu.production", new BankAppInfo("Nubank", "bank"));
         BANK_PACKAGES.put("br.com.intermedium", new BankAppInfo("Inter", "bank"));
+        BANK_PACKAGES.put("br.com.intermedium.pj", new BankAppInfo("Inter Empresas", "bank"));
         BANK_PACKAGES.put("com.c6bank.app", new BankAppInfo("C6 Bank", "bank"));
+        BANK_PACKAGES.put("com.c6bank.empresa", new BankAppInfo("C6 Empresas", "bank"));
         BANK_PACKAGES.put("br.com.neon", new BankAppInfo("Neon", "bank"));
         BANK_PACKAGES.put("br.com.bradesco.next", new BankAppInfo("Next", "bank"));
         BANK_PACKAGES.put("com.itau", new BankAppInfo("Itaú", "bank"));
-        BANK_PACKAGES.put("com.itau.personnalite", new BankAppInfo("Itaú Personnalité", "bank"));
+        BANK_PACKAGES.put("com.itau.personnalite", new BankAppInfo("Itaú", "bank"));
         BANK_PACKAGES.put("com.bradesco", new BankAppInfo("Bradesco", "bank"));
+        BANK_PACKAGES.put("com.bradesco.cartoes", new BankAppInfo("Bradesco", "bank"));
         BANK_PACKAGES.put("com.santander.app", new BankAppInfo("Santander", "bank"));
         BANK_PACKAGES.put("br.com.santander.way", new BankAppInfo("Santander", "bank"));
         BANK_PACKAGES.put("br.gov.caixa.tem", new BankAppInfo("Caixa", "bank"));
         BANK_PACKAGES.put("br.com.gabba.Caixa", new BankAppInfo("Caixa", "bank"));
         BANK_PACKAGES.put("br.com.bb.android", new BankAppInfo("Banco do Brasil", "bank"));
+        BANK_PACKAGES.put("br.com.sofisa.direto", new BankAppInfo("Sofisa Direto", "bank"));
+        BANK_PACKAGES.put("br.com.bancopan.app", new BankAppInfo("Banco Pan", "bank"));
+        BANK_PACKAGES.put("br.com.bv.banco", new BankAppInfo("Banco BV", "bank"));
+        BANK_PACKAGES.put("com.cora.app", new BankAppInfo("Cora", "bank"));
 
         // Carteiras Digitais & Pagamentos
         BANK_PACKAGES.put("com.google.android.apps.walletnfcrel", new BankAppInfo("Carteira Google", "wallet"));
@@ -82,6 +89,7 @@ public class BankNotificationPlugin extends Plugin {
         BANK_PACKAGES.put("com.picpay", new BankAppInfo("PicPay", "wallet"));
         BANK_PACKAGES.put("br.com.uol.ps", new BankAppInfo("PagBank", "wallet"));
         BANK_PACKAGES.put("br.com.uol.ps.myaccount", new BankAppInfo("PagBank", "wallet"));
+        BANK_PACKAGES.put("br.com.uol.ps.seller", new BankAppInfo("PagBank Vendedor", "wallet"));
         BANK_PACKAGES.put("com.recargapay", new BankAppInfo("RecargaPay", "wallet"));
 
         // Fintechs & Outros Bancos
@@ -92,6 +100,7 @@ public class BankNotificationPlugin extends Plugin {
 
         // Investimentos, Cripto & Contas Globais
         BANK_PACKAGES.put("com.btg.pactual.banking", new BankAppInfo("BTG Pactual", "bank"));
+        BANK_PACKAGES.put("com.btgpactual.empresas", new BankAppInfo("BTG Empresas", "bank"));
         BANK_PACKAGES.put("com.btgpactual.investimentos", new BankAppInfo("BTG Investimentos", "broker"));
         BANK_PACKAGES.put("br.com.btg.pactual.digital", new BankAppInfo("BTG Investimentos", "broker"));
         BANK_PACKAGES.put("br.com.xp.carteira", new BankAppInfo("XP Investimentos", "broker"));
@@ -104,13 +113,14 @@ public class BankNotificationPlugin extends Plugin {
         BANK_PACKAGES.put("com.nomadfinancial.app", new BankAppInfo("Nomad", "broker"));
         BANK_PACKAGES.put("com.nomadglobal.app", new BankAppInfo("Nomad", "broker"));
         BANK_PACKAGES.put("com.transferwise.android", new BankAppInfo("Wise", "broker"));
+        BANK_PACKAGES.put("us.avenue.app", new BankAppInfo("Avenue", "broker"));
 
         // Cooperativas, Adquirentes & Outros
         BANK_PACKAGES.put("br.com.sicoob.net", new BankAppInfo("Sicoob", "bank"));
         BANK_PACKAGES.put("br.com.sicredi.mobile", new BankAppInfo("Sicredi", "bank"));
         BANK_PACKAGES.put("br.com.safra.mobile", new BankAppInfo("Banco Safra", "bank"));
-        BANK_PACKAGES.put("br.com.stone.ton", new BankAppInfo("Ton", "bank"));
-        BANK_PACKAGES.put("co.stone.stone", new BankAppInfo("Stone", "bank"));
+        BANK_PACKAGES.put("br.com.stone.ton", new BankAppInfo("Ton", "wallet"));
+        BANK_PACKAGES.put("co.stone.stone", new BankAppInfo("Stone", "wallet"));
     }
 
     @Override
@@ -188,6 +198,7 @@ public class BankNotificationPlugin extends Plugin {
     @PluginMethod
     public void syncMonitoredPackages(PluginCall call) {
         JSArray packagesArray = call.getArray("packages");
+        Boolean interactiveEnabled = call.getBoolean("interactiveEnabled");
         Context context = getContext();
 
         try {
@@ -205,7 +216,15 @@ public class BankNotificationPlugin extends Plugin {
                 BankNotificationListenerService.PREFS_NAME,
                 Context.MODE_PRIVATE
             );
-            prefs.edit().putStringSet(BankNotificationListenerService.KEY_ALLOWED_PACKAGES, pkgSet).apply();
+            SharedPreferences.Editor editor = prefs.edit()
+                .putStringSet(BankNotificationListenerService.KEY_ALLOWED_PACKAGES, pkgSet);
+            if (interactiveEnabled != null) {
+                editor.putBoolean(
+                    BankNotificationListenerService.KEY_INTERACTIVE_ENABLED,
+                    interactiveEnabled
+                );
+            }
+            editor.apply();
 
             JSObject ret = new JSObject();
             ret.put("success", true);
@@ -214,6 +233,30 @@ public class BankNotificationPlugin extends Plugin {
         } catch (Exception e) {
             android.util.Log.e("BankNotificationPlugin", "Erro ao sincronizar pacotes monitorados", e);
             call.reject("Erro ao salvar pacotes monitorados: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void clearMonitoredPackages(PluginCall call) {
+        Context context = getContext();
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(
+                BankNotificationListenerService.PREFS_NAME,
+                Context.MODE_PRIVATE
+            );
+            prefs.edit()
+                .putStringSet(BankNotificationListenerService.KEY_ALLOWED_PACKAGES, new HashSet<>())
+                .putBoolean(BankNotificationListenerService.KEY_INTERACTIVE_ENABLED, false)
+                .remove(BankNotificationListenerService.KEY_BUFFER)
+                .remove(BankNotificationActionReceiver.KEY_CONFIRMED_BUFFER)
+                .apply();
+
+            JSObject ret = new JSObject();
+            ret.put("success", true);
+            call.resolve(ret);
+        } catch (Exception e) {
+            android.util.Log.e("BankNotificationPlugin", "Erro ao limpar pacotes monitorados", e);
+            call.reject("Erro ao limpar pacotes monitorados: " + e.getMessage());
         }
     }
 

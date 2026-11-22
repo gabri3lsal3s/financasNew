@@ -16,6 +16,8 @@ interface ImportMetaEnv {
   readonly VITE_SUPABASE_ANON_KEY?: string;
   /** Provedor de faturamento padrão ativo ("asaas" ou "stripe"). */
   readonly VITE_DEFAULT_BILLING_PROVIDER?: string;
+  /** Chave pública VAPID opcional para assinaturas Web Push no PWA. */
+  readonly VITE_VAPID_PUBLIC_KEY?: string;
 }
 
 interface ImportMeta {

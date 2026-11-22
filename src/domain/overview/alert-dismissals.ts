@@ -10,10 +10,12 @@
  */
 
 import type {
+  DashboardAlertDismissals,
   GoalAlertDismissalCheckpoint,
   GoalAlertStage,
   PaceAlertDismissalCheckpoint,
   SurplusAlertDismissalCheckpoint,
+  TimedAlertDismissalCheckpoint,
   ZeroGuiltDismissalCheckpoint,
 } from "@/types/schema";
 
@@ -311,5 +313,109 @@ export function createZeroGuiltDismissalCheckpoint(
 ): ZeroGuiltDismissalCheckpoint {
   return {
     dismissedAtDate: todayDate,
+  };
+}
+
+/**
+ * Cria um checkpoint de dispensa temporária padronizada (7 ou 30 dias) para cards de carrossel.
+ */
+export function createTimedDismissalCheckpoint(
+  days: 7 | 30 = 7,
+  nowMs: number = Date.now(),
+): TimedAlertDismissalCheckpoint {
+  return {
+    dismissedAt: new Date(nowMs).toISOString(),
+    dismissedUntil: nowMs + days * 24 * 60 * 60 * 1000,
+  };
+}
+
+/**
+ * Retorna true se o card ainda estiver dentro da janela de dispensa (7 ou 30 dias).
+ */
+export function isTimedAlertDismissed(
+  checkpoint: TimedAlertDismissalCheckpoint | null | undefined,
+  nowMs: number = Date.now(),
+): boolean {
+  if (!checkpoint?.dismissedUntil) return false;
+  return nowMs < checkpoint.dismissedUntil;
+}
+
+/**
+ * Avalia elegibilidade do banner de trial na Home.
+ * Permite dispensa temporária (7d/30d), mas fura o cooldown automaticamente
+ * quando restarem <= 3 dias (janela crítica iminente).
+ */
+export function shouldShowTrialBanner(
+  daysRemaining: number | null,
+  hasAutoRenew: boolean,
+  checkpoint: TimedAlertDismissalCheckpoint | null | undefined,
+  nowMs: number = Date.now(),
+): boolean {
+  if (hasAutoRenew || daysRemaining === null) {
+    return false;
+  }
+  if (daysRemaining <= 3) {
+    return true;
+  }
+  return !isTimedAlertDismissed(checkpoint, nowMs);
+}
+
+function resolveCheckpointTimestamp(
+  cp: { dismissedUntil?: number; dismissedAt?: string } | undefined,
+): number {
+  if (!cp) return -1;
+  if (typeof cp.dismissedUntil === "number" && Number.isFinite(cp.dismissedUntil)) {
+    return cp.dismissedUntil;
+  }
+  if (cp.dismissedAt) {
+    const parsed = Date.parse(cp.dismissedAt);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+function pickNewerCheckpoint<T extends { dismissedUntil?: number; dismissedAt?: string }>(
+  a?: T,
+  b?: T,
+): T | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return resolveCheckpointTimestamp(b) >= resolveCheckpointTimestamp(a) ? b : a;
+}
+
+function mergeCheckpointMap<T extends { dismissedUntil?: number; dismissedAt?: string }>(
+  cloudMap?: Record<string, T>,
+  localMap?: Record<string, T>,
+): Record<string, T> | undefined {
+  if (!cloudMap && !localMap) return undefined;
+  const merged: Record<string, T> = {};
+  for (const key of new Set([...Object.keys(cloudMap ?? {}), ...Object.keys(localMap ?? {})])) {
+    const chosen = pickNewerCheckpoint(cloudMap?.[key], localMap?.[key]);
+    if (chosen) merged[key] = chosen;
+  }
+  return merged;
+}
+
+/**
+ * Mescla dispensas locais e da nuvem escolhendo sempre o checkpoint com expiração mais recente.
+ */
+export function mergeDashboardAlertDismissals(
+  cloud?: DashboardAlertDismissals,
+  local?: DashboardAlertDismissals,
+): DashboardAlertDismissals {
+  const zeroGuilt =
+    cloud?.zeroGuilt && local?.zeroGuilt
+      ? local.zeroGuilt.dismissedAtDate >= cloud.zeroGuilt.dismissedAtDate
+        ? local.zeroGuilt
+        : cloud.zeroGuilt
+      : local?.zeroGuilt ?? cloud?.zeroGuilt;
+
+  return {
+    goals: mergeCheckpointMap(cloud?.goals, local?.goals) ?? {},
+    pace: pickNewerCheckpoint(cloud?.pace, local?.pace),
+    surplus: pickNewerCheckpoint(cloud?.surplus, local?.surplus),
+    zeroGuilt,
+    governance: pickNewerCheckpoint(cloud?.governance, local?.governance),
+    cards: mergeCheckpointMap(cloud?.cards, local?.cards) ?? {},
   };
 }

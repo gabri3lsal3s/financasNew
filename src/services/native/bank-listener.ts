@@ -10,7 +10,14 @@ import {
 } from "@/domain/notifications";
 import { isNativePlatform } from "./platform";
 import { addPendingSuggestion } from "./suggestions-store";
-import { quickAddTransaction, scheduleInteractiveBankNotification } from "./interactive-notifications";
+import {
+  buildReviewRoute,
+  quickAddTransaction,
+  scheduleInteractiveBankNotification,
+  undoQuickAddTransaction,
+} from "./interactive-notifications";
+
+export { buildReviewRoute };
 import {
   getBankAssistantPreferences,
   subscribeBankAssistantPreferences,
@@ -33,7 +40,9 @@ export interface BankNotificationPluginInterface {
   }>;
   syncMonitoredPackages(options: {
     packages: string[];
+    interactiveEnabled?: boolean;
   }): Promise<{ success: boolean; count: number }>;
+  clearMonitoredPackages(): Promise<{ success: boolean }>;
   getPendingShare(): Promise<{ text?: string | null }>;
   extractTextFromReceipt(options: {
     base64Data: string;
@@ -83,6 +92,9 @@ export const BankNotificationPlugin = registerPlugin<BankNotificationPluginInter
       },
       async syncMonitoredPackages() {
         return { success: true, count: 0 };
+      },
+      async clearMonitoredPackages() {
+        return { success: true };
       },
       async getPendingShare() {
         return { text: null };
@@ -250,14 +262,50 @@ export async function getInstalledBankingApps(): Promise<{
   }
 }
 
+interface ConfirmedTransactionRecord {
+  createdId: string;
+  type: "expense" | "income";
+  suggestion: ParsedBankTransaction;
+}
+
+const MAX_CONFIRMED_RECORDS = 30;
+const recentConfirmedRecords = new Map<string, ConfirmedTransactionRecord>();
+
+function buildConfirmedRecordKey(payload: {
+  packageName?: string;
+  title?: string;
+  text?: string;
+  timestamp?: number;
+}): string {
+  return `${payload.timestamp ?? 0}::${payload.packageName ?? ""}::${payload.title ?? ""}::${payload.text ?? ""}`;
+}
+
+function rememberConfirmedRecord(key: string, record: ConfirmedTransactionRecord): void {
+  if (recentConfirmedRecords.size >= MAX_CONFIRMED_RECORDS) {
+    const oldestKey = recentConfirmedRecords.keys().next().value;
+    if (oldestKey !== undefined) {
+      recentConfirmedRecords.delete(oldestKey);
+    }
+  }
+  recentConfirmedRecords.set(key, record);
+}
+
 /**
- * Sincroniza a lista de bancos monitorados do usuário diretamente com o serviço nativo Android.
+ * Sincroniza a lista de bancos monitorados e a preferência de notificações interativas com o serviço Android.
  */
-export async function syncMonitoredBanksWithNative(monitoredBanks: string[]): Promise<boolean> {
+export async function syncMonitoredBanksWithNative(
+  monitoredBanks: string[],
+  interactiveEnabled?: boolean,
+): Promise<boolean> {
   if (!isNativePlatform()) return true;
   try {
     const packages = getPackagesForMonitoredBanks(monitoredBanks);
-    const result = await BankNotificationPlugin.syncMonitoredPackages({ packages });
+    const resolvedInteractive =
+      interactiveEnabled ?? getBankAssistantPreferences().interactiveNotificationsEnabled;
+    const result = await BankNotificationPlugin.syncMonitoredPackages({
+      packages,
+      interactiveEnabled: resolvedInteractive,
+    });
     return Boolean(result?.success);
   } catch {
     return false;
@@ -265,42 +313,59 @@ export async function syncMonitoredBanksWithNative(monitoredBanks: string[]): Pr
 }
 
 /**
- * Constrói a rota com query parameters para abrir o Wizard Rápido pré-preenchido.
+ * Limpa os pacotes bancários monitorados e buffers nativos no Android (logout ou downgrade).
  */
-export function buildReviewRoute(parsed: ParsedBankTransaction): string {
-  const params = new URLSearchParams();
-  params.set("novo", parsed.type);
-  params.set("modo", "rapido");
-  params.set("valor", parsed.amountCents.toString());
-  params.set("descricao", parsed.description);
-  params.set("data", parsed.date);
-  params.set("origem", "notificacao");
-  if (parsed.categorySlug) params.set("categoria", parsed.categorySlug);
-  if (parsed.paymentMethod) params.set("forma", parsed.paymentMethod);
-  const cardToken = parsed.cardLastDigits || parsed.issuerBank || parsed.bankName;
-  if (cardToken) {
-    params.set("cartao", cardToken);
+export async function clearNativeBankMonitoring(): Promise<boolean> {
+  if (!isNativePlatform()) return true;
+  try {
+    if (typeof BankNotificationPlugin.clearMonitoredPackages === "function") {
+      const result = await BankNotificationPlugin.clearMonitoredPackages();
+      return Boolean(result?.success);
+    }
+    const fallback = await BankNotificationPlugin.syncMonitoredPackages({
+      packages: [],
+      interactiveEnabled: false,
+    });
+    return Boolean(fallback?.success);
+  } catch {
+    return false;
   }
-  if (parsed.installments && parsed.installments > 1) {
-    params.set("parcelas", parsed.installments.toString());
+}
+
+async function executeConfirmedQuickAdd(
+  payload: BankNotificationPayload,
+  onNavigate?: (route: string) => void,
+): Promise<void> {
+  if (!payload?.text) return;
+  const parsed = parseBankNotification(payload);
+  if (!parsed) return;
+
+  const result = await quickAddTransaction(parsed);
+  if (result.success && result.createdId) {
+    const recordKey = buildConfirmedRecordKey(payload);
+    rememberConfirmedRecord(recordKey, {
+      createdId: result.createdId,
+      type: result.type,
+      suggestion: parsed,
+    });
+  } else if (!result.success && result.requiresWizard && onNavigate) {
+    onNavigate(buildReviewRoute(parsed));
   }
-  return `/transacoes?${params.toString()}`;
 }
 
 /**
  * Descarrega o buffer de transações confirmadas em segundo plano e realiza o cadastro silencioso.
  */
-export async function flushConfirmedBankTransactions(): Promise<number> {
+export async function flushConfirmedBankTransactions(
+  onNavigate?: (route: string) => void,
+): Promise<number> {
   if (!isNativePlatform()) return 0;
   try {
     const result = await BankNotificationPlugin.flushConfirmedTransactions();
     const list = result?.transactions || [];
     for (const item of list) {
       if (item.text) {
-        const parsed = parseBankNotification(item);
-        if (parsed) {
-          void quickAddTransaction(parsed);
-        }
+        void executeConfirmedQuickAdd(item, onNavigate);
       }
     }
     return list.length;
@@ -320,16 +385,18 @@ export function initBankNotificationListener(onNavigate?: (route: string) => voi
 
   isInitialized = true;
 
-  // Sincroniza imediatamente os pacotes autorizados nas preferências com o serviço nativo
+  // Sincroniza imediatamente pacotes autorizados e exibição de push interativo com o serviço nativo
   const prefs = getBankAssistantPreferences();
   void syncMonitoredBanksWithNative(
     prefs.passiveCaptureEnabled ? prefs.monitoredBanks : [],
+    prefs.interactiveNotificationsEnabled,
   );
 
   // Inscreve ouvinte para sincronizar pacotes quando o usuário altera as preferências
   const unsubPrefs = subscribeBankAssistantPreferences((nextPrefs) => {
     void syncMonitoredBanksWithNative(
       nextPrefs.passiveCaptureEnabled ? nextPrefs.monitoredBanks : [],
+      nextPrefs.interactiveNotificationsEnabled,
     );
   });
 
@@ -337,7 +404,7 @@ export function initBankNotificationListener(onNavigate?: (route: string) => voi
   void flushPendingBankNotifications();
 
   // Esvazia transações confirmadas em segundo plano
-  void flushConfirmedBankTransactions();
+  void flushConfirmedBankTransactions(onNavigate);
 
   const handleSharePayload = (text: string) => {
     if (!text || !text.trim()) return;
@@ -426,17 +493,25 @@ export function initBankNotificationListener(onNavigate?: (route: string) => voi
   const confirmedHandlePromise = BankNotificationPlugin.addListener(
     "bankTransactionConfirmed",
     (payload) => {
-      if (payload?.text) {
-        const parsed = parseBankNotification(payload);
-        if (parsed) {
-          void quickAddTransaction(parsed);
-        }
+      void executeConfirmedQuickAdd(payload, onNavigate);
+    },
+  );
+
+  const undoneHandlePromise = BankNotificationPlugin.addListener(
+    "bankTransactionUndone",
+    (payload) => {
+      const exactKey = buildConfirmedRecordKey(payload);
+      const record = recentConfirmedRecords.get(exactKey);
+      if (record) {
+        recentConfirmedRecords.delete(exactKey);
+        void undoQuickAddTransaction(record.createdId, record.type, record.suggestion);
       }
     },
   );
 
   return async () => {
     isInitialized = false;
+    recentConfirmedRecords.clear();
     unsubPrefs();
     try {
       const handles = await Promise.all([
@@ -444,6 +519,7 @@ export function initBankNotificationListener(onNavigate?: (route: string) => voi
         shareHandlePromise,
         reviewHandlePromise,
         confirmedHandlePromise,
+        undoneHandlePromise,
       ]);
       await Promise.all(handles.map((h) => h?.remove?.()));
     } catch {

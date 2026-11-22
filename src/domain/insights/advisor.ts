@@ -341,7 +341,7 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
       candidates.push({
         id: `missing_expense:${occ.key}`,
         themeKey: `missing_expense:${occ.key}`,
-        priority: 1,
+        priority: 2,
         category: "critical",
         title: "Conta pendente no mês",
         description: `${occ.name} costuma ser cobrada por volta do dia ${occ.typicalDayOfMonth ?? 10} e ainda não foi identificada no mês.`,
@@ -388,14 +388,16 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
       if (isOccurrenceIgnored(feedbackMap[commitment.key])) continue;
       if (candidates.some((c) => c.themeKey === commitment.key)) continue;
 
+      const isUrgentWindow = commitment.daysUntilDue <= 7;
+
       candidates.push({
         id: commitment.key,
         themeKey: commitment.key,
-        priority: 1,
-        category: "critical",
+        priority: isUrgentWindow ? 2 : 3,
+        category: isUrgentWindow ? "critical" : "savings",
         title: "Compromisso anual previsto",
         description: commitment.alertMessage,
-        iconName: "alert-triangle",
+        iconName: isUrgentWindow ? "alert-triangle" : "trending-up",
         primaryAction: {
           label: "Provisionar pagamento",
           kind: "register_expense",
@@ -514,10 +516,10 @@ export function generateSmartAdvisorInsights(input: GenerateSmartAdvisorInsights
       id: "household:settlement_pending",
       themeKey: "household:settlement_pending",
       priority: 2,
-      category: "income",
+      category: isPayer ? "critical" : "income",
       title: "Acerto familiar pendente",
       description: desc,
-      iconName: "arrow-down-left",
+      iconName: isPayer ? "alert-triangle" : "arrow-down-left",
       primaryAction: {
         label: isPayer ? "Compensar Pix" : "Ver acerto",
         kind: "open_family_settlement",

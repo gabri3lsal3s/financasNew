@@ -48,15 +48,15 @@ export function mergeAndFilterValidDismissals(
   localDismissals?: Record<string, number>,
 ): Record<string, number> {
   if (hasLocalOverride && localDismissals !== undefined) return localDismissals;
-  if (!cloudDismissals) return storeDismissals;
-  const merged = { ...storeDismissals, ...cloudDismissals };
-  const valid: Record<string, number> = {};
-  for (const [k, v] of Object.entries(merged)) {
-    if (typeof v === "number" && v > nowMs) {
-      valid[k] = v;
+  const merged: Record<string, number> = {};
+  for (const source of [storeDismissals, cloudDismissals ?? {}]) {
+    for (const [k, v] of Object.entries(source)) {
+      if (typeof v === "number" && v > nowMs) {
+        merged[k] = merged[k] !== undefined ? Math.max(merged[k], v) : v;
+      }
     }
   }
-  return valid;
+  return merged;
 }
 
 export function computeDismissCooldownExpiry(nowMs: number, days: number): number {

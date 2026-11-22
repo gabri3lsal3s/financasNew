@@ -1,6 +1,7 @@
-import { Save } from "lucide-react";
+import { Compass, Save } from "lucide-react";
 import { Alert, Button, EmptyState, ErrorState, Tabs, TargetsSkeleton } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
+import { startDemo } from "@/state/demo-mode";
 import {
   AllocationBreakdownDialog,
   AssetDetailSheet,
@@ -57,11 +58,23 @@ export function TargetsTab({ onGoToPosition }: { onGoToPosition?: () => void }) 
           tone="default"
           headingLevel="h2"
           action={
-            onGoToPosition ? (
-              <Button type="button" onClick={onGoToPosition}>
-                Ir para Carteira
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {onGoToPosition ? (
+                <Button type="button" size="sm" onClick={onGoToPosition}>
+                  Ir para Carteira
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => startDemo("investments_targets")}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Compass className="size-4" aria-hidden="true" />
+                <span>Ver metas na Simulação</span>
               </Button>
-            ) : undefined
+            </div>
           }
         />
       ) : (

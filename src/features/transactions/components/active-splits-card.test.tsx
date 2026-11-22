@@ -4,7 +4,7 @@ import { ActiveSplitsCard } from "./active-splits-card";
 import type { Debt, PublicShare } from "@/types";
 
 const mockSettleIntegratedReceivable = vi.fn();
-const mockUpdatePublicShare = vi.fn().mockResolvedValue({});
+const mockApplySplitSettlement = vi.fn().mockResolvedValue({});
 let mockPublicShares: PublicShare[] = [];
 let mockDebts: Debt[] = [];
 
@@ -21,9 +21,18 @@ vi.mock("@/state", () => ({
     mutateAsync: mockSettleIntegratedReceivable,
     isPending: false,
   }),
-  useUpdatePublicShare: () => ({
-    mutateAsync: mockUpdatePublicShare,
+  useApplySplitSettlement: () => ({
+    mutateAsync: mockApplySplitSettlement,
     isPending: false,
+  }),
+  useCreateLinkedSplit: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+  useExpense: () => ({
+    data: null,
+    isLoading: false,
+    isFetched: true,
   }),
 }));
 
@@ -95,8 +104,8 @@ describe("ActiveSplitsCard", () => {
     expect(screen.getByRole("button", { name: /dar baixa/i })).toBeInTheDocument();
   });
 
-  it("chama settleIntegratedReceivable ao clicar em 'Dar Baixa'", async () => {
-    mockSettleIntegratedReceivable.mockResolvedValueOnce({ success: true });
+  it("chama useApplySplitSettlement ao clicar em 'Dar Baixa' (com ou sem linkedDebt)", async () => {
+    mockApplySplitSettlement.mockResolvedValueOnce({});
 
     const mockShare: PublicShare = {
       id: "share-1",
@@ -140,16 +149,10 @@ describe("ActiveSplitsCard", () => {
     fireEvent.click(settleBtn);
 
     await waitFor(() => {
-      expect(mockSettleIntegratedReceivable).toHaveBeenCalledWith({
-        debtId: "debt-2",
-        result: 100,
-      });
-      expect(mockUpdatePublicShare).toHaveBeenCalledWith({
-        id: "share-1",
-        payload: expect.objectContaining({
-          is_completed: true,
-        }),
-        isRevoked: true,
+      expect(mockApplySplitSettlement).toHaveBeenCalledWith({
+        share: mockShare,
+        action: { type: "settle_all" },
+        linkedDebt: mockDebt,
       });
     });
   });

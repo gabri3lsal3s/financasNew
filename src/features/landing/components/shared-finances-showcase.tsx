@@ -19,7 +19,7 @@ export function SharedFinancesShowcase({ className }: SharedFinancesShowcaseProp
   return (
     <Card
       className={cn(
-        "border-border/80 bg-surface shadow-xl p-4 sm:p-6 md:p-7 space-y-4 sm:space-y-4.5 rounded-2xl sm:rounded-3xl",
+        "border-border/80 bg-surface shadow-xs p-4 sm:p-6 md:p-7 space-y-4 sm:space-y-4.5 rounded-2xl sm:rounded-3xl",
         className,
       )}
     >

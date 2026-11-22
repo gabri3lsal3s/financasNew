@@ -163,7 +163,7 @@ describe("tour-catalog — Catálogo Canônico de Micro-Tours e Grupos", () => {
     it("retorna os metadados da trilha solicitada", () => {
       const metaWizard = getTourTrackMeta("finances_wizard");
       expect(metaWizard).toBeDefined();
-      expect(metaWizard?.title).toBe("Botão Wizard (+) e Lançamento Rápido");
+      expect(metaWizard?.title).toBe("Lançamento Rápido (+)");
       expect(metaWizard?.category).toBe("finances");
 
       const metaShared = getTourTrackMeta("shared_finances");

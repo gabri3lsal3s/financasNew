@@ -378,7 +378,7 @@ describe("Tarefa 5.1: Testes E2E de Simulação (Vitest) — Trilha de Finanças
       expect(screen.getByText("Passo 4 de 4")).toBeInTheDocument();
       expect(screen.getByText(/Termômetro Coletivo|Metas Coletivas/i)).toBeInTheDocument();
 
-      const finishBtn = screen.getByRole("button", { name: /Começar/i });
+      const finishBtn = screen.getByRole("button", { name: /Voltar para minha conta|Minha conta/i });
       expect(finishBtn).toBeInTheDocument();
       await user.click(finishBtn);
 
@@ -469,7 +469,7 @@ describe("Tarefa 5.1: Testes E2E de Simulação (Vitest) — Trilha de Finanças
         }
 
         // Conclui o micro-tour
-        const finishBtn = screen.getByRole("button", { name: /Começar/i });
+        const finishBtn = screen.getByRole("button", { name: /Voltar para minha conta|Minha conta/i });
         await user.click(finishBtn);
 
         expect(getDemoSessionState().isDemoActive).toBe(false);

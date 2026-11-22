@@ -96,11 +96,16 @@ vi.mock("@/state", () => ({
       .map((d) => ({
         key: `debt:${d.id}`,
         kind: "debt" as const,
+        direction: d.type as "payable" | "receivable",
         title: d.name,
         subtitle: d.type === "payable" ? "A pagar" : "A receber",
         dueDate: d.due_date,
         amountCents: Math.round(d.amount * 100),
-        status: (d.due_date < "2026-08-01" ? "overdue" : "due_soon") as "overdue" | "due_soon",
+        status: (d.type === "receivable"
+          ? "pending"
+          : d.due_date < "2026-08-01"
+            ? "overdue"
+            : "due_soon") as "overdue" | "due_soon" | "pending",
         link: { path: "/dividas", params: { q: d.id } },
       }));
 
@@ -343,6 +348,31 @@ describe("RemindersPage (central de lembretes §3.10)", () => {
       expect(screen.getByText(/Modal Quitar: Boleto Internet/i)).toBeInTheDocument();
     } finally {
       stateMocks.debts = stateMocks.debts.filter((d) => d.id !== "d99");
+    }
+  });
+
+  it("separa dívidas a receber no chip 'A receber' sem classificá-las como atrasadas críticas", async () => {
+    const user = userEvent.setup();
+    stateMocks.debts.push({
+      id: "r50",
+      name: "Reembolso Consultoria",
+      type: "receivable",
+      amount: 450,
+      due_date: "2026-08-04",
+      paid_at: null,
+    });
+
+    try {
+      render(<RemindersPage />);
+      expect(screen.getByText("Reembolso Consultoria")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Registrar recebimento Reembolso Consultoria/i }),
+      ).toBeInTheDocument();
+      const receivableChip = screen.getAllByText(/A receber/i)[0]!;
+      await user.click(receivableChip);
+      expect(screen.getByText("Reembolso Consultoria")).toBeInTheDocument();
+    } finally {
+      stateMocks.debts = stateMocks.debts.filter((d) => d.id !== "r50");
     }
   });
 });

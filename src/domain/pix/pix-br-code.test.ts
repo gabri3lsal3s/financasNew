@@ -82,6 +82,13 @@ describe("pix-br-code (Motor Puro de Geracao Pix Copia e Cola BACEN)", () => {
       expect(detectPixKeyType("12.345.678/0001-90")).toBe("cnpj");
       expect(detectPixKeyType("(11) 98765-4321")).toBe("phone");
       expect(detectPixKeyType("+5511987654321")).toBe("phone");
+      expect(detectPixKeyType("79999887766")).toBe("phone");
+      expect(detectPixKeyType("5579999887766")).toBe("phone");
+    });
+
+    it("normaliza telefone sem mascara para +55 automaticamente", () => {
+      expect(normalizePixKey("79999887766")).toBe("+5579999887766");
+      expect(normalizePixKey("5579999887766")).toBe("+5579999887766");
     });
 
     it("normaliza CPF removendo pontos e tracos", () => {
@@ -220,6 +227,14 @@ describe("pix-br-code (Motor Puro de Geracao Pix Copia e Cola BACEN)", () => {
       expect(validatePixBrCode("texto qualquer")).toBe(false);
       expect(validatePixBrCode("")).toBe(false);
       expect(decodePixBrCode("texto qualquer")).toBeNull();
+    });
+
+    it("normaliza barras e underlines em textos EMV sem quebrar validadores bancarios", () => {
+      expect(sanitizeMerchantText("Pizza 1/3 _ Mesa_2", 25)).toBe("Pizza 1 3 Mesa 2");
+    });
+
+    it("lanca erro se formatEmvField exceder 99 caracteres", () => {
+      expect(() => formatEmvField("26", "a".repeat(100))).toThrow();
     });
 
     it("lanca erro se chave Pix estiver vazia", () => {

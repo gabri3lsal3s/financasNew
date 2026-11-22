@@ -1,6 +1,7 @@
-import { Plus, Users } from "lucide-react";
+import { Compass, Plus, Users } from "lucide-react";
 import { Button, EmptyState } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
+import { startDemo } from "@/state/demo-mode";
 
 export interface FamilyModeInactiveViewProps {
   isTogglingMode: boolean;
@@ -74,16 +75,28 @@ export function FamilyEmptySetupView({ onOpenCreate }: FamilyEmptySetupViewProps
         title="Nenhuma família criada ainda"
         description="Crie o seu grupo familiar para acompanhar despesas compartilhadas, definir o teto mensal da casa e fazer acertos justos de contas. Suas contas e despesas pessoais permanecem estritamente privadas."
         action={
-          <Button
-            type="button"
-            variant="default"
-            size="default"
-            onClick={onOpenCreate}
-            className="gap-2 shadow-xs"
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            <span>Criar Família</span>
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button
+              type="button"
+              variant="default"
+              size="default"
+              onClick={onOpenCreate}
+              className="gap-2 shadow-xs"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              <span>Criar Família</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="default"
+              onClick={() => startDemo("finances_family")}
+              className="gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <Compass className="size-4" aria-hidden="true" />
+              <span>Ver exemplo na Simulação</span>
+            </Button>
+          </div>
         }
       />
     </div>

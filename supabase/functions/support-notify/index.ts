@@ -1,5 +1,10 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
+import {
+  buildCorsHeaders,
+  jsonResponse,
+  safeErrorResponse,
+  timingSafeEqualString,
+} from "../_shared/http.ts";
 import {
   buildTelegramSupportMessage,
   sendTelegramNotification,
@@ -55,14 +60,19 @@ Deno.serve(async (req: Request) => {
 
     // Cenário 1: Disparo via Supabase Database Webhook (payload.record)
     if (payload.record && payload.record.message) {
-      const webhookSecret = Deno.env.get("WEBHOOK_SECRET");
+      const webhookSecret = Deno.env.get("WEBHOOK_SECRET") ?? "";
       const headerSecret = req.headers.get("x-webhook-secret") ?? "";
       const authHeader = req.headers.get("Authorization") ?? "";
       const bearerToken = authHeader.replace(/^Bearer\s+/i, "").trim();
 
       const isWebhookAuthorized =
-        (Boolean(webhookSecret) && (headerSecret === webhookSecret || bearerToken === webhookSecret)) ||
-        (bearerToken.length > 0 && bearerToken === supabaseServiceKey);
+        (webhookSecret.length > 0 &&
+          ((headerSecret.length > 0 &&
+            (await timingSafeEqualString(headerSecret, webhookSecret))) ||
+            (bearerToken.length > 0 &&
+              (await timingSafeEqualString(bearerToken, webhookSecret))))) ||
+        (bearerToken.length > 0 &&
+          (await timingSafeEqualString(bearerToken, supabaseServiceKey)));
 
       if (!isWebhookAuthorized) {
         return jsonResponse(req, { error: "Acesso não autorizado ao webhook de suporte" }, 401);
@@ -135,15 +145,19 @@ Deno.serve(async (req: Request) => {
           return jsonResponse(req, { error: "Chamado não localizado" }, 404);
         }
 
-        // Validação estrita de IDOR: apenas o próprio titular ou admins podem despachar notificação
+        // Validação estrita de IDOR: apenas o próprio titular ou admins ativos podem despachar notificação
         if (ticket.user_id !== user.id) {
           const { data: profile } = await supabaseAdmin
             .from("profiles")
-            .select("role")
+            .select("role, status")
             .eq("id", user.id)
             .single();
 
-          if (!profile || !["admin", "superadmin"].includes(profile.role)) {
+          if (
+            !profile ||
+            profile.status !== "active" ||
+            !["admin", "superadmin"].includes(profile.role)
+          ) {
             return jsonResponse(req, { error: "Acesso não autorizado ao chamado informado" }, 403);
           }
         }
@@ -166,11 +180,20 @@ Deno.serve(async (req: Request) => {
           return jsonResponse(req, { error: "A mensagem do chamado é obrigatória" }, 400);
         }
 
+        const allowedTypes = new Set(["doubt", "bug", "suggestion", "other"]);
+        const normalizedType = allowedTypes.has(String(payload.type || "doubt"))
+          ? String(payload.type || "doubt")
+          : "doubt";
+
         const { data: profile } = await supabaseAdmin
           .from("profiles")
-          .select("name, email")
+          .select("name, email, status")
           .eq("id", user.id)
           .maybeSingle();
+
+        if (!profile || profile.status !== "active") {
+          return jsonResponse(req, { error: "Conta inativa ou não autorizada" }, 403);
+        }
 
         const resolvedName = profile?.name || user.user_metadata?.name || user.email?.split("@")[0] || "Cliente";
         const resolvedEmail = profile?.email || user.email || "";
@@ -180,7 +203,7 @@ Deno.serve(async (req: Request) => {
           .from("support_tickets")
           .insert({
             user_id: user.id,
-            type: payload.type || "doubt",
+            type: normalizedType,
             subject: payload.subject || null,
             message: messageText,
             user_name: resolvedName,

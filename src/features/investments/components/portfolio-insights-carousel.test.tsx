@@ -394,7 +394,7 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     render(<PortfolioInsightsCarousel />);
 
     expect(screen.getByText("Alta concentração em PETR4")).toBeInTheDocument();
-    expect(screen.getByText("87.0% do total")).toBeInTheDocument();
+    expect(screen.getByText("87,0% do total")).toBeInTheDocument();
     expect(screen.getByText("Simular Rebalanceamento")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Simular Rebalanceamento"));

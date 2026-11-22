@@ -78,6 +78,21 @@ describe("Auditoria PWA (instalabilidade)", () => {
     expect(html).toContain('name="apple-mobile-web-app-title" content="Axir"');
   });
 
+  it("#app-splash em index.html usa WebP inline, sem onerror inline e sem fade prematuro por :has()", () => {
+    const html = readFileSync(resolve(root, "index.html"), "utf8");
+    const splashMatch = html.match(/<div id="app-splash"[\s\S]*?<\/div>/);
+    expect(splashMatch).not.toBeNull();
+    const splashHtml = splashMatch?.[0] ?? "";
+
+    expect(splashHtml).toContain('class="app-splash-icon app-splash-light"');
+    expect(splashHtml).toContain('class="app-splash-icon app-splash-dark"');
+    const inlineImages = splashHtml.match(/src="data:image\/webp;base64,[^"]+"/g) ?? [];
+    expect(inlineImages).toHaveLength(2);
+    expect(inlineImages[0]).not.toBe(inlineImages[1]);
+    expect(splashHtml).not.toContain("onerror=");
+    expect(html).not.toContain("body:has(#root:not(:empty)) #app-splash");
+  });
+
   it("Service Worker: autoUpdate com onNeedReload (toast, sem reload automático)", () => {
     const pwa = readFileSync(resolve(root, "src/app/pwa.ts"), "utf8");
 

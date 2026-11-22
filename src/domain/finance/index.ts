@@ -4,3 +4,4 @@
  */
 
 export * from "./split-math";
+export * from "./split-reconciliation";

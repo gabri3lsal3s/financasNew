@@ -399,6 +399,7 @@ describe("use-simulated-queries — Interceptação Segura de Queries no TanStac
         incomeCategories: 3,
         cards: 1,
         transactions: 12,
+        cashCheckpoints: 1,
         notificationsEnabled: false,
       });
     });

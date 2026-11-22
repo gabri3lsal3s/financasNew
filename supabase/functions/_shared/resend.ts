@@ -1,6 +1,6 @@
 /**
- * Servico de Disparo de E-mails Transacionais via API Resend
- * Idempotente, seguro, com persistencia em public.transactional_email_logs
+ * Serviço de Disparo de E-mails Transacionais via API Resend
+ * Idempotente, seguro, com persistência em public.transactional_email_logs
  * e comportamento fail-safe (nunca interrompe fluxos de pagamento).
  */
 
@@ -31,26 +31,46 @@ export function getResendApiKey(): string | null {
 
 export function getResendFromEmail(): string {
   const from = Deno.env.get("RESEND_FROM_EMAIL");
-  return from && from.trim().length > 0 ? from.trim() : "Axir <contato@axir.com.br>";
+  return from && from.trim().length > 0 ? from.trim() : "Axir <noreply@axir.com.br>";
+}
+
+async function upsertEmailLog(
+  supabaseAdmin: SupabaseClient,
+  row: {
+    user_id: string | null;
+    recipient_email: string;
+    template_key: string;
+    dedup_key: string;
+    status: "sent" | "failed" | "skipped_missing_key";
+    provider_message_id?: string | null;
+    metadata: Record<string, unknown>;
+  },
+): Promise<void> {
+  const { error } = await supabaseAdmin
+    .from("transactional_email_logs")
+    .upsert(row, { onConflict: "dedup_key" });
+  if (error) {
+    console.warn("[resend] Falha ao persistir transactional_email_logs:", error.message);
+  }
 }
 
 /**
- * Envia e-mail transacional com rastreamento no banco e idempotencia estrita
+ * Envia e-mail transacional com rastreamento no banco e idempotência estrita.
  */
 export async function sendTransactionalEmail(
   supabaseAdmin: SupabaseClient,
-  options: SendEmailOptions
+  options: SendEmailOptions,
 ): Promise<SendEmailResult> {
   const cleanTo = (options.to || "").trim().toLowerCase();
   const apiKey = getResendApiKey();
-  const idempotencyKey = options.idempotencyKey || null;
+  const idempotencyKey = options.idempotencyKey?.trim() || null;
 
   if (!cleanTo || !cleanTo.includes("@")) {
-    console.warn("[resend] Destinatario invalido:", cleanTo);
-    return { success: false, error: "E-mail de destino invalido." };
+    console.warn("[resend] Destinatário inválido:", cleanTo);
+    return { success: false, error: "E-mail de destino inválido." };
   }
 
-  // 1. Verificacao de idempotencia no banco
+  // 1. Verificação de idempotência no banco: apenas status 'sent' bloqueia reenvio
   if (idempotencyKey) {
     try {
       const { data: existingLog } = await supabaseAdmin
@@ -61,21 +81,21 @@ export async function sendTransactionalEmail(
         .maybeSingle();
 
       if (existingLog) {
-        console.log(`[resend] E-mail com idempotency_key '${idempotencyKey}' ja enviado. Ignorando reenvio.`);
+        console.log(`[resend] E-mail com idempotency_key '${idempotencyKey}' já enviado. Ignorando reenvio.`);
         return { success: true, skipped: true, id: existingLog.provider_message_id || undefined };
       }
     } catch (err: unknown) {
-      console.warn("[resend] Falha ao verificar idempotencia de e-mail:", err);
+      console.warn("[resend] Falha ao verificar idempotência de e-mail:", err);
     }
   }
 
   const effectiveDedupKey = idempotencyKey || `${options.template}_${cleanTo}_${Date.now()}`;
 
-  // 2. Se a chave do Resend nao estiver configurada, registrar log de fallback seguro
+  // 2. Se a chave do Resend não estiver configurada, registra fallback seguro sem bloquear futuras tentativas
   if (!apiKey) {
     console.warn("[resend] RESEND_API_KEY ausente no ambiente. Gravando log 'skipped_missing_key'.");
     try {
-      await supabaseAdmin.from("transactional_email_logs").insert({
+      await upsertEmailLog(supabaseAdmin, {
         user_id: options.userId || null,
         recipient_email: cleanTo,
         template_key: options.template,
@@ -91,10 +111,10 @@ export async function sendTransactionalEmail(
     } catch (dbErr: unknown) {
       console.warn("[resend] Falha ao gravar log de e-mail ausente:", dbErr);
     }
-    return { success: false, skipped: true, error: "Chave Resend nao configurada." };
+    return { success: false, skipped: true, error: "Chave Resend não configurada." };
   }
 
-  // 3. Execucao do disparo via API HTTP do Resend
+  // 3. Execução do disparo via API HTTP do Resend com Idempotency-Key nativo
   const fromEmail = getResendFromEmail();
 
   try {
@@ -103,6 +123,7 @@ export async function sendTransactionalEmail(
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        "Idempotency-Key": effectiveDedupKey,
       },
       body: JSON.stringify({
         from: fromEmail,
@@ -119,7 +140,7 @@ export async function sendTransactionalEmail(
       const errorMsg = data?.message || data?.error || `HTTP ${res.status}`;
       console.error("[resend] Erro retornado pela API do Resend:", errorMsg);
 
-      await supabaseAdmin.from("transactional_email_logs").insert({
+      await upsertEmailLog(supabaseAdmin, {
         user_id: options.userId || null,
         recipient_email: cleanTo,
         template_key: options.template,
@@ -138,7 +159,7 @@ export async function sendTransactionalEmail(
 
     const providerId = data?.id || null;
 
-    await supabaseAdmin.from("transactional_email_logs").insert({
+    await upsertEmailLog(supabaseAdmin, {
       user_id: options.userId || null,
       recipient_email: cleanTo,
       template_key: options.template,
@@ -155,10 +176,10 @@ export async function sendTransactionalEmail(
     return { success: true, id: providerId || undefined };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error("[resend] Falha de conexao com API Resend:", errorMsg);
+    console.error("[resend] Falha de conexão com API Resend:", errorMsg);
 
     try {
-      await supabaseAdmin.from("transactional_email_logs").insert({
+      await upsertEmailLog(supabaseAdmin, {
         user_id: options.userId || null,
         recipient_email: cleanTo,
         template_key: options.template,

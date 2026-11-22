@@ -163,12 +163,12 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Polimento Final 10/10 dos Relatorios PDF e Motor de Preco Teto & Valuation",
-    "Carteira Mensal: cabecalhos compactos, largura fixa de colunas sem invasao de texto e travessoes em Reserva de Caixa",
-    "Fatura de Cartao: padrao visual unificado, respiro vertical calibrado, separacao de colunas e rodape ancorado na base A4",
-    "IRPF & DRE: rotulo limpo sem truncamento no Grupo 04 e icones vetoriais financeiros consistentes na Cascata DRE",
-    "Preco Teto & Valuation Multimodelo: Bazin, Graham, Gordon, FIIs e mesa de consenso com persistencia no Supabase",
-    "Governanca de alertas do carrossel de patrimonio e integracao no alocador de aportes"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Auditoria Completa, Hardening de Seguranca/Privacidade e Padronizacao do Ecossistema de Notificacoes",
+    "Notification Hub Unificado: paridade entre Sininho, Popover, Sidebar, BottomNav e Central de Lembretes com calibracao P0 a P3",
+    "Seguranca & Privacidade (Migration 0138): FORCE RLS, revogacao de acesso anon em RPCs de broadcast e limpeza de sessao/push no logout",
+    "Push Hibrido & Resumo Dominical Opt-In: respeito ao Horario Silencioso na Web/Android, persistencia de snooze e deduplicacao idempotente",
+    "Carrossel Unificado & Prominent Disclosure: dispensa padronizada 7d/30d, opt-in explicito do Assistente Bancario e zero whack-a-mole",
+    "Padronizacao UI/UX: zero truncamento em valores monetarios, virgula decimal pt-BR, Toast Undo de 5s estavel e zero emojis"
   ]
 }
 EOF

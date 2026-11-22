@@ -1,127 +1,265 @@
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { isSplitFullyCompleted } from "@/domain/finance/split-math";
+import { todayISO } from "@/domain/debts";
+import {
+  normalizeSplitParticipants,
+  resolveSplitExpirationIso,
+  splitAmountEqually,
+  sumExpectedFromFriendsCents,
+  sumSettledFromFriendsCents,
+  type SplitEditInput,
+} from "@/domain/finance";
+import { isSplitFullyCompleted, type SplitRemainderPolicy } from "@/domain/finance/split-math";
+import { buildPixTransferCode, validateAndClassifyPixKey, type PixKeyType } from "@/domain/pix";
+import { getPublicShareUrl } from "@/services/app-url";
+import { copyTextToClipboard } from "@/services/export-actions";
 import { formatCentsAsBRL } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
-import { deleteAllSplitExpenses, syncSplitExpenseReportWeights } from "@/services/split-sync";
+import { useSplitPreferences } from "@/services/split-preferences";
 import { pushToast } from "@/services/toast";
 import {
-  useDeleteDebt, useDeletePublicShare, useExpense, useExpensesByInstallmentGroup,
-  useSettleIntegratedReceivable, useUpdateDebt, useUpdateExpense, useUpdatePublicShare,
+  useApplySplitSettlement,
+  useDeleteLinkedSplit,
+  useDismissSplitPaymentSignal,
+  useExpense,
+  useExpensesByInstallmentGroup,
+  useUpdateSplitComprehensive,
 } from "@/state";
-import type { Debt, PublicShare, SplitParticipantInstallment, SplitParticipantItem, SplitSharePayload } from "@/types";
-import { buildInitialSplitParticipants } from "./split-constants";
-import {
-  applyInstallmentToggle, applyParticipantCustomSettle,
-  applyParticipantFullSettle, applyParticipantUnsettle,
-} from "./split-manage-helpers";
+import type { Debt, PublicShare, SplitParticipantItem, SplitSharePayload } from "@/types";
+import type { EditableSplitParticipant } from "./split-edit-tab";
+
+export type ManageSplitTab = "settlements" | "edit" | "public";
 
 export interface UseManageSplitParams {
+  open?: boolean;
   share: PublicShare;
   linkedDebt?: Debt | null;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 }
 
-export function useManageSplit({ share, linkedDebt, onOpenChange, onSuccess }: UseManageSplitParams) {
-  const queryClient = useQueryClient();
-  const updateShareMutation = useUpdatePublicShare();
-  const deleteShareMutation = useDeletePublicShare();
-  const updateExpenseMutation = useUpdateExpense();
-  const updateDebtMutation = useUpdateDebt();
-  const deleteDebtMutation = useDeleteDebt();
-  const settleDebtMutation = useSettleIntegratedReceivable();
+interface DraftParticipantItem {
+  id: string;
+  name: string;
+  isHost: boolean;
+  fixedCents: number;
+  settledCents: number;
+}
 
-  const payload = (share.payload ?? {}) as unknown as SplitSharePayload;
-  const { data: linkedExpense, isFetched: isExpenseFetched } = useExpense(payload.expense_id ?? null);
-  const hasLinkedExpense = Boolean(payload.expense_id && (!isExpenseFetched || linkedExpense));
-  const groupId = payload.installment_group_id ?? linkedExpense?.installment_group_id ?? null;
+function buildEditDraftParticipants(payload: SplitSharePayload): DraftParticipantItem[] {
+  return normalizeSplitParticipants(payload).map((p, idx) => ({
+    id: p.id || `p_${idx + 1}`,
+    name: p.name,
+    isHost: Boolean(p.is_host),
+    fixedCents: Math.max(0, Number(p.share_cents ?? 0)),
+    settledCents: Math.max(0, Number(p.settled_cents ?? (p.is_settled ? p.share_cents : 0))),
+  }));
+}
+
+export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, onSuccess }: UseManageSplitParams) {
+  const applySplitSettlement = useApplySplitSettlement();
+  const updateSplitComprehensive = useUpdateSplitComprehensive();
+  const deleteLinkedSplit = useDeleteLinkedSplit();
+  const dismissSignalMutation = useDismissSplitPaymentSignal();
+  const { updatePreferences } = useSplitPreferences();
+
+  const payload = useMemo(
+    () => (share.payload ?? {}) as unknown as SplitSharePayload,
+    [share.payload],
+  );
+  const linkedExpenseId = share.expense_id || payload.expense_id || null;
+  const { data: linkedExpense, isFetched: isExpenseFetched } = useExpense(linkedExpenseId);
+  const hasLinkedExpense = Boolean(linkedExpenseId && (!isExpenseFetched || linkedExpense));
+  const groupId = share.installment_group_id || payload.installment_group_id || linkedExpense?.installment_group_id || null;
   const { data: groupExpenses } = useExpensesByInstallmentGroup(groupId);
 
-  const [participants, setParticipants] = useState<SplitParticipantItem[]>(() => buildInitialSplitParticipants(payload));
-  const [participantInstallments, setParticipantInstallments] = useState<SplitParticipantInstallment[]>(
-    () => payload.participant_installments ?? [],
+  const installmentsCount = Math.max(
+    1,
+    Number(payload.installments_count ?? linkedExpense?.installments_total ?? (groupExpenses?.length ?? 1)),
   );
+  const isMultiInstallmentGroup = Boolean(installmentsCount > 1 || (groupExpenses && groupExpenses.length > 1));
+
+  const participants = useMemo(() => normalizeSplitParticipants(payload), [payload]);
+  const participantInstallments = useMemo(() => payload.participant_installments ?? [], [payload]);
+  const pendingSignals = useMemo(
+    () => (payload.payment_signals ?? []).filter((s) => s.status === "pending"),
+    [payload.payment_signals],
+  );
+
+  const [activeTab, setActiveTab] = useState<ManageSplitTab>("settlements");
   const [customInputParticipantId, setCustomInputParticipantId] = useState<string | null>(null);
   const [customInputCents, setCustomInputCents] = useState<number>(0);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleteLinkedDebt, setDeleteLinkedDebt] = useState<boolean>(true);
   const [deleteOriginalExpense, setDeleteOriginalExpense] = useState<boolean>(false);
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
-  const [isEditingInfo, setIsEditingInfo] = useState(false);
+
+  // Drafts para Aba 2 ("Editar Racha")
   const [editedTitle, setEditedTitle] = useState(payload.title || "");
+  const [editedTotalCents, setEditedTotalCents] = useState(Number(payload.total_cents ?? 0));
+  const [editedDate, setEditedDate] = useState(payload.date || todayISO());
+  const [editedDueDate, setEditedDueDate] = useState(linkedDebt?.due_date || payload.due_date || payload.date || todayISO());
+  const [editedRemainderPolicy, setEditedRemainderPolicy] = useState<SplitRemainderPolicy>(payload.remainder_policy ?? "host");
+  const [editedSplitMode, setEditedSplitMode] = useState<"equal" | "custom">(payload.split_mode ?? "equal");
+  const [editedInstallmentsMode, setEditedInstallmentsMode] = useState<"single_total" | "per_installment">(
+    payload.installments_mode ?? "per_installment",
+  );
+  const [editedParticipants, setEditedParticipants] = useState<DraftParticipantItem[]>(() =>
+    buildEditDraftParticipants(payload),
+  );
+
+  // Drafts para Aba 3 ("Pix e Página")
   const [editedPixKey, setEditedPixKey] = useState(payload.pix_key || "");
+  const [editedKeyType, setEditedKeyType] = useState<string>(payload.pix_key_type || "auto");
+  const [editedHostName, setEditedHostName] = useState(
+    payload.host_name || participants.find((p) => p.is_host)?.name || "Anfitrião",
+  );
+  const [editedHostCity, setEditedHostCity] = useState(payload.host_city || "");
+  const [editedCustomNote, setEditedCustomNote] = useState(payload.custom_note || "");
+  const [editedShowParticipantsList, setEditedShowParticipantsList] = useState<boolean>(
+    payload.show_participants_list ?? true,
+  );
+  const [editedPublicPagePaused, setEditedPublicPagePaused] = useState<boolean>(
+    Boolean(payload.public_page_paused),
+  );
+
+  const syncKey = `${share.id}:${share.updated_at}:${open}`;
+  const [prevSyncKey, setPrevSyncKey] = useState(syncKey);
+  if (syncKey !== prevSyncKey) {
+    setPrevSyncKey(syncKey);
+    const freshParticipants = normalizeSplitParticipants(payload);
+    setEditedTitle(payload.title || "");
+    setEditedTotalCents(Number(payload.total_cents ?? 0));
+    setEditedDate(payload.date || todayISO());
+    setEditedDueDate(linkedDebt?.due_date || payload.due_date || payload.date || todayISO());
+    setEditedRemainderPolicy(payload.remainder_policy ?? "host");
+    setEditedSplitMode(payload.split_mode ?? "equal");
+    setEditedInstallmentsMode(payload.installments_mode ?? "per_installment");
+    setEditedParticipants(buildEditDraftParticipants(payload));
+    setEditedPixKey(payload.pix_key || "");
+    setEditedKeyType(payload.pix_key_type || "auto");
+    setEditedHostName(payload.host_name || freshParticipants.find((p) => p.is_host)?.name || "Anfitrião");
+    setEditedHostCity(payload.host_city || "");
+    setEditedCustomNote(payload.custom_note || "");
+    setEditedShowParticipantsList(payload.show_participants_list ?? true);
+    setEditedPublicPagePaused(Boolean(payload.public_page_paused));
+    if (open) {
+      setCustomInputParticipantId(null);
+    }
+  }
 
   const totalCents = Number(payload.total_cents ?? 0);
   const friends = useMemo(() => participants.filter((p) => !p.is_host), [participants]);
-  const totalSettledFromFriendsCents = useMemo(
-    () => friends.reduce((acc, f) => acc + Number(f.settled_cents ?? (f.is_settled ? f.share_cents : 0)), 0),
-    [friends],
-  );
+  const totalSettledFromFriendsCents = useMemo(() => sumSettledFromFriendsCents(participants), [participants]);
+  const totalExpectedFromFriendsCents = useMemo(() => sumExpectedFromFriendsCents(participants), [participants]);
+  const remainingReceivableCents = Math.max(0, totalExpectedFromFriendsCents - totalSettledFromFriendsCents);
   const settledFriendsCount = useMemo(() => friends.filter((f) => f.is_settled).length, [friends]);
 
   const settledSubtitle = useMemo(() => {
     const hostId = participants.find((p) => p.is_host)?.id;
     const friendInsts = participantInstallments.filter((i) => i.participant_id !== hostId);
-    if (friendInsts.length > 0) return `${friendInsts.filter((i) => i.is_settled).length} de ${friendInsts.length} parcelas pagas`;
+    if (friendInsts.length > 0) {
+      return `${friendInsts.filter((i) => i.is_settled).length} de ${friendInsts.length} parcelas pagas`;
+    }
     return `${settledFriendsCount} de ${friends.length} amigos baixados`;
   }, [participants, participantInstallments, settledFriendsCount, friends.length]);
 
   const hostNetCostCents = Math.max(0, totalCents - totalSettledFromFriendsCents);
   const netReportWeight = totalCents > 0 ? hostNetCostCents / totalCents : 1;
-  const isCompleted = isSplitFullyCompleted(participants, participantInstallments);
+  const isCompleted = Boolean(payload.is_completed) || isSplitFullyCompleted(participants, participantInstallments);
 
-  const persistParticipants = async (
-    updatedParticipants: SplitParticipantItem[],
-    options?: { markCompleted?: boolean; updatedInstallments?: SplitParticipantInstallment[] },
-  ) => {
-    const updatedSettledTotal = updatedParticipants
-      .filter((p) => !p.is_host)
-      .reduce((acc, f) => acc + Number(f.settled_cents ?? (f.is_settled ? f.share_cents : 0)), 0);
-    const installmentsToPersist = options?.updatedInstallments ?? participantInstallments;
-    const completed = options?.markCompleted ?? isSplitFullyCompleted(updatedParticipants, installmentsToPersist);
-
-    const newPayload: SplitSharePayload = {
-      ...payload, title: editedTitle.trim() || payload.title, pix_key: editedPixKey.trim() || payload.pix_key,
-      participants: updatedParticipants,
-      participant_installments: installmentsToPersist.length > 0 ? installmentsToPersist : undefined,
-      total_settled_cents: updatedSettledTotal, is_completed: completed, installment_group_id: groupId,
-    };
-
-    setParticipants(updatedParticipants);
-    if (options?.updatedInstallments) setParticipantInstallments(options.updatedInstallments);
-
-    await updateShareMutation.mutateAsync({
-      id: share.id,
-      payload: newPayload as unknown as Record<string, unknown>,
-      isRevoked: completed,
+  // Preview de edição (Aba 2)
+  const editPreview = useMemo(() => {
+    const equalPreviewShares = splitAmountEqually(Math.max(0, editedTotalCents), Math.max(1, editedParticipants.length), {
+      remainderPolicy: editedRemainderPolicy,
     });
+    const resolvedPreviewShares = editedParticipants.map((p, idx) =>
+      editedSplitMode === "custom" ? p.fixedCents : (equalPreviewShares[idx] ?? 0),
+    );
+    const overpaidNotices = editedParticipants
+      .map((p, idx) => {
+        if (p.isHost) return null;
+        const nextShare = resolvedPreviewShares[idx] ?? 0;
+        if (p.settledCents <= nextShare) return null;
+        return {
+          participantId: p.id,
+          name: p.name,
+          previousSettledCents: p.settledCents,
+          newShareCents: nextShare,
+          excessCents: p.settledCents - nextShare,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
 
-    if (payload.expense_id && hasLinkedExpense) {
-      try {
-        await syncSplitExpenseReportWeights({
-          expenseId: payload.expense_id, installments: installmentsToPersist,
-          hostId: updatedParticipants.find((p) => p.is_host)?.id, totalCents, installmentsCount: payload.installments_count, groupId,
-        });
-        void queryClient.invalidateQueries({ queryKey: ["expenses"] });
-        void queryClient.invalidateQueries({ queryKey: ["card-expenses"] });
-      } catch (err) { console.warn("Não foi possível sincronizar pesos contábeis das parcelas:", err); }
+    const editableList: EditableSplitParticipant[] = editedParticipants.map((p, idx) => ({
+      ...p,
+      sharePreviewCents: resolvedPreviewShares[idx] ?? 0,
+    }));
+
+    const customSumCents = editedParticipants.reduce((acc, p) => acc + Math.max(0, p.fixedCents), 0);
+    const isEditValid =
+      editedTotalCents > 0 &&
+      editedParticipants.filter((p) => !p.isHost).length >= 1 &&
+      editedTitle.trim().length > 0 &&
+      (editedSplitMode === "equal" || customSumCents === editedTotalCents);
+
+    return { editableList, overpaidNotices, customSumCents, isEditValid };
+  }, [editedTotalCents, editedParticipants, editedRemainderPolicy, editedSplitMode, editedTitle]);
+
+  // Validação Pix e prévia QR Code (Aba 3)
+  const pixValidation = useMemo(
+    () =>
+      validateAndClassifyPixKey(
+        editedPixKey,
+        editedKeyType === "auto" ? undefined : (editedKeyType as PixKeyType),
+      ),
+    [editedPixKey, editedKeyType],
+  );
+
+  const firstGuestPreviewAmountCents = useMemo(() => {
+    const firstGuest = friends[0];
+    if (!firstGuest) return Math.max(0, Number(payload.guest_share_cents ?? 0));
+    if (installmentsCount > 1 && payload.installments_mode !== "single_total") {
+      const firstInst = participantInstallments.find(
+        (i) => i.participant_id === firstGuest.id && !i.is_settled,
+      ) ?? participantInstallments.find((i) => i.participant_id === firstGuest.id);
+      if (firstInst) return firstInst.amount_cents;
     }
+    return Math.max(0, firstGuest.share_cents - Number(firstGuest.settled_cents ?? 0)) || firstGuest.share_cents;
+  }, [friends, payload.guest_share_cents, installmentsCount, payload.installments_mode, participantInstallments]);
 
-    if (linkedDebt && !linkedDebt.paid_at) {
-      try {
-        const remaining = Math.max(0, friends.reduce((acc, f) => acc + f.share_cents, 0) - updatedSettledTotal);
-        if (completed || remaining === 0) await settleDebtMutation.mutateAsync({ debtId: linkedDebt.id, result: hostNetCostCents / 100 });
-        else await updateDebtMutation.mutateAsync({ id: linkedDebt.id, input: { amount: remaining / 100 } });
-      } catch (err) { console.warn("Não foi possível sincronizar a dívida vinculada:", err); }
+  const previewBrCode = useMemo(() => {
+    if (!pixValidation.isValid || !pixValidation.resolvedType || !editedHostCity.trim()) {
+      return "";
     }
-  };
+    return (
+      buildPixTransferCode({
+        pixKey: pixValidation.normalizedKey ?? editedPixKey.trim(),
+        keyType: pixValidation.resolvedType,
+        merchantName: editedHostName.trim() || "Anfitriao",
+        merchantCity: editedHostCity.trim(),
+        amountCents: firstGuestPreviewAmountCents,
+        txId: `PREV${share.token}`.replace(/[^A-Za-z0-9]/g, "").slice(0, 25),
+        infoAdicional: editedTitle.trim() || payload.title || "Racha de conta",
+        defaultMerchantName: "Anfitriao",
+        defaultMerchantCity: "BRASIL",
+      }) ?? ""
+    );
+  }, [pixValidation, editedHostCity, editedPixKey, editedHostName, firstGuestPreviewAmountCents, share.token, editedTitle, payload.title]);
 
+  const isPublicConfigValid =
+    pixValidation.isValid &&
+    editedHostName.trim().length > 0 &&
+    editedHostCity.trim().length > 0;
+
+  // Handlers de Baixas (Aba 1)
   const handleSettleFull = async (participantId: string) => {
-    const next = applyParticipantFullSettle(participants, participantInstallments, participantId);
     try {
-      await persistParticipants(next.participants, { updatedInstallments: next.installments, markCompleted: isSplitFullyCompleted(next.participants, next.installments) });
+      await applySplitSettlement.mutateAsync({
+        share,
+        action: { type: "settle_full_participant", participantId },
+        linkedDebt,
+        installmentsTotal: installmentsCount,
+      });
       triggerSensory("action");
       pushToast({ title: "Baixa registrada!", description: "Reembolso integral do participante registrado.", variant: "success" });
     } catch { triggerSensory("destructive"); }
@@ -129,9 +267,17 @@ export function useManageSplit({ share, linkedDebt, onOpenChange, onSuccess }: U
 
   const handleConfirmCustomSettle = async () => {
     if (!customInputParticipantId) return;
-    const next = applyParticipantCustomSettle(participants, participantInstallments, customInputParticipantId, customInputCents);
     try {
-      await persistParticipants(next.participants, { updatedInstallments: next.installments, markCompleted: isSplitFullyCompleted(next.participants, next.installments) });
+      await applySplitSettlement.mutateAsync({
+        share,
+        action: {
+          type: "settle_custom_participant",
+          participantId: customInputParticipantId,
+          settledCents: customInputCents,
+        },
+        linkedDebt,
+        installmentsTotal: installmentsCount,
+      });
       triggerSensory("action");
       setCustomInputParticipantId(null);
       pushToast({
@@ -143,92 +289,450 @@ export function useManageSplit({ share, linkedDebt, onOpenChange, onSuccess }: U
   };
 
   const handleUnsettle = async (participantId: string) => {
-    const next = applyParticipantUnsettle(participants, participantInstallments, participantId);
     try {
-      await persistParticipants(next.participants, { updatedInstallments: next.installments, markCompleted: false });
+      await applySplitSettlement.mutateAsync({
+        share,
+        action: { type: "unsettle_participant", participantId },
+        linkedDebt,
+        installmentsTotal: installmentsCount,
+      });
       triggerSensory("selection");
       pushToast({ title: "Baixa desfeita", description: "O participante voltou ao status de pendente.", variant: "default" });
     } catch { triggerSensory("destructive"); }
   };
 
   const handleToggleSettleInstallment = async (installmentId: string, markSettled: boolean) => {
-    const next = applyInstallmentToggle(participants, participantInstallments, installmentId, markSettled);
-    if (!next) return;
     try {
-      await persistParticipants(next.participants, { updatedInstallments: next.installments, markCompleted: isSplitFullyCompleted(next.participants, next.installments) });
+      await applySplitSettlement.mutateAsync({
+        share,
+        action: { type: "toggle_installment", installmentId, markSettled },
+        linkedDebt,
+        installmentsTotal: installmentsCount,
+      });
       triggerSensory("action");
       pushToast({
         title: markSettled ? "Parcela marcada como paga!" : "Baixa da parcela desfeita",
-        description: markSettled ? `Parcela ${next.target.installment_number}/${next.target.total_installments} quitada com sucesso.` : `Parcela ${next.target.installment_number}/${next.target.total_installments} reaberta como pendente.`,
         variant: "success",
       });
     } catch { triggerSensory("destructive"); }
   };
 
-  const handleFinalizeSplit = async () => {
+  const handleConfirmSignal = async (signalId: string) => {
     try {
-      await persistParticipants(participants, { markCompleted: true });
+      await applySplitSettlement.mutateAsync({
+        share,
+        action: { type: "confirm_signal", signalId },
+        linkedDebt,
+        installmentsTotal: installmentsCount,
+      });
+      triggerSensory("success");
+      pushToast({ title: "Pagamento confirmado!", description: "O valor foi abatido do racha e da despesa.", variant: "success" });
+    } catch { triggerSensory("destructive"); }
+  };
+
+  const handleDismissSignal = async (signalId: string) => {
+    try {
+      await dismissSignalMutation.mutateAsync({ shareId: share.id, signalId });
+      triggerSensory("action");
+    } catch { triggerSensory("destructive"); }
+  };
+
+  const handleSettleAll = async () => {
+    try {
+      await applySplitSettlement.mutateAsync({
+        share,
+        action: { type: "settle_all" },
+        linkedDebt,
+        installmentsTotal: installmentsCount,
+      });
       triggerSensory("success");
       setConfirmFinalizeOpen(false);
-      pushToast({ title: "Racha finalizado com sucesso!", description: `Sua despesa foi ajustada para ${formatCentsAsBRL(hostNetCostCents)} e a cobrança foi liquidada.`, variant: "success" });
+      pushToast({
+        title: "Todos os pagamentos confirmados!",
+        description: "Racha quitado integralmente e link público encerrado.",
+        variant: "success",
+      });
       onSuccess?.();
       onOpenChange(false);
     } catch { triggerSensory("destructive"); }
   };
 
-  const handleSaveInfo = async () => {
+  const handleFinalizeSplit = async () => {
     try {
-      await persistParticipants(participants);
-      setIsEditingInfo(false);
+      const res = await applySplitSettlement.mutateAsync({
+        share,
+        action: { type: "finalize_as_is" },
+        linkedDebt,
+        installmentsTotal: installmentsCount,
+      });
       triggerSensory("success");
-      pushToast({ title: "Dados atualizados com sucesso!", variant: "default" });
+      setConfirmFinalizeOpen(false);
+      pushToast({
+        title: "Racha finalizado com sucesso!",
+        description: `Sua despesa foi ajustada para ${formatCentsAsBRL(res.transition.hostNetCostCents)} e a cobrança foi liquidada.`,
+        variant: "success",
+      });
+      onSuccess?.();
+      onOpenChange(false);
     } catch { triggerSensory("destructive"); }
   };
 
-  const handleDeleteSplit = async () => {
-    setIsDeleting(true);
+  const handleReopenSplit = async () => {
     try {
-      if (deleteOriginalExpense && payload.expense_id && hasLinkedExpense) {
-        try {
-          await deleteAllSplitExpenses({ expenseId: payload.expense_id, groupId });
-          void queryClient.invalidateQueries({ queryKey: ["expenses"] });
-          void queryClient.invalidateQueries({ queryKey: ["card-expenses"] });
-        } catch (err) { console.warn("Não foi possível excluir despesa vinculada (pode já ter sido excluída):", err); }
-      } else if (!deleteOriginalExpense && payload.expense_id && hasLinkedExpense) {
-        try {
-          const targets = groupExpenses && groupExpenses.length > 0 ? groupExpenses.map((e) => e.id) : [payload.expense_id];
-          for (const id of targets) await updateExpenseMutation.mutateAsync({ id, input: { report_weight: 1 } });
-        } catch (err) { console.warn("Não foi possível restaurar peso da despesa vinculada (pode já ter sido excluída):", err); }
-      }
-      if (deleteLinkedDebt && linkedDebt) {
-        try { await deleteDebtMutation.mutateAsync(linkedDebt.id); } catch (err) { console.warn("Não foi possível excluir dívida vinculada (pode já ter sido excluída):", err); }
-      }
-      await deleteShareMutation.mutateAsync(share.id);
+      await applySplitSettlement.mutateAsync({
+        share,
+        action: { type: "reopen" },
+        linkedDebt,
+        installmentsTotal: installmentsCount,
+      });
+      triggerSensory("selection");
+      pushToast({ title: "Racha reaberto!", description: "O acompanhamento e o link voltaram a ficar ativos.", variant: "default" });
+    } catch { triggerSensory("destructive"); }
+  };
+
+  // Handlers de Edição (Aba 2)
+  const handleEditSplitModeChange = (mode: "equal" | "custom") => {
+    setEditedSplitMode(mode);
+    if (mode === "custom") {
+      const equal = splitAmountEqually(Math.max(0, editedTotalCents), Math.max(1, editedParticipants.length), {
+        remainderPolicy: editedRemainderPolicy,
+      });
+      setEditedParticipants((prev) =>
+        prev.map((p, idx) => ({ ...p, fixedCents: equal[idx] ?? 0 })),
+      );
+    }
+  };
+
+  const handleEditParticipantName = (index: number, name: string) => {
+    setEditedParticipants((prev) => prev.map((p, idx) => (idx === index ? { ...p, name } : p)));
+  };
+
+  const handleEditParticipantFixedCents = (index: number, cents: number) => {
+    setEditedParticipants((prev) =>
+      prev.map((p, idx) => (idx === index ? { ...p, fixedCents: Math.max(0, cents) } : p)),
+    );
+  };
+
+  const handleAddParticipant = () => {
+    if (editedParticipants.length >= 50) return;
+    setEditedParticipants((prev) => [
+      ...prev,
+      {
+        id: `p_${Date.now().toString(36)}_${prev.length + 1}`,
+        name: `Convidado ${prev.length}`,
+        isHost: false,
+        fixedCents: 0,
+        settledCents: 0,
+      },
+    ]);
+  };
+
+  const handleRemoveParticipant = (index: number) => {
+    const target = editedParticipants[index];
+    if (!target || target.isHost || target.settledCents > 0) return;
+    if (editedParticipants.filter((p) => !p.isHost).length <= 1) return;
+    setEditedParticipants((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const buildCurrentPixEditBase = (): Omit<SplitEditInput, "pixKey" | "pixKeyType" | "hostName" | "hostCity" | "customNote" | "showParticipantsList" | "publicPagePaused"> => ({
+    title: editedTitle.trim() || payload.title || "Racha de Despesa",
+    totalCents: editedTotalCents,
+    date: editedDate,
+    dueDate: editedDueDate || null,
+    splitMode: editedSplitMode,
+    remainderPolicy: editedRemainderPolicy,
+    participants: editedParticipants.map((p) => ({
+      id: p.id,
+      name: p.name,
+      isHost: p.isHost,
+      fixedCents: editedSplitMode === "custom" ? p.fixedCents : null,
+    })),
+    installmentsCount,
+    installmentsMode: editedInstallmentsMode,
+  });
+
+  const handleSaveEdit = async () => {
+    if (!editPreview.isEditValid) return;
+    const validKeyType: PixKeyType =
+      pixValidation.resolvedType ?? (payload.pix_key_type as PixKeyType) ?? "cpf";
+    const hostRow = editedParticipants.find((p) => p.isHost);
+    const edit: SplitEditInput = {
+      ...buildCurrentPixEditBase(),
+      pixKey: pixValidation.normalizedKey ?? (editedPixKey.trim() || payload.pix_key),
+      pixKeyType: validKeyType,
+      hostName: editedHostName.trim() || hostRow?.name || payload.host_name || "Anfitrião",
+      hostCity: editedHostCity.trim() || payload.host_city || "Brasil",
+      customNote: editedCustomNote,
+      showParticipantsList: editedShowParticipantsList,
+      publicPagePaused: editedPublicPagePaused,
+    };
+
+    try {
+      await updateSplitComprehensive.mutateAsync({
+        share,
+        edit,
+        linkedDebt,
+        syncExpense: true,
+        installmentsTotal: installmentsCount,
+      });
+      triggerSensory("success");
+      pushToast({
+        title: "Racha e despesa atualizados!",
+        description: "Os novos valores, participantes e link Pix estão sincronizados.",
+        variant: "success",
+      });
+      setActiveTab("settlements");
+    } catch { triggerSensory("destructive"); }
+  };
+
+  // Handlers de Pix e Página Pública (Aba 3)
+  const buildPublicConfigEditInput = (): SplitEditInput => {
+    const validKeyType: PixKeyType = pixValidation.resolvedType ?? "cpf";
+    const normalizedParticipants = buildEditDraftParticipants(payload);
+    return {
+      title: payload.title || "Racha de Despesa",
+      totalCents: Number(payload.total_cents ?? 0),
+      date: payload.date || todayISO(),
+      dueDate: payload.due_date ?? null,
+      splitMode: payload.split_mode ?? "equal",
+      remainderPolicy: payload.remainder_policy ?? "host",
+      participants: normalizedParticipants.map((p) => ({
+        id: p.id,
+        name: p.isHost && editedHostName.trim() ? editedHostName.trim() : p.name,
+        isHost: p.isHost,
+        fixedCents: payload.split_mode === "custom" ? p.fixedCents : null,
+      })),
+      installmentsCount,
+      installmentsMode: payload.installments_mode ?? "per_installment",
+      pixKey: pixValidation.normalizedKey ?? editedPixKey.trim(),
+      pixKeyType: validKeyType,
+      hostName: editedHostName.trim() || "Anfitrião",
+      hostCity: editedHostCity.trim() || "BRASIL",
+      customNote: editedCustomNote,
+      showParticipantsList: editedShowParticipantsList,
+      publicPagePaused: editedPublicPagePaused,
+    };
+  };
+
+  const handleSavePublicConfig = async () => {
+    if (!isPublicConfigValid || !pixValidation.resolvedType) return;
+    try {
+      await updateSplitComprehensive.mutateAsync({
+        share,
+        edit: buildPublicConfigEditInput(),
+        linkedDebt,
+        syncExpense: false,
+        installmentsTotal: installmentsCount,
+      });
+      updatePreferences({
+        pixKey: pixValidation.normalizedKey ?? editedPixKey.trim(),
+        pixKeyType: pixValidation.resolvedType,
+        merchantName: editedHostName.trim(),
+        merchantCity: editedHostCity.trim(),
+      });
+      triggerSensory("success");
+      pushToast({
+        title: "Configurações Pix e página salvas!",
+        description: editedPublicPagePaused
+          ? "O link público está pausado até você reativá-lo."
+          : "Seu QR Code e preferências públicas foram atualizados.",
+        variant: "success",
+      });
+    } catch { triggerSensory("destructive"); }
+  };
+
+  const handleExtendExpiration = async () => {
+    const baseMs = share.expires_at ? Math.max(Date.now(), new Date(share.expires_at).getTime()) : Date.now();
+    const nextIso = resolveSplitExpirationIso(payload.date || todayISO(), installmentsCount, 60, baseMs);
+    try {
+      await updateSplitComprehensive.mutateAsync({
+        share,
+        edit: buildPublicConfigEditInput(),
+        linkedDebt,
+        expiresAt: nextIso,
+        syncExpense: false,
+        installmentsTotal: installmentsCount,
+      });
+      triggerSensory("success");
+      pushToast({ title: "Validade do link estendida!", variant: "success" });
+    } catch { triggerSensory("destructive"); }
+  };
+
+  const handleRegenerateLink = async () => {
+    try {
+      const updated = await updateSplitComprehensive.mutateAsync({
+        share,
+        edit: buildPublicConfigEditInput(),
+        linkedDebt,
+        regenerateToken: true,
+        syncExpense: false,
+        installmentsTotal: installmentsCount,
+      });
+      const nextUrl = getPublicShareUrl(`r/${updated.share.token}`);
+      await copyTextToClipboard(nextUrl);
+      triggerSensory("success");
+      pushToast({
+        title: "Novo link gerado e copiado!",
+        description: "O link anterior foi invalidado imediatamente.",
+        variant: "success",
+      });
+    } catch { triggerSensory("destructive"); }
+  };
+
+  const handleTestCopyBrCode = async () => {
+    if (!previewBrCode) return;
+    const ok = await copyTextToClipboard(previewBrCode);
+    if (ok) {
+      triggerSensory("selection");
+      pushToast({ title: "Pix Copia e Cola copiado para teste!", variant: "default" });
+    } else {
+      pushToast({ title: "Não foi possível copiar automaticamente.", variant: "destructive" });
+    }
+  };
+
+  const handleCopyPublicLink = async () => {
+    const ok = await copyTextToClipboard(getPublicShareUrl(`r/${share.token}`));
+    if (ok) {
+      triggerSensory("selection");
+      pushToast({ title: "Link público copiado!", variant: "default" });
+    }
+  };
+
+  const handleDeleteSplit = async () => {
+    try {
+      await deleteLinkedSplit.mutateAsync({
+        share,
+        linkedDebt: deleteLinkedDebt ? linkedDebt : null,
+        deleteExpense: deleteOriginalExpense,
+      });
       triggerSensory("destructive");
       setConfirmDeleteOpen(false);
       pushToast({
         title: "Racha excluído com sucesso!",
-        description: deleteOriginalExpense && hasLinkedExpense ? "O racha e a despesa vinculada foram removidos." : hasLinkedExpense ? "O racha foi removido e a despesa original foi restaurada para 100%." : "O racha foi removido.",
+        description:
+          deleteOriginalExpense && hasLinkedExpense
+            ? "O racha e a despesa vinculada foram removidos."
+            : hasLinkedExpense
+              ? "O racha foi removido e a despesa original foi restaurada para 100%."
+              : "O racha foi removido.",
         variant: "default",
       });
       onSuccess?.();
       onOpenChange(false);
-    } catch {
-      triggerSensory("destructive");
-      pushToast({ title: "Erro ao excluir racha", description: "Não foi possível concluir a exclusão. Tente novamente.", variant: "destructive" });
-    } finally { setIsDeleting(false); }
+    } catch { triggerSensory("destructive"); }
   };
 
+  const isMutating =
+    applySplitSettlement.isPending ||
+    updateSplitComprehensive.isPending ||
+    deleteLinkedSplit.isPending ||
+    dismissSignalMutation.isPending;
+
   return {
-    payload, linkedExpense, isExpenseFetched, hasLinkedExpense, participants, friends, participantInstallments,
-    customInputParticipantId, setCustomInputParticipantId, customInputCents, setCustomInputCents,
-    confirmFinalizeOpen, setConfirmFinalizeOpen, confirmDeleteOpen, setConfirmDeleteOpen,
-    deleteLinkedDebt, setDeleteLinkedDebt, deleteOriginalExpense, setDeleteOriginalExpense, isDeleting,
-    isEditingInfo, setIsEditingInfo, editedTitle, setEditedTitle, editedPixKey, setEditedPixKey,
-    totalCents, totalSettledFromFriendsCents, settledSubtitle, hostNetCostCents, netReportWeight, isCompleted,
-    handleOpenDeleteConfirm: () => { setDeleteLinkedDebt(Boolean(linkedDebt)); setDeleteOriginalExpense(false); setConfirmDeleteOpen(true); },
-    handleOpenCustomSettle: (p: SplitParticipantItem) => { setCustomInputParticipantId(p.id || null); setCustomInputCents(p.share_cents); },
-    handleSettleFull, handleConfirmCustomSettle, handleUnsettle, handleToggleSettleInstallment,
-    handleFinalizeSplit, handleSaveInfo, handleDeleteSplit,
+    payload,
+    linkedExpense,
+    isExpenseFetched,
+    hasLinkedExpense,
+    isMultiInstallmentGroup,
+    installmentsCount,
+    participants,
+    friends,
+    participantInstallments,
+    pendingSignals,
+    activeTab,
+    setActiveTab,
+    customInputParticipantId,
+    setCustomInputParticipantId,
+    customInputCents,
+    setCustomInputCents,
+    confirmFinalizeOpen,
+    setConfirmFinalizeOpen,
+    confirmDeleteOpen,
+    setConfirmDeleteOpen,
+    deleteLinkedDebt,
+    setDeleteLinkedDebt,
+    deleteOriginalExpense,
+    setDeleteOriginalExpense,
+    isDeleting: deleteLinkedSplit.isPending,
+    isSaving: updateSplitComprehensive.isPending,
+    isMutating,
+    totalCents,
+    totalSettledFromFriendsCents,
+    remainingReceivableCents,
+    settledSubtitle,
+    hostNetCostCents,
+    netReportWeight,
+    isCompleted,
+    // Aba 2
+    editedTitle,
+    setEditedTitle,
+    editedTotalCents,
+    setEditedTotalCents,
+    editedDate,
+    setEditedDate,
+    editedDueDate,
+    setEditedDueDate,
+    editedRemainderPolicy,
+    setEditedRemainderPolicy,
+    editedSplitMode,
+    handleEditSplitModeChange,
+    editedInstallmentsMode,
+    setEditedInstallmentsMode,
+    editableParticipants: editPreview.editableList,
+    overpaidNotices: editPreview.overpaidNotices,
+    customSumCents: editPreview.customSumCents,
+    isEditValid: editPreview.isEditValid,
+    handleEditParticipantName,
+    handleEditParticipantFixedCents,
+    handleAddParticipant,
+    handleRemoveParticipant,
+    handleSaveEdit,
+    // Aba 3
+    editedPixKey,
+    setEditedPixKey,
+    editedKeyType,
+    setEditedKeyType,
+    detectedPixType: pixValidation.resolvedType,
+    pixValidationError: pixValidation.errorMessage,
+    isAmbiguousCpfOrPhone: pixValidation.isAmbiguousCpfOrPhone,
+    editedHostName,
+    setEditedHostName,
+    editedHostCity,
+    setEditedHostCity,
+    editedCustomNote,
+    setEditedCustomNote,
+    editedShowParticipantsList,
+    setEditedShowParticipantsList,
+    editedPublicPagePaused,
+    setEditedPublicPagePaused,
+    previewBrCode,
+    firstGuestPreviewAmountCents,
+    publicUrl: getPublicShareUrl(`r/${share.token}`),
+    isPublicConfigValid,
+    // Ações
+    handleOpenDeleteConfirm: () => {
+      setDeleteLinkedDebt(Boolean(linkedDebt));
+      setDeleteOriginalExpense(false);
+      setConfirmDeleteOpen(true);
+    },
+    handleOpenCustomSettle: (p: SplitParticipantItem) => {
+      setCustomInputParticipantId(p.id || null);
+      setCustomInputCents(p.share_cents);
+    },
+    handleSettleFull,
+    handleConfirmCustomSettle,
+    handleUnsettle,
+    handleToggleSettleInstallment,
+    handleConfirmSignal,
+    handleDismissSignal,
+    handleSettleAll,
+    handleFinalizeSplit,
+    handleReopenSplit,
+    handleSavePublicConfig,
+    handleExtendExpiration,
+    handleRegenerateLink,
+    handleTestCopyBrCode,
+    handleCopyPublicLink,
+    handleDeleteSplit,
   };
 }

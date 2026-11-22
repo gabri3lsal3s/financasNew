@@ -218,10 +218,10 @@ describe("SmartAdvisorCard", () => {
   });
 
   describe("Renderização nos 4 Estados Canônicos", () => {
-    it("1. Crítica: renderiza badge Atenção, título e ação Ver cobranças", () => {
+    it("1. Crítica: renderiza badge Crítico, título e ação Ver cobranças", () => {
       render(<SmartAdvisorCard insight={criticalInsight} />);
 
-      expect(screen.getByText("Atenção")).toBeInTheDocument();
+      expect(screen.getByText("Crítico")).toBeInTheDocument();
       expect(screen.getByText("Cobrança duplicada detectada")).toBeInTheDocument();
       expect(screen.getByText(/Identificamos 2 cobranças de Netflix/)).toBeInTheDocument();
       expect(screen.getByRole("button", { name: /Ver cobranças/i })).toBeInTheDocument();
@@ -746,6 +746,24 @@ describe("SmartAdvisorCard", () => {
       expect(skeleton).toBeInTheDocument();
       expect(skeleton).toHaveClass("min-h-[148px]");
       expect(skeleton).toHaveClass("sm:min-h-[140px]");
+    });
+
+    it("quando embeddedInCarousel={true}, oculta paginação duplicada e usa CarouselDismissPopover (7d/30d)", () => {
+      const onDismiss = vi.fn();
+      render(
+        <SmartAdvisorCard
+          embeddedInCarousel
+          insight={criticalInsight}
+          totalCount={3}
+          currentIndex={0}
+          onDismiss={onDismiss}
+        />,
+      );
+
+      expect(screen.queryByText("1 de 3")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: /Dispensar sugestão/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Dispensar por 7 dias/i }));
+      expect(onDismiss).toHaveBeenCalledWith(criticalInsight.themeKey, 7);
     });
   });
 });

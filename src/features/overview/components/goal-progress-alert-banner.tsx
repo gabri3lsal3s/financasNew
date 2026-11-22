@@ -95,7 +95,7 @@ export function GoalProgressAlertBanner({
             </Badge>
           </div>
 
-          <p className="text-xs text-muted-foreground leading-relaxed truncate">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
             {isCompleted ? (
               <span>Parabéns! Você alcançou o valor planejado com sucesso.</span>
             ) : isFinalStretch ? (

@@ -1,10 +1,26 @@
 import { Bell } from "lucide-react";
-import { Button, EmptyState, FilterChips } from "@/components/ui";
 import { HighlightRow, ReminderItem } from "@/components/modules";
+import { Button, EmptyState, FilterChips } from "@/components/ui";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
+import type {
+  BudgetOverrunAlert,
+  ClosedCardBillAlert,
+  PendingSplitSignalSummary,
+  TripFamilyAlert,
+} from "@/domain/notifications/hub";
 import type { ReminderItem as ReminderItemData } from "@/domain/reminders";
+import type { SupportTicket, UserBroadcastNotification } from "@/types";
 import type { RemindersSubFilter } from "../hooks/use-reminders-page-state";
 import { AdvisorReminderCard } from "./AdvisorReminderCard";
+import {
+  BroadcastNotificationRow,
+  BudgetOverrunNotificationRow,
+  ClosedBillNotificationRow,
+  SplitSignalNotificationRow,
+  SubscriptionPastDueRow,
+  SupportReplyRow,
+  TripFamilyNotificationRow,
+} from "./notifications/SystemNotificationRows";
 
 export interface RemindersPendingTabProps {
   subFilter: RemindersSubFilter;
@@ -13,14 +29,31 @@ export interface RemindersPendingTabProps {
   overdueCount: number;
   billsCount: number;
   debtsCount: number;
+  receivablesCount?: number;
   advisorCount: number;
+  systemCount?: number;
   advisorAlerts: SmartAdvisorInsight[];
+  closedBillAlerts?: ClosedCardBillAlert[];
+  budgetOverrunAlert?: BudgetOverrunAlert | null;
+  tripAndFamilyAlerts?: TripFamilyAlert[];
+  unreadBroadcasts?: UserBroadcastNotification[];
+  unreadSupportTickets?: SupportTicket[];
+  pendingSplitSignals?: PendingSplitSignalSummary[];
+  hasPastDueSubscription?: boolean;
   filteredItems: ReminderItemData[];
   stateMap: Map<string, string>;
   highlightId: string | null;
   billDaysBefore: number;
+  debtDaysBefore?: number;
   onOpenAdvisorAlert: (item: SmartAdvisorInsight) => void;
   onDismissAdvisor: (themeKey: string) => void;
+  onOpenRoute?: (route: string) => void;
+  onOpenBroadcast?: (b: UserBroadcastNotification) => void;
+  onMarkBroadcastRead?: (id: string) => void;
+  onDismissBroadcast?: (id: string) => void;
+  onOpenSupport?: () => void;
+  onOpenSplitSignal?: () => void;
+  onOpenSubscriptionPastDue?: () => void;
   onMarkRead: (key: string) => void;
   onSnooze: (key: string) => void;
   onRestore: (key: string) => void;
@@ -33,7 +66,11 @@ function getEmptyDescription(subFilter: RemindersSubFilter): string {
   if (subFilter === "overdue") return "Nenhuma fatura ou dívida atrasada.";
   if (subFilter === "bills") return "Nenhuma fatura pendente no momento.";
   if (subFilter === "debts") return "Nenhuma dívida pendente no momento.";
+  if (subFilter === "receivables")
+    return "Nenhum valor a receber pendente no momento.";
   if (subFilter === "advisor") return "Nenhum aviso inteligente no momento.";
+  if (subFilter === "system")
+    return "Nenhum comunicado ou sinalização de racha no momento.";
   return "Nenhuma pendência no momento. Todas as faturas, dívidas e avisos estão em dia.";
 }
 
@@ -44,14 +81,31 @@ export function RemindersPendingTab({
   overdueCount,
   billsCount,
   debtsCount,
+  receivablesCount = 0,
   advisorCount,
+  systemCount = 0,
   advisorAlerts,
+  closedBillAlerts = [],
+  budgetOverrunAlert = null,
+  tripAndFamilyAlerts = [],
+  unreadBroadcasts = [],
+  unreadSupportTickets = [],
+  pendingSplitSignals = [],
+  hasPastDueSubscription = false,
   filteredItems,
   stateMap,
   highlightId,
   billDaysBefore,
+  debtDaysBefore,
   onOpenAdvisorAlert,
   onDismissAdvisor,
+  onOpenRoute,
+  onOpenBroadcast,
+  onMarkBroadcastRead,
+  onDismissBroadcast,
+  onOpenSupport,
+  onOpenSplitSignal,
+  onOpenSubscriptionPastDue,
   onMarkRead,
   onSnooze,
   onRestore,
@@ -59,11 +113,19 @@ export function RemindersPendingTab({
   onOpenReminder,
   onOpenSettings,
 }: RemindersPendingTabProps) {
+  const showSystem = subFilter === "all" || subFilter === "system";
+  const showClosedBills = subFilter === "all" || subFilter === "bills";
   const showAdvisor = subFilter === "all" || subFilter === "advisor";
-  const showReminders = subFilter !== "advisor";
+  const showReminders = subFilter !== "advisor" && subFilter !== "system";
   const visibleAdvisorAlerts = showAdvisor ? advisorAlerts : [];
+  const visibleClosedBills = showClosedBills ? closedBillAlerts : [];
   const visibleReminders = showReminders ? filteredItems : [];
-  const hasAnyVisibleItem = visibleAdvisorAlerts.length > 0 || visibleReminders.length > 0;
+  const hasVisibleSystem = showSystem && systemCount > 0;
+  const hasAnyVisibleItem =
+    hasVisibleSystem ||
+    visibleClosedBills.length > 0 ||
+    visibleAdvisorAlerts.length > 0 ||
+    visibleReminders.length > 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -72,12 +134,47 @@ export function RemindersPendingTab({
           items={[
             { key: "all", label: "Todas", count: totalPendingEffective },
             ...(overdueCount > 0
-              ? [{ key: "overdue", label: "Atrasadas", count: overdueCount, tone: "critical" as const }]
+              ? [
+                  {
+                    key: "overdue",
+                    label: "Atrasadas",
+                    count: overdueCount,
+                    tone: "critical" as const,
+                  },
+                ]
               : []),
-            ...(billsCount > 0 ? [{ key: "bills", label: "Faturas", count: billsCount }] : []),
-            ...(debtsCount > 0 ? [{ key: "debts", label: "Dívidas", count: debtsCount }] : []),
+            ...(billsCount > 0
+              ? [{ key: "bills", label: "Faturas", count: billsCount }]
+              : []),
+            ...(debtsCount > 0
+              ? [{ key: "debts", label: "Dívidas", count: debtsCount }]
+              : []),
+            ...(receivablesCount > 0
+              ? [
+                  {
+                    key: "receivables",
+                    label: "A receber",
+                    count: receivablesCount,
+                  },
+                ]
+              : []),
             ...(advisorCount > 0
-              ? [{ key: "advisor", label: "Avisos & Renda", count: advisorCount }]
+              ? [
+                  {
+                    key: "advisor",
+                    label: "Avisos & Renda",
+                    count: advisorCount,
+                  },
+                ]
+              : []),
+            ...(systemCount > 0
+              ? [
+                  {
+                    key: "system",
+                    label: "Comunicados & Rachas",
+                    count: systemCount,
+                  },
+                ]
               : []),
           ]}
           activeKey={subFilter}
@@ -96,6 +193,69 @@ export function RemindersPendingTab({
         />
       ) : (
         <div className="flex flex-col gap-2.5">
+          {hasVisibleSystem ? (
+            <>
+              {hasPastDueSubscription && onOpenSubscriptionPastDue ? (
+                <SubscriptionPastDueRow onOpen={onOpenSubscriptionPastDue} />
+              ) : null}
+              {budgetOverrunAlert ? (
+                <BudgetOverrunNotificationRow
+                  alert={budgetOverrunAlert}
+                  onOpen={() => onOpenRoute?.(budgetOverrunAlert.targetRoute)}
+                  onMarkRead={() => onMarkRead(budgetOverrunAlert.id)}
+                />
+              ) : null}
+              {tripAndFamilyAlerts.map((alert) => (
+                <TripFamilyNotificationRow
+                  key={alert.id}
+                  alert={alert}
+                  onOpen={() => onOpenRoute?.(alert.targetRoute)}
+                  onMarkRead={() => onMarkRead(alert.id)}
+                />
+              ))}
+              {unreadBroadcasts.map((broadcast) => (
+                <BroadcastNotificationRow
+                  key={broadcast.id}
+                  broadcast={broadcast}
+                  onOpen={() => onOpenBroadcast?.(broadcast)}
+                  onMarkRead={
+                    onMarkBroadcastRead
+                      ? () => onMarkBroadcastRead(broadcast.id)
+                      : undefined
+                  }
+                  onDismiss={
+                    onDismissBroadcast
+                      ? () => onDismissBroadcast(broadcast.id)
+                      : undefined
+                  }
+                />
+              ))}
+              {unreadSupportTickets.map((ticket) => (
+                <SupportReplyRow
+                  key={ticket.id}
+                  ticket={ticket}
+                  onOpen={() => onOpenSupport?.()}
+                />
+              ))}
+              {pendingSplitSignals.map((group) => (
+                <SplitSignalNotificationRow
+                  key={group.shareId}
+                  signalGroup={group}
+                  onOpen={() => onOpenSplitSignal?.()}
+                />
+              ))}
+            </>
+          ) : null}
+
+          {visibleClosedBills.map((closedAlert) => (
+            <ClosedBillNotificationRow
+              key={closedAlert.key}
+              alert={closedAlert}
+              onOpen={() => onOpenRoute?.(closedAlert.targetRoute)}
+              onMarkRead={() => onMarkRead(closedAlert.key)}
+            />
+          ))}
+
           {visibleAdvisorAlerts.map((advisorItem) => (
             <AdvisorReminderCard
               key={advisorItem.id}
@@ -112,7 +272,10 @@ export function RemindersPendingTab({
                 highlightId === item.link?.params?.q ||
                 highlightId === item.link?.params?.debt);
             return (
-              <div key={item.key} data-tour={idx === 0 ? "reminders-settle-card" : undefined}>
+              <div
+                key={item.key}
+                data-tour={idx === 0 ? "reminders-settle-card" : undefined}
+              >
                 <HighlightRow
                   highlightId={highlightId}
                   id={isMatch ? highlightId : item.key}
@@ -120,7 +283,12 @@ export function RemindersPendingTab({
                 >
                   <ReminderItem
                     item={item}
-                    stateKind={(stateMap.get(item.key) as "read" | "snoozed" | undefined) ?? null}
+                    stateKind={
+                      (stateMap.get(item.key) as
+                        | "read"
+                        | "snoozed"
+                        | undefined) ?? null
+                    }
                     onMarkRead={onMarkRead}
                     onSnooze={onSnooze}
                     onRestore={onRestore}
@@ -137,7 +305,20 @@ export function RemindersPendingTab({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-border/80 bg-surface-raised/60 px-3.5 py-2.5 text-xs text-muted-foreground mt-2">
         <span>
           Monitorando faturas e dívidas com vencimento nos próximos{" "}
-          <strong className="text-foreground font-semibold">{billDaysBefore} dias</strong>.
+          <strong className="text-foreground font-semibold">
+            {billDaysBefore} dias
+          </strong>
+          {debtDaysBefore !== undefined && debtDaysBefore !== billDaysBefore ? (
+            <>
+              {" "}
+              (faturas) e{" "}
+              <strong className="text-foreground font-semibold">
+                {debtDaysBefore} dias
+              </strong>{" "}
+              (dívidas)
+            </>
+          ) : null}
+          .
         </span>
         <Button
           type="button"

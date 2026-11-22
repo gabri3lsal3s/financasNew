@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Alert, Modal } from "@/components/ui";
+import { ManageSplitDialog } from "@/components/modules/manage-split-dialog";
 import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import type { Expense, InstallmentDeleteMode } from "@/types";
@@ -39,6 +40,9 @@ function ExpenseDetailDialogContent({
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
+  const [manageSplitOpen, setManageSplitOpen] = useState(false);
+  const [convertToSplit, setConvertToSplit] = useState(false);
+  const [splitSeedExpense, setSplitSeedExpense] = useState<Expense | null>(null);
   const [mode, setMode] = useState<InstallmentDeleteMode>("single");
   const [editScope, setEditScope] = useState<InstallmentDeleteMode>("single");
   const [tripDeleteMode, setTripDeleteMode] = useState<TripDeleteMode>("both");
@@ -47,7 +51,11 @@ function ExpenseDetailDialogContent({
 
   if (open !== prevOpen) {
     setPrevOpen(open);
-    if (open) setIsEditing(isReadOnlyMode ? false : initialEditing);
+    if (open) {
+      setIsEditing(isReadOnlyMode ? false : initialEditing);
+      setConvertToSplit(false);
+      setSplitSeedExpense(null);
+    }
   }
 
   const actions = useExpenseDetailActions({
@@ -60,16 +68,39 @@ function ExpenseDetailDialogContent({
     setError,
     setConfirmOpen,
     setIsEditing,
+    onRequestOpenSplit: (updatedExpense) => {
+      setSplitSeedExpense(updatedExpense);
+      setConvertToSplit(false);
+      setSplitOpen(true);
+    },
   });
 
   const resetAndClose = (next: boolean) => {
     setError(null);
     setIsEditing(false);
     setConfirmOpen(false);
+    setConvertToSplit(false);
     setEditScope("single");
     setTripDeleteMode("both");
     onOpenChange(next);
   };
+
+  const handleOpenCreateSplit = () =>
+    guardAction(() => {
+      setSplitSeedExpense(null);
+      setSplitOpen(true);
+    }, "Rachar Despesa");
+
+  const handleOpenManageSplit = () =>
+    guardAction(() => {
+      setManageSplitOpen(true);
+    }, "Gerenciar Racha");
+
+  const activeSplitExpense = splitSeedExpense ?? expense;
+  const activeSplitAmountCents =
+    splitSeedExpense && actions.groupExpenses.length <= 1
+      ? Math.round(splitSeedExpense.value * 100)
+      : actions.groupTotalCents;
 
   return (
     <>
@@ -90,8 +121,10 @@ function ExpenseDetailDialogContent({
             isEditing={isEditing}
             editPending={actions.editPending}
             repeatPending={actions.repeatPending}
+            hasLinkedSplit={actions.hasLinkedSplit}
             onCancelEdit={() => {
               setIsEditing(false);
+              setConvertToSplit(false);
               setError(null);
               setEditScope("single");
             }}
@@ -100,7 +133,8 @@ function ExpenseDetailDialogContent({
               onOpenChange(false);
               navigate(`/viagens/${tripId}`);
             }}
-            onSplit={() => guardAction(() => setSplitOpen(true), "Rachar Despesa")}
+            onSplit={handleOpenCreateSplit}
+            onManageSplit={handleOpenManageSplit}
             onShare={() => void actions.handleShare()}
             onRepeat={() => guardAction(() => void actions.handleRepeat(), "Duplicar Despesa")}
             onStartEdit={() => guardAction(() => setIsEditing(true), "Editar Despesa")}
@@ -124,6 +158,10 @@ function ExpenseDetailDialogContent({
                 onScopeChange={setEditScope}
                 submitRef={editSubmitRef}
                 onSave={actions.handleSaveEdit}
+                hasLinkedSplit={actions.hasLinkedSplit}
+                onManageSplit={handleOpenManageSplit}
+                convertToSplit={convertToSplit}
+                onConvertToSplitChange={setConvertToSplit}
               />
             ) : (
               <ExpenseDetailView
@@ -133,19 +171,37 @@ function ExpenseDetailDialogContent({
                 isInstallment={actions.isInstallment}
                 isRecurring={actions.isRecurring}
                 priceEvolution={actions.priceEvolution}
+                linkedSplitShare={actions.linkedSplitShare}
+                linkedRachaDebt={actions.linkedRachaDebt}
+                onManageSplit={handleOpenManageSplit}
+                onCreateSplit={handleOpenCreateSplit}
               />
             )}
           </div>
         ) : null}
       </Modal>
 
-      {splitOpen && expense ? (
+      {splitOpen && activeSplitExpense ? (
         <SplitExpenseDialog
           open={splitOpen}
-          onOpenChange={setSplitOpen}
-          expense={expense}
+          onOpenChange={(next) => {
+            setSplitOpen(next);
+            if (!next) setSplitSeedExpense(null);
+          }}
+          expense={activeSplitExpense}
+          initialAmountCents={activeSplitAmountCents}
+          linkedDebtId={actions.linkedRachaDebt?.id ?? null}
           categoryName={actions.currentCategory?.name}
           categoryIcon={actions.currentCategory?.icon ?? undefined}
+        />
+      ) : null}
+
+      {manageSplitOpen && actions.linkedSplitShare ? (
+        <ManageSplitDialog
+          open={manageSplitOpen}
+          onOpenChange={setManageSplitOpen}
+          share={actions.linkedSplitShare}
+          linkedDebt={actions.linkedRachaDebt}
         />
       ) : null}
 

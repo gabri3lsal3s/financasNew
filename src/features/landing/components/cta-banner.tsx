@@ -9,7 +9,7 @@ export function CtaBanner() {
   const { freeRegisterUrl, isLoggedIn } = useLandingCta();
 
   return (
-    <section className="py-14 md:py-32 relative overflow-hidden bg-surface-raised/30 border-y border-border/70">
+    <section className="py-14 md:py-24 relative overflow-hidden bg-surface-raised/30 border-y border-border/70">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <ScrollReveal className="relative rounded-2xl sm:rounded-3xl border border-primary/30 bg-surface p-6 sm:p-16 lg:p-20 shadow-xl sm:shadow-2xl overflow-hidden text-center max-w-6xl mx-auto">
           <div
@@ -28,13 +28,12 @@ export function CtaBanner() {
             </div>
 
             <h2 className="mt-4 sm:mt-6 font-display text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground">
-              Pronto para ter clareza total sobre o seu dinheiro?
+              Chega de espalhar sua vida financeira entre planilhas, cadernos e apps soltos.
             </h2>
 
             <p className="mt-3 sm:mt-5 max-w-3xl mx-auto text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-              Junte-se a quem já abandonou o caos das planilhas, das faturas surpresas e dos
-              cálculos manuais de aportes. Crie sua conta gratuita hoje mesmo e assuma o controle
-              definitivo do seu patrimônio.
+              Reúna caixa diário, cartões, contas a pagar e a receber, rateios em grupo e carteira
+              de investimentos em um único painel claro, auditável e pronto em menos de 2 minutos.
             </p>
 
             <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">

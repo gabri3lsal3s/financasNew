@@ -1,6 +1,8 @@
 import { ChevronRight, Coins } from "lucide-react";
+import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
 import { Badge, Button, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
+import { cn } from "@/lib/utils";
 
 export interface CorporateDividendsBannerProps {
   availableCount: number;
@@ -8,6 +10,7 @@ export interface CorporateDividendsBannerProps {
   totalAvailableAmount: number;
   totalProjectedAmount: number;
   onInspect: () => void;
+  onDismiss?: (days: 7 | 30) => void;
 }
 
 /**
@@ -19,38 +22,40 @@ export function CorporateDividendsBanner({
   totalAvailableAmount,
   totalProjectedAmount,
   onInspect,
+  onDismiss,
 }: CorporateDividendsBannerProps) {
   const hasAvailable = availableCount > 0;
 
   return (
     <div
-      role="alert"
+      role="region"
+      aria-label="Aviso de proventos"
       className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs transition-all"
     >
-      <div className="flex items-center gap-3 min-w-0 pr-6 sm:pr-0">
+      <div className={cn("flex items-center gap-3 min-w-0", onDismiss && "pr-6 sm:pr-0")}>
         <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-portfolio/20 bg-portfolio/10 text-portfolio">
           <Coins className="size-4.5" aria-hidden="true" />
         </div>
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-xs font-semibold text-foreground truncate">
+            <h2 className="text-sm font-semibold text-foreground truncate">
               {hasAvailable ? "Proventos Creditados na Corretora" : "Proventos Previstos no Mês"}
-            </span>
+            </h2>
             <Badge variant="portfolio" size="xs" className="shrink-0">
               {hasAvailable
                 ? `${availableCount} ${availableCount === 1 ? "disponível" : "disponíveis"}`
                 : "Provisionado"}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
             {hasAvailable ? (
               <>
-                {availableCount} proventos disponíveis totalizando{" "}
+                {availableCount} {availableCount === 1 ? "provento disponível" : "proventos disponíveis"} totalizando{" "}
                 <MoneyText cents={numberToCents(totalAvailableAmount)} className="font-semibold" />.
               </>
             ) : (
               <>
-                {projectedCount} proventos previstos totalizando{" "}
+                {projectedCount} {projectedCount === 1 ? "provento previsto" : "proventos previstos"} totalizando{" "}
                 <MoneyText cents={numberToCents(totalProjectedAmount)} className="font-semibold" />.
               </>
             )}
@@ -58,16 +63,25 @@ export function CorporateDividendsBanner({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-center mt-auto sm:mt-0">
+      <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
         <Button
           type="button"
           size="sm"
           onClick={onInspect}
-          className="shrink-0 w-full sm:w-auto font-semibold cursor-pointer gap-1.5"
+          className="shrink-0 flex-1 sm:flex-initial justify-center font-semibold cursor-pointer gap-1.5"
         >
           <span>Conferir</span>
           <ChevronRight className="size-3.5" aria-hidden="true" />
         </Button>
+
+        {onDismiss ? (
+          <div className="absolute top-3 right-3 sm:static">
+            <CarouselDismissPopover
+              onDismiss={onDismiss}
+              label="Dispensar aviso de proventos"
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

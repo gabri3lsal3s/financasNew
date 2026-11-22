@@ -198,7 +198,7 @@ describe("Metadata de Demonstração e Taxonomia de Trilhas (metadata.ts)", () =
 
   describe("getTourTrackDescription", () => {
     it("retorna descrições amigáveis em pt-BR de cada trilha e micro-tour", () => {
-      expect(getTourTrackDescription("finances")).toContain("Jornada sequencial completa");
+      expect(getTourTrackDescription("finances")).toContain("Jornada essencial com saldo livre seguro");
       expect(getTourTrackDescription("finances_split")).toContain("Divisão inteligente de contas e eventos");
       expect(getTourTrackDescription("finances_family")).toContain("Gestão orçamentária para casais");
       expect(getTourTrackDescription("finances_goals")).toContain("Vaquinha colaborativa");

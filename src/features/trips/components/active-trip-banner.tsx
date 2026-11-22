@@ -5,6 +5,7 @@
 
 import { Link } from "react-router";
 import { ArrowRight, Plane } from "lucide-react";
+import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
 import { Badge, buttonVariants } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import { formatDateBR } from "@/lib/date";
@@ -15,17 +16,23 @@ import type { Trip } from "@/types/trips";
 export interface ActiveTripBannerProps {
   trip: Trip;
   totalExpensesCents?: number;
+  onDismiss?: (days: 7 | 30) => void;
 }
 
 export function ActiveTripBanner({
   trip,
   totalExpensesCents,
+  onDismiss,
 }: ActiveTripBannerProps) {
   const hasExpensesTotal = typeof totalExpensesCents === "number";
 
   return (
-    <div className="w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs">
-      <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+    <div
+      role="region"
+      aria-label={`Viagem ativa: ${trip.title}`}
+      className="relative w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs"
+    >
+      <div className={cn("flex items-start sm:items-center gap-3 min-w-0 flex-1", onDismiss && "pr-6 sm:pr-0")}>
         <span
           className="flex size-9 shrink-0 items-center justify-center rounded-xl border bg-primary/10 border-primary/20 text-primary-strong"
           aria-hidden="true"
@@ -67,17 +74,28 @@ export function ActiveTripBanner({
         </div>
       </div>
 
-      <Link
-        to={`/viagens/${trip.id}`}
-        onClick={() => triggerSensory("selection")}
-        className={cn(
-          buttonVariants({ variant: "default", size: "sm" }),
-          "h-8 text-xs gap-1.5 w-full sm:w-auto shrink-0 self-stretch sm:self-center mt-auto sm:mt-0",
-        )}
-      >
-        <span>Acessar Viagem</span>
-        <ArrowRight className="size-3.5" aria-hidden="true" />
-      </Link>
+      <div className="flex shrink-0 items-center gap-2 w-full sm:w-auto self-stretch sm:self-center mt-auto sm:mt-0">
+        <Link
+          to={`/viagens/${trip.id}`}
+          onClick={() => triggerSensory("selection")}
+          className={cn(
+            buttonVariants({ variant: "default", size: "sm" }),
+            "h-8 text-xs gap-1.5 flex-1 sm:flex-initial justify-center shrink-0",
+          )}
+        >
+          <span>Acessar Viagem</span>
+          <ArrowRight className="size-3.5" aria-hidden="true" />
+        </Link>
+
+        {onDismiss ? (
+          <div className="absolute top-3 right-3 sm:static">
+            <CarouselDismissPopover
+              onDismiss={onDismiss}
+              label="Dispensar aviso de viagem ativa"
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

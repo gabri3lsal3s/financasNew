@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Trip } from "@/types/trips";
 import { ActiveTripBanner } from "./active-trip-banner";
 
@@ -47,5 +47,18 @@ describe("ActiveTripBanner", () => {
     expect(amountEl).toBeInTheDocument();
     expect(amountEl).toHaveClass("num");
     expect(amountEl).not.toHaveClass("truncate");
+  });
+
+  it("permite dispensar o aviso de viagem ativa por 7 ou 30 dias", () => {
+    const onDismiss = vi.fn();
+    render(
+      <MemoryRouter>
+        <ActiveTripBanner trip={baseTrip} onDismiss={onDismiss} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Dispensar aviso de viagem ativa/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Dispensar por 7 dias/i }));
+    expect(onDismiss).toHaveBeenCalledWith(7);
   });
 });

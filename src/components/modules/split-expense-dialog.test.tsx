@@ -6,18 +6,27 @@ import { storeSplitPreferences } from "@/services/split-preferences";
 import type { Expense } from "@/types";
 
 const mockMutateAsync = vi.fn();
-vi.mock("@/state/mutations/use-public-share-mutations", () => ({
-  useCreatePublicShare: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending: false,
-  }),
-}));
+vi.mock("@/state", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/state")>();
+  return {
+    ...actual,
+    useCreateLinkedSplit: () => ({
+      mutateAsync: mockMutateAsync,
+      isPending: false,
+    }),
+    useExpense: () => ({
+      data: null,
+      isLoading: false,
+      isFetched: true,
+    }),
+  };
+});
 
 const MOCK_PROFILE = {
   id: "user-123",
   name: "Gabriel Silva",
   email: "gabriel@example.com",
-  cpf: "12345678901",
+  cpf: "52998224725",
   created_at: "2026-01-01T00:00:00Z",
 };
 
@@ -76,10 +85,13 @@ describe("SplitExpenseDialog", () => {
     localStorage.clear();
     vi.clearAllMocks();
     mockMutateAsync.mockResolvedValue({
-      id: "share-123",
-      token: "tok1234567",
-      kind: "split",
-      payload: {},
+      share: {
+        id: "share-123",
+        token: "tok1234567",
+        kind: "split",
+        payload: {},
+      },
+      debt: null,
     });
 
     Object.defineProperty(navigator, "clipboard", {
@@ -111,9 +123,9 @@ describe("SplitExpenseDialog", () => {
     const descInput = screen.getByLabelText("Descrição do racha");
     expect(descInput).toHaveValue("Pizza com Amigos");
 
-    // Chave Pix preenchida do perfil (CPF)
+    // Chave Pix preenchida do perfil (CPF válido)
     const pixInput = screen.getByLabelText("Chave Pix do anfitrião");
-    expect(pixInput).toHaveValue("12345678901");
+    expect(pixInput).toHaveValue("52998224725");
 
     // Titular preenchido
     const merchantInput = screen.getByLabelText("Nome do titular da chave Pix");
@@ -223,9 +235,11 @@ describe("SplitExpenseDialog", () => {
     const firstCall = mockMutateAsync.mock.calls[0];
     expect(firstCall).toBeDefined();
     const callArg = firstCall![0];
-    expect(callArg.kind).toBe("split");
+    expect(callArg.expenseId).toBe("exp-123");
+    expect(callArg.friendsExpectedCents).toBe(4500);
     expect(callArg.payload.total_cents).toBe(9000);
     expect(callArg.payload.guest_share_cents).toBe(4500);
+    expect(callArg.payload.total_settled_cents).toBe(0);
     expect(callArg.payload.host_city).toBe("NOSSA SENHORA DA GLORIA");
     expect(callArg.payload.pix_br_code).toBeDefined();
 
@@ -398,5 +412,28 @@ describe("SplitExpenseDialog", () => {
 
     expect(screen.getByLabelText("Chave Pix do anfitrião")).toHaveValue("");
     currentMockProfile = MOCK_PROFILE;
+  });
+
+  it("bloqueia geração quando a chave Pix é inválida e usa initialAmountCents em despesa parcelada", () => {
+    renderWithClient(
+      <SplitExpenseDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        expense={{ ...mockExpense, value: 100, installments_total: 3 }}
+        initialAmountCents={30000}
+      />,
+    );
+
+    // Soma completa do parcelamento (R$ 300,00 -> 150,00 cada)
+    expect(screen.getAllByText(/150,00/).length).toBeGreaterThanOrEqual(1);
+
+    const cityInput = screen.getByLabelText("Cidade do titular da chave Pix");
+    fireEvent.change(cityInput, { target: { value: "ARACAJU" } });
+
+    const pixInput = screen.getByLabelText("Chave Pix do anfitrião");
+    fireEvent.change(pixInput, { target: { value: "12345678901" } });
+
+    expect(screen.getByText(/INVÁLIDA/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Gerar Racha & Copiar Link/i })).toBeDisabled();
   });
 });

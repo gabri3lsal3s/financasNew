@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
+import { CarouselDismissPopover } from "@/components/modules/carousel-dismiss-popover";
 import { SmartAdvisorCardSkeleton } from "@/components/modules/smart-advisor-card-skeleton";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { buildSmartAdvisorBreakdown } from "@/domain/calculation-memory/builders/insights-breakdown";
 import type { SmartAdvisorCardContext, SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type { CalibrationDecision } from "@/domain/insights/feedback";
@@ -10,7 +15,20 @@ import { cn } from "@/lib/utils";
 import { pushToast } from "@/services/toast";
 import { SmartAdvisorCardFooter } from "./smart-advisor-card-footer";
 import { SmartAdvisorCardHeader } from "./smart-advisor-card-header";
-import { resolveSmartAdvisorActionRoute, resolveSmartAdvisorPresentation } from "./smart-advisor-routing";
+import { AdvisorCategoryIcon } from "./smart-advisor-category-icon";
+import {
+  resolveSmartAdvisorActionRoute,
+  resolveSmartAdvisorPresentation,
+  type SmartAdvisorPresentation,
+} from "./smart-advisor-routing";
+
+const CAROUSEL_ICON_TONES: Record<SmartAdvisorPresentation["badgeVariant"], string> = {
+  critical: "bg-critical/10 border-critical/20 text-critical-strong",
+  warning: "bg-warning/15 border-warning/20 text-warning-strong",
+  positive: "bg-positive/10 border-positive/20 text-positive-strong",
+  portfolio: "bg-portfolio/10 border-portfolio/20 text-portfolio",
+  muted: "bg-primary/10 border-primary/20 text-primary-strong",
+};
 
 export interface SmartAdvisorCardProps {
   className?: string;
@@ -38,6 +56,7 @@ export interface SmartAdvisorCardProps {
   safeToSpendCents?: number;
   committedObligationsCents?: number;
   suppressedThemeKeys?: readonly string[];
+  embeddedInCarousel?: boolean;
 }
 
 /**
@@ -62,6 +81,7 @@ export function SmartAdvisorCard({
   safeToSpendCents,
   committedObligationsCents,
   suppressedThemeKeys,
+  embeddedInCarousel = false,
 }: SmartAdvisorCardProps) {
   const navigate = useNavigate();
   const isCurrentMonth = month ? month === currentMonth() : true;
@@ -102,12 +122,22 @@ export function SmartAdvisorCard({
     }
   };
 
-  const handleDismiss = () => {
-    if (onDismiss) onDismiss(activeInsight.themeKey);
-    else hook.dismiss(activeInsight.themeKey);
+  const handleDismiss = (days?: 7 | 30) => {
+    const resolvedDays = days ?? 30;
+    if (onDismiss) {
+      if (days !== undefined) onDismiss(activeInsight.themeKey, days);
+      else onDismiss(activeInsight.themeKey);
+    } else if (days !== undefined) {
+      hook.dismiss(activeInsight.themeKey, days);
+    } else {
+      hook.dismiss(activeInsight.themeKey);
+    }
     pushToast({
       title: "Sugestão dispensada",
-      description: "Esta recomendação foi pausada e reaparecerá após 30 dias.",
+      description:
+        resolvedDays === 7
+          ? "Esta recomendação foi pausada por 7 dias."
+          : "Esta recomendação foi pausada e reaparecerá após 30 dias.",
       variant: "default",
     });
   };
@@ -125,7 +155,12 @@ export function SmartAdvisorCard({
   };
 
   const handleIgnoreRecurrence = (reason: CalibrationDecision = "one_off") => {
-    if (reason === "essential") return handleMarkEssential().then(() => hook.dismiss(activeInsight.themeKey));
+    if (reason === "essential") {
+      return handleMarkEssential().then(() => {
+        if (onDismiss) onDismiss(activeInsight.themeKey);
+        else hook.dismiss(activeInsight.themeKey);
+      });
+    }
     const payload = activeInsight.secondaryAction?.payload as { key?: string } | undefined;
     const key = payload?.key ?? activeInsight.themeKey.replace(/^calib:/, "");
     return runWithSubmitting(async () => {
@@ -141,6 +176,133 @@ export function SmartAdvisorCard({
     activeInsight.category === "savings" &&
     (activeInsight.primaryAction?.kind === "cut_subscription" ||
       activeInsight.primaryAction?.kind === "set_category_budget");
+
+  const handleConfirmRecurrenceAction = () => {
+    const p = activeInsight.primaryAction?.payload as { key?: string } | undefined;
+    const key = p?.key ?? activeInsight.themeKey.replace(/^calib:/, "");
+    void runWithSubmitting(async () => {
+      if (onConfirmRecurrence) await onConfirmRecurrence(key);
+      else {
+        await hook.confirmRecurrence(key);
+        hook.dismiss(activeInsight.themeKey);
+      }
+    });
+  };
+
+  const handleConfirmIncomeAction = () => {
+    const p = activeInsight.primaryAction?.payload as
+      | { name: string; valueCents: number; categoryId: string; date?: string }
+      | undefined;
+    if (!p) return;
+    void runWithSubmitting(() =>
+      onConfirmIncome ? Promise.resolve(onConfirmIncome(p)) : hook.confirmIncome(p),
+    );
+  };
+
+  const handleConfirmExpenseAction = () => {
+    const p = activeInsight.primaryAction?.payload as
+      | { name: string; valueCents: number; categoryId: string; date?: string; forma?: string; cardId?: string }
+      | undefined;
+    if (!p) return;
+    void runWithSubmitting(() =>
+      onConfirmExpense ? Promise.resolve(onConfirmExpense(p)) : hook.confirmExpense(p),
+    );
+  };
+
+  const handlePrimaryActionClick = () => {
+    const route = resolveSmartAdvisorActionRoute(activeInsight, window.location.search);
+    if (route) navigate?.(route);
+  };
+
+  if (embeddedInCarousel) {
+    return (
+      <div
+        role="region"
+        aria-label="Assistente Proativo de Insights"
+        className={cn(
+          "relative group w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl border border-border/80 bg-surface p-3.5 sm:p-4 shadow-xs transition-all motion-reduce:transition-none",
+          className,
+        )}
+      >
+        <div
+          key={activeInsight.id}
+          data-testid="smart-advisor-content-body"
+          className="flex items-start sm:items-center gap-3 min-w-0 pr-8 sm:pr-0 flex-1 motion-safe:animate-in motion-safe:fade-in-50 motion-safe:duration-150 motion-reduce:animate-none motion-reduce:transition-none"
+        >
+          <span
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-xl border",
+              CAROUSEL_ICON_TONES[presentation.badgeVariant],
+            )}
+            aria-hidden="true"
+          >
+            <AdvisorCategoryIcon kind={presentation.iconKind} sizeClass="size-4.5" inheritColor />
+          </span>
+          <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              <h3 className="text-sm font-semibold text-foreground tracking-tight truncate">
+                {activeInsight.title}
+              </h3>
+              <Badge variant={presentation.badgeVariant} size="xs" className="shrink-0 font-medium">
+                {presentation.badgeLabel}
+              </Badge>
+              {breakdown ? (
+                <CalculationMemoryModal
+                  breakdown={breakdown}
+                  label={`Memória de cálculo de ${presentation.badgeLabel}`}
+                />
+              ) : null}
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
+              {activeInsight.description}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 self-stretch sm:self-center mt-auto sm:mt-0">
+          <SmartAdvisorCardFooter
+            insight={activeInsight}
+            cardContext={cardContext}
+            isSubmitting={isSubmitting}
+            hasExternalConfirmRecurrence={Boolean(onConfirmRecurrence)}
+            hasExternalConfirmIncome={Boolean(onConfirmIncome)}
+            hasExternalConfirmExpense={Boolean(onConfirmExpense)}
+            onConfirmRecurrence={handleConfirmRecurrenceAction}
+            onIgnoreRecurrence={(reason) => void handleIgnoreRecurrence(reason)}
+            onConfirmIncome={handleConfirmIncomeAction}
+            onConfirmExpense={handleConfirmExpenseAction}
+            onActionClick={handlePrimaryActionClick}
+            onDismiss={() => handleDismiss()}
+            embeddedInCarousel
+          />
+
+          {isTopSavingsEssential ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Manter como essencial"
+              title="Manter como essencial"
+              sensoryIntent={onMarkEssential ? "action" : false}
+              onClick={() => void handleMarkEssential()}
+              disabled={isSubmitting}
+              className="relative h-8 px-2.5 text-xs text-muted-foreground hover:text-foreground shrink-0 gap-1 cursor-pointer max-sm:after:absolute max-sm:after:-inset-2"
+            >
+              <ShieldCheck className="size-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Manter como essencial</span>
+              <span className="sr-only sm:hidden">Manter como essencial</span>
+            </Button>
+          ) : (
+            <div className="absolute top-3 right-3 sm:static">
+              <CarouselDismissPopover
+                onDismiss={(days) => handleDismiss(days)}
+                label="Dispensar sugestão"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -160,9 +322,10 @@ export function SmartAdvisorCard({
         onPrev={onPrev ?? hook.prevInsight}
         onNext={onNext ?? hook.nextInsight}
         onMarkEssential={() => void handleMarkEssential()}
-        onDismiss={handleDismiss}
+        onDismiss={(days) => handleDismiss(days)}
         hasExternalMarkEssential={Boolean(onMarkEssential)}
         breakdown={breakdown}
+        embeddedInCarousel={false}
       />
 
       <div
@@ -182,41 +345,12 @@ export function SmartAdvisorCard({
           hasExternalConfirmRecurrence={Boolean(onConfirmRecurrence)}
           hasExternalConfirmIncome={Boolean(onConfirmIncome)}
           hasExternalConfirmExpense={Boolean(onConfirmExpense)}
-          onConfirmRecurrence={() => {
-            const p = activeInsight.primaryAction?.payload as { key?: string } | undefined;
-            const key = p?.key ?? activeInsight.themeKey.replace(/^calib:/, "");
-            void runWithSubmitting(async () => {
-              if (onConfirmRecurrence) await onConfirmRecurrence(key);
-              else {
-                await hook.confirmRecurrence(key);
-                hook.dismiss(activeInsight.themeKey);
-              }
-            });
-          }}
+          onConfirmRecurrence={handleConfirmRecurrenceAction}
           onIgnoreRecurrence={(reason) => void handleIgnoreRecurrence(reason)}
-          onConfirmIncome={() => {
-            const p = activeInsight.primaryAction?.payload as
-              | { name: string; valueCents: number; categoryId: string; date?: string }
-              | undefined;
-            if (!p) return;
-            void runWithSubmitting(() =>
-              onConfirmIncome ? Promise.resolve(onConfirmIncome(p)) : hook.confirmIncome(p),
-            );
-          }}
-          onConfirmExpense={() => {
-            const p = activeInsight.primaryAction?.payload as
-              | { name: string; valueCents: number; categoryId: string; date?: string; forma?: string; cardId?: string }
-              | undefined;
-            if (!p) return;
-            void runWithSubmitting(() =>
-              onConfirmExpense ? Promise.resolve(onConfirmExpense(p)) : hook.confirmExpense(p),
-            );
-          }}
-          onActionClick={() => {
-            const route = resolveSmartAdvisorActionRoute(activeInsight, window.location.search);
-            if (route) navigate?.(route);
-          }}
-          onDismiss={handleDismiss}
+          onConfirmIncome={handleConfirmIncomeAction}
+          onConfirmExpense={handleConfirmExpenseAction}
+          onActionClick={handlePrimaryActionClick}
+          onDismiss={() => handleDismiss()}
         />
       </div>
     </div>

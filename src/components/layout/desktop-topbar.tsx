@@ -15,7 +15,7 @@ export interface DesktopTopbarProps {
   onEndDemo: () => void;
   onOpenUpgrade: () => void;
   showCalc: boolean;
-  hasNotifications: boolean;
+  hasNotifications?: boolean;
   showTheme: boolean;
   showPrivacy: boolean;
   onThemeChange: (next: ThemePreference) => void;
@@ -27,7 +27,7 @@ export function DesktopTopbar({
   onEndDemo,
   onOpenUpgrade,
   showCalc,
-  hasNotifications,
+  hasNotifications = true,
   showTheme,
   showPrivacy,
   onThemeChange,

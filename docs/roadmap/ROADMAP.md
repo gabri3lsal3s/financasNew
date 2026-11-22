@@ -1,5 +1,19 @@
 # ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.15.0 (Reestruturação Holística Ponta a Ponta do Módulo de Racha & Integração Total com Despesas/Pix)** registra a entrega completa da arquitetura relacional, motor puro de reconciliação, edição completa em 3 abas e endurecimento Pix/QR Code para o ecossistema de Despesas Compartilhadas (2026-11-22):
+> - **(1) Banco Relacional 1:1 & Hardening SQL (Migração `20260101000134`)**:
+>   - Colunas indexadas (`expense_id`, `installment_group_id`, `debt_id`) e unicidade 1:1 parcial em `public.public_shares` (`uq_public_shares_split_expense_id`, `uq_public_shares_split_group_id`);
+>   - Trigger atualizado para pausa manual (`public_page_paused`) e RPCs `signal_split_payment` / `dismiss_split_payment_signal` com bloqueio ao anfitrião, cotas quitadas e suporte multi-parcelas (`p_installment_ids`).
+> - **(2) Validação Pix Estrita, BR Code EMV & QR Code Vetorial SVG**:
+>   - Novo validador puro `src/domain/pix/pix-key-validation.ts` (CPF/CNPJ Módulo 11, e-mail, EVP e celular `+55` com desambiguação de 11 dígitos);
+>   - `QrCodeCanvas` migrado para SVG vetorial nativo com margem ISO de 4 módulos e cópia resiliente `copyTextToClipboard` para navegadores WebView.
+> - **(3) Motor Único de Reconciliação (`split-reconciliation.ts`) & Sincronização Bidirecional (`use-split-sync-mutations.ts`)**:
+>   - Abatimento real de `expenses.report_weight` para despesas à vista (`1x`), parceladas mês a mês (`per_installment`) e em cota única (`single_total`);
+>   - Despesa vinculada exibe badge `Racha` e botão `Gerenciar Racha` no extrato e detalhes (impedindo duplicidade e sincronizando edições entre `Expense <-> Split <-> Debt <-> /r/:token`).
+> - **(4) Central de Controle em 3 Abas (`ManageSplitDialog`) & Página Pública (`/r/:token`)**:
+>   - Abas `Baixas` (com avisos Pix inline e `Reabrir Racha`), `Editar Racha` (`split-edit-tab.tsx` com cotas iguais/personalizadas e edição de participantes) e `Pix e Página` (`split-public-config-tab.tsx` com prévia SVG ao vivo, recado, privacidade, pausa e renovação de token);
+>   - Página `/r/:token` exclui integralmente o anfitrião, auto-seleciona convidado único, oferece `Prévia do Anfitrião`, cobra saldo exato restante em baixas parciais e oculta QR/aviso quando quitado.
+
 > **v3.14.0 (Build 101 — Arquitetura SSOT de Elegibilidade e Renderização Condicional no Motor de Relatórios — Scorecard 10/10 Homologado)** registra a conclusão da arquitetura de resiliência e elegibilidade de relatórios para dados parciais ou insuficientes, homologando 100% dos testes e selando o padrão executivo Private Banking (2026-11-21):
 > - **(1) Domínio SSOT de Elegibilidade e Integridade (`src/domain/reports/report-readiness.ts`)**:
 >   - Centralização canônica de regras de negócio de prontidão em funções puras (`evaluateReportReadiness` e avaliadores dedicados para cada um dos 8 relatórios);
@@ -7901,6 +7915,77 @@ flowchart TD
 > - **Qualidade e Distribuição Android:**
 >   - `npm run typecheck` e `npm run lint` com 0 erros;
 >   - APK Release Build 102 compilado, assinado e publicado no Cloudflare R2 com hash SHA-256 verificado (`9cee98e69428b069bcfaccefa1b6464b195359ea49d1a027c00895e6cc897faf`).
+
+---
+
+### Fase 122 — Arquitetura de Aquisição de Clientes, Landing Page "Do Gasto aos Investimentos", Onboarding Inline em 2 Fases & Padronização de Tours e Empty States (v3.14.0)
+
+> **Status:** ✅ Concluída, Auditada e Homologada — **Fluxo Ponta a Ponta de Aquisição, Conversão sem Fricção e Primeiro Acesso Guiado (Desktop, Tablet & Mobile)**:
+> - **Etapa 1 — Domínio de Onboarding & Sincronização do Sininho (`src/domain/onboarding/`, `src/data/repositories/onboarding.ts`, `src/hooks/use-onboarding-dismissed.ts`):**
+>   - Expansão de `OnboardingGoalId` com suporte explícito a `"investments"`;
+>   - Eliminação dos 2 passos redundantes de categorias pré-criadas (`expense-category`, `income-category`) em favor de passos reais de primeiro uso (`cash-checkpoint`, `first-transaction`, `card`, `portfolio-asset`, `portfolio-transaction`, `bank-notifications`) ordenados dinamicamente conforme `initialGoal`;
+>   - Correção de `isFirstUse` para verificar `(counts.cashCheckpoints ?? 0) === 0` e invalidação automática da query key `["onboarding"]` nas mutações de `cash_checkpoints`;
+>   - Sincronização em tempo real entre a Home e o `NotificationsPopover` via `useSyncExternalStore`, com separação entre `dismissVirginGuide` (recolhe apenas o card amplo da Fase 1 revelando os gráficos reais da Home) e `dismissOnboarding` (dispensa definitivamente o banner compacto da Fase 2).
+> - **Etapa 2 — Onboarding Inline em 2 Fases na Home & Fim dos Modais Concorrentes (`VirginAccountHero`, `OnboardingCarouselBanner`, `OnboardingChecklistModal`):**
+>   - Silenciamento dos pop-ups automáticos concorrentes no shell autenticado (`autoPrompt = false` em `useShellOnboardingOrchestrator`);
+>   - **Fase 1 (`VirginAccountHero`):** card inline acolhedor para contas virgens (`isFirstUse && !isVirginGuideDismissed`) com 3 pílulas interativas de foco (*Dia a dia & Cartões*, *Casa & Família*, *Investimentos & Metas*), 3 cartões de passos diretos, botão de Tour Rápido (1 min) e botão *"Explorar sozinho"*;
+>   - **Fase 2 (`OnboardingCarouselBanner` + `OnboardingChecklistModal`):** banner compacto integrado ao `DashboardAlertsCarousel` (Regra 19) e modal de checklist separado entre *"3 passos essenciais"* e *"Complementares · no seu ritmo"*, 100% isentos de imports de `@/state` em `components/modules/` (Regra 4.5).
+> - **Etapa 3 — Catálogo de Tours em 2 Camadas, Micro-Tours Contextuais & Empty States Padronizados (`DemoTrackSelectModal`, `tour-steps.ts`, `EmptyState`):**
+>   - Destaque visual no topo do `DemoTrackSelectModal` para as **3 jornadas completas de 1 minuto** (`finances`, `shared_finances`, `investments`) e recolhimento dos **14 micro-tours específicos** em `<Accordion />`;
+>   - Enriquecimento da trilha `investments` com Preço Teto & Valuation multimodelo, Rebalanceamento Sem Vendas e Dossiê A4/IRPF, humanização de copy em todas as 19 trilhas e definição de *"Voltar para minha conta"* como CTA primário de conclusão;
+>   - Adição de botão secundário calmo de descoberta na Simulação (`startDemo(...)`) nos `<EmptyState />` de *Contas a Pagar/Receber*, *Contratos & Financiamentos*, *Orçamentos por Categoria*, *Metas da Carteira*, *Modo Família* e *Modo Viagem* (alinhados com *Transações*, *Cartões* e *Investimentos*), além de `aria-hidden="true"` estrito em todos os ícones (Regra 8).
+> - **Etapa 4 — Cadastro de Fricção Mínima & Handoff dos Simuladores Públicos (`RegisterPage`, `LoginPage`, `useDocumentMeta`, `MinimalWealthSimulator`):**
+>   - Campo de Código de Convite recolhido sob progressive disclosure (*"Tem um código de convite?"* / *"Ocultar"*), placeholder natural (*"Seu nome"*), remoção de caixas decorativas `size-7` em `RegisterSideHero` e `LoginSideHero` (Regra 13), e conexão direta dos simuladores públicos (`setStoredInitialGoal("investments" | "debts")`) com o foco inicial pós-cadastro.
+> - **Etapa 5 — Nova Arquitetura da Página de Apresentação & Scroll-Spy Contínuo (`LandingPage`, `useScrollSpy`):**
+>   - Narrativa integrada *"Do gasto do dia a dia aos seus investimentos"*: `HeroSection` $\rightarrow$ `UnifiedEcosystemSection` (Bento Grid de 6 pilares) $\rightarrow$ `FinancialPainPointsSection` (4 dores reais com previews interativos) $\rightarrow$ `DeepDiveTabsSection` (4 abas interativas: *Preço Teto & Valuation*, *Carteira & Aportes*, *7 Relatórios A4*, *Radar Preventivo & Privacidade*) $\rightarrow$ `MinimalWealthSimulator` + `ToolsShowcase` $\rightarrow$ `PricingSection` + `PlatformComparison` $\rightarrow$ `FaqSection` & `FinalCtaSection`, com remoção do legado `product-narratives.tsx`;
+>   - Correção definitiva do Scroll-Spy (`SECTION_NAV_ALIAS` mapeando `ferramentas -> simulador` e `plataformas -> precos` + limiar de ~35% da viewport), garantindo destaque contínuo do botão *"Planos"* e demais itens do cabeçalho em Desktop (`1440px`), Tablet (`768px`) e Mobile (`390px`) com `scrollWidth <= innerWidth` e zero erros de console.
+
+---
+
+### Fase 123 — Auditoria Holística e Reorganização Completa do Ecossistema de Notificações, Alertas e Push Híbrido (Fases 0 a 5 · v3.15.0)
+
+> **Status:** Concluída, Auditada e Homologada — **Notification Hub Único, Carrossel Unificado 100% Dispensável, Push Híbrido (Local Agendado + Web Push VAPID / FCM), Resumo Dominical Opt-In e Governança Permanente (`PLANO_MESTRE_AUDITORIA_E_REORGANIZACAO_NOTIFICACOES.md`)**:
+> - **Fase 0 — Hotfixes Críticos de Confiança, Rachas, Severidades e Snooze:**
+>   - Separação estrita `payable` vs. `receivable` em `src/domain/reminders/` e `useReminders()` (cruzando `public_shares` de Racha por `debt_id`, `expense_id`, `installment_group_id` e prefixo `"Racha:"`), retirando recebíveis e dívidas espelhadas de rachas do contador crítico e de notificações "Pagar no App";
+>   - Recalibração de severidades (`billReminder` `"due_today"`, `debtReminder` respeitando `daysBefore` 0–2, `annual:*`/`missing_expense:*`/`household:settlement_pending` em `advisor.ts`), correção de `applyReminderState` / `isSnoozeExpired` (`today >= snoozeUntil`) e envio exclusivo de itens `payable` pendentes no `ACTION_SNOOZE` / sync nativo.
+> - **Fase 1 — Motor Unificado (`Notification Hub`) & Central `/lembretes` (`src/domain/notifications/hub/` + `useNotificationCenter`):**
+>   - Fonte única de verdade (`types.ts`, `build-notification-center.ts`) com classificação `P0_CRITICAL`..`P3_OPPORTUNITY`, deduplicação por `entityRefs` e paridade de badges entre Sininho, Popover, Sidebar, BottomNav, MoreMenuSheet e `/lembretes`;
+>   - Migration `20260101000135_notification_hub_broadcast_expiry_and_dismiss.sql` (`expires_at` em `admin_broadcast_notifications` + RPC `dismiss_broadcast_notification`), suporte completo a Broadcasts, Respostas de Suporte e Sinalizações Pix em Rachas em `/lembretes`.
+> - **Fase 2 — Carrossel Único Inteligente na Home (`DashboardAlertsCarousel` + `SmartAdvisorCard`):**
+>   - Fusão em 1 único carrossel priorizado (`maxItems={5}`), dispensa padronizada de **7 dias ou 30 dias** (`CarouselDismissPopover` em `dashboardAlertDismissals.cards`) em 100% dos slides dispensáveis, supressão do `SplitPendingBanner` redundante quando há sinalização Pix ativa no `PendingSplitSignalsCard`, correções de pluralização/acessibilidade (`role="region"`, `1 provento`, `1 dia restante`, `"Gastos acima de 85% da renda"`) e dispensa independente de permissões em `useOverviewPermissionsBanner`.
+> - **Fase 3 — Push Híbrido Real & Blindagem do Assistente Bancário Android (Java + TS):**
+>   - Motor puro `src/domain/notifications/schedule.ts` (`buildDueNotificationSchedule`, horizonte 7 dias às 09:00, agrupamento diário `day:YYYY-MM-DD`, *Quiet Hours* padrão `22:00–08:00` apenas para `payable`), cancelamento reativo imediato nas mutações de quitação/exclusão de dívidas e rachas, sincronização real na nuvem (`CloudPreferencesSyncInner`) e remoção de retorno falso `true` na Web;
+>   - Fundação de Push Remoto Real: Migration `20260101000136_user_push_subscriptions.sql` (`user_push_subscriptions` + `push_delivery_logs`), `public/sw-push.js` integrado ao Workbox (`importScripts`), cliente Web Push VAPID (`src/services/push/`), repositório/hooks e Edge Function `push-dispatcher` (Web Push VAPID + FCM HTTP v1 com *Quiet Hours* e idempotência);
+>   - Unificação das 5 listas do catálogo bancário em **40 instituições / 54 pacotes** (`bank-catalog-parity.test.ts` validando TS, Java Listener, Java Plugin e `AndroidManifest.xml`), correção do canal `axir_confirmations`, eliminação de inserção dupla no warm-start do `BankNotificationActionReceiver.java`, conexão de `"bankTransactionUndone"` → `undoQuickAddTransaction`, `requiresWizard: true` e `clearMonitoredPackages` no logout/downgrade.
+> - **Fase 4 — Cobertura Inteligente, `sunday-digest` Opt-In & Configurações em 4 Blocos:**
+>   - Novos detectores puros em `src/domain/notifications/hub/event-detectors.ts`: fechamento de fatura opt-in (`detectClosedCardBills`, `P2`, padrão `false`), estouro consolidado mensal de orçamento > 100% (`detectConsolidatedBudgetOverrun`, 1 alerta mensal `P1`), acertos de Viagem e convites familiares pendentes (`detectTripAndFamilyPendingAlerts`, `P1`) e `SubscriptionPastDueBanner` (`P0`, `priority: 0`) no carrossel + correção da leitura de `useUserSubscription`;
+>   - Backend: Migration `20260101000137_weekly_digest_and_notification_prefs.sql` (`weekly_digest_enabled boolean not null default false`), janela segura `48h–76h` no `billing-lifecycle-cron` e `sunday-digest` real opt-in via Resend + `renderSundayDigestEmail` (zero emojis + HTML escape);
+>   - Aba `Configurações > Notificações` reorganizada em 4 blocos claros (`RemindersCard` com filtros por categoria, `DevicePushCard` com Due + Daily + Remote Push VAPID + *Quiet Hours* + `"Enviar notificação de teste"`, `BankingAssistantCard` com 40 instituições e alerta de 0 bancos, e `EmailDigestPrefsCard` com Resumo Semanal opt-in desativado por padrão).
+> - **Fase 5 — Governança Permanente & Verificação Final:**
+>   - Adicionada **Regra 35** no `AGENTS.md` consolidando a obrigatoriedade do `Notification Hub`, carrossel único 7d/30d, *Quiet Hours*, opt-in default-OFF e zero emojis;
+>   - Quality Gate (`npm run verify:full` + `npm run build` + suítes afetadas): `tsc -b` 0 erros, `eslint .` 0 erros, `220/220` arquivos (`3.150/3.150` testes de domínio), `36/36` arquivos (`355/355` testes de UI/serviços de notificações, lembretes, configurações, visão geral e assinatura), `8/8` testes E2E Playwright (Desktop & Mobile Chromium) e build PWA com `dist/sw-push.js` integrado.
+
+---
+
+### Fase 124 — Auditoria Profunda de Segurança, Privacidade, Paridade e Padronização UI/UX do Ecossistema de Notificações (Waves 1 a 4 · v3.16.0 · Build 103)
+
+> **Status:** Concluída, Auditada e Homologada em Produção — **Hardening SQL/RLS (`0138`), Isolamento Multi-Conta, Paridade Total de Superfícies, Prominent Disclosure e Conformidade Estrita com `AGENTS.md` (`docs/diagnostics/AUDITORIA_COMPLETA_NOTIFICACOES_E_LEMBRETES.md`)**:
+> - **Wave 1 — Hardening de Segurança, Privacidade, Backend, Edge Functions e Logout:**
+>   - Migration `20260101000138_harden_notifications_broadcasts_and_lifecycle.sql`: `REVOKE EXECUTE FROM PUBLIC, anon` e checagem explícita `auth.uid() IS NOT NULL` em `get_my_broadcast_notifications`, `mark_broadcast_as_read`, `dismiss_broadcast_notification` e `admin_send_broadcast_notification`; adição de `p_expires_at` e validação de `p_action_url`; restrição de `broadcast_notifications_select` a administradores; `FORCE ROW LEVEL SECURITY` em 5 tabelas de notificações; correção de `handle_new_user()` (`custom_settings`) e permissão a `postgres`/`supabase_admin` em `reconcile_expired_subscriptions()`;
+>   - Edge Functions (`push-dispatcher`, `sunday-digest`, `billing-lifecycle-cron`, `support-notify`) e `_shared/{resend.ts,email-templates.ts,telegram.ts}`: idempotência por `upsert(onConflict: "dedup_key")` + `Idempotency-Key`, paginação em lotes de 250 usuários, janela inclusiva de 7 dias com aplicação de `report_weight`, filtro de perfis ativos (`status = 'active'`), opt-in estrito `remotePushEnabled === true` (exceto `test_push`/`P0`), canal Android `"due_reminders"`, limpeza de tokens expirados, comparação `timingSafeEqualString` e zero emojis;
+>   - Isolamento de sessão e limpeza no logout (`use-sign-out.ts`, `providers.tsx`, `user-storage.ts`, `sw-push.js`, `web-push.ts`): preservação da sessão local quando `scope: "others"`, desinscrição do endpoint atual no Web Push sem apagar outros dispositivos do usuário, cancelamento de notificações locais e monitoramento bancário ao sair/trocar de conta e validação de rotação da `applicationServerKey`.
+> - **Wave 2 — Motor do Notification Hub, Paridade de Superfícies, Agendamento Web/Local e Cooldowns:**
+>   - `src/domain/notifications/hub/`: preservação de 2+ faturas abertas do mesmo cartão sem colisão por `card:${cardId}`, calibração de `due_today`, `household:ceiling_exceeded` e `dup:*` para `P1_ACTION_NEEDED`, convites familiares e viagens encerradas passivas para `P2_ADVISORY`, `promotion` para `P3_OPPORTUNITY`, formatação de competência/datas pt-BR e filtro de recebíveis de racha por palavra inteira e `installment_group_id` irmão;
+>   - Paridade entre Sininho (`NotificationsButton`), `NotificationsPopover`, Sidebar/BottomNav e `/lembretes` (`totalBellCount`, `totalRemindersPageCount`, `criticalCount`, `actionNeededCount`), ordenação `P0 -> P1 -> P2/P3`, botão explícito de marcar como lido em comunicados sem `action_url` e Toast Undo de 5s ao adiar/arquivar;
+>   - Respeito ao Horário Silencioso também na Web (`buildDueNotificationSchedule`), sincronização reativa em `RemindersNotificationSyncInner`, persistência de `KEY_SNOOZED_DUE_NOTIFS` (`preserveSnoozed`) para não cancelar lembretes adiados via `ACTION_SNOOZE`, escopo por `userId` e mesclagem pelo `dismissedUntil` mais recente nos descartes da Home, SmartAdvisor e Carteira, além de prevenção de *whack-a-mole* entre `SurplusAporteBanner` e `aporte:rebalance`.
+> - **Wave 3 — Conformidade UI/UX (`AGENTS.md`) e Estabilidade do Motor de Toasts:**
+>   - Captura passiva bancária `passiveCaptureEnabled: false` por padrão (opt-in explícito), exigência de `monitoredBanks.length > 0` para alerta de permissão e roteamento do banner da Home para `/configuracoes?tab=notifications` (respeitando *Prominent Disclosure* antes da tela nativa do Android);
+>   - Anatomia Nível 2 horizontal do `SmartAdvisorCard` quando embutido no carrossel (`size-9 rounded-xl border`, `CarouselDismissPopover` 7d/30d, botão `size="sm"` `h-8`), teto de `maxItems={5}` no `PortfolioInsightsCarousel`, remoção de `role="alert"` em slides não críticos, eliminação de `truncate` sobre `<MoneyText />` (Regra 11), formatação percentual com vírgula pt-BR via `formatPercent` (Regra 28), `max-w-full truncate` no primitivo `<Badge />` (Regra 23), `<ModalFooter borderless>` no `ProminentDisclosureModal` e duração padrão de `5000ms` com callback estável (`useCallback`) em toasts com ação de Desfazer (Regra 32).
+> - **Wave 4 — Painel Admin Broadcasts, Rollout Supabase, Documentação e Build Android Pro v3.16.0 (Build 103):**
+>   - Seletor de expiração (`expires_at`), validação de URLs (`/` ou `https://`), `<ConfirmDialog>` de revisão pré-disparo e preview dinâmico por categoria/público no `BroadcastComposerForm` + badge de expiração e público `"Usuários específicos"` no `BroadcastHistoryList`;
+>   - Migration `0138` aplicada em produção, 9 Edge Functions reimplantadas e validadas por smoke tests HTTP, relatório completo em `docs/diagnostics/AUDITORIA_COMPLETA_NOTIFICACOES_E_LEMBRETES.md` e compilação do APK Android v3.16.0 (Build 103).
+
+
 
 
 

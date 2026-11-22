@@ -1,7 +1,7 @@
 /**
  * Onboarding de primeiro uso (§5.7) — funções puras.
  * Deriva o checklist de configuração inicial a partir de contagens de dados
- * do usuário (categorias, cartões, lançamentos, ativos e investimentos)
+ * reais do usuário (saldo calibrado, lançamentos, cartões, ativos e investimentos)
  * respeitando os módulos liberados para a conta (hasFeature). Sem UI, sem Supabase.
  */
 
@@ -12,6 +12,8 @@ export interface OnboardingCounts {
   expenseCategories: number;
   /** Categorias de renda criadas pelo usuário (não reservadas). */
   incomeCategories: number;
+  /** Checkpoints de saldo em conta cadastrados (calibração inicial de caixa). */
+  cashCheckpoints?: number;
   /** Cartões de crédito cadastrados. */
   cards: number;
   /** Lançamentos registrados (despesas + rendas). */
@@ -25,10 +27,9 @@ export interface OnboardingCounts {
 }
 
 export type OnboardingStepId =
-  | "expense-category"
-  | "income-category"
-  | "card"
+  | "cash-checkpoint"
   | "first-transaction"
+  | "card"
   | "portfolio-asset"
   | "portfolio-transaction"
   | "bank-notifications";
@@ -49,22 +50,10 @@ interface StepDefinition {
 
 export const ALL_ONBOARDING_STEPS: readonly StepDefinition[] = [
   {
-    id: "expense-category",
-    featureKey: "budgets",
+    id: "cash-checkpoint",
+    featureKey: "transactions",
     isCore: true,
-    isDone: (c) => c.expenseCategories > 0,
-  },
-  {
-    id: "income-category",
-    featureKey: "budgets",
-    isCore: true,
-    isDone: (c) => c.incomeCategories > 0,
-  },
-  {
-    id: "card",
-    featureKey: "cards",
-    isCore: true,
-    isDone: (c) => c.cards > 0,
+    isDone: (c) => (c.cashCheckpoints ?? 0) > 0,
   },
   {
     id: "first-transaction",
@@ -73,15 +62,21 @@ export const ALL_ONBOARDING_STEPS: readonly StepDefinition[] = [
     isDone: (c) => c.transactions > 0,
   },
   {
+    id: "card",
+    featureKey: "cards",
+    isCore: true,
+    isDone: (c) => c.cards > 0,
+  },
+  {
     id: "portfolio-asset",
     featureKey: "investments",
-    isCore: true,
+    isCore: false,
     isDone: (c) => (c.portfolioAssets ?? 0) > 0,
   },
   {
     id: "portfolio-transaction",
     featureKey: "investments",
-    isCore: true,
+    isCore: false,
     isDone: (c) => (c.portfolioTransactions ?? 0) > 0,
   },
   {
@@ -92,13 +87,21 @@ export const ALL_ONBOARDING_STEPS: readonly StepDefinition[] = [
   },
 ] as const;
 
-/** Checklist derivado das contagens — filtrado pelas features disponíveis se hasFeature for informado. */
+const STEP_MAP = new Map<OnboardingStepId, StepDefinition>(
+  ALL_ONBOARDING_STEPS.map((step) => [step.id, step]),
+);
+
+function isStepAllowed(step: StepDefinition, hasFeature?: FeaturePredicate): boolean {
+  return !hasFeature || hasFeature(step.featureKey);
+}
+
+/** Checklist completo derivado das contagens — filtrado pelas features disponíveis. */
 export function onboardingSteps(
   counts: OnboardingCounts,
   hasFeature?: FeaturePredicate,
 ): OnboardingStep[] {
   return ALL_ONBOARDING_STEPS
-    .filter((step) => !hasFeature || hasFeature(step.featureKey))
+    .filter((step) => isStepAllowed(step, hasFeature))
     .map((step) => ({ id: step.id, done: step.isDone(counts) }));
 }
 
@@ -116,22 +119,42 @@ export function onboardingProgress(
 }
 
 /**
- * Passos centrais do checklist liberados para o usuário (excluindo passos não-core
- * como bank-notifications, que depende de permissão de plataforma Android).
- * Quando initialGoal for informado, reordena os passos para colocar o objetivo prioritário no topo.
+ * Passos centrais (3 ações reais) do onboarding liberados para o usuário.
+ * - Perfil exclusivo de investimentos: retorna cadastro de ativo e 1ª operação.
+ * - Demais contas: retorna Saldo inicial, 1º lançamento e Cartão (ou Ativo no topo se foco = "investments").
  */
 export function coreOnboardingSteps(
   counts: OnboardingCounts,
   hasFeature?: FeaturePredicate,
   initialGoal?: OnboardingGoalId | null,
 ): OnboardingStep[] {
-  const steps = ALL_ONBOARDING_STEPS
-    .filter((step) => step.isCore && (!hasFeature || hasFeature(step.featureKey)))
+  const allowFinances = !hasFeature || hasFeature("transactions") || hasFeature("cards");
+  const allowInvestments = !hasFeature || hasFeature("investments");
+
+  if (!allowFinances && allowInvestments) {
+    const investmentIds: OnboardingStepId[] = ["portfolio-asset", "portfolio-transaction"];
+    return investmentIds
+      .map((id) => STEP_MAP.get(id))
+      .filter((step): step is StepDefinition => Boolean(step && isStepAllowed(step, hasFeature)))
+      .map((step) => ({ id: step.id, done: step.isDone(counts) }));
+  }
+
+  if (!allowFinances) return [];
+
+  let orderedIds: OnboardingStepId[];
+  if (initialGoal === "investments" && allowInvestments) {
+    orderedIds = ["portfolio-asset", "cash-checkpoint", "first-transaction"];
+  } else {
+    orderedIds = ["cash-checkpoint", "first-transaction", "card"];
+  }
+
+  const steps = orderedIds
+    .map((id) => STEP_MAP.get(id))
+    .filter((step): step is StepDefinition => Boolean(step && isStepAllowed(step, hasFeature)))
     .map((step) => ({ id: step.id, done: step.isDone(counts) }));
 
-  if (!initialGoal) return steps;
+  if (!initialGoal || initialGoal === "investments") return steps;
 
-  // Determina o ID prioritário para o topo do checklist com base na meta escolhida no acolhimento
   const priorityStepId: OnboardingStepId | null =
     initialGoal === "cards"
       ? "card"
@@ -160,46 +183,41 @@ export function coreOnboardingProgress(
 }
 
 /**
- * Usuário ativo: já atingiu limiar de maturidade de uso nos módulos aos quais tem acesso.
- * - Finanças: >= 3 transações ou >= 1 cartão.
- * - Investimentos: >= 1 ativo ou >= 1 operação de carteira.
- * Um usuário ativo não precisa mais do banner de configuração na home.
+ * Usuário ativo: já concluiu todos os passos essenciais do onboarding ou atingiu uso recorrente (>= 5 lançamentos).
  */
 export function isUserActive(
   counts: OnboardingCounts,
   hasFeature?: FeaturePredicate,
+  initialGoal?: OnboardingGoalId | null,
 ): boolean {
   const allowFinances = !hasFeature || hasFeature("transactions") || hasFeature("cards");
   const allowInvestments = !hasFeature || hasFeature("investments");
 
-  const activeFinances = allowFinances && (counts.transactions >= 3 || counts.cards >= 1);
-  const activeInvestments =
-    allowInvestments &&
-    ((counts.portfolioAssets ?? 0) >= 1 || (counts.portfolioTransactions ?? 0) >= 1);
-
-  if (hasFeature) {
-    if (!allowFinances && allowInvestments) {
-      return activeInvestments;
-    }
-    if (allowFinances && !allowInvestments) {
-      return activeFinances;
-    }
+  if (!allowFinances && allowInvestments) {
+    return (counts.portfolioAssets ?? 0) >= 1 && (counts.portfolioTransactions ?? 0) >= 1;
   }
 
-  return activeFinances || activeInvestments;
+  if (allowFinances) {
+    const core = coreOnboardingSteps(counts, hasFeature, initialGoal);
+    const allCoreDone = core.length > 0 && core.every((s) => s.done);
+    return counts.transactions >= 5 || allCoreDone;
+  }
+
+  return false;
 }
 
 /**
- * Controla a exibição do banner de onboarding na home.
- * Oculta automaticamente quando o usuário está ativo (smart dismiss),
- * ou quando todos os passos principais liberados foram concluídos.
+ * Controla a exibição do guia de primeiros passos na Home (Fase 2 — Carrossel).
+ * Permanece ativo após a 1ª ação até o usuário concluir os passos essenciais,
+ * atingir 5+ lançamentos ou dispensar manualmente.
  */
 export function shouldShowOnboardingBanner(
   counts: OnboardingCounts,
   hasFeature?: FeaturePredicate,
+  initialGoal?: OnboardingGoalId | null,
 ): boolean {
-  if (isUserActive(counts, hasFeature)) return false;
-  const steps = coreOnboardingSteps(counts, hasFeature);
+  if (isUserActive(counts, hasFeature, initialGoal)) return false;
+  const steps = coreOnboardingSteps(counts, hasFeature, initialGoal);
   if (steps.length === 0) return false;
   return steps.some((s) => !s.done);
 }
@@ -215,11 +233,12 @@ export function isOnboardingComplete(
 }
 
 /**
- * Primeiro uso: conta recém-criada sem movimentações (sem cartões, lançamentos nem investimentos).
+ * Primeiro uso: conta recém-criada sem saldo calibrado, cartões, lançamentos nem investimentos.
  * Categorias pré-populadas pelo sistema no cadastro não descaracterizam o primeiro uso.
  */
 export function isFirstUse(counts: OnboardingCounts): boolean {
   return (
+    (counts.cashCheckpoints ?? 0) === 0 &&
     counts.cards === 0 &&
     counts.transactions === 0 &&
     (counts.portfolioAssets ?? 0) === 0 &&
@@ -227,4 +246,3 @@ export function isFirstUse(counts: OnboardingCounts): boolean {
     !counts.notificationsEnabled
   );
 }
-

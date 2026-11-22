@@ -114,4 +114,76 @@ describe("useScrollSpy", () => {
 
     expect(result.current.resetKey).toBe(1);
   });
+
+  it("rastreia as seções padrão da nova arquitetura da landing page (ecossistema, dores, profundidade, simulador)", () => {
+    const ids = ["ecossistema", "dores", "profundidade", "simulador"];
+    const elements = ids.map((id) => {
+      const el = document.createElement("div");
+      el.id = id;
+      document.body.appendChild(el);
+      return el;
+    });
+
+    vi.spyOn(elements[0]!, "getBoundingClientRect").mockReturnValue({
+      top: 400,
+      bottom: 800,
+      left: 0,
+      right: 1000,
+      width: 1000,
+      height: 400,
+      x: 0,
+      y: 400,
+      toJSON: () => {},
+    });
+
+    vi.spyOn(elements[2]!, "getBoundingClientRect").mockReturnValue({
+      top: 60,
+      bottom: 600,
+      left: 0,
+      right: 1000,
+      width: 1000,
+      height: 540,
+      x: 0,
+      y: 60,
+      toJSON: () => {},
+    });
+
+    const { result } = renderHook(() => useScrollSpy({ offset: 140 }));
+
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(result.current.activeSection).toBe("profundidade");
+
+    elements.forEach((el) => document.body.removeChild(el));
+  });
+
+  it("mapeia seções complementares (#plataformas -> precos e #ferramentas -> simulador) para destacar o botão Planos e Simulador sem zonas mortas", () => {
+    const plataformasEl = document.createElement("div");
+    plataformasEl.id = "plataformas";
+    document.body.appendChild(plataformasEl);
+
+    vi.spyOn(plataformasEl, "getBoundingClientRect").mockReturnValue({
+      top: 40,
+      bottom: 620,
+      left: 0,
+      right: 1000,
+      width: 1000,
+      height: 580,
+      x: 0,
+      y: 40,
+      toJSON: () => {},
+    });
+
+    const { result } = renderHook(() => useScrollSpy({ offset: 140 }));
+
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(result.current.activeSection).toBe("precos");
+
+    document.body.removeChild(plataformasEl);
+  });
 });

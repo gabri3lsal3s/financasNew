@@ -20,7 +20,7 @@ export function RemindersSettingsModal({
       onOpenChange={onOpenChange}
       title="Configurações de Lembretes"
       description="Personalize a antecedência das contas e os alertas do dispositivo."
-      size="md"
+      size="lg"
       footer={
         <ModalFooter borderless>
           <Button

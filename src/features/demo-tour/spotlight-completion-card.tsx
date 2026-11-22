@@ -19,7 +19,7 @@ export interface SpotlightCompletionCardProps {
 }
 
 /**
- * Rodapé de conclusão do último passo do tour com hand-off para a conta real ou próximo bloco.
+ * Rodapé de conclusão do último passo do tour com prioridade confortável de retorno à conta real.
  */
 export function SpotlightCompletionCard({
   steps,
@@ -99,28 +99,28 @@ export function SpotlightCompletionCard({
       >
         <Button
           type="button"
-          variant={blockHandoff?.nextTrackId ? "outline" : "default"}
+          variant="default"
           size="sm"
           onClick={onStartRealAccount}
-          aria-label="Começar Conta Real"
-          title="Começar Conta Real"
+          aria-label="Voltar para minha conta"
+          title="Voltar para minha conta"
           className="h-8.5 px-3 text-xs font-semibold gap-1.5 w-full min-w-0 justify-center"
         >
-          <Check className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
-          <span className="sm:hidden truncate">Começar</span>
+          <Check className="size-3.5 shrink-0" aria-hidden="true" />
+          <span className="sm:hidden truncate">Minha conta</span>
           <span className="hidden sm:inline truncate">
-            {isNarrowCard ? "Começar" : "Começar Conta Real"}
+            {isNarrowCard ? "Minha conta" : "Voltar para minha conta"}
           </span>
         </Button>
         {blockHandoff?.nextTrackId ? (
           <Button
             type="button"
-            variant="default"
+            variant="outline"
             size="sm"
             onClick={() => onStartNextBlock(blockHandoff.nextTrackId!)}
             aria-label={`Avançar para ${blockHandoff.nextTrackLabel ?? "Próxima Trilha"}`}
             title={blockHandoff.nextTrackLabel ?? "Próxima Trilha"}
-            className="h-8.5 px-3 text-xs font-semibold gap-1.5 w-full min-w-0 justify-center"
+            className="h-8.5 px-3 text-xs font-medium gap-1.5 w-full min-w-0 justify-center"
           >
             <span className="truncate">{blockHandoff.nextTrackLabel ?? "Próxima Trilha"}</span>
             <ArrowRight className="size-3.5 shrink-0" aria-hidden="true" />

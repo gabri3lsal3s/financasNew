@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Toast } from "@/components/ui/toast";
 import { dismissToast, subscribeToasts, type ToastItem } from "@/services/toast";
 
@@ -8,11 +8,11 @@ interface HostToast extends ToastItem {
 }
 
 /** Componente item com timer autônomo de auto-dismiss garantido. */
-function ToastHostItem({ item, onDismiss }: { item: HostToast; onDismiss: () => void }) {
+function ToastHostItem({ item, onDismiss }: { item: HostToast; onDismiss: (id: number) => void }) {
   useEffect(() => {
     if (!item.open) return;
     const timer = setTimeout(() => {
-      onDismiss();
+      onDismiss(item.id);
     }, item.duration || 3000);
     return () => clearTimeout(timer);
   }, [item.id, item.open, item.duration, onDismiss]);
@@ -21,7 +21,7 @@ function ToastHostItem({ item, onDismiss }: { item: HostToast; onDismiss: () => 
     <Toast
       open={item.open}
       onOpenChange={(next) => {
-        if (!next) onDismiss();
+        if (!next) onDismiss(item.id);
       }}
       title={item.title}
       description={item.description}
@@ -48,11 +48,11 @@ export function ToastHost() {
     [],
   );
 
-  const handleDismiss = (id: number) => {
+  const handleDismiss = useCallback((id: number) => {
     // Mantém o item montado com open=false para a animação de saída, depois remove.
     setItems((current) => current.map((item) => (item.id === id ? { ...item, open: false } : item)));
     window.setTimeout(() => dismissToast(id), 300);
-  };
+  }, []);
 
   return (
     <>
@@ -60,7 +60,7 @@ export function ToastHost() {
         <ToastHostItem
           key={item.id}
           item={item}
-          onDismiss={() => handleDismiss(item.id)}
+          onDismiss={handleDismiss}
         />
       ))}
     </>

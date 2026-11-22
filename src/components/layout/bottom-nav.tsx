@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import { filterNavItems, navItems } from "@/components/layout/nav-items";
 import { resolveBottomNavSlots } from "@/domain/navigation";
 import { triggerSensory } from "@/services/sensory";
-import { useFamilyMode, useTripMode, useReminders, useUserAccess } from "@/state";
+import { useNotificationCenter } from "@/hooks/use-notification-center";
+import { useFamilyMode, useTripMode, useUserAccess } from "@/state";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { MoreMenuSheet } from "./more-menu-sheet";
 import { BottomNavItem } from "./bottom-nav-item";
@@ -18,7 +19,8 @@ export function BottomNav() {
   const { isTripModeEnabled } = useTripMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
   const isTripActive = Boolean(isTripModeEnabled);
-  const { totalCount, urgentCount } = useReminders();
+  const { totalRemindersPageCount: totalCount, criticalCount: urgentCount } =
+    useNotificationCenter();
   const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard();
 
   const allowedItems = filterNavItems(navItems, isAdmin, hasFeature, isFamilyActive, isTripActive);

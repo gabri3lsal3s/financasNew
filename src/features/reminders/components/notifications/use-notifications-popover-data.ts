@@ -1,20 +1,36 @@
 import { useNavigate } from "react-router";
-import { coreOnboardingProgress, coreOnboardingSteps, shouldShowOnboardingBanner } from "@/domain/onboarding";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
+import { coreOnboardingSteps } from "@/domain/onboarding";
 import type { ReminderItem } from "@/domain/reminders";
-import { useSmartAdvisorInsights } from "@/features/overview/hooks";
-import { useOnboardingDismissed } from "@/hooks";
 import {
-  useMarkAllRemindersAsRead,
-  useMarkBroadcastAsRead,
-  useMyBroadcastNotifications,
-  useMySupportTickets,
-  useOnboardingCounts,
-  useReminders,
-  useSetReminderState,
-  useUserAccess,
-} from "@/state";
+  getOptionalHook,
+  useNotificationCenter,
+} from "@/hooks/use-notification-center";
+import * as state from "@/state";
 import { navigateAdvisorAlert } from "../../utils/navigate-advisor-alert";
+
+function openActionUrlSafely(
+  rawUrl: string,
+  navigate: ReturnType<typeof useNavigate>,
+  onClose?: () => void,
+) {
+  const url = rawUrl.trim();
+  if (!url) return;
+  if (url.startsWith("/") && !url.startsWith("//")) {
+    onClose?.();
+    navigate(url);
+    return;
+  }
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === "https:") {
+      onClose?.();
+      window.open(parsed.toString(), "_blank", "noopener,noreferrer");
+    }
+  } catch {
+    // URL inválida ignorada por segurança
+  }
+}
 
 export function useNotificationsPopoverData({
   onOpenChange,
@@ -26,41 +42,77 @@ export function useNotificationsPopoverData({
   propOnDismissAdvisor?: (themeKey: string, days?: number) => void;
 }) {
   const navigate = useNavigate();
-  const { hasFeature } = useUserAccess();
-  const { items, totalCount, urgentCount, isLoading } = useReminders();
-  const onboardingQuery = useOnboardingCounts();
-  const { isDismissed, dismiss } = useOnboardingDismissed();
-  const setReminderStateMutation = useSetReminderState();
-  const markAllMutation = useMarkAllRemindersAsRead();
-  const myTicketsQuery = useMySupportTickets();
-  const broadcastsQuery = useMyBroadcastNotifications();
-  const markBroadcastMutation = useMarkBroadcastAsRead();
+  const center = useNotificationCenter();
 
-  const unreadBroadcasts = (broadcastsQuery.data ?? []).filter((b) => !b.is_read);
-  const unreadSupportTickets = (myTicketsQuery.data ?? []).filter(
-    (t) => Boolean(t.admin_reply) && !t.user_read_at,
+  const useSetReminderStateSafe = getOptionalHook<{
+    mutate: (args: {
+      occurrenceKey: string;
+      state: { kind: "read" | "snoozed"; snoozeUntil?: string } | null;
+    }) => void;
+    isPending: boolean;
+  }>(state, "useSetReminderState", () => ({
+    mutate: () => {},
+    isPending: false,
+  }));
+  const useMarkAllRemindersAsReadSafe = getOptionalHook<{
+    mutate: (keys: string[]) => void;
+    isPending: boolean;
+  }>(state, "useMarkAllRemindersAsRead", () => ({
+    mutate: () => {},
+    isPending: false,
+  }));
+  const useMarkBroadcastAsReadSafe = getOptionalHook<{
+    mutate: (id: string) => void;
+    isPending: boolean;
+  }>(state, "useMarkBroadcastAsRead", () => ({
+    mutate: () => {},
+    isPending: false,
+  }));
+  const useDismissBroadcastNotificationSafe = getOptionalHook(
+    state,
+    "useDismissBroadcastNotification",
+    () => null as { mutate: (id: string) => void } | null,
   );
 
-  const advisorHook = useSmartAdvisorInsights({ enabled: propAdvisorAlerts === undefined });
-  const advisorAlerts =
-    propAdvisorAlerts ?? advisorHook.insights.filter((i) => i.priority === 1 || i.priority === 2);
-  const dismissAdvisor = propOnDismissAdvisor ?? advisorHook.dismiss;
+  const setReminderStateMutation = useSetReminderStateSafe();
+  const markAllMutation = useMarkAllRemindersAsReadSafe();
+  const markBroadcastMutation = useMarkBroadcastAsReadSafe();
+  const dismissBroadcastMutation = useDismissBroadcastNotificationSafe();
 
-  const showOnboarding =
-    !isDismissed && onboardingQuery?.data
-      ? shouldShowOnboardingBanner(onboardingQuery.data, hasFeature)
-      : false;
-  const onboardingProg = onboardingQuery?.data
-    ? coreOnboardingProgress(onboardingQuery.data, hasFeature)
-    : { done: 0, total: 0 };
+  const {
+    items,
+    closedBillAlerts,
+    budgetOverrunAlert,
+    tripAndFamilyAlerts,
+    criticalCount,
+    actionNeededCount,
+    isLoading,
+    unreadBroadcasts,
+    unreadSupportTickets,
+    pendingSplitSignals,
+    hasPastDueSubscription,
+    showOnboarding,
+    onboardingData,
+    onboardingProg,
+    hasFeature,
+    dismissOnboarding,
+    advisorAlerts: centerAdvisorAlerts,
+    dismissAdvisor: centerDismissAdvisor,
+  } = center;
 
-  const effectiveTotalCount =
-    totalCount +
-    (showOnboarding ? 1 : 0) +
-    advisorAlerts.length +
-    unreadSupportTickets.length +
-    unreadBroadcasts.length;
-  const hasUrgent = urgentCount > 0 || advisorAlerts.some((i) => i.priority === 1);
+  const advisorAlerts = propAdvisorAlerts ?? centerAdvisorAlerts;
+  const dismissAdvisor = propOnDismissAdvisor ?? centerDismissAdvisor;
+
+  const effectiveTotalCount = propAdvisorAlerts
+    ? center.totalBellCount +
+      Math.max(0, propAdvisorAlerts.length - centerAdvisorAlerts.length)
+    : center.totalBellCount;
+
+  const hasUrgent =
+    criticalCount > 0 ||
+    propAdvisorAlerts?.some((i) => i.priority === 1 && i.category === "critical") ||
+    false;
+  const hasActionNeeded = !hasUrgent && actionNeededCount > 0;
 
   const handleOpenItem = (item: ReminderItem) => {
     onOpenChange?.(false);
@@ -79,16 +131,17 @@ export function useNotificationsPopoverData({
 
   const handleOpenOnboarding = () => {
     onOpenChange?.(false);
-    if (!onboardingQuery.data) return;
+    if (!onboardingData) return;
 
-    const pending = coreOnboardingSteps(onboardingQuery.data, hasFeature).filter((s) => !s.done);
+    const pending = coreOnboardingSteps(onboardingData, hasFeature).filter(
+      (s) => !s.done,
+    );
     const nextStep = pending[0];
 
     if (nextStep) {
       switch (nextStep.id) {
-        case "expense-category":
-        case "income-category":
-          navigate("/orcamentos?tab=categories&novo=categoria");
+        case "cash-checkpoint":
+          navigate("/configuracoes");
           return;
         case "card":
           navigate("/cartoes");
@@ -102,6 +155,9 @@ export function useNotificationsPopoverData({
         case "portfolio-transaction":
           navigate("/investments?novo=investimento");
           return;
+        case "bank-notifications":
+          navigate("/configuracoes?tab=notifications");
+          return;
       }
     }
 
@@ -112,10 +168,25 @@ export function useNotificationsPopoverData({
     }
   };
 
-  const handleOpenBroadcast = (id: string, actionUrl: string | null | undefined) => {
+  const handleOpenBroadcast = (
+    id: string,
+    actionUrl: string | null | undefined,
+  ) => {
+    if (!actionUrl) return;
     markBroadcastMutation.mutate(id);
-    onOpenChange?.(false);
-    if (actionUrl) navigate(actionUrl);
+    openActionUrlSafely(actionUrl, navigate, () => onOpenChange?.(false));
+  };
+
+  const handleMarkBroadcastRead = (id: string) => {
+    markBroadcastMutation.mutate(id);
+  };
+
+  const handleDismissBroadcast = (id: string) => {
+    if (dismissBroadcastMutation) {
+      dismissBroadcastMutation.mutate(id);
+    } else {
+      markBroadcastMutation.mutate(id);
+    }
   };
 
   const handleOpenSupport = () => {
@@ -123,13 +194,37 @@ export function useNotificationsPopoverData({
     navigate("/configuracoes?tab=support");
   };
 
+  const handleOpenSplitSignal = () => {
+    onOpenChange?.(false);
+    navigate("/dividas");
+  };
+
+  const handleOpenSubscriptionPastDue = () => {
+    onOpenChange?.(false);
+    navigate("/configuracoes?tab=subscription");
+  };
+
+  const handleOpenRoute = (route: string) => {
+    onOpenChange?.(false);
+    navigate(route);
+  };
+
   const handleMarkRead = (key: string) => {
-    setReminderStateMutation.mutate({ occurrenceKey: key, state: { kind: "read" } });
+    setReminderStateMutation.mutate({
+      occurrenceKey: key,
+      state: { kind: "read" },
+    });
   };
 
   const handleMarkAllRead = () => {
     const keys = items.map((i) => i.key);
+    keys.push(...closedBillAlerts.map((a) => a.key));
+    if (budgetOverrunAlert) keys.push(budgetOverrunAlert.id);
+    keys.push(...tripAndFamilyAlerts.map((a) => a.id));
     if (keys.length > 0) markAllMutation.mutate(keys);
+    for (const b of unreadBroadcasts) {
+      markBroadcastMutation.mutate(b.id);
+    }
   };
 
   const handleViewAll = () => {
@@ -139,22 +234,33 @@ export function useNotificationsPopoverData({
 
   return {
     items,
-    isLoading,
+    closedBillAlerts,
+    budgetOverrunAlert,
+    tripAndFamilyAlerts,
     unreadBroadcasts,
     unreadSupportTickets,
-    advisorAlerts,
+    pendingSplitSignals,
+    hasPastDueSubscription,
     showOnboarding,
     onboardingProg,
+    advisorAlerts,
+    dismissAdvisor,
+    dismissOnboarding,
     effectiveTotalCount,
     hasUrgent,
+    hasActionNeeded,
+    isLoading,
     markAllPending: markAllMutation.isPending,
-    dismissOnboarding: dismiss,
-    dismissAdvisor,
     handleOpenItem,
     handleOpenAdvisorAlert,
     handleOpenOnboarding,
     handleOpenBroadcast,
+    handleMarkBroadcastRead,
+    handleDismissBroadcast,
     handleOpenSupport,
+    handleOpenSplitSignal,
+    handleOpenSubscriptionPastDue,
+    handleOpenRoute,
     handleMarkRead,
     handleMarkAllRead,
     handleViewAll,

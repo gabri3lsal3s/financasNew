@@ -1,7 +1,9 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { NavigateFunction } from "react-router";
 import type { PermissionAlertBannerType } from "@/components/modules";
+import { mergeDashboardAlertDismissals } from "@/domain/overview";
 import {
+  isDailyReminderEnabled,
   isDueNotificationsEnabled,
   isNativePlatform,
   isPermissionAlertDismissed,
@@ -9,24 +11,33 @@ import {
   useBankAssistantPreferences,
   usePermissionsStatus,
 } from "@/services/native";
+import { getActiveUserId, getUserStorageKey, subscribeActiveUserId } from "@/services/user-storage";
 import { useUpdateCustomSettings, useUserAccess, useUserPreferences } from "@/state";
 import type { DashboardAlertDismissals } from "@/types";
 
 const DASHBOARD_ALERT_DISMISSALS_KEY = "financasnew:dashboard_alert_dismissals";
 
-export function loadLocalAlertDismissals(): DashboardAlertDismissals {
+function getScopedDashboardDismissalsKey(userId?: string | null): string {
+  const uid = userId !== undefined ? userId : getActiveUserId();
+  return uid ? getUserStorageKey(DASHBOARD_ALERT_DISMISSALS_KEY, uid) : DASHBOARD_ALERT_DISMISSALS_KEY;
+}
+
+export function loadLocalAlertDismissals(storageKey = getScopedDashboardDismissalsKey()): DashboardAlertDismissals {
   try {
-    const raw = typeof window !== "undefined" ? window.localStorage.getItem(DASHBOARD_ALERT_DISMISSALS_KEY) : null;
+    const raw = typeof window !== "undefined" ? window.localStorage.getItem(storageKey) : null;
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
   }
 }
 
-export function saveLocalAlertDismissals(dismissals: DashboardAlertDismissals): void {
+export function saveLocalAlertDismissals(
+  dismissals: DashboardAlertDismissals,
+  storageKey = getScopedDashboardDismissalsKey(),
+): void {
   try {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(DASHBOARD_ALERT_DISMISSALS_KEY, JSON.stringify(dismissals));
+      window.localStorage.setItem(storageKey, JSON.stringify(dismissals));
     }
   } catch {
     // noop
@@ -37,43 +48,41 @@ export function useDashboardAlertDismissals() {
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
 
-  const [localAlertDismissals, setLocalAlertDismissals] = useState<DashboardAlertDismissals>(() =>
-    loadLocalAlertDismissals(),
+  const [activeUid, setActiveUid] = useState<string | null>(() => getActiveUserId());
+  useEffect(() => subscribeActiveUserId(setActiveUid), []);
+  const storageKey = getScopedDashboardDismissalsKey(activeUid);
+
+  const [localState, setLocalState] = useState<{ key: string; value: DashboardAlertDismissals }>(() => ({
+    key: storageKey,
+    value: loadLocalAlertDismissals(storageKey),
+  }));
+
+  const effectiveLocalDismissals = useMemo(
+    () => (localState.key === storageKey ? localState.value : loadLocalAlertDismissals(storageKey)),
+    [localState, storageKey],
   );
 
   const cloudAlertDismissals = userPreferencesQuery.data?.custom_settings?.dashboardAlertDismissals;
 
   const alertDismissals = useMemo<DashboardAlertDismissals>(() => {
-    return {
-      ...cloudAlertDismissals,
-      ...localAlertDismissals,
-      goals: {
-        ...(cloudAlertDismissals?.goals ?? {}),
-        ...(localAlertDismissals?.goals ?? {}),
-      },
-    };
-  }, [cloudAlertDismissals, localAlertDismissals]);
+    return mergeDashboardAlertDismissals(cloudAlertDismissals, effectiveLocalDismissals);
+  }, [cloudAlertDismissals, effectiveLocalDismissals]);
 
   const updateAlertDismissals = useCallback(
     (updater: (prev: DashboardAlertDismissals) => DashboardAlertDismissals) => {
-      setLocalAlertDismissals((prev) => {
-        const mergedBase: DashboardAlertDismissals = {
-          ...cloudAlertDismissals,
-          ...prev,
-          goals: {
-            ...(cloudAlertDismissals?.goals ?? {}),
-            ...(prev.goals ?? {}),
-          },
-        };
+      setLocalState((prevState) => {
+        const prevLocal =
+          prevState.key === storageKey ? prevState.value : loadLocalAlertDismissals(storageKey);
+        const mergedBase = mergeDashboardAlertDismissals(cloudAlertDismissals, prevLocal);
         const next = updater(mergedBase);
-        saveLocalAlertDismissals(next);
+        saveLocalAlertDismissals(next, storageKey);
         updateCustomSettingsMutation.mutate({
           dashboardAlertDismissals: next,
         });
-        return next;
+        return { key: storageKey, value: next };
       });
     },
-    [cloudAlertDismissals, updateCustomSettingsMutation],
+    [cloudAlertDismissals, storageKey, updateCustomSettingsMutation],
   );
 
   return { alertDismissals, updateAlertDismissals };
@@ -81,7 +90,7 @@ export function useDashboardAlertDismissals() {
 
 export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
   const isNative = isNativePlatform();
-  const { postNotificationsGranted, listenerGranted, requestPostNotifications, requestNotificationListener } =
+  const { postNotificationsGranted, listenerGranted, requestPostNotifications } =
     usePermissionsStatus();
   const { preferences: bankPrefs } = useBankAssistantPreferences();
   const userPreferencesQuery = useUserPreferences();
@@ -92,35 +101,49 @@ export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
 
   const cloudDeviceNotifs = userPreferencesQuery.data?.custom_settings?.deviceNotifications;
   const dueNotificationsActive = cloudDeviceNotifs?.dueNotificationsEnabled ?? isDueNotificationsEnabled();
+  const dailyReminderActive = cloudDeviceNotifs?.dailyReminderEnabled ?? isDailyReminderEnabled();
 
+  const hasMonitoredBanks = (bankPrefs.monitoredBanks?.length ?? 0) > 0;
   const isBankListenerMissing =
-    isNative && isBankListenerAllowed && bankPrefs.passiveCaptureEnabled && !listenerGranted;
-  const isPushDueMissing = isNative && dueNotificationsActive && !postNotificationsGranted;
+    isNative &&
+    isBankListenerAllowed &&
+    bankPrefs.passiveCaptureEnabled &&
+    hasMonitoredBanks &&
+    !listenerGranted;
+  const isPushDueMissing =
+    isNative && (dueNotificationsActive || dailyReminderActive) && !postNotificationsGranted;
 
-  const [permissionAlertDismissed, setPermissionAlertDismissed] = useState(false);
+  const [dismissedSession, setDismissedSession] = useState<{
+    pushDue?: boolean;
+    passiveBankListener?: boolean;
+  }>({});
 
-  const isAlertDismissedInStorage =
+  const isBankListenerDismissed =
+    Boolean(dismissedSession.passiveBankListener) ||
     isPermissionAlertDismissed("passiveBankListener") ||
+    Boolean(cloudDeviceNotifs?.dismissedPermissionAlerts?.passiveBankListener);
+  const isPushDueDismissed =
+    Boolean(dismissedSession.pushDue) ||
     isPermissionAlertDismissed("pushDue") ||
-    Boolean(cloudDeviceNotifs?.dismissedPermissionAlerts?.passiveBankListener) ||
     Boolean(cloudDeviceNotifs?.dismissedPermissionAlerts?.pushDue);
 
+  const showBankMissing = isBankListenerMissing && !isBankListenerDismissed;
+  const showPushMissing = isPushDueMissing && !isPushDueDismissed;
+
   const shouldShowPermissionsBanner =
-    isNative &&
-    !permissionAlertDismissed &&
-    !isAlertDismissedInStorage &&
-    (isBankListenerMissing || isPushDueMissing);
+    isNative && (showBankMissing || showPushMissing);
 
   const permissionBannerType: PermissionAlertBannerType =
-    isBankListenerMissing && isPushDueMissing
+    showBankMissing && showPushMissing
       ? "both"
-      : isBankListenerMissing
+      : showBankMissing
         ? "bank_listener"
         : "push_due";
 
   const handlePermissionsBannerAction = () => {
-    if (permissionBannerType === "bank_listener") {
-      void requestNotificationListener();
+    if (permissionBannerType === "bank_listener" || permissionBannerType === "both") {
+      // Direciona para Settings > Notificações onde o Prominent Disclosure é exibido antes do Android Notification Listener
+      navigate("/configuracoes?tab=notifications");
     } else if (permissionBannerType === "push_due") {
       void requestPostNotifications();
     } else {
@@ -129,14 +152,24 @@ export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
   };
 
   const handlePermissionsBannerDismiss = () => {
-    setPermissionAlertDismissed(true);
-    setDismissedPermissionAlert("passiveBankListener", true);
-    setDismissedPermissionAlert("pushDue", true);
+    setDismissedSession((prev) => ({
+      ...prev,
+      ...(showBankMissing ? { passiveBankListener: true } : {}),
+      ...(showPushMissing ? { pushDue: true } : {}),
+    }));
+    if (showBankMissing) {
+      setDismissedPermissionAlert("passiveBankListener", true);
+    }
+    if (showPushMissing) {
+      setDismissedPermissionAlert("pushDue", true);
+    }
     updateCustomSettingsMutation.mutate({
       deviceNotifications: {
+        ...cloudDeviceNotifs,
         dismissedPermissionAlerts: {
-          pushDue: true,
-          passiveBankListener: true,
+          ...(cloudDeviceNotifs?.dismissedPermissionAlerts ?? {}),
+          ...(showPushMissing ? { pushDue: true } : {}),
+          ...(showBankMissing ? { passiveBankListener: true } : {}),
         },
       },
     });

@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from "react";
 export interface UseScrollSpyOptions {
   /** Lista ordenada de IDs das seções a monitorar. */
   sectionIds?: string[];
-  /** Offset vertical em pixels para considerar a seção ativa (padrão: 140px, cobrindo a altura do header). */
+  /** Offset vertical em pixels para considerar a seção ativa (quando omitido, adapta-se à altura da janela). */
   offset?: number;
   /** Limite de rolagem em pixels para ativar a elevação do header (padrão: 20px). */
   scrolledThreshold?: number;
@@ -24,7 +24,25 @@ export interface UseScrollSpyResult {
   resetKey: number;
 }
 
-const DEFAULT_SECTIONS = ["recursos", "simulador", "plataformas", "ferramentas", "precos", "faq"];
+const DEFAULT_SECTIONS = [
+  "ecossistema",
+  "dores",
+  "profundidade",
+  "simulador",
+  "ferramentas",
+  "precos",
+  "plataformas",
+  "faq",
+];
+
+/**
+ * Mapeia seções complementares para o item correspondente na barra de navegação principal,
+ * eliminando zonas mortas entre Simulador (#simulador + #ferramentas) e Planos (#precos + #plataformas).
+ */
+const SECTION_NAV_ALIAS: Record<string, string> = {
+  ferramentas: "simulador",
+  plataformas: "precos",
+};
 
 /**
  * Hook de monitoramento da rolagem com requestAnimationFrame.
@@ -34,7 +52,7 @@ const DEFAULT_SECTIONS = ["recursos", "simulador", "plataformas", "ferramentas",
  */
 export function useScrollSpy({
   sectionIds = DEFAULT_SECTIONS,
-  offset = 140,
+  offset,
   scrolledThreshold = 20,
   backToTopThreshold = 600,
 }: UseScrollSpyOptions = {}): UseScrollSpyResult {
@@ -50,6 +68,8 @@ export function useScrollSpy({
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const isDefaultSections = sectionIds === DEFAULT_SECTIONS;
+
     const handleScroll = () => {
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
@@ -61,7 +81,10 @@ export function useScrollSpy({
           document.documentElement.scrollHeight - document.documentElement.clientHeight;
 
         // 1. Progresso da rolagem em porcentagem inteira (0 a 100)
-        const progress = totalHeight > 0 ? Math.min(100, Math.max(0, Math.round((scrollY / totalHeight) * 100))) : 0;
+        const progress =
+          totalHeight > 0
+            ? Math.min(100, Math.max(0, Math.round((scrollY / totalHeight) * 100)))
+            : 0;
         setScrollProgress((prev) => (prev === progress ? prev : progress));
 
         // 2. Estado de rolagem do header
@@ -80,16 +103,21 @@ export function useScrollSpy({
           setResetKey((prev) => prev + 1);
         }
 
-        // 5. Detecção da seção ativa
+        // 5. Detecção da seção ativa com linha de ativação confortável ( ~35% da viewport quando padrão )
+        const effectiveOffset =
+          offset !== undefined
+            ? offset
+            : window.innerHeight > 400
+              ? Math.max(160, Math.min(340, Math.round(window.innerHeight * 0.35)))
+              : 140;
+
         let currentActive = "";
         for (const id of sectionIds) {
           const element = document.getElementById(id);
           if (element) {
             const rect = element.getBoundingClientRect();
-            // A seção é ativa se o topo dela já entrou na janela menos o offset
-            // e o fundo dela ainda não passou totalmente do topo
-            if (rect.top <= offset && rect.bottom > offset) {
-              currentActive = id;
+            if (rect.top <= effectiveOffset && rect.bottom > effectiveOffset) {
+              currentActive = isDefaultSections ? (SECTION_NAV_ALIAS[id] ?? id) : id;
               break;
             }
           }

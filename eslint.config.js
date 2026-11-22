@@ -104,6 +104,10 @@ export default tseslint.config(
     },
   },
   {
+    files: ["public/sw-push.js"],
+    languageOptions: { globals: globals.serviceworker },
+  },
+  {
     files: ["*.config.{js,ts}", "scripts/**/*.{js,mjs}"],
     languageOptions: { globals: globals.node },
   },

@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, Navigate } from "react-router";
-import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, ShieldCheck, Sparkles, Ticket } from "lucide-react";
 import {
   Alert,
   Button,
@@ -9,6 +10,7 @@ import {
   Turnstile,
   buttonVariants,
 } from "@/components/ui";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 import { cn } from "@/lib/utils";
 import { AuthShell } from "../components/auth-shell";
 import { RegisterConfirmationCard } from "../components/register-confirmation-card";
@@ -18,6 +20,14 @@ import { useRegisterForm } from "../hooks/use-register-form";
 
 export function RegisterPage() {
   const r = useRegisterForm();
+  const [showInviteField, setShowInviteField] = useState(() => Boolean(r.inviteCode));
+
+  useDocumentMeta({
+    title: "Criar Conta Grátis — Axir | 30 Dias Pro sem Cartão",
+    description:
+      "Crie sua conta gratuita no Axir com 30 dias de Acesso Pro Total sem cartão de crédito e sem senhas bancárias.",
+    canonicalPath: "/cadastro",
+  });
 
   if (r.redirectPath) {
     return <Navigate to={r.redirectPath} replace />;
@@ -74,18 +84,11 @@ export function RegisterPage() {
         ) : (
           <>
             {!r.planoParam ? (
-              <div className="flex lg:hidden rounded-xl border border-primary/40 bg-primary/5 p-3.5 items-center gap-3">
-                <div className="flex flex-col gap-0.5 min-w-0">
-                  <p className="text-xs font-semibold text-foreground">30 dias Pro grátis</p>
-                  <p className="text-[11px] text-muted-foreground">Sem cartão de crédito</p>
-                </div>
-                <Link
-                  to="/assinatura?plano=pro-anual"
-                  className={cn(buttonVariants({ size: "sm" }), "shrink-0 text-xs gap-1 ml-auto")}
-                >
-                  <span>Ver Plano Pro</span>
-                  <ArrowRight className="size-3.5" aria-hidden="true" />
-                </Link>
+              <div className="flex lg:hidden rounded-xl border border-primary/25 bg-primary/5 px-3.5 py-2.5 items-center gap-2.5 text-xs">
+                <ShieldCheck className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
+                <p className="text-foreground leading-snug">
+                  <strong>30 dias de Acesso Pro grátis</strong> · sem cartão de crédito e cancelamento em 1 clique.
+                </p>
               </div>
             ) : null}
 
@@ -104,7 +107,7 @@ export function RegisterPage() {
                     autoComplete="name"
                     value={r.name}
                     onChange={(event) => r.setName(event.target.value)}
-                    placeholder="Como quer ser chamado"
+                    placeholder="Seu nome"
                     className="text-base sm:text-sm"
                   />
                 </FormField>
@@ -131,16 +134,48 @@ export function RegisterPage() {
                 onConfirmPasswordChange={r.setConfirmPassword}
               />
 
-              <FormField label="Código de Convite" htmlFor="register-invite" optional>
-                <Input
-                  id="register-invite"
-                  type="text"
-                  value={r.inviteCode}
-                  onChange={(event) => r.setInviteCode(event.target.value.toUpperCase())}
-                  placeholder="Ex: AXIR-XXXX-XXXX"
-                  className="text-base sm:text-sm font-mono uppercase"
-                />
-              </FormField>
+              {showInviteField ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <label
+                      htmlFor="register-invite"
+                      className="text-xs font-semibold text-foreground"
+                    >
+                      Código de Convite{" "}
+                      <span className="font-normal text-muted-foreground">(opcional)</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        r.setInviteCode("");
+                        setShowInviteField(false);
+                      }}
+                      className="text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      Ocultar
+                    </button>
+                  </div>
+                  <Input
+                    id="register-invite"
+                    type="text"
+                    value={r.inviteCode}
+                    onChange={(event) => r.setInviteCode(event.target.value.toUpperCase())}
+                    placeholder="Ex: AXIR-XXXX-XXXX"
+                    className="text-base sm:text-sm font-mono uppercase"
+                  />
+                </div>
+              ) : (
+                <div className="flex justify-start">
+                  <button
+                    type="button"
+                    onClick={() => setShowInviteField(true)}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary-strong transition-colors cursor-pointer"
+                  >
+                    <Ticket className="size-3.5" aria-hidden="true" />
+                    <span>Tem um código de convite?</span>
+                  </button>
+                </div>
+              )}
 
               <div className="flex items-start gap-2.5 pt-1">
                 <Checkbox

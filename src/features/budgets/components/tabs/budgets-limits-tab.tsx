@@ -1,6 +1,7 @@
-import { PiggyBank, Plus, Target } from "lucide-react";
+import { Compass, PiggyBank, Plus, Target } from "lucide-react";
 import { Button, EmptyState, Skeleton } from "@/components/ui";
 import { MonthPicker } from "@/components/modules";
+import { startDemo } from "@/state/demo-mode";
 import type { Category } from "@/types";
 import { BudgetCategoryRow, type BudgetCategoryRowData } from "../budget-category-row";
 import { BudgetsLimitsSummaryCard } from "./budgets-limits-summary-card";
@@ -137,17 +138,29 @@ export function BudgetsLimitsTab({
               : "Defina um limite mensal por categoria de despesa para acompanhar os gastos ou crie uma nova categoria."
           }
           action={
-            categoriesCount > 0 ? (
-              <Button size="sm" sensoryIntent="selection" onClick={onToggleShowAllCategories} className="gap-1.5">
-                <Target className="size-4" aria-hidden="true" />
-                Definir limites por categoria
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {categoriesCount > 0 ? (
+                <Button size="sm" sensoryIntent="selection" onClick={onToggleShowAllCategories} className="gap-1.5">
+                  <Target className="size-4" aria-hidden="true" />
+                  Definir limites por categoria
+                </Button>
+              ) : (
+                <Button size="sm" onClick={onOpenCreateCategory} className="gap-1.5">
+                  <Plus className="size-4" aria-hidden="true" />
+                  Nova categoria
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => startDemo("finances_budgets")}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Compass className="size-4" aria-hidden="true" />
+                <span>Ver exemplo na Simulação</span>
               </Button>
-            ) : (
-              <Button size="sm" onClick={onOpenCreateCategory} className="gap-1.5">
-                <Plus className="size-4" aria-hidden="true" />
-                Nova categoria
-              </Button>
-            )
+            </div>
           }
         />
       ) : (

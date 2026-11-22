@@ -1,16 +1,17 @@
 import { useMemo, useState } from "react";
 import { getPublicShareUrl } from "@/services/app-url";
+import { copyTextToClipboard } from "@/services/export-actions";
 import { formatCentsAsBRL } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import {
+  useApplySplitSettlement,
   useDebts,
   useMyPublicShares,
   useSettleIntegratedReceivable,
-  useUpdatePublicShare,
 } from "@/state";
 import type { PublicShare, SplitSharePayload } from "@/types";
-import { buildAndSortActiveSplits, buildSettledSplitSharePayload } from "./active-splits-mappers";
+import { buildAndSortActiveSplits } from "./active-splits-mappers";
 import type {
   ActiveSplitItem,
   GeneratingShareTarget,
@@ -23,7 +24,7 @@ export function useActiveSplits(month?: string) {
   const { data: shares, isLoading: isLoadingShares } = useMyPublicShares("split");
   const { data: debts, isLoading: isLoadingDebts } = useDebts();
   const settleMutation = useSettleIntegratedReceivable();
-  const updateShareMutation = useUpdatePublicShare();
+  const applySplitSettlement = useApplySplitSettlement();
 
   const [currentBlock, setCurrentBlock] = useState(0);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
@@ -47,6 +48,26 @@ export function useActiveSplits(month?: string) {
       return;
     }
 
+    if (item.share) {
+      try {
+        await applySplitSettlement.mutateAsync({
+          share: item.share,
+          action: { type: "settle_all" },
+          linkedDebt: item.linkedDebt,
+        });
+        triggerSensory("success");
+        pushToast({
+          title: "Racha marcado como recebido!",
+          description: "Os pagamentos foram confirmados e sua despesa considera apenas sua parte.",
+          variant: "success",
+        });
+      } catch {
+        triggerSensory("destructive");
+        pushToast({ title: "Não foi possível dar baixa no racha", variant: "destructive" });
+      }
+      return;
+    }
+
     if (!item.linkedDebt) {
       triggerSensory("warning");
       pushToast({
@@ -59,17 +80,6 @@ export function useActiveSplits(month?: string) {
 
     try {
       await settleMutation.mutateAsync({ debtId: item.linkedDebt.id, result: item.hostShareCents / 100 });
-
-      // Ao finalizar/arquivar o racha, cancela automaticamente a página pública
-      if (item.share) {
-        const nextPayload = buildSettledSplitSharePayload(item, new Date().toISOString());
-        await updateShareMutation.mutateAsync({
-          id: item.share.id,
-          payload: nextPayload as unknown as Record<string, unknown>,
-          isRevoked: true,
-        });
-      }
-
       triggerSensory("success");
       pushToast({
         title: "Racha marcado como recebido!",
@@ -84,20 +94,16 @@ export function useActiveSplits(month?: string) {
 
   const handleCopyLink = async (share: PublicShare) => {
     const url = getPublicShareUrl(`r/${share.token}`);
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(url);
-        setCopiedToken(share.token);
-        triggerSensory("selection");
-        pushToast({
-          title: "Link do racha copiado!",
-          description: "Envie aos amigos para copiar o Pix.",
-          variant: "default",
-        });
-        setTimeout(() => setCopiedToken(null), 2500);
-      } catch {
-        // Fallback silencioso
-      }
+    const ok = await copyTextToClipboard(url);
+    if (ok) {
+      setCopiedToken(share.token);
+      triggerSensory("selection");
+      pushToast({
+        title: "Link do racha copiado!",
+        description: "Envie aos amigos para copiar o Pix.",
+        variant: "default",
+      });
+      setTimeout(() => setCopiedToken(null), 2500);
     }
   };
 
@@ -127,7 +133,7 @@ export function useActiveSplits(month?: string) {
     copiedToken,
     managingItem,
     generatingShareFor,
-    isSettlePending: settleMutation.isPending || updateShareMutation.isPending,
+    isSettlePending: settleMutation.isPending || applySplitSettlement.isPending,
     setCurrentBlock,
     setUserExpanded,
     setManagingItem,

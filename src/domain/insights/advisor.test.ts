@@ -78,7 +78,7 @@ describe("generateSmartAdvisorInsights", () => {
     });
 
     expect(insights).toHaveLength(1);
-    expect(insights[0]?.priority).toBe(1);
+    expect(insights[0]?.priority).toBe(2);
     expect(insights[0]?.category).toBe("critical");
     expect(insights[0]?.title).toBe("Conta pendente no mês");
     expect(insights[0]?.primaryAction?.kind).toBe("register_expense");
@@ -619,8 +619,8 @@ describe("filterAndRankAdvisorInsights", () => {
 
     const annualInsight = insights.find((i) => i.id === "annual:ipva");
     expect(annualInsight).toBeDefined();
-    expect(annualInsight?.priority).toBe(1);
-    expect(annualInsight?.category).toBe("critical");
+    expect(annualInsight?.priority).toBe(3);
+    expect(annualInsight?.category).toBe("savings");
     expect(annualInsight?.title).toBe("Compromisso anual previsto");
     expect(annualInsight?.description).toBe(
       "No ano passado você pagou R$ 1.850,00 de IPVA em Janeiro. Deseja provisionar este valor?",
@@ -728,6 +728,47 @@ describe("filterAndRankAdvisorInsights", () => {
     expect(setInsight?.category).toBe("income");
     expect(setInsight?.description).toContain("450,00 a receber de Mariana");
     expect(setInsight?.primaryAction?.kind).toBe("open_family_settlement");
+  });
+
+  it("classifica acerto familiar pendente como critical/alert-triangle (nunca income) quando usuário é pagador", () => {
+    const insights = generateSmartAdvisorInsights({
+      occurrences: [],
+      todayISO: "2026-10-28",
+      currentUserId: "user-2",
+      household: {
+        family: { id: "fam-1", name: "Família Silva", owner_id: "user-1", monthly_budget_cents: 500000, split_rule: "equal" },
+        month: "2026-10",
+        monthly_ceiling_cents: 500000,
+        total_spent_cents: 300000,
+        total_income_cents: 800000,
+        remaining_cents: 200000,
+        spent_percentage: 60,
+        members: [],
+        expenses: [],
+        is_settled: false,
+        settlement: {
+          id: "set-1",
+          month: "2026-10",
+          payer_id: "user-2",
+          payer_name: "Mariana",
+          receiver_id: "user-1",
+          receiver_name: "Gabriel",
+          amount_cents: 45000,
+          settled_at: "2026-10-28",
+          payment_method: "pix",
+          notes: null,
+          created_at: "2026-10-28",
+        },
+        has_post_settlement_expenses: false,
+      },
+    });
+
+    const setInsight = insights.find((i) => i.id === "household:settlement_pending");
+    expect(setInsight).toBeDefined();
+    expect(setInsight?.priority).toBe(2);
+    expect(setInsight?.category).toBe("critical");
+    expect(setInsight?.iconName).toBe("alert-triangle");
+    expect(setInsight?.description).toContain("450,00 pendente para Gabriel");
   });
 
   it("gera insight de prioridade 2 (Entrada) para meta de receita em atraso no fim do mês", () => {

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import * as nativeServices from "@/services/native";
 import { RemindersSettingsModal } from "./reminders-settings-modal";
 
 const mockUpdateReminderPreferences = vi.fn();
@@ -39,8 +40,15 @@ vi.mock("@/services/native", () => ({
   setDueNotificationsEnabled: vi.fn(),
   getDailyReminderTime: vi.fn(() => "20:00"),
   setDailyReminderTime: vi.fn(),
-  scheduleDailyReminder: vi.fn(() => Promise.resolve(true)),
+  isRemotePushEnabled: vi.fn(() => false),
+  setRemotePushEnabled: vi.fn(),
+  getQuietHoursConfig: vi.fn(() => ({ enabled: true, start: "22:00", end: "08:00" })),
+  setQuietHoursConfig: vi.fn((patch) => ({ enabled: true, start: "22:00", end: "08:00", ...patch })),
+  scheduleDailyReminder: vi.fn(() => Promise.resolve(false)),
   cancelDailyReminder: vi.fn(() => Promise.resolve()),
+  clearAllDueNotifications: vi.fn(() => Promise.resolve()),
+  dispatchLocalOrWebNotification: vi.fn(() => Promise.resolve(true)),
+  isNativePlatform: vi.fn(() => true),
   usePermissionsStatus: vi.fn(() => ({
     postNotificationsGranted: true,
     listenerGranted: true,
@@ -60,6 +68,7 @@ vi.mock("@/services/toast", () => ({
 describe("RemindersSettingsModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(nativeServices.isNativePlatform).mockReturnValue(true);
   });
 
   it("renderiza o modal quando aberto com títulos e seletores de antecedência", () => {
@@ -71,6 +80,8 @@ describe("RemindersSettingsModal", () => {
     expect(screen.getByText("Antecedência para Dívidas")).toBeInTheDocument();
     expect(screen.getByText("Notificações de Contas no Dispositivo")).toBeInTheDocument();
     expect(screen.getByText("Lembrete de Fechamento Diário")).toBeInTheDocument();
+    expect(screen.getByText("Horário Silencioso")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Enviar notificação de teste/i })).toBeInTheDocument();
   });
 
   it("permite fechar através do botão Concluir", async () => {
@@ -97,5 +108,16 @@ describe("RemindersSettingsModal", () => {
     expect(mockUpdateReminderPreferences).toHaveBeenCalledWith({
       remindersEnabled: false,
     });
+    expect(nativeServices.clearAllDueNotifications).toHaveBeenCalledTimes(1);
+  });
+
+  it("sinaliza transparência na Web sobre disponibilidade do lembrete diário no App Android", () => {
+    vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
+    render(<RemindersSettingsModal open={true} onOpenChange={vi.fn()} />);
+
+    expect(screen.getByText("Disponível no App Android")).toBeInTheDocument();
+    expect(
+      screen.getByText(/navegadores Web não executam alarmes offline/i),
+    ).toBeInTheDocument();
   });
 });

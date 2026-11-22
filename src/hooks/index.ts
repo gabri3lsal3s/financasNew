@@ -44,5 +44,9 @@ export type {
   DetectedPixTransaction,
   UsePixClipboardDetectorResult,
 } from "./use-pix-clipboard-detector";
+export {
+  useNotificationCenter,
+  type UseNotificationCenterResult,
+} from "./use-notification-center";
 
 

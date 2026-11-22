@@ -9,6 +9,7 @@
  */
 
 import {
+  decodePixBrCode,
   detectPixKeyType,
   generatePixBrCode,
   sanitizeMerchantText,
@@ -103,7 +104,11 @@ export function buildPixTransferCode(options: BuildPixTransferCodeOptions): stri
       postalCode: options.postalCode ?? undefined,
     });
 
-    return validatePixBrCode(payload) ? payload : null;
+    if (!validatePixBrCode(payload)) {
+      return null;
+    }
+    const decoded = decodePixBrCode(payload);
+    return decoded && decoded.isValidCrc && decoded.pixKey.length > 0 ? payload : null;
   } catch {
     return null;
   }

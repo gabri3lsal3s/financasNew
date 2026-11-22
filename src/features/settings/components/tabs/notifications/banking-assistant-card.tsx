@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router";
-import { CreditCard, Download, Zap } from "lucide-react";
+import { CreditCard, Download, Info, Zap } from "lucide-react";
 import {
   Badge,
   Button,
@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui";
+import { HOMOLOGATED_INSTITUTIONS } from "@/domain/notifications";
 import { shouldOfferAndroidApk } from "@/services/native/app-links";
 import { BankingAssistantOptions } from "./banking-assistant-options";
 import { BankingCatalogAccordion } from "./banking-catalog-accordion";
@@ -51,7 +52,7 @@ export function BankingAssistantCard() {
     }
 
     return (
-      <Card>
+      <Card className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
             <CardTitle className="text-base flex items-center gap-2 min-w-0">
@@ -75,7 +76,7 @@ export function BankingAssistantCard() {
                   Leitura Automática de Comprovantes Pix e Notificações de Cartão
                 </h4>
                 <p className="text-xs text-muted-foreground max-w-xl leading-relaxed">
-                  Disponível através do Aplicativo Android Pro. Ele escuta notificações de mais de 20 bancos e sugere o lançamento imediatamente com um único toque, com 100% de privacidade local no celular.
+                  Disponível através do Aplicativo Android Pro. Ele escuta notificações de {HOMOLOGATED_INSTITUTIONS.length} instituições financeiras e sugere o lançamento imediatamente com um único toque, com 100% de privacidade local no celular.
                 </p>
               </div>
 
@@ -100,7 +101,7 @@ export function BankingAssistantCard() {
 
   return (
     <>
-      <Card>
+      <Card className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
           <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
             <CardTitle className="text-base flex items-center gap-2 min-w-0">
@@ -140,6 +141,23 @@ export function BankingAssistantCard() {
 
           {bankPrefs.passiveCaptureEnabled ? (
             <>
+              {listenerGranted && bankPrefs.monitoredBanks.length === 0 ? (
+                <div className="flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning/5 p-3 text-xs text-muted-foreground">
+                  <Info
+                    className="size-4 text-warning-strong shrink-0 mt-0.5"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-foreground block">
+                      Nenhuma instituição selecionada no momento
+                    </span>
+                    <span className="text-[11px] leading-relaxed">
+                      Marque pelo menos um banco ou carteira abaixo para iniciar a captura automática no Android.
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+
               <InstalledBankingAppsSection
                 installedBanks={installedBanks}
                 installedApps={installedApps}

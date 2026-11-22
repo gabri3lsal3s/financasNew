@@ -16,7 +16,7 @@ export function RemindersCard() {
   return (
     <Card data-tour="settings-notifications-card" className="border-border/80 bg-surface shadow-xs">
       <CardHeader className="pb-3.5">
-        <CardTitle className="text-base font-semibold flex items-center justify-between gap-2">
+        <CardTitle className="text-base font-semibold flex flex-wrap items-center justify-between gap-2">
           <span className="flex items-center gap-2 min-w-0">
             <Bell className="size-4 text-muted-foreground" aria-hidden="true" />
             <span>Lembretes &amp; Notificações</span>
@@ -27,7 +27,7 @@ export function RemindersCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <RemindersPreferencesForm />
+        <RemindersPreferencesForm sections="in-app" />
       </CardContent>
     </Card>
   );

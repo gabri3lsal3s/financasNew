@@ -46,6 +46,7 @@
 │   ├── design/                    # Identidade visual, tokens e regras de interface
 │   │   └── DESIGN_SYSTEM.md       #   Tokens, componentes, regras DRY e ergonomia
 │   ├── platforms/                 # Guias de plataformas, distribuição e deploy
+│   │   ├── CONFIGURACAO_STACKS_E_PASSOS_MANUAIS.md # Inventário de configuração ativa + passos manuais (Cloudflare, Supabase, Resend, FCM)
 │   │   ├── DEPLOYMENT.md          #   Deploy (Cloudflare Pages + Supabase), env vars e DNS
 │   │   ├── NATIVE_DISTRIBUTION_GUIDE.md # Android nativo, keystore e in-app updater via R2
 │   │   ├── PWA_GUIDELINES.md      #   Requisitos PWA (manifest, SW, instalação)
@@ -88,6 +89,7 @@
 │   │   ├── 04_PLANO_EXPANSAO_APRESENTACAO_E_TOUR_GUIADO.md
 │   │   └── 05_PLANO_FECHAMENTO_AUTOMATICO_SNAPSHOTS_E_COTACAO.md
 │   ├── diagnostics/               # Diagnósticos técnicos e relatórios de avaliação arquitetural
+│   │   ├── AUDITORIA_COMPLETA_NOTIFICACOES_E_LEMBRETES.md # Auditoria profunda, arquitetura e remediação de notificações (v3.16.0)
 │   │   └── DIAGNOSTICO_SEGURANCA_PERFORMANCE_ESCALA.md # Diagnóstico de concorrência, velocidade e blindagem
 │   └── reports/                   # Relatórios de auditoria e logs de homologação (.gitkeep)
 │
@@ -95,6 +97,7 @@
 │   ├── favicon.ico / favicon.svg  # Multi-resolução (16, 32, 48) e SVG transparente
 │   ├── brand/                     # Assets oficiais da marca (logo.png, logo-128, favicon-32, favicon.svg, logo-full)
 │   ├── offline.html               # Fallback offline (raiz)
+│   ├── sw-push.js                 # Handler Service Worker para Push Remoto Web (VAPID) e notificationclick
 │   ├── _headers                   # Políticas de cache e segurança Cloudflare Pages
 │   ├── robots.txt / sitemap.xml   # Indexação pública e descoberta de rotas canônicas
 │   ├── llms.txt / llms-full.txt   # Documentação canônica para agentes de IA (llms.txt)
@@ -120,6 +123,7 @@
 │   ├── deploy-quotes.mjs          #   Deploy e cron da edge function de cotações
 │   ├── generate-icons.mjs         #   Gerador de ícones e favicons
 │   ├── generate-play-protect-appeal.ts # Extrator de fingerprints SHA-256 e gerador de dossiê para apelação do Play Protect (npm run playprotect:info)
+│   ├── notifications-cron.mjs     #   Gerador de SQL idempotente do pg_cron para billing-lifecycle-cron e sunday-digest (npm run notifications:cron)
 │   ├── preflight-check.ts         #   Diagnóstico pré-voo automatizado de prontidão operacional e produção (7 dimensões, npm run preflight)
 │   └── upload-r2.mjs              #   Upload de APKs compilados e manifestos version.json para o Cloudflare R2
 │
@@ -128,9 +132,12 @@
 │   └── mockups/                   #   Mockups promocionais e prévias da interface
 │
 ├── supabase/                      # Backend — ver ESPECIFICAÇÃO §2 (migrations versionadas)
-│   ├── migrations/                # 0001..0060_support_tickets.sql
+│   ├── migrations/                # 0001..0138_harden_notifications_broadcasts_and_lifecycle.sql
 │   │                              # (schema, RLS estrito com is_current_user_active, triggers,
-│   │                              # RPCs transacionais, backend feature flag enforcement, expurgo atômico de contas, tickets de suporte)
+│   │                              # RPCs transacionais, backend feature flag enforcement, expurgo atômico de contas, 0060_support_tickets.sql,
+│   │                              # user_push_subscriptions/push_delivery_logs 0136, weekly_digest_enabled opt-in 0137, FORCE RLS e hardening 0138)
+│   ├── notifications-cron.sql     # SQL idempotente do pg_cron para billing-lifecycle-cron e sunday-digest
+│   ├── quotes-cron.sql            # SQL idempotente do pg_cron para atualização periódica de cotações
 │   ├── tests/                     # Testes pgTAP para execução contra banco Postgres real (supabase test db)
 │   │   └── database/              #   01_rls_and_rollback.test.sql (auditoria pgTAP de RLS e rollback atômico)
 │   └── functions/                 # Edge functions (runtime Deno — fora do bundle Vite)
@@ -141,6 +148,10 @@
 │       ├── quotes/index.ts        #   Edge function de cotações: fetch Yahoo em cascata +
 │       │                          #   upsert do cache global asset_prices (auth por service role)
 │       ├── support-notify/index.ts #  Edge function de suporte: despacho de tickets ao bot Telegram do fundador
+│       ├── push-dispatcher/index.ts # Dispatcher híbrido de Push Remoto (Web Push VAPID + FCM HTTP v1 com Quiet Hours/idempotência)
+│       ├── sunday-digest/index.ts # Resumo semanal dominical opt-in via Resend (+ push remoto opcional)
+│       ├── billing-lifecycle-cron/index.ts # Reconciliação SaaS e aviso de fim de trial (janela 48h–76h com idempotência)
+│       ├── admin-super-action/index.ts # Operações privilegiadas de superadmin (provisionamento e ajustes Asaas)
 │       ├── asaas-checkout/index.ts #  Criação de clientes e cobranças Pix/Cartão via Asaas
 │       ├── asaas-manage/index.ts  #   Cancelamento e gestão de assinaturas no Asaas
 │       └── asaas-webhook/index.ts #   Webhook idempotente de processamento de pagamentos Asaas
@@ -170,7 +181,7 @@
     │   │   └── index.ts
     │   ├── modules/               # Componentes de DOMÍNIO reutilizáveis: kpi-card, cash-kpi-card,
     │   │   │                      #   portfolio/ (position-types, position-table-header, subcomponentes F57),
-    │   │   │                      #   subscription/ (subscription-badge, upgrade-dialog, checkout-sheet),
+    │   │   │                      #   subscription/ (subscription-badge, upgrade-dialog, trial-ending-banner, read-only-banner, subscription-past-due-banner),
     │   │   │                      #   category-icon(+icons), month-picker, year-picker, transaction-row,
     │   │   │                      #   budget-progress-bar, debt-status-badge,
     │   │   │                      #   invoice-status-badge, onboarding-banner, pwa-update-toast,
@@ -194,6 +205,9 @@
     │   │   │                      #   emergency-thermometer (Reserva de Emergência e Autonomia),
 │   │   │                      #   emergency-fund-config-dialog (Modal de configuração da composição e parâmetros da Reserva de Emergência),
     │   │   │                      #   help-modal (Central de Ajuda, FAQ e atalhos para modo simulação),
+    │   │   │                      #   virgin-account-hero (Fase 1 do onboarding inline na Home com 3 focos e tour de 1 min),
+    │   │   │                      #   onboarding-carousel-banner (Fase 2 do onboarding no carrossel da Home),
+    │   │   │                      #   onboarding-banner, overview/onboarding-checklist-modal,
     │   │   │                      #   welcome-modal, demo-track-select-modal, demo-tour-spotlight,
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes),
     │   │   │                      #   cash-kpi-card (card exclusivo de saldo em Caixa & Liquidez com variantes banner e card),
@@ -219,7 +233,8 @@
     │   │                          #     components/ (category-breakdown-dialog, other-budgets-dialog),
     │   │                          #     hooks/ (use-smart-advisor-insights.ts, use-overview-data.ts — queries e derivações da Home)
     │   ├── transactions/          #   Transações (swipe-to-action F8) + wizard de lançamento + reconciliação de extratos
-    │   │                          #     pages/ (share-receipt-page.tsx), wizard/ (step-quick.tsx — lançamento rápido em 1 tela)
+    │   │                          #     pages/ (share-receipt-page.tsx), wizard/ (step-quick.tsx — lançamento rápido em 1 tela),
+    │   │                          #     components/split/ (split-expense-dialog, manage-split-dialog, split-edit-tab, split-public-config-tab)
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
     │   │                          #     components/ (card-invoice-expenses-feed, card-invoice-payments-feed — extratos extraídos da página)
     │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72, debts-page-demo.test.tsx)
@@ -234,8 +249,8 @@
     │   │                          #     hooks/ (use-reports-data.ts — agregações, DRE, carteira, indicadores e exportação)
     │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
-    │   ├── reminders/             #   Lembretes (central de notificações)
-    │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas: Minha Conta & Identidade (AccountTab), Aparência & Identidade Visual, Notificações & Automações, Segurança & Gestão de Dados, Plano & Assinatura, Dispositivos & App (App Pro)
+    │   ├── reminders/             #   Central unificada de notificações & preferências (hooks/use-notification-preferences-form, prefs/{InAppRemindersPrefsCard,DueNotificationsPrefsCard,DailyClosingReminderCard,RemotePushPrefsCard,QuietHoursPrefsCard})
+    │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas (incluindo notifications-tab em 4 blocos: reminders-card, device-push-card, banking-assistant-card, email-digest-prefs-card)
     │   ├── admin/                 #   Módulo Administrativo SaaS Isolado (/admin/login, /admin/*)
     │   │                          #     layouts/ (admin-shell), components/ (user-edit-dialog, feature-toggle-card, telegram-settings-card, ticket-manage-dialog)
     │   │                          #     pages: admin-login-page, admin-dashboard-page, admin-users-page, admin-billing-page,
@@ -261,9 +276,14 @@
     │   │
     │   ├── auth/                  #   Autenticação e Recuperação de Senha (/entrar, /cadastro, /recuperar-senha, /redefinir-senha)
     │   │                          #     pages: login-page, register-page, forgot-password-page, reset-password-page
-    │   │                          #     components: auth-shell, invite-code-input
-    │   ├── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /landing)
-    │                              #     com simulador FIRE interativo, showcase, platform-comparison (Tripé Web, PWA e Android Pro), pricing, FAQ, scroll-reveal, scroll-spy e back-to-top
+    │   │                          #     components: auth-shell, register-side-hero, login-side-hero, invite-code-input
+    │   ├── onboarding/            #   Orquestração de boas-vindas e foco inicial (welcome-modal, use-initial-onboarding)
+    │   ├── demo-tour/             #   Spotlight guiado e catálogo de 19 trilhas (demo-tour-spotlight, demo-track-select-modal, track-option-card)
+    │   ├── landing/               #   Landing Page pública de apresentação & planos (/apresentacao, /precos, /planos, /landing)
+    │                              #     components: hero-section, unified-ecosystem-section (Bento 6 pilares),
+    │                              #       financial-pain-points-section + pain-previews/ (caixa, captura, dívidas, investimentos),
+    │                              #       deep-dive-tabs-section + deep-dive-previews/ (valuation, carteira, 7 relatórios A4, radar & privacidade),
+    │                              #       minimal-wealth-simulator, tools-showcase, pricing-section, platform-comparison, faq-section, final-cta-section
     │
     │   ├── legal/                 #   Páginas Legais e Regulatórias (/termos, /privacidade, LGPD, Decreto 7.962/2013)
     │   │                          #     pages: terms-page, privacy-page (com pages/index.ts)
@@ -294,15 +314,18 @@
     │   ├── trips/                 #   Modo Viagem: motor puro de rateios proporcionais e simplificação de dívidas via grafo líquido (trip-math.ts) e prestação de contas executiva (trip-reporting.ts)
     │   ├── family/                #   Modo Família Colaborativo: category-clustering.ts (agrupamento e semântica de categorias da casa), reconciliation.ts e settlement.ts
     │   ├── share/                 #   tokens públicos URL-safe (token.ts), motor de serialização stateful URL comprimida (stateful-url.ts) e transporte de simulação (simulation-transport.ts)
-    │   ├── finance/               #   motor puro de rateio de despesas e divisão equitativa em centavos (split-math.ts, balanceamento de sobra)
-    │   ├── pix/                   #   motor puro de Pix Copia e Cola padrão BACEN (pix-br-code.ts, CRC16-CCITT 0x1021, normalização)
+    │   ├── finance/               #   motor puro de rateio e reconciliação de despesas em centavos (split-math.ts, split-reconciliation.ts)
+    │   ├── pix/                   #   motor puro de Pix Copia e Cola e validação estrita padrão BACEN (pix-br-code.ts, pix-key-validation.ts, build-pix-transfer-code.ts)
     │   ├── validation/            #   validação pura e defensiva com Zod: sanitization.ts (XSS/control chars/money limits), password.ts, cpf.ts
     │   ├── admin/                 #   F43: RBAC, hierarquia de papéis, resolução de Feature Flags, schemas.ts e validação de convites
     │   ├── navigation/            #   F43: Resolução dinâmica de slots BottomNav e rota de fallback (landing route)
     │   ├── onboarding/            #   checklist/progresso do primeiro uso (F5.4)
     │   ├── theme/                 #   motor puro de resolução de tema (light/dark/oled/system/schedule), janela diurna e parsing HH:mm
     │   ├── demo-simulation/       # datasets sintéticos puros em memória, trilhas (finanças/investimentos), passos do tour e hand-off contextual (handoff.ts)
-    │   ├── notifications/         #   Parsing puro de notificações bancárias, comprovantes e área de transferência:
+    │   ├── notifications/         #   Motor do Notification Hub (hub/{types.ts,event-detectors.ts,build-notification-center.ts,index.ts} —
+    │   │                          #     classificação P0–P3, deduplicação por entityRefs, fechamento de fatura opt-in, estouro consolidado de orçamento, viagens/família e sinais Pix em rachas) +
+    │   │                          #     Agendamento híbrido & Quiet Hours (schedule.ts) + Catálogo unificado 40 instituições (preferences.ts + bank-catalog-parity.test.ts) +
+    │   │                          #     Parsing puro de notificações bancárias, comprovantes e área de transferência:
     │   │                          #     pix-clipboard.ts (cascateamento multiformato: EMV, texto livre, comprovante universal),
     │   │                          #     pix-text-parser.ts (parser puro de chaves, links e mensagens com valor),
     │   │                          #     pix-emv-parser.ts (decodificador EMV QRCPS tag 26 e 62), merchant-memory.ts (aprendizado com pixKeys),
@@ -375,6 +398,7 @@
     │   ├── repositories/          #   expenses.ts, incomes.ts, cards.ts, debts.ts, trips.ts,
     │   │                          #   budgets.ts, portfolio.ts, portfolio-monthly-prices.ts (F51: cotações mensais auditadas), categories.ts,
     │   │                          #   public-shares.ts (links públicos, tokens criptográficos, rateio Pix e orçamentos familiares),
+    │   │                          #   push-subscriptions.ts (inscrições Web Push VAPID e tokens FCM multi-dispositivo),
     │   │                          #   billing.ts (adaptadores agnósticos Stripe/Asaas, checkout e portal de faturamento),
     │   │                          #   subscriptions.ts (status SaaS, planos e gestão administrativa de permissões modulares),
     │   │                          #   support-tickets.ts (registro de tickets de suporte, feedback, respostas e despacho ao Telegram),
@@ -399,6 +423,7 @@
     │   ├── cache-policy.ts        #   F23: STALE_TIMES/gcTime por tipo de dado
     │   │                          #     (estático 5 min, analítico, cotações, transacional)
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), useMacroIndicators (CDI/Selic BCB), use-trips.ts,
+    │   │                          #     use-push-subscriptions.ts (inscrições de Push Remoto do usuário),
     │   │                          #     use-emergency-fund-composition.ts (composição dinâmica da reserva de emergência),
     │   │                          #     use-insight-feedback.ts (aprendizado do usuário com persistência e atualização otimista),
     │   │                          #     use-range-queries.test.tsx (cancelamento cooperativo via AbortSignal),
@@ -412,7 +437,7 @@
     │   │   │   ├── use-portfolio-dividend-mutations.ts
     │   │   │   ├── use-portfolio-order-mutations.ts
     │   │   │   └── index.ts
-    │   │   ├── use-expense-mutations.ts, use-card-mutations.ts…
+    │   │   ├── use-expense-mutations.ts, use-card-mutations.ts, use-split-sync-mutations.ts, use-push-subscription-mutations.ts…
     │   │                          #      use-profile-mutations — atualização de perfil/nome)
     │   │                          #   optimistic-cache.ts (F30 — helpers de snapshot/
     │   │                          #     rollback e updaters das listas em cache)
@@ -427,13 +452,15 @@
     │                              #   use-dynamic-favicon, use-dynamic-app-icon (sincronização de marca e ícone no Launcher),
     │                              #   use-container-scroll (monitoramento cirúrgico de rolagem a 120fps sem re-render),
     │                              #   use-pix-clipboard-detector (detecção reativa e passiva de Pix com valor no clipboard sem polling e sem poluição visual),
+    │                              #   use-notification-center (Notification Hub unificado para Sininho, Popover, Sidebar, BottomNav e /lembretes),
     │                              #   use-route-prefetch (F23 — chunks das rotas vizinhas),
     │                              #   use-document-meta (SEO por rota: title, description, canonical e OG)…)
     ├── services/                  # Apresentação + integrações
     │   ├── native/                #   Gateway nativo (Capacitor/Android): platform, back-button,
     │   │                          #     status-bar, haptics, splash-screen, biometrics, privacy-shield, app-lock,
-    │   │                          #     deep-links, local-notifications, suggestions-store, bank-listener, app-icon,
+    │   │                          #     deep-links, local-notifications, interactive-notifications, suggestions-store, bank-listener, app-icon,
     │   │                          #     update-checker, update-schema, ocr-receipt-parser (OCR local com Tesseract.js)
+    │   ├── push/                  #   Cliente Web Push VAPID do PWA (web-push.ts — PushManager, VAPID base64url, unsubscribe)
     │   ├── merchant-learning.ts   #   Motor semântico de estabelecimentos (normalização fonética, predição e aprendizado)
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR, CPF)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,
@@ -553,8 +580,8 @@ src/features/transactions/
 | Tipo/contrato de domínio | `src/types/` |
 | Cor, fonte, raio, sombra | `src/styles/tokens.css` — **nunca** em componente |
 | Manifest, ícone, splash, offline | `public/pwa/` |
-| Script operacional fora do bundle (deploy/cron de edge function) | `scripts/` (ex.: `deploy-quotes.mjs`) |
-| SQL de operação manual (cron da edge function de cotações) | `supabase/quotes-cron.sql` |
+| Script operacional fora do bundle (deploy/cron de edge function) | `scripts/` (ex.: `deploy-quotes.mjs`, `notifications-cron.mjs`) |
+| SQL de operação manual (`pg_cron` de cotações e notificações) | `supabase/quotes-cron.sql` e `supabase/notifications-cron.sql` |
 | Nova documentação | `docs/<UPPER_SNAKE_CASE>.md` |
 | Roadmap canônico e histórico de fases | `docs/ROADMAP.md` (Fases consolidadas de 0 a 91+) |
 | Motor puro de gestos (axis-lock, thresholds, flick, resistência de borda) | `src/domain/gestures/` (ex.: `swipe.ts` — F20) |

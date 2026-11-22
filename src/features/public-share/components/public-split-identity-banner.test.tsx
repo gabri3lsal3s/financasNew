@@ -37,7 +37,7 @@ describe("PublicSplitIdentityBanner", () => {
   });
 
   describe("Estado 1: Sem identidade ativa", () => {
-    it("renderiza título 'Quem é você neste racha?' e botões dos participantes", () => {
+    it("renderiza título 'Quem é você neste racha?' e exibe apenas convidados (exclui o anfitrião)", () => {
       render(
         <PublicSplitIdentityBanner
           token="test-token"
@@ -53,8 +53,8 @@ describe("PublicSplitIdentityBanner", () => {
         )
       ).toBeInTheDocument();
 
-      expect(screen.getByRole("button", { name: /Gabriel Sales/i })).toBeInTheDocument();
-      expect(screen.getByText("(Organizador)")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Gabriel Sales/i })).not.toBeInTheDocument();
+      expect(screen.queryByText("(Organizador)")).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Mariana" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Lucas" })).toBeInTheDocument();
     });
@@ -96,7 +96,7 @@ describe("PublicSplitIdentityBanner", () => {
       expect(screen.getByRole("button", { name: /Alterar/i })).toBeInTheDocument();
     });
 
-    it("exibe '(Organizador)' se o participante ativo for o anfitrião", () => {
+    it("ignora activeParticipantId do anfitrião e não permite identificá-lo como pagador", () => {
       render(
         <PublicSplitIdentityBanner
           token="test-token"
@@ -106,7 +106,36 @@ describe("PublicSplitIdentityBanner", () => {
         />
       );
 
-      expect(screen.getByText(/Você é Gabriel Sales \(Organizador\)/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Você é Gabriel Sales/i)).not.toBeInTheDocument();
+      expect(screen.getByText("Quem é você neste racha?")).toBeInTheDocument();
+    });
+
+    it("auto-exibe o único convidado quando há apenas 1 amigo (sem botão Alterar)", () => {
+      const singleGuest = mockParticipants.slice(0, 2);
+      render(
+        <PublicSplitIdentityBanner
+          token="test-token"
+          participants={singleGuest}
+          hostName="Gabriel Sales"
+        />
+      );
+
+      expect(screen.getByText("Você é Mariana")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Alterar/i })).not.toBeInTheDocument();
+    });
+
+    it("exibe banner de Prévia do Anfitrião quando isHostPreview=true", () => {
+      render(
+        <PublicSplitIdentityBanner
+          token="test-token"
+          participants={mockParticipants}
+          hostName="Gabriel Sales"
+          isHostPreview={true}
+        />
+      );
+
+      expect(screen.getByText("Prévia do Anfitrião")).toBeInTheDocument();
+      expect(screen.getByText(/Simular visão de/i)).toBeInTheDocument();
     });
 
     it("ao clicar em 'Alterar', limpa a identidade e volta ao estado inicial", async () => {

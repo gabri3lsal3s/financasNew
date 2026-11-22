@@ -218,6 +218,7 @@ export function useSimulatedOnboardingCounts() {
     () => ({
       expenseCategories: 6,
       incomeCategories: 3,
+      cashCheckpoints: 1,
       cards: 1,
       transactions: 12,
       notificationsEnabled: false,

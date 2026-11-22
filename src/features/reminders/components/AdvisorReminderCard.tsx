@@ -1,7 +1,39 @@
-import { AlertTriangle, ArrowDownLeft, CreditCard, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowDownLeft,
+  HelpCircle,
+  TrendingDown,
+  TrendingUp,
+  Users,
+  X,
+} from "lucide-react";
 import { Badge, Button, MoneyText } from "@/components/ui";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
+import {
+  resolveSmartAdvisorPresentation,
+  type AdvisorIconKind,
+} from "@/features/overview/components/smart-advisor/smart-advisor-routing";
 import { cn } from "@/lib/utils";
+
+const ADVISOR_ICON_MAP: Record<AdvisorIconKind, typeof AlertTriangle> = {
+  household: Users,
+  aporte: TrendingUp,
+  critical: AlertTriangle,
+  income: ArrowDownLeft,
+  savings: TrendingDown,
+  calibration: HelpCircle,
+};
+
+const CONTAINER_TONES: Record<
+  "critical" | "muted" | "portfolio" | "positive" | "warning",
+  string
+> = {
+  critical: "bg-critical/10 border-critical/20 text-critical-strong",
+  positive: "bg-positive/10 border-positive/20 text-positive-strong",
+  portfolio: "bg-portfolio/10 border-portfolio/20 text-portfolio",
+  warning: "bg-warning/15 border-warning/20 text-warning-strong",
+  muted: "bg-primary/10 border-primary/20 text-primary-strong",
+};
 
 export interface AdvisorReminderCardProps {
   advisorItem: SmartAdvisorInsight;
@@ -14,10 +46,9 @@ export function AdvisorReminderCard({
   onOpen,
   onDismiss,
 }: AdvisorReminderCardProps) {
-  const isCritical = advisorItem.priority === 1;
+  const presentation = resolveSmartAdvisorPresentation(advisorItem);
+  const Icon = ADVISOR_ICON_MAP[presentation.iconKind];
   const isIncome = advisorItem.category === "income";
-  const badgeVariant = isCritical ? "critical" : isIncome ? "positive" : "warning";
-  const badgeLabel = isCritical ? "Crítico" : isIncome ? "Entrada" : "Vence hoje";
   const cardName = advisorItem.cardContext?.cardName ?? advisorItem.metadata?.cardName;
 
   return (
@@ -26,20 +57,10 @@ export function AdvisorReminderCard({
         <span
           className={cn(
             "flex size-9 shrink-0 items-center justify-center rounded-xl border",
-            isCritical
-              ? "bg-critical/10 border-critical/20 text-critical-strong"
-              : isIncome
-                ? "bg-positive/10 border-positive/20 text-positive-strong"
-                : "bg-warning/15 border-warning/20 text-warning-strong",
+            CONTAINER_TONES[presentation.badgeVariant],
           )}
         >
-          {isCritical ? (
-            <AlertTriangle className="size-4.5" aria-hidden="true" />
-          ) : isIncome ? (
-            <ArrowDownLeft className="size-4.5" aria-hidden="true" />
-          ) : (
-            <CreditCard className="size-4.5" aria-hidden="true" />
-          )}
+          <Icon className="size-4.5" aria-hidden="true" />
         </span>
 
         <div className="flex flex-col gap-0.5 min-w-0 flex-1">
@@ -47,8 +68,8 @@ export function AdvisorReminderCard({
             <h3 className="text-sm font-semibold text-foreground line-clamp-2 break-words min-w-0">
               {advisorItem.title}
             </h3>
-            <Badge variant={badgeVariant} size="xs" className="shrink-0">
-              {badgeLabel}
+            <Badge variant={presentation.badgeVariant} size="xs" className="shrink-0">
+              {presentation.badgeLabel}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">

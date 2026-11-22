@@ -20,10 +20,27 @@ export interface SmartAdvisorPresentation {
 export function resolveSmartAdvisorPresentation(
   insight: SmartAdvisorInsight,
 ): SmartAdvisorPresentation {
+  if (insight.themeKey === "household:ceiling_exceeded") {
+    return {
+      iconKind: "household",
+      badgeVariant: "critical",
+      badgeLabel: "Teto Familiar",
+    };
+  }
+
+  if (insight.themeKey === "household:settlement_pending") {
+    const isReceiver = insight.category === "income";
+    return {
+      iconKind: "household",
+      badgeVariant: isReceiver ? "positive" : "warning",
+      badgeLabel: isReceiver ? "A Receber · Família" : "Acerto Familiar",
+    };
+  }
+
   if (insight.themeKey.startsWith("household:")) {
     return {
       iconKind: "household",
-      badgeVariant: insight.category === "critical" ? "critical" : "muted",
+      badgeVariant: "muted",
       badgeLabel: "Família",
     };
   }
@@ -52,9 +69,37 @@ export function resolveSmartAdvisorPresentation(
     };
   }
 
+  if (insight.themeKey.startsWith("missing_expense:")) {
+    return {
+      iconKind: "critical",
+      badgeVariant: "warning",
+      badgeLabel: "Conta Pendente",
+    };
+  }
+
+  if (insight.themeKey.startsWith("due_today:")) {
+    return {
+      iconKind: "critical",
+      badgeVariant: "warning",
+      badgeLabel: "Vence hoje",
+    };
+  }
+
+  if (insight.themeKey.startsWith("dup:")) {
+    return {
+      iconKind: "critical",
+      badgeVariant: "critical",
+      badgeLabel: "Crítico",
+    };
+  }
+
   switch (insight.category) {
     case "critical":
-      return { iconKind: "critical", badgeVariant: "critical", badgeLabel: "Atenção" };
+      return {
+        iconKind: "critical",
+        badgeVariant: insight.priority === 1 ? "critical" : "warning",
+        badgeLabel: insight.priority === 1 ? "Crítico" : "Atenção",
+      };
     case "income":
       return { iconKind: "income", badgeVariant: "positive", badgeLabel: "Entrada Prevista" };
     case "savings":
@@ -73,44 +118,21 @@ export function resolveSmartAdvisorActionRoute(
   currentSearch: string,
 ): string | null {
   if (
-    insight.primaryAction?.kind === "register_expense" ||
-    (insight.category === "critical" && !insight.id.startsWith("dup:"))
+    insight.primaryAction?.kind === "navigate_family" ||
+    insight.primaryAction?.kind === "open_family_settlement" ||
+    insight.themeKey.startsWith("household:")
   ) {
-    const p = insight.primaryAction?.payload as
-      | {
-          name?: string;
-          valueCents?: number;
-          categoryId?: string;
-          date?: string;
-          forma?: string;
-          cardId?: string;
-        }
-      | undefined;
-
-    const params = new URLSearchParams(currentSearch);
-    params.set("novo", "despesa");
-    params.set("modo", "rapido");
-    if (p?.valueCents) params.set("valor", String(p.valueCents));
-    if (p?.name) params.set("descricao", p.name);
-    if (p?.categoryId) params.set("categoria", p.categoryId);
-    if (p?.date) params.set("data", p.date);
-    if (p?.forma) params.set("forma", p.forma);
-    if (p?.cardId) params.set("cartao", p.cardId);
-    return `?${params.toString()}`;
+    return "/familia";
   }
 
-  if (insight.category === "income" && insight.primaryAction?.kind === "open_income") {
-    const p = insight.primaryAction?.payload as
-      | { name?: string; categoryId?: string; date?: string; valueCents?: number }
-      | undefined;
-    const params = new URLSearchParams(currentSearch);
-    params.set("novo", "receita");
-    params.set("modo", "rapido");
-    if (p?.name) params.set("descricao", p.name);
-    if (p?.categoryId) params.set("categoria", p.categoryId);
-    if (p?.date) params.set("data", p.date);
-    if (p?.valueCents) params.set("valor", String(p.valueCents));
-    return `?${params.toString()}`;
+  if (
+    insight.primaryAction?.kind === "open_income_goals" ||
+    insight.themeKey.startsWith("income_goal:")
+  ) {
+    const payload = insight.primaryAction?.payload as { categoryId?: string } | undefined;
+    return payload?.categoryId
+      ? `/orcamentos?tab=goals&categoria=${encodeURIComponent(payload.categoryId)}`
+      : "/orcamentos?tab=goals";
   }
 
   if (insight.primaryAction?.kind === "navigate_aporte" || insight.themeKey.startsWith("aporte:")) {
@@ -144,17 +166,55 @@ export function resolveSmartAdvisorActionRoute(
   }
 
   if (
-    insight.primaryAction?.kind === "navigate_family" ||
-    insight.primaryAction?.kind === "open_family_settlement"
+    insight.category === "income" ||
+    insight.primaryAction?.kind === "open_income" ||
+    insight.primaryAction?.kind === "confirm_income"
   ) {
-    return "/familia";
+    const p = insight.primaryAction?.payload as
+      | { name?: string; categoryId?: string; date?: string; valueCents?: number }
+      | undefined;
+    const params = new URLSearchParams(currentSearch);
+    params.set("novo", "receita");
+    params.set("modo", "rapido");
+    if (p?.name) params.set("descricao", p.name);
+    if (p?.categoryId) params.set("categoria", p.categoryId);
+    if (p?.date) params.set("data", p.date);
+    const valueCents = p?.valueCents ?? insight.metadata?.valueCents;
+    if (valueCents) params.set("valor", String(valueCents));
+    return `?${params.toString()}`;
   }
 
-  if (insight.primaryAction?.kind === "open_income_goals") {
-    const payload = insight.primaryAction?.payload as { categoryId?: string } | undefined;
-    return payload?.categoryId
-      ? `/orcamentos?tab=goals&categoria=${encodeURIComponent(payload.categoryId)}`
-      : "/orcamentos?tab=goals";
+  if (
+    insight.primaryAction?.kind === "register_expense" ||
+    insight.primaryAction?.kind === "confirm_expense" ||
+    insight.category === "critical"
+  ) {
+    const p = insight.primaryAction?.payload as
+      | {
+          name?: string;
+          valueCents?: number;
+          categoryId?: string;
+          date?: string;
+          forma?: string;
+          cardId?: string;
+        }
+      | undefined;
+
+    const params = new URLSearchParams(currentSearch);
+    params.set("novo", "despesa");
+    params.set("modo", "rapido");
+    const name = p?.name ?? insight.title;
+    const valueCents = p?.valueCents ?? insight.metadata?.valueCents;
+    const categoryId = p?.categoryId ?? insight.metadata?.categoryId;
+    const date = p?.date ?? insight.metadata?.expectedDate;
+    const cardId = p?.cardId ?? insight.metadata?.cardId ?? insight.cardContext?.cardId;
+    if (valueCents) params.set("valor", String(valueCents));
+    if (name) params.set("descricao", name);
+    if (categoryId) params.set("categoria", categoryId);
+    if (date) params.set("data", date);
+    if (p?.forma) params.set("forma", p.forma);
+    if (cardId) params.set("cartao", cardId);
+    return `?${params.toString()}`;
   }
 
   return null;

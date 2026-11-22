@@ -1,7 +1,17 @@
 import { LocalNotifications } from "@capacitor/local-notifications";
-import { inferCategoryKeyword } from "@/domain/notifications";
-import { todayISO } from "@/domain/debts";
+import { setReminderState } from "@/data/repositories/reminder-states";
+import { addDaysISO, todayISO } from "@/domain/debts";
 import { DEMO_USER_ID } from "@/domain/demo-simulation";
+import {
+  DEFAULT_QUIET_HOURS,
+  MAX_OVERDUE_DAYS_FOR_NOTIFICATION,
+  adjustDateForQuietHours,
+  buildDueNotificationSchedule,
+  inferCategoryKeyword,
+  normalizeQuietHours,
+  type ParsedBankTransaction,
+  type QuietHoursConfig,
+} from "@/domain/notifications";
 import { getDemoSessionState } from "@/state/demo-mode";
 import { getUserStorageItem, setUserStorageItem } from "@/services/user-storage";
 import { isNativePlatform } from "./platform";
@@ -9,10 +19,13 @@ import {
   ACTION_EDIT,
   ACTION_QUICK_ADD,
   ACTION_UNDO,
+  buildReviewRoute,
   hashString,
   quickAddTransaction,
   undoQuickAddTransaction,
 } from "./interactive-notifications";
+
+export { MAX_OVERDUE_DAYS_FOR_NOTIFICATION };
 
 export const DAILY_REMINDER_NOTIFICATION_ID = 2026;
 export const DAILY_REMINDER_CHANNEL_ID = "daily_reminders";
@@ -28,8 +41,12 @@ export const ACTION_SNOOZE = "SNOOZE";
 const KEY_REMINDER_ENABLED = "daily_reminder_enabled";
 const KEY_DUE_NOTIFICATIONS_ENABLED = "due_notifications_enabled";
 const KEY_LAST_DUE_SYNC_DATE = "due_notifications_last_sync_date";
+const KEY_LAST_DUE_SCHEDULE_SIG = "due_notifications_last_schedule_sig";
 const KEY_ACTIVE_DUE_KEYS = "due_notifications_active_keys";
+const KEY_SNOOZED_DUE_NOTIFS = "due_notifications_snoozed";
 const KEY_REMINDER_TIME = "daily_reminder_time";
+const KEY_REMOTE_PUSH_ENABLED = "device_notifications_remote_push_enabled";
+const KEY_QUIET_HOURS = "device_notifications_quiet_hours";
 const DEFAULT_REMINDER_TIME = "20:00";
 
 let isActionListenerActive = false;
@@ -40,6 +57,8 @@ export interface DeviceNotificationPreferences {
   dueNotificationsEnabled: boolean;
   dailyReminderEnabled: boolean;
   dailyReminderTime: string;
+  remotePushEnabled: boolean;
+  quietHours: QuietHoursConfig;
   dismissedPermissionAlerts?: {
     pushDue?: boolean;
     passiveBankListener?: boolean;
@@ -91,12 +110,53 @@ export function setDailyReminderTime(time: string, userId?: string | null): void
 }
 
 /**
+ * Lê se o push remoto está habilitado para este usuário.
+ */
+export function isRemotePushEnabled(userId?: string | null): boolean {
+  return getUserStorageItem(KEY_REMOTE_PUSH_ENABLED, userId) === "true";
+}
+
+/**
+ * Atualiza a preferência local de push remoto.
+ */
+export function setRemotePushEnabled(enabled: boolean, userId?: string | null): void {
+  setUserStorageItem(KEY_REMOTE_PUSH_ENABLED, String(enabled), userId);
+}
+
+/**
+ * Lê a configuração de Horário Silencioso (Quiet Hours) do usuário com fallback seguro (22:00–08:00).
+ */
+export function getQuietHoursConfig(userId?: string | null): QuietHoursConfig {
+  const raw = getUserStorageItem(KEY_QUIET_HOURS, userId);
+  if (!raw) return { ...DEFAULT_QUIET_HOURS };
+  try {
+    return normalizeQuietHours(JSON.parse(raw) as Partial<QuietHoursConfig>);
+  } catch {
+    return { ...DEFAULT_QUIET_HOURS };
+  }
+}
+
+/**
+ * Persiste atualização parcial do Horário Silencioso localmente com normalização.
+ */
+export function setQuietHoursConfig(
+  patch: Partial<QuietHoursConfig>,
+  userId?: string | null,
+): QuietHoursConfig {
+  const current = getQuietHoursConfig(userId);
+  const next = normalizeQuietHours({ ...current, ...patch });
+  setUserStorageItem(KEY_QUIET_HOURS, JSON.stringify(next), userId);
+  return next;
+}
+
+/**
  * Obtém as preferências consolidadas de notificações no dispositivo.
  */
 export function getDeviceNotificationPreferences(userId?: string | null): DeviceNotificationPreferences {
   const rawDue = getUserStorageItem(KEY_DUE_NOTIFICATIONS_ENABLED, userId);
   const rawDaily = getUserStorageItem(KEY_REMINDER_ENABLED, userId);
   const rawTime = getUserStorageItem(KEY_REMINDER_TIME, userId);
+  const rawRemotePush = getUserStorageItem(KEY_REMOTE_PUSH_ENABLED, userId);
   const rawDismissed = getUserStorageItem(KEY_DISMISSED_PERMISSION_ALERTS, userId);
 
   let dismissed: { pushDue?: boolean; passiveBankListener?: boolean } | undefined;
@@ -112,6 +172,8 @@ export function getDeviceNotificationPreferences(userId?: string | null): Device
     dueNotificationsEnabled: rawDue === "true",
     dailyReminderEnabled: rawDaily === "true",
     dailyReminderTime: rawTime || DEFAULT_REMINDER_TIME,
+    remotePushEnabled: rawRemotePush === "true",
+    quietHours: getQuietHoursConfig(userId),
     dismissedPermissionAlerts: dismissed,
   };
 }
@@ -124,6 +186,8 @@ export function syncDeviceNotificationsWithCloud(
     dueNotificationsEnabled?: boolean;
     dailyReminderEnabled?: boolean;
     dailyReminderTime?: string;
+    remotePushEnabled?: boolean;
+    quietHours?: Partial<QuietHoursConfig>;
     dismissedPermissionAlerts?: {
       pushDue?: boolean;
       passiveBankListener?: boolean;
@@ -141,6 +205,12 @@ export function syncDeviceNotificationsWithCloud(
   }
   if (cloudPrefs.dailyReminderTime !== undefined) {
     setDailyReminderTime(cloudPrefs.dailyReminderTime, userId);
+  }
+  if (cloudPrefs.remotePushEnabled !== undefined) {
+    setRemotePushEnabled(cloudPrefs.remotePushEnabled, userId);
+  }
+  if (cloudPrefs.quietHours !== undefined) {
+    setQuietHoursConfig(cloudPrefs.quietHours, userId);
   }
   if (cloudPrefs.dismissedPermissionAlerts !== undefined) {
     setUserStorageItem(
@@ -218,11 +288,13 @@ export async function requestNotificationPermissions(): Promise<{ granted: boole
 }
 
 /**
- * Agenda o lembrete de fechamento diário com botões de ação rápida.
+ * Agenda o lembrete de fechamento diário com botões de ação rápida (exclusivo no app Android nativo).
+ * Retorna `false` na Web/PWA pois navegadores não suportam alarmes locais recorrentes offline.
  */
 export async function scheduleDailyReminder(options?: {
   hour?: number;
   minute?: number;
+  requestPermission?: boolean;
 }): Promise<boolean> {
   if (getDemoSessionState().isDemoActive) {
     return false;
@@ -232,11 +304,14 @@ export async function scheduleDailyReminder(options?: {
   const minute = options?.minute ?? 0;
 
   if (!isNativePlatform()) {
-    return true;
+    return false;
   }
 
   try {
-    const permissions = await requestNotificationPermissions();
+    const permissions =
+      options?.requestPermission === false
+        ? await checkNotificationPermissions()
+        : await requestNotificationPermissions();
     if (!permissions.granted) {
       return false;
     }
@@ -365,6 +440,7 @@ export interface DispatchNotificationOptions {
   channelId?: string;
   actionTypeId?: string;
   id?: number;
+  scheduleAt?: Date;
 }
 
 /**
@@ -386,7 +462,9 @@ export async function dispatchLocalOrWebNotification(
   if (isNativePlatform()) {
     try {
       await setupDueRemindersChannel();
-      const notifId = options.id ?? (options.tag ? Math.abs(options.tag.split("").reduce((a, b) => ((a << 5) - a + b.charCodeAt(0)) | 0, 0)) : Math.floor(Math.random() * 100000) + 10000);
+      const notifId =
+        options.id ??
+        (options.tag ? hashString(options.tag) : Math.floor(Math.random() * 100000) + 10000);
       await LocalNotifications.schedule({
         notifications: [
           {
@@ -395,6 +473,9 @@ export async function dispatchLocalOrWebNotification(
             body: options.body,
             channelId: options.channelId ?? DUE_REMINDER_CHANNEL_ID,
             actionTypeId: options.actionTypeId,
+            ...(options.scheduleAt
+              ? { schedule: { at: options.scheduleAt, allowWhileIdle: true } }
+              : {}),
             extra: {
               url: options.url,
               tag: options.tag,
@@ -452,6 +533,7 @@ export async function dispatchLocalOrWebNotification(
 export interface DueReminderPayload {
   key: string;
   kind: "bill" | "debt";
+  direction?: "payable" | "receivable";
   title: string;
   dueDate: string;
   amountCents: number;
@@ -459,12 +541,24 @@ export interface DueReminderPayload {
   link?: { path: string; params?: Record<string, string> };
 }
 
-/** Janela máxima em dias para emissão de notificação ativa de conta vencida. */
-export const MAX_OVERDUE_DAYS_FOR_NOTIFICATION = 30;
-
 /** Retorna um identificador numérico determinístico estável para a notificação de uma conta. */
 export function getDueReminderNotificationId(key: string): number {
   return hashString(`due:${key}`);
+}
+
+/** Retorna um identificador numérico determinístico para agrupamento diário futuro agendado. */
+export function getDueScheduledDayNotificationId(dueDate: string): number {
+  return hashString(`due:day:${dueDate}`);
+}
+
+function resolveDueNotificationId(key: string): number {
+  if (key === "summary") {
+    return DUE_SUMMARY_NOTIFICATION_ID;
+  }
+  if (key.startsWith("day:")) {
+    return getDueScheduledDayNotificationId(key.slice(4));
+  }
+  return getDueReminderNotificationId(key);
 }
 
 /** Retorna a lista de chaves de lembretes atualmente ativos no sistema operacional. */
@@ -481,6 +575,51 @@ export function getActiveDueKeys(userId?: string | null): string[] {
 /** Atualiza a lista de chaves de lembretes ativos no sistema operacional. */
 export function setActiveDueKeys(keys: string[], userId?: string | null): void {
   setUserStorageItem(KEY_ACTIVE_DUE_KEYS, JSON.stringify(keys), userId);
+}
+
+interface SnoozedDueNotifEntry {
+  key: string;
+  id: number;
+  untilIso: string;
+}
+
+function getSnoozedDueNotifs(userId?: string | null): SnoozedDueNotifEntry[] {
+  const val = getUserStorageItem(KEY_SNOOZED_DUE_NOTIFS, userId);
+  if (!val) return [];
+  try {
+    const parsed = JSON.parse(val);
+    if (!Array.isArray(parsed)) return [];
+    const today = todayISO();
+    return parsed.filter(
+      (item): item is SnoozedDueNotifEntry =>
+        typeof item?.key === "string" &&
+        typeof item?.id === "number" &&
+        typeof item?.untilIso === "string" &&
+        item.untilIso > today,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function setSnoozedDueNotifs(entries: SnoozedDueNotifEntry[], userId?: string | null): void {
+  const today = todayISO();
+  const valid = entries.filter((item) => item.untilIso > today);
+  setUserStorageItem(KEY_SNOOZED_DUE_NOTIFS, JSON.stringify(valid), userId);
+}
+
+function addSnoozedDueNotif(entry: SnoozedDueNotifEntry, userId?: string | null): void {
+  const current = getSnoozedDueNotifs(userId).filter((s) => s.key !== entry.key && s.id !== entry.id);
+  setSnoozedDueNotifs([...current, entry], userId);
+}
+
+function removeSnoozedDueNotifByKey(key: string, userId?: string | null): void {
+  if (!key) return;
+  const current = getSnoozedDueNotifs(userId);
+  const next = current.filter((s) => s.key !== key);
+  if (next.length !== current.length) {
+    setSnoozedDueNotifs(next, userId);
+  }
 }
 
 /**
@@ -514,31 +653,57 @@ export async function cancelDueReminderNotification(key: string, userId?: string
   await cancelNotificationById(notifId);
 
   const active = getActiveDueKeys(userId);
-  if (active.includes(key)) {
-    setActiveDueKeys(active.filter((k) => k !== key), userId);
+  if (active.includes("summary")) {
+    await cancelNotificationById(DUE_SUMMARY_NOTIFICATION_ID);
   }
+  for (const activeKey of active) {
+    if (activeKey.startsWith("day:")) {
+      await cancelNotificationById(resolveDueNotificationId(activeKey));
+    }
+  }
+  const nextActive = active.filter(
+    (k) => k !== key && k !== "summary" && !k.startsWith("day:"),
+  );
+  if (nextActive.length !== active.length) {
+    setActiveDueKeys(nextActive, userId);
+  }
+  setUserStorageItem(KEY_LAST_DUE_SCHEDULE_SIG, "", userId);
 }
 
 /**
  * Remove todas as notificações de vencimento ativas e limpa a barra de status.
  */
-export async function clearAllDueNotifications(userId?: string | null): Promise<void> {
+export async function clearAllDueNotifications(
+  userId?: string | null,
+  options?: { preserveSnoozed?: boolean },
+): Promise<void> {
+  const preserveSnoozed = options?.preserveSnoozed ?? false;
+  const snoozed = getSnoozedDueNotifs(userId);
+  const snoozedKeys = new Set(snoozed.map((s) => s.key));
   const active = getActiveDueKeys(userId);
   for (const k of active) {
+    if (preserveSnoozed && snoozedKeys.has(k)) continue;
     if (k !== "summary") {
-      await cancelNotificationById(getDueReminderNotificationId(k));
+      await cancelNotificationById(resolveDueNotificationId(k));
     }
   }
   await cancelNotificationById(DUE_SUMMARY_NOTIFICATION_ID);
-  setActiveDueKeys([], userId);
+  if (!preserveSnoozed) {
+    for (const entry of snoozed) {
+      await cancelNotificationById(entry.id);
+    }
+    setSnoozedDueNotifs([], userId);
+  }
+  setActiveDueKeys(preserveSnoozed ? active.filter((k) => snoozedKeys.has(k)) : [], userId);
+  setUserStorageItem(KEY_LAST_DUE_SYNC_DATE, "", userId);
+  setUserStorageItem(KEY_LAST_DUE_SCHEDULE_SIG, "", userId);
 }
 
 /**
- * Sincroniza e agenda/emite notificações para faturas e dívidas pendentes.
- * É executada uma vez por dia por usuário ou quando houver nova pendência urgente.
- * Aplica consolidação anti-flood (notificação agrupada caso haja >= 2 contas),
- * corte temporal para contas antigas vencidas há mais de 30 dias e cancela
- * imediatamente notificações de contas que já foram quitadas ou que não são mais elegíveis.
+ * Sincroniza e agenda notificações híbridas para contas a pagar pendentes:
+ * - Hoje / atrasadas (<= 30d): disparo único diário com consolidação anti-flood.
+ * - Próximos 7 dias (Android nativo): agendamento antecipado às 09:00 (`schedule.at`),
+ *   agrupado por data e respeitando o Horário Silencioso (Quiet Hours).
  */
 export async function syncDueReminderNotifications(
   reminders: readonly DueReminderPayload[],
@@ -555,126 +720,113 @@ export async function syncDueReminderNotifications(
     return 0;
   }
 
-  // Filtra itens simulados ou mockados que possam ter vazado
-  const cleanReminders = reminders.filter((r) => !r.key.includes("mock-"));
-
   const today = todayISO();
+  const isNative = isNativePlatform();
   const lastSync = getUserStorageItem(KEY_LAST_DUE_SYNC_DATE, userId);
-  if (!force && lastSync === today) {
-    return 0;
-  }
+  const lastScheduleSig = getUserStorageItem(KEY_LAST_DUE_SCHEDULE_SIG, userId);
 
   const perm = await checkNotificationPermissions();
   if (!perm.granted) {
     return 0;
   }
 
-  // Filtra apenas contas que vencem hoje, nos próximos 3 dias ou atrasadas recentemente (<= 30 dias)
-  const eligible = cleanReminders.filter((rem) => {
-    if (rem.status === "due_today" || rem.status === "due_soon") {
-      return true;
-    }
-    if (rem.status === "overdue") {
-      const diffMs = new Date(`${today}T12:00:00`).getTime() - new Date(`${rem.dueDate}T12:00:00`).getTime();
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      return diffDays <= MAX_OVERDUE_DAYS_FOR_NOTIFICATION;
-    }
-    return false;
+  const quietHours = getQuietHoursConfig(userId);
+  const plan = buildDueNotificationSchedule({
+    reminders,
+    today,
+    now: new Date(),
+    isNative,
+    quietHours,
   });
 
-  if (eligible.length === 0) {
-    await clearAllDueNotifications(userId);
+  if (plan.length === 0) {
+    if (!force && lastSync === today && (!isNative || lastScheduleSig === "[]")) {
+      return 0;
+    }
+    await clearAllDueNotifications(userId, { preserveSnoozed: true });
     setUserStorageItem(KEY_LAST_DUE_SYNC_DATE, today, userId);
+    if (isNative) {
+      setUserStorageItem(KEY_LAST_DUE_SCHEDULE_SIG, "[]", userId);
+    }
     return 0;
   }
 
-  let count = 0;
+  const todayPlan = plan.filter((item) => item.scope === "today");
+  const upcomingPlan = plan.filter((item) => item.scope === "upcoming");
+  const upcomingSig = JSON.stringify(
+    upcomingPlan.map((u) => [u.key, u.dueDate, u.title, u.body, u.scheduleAt?.getTime() ?? 0]),
+  );
 
-  // Consolidação anti-flood: se houver 2 ou mais contas pendentes, consolida em 1 notificação elegante
-  if (eligible.length > 1) {
-    // Limpa notificações individuais anteriores para consolidar em uma só
-    const previousActive = getActiveDueKeys(userId);
-    for (const k of previousActive) {
-      if (k !== "summary") {
-        await cancelNotificationById(getDueReminderNotificationId(k));
-      }
+  const shouldDispatchToday = force || lastSync !== today;
+  const shouldSyncUpcoming = isNative && (force || lastScheduleSig !== upcomingSig);
+
+  if (!shouldDispatchToday && !shouldSyncUpcoming) {
+    return 0;
+  }
+
+  const desiredKeys = new Set(plan.map((p) => p.key));
+  const todayKeys = new Set(todayPlan.map((p) => p.key));
+  const upcomingKeys = new Set(upcomingPlan.map((p) => p.key));
+  const previousActive = getActiveDueKeys(userId);
+  const snoozedKeys = new Set(getSnoozedDueNotifs(userId).map((s) => s.key));
+
+  for (const prevKey of previousActive) {
+    if (snoozedKeys.has(prevKey)) {
+      continue;
     }
-
-    const totalCents = eligible.reduce((acc, r) => acc + r.amountCents, 0);
-    const totalReais = (totalCents / 100).toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-
-    const title = `Axir · Contas e faturas pendentes (${eligible.length})`;
-    const body = `Você possui ${eligible.length} contas aguardando quitação (total de R$ ${totalReais}). Toque para conferir.`;
-    const tag = "due:summary";
-
-    const sent = await dispatchLocalOrWebNotification({
-      id: DUE_SUMMARY_NOTIFICATION_ID,
-      title,
-      body,
-      url: "/lembretes",
-      tag,
-      channelId: DUE_REMINDER_CHANNEL_ID,
-    });
-
-    if (sent) {
-      setActiveDueKeys(["summary"], userId);
-      count = 1;
+    if (!desiredKeys.has(prevKey)) {
+      await cancelNotificationById(resolveDueNotificationId(prevKey));
+      continue;
     }
-  } else {
-    // Apenas 1 conta pendente: cancela o resumo anterior e outras notificações
-    await cancelNotificationById(DUE_SUMMARY_NOTIFICATION_ID);
-
-    const rem = eligible[0]!;
-    const previousActive = getActiveDueKeys(userId);
-    for (const k of previousActive) {
-      if (k !== rem.key && k !== "summary") {
-        await cancelNotificationById(getDueReminderNotificationId(k));
-      }
-    }
-
-    const statusLabel =
-      rem.status === "overdue"
-        ? "Vencida"
-        : rem.status === "due_today"
-          ? "Vence hoje"
-          : `Vence em ${rem.dueDate.slice(8, 10)}/${rem.dueDate.slice(5, 7)}`;
-
-    const reais = (rem.amountCents / 100).toLocaleString("pt-BR", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-
-    let routeUrl = rem.kind === "bill" ? "/cartoes" : "/dividas";
-    if (rem.link?.params) {
-      const q = new URLSearchParams(rem.link.params).toString();
-      if (q) routeUrl = `${rem.link.path}?${q}`;
-    }
-
-    const title = `${rem.title} — ${statusLabel}`;
-    const body = `Saldo em aberto: R$ ${reais}. Toque para conferir e quitar.`;
-    const notifId = getDueReminderNotificationId(rem.key);
-    const tag = `due:${rem.key}`;
-
-    const sent = await dispatchLocalOrWebNotification({
-      id: notifId,
-      title,
-      body,
-      url: routeUrl,
-      tag,
-      channelId: DUE_REMINDER_CHANNEL_ID,
-      actionTypeId: DUE_REMINDER_ACTION_TYPE_ID,
-    });
-
-    if (sent) {
-      setActiveDueKeys([rem.key], userId);
-      count = 1;
+    if (shouldSyncUpcoming && prevKey.startsWith("day:") && !upcomingKeys.has(prevKey)) {
+      await cancelNotificationById(resolveDueNotificationId(prevKey));
     }
   }
 
-  setUserStorageItem(KEY_LAST_DUE_SYNC_DATE, today, userId);
+  if (shouldDispatchToday && todayPlan.some((p) => !p.isSummary) && previousActive.includes("summary")) {
+    await cancelNotificationById(DUE_SUMMARY_NOTIFICATION_ID);
+  }
+
+  const toDispatch = [
+    ...(shouldDispatchToday ? todayPlan : []),
+    ...(shouldSyncUpcoming ? upcomingPlan : []),
+  ];
+
+  const activeKeysSet = new Set(
+    previousActive.filter((k) => {
+      if (!desiredKeys.has(k)) return false;
+      if (shouldDispatchToday && todayKeys.has(k)) return false;
+      if (shouldSyncUpcoming && upcomingKeys.has(k)) return false;
+      return true;
+    }),
+  );
+
+  let count = 0;
+  for (const item of toDispatch) {
+    const notifId = resolveDueNotificationId(item.key);
+    const sent = await dispatchLocalOrWebNotification({
+      id: notifId,
+      title: item.title,
+      body: item.body,
+      url: item.url,
+      tag: item.tag,
+      channelId: DUE_REMINDER_CHANNEL_ID,
+      actionTypeId: item.actionTypeId,
+      scheduleAt: item.scheduleAt,
+    });
+    if (sent) {
+      activeKeysSet.add(item.key);
+      count += 1;
+    }
+  }
+
+  setActiveDueKeys(Array.from(activeKeysSet), userId);
+  if (shouldDispatchToday) {
+    setUserStorageItem(KEY_LAST_DUE_SYNC_DATE, today, userId);
+  }
+  if (isNative && shouldSyncUpcoming) {
+    setUserStorageItem(KEY_LAST_DUE_SCHEDULE_SIG, upcomingSig, userId);
+  }
   return count;
 }
 
@@ -698,7 +850,12 @@ export function initNotificationActionListener(
 
       if (actionId === ACTION_QUICK_ADD) {
         if (extra?.suggestion) {
-          void quickAddTransaction(extra.suggestion as never);
+          const sug = extra.suggestion as ParsedBankTransaction;
+          void quickAddTransaction(sug).then((res) => {
+            if (!res.success && res.requiresWizard) {
+              onNavigate(buildReviewRoute(sug));
+            }
+          });
         }
       } else if (actionId === ACTION_EDIT) {
         if (extra?.suggestion) {
@@ -749,7 +906,10 @@ export function initNotificationActionListener(
         // Redireciona para quitação assistida (abre o modal de confirmação do usuário)
         const tag = (extra?.tag as string) ?? "";
         const itemKey = tag.startsWith("due:") ? tag.replace("due:", "") : "";
-        if (itemKey && itemKey !== "summary") {
+        if (itemKey) {
+          removeSnoozedDueNotifByKey(itemKey);
+        }
+        if (itemKey && itemKey !== "summary" && !itemKey.startsWith("day:")) {
           onNavigate(`/lembretes?action=pay&key=${encodeURIComponent(itemKey)}`);
         } else if (extra?.url && typeof extra.url === "string") {
           onNavigate(extra.url);
@@ -757,22 +917,48 @@ export function initNotificationActionListener(
           onNavigate("/lembretes");
         }
       } else if (actionId === ACTION_SNOOZE) {
-        // Adia o lembrete por 3 dias
+        // Adia o lembrete por 3 dias (agendado para 09:00, respeitando Horário Silencioso) e persiste o snooze no banco
         const tag = (extra?.tag as string) ?? "";
-        const notifId = notification.id;
-        if (notifId) {
-          void cancelNotificationById(notifId);
+        const itemKey = tag.startsWith("due:") ? tag.replace("due:", "") : "";
+        const untilIso = addDaysISO(todayISO(), 3);
+        const notifId =
+          notification.id ?? (itemKey ? resolveDueNotificationId(itemKey) : hashString(tag || "due:snooze"));
+        if (notification.id) {
+          void cancelNotificationById(notification.id);
         }
-        // Registra reagendamento local
-        const snoozeDate = new Date();
-        snoozeDate.setDate(snoozeDate.getDate() + 3);
+        addSnoozedDueNotif(
+          {
+            key: itemKey || `notif:${notifId}`,
+            id: notifId,
+            untilIso,
+          },
+          undefined,
+        );
+        if (itemKey && itemKey !== "summary" && !itemKey.startsWith("day:")) {
+          void setReminderState(itemKey, {
+            kind: "snoozed",
+            snoozeUntil: untilIso,
+          })
+            .then(() => {
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("axir:reminder-states-changed"));
+              }
+            })
+            .catch(() => {});
+        }
+        const rawSnoozeDate = new Date();
+        rawSnoozeDate.setDate(rawSnoozeDate.getDate() + 3);
+        rawSnoozeDate.setHours(9, 0, 0, 0);
+        const snoozeDate = adjustDateForQuietHours(rawSnoozeDate, getQuietHoursConfig());
         void dispatchLocalOrWebNotification({
           id: notifId,
-          title: notification.title,
+          title: "Lembrete adiado — Confira sua pendência",
           body: notification.body,
+          url: typeof extra?.url === "string" ? extra.url : "/lembretes",
           tag,
           channelId: DUE_REMINDER_CHANNEL_ID,
           actionTypeId: DUE_REMINDER_ACTION_TYPE_ID,
+          scheduleAt: snoozeDate,
         });
       } else {
         // Toque no corpo da notificação (tap padrão)

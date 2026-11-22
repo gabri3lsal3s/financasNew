@@ -2,6 +2,7 @@ import { Plus, Trash2, Users } from "lucide-react";
 import { Badge, Button, Input, MoneyInput, NumberStepper } from "@/components/ui";
 import { MoneyText } from "@/components/ui/money-text";
 import type { SplitExpenseSummary, SplitRemainderPolicy } from "@/domain/finance/split-math";
+import { formatCentsAsBRL } from "@/services/masks";
 import { QUICK_PEOPLE_COUNTS } from "./split-constants";
 
 export interface SplitParticipantsEditorProps {
@@ -20,6 +21,10 @@ export interface SplitParticipantsEditorProps {
   onRemoveParticipant: (index: number) => void;
   summary: SplitExpenseSummary;
   remainderPolicy: SplitRemainderPolicy;
+  splitMode?: "equal" | "custom";
+  onSplitModeChange?: (mode: "equal" | "custom") => void;
+  customSharesCents?: number[];
+  onCustomShareChange?: (index: number, cents: number) => void;
 }
 
 /** Editor de valor, descrição e divisão entre participantes do racha. */
@@ -27,7 +32,61 @@ export function SplitParticipantsEditor({
   isPreconfigured, totalCents, onTotalCentsChange, description, onDescriptionChange,
   peopleCount, onPeopleCountChange, isCustomMode, onCustomModeChange, participants,
   onParticipantNameChange, onAddParticipant, onRemoveParticipant, summary, remainderPolicy,
+  splitMode = "equal", onSplitModeChange, customSharesCents, onCustomShareChange,
 }: SplitParticipantsEditorProps) {
+  const customSumCents =
+    splitMode === "custom" && customSharesCents
+      ? customSharesCents.reduce((acc, c) => acc + Math.max(0, c), 0)
+      : totalCents;
+  const customDiffCents = totalCents - customSumCents;
+
+  const renderSplitBalanceFeedback = () => {
+    if (splitMode !== "custom" || !customSharesCents) return null;
+    if (customDiffCents === 0) {
+      return (
+        <span className="text-[11px] font-medium text-positive-strong block">
+          Soma das cotas fechada exatamente em {formatCentsAsBRL(totalCents)}.
+        </span>
+      );
+    }
+    if (customDiffCents > 0) {
+      return (
+        <span className="text-[11px] font-medium text-warning-strong block">
+          Faltam {formatCentsAsBRL(customDiffCents)} para fechar o valor total.
+        </span>
+      );
+    }
+    return (
+      <span className="text-[11px] font-medium text-critical block">
+        As cotas excedem o valor total em {formatCentsAsBRL(Math.abs(customDiffCents))}.
+      </span>
+    );
+  };
+
+  const renderSplitModeSwitch = () =>
+    onSplitModeChange ? (
+      <div className="flex items-center justify-between gap-2 pb-1">
+        <span className="text-[11px] font-medium text-muted-foreground">Modo de cálculo</span>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant={splitMode === "equal" ? "default" : "outline"}
+            size="xs"
+            onClick={() => onSplitModeChange("equal")}
+          >
+            Igualitário
+          </Button>
+          <Button
+            type="button"
+            variant={splitMode === "custom" ? "default" : "outline"}
+            size="xs"
+            onClick={() => onSplitModeChange("custom")}
+          >
+            Valores Personalizados
+          </Button>
+        </div>
+      </div>
+    ) : null;
   if (isPreconfigured) {
     return (
       <div className="rounded-xl border border-border/80 bg-surface p-3.5 space-y-3 shadow-xs">
@@ -81,6 +140,7 @@ export function SplitParticipantsEditor({
           </Button>
           {isCustomMode ? (
             <div className="space-y-2 pt-2 mt-1 border-t border-border/80">
+              {renderSplitModeSwitch()}
               {participants.map((name, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <div className="flex-1 min-w-0">
@@ -92,12 +152,23 @@ export function SplitParticipantsEditor({
                       aria-label={`Nome do participante ${index + 1}`}
                     />
                   </div>
-                  <div className="w-24 text-right shrink-0">
-                    <MoneyText cents={summary.shares[index] ?? 0} variant="value" className="font-medium text-xs" />
-                  </div>
+                  {splitMode === "custom" && customSharesCents && onCustomShareChange ? (
+                    <div className="w-28 shrink-0">
+                      <MoneyInput
+                        cents={customSharesCents[index] ?? 0}
+                        onCentsChange={(cents) => onCustomShareChange(index, cents)}
+                        aria-label={`Valor do participante ${index + 1}`}
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-24 text-right shrink-0">
+                      <MoneyText cents={summary.shares[index] ?? 0} variant="value" className="font-medium text-xs" />
+                    </div>
+                  )}
                   {index === 0 ? <Badge size="xs" variant="muted" className="shrink-0">Anfitrião</Badge> : null}
                 </div>
               ))}
+              {renderSplitBalanceFeedback()}
             </div>
           ) : null}
         </div>
@@ -158,6 +229,7 @@ export function SplitParticipantsEditor({
           </div>
         ) : (
           <div className="space-y-2">
+            {renderSplitModeSwitch()}
             {participants.map((name, index) => (
               <div key={index} className="flex items-center gap-2">
                 <div className="flex-1 min-w-0">
@@ -167,9 +239,19 @@ export function SplitParticipantsEditor({
                     className="text-base sm:text-sm" aria-label={`Nome do participante ${index + 1}`}
                   />
                 </div>
-                <div className="w-24 text-right shrink-0">
-                  <MoneyText cents={summary.shares[index] ?? 0} variant="value" className="font-medium" />
-                </div>
+                {splitMode === "custom" && customSharesCents && onCustomShareChange ? (
+                  <div className="w-28 shrink-0">
+                    <MoneyInput
+                      cents={customSharesCents[index] ?? 0}
+                      onCentsChange={(cents) => onCustomShareChange(index, cents)}
+                      aria-label={`Valor do participante ${index + 1}`}
+                    />
+                  </div>
+                ) : (
+                  <div className="w-24 text-right shrink-0">
+                    <MoneyText cents={summary.shares[index] ?? 0} variant="value" className="font-medium" />
+                  </div>
+                )}
                 {index === 0 ? (
                   <Badge size="xs" variant="muted" className="shrink-0">Anfitrião</Badge>
                 ) : (
@@ -179,6 +261,7 @@ export function SplitParticipantsEditor({
                 )}
               </div>
             ))}
+            {renderSplitBalanceFeedback()}
             {peopleCount < 50 ? (
               <Button type="button" variant="ghost" size="xs" onClick={onAddParticipant} className="gap-1 text-xs text-muted-foreground hover:text-foreground">
                 <Plus className="size-3.5" aria-hidden="true" />

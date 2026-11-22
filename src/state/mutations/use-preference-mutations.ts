@@ -62,11 +62,27 @@ export function useUpdateCustomSettings() {
               deviceNotifications: {
                 ...(old.custom_settings?.deviceNotifications ?? {}),
                 ...(patch.deviceNotifications ?? {}),
+                quietHours:
+                  patch.deviceNotifications?.quietHours !== undefined ||
+                  old.custom_settings?.deviceNotifications?.quietHours !== undefined
+                    ? {
+                        ...(old.custom_settings?.deviceNotifications?.quietHours ?? {}),
+                        ...(patch.deviceNotifications?.quietHours ?? {}),
+                      }
+                    : undefined,
                 dismissedPermissionAlerts: {
                   ...(old.custom_settings?.deviceNotifications?.dismissedPermissionAlerts ?? {}),
                   ...(patch.deviceNotifications?.dismissedPermissionAlerts ?? {}),
                 },
               },
+              notificationCategories:
+                patch.notificationCategories !== undefined ||
+                old.custom_settings?.notificationCategories !== undefined
+                  ? {
+                      ...(old.custom_settings?.notificationCategories ?? {}),
+                      ...(patch.notificationCategories ?? {}),
+                    }
+                  : undefined,
               emergencyFundConfig: patch.emergencyFundConfig !== undefined
                 ? {
                     ...(old.custom_settings?.emergencyFundConfig ?? {}),
@@ -80,6 +96,10 @@ export function useUpdateCustomSettings() {
                     goals: {
                       ...(old.custom_settings?.dashboardAlertDismissals?.goals ?? {}),
                       ...(patch.dashboardAlertDismissals?.goals ?? {}),
+                    },
+                    cards: {
+                      ...(old.custom_settings?.dashboardAlertDismissals?.cards ?? {}),
+                      ...(patch.dashboardAlertDismissals?.cards ?? {}),
                     },
                   }
                 : old.custom_settings?.dashboardAlertDismissals,

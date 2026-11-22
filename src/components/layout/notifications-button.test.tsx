@@ -7,6 +7,7 @@ import { NotificationsButton } from "./notifications-button";
 const mockUseReminders = vi.fn();
 const mockUseOnboardingCounts = vi.fn();
 const mockUseSmartAdvisorInsights = vi.fn();
+const mockUseMyBroadcastNotifications = vi.fn();
 const mockHasFeature: (key: string) => boolean = (key: string) => key !== "investments";
 
 vi.mock("@/features/overview/hooks", () => ({
@@ -19,7 +20,7 @@ vi.mock("@/state", () => ({
   useSetReminderState: () => ({ mutate: vi.fn(), isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: vi.fn(), isPending: false }),
   useMySupportTickets: () => ({ data: [], isLoading: false }),
-  useMyBroadcastNotifications: () => ({ data: [], isLoading: false }),
+  useMyBroadcastNotifications: () => mockUseMyBroadcastNotifications(),
   useMarkBroadcastAsRead: () => ({ mutate: vi.fn(), isPending: false }),
   useUserAccess: () => ({
     hasFeature: (key: string) => mockHasFeature(key),
@@ -33,7 +34,14 @@ describe("NotificationsButton", () => {
   beforeEach(() => {
     localStorage.clear();
     mockUseOnboardingCounts.mockReturnValue({
-      data: { expenseCategories: 5, incomeCategories: 5, cards: 1, transactions: 1, notificationsEnabled: true },
+      data: {
+        expenseCategories: 5,
+        incomeCategories: 5,
+        cards: 1,
+        transactions: 1,
+        cashCheckpoints: 1,
+        notificationsEnabled: true,
+      },
     });
     mockUseSmartAdvisorInsights.mockReturnValue({
       insight: null,
@@ -42,6 +50,7 @@ describe("NotificationsButton", () => {
       totalCount: 0,
       dismiss: vi.fn(),
     });
+    mockUseMyBroadcastNotifications.mockReturnValue({ data: [], isLoading: false });
   });
   it("renderiza o sininho com badge de contagem quando há pendências", () => {
     mockUseReminders.mockReturnValue({
@@ -62,7 +71,7 @@ describe("NotificationsButton", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
-  it("não renderiza o botão quando não há itens (totalCount === 0)", () => {
+  it("renderiza o sininho sem badge numérico quando não há pendências (totalCount === 0)", () => {
     mockUseReminders.mockReturnValue({
       items: [],
       totalCount: 0,
@@ -71,13 +80,15 @@ describe("NotificationsButton", () => {
       isLoading: false,
     });
 
-    const { container } = render(
+    render(
       <MemoryRouter>
         <NotificationsButton />
       </MemoryRouter>,
     );
 
-    expect(container).toBeEmptyDOMElement();
+    const btn = screen.getByRole("button", { name: "Central de Lembretes e Avisos" });
+    expect(btn).toBeInTheDocument();
+    expect(btn.querySelector("span")).toBeNull();
   });
 
   it("abre o popover ao clicar no sininho quando há notificações", async () => {
@@ -118,7 +129,7 @@ describe("NotificationsButton", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("button", { name: "Notificações: 1 pendências" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Notificações: 1 pendência" })).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
   });
 
@@ -201,7 +212,7 @@ describe("NotificationsButton", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("button", { name: "Notificações: 1 pendências" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Notificações: 1 pendência" })).toBeInTheDocument();
     expect(screen.getByText("1")).toHaveClass("bg-critical");
   });
 
@@ -237,7 +248,40 @@ describe("NotificationsButton", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("button", { name: "Notificações: 1 pendências" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Notificações: 1 pendência" })).toBeInTheDocument();
     expect(screen.getByText("1")).toHaveClass("bg-warning-strong");
+  });
+
+  it("inclui comunicados broadcast não lidos na contagem e aplica badge crítico quando urgente", () => {
+    mockUseReminders.mockReturnValue({
+      items: [],
+      totalCount: 0,
+      overdueCount: 0,
+      dueTodayCount: 0,
+      isLoading: false,
+    });
+    mockUseMyBroadcastNotifications.mockReturnValue({
+      data: [
+        {
+          id: "b-1",
+          title: "Manutenção Programada",
+          message: "Sistema em atualização às 23h.",
+          type: "critical",
+          created_at: "2026-11-22T00:00:00Z",
+          is_read: false,
+          is_dismissed: false,
+        },
+      ],
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <NotificationsButton />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: "Notificações: 1 pendência" })).toBeInTheDocument();
+    expect(screen.getByText("1")).toHaveClass("bg-critical");
   });
 });

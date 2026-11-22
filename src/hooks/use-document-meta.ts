@@ -3,9 +3,9 @@ import { useEffect } from "react";
 const SITE_URL = "https://axir.com.br";
 
 const DEFAULT_META = {
-  title: "Axir — Gestão Financeira Pessoal, Cartões de Crédito e Aportes",
+  title: "Axir — Toda Sua Vida Financeira em Um Único App",
   description:
-    "Gestão financeira pessoal, controle de cartões de crédito e motor determinístico de rebalanceamento de carteira. 100% Online First e seguro.",
+    "Do gasto do dia a dia aos seus investimentos. Conecte caixa real, cartões, contas a pagar e receber, racha em grupo, Modo Família, preço teto e relatórios com memória de cálculo.",
   canonical: `${SITE_URL}/`,
   robots: "index, follow, max-image-preview:large",
 } as const;

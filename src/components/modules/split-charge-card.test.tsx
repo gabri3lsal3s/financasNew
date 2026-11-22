@@ -217,5 +217,36 @@ describe("SplitChargeCard — Card Canônico de Cobrança Compartilhada", () => 
     expect(screen.getByText("Parcela 6/6")).toBeInTheDocument();
     expect(screen.getByText(/Parcelas \(2\/6 pagas\)/i)).toBeInTheDocument();
   });
+
+  it("exibe recado do anfitrião, respeita showParticipantsList=false e mostra estado quitado sem QR/CTA", () => {
+    const { rerender } = render(
+      <SplitChargeCard
+        {...baseProps}
+        customNote="Mandar ate sexta-feira por favor"
+        showParticipantsList={false}
+        participantTotalShareCents={12000}
+        participantSettledCents={5000}
+        guestShareCents={7000}
+      />,
+    );
+
+    expect(screen.getByText("Mandar ate sexta-feira por favor")).toBeInTheDocument();
+    expect(screen.queryByText("Divisão entre os participantes")).not.toBeInTheDocument();
+    expect(screen.getByText("Saldo restante a pagar")).toBeInTheDocument();
+
+    rerender(
+      <SplitChargeCard
+        {...baseProps}
+        isCurrentSettled={true}
+        participantTotalShareCents={12000}
+        participantSettledCents={12000}
+        onSignalPayment={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Sua parte já foi confirmada pelo anfitrião")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Já fiz o Pix/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Exibir QR Code Pix/i })).not.toBeInTheDocument();
+  });
 });
 

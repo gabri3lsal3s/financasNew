@@ -5,6 +5,7 @@ export interface DailyClosingReminderCardProps {
   dailyReminderActive: boolean;
   dailyReminderTime: string;
   postNotificationsGranted: boolean;
+  isNative?: boolean;
   onToggleDailyReminder: (enabled: boolean) => void;
   onTimeChange: (time: string) => void;
   onRequestPermission: () => void;
@@ -14,6 +15,7 @@ export function DailyClosingReminderCard({
   dailyReminderActive,
   dailyReminderTime,
   postNotificationsGranted,
+  isNative = true,
   onToggleDailyReminder,
   onTimeChange,
   onRequestPermission,
@@ -29,7 +31,7 @@ export function DailyClosingReminderCard({
               </span>
               <Badge
                 variant={
-                  !dailyReminderActive
+                  !isNative || !dailyReminderActive
                     ? "muted"
                     : postNotificationsGranted
                       ? "default"
@@ -37,15 +39,21 @@ export function DailyClosingReminderCard({
                 }
                 size="xs"
               >
-                {!dailyReminderActive
-                  ? "Desativado"
-                  : postNotificationsGranted
-                    ? "Ativado"
-                    : "Permissão Pendente"}
+                {!isNative
+                  ? dailyReminderActive
+                    ? "Sincronizado para App Android"
+                    : "Disponível no App Android"
+                  : !dailyReminderActive
+                    ? "Desativado"
+                    : postNotificationsGranted
+                      ? "Ativado"
+                      : "Permissão Pendente"}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Receba um lembrete no horário configurado com botões rápidos para registrar gastos do dia.
+              {isNative
+                ? "Receba um lembrete no horário configurado com botões rápidos para registrar gastos do dia."
+                : "O alarme local recorrente dispara no aplicativo Android (navegadores Web não executam alarmes offline). Sua escolha aqui fica salva na nuvem."}
             </p>
           </div>
           <Switch
@@ -55,7 +63,7 @@ export function DailyClosingReminderCard({
           />
         </div>
 
-        {dailyReminderActive && !postNotificationsGranted && (
+        {isNative && dailyReminderActive && !postNotificationsGranted && (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-xl border border-warning/30 bg-warning/5 gap-2.5">
             <div className="text-[11px] text-muted-foreground leading-relaxed">
               <span className="font-semibold text-foreground block">
@@ -98,7 +106,9 @@ export function DailyClosingReminderCard({
             ariaLabel="Selecione o horário para o lembrete diário"
           />
           <p className="text-[11px] text-muted-foreground">
-            O aplicativo emitirá a notificação programada todos os dias no horário selecionado.
+            {isNative
+              ? "O aplicativo emitirá a notificação programada todos os dias no horário selecionado."
+              : "O aplicativo Android emitirá a notificação programada todos os dias no horário selecionado."}
           </p>
         </div>
       )}

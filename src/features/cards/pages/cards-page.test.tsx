@@ -247,6 +247,13 @@ vi.mock("@/state", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useSyncSplitFromExpenseEdit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useExpensesByInstallmentGroup: () => ({ data: [], isLoading: false, isError: false, error: null }),
+  useUpdateDebt: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCreateLinkedSplit: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useApplySplitSettlement: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateSplitComprehensive: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteLinkedSplit: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 describe("CardsPage — Gestão completa, Wallet 3D e faturas (§3.3.3)", () => {

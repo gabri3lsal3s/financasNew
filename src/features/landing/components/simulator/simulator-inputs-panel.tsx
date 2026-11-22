@@ -80,7 +80,7 @@ export function SimulatorInputsPanel({
               aria-label="Valor do patrimônio atual"
             />
           </FormField>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {PATRIMONY_PRESETS.map((val) => (
               <button
                 key={val}
@@ -121,7 +121,7 @@ export function SimulatorInputsPanel({
               aria-label="Valor do aporte mensal"
             />
           </FormField>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {APORTE_PRESETS.map((val) => (
               <button
                 key={val}

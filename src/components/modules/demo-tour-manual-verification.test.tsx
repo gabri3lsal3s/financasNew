@@ -856,7 +856,7 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
         id: "finances-wizard-btn",
         selector: "bottom-nav-wizard",
         route: "/",
-        title: "O Botão Wizard (+) e Atalhos",
+        title: "Botão de Lançamento Rápido (+)",
         expectedKeyword: "barra inferior",
         nextRoute: "/transacoes",
       },
@@ -964,7 +964,7 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
     // No Passo 5: Botão Anterior está ativo e botão final de ação está presente
     expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
     expect(screen.getByText("Categorias & Tetos Mensais")).toBeInTheDocument();
-    const finishBtn = screen.getByRole("button", { name: /Começar Conta Real|Começar/i });
+    const finishBtn = screen.getByRole("button", { name: /Voltar para minha conta|Minha conta/i });
     expect(finishBtn).toBeInTheDocument();
 
     // Jornada de Retorno: Passos 5 retrocedendo até 1
@@ -1131,7 +1131,7 @@ describe("Teste Manual do Tour Geral: Jornada Lógica e Completa de Finanças e 
     // No Passo 5: Proventos & Renda Passiva
     expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
     expect(screen.getByText("Proventos & Renda Passiva")).toBeInTheDocument();
-    const finishBtn = screen.getByRole("button", { name: /Começar Conta Real|Começar/i });
+    const finishBtn = screen.getByRole("button", { name: /Voltar para minha conta|Minha conta/i });
     expect(finishBtn).toBeInTheDocument();
 
     // Jornada de Retorno: Passos 5 retrocedendo até 1
@@ -1346,7 +1346,7 @@ describe("Teste Manual de Conclusão: Conclusão dos Tours Completos e Encerrame
     expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
     expect(screen.getByText("Categorias & Tetos Mensais")).toBeInTheDocument();
 
-    const finishBtn = screen.getByRole("button", { name: /Começar Conta Real|Lançar na Conta Real|Começar/i });
+    const finishBtn = screen.getByRole("button", { name: /Voltar para minha conta|Minha conta/i });
     expect(finishBtn).toBeInTheDocument();
 
     await user.click(finishBtn);
@@ -1397,7 +1397,7 @@ describe("Teste Manual de Conclusão: Conclusão dos Tours Completos e Encerrame
     expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
     expect(screen.getByText("Proventos & Renda Passiva")).toBeInTheDocument();
 
-    const finishBtn = screen.getByRole("button", { name: /Começar Conta Real|Começar/i });
+    const finishBtn = screen.getByRole("button", { name: /Voltar para minha conta|Minha conta/i });
     expect(finishBtn).toBeInTheDocument();
 
     await user.click(finishBtn);
@@ -1448,7 +1448,7 @@ describe("Teste Manual de Conclusão: Conclusão dos Tours Completos e Encerrame
     expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
     expect(screen.getByText("Central de Ajuda & Suporte Direto")).toBeInTheDocument();
 
-    const finishBtn = screen.getByRole("button", { name: /Começar Conta Real|Começar/i });
+    const finishBtn = screen.getByRole("button", { name: /Voltar para minha conta|Minha conta/i });
     expect(finishBtn).toBeInTheDocument();
 
     await user.click(finishBtn);
@@ -1515,7 +1515,7 @@ describe("Teste Manual de Conclusão: Conclusão dos Tours Completos e Encerrame
         window.dispatchEvent(new Event("resize"));
       });
 
-      const finishBtn = screen.getByRole("button", { name: /Começar Conta Real|Começar/i });
+      const finishBtn = screen.getByRole("button", { name: /Voltar para minha conta|Minha conta/i });
       await user.click(finishBtn);
 
       // Comprova encerramento da sessão demo

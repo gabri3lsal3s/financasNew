@@ -13,6 +13,8 @@ const navigateMock = vi.fn();
 const deleteTripExpenseLinkedMock = vi.fn();
 const updateTripExpenseLinkedMock = vi.fn();
 const deletePublicShareMock = vi.fn().mockResolvedValue(undefined);
+const syncSplitFromExpenseEditMock = vi.fn().mockResolvedValue({});
+const updateDebtMock = vi.fn().mockResolvedValue({});
 
 let currentTestQueryClient: QueryClient;
 
@@ -83,6 +85,9 @@ const stateMocks = vi.hoisted(() => ({
   isReadOnly: false,
   isFamilyModeEnabled: true,
   myFamily: null as unknown,
+  myPublicShares: [] as unknown[],
+  debts: [] as unknown[],
+  groupExpenses: undefined as unknown[] | undefined,
 }));
 
 vi.mock("@/state", () => ({
@@ -112,17 +117,28 @@ vi.mock("@/state", () => ({
   useFamilyMode: () => ({ isFamilyModeEnabled: stateMocks.isFamilyModeEnabled }),
   useMyFamily: () => ({ data: stateMocks.myFamily ?? null, isLoading: false }),
   useExpenses: () => ({ data: [], isLoading: false }),
-  useMyPublicShares: () => ({ data: [], isLoading: false }),
-  useDebts: () => ({ data: [], isLoading: false }),
+  useExpensesByInstallmentGroup: () => ({ data: stateMocks.groupExpenses, isLoading: false }),
+  useMyPublicShares: () => ({ data: stateMocks.myPublicShares, isLoading: false }),
+  useDebts: () => ({ data: stateMocks.debts, isLoading: false }),
+  useSyncSplitFromExpenseEdit: () => ({ mutateAsync: syncSplitFromExpenseEditMock, isPending: false }),
+  useUpdateDebt: () => ({ mutateAsync: updateDebtMock, isPending: false }),
 }));
 
 vi.mock("@/state/mutations/use-public-share-mutations", () => ({
+  publicShareQueryKey: ["public-share"],
+  publicSharesQueryKey: ["public-shares"],
+  myPublicSharesMutationKey: ["my-public-shares"],
   useDeletePublicShareMutation: () => ({ mutateAsync: deletePublicShareMock, isPending: false }),
 }));
 
 vi.mock("@/components/modules/split-expense-dialog", () => ({
   SplitExpenseDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="split-expense-dialog">Diálogo de Racha</div> : null,
+}));
+
+vi.mock("@/components/modules/manage-split-dialog", () => ({
+  ManageSplitDialog: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="manage-split-dialog">Gerenciar Racha</div> : null,
 }));
 
 const baseExpense: Expense = {
@@ -757,6 +773,66 @@ describe("ExpenseDetailDialog", () => {
           title: "Despesa e racha vinculado excluídos",
         }),
       );
+    });
+
+    it("identifica despesa vinculada a racha com badge Racha, substitui Rachar por Gerenciar Racha e sincroniza edição", async () => {
+      updateExpenseMock.mockResolvedValueOnce({});
+      syncSplitFromExpenseEditMock.mockResolvedValueOnce({});
+      stateMocks.myPublicShares = [
+        {
+          id: "share-linked-1",
+          user_id: "u1",
+          kind: "split",
+          token: "tok-linked",
+          expense_id: "e1",
+          installment_group_id: null,
+          debt_id: null,
+          created_at: "2026-08-04T10:00:00Z",
+          updated_at: "2026-08-04T10:00:00Z",
+          expires_at: null,
+          is_revoked: false,
+          payload: {
+            title: "Jantar",
+            total_cents: 12050,
+            date: "2026-08-04",
+            people_count: 2,
+            guest_share_cents: 6025,
+            host_share_cents: 6025,
+            expense_id: "e1",
+            participants: [
+              { id: "p_1", name: "Eu", share_cents: 6025, is_host: true, is_settled: true, settled_cents: 6025 },
+              { id: "p_2", name: "Lucas", share_cents: 6025, is_host: false, is_settled: false, settled_cents: 0 },
+            ],
+          },
+        },
+      ];
+
+      const user = userEvent.setup();
+      render(<ExpenseDetailDialog expense={baseExpense} open={true} onOpenChange={vi.fn()} />);
+
+      // Exibe badge Racha em vez de Individual e botão Gerenciar Racha no lugar de Rachar
+      expect(screen.getByText("Racha")).toBeInTheDocument();
+      expect(screen.queryByText("Individual")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^Rachar$/i })).not.toBeInTheDocument();
+      expect(screen.getAllByRole("button", { name: /Gerenciar Racha/i }).length).toBeGreaterThanOrEqual(1);
+
+      // Editar despesa dispara useSyncSplitFromExpenseEdit
+      await user.click(screen.getByRole("button", { name: "Editar" }));
+      const descInput = screen.getByLabelText("Descrição");
+      await user.type(descInput, "Churrasco Editado");
+      await user.click(screen.getByRole("button", { name: /Salvar alterações/i }));
+
+      await waitFor(() => {
+        expect(syncSplitFromExpenseEditMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            share: expect.objectContaining({ id: "share-linked-1" }),
+            nextTitle: "Churrasco Editado",
+            nextTotalCents: 12050,
+          }),
+        );
+      });
+
+      stateMocks.myPublicShares = [];
     });
   });
 });

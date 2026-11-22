@@ -81,10 +81,27 @@ export function formatDeviceInfo(info?: Record<string, unknown> | null): string 
   return parts.length > 0 ? parts.join(" | ") : JSON.stringify(info);
 }
 
+function resolveAdminBaseUrl(): string {
+  const denoEnv = (
+    globalThis as { Deno?: { env?: { get(key: string): string | undefined } } }
+  ).Deno?.env;
+  const raw = denoEnv?.get("PUBLIC_APP_URL") || "https://axir.com.br";
+  return raw.replace(/\/+$/, "");
+}
+
+function clampText(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, Math.max(0, maxLen - 3))}...`;
+}
+
 /**
  * Monta o corpo da mensagem formatada em HTML para o Telegram
  */
 export function buildTelegramSupportMessage(data: SupportTicketNotificationData): string {
+  const cleanMessage = clampText((data.message || "").trim(), 2200);
+  const cleanDeviceInfo = clampText(formatDeviceInfo(data.deviceInfo), 300);
+  const adminUrl = `${resolveAdminBaseUrl()}/admin/chamados`;
+
   const lines: (string | null)[] = [
     `<b>[CHAMADO DE SUPORTE — AXIR]</b>\n`,
     `<b>Cliente:</b> ${escapeTelegramHtml(data.userName || "Cliente não identificado")}`,
@@ -92,18 +109,18 @@ export function buildTelegramSupportMessage(data: SupportTicketNotificationData)
       ? `<b>E-mail:</b> <a href="mailto:${escapeTelegramHtml(data.userEmail)}">${escapeTelegramHtml(data.userEmail)}</a>`
       : `<b>E-mail:</b> Não informado`,
     `<b>Tipo:</b> ${escapeTelegramHtml(formatTicketType(data.type))}`,
-    data.subject ? `<b>Assunto:</b> ${escapeTelegramHtml(data.subject)}` : null,
+    data.subject ? `<b>Assunto:</b> ${escapeTelegramHtml(clampText(data.subject, 200))}` : null,
     `<b>Rota no App:</b> <code>${escapeTelegramHtml(data.currentRoute || "/")}</code>`,
     `<b>Versão:</b> ${escapeTelegramHtml(data.appVersion || "Web")}`,
-    `<b>Dispositivo:</b> ${escapeTelegramHtml(formatDeviceInfo(data.deviceInfo))}`,
+    `<b>Dispositivo:</b> ${escapeTelegramHtml(cleanDeviceInfo)}`,
     data.ticketId ? `<b>ID do Chamado:</b> <code>${escapeTelegramHtml(data.ticketId)}</code>` : null,
-    `\n<b>Mensagem:</b>\n${escapeTelegramHtml(data.message.trim())}`,
+    `\n<b>Mensagem:</b>\n${escapeTelegramHtml(cleanMessage)}`,
     data.ticketId
-      ? `\n<a href="https://axir.com.br/admin?aba=chamados&amp;ticket=${encodeURIComponent(data.ticketId)}">Responder Chamado no Painel Admin</a>`
+      ? `\n<a href="${escapeTelegramHtml(`${adminUrl}?ticket=${encodeURIComponent(data.ticketId)}`)}">Responder Chamado no Painel Admin</a>`
       : null,
   ];
 
-  return lines.filter((line): line is string => Boolean(line)).join("\n");
+  return clampText(lines.filter((line): line is string => Boolean(line)).join("\n"), 4000);
 }
 
 /**

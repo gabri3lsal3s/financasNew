@@ -11,11 +11,13 @@ import { usePendingSplitExpense } from "@/hooks/use-pending-split-expense";
 import { usePendingSimulation } from "@/hooks/use-pending-simulation";
 import { useUserAccess } from "@/state";
 import {
+  clearNativeBankMonitoring,
   getPendingRouteAfterUnlock,
   initBankNotificationListener,
   initDeepLinkListener,
   initNotificationActionListener,
   isAppLocked,
+  isNativePlatform,
   setPendingRouteAfterUnlock,
   subscribeAppLock,
 } from "@/services/native";
@@ -35,6 +37,12 @@ function NativeIntegrationsHandler() {
   const navigate = useNavigate();
   const { hasFeature } = useUserAccess();
   const isBankListenerAllowed = hasFeature("bank_notification_listener");
+
+  useEffect(() => {
+    if (isNativePlatform() && !isBankListenerAllowed) {
+      void clearNativeBankMonitoring();
+    }
+  }, [isBankListenerAllowed]);
 
   useEffect(() => {
     const handleNativeNavigation = (route: string) => {

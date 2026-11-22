@@ -32,6 +32,8 @@ export interface LogoFullProps {
   onClick?: () => void;
   /** Label acessível customizado */
   "aria-label"?: string;
+  /** Prioriza decodificação síncrona imediata e alta prioridade de fetch. */
+  priority?: boolean;
 }
 
 const SIZE_PRESETS = {
@@ -81,6 +83,7 @@ export function LogoFull({
   size = "md",
   onClick,
   "aria-label": ariaLabel,
+  priority = false,
 }: LogoFullProps) {
   const isProActive = useIsPro(isPro);
   const preset = SIZE_PRESETS[size];
@@ -115,6 +118,7 @@ export function LogoFull({
         themeMode={themeMode}
         accentReactive={accentReactive}
         variant={variant}
+        priority={priority}
         aria-hidden="true"
       />
       <span

@@ -149,17 +149,24 @@
         <!-- Bancos Tradicionais & Digitais -->
         <package android:name="com.nu.production" />
         <package android:name="br.com.intermedium" />
+        <package android:name="br.com.intermedium.pj" />
         <package android:name="com.c6bank.app" />
+        <package android:name="com.c6bank.empresa" />
         <package android:name="br.com.neon" />
         <package android:name="br.com.bradesco.next" />
         <package android:name="com.itau" />
         <package android:name="com.itau.personnalite" />
         <package android:name="com.bradesco" />
+        <package android:name="com.bradesco.cartoes" />
         <package android:name="com.santander.app" />
         <package android:name="br.com.santander.way" />
         <package android:name="br.gov.caixa.tem" />
         <package android:name="br.com.gabba.Caixa" />
         <package android:name="br.com.bb.android" />
+        <package android:name="br.com.sofisa.direto" />
+        <package android:name="br.com.bancopan.app" />
+        <package android:name="br.com.bv.banco" />
+        <package android:name="com.cora.app" />
 
         <!-- Carteiras Digitais & Pagamentos -->
         <package android:name="com.google.android.apps.walletnfcrel" />
@@ -170,6 +177,7 @@
         <package android:name="com.picpay" />
         <package android:name="br.com.uol.ps" />
         <package android:name="br.com.uol.ps.myaccount" />
+        <package android:name="br.com.uol.ps.seller" />
         <package android:name="com.recargapay" />
 
         <!-- Fintechs & Outros Bancos -->
@@ -180,6 +188,7 @@
 
         <!-- Investimentos, Cripto & Contas Globais -->
         <package android:name="com.btg.pactual.banking" />
+        <package android:name="com.btgpactual.empresas" />
         <package android:name="com.btgpactual.investimentos" />
         <package android:name="br.com.btg.pactual.digital" />
         <package android:name="br.com.xp.carteira" />
@@ -192,6 +201,7 @@
         <package android:name="com.nomadfinancial.app" />
         <package android:name="com.nomadglobal.app" />
         <package android:name="com.transferwise.android" />
+        <package android:name="us.avenue.app" />
 
         <!-- Cooperativas, Adquirentes & Outros -->
         <package android:name="br.com.sicoob.net" />

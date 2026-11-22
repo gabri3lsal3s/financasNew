@@ -3,10 +3,13 @@ import {
   createGoalDismissalCheckpoint,
   createPaceDismissalCheckpoint,
   createSurplusDismissalCheckpoint,
+  createTimedDismissalCheckpoint,
   createZeroGuiltDismissalCheckpoint,
+  isTimedAlertDismissed,
   shouldShowGoalAlert,
   shouldShowPaceAlert,
   shouldShowSurplusAlert,
+  shouldShowTrialBanner,
   shouldShowZeroGuiltAlert,
   type GoalAlertEvaluation,
 } from "./alert-dismissals";
@@ -333,6 +336,52 @@ describe("alert-dismissals (Motor Puro de Elegibilidade e Descarte de Alertas)",
     it("reativa em um novo dia", () => {
       const checkpoint = createZeroGuiltDismissalCheckpoint("2026-11-08");
       expect(shouldShowZeroGuiltAlert(checkpoint, "2026-11-09")).toBe(true);
+    });
+  });
+
+  describe("createTimedDismissalCheckpoint e isTimedAlertDismissed", () => {
+    it("mantém card dispensado durante 7 dias e reativa após expirar", () => {
+      const now = new Date("2026-11-01T12:00:00Z").getTime();
+      const checkpoint = createTimedDismissalCheckpoint(7, now);
+
+      expect(isTimedAlertDismissed(checkpoint, now + 6 * 24 * 60 * 60 * 1000)).toBe(true);
+      expect(isTimedAlertDismissed(checkpoint, now + 7 * 24 * 60 * 60 * 1000 + 1)).toBe(false);
+    });
+
+    it("mantém card dispensado durante 30 dias e reativa após expirar", () => {
+      const now = new Date("2026-11-01T12:00:00Z").getTime();
+      const checkpoint = createTimedDismissalCheckpoint(30, now);
+
+      expect(isTimedAlertDismissed(checkpoint, now + 29 * 24 * 60 * 60 * 1000)).toBe(true);
+      expect(isTimedAlertDismissed(checkpoint, now + 30 * 24 * 60 * 60 * 1000 + 1)).toBe(false);
+    });
+  });
+
+  describe("shouldShowTrialBanner", () => {
+    it("oculta quando há cobrança automática ativa ou daysRemaining é null", () => {
+      expect(shouldShowTrialBanner(15, true, null)).toBe(false);
+      expect(shouldShowTrialBanner(null, false, null)).toBe(false);
+    });
+
+    it("respeita dispensa de 7d/30d quando faltam mais de 3 dias", () => {
+      const now = new Date("2026-11-01T12:00:00Z").getTime();
+      const checkpoint = createTimedDismissalCheckpoint(7, now);
+
+      expect(shouldShowTrialBanner(15, false, checkpoint, now + 2 * 24 * 60 * 60 * 1000)).toBe(
+        false,
+      );
+      expect(shouldShowTrialBanner(15, false, checkpoint, now + 8 * 24 * 60 * 60 * 1000)).toBe(
+        true,
+      );
+    });
+
+    it("reativa obrigatoriamente na janela crítica (<= 3 dias) mesmo se dispensado antes", () => {
+      const now = new Date("2026-11-01T12:00:00Z").getTime();
+      const checkpoint = createTimedDismissalCheckpoint(30, now);
+
+      expect(shouldShowTrialBanner(3, false, checkpoint, now + 1000)).toBe(true);
+      expect(shouldShowTrialBanner(1, false, checkpoint, now + 1000)).toBe(true);
+      expect(shouldShowTrialBanner(0, false, checkpoint, now + 1000)).toBe(true);
     });
   });
 });

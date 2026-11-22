@@ -5,6 +5,7 @@ export interface SplitParticipantView {
   id?: string;
   name: string;
   is_host?: boolean;
+  is_settled?: boolean;
   share_cents: number;
 }
 
@@ -22,6 +23,12 @@ export interface SplitChargeCardProps {
   pixKey?: string;
   pixKeyType?: string;
   participants?: SplitParticipantView[];
+  customNote?: string | null;
+  showParticipantsList?: boolean;
+  isCurrentSettled?: boolean;
+  participantTotalShareCents?: number;
+  participantSettledCents?: number;
+  isHostViewing?: boolean;
   isDemo?: boolean;
   defaultShowQrCode?: boolean;
   onCopyPix?: () => void;

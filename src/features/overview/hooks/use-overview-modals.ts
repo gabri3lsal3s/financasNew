@@ -4,6 +4,7 @@ import {
   createGoalDismissalCheckpoint,
   createPaceDismissalCheckpoint,
   createSurplusDismissalCheckpoint,
+  createTimedDismissalCheckpoint,
 } from "@/domain/overview";
 import type { DashboardAlertDismissals, PublicShare } from "@/types";
 
@@ -46,6 +47,7 @@ export function useOverviewModals({
   const [checkpointOpen, setCheckpointOpen] = useState(false);
   const [depositGoalShare, setDepositGoalShare] = useState<PublicShare | null>(null);
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const [onboardingChecklistOpen, setOnboardingChecklistOpen] = useState(false);
   const [demoTrackModalOpen, setDemoTrackModalOpen] = useState(false);
 
   const handleLaunchPixFromClipboard = useCallback(
@@ -154,6 +156,19 @@ export function useOverviewModals({
     [updateAlertDismissals],
   );
 
+  const handleDismissCard = useCallback(
+    (cardKey: string, days: 7 | 30 = 7) => {
+      updateAlertDismissals((prev) => ({
+        ...prev,
+        cards: {
+          ...(prev.cards ?? {}),
+          [cardKey]: createTimedDismissalCheckpoint(days),
+        },
+      }));
+    },
+    [updateAlertDismissals],
+  );
+
   return {
     selectedCategoryId,
     setSelectedCategoryId,
@@ -169,6 +184,8 @@ export function useOverviewModals({
     setDepositGoalShare,
     welcomeDismissed,
     setWelcomeDismissed,
+    onboardingChecklistOpen,
+    setOnboardingChecklistOpen,
     demoTrackModalOpen,
     setDemoTrackModalOpen,
     handleLaunchPixFromClipboard,
@@ -176,5 +193,6 @@ export function useOverviewModals({
     handleDismissSurplus,
     handleDismissGoal,
     handleDismissGovernance,
+    handleDismissCard,
   };
 }

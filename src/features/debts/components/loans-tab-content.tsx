@@ -1,5 +1,6 @@
-import { Coins, Plus } from "lucide-react";
+import { Coins, Compass, Plus } from "lucide-react";
 import { Button, EmptyState, Skeleton } from "@/components/ui";
+import { startDemo } from "@/state/demo-mode";
 import type { Debt, Loan } from "@/types";
 import { LoanCard } from "./loan-card";
 
@@ -53,10 +54,22 @@ export function LoansTabContent({
           title="Nenhum contrato cadastrado"
           description="Cadastre seus contratos de crédito (Price ou SAC) para simular amortizações e acompanhar o saldo devedor."
           action={
-            <Button onClick={onOpenNewLoan} className="gap-1.5">
-              <Plus aria-hidden="true" className="size-4" />
-              Cadastrar contrato
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button size="sm" onClick={onOpenNewLoan} className="gap-1.5">
+                <Plus aria-hidden="true" className="size-4" />
+                Cadastrar contrato
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => startDemo("finances_debts")}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Compass className="size-4" aria-hidden="true" />
+                <span>Ver exemplo na Simulação</span>
+              </Button>
+            </div>
           }
         />
       ) : (

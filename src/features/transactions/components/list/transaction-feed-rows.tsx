@@ -9,6 +9,7 @@ export interface ExpenseRowProps {
   category?: Category | null;
   recurrenceLabel?: string;
   isFamilyModeEnabled?: boolean;
+  hasLinkedSplit?: boolean;
   priceEvolution?: ExpensePriceEvolution | null;
   onClick?: () => void;
 }
@@ -19,6 +20,7 @@ export function ExpenseRow({
   category,
   recurrenceLabel,
   isFamilyModeEnabled,
+  hasLinkedSplit,
   priceEvolution,
   onClick,
 }: ExpenseRowProps) {
@@ -37,6 +39,7 @@ export function ExpenseRow({
       subtitle={subtitle}
       amountCents={Math.round(expense.value * 100)}
       reportWeight={expense.report_weight}
+      hasLinkedSplit={hasLinkedSplit}
       kind="expense"
       icon={category?.icon}
       iconColor={category?.color}

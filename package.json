@@ -1,7 +1,7 @@
 {
   "name": "axir",
   "private": true,
-  "version": "3.14.0",
+  "version": "3.16.0",
   "type": "module",
   "engines": {
     "node": ">=22.23.4 <23 || >=24.22.1 <25 || >=26.12.1"
@@ -32,9 +32,10 @@
     "db:reset": "supabase db reset",
     "db:push": "supabase db push",
     "db:types": "supabase gen types typescript --local > src/types/database.ts",
-    "deploy:functions": "npx supabase functions deploy asaas-checkout --no-verify-jwt && npx supabase functions deploy asaas-manage && npx supabase functions deploy asaas-webhook --no-verify-jwt && npx supabase functions deploy support-notify --no-verify-jwt && npx supabase functions deploy quotes",
+    "deploy:functions": "npx supabase functions deploy asaas-checkout --no-verify-jwt --use-api && npx supabase functions deploy asaas-manage --no-verify-jwt --use-api && npx supabase functions deploy asaas-webhook --no-verify-jwt --use-api && npx supabase functions deploy support-notify --no-verify-jwt --use-api && npx supabase functions deploy quotes --no-verify-jwt --use-api && npx supabase functions deploy billing-lifecycle-cron --no-verify-jwt --use-api && npx supabase functions deploy push-dispatcher --no-verify-jwt --use-api && npx supabase functions deploy sunday-digest --no-verify-jwt --use-api && npx supabase functions deploy admin-super-action --no-verify-jwt --use-api",
     "quotes:deploy": "node scripts/deploy-quotes.mjs deploy",
     "quotes:cron": "node scripts/deploy-quotes.mjs cron",
+    "notifications:cron": "node scripts/notifications-cron.mjs",
     "cap:sync": "cap sync android",
     "cap:open": "cap open android",
     "cap:build": "npm run build && cap sync android",

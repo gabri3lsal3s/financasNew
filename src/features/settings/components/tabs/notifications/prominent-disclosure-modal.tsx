@@ -1,5 +1,5 @@
 import { ShieldCheck, CheckCircle2 } from "lucide-react";
-import { Button, Modal } from "@/components/ui";
+import { Button, Modal, ModalFooter } from "@/components/ui";
 import { PROMINENT_DISCLOSURE_INFO } from "@/lib/institutional";
 
 export interface ProminentDisclosureModalProps {
@@ -21,7 +21,7 @@ export function ProminentDisclosureModal({
       description={PROMINENT_DISCLOSURE_INFO.subtitle}
       size="md"
       footer={
-        <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 w-full [&_button]:w-full [&_button]:sm:w-auto">
+        <ModalFooter borderless>
           <Button
             type="button"
             variant="outline"
@@ -36,7 +36,7 @@ export function ProminentDisclosureModal({
           >
             Entendi e Habilitar no Android
           </Button>
-        </div>
+        </ModalFooter>
       }
     >
       <div className="space-y-4 py-1">

@@ -41,6 +41,10 @@ export { HighlightRow } from "./highlight-row";
 export type { HighlightRowProps } from "./highlight-row";
 export { OnboardingBanner } from "./onboarding-banner";
 export type { OnboardingBannerProps } from "./onboarding-banner";
+export { OnboardingCarouselBanner } from "./onboarding-carousel-banner";
+export type { OnboardingCarouselBannerProps } from "./onboarding-carousel-banner";
+export { OnboardingChecklistModal } from "./overview/onboarding-checklist-modal";
+export type { OnboardingChecklistModalProps } from "./overview/onboarding-checklist-modal";
 export { CategoryDonut } from "./category-donut";
 export type { CategoryDonutProps, DonutSlice } from "./category-donut";
 export { AllocationDonut } from "./allocation-donut";
@@ -156,7 +160,10 @@ export type { WeeklyDueRadarCardProps } from "./weekly-due-radar-card";
 export { KpiGrid } from "./kpi-grid";
 export type { KpiGridProps } from "./kpi-grid";
 export { VirginAccountHero } from "./virgin-account-hero";
-export type { VirginAccountHeroProps } from "./virgin-account-hero";
+export type {
+  VirginAccountHeroProps,
+  OnboardingQuickTourTrack,
+} from "./virgin-account-hero";
 export { EquationBreakdownPopover } from "./equation-breakdown-popover";
 export type { EquationBreakdownPopoverProps, EquationItem } from "./equation-breakdown-popover";
 export {

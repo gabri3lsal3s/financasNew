@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { AlertCircle, Check, ChevronDown, ChevronUp, HandCoins, Plus } from "lucide-react";
+import { AlertCircle, Check, ChevronDown, ChevronUp, Compass, HandCoins, Plus } from "lucide-react";
 import { Badge, Button, EmptyState, Skeleton } from "@/components/ui";
 import { HighlightRow, KpiCard, KpiGrid } from "@/components/modules";
 import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { buildDebtsSummaryBreakdown } from "@/domain/calculation-memory";
 import { debtStatus, type DebtsSummary } from "@/domain/debts";
 import { monthLabel } from "@/lib/date";
+import { startDemo } from "@/state/demo-mode";
 import type { Debt } from "@/types";
 import { DebtRow } from "./debt-row";
 
@@ -158,10 +159,24 @@ export function DebtsUrgencyList({
               : "Cadastre contas a receber para acompanhar valores a receber."
           }
           action={
-            <Button onClick={onCreateNew} className="gap-1.5">
-              <Plus className="size-4" aria-hidden="true" />
-              {type === "payable" ? "Nova conta a pagar" : "Nova conta a receber"}
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button size="sm" onClick={onCreateNew} className="gap-1.5">
+                <Plus className="size-4" aria-hidden="true" />
+                {type === "payable" ? "Nova conta a pagar" : "Nova conta a receber"}
+              </Button>
+              {totalDebtsCount === 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => startDemo("finances_debts")}
+                  className="gap-1.5 text-muted-foreground hover:text-foreground"
+                >
+                  <Compass className="size-4" aria-hidden="true" />
+                  <span>Ver exemplo na Simulação</span>
+                </Button>
+              )}
+            </div>
           }
         />
       ) : (

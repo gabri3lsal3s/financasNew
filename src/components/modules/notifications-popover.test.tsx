@@ -9,6 +9,7 @@ const mockUseOnboardingCounts = vi.fn();
 const mockSetReminderStateMutate = vi.fn();
 const mockMarkAllMutate = vi.fn();
 const mockUseSmartAdvisorInsights = vi.fn();
+const mockUseMyBroadcastNotifications = vi.fn();
 let mockHasFeature: (key: string) => boolean = (key: string) => key !== "investments";
 
 vi.mock("@/features/overview/hooks", () => ({
@@ -21,7 +22,7 @@ vi.mock("@/state", () => ({
   useSetReminderState: () => ({ mutate: mockSetReminderStateMutate, isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: mockMarkAllMutate, isPending: false }),
   useMySupportTickets: () => ({ data: [], isLoading: false }),
-  useMyBroadcastNotifications: () => ({ data: [], isLoading: false }),
+  useMyBroadcastNotifications: () => mockUseMyBroadcastNotifications(),
   useMarkBroadcastAsRead: () => ({ mutate: vi.fn(), isPending: false }),
   useUserAccess: () => ({
     hasFeature: (key: string) => mockHasFeature(key),
@@ -36,7 +37,14 @@ describe("NotificationsPopover", () => {
     localStorage.clear();
     mockHasFeature = (key: string) => key !== "investments";
     mockUseOnboardingCounts.mockReturnValue({
-      data: { expenseCategories: 5, incomeCategories: 5, cards: 1, transactions: 1, notificationsEnabled: true },
+      data: {
+        expenseCategories: 5,
+        incomeCategories: 5,
+        cards: 1,
+        transactions: 1,
+        cashCheckpoints: 1,
+        notificationsEnabled: true,
+      },
     });
     mockUseSmartAdvisorInsights.mockReturnValue({
       insight: null,
@@ -45,6 +53,7 @@ describe("NotificationsPopover", () => {
       totalCount: 0,
       dismiss: vi.fn(),
     });
+    mockUseMyBroadcastNotifications.mockReturnValue({ data: [], isLoading: false });
   });
   it("renderiza lista com lembretes e permite marcar lido", async () => {
     const user = userEvent.setup();
@@ -117,7 +126,13 @@ describe("NotificationsPopover", () => {
       isLoading: false,
     });
     mockUseOnboardingCounts.mockReturnValue({
-      data: { expenseCategories: 1, incomeCategories: 0, cards: 0, transactions: 0 },
+      data: {
+        expenseCategories: 1,
+        incomeCategories: 0,
+        cards: 0,
+        transactions: 0,
+        cashCheckpoints: 1,
+      },
     });
 
     render(
@@ -130,12 +145,12 @@ describe("NotificationsPopover", () => {
 
     await user.click(screen.getByRole("button", { name: "Sininho" }));
     expect(screen.getByText("Configuração inicial")).toBeInTheDocument();
-    expect(screen.getByText("1/4 passos")).toBeInTheDocument();
+    expect(screen.getByText("1/3 passos")).toBeInTheDocument();
 
     const dismissBtn = screen.getByRole("button", { name: /Ignorar configuração inicial/i });
     await user.click(dismissBtn);
 
-    expect(screen.queryByText("1/4 passos")).not.toBeInTheDocument();
+    expect(screen.queryByText("1/3 passos")).not.toBeInTheDocument();
   });
 
   it("renderiza passos e navega para rota de investimentos para usuário exclusivo de investimentos", async () => {
@@ -255,7 +270,7 @@ describe("NotificationsPopover", () => {
     expect(screen.getByText("Vence hoje")).toBeInTheDocument();
 
     expect(screen.getByText("Salário Previsto")).toBeInTheDocument();
-    expect(screen.getByText("Entrada")).toBeInTheDocument();
+    expect(screen.getByText("Entrada Prevista")).toBeInTheDocument();
   });
 
   it("permite dispensar alerta do Smart Advisor diretamente no popover com cooldown de 30 dias", async () => {
@@ -365,5 +380,73 @@ describe("NotificationsPopover", () => {
     expect(currentSearch).toContain("modo=rapido");
     expect(currentSearch).toContain("valor=21500");
     expect(currentSearch).toContain("categoria=cat-luz");
+  });
+
+  it("exibe badge e tom visual respeitando broadcast.type (ex: critical -> Urgente)", async () => {
+    const user = userEvent.setup();
+    mockUseReminders.mockReturnValue({
+      items: [],
+      totalCount: 0,
+      urgentCount: 0,
+      isLoading: false,
+    });
+    mockUseMyBroadcastNotifications.mockReturnValue({
+      data: [
+        {
+          id: "b-crit",
+          title: "Aviso Importante",
+          message: "Verifique sua assinatura.",
+          type: "critical",
+          created_at: "2026-11-22T00:00:00Z",
+          is_read: false,
+          is_dismissed: false,
+        },
+      ],
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <NotificationsPopover>
+          <button type="button">Sininho</button>
+        </NotificationsPopover>
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Sininho" }));
+    expect(screen.getByText("Aviso Importante")).toBeInTheDocument();
+    expect(screen.getByText("Urgente")).toBeInTheDocument();
+  });
+
+  it("exibe indicador '+N outros lembretes na Central' quando há mais de 6 lembretes pendentes", async () => {
+    const user = userEvent.setup();
+    const eightItems = Array.from({ length: 8 }, (_, idx) => ({
+      key: `debt:d-${idx + 1}`,
+      title: `Conta ${idx + 1}`,
+      subtitle: "A pagar",
+      dueDate: "2026-08-10",
+      amountCents: 10000,
+      status: "due_soon" as const,
+      kind: "debt" as const,
+      link: { path: "/dividas", params: { q: `d-${idx + 1}` } },
+    }));
+
+    mockUseReminders.mockReturnValue({
+      items: eightItems,
+      totalCount: 8,
+      urgentCount: 0,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <NotificationsPopover>
+          <button type="button">Sininho</button>
+        </NotificationsPopover>
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Sininho" }));
+    expect(screen.getByText(/\+2 outros lembretes na Central/i)).toBeInTheDocument();
   });
 });

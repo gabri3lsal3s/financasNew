@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { useSafeTheme } from "@/app/theme-provider";
 import { useIsPro } from "@/hooks/use-is-pro";
+import { INLINE_LOGO_WEBP_DATA_URI, type LogoInlineVariantKey } from "./logo-inline-assets";
 
 export interface LogoIconProps extends React.HTMLAttributes<HTMLElement> {
   className?: string;
@@ -68,6 +69,8 @@ export function LogoIcon({
 
   const colorKey = isProActive ? "amber" : "teal";
   const toneKey = isLight ? "light" : "dark";
+  const variantKey: LogoInlineVariantKey = `${colorKey}-${toneKey}`;
+  const inlineWebp = INLINE_LOGO_WEBP_DATA_URI[variantKey];
   const assetBase = `/brand/logo-${colorKey}-${toneKey}`;
 
   const isAriaHidden = ariaHidden === true || ariaHidden === "true";
@@ -91,25 +94,20 @@ export function LogoIcon({
       {...props}
     >
       <picture className="size-full flex items-center justify-center pointer-events-none select-none">
-        <source
-          type="image/webp"
-          srcSet={`${assetBase}-64.webp 64w, ${assetBase}-128.webp 128w, ${assetBase}-256.webp 256w`}
-          sizes="(max-width: 64px) 64px, (max-width: 128px) 128px, 256px"
-        />
+        <source type="image/webp" srcSet={inlineWebp} />
         <img
           src={`${assetBase}-128.png`}
-          srcSet={`${assetBase}-64.png 64w, ${assetBase}-128.png 128w, ${assetBase}-256.png 256w`}
-          sizes="(max-width: 64px) 64px, (max-width: 128px) 128px, 256px"
+          srcSet={`${assetBase}-128.png 1x, ${assetBase}-256.png 2x`}
           width={128}
           height={128}
           alt={effectiveTitle || ""}
           aria-hidden={isAriaHidden ? "true" : undefined}
           role={isAriaHidden ? "presentation" : "img"}
           loading="eager"
-          decoding={priority ? "sync" : "async"}
+          decoding="sync"
           fetchPriority={priority ? "high" : undefined}
           draggable={false}
-          className="size-full object-contain pointer-events-none select-none transition-transform duration-200"
+          className="size-full object-contain pointer-events-none select-none text-transparent text-[0px] leading-none transition-transform duration-200"
         />
       </picture>
     </span>

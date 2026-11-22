@@ -67,6 +67,7 @@ export async function signalSplitPayment(params: {
   amountCents: number;
   participantId?: string | null;
   installmentId?: string | null;
+  installmentIds?: string[] | null;
 }): Promise<{
   success: boolean;
   signal_id: string;
@@ -81,6 +82,7 @@ export async function signalSplitPayment(params: {
       p_amount_cents: params.amountCents,
       p_participant_id: params.participantId ?? null,
       p_installment_id: params.installmentId ?? null,
+      p_installment_ids: params.installmentIds ?? null,
     }),
   );
 }

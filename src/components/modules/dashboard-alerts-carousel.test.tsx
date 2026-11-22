@@ -196,4 +196,22 @@ describe("DashboardAlertsCarousel", () => {
 
     expect(screen.getByText("1 de 2")).toBeInTheDocument();
   });
+
+  it("limita os slides exibidos ao teto definido por maxItems preservando a prioridade", () => {
+    const sixItems: DashboardAlertItem[] = [
+      { id: "p6", priority: 6, content: <div>Slide 6</div> },
+      { id: "p1", priority: 1, content: <div>Slide 1</div> },
+      { id: "p4", priority: 4, content: <div>Slide 4</div> },
+      { id: "p2", priority: 2, content: <div>Slide 2</div> },
+      { id: "p5", priority: 5, content: <div>Slide 5</div> },
+      { id: "p3", priority: 3, content: <div>Slide 3</div> },
+    ];
+
+    render(<DashboardAlertsCarousel items={sixItems} maxItems={5} />);
+
+    expect(screen.getByText("1 de 5")).toBeInTheDocument();
+    expect(screen.getAllByText("Slide 1").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Slide 5").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("Slide 6")).not.toBeInTheDocument();
+  });
 });

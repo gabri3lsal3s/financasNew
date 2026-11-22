@@ -69,4 +69,21 @@ describe("HouseholdAlertBanner", () => {
     expect(screen.getByText(/Você deve compensar/i)).toBeInTheDocument();
     expect(screen.getByText(/para Gabriel/i)).toBeInTheDocument();
   });
+
+  it("permite dispensar o banner familiar por 7 ou 30 dias", () => {
+    const onDismiss = vi.fn();
+    render(
+      <HouseholdAlertBanner
+        variant="settlement_pending"
+        settlementAmountCents={42000}
+        settlementReceiverName="Gabriel"
+        isCurrentUserPayer={true}
+        onDismiss={onDismiss}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Dispensar aviso de acerto familiar/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Lembrar no próximo mês/i }));
+    expect(onDismiss).toHaveBeenCalledWith(30);
+  });
 });

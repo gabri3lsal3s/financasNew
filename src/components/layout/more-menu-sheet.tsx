@@ -12,7 +12,8 @@ import { triggerSensory } from "@/services/sensory";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { useAppUpdate } from "@/hooks/use-app-update";
 import { applyPWAUpdate, getPWAUpdateAvailable, subscribePWAUpdate } from "@/app/pwa";
-import { useFamilyMode, useTripMode, useReminders, useUserAccess } from "@/state";
+import { useNotificationCenter } from "@/hooks/use-notification-center";
+import { useFamilyMode, useTripMode, useUserAccess } from "@/state";
 import { Badge } from "@/components/ui/badge";
 import { Modal } from "@/components/ui/modal";
 
@@ -37,7 +38,8 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
   // No app nativo, ou quando já estiver usando PWA em plataforma sem APK (iOS/Desktop), oculta a opção.
   const showDownloadAppOption = !isNative && (canOfferAndroidApk || !isPwaActive);
 
-  const { totalCount, urgentCount } = useReminders();
+  const { totalRemindersPageCount: totalCount, criticalCount: urgentCount } =
+    useNotificationCenter();
   const { isAdmin, hasFeature } = useUserAccess();
   const { isFamilyModeEnabled } = useFamilyMode();
   const { isTripModeEnabled } = useTripMode();
@@ -128,9 +130,7 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                 className="flex min-h-11 w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover cursor-pointer shadow-xs"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
-                    <Compass className="size-4" aria-hidden="true" />
-                  </div>
+                  <Compass className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <div>
                     <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <span>Rever Tour Guiado</span>
@@ -155,9 +155,7 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                 className="flex min-h-11 w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover cursor-pointer shadow-xs"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
-                    <HelpCircle className="size-4" aria-hidden="true" />
-                  </div>
+                  <HelpCircle className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <div>
                     <div className="text-xs font-semibold text-foreground">
                       Central de Ajuda &amp; Suporte
@@ -184,9 +182,7 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                   className="flex min-h-11 w-full items-center justify-between rounded-xl border border-warning/30 bg-warning/10 p-3.5 text-left transition-colors hover:bg-warning/15 cursor-pointer shadow-xs"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-warning/20 text-warning-strong">
-                      <Sparkles className="size-4" aria-hidden="true" />
-                    </div>
+                    <Sparkles className="size-5 shrink-0 text-warning-strong" aria-hidden="true" />
                     <div>
                       <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <span>Atualização disponível</span>
@@ -213,9 +209,7 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                   className="flex min-h-11 w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover cursor-pointer shadow-xs"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
-                      <Download className="size-4" aria-hidden="true" />
-                    </div>
+                    <Download className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                     <div>
                       <div className="text-xs font-semibold text-foreground">
                         Baixar aplicativo

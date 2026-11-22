@@ -18,6 +18,9 @@ vi.mock("@/services/toast", () => ({
 }));
 
 let mockHasFeature = vi.fn(() => true);
+const mockUpdateCustomSettings = vi.fn();
+const mockUpdateReminderPreferences = vi.fn();
+let mockWeeklyDigestEnabled = false;
 
 vi.mock("@/state", () => ({
   useUserPreferences: () => ({
@@ -25,13 +28,14 @@ vi.mock("@/state", () => ({
       reminders_enabled: true,
       reminder_days_before_debt: 3,
       reminder_days_before_bill: 5,
+      weekly_digest_enabled: mockWeeklyDigestEnabled,
       custom_settings: {},
     },
     isLoading: false,
     error: null,
   }),
-  useUpdateCustomSettings: () => ({ mutate: vi.fn(), isPending: false }),
-  useUpdateReminderPreferences: () => ({ mutate: vi.fn(), isPending: false }),
+  useUpdateCustomSettings: () => ({ mutate: mockUpdateCustomSettings, isPending: false }),
+  useUpdateReminderPreferences: () => ({ mutate: mockUpdateReminderPreferences, isPending: false }),
   useUserAccess: () => ({
     role: "admin",
     hasFeature: () => mockHasFeature(),
@@ -48,6 +52,7 @@ vi.mock("@/services/native", async () => {
     setDailyReminderTime: vi.fn(),
     scheduleDailyReminder: vi.fn().mockResolvedValue(true),
     cancelDailyReminder: vi.fn().mockResolvedValue(undefined),
+    dispatchLocalOrWebNotification: vi.fn().mockResolvedValue(true),
     requestNotificationPermissions: vi.fn().mockResolvedValue({ granted: true }),
     isNotificationListenerGranted: vi.fn().mockResolvedValue(true),
     requestNotificationListenerPermission: vi.fn().mockResolvedValue(true),
@@ -90,6 +95,8 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
     localStorage.clear();
     nativeServices.resetBankAssistantPreferences();
     vi.clearAllMocks();
+    mockHasFeature = vi.fn(() => true);
+    mockWeeklyDigestEnabled = false;
     vi.mocked(nativeServices.isNativePlatform).mockReturnValue(true);
   });
 
@@ -118,12 +125,29 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       await user.click(reminderSwitch);
 
       expect(nativeServices.requestNotificationPermissions).toHaveBeenCalled();
-      expect(nativeServices.scheduleDailyReminder).toHaveBeenCalledWith({ hour: 20, minute: 0 });
+      expect(nativeServices.scheduleDailyReminder).toHaveBeenCalledWith({
+        hour: 20,
+        minute: 0,
+        requestPermission: false,
+      });
       expect(nativeServices.setDailyReminderEnabled).toHaveBeenCalledWith(true);
     });
   });
 
   describe("Assistente Passivo de Compras & Bancos (Android Nativo)", () => {
+    beforeEach(() => {
+      nativeServices.setBankAssistantPreferences({ passiveCaptureEnabled: true });
+    });
+
+    it("inicia captura passiva desativada por padrão até ativação explícita do usuário", () => {
+      nativeServices.resetBankAssistantPreferences();
+      renderNotificationsTab();
+      expect(screen.getByText("Assistente Passivo de Compras & Bancos")).toBeInTheDocument();
+      expect(
+        screen.getByRole("checkbox", { name: "Habilitar Captura Passiva de Notificações" }),
+      ).not.toBeChecked();
+    });
+
     it("renderiza a seção e o toggle mestre de captura passiva", () => {
       renderNotificationsTab();
       expect(screen.getByText("Assistente Passivo de Compras & Bancos")).toBeInTheDocument();
@@ -362,6 +386,7 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       // Inicia com preferências contendo Nubank monitorado
       nativeServices.setBankAssistantPreferences({
         ...DEFAULT_BANK_ASSISTANT_PREFERENCES,
+        passiveCaptureEnabled: true,
         monitoredBanks: ["Nubank"],
       });
 
@@ -393,6 +418,10 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
   });
 
   describe("Prominent Disclosure Android (Contrato 4 & Google Play Store)", () => {
+    beforeEach(() => {
+      nativeServices.setBankAssistantPreferences({ passiveCaptureEnabled: true });
+    });
+
     it("exibe o banner permanente de processamento 100% no dispositivo (On-Device)", () => {
       renderNotificationsTab();
       expect(
@@ -505,6 +534,110 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       expect(screen.queryByText("Exclusivo no App Android")).not.toBeInTheDocument();
       expect(screen.queryByRole("checkbox", { name: /Habilitar Captura Passiva/i })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /Baixar App Pro/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Estrutura em 4 Blocos, Quiet Hours, Push Teste e Resumo Semanal Opt-In (Fase 4.3)", () => {
+    beforeEach(() => {
+      nativeServices.setBankAssistantPreferences({ passiveCaptureEnabled: true });
+    });
+
+    it("exibe os 4 blocos organizados no Android e categorias granulares com fechamento de fatura opt-in (desativado por padrão)", async () => {
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
+      expect(screen.getByText("Notificações no Dispositivo")).toBeInTheDocument();
+      expect(screen.getByText("Assistente Passivo de Compras & Bancos")).toBeInTheDocument();
+      expect(screen.getByText("E-mails e Resumos")).toBeInTheDocument();
+
+      // Categorias na Central
+      const billClosingSwitch = screen.getByRole("switch", {
+        name: "Habilitar alertas de fechamento de fatura",
+      });
+      expect(billClosingSwitch).toHaveAttribute("aria-checked", "false");
+      await user.click(billClosingSwitch);
+      expect(mockUpdateCustomSettings).toHaveBeenCalledWith({
+        notificationCategories: { billClosing: true },
+      });
+
+      // Catálogo atualizado com contagem real (40)
+      expect(
+        screen.getByText(
+          `Explorar catálogo completo (${HOMOLOGATED_INSTITUTIONS.length} instituições financeiras)`,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("permite alternar Horário Silencioso e disparar notificação de teste no dispositivo", async () => {
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      const quietHoursSwitch = screen.getByRole("switch", {
+        name: "Habilitar Horário Silencioso",
+      });
+      expect(quietHoursSwitch).toHaveAttribute("aria-checked", "true");
+      await user.click(quietHoursSwitch);
+      expect(mockUpdateCustomSettings).toHaveBeenCalledWith({
+        deviceNotifications: {
+          quietHours: expect.objectContaining({ enabled: false }),
+        },
+      });
+
+      const testBtn = screen.getByRole("button", {
+        name: /Enviar notificação de teste/i,
+      });
+      await user.click(testBtn);
+      expect(nativeServices.dispatchLocalOrWebNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Notificação de teste do Axir",
+        }),
+      );
+      expect(pushToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Notificação de teste enviada",
+          variant: "success",
+        }),
+      );
+    });
+
+    it("mantém o Resumo Semanal de Domingo desativado por padrão (opt-in D-N4) e permite ativar", async () => {
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      const digestSwitch = screen.getByRole("switch", {
+        name: "Habilitar Resumo Semanal de Domingo",
+      });
+      expect(digestSwitch).toHaveAttribute("aria-checked", "false");
+      expect(screen.getByText("Sempre ativo")).toBeInTheDocument();
+
+      await user.click(digestSwitch);
+      expect(mockUpdateReminderPreferences).toHaveBeenCalledWith({
+        weeklyDigestEnabled: true,
+      });
+    });
+
+    it("alerta quando captura passiva está ativa no Android com zero instituições selecionadas", () => {
+      const mockedHook = vi.mocked(nativeServices.usePermissionsStatus);
+      const previousImpl = mockedHook.getMockImplementation();
+      mockedHook.mockImplementation(() => ({
+        postNotificationsGranted: true,
+        listenerGranted: true,
+        isChecking: false,
+        refresh: vi.fn().mockResolvedValue(undefined),
+        requestPostNotifications: vi.fn().mockResolvedValue(true),
+        requestNotificationListener: vi.fn().mockResolvedValue(true),
+      }));
+      try {
+        renderNotificationsTab();
+        expect(
+          screen.getByText("Nenhuma instituição selecionada no momento"),
+        ).toBeInTheDocument();
+      } finally {
+        if (previousImpl) {
+          mockedHook.mockImplementation(previousImpl);
+        }
+      }
     });
   });
 });

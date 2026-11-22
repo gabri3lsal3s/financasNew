@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useAuth } from "./use-auth";
 import { useSaveSimulationToAccount } from "@/state";
+import { getStoredInitialGoal, setStoredInitialGoal } from "@/state/demo-mode/demo-storage";
 import { getPendingSimulation, clearPendingSimulation } from "@/domain/share";
 
 /**
@@ -21,6 +22,13 @@ export function usePendingSimulation() {
 
     processedRef.current = true;
     clearPendingSimulation();
+
+    if (
+      !getStoredInitialGoal() &&
+      (pending.type === "rebalance_simulator" || pending.type === "compound_interest")
+    ) {
+      setStoredInitialGoal("investments");
+    }
 
     void saveMutation.mutateAsync(pending).catch(() => {
       // Falha tratada no onError da mutation via toast institucional

@@ -401,7 +401,8 @@ export function computePendingSplitReceivables(params: {
     if (mappedDebtIds.has(debt.id)) continue;
     if (debt.expense_id && mappedExpenseIds.has(debt.expense_id)) continue;
     if (debt.installment_group_id && mappedInstallmentGroupIds.has(debt.installment_group_id)) continue;
-    if (!debt.name.toLowerCase().startsWith("racha:") && !debt.name.toLowerCase().includes("racha")) continue;
+    const normalizedDebtName = debt.name.trim().toLowerCase();
+    if (!normalizedDebtName.startsWith("racha:") && !/(?:^|[\s:_-])racha(?:$|[\s:_-])/.test(normalizedDebtName)) continue;
 
     const debtCents = Math.round(debt.amount * 100);
     if (debtCents > 0) {

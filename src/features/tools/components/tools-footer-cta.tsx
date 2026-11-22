@@ -10,6 +10,7 @@ import {
   storePendingSimulation,
   type PendingSimulation,
 } from "@/domain/share";
+import { setStoredInitialGoal } from "@/state/demo-mode/demo-storage";
 
 export interface ToolsFooterCtaProps {
   title?: string;
@@ -50,6 +51,15 @@ export function ToolsFooterCta({
           setIsSubmitting(false);
         }
         return;
+      }
+
+      if (
+        simulationPayload.type === "rebalance_simulator" ||
+        simulationPayload.type === "compound_interest"
+      ) {
+        setStoredInitialGoal("investments");
+      } else if (simulationPayload.type === "debt_simulator") {
+        setStoredInitialGoal("debts");
       }
 
       storePendingSimulation(simulationPayload);

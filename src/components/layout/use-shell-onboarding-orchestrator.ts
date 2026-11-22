@@ -129,11 +129,14 @@ function detectActiveDialogInDom(): boolean {
 export interface UseShellOnboardingOrchestratorOptions {
   isWizardOpen: boolean;
   isVirginAccount?: boolean;
+  /** Mantém os modais automáticos silenciados no shell (onboarding 100% inline na Home). */
+  autoPrompt?: boolean;
 }
 
 export function useShellOnboardingOrchestrator({
   isWizardOpen,
   isVirginAccount = false,
+  autoPrompt = false,
 }: UseShellOnboardingOrchestratorOptions) {
   const locked = useSyncExternalStore(subscribeAppLock, isAppLocked);
   const { isDemoActive } = useDemoSession();
@@ -145,7 +148,7 @@ export function useShellOnboardingOrchestrator({
   const isAndroidEligible = shouldOfferAndroidApk();
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
+    if (typeof document === "undefined" || !autoPrompt) return;
 
     const syncFromDom = () => {
       const seenNative = hasSeenNativeOnboarding();
@@ -184,10 +187,18 @@ export function useShellOnboardingOrchestrator({
       window.clearTimeout(timer);
       observer?.disconnect();
     };
-  }, [isAndroidNativeRuntime, isDemoActive, isVirginAccount, isWizardOpen, locked, nativeDismissed]);
+  }, [
+    autoPrompt,
+    isAndroidNativeRuntime,
+    isDemoActive,
+    isVirginAccount,
+    isWizardOpen,
+    locked,
+    nativeDismissed,
+  ]);
 
   const isNativeOnboardingOpen =
-    nativeQueueActive && !locked && !isDemoActive && !isWizardOpen && !nativeDismissed;
+    autoPrompt && nativeQueueActive && !locked && !isDemoActive && !isWizardOpen && !nativeDismissed;
 
   const onNativeOnboardingOpenChange = useCallback((open: boolean) => {
     if (!open) {
@@ -199,18 +210,20 @@ export function useShellOnboardingOrchestrator({
     }
   }, []);
 
-  const nextStep = resolveNextShellOnboardingStep({
-    isAppLocked: locked,
-    isDemoActive,
-    isWizardOpen,
-    hasExternalDialogOpen: isNativeOnboardingOpen ? false : hasExternalDialogOpen,
-    isAndroidEligible,
-    isAndroidNativeRuntime,
-    hasSeenWelcome: hasSeenWelcomeModal(),
-    hasSeenWelcomeFeature: readHasSeenWelcomeFeature(),
-    hasSeenNativeOnboarding: nativeDismissed || hasSeenNativeOnboarding(),
-    isVirginAccount,
-  });
+  const nextStep = autoPrompt
+    ? resolveNextShellOnboardingStep({
+        isAppLocked: locked,
+        isDemoActive,
+        isWizardOpen,
+        hasExternalDialogOpen: isNativeOnboardingOpen ? false : hasExternalDialogOpen,
+        isAndroidEligible,
+        isAndroidNativeRuntime,
+        hasSeenWelcome: hasSeenWelcomeModal(),
+        hasSeenWelcomeFeature: readHasSeenWelcomeFeature(),
+        hasSeenNativeOnboarding: nativeDismissed || hasSeenNativeOnboarding(),
+        isVirginAccount,
+      })
+    : null;
 
   return { nextStep, isNativeOnboardingOpen, onNativeOnboardingOpenChange };
 }

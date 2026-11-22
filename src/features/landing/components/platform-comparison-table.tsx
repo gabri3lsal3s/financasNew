@@ -1,5 +1,4 @@
 import { CheckCircle2 } from "lucide-react";
-import { ScrollReveal } from "./scroll-reveal";
 
 export interface PlatformFeature {
   name: string;
@@ -85,7 +84,7 @@ function FeatureCellValue({
 
 export function PlatformComparisonTable() {
   return (
-    <ScrollReveal delay={200} className="mt-12">
+    <div className="space-y-3">
       <div className="overflow-x-auto no-scrollbar scroll-smooth rounded-2xl border border-border/80 bg-surface shadow-xs">
         <table className="w-full min-w-[560px] text-left text-xs sm:text-sm">
           <caption className="sr-only">Matriz comparativa de funcionalidades por plataforma</caption>
@@ -123,10 +122,10 @@ export function PlatformComparisonTable() {
           </tbody>
         </table>
       </div>
-      <p className="mt-3 text-xs sm:text-sm text-muted-foreground text-center">
-        E mais: Radar Fiscal, Escudo de Privacidade, Facilitador de IRPF, simuladores públicos e
-        atalhos de launcher.
+      <p className="text-xs sm:text-sm text-muted-foreground text-center">
+        E mais: DRE Mensal, Lâmina Patrimonial, Memória de Cálculo em 12 módulos, Escudo de
+        Privacidade e atalhos rápidos.
       </p>
-    </ScrollReveal>
+    </div>
   );
 }

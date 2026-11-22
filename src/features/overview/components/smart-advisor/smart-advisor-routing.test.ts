@@ -97,4 +97,34 @@ describe("smart-advisor-routing", () => {
     const route = resolveSmartAdvisorActionRoute(insight, "");
     expect(route).toBe("/orcamentos?tab=goals");
   });
+
+  it("redireciona household:ceiling_exceeded e household:settlement_pending para /familia (nunca nova despesa/receita)", () => {
+    const ceiling: SmartAdvisorInsight = {
+      id: "household:ceiling_exceeded",
+      themeKey: "household:ceiling_exceeded",
+      priority: 1,
+      category: "critical",
+      title: "Teto familiar estourado",
+      description: "Acima do teto",
+      iconName: "alert-triangle",
+      primaryAction: { label: "Ver gastos", kind: "navigate_family" },
+      metadata: { valueCents: 550000 },
+    };
+    const settlement: SmartAdvisorInsight = {
+      id: "household:settlement_pending",
+      themeKey: "household:settlement_pending",
+      priority: 2,
+      category: "income",
+      title: "Acerto familiar pendente",
+      description: "Compensação pendente",
+      iconName: "arrow-down-left",
+      primaryAction: { label: "Ver acerto", kind: "open_family_settlement" },
+      metadata: { valueCents: 45000 },
+    };
+
+    expect(resolveSmartAdvisorActionRoute(ceiling, "")).toBe("/familia");
+    expect(resolveSmartAdvisorActionRoute(settlement, "")).toBe("/familia");
+    expect(resolveSmartAdvisorPresentation(ceiling).badgeLabel).toBe("Teto Familiar");
+    expect(resolveSmartAdvisorPresentation(settlement).badgeLabel).toBe("A Receber · Família");
+  });
 });

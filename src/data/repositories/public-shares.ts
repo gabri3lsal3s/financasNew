@@ -30,19 +30,39 @@ export interface CreatePublicShareInput {
   token?: string;
   payload: Record<string, unknown>;
   expiresInDays?: number;
+  expiresAt?: string | null;
+  expenseId?: string | null;
+  installmentGroupId?: string | null;
+  debtId?: string | null;
 }
 
 function mapPublicShare(row: Record<string, unknown>): PublicShare {
+  const payload = (row.payload as Record<string, unknown>) ?? {};
   return {
     id: String(row.id),
     user_id: String(row.user_id),
     kind: row.kind as PublicShareKind,
     token: String(row.token),
-    payload: (row.payload as Record<string, unknown>) ?? {},
+    payload,
     created_at: String(row.created_at),
     expires_at: row.expires_at ? String(row.expires_at) : null,
     is_revoked: Boolean(row.is_revoked),
     updated_at: String(row.updated_at),
+    expense_id: row.expense_id
+      ? String(row.expense_id)
+      : typeof payload.expense_id === "string"
+        ? payload.expense_id
+        : null,
+    installment_group_id: row.installment_group_id
+      ? String(row.installment_group_id)
+      : typeof payload.installment_group_id === "string"
+        ? payload.installment_group_id
+        : null,
+    debt_id: row.debt_id
+      ? String(row.debt_id)
+      : typeof payload.debt_id === "string"
+        ? payload.debt_id
+        : null,
   };
 }
 
@@ -54,7 +74,29 @@ export async function createPublicShare(input: CreatePublicShareInput): Promise<
   const token = input.token || generateShareToken();
 
   const days = input.expiresInDays ?? 30;
-  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  const expiresAt =
+    input.expiresAt !== undefined
+      ? input.expiresAt
+      : new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+  const extractedExpenseId =
+    input.expenseId !== undefined
+      ? input.expenseId
+      : typeof input.payload.expense_id === "string" && input.payload.expense_id
+        ? input.payload.expense_id
+        : undefined;
+  const extractedGroupId =
+    input.installmentGroupId !== undefined
+      ? input.installmentGroupId
+      : typeof input.payload.installment_group_id === "string" && input.payload.installment_group_id
+        ? input.payload.installment_group_id
+        : undefined;
+  const extractedDebtId =
+    input.debtId !== undefined
+      ? input.debtId
+      : typeof input.payload.debt_id === "string" && input.payload.debt_id
+        ? input.payload.debt_id
+        : undefined;
 
   const insertPayload: DbInsert<PublicShare> = {
     user_id,
@@ -63,6 +105,9 @@ export async function createPublicShare(input: CreatePublicShareInput): Promise<
     payload: input.payload,
     expires_at: expiresAt,
     is_revoked: false,
+    ...(extractedExpenseId ? { expense_id: extractedExpenseId } : {}),
+    ...(extractedGroupId ? { installment_group_id: extractedGroupId } : {}),
+    ...(extractedDebtId ? { debt_id: extractedDebtId } : {}),
   };
 
   const { data, error } = await resolveQuery<Record<string, unknown>>(
@@ -86,9 +131,10 @@ export async function createPublicShare(input: CreatePublicShareInput): Promise<
 }
 
 function isArchivedSplitShare(share: PublicShare): boolean {
+  const payload = share.payload as Record<string, unknown> | undefined;
   return (
     share.kind === "split" &&
-    Boolean((share.payload as Record<string, unknown> | undefined)?.is_completed)
+    (Boolean(payload?.is_completed) || Boolean(payload?.public_page_paused))
   );
 }
 
@@ -199,19 +245,31 @@ export async function deletePublicShare(id: string): Promise<void> {
   }
 }
 
+export interface UpdatePublicShareOptions {
+  isRevoked?: boolean;
+  expiresAt?: string | null;
+  expenseId?: string | null;
+  installmentGroupId?: string | null;
+  debtId?: string | null;
+}
+
 /**
  * Atualiza o payload de um compartilhamento público existente (ex.: registrar contribuições ou alterar status).
- * Opcionalmente sincroniza `is_revoked` na mesma operação (ex.: cancelar página pública de racha arquivado ou restaurá-la).
+ * Opcionalmente sincroniza `is_revoked`, `expires_at` e chaves relacionais na mesma operação.
  */
 export async function updatePublicSharePayload(
   id: string,
   payload: Record<string, unknown>,
-  options?: { isRevoked?: boolean },
+  options?: UpdatePublicShareOptions,
 ): Promise<PublicShare> {
   const updateData: DbUpdate<PublicShare> = {
     payload,
     updated_at: new Date().toISOString(),
     ...(options?.isRevoked !== undefined ? { is_revoked: options.isRevoked } : {}),
+    ...(options?.expiresAt !== undefined ? { expires_at: options.expiresAt } : {}),
+    ...(options?.expenseId !== undefined ? { expense_id: options.expenseId } : {}),
+    ...(options?.installmentGroupId !== undefined ? { installment_group_id: options.installmentGroupId } : {}),
+    ...(options?.debtId !== undefined ? { debt_id: options.debtId } : {}),
   };
 
   const { data, error } = await resolveQuery<Record<string, unknown>[]>(
@@ -260,6 +318,28 @@ export async function listMyPublicShares(kind?: PublicShareKind): Promise<Public
   }
 
   return (data ?? []).map(mapPublicShare);
+}
+
+/**
+ * Localiza se já existe um racha vinculado à despesa ou ao grupo de parcelas do usuário.
+ */
+export async function findSplitShareByExpenseOrGroup(
+  expenseId?: string | null,
+  installmentGroupId?: string | null,
+): Promise<PublicShare | null> {
+  if (!expenseId && !installmentGroupId) return null;
+  const shares = await listMyPublicShares("split");
+  return (
+    shares.find((share) => {
+      const p = share.payload ?? {};
+      const matchExp = Boolean(expenseId && (share.expense_id === expenseId || p.expense_id === expenseId));
+      const matchGrp = Boolean(
+        installmentGroupId &&
+          (share.installment_group_id === installmentGroupId || p.installment_group_id === installmentGroupId),
+      );
+      return matchExp || matchGrp;
+    }) ?? null
+  );
 }
 
 export interface SaveSplitExpenseInput {
@@ -361,7 +441,10 @@ export async function regeneratePublicShare(
 ): Promise<PublicShare> {
   const token = input.token || generateShareToken();
   const days = input.expiresInDays ?? 30;
-  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  const expiresAt =
+    input.expiresAt !== undefined
+      ? input.expiresAt
+      : new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 
   const updateData: DbUpdate<PublicShare> = {
     token,

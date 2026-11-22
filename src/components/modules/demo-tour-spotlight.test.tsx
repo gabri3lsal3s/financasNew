@@ -192,7 +192,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
 
     expect(screen.getByText("Passo 5 de 5")).toBeInTheDocument();
     const finishBtn = screen.getByRole("button", {
-      name: /Começar Conta Real/i,
+      name: /Voltar para minha conta/i,
     });
     expect(finishBtn).toBeInTheDocument();
 
@@ -1114,7 +1114,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       expect(spanText?.textContent).toBe("Anterior");
     });
 
-    it("renderiza rótulo adaptativo no botão de conclusão (sm:hidden: 'Começar', hidden sm:inline: 'Começar Conta Real')", async () => {
+    it("renderiza rótulo adaptativo no botão de conclusão (sm:hidden: 'Minha conta', hidden sm:inline: 'Voltar para minha conta')", async () => {
       const user = userEvent.setup();
       startDemo("investments"); // 5 passos (0, 1, 2, 3, 4)
 
@@ -1126,17 +1126,17 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       await user.click(screen.getByRole("button", { name: /Próximo/i }));
       await user.click(screen.getByRole("button", { name: /Próximo/i }));
 
-      const finishBtn = screen.getByRole("button", { name: /Começar Conta Real/i });
+      const finishBtn = screen.getByRole("button", { name: /Voltar para minha conta/i });
       expect(finishBtn).toBeInTheDocument();
 
       const compactSpan = finishBtn.querySelector("span.sm\\:hidden");
       expect(compactSpan).not.toBeNull();
-      expect(compactSpan?.textContent).toBe("Começar");
+      expect(compactSpan?.textContent).toBe("Minha conta");
 
       const fullSpan = finishBtn.querySelector("span.hidden");
       expect(fullSpan).not.toBeNull();
       expect(fullSpan?.className).toContain("sm:inline");
-      expect(fullSpan?.textContent).toBe("Começar Conta Real");
+      expect(fullSpan?.textContent).toBe("Voltar para minha conta");
     });
 
     it("renderiza dots de progresso como pílulas discretas e espaçamento seguro", () => {
@@ -1370,7 +1370,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
           // Título e descrição com contraste tipográfico legível
           const title = screen.getByText("Dashboard & Saldo Livre Real");
           expect(title.className).toContain("text-foreground");
-          const desc = screen.getByText(/Monitore seu saldo livre real/i);
+          const desc = screen.getByText(/Veja seu saldo livre real/i);
           expect(desc.className).toContain("text-muted-foreground");
 
           // Rodapé sem quebra ou colisão: botão Anterior omite texto no mobile
@@ -1616,7 +1616,7 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
       });
 
       // No último passo, o botão de conclusão é exibido
-      const finishBtn = screen.getByRole("button", { name: /Começar Conta Real/i });
+      const finishBtn = screen.getByRole("button", { name: /Voltar para minha conta/i });
       finishBtn.focus();
       expect(document.activeElement).toBe(finishBtn);
 
@@ -1786,8 +1786,8 @@ describe("DemoTourSpotlight — Foco e Apresentação Guiada com Spotlight", () 
           await user.keyboard(" ");
           expect(getDemoSessionState().currentStepIndex).toBe(4);
 
-          // 4. Tab e Enter no botão CTA final ("Começar Conta Real"): conclui tour
-          const finishBtn = screen.getByRole("button", { name: /Começar Conta Real/i });
+          // 4. Tab e Enter no botão CTA final ("Voltar para minha conta"): conclui tour
+          const finishBtn = screen.getByRole("button", { name: /Voltar para minha conta/i });
           finishBtn.focus();
           expect(document.activeElement).toBe(finishBtn);
           await user.keyboard("{Enter}");

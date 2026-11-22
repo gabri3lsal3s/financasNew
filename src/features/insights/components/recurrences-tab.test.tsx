@@ -20,6 +20,8 @@ vi.mock("@/state", () => ({
   useCreateExpense: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateRecurrence: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSetFeedback: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUserPreferences: () => ({ data: { custom_settings: {} }, isLoading: false, error: null }),
+  useUpdateCustomSettings: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
 const mockOccurrences: RecurrenceOccurrence[] = [
@@ -533,7 +535,8 @@ describe("RecurrencesTab", () => {
       const user = userEvent.setup();
       const mockOnFeedback = vi.fn();
       const mockRevokeDismissal = vi.fn();
-      const expiry = new Date(2026, 10, 22, 12, 0, 0).getTime();
+      const futureYear = new Date().getFullYear() + 1;
+      const expiry = new Date(futureYear, 10, 22, 12, 0, 0).getTime();
 
       render(
         <RecurrencesTab

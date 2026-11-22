@@ -120,7 +120,7 @@ export function WeeklyDueRadarCard({ summary, className, onOpenItem }: WeeklyDue
                 <Icon
                   className={cn(
                     "size-4 shrink-0",
-                    item.kind === "bill" ? "text-portfolio" : "text-primary-strong",
+                    item.kind === "bill" ? "text-portfolio" : "text-muted-foreground",
                   )}
                   aria-hidden="true"
                 />

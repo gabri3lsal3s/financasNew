@@ -11,18 +11,18 @@ import {
 } from "./preferences";
 
 describe("Domain — BankAssistantPreferences (Fase 1 — Tarefa 1.4)", () => {
-  it("contém catálogo homologado categorizado com 36 instituições", () => {
-    expect(HOMOLOGATED_INSTITUTIONS.length).toBe(36);
-    expect(HOMOLOGATED_BANKS.length).toBe(36);
+  it("contém catálogo homologado categorizado com 40 instituições", () => {
+    expect(HOMOLOGATED_INSTITUTIONS.length).toBe(40);
+    expect(HOMOLOGATED_BANKS.length).toBe(40);
 
     const traditionalDigital = getInstitutionsByCategory("traditional_digital");
     const paymentWallets = getInstitutionsByCategory("payment_wallets");
     const investmentsCrypto = getInstitutionsByCategory("investments_crypto");
 
-    expect(traditionalDigital.length).toBe(21);
-    expect(paymentWallets.length).toBe(8);
+    expect(traditionalDigital.length).toBe(24);
+    expect(paymentWallets.length).toBe(9);
     expect(investmentsCrypto.length).toBe(7);
-    expect(traditionalDigital.length + paymentWallets.length + investmentsCrypto.length).toBe(36);
+    expect(traditionalDigital.length + paymentWallets.length + investmentsCrypto.length).toBe(40);
   });
 
   it("garante integridade de cada instituição homologada", () => {
@@ -40,7 +40,7 @@ describe("Domain — BankAssistantPreferences (Fase 1 — Tarefa 1.4)", () => {
 
   it("inicia lista de bancos monitorados vazia por padrão para novas instalações", () => {
     expect(DEFAULT_BANK_ASSISTANT_PREFERENCES.monitoredBanks).toEqual([]);
-    expect(DEFAULT_BANK_ASSISTANT_PREFERENCES.passiveCaptureEnabled).toBe(true);
+    expect(DEFAULT_BANK_ASSISTANT_PREFERENCES.passiveCaptureEnabled).toBe(false);
     expect(DEFAULT_BANK_ASSISTANT_PREFERENCES.interactiveNotificationsEnabled).toBe(true);
     expect(DEFAULT_BANK_ASSISTANT_PREFERENCES.autoInstallmentsEnabled).toBe(true);
     expect(DEFAULT_BANK_ASSISTANT_PREFERENCES.autoCategoryInferenceEnabled).toBe(true);
@@ -90,6 +90,7 @@ describe("Domain — BankAssistantPreferences (Fase 1 — Tarefa 1.4)", () => {
   it("verifica se um banco está monitorado respeitando a lista e o toggle mestre", () => {
     const prefs = {
       ...DEFAULT_BANK_ASSISTANT_PREFERENCES,
+      passiveCaptureEnabled: true,
       monitoredBanks: ["Nubank", "Itaú", "Carteira Google", "Rico"],
     };
 

@@ -23,6 +23,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(BankNotificationPlugin.class);
         registerPlugin(AppIconPlugin.class);
         registerPlugin(AppUpdatePlugin.class);
+        registerPlugin(NativeExportPlugin.class);
         super.onCreate(savedInstanceState);
         handleSendIntent(getIntent());
     }

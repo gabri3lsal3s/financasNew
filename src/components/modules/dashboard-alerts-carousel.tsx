@@ -13,6 +13,7 @@ export interface DashboardAlertsCarouselProps {
   items: (DashboardAlertItem | null | undefined | false)[];
   className?: string;
   autoplayIntervalMs?: number;
+  maxItems?: number;
 }
 
 /**
@@ -22,14 +23,14 @@ export function DashboardAlertsCarousel({
   items,
   className,
   autoplayIntervalMs = 8000,
+  maxItems,
 }: DashboardAlertsCarouselProps) {
-  const validItems = useMemo(
-    () =>
-      items
-        .filter((item): item is DashboardAlertItem => Boolean(item && item.content))
-        .sort((a, b) => a.priority - b.priority),
-    [items],
-  );
+  const validItems = useMemo(() => {
+    const sorted = items
+      .filter((item): item is DashboardAlertItem => Boolean(item && item.content))
+      .sort((a, b) => a.priority - b.priority);
+    return maxItems && maxItems > 0 ? sorted.slice(0, maxItems) : sorted;
+  }, [items, maxItems]);
 
   const total = validItems.length;
   const extendedItems = useMemo(() => {

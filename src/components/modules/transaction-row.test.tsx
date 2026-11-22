@@ -44,7 +44,7 @@ describe("TransactionRow", () => {
       />,
     );
     expect(screen.getByText("-R$ 200,00")).toBeInTheDocument();
-    expect(screen.getByText("Relat.:")).toBeInTheDocument();
+    expect(screen.getByText("Sua parte:")).toBeInTheDocument();
     expect(screen.getByText("R$ 100,00")).toBeInTheDocument();
     expect(screen.getByText("50% rateio")).toBeInTheDocument();
   });
@@ -59,7 +59,7 @@ describe("TransactionRow", () => {
       />,
     );
     expect(screen.getByText("0% reembolso")).toBeInTheDocument();
-    expect(screen.getByText("Relat.:")).toBeInTheDocument();
+    expect(screen.getByText("Sua parte:")).toBeInTheDocument();
     expect(screen.getByText("R$ 0,00")).toBeInTheDocument();
   });
 
@@ -74,20 +74,21 @@ describe("TransactionRow", () => {
     );
     expect(screen.queryByText(/rateio/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/reembolso/i)).not.toBeInTheDocument();
-    expect(screen.queryByText("Relat.:")).not.toBeInTheDocument();
+    expect(screen.queryByText("Sua parte:")).not.toBeInTheDocument();
   });
 
-  it("renderiza badge derivado a partir de weightedAmountCents", () => {
+  it("renderiza badge derivado a partir de weightedAmountCents e badge Racha quando hasLinkedSplit", () => {
     render(
       <TransactionRow
         title="Compra em Conjunto"
         amountCents={10000}
         weightedAmountCents={7500}
+        hasLinkedSplit={true}
         kind="expense"
       />,
     );
-    expect(screen.getByText("75% rateio")).toBeInTheDocument();
-    expect(screen.getByText("Relat.:")).toBeInTheDocument();
+    expect(screen.getByText("Racha")).toBeInTheDocument();
+    expect(screen.getByText("Sua parte:")).toBeInTheDocument();
     expect(screen.getByText("R$ 75,00")).toBeInTheDocument();
   });
 

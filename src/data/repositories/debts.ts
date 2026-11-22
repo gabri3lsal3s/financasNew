@@ -49,6 +49,43 @@ export async function createDebt(input: CreateDebtInput): Promise<Debt> {
   return mapDebt(data);
 }
 
+export interface CreateLinkedReceivableDebtInput {
+  name: string;
+  amount: number;
+  due_date: string;
+  expense_id: string | null;
+  installment_group_id?: string | null;
+}
+
+/** Cria uma cobrança a receber vinculada a uma despesa (ex.: ao rachar uma despesa já existente). */
+export async function createLinkedReceivableDebt(input: CreateLinkedReceivableDebtInput): Promise<Debt> {
+  const user_id = await currentUserId();
+  const { data, error } = await resolveQuery<Debt>(
+    getSupabase()
+      .from("debts")
+      .insert({
+        user_id,
+        name: input.name,
+        type: "receivable",
+        amount: input.amount,
+        due_date: input.due_date,
+        paid_at: null,
+        expense_id: input.expense_id,
+        installment_group_id: input.installment_group_id ?? null,
+      })
+      .select()
+      .single(),
+  );
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao criar cobrança vinculada.", null);
+  }
+  return mapDebt(data);
+}
+
 export async function updateDebt(id: string, input: DbUpdate<Debt>): Promise<Debt> {
   const { data, error } = await resolveQuery<Debt>(
     getSupabase().from("debts").update(input).eq("id", id).select().single(),

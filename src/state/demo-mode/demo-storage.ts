@@ -1,5 +1,6 @@
 import type { TourTrackId } from "@/domain/demo-simulation";
 import { getActiveUserId, getUserStorageKey } from "@/services/user-storage";
+import type { OnboardingGoalId } from "@/types";
 
 const LEGACY_KEYS = {
   COMPLETED_FINANCES: "financas:demo_completed_finances",
@@ -185,11 +186,17 @@ export function markNativeOnboardingSeen(): void {
 /**
  * Recupera a meta prioritária inicial selecionada no acolhimento do usuário ativo.
  */
-export function getStoredInitialGoal(): "cards" | "ocr" | "debts" | "family" | null {
+export function getStoredInitialGoal(): OnboardingGoalId | null {
   if (!isLocalStorageAvailable()) return null;
   try {
     const val = readScopedOrLegacy(SCOPED_NAMES.INITIAL_GOAL, LEGACY_KEYS.INITIAL_GOAL);
-    if (val === "cards" || val === "ocr" || val === "debts" || val === "family") {
+    if (
+      val === "cards" ||
+      val === "ocr" ||
+      val === "debts" ||
+      val === "family" ||
+      val === "investments"
+    ) {
       return val;
     }
     return null;
@@ -201,7 +208,7 @@ export function getStoredInitialGoal(): "cards" | "ocr" | "debts" | "family" | n
 /**
  * Salva a meta prioritária inicial selecionada no acolhimento do usuário ativo.
  */
-export function setStoredInitialGoal(goal: "cards" | "ocr" | "debts" | "family"): void {
+export function setStoredInitialGoal(goal: OnboardingGoalId): void {
   if (!isLocalStorageAvailable()) return;
   try {
     writeScoped(SCOPED_NAMES.INITIAL_GOAL, goal, LEGACY_KEYS.INITIAL_GOAL);

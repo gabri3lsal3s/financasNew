@@ -13,10 +13,8 @@ export function WelcomeTourConfirmStep({ activeGoal }: WelcomeTourConfirmStepPro
 
   return (
     <div className="space-y-3.5 py-1">
-      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-center sm:text-left flex flex-col sm:flex-row items-center gap-3.5">
-        <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-          <Icon className="size-5 text-primary-strong" aria-hidden="true" />
-        </div>
+      <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex items-start gap-3">
+        <Icon className="size-5 text-primary-strong shrink-0 mt-0.5" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <span className="text-[11px] font-medium text-primary-strong uppercase tracking-wider">
             Foco Escolhido

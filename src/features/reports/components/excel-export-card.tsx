@@ -3,6 +3,7 @@ import { Download, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui";
 import { todayISO } from "@/domain/debts";
 import { exportMultiSheetExcel, type ExcelWorkbookData } from "@/services/excel-export";
+import { isNativePlatform } from "@/services/native";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 
@@ -21,16 +22,22 @@ export function ExcelExportCard({
 }: ExcelExportCardProps) {
   const [downloading, setDownloading] = useState(false);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (disabled) return;
     setDownloading(true);
     try {
       const today = todayISO();
-      exportMultiSheetExcel(`Caderno_Relatorios_Financeiro_${today}`, workbookData);
+      const exported = await exportMultiSheetExcel(`Caderno_Relatorios_Financeiro_${today}`, workbookData);
+      if (!exported) {
+        throw new Error("Falha ao exportar planilha.");
+      }
       triggerSensory("success");
+      const native = isNativePlatform();
       pushToast({
-        title: "Download iniciado",
-        description: "O Caderno Excel Multi-Abas foi gerado com sucesso.",
+        title: native ? "Planilha exportada" : "Download iniciado",
+        description: native
+          ? "Salva em Downloads/Axir e pronta para abrir ou compartilhar."
+          : "O Caderno Excel Multi-Abas foi gerado com sucesso.",
         variant: "success",
       });
     } catch {

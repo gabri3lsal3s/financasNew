@@ -6,6 +6,7 @@ const mockPlugin = vi.hoisted(() => ({
   flushPendingNotifications: vi.fn(),
   getInstalledBankingApps: vi.fn().mockResolvedValue({ apps: [], installedBankNames: [] }),
   syncMonitoredPackages: vi.fn().mockResolvedValue({ success: true, count: 0 }),
+  clearMonitoredPackages: vi.fn().mockResolvedValue({ success: true }),
   getPendingShare: vi.fn().mockResolvedValue({ text: null }),
   extractTextFromReceipt: vi.fn().mockResolvedValue({ text: "" }),
   getPendingReviewTransaction: vi.fn().mockResolvedValue({ payload: null }),
@@ -23,14 +24,17 @@ vi.mock("@capacitor/core", async (importOriginal) => {
 
 import * as platformModule from "./platform";
 import * as prefsModule from "./bank-assistant-preferences";
+import * as interactiveModule from "./interactive-notifications";
 import { DEFAULT_BANK_ASSISTANT_PREFERENCES, HOMOLOGATED_BANKS } from "@/domain/notifications";
 import {
+  clearNativeBankMonitoring,
   flushPendingBankNotifications,
   initBankNotificationListener,
   isNotificationListenerGranted,
   processBankNotification,
   processPixShare,
   requestNotificationListenerPermission,
+  syncMonitoredBanksWithNative,
 } from "./bank-listener";
 import * as suggestionsStoreModule from "./suggestions-store";
 
@@ -39,6 +43,7 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
     vi.clearAllMocks();
     vi.spyOn(prefsModule, "getBankAssistantPreferences").mockReturnValue({
       ...DEFAULT_BANK_ASSISTANT_PREFERENCES,
+      passiveCaptureEnabled: true,
       monitoredBanks: [...HOMOLOGATED_BANKS],
     });
   });
@@ -435,6 +440,84 @@ describe("bank-listener (Serviço de Notificações e Pix)", () => {
       expect(nomadResult).not.toBeNull();
       expect(nomadResult?.bankName).toBe("Nomad");
       expect(addSpy).toHaveBeenCalledWith(nomadResult);
+    });
+
+    it("sincroniza interactiveEnabled e limpa pacotes nativos com clearNativeBankMonitoring", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+
+      await syncMonitoredBanksWithNative(["Nubank"], false);
+      expect(mockPlugin.syncMonitoredPackages).toHaveBeenCalledWith({
+        packages: ["com.nu.production"],
+        interactiveEnabled: false,
+      });
+
+      const cleared = await clearNativeBankMonitoring();
+      expect(cleared).toBe(true);
+      expect(mockPlugin.clearMonitoredPackages).toHaveBeenCalledTimes(1);
+    });
+
+    it("conecta bankTransactionConfirmed + bankTransactionUndone ao undoQuickAddTransaction e abre Wizard quando requiresWizard=true", async () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      const listeners = new Map<string, (payload: unknown) => void>();
+      mockPlugin.addListener.mockImplementation((eventName: string, cb: (p: unknown) => void) => {
+        listeners.set(eventName, cb);
+        return Promise.resolve({ remove: vi.fn() });
+      });
+
+      const quickAddSpy = vi
+        .spyOn(interactiveModule, "quickAddTransaction")
+        .mockResolvedValueOnce({
+          success: true,
+          createdId: "exp-bg-99",
+          categoryName: "Alimentação",
+          type: "expense",
+        })
+        .mockResolvedValueOnce({
+          success: false,
+          requiresWizard: true,
+          type: "expense",
+          error: "Categoria desconhecida",
+        });
+
+      const undoSpy = vi
+        .spyOn(interactiveModule, "undoQuickAddTransaction")
+        .mockResolvedValue(true);
+
+      const onNavigate = vi.fn();
+      const cleanup = initBankNotificationListener(onNavigate);
+
+      const payloadConfirmed = {
+        packageName: "com.nu.production",
+        title: "Nubank",
+        text: "Compra de R$ 40,00 no cartão de crédito aprovada em Padaria",
+        timestamp: 1729000555000,
+      };
+      listeners.get("bankTransactionConfirmed")?.(payloadConfirmed);
+      await new Promise((r) => setTimeout(r, 15));
+
+      expect(quickAddSpy).toHaveBeenCalledTimes(1);
+
+      listeners.get("bankTransactionUndone")?.(payloadConfirmed);
+      await new Promise((r) => setTimeout(r, 15));
+
+      expect(undoSpy).toHaveBeenCalledWith(
+        "exp-bg-99",
+        "expense",
+        expect.objectContaining({ amountCents: 4000 }),
+      );
+
+      listeners.get("bankTransactionConfirmed")?.({
+        packageName: "com.nu.production",
+        title: "Nubank",
+        text: "Compra de R$ 75,00 aprovada em Loja Desconhecida",
+        timestamp: 1729000666000,
+      });
+      await new Promise((r) => setTimeout(r, 15));
+
+      expect(onNavigate).toHaveBeenCalledWith(expect.stringContaining("/transacoes?"));
+      expect(onNavigate).toHaveBeenCalledWith(expect.stringContaining("modo=rapido"));
+
+      await cleanup();
     });
   });
 });

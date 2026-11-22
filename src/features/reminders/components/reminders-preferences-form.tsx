@@ -1,195 +1,119 @@
-import { useState } from "react";
-import {
-  useUserPreferences,
-  useUpdateReminderPreferences,
-  useUpdateCustomSettings,
-  useUserAccess,
-} from "@/state";
-import { pushToast } from "@/services/toast";
+import { BellRing } from "lucide-react";
+import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
-import {
-  isDailyReminderEnabled,
-  setDailyReminderEnabled,
-  isDueNotificationsEnabled,
-  setDueNotificationsEnabled,
-  getDailyReminderTime,
-  setDailyReminderTime,
-  scheduleDailyReminder,
-  cancelDailyReminder,
-  usePermissionsStatus,
-} from "@/services/native";
+import { useNotificationPreferencesForm } from "../hooks/use-notification-preferences-form";
 import { DailyClosingReminderCard } from "./prefs/DailyClosingReminderCard";
 import { DueNotificationsPrefsCard } from "./prefs/DueNotificationsPrefsCard";
 import { InAppRemindersPrefsCard } from "./prefs/InAppRemindersPrefsCard";
+import { QuietHoursPrefsCard } from "./prefs/QuietHoursPrefsCard";
+import { RemotePushPrefsCard } from "./prefs/RemotePushPrefsCard";
 
 export interface RemindersPreferencesFormProps {
   className?: string;
+  sections?: "all" | "in-app" | "device";
 }
 
 /**
  * Formulário compartilhado de preferências de lembretes e notificações.
- * Reaproveitado tanto no card de Configurações quanto no modal de Lembretes.
+ * Reaproveitado tanto nos cards de Configurações quanto no modal rápido de Lembretes.
  */
-export function RemindersPreferencesForm({ className }: RemindersPreferencesFormProps) {
-  const { hasFeature } = useUserAccess();
-  const preferencesQuery = useUserPreferences();
-  const updateReminderPreferencesMutation = useUpdateReminderPreferences();
-  const updateCustomSettingsMutation = useUpdateCustomSettings();
-  const { postNotificationsGranted, requestPostNotifications } = usePermissionsStatus();
-
-  const remindersEnabled = preferencesQuery.data?.reminders_enabled ?? true;
-  const billDaysBefore = preferencesQuery.data?.reminder_days_before_bill ?? 3;
-  const debtDaysBefore = preferencesQuery.data?.reminder_days_before_debt ?? 3;
-  const cloudDeviceNotifs = preferencesQuery.data?.custom_settings?.deviceNotifications;
-
-  const [localDailyReminderActive, setLocalDailyReminderActive] = useState<boolean | null>(null);
-  const [localDailyReminderTime, setLocalDailyReminderTime] = useState<string | null>(null);
-  const [localDueNotificationsActive, setLocalDueNotificationsActive] = useState<boolean | null>(null);
-
-  const dueNotificationsActive =
-    localDueNotificationsActive ??
-    cloudDeviceNotifs?.dueNotificationsEnabled ??
-    isDueNotificationsEnabled();
-
-  const dailyReminderActive =
-    localDailyReminderActive ??
-    cloudDeviceNotifs?.dailyReminderEnabled ??
-    isDailyReminderEnabled();
-
-  const dailyReminderTime =
-    localDailyReminderTime ??
-    cloudDeviceNotifs?.dailyReminderTime ??
-    getDailyReminderTime();
-
-  const handleToggleReminders = (enabled: boolean) => {
-    updateReminderPreferencesMutation.mutate({ remindersEnabled: enabled });
-  };
-
-  const handleUpdateBillDays = (valStr: string) => {
-    const num = parseInt(valStr, 10);
-    if (!Number.isNaN(num) && num >= 0 && num <= 30) {
-      updateReminderPreferencesMutation.mutate({ reminderDaysBeforeBill: num });
-    }
-  };
-
-  const handleUpdateDebtDays = (valStr: string) => {
-    const num = parseInt(valStr, 10);
-    if (!Number.isNaN(num) && num >= 0 && num <= 30) {
-      updateReminderPreferencesMutation.mutate({ reminderDaysBeforeDebt: num });
-    }
-  };
-
-  const handleToggleDueNotifications = async (enabled: boolean) => {
-    setDueNotificationsEnabled(enabled);
-    setLocalDueNotificationsActive(enabled);
-    updateCustomSettingsMutation.mutate({
-      deviceNotifications: { dueNotificationsEnabled: enabled },
-    });
-
-    if (enabled) {
-      const granted = await requestPostNotifications();
-      if (!granted) {
-        pushToast({
-          title: "Permissão pendente no sistema",
-          description:
-            "Habilite as notificações no navegador ou nas configurações do seu celular para receber alertas de contas.",
-          variant: "warning",
-        });
-      } else {
-        pushToast({
-          title: "Notificações de contas ativadas",
-          description: "Você receberá alertas no dispositivo sobre faturas e dívidas próximas do vencimento.",
-          variant: "success",
-        });
-      }
-    } else {
-      pushToast({
-        title: "Notificações de contas desativadas",
-        variant: "default",
-      });
-    }
-  };
-
-  const handleToggleDailyReminder = async (enabled: boolean) => {
-    setDailyReminderEnabled(enabled);
-    setLocalDailyReminderActive(enabled);
-    updateCustomSettingsMutation.mutate({
-      deviceNotifications: { dailyReminderEnabled: enabled },
-    });
-
-    if (enabled) {
-      const granted = await requestPostNotifications();
-      if (!granted) {
-        pushToast({
-          title: "Permissão pendente no sistema",
-          description: "Habilite as notificações nas configurações do seu celular para que o lembrete seja entregue.",
-          variant: "warning",
-        });
-      }
-      const [h, m] = dailyReminderTime.split(":").map(Number);
-      const scheduled = await scheduleDailyReminder({ hour: h || 20, minute: m || 0 });
-      if (scheduled) {
-        pushToast({
-          title: "Lembrete diário ativado",
-          description: `Você receberá uma notificação com botões rápidos todos os dias às ${dailyReminderTime}.`,
-          variant: "success",
-        });
-      }
-    } else {
-      await cancelDailyReminder();
-      pushToast({
-        title: "Lembrete diário desativado",
-        variant: "default",
-      });
-    }
-  };
-
-  const handleDailyReminderTimeChange = async (time: string) => {
-    setDailyReminderTime(time);
-    setLocalDailyReminderTime(time);
-    updateCustomSettingsMutation.mutate({
-      deviceNotifications: { dailyReminderTime: time },
-    });
-
-    if (dailyReminderActive) {
-      const [h, m] = time.split(":").map(Number);
-      await scheduleDailyReminder({ hour: h || 20, minute: m || 0 });
-      pushToast({
-        title: "Horário atualizado",
-        description: `Lembrete diário reprogramado para as ${time}.`,
-        variant: "default",
-      });
-    }
-  };
+export function RemindersPreferencesForm({
+  className,
+  sections = "all",
+}: RemindersPreferencesFormProps) {
+  const form = useNotificationPreferencesForm();
+  const showInApp = sections === "all" || sections === "in-app";
+  const showDevice = sections === "all" || sections === "device";
 
   return (
     <div className={cn("space-y-4", className)}>
-      <InAppRemindersPrefsCard
-        remindersEnabled={remindersEnabled}
-        billDaysBefore={billDaysBefore}
-        debtDaysBefore={debtDaysBefore}
-        showCards={hasFeature("cards")}
-        showDebts={hasFeature("debts")}
-        onToggleReminders={handleToggleReminders}
-        onUpdateBillDays={handleUpdateBillDays}
-        onUpdateDebtDays={handleUpdateDebtDays}
-      />
+      {showInApp ? (
+        <InAppRemindersPrefsCard
+          remindersEnabled={form.remindersEnabled}
+          billDaysBefore={form.billDaysBefore}
+          debtDaysBefore={form.debtDaysBefore}
+          categoryPreferences={form.categoryPreferences}
+          showCards={form.hasFeature("cards")}
+          showDebts={form.hasFeature("debts")}
+          showBudgets={form.hasFeature("budgets")}
+          showFamilyOrTrips={
+            form.hasFeature("family_mode") || form.hasFeature("trips")
+          }
+          onToggleReminders={form.handleToggleReminders}
+          onUpdateBillDays={form.handleUpdateBillDays}
+          onUpdateDebtDays={form.handleUpdateDebtDays}
+          onToggleCategory={form.handleToggleCategory}
+        />
+      ) : null}
 
-      <DueNotificationsPrefsCard
-        dueNotificationsActive={dueNotificationsActive}
-        postNotificationsGranted={postNotificationsGranted}
-        onToggleDueNotifications={(enabled) => void handleToggleDueNotifications(enabled)}
-        onRequestPermission={() => void requestPostNotifications()}
-      />
+      {showDevice ? (
+        <>
+          <DueNotificationsPrefsCard
+            dueNotificationsActive={form.dueNotificationsActive}
+            postNotificationsGranted={form.postNotificationsGranted}
+            remindersEnabled={form.remindersEnabled}
+            isNative={form.isNative}
+            showTopDivider={showInApp}
+            onToggleDueNotifications={(enabled) =>
+              void form.handleToggleDueNotifications(enabled)
+            }
+            onRequestPermission={() => void form.requestPostNotifications()}
+          />
 
-      <DailyClosingReminderCard
-        dailyReminderActive={dailyReminderActive}
-        dailyReminderTime={dailyReminderTime}
-        postNotificationsGranted={postNotificationsGranted}
-        onToggleDailyReminder={(enabled) => void handleToggleDailyReminder(enabled)}
-        onTimeChange={(time) => void handleDailyReminderTimeChange(time)}
-        onRequestPermission={() => void requestPostNotifications()}
-      />
+          <DailyClosingReminderCard
+            dailyReminderActive={form.dailyReminderActive}
+            dailyReminderTime={form.dailyReminderTime}
+            postNotificationsGranted={form.postNotificationsGranted}
+            isNative={form.isNative}
+            onToggleDailyReminder={(enabled) =>
+              void form.handleToggleDailyReminder(enabled)
+            }
+            onTimeChange={(time) => void form.handleDailyReminderTimeChange(time)}
+            onRequestPermission={() => void form.requestPostNotifications()}
+          />
+
+          <RemotePushPrefsCard
+            remotePushEnabled={form.remotePushEnabled}
+            isNative={form.isNative}
+            webPushSupported={form.webPushSupported}
+            webPushConfigured={form.webPushConfigured}
+            permissionDenied={form.webPermissionDenied}
+            iosNeedsInstall={form.iosNeedsInstall}
+            isBusy={form.remotePushBusy}
+            onToggleRemotePush={(enabled) =>
+              void form.handleToggleRemotePush(enabled)
+            }
+          />
+
+          <QuietHoursPrefsCard
+            quietHours={form.quietHours}
+            onUpdateQuietHours={form.handleUpdateQuietHours}
+          />
+
+          <div className="pt-2 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="min-w-0">
+              <span className="text-xs font-semibold text-foreground block">
+                Validar entrega neste dispositivo
+              </span>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                Dispara uma notificação de teste para conferir som, banner e permissões neste aparelho.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              sensoryIntent="action"
+              disabled={form.testNotificationPending}
+              onClick={() => void form.handleSendTestNotification()}
+              className="gap-1.5 shrink-0"
+            >
+              <BellRing className="size-3.5" aria-hidden="true" />
+              Enviar notificação de teste
+            </Button>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

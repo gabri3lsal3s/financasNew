@@ -15,20 +15,14 @@ import { RouteSkeletonFallback } from "@/components/ui";
 import { DemoTourSpotlight } from "@/components/modules/demo-tour-spotlight";
 import { NativeOnboardingDialog } from "@/components/modules/native-onboarding-dialog";
 import { endDemo, useDemoSession } from "@/state/demo-mode";
-import { useContainerScroll, useOnboardingDismissed } from "@/hooks";
+import { useContainerScroll } from "@/hooks";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { dismissPendingSuggestion } from "@/services/native";
 import {
-  useMySupportTickets,
-  useOnboardingCounts,
-  useReminders,
   useUpdateCustomSettings,
-  useUserAccess,
   useUserSubscription,
 } from "@/state";
-import { shouldShowOnboardingBanner } from "@/domain/onboarding";
-import { useSmartAdvisorInsights } from "@/features/overview/hooks";
 import { DesktopTopbar } from "./desktop-topbar";
 import { MobileTopbar } from "./mobile-topbar";
 import {
@@ -113,21 +107,6 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
     }
   };
 
-  const { hasFeature } = useUserAccess();
-  const { totalCount: remindersTotalCount } = useReminders();
-  const onboardingQuery = useOnboardingCounts();
-  const { isDismissed: onboardingDismissed } = useOnboardingDismissed();
-  const showOnboarding =
-    !onboardingDismissed && onboardingQuery?.data
-      ? shouldShowOnboardingBanner(onboardingQuery.data, hasFeature)
-      : false;
-  const advisor = useSmartAdvisorInsights();
-  const advisorAlertsCount = advisor.insights.filter((i) => i.priority === 1 || i.priority === 2).length;
-  const myTicketsQuery = useMySupportTickets();
-  const unreadSupportCount = (myTicketsQuery.data ?? []).filter(
-    (t) => Boolean(t.admin_reply) && !t.user_read_at,
-  ).length;
-
   const { isScrolled, showBackToTop } = useContainerScroll({
     containerId: "main-content",
     scrolledThreshold: 15,
@@ -136,16 +115,10 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
 
   const onboarding = useShellOnboardingOrchestrator({ isWizardOpen: wizardOpen });
 
-  const hasNotifications =
-    remindersTotalCount > 0 || showOnboarding || advisorAlertsCount > 0 || unreadSupportCount > 0;
   const cfg = visual.headerButtons;
   const showCalc = cfg.calculatorButton;
   const showTheme = cfg.themeToggle;
-  let showPrivacy = cfg.privacyToggle;
-
-  if (hasNotifications && [showCalc, showTheme, showPrivacy].filter(Boolean).length >= 3) {
-    if (showPrivacy) showPrivacy = false;
-  }
+  const showPrivacy = cfg.privacyToggle;
 
   return (
     <div className="h-dvh flex flex-col overflow-hidden text-foreground">
@@ -183,7 +156,7 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
               onEndDemo={endDemo}
               onOpenUpgrade={() => setHeaderUpgradeOpen(true)}
               showCalc={showCalc}
-              hasNotifications={hasNotifications}
+              hasNotifications
               showTheme={showTheme}
               showPrivacy={showPrivacy}
               onThemeChange={handleThemeChange}

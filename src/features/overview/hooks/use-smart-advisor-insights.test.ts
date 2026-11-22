@@ -150,8 +150,8 @@ describe("useSmartAdvisorInsights", () => {
       );
 
       expect(result.current.insight).not.toBeNull();
-      expect(result.current.insight?.priority).toBe(1);
-      expect(result.current.insight?.category).toBe("critical");
+      expect(result.current.insight?.priority).toBe(3);
+      expect(result.current.insight?.category).toBe("savings");
       expect(result.current.insight?.title).toBe("Compromisso anual previsto");
       expect(result.current.insight?.description).toContain("de IPVA em Novembro");
       expect(result.current.insight?.description).toContain("No ano passado você pagou");

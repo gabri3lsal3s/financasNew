@@ -6,4 +6,6 @@ export { ReadOnlyBanner } from "./read-only-banner";
 export type { ReadOnlyBannerProps } from "./read-only-banner";
 export { TrialEndingBanner } from "./trial-ending-banner";
 export type { TrialEndingBannerProps } from "./trial-ending-banner";
+export { SubscriptionPastDueBanner } from "./subscription-past-due-banner";
+export type { SubscriptionPastDueBannerProps } from "./subscription-past-due-banner";
 

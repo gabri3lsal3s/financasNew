@@ -25,13 +25,13 @@ vi.mock("@/components/ui/turnstile", () => ({
   ),
 }));
 
-function renderRegisterPage() {
+function renderRegisterPage(initialEntries: string[] = ["/cadastro"]) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={initialEntries}>
         <RegisterPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -53,20 +53,33 @@ describe("RegisterPage - Validação em Tempo Real e Requisitos de Senha", () =>
     });
   });
 
-  it("renderiza todos os campos de formulário e botão de ação", () => {
+  it("renderiza os campos essenciais de cadastro com convite recolhido por padrão e sem desvio para checkout", async () => {
+    const user = userEvent.setup();
     renderRegisterPage();
 
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
     expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();
     expect(screen.getByLabelText("Confirmar Senha")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Código de Convite/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Ver Plano Pro/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Tem um código de convite/i }));
     expect(screen.getByLabelText(/Código de Convite/i)).toBeInTheDocument();
+
     const checkbox = screen.getByRole("checkbox", {
       name: /Li e concordo com os Termos de Uso e a Política de Privacidade/i,
     });
     expect(checkbox).toBeInTheDocument();
     expect(checkbox).not.toBeChecked();
     expect(screen.getByRole("button", { name: "Criar conta" })).toBeInTheDocument();
+  });
+
+  it("expande o campo de convite automaticamente quando ?convite= é passado na URL", () => {
+    renderRegisterPage(["/cadastro?convite=AXIR-PROMO"]);
+    const input = screen.getByLabelText(/Código de Convite/i) as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.value).toBe("AXIR-PROMO");
   });
 
   it("bloqueia o envio e desabilita o botão até que o usuário aceite os termos de uso", async () => {

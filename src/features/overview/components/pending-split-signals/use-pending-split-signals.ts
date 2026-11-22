@@ -1,20 +1,14 @@
-import { useContext, useMemo, useState } from "react";
-import { QueryClientContext } from "@tanstack/react-query";
-import { isParticipantFullySettled, isSplitFullyCompleted } from "@/domain/finance/split-math";
+import { useMemo, useState } from "react";
 import { triggerSensory } from "@/services/sensory";
-import { syncSplitExpenseReportWeights } from "@/services/split-sync";
 import { pushToast } from "@/services/toast";
 import {
+  useApplySplitSettlement,
   useDebts,
   useDismissSplitPaymentSignal,
   useMyPublicShares,
-  useSettleIntegratedReceivable,
-  useUpdateDebt,
-  useUpdatePublicShare,
 } from "@/state";
 import type {
   PublicShare,
-  SplitParticipantInstallment,
   SplitParticipantItem,
   SplitPaymentSignal,
   SplitSharePayload,
@@ -28,16 +22,13 @@ export interface SignalItemWithContext {
 }
 
 /**
- * Gerencia leitura, liquidação (com recálculo de pesos e revogação ao concluir)
+ * Gerencia leitura, liquidação (via motor unificado de sincronização)
  * e dispensa de sinalizações de pagamento de rachas.
  */
 export function usePendingSplitSignals() {
-  const queryClient = useContext(QueryClientContext) ?? null;
   const { data: shares } = useMyPublicShares("split");
   const { data: debts } = useDebts();
-  const updateShareMutation = useUpdatePublicShare();
-  const updateDebtMutation = useUpdateDebt();
-  const settleDebtMutation = useSettleIntegratedReceivable();
+  const applySplitSettlement = useApplySplitSettlement();
   const dismissSignalMutation = useDismissSplitPaymentSignal();
   const [processingSignalId, setProcessingSignalId] = useState<string | null>(null);
 
@@ -55,6 +46,7 @@ export function usePendingSplitSignals() {
             (sig.participant_id && p.id === sig.participant_id) ||
             p.name.trim().toLowerCase() === sig.participant_name.trim().toLowerCase(),
         );
+        if (participant?.is_host) continue;
         items.push({ share, payload, signal: sig, participant });
       }
     }
@@ -63,128 +55,26 @@ export function usePendingSplitSignals() {
 
   const handleConfirmSettle = async (item: SignalItemWithContext) => {
     setProcessingSignalId(item.signal.id);
-    const { share, payload, signal, participant } = item;
+    const { share, payload, signal } = item;
 
     try {
-      const participantsList: SplitParticipantItem[] = (payload.participants ?? []).map((p, idx) => ({
-        ...p,
-        id: p.id || `p_${idx + 1}`,
-      }));
-      const currentInsts: SplitParticipantInstallment[] = payload.participant_installments ?? [];
-      let targetParticipantId = participant?.id;
-      if (!targetParticipantId) {
-        targetParticipantId = participantsList.find(
-          (p) => p.name.trim().toLowerCase() === signal.participant_name.trim().toLowerCase(),
-        )?.id;
-      }
-      if (!targetParticipantId) {
-        const guestOnly = participantsList.filter((p) => !p.is_host);
-        if (guestOnly.length === 1) targetParticipantId = guestOnly[0]?.id;
-      }
+      const debtId = share.debt_id || payload.debt_id || null;
+      const expenseId = share.expense_id || payload.expense_id || null;
+      const groupId = share.installment_group_id || payload.installment_group_id || null;
+      const linkedDebt =
+        debts?.find(
+          (d) =>
+            (debtId && d.id === debtId) ||
+            (d.type === "receivable" &&
+              ((expenseId && d.expense_id === expenseId) ||
+                (groupId && d.installment_group_id === groupId))),
+        ) ?? null;
 
-      let installmentUpdated = false;
-      const updatedInstallments = currentInsts.map((inst) => {
-        const isTarget =
-          (signal.installment_id && inst.id === signal.installment_id) ||
-          (!signal.installment_id &&
-            targetParticipantId &&
-            inst.participant_id === targetParticipantId &&
-            !inst.is_settled &&
-            !installmentUpdated);
-        if (!isTarget) return inst;
-        installmentUpdated = true;
-        return {
-          ...inst,
-          is_settled: true,
-          settled_at: new Date().toISOString(),
-          signal_status: "none" as const,
-        };
+      await applySplitSettlement.mutateAsync({
+        share,
+        action: { type: "confirm_signal", signalId: signal.id },
+        linkedDebt,
       });
-
-      const updatedParticipants = participantsList.map((p) => {
-        const isTarget =
-          (targetParticipantId && p.id === targetParticipantId) ||
-          p.name.trim().toLowerCase() === signal.participant_name.trim().toLowerCase();
-        if (!isTarget) return p;
-
-        let friendInsts = updatedInstallments.filter((i) => i.participant_id === p.id);
-        if (friendInsts.length === 0 && participantsList.filter((x) => !x.is_host).length === 1) {
-          const hostId = participantsList.find((x) => x.is_host)?.id;
-          friendInsts = updatedInstallments.filter((i) => i.participant_id !== hostId);
-        }
-        const settledCents =
-          friendInsts.length > 0
-            ? friendInsts.filter((i) => i.is_settled).reduce((acc, i) => acc + i.amount_cents, 0)
-            : Math.min(p.share_cents, Number(p.settled_cents ?? 0) + signal.amount_cents);
-        const fullySettled = isParticipantFullySettled({ ...p, settled_cents: settledCents }, friendInsts);
-
-        return {
-          ...p,
-          is_settled: fullySettled,
-          settled_cents: settledCents,
-          settled_at: fullySettled ? p.settled_at || new Date().toISOString() : null,
-          has_payment_signal: false,
-        };
-      });
-
-      const updatedSignals = (payload.payment_signals ?? []).map((s) =>
-        s.id === signal.id ? { ...s, status: "confirmed" as const, confirmed_at: new Date().toISOString() } : s,
-      );
-      const totalSettledFromFriends = updatedParticipants
-        .filter((p) => !p.is_host)
-        .reduce((acc, f) => acc + (f.is_settled ? Number(f.settled_cents ?? f.share_cents) : Number(f.settled_cents ?? 0)), 0);
-      const friends = updatedParticipants.filter((p) => !p.is_host);
-      const allCompleted = isSplitFullyCompleted(updatedParticipants, updatedInstallments);
-
-      const newPayload: SplitSharePayload = {
-        ...payload,
-        participants: updatedParticipants,
-        participant_installments: updatedInstallments.length > 0 ? updatedInstallments : undefined,
-        payment_signals: updatedSignals,
-        total_settled_cents: totalSettledFromFriends,
-        is_completed: allCompleted,
-      };
-
-      await updateShareMutation.mutateAsync({
-        id: share.id,
-        payload: newPayload as unknown as Record<string, unknown>,
-        isRevoked: allCompleted,
-      });
-
-      if (payload.expense_id) {
-        try {
-          const hostId = updatedParticipants.find((p) => p.is_host)?.id;
-          await syncSplitExpenseReportWeights({
-            expenseId: payload.expense_id,
-            installments: updatedInstallments,
-            hostId,
-            totalCents: payload.total_cents,
-            installmentsCount: payload.installments_count,
-            groupId: payload.installment_group_id,
-          });
-          if (queryClient) {
-            void queryClient.invalidateQueries({ queryKey: ["expenses"] });
-            void queryClient.invalidateQueries({ queryKey: ["card-expenses"] });
-          }
-        } catch (err) {
-          console.warn("Não foi possível sincronizar pesos contábeis das parcelas:", err);
-        }
-      }
-
-      const linkedDebt = debts?.find((d) => d.expense_id === payload.expense_id || d.id === payload.debt_id);
-      if (linkedDebt && !linkedDebt.paid_at) {
-        try {
-          const totalFriendsExpectedCents = friends.reduce((acc, f) => acc + f.share_cents, 0);
-          const remainingCents = Math.max(0, totalFriendsExpectedCents - totalSettledFromFriends);
-          if (allCompleted || remainingCents === 0) {
-            await settleDebtMutation.mutateAsync({ debtId: linkedDebt.id, result: linkedDebt.amount });
-          } else {
-            await updateDebtMutation.mutateAsync({ id: linkedDebt.id, input: { amount: remainingCents / 100 } });
-          }
-        } catch (err) {
-          console.warn("Não foi possível sincronizar dívida vinculada ao abater racha:", err);
-        }
-      }
 
       triggerSensory("success");
       pushToast({

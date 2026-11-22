@@ -35,7 +35,7 @@ const TOOLS_LIST: ToolCardInfo[] = [
       "Ordem passo a passo de liquidação das dívidas",
       "Simulação de aceleração com aportes extras mensais",
     ],
-    icon: <ShieldAlert className="size-5 text-warning-strong" aria-hidden="true" />,
+    icon: <ShieldAlert className="size-4 text-warning-strong" aria-hidden="true" />,
   },
   {
     path: "/ferramentas/rebalanceamento",
@@ -48,7 +48,7 @@ const TOOLS_LIST: ToolCardInfo[] = [
       "Gráfico de alocação Donut pós-aporte em tempo real",
       "Recomendação de quanto comprar em cada classe",
     ],
-    icon: <PieChart className="size-5 text-portfolio" aria-hidden="true" />,
+    icon: <PieChart className="size-4 text-portfolio" aria-hidden="true" />,
   },
   {
     path: "/ferramentas/juros-compostos",
@@ -61,7 +61,7 @@ const TOOLS_LIST: ToolCardInfo[] = [
       "Estimativa de ano de alcance do FIRE (Independência Financeira)",
       "Tabela completa de evolução patrimonial ano a ano",
     ],
-    icon: <TrendingUp className="size-5 text-positive-strong" aria-hidden="true" />,
+    icon: <TrendingUp className="size-4 text-positive-strong" aria-hidden="true" />,
   },
 ];
 
@@ -142,7 +142,7 @@ export function ToolsHubPage() {
 
         <section className="rounded-2xl border border-border/80 bg-surface shadow-xs p-5 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <Lock className="size-4 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+            <Lock className="size-4 text-positive-strong shrink-0 mt-0.5" aria-hidden="true" />
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-foreground">
                 Privacidade Absoluta: Execução 100% no Cliente

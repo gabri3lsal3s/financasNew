@@ -1,7 +1,14 @@
 import { Bell, CheckCheck, SlidersHorizontal } from "lucide-react";
-import { Badge, Button, EmptyState, ErrorState, Skeleton, Tabs } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { ReadOnlyBanner } from "@/components/modules";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ErrorState,
+  Skeleton,
+  Tabs,
+} from "@/components/ui";
 import { PaymentDialog } from "@/features/cards/components/payment-dialog";
 import { SettleDialog } from "@/features/debts/components/settle-dialog";
 import { getErrorMessage } from "@/services/errors";
@@ -15,8 +22,8 @@ import {
 import { navigateAdvisorAlert } from "../utils/navigate-advisor-alert";
 
 /**
- * Central de Lembretes & Avisos (§3.10) — consolida faturas, dívidas pendentes
- * e avisos inteligentes (Smart Advisor).
+ * Central de Lembretes & Avisos (§3.10) — consolida faturas, dívidas pendentes,
+ * recebíveis, comunicados, suporte, sinais de racha e avisos inteligentes (Smart Advisor).
  */
 export function RemindersPage() {
   const s = useRemindersPageState();
@@ -28,7 +35,16 @@ export function RemindersPage() {
         description="Faturas, compromissos e avisos inteligentes que precisam da sua atenção"
         badge={
           s.totalPendingEffective > 0 ? (
-            <Badge variant={s.hasUrgentPending ? "critical" : "default"} size="sm">
+            <Badge
+              variant={
+                s.hasUrgentPending
+                  ? "critical"
+                  : s.hasActionNeededPending
+                    ? "warning"
+                    : "default"
+              }
+              size="sm"
+            >
               {s.totalPendingEffective}{" "}
               {s.totalPendingEffective === 1 ? "pendência" : "pendências"}
             </Badge>
@@ -36,7 +52,11 @@ export function RemindersPage() {
         }
         actions={
           <>
-            {s.unreadFilteredItems.length > 0 ? (
+            {s.unreadFilteredItems.length > 0 ||
+            s.closedBillAlerts.length > 0 ||
+            Boolean(s.budgetOverrunAlert) ||
+            s.tripAndFamilyAlerts.length > 0 ||
+            s.unreadBroadcasts.length > 0 ? (
               <Button
                 type="button"
                 variant="outline"
@@ -47,9 +67,14 @@ export function RemindersPage() {
                 aria-label="Marcar todas como lidas"
                 className="max-sm:min-h-11"
               >
-                <CheckCheck className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
+                <CheckCheck
+                  className="size-4 mr-1.5 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <span className="sm:hidden">Marcar lidas</span>
-                <span className="hidden sm:inline">Marcar todas como lidas</span>
+                <span className="hidden sm:inline">
+                  Marcar todas como lidas
+                </span>
               </Button>
             ) : null}
 
@@ -62,7 +87,10 @@ export function RemindersPage() {
               title="Configurar Lembretes e Antecedência"
               className="max-sm:min-h-11"
             >
-              <SlidersHorizontal className="size-4 mr-1.5 text-muted-foreground" aria-hidden="true" />
+              <SlidersHorizontal
+                className="size-4 mr-1.5 text-muted-foreground"
+                aria-hidden="true"
+              />
               Ajustes
             </Button>
           </>
@@ -70,7 +98,9 @@ export function RemindersPage() {
       />
 
       {s.permission.isReadOnlyMode ? <ReadOnlyBanner /> : null}
-      {s.error ? <ErrorState message={getErrorMessage(s.error)} /> : null}
+      {s.error ? (
+        <ErrorState message={getErrorMessage(s.error)} onRetry={s.handleRetry} />
+      ) : null}
 
       {s.isLoading ? (
         <div className="flex flex-col gap-3" aria-hidden="true">
@@ -90,7 +120,7 @@ export function RemindersPage() {
             </div>
           ))}
         </div>
-      ) : !s.preferences.enabled ? (
+      ) : !s.preferences.enabled && s.systemCount === 0 && s.advisorCount === 0 ? (
         <EmptyState
           icon={<Bell className="size-6" aria-hidden="true" />}
           title="Lembretes desativados"
@@ -134,15 +164,38 @@ export function RemindersPage() {
                   overdueCount={s.overdueCount}
                   billsCount={s.billsCount}
                   debtsCount={s.debtsCount}
+                  receivablesCount={s.receivablesCount}
                   advisorCount={s.advisorCount}
+                  systemCount={s.systemCount}
                   advisorAlerts={s.advisorAlerts}
+                  closedBillAlerts={s.closedBillAlerts}
+                  budgetOverrunAlert={s.budgetOverrunAlert}
+                  tripAndFamilyAlerts={s.tripAndFamilyAlerts}
+                  unreadBroadcasts={s.unreadBroadcasts}
+                  unreadSupportTickets={s.unreadSupportTickets}
+                  pendingSplitSignals={s.pendingSplitSignals}
+                  hasPastDueSubscription={s.hasPastDueSubscription}
                   filteredItems={s.filteredItems}
                   stateMap={s.stateMap}
                   highlightId={s.highlightId}
                   billDaysBefore={s.preferences.billDaysBefore}
-                  onOpenAdvisorAlert={(item) => navigateAdvisorAlert(item, s.navigate)}
-                  onDismissAdvisor={(themeKey) => s.dismissAdvisor(themeKey, 30)}
-                  onMarkRead={(key) => s.handleStateUpdate(key, { kind: "read" })}
+                  debtDaysBefore={s.preferences.debtDaysBefore}
+                  onOpenAdvisorAlert={(item) =>
+                    navigateAdvisorAlert(item, s.navigate)
+                  }
+                  onDismissAdvisor={(themeKey) =>
+                    s.dismissAdvisor(themeKey, 30)
+                  }
+                  onOpenRoute={(route) => s.navigate(route)}
+                  onOpenBroadcast={s.handleOpenBroadcast}
+                  onMarkBroadcastRead={s.handleMarkBroadcastRead}
+                  onDismissBroadcast={s.handleDismissBroadcast}
+                  onOpenSupport={s.handleOpenSupport}
+                  onOpenSplitSignal={s.handleOpenSplitSignal}
+                  onOpenSubscriptionPastDue={s.handleOpenSubscriptionPastDue}
+                  onMarkRead={(key) =>
+                    s.handleStateUpdate(key, { kind: "read" })
+                  }
                   onSnooze={s.snooze}
                   onRestore={(key) => s.handleStateUpdate(key, null)}
                   onSettle={s.handleSettle}
@@ -162,7 +215,9 @@ export function RemindersPage() {
                 <RemindersReadTab
                   items={s.readHistoryItems}
                   highlightId={s.highlightId}
-                  onMarkRead={(key) => s.handleStateUpdate(key, { kind: "read" })}
+                  onMarkRead={(key) =>
+                    s.handleStateUpdate(key, { kind: "read" })
+                  }
                   onSnooze={s.snooze}
                   onRestore={(key) => s.handleStateUpdate(key, null)}
                   onOpenReminder={s.openReminder}
@@ -173,7 +228,10 @@ export function RemindersPage() {
         />
       )}
 
-      <RemindersSettingsModal open={s.isSettingsOpen} onOpenChange={s.setIsSettingsOpen} />
+      <RemindersSettingsModal
+        open={s.isSettingsOpen}
+        onOpenChange={s.setIsSettingsOpen}
+      />
 
       {s.settleDebt ? (
         <SettleDialog

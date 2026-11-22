@@ -3,12 +3,21 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApkBetaRestrictedModal } from "./apk-beta-restricted-modal";
 
-const mockIsNativePlatform = vi.fn();
-const mockUseAuth = vi.fn();
-const mockUseSignOut = vi.fn();
-const mockUseUserAccess = vi.fn();
-const mockUseUserSubscription = vi.fn();
-const mockSignOutFn = vi.fn();
+const {
+  mockIsNativePlatform,
+  mockUseAuth,
+  mockUseSignOut,
+  mockUseUserAccess,
+  mockUseUserSubscription,
+  mockSignOutFn,
+} = vi.hoisted(() => ({
+  mockIsNativePlatform: vi.fn(),
+  mockUseAuth: vi.fn(),
+  mockUseSignOut: vi.fn(),
+  mockUseUserAccess: vi.fn(),
+  mockUseUserSubscription: vi.fn(),
+  mockSignOutFn: vi.fn(),
+}));
 
 vi.mock("@/services/native/platform", () => ({
   isNativePlatform: () => mockIsNativePlatform(),

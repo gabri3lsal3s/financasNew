@@ -51,7 +51,7 @@ export function pushToast(request: ToastRequest): number {
     title: request.title,
     description: request.description,
     variant: request.variant ?? "default",
-    duration: request.duration ?? 3000,
+    duration: request.duration ?? (request.action ? 5000 : 3000),
     action: request.action,
   };
   // Mantém no máximo MAX_CONCURRENT_TOASTS — descarta os anteriores

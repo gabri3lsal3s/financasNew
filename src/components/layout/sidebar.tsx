@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 import { LogoProfileButton } from "@/components/layout/logo-profile-button";
 import { navGroups, filterNavItems } from "@/components/layout/nav-items";
 import { Button } from "@/components/ui/button";
-import { useFamilyMode, useTripMode, useReminders, useUserAccess, useUserSubscription } from "@/state";
+import { useNotificationCenter } from "@/hooks/use-notification-center";
+import { useFamilyMode, useTripMode, useUserAccess, useUserSubscription } from "@/state";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { SidebarNavGroup } from "./sidebar-nav-group";
@@ -32,7 +33,8 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const enterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { totalCount, urgentCount } = useReminders();
+  const { totalRemindersPageCount: totalCount, criticalCount: urgentCount } =
+    useNotificationCenter();
 
   useEffect(() => {
     return () => {

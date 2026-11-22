@@ -380,6 +380,7 @@ export async function adminSendBroadcastNotification(params: {
   actionUrl?: string | null;
   targetAudience?: BroadcastAudience;
   targetUserIds?: string[] | null;
+  expiresAt?: string | null;
 }): Promise<string> {
   return unwrapRpc(
     callRpc("admin_send_broadcast_notification" as never, {
@@ -389,6 +390,7 @@ export async function adminSendBroadcastNotification(params: {
       p_action_url: params.actionUrl ?? null,
       p_target_audience: params.targetAudience ?? "all",
       p_target_user_ids: params.targetUserIds ?? null,
+      p_expires_at: params.expiresAt ?? null,
     } as never),
   );
 }
@@ -413,6 +415,19 @@ export async function markBroadcastAsRead(notificationId: string): Promise<void>
     callRpc("mark_broadcast_as_read" as never, {
       p_notification_id: notificationId,
     } as never),
+    true,
+  );
+}
+
+/**
+ * Dispensa permanentemente uma notificação broadcast do feed do usuário.
+ */
+export async function dismissBroadcastNotification(notificationId: string): Promise<void> {
+  await unwrapRpc(
+    callRpc("dismiss_broadcast_notification" as never, {
+      p_notification_id: notificationId,
+    } as never),
+    true,
   );
 }
 

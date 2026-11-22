@@ -13,6 +13,7 @@
  */
 
 import { OFFICIAL_CVM_DISCLAIMER, OFFICIAL_TAX_DISCLAIMER } from "@/lib/institutional";
+import { downloadBlob } from "@/services/export-actions";
 
 export interface ExcelPositionRow {
   ticker: string;
@@ -544,18 +545,13 @@ export function generateMultiSheetExcelXml(data: ExcelWorkbookData): string {
 }
 
 /**
- * Dispara o download nativo do arquivo Excel multi-abas no navegador.
+ * Dispara a exportação do arquivo Excel multi-abas na Web/PWA e no APK Android nativo.
  */
-export function exportMultiSheetExcel(filename: string, data: ExcelWorkbookData): void {
+export function exportMultiSheetExcel(filename: string, data: ExcelWorkbookData): Promise<boolean> {
   const xmlContent = generateMultiSheetExcelXml(data);
   const blob = new Blob([xmlContent], {
     type: "application/vnd.ms-excel;charset=utf-8",
   });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename.endsWith(".xls") || filename.endsWith(".xlsx") ? filename : `${filename}.xls`;
-  anchor.rel = "noopener";
-  anchor.click();
-  URL.revokeObjectURL(url);
+  const safeName = filename.endsWith(".xls") || filename.endsWith(".xlsx") ? filename : `${filename}.xls`;
+  return downloadBlob(safeName, blob, { silentToast: true });
 }

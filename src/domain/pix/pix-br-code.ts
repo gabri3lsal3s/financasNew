@@ -6,6 +6,8 @@
  * Motor 100% puro: sem dependencias de UI, React ou Supabase (AGENTS.md secao 3).
  */
 
+import { isValidCPF } from "@/domain/validation/cpf";
+
 export type PixKeyType = "cpf" | "cnpj" | "email" | "phone" | "random";
 
 export interface GeneratePixBrCodeOptions {
@@ -82,6 +84,9 @@ export interface DecodedPixBrCode {
  */
 export function formatEmvField(id: string, value: string): string {
   const normalizedId = id.padStart(2, "0");
+  if (value.length > 99) {
+    throw new Error(`Campo EMV ${normalizedId} excede o limite máximo de 99 caracteres.`);
+  }
   const lengthStr = String(value.length).padStart(2, "0");
   return `${normalizedId}${lengthStr}${value}`;
 }
@@ -110,14 +115,16 @@ export function calculatePixCrc16(payloadToSign: string): string {
 }
 
 /**
- * Remove acentos, caracteres diacriticos e restringe a caracteres permitidos no EMV.
+ * Remove acentos, caracteres diacriticos e restringe a caracteres ASCII seguros no EMV.
  */
 export function sanitizeMerchantText(text: string, maxLength: number, uppercase = false): string {
   if (!text) return "";
   let clean = text
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9\s.,\-_/]/g, "")
+    .replace(/[-_/.,]+/g, " ")
+    .replace(/[^a-zA-Z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 
   if (uppercase) {
@@ -151,9 +158,27 @@ export function detectPixKeyType(key: string): PixKeyType | "unknown" {
   if (trimmed.startsWith("+") || trimmed.includes("(") || (digits.length === 11 && trimmed.includes("-") && !trimmed.includes("."))) {
     return "phone";
   }
+  if (digits.startsWith("55") && (digits.length === 12 || digits.length === 13)) {
+    const ddd = Number(digits.slice(2, 4));
+    if (ddd >= 11 && ddd <= 99 && (digits.length === 12 || digits[4] === "9")) {
+      return "phone";
+    }
+  }
   if (digits.length === 14 || trimmed.includes("/")) return "cnpj";
-  if (digits.length === 11) return "cpf";
-  if (digits.length >= 10 && digits.length <= 13 && trimmed.startsWith("+")) return "phone";
+  if (digits.length === 11) {
+    const ddd = Number(digits.slice(0, 2));
+    const looksLikeBrazilianMobile = ddd >= 11 && ddd <= 99 && digits[2] === "9";
+    if (looksLikeBrazilianMobile && !isValidCPF(digits)) {
+      return "phone";
+    }
+    return "cpf";
+  }
+  if (digits.length === 10) {
+    const ddd = Number(digits.slice(0, 2));
+    if (ddd >= 11 && ddd <= 99 && Number(digits[2]) >= 2) {
+      return "phone";
+    }
+  }
 
   return "unknown";
 }

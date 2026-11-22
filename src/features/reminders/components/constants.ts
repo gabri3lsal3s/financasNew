@@ -18,3 +18,11 @@ export const REMINDER_DAYS_OPTIONS: SelectOption[] = [
   { value: "15", label: "15 dias antes" },
   { value: "30", label: "30 dias antes (1 mês)" },
 ];
+
+export const QUIET_HOURS_TIME_OPTIONS: SelectOption[] = Array.from(
+  { length: 24 },
+  (_, hour) => {
+    const label = `${String(hour).padStart(2, "0")}:00`;
+    return { value: label, label };
+  },
+);

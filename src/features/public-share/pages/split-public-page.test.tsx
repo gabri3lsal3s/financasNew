@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SplitPublicPage } from "./split-public-page";
 import * as publicShareQuery from "@/state/queries/use-public-shares";
 import * as toastService from "@/services/toast";
+import { validatePixBrCode } from "@/domain/pix";
 import type { PublicShare } from "@/types";
 
 const mockSignalMutateAsync = vi.fn().mockResolvedValue({ success: true });
@@ -154,7 +155,11 @@ describe("SplitPublicPage (/r/:token)", () => {
     const copyBtn = screen.getByRole("button", { name: /Copiar código Pix no valor de/i });
     await user.click(copyBtn);
 
-    expect(writeTextSpy).toHaveBeenCalledWith(mockPublicShare.payload.pix_br_code);
+    expect(writeTextSpy).toHaveBeenCalledTimes(1);
+    const copiedCode = writeTextSpy.mock.calls[0]?.[0] as string;
+    expect(validatePixBrCode(copiedCode)).toBe(true);
+    expect(copiedCode).toContain("gabriel@exemplo.com");
+    expect(copiedCode).toContain("40.00");
     expect(toastService.pushToast).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Código Pix copiado!",
@@ -344,5 +349,72 @@ describe("SplitPublicPage (/r/:token)", () => {
 
     // O botão de copiar Pix agora reflete o valor de R$ 13,33
     expect(screen.getByText(/Copiar Pix — R\$ 13,33/i)).toBeInTheDocument();
+  });
+
+  it("exclui anfitrião da seleção de convidados, exibe recado e oculta lista quando configurado", () => {
+    const shareWithNoteAndHiddenList: PublicShare = {
+      ...mockPublicShare,
+      payload: {
+        ...mockPublicShare.payload,
+        custom_note: "Enviar ate amanha!",
+        show_participants_list: false,
+      },
+    };
+
+    vi.spyOn(publicShareQuery, "usePublicShare").mockReturnValue({
+      data: shareWithNoteAndHiddenList,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof publicShareQuery.usePublicShare>);
+
+    renderPage();
+
+    expect(screen.queryByRole("button", { name: /Gabriel \(Anfitriao\)/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Enviar ate amanha!")).toBeInTheDocument();
+    expect(screen.queryByText("Divisão entre os participantes")).not.toBeInTheDocument();
+  });
+
+  it("cobra apenas saldo restante em pagamento parcial e oculta Pix para convidado já quitado", () => {
+    const sharePartialAndSettled: PublicShare = {
+      ...mockPublicShare,
+      payload: {
+        ...mockPublicShare.payload,
+        participants: [
+          { id: "p_1", name: "Gabriel", share_cents: 4000, is_host: true, is_settled: true, settled_cents: 4000 },
+          { id: "p_2", name: "Mariana", share_cents: 4000, is_host: false, is_settled: false, settled_cents: 1500 },
+        ],
+      },
+    };
+
+    vi.spyOn(publicShareQuery, "usePublicShare").mockReturnValue({
+      data: sharePartialAndSettled,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof publicShareQuery.usePublicShare>);
+
+    const { unmount } = renderPage();
+    // Convidado único é auto-selecionado com saldo restante de R$ 25,00 (4000 - 1500)
+    expect(screen.getByText(/Copiar Pix — R\$ 25,00/i)).toBeInTheDocument();
+    unmount();
+
+    const shareSettled: PublicShare = {
+      ...mockPublicShare,
+      payload: {
+        ...mockPublicShare.payload,
+        participants: [
+          { id: "p_1", name: "Gabriel", share_cents: 4000, is_host: true, is_settled: true, settled_cents: 4000 },
+          { id: "p_2", name: "Mariana", share_cents: 4000, is_host: false, is_settled: true, settled_cents: 4000 },
+        ],
+      },
+    };
+    vi.spyOn(publicShareQuery, "usePublicShare").mockReturnValue({
+      data: shareSettled,
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof publicShareQuery.usePublicShare>);
+
+    renderPage();
+    expect(screen.getByText("Sua parte já foi confirmada pelo anfitrião")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Já fiz o Pix/i })).not.toBeInTheDocument();
   });
 });

@@ -1,11 +1,18 @@
 import { CheckCircle2, Layers, Monitor, ShieldCheck, Smartphone, Zap } from "lucide-react";
-import { Badge, Card } from "@/components/ui";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Badge,
+  Card,
+} from "@/components/ui";
 import { ScrollReveal } from "./scroll-reveal";
 import { PlatformComparisonTable } from "./platform-comparison-table";
 
 export function PlatformComparison() {
   return (
-    <section id="plataformas" className="py-14 md:py-28 border-t border-border/60 scroll-mt-20">
+    <section id="plataformas" className="py-14 md:py-24 border-t border-border/60 scroll-mt-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <ScrollReveal className="text-center max-w-4xl mx-auto">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary-strong dark:text-primary">
@@ -26,7 +33,7 @@ export function PlatformComparison() {
             <Card className="h-full border-border/80 bg-surface shadow-xs p-5 sm:p-6 rounded-2xl flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <Monitor className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
+                  <Monitor className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   <Badge variant="muted" size="xs">
                     Computador
                   </Badge>
@@ -68,7 +75,7 @@ export function PlatformComparison() {
             <Card className="h-full border-primary/50 bg-surface shadow-sm p-5 sm:p-6 rounded-2xl flex flex-col justify-between space-y-4 ring-1 ring-primary/20">
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <Smartphone className="size-5 text-primary-strong dark:text-primary shrink-0" aria-hidden="true" />
+                  <Smartphone className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
                   <Badge variant="default" size="xs" className="font-semibold">
                     Oficial Recomendado
                   </Badge>
@@ -118,8 +125,8 @@ export function PlatformComparison() {
             <Card className="h-full border-border/80 bg-surface shadow-xs p-5 sm:p-6 rounded-2xl flex flex-col justify-between space-y-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <Zap className="size-5 text-muted-foreground shrink-0" aria-hidden="true" />
-                  <Badge variant="default" size="xs" className="font-semibold">
+                  <Zap className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+                  <Badge variant="portfolio" size="xs" className="font-semibold">
                     Nativo Pro
                   </Badge>
                 </div>
@@ -144,7 +151,10 @@ export function PlatformComparison() {
                       className="size-4 text-positive-strong dark:text-positive shrink-0 mt-0.5"
                       aria-hidden="true"
                     />
-                    <span>Compartilhamento nativo de comprovantes de qualquer banco via Intent</span>
+                    <span>
+                      Compartilhamento nativo de comprovantes direto do aplicativo do seu banco no
+                      Android
+                    </span>
                   </div>
                   <div className="flex items-start gap-2">
                     <CheckCircle2
@@ -161,7 +171,21 @@ export function PlatformComparison() {
           </ScrollReveal>
         </div>
 
-        <PlatformComparisonTable />
+        <ScrollReveal delay={200} className="mt-10 max-w-5xl mx-auto">
+          <Accordion type="single" collapsible>
+            <AccordionItem
+              value="platform-matrix"
+              className="rounded-2xl border-border/80 bg-surface shadow-xs"
+            >
+              <AccordionTrigger className="px-4 py-3.5 sm:px-6 sm:py-4 text-sm sm:text-base font-semibold">
+                Ver comparativo detalhado por plataforma
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4 sm:px-6 sm:pb-6 pt-1">
+                <PlatformComparisonTable />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </ScrollReveal>
 
         <ScrollReveal delay={250} className="mt-6 text-center">
           <div className="inline-flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">

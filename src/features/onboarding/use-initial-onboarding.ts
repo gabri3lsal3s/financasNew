@@ -13,8 +13,9 @@ import {
   setStoredInitialGoal,
 } from "@/state/demo-mode";
 import { useUpdateCustomSettings } from "@/state";
+import type { OnboardingGoalId } from "@/types";
 
-export type OnboardingGoalId = "cards" | "ocr" | "debts" | "family";
+export type { OnboardingGoalId };
 
 export interface OnboardingGoalOption {
   id: OnboardingGoalId;

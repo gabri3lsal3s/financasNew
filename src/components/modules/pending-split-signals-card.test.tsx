@@ -1,12 +1,9 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { PendingSplitSignalsCard } from "./pending-split-signals-card";
-import { syncSplitExpenseReportWeights } from "@/services/split-sync";
 import type { PublicShare, SplitSharePayload } from "@/types";
 
-const mockUpdateShare = vi.fn().mockResolvedValue({});
-const mockUpdateExpense = vi.fn().mockResolvedValue({});
-const mockSettleDebt = vi.fn().mockResolvedValue({});
+const mockApplySplitSettlement = vi.fn().mockResolvedValue({});
 const mockDismissSignal = vi.fn().mockResolvedValue({});
 
 let mockSharesData: PublicShare[] = [];
@@ -14,10 +11,7 @@ let mockSharesData: PublicShare[] = [];
 vi.mock("@/state", () => ({
   useMyPublicShares: () => ({ data: mockSharesData }),
   useDebts: () => ({ data: [] }),
-  useUpdatePublicShare: () => ({ mutateAsync: mockUpdateShare }),
-  useUpdateExpense: () => ({ mutateAsync: mockUpdateExpense }),
-  useUpdateDebt: () => ({ mutateAsync: vi.fn().mockResolvedValue({}) }),
-  useSettleIntegratedReceivable: () => ({ mutateAsync: mockSettleDebt }),
+  useApplySplitSettlement: () => ({ mutateAsync: mockApplySplitSettlement, isPending: false }),
   useDismissSplitPaymentSignal: () => ({ mutateAsync: mockDismissSignal }),
 }));
 
@@ -27,10 +21,6 @@ vi.mock("@/services/sensory", () => ({
 
 vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),
-}));
-
-vi.mock("@/services/split-sync", () => ({
-  syncSplitExpenseReportWeights: vi.fn().mockResolvedValue({ updatedCount: 1, groupId: null }),
 }));
 
 describe("PendingSplitSignalsCard", () => {
@@ -102,24 +92,11 @@ describe("PendingSplitSignalsCard", () => {
     fireEvent.click(abaterBtn);
 
     await waitFor(() => {
-      expect(mockUpdateShare).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: "share-1",
-          payload: expect.objectContaining({
-            total_settled_cents: 5000,
-            is_completed: true,
-          }),
-        }),
-      );
-    });
-
-    await waitFor(() => {
-      expect(syncSplitExpenseReportWeights).toHaveBeenCalledWith(
-        expect.objectContaining({
-          expenseId: "exp-123",
-          totalCents: 10000,
-        }),
-      );
+      expect(mockApplySplitSettlement).toHaveBeenCalledWith({
+        share: expect.objectContaining({ id: "share-1" }),
+        action: { type: "confirm_signal", signalId: "sig-1" },
+        linkedDebt: null,
+      });
     });
   });
 

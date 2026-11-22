@@ -11,19 +11,57 @@ import type { AdvisorIconKind } from "./smart-advisor-routing";
 /**
  * Ícone semântico da categoria de recomendação exibido no cabeçalho do SmartAdvisor.
  */
-export function AdvisorCategoryIcon({ kind }: { kind: AdvisorIconKind }) {
+export function AdvisorCategoryIcon({
+  kind,
+  sizeClass = "size-4",
+  inheritColor = false,
+}: {
+  kind: AdvisorIconKind;
+  sizeClass?: string;
+  inheritColor?: boolean;
+}) {
   switch (kind) {
     case "household":
-      return <Users className="size-4 text-primary-strong shrink-0" aria-hidden="true" />;
+      return (
+        <Users
+          className={`${sizeClass} ${inheritColor ? "" : "text-primary-strong"} shrink-0`.trim()}
+          aria-hidden="true"
+        />
+      );
     case "aporte":
-      return <TrendingUp className="size-4 text-portfolio shrink-0" aria-hidden="true" />;
+      return (
+        <TrendingUp
+          className={`${sizeClass} ${inheritColor ? "" : "text-portfolio"} shrink-0`.trim()}
+          aria-hidden="true"
+        />
+      );
     case "critical":
-      return <AlertTriangle className="size-4 text-critical-strong shrink-0" aria-hidden="true" />;
+      return (
+        <AlertTriangle
+          className={`${sizeClass} ${inheritColor ? "" : "text-critical-strong"} shrink-0`.trim()}
+          aria-hidden="true"
+        />
+      );
     case "income":
-      return <ArrowDownLeft className="size-4 text-positive-strong shrink-0" aria-hidden="true" />;
+      return (
+        <ArrowDownLeft
+          className={`${sizeClass} ${inheritColor ? "" : "text-positive-strong"} shrink-0`.trim()}
+          aria-hidden="true"
+        />
+      );
     case "savings":
-      return <TrendingDown className="size-4 text-warning-strong shrink-0" aria-hidden="true" />;
+      return (
+        <TrendingDown
+          className={`${sizeClass} ${inheritColor ? "" : "text-warning-strong"} shrink-0`.trim()}
+          aria-hidden="true"
+        />
+      );
     default:
-      return <HelpCircle className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />;
+      return (
+        <HelpCircle
+          className={`${sizeClass} ${inheritColor ? "" : "text-muted-foreground"} shrink-0`.trim()}
+          aria-hidden="true"
+        />
+      );
   }
 }

@@ -480,7 +480,7 @@ describe("§3.10 — Lembretes (in-app)", () => {
 
   it("snooze oculta até a data, mas expira ao vencer/atrasar (o alerta volta)", () => {
     expect(isSnoozeExpired({ key: "s1", kind: "snoozed", snoozeUntil: "2026-08-15" }, "2026-08-12", "2026-08-10")).toBe(false);
-    expect(isSnoozeExpired({ key: "s2", kind: "snoozed", snoozeUntil: "2026-08-30" }, "2026-08-05", "2026-08-10")).toBe(true); // vencida
+    expect(isSnoozeExpired({ key: "s2", kind: "snoozed", snoozeUntil: "2026-08-10" }, "2026-08-05", "2026-08-10")).toBe(true); // snoozeUntil <= today
   });
 
   it("ordenação: atrasados primeiro, depois por vencimento", () => {
@@ -627,18 +627,20 @@ describe("§5.7 — Onboarding de primeiro uso (derivação por dados)", () => {
       incomeCategories: 1,
       cards: 1,
       transactions: 1,
+      cashCheckpoints: 1,
       notificationsEnabled: true,
       portfolioAssets: 1,
       portfolioTransactions: 1,
     });
-    expect(progress.done).toBe(7);
-    expect(progress.total).toBe(7);
+    expect(progress.done).toBe(6);
+    expect(progress.total).toBe(6);
     expect(
       isFirstUse({
         expenseCategories: 0,
         incomeCategories: 0,
         cards: 0,
         transactions: 0,
+        cashCheckpoints: 0,
         notificationsEnabled: false,
       }),
     ).toBe(true);

@@ -1,4 +1,5 @@
 import { render as originalRender, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { ManageSplitDialog } from "./manage-split-dialog";
@@ -14,14 +15,11 @@ function render(ui: React.ReactElement, options?: Parameters<typeof originalRend
   );
 }
 
-const mockUpdatePublicShare = vi.fn();
-const mockDeletePublicShare = vi.fn();
-const mockUpdateExpense = vi.fn();
-const mockDeleteExpense = vi.fn();
-const mockUpdateDebt = vi.fn();
-const mockDeleteDebt = vi.fn();
-const mockSettleDebt = vi.fn();
-let mockLinkedExpenseData: unknown = { id: "exp-1", value: 100 };
+const mockApplySplitSettlement = vi.fn();
+const mockUpdateSplitComprehensive = vi.fn();
+const mockDeleteLinkedSplit = vi.fn();
+const mockDismissSignal = vi.fn();
+let mockLinkedExpenseData: unknown = { id: "exp-1", value: 100, installments_total: 1 };
 let mockLinkedExpenseIsFetched = true;
 
 vi.mock("@/state", () => ({
@@ -34,42 +32,22 @@ vi.mock("@/state", () => ({
     data: undefined,
     isLoading: false,
   }),
-  useUpdatePublicShare: () => ({
-    mutateAsync: mockUpdatePublicShare,
+  useApplySplitSettlement: () => ({
+    mutateAsync: mockApplySplitSettlement,
     isPending: false,
   }),
-  useDeletePublicShare: () => ({
-    mutateAsync: mockDeletePublicShare,
+  useUpdateSplitComprehensive: () => ({
+    mutateAsync: mockUpdateSplitComprehensive,
     isPending: false,
   }),
-  useUpdateExpense: () => ({
-    mutateAsync: mockUpdateExpense,
+  useDeleteLinkedSplit: () => ({
+    mutateAsync: mockDeleteLinkedSplit,
     isPending: false,
   }),
-  useDeleteExpense: () => ({
-    mutateAsync: mockDeleteExpense,
+  useDismissSplitPaymentSignal: () => ({
+    mutateAsync: mockDismissSignal,
     isPending: false,
   }),
-  useUpdateDebt: () => ({
-    mutateAsync: mockUpdateDebt,
-    isPending: false,
-  }),
-  useDeleteDebt: () => ({
-    mutateAsync: mockDeleteDebt,
-    isPending: false,
-  }),
-  useSettleIntegratedReceivable: () => ({
-    mutateAsync: mockSettleDebt,
-    isPending: false,
-  }),
-}));
-
-const mockSyncSplitExpenseReportWeights = vi.fn().mockResolvedValue({ updatedCount: 1, groupId: null });
-const mockDeleteAllSplitExpenses = vi.fn().mockResolvedValue({ deletedCount: 1 });
-
-vi.mock("@/services/split-sync", () => ({
-  syncSplitExpenseReportWeights: (...args: unknown[]) => mockSyncSplitExpenseReportWeights(...args),
-  deleteAllSplitExpenses: (...args: unknown[]) => mockDeleteAllSplitExpenses(...args),
 }));
 
 vi.mock("@/services/toast", () => ({
@@ -86,9 +64,12 @@ describe("ManageSplitDialog", () => {
     user_id: "u1",
     kind: "split",
     token: "tok-abc",
+    expense_id: "exp-1",
+    installment_group_id: null,
+    debt_id: "debt-1",
     created_at: "2026-08-10T12:00:00Z",
     updated_at: "2026-08-10T12:00:00Z",
-    expires_at: null,
+    expires_at: "2026-10-10T12:00:00Z",
     is_revoked: false,
     payload: {
       title: "Churrasco de Domingo",
@@ -99,6 +80,11 @@ describe("ManageSplitDialog", () => {
       host_share_cents: 2500,
       expense_id: "exp-1",
       debt_id: "debt-1",
+      pix_key: "gabriel@exemplo.com",
+      pix_key_type: "email",
+      host_name: "Gabriel",
+      host_city: "ARACAJU",
+      remainder_policy: "host",
       participants: [
         { id: "p_1", name: "Você (Anfitrião)", share_cents: 2500, is_host: true, is_settled: true, settled_cents: 2500 },
         { id: "p_2", name: "Lucas", share_cents: 2500, is_host: false, is_settled: false, settled_cents: 0 },
@@ -111,7 +97,7 @@ describe("ManageSplitDialog", () => {
   const baseDebt: Debt = {
     id: "debt-1",
     user_id: "u1",
-    name: "Churrasco",
+    name: "Racha: Churrasco de Domingo",
     type: "receivable",
     amount: 75,
     due_date: "2026-08-15",
@@ -123,31 +109,114 @@ describe("ManageSplitDialog", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockLinkedExpenseData = { id: "exp-1", value: 100 };
+    mockLinkedExpenseData = { id: "exp-1", value: 100, installments_total: 1 };
     mockLinkedExpenseIsFetched = true;
+    mockApplySplitSettlement.mockResolvedValue({
+      share: baseShare,
+      transition: { hostNetCostCents: 7500 },
+      debt: baseDebt,
+    });
+    mockUpdateSplitComprehensive.mockResolvedValue({
+      share: baseShare,
+      result: { nextPayload: baseShare.payload },
+      debt: baseDebt,
+    });
+    mockDeleteLinkedSplit.mockResolvedValue({ deletedExpense: false });
+    mockDismissSignal.mockResolvedValue({ success: true });
   });
 
-  it("renderiza participantes e resumo contábil", () => {
+  it("renderiza as 3 abas canônicas, participantes e resumo contábil", () => {
     render(
       <ManageSplitDialog
         open={true}
         onOpenChange={vi.fn()}
         share={baseShare}
         linkedDebt={baseDebt}
-      />
+      />,
     );
 
     expect(screen.getByText("Churrasco de Domingo")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Baixas/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Editar Racha/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Pix e Página/i })).toBeInTheDocument();
     expect(screen.getByText("Lucas")).toBeInTheDocument();
     expect(screen.getByText("Mariana")).toBeInTheDocument();
     expect(screen.getByText("Rafael")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /recebi tudo/i })).toHaveLength(3);
   });
 
-  it("permite dar baixa integral no amigo e atualiza o valor da dívida restante", async () => {
-    mockUpdatePublicShare.mockResolvedValueOnce({});
-    mockUpdateExpense.mockResolvedValueOnce({});
-    mockUpdateDebt.mockResolvedValueOnce({});
+  it("permite dar baixa integral no amigo via useApplySplitSettlement", async () => {
+    render(
+      <ManageSplitDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        share={baseShare}
+        linkedDebt={baseDebt}
+      />,
+    );
+
+    const settleButtons = screen.getAllByRole("button", { name: /recebi tudo/i });
+    fireEvent.click(settleButtons[0]!);
+
+    await waitFor(() => {
+      expect(mockApplySplitSettlement).toHaveBeenCalledWith({
+        share: baseShare,
+        action: { type: "settle_full_participant", participantId: "p_2" },
+        linkedDebt: baseDebt,
+        installmentsTotal: 1,
+      });
+    });
+  });
+
+  it("permite finalizar o racha via finalize_as_is ou quitar todos com Recebi Tudo", async () => {
+    const onOpenChange = vi.fn();
+
+    render(
+      <ManageSplitDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        share={baseShare}
+        linkedDebt={baseDebt}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /finalizar racha/i }));
+    fireEvent.click(screen.getByRole("button", { name: /finalizar e quitar cobrança/i }));
+
+    await waitFor(() => {
+      expect(mockApplySplitSettlement).toHaveBeenCalledWith({
+        share: baseShare,
+        action: { type: "finalize_as_is" },
+        linkedDebt: baseDebt,
+        installmentsTotal: 1,
+      });
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  it("permite exclusão granular mantendo a despesa ou excluindo tudo via useDeleteLinkedSplit", async () => {
+    const { unmount } = render(
+      <ManageSplitDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        share={baseShare}
+        linkedDebt={baseDebt}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /excluir racha/i }));
+    fireEvent.click(screen.getByRole("button", { name: /confirmar exclusão/i }));
+
+    await waitFor(() => {
+      expect(mockDeleteLinkedSplit).toHaveBeenCalledWith({
+        share: baseShare,
+        linkedDebt: baseDebt,
+        deleteExpense: false,
+      });
+    });
+
+    unmount();
+    vi.clearAllMocks();
 
     render(
       <ManageSplitDialog
@@ -155,213 +224,72 @@ describe("ManageSplitDialog", () => {
         onOpenChange={vi.fn()}
         share={baseShare}
         linkedDebt={baseDebt}
-      />
+      />,
     );
 
-    const settleButtons = screen.getAllByRole("button", { name: /recebi tudo/i });
-    expect(settleButtons.length).toBeGreaterThan(0);
-    fireEvent.click(settleButtons[0]!);
+    fireEvent.click(screen.getByRole("button", { name: /excluir racha/i }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /despesa original no extrato/i }));
+    fireEvent.click(screen.getByRole("button", { name: /confirmar exclusão/i }));
 
     await waitFor(() => {
-      expect(mockUpdatePublicShare).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: "share-123",
-          payload: expect.objectContaining({
-            total_settled_cents: 2500,
-          }),
-        })
-      );
-      // Cobrança a receber diminui de R$ 75 para R$ 50
-      expect(mockUpdateDebt).toHaveBeenCalledWith({
-        id: "debt-1",
-        input: {
-          amount: 50,
-        },
-      });
-      // Sincroniza pesos contábeis das despesas
-      expect(mockSyncSplitExpenseReportWeights).toHaveBeenCalledWith(
-        expect.objectContaining({
-          expenseId: "exp-1",
-          totalCents: 10000,
-        }),
-      );
-    });
-  });
-
-  it("permite finalizar o racha atualizando a despesa com o peso contábil correto e quitando dívida", async () => {
-    mockUpdatePublicShare.mockResolvedValueOnce({});
-    mockUpdateExpense.mockResolvedValueOnce({});
-    mockSettleDebt.mockResolvedValueOnce({});
-    const onOpenChange = vi.fn();
-
-    render(
-      <ManageSplitDialog
-        open={true}
-        onOpenChange={onOpenChange}
-        share={baseShare}
-        linkedDebt={baseDebt}
-      />
-    );
-
-    const finalizeBtn = screen.getByRole("button", { name: /finalizar racha/i });
-    fireEvent.click(finalizeBtn);
-
-    const confirmBtn = screen.getByRole("button", { name: /finalizar e quitar cobrança/i });
-    fireEvent.click(confirmBtn);
-
-    await waitFor(() => {
-      expect(mockSyncSplitExpenseReportWeights).toHaveBeenCalledWith(
-        expect.objectContaining({
-          expenseId: "exp-1",
-          totalCents: 10000,
-        }),
-      );
-      expect(mockSettleDebt).toHaveBeenCalledWith({
-        debtId: "debt-1",
-        result: 100,
+      expect(mockDeleteLinkedSplit).toHaveBeenCalledWith({
+        share: baseShare,
+        linkedDebt: baseDebt,
+        deleteExpense: true,
       });
     });
   });
 
-  it("permite exclusão granular com restauração de 100% na despesa mantida", async () => {
-    mockDeletePublicShare.mockResolvedValueOnce({});
-    mockUpdateExpense.mockResolvedValueOnce({});
-    mockDeleteDebt.mockResolvedValueOnce({});
-    const onOpenChange = vi.fn();
+  it("exibe avisos de pagamento pendentes inline e permite confirmar ou recusar", async () => {
+    const shareWithSignals: PublicShare = {
+      ...baseShare,
+      payload: {
+        ...baseShare.payload,
+        payment_signals: [
+          {
+            id: "sig-9",
+            participant_id: "p_2",
+            participant_name: "Lucas",
+            amount_cents: 2500,
+            status: "pending",
+            created_at: "2026-08-10T15:00:00Z",
+          },
+        ],
+      },
+    };
 
     render(
       <ManageSplitDialog
         open={true}
-        onOpenChange={onOpenChange}
-        share={baseShare}
+        onOpenChange={vi.fn()}
+        share={shareWithSignals}
         linkedDebt={baseDebt}
-      />
+      />,
     );
 
-    const deleteBtn = screen.getByRole("button", { name: /excluir racha/i });
-    fireEvent.click(deleteBtn);
+    expect(screen.getByText(/Avisos de Pix Aguardando Confirmação/i)).toBeInTheDocument();
+    expect(screen.getByText("Lucas informou pagamento")).toBeInTheDocument();
 
-    expect(screen.getByText("Escolha quais registros vinculados a este racha você também deseja remover:")).toBeInTheDocument();
-    expect(screen.getByText("Link e dados do racha")).toBeInTheDocument();
-    expect(screen.getByText("Conta a receber vinculada")).toBeInTheDocument();
-    expect(screen.getByText("Despesa original no extrato")).toBeInTheDocument();
-
-    const confirmDeleteBtn = screen.getByRole("button", { name: /confirmar exclusão/i });
-    fireEvent.click(confirmDeleteBtn);
-
+    fireEvent.click(screen.getByRole("button", { name: /Confirmar/i }));
     await waitFor(() => {
-      // Como despesa foi mantida, restaura para 100%
-      expect(mockUpdateExpense).toHaveBeenCalledWith({
-        id: "exp-1",
-        input: {
-          report_weight: 1,
-        },
+      expect(mockApplySplitSettlement).toHaveBeenCalledWith({
+        share: shareWithSignals,
+        action: { type: "confirm_signal", signalId: "sig-9" },
+        linkedDebt: baseDebt,
+        installmentsTotal: 1,
       });
-      // Dívida vinculada foi excluída (default: true)
-      expect(mockDeleteDebt).toHaveBeenCalledWith("debt-1");
-      // Racha público foi excluído
-      expect(mockDeletePublicShare).toHaveBeenCalledWith("share-123");
     });
-  });
 
-  it("permite exclusão total selecionando também a exclusão da despesa original", async () => {
-    mockDeletePublicShare.mockResolvedValueOnce({});
-    mockDeleteExpense.mockResolvedValueOnce({});
-    mockDeleteDebt.mockResolvedValueOnce({});
-    const onOpenChange = vi.fn();
-
-    render(
-      <ManageSplitDialog
-        open={true}
-        onOpenChange={onOpenChange}
-        share={baseShare}
-        linkedDebt={baseDebt}
-      />
-    );
-
-    const deleteBtn = screen.getByRole("button", { name: /excluir racha/i });
-    fireEvent.click(deleteBtn);
-
-    // Marca o checkbox da despesa original
-    const expenseCheckbox = screen.getByRole("checkbox", { name: /despesa original no extrato/i });
-    fireEvent.click(expenseCheckbox);
-
-    const confirmDeleteBtn = screen.getByRole("button", { name: /confirmar exclusão/i });
-    fireEvent.click(confirmDeleteBtn);
-
+    fireEvent.click(screen.getByRole("button", { name: /Recusar/i }));
     await waitFor(() => {
-      expect(mockDeleteAllSplitExpenses).toHaveBeenCalledWith({ expenseId: "exp-1", groupId: null });
-      expect(mockDeleteDebt).toHaveBeenCalledWith("debt-1");
-      expect(mockDeletePublicShare).toHaveBeenCalledWith("share-123");
+      expect(mockDismissSignal).toHaveBeenCalledWith({
+        shareId: "share-123",
+        signalId: "sig-9",
+      });
     });
   });
 
-  it("permite excluir o racha quando a despesa vinculada ja foi excluida isoladamente", async () => {
-    mockDeletePublicShare.mockResolvedValueOnce({});
-    mockLinkedExpenseData = null; // Despesa nao existe mais no banco
-    mockLinkedExpenseIsFetched = true;
-    const onOpenChange = vi.fn();
-
-    render(
-      <ManageSplitDialog
-        open={true}
-        onOpenChange={onOpenChange}
-        share={baseShare}
-        linkedDebt={null} // Divida tambem ja nao existe
-      />
-    );
-
-    const deleteBtn = screen.getByRole("button", { name: /excluir racha/i });
-    fireEvent.click(deleteBtn);
-
-    // Nao exibe checkbox para a despesa original ja que ela nao existe mais
-    expect(screen.queryByRole("checkbox", { name: /despesa original no extrato/i })).not.toBeInTheDocument();
-    // Exibe nota informativa de que a despesa vinculada ja foi removida
-    expect(screen.getByText("Despesa vinculada já excluída")).toBeInTheDocument();
-
-    const confirmDeleteBtn = screen.getByRole("button", { name: /confirmar exclusão/i });
-    fireEvent.click(confirmDeleteBtn);
-
-    await waitFor(() => {
-      // Nao tenta restaurar despesa inexistente
-      expect(mockUpdateExpense).not.toHaveBeenCalled();
-      expect(mockDeleteExpense).not.toHaveBeenCalled();
-      // O racha publico e excluido com sucesso
-      expect(mockDeletePublicShare).toHaveBeenCalledWith("share-123");
-    });
-  });
-
-  it("permite excluir o racha mesmo se a restauracao da despesa ou exclusao da divida falhar", async () => {
-    mockDeletePublicShare.mockResolvedValueOnce({});
-    mockUpdateExpense.mockRejectedValueOnce(new Error("Despesa nao encontrada"));
-    mockDeleteDebt.mockRejectedValueOnce(new Error("Divida nao encontrada"));
-    const onOpenChange = vi.fn();
-
-    render(
-      <ManageSplitDialog
-        open={true}
-        onOpenChange={onOpenChange}
-        share={baseShare}
-        linkedDebt={baseDebt}
-      />
-    );
-
-    const deleteBtn = screen.getByRole("button", { name: /excluir racha/i });
-    fireEvent.click(deleteBtn);
-
-    const confirmDeleteBtn = screen.getByRole("button", { name: /confirmar exclusão/i });
-    fireEvent.click(confirmDeleteBtn);
-
-    await waitFor(() => {
-      // Mesmo com rejeicao nas operacoes secundarias, o racha principal e removido
-      expect(mockDeletePublicShare).toHaveBeenCalledWith("share-123");
-    });
-  });
-
-  it("exibe a grade de parcelas por amigo e permite baixar individualmente uma parcela", async () => {
-    mockUpdatePublicShare.mockResolvedValueOnce({});
-    const onOpenChange = vi.fn();
-
+  it("exibe a grade de parcelas e permite baixar parcela individualmente", async () => {
     const shareWithInstallments: PublicShare = {
       ...baseShare,
       payload: {
@@ -394,71 +322,85 @@ describe("ManageSplitDialog", () => {
     render(
       <ManageSplitDialog
         open={true}
-        onOpenChange={onOpenChange}
+        onOpenChange={vi.fn()}
         share={shareWithInstallments}
-      />
+      />,
     );
 
-    // Deve exibir as parcelas do amigo
-    expect(screen.getByText("Parcelas mensais:")).toBeInTheDocument();
-    expect(screen.getByText("1/2")).toBeInTheDocument();
-    expect(screen.getByText("2/2")).toBeInTheDocument();
-
-    // Clica no botão de baixar a parcela 1
     const baixarParcela1 = screen.getByLabelText("Confirmar recebimento da parcela 1 de Lucas");
     fireEvent.click(baixarParcela1);
 
     await waitFor(() => {
-      expect(mockUpdatePublicShare).toHaveBeenCalledWith(
+      expect(mockApplySplitSettlement).toHaveBeenCalledWith({
+        share: shareWithInstallments,
+        action: { type: "toggle_installment", installmentId: "p_2_inst_1", markSettled: true },
+        linkedDebt: undefined,
+        installmentsTotal: 2,
+      });
+    });
+  });
+
+  it("ativa calculadora apenas ao abrir Outro Valor na aba Baixas e permite editar na aba Editar Racha", async () => {
+    const user = userEvent.setup();
+    render(
+      <ManageSplitDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        share={baseShare}
+        linkedDebt={baseDebt}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: /outro valor/i })[0]!);
+    expect(screen.getByRole("button", { name: "Abrir calculadora" })).toBeInTheDocument();
+
+    // Navega para aba Editar Racha e salva alteração
+    await user.click(screen.getByRole("tab", { name: /Editar Racha/i }));
+    const titleInput = screen.getByLabelText("Nome do racha");
+    fireEvent.change(titleInput, { target: { value: "Churrasco da Equipe" } });
+    await user.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    await waitFor(() => {
+      expect(mockUpdateSplitComprehensive).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: "share-123",
-          payload: expect.objectContaining({
-            participant_installments: expect.arrayContaining([
-              expect.objectContaining({
-                id: "p_2_inst_1",
-                is_settled: true,
-              }),
-            ]),
+          share: baseShare,
+          syncExpense: true,
+          edit: expect.objectContaining({
+            title: "Churrasco da Equipe",
           }),
-        }),
-      );
-      expect(mockSyncSplitExpenseReportWeights).toHaveBeenCalledWith(
-        expect.objectContaining({
-          expenseId: "exp-1",
-          totalCents: 10000,
-          installments: expect.arrayContaining([
-            expect.objectContaining({
-              id: "p_2_inst_1",
-              is_settled: true,
-            }),
-          ]),
         }),
       );
     });
   });
 
-  it("revoga o share (isRevoked: true) ao finalizar o racha e ativa calculadora apenas no Outro Valor", async () => {
-    mockUpdatePublicShare.mockResolvedValueOnce({ ...baseShare, is_revoked: true });
-    render(<ManageSplitDialog open={true} onOpenChange={vi.fn()} share={baseShare} linkedDebt={baseDebt} />);
+  it("permite reabrir um racha concluído", async () => {
+    const completedShare: PublicShare = {
+      ...baseShare,
+      is_revoked: true,
+      payload: {
+        ...baseShare.payload,
+        is_completed: true,
+      },
+    };
 
-    // Calculadora oculta na visão inicial
-    expect(screen.queryByRole("button", { name: "Abrir calculadora" })).not.toBeInTheDocument();
+    render(
+      <ManageSplitDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        share={completedShare}
+        linkedDebt={baseDebt}
+      />,
+    );
 
-    // Abre "Outro Valor" -> ativa calculadora
-    fireEvent.click(screen.getAllByRole("button", { name: /outro valor/i })[0]!);
-    expect(screen.getByRole("button", { name: "Abrir calculadora" })).toBeInTheDocument();
-
-    // Finaliza racha no diálogo elevado e preserva isRevoked: true
-    fireEvent.click(screen.getByRole("button", { name: /finalizar racha/i }));
-    fireEvent.click(screen.getByRole("button", { name: /finalizar e quitar cobrança/i }));
-
+    fireEvent.click(screen.getByRole("button", { name: /Reabrir Racha/i }));
     await waitFor(() => {
-      expect(mockUpdatePublicShare).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: "share-123",
-          isRevoked: true,
-        }),
-      );
+      expect(mockApplySplitSettlement).toHaveBeenCalledWith({
+        share: completedShare,
+        action: { type: "reopen" },
+        linkedDebt: baseDebt,
+        installmentsTotal: 1,
+      });
     });
   });
 });

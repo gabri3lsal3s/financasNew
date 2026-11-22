@@ -14,6 +14,7 @@ import android.service.notification.StatusBarNotification;
 import android.util.Log;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -24,6 +25,7 @@ public class BankNotificationListenerService extends NotificationListenerService
     public static final String PREFS_NAME = "bank_notifications_prefs";
     public static final String KEY_BUFFER = "pending_notifications_buffer";
     public static final String KEY_ALLOWED_PACKAGES = "allowed_bank_packages";
+    public static final String KEY_INTERACTIVE_ENABLED = "interactive_notifications_enabled";
     public static final String CHANNEL_ID = "bank_transaction_suggestions";
     private static final int MAX_BUFFER_SIZE = 30;
 
@@ -62,6 +64,7 @@ public class BankNotificationListenerService extends NotificationListenerService
         "com.itau",
         "com.itau.personnalite",
         "com.bradesco",
+        "com.bradesco.cartoes",
         "com.santander.app",
         "br.com.santander.way",
         "br.gov.caixa.tem",
@@ -74,7 +77,6 @@ public class BankNotificationListenerService extends NotificationListenerService
 
         // Carteiras Digitais & Pagamentos
         "com.google.android.apps.walletnfcrel",
-        "com.google.android.gms",
         "com.samsung.android.spay",
         "com.samsung.android.raja.spay",
         "com.samsung.android.app.spay",
@@ -117,8 +119,7 @@ public class BankNotificationListenerService extends NotificationListenerService
     ));
 
     /**
-     * Retorna o conjunto de pacotes bancários autorizados pelo usuário.
-     * Se ainda não houver preferência salva, adota os pacotes padrão homologados.
+     * Retorna o conjunto de pacotes bancários autorizados pelo usuário (opt-in explícito).
      */
     public Set<String> getAllowedPackages() {
         try {
@@ -126,12 +127,24 @@ public class BankNotificationListenerService extends NotificationListenerService
             if (prefs.contains(KEY_ALLOWED_PACKAGES)) {
                 Set<String> saved = prefs.getStringSet(KEY_ALLOWED_PACKAGES, null);
                 if (saved != null) {
-                    return saved;
+                    return new HashSet<>(saved);
                 }
             }
         } catch (Exception ignored) {
         }
-        return DEFAULT_MONITORED_PACKAGES;
+        return Collections.emptySet();
+    }
+
+    /**
+     * Indica se o usuário manteve habilitada a exibição de notificações interativas no sistema.
+     */
+    public boolean isInteractiveNotificationsEnabled() {
+        try {
+            android.content.SharedPreferences prefs = getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE);
+            return prefs.getBoolean(KEY_INTERACTIVE_ENABLED, true);
+        } catch (Exception ignored) {
+            return true;
+        }
     }
 
     @Override
@@ -143,9 +156,11 @@ public class BankNotificationListenerService extends NotificationListenerService
 
         // REGRA DE OURO ANTI-FALSOS POSITIVOS:
         // Apenas pacotes de aplicativos bancários explicitamente autorizados são processados.
-        // Qualquer app não bancário (WhatsApp, SMS, Shopee, lojas, etc.) é descartado de imediato.
+        // Fallback de Google Pay via GMS ocorre apenas quando Carteira Google estiver autorizada.
         Set<String> allowedPackages = getAllowedPackages();
-        if (!allowedPackages.contains(packageName)) {
+        boolean isGmsWalletFallback = "com.google.android.gms".equals(packageName)
+                && allowedPackages.contains("com.google.android.apps.walletnfcrel");
+        if (!allowedPackages.contains(packageName) && !isGmsWalletFallback) {
             return;
         }
 
@@ -235,8 +250,10 @@ public class BankNotificationListenerService extends NotificationListenerService
 
         long timestamp = sbn.getPostTime();
 
-        // Dispara notificação push nativa interativa mesmo com o app em segundo plano ou fechado
-        postInteractivePush(packageName, title, text, timestamp);
+        // Dispara notificação push nativa interativa apenas quando o usuário habilitou essa opção
+        if (isInteractiveNotificationsEnabled()) {
+            postInteractivePush(packageName, title, text, timestamp);
+        }
 
         BankNotificationPlugin plugin = BankNotificationPlugin.getInstance();
         if (plugin != null) {

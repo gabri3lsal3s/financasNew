@@ -10,7 +10,8 @@ public class BankNotificationActionReceiverTest {
     public void testConstants() {
         assertEquals("com.guiafinanceiro.app.ACTION_CONFIRM_TRANSACTION", BankNotificationActionReceiver.ACTION_CONFIRM);
         assertEquals("com.guiafinanceiro.app.ACTION_UNDO_TRANSACTION", BankNotificationActionReceiver.ACTION_UNDO);
-        assertEquals("axis_confirmations", BankNotificationActionReceiver.CHANNEL_CONFIRMATIONS);
+        assertEquals("axir_confirmations", BankNotificationActionReceiver.CHANNEL_CONFIRMATIONS);
+        assertEquals("axis_confirmations", BankNotificationActionReceiver.LEGACY_CHANNEL_CONFIRMATIONS);
         assertEquals("confirmed_transactions_buffer", BankNotificationActionReceiver.KEY_CONFIRMED_BUFFER);
     }
 

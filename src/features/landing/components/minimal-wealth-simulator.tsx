@@ -12,6 +12,7 @@ import { SimulatorAllocationResults } from "./simulator/simulator-allocation-res
 import { formatCentsAsBRL, formatPercent } from "@/services/masks";
 import { numberToCents } from "@/domain/money";
 import { storePendingSimulation } from "@/domain/share";
+import { setStoredInitialGoal } from "@/state/demo-mode/demo-storage";
 import {
   simulateStrategyAporte,
   STRATEGY_PRESETS,
@@ -70,25 +71,25 @@ export function MinimalWealthSimulator() {
   return (
     <section
       id="simulador"
-      className="py-14 md:py-32 bg-surface-raised/30 border-t border-border/60 scroll-mt-20"
+      className="py-14 md:py-24 bg-surface-raised/30 border-t border-border/60 scroll-mt-20"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <ScrollReveal className="text-center max-w-4xl mx-auto">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold text-primary-strong dark:text-primary">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary-strong dark:text-primary">
             <PieChart className="size-3.5 sm:size-4" aria-hidden="true" />
             <span>Rebalanceamento sem vender ativos</span>
           </div>
-          <h2 className="mt-4 font-display text-3xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+          <h2 className="mt-3 sm:mt-4 font-display text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-foreground">
             Simulador de Carteira & Aportes Inteligentes
           </h2>
-          <p className="mt-4 sm:mt-5 text-sm sm:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-            Selecione seu patrimônio, estratégia e valor de aporte. Veja o algoritmo identificar as
-            classes defasadas e direcionar 100% dos recursos sem precisar vender ativos.
+          <p className="mt-3 sm:mt-4 text-sm sm:text-lg text-muted-foreground leading-relaxed">
+            Depois de organizar seu caixa e suas metas, simule ao vivo onde colocar seu próximo
+            aporte para equilibrar a carteira sem precisar vender nenhum ativo.
           </p>
         </ScrollReveal>
 
-        <ScrollReveal delay={100} className="mt-10 sm:mt-16 max-w-6xl mx-auto">
-          <Card className="border-border/80 bg-surface shadow-xl sm:shadow-2xl p-4 sm:p-8 lg:p-12 space-y-6 sm:space-y-8 rounded-2xl sm:rounded-3xl">
+        <ScrollReveal delay={100} className="mt-10 sm:mt-14 max-w-6xl mx-auto">
+          <Card className="border-border/80 bg-surface shadow-sm p-4 sm:p-8 lg:p-10 space-y-6 sm:space-y-8 rounded-2xl sm:rounded-3xl">
             <SimulatorInputsPanel
               strategy={strategy}
               onStrategyChange={setStrategy}
@@ -131,7 +132,8 @@ export function MinimalWealthSimulator() {
               </span>
               <Link
                 to={trialUrl}
-                onClick={() =>
+                onClick={() => {
+                  setStoredInitialGoal("investments");
                   storePendingSimulation({
                     type: "rebalance_simulator",
                     classes: currentStrategy.classes.map((cls) => ({
@@ -141,8 +143,8 @@ export function MinimalWealthSimulator() {
                     patrimonyBaseCents: numberToCents(patrimonyBase),
                     aporteAmountCents: numberToCents(aporteAmount),
                     selectedPreset: strategy,
-                  })
-                }
+                  });
+                }}
                 aria-label="Organizar investimentos e começar teste gratuito de 30 dias"
                 className={cn(
                   buttonVariants({ size: "default" }),

@@ -136,7 +136,7 @@ export function SplitMockupPreview({ active }: SplitMockupPreviewProps) {
           </div>
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <ShieldCheck className="size-3.5 text-primary shrink-0" aria-hidden="true" />
+              <ShieldCheck className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
               <span>Chave Pix Dinâmica (E-mail)</span>
             </div>
             <span className="font-mono font-semibold text-foreground text-xs break-all block leading-snug">

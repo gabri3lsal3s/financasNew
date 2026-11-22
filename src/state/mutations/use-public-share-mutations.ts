@@ -17,6 +17,7 @@ import type { PublicShare } from "@/types";
 import { pushToast } from "@/services/toast";
 import { getErrorMessage } from "@/services/errors";
 
+export const publicShareQueryKey = ["public-share"] as const;
 export const publicSharesQueryKey = ["public-shares"] as const;
 export const myPublicSharesMutationKey = ["my-public-shares"] as const;
 
@@ -26,6 +27,7 @@ export function useCreatePublicShare() {
   return useMutation({
     mutationFn: (input: CreatePublicShareInput) => createPublicShare(input),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: publicShareQueryKey });
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
       void queryClient.invalidateQueries({ queryKey: ["debts"] });
@@ -84,6 +86,7 @@ export function useUpdatePublicShare() {
       pushToast({ title: getErrorMessage(error), variant: "destructive" });
     },
     onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: publicShareQueryKey });
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
     },
@@ -122,6 +125,7 @@ export function useRevokePublicShare() {
       pushToast({ title: getErrorMessage(error), variant: "destructive" });
     },
     onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: publicShareQueryKey });
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
     },
@@ -160,6 +164,7 @@ export function useRestorePublicShare() {
       pushToast({ title: getErrorMessage(error), variant: "destructive" });
     },
     onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: publicShareQueryKey });
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
     },
@@ -198,6 +203,7 @@ function useDeletePublicShareBase(silentError = false) {
       }
     },
     onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: publicShareQueryKey });
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
     },
@@ -261,6 +267,7 @@ export function useRegeneratePublicShare() {
           return old.map((share) => (share.id === data.id ? data : share));
         },
       );
+      void queryClient.invalidateQueries({ queryKey: publicShareQueryKey });
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
     },
@@ -335,8 +342,10 @@ export function useSignalSplitPayment() {
       amountCents: number;
       participantId?: string | null;
       installmentId?: string | null;
+      installmentIds?: string[] | null;
     }) => signalSplitPayment(params),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: publicShareQueryKey });
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
     },
@@ -350,6 +359,7 @@ export function useDismissSplitPaymentSignal() {
     mutationFn: (params: { shareId: string; signalId: string }) =>
       dismissSplitPaymentSignal(params),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: publicShareQueryKey });
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
       pushToast({
@@ -383,6 +393,7 @@ export function useAllocateGoalDeposit() {
       notes?: string;
     }) => allocateGoalDeposit(input),
     onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: publicShareQueryKey });
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
       void queryClient.invalidateQueries({ queryKey: myPublicSharesMutationKey });
       pushToast({

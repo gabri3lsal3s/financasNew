@@ -13,13 +13,13 @@ const TRIAL_FEATURES = [
 
 const PRO_FEATURES = [
   { bold: "Lançamentos e escritas 100% ilimitados", rest: "" },
-  { bold: "Leitor OCR", rest: " de cupons fiscais NFC-e e boletos" },
-  { bold: "Multi-Cartões", rest: " + Parcelamentos em até 60x" },
-  { bold: "Safe-to-Spend diário", rest: " e Radar de Vencimentos" },
-  { bold: "Espaço Família colaborativo", rest: " e Racha Pix" },
-  { bold: "Controle de Dívidas", rest: " (Snowball / Avalanche)" },
-  { bold: "Motor de Rebalanceamento", rest: " de carteira sem DARF" },
-  { bold: "Radar Fiscal de IR", rest: " & Dossiê em Excel (.xlsx)" },
+  { bold: "Leitor OCR", rest: " de cupons NFC-e, boletos e extratos" },
+  { bold: "Cartões até 60x", rest: " + A Pagar, A Receber & Contratos Price/SAC" },
+  { bold: "Safe-to-Spend diário", rest: " e Radar Preventivo de vencimentos" },
+  { bold: "Modo Família, Viagens", rest: " e Racha de Parcelas via Pix" },
+  { bold: "Metas de Carteira & Governança", rest: " com nota de tese" },
+  { bold: "Valuation (Bazin, Graham, Gordon, FIIs)", rest: " & Aportes sem vender" },
+  { bold: "DRE, Lâmina, Balanço, Excel (5 abas)", rest: " & Memória de Cálculo" },
 ];
 
 export interface PricingCardsGridProps {

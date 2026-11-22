@@ -106,6 +106,7 @@ export function TransactionListPage() {
           effectiveVisibleCount={tx.effectiveVisibleCount}
           filteredFeedItemsCount={tx.filteredFeedItemsCount}
           recurrenceLabel={tx.recurrenceLabel}
+          isExpenseSplit={tx.isExpenseSplit}
           onSelectExpense={tx.setSelectedExpense}
           onSelectIncome={tx.setSelectedIncome}
           onClearSearch={() => tx.setSearchQuery("")}
@@ -132,6 +133,9 @@ export function TransactionListPage() {
         showRachaPreview={tx.showRachaPreview}
         showRachaSimulation={tx.showRachaSimulation}
         onCloseRachaParams={tx.clearRachaParams}
+        managedSplitShare={tx.managedSplitShare}
+        managedSplitDebt={tx.managedSplitDebt}
+        onCloseManagedSplit={tx.clearManagedSplitParam}
         upgradeOpen={tx.upgradeOpen}
         onUpgradeOpenChange={tx.setUpgradeOpen}
         upgradeContext={tx.upgradeContext}

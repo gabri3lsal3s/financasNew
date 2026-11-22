@@ -4,6 +4,7 @@ import { isBiometricAuthInProgress, authenticateWithBiometrics } from "./biometr
 import { disablePrivacyShield, enablePrivacyShield } from "./privacy-shield";
 import { isNativePlatform } from "./platform";
 import { isPinLockConfigured } from "./pin-lock";
+import { isNativeExportInProgress } from "./native-export";
 
 const KEY_BIOMETRIC_LOCK = "biometric_lock_enabled";
 const KEY_TIMEOUT = "biometric_lock_timeout_minutes";
@@ -219,9 +220,9 @@ export function initAppLockListener(): () => void {
 
   if (isNativePlatform()) {
     const listenerPromise = App.addListener("appStateChange", ({ isActive }) => {
-      // Se a autenticação biométrica nativa está em andamento (ou na janela de retorno),
+      // Se a autenticação biométrica nativa ou o Print/Share Sheet está em andamento,
       // a alternância de foco da janela não representa uma saída real do aplicativo.
-      if (isBiometricAuthInProgress()) {
+      if (isBiometricAuthInProgress() || isNativeExportInProgress()) {
         return;
       }
 

@@ -11,6 +11,7 @@ import {
   adminSendBroadcastNotification,
   adminLogSystemBackup,
   markBroadcastAsRead,
+  dismissBroadcastNotification,
   adminProvisionUser,
   adminResetUserMFA,
   adminRevokeUserSessions,
@@ -396,6 +397,7 @@ export function useAdminSendBroadcast() {
       actionUrl?: string | null;
       targetAudience?: BroadcastAudience;
       targetUserIds?: string[] | null;
+      expiresAt?: string | null;
     }) => adminSendBroadcastNotification(params),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ADMIN_BROADCASTS_KEY });
@@ -455,6 +457,31 @@ export function useMarkBroadcastAsRead() {
     mutationFn: (notificationId: string) => markBroadcastAsRead(notificationId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: MY_BROADCASTS_KEY });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Não foi possível marcar o comunicado",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useDismissBroadcastNotification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (notificationId: string) => dismissBroadcastNotification(notificationId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: MY_BROADCASTS_KEY });
+    },
+    onError: (err) => {
+      pushToast({
+        title: "Não foi possível dispensar o comunicado",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
     },
   });
 }

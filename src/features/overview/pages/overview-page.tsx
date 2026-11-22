@@ -1,15 +1,17 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router";
 import {
   AutoRegisteredBanner,
   type DonutSlice,
   MonthPicker,
+  type OnboardingQuickTourTrack,
   PendingSplitSignalsCard,
   PendingSuggestionsCard,
 } from "@/components/modules";
+import { getTourTrackMeta } from "@/domain/demo-simulation";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { currentMonth } from "@/lib/date";
-import { hasSeenWelcomeModal, useAssetGovernanceInsights, useUserAccess } from "@/state";
+import { startDemo, useAssetGovernanceInsights, useUserAccess } from "@/state";
 import {
   buildOverviewAlertItems,
   OverviewDashboardContent,
@@ -20,6 +22,7 @@ import {
   useOverviewData,
   useOverviewPermissionsBanner,
   usePixClipboardDetector,
+  useSmartAdvisorInsights,
 } from "../hooks";
 import { useOverviewModals } from "../hooks/use-overview-modals";
 
@@ -38,6 +41,55 @@ export function OverviewPage() {
   const data = useOverviewData({ month, alertDismissals });
   const govInsights = useAssetGovernanceInsights();
 
+  const suppressedAdvisorThemeKeys = useMemo(() => {
+    const keys: string[] = [];
+    const hasHouseholdExceeded = Boolean(
+      data.householdData &&
+        data.householdData.monthly_ceiling_cents > 0 &&
+        data.householdData.spent_percentage >= 100,
+    );
+    const hasHouseholdSettlement = Boolean(
+      data.householdData &&
+        !data.householdData.is_settled &&
+        data.householdData.settlement &&
+        data.householdData.settlement.amount_cents > 0,
+    );
+    // Evita efeito whack-a-mole: mesmo quando SurplusAporteBanner foi dispensado por 7d/30d,
+    // a oportunidade de aporte na Home continua controlada pela dispensa explícita sem
+    // ressuscitar "aporte:rebalance" / "aporte:habit" no SmartAdvisor imediatamente.
+    const hasSurplusBannerOrDismissed = Boolean(
+      data.surplusCapacity.hasSurplus &&
+        data.isCurrentMonth &&
+        (data.isSurplusEligible || Boolean(alertDismissals.surplus)),
+    );
+
+    if (hasHouseholdExceeded) {
+      keys.push("household:ceiling_exceeded");
+    }
+    if (hasHouseholdSettlement) {
+      keys.push("household:settlement_pending");
+    }
+    if (hasSurplusBannerOrDismissed) {
+      keys.push("aporte:rebalance", "aporte:habit");
+    }
+    return keys;
+  }, [
+    data.householdData,
+    data.surplusCapacity.hasSurplus,
+    data.isCurrentMonth,
+    data.isSurplusEligible,
+    alertDismissals.surplus,
+  ]);
+
+  const advisor = useSmartAdvisorInsights({
+    month,
+    enabled: data.isCurrentMonth && !data.showVirginGuide,
+    savingsSurplusCents: data.surplusCapacity.suggestedAporteCents,
+    safeToSpendCents: data.realCashData.safeToSpend.safeToSpendCents,
+    committedObligationsCents: data.realCashData.safeToSpend.committedObligationsCents,
+    suppressedThemeKeys: suppressedAdvisorThemeKeys,
+  });
+
   const modals = useOverviewModals({
     month,
     navigate,
@@ -49,6 +101,17 @@ export function OverviewPage() {
     hasSurplus: data.surplusCapacity.hasSurplus,
     liveGoalProgress: data.liveGoalProgress,
   });
+
+  const handleStartQuickTour = useCallback(
+    (track: OnboardingQuickTourTrack) => {
+      startDemo(track);
+      const meta = getTourTrackMeta(track);
+      if (meta?.startRoute && meta.startRoute !== "/") {
+        navigate(meta.startRoute);
+      }
+    },
+    [navigate],
+  );
 
   const { budgetAndDonut } = data;
   const donutSlices = useMemo<DonutSlice[]>(
@@ -67,6 +130,7 @@ export function OverviewPage() {
   );
 
   const alertItems = buildOverviewAlertItems({
+    month,
     data,
     shouldShowPermissionsBanner: permissions.shouldShowPermissionsBanner,
     permissionBannerType: permissions.permissionBannerType,
@@ -84,6 +148,21 @@ export function OverviewPage() {
     onReviewGovernance: () => navigate("/investments?tab=metas"),
     onDismissGovernance: modals.handleDismissGovernance,
     isGovernanceDismissed: data.isGovernanceDismissed,
+    showOnboardingCarousel: data.showOnboarding,
+    initialGoal: data.initialGoal,
+    onOpenOnboardingChecklist: () => modals.setOnboardingChecklistOpen(true),
+    onDismissOnboarding: data.dismissOnboarding,
+    onDismissCard: modals.handleDismissCard,
+    advisorInsights: advisor.insights,
+    onDismissAdvisor: advisor.dismiss,
+    onConfirmRecurrence: advisor.confirmRecurrence,
+    onIgnoreRecurrence: (occurrenceKey, reason) =>
+      reason === "essential"
+        ? advisor.markAsEssential(occurrenceKey)
+        : advisor.ignoreRecurrence(occurrenceKey, reason),
+    onMarkEssential: advisor.markAsEssential,
+    onConfirmIncome: advisor.confirmIncome,
+    onConfirmExpense: advisor.confirmExpense,
   });
 
   const hasFinance =
@@ -93,15 +172,13 @@ export function OverviewPage() {
     return <Navigate to="/investments" replace />;
   }
 
-  const welcomeModalOpen = data.isVirginAccount && !hasSeenWelcomeModal() && !modals.welcomeDismissed;
-
   return (
     <>
       <OverviewModalsHost
         month={month}
-        welcomeModalOpen={welcomeModalOpen}
         data={data}
         modals={modals}
+        onStartQuickTour={handleStartQuickTour}
         upgradeModal={upgradeModal}
       />
 
@@ -120,6 +197,7 @@ export function OverviewPage() {
           detectedPix={detectedPix}
           onDismissDetectedPix={dismissDetectedPix}
           guardAction={guardAction}
+          onStartQuickTour={handleStartQuickTour}
           navigate={navigate}
         />
       </div>

@@ -23,7 +23,7 @@ describe("TrialEndingBanner component", () => {
     );
 
     expect(screen.getByText("Seu período de teste Pro encerra amanhã")).toBeInTheDocument();
-    expect(screen.getByText("1d restantes")).toBeInTheDocument();
+    expect(screen.getByText("1 dia restante")).toBeInTheDocument();
   });
 
   it("renderiza mensagem para 0 dias restantes (último dia)", () => {
@@ -79,6 +79,19 @@ describe("TrialEndingBanner component", () => {
     expect(
       screen.getByRole("button", { name: /Ver Oferta com 40% OFF/i }),
     ).toBeInTheDocument();
+  });
+
+  it("permite dispensar o aviso de trial por 7 ou 30 dias via CarouselDismissPopover", () => {
+    const onDismiss = vi.fn();
+    render(
+      <BrowserRouter>
+        <TrialEndingBanner daysRemaining={15} onDismiss={onDismiss} />
+      </BrowserRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Dispensar aviso do período de teste/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Dispensar por 7 dias/i }));
+    expect(onDismiss).toHaveBeenCalledWith(7);
   });
 });
 

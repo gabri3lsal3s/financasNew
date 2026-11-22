@@ -1,10 +1,18 @@
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Alert, Button, FormField, Modal, ModalFooter, MoneyInput, RadioGroup, Select, Skeleton } from "@/components/ui";
 import { todayLocalIso } from "@/lib/date";
 import { getErrorMessage } from "@/services/errors";
 import { sensory } from "@/services/sensory";
-import { useCategories, useExpense, usePayDebt, useReceiveDebt, useSettleIntegratedReceivable } from "@/state";
-import type { Debt } from "@/types";
+import {
+  useCategories,
+  useExpense,
+  useMyPublicShares,
+  usePayDebt,
+  useReceiveDebt,
+  useSettleIntegratedReceivable,
+  useSyncSplitFromDebtSettle,
+} from "@/state";
+import type { Debt, SplitSharePayload } from "@/types";
 import { DebtPenaltiesFields } from "./debt-penalties-fields";
 
 export interface SettleDialogProps {
@@ -34,11 +42,36 @@ function SettleDialogContent({ debt, open, onOpenChange }: SettleDialogProps) {
 
   const expenseCategories = useCategories(isReceivable ? "income" : "expense");
   const linkedExpense = useExpense(integrated ? debt.expense_id : null);
+  const { data: splitShares } = useMyPublicShares("split", { enabled: isReceivable && open });
+
+  const linkedSplitShare = useMemo(() => {
+    if (!isReceivable || !splitShares) return null;
+    return (
+      splitShares.find((share) => {
+        const p = (share.payload ?? {}) as Partial<SplitSharePayload>;
+        return (
+          share.debt_id === debt.id ||
+          p.debt_id === debt.id ||
+          Boolean(debt.expense_id && (share.expense_id === debt.expense_id || p.expense_id === debt.expense_id)) ||
+          Boolean(
+            debt.installment_group_id &&
+              (share.installment_group_id === debt.installment_group_id ||
+                p.installment_group_id === debt.installment_group_id),
+          )
+        );
+      }) ?? null
+    );
+  }, [isReceivable, splitShares, debt.id, debt.expense_id, debt.installment_group_id]);
 
   const payDebt = usePayDebt();
   const receiveDebt = useReceiveDebt();
   const settleIntegrated = useSettleIntegratedReceivable();
-  const pending = payDebt.isPending || receiveDebt.isPending || settleIntegrated.isPending;
+  const syncSplitFromDebtSettle = useSyncSplitFromDebtSettle();
+  const pending =
+    payDebt.isPending ||
+    receiveDebt.isPending ||
+    settleIntegrated.isPending ||
+    syncSplitFromDebtSettle.isPending;
 
   const suggestedResultCents =
     linkedExpense.data?.base_amount !== undefined
@@ -67,6 +100,20 @@ function SettleDialogContent({ debt, open, onOpenChange }: SettleDialogProps) {
           interestAmount: interestCents / 100,
           discountAmount: discountCents / 100,
           totalPaid: effectivePayableCents / 100,
+        });
+      }
+
+      if (isReceivable && linkedSplitShare) {
+        const baseExpCents = linkedExpense.data
+          ? Math.round((linkedExpense.data.base_amount ?? linkedExpense.data.value) * 100)
+          : originalCents;
+        const settledAmountCents = integrated
+          ? Math.max(0, baseExpCents - effectiveResultCents)
+          : originalCents;
+        await syncSplitFromDebtSettle.mutateAsync({
+          share: linkedSplitShare,
+          debt,
+          settledAmountCents,
         });
       }
       sensory.success();

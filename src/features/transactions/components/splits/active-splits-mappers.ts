@@ -1,4 +1,5 @@
 import { todayISO } from "@/domain/debts";
+import { sumExpectedFromFriendsCents, sumSettledFromFriendsCents } from "@/domain/finance";
 import { isParticipantFullySettled, isSplitFullyCompleted } from "@/domain/finance/split-math";
 import type { Debt, PublicShare, SplitSharePayload } from "@/types";
 import type { ActiveSplitItem } from "./active-splits-types";
@@ -13,11 +14,15 @@ export function buildAndSortActiveSplits(params: {
   if (!(shares && shares.length > 0) && !(debts && debts.length > 0)) return [];
 
   const receivableDebtsByExpense = new Map<string, Debt>();
+  const receivableDebtsByGroup = new Map<string, Debt>();
   const debtById = new Map<string, Debt>();
   for (const debt of debts ?? []) {
     debtById.set(debt.id, debt);
     if (debt.type === "receivable" && debt.expense_id) {
       receivableDebtsByExpense.set(debt.expense_id, debt);
+    }
+    if (debt.type === "receivable" && debt.installment_group_id) {
+      receivableDebtsByGroup.set(debt.installment_group_id, debt);
     }
   }
 
@@ -27,12 +32,18 @@ export function buildAndSortActiveSplits(params: {
 
   const itemsFromShares: ActiveSplitItem[] = (shares ?? []).map((share) => {
     const payload = (share.payload ?? {}) as unknown as SplitSharePayload;
-    if (payload.debt_id) mappedDebtIds.add(payload.debt_id);
-    if (payload.expense_id) mappedExpenseIds.add(payload.expense_id);
+    const refDebtId = share.debt_id || payload.debt_id || null;
+    const refExpenseId = share.expense_id || payload.expense_id || null;
+    const refGroupId = share.installment_group_id || payload.installment_group_id || null;
+
+    if (refDebtId) mappedDebtIds.add(refDebtId);
+    if (refExpenseId) mappedExpenseIds.add(refExpenseId);
+    if (refGroupId) mappedInstallmentGroupIds.add(refGroupId);
 
     const linkedDebt =
-      (payload.debt_id ? debtById.get(payload.debt_id) : null) ||
-      (payload.expense_id ? receivableDebtsByExpense.get(payload.expense_id) : null) ||
+      (refDebtId ? debtById.get(refDebtId) : null) ||
+      (refExpenseId ? receivableDebtsByExpense.get(refExpenseId) : null) ||
+      (refGroupId ? receivableDebtsByGroup.get(refGroupId) : null) ||
       null;
     if (linkedDebt) {
       mappedDebtIds.add(linkedDebt.id);
@@ -50,6 +61,10 @@ export function buildAndSortActiveSplits(params: {
     const peopleCount = Number(payload.people_count ?? 2);
     const guestCount = Math.max(1, peopleCount - 1);
     const guestShareCents = Number(payload.guest_share_cents ?? 0);
+    const receivableExpectedCents =
+      friends.length > 0 ? sumExpectedFromFriendsCents(participants) : guestShareCents * guestCount;
+    const settledFromFriendsCents =
+      friends.length > 0 ? sumSettledFromFriendsCents(participants) : Number(payload.total_settled_cents ?? 0);
 
     const settledFriendsCount = friends.filter((f) => {
       const friendInsts = participantInstallments.filter(
@@ -67,7 +82,7 @@ export function buildAndSortActiveSplits(params: {
       linkedDebt,
       dueDate:
         linkedDebt?.due_date ||
-        ((payload as Record<string, unknown>)?.due_date as string | undefined) ||
+        payload.due_date ||
         null,
       createdAt: share.created_at || payload.date || "",
       isSettled,
@@ -77,13 +92,10 @@ export function buildAndSortActiveSplits(params: {
       hostShareCents: Number(payload.host_share_cents ?? 0),
       peopleCount,
       guestCount,
-      receivableExpectedCents: guestShareCents * guestCount,
+      receivableExpectedCents,
       settledFriendsCount,
       signaledFriends: friends.filter((p) => p.has_payment_signal && !p.is_settled),
-      totalSettledFromFriendsCents: friends.reduce(
-        (acc, f) => acc + (f.is_settled ? Number(f.settled_cents ?? f.share_cents) : 0),
-        0,
-      ),
+      totalSettledFromFriendsCents: settledFromFriendsCents,
       date: payload.date || share.created_at.slice(0, 10),
       needsLinkGeneration: false,
     };

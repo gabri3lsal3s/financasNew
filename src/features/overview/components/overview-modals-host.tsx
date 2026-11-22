@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
-import { DemoTrackSelectModal, WelcomeModal } from "@/components/modules";
+import {
+  DemoTrackSelectModal,
+  OnboardingChecklistModal,
+  type OnboardingQuickTourTrack,
+} from "@/components/modules";
 import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
 import { resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets";
 import { AddContributionDialog } from "@/features/goals";
@@ -12,9 +16,9 @@ import { OtherCategoriesDialog } from "./other-categories-dialog";
 
 export interface OverviewModalsHostProps {
   month: string;
-  welcomeModalOpen: boolean;
   data: ReturnType<typeof useOverviewData>;
   modals: ReturnType<typeof useOverviewModals>;
+  onStartQuickTour: (track: OnboardingQuickTourTrack) => void;
   upgradeModal: ReactNode;
 }
 
@@ -23,9 +27,9 @@ export interface OverviewModalsHostProps {
  */
 export function OverviewModalsHost({
   month,
-  welcomeModalOpen,
   data,
   modals,
+  onStartQuickTour,
   upgradeModal,
 }: OverviewModalsHostProps) {
   const { budgetAndDonut } = data;
@@ -49,21 +53,34 @@ export function OverviewModalsHost({
     : 0;
   const selectedExpenses = expenses.filter((e) => e.category_id === modals.selectedCategoryId);
 
+  const quickTourTrack: OnboardingQuickTourTrack =
+    data.initialGoal === "family"
+      ? "shared_finances"
+      : data.initialGoal === "investments"
+        ? "investments"
+        : "finances";
+
   return (
     <>
-      <WelcomeModal
-        open={welcomeModalOpen}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) modals.setWelcomeDismissed(true);
-        }}
-        onStartTour={() => modals.setDemoTrackModalOpen(true)}
-      />
       <DemoTrackSelectModal
         open={modals.demoTrackModalOpen}
         onOpenChange={modals.setDemoTrackModalOpen}
       />
 
-      {!data.isVirginAccount ? (
+      {data.onboardingQuery?.data ? (
+        <OnboardingChecklistModal
+          open={modals.onboardingChecklistOpen}
+          onOpenChange={modals.setOnboardingChecklistOpen}
+          counts={data.onboardingQuery.data}
+          hasFeature={data.hasFeature}
+          initialGoal={data.initialGoal}
+          onCalibrateCash={() => modals.setCheckpointOpen(true)}
+          onStartQuickTour={() => onStartQuickTour(quickTourTrack)}
+          onOpenDemoTrackSelect={() => modals.setDemoTrackModalOpen(true)}
+        />
+      ) : null}
+
+      {!data.showVirginGuide ? (
         <>
           <CategoryBreakdownDialog
             open={modals.selectedCategoryId !== null}

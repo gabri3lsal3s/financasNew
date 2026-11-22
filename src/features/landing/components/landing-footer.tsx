@@ -74,16 +74,16 @@ export function LandingFooter() {
                 </Link>
               ) : null}
               <a
-                href="#recursos"
+                href="#dores"
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                Funcionalidades
+                Na Prática
               </a>
               <a
-                href="#investimentos"
+                href="#profundidade"
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                Investimentos & Dossiês
+                Investimentos &amp; Relatórios
               </a>
               <a
                 href="#simulador"

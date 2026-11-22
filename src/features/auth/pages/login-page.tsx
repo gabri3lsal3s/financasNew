@@ -8,12 +8,19 @@ import {
   PasswordInput,
   Turnstile,
 } from "@/components/ui";
+import { useDocumentMeta } from "@/hooks/use-document-meta";
 import { AuthShell } from "../components/auth-shell";
 import { LoginSideHero } from "../components/login-side-hero";
 import { MfaChallengeView } from "../components/mfa-challenge-view";
 import { useLoginForm } from "../hooks/use-login-form";
 
 export function LoginPage() {
+  useDocumentMeta({
+    title: "Entrar — Axir | Centro Financeiro Pessoal",
+    description:
+      "Acesse sua conta no Axir para gerenciar caixa real, cartões, dívidas, finanças compartilhadas e investimentos.",
+    canonicalPath: "/entrar",
+  });
   const {
     from,
     shouldRedirect,

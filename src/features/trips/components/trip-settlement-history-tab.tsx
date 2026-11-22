@@ -14,7 +14,7 @@ export function TripSettlementHistoryTab({ settlements, members = [] }: TripSett
   if (settlements.length === 0) {
     return (
       <EmptyState
-        icon={<History className="size-6" />}
+        icon={<History className="size-6" aria-hidden="true" />}
         title="Nenhum acerto gravado"
         description="Quando os participantes confirmarem transferências Pix, o registro aparecerá aqui."
       />

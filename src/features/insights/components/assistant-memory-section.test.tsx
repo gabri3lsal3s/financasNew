@@ -54,7 +54,8 @@ describe("AssistantMemorySection (F30)", () => {
 
   it("expande a seção e lista descartes temporários (cooldowns) com data limite", async () => {
     const user = userEvent.setup();
-    const expiry = new Date(2026, 10, 22, 12, 0, 0).getTime();
+    const futureYear = new Date().getFullYear() + 1;
+    const expiry = new Date(futureYear, 10, 22, 12, 0, 0).getTime();
 
     render(
       <AssistantMemorySection

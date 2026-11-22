@@ -36,7 +36,7 @@ export function AuthShell({ title, subtitle, children, sideHero, className }: Au
           className,
         )}
       >
-        <div className="w-full max-w-lg lg:max-w-4xl">
+        <div className="w-full max-w-lg lg:max-w-4xl animate-route-in">
           <div className="w-full flex justify-end mb-2.5">
             <ThemeToggle />
           </div>
@@ -63,6 +63,7 @@ export function AuthShell({ title, subtitle, children, sideHero, className }: Au
                     markClassName="size-10"
                     showWordmark
                     showSubtitle
+                    priority
                   />
                   <div className="flex flex-col gap-1 items-center">
                     <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
@@ -94,13 +95,13 @@ export function AuthShell({ title, subtitle, children, sideHero, className }: Au
         className,
       )}
     >
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md animate-route-in">
         <div className="w-full flex justify-end mb-2.5">
           <ThemeToggle />
         </div>
         <Card className="w-full border-border/80 bg-surface shadow-md rounded-2xl p-6 sm:p-8">
           <CardHeader className="p-0 flex-col items-center gap-3 text-center mb-6">
-            <BrandLogo markClassName="size-11" showWordmark showSubtitle />
+            <BrandLogo markClassName="size-11" showWordmark showSubtitle priority />
             <div className="flex flex-col gap-1">
               <h1 className="font-display text-2xl font-bold tracking-tight text-foreground">
                 {title}

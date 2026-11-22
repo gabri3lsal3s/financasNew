@@ -52,6 +52,12 @@ const mockStates = {
   error: null,
 };
 
+const mockSplitShares = {
+  data: [] as Array<{ id: string; debt_id?: string | null; expense_id?: string | null; payload?: Record<string, unknown> }>,
+  isLoading: false,
+  error: null,
+};
+
 const mockPreferences = {
   data: {
     reminders_enabled: true,
@@ -73,6 +79,10 @@ vi.mock("@/state/queries/use-overview", () => ({
 
 vi.mock("@/state/queries/use-debts", () => ({
   useDebts: () => mockDebts,
+}));
+
+vi.mock("@/state/queries/use-public-shares", () => ({
+  useMyPublicShares: () => mockSplitShares,
 }));
 
 vi.mock("@/state/queries/use-reminder-states", () => ({
@@ -107,6 +117,45 @@ describe("useReminders", () => {
     expect(result.current.totalCount).toBe(0);
     expect(result.current.readHistoryItems).toHaveLength(0);
     mockCardPayments.isLoading = false;
+  });
+
+  it("suprime dívidas vinculadas a rachas e mantém contas a receber fora de overdueCount/urgentCount", () => {
+    const prevDebts = mockDebts.data;
+    mockDebts.data = [
+      ...prevDebts,
+      {
+        id: "d-racha",
+        name: "Racha: Jantar",
+        amount: 80,
+        due_date: "2026-08-01",
+        paid_at: null,
+        type: "receivable",
+      },
+      {
+        id: "d-recv",
+        name: "Reembolso Trabalho",
+        amount: 300,
+        due_date: "2026-08-02",
+        paid_at: null,
+        type: "receivable",
+      },
+    ] as never;
+    mockSplitShares.data = [{ id: "share-1", debt_id: "d-racha" }];
+
+    // Hoje: 2026-08-10 (fatura Nubank vence hoje!)
+    const { result } = renderHook(() => useReminders("2026-08-10"));
+
+    expect(result.current.items.some((i) => i.key === "debt:d-racha")).toBe(false);
+    const recv = result.current.items.find((i) => i.key === "debt:d-recv");
+    expect(recv?.status).toBe("pending");
+    expect(recv?.direction).toBe("receivable");
+    expect(result.current.receivableCount).toBe(1);
+    expect(result.current.overdueCount).toBe(0);
+    expect(result.current.dueTodayCount).toBe(2); // fatura + d1 vencem em 2026-08-10
+    expect(result.current.urgentCount).toBe(2);
+
+    mockDebts.data = prevDebts;
+    mockSplitShares.data = [];
   });
 
   it("reconstitui histórico de itens lidos mesmo quando faturas foram quitadas ou passaram da janela", () => {

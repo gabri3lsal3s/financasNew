@@ -23,6 +23,10 @@ export interface SplitExpenseDialogProps {
   initialPeopleCount?: number;
   /** Quantidade de parcelas da despesa */
   initialInstallmentsCount?: number;
+  /** Modalidade de cobrança parcelada ("per_installment" | "single_total") */
+  initialInstallmentsMode?: "single_total" | "per_installment";
+  /** ID da cobrança a receber já vinculada (para evitar duplicidade ao gerar o link) */
+  linkedDebtId?: string | null;
   /** Nome da categoria da despesa (para correspondência ao salvar via link) */
   categoryName?: string;
   /** Ícone da categoria */
@@ -126,6 +130,10 @@ export function SplitExpenseDialog(props: SplitExpenseDialogProps) {
               onPeopleCountChange={form.handlePeopleCountChange}
               isCustomMode={form.isCustomMode}
               onCustomModeChange={form.setIsCustomMode}
+              splitMode={form.splitMode}
+              onSplitModeChange={form.handleSplitModeChange}
+              customSharesCents={form.customSharesCents}
+              onCustomShareChange={form.handleCustomShareChange}
               participants={form.participants}
               onParticipantNameChange={form.handleParticipantNameChange}
               onAddParticipant={form.handleAddParticipant}
@@ -139,6 +147,9 @@ export function SplitExpenseDialog(props: SplitExpenseDialogProps) {
               selectedKeyType={form.selectedKeyType}
               onSelectedKeyTypeChange={form.setSelectedKeyType}
               detectedType={form.detectedType}
+              validationError={form.pixValidationError}
+              isAmbiguousCpfOrPhone={form.isAmbiguousCpfOrPhone}
+              onQuickSelectKeyType={(t) => form.setSelectedKeyType(t)}
               merchantName={form.merchantName}
               onMerchantNameChange={form.setMerchantName}
               merchantCity={form.merchantCity}

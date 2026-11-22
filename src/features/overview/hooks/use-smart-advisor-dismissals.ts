@@ -9,24 +9,48 @@ import {
   computeDismissCooldownExpiry,
   mergeAndFilterValidDismissals,
 } from "@/domain/insights/smart-advisor-rules";
+import { getActiveUserId, getUserStorageKey, subscribeActiveUserId } from "@/services/user-storage";
+import * as stateHooks from "@/state";
 
 let memoryDismissals: Record<string, number> = {};
 let memoryLastDismissedDay: string | null = null;
-let storageInitialized = false;
+let loadedScope: string | null = null;
 const subscribers = new Set<() => void>();
+
+function currentUserScope(): string {
+  return getActiveUserId() ?? "__guest__";
+}
+
+function getScopedDismissalsKey(): string {
+  const uid = getActiveUserId();
+  return uid ? getUserStorageKey(SMART_ADVISOR_DISMISSALS_KEY, uid) : SMART_ADVISOR_DISMISSALS_KEY;
+}
+
+function getScopedLastDismissedDayKey(): string {
+  const uid = getActiveUserId();
+  return uid ? getUserStorageKey(SMART_ADVISOR_LAST_DISMISSED_DAY_KEY, uid) : SMART_ADVISOR_LAST_DISMISSED_DAY_KEY;
+}
 
 function notifySubscribers() {
   subscribers.forEach((fn) => fn());
 }
 
+subscribeActiveUserId(() => {
+  loadedScope = null;
+  memoryDismissals = {};
+  memoryLastDismissedDay = null;
+  notifySubscribers();
+});
+
 function initStorageIfNeeded() {
-  if (storageInitialized) return;
+  const scope = currentUserScope();
+  if (loadedScope === scope) return;
   if (typeof window === "undefined" || !window.localStorage) {
-    storageInitialized = true;
+    loadedScope = scope;
     return;
   }
   try {
-    const raw = window.localStorage.getItem(SMART_ADVISOR_DISMISSALS_KEY);
+    const raw = window.localStorage.getItem(getScopedDismissalsKey());
     if (raw) {
       const parsed = JSON.parse(raw) as Record<string, number>;
       const now = Date.now();
@@ -35,16 +59,18 @@ function initStorageIfNeeded() {
         if (typeof v === "number" && v > now) valid[k] = v;
       }
       memoryDismissals = valid;
+    } else {
+      memoryDismissals = {};
     }
   } catch {
     memoryDismissals = {};
   }
   try {
-    memoryLastDismissedDay = window.localStorage.getItem(SMART_ADVISOR_LAST_DISMISSED_DAY_KEY);
+    memoryLastDismissedDay = window.localStorage.getItem(getScopedLastDismissedDayKey());
   } catch {
     memoryLastDismissedDay = null;
   }
-  storageInitialized = true;
+  loadedScope = scope;
 }
 
 const getDismissalsSnapshot = () => {
@@ -63,17 +89,30 @@ function subscribe(callback: () => void): () => void {
   };
 }
 
+function replaceSmartAdvisorDismissals(next: Record<string, number>) {
+  loadedScope = currentUserScope();
+  memoryDismissals = next;
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      window.localStorage.setItem(getScopedDismissalsKey(), JSON.stringify(next));
+    } catch {
+      // Ignora erro
+    }
+  }
+  notifySubscribers();
+}
+
 /**
  * Reseta todos os cooldowns e registros locais de dispensa do SmartAdvisor.
  */
 export function resetSmartAdvisorCooldowns() {
   memoryDismissals = {};
   memoryLastDismissedDay = null;
-  storageInitialized = true;
+  loadedScope = currentUserScope();
   if (typeof window !== "undefined" && window.localStorage) {
     try {
-      window.localStorage.removeItem(SMART_ADVISOR_DISMISSALS_KEY);
-      window.localStorage.removeItem(SMART_ADVISOR_LAST_DISMISSED_DAY_KEY);
+      window.localStorage.removeItem(getScopedDismissalsKey());
+      window.localStorage.removeItem(getScopedLastDismissedDayKey());
     } catch {
       // Ignora erro
     }
@@ -89,15 +128,7 @@ export function revokeSmartAdvisorDismissal(themeKey: string) {
   initStorageIfNeeded();
   const next = { ...memoryDismissals };
   delete next[themeKey];
-  memoryDismissals = next;
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      window.localStorage.setItem(SMART_ADVISOR_DISMISSALS_KEY, JSON.stringify(next));
-    } catch {
-      // Ignora erro
-    }
-  }
-  notifySubscribers();
+  replaceSmartAdvisorDismissals(next);
 }
 
 function recordCooldownDismissal(keyToDismiss: string | undefined, effectiveDay: string | null, nowMs: number, days: number) {
@@ -108,8 +139,8 @@ function recordCooldownDismissal(keyToDismiss: string | undefined, effectiveDay:
   }
   if (typeof window !== "undefined" && window.localStorage) {
     try {
-      if (effectiveDay) window.localStorage.setItem(SMART_ADVISOR_LAST_DISMISSED_DAY_KEY, effectiveDay);
-      if (keyToDismiss) window.localStorage.setItem(SMART_ADVISOR_DISMISSALS_KEY, JSON.stringify(memoryDismissals));
+      if (effectiveDay) window.localStorage.setItem(getScopedLastDismissedDayKey(), effectiveDay);
+      if (keyToDismiss) window.localStorage.setItem(getScopedDismissalsKey(), JSON.stringify(memoryDismissals));
     } catch {
       // Ignora erro de cota no localStorage
     }
@@ -173,8 +204,14 @@ export function useSmartAdvisorCooldownController(params: {
 
       const nextMemory = recordCooldownDismissal(keyToDismiss, effectiveDay, params.nowMs, days);
       if (keyToDismiss) {
+        const mergedCloud = mergeAndFilterValidDismissals(
+          nextMemory,
+          params.cloudDismissals,
+          params.nowMs,
+          false,
+        );
         params.onPersistCloudDismissal({
-          advisorDismissals: { ...(params.cloudDismissals ?? {}), ...nextMemory },
+          advisorDismissals: mergedCloud,
           advisorLastDismissedDay: effectiveDay ?? undefined,
         });
       }
@@ -187,10 +224,48 @@ export function useSmartAdvisorCooldownController(params: {
 
 /**
  * Hook reativo para leitura e gerenciamento de descartes temporários (cooldowns) do assistente.
+ * Mescla nuvem (Supabase) + armazenamento local escopado por usuário e propaga revogações.
  */
 export function useSmartAdvisorDismissals() {
-  const dismissals = useSyncExternalStore(subscribe, getDismissalsSnapshot, () => ({}));
-  const revokeDismissal = useCallback((themeKey: string) => revokeSmartAdvisorDismissal(themeKey), []);
-  const resetAll = useCallback(() => resetSmartAdvisorCooldowns(), []);
+  const storeDismissals = useSyncExternalStore(subscribe, getDismissalsSnapshot, () => ({}));
+  const userPreferencesQuery =
+    typeof stateHooks.useUserPreferences === "function"
+      ? stateHooks.useUserPreferences()
+      : undefined;
+  const updateCustomSettingsMutation =
+    typeof stateHooks.useUpdateCustomSettings === "function"
+      ? stateHooks.useUpdateCustomSettings()
+      : undefined;
+  const [nowMs] = useState(() => Date.now());
+  const cloudDismissals = userPreferencesQuery?.data?.custom_settings?.advisorDismissals;
+
+  const dismissals = useMemo(
+    () => mergeAndFilterValidDismissals(storeDismissals, cloudDismissals, nowMs, false),
+    [storeDismissals, cloudDismissals, nowMs],
+  );
+
+  const revokeDismissal = useCallback(
+    (themeKey: string) => {
+      const next = mergeAndFilterValidDismissals(
+        getDismissalsSnapshot(),
+        cloudDismissals,
+        Date.now(),
+        false,
+      );
+      delete next[themeKey];
+      replaceSmartAdvisorDismissals(next);
+      updateCustomSettingsMutation?.mutate({ advisorDismissals: next });
+    },
+    [cloudDismissals, updateCustomSettingsMutation],
+  );
+
+  const resetAll = useCallback(() => {
+    resetSmartAdvisorCooldowns();
+    updateCustomSettingsMutation?.mutate({
+      advisorDismissals: {},
+      advisorLastDismissedDay: null,
+    });
+  }, [updateCustomSettingsMutation]);
+
   return { dismissals, revokeDismissal, resetAll };
 }

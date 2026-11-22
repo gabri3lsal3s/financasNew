@@ -14,15 +14,48 @@ interface BaseEmailShellOptions {
   extraHtml?: string;
 }
 
+function escapeHtmlText(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function sanitizeSafeEmailUrl(rawUrl: string | undefined, fallback = "https://axir.com.br"): string {
+  const candidate = (rawUrl || "").trim();
+  if (!candidate) return fallback;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol === "https:") return parsed.toString();
+    if (
+      parsed.protocol === "http:" &&
+      (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1")
+    ) {
+      return parsed.toString();
+    }
+  } catch {
+    // URL inválida usa fallback seguro
+  }
+  return fallback;
+}
+
 export function renderAxirEmailShell(options: BaseEmailShellOptions): string {
   const currentYear = new Date().getFullYear();
-  const ctaBlock = options.ctaText && options.ctaUrl
+  const safeTitle = escapeHtmlText(options.title);
+  const safeBadge = escapeHtmlText(options.badge);
+  const safeHeading = escapeHtmlText(options.heading);
+  const safeCtaText = options.ctaText ? escapeHtmlText(options.ctaText) : "";
+  const safeCtaUrl = options.ctaUrl ? escapeHtmlText(sanitizeSafeEmailUrl(options.ctaUrl)) : "";
+
+  const ctaBlock = safeCtaText && safeCtaUrl
     ? `
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 28px 0 24px 0;">
         <tr>
           <td align="center" style="border-radius: 8px; background-color: #0D9488;">
-            <a href="${options.ctaUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: 600; color: #FFFFFF; text-decoration: none; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
-              ${options.ctaText}
+            <a href="${safeCtaUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 14px 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; font-weight: 600; color: #FFFFFF; text-decoration: none; border-radius: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+              ${safeCtaText}
             </a>
           </td>
         </tr>
@@ -31,8 +64,8 @@ export function renderAxirEmailShell(options: BaseEmailShellOptions): string {
         <tr>
           <td>
             <p style="margin: 0; font-size: 11px; line-height: 1.5; color: #9CA3AF; word-break: break-all;">
-              Se o botao acima nao funcionar, copie e cole este link no navegador:<br>
-              <a href="${options.ctaUrl}" target="_blank" rel="noopener noreferrer" style="color: #14B8A6; text-decoration: underline;">${options.ctaUrl}</a>
+              Se o botão acima não funcionar, copie e cole este link no navegador:<br>
+              <a href="${safeCtaUrl}" target="_blank" rel="noopener noreferrer" style="color: #14B8A6; text-decoration: underline;">${safeCtaUrl}</a>
             </p>
           </td>
         </tr>
@@ -45,14 +78,14 @@ export function renderAxirEmailShell(options: BaseEmailShellOptions): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${options.title}</title>
+  <title>${safeTitle}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #0B0F19; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #F9FAFB;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #0B0F19; min-height: 100vh; padding: 36px 16px;">
     <tr>
       <td align="center" valign="top">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 580px; margin: 0 auto;">
-          <!-- Cabecalho Institucional Axir -->
+          <!-- Cabeçalho Institucional Axir -->
           <tr>
             <td align="center" style="padding-bottom: 28px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
@@ -66,7 +99,7 @@ export function renderAxirEmailShell(options: BaseEmailShellOptions): string {
                 <tr>
                   <td align="center" style="padding-top: 4px;">
                     <span style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; color: #94A3B8;">
-                      Inteligencia &amp; Soberania Financeira
+                      Inteligência &amp; Soberania Financeira
                     </span>
                   </td>
                 </tr>
@@ -80,13 +113,13 @@ export function renderAxirEmailShell(options: BaseEmailShellOptions): string {
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
                   <td>
-                    <!-- Badge Semantico -->
+                    <!-- Badge Semântico -->
                     <span style="display: inline-block; padding: 4px 12px; background-color: rgba(13, 148, 136, 0.15); border: 1px solid rgba(13, 148, 136, 0.3); border-radius: 9999px; font-size: 11px; font-weight: 600; color: #14B8A6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 20px;">
-                      ${options.badge}
+                      ${safeBadge}
                     </span>
 
                     <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 700; color: #F9FAFB; line-height: 1.35;">
-                      ${options.heading}
+                      ${safeHeading}
                     </h1>
 
                     <div style="font-size: 14px; line-height: 1.6; color: #9CA3AF;">
@@ -102,15 +135,15 @@ export function renderAxirEmailShell(options: BaseEmailShellOptions): string {
             </td>
           </tr>
 
-          <!-- Rodape Institucional -->
+          <!-- Rodapé Institucional -->
           <tr>
             <td align="center" style="padding-top: 28px; padding-bottom: 20px;">
               <p style="margin: 0 0 8px 0; font-size: 11px; color: #6B7280; line-height: 1.5;">
                 &copy; ${currentYear} Axir. Todos os direitos reservados.<br>
-                Plataforma de Gestao Financeira Pessoal de Alta Precisao.
+                Plataforma de Gestão Financeira Pessoal de Alta Precisão.
               </p>
               <p style="margin: 0; font-size: 11px; color: #6B7280;">
-                Precisa de ajuda? Fale conosco em <a href="mailto:ajuda@axir.com.br" style="color: #9CA3AF; text-decoration: underline;">ajuda@axir.com.br</a>
+                Precisa de ajuda? Fale conosco em <a href="mailto:suporte@axir.com.br" style="color: #9CA3AF; text-decoration: underline;">suporte@axir.com.br</a>
               </p>
             </td>
           </tr>
@@ -131,35 +164,37 @@ export function renderTrialWelcomeEmail(params: {
   trialEndsFormatted: string;
   appUrl: string;
 }): { subject: string; html: string; text: string } {
-  const firstName = params.name ? params.name.split(" ")[0] : "Cliente";
-  const subject = `Bem-vindo ao Axir - Seus ${params.trialDays} dias de teste comecaram`;
+  const firstName = params.name ? params.name.split(" ")[0] || "Cliente" : "Cliente";
+  const safeName = escapeHtmlText(firstName);
+  const safeEnds = escapeHtmlText(params.trialEndsFormatted);
+  const subject = `Bem-vindo ao Axir - Seus ${params.trialDays} dias de teste começaram`;
 
   const bodyHtml = `
-    <p style="margin: 0 0 16px 0;">Ola, <strong>${firstName}</strong>,</p>
+    <p style="margin: 0 0 16px 0;">Olá, <strong>${safeName}</strong>,</p>
     <p style="margin: 0 0 16px 0;">
-      Sua conta no <strong>Axir</strong> esta ativa. Voce tem acesso irrestrito a todos os recursos da plataforma durante seus <strong>${params.trialDays} dias de teste gratuito</strong>, validos ate <strong>${params.trialEndsFormatted}</strong>.
+      Sua conta no <strong>Axir</strong> está ativa. Você tem acesso completo aos recursos da plataforma durante seus <strong>${params.trialDays} dias de teste gratuito</strong>, válidos até <strong>${safeEnds}</strong>.
     </p>
     <p style="margin: 0 0 16px 0;">
-      Aproveite para organizar suas contas, lancar receitas e despesas, planejar orcamentos e experimentar o motor de projecao patrimonial.
+      Aproveite para organizar suas contas, lançar receitas e despesas, planejar orçamentos e acompanhar suas projeções patrimoniais.
     </p>
   `;
 
   const html = renderAxirEmailShell({
     title: subject,
-    badge: "Periodo de Testes Ativo",
+    badge: "Período de Testes Ativo",
     heading: `Bem-vindo ao Axir, ${firstName}`,
     bodyHtml,
     ctaText: "Acessar Meu Painel",
     ctaUrl: params.appUrl,
   });
 
-  const text = `Ola, ${firstName}. Sua conta no Axir esta ativa com ${params.trialDays} dias de teste gratuito ate ${params.trialEndsFormatted}. Acesse seu painel: ${params.appUrl}`;
+  const text = `Olá, ${firstName}. Sua conta no Axir está ativa com ${params.trialDays} dias de teste gratuito até ${params.trialEndsFormatted}. Acesse seu painel: ${sanitizeSafeEmailUrl(params.appUrl)}`;
 
   return { subject, html, text };
 }
 
 // -----------------------------------------------------------------------------
-// 2. Template: Cartao cadastrado no Trial (Renovacao Agendada)
+// 2. Template: Cartão cadastrado no Trial (Renovação Agendada)
 // -----------------------------------------------------------------------------
 export function renderTrialCardScheduledEmail(params: {
   name: string;
@@ -169,41 +204,46 @@ export function renderTrialCardScheduledEmail(params: {
   planValueFormatted: string;
   appUrl: string;
 }): { subject: string; html: string; text: string } {
-  const firstName = params.name ? params.name.split(" ")[0] : "Cliente";
-  const subject = "Cartao cadastrado com sucesso - Renovacao agendada";
+  const firstName = params.name ? params.name.split(" ")[0] || "Cliente" : "Cliente";
+  const safeName = escapeHtmlText(firstName);
+  const safeLast4 = escapeHtmlText(params.cardLast4);
+  const safePlanName = escapeHtmlText(params.planName);
+  const safePlanValue = escapeHtmlText(params.planValueFormatted);
+  const safeChargeDate = escapeHtmlText(params.firstChargeDateFormatted);
+  const subject = "Cartão cadastrado com sucesso - Renovação agendada";
 
   const bodyHtml = `
-    <p style="margin: 0 0 16px 0;">Ola, <strong>${firstName}</strong>,</p>
+    <p style="margin: 0 0 16px 0;">Olá, <strong>${safeName}</strong>,</p>
     <p style="margin: 0 0 16px 0;">
-      Seu cartao final <strong>${params.cardLast4}</strong> foi validado e vinculado a sua conta com sucesso.
+      Seu cartão final <strong>${safeLast4}</strong> foi validado e vinculado à sua conta com sucesso.
     </p>
     <div style="background-color: #1F2937; border-left: 3px solid #0D9488; padding: 14px 16px; border-radius: 4px; margin: 20px 0;">
-      <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 600; color: #F9FAFB;">Informacoes do Agendamento:</p>
-      <p style="margin: 0 0 4px 0; font-size: 13px; color: #D1D5DB;">Plano: <strong>${params.planName}</strong></p>
-      <p style="margin: 0 0 4px 0; font-size: 13px; color: #D1D5DB;">Valor da assinatura: <strong>${params.planValueFormatted}</strong></p>
-      <p style="margin: 0; font-size: 13px; color: #D1D5DB;">Primeira cobranca apenas em: <strong>${params.firstChargeDateFormatted}</strong></p>
+      <p style="margin: 0 0 6px 0; font-size: 13px; font-weight: 600; color: #F9FAFB;">Informações do Agendamento:</p>
+      <p style="margin: 0 0 4px 0; font-size: 13px; color: #D1D5DB;">Plano: <strong>${safePlanName}</strong></p>
+      <p style="margin: 0 0 4px 0; font-size: 13px; color: #D1D5DB;">Valor da assinatura: <strong>${safePlanValue}</strong></p>
+      <p style="margin: 0; font-size: 13px; color: #D1D5DB;">Primeira cobrança apenas em: <strong>${safeChargeDate}</strong></p>
     </div>
     <p style="margin: 0 0 16px 0;">
-      <strong>Nenhum valor foi debitado hoje.</strong> Voce continuara aproveitando seu periodo de testes gratuito sem interrupcoes e podera cancelar o agendamento a qualquer momento antes do primeiro vencimento.
+      <strong>Nenhum valor foi debitado hoje.</strong> Você continuará aproveitando seu período de testes gratuito sem interrupções e poderá cancelar o agendamento a qualquer momento antes do primeiro vencimento.
     </p>
   `;
 
   const html = renderAxirEmailShell({
     title: subject,
-    badge: "Renovacao Agendada",
-    heading: "Cartao validado com sucesso",
+    badge: "Renovação Agendada",
+    heading: "Cartão validado com sucesso",
     bodyHtml,
     ctaText: "Gerenciar Minha Assinatura",
-    ctaUrl: `${params.appUrl}/assinatura`,
+    ctaUrl: `${sanitizeSafeEmailUrl(params.appUrl)}/assinatura`,
   });
 
-  const text = `Ola, ${firstName}. Seu cartao final ${params.cardLast4} foi cadastrado. Nenhuma cobranca foi realizada hoje. Sua primeira cobranca do plano ${params.planName} (${params.planValueFormatted}) ocorrera apenas em ${params.firstChargeDateFormatted}.`;
+  const text = `Olá, ${firstName}. Seu cartão final ${params.cardLast4} foi cadastrado. Nenhuma cobrança foi realizada hoje. Sua primeira cobrança do plano ${params.planName} (${params.planValueFormatted}) ocorrerá apenas em ${params.firstChargeDateFormatted}.`;
 
   return { subject, html, text };
 }
 
 // -----------------------------------------------------------------------------
-// 3. Template: Confirmacao de Assinatura Pro / Renovacao Confirmada
+// 3. Template: Confirmação de Assinatura Pro / Renovação Confirmada
 // -----------------------------------------------------------------------------
 export function renderProActivationEmail(params: {
   name: string;
@@ -213,38 +253,45 @@ export function renderProActivationEmail(params: {
   invoicePdfUrl?: string;
   appUrl: string;
 }): { subject: string; html: string; text: string } {
-  const firstName = params.name ? params.name.split(" ")[0] : "Cliente";
-  const subject = `Confirmacao de Pagamento - ${params.planName}`;
+  const firstName = params.name ? params.name.split(" ")[0] || "Cliente" : "Cliente";
+  const safeName = escapeHtmlText(firstName);
+  const safePlanName = escapeHtmlText(params.planName);
+  const safePeriodEnd = escapeHtmlText(params.periodEndFormatted);
+  const safeInvoiceValue = escapeHtmlText(params.invoiceValueFormatted);
+  const validatedInvoiceUrl = params.invoicePdfUrl
+    ? sanitizeSafeEmailUrl(params.invoicePdfUrl, "")
+    : "";
+  const subject = `Confirmação de Pagamento - ${params.planName}`;
 
-  const invoiceRow = params.invoicePdfUrl
-    ? `<p style="margin: 12px 0 0 0; font-size: 13px;"><a href="${params.invoicePdfUrl}" target="_blank" rel="noopener noreferrer" style="color: #14B8A6; text-decoration: underline;">Visualizar comprovante fiscal / fatura</a></p>`
+  const invoiceRow = validatedInvoiceUrl
+    ? `<p style="margin: 12px 0 0 0; font-size: 13px;"><a href="${escapeHtmlText(validatedInvoiceUrl)}" target="_blank" rel="noopener noreferrer" style="color: #14B8A6; text-decoration: underline;">Visualizar comprovante / fatura</a></p>`
     : "";
 
   const bodyHtml = `
-    <p style="margin: 0 0 16px 0;">Ola, <strong>${firstName}</strong>,</p>
+    <p style="margin: 0 0 16px 0;">Olá, <strong>${safeName}</strong>,</p>
     <p style="margin: 0 0 16px 0;">
-      Confirmamos o recebimento do pagamento da sua assinatura do <strong>${params.planName}</strong> no valor de <strong>${params.invoiceValueFormatted}</strong>.
+      Confirmamos o recebimento do pagamento da sua assinatura <strong>${safePlanName}</strong> no valor de <strong>${safeInvoiceValue}</strong>.
     </p>
     <div style="background-color: #1F2937; border-left: 3px solid #0D9488; padding: 14px 16px; border-radius: 4px; margin: 20px 0;">
       <p style="margin: 0 0 4px 0; font-size: 13px; color: #D1D5DB;">Status: <strong>Ativo</strong></p>
-      <p style="margin: 0 0 4px 0; font-size: 13px; color: #D1D5DB;">Vigencia garantida ate: <strong>${params.periodEndFormatted}</strong></p>
+      <p style="margin: 0 0 4px 0; font-size: 13px; color: #D1D5DB;">Vigência garantida até: <strong>${safePeriodEnd}</strong></p>
       ${invoiceRow}
     </div>
     <p style="margin: 0 0 16px 0;">
-      Todos os recursos avancados de gestao financeira, relatorios executivos e motores de projecao patrimonial estao liberados.
+      Todos os recursos de gestão financeira, relatórios executivos e projeções patrimoniais estão liberados.
     </p>
   `;
 
   const html = renderAxirEmailShell({
     title: subject,
     badge: "Pagamento Confirmado",
-    heading: "Sua assinatura Pro esta ativa",
+    heading: "Sua assinatura Pro está ativa",
     bodyHtml,
     ctaText: "Acessar Plataforma",
     ctaUrl: params.appUrl,
   });
 
-  const text = `Ola, ${firstName}. O pagamento de ${params.invoiceValueFormatted} do ${params.planName} foi confirmado. Seu acesso esta garantido ate ${params.periodEndFormatted}. Acesse: ${params.appUrl}`;
+  const text = `Olá, ${firstName}. O pagamento de ${params.invoiceValueFormatted} do ${params.planName} foi confirmado. Seu acesso está garantido até ${params.periodEndFormatted}. Acesse: ${sanitizeSafeEmailUrl(params.appUrl)}`;
 
   return { subject, html, text };
 }
@@ -258,42 +305,46 @@ export function renderPaymentFailedEmail(params: {
   retryDateFormatted?: string;
   updateCardUrl: string;
 }): { subject: string; html: string; text: string } {
-  const firstName = params.name ? params.name.split(" ")[0] : "Cliente";
-  const subject = "Importante: Nao conseguimos processar o pagamento da sua assinatura";
+  const firstName = params.name ? params.name.split(" ")[0] || "Cliente" : "Cliente";
+  const safeName = escapeHtmlText(firstName);
+  const safePlanName = escapeHtmlText(params.planName);
+  const safeRetryDate = params.retryDateFormatted ? escapeHtmlText(params.retryDateFormatted) : "";
+  const safeUpdateUrl = sanitizeSafeEmailUrl(params.updateCardUrl);
+  const subject = "Atenção: não conseguimos processar o pagamento da sua assinatura";
 
-  const retryInfo = params.retryDateFormatted
-    ? `Uma nova tentativa de processamento sera realizada em <strong>${params.retryDateFormatted}</strong>.`
-    : "Por favor, revise os dados do seu cartao para manter seu acesso sem interrupcoes.";
+  const retryInfo = safeRetryDate
+    ? `Uma nova tentativa de processamento será realizada em <strong>${safeRetryDate}</strong>.`
+    : "Por favor, revise os dados do seu cartão para manter seu acesso sem interrupções.";
 
   const bodyHtml = `
-    <p style="margin: 0 0 16px 0;">Ola, <strong>${firstName}</strong>,</p>
+    <p style="margin: 0 0 16px 0;">Olá, <strong>${safeName}</strong>,</p>
     <p style="margin: 0 0 16px 0;">
-      Identificamos uma instabilidade ao processar a cobranca da assinatura do seu <strong>${params.planName}</strong> junto a operadora do seu cartao.
+      Identificamos uma instabilidade ao processar a cobrança da assinatura do seu <strong>${safePlanName}</strong> junto à operadora do cartão.
     </p>
     <div style="background-color: #1F2937; border-left: 3px solid #EF4444; padding: 14px 16px; border-radius: 4px; margin: 20px 0;">
       <p style="margin: 0; font-size: 13px; color: #FCA5A5;">${retryInfo}</p>
     </div>
     <p style="margin: 0 0 16px 0;">
-      Para evitar a suspensao das suas ferramentas financeiras, atualize a forma de pagamento clicando no botao abaixo:
+      Para evitar interrupções, atualize a forma de pagamento clicando no botão abaixo:
     </p>
   `;
 
   const html = renderAxirEmailShell({
     title: subject,
-    badge: "Atencao Necessaria",
-    heading: "Pendencia de Pagamento",
+    badge: "Atenção Necessária",
+    heading: "Pendência de Pagamento",
     bodyHtml,
     ctaText: "Atualizar Forma de Pagamento",
-    ctaUrl: params.updateCardUrl,
+    ctaUrl: safeUpdateUrl,
   });
 
-  const text = `Ola, ${firstName}. Nao conseguimos processar o pagamento do ${params.planName}. Atualize seu cartao para evitar interrupcao no servico: ${params.updateCardUrl}`;
+  const text = `Olá, ${firstName}. Não conseguimos processar o pagamento do ${params.planName}. Atualize seu cartão para evitar interrupção no serviço: ${safeUpdateUrl}`;
 
   return { subject, html, text };
 }
 
 // -----------------------------------------------------------------------------
-// 5. Template: Confirmacao de Cancelamento
+// 5. Template: Confirmação de Cancelamento
 // -----------------------------------------------------------------------------
 export function renderSubscriptionCanceledEmail(params: {
   name: string;
@@ -301,35 +352,40 @@ export function renderSubscriptionCanceledEmail(params: {
   effectiveUntilFormatted?: string;
   reactivateUrl: string;
 }): { subject: string; html: string; text: string } {
-  const firstName = params.name ? params.name.split(" ")[0] : "Cliente";
-  const subject = "Confirmacao de cancelamento da assinatura Axir";
+  const firstName = params.name ? params.name.split(" ")[0] || "Cliente" : "Cliente";
+  const safeName = escapeHtmlText(firstName);
+  const safeEffectiveUntil = escapeHtmlText(
+    params.effectiveUntilFormatted || "o fim do período atual",
+  );
+  const safeReactivateUrl = sanitizeSafeEmailUrl(params.reactivateUrl);
+  const subject = "Confirmação de cancelamento da assinatura Axir";
 
   const messageDetails = params.isCdcRefund
     ? `
       <p style="margin: 0 0 16px 0;">
-        Como sua solicitacao ocorreu dentro do prazo legal de 7 dias (CDC), o <strong>estorno integral</strong> foi solicitado ao gateway financeiro e seu plano Pro foi encerrado. O credito dependera do fechamento da fatura do seu banco emissor.
+        Como sua solicitação ocorreu dentro do prazo legal de 7 dias (CDC), o <strong>estorno integral</strong> foi solicitado e seu plano Pro foi encerrado. O crédito dependerá do fechamento da fatura do seu banco emissor.
       </p>
       <p style="margin: 0 0 16px 0;">
-        Sua conta agora opera no modo <strong>Somente Leitura</strong>. Seus dados financeiros historicos permanecem salvos com total seguranca.
+        Sua conta agora opera no modo <strong>Somente Leitura</strong>. Seus dados financeiros históricos permanecem salvos com segurança.
       </p>
     `
     : `
       <p style="margin: 0 0 16px 0;">
-        Sua assinatura foi cancelada e nao havera novas cobrancas.
+        Sua assinatura foi cancelada e não haverá novas cobranças.
       </p>
       <p style="margin: 0 0 16px 0;">
-        Seu acesso completo ao Plano Pro continuara ativo ate <strong>${params.effectiveUntilFormatted || "o fim do periodo atual"}</strong>. Apos essa data, sua conta passara automaticamente para o modo Somente Leitura.
+        Seu acesso completo ao Plano Pro continuará ativo até <strong>${safeEffectiveUntil}</strong>. Após essa data, sua conta passará automaticamente para o modo Somente Leitura.
       </p>
     `;
 
   const bodyHtml = `
-    <p style="margin: 0 0 16px 0;">Ola, <strong>${firstName}</strong>,</p>
+    <p style="margin: 0 0 16px 0;">Olá, <strong>${safeName}</strong>,</p>
     <p style="margin: 0 0 16px 0;">
-      Confirmamos a realizacao do cancelamento da sua assinatura no <strong>Axir</strong>.
+      Confirmamos o cancelamento da sua assinatura no <strong>Axir</strong>.
     </p>
     ${messageDetails}
     <p style="margin: 0 0 16px 0;">
-      Sentiremos sua falta. Se desejar reativar sua assinatura no futuro, bastara acessar sua conta com seu login habitual.
+      Quando quiser reativar sua assinatura, basta acessar sua conta com seu login habitual.
     </p>
   `;
 
@@ -339,10 +395,10 @@ export function renderSubscriptionCanceledEmail(params: {
     heading: "Assinatura Cancelada",
     bodyHtml,
     ctaText: "Reativar Minha Assinatura",
-    ctaUrl: params.reactivateUrl,
+    ctaUrl: safeReactivateUrl,
   });
 
-  const text = `Ola, ${firstName}. Confirmamos o cancelamento da sua assinatura no Axir. Seus dados continuam preservados. Voce pode reativar quando quiser em: ${params.reactivateUrl}`;
+  const text = `Olá, ${firstName}. Confirmamos o cancelamento da sua assinatura no Axir. Seus dados continuam preservados. Você pode reativar quando quiser em: ${safeReactivateUrl}`;
 
   return { subject, html, text };
 }
@@ -356,57 +412,63 @@ export function renderTrialEndingReminderEmail(params: {
   trialEndsFormatted: string;
   checkoutUrl: string;
 }): { subject: string; html: string; text: string } {
-  const firstName = params.name ? params.name.split(" ")[0] : "Cliente";
-  const subject = `Seu teste gratuito no Axir termina em ${params.daysRemaining} dias`;
+  const firstName = params.name ? params.name.split(" ")[0] || "Cliente" : "Cliente";
+  const safeName = escapeHtmlText(firstName);
+  const safeEnds = escapeHtmlText(params.trialEndsFormatted);
+  const safeCheckoutUrl = sanitizeSafeEmailUrl(params.checkoutUrl);
+  const daysLabel = params.daysRemaining === 1 ? "1 dia" : `${params.daysRemaining} dias`;
+  const subject = `Seu teste gratuito no Axir termina em ${daysLabel}`;
 
   const bodyHtml = `
-    <p style="margin: 0 0 16px 0;">Ola, <strong>${firstName}</strong>,</p>
+    <p style="margin: 0 0 16px 0;">Olá, <strong>${safeName}</strong>,</p>
     <p style="margin: 0 0 16px 0;">
-      Faltam apenas <strong>${params.daysRemaining} dias</strong> para o encerramento do seu periodo de testes gratuito no <strong>Axir</strong> (termino em <strong>${params.trialEndsFormatted}</strong>).
+      Faltam <strong>${escapeHtmlText(daysLabel)}</strong> para o encerramento do seu período de testes gratuito no <strong>Axir</strong> (término em <strong>${safeEnds}</strong>).
     </p>
     <p style="margin: 0 0 16px 0;">
-      Para manter suas sincronizacoes ativas, motores de projecao e continuar lancando novas despesas sem interrupcao, escolha o plano ideal para seus objetivos patrimoniais.
+      Para manter suas projeções e continuar lançando novas despesas sem interrupção, escolha o plano ideal para você.
     </p>
     <div style="background-color: #1F2937; border-left: 3px solid #0D9488; padding: 14px 16px; border-radius: 4px; margin: 20px 0;">
-      <p style="margin: 0 0 4px 0; font-size: 13px; color: #D1D5DB;">Plano Pro Mensal: R$ 19,99/mes</p>
-      <p style="margin: 0; font-size: 13px; color: #D1D5DB;">Plano Pro Anual: R$ 143,88/ano (equivalente a R$ 11,99/mes - 40% de economia)</p>
+      <p style="margin: 0 0 4px 0; font-size: 13px; color: #D1D5DB;">Plano Pro Mensal: R$ 19,99/mês</p>
+      <p style="margin: 0; font-size: 13px; color: #D1D5DB;">Plano Pro Anual: R$ 143,88/ano (equivalente a R$ 11,99/mês - 40% de economia)</p>
     </div>
   `;
 
   const html = renderAxirEmailShell({
     title: subject,
-    badge: "Periodo de Teste Expirando",
-    heading: "Nao perca o ritmo da sua gestao",
+    badge: "Período de Teste Expirando",
+    heading: "Não perca o ritmo do seu controle",
     bodyHtml,
     ctaText: "Garantir Meu Plano Pro",
-    ctaUrl: params.checkoutUrl,
+    ctaUrl: safeCheckoutUrl,
   });
 
-  const text = `Ola, ${firstName}. Faltam ${params.daysRemaining} dias para o fim do seu teste gratuito no Axir (ate ${params.trialEndsFormatted}). Garanta seu plano Pro em: ${params.checkoutUrl}`;
+  const text = `Olá, ${firstName}. Faltam ${daysLabel} para o fim do seu teste gratuito no Axir (até ${params.trialEndsFormatted}). Garanta seu plano Pro em: ${safeCheckoutUrl}`;
 
   return { subject, html, text };
 }
 
 // -----------------------------------------------------------------------------
-// 7. Template: Encerramento do trial e transicao para Somente Leitura
+// 7. Template: Encerramento do trial e transição para Somente Leitura
 // -----------------------------------------------------------------------------
 export function renderTrialExpiredReadOnlyEmail(params: {
   name: string;
   reactivateUrl: string;
 }): { subject: string; html: string; text: string } {
-  const firstName = params.name ? params.name.split(" ")[0] : "Cliente";
-  const subject = "Seu periodo de testes no Axir terminou";
+  const firstName = params.name ? params.name.split(" ")[0] || "Cliente" : "Cliente";
+  const safeName = escapeHtmlText(firstName);
+  const safeReactivateUrl = sanitizeSafeEmailUrl(params.reactivateUrl);
+  const subject = "Seu período de testes no Axir terminou";
 
   const bodyHtml = `
-    <p style="margin: 0 0 16px 0;">Ola, <strong>${firstName}</strong>,</p>
+    <p style="margin: 0 0 16px 0;">Olá, <strong>${safeName}</strong>,</p>
     <p style="margin: 0 0 16px 0;">
-      Seu periodo de testes de 30 dias no <strong>Axir</strong> chegou ao fim.
+      Seu período de testes de 30 dias no <strong>Axir</strong> chegou ao fim.
     </p>
     <p style="margin: 0 0 16px 0;">
-      Sua conta passou para o modo <strong>Somente Leitura</strong>. Todos os seus dados, contas bancarias, metas e historico continuam <strong>100% seguros e intactos</strong> para consulta e exportacao.
+      Sua conta passou para o modo <strong>Somente Leitura</strong>. Todos os seus dados, cartões, metas e histórico continuam <strong>100% salvos e intactos</strong> para consulta e exportação.
     </p>
     <p style="margin: 0 0 16px 0;">
-      Para voltar a cadastrar novas transacoes, sincronizar cartoes e utilizar o motor de projecao, assine o Plano Pro a qualquer momento.
+      Para voltar a cadastrar novas transações e utilizar todos os recursos do app, assine o Plano Pro a qualquer momento.
     </p>
   `;
 
@@ -416,10 +478,131 @@ export function renderTrialExpiredReadOnlyEmail(params: {
     heading: "Seus dados continuam seguros",
     bodyHtml,
     ctaText: "Reativar Plano Pro",
-    ctaUrl: params.reactivateUrl,
+    ctaUrl: safeReactivateUrl,
   });
 
-  const text = `Ola, ${firstName}. Seu teste gratuito no Axir terminou. Sua conta esta em modo Somente Leitura e todos os seus dados estao salvos. Reative o Pro em: ${params.reactivateUrl}`;
+  const text = `Olá, ${firstName}. Seu teste gratuito no Axir terminou. Sua conta está em modo Somente Leitura e todos os seus dados estão salvos. Reative o Pro em: ${safeReactivateUrl}`;
 
   return { subject, html, text };
+}
+
+export interface SundayDigestEmailParams {
+  name: string;
+  periodLabel: string;
+  totalWeeklySpentBRL: string;
+  expenseCount: number;
+  topCategoryName?: string | null;
+  topCategorySpentBRL?: string | null;
+  upcomingCount: number;
+  upcomingTotalBRL: string;
+  appUrl: string;
+  managePrefsUrl: string;
+}
+
+// -----------------------------------------------------------------------------
+// 8. Template: Resumo Semanal de Domingo (opt-in explícito)
+// -----------------------------------------------------------------------------
+export function renderSundayDigestEmail(
+  params: SundayDigestEmailParams,
+): { subject: string; html: string; text: string } {
+  const firstName = params.name ? params.name.split(" ")[0] || "Cliente" : "Cliente";
+  const safeName = escapeHtmlText(firstName);
+  const safePeriod = escapeHtmlText(params.periodLabel);
+  const safeTotal = escapeHtmlText(params.totalWeeklySpentBRL);
+  const safeTopCategory = params.topCategoryName
+    ? escapeHtmlText(params.topCategoryName)
+    : null;
+  const safeTopAmount = params.topCategorySpentBRL
+    ? escapeHtmlText(params.topCategorySpentBRL)
+    : null;
+  const safeUpcomingTotal = escapeHtmlText(params.upcomingTotalBRL);
+  const safeAppUrl = sanitizeSafeEmailUrl(params.appUrl);
+  const safeManagePrefsUrl = sanitizeSafeEmailUrl(
+    params.managePrefsUrl,
+    "https://axir.com.br/configuracoes?tab=notifications",
+  );
+
+  const countLabel =
+    params.expenseCount === 1
+      ? "1 lançamento"
+      : `${params.expenseCount} lançamentos`;
+
+  const subject = `Resumo da Semana Axir (${params.periodLabel})`;
+
+  const topCategoryRow =
+    safeTopCategory && safeTopAmount
+      ? `<p style="margin: 0 0 6px 0; font-size: 13px; color: #D1D5DB;">Maior categoria da semana: <strong>${safeTopCategory}</strong> (${safeTopAmount})</p>`
+      : "";
+
+  const upcomingRow =
+    params.upcomingCount > 0
+      ? `<p style="margin: 0; font-size: 13px; color: #D1D5DB;">Contas e faturas em aberto (próximos dias): <strong>${params.upcomingCount}</strong> (${safeUpcomingTotal})</p>`
+      : `<p style="margin: 0; font-size: 13px; color: #D1D5DB;">Contas e faturas em aberto: tudo em dia nos próximos dias.</p>`;
+
+  const summaryBoxHtml =
+    params.expenseCount === 0 && params.upcomingCount === 0
+      ? `
+      <div style="background-color: #1F2937; border-left: 3px solid #0D9488; padding: 14px 16px; border-radius: 4px; margin: 20px 0;">
+        <p style="margin: 0 0 6px 0; font-size: 13px; color: #D1D5DB;">Semana tranquila por aqui: nenhum gasto registrado neste período.</p>
+        <p style="margin: 0; font-size: 13px; color: #D1D5DB;">Nenhuma conta ou fatura vencendo nos próximos dias.</p>
+      </div>
+    `
+      : `
+      <div style="background-color: #1F2937; border-left: 3px solid #0D9488; padding: 14px 16px; border-radius: 4px; margin: 20px 0;">
+        <p style="margin: 0 0 6px 0; font-size: 13px; color: #D1D5DB;">Total gasto na semana (${countLabel}): <strong>${safeTotal}</strong></p>
+        ${topCategoryRow}
+        ${upcomingRow}
+      </div>
+    `;
+
+  const bodyHtml = `
+    <p style="margin: 0 0 16px 0;">Olá, <strong>${safeName}</strong>,</p>
+    <p style="margin: 0 0 16px 0;">
+      Aqui está o seu resumo semanal de <strong>${safePeriod}</strong>.
+    </p>
+    ${summaryBoxHtml}
+    <p style="margin: 0 0 12px 0;">
+      Você recebe este e-mail porque ativou o Resumo Semanal de Domingo nas suas configurações.
+    </p>
+  `;
+
+  const extraHtml = `
+    <p style="margin: 20px 0 0 0; font-size: 11px; line-height: 1.5; color: #6B7280;">
+      Deseja pausar ou alterar seus avisos? Gerencie em
+      <a href="${escapeHtmlText(safeManagePrefsUrl)}" target="_blank" rel="noopener noreferrer" style="color: #14B8A6; text-decoration: underline;">Configurações de Notificações</a>.
+    </p>
+  `;
+
+  const html = renderAxirEmailShell({
+    title: subject,
+    badge: "Resumo Semanal",
+    heading: "Consolidado dos últimos 7 dias",
+    bodyHtml,
+    ctaText: "Abrir Visão Geral",
+    ctaUrl: safeAppUrl,
+    extraHtml,
+  });
+
+  const textParts =
+    params.expenseCount === 0 && params.upcomingCount === 0
+      ? [
+          `Olá, ${firstName}. Resumo Semanal Axir (${params.periodLabel}):`,
+          "Semana tranquila: nenhum gasto registrado e nenhuma conta vencendo nos próximos dias.",
+          `Acesse: ${safeAppUrl}`,
+          `Desativar resumo: ${safeManagePrefsUrl}`,
+        ]
+      : [
+          `Olá, ${firstName}. Resumo Semanal Axir (${params.periodLabel}):`,
+          `Total gasto (${countLabel}): ${params.totalWeeklySpentBRL}.`,
+          params.topCategoryName && params.topCategorySpentBRL
+            ? `Maior categoria: ${params.topCategoryName} (${params.topCategorySpentBRL}).`
+            : "",
+          params.upcomingCount > 0
+            ? `Contas e faturas em aberto: ${params.upcomingCount} (${params.upcomingTotalBRL}).`
+            : "Tudo em dia nos próximos dias.",
+          `Acesse: ${safeAppUrl}`,
+          `Desativar resumo: ${safeManagePrefsUrl}`,
+        ].filter(Boolean);
+
+  return { subject, html, text: textParts.join(" ") };
 }

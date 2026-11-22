@@ -263,7 +263,7 @@ export function getTrialLifecycleMetadata(daysRemaining: number): TrialLifecycle
     case "awareness":
       return {
         stage,
-        badgeLabel: `${daysRemaining}d restantes`,
+        badgeLabel: daysRemaining === 1 ? "1 dia restante" : `${daysRemaining}d restantes`,
         badgeVariant: "default",
         title: `Seu teste Pro está ativo: restam ${daysRemaining} dias de acesso`,
         description:
@@ -273,7 +273,7 @@ export function getTrialLifecycleMetadata(daysRemaining: number): TrialLifecycle
     case "warning":
       return {
         stage,
-        badgeLabel: `${daysRemaining}d restantes`,
+        badgeLabel: daysRemaining === 1 ? "1 dia restante" : `${daysRemaining}d restantes`,
         badgeVariant: "warning",
         title: `Seu período de teste Pro encerra em ${daysRemaining} ${daysRemaining === 1 ? "dia" : "dias"}`,
         description:

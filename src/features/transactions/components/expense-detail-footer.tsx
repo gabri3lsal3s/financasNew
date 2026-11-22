@@ -7,10 +7,12 @@ export interface ExpenseDetailFooterProps {
   isEditing: boolean;
   editPending: boolean;
   repeatPending: boolean;
+  hasLinkedSplit?: boolean;
   onCancelEdit: () => void;
   onSubmitEdit: () => void;
   onGoToTrip: (tripId: string) => void;
   onSplit: () => void;
+  onManageSplit?: () => void;
   onShare: () => void;
   onRepeat: () => void;
   onStartEdit: () => void;
@@ -23,10 +25,12 @@ export function ExpenseDetailFooter({
   isEditing,
   editPending,
   repeatPending,
+  hasLinkedSplit,
   onCancelEdit,
   onSubmitEdit,
   onGoToTrip,
   onSplit,
+  onManageSplit,
   onShare,
   onRepeat,
   onStartEdit,
@@ -77,6 +81,19 @@ export function ExpenseDetailFooter({
             >
               <Plane className="size-3.5" aria-hidden="true" />
               <span className="sr-only">Na Viagem</span>
+            </Button>
+          ) : hasLinkedSplit && onManageSplit ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="size-8 !min-w-8 !w-8 p-0 shrink-0 border-portfolio/40 bg-portfolio/5 text-portfolio hover:bg-portfolio/15"
+              onClick={onManageSplit}
+              title="Gerenciar Racha"
+              aria-label="Gerenciar Racha"
+            >
+              <Users className="size-3.5" aria-hidden="true" />
+              <span className="sr-only">Gerenciar Racha</span>
             </Button>
           ) : (
             <Button

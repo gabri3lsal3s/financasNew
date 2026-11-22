@@ -113,6 +113,10 @@ vi.mock("@/state", () => ({
   }),
   useExpense: () => ({ data: null, isLoading: false }),
   useLinkPersonalExpenseToTripMutation: () => ({ mutateAsync: linkPersonalExpenseToTripMock, isPending: false }),
+  useCreateLinkedSplit: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ share: { id: "share-1", token: "tok123" }, debtId: "debt-1" }),
+    isPending: false,
+  }),
 }));
 
 vi.mock("@/hooks/use-auth", () => ({

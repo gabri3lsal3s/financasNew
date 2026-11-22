@@ -157,7 +157,8 @@ export function useLaunchWizardSubmit(params: UseLaunchWizardSubmitParams) {
             id: typeof createdExpenseId === "string" ? createdExpenseId : "",
             value: state.valueCents / 100, description: state.description || null, date: state.date,
             peopleCount: state.splitPeopleCount,
-            installmentsCount: state.splitDebtMode === "per_installment" && state.installments > 1 ? state.installments : 1,
+            installmentsCount: state.installments > 1 ? state.installments : 1,
+            installmentsMode: state.installments > 1 ? state.splitDebtMode : "single_total",
             categoryId: state.categoryId, categoryName: selectedCategory?.name, categoryIcon: selectedCategory?.icon ?? undefined,
           }
         : null;

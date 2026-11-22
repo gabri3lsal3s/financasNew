@@ -68,6 +68,21 @@ describe("buildPixTransferCode", () => {
     expect(buildPixTransferCode({ pixKey: "a@b.com", amountCents: Number.NaN })).toBeNull();
   });
 
+  it("normaliza celular sem máscara para +55 e preserva keyType explícito", () => {
+    const code = buildPixTransferCode({
+      pixKey: "79999887766",
+      keyType: "auto",
+      merchantName: "Gabriel Sales",
+      merchantCity: "Aracaju",
+      amountCents: 4500,
+    });
+    expect(code).not.toBeNull();
+    const decoded = decodePixBrCode(code!);
+    expect(decoded?.pixKey).toBe("+5579999887766");
+    expect(decoded?.amountCents).toBe(4500);
+    expect(decoded?.isValidCrc).toBe(true);
+  });
+
   it("resolvePixKeyType preserva tipo explícito válido e detecta quando auto/unknown", () => {
     expect(resolvePixKeyType("11999998888", "phone")).toBe("phone");
     expect(resolvePixKeyType("ana@axir.com.br", "auto")).toBe("email");

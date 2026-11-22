@@ -107,7 +107,7 @@ export function PendingSplitSignalsCard({ className }: PendingSplitSignalsCardPr
                   className="gap-1.5 h-8 text-xs font-semibold cursor-pointer"
                   aria-label={`Confirmar e abater ${formatCentsAsCurrency(item.signal.amount_cents)} de ${item.signal.participant_name}`}
                 >
-                  <Check className="size-3.5 text-positive-strong shrink-0" aria-hidden="true" />
+                  <Check className="size-3.5 shrink-0" aria-hidden="true" />
                   <span>
                     Abater <MoneyText cents={item.signal.amount_cents} tone="default" />
                   </span>

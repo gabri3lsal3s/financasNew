@@ -5,10 +5,10 @@ export interface LandingNavLink {
 }
 
 export const LANDING_NAV_LINKS: readonly LandingNavLink[] = [
-  { id: "recursos", label: "Recursos", mobileLabel: "Recursos" },
-  { id: "simulador", label: "Simulador", mobileLabel: "Simulador Patrimonial" },
-  { id: "plataformas", label: "Plataformas", mobileLabel: "Plataformas & App" },
-  { id: "ferramentas", label: "Ferramentas", mobileLabel: "Ferramentas Gratuitas" },
+  { id: "ecossistema", label: "Visão Global", mobileLabel: "Visão Global" },
+  { id: "dores", label: "Na Prática", mobileLabel: "Na Prática" },
+  { id: "profundidade", label: "Recursos", mobileLabel: "Recursos & Relatórios" },
+  { id: "simulador", label: "Simulador", mobileLabel: "Simulador de Aportes" },
   { id: "precos", label: "Planos", mobileLabel: "Planos & Preços" },
   { id: "faq", label: "Dúvidas", mobileLabel: "Dúvidas Frequentes" },
 ];

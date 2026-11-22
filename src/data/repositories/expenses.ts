@@ -167,8 +167,12 @@ export async function getExpense(id: string): Promise<Expense | null> {
 }
 
 export async function updateExpense(id: string, input: DbUpdate<Expense>): Promise<Expense> {
+  const effectiveInput: DbUpdate<Expense> =
+    input.value !== undefined && input.base_amount === undefined
+      ? { ...input, base_amount: input.value }
+      : input;
   const { data, error } = await resolveQuery<Expense>(
-    getSupabase().from("expenses").update(input).eq("id", id).select().single(),
+    getSupabase().from("expenses").update(effectiveInput).eq("id", id).select().single(),
   );
   if (error) {
     const classified = classifyError(error);

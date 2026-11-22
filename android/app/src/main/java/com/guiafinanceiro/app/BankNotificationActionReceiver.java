@@ -19,7 +19,8 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
     public static final String ACTION_CONFIRM = "com.guiafinanceiro.app.ACTION_CONFIRM_TRANSACTION";
     public static final String ACTION_UNDO = "com.guiafinanceiro.app.ACTION_UNDO_TRANSACTION";
     public static final String KEY_CONFIRMED_BUFFER = "confirmed_transactions_buffer";
-    public static final String CHANNEL_CONFIRMATIONS = "axis_confirmations";
+    public static final String CHANNEL_CONFIRMATIONS = "axir_confirmations";
+    public static final String LEGACY_CHANNEL_CONFIRMATIONS = "axis_confirmations";
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -40,14 +41,15 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
         if (ACTION_CONFIRM.equals(action)) {
             Log.d(TAG, "Confirmando transacao em segundo plano: " + title + " - " + text);
 
-            saveConfirmedTransaction(context, packageName, title, text, timestamp);
-
             BankNotificationPlugin plugin = BankNotificationPlugin.getInstance();
             if (plugin != null) {
+                // Warm-start: TS grava no banco imediatamente e emite 1 única notificação com a categoria real.
                 plugin.onTransactionConfirmed(packageName, title, text, timestamp);
+            } else {
+                // Cold-start: persiste no buffer para gravação ao abrir e mostra notificação única sem duplicar.
+                saveConfirmedTransaction(context, packageName, title, text, timestamp);
+                postUndoNotification(context, nm, notificationId, packageName, title, text, timestamp);
             }
-
-            postUndoNotification(context, nm, notificationId, packageName, title, text, timestamp);
 
         } else if (ACTION_UNDO.equals(action)) {
             Log.d(TAG, "Desfazendo transacao confirmada: " + title);
@@ -56,9 +58,9 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
             BankNotificationPlugin plugin = BankNotificationPlugin.getInstance();
             if (plugin != null) {
                 plugin.onTransactionUndone(packageName, title, text, timestamp);
+            } else {
+                postUndoneConfirmationNotification(context, nm, notificationId);
             }
-
-            postUndoneConfirmationNotification(context, nm, notificationId);
         }
     }
 
@@ -157,6 +159,7 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
 
     private void ensureConfirmationChannel(NotificationManager nm) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm != null) {
+            nm.deleteNotificationChannel(LEGACY_CHANNEL_CONFIRMATIONS);
             android.app.NotificationChannel channel = nm.getNotificationChannel(CHANNEL_CONFIRMATIONS);
             if (channel == null) {
                 channel = new android.app.NotificationChannel(
@@ -231,8 +234,10 @@ public class BankNotificationActionReceiver extends BroadcastReceiver {
             notifTitle += " · " + amountFormatted;
         }
 
-        String bodyText = (partyName != null ? partyName : (title != null && !title.trim().isEmpty() ? title.trim() : "Lançamento confirmado"))
-                + " • Categoria: Outros";
+        String subject = partyName != null
+                ? partyName
+                : (title != null && !title.trim().isEmpty() ? title.trim() : "Lançamento confirmado");
+        String bodyText = subject + " · Será salvo ao abrir o Axir";
 
         Notification.BigTextStyle bigStyle = new Notification.BigTextStyle()
                 .setBigContentTitle(notifTitle)

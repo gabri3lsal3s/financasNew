@@ -207,7 +207,7 @@ export function TripMockupPreview({ active }: TripMockupPreviewProps) {
       </div>
 
       <div className="flex items-center gap-2 p-2.5 rounded-xl border border-border/80 bg-surface-raised/40 text-[11px] sm:text-xs text-muted-foreground">
-        <Share2 className="size-4 text-primary shrink-0" aria-hidden="true" />
+        <Share2 className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
         <span className="leading-relaxed">
           Zero atrito: compartilhe o link seguro da viagem. Seus amigos lançam gastos e conferem o
           acerto pelo navegador, sem necessidade de baixar o app ou criar conta.

@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { useEffect } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { QueryClientContext } from "@tanstack/react-query";
+import { parseTimeHHMM } from "@/domain/notifications";
 import { NativeUpdateToast } from "@/components/modules/native-update-toast";
 import { AppLockOverlay } from "@/app/app-lock-overlay";
 import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
@@ -13,6 +15,9 @@ import { syncVisualWithCloud, useVisualCustomization } from "@/hooks/use-visual-
 import { useDynamicFavicon } from "@/hooks/use-dynamic-favicon";
 import { useDynamicAppIcon } from "@/hooks/use-dynamic-app-icon";
 import {
+  cancelDailyReminder,
+  clearAllDueNotifications,
+  scheduleDailyReminder,
   setPrivacyShieldEnabled,
   syncDueReminderNotifications,
   syncBankAssistantWithCloud,
@@ -31,7 +36,9 @@ function CloudPreferencesSync({ children }: { children: ReactNode }) {
 }
 
 function CloudPreferencesSyncInner({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const { data: preferences } = useUserPreferences();
+  const lastNativeScheduleSigRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (preferences?.custom_settings) {
@@ -53,14 +60,36 @@ function CloudPreferencesSyncInner({ children }: { children: ReactNode }) {
         if (isNativePlatform()) {
           void syncMonitoredBanksWithNative(
             syncedBankPrefs.passiveCaptureEnabled ? syncedBankPrefs.monitoredBanks : [],
+            syncedBankPrefs.interactiveNotificationsEnabled,
           );
         }
       }
       if (preferences.custom_settings.deviceNotifications) {
-        syncDeviceNotificationsWithCloud(preferences.custom_settings.deviceNotifications);
+        const deviceNotifs = preferences.custom_settings.deviceNotifications;
+        syncDeviceNotificationsWithCloud(deviceNotifs, user?.id);
+
+        if (isNativePlatform()) {
+          const scheduleSig = JSON.stringify({
+            due: deviceNotifs.dueNotificationsEnabled,
+            daily: deviceNotifs.dailyReminderEnabled,
+            time: deviceNotifs.dailyReminderTime ?? "20:00",
+          });
+          if (lastNativeScheduleSigRef.current !== scheduleSig) {
+            lastNativeScheduleSigRef.current = scheduleSig;
+            if (deviceNotifs.dailyReminderEnabled === true) {
+              const { hour, minute } = parseTimeHHMM(deviceNotifs.dailyReminderTime, 20, 0);
+              void scheduleDailyReminder({ hour, minute, requestPermission: false });
+            } else if (deviceNotifs.dailyReminderEnabled === false) {
+              void cancelDailyReminder();
+            }
+            if (deviceNotifs.dueNotificationsEnabled === false) {
+              void clearAllDueNotifications(user?.id);
+            }
+          }
+        }
       }
     }
-  }, [preferences?.custom_settings]);
+  }, [preferences?.custom_settings, user?.id]);
 
   return <>{children}</>;
 }
@@ -87,15 +116,51 @@ function RemindersNotificationSync() {
 }
 
 function RemindersNotificationSyncInner({ userId }: { userId: string }) {
-  const { allItems, preferences, isLoading } = useReminders();
+  const { items, scheduledPayableItems, preferences, isLoading } = useReminders();
+  const { data: userPreferences } = useUserPreferences();
   const { isDemoActive } = useDemoSession();
+  const queryClient = useContext(QueryClientContext);
+  const [syncVersion, setSyncVersion] = useState(0);
+
+  useEffect(() => {
+    const handlePrefsChanged = () => setSyncVersion((v) => v + 1);
+    const handleStatesChanged = () => {
+      void queryClient?.invalidateQueries({ queryKey: ["reminder-states"] });
+      setSyncVersion((v) => v + 1);
+    };
+    window.addEventListener("axir:device-notification-prefs-changed", handlePrefsChanged);
+    window.addEventListener("axir:reminder-states-changed", handleStatesChanged);
+    return () => {
+      window.removeEventListener("axir:device-notification-prefs-changed", handlePrefsChanged);
+      window.removeEventListener("axir:reminder-states-changed", handleStatesChanged);
+    };
+  }, [queryClient]);
+
+  const deviceNotifications = userPreferences?.custom_settings?.deviceNotifications;
 
   useEffect(() => {
     if (isDemoActive || isLoading) return;
-    if (preferences.enabled) {
-      void syncDueReminderNotifications(allItems, userId);
+    if (!preferences.enabled) {
+      void clearAllDueNotifications(userId);
+      return;
     }
-  }, [preferences.enabled, allItems, userId, isLoading, isDemoActive]);
+    const payableItems = isNativePlatform()
+      ? (scheduledPayableItems ?? items.filter((i) => (i.direction ?? "payable") === "payable"))
+      : items.filter((i) => (i.direction ?? "payable") === "payable");
+    void syncDueReminderNotifications(payableItems, userId);
+  }, [
+    preferences.enabled,
+    items,
+    scheduledPayableItems,
+    userId,
+    isLoading,
+    isDemoActive,
+    deviceNotifications?.dueNotificationsEnabled,
+    deviceNotifications?.quietHours?.enabled,
+    deviceNotifications?.quietHours?.start,
+    deviceNotifications?.quietHours?.end,
+    syncVersion,
+  ]);
 
   return null;
 }

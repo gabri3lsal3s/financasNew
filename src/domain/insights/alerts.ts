@@ -97,7 +97,7 @@ export function criticalAlerts(input: CriticalAlertInput): InsightAlert[] {
       id: "burn_rate",
       priority: 4,
       severity: "critical",
-      title: hasNoIncomeWithExpenses ? "Consumo sem renda registrada" : "Burn rate alto",
+      title: hasNoIncomeWithExpenses ? "Consumo sem renda registrada" : "Gastos acima de 85% da renda",
       description: hasNoIncomeWithExpenses
         ? "Existem despesas no período sem nenhuma entrada de renda registrada."
         : `As despesas consomem ${input.burnRatePercent.toFixed(0)}% da renda — acima de 85%.`,

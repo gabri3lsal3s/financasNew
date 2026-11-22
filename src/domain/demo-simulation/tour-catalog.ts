@@ -39,10 +39,10 @@ export const TOUR_TRACK_METAS: Record<AnyTourTrackId, TourTrackMeta> = {
   },
   finances_wizard: {
     id: "finances_wizard",
-    title: "Botão Wizard (+) e Lançamento Rápido",
-    shortTitle: "Wizard (+)",
+    title: "Lançamento Rápido (+)",
+    shortTitle: "Lançamento (+)",
     description:
-      "Lançamento ultra-rápido de despesas, receitas, Pix e parcelamento inteligente.",
+      "Lançamento ágil de despesas, receitas, Pix e parcelamento em até 60x com memória de cálculo.",
     category: "finances",
     stepsCount: 3,
     iconName: "plus-circle",
@@ -219,7 +219,7 @@ export const TOUR_TRACK_METAS: Record<AnyTourTrackId, TourTrackMeta> = {
     title: "Finanças Diárias & Cartões",
     shortTitle: "Finanças Essencial",
     description:
-      "Jornada rápida de primeiros passos com saldo livre real, botão wizard (+), extrato unificado, cartões e tetos mensais.",
+      "Jornada rápida de primeiros passos com saldo livre seguro, lançamento rápido (+), extrato unificado, cartões e tetos mensais.",
     category: "finances",
     stepsCount: 5,
     iconName: "wallet",
@@ -243,7 +243,7 @@ export const TOUR_TRACK_METAS: Record<AnyTourTrackId, TourTrackMeta> = {
     title: "Investimentos & Rebalanceamento",
     shortTitle: "Investimentos Completo",
     description:
-      "Jornada patrimonial completa com visão geral, nova operação, metas de alocação, cálculo de aportes e proventos.",
+      "Jornada patrimonial completa com visão global, preço teto (Bazin, Graham, Gordon e FIIs), metas e governança, cálculo de aportes e proventos.",
     category: "investments",
     stepsCount: 5,
     iconName: "trending-up",

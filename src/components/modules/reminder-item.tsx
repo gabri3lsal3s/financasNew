@@ -42,7 +42,22 @@ export function ReminderItem({
 }: ReminderItemProps) {
   const Icon = item.kind === "bill" ? CreditCard : HandCoins;
   const isRead = stateKind === "read";
+  const isReceivable = item.direction === "receivable";
   const clickable = onOpen !== undefined;
+  const badgeVariant = isRead ? "muted" : isReceivable ? "portfolio" : STATUS_VARIANTS[item.status];
+  const badgeLabel = isReceivable ? "A receber" : STATUS_LABELS[item.status];
+  const settleLabel =
+    item.kind === "bill"
+      ? "Pagar Fatura"
+      : isReceivable
+        ? "Registrar Recebimento"
+        : "Dar Baixa";
+  const settleAriaLabel =
+    item.kind === "bill"
+      ? `Pagar fatura ${item.title}`
+      : isReceivable
+        ? `Registrar recebimento ${item.title}`
+        : `Dar baixa ${item.title}`;
 
   const handleOpen = () => {
     if (!onOpen) return;
@@ -85,7 +100,7 @@ export function ReminderItem({
               ? "text-muted-foreground"
               : item.kind === "bill"
                 ? "text-portfolio"
-                : "text-primary-strong",
+                : "text-muted-foreground",
           )}
         >
           <Icon className="size-4" aria-hidden="true" />
@@ -102,11 +117,11 @@ export function ReminderItem({
               {item.title}
             </h3>
             <Badge
-              variant={isRead ? "muted" : STATUS_VARIANTS[item.status]}
+              variant={badgeVariant}
               size="xs"
               className="shrink-0 max-w-full truncate"
             >
-              {STATUS_LABELS[item.status]}
+              {badgeLabel}
             </Badge>
             {stateKind === "snoozed" ? (
               <Badge variant="muted" size="xs" className="shrink-0">
@@ -120,13 +135,14 @@ export function ReminderItem({
             ) : null}
           </div>
 
-          {item.subtitle ? (
+          {item.subtitle && item.subtitle !== badgeLabel ? (
             <p className="text-xs text-muted-foreground line-clamp-1 break-words">{item.subtitle}</p>
           ) : null}
 
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
             <span>
-              Vence em <span className="num font-medium text-foreground">{formatDateBR(item.dueDate)}</span>
+              {isReceivable ? "Previsto para " : "Vence em "}
+              <span className="num font-medium text-foreground">{formatDateBR(item.dueDate)}</span>
             </span>
             {item.amountCents > 0 ? (
               <span className="inline-flex items-center gap-1.5">
@@ -174,10 +190,10 @@ export function ReminderItem({
                 size="sm"
                 onClick={() => onSettle(item)}
                 className="h-8 max-sm:min-h-11 px-2.5 text-xs font-semibold gap-1.5 shrink-0"
-                aria-label={`${item.kind === "bill" ? "Pagar fatura" : "Dar baixa"} ${item.title}`}
+                aria-label={settleAriaLabel}
               >
                 <CheckCircle2 className="size-3.5" aria-hidden="true" />
-                <span>{item.kind === "bill" ? "Pagar Fatura" : "Dar Baixa"}</span>
+                <span>{settleLabel}</span>
               </Button>
             ) : null}
             <Button

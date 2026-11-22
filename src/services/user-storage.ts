@@ -170,6 +170,13 @@ export function sanitizeLegacyStorage(): void {
     "financas_number_ticker_enabled",
     "financas_dashboard_widgets",
     "financas_header_buttons",
+    "financas:onboarding_dismissed",
+    "axis_smart_advisor_dismissals",
+    "axis_smart_advisor_last_dismissed_day",
+    "axis_smart_advisor_dismissals_v1",
+    "axis_smart_advisor_last_dismissed_day_v1",
+    "financasnew:dashboard_alert_dismissals",
+    "axir_dashboard_alert_dismissals_v1",
   ];
 
   for (const key of legacyKeys) {

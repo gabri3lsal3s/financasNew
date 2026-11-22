@@ -56,6 +56,11 @@ export function SplitChargeParticipants({
                     Anfitrião
                   </Badge>
                 )}
+                {!isHost && item.is_settled && (
+                  <Badge variant="positive" size="xs">
+                    Pago
+                  </Badge>
+                )}
                 {isMe && (
                   <Badge variant="default" size="xs">
                     Você

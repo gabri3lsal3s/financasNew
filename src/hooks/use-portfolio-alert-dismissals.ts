@@ -30,6 +30,23 @@ function writeDismissals(storageKey: string, map: PortfolioAlertDismissalsMap): 
   }
 }
 
+function mergePortfolioDismissalsByLatestExpiry(
+  cloud?: PortfolioAlertDismissalsMap,
+  local?: PortfolioAlertDismissalsMap,
+): PortfolioAlertDismissalsMap {
+  const merged: PortfolioAlertDismissalsMap = {};
+  for (const key of new Set([...Object.keys(cloud ?? {}), ...Object.keys(local ?? {})])) {
+    const c = cloud?.[key];
+    const l = local?.[key];
+    if (c && l) {
+      merged[key] = l.dismissedUntil >= c.dismissedUntil ? l : c;
+    } else if (l ?? c) {
+      merged[key] = (l ?? c)!;
+    }
+  }
+  return merged;
+}
+
 /**
  * Gerencia dispensa temporária (7 ou 30 dias) de slides do carrossel de insights de investimentos.
  * Garante que os cards dispensados permaneçam silenciados até o término do período escolhido,
@@ -43,18 +60,24 @@ export function usePortfolioAlertDismissals() {
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
 
-  const [localDismissals, setLocalDismissals] = useState<PortfolioAlertDismissalsMap>(() =>
-    readDismissals(storageKey),
+  const [localState, setLocalState] = useState<{
+    key: string;
+    map: PortfolioAlertDismissalsMap;
+  }>(() => ({
+    key: storageKey,
+    map: readDismissals(storageKey),
+  }));
+
+  const effectiveLocalDismissals = useMemo(
+    () => (localState.key === storageKey ? localState.map : readDismissals(storageKey)),
+    [localState, storageKey],
   );
 
   const cloudDismissals = userPreferencesQuery.data?.custom_settings?.portfolioAlertDismissals;
 
   const dismissals = useMemo<PortfolioAlertDismissalsMap>(() => {
-    return {
-      ...(cloudDismissals ?? {}),
-      ...(localDismissals ?? {}),
-    };
-  }, [cloudDismissals, localDismissals]);
+    return mergePortfolioDismissalsByLatestExpiry(cloudDismissals, effectiveLocalDismissals);
+  }, [cloudDismissals, effectiveLocalDismissals]);
 
   const dismissAlert = useCallback(
     (alertId: string, durationDays: 7 | 30, fingerprint?: string) => {
@@ -65,17 +88,17 @@ export function usePortfolioAlertDismissals() {
         fingerprint,
       };
 
-      setLocalDismissals((prev) => {
+      setLocalState((prevState) => {
+        const prevMap = prevState.key === storageKey ? prevState.map : readDismissals(storageKey);
         const next: PortfolioAlertDismissalsMap = {
-          ...(cloudDismissals ?? {}),
-          ...prev,
+          ...mergePortfolioDismissalsByLatestExpiry(cloudDismissals, prevMap),
           [alertId]: nextEntry,
         };
         writeDismissals(storageKey, next);
         updateCustomSettingsMutation.mutate({
           portfolioAlertDismissals: next,
         });
-        return next;
+        return { key: storageKey, map: next };
       });
     },
     [cloudDismissals, storageKey, updateCustomSettingsMutation],

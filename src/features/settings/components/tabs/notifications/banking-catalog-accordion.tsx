@@ -109,7 +109,9 @@ export function BankingCatalogAccordion({
           <AccordionTrigger className="px-3.5 py-3 text-xs">
             <span className="flex items-center gap-2 flex-wrap min-w-0">
               <Building2 className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-              <span>Explorar catálogo completo (25+ instituições financeiras)</span>
+              <span>
+                Explorar catálogo completo ({HOMOLOGATED_INSTITUTIONS.length} instituições financeiras)
+              </span>
               <Badge variant="muted" size="xs">
                 {monitoredBanks.length}/{HOMOLOGATED_BANKS.length} ativos
               </Badge>

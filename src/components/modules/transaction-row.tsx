@@ -16,6 +16,8 @@ export interface TransactionRowProps {
   weightedAmountCents?: number;
   /** Peso no relatório (0 a 1). */
   reportWeight?: number;
+  /** Indica que o lançamento está vinculado a um Racha compartilhado. */
+  hasLinkedSplit?: boolean;
   kind: "income" | "expense" | "neutral";
   icon?: string | null;
   iconColor?: string | null;
@@ -50,6 +52,7 @@ export function TransactionRow({
   amountCents,
   weightedAmountCents,
   reportWeight,
+  hasLinkedSplit,
   kind,
   icon,
   iconColor,
@@ -106,7 +109,17 @@ export function TransactionRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 min-w-0">
           <p className="truncate text-sm font-medium text-foreground">{title}</p>
-          {hasSplitWeight && splitLabel ? (
+          {hasLinkedSplit ? (
+            <Badge
+              variant="portfolio"
+              size="xs"
+              className="shrink-0 font-medium"
+              title="Despesa compartilhada em Racha"
+            >
+              Racha
+            </Badge>
+          ) : null}
+          {hasSplitWeight && splitLabel && !hasLinkedSplit ? (
             <Badge
               variant="muted"
               size="xs"
@@ -137,11 +150,11 @@ export function TransactionRow({
         />
         {hasDifferentWeight && effectiveWeightedCents !== undefined ? (
           <span
-            className="text-[11px] text-muted-foreground inline-flex items-center gap-1"
-            title="Valor nominal bruto cobrado integralmente; no relatório é considerado apenas o valor ponderado."
+            className="text-[11px] text-muted-foreground inline-flex items-center gap-1 whitespace-nowrap"
+            title="Valor nominal bruto cobrado integralmente; no relatório e saldo conta apenas a sua parte líquida."
           >
-            <span>Relat.:</span>
-            <MoneyText cents={effectiveWeightedCents} tone="default" className="text-[11px] text-muted-foreground" />
+            <span>Sua parte:</span>
+            <MoneyText cents={effectiveWeightedCents} tone="default" className="text-[11px] font-medium text-foreground" />
           </span>
         ) : null}
       </div>

@@ -5,6 +5,7 @@ import { debtsKey } from "@/state/queries/use-debts";
 import { incomesKey } from "@/state/queries/use-incomes";
 import { expensesKey } from "@/state/queries/use-expenses";
 import { getErrorMessage } from "@/services/errors";
+import { cancelDueReminderNotification } from "@/services/native";
 import { pushToast } from "@/services/toast";
 import { LOANS_QUERY_KEY } from "@/state/queries/use-loans";
 import type { DbUpdate, Debt, InstallmentDeleteMode } from "@/types";
@@ -46,7 +47,11 @@ export function useDeleteDebt() {
       const mode = typeof param === "string" ? "single" : (param.mode ?? "single");
       return deleteDebt(id, mode);
     },
-    onSuccess: () => invalidateFinance(queryClient),
+    onSuccess: (_data, param) => {
+      const id = typeof param === "string" ? param : param.id;
+      void cancelDueReminderNotification(`debt:${id}`);
+      invalidateFinance(queryClient);
+    },
     // Falha de rede/banco na exclusão: feedback explícito (antes a promise
     // rejeitada ficava sem tratamento e o usuário não via nada).
     onError: (error) => {
@@ -88,7 +93,10 @@ export function usePayDebt() {
         discountAmount,
         totalPaid,
       }),
-    onSuccess: () => invalidateFinance(queryClient),
+    onSuccess: (_data, variables) => {
+      void cancelDueReminderNotification(`debt:${variables.debtId}`);
+      invalidateFinance(queryClient);
+    },
   });
 }
 
@@ -105,7 +113,10 @@ export function useReceiveDebt() {
       createIncome: boolean;
       incomeCategoryId?: string | null;
     }) => receiveDebt(debtId, { createIncome, incomeCategoryId }),
-    onSuccess: () => invalidateFinance(queryClient),
+    onSuccess: (_data, variables) => {
+      void cancelDueReminderNotification(`debt:${variables.debtId}`);
+      invalidateFinance(queryClient);
+    },
   });
 }
 
@@ -115,6 +126,9 @@ export function useSettleIntegratedReceivable() {
   return useMutation({
     mutationFn: ({ debtId, result }: { debtId: string; result: number }) =>
       settleIntegratedReceivable(debtId, result),
-    onSuccess: () => invalidateFinance(queryClient),
+    onSuccess: (_data, variables) => {
+      void cancelDueReminderNotification(`debt:${variables.debtId}`);
+      invalidateFinance(queryClient);
+    },
   });
 }

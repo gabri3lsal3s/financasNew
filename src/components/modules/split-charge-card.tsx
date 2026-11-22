@@ -1,4 +1,4 @@
-import { QrCode, Share2, ShieldCheck } from "lucide-react";
+import { MessageSquareText, QrCode, Share2, ShieldCheck } from "lucide-react";
 import { Badge, Button, Card, CardContent, CardHeader } from "@/components/ui";
 import { calculateInstallmentsProgress } from "@/domain/finance/split-math";
 import { todayLocalIso } from "@/lib/date";
@@ -31,6 +31,12 @@ export function SplitChargeCard({
   pixKey,
   pixKeyType = "E-mail",
   participants,
+  customNote,
+  showParticipantsList = true,
+  isCurrentSettled = false,
+  participantTotalShareCents,
+  participantSettledCents = 0,
+  isHostViewing = false,
   isDemo = false,
   defaultShowQrCode = false,
   installments,
@@ -83,6 +89,10 @@ export function SplitChargeCard({
       installmentsProgress={installmentsProgress}
       selectedInstallment={selectedInstallment}
       isPayAllRemaining={isPayAllRemaining}
+      isCurrentSettled={isCurrentSettled}
+      participantTotalShareCents={participantTotalShareCents}
+      participantSettledCents={participantSettledCents}
+      isHostViewing={isHostViewing}
       onCopyPix={onCopyPix}
       onCopyPixKey={onCopyPixKey}
       onSignalPayment={onSignalPayment}
@@ -91,13 +101,21 @@ export function SplitChargeCard({
     />
   );
 
-  const participantsBlock = (
-    <SplitChargeParticipants
-      participants={participants}
-      hostName={hostName}
-      activeParticipantId={activeParticipantId}
-    />
-  );
+  const noteBlock = customNote?.trim() ? (
+    <div className="rounded-xl border border-border/80 bg-surface-raised/60 p-3 flex items-start gap-2.5 text-xs">
+      <MessageSquareText className="size-4 text-portfolio shrink-0 mt-0.5" aria-hidden="true" />
+      <p className="text-foreground leading-relaxed">{customNote.trim()}</p>
+    </div>
+  ) : null;
+
+  const participantsBlock =
+    showParticipantsList !== false ? (
+      <SplitChargeParticipants
+        participants={participants}
+        hostName={hostName}
+        activeParticipantId={activeParticipantId}
+      />
+    ) : null;
 
   const installmentsBlock =
     hasInstallments && installments && installmentsProgress ? (
@@ -148,6 +166,7 @@ export function SplitChargeCard({
               />
             </CardHeader>
             <CardContent className="p-4 sm:p-6 pt-0 space-y-4 sm:space-y-5">
+              {noteBlock}
               {participantsBlock}
               {installmentsBlock}
               {shareBlock}
@@ -195,6 +214,7 @@ export function SplitChargeCard({
           />
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0 space-y-4 sm:space-y-5">
+          {noteBlock}
           {pixPanel}
           {installmentsBlock}
           {participantsBlock}
