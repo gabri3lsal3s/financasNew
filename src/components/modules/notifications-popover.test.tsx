@@ -153,12 +153,12 @@ describe("NotificationsPopover", () => {
 
     await user.click(screen.getByRole("button", { name: "Sininho" }));
     expect(screen.getByText("Configuração inicial")).toBeInTheDocument();
-    expect(screen.getByText("1/3 passos")).toBeInTheDocument();
+    expect(screen.getByText("1/2 passos")).toBeInTheDocument();
 
     const dismissBtn = screen.getByRole("button", { name: /Ignorar configuração inicial/i });
     await user.click(dismissBtn);
 
-    expect(screen.queryByText("1/3 passos")).not.toBeInTheDocument();
+    expect(screen.queryByText("1/2 passos")).not.toBeInTheDocument();
   });
 
   it("renderiza passos e navega para rota de investimentos para usuário exclusivo de investimentos", async () => {

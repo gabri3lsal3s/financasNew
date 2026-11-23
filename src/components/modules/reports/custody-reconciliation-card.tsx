@@ -1,12 +1,14 @@
+import { useMemo } from "react";
 import { Globe, Scale } from "lucide-react";
+import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import { MoneyText } from "@/components/ui/money-text";
+import { buildCustodyReconciliationBreakdown } from "@/domain/calculation-memory";
 import {
   computeProjectedPatrimonyWithProvisioned,
   type CustodyReconciliationSummary,
   type ProvisionedDividendsSummary,
 } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
-import { formatFxRate } from "@/services/masks";
 import { formatPercent } from "@/services/masks/percent";
 
 export interface CustodyReconciliationCardProps {
@@ -27,16 +29,21 @@ export function CustodyReconciliationCard({
   className,
 }: CustodyReconciliationCardProps) {
   const isReport = variant === "report";
-  const fxFormatted = `R$ ${formatFxRate(summary.fxRateUsed)}`;
   const hasProvisioned = Boolean(provisionedSummary && provisionedSummary.totalCount > 0);
   const projectedModel = hasProvisioned
     ? computeProjectedPatrimonyWithProvisioned(summary.closingPatrimonyCents, provisionedSummary)
     : null;
 
+  const custodyBreakdown = useMemo(
+    () => buildCustodyReconciliationBreakdown({ summary, provisionedSummary }),
+    [summary, provisionedSummary],
+  );
+
   return (
     <section
       aria-label="Conciliação por Custódia Brasil e Exterior"
       className={cn(
+        "group",
         isReport
           ? "rounded-xl border border-border/80 bg-surface p-3 break-inside-avoid print:break-inside-avoid"
           : "rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs min-w-0",
@@ -46,21 +53,21 @@ export function CustodyReconciliationCard({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-border/80">
         <div className="flex items-center gap-2 min-w-0">
           <Scale className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          <div className="flex flex-col min-w-0">
-            <h3
-              className={cn(
-                "font-semibold text-foreground leading-tight",
-                isReport ? "text-xs uppercase tracking-wider font-bold" : "text-sm",
-              )}
-            >
-              Conciliação por Custódia (Brasil vs. Exterior)
-            </h3>
-            <span className="text-[11px] text-muted-foreground">
-              {summary.hasForeignCustody
-                ? `ETFs/BDRs listados na B3 permanecem em BRL. Câmbio de referência: ${fxFormatted} (${summary.fxSourceLabel}).`
-                : "100% da custódia alocada em ativos locais denominados em Real (BRL)."}
-            </span>
-          </div>
+          <h3
+            className={cn(
+              "font-semibold text-foreground leading-tight",
+              isReport ? "text-xs uppercase tracking-wider font-bold" : "text-sm",
+            )}
+          >
+            Conciliação por Custódia (Brasil vs. Exterior)
+          </h3>
+          {!isReport ? (
+            <CalculationMemoryModal
+              breakdown={custodyBreakdown}
+              label="Conciliação por Custódia (Brasil vs. Exterior)"
+              priority="p0"
+            />
+          ) : null}
         </div>
 
         <span className="text-[11px] font-mono text-muted-foreground shrink-0">

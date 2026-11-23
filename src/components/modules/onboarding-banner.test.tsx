@@ -47,7 +47,7 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
     const hasFinances = (k: string) => k === "budgets" || k === "cards" || k === "transactions";
     render(<OnboardingBanner counts={empty} hasFeature={hasFinances} onDismiss={vi.fn()} />);
     expect(screen.getByText("Configure sua conta")).toBeInTheDocument();
-    expect(screen.getByText("0/3")).toBeInTheDocument();
+    expect(screen.getByText("0/2")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Continuar/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Dispensar aviso/i })).toBeInTheDocument();
   });
@@ -67,7 +67,7 @@ describe("OnboardingBanner — banner compacto de configuração inicial (§5.7)
   it("progresso parcial reflete contagem correta de passos core", () => {
     const hasFinances = (k: string) => k === "budgets" || k === "cards" || k === "transactions";
     render(<OnboardingBanner counts={partial} hasFeature={hasFinances} onDismiss={vi.fn()} />);
-    expect(screen.getByText("1/3")).toBeInTheDocument();
+    expect(screen.getByText("1/2")).toBeInTheDocument();
   });
 
   it("botão Continuar abre o modal com o checklist completo sem passos redundantes de categorias", () => {

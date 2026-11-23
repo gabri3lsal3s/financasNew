@@ -95,7 +95,7 @@ export function useInitialOnboarding({
       try {
         updateCustomSettingsMutation.mutate({
           initialGoal: goalId,
-          ...(goalId === "family" ? { familyModeEnabled: true } : {}),
+          familyModeEnabled: true,
         });
       } catch {
         // Ignora falha assíncrona se desconectado

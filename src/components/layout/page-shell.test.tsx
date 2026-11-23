@@ -358,28 +358,28 @@ describe("PageShell (F7.2/F7.3)", () => {
     expect(screen.queryByRole("button", { name: /Calculadora/i })).not.toBeInTheDocument();
   });
 
-  it("não renderiza DemoTourSpotlight nem indicador no header quando a simulação não está ativa", () => {
+  it("não renderiza DemoTourSpotlight nem pílulas de trial/simulação no header quando a simulação não está ativa", () => {
     renderShell();
     expect(screen.queryByRole("dialog", { name: /Tour guiado interativo/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("header-demo-indicator")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Teste Pro:/i)).not.toBeInTheDocument();
   });
 
-  it("renderiza DemoTourSpotlight e indicador no header quando a simulação está ativa e permite encerrar imediatamente", async () => {
+  it("renderiza DemoTourSpotlight sem poluir o header com pílula de simulação quando a simulação está ativa", async () => {
     startDemo("finances");
     const user = userEvent.setup();
 
     renderShell();
 
     expect(screen.getByRole("dialog", { name: /Tour guiado interativo/i })).toBeInTheDocument();
-    expect(screen.getByTestId("header-demo-indicator")).toBeInTheDocument();
+    expect(screen.queryByTestId("header-demo-indicator")).not.toBeInTheDocument();
     expect(screen.getByText("Passo 1 de 5")).toBeInTheDocument();
     expect(screen.getByText("Dashboard & Saldo Livre Real")).toBeInTheDocument();
 
-    const exitBtn = screen.getByRole("button", { name: /Encerrar demonstração/i });
+    const exitBtn = screen.getByRole("button", { name: /Encerrar tour demonstrativo/i });
     await user.click(exitBtn);
 
     expect(screen.queryByRole("dialog", { name: /Tour guiado interativo/i })).not.toBeInTheDocument();
-    expect(screen.queryByTestId("header-demo-indicator")).not.toBeInTheDocument();
   });
 
   it("aplica .pt-safe no cabeçalho e dispara cloud sync silencioso ao alternar o ThemeToggle (M7)", async () => {

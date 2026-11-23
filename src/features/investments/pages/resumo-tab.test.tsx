@@ -393,7 +393,9 @@ describe("ResumoTab", () => {
 
     // Sem botão manual de atualizar cotações; com card de Conciliação por Custódia Brasil vs Exterior
     expect(screen.queryByRole("button", { name: /Atualizar cotações/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/Conciliação por Custódia/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /Conciliação por Custódia/i }),
+    ).toBeInTheDocument();
 
     // Ao clicar em "Sem nota", abre o diálogo de Avaliação de Tese
     await user.click(screen.getAllByRole("button", { name: /Avaliar nota de PETR4/i })[0]!);

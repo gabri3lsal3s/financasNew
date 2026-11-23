@@ -160,8 +160,8 @@ export function InterfaceShortcutsCard({
                   <div className="font-semibold text-xs text-foreground">Modo Família</div>
                   <div className="text-[11px] text-muted-foreground">
                     {isFamilyModeEnabled
-                      ? "Ativo. Exibe abas de visão e botões para separar gastos pessoais e familiares."
-                      : "Desativado por padrão. Mantém o visual mais limpo para uso pessoal, sem perder dados."}
+                      ? "Ativo por padrão. Exibe abas de visão e botões para separar gastos pessoais e familiares."
+                      : "Desativado. Mantém o visual mais limpo para uso pessoal, sem perder dados."}
                   </div>
                 </div>
               </div>

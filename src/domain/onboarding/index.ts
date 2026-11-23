@@ -64,7 +64,7 @@ export const ALL_ONBOARDING_STEPS: readonly StepDefinition[] = [
   {
     id: "card",
     featureKey: "cards",
-    isCore: true,
+    isCore: false,
     isDone: (c) => c.cards > 0,
   },
   {
@@ -119,9 +119,9 @@ export function onboardingProgress(
 }
 
 /**
- * Passos centrais (3 ações reais) do onboarding liberados para o usuário.
+ * Passos centrais (ações essenciais) do onboarding liberados para o usuário.
  * - Perfil exclusivo de investimentos: retorna cadastro de ativo e 1ª operação.
- * - Demais contas: retorna Saldo inicial, 1º lançamento e Cartão (ou Ativo no topo se foco = "investments").
+ * - Demais contas: retorna Saldo inicial e 1º lançamento (cartão é opcional por padrão; incluído no topo apenas se foco = "cards", ou Ativo no topo se foco = "investments").
  */
 export function coreOnboardingSteps(
   counts: OnboardingCounts,
@@ -144,8 +144,10 @@ export function coreOnboardingSteps(
   let orderedIds: OnboardingStepId[];
   if (initialGoal === "investments" && allowInvestments) {
     orderedIds = ["portfolio-asset", "cash-checkpoint", "first-transaction"];
+  } else if (initialGoal === "cards") {
+    orderedIds = ["card", "cash-checkpoint", "first-transaction"];
   } else {
-    orderedIds = ["cash-checkpoint", "first-transaction", "card"];
+    orderedIds = ["cash-checkpoint", "first-transaction"];
   }
 
   const steps = orderedIds
@@ -153,14 +155,12 @@ export function coreOnboardingSteps(
     .filter((step): step is StepDefinition => Boolean(step && isStepAllowed(step, hasFeature)))
     .map((step) => ({ id: step.id, done: step.isDone(counts) }));
 
-  if (!initialGoal || initialGoal === "investments") return steps;
+  if (!initialGoal || initialGoal === "investments" || initialGoal === "cards") return steps;
 
   const priorityStepId: OnboardingStepId | null =
-    initialGoal === "cards"
-      ? "card"
-      : initialGoal === "ocr" || initialGoal === "debts"
-        ? "first-transaction"
-        : null;
+    initialGoal === "ocr" || initialGoal === "debts"
+      ? "first-transaction"
+      : null;
 
   if (!priorityStepId) return steps;
 

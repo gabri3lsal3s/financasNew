@@ -15,7 +15,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { RouteSkeletonFallback } from "@/components/ui";
 import { DemoTourSpotlight } from "@/components/modules/demo-tour-spotlight";
 import { NativeOnboardingDialog } from "@/components/modules/native-onboarding-dialog";
-import { endDemo, useDemoSession } from "@/state/demo-mode";
+import { useDemoSession } from "@/state/demo-mode";
 import { useContainerScroll } from "@/hooks";
 import { useNotificationCenter } from "@/hooks/use-notification-center";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
@@ -164,8 +164,6 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
             <GlobalSearch className="flex-1 min-w-0" />
             <DesktopTopbar
               subscription={subscription}
-              isDemoActive={isDemoActive}
-              onEndDemo={endDemo}
               onOpenUpgrade={() => setHeaderUpgradeOpen(true)}
               showCalc={showCalc}
               hasNotifications={hasNotifications}

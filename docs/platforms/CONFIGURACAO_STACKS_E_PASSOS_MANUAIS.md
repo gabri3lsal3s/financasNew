@@ -89,7 +89,7 @@ Sem uma chave válida da API do Resend, o resumo dominical (`sunday-digest`) e o
 2. Publique os registros DNS fornecidos pelo Resend no DNS da Cloudflare (seção 2.2) e aguarde a validação do domínio.
 3. Gere uma API Key no Resend e cadastre os secrets no Supabase:
    ```bash
-   supabase secrets set RESEND_API_KEY="re_sua_chave_aqui" RESEND_FROM_EMAIL="Axir <noreply@axir.com.br>"
+   supabase secrets set RESEND_API_KEY="re_sua_chave_aqui" RESEND_FROM_EMAIL="Axir <nao-responda@axir.com.br>" RESEND_REPLY_TO_EMAIL="suporte@axir.com.br"
    ```
 4. Configure também o **SMTP Customizado do Supabase Auth** (**Supabase Dashboard > Authentication > SMTP Settings**), pois o SMTP nativo do Supabase impõe limite restrito por hora:
    - **Enable Custom SMTP:** ativado
@@ -97,7 +97,7 @@ Sem uma chave válida da API do Resend, o resumo dominical (`sunday-digest`) e o
    - **Port:** `465` (ou `587`)
    - **Username:** `resend`
    - **Password:** o mesmo valor de `RESEND_API_KEY`
-   - **Sender email:** `noreply@axir.com.br`
+   - **Sender email:** `nao-responda@axir.com.br` (ou `suporte@axir.com.br`)
    - **Sender name:** `Axir`
 
 ### 3.2 Habilitação de `pg_cron` e `pg_net` + Agendamento dos Crons de Notificações

@@ -151,8 +151,8 @@ describe("isUserActive — limiar de atividade para conclusão / smart dismiss",
     expect(isUserActive({ ...empty, transactions: 1 })).toBe(false);
   });
 
-  it("verdadeiro ao concluir os 3 passos core ou atingir 5 lançamentos", () => {
-    expect(isUserActive({ ...empty, cashCheckpoints: 1, transactions: 1, cards: 1 })).toBe(true);
+  it("verdadeiro ao concluir os 2 passos core (saldo e lançamento) ou atingir 5 lançamentos", () => {
+    expect(isUserActive({ ...empty, cashCheckpoints: 1, transactions: 1 })).toBe(true);
     expect(isUserActive({ ...empty, transactions: 5 })).toBe(true);
   });
 
@@ -171,11 +171,11 @@ describe("isUserActive — limiar de atividade para conclusão / smart dismiss",
   });
 });
 
-describe("coreOnboardingSteps — 3 passos reais prioritários", () => {
-  it("retorna 3 passos essenciais por padrão", () => {
+describe("coreOnboardingSteps — passos essenciais prioritários (cartão opcional por padrão)", () => {
+  it("retorna 2 passos essenciais por padrão (saldo inicial e 1º lançamento)", () => {
     const steps = coreOnboardingSteps(empty);
-    expect(steps).toHaveLength(3);
-    expect(steps.map((s) => s.id)).toEqual(["cash-checkpoint", "first-transaction", "card"]);
+    expect(steps).toHaveLength(2);
+    expect(steps.map((s) => s.id)).toEqual(["cash-checkpoint", "first-transaction"]);
   });
 
   it("progresso core para usuário exclusivo de investimentos (0/2 e 2/2)", () => {
@@ -188,22 +188,21 @@ describe("coreOnboardingSteps — 3 passos reais prioritários", () => {
     });
   });
 
-  it("progresso core para usuário de finanças tradicionais (0/3 e 3/3)", () => {
+  it("progresso core para usuário de finanças tradicionais (0/2 e 2/2, sem exigir cartão)", () => {
     const hasFinances = (key: string) =>
       key === "budgets" || key === "cards" || key === "transactions";
-    expect(coreOnboardingProgress(empty, hasFinances)).toEqual({ done: 0, total: 3 });
+    expect(coreOnboardingProgress(empty, hasFinances)).toEqual({ done: 0, total: 2 });
     const doneFinances = {
       ...empty,
       cashCheckpoints: 1,
-      cards: 1,
       transactions: 1,
     };
-    expect(coreOnboardingProgress(doneFinances, hasFinances)).toEqual({ done: 3, total: 3 });
+    expect(coreOnboardingProgress(doneFinances, hasFinances)).toEqual({ done: 2, total: 2 });
   });
 
-  it("reordena priorizando cartão quando initialGoal é 'cards'", () => {
+  it("inclui e prioriza cartão quando initialGoal é 'cards'", () => {
     const steps = coreOnboardingSteps(empty, undefined, "cards");
-    expect(steps[0]!.id).toBe("card");
+    expect(steps.map((s) => s.id)).toEqual(["card", "cash-checkpoint", "first-transaction"]);
   });
 
   it("reordena priorizando primeira transação quando initialGoal é 'ocr' ou 'debts'", () => {
@@ -227,7 +226,7 @@ describe("coreOnboardingSteps — 3 passos reais prioritários", () => {
 });
 
 describe("shouldShowOnboardingBanner — lógica de exibição do guia na Fase 2", () => {
-  it("permanece visível após calibrar saldo ou adicionar apenas 1 cartão até completar os 3 passos", () => {
+  it("permanece visível após calibrar saldo até completar os 2 passos essenciais (sem exigir cartão)", () => {
     const hasFinances = (key: string) =>
       key === "budgets" || key === "cards" || key === "transactions";
     expect(shouldShowOnboardingBanner(empty, hasFinances)).toBe(true);
@@ -237,7 +236,7 @@ describe("shouldShowOnboardingBanner — lógica de exibição do guia na Fase 2
     ).toBe(true);
     expect(
       shouldShowOnboardingBanner(
-        { ...empty, cashCheckpoints: 1, cards: 1, transactions: 1 },
+        { ...empty, cashCheckpoints: 1, transactions: 1 },
         hasFinances,
       ),
     ).toBe(false);

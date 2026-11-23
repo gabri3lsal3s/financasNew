@@ -120,6 +120,10 @@ describe("WelcomeModal — Acolhimento e Escolha de Partida (§3.1)", () => {
     expect(handleStartReal).toHaveBeenCalledTimes(1);
     expect(handleOpenChange).toHaveBeenCalledWith(false);
     expect(hasSeenWelcomeModal()).toBe(true);
+    expect(mockUpdateCustomSettingsMutate).toHaveBeenCalledWith({
+      initialGoal: "ocr",
+      familyModeEnabled: true,
+    });
     expect(mockNavigate).toHaveBeenCalledWith("/transacoes?novo=transacao");
   });
 

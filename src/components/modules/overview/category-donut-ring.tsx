@@ -122,23 +122,23 @@ export function CategoryDonutRing({
         }
       >
         {activeDisplayItem ? (
-          <div className="flex flex-col items-center justify-center w-full max-w-[85%] min-w-0">
-            <div className="flex items-center justify-center gap-1.5 w-full min-w-0">
+          <div className="flex flex-col items-center justify-center w-full max-w-[90%] min-w-0">
+            <div className="flex items-center justify-center gap-1 w-full min-w-0">
               {activeDisplayItem.icon && activeDisplayItem.colorStyle ? (
                 <CategoryIcon
                   icon={activeDisplayItem.icon}
                   color={activeDisplayItem.colorStyle}
-                  className="size-3.5 shrink-0"
+                  className="size-3 shrink-0"
                 />
               ) : (
                 <span
                   aria-hidden="true"
                   style={{ backgroundColor: activeDisplayItem.colorStyle }}
-                  className="size-2 rounded-full shrink-0"
+                  className="size-1.5 rounded-full shrink-0"
                 />
               )}
               <span
-                className="text-[10px] sm:text-xs font-bold uppercase tracking-wider line-clamp-2 break-words text-center"
+                className="text-[9.5px] sm:text-[11px] font-bold uppercase tracking-tight truncate max-w-full text-center"
                 style={{ color: activeDisplayItem.colorStyle }}
                 title={activeDisplayItem.label}
               >

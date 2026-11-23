@@ -834,7 +834,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     };
     render(<OverviewPage />);
     expect(screen.getAllByText("Primeiros passos no Axir").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("1/3 concluídos").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("1/2 concluídos").length).toBeGreaterThan(0);
     const continueBtn = screen.getAllByRole("button", { name: /Continuar/i })[0]!;
     expect(continueBtn).toBeInTheDocument();
 
@@ -861,12 +861,12 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     expect(screen.queryByText("Primeiros passos no Axir")).not.toBeInTheDocument();
   });
 
-  it("não renderiza o card de primeiros passos quando os 3 passos essenciais estiverem concluídos", () => {
+  it("não renderiza o card de primeiros passos quando os 2 passos essenciais estiverem concluídos", () => {
     onboardingCountsMock = {
       expenseCategories: 11,
       incomeCategories: 3,
       cashCheckpoints: 1,
-      cards: 1,
+      cards: 0,
       transactions: 1,
       notificationsEnabled: false,
     };

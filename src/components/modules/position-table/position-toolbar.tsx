@@ -27,10 +27,6 @@ export interface PositionToolbarProps {
   isGroupedMode?: boolean;
   areAllExpanded?: boolean;
   onToggleExpandAll?: () => void;
-  quarantineCount?: number;
-  exitCount?: number;
-  governanceFilter?: "all" | "core" | "quarantine" | "exit";
-  onSelectGovernanceFilter?: (status: "all" | "core" | "quarantine" | "exit") => void;
 }
 
 export function PositionToolbar({
@@ -50,10 +46,6 @@ export function PositionToolbar({
   isGroupedMode = false,
   areAllExpanded = false,
   onToggleExpandAll,
-  quarantineCount = 0,
-  exitCount = 0,
-  governanceFilter = "core",
-  onSelectGovernanceFilter,
 }: PositionToolbarProps) {
   const classOptions: SelectOption[] = [
     { value: "all", label: "Todas as classes" },
@@ -64,8 +56,6 @@ export function PositionToolbar({
     { value: "all", label: "Todos os setores" },
     ...availableSectors.map((sec) => ({ value: sec, label: sec })),
   ];
-
-  const hasGovernanceAssets = quarantineCount > 0 || exitCount > 0;
 
   return (
     <div className="flex flex-col gap-2.5 w-full min-w-0">
@@ -79,73 +69,6 @@ export function PositionToolbar({
           aria-label="Buscar ativo"
         />
       </div>
-
-      {/* Linha de Governança (divulgação progressiva: só aparece se houver quarentena ou saída) */}
-      {hasGovernanceAssets ? (
-        <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-          <span className="text-[11px] font-semibold text-muted-foreground mr-1">Foco:</span>
-          <Button
-            type="button"
-            variant={governanceFilter === "core" ? "default" : "outline"}
-            size="xs"
-            sensoryIntent="selection"
-            onClick={() => onSelectGovernanceFilter?.("core")}
-            className={cn("h-6 px-2 text-[11px] shrink-0", governanceFilter === "core" && "shadow-xs font-semibold")}
-          >
-            Carteira em Aporte
-          </Button>
-          {quarantineCount > 0 ? (
-            <Button
-              type="button"
-              variant={governanceFilter === "quarantine" ? "default" : "outline"}
-              size="xs"
-              sensoryIntent="selection"
-              onClick={() => onSelectGovernanceFilter?.("quarantine")}
-              className={cn(
-                "h-6 px-2 gap-1.5 text-[11px] shrink-0",
-                governanceFilter === "quarantine"
-                  ? "shadow-xs font-semibold"
-                  : "text-warning-strong border-warning/40",
-              )}
-            >
-              <span>Quarentena</span>
-              <Badge variant="warning" size="xs">
-                {quarantineCount}
-              </Badge>
-            </Button>
-          ) : null}
-          {exitCount > 0 ? (
-            <Button
-              type="button"
-              variant={governanceFilter === "exit" ? "default" : "outline"}
-              size="xs"
-              sensoryIntent="selection"
-              onClick={() => onSelectGovernanceFilter?.("exit")}
-              className={cn(
-                "h-6 px-2 gap-1.5 text-[11px] shrink-0",
-                governanceFilter === "exit"
-                  ? "shadow-xs font-semibold"
-                  : "text-negative-strong border-negative/40",
-              )}
-            >
-              <span>Em Saída</span>
-              <Badge variant="negative" size="xs">
-                {exitCount}
-              </Badge>
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant={governanceFilter === "all" ? "default" : "outline"}
-            size="xs"
-            sensoryIntent="selection"
-            onClick={() => onSelectGovernanceFilter?.("all")}
-            className={cn("h-6 px-2 text-[11px] shrink-0", governanceFilter === "all" && "shadow-xs font-semibold")}
-          >
-            Todos
-          </Button>
-        </div>
-      ) : null}
 
       {/* Linha 2: Seletores de Agrupamento, Filtros e Encerradas */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 w-full min-w-0">

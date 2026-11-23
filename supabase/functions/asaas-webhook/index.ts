@@ -273,6 +273,43 @@ Deno?.serve?.(async (req: Request) => {
         console.warn("[asaas-webhook] Falha ao notificar Telegram sobre acumulativo:", tgErr);
       }
 
+      // Disparo de e-mail transacional via Resend: Confirmação de Antecipação Acumulativa PRO
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name, email")
+          .eq("id", userSub.user_id)
+          .maybeSingle();
+
+        const recipientEmail = profile?.email;
+        if (recipientEmail) {
+          const appUrl = Deno?.env?.get ? Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br" : "https://axir.com.br";
+          const planDisplayName = userSub.tier === "pro_annual" ? "Plano Pro Anual" : "Plano Pro Mensal";
+          const emailData = renderProActivationEmail({
+            name: profile?.name || "Cliente",
+            planName: planDisplayName,
+            periodEndFormatted: new Date(decision.newPeriodEnd).toLocaleDateString("pt-BR"),
+            invoiceValueFormatted: `R$ ${(payment.value || 0).toFixed(2).replace(".", ",")}`,
+            invoicePdfUrl: payment.bankSlipUrl || payment.invoiceUrl || undefined,
+            appUrl,
+            isFirstActivation: false,
+            cumulativeMonths: decision.monthsCount,
+          });
+
+          await sendTransactionalEmail(supabase, {
+            to: recipientEmail,
+            subject: emailData.subject,
+            template: "pro_cumulative_renewal",
+            html: emailData.html,
+            text: emailData.text,
+            userId: userSub.user_id,
+            idempotencyKey: `pro_cumulative_${paymentId}`,
+          });
+        }
+      } catch (emailErr) {
+        console.warn("[asaas-webhook] Aviso ao enviar e-mail de antecipação acumulativa Pro:", emailErr);
+      }
+
       return json({
         received: true,
         event: eventType,
@@ -411,6 +448,7 @@ Deno?.serve?.(async (req: Request) => {
             invoiceValueFormatted: `R$ ${(payment.value || 0).toFixed(2).replace(".", ",")}`,
             invoicePdfUrl: payment.bankSlipUrl || payment.invoiceUrl || undefined,
             appUrl,
+            isFirstActivation: isFirstPaidCharge,
           });
 
           await sendTransactionalEmail(supabase, {

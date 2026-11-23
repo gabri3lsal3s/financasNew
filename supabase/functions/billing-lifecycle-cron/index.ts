@@ -7,7 +7,10 @@ import {
   timingSafeEqualString,
 } from "../_shared/http.ts";
 import { sendTransactionalEmail } from "../_shared/resend.ts";
-import { renderTrialEndingReminderEmail } from "../_shared/email-templates.ts";
+import {
+  renderTrialEndingReminderEmail,
+  renderTrialExpiredReadOnlyEmail,
+} from "../_shared/email-templates.ts";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -162,12 +165,68 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // 4. Notifica usuários cujo período de testes de 30 dias encerrou recentemente (últimas 48h)
+    // e que migraram para Somente Leitura (read_only_expired), garantindo envio único via idempotencyKey.
+    const expiredLookback = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
+    const { data: recentlyExpiredTrials, error: expiredTrialsError } = await supabaseAdmin
+      .from("user_subscriptions")
+      .select("id, user_id, trial_ends_at, trial_consumed_at, profiles!inner(id, email, name, status)")
+      .eq("tier", "read_only")
+      .eq("status", "read_only_expired")
+      .is("billing_start_at", null)
+      .eq("profiles.status", "active")
+      .gte("trial_ends_at", expiredLookback)
+      .lte("trial_ends_at", now.toISOString());
+
+    if (expiredTrialsError) {
+      console.error("[billing-lifecycle-cron] Erro ao buscar trials recém-expirados:", expiredTrialsError);
+    }
+
+    let expiredNoticesSent = 0;
+    for (const sub of recentlyExpiredTrials || []) {
+      const profile = Array.isArray(sub.profiles) ? sub.profiles[0] : sub.profiles;
+      if (!profile?.email) continue;
+
+      try {
+        const emailData = renderTrialExpiredReadOnlyEmail({
+          name: profile.name || "Cliente",
+          reactivateUrl: `${appUrl}/assinatura`,
+        });
+
+        const brtEndKey = sub.trial_ends_at
+          ? new Intl.DateTimeFormat("en-CA", {
+              timeZone: "America/Sao_Paulo",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit",
+            }).format(new Date(sub.trial_ends_at))
+          : "once";
+
+        const result = await sendTransactionalEmail(supabaseAdmin, {
+          to: profile.email,
+          subject: emailData.subject,
+          template: "trial_expired_read_only",
+          html: emailData.html,
+          text: emailData.text,
+          userId: sub.user_id,
+          idempotencyKey: `trial_expired_ro_${sub.user_id}_${brtEndKey}`,
+        });
+
+        if (result.success && !result.skipped) {
+          expiredNoticesSent++;
+        }
+      } catch (err: unknown) {
+        console.warn(`[billing-lifecycle-cron] Falha ao enviar aviso de trial expirado para user ${sub.user_id}:`, err);
+      }
+    }
+
     return jsonResponse(req, {
       success: true,
       timestamp: new Date().toISOString(),
       reconciledSubscriptions: reconciledCount ?? 0,
       resyncedSubscriptions: resyncedCount,
       expiringTrialsNotified: remindersSent,
+      expiredTrialsNotified: expiredNoticesSent,
     });
   } catch (err) {
     return safeErrorResponse(req, 500, "Erro ao processar ciclo de vida de faturamento.", err);

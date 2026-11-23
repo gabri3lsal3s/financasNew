@@ -66,35 +66,4 @@ describe("PositionToolbar", () => {
     // No modo Por Setor, o seletor limpo de setores é exibido sem poluir em múltiplas linhas
     expect(screen.getByLabelText(/Filtrar por setor/i)).toBeInTheDocument();
   });
-
-  it("renderiza os pills de governança progressivos apenas quando há ativos em quarentena ou saída", async () => {
-    const user = userEvent.setup();
-    const onSelectGovernanceFilter = vi.fn();
-    const { rerender } = render(
-      <PositionToolbar
-        {...defaultProps}
-        quarantineCount={0}
-        exitCount={0}
-      />,
-    );
-
-    // Sem ativos em quarentena/saída, não deve renderizar botões de foco
-    expect(screen.queryByText(/Carteira em Aporte/i)).not.toBeInTheDocument();
-
-    // Com ativos em quarentena, divulga progressivamente
-    rerender(
-      <PositionToolbar
-        {...defaultProps}
-        quarantineCount={2}
-        exitCount={1}
-        onSelectGovernanceFilter={onSelectGovernanceFilter}
-      />,
-    );
-
-    expect(screen.getByText(/Carteira em Aporte/i)).toBeInTheDocument();
-    const quarantineBtn = screen.getByRole("button", { name: /Quarentena/i });
-    expect(quarantineBtn).toBeInTheDocument();
-    await user.click(quarantineBtn);
-    expect(onSelectGovernanceFilter).toHaveBeenCalledWith("quarantine");
-  });
 });

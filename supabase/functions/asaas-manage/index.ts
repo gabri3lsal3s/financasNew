@@ -11,7 +11,10 @@ import {
 } from "../_shared/asaas.ts";
 import { buildCorsHeaders, jsonResponse, safeErrorResponse } from "../_shared/http.ts";
 import { sendTransactionalEmail } from "../_shared/resend.ts";
-import { renderSubscriptionCanceledEmail } from "../_shared/email-templates.ts";
+import {
+  renderProPlanChangeScheduledEmail,
+  renderSubscriptionCanceledEmail,
+} from "../_shared/email-templates.ts";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -114,6 +117,40 @@ Deno.serve(async (req: Request) => {
       });
 
       const formattedDate = new Date(userSub.current_period_end).toLocaleDateString("pt-BR");
+
+      // Disparo de e-mail transacional via Resend: Mudança de Ciclo PRO Agendada
+      try {
+        const appUrl = Deno.env.get("PUBLIC_APP_URL") || "https://axir.com.br";
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("name, email")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        const recipientEmail = profile?.email || user.email || "";
+        if (recipientEmail) {
+          const emailData = renderProPlanChangeScheduledEmail({
+            name: profile?.name || user.email?.split("@")[0] || "Cliente",
+            currentPlanName: userSub.tier === "pro_annual" ? "Plano Pro Anual" : "Plano Pro Mensal",
+            targetPlanName: targetPlan === "annual" ? "Plano Pro Anual" : "Plano Pro Mensal",
+            targetPlanValueFormatted: targetPlan === "annual" ? "R$ 143,88/ano" : "R$ 19,99/mês",
+            effectiveDateFormatted: formattedDate,
+            appUrl,
+          });
+          await sendTransactionalEmail(supabase, {
+            to: recipientEmail,
+            subject: emailData.subject,
+            template: "pro_plan_change_scheduled",
+            html: emailData.html,
+            text: emailData.text,
+            userId: user.id,
+            idempotencyKey: `plan_change_${userSub.id}_${targetPlanId}_${new Date().toISOString().slice(0, 10)}`,
+          });
+        }
+      } catch (emailErr) {
+        console.warn("[asaas-manage] Aviso ao enviar e-mail de troca de ciclo agendada:", emailErr);
+      }
+
       return jsonResponse(req, {
         ok: true,
         message: `Sua mudança para o ${targetPlan === "annual" ? "Plano Pro Anual" : "Plano Pro Mensal"} foi agendada para ${formattedDate}. Até lá, seu plano atual continuará ativo.`,

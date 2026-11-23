@@ -114,7 +114,7 @@ export function OnboardingChecklistModal({
               >
                 {meta.label}
               </p>
-              {isOptional ? (
+              {isOptional || step.id === "card" ? (
                 <Badge variant="muted" size="xs" className="shrink-0">
                   Opcional
                 </Badge>

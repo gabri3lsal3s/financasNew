@@ -12,6 +12,7 @@ export interface SendEmailOptions {
   template: string;
   html: string;
   text?: string;
+  replyTo?: string;
   userId?: string | null;
   idempotencyKey?: string | null;
   metadata?: Record<string, unknown>;
@@ -31,7 +32,12 @@ export function getResendApiKey(): string | null {
 
 export function getResendFromEmail(): string {
   const from = Deno.env.get("RESEND_FROM_EMAIL");
-  return from && from.trim().length > 0 ? from.trim() : "Axir <noreply@axir.com.br>";
+  return from && from.trim().length > 0 ? from.trim() : "Axir <nao-responda@axir.com.br>";
+}
+
+export function getResendReplyToEmail(): string {
+  const replyTo = Deno.env.get("RESEND_REPLY_TO_EMAIL");
+  return replyTo && replyTo.trim().length > 0 ? replyTo.trim() : "suporte@axir.com.br";
 }
 
 async function upsertEmailLog(
@@ -116,6 +122,7 @@ export async function sendTransactionalEmail(
 
   // 3. Execução do disparo via API HTTP do Resend com Idempotency-Key nativo
   const fromEmail = getResendFromEmail();
+  const replyToEmail = options.replyTo?.trim() || getResendReplyToEmail();
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
@@ -128,6 +135,7 @@ export async function sendTransactionalEmail(
       body: JSON.stringify({
         from: fromEmail,
         to: [cleanTo],
+        reply_to: replyToEmail,
         subject: options.subject,
         html: options.html,
         text: options.text || undefined,

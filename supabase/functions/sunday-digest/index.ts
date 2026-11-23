@@ -142,6 +142,25 @@ Deno.serve(async (req: Request) => {
       activeProfiles.push(...((batchProfiles ?? []) as ProfileRow[]));
     }
 
+    // Identifica quais usuários ativos são assinantes PRO/Vitalícios para aplicar a identidade Ouro Âmbar PRO no e-mail
+    const proSubscriberIds = new Set<string>();
+    const activeProfileIds = activeProfiles.map((p) => p.id);
+    for (let i = 0; i < activeProfileIds.length; i += 250) {
+      const chunkIds = activeProfileIds.slice(i, i + 250);
+      const { data: batchSubs } = await supabaseAdmin
+        .from("user_subscriptions")
+        .select("user_id, tier, status")
+        .in("user_id", chunkIds);
+
+      for (const sub of (batchSubs ?? []) as Array<{ user_id: string; tier?: string; status?: string }>) {
+        const isProTier = sub.tier === "pro_monthly" || sub.tier === "pro_annual" || sub.tier === "lifetime";
+        const isValidStatus = sub.status === "active" || sub.status === "past_due";
+        if (isProTier && isValidStatus) {
+          proSubscriberIds.add(sub.user_id);
+        }
+      }
+    }
+
     const prefMap = new Map(eligiblePrefs.map((p) => [p.user_id, p]));
     const now = new Date();
     const todayIso = getSaoPauloDateString(now);
@@ -257,6 +276,8 @@ Deno.serve(async (req: Request) => {
         0,
       );
 
+      const isUserPro = proSubscriberIds.has(profile.id);
+
       const emailData = renderSundayDigestEmail({
         name: profile.name || "Cliente",
         periodLabel,
@@ -271,6 +292,7 @@ Deno.serve(async (req: Request) => {
         upcomingTotalBRL: formatCentsPtBr(upcomingTotalCents),
         appUrl,
         managePrefsUrl: `${appUrl}/configuracoes?tab=notifications`,
+        isPro: isUserPro,
       });
 
       const emailResult = await sendTransactionalEmail(supabaseAdmin, {

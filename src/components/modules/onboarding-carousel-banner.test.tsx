@@ -25,7 +25,7 @@ describe("OnboardingCarouselBanner — Fase 2 no Carrossel da Home", () => {
     );
 
     expect(screen.getByText("Primeiros passos no Axir")).toBeInTheDocument();
-    expect(screen.getByText("1/3 concluídos")).toBeInTheDocument();
+    expect(screen.getByText("1/2 concluídos")).toBeInTheDocument();
     expect(screen.getByText(/Próximo passo: Registrar primeiro lançamento/i)).toBeInTheDocument();
   });
 

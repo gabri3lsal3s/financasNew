@@ -16,7 +16,6 @@ export function usePositionTableState(rows: readonly PositionRow[], highlightId?
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
-  const [governanceFilter, setGovernanceFilter] = useState<"all" | "core" | "quarantine" | "exit">("core");
   const [quarantineSectionOpen, setQuarantineSectionOpen] = useState(false);
   const [exitSectionOpen, setExitSectionOpen] = useState(false);
   const [groupBy, setGroupBy] = useState<"class" | "sector">("class");
@@ -46,17 +45,10 @@ export function usePositionTableState(rows: readonly PositionRow[], highlightId?
     [activeRows],
   );
 
-  const displaySourceRows = useMemo(() => {
-    let source = activeRows;
-    if (governanceFilter === "core") {
-      source = coreRows;
-    } else if (governanceFilter === "quarantine") {
-      source = quarantineRows;
-    } else if (governanceFilter === "exit") {
-      source = exitRows;
-    }
-    return hideClosed ? source : effectiveRows;
-  }, [activeRows, coreRows, quarantineRows, exitRows, governanceFilter, hideClosed, effectiveRows]);
+  const displaySourceRows = useMemo(
+    () => (hideClosed ? coreRows : effectiveRows),
+    [coreRows, hideClosed, effectiveRows],
+  );
 
   useEffect(() => {
     if (!highlightId) return;
@@ -168,15 +160,13 @@ export function usePositionTableState(rows: readonly PositionRow[], highlightId?
     setSearch("");
     setSelectedClass(null);
     setSelectedSector(null);
-    setGovernanceFilter("core");
     setPage(1);
   };
 
   const hasFiltersActive =
     search.trim() !== "" ||
     selectedClass !== null ||
-    effectiveSelectedSector !== null ||
-    governanceFilter !== "core";
+    effectiveSelectedSector !== null;
 
   return {
     sort,
@@ -213,11 +203,6 @@ export function usePositionTableState(rows: readonly PositionRow[], highlightId?
     toggleExpandAll,
     areAllExpanded,
     clearFilters,
-    governanceFilter,
-    setGovernanceFilter: (status: "all" | "core" | "quarantine" | "exit") => {
-      setGovernanceFilter(status);
-      setPage(1);
-    },
     quarantineRows,
     exitRows,
     quarantineSectionOpen,

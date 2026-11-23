@@ -105,7 +105,7 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
       try {
         updateCustomSettingsMutation.mutate({
           initialGoal: goal,
-          ...(goal === "family" ? { familyModeEnabled: true } : {}),
+          familyModeEnabled: true,
         });
       } catch {
         // Falha silenciosa caso offline

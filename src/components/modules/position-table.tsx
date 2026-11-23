@@ -140,10 +140,6 @@ export function PositionTable({
           isGroupedMode={state.isGroupedMode}
           areAllExpanded={state.areAllExpanded}
           onToggleExpandAll={state.toggleExpandAll}
-          quarantineCount={state.quarantineRows.length}
-          exitCount={state.exitRows.length}
-          governanceFilter={state.governanceFilter}
-          onSelectGovernanceFilter={state.setGovernanceFilter}
         />
       ) : null}
 
@@ -211,26 +207,22 @@ export function PositionTable({
         />
       ) : null}
 
-      {state.governanceFilter === "core" ? (
-        <>
-          <PositionGovernanceSection
-            mode="quarantine"
-            rows={state.quarantineRows}
-            isOpen={state.quarantineSectionOpen}
-            onToggle={state.toggleQuarantineSection}
-            onOpen={handleOpen}
-            onEvaluateScore={onEvaluateScore}
-          />
-          <PositionGovernanceSection
-            mode="exit"
-            rows={state.exitRows}
-            isOpen={state.exitSectionOpen}
-            onToggle={state.toggleExitSection}
-            onOpen={handleOpen}
-            onEvaluateScore={onEvaluateScore}
-          />
-        </>
-      ) : null}
+      <PositionGovernanceSection
+        mode="quarantine"
+        rows={state.quarantineRows}
+        isOpen={state.quarantineSectionOpen}
+        onToggle={state.toggleQuarantineSection}
+        onOpen={handleOpen}
+        onEvaluateScore={onEvaluateScore}
+      />
+      <PositionGovernanceSection
+        mode="exit"
+        rows={state.exitRows}
+        isOpen={state.exitSectionOpen}
+        onToggle={state.toggleExitSection}
+        onOpen={handleOpen}
+        onEvaluateScore={onEvaluateScore}
+      />
 
       {state.hideClosed ? (
         <PositionClosedSection

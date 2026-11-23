@@ -101,26 +101,26 @@ export function LogoProfileButton({
         open={open}
         onOpenChange={setOpen}
         title="Minha Conta"
-        size="sm"
+        size="lg"
         footer={
-          <div className="flex flex-col gap-2 w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
             <Button
               type="button"
               variant="ghost"
               sensoryIntent="destructive"
-              className="w-full justify-start gap-2.5 text-critical-strong hover:text-critical-strong hover:bg-critical/10 text-xs"
+              className="w-full sm:w-auto justify-start gap-2.5 text-critical-strong hover:text-critical-strong hover:bg-critical/10 text-xs sm:text-sm"
               onClick={handleLogout}
             >
               <LogOut className="size-4 shrink-0" aria-hidden="true" />
               <span>Sair da Conta</span>
             </Button>
-            <p className="text-[10px] text-muted-foreground/70 text-center select-none">
+            <p className="text-[11px] text-muted-foreground/70 text-center sm:text-right select-none">
               {AXIR_APP_NAME} - v{AXIR_APP_VERSION}
             </p>
           </div>
         }
       >
-        <div className="space-y-4 pt-1">
+        <div className="space-y-4 sm:space-y-5 pt-1">
           <ProfileIdentityHeader
             initials={initials}
             displayName={displayName}
