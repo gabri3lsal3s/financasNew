@@ -1,12 +1,18 @@
 import { useCallback, useContext } from "react";
 import { QueryClientContext } from "@tanstack/react-query";
 import { getSupabase } from "@/data/client";
-import { deactivatePushSubscriptionByEndpoint } from "@/data/repositories/push-subscriptions";
+import {
+  deactivatePushSubscriptionByEndpoint,
+  deactivatePushSubscriptionByFcmToken,
+} from "@/data/repositories/push-subscriptions";
 import { resetAppState } from "@/services/auth-cleanup";
 import { clearNativeBankMonitoring } from "@/services/native/bank-listener";
 import { clearDeviceSessionSync } from "@/services/native/device-info";
 import { cancelDailyReminder, clearAllDueNotifications } from "@/services/native/local-notifications";
-import { unsubscribeBrowserWebPush } from "@/services/push/web-push";
+import {
+  unsubscribeBrowserWebPush,
+  unregisterNativeFcmPush,
+} from "@/services/push";
 import { getActiveUserId } from "@/services/user-storage";
 
 export interface SignOutOptions {
@@ -35,11 +41,20 @@ export function useSignOut() {
       const previousUserId = getActiveUserId();
       clearDeviceSessionSync();
 
-      // Remove assinatura Web Push do navegador e desativa no backend enquanto o JWT ainda está válido
+      // Remove assinaturas Web Push e FCM nativo do dispositivo enquanto o JWT ainda está válido
       try {
         const { endpoint } = await unsubscribeBrowserWebPush();
         if (endpoint) {
           await deactivatePushSubscriptionByEndpoint(endpoint);
+        }
+      } catch {
+        // Não bloqueia logout em caso de falha de rede ou ausência de suporte
+      }
+
+      try {
+        const { token } = await unregisterNativeFcmPush(previousUserId);
+        if (token) {
+          await deactivatePushSubscriptionByFcmToken(token);
         }
       } catch {
         // Não bloqueia logout em caso de falha de rede ou ausência de suporte

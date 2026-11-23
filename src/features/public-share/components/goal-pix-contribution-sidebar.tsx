@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, CheckCircle2, Copy, QrCode } from "lucide-react";
+import { PixTroubleshootAccordion } from "@/components/modules";
 import {
   Badge,
   Button,
@@ -9,19 +10,17 @@ import {
   CardTitle,
   QrCodeCanvas,
 } from "@/components/ui";
+import {
+  DEFAULT_PIX_CITY,
+  buildPixTransferCode,
+  formatPixKeyTypeLabel,
+  validatePixBrCode,
+  type PixKeyType,
+} from "@/domain/pix";
+import { copyTextToClipboard } from "@/services/export-actions";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { SharedGoalTrackerResult } from "@/types";
-
-const PIX_KEY_TYPE_LABELS: Record<string, string> = {
-  cpf: "CPF",
-  cnpj: "CNPJ",
-  email: "E-mail",
-  phone: "Celular",
-  random: "Chave Aleatória (EVP)",
-  auto: "Chave Pix",
-  unknown: "Chave Pix",
-};
 
 export interface GoalPixContributionSidebarProps {
   goalData: SharedGoalTrackerResult;
@@ -46,6 +45,31 @@ export function GoalPixContributionSidebar({ goalData }: GoalPixContributionSide
     };
   }, []);
 
+  const effectivePixBrCode = useMemo(() => {
+    const rawKey = goalData.pix_key?.trim() ?? "";
+    const fallbackBrCode =
+      goalData.pix_br_code?.trim() && validatePixBrCode(goalData.pix_br_code.trim())
+        ? goalData.pix_br_code.trim()
+        : "";
+    if (!rawKey) return fallbackBrCode;
+    const regenerated = buildPixTransferCode({
+      pixKey: rawKey,
+      keyType: goalData.pix_key_type as PixKeyType | "auto" | "unknown" | undefined,
+      merchantName: goalData.organizer_name || "Organizador",
+      merchantCity: goalData.organizer_city || DEFAULT_PIX_CITY,
+      txId: "***",
+      defaultMerchantName: "Organizador",
+      defaultMerchantCity: DEFAULT_PIX_CITY,
+    });
+    return regenerated || fallbackBrCode;
+  }, [
+    goalData.pix_key,
+    goalData.pix_key_type,
+    goalData.organizer_name,
+    goalData.organizer_city,
+    goalData.pix_br_code,
+  ]);
+
   if (goalData.status === "archived") {
     return (
       <Card className="border-border/80 bg-surface shadow-xs text-center p-6 sm:p-8 space-y-3">
@@ -64,14 +88,13 @@ export function GoalPixContributionSidebar({ goalData }: GoalPixContributionSide
     );
   }
 
-  const handleCopyPix = async () => {
-    const pixToCopy = goalData.pix_br_code?.trim() || goalData.pix_key?.trim();
-    if (!pixToCopy) return;
+  const pixCopyTarget = (effectivePixBrCode || goalData.pix_key?.trim() || "").trim();
 
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(pixToCopy);
-      }
+  const handleCopyPix = async () => {
+    if (!pixCopyTarget) return;
+
+    const copied = await copyTextToClipboard(pixCopyTarget);
+    if (copied) {
       setCopiedPix(true);
       triggerSensory("success");
       pushToast({
@@ -81,7 +104,7 @@ export function GoalPixContributionSidebar({ goalData }: GoalPixContributionSide
       });
       if (pixTimeoutRef.current) clearTimeout(pixTimeoutRef.current);
       pixTimeoutRef.current = setTimeout(() => setCopiedPix(false), 3000);
-    } catch {
+    } else {
       triggerSensory("destructive");
       pushToast({
         title: "Não foi possível copiar o Pix",
@@ -92,11 +115,10 @@ export function GoalPixContributionSidebar({ goalData }: GoalPixContributionSide
   };
 
   const handleCopyKey = async () => {
-    if (!goalData.pix_key) return;
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(goalData.pix_key.trim());
-      }
+    const cleanKey = goalData.pix_key?.trim();
+    if (!cleanKey) return;
+    const copied = await copyTextToClipboard(cleanKey);
+    if (copied) {
       setCopiedKey(true);
       triggerSensory("success");
       pushToast({
@@ -106,7 +128,7 @@ export function GoalPixContributionSidebar({ goalData }: GoalPixContributionSide
       });
       if (keyTimeoutRef.current) clearTimeout(keyTimeoutRef.current);
       keyTimeoutRef.current = setTimeout(() => setCopiedKey(false), 3000);
-    } catch {
+    } else {
       triggerSensory("destructive");
       pushToast({
         title: "Não foi possível copiar a chave",
@@ -121,7 +143,7 @@ export function GoalPixContributionSidebar({ goalData }: GoalPixContributionSide
         <CardTitle className="text-base flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
           <span>Contribua com a Meta via Pix</span>
           <Badge variant="muted" size="xs">
-            {PIX_KEY_TYPE_LABELS[goalData.pix_key_type] ?? "Chave Pix"}
+            {formatPixKeyTypeLabel(goalData.pix_key_type)}
           </Badge>
         </CardTitle>
         <p className="text-xs text-muted-foreground">
@@ -206,14 +228,21 @@ export function GoalPixContributionSidebar({ goalData }: GoalPixContributionSide
           {showQrCode && (
             <div className="flex flex-col items-center justify-center p-4 bg-surface-raised rounded-xl border border-border/80 space-y-2.5">
               <QrCodeCanvas
-                text={goalData.pix_br_code?.trim() || goalData.pix_key?.trim()}
-                size={180}
+                text={pixCopyTarget}
+                size={200}
               />
               <p className="text-[11px] text-muted-foreground text-center max-w-xs">
                 Abra o aplicativo do seu banco no celular e escaneie o código QR acima para transferir.
               </p>
             </div>
           )}
+
+          <PixTroubleshootAccordion
+            pixBrCode={effectivePixBrCode}
+            pixKey={goalData.pix_key}
+            pixKeyType={goalData.pix_key_type}
+            onCopyPixKey={goalData.pix_key ? () => void handleCopyKey() : undefined}
+          />
         </div>
       </CardContent>
     </Card>

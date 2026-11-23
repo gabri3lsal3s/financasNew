@@ -36,6 +36,12 @@ if [ -z "${STORE_PASS}" ]; then
   exit 1
 fi
 
+if [ "${STORE_PASS}" = "guiafinanceiro123" ] || [ "${KEY_PASS}" = "guiafinanceiro123" ]; then
+  echo "ERRO DE SEGURANCA: KEYSTORE_PASSWORD/KEY_PASSWORD utiliza senha padrao antiga revogada."
+  echo "Altere a senha da keystore e configure um segredo forte no .env.local."
+  exit 1
+fi
+
 # 1. Configuração do JDK compatível (prioriza JDK 21 LTS se instalado)
 if [ -d "${HOME}/.local/share/jvm/jdk-21" ]; then
   export JAVA_HOME="${HOME}/.local/share/jvm/jdk-21"
@@ -163,12 +169,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Auditoria Completa, Hardening de Seguranca/Privacidade e Padronizacao do Ecossistema de Notificacoes",
-    "Notification Hub Unificado: paridade entre Sininho, Popover, Sidebar, BottomNav e Central de Lembretes com calibracao P0 a P3",
-    "Seguranca & Privacidade (Migration 0138): FORCE RLS, revogacao de acesso anon em RPCs de broadcast e limpeza de sessao/push no logout",
-    "Push Hibrido & Resumo Dominical Opt-In: respeito ao Horario Silencioso na Web/Android, persistencia de snooze e deduplicacao idempotente",
-    "Carrossel Unificado & Prominent Disclosure: dispensa padronizada 7d/30d, opt-in explicito do Assistente Bancario e zero whack-a-mole",
-    "Padronizacao UI/UX: zero truncamento em valores monetarios, virgula decimal pt-BR, Toast Undo de 5s estavel e zero emojis"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Push Remoto Android FCM, Hardening de Seguranca 0139/0140, Webhook de Suporte e Melhorias Pix",
+    "Push Remoto Nativo Android (FCM): opt-in nas configuracoes, canal padrao due_reminders, roteamento por deep-link e limpeza no logout",
+    "Seguranca e Privacidade (Migrations 0139 e 0140): endurecimento RLS/triggers, MFA AAL2 admin, protecao de keystore e webhook de suporte com deduplicacao atomica",
+    "Pix e Financas Compartilhadas: diagnostico aprimorado de chaves Pix, validacao de destinatario e maior confiabilidade em Rachas, Metas, Familia e Viagens",
+    "Infraestrutura de Producao: Cloudflare Workers com VAPID ativo, SSL Full (strict), Resend verificado, crons pg_cron/pg_net e FCM HTTP v1"
   ]
 }
 EOF

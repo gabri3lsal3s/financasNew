@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   deactivateAllMyPushSubscriptions,
   deactivatePushSubscriptionByEndpoint,
+  deactivatePushSubscriptionByFcmToken,
   listMyPushSubscriptions,
   upsertFcmPushSubscription,
   upsertWebPushSubscription,
@@ -100,12 +101,18 @@ describe("push-subscriptions repository", () => {
   });
 
   it("desativa assinatura específica e todas as assinaturas do usuário", async () => {
-    mockEqUpdateSecond.mockResolvedValueOnce({ error: null }).mockResolvedValueOnce({ error: null });
+    mockEqUpdateSecond
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: null });
 
     await deactivatePushSubscriptionByEndpoint("https://push.example/1");
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ is_active: false }));
     expect(mockEqUpdateFirst).toHaveBeenCalledWith("user_id", "user-1");
     expect(mockEqUpdateSecond).toHaveBeenCalledWith("endpoint", "https://push.example/1");
+
+    await deactivatePushSubscriptionByFcmToken("fcm-tok-123");
+    expect(mockEqUpdateSecond).toHaveBeenCalledWith("fcm_token", "fcm-tok-123");
 
     await deactivateAllMyPushSubscriptions();
     expect(mockEqUpdateSecond).toHaveBeenCalledWith("is_active", true);

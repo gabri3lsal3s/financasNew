@@ -1,4 +1,5 @@
 import { Lock, UserPlus } from "lucide-react";
+import { PixKeyInputFields } from "@/components/modules";
 import {
   Badge,
   Button,
@@ -8,18 +9,9 @@ import {
   CardTitle,
   FormField,
   Input,
-  Select,
-  type SelectOption,
 } from "@/components/ui";
-import type { FamilyPixKeyType } from "@/types";
+import type { PixKeyType } from "@/domain/pix";
 import { FamilyInviteShell } from "./family-invite-shell";
-
-const PIX_KEY_OPTIONS: SelectOption[] = [
-  { value: "cpf", label: "CPF" },
-  { value: "email", label: "E-mail" },
-  { value: "phone", label: "Telefone Celular" },
-  { value: "random", label: "Chave Aleatória" },
-];
 
 export interface FamilyInviteAcceptFormProps {
   token?: string;
@@ -29,8 +21,13 @@ export interface FamilyInviteAcceptFormProps {
   onDisplayNameChange: (val: string) => void;
   pixKey: string;
   onPixKeyChange: (val: string) => void;
-  pixKeyType: FamilyPixKeyType;
-  onPixKeyTypeChange: (val: FamilyPixKeyType) => void;
+  pixKeyType: string;
+  onPixKeyTypeChange: (val: string) => void;
+  detectedPixType?: PixKeyType | null;
+  pixValidationError?: string | null;
+  isAmbiguousCpfOrPhone?: boolean;
+  hasInvalidPix?: boolean;
+  onQuickSelectKeyType?: (type: "phone" | "cpf") => void;
   isPending: boolean;
   onSubmit: () => void;
 }
@@ -45,6 +42,11 @@ export function FamilyInviteAcceptForm({
   onPixKeyChange,
   pixKeyType,
   onPixKeyTypeChange,
+  detectedPixType = null,
+  pixValidationError = null,
+  isAmbiguousCpfOrPhone = false,
+  hasInvalidPix = false,
+  onQuickSelectKeyType,
   isPending,
   onSubmit,
 }: FamilyInviteAcceptFormProps) {
@@ -94,34 +96,27 @@ export function FamilyInviteAcceptForm({
             />
           </FormField>
 
-          <div className="space-y-1.5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <FormField label="Chave Pix" optional htmlFor="family-pix-key">
-                <Input
-                  id="family-pix-key"
-                  value={pixKey}
-                  onChange={(e) => onPixKeyChange(e.target.value)}
-                  placeholder="Ex: seu-pix@email.com"
-                  maxLength={80}
-                  className="font-mono text-base sm:text-sm"
-                />
-              </FormField>
-
-              <FormField label="Tipo da Chave Pix" optional htmlFor="family-pix-type">
-                <Select
-                  id="family-pix-type"
-                  value={pixKeyType}
-                  onValueChange={(val) => onPixKeyTypeChange(val as FamilyPixKeyType)}
-                  options={PIX_KEY_OPTIONS}
-                  ariaLabel="Tipo de Chave Pix"
-                />
-              </FormField>
-            </div>
-            <span className="text-[11px] text-muted-foreground block">
-              Sua chave Pix permite que seu parceiro realize o acerto do mês diretamente pelo
-              app com 1 toque.
-            </span>
-          </div>
+          <PixKeyInputFields
+            pixKey={pixKey}
+            onPixKeyChange={onPixKeyChange}
+            selectedKeyType={pixKeyType}
+            onSelectedKeyTypeChange={onPixKeyTypeChange}
+            detectedType={detectedPixType}
+            validationError={pixValidationError}
+            isAmbiguousCpfOrPhone={isAmbiguousCpfOrPhone}
+            onQuickSelectKeyType={onQuickSelectKeyType}
+            allowCnpj={false}
+            pixKeyId="family-pix-key"
+            keyTypeId="family-pix-type"
+            pixKeyLabel="Chave Pix (opcional)"
+            pixKeyAriaLabel="Chave Pix (opcional)"
+            pixKeyPlaceholder="Ex: seu-pix@email.com"
+            pixKeyHelperText="Permite que seu parceiro realize o acerto do mês diretamente pelo app com 1 toque."
+            keyTypeLabel="Tipo da Chave Pix"
+            keyTypeAriaLabel="Tipo de Chave Pix"
+            showBankRegistrationNotice={true}
+            showVerificationBadge={true}
+          />
         </CardContent>
 
         <div className="pt-1">
@@ -131,7 +126,7 @@ export function FamilyInviteAcceptForm({
             size="lg"
             sensoryIntent={false}
             loading={isPending}
-            disabled={isPending}
+            disabled={hasInvalidPix || isPending}
             onClick={onSubmit}
             className="w-full gap-2 shadow-xs"
           >

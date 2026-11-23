@@ -1,6 +1,7 @@
 import { Check, Copy, QrCode } from "lucide-react";
+import { PixTroubleshootAccordion } from "@/components/modules";
 import { Button, MoneyText, QrCodeCanvas } from "@/components/ui";
-import { buildPixTransferCode } from "@/domain/pix";
+import { DEFAULT_PIX_CITY, buildPixTransferCode, formatPixKeyTypeLabel } from "@/domain/pix";
 import type { SuggestedSettlement } from "@/types/trips";
 
 export interface TripPixPaymentPanelProps {
@@ -30,38 +31,30 @@ export function TripPixPaymentPanel({
 }: TripPixPaymentPanelProps) {
   if (!settlement.toPixKey) return null;
 
-  const cleanTitle = (tripTitle || "Viagem")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9 ]/g, "")
-    .trim()
-    .slice(0, 16);
-
-  const txSuffix = `${settlement.fromMemberId.slice(0, 4)}${settlement.toMemberId.slice(0, 4)}`
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .toUpperCase();
-
+  const rawKey = settlement.toPixKey.trim();
   const pixBrCode = buildPixTransferCode({
-    pixKey: settlement.toPixKey,
+    pixKey: rawKey,
     keyType: settlement.toPixKeyType ?? "auto",
     merchantName: settlement.toMemberName || "Recebedor",
-    merchantCity: destination || "BRASIL",
+    merchantCity: destination || DEFAULT_PIX_CITY,
     amountCents: settlement.amountCents,
-    txId: `TRIP${txSuffix}`.slice(0, 25),
-    infoAdicional: `Acerto: ${cleanTitle}`.slice(0, 25),
+    txId: "***",
+    infoAdicional: `Acerto ${tripTitle || "Viagem"}`,
+    defaultMerchantName: "Recebedor",
+    defaultMerchantCity: DEFAULT_PIX_CITY,
   });
 
-  const codeToCopy = pixBrCode || settlement.toPixKey;
+  const codeToCopy = (pixBrCode || rawKey).trim();
 
   return (
     <div className="bg-surface-raised p-2.5 rounded-xl border border-border/80 space-y-2">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
         <div className="min-w-0 truncate">
           <span className="text-[11px] text-muted-foreground block">
-            Chave Pix ({settlement.toPixKeyType ?? "Pix"}):
+            Chave Pix ({settlement.toPixKeyType ? formatPixKeyTypeLabel(settlement.toPixKeyType) : "Pix"}):
           </span>
           <span className="font-mono text-xs text-foreground truncate block font-medium">
-            {settlement.toPixKey}
+            {rawKey}
           </span>
         </div>
 
@@ -110,11 +103,11 @@ export function TripPixPaymentPanel({
             size="sm"
             variant="ghost"
             sensoryIntent={false}
-            onClick={() => onCopyRawPixKey(settlement.toPixKey!)}
+            onClick={() => onCopyRawPixKey(rawKey)}
             className="text-muted-foreground px-2"
             title="Copiar apenas a chave Pix (sem valor)"
           >
-            {copiedKey === settlement.toPixKey ? "Chave copiada" : "Só a chave"}
+            {copiedKey === rawKey || copiedKey === settlement.toPixKey ? "Chave copiada" : "Só a chave"}
           </Button>
         </div>
       </div>
@@ -125,18 +118,25 @@ export function TripPixPaymentPanel({
             Aponte a câmera do aplicativo bancário para pagar o valor exato de{" "}
             <MoneyText cents={settlement.amountCents} tone="default" variant="caption" className="font-bold text-foreground" />:
           </p>
-          <div className="p-2 rounded-xl border border-border/80 bg-background/80 shadow-xs">
-            <QrCodeCanvas
-              text={pixBrCode}
-              size={160}
-              label={`QR Code Pix para ${settlement.toMemberName}`}
-            />
-          </div>
+          <QrCodeCanvas
+            text={pixBrCode}
+            size={200}
+            label={`QR Code Pix para ${settlement.toMemberName}`}
+          />
           <p className="text-[11px] text-muted-foreground">
             Beneficiário: <span className="font-medium text-foreground">{settlement.toMemberName}</span>
           </p>
         </div>
       )}
+
+      {isQrOpen || !pixBrCode ? (
+        <PixTroubleshootAccordion
+          pixBrCode={pixBrCode}
+          pixKey={rawKey}
+          pixKeyType={settlement.toPixKeyType}
+          onCopyPixKey={() => onCopyRawPixKey(rawKey)}
+        />
+      ) : null}
     </div>
   );
 }

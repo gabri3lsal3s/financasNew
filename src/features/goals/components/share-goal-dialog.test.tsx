@@ -1,5 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { decodePixBrCode, validatePixBrCode } from "@/domain/pix";
+import { storeSplitPreferences } from "@/services/split-preferences";
 import { ShareGoalDialog } from "./share-goal-dialog";
 import type { Category, PublicShare } from "@/types";
 
@@ -26,7 +28,7 @@ vi.mock("@/state/queries/use-user-access", () => ({
   useUserAccess: () => ({
     profile: {
       name: "Gabriel Sales",
-      cpf: "123.456.789-00",
+      cpf: "52998224725",
       email: "gabriel@axis.app",
     },
   }),
@@ -39,37 +41,48 @@ vi.mock("@/state/queries/use-public-shares", () => ({
   }),
 }));
 
-vi.mock("@/state/mutations/use-public-share-mutations", () => ({
-  useCreatePublicShare: () => ({
-    mutateAsync: mutateAsyncCreateMock,
-    isPending: false,
-  }),
-  useUpdatePublicShare: () => ({
-    mutateAsync: mutateAsyncUpdateMock,
-    isPending: false,
-  }),
-  useRevokePublicShare: () => ({
-    mutateAsync: mutateAsyncRevokeMock,
-    isPending: false,
-  }),
-  useRestorePublicShare: () => ({
-    mutateAsync: mutateAsyncRestoreMock,
-    isPending: false,
-  }),
-  useDeletePublicShare: () => ({
-    mutateAsync: mutateAsyncDeleteMock,
-    isPending: false,
-  }),
-  useRegeneratePublicShare: () => ({
-    mutateAsync: mutateAsyncRegenerateMock,
-    isPending: false,
-  }),
-}));
+vi.mock("@/state/mutations/use-public-share-mutations", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/state/mutations/use-public-share-mutations")>();
+  return {
+    ...actual,
+    useCreatePublicShare: () => ({
+      mutateAsync: mutateAsyncCreateMock,
+      isPending: false,
+    }),
+    useUpdatePublicShare: () => ({
+      mutateAsync: mutateAsyncUpdateMock,
+      isPending: false,
+    }),
+    useRevokePublicShare: () => ({
+      mutateAsync: mutateAsyncRevokeMock,
+      isPending: false,
+    }),
+    useRestorePublicShare: () => ({
+      mutateAsync: mutateAsyncRestoreMock,
+      isPending: false,
+    }),
+    useDeletePublicShare: () => ({
+      mutateAsync: mutateAsyncDeleteMock,
+      isPending: false,
+    }),
+    useRegeneratePublicShare: () => ({
+      mutateAsync: mutateAsyncRegenerateMock,
+      isPending: false,
+    }),
+  };
+});
 
 describe("ShareGoalDialog", () => {
   const originalClipboard = navigator.clipboard;
 
   beforeEach(() => {
+    localStorage.clear();
+    storeSplitPreferences({
+      pixKey: "",
+      pixKeyType: "auto",
+      merchantName: "",
+      merchantCity: "",
+    });
     vi.clearAllMocks();
     mockMyShares = [];
     Object.defineProperty(navigator, "clipboard", {
@@ -87,7 +100,7 @@ describe("ShareGoalDialog", () => {
     });
   });
 
-  it("renderiza formulário de criação com campos pré-preenchidos a partir do perfil e meta", () => {
+  it("renderiza formulário de criação sem auto-fill silencioso de perfil e com aviso + chips explícitos", () => {
     render(
       <ShareGoalDialog
         open={true}
@@ -101,11 +114,20 @@ describe("ShareGoalDialog", () => {
 
     expect(screen.getByText("Compartilhar Progresso da Meta")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Viagem de Fim de Ano")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("123.456.789-00")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Gabriel Sales")).toBeInTheDocument();
+    expect(screen.getByLabelText("Chave Pix do Organizador")).toHaveValue("");
     expect(
-      screen.getByRole("button", { name: /Gerar Termômetro Público & Copiar Link/ }),
+      screen.getByText(/Informe apenas uma chave Pix já cadastrada e ativa no seu banco/i),
     ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Gabriel Sales")).toBeInTheDocument();
+
+    const submitBtn = screen.getByRole("button", {
+      name: /Gerar Termômetro Público & Copiar Link/,
+    });
+    expect(submitBtn).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Usar meu CPF" }));
+    expect(screen.getByLabelText("Chave Pix do Organizador")).toHaveValue("52998224725");
+    expect(submitBtn).not.toBeDisabled();
   });
 
   it("gera o termômetro público com chave Pix BACEN e copia o link gerado", async () => {
@@ -127,6 +149,8 @@ describe("ShareGoalDialog", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Usar meu CPF" }));
+
     const submitBtn = screen.getByRole("button", {
       name: /Gerar Termômetro Público & Copiar Link/,
     });
@@ -141,7 +165,8 @@ describe("ShareGoalDialog", () => {
     expect(createArg.payload.title).toBe("Viagem de Fim de Ano");
     expect(createArg.payload.category_id).toBe("cat-1");
     expect(createArg.payload.target_cents).toBe(500000);
-    expect(createArg.payload.pix_key).toBe("123.456.789-00");
+    expect(createArg.payload.pix_key).toBe("52998224725");
+    expect(createArg.payload.pix_key_type).toBe("cpf");
     expect(createArg.payload.pix_br_code).toContain("000201"); // Prefixo BACEN EMV
 
     await waitFor(() => {
@@ -149,6 +174,28 @@ describe("ShareGoalDialog", () => {
         expect.stringContaining("/meta/gt_token123"),
       );
     });
+  });
+
+  it("bloqueia criação quando a chave Pix digitada é inválida", () => {
+    render(
+      <ShareGoalDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        category={mockCategory}
+        month="2026-11"
+        currentExpectedCents={500000}
+        currentRealizedCents={250000}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Chave Pix do Organizador"), {
+      target: { value: "12345678900" },
+    });
+
+    expect(screen.getByText(/INVÁLIDA/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Gerar Termômetro Público & Copiar Link/ }),
+    ).toBeDisabled();
   });
 
   it("exibe informações do link ativo, botão de cópia e ações quando o compartilhamento já existe", async () => {
@@ -163,7 +210,7 @@ describe("ShareGoalDialog", () => {
           title: "Viagem Coletiva 2026",
           target_cents: 800000,
           current_cents: 400000,
-          pix_key: "123.456.789-00",
+          pix_key: "52998224725",
           pix_br_code: "000201...",
         },
         created_at: "2026-11-01T00:00:00Z",
@@ -209,7 +256,7 @@ describe("ShareGoalDialog", () => {
           category_id: "cat-1",
           title: "Meta para Revogar",
           target_cents: 300000,
-          pix_key: "123.456.789-00",
+          pix_key: "52998224725",
         },
         created_at: "2026-11-01T00:00:00Z",
         expires_at: "2026-12-01T00:00:00Z",
@@ -255,7 +302,7 @@ describe("ShareGoalDialog", () => {
         payload: {
           title: "Meta para Excluir",
           target_cents: 500000,
-          pix_key: "123.456.789-00",
+          pix_key: "52998224725",
         },
         created_at: "2026-11-01T00:00:00Z",
         expires_at: "2026-12-01T00:00:00Z",
@@ -296,7 +343,7 @@ describe("ShareGoalDialog", () => {
         payload: {
           title: "Meta Pausada",
           target_cents: 500000,
-          pix_key: "123.456.789-00",
+          pix_key: "52998224725",
         },
         created_at: "2026-11-01T00:00:00Z",
         expires_at: "2026-12-01T00:00:00Z",
@@ -337,7 +384,7 @@ describe("ShareGoalDialog", () => {
         target_cents: 100000,
         current_cents: 20000,
         deadline: "2026-12-31",
-        pix_key: "123.456.789-00",
+        pix_key: "52998224725",
         show_contributions_publicly: true,
       },
       created_at: "2026-11-01T00:00:00Z",
@@ -387,7 +434,7 @@ describe("ShareGoalDialog", () => {
         target_cents: 100000,
         current_cents: 100000,
         status: "completed",
-        pix_key: "123.456.789-00",
+        pix_key: "52998224725",
       },
       created_at: "2026-11-01T00:00:00Z",
       expires_at: "2026-12-01T00:00:00Z",
@@ -435,7 +482,7 @@ describe("ShareGoalDialog", () => {
           target_cents: 100000,
           current_cents: 20000,
           status: "active",
-          pix_key: "123.456.789-00",
+          pix_key: "52998224725",
         },
         created_at: "2026-11-01T00:00:00Z",
         expires_at: "2026-12-01T00:00:00Z",
@@ -526,7 +573,7 @@ describe("ShareGoalDialog", () => {
           title: "Meta com Link Renovado",
           target_cents: 100000,
           current_cents: 50000,
-          pix_key: "123.456.789-00",
+          pix_key: "52998224725",
         },
         created_at: "2026-11-01T00:00:00Z",
         expires_at: "2026-12-01T00:00:00Z",
@@ -562,6 +609,47 @@ describe("ShareGoalDialog", () => {
         expect.stringContaining("/meta/gt_brand_new_token"),
       );
     });
+  });
+
+  it("permite criar termômetro usando apenas a Chave Pix sem campo de Cidade na interface", async () => {
+    mutateAsyncCreateMock.mockResolvedValueOnce({
+      id: "share-min",
+      token: "gt_min_token",
+      kind: "goal_tracker",
+      payload: {},
+    });
+
+    render(
+      <ShareGoalDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        category={mockCategory}
+        month="2026-11"
+        currentExpectedCents={500000}
+        currentRealizedCents={250000}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Cidade")).not.toBeInTheDocument();
+
+    const nameInput = screen.getByLabelText("Nome do Titular / Organizador");
+    fireEvent.change(nameInput, { target: { value: "" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Usar meu CPF" }));
+
+    const submitBtn = screen.getByRole("button", {
+      name: /Gerar Termômetro Público & Copiar Link/,
+    });
+    expect(submitBtn).not.toBeDisabled();
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mutateAsyncCreateMock).toHaveBeenCalledTimes(1);
+    });
+
+    const createArg = mutateAsyncCreateMock.mock.calls[0]?.[0];
+    expect(validatePixBrCode(createArg.payload.pix_br_code)).toBe(true);
+    expect(decodePixBrCode(createArg.payload.pix_br_code)?.merchantCity).toBe("BRASILIA");
   });
 });
 

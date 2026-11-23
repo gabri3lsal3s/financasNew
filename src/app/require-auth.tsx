@@ -1,14 +1,16 @@
 import type { ReactNode } from "react";
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useRef } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { AuthenticatedProviders } from "@/app/authenticated-providers";
 import { useAuth } from "@/hooks/use-auth";
 import { useIdleSessionTimeout } from "@/hooks/use-idle-session-timeout";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
+import { getOptionalHook } from "@/hooks/use-notification-center";
 import { useRoutePrefetch } from "@/hooks/use-route-prefetch";
 import { usePendingSplitExpense } from "@/hooks/use-pending-split-expense";
 import { usePendingSimulation } from "@/hooks/use-pending-simulation";
+import * as state from "@/state";
 import { useUserAccess } from "@/state";
 import {
   clearNativeBankMonitoring,
@@ -18,9 +20,17 @@ import {
   initNotificationActionListener,
   isAppLocked,
   isNativePlatform,
+  isRemotePushEnabled,
   setPendingRouteAfterUnlock,
   subscribeAppLock,
 } from "@/services/native";
+import {
+  checkNativePushPermission,
+  getStoredFcmToken,
+  initNativePushListeners,
+  registerNativeFcmPush,
+} from "@/services/push";
+import { pushToast } from "@/services/toast";
 
 const FloatingCalculator = lazy(() =>
   import("@/components/modules/floating-calculator").then((m) => ({ default: m.FloatingCalculator })),
@@ -37,12 +47,43 @@ function NativeIntegrationsHandler() {
   const navigate = useNavigate();
   const { hasFeature } = useUserAccess();
   const isBankListenerAllowed = hasFeature("bank_notification_listener");
+  const useRegisterFcmTokenSafe = getOptionalHook<{
+    mutate: (input: { fcmToken: string; deviceLabel?: string | null }) => void;
+  }>(state, "useRegisterFcmToken", () => ({
+    mutate: () => {},
+  }));
+  const { mutate: registerFcmToken } = useRegisterFcmTokenSafe();
+  const registerFcmTokenRef = useRef(registerFcmToken);
+
+  useEffect(() => {
+    registerFcmTokenRef.current = registerFcmToken;
+  }, [registerFcmToken]);
 
   useEffect(() => {
     if (isNativePlatform() && !isBankListenerAllowed) {
       void clearNativeBankMonitoring();
     }
   }, [isBankListenerAllowed]);
+
+  useEffect(() => {
+    if (!isNativePlatform() || !isRemotePushEnabled() || getStoredFcmToken()) {
+      return;
+    }
+    let cancelled = false;
+    void checkNativePushPermission().then(async (perm) => {
+      if (cancelled || perm !== "granted") return;
+      const result = await registerNativeFcmPush({ requestPermission: false });
+      if (!cancelled && result.ok) {
+        registerFcmTokenRef.current({
+          fcmToken: result.token,
+          deviceLabel: "Android App",
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const handleNativeNavigation = (route: string) => {
@@ -55,6 +96,22 @@ function NativeIntegrationsHandler() {
 
     const cleanupDeepLinks = initDeepLinkListener(handleNativeNavigation);
     const cleanupNotifications = initNotificationActionListener(handleNativeNavigation);
+    const cleanupRemotePush = initNativePushListeners({
+      onActionPerformed: handleNativeNavigation,
+      onTokenRefresh: (token) => {
+        if (isRemotePushEnabled()) {
+          registerFcmTokenRef.current({
+            fcmToken: token,
+            deviceLabel: "Android App",
+          });
+        }
+      },
+      onForegroundPush: ({ title, body }) => {
+        if (title) {
+          pushToast({ title, description: body, variant: "default" });
+        }
+      },
+    });
     const cleanupBankNotifications = isBankListenerAllowed
       ? initBankNotificationListener(handleNativeNavigation)
       : null;
@@ -72,6 +129,7 @@ function NativeIntegrationsHandler() {
     return () => {
       void cleanupDeepLinks();
       void cleanupNotifications();
+      void cleanupRemotePush();
       if (cleanupBankNotifications) {
         void cleanupBankNotifications();
       }

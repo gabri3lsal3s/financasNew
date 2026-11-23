@@ -1158,6 +1158,7 @@ export type SupportTicket = {
   admin_replied_at?: string | null;
   user_read_at?: string | null;
   admin_id?: string | null;
+  telegram_notified_at?: string | null;
   created_at: string;
   updated_at: string;
 };

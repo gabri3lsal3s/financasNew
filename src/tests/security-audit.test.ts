@@ -1578,12 +1578,71 @@ describe("Fase 1 — Hardening & Teste de Penetração da RPC Pública signal_sp
   });
 });
 
+describe("Auditoria de Segurança v3.15 — Remediação Integral F-01 a F-16 (Migration 0139)", () => {
+  const migration139Path = resolve(
+    root,
+    "supabase/migrations/20260101000139_security_audit_remediation_and_rls_hardening.sql",
+  );
 
+  it("migração 0139 existe e corrige current_user em protect_profile_security_fields e reconcile_expired_subscriptions (F-04, F-05)", () => {
+    expect(existsSync(migration139Path)).toBe(true);
+    const sql = readFileSync(migration139Path, "utf8");
 
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.protect_profile_security_fields\(\)/i);
+    expect(sql).not.toMatch(/current_user\s+in\s*\(\s*'postgres'/i);
+    expect(sql).toMatch(/session_user\s+IN\s*\(\s*'postgres',\s*'supabase_admin'/i);
+    expect(sql).toMatch(/BEFORE INSERT OR UPDATE ON public\.profiles/i);
 
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.reconcile_expired_subscriptions\(\)/i);
+    expect(sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.reconcile_expired_subscriptions\(\) FROM PUBLIC, anon, authenticated;/i,
+    );
+    expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.reconcile_expired_subscriptions\(\) TO service_role;/i);
+  });
 
+  it("migração 0139 blinda RLS e triggers de family_invites, family_members, trip_members e governança admin (F-01, F-02, F-06, F-08)", () => {
+    const sql = readFileSync(migration139Path, "utf8");
 
+    expect(sql).toMatch(/CREATE POLICY "family_invites_select" ON public\.family_invites/i);
+    expect(sql).not.toMatch(/family_invites_select[\s\S]*status\s*=\s*'pending'\s+AND\s+expires_at\s*>\s*now\(\)\s+AND\s+\(SELECT\s+auth\.uid\(\)\)\s+IS\s+NOT\s+NULL/i);
+    expect(sql).toMatch(/CREATE TRIGGER trg_protect_family_member_security_fields/i);
+    expect(sql).toMatch(/CREATE TRIGGER trg_protect_trip_member_security_fields/i);
+    expect(sql).toMatch(/CREATE TRIGGER trg_protect_support_ticket_admin_fields/i);
 
+    expect(sql).toMatch(/REVOKE INSERT, UPDATE, DELETE ON TABLE[\s\S]*public\.system_features[\s\S]*public\.user_feature_overrides[\s\S]*public\.user_module_permissions[\s\S]*public\.user_subscriptions[\s\S]*FROM anon, authenticated;/i);
+    expect(sql).toMatch(/admin_set_feature_override[\s\S]*v_target_role\s*=\s*'superadmin'::public\.user_role\s+AND\s+NOT\s+public\.is_superadmin\(\)/i);
+  });
 
+  it("migração 0139 remove sobrecargas órfãs e valida posse/destinatário nas RPCs SECURITY DEFINER (F-03, F-07, F-10, F-11, F-12)", () => {
+    const sql = readFileSync(migration139Path, "utf8");
+
+    expect(sql).toMatch(/DROP FUNCTION IF EXISTS public\.add_public_trip_expense\(text, uuid, int, text, text, date, text, jsonb, text, uuid\);/i);
+    expect(sql).toMatch(/DROP FUNCTION IF EXISTS public\.create_trip\(text, text, date, date, text, text, jsonb\);/i);
+    expect(sql).toMatch(/CREATE OR REPLACE FUNCTION public\.refinance_credit_card_bill\([\s\S]*can_current_user_write_module\('cards'\)/i);
+    expect(sql).toMatch(/get_family_income_ratio_suggestion[\s\S]*i\.is_family\s*=\s*true[\s\S]*i\.family_id\s*=\s*v_family_id/i);
+    expect(sql).toMatch(/accept_family_invite[\s\S]*v_invite\.invited_email[\s\S]*v_member_count\s*>=\s*6/i);
+    expect(sql).toMatch(/approve_dividends_batch_atomic[\s\S]*WHERE id = \(v_item->>'asset_id'\)::uuid\s+AND user_id = v_user_id/i);
+    expect(sql).toMatch(/restore_backup[\s\S]*LEFT JOIN public\.expenses e ON e\.id = d\.expense_id AND e\.user_id = v_uid/i);
+    expect(sql).toMatch(/get_user_module_access[\s\S]*p_user_id IS DISTINCT FROM v_caller_uid/i);
+  });
+
+  it("scripts, documentação Android e Edge Functions estão livres da senha revogada e aplicam escape/MFA AAL2 (F-09, F-13, F-15)", () => {
+    const appealScript = readFileSync(resolve(root, "scripts/generate-play-protect-appeal.ts"), "utf8");
+    expect(appealScript).not.toContain("-storepass guiafinanceiro123");
+
+    const nativeGuide = readFileSync(resolve(root, "docs/platforms/NATIVE_DISTRIBUTION_GUIDE.md"), "utf8");
+    expect(nativeGuide).not.toContain("guiafinanceiro123");
+
+    const buildApkScript = readFileSync(resolve(root, "scripts/build-apk.sh"), "utf8");
+    expect(buildApkScript).toContain("guiafinanceiro123");
+
+    const asaasWebhook = readFileSync(resolve(root, "supabase/functions/asaas-webhook/index.ts"), "utf8");
+    expect(asaasWebhook).toContain("escapeTelegramHtml");
+
+    const adminSuperAction = readFileSync(resolve(root, "supabase/functions/admin-super-action/index.ts"), "utf8");
+    expect(adminSuperAction).toContain("aal2");
+    expect(adminSuperAction).toContain("mfa.listFactors");
+  });
+});
 
 

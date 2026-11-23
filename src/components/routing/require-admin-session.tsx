@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
  * Redireciona usuários desautenticados ou com contas regulares para o portal exclusivo /admin/login.
  */
 export function RequireAdminSession() {
-  const { session, loading: authLoading } = useAuth();
+  const { session, loading: authLoading, mfaRequired, mfaVerified } = useAuth();
   const { isAdmin, isLoading: accessLoading } = useUserAccess(session?.user?.id);
   const location = useLocation();
 
@@ -20,6 +20,10 @@ export function RequireAdminSession() {
 
   if (!session?.user || !isAdmin) {
     return <Navigate to="/admin/login" replace state={{ from: location }} />;
+  }
+
+  if (mfaRequired && !mfaVerified) {
+    return <Navigate to="/entrar?desafio=totp" replace state={{ from: location }} />;
   }
 
   return <Outlet />;

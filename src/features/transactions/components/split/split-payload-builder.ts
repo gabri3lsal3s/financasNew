@@ -5,7 +5,7 @@ import {
   type SplitExpenseSummary,
   type SplitRemainderPolicy,
 } from "@/domain/finance/split-math";
-import { buildPixTransferCode, type PixKeyType } from "@/domain/pix";
+import { DEFAULT_PIX_CITY, buildPixTransferCode, type PixKeyType } from "@/domain/pix";
 import type { Expense, SplitParticipantInstallment, SplitSharePayload } from "@/types";
 
 export interface BuildSplitPayloadInput {
@@ -98,10 +98,10 @@ export function buildSplitSharePayload(input: BuildSplitPayloadInput): SplitShar
       merchantName: cleanMerchant,
       merchantCity: cleanCity,
       amountCents: firstGuestChargeCents,
-      txId: `RACHA${Date.now().toString(36).toUpperCase()}`.slice(0, 25),
+      txId: "***",
       infoAdicional: description.trim() || "Racha de conta",
       defaultMerchantName: "Anfitriao",
-      defaultMerchantCity: "BRASIL",
+      defaultMerchantCity: DEFAULT_PIX_CITY,
     }) ?? "";
 
   const nowIso = new Date().toISOString();

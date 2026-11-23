@@ -1,6 +1,7 @@
 import { CalendarClock, Copy, ExternalLink, RefreshCw, Save, ShieldCheck } from "lucide-react";
+import type { PixKeyProfileSuggestions } from "@/components/modules";
 import { Alert, Badge, Button, FormField, QrCodeCanvas, Switch, Textarea } from "@/components/ui";
-import type { PixKeyType } from "@/domain/pix";
+import { decodePixBrCode, formatPixKeyTypeLabel, type PixKeyType } from "@/domain/pix";
 import { formatDateBR } from "@/lib/date";
 import { formatCentsAsBRL } from "@/services/masks";
 import { SplitPixConfigFields } from "./split-pix-config-fields";
@@ -14,10 +15,9 @@ export interface SplitPublicConfigTabProps {
   pixValidationError: string | null;
   isAmbiguousCpfOrPhone: boolean;
   onQuickSelectKeyType: (type: "phone" | "cpf") => void;
+  profileSuggestions?: PixKeyProfileSuggestions;
   hostName: string;
   onHostNameChange: (val: string) => void;
-  hostCity: string;
-  onHostCityChange: (val: string) => void;
   customNote: string;
   onCustomNoteChange: (val: string) => void;
   showParticipantsList: boolean;
@@ -47,10 +47,9 @@ export function SplitPublicConfigTab({
   pixValidationError,
   isAmbiguousCpfOrPhone,
   onQuickSelectKeyType,
+  profileSuggestions,
   hostName,
   onHostNameChange,
-  hostCity,
-  onHostCityChange,
   customNote,
   onCustomNoteChange,
   showParticipantsList,
@@ -69,6 +68,8 @@ export function SplitPublicConfigTab({
   onRegenerateLink,
   onSavePublicConfig,
 }: SplitPublicConfigTabProps) {
+  const decodedPreview = previewBrCode ? decodePixBrCode(previewBrCode) : null;
+
   return (
     <div className="space-y-4">
       <SplitPixConfigFields
@@ -80,10 +81,11 @@ export function SplitPublicConfigTab({
         validationError={pixValidationError}
         isAmbiguousCpfOrPhone={isAmbiguousCpfOrPhone}
         onQuickSelectKeyType={onQuickSelectKeyType}
+        profileSuggestions={profileSuggestions}
         merchantName={hostName}
         onMerchantNameChange={onHostNameChange}
-        merchantCity={hostCity}
-        onMerchantCityChange={onHostCityChange}
+        showVerificationPanel={false}
+        allowTestCopy={false}
         hideRemainderPolicy={true}
       />
 
@@ -108,19 +110,48 @@ export function SplitPublicConfigTab({
           <span className="text-xs font-semibold text-foreground">
             Prévia ao vivo do QR Code Pix
           </span>
-          <Badge variant="portfolio" size="xs">
-            Exemplo cota: {formatCentsAsBRL(previewAmountCents)}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {decodedPreview?.isValidCrc && decodedPreview.crc ? (
+              <Badge variant="positive" size="xs">
+                CRC16 {decodedPreview.crc}
+              </Badge>
+            ) : null}
+            <Badge variant="portfolio" size="xs">
+              Exemplo cota: {formatCentsAsBRL(previewAmountCents)}
+            </Badge>
+          </div>
         </div>
 
         {previewBrCode ? (
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="rounded-xl border border-border/80 bg-white p-2.5 shadow-xs shrink-0">
-              <QrCodeCanvas text={previewBrCode} size={144} label="Prévia do QR Code Pix" />
-            </div>
-            <div className="flex flex-col gap-2 min-w-0 flex-1 w-full">
+            <QrCodeCanvas
+              text={previewBrCode}
+              size={192}
+              label="Prévia do QR Code Pix"
+              className="shrink-0"
+            />
+            <div className="flex flex-col gap-2.5 min-w-0 flex-1 w-full">
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Cada amigo verá o QR Code preenchido com o valor exato pendente da sua cota (ou parcela) e os dados do seu Pix acima.
+              </p>
+              {decodedPreview ? (
+                <div className="rounded-lg border border-border/80 bg-surface-raised p-2.5 text-[11px] space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Chave no BR Code ({formatPixKeyTypeLabel(detectedType)}):</span>
+                    <span className="font-mono font-semibold text-foreground break-all text-right">
+                      {decodedPreview.pixKey}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Recebedor EMV:</span>
+                    <span className="text-foreground text-right">
+                      {decodedPreview.merchantName}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Importante: alguns bancos (como Banco do Brasil) recusam o pagamento se você tentar testar o Copia e Cola na mesma conta recebedora ou se a chave não estiver cadastrada no Pix.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" size="sm" variant="outline" onClick={onTestCopyBrCode} className="gap-1.5">
@@ -133,7 +164,8 @@ export function SplitPublicConfigTab({
         ) : (
           <Alert variant="warning">
             <span>
-              Não foi possível gerar a prévia do QR Code Pix. Verifique se a chave Pix e a cidade do titular são válidas.
+              {pixValidationError ||
+                "Informe uma chave Pix válida para gerar o QR Code e o Copia e Cola."}
             </span>
           </Alert>
         )}

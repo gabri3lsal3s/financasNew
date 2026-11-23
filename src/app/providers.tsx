@@ -11,6 +11,7 @@ import { resetAppState } from "@/services/auth-cleanup";
 import { initAppLockListener } from "@/services/native/app-lock";
 import { clearNativeBankMonitoring } from "@/services/native/bank-listener";
 import { cancelDailyReminder, clearAllDueNotifications } from "@/services/native/local-notifications";
+import { unregisterNativeFcmPush } from "@/services/push/fcm-push";
 import { unsubscribeBrowserWebPush } from "@/services/push/web-push";
 
 /**
@@ -43,6 +44,7 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
           Promise.resolve(clearAllDueNotifications(previousUserId)),
           Promise.resolve(cancelDailyReminder()),
           Promise.resolve(unsubscribeBrowserWebPush()),
+          Promise.resolve(unregisterNativeFcmPush(previousUserId)),
         ]);
         resetAppState(queryClient, null);
       } else if (previousUserId !== newUserId) {
@@ -52,6 +54,7 @@ function AuthQuerySync({ children }: { children: ReactNode }) {
             Promise.resolve(clearAllDueNotifications(previousUserId)),
             Promise.resolve(cancelDailyReminder()),
             Promise.resolve(unsubscribeBrowserWebPush()),
+            Promise.resolve(unregisterNativeFcmPush(previousUserId)),
           ]);
         }
         resetAppState(queryClient, newUserId);

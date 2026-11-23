@@ -1,5 +1,7 @@
 import { Plus, Trash2, Users } from "lucide-react";
-import { Button, Input, Select } from "@/components/ui";
+import { PixKeyInputFields } from "@/components/modules";
+import { Button, Input } from "@/components/ui";
+import type { PixKeyType } from "@/domain/pix";
 import type { TripPixKeyType } from "@/types/trips";
 
 export interface InitialTripMemberDraft {
@@ -8,13 +10,6 @@ export interface InitialTripMemberDraft {
   pix_key_type?: TripPixKeyType;
 }
 
-const PIX_TYPE_OPTIONS = [
-  { value: "cpf", label: "CPF" },
-  { value: "email", label: "E-mail" },
-  { value: "phone", label: "Telefone" },
-  { value: "random", label: "Aleatória" },
-];
-
 export interface CreateTripMembersSectionProps {
   hostName: string;
   members: InitialTripMemberDraft[];
@@ -22,8 +17,13 @@ export interface CreateTripMembersSectionProps {
   onNewMemberNameChange: (val: string) => void;
   newMemberPix: string;
   onNewMemberPixChange: (val: string) => void;
-  newMemberPixType: TripPixKeyType;
-  onNewMemberPixTypeChange: (val: TripPixKeyType) => void;
+  newMemberPixType: string;
+  onNewMemberPixTypeChange: (val: string) => void;
+  newMemberDetectedType: PixKeyType | null;
+  newMemberPixError: string | null;
+  isAmbiguousCpfOrPhone: boolean;
+  onQuickSelectKeyType: (type: "phone" | "cpf") => void;
+  canAddMember: boolean;
   onAddMember: () => void;
   onRemoveMember: (index: number) => void;
 }
@@ -37,6 +37,11 @@ export function CreateTripMembersSection({
   onNewMemberPixChange,
   newMemberPixType,
   onNewMemberPixTypeChange,
+  newMemberDetectedType,
+  newMemberPixError,
+  isAmbiguousCpfOrPhone,
+  onQuickSelectKeyType,
+  canAddMember,
   onAddMember,
   onRemoveMember,
 }: CreateTripMembersSectionProps) {
@@ -83,54 +88,57 @@ export function CreateTripMembersSection({
         </div>
       )}
 
-      <div className="p-3 rounded-xl bg-surface border border-border/80 space-y-2.5">
+      <div className="p-3 rounded-xl bg-surface border border-border/80 space-y-3">
         <p className="text-[11px] font-medium text-muted-foreground">
           Adicionar amigos que vão viajar com você:
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-          <div className="sm:col-span-5">
-            <Input
-              value={newMemberName}
-              onChange={(e) => onNewMemberNameChange(e.target.value)}
-              placeholder="Nome do amigo"
-              className="text-base sm:text-sm"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  onAddMember();
-                }
-              }}
-            />
-          </div>
-          <div className="sm:col-span-4">
-            <Input
-              value={newMemberPix}
-              onChange={(e) => onNewMemberPixChange(e.target.value)}
-              placeholder="Chave Pix (opcional)"
-              className="text-base sm:text-sm"
-            />
-          </div>
-          <div className="sm:col-span-3 flex gap-1.5">
-            <Select
-              value={newMemberPixType}
-              onValueChange={(val) => onNewMemberPixTypeChange(val as TripPixKeyType)}
-              options={PIX_TYPE_OPTIONS}
-              className="flex-1"
-            />
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              onClick={onAddMember}
-              disabled={!newMemberName.trim()}
-              className="shrink-0"
-              title="Adicionar à lista"
-              aria-label="Adicionar amigo à lista"
-            >
-              <Plus className="size-4" aria-hidden="true" />
-            </Button>
-          </div>
+        <div className="flex items-center gap-2">
+          <Input
+            value={newMemberName}
+            onChange={(e) => onNewMemberNameChange(e.target.value)}
+            placeholder="Nome do amigo"
+            aria-label="Nome do amigo"
+            className="text-base sm:text-sm flex-1"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (canAddMember) onAddMember();
+              }
+            }}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={onAddMember}
+            disabled={!canAddMember}
+            className="shrink-0 gap-1"
+            title="Adicionar à lista"
+            aria-label="Adicionar amigo à lista"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            <span>Adicionar</span>
+          </Button>
         </div>
+
+        <PixKeyInputFields
+          pixKey={newMemberPix}
+          onPixKeyChange={onNewMemberPixChange}
+          selectedKeyType={newMemberPixType}
+          onSelectedKeyTypeChange={onNewMemberPixTypeChange}
+          detectedType={newMemberDetectedType}
+          validationError={newMemberPixError}
+          isAmbiguousCpfOrPhone={isAmbiguousCpfOrPhone}
+          onQuickSelectKeyType={onQuickSelectKeyType}
+          pixKeyLabel="Chave Pix (opcional)"
+          pixKeyAriaLabel="Chave Pix do amigo"
+          pixKeyPlaceholder="Chave Pix (opcional)"
+          pixKeyHelperText="Opcional, para facilitar o acerto no final da viagem"
+          keyTypeLabel="Tipo da Chave"
+          keyTypeAriaLabel="Tipo da Chave Pix do amigo"
+          showBankRegistrationNotice={Boolean(newMemberPix.trim())}
+          showVerificationBadge={true}
+        />
       </div>
     </div>
   );

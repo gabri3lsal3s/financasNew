@@ -5,6 +5,7 @@ import {
   useUpdateTripMutation,
 } from "@/state/queries/use-trips";
 import { buildTripSettlementWhatsAppMessage } from "@/domain/trips";
+import { copyTextToClipboard } from "@/services/export-actions";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { SuggestedSettlement, TripExpense, TripMember, TripSettlement } from "@/types/trips";
@@ -42,33 +43,33 @@ export function useTripSettlementActions({
   const updateTripMutation = useUpdateTripMutation();
 
   const handleCopyPixBrCode = async (code: string, keyIdentifier: string) => {
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(code);
-        setCopiedCodeKey(keyIdentifier);
-        triggerSensory("action");
-        pushToast({
-          title: "Pix Copia e Cola com valor copiado!",
-          description: "Abra o aplicativo do seu banco para colar e pagar o valor exato.",
-        });
-        setTimeout(() => setCopiedCodeKey(null), 3000);
-      }
-    } catch {
+    const cleanCode = code.trim();
+    if (!cleanCode) return;
+    const copied = await copyTextToClipboard(cleanCode);
+    if (copied) {
+      setCopiedCodeKey(keyIdentifier);
+      triggerSensory("action");
+      pushToast({
+        title: "Pix Copia e Cola com valor copiado!",
+        description: "Abra o aplicativo do seu banco para colar e pagar o valor exato.",
+      });
+      setTimeout(() => setCopiedCodeKey(null), 3000);
+    } else {
       triggerSensory("error");
       pushToast({ title: "Erro ao copiar código Pix", description: "Selecione e copie manualmente.", variant: "destructive" });
     }
   };
 
   const handleCopyRawPixKey = async (pixKey: string) => {
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(pixKey);
-        setCopiedKey(pixKey);
-        triggerSensory("action");
-        pushToast({ title: "Chave Pix copiada", description: "Cole no seu aplicativo bancário para efetuar a transferência." });
-        setTimeout(() => setCopiedKey(null), 3000);
-      }
-    } catch {
+    const cleanKey = pixKey.trim();
+    if (!cleanKey) return;
+    const copied = await copyTextToClipboard(cleanKey);
+    if (copied) {
+      setCopiedKey(cleanKey);
+      triggerSensory("action");
+      pushToast({ title: "Chave Pix copiada", description: "Cole no seu aplicativo bancário para efetuar a transferência." });
+      setTimeout(() => setCopiedKey(null), 3000);
+    } else {
       triggerSensory("error");
       pushToast({ title: "Erro ao copiar chave", variant: "destructive" });
     }

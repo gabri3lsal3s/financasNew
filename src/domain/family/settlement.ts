@@ -16,10 +16,12 @@
  */
 
 import {
-  generatePixBrCode,
-  normalizePixKey,
+  DEFAULT_PIX_CITY,
+  buildPixTransferCode,
   sanitizeMerchantText,
+  sanitizePixCity,
   sanitizeTxId,
+  validateAndClassifyPixKey,
   validatePixBrCode,
   type PixKeyType,
 } from "../pix";
@@ -241,65 +243,59 @@ export function generateSettlementPixPayload(
 
   const safeAmount = sanitizeCents(params.amountCents);
   const cleanMerchantName = sanitizeMerchantText(params.merchantName || "Acerto Familiar", 25);
-  const cleanCity = sanitizeMerchantText(params.merchantCity || "CIDADE", 15, true) || "CIDADE";
+  const cleanCity = sanitizePixCity(params.merchantCity, DEFAULT_PIX_CITY).value;
 
-  const effectiveKeyType = params.keyType ? (params.keyType as PixKeyType) : undefined;
+  const effectiveKeyType = params.keyType ? (params.keyType as PixKeyType | "auto") : undefined;
+  const validation = validateAndClassifyPixKey(rawKey, effectiveKeyType);
 
-  try {
-    const normalizedKey = normalizePixKey(rawKey, effectiveKeyType);
-    if (!normalizedKey) {
-      return {
-        has_pix: false,
-        pix_payload: null,
-        pix_key: rawKey,
-        pix_key_type: null,
-        tx_id: txIdFallback,
-        error: "Chave Pix invalida ou nao reconhecida.",
-      };
-    }
-
-    const payload = generatePixBrCode({
-      pixKey: normalizedKey,
-      keyType: effectiveKeyType,
-      merchantName: cleanMerchantName || "Acerto Familiar",
-      merchantCity: cleanCity,
-      amountCents: safeAmount,
-      txId: params.txId ? sanitizeTxId(params.txId) : undefined,
-      infoAdicional: params.infoAdicional
-        ? sanitizeMerchantText(params.infoAdicional, 25)
-        : undefined,
-    });
-
-    const isValid = validatePixBrCode(payload);
-    if (!isValid) {
-      return {
-        has_pix: false,
-        pix_payload: null,
-        pix_key: normalizedKey,
-        pix_key_type: (effectiveKeyType as FamilyPixKeyType) ?? null,
-        tx_id: txIdFallback,
-        error: "Falha na validacao de integridade EMVCo do BR Code.",
-      };
-    }
-
-    return {
-      has_pix: true,
-      pix_payload: payload,
-      pix_key: normalizedKey,
-      pix_key_type: (effectiveKeyType as FamilyPixKeyType) ?? null,
-      tx_id: params.txId ? sanitizeTxId(params.txId) : txIdFallback,
-    };
-  } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : "Erro na geracao do BR Code Pix.";
+  if (!validation.isValid || !validation.normalizedKey || !validation.resolvedType) {
     return {
       has_pix: false,
       pix_payload: null,
       pix_key: rawKey,
       pix_key_type: null,
       tx_id: txIdFallback,
-      error: errorMessage,
+      error: validation.errorMessage ?? "Chave Pix invalida ou nao reconhecida.",
     };
   }
+
+  const familyKeyType: FamilyPixKeyType | null =
+    validation.resolvedType === "cnpj"
+      ? null
+      : (validation.resolvedType as FamilyPixKeyType);
+
+  const payload = buildPixTransferCode({
+    pixKey: validation.normalizedKey,
+    keyType: validation.resolvedType,
+    merchantName: cleanMerchantName || "Acerto Familiar",
+    merchantCity: cleanCity,
+    amountCents: safeAmount,
+    txId: params.txId ? sanitizeTxId(params.txId) : "***",
+    infoAdicional: params.infoAdicional
+      ? sanitizeMerchantText(params.infoAdicional, 25)
+      : undefined,
+    defaultMerchantName: "Acerto Familiar",
+    defaultMerchantCity: DEFAULT_PIX_CITY,
+  });
+
+  if (!payload || !validatePixBrCode(payload)) {
+    return {
+      has_pix: false,
+      pix_payload: null,
+      pix_key: validation.normalizedKey,
+      pix_key_type: familyKeyType,
+      tx_id: txIdFallback,
+      error: "Falha na validacao de integridade EMVCo do BR Code.",
+    };
+  }
+
+  return {
+    has_pix: true,
+    pix_payload: payload,
+    pix_key: validation.normalizedKey,
+    pix_key_type: familyKeyType,
+    tx_id: params.txId ? sanitizeTxId(params.txId) : txIdFallback,
+  };
 }
 
 // ===========================================================================
@@ -360,8 +356,7 @@ export function resolveSettlementTransfers(
 
   const transfers: SettlementTransfer[] = [];
   const month = options?.month || "competencia";
-  const monthClean = month.replace(/[^a-zA-Z0-9]/g, "");
-  const defaultCity = options?.defaultCity || "CIDADE";
+  const defaultCity = options?.defaultCity || DEFAULT_PIX_CITY;
   const prefix = options?.descriptionPrefix || "Compensacao familiar";
 
   let dIdx = 0;
@@ -377,7 +372,7 @@ export function resolveSettlementTransfers(
     const transferCents = Math.min(debtor.remainingDebt, creditor.remainingCredit);
 
     if (transferCents > 0) {
-      const txId = sanitizeTxId(`FAM${monthClean}${transferIndex}`);
+      const txId = "***";
       const infoAdicional = sanitizeMerchantText(`Acerto ${month}`, 25);
       const description = `${prefix} - ${month}`;
 

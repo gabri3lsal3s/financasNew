@@ -150,10 +150,13 @@ export function SplitExpenseDialog(props: SplitExpenseDialogProps) {
               validationError={form.pixValidationError}
               isAmbiguousCpfOrPhone={form.isAmbiguousCpfOrPhone}
               onQuickSelectKeyType={(t) => form.setSelectedKeyType(t)}
+              profileSuggestions={form.profileSuggestions}
+              profileEmail={form.profileEmail}
+              previewAmountCents={form.previewAmountCents}
+              previewInfoAdicional={form.description}
+              onTestCopyBrCode={(code) => void form.handleTestCopyBrCode(code)}
               merchantName={form.merchantName}
               onMerchantNameChange={form.setMerchantName}
-              merchantCity={form.merchantCity}
-              onMerchantCityChange={form.setMerchantCity}
               remainderPolicy={form.remainderPolicy}
               onRemainderPolicyChange={form.setRemainderPolicy}
             />

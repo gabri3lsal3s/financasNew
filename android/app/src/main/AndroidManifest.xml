@@ -136,6 +136,11 @@
         <meta-data
             android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="ocr" />
+
+        <!-- Canal padrão para notificações remotas FCM em segundo plano -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="due_reminders" />
     </application>
 
     <!-- Permissions -->

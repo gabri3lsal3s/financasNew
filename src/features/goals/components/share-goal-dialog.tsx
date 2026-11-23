@@ -84,7 +84,7 @@ function ShareGoalDialogInner({
         type="button"
         variant="default"
         sensoryIntent="success"
-        disabled={s.targetCents <= 0 || (s.isShared && !s.pixKey.trim()) || s.isPending}
+        disabled={s.targetCents <= 0 || (s.isShared && !s.isPixValid) || s.isPending}
         onClick={() => void s.handleSubmitForm()}
         aria-label={submitAriaLabel}
         className="gap-2"
@@ -183,10 +183,13 @@ function ShareGoalDialogInner({
             onPixKeyChange={s.setPixKey}
             selectedKeyType={s.selectedKeyType}
             onSelectedKeyTypeChange={s.setSelectedKeyType}
+            detectedType={s.detectedPixType}
+            pixValidationError={s.pixValidationError}
+            isAmbiguousCpfOrPhone={s.isAmbiguousCpfOrPhone}
+            onQuickSelectKeyType={(t) => s.setSelectedKeyType(t)}
+            profileSuggestions={s.profileSuggestions}
             merchantName={s.merchantName}
             onMerchantNameChange={s.setMerchantName}
-            merchantCity={s.merchantCity}
-            onMerchantCityChange={s.setMerchantCity}
             showContributionsPublicly={s.showContributionsPublicly}
             onShowContributionsPubliclyChange={s.setShowContributionsPublicly}
             onCancelEdit={() => s.setIsEditingGoal(false)}

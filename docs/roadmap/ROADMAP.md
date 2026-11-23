@@ -1,5 +1,11 @@
 # ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.16.1 (Build 104 — Automação de Stacks em Produção, Push Remoto Nativo Android FCM, Webhook de Suporte 0140, Hardening de Segurança 0139 e Diagnóstico Pix)** conclui o provisionamento produtivo das stacks e entrega melhorias estruturais de segurança, mensageria móvel e pagamentos instantâneos (2026-11-22):
+> - **Automação das Stacks em Produção:** Cloudflare Workers Static Assets (`financasnew`) + Workers Builds (`VITE_VAPID_PUBLIC_KEY`, `VITE_PUBLIC_SITE_URL`, `NODE_VERSION=22`), SSL/TLS `Full (strict)`, domínio `axir.com.br` verificado na Resend com Auth SMTP sincronizado e crons `pg_cron`/`pg_net` ativos (`billing-lifecycle-daily`, `sunday-digest-weekly`, `quotes-cron`).
+> - **Push Remoto Nativo Android (FCM):** registro do app `com.guiafinanceiro.app` no projeto `axir-de9f6`, integração de `@capacitor/push-notifications@^8.1.3` + `src/services/push/fcm-push.ts`, toggle *opt-in* nativo, listeners de deep-link e limpeza automática no logout.
+> - **Webhook de Suporte & Deduplicação (`0140`):** trigger `trg_notify_support_ticket_webhook` via `pg_net`/Vault e claim atômico `telegram_notified_at` na Edge Function `support-notify`.
+> - **Segurança & Diagnóstico Pix (`0139`):** remediação de RLS e RPCs (`0139`), MFA AAL2 administrativo, escape HTML no Telegram e diagnóstico aprimorado de chaves Pix em Rachas, Metas, Família e Viagens.
+
 > **v3.15.0 (Reestruturação Holística Ponta a Ponta do Módulo de Racha & Integração Total com Despesas/Pix)** registra a entrega completa da arquitetura relacional, motor puro de reconciliação, edição completa em 3 abas e endurecimento Pix/QR Code para o ecossistema de Despesas Compartilhadas (2026-11-22):
 > - **(1) Banco Relacional 1:1 & Hardening SQL (Migração `20260101000134`)**:
 >   - Colunas indexadas (`expense_id`, `installment_group_id`, `debt_id`) e unicidade 1:1 parcial em `public.public_shares` (`uq_public_shares_split_expense_id`, `uq_public_shares_split_group_id`);
@@ -7984,6 +7990,17 @@ flowchart TD
 > - **Wave 4 — Painel Admin Broadcasts, Rollout Supabase, Documentação e Build Android Pro v3.16.0 (Build 103):**
 >   - Seletor de expiração (`expires_at`), validação de URLs (`/` ou `https://`), `<ConfirmDialog>` de revisão pré-disparo e preview dinâmico por categoria/público no `BroadcastComposerForm` + badge de expiração e público `"Usuários específicos"` no `BroadcastHistoryList`;
 >   - Migration `0138` aplicada em produção, 9 Edge Functions reimplantadas e validadas por smoke tests HTTP, relatório completo em `docs/diagnostics/AUDITORIA_COMPLETA_NOTIFICACOES_E_LEMBRETES.md` e compilação do APK Android v3.16.0 (Build 103).
+
+---
+
+### Fase 125 — Automação Completa das Stacks em Produção, Push Remoto Android FCM, Webhook de Suporte 0140 e Hardening v3.16.1 (Build 104)
+
+> **Status:** Concluída, Aplicada em Produção e Validada Ponta a Ponta:
+> - **Infraestrutura de Produção & Crons:** Cloudflare Workers Static Assets (`financasnew`) e triggers do Workers Builds atualizados com `VITE_VAPID_PUBLIC_KEY` (embutida no bundle publicado e verificada junto ao `/sw-push.js`), `VITE_PUBLIC_SITE_URL`, `NODE_VERSION=22`, SSL/TLS `Full (strict)`, domínio `axir.com.br` verificado na Resend, Auth Custom SMTP (`smtp.resend.com:465`), Redirect URLs com `com.guiafinanceiro.app://**`, `pg_cron` + `pg_net` ativos (`billing-lifecycle-daily`, `sunday-digest-weekly`, `quotes-cron`) e sincronia das policies InitPlan em `user_push_subscriptions` e `push_delivery_logs`.
+> - **Push Remoto Nativo Android (FCM HTTP v1):** cadastro de `com.guiafinanceiro.app` no Firebase (`axir-de9f6`), geração local de `android/app/google-services.json` (protegido no `.gitignore`), secrets `FCM_PROJECT_ID` e `FCM_SERVICE_ACCOUNT_JSON` nas Edge Functions, instalação de `@capacitor/push-notifications@^8.1.3`, bridge `src/services/push/fcm-push.ts`, toggle opt-in nativo em `RemotePushPrefsCard` / `useNotificationPreferencesForm`, canal padrão `due_reminders` em `AndroidManifest.xml`, handlers globais de deep-link/foreground em `require-auth.tsx` e revogação do token FCM no logout (`use-sign-out.ts` / `providers.tsx`).
+> - **`WEBHOOK_SECRET` & Redundância em `support_tickets` (Migration `0140`):** adição de `telegram_notified_at` com proteção em `protect_support_ticket_admin_fields()`, trigger `AFTER INSERT` `trg_notify_support_ticket_webhook` via `pg_net` lendo `webhook_secret` e `support_notify_url` do Supabase Vault e deduplicação atômica na Edge Function `support-notify`.
+> - **Segurança & Pix v3.16.1 (Migration `0139`):** endurecimento completo de RLS/triggers e RPCs (`0139`), exigência de AAL2 MFA em `admin-super-action`, escape HTML em notificações do `asaas-webhook`, validação fail-fast de senha revogada da keystore e diagnóstico aprimorado de chaves Pix nos fluxos de Racha, Meta, Família e Viagem.
+> - **Release Mobile:** compilação e publicação do APK assinado **Axir v3.16.1 (Build 104)** no Cloudflare R2 com atualização do manifesto `public/releases/version.json`.
 
 
 

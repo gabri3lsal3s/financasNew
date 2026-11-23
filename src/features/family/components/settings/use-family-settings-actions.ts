@@ -10,6 +10,7 @@ import {
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
 import { getPublicShareUrl } from "@/services/app-url";
+import { copyTextToClipboard } from "@/services/export-actions";
 import type { Family, FamilyInvite, FamilyMember, FamilyMemberWithProfile, FamilyPixKeyType, FamilySplitRule } from "@/types";
 
 export function useFamilySettingsActions({
@@ -139,15 +140,13 @@ export function useFamilySettingsActions({
   };
 
   const copyLink = async (url: string, token: string) => {
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-      }
+    const copied = await copyTextToClipboard(url);
+    if (copied) {
       onCopiedToken(token);
       triggerSensory("success");
       pushToast({ title: "Link de convite copiado!", description: "Pronto para enviar por WhatsApp ou mensagem.", variant: "default" });
       setTimeout(() => onCopiedToken(null), 2500);
-    } catch {
+    } else {
       triggerSensory("error");
       pushToast({ title: "Não foi possível copiar o link", variant: "destructive" });
     }

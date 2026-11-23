@@ -233,4 +233,25 @@ describe("FamilySettingsDialog", () => {
       renderDialog({ open: false });
     }).not.toThrow();
   });
+
+  it("valida e salva chave Pix com detecção automática na aba Meus Dados & Pix", async () => {
+    const user = userEvent.setup();
+    renderDialog({ initialTab: "pix" });
+
+    const pixInput = screen.getByLabelText(/Sua Chave Pix/i);
+    expect(pixInput).toHaveValue("gabriel@pix.com");
+
+    await user.clear(pixInput);
+    await user.type(pixInput, "(79) 99988-7766");
+
+    await user.click(screen.getByRole("button", { name: "Salvar Meus Dados" }));
+
+    expect(mockUpdateMember).toHaveBeenCalledWith({
+      memberId: "mem-1",
+      updates: expect.objectContaining({
+        pix_key: "+5579999887766",
+        pix_key_type: "phone",
+      }),
+    });
+  });
 });

@@ -48,6 +48,15 @@ interface CliArgs {
   summary?: string;
 }
 
+function escapeTelegramHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function parseArgs(): CliArgs {
   const raw = process.argv.slice(2);
   let type: NotificationCategory = "git";
@@ -60,7 +69,7 @@ function parseArgs(): CliArgs {
       type = raw[i + 1] as NotificationCategory;
       i++;
     } else if ((raw[i] === "--msg" || raw[i] === "--message") && raw[i + 1]) {
-      message = raw[i + 1].replace(/%0A/gi, "\n");
+      message = escapeTelegramHtml(raw[i + 1].replace(/%0A/gi, "\n"));
       i++;
     } else if (raw[i] === "--summary" && raw[i + 1]) {
       summary = raw[i + 1].replace(/%0A/gi, "\n");
@@ -72,10 +81,11 @@ function parseArgs(): CliArgs {
 
   if (!message && summary) {
     type = "deploy";
+    const safeSummary = escapeTelegramHtml(summary);
     if (summary.includes("Compartilhamento") || summary.includes("Racha Pix")) {
-      message = `<b>ARGOS: Relatório Executivo — Ferramentas de Compartilhamento &amp; Crescimento Orgânico</b>\n\n<b>Status:</b> ${summary}\n\n<b>Principais Entregas:</b>\n• Motor Pix Copia e Cola BACEN (BR Code EMV QRCPS-MPM) com CRC16 estrito e rateio justo de centavos\n• Diálogo de divisão de despesas (Split) e página pública ultraleve (/r/:token) com auto-onboarding\n• Painel de Orçamento Familiar Dinâmico (is_family) e link público seguro (/orcamento-familiar/:token)\n• Termômetro de Meta Coletiva com Pix e contagem regressiva (/meta/:token)\n• Hub de Simuladores Financeiros Abertos (Dívidas, Rebalanceamento, Juros Compostos) com Stateful URLs\n• Rodapé contábil com chancela institucional sóbria em relatórios e extratos PDF\n• Build Web de produção e APK Android (Debug e Release Assinado v0.1.0)\n• Documentação técnica (ESPECIFICACAO_TECNICA.md e ARCHITECTURE.md) 100% atualizada\n\n<b>Métricas de Validação Técnica:</b>\n• Typecheck: 100% OK\n• Lint: 100% OK (zero emojis, zero controles nativos crus)\n• Testes Automatizados: 100% aprovados\n• Build Web &amp; APK Android: compilados e validados com SHA-256\n\n<b>Parecer Supabase:</b> 4 migrações preparadas (000065_create_public_shares_table, 000066_add_is_family_to_transactions, 000067_create_get_shared_family_budget_rpc e 000068_create_get_shared_goal_tracker_rpc) blindadas por RLS.`;
+      message = `<b>ARGOS: Relatório Executivo — Ferramentas de Compartilhamento &amp; Crescimento Orgânico</b>\n\n<b>Status:</b> ${safeSummary}\n\n<b>Principais Entregas:</b>\n• Motor Pix Copia e Cola BACEN (BR Code EMV QRCPS-MPM) com CRC16 estrito e rateio justo de centavos\n• Diálogo de divisão de despesas (Split) e página pública ultraleve (/r/:token) com auto-onboarding\n• Painel de Orçamento Familiar Dinâmico (is_family) e link público seguro (/orcamento-familiar/:token)\n• Termômetro de Meta Coletiva com Pix e contagem regressiva (/meta/:token)\n• Hub de Simuladores Financeiros Abertos (Dívidas, Rebalanceamento, Juros Compostos) com Stateful URLs\n• Rodapé contábil com chancela institucional sóbria em relatórios e extratos PDF\n• Build Web de produção e APK Android (Debug e Release Assinado v0.1.0)\n• Documentação técnica (ESPECIFICACAO_TECNICA.md e ARCHITECTURE.md) 100% atualizada\n\n<b>Métricas de Validação Técnica:</b>\n• Typecheck: 100% OK\n• Lint: 100% OK (zero emojis, zero controles nativos crus)\n• Testes Automatizados: 100% aprovados\n• Build Web &amp; APK Android: compilados e validados com SHA-256\n\n<b>Parecer Supabase:</b> 4 migrações preparadas (000065_create_public_shares_table, 000066_add_is_family_to_transactions, 000067_create_get_shared_family_budget_rpc e 000068_create_get_shared_goal_tracker_rpc) blindadas por RLS.`;
     } else {
-      message = `<b>ARGOS: Relatório Executivo</b>\n\n<b>Resumo:</b> ${summary}\n\n<b>Status:</b> Concluído com Sucesso e Validado.`;
+      message = `<b>ARGOS: Relatório Executivo</b>\n\n<b>Resumo:</b> ${safeSummary}\n\n<b>Status:</b> Concluído com Sucesso e Validado.`;
     }
   }
 

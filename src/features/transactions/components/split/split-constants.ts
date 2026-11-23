@@ -45,10 +45,10 @@ export function resolveDefaultPixDefaults(
     };
   }
   return {
-    pixKey: preferences.pixKey || profile?.cpf || profile?.email || "",
+    pixKey: preferences.pixKey || "",
     keyType: preferences.pixKeyType || "auto",
     merchantName: preferences.merchantName || profile?.name || "Você",
-    merchantCity: preferences.merchantCity || "São Paulo",
+    merchantCity: preferences.merchantCity || "",
     remainderPolicy: preferences.remainderPolicy || "host",
   };
 }

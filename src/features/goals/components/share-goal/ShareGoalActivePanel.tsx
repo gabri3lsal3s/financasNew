@@ -201,7 +201,7 @@ export function ShareGoalActivePanel({
 
           {Boolean(activeShare.payload?.pix_key || pixKey) && (
             <ShareGoalQrCard
-              pixBrCode={String(activeShare.payload?.pix_br_code || effectivePixBrCode)}
+              pixBrCode={effectivePixBrCode || String(activeShare.payload?.pix_br_code || "")}
               showQrPreview={showQrPreview}
               onToggleQrPreview={onToggleQrPreview}
             />

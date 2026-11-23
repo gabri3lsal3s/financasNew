@@ -11,10 +11,13 @@ import * as nativeServices from "@/services/native";
 import {
   dispatchRemoteTestPush,
   getCurrentWebPushSubscription,
+  getStoredFcmToken,
   getVapidPublicKey,
   getWebPushPermissionState,
   isWebPushSupported,
+  registerNativeFcmPush,
   subscribeBrowserWebPush,
+  unregisterNativeFcmPush,
   unsubscribeBrowserWebPush,
 } from "@/services/push";
 import { pushToast } from "@/services/toast";
@@ -36,6 +39,11 @@ interface WebPushSubscriptionInput {
   p256dh: string;
   auth: string;
   userAgent?: string | null;
+}
+
+interface FcmTokenRegistrationInput {
+  fcmToken: string;
+  deviceLabel?: string | null;
 }
 
 function callOptionalNative<TResult>(
@@ -120,6 +128,28 @@ export function useNotificationPreferencesForm() {
       isPending: false,
     }),
   );
+  const useRegisterFcmTokenSafe = getOptionalHook<{
+    mutateAsync: (input: FcmTokenRegistrationInput) => Promise<unknown>;
+    isPending: boolean;
+  }>(
+    state,
+    "useRegisterFcmToken",
+    () => ({
+      mutateAsync: async () => undefined,
+      isPending: false,
+    }),
+  );
+  const useDisableFcmTokenSafe = getOptionalHook<{
+    mutateAsync: (fcmToken?: string | null) => Promise<unknown>;
+    isPending: boolean;
+  }>(
+    state,
+    "useDisableFcmToken",
+    () => ({
+      mutateAsync: async () => undefined,
+      isPending: false,
+    }),
+  );
 
   const { hasFeature } = useUserAccessSafe();
   const preferencesQuery = useUserPreferencesSafe();
@@ -127,6 +157,8 @@ export function useNotificationPreferencesForm() {
   const updateCustomSettingsMutation = useUpdateCustomSettingsSafe();
   const enableWebPushMutation = useEnableWebPushMutationSafe();
   const disableWebPushMutation = useDisableWebPushMutationSafe();
+  const registerFcmTokenMutation = useRegisterFcmTokenSafe();
+  const disableFcmTokenMutation = useDisableFcmTokenSafe();
 
   const permissionsStatus = nativeServices.usePermissionsStatus();
   const { postNotificationsGranted, requestPostNotifications } = permissionsStatus;
@@ -150,6 +182,7 @@ export function useNotificationPreferencesForm() {
   const [localDueNotificationsActive, setLocalDueNotificationsActive] = useState<boolean | null>(null);
   const [localRemotePushEnabled, setLocalRemotePushEnabled] = useState<boolean | null>(null);
   const [browserSubscriptionActive, setBrowserSubscriptionActive] = useState<boolean | null>(null);
+  const [nativePermissionDenied, setNativePermissionDenied] = useState(false);
   const [localQuietHours, setLocalQuietHours] = useState<QuietHoursConfig | null>(null);
   const [remotePushBusy, setRemotePushBusy] = useState(false);
   const [testNotificationPending, setTestNotificationPending] = useState(false);
@@ -182,9 +215,15 @@ export function useNotificationPreferencesForm() {
     cloudDeviceNotifs?.dailyReminderTime ??
     nativeServices.getDailyReminderTime();
 
-  // Na Web, o status exibido reflete a inscrição real deste navegador + permissão concedida
+  const hasActiveNativeToken =
+    isNative && Boolean(getStoredFcmToken()) && postNotificationsGranted;
+
+  // Reflete inscrição ativa neste aparelho (token FCM nativo ou PushSubscription Web + permissão concedida)
   const remotePushEnabled = isNative
-    ? false
+    ? localRemotePushEnabled !== null
+      ? localRemotePushEnabled
+      : hasActiveNativeToken ||
+        (cloudDeviceNotifs?.remotePushEnabled === true && Boolean(getStoredFcmToken()))
     : localRemotePushEnabled !== null
       ? localRemotePushEnabled
       : browserSubscriptionActive === true;
@@ -380,10 +419,79 @@ export function useNotificationPreferencesForm() {
     notifyDevicePrefsChanged();
   };
 
+  const handleToggleNativeRemotePush = async (enabled: boolean) => {
+    if (enabled) {
+      const result = await registerNativeFcmPush({ requestPermission: true });
+      if (!result.ok) {
+        if (result.reason === "permission_denied") {
+          setNativePermissionDenied(true);
+        }
+        pushToast({
+          title: "Não foi possível ativar os alertas em segundo plano",
+          description: result.message,
+          variant: "warning",
+        });
+        return;
+      }
+
+      setNativePermissionDenied(false);
+      try {
+        await registerFcmTokenMutation.mutateAsync({
+          fcmToken: result.token,
+          deviceLabel: "Android App",
+        });
+      } catch {
+        await unregisterNativeFcmPush();
+        setLocalRemotePushEnabled(false);
+        pushToast({
+          title: "Erro ao salvar ativação",
+          description: "Não foi possível registrar este celular no servidor. Tente novamente.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      callOptionalNative("setRemotePushEnabled", () => undefined, true);
+      setLocalRemotePushEnabled(true);
+      updateCustomSettingsMutation.mutate({
+        deviceNotifications: { remotePushEnabled: true },
+      });
+      pushToast({
+        title: "Alertas em segundo plano ativados",
+        description: "Você receberá avisos importantes neste celular mesmo com o app fechado.",
+        variant: "success",
+      });
+      return;
+    }
+
+    const { token } = await unregisterNativeFcmPush();
+    if (token) {
+      try {
+        await disableFcmTokenMutation.mutateAsync(token);
+      } catch {
+        // Não impede atualização do estado local após remoção no dispositivo
+      }
+    }
+    callOptionalNative("setRemotePushEnabled", () => undefined, false);
+    setLocalRemotePushEnabled(false);
+    updateCustomSettingsMutation.mutate({
+      deviceNotifications: { remotePushEnabled: false },
+    });
+    pushToast({
+      title: "Alertas em segundo plano desativados neste aparelho",
+      variant: "default",
+    });
+  };
+
   const handleToggleRemotePush = async (enabled: boolean) => {
-    if (remotePushBusy || isNative) return;
+    if (remotePushBusy) return;
     setRemotePushBusy(true);
     try {
+      if (isNative) {
+        await handleToggleNativeRemotePush(enabled);
+        return;
+      }
+
       if (enabled) {
         const result = await subscribeBrowserWebPush();
         if (!result.ok) {
@@ -472,7 +580,7 @@ export function useNotificationPreferencesForm() {
       );
 
       let deliveredRemote = false;
-      if (!isNative && remotePushEnabled) {
+      if (remotePushEnabled) {
         deliveredRemote = await dispatchRemoteTestPush();
       }
 
@@ -518,6 +626,7 @@ export function useNotificationPreferencesForm() {
     webPushConfigured,
     iosNeedsInstall,
     webPermissionDenied,
+    nativePermissionDenied: nativePermissionDenied && !postNotificationsGranted,
     remotePushBusy,
     quietHours,
     testNotificationPending,

@@ -90,7 +90,11 @@ export function InvoiceHistoryCard({ subscription }: InvoiceHistoryCardProps) {
               ) : invoices && invoices.length > 0 ? (
                 <div className="divide-y divide-border/80 rounded-xl border border-border/80 overflow-hidden">
                   {invoices.map((inv) => {
-                    const receiptUrl = inv.transactionReceiptUrl || inv.invoiceUrl;
+                    const rawReceiptUrl = inv.transactionReceiptUrl || inv.invoiceUrl;
+                    const receiptUrl =
+                      rawReceiptUrl && /^https:\/\//i.test(rawReceiptUrl.trim())
+                        ? rawReceiptUrl.trim()
+                        : null;
                     const dateFormatted =
                       inv.paymentDate || inv.dateCreated
                         ? new Date(inv.paymentDate || inv.dateCreated).toLocaleDateString("pt-BR", {

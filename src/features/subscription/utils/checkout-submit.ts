@@ -118,8 +118,14 @@ async function processCreditCardCheckout(
     firstBillingDate: params.firstBillingDate.toISOString(),
   });
 
-  if (res && res.method === "hosted_session" && "checkoutUrl" in res) {
-    window.location.href = res.checkoutUrl;
+  if (
+    res &&
+    res.method === "hosted_session" &&
+    "checkoutUrl" in res &&
+    typeof res.checkoutUrl === "string" &&
+    /^https:\/\//i.test(res.checkoutUrl.trim())
+  ) {
+    window.location.href = res.checkoutUrl.trim();
     return;
   }
 

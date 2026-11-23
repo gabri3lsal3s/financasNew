@@ -1,8 +1,9 @@
 import { Copy, QrCode } from "lucide-react";
+import { PixTroubleshootAccordion } from "@/components/modules";
 import { Badge, Button, Input, MoneyText, QrCodeCanvas } from "@/components/ui";
 import { CalculationMemoryModal } from "@/components/modules/calculation-memory";
 import type { CalculationBreakdown } from "@/domain/calculation-memory/types";
-import { buildPixTransferCode } from "@/domain/pix";
+import { buildPixTransferCode, formatPixKeyTypeLabel, validatePixBrCode } from "@/domain/pix";
 import type { SettlementTransfer } from "@/domain/family";
 
 export interface FamilySettlementTransferCardProps {
@@ -18,16 +19,20 @@ export function FamilySettlementTransferCard({
   onCopy,
   breakdown,
 }: FamilySettlementTransferCardProps) {
+  const freshPayload = buildPixTransferCode({
+    pixKey: transfer.pix_key,
+    keyType: transfer.pix_key_type ?? "auto",
+    merchantName: transfer.receiver_name,
+    amountCents: transfer.amount_cents,
+    txId: "***",
+    infoAdicional: `Familia ${month}`,
+  });
+
   const pixPayload =
-    transfer.pix_payload ||
-    buildPixTransferCode({
-      pixKey: transfer.pix_key,
-      keyType: transfer.pix_key_type ?? "auto",
-      merchantName: transfer.receiver_name,
-      amountCents: transfer.amount_cents,
-      txId: transfer.tx_id,
-      infoAdicional: `Familia ${month}`,
-    });
+    freshPayload ||
+    (transfer.pix_payload && validatePixBrCode(transfer.pix_payload)
+      ? transfer.pix_payload
+      : null);
 
   return (
     <div className="group p-4 rounded-xl border border-border/80 bg-surface-raised space-y-3.5">
@@ -65,7 +70,7 @@ export function FamilySettlementTransferCard({
             </label>
             {transfer.pix_key_type ? (
               <Badge variant="muted" size="xs">
-                {transfer.pix_key_type}
+                {formatPixKeyTypeLabel(transfer.pix_key_type)}
               </Badge>
             ) : null}
           </div>
@@ -82,7 +87,7 @@ export function FamilySettlementTransferCard({
               size="sm"
               sensoryIntent={false}
               className="shrink-0 gap-1.5"
-              onClick={() => onCopy(transfer.pix_key!, "Chave Pix")}
+              onClick={() => onCopy(transfer.pix_key!.trim(), "Chave Pix")}
             >
               <Copy className="size-3.5" aria-hidden="true" />
               <span>Copiar</span>
@@ -114,7 +119,7 @@ export function FamilySettlementTransferCard({
                 size="sm"
                 sensoryIntent={false}
                 className="shrink-0 gap-1.5"
-                onClick={() => onCopy(pixPayload, "Código Pix")}
+                onClick={() => onCopy(pixPayload.trim(), "Código Pix")}
               >
                 <Copy className="size-3.5" aria-hidden="true" />
                 <span>Copiar Pix</span>
@@ -125,7 +130,7 @@ export function FamilySettlementTransferCard({
           <div className="pt-2 border-t border-border/80 flex flex-col items-center gap-2 text-center">
             <QrCodeCanvas
               text={pixPayload}
-              size={156}
+              size={200}
               label={`QR Code Pix para ${transfer.receiver_name}`}
             />
             <span className="text-[11px] text-muted-foreground">
@@ -135,6 +140,19 @@ export function FamilySettlementTransferCard({
           </div>
         </div>
       )}
+
+      {(pixPayload || transfer.pix_key) ? (
+        <PixTroubleshootAccordion
+          pixBrCode={pixPayload}
+          pixKey={transfer.pix_key}
+          pixKeyType={transfer.pix_key_type}
+          onCopyPixKey={
+            transfer.pix_key
+              ? () => onCopy(transfer.pix_key!.trim(), "Chave Pix")
+              : undefined
+          }
+        />
+      ) : null}
     </div>
   );
 }

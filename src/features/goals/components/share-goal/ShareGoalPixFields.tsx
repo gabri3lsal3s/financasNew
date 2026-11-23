@@ -1,23 +1,19 @@
-import { Input, Select, type SelectOption } from "@/components/ui";
-
-const PIX_KEY_OPTIONS: SelectOption[] = [
-  { value: "auto", label: "Detecção automática" },
-  { value: "cpf", label: "CPF" },
-  { value: "phone", label: "Celular (+55)" },
-  { value: "email", label: "E-mail" },
-  { value: "random", label: "Chave Aleatória (EVP)" },
-  { value: "cnpj", label: "CNPJ" },
-];
+import { PixRecipientConfigFields, type PixKeyProfileSuggestions } from "@/components/modules";
+import type { PixKeyType } from "@/domain/pix";
 
 export interface ShareGoalPixFieldsProps {
   pixKey: string;
   onPixKeyChange: (val: string) => void;
   selectedKeyType: string;
   onSelectedKeyTypeChange: (val: string) => void;
+  detectedType?: PixKeyType | null;
+  validationError?: string | null;
+  isAmbiguousCpfOrPhone?: boolean;
+  onQuickSelectKeyType?: (type: "phone" | "cpf") => void;
+  profileSuggestions?: PixKeyProfileSuggestions;
   merchantName: string;
   onMerchantNameChange: (val: string) => void;
-  merchantCity: string;
-  onMerchantCityChange: (val: string) => void;
+  previewInfoAdicional?: string;
 }
 
 export function ShareGoalPixFields({
@@ -25,68 +21,47 @@ export function ShareGoalPixFields({
   onPixKeyChange,
   selectedKeyType,
   onSelectedKeyTypeChange,
+  detectedType = null,
+  validationError = null,
+  isAmbiguousCpfOrPhone = false,
+  onQuickSelectKeyType,
+  profileSuggestions,
   merchantName,
   onMerchantNameChange,
-  merchantCity,
-  onMerchantCityChange,
+  previewInfoAdicional,
 }: ShareGoalPixFieldsProps) {
   return (
-    <>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="goal-pix-key" className="text-xs font-semibold text-foreground">
-          Chave Pix do Organizador
-        </label>
-        <Input
-          id="goal-pix-key"
-          value={pixKey}
-          onChange={(e) => onPixKeyChange(e.target.value)}
-          placeholder="CPF, celular, e-mail ou aleatória"
-          className="text-base sm:text-sm"
-          required
-        />
-        <p className="text-[11px] text-muted-foreground">
-          Destino das contribuições dos participantes.
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-foreground">Tipo de Chave Pix</label>
-        <Select
-          value={selectedKeyType}
-          onValueChange={onSelectedKeyTypeChange}
-          options={PIX_KEY_OPTIONS}
-          ariaLabel="Tipo de Chave Pix"
-        />
-        <p className="text-[11px] text-muted-foreground">Formatação do identificador BACEN.</p>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="goal-merchant-name" className="text-xs font-semibold text-foreground">
-          Nome do Titular / Organizador
-        </label>
-        <Input
-          id="goal-merchant-name"
-          value={merchantName}
-          onChange={(e) => onMerchantNameChange(e.target.value)}
-          placeholder="Ex.: Gabriel Sales"
-          className="text-base sm:text-sm"
-          required
-        />
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="goal-merchant-city" className="text-xs font-semibold text-foreground">
-          Cidade
-        </label>
-        <Input
-          id="goal-merchant-city"
-          value={merchantCity}
-          onChange={(e) => onMerchantCityChange(e.target.value)}
-          placeholder="Ex.: SAO PAULO"
-          className="text-base sm:text-sm"
-          required
-        />
-      </div>
-    </>
+    <div className="sm:col-span-2 pt-1 border-t border-border/80">
+      <PixRecipientConfigFields
+        pixKey={pixKey}
+        onPixKeyChange={onPixKeyChange}
+        selectedKeyType={selectedKeyType}
+        onSelectedKeyTypeChange={onSelectedKeyTypeChange}
+        detectedType={detectedType}
+        validationError={validationError}
+        isAmbiguousCpfOrPhone={isAmbiguousCpfOrPhone}
+        onQuickSelectKeyType={onQuickSelectKeyType}
+        profileSuggestions={profileSuggestions}
+        merchantName={merchantName}
+        onMerchantNameChange={onMerchantNameChange}
+        previewInfoAdicional={previewInfoAdicional}
+        defaultMerchantName="Organizador"
+        defaultMerchantCity="BRASILIA"
+        requirePixKey={true}
+        showVerificationPanel={true}
+        allowTestCopy={true}
+        pixKeyId="goal-pix-key"
+        pixKeyLabel="Chave Pix do Organizador"
+        pixKeyAriaLabel="Chave Pix do Organizador"
+        pixKeyHelperText="Obrigatória · Destino das contribuições dos participantes"
+        keyTypeLabel="Tipo de Chave Pix"
+        keyTypeAriaLabel="Tipo de Chave Pix"
+        keyTypeHelperText="Formatação do identificador BACEN"
+        merchantNameId="goal-merchant-name"
+        merchantNameLabel="Nome do Titular / Organizador"
+        merchantNameAriaLabel="Nome do Titular / Organizador"
+        merchantNamePlaceholder="Ex.: Gabriel Sales (opcional)"
+      />
+    </div>
   );
 }

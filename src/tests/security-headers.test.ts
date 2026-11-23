@@ -23,7 +23,8 @@ describe("Tarefa 1.3 — Content-Security-Policy (CSP) & Segurança de Borda em 
 
     // Valida diretivas obrigatórias de contenção
     expect(csp).toContain("default-src 'self'");
-    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'");
+    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
+    expect(csp).not.toContain("'unsafe-eval'");
     expect(csp).toContain("https://challenges.cloudflare.com");
     // Verifica o hash exato do script inline de tema/splash em index.html
     const indexHtml = readFileSync(resolve(root, "index.html"), "utf8");

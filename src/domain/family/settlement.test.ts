@@ -112,19 +112,32 @@ describe("settlement — Motor Puro de Compensação Justa Familiar via Pix", ()
 
     it("gera BR Code com chave CPF normalizando pontuação", () => {
       const result = generateSettlementPixPayload({
-        pixKey: "123.456.789-00",
+        pixKey: "123.456.789-09",
         merchantName: "Joao Souza",
         merchantCity: "Rio de Janeiro",
         amountCents: 8520, // R$ 85,20
       });
 
       expect(result.has_pix).toBe(true);
-      expect(result.pix_key).toBe("12345678900");
+      expect(result.pix_key).toBe("12345678909");
       expect(result.pix_payload).toBeDefined();
 
       expect(validatePixBrCode(result.pix_payload!)).toBe(true);
       const decoded = decodePixBrCode(result.pix_payload!);
       expect(decoded?.amountCents).toBe(8520);
+    });
+
+    it("retorna has_pix falso para chave malformada", () => {
+      const invalid = generateSettlementPixPayload({
+        pixKey: "chave-pix-invalida",
+        merchantName: "Joao Souza",
+        merchantCity: "Aracaju",
+        amountCents: 5000,
+      });
+
+      expect(invalid.has_pix).toBe(false);
+      expect(invalid.pix_payload).toBeNull();
+      expect(invalid.error).toBeTruthy();
     });
 
     it("gera BR Code com chave de celular formatada para E.164 (+55)", () => {

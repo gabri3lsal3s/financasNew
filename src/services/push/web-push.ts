@@ -232,7 +232,7 @@ export async function unsubscribeBrowserWebPush(): Promise<{
  * Dispara um teste real de entrega remota pelo `push-dispatcher` para o próprio usuário autenticado.
  */
 export async function dispatchRemoteTestPush(): Promise<boolean> {
-  if (!isWebPushSupported()) return false;
+  if (!isWebPushSupported() && !isNativePlatform()) return false;
   try {
     const supabase = getSupabase();
     const { data, error } = await supabase.functions.invoke("push-dispatcher", {

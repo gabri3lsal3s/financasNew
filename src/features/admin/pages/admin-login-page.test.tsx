@@ -1,21 +1,20 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminLoginPage } from "./admin-login-page";
 
 const mockSignInAdmin = vi.fn();
+const mockUseAuth = vi.fn();
+const mockUseUserAccess = vi.fn();
 
 vi.mock("@/hooks/use-auth", () => ({
-  useAuth: () => ({ session: null }),
+  useAuth: () => mockUseAuth(),
   signInAdmin: (...args: unknown[]) => mockSignInAdmin(...args),
 }));
 
 vi.mock("@/state", () => ({
-  useUserAccess: () => ({
-    isAdmin: false,
-    isLoading: false,
-  }),
+  useUserAccess: () => mockUseUserAccess(),
 }));
 
 vi.mock("@/components/ui/turnstile", () => ({
@@ -41,6 +40,8 @@ vi.mock("@/services/toast", () => ({
 describe("AdminLoginPage Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({ session: null, mfaRequired: false, mfaVerified: false });
+    mockUseUserAccess.mockReturnValue({ isAdmin: false, isLoading: false });
   });
 
   it("renderiza o formulário de login administrativo com branding seguro", () => {
@@ -86,5 +87,27 @@ describe("AdminLoginPage Component", () => {
     expect(
       await screen.findByText(/Esta conta não possui privilégios de operador administrativo/i),
     ).toBeInTheDocument();
+  });
+
+  it("encaminha admin autenticado em AAL1 para /entrar?desafio=totp quando mfaRequired for true e mfaVerified for false", () => {
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "admin-1" } },
+      mfaRequired: true,
+      mfaVerified: false,
+    });
+    mockUseUserAccess.mockReturnValue({ isAdmin: true, isLoading: false });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/login"]}>
+        <Routes>
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/admin/dashboard" element={<div>Dashboard Admin</div>} />
+          <Route path="/entrar" element={<div>Tela de Desafio TOTP</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText("Dashboard Admin")).not.toBeInTheDocument();
+    expect(screen.getByText("Tela de Desafio TOTP")).toBeInTheDocument();
   });
 });

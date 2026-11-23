@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { validateAndClassifyPixKey, type PixKeyType } from "@/domain/pix";
 import { useAuth } from "@/hooks/use-auth";
 import {
   useAcceptFamilyInvite,
@@ -8,9 +9,13 @@ import {
   useMyFamily,
 } from "@/state/queries/use-family";
 import { getPublicAppUrl } from "@/services/app-url";
+import { copyTextToClipboard } from "@/services/export-actions";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { FamilyPixKeyType } from "@/types";
+
+const CNPJ_NOT_SUPPORTED_ERROR =
+  "Chave Pix do tipo CNPJ não é suportada no modo familiar. Use CPF, Celular (+55), E-mail ou Chave Aleatória.";
 
 export function useFamilyInviteFlow(token: string | undefined) {
   const navigate = useNavigate();
@@ -29,9 +34,27 @@ export function useFamilyInviteFlow(token: string | undefined) {
   const [customDisplayName, setCustomDisplayName] = useState<string | null>(null);
   const displayName = customDisplayName ?? defaultDisplayName;
   const [pixKey, setPixKey] = useState("");
-  const [pixKeyType, setPixKeyType] = useState<FamilyPixKeyType>("cpf");
+  const [pixKeyType, setPixKeyType] = useState<string>("auto");
   const [copiedLink, setCopiedLink] = useState(false);
   const [now] = useState(() => Date.now());
+
+  const pixValidation = useMemo(() => {
+    if (!pixKey.trim()) return null;
+    const rawResult = validateAndClassifyPixKey(
+      pixKey,
+      pixKeyType === "auto" ? undefined : (pixKeyType as PixKeyType),
+    );
+    if (rawResult.resolvedType === "cnpj") {
+      return {
+        ...rawResult,
+        isValid: false,
+        errorMessage: CNPJ_NOT_SUPPORTED_ERROR,
+      };
+    }
+    return rawResult;
+  }, [pixKey, pixKeyType]);
+
+  const hasInvalidPix = Boolean(pixKey.trim() && pixValidation && !pixValidation.isValid);
 
   useEffect(() => {
     if (invite?.family_name) {
@@ -44,8 +67,8 @@ export function useFamilyInviteFlow(token: string | undefined) {
   const canonicalInviteUrl = getPublicAppUrl(`convite-familiar/${token ?? ""}`);
 
   const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(canonicalInviteUrl);
+    const copied = await copyTextToClipboard(canonicalInviteUrl);
+    if (copied) {
       setCopiedLink(true);
       triggerSensory("success");
       pushToast({
@@ -54,7 +77,7 @@ export function useFamilyInviteFlow(token: string | undefined) {
         variant: "default",
       });
       setTimeout(() => setCopiedLink(false), 3000);
-    } catch {
+    } else {
       triggerSensory("error");
       pushToast({
         title: "Erro ao copiar",
@@ -79,13 +102,24 @@ export function useFamilyInviteFlow(token: string | undefined) {
   };
 
   const handleAcceptInvite = async () => {
-    if (!token) return;
+    if (!token || hasInvalidPix) return;
+    const cleanPix = pixKey.trim()
+      ? (pixValidation?.normalizedKey ?? pixKey.trim())
+      : null;
+    const resolvedPixType: FamilyPixKeyType | null = cleanPix
+      ? ((pixValidation?.resolvedType && pixValidation.resolvedType !== "cnpj"
+          ? pixValidation.resolvedType
+          : pixKeyType === "auto"
+            ? null
+            : pixKeyType) as FamilyPixKeyType | null)
+      : null;
+
     try {
       await acceptInviteMutation.mutateAsync({
         token,
         displayName: displayName.trim() || null,
-        pixKey: pixKey.trim() || null,
-        pixKeyType: pixKey.trim() ? pixKeyType : null,
+        pixKey: cleanPix,
+        pixKeyType: cleanPix ? resolvedPixType : null,
       });
       navigate("/familia", { replace: true });
     } catch {
@@ -109,6 +143,10 @@ export function useFamilyInviteFlow(token: string | undefined) {
     setPixKey,
     pixKeyType,
     setPixKeyType,
+    detectedPixType: pixValidation?.resolvedType ?? null,
+    pixValidationError: pixValidation?.errorMessage ?? null,
+    isAmbiguousCpfOrPhone: pixValidation?.isAmbiguousCpfOrPhone ?? false,
+    hasInvalidPix,
     copiedLink,
     now,
     canonicalInviteUrl,

@@ -52,8 +52,14 @@ export function AppDownloadModal({
   };
 
   const handleDownloadApk = () => {
+    const cleanUrl = apkUrl.trim();
+    const isSafeUrl =
+      /^https:\/\//i.test(cleanUrl) || (cleanUrl.startsWith("/") && !cleanUrl.startsWith("//"));
+    if (!isSafeUrl) {
+      return;
+    }
     const link = document.createElement("a");
-    link.href = apkUrl;
+    link.href = cleanUrl;
     link.download = AXIR_APK_FILENAME;
     link.target = "_blank";
     link.rel = "noopener noreferrer";

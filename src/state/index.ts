@@ -371,5 +371,6 @@ export {
   useEnableWebPushSubscription,
   useDisableWebPushSubscription,
   useRegisterFcmToken,
+  useDisableFcmToken,
 } from "./mutations/use-push-subscription-mutations";
 

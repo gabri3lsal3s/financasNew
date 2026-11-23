@@ -117,7 +117,10 @@ export async function listMySupportTickets(): Promise<SupportTicket[]> {
     throw new AppError(classified.kind, classified.message, error);
   }
 
-  return data ?? [];
+  return (data ?? []).map((ticket) => ({
+    ...ticket,
+    admin_notes: null,
+  }));
 }
 
 /**

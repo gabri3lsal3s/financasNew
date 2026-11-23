@@ -23,10 +23,15 @@ android {
             def keystorePath = System.getenv("KEYSTORE_PATH") ?: "release-key.keystore"
             def keystoreFile = file(keystorePath)
             if (keystoreFile.exists()) {
+                def envStorePass = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                def envKeyPass = System.getenv("KEY_PASSWORD") ?: envStorePass
+                if (envStorePass == "guiafinanceiro123" || envKeyPass == "guiafinanceiro123") {
+                    throw new GradleException("ERRO DE SEGURANCA: Senha padrao antiga revogada detectada em KEYSTORE_PASSWORD/KEY_PASSWORD.")
+                }
                 storeFile keystoreFile
-                storePassword System.getenv("KEYSTORE_PASSWORD") ?: ""
+                storePassword envStorePass
                 keyAlias System.getenv("KEY_ALIAS") ?: "guiafinanceiro"
-                keyPassword System.getenv("KEY_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyPassword envKeyPass
             }
         }
     }

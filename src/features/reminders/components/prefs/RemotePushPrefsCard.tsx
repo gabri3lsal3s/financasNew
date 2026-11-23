@@ -21,16 +21,20 @@ export function RemotePushPrefsCard({
   isBusy = false,
   onToggleRemotePush,
 }: RemotePushPrefsCardProps) {
-  const canToggleWebPush =
-    !isNative &&
-    webPushSupported &&
-    webPushConfigured &&
-    !iosNeedsInstall &&
-    (!permissionDenied || remotePushEnabled);
+  const canToggle = isNative
+    ? !permissionDenied || remotePushEnabled
+    : webPushSupported &&
+      webPushConfigured &&
+      !iosNeedsInstall &&
+      (!permissionDenied || remotePushEnabled);
 
-  const badgeVariant = remotePushEnabled && canToggleWebPush ? "default" : "muted";
+  const badgeVariant = remotePushEnabled && canToggle ? "default" : "muted";
   const badgeLabel = isNative
-    ? "Somente avisos locais"
+    ? permissionDenied
+      ? "Bloqueado no aparelho"
+      : remotePushEnabled
+        ? "Ativado neste aparelho"
+        : "Desativado"
     : iosNeedsInstall
       ? "Instalar na Tela Inicial"
       : !webPushSupported
@@ -44,7 +48,9 @@ export function RemotePushPrefsCard({
               : "Desativado";
 
   const description = isNative
-    ? "No App Android, seus lembretes de contas e o Assistente de Notificações já funcionam localmente mesmo offline. Alertas remotos em segundo plano com o app fechado estão em preparação."
+    ? permissionDenied
+      ? "As notificações do Axir estão bloqueadas no Android. Libere a permissão nas configurações do aparelho para ativar."
+      : "Receba avisos importantes neste celular (Pix em rachas, respostas do suporte, avisos de assinatura e comunicados) mesmo com o app fechado."
     : iosNeedsInstall
       ? "No iPhone/iPad, toque em Compartilhar > Adicionar à Tela de Início e abra o Axir pelo ícone para liberar alertas mesmo com o app fechado."
       : !webPushSupported
@@ -73,8 +79,8 @@ export function RemotePushPrefsCard({
             </p>
           </div>
           <Switch
-            checked={canToggleWebPush ? remotePushEnabled : false}
-            disabled={!canToggleWebPush || isBusy}
+            checked={canToggle ? remotePushEnabled : false}
+            disabled={!canToggle || isBusy}
             onCheckedChange={onToggleRemotePush}
             aria-label="Habilitar Notificações Push Remotas"
           />

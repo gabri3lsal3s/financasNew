@@ -67,6 +67,14 @@ export function FamilySettingsDialog({
             s.setMemberPixKey(val);
             s.setIsMemberDirty(true);
           }}
+          detectedPixType={s.memberDetectedPixType}
+          pixValidationError={s.memberPixValidationError}
+          isAmbiguousCpfOrPhone={s.isMemberPixAmbiguous}
+          hasInvalidPixKey={s.hasInvalidMemberPix}
+          onQuickSelectKeyType={(t) => {
+            s.setMemberPixKeyType(t);
+            s.setIsMemberDirty(true);
+          }}
           memberSplitRatioPercent={s.memberSplitRatioPercent}
           onMemberSplitRatioPercentChange={(val) => {
             s.setMemberSplitRatioPercent(val);

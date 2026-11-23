@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { isValidCNPJ, isValidBrazilianPhoneDigits, validateAndClassifyPixKey } from "./pix-key-validation";
+import {
+  formatPixKeyTypeLabel,
+  isValidCNPJ,
+  isValidBrazilianPhoneDigits,
+  validateAndClassifyPixKey,
+} from "./pix-key-validation";
 
 describe("pix-key-validation", () => {
   it("valida CNPJ corretamente", () => {
@@ -56,11 +61,52 @@ describe("pix-key-validation", () => {
     expect(res.errorMessage).toBeTruthy();
   });
 
-  it("valida email, chave aleatória e telefone formatado", () => {
+  it("valida email, chave aleatória, telefone com prefixo 0/0055 e caracteres invisíveis", () => {
     expect(validateAndClassifyPixKey("  Ana@Axir.com.br ").normalizedKey).toBe("ana@axir.com.br");
+    expect(validateAndClassifyPixKey("ana@exemplo\u200B.com").normalizedKey).toBe("ana@exemplo.com");
     expect(
-      validateAndClassifyPixKey("123E4567-E12B-12D1-A456-426655440000").normalizedKey,
+      validateAndClassifyPixKey("\uFEFF123E4567-E12B-12D1-A456-426655440000\u200B").normalizedKey,
     ).toBe("123e4567-e12b-12d1-a456-426655440000");
     expect(validateAndClassifyPixKey("(79) 99988-7766").normalizedKey).toBe("+5579999887766");
+    expect(validateAndClassifyPixKey("011999998888").normalizedKey).toBe("+5511999998888");
+    expect(validateAndClassifyPixKey("+55 (011) 99999-8888").normalizedKey).toBe("+5511999998888");
+    expect(validateAndClassifyPixKey("005511999998888").normalizedKey).toBe("+5511999998888");
+    expect(validateAndClassifyPixKey("alice@pix").isValid).toBe(false);
+    expect(validateAndClassifyPixKey("alice@exa mplo.com").isValid).toBe(false);
+  });
+
+  it("exibe mensagens de erro detalhadas com motivo exato e orientacao de correcao", () => {
+    const partialUuid = validateAndClassifyPixKey("123e4567-e12b-12d1", "auto");
+    expect(partialUuid.isValid).toBe(false);
+    expect(partialUuid.errorMessage).toContain("18/36 caracteres");
+
+    const explicitShortUuid = validateAndClassifyPixKey("123e4567-e12b", "random");
+    expect(explicitShortUuid.isValid).toBe(false);
+    expect(explicitShortUuid.errorMessage).toContain("13/36 caracteres");
+
+    const accentedEmail = validateAndClassifyPixKey("joão@exemplo.com", "email");
+    expect(accentedEmail.isValid).toBe(false);
+    expect(accentedEmail.errorMessage).toContain("ASCII");
+
+    const emailWithSpaces = validateAndClassifyPixKey("ana @exemplo.com", "email");
+    expect(emailWithSpaces.isValid).toBe(false);
+    expect(emailWithSpaces.errorMessage).toContain("espaços");
+
+    const shortDigits = validateAndClassifyPixKey("79999", "auto");
+    expect(shortDigits.isValid).toBe(false);
+    expect(shortDigits.errorMessage).toContain("5 informados");
+
+    const invalidCpfLikePhone = validateAndClassifyPixKey("79999887766", "cpf");
+    expect(invalidCpfLikePhone.isValid).toBe(false);
+    expect(invalidCpfLikePhone.errorMessage).toContain("Celular (+55)");
+  });
+
+  it("formata rótulos amigáveis dos tipos de chave Pix", () => {
+    expect(formatPixKeyTypeLabel("cpf")).toBe("CPF");
+    expect(formatPixKeyTypeLabel("cnpj")).toBe("CNPJ");
+    expect(formatPixKeyTypeLabel("email")).toBe("E-mail");
+    expect(formatPixKeyTypeLabel("phone")).toBe("Celular (+55)");
+    expect(formatPixKeyTypeLabel("random")).toBe("Chave Aleatória (EVP)");
+    expect(formatPixKeyTypeLabel("unknown")).toBe("Chave Pix");
   });
 });

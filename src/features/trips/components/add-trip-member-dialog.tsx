@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Button, DatePicker, FormField, Input, Modal, ModalFooter, Select } from "@/components/ui";
+import { useMemo, useState } from "react";
+import { PixKeyInputFields } from "@/components/modules";
+import { Button, DatePicker, FormField, Input, Modal, ModalFooter } from "@/components/ui";
+import { validateAndClassifyPixKey, type PixKeyType } from "@/domain/pix";
 import { useAddTripMemberMutation } from "@/state/queries/use-trips";
 import { triggerSensory } from "@/services/sensory";
 import { todayISO } from "@/lib/date";
@@ -12,13 +14,6 @@ export interface AddTripMemberDialogProps {
   tripId: string;
 }
 
-const PIX_TYPE_OPTIONS = [
-  { value: "cpf", label: "CPF" },
-  { value: "email", label: "E-mail" },
-  { value: "phone", label: "Telefone" },
-  { value: "random", label: "Aleatória" },
-];
-
 export function AddTripMemberDialog({
   open,
   onOpenChange,
@@ -26,11 +21,21 @@ export function AddTripMemberDialog({
 }: AddTripMemberDialogProps) {
   const [name, setName] = useState("");
   const [pixKey, setPixKey] = useState("");
-  const [pixKeyType, setPixKeyType] = useState<TripPixKeyType>("cpf");
+  const [pixKeyType, setPixKeyType] = useState<string>("auto");
   const [participationMode, setParticipationMode] = useState<"all" | "from_date">("all");
   const [joinedDate, setJoinedDate] = useState(() => todayISO());
 
   const addMemberMutation = useAddTripMemberMutation();
+
+  const pixValidation = useMemo(() => {
+    if (!pixKey.trim()) return null;
+    return validateAndClassifyPixKey(
+      pixKey,
+      pixKeyType === "auto" ? undefined : (pixKeyType as PixKeyType),
+    );
+  }, [pixKey, pixKeyType]);
+
+  const hasInvalidPix = Boolean(pixKey.trim() && pixValidation && !pixValidation.isValid);
 
   const handleModeChange = (mode: "all" | "from_date") => {
     triggerSensory("selection");
@@ -39,19 +44,28 @@ export function AddTripMemberDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || hasInvalidPix) return;
+
+    const cleanPix = pixKey.trim()
+      ? (pixValidation?.normalizedKey ?? pixKey.trim())
+      : null;
+    const resolvedPixType: TripPixKeyType | null = cleanPix
+      ? ((pixValidation?.resolvedType ??
+          (pixKeyType === "auto" ? null : pixKeyType)) as TripPixKeyType | null)
+      : null;
 
     try {
       await addMemberMutation.mutateAsync({
         trip_id: tripId,
         name: name.trim(),
-        pix_key: pixKey.trim() || null,
-        pix_key_type: pixKey.trim() ? pixKeyType : null,
+        pix_key: cleanPix,
+        pix_key_type: cleanPix ? resolvedPixType : null,
         joined_date: participationMode === "from_date" ? joinedDate : null,
       });
 
       setName("");
       setPixKey("");
+      setPixKeyType("auto");
       setParticipationMode("all");
       onOpenChange(false);
     } catch {
@@ -74,7 +88,7 @@ export function AddTripMemberDialog({
           <Button
             type="submit"
             form="add-trip-member-form"
-            disabled={!name.trim() || addMemberMutation.isPending}
+            disabled={!name.trim() || hasInvalidPix || addMemberMutation.isPending}
             loading={addMemberMutation.isPending}
           >
             Adicionar
@@ -95,26 +109,26 @@ export function AddTripMemberDialog({
           />
         </FormField>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <FormField label="Tipo da Chave Pix" htmlFor="add-member-pix-type">
-            <Select
-              id="add-member-pix-type"
-              value={pixKeyType}
-              onValueChange={(val) => setPixKeyType(val as TripPixKeyType)}
-              options={PIX_TYPE_OPTIONS}
-            />
-          </FormField>
-
-          <FormField label="Chave Pix" optional htmlFor="add-member-pix-key">
-            <Input
-              id="add-member-pix-key"
-              value={pixKey}
-              onChange={(e) => setPixKey(e.target.value)}
-              placeholder="Para receber transferências"
-              className="text-base sm:text-sm font-mono"
-            />
-          </FormField>
-        </div>
+        <PixKeyInputFields
+          pixKey={pixKey}
+          onPixKeyChange={setPixKey}
+          selectedKeyType={pixKeyType}
+          onSelectedKeyTypeChange={setPixKeyType}
+          detectedType={pixValidation?.resolvedType ?? null}
+          validationError={pixValidation?.errorMessage ?? null}
+          isAmbiguousCpfOrPhone={pixValidation?.isAmbiguousCpfOrPhone ?? false}
+          onQuickSelectKeyType={(t) => setPixKeyType(t)}
+          pixKeyId="add-member-pix-key"
+          keyTypeId="add-member-pix-type"
+          pixKeyLabel="Chave Pix (opcional)"
+          pixKeyAriaLabel="Chave Pix do participante"
+          pixKeyPlaceholder="CPF, celular, e-mail ou aleatória"
+          pixKeyHelperText="Para receber transferências no acerto"
+          keyTypeLabel="Tipo da Chave Pix"
+          keyTypeAriaLabel="Tipo da Chave Pix"
+          showBankRegistrationNotice={Boolean(pixKey.trim())}
+          showVerificationBadge={true}
+        />
 
         <div className="space-y-2 pt-2 border-t border-border/80">
           <span className="text-xs font-semibold text-foreground block">

@@ -515,9 +515,21 @@ export async function dispatchLocalOrWebNotification(
       });
 
       if (options.url) {
+        const rawUrl = options.url.trim();
         notif.onclick = () => {
           window.focus();
-          window.location.href = options.url!;
+          if (rawUrl.startsWith("/") && !rawUrl.startsWith("//")) {
+            window.location.href = rawUrl;
+          } else {
+            try {
+              const parsed = new URL(rawUrl, window.location.origin);
+              if (parsed.origin === window.location.origin) {
+                window.location.href = parsed.href;
+              }
+            } catch {
+              // URL inválida ignorada por segurança
+            }
+          }
           notif.close();
         };
       }

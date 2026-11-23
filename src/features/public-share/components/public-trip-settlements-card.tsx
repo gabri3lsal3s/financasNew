@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { Badge, Card, EmptyState } from "@/components/ui";
+import { copyTextToClipboard } from "@/services/export-actions";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { PublicTripLedgerData, SuggestedSettlement } from "@/types/trips";
@@ -33,11 +34,11 @@ export function PublicTripSettlementsCard({
   }, []);
 
   const handleCopyPix = async (pixKey: string) => {
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(pixKey);
-      }
-      setCopiedPixKey(pixKey);
+    const cleanKey = pixKey.trim();
+    if (!cleanKey) return;
+    const copied = await copyTextToClipboard(cleanKey);
+    if (copied) {
+      setCopiedPixKey(cleanKey);
       triggerSensory("success");
       pushToast({
         title: "Chave Pix copiada",
@@ -45,7 +46,7 @@ export function PublicTripSettlementsCard({
       });
       if (pixTimerRef.current) clearTimeout(pixTimerRef.current);
       pixTimerRef.current = setTimeout(() => setCopiedPixKey(null), 3000);
-    } catch {
+    } else {
       triggerSensory("destructive");
       pushToast({
         title: "Erro ao copiar chave",
@@ -56,10 +57,10 @@ export function PublicTripSettlementsCard({
   };
 
   const handleCopyPixBrCode = async (code: string, keyIdentifier: string) => {
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(code);
-      }
+    const cleanCode = code.trim();
+    if (!cleanCode) return;
+    const copied = await copyTextToClipboard(cleanCode);
+    if (copied) {
       setCopiedCodeKey(keyIdentifier);
       triggerSensory("success");
       pushToast({
@@ -68,7 +69,7 @@ export function PublicTripSettlementsCard({
       });
       if (codeTimerRef.current) clearTimeout(codeTimerRef.current);
       codeTimerRef.current = setTimeout(() => setCopiedCodeKey(null), 3000);
-    } catch {
+    } else {
       triggerSensory("destructive");
       pushToast({
         title: "Erro ao copiar código",

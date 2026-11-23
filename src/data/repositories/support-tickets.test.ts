@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   createSupportTicket,
   listAdminSupportTickets,
+  listMySupportTickets,
   updateAdminSupportTicket,
 } from "./support-tickets";
 import { getSupabase } from "@/data/client";
@@ -153,5 +154,35 @@ describe("createSupportTicket — Repositório de Chamados de Suporte", () => {
         message: "Como funciona?",
       }),
     ).rejects.toThrow();
+  });
+
+  it("remove admin_notes em listMySupportTickets para nunca expor anotações internas ao usuário final", async () => {
+    const mockOrder = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: "t-user-1",
+          user_id: "usr-test-123",
+          type: "doubt",
+          status: "in_progress",
+          message: "Dúvida sobre extrato",
+          admin_notes: "Nota interna confidencial",
+          admin_reply: "Resposta pública",
+        },
+      ],
+      error: null,
+    });
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+
+    vi.mocked(getSupabase).mockReturnValue({
+      from: mockFrom,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+
+    const tickets = await listMySupportTickets();
+    expect(tickets).toHaveLength(1);
+    expect(tickets[0]?.admin_reply).toBe("Resposta pública");
+    expect(tickets[0]?.admin_notes).toBeNull();
   });
 });

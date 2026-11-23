@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterAll } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { decodePixBrCode, validatePixBrCode } from "@/domain/pix";
 import { SplitExpenseDialog } from "./split-expense-dialog";
 import { storeSplitPreferences } from "@/services/split-preferences";
 import type { Expense } from "@/types";
@@ -83,6 +84,12 @@ describe("SplitExpenseDialog", () => {
 
   beforeEach(() => {
     localStorage.clear();
+    storeSplitPreferences({
+      pixKey: "",
+      pixKeyType: "auto",
+      merchantName: "",
+      merchantCity: "",
+    });
     vi.clearAllMocks();
     mockMutateAsync.mockResolvedValue({
       share: {
@@ -109,7 +116,7 @@ describe("SplitExpenseDialog", () => {
     });
   });
 
-  it("renderiza campos com dados preenchidos a partir da despesa e perfil", () => {
+  it("não pré-preenche silenciosamente CPF ou e-mail do perfil e exibe aviso + chips explícitos de preenchimento", () => {
     renderWithClient(
       <SplitExpenseDialog
         open={true}
@@ -123,9 +130,17 @@ describe("SplitExpenseDialog", () => {
     const descInput = screen.getByLabelText("Descrição do racha");
     expect(descInput).toHaveValue("Pizza com Amigos");
 
-    // Chave Pix preenchida do perfil (CPF válido)
+    // Chave Pix NÃO é auto-preenchida silenciosamente com CPF/e-mail de login
     const pixInput = screen.getByLabelText("Chave Pix do anfitrião");
-    expect(pixInput).toHaveValue("52998224725");
+    expect(pixInput).toHaveValue("");
+    expect(
+      screen.getByText(/Informe apenas uma chave Pix já cadastrada e ativa no seu banco/i),
+    ).toBeInTheDocument();
+
+    // Chips opcionais de 1 clique permitem preencher explicitamente e disparam alerta se for e-mail de login
+    fireEvent.click(screen.getByRole("button", { name: "Usar meu e-mail" }));
+    expect(pixInput).toHaveValue("gabriel@example.com");
+    expect(screen.getByText(/este é o seu e-mail de login no Axir/i)).toBeInTheDocument();
 
     // Titular preenchido
     const merchantInput = screen.getByLabelText("Nome do titular da chave Pix");
@@ -209,7 +224,7 @@ describe("SplitExpenseDialog", () => {
 
     expect(screen.getByLabelText("Chave Pix do anfitrião")).toHaveValue("minhachave@salva.com");
     expect(screen.getByLabelText("Nome do titular da chave Pix")).toHaveValue("Gabriel Personalizado");
-    expect(screen.getByLabelText("Cidade do titular da chave Pix")).toHaveValue("CURITIBA");
+    expect(screen.queryByLabelText("Cidade do titular da chave Pix")).not.toBeInTheDocument();
   });
 
   it("gera racha, chama mutation, copia link e exibe tela de sucesso com botão WhatsApp", async () => {
@@ -221,8 +236,8 @@ describe("SplitExpenseDialog", () => {
       />,
     );
 
-    const cityInput = screen.getByLabelText("Cidade do titular da chave Pix");
-    fireEvent.change(cityInput, { target: { value: "NOSSA SENHORA DA GLORIA" } });
+    fireEvent.click(screen.getByRole("button", { name: "Usar meu CPF" }));
+    expect(screen.getByLabelText("Chave Pix do anfitrião")).toHaveValue("52998224725");
 
     const submitBtn = screen.getByRole("button", { name: /Gerar Racha & Copiar Link/i });
     expect(submitBtn).not.toBeDisabled();
@@ -240,7 +255,7 @@ describe("SplitExpenseDialog", () => {
     expect(callArg.payload.total_cents).toBe(9000);
     expect(callArg.payload.guest_share_cents).toBe(4500);
     expect(callArg.payload.total_settled_cents).toBe(0);
-    expect(callArg.payload.host_city).toBe("NOSSA SENHORA DA GLORIA");
+    expect(callArg.payload.host_city).toBe("BRASILIA");
     expect(callArg.payload.pix_br_code).toBeDefined();
 
     // Link copiado para clipboard
@@ -254,8 +269,10 @@ describe("SplitExpenseDialog", () => {
     expect(screen.getByRole("button", { name: "Concluir" })).toBeInTheDocument();
   });
 
-  it("auto-gera o racha quando autoGenerate for true e cidade estiver preenchida", async () => {
+  it("auto-gera o racha quando autoGenerate for true e preferências Pix estiverem salvas", async () => {
     storeSplitPreferences({
+      pixKey: "52998224725",
+      pixKeyType: "cpf",
       merchantCity: "ARACAJU",
     });
 
@@ -276,6 +293,8 @@ describe("SplitExpenseDialog", () => {
 
   it("gera racha parcelado com participant_installments quando a despesa for parcelada", async () => {
     storeSplitPreferences({
+      pixKey: "52998224725",
+      pixKeyType: "cpf",
       merchantCity: "ARACAJU",
     });
 
@@ -427,13 +446,40 @@ describe("SplitExpenseDialog", () => {
     // Soma completa do parcelamento (R$ 300,00 -> 150,00 cada)
     expect(screen.getAllByText(/150,00/).length).toBeGreaterThanOrEqual(1);
 
-    const cityInput = screen.getByLabelText("Cidade do titular da chave Pix");
-    fireEvent.change(cityInput, { target: { value: "ARACAJU" } });
-
     const pixInput = screen.getByLabelText("Chave Pix do anfitrião");
     fireEvent.change(pixInput, { target: { value: "12345678901" } });
 
     expect(screen.getByText(/INVÁLIDA/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Gerar Racha & Copiar Link/i })).toBeDisabled();
+  });
+
+  it("permite criar racha usando apenas a Chave Pix quando Nome está vazio e sem campo de Cidade", async () => {
+    renderWithClient(
+      <SplitExpenseDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        expense={mockExpense}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Cidade do titular da chave Pix")).not.toBeInTheDocument();
+    const nameInput = screen.getByLabelText("Nome do titular da chave Pix");
+    fireEvent.change(nameInput, { target: { value: "" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Usar meu CPF" }));
+
+    const submitBtn = screen.getByRole("button", { name: /Gerar Racha & Copiar Link/i });
+    expect(submitBtn).not.toBeDisabled();
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockMutateAsync).toHaveBeenCalledTimes(1);
+    });
+
+    const callArg = mockMutateAsync.mock.calls[0]![0];
+    expect(validatePixBrCode(callArg.payload.pix_br_code)).toBe(true);
+    const decoded = decodePixBrCode(callArg.payload.pix_br_code);
+    expect(decoded?.merchantCity).toBe("BRASILIA");
+    expect(decoded?.pixKey).toBe("52998224725");
   });
 });

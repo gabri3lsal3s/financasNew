@@ -9,6 +9,7 @@ import { formatCentsAsCurrency } from "@/services/masks";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { SplitParticipantInstallment } from "@/types";
+import { PixTroubleshootAccordion } from "../pix-troubleshoot-accordion";
 import { SplitChargeQrBox } from "./split-charge-qr-box";
 
 export interface SplitChargePixPanelProps {
@@ -101,7 +102,7 @@ export function SplitChargePixPanel({
       onCopyPix();
       return;
     }
-    const codeToCopy = pixBrCode || pixKey;
+    const codeToCopy = (pixBrCode || pixKey)?.trim();
     if (!codeToCopy) return;
     const copied = await copyTextToClipboard(codeToCopy);
     if (copied) {
@@ -132,8 +133,9 @@ export function SplitChargePixPanel({
       onCopyPixKey();
       return;
     }
-    if (!pixKey) return;
-    const copied = await copyTextToClipboard(pixKey);
+    const cleanKey = pixKey?.trim();
+    if (!cleanKey) return;
+    const copied = await copyTextToClipboard(cleanKey);
     if (copied) {
       setManualCopyCode(null);
       setCopiedKey(true);
@@ -146,7 +148,7 @@ export function SplitChargePixPanel({
       if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
       keyTimerRef.current = setTimeout(() => setCopiedKey(false), 3000);
     } else {
-      setManualCopyCode(pixKey);
+      setManualCopyCode(cleanKey);
       triggerSensory("destructive");
       pushToast({ title: "Não foi possível copiar a chave automaticamente.", variant: "destructive" });
     }
@@ -305,6 +307,15 @@ export function SplitChargePixPanel({
             onCopyPixKey={handleCopyPixKey}
           />
         )}
+
+        {hasValidCopyTarget ? (
+          <PixTroubleshootAccordion
+            pixBrCode={pixBrCode}
+            pixKey={pixKey}
+            pixKeyType={pixKeyType}
+            onCopyPixKey={pixKey ? () => void handleCopyPixKey() : undefined}
+          />
+        ) : null}
       </div>
     </div>
   );

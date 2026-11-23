@@ -166,8 +166,8 @@ describe("TripSettlementDialog Component", () => {
   });
 
   const members: TripMember[] = [
-    { id: "m-alice", trip_id: "trip-1", user_id: "user-alice", name: "Alice", is_host: true, pix_key: "alice@pix", pix_key_type: "email", created_at: "" },
-    { id: "m-bob", trip_id: "trip-1", user_id: "user-bob", name: "Bob", is_host: false, pix_key: "bob@pix", pix_key_type: "email", created_at: "" },
+    { id: "m-alice", trip_id: "trip-1", user_id: "user-alice", name: "Alice", is_host: true, pix_key: "alice@pix.me", pix_key_type: "email", created_at: "" },
+    { id: "m-bob", trip_id: "trip-1", user_id: "user-bob", name: "Bob", is_host: false, pix_key: "bob@pix.me", pix_key_type: "email", created_at: "" },
   ];
 
   it("renderiza empty state quando todas as contas estão equilibradas", () => {
@@ -194,7 +194,7 @@ describe("TripSettlementDialog Component", () => {
         toMemberId: "m-alice",
         toMemberName: "Alice",
         amountCents: 8500,
-        toPixKey: "alice@pix",
+        toPixKey: "alice@pix.me",
         toPixKeyType: "email",
       },
     ];
@@ -224,7 +224,7 @@ describe("TripSettlementDialog Component", () => {
     // Testar cópia da chave crua
     const rawKeyBtn = screen.getByRole("button", { name: /Só a chave/i });
     fireEvent.click(rawKeyBtn);
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("alice@pix");
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("alice@pix.me");
   });
 
   it("fluxo do devedor: exibe badge Você e botão 'Pagar Pix e Registrar no Meu Extrato'", async () => {
@@ -236,7 +236,7 @@ describe("TripSettlementDialog Component", () => {
         toMemberId: "m-bob",
         toMemberName: "Bob",
         amountCents: 12000,
-        toPixKey: "bob@pix",
+        toPixKey: "bob@pix.me",
         toPixKeyType: "email",
       },
     ];
@@ -288,7 +288,7 @@ describe("TripSettlementDialog Component", () => {
         toMemberId: "m-alice",
         toMemberName: "Alice",
         amountCents: 9000,
-        toPixKey: "alice@pix",
+        toPixKey: "alice@pix.me",
         toPixKeyType: "email",
       },
     ];
@@ -370,7 +370,7 @@ describe("TripSettlementDialog Component", () => {
         toMemberId: "m-alice",
         toMemberName: "Alice",
         amountCents: 5000,
-        toPixKey: "alice@pix",
+        toPixKey: "alice@pix.me",
         toPixKeyType: "email",
       },
     ];
@@ -401,7 +401,7 @@ describe("TripSettlementDialog Component", () => {
         toMemberId: "m-alice",
         toMemberName: "Alice",
         amountCents: 5000,
-        toPixKey: "alice@pix",
+        toPixKey: "alice@pix.me",
         toPixKeyType: "email",
       },
     ];
@@ -441,7 +441,7 @@ describe("TripSettlementDialog Component", () => {
         toMemberId: "m-alice",
         toMemberName: "Alice",
         amountCents: 5000,
-        toPixKey: "alice@pix",
+        toPixKey: "alice@pix.me",
         toPixKeyType: "email",
       },
     ];
@@ -490,7 +490,7 @@ describe("TripSettlementDialog Component", () => {
         toMemberId: "m-alice",
         toMemberName: "Alice",
         amountCents: 5000,
-        toPixKey: "alice@pix",
+        toPixKey: "alice@pix.me",
         toPixKeyType: "email",
       },
     ];

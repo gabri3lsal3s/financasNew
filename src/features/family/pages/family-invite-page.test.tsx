@@ -382,10 +382,52 @@ describe("FamilyInvitePage (/convite-familiar/:token)", () => {
         token: "tok-123",
         displayName: "Lucas P.",
         pixKey: "lucas@pix.me",
-        pixKeyType: "cpf",
+        pixKeyType: "email",
       });
     });
 
     expect(mockNavigate).toHaveBeenCalledWith("/familia", { replace: true });
+  });
+
+  it("bloqueia envio quando o convidado digita uma chave Pix inválida", async () => {
+    const user = userEvent.setup();
+
+    vi.mocked(authHook.useAuth).mockReturnValue({
+      session: {
+        user: { id: "user-partner", user_metadata: { name: "Lucas P." } },
+      } as unknown as authHook.AuthState["session"],
+      user: { id: "user-partner" } as unknown as authHook.AuthState["user"],
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    vi.mocked(familyHooks.useFamilyInvite).mockReturnValue({
+      data: {
+        id: "inv-1",
+        family_id: "fam-1",
+        invited_by: "user-owner",
+        inviter_name: "Mariana",
+        family_name: "Família Feliz",
+        token: "tok-123",
+        status: "pending",
+        expires_at: "2099-01-01T00:00:00Z",
+      },
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof familyHooks.useFamilyInvite>);
+
+    renderPage("tok-123");
+
+    const pixInput = screen.getByPlaceholderText(/seu-pix@email.com/i);
+    await user.type(pixInput, "chave-invalida");
+
+    expect(screen.getByText(/INVÁLIDA/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Aceitar Convite e Entrar na Família/i }),
+    ).toBeDisabled();
   });
 });

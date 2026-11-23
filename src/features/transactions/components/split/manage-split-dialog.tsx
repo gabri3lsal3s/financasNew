@@ -204,10 +204,9 @@ export function ManageSplitDialog({ open, onOpenChange, share, linkedDebt, onSuc
       pixValidationError={split.pixValidationError}
       isAmbiguousCpfOrPhone={split.isAmbiguousCpfOrPhone}
       onQuickSelectKeyType={(t) => split.setEditedKeyType(t)}
+      profileSuggestions={split.profileSuggestions}
       hostName={split.editedHostName}
       onHostNameChange={split.setEditedHostName}
-      hostCity={split.editedHostCity}
-      onHostCityChange={split.setEditedHostCity}
       customNote={split.editedCustomNote}
       onCustomNoteChange={split.setEditedCustomNote}
       showParticipantsList={split.editedShowParticipantsList}

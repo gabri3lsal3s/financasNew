@@ -10,7 +10,7 @@
  * Motor 100% puro: sem dependências de UI, React ou Supabase (AGENTS.md §3).
  */
 
-import { buildPixTransferCode, type PixKeyType } from "@/domain/pix";
+import { DEFAULT_PIX_CITY, buildPixTransferCode, type PixKeyType } from "@/domain/pix";
 import type {
   SplitParticipantInstallment,
   SplitParticipantItem,
@@ -635,7 +635,7 @@ export function recalculateSplitPayloadOnEdit(
   const safeTotalCents = Math.max(0, Math.round(edit.totalCents));
   const cleanTitle = edit.title.trim() || "Racha de Despesa";
   const cleanHostName = edit.hostName.trim() || "Anfitrião";
-  const cleanHostCity = edit.hostCity.trim() || "SAO PAULO";
+  const cleanHostCity = edit.hostCity.trim() || DEFAULT_PIX_CITY;
   const cleanPixKey = edit.pixKey.trim();
 
   // Garante anfitrião no índice 0 e pelo menos 2 pessoas quando possível
@@ -833,10 +833,10 @@ export function recalculateSplitPayloadOnEdit(
       merchantName: cleanHostName,
       merchantCity: cleanHostCity,
       amountCents: firstGuestChargeCents,
-      txId: `RACHA${Date.now().toString(36).toUpperCase()}`.slice(0, 25),
+      txId: "***",
       infoAdicional: cleanTitle,
       defaultMerchantName: "Anfitriao",
-      defaultMerchantCity: "BRASIL",
+      defaultMerchantCity: DEFAULT_PIX_CITY,
     }) ?? "";
 
   const totalSettledFromFriendsCents = sumSettledFromFriendsCents(nextParticipants);

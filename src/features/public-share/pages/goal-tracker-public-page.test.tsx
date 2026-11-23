@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { validatePixBrCode } from "@/domain/pix";
 import { GoalTrackerPublicPage } from "./goal-tracker-public-page";
 import * as publicShareQuery from "@/state/queries/use-public-shares";
 import * as pwaInstallHook from "@/hooks/use-pwa-install";
@@ -167,7 +168,13 @@ describe("GoalTrackerPublicPage (/meta/:token)", () => {
     const copyButton = screen.getByRole("button", { name: "Copiar Pix do Organizador" });
     await user.click(copyButton);
 
-    expect(writeTextSpy).toHaveBeenCalledWith(mockGoalTracker.pix_br_code);
+    expect(writeTextSpy).toHaveBeenCalledTimes(1);
+    const copiedCode = String(writeTextSpy.mock.calls[0]?.[0] ?? "");
+    expect(copiedCode.startsWith("00020126")).toBe(true);
+    expect(copiedCode.startsWith("000201010211")).toBe(false);
+    expect(copiedCode).toContain("gabriel@exemplo.com");
+    expect(copiedCode).toContain("62070503***");
+    expect(validatePixBrCode(copiedCode)).toBe(true);
     expect(screen.getByText("Pix Copiado com Sucesso!")).toBeInTheDocument();
     expect(toastService.pushToast).toHaveBeenCalledWith(
       expect.objectContaining({

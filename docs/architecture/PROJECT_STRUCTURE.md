@@ -132,10 +132,11 @@
 │   └── mockups/                   #   Mockups promocionais e prévias da interface
 │
 ├── supabase/                      # Backend — ver ESPECIFICAÇÃO §2 (migrations versionadas)
-│   ├── migrations/                # 0001..0138_harden_notifications_broadcasts_and_lifecycle.sql
+│   ├── migrations/                # 0001..0140_support_ticket_webhook_and_dedup.sql
 │   │                              # (schema, RLS estrito com is_current_user_active, triggers,
 │   │                              # RPCs transacionais, backend feature flag enforcement, expurgo atômico de contas, 0060_support_tickets.sql,
-│   │                              # user_push_subscriptions/push_delivery_logs 0136, weekly_digest_enabled opt-in 0137, FORCE RLS e hardening 0138)
+│   │                              # user_push_subscriptions/push_delivery_logs 0136, weekly_digest_enabled opt-in 0137, FORCE RLS e hardening 0138,
+│   │                              # remediação auditoria de segurança e RLS hardening 0139, Database Webhook support_tickets + dedup telegram_notified_at 0140)
 │   ├── notifications-cron.sql     # SQL idempotente do pg_cron para billing-lifecycle-cron e sunday-digest
 │   ├── quotes-cron.sql            # SQL idempotente do pg_cron para atualização periódica de cotações
 │   ├── tests/                     # Testes pgTAP para execução contra banco Postgres real (supabase test db)
@@ -460,7 +461,7 @@
     │   │                          #     status-bar, haptics, splash-screen, biometrics, privacy-shield, app-lock,
     │   │                          #     deep-links, local-notifications, interactive-notifications, suggestions-store, bank-listener, app-icon,
     │   │                          #     update-checker, update-schema, ocr-receipt-parser (OCR local com Tesseract.js)
-    │   ├── push/                  #   Cliente Web Push VAPID do PWA (web-push.ts — PushManager, VAPID base64url, unsubscribe)
+    │   ├── push/                  #   Clientes de Push Remoto: Web Push VAPID PWA (web-push.ts — PushManager, VAPID base64url, unsubscribe) e Android Nativo FCM (fcm-push.ts — @capacitor/push-notifications, canal due_reminders, deep-link e limpeza no logout)
     │   ├── merchant-learning.ts   #   Motor semântico de estabelecimentos (normalização fonética, predição e aprendizado)
     │   ├── masks/                 #   máscaras de apresentação (moeda, percentual pt-BR, CPF)
     │   │                          #   — barrel index.ts (fonte única DRY: formatCentsAsBRL,

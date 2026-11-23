@@ -40,8 +40,8 @@ android/app/release-key.keystore
 ```
 
 - **Algoritmo:** RSA 2048 bits
-- **Alias:** `guiafinanceiro` (ou definido via `KEY_ALIAS`)
-- **Senha Padrão:** `guiafinanceiro123` (ou definida via `KEYSTORE_PASSWORD` e `KEY_PASSWORD`)
+- **Alias:** Definido via variável de ambiente `KEY_ALIAS` (padrão: `guiafinanceiro`)
+- **Senha da Keystore:** Definida obrigatoriamente via variáveis de ambiente `KEYSTORE_PASSWORD` e `KEY_PASSWORD` em `.env.local` (armazenada em cofre de senhas; nunca commitada no Git).
 - **Fingerprint SHA-256:** `B9:C1:4B:F2:4D:F9:95:0A:84:70:EA:2E:02:6C:BC:2D:84:32:86:FE:6F:0A:30:8F:8B:F3:1D:4A:5C:29:9A:1B`
 
 > [!CAUTION]

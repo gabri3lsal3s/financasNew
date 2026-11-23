@@ -1,5 +1,7 @@
 import { Edit2 } from "lucide-react";
+import type { PixKeyProfileSuggestions } from "@/components/modules";
 import { Button, DatePicker, Input, MoneyInput, Switch } from "@/components/ui";
+import type { PixKeyType } from "@/domain/pix";
 import { ShareGoalPixFields } from "./ShareGoalPixFields";
 
 export interface ShareGoalFormProps {
@@ -18,10 +20,13 @@ export interface ShareGoalFormProps {
   onPixKeyChange: (val: string) => void;
   selectedKeyType: string;
   onSelectedKeyTypeChange: (val: string) => void;
+  detectedType?: PixKeyType | null;
+  pixValidationError?: string | null;
+  isAmbiguousCpfOrPhone?: boolean;
+  onQuickSelectKeyType?: (type: "phone" | "cpf") => void;
+  profileSuggestions?: PixKeyProfileSuggestions;
   merchantName: string;
   onMerchantNameChange: (val: string) => void;
-  merchantCity: string;
-  onMerchantCityChange: (val: string) => void;
   showContributionsPublicly: boolean;
   onShowContributionsPubliclyChange: (val: boolean) => void;
   onCancelEdit: () => void;
@@ -44,10 +49,13 @@ export function ShareGoalForm({
   onPixKeyChange,
   selectedKeyType,
   onSelectedKeyTypeChange,
+  detectedType,
+  pixValidationError,
+  isAmbiguousCpfOrPhone,
+  onQuickSelectKeyType,
+  profileSuggestions,
   merchantName,
   onMerchantNameChange,
-  merchantCity,
-  onMerchantCityChange,
   showContributionsPublicly,
   onShowContributionsPubliclyChange,
   onCancelEdit,
@@ -156,10 +164,14 @@ export function ShareGoalForm({
             onPixKeyChange={onPixKeyChange}
             selectedKeyType={selectedKeyType}
             onSelectedKeyTypeChange={onSelectedKeyTypeChange}
+            detectedType={detectedType}
+            validationError={pixValidationError}
+            isAmbiguousCpfOrPhone={isAmbiguousCpfOrPhone}
+            onQuickSelectKeyType={onQuickSelectKeyType}
+            profileSuggestions={profileSuggestions}
             merchantName={merchantName}
             onMerchantNameChange={onMerchantNameChange}
-            merchantCity={merchantCity}
-            onMerchantCityChange={onMerchantCityChange}
+            previewInfoAdicional={title}
           />
         )}
       </div>

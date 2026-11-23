@@ -4,15 +4,22 @@
  */
 
 export {
+  DEFAULT_PIX_CITY,
+  DEFAULT_PIX_MERCHANT_NAME,
   calculatePixCrc16,
   decodePixBrCode,
   detectPixKeyType,
+  extractBrazilianPhoneLocalDigits,
   formatEmvField,
   formatPixAmount,
   generatePixBrCode,
   normalizePixKey,
   sanitizeMerchantText,
+  sanitizePixCity,
+  sanitizePixMerchantName,
   sanitizeTxId,
+  stripInvisiblePixChars,
+  truncateAtWordBoundary,
   validatePixBrCode,
 } from "./pix-br-code";
 
@@ -22,11 +29,22 @@ export {
 } from "./build-pix-transfer-code";
 
 export {
+  formatPixKeyTypeLabel,
   isValidBrazilianPhoneDigits,
   isValidCNPJ,
   validateAndClassifyPixKey,
   type PixKeyValidationResult,
 } from "./pix-key-validation";
+
+export {
+  inspectPixPaymentPayload,
+  verifyPixConfiguration,
+  type InspectPixPaymentPayloadInput,
+  type PixConfigurationDiagnosis,
+  type PixConfigurationStatus,
+  type PixPaymentInspection,
+  type VerifyPixConfigurationInput,
+} from "./pix-diagnostics";
 
 export {
   drawQrCodeToCanvas,
@@ -41,6 +59,7 @@ export type {
   DecodedPixBrCode,
   GeneratePixBrCodeOptions,
   PixKeyType,
+  PixSanitizedFieldResult,
 } from "./pix-br-code";
 
 export type {

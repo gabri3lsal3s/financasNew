@@ -1,17 +1,16 @@
 {
-  "version": "3.16.0",
-  "versionCode": 103,
-  "releaseDate": "2026-11-22T18:18:37Z",
-  "minSupportedVersion": "3.16.0",
+  "version": "3.16.1",
+  "versionCode": 104,
+  "releaseDate": "2026-11-23T01:39:30Z",
+  "minSupportedVersion": "3.16.1",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "7bc4be6fd4c30c42bfbcd0d6744dc563e66e3934a0a5334faa613d4dd3daca7d",
-  "fileSizeBytes": 12431873,
+  "sha256": "555e93eae4bf7b62dd85cef1ae8b3ffd36d0484e985074cc6baffe9a7959db35",
+  "fileSizeBytes": 13280713,
   "changelog": [
-    "Axir v3.16.0 (Build 103): Auditoria Completa, Hardening de Seguranca/Privacidade e Padronizacao do Ecossistema de Notificacoes",
-    "Notification Hub Unificado: paridade entre Sininho, Popover, Sidebar, BottomNav e Central de Lembretes com calibracao P0 a P3",
-    "Seguranca & Privacidade (Migration 0138): FORCE RLS, revogacao de acesso anon em RPCs de broadcast e limpeza de sessao/push no logout",
-    "Push Hibrido & Resumo Dominical Opt-In: respeito ao Horario Silencioso na Web/Android, persistencia de snooze e deduplicacao idempotente",
-    "Carrossel Unificado & Prominent Disclosure: dispensa padronizada 7d/30d, opt-in explicito do Assistente Bancario e zero whack-a-mole",
-    "Padronizacao UI/UX: zero truncamento em valores monetarios, virgula decimal pt-BR, Toast Undo de 5s estavel e zero emojis"
+    "Axir v3.16.1 (Build 104): Push Remoto Android FCM, Hardening de Seguranca 0139/0140, Webhook de Suporte e Melhorias Pix",
+    "Push Remoto Nativo Android (FCM): opt-in nas configuracoes, canal padrao due_reminders, roteamento por deep-link e limpeza no logout",
+    "Seguranca e Privacidade (Migrations 0139 e 0140): endurecimento RLS/triggers, MFA AAL2 admin, protecao de keystore e webhook de suporte com deduplicacao atomica",
+    "Pix e Financas Compartilhadas: diagnostico aprimorado de chaves Pix, validacao de destinatario e maior confiabilidade em Rachas, Metas, Familia e Viagens",
+    "Infraestrutura de Producao: Cloudflare Workers com VAPID ativo, SSL Full (strict), Resend verificado, crons pg_cron/pg_net e FCM HTTP v1"
   ]
 }

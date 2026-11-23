@@ -5,6 +5,32 @@
 
 ---
 
+## 0. Status da Configuracao Automatizada (verificado em producao)
+
+Aplicado via APIs oficiais e validado ponta a ponta:
+
+| Stack | Item | Status |
+|---|---|---|
+| Cloudflare Workers (`financasnew`) | Workers Builds (`main` e demais branches) com `VITE_VAPID_PUBLIC_KEY`, `VITE_PUBLIC_SITE_URL`, `NODE_VERSION=22`; dominios `axir.com.br` e `www.axir.com.br`; SSL/TLS `Full (strict)`; Always Use HTTPS; build com chave VAPID embutida no bundle e `/sw-push.js` ativo | Ativo |
+| Resend | Dominio `axir.com.br` verificado (SPF/DKIM); `RESEND_API_KEY` e `RESEND_FROM_EMAIL` nos secrets do Supabase | Ativo |
+| Supabase Auth | SMTP customizado Resend (`smtp.resend.com:465`), Site URL e Redirect URLs (incluindo `com.guiafinanceiro.app://**`) | Ativo |
+| Supabase DB e Crons | `pg_cron` e `pg_net` habilitadas; jobs `billing-lifecycle-daily`, `sunday-digest-weekly` e `quotes-cron`; policies InitPlan de push sincronizadas; migration `0140` aplicada | Ativo |
+| Firebase FCM (`axir-de9f6`) e Android Push | App Android `com.guiafinanceiro.app` registrado; `FCM_PROJECT_ID` e `FCM_SERVICE_ACCOUNT_JSON` nos secrets; `android/app/google-services.json` local (ignorado pelo Git); `@capacitor/push-notifications`, `src/services/push/fcm-push.ts`, toggle opt-in nativo, handler de deep-link e limpeza no logout integrados | Ativo |
+| `WEBHOOK_SECRET` e Webhook `support_tickets` | `WEBHOOK_SECRET` provisionado nos secrets e no Supabase Vault (`webhook_secret`, `support_notify_url`); trigger `trg_notify_support_ticket_webhook` via `pg_net` e deduplicacao atomica (`telegram_notified_at`) ativos em `support-notify` | Ativo |
+| Distribuicao Mobile (Android Pro) | APK assinado `v3.16.1` (Build `104`) com `@capacitor/push-notifications` e `google-services.json` compilado, publicado no Cloudflare R2 e manifesto `public/releases/version.json` sincronizado | Ativo |
+| Sentry (`VITE_SENTRY_DSN`) | SDK `@sentry/react`, higienizacao LGPD (`src/services/observability.ts`), `AppErrorBoundary`, lazy chunk `vendor-sentry` e CSP `https://*.sentry.io` validados nos testes; aguarda apenas o DSN publico do projeto React no Sentry | Pronto para ativar |
+
+Nota: a hospedagem e Cloudflare Workers Static Assets (nao Pages); as variaveis de build ficam em Workers Builds.
+
+### Pendencias reais (opcionais)
+
+1. Sentry em producao: criar o projeto React em sentry.io, copiar `VITE_SENTRY_DSN` e cadastrar nos triggers do Cloudflare Workers Builds (disparando um novo deploy).
+2. Rotacionar chaves compartilhadas em conversas (Resend API Key, Supabase PAT, chave da conta de servico Firebase) e atualizar `RESEND_API_KEY` e `FCM_SERVICE_ACCOUNT_JSON` nos secrets do Supabase.
+
+As secoes abaixo sao referencia historica de como cada item foi configurado.
+
+---
+
 ## 1. O que já está configurado e ativo
 
 As etapas automatizáveis de banco de dados, Edge Functions, segredos de servidor e cabeçalhos de borda já foram aplicadas e validadas no projeto Supabase vinculado (`lnsfcajcfofgvpvabwbi`):

@@ -94,6 +94,8 @@ describe("RequireAdminSession Guard", () => {
     mockUseAuth.mockReturnValue({
       session: { user: { id: "u-admin" } },
       loading: false,
+      mfaRequired: false,
+      mfaVerified: true,
     });
     mockUseUserAccess.mockReturnValue({
       isLoading: false,
@@ -112,5 +114,33 @@ describe("RequireAdminSession Guard", () => {
     );
 
     expect(screen.getByText("Dashboard Admin Protegido")).toBeInTheDocument();
+  });
+
+  it("redireciona para /entrar?desafio=totp se o admin possui MFA pendente de validação (AAL2)", () => {
+    mockUseAuth.mockReturnValue({
+      session: { user: { id: "u-admin" } },
+      loading: false,
+      mfaRequired: true,
+      mfaVerified: false,
+    });
+    mockUseUserAccess.mockReturnValue({
+      isLoading: false,
+      isAdmin: true,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/admin/dashboard"]}>
+        <Routes>
+          <Route element={<RequireAdminSession />}>
+            <Route path="/admin/dashboard" element={<div>Dashboard Admin Protegido</div>} />
+          </Route>
+          <Route path="/entrar" element={<div>Tela de Desafio TOTP</div>} />
+          <Route path="/admin/login" element={<div>Tela de Login Admin</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByText("Dashboard Admin Protegido")).not.toBeInTheDocument();
+    expect(screen.getByText("Tela de Desafio TOTP")).toBeInTheDocument();
   });
 });

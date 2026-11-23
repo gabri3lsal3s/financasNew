@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   deactivatePushSubscriptionByEndpoint,
+  deactivatePushSubscriptionByFcmToken,
   upsertFcmPushSubscription,
   upsertWebPushSubscription,
   type SaveFcmSubscriptionInput,
@@ -37,6 +38,20 @@ export function useRegisterFcmToken() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: SaveFcmSubscriptionInput) => upsertFcmPushSubscription(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: pushSubscriptionsKey });
+    },
+  });
+}
+
+export function useDisableFcmToken() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (fcmToken?: string | null) => {
+      if (fcmToken) {
+        await deactivatePushSubscriptionByFcmToken(fcmToken);
+      }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: pushSubscriptionsKey });
     },

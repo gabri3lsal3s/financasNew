@@ -37,14 +37,46 @@ function getManifest(): VersionManifest | null {
   return null;
 }
 
+function loadEnvFiles(): void {
+  for (const envName of [".env.local", ".env"]) {
+    const envPath = path.join(ROOT_DIR, envName);
+    if (!fs.existsSync(envPath)) continue;
+    try {
+      const content = fs.readFileSync(envPath, "utf-8");
+      for (const line of content.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const eqIdx = trimmed.indexOf("=");
+        if (eqIdx === -1) continue;
+        const key = trimmed.slice(0, eqIdx).trim();
+        const rawVal = trimmed.slice(eqIdx + 1).trim();
+        const val = rawVal.replace(/^["']|["']$/g, "");
+        if (key && !process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    } catch {
+      // Ignora erro de leitura do arquivo .env
+    }
+  }
+}
+
 function getCertificateFingerprint(): string {
   if (!fs.existsSync(KEYSTORE_PATH)) {
     return "Keystore não encontrado em android/app/release-key.keystore";
   }
 
+  loadEnvFiles();
+  const storePass = process.env.KEYSTORE_PASSWORD?.trim() ?? "";
+  const keyAlias = process.env.KEY_ALIAS?.trim() || "guiafinanceiro";
+
+  if (!storePass || storePass === "guiafinanceiro123") {
+    return "Defina uma KEYSTORE_PASSWORD forte em .env.local para extrair o fingerprint SHA-256 via keytool.";
+  }
+
   try {
     const output = execSync(
-      `LC_ALL=C keytool -list -v -keystore "${KEYSTORE_PATH}" -alias guiafinanceiro -storepass guiafinanceiro123`,
+      `LC_ALL=C keytool -list -v -keystore "${KEYSTORE_PATH}" -alias "${keyAlias}" -storepass "${storePass}"`,
       { encoding: "utf-8" },
     );
     const match = output.match(/SHA256:\s*([A-F0-9:]+)/i);

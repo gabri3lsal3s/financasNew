@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useSignOut } from "./use-sign-out";
-import { deactivatePushSubscriptionByEndpoint } from "@/data/repositories/push-subscriptions";
+import {
+  deactivatePushSubscriptionByEndpoint,
+  deactivatePushSubscriptionByFcmToken,
+} from "@/data/repositories/push-subscriptions";
 import { resetAppState } from "@/services/auth-cleanup";
 import { clearNativeBankMonitoring } from "@/services/native/bank-listener";
 import { clearDeviceSessionSync } from "@/services/native/device-info";
 import { cancelDailyReminder, clearAllDueNotifications } from "@/services/native/local-notifications";
-import { unsubscribeBrowserWebPush } from "@/services/push/web-push";
+import { unregisterNativeFcmPush, unsubscribeBrowserWebPush } from "@/services/push";
 
 vi.mock("@/services/auth-cleanup", () => ({
   resetAppState: vi.fn(),
@@ -25,15 +28,20 @@ vi.mock("@/services/native/local-notifications", () => ({
   cancelDailyReminder: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("@/services/push/web-push", () => ({
+vi.mock("@/services/push", () => ({
   unsubscribeBrowserWebPush: vi.fn().mockResolvedValue({
     unsubscribed: true,
     endpoint: "https://push.example/endpoint-1",
+  }),
+  unregisterNativeFcmPush: vi.fn().mockResolvedValue({
+    unregistered: true,
+    token: "fcm-token-1",
   }),
 }));
 
 vi.mock("@/data/repositories/push-subscriptions", () => ({
   deactivatePushSubscriptionByEndpoint: vi.fn().mockResolvedValue(undefined),
+  deactivatePushSubscriptionByFcmToken: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@/services/user-storage", () => ({
@@ -68,6 +76,8 @@ describe("useSignOut", () => {
     expect(deactivatePushSubscriptionByEndpoint).toHaveBeenCalledWith(
       "https://push.example/endpoint-1",
     );
+    expect(unregisterNativeFcmPush).toHaveBeenCalledWith("user-123");
+    expect(deactivatePushSubscriptionByFcmToken).toHaveBeenCalledWith("fcm-token-1");
     expect(clearNativeBankMonitoring).toHaveBeenCalledTimes(1);
     expect(clearAllDueNotifications).toHaveBeenCalledWith("user-123");
     expect(cancelDailyReminder).toHaveBeenCalledTimes(1);
@@ -86,6 +96,8 @@ describe("useSignOut", () => {
     expect(clearDeviceSessionSync).not.toHaveBeenCalled();
     expect(unsubscribeBrowserWebPush).not.toHaveBeenCalled();
     expect(deactivatePushSubscriptionByEndpoint).not.toHaveBeenCalled();
+    expect(unregisterNativeFcmPush).not.toHaveBeenCalled();
+    expect(deactivatePushSubscriptionByFcmToken).not.toHaveBeenCalled();
     expect(clearNativeBankMonitoring).not.toHaveBeenCalled();
     expect(clearAllDueNotifications).not.toHaveBeenCalled();
     expect(cancelDailyReminder).not.toHaveBeenCalled();

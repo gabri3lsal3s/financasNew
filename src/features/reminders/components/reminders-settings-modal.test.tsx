@@ -120,4 +120,15 @@ describe("RemindersSettingsModal", () => {
       screen.getByText(/navegadores Web não executam alarmes offline/i),
     ).toBeInTheDocument();
   });
+
+  it("exibe o toggle de Push Remoto interativo e desligado por padrão no Android nativo", () => {
+    vi.mocked(nativeServices.isNativePlatform).mockReturnValue(true);
+    render(<RemindersSettingsModal open={true} onOpenChange={vi.fn()} />);
+
+    const remotePushSwitch = screen.getByRole("switch", {
+      name: "Habilitar Notificações Push Remotas",
+    });
+    expect(remotePushSwitch).toBeEnabled();
+    expect(remotePushSwitch).not.toBeChecked();
+  });
 });

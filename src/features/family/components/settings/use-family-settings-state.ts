@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { validateAndClassifyPixKey, type PixKeyType } from "@/domain/pix";
 import { useFamilyIncomeRatioSuggestion, useMyFamily } from "@/state";
 import type { FamilyInvite, FamilyMember, FamilyPixKeyType, FamilySplitRule } from "@/types";
 import { useFamilySettingsActions } from "./use-family-settings-actions";
+
+const CNPJ_NOT_SUPPORTED_ERROR =
+  "Chave Pix do tipo CNPJ não é suportada no modo familiar. Use CPF, Celular (+55), E-mail ou Chave Aleatória.";
 
 export function useFamilySettingsState({
   open,
@@ -21,7 +25,7 @@ export function useFamilySettingsState({
   const [isFamilyDirty, setIsFamilyDirty] = useState(false);
 
   const [memberDisplayName, setMemberDisplayName] = useState("");
-  const [memberPixKeyType, setMemberPixKeyType] = useState<FamilyPixKeyType>("cpf");
+  const [memberPixKeyType, setMemberPixKeyType] = useState<string>("auto");
   const [memberPixKey, setMemberPixKey] = useState("");
   const [memberSplitRatioPercent, setMemberSplitRatioPercent] = useState<number>(50);
   const [isMemberDirty, setIsMemberDirty] = useState(false);
@@ -55,7 +59,7 @@ export function useFamilySettingsState({
     }
     if (currentMember) {
       setMemberDisplayName(currentMember.display_name || "");
-      setMemberPixKeyType(currentMember.pix_key_type || "cpf");
+      setMemberPixKeyType(currentMember.pix_key_type || "auto");
       setMemberPixKey(currentMember.pix_key || "");
       setMemberSplitRatioPercent(Math.round((currentMember.split_ratio ?? 0.5) * 100));
     }
@@ -86,10 +90,30 @@ export function useFamilySettingsState({
   if (currentMember && currentMember.id !== syncedMemberId && !isMemberDirty) {
     setSyncedMemberId(currentMember.id);
     setMemberDisplayName(currentMember.display_name || "");
-    setMemberPixKeyType(currentMember.pix_key_type || "cpf");
+    setMemberPixKeyType(currentMember.pix_key_type || "auto");
     setMemberPixKey(currentMember.pix_key || "");
     setMemberSplitRatioPercent(Math.round((currentMember.split_ratio ?? 0.5) * 100));
   }
+
+  const memberPixValidation = useMemo(() => {
+    if (!memberPixKey.trim()) return null;
+    const rawResult = validateAndClassifyPixKey(
+      memberPixKey,
+      memberPixKeyType === "auto" ? undefined : (memberPixKeyType as PixKeyType),
+    );
+    if (rawResult.resolvedType === "cnpj") {
+      return {
+        ...rawResult,
+        isValid: false,
+        errorMessage: CNPJ_NOT_SUPPORTED_ERROR,
+      };
+    }
+    return rawResult;
+  }, [memberPixKey, memberPixKeyType]);
+
+  const hasInvalidMemberPix = Boolean(
+    memberPixKey.trim() && memberPixValidation && !memberPixValidation.isValid,
+  );
 
   const pendingInvites = invites.filter((inv) => {
     if (inv.status !== "pending") return false;
@@ -135,6 +159,10 @@ export function useFamilySettingsState({
     setMemberPixKeyType,
     memberPixKey,
     setMemberPixKey,
+    memberDetectedPixType: memberPixValidation?.resolvedType ?? null,
+    memberPixValidationError: memberPixValidation?.errorMessage ?? null,
+    isMemberPixAmbiguous: memberPixValidation?.isAmbiguousCpfOrPhone ?? false,
+    hasInvalidMemberPix,
     memberSplitRatioPercent,
     setMemberSplitRatioPercent,
     isMemberDirty,
@@ -171,7 +199,22 @@ export function useFamilySettingsState({
     handleResetDrafts: resetDrafts,
     handleSaveMemberPix: (e: FormEvent) => {
       e.preventDefault();
-      return actions.saveMemberPix(memberDisplayName, memberPixKey, memberPixKeyType, memberSplitRatioPercent, editSplitRule);
+      if (hasInvalidMemberPix) return;
+      const cleanPixKey = memberPixKey.trim()
+        ? (memberPixValidation?.normalizedKey ?? memberPixKey.trim())
+        : "";
+      const resolvedType = (memberPixValidation?.resolvedType && memberPixValidation.resolvedType !== "cnpj"
+        ? memberPixValidation.resolvedType
+        : memberPixKeyType === "auto"
+          ? "cpf"
+          : memberPixKeyType) as FamilyPixKeyType;
+      return actions.saveMemberPix(
+        memberDisplayName,
+        cleanPixKey,
+        resolvedType,
+        memberSplitRatioPercent,
+        editSplitRule,
+      );
     },
     handleSendInvite: (e: FormEvent) => {
       e.preventDefault();

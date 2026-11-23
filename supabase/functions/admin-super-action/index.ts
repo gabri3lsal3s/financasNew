@@ -67,6 +67,39 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // 3. Exigir verificação MFA AAL2 caso o superadministrador possua fator TOTP ativo
+    const { data: mfaData, error: mfaError } = await adminClient.auth.admin.mfa.listFactors({
+      userId: callerUser.id,
+    });
+    if (mfaError) {
+      return safeErrorResponse(req, 403, "Falha ao verificar fatores de autenticação (MFA).");
+    }
+    const hasVerifiedMfa = (mfaData?.factors ?? []).some(
+      (f: { status?: string }) => f.status === "verified",
+    );
+    if (hasVerifiedMfa) {
+      try {
+        const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+        const payloadBase64 = token.split(".")[1] ?? "";
+        const normalized = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+        const jwtPayload = JSON.parse(atob(padded));
+        if (jwtPayload?.aal !== "aal2") {
+          return jsonResponse(
+            req,
+            { error: "Verificação de segundo fator (MFA/2FA AAL2) obrigatória para ações de Superadmin." },
+            403,
+          );
+        }
+      } catch {
+        return jsonResponse(
+          req,
+          { error: "Não foi possível validar o nível de segurança MFA (AAL2) do token." },
+          403,
+        );
+      }
+    }
+
     const body = await req.json();
     const { action } = body;
 

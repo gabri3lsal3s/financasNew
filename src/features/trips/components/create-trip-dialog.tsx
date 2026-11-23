@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button, DatePicker, FormField, Input, Modal, ModalFooter } from "@/components/ui";
+import { validateAndClassifyPixKey, type PixKeyType } from "@/domain/pix";
 import { useCreateTripMutation } from "@/state/queries/use-trips";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserAccess } from "@/state/queries/use-user-access";
@@ -34,7 +35,7 @@ export function CreateTripDialog({
   const [members, setMembers] = useState<InitialTripMemberDraft[]>([]);
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberPix, setNewMemberPix] = useState("");
-  const [newMemberPixType, setNewMemberPixType] = useState<TripPixKeyType>("cpf");
+  const [newMemberPixType, setNewMemberPixType] = useState<string>("auto");
 
   if (defaultHostName !== prevDefaultHostName) {
     setPrevDefaultHostName(defaultHostName);
@@ -43,18 +44,42 @@ export function CreateTripDialog({
 
   const createTripMutation = useCreateTripMutation();
 
+  const newMemberPixValidation = useMemo(() => {
+    if (!newMemberPix.trim()) return null;
+    return validateAndClassifyPixKey(
+      newMemberPix,
+      newMemberPixType === "auto" ? undefined : (newMemberPixType as PixKeyType),
+    );
+  }, [newMemberPix, newMemberPixType]);
+
+  const hasInvalidDraftPix = Boolean(
+    newMemberPix.trim() && newMemberPixValidation && !newMemberPixValidation.isValid,
+  );
+  const canAddMember = Boolean(newMemberName.trim() && !hasInvalidDraftPix);
+
   const handleAddMember = () => {
-    if (!newMemberName.trim()) return;
+    if (!canAddMember) return;
+    const cleanPix = newMemberPix.trim()
+      ? (newMemberPixValidation?.normalizedKey ?? newMemberPix.trim())
+      : undefined;
+    const resolvedType = cleanPix
+      ? ((newMemberPixValidation?.resolvedType ??
+          (newMemberPixType === "auto" ? undefined : newMemberPixType)) as
+          | TripPixKeyType
+          | undefined)
+      : undefined;
+
     setMembers((prev) => [
       ...prev,
       {
         name: newMemberName.trim(),
-        pix_key: newMemberPix.trim() || undefined,
-        pix_key_type: newMemberPix.trim() ? newMemberPixType : undefined,
+        pix_key: cleanPix,
+        pix_key_type: resolvedType,
       },
     ]);
     setNewMemberName("");
     setNewMemberPix("");
+    setNewMemberPixType("auto");
   };
 
   const handleRemoveMember = (index: number) => {
@@ -63,14 +88,23 @@ export function CreateTripDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !hostName.trim() || !startDate || !endDate) return;
+    if (!title.trim() || !hostName.trim() || !startDate || !endDate || hasInvalidDraftPix) return;
 
     const finalMembers = [...members];
     if (newMemberName.trim()) {
+      const cleanPix = newMemberPix.trim()
+        ? (newMemberPixValidation?.normalizedKey ?? newMemberPix.trim())
+        : undefined;
+      const resolvedType = cleanPix
+        ? ((newMemberPixValidation?.resolvedType ??
+            (newMemberPixType === "auto" ? undefined : newMemberPixType)) as
+            | TripPixKeyType
+            | undefined)
+        : undefined;
       finalMembers.push({
         name: newMemberName.trim(),
-        pix_key: newMemberPix.trim() || undefined,
-        pix_key_type: newMemberPix.trim() ? newMemberPixType : undefined,
+        pix_key: cleanPix,
+        pix_key_type: resolvedType,
       });
     }
 
@@ -89,6 +123,7 @@ export function CreateTripDialog({
       setMembers([]);
       setNewMemberName("");
       setNewMemberPix("");
+      setNewMemberPixType("auto");
       onOpenChange(false);
       onSuccess?.(created.id);
     } catch {
@@ -111,7 +146,7 @@ export function CreateTripDialog({
           <Button
             type="submit"
             form="create-trip-form"
-            disabled={!title.trim() || !hostName.trim() || !startDate || !endDate || createTripMutation.isPending}
+            disabled={!title.trim() || !hostName.trim() || !startDate || !endDate || hasInvalidDraftPix || createTripMutation.isPending}
             loading={createTripMutation.isPending}
           >
             Criar Viagem
@@ -188,6 +223,11 @@ export function CreateTripDialog({
           onNewMemberPixChange={setNewMemberPix}
           newMemberPixType={newMemberPixType}
           onNewMemberPixTypeChange={setNewMemberPixType}
+          newMemberDetectedType={newMemberPixValidation?.resolvedType ?? null}
+          newMemberPixError={newMemberPixValidation?.errorMessage ?? null}
+          isAmbiguousCpfOrPhone={newMemberPixValidation?.isAmbiguousCpfOrPhone ?? false}
+          onQuickSelectKeyType={(t) => setNewMemberPixType(t)}
+          canAddMember={canAddMember}
           onAddMember={handleAddMember}
           onRemoveMember={handleRemoveMember}
         />

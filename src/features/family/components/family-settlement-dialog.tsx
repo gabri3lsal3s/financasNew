@@ -4,6 +4,7 @@ import { Button, FormField, Input, Modal, ModalFooter, MoneyText } from "@/compo
 import { buildFamilySettlementBreakdown } from "@/domain/calculation-memory/builders/family-breakdown";
 import { buildSettlementAuditSnapshot, calculateHouseholdSettlement } from "@/domain/family";
 import { useRecordFamilySettlement } from "@/state";
+import { copyTextToClipboard } from "@/services/export-actions";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { formatDateBR, monthLabel } from "@/lib/date";
@@ -83,23 +84,21 @@ export function FamilySettlementDialog({
   }, [primaryTransfer, plan.members, consolidation]);
 
   const handleCopy = async (text: string, label: string) => {
-    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-        triggerSensory("action");
-        pushToast({
-          title: `${label} copiado!`,
-          description: "Cole no aplicativo do seu banco para efetuar a transferência.",
-          variant: "default",
-        });
-      } catch {
-        triggerSensory("error");
-        pushToast({
-          title: "Não foi possível copiar automaticamente.",
-          description: "Selecione e copie manualmente o texto.",
-          variant: "destructive",
-        });
-      }
+    const copied = await copyTextToClipboard(text);
+    if (copied) {
+      triggerSensory("action");
+      pushToast({
+        title: `${label} copiado!`,
+        description: "Cole no aplicativo do seu banco para efetuar a transferência.",
+        variant: "default",
+      });
+    } else {
+      triggerSensory("error");
+      pushToast({
+        title: "Não foi possível copiar automaticamente.",
+        description: "Selecione e copie manualmente o texto.",
+        variant: "destructive",
+      });
     }
   };
 

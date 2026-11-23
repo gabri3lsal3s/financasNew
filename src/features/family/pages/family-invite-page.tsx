@@ -134,6 +134,11 @@ export function FamilyInvitePage() {
       onPixKeyChange={flow.setPixKey}
       pixKeyType={flow.pixKeyType}
       onPixKeyTypeChange={flow.setPixKeyType}
+      detectedPixType={flow.detectedPixType}
+      pixValidationError={flow.pixValidationError}
+      isAmbiguousCpfOrPhone={flow.isAmbiguousCpfOrPhone}
+      hasInvalidPix={flow.hasInvalidPix}
+      onQuickSelectKeyType={(t) => flow.setPixKeyType(t)}
       isPending={flow.acceptPending}
       onSubmit={() => void flow.handleAcceptInvite()}
     />

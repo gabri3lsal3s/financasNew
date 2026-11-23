@@ -9,14 +9,19 @@
  */
 
 import {
+  DEFAULT_PIX_CITY,
   decodePixBrCode,
   detectPixKeyType,
   generatePixBrCode,
   sanitizeMerchantText,
+  sanitizePixCity,
+  sanitizePixMerchantName,
   sanitizeTxId,
+  stripInvisiblePixChars,
   validatePixBrCode,
   type PixKeyType,
 } from "./pix-br-code";
+import { validateAndClassifyPixKey } from "./pix-key-validation";
 
 export interface BuildPixTransferCodeOptions {
   /** Chave Pix do recebedor (se vazia, nula ou inválida, retorna null). */
@@ -39,6 +44,8 @@ export interface BuildPixTransferCodeOptions {
   defaultMerchantName?: string;
   /** Fallback para cidade do recebedor quando vazia após sanitização. */
   defaultMerchantCity?: string;
+  /** Quando false, desativa a validação estrita da chave (apenas para compatibilidade legada). Padrão: true. */
+  strictKeyValidation?: boolean;
 }
 
 /**
@@ -65,7 +72,7 @@ export function buildPixTransferCode(options: BuildPixTransferCodeOptions): stri
     return null;
   }
 
-  const trimmedKey = options.pixKey.trim();
+  const trimmedKey = stripInvisiblePixChars(options.pixKey).trim();
   if (!trimmedKey) {
     return null;
   }
@@ -76,28 +83,40 @@ export function buildPixTransferCode(options: BuildPixTransferCodeOptions): stri
     }
   }
 
-  const fallbackName =
-    sanitizeMerchantText(options.defaultMerchantName ?? "Recebedor", 25) || "Recebedor";
-  const fallbackCity =
-    sanitizeMerchantText(options.defaultMerchantCity ?? "BRASIL", 15, true) || "BRASIL";
+  let pixKeyForGeneration = trimmedKey;
+  let resolvedKeyType: PixKeyType | undefined;
 
-  const cleanMerchantName =
-    sanitizeMerchantText(options.merchantName ?? "", 25) || fallbackName;
-  const cleanMerchantCity =
-    sanitizeMerchantText(options.merchantCity ?? "", 15, true) || fallbackCity;
+  if (options.strictKeyValidation !== false) {
+    const validation = validateAndClassifyPixKey(trimmedKey, options.keyType);
+    if (!validation.isValid || !validation.normalizedKey || !validation.resolvedType) {
+      return null;
+    }
+    pixKeyForGeneration = validation.normalizedKey;
+    resolvedKeyType = validation.resolvedType;
+  } else {
+    resolvedKeyType = resolvePixKeyType(trimmedKey, options.keyType);
+  }
+
+  const resolvedName = sanitizePixMerchantName(
+    options.merchantName,
+    options.defaultMerchantName ?? "Recebedor",
+  );
+  const resolvedCity = sanitizePixCity(
+    options.merchantCity,
+    options.defaultMerchantCity ?? DEFAULT_PIX_CITY,
+  );
 
   const cleanInfo = options.infoAdicional
     ? sanitizeMerchantText(options.infoAdicional, 25) || undefined
     : undefined;
   const cleanTxId = options.txId ? sanitizeTxId(options.txId) : undefined;
-  const resolvedKeyType = resolvePixKeyType(trimmedKey, options.keyType);
 
   try {
     const payload = generatePixBrCode({
-      pixKey: trimmedKey,
+      pixKey: pixKeyForGeneration,
       keyType: resolvedKeyType,
-      merchantName: cleanMerchantName,
-      merchantCity: cleanMerchantCity,
+      merchantName: resolvedName.value,
+      merchantCity: resolvedCity.value,
       amountCents: options.amountCents ?? undefined,
       txId: cleanTxId,
       infoAdicional: cleanInfo,

@@ -9,7 +9,12 @@ import {
   type SplitEditInput,
 } from "@/domain/finance";
 import { isSplitFullyCompleted, type SplitRemainderPolicy } from "@/domain/finance/split-math";
-import { buildPixTransferCode, validateAndClassifyPixKey, type PixKeyType } from "@/domain/pix";
+import {
+  DEFAULT_PIX_CITY,
+  buildPixTransferCode,
+  validateAndClassifyPixKey,
+  type PixKeyType,
+} from "@/domain/pix";
 import { getPublicShareUrl } from "@/services/app-url";
 import { copyTextToClipboard } from "@/services/export-actions";
 import { formatCentsAsBRL } from "@/services/masks";
@@ -24,6 +29,7 @@ import {
   useExpensesByInstallmentGroup,
   useUpdateSplitComprehensive,
 } from "@/state";
+import { useUserAccess } from "@/state/queries/use-user-access";
 import type { Debt, PublicShare, SplitParticipantItem, SplitSharePayload } from "@/types";
 import type { EditableSplitParticipant } from "./split-edit-tab";
 
@@ -56,6 +62,7 @@ function buildEditDraftParticipants(payload: SplitSharePayload): DraftParticipan
 }
 
 export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, onSuccess }: UseManageSplitParams) {
+  const { profile } = useUserAccess();
   const applySplitSettlement = useApplySplitSettlement();
   const updateSplitComprehensive = useUpdateSplitComprehensive();
   const deleteLinkedSplit = useDeleteLinkedSplit();
@@ -228,7 +235,7 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
   }, [friends, payload.guest_share_cents, installmentsCount, payload.installments_mode, participantInstallments]);
 
   const previewBrCode = useMemo(() => {
-    if (!pixValidation.isValid || !pixValidation.resolvedType || !editedHostCity.trim()) {
+    if (!pixValidation.isValid || !pixValidation.resolvedType) {
       return "";
     }
     return (
@@ -236,20 +243,17 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
         pixKey: pixValidation.normalizedKey ?? editedPixKey.trim(),
         keyType: pixValidation.resolvedType,
         merchantName: editedHostName.trim() || "Anfitriao",
-        merchantCity: editedHostCity.trim(),
+        merchantCity: editedHostCity.trim() || DEFAULT_PIX_CITY,
         amountCents: firstGuestPreviewAmountCents,
-        txId: `PREV${share.token}`.replace(/[^A-Za-z0-9]/g, "").slice(0, 25),
+        txId: "***",
         infoAdicional: editedTitle.trim() || payload.title || "Racha de conta",
         defaultMerchantName: "Anfitriao",
-        defaultMerchantCity: "BRASIL",
+        defaultMerchantCity: DEFAULT_PIX_CITY,
       }) ?? ""
     );
-  }, [pixValidation, editedHostCity, editedPixKey, editedHostName, firstGuestPreviewAmountCents, share.token, editedTitle, payload.title]);
+  }, [pixValidation, editedHostCity, editedPixKey, editedHostName, firstGuestPreviewAmountCents, editedTitle, payload.title]);
 
-  const isPublicConfigValid =
-    pixValidation.isValid &&
-    editedHostName.trim().length > 0 &&
-    editedHostCity.trim().length > 0;
+  const isPublicConfigValid = pixValidation.isValid;
 
   // Handlers de Baixas (Aba 1)
   const handleSettleFull = async (participantId: string) => {
@@ -461,7 +465,7 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
       pixKey: pixValidation.normalizedKey ?? (editedPixKey.trim() || payload.pix_key),
       pixKeyType: validKeyType,
       hostName: editedHostName.trim() || hostRow?.name || payload.host_name || "Anfitrião",
-      hostCity: editedHostCity.trim() || payload.host_city || "Brasil",
+      hostCity: editedHostCity.trim() || payload.host_city || DEFAULT_PIX_CITY,
       customNote: editedCustomNote,
       showParticipantsList: editedShowParticipantsList,
       publicPagePaused: editedPublicPagePaused,
@@ -507,7 +511,7 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
       pixKey: pixValidation.normalizedKey ?? editedPixKey.trim(),
       pixKeyType: validKeyType,
       hostName: editedHostName.trim() || "Anfitrião",
-      hostCity: editedHostCity.trim() || "BRASIL",
+      hostCity: editedHostCity.trim() || DEFAULT_PIX_CITY,
       customNote: editedCustomNote,
       showParticipantsList: editedShowParticipantsList,
       publicPagePaused: editedPublicPagePaused,
@@ -580,8 +584,9 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
   };
 
   const handleTestCopyBrCode = async () => {
-    if (!previewBrCode) return;
-    const ok = await copyTextToClipboard(previewBrCode);
+    const cleanCode = previewBrCode.trim();
+    if (!cleanCode) return;
+    const ok = await copyTextToClipboard(cleanCode);
     if (ok) {
       triggerSensory("selection");
       pushToast({ title: "Pix Copia e Cola copiado para teste!", variant: "default" });
@@ -695,6 +700,7 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
     detectedPixType: pixValidation.resolvedType,
     pixValidationError: pixValidation.errorMessage,
     isAmbiguousCpfOrPhone: pixValidation.isAmbiguousCpfOrPhone,
+    profileSuggestions: profile ? { cpf: profile.cpf, email: profile.email } : undefined,
     editedHostName,
     setEditedHostName,
     editedHostCity,

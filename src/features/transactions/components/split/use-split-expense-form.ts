@@ -5,7 +5,7 @@ import {
   splitAmountEqually,
   type SplitRemainderPolicy,
 } from "@/domain/finance/split-math";
-import { validateAndClassifyPixKey, type PixKeyType } from "@/domain/pix";
+import { DEFAULT_PIX_CITY, validateAndClassifyPixKey, type PixKeyType } from "@/domain/pix";
 import { generateShareToken } from "@/domain/share/token";
 import { getPublicAppUrl, getPublicShareUrl } from "@/services/app-url";
 import { copyTextToClipboard, shareText } from "@/services/export-actions";
@@ -188,14 +188,14 @@ export function useSplitExpenseForm(params: UseSplitExpenseFormParams) {
     if (totalCents <= 0 || peopleCount < 2 || !pixValidation.isValid || !pixValidation.resolvedType) return;
     try {
       const cleanMerchant = merchantName.trim() || (isSimulationActive ? "Gabriel (Demonstração)" : profile?.name || "Anfitriao");
-      const cleanCity = merchantCity.trim();
-      if (!cleanCity) return;
+      const rawCity = merchantCity.trim();
+      const safeCityToStore = rawCity || DEFAULT_PIX_CITY;
 
       const resolvedType = pixValidation.resolvedType;
       const cleanPixKey = pixValidation.normalizedKey ?? pixKey.trim();
       const resolvedHostName = cleanMerchant && cleanMerchant !== "Você" ? cleanMerchant : (isSimulationActive ? "Gabriel (Demonstração)" : profile?.name || "Anfitrião");
       const payload = buildSplitSharePayload({
-        totalCents, peopleCount, description, pixKey: cleanPixKey, detectedType: resolvedType, cleanMerchant, cleanCity,
+        totalCents, peopleCount, description, pixKey: cleanPixKey, detectedType: resolvedType, cleanMerchant, cleanCity: safeCityToStore,
         resolvedHostName, participants, summary, remainderPolicy,
         splitMode, customSharesCents, installmentsMode: initialInstallmentsMode, linkedDebtId,
         expense, fullExpense, initialDate, initialInstallmentsCount, categoryName, categoryIcon,
@@ -232,7 +232,7 @@ export function useSplitExpenseForm(params: UseSplitExpenseFormParams) {
       setGeneratedLink(url);
       const copiedOk = await copyTextToClipboard(url);
       if (copiedOk) setCopied(true);
-      updatePreferences({ pixKey: cleanPixKey, pixKeyType: resolvedType, merchantName: cleanMerchant, merchantCity: cleanCity, remainderPolicy, defaultPeopleCount: peopleCount });
+      updatePreferences({ pixKey: cleanPixKey, pixKeyType: resolvedType, merchantName: cleanMerchant, merchantCity: rawCity, remainderPolicy, defaultPeopleCount: peopleCount });
       triggerSensory("success");
       pushToast({ title: "Link do racha gerado e copiado!", description: "Compartilhe com seus amigos para receber via Pix.", variant: "success" });
     } catch { /* Tratado pela mutation */ }
@@ -242,6 +242,23 @@ export function useSplitExpenseForm(params: UseSplitExpenseFormParams) {
     expense, initialDate, participants, remainderPolicy, categoryName, categoryIcon,
     createLinkedSplitMutation, updatePreferences, isSimulationActive, initialInstallmentsCount, fullExpense,
   ]);
+
+  const handleTestCopyBrCode = async (brCode: string) => {
+    const clean = brCode.trim();
+    if (!clean) return;
+    const ok = await copyTextToClipboard(clean);
+    if (ok) {
+      triggerSensory("selection");
+      pushToast({
+        title: "Código Pix de teste copiado!",
+        description: "Cole em Pix Copia e Cola de outra conta para validar o recebimento.",
+        variant: "default",
+      });
+    } else {
+      triggerSensory("destructive");
+      pushToast({ title: "Não foi possível copiar automaticamente.", variant: "destructive" });
+    }
+  };
 
   const handleCopyLinkAgain = async () => {
     if (!generatedLink) return;
@@ -294,8 +311,6 @@ export function useSplitExpenseForm(params: UseSplitExpenseFormParams) {
     totalCents > 0 &&
     peopleCount >= 2 &&
     pixValidation.isValid &&
-    merchantName.trim().length > 0 &&
-    merchantCity.trim().length > 0 &&
     isCustomValid;
 
   useEffect(() => {
@@ -312,9 +327,12 @@ export function useSplitExpenseForm(params: UseSplitExpenseFormParams) {
     detectedType,
     pixValidationError: pixValidation.errorMessage,
     isAmbiguousCpfOrPhone: pixValidation.isAmbiguousCpfOrPhone,
+    profileEmail: !isSimulationActive ? profile?.email ?? null : null,
+    profileSuggestions: !isSimulationActive && profile ? { cpf: profile.cpf, email: profile.email } : undefined,
+    previewAmountCents: summary.guestShareCents,
     summary, generatedLink, copied,
     isFormValid, isPending: createLinkedSplitMutation.isPending,
     handlePeopleCountChange, handleParticipantNameChange, handleAddParticipant, handleRemoveParticipant,
-    handleGenerateAndCopy, handleCopyLinkAgain, handleShareWhatsApp, handleShareNative,
+    handleGenerateAndCopy, handleTestCopyBrCode, handleCopyLinkAgain, handleShareWhatsApp, handleShareNative,
   };
 }

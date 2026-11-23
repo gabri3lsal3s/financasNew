@@ -153,6 +153,15 @@ export { SplitChargeCard } from "./split-charge-card";
 export type { SplitChargeCardProps, SplitParticipantView } from "./split-charge-card";
 export { SplitPreviewMockupCard } from "./split-preview-mockup-card";
 export type { SplitPreviewMockupCardProps } from "./split-preview-mockup-card";
+export { PixKeyInputFields } from "./pix-key-input-fields";
+export type {
+  PixKeyInputFieldsProps,
+  PixKeyProfileSuggestions,
+} from "./pix-key-input-fields";
+export { PixRecipientConfigFields } from "./pix-recipient-config-fields";
+export type { PixRecipientConfigFieldsProps } from "./pix-recipient-config-fields";
+export { PixTroubleshootAccordion } from "./pix-troubleshoot-accordion";
+export type { PixTroubleshootAccordionProps } from "./pix-troubleshoot-accordion";
 export { PlatformsTriptychCard } from "./platforms-triptych-card";
 export type { PlatformsTriptychCardProps, PlatformTriptychItem } from "./platforms-triptych-card";
 export { WeeklyDueRadarCard } from "./weekly-due-radar-card";

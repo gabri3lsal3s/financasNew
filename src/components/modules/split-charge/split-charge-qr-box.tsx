@@ -1,5 +1,6 @@
 import { AlertTriangle, Check, Copy, ShieldCheck } from "lucide-react";
 import { Alert, Button, QrCodeCanvas } from "@/components/ui";
+import { formatPixKeyTypeLabel } from "@/domain/pix";
 
 export interface SplitChargeQrBoxProps {
   pixBoxTourId?: string;
@@ -10,6 +11,8 @@ export interface SplitChargeQrBoxProps {
   onCopyPixKey: () => void;
 }
 
+const CANONICAL_PIX_TYPES = new Set(["cpf", "cnpj", "email", "phone", "random"]);
+
 /**
  * Caixa de visualização do QR Code Pix vetorial SVG e cópia da chave direta.
  */
@@ -17,10 +20,15 @@ export function SplitChargeQrBox({
   pixBoxTourId,
   pixBrCode,
   pixKey,
-  pixKeyType = "E-mail",
+  pixKeyType = "email",
   copiedKey,
   onCopyPixKey,
 }: SplitChargeQrBoxProps) {
+  const normalizedType = pixKeyType?.trim().toLowerCase() ?? "";
+  const formattedTypeLabel = CANONICAL_PIX_TYPES.has(normalizedType)
+    ? formatPixKeyTypeLabel(normalizedType)
+    : pixKeyType || "cadastrada";
+
   return (
     <div
       data-tour={pixBoxTourId}
@@ -31,9 +39,7 @@ export function SplitChargeQrBox({
           <p className="text-xs text-muted-foreground">
             Abra o app do seu banco, escolha <strong>Pagar com QR Code</strong> e aponte para a tela:
           </p>
-          <div className="rounded-xl border border-border/80 bg-white p-2 shadow-xs">
-            <QrCodeCanvas text={pixBrCode} size={180} label="Código QR Pix oficial" />
-          </div>
+          <QrCodeCanvas text={pixBrCode} size={208} label="Código QR Pix oficial" />
         </>
       ) : (
         <Alert variant="warning" className="text-left">
@@ -48,7 +54,7 @@ export function SplitChargeQrBox({
       {pixKey ? (
         <div className="w-full pt-2 border-t border-border/80 flex flex-col items-center gap-1.5">
           <span className="text-[11px] text-muted-foreground">
-            Chave Pix ({pixKeyType || "cadastrada"}):
+            Chave Pix ({formattedTypeLabel}):
           </span>
           <div className="flex items-center gap-2 max-w-full">
             <code className="text-xs font-mono bg-surface px-2 py-1 rounded border border-border/80 text-foreground truncate max-w-[160px] sm:max-w-[240px]">

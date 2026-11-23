@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { calculateInstallmentsProgress } from "@/domain/finance/split-math";
-import { buildPixTransferCode, type PixKeyType } from "@/domain/pix";
+import { DEFAULT_PIX_CITY, buildPixTransferCode, validatePixBrCode, type PixKeyType } from "@/domain/pix";
 import { useAuth } from "@/hooks/use-auth";
 import { useCategories } from "@/state";
 import { usePublicShare } from "@/state/queries/use-public-shares";
@@ -182,34 +182,33 @@ export function usePublicSplitPage(token: string, rawToken?: string) {
 
   const dynamicPixBrCode = useMemo(() => {
     if (!payload || isCurrentParticipantSettled) return "";
-    if (!payload.pix_key) return payload.pix_br_code || "";
+    if (!payload.pix_key) {
+      return payload.pix_br_code && validatePixBrCode(payload.pix_br_code)
+        ? payload.pix_br_code
+        : "";
+    }
 
-    const txSuffix = (token || "RACHA").replace(/[^a-zA-Z0-9]/g, "").slice(0, 6).toUpperCase();
     const instSuffix =
       selectedInstallment && !isPayAllRemaining
         ? `${selectedInstallment.installment_number}/${selectedInstallment.total_installments}`
         : "";
-    const txPrefix = selectedInstallment
-      ? `RACHA${selectedInstallment.installment_number.toString().padStart(2, "0")}`
-      : "RACHA";
 
     return (
       buildPixTransferCode({
         pixKey: payload.pix_key,
         keyType: payload.pix_key_type as PixKeyType | "auto" | "unknown" | undefined,
         merchantName: payload.host_name || "Anfitriao",
-        merchantCity: payload.host_city || "SAO PAULO",
+        merchantCity: payload.host_city || DEFAULT_PIX_CITY,
         amountCents: effectiveChargeCents,
-        txId: `${txPrefix}${txSuffix}`.slice(0, 25),
+        txId: "***",
         infoAdicional: `${(payload.title || "Racha").slice(0, 15)} ${instSuffix}`.trim(),
         defaultMerchantName: "Anfitriao",
-        defaultMerchantCity: "SAO PAULO",
+        defaultMerchantCity: DEFAULT_PIX_CITY,
       }) || ""
     );
   }, [
     payload,
     isCurrentParticipantSettled,
-    token,
     selectedInstallment,
     isPayAllRemaining,
     effectiveChargeCents,

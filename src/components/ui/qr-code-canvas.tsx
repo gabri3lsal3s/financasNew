@@ -5,7 +5,7 @@ import { generateQrCodeMatrix } from "@/domain/pix";
 export interface QrCodeCanvasProps {
   /** Texto a ser codificado no QR Code (ex.: Pix Copia e Cola, URL) */
   text: string;
-  /** Tamanho visual do conteiner em pixels (largura e altura). Padrao: 180 */
+  /** Tamanho visual do conteiner em pixels (largura e altura). Padrao: 200 */
   size?: number;
   /** Margem de respiro em modulos do QR code (ISO/IEC 18004 exige >= 4). Padrao: 4 */
   margin?: number;
@@ -27,7 +27,7 @@ export interface QrCodeCanvasProps {
  */
 export function QrCodeCanvas({
   text,
-  size = 180,
+  size = 200,
   margin = 4,
   darkColor = "#000000",
   lightColor = "#ffffff",

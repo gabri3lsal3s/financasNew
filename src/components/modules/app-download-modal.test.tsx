@@ -132,4 +132,24 @@ describe("AppDownloadModal — Diálogo Unificado de Instalação e Download", (
     appendSpy.mockRestore();
     removeSpy.mockRestore();
   });
+
+  it("bloqueia URL de APK com protocolo inseguro (javascript:)", async () => {
+    const user = userEvent.setup();
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    render(
+      <AppDownloadModal
+        open={true}
+        onOpenChange={mockOnOpenChange}
+        apkUrl="javascript:alert(1)"
+      />,
+    );
+
+    const downloadBtn = screen.getByRole("button", { name: "Baixar APK" });
+    await user.click(downloadBtn);
+
+    expect(clickSpy).not.toHaveBeenCalled();
+    expect(mockOnOpenChange).not.toHaveBeenCalledWith(false);
+    clickSpy.mockRestore();
+  });
 });

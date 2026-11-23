@@ -1,6 +1,7 @@
 import { Check, Copy, QrCode } from "lucide-react";
+import { PixTroubleshootAccordion } from "@/components/modules";
 import { Button, MoneyText, QrCodeCanvas } from "@/components/ui";
-import { buildPixTransferCode } from "@/domain/pix";
+import { DEFAULT_PIX_CITY, buildPixTransferCode, formatPixKeyTypeLabel } from "@/domain/pix";
 import { formatCentsAsBRL } from "@/services/masks/money";
 import type { PublicTripLedgerData, SuggestedSettlement } from "@/types/trips";
 
@@ -31,25 +32,22 @@ export function PublicTripSettlementRow({
 }: PublicTripSettlementRowProps) {
   const key = `${settlement.fromMemberId}-${settlement.toMemberId}`;
   const rawKey = settlement.toPixKey?.trim() ?? "";
-  const txSuffix = `${settlement.fromMemberId.slice(0, 4)}${settlement.toMemberId.slice(0, 4)}`
-    .replace(/[^a-zA-Z0-9]/g, "")
-    .toUpperCase();
 
   const pixBrCode = rawKey
     ? buildPixTransferCode({
         pixKey: rawKey,
         keyType: settlement.toPixKeyType,
         merchantName: settlement.toMemberName,
-        merchantCity: trip.destination || "BRASIL",
+        merchantCity: trip.destination || DEFAULT_PIX_CITY,
         amountCents: settlement.amountCents,
-        txId: `TRIP${txSuffix}`,
-        infoAdicional: `Acerto: ${trip.title || "Viagem"}`,
+        txId: "***",
+        infoAdicional: `Acerto ${trip.title || "Viagem"}`,
         defaultMerchantName: "Recebedor",
-        defaultMerchantCity: "BRASIL",
+        defaultMerchantCity: DEFAULT_PIX_CITY,
       })
     : null;
 
-  const codeToCopy = pixBrCode || rawKey;
+  const codeToCopy = (pixBrCode || rawKey).trim();
 
   return (
     <div className="rounded-xl bg-surface-raised p-3.5 space-y-2.5">
@@ -72,7 +70,7 @@ export function PublicTripSettlementRow({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="min-w-0">
               <span className="text-[11px] text-muted-foreground block font-medium">
-                Chave Pix ({settlement.toPixKeyType ?? "Pix"}):
+                Chave Pix ({settlement.toPixKeyType ? formatPixKeyTypeLabel(settlement.toPixKeyType) : "Pix"}):
               </span>
               <span className="font-mono text-xs text-foreground truncate block font-medium">
                 {settlement.toPixKey}
@@ -127,7 +125,7 @@ export function PublicTripSettlementRow({
                 size="sm"
                 variant="ghost"
                 sensoryIntent={false}
-                onClick={() => onCopyPixKey(settlement.toPixKey!)}
+                onClick={() => onCopyPixKey(rawKey)}
                 className="px-2 text-[11px] text-muted-foreground shrink-0"
                 title="Copiar apenas a chave Pix"
               >
@@ -150,15 +148,22 @@ export function PublicTripSettlementRow({
                 />
                 :
               </p>
-              <div className="p-2 rounded-xl border border-border/80 bg-background shadow-xs">
-                <QrCodeCanvas
-                  text={pixBrCode}
-                  size={160}
-                  label={`QR Code Pix para ${settlement.toMemberName}`}
-                />
-              </div>
+              <QrCodeCanvas
+                text={pixBrCode}
+                size={200}
+                label={`QR Code Pix para ${settlement.toMemberName}`}
+              />
             </div>
           )}
+
+          {isQrOpen || !pixBrCode ? (
+            <PixTroubleshootAccordion
+              pixBrCode={pixBrCode}
+              pixKey={rawKey}
+              pixKeyType={settlement.toPixKeyType}
+              onCopyPixKey={() => onCopyPixKey(rawKey)}
+            />
+          ) : null}
         </div>
       )}
     </div>

@@ -77,7 +77,9 @@ export function RemindersPreferencesForm({
             isNative={form.isNative}
             webPushSupported={form.webPushSupported}
             webPushConfigured={form.webPushConfigured}
-            permissionDenied={form.webPermissionDenied}
+            permissionDenied={
+              form.isNative ? form.nativePermissionDenied : form.webPermissionDenied
+            }
             iosNeedsInstall={form.iosNeedsInstall}
             isBusy={form.remotePushBusy}
             onToggleRemotePush={(enabled) =>

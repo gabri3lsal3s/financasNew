@@ -22,7 +22,7 @@ import { useUserAccess } from "@/state";
 export function AdminLoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { session } = useAuth();
+  const { session, mfaRequired, mfaVerified } = useAuth();
   const { isAdmin, isLoading: accessLoading } = useUserAccess(session?.user?.id);
 
   const [email, setEmail] = useState("");
@@ -44,6 +44,9 @@ export function AdminLoginPage() {
   if (session?.user && isAdmin && !accessLoading) {
     const from =
       (location.state as { from?: { pathname?: string } })?.from?.pathname || "/admin/dashboard";
+    if (mfaRequired && !mfaVerified) {
+      return <Navigate to="/entrar?desafio=totp" replace state={{ from: { pathname: from } }} />;
+    }
     return <Navigate to={from} replace />;
   }
 

@@ -1,7 +1,11 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { decideWebhookAction } from "../_shared/asaas-webhook-logic.ts";
 import { timingSafeEqualString } from "../_shared/http.ts";
-import { buildTelegramSaleMessage, sendTelegramNotification } from "../_shared/telegram.ts";
+import {
+  buildTelegramSaleMessage,
+  escapeTelegramHtml,
+  sendTelegramNotification,
+} from "../_shared/telegram.ts";
 import {
   postponeAsaasSubscriptionAfterPrepayment,
   ensurePreviousSubscriptionCanceled,
@@ -246,12 +250,20 @@ Deno?.serve?.(async (req: Request) => {
             .eq("id", userSub.user_id)
             .maybeSingle();
 
+          const safeCustomerName = escapeTelegramHtml(String(profile?.name || "Assinante"));
+          const safeCustomerEmail = escapeTelegramHtml(String(profile?.email || "—"));
+          const safeAmount = escapeTelegramHtml(String(payment.value?.toFixed(2) ?? "0.00"));
+          const safeBillingType = escapeTelegramHtml(String(payment.billingType || "—"));
+          const safePeriodEnd = escapeTelegramHtml(
+            new Date(decision.newPeriodEnd).toLocaleDateString("pt-BR"),
+          );
+
           const text = [
             `<b>[AXIR] ANTECIPAÇÃO ACUMULATIVA CONFIRMADA</b>`,
-            `<b>Cliente:</b> ${profile?.name || "Assinante"} (${profile?.email || "—"})`,
+            `<b>Cliente:</b> ${safeCustomerName} (${safeCustomerEmail})`,
             `<b>Meses Antecipados:</b> +${decision.monthsCount} meses`,
-            `<b>Valor Pago:</b> R$ ${payment.value?.toFixed(2)} (${payment.billingType})`,
-            `<b>Novo Vencimento:</b> ${new Date(decision.newPeriodEnd).toLocaleDateString("pt-BR")}`,
+            `<b>Valor Pago:</b> R$ ${safeAmount} (${safeBillingType})`,
+            `<b>Novo Vencimento:</b> ${safePeriodEnd}`,
             `<b>Sincronizado no Asaas:</b> ${asaasSyncSuccess ? "SIM" : "PENDENTE RECONCILIAÇÃO"}`,
           ].join("\n");
 

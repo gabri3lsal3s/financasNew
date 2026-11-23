@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
+import { validateAndClassifyPixKey, type PixKeyType } from "@/domain/pix";
 import { useMyPublicShares } from "@/state/queries/use-public-shares";
 import { useUserAccess } from "@/state/queries/use-user-access";
 import { getPublicShareUrl } from "@/services/app-url";
+import { copyTextToClipboard } from "@/services/export-actions";
+import { getStoredSplitPreferences, storeSplitPreferences } from "@/services/split-preferences";
 import { pushToast } from "@/services/toast";
 import type { Category, GoalTrackerStatus, PublicShare } from "@/types";
 import { buildGoalPixData, buildGoalSharePayload } from "./share-goal-payload";
@@ -68,21 +71,46 @@ export function useShareGoalActions({
   );
   const [deadline, setDeadline] = useState<string>(() => (activeShare?.payload?.deadline as string) || "");
   const [pixKey, setPixKey] = useState<string>(
-    () => (activeShare?.payload?.pix_key as string) || profile?.cpf || profile?.email || "",
+    () => (activeShare?.payload?.pix_key as string) || getStoredSplitPreferences().pixKey || "",
   );
   const [selectedKeyType, setSelectedKeyType] = useState<string>(
-    () => (activeShare?.payload?.pix_key_type as string) || "auto",
+    () =>
+      (activeShare?.payload?.pix_key_type as string) ||
+      getStoredSplitPreferences().pixKeyType ||
+      "auto",
   );
   const [merchantName, setMerchantName] = useState<string>(
-    () => (activeShare?.payload?.organizer_name as string) || profile?.name || "Organizador",
+    () =>
+      (activeShare?.payload?.organizer_name as string) ||
+      getStoredSplitPreferences().merchantName ||
+      profile?.name ||
+      "Organizador",
   );
   const [merchantCity, setMerchantCity] = useState<string>(
-    () => (activeShare?.payload?.organizer_city as string) || "SAO PAULO",
+    () =>
+      (activeShare?.payload?.organizer_city as string) ||
+      getStoredSplitPreferences().merchantCity ||
+      "",
   );
   const [showContributionsPublicly, setShowContributionsPublicly] = useState<boolean>(() =>
     activeShare?.payload?.show_contributions_publicly !== undefined
       ? Boolean(activeShare.payload.show_contributions_publicly)
       : true,
+  );
+
+  const pixValidation = useMemo(
+    () =>
+      validateAndClassifyPixKey(
+        pixKey,
+        selectedKeyType === "auto" || selectedKeyType === "unknown"
+          ? undefined
+          : (selectedKeyType as PixKeyType),
+      ),
+    [pixKey, selectedKeyType],
+  );
+
+  const isPixValid = Boolean(
+    !isShared || (pixValidation.isValid && pixValidation.resolvedType),
   );
 
   const [copied, setCopied] = useState(false);
@@ -136,10 +164,8 @@ export function useShareGoalActions({
 
   const handleCopyLink = async () => {
     if (!shareUrl) return;
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-      }
+    const copiedOk = await copyTextToClipboard(shareUrl);
+    if (copiedOk) {
       setCopied(true);
       pushToast({
         title: "Link público copiado!",
@@ -147,9 +173,22 @@ export function useShareGoalActions({
         variant: "default",
       });
       setTimeout(() => setCopied(false), 2500);
-    } catch {
+    } else {
       pushToast({ title: "Não foi possível copiar o link", variant: "destructive" });
     }
+  };
+
+  const handleSubmitForm = async () => {
+    if (isShared && !isPixValid) return;
+    if (isShared && pixValidation.isValid && pixValidation.resolvedType) {
+      storeSplitPreferences({
+        pixKey: pixValidation.normalizedKey ?? pixKey.trim(),
+        pixKeyType: pixValidation.resolvedType,
+        merchantName: merchantName.trim(),
+        merchantCity: merchantCity.trim(),
+      });
+    }
+    await mutations.handleCreateOrUpdate(pixKey, isPixValid);
   };
 
   const handleOpenPublicPage = () => {
@@ -177,6 +216,11 @@ export function useShareGoalActions({
     setPixKey,
     selectedKeyType,
     setSelectedKeyType,
+    detectedPixType: pixValidation.resolvedType,
+    pixValidationError: pixValidation.errorMessage,
+    isAmbiguousCpfOrPhone: pixValidation.isAmbiguousCpfOrPhone,
+    isPixValid,
+    profileSuggestions: profile ? { cpf: profile.cpf, email: profile.email } : undefined,
     merchantName,
     setMerchantName,
     merchantCity,
@@ -199,7 +243,7 @@ export function useShareGoalActions({
     isPending: mutations.isPending,
     handleCopyLink,
     handleOpenPublicPage,
-    handleSubmitForm: () => mutations.handleCreateOrUpdate(pixKey),
+    handleSubmitForm,
     handleConfirmRevoke: mutations.handleConfirmRevoke,
     handleConfirmRestore: mutations.handleConfirmRestore,
     handleConfirmDelete: mutations.handleConfirmDelete,

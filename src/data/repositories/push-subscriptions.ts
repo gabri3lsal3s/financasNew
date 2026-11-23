@@ -134,6 +134,23 @@ export async function deactivatePushSubscriptionByEndpoint(endpoint: string): Pr
 }
 
 /**
+ * Desativa uma inscrição FCM específica pelo token do aparelho Android nativo.
+ */
+export async function deactivatePushSubscriptionByFcmToken(fcmToken: string): Promise<void> {
+  const user_id = await currentUserId();
+  const { error } = await getSupabase()
+    .from("user_push_subscriptions")
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq("user_id", user_id)
+    .eq("fcm_token", fcmToken);
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+/**
  * Desativa todas as inscrições de Push Remoto do usuário autenticado.
  */
 export async function deactivateAllMyPushSubscriptions(): Promise<void> {

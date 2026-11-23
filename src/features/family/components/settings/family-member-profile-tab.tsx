@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import { KeyRound, Sparkles } from "lucide-react";
+import { PixKeyInputFields } from "@/components/modules";
 import {
   Button,
   Card,
@@ -9,25 +10,22 @@ import {
   FormField,
   Input,
   PercentInput,
-  Select,
-  type SelectOption,
 } from "@/components/ui";
-import type { FamilyIncomeRatioSuggestionItem, FamilyPixKeyType, FamilySplitRule } from "@/types";
-
-const PIX_KEY_OPTIONS: SelectOption[] = [
-  { value: "cpf", label: "CPF" },
-  { value: "email", label: "E-mail" },
-  { value: "phone", label: "Telefone / Celular" },
-  { value: "random", label: "Chave Aleatória" },
-];
+import type { PixKeyType } from "@/domain/pix";
+import type { FamilyIncomeRatioSuggestionItem, FamilySplitRule } from "@/types";
 
 export interface FamilyMemberProfileTabProps {
   memberDisplayName: string;
   onMemberDisplayNameChange: (val: string) => void;
-  memberPixKeyType: FamilyPixKeyType;
-  onMemberPixKeyTypeChange: (val: FamilyPixKeyType) => void;
+  memberPixKeyType: string;
+  onMemberPixKeyTypeChange: (val: string) => void;
   memberPixKey: string;
   onMemberPixKeyChange: (val: string) => void;
+  detectedPixType?: PixKeyType | null;
+  pixValidationError?: string | null;
+  isAmbiguousCpfOrPhone?: boolean;
+  hasInvalidPixKey?: boolean;
+  onQuickSelectKeyType?: (type: "phone" | "cpf") => void;
   memberSplitRatioPercent: number;
   onMemberSplitRatioPercentChange: (val: number) => void;
   splitRule?: FamilySplitRule;
@@ -44,6 +42,11 @@ export function FamilyMemberProfileTab({
   onMemberPixKeyTypeChange,
   memberPixKey,
   onMemberPixKeyChange,
+  detectedPixType = null,
+  pixValidationError = null,
+  isAmbiguousCpfOrPhone = false,
+  hasInvalidPixKey = false,
+  onQuickSelectKeyType,
   memberSplitRatioPercent,
   onMemberSplitRatioPercentChange,
   splitRule,
@@ -68,42 +71,37 @@ export function FamilyMemberProfileTab({
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-3.5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <FormField label="Meu nome de exibição no grupo" htmlFor="member-display-name">
-                <Input
-                  id="member-display-name"
-                  value={memberDisplayName}
-                  onChange={(e) => onMemberDisplayNameChange(e.target.value)}
-                  placeholder="Ex: Amor, Pai, Gabriel"
-                  className="h-10 text-base sm:text-sm rounded-xl"
-                />
-              </FormField>
-
-              <FormField label="Tipo de Chave Pix" htmlFor="member-pix-type">
-                <Select
-                  id="member-pix-type"
-                  value={memberPixKeyType}
-                  onValueChange={(val) => onMemberPixKeyTypeChange(val as FamilyPixKeyType)}
-                  options={PIX_KEY_OPTIONS}
-                  ariaLabel="Tipo de Chave Pix"
-                  className="h-10 text-base sm:text-sm rounded-xl"
-                />
-              </FormField>
-            </div>
-
-            <FormField
-              label="Sua Chave Pix para recebimento de rateios"
-              htmlFor="member-pix-key"
-              helperText="Utilizada quando o outro membro fizer o acerto mensal de despesas via Pix."
-            >
+            <FormField label="Meu nome de exibição no grupo" htmlFor="member-display-name">
               <Input
-                id="member-pix-key"
-                value={memberPixKey}
-                onChange={(e) => onMemberPixKeyChange(e.target.value)}
-                placeholder="Informe a chave Pix (CPF, e-mail ou telefone)"
+                id="member-display-name"
+                value={memberDisplayName}
+                onChange={(e) => onMemberDisplayNameChange(e.target.value)}
+                placeholder="Ex: Amor, Pai, Gabriel"
                 className="h-10 text-base sm:text-sm rounded-xl"
               />
             </FormField>
+
+            <PixKeyInputFields
+              pixKey={memberPixKey}
+              onPixKeyChange={onMemberPixKeyChange}
+              selectedKeyType={memberPixKeyType}
+              onSelectedKeyTypeChange={onMemberPixKeyTypeChange}
+              detectedType={detectedPixType}
+              validationError={pixValidationError}
+              isAmbiguousCpfOrPhone={isAmbiguousCpfOrPhone}
+              onQuickSelectKeyType={onQuickSelectKeyType}
+              allowCnpj={false}
+              pixKeyId="member-pix-key"
+              keyTypeId="member-pix-type"
+              pixKeyLabel="Sua Chave Pix para recebimento de rateios"
+              pixKeyAriaLabel="Sua Chave Pix para recebimento de rateios"
+              pixKeyPlaceholder="Informe a chave Pix (CPF, celular, e-mail ou aleatória)"
+              pixKeyHelperText="Utilizada quando o outro membro fizer o acerto mensal de despesas via Pix."
+              keyTypeLabel="Tipo de Chave Pix"
+              keyTypeAriaLabel="Tipo de Chave Pix"
+              showBankRegistrationNotice={true}
+              showVerificationBadge={true}
+            />
 
             {splitRule === "proportional" && (
               <div className="space-y-2 pt-2 border-t border-border/80">
@@ -137,7 +135,7 @@ export function FamilyMemberProfileTab({
               <Button
                 type="submit"
                 sensoryIntent={false}
-                disabled={!isDirty || isPending}
+                disabled={!isDirty || hasInvalidPixKey || isPending}
                 loading={isPending}
                 className="gap-2 rounded-xl"
               >

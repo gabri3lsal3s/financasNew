@@ -252,6 +252,25 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    if (resolvedTicketId) {
+      const { data: claimed, error: claimErr } = await supabaseAdmin
+        .from("support_tickets")
+        .update({ telegram_notified_at: new Date().toISOString() })
+        .eq("id", resolvedTicketId)
+        .is("telegram_notified_at", null)
+        .select("id")
+        .maybeSingle();
+
+      if (!claimErr && !claimed) {
+        return jsonResponse(req, {
+          success: true,
+          ticketId: resolvedTicketId,
+          delivered: true,
+          deduplicated: true,
+        });
+      }
+    }
+
     const messageHtml = buildTelegramSupportMessage(notificationData);
     const result = await sendTelegramNotification({
       botToken: telegramBotToken,
@@ -260,6 +279,12 @@ Deno.serve(async (req: Request) => {
     });
 
     if (!result.success) {
+      if (resolvedTicketId) {
+        await supabaseAdmin
+          .from("support_tickets")
+          .update({ telegram_notified_at: null })
+          .eq("id", resolvedTicketId);
+      }
       console.error("[support-notify] Falha ao entregar mensagem no Telegram:", result.error);
       return jsonResponse(req, {
         success: true,

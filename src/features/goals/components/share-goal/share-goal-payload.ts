@@ -1,4 +1,10 @@
-import { buildPixTransferCode, resolvePixKeyType, type PixKeyType } from "@/domain/pix";
+import {
+  DEFAULT_PIX_CITY,
+  buildPixTransferCode,
+  resolvePixKeyType,
+  validateAndClassifyPixKey,
+  type PixKeyType,
+} from "@/domain/pix";
 import type { Category, GoalTrackerSharePayload, GoalTrackerStatus } from "@/types";
 
 export interface BuildGoalSharePayloadInput {
@@ -26,23 +32,39 @@ export function buildGoalPixData(params: {
   merchantCity: string;
 }) {
   if (!params.isShared || !params.pixKey.trim()) {
-    return { keyType: "unknown" as const, brCode: "" };
+    return { keyType: "unknown" as const, normalizedKey: "", brCode: "" };
   }
-  const resolvedType = resolvePixKeyType(
+  const validation = validateAndClassifyPixKey(
     params.pixKey,
     params.selectedKeyType as PixKeyType | "auto" | "unknown",
   );
+  const resolvedType =
+    validation.resolvedType ??
+    resolvePixKeyType(
+      params.pixKey,
+      params.selectedKeyType as PixKeyType | "auto" | "unknown",
+    );
+  const normalizedKey = validation.normalizedKey ?? params.pixKey.trim();
+
+  if (!validation.isValid || !resolvedType) {
+    return {
+      keyType: resolvedType ?? ("unknown" as const),
+      normalizedKey,
+      brCode: "",
+    };
+  }
+
   const brCode =
     buildPixTransferCode({
-      pixKey: params.pixKey,
-      keyType: params.selectedKeyType as PixKeyType | "auto" | "unknown",
+      pixKey: normalizedKey,
+      keyType: resolvedType,
       merchantName: params.merchantName,
       merchantCity: params.merchantCity,
       txId: "***",
       defaultMerchantName: "Organizador",
-      defaultMerchantCity: "SAO PAULO",
+      defaultMerchantCity: DEFAULT_PIX_CITY,
     }) ?? "";
-  return { keyType: resolvedType ?? ("unknown" as const), brCode };
+  return { keyType: resolvedType, normalizedKey, brCode };
 }
 
 export function buildGoalSharePayload({
@@ -61,7 +83,7 @@ export function buildGoalSharePayload({
   merchantCity,
   showContributionsPublicly,
 }: BuildGoalSharePayloadInput): GoalTrackerSharePayload {
-  const { keyType, brCode } = buildGoalPixData({
+  const { keyType, normalizedKey, brCode } = buildGoalPixData({
     isShared,
     pixKey,
     selectedKeyType,
@@ -87,8 +109,8 @@ export function buildGoalSharePayload({
     current_cents: initialCollectedCents,
     deadline: deadline.trim() || null,
     organizer_name: merchantName.trim() || "Organizador",
-    organizer_city: merchantCity.trim() || "SAO PAULO",
-    pix_key: isShared ? pixKey.trim() : "",
+    organizer_city: merchantCity.trim() || DEFAULT_PIX_CITY,
+    pix_key: isShared ? normalizedKey : "",
     pix_key_type: keyType,
     pix_br_code: brCode,
     status: resolvedStatus,

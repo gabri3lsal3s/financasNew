@@ -7,6 +7,7 @@ import {
   useUpdatePublicShare,
 } from "@/state/mutations/use-public-share-mutations";
 import { getPublicAppUrl } from "@/services/app-url";
+import { copyTextToClipboard } from "@/services/export-actions";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { GoalTrackerSharePayload, GoalTrackerStatus, PublicShare } from "@/types";
@@ -28,9 +29,7 @@ export interface UseShareGoalMutationsParams {
 }
 
 async function copyUrlSilently(token: string) {
-  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(getPublicAppUrl(`meta/${token}`)).catch(() => {});
-  }
+  await copyTextToClipboard(getPublicAppUrl(`meta/${token}`)).catch(() => {});
 }
 
 export function useShareGoalMutations(p: UseShareGoalMutationsParams) {
@@ -41,8 +40,8 @@ export function useShareGoalMutations(p: UseShareGoalMutationsParams) {
   const deleteMutation = useDeletePublicShare();
   const regenerateMutation = useRegeneratePublicShare();
 
-  const handleCreateOrUpdate = async (pixKey: string) => {
-    if (p.targetCents <= 0 || (p.isShared && !pixKey.trim())) return;
+  const handleCreateOrUpdate = async (pixKey: string, isPixValid = true) => {
+    if (p.targetCents <= 0 || (p.isShared && (!pixKey.trim() || !isPixValid))) return;
     if (p.activeShare) {
       try {
         await updateMutation.mutateAsync({
