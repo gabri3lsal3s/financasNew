@@ -68,7 +68,7 @@ export function AttachReceiptDialog({
     cardDigitsMapping,
     bankCardMapping,
     isReadOnlyMode,
-    aiFallbackEnabled: aiExtractionEnabled,
+    aiFallbackEnabled: aiExtractionEnabled ?? true,
   };
 
   const handleClose = () => {

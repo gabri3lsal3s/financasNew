@@ -3,6 +3,7 @@ import {
   applyOcrPixelPreprocess,
   calculateOtsuThreshold,
   classifyOcrImageProfile,
+  extractTextFromImageWeb,
 } from "./web-ocr";
 
 describe("calculateOtsuThreshold", () => {
@@ -129,5 +130,32 @@ describe("applyOcrPixelPreprocess & classifyOcrImageProfile (Dark Mode / Prints 
   it("classifyOcrImageProfile trata entrada vazia sem dividir por zero", () => {
     const empty = classifyOcrImageProfile([], 0);
     expect(empty.strategy).toBe("thermal_otsu_binarize");
+  });
+});
+
+describe("extractTextFromImageWeb (Gecko/Firefox & Resiliência a SecurityError)", () => {
+  it("ignora spawn de worker e retorna string vazia imediatamente no Firefox para acionar Gemini Vision", async () => {
+    const originalUserAgent = navigator.userAgent;
+    Object.defineProperty(navigator, "userAgent", {
+      value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/119.0",
+      configurable: true,
+    });
+
+    const file = new File(["fake-image-bytes"], "comprovante.png", { type: "image/png" });
+    const result = await extractTextFromImageWeb(file);
+
+    expect(result).toBe("");
+
+    Object.defineProperty(navigator, "userAgent", {
+      value: originalUserAgent,
+      configurable: true,
+    });
+  });
+
+  it("não propaga erro não tratado quando createWorker ou Worker falha", async () => {
+    const file = new File(["fake-bytes"], "comprovante.jpg", { type: "image/jpeg" });
+    // Em jsdom, createWorker falha por ausência de Web Worker nativo; deve retornar "" silenciosamente
+    const result = await extractTextFromImageWeb(file);
+    expect(result).toBe("");
   });
 });

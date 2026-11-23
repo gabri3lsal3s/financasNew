@@ -81,8 +81,9 @@ export function LaunchWizard({
     ? (userTripsQuery.data ?? []).filter((t) => t.status === "active" || t.status === "planning")
     : [];
   const { session, user } = useAuth();
-  const { profile, hasFeature } = useUserAccess();
-  const aiExtractionEnabled = typeof hasFeature === "function" ? hasFeature("ai_extraction") : true;
+  const { profile, hasFeature, isLoading: isAccessLoading } = useUserAccess();
+  const aiExtractionEnabled =
+    typeof hasFeature === "function" ? (isAccessLoading ? true : hasFeature("ai_extraction")) : true;
   const currentUserId = user?.id ?? session?.user?.id ?? profile?.id;
   const userFullName =
     profile?.name ??

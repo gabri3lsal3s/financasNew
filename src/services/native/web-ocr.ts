@@ -238,11 +238,13 @@ export async function preprocessImageForOcr(file: File | Blob): Promise<Blob | F
     return file;
   }
 
+  let createdUrl: string | null = null;
+  let closeBitmap: (() => void) | null = null;
+
   try {
     let bitmapWidth = 0;
     let bitmapHeight = 0;
     let sourceDrawable: CanvasImageSource | null = null;
-    let closeBitmap: (() => void) | null = null;
 
     if (typeof createImageBitmap === "function") {
       try {
@@ -257,14 +259,13 @@ export async function preprocessImageForOcr(file: File | Blob): Promise<Blob | F
     }
 
     if (!sourceDrawable) {
-      const url = URL.createObjectURL(file);
+      createdUrl = URL.createObjectURL(file);
       const img = new Image();
       await new Promise<void>((resolve, reject) => {
         img.onload = () => resolve();
         img.onerror = () => reject(new Error("Falha ao carregar imagem"));
-        img.src = url;
+        img.src = createdUrl!;
       });
-      URL.revokeObjectURL(url);
       bitmapWidth = img.naturalWidth || img.width;
       bitmapHeight = img.naturalHeight || img.height;
       sourceDrawable = img;
@@ -290,12 +291,10 @@ export async function preprocessImageForOcr(file: File | Blob): Promise<Blob | F
     canvas.height = targetHeight;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) {
-      closeBitmap?.();
       return file;
     }
 
     ctx.drawImage(sourceDrawable, 0, 0, targetWidth, targetHeight);
-    closeBitmap?.();
 
     const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
     applyOcrPixelPreprocess(imageData.data, targetWidth, targetHeight);
@@ -311,26 +310,79 @@ export async function preprocessImageForOcr(file: File | Blob): Promise<Blob | F
     });
   } catch {
     return file;
+  } finally {
+    closeBitmap?.();
+    if (createdUrl) {
+      try {
+        URL.revokeObjectURL(createdUrl);
+      } catch {
+        // no-op
+      }
+    }
   }
 }
 
 export async function extractTextFromImageWeb(file: File | Blob): Promise<string> {
+  // 1. Em ambientes sem suporte nativo a Web Worker (Node, SSR, jsdom) ou
+  // em navegadores estritos como Firefox (onde a criação de Web Workers inline via Blob URL
+  // com scripts externos dispara SecurityError na engine Gecko), retorna string vazia
+  // imediatamente para acionar o Gemini Vision multimodal sem atrito nem ruído no console.
+  if (
+    typeof window === "undefined" ||
+    typeof Worker === "undefined" ||
+    (typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent))
+  ) {
+    return "";
+  }
+
   const workerHolder: { current: TerminableWorker | null } = { current: null };
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  // Supressores de segurança para interceptar e prevenir que erros não tratados de workers vazem para a window
+  const suppressWorkerSecurityError = (event: ErrorEvent) => {
+    const msg = String(event.message || "");
+    if (
+      msg.includes("insecure") ||
+      msg.includes("SecurityError") ||
+      event.error?.name === "SecurityError"
+    ) {
+      event.preventDefault?.();
+    }
+  };
+  const suppressUnhandledRejection = (event: PromiseRejectionEvent) => {
+    const reason = event.reason;
+    const msg = String(reason?.message || reason || "");
+    if (
+      msg.includes("insecure") ||
+      msg.includes("SecurityError") ||
+      reason?.name === "SecurityError"
+    ) {
+      event.preventDefault?.();
+    }
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("error", suppressWorkerSecurityError);
+    window.addEventListener("unhandledrejection", suppressUnhandledRejection);
+  }
 
   try {
     const processedFile = await preprocessImageForOcr(file);
 
     const ocrPromise = (async () => {
-      const { createWorker } = await import("tesseract.js");
-      // OEM 1 (LSTM_ONLY) com errorHandler explícito evita uncaught rejection quando worker falha/expira
-      const tesseractWorker = await createWorker("por", 1, {
-        errorHandler: () => {},
-      });
-      workerHolder.current = tesseractWorker;
+      try {
+        const { createWorker } = await import("tesseract.js");
+        // OEM 1 (LSTM_ONLY) com errorHandler explícito evita uncaught rejection quando worker falha/expira
+        const tesseractWorker = await createWorker("por", 1, {
+          errorHandler: () => {},
+        });
+        workerHolder.current = tesseractWorker;
 
-      const ret = await tesseractWorker.recognize(processedFile);
-      return ret?.data?.text ?? "";
+        const ret = await tesseractWorker.recognize(processedFile);
+        return ret?.data?.text ?? "";
+      } catch {
+        return "";
+      }
     })();
 
     // Evita Uncaught (in promise) caso timeout ou worker encerre antes da promise rejeitar
@@ -350,6 +402,10 @@ export async function extractTextFromImageWeb(file: File | Blob): Promise<string
     // Log silencioso com fallback
     return "";
   } finally {
+    if (typeof window !== "undefined") {
+      window.removeEventListener("error", suppressWorkerSecurityError);
+      window.removeEventListener("unhandledrejection", suppressUnhandledRejection);
+    }
     if (timeoutId !== undefined) {
       clearTimeout(timeoutId);
     }
