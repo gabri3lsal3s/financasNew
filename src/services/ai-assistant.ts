@@ -2,7 +2,7 @@
  * Cliente HTTP fino de Micro-IA Híbrida (`ai-financial-assistant`) — Fases D e E.
  *
  * Regras de engenharia e FinOps:
- * - Zero SDK pesado no frontend: utiliza `fetch` nativo + `AbortController` (timeout 5,5s).
+ * - Zero SDK pesado no frontend: utiliza `fetch` nativo + `AbortController` (timeout 22s para retry/fallback).
  * - Deduplicação de chamadas concorrentes por `(userId, mode, sha256)` via `inFlightBySha256` (Trava 4 / Ajuste #4).
  * - Checagem síncrona de offline (`navigator.onLine === false`), `isReadOnlyMode` e kill-switch antes de rede.
  * - Mascaramento PII / higienização (Trava 5) e compressão Vision (1024px @ 0.72, <= 500 KB) no cliente.
@@ -26,6 +26,7 @@ import {
   MAX_AI_IMAGE_BYTES,
   MAX_AI_SINGLE_RECEIPT_TEXT_CHARS,
   MAX_AI_STATEMENT_PDF_TEXT_CHARS,
+  normalizeSingleReceiptAiPayload,
   sanitizeBatchDescriptionForAi,
   Sha256HexSchema,
   validateCategorizeBatchOutput,
@@ -35,7 +36,7 @@ import {
   type AiStatementPdfRowsOutput,
 } from "../../supabase/functions/_shared/ai-schemas";
 
-export const CLIENT_AI_TIMEOUT_MS = 12_000;
+export const CLIENT_AI_TIMEOUT_MS = 22_000;
 export const CLIENT_AI_BATCH_TIMEOUT_MS = 8_000;
 const AI_VISION_MAX_DIMENSION = 1024;
 const AI_VISION_DEFAULT_QUALITY = 0.72;
@@ -188,90 +189,176 @@ async function blobToBase64(blob: Blob): Promise<string> {
   return btoa(binary);
 }
 
+type VisionImageMimeType = "image/jpeg" | "image/webp" | "image/png";
+
+function detectDirectVisionMime(blob: Blob): VisionImageMimeType | null {
+  const normalized = blob.type.trim().toLowerCase();
+  if (normalized === "image/jpeg" || normalized === "image/jpg") return "image/jpeg";
+  if (normalized === "image/webp") return "image/webp";
+  if (normalized === "image/png") return "image/png";
+  return null;
+}
+
+async function encodeCanvasWithinCap(
+  source: CanvasImageSource,
+  targetW: number,
+  targetH: number,
+  outputMime: "image/jpeg" | "image/webp",
+  qualities: readonly number[],
+): Promise<{ base64: string; mimeType: VisionImageMimeType } | null> {
+  const canvas = document.createElement("canvas");
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  ctx.drawImage(source, 0, 0, targetW, targetH);
+
+  for (const quality of qualities) {
+    const exported = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((res) => resolve(res), outputMime, quality),
+    );
+    if (!exported) continue;
+    const candidateBase64 = await blobToBase64(exported);
+    if (isWithinImageByteCap(candidateBase64, MAX_AI_IMAGE_BYTES)) {
+      return { base64: candidateBase64, mimeType: outputMime };
+    }
+  }
+  return null;
+}
+
 /**
  * Redimensiona/comprime uma imagem (ou página PDF renderizada) para o teto Vision (1024px @ 0.72, <= 500 KB).
+ * Converte formatos modernos como AVIF para JPEG no navegador; jamais rotula bytes brutos incompatíveis como JPEG.
  */
 export async function compressBlobForAiVision(blob: Blob): Promise<{
   base64: string;
-  mimeType: "image/jpeg" | "image/webp" | "image/png";
+  mimeType: VisionImageMimeType;
 } | null> {
-  const fallbackMime: "image/jpeg" | "image/webp" | "image/png" =
-    blob.type === "image/webp"
-      ? "image/webp"
-      : blob.type === "image/png"
-        ? "image/png"
-        : "image/jpeg";
+  const directMime = detectDirectVisionMime(blob);
 
-  if (typeof document === "undefined" || typeof createImageBitmap !== "function") {
+  const probeCanvas =
+    typeof document !== "undefined" ? document.createElement("canvas") : null;
+  const hasCanvas2d = Boolean(
+    probeCanvas &&
+      typeof probeCanvas.toBlob === "function" &&
+      probeCanvas.getContext("2d"),
+  );
+
+  if (!hasCanvas2d) {
+    if (!directMime) return null;
     const rawBase64 = await blobToBase64(blob);
     if (!isWithinImageByteCap(rawBase64, MAX_AI_IMAGE_BYTES)) {
       return null;
     }
-    return { base64: rawBase64, mimeType: fallbackMime };
+    return { base64: rawBase64, mimeType: directMime };
   }
 
   let bitmap: ImageBitmap | null = null;
-  try {
-    bitmap = await createImageBitmap(blob);
-    const largest = Math.max(bitmap.width, bitmap.height, 1);
-    const scale = largest > AI_VISION_MAX_DIMENSION ? AI_VISION_MAX_DIMENSION / largest : 1;
-    const targetW = Math.max(1, Math.round(bitmap.width * scale));
-    const targetH = Math.max(1, Math.round(bitmap.height * scale));
+  let createdUrl: string | null = null;
 
-    const canvas = document.createElement("canvas");
-    canvas.width = targetW;
-    canvas.height = targetH;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
+  try {
+    let sourceDrawable: CanvasImageSource | null = null;
+    let sourceWidth = 0;
+    let sourceHeight = 0;
+
+    if (typeof createImageBitmap === "function") {
+      try {
+        bitmap = await createImageBitmap(blob);
+        sourceDrawable = bitmap;
+        sourceWidth = bitmap.width;
+        sourceHeight = bitmap.height;
+      } catch {
+        bitmap = null;
+      }
+    }
+
+    if (!sourceDrawable && typeof Image !== "undefined" && typeof URL?.createObjectURL === "function") {
+      createdUrl = URL.createObjectURL(blob);
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          img.onload = null;
+          img.onerror = null;
+          reject(new Error("Tempo limite ao decodificar imagem para Vision."));
+        }, 3_000);
+        img.onload = () => {
+          clearTimeout(timer);
+          img.onload = null;
+          img.onerror = null;
+          resolve();
+        };
+        img.onerror = () => {
+          clearTimeout(timer);
+          img.onload = null;
+          img.onerror = null;
+          reject(new Error("Falha ao decodificar imagem para Vision."));
+        };
+        img.src = createdUrl!;
+      });
+      sourceWidth = img.naturalWidth || img.width;
+      sourceHeight = img.naturalHeight || img.height;
+      if (sourceWidth > 0 && sourceHeight > 0) {
+        sourceDrawable = img;
+      }
+    }
+
+    if (!sourceDrawable || sourceWidth <= 0 || sourceHeight <= 0) {
+      if (!directMime) return null;
       const rawBase64 = await blobToBase64(blob);
       return isWithinImageByteCap(rawBase64, MAX_AI_IMAGE_BYTES)
-        ? { base64: rawBase64, mimeType: fallbackMime }
+        ? { base64: rawBase64, mimeType: directMime }
         : null;
     }
 
-    ctx.drawImage(bitmap, 0, 0, targetW, targetH);
+    const largest = Math.max(sourceWidth, sourceHeight, 1);
+    const scale = largest > AI_VISION_MAX_DIMENSION ? AI_VISION_MAX_DIMENSION / largest : 1;
+    const targetW = Math.max(1, Math.round(sourceWidth * scale));
+    const targetH = Math.max(1, Math.round(sourceHeight * scale));
     const outputMime: "image/jpeg" | "image/webp" =
-      blob.type === "image/webp" ? "image/webp" : "image/jpeg";
+      directMime === "image/webp" ? "image/webp" : "image/jpeg";
 
-    for (const quality of [AI_VISION_DEFAULT_QUALITY, AI_VISION_FALLBACK_QUALITY]) {
-      const exported = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((res) => resolve(res), outputMime, quality),
-      );
-      if (!exported) continue;
-      const candidateBase64 = await blobToBase64(exported);
-      if (isWithinImageByteCap(candidateBase64, MAX_AI_IMAGE_BYTES)) {
-        return { base64: candidateBase64, mimeType: outputMime };
-      }
+    const primaryEncoded = await encodeCanvasWithinCap(
+      sourceDrawable,
+      targetW,
+      targetH,
+      outputMime,
+      [AI_VISION_DEFAULT_QUALITY, AI_VISION_FALLBACK_QUALITY],
+    );
+    if (primaryEncoded) {
+      return primaryEncoded;
     }
 
     if (largest > AI_VISION_RETRY_MAX_DIMENSION) {
       const retryScale = AI_VISION_RETRY_MAX_DIMENSION / largest;
-      const retryCanvas = document.createElement("canvas");
-      retryCanvas.width = Math.max(1, Math.round(bitmap.width * retryScale));
-      retryCanvas.height = Math.max(1, Math.round(bitmap.height * retryScale));
-      const retryCtx = retryCanvas.getContext("2d");
-      if (retryCtx) {
-        retryCtx.drawImage(bitmap, 0, 0, retryCanvas.width, retryCanvas.height);
-        const retryExported = await new Promise<Blob | null>((resolve) =>
-          retryCanvas.toBlob((res) => resolve(res), outputMime, AI_VISION_RETRY_QUALITY),
-        );
-        if (retryExported) {
-          const retryBase64 = await blobToBase64(retryExported);
-          if (isWithinImageByteCap(retryBase64, MAX_AI_IMAGE_BYTES)) {
-            return { base64: retryBase64, mimeType: outputMime };
-          }
-        }
+      const retryEncoded = await encodeCanvasWithinCap(
+        sourceDrawable,
+        Math.max(1, Math.round(sourceWidth * retryScale)),
+        Math.max(1, Math.round(sourceHeight * retryScale)),
+        outputMime,
+        [AI_VISION_RETRY_QUALITY],
+      );
+      if (retryEncoded) {
+        return retryEncoded;
       }
     }
 
     return null;
   } catch {
+    if (!directMime) return null;
     const rawBase64 = await blobToBase64(blob);
     return isWithinImageByteCap(rawBase64, MAX_AI_IMAGE_BYTES)
-      ? { base64: rawBase64, mimeType: fallbackMime }
+      ? { base64: rawBase64, mimeType: directMime }
       : null;
   } finally {
     bitmap?.close();
+    if (createdUrl) {
+      try {
+        URL.revokeObjectURL(createdUrl);
+      } catch {
+        // no-op
+      }
+    }
   }
 }
 
@@ -449,7 +536,9 @@ async function performSingleReceiptAiCall(
     return httpRes;
   }
 
-  const validatedData = AiSingleReceiptOutputSchema.safeParse(httpRes.data);
+  const validatedData = AiSingleReceiptOutputSchema.safeParse(
+    normalizeSingleReceiptAiPayload(httpRes.data),
+  );
   if (!validatedData.success) {
     return { ok: false, reason: "invalid_ai_output", fallbackToLocal: true };
   }
@@ -666,7 +755,7 @@ export function convertAiReceiptToUniversalData(
       nature: aiData.confidence,
       date: aiData.date ? aiData.confidence : fallbackDateIso ? "medium" : "low",
     },
-    isSameTitularity: aiData.isSameTitularity,
+    isSameTitularity: aiData.isSameTitularity ?? undefined,
     extractionSource: source,
   };
 }

@@ -460,7 +460,7 @@ export const AiSingleReceiptOutputSchema = z.object({
     .optional(),
   cardBrand: z.string().trim().max(40).nullable().optional(),
   installmentsCount: z.number().int().min(1).max(60).nullable().optional(),
-  isSameTitularity: z.boolean().optional(),
+  isSameTitularity: z.boolean().nullable().optional(),
   confidence: ConfidenceLevelSchema,
   fieldConfidence: z
     .object({
@@ -469,10 +469,68 @@ export const AiSingleReceiptOutputSchema = z.object({
       nature: ConfidenceLevelSchema,
       date: ConfidenceLevelSchema,
     })
+    .nullable()
     .optional(),
 });
 
 export type AiSingleReceiptOutput = z.infer<typeof AiSingleReceiptOutputSchema>;
+
+/**
+ * Normaliza campos opcionais/formatáveis retornados pelo LLM antes da validação Zod estrita,
+ * preservando integralmente a exigência de `amountCents` inteiro válido (nunca arredonda float).
+ */
+export function normalizeSingleReceiptAiPayload(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return raw;
+  }
+
+  const clone: Record<string, unknown> = { ...(raw as Record<string, unknown>) };
+
+  if (typeof clone.date === "string") {
+    const trimmed = clone.date.trim();
+    if (!trimmed) {
+      clone.date = null;
+    } else if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+      clone.date = trimmed.slice(0, 10);
+    } else {
+      clone.date = null;
+    }
+  }
+
+  if (typeof clone.cardLastDigits === "string") {
+    const digits = clone.cardLastDigits.replace(/\D/g, "");
+    clone.cardLastDigits = digits.length >= 4 ? digits.slice(-4) : null;
+  }
+
+  if (typeof clone.installmentsCount === "number") {
+    if (
+      !Number.isFinite(clone.installmentsCount) ||
+      clone.installmentsCount < 1 ||
+      clone.installmentsCount > 60
+    ) {
+      clone.installmentsCount = null;
+    }
+  }
+
+  if (typeof clone.description === "string") {
+    clone.description = clone.description.trim().slice(0, 160);
+  }
+
+  const optionalTextCaps = [
+    ["merchantOrBeneficiary", 120],
+    ["payerOrSource", 120],
+    ["bankName", 80],
+    ["cardBrand", 40],
+  ] as const;
+
+  for (const [field, maxLen] of optionalTextCaps) {
+    if (typeof clone[field] === "string") {
+      clone[field] = (clone[field] as string).trim().slice(0, maxLen) || null;
+    }
+  }
+
+  return clone;
+}
 
 export const AiStatementPdfRowSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

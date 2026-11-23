@@ -12,6 +12,7 @@ import {
   MAX_AI_IMAGE_BYTES,
   MAX_AI_SINGLE_RECEIPT_TEXT_CHARS,
   MAX_AI_STATEMENT_PDF_TEXT_CHARS,
+  normalizeSingleReceiptAiPayload,
   sanitizeBatchDescriptionForAi,
   stripJsonMarkdownFences,
   validateCategorizeBatchOutput,
@@ -307,6 +308,75 @@ describe("ai-schemas (Trava 3 Hard Caps, Trava 5 Whitelist & Ajuste #3 BRT)", ()
         },
         allowed,
         1,
+      ).success,
+    ).toBe(false);
+  });
+
+  it("aceita isSameTitularity/fieldConfidence null (cupom NFC-e real do Gemini) e normaliza opcionais sem arredondar float", () => {
+    const geminiDanfePayload = {
+      amountCents: 27000,
+      nature: "expense",
+      paymentMethod: "cash",
+      receiptKind: "invoice_danfe",
+      description: "REDE MOLEZA",
+      confidence: "high",
+      bankName: null,
+      cardBrand: null,
+      cardLastDigits: null,
+      date: "2024-05-09",
+      fieldConfidence: {
+        amount: "high",
+        counterparty: "high",
+        nature: "high",
+        date: "high",
+      },
+      installmentsCount: null,
+      isSameTitularity: null,
+      merchantOrBeneficiary: "REDE MOLEZA",
+      payerOrSource: null,
+    };
+
+    const parsedDanfe = AiSingleReceiptOutputSchema.safeParse(
+      normalizeSingleReceiptAiPayload(geminiDanfePayload),
+    );
+    expect(parsedDanfe.success).toBe(true);
+
+    const normalizedMixed = normalizeSingleReceiptAiPayload({
+      amountCents: 1330,
+      nature: "expense",
+      paymentMethod: "credit_card",
+      receiptKind: "card_slip",
+      description: "  Nextar Comercio  ",
+      date: "2024-04-04T10:15:00",
+      cardLastDigits: "**** 4321",
+      installmentsCount: 0,
+      isSameTitularity: null,
+      fieldConfidence: null,
+      confidence: "high",
+    });
+
+    const parsedMixed = AiSingleReceiptOutputSchema.safeParse(normalizedMixed);
+    expect(parsedMixed.success).toBe(true);
+    if (parsedMixed.success) {
+      expect(parsedMixed.data.description).toBe("Nextar Comercio");
+      expect(parsedMixed.data.date).toBe("2024-04-04");
+      expect(parsedMixed.data.cardLastDigits).toBe("4321");
+      expect(parsedMixed.data.installmentsCount).toBeNull();
+      expect(parsedMixed.data.isSameTitularity).toBeNull();
+      expect(parsedMixed.data.fieldConfidence).toBeNull();
+    }
+
+    // Nunca arredonda amountCents float
+    expect(
+      AiSingleReceiptOutputSchema.safeParse(
+        normalizeSingleReceiptAiPayload({
+          amountCents: 270.5,
+          nature: "expense",
+          paymentMethod: "cash",
+          receiptKind: "invoice_danfe",
+          description: "REDE MOLEZA",
+          confidence: "high",
+        }),
       ).success,
     ).toBe(false);
   });

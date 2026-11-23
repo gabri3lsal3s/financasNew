@@ -585,4 +585,47 @@ describe("ai-assistant (Resiliência FinOps G6, Lock inFlightBySha256 & LGPD)", 
     expect((capturedBody.imageBase64 as string).length).toBeGreaterThan(0);
     expect(typeof capturedBody.text).toBe("string");
   });
+
+  it("13. aceita resposta com isSameTitularity e fieldConfidence null e converte para isSameTitularity undefined", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          ok: true,
+          mode: "single_receipt",
+          cached: false,
+          source: "ai_vision",
+          data: {
+            amountCents: 27000,
+            date: "2024-05-09",
+            nature: "expense",
+            paymentMethod: "cash",
+            receiptKind: "invoice_danfe",
+            description: "REDE MOLEZA",
+            merchantOrBeneficiary: "REDE MOLEZA",
+            isSameTitularity: null,
+            fieldConfidence: null,
+            confidence: "high",
+          },
+        }),
+        { status: 200 },
+      ),
+    ) as unknown as typeof fetch;
+
+    const img = new Blob(["jpeg-bytes"], { type: "image/jpeg" });
+    const res = await extractSingleReceiptWithAi({
+      sha256: VALID_SHA,
+      imageBlob: img,
+      preferVision: true,
+      userId: "user-1",
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.data.isSameTitularity).toBeNull();
+      expect(res.data.fieldConfidence).toBeNull();
+      const universal = convertAiReceiptToUniversalData(res.data, res.source);
+      expect(universal.amountCents).toBe(27000);
+      expect(universal.isSameTitularity).toBeUndefined();
+    }
+  });
 });

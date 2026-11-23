@@ -525,4 +525,55 @@ describe("receipt-resolution", () => {
       }
     }
   });
+
+  it("reconhece arquivo .avif com MIME application/octet-stream como imagem raster para IA Vision e informa instabilidade quando upstream falha", async () => {
+    mockExtractReceiptTextFromFile.mockResolvedValueOnce("");
+    mockExtractSingleReceiptWithAi.mockResolvedValueOnce({
+      ok: true,
+      cached: false,
+      source: "ai_vision",
+      data: {
+        amountCents: 1330,
+        date: "2024-04-04",
+        nature: "expense",
+        paymentMethod: "cash",
+        receiptKind: "generic",
+        description: "Nextar",
+        merchantOrBeneficiary: "Nextar",
+        isSameTitularity: false,
+        confidence: "high",
+      },
+    });
+
+    const avifOctetFile = new File(["avif-payload"], "comprovante.avif", {
+      type: "application/octet-stream",
+    });
+    const okRes = await resolveAndScanReceiptFile(avifOctetFile, { userId: "user-1" });
+
+    expect(okRes.ok).toBe(true);
+    expect(okRes.parsed?.amountCents).toBe(1330);
+    expect(mockExtractSingleReceiptWithAi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preferVision: true,
+        imageBlob: expect.any(File),
+      }),
+    );
+
+    mockExtractReceiptTextFromFile.mockResolvedValueOnce("");
+    mockExtractSingleReceiptWithAi.mockResolvedValueOnce({
+      ok: false,
+      reason: "upstream_unavailable",
+      fallbackToLocal: true,
+    });
+
+    const unstableFile = new File(["jpg-payload"], "foto-pendente.jpg", {
+      type: "image/jpeg",
+    });
+    const unstableRes = await resolveAndScanReceiptFile(unstableFile, { userId: "user-1" });
+
+    expect(unstableRes.ok).toBe(false);
+    expect(unstableRes.status).toBe("empty_text");
+    expect(unstableRes.aiFallbackReason).toBe("upstream_unavailable");
+    expect(unstableRes.errorMessage).toMatch(/temporariamente instável/i);
+  });
 });

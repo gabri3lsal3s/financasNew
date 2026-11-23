@@ -33,6 +33,7 @@ import {
   maskSensitivePiiForAi,
   MAX_AI_SINGLE_RECEIPT_TEXT_CHARS,
   MAX_AI_STATEMENT_PDF_TEXT_CHARS,
+  normalizeSingleReceiptAiPayload,
   sanitizeBatchDescriptionForAi,
   stripBase64DataPrefix,
   stripJsonMarkdownFences,
@@ -52,9 +53,27 @@ declare const Deno:
     }
   | undefined;
 
-const GEMINI_TIMEOUT_MS = 10_000;
+const GEMINI_PRIMARY_TIMEOUT_MS = 9_000;
+const GEMINI_FALLBACK_TIMEOUT_MS = 10_000;
 const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
+const DEFAULT_FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-flash-lite-latest"] as const;
 const MIN_USEFUL_TEXT_CHARS = 20;
+
+function buildGeminiModelCandidates(primaryModel: string, rawFallbackCsv?: string): string[] {
+  const envFallbacks = (rawFallbackCsv ?? "")
+    .split(",")
+    .map((m) => m.trim())
+    .filter(Boolean);
+  const fallbacks = envFallbacks.length > 0 ? envFallbacks : [...DEFAULT_FALLBACK_MODELS];
+  const unique: string[] = [];
+  for (const candidate of [primaryModel.trim() || DEFAULT_GEMINI_MODEL, ...fallbacks]) {
+    if (candidate && !unique.includes(candidate)) {
+      unique.push(candidate);
+    }
+    if (unique.length >= 3) break;
+  }
+  return unique;
+}
 
 const GEMINI_SINGLE_RECEIPT_RESPONSE_SCHEMA = {
   type: "OBJECT",
@@ -212,7 +231,7 @@ function fallbackResponse(
 
 async function callGeminiJson(params: {
   apiKey: string;
-  model: string;
+  models: readonly string[];
   parts: Array<Record<string, unknown>>;
   responseSchema: Record<string, unknown>;
   maxOutputTokens: number;
@@ -220,68 +239,114 @@ async function callGeminiJson(params: {
   | { ok: true; payload: unknown }
   | { ok: false; reason: "timeout" | "upstream_unavailable" | "invalid_ai_output" }
 > {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  let lastFailureReason: "timeout" | "upstream_unavailable" | "invalid_ai_output" =
+    "upstream_unavailable";
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-      params.model,
-    )}:generateContent`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": params.apiKey,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: params.parts }],
-        generationConfig: {
-          temperature: 0,
-          maxOutputTokens: params.maxOutputTokens,
-          responseMimeType: "application/json",
-          responseSchema: params.responseSchema,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      return { ok: false, reason: "upstream_unavailable" };
-    }
-
-    const json = (await response.json()) as {
-      candidates?: Array<{
-        content?: {
-          parts?: Array<{ text?: string; thought?: boolean }>;
-        };
-      }>;
-    };
-
-    const parts = json.candidates?.[0]?.content?.parts;
-    const rawOutputText =
-      parts?.find((p) => !p.thought && typeof p.text === "string")?.text ?? parts?.[0]?.text;
-    if (!rawOutputText) {
-      return { ok: false, reason: "invalid_ai_output" };
-    }
+  for (let idx = 0; idx < params.models.length; idx++) {
+    const model = params.models[idx]!;
+    const hasNext = idx < params.models.length - 1;
+    const timeoutMs = idx === 0 ? GEMINI_PRIMARY_TIMEOUT_MS : GEMINI_FALLBACK_TIMEOUT_MS;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      return { ok: true, payload: JSON.parse(stripJsonMarkdownFences(rawOutputText)) };
-    } catch {
-      return { ok: false, reason: "invalid_ai_output" };
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+        model,
+      )}:generateContent`;
+
+      // Nota: nao enviar `thinkingConfig` no `generationConfig`, pois `gemini-3.5-flash-lite` rejeita com HTTP 400.
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": params.apiKey,
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: params.parts }],
+          generationConfig: {
+            temperature: 0,
+            maxOutputTokens: params.maxOutputTokens,
+            responseMimeType: "application/json",
+            responseSchema: params.responseSchema,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn("[ai-financial-assistant] gemini http error", {
+          model,
+          status: response.status,
+          attempt: idx + 1,
+        });
+        lastFailureReason = "upstream_unavailable";
+        const retryable =
+          response.status === 429 || response.status >= 500 || response.status === 404;
+        if (retryable && hasNext) {
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          continue;
+        }
+        return { ok: false, reason: "upstream_unavailable" };
+      }
+
+      const json = (await response.json()) as {
+        candidates?: Array<{
+          finishReason?: string;
+          content?: {
+            parts?: Array<{ text?: string; thought?: boolean }>;
+          };
+        }>;
+      };
+
+      const candidate = json.candidates?.[0];
+      const parts = candidate?.content?.parts;
+      const rawOutputText =
+        parts?.find((p) => !p.thought && typeof p.text === "string")?.text ?? parts?.[0]?.text;
+
+      if (!rawOutputText) {
+        console.warn("[ai-financial-assistant] gemini invalid json", {
+          model,
+          finishReason: candidate?.finishReason,
+          attempt: idx + 1,
+        });
+        lastFailureReason = "invalid_ai_output";
+        if (hasNext) continue;
+        return { ok: false, reason: "invalid_ai_output" };
+      }
+
+      try {
+        return { ok: true, payload: JSON.parse(stripJsonMarkdownFences(rawOutputText)) };
+      } catch {
+        console.warn("[ai-financial-assistant] gemini invalid json", {
+          model,
+          finishReason: candidate?.finishReason,
+          attempt: idx + 1,
+        });
+        lastFailureReason = "invalid_ai_output";
+        if (hasNext) continue;
+        return { ok: false, reason: "invalid_ai_output" };
+      }
+    } catch (err) {
+      const isTimeout =
+        controller.signal.aborted ||
+        (err instanceof Error && err.name === "AbortError") ||
+        (typeof DOMException !== "undefined" &&
+          err instanceof DOMException &&
+          err.name === "AbortError");
+      console.warn("[ai-financial-assistant] gemini request failed", {
+        model,
+        isTimeout,
+        attempt: idx + 1,
+      });
+      lastFailureReason = isTimeout ? "timeout" : "upstream_unavailable";
+      if (hasNext) continue;
+      return { ok: false, reason: lastFailureReason };
+    } finally {
+      clearTimeout(timeoutId);
     }
-  } catch (err) {
-    const isTimeout =
-      controller.signal.aborted ||
-      (err instanceof Error && err.name === "AbortError") ||
-      (typeof DOMException !== "undefined" && err instanceof DOMException && err.name === "AbortError");
-    if (isTimeout) {
-      return { ok: false, reason: "timeout" };
-    }
-    return { ok: false, reason: "upstream_unavailable" };
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  return { ok: false, reason: lastFailureReason };
 }
 
 Deno?.serve?.(async (req: Request) => {
@@ -305,6 +370,10 @@ Deno?.serve?.(async (req: Request) => {
     const anonKey = Deno?.env?.get("SUPABASE_ANON_KEY");
     const geminiApiKey = (Deno?.env?.get("GEMINI_API_KEY") ?? "").trim();
     const geminiModel = (Deno?.env?.get("GEMINI_MODEL") ?? "").trim() || DEFAULT_GEMINI_MODEL;
+    const modelCandidates = buildGeminiModelCandidates(
+      geminiModel,
+      Deno?.env?.get("GEMINI_FALLBACK_MODELS"),
+    );
 
     if (!supabaseUrl || !supabaseServiceKey || !anonKey) {
       return safeErrorResponse(req, 500, "Servico de assistente indisponivel.");
@@ -444,7 +513,9 @@ Deno?.serve?.(async (req: Request) => {
       isAiCacheEntryFresh((cacheRow as { created_at?: string }).created_at, requestData.mode)
     ) {
       if (requestData.mode === "single_receipt") {
-        const validatedCached = AiSingleReceiptOutputSchema.safeParse(cacheRow.extracted_json);
+        const validatedCached = AiSingleReceiptOutputSchema.safeParse(
+          normalizeSingleReceiptAiPayload(cacheRow.extracted_json),
+        );
         if (validatedCached.success) {
           return jsonResponse(req, {
             ok: true,
@@ -544,15 +615,22 @@ Deno?.serve?.(async (req: Request) => {
 
       const gemini = await callGeminiJson({
         apiKey: geminiApiKey,
-        model: geminiModel,
+        models: modelCandidates,
         parts,
         responseSchema: GEMINI_SINGLE_RECEIPT_RESPONSE_SCHEMA,
-        maxOutputTokens: 512,
+        maxOutputTokens: 2_048,
       });
       if (!gemini.ok) return fallbackResponse(req, gemini.reason, 200);
 
-      const parsed = AiSingleReceiptOutputSchema.safeParse(gemini.payload);
-      if (!parsed.success) return fallbackResponse(req, "invalid_ai_output", 200);
+      const parsed = AiSingleReceiptOutputSchema.safeParse(
+        normalizeSingleReceiptAiPayload(gemini.payload),
+      );
+      if (!parsed.success) {
+        console.warn("[ai-financial-assistant] single_receipt zod failed", {
+          issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), code: i.code })),
+        });
+        return fallbackResponse(req, "invalid_ai_output", 200);
+      }
       validatedOutput = parsed.data;
     } else if (requestData.mode === "categorize_batch" && allowedCategoryIds) {
       const sanitizedDescriptions = requestData.descriptions.map((d) =>
@@ -561,12 +639,12 @@ Deno?.serve?.(async (req: Request) => {
 
       const gemini = await callGeminiJson({
         apiKey: geminiApiKey,
-        model: geminiModel,
+        models: modelCandidates,
         parts: [
           { text: buildCategorizeBatchPrompt(sanitizedDescriptions, requestData.categories) },
         ],
         responseSchema: GEMINI_CATEGORIZE_BATCH_RESPONSE_SCHEMA,
-        maxOutputTokens: 1_536,
+        maxOutputTokens: 4_096,
       });
       if (!gemini.ok) return fallbackResponse(req, gemini.reason, 200);
 
@@ -585,10 +663,10 @@ Deno?.serve?.(async (req: Request) => {
 
       const gemini = await callGeminiJson({
         apiKey: geminiApiKey,
-        model: geminiModel,
+        models: modelCandidates,
         parts: [{ text: buildStatementPdfRowsPrompt(sanitizedText, requestData.referenceYear) }],
         responseSchema: GEMINI_STATEMENT_PDF_ROWS_RESPONSE_SCHEMA,
-        maxOutputTokens: 4_096,
+        maxOutputTokens: 8_192,
       });
       if (!gemini.ok) return fallbackResponse(req, gemini.reason, 200);
 

@@ -53,6 +53,27 @@ const DEFAULT_COMPRESS_MAX_BYTES = 1.5 * 1024 * 1024;
 const DEFAULT_COMPRESS_MAX_DIMENSION = 2000;
 const DEFAULT_COMPRESS_QUALITY = 0.85;
 
+const RASTER_IMAGE_EXTENSIONS = [
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp",
+  ".avif",
+  ".bmp",
+  ".gif",
+  ".heic",
+  ".heif",
+] as const;
+
+function isRasterReceiptFile(file: File): boolean {
+  const mime = file.type.trim().toLowerCase();
+  if (mime.startsWith("image/") && mime !== "image/svg+xml") {
+    return true;
+  }
+  const lowerName = file.name.trim().toLowerCase();
+  return RASTER_IMAGE_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
+}
+
 const RECEIPT_SCAN_CACHE_STORAGE_KEY = "receipt_scan_cache_v1";
 const RECEIPT_SCAN_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
 const RECEIPT_SCAN_CACHE_MAX_ENTRIES = 50;
@@ -282,8 +303,7 @@ export async function compressReceiptImageIfNeeded(
   const maxDimension = options?.maxDimension ?? DEFAULT_COMPRESS_MAX_DIMENSION;
   const quality = options?.quality ?? DEFAULT_COMPRESS_QUALITY;
 
-  const isRasterImage =
-    file.type.startsWith("image/") && file.type !== "image/svg+xml";
+  const isRasterImage = isRasterReceiptFile(file);
 
   if (
     !isRasterImage ||
@@ -579,6 +599,38 @@ async function tryAiReceiptFallback(params: {
   return { ok: true, resolved: resolvedFromAi };
 }
 
+function buildAiFailureFallbackMessage(params: {
+  reason: AiFallbackReason;
+  quotaResetAt?: string;
+  defaultMessage: string;
+  context: "empty_text" | "unrecognized";
+}): string {
+  if (params.reason === "quota_exceeded") {
+    return params.context === "empty_text"
+      ? `Não foi possível ler o texto deste arquivo e sua cota de leitura assistida renova em ${formatAiQuotaResetHint(
+          params.quotaResetAt,
+        )}. Preencha manualmente ou envie um PDF digital.`
+      : `Não foi possível identificar os campos automaticamente e sua cota de leitura assistida renova em ${formatAiQuotaResetHint(
+          params.quotaResetAt,
+        )}. Preencha os campos manualmente.`;
+  }
+
+  if (params.reason === "timeout" || params.reason === "upstream_unavailable") {
+    return "A leitura assistida por IA está temporariamente instável. Tente enviar novamente em instantes ou preencha os campos manualmente.";
+  }
+
+  if (params.context === "empty_text") {
+    if (params.reason === "offline") {
+      return "Sem conexão com a internet para acionar a leitura assistida por IA. Conecte-se e tente novamente ou preencha os campos manualmente.";
+    }
+    if (params.reason === "read_only") {
+      return "A leitura assistida por IA está disponível apenas em contas ativas. Envie um PDF digital emitido pelo banco ou preencha os campos manualmente.";
+    }
+  }
+
+  return params.defaultMessage;
+}
+
 function canAttemptAiFallback(
   sha256: string | null,
   options?: ResolveAndScanReceiptFileOptions,
@@ -705,12 +757,7 @@ export async function resolveAndScanReceiptFile(
   }
 
   const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
-  const isRasterImage =
-    (file.type.startsWith("image/") && file.type !== "image/svg+xml") ||
-    lowerName.endsWith(".png") ||
-    lowerName.endsWith(".jpg") ||
-    lowerName.endsWith(".jpeg") ||
-    lowerName.endsWith(".webp");
+  const isRasterImage = isRasterReceiptFile(file);
 
   const shouldCompress = options?.compressImage !== false;
   const preparedFile = shouldCompress
@@ -748,13 +795,6 @@ export async function resolveAndScanReceiptFile(
           };
         }
 
-        const quotaMessage =
-          aiAttempt.reason === "quota_exceeded"
-            ? `Não foi possível ler o texto deste arquivo e sua cota de leitura assistida renova em ${formatAiQuotaResetHint(
-                aiAttempt.quotaResetAt,
-              )}. Preencha manualmente ou envie um PDF digital.`
-            : undefined;
-
         return {
           status: "empty_text",
           ok: false,
@@ -765,9 +805,13 @@ export async function resolveAndScanReceiptFile(
           identity: null,
           aiFallbackReason: aiAttempt.reason,
           quotaResetAt: aiAttempt.quotaResetAt,
-          errorMessage:
-            quotaMessage ??
-            "Não foi possível ler o texto deste arquivo. Certifique-se de que o comprovante esteja nítido ou seja um PDF digital emitido pelo banco.",
+          errorMessage: buildAiFailureFallbackMessage({
+            reason: aiAttempt.reason,
+            quotaResetAt: aiAttempt.quotaResetAt,
+            defaultMessage:
+              "Não foi possível ler o texto deste arquivo. Certifique-se de que o comprovante esteja nítido ou seja um PDF digital emitido pelo banco.",
+            context: "empty_text",
+          }),
         };
       }
 
@@ -833,13 +877,6 @@ export async function resolveAndScanReceiptFile(
           };
         }
 
-        const quotaMessage =
-          aiAttempt.reason === "quota_exceeded"
-            ? `Não foi possível identificar os campos automaticamente e sua cota de leitura assistida renova em ${formatAiQuotaResetHint(
-                aiAttempt.quotaResetAt,
-              )}. Preencha os campos manualmente.`
-            : undefined;
-
         return {
           status: "unrecognized",
           ok: false,
@@ -851,9 +888,13 @@ export async function resolveAndScanReceiptFile(
           multiplicity,
           aiFallbackReason: aiAttempt.reason,
           quotaResetAt: aiAttempt.quotaResetAt,
-          errorMessage:
-            quotaMessage ??
-            "Não foi possível identificar informações financeiras válidas (valor, data e destinatário) no comprovante. Verifique o arquivo e tente novamente.",
+          errorMessage: buildAiFailureFallbackMessage({
+            reason: aiAttempt.reason,
+            quotaResetAt: aiAttempt.quotaResetAt,
+            defaultMessage:
+              "Não foi possível identificar informações financeiras válidas (valor, data e destinatário) no comprovante. Verifique o arquivo e tente novamente.",
+            context: "unrecognized",
+          }),
         };
       }
 

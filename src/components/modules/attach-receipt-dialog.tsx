@@ -303,10 +303,10 @@ export function AttachReceiptDialog({
           </div>
         ) : (
           <Dropzone
-            accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+            accept="image/png,image/jpeg,image/jpg,image/webp,image/avif,application/pdf,.png,.jpg,.jpeg,.webp,.avif,.pdf"
             maxSizeBytes={MAX_RECEIPT_FILE_SIZE_BYTES}
             label="Arraste o comprovante aqui ou toque para selecionar"
-            hint="Formatos aceitos: PDF digital, PDF escaneado, PNG ou JPG (até 15 MB) · ou cole com Ctrl+V"
+            hint="Formatos aceitos: PDF digital, PDF escaneado, PNG, JPG, WebP ou AVIF (até 15 MB) · ou cole com Ctrl+V"
             enableCamera={true}
             onFiles={(files) => {
               if (files[0]) void handleProcessFile(files[0]);

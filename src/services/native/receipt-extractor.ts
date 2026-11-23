@@ -298,7 +298,12 @@ export async function extractReceiptTextFromFile(file: File): Promise<string> {
     lowerName.endsWith(".png") ||
     lowerName.endsWith(".jpg") ||
     lowerName.endsWith(".jpeg") ||
-    lowerName.endsWith(".webp");
+    lowerName.endsWith(".webp") ||
+    lowerName.endsWith(".avif") ||
+    lowerName.endsWith(".bmp") ||
+    lowerName.endsWith(".gif") ||
+    lowerName.endsWith(".heic") ||
+    lowerName.endsWith(".heif");
 
   let extractedRaw = "";
 
