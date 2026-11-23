@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 /**
  * Botão de notificações no header com indicador de contagem e popover rápido.
  * Consome contagem e severidade unificadas do Notification Hub (`useNotificationCenter`).
+ * Retorna `null` quando não há notificações ativas (`totalBellCount === 0`).
  */
 export function NotificationsButton() {
   const [open, setOpen] = useState(false);
@@ -18,6 +19,8 @@ export function NotificationsButton() {
     advisorAlerts,
     dismissAdvisor,
   } = useNotificationCenter();
+
+  if (effectiveTotalCount === 0) return null;
 
   const isCritical = criticalCount > 0;
   const isActionNeeded = !isCritical && actionNeededCount > 0;

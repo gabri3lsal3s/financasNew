@@ -25,11 +25,21 @@ export interface DashboardWidgetsConfig {
   contextBanners: boolean;
 }
 
+export type HeaderActionSlotKey = "calculatorButton" | "themeToggle" | "privacyToggle";
+export type VisibleHeaderSlot = HeaderActionSlotKey | "notifications";
+
+export const CANONICAL_HEADER_ACTION_SLOTS: readonly HeaderActionSlotKey[] = [
+  "calculatorButton",
+  "themeToggle",
+  "privacyToggle",
+];
+
 export interface HeaderButtonsConfig {
   logo: boolean;
   calculatorButton: boolean;
   themeToggle: boolean;
   privacyToggle: boolean;
+  order?: HeaderActionSlotKey[];
 }
 
 export interface VisualCustomization {
@@ -121,6 +131,58 @@ export function isValidAccentTheme(value: unknown): value is AccentTheme {
 }
 
 /**
+ * Resolve a ordem da esquerda para a direita dos botões de ação ativos no cabeçalho (máx. 2).
+ * Respeita a ordem em que o usuário ativou os botões (`cfg.order`), usando a ordem canônica como fallback.
+ */
+export function resolveHeaderActionOrder(cfg: HeaderButtonsConfig): HeaderActionSlotKey[] {
+  const ordered: HeaderActionSlotKey[] = [];
+
+  if (Array.isArray(cfg.order)) {
+    for (const key of cfg.order) {
+      if (
+        CANONICAL_HEADER_ACTION_SLOTS.includes(key) &&
+        cfg[key] === true &&
+        !ordered.includes(key)
+      ) {
+        ordered.push(key);
+      }
+    }
+  }
+
+  for (const key of CANONICAL_HEADER_ACTION_SLOTS) {
+    if (cfg[key] === true && !ordered.includes(key)) {
+      ordered.push(key);
+    }
+  }
+
+  return ordered.slice(0, 2);
+}
+
+/**
+ * Resolve os slots visíveis no topo (máximo estrito de 2 botões).
+ * Quando há notificações (`hasNotifications === true`), o sininho ocupa sempre o espaço mais extremo à direita:
+ * - Se houver 2 botões ativos, o botão mais à direita (`active[1]`) é substituído pelo sininho;
+ * - Se houver 1 botão ativo, ele permanece à esquerda e o sininho entra à direita;
+ * - Quando as notificações zeram (`hasNotifications === false`), o sininho sai e o botão substituído retorna.
+ */
+export function resolveVisibleHeaderSlots(
+  cfg: HeaderButtonsConfig,
+  hasNotifications: boolean,
+): VisibleHeaderSlot[] {
+  const active = resolveHeaderActionOrder(cfg);
+  if (!hasNotifications) {
+    return active;
+  }
+  if (active.length >= 2) {
+    return [active[0]!, "notifications"];
+  }
+  if (active.length === 1) {
+    return [active[0]!, "notifications"];
+  }
+  return ["notifications"];
+}
+
+/**
  * Mescla uma atualização parcial na configuração visual preservando a consistência
  * entre presets de experiência e ajustes finos individuais.
  */
@@ -131,8 +193,16 @@ export function mergeVisualCustomization(
   const mergedWidgets = partial.dashboardWidgets
     ? { ...current.dashboardWidgets, ...partial.dashboardWidgets }
     : current.dashboardWidgets;
-  const mergedHeaderButtons = partial.headerButtons
-    ? { ...current.headerButtons, ...partial.headerButtons }
+  const mergedHeaderButtons: HeaderButtonsConfig = partial.headerButtons
+    ? {
+        ...current.headerButtons,
+        ...partial.headerButtons,
+        ...(partial.headerButtons.order !== undefined
+          ? { order: partial.headerButtons.order }
+          : current.headerButtons.order !== undefined
+            ? { order: current.headerButtons.order }
+            : {}),
+      }
     : current.headerButtons;
 
   if (partial.experiencePreset && partial.experiencePreset !== "custom") {

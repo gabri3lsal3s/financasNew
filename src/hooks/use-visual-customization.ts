@@ -7,14 +7,18 @@ import {
   DEFAULT_WIDGETS,
   mergeVisualCustomization,
   normalizeCloudVisualPartial,
+  resolveHeaderActionOrder,
+  resolveVisibleHeaderSlots,
   type AccentTheme,
   type DashboardWidgetsConfig,
   type DensityLevel,
   type ExperiencePreset,
+  type HeaderActionSlotKey,
   type HeaderButtonsConfig,
   type MotionLevel,
   type SensoryIntent,
   type SurfaceStyle,
+  type VisibleHeaderSlot,
   type VisualCustomization,
 } from "@/domain/preferences/visual-defaults";
 import {
@@ -33,10 +37,18 @@ export type {
   ExperiencePreset,
   SensoryIntent,
   DashboardWidgetsConfig,
+  HeaderActionSlotKey,
   HeaderButtonsConfig,
+  VisibleHeaderSlot,
   VisualCustomization,
 };
-export { DEFAULT_HEADER_BUTTONS, DEFAULT_WIDGETS, DEFAULT_CONFIG };
+export {
+  DEFAULT_HEADER_BUTTONS,
+  DEFAULT_WIDGETS,
+  DEFAULT_CONFIG,
+  resolveHeaderActionOrder,
+  resolveVisibleHeaderSlots,
+};
 
 const listeners = new Set<() => void>();
 let currentConfig: VisualCustomization = DEFAULT_CONFIG;
@@ -159,10 +171,25 @@ export function useVisualCustomization() {
       updateVisualCustomization({
         dashboardWidgets: { ...config.dashboardWidgets, [widget]: visible },
       }),
-    setHeaderButton: (button: keyof HeaderButtonsConfig, visible: boolean) =>
+    setHeaderButton: (button: keyof HeaderButtonsConfig, visible: boolean) => {
+      if (button === "logo" || button === "order") {
+        updateVisualCustomization({
+          headerButtons: { ...config.headerButtons, logo: visible },
+        });
+        return;
+      }
+      const currentOrder = resolveHeaderActionOrder(config.headerButtons);
+      const nextOrder: HeaderActionSlotKey[] = visible
+        ? [...currentOrder.filter((k) => k !== button), button].slice(0, 2)
+        : currentOrder.filter((k) => k !== button);
       updateVisualCustomization({
-        headerButtons: { ...config.headerButtons, [button]: visible },
-      }),
+        headerButtons: {
+          ...config.headerButtons,
+          [button]: visible,
+          order: nextOrder,
+        },
+      });
+    },
     setShowCalculationMemory: (showCalculationMemory: boolean) =>
       updateVisualCustomization({ showCalculationMemory }),
     resetToDefaults: () => updateVisualCustomization(DEFAULT_CONFIG),

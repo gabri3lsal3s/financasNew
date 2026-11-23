@@ -358,6 +358,64 @@ export function useDismissSplitPaymentSignal() {
   return useMutation({
     mutationFn: (params: { shareId: string; signalId: string }) =>
       dismissSplitPaymentSignal(params),
+    onMutate: async ({ shareId, signalId }) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: myPublicSharesMutationKey }),
+        queryClient.cancelQueries({ queryKey: publicSharesQueryKey }),
+      ]);
+      const previousMy = queryClient.getQueriesData<PublicShare[]>({
+        queryKey: myPublicSharesMutationKey,
+      });
+      const previousPublic = queryClient.getQueriesData<PublicShare[]>({
+        queryKey: publicSharesQueryKey,
+      });
+
+      const applyDismiss = (old: PublicShare[] | undefined) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((share) => {
+          if (share.id !== shareId) return share;
+          const payload = (share.payload ?? {}) as Record<string, unknown>;
+          const rawSignals = Array.isArray(payload.payment_signals)
+            ? (payload.payment_signals as Array<Record<string, unknown>>)
+            : [];
+          const targetSignal = rawSignals.find((s) => s.id === signalId);
+          const nextSignals = rawSignals.map((s) =>
+            s.id === signalId ? { ...s, status: "dismissed" } : s,
+          );
+          const participantId =
+            typeof targetSignal?.participant_id === "string"
+              ? targetSignal.participant_id
+              : null;
+          const hasOtherPending = participantId
+            ? nextSignals.some(
+                (s) => s.status === "pending" && s.participant_id === participantId,
+              )
+            : false;
+          const rawParticipants = Array.isArray(payload.participants)
+            ? (payload.participants as Array<Record<string, unknown>>)
+            : [];
+          const nextParticipants = participantId
+            ? rawParticipants.map((p) =>
+                p.id === participantId ? { ...p, has_payment_signal: hasOtherPending } : p,
+              )
+            : rawParticipants;
+
+          return {
+            ...share,
+            payload: {
+              ...payload,
+              payment_signals: nextSignals,
+              ...(rawParticipants.length > 0 ? { participants: nextParticipants } : {}),
+            },
+          };
+        });
+      };
+
+      queryClient.setQueriesData<PublicShare[]>({ queryKey: myPublicSharesMutationKey }, applyDismiss);
+      queryClient.setQueriesData<PublicShare[]>({ queryKey: publicSharesQueryKey }, applyDismiss);
+
+      return { previousMy, previousPublic };
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: publicShareQueryKey });
       void queryClient.invalidateQueries({ queryKey: publicSharesQueryKey });
@@ -368,7 +426,17 @@ export function useDismissSplitPaymentSignal() {
         variant: "default",
       });
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      if (context?.previousMy) {
+        for (const [key, data] of context.previousMy) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      if (context?.previousPublic) {
+        for (const [key, data] of context.previousPublic) {
+          queryClient.setQueryData(key, data);
+        }
+      }
       pushToast({
         title: "Não foi possível dispensar o aviso",
         description: getErrorMessage(error),

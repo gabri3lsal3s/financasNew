@@ -254,6 +254,14 @@ describe("ManageSplitDialog", () => {
             status: "pending",
             created_at: "2026-08-10T15:00:00Z",
           },
+          {
+            id: "sig-10",
+            participant_id: "p_3",
+            participant_name: "Mariana",
+            amount_cents: 2500,
+            status: "pending",
+            created_at: "2026-08-10T15:05:00Z",
+          },
         ],
       },
     };
@@ -269,8 +277,10 @@ describe("ManageSplitDialog", () => {
 
     expect(screen.getByText(/Avisos de Pix Aguardando Confirmação/i)).toBeInTheDocument();
     expect(screen.getByText("Lucas informou pagamento")).toBeInTheDocument();
+    expect(screen.getByText("Mariana informou pagamento")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /Confirmar/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Confirmar/i })[0]!);
+    expect(screen.queryByText("Lucas informou pagamento")).toBeNull();
     await waitFor(() => {
       expect(mockApplySplitSettlement).toHaveBeenCalledWith({
         share: shareWithSignals,
@@ -281,10 +291,11 @@ describe("ManageSplitDialog", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: /Recusar/i }));
+    expect(screen.queryByText("Mariana informou pagamento")).toBeNull();
     await waitFor(() => {
       expect(mockDismissSignal).toHaveBeenCalledWith({
         shareId: "share-123",
-        signalId: "sig-9",
+        signalId: "sig-10",
       });
     });
   });
@@ -402,5 +413,152 @@ describe("ManageSplitDialog", () => {
         installmentsTotal: 1,
       });
     });
+  });
+
+  it("aplica baixas sequenciais e edição de racha otimisticamente sem fechar o modal", async () => {
+    const user = userEvent.setup();
+    const deferred: {
+      resolveFirst?: () => void;
+      resolveSecond?: () => void;
+      resolveEdit?: () => void;
+    } = {};
+
+    mockApplySplitSettlement
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            deferred.resolveFirst = () =>
+              resolve({
+                share: baseShare,
+                transition: { hostNetCostCents: 7500 },
+                debt: baseDebt,
+              });
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            deferred.resolveSecond = () =>
+              resolve({
+                share: baseShare,
+                transition: { hostNetCostCents: 5000 },
+                debt: baseDebt,
+              });
+          }),
+      );
+
+    mockUpdateSplitComprehensive.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          deferred.resolveEdit = () =>
+            resolve({
+              share: baseShare,
+              result: { nextPayload: baseShare.payload },
+              debt: baseDebt,
+            });
+        }),
+    );
+
+    render(
+      <ManageSplitDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        share={baseShare}
+        linkedDebt={baseDebt}
+      />,
+    );
+
+    const initialRecebiButtons = screen.getAllByRole("button", {
+      name: /Recebi Tudo/i,
+    });
+    expect(initialRecebiButtons.length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText("Quitado")).toBeNull();
+
+    // 1a baixa: aplica em 0ms antes de o servidor responder
+    fireEvent.click(initialRecebiButtons[0]!);
+    expect(screen.getAllByText("Quitado")).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /Desfazer/i })).toHaveLength(1);
+    expect(mockApplySplitSettlement).toHaveBeenCalledTimes(1);
+
+    // 2a baixa enquanto a 1a ainda está pendente: reflete em 0ms e aguarda na fila serializada
+    const remainingRecebiButtons = screen.getAllByRole("button", {
+      name: /Recebi Tudo/i,
+    });
+    fireEvent.click(remainingRecebiButtons[0]!);
+    expect(screen.getAllByText("Quitado")).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /Desfazer/i })).toHaveLength(2);
+    expect(mockApplySplitSettlement).toHaveBeenCalledTimes(1);
+
+    // Quando a 1a termina, a 2a dispara recebendo o payload já com o 1o participante quitado
+    deferred.resolveFirst?.();
+    await waitFor(() => {
+      expect(mockApplySplitSettlement).toHaveBeenCalledTimes(2);
+    });
+    const secondCallArg = mockApplySplitSettlement.mock.calls[1]?.[0] as
+      | { share: PublicShare }
+      | undefined;
+    const secondCallParticipants =
+      secondCallArg?.share.payload &&
+      "participants" in secondCallArg.share.payload &&
+      Array.isArray(secondCallArg.share.payload.participants)
+        ? (secondCallArg.share.payload.participants as Array<{
+            is_host?: boolean;
+            is_settled?: boolean;
+          }>)
+        : [];
+    expect(
+      secondCallParticipants.filter((p) => !p.is_host && Boolean(p.is_settled)),
+    ).toHaveLength(1);
+
+    deferred.resolveSecond?.();
+
+    // Edição completa otimista sem fechar o modal
+    await user.click(screen.getByRole("tab", { name: /Editar Racha/i }));
+    const titleInput = screen.getByLabelText("Nome do racha");
+    fireEvent.change(titleInput, { target: { value: "Churrasco Atualizado" } });
+    fireEvent.click(screen.getByRole("button", { name: /Salvar Alterações/i }));
+
+    // Volta imediatamente para a aba Baixas com o título atualizado mesmo antes de resolver o save
+    expect(screen.getAllByText("Churrasco Atualizado").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Quitado")).toHaveLength(2);
+    await waitFor(() => {
+      expect(mockUpdateSplitComprehensive).toHaveBeenCalledTimes(1);
+    });
+    deferred.resolveEdit?.();
+  });
+
+  it("faz rollback do estado otimista no modal se a baixa falhar", async () => {
+    const deferred: { rejectFirst?: (err: Error) => void } = {};
+    mockApplySplitSettlement.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          deferred.rejectFirst = reject;
+        }),
+    );
+
+    render(
+      <ManageSplitDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        share={baseShare}
+        linkedDebt={baseDebt}
+      />,
+    );
+
+    const recebiButtons = screen.getAllByRole("button", {
+      name: /Recebi Tudo/i,
+    });
+    fireEvent.click(recebiButtons[0]!);
+
+    expect(screen.getAllByText("Quitado")).toHaveLength(1);
+
+    deferred.rejectFirst?.(new Error("Falha ao sincronizar baixa"));
+
+    await waitFor(() => {
+      expect(screen.queryByText("Quitado")).toBeNull();
+    });
+    expect(
+      screen.getAllByRole("button", { name: /Recebi Tudo/i }),
+    ).toHaveLength(recebiButtons.length);
   });
 });

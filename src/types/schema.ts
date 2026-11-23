@@ -353,6 +353,7 @@ export type UserCustomSettings = {
     calculatorButton?: boolean;
     themeToggle?: boolean;
     privacyToggle?: boolean;
+    order?: Array<"calculatorButton" | "themeToggle" | "privacyToggle">;
   };
   bankAssistant?: {
     passiveCaptureEnabled?: boolean;

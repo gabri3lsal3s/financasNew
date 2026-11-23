@@ -6,6 +6,10 @@ import { NotificationsButton } from "@/components/layout/notifications-button";
 import { PrivacyToggle } from "@/components/layout/privacy-toggle";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui";
+import {
+  resolveVisibleHeaderSlots,
+  type VisibleHeaderSlot,
+} from "@/domain/preferences/visual-defaults";
 import { triggerSensory } from "@/services/sensory";
 import type { SubscriptionStatus } from "@/types";
 
@@ -18,6 +22,7 @@ export interface DesktopTopbarProps {
   hasNotifications?: boolean;
   showTheme: boolean;
   showPrivacy: boolean;
+  visibleSlots?: VisibleHeaderSlot[];
   onThemeChange: (next: ThemePreference) => void;
 }
 
@@ -27,11 +32,23 @@ export function DesktopTopbar({
   onEndDemo,
   onOpenUpgrade,
   showCalc,
-  hasNotifications = true,
+  hasNotifications = false,
   showTheme,
   showPrivacy,
+  visibleSlots,
   onThemeChange,
 }: DesktopTopbarProps) {
+  const resolvedSlots =
+    visibleSlots ??
+    resolveVisibleHeaderSlots(
+      {
+        logo: true,
+        calculatorButton: showCalc,
+        themeToggle: showTheme,
+        privacyToggle: showPrivacy,
+      },
+      hasNotifications,
+    );
   return (
     <>
       {subscription?.isTrial && subscription.trialDaysRemaining !== null && (
@@ -103,12 +120,22 @@ export function DesktopTopbar({
         </div>
       )}
 
-      {showCalc && <CalculatorButton />}
-      {hasNotifications && <NotificationsButton />}
-
       <div data-tour="header-privacy-theme" className="flex items-center gap-1.5 shrink-0">
-        {showTheme && <ThemeToggle onThemeChange={onThemeChange} />}
-        {showPrivacy && <PrivacyToggle />}
+        {resolvedSlots.map((slot) => {
+          if (slot === "calculatorButton") {
+            return <CalculatorButton key="calculatorButton" />;
+          }
+          if (slot === "themeToggle") {
+            return <ThemeToggle key="themeToggle" onThemeChange={onThemeChange} />;
+          }
+          if (slot === "privacyToggle") {
+            return <PrivacyToggle key="privacyToggle" />;
+          }
+          if (slot === "notifications") {
+            return <NotificationsButton key="notifications" />;
+          }
+          return null;
+        })}
       </div>
     </>
   );

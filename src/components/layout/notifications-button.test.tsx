@@ -71,7 +71,7 @@ describe("NotificationsButton", () => {
     expect(screen.getByText("3")).toBeInTheDocument();
   });
 
-  it("renderiza o sininho sem badge numérico quando não há pendências (totalCount === 0)", () => {
+  it("não renderiza nada (retorna null) quando não há pendências (totalCount === 0)", () => {
     mockUseReminders.mockReturnValue({
       items: [],
       totalCount: 0,
@@ -80,15 +80,13 @@ describe("NotificationsButton", () => {
       isLoading: false,
     });
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <NotificationsButton />
       </MemoryRouter>,
     );
 
-    const btn = screen.getByRole("button", { name: "Central de Lembretes e Avisos" });
-    expect(btn).toBeInTheDocument();
-    expect(btn.querySelector("span")).toBeNull();
+    expect(container.firstChild).toBeNull();
   });
 
   it("abre o popover ao clicar no sininho quando há notificações", async () => {

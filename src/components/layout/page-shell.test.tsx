@@ -6,6 +6,10 @@ import { PageShell } from "./page-shell";
 import { resolveNextShellOnboardingStep } from "./use-shell-onboarding-orchestrator";
 import { resetNetworkStatusForTesting } from "@/services/network-status";
 import { resetDemoSession, resetDemoTourStorage, startDemo } from "@/state/demo-mode";
+import {
+  resetVisualCustomization,
+  updateVisualCustomization,
+} from "@/hooks/use-visual-customization";
 import * as nativeModule from "@/services/native";
 
 import { getUserStorageKey } from "@/services/user-storage";
@@ -136,7 +140,15 @@ function contentWrapper() {
 
 beforeEach(() => {
   window.localStorage.clear();
+  resetVisualCustomization(null);
   mockUpdateCustomSettingsMutate.mockClear();
+  mockUseSmartAdvisorInsights.mockReturnValue({
+    insight: null,
+    insights: [],
+    currentIndex: 0,
+    totalCount: 0,
+    dismiss: vi.fn(),
+  });
   resetNetworkStatusForTesting(true);
   resetDemoTourStorage();
   resetDemoSession();
@@ -262,6 +274,71 @@ describe("PageShell (F7.2/F7.3)", () => {
 
     renderShell();
     expect(screen.getByRole("button", { name: /Notificações: 1 pendência/i })).toBeInTheDocument();
+  });
+
+  it("respeita máximo de 2 slots no topo e posiciona o sininho sempre no extremo direito substituindo o último botão à direita", () => {
+    // 1. Sem notificações e com [Calculadora, Privacidade]: exibe ambos e oculta sininho
+    updateVisualCustomization({
+      headerButtons: {
+        logo: true,
+        calculatorButton: true,
+        themeToggle: false,
+        privacyToggle: true,
+        order: ["calculatorButton", "privacyToggle"],
+      },
+    });
+
+    const { unmount } = renderShell();
+    expect(screen.getByRole("button", { name: /Calculadora/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ocultar valores/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Notificações/i })).not.toBeInTheDocument();
+    unmount();
+
+    // 2. Chega 1 notificação com [Calculadora, Privacidade]: Privacidade (à direita) cede lugar ao sininho no extremo direito
+    const criticalAlert = {
+      id: "crit-slot-1",
+      themeKey: "dup:netflix",
+      priority: 1 as const,
+      category: "critical" as const,
+      title: "Cobrança duplicada",
+      description: "Detectamos duas cobranças.",
+      iconName: "alert-triangle" as const,
+    };
+    mockUseSmartAdvisorInsights.mockReturnValue({
+      insight: criticalAlert,
+      insights: [criticalAlert],
+      currentIndex: 0,
+      totalCount: 1,
+      dismiss: vi.fn(),
+    });
+
+    const { unmount: unmount2 } = renderShell();
+    const slotContainer = document.querySelector('[data-tour="header-privacy-theme"]');
+    const buttonsCaseA = Array.from(slotContainer?.querySelectorAll("button") ?? []);
+    expect(buttonsCaseA).toHaveLength(2);
+    expect(buttonsCaseA[0]).toHaveAccessibleName(/Calculadora/i);
+    expect(buttonsCaseA[1]).toHaveAccessibleName(/Notificações: 1 pendência/i);
+    expect(screen.queryByRole("button", { name: /Ocultar valores/i })).not.toBeInTheDocument();
+    unmount2();
+
+    // 3. Se a Calculadora estiver por último à direita ([Privacidade, Calculadora]), a Calculadora é substituída pelo sininho
+    updateVisualCustomization({
+      headerButtons: {
+        logo: true,
+        calculatorButton: true,
+        themeToggle: false,
+        privacyToggle: true,
+        order: ["privacyToggle", "calculatorButton"],
+      },
+    });
+
+    renderShell();
+    const slotContainerB = document.querySelector('[data-tour="header-privacy-theme"]');
+    const buttonsCaseB = Array.from(slotContainerB?.querySelectorAll("button") ?? []);
+    expect(buttonsCaseB).toHaveLength(2);
+    expect(buttonsCaseB[0]).toHaveAccessibleName(/Ocultar valores/i);
+    expect(buttonsCaseB[1]).toHaveAccessibleName(/Notificações: 1 pendência/i);
+    expect(screen.queryByRole("button", { name: /Calculadora/i })).not.toBeInTheDocument();
   });
 
   it("não renderiza DemoTourSpotlight nem indicador no header quando a simulação não está ativa", () => {

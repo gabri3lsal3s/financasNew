@@ -64,6 +64,25 @@ export async function invalidateSplitEcosystem(queryClient: QueryClient): Promis
   );
 }
 
+export function patchPublicShareInCache(
+  queryClient: QueryClient,
+  updatedShare: PublicShare,
+): void {
+  for (const queryKey of [myPublicSharesMutationKey, publicSharesQueryKey]) {
+    queryClient.setQueriesData<PublicShare[]>(
+      { queryKey: [...queryKey] },
+      (old) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((item) => (item.id === updatedShare.id ? updatedShare : item));
+      },
+    );
+  }
+  queryClient.setQueriesData<PublicShare | null>(
+    { queryKey: [...publicShareQueryKey] },
+    (old) => (old && old.id === updatedShare.id ? updatedShare : old),
+  );
+}
+
 export interface CreateLinkedSplitInput {
   token?: string;
   payload: SplitSharePayload;
@@ -255,7 +274,32 @@ export function useApplySplitSettlement() {
 
       return { share: updatedShare, transition, debt };
     },
+    onMutate: async ({ share, action }) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: [...myPublicSharesMutationKey] }),
+        queryClient.cancelQueries({ queryKey: [...publicSharesQueryKey] }),
+      ]);
+      const prevMyShares = queryClient.getQueriesData<PublicShare[]>({
+        queryKey: [...myPublicSharesMutationKey],
+      });
+      const prevPublicShares = queryClient.getQueriesData<PublicShare[]>({
+        queryKey: [...publicSharesQueryKey],
+      });
+
+      const payload = share.payload as unknown as SplitSharePayload;
+      const transition = applySplitSettlementTransition(payload, action);
+      const isPaused = Boolean(transition.nextPayload.public_page_paused);
+      const optimisticShare: PublicShare = {
+        ...share,
+        payload: transition.nextPayload as unknown as Record<string, unknown>,
+        is_revoked: transition.isCompleted || isPaused,
+      };
+      patchPublicShareInCache(queryClient, optimisticShare);
+
+      return { prevMyShares, prevPublicShares };
+    },
     onSuccess: (result, variables) => {
+      patchPublicShareInCache(queryClient, result.share);
       if (result.transition.isCompleted) {
         const debtId =
           result.debt?.id ||
@@ -269,7 +313,18 @@ export function useApplySplitSettlement() {
       }
       void invalidateSplitEcosystem(queryClient);
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      if (context?.prevMyShares) {
+        for (const [key, data] of context.prevMyShares) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      if (context?.prevPublicShares) {
+        for (const [key, data] of context.prevPublicShares) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      void invalidateSplitEcosystem(queryClient);
       pushToast({ title: getErrorMessage(error), variant: "destructive" });
     },
   });
@@ -400,10 +455,47 @@ export function useUpdateSplitComprehensive() {
 
       return { share: updatedShare, result, debt: syncedDebt };
     },
-    onSuccess: () => {
+    onMutate: async ({ share, edit, expiresAt }) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: [...myPublicSharesMutationKey] }),
+        queryClient.cancelQueries({ queryKey: [...publicSharesQueryKey] }),
+      ]);
+      const prevMyShares = queryClient.getQueriesData<PublicShare[]>({
+        queryKey: [...myPublicSharesMutationKey],
+      });
+      const prevPublicShares = queryClient.getQueriesData<PublicShare[]>({
+        queryKey: [...publicSharesQueryKey],
+      });
+
+      const currentPayload = share.payload as unknown as SplitSharePayload;
+      const result = recalculateSplitPayloadOnEdit(currentPayload, edit);
+      const isPaused = Boolean(result.nextPayload.public_page_paused);
+      const optimisticShare: PublicShare = {
+        ...share,
+        payload: result.nextPayload as unknown as Record<string, unknown>,
+        is_revoked: result.isCompleted || isPaused,
+        ...(expiresAt !== undefined ? { expires_at: expiresAt } : {}),
+      };
+      patchPublicShareInCache(queryClient, optimisticShare);
+
+      return { prevMyShares, prevPublicShares };
+    },
+    onSuccess: (result) => {
+      patchPublicShareInCache(queryClient, result.share);
       void invalidateSplitEcosystem(queryClient);
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      if (context?.prevMyShares) {
+        for (const [key, data] of context.prevMyShares) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      if (context?.prevPublicShares) {
+        for (const [key, data] of context.prevPublicShares) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      void invalidateSplitEcosystem(queryClient);
       pushToast({ title: getErrorMessage(error), variant: "destructive" });
     },
   });

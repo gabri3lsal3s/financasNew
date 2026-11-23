@@ -16,8 +16,12 @@ import { DemoTourSpotlight } from "@/components/modules/demo-tour-spotlight";
 import { NativeOnboardingDialog } from "@/components/modules/native-onboarding-dialog";
 import { endDemo, useDemoSession } from "@/state/demo-mode";
 import { useContainerScroll } from "@/hooks";
+import { useNotificationCenter } from "@/hooks/use-notification-center";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
-import { useVisualCustomization } from "@/hooks/use-visual-customization";
+import {
+  resolveVisibleHeaderSlots,
+  useVisualCustomization,
+} from "@/hooks/use-visual-customization";
 import { dismissPendingSuggestion } from "@/services/native";
 import {
   useUpdateCustomSettings,
@@ -114,11 +118,14 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
   });
 
   const onboarding = useShellOnboardingOrchestrator({ isWizardOpen: wizardOpen });
+  const { totalBellCount } = useNotificationCenter();
+  const hasNotifications = totalBellCount > 0;
 
   const cfg = visual.headerButtons;
-  const showCalc = cfg.calculatorButton;
-  const showTheme = cfg.themeToggle;
-  const showPrivacy = cfg.privacyToggle;
+  const visibleSlots = resolveVisibleHeaderSlots(cfg, hasNotifications);
+  const showCalc = visibleSlots.includes("calculatorButton");
+  const showTheme = visibleSlots.includes("themeToggle");
+  const showPrivacy = visibleSlots.includes("privacyToggle");
 
   return (
     <div className="h-dvh flex flex-col overflow-hidden text-foreground">
@@ -156,9 +163,10 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
               onEndDemo={endDemo}
               onOpenUpgrade={() => setHeaderUpgradeOpen(true)}
               showCalc={showCalc}
-              hasNotifications
+              hasNotifications={hasNotifications}
               showTheme={showTheme}
               showPrivacy={showPrivacy}
+              visibleSlots={visibleSlots}
               onThemeChange={handleThemeChange}
             />
           </div>

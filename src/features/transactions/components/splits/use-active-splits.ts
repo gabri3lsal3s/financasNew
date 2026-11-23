@@ -37,6 +37,37 @@ export function useActiveSplits(month?: string) {
     [shares, debts, month],
   );
 
+  const liveManagingItem = useMemo<ManagingSplitTarget | null>(() => {
+    if (!managingItem) return null;
+    const matchedActive =
+      activeSplits.find((item) => item.share?.id === managingItem.share.id) ??
+      (managingItem.share.expense_id
+        ? activeSplits.find(
+            (item) =>
+              item.share &&
+              item.share.expense_id === managingItem.share.expense_id,
+          )
+        : undefined);
+    if (matchedActive?.share) {
+      return {
+        share: matchedActive.share,
+        linkedDebt: matchedActive.linkedDebt ?? managingItem.linkedDebt ?? null,
+      };
+    }
+
+    const liveShare = shares?.find((s) => s.id === managingItem.share.id) ?? managingItem.share;
+    const liveDebtId = managingItem.linkedDebt?.id ?? liveShare.debt_id;
+    const liveDebt =
+      (liveDebtId ? debts?.find((d) => d.id === liveDebtId) : undefined) ??
+      managingItem.linkedDebt ??
+      null;
+
+    return {
+      share: liveShare,
+      linkedDebt: liveDebt,
+    };
+  }, [managingItem, activeSplits, shares, debts]);
+
   const handleQuickSettle = async (item: ActiveSplitItem) => {
     const hasInstallments =
       (item.payload.participant_installments && item.payload.participant_installments.length > 1) ||
@@ -131,7 +162,7 @@ export function useActiveSplits(month?: string) {
     allFinalized,
     isExpanded,
     copiedToken,
-    managingItem,
+    managingItem: liveManagingItem,
     generatingShareFor,
     isSettlePending: settleMutation.isPending || applySplitSettlement.isPending,
     setCurrentBlock,

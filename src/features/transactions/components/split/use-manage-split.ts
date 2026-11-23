@@ -1,12 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { todayISO } from "@/domain/debts";
 import {
+  applySplitSettlementTransition,
   normalizeSplitParticipants,
+  recalculateSplitPayloadOnEdit,
   resolveSplitExpirationIso,
   splitAmountEqually,
   sumExpectedFromFriendsCents,
   sumSettledFromFriendsCents,
   type SplitEditInput,
+  type SplitSettlementAction,
 } from "@/domain/finance";
 import { isSplitFullyCompleted, type SplitRemainderPolicy } from "@/domain/finance/split-math";
 import {
@@ -69,14 +72,27 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
   const dismissSignalMutation = useDismissSplitPaymentSignal();
   const { updatePreferences } = useSplitPreferences();
 
+  const [optimisticShare, setOptimisticShare] = useState<PublicShare | null>(null);
+  const isAnySplitMutationPending =
+    applySplitSettlement.isPending ||
+    updateSplitComprehensive.isPending ||
+    deleteLinkedSplit.isPending ||
+    dismissSignalMutation.isPending;
+
+  const effectiveShare = optimisticShare && optimisticShare.id === share.id ? optimisticShare : share;
+
   const payload = useMemo(
-    () => (share.payload ?? {}) as unknown as SplitSharePayload,
-    [share.payload],
+    () => (effectiveShare.payload ?? {}) as unknown as SplitSharePayload,
+    [effectiveShare.payload],
   );
-  const linkedExpenseId = share.expense_id || payload.expense_id || null;
+  const linkedExpenseId = effectiveShare.expense_id || payload.expense_id || null;
   const { data: linkedExpense, isFetched: isExpenseFetched } = useExpense(linkedExpenseId);
   const hasLinkedExpense = Boolean(linkedExpenseId && (!isExpenseFetched || linkedExpense));
-  const groupId = share.installment_group_id || payload.installment_group_id || linkedExpense?.installment_group_id || null;
+  const groupId =
+    effectiveShare.installment_group_id ||
+    payload.installment_group_id ||
+    linkedExpense?.installment_group_id ||
+    null;
   const { data: groupExpenses } = useExpensesByInstallmentGroup(groupId);
 
   const installmentsCount = Math.max(
@@ -129,30 +145,103 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
     Boolean(payload.public_page_paused),
   );
 
-  const syncKey = `${share.id}:${share.updated_at}:${open}`;
-  const [prevSyncKey, setPrevSyncKey] = useState(syncKey);
-  if (syncKey !== prevSyncKey) {
-    setPrevSyncKey(syncKey);
-    const freshParticipants = normalizeSplitParticipants(payload);
-    setEditedTitle(payload.title || "");
-    setEditedTotalCents(Number(payload.total_cents ?? 0));
-    setEditedDate(payload.date || todayISO());
-    setEditedDueDate(linkedDebt?.due_date || payload.due_date || payload.date || todayISO());
-    setEditedRemainderPolicy(payload.remainder_policy ?? "host");
-    setEditedSplitMode(payload.split_mode ?? "equal");
-    setEditedInstallmentsMode(payload.installments_mode ?? "per_installment");
-    setEditedParticipants(buildEditDraftParticipants(payload));
-    setEditedPixKey(payload.pix_key || "");
-    setEditedKeyType(payload.pix_key_type || "auto");
-    setEditedHostName(payload.host_name || freshParticipants.find((p) => p.is_host)?.name || "Anfitrião");
-    setEditedHostCity(payload.host_city || "");
-    setEditedCustomNote(payload.custom_note || "");
-    setEditedShowParticipantsList(payload.show_participants_list ?? true);
-    setEditedPublicPagePaused(Boolean(payload.public_page_paused));
+  const syncDraftsFromPayload = (targetPayload: SplitSharePayload) => {
+    const freshParticipants = normalizeSplitParticipants(targetPayload);
+    setEditedTitle(targetPayload.title || "");
+    setEditedTotalCents(Number(targetPayload.total_cents ?? 0));
+    setEditedDate(targetPayload.date || todayISO());
+    setEditedDueDate(linkedDebt?.due_date || targetPayload.due_date || targetPayload.date || todayISO());
+    setEditedRemainderPolicy(targetPayload.remainder_policy ?? "host");
+    setEditedSplitMode(targetPayload.split_mode ?? "equal");
+    setEditedInstallmentsMode(targetPayload.installments_mode ?? "per_installment");
+    setEditedParticipants(buildEditDraftParticipants(targetPayload));
+    setEditedPixKey(targetPayload.pix_key || "");
+    setEditedKeyType(targetPayload.pix_key_type || "auto");
+    setEditedHostName(
+      targetPayload.host_name || freshParticipants.find((p) => p.is_host)?.name || "Anfitrião",
+    );
+    setEditedHostCity(targetPayload.host_city || "");
+    setEditedCustomNote(targetPayload.custom_note || "");
+    setEditedShowParticipantsList(targetPayload.show_participants_list ?? true);
+    setEditedPublicPagePaused(Boolean(targetPayload.public_page_paused));
+  };
+
+  const [prevShareId, setPrevShareId] = useState(share.id);
+  const [prevPropUpdatedAt, setPrevPropUpdatedAt] = useState(share.updated_at);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  if (share.id !== prevShareId || share.updated_at !== prevPropUpdatedAt || open !== prevOpen) {
+    const switchedOrToggled = share.id !== prevShareId || !open || (!prevOpen && open);
+    setPrevShareId(share.id);
+    setPrevPropUpdatedAt(share.updated_at);
+    setPrevOpen(open);
+
+    if (switchedOrToggled || !isAnySplitMutationPending) {
+      setOptimisticShare(null);
+      syncDraftsFromPayload((share.payload ?? {}) as unknown as SplitSharePayload);
+    }
     if (open) {
       setCustomInputParticipantId(null);
     }
   }
+
+  const latestShareRef = useRef<PublicShare>(effectiveShare);
+  useEffect(() => {
+    latestShareRef.current = effectiveShare;
+  }, [effectiveShare]);
+
+  const opSeqRef = useRef(0);
+  const inFlightCountRef = useRef(0);
+  const mutationQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  const applyOptimisticShareUpdate = (nextShare: PublicShare, clearOptimistic = false) => {
+    latestShareRef.current = nextShare;
+    setOptimisticShare(clearOptimistic ? null : nextShare);
+    syncDraftsFromPayload((nextShare.payload ?? {}) as unknown as SplitSharePayload);
+  };
+
+  const enqueueShareMutation = async <TRes,>(params: {
+    opId: number;
+    baseShare: PublicShare;
+    prevOptimistic: PublicShare | null;
+    execute: () => Promise<TRes>;
+    extractShare: (res: TRes) => PublicShare | null | undefined;
+  }): Promise<TRes> => {
+    const { opId, baseShare, prevOptimistic, execute, extractShare } = params;
+
+    const run = async (): Promise<TRes> => {
+      try {
+        const res = await execute();
+        const serverShare = extractShare(res);
+        if (
+          serverShare &&
+          opId === opSeqRef.current &&
+          (serverShare.id !== baseShare.id ||
+            serverShare.updated_at !== baseShare.updated_at ||
+            serverShare.token !== baseShare.token)
+        ) {
+          applyOptimisticShareUpdate(serverShare);
+        }
+        return res;
+      } catch (err) {
+        if (opId === opSeqRef.current) {
+          applyOptimisticShareUpdate(prevOptimistic ?? share, prevOptimistic === null);
+        }
+        throw err;
+      } finally {
+        inFlightCountRef.current = Math.max(0, inFlightCountRef.current - 1);
+      }
+    };
+
+    const isBusy = inFlightCountRef.current > 0;
+    inFlightCountRef.current += 1;
+    const nextPromise = isBusy ? mutationQueueRef.current.then(run, run) : run();
+    mutationQueueRef.current = nextPromise.then(
+      () => undefined,
+      () => undefined,
+    );
+    return nextPromise;
+  };
 
   const totalCents = Number(payload.total_cents ?? 0);
   const friends = useMemo(() => participants.filter((p) => !p.is_host), [participants]);
@@ -256,14 +345,39 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
   const isPublicConfigValid = pixValidation.isValid;
 
   // Handlers de Baixas (Aba 1)
+  const runOptimisticSettlement = (action: SplitSettlementAction) => {
+    const opId = ++opSeqRef.current;
+    const prevOptimistic = optimisticShare;
+    const baseShare = latestShareRef.current;
+    const basePayload = (baseShare.payload ?? {}) as unknown as SplitSharePayload;
+    const transition = applySplitSettlementTransition(basePayload, action);
+    const optimisticNextShare: PublicShare = {
+      ...baseShare,
+      payload: transition.nextPayload as unknown as Record<string, unknown>,
+      is_revoked:
+        transition.isCompleted || Boolean(transition.nextPayload.public_page_paused),
+    };
+
+    applyOptimisticShareUpdate(optimisticNextShare);
+
+    return enqueueShareMutation({
+      opId,
+      baseShare,
+      prevOptimistic,
+      execute: () =>
+        applySplitSettlement.mutateAsync({
+          share: baseShare,
+          action,
+          linkedDebt,
+          installmentsTotal: installmentsCount,
+        }),
+      extractShare: (res) => res?.share,
+    });
+  };
+
   const handleSettleFull = async (participantId: string) => {
     try {
-      await applySplitSettlement.mutateAsync({
-        share,
-        action: { type: "settle_full_participant", participantId },
-        linkedDebt,
-        installmentsTotal: installmentsCount,
-      });
+      await runOptimisticSettlement({ type: "settle_full_participant", participantId });
       triggerSensory("action");
       pushToast({ title: "Baixa registrada!", description: "Reembolso integral do participante registrado.", variant: "success" });
     } catch { triggerSensory("destructive"); }
@@ -271,22 +385,19 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
 
   const handleConfirmCustomSettle = async () => {
     if (!customInputParticipantId) return;
+    const targetId = customInputParticipantId;
+    const settledCents = customInputCents;
+    setCustomInputParticipantId(null);
     try {
-      await applySplitSettlement.mutateAsync({
-        share,
-        action: {
-          type: "settle_custom_participant",
-          participantId: customInputParticipantId,
-          settledCents: customInputCents,
-        },
-        linkedDebt,
-        installmentsTotal: installmentsCount,
+      await runOptimisticSettlement({
+        type: "settle_custom_participant",
+        participantId: targetId,
+        settledCents,
       });
       triggerSensory("action");
-      setCustomInputParticipantId(null);
       pushToast({
         title: "Baixa registrada!",
-        description: customInputCents === 0 ? "Calote registrado (R$ 0,00). O valor restante foi mantido no seu custo." : "Valor personalizado recebido com sucesso.",
+        description: settledCents === 0 ? "Calote registrado (R$ 0,00). O valor restante foi mantido no seu custo." : "Valor personalizado recebido com sucesso.",
         variant: "success",
       });
     } catch { triggerSensory("destructive"); }
@@ -294,12 +405,7 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
 
   const handleUnsettle = async (participantId: string) => {
     try {
-      await applySplitSettlement.mutateAsync({
-        share,
-        action: { type: "unsettle_participant", participantId },
-        linkedDebt,
-        installmentsTotal: installmentsCount,
-      });
+      await runOptimisticSettlement({ type: "unsettle_participant", participantId });
       triggerSensory("selection");
       pushToast({ title: "Baixa desfeita", description: "O participante voltou ao status de pendente.", variant: "default" });
     } catch { triggerSensory("destructive"); }
@@ -307,12 +413,7 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
 
   const handleToggleSettleInstallment = async (installmentId: string, markSettled: boolean) => {
     try {
-      await applySplitSettlement.mutateAsync({
-        share,
-        action: { type: "toggle_installment", installmentId, markSettled },
-        linkedDebt,
-        installmentsTotal: installmentsCount,
-      });
+      await runOptimisticSettlement({ type: "toggle_installment", installmentId, markSettled });
       triggerSensory("action");
       pushToast({
         title: markSettled ? "Parcela marcada como paga!" : "Baixa da parcela desfeita",
@@ -323,32 +424,57 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
 
   const handleConfirmSignal = async (signalId: string) => {
     try {
-      await applySplitSettlement.mutateAsync({
-        share,
-        action: { type: "confirm_signal", signalId },
-        linkedDebt,
-        installmentsTotal: installmentsCount,
-      });
+      await runOptimisticSettlement({ type: "confirm_signal", signalId });
       triggerSensory("success");
       pushToast({ title: "Pagamento confirmado!", description: "O valor foi abatido do racha e da despesa.", variant: "success" });
     } catch { triggerSensory("destructive"); }
   };
 
   const handleDismissSignal = async (signalId: string) => {
+    const opId = ++opSeqRef.current;
+    const prevOptimistic = optimisticShare;
+    const baseShare = latestShareRef.current;
+    const basePayload = (baseShare.payload ?? {}) as unknown as SplitSharePayload;
+    const rawSignals = basePayload.payment_signals ?? [];
+    const targetSignal = rawSignals.find((s) => s.id === signalId);
+    const nextSignals = rawSignals.map((s) =>
+      s.id === signalId ? { ...s, status: "dismissed" as const } : s,
+    );
+    const participantId = targetSignal?.participant_id;
+    const hasOtherPending = participantId
+      ? nextSignals.some((s) => s.status === "pending" && s.participant_id === participantId)
+      : false;
+    const nextParticipants = participantId
+      ? (basePayload.participants ?? []).map((p) =>
+          p.id === participantId ? { ...p, has_payment_signal: hasOtherPending } : p,
+        )
+      : basePayload.participants;
+
+    const optimisticNextShare: PublicShare = {
+      ...baseShare,
+      payload: {
+        ...basePayload,
+        payment_signals: nextSignals,
+        ...(nextParticipants ? { participants: nextParticipants } : {}),
+      } as unknown as Record<string, unknown>,
+    };
+    applyOptimisticShareUpdate(optimisticNextShare);
+
     try {
-      await dismissSignalMutation.mutateAsync({ shareId: share.id, signalId });
+      await enqueueShareMutation({
+        opId,
+        baseShare,
+        prevOptimistic,
+        execute: () => dismissSignalMutation.mutateAsync({ shareId: baseShare.id, signalId }),
+        extractShare: () => null,
+      });
       triggerSensory("action");
     } catch { triggerSensory("destructive"); }
   };
 
   const handleSettleAll = async () => {
     try {
-      await applySplitSettlement.mutateAsync({
-        share,
-        action: { type: "settle_all" },
-        linkedDebt,
-        installmentsTotal: installmentsCount,
-      });
+      await runOptimisticSettlement({ type: "settle_all" });
       triggerSensory("success");
       setConfirmFinalizeOpen(false);
       pushToast({
@@ -363,12 +489,7 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
 
   const handleFinalizeSplit = async () => {
     try {
-      const res = await applySplitSettlement.mutateAsync({
-        share,
-        action: { type: "finalize_as_is" },
-        linkedDebt,
-        installmentsTotal: installmentsCount,
-      });
+      const res = await runOptimisticSettlement({ type: "finalize_as_is" });
       triggerSensory("success");
       setConfirmFinalizeOpen(false);
       pushToast({
@@ -383,12 +504,7 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
 
   const handleReopenSplit = async () => {
     try {
-      await applySplitSettlement.mutateAsync({
-        share,
-        action: { type: "reopen" },
-        linkedDebt,
-        installmentsTotal: installmentsCount,
-      });
+      await runOptimisticSettlement({ type: "reopen" });
       triggerSensory("selection");
       pushToast({ title: "Racha reaberto!", description: "O acompanhamento e o link voltaram a ficar ativos.", variant: "default" });
     } catch { triggerSensory("destructive"); }
@@ -455,6 +571,47 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
     installmentsMode: editedInstallmentsMode,
   });
 
+  const runOptimisticComprehensiveEdit = (
+    edit: SplitEditInput,
+    options?: {
+      expiresAt?: string | null;
+      regenerateToken?: boolean;
+      syncExpense?: boolean;
+    },
+  ) => {
+    const opId = ++opSeqRef.current;
+    const prevOptimistic = optimisticShare;
+    const baseShare = latestShareRef.current;
+    const basePayload = (baseShare.payload ?? {}) as unknown as SplitSharePayload;
+    const calc = recalculateSplitPayloadOnEdit(basePayload, edit);
+    const isPaused = Boolean(calc.nextPayload.public_page_paused);
+    const optimisticNextShare: PublicShare = {
+      ...baseShare,
+      payload: calc.nextPayload as unknown as Record<string, unknown>,
+      is_revoked: calc.isCompleted || isPaused,
+      ...(options?.expiresAt !== undefined ? { expires_at: options.expiresAt } : {}),
+    };
+
+    applyOptimisticShareUpdate(optimisticNextShare);
+
+    return enqueueShareMutation({
+      opId,
+      baseShare,
+      prevOptimistic,
+      execute: () =>
+        updateSplitComprehensive.mutateAsync({
+          share: baseShare,
+          edit,
+          linkedDebt,
+          expiresAt: options?.expiresAt,
+          regenerateToken: options?.regenerateToken,
+          syncExpense: options?.syncExpense ?? true,
+          installmentsTotal: installmentsCount,
+        }),
+      extractShare: (res) => res?.share,
+    });
+  };
+
   const handleSaveEdit = async () => {
     if (!editPreview.isEditValid) return;
     const validKeyType: PixKeyType =
@@ -471,43 +628,37 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
       publicPagePaused: editedPublicPagePaused,
     };
 
+    setActiveTab("settlements");
     try {
-      await updateSplitComprehensive.mutateAsync({
-        share,
-        edit,
-        linkedDebt,
-        syncExpense: true,
-        installmentsTotal: installmentsCount,
-      });
+      await runOptimisticComprehensiveEdit(edit, { syncExpense: true });
       triggerSensory("success");
       pushToast({
         title: "Racha e despesa atualizados!",
         description: "Os novos valores, participantes e link Pix estão sincronizados.",
         variant: "success",
       });
-      setActiveTab("settlements");
     } catch { triggerSensory("destructive"); }
   };
 
   // Handlers de Pix e Página Pública (Aba 3)
-  const buildPublicConfigEditInput = (): SplitEditInput => {
+  const buildPublicConfigEditInput = (basePayload: SplitSharePayload = payload): SplitEditInput => {
     const validKeyType: PixKeyType = pixValidation.resolvedType ?? "cpf";
-    const normalizedParticipants = buildEditDraftParticipants(payload);
+    const normalizedParticipants = buildEditDraftParticipants(basePayload);
     return {
-      title: payload.title || "Racha de Despesa",
-      totalCents: Number(payload.total_cents ?? 0),
-      date: payload.date || todayISO(),
-      dueDate: payload.due_date ?? null,
-      splitMode: payload.split_mode ?? "equal",
-      remainderPolicy: payload.remainder_policy ?? "host",
+      title: basePayload.title || "Racha de Despesa",
+      totalCents: Number(basePayload.total_cents ?? 0),
+      date: basePayload.date || todayISO(),
+      dueDate: basePayload.due_date ?? null,
+      splitMode: basePayload.split_mode ?? "equal",
+      remainderPolicy: basePayload.remainder_policy ?? "host",
       participants: normalizedParticipants.map((p) => ({
         id: p.id,
         name: p.isHost && editedHostName.trim() ? editedHostName.trim() : p.name,
         isHost: p.isHost,
-        fixedCents: payload.split_mode === "custom" ? p.fixedCents : null,
+        fixedCents: basePayload.split_mode === "custom" ? p.fixedCents : null,
       })),
       installmentsCount,
-      installmentsMode: payload.installments_mode ?? "per_installment",
+      installmentsMode: basePayload.installments_mode ?? "per_installment",
       pixKey: pixValidation.normalizedKey ?? editedPixKey.trim(),
       pixKeyType: validKeyType,
       hostName: editedHostName.trim() || "Anfitrião",
@@ -520,13 +671,10 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
 
   const handleSavePublicConfig = async () => {
     if (!isPublicConfigValid || !pixValidation.resolvedType) return;
+    const basePayload = (latestShareRef.current.payload ?? payload) as unknown as SplitSharePayload;
     try {
-      await updateSplitComprehensive.mutateAsync({
-        share,
-        edit: buildPublicConfigEditInput(),
-        linkedDebt,
+      await runOptimisticComprehensiveEdit(buildPublicConfigEditInput(basePayload), {
         syncExpense: false,
-        installmentsTotal: installmentsCount,
       });
       updatePreferences({
         pixKey: pixValidation.normalizedKey ?? editedPixKey.trim(),
@@ -546,16 +694,21 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
   };
 
   const handleExtendExpiration = async () => {
-    const baseMs = share.expires_at ? Math.max(Date.now(), new Date(share.expires_at).getTime()) : Date.now();
-    const nextIso = resolveSplitExpirationIso(payload.date || todayISO(), installmentsCount, 60, baseMs);
+    const baseShare = latestShareRef.current;
+    const basePayload = (baseShare.payload ?? payload) as unknown as SplitSharePayload;
+    const baseMs = baseShare.expires_at
+      ? Math.max(Date.now(), new Date(baseShare.expires_at).getTime())
+      : Date.now();
+    const nextIso = resolveSplitExpirationIso(
+      basePayload.date || todayISO(),
+      installmentsCount,
+      60,
+      baseMs,
+    );
     try {
-      await updateSplitComprehensive.mutateAsync({
-        share,
-        edit: buildPublicConfigEditInput(),
-        linkedDebt,
+      await runOptimisticComprehensiveEdit(buildPublicConfigEditInput(basePayload), {
         expiresAt: nextIso,
         syncExpense: false,
-        installmentsTotal: installmentsCount,
       });
       triggerSensory("success");
       pushToast({ title: "Validade do link estendida!", variant: "success" });
@@ -563,15 +716,15 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
   };
 
   const handleRegenerateLink = async () => {
+    const basePayload = (latestShareRef.current.payload ?? payload) as unknown as SplitSharePayload;
     try {
-      const updated = await updateSplitComprehensive.mutateAsync({
-        share,
-        edit: buildPublicConfigEditInput(),
-        linkedDebt,
-        regenerateToken: true,
-        syncExpense: false,
-        installmentsTotal: installmentsCount,
-      });
+      const updated = await runOptimisticComprehensiveEdit(
+        buildPublicConfigEditInput(basePayload),
+        {
+          regenerateToken: true,
+          syncExpense: false,
+        },
+      );
       const nextUrl = getPublicShareUrl(`r/${updated.share.token}`);
       await copyTextToClipboard(nextUrl);
       triggerSensory("success");
@@ -596,7 +749,7 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
   };
 
   const handleCopyPublicLink = async () => {
-    const ok = await copyTextToClipboard(getPublicShareUrl(`r/${share.token}`));
+    const ok = await copyTextToClipboard(getPublicShareUrl(`r/${effectiveShare.token}`));
     if (ok) {
       triggerSensory("selection");
       pushToast({ title: "Link público copiado!", variant: "default" });
@@ -606,7 +759,7 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
   const handleDeleteSplit = async () => {
     try {
       await deleteLinkedSplit.mutateAsync({
-        share,
+        share: latestShareRef.current,
         linkedDebt: deleteLinkedDebt ? linkedDebt : null,
         deleteExpense: deleteOriginalExpense,
       });
@@ -713,7 +866,7 @@ export function useManageSplit({ open = true, share, linkedDebt, onOpenChange, o
     setEditedPublicPagePaused,
     previewBrCode,
     firstGuestPreviewAmountCents,
-    publicUrl: getPublicShareUrl(`r/${share.token}`),
+    publicUrl: getPublicShareUrl(`r/${effectiveShare.token}`),
     isPublicConfigValid,
     // Ações
     handleOpenDeleteConfirm: () => {
