@@ -1,5 +1,5 @@
 /**
- * Edge Function de Micro-IA Hibrida FinOps (`gemini-2.5-flash-lite`) — Fases D e E.
+ * Edge Function de Micro-IA Hibrida FinOps (`gemini-3.5-flash-lite`) — Fases D e E.
  *
  * Modos suportados:
  *  - `single_receipt` (Balde 1: `receipt_calls`): fallback unitario para comprovante dificil
@@ -53,7 +53,7 @@ declare const Deno:
   | undefined;
 
 const GEMINI_TIMEOUT_MS = 4_500;
-const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite";
+const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 const MIN_USEFUL_TEXT_CHARS = 20;
 
 const GEMINI_SINGLE_RECEIPT_RESPONSE_SCHEMA = {
@@ -253,12 +253,14 @@ async function callGeminiJson(params: {
     const json = (await response.json()) as {
       candidates?: Array<{
         content?: {
-          parts?: Array<{ text?: string }>;
+          parts?: Array<{ text?: string; thought?: boolean }>;
         };
       }>;
     };
 
-    const rawOutputText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parts = json.candidates?.[0]?.content?.parts;
+    const rawOutputText =
+      parts?.find((p) => !p.thought && typeof p.text === "string")?.text ?? parts?.[0]?.text;
     if (!rawOutputText) {
       return { ok: false, reason: "invalid_ai_output" };
     }
@@ -507,7 +509,7 @@ Deno?.serve?.(async (req: Request) => {
       });
     }
 
-    // 7. Monta prompt/schema por modo e executa Gemini 2.5 Flash-Lite
+    // 7. Monta prompt/schema por modo e executa Gemini 3.5 Flash-Lite
     let validatedOutput: unknown = null;
     let responseSource: "ai_text" | "ai_vision" = "ai_text";
 

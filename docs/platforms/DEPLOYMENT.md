@@ -292,7 +292,7 @@ npx supabase secrets set \
 | `FCM_SERVICE_ACCOUNT_JSON` | *(opcional)* JSON da Service Account Firebase (FCM HTTP v1) | Firebase Console → Service Accounts → Generate new private key |
 | `GEMINI_API_KEY` | *(Micro-IA)* Chave da Gemini API para `ai-financial-assistant` | Google AI Studio → Create API key |
 | `AI_EXTRACTION_ENABLED` | *(Micro-IA / kill-switch)* `"true"` para habilitar extração assistida; qualquer outro valor desativa imediatamente (`disabled`) | Variável de controle FinOps definida no Supabase Secrets |
-| `GEMINI_MODEL` | *(opcional / Micro-IA)* Modelo Gemini utilizado (padrão: `gemini-2.5-flash-lite`) | Sobrescreve o modelo padrão caso necessário |
+| `GEMINI_MODEL` | *(opcional / Micro-IA)* Modelo Gemini utilizado (padrão: `gemini-3.5-flash-lite`) | Sobrescreve o modelo padrão caso necessário |
 
 > **Comportamento gracioso sem secrets de Push Remoto:** caso `VAPID_*` / `FCM_*` não estejam configurados, a Edge Function `push-dispatcher` registra `skipped_unconfigured` em `push_delivery_logs` e retorna HTTP 200 sem quebrar fluxos chamadores; notificações locais agendadas no Android Pro continuam operando offline normalmente.
 
