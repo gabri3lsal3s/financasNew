@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router";
+import { useLayoutEffect, useState } from "react";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import {
   Activity,
   ExternalLink,
@@ -14,16 +14,22 @@ import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useUserAccess } from "@/state";
 import { cn } from "@/lib/utils";
+import { resetPageScroll } from "@/services/scroll";
 import { triggerSensory } from "@/services/sensory";
 import { ADMIN_NAV_ITEMS } from "./admin-nav-config";
 import { AdminMobileDrawer } from "./admin-mobile-drawer";
 
 export function AdminShell() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { session } = useAuth();
   const { signOut } = useSignOut();
   const { profile, role, isSuperAdmin } = useUserAccess(session?.user?.id);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    resetPageScroll({ containerId: "admin-main-content" });
+  }, [location.pathname]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -163,8 +169,13 @@ export function AdminShell() {
           onSignOut={handleSignOut}
         />
 
-        <main className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 pb-28 sm:pb-32 lg:pb-8 pb-safe overflow-y-auto">
-          <Outlet />
+        <main
+          id="admin-main-content"
+          className="flex-1 w-full min-w-0 p-4 sm:p-6 lg:p-8 pb-28 sm:pb-32 lg:pb-8 pb-safe overflow-y-auto"
+        >
+          <div key={location.pathname} className="animate-route-in min-w-0 w-full">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

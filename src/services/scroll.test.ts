@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { triggerSensory } from "./sensory";
-import { scrollToTop } from "./scroll";
+import { resetPageScroll, scrollToTop } from "./scroll";
 
 vi.mock("./sensory", () => ({
   triggerSensory: vi.fn(),
@@ -62,5 +62,36 @@ describe("scrollToTop service", () => {
 
     scrollToTop();
     expect(main.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "auto" });
+  });
+});
+
+describe("resetPageScroll service", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("reseta instantaneamente window, documentElement e containers main", () => {
+    const windowScrollToSpy = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    document.documentElement.scrollTop = 1200;
+    document.body.scrollTop = 800;
+
+    const main = document.createElement("main");
+    main.id = "main-content";
+    main.scrollTop = 640;
+    const mainScrollToSpy = vi.fn();
+    main.scrollTo = mainScrollToSpy;
+    document.body.appendChild(main);
+
+    resetPageScroll();
+
+    expect(windowScrollToSpy).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "instant" });
+    expect(document.documentElement.scrollTop).toBe(0);
+    expect(document.body.scrollTop).toBe(0);
+    expect(main.scrollTop).toBe(0);
+    expect(mainScrollToSpy).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "instant" });
   });
 });

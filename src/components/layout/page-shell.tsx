@@ -1,9 +1,10 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Outlet, useLocation, useNavigate, useSearchParams } from "react-router";
 import type { ThemePreference } from "@/app/theme-provider";
 import { cn } from "@/lib/utils";
 import { trackFeatureUse } from "@/services/analytics";
+import { resetPageScroll } from "@/services/scroll";
 import { UpgradeDialog } from "@/components/modules/subscription/upgrade-dialog";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -80,6 +81,10 @@ export function PageShell({ children }: { children?: ReactNode } = {}) {
     () => parseLaunchWizardInitialValues(searchKey, novoParam),
     [searchKey, novoParam],
   );
+
+  useLayoutEffect(() => {
+    resetPageScroll({ containerId: "main-content" });
+  }, [location.pathname]);
 
   useEffect(() => {
     const targetModule = PATH_TO_MODULE[location.pathname];

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useLandingCta, useScrollSpy } from "@/features/landing/hooks";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { registerBackHandler } from "@/services/native";
+import { scrollToTop } from "@/services/scroll";
 import { LANDING_NAV_LINKS } from "./landing-nav-links";
 import { LandingMobileDrawer } from "./landing-mobile-drawer";
 
@@ -88,6 +89,11 @@ export function LandingHeader() {
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
           <Link
             to={homeUrl}
+            onClick={() => {
+              if (location.pathname === homeUrl || location.pathname === "/apresentacao") {
+                scrollToTop({ sensoryFeedback: true });
+              }
+            }}
             className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
           >
             <BrandLogo markClassName="size-8" showWordmark wordmarkClassName="text-base sm:text-lg" />

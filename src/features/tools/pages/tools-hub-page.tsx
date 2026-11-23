@@ -77,7 +77,7 @@ export function ToolsHubPage() {
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between">
       <ToolsHeader />
 
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-10 space-y-10 flex-1">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-10 space-y-10 flex-1 animate-route-in">
         <section className="text-center space-y-4 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-surface px-3 py-1 text-xs font-semibold text-muted-foreground shadow-xs">
             <Sparkles className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />

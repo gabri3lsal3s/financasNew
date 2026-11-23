@@ -75,24 +75,40 @@ export function LandingFooter() {
               ) : null}
               <a
                 href="#dores"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("dores")?.scrollIntoView({ behavior: "smooth" });
+                }}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 Na Prática
               </a>
               <a
                 href="#profundidade"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("profundidade")?.scrollIntoView({ behavior: "smooth" });
+                }}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 Investimentos &amp; Relatórios
               </a>
               <a
                 href="#simulador"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("simulador")?.scrollIntoView({ behavior: "smooth" });
+                }}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 Simulador Patrimonial
               </a>
               <a
                 href="#precos"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("precos")?.scrollIntoView({ behavior: "smooth" });
+                }}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors py-2 sm:py-0.5 inline-flex items-center rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
                 Planos & Preços

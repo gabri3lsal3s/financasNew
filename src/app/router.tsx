@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { Navigate, BrowserRouter, Route, Routes, useLocation, useNavigate } from "react-router";
 import { appRoutes } from "@/app/routes";
 import { LoadingScreen } from "@/components/layout/loading-screen";
+import { ScrollRestoration } from "@/components/routing/scroll-restoration";
 import { isNativePlatform } from "@/services/native";
 
 /**
@@ -255,6 +256,7 @@ function HashRouteNormalizer() {
 export function AppRouter() {
   return (
     <BrowserRouter>
+      <ScrollRestoration />
       <HashRouteNormalizer />
       <Suspense fallback={<LoadingScreen statusText="Iniciando sessão segura…" />}>
         <Routes>

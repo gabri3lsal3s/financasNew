@@ -53,7 +53,7 @@ export function LegalPageShell({
         id="conteudo-legal"
         tabIndex={-1}
         className={cn(
-          "focus-visible:outline-none flex-1 mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12",
+          "focus-visible:outline-none flex-1 mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8 py-8 sm:py-12 animate-route-in",
           className,
         )}
       >

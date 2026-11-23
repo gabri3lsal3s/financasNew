@@ -303,7 +303,6 @@
   }
 
   html {
-    scroll-behavior: smooth;
     overflow-x: clip;
     -webkit-tap-highlight-color: transparent;
   }

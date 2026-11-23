@@ -68,7 +68,7 @@ export function SubscriptionSuccessPage() {
         }
       />
 
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 py-10 sm:py-14 pb-[calc(2.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] flex flex-col items-center">
+      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 py-10 sm:py-14 pb-[calc(2.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] flex flex-col items-center animate-route-in">
         <div className="w-full max-w-2xl text-center space-y-4">
           <div className="inline-flex size-12 sm:size-14 items-center justify-center rounded-2xl bg-positive/10 border border-positive/20 text-positive-strong shadow-xs">
             <CheckCircle2 className="size-6 sm:size-7" aria-hidden="true" />

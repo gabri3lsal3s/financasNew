@@ -63,7 +63,7 @@ export function SubscriptionCheckoutPage() {
         }
       />
 
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 pt-6 sm:pt-8 pb-[calc(2.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] sm:py-12">
+      <main className="flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 pt-6 sm:pt-8 pb-[calc(2.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] sm:py-12 animate-route-in">
         {c.confirmationSent ? (
           <CheckoutEmailConfirmationView
             planLabel={c.planConfig.title}

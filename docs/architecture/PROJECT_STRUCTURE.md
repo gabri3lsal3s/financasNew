@@ -172,6 +172,7 @@
     │   └── app-lock-overlay.tsx   # Escudo de bloqueio do aplicativo com biometria (App Lock)
     │
     ├── components/
+    │   ├── routing/               # Guards de rota e restauração de rolagem SPA (require-active-account, require-admin-session, require-feature, scroll-restoration)
     │   ├── ui/                    # PRIMITIVOS genéricos (sem domínio): button (+ button-variants), input,
     │   │   │                      #   numeric-input (integração bidirecional c/ calculadora decimal livre),
     │   │   │                      #   card, badge, modal, responsive-dialog (F55 — drawer mobile + modal desktop),
@@ -473,6 +474,7 @@
     │   ├── user-storage.ts        #   Isolamento de localStorage por userId (financas_${userId}_*) + sanitizeLegacyStorage
     │   ├── auth-cleanup.ts        #   resetAppState() — cancelamento de queries, purge de cache, reset de stores e DOM
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
+    │   ├── scroll.ts              #   Serviço canônico de rolagem: scrollToTop (smooth na mesma rota) e resetPageScroll (instantâneo em transições de rota)
     │   ├── toast.ts               #   F30: bus de toasts imperativos (pushToast/dismissToast
     │   │                          #     — pub/sub com Single Toast Mode, auto-dismiss garantido)
     │   ├── audio-fx.ts            #   Feedback sonoro sintetizado via Web Audio (F11)

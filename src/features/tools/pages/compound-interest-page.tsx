@@ -108,7 +108,7 @@ export function CompoundInterestPage() {
     <div className="min-h-dvh bg-background text-foreground flex flex-col justify-between">
       <ToolsHeader />
 
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 flex-1">
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 flex-1 animate-route-in">
         <section className="space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
