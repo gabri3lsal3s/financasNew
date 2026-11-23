@@ -3,6 +3,7 @@ import * as TabsPrimitive from "@radix-ui/react-tabs";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
+import { useHorizontalDragScroll } from "@/hooks/use-horizontal-drag-scroll";
 import { useSwipeNavigation } from "@/hooks/use-swipe-navigation";
 
 export interface TabItem {
@@ -52,6 +53,7 @@ export function Tabs({
   const contentRef = useRef<HTMLDivElement>(null);
   const currentIndex = Math.max(0, items.findIndex((item) => item.value === value));
   const isFullWidth = fullWidth ?? false;
+  const { containerRef: listRef, dragScrollProps } = useHorizontalDragScroll<HTMLDivElement>(value);
 
   const swipe = useSwipeNavigation({
     onNavigate: (direction) => {
@@ -98,11 +100,16 @@ export function Tabs({
   };
 
   return (
-    <TabsPrimitive.Root value={value} onValueChange={handleTabChange} className={className}>
+    <TabsPrimitive.Root
+      value={value}
+      onValueChange={handleTabChange}
+      className={cn("min-w-0 max-w-full", className)}
+    >
       <TabsPrimitive.List
+        ref={listRef}
+        {...dragScrollProps}
         className={cn(
-          "flex gap-1 overflow-x-auto no-scrollbar scroll-smooth",
-          isFullWidth ? "w-full" : "w-full sm:w-auto",
+          "flex w-full max-w-full min-w-0 gap-1 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x",
           variant === "underline"
             ? "border-b border-border"
             : "p-1 rounded-xl bg-muted/60 border border-border/80 backdrop-blur-sm",
@@ -115,10 +122,10 @@ export function Tabs({
             value={item.value}
             aria-label={item.ariaLabel ?? item.label}
             className={cn(
-              "inline-flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap py-2 text-sm font-medium tracking-tight sm:tracking-normal transition-all duration-200 outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:rounded-md cursor-pointer select-none active:scale-[0.98] [&_svg]:size-3.5 sm:[&_svg]:size-4 [&_svg]:shrink-0",
+              "inline-flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap py-2 text-sm font-medium tracking-tight sm:tracking-normal transition-all duration-200 outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:rounded-md cursor-pointer select-none active:scale-[0.98] touch-pan-x [&_svg]:size-3.5 sm:[&_svg]:size-4 [&_svg]:shrink-0",
               isFullWidth
                 ? "flex-1 min-w-0 px-1.5 sm:px-3.5 text-center"
-                : "shrink-0 flex-initial min-w-fit px-3 sm:px-3.5 text-center sm:text-left",
+                : "shrink-0 flex-1 min-w-fit px-3 sm:px-3.5 text-center",
               variant === "underline"
                 ? "border-b-2 border-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-primary-strong data-[state=active]:font-semibold"
                 : "rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface/50 data-[state=active]:bg-surface data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-xs",

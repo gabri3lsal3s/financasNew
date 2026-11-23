@@ -30,52 +30,52 @@ export interface UpgradeDialogProps {
 
 const BENEFITS = [
   {
-    icon: ReceiptText,
-    title: "Leitor OCR de Cupons & Notas Fiscais",
+    icon: Landmark,
+    title: "Caixa Real & Saldo Livre Diário",
     description:
-      "Extração item a item de cupons NFC-e/SAT, boletos e comprovantes Pix sem digitação manual.",
+      "Saiba quanto pode gastar hoje já descontando faturas, contas do mês, reserva e alertas de vencimento.",
+  },
+  {
+    icon: ReceiptText,
+    title: "Captura Inteligente: OCR, Pix & Bancos",
+    description:
+      "Leitura de cupons NFC-e, boletos, comprovantes Pix com memória de categoria e notificações bancárias.",
   },
   {
     icon: CreditCard,
     title: "Multi-Cartões & Parcelas em até 60x",
     description:
-      "Controle do melhor dia de compra, fechamento e projeção detalhada de faturas futuras.",
-  },
-  {
-    icon: Landmark,
-    title: "Previsibilidade & Safe-to-Spend Diário",
-    description:
-      "Termômetro em tempo real do quanto pode gastar com segurança e Radar de Vencimentos.",
-  },
-  {
-    icon: Users,
-    title: "Espaço Família & Viagens",
-    description:
-      "Orçamentos colaborativos em casal com privacidade e racha de contas Pix via link público.",
+      "Melhor dia de compra, fechamento automático, conciliação e projeção completa de faturas futuras.",
   },
   {
     icon: Calculator,
-    title: "Radar de Dívidas & Simuladores",
+    title: "Contas a Pagar/Receber, Contratos & Dívidas",
     description:
-      "Estratégias Bola de Neve e Avalanche com cálculo de amortização e economia de juros.",
+      "Controle de recebíveis, financiamentos Price/SAC e planos de quitação Bola de Neve e Avalanche.",
+  },
+  {
+    icon: Users,
+    title: "Modo Família, Viagens & Racha Pix",
+    description:
+      "Orçamento proporcional do lar, grupos de viagem, vaquinhas e racha de parcelas via link público sem cadastro.",
   },
   {
     icon: TrendingUp,
-    title: "Rebalanceamento de Carteira",
+    title: "Carteira Multi-Ativos & Aportes sem Vendas",
     description:
-      "Aportes matemáticos calculados diretamente para o déficit da meta sem gerar DARF.",
+      "Ações, FIIs, Renda Fixa (CDI/IPCA+) e Exterior (PTAX) com proventos e rebalanceamento inteligente.",
   },
   {
     icon: BarChart3,
-    title: "Radar Fiscal IR & DARF",
+    title: "Preço Teto & Valuation Multimodelo",
     description:
-      "Apuração automática de ganhos líquidos e emissão das guias de recolhimento de investimentos.",
+      "Calcule preço teto e margem de segurança por Bazin, Graham, Gordon e P/VP com nota de tese.",
   },
   {
     icon: FileSpreadsheet,
-    title: "Dossiê Executivo Contábil (.xlsx)",
+    title: "7 Relatórios A4/PDF, Excel & Memória de Cálculo",
     description:
-      "Exportação completa em planilha auditada de 5 abas pronta para o seu contador.",
+      "DRE Pessoal, Balanço 360°, Dossiê da Carteira e planilha de 5 abas (.xlsx) com todas as fórmulas abertas.",
   },
 ] as const;
 

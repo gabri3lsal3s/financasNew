@@ -1,34 +1,39 @@
 import {
   Calendar,
   CreditCard,
+  FileSpreadsheet,
   Layers,
   QrCode,
-  Receipt,
   ShieldCheck,
   TrendingUp,
+  Users,
 } from "lucide-react";
 import { Badge, Card, CardContent, MoneyText } from "@/components/ui";
 
 const PRO_BENEFITS = [
   {
-    title: "Lançamentos e Histórico Ilimitados",
-    description: "Preservação vitalícia de todas as suas receitas, despesas e patrimônio.",
+    title: "Caixa Real, Cartões até 60x & Captura OCR/Pix",
+    description:
+      "Saldo livre para gastar hoje, faturas futuras, contas a pagar/receber e leitura de comprovantes sem digitação.",
     icon: Layers,
   },
   {
-    title: "Multi-Cartões e Parcelamento até 60x",
-    description: "Controle estrito de faturas futuras e competências sem surpresas.",
-    icon: CreditCard,
+    title: "Modo Família, Viagens & Racha Pix",
+    description:
+      "Teto familiar proporcional, grupos de viagem, vaquinhas e divisão de parcelas com link público sem exigir cadastro.",
+    icon: Users,
   },
   {
-    title: "Motor de Rebalanceamento Determinístico",
-    description: "Cálculo matemático do aporte ideal sem fórmulas frágeis de planilha.",
+    title: "Carteira Multi-Ativos, Preço Teto & Aportes",
+    description:
+      "Ações, FIIs, Renda Fixa e Exterior com Valuation (Bazin, Graham, Gordon, P/VP) e rebalanceamento sem vendas.",
     icon: TrendingUp,
   },
   {
-    title: "Radar Fiscal IR e Dossiê Executivo",
-    description: "Relatórios analíticos em Excel e visão consolidada de impostos.",
-    icon: Receipt,
+    title: "7 Relatórios Executivos A4/PDF & Excel (.xlsx)",
+    description:
+      "DRE Pessoal, Balanço 360°, Dossiê da Carteira e planilha auditável de 5 abas com memória de cálculo aberta.",
+    icon: FileSpreadsheet,
   },
 ] as const;
 

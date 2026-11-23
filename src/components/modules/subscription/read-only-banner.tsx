@@ -46,7 +46,8 @@ export function ReadOnlyBanner({ className, onActivatePro }: ReadOnlyBannerProps
           </p>
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             Seu período de teste encerrou. Seus dados e relatórios estão 100% seguros e disponíveis
-            para consulta e exportação. Ative o Plano Pro para liberar novas escritas e edições.
+            para consulta e exportação. Ative o Plano Pro para liberar novos lançamentos, aportes e
+            edições.
           </p>
         </div>
       </div>

@@ -39,10 +39,16 @@ describe("SubscriptionSuccessPage Component", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Lançamentos e Histórico Ilimitados")).toBeInTheDocument();
-    expect(screen.getByText("Multi-Cartões e Parcelamento até 60x")).toBeInTheDocument();
-    expect(screen.getByText("Motor de Rebalanceamento Determinístico")).toBeInTheDocument();
-    expect(screen.getByText("Radar Fiscal IR e Dossiê Executivo")).toBeInTheDocument();
+    expect(
+      screen.getByText("Caixa Real, Cartões até 60x & Captura OCR/Pix"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Modo Família, Viagens & Racha Pix")).toBeInTheDocument();
+    expect(
+      screen.getByText("Carteira Multi-Ativos, Preço Teto & Aportes"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("7 Relatórios Executivos A4/PDF & Excel (.xlsx)"),
+    ).toBeInTheDocument();
   });
 
   it("renderiza mensagem de período de teste ativo quando a cobrança é agendada", () => {

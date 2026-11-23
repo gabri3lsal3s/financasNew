@@ -17,8 +17,9 @@ export function WelcomeIntroStep() {
             </Badge>
           </div>
           <p className="mt-1 text-muted-foreground leading-relaxed">
-            Você tem acesso irrestrito a OCR com inteligência semântica, controle multi-cartões em
-            até 60x, Espaço Família compartilhado e simuladores de dívidas.
+            Você tem acesso irrestrito a Caixa Real e Saldo Livre diário, leitura de comprovantes via
+            OCR e Pix, cartões em até 60x, Modo Família, Viagens, Carteira de Investimentos com
+            Preço Teto e 7 Relatórios Executivos A4/Excel.
           </p>
         </div>
       </div>

@@ -5,15 +5,15 @@ import { cn } from "@/lib/utils";
 import type { SubscriptionPlan } from "@/types";
 
 const BENEFITS = [
-  "Lançamentos e escritas 100% ilimitados",
-  "Leitor OCR de cupons NFC-e, notas fiscais e boletos",
-  "Multi-Cartões + Parcelamentos em até 60x",
-  "Gestão de Dívidas (Snowball / Avalanche) e Juros",
-  "Safe-to-Spend diário e Radar de Vencimentos",
-  "Espaço Família colaborativo e Racha Pix",
-  "Motor determinístico de Rebalanceamento",
-  "Radar Fiscal de IR e DARF automático",
-  "Dossiê Executivo Contábil em Excel (.xlsx)",
+  "Lançamentos, cartões, ativos e histórico 100% ilimitados",
+  "Caixa Real e Saldo Livre para gastar hoje sem comprometer o mês",
+  "Captura sem digitação: Leitor OCR de cupons/boletos, Pix e notificações",
+  "Multi-Cartões em até 60x, melhor dia de compra e faturas futuras",
+  "Contas a Pagar e a Receber, Contratos (Price/SAC) e Quitação de Dívidas",
+  "Modo Família, Viagens, Vaquinhas e Racha Pix com link público sem cadastro",
+  "Carteira Multi-Ativos (Ações, FIIs, Renda Fixa CDI/IPCA+ e Exterior) e Proventos",
+  "Preço Teto & Valuation (Bazin, Graham, Gordon, P/VP) e Aportes sem vendas",
+  "7 Relatórios Executivos A4/PDF, Excel (.xlsx) e Memória de Cálculo aberta",
 ] as const;
 
 export interface CheckoutPlanSummarySidebarProps {

@@ -94,7 +94,7 @@ export function LandingPage() {
 
   return (
     <ScrollRevealProvider resetKey={resetKey}>
-      <div className="min-h-dvh bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
+      <div className="min-h-dvh w-full max-w-full overflow-x-clip bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
         {/* Skip to main content (a11y para teclado e leitores de tela) */}
         <a
           href="#conteudo-principal"
@@ -107,7 +107,7 @@ export function LandingPage() {
         <LandingHeader />
 
         {/* Main Content Editorial */}
-        <main id="conteudo-principal" className="flex-1">
+        <main id="conteudo-principal" className="flex-1 min-w-0 w-full max-w-full">
           <HeroEditorial />
           <UnifiedEcosystemSection onSelectDestination={handleSelectEcosystemDestination} />
           <FinancialPainPointsSection

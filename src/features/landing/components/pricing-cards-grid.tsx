@@ -5,21 +5,22 @@ import { cn } from "@/lib/utils";
 import { ScrollReveal } from "./scroll-reveal";
 
 const TRIAL_FEATURES = [
-  "Lançamentos e escritas 100% liberados",
-  "Gestão de múltiplos cartões e parcelamentos",
-  "Controle de dívidas a pagar e a receber",
-  "Simulador e rebalanceamento de carteira",
+  "Acesso 100% liberado a todos os módulos do Plano Pro por 30 dias",
+  "Caixa Real, Saldo Livre para gastar hoje e Cartões em até 60x",
+  "Captura sem digitação (OCR de cupons/boletos, Pix e notificações)",
+  "Contas a pagar/receber, Modo Família, Viagens e Racha Pix",
+  "Carteira Multi-Ativos, Preço Teto & Valuation e 7 Relatórios A4/Excel",
 ];
 
 const PRO_FEATURES = [
-  { bold: "Lançamentos e escritas 100% ilimitados", rest: "" },
-  { bold: "Leitor OCR", rest: " de cupons NFC-e, boletos e extratos" },
+  { bold: "Lançamentos, cartões, ativos e histórico", rest: " 100% ilimitados" },
+  { bold: "Caixa Real & Saldo Livre Diário", rest: " + Radar Preventivo de vencimentos" },
+  { bold: "Captura sem digitação:", rest: " Leitor OCR (NFC-e/boletos), Pix e notificações" },
   { bold: "Cartões até 60x", rest: " + A Pagar, A Receber & Contratos Price/SAC" },
-  { bold: "Safe-to-Spend diário", rest: " e Radar Preventivo de vencimentos" },
-  { bold: "Modo Família, Viagens", rest: " e Racha de Parcelas via Pix" },
-  { bold: "Metas de Carteira & Governança", rest: " com nota de tese" },
-  { bold: "Valuation (Bazin, Graham, Gordon, FIIs)", rest: " & Aportes sem vender" },
-  { bold: "DRE, Lâmina, Balanço, Excel (5 abas)", rest: " & Memória de Cálculo" },
+  { bold: "Modo Família, Viagens, Vaquinhas", rest: " & Racha Pix sem exigir cadastro" },
+  { bold: "Carteira Multi-Ativos", rest: " (Ações, FIIs, RF CDI/IPCA+ e Exterior) & Proventos" },
+  { bold: "Preço Teto & Valuation", rest: " (Bazin, Graham, Gordon, P/VP) & Aportes sem vender" },
+  { bold: "7 Relatórios Executivos A4/PDF, Excel (.xlsx)", rest: " & Memória de Cálculo" },
 ];
 
 export interface PricingCardsGridProps {
@@ -57,8 +58,8 @@ export function PricingCardsGrid({
               Acesso irrestrito a todas as funcionalidades do Pro
             </p>
             <p className="mt-2.5 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
-              Experimente o poder do Safe-to-Spend, controle de cartões e rebalanceamento com seus
-              dados reais.
+              Experimente do gasto do dia a dia aos seus investimentos com seus próprios dados, sem
+              nenhuma funcionalidade bloqueada.
             </p>
 
             <div className="mt-6 sm:mt-8 flex flex-col gap-2.5 sm:gap-3.5 text-xs sm:text-sm text-muted-foreground">

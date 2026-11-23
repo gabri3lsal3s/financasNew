@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { useHorizontalDragScroll } from "@/hooks/use-horizontal-drag-scroll";
 import { cn } from "@/lib/utils";
 import { triggerSensory } from "@/services/sensory";
 import type { OnboardingGoalId } from "@/types";
@@ -94,6 +95,8 @@ export function VirginAccountHero({
   }
 
   const activeFocus = localFocus;
+  const { containerRef: focusRef, dragScrollProps } =
+    useHorizontalDragScroll<HTMLDivElement>(activeFocus);
   const activeFocusOption =
     FOCUS_OPTIONS.find((opt) => opt.goal === activeFocus) ?? FOCUS_OPTIONS[0]!;
   const firstName = firstNameOf(userName);
@@ -346,7 +349,9 @@ export function VirginAccountHero({
         </div>
 
         <div
-          className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5"
+          ref={focusRef}
+          {...dragScrollProps}
+          className="flex w-full max-w-full min-w-0 items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x pb-0.5 select-none"
           role="group"
           aria-label="Foco inicial opcional"
         >
@@ -360,7 +365,7 @@ export function VirginAccountHero({
                 aria-pressed={isSelected}
                 onClick={() => handleSelectFocus(option.goal)}
                 className={cn(
-                  "shrink-0 flex-initial min-w-fit inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer",
+                  "shrink-0 flex-1 min-w-fit inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer touch-pan-x",
                   isSelected
                     ? "border-primary/40 bg-primary/10 text-primary-strong font-semibold"
                     : "border-border/80 bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-hover",

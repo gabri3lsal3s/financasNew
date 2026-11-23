@@ -2,7 +2,9 @@ import { Link, useLocation } from "react-router";
 import { ArrowLeft, Layers, PieChart, ShieldAlert, TrendingUp } from "lucide-react";
 import { BrandLogo, ThemeToggle } from "@/components/layout";
 import { buttonVariants } from "@/components/ui";
+import { useHorizontalDragScroll } from "@/hooks/use-horizontal-drag-scroll";
 import { cn } from "@/lib/utils";
+import { scrollToTop } from "@/services/scroll";
 
 export interface ToolNavTab {
   path: string;
@@ -35,6 +37,8 @@ const TOOLS_NAV_TABS: ToolNavTab[] = [
 
 export function ToolsHeader() {
   const location = useLocation();
+  const { containerRef: mobileNavRef, dragScrollProps } =
+    useHorizontalDragScroll<HTMLDivElement>(location.pathname);
 
   return (
     <header className="sticky top-0 z-sticky w-full border-b border-border/80 bg-background/95 backdrop-blur-md pt-safe">
@@ -67,6 +71,11 @@ export function ToolsHeader() {
               <Link
                 key={tab.path}
                 to={tab.path}
+                onClick={() => {
+                  if (isActive) {
+                    scrollToTop({ sensoryFeedback: true });
+                  }
+                }}
                 className={cn(
                   "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   isActive
@@ -112,15 +121,24 @@ export function ToolsHeader() {
       </div>
 
       {/* Navegação horizontal rolável em Mobile & Tablet (< lg) */}
-      <div className="flex lg:hidden border-t border-border/80 bg-surface/60 px-4 py-2 overflow-x-auto no-scrollbar scroll-smooth gap-1.5">
+      <div
+        ref={mobileNavRef}
+        {...dragScrollProps}
+        className="flex lg:hidden w-full max-w-full min-w-0 border-t border-border/80 bg-surface/60 px-4 py-2 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x gap-1.5 select-none"
+      >
         {TOOLS_NAV_TABS.map((tab) => {
           const isActive = location.pathname === tab.path;
           return (
             <Link
               key={tab.path}
               to={tab.path}
+              onClick={() => {
+                if (isActive) {
+                  scrollToTop({ sensoryFeedback: true });
+                }
+              }}
               className={cn(
-                "shrink-0 min-w-fit min-h-11 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                "shrink-0 flex-1 min-w-fit min-h-11 inline-flex items-center justify-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring touch-pan-x",
                 isActive
                   ? "bg-primary-strong text-primary-foreground dark:bg-primary font-semibold"
                   : "bg-surface text-muted-foreground hover:text-foreground border border-border/80",

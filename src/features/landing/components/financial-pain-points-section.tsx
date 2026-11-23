@@ -8,6 +8,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useHorizontalDragScroll } from "@/hooks/use-horizontal-drag-scroll";
 import { triggerSensory } from "@/services/sensory";
 import { ScrollReveal } from "./scroll-reveal";
 import { SharedFinancesShowcase } from "./shared-finances-showcase";
@@ -77,6 +78,8 @@ export function FinancialPainPointsSection({
 }: FinancialPainPointsSectionProps) {
   const [internalPain, setInternalPain] = useState<PainKey>("cash");
   const activePain = controlledPain ?? internalPain;
+  const { containerRef: pillsRef, dragScrollProps } =
+    useHorizontalDragScroll<HTMLDivElement>(activePain);
 
   const selectPain = (pain: PainKey) => {
     triggerSensory("selection");
@@ -86,7 +89,7 @@ export function FinancialPainPointsSection({
 
   return (
     <section id="dores" className="py-14 md:py-28 border-t border-border/60 scroll-mt-20">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 space-y-8 sm:space-y-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12 space-y-8 sm:space-y-12 min-w-0 w-full">
         <ScrollReveal className="text-center max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs sm:text-sm font-semibold text-primary-strong">
             <Sparkles className="size-3.5 sm:size-4" aria-hidden="true" />
@@ -103,7 +106,9 @@ export function FinancialPainPointsSection({
 
         {/* Pills horizontais no mobile (< lg) — Regra 9 */}
         <div
-          className="flex lg:hidden items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth pb-1"
+          ref={pillsRef}
+          {...dragScrollProps}
+          className="flex lg:hidden w-full max-w-full min-w-0 items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth touch-pan-x pb-1 select-none"
           role="tablist"
           aria-label="Cenários financeiros do dia a dia"
         >
@@ -118,7 +123,7 @@ export function FinancialPainPointsSection({
                 aria-selected={isSelected}
                 onClick={() => selectPain(option.key)}
                 className={cn(
-                  "shrink-0 flex-initial min-w-fit inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors cursor-pointer",
+                  "shrink-0 flex-1 min-w-fit inline-flex items-center justify-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer touch-pan-x",
                   isSelected
                     ? "border-primary bg-primary/10 text-primary-strong font-semibold"
                     : "border-border/80 bg-surface text-muted-foreground hover:text-foreground",
@@ -131,7 +136,7 @@ export function FinancialPainPointsSection({
           })}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start min-w-0">
           {/* Lista vertical no desktop */}
           <div
             className="hidden lg:flex lg:col-span-5 flex-col gap-2.5"
@@ -176,7 +181,7 @@ export function FinancialPainPointsSection({
           </div>
 
           {/* Palco Interativo */}
-          <div key={activePain} className="lg:col-span-7 animate-fade-slide-in">
+          <div key={activePain} className="lg:col-span-7 min-w-0 w-full animate-fade-slide-in">
             {activePain === "cash" ? <PainCashPreview /> : null}
             {activePain === "capture" ? <PainCapturePreview /> : null}
             {activePain === "debts" ? <PainDebtsPreview /> : null}

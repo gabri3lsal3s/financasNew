@@ -31,10 +31,14 @@ describe("UpgradeDialog component", () => {
     );
 
     expect(screen.getByText("Ativar Plano Pro")).toBeInTheDocument();
-    expect(screen.getByText("Leitor OCR de Cupons & Notas Fiscais")).toBeInTheDocument();
+    expect(screen.getByText("Caixa Real & Saldo Livre Diário")).toBeInTheDocument();
+    expect(screen.getByText("Captura Inteligente: OCR, Pix & Bancos")).toBeInTheDocument();
     expect(screen.getByText("Multi-Cartões & Parcelas em até 60x")).toBeInTheDocument();
-    expect(screen.getByText("Previsibilidade & Safe-to-Spend Diário")).toBeInTheDocument();
-    expect(screen.getByText("Espaço Família & Viagens")).toBeInTheDocument();
+    expect(screen.getByText("Modo Família, Viagens & Racha Pix")).toBeInTheDocument();
+    expect(screen.getByText("Preço Teto & Valuation Multimodelo")).toBeInTheDocument();
+    expect(
+      screen.getByText("7 Relatórios A4/PDF, Excel & Memória de Cálculo"),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Apenas R\$\s*0,39 por dia/i)).toBeInTheDocument();
     expect(screen.getByText(/R\$\s*0,00 cobrados hoje/i)).toBeInTheDocument();
   });
