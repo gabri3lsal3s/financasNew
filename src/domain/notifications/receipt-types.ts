@@ -8,6 +8,27 @@ export type ReceiptKind =
   | "wire_transfer"
   | "generic";
 
+export type ConfidenceLevel = "high" | "medium" | "low";
+
+export interface ReceiptFieldConfidence {
+  amount: ConfidenceLevel;
+  counterparty: ConfidenceLevel;
+  nature: ConfidenceLevel;
+  date: ConfidenceLevel;
+}
+
+export type ReceiptExtractionSource =
+  | "local_deterministic"
+  | "cache_local"
+  | "cache_remote"
+  | "ai_text"
+  | "ai_vision";
+
+export interface ReceiptUserContext {
+  userFullName?: string | null;
+  userCpf?: string | null;
+}
+
 export type CardSlipModality =
   | "credit_sight"
   | "credit_store_installments"
@@ -70,4 +91,11 @@ export interface UniversalReceiptData {
   netAmountCents?: number;
   feeCents?: number;
   rawCleanText: string;
+  recipientTaxId?: string;
+  payerTaxId?: string;
+  confidence?: ConfidenceLevel;
+  confidenceScore?: number;
+  fieldConfidence?: ReceiptFieldConfidence;
+  isSameTitularity?: boolean;
+  extractionSource?: ReceiptExtractionSource;
 }

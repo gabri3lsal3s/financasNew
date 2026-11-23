@@ -27,6 +27,7 @@ import {
   parsePixShareText,
   resolveBankName,
 } from "./bank-parser";
+import { computeEMVCRC16 } from "./pix-emv-parser";
 
 
 describe("bank-parser (Domínio de Notificações Bancárias)", () => {
@@ -566,7 +567,8 @@ describe("bank-parser (Domínio de Notificações Bancárias)", () => {
     });
 
     it("decodifica código Pix Copia e Cola EMVCo compartilhado", () => {
-      const payload = "00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540550.005802BR5915PADARIA ESTRELA6009SAO PAULO6304ABCD";
+      const base = "00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540550.005802BR5915PADARIA ESTRELA6009SAO PAULO6304";
+      const payload = `${base}${computeEMVCRC16(base)}`;
       const parsed = parsePixShareText(payload);
       expect(parsed).not.toBeNull();
       expect(parsed?.amountCents).toBe(5000);

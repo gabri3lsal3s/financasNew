@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ConfirmDialog } from "@/components/ui";
 import { AttachReceiptDialog } from "@/components/modules/attach-receipt-dialog";
 import { SplitExpenseDialog } from "@/components/modules/split-expense-dialog";
-import type { ParsedBankTransaction } from "@/domain/notifications";
+import type { ParsedBankTransaction, ReceiptUserContext } from "@/domain/notifications";
 import type { CreditCard } from "@/types";
 import type { CreatedSplitExpense } from "./wizard-types";
 
@@ -13,6 +13,11 @@ export interface LaunchWizardModalsProps {
   attachOpen: boolean;
   onAttachOpenChange: (open: boolean) => void;
   onReceiptParsed: (parsed: ParsedBankTransaction) => void;
+  onNavigateToStatementImport?: () => void;
+  userContext?: ReceiptUserContext;
+  userId?: string | null;
+  isReadOnlyMode?: boolean;
+  aiExtractionEnabled?: boolean;
   cards: CreditCard[] | undefined;
   createdSplitExpense: CreatedSplitExpense | null;
   onClearCreatedSplit: () => void;
@@ -28,6 +33,11 @@ export function LaunchWizardModals({
   attachOpen,
   onAttachOpenChange,
   onReceiptParsed,
+  onNavigateToStatementImport,
+  userContext,
+  userId,
+  isReadOnlyMode,
+  aiExtractionEnabled,
   cards,
   createdSplitExpense,
   onClearCreatedSplit,
@@ -53,6 +63,11 @@ export function LaunchWizardModals({
         open={attachOpen}
         onOpenChange={onAttachOpenChange}
         onParsed={onReceiptParsed}
+        onNavigateToStatementImport={onNavigateToStatementImport}
+        userContext={userContext}
+        userId={userId}
+        isReadOnlyMode={isReadOnlyMode}
+        aiExtractionEnabled={aiExtractionEnabled}
         cards={cards}
       />
 

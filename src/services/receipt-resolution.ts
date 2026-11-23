@@ -1,11 +1,12 @@
 /**
  * Serviço unificado de resolução, OCR, compressão e hash SHA-256 de comprovantes.
  *
- * Consolida os pipelines anteriormente duplicados em `AttachReceiptDialog`,
- * `LaunchWizard` e `ShareTargetPage` em um ponto único testável e tipado.
+ * Consolida os pipelines de extração e parsing determinístico, com cache local LGPD
+ * por SHA-256 sobre o arquivo bruto (sem armazenar imagem ou texto bruto).
  */
 
 import {
+  detectDocumentMultiplicity,
   formatReceiptItemsObservation,
   getReceiptKindLabel,
   parseBankNotification,
@@ -14,8 +15,10 @@ import {
   resolveBestMatchingCard,
   resolveMerchantIdentity,
   type CardDigitsMapping,
+  type DocumentMultiplicity,
   type MerchantLearningMemory,
   type ParsedBankTransaction,
+  type ReceiptUserContext,
   type ResolvedMerchantIdentity,
   type UniversalReceiptData,
 } from "@/domain/notifications";
@@ -25,18 +28,37 @@ import {
   getMerchantLearningMemory,
 } from "@/services/merchant-learning";
 import {
+  convertAiReceiptToUniversalData,
+  extractSingleReceiptWithAi,
+  formatAiQuotaResetHint,
+  type AiSingleReceiptClientResult,
+} from "@/services/ai-assistant";
+import {
   extractReceiptTextFromFile,
   MAX_RECEIPT_FILE_SIZE_BYTES,
   processPixShare,
 } from "@/services/native";
+import {
+  getUserStorageItem,
+  removeUserStorageItem,
+  setUserStorageItem,
+} from "@/services/user-storage";
 import type { CreditCard } from "@/types/schema";
+import type { AiFallbackReason } from "../../supabase/functions/_shared/ai-schemas";
+
+export const AI_FALLBACK_CONFIDENCE_THRESHOLD = 0.85;
 
 const DEFAULT_COMPRESS_MAX_BYTES = 1.5 * 1024 * 1024;
 const DEFAULT_COMPRESS_MAX_DIMENSION = 2000;
 const DEFAULT_COMPRESS_QUALITY = 0.85;
 
+const RECEIPT_SCAN_CACHE_STORAGE_KEY = "receipt_scan_cache_v1";
+const RECEIPT_SCAN_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 dias
+const RECEIPT_SCAN_CACHE_MAX_ENTRIES = 50;
+
 export type ReceiptScanStatus =
   | "success"
+  | "multi_statement"
   | "file_too_large"
   | "unsupported_format"
   | "empty_text"
@@ -48,6 +70,10 @@ export interface ResolveReceiptOptions {
   isManualAttachment?: boolean;
   /** Cartões de crédito ativos para auto-vínculo. */
   cards?: CreditCard[];
+  /** Contexto opcional do titular autenticado (profiles.name / CPF). */
+  userContext?: ReceiptUserContext;
+  /** Identificador explícito do usuário ativo para isolamento de cache local. */
+  userId?: string | null;
   /** Memória de aprendizado de estabelecimentos (padrão: lida do serviço). */
   userMemory?: MerchantLearningMemory;
   /** Mapeamento de 4 dígitos finais -> cardId. */
@@ -72,10 +98,16 @@ export interface ResolveAndScanReceiptFileOptions extends ResolveReceiptOptions 
   compressImage?: boolean;
   /** Opções de compressão de imagem. */
   compression?: CompressReceiptImageOptions;
-  /** Se true, calcula checksum SHA-256 do arquivo (padrão: true). */
+  /** Se true, calcula checksum SHA-256 do arquivo bruto original (padrão: true). */
   computeHash?: boolean;
+  /** Se true, consulta e grava cache estruturado local por SHA-256 (padrão: true). */
+  useLocalCache?: boolean;
   /** Limite máximo de tamanho permitido (padrão: 15 MB). */
   maxSizeBytes?: number;
+  /** Permite fallback seletivo para Micro-IA quando confiança local < 0.85 ou OCR vazio (padrão: true). */
+  aiFallbackEnabled?: boolean;
+  /** Bloqueia chamada de rede à Micro-IA quando conta está em modo somente leitura. */
+  isReadOnlyMode?: boolean;
 }
 
 export interface ResolvedReceiptResult {
@@ -96,7 +128,114 @@ export interface ScanReceiptFileResult {
   identity: ResolvedMerchantIdentity | null;
   matchedCard?: CreditCard;
   kindLabel?: string;
+  multiplicity?: DocumentMultiplicity;
+  aiFallbackReason?: AiFallbackReason;
+  quotaResetAt?: string;
   errorMessage?: string;
+}
+
+interface CachedReceiptScanEntry {
+  sha256: string;
+  contextSig: string;
+  cachedAt: number;
+  parsed: Omit<ParsedBankTransaction, "rawText">;
+  identity: ResolvedMerchantIdentity;
+  kindLabel: string;
+}
+
+function buildContextSignature(userContext?: ReceiptUserContext): string {
+  const normalizedName = (userContext?.userFullName ?? "").trim().toLowerCase();
+  const hasCpf = Boolean(userContext?.userCpf && userContext.userCpf.trim().length > 0);
+  if (!normalizedName && !hasCpf) return "";
+  const input = `${normalizedName}|${hasCpf ? "cpf1" : "cpf0"}`;
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16);
+}
+
+function readLocalCacheEntries(userId?: string | null): CachedReceiptScanEntry[] {
+  const raw = getUserStorageItem(RECEIPT_SCAN_CACHE_STORAGE_KEY, userId);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const cutoff = Date.now() - RECEIPT_SCAN_CACHE_TTL_MS;
+    return parsed.filter(
+      (item): item is CachedReceiptScanEntry =>
+        typeof item === "object" &&
+        item !== null &&
+        typeof (item as CachedReceiptScanEntry).sha256 === "string" &&
+        typeof (item as CachedReceiptScanEntry).cachedAt === "number" &&
+        (item as CachedReceiptScanEntry).cachedAt >= cutoff &&
+        typeof (item as CachedReceiptScanEntry).parsed === "object" &&
+        (item as CachedReceiptScanEntry).parsed !== null &&
+        typeof (item as CachedReceiptScanEntry).identity === "object" &&
+        (item as CachedReceiptScanEntry).identity !== null,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalCacheEntries(
+  entries: CachedReceiptScanEntry[],
+  userId?: string | null,
+): void {
+  const trimmed = [...entries]
+    .sort((a, b) => b.cachedAt - a.cachedAt)
+    .slice(0, RECEIPT_SCAN_CACHE_MAX_ENTRIES);
+  setUserStorageItem(RECEIPT_SCAN_CACHE_STORAGE_KEY, JSON.stringify(trimmed), userId);
+}
+
+function lookupLocalReceiptCache(
+  sha256: string,
+  userContext?: ReceiptUserContext,
+  userId?: string | null,
+): CachedReceiptScanEntry | null {
+  const contextSig = buildContextSignature(userContext);
+  const validEntries = readLocalCacheEntries(userId);
+  const match = validEntries.find(
+    (entry) => entry.sha256 === sha256 && entry.contextSig === contextSig,
+  );
+  return match ?? null;
+}
+
+function saveLocalReceiptCache(
+  sha256: string,
+  resolved: ResolvedReceiptResult,
+  userContext?: ReceiptUserContext,
+  userId?: string | null,
+): void {
+  const contextSig = buildContextSignature(userContext);
+  // Política LGPD: nunca persistir rawText nem conteúdo bruto de imagem no localStorage
+  const parsedWithoutRawText = { ...resolved.parsed };
+  delete (parsedWithoutRawText as { rawText?: string }).rawText;
+
+  const nextEntry: CachedReceiptScanEntry = {
+    sha256,
+    contextSig,
+    cachedAt: Date.now(),
+    parsed: parsedWithoutRawText,
+    identity: resolved.identity,
+    kindLabel: resolved.kindLabel,
+  };
+
+  const existing = readLocalCacheEntries(userId).filter(
+    (entry) => !(entry.sha256 === sha256 && entry.contextSig === contextSig),
+  );
+  existing.unshift(nextEntry);
+  writeLocalCacheEntries(existing, userId);
+}
+
+/**
+ * Remove entradas armazenadas em cache local para o usuário ativo (ou userId informado).
+ */
+export function clearLocalReceiptScanCache(userId?: string | null): void {
+  removeUserStorageItem(RECEIPT_SCAN_CACHE_STORAGE_KEY, userId);
 }
 
 async function readBlobAsArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
@@ -228,7 +367,9 @@ export function resolveReceiptTransaction(
     : (rawParsed as ParsedBankTransaction);
 
   const merchantSource = universal
-    ? universal.merchantOrBeneficiary || universal.description
+    ? universal.nature === "income" && universal.payerOrSource
+      ? universal.payerOrSource
+      : universal.merchantOrBeneficiary || universal.description
     : legacy?.merchant || legacy?.description || "";
 
   const pixKey =
@@ -283,7 +424,11 @@ export function resolveReceiptTransaction(
         : undefined;
 
     const resolvedNature =
-      identity.defaultNature || (universal.nature === "income" ? "income" : "expense");
+      universal.fieldConfidence?.nature === "high" || universal.isSameTitularity
+        ? universal.nature === "income"
+          ? "income"
+          : "expense"
+        : identity.defaultNature || (universal.nature === "income" ? "income" : "expense");
 
     const parsed: ParsedBankTransaction = {
       id: universal.id,
@@ -312,6 +457,11 @@ export function resolveReceiptTransaction(
       recipientName: universal.merchantOrBeneficiary,
       notes: itemsNotes,
       source: "receipt",
+      confidence: universal.confidence,
+      confidenceScore: universal.confidenceScore,
+      fieldConfidence: universal.fieldConfidence,
+      isSameTitularity: universal.isSameTitularity,
+      extractionSource: universal.extractionSource ?? "local_deterministic",
     };
 
     return {
@@ -337,6 +487,7 @@ export function resolveReceiptTransaction(
     cardId: matchedCard?.id || legacyTx.cardId,
     cardBrand: matchedCard?.brand || legacyTx.cardBrand,
     pixKey: pixKey || identity.pixKey,
+    extractionSource: legacyTx.extractionSource ?? "local_deterministic",
   };
 
   return {
@@ -361,7 +512,11 @@ export function resolveReceiptFromText(
     return null;
   }
 
-  const universal = parseUniversalReceipt(trimmed, Boolean(options?.isManualAttachment));
+  const universal = parseUniversalReceipt(
+    trimmed,
+    Boolean(options?.isManualAttachment),
+    options?.userContext,
+  );
   if (universal) {
     return resolveReceiptTransaction(universal, options);
   }
@@ -386,13 +541,80 @@ export function resolveReceiptFromText(
   return resolveReceiptTransaction(legacyParsed, options);
 }
 
+async function tryAiReceiptFallback(params: {
+  sha256: string;
+  trimmedText?: string;
+  isRasterImage: boolean;
+  isPdf: boolean;
+  preparedFile: File;
+  rawFile: File;
+  shouldUseLocalCache: boolean;
+  fallbackDateIso?: string;
+  options?: ResolveAndScanReceiptFileOptions;
+}): Promise<
+  | { ok: true; resolved: ResolvedReceiptResult }
+  | { ok: false; reason: AiFallbackReason; quotaResetAt?: string }
+> {
+  const aiRes = await extractSingleReceiptWithAi({
+    sha256: params.sha256,
+    text: params.trimmedText,
+    imageBlob: params.isRasterImage ? params.preparedFile : undefined,
+    pdfFile: params.isPdf ? params.rawFile : undefined,
+    userFullName: params.options?.userContext?.userFullName,
+    userId: params.options?.userId,
+    isReadOnlyMode: params.options?.isReadOnlyMode,
+    featureEnabled: params.options?.aiFallbackEnabled,
+  });
+
+  if (!aiRes.ok) {
+    return { ok: false, reason: aiRes.reason, quotaResetAt: aiRes.quotaResetAt };
+  }
+
+  const resolvedFromAi = buildAiResolvedResult(aiRes, params.options, params.fallbackDateIso);
+  if (params.shouldUseLocalCache) {
+    saveLocalReceiptCache(
+      params.sha256,
+      resolvedFromAi,
+      params.options?.userContext,
+      params.options?.userId,
+    );
+  }
+  return { ok: true, resolved: resolvedFromAi };
+}
+
+function canAttemptAiFallback(
+  sha256: string | null,
+  options?: ResolveAndScanReceiptFileOptions,
+): sha256 is string {
+  if (!sha256) return false;
+  if (options?.aiFallbackEnabled === false) return false;
+  if (options?.isReadOnlyMode === true) return false;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
+  return true;
+}
+
+function buildAiResolvedResult(
+  aiResult: Extract<AiSingleReceiptClientResult, { ok: true }>,
+  options?: ResolveAndScanReceiptFileOptions,
+  fallbackDateIso?: string,
+): ResolvedReceiptResult {
+  const universalAi = convertAiReceiptToUniversalData(
+    aiResult.data,
+    aiResult.source,
+    fallbackDateIso,
+  );
+  return resolveReceiptTransaction(universalAi, options);
+}
+
 /**
  * Pipeline único de resolução e varredura de arquivo de comprovante (PDF ou imagem):
  * 1. Valida tamanho (15 MB padrão) e bloqueia SVG;
- * 2. Comprime imagens grandes quando aplicável;
- * 3. Calcula hash criptográfico SHA-256;
- * 4. Extrai texto via OCR (ML Kit nativo, unpdf ou Tesseract Web);
- * 5. Interpreta o comprovante e resolve identidade de estabelecimento e cartão.
+ * 2. Calcula hash criptográfico SHA-256 sobre o arquivo ORIGINAL bruto (antes do canvas);
+ * 3. Consulta cache local LGPD por SHA-256 (0 OCR / 0 compressão / 0 IA em acerto);
+ * 4. Comprime imagens grandes quando aplicável e extrai texto (unpdf / ML Kit / Tesseract);
+ * 5. Detecta documentos multi-lançamento (extratos/faturas) -> status `multi_statement`;
+ * 6. Interpreta com contexto do titular e, se confiança < 0.85 ou OCR vazio/não reconhecido,
+ *    aciona fallback seletivo de Micro-IA com degradação silenciosa garantida.
  */
 export async function resolveAndScanReceiptFile(
   file: File,
@@ -440,19 +662,117 @@ export async function resolveAndScanReceiptFile(
     };
   }
 
+  // Passo 1: SHA-256 calculado sempre sobre o arquivo bruto original antes de qualquer compressão em <canvas>
+  const shouldComputeHash = options?.computeHash !== false;
+  const sha256 = shouldComputeHash ? await computeFileSha256(file) : null;
+  const shouldUseLocalCache = Boolean(sha256 && options?.useLocalCache !== false);
+
+  // Passo 2: Consulta cache local estruturado antes de comprimir ou acionar OCR
+  if (shouldUseLocalCache && sha256) {
+    const cached = lookupLocalReceiptCache(sha256, options?.userContext, options?.userId);
+    if (cached) {
+      const cardDigitsMapping = options?.cardDigitsMapping ?? getCardDigitsMapping();
+      const bankCardMapping = options?.bankCardMapping ?? getBankCardMapping();
+      const matchedCard = resolveBestMatchingCard(options?.cards, {
+        cardId: cached.parsed.cardId || cached.identity.preferredCardId,
+        cardLastDigits: cached.parsed.cardLastDigits,
+        bankName: cached.parsed.bankName,
+        issuerBank: cached.parsed.issuerBank || cached.parsed.bankName,
+        cardBrand: cached.parsed.cardBrand,
+        cardDigitsMapping,
+        bankCardMapping,
+        preferredCardId: cached.identity.preferredCardId,
+      });
+
+      const hydratedParsed: ParsedBankTransaction = {
+        ...cached.parsed,
+        rawText: "",
+        cardId: matchedCard?.id || cached.parsed.cardId,
+        cardBrand: matchedCard?.brand || cached.parsed.cardBrand,
+        extractionSource: "cache_local",
+      };
+
+      return {
+        status: "success",
+        ok: true,
+        file,
+        sha256,
+        extractedText: "",
+        parsed: hydratedParsed,
+        identity: cached.identity,
+        matchedCard,
+        kindLabel: cached.kindLabel,
+        multiplicity: "single_receipt",
+      };
+    }
+  }
+
+  const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
+  const isRasterImage =
+    (file.type.startsWith("image/") && file.type !== "image/svg+xml") ||
+    lowerName.endsWith(".png") ||
+    lowerName.endsWith(".jpg") ||
+    lowerName.endsWith(".jpeg") ||
+    lowerName.endsWith(".webp");
+
   const shouldCompress = options?.compressImage !== false;
   const preparedFile = shouldCompress
     ? await compressReceiptImageIfNeeded(file, options?.compression)
     : file;
-
-  const shouldComputeHash = options?.computeHash !== false;
-  const sha256 = shouldComputeHash ? await computeFileSha256(preparedFile) : null;
 
   try {
     const extractedRaw = await extractReceiptTextFromFile(preparedFile);
     const trimmed = extractedRaw.trim();
 
     if (!trimmed) {
+      if (canAttemptAiFallback(sha256, options) && (isRasterImage || isPdf)) {
+        const aiAttempt = await tryAiReceiptFallback({
+          sha256,
+          isRasterImage,
+          isPdf,
+          preparedFile,
+          rawFile: file,
+          shouldUseLocalCache,
+          options,
+        });
+        if (aiAttempt.ok) {
+          return {
+            status: "success",
+            ok: true,
+            file: preparedFile,
+            sha256,
+            extractedText: "",
+            parsed: aiAttempt.resolved.parsed,
+            identity: aiAttempt.resolved.identity,
+            matchedCard: aiAttempt.resolved.matchedCard,
+            kindLabel: aiAttempt.resolved.kindLabel,
+            multiplicity: "single_receipt",
+          };
+        }
+
+        const quotaMessage =
+          aiAttempt.reason === "quota_exceeded"
+            ? `Não foi possível ler o texto deste arquivo e sua cota de leitura assistida renova em ${formatAiQuotaResetHint(
+                aiAttempt.quotaResetAt,
+              )}. Preencha manualmente ou envie um PDF digital.`
+            : undefined;
+
+        return {
+          status: "empty_text",
+          ok: false,
+          file: preparedFile,
+          sha256,
+          extractedText: "",
+          parsed: null,
+          identity: null,
+          aiFallbackReason: aiAttempt.reason,
+          quotaResetAt: aiAttempt.quotaResetAt,
+          errorMessage:
+            quotaMessage ??
+            "Não foi possível ler o texto deste arquivo. Certifique-se de que o comprovante esteja nítido ou seja um PDF digital emitido pelo banco.",
+        };
+      }
+
       return {
         status: "empty_text",
         ok: false,
@@ -466,12 +786,78 @@ export async function resolveAndScanReceiptFile(
       };
     }
 
+    const multiplicity = detectDocumentMultiplicity(trimmed);
+    if (multiplicity === "multi_statement") {
+      return {
+        status: "multi_statement",
+        ok: false,
+        file: preparedFile,
+        sha256,
+        extractedText: trimmed,
+        parsed: null,
+        identity: null,
+        multiplicity,
+        errorMessage:
+          "Este arquivo contém vários lançamentos de extrato ou fatura. Use a importação de fatura para importar transações em lote.",
+      };
+    }
+
     const resolved = resolveReceiptFromText(trimmed, {
       ...options,
       isManualAttachment: options?.isManualAttachment ?? true,
     });
 
     if (!resolved) {
+      if (canAttemptAiFallback(sha256, options)) {
+        const aiAttempt = await tryAiReceiptFallback({
+          sha256,
+          trimmedText: trimmed,
+          isRasterImage,
+          isPdf,
+          preparedFile,
+          rawFile: file,
+          shouldUseLocalCache,
+          options,
+        });
+        if (aiAttempt.ok) {
+          return {
+            status: "success",
+            ok: true,
+            file: preparedFile,
+            sha256,
+            extractedText: trimmed,
+            parsed: aiAttempt.resolved.parsed,
+            identity: aiAttempt.resolved.identity,
+            matchedCard: aiAttempt.resolved.matchedCard,
+            kindLabel: aiAttempt.resolved.kindLabel,
+            multiplicity,
+          };
+        }
+
+        const quotaMessage =
+          aiAttempt.reason === "quota_exceeded"
+            ? `Não foi possível identificar os campos automaticamente e sua cota de leitura assistida renova em ${formatAiQuotaResetHint(
+                aiAttempt.quotaResetAt,
+              )}. Preencha os campos manualmente.`
+            : undefined;
+
+        return {
+          status: "unrecognized",
+          ok: false,
+          file: preparedFile,
+          sha256,
+          extractedText: trimmed,
+          parsed: null,
+          identity: null,
+          multiplicity,
+          aiFallbackReason: aiAttempt.reason,
+          quotaResetAt: aiAttempt.quotaResetAt,
+          errorMessage:
+            quotaMessage ??
+            "Não foi possível identificar informações financeiras válidas (valor, data e destinatário) no comprovante. Verifique o arquivo e tente novamente.",
+        };
+      }
+
       return {
         status: "unrecognized",
         ok: false,
@@ -480,9 +866,39 @@ export async function resolveAndScanReceiptFile(
         extractedText: trimmed,
         parsed: null,
         identity: null,
+        multiplicity,
         errorMessage:
           "Não foi possível identificar informações financeiras válidas (valor, data e destinatário) no comprovante. Verifique o arquivo e tente novamente.",
       };
+    }
+
+    let finalResolved = resolved;
+    const localConfidenceScore = resolved.parsed.confidenceScore ?? 1;
+    if (
+      localConfidenceScore < AI_FALLBACK_CONFIDENCE_THRESHOLD &&
+      canAttemptAiFallback(sha256, options)
+    ) {
+      const aiAttempt = await tryAiReceiptFallback({
+        sha256,
+        trimmedText: trimmed,
+        isRasterImage,
+        isPdf,
+        preparedFile,
+        rawFile: file,
+        shouldUseLocalCache: false,
+        fallbackDateIso: resolved.parsed.date,
+        options,
+      });
+      if (aiAttempt.ok) {
+        const aiScore = aiAttempt.resolved.parsed.confidenceScore ?? 0;
+        if (aiScore >= localConfidenceScore) {
+          finalResolved = aiAttempt.resolved;
+        }
+      }
+    }
+
+    if (shouldUseLocalCache && sha256) {
+      saveLocalReceiptCache(sha256, finalResolved, options?.userContext, options?.userId);
     }
 
     return {
@@ -491,10 +907,11 @@ export async function resolveAndScanReceiptFile(
       file: preparedFile,
       sha256,
       extractedText: trimmed,
-      parsed: resolved.parsed,
-      identity: resolved.identity,
-      matchedCard: resolved.matchedCard,
-      kindLabel: resolved.kindLabel,
+      parsed: finalResolved.parsed,
+      identity: finalResolved.identity,
+      matchedCard: finalResolved.matchedCard,
+      kindLabel: finalResolved.kindLabel,
+      multiplicity,
     };
   } catch {
     return {

@@ -17,7 +17,8 @@ export interface DashboardPixClipboardCardProps {
 }
 
 /**
- * Cartão contextual de sugestão para Pix copiado na área de transferência.
+ * Cartão contextual de sugestão para Pix Copia e Cola detectado na área de transferência
+ * (com ou sem valor definido no BR Code).
  */
 export function DashboardPixClipboardCard({
   detected,
@@ -25,11 +26,12 @@ export function DashboardPixClipboardCard({
   onDismiss,
 }: DashboardPixClipboardCardProps) {
   const { candidate, identity } = detected;
+  const hasAmount = candidate.valueCents > 0;
 
   const handleLaunch = () => {
     onLaunch({
-      valorCents: candidate.valueCents,
-      desc: identity.friendlyName || candidate.description,
+      valorCents: hasAmount ? candidate.valueCents : undefined,
+      desc: identity.friendlyName || candidate.recipientName || candidate.description,
       categoria: identity.categorySlug,
       tipo: identity.defaultNature || candidate.nature,
       forma: "pix",
@@ -39,6 +41,11 @@ export function DashboardPixClipboardCard({
 
   const title = identity.friendlyName || candidate.recipientName || "Pix Detectado";
   const isIncome = candidate.nature === "income";
+  const ctaLabel = !hasAmount
+    ? "Informar valor"
+    : isIncome
+      ? "Lançar Receita"
+      : "Lançar Despesa";
 
   return (
     <div
@@ -58,8 +65,17 @@ export function DashboardPixClipboardCard({
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:line-clamp-1 break-words">
-            <MoneyText cents={candidate.valueCents} tone="default" className="font-semibold" /> ·{" "}
-            {identity.isLearned ? `Categoria: ${identity.categorySlug}` : "Toque para confirmar lançamento"}
+            {hasAmount ? (
+              <>
+                <MoneyText cents={candidate.valueCents} tone="default" className="font-semibold" />{" "}
+                ·{" "}
+                {identity.isLearned
+                  ? `Categoria: ${identity.categorySlug}`
+                  : "Toque para confirmar lançamento"}
+              </>
+            ) : (
+              "Valor em aberto · Toque para informar o valor e lançar"
+            )}
           </p>
         </div>
       </div>
@@ -74,7 +90,7 @@ export function DashboardPixClipboardCard({
           className="h-8 gap-1.5 px-3 text-xs flex-1 sm:flex-initial"
         >
           <Zap className="size-3.5" aria-hidden="true" />
-          <span>{isIncome ? "Lançar Receita" : "Lançar Despesa"}</span>
+          <span>{ctaLabel}</span>
         </Button>
 
         <Button

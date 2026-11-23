@@ -1,9 +1,20 @@
 /**
- * Parser puro de chaves Pix, links de cobrança e mensagens de compartilhamento bancário.
+ * Parser estrito de chaves Pix isoladas, extração auxiliar em comprovantes e utilitários de texto Pix.
+ *
+ * Regras de rigor (Fase A):
+ * - Chaves Pix isoladas (`PIX_KEY`) são aceitas somente quando a string inteira (ou após rótulo curto explícito)
+ *   passa por validação estrita: CPF/CNPJ via Módulo 11 oficial, EVP via UUID v4 estrito, E-mail RFC completo,
+ *   e Celular com DDD oficial Anatel + 9º dígito.
+ * - Nunca infere valor monetário de uma chave Pix isolada (`amountCents === 0` garantido).
+ * - Nunca captura decimais sem cifrão (`45.00`, `v2.50`) ou textos/mensagens comuns como lançamento Pix.
+ *
  * Função 100% pura: sem dependências de UI, React ou banco de dados.
  */
 
-import { toISODate } from "@/domain/money";
+import { parseBrazilianCurrencyToCents, toISODate } from "@/domain/money";
+import { stripInvisiblePixChars } from "@/domain/pix";
+import { isValidCNPJ } from "@/domain/validation/cnpj";
+import { isValidCPF } from "@/domain/validation/cpf";
 
 export type PixKeyType = "cpf" | "cnpj" | "email" | "phone" | "evp";
 
@@ -14,11 +25,11 @@ export interface DetectedPixKey {
 }
 
 export interface ParsedPixTextResult {
-  kind: "pix_key" | "pix_link" | "pix_message";
+  kind: "PIX_KEY";
   amountCents: number;
   description: string;
-  pixKey?: string;
-  pixKeyType?: PixKeyType;
+  pixKey: string;
+  pixKeyType: PixKeyType;
   recipientName?: string;
   nature: "expense" | "income";
   confidence: "high" | "medium" | "low";
@@ -26,15 +37,178 @@ export interface ParsedPixTextResult {
   rawText: string;
 }
 
+const MAX_ISOLATED_KEY_INPUT_LENGTH = 80;
+
+const VALID_BR_DDDS = new Set<number>([
+  11, 12, 13, 14, 15, 16, 17, 18, 19,
+  21, 22, 24, 27, 28,
+  31, 32, 33, 34, 35, 37, 38,
+  41, 42, 43, 44, 45, 46, 47, 48, 49,
+  51, 53, 54, 55,
+  61, 62, 63, 64, 65, 66, 67, 68, 69,
+  71, 73, 74, 75, 77, 79,
+  81, 82, 83, 84, 85, 86, 87, 88, 89,
+  91, 92, 93, 94, 95, 96, 97, 98, 99,
+]);
+
+const UUID_V4_STRICT_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const EMAIL_FULL_REGEX =
+  /^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}$/i;
+
+const FORMATTED_CNPJ_FULL_REGEX = /^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/;
+const FORMATTED_CPF_FULL_REGEX = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
+const MOBILE_PHONE_FULL_REGEX = /^(?:\+?55[\s-]*)?(?:\(?(\d{2})\)?[\s-]*)(9\s?\d{4})[-\s]?(\d{4})$/;
+
+const SHORT_KEY_LABEL_REGEX =
+  /^(?:(?:chave\s*(?:do\s+)?pix|pix\s*chave)(?:\s*[:=-]\s*|\s+)|(?:chave|pix|cpf|cnpj|e-?mail|celular|telefone)\s*[:=-]\s*)/i;
+
+function isValidBrazilianMobileMatch(candidate: string): { ddd: string; localNumber: string } | null {
+  const match = MOBILE_PHONE_FULL_REGEX.exec(candidate);
+  if (!match || !match[1] || !match[2] || !match[3]) return null;
+
+  const dddNum = Number.parseInt(match[1], 10);
+  if (!VALID_BR_DDDS.has(dddNum)) return null;
+
+  const localNumber = `${match[2].replace(/\s/g, "")}${match[3]}`;
+  if (!/^9\d{8}$/.test(localNumber)) return null;
+
+  return { ddd: match[1], localNumber };
+}
+
 /**
- * Normaliza e valida uma chave Pix isolada ou dentro de texto.
+ * Normaliza e valida estritamente uma chave Pix isolada (ou precedida por rótulo curto explícito <= 80 chars).
+ * Rejeita textos longos, chats, números soltos ou documentos com dígito verificador inválido.
  */
 export function detectPixKey(text: string): DetectedPixKey | null {
   if (!text || typeof text !== "string") return null;
-  const trimmed = text.trim();
 
-  // 1. Chave Aleatória (EVP) — UUIDv4 de 32 hexadecimais com 4 hífens
-  const evpMatch = /\b([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\b/.exec(trimmed);
+  const cleaned = stripInvisiblePixChars(text, true).replace(/\s+/g, " ").trim();
+  if (!cleaned || cleaned.length > MAX_ISOLATED_KEY_INPUT_LENGTH) {
+    return null;
+  }
+
+  let candidate = cleaned;
+  let explicitPhoneHint = false;
+
+  const labelMatch = SHORT_KEY_LABEL_REGEX.exec(cleaned);
+  if (labelMatch) {
+    explicitPhoneHint = /^(?:celular|telefone)/i.test(labelMatch[0]);
+    candidate = cleaned.slice(labelMatch[0].length).trim();
+  }
+
+  if (!candidate) return null;
+
+  // 1. Chave Aleatória (EVP) — UUID v4 estrito
+  if (UUID_V4_STRICT_REGEX.test(candidate)) {
+    return {
+      rawKey: candidate,
+      normalizedKey: candidate.toLowerCase(),
+      type: "evp",
+    };
+  }
+
+  // 2. Chave E-mail isolada (<= 77 chars padrão BACEN, sem "..")
+  if (candidate.length <= 77 && !candidate.includes("..") && EMAIL_FULL_REGEX.test(candidate)) {
+    return {
+      rawKey: candidate,
+      normalizedKey: candidate.toLowerCase(),
+      type: "email",
+    };
+  }
+
+  // 3. Chave CNPJ (14 dígitos formatada ou limpa, validada com Módulo 11)
+  if (FORMATTED_CNPJ_FULL_REGEX.test(candidate) || /^\d{14}$/.test(candidate)) {
+    const digits = candidate.replace(/\D/g, "");
+    if (isValidCNPJ(digits)) {
+      return {
+        rawKey: candidate,
+        normalizedKey: digits,
+        type: "cnpj",
+      };
+    }
+    return null;
+  }
+
+  // 4. Chave CPF formatada (XXX.XXX.XXX-XX, validada com Módulo 11)
+  if (FORMATTED_CPF_FULL_REGEX.test(candidate)) {
+    const digits = candidate.replace(/\D/g, "");
+    if (isValidCPF(digits)) {
+      return {
+        rawKey: candidate,
+        normalizedKey: digits,
+        type: "cpf",
+      };
+    }
+    return null;
+  }
+
+  // 5. Sequência exata de 11 dígitos sem formatação de telefone
+  if (/^\d{11}$/.test(candidate)) {
+    if (explicitPhoneHint) {
+      const phone = isValidBrazilianMobileMatch(candidate);
+      if (phone) {
+        return {
+          rawKey: candidate,
+          normalizedKey: `+55${phone.ddd}${phone.localNumber}`,
+          type: "phone",
+        };
+      }
+      return null;
+    }
+
+    if (isValidCPF(candidate)) {
+      return {
+        rawKey: candidate,
+        normalizedKey: candidate,
+        type: "cpf",
+      };
+    }
+
+    const phone = isValidBrazilianMobileMatch(candidate);
+    if (phone) {
+      return {
+        rawKey: candidate,
+        normalizedKey: `+55${phone.ddd}${phone.localNumber}`,
+        type: "phone",
+      };
+    }
+
+    return null;
+  }
+
+  // 6. Chave Telefone Celular Brasileiro formatado / com +55
+  const phone = isValidBrazilianMobileMatch(candidate);
+  if (phone) {
+    return {
+      rawKey: candidate,
+      normalizedKey: `+55${phone.ddd}${phone.localNumber}`,
+      type: "phone",
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Extrai chave Pix explicitamente rotulada (ou UUID v4) de dentro de um comprovante bancário formal.
+ */
+export function extractPixKeyFromReceiptText(text: string): DetectedPixKey | null {
+  if (!text || typeof text !== "string") return null;
+
+  const labeledMatch =
+    /(?:Chave\s+Pix|Chave\s+de\s+Endere[çc]amento|Chave\s+vinculada|Chave)\s*[:=]\s*([^\n\r,]+)/i.exec(
+      text,
+    );
+  if (labeledMatch && labeledMatch[1]) {
+    const candidate = labeledMatch[1].trim();
+    const detected = detectPixKey(candidate);
+    if (detected) return detected;
+  }
+
+  const evpMatch =
+    /\b([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\b/i.exec(text);
   if (evpMatch && evpMatch[1]) {
     return {
       rawKey: evpMatch[1],
@@ -43,126 +217,29 @@ export function detectPixKey(text: string): DetectedPixKey | null {
     };
   }
 
-  // 2. Chave E-mail
-  const emailMatch = /\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/.exec(trimmed);
-  if (emailMatch && emailMatch[1]) {
-    return {
-      rawKey: emailMatch[1],
-      normalizedKey: emailMatch[1].toLowerCase(),
-      type: "email",
-    };
-  }
-
-  // 3. Chave CNPJ (14 dígitos)
-  const formattedCnpj = /\b(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})\b/.exec(trimmed);
-  if (formattedCnpj && formattedCnpj[1]) {
-    return {
-      rawKey: formattedCnpj[1],
-      normalizedKey: formattedCnpj[1].replace(/\D/g, ""),
-      type: "cnpj",
-    };
-  }
-
-  // 4. Chave CPF (11 dígitos formatados)
-  const formattedCpf = /\b(\d{3}\.\d{3}\.\d{3}-\d{2})\b/.exec(trimmed);
-  if (formattedCpf && formattedCpf[1]) {
-    return {
-      rawKey: formattedCpf[1],
-      normalizedKey: formattedCpf[1].replace(/\D/g, ""),
-      type: "cpf",
-    };
-  }
-
-  // 5. Chave Telefone Celular Brasileiro (com ou sem +55, com ou sem parênteses, 9 dígitos após DDD)
-  // Ex.: +5511999998888, (11) 99999-8888, 11999998888
-  const phoneMatch = /(?:(?:\+?55\s*)?(?:\(?([1-9]{2})\)?\s*))?(9\d{4})[-\s]?(\d{4})\b/.exec(trimmed);
-  if (phoneMatch && phoneMatch[2] && phoneMatch[3]) {
-    const ddd = phoneMatch[1] || "";
-    const num = `${phoneMatch[2]}${phoneMatch[3]}`;
-    if (ddd) {
-      const fullDigits = `55${ddd}${num}`;
-      return {
-        rawKey: phoneMatch[0].trim(),
-        normalizedKey: fullDigits,
-        type: "phone",
-      };
-    }
-  }
-
-  // 6. CNPJ ou CPF desformatados precedidos por marcador semântico de Pix ou documento
-  const unformattedPixKeyMatch = /(?:chave\s*pix|pix\s*chave|pix|cpf|cnpj|para)[\s:.-]*(\d{11}|\d{14})\b/i.exec(trimmed);
-  if (unformattedPixKeyMatch && unformattedPixKeyMatch[1]) {
-    const digits = unformattedPixKeyMatch[1];
-    return {
-      rawKey: digits,
-      normalizedKey: digits,
-      type: digits.length === 14 ? "cnpj" : "cpf",
-    };
-  }
-
-  // 6.1 CNPJ isolado de 14 dígitos no texto (sequência exclusiva de pessoas jurídicas)
-  const cnpj14Match = /\b(\d{14})\b/.exec(trimmed);
-  if (cnpj14Match && cnpj14Match[1]) {
-    return {
-      rawKey: cnpj14Match[1],
-      normalizedKey: cnpj14Match[1],
-      type: "cnpj",
-    };
-  }
-
-  // 7. Sequência limpa isolada de 11 ou 14 dígitos
-  if (/^\d{11}$/.test(trimmed)) {
-    return {
-      rawKey: trimmed,
-      normalizedKey: trimmed,
-      type: "cpf",
-    };
-  }
-  if (/^\d{14}$/.test(trimmed)) {
-    return {
-      rawKey: trimmed,
-      normalizedKey: trimmed,
-      type: "cnpj",
-    };
-  }
-
   return null;
 }
 
 /**
- * Extrai valor monetário em centavos a partir de qualquer string livre.
+ * Extrai valor monetário em centavos a partir de texto com moeda brasileira explícita (R$)
+ * ou formato decimal brasileiro com vírgula. Ignora decimais sem cifrão com ponto (ex.: "45.00", "v2.50").
  */
 export function extractAmountCentsFromText(text: string): number {
   if (!text || typeof text !== "string") return 0;
 
-  // Formato brasileiro com vírgula (R$ 1.250,50 ou 50,00)
-  const brlMatch = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})\b/.exec(text);
+  // 1. Valor com prefixo monetário explícito ("R$ 1.250,50", "R$ 100", "R$ 45.00")
+  const currencyMatch =
+    /(?:R\$|BRL)\s*[:.]?\s*(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i.exec(text);
+  if (currencyMatch && currencyMatch[1]) {
+    const cents = parseBrazilianCurrencyToCents(currencyMatch[1]);
+    if (cents !== null && cents > 0) return cents;
+  }
+
+  // 2. Formato brasileiro com vírgula decimal ("1.250,50" ou "45,90")
+  const brlMatch = /\b(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})\b/.exec(text);
   if (brlMatch && brlMatch[1]) {
-    const raw = brlMatch[1].replace(/\./g, "").replace(",", ".");
-    const num = Number.parseFloat(raw);
-    if (Number.isFinite(num) && num > 0) {
-      return Math.round(num * 100);
-    }
-  }
-
-  // Formato internacional com ponto (1,250.50 ou 50.00)
-  const intlMatch = /(?:\$\s*)?(\d{1,3}(?:,\d{3})+\.\d{2}|\d+\.\d{2})\b/.exec(text);
-  if (intlMatch && intlMatch[1]) {
-    const raw = intlMatch[1].replace(/,/g, "");
-    const num = Number.parseFloat(raw);
-    if (Number.isFinite(num) && num > 0) {
-      return Math.round(num * 100);
-    }
-  }
-
-  // Inteiro com R$ (R$ 50 ou R$ 1.500)
-  const intMatch = /(?:R\$|\$)\s*(\d{1,3}(?:\.\d{3})+|\d+)\b/i.exec(text);
-  if (intMatch && intMatch[1]) {
-    const raw = intMatch[1].replace(/\./g, "");
-    const num = Number.parseInt(raw, 10);
-    if (Number.isFinite(num) && num > 0) {
-      return num * 100;
-    }
+    const cents = parseBrazilianCurrencyToCents(brlMatch[1]);
+    if (cents !== null && cents > 0) return cents;
   }
 
   return 0;
@@ -174,14 +251,13 @@ export function extractAmountCentsFromText(text: string): number {
 export function extractRecipientFromText(text: string): string | undefined {
   if (!text || typeof text !== "string") return undefined;
 
-  // Marcadores comuns: "para [Nome]", "favorecido: [Nome]", "destinatário: [Nome]", "recebedor: [Nome]"
-  const recipientMatch = /(?:para|favorecido|destinat[aá]rio|recebedor|recebido de|de)[\s:]+([A-ZÁÉÍÓÚÂÊÔÃÕÇa-záéíóúâêôãõç\s]{3,35}?)(?=\s+(?:chave|pix|cpf|cnpj|banco|ag[eê]ncia|conta|no\s+valor|valor)|[\n,.;-]|$)/i.exec(
-    text,
-  );
+  const recipientMatch =
+    /(?:para|favorecido|destinat[aá]rio|recebedor|recebido de|de)[\s:]+([A-ZÁÉÍÓÚÂÊÔÃÕÇa-záéíóúâêôãõç\s]{3,35}?)(?=\s+(?:chave|pix|cpf|cnpj|banco|ag[eê]ncia|conta|no\s+valor|valor)|[\n,.;-]|$)/i.exec(
+      text,
+    );
 
   if (recipientMatch && recipientMatch[1]) {
     const candidate = recipientMatch[1].trim();
-    // Filtra palavras comuns de preposição ou termos genéricos
     if (
       !/^(mim|voc[eê]|conta|chave|pix|banco|valor|outro|ag[eê]ncia|hoje|ontem)$/i.test(candidate) &&
       candidate.length >= 3
@@ -194,7 +270,7 @@ export function extractRecipientFromText(text: string): string | undefined {
 }
 
 /**
- * Determina se a mensagem indica uma despesa (pagamento/cobrança enviada) ou receita (recebimento/depósito).
+ * Determina se uma mensagem indica entrada (receita) ou saída (despesa).
  */
 export function inferNatureFromText(text: string): "expense" | "income" {
   const lower = text.toLowerCase();
@@ -214,125 +290,28 @@ export function inferNatureFromText(text: string): "expense" | "income" {
 }
 
 /**
- * Tenta fazer o parsing de links de cobrança Pix (ex.: pix.bcb.gov.br, Nubank, Mercado Pago, etc.).
- */
-export function parsePixUrl(text: string): ParsedPixTextResult | null {
-  if (!text || typeof text !== "string") return null;
-
-  // Verifica se há URL de Pix
-  const urlMatch = /(https?:\/\/[^\s]+)/i.exec(text);
-  if (!urlMatch || !urlMatch[1]) return null;
-
-  const urlString = urlMatch[1];
-  const isPixUrl =
-    urlString.includes("pix.bcb.gov.br") ||
-    urlString.includes("nubank.com.br/cobrar") ||
-    urlString.includes("picpay") ||
-    urlString.includes("mercadopago") ||
-    urlString.includes("/pix") ||
-    urlString.includes("pix=");
-
-  if (!isPixUrl) return null;
-
-  let amountCents = 0;
-  let pixKey: string | undefined;
-  let recipient: string | undefined;
-
-  try {
-    const parsedUrl = new URL(urlString);
-    const params = parsedUrl.searchParams;
-
-    // Busca valor nos query params
-    const valParam = params.get("valor") || params.get("value") || params.get("amount") || params.get("v");
-    if (valParam) {
-      amountCents = extractAmountCentsFromText(valParam);
-    }
-
-    // Busca chave Pix nos query params
-    const keyParam = params.get("chave") || params.get("key") || params.get("pix_key") || params.get("k");
-    if (keyParam) {
-      const detected = detectPixKey(keyParam);
-      if (detected) {
-        pixKey = detected.normalizedKey;
-      }
-    }
-
-    // Busca beneficiário / nome
-    const recParam = params.get("nome") || params.get("name") || params.get("favorecido") || params.get("recipient");
-    if (recParam) {
-      recipient = recParam.trim();
-    }
-  } catch {
-    // URL mal formatada
-  }
-
-  // Se não extraiu valor da URL, tenta extrair do restante do texto
-  if (amountCents === 0) {
-    amountCents = extractAmountCentsFromText(text);
-  }
-  if (!recipient) {
-    recipient = extractRecipientFromText(text);
-  }
-
-  return {
-    kind: "pix_link",
-    amountCents,
-    description: recipient ? `Pix: ${recipient}` : "Cobrança Pix via Link",
-    pixKey,
-    recipientName: recipient,
-    nature: inferNatureFromText(text),
-    confidence: amountCents > 0 ? "high" : "medium",
-    date: toISODate(new Date()),
-    rawText: text.trim(),
-  };
-}
-
-/**
- * Tenta fazer o parsing de um texto livre contendo informações de Pix (chave, valor ou mensagem).
+ * Tenta fazer o parsing estrito de chave Pix isolada no texto livre.
+ * Textos longos, mensagens de chat, links genéricos e números soltos retornam null.
  */
 export function parsePixFreeText(text: string): ParsedPixTextResult | null {
   if (!text || typeof text !== "string") return null;
   const trimmed = text.trim();
   if (!trimmed) return null;
 
-  // 1. Tenta como link Pix
-  const urlCandidate = parsePixUrl(trimmed);
-  if (urlCandidate) {
-    return urlCandidate;
-  }
-
-  // 2. Extrai chave Pix e valor do texto
   const detectedKey = detectPixKey(trimmed);
-  const amountCents = extractAmountCentsFromText(trimmed);
-  const recipient = extractRecipientFromText(trimmed);
-  const nature = inferNatureFromText(trimmed);
-
-  // Se tem pelo menos chave Pix ou tem valor com menção a Pix
-  const hasPixMention = /pix/i.test(trimmed);
-
-  if (detectedKey || (amountCents > 0 && hasPixMention)) {
-    const isOnlyKey = Boolean(detectedKey && trimmed.length <= detectedKey.rawKey.length + 4);
-    const kind = isOnlyKey ? "pix_key" : "pix_message";
-
-    const description = recipient
-      ? `Pix: ${recipient}`
-      : detectedKey
-        ? `Pix: ${detectedKey.rawKey}`
-        : "Transferência Pix";
-
-    return {
-      kind,
-      amountCents,
-      description,
-      pixKey: detectedKey?.normalizedKey,
-      pixKeyType: detectedKey?.type,
-      recipientName: recipient,
-      nature,
-      confidence: amountCents > 0 && detectedKey ? "high" : amountCents > 0 || detectedKey ? "medium" : "low",
-      date: toISODate(new Date()),
-      rawText: trimmed,
-    };
+  if (!detectedKey) {
+    return null;
   }
 
-  return null;
+  return {
+    kind: "PIX_KEY",
+    amountCents: 0,
+    description: `Pix: ${detectedKey.rawKey}`,
+    pixKey: detectedKey.normalizedKey,
+    pixKeyType: detectedKey.type,
+    nature: "expense",
+    confidence: "medium",
+    date: toISODate(new Date()),
+    rawText: trimmed,
+  };
 }

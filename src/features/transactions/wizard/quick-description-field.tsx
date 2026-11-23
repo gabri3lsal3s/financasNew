@@ -8,12 +8,14 @@ import {
 } from "@/domain/notifications";
 import { useMerchantLearning } from "@/services/merchant-learning";
 import { triggerSensory } from "@/services/sensory";
+import { cn } from "@/lib/utils";
 import type { Category } from "@/types";
 
 export interface QuickDescriptionFieldProps {
   value: string;
   isExpense: boolean;
   categories: Category[] | undefined;
+  needsReview?: boolean;
   onDescriptionChange: (value: string) => void;
   onCategoryChange: (categoryId: string) => void;
 }
@@ -28,6 +30,7 @@ export function QuickDescriptionField({
   value,
   isExpense,
   categories,
+  needsReview = false,
   onDescriptionChange,
   onCategoryChange,
 }: QuickDescriptionFieldProps) {
@@ -67,14 +70,22 @@ export function QuickDescriptionField({
 
   return (
     <div className="relative flex flex-col gap-1.5">
-      <label htmlFor="quick-description-input" className="text-xs font-semibold text-foreground">
-        Descrição / Estabelecimento
-      </label>
+      <div className="flex items-center gap-2">
+        <label htmlFor="quick-description-input" className="text-xs font-semibold text-foreground">
+          Descrição / Estabelecimento
+        </label>
+        {needsReview ? (
+          <Badge variant="warning" size="xs">
+            Conferir
+          </Badge>
+        ) : null}
+      </div>
       <Input
         id="quick-description-input"
         value={value}
         onChange={(e) => onDescriptionChange(e.target.value)}
         placeholder={isExpense ? "Ex: Padaria do Zé, Uber, Mercado..." : "Ex: Salário, Rendimentos, Pix..."}
+        className={cn(needsReview && "border-warning/60 ring-1 ring-warning/25")}
         onFocus={() => setFocused(true)}
         onBlur={() => setTimeout(() => setFocused(false), 200)}
       />

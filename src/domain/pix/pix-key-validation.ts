@@ -4,6 +4,7 @@
  * Motor 100% puro: sem dependências de UI, React ou Supabase (AGENTS.md §3).
  */
 
+import { isValidCNPJ } from "@/domain/validation/cnpj";
 import { isValidCPF } from "@/domain/validation/cpf";
 import {
   detectPixKeyType,
@@ -51,33 +52,9 @@ export function formatPixKeyTypeLabel(type: PixKeyType | string | null | undefin
 }
 
 /**
- * Valida CNPJ matematicamente pelos dois dígitos verificadores (módulo 11).
+ * Valida CNPJ matematicamente pelos dois dígitos verificadores (fonte única: `@/domain/validation/cnpj`).
  */
-export function isValidCNPJ(value: string): boolean {
-  const digits = value.replace(/\D/g, "");
-  if (digits.length !== 14) return false;
-  if (/^(\d)\1{13}$/.test(digits)) return false;
-
-  const weights1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-  let sum1 = 0;
-  for (let i = 0; i < 12; i++) {
-    sum1 += Number(digits[i]) * weights1[i]!;
-  }
-  const rem1 = sum1 % 11;
-  const digit1 = rem1 < 2 ? 0 : 11 - rem1;
-  if (digit1 !== Number(digits[12])) return false;
-
-  const weights2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-  let sum2 = 0;
-  for (let i = 0; i < 13; i++) {
-    sum2 += Number(digits[i]) * weights2[i]!;
-  }
-  const rem2 = sum2 % 11;
-  const digit2 = rem2 < 2 ? 0 : 11 - rem2;
-  if (digit2 !== Number(digits[13])) return false;
-
-  return true;
-}
+export { isValidCNPJ };
 
 /**
  * Verifica se uma sequência de 10 ou 11 dígitos corresponde a um telefone brasileiro

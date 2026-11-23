@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatDecimalNumber, numberToCents, parseBRLToCents, parseDecimalNumber } from "./parse";
+import {
+  formatDecimalNumber,
+  numberToCents,
+  parseBRLToCents,
+  parseBrazilianCurrencyToCents,
+  parseDecimalNumber,
+} from "./parse";
 import { formatCentsAsBRL } from "@/services/masks/money";
 
 describe("parseBRLToCents", () => {
@@ -18,6 +24,44 @@ describe("parseBRLToCents", () => {
     expect(parseBRLToCents("-10")).toBeNull();
     expect(parseBRLToCents("1.500,123")).toBeNull();
     expect(parseBRLToCents("R$")).toBeNull();
+  });
+
+  describe("parseBrazilianCurrencyToCents (Golden Dataset G4 + negativos)", () => {
+    it("interpreta formatos PT-BR padrão e com separador de milhar", () => {
+      expect(parseBrazilianCurrencyToCents("R$ 45,00")).toBe(4500);
+      expect(parseBrazilianCurrencyToCents("45,00")).toBe(4500);
+      expect(parseBrazilianCurrencyToCents("R$ 1.450,00")).toBe(145000);
+      expect(parseBrazilianCurrencyToCents("0,50")).toBe(50);
+      expect(parseBrazilianCurrencyToCents("R$ 1.200")).toBe(120000);
+      expect(parseBrazilianCurrencyToCents("1.500,5")).toBe(150050);
+    });
+
+    it("interpreta formato internacional/EMV e ruídos de espaço de OCR", () => {
+      expect(parseBrazilianCurrencyToCents("R$ 45.00")).toBe(4500);
+      expect(parseBrazilianCurrencyToCents("45.00")).toBe(4500);
+      expect(parseBrazilianCurrencyToCents("1,450.00")).toBe(145000);
+      expect(parseBrazilianCurrencyToCents("R$ 45 , 00")).toBe(4500);
+      expect(parseBrazilianCurrencyToCents("R$ 1 . 250 , 50")).toBe(125050);
+    });
+
+    it("interpreta 3 casas decimais PDV apenas quando termina em 0 e rejeita precisão inválida", () => {
+      expect(parseBrazilianCurrencyToCents("45,000")).toBe(4500);
+      expect(parseBrazilianCurrencyToCents("R$ 1.250,500")).toBe(125050);
+      expect(parseBrazilianCurrencyToCents("1.500,123")).toBeNull();
+    });
+
+    it("suporta valores negativos explicitamente apenas com allowNegative: true", () => {
+      expect(parseBrazilianCurrencyToCents("-R$ 45,00")).toBeNull();
+      expect(parseBrazilianCurrencyToCents("R$ -45,00")).toBeNull();
+      expect(parseBrazilianCurrencyToCents("(45,00)")).toBeNull();
+      expect(parseBrazilianCurrencyToCents("45,00-")).toBeNull();
+
+      expect(parseBrazilianCurrencyToCents("-R$ 45,00", { allowNegative: true })).toBe(-4500);
+      expect(parseBrazilianCurrencyToCents("R$ -45,00", { allowNegative: true })).toBe(-4500);
+      expect(parseBrazilianCurrencyToCents("(45,00)", { allowNegative: true })).toBe(-4500);
+      expect(parseBrazilianCurrencyToCents("45,00-", { allowNegative: true })).toBe(-4500);
+      expect(parseBrazilianCurrencyToCents("0,00", { allowNegative: true })).toBe(0);
+    });
   });
 });
 

@@ -207,6 +207,8 @@ export function CardsPage() {
         onUpgradeOpenChange={state.setUpgradeOpen}
         upgradeContext={state.upgradeContext}
         onProceedToCheckout={(url) => state.navigate(url)}
+        isReadOnlyMode={state.permission.isReadOnlyMode}
+        aiExtractionEnabled={!state.aiPermission.isHidden && state.aiPermission.canWrite}
       />
     </div>
   );

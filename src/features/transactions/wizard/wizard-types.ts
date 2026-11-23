@@ -1,3 +1,4 @@
+import type { ConfidenceLevel, ReceiptFieldConfidence } from "@/domain/notifications";
 import type { RecurrenceFrequency } from "@/domain/recurrences";
 import type { DebtType, PaymentMethod, ReceiveType } from "@/types";
 
@@ -54,6 +55,11 @@ export interface ReceiptMeta {
   taxId?: string;
   packageName?: string;
   pixKey?: string;
+  confidence?: ConfidenceLevel;
+  confidenceScore?: number;
+  fieldConfidence?: ReceiptFieldConfidence;
+  isSameTitularity?: boolean;
+  needsAmountInput?: boolean;
 }
 
 export interface CreatedSplitExpense {

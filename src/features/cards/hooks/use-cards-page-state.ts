@@ -35,6 +35,7 @@ export function useCardsPageState() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const permission = usePermission("cards");
+  const aiPermission = usePermission("ai_extraction");
 
   const cardsQuery = useCreditCards();
   const allCardExpensesQuery = useAllCardExpenses();
@@ -187,6 +188,7 @@ export function useCardsPageState() {
   return {
     navigate,
     permission,
+    aiPermission,
     cards,
     primaryCardId,
     selectedCard,

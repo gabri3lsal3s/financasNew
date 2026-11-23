@@ -1,15 +1,24 @@
 import { numberToCents } from "@/domain/money";
 import {
   STATEMENT_IMPORT_CHUNK_SIZE,
+  buildTransactionsFromRows,
   chunkArray,
   generateStatementHash,
+  parseStatementInput,
   reconcileStatementTransactions,
   type CategoryPredictionSource,
+  type ColumnMapping,
   type ExistingExpenseForReconciliation,
+  type RawParsedRow,
   type ReconciliationItem,
   type StatementTransaction,
 } from "@/domain/reconciliation";
+import {
+  computeTextSha256,
+  extractStatementPdfRowsWithAi,
+} from "@/services/ai-assistant";
 import type { Expense } from "@/types";
+import type { AiStatementPdfRow } from "../../../../supabase/functions/_shared/ai-schemas";
 import type { StatementImportProgress } from "./statement-reconcile-step";
 
 export interface StatementItemPatch {
@@ -220,4 +229,124 @@ export function runStatementReconciliation(params: {
     history: params.history,
     defaultCategoryId: params.defaultCategoryId,
   });
+}
+
+function formatStatementAmountCell(amountCents: number): string {
+  const absFormatted = (Math.abs(amountCents) / 100).toFixed(2).replace(".", ",");
+  return amountCents < 0 ? `-${absFormatted}` : absFormatted;
+}
+
+/**
+ * Converte linhas extraídas de PDF multi-coluna em `RawParsedRow[]` para alimentar
+ * os motores determinísticos `buildTransactionsFromRows` e `reconcileStatementTransactions`.
+ */
+export function convertAiStatementRowsToRawParsedRows(
+  rows: readonly AiStatementPdfRow[],
+): RawParsedRow[] {
+  return rows.map((row, index) => {
+    const hasInstallment =
+      typeof row.installmentCurrent === "number" &&
+      typeof row.installmentTotal === "number" &&
+      row.installmentTotal > 1;
+    const alreadyHasInstallmentTag = /\b\d{1,2}\s*\/\s*\d{1,2}\b/.test(row.description);
+    const descriptionCell =
+      hasInstallment && !alreadyHasInstallmentTag
+        ? `${row.description.trim()} ${row.installmentCurrent}/${row.installmentTotal}`
+        : row.description.trim();
+    const amountCell = formatStatementAmountCell(row.amountCents);
+
+    return {
+      rowIndex: index,
+      rawText: `${row.date}\t${descriptionCell}\t${amountCell}`,
+      cells: [row.date, descriptionCell, amountCell],
+    };
+  });
+}
+
+export interface ParseStatementWithFallbackParams {
+  content: string | ArrayBuffer;
+  fileNameOrType: string;
+  cardId: string;
+  competenceMonth: string;
+  fileSha256?: string | null;
+  userId?: string | null;
+  isReadOnlyMode?: boolean;
+  aiFallbackEnabled?: boolean;
+}
+
+export interface ParsedStatementWithFallbackResult {
+  transactions: StatementTransaction[];
+  rows: RawParsedRow[];
+  mapping: ColumnMapping;
+  isOfx: boolean;
+  usedAiFallback: boolean;
+}
+
+/**
+ * Interpreta extratos/faturas com o parser determinístico local e, exclusivamente
+ * para PDFs multi-coluna cujo parser tabular local retornar vazio, aciona o fallback
+ * `statement_pdf_rows` (Balde 2) mantendo soma, hash e conciliação determinísticos.
+ */
+export async function parseStatementWithPdfAiFallback(
+  params: ParseStatementWithFallbackParams,
+): Promise<ParsedStatementWithFallbackResult> {
+  const deterministic = parseStatementInput(params.content, params.fileNameOrType, {
+    cardId: params.cardId,
+    competenceMonth: params.competenceMonth,
+  });
+
+  if (deterministic.transactions.length > 0 || deterministic.rows.length > 0) {
+    return { ...deterministic, usedAiFallback: false };
+  }
+
+  const isPdfText =
+    params.fileNameOrType.toLowerCase().endsWith(".pdf") &&
+    typeof params.content === "string" &&
+    params.content.trim().length > 0;
+
+  if (!isPdfText) {
+    return { ...deterministic, usedAiFallback: false };
+  }
+
+  const pdfText = params.content as string;
+  const resolvedSha = params.fileSha256 || (await computeTextSha256(pdfText));
+  const parsedYear = Number.parseInt(params.competenceMonth.slice(0, 4), 10);
+
+  const aiRes = await extractStatementPdfRowsWithAi({
+    sha256: resolvedSha,
+    text: pdfText,
+    referenceYear: Number.isFinite(parsedYear) ? parsedYear : undefined,
+    userId: params.userId,
+    isReadOnlyMode: params.isReadOnlyMode,
+    featureEnabled: params.aiFallbackEnabled,
+  });
+
+  if (!aiRes.ok || aiRes.data.rows.length === 0) {
+    return { ...deterministic, usedAiFallback: false };
+  }
+
+  const aiRows = convertAiStatementRowsToRawParsedRows(aiRes.data.rows);
+  const canonicalMapping: ColumnMapping = {
+    dateColIndex: 0,
+    descriptionColIndex: 1,
+    amountColIndex: 2,
+    hasHeader: false,
+    startRowIndex: 0,
+  };
+  const transactions = buildTransactionsFromRows(aiRows, canonicalMapping, {
+    cardId: params.cardId,
+    competenceMonth: params.competenceMonth,
+  });
+
+  if (transactions.length === 0) {
+    return { ...deterministic, usedAiFallback: false };
+  }
+
+  return {
+    transactions,
+    rows: aiRows,
+    mapping: canonicalMapping,
+    isOfx: false,
+    usedAiFallback: true,
+  };
 }

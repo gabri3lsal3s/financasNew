@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UseQueryResult } from "@tanstack/react-query";
+import * as merchantLearningService from "@/services/merchant-learning";
 import type { CreditCard, Expense } from "@/types";
 import { StatementImportDialog } from "./statement-import-dialog";
 
@@ -51,15 +52,40 @@ vi.mock("@/state", async (importOriginal) => {
   };
 });
 
+const mockUnpdfExtractText = vi.fn().mockResolvedValue({
+  text: [
+    "15/08/2026\tPadaria Estrela\t25,00",
+    "16/08/2026\tSupermercado Dia\t140,50",
+  ],
+  totalPages: 1,
+});
+
+const mockCategorizeDescriptionsBatchWithAi = vi.fn().mockResolvedValue({
+  ok: false,
+  reason: "unauthenticated",
+  fallbackToLocal: true,
+});
+
+const mockExtractStatementPdfRowsWithAi = vi.fn().mockResolvedValue({
+  ok: false,
+  reason: "unauthenticated",
+  fallbackToLocal: true,
+});
+
 vi.mock("unpdf", () => ({
-  extractText: vi.fn().mockResolvedValue({
-    text: [
-      "15/08/2026\tPadaria Estrela\t25,00",
-      "16/08/2026\tSupermercado Dia\t140,50",
-    ],
-    totalPages: 1,
-  }),
+  extractText: (...args: unknown[]) => mockUnpdfExtractText(...args),
 }));
+
+vi.mock("@/services/ai-assistant", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/services/ai-assistant")>();
+  return {
+    ...actual,
+    categorizeDescriptionsBatchWithAi: (...args: unknown[]) =>
+      mockCategorizeDescriptionsBatchWithAi(...args),
+    extractStatementPdfRowsWithAi: (...args: unknown[]) =>
+      mockExtractStatementPdfRowsWithAi(...args),
+  };
+});
 
 async function uploadMockStatementFile(
   user: ReturnType<typeof userEvent.setup>,
@@ -456,5 +482,217 @@ describe("StatementImportDialog", () => {
 
     // Deve avançar para a prévia / mapeamento das linhas extraídas do PDF
     expect(await screen.findByText("Padaria Estrela")).toBeInTheDocument();
+  });
+
+  describe("Fase E — Auto-categorização Batch Silenciosa & Fallback PDF Multi-Coluna", () => {
+    beforeEach(() => {
+      localStorage.clear();
+      mutateAsyncMock.mockClear();
+      mockCategorizeDescriptionsBatchWithAi.mockReset().mockResolvedValue({
+        ok: false,
+        reason: "unauthenticated",
+        fallbackToLocal: true,
+      });
+      mockExtractStatementPdfRowsWithAi.mockReset().mockResolvedValue({
+        ok: false,
+        reason: "unauthenticated",
+        fallbackToLocal: true,
+      });
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      localStorage.clear();
+    });
+
+    it("auto-categoriza itens desconhecidos em background (Camada 4) sem enviar valores/datas e retroalimenta MerchantLearningMemory", async () => {
+      const user = userEvent.setup();
+      const autoLearnSpy = vi.spyOn(merchantLearningService, "autoLearnExpenseCategory");
+
+      mockCategorizeDescriptionsBatchWithAi.mockResolvedValueOnce({
+        ok: true,
+        cached: false,
+        source: "ai_text",
+        data: {
+          items: [{ index: 0, friendlyName: "Loja XPTZ Tech", categoryId: "cat-2" }],
+        },
+      });
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      await uploadMockStatementFile(
+        user,
+        "Data\tDescricao\tValor\n18/08/2026\tLOJA XPTZ 9981\t349,90",
+      );
+      await advanceFromMapping(user);
+
+      // Camada 4 atualiza descrição amigável e categoria no item desconhecido
+      expect(await screen.findByText("Loja XPTZ Tech")).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(mockCategorizeDescriptionsBatchWithAi).toHaveBeenCalledTimes(1);
+        expect(autoLearnSpy).toHaveBeenCalledWith(
+          "Loja XPTZ Tech",
+          "cat-2",
+          undefined,
+          expect.stringContaining("LOJA XPTZ 9981"),
+        );
+      });
+
+      // Verifica que o payload passado à função de lote contém apenas descrições e whitelist
+      const callArgs = mockCategorizeDescriptionsBatchWithAi.mock.calls[0]?.[0] as {
+        descriptions: string[];
+        categories: Array<{ id: string; name: string }>;
+      };
+      expect(JSON.stringify(callArgs.descriptions)).not.toContain("349,90");
+      expect(JSON.stringify(callArgs.descriptions)).not.toContain("18/08/2026");
+      expect(callArgs.categories).toEqual([
+        { id: "cat-1", name: "Alimentação" },
+        { id: "cat-2", name: "Tecnologia" },
+      ]);
+
+      // Importação usa a categoria Tecnologia (cat-2) aplicada silenciosamente
+      const importBtn = await screen.findByRole("button", { name: /Importar 1 Lançamento/i });
+      await user.click(importBtn);
+
+      expect(mutateAsyncMock).toHaveBeenCalledWith({
+        cardId: "card-test",
+        competenceMonth: "2026-08",
+        expenses: [
+          expect.objectContaining({
+            date: "2026-08-18",
+            description: "Loja XPTZ Tech",
+            value: 349.9,
+            category_id: "cat-2",
+          }),
+        ],
+      });
+    });
+
+    it("degrada silenciosamente quando offline ou sem cota no categorize_batch sem travar o diálogo", async () => {
+      const user = userEvent.setup();
+      mockCategorizeDescriptionsBatchWithAi.mockResolvedValueOnce({
+        ok: false,
+        reason: "quota_exceeded",
+        fallbackToLocal: true,
+        quotaResetAt: "2026-12-01T00:00:00-03:00",
+      });
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      await uploadMockStatementFile(
+        user,
+        "Data\tDescricao\tValor\n19/08/2026\tCOMERCIO ALPHA\t89,00",
+      );
+      await advanceFromMapping(user);
+
+      expect(await screen.findByText(/Comercio Alpha/i)).toBeInTheDocument();
+      const importBtn = await screen.findByRole("button", { name: /Importar 1 Lançamento/i });
+      await user.click(importBtn);
+
+      // Mantém categoria fallback padrão sem erros
+      expect(mutateAsyncMock).toHaveBeenCalledWith({
+        cardId: "card-test",
+        competenceMonth: "2026-08",
+        expenses: [
+          expect.objectContaining({
+            date: "2026-08-19",
+            value: 89,
+            category_id: "cat-1",
+          }),
+        ],
+      });
+    });
+
+    it("aciona fallback statement_pdf_rows em PDF multi-coluna desalinhado e preserva parcelas/estornos na conciliação determinística", async () => {
+      const user = userEvent.setup();
+      // Texto desalinhado que o parser tabular local não consegue fatiar sozinho
+      mockUnpdfExtractText.mockResolvedValueOnce({
+        text: ["RESUMO DA FATURA BANCO DIGITAL CABECALHO MULTI COLUNA SEM DELIMITADOR"],
+        totalPages: 1,
+      });
+
+      mockExtractStatementPdfRowsWithAi.mockResolvedValueOnce({
+        ok: true,
+        cached: false,
+        source: "ai_text",
+        data: {
+          rows: [
+            {
+              date: "2026-08-10",
+              description: "Livraria Cultura",
+              amountCents: 12000,
+              installmentCurrent: 2,
+              installmentTotal: 3,
+            },
+            {
+              date: "2026-08-11",
+              description: "Estorno Livraria",
+              amountCents: -4000,
+              installmentCurrent: null,
+              installmentTotal: null,
+            },
+          ],
+        },
+      });
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      const pdfFile = new File(["pdf-multi-coluna"], "fatura-desalinhada.pdf", {
+        type: "application/pdf",
+      });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(input, pdfFile);
+
+      expect(await screen.findByText(/Livraria Cultura 2\/3/i)).toBeInTheDocument();
+      expect(screen.getByText(/Estorno Livraria/i)).toBeInTheDocument();
+      expect(mockExtractStatementPdfRowsWithAi).toHaveBeenCalledTimes(1);
+
+      await advanceFromMapping(user);
+
+      // Compra positiva fica selecionada; estorno (-40,00) fica desmarcado pelo motor determinístico
+      const importBtn = await screen.findByRole("button", { name: /Importar 1 Lançamento/i });
+      await user.click(importBtn);
+
+      expect(mutateAsyncMock).toHaveBeenCalledWith({
+        cardId: "card-test",
+        competenceMonth: "2026-08",
+        expenses: [
+          expect.objectContaining({
+            date: "2026-08-10",
+            value: 120,
+            installment_number: 2,
+            installments_total: 3,
+          }),
+        ],
+      });
+    });
   });
 });

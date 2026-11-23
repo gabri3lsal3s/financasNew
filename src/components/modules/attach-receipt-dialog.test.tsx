@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AttachReceiptDialog } from "./attach-receipt-dialog";
-import { getReceiptKindLabel } from "@/domain/notifications";
+import { computeEMVCRC16, getReceiptKindLabel } from "@/domain/notifications";
+import * as clipboardService from "@/services/clipboard";
+import { clearLocalReceiptScanCache } from "@/services/receipt-resolution";
 import { pushToast } from "@/services/toast";
 import type { CreditCard } from "@/types/schema";
 
@@ -67,6 +69,8 @@ describe("AttachReceiptDialog", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    clearLocalReceiptScanCache();
   });
 
   it("getReceiptKindLabel retorna rótulo correto para cada tipo de comprovante", () => {
@@ -304,5 +308,90 @@ describe("AttachReceiptDialog", () => {
 
     expect(mockExtractReceiptTextFromFile).not.toHaveBeenCalled();
     expect(onParsed).not.toHaveBeenCalled();
+  });
+
+  it("usa readClipboardText no botão 'Colar comprovante Pix' para PIX_BRCODE sem Tag 54 e PIX_KEY", async () => {
+    const baseEmv =
+      "00020126360014br.gov.bcb.pix0114+55119876543215204000053039865802BR5913CAFE SAO JOSE6009SAO PAULO6304";
+    const emvWithoutAmount = `${baseEmv}${computeEMVCRC16(baseEmv)}`;
+    const readSpy = vi.spyOn(clipboardService, "readClipboardText").mockResolvedValueOnce({
+      status: "success",
+      text: emvWithoutAmount,
+    });
+
+    render(<AttachReceiptDialog open={true} onOpenChange={onOpenChange} onParsed={onParsed} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Colar comprovante Pix/i }));
+
+    await waitFor(() => {
+      expect(readSpy).toHaveBeenCalledTimes(1);
+      expect(onParsed).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amountCents: 0,
+          paymentMethod: "pix",
+          pixKey: "+5511987654321",
+        }),
+      );
+    });
+  });
+
+  it("aceita Ctrl+V de imagem colada diretamente no diálogo e aciona OCR", async () => {
+    mockExtractReceiptTextFromFile.mockResolvedValueOnce(
+      "Comprovante Pix Nubank\nValor Pago: R$ 72,50\nData: 22/11/2026\nDestino\nFARMACIA EXEMPLO",
+    );
+
+    render(<AttachReceiptDialog open={true} onOpenChange={onOpenChange} onParsed={onParsed} />);
+
+    const dropText = screen.getByText(/Arraste o comprovante aqui/i);
+    const pngFile = new File(["png-print"], "print.png", { type: "image/png" });
+    fireEvent.paste(dropText, {
+      clipboardData: {
+        files: [pngFile],
+        getData: () => "",
+      },
+    });
+
+    await waitFor(() => {
+      expect(onParsed).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amountCents: 7250,
+          paymentMethod: "pix",
+        }),
+      );
+    });
+  });
+
+  it("orienta e oferece redirecionamento para importação de fatura quando status for multi_statement", async () => {
+    const onNavigateToStatementImport = vi.fn();
+    mockExtractReceiptTextFromFile.mockResolvedValueOnce(
+      [
+        "Extrato Bancário Mensal",
+        "01/11/2026 SUPERMERCADO A R$ 110,00",
+        "02/11/2026 FARMACIA B R$ 45,00",
+        "03/11/2026 PADARIA C R$ 22,50",
+      ].join("\n"),
+    );
+
+    render(
+      <AttachReceiptDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        onParsed={onParsed}
+        onNavigateToStatementImport={onNavigateToStatementImport}
+      />,
+    );
+
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const pdfFile = new File(["extrato-pdf"], "extrato.pdf", { type: "application/pdf" });
+    fireEvent.change(fileInput, { target: { files: [pdfFile] } });
+
+    const redirectBtn = await screen.findByRole("button", {
+      name: /Ir para importação de fatura/i,
+    });
+    expect(onParsed).not.toHaveBeenCalled();
+
+    fireEvent.click(redirectBtn);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(onNavigateToStatementImport).toHaveBeenCalledTimes(1);
   });
 });

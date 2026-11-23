@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   autoRegisterReceipt,
   BankNotificationPlugin,
+  buildReviewRoute,
   processPixShare,
 } from "@/services/native";
 import {
@@ -22,8 +23,9 @@ import { triggerSensory } from "@/services/sensory";
  * enviados através do menu de compartilhamento do sistema (Android/iOS/Desktop)
  * ou do buffer de Cold Start do plugin nativo.
  *
- * Efetiva o auto-cadastro imediato via RPC transacional, exibe Toast e Banner
- * persistente com opção de edição e reversão (Desfazer), e redireciona para a Home.
+ * Trava 2: Auto-cadastra imediatamente via RPC apenas quando `confidence === "high"`,
+ * `amountCents > 0` e `isSameTitularity !== true`. Em confiança média/baixa ou mesma titularidade,
+ * redireciona para revisão rápida segura no `LaunchWizard` (`buildReviewRoute(parsed)`).
  */
 export function ShareTargetPage() {
   const navigate = useNavigate();
@@ -87,6 +89,11 @@ export function ShareTargetPage() {
             taxId: universal.taxId,
             payerName: universal.payerOrSource,
             recipientName: universal.merchantOrBeneficiary,
+            confidence: universal.confidence,
+            confidenceScore: universal.confidenceScore,
+            fieldConfidence: universal.fieldConfidence,
+            isSameTitularity: universal.isSameTitularity,
+            extractionSource: universal.extractionSource,
             source: "receipt",
           };
         }
@@ -105,12 +112,36 @@ export function ShareTargetPage() {
         }
 
         if (parsed) {
-          await autoRegisterReceipt(parsed);
+          // Trava 2: Auto-cadastro imediato exige confiança alta e não ser mesma titularidade
+          const canAutoRegister =
+            parsed.amountCents > 0 &&
+            parsed.confidence === "high" &&
+            parsed.isSameTitularity !== true;
+
+          if (canAutoRegister) {
+            await autoRegisterReceipt(parsed);
+          } else {
+            triggerSensory("warning");
+            pushToast({
+              title:
+                parsed.isSameTitularity === true
+                  ? "Transferência entre suas próprias contas"
+                  : "Confira os dados do comprovante",
+              description:
+                parsed.isSameTitularity === true
+                  ? "Abrindo no lançamento rápido para você decidir se deseja registrar."
+                  : "Alguns campos precisam de confirmação antes de salvar.",
+              variant: "default",
+            });
+            navigate(buildReviewRoute(parsed), { replace: true });
+            return;
+          }
         } else {
           triggerSensory("warning");
           pushToast({
             title: "Comprovante não identificado",
-            description: "Não foi possível extrair automaticamente os dados do comprovante compartilhado.",
+            description:
+              "Não foi possível extrair automaticamente os dados do comprovante compartilhado.",
             variant: "destructive",
           });
         }

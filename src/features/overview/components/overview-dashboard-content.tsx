@@ -90,7 +90,7 @@ export function OverviewDashboardContent({
         />
       ) : (
         <>
-          {detectedPix && detectedPix.candidate.valueCents > 0 ? (
+          {detectedPix ? (
             <div className="w-full animate-fade-slide-in">
               <DashboardPixClipboardCard
                 detected={detectedPix}

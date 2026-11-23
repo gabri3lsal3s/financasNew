@@ -10,14 +10,18 @@
 import { toISODate } from "@/domain/money";
 import {
   cleanMerchantName,
-  extractCentsFromText,
   extractDateFromReceipt,
   extractTaxId,
   isBlacklistedReceipt,
   resolveBankName,
 } from "./bank-parser";
 import { isBankSlipReceipt } from "./bank-slip-parser";
-import { isPixReceipt } from "./pix-receipt-parser";
+import {
+  extractPartyBlockInfo,
+  isInvalidPartyCandidate,
+  isPixReceipt,
+} from "./pix-receipt-parser";
+import { extractSovereignReceiptAmountCents } from "./receipt-amount-scorer";
 import type { UniversalReceiptData } from "./receipt-types";
 
 /**
@@ -60,14 +64,19 @@ export function isWireTransferReceipt(text: string): boolean {
  * Extrai o nome do favorecido / destinatário da transferência bancária.
  */
 export function extractWireBeneficiary(text: string): string {
+  const fromBlock = extractPartyBlockInfo(text, "recipient");
+  if (fromBlock.name && !isInvalidPartyCandidate(fromBlock.name)) {
+    return fromBlock.name;
+  }
+
   const match =
     /(?:(?:Favorecido|Destinat[áa]rio|Conta\s+de\s+Destino)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social):\s*([^\n\r,]+)|(?:Favorecido|Destinat[áa]rio|Nome\s+do\s+Favorecido|Para|Cr[ée]dito\s+para)\s*[:=]\s*([^\n\r,]+))/i.exec(
       text,
     );
   if (match) {
-    const candidate = (match[1] || match[2] || "").trim();
-    if (candidate.length >= 3 && !/^(?:n[ãa]o\s+informado|-+)$/i.test(candidate)) {
-      return cleanMerchantName(candidate);
+    const candidate = cleanMerchantName((match[1] || match[2] || "").trim());
+    if (!isInvalidPartyCandidate(candidate)) {
+      return candidate;
     }
   }
   return "";
@@ -77,17 +86,43 @@ export function extractWireBeneficiary(text: string): string {
  * Extrai o nome do remetente / emissor da transferência bancária.
  */
 export function extractWireSender(text: string): string {
+  const fromBlock = extractPartyBlockInfo(text, "payer");
+  if (fromBlock.name && !isInvalidPartyCandidate(fromBlock.name)) {
+    return fromBlock.name;
+  }
+
   const match =
     /(?:(?:Remetente|Origem|Conta\s+de\s+Origem)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social):\s*([^\n\r,]+)|(?:Remetente|Origem|Nome\s+do\s+Remetente|De|Debitado\s+de)\s*[:=]\s*([^\n\r,]+))/i.exec(
       text,
     );
   if (match) {
-    const candidate = (match[1] || match[2] || "").trim();
-    if (candidate.length >= 3 && !/^(?:n[ãa]o\s+informado|-+)$/i.test(candidate)) {
-      return cleanMerchantName(candidate);
+    const candidate = cleanMerchantName((match[1] || match[2] || "").trim());
+    if (!isInvalidPartyCandidate(candidate)) {
+      return candidate;
     }
   }
   return "";
+}
+
+/**
+ * Detecta se um comprovante de TED/DOC representa crédito recebido ou envio/saída.
+ */
+export function detectWireTransferNature(rawText: string): "expense" | "income" {
+  const lower = rawText.toLowerCase();
+  const hasIncomeMarker =
+    /\b(?:ted\s+recebid[ao]|doc\s+recebid[ao]|transfer[êe]ncia(?:\s+banc[áa]ria)?\s+recebida|comprovante\s+de\s+recebimento|valor\s+(?:recebido|creditado)|voc[êe]\s+recebeu|cr[ée]dito\s+recebido)\b/i.test(
+      lower,
+    );
+  const hasExplicitExpenseMarker =
+    /\b(?:ted\s+enviad[ao]|doc\s+enviad[ao]|transfer[êe]ncia\s+enviada|valor\s+(?:debitado|enviado)|comprovante\s+de\s+(?:pagamento|envio)|voc[êe]\s+(?:transferiu|enviou|pagou))\b/i.test(
+      lower,
+    );
+
+  if (hasIncomeMarker && !hasExplicitExpenseMarker) {
+    return "income";
+  }
+
+  return "expense";
 }
 
 /**
@@ -112,13 +147,16 @@ export function parseWireTransferReceipt(rawText: string): UniversalReceiptData 
 
   if (isBlacklistedReceipt(rawText)) return null;
 
-  const cents = extractCentsFromText(rawText);
+  const cents = extractSovereignReceiptAmountCents(rawText);
   if (!cents || cents <= 0) return null;
 
+  const nature = detectWireTransferNature(rawText);
   const { date: txDate } = extractDateFromReceipt(rawText, false);
-  const beneficiary = extractWireBeneficiary(rawText);
-  const sender = extractWireSender(rawText);
-  const taxId = extractTaxId(rawText);
+  const beneficiaryBlock = extractPartyBlockInfo(rawText, "recipient");
+  const senderBlock = extractPartyBlockInfo(rawText, "payer");
+  const beneficiary = beneficiaryBlock.name || extractWireBeneficiary(rawText);
+  const sender = senderBlock.name || extractWireSender(rawText);
+  const taxId = extractTaxId(rawText) || beneficiaryBlock.taxId || senderBlock.taxId;
 
   // Resolução do banco de origem
   const headerLines = rawText.split(/[\r\n]+/).slice(0, 4).join(" ");
@@ -130,7 +168,9 @@ export function parseWireTransferReceipt(rawText: string): UniversalReceiptData 
   const counterpartBank = extractWireCounterpartBank(rawText);
 
   let description: string;
-  if (beneficiary) {
+  if (nature === "income") {
+    description = sender ? `TED Recebida: ${sender}` : `TED Recebida (${originBank})`;
+  } else if (beneficiary) {
     description = `TED para ${beneficiary}`;
   } else if (counterpartBank) {
     description = `Transferência (${counterpartBank})`;
@@ -143,7 +183,7 @@ export function parseWireTransferReceipt(rawText: string): UniversalReceiptData 
   return {
     id,
     kind: "wire_transfer",
-    nature: "expense",
+    nature,
     amountCents: cents,
     date: txDate || toISODate(new Date()),
     description,
@@ -151,6 +191,8 @@ export function parseWireTransferReceipt(rawText: string): UniversalReceiptData 
     merchantOrBeneficiary: beneficiary || undefined,
     payerOrSource: sender || undefined,
     taxId,
+    recipientTaxId: beneficiaryBlock.taxId,
+    payerTaxId: senderBlock.taxId,
     bankName: originBank,
     issuerBank: counterpartBank,
     rawCleanText: rawText,

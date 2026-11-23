@@ -8,6 +8,7 @@ import {
   resolveBestMatchingCard,
   type CanonicalCategorySlug,
   type ParsedBankTransaction,
+  type ReceiptUserContext,
   type UniversalReceiptData,
 } from "@/domain/notifications";
 import { readClipboardText } from "@/services/clipboard";
@@ -17,15 +18,20 @@ import {
   useMerchantLearning,
 } from "@/services/merchant-learning";
 import { getBankAssistantPreferences } from "@/services/native";
+import { consumeCurrentDetectedPix } from "@/services/pix-clipboard-store";
 import {
   resolveAndScanReceiptFile,
+  resolveReceiptFromText,
   resolveReceiptTransaction,
   type ScanReceiptFileResult,
 } from "@/services/receipt-resolution";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { Category, CreditCard } from "@/types";
-import { applyResolvedReceiptToLaunchState, buildClipboardCandidateTransaction } from "./wizard-mappers";
+import {
+  applyResolvedReceiptToLaunchState,
+  buildClipboardCandidateTransaction,
+} from "./wizard-mappers";
 import type { LaunchState, ReceiptMeta, WizardMode } from "./wizard-types";
 
 export interface UseReceiptAutofillParams {
@@ -37,9 +43,16 @@ export interface UseReceiptAutofillParams {
   categories: Category[] | undefined;
   cards: CreditCard[] | undefined;
   initialValues?: Partial<LaunchState>;
-  detectedPix: { candidate: ReturnType<typeof parseClipboardTransactionCandidate>; rawText: string } | null;
+  detectedPix: {
+    candidate: ReturnType<typeof parseClipboardTransactionCandidate>;
+    rawText: string;
+  } | null;
   clearDetectedPix: () => void;
   onOpenAttachDialog: () => void;
+  userContext?: ReceiptUserContext;
+  userId?: string | null;
+  isReadOnlyMode?: boolean;
+  aiExtractionEnabled?: boolean;
 }
 
 export function useReceiptAutofill({
@@ -54,6 +67,10 @@ export function useReceiptAutofill({
   detectedPix,
   clearDetectedPix,
   onOpenAttachDialog,
+  userContext,
+  userId,
+  isReadOnlyMode,
+  aiExtractionEnabled,
 }: UseReceiptAutofillParams) {
   const merchantLearning = useMerchantLearning();
   const cardDigits = useCardDigitsMapping();
@@ -64,7 +81,8 @@ export function useReceiptAutofill({
 
     const target = initialValues?.categoryId || state.categoryId;
     let matchedCategory = target
-      ? categories.find((c) => c.id === target) || matchCategoryBySlug(categories, target as CanonicalCategorySlug)
+      ? categories.find((c) => c.id === target) ||
+        matchCategoryBySlug(categories, target as CanonicalCategorySlug)
       : undefined;
 
     if (!matchedCategory && state.description) {
@@ -102,29 +120,47 @@ export function useReceiptAutofill({
 
     if (resolvedCard) {
       const targetCardId = resolvedCard.id;
-      const timer = setTimeout(() => setState((prev) => ({ ...prev, cardId: targetCardId })), 0);
+      const timer = setTimeout(
+        () => setState((prev) => ({ ...prev, cardId: targetCardId })),
+        0,
+      );
       return () => clearTimeout(timer);
     }
   }, [state.type, state.paymentMethod, state.cardId, initialValues?.cardId, cards, setState]);
 
   const handleReceiptParsed = useCallback(
-    (parsed: ParsedBankTransaction | UniversalReceiptData, options?: { silentFeedback?: boolean }) => {
+    (
+      parsed: ParsedBankTransaction | UniversalReceiptData,
+      options?: { silentFeedback?: boolean },
+    ) => {
       setMode("quick");
       const resolved = resolveReceiptTransaction(parsed, {
         cards,
+        userContext,
+        userId,
         userMemory: merchantLearning.memory,
         cardDigitsMapping: cardDigits.cardDigitsMapping,
         bankCardMapping: bankCard.bankCardMapping,
       });
 
       const { parsed: enriched, identity, kindLabel } = resolved;
-      const packageName = "packageName" in parsed && typeof parsed.packageName === "string" ? parsed.packageName : undefined;
+      const packageName =
+        "packageName" in parsed && typeof parsed.packageName === "string"
+          ? parsed.packageName
+          : undefined;
+      const needsAmountInput = enriched.amountCents === 0;
+
       setReceiptMeta({
         merchant: identity.friendlyName || enriched.description,
         cardLastDigits: enriched.cardLastDigits,
         taxId: enriched.taxId || identity.taxId,
         packageName,
         pixKey: ("pixKey" in enriched ? enriched.pixKey : undefined) || identity.pixKey,
+        confidence: enriched.confidence,
+        confidenceScore: enriched.confidenceScore,
+        fieldConfidence: enriched.fieldConfidence,
+        isSameTitularity: enriched.isSameTitularity,
+        needsAmountInput,
       });
 
       setState((prev) => applyResolvedReceiptToLaunchState(prev, resolved, categories, cards));
@@ -133,13 +169,29 @@ export function useReceiptAutofill({
       if (!options?.silentFeedback) {
         triggerSensory("success");
         pushToast({
-          title: `${kindLabel} reconhecido`,
-          description: `${identity.friendlyName || enriched.description} preenchido no Wizard Rápido para conferência.`,
-          variant: "success",
+          title: needsAmountInput
+            ? `${kindLabel} preenchido`
+            : `${kindLabel} reconhecido`,
+          description: needsAmountInput
+            ? `${identity.friendlyName || enriched.description} — informe o valor para concluir o lançamento.`
+            : `${identity.friendlyName || enriched.description} preenchido no Wizard Rápido para conferência.`,
+          variant: needsAmountInput ? "default" : "success",
         });
       }
     },
-    [bankCard.bankCardMapping, cardDigits.cardDigitsMapping, cards, categories, merchantLearning.memory, setIsCategoryUnconfirmed, setMode, setReceiptMeta, setState],
+    [
+      bankCard.bankCardMapping,
+      cardDigits.cardDigitsMapping,
+      cards,
+      categories,
+      merchantLearning.memory,
+      setIsCategoryUnconfirmed,
+      setMode,
+      setReceiptMeta,
+      setState,
+      userContext,
+      userId,
+    ],
   );
 
   const scanReceiptFile = useCallback(
@@ -147,30 +199,117 @@ export function useReceiptAutofill({
       const result = await resolveAndScanReceiptFile(file, {
         cards,
         isManualAttachment: true,
+        userContext,
+        userId,
         userMemory: merchantLearning.memory,
         cardDigitsMapping: cardDigits.cardDigitsMapping,
         bankCardMapping: bankCard.bankCardMapping,
+        isReadOnlyMode,
+        aiFallbackEnabled: aiExtractionEnabled,
       });
       if (result.ok && result.parsed) handleReceiptParsed(result.parsed);
       return result;
     },
-    [bankCard.bankCardMapping, cardDigits.cardDigitsMapping, cards, handleReceiptParsed, merchantLearning.memory],
+    [
+      aiExtractionEnabled,
+      bankCard.bankCardMapping,
+      cardDigits.cardDigitsMapping,
+      cards,
+      handleReceiptParsed,
+      isReadOnlyMode,
+      merchantLearning.memory,
+      userContext,
+      userId,
+    ],
+  );
+
+  const handlePasteText = useCallback(
+    (rawText: string): boolean => {
+      const trimmed = rawText.trim();
+      if (!trimmed) return false;
+
+      const candidate = parseClipboardTransactionCandidate(trimmed);
+      if (candidate && (candidate.kind === "PIX_BRCODE" || candidate.kind === "PIX_KEY")) {
+        handleReceiptParsed(buildClipboardCandidateTransaction(candidate, trimmed));
+        consumeCurrentDetectedPix(trimmed, userId);
+        return true;
+      }
+
+      const resolvedText = resolveReceiptFromText(trimmed, {
+        cards,
+        isManualAttachment: true,
+        userContext,
+        userId,
+        userMemory: merchantLearning.memory,
+        cardDigitsMapping: cardDigits.cardDigitsMapping,
+        bankCardMapping: bankCard.bankCardMapping,
+      });
+
+      if (resolvedText) {
+        handleReceiptParsed(resolvedText.parsed);
+        consumeCurrentDetectedPix(trimmed, userId);
+        return true;
+      }
+
+      return false;
+    },
+    [
+      bankCard.bankCardMapping,
+      cardDigits.cardDigitsMapping,
+      cards,
+      handleReceiptParsed,
+      merchantLearning.memory,
+      userContext,
+      userId,
+    ],
+  );
+
+  const handlePasteImageFile = useCallback(
+    async (file: File): Promise<void> => {
+      const result = await scanReceiptFile(file);
+      if (result.ok) return;
+
+      triggerSensory("warning");
+      if (result.status === "multi_statement") {
+        pushToast({
+          title: "Arquivo com vários lançamentos",
+          description:
+            result.errorMessage ??
+            "Use a importação em lote na tela de Cartões para extratos ou faturas.",
+          variant: "default",
+        });
+        return;
+      }
+
+      if (result.errorMessage) {
+        pushToast({
+          title: "Não foi possível ler o print colado",
+          description: result.errorMessage,
+          variant: "destructive",
+        });
+      }
+    },
+    [scanReceiptFile],
   );
 
   const handlePastePixFromClipboard = useCallback(async () => {
     try {
-      if (detectedPix?.candidate && detectedPix.candidate.valueCents > 0) {
-        handleReceiptParsed(buildClipboardCandidateTransaction(detectedPix.candidate, detectedPix.rawText));
+      if (
+        detectedPix?.candidate &&
+        (detectedPix.candidate.kind === "PIX_BRCODE" ||
+          detectedPix.candidate.kind === "PIX_KEY" ||
+          detectedPix.candidate.valueCents > 0)
+      ) {
+        handleReceiptParsed(
+          buildClipboardCandidateTransaction(detectedPix.candidate, detectedPix.rawText),
+        );
         clearDetectedPix();
         return;
       }
+
       const clipResult = await readClipboardText();
       if (clipResult.status === "success" && clipResult.text) {
-        const text = clipResult.text.trim();
-        const candidate = parseClipboardTransactionCandidate(text);
-        if (candidate && candidate.valueCents > 0) {
-          handleReceiptParsed(buildClipboardCandidateTransaction(candidate, text));
-          clearDetectedPix();
+        if (handlePasteText(clipResult.text)) {
           return;
         }
       }
@@ -178,7 +317,13 @@ export function useReceiptAutofill({
     } catch {
       onOpenAttachDialog();
     }
-  }, [clearDetectedPix, detectedPix, handleReceiptParsed, onOpenAttachDialog]);
+  }, [clearDetectedPix, detectedPix, handlePasteText, handleReceiptParsed, onOpenAttachDialog]);
 
-  return { handleReceiptParsed, scanReceiptFile, handlePastePixFromClipboard };
+  return {
+    handleReceiptParsed,
+    scanReceiptFile,
+    handlePasteText,
+    handlePasteImageFile,
+    handlePastePixFromClipboard,
+  };
 }

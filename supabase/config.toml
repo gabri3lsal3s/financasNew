@@ -430,6 +430,10 @@ verify_jwt = false
 [functions.admin-super-action]
 verify_jwt = false
 
+# Assistente de Micro-IA FinOps (validação própria via JWT, assinatura ativa e kill-switch)
+[functions.ai-financial-assistant]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

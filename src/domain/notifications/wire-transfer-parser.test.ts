@@ -67,4 +67,31 @@ describe("wire-transfer-parser — Parser Especializado de TED/DOC/Transferênci
     const pixRaw = "Comprovante de transferência Pix realizada";
     expect(parseWireTransferReceipt(pixRaw)).toBeNull();
   });
+
+  it("extrai blocos sem 'Nome:' e detecta TED Recebida como income (Fase B)", () => {
+    const tedReceived = `
+      Banco Itaú
+      Comprovante de Transferência Bancária Recebida
+      Tipo de transferência: TED
+      Data: 20/11/2026
+      Valor creditado: R$ 3.400,00
+
+      Origem
+      EMPRESA ALFA CONSULTORIA LTDA
+      CNPJ: 18.236.120/0001-58
+      Instituição: Banco do Brasil S.A.
+
+      Destino
+      GABRIEL SALES
+      Instituição: Itaú Unibanco S.A.
+    `;
+
+    const parsed = parseWireTransferReceipt(tedReceived);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.nature).toBe("income");
+    expect(parsed?.amountCents).toBe(340000);
+    expect(parsed?.payerOrSource).toContain("EMPRESA ALFA CONSULTORIA");
+    expect(parsed?.merchantOrBeneficiary).toBe("GABRIEL SALES");
+    expect(parsed?.description).toContain("TED Recebida:");
+  });
 });

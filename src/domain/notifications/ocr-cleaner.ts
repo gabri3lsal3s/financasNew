@@ -123,8 +123,8 @@ function fixColonsAndCurrencySymbols(text: string): string {
   // Não afeta US$, ARS$ etc.
   result = result.replace(/(?<![A-Za-z])\$\s*(?=\d{1,3}(?:\.\d{3})*,\d{2}\b|\d+,\d{2}\b)/g, "R$ ");
 
-  // Normaliza valores com 3 decimais de atacado quando terminam em 000: "R$ 6,000" -> "R$ 6,00"
-  result = result.replace(/(R\$\s*\d+),(\d{2})0\b/g, "$1,$2");
+  // Normaliza valores com 3 decimais de atacado quando terminam em 0: "R$ 6,000" -> "R$ 6,00", "R$ 1.250,000" -> "R$ 1.250,00"
+  result = result.replace(/(R\$\s*(?:\d{1,3}(?:\.\d{3})+|\d+)),(\d{2})0\b/g, "$1,$2");
 
   return result;
 }
@@ -199,8 +199,9 @@ function fixFracturedMonetaryAmounts(text: string): string {
   // 2. Espaços ao redor da vírgula decimal: "45 , 90" ou "45, 90" ou "45 ,90"
   result = result.replace(/(?<=\b\d{1,6})\s*,\s*(?=\d{2}\b)/g, ",");
 
-  // 3. Espaços internos anômalos entre dígitos que possuem decimais: "1 50,00" -> "150,00"
-  result = result.replace(/(?<=\b\d{1,4})\s+(?=\d+,\d{2}\b)/g, "");
+  // 3. Espaços internos anômalos entre dígitos SOMENTE quando precedidos por R$:
+  // Ex: "R$ 1 50,00" -> "R$ 150,00". Nunca funde número de item/qtd/ano ("Item 1 45,00", "Qtd 2 45,00").
+  result = result.replace(/(R\$\s*\d{1,4})\s+(?=\d+,\d{2}\b)/gi, "$1");
 
   // 4. Espaços internos anômalos em números monetários precedidos por R$:
   // Ex: "R$ 1 250,00" -> "R$ 1250,00"

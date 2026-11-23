@@ -14,6 +14,20 @@ interface TerminableWorker {
   terminate: () => Promise<unknown>;
 }
 
+export type OcrPreprocessStrategy =
+  | "dark_mode_invert_grayscale"
+  | "digital_screenshot_grayscale"
+  | "thermal_otsu_binarize";
+
+export interface OcrImageProfile {
+  meanGray: number;
+  modeGray: number;
+  modeConcentration: number;
+  isDarkMode: boolean;
+  isDigitalScreenshot: boolean;
+  strategy: OcrPreprocessStrategy;
+}
+
 /**
  * Calcula o limiar ótimo de binarização pelo método de Otsu a partir do histograma de luminância.
  * Função pura e determinística.
@@ -58,10 +72,166 @@ export function calculateOtsuThreshold(histogram: number[], totalPixels: number)
 }
 
 /**
+ * Classifica o perfil de luminância de uma imagem para selecionar a melhor estratégia de pré-processamento OCR:
+ * - Prints em Dark Mode (`meanGray < 110`): inversão suave sem binarização dura (preserva anti-aliasing).
+ * - Prints digitais em Modo Claro: escala de cinza suave sem binarização de Otsu (preserva fontes finas).
+ * - Fotos de cupons térmicos / câmera: binarização adaptativa por Otsu para remover sombras do papel.
+ */
+export function classifyOcrImageProfile(histogram: number[], totalPixels: number): OcrImageProfile {
+  if (totalPixels <= 0 || histogram.length < 256) {
+    return {
+      meanGray: 255,
+      modeGray: 255,
+      modeConcentration: 0,
+      isDarkMode: false,
+      isDigitalScreenshot: false,
+      strategy: "thermal_otsu_binarize",
+    };
+  }
+
+  let weightedSum = 0;
+  let modeGray = 0;
+  let modeCount = -1;
+
+  for (let i = 0; i < 256; i++) {
+    const count = histogram[i] ?? 0;
+    weightedSum += i * count;
+    if (count > modeCount) {
+      modeCount = count;
+      modeGray = i;
+    }
+  }
+
+  const meanGray = weightedSum / totalPixels;
+
+  let bandCount = 0;
+  const minBand = Math.max(0, modeGray - 4);
+  const maxBand = Math.min(255, modeGray + 4);
+  for (let i = minBand; i <= maxBand; i++) {
+    bandCount += histogram[i] ?? 0;
+  }
+  const modeConcentration = bandCount / totalPixels;
+
+  const isDarkMode = meanGray < 110;
+  const isDigitalScreenshot =
+    (modeConcentration >= 0.5 && (modeGray >= 230 || modeGray <= 45)) ||
+    (modeConcentration >= 0.6 && (modeGray >= 200 || modeGray <= 70));
+
+  const strategy: OcrPreprocessStrategy = isDarkMode
+    ? "dark_mode_invert_grayscale"
+    : isDigitalScreenshot
+      ? "digital_screenshot_grayscale"
+      : "thermal_otsu_binarize";
+
+  return {
+    meanGray,
+    modeGray,
+    modeConcentration,
+    isDarkMode,
+    isDigitalScreenshot,
+    strategy,
+  };
+}
+
+function getHistogramPercentile(histogram: number[], totalPixels: number, quantile: number): number {
+  const target = totalPixels * quantile;
+  let cumulative = 0;
+  for (let i = 0; i < 256; i++) {
+    cumulative += histogram[i] ?? 0;
+    if (cumulative >= target) {
+      return i;
+    }
+  }
+  return 255;
+}
+
+/**
+ * Aplica pré-processamento adaptativo diretamente no buffer RGBA de um <canvas>.
+ * Função determinística testável em jsdom sem depender de Tesseract ativo.
+ */
+export function applyOcrPixelPreprocess(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): OcrImageProfile {
+  const totalPixels = Math.max(0, Math.min(width * height, Math.floor(data.length / 4)));
+  const histogram = new Array<number>(256).fill(0);
+  const grays = new Uint8Array(totalPixels);
+
+  let pixelIdx = 0;
+  for (let i = 0; pixelIdx < totalPixels; i += 4) {
+    const r = data[i] ?? 0;
+    const g = data[i + 1] ?? 0;
+    const b = data[i + 2] ?? 0;
+    const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+    grays[pixelIdx] = gray;
+    histogram[gray] = (histogram[gray] ?? 0) + 1;
+    pixelIdx++;
+  }
+
+  const profile = classifyOcrImageProfile(histogram, totalPixels);
+
+  if (profile.strategy === "dark_mode_invert_grayscale") {
+    const lowGray = getHistogramPercentile(histogram, totalPixels, 0.005);
+    const highGray = getHistogramPercentile(histogram, totalPixels, 0.995);
+    const invLow = 255 - highGray;
+    const invHigh = 255 - lowGray;
+    const span = invHigh - invLow;
+    const shouldStretch = span >= 30 && span < 230;
+
+    pixelIdx = 0;
+    for (let i = 0; pixelIdx < totalPixels; i += 4) {
+      const inverted = 255 - grays[pixelIdx]!;
+      const out = shouldStretch
+        ? Math.max(0, Math.min(255, Math.round(((inverted - invLow) * 255) / span)))
+        : inverted;
+      data[i] = out;
+      data[i + 1] = out;
+      data[i + 2] = out;
+      pixelIdx++;
+    }
+    return profile;
+  }
+
+  if (profile.strategy === "digital_screenshot_grayscale") {
+    const lowGray = getHistogramPercentile(histogram, totalPixels, 0.005);
+    const highGray = getHistogramPercentile(histogram, totalPixels, 0.995);
+    const span = highGray - lowGray;
+    const shouldStretch = span >= 30 && span < 230;
+
+    pixelIdx = 0;
+    for (let i = 0; pixelIdx < totalPixels; i += 4) {
+      const gray = grays[pixelIdx]!;
+      const out = shouldStretch
+        ? Math.max(0, Math.min(255, Math.round(((gray - lowGray) * 255) / span)))
+        : gray;
+      data[i] = out;
+      data[i + 1] = out;
+      data[i + 2] = out;
+      pixelIdx++;
+    }
+    return profile;
+  }
+
+  // Fotos térmicas / documentos fotografados com variação de luz -> Otsu clássico
+  const otsuThreshold = calculateOtsuThreshold(histogram, totalPixels);
+  pixelIdx = 0;
+  for (let i = 0; pixelIdx < totalPixels; i += 4) {
+    const binary = grays[pixelIdx]! < otsuThreshold ? 0 : 255;
+    data[i] = binary;
+    data[i + 1] = binary;
+    data[i + 2] = binary;
+    pixelIdx++;
+  }
+
+  return profile;
+}
+
+/**
  * Pré-processa a imagem no navegador via <canvas> antes de enviar ao Tesseract:
  * - Redimensiona suavemente imagens com dimensão > 2500px, acelerando o OCR sem perda de nitidez.
- * - Converte os pixels para escala de cinza (grayscale).
- * - Calcula histograma e aplica binarização adaptativa pelo método de Otsu para isolar caracteres térmicos.
+ * - Detecta Dark Mode / prints digitais para preservar anti-aliasing sem binarização destrutiva.
+ * - Aplica Otsu somente em fotos físicas / cupons térmicos.
  */
 export async function preprocessImageForOcr(file: File | Blob): Promise<Blob | File> {
   if (typeof window === "undefined" || typeof document === "undefined") {
@@ -127,42 +297,8 @@ export async function preprocessImageForOcr(file: File | Blob): Promise<Blob | F
     ctx.drawImage(sourceDrawable, 0, 0, targetWidth, targetHeight);
     closeBitmap?.();
 
-    // Conversão para Grayscale e Binarização Adaptativa (Otsu)
     const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
-    const data = imageData.data;
-    const totalPixels = targetWidth * targetHeight;
-    const histogram = new Array<number>(256).fill(0);
-    const grays = new Uint8Array(totalPixels);
-
-    // Passo 1: Construção do histograma de luminância em escala de cinza
-    let pixelIdx = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i]!;
-      const g = data[i + 1]!;
-      const b = data[i + 2]!;
-      // Luminância padronizada NTSC / ITU-R BT.601
-      const gray = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
-      grays[pixelIdx] = gray;
-      histogram[gray] = (histogram[gray] ?? 0) + 1;
-      pixelIdx++;
-    }
-
-    // Passo 2: Cálculo do limiar ideal por Otsu
-    const otsuThreshold = calculateOtsuThreshold(histogram, totalPixels);
-
-    // Passo 3: Aplicação de binarização com realce para leitura óptica
-    pixelIdx = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const gray = grays[pixelIdx]!;
-      // Pixels mais escuros que o limiar viram texto escuro (0), mais claros viram fundo branco (255)
-      const binary = gray < otsuThreshold ? 0 : 255;
-
-      data[i] = binary;
-      data[i + 1] = binary;
-      data[i + 2] = binary;
-      pixelIdx++;
-    }
-
+    applyOcrPixelPreprocess(imageData.data, targetWidth, targetHeight);
     ctx.putImageData(imageData, 0, 0);
 
     return await new Promise<Blob>((resolve) => {

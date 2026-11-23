@@ -15,7 +15,7 @@ describe("DashboardPixClipboardCard", () => {
 
   const mockDetected: DetectedPixTransaction = {
     candidate: {
-      kind: "pix_message",
+      kind: "PIX_BRCODE",
       valueCents: 4500,
       description: "Padaria São Bento",
       recipientName: "Padaria São Bento",
@@ -115,5 +115,42 @@ describe("DashboardPixClipboardCard", () => {
     await user.click(dismissBtn);
 
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it("exibe estado elegante 'Valor em aberto' quando PIX_BRCODE não possui Tag 54 (valueCents === 0)", async () => {
+    const onLaunch = vi.fn();
+    const user = userEvent.setup();
+
+    const openAmountDetected: DetectedPixTransaction = {
+      ...mockDetected,
+      candidate: {
+        ...mockDetected.candidate,
+        valueCents: 0,
+      },
+    };
+
+    render(
+      <DashboardPixClipboardCard
+        detected={openAmountDetected}
+        onLaunch={onLaunch}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText("Valor em aberto · Toque para informar o valor e lançar"),
+    ).toBeInTheDocument();
+
+    const cta = screen.getByRole("button", { name: /Informar valor/i });
+    await user.click(cta);
+
+    expect(onLaunch).toHaveBeenCalledWith({
+      valorCents: undefined,
+      desc: "Padaria São Bento",
+      categoria: "alimentacao",
+      tipo: "expense",
+      forma: "pix",
+      pixKey: "12345678000199",
+    });
   });
 });

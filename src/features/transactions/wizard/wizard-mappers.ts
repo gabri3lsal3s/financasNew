@@ -14,6 +14,20 @@ export function buildClipboardCandidateTransaction(
   candidate: NonNullable<ReturnType<typeof parseClipboardTransactionCandidate>>,
   rawText: string,
 ): ParsedBankTransaction {
+  const hasCounterparty = Boolean(candidate.recipientName || candidate.merchant);
+  const amountConfidence = candidate.valueCents > 0 ? "high" : "low";
+  const counterpartyConfidence = hasCounterparty
+    ? "high"
+    : candidate.kind === "PIX_KEY"
+      ? "medium"
+      : "low";
+  const overallConfidence =
+    candidate.kind === "PIX_BRCODE" && candidate.valueCents > 0
+      ? "high"
+      : candidate.kind === "PIX_KEY"
+        ? "medium"
+        : candidate.confidence;
+
   return {
     id: `pix_clip_${Date.now()}`,
     bankName: "Pix",
@@ -34,6 +48,14 @@ export function buildClipboardCandidateTransaction(
           : candidate.paymentMethod,
     timestamp: Date.now(),
     rawText,
+    confidence: overallConfidence,
+    fieldConfidence: {
+      amount: amountConfidence,
+      counterparty: counterpartyConfidence,
+      nature: "high",
+      date: candidate.date ? "high" : "low",
+    },
+    extractionSource: "local_deterministic",
   };
 }
 

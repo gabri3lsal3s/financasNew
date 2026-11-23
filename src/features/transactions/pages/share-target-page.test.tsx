@@ -436,4 +436,75 @@ describe("ShareTargetPage — Web Share Target & Auto-Cadastro (§1.6)", () => {
       }),
     );
   });
+
+  describe("Trava 2 — Bloqueio de Auto-Cadastro em Mesma Titularidade e Confiança Baixa/Média", () => {
+    it("redireciona para buildReviewRoute sem auto-cadastrar quando isSameTitularity === true", async () => {
+      const sameTitularityReceipt = [
+        "Comprovante de transferência Pix",
+        "Valor: R$ 500,00",
+        "Data: 22/11/2026",
+        "Destino",
+        "GABRIEL SALES",
+        "Origem",
+        "GABRIEL SALES",
+      ].join("\n");
+
+      const pushToastSpy = vi.spyOn(toastModule, "pushToast").mockReturnValue(1);
+      const sensorySpy = vi.spyOn(sensoryModule, "triggerSensory").mockImplementation(() => {});
+
+      render(
+        <MemoryRouter
+          initialEntries={[`/share-target?text=${encodeURIComponent(sameTitularityReceipt)}`]}
+        >
+          <ShareTargetPage />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          expect.stringMatching(/^\/transacoes\?.*novo=expense.*modo=rapido.*valor=50000/),
+          { replace: true },
+        );
+      });
+
+      expect(rpcModule.createExpenseWithDebt).not.toHaveBeenCalled();
+      expect(sensorySpy).toHaveBeenCalledWith("warning");
+      expect(pushToastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Transferência entre suas próprias contas",
+        }),
+      );
+    });
+
+    it("redireciona para buildReviewRoute sem auto-cadastrar quando confiança for média ou baixa (contraparte ausente)", async () => {
+      const lowConfidenceReceipt = [
+        "Comprovante Pix",
+        "Valor: R$ 95,00",
+      ].join("\n");
+
+      const pushToastSpy = vi.spyOn(toastModule, "pushToast").mockReturnValue(1);
+
+      render(
+        <MemoryRouter
+          initialEntries={[`/share-target?text=${encodeURIComponent(lowConfidenceReceipt)}`]}
+        >
+          <ShareTargetPage />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith(
+          expect.stringMatching(/^\/transacoes\?.*novo=expense.*modo=rapido.*valor=9500/),
+          { replace: true },
+        );
+      });
+
+      expect(rpcModule.createExpenseWithDebt).not.toHaveBeenCalled();
+      expect(pushToastSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Confira os dados do comprovante",
+        }),
+      );
+    });
+  });
 });

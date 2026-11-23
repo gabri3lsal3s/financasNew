@@ -12,12 +12,12 @@
 import { toISODate } from "@/domain/money";
 import {
   cleanMerchantName,
-  extractCentsFromText,
   extractDateFromReceipt,
   extractTaxId,
   isBlacklistedReceipt,
   resolveBankName,
 } from "./bank-parser";
+import { extractSovereignReceiptAmountCents } from "./receipt-amount-scorer";
 import { isPixReceipt } from "./pix-receipt-parser";
 import { extractDetailedInstallments } from "./installment-extractor";
 import { cleanCorporateSuffixes } from "./danfe-nfc-parser";
@@ -223,7 +223,7 @@ export function parseBankSlipReceipt(rawText: string): UniversalReceiptData | nu
 
   if (isBlacklistedReceipt(rawText)) return null;
 
-  const cents = extractCentsFromText(rawText);
+  const cents = extractSovereignReceiptAmountCents(rawText);
   if (!cents || cents <= 0) return null;
 
   // Extrai data de pagamento (efetivação)

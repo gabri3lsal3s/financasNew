@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Check, Clock, CreditCard, SlidersHorizontal } from "lucide-react";
-import { Badge, Button, Chip, MoneyInput, MoneyText, Select, Tabs } from "@/components/ui";
+import { Alert, Badge, Button, Chip, MoneyInput, MoneyText, Select, Tabs } from "@/components/ui";
 import type { HabitualEntry, PredictionEntry } from "@/domain/predictions";
 import { triggerSensory } from "@/services/sensory";
 import { formatCentsAsCurrency } from "@/services/masks";
@@ -9,7 +9,7 @@ import type { Category, PaymentMethod, ReceiveType } from "@/types";
 import { LaunchContextSelector } from "./launch-context-selector";
 import { QuickCategoryGrid } from "./quick-category-grid";
 import { QuickDescriptionField } from "./quick-description-field";
-import type { EntryType, LaunchState } from "./wizard-types";
+import type { EntryType, LaunchState, ReceiptMeta } from "./wizard-types";
 
 export interface StepQuickProps {
   state: LaunchState;
@@ -38,6 +38,7 @@ export interface StepQuickProps {
   onApplyHabitual?: (habit: HabitualEntry) => void;
   cards: { id: string; name: string }[] | undefined;
   cardsLoading?: boolean;
+  receiptMeta?: ReceiptMeta | null;
   onSubmit?: () => void;
 }
 
@@ -62,10 +63,22 @@ export function StepQuick(props: StepQuickProps) {
     onDescriptionChange, onFamilyChange, isFamilyModeEnabled = false, onSplitToggle,
     onSplitPeopleCountChange, onSplitDebtModeChange, activeTrips, onTripChange,
     activeTripMemberName, onSwitchToGuided, categories, categoriesLoading = false,
-    predictionEntries, habits, onApplyHabitual, cards, cardsLoading = false, onSubmit,
+    predictionEntries, habits, onApplyHabitual, cards, cardsLoading = false, receiptMeta, onSubmit,
   } = props;
 
   const isExpense = state.type === "expense";
+  const highlightAmountNeeded = Boolean(receiptMeta?.needsAmountInput && state.valueCents === 0);
+  const amountNeedsReview = Boolean(
+    !highlightAmountNeeded &&
+      receiptMeta?.fieldConfidence &&
+      receiptMeta.fieldConfidence.amount !== "high",
+  );
+  const counterpartyNeedsReview = Boolean(
+    receiptMeta?.fieldConfidence && receiptMeta.fieldConfidence.counterparty !== "high",
+  );
+  const natureNeedsReview = Boolean(
+    receiptMeta?.fieldConfidence && receiptMeta.fieldConfidence.nature !== "high",
+  );
   const installmentOptions = useMemo(
     () => Array.from({ length: 12 }, (_, idx) => {
       const i = idx + 1;
@@ -79,12 +92,28 @@ export function StepQuick(props: StepQuickProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <Tabs
-        value={state.type}
-        fullWidth
-        onValueChange={(val) => onTypeChange(val as EntryType)}
-        items={[{ value: "expense", label: "Despesa", content: null }, { value: "income", label: "Renda", content: null }]}
-      />
+      {receiptMeta?.isSameTitularity === true ? (
+        <Alert variant="warning">
+          Transferência entre suas próprias contas detectada. Confira se deseja registrar esta movimentação.
+        </Alert>
+      ) : null}
+
+      <div className="flex flex-col gap-1.5">
+        {natureNeedsReview ? (
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium text-muted-foreground">Tipo de movimentação</span>
+            <Badge variant="warning" size="xs">
+              Conferir
+            </Badge>
+          </div>
+        ) : null}
+        <Tabs
+          value={state.type}
+          fullWidth
+          onValueChange={(val) => onTypeChange(val as EntryType)}
+          items={[{ value: "expense", label: "Despesa", content: null }, { value: "income", label: "Renda", content: null }]}
+        />
+      </div>
 
       {habits && habits.length > 0 ? (
         <div className="flex flex-col gap-1.5" data-testid="quick-habitual-entries">
@@ -112,12 +141,29 @@ export function StepQuick(props: StepQuickProps) {
       ) : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="quick-value-input" className="text-xs font-semibold text-foreground">Valor</label>
+        <div className="flex items-center gap-2">
+          <label htmlFor="quick-value-input" className="text-xs font-semibold text-foreground">
+            Valor
+          </label>
+          {highlightAmountNeeded ? (
+            <Badge variant="default" size="xs">
+              Informar valor
+            </Badge>
+          ) : amountNeedsReview ? (
+            <Badge variant="warning" size="xs">
+              Conferir
+            </Badge>
+          ) : null}
+        </div>
         <MoneyInput
           id="quick-value-input"
           cents={state.valueCents}
           onCentsChange={onValueChange}
           aria-label="Valor do lançamento"
+          className={cn(
+            highlightAmountNeeded && "ring-2 ring-primary/30 border-primary/60",
+            amountNeedsReview && "border-warning/60 ring-1 ring-warning/25",
+          )}
           onKeyDown={(event) => {
             if (event.key === "Enter" && state.valueCents > 0) { event.preventDefault(); onSubmit?.(); }
           }}
@@ -128,6 +174,7 @@ export function StepQuick(props: StepQuickProps) {
         value={state.description}
         isExpense={isExpense}
         categories={categories}
+        needsReview={counterpartyNeedsReview}
         onDescriptionChange={onDescriptionChange}
         onCategoryChange={onCategoryChange}
       />

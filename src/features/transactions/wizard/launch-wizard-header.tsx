@@ -1,10 +1,12 @@
 import { ClipboardPaste, Paperclip, Zap } from "lucide-react";
 import { Button } from "@/components/ui";
+import { cn } from "@/lib/utils";
 import type { WizardMode } from "./wizard-types";
 
 export interface LaunchWizardHeaderActionsProps {
   mode: WizardMode;
   hasDetectedPix: boolean;
+  showPastePix?: boolean;
   onSwitchToQuick: () => void;
   onPastePix: () => void;
   onOpenAttach: () => void;
@@ -13,6 +15,7 @@ export interface LaunchWizardHeaderActionsProps {
 export function LaunchWizardHeaderActions({
   mode,
   hasDetectedPix,
+  showPastePix = true,
   onSwitchToQuick,
   onPastePix,
   onOpenAttach,
@@ -33,14 +36,19 @@ export function LaunchWizardHeaderActions({
           <span className="hidden sm:inline">Modo rápido</span>
         </Button>
       ) : null}
-      {hasDetectedPix ? (
+      {showPastePix ? (
         <Button
           type="button"
           variant="outline"
           size="xs"
           sensoryIntent={false}
           onClick={onPastePix}
-          className="gap-1 border-primary/30 bg-surface-raised px-2.5 text-xs font-medium text-primary-strong shadow-xs hover:bg-primary/5"
+          className={cn(
+            "gap-1 px-2.5 text-xs font-medium text-primary-strong shadow-xs transition-colors",
+            hasDetectedPix
+              ? "border-primary/50 bg-primary/10 hover:bg-primary/15"
+              : "border-primary/30 bg-surface-raised hover:bg-primary/5",
+          )}
           aria-label="Colar comprovante Pix"
         >
           <ClipboardPaste className="size-3.5 text-primary-strong" aria-hidden="true" />

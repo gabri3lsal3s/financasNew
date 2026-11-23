@@ -1,23 +1,32 @@
 /**
- * Parser puro e agregador de conteúdo da área de transferência.
- * Reconhece em cascata:
- * 1. Pix Copia e Cola / BR Code (EMVCo 000201...).
- * 2. Comprovantes bancários completos (Pix, TED, Boleto, Cartão).
- * 3. Textos livres de compartilhamento bancário.
+ * Parser puro e agregador estrito de conteúdo da área de transferência.
+ * Reconhece exclusivamente em cascata discriminada (`PIX_BRCODE | PIX_KEY | PIX_RECEIPT | NONE`):
+ * 1. Pix Copia e Cola / BR Code (EMVCo 000201... com GUI `br.gov.bcb.pix` e CRC16-CCITT válido, com ou sem valor).
+ * 2. Chave Pix isolada validada estritamente (`PIX_KEY`, sempre com `valueCents === 0`).
+ * 3. Comprovantes bancários formais inequívocos (`PIX_RECEIPT`, sem fallback genérico frouxo).
  */
 
+import { isBankSlipReceipt } from "./bank-slip-parser";
+import { isCardSlipReceipt } from "./card-slip-parser";
+import { isDanfeNfcReceipt } from "./danfe-nfc-parser";
 import { parsePixEMVPayload } from "./pix-emv-parser";
-import { parseUniversalReceipt } from "./universal-receipt-parser";
-import { detectPixKey, parsePixFreeText, type PixKeyType } from "./pix-text-parser";
+import { isPixReceipt } from "./pix-receipt-parser";
+import { detectPixKey, extractPixKeyFromReceiptText, type PixKeyType } from "./pix-text-parser";
+import { isInvoicePaymentReceipt, parseUniversalReceipt } from "./universal-receipt-parser";
+import { isWireTransferReceipt } from "./wire-transfer-parser";
+
+export type ClipboardPixKind = "PIX_BRCODE" | "PIX_KEY" | "PIX_RECEIPT" | "NONE";
 
 export interface ClipboardParsedCandidate {
-  kind: "emv_code" | "receipt" | "decimal_amount" | "pix_key" | "pix_link" | "pix_message";
+  kind: ClipboardPixKind;
   valueCents: number;
   description: string;
   merchant?: string;
   recipientName?: string;
   pixKey?: string;
   pixKeyType?: PixKeyType;
+  txId?: string;
+  city?: string;
   taxId?: string;
   nature: "expense" | "income";
   paymentMethod: "pix" | "credit_card" | "debit_card" | "boleto" | "other";
@@ -26,8 +35,19 @@ export interface ClipboardParsedCandidate {
   rawText?: string;
 }
 
+function hasFormalReceiptSignature(text: string): boolean {
+  return (
+    isInvoicePaymentReceipt(text) ||
+    isDanfeNfcReceipt(text) ||
+    isBankSlipReceipt(text) ||
+    isPixReceipt(text) ||
+    isCardSlipReceipt(text) ||
+    isWireTransferReceipt(text)
+  );
+}
+
 /**
- * Tenta converter texto livre colado da área de transferência em um candidato a lançamento.
+ * Tenta converter texto colado da área de transferência em um candidato estruturado.
  * Função 100% pura: sem efeitos colaterais e sem dependência de rede ou UI.
  */
 export function parseClipboardTransactionCandidate(rawText?: string | null): ClipboardParsedCandidate | null {
@@ -35,97 +55,77 @@ export function parseClipboardTransactionCandidate(rawText?: string | null): Cli
   const trimmed = rawText.trim();
   if (trimmed.length === 0) return null;
 
-  // 1. Tenta decodificar Pix Copia e Cola EMVCo (BR Code)
+  // 1. Pix Copia e Cola EMVCo (BR Code) com validação CRC16-CCITT UTF-8 (suporta Tag 54 ausente -> valueCents = 0)
   if (trimmed.includes("000201")) {
     const emv = parsePixEMVPayload(trimmed);
     if (emv) {
       return {
-        kind: "emv_code",
+        kind: "PIX_BRCODE",
         valueCents: emv.amountCents,
         description: emv.description,
         merchant: emv.merchant,
         recipientName: emv.recipientName,
         pixKey: emv.pixKey,
+        txId: emv.txId,
+        city: emv.city,
         nature: "expense",
         paymentMethod: "pix",
         confidence: "high",
         date: emv.date,
-        rawText: trimmed,
+        rawText: emv.rawText,
       };
     }
   }
 
-  // 2. Se for mensagem de compartilhamento, chave avulsa ou link Pix (sem cabeçalho de comprovante formal)
-  const isFormalReceipt = /\b(?:comprovante|autentica[çc][ãa]o|extrato\s+sat|danfe|documento\s+auxiliar|via\s+do\s+cliente)\b/i.test(trimmed);
-
-  if (!isFormalReceipt) {
-    const pixText = parsePixFreeText(trimmed);
-    if (pixText) {
-      return {
-        kind: pixText.kind,
-        valueCents: pixText.amountCents,
-        description: pixText.description,
-        merchant: pixText.recipientName,
-        recipientName: pixText.recipientName,
-        pixKey: pixText.pixKey,
-        pixKeyType: pixText.pixKeyType,
-        nature: pixText.nature,
-        paymentMethod: "pix",
-        confidence: pixText.confidence,
-        date: pixText.date,
-        rawText: trimmed,
-      };
-    }
-  }
-
-  // 3. Tenta decodificar comprovante bancário universal formal
-  const receipt = parseUniversalReceipt(trimmed);
-  if (receipt && receipt.amountCents > 0) {
-    const method: ClipboardParsedCandidate["paymentMethod"] =
-      receipt.paymentMethod === "pix"
-        ? "pix"
-        : receipt.paymentMethod === "credit_card"
-          ? "credit_card"
-          : receipt.paymentMethod === "debit"
-            ? "debit_card"
-            : "other";
-
-    const detectedKey = detectPixKey(trimmed);
-
+  // 2. Chave Pix isolada estrita (CPF/CNPJ Módulo 11, EVP UUIDv4, E-mail completo, Celular DDD Anatel)
+  const isolatedKey = detectPixKey(trimmed);
+  if (isolatedKey) {
     return {
-      kind: "receipt",
-      valueCents: receipt.amountCents,
-      description: receipt.description,
-      merchant: receipt.merchantOrBeneficiary,
-      recipientName: receipt.merchantOrBeneficiary,
-      taxId: receipt.taxId,
-      pixKey: detectedKey?.normalizedKey,
-      pixKeyType: detectedKey?.type,
-      nature: receipt.nature,
-      paymentMethod: method,
-      confidence: "high",
-      date: receipt.date,
-      rawText: trimmed,
-    };
-  }
-
-  // 4. Fallback final para texto Pix se ainda não capturado
-  const fallbackPix = parsePixFreeText(trimmed);
-  if (fallbackPix) {
-    return {
-      kind: fallbackPix.kind,
-      valueCents: fallbackPix.amountCents,
-      description: fallbackPix.description,
-      merchant: fallbackPix.recipientName,
-      recipientName: fallbackPix.recipientName,
-      pixKey: fallbackPix.pixKey,
-      pixKeyType: fallbackPix.pixKeyType,
-      nature: fallbackPix.nature,
+      kind: "PIX_KEY",
+      valueCents: 0,
+      description: `Pix: ${isolatedKey.rawKey}`,
+      pixKey: isolatedKey.normalizedKey,
+      pixKeyType: isolatedKey.type,
+      nature: "expense",
       paymentMethod: "pix",
-      confidence: fallbackPix.confidence,
-      date: fallbackPix.date,
+      confidence: "medium",
       rawText: trimmed,
     };
+  }
+
+  // 3. Comprovante bancário formal inequívoco (proibido fallback genérico em textos aleatórios)
+  if (hasFormalReceiptSignature(trimmed)) {
+    const receipt = parseUniversalReceipt(trimmed);
+    if (receipt && receipt.amountCents > 0) {
+      const method: ClipboardParsedCandidate["paymentMethod"] =
+        receipt.paymentMethod === "pix"
+          ? "pix"
+          : receipt.paymentMethod === "credit_card"
+            ? "credit_card"
+            : receipt.paymentMethod === "debit"
+              ? "debit_card"
+              : receipt.kind === "bank_slip_payment"
+                ? "boleto"
+                : "other";
+
+      const detectedKey = extractPixKeyFromReceiptText(trimmed);
+
+      return {
+        kind: "PIX_RECEIPT",
+        valueCents: receipt.amountCents,
+        description: receipt.description,
+        merchant: receipt.merchantOrBeneficiary,
+        recipientName: receipt.merchantOrBeneficiary,
+        taxId: receipt.taxId,
+        pixKey: detectedKey?.normalizedKey,
+        pixKeyType: detectedKey?.type,
+        nature: receipt.nature,
+        paymentMethod: method,
+        confidence: "high",
+        date: receipt.date,
+        rawText: trimmed,
+      };
+    }
   }
 
   return null;

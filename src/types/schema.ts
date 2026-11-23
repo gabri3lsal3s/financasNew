@@ -109,6 +109,7 @@ export const SYSTEM_FEATURE_KEYS = [
   "apk_access_free",
   "apk_access_pro",
   "bank_notification_listener",
+  "ai_extraction",
 ] as const;
 export type SystemFeatureKey = (typeof SYSTEM_FEATURE_KEYS)[number];
 
@@ -531,6 +532,8 @@ export interface EmergencyFundConfig {
   useNetValue?: boolean;
   /** Meta personalizada de autonomia do usuário em meses (3, 6 ou 12). Padrão: 6. */
   targetMonths?: 3 | 6 | 12;
+  /** Override limpo para usuários que mantêm a reserva de emergência fora do app (reversível na Memória do Copiloto). */
+  hasExternalEmergencyFund?: boolean;
 }
 
 export type AppMode = "essential" | "investor";

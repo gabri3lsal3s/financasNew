@@ -33,6 +33,16 @@ describe("cleanOcrText", () => {
     expect(cleaned).toContain("R$ 150,00");
   });
 
+  it("preserva quantidades e anos antes de valores monetarios sem prefixo R$", () => {
+    expect(cleanOcrText("Item 1 45,00")).toContain("Item 1 45,00");
+    expect(cleanOcrText("Qtd 2 45,00")).toContain("Qtd 2 45,00");
+    expect(cleanOcrText("2026 45,00")).toContain("2026 45,00");
+  });
+
+  it("normaliza valores PDV com tres casas terminadas em zero mesmo com milhar", () => {
+    expect(cleanOcrText("Total R$ 1.250,000")).toContain("R$ 1.250,00");
+  });
+
   it("corrige substituicoes opticas em datas brasileiras", () => {
     const raw = "DATA: 28/lO/2026\nEMISSAO: 0l/05/2O26";
     const cleaned = cleanOcrText(raw);

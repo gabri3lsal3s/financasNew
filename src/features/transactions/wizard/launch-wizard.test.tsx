@@ -2,6 +2,12 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as clipboardService from "@/services/clipboard";
+import { computeEMVCRC16 } from "@/domain/notifications";
+import {
+  isClipboardTextDismissed,
+  resetPixClipboardStoreForTests,
+} from "@/services/pix-clipboard-store";
+import { clearLocalReceiptScanCache } from "@/services/receipt-resolution";
 import { resolveActiveTripMember } from "@/domain/trips";
 import { LaunchWizard } from "./launch-wizard";
 
@@ -178,6 +184,8 @@ const predictionHistoryMock = vi.fn(() => [] as unknown[]);
 describe("LaunchWizard — fluxo de lançamento (D10)", () => {
   beforeEach(() => {
     localStorage.clear();
+    resetPixClipboardStoreForTests();
+    clearLocalReceiptScanCache();
     mockIsFamilyModeEnabled = true;
     mockMyFamily = null;
     mockTrips = [];
@@ -695,43 +703,115 @@ describe("LaunchWizard — fluxo de lançamento (D10)", () => {
     });
   });
 
-  describe("Botão Colar Pix Condicional na Área de Transferência", () => {
-    it("não renderiza o botão Colar Pix quando a área de transferência não tiver Pix com valor", () => {
+  describe("Botão Colar Pix, Ctrl+V e Ergonomia sem autoFocus (Fase C)", () => {
+    function buildEmv(options: { amount?: string; merchant?: string }): string {
+      const merchant = options.merchant ?? "PADARIA SAO BENTO";
+      const amountTag =
+        options.amount !== undefined
+          ? `54${String(options.amount.length).padStart(2, "0")}${options.amount}`
+          : "";
+      const merchantLen = String(merchant.length).padStart(2, "0");
+      const base = `00020126360014br.gov.bcb.pix0114+5511987654321520400005303986${amountTag}5802BR59${merchantLen}${merchant}6009SAO PAULO6304`;
+      return `${base}${computeEMVCRC16(base)}`;
+    }
+
+    it("mantém o botão Colar Pix acessível no modo rápido e no Passo 1 mesmo com clipboard vazio", () => {
       vi.spyOn(clipboardService, "readClipboardText").mockResolvedValue({
         status: "empty",
       });
 
-      render(<LaunchWizard initialMode="quick" />);
+      const { unmount } = render(<LaunchWizard initialMode="quick" />);
+      expect(screen.getByRole("button", { name: /Colar comprovante Pix/i })).toBeInTheDocument();
+      unmount();
 
-      expect(screen.queryByRole("button", { name: /Colar comprovante Pix/i })).not.toBeInTheDocument();
+      render(<LaunchWizard initialMode="guided" />);
+      expect(screen.getByRole("button", { name: /Colar comprovante Pix/i })).toBeInTheDocument();
     });
 
-    it("renderiza o botão Colar Pix quando houver um Pix com valor válido na área de transferência e preenche o formulário ao clicar", async () => {
+    it("ao clicar em Colar Pix com PIX_BRCODE válido, preenche descrição/valor e registra FNV-1a consumido", async () => {
       const user = userEvent.setup();
+      const emvWithValue = buildEmv({ amount: "38.00", merchant: "PADARIA SAO BENTO" });
       vi.spyOn(clipboardService, "canReadClipboardSilently").mockResolvedValue(true);
       vi.spyOn(clipboardService, "readClipboardText").mockResolvedValue({
         status: "success",
-        text: "Pix de R$ 38,00 para Padaria São Bento",
+        text: emvWithValue,
       });
 
       render(<LaunchWizard initialMode="quick" />);
 
-      // Aguarda detecção passiva do hook
-      const pasteBtn = await screen.findByRole("button", { name: /Colar comprovante Pix/i });
-      expect(pasteBtn).toBeInTheDocument();
-
+      const pasteBtn = screen.getByRole("button", { name: /Colar comprovante Pix/i });
       await user.click(pasteBtn);
 
-      // Deve preencher a descrição e o valor
       await waitFor(() => {
         const descInput = screen.getByLabelText(/Descrição/i) as HTMLInputElement;
-        expect(descInput.value).toContain("Padaria São Bento");
+        expect(descInput.value).toMatch(/Padaria S[ãa]o Bento/i);
         const valInput = screen.getByRole("textbox", { name: "Valor do lançamento" }) as HTMLInputElement;
         expect(valInput.value).toMatch(/38,00/);
       });
 
-      // E o botão é limpo e desaparece
-      expect(screen.queryByRole("button", { name: /Colar comprovante Pix/i })).not.toBeInTheDocument();
+      expect(isClipboardTextDismissed(emvWithValue, "user-123")).toBe(true);
+    });
+
+    it("para PIX_BRCODE sem Tag 54 (valueCents = 0), destaca MoneyInput sem usar autoFocus", async () => {
+      const user = userEvent.setup();
+      const emvOpenAmount = buildEmv({ merchant: "CAFE CENTRAL" });
+      vi.spyOn(clipboardService, "canReadClipboardSilently").mockResolvedValue(false);
+      vi.spyOn(clipboardService, "readClipboardText").mockResolvedValue({
+        status: "success",
+        text: emvOpenAmount,
+      });
+
+      render(<LaunchWizard initialMode="quick" />);
+
+      const pasteBtn = screen.getByRole("button", { name: /Colar comprovante Pix/i });
+      await user.click(pasteBtn);
+
+      const valInput = (await screen.findByRole("textbox", {
+        name: "Valor do lançamento",
+      })) as HTMLInputElement;
+
+      await waitFor(() => {
+        expect(screen.getByText("Informar valor")).toBeInTheDocument();
+        expect(valInput.className).toContain("ring-2");
+        expect(valInput.className).toContain("border-primary/60");
+      });
+
+      // Garantia estrita de zero autoFocus
+      expect(document.activeElement).not.toBe(valInput);
+    });
+
+    it("suporta Ctrl+V de imagem de print e exibe alerta de mesma titularidade quando aplicável", async () => {
+      extractReceiptTextFromFileMock.mockResolvedValueOnce(
+        [
+          "Comprovante de transferência Pix",
+          "Valor Pago: R$ 140,00",
+          "Data: 22/11/2026",
+          "Destino",
+          "GABRIEL SILVA",
+          "Origem",
+          "GABRIEL SILVA",
+        ].join("\n"),
+      );
+
+      render(<LaunchWizard initialMode="quick" />);
+
+      const valInput = screen.getByRole("textbox", { name: "Valor do lançamento" });
+      const printFile = new File(["print-bytes"], "print-pix.png", { type: "image/png" });
+      fireEvent.paste(valInput, {
+        clipboardData: {
+          files: [printFile],
+          getData: () => "",
+        },
+      });
+
+      await waitFor(() => {
+        expect((valInput as HTMLInputElement).value).toMatch(/140,00/);
+        expect(
+          screen.getByText(/Transferência entre suas próprias contas detectada/i),
+        ).toBeInTheDocument();
+      });
+
+      expect(document.activeElement).not.toBe(valInput);
     });
   });
 

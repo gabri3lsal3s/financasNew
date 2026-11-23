@@ -1,6 +1,11 @@
 import { toISODate } from "@/domain/money";
 import type { PaymentMethod } from "@/types/schema";
 import { inferCategoryKeyword } from "./category-inference";
+import type {
+  ConfidenceLevel,
+  ReceiptExtractionSource,
+  ReceiptFieldConfidence,
+} from "./receipt-types";
 import {
   cleanAcquirerPrefixes,
   findCanonicalMerchant,
@@ -60,6 +65,11 @@ export interface ParsedBankTransaction {
   recipientName?: string;
   notes?: string;
   source?: "receipt" | "notification";
+  confidence?: ConfidenceLevel;
+  confidenceScore?: number;
+  fieldConfidence?: ReceiptFieldConfidence;
+  isSameTitularity?: boolean;
+  extractionSource?: ReceiptExtractionSource;
 }
 
 
@@ -1742,17 +1752,21 @@ export function detectPixTransactionNature(rawText: string): "expense" | "income
 
   // Termos inequívocos de recebimento de Pix
   const incomeRegex =
-    /\b(?:pix\s+recebido|recebemos\s+um\s+pix|voc[êe]\s+recebeu|transfer[êe]ncia(?:\s+pix)?\s+recebida|quem\s+te\s+enviou|recebido\s+por|valor\s+creditado|valor\s+recebido)\b/i;
-  // Termos inequívocos de envio de Pix
+    /\b(?:pix\s+recebido|comprovante\s+de\s+recebimento(?:\s+pix)?|recebemos\s+um\s+pix|voc[êe]\s+recebeu|transfer[êe]ncia(?:\s+pix)?\s+recebida|quem\s+te\s+enviou|recebido\s+por|valor\s+creditado|valor\s+recebido)\b/i;
+  // Termos inequívocos de envio/pagamento de Pix (sem rótulos neutros como "para:", "destinatário:", "favorecido:", "dados do recebedor")
   const expenseRegex =
-    /\b(?:pix\s+enviado|voc[êe]\s+transferiu|voc[êe]\s+pagou|pago\s+para|para:|destinat[áa]rio:|benefici[áa]rio:|favorecido:|dados\s+do\s+recebedor|comprovante\s+de\s+pagamento|comprovante\s+de\s+agendamento)\b/i;
+    /\b(?:pix\s+enviado|comprovante\s+de\s+envio(?:\s+pix)?|voc[êe]\s+transferiu|voc[êe]\s+enviou|voc[êe]\s+pagou|pago\s+para|valor\s+(?:debitado|enviado)|pagamento\s+feito\s+via\s+pix|comprovante\s+de\s+pagamento|comprovante\s+de\s+agendamento)\b/i;
 
   if (incomeRegex.test(lower) && !expenseRegex.test(lower)) {
     return "income";
   }
 
-  // Se ambos os blocos estiverem presentes (ex: comprovante com dados do pagador e do recebedor):
-  if (/\b(?:pix\s+recebido|transfer[êe]ncia(?:\s+pix)?\s+recebida|quem\s+te\s+enviou|valor\s+recebido)\b/i.test(lower)) {
+  // Marcadores fortes de recebimento prevalecem sobre estrutura comum de recibo
+  if (
+    /\b(?:pix\s+recebido|comprovante\s+de\s+recebimento(?:\s+pix)?|transfer[êe]ncia(?:\s+pix)?\s+recebida|quem\s+te\s+enviou|valor\s+recebido|voc[êe]\s+recebeu|valor\s+creditado)\b/i.test(
+      lower,
+    )
+  ) {
     return "income";
   }
 

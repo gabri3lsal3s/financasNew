@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ClipboardEvent } from "react";
 import { useNavigate } from "react-router";
 import { Alert, Modal } from "@/components/ui";
 import { buildDescriptionSuggestions, buildHabitualEntries, dayOfMonth } from "@/domain/predictions";
+import { parseClipboardTransactionCandidate, type ReceiptUserContext } from "@/domain/notifications";
 import { todayISO } from "@/domain/debts";
 import { resolveActiveTripMember } from "@/domain/trips";
 import { useAuth } from "@/hooks/use-auth";
@@ -56,7 +57,19 @@ export function LaunchWizard({
   const [confirmClose, setConfirmClose] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [isCategoryUnconfirmed, setIsCategoryUnconfirmed] = useState(false);
-  const [receiptMeta, setReceiptMeta] = useState<ReceiptMeta | null>(null);
+  const [receiptMeta, setReceiptMeta] = useState<ReceiptMeta | null>(() => {
+    if (
+      initialValues?.paymentMethod === "pix" &&
+      !initialValues?.valueCents &&
+      Boolean(initialValues?.description)
+    ) {
+      return {
+        merchant: initialValues.description,
+        needsAmountInput: true,
+      };
+    }
+    return null;
+  });
   const [createdSplitExpense, setCreatedSplitExpense] = useState<CreatedSplitExpense | null>(null);
   const [activeType, setActiveType] = useState<EntryType>(initialValues?.type ?? initialType);
 
@@ -68,8 +81,16 @@ export function LaunchWizard({
     ? (userTripsQuery.data ?? []).filter((t) => t.status === "active" || t.status === "planning")
     : [];
   const { session, user } = useAuth();
-  const { profile } = useUserAccess();
+  const { profile, hasFeature } = useUserAccess();
+  const aiExtractionEnabled = typeof hasFeature === "function" ? hasFeature("ai_extraction") : true;
   const currentUserId = user?.id ?? session?.user?.id ?? profile?.id;
+  const userFullName =
+    profile?.name ??
+    (typeof user?.user_metadata?.name === "string" ? user.user_metadata.name : undefined);
+  const userContext = useMemo<ReceiptUserContext | undefined>(
+    () => (userFullName ? { userFullName } : undefined),
+    [userFullName],
+  );
   const userPreferencesQuery = useUserPreferences();
   const { isFamilyModeEnabled } = useFamilyMode();
   const isFamilyActive = Boolean(isFamilyModeEnabled);
@@ -108,11 +129,52 @@ export function LaunchWizard({
     limit: 3, categoryName: selectedCategory?.name ?? null, query: state.description, todayISO: today,
   });
 
-  const { handleReceiptParsed, handlePastePixFromClipboard } = useReceiptAutofill({
+  const {
+    handleReceiptParsed,
+    handlePasteText,
+    handlePasteImageFile,
+    handlePastePixFromClipboard,
+  } = useReceiptAutofill({
     state, setState, setMode, setIsCategoryUnconfirmed, setReceiptMeta,
     categories: categoriesQuery.data, cards: cardsQuery.data, initialValues,
     detectedPix, clearDetectedPix, onOpenAttachDialog: () => setAttachOpen(true),
+    userContext,
+    userId: currentUserId,
+    isReadOnlyMode,
+    aiExtractionEnabled,
   });
+
+  const handleWizardPaste = useCallback(
+    (event: ClipboardEvent<HTMLDivElement>) => {
+      const files = Array.from(event.clipboardData?.files ?? []);
+      const imageFile = files.find((f) => f.type.startsWith("image/"));
+      if (imageFile) {
+        event.preventDefault();
+        void handlePasteImageFile(imageFile);
+        return;
+      }
+
+      const pastedText = event.clipboardData?.getData("text")?.trim() ?? "";
+      if (!pastedText) return;
+
+      const targetTag = (event.target as HTMLElement | null)?.tagName;
+      const isEditingInput = targetTag === "INPUT" || targetTag === "TEXTAREA";
+
+      if (isEditingInput) {
+        const candidate = parseClipboardTransactionCandidate(pastedText);
+        if (candidate && candidate.kind !== "NONE") {
+          event.preventDefault();
+          handlePasteText(pastedText);
+        }
+        return;
+      }
+
+      if (handlePasteText(pastedText)) {
+        event.preventDefault();
+      }
+    },
+    [handlePasteImageFile, handlePasteText],
+  );
 
   const { submit, pending, error, setError } = useLaunchWizardSubmit({
     state, setState, initialType, initialValues, isReadOnlyMode, guardAction,
@@ -153,7 +215,8 @@ export function LaunchWizard({
         headerActions={
           <LaunchWizardHeaderActions
             mode={mode}
-            hasDetectedPix={Boolean(detectedPix && detectedPix.candidate.valueCents > 0)}
+            hasDetectedPix={Boolean(detectedPix)}
+            showPastePix={mode === "quick" || state.step === 1}
             onSwitchToQuick={wizard.switchToQuick}
             onPastePix={() => void handlePastePixFromClipboard()}
             onOpenAttach={() => setAttachOpen(true)}
@@ -168,7 +231,7 @@ export function LaunchWizard({
           />
         }
       >
-        <div className="flex flex-col gap-6 pt-2">
+        <div className="flex flex-col gap-6 pt-2" onPaste={handleWizardPaste}>
           {error ? <Alert variant="error">{error}</Alert> : null}
           {mode === "quick" ? (
             <StepQuick
@@ -182,6 +245,7 @@ export function LaunchWizard({
               onSplitPeopleCountChange={wizard.handleSplitPeopleCountChange} onSwitchToGuided={wizard.switchToGuided}
               categories={categoriesQuery.data} categoriesLoading={categoriesQuery.isLoading}
               predictionEntries={prediction.entries} cards={cardsQuery.data} cardsLoading={cardsQuery.isLoading}
+              receiptMeta={receiptMeta}
               activeTrips={activeTrips} onTripChange={wizard.handleTripChange} activeTripMemberName={activeTripMember?.name}
               onSplitDebtModeChange={(m) => set("splitDebtMode", m)}
               onSubmit={() => { if (canSubmitQuick && !pending) void submit(); }}
@@ -224,6 +288,15 @@ export function LaunchWizard({
         attachOpen={attachOpen}
         onAttachOpenChange={setAttachOpen}
         onReceiptParsed={(parsed) => handleReceiptParsed(parsed, { silentFeedback: true })}
+        onNavigateToStatementImport={() => {
+          setAttachOpen(false);
+          handleClose();
+          navigate("/cartoes");
+        }}
+        userContext={userContext}
+        userId={currentUserId}
+        isReadOnlyMode={isReadOnlyMode}
+        aiExtractionEnabled={aiExtractionEnabled}
         cards={cardsQuery.data}
         createdSplitExpense={createdSplitExpense}
         onClearCreatedSplit={() => setCreatedSplitExpense(null)}

@@ -24,7 +24,7 @@
   - **Defesa em Profundidade:** `Strict-Transport-Security` (HSTS preload), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `X-XSS-Protection: 1; mode=block`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`;
   - **CORS das Edge Functions:** allowlist (`ALLOWED_ORIGINS` + `*.workers.dev` + `*.pages.dev` + localhost/Capacitor); webhook Asaas sem CORS de browser; `quotes` só grava cache global com service role.
   - **Estratégia de Cache de Borda:** assets estáticos versionados (`/assets/*`) com cache imutável de 1 ano (`max-age=31536000, immutable`), e artefatos dinâmicos de ciclo de vida (`/index.html`, `/sw.js`, `/pwa/*`) com validação imediata (`max-age=0, must-revalidate`).
-- **Backend:** Supabase — migrations em `supabase/migrations/` (sequência canônica estrita 0001–0138: schema, RLS, RPCs, quotas, planos, conciliação, colaboração familiar/viagens, faturamento, auditoria, calibração não-destrutiva de snapshots, Notification Hub, subscriptions Web Push/FCM, preferências de resumo semanal e hardening `FORCE RLS` / RPCs de broadcasts e ciclo de vida).
+- **Backend:** Supabase — migrations em `supabase/migrations/` (sequência canônica estrita 0001–0145: schema, RLS, RPCs, quotas, planos, conciliação, colaboração familiar/viagens, faturamento, auditoria, calibração não-destrutiva de snapshots, Notification Hub, subscriptions Web Push/FCM, preferências de resumo semanal, hardening `FORCE RLS` / RPCs de broadcasts e ciclo de vida, e camada FinOps/LGPD de Micro-IA Híbrida para comprovantes e faturas).
 - **Auth:** Supabase Auth (email/senha) + trigger `handle_new_user` (cria `profiles` e `user_preferences` automaticamente).
 - **Cotações:** tabela `asset_prices` com cache global (`user_id NULL`) + override manual do usuário. O cache global é escrito pela **edge function `quotes`** (implementada em `supabase/functions/quotes/`).
 
@@ -46,7 +46,7 @@
 ### 3.1 Supabase: criar o projeto e aplicar o schema
 
 1. Crie o projeto em [supabase.com/dashboard](https://supabase.com/dashboard) (anote `Project URL` e `anon key` em **Settings → API**).
-2. Aplique as migrations **na ordem** (0001 → 0138) via `supabase db push` ou console SQL.
+2. Aplique as migrations **na ordem** (0001 → 0145) via `supabase db push` ou console SQL.
 3. **Auth — configurar URLs de redirect** (Settings → Auth → URL Configuration):
    - `Site URL`: `https://axir.com.br`
    - `Redirect URLs`: adicionar `https://axir.com.br/**`, `https://www.axir.com.br/**`, `https://*.pages.dev/**` e `http://localhost:5173/**`
@@ -290,6 +290,9 @@ npx supabase secrets set \
 | `VAPID_SUBJECT` | *(opcional)* Identificador de contato VAPID | Ex.: `mailto:suporte@axir.com.br` |
 | `FCM_PROJECT_ID` | *(opcional)* ID do projeto Firebase para push nativo Android | Firebase Console → Project Settings → General |
 | `FCM_SERVICE_ACCOUNT_JSON` | *(opcional)* JSON da Service Account Firebase (FCM HTTP v1) | Firebase Console → Service Accounts → Generate new private key |
+| `GEMINI_API_KEY` | *(Micro-IA)* Chave da Gemini API para `ai-financial-assistant` | Google AI Studio → Create API key |
+| `AI_EXTRACTION_ENABLED` | *(Micro-IA / kill-switch)* `"true"` para habilitar extração assistida; qualquer outro valor desativa imediatamente (`disabled`) | Variável de controle FinOps definida no Supabase Secrets |
+| `GEMINI_MODEL` | *(opcional / Micro-IA)* Modelo Gemini utilizado (padrão: `gemini-2.5-flash-lite`) | Sobrescreve o modelo padrão caso necessário |
 
 > **Comportamento gracioso sem secrets de Push Remoto:** caso `VAPID_*` / `FCM_*` não estejam configurados, a Edge Function `push-dispatcher` registra `skipped_unconfigured` em `push_delivery_logs` e retorna HTTP 200 sem quebrar fluxos chamadores; notificações locais agendadas no Android Pro continuam operando offline normalmente.
 
@@ -303,7 +306,7 @@ npx supabase secrets list
 O ecossistema de Edge Functions do projeto conta com políticas de segurança estritas e fail-closed:
 
 ```bash
-# Deploy completo de todas as 9 Edge Functions (via --use-api):
+# Deploy completo de todas as 10 Edge Functions (via --use-api):
 npm run deploy:functions
 
 # Ou individualmente (todas usam --no-verify-jwt --use-api e validação fail-closed interna):
@@ -334,6 +337,9 @@ npx supabase functions deploy sunday-digest --no-verify-jwt --use-api
 
 # 9. Ações Privilegiadas de Superadmin (provisionamento e ajuste de planos)
 npx supabase functions deploy admin-super-action --no-verify-jwt --use-api
+
+# 10. Assistente de Micro-IA FinOps (fallback comprovantes e categorização/PDF de faturas)
+npx supabase functions deploy ai-financial-assistant --no-verify-jwt --use-api
 ```
 
 > Para os passos manuais complementares pós-automação (Cloudflare Pages, Resend DNS/SMTP, `pg_cron` via `npm run notifications:cron`, Firebase FCM e validação ponta a ponta), consulte [`CONFIGURACAO_STACKS_E_PASSOS_MANUAIS.md`](./CONFIGURACAO_STACKS_E_PASSOS_MANUAIS.md).

@@ -1,67 +1,88 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { parseClipboardTransactionCandidate } from "./pix-clipboard";
+import { computeEMVCRC16 } from "./pix-emv-parser";
 
-describe("pix-clipboard (Parser em Cascata da Área de Transferência)", () => {
-  it("reconhece Pix Copia e Cola EMV com valor", () => {
-    // Payload EMV sintético válido com tag 54 (valor R$ 25,50) e tag 59 (PADARIA CENTRAL)
-    const emvPayload =
-      "00020126360014br.gov.bcb.pix0114+5511999999999520400005303986540525.505802BR5915PADARIA CENTRAL6009SAO PAULO62070503***6304ABCD";
+function makeEmv(baseWithoutCrc: string): string {
+  return `${baseWithoutCrc}${computeEMVCRC16(baseWithoutCrc)}`;
+}
 
-    const candidate = parseClipboardTransactionCandidate(emvPayload);
-    expect(candidate).not.toBeNull();
-    expect(candidate?.kind).toBe("emv_code");
-    expect(candidate?.valueCents).toBe(2550);
-    expect(candidate?.paymentMethod).toBe("pix");
-    expect(candidate?.description).toContain("PADARIA CENTRAL");
-    expect(candidate?.pixKey).toBe("+5511999999999");
+describe("parseClipboardTransactionCandidate (Golden Dataset G1, G2 e G3)", () => {
+  it("G1a: decodifica Pix Copia e Cola estático com valor e CRC16 válido como PIX_BRCODE", () => {
+    const payload = makeEmv(
+      "00020126360014br.gov.bcb.pix0114+5511987654321520400005303986540545.005802BR5913CAFE SAO JOSE6009SAO PAULO6304",
+    );
+
+    const parsed = parseClipboardTransactionCandidate(payload);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.kind).toBe("PIX_BRCODE");
+    expect(parsed?.valueCents).toBe(4500);
+    expect(parsed?.recipientName).toBe("CAFE SAO JOSE");
+    expect(parsed?.pixKey).toBe("+5511987654321");
+    expect(parsed?.paymentMethod).toBe("pix");
+    expect(parsed?.confidence).toBe("high");
   });
 
-  it("reconhece mensagem de WhatsApp com chave Pix e valor", () => {
-    const text = "Segue minha chave Pix celular: 11988887777 para o almoço no valor de R$ 42,50";
-    const candidate = parseClipboardTransactionCandidate(text);
-    expect(candidate).not.toBeNull();
-    expect(candidate?.kind).toBe("pix_message");
-    expect(candidate?.valueCents).toBe(4250);
-    expect(candidate?.pixKey).toBe("5511988887777");
-    expect(candidate?.paymentMethod).toBe("pix");
+  it("G1b: decodifica Pix Copia e Cola sem Tag 54 com valueCents === 0", () => {
+    const payload = makeEmv(
+      "00020126360014br.gov.bcb.pix0114182361200001585204000053039865802BR5915PADARIA CENTRAL6008CURITIBA6304",
+    );
+
+    const parsed = parseClipboardTransactionCandidate(payload);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.kind).toBe("PIX_BRCODE");
+    expect(parsed?.valueCents).toBe(0);
+    expect(parsed?.recipientName).toBe("PADARIA CENTRAL");
   });
 
-  it("reconhece link Pix de cobrança", () => {
-    const text = "https://pix.bcb.gov.br/qr/cob?valor=120.00&chave=loja@pix.com&nome=Mercado+Local";
-    const candidate = parseClipboardTransactionCandidate(text);
-    expect(candidate).not.toBeNull();
-    expect(candidate?.kind).toBe("pix_link");
-    expect(candidate?.valueCents).toBe(12000);
-    expect(candidate?.recipientName).toContain("Mercado Local");
+  it("G1c: rejeita EMVCo sem GUI Pix ou com CRC adulterado", () => {
+    const tampered =
+      "00020126360014br.gov.bcb.pix0114+5511987654321520400005303986540545.005802BR5913CAFE SAO JOSE6009SAO PAULO6304ABCD";
+    expect(parseClipboardTransactionCandidate(tampered)).toBeNull();
   });
 
-  it("reconhece chave Pix pura avulsa", () => {
-    const text = "contato@empresa.com.br";
-    const candidate = parseClipboardTransactionCandidate(text);
-    expect(candidate).not.toBeNull();
-    expect(candidate?.kind).toBe("pix_key");
-    expect(candidate?.pixKey).toBe("contato@empresa.com.br");
+  it("G3: reconhece chave Pix isolada estrita como PIX_KEY com valueCents === 0", () => {
+    const uuidCandidate = parseClipboardTransactionCandidate(
+      "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    );
+    expect(uuidCandidate).not.toBeNull();
+    expect(uuidCandidate?.kind).toBe("PIX_KEY");
+    expect(uuidCandidate?.valueCents).toBe(0);
+    expect(uuidCandidate?.pixKeyType).toBe("evp");
+
+    const cpfCandidate = parseClipboardTransactionCandidate("Chave: 123.456.789-09");
+    expect(cpfCandidate).not.toBeNull();
+    expect(cpfCandidate?.kind).toBe("PIX_KEY");
+    expect(cpfCandidate?.valueCents).toBe(0);
+    expect(cpfCandidate?.pixKey).toBe("12345678909");
   });
 
-  it("reconhece comprovante universal de transferência Pix", () => {
-    const receiptText = `
-Comprovante de Transferência Pix
-Valor: R$ 142,80
-Data: 12/11/2026
-Destinatário: POSTO IPIRANGA LTDA
-CPF/CNPJ: 12.345.678/0001-90
-Instituição: BANCO ITAU
-    `;
-
-    const candidate = parseClipboardTransactionCandidate(receiptText);
-    expect(candidate).not.toBeNull();
-    expect(candidate?.kind).toBe("receipt");
-    expect(candidate?.valueCents).toBe(14280);
-    expect(candidate?.paymentMethod).toBe("pix");
+  it("G2: zera falsos positivos em mensagens de WhatsApp, links, números soltos e texto genérico", () => {
+    expect(
+      parseClipboardTransactionCandidate(
+        "Oi! Pode mandar para meu cel (11) 98765-4321 no valor de R$ 50,00?",
+      ),
+    ).toBeNull();
+    expect(parseClipboardTransactionCandidate("https://site.com/artigo-v2.50")).toBeNull();
+    expect(parseClipboardTransactionCandidate("123.456.789-00")).toBeNull();
+    expect(parseClipboardTransactionCandidate("12.345.678/0001-90")).toBeNull();
+    expect(parseClipboardTransactionCandidate("Pedido 45.00 confirmado no estoque")).toBeNull();
+    expect(parseClipboardTransactionCandidate("45,00")).toBeNull();
   });
 
-  it("retorna null para texto arbitrário ou vazio", () => {
-    expect(parseClipboardTransactionCandidate("")).toBeNull();
-    expect(parseClipboardTransactionCandidate("Olá, tudo bem com você?")).toBeNull();
+  it("aceita apenas comprovante bancário formal inequívoco como PIX_RECEIPT", () => {
+    const formalReceipt = [
+      "COMPROVANTE DE TRANSFERENCIA PIX",
+      "Valor: R$ 128,40",
+      "Data: 14/03/2026",
+      "Favorecido: MERCADO BOM PRECO LTDA",
+      "Chave Pix: financeiro@mercadobompreco.com.br",
+      "ID da transacao: E18236120202603141234s1234567890",
+    ].join("\n");
+
+    const parsed = parseClipboardTransactionCandidate(formalReceipt);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.kind).toBe("PIX_RECEIPT");
+    expect(parsed?.valueCents).toBe(12840);
+    expect(parsed?.pixKey).toBe("financeiro@mercadobompreco.com.br");
   });
 });

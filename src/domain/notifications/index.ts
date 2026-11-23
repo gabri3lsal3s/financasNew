@@ -8,6 +8,8 @@ export * from "./pix-emv-parser";
 export * from "./preferences";
 export * from "./ocr-cleaner";
 export * from "./receipt-types";
+export * from "./receipt-amount-scorer";
+export * from "./document-multiplicity";
 export * from "./installment-extractor";
 export * from "./card-slip-parser";
 export * from "./pix-receipt-parser";

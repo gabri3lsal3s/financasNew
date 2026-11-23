@@ -1,18 +1,26 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { canReadClipboardSilently, readClipboardText } from "@/services/clipboard";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import { App } from "@capacitor/app";
 import {
   parseClipboardTransactionCandidate,
   resolveMerchantIdentity,
-  type ClipboardParsedCandidate,
-  type ResolvedMerchantIdentity,
 } from "@/domain/notifications";
+import { canReadClipboardSilently, readClipboardText } from "@/services/clipboard";
 import { useMerchantLearning } from "@/services/merchant-learning";
+import { isNativePlatform } from "@/services/native";
+import {
+  canTriggerNativeClipboardCheck,
+  consumeCurrentDetectedPix,
+  dismissCurrentDetectedPix,
+  getDetectedPixSnapshot,
+  isClipboardTextDismissed,
+  NATIVE_CLIPBOARD_COOLDOWN_MS,
+  recordNativeClipboardCheck,
+  setDetectedPixState,
+  subscribeDetectedPix,
+  type DetectedPixTransaction,
+} from "@/services/pix-clipboard-store";
 
-export interface DetectedPixTransaction {
-  candidate: ClipboardParsedCandidate;
-  identity: ResolvedMerchantIdentity;
-  rawText: string;
-}
+export type { DetectedPixTransaction };
 
 export interface UsePixClipboardDetectorResult {
   detectedPix: DetectedPixTransaction | null;
@@ -21,15 +29,25 @@ export interface UsePixClipboardDetectorResult {
 }
 
 /**
- * Hook que monitora a área de transferência no foco da janela e retorno da tela (focus / visibilitychange)
- * e detecta exclusivamente códigos e chaves Pix que possuam valor monetário válido (> R$ 0,00).
- *
- * Chaves avulsas sem valor não ativam a sugestão para evitar poluição visual.
+ * Monitora passivamente a área de transferência para sugerir Pix Copia e Cola (`PIX_BRCODE`
+ * com ou sem Tag 54):
+ * - Web/PWA: lê somente quando `canReadClipboardSilently()` for true (evita popup de permissão).
+ * - Android nativo: usa `App.addListener("appStateChange")` com cooldown mínimo de 10s
+ *   (nunca usa `window.focus`, eliminando spam de toast do Android 12+).
+ * - Deduplicação persistente síncrona via FNV-1a 32-bit em `user-storage` (24h).
  */
 export function usePixClipboardDetector(): UsePixClipboardDetectorResult {
   const merchantLearning = useMerchantLearning();
-  const [detectedPix, setDetectedPix] = useState<DetectedPixTransaction | null>(null);
-  const dismissedTextsRef = useRef<Set<string>>(new Set());
+  const memoryRef = useRef(merchantLearning.memory);
+  useEffect(() => {
+    memoryRef.current = merchantLearning.memory;
+  }, [merchantLearning.memory]);
+
+  const detectedPix = useSyncExternalStore(
+    subscribeDetectedPix,
+    getDetectedPixSnapshot,
+    () => null,
+  );
 
   const checkClipboard = useCallback(async () => {
     try {
@@ -37,12 +55,16 @@ export function usePixClipboardDetector(): UsePixClipboardDetectorResult {
         return;
       }
 
-      // Bloqueio rigoroso contra popup/chip flutuante nativo do Chrome ([ Colar ]):
-      // Só realiza leitura passiva/automática de fundo se o navegador possuir permissão explicitamente 'granted'.
-      // Se estiver 'prompt' ou 'denied', aborta silenciosamente para não poluir a tela do usuário.
-      const canRead = await canReadClipboardSilently();
-      if (!canRead) {
-        return;
+      if (isNativePlatform()) {
+        if (!canTriggerNativeClipboardCheck(NATIVE_CLIPBOARD_COOLDOWN_MS)) {
+          return;
+        }
+        recordNativeClipboardCheck();
+      } else {
+        const canRead = await canReadClipboardSilently();
+        if (!canRead) {
+          return;
+        }
       }
 
       const result = await readClipboardText();
@@ -51,13 +73,13 @@ export function usePixClipboardDetector(): UsePixClipboardDetectorResult {
       }
 
       const text = result.text.trim();
-      if (!text || dismissedTextsRef.current.has(text)) {
+      if (!text || isClipboardTextDismissed(text)) {
         return;
       }
 
       const candidate = parseClipboardTransactionCandidate(text);
-      // REQUISITO ESTRITO: Apenas chaves/códigos Pix que contenham VALOR VÁLIDO (> 0 centavos)
-      if (!candidate || candidate.valueCents <= 0) {
+      // Detector passivo estrito na Home: aceita EXCLUSIVAMENTE PIX_BRCODE (com ou sem Tag 54)
+      if (!candidate || candidate.kind !== "PIX_BRCODE") {
         return;
       }
 
@@ -65,24 +87,38 @@ export function usePixClipboardDetector(): UsePixClipboardDetectorResult {
         merchantOrDescription: candidate.recipientName || candidate.description,
         pixKey: candidate.pixKey,
         taxId: candidate.taxId,
-        userMemory: merchantLearning.memory,
+        userMemory: memoryRef.current,
       });
 
-      setDetectedPix({
+      setDetectedPixState({
         candidate,
         identity,
         rawText: text,
       });
     } catch {
-      // Falhas de leitura passiva são silenciadas conforme governança
+      // Falhas silenciosas em leitura passiva por governança
     }
-  }, [merchantLearning.memory]);
+  }, []);
 
   useEffect(() => {
-    // Verificação passiva agendada no retorno / montagem
     const timer = setTimeout(() => {
       void checkClipboard();
     }, 150);
+
+    if (isNativePlatform()) {
+      let cancelled = false;
+      const listenerPromise = App.addListener("appStateChange", ({ isActive }) => {
+        if (isActive && !cancelled) {
+          void checkClipboard();
+        }
+      });
+
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+        void listenerPromise.then((handle) => handle.remove()).catch(() => undefined);
+      };
+    }
 
     const onFocus = () => {
       void checkClipboard();
@@ -105,14 +141,11 @@ export function usePixClipboardDetector(): UsePixClipboardDetectorResult {
   }, [checkClipboard]);
 
   const dismissDetectedPix = useCallback(() => {
-    if (detectedPix) {
-      dismissedTextsRef.current.add(detectedPix.rawText);
-    }
-    setDetectedPix(null);
-  }, [detectedPix]);
+    dismissCurrentDetectedPix();
+  }, []);
 
   const clearDetectedPix = useCallback(() => {
-    setDetectedPix(null);
+    consumeCurrentDetectedPix();
   }, []);
 
   return {

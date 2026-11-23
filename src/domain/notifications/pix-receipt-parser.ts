@@ -11,7 +11,6 @@ import { toISODate } from "@/domain/money";
 import {
   cleanMerchantName,
   detectPixTransactionNature,
-  extractCentsFromText,
   extractDateFromReceipt,
   extractMerchantOrRecipient,
   extractTaxId,
@@ -19,6 +18,7 @@ import {
   isScheduledTransaction,
   resolveBankName,
 } from "./bank-parser";
+import { extractSovereignReceiptAmountCents } from "./receipt-amount-scorer";
 import type { UniversalReceiptData } from "./receipt-types";
 
 /**
@@ -155,6 +155,315 @@ export function extractPixEndToEndId(text: string): string | undefined {
   return undefined;
 }
 
+export interface ExtractedPartyBlockInfo {
+  name: string;
+  taxId?: string;
+}
+
+const KNOWN_INSTITUTION_EXACT_NAMES = new Set([
+  "nubank",
+  "nu pagamentos",
+  "nu financeira",
+  "itau",
+  "itaú",
+  "itaucard",
+  "itau unibanco",
+  "itaú unibanco",
+  "banco itau",
+  "banco itaú",
+  "banco inter",
+  "inter",
+  "c6",
+  "c6 bank",
+  "banco c6",
+  "bradesco",
+  "banco bradesco",
+  "santander",
+  "banco santander",
+  "banco santander brasil",
+  "mercado pago",
+  "picpay",
+  "picpay servicos",
+  "pagbank",
+  "pagseguro",
+  "pagseguro internet",
+  "neon",
+  "neon pagamentos",
+  "next",
+  "btg",
+  "btg pactual",
+  "banco btg pactual",
+  "xp",
+  "xp investimentos",
+  "caixa",
+  "caixa tem",
+  "caixa economica",
+  "caixa econômica",
+  "caixa economica federal",
+  "caixa econômica federal",
+  "banco do brasil",
+  "bb",
+  "sicoob",
+  "sicredi",
+  "safra",
+  "banco safra",
+  "banco pan",
+  "banco original",
+  "bco bs2",
+  "bs2",
+  "cielo",
+  "rede",
+  "stone",
+  "getnet",
+]);
+
+/**
+ * Detecta se o texto candidato representa nome de instituição financeira/banco/adquirente,
+ * evitando falso positivo como beneficiário de Pix ou transferência.
+ */
+export function isBankOrInstitutionName(candidate: string): boolean {
+  if (!candidate || typeof candidate !== "string") return false;
+  const trimmed = candidate.trim();
+  if (!trimmed) return false;
+
+  const stripped = trimmed
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\b(?:s\.?\/?a\.?|ltda\.?|instituicao\s+de\s+pagamento|brasil)\b/gi, "")
+    .replace(/[().]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (KNOWN_INSTITUTION_EXACT_NAMES.has(stripped)) {
+    return true;
+  }
+
+  return (
+    /^(?:banco|bco|institui[çc][ãa]o|cooperativa\s+de\s+cr[ée]dito|nu\s+pagamentos|pagseguro\s+internet|iti\s*[-–]\s*banco|bco\s+bs2|mercadopago\.com|neon\s+pagamentos|stone\s+pagamentos|picpay\s+servi[çc]os)\b/i.test(
+      trimmed,
+    ) ||
+    /\binstitui[çc][ãa]o\s+de\s+pagamento\b/i.test(trimmed)
+  );
+}
+
+/**
+ * Rejeita ruídos de layout, rótulos de campo, documentos numéricos e nomes de bancos.
+ */
+export function isInvalidPartyCandidate(candidate: string): boolean {
+  if (!candidate || typeof candidate !== "string") return true;
+  const trimmed = candidate.trim();
+  if (trimmed.length < 3) return true;
+
+  // Apenas dígitos, pontuação, asteriscos ou máscara
+  if (/^[\d.*\-/\s\u2022+:()]+$/.test(trimmed)) return true;
+
+  // Exige ao menos 3 letras alfabéticas
+  const lettersOnly = trimmed.replace(/[^A-Za-zÀ-ÿ]/g, "");
+  if (lettersOnly.length < 3) return true;
+
+  // Rótulos de campo / termos operacionais
+  if (
+    /^(?:n[ãa]o\s+informad[ao]|d[ée]bito|cr[ée]dito|conta(?:\s+corrente|\s+poupan[çc]a|\s+pagamento)?|ag[êe]ncia|chave(?:\s+pix)?|cpf(?:\s*\/\s*cnpj)?|cnpj|institui[çc][ãa]o(?:\s+financeira)?|banco|valor(?:\s+pago)?|data(?:\s+e\s+hora)?|hor[áa]rio|tipo\s+de\s+(?:conta|transfer[êe]ncia|pix)|sobre\s+a\s+transa[çc][ãa]o|comprovante(?:\s+de\s+.*)?|autentica[çc][ãa]o|id\s+da\s+transa[çc][ãa]o|endtoendid|pagador|recebedor|favorecido|benefici[áa]rio|destinat[áa]rio|remetente|origem|destino|para|de)$/i.test(
+      trimmed,
+    )
+  ) {
+    return true;
+  }
+
+  if (/^(?:r\$|brl|\$)\s*\d|\b\d{2}[/.-]\d{2}[/.-]\d{2,4}\b/i.test(trimmed)) {
+    return true;
+  }
+
+  if (/^(?:cpf|cnpj|chave(?:\s+pix)?|ag[êe]ncia|conta|institui[çc][ãa]o|banco|id|autentica[çc][ãa]o)\s*[:=]/i.test(trimmed)) {
+    return true;
+  }
+
+  return isBankOrInstitutionName(trimmed);
+}
+
+const RECIPIENT_BLOCK_HEADER_REGEX =
+  /^(?:Dados\s+(?:do\s+Recebedor|de\s+quem\s+recebeu|de\s+destino|do\s+destino|do\s+favorecido|do\s+benefici[áa]rio|do\s+destinat[áa]rio)|Destino(?:\s*\/\s*Recebedor)?|Quem\s+recebeu|Nome\s+do\s+(?:recebedor|favorecido)|Pago\s+para|Cr[ée]dito\s+para|Creditado\s+em|Conta\s+de\s+Destino|Benefici[áa]rio|Favorecido|Destinat[áa]rio|Recebedor|Para)\s*(?:[:=]\s*(.*))?$/i;
+
+const PAYER_BLOCK_HEADER_REGEX =
+  /^(?:Dados\s+(?:do\s+Pagador|de\s+quem\s+(?:pagou|enviou)|de\s+origem|da\s+origem|da\s+conta\s+debitada)|Origem(?:\s*\/\s*Pagador)?|Quem\s+(?:te\s+)?(?:enviou|pagou)|Nome\s+do\s+(?:pagador|remetente)|Conta\s+de\s+Origem|Debitado\s+de|Pagador|Remetente|De)\s*(?:[:=]\s*(.*))?$/i;
+
+const TERMINAL_SECTION_REGEX =
+  /^(?:Sobre\s+a\s+transa[çc][ãa]o|Autentica[çc][ãa]o|C[óo]digo\s+de\s+autentica[çc][ãa]o|ID\s+(?:da\s+transa[çc][ãa]o|da\s+opera[çc][ãa]o|Fim\s+a\s+Fim)|EndToEndId|Estamos\s+aqui)\b/i;
+
+const BLOCK_NON_NAME_LABEL_ONLY_REGEX =
+  /^(?:CPF\/CNPJ|CNPJ\/CPF|CPF|CNPJ|Institui[çc][ãa]o(?:\s+(?:Financeira|Destinat[áa]ria|do\s+Recebedor|de\s+Destino|de\s+Origem|do\s+Pagador))?|Banco(?:\s+(?:Destinat[áa]rio|do\s+Recebedor|de\s+Destino|Favorecido|de\s+Origem))?|Ag[êe]ncia(?:\s*[:/]?\s*conta)?|Conta(?:\s+(?:corrente|poupan[çc]a))?|Chave(?:\s+(?:Pix|de\s+Endere[çc]amento|vinculada))?|Tipo\s+de\s+conta|Ispb)\s*[:=]?\s*$/i;
+
+const BLOCK_INLINE_TAX_ID_REGEX =
+  /^(?:CPF\/CNPJ|CNPJ\/CPF|CPF|CNPJ)\s*[:=]?\s*(.+)$/i;
+
+function normalizeBlockTaxId(raw: string): string | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed || /^(?:n[ãa]o\s+informad|-+)$/i.test(trimmed)) return undefined;
+  // CNPJ completo ou dígitos puros sem máscara -> retorna apenas dígitos
+  if (!/[*\u2022]/.test(trimmed)) {
+    const digits = trimmed.replace(/\D/g, "");
+    if (digits.length === 14 || digits.length === 11) {
+      return digits;
+    }
+  }
+  if (/[\d*\u2022]/.test(trimmed) && trimmed.replace(/[^0-9*\u2022./-]/g, "").length >= 6) {
+    return trimmed;
+  }
+  return undefined;
+}
+
+/**
+ * Extrai nome e CPF/CNPJ dentro de blocos multilinha (com ou sem "Nome:") de Recebedor/Pagador,
+ * suportando Nubank, Inter, Caixa, Itaú, PicPay, BTG, Mercado Pago e Iti.
+ */
+export function extractPartyBlockInfo(
+  rawText: string,
+  role: "recipient" | "payer",
+): ExtractedPartyBlockInfo {
+  if (!rawText || typeof rawText !== "string") {
+    return { name: "" };
+  }
+
+  const lines = rawText
+    .split(/[\r\n]+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const targetRegex = role === "recipient" ? RECIPIENT_BLOCK_HEADER_REGEX : PAYER_BLOCK_HEADER_REGEX;
+  const oppositeRegex = role === "recipient" ? PAYER_BLOCK_HEADER_REGEX : RECIPIENT_BLOCK_HEADER_REGEX;
+
+  let extractedName = "";
+  let extractedTaxId: string | undefined;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    const headerMatch = targetRegex.exec(line);
+    if (!headerMatch) continue;
+
+    // Caso 1: valor inline após ":" ou "=" na própria linha do cabeçalho
+    const inlineVal = headerMatch[1]?.trim();
+    if (inlineVal) {
+      const cleanedInline = cleanMerchantName(
+        inlineVal.replace(/^(?:Nome|Raz[ãa]o\s+Social)\s*[:=]?\s*/i, ""),
+      );
+      if (!extractedName && !isInvalidPartyCandidate(cleanedInline)) {
+        extractedName = cleanedInline;
+      }
+    }
+
+    // Caso 2: varre até 8 linhas seguintes do bloco até mudar de seção
+    const limit = Math.min(lines.length, i + 9);
+    for (let j = i + 1; j < limit; j++) {
+      const subLine = lines[j]!;
+
+      if (oppositeRegex.test(subLine) || TERMINAL_SECTION_REGEX.test(subLine)) {
+        break;
+      }
+      // Subcabeçalho explícito do próprio papel continua no mesmo bloco (ex: "Creditado em:\nFavorecido: X")
+      if (targetRegex.test(subLine)) {
+        const nestedInline = targetRegex.exec(subLine)?.[1]?.trim();
+        if (nestedInline) {
+          const cleanedNested = cleanMerchantName(
+            nestedInline.replace(/^(?:Nome|Raz[ãa]o\s+Social)\s*[:=]?\s*/i, ""),
+          );
+          if (!extractedName && !isInvalidPartyCandidate(cleanedNested)) {
+            extractedName = cleanedNested;
+          }
+        }
+        continue;
+      }
+
+      // 2a. Linha explícita de Nome / Razão Social
+      const namePrefixMatch =
+        /^(?:Nome(?:\s+completo|\s+do\s+(?:recebedor|favorecido|pagador|remetente))?|Raz[ãa]o\s+Social)(?:\s*[:=]\s*(.+)|\s+(.+))?$/i.exec(
+          subLine,
+        );
+      if (namePrefixMatch) {
+        const inlineName = (namePrefixMatch[1] || namePrefixMatch[2] || "").trim();
+        let resolvedName = inlineName;
+        if (!resolvedName && j + 1 < limit) {
+          const nextLine = lines[j + 1]!;
+          if (!oppositeRegex.test(nextLine) && !BLOCK_NON_NAME_LABEL_ONLY_REGEX.test(nextLine)) {
+            resolvedName = nextLine;
+            j++;
+          }
+        }
+        const cleaned = cleanMerchantName(resolvedName);
+        if (!extractedName && !isInvalidPartyCandidate(cleaned)) {
+          extractedName = cleaned;
+        }
+        continue;
+      }
+
+      // 2b. Rótulo isolado de metadado (CPF / CNPJ / Instituição / Agência / Chave)
+      if (BLOCK_NON_NAME_LABEL_ONLY_REGEX.test(subLine)) {
+        const isTaxField = /^(?:CPF|CNPJ)/i.test(subLine);
+        if (j + 1 < limit) {
+          const nextLine = lines[j + 1]!;
+          if (isTaxField && !extractedTaxId) {
+            extractedTaxId = normalizeBlockTaxId(nextLine);
+          }
+          j++; // Pula o valor desse metadado para nunca virar nome de favorecido
+        }
+        continue;
+      }
+
+      // 2c. CPF / CNPJ inline
+      const inlineTaxMatch = BLOCK_INLINE_TAX_ID_REGEX.exec(subLine);
+      if (inlineTaxMatch && inlineTaxMatch[1]) {
+        if (!extractedTaxId) {
+          extractedTaxId = normalizeBlockTaxId(inlineTaxMatch[1]);
+        }
+        continue;
+      }
+
+      // 2d. Outro rótulo inline (Instituição:, Banco:, Agência:, Chave Pix:, Conta:)
+      if (
+        /^(?:Institui[çc][ãa]o|Banco|Ag[êe]ncia|Conta|Chave(?:\s+Pix)?|Ispb|Tipo\s+de\s+conta|Documento)\b(?:\s*[:=]|\s+)/i.test(
+          subLine,
+        )
+      ) {
+        continue;
+      }
+
+      // 2e. Layout moderno sem rótulo "Nome:" (Nubank / Inter / PicPay / BTG / Iti):
+      // primeira linha nominal válida logo após o cabeçalho Destino / Origem / Para / De
+      if (!extractedName) {
+        const cleanedFreeLine = cleanMerchantName(subLine);
+        if (!isInvalidPartyCandidate(cleanedFreeLine)) {
+          extractedName = cleanedFreeLine;
+        }
+      }
+    }
+
+    if (extractedName) {
+      return { name: extractedName, taxId: extractedTaxId };
+    }
+  }
+
+  // Fallback para textos colapsados em linha única (ex.: Web Share Target)
+  if (!extractedName) {
+    const inlineFallbackRegex =
+      role === "recipient"
+        ? /\b(?:Benefici[áa]rio|Favorecido|Destinat[áa]rio|Recebedor|Nome\s+do\s+recebedor|Pago\s+para)\s*[:=]\s*([^\n\r,;]+)/i
+        : /\b(?:Pagador|Remetente|Quem\s+te\s+enviou|Nome\s+do\s+pagador)\s*[:=]\s*([^\n\r,;]+)/i;
+    const inlineFallbackMatch = inlineFallbackRegex.exec(rawText);
+    if (inlineFallbackMatch && inlineFallbackMatch[1]) {
+      const trimmedTail = inlineFallbackMatch[1]
+        .split(/\s+(?:CPF|CNPJ|Chave(?:\s+Pix)?|Institui[çc][ãa]o|Banco|Valor|Data|ID\b|Autentica[çc][ãa]o)\b/i)[0]
+        ?.replace(/^(?:Nome|Raz[ãa]o\s+Social)\s*[:=]?\s*/i, "")
+        .trim();
+      const cleanedFallback = cleanMerchantName(trimmedTail ?? "");
+      if (!isInvalidPartyCandidate(cleanedFallback)) {
+        extractedName = cleanedFallback;
+      }
+    }
+  }
+
+  return { name: extractedName, taxId: extractedTaxId };
+}
+
 /**
  * Executa o parsing especializado de um comprovante de Pix.
  */
@@ -164,7 +473,7 @@ export function parsePixReceipt(rawText: string): UniversalReceiptData | null {
   // Descarta se pertencer à blacklist de comprovantes inválidos (falhas, 2FA, spam)
   if (isBlacklistedReceipt(rawText)) return null;
 
-  const cents = extractCentsFromText(rawText);
+  const cents = extractSovereignReceiptAmountCents(rawText);
   if (!cents || cents <= 0) return null;
 
   const nature = detectPixTransactionNature(rawText);
@@ -189,103 +498,30 @@ export function parsePixReceipt(rawText: string): UniversalReceiptData | null {
     bankName = resolveBankName(undefined, undefined, rawText) || "Pix";
   }
 
-  // 1. Extração do recebedor / favorecido
-  let rawRecipient = "";
+  // 1. Extração do recebedor / favorecido e do pagador / remetente (com suporte a blocos sem "Nome:")
+  const recipientBlock = extractPartyBlockInfo(rawText, "recipient");
+  const payerBlock = extractPartyBlockInfo(rawText, "payer");
 
-  // 1.1 Bloco com quebra de linha (ex: "Favorecido:\nNome: FULANO" ou "Para:\nNome: FULANO")
-  const recipientBlockMatch =
-    /(?:^|\n)\s*(?:(?:Dados\s+(?:do\s+Recebedor|de\s+quem\s+recebeu|de\s+destino|do\s+destino|do\s+favorecido|do\s+benefici[áa]rio)|Destino|Dados\s+do\s+Destinat[áa]rio|Quem\s+recebeu|Favorecido|Benefici[áa]rio|Destinat[áa]rio|Recebedor|Para)\s*[:=]?)\s*\n\s*(?:Nome(?:\s+completo)?|Raz[ãa]o\s+Social)\s*[:=]\s*([^\n\r,]+)/i.exec(
-      rawText,
-    );
-  if (recipientBlockMatch && recipientBlockMatch[1]) {
-    rawRecipient = recipientBlockMatch[1].trim();
-  }
-
-  // 1.2 Linha direta (ex: "Favorecido: FULANO", "Para: FULANO", "Recebedor: FULANO")
-  if (!rawRecipient) {
-    const directRecipientMatch =
-      /(?:^|\n)\s*(?:Nome\s+do\s+recebedor|Recebedor|Pago\s+para|Benefici[áa]rio|Favorecido|Destinat[áa]rio|Para)\s*[:=]\s*([^\n\r,]+)/i.exec(
-        rawText,
-      );
-    if (directRecipientMatch && directRecipientMatch[1]) {
-      const candidate = directRecipientMatch[1].trim();
-      if (!/^(?:d[ée]bito|cr[ée]dito|conta|ag[êe]ncia)/i.test(candidate)) {
-        rawRecipient = candidate;
-      }
+  let recipient = recipientBlock.name;
+  if (!recipient && nature === "expense") {
+    const fallbackRecipient = cleanMerchantName(extractMerchantOrRecipient(rawText));
+    if (!isInvalidPartyCandidate(fallbackRecipient)) {
+      recipient = fallbackRecipient;
     }
   }
 
-  // 1.3 Fallback abrangente
-  if (!rawRecipient) {
-    const recipientMatch =
-      /(?:(?:Dados\s+(?:do\s+Recebedor|de\s+quem\s+recebeu|de\s+destino|do\s+destino|do\s+favorecido|do\s+benefici[áa]rio)|Destino|Dados\s+do\s+Destinat[áa]rio|Quem\s+recebeu)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social)\s*[:=\n\s]\s*([^\n\r,]+)|(?:Destinat[áa]rio|Nome\s+do\s+recebedor|Recebedor|Pago\s+para|Benefici[áa]rio|Favorecido|Quem\s+recebeu)\s*[:=\n]\s*([^\n\r,]+))/i.exec(
-        rawText,
-      );
-    rawRecipient = recipientMatch ? (recipientMatch[1] || recipientMatch[2] || "").trim() : "";
-  }
-  rawRecipient = rawRecipient.replace(/^(?:Nome|Raz[ãa]o\s+Social)\s*[:=\s]?\s*/i, "").trim();
-
-  // 2. Extração do pagador / remetente
-  let rawPayer = "";
-
-  // 2.1 Bloco com quebra de linha (ex: "Pagador:\nNome: FULANO" ou "De:\nNome: FULANO")
-  const payerBlockMatch =
-    /(?:^|\n)\s*(?:(?:Dados\s+(?:do\s+Pagador|de\s+quem\s+(?:pagou|enviou)|de\s+origem|da\s+origem)|Origem|Quem\s+te\s+enviou|Quem\s+pagou|Pagador|Remetente|De)\s*[:=]?)\s*\n\s*(?:Nome(?:\s+completo)?|Raz[ãa]o\s+Social)\s*[:=]\s*([^\n\r,]+)/i.exec(
-      rawText,
-    );
-  if (payerBlockMatch && payerBlockMatch[1]) {
-    rawPayer = payerBlockMatch[1].trim();
-  }
-
-  // 2.2 Linha direta (ex: "Pagador: FULANO", "Remetente: FULANO", "De: FULANO")
-  if (!rawPayer) {
-    const directPayerMatch =
-      /(?:^|\n)\s*(?:Quem\s+te\s+enviou|Nome\s+do\s+pagador|Pagador|Remetente|Origem|De)\s*[:=]\s*([^\n\r,]+)/i.exec(
-        rawText,
-      );
-    if (directPayerMatch && directPayerMatch[1]) {
-      const candidate = directPayerMatch[1].trim();
-      if (!/^(?:d[ée]bito|cr[ée]dito|conta|ag[êe]ncia)/i.test(candidate)) {
-        rawPayer = candidate;
-      }
+  let payer = payerBlock.name;
+  if (!payer && nature === "income") {
+    const fallbackPayer = cleanMerchantName(extractMerchantOrRecipient(rawText));
+    if (!isInvalidPartyCandidate(fallbackPayer)) {
+      payer = fallbackPayer;
     }
   }
-
-  // 2.3 Fallback abrangente
-  if (!rawPayer) {
-    const payerMatch =
-      /(?:(?:Dados\s+(?:do\s+Pagador|de\s+quem\s+(?:pagou|enviou)|de\s+origem|da\s+origem)|Origem|Quem\s+te\s+enviou|Quem\s+pagou)[\s\S]*?(?:Nome|Raz[ãa]o\s+Social)\s*[:=\n\s]\s*([^\n\r,]+)|(?:Quem\s+te\s+enviou|Pagador|Origem|Nome\s+do\s+pagador|Remetente)\s*[:=\n]\s*([^\n\r,]+))/i.exec(
-        rawText,
-      );
-    rawPayer = payerMatch ? (payerMatch[1] || payerMatch[2] || "").trim() : "";
-  }
-  rawPayer = rawPayer.replace(/^(?:Nome|Raz[ãa]o\s+Social)\s*[:=\s]?\s*/i, "").trim();
-
-  // Tratamento especial para formato Iti ("de\nAna Paula...\npara\nAna Paula...")
-  if (!rawRecipient) {
-    const itiParaMatch = /(?:^|\n)para\s*\n\s*([A-Za-zÀ-ÿ\s]{3,40})/i.exec(rawText);
-    if (itiParaMatch && itiParaMatch[1]) {
-      rawRecipient = itiParaMatch[1].trim();
-    }
-  }
-  if (!rawPayer) {
-    const itiDeMatch = /(?:^|\n)de\s*\n\s*([A-Za-zÀ-ÿ\s]{3,40})/i.exec(rawText);
-    if (itiDeMatch && itiDeMatch[1]) {
-      rawPayer = itiDeMatch[1].trim();
-    }
-  }
-
-  const recipient = cleanMerchantName(
-    rawRecipient || (nature === "expense" ? extractMerchantOrRecipient(rawText) : ""),
-  );
-  const payer = cleanMerchantName(
-    rawPayer || (nature === "income" ? extractMerchantOrRecipient(rawText) : ""),
-  );
 
   let taxId = extractTaxId(rawText);
   if (!taxId) {
     const maskedMatch =
-      /\b([0-9*]{3}\.[0-9*]{3}\.[0-9*]{3}-[0-9*]{2})\b|\b([0-9*]{2}\.[0-9*]{3}\.[0-9*]{3}\/[0-9*]{4}-[0-9*]{2})\b/.exec(
+      /\b([0-9*\u2022]{3}\.[0-9*\u2022]{3}\.[0-9*\u2022]{3}-[0-9*\u2022]{2})\b|\b([0-9*\u2022]{2}\.[0-9*\u2022]{3}\.[0-9*\u2022]{3}\/[0-9*\u2022]{4}-[0-9*\u2022]{2})\b/.exec(
         rawText,
       );
     if (maskedMatch) {
@@ -320,7 +556,9 @@ export function parsePixReceipt(rawText: string): UniversalReceiptData | null {
     paymentMethod: "pix",
     merchantOrBeneficiary: recipient || undefined,
     payerOrSource: payer || undefined,
-    taxId,
+    taxId: taxId || recipientBlock.taxId || payerBlock.taxId,
+    recipientTaxId: recipientBlock.taxId,
+    payerTaxId: payerBlock.taxId,
     bankName,
     issuerBank: bankName,
     destinationBank,

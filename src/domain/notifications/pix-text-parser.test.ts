@@ -1,132 +1,127 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   detectPixKey,
   extractAmountCentsFromText,
+  extractPixKeyFromReceiptText,
   extractRecipientFromText,
   inferNatureFromText,
   parsePixFreeText,
-  parsePixUrl,
 } from "./pix-text-parser";
 
-describe("pix-text-parser", () => {
-  describe("detectPixKey", () => {
-    it("detecta chave aleatória EVP (UUIDv4)", () => {
-      const key = "123e4567-e89b-12d3-a456-426614174000";
-      const result = detectPixKey(key);
-      expect(result).not.toBeNull();
-      expect(result?.type).toBe("evp");
-      expect(result?.normalizedKey).toBe("123e4567-e89b-12d3-a456-426614174000");
+describe("pix-text-parser (Chaves Pix Estritas & Higiene Zero Falso Positivo)", () => {
+  describe("detectPixKey (Golden Dataset G3 + G2 negativos)", () => {
+    it("aceita CPF e CNPJ apenas quando matematicamente válidos (Módulo 11)", () => {
+      expect(detectPixKey("123.456.789-09")).toEqual({
+        rawKey: "123.456.789-09",
+        normalizedKey: "12345678909",
+        type: "cpf",
+      });
+      expect(detectPixKey("11.222.333/0001-81")).toEqual({
+        rawKey: "11.222.333/0001-81",
+        normalizedKey: "11222333000181",
+        type: "cnpj",
+      });
+      expect(detectPixKey("18236120000158")?.type).toBe("cnpj");
+
+      expect(detectPixKey("123.456.789-00")).toBeNull();
+      expect(detectPixKey("111.111.111-11")).toBeNull();
+      expect(detectPixKey("12.345.678/0001-90")).toBeNull();
+      expect(detectPixKey("12345678900")).toBeNull();
     });
 
-    it("detecta chave e-mail", () => {
-      const result = detectPixKey("contato@lojinha.com.br");
-      expect(result).not.toBeNull();
-      expect(result?.type).toBe("email");
-      expect(result?.normalizedKey).toBe("contato@lojinha.com.br");
+    it("aceita apenas UUID v4 estrito como chave aleatória EVP", () => {
+      const validUuidV4 = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
+      expect(detectPixKey(validUuidV4)).toEqual({
+        rawKey: validUuidV4,
+        normalizedKey: validUuidV4,
+        type: "evp",
+      });
+
+      // UUID v1 (versão != 4) e variantes inválidas devem ser rejeitados
+      expect(detectPixKey("123e4567-e89b-12d3-a456-426614174000")).toBeNull();
+      expect(detectPixKey("f47ac10b-58cc-4372-0567-0e02b2c3d479")).toBeNull();
+      expect(detectPixKey("pedido-2026-4372-a567-0e02b2c3d479")).toBeNull();
     });
 
-    it("detecta chave CNPJ formatada e desformatada", () => {
-      const res1 = detectPixKey("12.345.678/0001-90");
-      expect(res1?.type).toBe("cnpj");
-      expect(res1?.normalizedKey).toBe("12345678000190");
+    it("aceita e-mail isolado <= 77 chars e celular com DDD oficial Anatel + 9o digito", () => {
+      expect(detectPixKey("Pagamentos@Padaria.Com.Br")).toEqual({
+        rawKey: "Pagamentos@Padaria.Com.Br",
+        normalizedKey: "pagamentos@padaria.com.br",
+        type: "email",
+      });
 
-      const res2 = detectPixKey("12345678000190");
-      expect(res2?.type).toBe("cnpj");
-      expect(res2?.normalizedKey).toBe("12345678000190");
+      expect(detectPixKey("+55 (11) 98765-4321")).toEqual({
+        rawKey: "+55 (11) 98765-4321",
+        normalizedKey: "+5511987654321",
+        type: "phone",
+      });
+
+      expect(detectPixKey("11987654321")?.normalizedKey).toBe("+5511987654321");
+
+      // DDD inválido (20), telefone fixo (sem 9o dígito) e e-mail com .. devem falhar
+      expect(detectPixKey("+55 20 98765-4321")).toBeNull();
+      expect(detectPixKey("(11) 3333-4444")).toBeNull();
+      expect(detectPixKey("user..name@example.com")).toBeNull();
     });
 
-    it("detecta chave CPF formatada e desformatada", () => {
-      const res1 = detectPixKey("123.456.789-00");
-      expect(res1?.type).toBe("cpf");
-      expect(res1?.normalizedKey).toBe("12345678900");
+    it("suporta rótulo curto explícito <= 80 chars e rejeita frases longas", () => {
+      const labeled = detectPixKey("Chave Pix: financeiro@empresa.com.br");
+      expect(labeled).toEqual({
+        rawKey: "financeiro@empresa.com.br",
+        normalizedKey: "financeiro@empresa.com.br",
+        type: "email",
+      });
 
-      const res2 = detectPixKey("12345678900");
-      expect(res2?.type).toBe("cpf");
-      expect(res2?.normalizedKey).toBe("12345678900");
-    });
-
-    it("detecta chave telefone celular brasileiro", () => {
-      const res1 = detectPixKey("(11) 98765-4321");
-      expect(res1?.type).toBe("phone");
-      expect(res1?.normalizedKey).toBe("5511987654321");
-
-      const res2 = detectPixKey("+55 21 99999-8888");
-      expect(res2?.type).toBe("phone");
-      expect(res2?.normalizedKey).toBe("5521999998888");
-    });
-
-    it("retorna null para texto genérico", () => {
-      expect(detectPixKey("Olá, tudo bem?")).toBeNull();
-      expect(detectPixKey("")).toBeNull();
-    });
-  });
-
-  describe("extractAmountCentsFromText", () => {
-    it("extrai valores em formato brasileiro", () => {
-      expect(extractAmountCentsFromText("Valor: R$ 1.250,50")).toBe(125050);
-      expect(extractAmountCentsFromText("Pix de 45,90")).toBe(4590);
-    });
-
-    it("extrai valores inteiros com moeda", () => {
-      expect(extractAmountCentsFromText("R$ 100")).toBe(10000);
-    });
-
-    it("retorna 0 para textos sem valor", () => {
-      expect(extractAmountCentsFromText("chave pix contato@loja.com")).toBe(0);
-    });
-  });
-
-  describe("extractRecipientFromText", () => {
-    it("extrai nome de favorecido", () => {
-      expect(extractRecipientFromText("Pagar para Padaria Central")).toBe("Padaria Central");
-      expect(extractRecipientFromText("Favorecido: João da Silva")).toBe("João da Silva");
+      expect(
+        detectPixKey(
+          "Oi tudo bem, esse aqui e meu celular +55 11 98765-4321 me manda os R$ 50,00 quando puder",
+        ),
+      ).toBeNull();
     });
   });
 
-  describe("inferNatureFromText", () => {
-    it("identifica despesa por padrão", () => {
-      expect(inferNatureFromText("Pix de R$ 50 para o almoço")).toBe("expense");
-    });
-
-    it("identifica receita para mensagens de recebimento", () => {
-      expect(inferNatureFromText("Você recebeu um Pix de R$ 150,00")).toBe("income");
-      expect(inferNatureFromText("Transferência recebida no valor de R$ 300")).toBe("income");
-    });
-  });
-
-  describe("parsePixUrl", () => {
-    it("extrai dados de links com query params", () => {
-      const url = "https://pix.bcb.gov.br/qr/cob?valor=75.50&chave=11988887777&nome=Restaurante+Bom+Gosto";
-      const result = parsePixUrl(url);
+  describe("parsePixFreeText (somente chave isolada com valueCents === 0)", () => {
+    it("retorna PIX_KEY com amountCents === 0 para chave isolada válida", () => {
+      const result = parsePixFreeText("Chave Pix: 11.222.333/0001-81");
       expect(result).not.toBeNull();
-      expect(result?.kind).toBe("pix_link");
-      expect(result?.amountCents).toBe(7550);
-      expect(result?.recipientName).toContain("Restaurante Bom Gosto");
-    });
-  });
-
-  describe("parsePixFreeText", () => {
-    it("faz o parsing de mensagem do WhatsApp com chave e valor", () => {
-      const text = "Segue a chave Pix da padaria: contato@padaria.com.br no valor de R$ 32,50 para o café";
-      const result = parsePixFreeText(text);
-      expect(result).not.toBeNull();
-      expect(result?.kind).toBe("pix_message");
-      expect(result?.amountCents).toBe(3250);
-      expect(result?.pixKey).toBe("contato@padaria.com.br");
-      expect(result?.nature).toBe("expense");
-    });
-
-    it("faz o parsing de chave Pix avulsa", () => {
-      const text = "fulano@exemplo.com";
-      const result = parsePixFreeText(text);
-      expect(result).not.toBeNull();
-      expect(result?.kind).toBe("pix_key");
-      expect(result?.pixKey).toBe("fulano@exemplo.com");
+      expect(result?.kind).toBe("PIX_KEY");
       expect(result?.amountCents).toBe(0);
+      expect(result?.pixKey).toBe("11222333000181");
+      expect(result?.pixKeyType).toBe("cnpj");
     });
 
-    it("retorna null para textos sem relação com Pix", () => {
-      expect(parsePixFreeText("Reunião agendada para amanhã às 14h")).toBeNull();
+    it("rejeita links genéricos, conversas com telefone + valor e e-mails comerciais (G2)", () => {
+      expect(parsePixFreeText("https://site.com/artigo-v2.50")).toBeNull();
+      expect(parsePixFreeText("Me chama no 11987654321 ou manda R$ 50,00")).toBeNull();
+      expect(
+        parsePixFreeText("Prezado cliente, sua fatura de 45.00 vence amanha. Contato: sac@loja.com"),
+      ).toBeNull();
+      expect(parsePixFreeText("45,00")).toBeNull();
+    });
+  });
+
+  describe("extractPixKeyFromReceiptText & auxiliares", () => {
+    it("extrai chave rotulada dentro de texto de comprovante sem confundir dígitos soltos", () => {
+      const receipt = "Comprovante Pix\nValor: R$ 45,00\nChave Pix: financeiro@cafesaojose.com.br";
+      expect(extractPixKeyFromReceiptText(receipt)).toEqual({
+        rawKey: "financeiro@cafesaojose.com.br",
+        normalizedKey: "financeiro@cafesaojose.com.br",
+        type: "email",
+      });
+    });
+
+    it("extrai valores monetários com R$ ou vírgula e ignora versões com ponto sem R$", () => {
+      expect(extractAmountCentsFromText("Transferencia de R$ 1.250,50 concluida")).toBe(125050);
+      expect(extractAmountCentsFromText("Total 45,90")).toBe(4590);
+      expect(extractAmountCentsFromText("Versao 2.50 ou porta 45.00")).toBe(0);
+    });
+
+    it("extrai destinatário e natureza corretamente", () => {
+      expect(extractRecipientFromText("Pix enviado para Maria Clara Silva no valor de R$ 50,00")).toBe(
+        "Maria Clara Silva",
+      );
+      expect(inferNatureFromText("Você recebeu um Pix de João")).toBe("income");
+      expect(inferNatureFromText("Pix enviado para Padaria")).toBe("expense");
     });
   });
 });

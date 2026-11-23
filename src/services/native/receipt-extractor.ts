@@ -1,7 +1,11 @@
-import { isNativePlatform } from "./platform";
-import { BankNotificationPlugin } from "./bank-listener";
 import { cleanOcrText } from "@/domain/notifications/ocr-cleaner";
+import { BankNotificationPlugin } from "./bank-listener";
+import { isNativePlatform } from "./platform";
 import { extractTextFromImageWeb } from "./web-ocr";
+
+export const MAX_RECEIPT_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
+export const MIN_DIGITAL_PDF_TEXT_LENGTH = 40;
+const PDF_RENDER_MAX_DIMENSION = 2000;
 
 /**
  * Converte um arquivo do navegador (File ou Blob) em string base64 pura (sem data prefix).
@@ -63,7 +67,9 @@ export function extractTextFromPdfArrayBuffer(buffer: ArrayBuffer): string {
 
   // 3. Fallback: Procura padrões de texto e números monetários legíveis no arquivo
   if (textChunks.length === 0) {
-    const plainMatches = rawString.match(/(?:R\$|Pix|Transfer[eê]ncia|Pagamento|Comprovante)[\s\S]{0,100}/gi);
+    const plainMatches = rawString.match(
+      /(?:R\$|Pix|Transfer[eê]ncia|Pagamento|Comprovante)[\s\S]{0,100}/gi,
+    );
     if (plainMatches) {
       textChunks.push(...plainMatches.map((m) => m.trim()));
     }
@@ -72,37 +78,178 @@ export function extractTextFromPdfArrayBuffer(buffer: ArrayBuffer): string {
   return textChunks.join("\n");
 }
 
+function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
+  return new Promise<Blob | null>((resolve) => {
+    if (typeof canvas.toBlob !== "function") {
+      resolve(null);
+      return;
+    }
+    canvas.toBlob((blob) => resolve(blob), "image/png");
+  });
+}
+
 /**
- * Extrai o texto contido em um arquivo PDF no navegador usando unpdf com fallback defensivo.
+ * Renderiza a primeira página de um PDF escaneado em PNG Blob via `unpdf` (`getDocumentProxy` + `<canvas>`),
+ * com fallback automático para `extractImages` quando necessário.
  */
-async function extractPdfTextWeb(file: File): Promise<string> {
+export async function renderScannedPdfPageToBlob(buffer: ArrayBuffer): Promise<Blob | null> {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const unpdf = await import("unpdf");
+
+  // Estratégia 1: renderização fiel da página 1 em <canvas>
   try {
-    const buffer = await file.arrayBuffer();
-    const { extractText } = await import("unpdf");
-    const result = await extractText(buffer);
-    const text = Array.isArray(result.text) ? result.text.join("\n") : (result.text ?? "");
-    if (text.trim().length > 0) {
-      return text.trim();
-    }
-    // Fallback para parser manual se unpdf retornar texto vazio
-    return extractTextFromPdfArrayBuffer(buffer);
-  } catch {
+    const pdf = await unpdf.getDocumentProxy(new Uint8Array(buffer.slice(0)));
     try {
-      const buffer = await file.arrayBuffer();
-      return extractTextFromPdfArrayBuffer(buffer);
-    } catch {
-      return "";
+      const page = await pdf.getPage(1);
+      const baseViewport = page.getViewport({ scale: 1 });
+      const largestSide = Math.max(baseViewport.width, baseViewport.height, 1);
+      const scale = Math.min(2, PDF_RENDER_MAX_DIMENSION / largestSide);
+      const viewport = page.getViewport({ scale });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(viewport.width));
+      canvas.height = Math.max(1, Math.round(viewport.height));
+
+      await page.render({ canvas, viewport }).promise;
+      page.cleanup();
+      const renderedBlob = await canvasToPngBlob(canvas);
+      if (renderedBlob && renderedBlob.size > 0) {
+        return renderedBlob;
+      }
+    } finally {
+      try {
+        await pdf.cleanup();
+        await pdf.loadingTask?.destroy();
+      } catch {
+        // Ignora erro ao liberar recursos do documento PDF
+      }
     }
+  } catch {
+    // Segue para fallback de extração direta de imagens embutidas
+  }
+
+  // Estratégia 2: extração da maior imagem embutida na página 1 via unpdf.extractImages
+  try {
+    const images = await unpdf.extractImages(new Uint8Array(buffer.slice(0)), 1);
+    const largest = images
+      .filter((img) => img.width >= 200 && img.height >= 200)
+      .sort((a, b) => b.width * b.height - a.width * a.height)[0];
+
+    if (!largest) {
+      return null;
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = largest.width;
+    canvas.height = largest.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      return null;
+    }
+
+    const pixelCount = largest.width * largest.height;
+    const rgba = new Uint8ClampedArray(pixelCount * 4);
+
+    if (largest.channels === 4) {
+      rgba.set(largest.data.subarray(0, pixelCount * 4));
+    } else if (largest.channels === 3) {
+      for (let i = 0; i < pixelCount; i++) {
+        rgba[i * 4] = largest.data[i * 3] ?? 0;
+        rgba[i * 4 + 1] = largest.data[i * 3 + 1] ?? 0;
+        rgba[i * 4 + 2] = largest.data[i * 3 + 2] ?? 0;
+        rgba[i * 4 + 3] = 255;
+      }
+    } else {
+      for (let i = 0; i < pixelCount; i++) {
+        const gray = largest.data[i] ?? 0;
+        rgba[i * 4] = gray;
+        rgba[i * 4 + 1] = gray;
+        rgba[i * 4 + 2] = gray;
+        rgba[i * 4 + 3] = 255;
+      }
+    }
+
+    const imageData = new ImageData(rgba, largest.width, largest.height);
+    ctx.putImageData(imageData, 0, 0);
+    return await canvasToPngBlob(canvas);
+  } catch {
+    return null;
   }
 }
 
-export const MAX_RECEIPT_FILE_SIZE_BYTES = 15 * 1024 * 1024; // 15 MB
+/**
+ * Pipeline unificado de leitura de PDF (Web/PWA e Android):
+ * 1. Tenta sempre extração de texto digital via `unpdf` (< 30ms) antes de qualquer OCR.
+ * 2. Se texto < 40 caracteres (PDF escaneado):
+ *    - No Android nativo: delega ao ReceiptOcrHelper (PdfRenderer + ML Kit).
+ *    - Na Web/PWA: renderiza página em <canvas> e passa ao OCR local.
+ */
+async function extractPdfTextUnified(file: File): Promise<string> {
+  let buffer: ArrayBuffer;
+  try {
+    buffer = await file.arrayBuffer();
+  } catch {
+    return "";
+  }
+
+  let digitalText: string;
+  try {
+    const { extractText } = await import("unpdf");
+    const result = await extractText(new Uint8Array(buffer.slice(0)), { mergePages: true });
+    digitalText = Array.isArray(result.text)
+      ? result.text.join("\n").trim()
+      : String(result.text ?? "").trim();
+  } catch {
+    digitalText = "";
+  }
+
+  if (digitalText.length < MIN_DIGITAL_PDF_TEXT_LENGTH) {
+    const rawFallback = extractTextFromPdfArrayBuffer(buffer).trim();
+    if (rawFallback.length > digitalText.length) {
+      digitalText = rawFallback;
+    }
+  }
+
+  if (digitalText.length >= MIN_DIGITAL_PDF_TEXT_LENGTH) {
+    return digitalText;
+  }
+
+  // PDF escaneado (camada de texto insuficiente)
+  if (isNativePlatform()) {
+    try {
+      const base64Data = await fileToBase64(file);
+      const res = await BankNotificationPlugin.extractTextFromReceipt({
+        base64Data,
+        mimeType: "application/pdf",
+      });
+      const nativeText = res?.text?.trim() ?? "";
+      if (nativeText.length > digitalText.length) {
+        return nativeText;
+      }
+    } catch {
+      // Fallback silencioso para renderização web caso o plugin falhe
+    }
+  } else {
+    const pageBlob = await renderScannedPdfPageToBlob(buffer);
+    if (pageBlob) {
+      const ocrText = (await extractTextFromImageWeb(pageBlob)).trim();
+      if (ocrText.length > digitalText.length) {
+        return ocrText;
+      }
+    }
+  }
+
+  return digitalText;
+}
 
 /**
  * Extrai o texto contido em um arquivo de comprovante (PDF ou imagem):
- * - No Android nativo: delega ao ML Kit Text Recognition via Capacitor Plugin (100% offline).
- * - Na Web / PWA (PDF): extrai streams digitais compactadas via unpdf.
- * - Na Web / PWA (Imagem): reconhece o texto via Tesseract.js sob demanda (dynamic import).
+ * - PDF digital (Web, PWA ou Android): extrai streams digitais via `unpdf` primeiro.
+ * - PDF escaneado (< 40 chars): PdfRenderer + ML Kit no Android; <canvas> + OCR na Web/PWA.
+ * - Imagem: ML Kit no Android nativo (fallback Web) e Tesseract.js com pré-processamento na Web/PWA.
  * - Em qualquer plataforma: higieniza e repara ruídos com cleanOcrText.
  */
 export async function extractReceiptTextFromFile(file: File): Promise<string> {
@@ -115,44 +262,41 @@ export async function extractReceiptTextFromFile(file: File): Promise<string> {
     throw new Error("Formato SVG não suportado para leitura de comprovantes.");
   }
 
+  const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
+  const isImage =
+    file.type.startsWith("image/") ||
+    lowerName.endsWith(".png") ||
+    lowerName.endsWith(".jpg") ||
+    lowerName.endsWith(".jpeg") ||
+    lowerName.endsWith(".webp");
+
   let extractedRaw = "";
 
-  if (isNativePlatform()) {
-    try {
-      const base64Data = await fileToBase64(file);
-      const res = await BankNotificationPlugin.extractTextFromReceipt({
-        base64Data,
-        mimeType: file.type || (file.name.endsWith(".pdf") ? "application/pdf" : "image/jpeg"),
-      });
-      if (res?.text && res.text.trim().length > 0) {
-        extractedRaw = res.text.trim();
-      }
-    } catch {
-      // Fallback para leitura em JS caso o plugin nativo falhe
-    }
-  }
-
-  // Se não foi resolvido pelo plugin nativo, processa no Web/PWA
-  if (!extractedRaw) {
-    const lowerName = file.name.toLowerCase();
-    const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
-    const isImage =
-      file.type.startsWith("image/") ||
-      lowerName.endsWith(".png") ||
-      lowerName.endsWith(".jpg") ||
-      lowerName.endsWith(".jpeg") ||
-      lowerName.endsWith(".webp");
-
-    if (isPdf) {
-      extractedRaw = await extractPdfTextWeb(file);
-    } else if (isImage) {
-      extractedRaw = await extractTextFromImageWeb(file);
-    } else if (file.type.startsWith("text/")) {
+  if (isPdf) {
+    extractedRaw = await extractPdfTextUnified(file);
+  } else if (isImage) {
+    if (isNativePlatform()) {
       try {
-        extractedRaw = (await file.text()).trim();
+        const base64Data = await fileToBase64(file);
+        const res = await BankNotificationPlugin.extractTextFromReceipt({
+          base64Data,
+          mimeType: file.type || "image/jpeg",
+        });
+        if (res?.text && res.text.trim().length > 0) {
+          extractedRaw = res.text.trim();
+        }
       } catch {
-        extractedRaw = "";
+        // Fallback para OCR Web
       }
+    }
+    if (!extractedRaw) {
+      extractedRaw = await extractTextFromImageWeb(file);
+    }
+  } else if (file.type.startsWith("text/")) {
+    try {
+      extractedRaw = (await file.text()).trim();
+    } catch {
+      extractedRaw = "";
     }
   }
 

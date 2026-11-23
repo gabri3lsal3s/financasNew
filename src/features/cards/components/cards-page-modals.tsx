@@ -57,6 +57,8 @@ export interface CardsPageModalsProps {
   onUpgradeOpenChange: (open: boolean) => void;
   upgradeContext: string | undefined;
   onProceedToCheckout: (url: string) => void;
+  isReadOnlyMode?: boolean;
+  aiExtractionEnabled?: boolean;
 }
 
 /** Hospeda os modais e fluxos auxiliares da página de Cartões. */
@@ -90,6 +92,8 @@ export function CardsPageModals({
   onUpgradeOpenChange,
   upgradeContext,
   onProceedToCheckout,
+  isReadOnlyMode,
+  aiExtractionEnabled,
 }: CardsPageModalsProps) {
   const { user } = useAuth();
   const accountHolder = user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "Titular";
@@ -163,6 +167,9 @@ export function CardsPageModals({
             onOpenChange={onImportOpenChange}
             card={selectedCard}
             competenceMonth={effectiveMonth}
+            userId={user?.id ?? null}
+            isReadOnlyMode={isReadOnlyMode}
+            aiExtractionEnabled={aiExtractionEnabled}
           />
         </Suspense>
       )}

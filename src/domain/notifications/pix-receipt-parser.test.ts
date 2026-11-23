@@ -260,4 +260,74 @@ describe("pix-receipt-parser — Parser Especializado de Comprovantes Pix (Taref
     const failedText = "Pix não realizado. Saldo insuficiente na conta corrente.";
     expect(parsePixReceipt(failedText)).toBeNull();
   });
+
+  describe("Layouts modernos sem 'Nome:', filtro de banco e natureza Pix Recebido (Fase B)", () => {
+    it("extrai Pagador e Recebedor de blocos Nubank/Inter sem rótulo 'Nome:'", () => {
+      const modernLayout = `
+        Nubank
+        Comprovante de transferência Pix
+        Valor: R$ 220,00
+        Data: 18/11/2026
+
+        Destino
+        MARIA CLARA OLIVEIRA
+        CPF: ***.456.789-**
+        Instituição: Banco Inter S.A.
+
+        Origem
+        GABRIEL SALES
+        CPF: ***.123.456-**
+        Instituição: Nu Pagamentos S.A.
+      `;
+
+      const parsed = parsePixReceipt(modernLayout);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.amountCents).toBe(22000);
+      expect(parsed?.merchantOrBeneficiary).toBe("MARIA CLARA OLIVEIRA");
+      expect(parsed?.payerOrSource).toBe("GABRIEL SALES");
+      expect(parsed?.recipientTaxId).toBe("***.456.789-**");
+      expect(parsed?.payerTaxId).toBe("***.123.456-**");
+    });
+
+    it("nunca captura nome de instituição bancária quando o nome do recebedor estiver ausente", () => {
+      const missingNameReceipt = `
+        Comprovante Pix
+        Valor pago: R$ 95,00
+        Data: 18/11/2026
+
+        Destino
+        Instituição: Nu Pagamentos S.A.
+        Chave Pix: ***.123.456-**
+
+        Origem
+        GABRIEL SALES
+      `;
+
+      const parsed = parsePixReceipt(missingNameReceipt);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.merchantOrBeneficiary).toBeUndefined();
+      expect(parsed?.payerOrSource).toBe("GABRIEL SALES");
+    });
+
+    it("mantém nature 'income' em Pix Recebido mesmo quando o recibo contém bloco 'Para:' e 'Dados do recebedor:'", () => {
+      const receivedWithNeutralBlocks = `
+        Banco Inter
+        Comprovante de Recebimento Pix
+        Valor recebido: R$ 650,00
+        Data: 19/11/2026
+
+        Origem
+        LUCAS PEREIRA ALVES
+
+        Dados do recebedor:
+        Para: GABRIEL SALES
+      `;
+
+      const parsed = parsePixReceipt(receivedWithNeutralBlocks);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.nature).toBe("income");
+      expect(parsed?.payerOrSource).toBe("LUCAS PEREIRA ALVES");
+      expect(parsed?.merchantOrBeneficiary).toBe("GABRIEL SALES");
+    });
+  });
 });

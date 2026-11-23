@@ -581,4 +581,129 @@ describe("universal-receipt-parser (Orquestrador Universal)", () => {
       expect(result?.payerOrSource).toBe("Marlene Maria da Silva");
     });
   });
+
+  describe("10. Motor v2: Valor Soberano, Titularidade, Anti-Homônimo e Confiança (Fase B — G5)", () => {
+    const modernNubankInter = `
+      Comprovante de transferência Pix
+      Data: 20/11/2026
+      Saldo em conta: R$ 3.500,00
+      Valor do documento: R$ 100,00
+      Desconto: R$ 15,00
+      Valor Pago: R$ 85,00
+
+      Destino
+      MARIA CLARA OLIVEIRA
+      CPF: ***.456.789-**
+      Instituição: Nu Pagamentos S.A.
+
+      Origem
+      GABRIEL SALES
+      CPF: ***.123.456-**
+      Instituição: Banco Inter S.A.
+    `;
+
+    it("seleciona Valor Pago (8500) acima de Saldo/Documento/Desconto e resolve direção para Gabriel (expense) vs Maria (income)", () => {
+      const asSender = parseUniversalReceipt(modernNubankInter, true, {
+        userFullName: "Gabriel",
+      });
+      expect(asSender).not.toBeNull();
+      expect(asSender?.amountCents).toBe(8500);
+      expect(asSender?.nature).toBe("expense");
+      expect(asSender?.isSameTitularity).toBe(false);
+      expect(asSender?.description).toBe("Pix para MARIA CLARA OLIVEIRA");
+      expect(asSender?.confidence).toBe("high");
+      expect(asSender?.confidenceScore).toBeGreaterThanOrEqual(0.85);
+      expect(asSender?.fieldConfidence).toEqual({
+        amount: "high",
+        counterparty: "high",
+        nature: "high",
+        date: "high",
+      });
+      expect(asSender?.extractionSource).toBe("local_deterministic");
+
+      const asRecipient = parseUniversalReceipt(modernNubankInter, true, {
+        userFullName: "Maria",
+      });
+      expect(asRecipient).not.toBeNull();
+      expect(asRecipient?.amountCents).toBe(8500);
+      expect(asRecipient?.nature).toBe("income");
+      expect(asRecipient?.isSameTitularity).toBe(false);
+      expect(asRecipient?.description).toBe("Pix Recebido: GABRIEL SALES");
+    });
+
+    it("detecta mesma titularidade e evita falso match entre homônimos de nome composto (Ajuste Técnico 2)", () => {
+      const sameOwnerText = `
+        Comprovante de transferência Pix
+        Valor: R$ 500,00
+        Data: 20/11/2026
+
+        Destino
+        GABRIEL SALES
+        Origem
+        GABRIEL SALES
+      `;
+      const sameOwner = parseUniversalReceipt(sameOwnerText, true, {
+        userFullName: "Gabriel Sales",
+      });
+      expect(sameOwner?.isSameTitularity).toBe(true);
+
+      // Usuário composto "Gabriel Sales" NÃO pode casar com "Gabriel Costa" no destino em recibo ambíguo
+      const homonymReceipt = `
+        Comprovante de transferência Pix
+        Valor recebido: R$ 300,00
+        Data: 20/11/2026
+
+        Destino
+        GABRIEL COSTA
+        Origem
+        LOJA MODELO LTDA
+      `;
+      const nonHomonymMatch = parseUniversalReceipt(homonymReceipt, true, {
+        userFullName: "Gabriel Sales",
+      });
+      // Não deve marcar isSameTitularity nem inverter por falsa colisão com "Gabriel Costa"
+      expect(nonHomonymMatch?.isSameTitularity).not.toBe(true);
+
+      // Com nome do meio ("GABRIEL PEREIRA SALES") já atinge >= 2 tokens significativos ("gabriel", "sales")
+      const fullCompoundReceipt = `
+        Comprovante de transferência Pix
+        Valor: R$ 300,00
+        Data: 20/11/2026
+
+        Destino
+        GABRIEL PEREIRA SALES
+        Origem
+        TERCEIRO PAGADOR
+      `;
+      const matchedCompound = parseUniversalReceipt(fullCompoundReceipt, true, {
+        userFullName: "Gabriel Sales",
+      });
+      expect(matchedCompound?.nature).toBe("income");
+      expect(matchedCompound?.description).toBe("Pix Recebido: TERCEIRO PAGADOR");
+    });
+
+    it("cruza CPF completo do contexto contra CPF mascarado no comprovante", () => {
+      const maskedCpfReceipt = `
+        Comprovante Pix
+        Valor: R$ 400,00
+        Data: 21/11/2026
+
+        Destino
+        TITULAR DESTINO
+        CPF: ***.456.789-**
+
+        Origem
+        PAGADOR EXTERNO
+        CPF: ***.111.222-**
+      `;
+
+      const parsed = parseUniversalReceipt(maskedCpfReceipt, true, {
+        userFullName: "Nome Diferente",
+        userCpf: "123.456.789-09",
+      });
+      expect(parsed?.nature).toBe("income");
+      expect(parsed?.description).toBe("Pix Recebido: PAGADOR EXTERNO");
+      expect(parsed?.isSameTitularity).toBe(false);
+    });
+  });
 });

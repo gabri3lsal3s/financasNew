@@ -13,6 +13,9 @@ export interface StatementImportDialogProps {
   onOpenChange: (open: boolean) => void;
   card: CreditCard | null;
   competenceMonth: string;
+  userId?: string | null;
+  isReadOnlyMode?: boolean;
+  aiExtractionEnabled?: boolean;
 }
 
 interface StatementImportContentProps {
@@ -20,6 +23,9 @@ interface StatementImportContentProps {
   onOpenChange: (open: boolean) => void;
   card: CreditCard;
   competenceMonth: string;
+  userId?: string | null;
+  isReadOnlyMode?: boolean;
+  aiExtractionEnabled?: boolean;
 }
 
 function StatementImportContent({
@@ -27,11 +33,17 @@ function StatementImportContent({
   onOpenChange,
   card,
   competenceMonth,
+  userId,
+  isReadOnlyMode,
+  aiExtractionEnabled,
 }: StatementImportContentProps) {
   const mappingFormId = useId();
   const state = useStatementImport({
     card,
     competenceMonth,
+    userId,
+    isReadOnlyMode,
+    aiExtractionEnabled,
     onClose: () => onOpenChange(false),
   });
 
@@ -102,7 +114,10 @@ function StatementImportContent({
         ) : null}
 
         {state.step === "upload" ? (
-          <StatementUploadStep onFileSelect={state.handleFileSelect} />
+          <StatementUploadStep
+            onFileSelect={state.handleFileSelect}
+            isProcessing={state.isReadingFile}
+          />
         ) : state.step === "mapping" && state.columnMapping ? (
           <StatementMappingStep
             rows={state.parsedRows}
@@ -145,6 +160,9 @@ export function StatementImportDialog({
   onOpenChange,
   card,
   competenceMonth,
+  userId,
+  isReadOnlyMode,
+  aiExtractionEnabled,
 }: StatementImportDialogProps) {
   if (!open || !card) return null;
 
@@ -155,6 +173,9 @@ export function StatementImportDialog({
       onOpenChange={onOpenChange}
       card={card}
       competenceMonth={competenceMonth}
+      userId={userId}
+      isReadOnlyMode={isReadOnlyMode}
+      aiExtractionEnabled={aiExtractionEnabled}
     />
   );
 }
