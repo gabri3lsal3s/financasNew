@@ -316,26 +316,33 @@ export async function preprocessImageForOcr(file: File | Blob): Promise<Blob | F
 
 export async function extractTextFromImageWeb(file: File | Blob): Promise<string> {
   const workerHolder: { current: TerminableWorker | null } = { current: null };
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
   try {
     const processedFile = await preprocessImageForOcr(file);
 
     const ocrPromise = (async () => {
       const { createWorker } = await import("tesseract.js");
-      const tesseractWorker = await createWorker("por");
+      // OEM 1 (LSTM_ONLY) com errorHandler explícito evita uncaught rejection quando worker falha/expira
+      const tesseractWorker = await createWorker("por", 1, {
+        errorHandler: () => {},
+      });
       workerHolder.current = tesseractWorker;
 
       const ret = await tesseractWorker.recognize(processedFile);
       return ret?.data?.text ?? "";
     })();
 
+    // Evita Uncaught (in promise) caso timeout ou worker encerre antes da promise rejeitar
+    void ocrPromise.catch(() => "");
+
     // Timeout de segurança para evitar travamento em dispositivos móveis com baixa CPU
-    const timeoutPromise = new Promise<string>((_, reject) =>
-      setTimeout(
+    const timeoutPromise = new Promise<string>((_, reject) => {
+      timeoutId = setTimeout(
         () => reject(new Error("Tempo limite de leitura óptica excedido")),
         OCR_TIMEOUT_MS,
-      ),
-    );
+      );
+    });
 
     const text = await Promise.race([ocrPromise, timeoutPromise]);
     return text.trim();
@@ -343,6 +350,9 @@ export async function extractTextFromImageWeb(file: File | Blob): Promise<string
     // Log silencioso com fallback
     return "";
   } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
     const active = workerHolder.current;
     if (active) {
       try {

@@ -27,6 +27,36 @@ export async function fileToBase64(file: File | Blob): Promise<string> {
   });
 }
 
+function isReadablePdfTextChunk(chunk: string): boolean {
+  const trimmed = chunk.trim();
+  if (trimmed.length < 2) return false;
+
+  let hasAlnum = false;
+  let readableCount = 0;
+
+  for (let i = 0; i < trimmed.length; i++) {
+    const code = trimmed.charCodeAt(i);
+    if (code <= 8 || (code >= 14 && code <= 31) || code === 127) {
+      return false;
+    }
+    if (
+      (code >= 48 && code <= 57) ||
+      (code >= 65 && code <= 90) ||
+      (code >= 97 && code <= 122) ||
+      (code >= 192 && code <= 255)
+    ) {
+      hasAlnum = true;
+      readableCount++;
+    } else if (code >= 32 && code <= 126) {
+      readableCount++;
+    } else if (code === 9 || code === 10 || code === 13) {
+      readableCount++;
+    }
+  }
+
+  return hasAlnum && readableCount / trimmed.length >= 0.7;
+}
+
 /**
  * Extrai texto legível de streams embutidas de um arquivo PDF digital no navegador
  * com fallback leve caso o módulo principal não esteja disponível.
@@ -44,7 +74,7 @@ export function extractTextFromPdfArrayBuffer(buffer: ArrayBuffer): string {
 
   while ((match = tjRegex.exec(rawString)) !== null) {
     const chunk = match[1]?.trim();
-    if (chunk && chunk.length > 1) {
+    if (chunk && isReadablePdfTextChunk(chunk)) {
       textChunks.push(chunk);
     }
   }
@@ -59,7 +89,7 @@ export function extractTextFromPdfArrayBuffer(buffer: ArrayBuffer): string {
         .map((c) => c.slice(1, -1))
         .join(" ")
         .trim();
-      if (line) {
+      if (line && isReadablePdfTextChunk(line)) {
         textChunks.push(line);
       }
     }
@@ -71,7 +101,7 @@ export function extractTextFromPdfArrayBuffer(buffer: ArrayBuffer): string {
       /(?:R\$|Pix|Transfer[eê]ncia|Pagamento|Comprovante)[\s\S]{0,100}/gi,
     );
     if (plainMatches) {
-      textChunks.push(...plainMatches.map((m) => m.trim()));
+      textChunks.push(...plainMatches.map((m) => m.trim()).filter(isReadablePdfTextChunk));
     }
   }
 

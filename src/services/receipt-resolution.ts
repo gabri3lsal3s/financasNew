@@ -33,6 +33,7 @@ import {
   formatAiQuotaResetHint,
   type AiSingleReceiptClientResult,
 } from "@/services/ai-assistant";
+import { computeSha256Hex } from "@/services/sha256-fallback";
 import {
   extractReceiptTextFromFile,
   MAX_RECEIPT_FILE_SIZE_BYTES,
@@ -261,15 +262,9 @@ async function readBlobAsArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
  * Retorna `null` silenciosamente caso Web Crypto Subtle não esteja disponível.
  */
 export async function computeFileSha256(file: Blob): Promise<string | null> {
-  if (typeof crypto === "undefined" || !crypto.subtle?.digest) {
-    return null;
-  }
-
   try {
     const buffer = await readBlobAsArrayBuffer(file);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-    const bytes = new Uint8Array(hashBuffer);
-    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return await computeSha256Hex(new Uint8Array(buffer));
   } catch {
     return null;
   }
@@ -549,6 +544,7 @@ async function tryAiReceiptFallback(params: {
   preparedFile: File;
   rawFile: File;
   shouldUseLocalCache: boolean;
+  preferVision?: boolean;
   fallbackDateIso?: string;
   options?: ResolveAndScanReceiptFileOptions;
 }): Promise<
@@ -560,6 +556,7 @@ async function tryAiReceiptFallback(params: {
     text: params.trimmedText,
     imageBlob: params.isRasterImage ? params.preparedFile : undefined,
     pdfFile: params.isPdf ? params.rawFile : undefined,
+    preferVision: params.preferVision,
     userFullName: params.options?.userContext?.userFullName,
     userId: params.options?.userId,
     isReadOnlyMode: params.options?.isReadOnlyMode,
@@ -733,6 +730,7 @@ export async function resolveAndScanReceiptFile(
           preparedFile,
           rawFile: file,
           shouldUseLocalCache,
+          preferVision: isRasterImage || isPdf,
           options,
         });
         if (aiAttempt.ok) {
@@ -817,6 +815,7 @@ export async function resolveAndScanReceiptFile(
           preparedFile,
           rawFile: file,
           shouldUseLocalCache,
+          preferVision: isRasterImage || isPdf,
           options,
         });
         if (aiAttempt.ok) {
@@ -886,6 +885,7 @@ export async function resolveAndScanReceiptFile(
         preparedFile,
         rawFile: file,
         shouldUseLocalCache: false,
+        preferVision: isRasterImage || isPdf,
         fallbackDateIso: resolved.parsed.date,
         options,
       });

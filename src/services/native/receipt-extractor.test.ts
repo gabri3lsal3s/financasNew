@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { extractReceiptTextFromFile } from "./receipt-extractor";
+import {
+  extractReceiptTextFromFile,
+  extractTextFromPdfArrayBuffer,
+} from "./receipt-extractor";
 
 const mockIsNativePlatform = vi.fn<() => boolean>();
 const mockExtractTextFromReceipt = vi.fn();
@@ -200,5 +203,19 @@ describe("receipt-extractor (Pipeline Unificado PDF Digital & Escaneado)", () =>
         delete (globalThis as { ImageData?: unknown }).ImageData;
       }
     }
+  });
+
+  it("extractTextFromPdfArrayBuffer rejeita streams binárias corrompidas para não mascarar PDF escaneado", () => {
+    const encoder = new TextEncoder();
+    const binaryJunk = new Uint8Array([0x01, 0x02, 0x03, 0x07, 0x12, 0x19]);
+    const prefix = encoder.encode("%PDF-1.4\nstream\n(");
+    const suffix = encoder.encode(") Tj\nendstream");
+    const combined = new Uint8Array(prefix.length + binaryJunk.length + suffix.length);
+    combined.set(prefix, 0);
+    combined.set(binaryJunk, prefix.length);
+    combined.set(suffix, prefix.length + binaryJunk.length);
+
+    const extracted = extractTextFromPdfArrayBuffer(combined.buffer);
+    expect(extracted).toBe("");
   });
 });

@@ -474,4 +474,55 @@ describe("receipt-resolution", () => {
     expect(upgraded.parsed?.date).toBe("2026-11-19");
     expect(upgraded.parsed?.fieldConfidence?.date).toBe("medium");
   });
+
+  it("calcula SHA-256 canônico mesmo sem crypto.subtle e aciona IA com preferVision em imagem não reconhecida", async () => {
+    const subtleDesc = Object.getOwnPropertyDescriptor(globalThis.crypto, "subtle");
+    Object.defineProperty(globalThis.crypto, "subtle", {
+      configurable: true,
+      value: undefined,
+    });
+
+    try {
+      const abcBlob = new Blob(["abc"], { type: "text/plain" });
+      const hash = await computeFileSha256(abcBlob);
+      // SHA-256 canônico FIPS 180-4 de "abc"
+      expect(hash).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+
+      mockExtractReceiptTextFromFile.mockResolvedValueOnce(
+        "Texto ruidoso de OCR sem valores ou banco identificaveis na foto",
+      );
+      mockExtractSingleReceiptWithAi.mockResolvedValueOnce({
+        ok: true,
+        cached: false,
+        source: "ai_vision",
+        data: {
+          amountCents: 3750,
+          date: "2026-11-23",
+          nature: "expense",
+          paymentMethod: "pix",
+          receiptKind: "pix",
+          description: "Cafe Esquina",
+          merchantOrBeneficiary: "Cafe Esquina",
+          confidence: "high",
+        },
+      });
+
+      const img = new File(["image-payload"], "foto-pix.jpg", { type: "image/jpeg" });
+      const res = await resolveAndScanReceiptFile(img, { userId: "user-1" });
+
+      expect(res.ok).toBe(true);
+      expect(res.parsed?.amountCents).toBe(3750);
+      expect(res.parsed?.extractionSource).toBe("ai_vision");
+      expect(mockExtractSingleReceiptWithAi).toHaveBeenCalledWith(
+        expect.objectContaining({
+          preferVision: true,
+          imageBlob: expect.any(File),
+        }),
+      );
+    } finally {
+      if (subtleDesc) {
+        Object.defineProperty(globalThis.crypto, "subtle", subtleDesc);
+      }
+    }
+  });
 });

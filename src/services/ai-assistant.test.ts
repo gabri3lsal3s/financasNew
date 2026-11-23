@@ -139,7 +139,7 @@ describe("ai-assistant (Resiliência FinOps G6, Lock inFlightBySha256 & LGPD)", 
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("4. Timeout de 5,5s: aborta requisição lenta via AbortController e retorna reason timeout", async () => {
+  it("4. Timeout do cliente: aborta requisição lenta via AbortController e retorna reason timeout", async () => {
     vi.useFakeTimers();
 
     globalThis.fetch = vi.fn().mockImplementation((_url, init?: RequestInit) => {
@@ -542,5 +542,47 @@ describe("ai-assistant (Resiliência FinOps G6, Lock inFlightBySha256 & LGPD)", 
       reason: "invalid_ai_output",
       fallbackToLocal: true,
     });
+  });
+
+  it("12. preferVision = true anexa imageBase64 mesmo quando text possui >= 20 caracteres (multimodal)", async () => {
+    let capturedBody: Record<string, unknown> = {};
+    globalThis.fetch = vi.fn(async (_url, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          mode: "single_receipt",
+          cached: false,
+          source: "ai_vision",
+          data: {
+            amountCents: 4990,
+            date: "2026-11-23",
+            nature: "expense",
+            paymentMethod: "pix",
+            receiptKind: "pix",
+            description: "Mercado Bom Dia",
+            confidence: "high",
+          },
+        }),
+        { status: 200 },
+      );
+    }) as unknown as typeof fetch;
+
+    const fakeImg = new Blob(["small-jpeg-bytes"], { type: "image/jpeg" });
+    const res = await extractSingleReceiptWithAi({
+      sha256: VALID_SHA,
+      text: "Texto parcial de OCR acima de vinte caracteres com ruido",
+      imageBlob: fakeImg,
+      preferVision: true,
+      userId: "user-1",
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.source).toBe("ai_vision");
+    }
+    expect(typeof capturedBody.imageBase64).toBe("string");
+    expect((capturedBody.imageBase64 as string).length).toBeGreaterThan(0);
+    expect(typeof capturedBody.text).toBe("string");
   });
 });

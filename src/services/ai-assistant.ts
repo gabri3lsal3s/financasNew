@@ -13,6 +13,7 @@ import { toISODate } from "@/domain/money";
 import type { UniversalReceiptData } from "@/domain/notifications";
 import { getSupabase } from "@/data/client";
 import { getSupabaseEnv } from "@/lib/env";
+import { computeSha256Hex } from "@/services/sha256-fallback";
 import {
   AI_FALLBACK_REASONS,
   AiSingleReceiptOutputSchema,
@@ -34,7 +35,8 @@ import {
   type AiStatementPdfRowsOutput,
 } from "../../supabase/functions/_shared/ai-schemas";
 
-export const CLIENT_AI_TIMEOUT_MS = 5_500;
+export const CLIENT_AI_TIMEOUT_MS = 12_000;
+export const CLIENT_AI_BATCH_TIMEOUT_MS = 8_000;
 const AI_VISION_MAX_DIMENSION = 1024;
 const AI_VISION_DEFAULT_QUALITY = 0.72;
 const AI_VISION_FALLBACK_QUALITY = 0.55;
@@ -55,6 +57,7 @@ export interface ExtractSingleReceiptAiParams extends AiClientBaseGuards {
   text?: string;
   imageBlob?: Blob;
   pdfFile?: File;
+  preferVision?: boolean;
   userFullName?: string | null;
 }
 
@@ -119,17 +122,12 @@ export function isClientAiExtractionEnabled(): boolean {
 }
 
 /**
- * Calcula SHA-256 hex minúsculo de um texto UTF-8 via Web Crypto API.
+ * Calcula SHA-256 hex minúsculo de um texto UTF-8 via Web Crypto API com fallback FIPS 180-4.
  */
 export async function computeTextSha256(text: string): Promise<string | null> {
-  if (typeof crypto === "undefined" || !crypto.subtle?.digest) {
-    return null;
-  }
   try {
     const encoded = new TextEncoder().encode(text);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", encoded);
-    const bytes = new Uint8Array(hashBuffer);
-    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return await computeSha256Hex(encoded);
   } catch {
     return null;
   }
@@ -305,7 +303,10 @@ type RawHttpAiResult =
     }
   | AiFallbackResult;
 
-async function invokeAiAssistantHttp(requestPayload: Record<string, unknown>): Promise<RawHttpAiResult> {
+async function invokeAiAssistantHttp(
+  requestPayload: Record<string, unknown>,
+  timeoutMs = CLIENT_AI_TIMEOUT_MS,
+): Promise<RawHttpAiResult> {
   let envUrl: string;
   let anonKey: string;
   let accessToken: string | undefined;
@@ -324,7 +325,7 @@ async function invokeAiAssistantHttp(requestPayload: Record<string, unknown>): P
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), CLIENT_AI_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(`${envUrl}/functions/v1/ai-financial-assistant`, {
@@ -408,7 +409,7 @@ async function performSingleReceiptAiCall(
     mimeType: "image/jpeg" | "image/webp" | "image/png";
   } | null = null;
 
-  if (maskedText.length < MIN_AI_TEXT_LENGTH) {
+  if (params.preferVision || maskedText.length < MIN_AI_TEXT_LENGTH) {
     let sourceBlob: Blob | null = params.imageBlob ?? null;
     if (!sourceBlob && params.pdfFile) {
       try {
@@ -456,7 +457,7 @@ async function performSingleReceiptAiCall(
   const source: AiSingleReceiptSource =
     httpRes.source === "cache_remote" || httpRes.source === "ai_vision" || httpRes.source === "ai_text"
       ? httpRes.source
-      : imagePayload && maskedText.length < MIN_AI_TEXT_LENGTH
+      : imagePayload
         ? "ai_vision"
         : "ai_text";
 
@@ -528,12 +529,15 @@ export async function categorizeDescriptionsBatchWithAi(
   const flightKey = `${params.userId ?? "anon"}:categorize_batch:${resolvedSha}`;
 
   return withInFlightDedup(flightKey, async () => {
-    const httpRes = await invokeAiAssistantHttp({
-      mode: "categorize_batch",
-      sha256: resolvedSha,
-      descriptions: sanitizedDescriptions,
-      categories: cleanCategories,
-    });
+    const httpRes = await invokeAiAssistantHttp(
+      {
+        mode: "categorize_batch",
+        sha256: resolvedSha,
+        descriptions: sanitizedDescriptions,
+        categories: cleanCategories,
+      },
+      CLIENT_AI_BATCH_TIMEOUT_MS,
+    );
 
     if (!httpRes.ok) {
       return httpRes;

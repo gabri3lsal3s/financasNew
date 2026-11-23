@@ -52,7 +52,7 @@ declare const Deno:
     }
   | undefined;
 
-const GEMINI_TIMEOUT_MS = 4_500;
+const GEMINI_TIMEOUT_MS = 10_000;
 const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite";
 const MIN_USEFUL_TEXT_CHARS = 20;
 
@@ -520,20 +520,27 @@ Deno?.serve?.(async (req: Request) => {
       const cleanImage = requestData.imageBase64
         ? stripBase64DataPrefix(requestData.imageBase64)
         : "";
-      const preferText = cleanedText.length >= MIN_USEFUL_TEXT_CHARS || cleanImage.length === 0;
-      responseSource = preferText ? "ai_text" : "ai_vision";
+      const hasImage = cleanImage.length > 0;
+      responseSource = hasImage ? "ai_vision" : "ai_text";
 
       const parts: Array<Record<string, unknown>> = [
         { text: buildSingleReceiptPrompt(requestData.userFullName) },
-        preferText
-          ? { text: `Texto extraido do comprovante:\n${cleanedText}` }
-          : {
-              inlineData: {
-                mimeType: requestData.imageMimeType ?? "image/jpeg",
-                data: cleanImage,
-              },
-            },
       ];
+      if (hasImage) {
+        parts.push({
+          inlineData: {
+            mimeType: requestData.imageMimeType ?? "image/jpeg",
+            data: cleanImage,
+          },
+        });
+      }
+      if (cleanedText.length >= MIN_USEFUL_TEXT_CHARS) {
+        parts.push({
+          text: hasImage
+            ? `Texto OCR auxiliar (pode conter ruidos ou estar incompleto):\n${cleanedText}`
+            : `Texto extraido do comprovante:\n${cleanedText}`,
+        });
+      }
 
       const gemini = await callGeminiJson({
         apiKey: geminiApiKey,

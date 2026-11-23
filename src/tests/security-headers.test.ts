@@ -59,6 +59,16 @@ describe("Tarefa 1.3 — Content-Security-Policy (CSP) & Segurança de Borda em 
     expect(csp).toMatch(/connect-src[^;]*https:\/\/challenges\.cloudflare\.com/);
   });
 
+  it("permite worker-src blob e cdn.jsdelivr.net para OCR client-side com Tesseract.js sem wildcards", () => {
+    const content = readFileSync(headersPath, "utf8");
+    const cspMatch = content.match(/Content-Security-Policy:\s*([^\r\n]+)/);
+    const csp = cspMatch?.[1] ?? "";
+
+    expect(csp).toContain("worker-src 'self' blob: https://cdn.jsdelivr.net");
+    expect(csp).toMatch(/script-src[^;]*https:\/\/cdn\.jsdelivr\.net/);
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/cdn\.jsdelivr\.net/);
+  });
+
   it("não possui wildcards permissivos (*) em script-src ou connect-src", () => {
     const content = readFileSync(headersPath, "utf8");
     const cspMatch = content.match(/Content-Security-Policy:\s*([^\r\n]+)/);
