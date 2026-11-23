@@ -86,6 +86,7 @@ export function OverviewDashboardContent({
           onOpenNewTransaction={() => navigate({ pathname: "/", search: "novo=transacao" })}
           onStartQuickTour={onStartQuickTour}
           onOpenDemo={() => modals.setDemoTrackModalOpen(true)}
+          onOpenPreferences={() => modals.setInitialPreferencesOpen(true)}
         />
       ) : (
         <>

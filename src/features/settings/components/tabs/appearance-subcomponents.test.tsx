@@ -133,7 +133,7 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
   });
 
   describe("InterfaceShortcutsCard", () => {
-    it("permite alternar logotipo e respeita limite de 2 atalhos de ação", async () => {
+    it("omite o logotipo fixo da grade e respeita limite de 2 atalhos de ação", async () => {
       const user = userEvent.setup();
       const onToggle = vi.fn();
 
@@ -149,13 +149,15 @@ describe("Appearance Subcomponents (Fase 1 — Tarefa 1.3)", () => {
         />,
       );
 
-      const logoCheckbox = screen.getByRole("checkbox", { name: "Logotipo Oficial" });
-      await user.click(logoCheckbox);
-      expect(onToggle).toHaveBeenCalledWith("logo", "Logo no Header", false);
+      expect(screen.queryByRole("checkbox", { name: "Logotipo Oficial" })).not.toBeInTheDocument();
 
       // Com calculadora e tema ativados (2 slots), o atalho de privacidade deve estar desabilitado
       const privacyCheckbox = screen.getByRole("checkbox", { name: /Ocultar Valores/i });
       expect(privacyCheckbox).toBeDisabled();
+
+      const calcCheckbox = screen.getByRole("checkbox", { name: /Calculadora/i });
+      await user.click(calcCheckbox);
+      expect(onToggle).toHaveBeenCalledWith("calculatorButton", "Calculadora", false);
     });
 
     it("renderiza a opção de Memória de Cálculo e Explicabilidade", async () => {

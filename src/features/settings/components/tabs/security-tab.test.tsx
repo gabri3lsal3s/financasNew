@@ -114,16 +114,25 @@ describe("SecurityTab - Bloqueio do Aplicativo & Privacidade", () => {
     });
   });
 
-  it("renderiza o card de Bloqueio do Aplicativo & Privacidade e badge de status", async () => {
-    renderSecurityTab();
+  it("renderiza o card de Bloqueio do Aplicativo & Privacidade e badge honesto conforme o estado real", async () => {
+    vi.mocked(nativeServices.isBiometricLockEnabled).mockReturnValue(false);
+    const { unmount } = renderSecurityTab();
 
     expect(screen.getByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();
     expect(screen.getByText("Exigir biometria ao retornar")).toBeInTheDocument();
     expect(screen.getByText("Escudo de Privacidade (Privacy Shield)")).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(screen.getByText("Sensor Biométrico Ativo")).toBeInTheDocument();
+      expect(screen.getByText("Bloqueio Desativado")).toBeInTheDocument();
     });
+    unmount();
+
+    vi.mocked(nativeServices.isBiometricLockEnabled).mockReturnValue(true);
+    renderSecurityTab();
+    await waitFor(() => {
+      expect(screen.getByText("Bloqueio Biométrico Ativo")).toBeInTheDocument();
+    });
+    vi.mocked(nativeServices.isBiometricLockEnabled).mockReturnValue(false);
   });
 
   it("permite alternar o bloqueio biométrico com autenticação bem-sucedida", async () => {

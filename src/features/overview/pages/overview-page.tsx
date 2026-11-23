@@ -11,7 +11,7 @@ import {
 import { getTourTrackMeta } from "@/domain/demo-simulation";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { currentMonth } from "@/lib/date";
-import { startDemo, useAssetGovernanceInsights, useUserAccess } from "@/state";
+import { startDemo, useAssetGovernanceInsights, useMarketQuotesSwr, useUserAccess } from "@/state";
 import {
   buildOverviewAlertItems,
   OverviewDashboardContent,
@@ -38,6 +38,7 @@ export function OverviewPage() {
 
   const { alertDismissals, updateAlertDismissals } = useDashboardAlertDismissals();
   const permissions = useOverviewPermissionsBanner(navigate);
+  useMarketQuotesSwr({ enabled: !accessLoading && hasFeature("investments"), enableInterval: false });
   const data = useOverviewData({ month, alertDismissals });
   const govInsights = useAssetGovernanceInsights();
 
@@ -129,6 +130,20 @@ export function OverviewPage() {
     [budgetAndDonut.donutSliceDescriptors, modals],
   );
 
+  const hasTrackableObligation =
+    (data.cardsQuery.data?.length ?? 0) > 0 ||
+    (data.debtsQuery.data?.length ?? 0) > 0 ||
+    data.splitPendingData.count > 0;
+  const showJitDeviceAlertsInvite = Boolean(
+    !data.showVirginGuide &&
+      hasTrackableObligation &&
+      data.onboardingQuery?.data &&
+      !data.onboardingQuery.data.notificationsEnabled &&
+      !permissions.isChecking &&
+      !permissions.hasDeviceAlertsConfigured &&
+      !data.isCardDismissed("jit-device-alerts-invite"),
+  );
+
   const alertItems = buildOverviewAlertItems({
     month,
     data,
@@ -152,6 +167,8 @@ export function OverviewPage() {
     initialGoal: data.initialGoal,
     onOpenOnboardingChecklist: () => modals.setOnboardingChecklistOpen(true),
     onDismissOnboarding: data.dismissOnboarding,
+    showJitDeviceAlertsInvite,
+    onOpenInitialPreferences: () => modals.setInitialPreferencesOpen(true),
     onDismissCard: modals.handleDismissCard,
     advisorInsights: advisor.insights,
     onDismissAdvisor: advisor.dismiss,

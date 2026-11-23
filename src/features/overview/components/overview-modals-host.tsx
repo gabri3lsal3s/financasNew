@@ -11,6 +11,7 @@ import { PendingDividendsDialog } from "@/features/investments/components/pendin
 import type { useOverviewData } from "../hooks/use-overview-data";
 import type { useOverviewModals } from "../hooks/use-overview-modals";
 import { CategoryBreakdownDialog } from "./category-breakdown-dialog";
+import { InitialPreferencesModal } from "./initial-preferences-modal";
 import { OtherBudgetsDialog } from "./other-budgets-dialog";
 import { OtherCategoriesDialog } from "./other-categories-dialog";
 
@@ -138,6 +139,13 @@ export function OverviewModalsHost({
         availableDividends={data.corporateDividends.available}
         projectedDividends={data.corporateDividends.projected}
       />
+
+      {modals.initialPreferencesOpen ? (
+        <InitialPreferencesModal
+          open={modals.initialPreferencesOpen}
+          onOpenChange={modals.setInitialPreferencesOpen}
+        />
+      ) : null}
 
       {upgradeModal}
     </>

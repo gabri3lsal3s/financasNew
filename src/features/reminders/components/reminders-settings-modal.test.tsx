@@ -7,6 +7,9 @@ import { RemindersSettingsModal } from "./reminders-settings-modal";
 const mockUpdateReminderPreferences = vi.fn();
 const mockUpdateCustomSettings = vi.fn();
 
+let mockPostNotificationsGranted = true;
+let mockCloudDueEnabled = false;
+
 vi.mock("@/state", () => ({
   useUserPreferences: vi.fn(() => ({
     data: {
@@ -15,7 +18,7 @@ vi.mock("@/state", () => ({
       reminder_days_before_debt: 3,
       custom_settings: {
         deviceNotifications: {
-          dueNotificationsEnabled: false,
+          dueNotificationsEnabled: mockCloudDueEnabled,
           dailyReminderEnabled: false,
           dailyReminderTime: "20:00",
         },
@@ -48,12 +51,14 @@ vi.mock("@/services/native", () => ({
   cancelDailyReminder: vi.fn(() => Promise.resolve()),
   clearAllDueNotifications: vi.fn(() => Promise.resolve()),
   dispatchLocalOrWebNotification: vi.fn(() => Promise.resolve(true)),
+  requestNotificationPermissions: vi.fn(() => Promise.resolve({ granted: true })),
   isNativePlatform: vi.fn(() => true),
   usePermissionsStatus: vi.fn(() => ({
-    postNotificationsGranted: true,
+    postNotificationsGranted: mockPostNotificationsGranted,
     listenerGranted: true,
     isChecking: false,
-    requestPostNotifications: vi.fn(() => Promise.resolve(true)),
+    refresh: vi.fn(() => Promise.resolve()),
+    requestPostNotifications: vi.fn(() => Promise.resolve(mockPostNotificationsGranted)),
   })),
 }));
 
@@ -68,20 +73,24 @@ vi.mock("@/services/toast", () => ({
 describe("RemindersSettingsModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPostNotificationsGranted = true;
+    mockCloudDueEnabled = false;
     vi.mocked(nativeServices.isNativePlatform).mockReturnValue(true);
   });
 
-  it("renderiza o modal quando aberto com títulos e seletores de antecedência", () => {
+  it("renderiza o modal quando aberto com títulos, seletores de antecedência e switch unificado no dispositivo", () => {
     render(<RemindersSettingsModal open={true} onOpenChange={vi.fn()} />);
 
     expect(screen.getByText("Configurações de Lembretes")).toBeInTheDocument();
     expect(screen.getByText("Lembretes no Aplicativo")).toBeInTheDocument();
     expect(screen.getByText("Antecedência para Faturas de Cartão")).toBeInTheDocument();
     expect(screen.getByText("Antecedência para Dívidas")).toBeInTheDocument();
-    expect(screen.getByText("Notificações de Contas no Dispositivo")).toBeInTheDocument();
+    expect(screen.getByText("Alertas neste Aparelho (Contas, Pix e Avisos)")).toBeInTheDocument();
     expect(screen.getByText("Lembrete de Fechamento Diário")).toBeInTheDocument();
-    expect(screen.getByText("Horário Silencioso")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Enviar notificação de teste/i })).toBeInTheDocument();
+    expect(screen.queryByText("Horário Silencioso")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Enviar notificação de teste/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("permite fechar através do botão Concluir", async () => {
@@ -111,24 +120,43 @@ describe("RemindersSettingsModal", () => {
     expect(nativeServices.clearAllDueNotifications).toHaveBeenCalledTimes(1);
   });
 
-  it("sinaliza transparência na Web sobre disponibilidade do lembrete diário no App Android", () => {
+  it("suprime o Lembrete de Fechamento Diário na Web e exibe Horário Silencioso recolhido quando há alerta ativo", async () => {
+    const user = userEvent.setup();
+    mockCloudDueEnabled = true;
+    mockPostNotificationsGranted = true;
     vi.mocked(nativeServices.isNativePlatform).mockReturnValue(false);
     render(<RemindersSettingsModal open={true} onOpenChange={vi.fn()} />);
 
-    expect(screen.getByText("Disponível no App Android")).toBeInTheDocument();
-    expect(
-      screen.getByText(/navegadores Web não executam alarmes offline/i),
-    ).toBeInTheDocument();
+    expect(screen.queryByText("Lembrete de Fechamento Diário")).not.toBeInTheDocument();
+    expect(screen.getByText("Ativado neste aparelho")).toBeInTheDocument();
+    expect(screen.getByText("Horário Silencioso")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Enviar notificação de teste/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Início do horário silencioso")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Alterar horário" }));
+    expect(screen.getByLabelText("Início do horário silencioso")).toBeInTheDocument();
   });
 
-  it("exibe o toggle de Push Remoto interativo e desligado por padrão no Android nativo", () => {
+  it("verdade de estado: não exibe alertas no dispositivo ligados quando a permissão do sistema estiver pendente", () => {
+    mockPostNotificationsGranted = false;
+    mockCloudDueEnabled = true;
+    render(<RemindersSettingsModal open={true} onOpenChange={vi.fn()} />);
+
+    const unifiedSwitch = screen.getByRole("switch", {
+      name: "Habilitar Alertas neste Aparelho",
+    });
+    expect(unifiedSwitch).not.toBeChecked();
+    expect(screen.getByText("Permissão Pendente")).toBeInTheDocument();
+  });
+
+  it("exibe o switch mestre unificado de alertas no aparelho interativo e desligado por padrão no Android nativo", () => {
     vi.mocked(nativeServices.isNativePlatform).mockReturnValue(true);
     render(<RemindersSettingsModal open={true} onOpenChange={vi.fn()} />);
 
-    const remotePushSwitch = screen.getByRole("switch", {
-      name: "Habilitar Notificações Push Remotas",
+    const unifiedSwitch = screen.getByRole("switch", {
+      name: "Habilitar Alertas neste Aparelho",
     });
-    expect(remotePushSwitch).toBeEnabled();
-    expect(remotePushSwitch).not.toBeChecked();
+    expect(unifiedSwitch).toBeEnabled();
+    expect(unifiedSwitch).not.toBeChecked();
   });
 });

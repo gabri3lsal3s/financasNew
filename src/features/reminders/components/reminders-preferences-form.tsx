@@ -3,10 +3,9 @@ import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useNotificationPreferencesForm } from "../hooks/use-notification-preferences-form";
 import { DailyClosingReminderCard } from "./prefs/DailyClosingReminderCard";
-import { DueNotificationsPrefsCard } from "./prefs/DueNotificationsPrefsCard";
 import { InAppRemindersPrefsCard } from "./prefs/InAppRemindersPrefsCard";
 import { QuietHoursPrefsCard } from "./prefs/QuietHoursPrefsCard";
-import { RemotePushPrefsCard } from "./prefs/RemotePushPrefsCard";
+import { UnifiedDeviceAlertsPrefsCard } from "./prefs/UnifiedDeviceAlertsPrefsCard";
 
 export interface RemindersPreferencesFormProps {
   className?: string;
@@ -48,72 +47,68 @@ export function RemindersPreferencesForm({
 
       {showDevice ? (
         <>
-          <DueNotificationsPrefsCard
-            dueNotificationsActive={form.dueNotificationsActive}
+          <UnifiedDeviceAlertsPrefsCard
+            effectiveDeviceAlertsActive={form.effectiveDeviceAlertsActive}
+            pendingPermission={form.deviceAlertsPendingPermission}
             postNotificationsGranted={form.postNotificationsGranted}
+            permissionDenied={form.devicePermissionDenied}
+            iosNeedsInstall={form.iosNeedsInstall}
             remindersEnabled={form.remindersEnabled}
             isNative={form.isNative}
-            showTopDivider={showInApp}
-            onToggleDueNotifications={(enabled) =>
-              void form.handleToggleDueNotifications(enabled)
-            }
-            onRequestPermission={() => void form.requestPostNotifications()}
-          />
-
-          <DailyClosingReminderCard
-            dailyReminderActive={form.dailyReminderActive}
-            dailyReminderTime={form.dailyReminderTime}
-            postNotificationsGranted={form.postNotificationsGranted}
-            isNative={form.isNative}
-            onToggleDailyReminder={(enabled) =>
-              void form.handleToggleDailyReminder(enabled)
-            }
-            onTimeChange={(time) => void form.handleDailyReminderTimeChange(time)}
-            onRequestPermission={() => void form.requestPostNotifications()}
-          />
-
-          <RemotePushPrefsCard
-            remotePushEnabled={form.remotePushEnabled}
-            isNative={form.isNative}
-            webPushSupported={form.webPushSupported}
-            webPushConfigured={form.webPushConfigured}
-            permissionDenied={
-              form.isNative ? form.nativePermissionDenied : form.webPermissionDenied
-            }
-            iosNeedsInstall={form.iosNeedsInstall}
             isBusy={form.remotePushBusy}
-            onToggleRemotePush={(enabled) =>
-              void form.handleToggleRemotePush(enabled)
+            showTopDivider={showInApp}
+            onToggleDeviceAlerts={(enabled) =>
+              void form.handleToggleUnifiedDeviceAlerts(enabled)
             }
+            onRequestPermission={() => void form.handleToggleUnifiedDeviceAlerts(true)}
           />
 
-          <QuietHoursPrefsCard
-            quietHours={form.quietHours}
-            onUpdateQuietHours={form.handleUpdateQuietHours}
-          />
+          {form.isNative ? (
+            <DailyClosingReminderCard
+              dailyReminderActive={form.dailyReminderActive}
+              pendingPermission={form.dailyReminderPendingPermission}
+              dailyReminderTime={form.dailyReminderTime}
+              postNotificationsGranted={form.postNotificationsGranted}
+              isNative={form.isNative}
+              onToggleDailyReminder={(enabled) =>
+                void form.handleToggleDailyReminder(enabled)
+              }
+              onTimeChange={(time) => void form.handleDailyReminderTimeChange(time)}
+              onRequestPermission={() => void form.handleToggleDailyReminder(true)}
+            />
+          ) : null}
 
-          <div className="pt-2 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="min-w-0">
-              <span className="text-xs font-semibold text-foreground block">
-                Validar entrega neste dispositivo
-              </span>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Dispara uma notificação de teste para conferir som, banner e permissões neste aparelho.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              sensoryIntent="action"
-              disabled={form.testNotificationPending}
-              onClick={() => void form.handleSendTestNotification()}
-              className="gap-1.5 shrink-0"
-            >
-              <BellRing className="size-3.5" aria-hidden="true" />
-              Enviar notificação de teste
-            </Button>
-          </div>
+          {form.hasActiveDeviceAlert ? (
+            <>
+              <QuietHoursPrefsCard
+                quietHours={form.quietHours}
+                onUpdateQuietHours={form.handleUpdateQuietHours}
+              />
+
+              <div className="pt-2 border-t border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="min-w-0">
+                  <span className="text-xs font-semibold text-foreground block">
+                    Validar entrega neste dispositivo
+                  </span>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Dispara uma notificação de teste para conferir som, banner e permissões neste aparelho.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  sensoryIntent="action"
+                  disabled={form.testNotificationPending}
+                  onClick={() => void form.handleSendTestNotification()}
+                  className="gap-1.5 shrink-0"
+                >
+                  <BellRing className="size-3.5" aria-hidden="true" />
+                  Enviar notificação de teste
+                </Button>
+              </div>
+            </>
+          ) : null}
         </>
       ) : null}
     </div>

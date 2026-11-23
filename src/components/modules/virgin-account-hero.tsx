@@ -6,6 +6,7 @@ import {
   CreditCard,
   Landmark,
   PlusCircle,
+  SlidersHorizontal,
   TrendingUp,
   Users,
   Wallet,
@@ -60,6 +61,7 @@ export interface VirginAccountHeroProps {
   onOpenStatementImport?: () => void;
   onStartQuickTour?: (track: OnboardingQuickTourTrack) => void;
   onOpenDemo?: () => void;
+  onOpenPreferences?: () => void;
   className?: string;
 }
 
@@ -77,6 +79,7 @@ export function VirginAccountHero({
   onOpenStatementImport,
   onStartQuickTour,
   onOpenDemo,
+  onOpenPreferences,
   className,
 }: VirginAccountHeroProps) {
   const navigate = useNavigate();
@@ -385,6 +388,19 @@ export function VirginAccountHero({
             Prefere ver como tudo funciona com dados de exemplo antes de começar?
           </span>
           <div className="flex flex-wrap items-center justify-center gap-2 shrink-0">
+            {onOpenPreferences ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onOpenPreferences}
+                className="gap-1.5 text-xs font-medium cursor-pointer"
+              >
+                <SlidersHorizontal className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <span>Personalizar alertas e privacidade</span>
+              </Button>
+            ) : null}
+
             <Button
               type="button"
               variant="outline"

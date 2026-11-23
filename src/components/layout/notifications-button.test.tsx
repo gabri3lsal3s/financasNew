@@ -8,6 +8,7 @@ const mockUseReminders = vi.fn();
 const mockUseOnboardingCounts = vi.fn();
 const mockUseSmartAdvisorInsights = vi.fn();
 const mockUseMyBroadcastNotifications = vi.fn();
+let mockAdvisorInsightsInBell = false;
 const mockHasFeature: (key: string) => boolean = (key: string) => key !== "investments";
 
 vi.mock("@/features/overview/hooks", () => ({
@@ -17,6 +18,14 @@ vi.mock("@/features/overview/hooks", () => ({
 vi.mock("@/state", () => ({
   useReminders: () => mockUseReminders(),
   useOnboardingCounts: () => mockUseOnboardingCounts(),
+  useUserPreferences: () => ({
+    data: {
+      custom_settings: {
+        notificationCategories: { advisorInsights: mockAdvisorInsightsInBell },
+      },
+    },
+    isLoading: false,
+  }),
   useSetReminderState: () => ({ mutate: vi.fn(), isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: vi.fn(), isPending: false }),
   useMySupportTickets: () => ({ data: [], isLoading: false }),
@@ -33,6 +42,7 @@ vi.mock("@/state", () => ({
 describe("NotificationsButton", () => {
   beforeEach(() => {
     localStorage.clear();
+    mockAdvisorInsightsInBell = false;
     mockUseOnboardingCounts.mockReturnValue({
       data: {
         expenseCategories: 5,
@@ -109,7 +119,7 @@ describe("NotificationsButton", () => {
     expect(screen.getByText("Lembretes & Avisos")).toBeInTheDocument();
   });
 
-  it("renderiza o sininho com 1 pendência quando não há lembretes mas há onboarding pendente", () => {
+  it("não renderiza o sininho apenas por passos de onboarding pendentes em conta nova", () => {
     mockUseReminders.mockReturnValue({
       items: [],
       totalCount: 0,
@@ -121,14 +131,13 @@ describe("NotificationsButton", () => {
       data: { expenseCategories: 0, incomeCategories: 0, cards: 0, transactions: 0 },
     });
 
-    render(
+    const { container } = render(
       <MemoryRouter>
         <NotificationsButton />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("button", { name: "Notificações: 1 pendência" })).toBeInTheDocument();
-    expect(screen.getByText("1")).toBeInTheDocument();
+    expect(container.firstChild).toBeNull();
   });
 
   it("aplica classes de tema corretas (bg-critical para urgente, bg-warning-strong para hoje, bg-primary padrão)", () => {
@@ -178,7 +187,8 @@ describe("NotificationsButton", () => {
     expect(screen.getByText("2")).toHaveClass("bg-primary", "text-primary-foreground");
   });
 
-  it("renderiza o sininho com badge crítico (bg-critical) quando há insight de prioridade 1 (crítico) no Smart Advisor", () => {
+  it("renderiza o sininho com badge crítico (bg-critical) quando há insight de prioridade 1 (crítico) no Smart Advisor com preferência ativa", () => {
+    mockAdvisorInsightsInBell = true;
     mockUseReminders.mockReturnValue({
       items: [],
       totalCount: 0,
@@ -214,7 +224,8 @@ describe("NotificationsButton", () => {
     expect(screen.getByText("1")).toHaveClass("bg-critical");
   });
 
-  it("renderiza o sininho com badge de aviso (bg-warning-strong) quando há insight de prioridade 2 (vencimento do dia / renda)", () => {
+  it("renderiza o sininho com badge de aviso (bg-warning-strong) quando há insight de prioridade 2 (vencimento do dia / renda) com preferência ativa", () => {
+    mockAdvisorInsightsInBell = true;
     mockUseReminders.mockReturnValue({
       items: [],
       totalCount: 0,

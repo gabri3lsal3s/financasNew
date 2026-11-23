@@ -48,6 +48,7 @@ export function useOverviewModals({
   const [depositGoalShare, setDepositGoalShare] = useState<PublicShare | null>(null);
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [onboardingChecklistOpen, setOnboardingChecklistOpen] = useState(false);
+  const [initialPreferencesOpen, setInitialPreferencesOpen] = useState(false);
   const [demoTrackModalOpen, setDemoTrackModalOpen] = useState(false);
 
   const handleLaunchPixFromClipboard = useCallback(
@@ -186,6 +187,8 @@ export function useOverviewModals({
     setWelcomeDismissed,
     onboardingChecklistOpen,
     setOnboardingChecklistOpen,
+    initialPreferencesOpen,
+    setInitialPreferencesOpen,
     demoTrackModalOpen,
     setDemoTrackModalOpen,
     handleLaunchPixFromClipboard,

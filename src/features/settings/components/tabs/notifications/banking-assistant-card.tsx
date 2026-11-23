@@ -23,6 +23,7 @@ export function BankingAssistantCard() {
     isBankListenerAllowed,
     bankPrefs,
     listenerGranted,
+    effectivePassiveCaptureActive,
     isDisclosureModalOpen,
     setIsDisclosureModalOpen,
     installedBanks,
@@ -32,9 +33,6 @@ export function BankingAssistantCard() {
     handleTogglePassiveCapture,
     handleConfirmDisclosure,
     handleToggleInteractiveNotifications,
-    handleToggleAutoInstallments,
-    handleToggleAutoCategoryInference,
-    handleSelectUnknownCategoryStrategy,
     handleToggleBank,
     handleSelectAllBanks,
     handleDeselectAllBanks,
@@ -134,14 +132,11 @@ export function BankingAssistantCard() {
             onOpenDisclosure={() => setIsDisclosureModalOpen(true)}
             onTogglePassiveCapture={handleTogglePassiveCapture}
             onToggleInteractiveNotifications={handleToggleInteractiveNotifications}
-            onToggleAutoInstallments={handleToggleAutoInstallments}
-            onToggleAutoCategoryInference={handleToggleAutoCategoryInference}
-            onSelectUnknownCategoryStrategy={handleSelectUnknownCategoryStrategy}
           />
 
-          {bankPrefs.passiveCaptureEnabled ? (
+          {effectivePassiveCaptureActive ? (
             <>
-              {listenerGranted && bankPrefs.monitoredBanks.length === 0 ? (
+              {bankPrefs.monitoredBanks.length === 0 ? (
                 <div className="flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning/5 p-3 text-xs text-muted-foreground">
                   <Info
                     className="size-4 text-warning-strong shrink-0 mt-0.5"

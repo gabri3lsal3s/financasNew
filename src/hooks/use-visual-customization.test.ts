@@ -26,7 +26,7 @@ describe("useVisualCustomization (F11)", () => {
     expect(config.surfaceStyle).toBe("glass");
     expect(config.motionLevel).toBe("fluid");
     expect(config.density).toBe("comfortable");
-    expect(config.soundEnabled).toBe(true);
+    expect(config.soundEnabled).toBe(false);
     expect(config.hapticEnabled).toBe(true);
     expect(config.numberTickerEnabled).toBe(true);
     expect(config.dashboardWidgets.kpis).toBe(true);

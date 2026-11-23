@@ -690,26 +690,6 @@ export function buildNotificationCenter(
     rawNotifications.push(mapAdvisorToNotification(insight));
   }
 
-  if (showOnboarding) {
-    const completed = input.onboardingCompletedCount ?? 0;
-    const total = input.onboardingTotalSteps ?? 4;
-    rawNotifications.push({
-      id: "onboarding:pending",
-      domain: "onboarding",
-      severity: "P2_ADVISORY",
-      title: "Concluir configuração inicial",
-      body: "Finalize os passos iniciais para destravar projeções e alertas precisos.",
-      badgeLabel: `${completed}/${total}`,
-      badgeVariant: "warning",
-      tone: "warning",
-      iconName: "sparkles",
-      targetRoute: "/configuracoes",
-      channels: ["bell"],
-      entityRefs: ["onboarding:pending"],
-      state: "unread",
-    });
-  }
-
   const notifications = deduplicateNotifications(rawNotifications);
   const bellNotifications = notifications.filter((n) => n.channels.includes("bell"));
   const remindersPageNotifications = notifications.filter((n) =>

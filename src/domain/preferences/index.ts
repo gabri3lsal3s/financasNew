@@ -37,7 +37,7 @@ export const EXPERIENCE_PRESETS: Record<Exclude<ExperiencePreset, "custom">, Exp
   dynamic: {
     motionLevel: "fluid",
     density: "comfortable",
-    soundEnabled: true,
+    soundEnabled: false,
     hapticEnabled: true,
     numberTickerEnabled: true,
     disabledSensoryIntents: [],
@@ -74,10 +74,10 @@ export const PRESET_METADATA_LIST: PresetMetadata[] = [
     title: "Dinâmico",
     badgeLabel: "Fintech Pro",
     tagline: "Imersivo e expressivo",
-    description: "Animações completas de física spring, contadores animados e retorno sensorial tátil e sonoro equilibrado.",
+    description: "Animações completas de física spring, contadores animados e retorno sensorial tátil sutil.",
     highlights: [
       "Animações fluidas em menus e transições",
-      "Feedback sonoro e vibração tátil ativos",
+      "Vibração tátil sutil ativa (sons opcionais)",
       "Contagem numérica animada nos KPIs",
     ],
   },
@@ -119,7 +119,7 @@ export function detectActivePreset(
   const isDynamic =
     config.motionLevel === "fluid" &&
     (config.density === "comfortable" || !config.density) &&
-    config.soundEnabled === true &&
+    config.soundEnabled !== true &&
     config.hapticEnabled === true &&
     config.numberTickerEnabled !== false &&
     (!config.disabledSensoryIntents || config.disabledSensoryIntents.length === 0);

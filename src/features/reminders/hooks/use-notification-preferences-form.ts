@@ -162,6 +162,7 @@ export function useNotificationPreferencesForm() {
 
   const permissionsStatus = nativeServices.usePermissionsStatus();
   const { postNotificationsGranted, requestPostNotifications } = permissionsStatus;
+  const refreshPermissions = permissionsStatus.refresh;
   const isNative = nativeServices.isNativePlatform();
   const webPushSupported = !isNative && isWebPushSupported();
   const webPushConfigured = Boolean(getVapidPublicKey());
@@ -200,15 +201,24 @@ export function useNotificationPreferencesForm() {
     };
   }, [isNative, webPushSupported, postNotificationsGranted]);
 
-  const dueNotificationsActive =
+  const dueNotificationsPref =
     localDueNotificationsActive ??
     cloudDeviceNotifs?.dueNotificationsEnabled ??
     nativeServices.isDueNotificationsEnabled();
 
-  const dailyReminderActive =
+  // Verdade de estado: nunca reporta notificações no dispositivo como ativas sem permissão do SO
+  const dueNotificationsActive = Boolean(dueNotificationsPref) && postNotificationsGranted;
+  const dueNotificationsPendingPermission =
+    Boolean(dueNotificationsPref) && !postNotificationsGranted;
+
+  const dailyReminderPref =
     localDailyReminderActive ??
     cloudDeviceNotifs?.dailyReminderEnabled ??
     nativeServices.isDailyReminderEnabled();
+
+  const dailyReminderActive = isNative && Boolean(dailyReminderPref) && postNotificationsGranted;
+  const dailyReminderPendingPermission =
+    isNative && Boolean(dailyReminderPref) && !postNotificationsGranted;
 
   const dailyReminderTime =
     localDailyReminderTime ??
@@ -218,15 +228,31 @@ export function useNotificationPreferencesForm() {
   const hasActiveNativeToken =
     isNative && Boolean(getStoredFcmToken()) && postNotificationsGranted;
 
-  // Reflete inscrição ativa neste aparelho (token FCM nativo ou PushSubscription Web + permissão concedida)
+  // Reflete inscrição ativa neste aparelho (token FCM nativo ou PushSubscription Web + permissão real concedida)
   const remotePushEnabled = isNative
-    ? localRemotePushEnabled !== null
-      ? localRemotePushEnabled
-      : hasActiveNativeToken ||
-        (cloudDeviceNotifs?.remotePushEnabled === true && Boolean(getStoredFcmToken()))
-    : localRemotePushEnabled !== null
-      ? localRemotePushEnabled
-      : browserSubscriptionActive === true;
+    ? postNotificationsGranted &&
+      (localRemotePushEnabled !== null
+        ? localRemotePushEnabled
+        : hasActiveNativeToken ||
+          (cloudDeviceNotifs?.remotePushEnabled === true && Boolean(getStoredFcmToken())))
+    : postNotificationsGranted &&
+      !webPermissionDenied &&
+      (localRemotePushEnabled !== null
+        ? localRemotePushEnabled
+        : browserSubscriptionActive === true);
+
+  const remotePushPref =
+    localRemotePushEnabled ?? (cloudDeviceNotifs?.remotePushEnabled === true);
+  const effectiveDeviceAlertsActive = Boolean(
+    (dueNotificationsActive || remotePushEnabled) && postNotificationsGranted,
+  );
+  const deviceAlertsPendingPermission = Boolean(
+    (dueNotificationsPref || remotePushPref) && !postNotificationsGranted,
+  );
+  const hasActiveDeviceAlert = effectiveDeviceAlertsActive || dailyReminderActive;
+  const devicePermissionDenied = isNative
+    ? nativePermissionDenied && !postNotificationsGranted
+    : webPermissionDenied;
 
   const localStoredQuietHours = callOptionalNative("getQuietHoursConfig", () => DEFAULT_QUIET_HOURS);
   const quietHours: QuietHoursConfig = localQuietHours ?? {
@@ -294,71 +320,63 @@ export function useNotificationPreferencesForm() {
   };
 
   const handleToggleDueNotifications = async (enabled: boolean) => {
-    nativeServices.setDueNotificationsEnabled(enabled);
-    setLocalDueNotificationsActive(enabled);
+    if (enabled) {
+      const granted = await handleRequestDevicePermission();
+      if (!granted) {
+        setLocalDueNotificationsActive(false);
+        return;
+      }
+
+      nativeServices.setDueNotificationsEnabled(true);
+      setLocalDueNotificationsActive(true);
+      updateCustomSettingsMutation.mutate({
+        deviceNotifications: { dueNotificationsEnabled: true },
+      });
+      notifyDevicePrefsChanged();
+      pushToast({
+        title: "Notificações de contas ativadas",
+        description:
+          "Você receberá alertas no dispositivo sobre faturas e dívidas próximas do vencimento.",
+        variant: "success",
+      });
+      return;
+    }
+
+    nativeServices.setDueNotificationsEnabled(false);
+    setLocalDueNotificationsActive(false);
     updateCustomSettingsMutation.mutate({
-      deviceNotifications: { dueNotificationsEnabled: enabled },
+      deviceNotifications: { dueNotificationsEnabled: false },
     });
     notifyDevicePrefsChanged();
-
-    if (enabled) {
-      const granted = await requestPostNotifications();
-      if (!granted) {
-        pushToast({
-          title: "Permissão pendente no dispositivo",
-          description:
-            "Libere as notificações no navegador ou nas configurações do celular para receber alertas de contas.",
-          variant: "warning",
-        });
-      } else {
-        pushToast({
-          title: "Notificações de contas ativadas",
-          description:
-            "Você receberá alertas no dispositivo sobre faturas e dívidas próximas do vencimento.",
-          variant: "success",
-        });
-      }
-    } else {
-      await callOptionalNative("clearAllDueNotifications", () => Promise.resolve());
-      pushToast({
-        title: "Notificações de contas desativadas",
-        variant: "default",
-      });
-    }
+    await callOptionalNative("clearAllDueNotifications", () => Promise.resolve());
+    pushToast({
+      title: "Notificações de contas desativadas",
+      variant: "default",
+    });
   };
 
   const handleToggleDailyReminder = async (enabled: boolean) => {
-    nativeServices.setDailyReminderEnabled(enabled);
-    setLocalDailyReminderActive(enabled);
-    updateCustomSettingsMutation.mutate({
-      deviceNotifications: { dailyReminderEnabled: enabled },
-    });
-
     if (enabled) {
       if (!isNative) {
-        pushToast({
-          title: "Preferência salva na nuvem",
-          description: `O lembrete diário às ${dailyReminderTime} será agendado ao acessar no App Android.`,
-          variant: "default",
-        });
         return;
       }
 
-      const granted = await requestPostNotifications();
+      const granted = await handleRequestDevicePermission();
       if (!granted) {
-        pushToast({
-          title: "Permissão pendente no celular",
-          description:
-            "Habilite as notificações nas configurações do Android para que o lembrete diário toque no horário.",
-          variant: "warning",
-        });
+        setLocalDailyReminderActive(false);
         return;
       }
+
       const parsedTime = parseTimeHHMM(dailyReminderTime, 20, 0);
       const scheduled = await nativeServices.scheduleDailyReminder({
         hour: parsedTime.hour,
         minute: parsedTime.minute,
         requestPermission: false,
+      });
+      nativeServices.setDailyReminderEnabled(true);
+      setLocalDailyReminderActive(true);
+      updateCustomSettingsMutation.mutate({
+        deviceNotifications: { dailyReminderEnabled: true },
       });
       if (scheduled) {
         pushToast({
@@ -367,13 +385,19 @@ export function useNotificationPreferencesForm() {
           variant: "success",
         });
       }
-    } else {
-      await nativeServices.cancelDailyReminder();
-      pushToast({
-        title: "Lembrete diário desativado",
-        variant: "default",
-      });
+      return;
     }
+
+    nativeServices.setDailyReminderEnabled(false);
+    setLocalDailyReminderActive(false);
+    updateCustomSettingsMutation.mutate({
+      deviceNotifications: { dailyReminderEnabled: false },
+    });
+    await nativeServices.cancelDailyReminder();
+    pushToast({
+      title: "Lembrete diário desativado",
+      variant: "default",
+    });
   };
 
   const handleDailyReminderTimeChange = async (time: string) => {
@@ -385,11 +409,6 @@ export function useNotificationPreferencesForm() {
 
     if (dailyReminderActive) {
       if (!isNative) {
-        pushToast({
-          title: "Horário salvo na nuvem",
-          description: `Horário ${time} sincronizado para o App Android.`,
-          variant: "default",
-        });
         return;
       }
       const parsedTime = parseTimeHHMM(time, 20, 0);
@@ -422,10 +441,12 @@ export function useNotificationPreferencesForm() {
   const handleToggleNativeRemotePush = async (enabled: boolean) => {
     if (enabled) {
       const result = await registerNativeFcmPush({ requestPermission: true });
+      await refreshPermissions?.();
       if (!result.ok) {
         if (result.reason === "permission_denied") {
           setNativePermissionDenied(true);
         }
+        setLocalRemotePushEnabled(false);
         pushToast({
           title: "Não foi possível ativar os alertas em segundo plano",
           description: result.message,
@@ -494,7 +515,10 @@ export function useNotificationPreferencesForm() {
 
       if (enabled) {
         const result = await subscribeBrowserWebPush();
+        await refreshPermissions?.();
         if (!result.ok) {
+          setLocalRemotePushEnabled(false);
+          setBrowserSubscriptionActive(false);
           pushToast({
             title: "Não foi possível ativar os alertas em segundo plano",
             description: result.message,
@@ -551,6 +575,118 @@ export function useNotificationPreferencesForm() {
           variant: "default",
         });
       }
+    } finally {
+      setRemotePushBusy(false);
+    }
+  };
+
+  const handleToggleUnifiedDeviceAlerts = async (enabled: boolean): Promise<boolean> => {
+    if (remotePushBusy) return false;
+    setRemotePushBusy(true);
+    try {
+      if (!enabled) {
+        nativeServices.setDueNotificationsEnabled(false);
+        setLocalDueNotificationsActive(false);
+        await callOptionalNative("clearAllDueNotifications", () => Promise.resolve());
+        if (remotePushEnabled || cloudDeviceNotifs?.remotePushEnabled) {
+          if (isNative) {
+            const { token } = await unregisterNativeFcmPush();
+            if (token) {
+              await disableFcmTokenMutation.mutateAsync(token).catch(() => undefined);
+            }
+          } else {
+            const { endpoint } = await unsubscribeBrowserWebPush();
+            if (endpoint) {
+              await disableWebPushMutation.mutateAsync(endpoint).catch(() => undefined);
+            }
+            setBrowserSubscriptionActive(false);
+          }
+        }
+        callOptionalNative("setRemotePushEnabled", () => undefined, false);
+        setLocalRemotePushEnabled(false);
+        setBrowserSubscriptionActive(false);
+        updateCustomSettingsMutation.mutate({
+          deviceNotifications: {
+            dueNotificationsEnabled: false,
+            remotePushEnabled: false,
+          },
+        });
+        notifyDevicePrefsChanged();
+        pushToast({
+          title: "Alertas neste aparelho desativados",
+          variant: "default",
+        });
+        return false;
+      }
+
+      const granted = await handleRequestDevicePermission();
+      await refreshPermissions?.();
+      if (!granted) {
+        setLocalDueNotificationsActive(false);
+        setLocalRemotePushEnabled(false);
+        if (isNative) {
+          setNativePermissionDenied(true);
+        }
+        return false;
+      }
+
+      setNativePermissionDenied(false);
+      nativeServices.setDueNotificationsEnabled(true);
+      setLocalDueNotificationsActive(true);
+
+      let nextRemoteActive = remotePushEnabled;
+      if (!remotePushEnabled) {
+        if (isNative) {
+          const fcmResult = await registerNativeFcmPush({ requestPermission: false });
+          if (fcmResult.ok) {
+            try {
+              await registerFcmTokenMutation.mutateAsync({
+                fcmToken: fcmResult.token,
+                deviceLabel: "Android App",
+              });
+              callOptionalNative("setRemotePushEnabled", () => undefined, true);
+              setLocalRemotePushEnabled(true);
+              nextRemoteActive = true;
+            } catch {
+              await unregisterNativeFcmPush();
+            }
+          }
+        } else if (webPushSupported && webPushConfigured) {
+          const webResult = await subscribeBrowserWebPush();
+          if (webResult.ok) {
+            try {
+              await enableWebPushMutation.mutateAsync({
+                endpoint: webResult.subscription.endpoint,
+                p256dh: webResult.subscription.p256dh,
+                auth: webResult.subscription.auth,
+                userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+              });
+              callOptionalNative("setRemotePushEnabled", () => undefined, true);
+              setLocalRemotePushEnabled(true);
+              setBrowserSubscriptionActive(true);
+              nextRemoteActive = true;
+            } catch {
+              await unsubscribeBrowserWebPush();
+            }
+          }
+        }
+      }
+
+      updateCustomSettingsMutation.mutate({
+        deviceNotifications: {
+          dueNotificationsEnabled: true,
+          ...(nextRemoteActive ? { remotePushEnabled: true } : {}),
+        },
+      });
+      notifyDevicePrefsChanged();
+      pushToast({
+        title: "Alertas neste aparelho ativados",
+        description: nextRemoteActive
+          ? "Avisos de vencimentos, Pix e suporte configurados com proteção do Horário Silencioso."
+          : "Alertas de contas no aparelho ativados com sucesso.",
+        variant: "success",
+      });
+      return true;
     } finally {
       setRemotePushBusy(false);
     }
@@ -619,7 +755,13 @@ export function useNotificationPreferencesForm() {
     debtDaysBefore,
     categoryPreferences,
     dueNotificationsActive,
+    dueNotificationsPendingPermission,
+    effectiveDeviceAlertsActive,
+    deviceAlertsPendingPermission,
+    hasActiveDeviceAlert,
+    devicePermissionDenied,
     dailyReminderActive,
+    dailyReminderPendingPermission,
     dailyReminderTime,
     remotePushEnabled,
     webPushSupported,
@@ -638,6 +780,7 @@ export function useNotificationPreferencesForm() {
     handleToggleCategory,
     handleToggleDueNotifications,
     handleToggleDailyReminder,
+    handleToggleUnifiedDeviceAlerts,
     handleDailyReminderTimeChange,
     handleUpdateQuietHours,
     handleToggleRemotePush,

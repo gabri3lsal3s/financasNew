@@ -11,5 +11,7 @@ export { PortfolioGovernanceBanner, type PortfolioGovernanceBannerProps } from "
 export { OverviewKpiGrid, OverviewLoadingSkeleton, type OverviewKpiGridProps } from "./overview-kpi-grid";
 export { OverviewChartsSection, type OverviewChartsSectionProps } from "./overview-charts-section";
 export { OverviewModalsHost, type OverviewModalsHostProps } from "./overview-modals-host";
+export { InitialPreferencesModal, type InitialPreferencesModalProps } from "./initial-preferences-modal";
+export { DeviceAlertsInviteBanner, type DeviceAlertsInviteBannerProps } from "./device-alerts-invite-banner";
 export { OverviewDashboardContent, type OverviewDashboardContentProps } from "./overview-dashboard-content";
 export { buildOverviewAlertItems, type BuildOverviewAlertItemsParams } from "./build-overview-alerts";

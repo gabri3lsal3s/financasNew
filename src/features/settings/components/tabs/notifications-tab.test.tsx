@@ -18,6 +18,9 @@ vi.mock("@/services/toast", () => ({
 }));
 
 let mockHasFeature = vi.fn(() => true);
+let mockPostNotificationsGranted = true;
+let mockListenerGranted = true;
+let mockDueNotificationsPrefCloud: boolean | undefined;
 const mockUpdateCustomSettings = vi.fn();
 const mockUpdateReminderPreferences = vi.fn();
 let mockWeeklyDigestEnabled = false;
@@ -29,7 +32,14 @@ vi.mock("@/state", () => ({
       reminder_days_before_debt: 3,
       reminder_days_before_bill: 5,
       weekly_digest_enabled: mockWeeklyDigestEnabled,
-      custom_settings: {},
+      custom_settings:
+        mockDueNotificationsPrefCloud !== undefined
+          ? {
+              deviceNotifications: {
+                dueNotificationsEnabled: mockDueNotificationsPrefCloud,
+              },
+            }
+          : {},
     },
     isLoading: false,
     error: null,
@@ -61,8 +71,8 @@ vi.mock("@/services/native", async () => {
       .mockResolvedValue({ installedBankNames: [], installedPackages: [], apps: [] }),
     isNativePlatform: vi.fn().mockReturnValue(true),
     usePermissionsStatus: vi.fn(() => ({
-      postNotificationsGranted: true,
-      listenerGranted: false, // Permite que os testes de Prominent Disclosure vejam o botão 'Habilitar no Android'
+      postNotificationsGranted: mockPostNotificationsGranted,
+      listenerGranted: mockListenerGranted,
       isChecking: false,
       refresh: vi.fn().mockResolvedValue(undefined),
       requestPostNotifications: vi.fn(async () => {
@@ -96,21 +106,33 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
     nativeServices.resetBankAssistantPreferences();
     vi.clearAllMocks();
     mockHasFeature = vi.fn(() => true);
+    mockPostNotificationsGranted = true;
+    mockListenerGranted = true;
+    mockDueNotificationsPrefCloud = undefined;
     mockWeeklyDigestEnabled = false;
     vi.mocked(nativeServices.isNativePlatform).mockReturnValue(true);
+    vi.mocked(nativeServices.requestNotificationPermissions).mockResolvedValue({ granted: true });
+    vi.mocked(nativeServices.isNotificationListenerGranted).mockResolvedValue(true);
   });
 
   describe("Lembretes de Vencimento & Diário", () => {
-    it("renderiza o controle de Lembrete Automático e Lembrete de Fechamento Diário", () => {
+    it("renderiza o controle de Lembrete Automático, switch unificado no dispositivo e Lembrete de Fechamento Diário", () => {
       renderNotificationsTab();
       expect(screen.getByText("Lembretes & Notificações")).toBeInTheDocument();
       expect(
         screen.getByRole("switch", { name: "Habilitar Lembretes no Aplicativo" }),
       ).toBeInTheDocument();
+      expect(screen.getByText("Alertas neste Aparelho (Contas, Pix e Avisos)")).toBeInTheDocument();
+      expect(
+        screen.getByRole("switch", { name: "Habilitar Alertas neste Aparelho" }),
+      ).toHaveAttribute("aria-checked", "false");
       expect(screen.getByText("Lembrete de Fechamento Diário")).toBeInTheDocument();
       expect(
         screen.getByRole("switch", { name: "Habilitar Lembrete de Fechamento Diário" }),
       ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("switch", { name: "Habilitar Horário Silencioso" }),
+      ).not.toBeInTheDocument();
     });
 
     it("permite ativar o lembrete diário solicitando agendamento", async () => {
@@ -131,6 +153,29 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
         requestPermission: false,
       });
       expect(nativeServices.setDailyReminderEnabled).toHaveBeenCalledWith(true);
+    });
+
+    it("verdade de estado: mantém switches desativados quando a permissão do sistema estiver negada ou revogada", async () => {
+      mockPostNotificationsGranted = false;
+      mockDueNotificationsPrefCloud = true;
+      vi.mocked(nativeServices.requestNotificationPermissions).mockResolvedValueOnce({ granted: false });
+
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      const unifiedSwitch = screen.getByRole("switch", {
+        name: "Habilitar Alertas neste Aparelho",
+      });
+      expect(unifiedSwitch).toHaveAttribute("aria-checked", "false");
+      expect(screen.getByText("Permissão Pendente")).toBeInTheDocument();
+
+      const dailySwitch = screen.getByRole("switch", {
+        name: "Habilitar Lembrete de Fechamento Diário",
+      });
+      expect(dailySwitch).toHaveAttribute("aria-checked", "false");
+
+      await user.click(dailySwitch);
+      expect(nativeServices.setDailyReminderEnabled).not.toHaveBeenCalledWith(true);
     });
   });
 
@@ -156,17 +201,28 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       ).toBeChecked();
     });
 
-    it("exibe os toggles de notificações com ação rápida, parcelas e inferência de categorias", () => {
+    it("exibe apenas o toggle simplificado de notificações com ação rápida sem opções técnicas redundantes", () => {
       renderNotificationsTab();
       expect(
         screen.getByRole("checkbox", { name: "Habilitar Notificações com Ação Rápida" }),
       ).toBeChecked();
       expect(
-        screen.getByRole("checkbox", { name: "Habilitar Cálculo Automático de Parcelas" }),
-      ).toBeChecked();
+        screen.queryByRole("checkbox", { name: "Habilitar Cálculo Automático de Parcelas" }),
+      ).not.toBeInTheDocument();
       expect(
-        screen.getByRole("checkbox", { name: "Habilitar Inferência Automática de Categorias" }),
-      ).toBeChecked();
+        screen.queryByRole("checkbox", { name: "Habilitar Inferência Automática de Categorias" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("verdade de estado: não marca captura passiva como ativa quando a permissão do Android estiver pendente", () => {
+      mockListenerGranted = false;
+      renderNotificationsTab();
+
+      const passiveCheckbox = screen.getByRole("checkbox", {
+        name: "Habilitar Captura Passiva de Notificações",
+      });
+      expect(passiveCheckbox).not.toBeChecked();
+      expect(screen.getByText("Permissão Pendente")).toBeInTheDocument();
     });
 
     it("permite alternar preferências individuais do assistente bancário", async () => {
@@ -419,6 +475,7 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
 
   describe("Prominent Disclosure Android (Contrato 4 & Google Play Store)", () => {
     beforeEach(() => {
+      mockListenerGranted = false;
       nativeServices.setBankAssistantPreferences({ passiveCaptureEnabled: true });
     });
 
@@ -569,10 +626,22 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
       ).toBeInTheDocument();
     });
 
-    it("permite alternar Horário Silencioso e disparar notificação de teste no dispositivo", async () => {
+    it("oculta Horário Silencioso e notificação de teste quando nenhum alerta no aparelho está ativo", () => {
+      renderNotificationsTab();
+
+      expect(screen.queryByText("Horário Silencioso")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Enviar notificação de teste/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("permite alternar Horário Silencioso e disparar notificação de teste quando alerta está ativo no dispositivo", async () => {
+      mockDueNotificationsPrefCloud = true;
+      mockPostNotificationsGranted = true;
       const user = userEvent.setup();
       renderNotificationsTab();
 
+      expect(screen.getByText("Ativado neste aparelho")).toBeInTheDocument();
       const quietHoursSwitch = screen.getByRole("switch", {
         name: "Habilitar Horário Silencioso",
       });

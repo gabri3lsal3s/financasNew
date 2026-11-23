@@ -90,7 +90,7 @@ export function useDashboardAlertDismissals() {
 
 export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
   const isNative = isNativePlatform();
-  const { postNotificationsGranted, listenerGranted, requestPostNotifications } =
+  const { postNotificationsGranted, listenerGranted, isChecking, requestPostNotifications } =
     usePermissionsStatus();
   const { preferences: bankPrefs } = useBankAssistantPreferences();
   const userPreferencesQuery = useUserPreferences();
@@ -102,6 +102,12 @@ export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
   const cloudDeviceNotifs = userPreferencesQuery.data?.custom_settings?.deviceNotifications;
   const dueNotificationsActive = cloudDeviceNotifs?.dueNotificationsEnabled ?? isDueNotificationsEnabled();
   const dailyReminderActive = cloudDeviceNotifs?.dailyReminderEnabled ?? isDailyReminderEnabled();
+  const hasDeviceAlertsConfigured = Boolean(
+    dueNotificationsActive ||
+      dailyReminderActive ||
+      cloudDeviceNotifs?.remotePushEnabled ||
+      postNotificationsGranted,
+  );
 
   const hasMonitoredBanks = (bankPrefs.monitoredBanks?.length ?? 0) > 0;
   const isBankListenerMissing =
@@ -176,6 +182,8 @@ export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
   };
 
   return {
+    isChecking,
+    hasDeviceAlertsConfigured,
     shouldShowPermissionsBanner,
     permissionBannerType,
     handlePermissionsBannerAction,

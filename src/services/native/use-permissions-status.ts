@@ -93,6 +93,34 @@ export function usePermissionsStatus(): PermissionsStatus {
       window.addEventListener("focus", handleFocus);
     }
 
+    // 3. Escuta alteração imediata de permissão na barra de endereços do navegador (Web Permissions API)
+    let permissionStatus: PermissionStatus | null = null;
+    let handlePermissionChange: (() => void) | null = null;
+    if (
+      !isNativePlatform() &&
+      typeof navigator !== "undefined" &&
+      "permissions" in navigator &&
+      typeof navigator.permissions?.query === "function"
+    ) {
+      void navigator.permissions
+        .query({ name: "notifications" as PermissionName })
+        .then((status) => {
+          if (!isMounted) return;
+          permissionStatus = status;
+          handlePermissionChange = () => {
+            void refresh();
+          };
+          if (typeof status.addEventListener === "function") {
+            status.addEventListener("change", handlePermissionChange);
+          } else {
+            status.onchange = handlePermissionChange;
+          }
+        })
+        .catch(() => {
+          // Alguns navegadores (ex.: Safari) não suportam permissions.query("notifications")
+        });
+    }
+
     return () => {
       isMounted = false;
       clearTimeout(timer);
@@ -106,6 +134,17 @@ export function usePermissionsStatus(): PermissionsStatus {
       if (typeof window !== "undefined") {
         document.removeEventListener("visibilitychange", handleVisibilityChange);
         window.removeEventListener("focus", handleFocus);
+      }
+      if (permissionStatus && handlePermissionChange) {
+        try {
+          if (typeof permissionStatus.removeEventListener === "function") {
+            permissionStatus.removeEventListener("change", handlePermissionChange);
+          } else if (permissionStatus.onchange === handlePermissionChange) {
+            permissionStatus.onchange = null;
+          }
+        } catch {
+          // no-op
+        }
       }
     };
   }, [refresh]);

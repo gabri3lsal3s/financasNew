@@ -26,7 +26,7 @@ export interface ExperiencePresetsCardProps {
 export function ExperiencePresetsCard({
   activePreset,
   onSelectPreset,
-  soundEnabled = true,
+  soundEnabled = false,
   onToggleSound,
   hapticEnabled = true,
   onToggleHaptic,

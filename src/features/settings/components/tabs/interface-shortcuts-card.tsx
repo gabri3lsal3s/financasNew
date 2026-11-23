@@ -1,6 +1,5 @@
 import {
   PanelTop,
-  Image as ImageIcon,
   Calculator,
   Monitor,
   Eye,
@@ -52,14 +51,6 @@ export function InterfaceShortcutsCard({
     isDisabled: boolean;
   }[] = [
     {
-      key: "logo",
-      label: "Logotipo Oficial",
-      desc: "Exibe o logotipo no topo",
-      icon: ImageIcon,
-      isChecked: headerButtons.logo,
-      isDisabled: false,
-    },
-    {
       key: "calculatorButton",
       label: "Calculadora",
       desc: "Calculadora flutuante rápida",
@@ -99,15 +90,14 @@ export function InterfaceShortcutsCard({
           <div className="text-xs font-semibold text-foreground flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
             <span>Atalhos Rápidos do Cabeçalho</span>
             <span className="text-[11px] text-muted-foreground font-normal">
-              Máximo de 2 botões de ação
+              Máximo de 2 ativos (o sininho ocupa o slot da direita quando há avisos)
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {shortcutItems.map((item) => {
               const Icon = item.icon;
               const fieldId = `header-shortcut-${item.key}`;
-              const actionName = item.key === "logo" ? "Logo no Header" : item.label;
 
               return (
                 <label
@@ -137,7 +127,7 @@ export function InterfaceShortcutsCard({
                     disabled={item.isDisabled}
                     onCheckedChange={(checked) => {
                       if (!item.isDisabled) {
-                        onToggleHeaderButton(item.key, actionName, Boolean(checked));
+                        onToggleHeaderButton(item.key, item.label, Boolean(checked));
                       }
                     }}
                     aria-label={item.label}

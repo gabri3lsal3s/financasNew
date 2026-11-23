@@ -11,7 +11,7 @@ describe("domain/preferences — Modos de Experiência (§3.10 / §3.11)", () =>
   it("contém os 3 presets canônicos com valores imutáveis e coerentes", () => {
     expect(EXPERIENCE_PRESETS.dynamic.motionLevel).toBe("fluid");
     expect(EXPERIENCE_PRESETS.dynamic.density).toBe("comfortable");
-    expect(EXPERIENCE_PRESETS.dynamic.soundEnabled).toBe(true);
+    expect(EXPERIENCE_PRESETS.dynamic.soundEnabled).toBe(false);
     expect(EXPERIENCE_PRESETS.dynamic.hapticEnabled).toBe(true);
     expect(EXPERIENCE_PRESETS.dynamic.numberTickerEnabled).toBe(true);
     expect(EXPERIENCE_PRESETS.dynamic.disabledSensoryIntents).toEqual([]);
@@ -109,7 +109,7 @@ describe("domain/preferences — Modos de Experiência (§3.10 / §3.11)", () =>
         surfaceStyle: "flat",
         motionLevel: "reduced" as const,
         density: "compact" as const,
-        soundEnabled: false,
+        soundEnabled: true,
         hapticEnabled: false,
         numberTickerEnabled: false,
         disabledSensoryIntents: ["error" as const],
@@ -121,7 +121,7 @@ describe("domain/preferences — Modos de Experiência (§3.10 / §3.11)", () =>
       expect(result.surfaceStyle).toBe("flat");
       expect(result.motionLevel).toBe("fluid");
       expect(result.density).toBe("comfortable");
-      expect(result.soundEnabled).toBe(true);
+      expect(result.soundEnabled).toBe(false);
       expect(result.hapticEnabled).toBe(true);
       expect(result.numberTickerEnabled).toBe(true);
       expect(result.disabledSensoryIntents).toEqual([]);

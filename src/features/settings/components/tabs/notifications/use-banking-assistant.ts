@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { HOMOLOGATED_BANKS, type UnknownCategoryStrategy } from "@/domain/notifications";
+import { useEffect, useRef, useState } from "react";
+import { HOMOLOGATED_BANKS } from "@/domain/notifications";
 import {
   getInstalledBankingApps,
   isNativePlatform,
@@ -18,14 +18,19 @@ export function useBankingAssistant() {
   const isBankListenerAllowed = hasFeature("bank_notification_listener");
   const { preferences: bankPrefs, updatePreferences: updateBankPrefs } =
     useBankAssistantPreferences();
-  const { listenerGranted, requestNotificationListener } = usePermissionsStatus();
+  const { listenerGranted, requestNotificationListener, refresh } = usePermissionsStatus();
 
   const [isDisclosureModalOpen, setIsDisclosureModalOpen] = useState(false);
   const [installedBanks, setInstalledBanks] = useState<string[]>([]);
   const [installedApps, setInstalledApps] = useState<InstalledBankApp[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const awaitingListenerReturnRef = useRef(false);
 
   const isNative = isNativePlatform();
+  const effectivePassiveCaptureActive = Boolean(bankPrefs.passiveCaptureEnabled && listenerGranted);
+  const isPassiveCapturePendingPermission = Boolean(
+    bankPrefs.passiveCaptureEnabled && !listenerGranted,
+  );
 
   useEffect(() => {
     if (!isNative || !isBankListenerAllowed) return;
@@ -34,13 +39,13 @@ export function useBankingAssistant() {
       setInstalledApps(res.apps || []);
     });
     void syncMonitoredBanksWithNative(
-      bankPrefs.passiveCaptureEnabled ? bankPrefs.monitoredBanks : [],
+      effectivePassiveCaptureActive ? bankPrefs.monitoredBanks : [],
       bankPrefs.interactiveNotificationsEnabled,
     );
   }, [
     isNative,
     isBankListenerAllowed,
-    bankPrefs.passiveCaptureEnabled,
+    effectivePassiveCaptureActive,
     bankPrefs.monitoredBanks,
     bankPrefs.interactiveNotificationsEnabled,
   ]);
@@ -52,6 +57,43 @@ export function useBankingAssistant() {
       void syncMonitoredBanksWithNative(syncNativeList);
     }
   };
+
+  // Quando o usuário retorna das Configurações do Android após confirmar o Disclosure,
+  // ativa automaticamente a captura passiva e pré-seleciona os bancos instalados no aparelho.
+  useEffect(() => {
+    if (!listenerGranted || !awaitingListenerReturnRef.current) return;
+    awaitingListenerReturnRef.current = false;
+    const autoBanks =
+      bankPrefs.monitoredBanks.length === 0 && installedBanks.length > 0
+        ? installedBanks
+        : bankPrefs.monitoredBanks;
+    updateBankPrefs({
+      passiveCaptureEnabled: true,
+      monitoredBanks: autoBanks,
+    });
+    updateCustomSettingsMutation.mutate({
+      bankAssistant: {
+        passiveCaptureEnabled: true,
+        monitoredBanks: autoBanks,
+      },
+    });
+    void syncMonitoredBanksWithNative(autoBanks);
+    triggerSensory("success");
+    pushToast({
+      title: "Captura de compras ativada",
+      description:
+        autoBanks.length > 0
+          ? `${autoBanks.length} instituição(ões) selecionada(s) automaticamente.`
+          : "Captura passiva de notificações bancárias autorizada.",
+      variant: "success",
+    });
+  }, [
+    listenerGranted,
+    bankPrefs.monitoredBanks,
+    installedBanks,
+    updateBankPrefs,
+    updateCustomSettingsMutation,
+  ]);
 
   const handleRescanBankingApps = async () => {
     setIsScanning(true);
@@ -91,12 +133,9 @@ export function useBankingAssistant() {
   };
 
   const handleTogglePassiveCapture = (enabled: boolean) => {
-    commitPrefs(
-      { passiveCaptureEnabled: enabled },
-      enabled ? bankPrefs.monitoredBanks : [],
-    );
-
     if (!enabled) {
+      awaitingListenerReturnRef.current = false;
+      commitPrefs({ passiveCaptureEnabled: false }, []);
       pushToast({
         title: "Captura de compras desativada",
         description: "Nenhuma notificação bancária será processada.",
@@ -105,20 +144,39 @@ export function useBankingAssistant() {
     }
 
     if (!listenerGranted) {
+      // Fluxo Permission-First: nunca marca como ativo antes de obter consentimento e permissão do Android
       setIsDisclosureModalOpen(true);
-    } else {
-      pushToast({
-        title: "Captura de compras ativada",
-        description: "Notificações bancárias serão detectadas e convertidas em sugestões.",
-        variant: "success",
-      });
+      return;
     }
+
+    const autoBanks =
+      bankPrefs.monitoredBanks.length === 0 && installedBanks.length > 0
+        ? installedBanks
+        : bankPrefs.monitoredBanks;
+    commitPrefs(
+      {
+        passiveCaptureEnabled: true,
+        ...(autoBanks !== bankPrefs.monitoredBanks ? { monitoredBanks: autoBanks } : {}),
+      },
+      autoBanks,
+    );
+    pushToast({
+      title: "Captura de compras ativada",
+      description:
+        autoBanks.length > 0 && bankPrefs.monitoredBanks.length === 0
+          ? `${autoBanks.length} aplicativo(s) bancário(s) instalado(s) selecionado(s) automaticamente.`
+          : "Notificações bancárias serão detectadas e convertidas em sugestões.",
+      variant: "success",
+    });
   };
 
   const handleConfirmDisclosure = async () => {
     setIsDisclosureModalOpen(false);
+    awaitingListenerReturnRef.current = true;
     const granted = await requestNotificationListener();
+    await refresh?.();
     if (!granted) {
+      commitPrefs({ passiveCaptureEnabled: false }, []);
       pushToast({
         title: "Permissão pendente no Android",
         description: "Habilite o Axir nas configurações de Acesso a Notificações do seu aparelho.",
@@ -126,7 +184,18 @@ export function useBankingAssistant() {
       });
       return;
     }
-    void syncMonitoredBanksWithNative(bankPrefs.monitoredBanks);
+    awaitingListenerReturnRef.current = false;
+    const autoBanks =
+      bankPrefs.monitoredBanks.length === 0 && installedBanks.length > 0
+        ? installedBanks
+        : bankPrefs.monitoredBanks;
+    commitPrefs(
+      {
+        passiveCaptureEnabled: true,
+        ...(autoBanks !== bankPrefs.monitoredBanks ? { monitoredBanks: autoBanks } : {}),
+      },
+      autoBanks,
+    );
     triggerSensory("success");
     pushToast({
       title: "Permissão concedida",
@@ -138,7 +207,7 @@ export function useBankingAssistant() {
   const handleToggleInteractiveNotifications = (enabled: boolean) => {
     commitPrefs({ interactiveNotificationsEnabled: enabled });
     void syncMonitoredBanksWithNative(
-      bankPrefs.passiveCaptureEnabled ? bankPrefs.monitoredBanks : [],
+      effectivePassiveCaptureActive ? bankPrefs.monitoredBanks : [],
       enabled,
     );
     pushToast({
@@ -149,40 +218,19 @@ export function useBankingAssistant() {
     });
   };
 
-  const handleToggleAutoInstallments = (enabled: boolean) => {
-    commitPrefs({ autoInstallmentsEnabled: enabled });
-    pushToast({
-      title: "Preferências salvas",
-      description: enabled
-        ? "Detecção e desmembramento automático de parcelas ativado."
-        : "Cálculo de parcelas desativado (compras tratadas como parcela única).",
-    });
-  };
-
-  const handleToggleAutoCategoryInference = (enabled: boolean) => {
-    commitPrefs({ autoCategoryInferenceEnabled: enabled });
-    pushToast({
-      title: "Preferências salvas",
-      description: enabled
-        ? "Inferência automática de categorias ativada."
-        : "Inferência desativada (seleção manual exigida).",
-    });
-  };
-
-  const handleSelectUnknownCategoryStrategy = (strategy: UnknownCategoryStrategy) => {
-    commitPrefs({ unknownCategoryHandling: strategy });
-  };
-
   const handleToggleBank = (bankName: string, nextChecked: boolean) => {
     const nextList = nextChecked
       ? [...new Set([...bankPrefs.monitoredBanks, bankName])]
       : bankPrefs.monitoredBanks.filter((b) => b !== bankName);
-    commitPrefs({ monitoredBanks: nextList }, bankPrefs.passiveCaptureEnabled ? nextList : undefined);
+    commitPrefs(
+      { monitoredBanks: nextList },
+      effectivePassiveCaptureActive ? nextList : undefined,
+    );
   };
 
   const handleSelectAllBanks = () => {
     const all = [...HOMOLOGATED_BANKS];
-    commitPrefs({ monitoredBanks: all }, bankPrefs.passiveCaptureEnabled ? all : undefined);
+    commitPrefs({ monitoredBanks: all }, effectivePassiveCaptureActive ? all : undefined);
     pushToast({
       title: "Todos os bancos selecionados",
       description: `Todos os ${HOMOLOGATED_BANKS.length} bancos homologados estão sendo monitorados.`,
@@ -200,7 +248,10 @@ export function useBankingAssistant() {
   const handleSelectOnlyInstalledBanks = () => {
     if (installedBanks.length === 0) return;
     const nextList = [...new Set([...bankPrefs.monitoredBanks, ...installedBanks])];
-    commitPrefs({ monitoredBanks: nextList }, bankPrefs.passiveCaptureEnabled ? nextList : undefined);
+    commitPrefs(
+      { monitoredBanks: nextList },
+      effectivePassiveCaptureActive ? nextList : undefined,
+    );
     pushToast({
       title: "Bancos instalados selecionados",
       description: `${installedBanks.length} aplicativo(s) bancário(s) detectado(s) no dispositivo estão sendo monitorados.`,
@@ -213,6 +264,8 @@ export function useBankingAssistant() {
     isBankListenerAllowed,
     bankPrefs,
     listenerGranted,
+    effectivePassiveCaptureActive,
+    isPassiveCapturePendingPermission,
     isDisclosureModalOpen,
     setIsDisclosureModalOpen,
     installedBanks,
@@ -222,9 +275,6 @@ export function useBankingAssistant() {
     handleTogglePassiveCapture,
     handleConfirmDisclosure,
     handleToggleInteractiveNotifications,
-    handleToggleAutoInstallments,
-    handleToggleAutoCategoryInference,
-    handleSelectUnknownCategoryStrategy,
     handleToggleBank,
     handleSelectAllBanks,
     handleDeselectAllBanks,

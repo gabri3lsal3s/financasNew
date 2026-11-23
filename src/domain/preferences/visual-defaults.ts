@@ -117,7 +117,7 @@ export const DEFAULT_CONFIG: VisualCustomization = {
   surfaceStyle: "glass",
   motionLevel: "fluid",
   density: "comfortable",
-  soundEnabled: true,
+  soundEnabled: false,
   hapticEnabled: true,
   disabledSensoryIntents: [],
   numberTickerEnabled: true,

@@ -54,6 +54,14 @@ vi.mock("@/features/overview/hooks", () => ({
   useSmartAdvisorInsights: () => mockUseSmartAdvisorInsights(),
 }));
 
+const mockUseReminders = vi.fn().mockReturnValue({
+  totalCount: 0,
+  urgentCount: 0,
+  items: [],
+  isLoading: false,
+  error: null,
+});
+
 vi.mock("@/state", () => ({
   useGlobalSearchEntries: () => ({
     entries: [],
@@ -61,12 +69,14 @@ vi.mock("@/state", () => ({
     isError: false,
     error: null,
   }),
-  useReminders: () => ({
-    totalCount: 0,
-    urgentCount: 0,
-    items: [],
+  useReminders: () => mockUseReminders(),
+  useUserPreferences: () => ({
+    data: {
+      custom_settings: {
+        notificationCategories: { advisorInsights: true },
+      },
+    },
     isLoading: false,
-    error: null,
   }),
   useOnboardingCounts: () => ({
     data: {
@@ -142,6 +152,13 @@ beforeEach(() => {
   window.localStorage.clear();
   resetVisualCustomization(null);
   mockUpdateCustomSettingsMutate.mockClear();
+  mockUseReminders.mockReturnValue({
+    totalCount: 0,
+    urgentCount: 0,
+    items: [],
+    isLoading: false,
+    error: null,
+  });
   mockUseSmartAdvisorInsights.mockReturnValue({
     insight: null,
     insights: [],

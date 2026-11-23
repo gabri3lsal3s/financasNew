@@ -150,7 +150,7 @@ export function readStoredVisualConfig(userId?: string | null): VisualCustomizat
         : "comfortable";
 
     const soundRaw = getUserStorageItem(VISUAL_STORAGE_KEYS.soundEnabled, userId);
-    const soundEnabled = soundRaw !== null ? soundRaw === "true" : true;
+    const soundEnabled = soundRaw !== null ? soundRaw === "true" : DEFAULT_CONFIG.soundEnabled;
 
     const hapticRaw = getUserStorageItem(VISUAL_STORAGE_KEYS.hapticEnabled, userId);
     const hapticEnabled = hapticRaw !== null ? hapticRaw !== "false" : true;

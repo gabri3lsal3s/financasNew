@@ -65,6 +65,9 @@ vi.mock("@/state", () => ({
       reminders_enabled: true,
       reminder_days_before_debt: 3,
       reminder_days_before_bill: 3,
+      custom_settings: {
+        notificationCategories: { advisorInsights: true },
+      },
     },
     isLoading: false,
     error: null,

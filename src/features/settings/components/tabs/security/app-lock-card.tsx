@@ -53,6 +53,10 @@ export function AppLockCard({
   onGraceMinutesChange,
   onTogglePrivacyShield,
 }: AppLockCardProps) {
+  const effectiveBiometricActive =
+    bioLockEnabled && (biometricsAvailable !== false || isDemoActive);
+  const effectivePinActive = bioLockEnabled && hasPinConfigured;
+
   return (
     <Card data-tour="settings-app-lock">
       <CardHeader>
@@ -63,22 +67,30 @@ export function AppLockCard({
           </CardTitle>
           <div className="shrink-0 self-start sm:self-auto">
             {showBiometrics ? (
-              biometricsAvailable || isDemoActive ? (
-                <Badge variant="default" size="xs">
-                  {biometryType === "face"
-                    ? "Reconhecimento Facial"
-                    : biometryType === "iris"
-                      ? "Leitor de Íris"
-                      : "Sensor Biométrico Ativo"}
-                </Badge>
-              ) : biometricsAvailable === false ? (
+              biometricsAvailable === false && !isDemoActive ? (
                 <Badge variant="muted" size="xs">
                   Biometria Indisponível
                 </Badge>
+              ) : bioLockEnabled && (biometricsAvailable || isDemoActive) ? (
+                <Badge variant="default" size="xs">
+                  {biometryType === "face"
+                    ? "Bloqueio Facial Ativo"
+                    : biometryType === "iris"
+                      ? "Bloqueio por Íris Ativo"
+                      : "Bloqueio Biométrico Ativo"}
+                </Badge>
+              ) : biometricsAvailable !== null || isDemoActive ? (
+                <Badge variant="muted" size="xs">
+                  Bloqueio Desativado
+                </Badge>
               ) : null
             ) : (
-              <Badge variant={hasPinConfigured ? "default" : "muted"} size="xs">
-                {hasPinConfigured ? "PIN Ativo" : "PIN Não Configurado"}
+              <Badge variant={effectivePinActive ? "default" : "muted"} size="xs">
+                {effectivePinActive
+                  ? "Bloqueio por PIN Ativo"
+                  : hasPinConfigured
+                    ? "Bloqueio Desativado"
+                    : "PIN Não Configurado"}
               </Badge>
             )}
           </div>
@@ -102,12 +114,13 @@ export function AppLockCard({
               <Checkbox
                 id="toggle-biometrics"
                 aria-label="Exigir biometria ao retornar ao aplicativo"
-                checked={bioLockEnabled}
+                checked={effectiveBiometricActive}
+                disabled={biometricsAvailable === false && !isDemoActive}
                 onCheckedChange={onToggleBiometrics}
               />
             </div>
 
-            {bioLockEnabled ? (
+            {effectiveBiometricActive ? (
               <div className="pt-3 border-t border-border/80">
                 <FormField
                   label="Tolerância para bloqueio"
@@ -142,7 +155,7 @@ export function AppLockCard({
               <Checkbox
                 id="toggle-pin-lock"
                 aria-label="Exigir PIN ao retornar ao aplicativo"
-                checked={bioLockEnabled}
+                checked={effectivePinActive}
                 onCheckedChange={onTogglePinLock}
               />
             </div>
@@ -163,7 +176,7 @@ export function AppLockCard({
               </Button>
             </div>
 
-            {bioLockEnabled ? (
+            {effectivePinActive ? (
               <div className="pt-3 border-t border-border/80">
                 <FormField
                   label="Tolerância para bloqueio"

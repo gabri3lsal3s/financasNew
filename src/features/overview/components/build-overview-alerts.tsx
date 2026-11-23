@@ -15,6 +15,7 @@ import { ActiveTripBanner } from "@/features/trips/components";
 import type { OnboardingGoalId, PublicShare } from "@/types";
 import type { useOverviewData } from "../hooks/use-overview-data";
 import { CorporateDividendsBanner } from "./corporate-dividends-banner";
+import { DeviceAlertsInviteBanner } from "./device-alerts-invite-banner";
 import { GoalProgressAlertBanner } from "./goal-progress-alert-banner";
 import { HouseholdAlertBanner } from "./household-alert-banner";
 import { PortfolioGovernanceBanner } from "./portfolio-governance-banner";
@@ -44,6 +45,8 @@ export interface BuildOverviewAlertItemsParams {
   initialGoal?: OnboardingGoalId | null;
   onOpenOnboardingChecklist?: () => void;
   onDismissOnboarding?: () => void;
+  showJitDeviceAlertsInvite?: boolean;
+  onOpenInitialPreferences?: () => void;
   onDismissCard?: (cardKey: string, days: 7 | 30) => void;
   advisorInsights?: SmartAdvisorInsight[];
   onDismissAdvisor?: (themeKey?: string, days?: number) => void;
@@ -257,6 +260,17 @@ export function buildOverviewAlertItems(
             overdueReviewsCount={params.overdueReviewsCount}
             onReview={params.onReviewGovernance}
             onDismiss={params.onDismissGovernance}
+          />
+        ),
+      },
+    params.showJitDeviceAlertsInvite &&
+      !data.isCardDismissed("jit-device-alerts-invite") && {
+        id: "jit-device-alerts-invite",
+        priority: 3.5,
+        content: (
+          <DeviceAlertsInviteBanner
+            onConfigure={() => params.onOpenInitialPreferences?.()}
+            onDismiss={() => params.onDismissCard?.("jit-device-alerts-invite", 30)}
           />
         ),
       },

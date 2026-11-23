@@ -19,6 +19,14 @@ vi.mock("@/features/overview/hooks", () => ({
 vi.mock("@/state", () => ({
   useReminders: () => mockUseReminders(),
   useOnboardingCounts: () => mockUseOnboardingCounts(),
+  useUserPreferences: () => ({
+    data: {
+      custom_settings: {
+        notificationCategories: { advisorInsights: true },
+      },
+    },
+    isLoading: false,
+  }),
   useSetReminderState: () => ({ mutate: mockSetReminderStateMutate, isPending: false }),
   useMarkAllRemindersAsRead: () => ({ mutate: mockMarkAllMutate, isPending: false }),
   useMySupportTickets: () => ({ data: [], isLoading: false }),

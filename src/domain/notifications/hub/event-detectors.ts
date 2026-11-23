@@ -25,7 +25,7 @@ export const DEFAULT_NOTIFICATION_CATEGORY_PREFERENCES: Required<NotificationCat
   billClosing: false,
   receivablesAndSplits: true,
   budgetsAndPace: true,
-  advisorInsights: true,
+  advisorInsights: false,
   familyAndTrips: true,
 };
 
@@ -36,7 +36,7 @@ export function resolveNotificationCategoryPreferences(
     billClosing: prefs?.billClosing === true,
     receivablesAndSplits: prefs?.receivablesAndSplits !== false,
     budgetsAndPace: prefs?.budgetsAndPace !== false,
-    advisorInsights: prefs?.advisorInsights !== false,
+    advisorInsights: prefs?.advisorInsights === true,
     familyAndTrips: prefs?.familyAndTrips !== false,
   };
 }

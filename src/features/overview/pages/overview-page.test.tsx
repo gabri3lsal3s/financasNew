@@ -122,6 +122,13 @@ let expensesMock = {
 };
 
 vi.mock("@/state", () => ({
+  useMarketQuotesSwr: () => ({
+    isSyncing: false,
+    lastSyncAt: null,
+    hasOpenMarket: false,
+    degradedTickers: [],
+    retryDegraded: vi.fn(),
+  }),
   useAssetGovernanceInsights: () => ({
     insights: [],
     summary: {
@@ -937,6 +944,86 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
 
       expect(startDemoMock).toHaveBeenCalledWith("investments");
       expect(navigateMock).toHaveBeenCalledWith("/investments");
+    });
+
+    it("abre o modal enxuto de personalização inicial ao clicar em 'Personalizar alertas e privacidade'", async () => {
+      const user = userEvent.setup();
+      const bioSpy = vi.spyOn(nativeModule, "checkBiometricsAvailability").mockResolvedValue({
+        isAvailable: true,
+        biometryType: "fingerprint",
+        deviceIsSecure: true,
+      });
+      onboardingCountsMock = {
+        expenseCategories: 11,
+        incomeCategories: 3,
+        cashCheckpoints: 0,
+        cards: 0,
+        transactions: 0,
+        notificationsEnabled: false,
+      };
+
+      try {
+        render(<OverviewPage />);
+
+        const prefsBtn = screen.getByRole("button", {
+          name: /Personalizar alertas e privacidade/i,
+        });
+        await user.click(prefsBtn);
+
+        expect(
+          screen.getByRole("heading", { name: "Personalizar alertas e privacidade" }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText("Alertas de contas e Pix neste aparelho"),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText("Botão de ocultar valores no topo"),
+        ).toBeInTheDocument();
+        expect(
+          await screen.findByText("Desbloqueio com biometria ao abrir"),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText("Resumo semanal de domingo por e-mail"),
+        ).toBeInTheDocument();
+      } finally {
+        bioSpy.mockRestore();
+      }
+    });
+
+    it("exibe convite Just-in-Time no carrossel quando há cartão/dívida e alertas não estão configurados, abrindo o modal ao clicar", () => {
+      const permSpy = vi.spyOn(nativeModule, "usePermissionsStatus").mockReturnValue({
+        postNotificationsGranted: false,
+        listenerGranted: false,
+        isChecking: false,
+        refresh: vi.fn().mockResolvedValue(undefined),
+        requestPostNotifications: vi.fn().mockResolvedValue(false),
+        requestNotificationListener: vi.fn().mockResolvedValue(false),
+      });
+      onboardingCountsMock = {
+        expenseCategories: 11,
+        incomeCategories: 3,
+        cashCheckpoints: 1,
+        cards: 1,
+        transactions: 1,
+        notificationsEnabled: false,
+      };
+
+      try {
+        render(<OverviewPage />);
+
+        expect(screen.getAllByText("Receba alertas de vencimentos e Pix").length).toBeGreaterThan(0);
+        const configBtn = screen.getAllByRole("button", {
+          name: /Configurar alertas/i,
+          hidden: true,
+        })[0]!;
+        fireEvent.click(configBtn);
+
+        expect(
+          screen.getByRole("heading", { name: "Personalizar alertas e privacidade" }),
+        ).toBeInTheDocument();
+      } finally {
+        permSpy.mockRestore();
+      }
     });
   });
 

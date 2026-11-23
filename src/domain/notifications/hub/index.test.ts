@@ -119,6 +119,7 @@ describe("Notification Hub (buildNotificationCenter)", () => {
     const center = buildNotificationCenter({
       reminderItems: [payableOverdue],
       advisorInsights: [duplicateBillAdvisor, independentAdvisor],
+      categoryPreferences: { advisorInsights: true },
     });
 
     expect(center.advisorAlerts).toHaveLength(1);
@@ -283,8 +284,11 @@ describe("Notification Hub (buildNotificationCenter)", () => {
 
   it("respeita filtros granulares por categoria e mantém fechamento de fatura opt-in por padrão", () => {
     expect(DEFAULT_NOTIFICATION_CATEGORY_PREFERENCES.billClosing).toBe(false);
+    expect(DEFAULT_NOTIFICATION_CATEGORY_PREFERENCES.advisorInsights).toBe(false);
     expect(resolveNotificationCategoryPreferences().billClosing).toBe(false);
+    expect(resolveNotificationCategoryPreferences().advisorInsights).toBe(false);
     expect(resolveNotificationCategoryPreferences({ billClosing: true }).billClosing).toBe(true);
+    expect(resolveNotificationCategoryPreferences({ advisorInsights: true }).advisorInsights).toBe(true);
 
     const closedAlert = {
       key: "bill_closed:c2:2026-08",
@@ -424,6 +428,7 @@ describe("Notification Hub (buildNotificationCenter)", () => {
 
     const center = buildNotificationCenter({
       reminderItems: [dueTodayBill, receivablePending],
+      categoryPreferences: { advisorInsights: true },
       advisorInsights: [
         {
           id: "dup:netflix",
@@ -540,6 +545,31 @@ describe("Notification Hub (buildNotificationCenter)", () => {
     } as unknown as PublicShare;
 
     expect(extractPendingSplitSignals([shareCompleted])).toHaveLength(0);
+  });
+
+  it("mantém o sininho limpo em conta nova sem pendências financeiras reais e mantém dicas do assistente opt-in", () => {
+    const newAccountCenter = buildNotificationCenter({
+      onboardingMissingCount: 3,
+      onboardingCompletedCount: 0,
+      onboardingTotalSteps: 3,
+      isOnboardingDismissed: false,
+      advisorInsights: [
+        {
+          id: "expected_income:salary",
+          themeKey: "expected_income:salary",
+          priority: 2,
+          category: "income",
+          title: "Salário previsto",
+          description: "Receita recorrente esperada para hoje.",
+          iconName: "arrow-down-left",
+        },
+      ],
+    });
+
+    expect(newAccountCenter.showOnboarding).toBe(true);
+    expect(newAccountCenter.totalBellCount).toBe(0);
+    expect(newAccountCenter.bellNotifications).toHaveLength(0);
+    expect(newAccountCenter.advisorAlerts).toHaveLength(0);
   });
 });
 
