@@ -78,7 +78,20 @@ export function buildOverviewAlertItems(
   const { data } = params;
   const { householdData, currentUserId, isCurrentMonth, cashGapResult, activeTrips, splitPendingData } = data;
   const { showPaceAlert, isPaceEligible, pace, daily, projection, eligibleGoalShares, liveGoalProgress } = data;
-  const { surplusCapacity, isSurplusEligible, corporateDividends, subscription } = data;
+  const {
+    surplusCapacity,
+    isSurplusEligible,
+    corporateDividends,
+    dividendAutomationPrefs,
+    subscription,
+  } = data;
+
+  const notifyAvailableDividends = dividendAutomationPrefs?.notifyOnPayment !== false;
+  const notifyProvisionedDividends = dividendAutomationPrefs?.notifyOnProvisioned !== false;
+  const effectiveAvailableDividends = notifyAvailableDividends ? corporateDividends.available : [];
+  const effectiveProjectedDividends = notifyProvisionedDividends ? corporateDividends.projected : [];
+  const effectiveAvailableAmount = notifyAvailableDividends ? corporateDividends.totalAvailableAmount : 0;
+  const effectiveProjectedAmount = notifyProvisionedDividends ? corporateDividends.totalProjectedAmount : 0;
 
   const hasHouseholdExceeded = Boolean(
     householdData && householdData.monthly_ceiling_cents > 0 && householdData.spent_percentage >= 100,
@@ -235,17 +248,19 @@ export function buildOverviewAlertItems(
         />
       ),
     },
-    (corporateDividends.available.length > 0 || corporateDividends.projected.length > 0) &&
+    params.canViewInvestments &&
+      isCurrentMonth &&
+      (effectiveAvailableDividends.length > 0 || effectiveProjectedDividends.length > 0) &&
       !data.isCardDismissed("corporate-dividends-alert") && {
         id: "corporate-dividends-alert",
-        priority: corporateDividends.available.length > 0 ? 2 : 3,
+        priority: effectiveAvailableDividends.length > 0 ? 2 : 3,
         content: (
           <CorporateDividendsBanner
-            availableCount={corporateDividends.available.length}
-            projectedCount={corporateDividends.projected.length}
-            totalAvailableAmount={corporateDividends.totalAvailableAmount}
-            totalProjectedAmount={corporateDividends.totalProjectedAmount}
-            hasUncertainTax={corporateDividends.available.some((d) => Boolean(d.isTypeUncertain))}
+            availableCount={effectiveAvailableDividends.length}
+            projectedCount={effectiveProjectedDividends.length}
+            totalAvailableAmount={effectiveAvailableAmount}
+            totalProjectedAmount={effectiveProjectedAmount}
+            hasUncertainTax={effectiveAvailableDividends.some((d) => Boolean(d.isTypeUncertain))}
             onInspect={params.onInspectDividends}
             onDismiss={(days) => params.onDismissCard?.("corporate-dividends-alert", days)}
           />

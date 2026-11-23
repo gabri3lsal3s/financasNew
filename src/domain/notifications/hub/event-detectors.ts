@@ -10,6 +10,7 @@ import {
   shiftMonth,
 } from "@/domain/cards";
 import { addDaysISO, todayISO } from "@/domain/debts";
+import { todaySaoPauloISO } from "@/domain/portfolio/dividend-suggester";
 import type { SuggestedDividendItem } from "@/domain/portfolio";
 import type {
   Budget,
@@ -341,6 +342,26 @@ function sumSuggestedBRLCents(
   return cents;
 }
 
+function buildDeterministicDividendSignature(
+  items: ReadonlyArray<Pick<SuggestedDividendItem, "ticker" | "totalAmount" | "isTypeUncertain">>,
+  scope: string,
+): string {
+  const parts = items
+    .map(
+      (item) =>
+        `${item.ticker.trim().toUpperCase()}:${Math.round((Number(item.totalAmount) || 0) * 100)}:${item.isTypeUncertain ? 1 : 0}`,
+    )
+    .sort()
+    .join(",");
+  let hash = 2166136261;
+  const payload = `${scope}|${parts}`;
+  for (let i = 0; i < payload.length; i++) {
+    hash ^= payload.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 /**
  * Agrupa proventos corporativos/manuais da carteira em até 3 alertas determinísticos
  * para a Central de Notificações e o Sininho (a confirmar, provisionados e liquidados).
@@ -348,7 +369,7 @@ function sumSuggestedBRLCents(
 export function detectDividendNotificationAlerts(
   input: DetectDividendNotificationAlertsInput,
 ): DividendNotificationAlert[] {
-  const today = (input.today ?? todayISO()).slice(0, 10);
+  const today = (input.today ?? todaySaoPauloISO()).slice(0, 10);
   const fx = input.fxRate && input.fxRate > 0 ? input.fxRate : 5.25;
   const alerts: DividendNotificationAlert[] = [];
 
@@ -357,7 +378,8 @@ export function detectDividendNotificationAlerts(
     const tickersPreview = buildTickersPreview(pending.map((p) => p.ticker));
     const hasUncertainTax = pending.some((p) => Boolean(p.isTypeUncertain));
     const totalBRLCents = sumSuggestedBRLCents(pending, fx);
-    const key = `dividends:pending:${today}`;
+    const sig = buildDeterministicDividendSignature(pending, today);
+    const key = `dividends:pending:${sig}`;
     alerts.push({
       id: key,
       kind: "pending_confirmation",
@@ -383,7 +405,8 @@ export function detectDividendNotificationAlerts(
     const tickersPreview = buildTickersPreview(provisioned.map((p) => p.ticker));
     const hasUncertainTax = provisioned.some((p) => Boolean(p.isTypeUncertain));
     const totalBRLCents = sumSuggestedBRLCents(provisioned, fx);
-    const key = `dividends:provisioned:${today.slice(0, 7)}`;
+    const sig = buildDeterministicDividendSignature(provisioned, today.slice(0, 7));
+    const key = `dividends:provisioned:${sig}`;
     alerts.push({
       id: key,
       kind: "provisioned",
@@ -435,7 +458,7 @@ export function detectDividendNotificationAlerts(
       tickersPreview,
       totalBRLCents,
       hasUncertainTax: false,
-      targetRoute: "/investments?tab=proventos",
+      targetRoute: "/investments?tab=proventos&subtab=mensal",
       entityRefs: [key],
     });
   }

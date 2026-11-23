@@ -303,6 +303,7 @@ export function useNotificationCenter(
     categoryPreferences.budgetsAndPace && hasFeature("budgets");
   const canDetectFamilyOrTrips = categoryPreferences.familyAndTrips;
 
+  const canDetectDividends = hasFeature("investments");
   const cardsQuery = useCreditCardsSafe({ enabled: canDetectBillClosing });
   const cardExpensesQuery = useAllCardExpensesSafe({
     enabled: canDetectBillClosing,
@@ -317,7 +318,7 @@ export function useNotificationCenter(
   const expenseCategoriesQuery = useCategoriesSafe("expense");
   const tripsQuery = useUserTripsSafe();
   const familyQuery = useMyFamilySafe({ enabled: canDetectFamilyOrTrips });
-  const corporateDividendsState = useCorporateDividendsSafe();
+  const corporateDividendsState = useCorporateDividendsSafe({ enabled: canDetectDividends });
 
   const reminderStates = useMemo(
     () => reminderStatesQuery?.data ?? [],

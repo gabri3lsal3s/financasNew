@@ -325,13 +325,48 @@ export function applySpikeGuardrail(
   return variation > 0.5 ? previousPrice : currentPrice;
 }
 
+const BRL_RESERVED_SHORT_TICKERS = new Set([
+  "CAIXA",
+  "CASH",
+  "SELIC",
+  "CDB",
+  "LCI",
+  "LCA",
+  "CRI",
+  "CRA",
+  "RDB",
+  "LF",
+  "LFT",
+  "LTN",
+  "NTNB",
+  "CDI",
+]);
+
 /**
  * Moeda inferida pelo padrão do ticker (§3.11.2):
- * 1–5 letras sem números = USD (ex.: AAPL, MSFT, O, T; IVVB11 tem número → BRL);
- * B3/RF/cripto = BRL.
+ * - Prefixo/nome de Caixa, RF ou BRL explícito (`-BRL`, `BTCBRL`) -> BRL;
+ * - Ações EUA com classe (`BRK.B`, `BRK-B`, `BF.B`), `-USD` ou 1–5 letras não-RF -> USD;
+ * - B3 com dígitos (PETR4, B3SA3, IVVB11) -> BRL.
  */
 export function inferCurrencyFromTicker(ticker: string): AssetCurrency {
-  return /^[A-Za-z]{1,5}$/.test(ticker) ? "USD" : "BRL";
+  const clean = ticker.trim().toUpperCase();
+  if (!clean) return "BRL";
+  if (
+    BRL_RESERVED_SHORT_TICKERS.has(clean) ||
+    clean.endsWith("-BRL") ||
+    clean.endsWith(".SA") ||
+    /^(BTC|ETH|SOL|ADA|XRP|BNB|DOGE|AVAX|LTC)BRL$/.test(clean)
+  ) {
+    return "BRL";
+  }
+  if (
+    clean.endsWith("-USD") ||
+    /^[A-Z]{1,4}[.-][ABC]$/.test(clean) ||
+    /^[A-Za-z]{1,5}$/.test(clean)
+  ) {
+    return "USD";
+  }
+  return "BRL";
 }
 
 export interface PositionPnl {

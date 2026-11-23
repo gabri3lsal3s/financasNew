@@ -79,7 +79,7 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
     expect(mutateMock).toHaveBeenCalledWith(
       expect.objectContaining({
         total_value: 45000,
-        total_cost: 45000,
+        total_cost: 40000,
       }),
     );
   });
@@ -245,7 +245,7 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
     expect(mutateMock).toHaveBeenCalledWith({
       month: currentMonthStr,
       total_value: 55000,
-      total_cost: 50000,
+      total_cost: 45000,
       status: "provisional",
     });
   });
@@ -534,12 +534,12 @@ describe("useAutoPortfolioSnapshot (§F50)", () => {
 
       const { rerender } = renderHook(() => useAutoPortfolioSnapshot());
 
-      // 1ª renderização dispara materialização única
+      // 1ª renderização dispara materialização única sem duplicar cashBRL sobre totalCostBRL
       expect(mutateMock).toHaveBeenCalledTimes(1);
       expect(mutateMock).toHaveBeenCalledWith(
         expect.objectContaining({
           total_value: 80000,
-          total_cost: 80000, // 70.000 + 10.000 (caixa 1:1)
+          total_cost: 70000,
         }),
       );
 

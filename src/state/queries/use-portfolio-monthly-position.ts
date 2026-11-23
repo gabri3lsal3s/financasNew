@@ -9,10 +9,10 @@
  * 3. Reconstrói deterministicamente a custódia através do motor puro `calculatePointInTimePosition`.
  */
 
-import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { QueryClientContext, useQuery } from "@tanstack/react-query";
 import { listMarketPriceHistoryByMonth } from "@/data/repositories/asset-prices";
-import { currentMonth } from "@/lib/date";
+import { todaySaoPauloISO } from "@/domain/portfolio/dividend-suggester";
 import { STALE_TIMES } from "@/state/cache-policy";
 import {
   useAllPortfolioTransactions,
@@ -56,7 +56,8 @@ export interface PortfolioMonthlyPositionState {
 }
 
 export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPositionState {
-  const isCurrent = month >= currentMonth();
+  const isCurrent = month >= todaySaoPauloISO().slice(0, 7);
+  const queryClient = useContext(QueryClientContext);
 
   // Se for o mês corrente, delega para usePortfolioPosition
   const currentPos = usePortfolioPosition();
@@ -69,7 +70,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
   const monthlyPricesQuery = usePortfolioMonthlyPrices(month);
   const marketHistoryQuery = useQuery({
     queryKey: ["market_price_history", month],
-    queryFn: () => listMarketPriceHistoryByMonth(month),
+    queryFn: () => listMarketPriceHistoryByMonth(month, { onlyMonthEnd: true }),
     staleTime: STALE_TIMES.static,
     enabled: !isCurrent && Boolean(month),
   });
@@ -81,7 +82,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     Record<string, Record<string, number>>
   >({});
   const [isFetchingApiQuotes, setIsFetchingApiQuotes] = useState(false);
-  const [attemptedKeys] = useState(() => new Set<string>());
+  const attemptedKeysRef = useRef<Set<string>>(new Set());
 
   const monthApiQuotes = useMemo(
     () => apiQuotesByMonth[month] ?? {},
@@ -150,14 +151,14 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     const missingTickers = [...candidateTickers].filter((ticker) => {
       if (savedTickerSet.has(ticker)) return false;
       const cacheKey = `${month}:${ticker}`;
-      return !attemptedKeys.has(cacheKey);
+      return !attemptedKeysRef.current.has(cacheKey);
     });
 
     if (missingTickers.length === 0) return;
 
-    // Registra imediatamente como consultados para prevenir qualquer re-disparo
-    for (const ticker of missingTickers) {
-      attemptedKeys.add(`${month}:${ticker}`);
+    const batchKeys = missingTickers.map((ticker) => `${month}:${ticker}`);
+    for (const cacheKey of batchKeys) {
+      attemptedKeysRef.current.add(cacheKey);
     }
 
     let isMounted = true;
@@ -172,7 +173,12 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
 
     fetchHistoricalMonthlyQuotes(missingTickers, month)
       .then((quotes) => {
-        if (!isMounted) return;
+        if (!isMounted) {
+          for (const cacheKey of batchKeys) {
+            attemptedKeysRef.current.delete(cacheKey);
+          }
+          return;
+        }
         if (quotes.length > 0) {
           const newMap: Record<string, number> = {};
           for (const q of quotes) {
@@ -188,10 +194,15 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
                 ...newMap,
               },
             }));
+            void queryClient?.invalidateQueries({ queryKey: ["market_price_history", month] });
           }
         }
       })
-      .catch(() => undefined)
+      .catch(() => {
+        for (const cacheKey of batchKeys) {
+          attemptedKeysRef.current.delete(cacheKey);
+        }
+      })
       .finally(() => {
         clearTimeout(safetyTimer);
         if (isMounted) setIsFetchingApiQuotes(false);
@@ -210,7 +221,7 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     monthlyPricesQuery.isLoading,
     marketHistoryQuery.data,
     marketHistoryQuery.isLoading,
-    attemptedKeys,
+    queryClient,
   ]);
 
   // Execução do motor puro de Ponto-no-Tempo
@@ -497,6 +508,8 @@ export function usePortfolioMonthlyPosition(month: string): PortfolioMonthlyPosi
     assets: assetsQuery.data ?? [],
     error,
     refetch: () => {
+      attemptedKeysRef.current.clear();
+      void queryClient?.invalidateQueries({ queryKey: ["market_price_history", month] });
       void assetsQuery.refetch();
       void transactionsQuery.refetch();
       void dividendsQuery.refetch();

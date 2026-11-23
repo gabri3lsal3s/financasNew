@@ -19,6 +19,7 @@ import type { AssetCurrency } from "@/types";
 export type ManualPriceInput = {
   ticker: string;
   price: number;
+  currency?: AssetCurrency;
 };
 
 /** Preço de mercado de um ativo: cache global + override manual do usuário + fallback offline. */
@@ -154,6 +155,11 @@ export function consolidateAssetPrices(rows: AssetPriceRow[]): AssetPriceRow[] {
           }
         : { ...row, ticker: key };
 
+    // Nunca aceitar override manual inválido (<= 0) para impedir travamento sobre cotações válidas de API
+    if (normalizedRow.source === "manual" && (normalizedRow.manual_price ?? normalizedRow.price) <= 0) {
+      continue;
+    }
+
     const existing = map.get(key);
     if (!existing) {
       map.set(key, normalizedRow);
@@ -206,9 +212,78 @@ export function consolidateAssetPrices(rows: AssetPriceRow[]): AssetPriceRow[] {
   return Array.from(map.values()).sort((a, b) => a.ticker.localeCompare(b.ticker));
 }
 
+const ASSET_PRICES_COLUMNS =
+  "ticker, price, currency, source, manual_price, user_id, updated_at, fetched_at, market_price_at, provider";
+const ASSET_PRICES_PAGE_SIZE = 1000;
+
+interface RawAssetPriceRow {
+  ticker: string;
+  price: string | number;
+  currency: AssetCurrency;
+  source: AssetPriceRow["source"];
+  manual_price: string | number | null;
+  user_id?: string | null;
+  updated_at?: string | null;
+  fetched_at?: string | null;
+  market_price_at?: string | null;
+  provider?: string | null;
+}
+
+interface RawMarketPriceHistoryRow {
+  ticker: string;
+  reference_date: string;
+  price: string | number;
+  currency: AssetCurrency;
+  provider: string | null;
+  market_price_at: string | null;
+  month: string;
+  is_month_end: boolean;
+}
+
+async function fetchPaginatedGlobalAssetPrices(): Promise<{ data: RawAssetPriceRow[]; error: unknown }> {
+  const collected: RawAssetPriceRow[] = [];
+  let offset = 0;
+
+  while (true) {
+    const baseQuery = getSupabase()
+      .from("asset_prices")
+      .select(ASSET_PRICES_COLUMNS)
+      .is("user_id", null);
+
+    const orderedQuery =
+      typeof (baseQuery as unknown as { order?: unknown }).order === "function"
+        ? (baseQuery as unknown as {
+            order: (col: string, opts: { ascending: boolean }) => typeof baseQuery;
+          }).order("updated_at", { ascending: false })
+        : baseQuery;
+
+    const hasRange = typeof (orderedQuery as unknown as { range?: unknown }).range === "function";
+    const pagedQuery = hasRange
+      ? (orderedQuery as unknown as { range: (from: number, to: number) => typeof baseQuery }).range(
+          offset,
+          offset + ASSET_PRICES_PAGE_SIZE - 1,
+        )
+      : orderedQuery;
+
+    const res = await resolveQuery<RawAssetPriceRow[]>(pagedQuery);
+    if (res.error) {
+      return { data: collected, error: res.error };
+    }
+
+    const batch = res.data ?? [];
+    collected.push(...batch);
+    if (!hasRange || batch.length < ASSET_PRICES_PAGE_SIZE) {
+      break;
+    }
+    offset += ASSET_PRICES_PAGE_SIZE;
+  }
+
+  return { data: collected, error: null };
+}
+
 /**
  * Lista os preços relevantes para o usuário:
- *   • Lê cache global (`user_id IS NULL`) + overrides manuais do usuário (`user_id = owner`);
+ *   • Lê cache global (`user_id IS NULL`) paginado + overrides manuais do usuário (`user_id = owner`);
  *   • Aplica ordenação determinística por `updated_at DESC` e consolidação em memória;
  *   • Degrada graciosamente com fallback local offline em caso de ausência ou falha de rede.
  */
@@ -222,21 +297,17 @@ export async function listAssetPrices(
 ): Promise<AssetPriceRow[]> {
   const user_id = await currentUserId();
 
-  const priceQuery = getSupabase()
+  const userQuery = getSupabase()
     .from("asset_prices")
-    .select(
-      "ticker, price, currency, source, manual_price, user_id, updated_at, fetched_at, market_price_at, provider",
-    )
-    .or(`user_id.is.null,user_id.eq.${user_id}`);
+    .select(ASSET_PRICES_COLUMNS)
+    .eq("user_id", user_id);
 
-  const orderedQuery =
-    typeof (priceQuery as unknown as { order?: unknown }).order === "function"
-      ? (priceQuery as unknown as {
-          order: (col: string, opts: { ascending: boolean }) => typeof priceQuery;
+  const orderedUserQuery =
+    typeof (userQuery as unknown as { order?: unknown }).order === "function"
+      ? (userQuery as unknown as {
+          order: (col: string, opts: { ascending: boolean }) => typeof userQuery;
         }).order("updated_at", { ascending: false })
-      : priceQuery;
-
-  const pricePromise = resolveQuery<AssetPriceRow[]>(orderedQuery);
+      : userQuery;
 
   const assetPromise = knownAssets
     ? Promise.resolve({ data: knownAssets, error: null })
@@ -254,18 +325,23 @@ export async function listAssetPrices(
           .eq("user_id", user_id),
       );
 
-  const [priceRes, assetRes] = await Promise.all([pricePromise, assetPromise]);
+  const [globalRes, userRes, assetRes] = await Promise.all([
+    fetchPaginatedGlobalAssetPrices(),
+    resolveQuery<RawAssetPriceRow[]>(orderedUserQuery),
+    assetPromise,
+  ]);
 
-  if (priceRes.error) {
+  const priceError = globalRes.error ?? userRes.error;
+  if (priceError) {
     if (assetRes.data && assetRes.data.length > 0) {
       const fallbackRows = buildFallbackRows(assetRes.data);
       return consolidateAssetPrices(fallbackRows);
     }
-    const classified = classifyError(priceRes.error);
-    throw new AppError(classified.kind, classified.message, priceRes.error);
+    const classified = classifyError(priceError);
+    throw new AppError(classified.kind, classified.message, priceError);
   }
 
-  const mappedPrices = (priceRes.data ?? []).map(mapRow);
+  const mappedPrices = [...globalRes.data, ...(userRes.data ?? [])].map(mapRow);
   const fallbackRows = buildFallbackRows(assetRes.data ?? []);
 
   return consolidateAssetPrices([...fallbackRows, ...mappedPrices]);
@@ -277,35 +353,49 @@ export async function listAssetPrices(
  */
 export async function listMarketPriceHistoryByMonth(
   month: string,
+  options?: { onlyMonthEnd?: boolean },
 ): Promise<MarketPriceHistoryRow[]> {
-  if (!/^\d{4}-\d{2}$/.test(month.trim())) return [];
+  const cleanMonth = month.trim();
+  if (!/^\d{4}-\d{2}$/.test(cleanMonth)) return [];
+  const onlyMonthEnd = options?.onlyMonthEnd ?? true;
+  const allRows: RawMarketPriceHistoryRow[] = [];
+  let offset = 0;
 
-  const { data, error } = await resolveQuery<
-    Array<{
-      ticker: string;
-      reference_date: string;
-      price: string | number;
-      currency: AssetCurrency;
-      provider: string | null;
-      market_price_at: string | null;
-      month: string;
-      is_month_end: boolean;
-    }>
-  >(
-    getSupabase()
+  while (true) {
+    const baseQuery = getSupabase()
       .from("market_price_history")
       .select("ticker, reference_date, price, currency, provider, market_price_at, month, is_month_end")
-      .eq("month", month.trim())
-      .order("is_month_end", { ascending: false })
-      .order("reference_date", { ascending: false }),
-  );
+      .eq("month", cleanMonth);
 
-  if (error || !Array.isArray(data)) {
-    return [];
+    const filteredQuery = onlyMonthEnd ? baseQuery.eq("is_month_end", true) : baseQuery;
+    const orderedQuery = filteredQuery
+      .order("is_month_end", { ascending: false })
+      .order("reference_date", { ascending: false });
+
+    const hasRange = typeof (orderedQuery as unknown as { range?: unknown }).range === "function";
+    const pagedQuery = hasRange
+      ? (orderedQuery as unknown as { range: (from: number, to: number) => typeof orderedQuery }).range(
+          offset,
+          offset + ASSET_PRICES_PAGE_SIZE - 1,
+        )
+      : orderedQuery;
+
+    const { data, error } = await resolveQuery<RawMarketPriceHistoryRow[]>(pagedQuery);
+
+    if (error || !Array.isArray(data)) {
+      if (allRows.length === 0) return [];
+      break;
+    }
+
+    allRows.push(...data);
+    if (!hasRange || data.length < ASSET_PRICES_PAGE_SIZE) {
+      break;
+    }
+    offset += ASSET_PRICES_PAGE_SIZE;
   }
 
   const byTicker = new Map<string, MarketPriceHistoryRow>();
-  for (const row of data) {
+  for (const row of allRows) {
     const ticker = row.ticker.trim().toUpperCase();
     const price = Number(row.price);
     if (!ticker || !Number.isFinite(price) || price <= 0) continue;
@@ -327,40 +417,81 @@ export async function listMarketPriceHistoryByMonth(
 }
 
 /**
- * Grava o override manual de preço exclusivo do usuário (`source = 'manual'`).
+ * Consulta a cotação oficial histórica de um ticker em `market_price_history` para uma data civil (`YYYY-MM-DD`)
+ * com janela lookback de 7 dias corridos (cobrindo finais de semana e feriados).
  */
-export async function setManualPrice(input: ManualPriceInput): Promise<void> {
-  const user_id = await currentUserId();
-  const normalizedTicker = input.ticker.trim().toUpperCase();
-  const currency: AssetCurrency = inferCurrencyFromTicker(normalizedTicker);
-  const nowIso = new Date().toISOString();
-  const row = {
-    user_id,
-    ticker: normalizedTicker,
-    price: input.price,
-    currency,
-    source: "manual" as const,
-    manual_price: input.price,
-    provider: "manual",
-    market_price_at: nowIso,
-    updated_at: nowIso,
-  };
+export async function getMarketPriceHistoryForDate(
+  ticker: string,
+  dateISO: string,
+): Promise<MarketPriceHistoryRow | null> {
+  const normalizedTicker = ticker.trim().toUpperCase();
+  const cleanDate = dateISO.trim().slice(0, 10);
+  if (!normalizedTicker || !/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) return null;
 
-  const { error: deleteError } = await getSupabase()
-    .from("asset_prices")
-    .delete()
-    .eq("user_id", user_id)
-    .eq("ticker", normalizedTicker);
+  const [y, m, d] = cleanDate.split("-").map(Number);
+  const endUtc = new Date(Date.UTC(y ?? 2026, (m ?? 1) - 1, d ?? 1));
+  const startUtc = new Date(endUtc.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const startDate = startUtc.toISOString().slice(0, 10);
 
-  if (deleteError) {
-    const classified = classifyError(deleteError);
-    throw new AppError(classified.kind, classified.message, deleteError);
+  const baseQuery = getSupabase()
+    .from("market_price_history")
+    .select("ticker, reference_date, price, currency, provider, market_price_at, month, is_month_end")
+    .eq("ticker", normalizedTicker)
+    .gte("reference_date", startDate)
+    .lte("reference_date", cleanDate)
+    .order("reference_date", { ascending: false });
+
+  const limitedQuery =
+    typeof (baseQuery as unknown as { limit?: unknown }).limit === "function"
+      ? (baseQuery as unknown as { limit: (count: number) => typeof baseQuery }).limit(7)
+      : baseQuery;
+
+  const { data, error } = await resolveQuery<RawMarketPriceHistoryRow[]>(limitedQuery);
+  if (error || !Array.isArray(data)) {
+    return null;
   }
 
-  const { error: insertError } = await getSupabase().from("asset_prices").insert(row);
-  if (insertError) {
-    const classified = classifyError(insertError);
-    throw new AppError(classified.kind, classified.message, insertError);
+  for (const row of data) {
+    const price = Number(row.price);
+    if (!Number.isFinite(price) || price <= 0) continue;
+    return {
+      ticker: row.ticker.trim().toUpperCase(),
+      reference_date: row.reference_date,
+      price,
+      currency: row.currency === "USD" ? "USD" : "BRL",
+      provider: row.provider ?? null,
+      market_price_at: row.market_price_at ?? null,
+      month: row.month,
+      is_month_end: Boolean(row.is_month_end),
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Grava o override manual de preço exclusivo do usuário (`source = 'manual'`) de forma atômica via RPC.
+ */
+export async function setManualPrice(input: ManualPriceInput): Promise<void> {
+  const normalizedTicker = input.ticker.trim().toUpperCase();
+  if (!normalizedTicker) {
+    throw new AppError("validation", "Ticker inválido para cotação manual.", null);
+  }
+  if (!Number.isFinite(input.price) || input.price <= 0) {
+    throw new AppError("validation", "O preço manual deve ser maior que zero.", null);
+  }
+
+  const currency: AssetCurrency = input.currency ?? inferCurrencyFromTicker(normalizedTicker);
+
+  const { error } = await getSupabase().rpc("set_manual_asset_price", {
+    p_ticker: normalizedTicker,
+    p_price: input.price,
+    p_currency: currency,
+  });
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
   }
 }
 

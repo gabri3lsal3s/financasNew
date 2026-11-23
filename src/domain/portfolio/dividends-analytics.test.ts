@@ -122,4 +122,44 @@ describe("dividends-analytics", () => {
     );
     expect(yearly.yearly[7]?.projectedTotal).toBe(30);
   });
+
+  it("converte proventos recebidos e previstos em USD usando usdRate explícito em buildYearlyDividendsSummary", () => {
+    const usdAsset = makeAsset({ id: "us1", ticker: "AAPL", currency: "USD" });
+    const assetById = new Map([["us1", usdAsset]]);
+    const yearly = buildYearlyDividendsSummary(
+      [makeDividend({ id: "d1", asset_id: "us1", date: "2026-08-10", amount: 10 })],
+      "2026",
+      [{ paymentDate: "2026-08-25", totalAmount: 5, currency: "USD" }],
+      assetById,
+      new Map(),
+      5.5,
+    );
+
+    expect(yearly.yearTotal).toBe(55);
+    expect(yearly.yearly[7]?.total).toBe(55);
+    expect(yearly.yearly[7]?.projectedTotal).toBe(27.5);
+  });
+
+  it("converte renda mensal estimada de ativos USD para BRL usando usdRate em buildSnowballDashboardItems", () => {
+    const assets = [
+      makeAsset({
+        id: "us1",
+        ticker: "O",
+        asset_class: "Internacional",
+        currency: "USD",
+        quantity: 100,
+        average_price: 50,
+        estimated_monthly_dividend_per_share: 0.25, // $25/mês
+      }),
+    ];
+    const rowByAssetId = new Map<string, DividendPositionRef>([
+      ["us1", { assetId: "us1", currency: "USD", priceBRL: 280, priceQuote: 50 }],
+    ]);
+
+    const snowball = buildSnowballDashboardItems(assets, [], rowByAssetId, 5.6);
+    expect(snowball.items).toHaveLength(1);
+    expect(snowball.items[0]?.currency).toBe("USD");
+    expect(snowball.items[0]?.monthlyIncomeBRL).toBe(140); // 25 * 5.6
+    expect(snowball.totalMonthlyEstimatedIncome).toBe(140);
+  });
 });

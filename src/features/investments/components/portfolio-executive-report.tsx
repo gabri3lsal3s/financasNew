@@ -7,6 +7,7 @@ import {
   buildReportPrintWarning,
   calculateCustodyReconciliation,
   evaluateStaleQuoteGuard,
+  FALLBACK_USD_RATE,
   getActiveCustodyPositions,
   type CanonicalFxMetadata,
   type ProvisionedDividendsSummary,
@@ -143,25 +144,39 @@ export function PortfolioExecutiveReport({
     [effectiveRows],
   );
 
+  const savedClosingUsdRate =
+    monthlyPositionQuery.data?.usdRate && monthlyPositionQuery.data.usdRate > 0
+      ? monthlyPositionQuery.data.usdRate
+      : null;
   const effectiveUsdRate = isCurrentSelected
     ? usdRate
-    : monthlyPositionQuery.data?.usdRate ?? usdRate;
-  const effectiveFxMetadata = useMemo(
-    () =>
-      isCurrentSelected
-        ? fxMetadata
-        : effectiveUsdRate && effectiveUsdRate > 0
-          ? {
-              rate: effectiveUsdRate,
-              source: "closing_saved" as const,
-              provider: "closing_saved",
-              fxRateAt: null,
-              fetchedAt: null,
-              isFallback: false,
-            }
-          : fxMetadata,
-    [isCurrentSelected, fxMetadata, effectiveUsdRate],
-  );
+    : savedClosingUsdRate ?? usdRate;
+  const effectiveFxMetadata = useMemo(() => {
+    if (isCurrentSelected) return fxMetadata;
+    if (savedClosingUsdRate !== null) {
+      return {
+        rate: savedClosingUsdRate,
+        source: "closing_saved" as const,
+        provider: "closing_saved",
+        fxRateAt: null,
+        fetchedAt: null,
+        isFallback: false,
+      };
+    }
+    if (fxMetadata) return fxMetadata;
+    if (usdRate && usdRate > 0) {
+      const isFallbackRate = Math.abs(usdRate - FALLBACK_USD_RATE) < 0.0001;
+      return {
+        rate: usdRate,
+        source: (isFallbackRate ? "fallback" : "api_live") as CanonicalFxMetadata["source"],
+        provider: isFallbackRate ? "fallback" : "reference",
+        fxRateAt: null,
+        fetchedAt: null,
+        isFallback: isFallbackRate,
+      };
+    }
+    return null;
+  }, [isCurrentSelected, savedClosingUsdRate, fxMetadata, usdRate]);
 
   const staleGuard = useMemo(() => {
     if (!isCurrentSelected) return null;

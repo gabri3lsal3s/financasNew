@@ -15,7 +15,7 @@ import {
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { todayISO } from "@/lib/date";
+import { todaySaoPauloISO } from "@/domain/portfolio/dividend-suggester";
 import type {
   DbInsert,
   DbUpdate,
@@ -39,7 +39,7 @@ export function useCreatePortfolioTransaction() {
       const txDate = (input.date ?? "").slice(0, 10);
       if (
         (input.type === "buy" || input.type === "sell" || input.type === "subscription") &&
-        txDate >= todayISO()
+        txDate >= todaySaoPauloISO()
       ) {
         const cachedAssets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
         const asset = cachedAssets.find((a) => a.id === input.asset_id);
@@ -47,6 +47,7 @@ export function useCreatePortfolioTransaction() {
           void triggerSurgicalQuoteSync(queryClient, {
             assets: [asset],
             reason: "post_trade_stale",
+            includeUsdFx: asset.currency === "USD",
           });
         }
       }

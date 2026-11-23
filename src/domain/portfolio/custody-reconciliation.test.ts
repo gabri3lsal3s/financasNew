@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateCustodyReconciliation } from "./custody-reconciliation";
+import { computeProjectedPatrimonyWithProvisioned } from "./provisioned-dividends";
 
 describe("domain/portfolio/custody-reconciliation", () => {
   it("mantém ETFs B3 (IVVB11/WRLD11) na Custódia Brasil BRL e consolida ativos USD no Exterior", () => {
@@ -113,5 +114,45 @@ describe("domain/portfolio/custody-reconciliation", () => {
     expect(summary.custodyForeignBRLCents).toBe(0);
     expect(summary.custodyBrazilCents).toBe(470000);
     expect(summary.custodyBrazilPct).toBe(100);
+  });
+
+  it("não cria custódia Brasil fantasma em carteira 100% USD sem CAIXA e segrega proventos provisionados", () => {
+    const summary = calculateCustodyReconciliation({
+      rows: [
+        {
+          ticker: "AAPL",
+          currency: "USD",
+          quantity: 10,
+          valueBRL: 5710.0,
+          priceQuote: 100.0,
+          usdRate: 5.71,
+        },
+        {
+          ticker: "CAIXA",
+          currency: "BRL",
+          quantity: 0,
+          valueBRL: 0,
+          isCash: true,
+        },
+      ],
+      cashBRL: 0,
+      totalBRL: 5710.0,
+      usdRate: 5.71,
+    });
+
+    expect(summary.hasForeignCustody).toBe(true);
+    expect(summary.custodyForeignAssetsCount).toBe(1);
+    expect(summary.custodyBrazilAssetsCount).toBe(0);
+    expect(summary.custodyBrazilCents).toBe(0);
+    expect(summary.custodyBrazilPct).toBe(0);
+    expect(summary.custodyForeignPct).toBe(100);
+    expect(summary.closingPatrimonyCents).toBe(571000);
+
+    const projected = computeProjectedPatrimonyWithProvisioned(summary.closingPatrimonyCents, {
+      totalReceivableBRLCents: 25000,
+    });
+    expect(projected.closingPatrimonyCents).toBe(571000);
+    expect(projected.receivableBRLCents).toBe(25000);
+    expect(projected.projectedPatrimonyCents).toBe(596000);
   });
 });

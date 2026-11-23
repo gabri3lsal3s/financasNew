@@ -49,10 +49,32 @@ export interface GlobalQuoteUpsertRow extends QuoteUpsertRow {
   pending_spike_at: string | null;
 }
 
-const FRACTIONAL_B3_WITH_SA_REGEX = /^([A-Z]{4}\d{1,2})F\.SA$/;
-const FRACTIONAL_B3_REGEX = /^([A-Z]{4}\d{1,2})F$/;
-const US_DOT_SHARE_REGEX = /^([A-Z]{1,4})\.([A-Z]{1,2})$/;
-const STANDARD_B3_REGEX = /^[A-Z]{4}\d{1,2}$/;
+const FRACTIONAL_B3_WITH_SA_REGEX = /^([A-Z][A-Z0-9]{3}\d{1,2})F\.SA$/;
+const FRACTIONAL_B3_REGEX = /^([A-Z][A-Z0-9]{3}\d{1,2})F$/;
+const US_DOT_SHARE_REGEX = /^([A-Z]{1,4})\.([ABC])$/;
+const STANDARD_B3_REGEX = /^(?=[A-Z0-9]{4}\d{1,2}$)(?=.*[A-Z])[A-Z][A-Z0-9]{3}\d{1,2}$/;
+const CRYPTO_TICKERS = new Set([
+  "BTC",
+  "ETH",
+  "SOL",
+  "ADA",
+  "XRP",
+  "USDT",
+  "USDC",
+  "BNB",
+  "DOGE",
+  "MATIC",
+  "LINK",
+  "DOT",
+  "AVAX",
+  "LTC",
+  "BTCBRL",
+  "ETHBRL",
+  "SOLBRL",
+  "XRPBRL",
+  "ADABRL",
+]);
+const BARE_CRYPTO_BRL_PAIR_REGEX = /^(BTC|ETH|SOL|ADA|XRP|BNB|DOGE|AVAX|LTC|LINK|DOT|MATIC)BRL$/;
 
 /**
  * Classifica o mercado de negociação de um ticker para cálculo de calendário,
@@ -75,10 +97,7 @@ export function classifyTickerMarket(raw: string): QuoteMarket {
   if (
     ticker.endsWith("-BRL") ||
     ticker.endsWith("-USD") ||
-    ticker === "BTC" ||
-    ticker === "ETH" ||
-    ticker === "BTCBRL" ||
-    ticker === "ETHBRL"
+    CRYPTO_TICKERS.has(ticker)
   ) {
     return "CRYPTO";
   }
@@ -94,11 +113,11 @@ export function classifyTickerMarket(raw: string): QuoteMarket {
 
 /**
  * Normaliza o ticker armazenado para o formato da API Yahoo Finance:
- *   • B3 fracionário (PETR4F, PETR4F.SA, BOVA11F) → padrão `.SA` (PETR4.SA, BOVA11.SA);
- *   • Ações EUA com ponto (BRK.B, BF.B) → hífen (BRK-B, BF-B);
- *   • B3 com número (PETR4, BOVA11, IVVB11, AAPL34) → sufixo `.SA`;
- *   • Pares cambiais USD/BRL → `USDBRL=X`;
- *   • Já com sufixo/`.SA`/`=`/`-` → mantém;
+ *   • B3 fracionário (PETR4F, PETR4F.SA, B3SA3F, BOVA11F) → padrão `.SA` (PETR4.SA, B3SA3.SA);
+ *   • Ações EUA com classe (BRK.B, BF.B) → hífen (BRK-B, BF-B), preservando bolsas globais (VWRA.L, SHOP.TO);
+ *   • B3 com número (PETR4, B3SA3, BOVA11, IVVB11, A1MD34) → sufixo `.SA`;
+ *   • Pares cambiais USD/BRL → `USDBRL=X` e cripto BRL sem hífen (BTCBRL) → `BTC-BRL`;
+ *   • Já com sufixo/`.SA`/`=`/`-`/`.` → mantém;
  *   • Internacional puro 1–5 letras (AAPL, MSFT, O, T) → mantém.
  */
 export function normalizeTickerForApi(raw: string): string {
@@ -107,6 +126,9 @@ export function normalizeTickerForApi(raw: string): string {
 
   if (ticker === "USD-BRL" || ticker === "USDBRL") return "USDBRL=X";
   if (ticker === "EUR-BRL" || ticker === "EURBRL") return "EURBRL=X";
+
+  const bareCryptoMatch = ticker.match(BARE_CRYPTO_BRL_PAIR_REGEX);
+  if (bareCryptoMatch && bareCryptoMatch[1]) return `${bareCryptoMatch[1]}-BRL`;
 
   const fracSaMatch = ticker.match(FRACTIONAL_B3_WITH_SA_REGEX);
   if (fracSaMatch && fracSaMatch[1]) return `${fracSaMatch[1]}.SA`;
@@ -218,7 +240,9 @@ export function getBrazilHolidays(year: number): Set<string> {
     formatDateIso(year, 10, 12), // Nossa Sra. Aparecida
     formatDateIso(year, 11, 2), // Finados
     formatDateIso(year, 11, 15), // Proclamação da República
+    formatDateIso(year, 12, 24), // Véspera de Natal (sem pregão na B3)
     formatDateIso(year, 12, 25), // Natal
+    formatDateIso(year, 12, 31), // Véspera de Ano Novo (sem pregão B3 / sem PTAX BCB)
   ]);
   if (year >= 2024) {
     holidays.add(formatDateIso(year, 11, 20)); // Consciência Negra
@@ -234,14 +258,13 @@ export function getBrazilHolidays(year: number): Set<string> {
   return holidays;
 }
 
-/** Feriados oficiais NYSE / NASDAQ (observados) para um ano civil. */
+/** Feriados oficiais NYSE / NASDAQ (observados) para um ano civil (NYSE Rule 7.2). */
 export function getUsMarketHolidays(year: number): Set<string> {
   const cached = US_HOLIDAYS_CACHE.get(year);
   if (cached) return cached;
 
   const holidays = new Set<string>();
-  observeUsHoliday(holidays, year, 1, 1); // New Year's Day
-  observeUsHoliday(holidays, year + 1, 1, 1); // Caso 1º Jan do ano seguinte caia no sábado → 31/Dez observado
+  observeUsHoliday(holidays, year, 1, 1); // New Year's Day (sábado não fecha 31/dez pela Rule 7.2)
   holidays.add(nthWeekdayOfMonth(year, 1, 1, 3)); // MLK Jr. Day (3ª seg Jan)
   holidays.add(nthWeekdayOfMonth(year, 2, 1, 3)); // Presidents' Day (3ª seg Fev)
 
@@ -282,19 +305,30 @@ const WEEKDAY_MAP: Record<string, number> = {
   Sat: 6,
 };
 
+const ZONED_FORMATTER_CACHE = new Map<string, Intl.DateTimeFormat>();
+
+function getZonedFormatter(timeZone: string): Intl.DateTimeFormat {
+  let fmt = ZONED_FORMATTER_CACHE.get(timeZone);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+    ZONED_FORMATTER_CACHE.set(timeZone, fmt);
+  }
+  return fmt;
+}
+
 /** Extrai componentes civis exatos de um instante UTC em qualquer fuso IANA (DST-aware). */
 export function getZonedDateParts(date: Date, timeZone: string): ZonedDateParts {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
+  const fmt = getZonedFormatter(timeZone);
   const parts = fmt.formatToParts(date);
   const map: Record<string, string> = {};
   for (const p of parts) {
@@ -957,7 +991,11 @@ export function parseYahooDividends(
   const metaRec = (entry?.meta ?? {}) as Record<string, unknown>;
   const rawMetaCurrency = typeof metaRec.currency === "string" ? metaRec.currency.toUpperCase() : "";
   const currency: "BRL" | "USD" =
-    market === "US" || rawMetaCurrency === "USD" ? "USD" : "BRL";
+    rawMetaCurrency === "BRL"
+      ? "BRL"
+      : rawMetaCurrency === "USD" || market === "US"
+        ? "USD"
+        : "BRL";
   const isUS = currency === "USD";
   const taxRatePct = isUS ? 30 : 0;
   const isTypeUncertain = !isUS;
@@ -976,7 +1014,7 @@ export function parseYahooDividends(
     const exDateIso = getZonedDateParts(new Date(ts * 1000), tz).isoDate;
     const comDate = getPreviousMarketBusinessDay(exDateIso, market);
     const explicitPayDate = normalizeIsoDateOrNull(rec.paymentDate);
-    const paymentDate = explicitPayDate ?? exDateIso;
+    const paymentDate = explicitPayDate;
     const netRate = Math.round(rate * (1 - taxRatePct / 100) * 100000000) / 100000000;
 
     list.push({
@@ -1007,13 +1045,38 @@ function roundQty8(val: number): number {
   return Math.round(val * 100_000_000) / 100_000_000;
 }
 
-function replayCustodyOps(initialQty: number, txs: readonly CustodyComDateTxInput[]): number {
+function getCustodyTxIntradayWeight(type: string): number {
+  if (type === "split" || type === "reverse_split") return 0;
+  if (type === "buy" || type === "subscription") return 1;
+  return 2;
+}
+
+function toSaoPauloDateIso(raw: string | null | undefined): string {
+  if (typeof raw !== "string") return "";
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const parsed = Date.parse(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return /^\d{4}-\d{2}-\d{2}/.test(trimmed) ? trimmed.slice(0, 10) : "";
+  }
+  return getZonedDateParts(new Date(parsed), "America/Sao_Paulo").isoDate;
+}
+
+function replayCustodyOpsDetailed(
+  initialQty: number,
+  txs: readonly CustodyComDateTxInput[],
+): { qty: number; clampedSell: boolean } {
   let qty = initialQty;
+  let clampedSell = false;
   for (const tx of txs) {
     const q = Number(tx.quantity) || 0;
     if (tx.type === "buy" || tx.type === "subscription") {
       qty += q;
     } else if (tx.type === "sell") {
+      if (qty + 1e-6 < q) {
+        clampedSell = true;
+      }
       qty = Math.max(0, qty - q);
     } else if (tx.type === "split") {
       const factor = q > 0 ? q : 1;
@@ -1023,13 +1086,14 @@ function replayCustodyOps(initialQty: number, txs: readonly CustodyComDateTxInpu
       qty /= factor;
     }
   }
-  return roundQty8(Math.max(0, qty));
+  return { qty: roundQty8(Math.max(0, qty)), clampedSell };
 }
 
 /**
  * Reconstrução determinística de custódia até o fechamento da Data COM (`America/Sao_Paulo`):
- * - Suporta ativos criados com saldo inicial declarado (baseline) e compras/vendas/splits posteriores;
- * - Suporta histórico 100% derivado do ledger sem distorcer ativos cuja custódia inicial não virou transação;
+ * - Suporta ativos criados com saldo inicial declarado (baseline) e compras/vendas/splits posteriores
+ *   (inclusive venda integral do saldo pré-ledger seguida de recompra posterior);
+ * - Ordena operações intradia (`split`/`reverse_split` → `buy`/`subscription` → `sell`);
  * - Zero dependência de JSX/Supabase.
  */
 export function computeCustodyAtComDatePure(
@@ -1039,10 +1103,7 @@ export function computeCustodyAtComDatePure(
 ): number {
   const comClean = comDate.slice(0, 10);
   const currentQty = Math.max(0, Number(asset.quantity) || 0);
-  const assetCreatedAt =
-    typeof asset.created_at === "string" && asset.created_at.trim().length >= 10
-      ? asset.created_at.slice(0, 10)
-      : "";
+  const assetCreatedAt = toSaoPauloDateIso(asset.created_at);
 
   const custodyTxs = transactions
     .filter(
@@ -1057,6 +1118,8 @@ export function computeCustodyAtComDatePure(
     .sort((a, b) => {
       const dCmp = a.date.slice(0, 10).localeCompare(b.date.slice(0, 10));
       if (dCmp !== 0) return dCmp;
+      const wCmp = getCustodyTxIntradayWeight(a.type) - getCustodyTxIntradayWeight(b.type);
+      if (wCmp !== 0) return wCmp;
       return (a.created_at ?? "").localeCompare(b.created_at ?? "");
     });
 
@@ -1068,10 +1131,10 @@ export function computeCustodyAtComDatePure(
   }
 
   // Calcula eventual custódia inicial pré-ledger fazendo reconciliação reversa a partir de `asset.quantity`.
-  const replayedFromZero = replayCustodyOps(0, custodyTxs);
+  const zeroPass = replayCustodyOpsDetailed(0, custodyTxs);
   let baselineQty = 0;
 
-  if (currentQty > replayedFromZero + 1e-6) {
+  if (currentQty > zeroPass.qty + 1e-6 || zeroPass.clampedSell) {
     let q = currentQty;
     for (let i = custodyTxs.length - 1; i >= 0; i--) {
       const tx = custodyTxs[i]!;
@@ -1096,7 +1159,7 @@ export function computeCustodyAtComDatePure(
     return 0;
   }
 
-  return replayCustodyOps(baselineQty, txsUpToCom);
+  return replayCustodyOpsDetailed(baselineQty, txsUpToCom).qty;
 }
 
 /**
@@ -1244,10 +1307,16 @@ export function evaluateSpikeGuardrail(input: SpikeGuardrailInput): SpikeGuardra
     };
   }
 
-  // 1. Eventos de split/inplit nos últimos 5 dias úteis do mercado
+  // 1. Eventos de split/inplit nos últimos 5 dias úteis do mercado (exigindo preço anterior pré-split)
+  const prevMarketDateIso =
+    previousMarketPriceAt && Number.isFinite(Date.parse(previousMarketPriceAt))
+      ? getZonedDateParts(new Date(Date.parse(previousMarketPriceAt)), tz).isoDate
+      : null;
+
   if (splits && splits.length > 0) {
     for (const sp of splits) {
       if (sp.ratio <= 0) continue;
+      if (prevMarketDateIso && prevMarketDateIso >= sp.dateISO) continue;
       const bizDaysSinceSplit = countMarketBusinessDays(sp.dateISO, nowIso, market);
       const isRecent =
         (sp.dateISO <= nowIso && bizDaysSinceSplit <= 5) ||
@@ -1272,23 +1341,8 @@ export function evaluateSpikeGuardrail(input: SpikeGuardrailInput): SpikeGuardra
     }
   }
 
-  // 2. Consenso por chartPreviousClose (±15%) ou provedor secundário (±5%)
-  if (
-    chartPreviousClose &&
-    chartPreviousClose > 0 &&
-    Math.abs(newPrice - chartPreviousClose) / chartPreviousClose <= 0.15
-  ) {
-    return {
-      accepted: true,
-      effectivePrice: newPrice,
-      effectiveMarketPriceAt: newMarketPriceAt,
-      effectiveProvider: newProvider,
-      pendingSpikePrice: null,
-      pendingSpikeAt: null,
-      reason: "consensus_verified",
-    };
-  }
-
+  // 2. Consenso estrito por provedor secundário distinto (±5%) — evita auto-validação por mesmo provedor
+  void chartPreviousClose;
   if (
     secondaryConfirmPrice &&
     secondaryConfirmPrice > 0 &&
@@ -1475,15 +1529,10 @@ export function isMarketQuotedAsset(asset: {
     return false;
   }
 
+  const PRIVATE_FIXED_INCOME_PREFIX_RE =
+    /^(CDB|RDB|LCI|LCA|CRI|CRA|LC|LF|LFT|NTNB|LTN|DEB|TESOURO)([-_\s]|$)/;
   if (
-    ticker.startsWith("CDB") ||
-    ticker.startsWith("LCI") ||
-    ticker.startsWith("LCA") ||
-    ticker.startsWith("CRI") ||
-    ticker.startsWith("CRA") ||
-    ticker.startsWith("RDB") ||
-    ticker.startsWith("DEB") ||
-    ticker.startsWith("TESOURO") ||
+    PRIVATE_FIXED_INCOME_PREFIX_RE.test(ticker) ||
     ticker.includes(" ")
   ) {
     return false;

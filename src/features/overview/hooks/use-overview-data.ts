@@ -229,6 +229,7 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     dismissVirginGuide,
     dismissOnboarding,
     corporateDividends,
+    dividendAutomationPrefs: userPreferencesQuery.data?.custom_settings?.dividendAutomation ?? null,
     subscription,
     realCashData,
     positionRows,

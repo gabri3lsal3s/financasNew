@@ -127,7 +127,7 @@ export function DividendsHistoryPanel({
                 <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-semibold text-foreground truncate">
-                      Proventos Provisionados da B3
+                      Proventos Provisionados
                     </span>
                     <Badge size="xs" variant="portfolio" className="font-medium">
                       PROVISIONADO

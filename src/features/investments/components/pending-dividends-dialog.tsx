@@ -6,7 +6,6 @@ import {
   Coins,
   EyeOff,
   Pencil,
-  Plus,
   Trash2,
 } from "lucide-react";
 import {
@@ -15,6 +14,7 @@ import {
   Checkbox,
   DatePicker,
   EmptyState,
+  ErrorState,
   Input,
   Modal,
   ModalFooter,
@@ -22,12 +22,14 @@ import {
   MoneyText,
   PercentInput,
   Select,
+  Skeleton,
   Tabs,
   type SelectOption,
   type TabItem,
 } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import {
+  FALLBACK_USD_RATE,
   getCustodyAtComDate,
   isCashAssetClass,
   isFixedIncomeClass,
@@ -36,12 +38,14 @@ import {
   todaySaoPauloISO,
   type SuggestedDividendItem,
 } from "@/domain/portfolio";
+import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { formatDateBR } from "@/lib/date";
 import { formatAssetQuantity } from "@/services/formatting";
 import {
   subscribeDividendReviewModal,
   type DividendReviewModalTab,
 } from "@/services/dividend-review-modal";
+import { formatFxRate } from "@/services/masks/money";
 import { formatPercent } from "@/services/masks/percent";
 import {
   useAllPortfolioTransactions,
@@ -62,12 +66,17 @@ export interface PendingDividendsDialogProps {
   projectedDividends: SuggestedDividendItem[];
   fxRate?: number;
   initialTab?: DividendReviewModalTab;
+  requestSeq?: number;
+  isLoading?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
 }
 
 interface RowOverrideState {
   type: CorporateDividendType;
   taxRatePct: number;
   netAmount: number;
+  grossBase: number;
 }
 
 const DIVIDEND_TYPE_OPTIONS: SelectOption[] = [
@@ -91,8 +100,13 @@ function getDefaultTaxForType(
   return type === "JCP" ? 15 : 0;
 }
 
-function formatFxRateDisplay(rate: number): string {
-  return rate.toFixed(4).replace(".", ",");
+function computeInitialGrossBase(item: SuggestedDividendItem): number {
+  if (item.grossAmount > 0) return item.grossAmount;
+  const tax = item.taxRatePct ?? getDefaultTaxForType(item.type, item.currency);
+  if (tax > 0 && tax < 100 && item.totalAmount > 0) {
+    return Math.round((item.totalAmount / (1 - tax / 100)) * 100) / 100;
+  }
+  return item.totalAmount;
 }
 
 /**
@@ -105,7 +119,14 @@ export function PendingDividendsDialog({
   projectedDividends,
   fxRate: fxRateProp,
   initialTab = "review",
+  requestSeq = 0,
+  isLoading = false,
+  isError = false,
+  onRetry,
 }: PendingDividendsDialogProps) {
+  const { guardAction, upgradeModal, isReadOnlyMode } = useMutationGuard({
+    moduleKey: "investments",
+  });
   const { data: userPreferences } = useUserPreferences();
   const assetsQuery = usePortfolioAssets();
   const transactionsQuery = useAllPortfolioTransactions();
@@ -114,11 +135,18 @@ export function PendingDividendsDialog({
   const createManualMutation = useCreateManualUserDividendEvent();
   const deleteManualMutation = useDeleteUserDividendEvent();
 
-  const effectiveFx = fxRateProp && fxRateProp > 0 ? fxRateProp : 5.25;
+  const effectiveFx = fxRateProp && fxRateProp > 0 ? fxRateProp : FALLBACK_USD_RATE;
   const defaultAutoCreditCash =
     userPreferences?.custom_settings?.dividendAutomation?.autoCreditCash !== false;
 
   const [activeTabOverride, setActiveTabOverride] = useState<DividendReviewModalTab | null>(null);
+  const [prevRequestKey, setPrevRequestKey] = useState<string>(`${initialTab}:${requestSeq}`);
+  const currentRequestKey = `${initialTab}:${requestSeq}`;
+  if (currentRequestKey !== prevRequestKey) {
+    setPrevRequestKey(currentRequestKey);
+    setActiveTabOverride(null);
+  }
+
   const [syncCashOverride, setSyncCashOverride] = useState<boolean | null>(null);
   const [deselectedKeys, setDeselectedKeys] = useState<Set<string>>(() => new Set());
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -144,7 +172,7 @@ export function PendingDividendsDialog({
   const [manualComDate, setManualComDate] = useState<string>(() => todaySaoPauloISO());
   const [manualPaymentDate, setManualPaymentDate] = useState<string>("");
   const [manualNetCents, setManualNetCents] = useState<number>(0);
-  const [manualTaxPct, setManualTaxPct] = useState<number>(0);
+  const [manualTaxPctOverride, setManualTaxPctOverride] = useState<number | null>(null);
   const [manualNotes, setManualNotes] = useState<string>("");
 
   const availableKeys = useMemo(
@@ -161,8 +189,16 @@ export function PendingDividendsDialog({
     if (!next) {
       setDeselectedKeys(new Set());
       setEditingKey(null);
+      setOverrides({});
       setActiveTabOverride(null);
       setSyncCashOverride(null);
+      setManualAssetId("");
+      setManualType("DIVIDENDO");
+      setManualComDate(todaySaoPauloISO());
+      setManualPaymentDate("");
+      setManualNetCents(0);
+      setManualTaxPctOverride(null);
+      setManualNotes("");
     }
     onOpenChange(next);
   };
@@ -176,6 +212,7 @@ export function PendingDividendsDialog({
         type: (item.type as CorporateDividendType) || "DIVIDENDO",
         taxRatePct: item.taxRatePct ?? getDefaultTaxForType(item.type, item.currency),
         netAmount: item.totalAmount,
+        grossBase: computeInitialGrossBase(item),
       };
     },
     [overrides],
@@ -191,6 +228,7 @@ export function PendingDividendsDialog({
         type: (item.type as CorporateDividendType) || "DIVIDENDO",
         taxRatePct: item.taxRatePct ?? getDefaultTaxForType(item.type, item.currency),
         netAmount: item.totalAmount,
+        grossBase: computeInitialGrossBase(item),
       };
       return { ...prev, [key]: updater(current) };
     });
@@ -246,9 +284,19 @@ export function PendingDividendsDialog({
     });
   };
 
-  const buildConfirmItem = (d: SuggestedDividendItem): ConfirmDividendEventItem => {
+  const hasInvalidSelectedAmount = useMemo(
+    () => selectedItems.some((item) => getEffectiveRow(item).netAmount <= 0),
+    [selectedItems, getEffectiveRow],
+  );
+
+  const buildConfirmItem = (
+    d: SuggestedDividendItem,
+    options?: { capEarlyDate?: boolean },
+  ): ConfirmDividendEventItem => {
     const eff = getEffectiveRow(d);
-    const paymentIso = d.paymentDate ?? todaySaoPauloISO();
+    const today = todaySaoPauloISO();
+    const rawPayDate = d.paymentDate ?? today;
+    const paymentIso = options?.capEarlyDate && rawPayDate > today ? today : rawPayDate;
     const qty = Math.max(0, d.quantityOnComDate);
     const netRate = qty > 0 ? Math.round((eff.netAmount / qty) * 100_000_000) / 100_000_000 : d.netRate;
 
@@ -268,24 +316,41 @@ export function PendingDividendsDialog({
       currency: d.currency,
       fx_rate: d.currency === "USD" ? effectiveFx : null,
       notes: d.isManual
-        ? `Provento manual (${eff.type})`
+        ? (d.notes?.trim() || `Provento manual (${eff.type})`)
         : `Provento automático (${eff.type}${eff.taxRatePct > 0 ? ` · ${formatPercent(eff.taxRatePct)}% IR` : ""})`,
     };
   };
 
-  const handleConfirmSelected = async () => {
-    if (selectedItems.length === 0) return;
-    await confirmMutation.mutateAsync({
-      items: selectedItems.map(buildConfirmItem),
-      sync_cash: syncCash,
+  const handleConfirmSelected = () => {
+    if (selectedItems.length === 0 || hasInvalidSelectedAmount || confirmMutation.isPending) return;
+    guardAction(() => {
+      void (async () => {
+        try {
+          await confirmMutation.mutateAsync({
+            items: selectedItems.map((item) => buildConfirmItem(item)),
+            sync_cash: syncCash,
+          });
+          handleOpenChange(false);
+        } catch {
+          // O hook já exibe toast de erro; mantém modal aberto
+        }
+      })();
     });
-    handleOpenChange(false);
   };
 
-  const handleSettleProvisionedNow = async (item: SuggestedDividendItem) => {
-    await confirmMutation.mutateAsync({
-      items: [buildConfirmItem(item)],
-      sync_cash: syncCash,
+  const handleSettleProvisionedNow = (item: SuggestedDividendItem) => {
+    if (confirmMutation.isPending || getEffectiveRow(item).netAmount <= 0) return;
+    guardAction(() => {
+      void (async () => {
+        try {
+          await confirmMutation.mutateAsync({
+            items: [buildConfirmItem(item, { capEarlyDate: true })],
+            sync_cash: syncCash,
+          });
+        } catch {
+          // O hook já exibe toast de erro
+        }
+      })();
     });
   };
 
@@ -293,6 +358,9 @@ export function PendingDividendsDialog({
     () => eligibleAssets.find((a) => a.id === effectiveManualAssetId) ?? null,
     [eligibleAssets, effectiveManualAssetId],
   );
+
+  const manualTaxPct =
+    manualTaxPctOverride ?? getDefaultTaxForType(manualType, selectedManualAsset?.currency ?? "BRL");
 
   const manualCustodyQty = useMemo(() => {
     if (!selectedManualAsset) return 0;
@@ -303,31 +371,69 @@ export function PendingDividendsDialog({
     );
   }, [selectedManualAsset, transactionsQuery.data, manualComDate]);
 
-  const handleCreateManual = async () => {
-    if (!selectedManualAsset || manualNetCents <= 0 || !manualComDate) return;
-    const netAmount = manualNetCents / 100;
-    const today = todaySaoPauloISO();
-    const cleanPay = manualPaymentDate ? manualPaymentDate.slice(0, 10) : null;
-    const status = cleanPay !== null && cleanPay <= today ? "PENDING_CONFIRMATION" : "PROVISIONED";
+  const handleCreateManual = () => {
+    if (
+      !selectedManualAsset ||
+      manualNetCents <= 0 ||
+      !manualComDate ||
+      createManualMutation.isPending
+    ) {
+      return;
+    }
+    guardAction(() => {
+      void (async () => {
+        const netAmount = manualNetCents / 100;
+        const today = todaySaoPauloISO();
+        const cleanPay = manualPaymentDate ? manualPaymentDate.slice(0, 10) : null;
+        const status =
+          cleanPay !== null && cleanPay <= today ? "PENDING_CONFIRMATION" : "PROVISIONED";
 
-    await createManualMutation.mutateAsync({
-      asset_id: selectedManualAsset.id,
-      ticker: selectedManualAsset.ticker,
-      type: manualType,
-      com_date: manualComDate.slice(0, 10),
-      payment_date: cleanPay,
-      quantity_on_com_date: manualCustodyQty > 0 ? manualCustodyQty : selectedManualAsset.quantity,
-      tax_rate_pct: manualTaxPct,
-      net_amount: netAmount,
-      currency: selectedManualAsset.currency === "USD" ? "USD" : "BRL",
-      status,
-      notes: manualNotes.trim() || null,
+        try {
+          await createManualMutation.mutateAsync({
+            asset_id: selectedManualAsset.id,
+            ticker: selectedManualAsset.ticker,
+            type: manualType,
+            com_date: manualComDate.slice(0, 10),
+            payment_date: cleanPay,
+            quantity_on_com_date: manualCustodyQty > 0 ? manualCustodyQty : selectedManualAsset.quantity,
+            tax_rate_pct: manualTaxPct,
+            net_amount: netAmount,
+            currency: selectedManualAsset.currency === "USD" ? "USD" : "BRL",
+            status,
+            notes: manualNotes.trim() || null,
+          });
+
+          setManualNetCents(0);
+          setManualTaxPctOverride(null);
+          setManualNotes("");
+          setManualPaymentDate("");
+          setActiveTabOverride("review");
+        } catch {
+          // O hook já exibe toast de erro
+        }
+      })();
     });
+  };
 
-    setManualNetCents(0);
-    setManualNotes("");
-    setManualPaymentDate("");
-    setActiveTabOverride("review");
+  const handleDismissItem = (item: SuggestedDividendItem) => {
+    if (dismissMutation.isPending) return;
+    guardAction(() => {
+      void dismissMutation
+        .mutateAsync({
+          eventId: item.eventId,
+          corporateDividendId: item.isManual ? null : item.corporateDividendId,
+          assetId: item.assetId,
+          reason: "manual_ignore",
+        })
+        .catch(() => undefined);
+    });
+  };
+
+  const handleDeleteManualEvent = (eventId: string) => {
+    if (deleteManualMutation.isPending) return;
+    guardAction(() => {
+      void deleteManualMutation.mutateAsync(eventId).catch(() => undefined);
+    });
   };
 
   const renderTaxAndSourceBadges = (item: SuggestedDividendItem, eff: RowOverrideState) => (
@@ -357,7 +463,20 @@ export function PendingDividendsDialog({
     </div>
   );
 
-  const reviewContent = (
+  const reviewContent = isLoading ? (
+    <div className="flex flex-col gap-3 py-2" aria-busy="true">
+      <Skeleton className="h-12 w-full rounded-xl" />
+      <Skeleton className="h-16 w-full rounded-xl" />
+      <Skeleton className="h-16 w-full rounded-xl" />
+    </div>
+  ) : isError ? (
+    <div className="py-2">
+      <ErrorState
+        message="Não foi possível carregar os proventos pendentes e provisionados."
+        onRetry={onRetry}
+      />
+    </div>
+  ) : (
     <div className="flex flex-col gap-4 py-1">
       {selectedSummary.hasUncertain ? (
         <div
@@ -398,6 +517,18 @@ export function PendingDividendsDialog({
                 tone="positive"
                 className="text-xs font-semibold"
               />
+              {selectedSummary.hasUsd && selectedSummary.totalUSDCents > 0 ? (
+                <span className="text-[11px] text-muted-foreground">
+                  (inclui{" "}
+                  <MoneyText
+                    cents={selectedSummary.totalUSDCents}
+                    currency="USD"
+                    tone="default"
+                    className="inline text-[11px] font-medium text-foreground"
+                  />{" "}
+                  · câmbio R$ {formatFxRate(effectiveFx)})
+                </span>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -409,7 +540,7 @@ export function PendingDividendsDialog({
             headingLevel="h3"
           />
         ) : (
-          <div className="flex flex-col divide-y divide-border/60 rounded-xl border border-border/80 bg-surface">
+          <div className="flex flex-col divide-y divide-border/80 rounded-xl border border-border/80 bg-surface">
             {availableDividends.map((div) => {
               const key = getItemKey(div);
               const eff = getEffectiveRow(div);
@@ -467,14 +598,8 @@ export function PendingDividendsDialog({
                         className="size-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
                         title="Dispensar este provento"
                         aria-label={`Ignorar provento de ${div.ticker}`}
-                        onClick={() =>
-                          void dismissMutation.mutateAsync({
-                            eventId: div.eventId,
-                            corporateDividendId: div.isManual ? null : div.corporateDividendId,
-                            reason: "manual_ignore",
-                          })
-                        }
-                        disabled={dismissMutation.isPending}
+                        onClick={() => handleDismissItem(div)}
+                        disabled={isReadOnlyMode || dismissMutation.isPending}
                       >
                         <EyeOff className="size-3.5" aria-hidden="true" />
                       </Button>
@@ -482,7 +607,7 @@ export function PendingDividendsDialog({
                   </div>
 
                   {isEditing ? (
-                    <div className="px-3 pb-3 pt-2 bg-muted/25 border-t border-border/60 flex flex-col gap-2.5">
+                    <div className="px-3 pb-3 pt-2 bg-muted/25 border-t border-border/80 flex flex-col gap-2.5">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         <div className="flex flex-col gap-1">
                           <label className="text-xs font-semibold text-foreground">
@@ -496,11 +621,10 @@ export function PendingDividendsDialog({
                               const typed = nextType as CorporateDividendType;
                               setRowOverride(div, (curr) => {
                                 const nextTax = getDefaultTaxForType(typed, div.currency);
-                                const grossBase =
-                                  div.grossAmount > 0 ? div.grossAmount : curr.netAmount;
                                 const nextNet =
-                                  Math.round(grossBase * (1 - nextTax / 100) * 100) / 100;
+                                  Math.round(curr.grossBase * (1 - nextTax / 100) * 100) / 100;
                                 return {
+                                  ...curr,
                                   type: typed,
                                   taxRatePct: nextTax,
                                   netAmount: nextNet > 0 ? nextNet : curr.netAmount,
@@ -516,15 +640,14 @@ export function PendingDividendsDialog({
                           </label>
                           <PercentInput
                             size="sm"
+                            maxValue={100}
                             value={eff.taxRatePct}
                             aria-label={`Alíquota IR de ${div.ticker}`}
                             onValueChange={(nextPct) => {
                               const clamped = Math.max(0, Math.min(100, nextPct));
                               setRowOverride(div, (curr) => {
-                                const grossBase =
-                                  div.grossAmount > 0 ? div.grossAmount : curr.netAmount;
                                 const nextNet =
-                                  Math.round(grossBase * (1 - clamped / 100) * 100) / 100;
+                                  Math.round(curr.grossBase * (1 - clamped / 100) * 100) / 100;
                                 return {
                                   ...curr,
                                   taxRatePct: clamped,
@@ -544,6 +667,7 @@ export function PendingDividendsDialog({
                             currency={div.currency}
                             cents={numberToCents(eff.netAmount)}
                             aria-label={`Valor líquido de ${div.ticker}`}
+                            aria-invalid={eff.netAmount <= 0}
                             onCentsChange={(cents) => {
                               setRowOverride(div, (curr) => ({
                                 ...curr,
@@ -551,6 +675,11 @@ export function PendingDividendsDialog({
                               }));
                             }}
                           />
+                          {eff.netAmount <= 0 ? (
+                            <span role="alert" className="text-[11px] text-critical-strong">
+                              Deve ser maior que zero
+                            </span>
+                          ) : null}
                         </div>
                       </div>
                       <div className="flex items-center justify-end">
@@ -596,7 +725,7 @@ export function PendingDividendsDialog({
           </div>
           <p className="text-[11px] text-muted-foreground leading-relaxed pl-6">
             {selectedSummary.hasUsd
-              ? `Ativos em USD permanecem na moeda nativa no extrato e creditam em R$ no Caixa pelo câmbio de referência (R$ ${formatFxRateDisplay(effectiveFx)}).`
+              ? `Ativos em USD permanecem na moeda nativa no extrato e creditam em R$ no Caixa pelo câmbio de referência (R$ ${formatFxRate(effectiveFx)}).`
               : "Ao manter marcado, o valor líquido confirmado entra imediatamente no ativo Caixa da carteira."}
           </p>
         </div>
@@ -616,7 +745,7 @@ export function PendingDividendsDialog({
               Fora do Patrimônio e do Caixa até o pagamento
             </span>
           </div>
-          <div className="flex flex-col divide-y divide-border/60 rounded-xl border border-border/80 bg-surface">
+          <div className="flex flex-col divide-y divide-border/80 rounded-xl border border-border/80 bg-surface">
             {projectedDividends.map((div) => {
               const eff = getEffectiveRow(div);
               return (
@@ -648,8 +777,8 @@ export function PendingDividendsDialog({
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={confirmMutation.isPending}
-                      onClick={() => void handleSettleProvisionedNow(div)}
+                      disabled={isReadOnlyMode || confirmMutation.isPending || eff.netAmount <= 0}
+                      onClick={() => handleSettleProvisionedNow(div)}
                     >
                       Confirmar agora
                     </Button>
@@ -661,8 +790,8 @@ export function PendingDividendsDialog({
                         className="size-8 p-0 shrink-0 text-muted-foreground hover:text-destructive"
                         title="Excluir provisionamento manual"
                         aria-label={`Excluir provisionamento manual de ${div.ticker}`}
-                        disabled={deleteManualMutation.isPending}
-                        onClick={() => void deleteManualMutation.mutateAsync(div.eventId!)}
+                        disabled={isReadOnlyMode || deleteManualMutation.isPending}
+                        onClick={() => handleDeleteManualEvent(div.eventId!)}
                       >
                         <Trash2 className="size-3.5" aria-hidden="true" />
                       </Button>
@@ -674,14 +803,8 @@ export function PendingDividendsDialog({
                         className="size-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
                         title="Dispensar provento previsto"
                         aria-label={`Dispensar provento previsto de ${div.ticker}`}
-                        disabled={dismissMutation.isPending}
-                        onClick={() =>
-                          void dismissMutation.mutateAsync({
-                            eventId: div.eventId,
-                            corporateDividendId: div.corporateDividendId,
-                            reason: "manual_ignore",
-                          })
-                        }
+                        disabled={isReadOnlyMode || dismissMutation.isPending}
+                        onClick={() => handleDismissItem(div)}
                       >
                         <EyeOff className="size-3.5" aria-hidden="true" />
                       </Button>
@@ -716,10 +839,7 @@ export function PendingDividendsDialog({
                 value={effectiveManualAssetId}
                 onValueChange={(id) => {
                   setManualAssetId(id);
-                  const found = eligibleAssets.find((a) => a.id === id);
-                  if (found) {
-                    setManualTaxPct(getDefaultTaxForType(manualType, found.currency));
-                  }
+                  setManualTaxPctOverride(null);
                 }}
                 options={eligibleAssets.map((a) => ({
                   value: a.id,
@@ -748,9 +868,7 @@ export function PendingDividendsDialog({
                 onValueChange={(val) => {
                   const typed = val as CorporateDividendType;
                   setManualType(typed);
-                  setManualTaxPct(
-                    getDefaultTaxForType(typed, selectedManualAsset?.currency ?? "BRL"),
-                  );
+                  setManualTaxPctOverride(null);
                 }}
                 options={DIVIDEND_TYPE_OPTIONS}
                 ariaLabel="Selecionar tipo de provento"
@@ -801,8 +919,9 @@ export function PendingDividendsDialog({
               </label>
               <PercentInput
                 id="manual-div-tax"
+                maxValue={100}
                 value={manualTaxPct}
-                onValueChange={setManualTaxPct}
+                onValueChange={(pct) => setManualTaxPctOverride(Math.max(0, Math.min(100, pct)))}
                 aria-label="Alíquota IR aplicada"
               />
             </div>
@@ -818,25 +937,6 @@ export function PendingDividendsDialog({
               onChange={(e) => setManualNotes(e.target.value)}
               placeholder="Ex.: Aviso aos acionistas ou corretora EUA"
             />
-          </div>
-
-          <div className="flex justify-end pt-1">
-            <Button
-              type="button"
-              size="sm"
-              className="gap-1.5"
-              loading={createManualMutation.isPending}
-              disabled={
-                !selectedManualAsset ||
-                manualNetCents <= 0 ||
-                !manualComDate ||
-                createManualMutation.isPending
-              }
-              onClick={() => void handleCreateManual()}
-            >
-              <Plus className="size-3.5" aria-hidden="true" />
-              Salvar Provisionamento
-            </Button>
           </div>
         </>
       )}
@@ -857,74 +957,83 @@ export function PendingDividendsDialog({
   ];
 
   return (
-    <Modal
-      open={open}
-      onOpenChange={handleOpenChange}
-      title="Proventos Detectados e Provisionados"
-      description="Confira valores líquidos, alíquotas de IR (JCP 15% / EUA 30%) e confirme o lançamento no extrato e no Caixa."
-      size="lg"
-      footer={
-        activeTab === "review" ? (
-          <ModalFooter borderless>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handleOpenChange(false)}
-            >
-              Fechar
-            </Button>
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              loading={confirmMutation.isPending}
-              disabled={selectedItems.length === 0 || confirmMutation.isPending}
-              sensoryIntent={false}
-              onClick={() => void handleConfirmSelected()}
-            >
-              {syncCash
-                ? `Aprovar no Caixa (${selectedItems.length})`
-                : `Confirmar no Extrato (${selectedItems.length})`}
-            </Button>
-          </ModalFooter>
-        ) : (
-          <ModalFooter borderless>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setActiveTabOverride("review")}
-            >
-              Voltar para Conferência
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              loading={createManualMutation.isPending}
-              disabled={
-                !selectedManualAsset ||
-                manualNetCents <= 0 ||
-                !manualComDate ||
-                createManualMutation.isPending
-              }
-              onClick={() => void handleCreateManual()}
-            >
-              Provisionar
-            </Button>
-          </ModalFooter>
-        )
-      }
-    >
-      <Tabs
-        value={activeTab}
-        onValueChange={(next) => setActiveTabOverride(next as DividendReviewModalTab)}
-        variant="pills"
-        fullWidth
-        items={tabs}
-        ariaLabel="Seções do modal de proventos"
-      />
-    </Modal>
+    <>
+      <Modal
+        open={open}
+        onOpenChange={handleOpenChange}
+        title="Proventos Detectados e Provisionados"
+        description="Confira valores líquidos, alíquotas de IR (JCP 15% / EUA 30%) e confirme o lançamento no extrato e no Caixa."
+        size="lg"
+        footer={
+          activeTab === "review" ? (
+            <ModalFooter borderless>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleOpenChange(false)}
+              >
+                Fechar
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                loading={confirmMutation.isPending}
+                disabled={
+                  isReadOnlyMode ||
+                  selectedItems.length === 0 ||
+                  hasInvalidSelectedAmount ||
+                  confirmMutation.isPending
+                }
+                sensoryIntent={false}
+                onClick={handleConfirmSelected}
+              >
+                {syncCash
+                  ? `Aprovar no Caixa (${selectedItems.length})`
+                  : `Confirmar no Extrato (${selectedItems.length})`}
+              </Button>
+            </ModalFooter>
+          ) : (
+            <ModalFooter borderless>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveTabOverride("review")}
+              >
+                Voltar para Conferência
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                loading={createManualMutation.isPending}
+                disabled={
+                  isReadOnlyMode ||
+                  !selectedManualAsset ||
+                  manualNetCents <= 0 ||
+                  !manualComDate ||
+                  createManualMutation.isPending
+                }
+                onClick={handleCreateManual}
+              >
+                Provisionar
+              </Button>
+            </ModalFooter>
+          )
+        }
+      >
+        <Tabs
+          value={activeTab}
+          onValueChange={(next) => setActiveTabOverride(next as DividendReviewModalTab)}
+          variant="pills"
+          fullWidth
+          items={tabs}
+          ariaLabel="Seções do modal de proventos"
+        />
+      </Modal>
+      {upgradeModal}
+    </>
   );
 }
 
@@ -932,12 +1041,14 @@ function PendingDividendsDialogHostContent({
   open,
   onOpenChange,
   initialTab,
+  requestSeq,
 }: {
   open: boolean;
   onOpenChange: (next: boolean) => void;
   initialTab: DividendReviewModalTab;
+  requestSeq: number;
 }) {
-  const { available, projected, fxRate } = useCorporateDividends();
+  const { available, projected, fxRate, isLoading, isError, refetch } = useCorporateDividends();
   return (
     <PendingDividendsDialog
       open={open}
@@ -946,6 +1057,10 @@ function PendingDividendsDialogHostContent({
       projectedDividends={projected}
       fxRate={fxRate}
       initialTab={initialTab}
+      requestSeq={requestSeq}
+      isLoading={isLoading}
+      isError={isError}
+      onRetry={refetch}
     />
   );
 }
@@ -957,10 +1072,12 @@ function PendingDividendsDialogHostContent({
 export function PendingDividendsDialogHost() {
   const [open, setOpen] = useState(false);
   const [initialTab, setInitialTab] = useState<DividendReviewModalTab>("review");
+  const [requestSeq, setRequestSeq] = useState(0);
 
   useEffect(() => {
     return subscribeDividendReviewModal((opts) => {
       setInitialTab(opts.initialTab ?? "review");
+      setRequestSeq((prev) => prev + 1);
       setOpen(true);
     });
   }, []);
@@ -972,6 +1089,7 @@ export function PendingDividendsDialogHost() {
       open={open}
       onOpenChange={setOpen}
       initialTab={initialTab}
+      requestSeq={requestSeq}
     />
   );
 }

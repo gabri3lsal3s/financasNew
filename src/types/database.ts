@@ -156,6 +156,40 @@ export interface Database {
         };
         Returns: ConfirmDividendEventsResult;
       };
+      revert_confirmed_dividend_events_atomic: {
+        Args: {
+          p_dividend_ids: string[];
+          p_event_ids?: string[] | null;
+          p_corporate_ids?: string[] | null;
+        };
+        Returns: {
+          success: boolean;
+          deleted_dividends: number;
+          reverted_events: number;
+          reverted_cash_brl: number;
+        };
+      };
+      dismiss_user_dividend_event_atomic: {
+        Args: {
+          p_event_id?: string | null;
+          p_corporate_dividend_id?: string | null;
+          p_asset_id?: string | null;
+          p_reason?: string;
+        };
+        Returns: {
+          success: boolean;
+          event_id: string | null;
+          corporate_dividend_id: string | null;
+        };
+      };
+      set_manual_asset_price: {
+        Args: {
+          p_ticker: string;
+          p_price: number;
+          p_currency?: string | null;
+        };
+        Returns: AssetPrice;
+      };
       settle_user_dividend_event_system: {
         Args: {
           p_event_id: string;

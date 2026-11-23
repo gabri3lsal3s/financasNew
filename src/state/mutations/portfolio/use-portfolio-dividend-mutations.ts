@@ -1,21 +1,25 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { approveDividendsBatchRpc, confirmUserDividendEventsRpc } from "@/data/rpc";
+import {
+  approveDividendsBatchRpc,
+  confirmUserDividendEventsRpc,
+  dismissUserDividendEventRpc,
+  revertConfirmedDividendEventsRpc,
+} from "@/data/rpc";
+import { consolidateAssetPrices, type AssetPriceRow } from "@/data/repositories/asset-prices";
 import {
   createManualUserDividendEvent,
   createPortfolioDividend,
   deletePortfolioDividend,
-  deletePortfolioDividendsByIds,
   deletePortfolioTransactionsMatching,
   deleteUserDividendEvent,
   dismissCorporateDividend,
-  removeDividendDismissal,
   revertSettledUserDividendEvents,
   updatePortfolioAsset,
   updatePortfolioDividend,
   updateUserDividendEvent,
   type CreateManualUserDividendEventInput,
 } from "@/data/repositories/portfolio";
-import { isCashAssetClass } from "@/domain/portfolio/valuation";
+import { FALLBACK_USD_RATE, isCashAssetClass, usdRateFromPrices } from "@/domain/portfolio/valuation";
 import { validateDividendReversalSafeguard } from "@/domain/portfolio/dividend-cash-governance";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
@@ -69,14 +73,36 @@ export function useUpdatePortfolioDividend() {
       const { id, patch, syncCash, previousSyncCash, previousCashAmount = 0 } = params;
       const updated = await updatePortfolioDividend(id, patch);
 
-      // Sincronização inteligente com Caixa
+      // Sincronização inteligente com Caixa (com conversão USD -> BRL quando necessário)
       if (syncCash !== undefined) {
         const cachedAssets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
         const cashAsset = cachedAssets.find(
           (a) => a.ticker.toUpperCase() === "CAIXA" || isCashAssetClass(a.asset_class),
         );
         if (cashAsset) {
-          const newAmount = patch.amount !== undefined ? patch.amount : (patch.cash_amount ?? 0);
+          let newAmount = 0;
+          if (patch.cash_amount !== undefined && patch.cash_amount !== null) {
+            newAmount = Number(patch.cash_amount) || 0;
+          } else if (patch.amount !== undefined) {
+            const rawAmount = Number(patch.amount) || 0;
+            const cachedDivs =
+              queryClient.getQueryData<PortfolioDividend[]>(PORTFOLIO_QUERY_KEYS.dividends) ?? [];
+            const existingDiv = cachedDivs.find((d) => d.id === id);
+            const targetAssetId = updated.asset_id ?? existingDiv?.asset_id;
+            const targetAsset = cachedAssets.find((a) => a.id === targetAssetId);
+            if (targetAsset?.currency === "USD") {
+              const cachedPrices =
+                queryClient.getQueryData<AssetPriceRow[]>(PORTFOLIO_QUERY_KEYS.assetPrices) ?? [];
+              const liveFx = usdRateFromPrices(
+                consolidateAssetPrices(cachedPrices),
+                FALLBACK_USD_RATE,
+              );
+              newAmount = Math.round(rawAmount * liveFx * 100) / 100;
+            } else {
+              newAmount = rawAmount;
+            }
+          }
+
           let delta = 0;
           if (syncCash && previousSyncCash) {
             delta = newAmount - previousCashAmount;
@@ -165,7 +191,17 @@ export function useDeletePortfolioDividend() {
         });
       }
 
-      // 3. Estorno inteligente no saldo de Caixa se solicitado
+      // 3. Reverte eventual evento automático vinculado ao provento excluído
+      const cachedEvents =
+        queryClient.getQueryData<UserDividendEvent[]>(PORTFOLIO_QUERY_KEYS.userDividendEvents) ?? [];
+      const linkedEventIds = cachedEvents
+        .filter((ev) => ev.settled_dividend_id === id)
+        .map((ev) => ev.id);
+      if (linkedEventIds.length > 0) {
+        await revertSettledUserDividendEvents(linkedEventIds);
+      }
+
+      // 4. Estorno inteligente no saldo de Caixa se solicitado
       if (rollbackCash && cashAmount !== undefined && cashAmount !== null && cashAmount > 0) {
         const cachedAssets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
         const cashAsset = cachedAssets.find(
@@ -233,24 +269,26 @@ export function useApproveDividendsBatch() {
           label: "Desfazer",
           onClick: async () => {
             try {
-              if (result.inserted_ids && result.inserted_ids.length > 0) {
-                await deletePortfolioDividendsByIds(result.inserted_ids);
-              }
+              const corpIds = variables.dividends
+                .map((d) => d.corporate_dividend_id)
+                .filter((cid): cid is string => Boolean(cid));
 
-              for (const div of variables.dividends) {
-                if (div.corporate_dividend_id) {
-                  await removeDividendDismissal(div.corporate_dividend_id).catch(() => undefined);
-                }
-              }
+              const undoRes = await revertConfirmedDividendEventsRpc({
+                dividendIds: result.inserted_ids ?? [],
+                eventIds: [],
+                corporateIds: corpIds,
+              });
 
-              if (variables.sync_cash && result.cash_asset_id && result.total_cash > 0) {
-                const assets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
-                const cashAsset = assets.find((a) => a.id === result.cash_asset_id || a.ticker.toUpperCase() === "CAIXA");
-                if (cashAsset) {
-                  const reversal = validateDividendReversalSafeguard(cashAsset.quantity, result.total_cash);
-                  await updatePortfolioAsset(cashAsset.id, {
-                    quantity: reversal.newBalance,
-                  });
+              if (variables.sync_cash && result.total_cash > 0) {
+                const shortfall = Math.max(
+                  0,
+                  Math.round((result.total_cash - undoRes.reverted_cash_brl) * 100) / 100,
+                );
+                if (shortfall > 0.01) {
+                  const reversal = validateDividendReversalSafeguard(
+                    undoRes.reverted_cash_brl,
+                    result.total_cash,
+                  );
                   if (!reversal.isSafe) {
                     pushToast({
                       title: "Atenção ao estorno de Caixa",
@@ -362,36 +400,26 @@ export function useConfirmUserDividendEvents() {
           label: "Desfazer",
           onClick: async () => {
             try {
-              if (result.inserted_ids && result.inserted_ids.length > 0) {
-                await deletePortfolioDividendsByIds(result.inserted_ids);
-              }
-              if (result.settled_event_ids && result.settled_event_ids.length > 0) {
-                await revertSettledUserDividendEvents(result.settled_event_ids);
-              }
-              for (const item of variables.items) {
-                if (item.corporate_dividend_id) {
-                  await removeDividendDismissal(item.corporate_dividend_id).catch(() => undefined);
-                }
-              }
-              if (
-                variables.sync_cash !== false &&
-                result.cash_asset_id &&
-                result.total_cash > 0
-              ) {
-                const assets =
-                  queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
-                const cashAsset = assets.find(
-                  (a) =>
-                    a.id === result.cash_asset_id || a.ticker.toUpperCase() === "CAIXA",
+              const corpIds = variables.items
+                .map((item) => item.corporate_dividend_id)
+                .filter((cid): cid is string => Boolean(cid));
+
+              const undoRes = await revertConfirmedDividendEventsRpc({
+                dividendIds: result.inserted_ids ?? [],
+                eventIds: result.settled_event_ids ?? [],
+                corporateIds: corpIds,
+              });
+
+              if (variables.sync_cash !== false && result.total_cash > 0) {
+                const shortfall = Math.max(
+                  0,
+                  Math.round((result.total_cash - undoRes.reverted_cash_brl) * 100) / 100,
                 );
-                if (cashAsset) {
+                if (shortfall > 0.01) {
                   const reversal = validateDividendReversalSafeguard(
-                    cashAsset.quantity,
+                    undoRes.reverted_cash_brl,
                     result.total_cash,
                   );
-                  await updatePortfolioAsset(cashAsset.id, {
-                    quantity: reversal.newBalance,
-                  });
                   if (!reversal.isSafe) {
                     pushToast({
                       title: "Atenção ao estorno de Caixa",
@@ -507,21 +535,20 @@ export function useDismissUserDividendEvent() {
     mutationFn: async ({
       eventId,
       corporateDividendId,
+      assetId,
       reason = "manual_ignore",
     }: {
       eventId?: string | null;
       corporateDividendId?: string | null;
+      assetId?: string | null;
       reason?: PortfolioDividendDismissalReason;
     }) => {
-      if (eventId) {
-        await updateUserDividendEvent(eventId, {
-          status: "DISMISSED",
-          dismiss_reason: reason,
-        });
-      }
-      if (corporateDividendId) {
-        await dismissCorporateDividend(corporateDividendId, reason);
-      }
+      return dismissUserDividendEventRpc({
+        eventId: eventId ?? null,
+        corporateDividendId: corporateDividendId ?? null,
+        assetId: assetId ?? null,
+        reason,
+      });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PORTFOLIO_QUERY_KEYS.corporateDividends });

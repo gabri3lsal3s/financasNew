@@ -795,20 +795,30 @@ export async function listCorporateDividends(tickers?: string[]): Promise<Corpor
     const uniqueTickers = Array.from(normalizedSet);
     if (uniqueTickers.length === 0) return [];
 
-    const { data, error } = await resolveQuery(
-      getSupabase()
-        .from("corporate_dividends")
-        .select("*")
-        .in("ticker", uniqueTickers)
-        .order("com_date", { ascending: false }),
-    );
+    const byId = new Map<string, CorporateDividend>();
+    const CHUNK_SIZE = 150;
+    for (let i = 0; i < uniqueTickers.length; i += CHUNK_SIZE) {
+      const chunk = uniqueTickers.slice(i, i + CHUNK_SIZE);
+      const { data, error } = await resolveQuery(
+        getSupabase()
+          .from("corporate_dividends")
+          .select("*")
+          .in("ticker", chunk)
+          .order("com_date", { ascending: false }),
+      );
 
-    if (error) {
-      const classified = classifyError(error);
-      throw new AppError(classified.kind, classified.message, error);
+      if (error) {
+        const classified = classifyError(error);
+        throw new AppError(classified.kind, classified.message, error);
+      }
+
+      for (const rawRow of (data ?? []) as CorporateDividend[]) {
+        const mapped = mapCorporateDividend(rawRow);
+        byId.set(mapped.id, mapped);
+      }
     }
 
-    return ((data ?? []) as CorporateDividend[]).map(mapCorporateDividend);
+    return Array.from(byId.values()).sort((a, b) => b.com_date.localeCompare(a.com_date));
   }
 
   const { data, error } = await resolveQuery(
@@ -872,9 +882,17 @@ export interface CreateManualUserDividendEventInput {
 export async function createManualUserDividendEvent(
   input: CreateManualUserDividendEventInput,
 ): Promise<UserDividendEvent> {
+  const rawNet = Number(input.net_amount);
+  if (!Number.isFinite(rawNet) || rawNet <= 0) {
+    throw new AppError("validation", "O valor líquido do provento deve ser maior que zero.", null);
+  }
+  const netAmount = Math.round(rawNet * 100) / 100;
+  if (netAmount <= 0) {
+    throw new AppError("validation", "O valor líquido do provento deve ser maior que zero.", null);
+  }
+
   const uid = await currentUserId();
   const qty = Math.max(0, Number(input.quantity_on_com_date) || 0);
-  const netAmount = Math.max(0, Math.round(Number(input.net_amount) * 100) / 100);
   const taxPct = Math.max(0, Math.min(100, Number(input.tax_rate_pct ?? 0) || 0));
   const grossAmount =
     input.gross_amount !== undefined
@@ -1048,7 +1066,7 @@ export async function dismissCorporateDividend(
           reason,
           dismissed_at: new Date().toISOString(),
         },
-        { onConflict: "user_id, corporate_dividend_id" },
+        { onConflict: "user_id,corporate_dividend_id" },
       )
       .select()
       .single(),

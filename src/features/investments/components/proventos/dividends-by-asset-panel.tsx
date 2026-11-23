@@ -91,7 +91,7 @@ export function DividendsByAssetPanel({
                     ) : null}
                   </div>
 
-                  <div className="flex items-end justify-between gap-2 border-t border-border/60 pt-2 text-xs">
+                  <div className="flex items-end justify-between gap-2 border-t border-border/80 pt-2 text-xs">
                     <div className="flex flex-col gap-0.5 text-[11px] text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <span>Inicial:</span>
@@ -165,7 +165,7 @@ export function DividendsByAssetPanel({
                     <th className="py-2.5 px-3 font-semibold text-right">Yield on Cost</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/60">
+                <tbody className="divide-y divide-border/80">
                   {items.map(({ asset, isUSD, initialHistorical, periodicAmount, totalAmount, totalAmountBRL, yoc }) => (
                     <tr key={asset.id} className="hover:bg-surface-hover/40 transition-colors">
                       <td className="py-2.5 px-3">

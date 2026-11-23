@@ -126,6 +126,42 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
   return buffer;
 }
 
+const OUTBOUND_TIMEOUT_MS = 5000;
+
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit,
+  timeoutMs = OUTBOUND_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timerId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timerId);
+  }
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs = OUTBOUND_TIMEOUT_MS,
+  timeoutMessage = "Operation timed out",
+): Promise<T> {
+  // Evita unhandledrejection caso o timeout vença e a promise original rejeite depois
+  promise.catch(() => {});
+  let timerId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timerId = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timerId !== undefined) clearTimeout(timerId);
+  }
+}
+
 async function getFcmAccessToken(serviceAccount: FcmServiceAccount): Promise<string> {
   const nowSec = Math.floor(Date.now() / 1000);
   const header = base64UrlEncode(JSON.stringify({ alg: "RS256", typ: "JWT" }));
@@ -154,7 +190,7 @@ async function getFcmAccessToken(serviceAccount: FcmServiceAccount): Promise<str
   );
   const jwt = `${signingInput}.${base64UrlEncode(new Uint8Array(sigBuf))}`;
 
-  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+  const tokenRes = await fetchWithTimeout("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -164,6 +200,7 @@ async function getFcmAccessToken(serviceAccount: FcmServiceAccount): Promise<str
   });
 
   if (!tokenRes.ok) {
+    await tokenRes.body?.cancel().catch(() => {});
     throw new Error(`FCM OAuth token exchange failed (${tokenRes.status})`);
   }
   const tokenData = (await tokenRes.json()) as { access_token?: string };
@@ -250,11 +287,16 @@ Deno.serve(async (req: Request) => {
         return jsonResponse(req, { error: "Sessão inválida ou expirada" }, 401);
       }
 
-      const { data: profile } = await supabaseAdmin
+      const { data: profile, error: profileError } = await supabaseAdmin
         .from("profiles")
         .select("role, status")
         .eq("id", user.id)
         .maybeSingle();
+
+      if (profileError) {
+        console.error("[push-dispatcher] Erro ao consultar perfil do chamador:", profileError);
+        return safeErrorResponse(req, 500, "Erro ao validar perfil do usuário.", profileError);
+      }
 
       if (!profile || profile.status !== "active") {
         return jsonResponse(req, { error: "Conta inativa ou não autorizada" }, 403);
@@ -298,21 +340,35 @@ Deno.serve(async (req: Request) => {
     }
     const hasFcm = Boolean(fcmProjectId && fcmServiceAccount?.client_email && fcmServiceAccount?.private_key);
 
-    if (!hasWebPush && !hasFcm) {
-      const baseKey = payload.idempotencyKey?.trim() || `${eventType}:${Date.now()}`;
+    let webPushClient: WebPushClient | null = null;
+    if (hasWebPush) {
+      try {
+        webPushClient = await loadWebPushClient(vapidSubject, vapidPublicKey, vapidPrivateKey);
+      } catch (vapidErr) {
+        console.warn("[push-dispatcher] Falha ao inicializar web-push (VAPID):", vapidErr);
+        webPushClient = null;
+      }
+    }
+
+    const baseIdempotency = payload.idempotencyKey?.trim() || `${eventType}:${Date.now()}`;
+
+    if (!webPushClient && !hasFcm) {
       for (const uid of targetUserIds) {
-        await supabaseAdmin
+        const { error: skipLogErr } = await supabaseAdmin
           .from("push_delivery_logs")
           .upsert(
             {
               user_id: uid,
               event_type: eventType,
-              idempotency_key: `${baseKey}:${uid}`,
+              idempotency_key: `${baseIdempotency}:${uid}`,
               channel: "none",
               status: "skipped_unconfigured",
             },
-            { onConflict: "idempotency_key", ignoreDuplicates: false },
+            { onConflict: "idempotency_key", ignoreDuplicates: true },
           );
+        if (skipLogErr) {
+          console.warn("[push-dispatcher] Erro ao gravar log skipped_unconfigured:", skipLogErr);
+        }
       }
 
       return jsonResponse(req, {
@@ -322,38 +378,126 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    let webPushClient: WebPushClient | null = null;
-    if (hasWebPush) {
-      webPushClient = await loadWebPushClient(vapidSubject, vapidPublicKey, vapidPrivateKey);
-    }
-
     let fcmAccessToken: string | null = null;
     let fcmTokenTried = false;
 
-    const baseIdempotency = payload.idempotencyKey?.trim() || `${eventType}:${Date.now()}`;
     let delivered = 0;
     let skipped = 0;
     let failed = 0;
 
+    const finalizeDeliveryLog = async (
+      uid: string,
+      userIdempKey: string,
+      channel: "web_push" | "fcm" | "mixed" | "none",
+      status:
+        | "sent"
+        | "partial"
+        | "skipped_quiet_hours"
+        | "skipped_disabled"
+        | "skipped_no_subscription"
+        | "skipped_unconfigured"
+        | "failed",
+      errorDetail: string | null = null,
+    ) => {
+      const { error: logErr } = await supabaseAdmin
+        .from("push_delivery_logs")
+        .update({
+          channel,
+          status,
+          error_detail: errorDetail,
+        })
+        .eq("idempotency_key", userIdempKey)
+        .eq("user_id", uid);
+      if (logErr) {
+        console.error("[push-dispatcher] Erro ao atualizar push_delivery_logs:", logErr);
+      }
+    };
+
     for (const uid of targetUserIds) {
       const userIdempKey = `${baseIdempotency}:${uid}`;
-      const { data: existingLog } = await supabaseAdmin
-        .from("push_delivery_logs")
-        .select("id, status")
-        .eq("idempotency_key", userIdempKey)
-        .in("status", ["sent", "partial"])
-        .maybeSingle();
 
-      if (existingLog) {
-        skipped += 1;
-        continue;
+      // Reserva atomica insert-first para eliminar janela TOCTOU de disparos concorrentes
+      const { error: reserveError } = await supabaseAdmin
+        .from("push_delivery_logs")
+        .insert({
+          user_id: uid,
+          event_type: eventType,
+          idempotency_key: userIdempKey,
+          channel: "none",
+          status: "failed",
+          error_detail: "in_flight",
+        });
+
+      if (reserveError) {
+        if (reserveError.code === "23505") {
+          const { data: existingLog, error: existingErr } = await supabaseAdmin
+            .from("push_delivery_logs")
+            .select("id, status, error_detail, created_at")
+            .eq("idempotency_key", userIdempKey)
+            .maybeSingle();
+
+          if (existingErr) {
+            console.error("[push-dispatcher] Erro ao consultar lock de idempotência:", existingErr);
+            failed += 1;
+            continue;
+          }
+
+          if (!existingLog || existingLog.status === "sent" || existingLog.status === "partial") {
+            skipped += 1;
+            continue;
+          }
+
+          const createdMs = Date.parse(String(existingLog.created_at ?? ""));
+          const isActiveInFlight =
+            existingLog.error_detail === "in_flight" &&
+            Number.isFinite(createdMs) &&
+            Date.now() - createdMs < 120_000;
+
+          if (isActiveInFlight) {
+            skipped += 1;
+            continue;
+          }
+
+          const { data: claimedLog, error: claimErr } = await supabaseAdmin
+            .from("push_delivery_logs")
+            .update({
+              channel: "none",
+              status: "failed",
+              error_detail: "in_flight",
+              created_at: new Date().toISOString(),
+            })
+            .eq("id", existingLog.id)
+            .eq("status", existingLog.status)
+            .eq("created_at", existingLog.created_at)
+            .select("id")
+            .maybeSingle();
+
+          if (claimErr) {
+            console.error("[push-dispatcher] Erro ao reivindicar lock de idempotência:", claimErr);
+            failed += 1;
+            continue;
+          }
+
+          if (!claimedLog) {
+            skipped += 1;
+            continue;
+          }
+        } else {
+          console.error("[push-dispatcher] Erro ao reservar idempotência em push_delivery_logs:", reserveError);
+          failed += 1;
+          continue;
+        }
       }
 
-      const { data: prefRow } = await supabaseAdmin
+      const { data: prefRow, error: prefError } = await supabaseAdmin
         .from("user_preferences")
         .select("custom_settings")
         .eq("user_id", uid)
         .maybeSingle();
+
+      if (prefError) {
+        console.warn("[push-dispatcher] Erro ao carregar user_preferences:", prefError);
+      }
 
       const customSettings = (prefRow?.custom_settings ?? {}) as {
         deviceNotifications?: UserPrefDeviceSettings;
@@ -374,60 +518,34 @@ Deno.serve(async (req: Request) => {
           deviceNotifs?.remotePushEnabled === true);
 
       if (!isOptInAllowed) {
-        await supabaseAdmin
-          .from("push_delivery_logs")
-          .upsert(
-            {
-              user_id: uid,
-              event_type: eventType,
-              idempotency_key: userIdempKey,
-              channel: "none",
-              status: "skipped_disabled",
-            },
-            { onConflict: "idempotency_key" },
-          );
+        await finalizeDeliveryLog(uid, userIdempKey, "none", "skipped_disabled");
         skipped += 1;
         continue;
       }
 
       const bypassQuietHours = severity === "P0" || eventType === "test_push" || !respectQuietHours;
       if (!bypassQuietHours && isQuietHoursActive(deviceNotifs?.quietHours)) {
-        await supabaseAdmin
-          .from("push_delivery_logs")
-          .upsert(
-            {
-              user_id: uid,
-              event_type: eventType,
-              idempotency_key: userIdempKey,
-              channel: "none",
-              status: "skipped_quiet_hours",
-            },
-            { onConflict: "idempotency_key" },
-          );
+        await finalizeDeliveryLog(uid, userIdempKey, "none", "skipped_quiet_hours");
         skipped += 1;
         continue;
       }
 
-      const { data: subs } = await supabaseAdmin
+      const { data: subs, error: subsError } = await supabaseAdmin
         .from("user_push_subscriptions")
         .select("id, user_id, platform, endpoint, p256dh, auth, fcm_token")
         .eq("user_id", uid)
         .eq("is_active", true);
 
+      if (subsError) {
+        console.error("[push-dispatcher] Erro ao consultar user_push_subscriptions:", subsError);
+        await finalizeDeliveryLog(uid, userIdempKey, "none", "failed", "subs_query_error");
+        failed += 1;
+        continue;
+      }
+
       const activeSubs = (subs ?? []) as PushSubscriptionRow[];
       if (activeSubs.length === 0) {
-        await supabaseAdmin
-          .from("push_delivery_logs")
-          .upsert(
-            {
-              user_id: uid,
-              event_type: eventType,
-              idempotency_key: userIdempKey,
-              channel: "none",
-              status: "skipped_no_subscription",
-            },
-            { onConflict: "idempotency_key" },
-          );
+        await finalizeDeliveryLog(uid, userIdempKey, "none", "skipped_no_subscription");
         skipped += 1;
         continue;
       }
@@ -454,34 +572,50 @@ Deno.serve(async (req: Request) => {
           hasEligibleProvider = true;
           usedChannels.add("web_push");
           try {
-            await webPushClient.sendNotification(
-              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-              JSON.stringify({ title, body, url, tag, eventType, severity }),
+            await withTimeout(
+              webPushClient.sendNotification(
+                { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                JSON.stringify({ title, body, url, tag, eventType, severity }),
+              ),
+              OUTBOUND_TIMEOUT_MS,
+              "web_push_timeout",
             );
             userSuccessCount += 1;
-            await supabaseAdmin
+            const { error: touchErr } = await supabaseAdmin
               .from("user_push_subscriptions")
               .update({ last_used_at: new Date().toISOString() })
               .eq("id", sub.id);
+            if (touchErr) {
+              console.warn("[push-dispatcher] Erro ao atualizar last_used_at web_push:", touchErr);
+            }
           } catch (err) {
             userErrorCount += 1;
             const statusCode =
               typeof err === "object" && err !== null && "statusCode" in err
                 ? Number((err as { statusCode?: number }).statusCode)
                 : 0;
-            lastErrorCode = statusCode > 0 ? `web_push_http_${statusCode}` : "web_push_error";
+            const isTimeout = err instanceof Error && err.message === "web_push_timeout";
+            lastErrorCode =
+              statusCode > 0
+                ? `web_push_http_${statusCode}`
+                : isTimeout
+                  ? "web_push_timeout"
+                  : "web_push_error";
             if (statusCode === 404 || statusCode === 410) {
-              await supabaseAdmin
+              const { error: deactErr } = await supabaseAdmin
                 .from("user_push_subscriptions")
                 .update({ is_active: false })
                 .eq("id", sub.id);
+              if (deactErr) {
+                console.warn("[push-dispatcher] Erro ao desativar assinatura web_push:", deactErr);
+              }
             }
           }
         } else if (sub.platform === "fcm" && hasFcm && fcmAccessToken && sub.fcm_token) {
           hasEligibleProvider = true;
           usedChannels.add("fcm");
           try {
-            const fcmRes = await fetch(
+            const fcmRes = await fetchWithTimeout(
               `https://fcm.googleapis.com/v1/projects/${fcmProjectId}/messages:send`,
               {
                 method: "POST",
@@ -508,14 +642,19 @@ Deno.serve(async (req: Request) => {
                   },
                 }),
               },
+              OUTBOUND_TIMEOUT_MS,
             );
 
             if (fcmRes.ok) {
+              await fcmRes.body?.cancel().catch(() => {});
               userSuccessCount += 1;
-              await supabaseAdmin
+              const { error: touchErr } = await supabaseAdmin
                 .from("user_push_subscriptions")
                 .update({ last_used_at: new Date().toISOString() })
                 .eq("id", sub.id);
+              if (touchErr) {
+                console.warn("[push-dispatcher] Erro ao atualizar last_used_at fcm:", touchErr);
+              }
             } else {
               const errText = await fcmRes.text().catch(() => "");
               userErrorCount += 1;
@@ -527,33 +666,33 @@ Deno.serve(async (req: Request) => {
                 errText.includes("SENDER_ID_MISMATCH") ||
                 (fcmRes.status === 400 && errText.includes("INVALID_ARGUMENT"));
               if (isPermanentTokenFailure) {
-                await supabaseAdmin
+                const { error: deactErr } = await supabaseAdmin
                   .from("user_push_subscriptions")
                   .update({ is_active: false })
                   .eq("id", sub.id);
+                if (deactErr) {
+                  console.warn("[push-dispatcher] Erro ao desativar assinatura fcm:", deactErr);
+                }
               }
             }
-          } catch {
+          } catch (fcmErr) {
             userErrorCount += 1;
-            lastErrorCode = "fcm_network_error";
+            lastErrorCode =
+              fcmErr instanceof Error && fcmErr.name === "AbortError"
+                ? "fcm_timeout"
+                : "fcm_network_error";
           }
         }
       }
 
       if (!hasEligibleProvider) {
-        await supabaseAdmin
-          .from("push_delivery_logs")
-          .upsert(
-            {
-              user_id: uid,
-              event_type: eventType,
-              idempotency_key: userIdempKey,
-              channel: "none",
-              status: "skipped_unconfigured",
-              error_detail: "provider_unconfigured_for_subscription",
-            },
-            { onConflict: "idempotency_key" },
-          );
+        await finalizeDeliveryLog(
+          uid,
+          userIdempKey,
+          "none",
+          "skipped_unconfigured",
+          "provider_unconfigured_for_subscription",
+        );
         skipped += 1;
         continue;
       }
@@ -574,19 +713,7 @@ Deno.serve(async (req: Request) => {
             ? "partial"
             : "failed";
 
-      await supabaseAdmin
-        .from("push_delivery_logs")
-        .upsert(
-          {
-            user_id: uid,
-            event_type: eventType,
-            idempotency_key: userIdempKey,
-            channel,
-            status: logStatus,
-            error_detail: lastErrorCode || null,
-          },
-          { onConflict: "idempotency_key" },
-        );
+      await finalizeDeliveryLog(uid, userIdempKey, channel, logStatus, lastErrorCode || null);
 
       if (userSuccessCount > 0) delivered += 1;
       else failed += 1;

@@ -1,4 +1,6 @@
-import { renderHook } from "@testing-library/react";
+import { createElement, type ReactNode } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { usePortfolioMonthlyPosition } from "./use-portfolio-monthly-position";
 import * as usePortfolioModule from "./use-portfolio";
@@ -6,9 +8,34 @@ import * as usePortfolioPositionModule from "./use-portfolio-position";
 import * as usePortfolioMonthlyPricesModule from "./use-portfolio-monthly-prices";
 import * as useMacroIndicatorsModule from "./use-macro-indicators";
 
+const listMarketPriceHistoryByMonthMock = vi.fn().mockResolvedValue([]);
+const fetchHistoricalMonthlyQuotesMock = vi.fn().mockResolvedValue([]);
+
+vi.mock("@/data/repositories/asset-prices", () => ({
+  listMarketPriceHistoryByMonth: (...args: unknown[]) =>
+    listMarketPriceHistoryByMonthMock(...args),
+}));
+
+vi.mock("@/services/quotes", () => ({
+  fetchHistoricalMonthlyQuotes: (...args: unknown[]) =>
+    fetchHistoricalMonthlyQuotesMock(...args),
+}));
+
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+  return ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client: queryClient }, children);
+}
+
 describe("usePortfolioMonthlyPosition", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    listMarketPriceHistoryByMonthMock.mockResolvedValue([]);
+    fetchHistoricalMonthlyQuotesMock.mockResolvedValue([]);
   });
 
   it("retorna diretamente usePortfolioPosition quando a competência é o mês corrente", () => {
@@ -101,7 +128,9 @@ describe("usePortfolioMonthlyPosition", () => {
     } as unknown as ReturnType<typeof useMacroIndicatorsModule.useMacroIndicators>);
 
     // Supõe mês atual como 2099-12 (garantido >= currentMonth)
-    const { result } = renderHook(() => usePortfolioMonthlyPosition("2099-12"));
+    const { result } = renderHook(() => usePortfolioMonthlyPosition("2099-12"), {
+      wrapper: createWrapper(),
+    });
 
     expect(result.current.isCurrentMonth).toBe(true);
     expect(result.current.isLoading).toBe(false);
@@ -113,7 +142,7 @@ describe("usePortfolioMonthlyPosition", () => {
     expect(mockRefetch).toHaveBeenCalledTimes(1);
   });
 
-  it("reconstrói a posição histórica via calculatePointInTimePosition para mês anterior", () => {
+  it("reconstrói a posição histórica via calculatePointInTimePosition para mês anterior", async () => {
     vi.spyOn(usePortfolioPositionModule, "usePortfolioPosition").mockReturnValue({
       rows: [],
       totalBRL: 0,
@@ -211,14 +240,19 @@ describe("usePortfolioMonthlyPosition", () => {
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useMacroIndicatorsModule.useMacroIndicators>);
 
-    const { result } = renderHook(() => usePortfolioMonthlyPosition("2026-01"));
+    const { result } = renderHook(() => usePortfolioMonthlyPosition("2026-01"), {
+      wrapper: createWrapper(),
+    });
 
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
     expect(result.current.isCurrentMonth).toBe(false);
-    expect(result.current.isLoading).toBe(false);
     expect(result.current.data?.cutoffDate).toBe("2026-01-31");
     expect(result.current.data?.totalInvestedBRL).toBe(3600); // 100 * 36
     expect(result.current.data?.positions).toHaveLength(1);
     expect(result.current.data?.positions[0]?.unrealizedPnl).toBe(600);
+    expect(listMarketPriceHistoryByMonthMock).toHaveBeenCalledWith("2026-01", { onlyMonthEnd: true });
   });
 
   it("não entra em loop infinito e finaliza o loading quando não há cotações salvas e a API retorna vazio", async () => {
@@ -311,9 +345,14 @@ describe("usePortfolioMonthlyPosition", () => {
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useMacroIndicatorsModule.useMacroIndicators>);
 
-    const { result } = renderHook(() => usePortfolioMonthlyPosition("2026-01"));
+    const { result } = renderHook(() => usePortfolioMonthlyPosition("2026-01"), {
+      wrapper: createWrapper(),
+    });
 
     // O hook conclui com os dados da cascata e fidelity calculados
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
     expect(result.current.isCurrentMonth).toBe(false);
     expect(result.current.data).not.toBeNull();
     expect(result.current.data?.positions).toHaveLength(1);

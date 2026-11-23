@@ -211,7 +211,7 @@ export function ExecutiveReportDocument({
           <span>
             A carteira encerra a competência com{" "}
             <strong>
-              <MoneyText cents={numberToCents(effectiveTotalBRL)} className="inline font-bold" />
+              <MoneyText cents={numberToCents(effectiveTotalBRL)} tone="default" className="inline font-bold" />
             </strong>{" "}
             sob custódia{" "}
             {hasSeparateCash && appliedAssetsCostCents > 0 ? (
@@ -219,11 +219,13 @@ export function ExecutiveReportDocument({
                 (custo de aquisição de{" "}
                 <MoneyText
                   cents={appliedAssetsCostCents}
+                  tone="default"
                   className="inline font-bold text-muted-foreground"
                 />{" "}
                 em ativos aplicados, totalizando{" "}
                 <MoneyText
                   cents={numberToCents(totalConsolidatedCostBRL)}
+                  tone="default"
                   className="inline font-bold text-muted-foreground"
                 />{" "}
                 com a reserva de caixa),
@@ -233,6 +235,7 @@ export function ExecutiveReportDocument({
                 (custo de aquisição de{" "}
                 <MoneyText
                   cents={numberToCents(effectiveCostBRL)}
+                  tone="default"
                   className="inline font-bold text-muted-foreground"
                 />
                 ),
@@ -279,7 +282,7 @@ export function ExecutiveReportDocument({
           aria-label="Síntese da Alocação Patrimonial"
           className="rounded-xl border border-border/80 bg-surface shadow-xs p-3.5 print:p-3 break-inside-avoid"
         >
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/60">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-border/80">
             <div className="flex items-center gap-1.5">
               <Layers className="size-3.5 text-muted-foreground" aria-hidden="true" />
               <span className="text-xs font-bold uppercase tracking-wider text-foreground">
@@ -302,7 +305,7 @@ export function ExecutiveReportDocument({
                 <col className="w-[14%]" />
               </colgroup>
               <thead>
-                <tr className="border-b border-border/60 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
+                <tr className="border-b border-border/80 text-muted-foreground font-bold text-[10px] uppercase tracking-wider text-left bg-muted/40">
                   <th className="py-1 px-2 font-bold pr-2">Classe de Ativo</th>
                   <th className="py-1 px-2 font-bold text-center whitespace-nowrap">Ativos</th>
                   <th className="py-1 px-2 text-right font-bold whitespace-nowrap">Posição (R$)</th>
@@ -318,7 +321,7 @@ export function ExecutiveReportDocument({
                   const totalCents = g.totalCents ?? 0;
                   const costCents = g.totalCostCents ?? 0;
                   const pct = effectiveTotalBRL > 0 ? (totalCents / numberToCents(effectiveTotalBRL)) * 100 : 0;
-                  const returnPct = costCents > 0 ? ((totalCents - costCents) / costCents) * 100 : 0;
+                  const returnPct = g.pnlPct;
                   return (
                     <tr key={className} className="even:bg-muted/20">
                       <td className="py-1.5 px-2 font-semibold text-foreground break-words leading-tight pr-2">{className}</td>
@@ -326,13 +329,13 @@ export function ExecutiveReportDocument({
                         {isCashClass ? "—" : (g.items?.length ?? 0)}
                       </td>
                       <td className="py-1.5 px-2 text-right font-mono font-bold whitespace-nowrap">
-                        <MoneyText cents={totalCents} hideCurrency />
+                        <MoneyText cents={totalCents} tone="default" hideCurrency />
                       </td>
                       <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
                         {formatPercent(pct)}%
                       </td>
                       <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
-                        <MoneyText cents={costCents} hideCurrency />
+                        <MoneyText cents={costCents} tone="default" hideCurrency />
                       </td>
                       <td className="py-1.5 px-2 text-right font-mono font-bold whitespace-nowrap">
                         {isCashClass ? (
@@ -351,13 +354,13 @@ export function ExecutiveReportDocument({
                     <td className="py-1.5 px-2 font-semibold text-foreground break-words leading-tight pr-2">Reserva de Caixa</td>
                     <td className="py-1.5 px-2 text-center text-muted-foreground font-mono whitespace-nowrap">—</td>
                     <td className="py-1.5 px-2 text-right font-mono font-bold whitespace-nowrap">
-                      <MoneyText cents={numberToCents(effectiveCashBRL)} hideCurrency />
+                      <MoneyText cents={numberToCents(effectiveCashBRL)} tone="default" hideCurrency />
                     </td>
                     <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
                       {formatPercent(effectiveTotalBRL > 0 ? (effectiveCashBRL / effectiveTotalBRL) * 100 : 0)}%
                     </td>
                     <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
-                      <MoneyText cents={numberToCents(effectiveCashBRL)} hideCurrency />
+                      <MoneyText cents={numberToCents(effectiveCashBRL)} tone="default" hideCurrency />
                     </td>
                     <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
                       —
@@ -372,11 +375,11 @@ export function ExecutiveReportDocument({
                     {investmentCount}
                   </td>
                   <td className="py-1.5 px-2 text-right font-mono whitespace-nowrap">
-                    <MoneyText cents={numberToCents(totalConsolidatedTotalBRL)} hideCurrency />
+                    <MoneyText cents={numberToCents(totalConsolidatedTotalBRL)} tone="default" hideCurrency />
                   </td>
                   <td className="py-1.5 px-2 text-right font-mono text-foreground whitespace-nowrap">100,0%</td>
                   <td className="py-1.5 px-2 text-right font-mono text-muted-foreground whitespace-nowrap">
-                    <MoneyText cents={numberToCents(totalConsolidatedCostBRL)} hideCurrency />
+                    <MoneyText cents={numberToCents(totalConsolidatedCostBRL)} tone="default" hideCurrency />
                   </td>
                   <td className="py-1.5 px-2 text-right font-mono font-bold whitespace-nowrap">
                     {totalConsolidatedCostBRL > 0 ? (
@@ -440,7 +443,7 @@ export function ExecutiveReportDocument({
                 </div>
                 <div className="flex items-center gap-2 font-mono num">
                   <span className="font-bold text-foreground">
-                    <MoneyText cents={numberToCents(effectiveCashBRL)} />
+                    <MoneyText cents={numberToCents(effectiveCashBRL)} tone="default" />
                   </span>
                   <span className="text-muted-foreground font-semibold text-[11px]">
                     ({formatPercent(effectiveTotalBRL > 0 ? (effectiveCashBRL / effectiveTotalBRL) * 100 : 0)}%)

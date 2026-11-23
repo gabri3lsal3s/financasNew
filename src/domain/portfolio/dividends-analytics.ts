@@ -51,19 +51,45 @@ export interface AssetDividendBreakdownItem {
 export interface SnowballAssetDashboardItem {
   asset: PortfolioAsset;
   currentPrice: number;
+  isUSD: boolean;
+  currency: "BRL" | "USD";
+  monthlyIncomeBRL: number;
   progress: SnowballProgressResult;
   dividendSource: "latest_tx" | "manual_estimate";
+}
+
+function resolveEffectiveUsdFx(
+  rowByAssetId: ReadonlyMap<string, DividendPositionRef>,
+  usdRate?: number,
+): number {
+  if (usdRate && Number.isFinite(usdRate) && usdRate > 0) {
+    return usdRate;
+  }
+  for (const r of rowByAssetId.values()) {
+    const isUsdRow = (r.currency ?? "").toUpperCase() === "USD";
+    if (isUsdRow && r.usdRate && Number.isFinite(r.usdRate) && r.usdRate > 0) {
+      return r.usdRate;
+    }
+  }
+  for (const r of rowByAssetId.values()) {
+    if (r.usdRate && Number.isFinite(r.usdRate) && r.usdRate > 0) {
+      return r.usdRate;
+    }
+  }
+  return FALLBACK_USD_RATE;
 }
 
 export function resolveDividendAmountBRL(
   dividend: Pick<PortfolioDividend, "asset_id" | "amount">,
   assetById: ReadonlyMap<string, PortfolioAsset>,
   rowByAssetId: ReadonlyMap<string, DividendPositionRef>,
+  fallbackUsdRate: number = FALLBACK_USD_RATE,
 ): number {
   const asset = dividend.asset_id ? assetById.get(dividend.asset_id) : null;
   const row = dividend.asset_id ? rowByAssetId.get(dividend.asset_id) : null;
   const isUSD = asset?.currency === "USD" || row?.currency === "USD";
-  const rate = isUSD ? (row?.usdRate || FALLBACK_USD_RATE) : 1;
+  const rowFx = row?.usdRate && Number.isFinite(row.usdRate) && row.usdRate > 0 ? row.usdRate : null;
+  const rate = isUSD ? (rowFx ?? (fallbackUsdRate > 0 ? fallbackUsdRate : FALLBACK_USD_RATE)) : 1;
   return dividend.amount * rate;
 }
 
@@ -108,11 +134,7 @@ export function buildYearlyDividendsSummary(
   rowByAssetId: ReadonlyMap<string, DividendPositionRef>,
   usdRate?: number,
 ) {
-  const effectiveFx =
-    usdRate && usdRate > 0
-      ? usdRate
-      : (Array.from(rowByAssetId.values()).find((r) => r.usdRate && r.usdRate > 0)?.usdRate ??
-        FALLBACK_USD_RATE);
+  const effectiveFx = resolveEffectiveUsdFx(rowByAssetId, usdRate);
 
   const allMonthsOfYear = Array.from({ length: 12 }, (_, i) => {
     const mm = String(i + 1).padStart(2, "0");
@@ -120,21 +142,30 @@ export function buildYearlyDividendsSummary(
   });
 
   const yearly: YearlyDividendMonthPoint[] = allMonthsOfYear.map((m) => {
-    const total = dividends
+    const monthCents = dividends
       .filter((d) => d.date.startsWith(m))
-      .reduce((acc, d) => acc + resolveDividendAmountBRL(d, assetById, rowByAssetId), 0);
+      .reduce(
+        (acc, d) => acc + Math.round(resolveDividendAmountBRL(d, assetById, rowByAssetId, effectiveFx) * 100),
+        0,
+      );
     const projectedInMonth = projectedDividends.filter(
       (p) => typeof p.paymentDate === "string" && p.paymentDate.startsWith(m),
     );
-    const projectedTotal = projectedInMonth.reduce((acc, p) => {
+    const projectedCents = projectedInMonth.reduce((acc, p) => {
       const rate = p.currency === "USD" ? effectiveFx : 1;
-      return acc + p.totalAmount * rate;
+      return acc + Math.round(p.totalAmount * rate * 100);
     }, 0);
-    return { month: m, total, projectedTotal, projectedCount: projectedInMonth.length };
+    return {
+      month: m,
+      total: monthCents / 100,
+      projectedTotal: projectedCents / 100,
+      projectedCount: projectedInMonth.length,
+    };
   });
 
-  const yearTotal = yearly.reduce((acc, e) => acc + e.total, 0);
-  const yearMonthlyAverage = Math.round((yearTotal / 12) * 100) / 100;
+  const yearTotalCents = yearly.reduce((acc, e) => acc + Math.round(e.total * 100), 0);
+  const yearTotal = yearTotalCents / 100;
+  const yearMonthlyAverage = Math.round(yearTotalCents / 12) / 100;
   const bestMonth = bestDividendMonth(yearly);
   const maxMonthTotal = Math.max(...yearly.map((e) => e.total), 1);
 
@@ -212,7 +243,10 @@ export function buildSnowballDashboardItems(
   assets: readonly PortfolioAsset[],
   dividends: readonly PortfolioDividend[],
   rowByAssetId: ReadonlyMap<string, DividendPositionRef>,
+  usdRate?: number,
 ) {
+  const effectiveFx = resolveEffectiveUsdFx(rowByAssetId, usdRate);
+
   const items: SnowballAssetDashboardItem[] = assets
     .filter((a) => !isCashAssetClass(a.asset_class) && a.quantity > 0)
     .map((a): SnowballAssetDashboardItem | null => {
@@ -232,6 +266,9 @@ export function buildSnowballDashboardItems(
 
       const row = rowByAssetId.get(a.id);
       const isUSD = a.currency === "USD" || row?.currency === "USD";
+      const rowFx =
+        row?.usdRate && Number.isFinite(row.usdRate) && row.usdRate > 0 ? row.usdRate : null;
+      const itemFxRate = isUSD ? (rowFx ?? effectiveFx) : 1;
       const currentPrice =
         row && (row.priceQuote ?? row.priceBRL) > 0
           ? isUSD
@@ -247,9 +284,14 @@ export function buildSnowballDashboardItems(
         monthlyDividendPerShare: resolved.perShare,
       });
 
+      const monthlyIncomeBRL = Math.round(progress.currentMonthlyIncome * itemFxRate * 100) / 100;
+
       return {
         asset: a,
         currentPrice,
+        isUSD,
+        currency: isUSD ? "USD" : "BRL",
+        monthlyIncomeBRL,
         progress,
         dividendSource: resolved.source,
       };
@@ -258,15 +300,15 @@ export function buildSnowballDashboardItems(
     .sort((a, b) => b.progress.progressPct - a.progress.progressPct);
 
   const activeCount = items.filter((i) => i.progress.isSnowballActive).length;
-  const totalMonthlyEstimatedIncome = items.reduce(
-    (acc, i) => acc + i.progress.currentMonthlyIncome,
+  const totalMonthlyEstimatedIncomeCents = items.reduce(
+    (acc, i) => acc + Math.round(i.monthlyIncomeBRL * 100),
     0,
   );
 
   return {
     items,
     activeCount,
-    totalMonthlyEstimatedIncome,
+    totalMonthlyEstimatedIncome: totalMonthlyEstimatedIncomeCents / 100,
   };
 }
 

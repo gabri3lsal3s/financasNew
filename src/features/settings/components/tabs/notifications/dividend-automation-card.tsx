@@ -5,7 +5,9 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  ErrorState,
   RadioGroup,
+  Skeleton,
   Switch,
 } from "@/components/ui";
 import { todaySaoPauloISO } from "@/domain/portfolio";
@@ -29,6 +31,37 @@ export function DividendAutomationCard() {
     return null;
   }
 
+  if (preferencesQuery.isLoading) {
+    return (
+      <Card className="border-border/80 bg-surface shadow-xs">
+        <CardHeader className="pb-3.5">
+          <div className="flex items-center justify-between gap-2">
+            <Skeleton className="h-5 w-52 rounded-md" />
+            <Skeleton className="h-5 w-28 rounded-full" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <Skeleton className="h-16 w-full rounded-xl" />
+          <Skeleton className="h-16 w-full rounded-xl" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (preferencesQuery.isError) {
+    return (
+      <Card className="border-border/80 bg-surface shadow-xs">
+        <CardContent className="p-4 sm:p-5">
+          <ErrorState
+            message="Não foi possível carregar as preferências de automação de proventos."
+            onRetry={() => void preferencesQuery.refetch()}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
   const current: DividendAutomationPreferences =
     preferencesQuery.data?.custom_settings?.dividendAutomation ?? {};
   const settlementMode = current.settlementMode ?? "manual_confirm";
@@ -38,9 +71,10 @@ export function DividendAutomationCard() {
 
   const updateField = (patch: Partial<DividendAutomationPreferences>) => {
     const today = todaySaoPauloISO();
+    const nextSettlementMode = patch.settlementMode ?? settlementMode;
     const shouldStampActivation =
-      !current.activatedAt ||
-      (patch.settlementMode === "auto" && settlementMode !== "auto");
+      (patch.settlementMode === "auto" && settlementMode !== "auto") ||
+      (nextSettlementMode === "auto" && !current.activatedAt);
 
     updateCustomSettings.mutate({
       dividendAutomation: {

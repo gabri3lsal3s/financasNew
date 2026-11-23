@@ -1,7 +1,7 @@
 import { Checkbox, ConfirmDialog, ErrorState, SkeletonTable, Tabs, type TabItem } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import { getErrorMessage } from "@/services/errors";
-import { formatCentsAsBRL } from "@/services/masks";
+import { formatCentsAsBRL, formatCentsAsCurrency } from "@/services/masks";
 import type { PortfolioAsset } from "@/types";
 import { QuickTransactionSheet } from "../components";
 import { DividendsByAssetPanel } from "../components/proventos/dividends-by-asset-panel";
@@ -99,11 +99,15 @@ export function ProventosTab({ defaultMonth }: ProventosTabProps) {
     },
   ];
 
+  const deleteTargetAsset = ctrl.dividendToDelete?.asset_id
+    ? ctrl.assetById.get(ctrl.dividendToDelete.asset_id)
+    : undefined;
   const deleteTargetTicker = ctrl.dividendToDelete
-    ? (ctrl.assetById.get(ctrl.dividendToDelete.asset_id ?? "")?.ticker ??
+    ? (deleteTargetAsset?.ticker ??
       ctrl.dividendToDelete.ticker ??
       "Ativo")
     : "";
+  const deleteTargetCurrency = deleteTargetAsset?.currency === "USD" ? "USD" : "BRL";
 
   return (
     <div className="flex flex-col gap-5 min-w-0" data-tour="investments-dividends">
@@ -153,7 +157,7 @@ export function ProventosTab({ defaultMonth }: ProventosTabProps) {
           }
         }}
         title="Excluir provento?"
-        description={`O registro deste provento de ${deleteTargetTicker} no valor de ${formatCentsAsBRL(numberToCents(ctrl.dividendToDelete?.amount ?? 0))} será removido da carteira.`}
+        description={`O registro deste provento de ${deleteTargetTicker} no valor de ${formatCentsAsCurrency(numberToCents(ctrl.dividendToDelete?.amount ?? 0), deleteTargetCurrency)} será removido da carteira.`}
         confirmLabel="Excluir"
         variant="destructive"
         confirmPending={ctrl.isDeleting}

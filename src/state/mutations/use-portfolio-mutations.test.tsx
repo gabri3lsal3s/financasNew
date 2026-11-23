@@ -20,6 +20,18 @@ import type { PortfolioAsset, PortfolioDividend, PortfolioTransaction, Portfolio
 
 vi.mock("@/data/rpc", () => ({
   approveDividendsBatchRpc: vi.fn(),
+  confirmUserDividendEventsRpc: vi.fn(),
+  revertConfirmedDividendEventsRpc: vi.fn().mockResolvedValue({
+    success: true,
+    deleted_dividends: 0,
+    reverted_events: 0,
+    reverted_cash_brl: 0,
+  }),
+  dismissUserDividendEventRpc: vi.fn().mockResolvedValue({
+    success: true,
+    event_id: null,
+    corporate_dividend_id: null,
+  }),
   executePortfolioBatchAporte: vi.fn(),
   revertPortfolioBatchAporte: vi.fn(),
   deletePortfolioTransactionAtomic: vi.fn().mockResolvedValue(true),
@@ -39,11 +51,16 @@ vi.mock("@/data/repositories/portfolio", () => ({
   deletePortfolioContribution: vi.fn().mockResolvedValue(undefined),
   deletePortfolioContributionsMatching: vi.fn().mockResolvedValue(undefined),
   createPortfolioDividend: vi.fn(),
+  updatePortfolioDividend: vi.fn(),
   deletePortfolioDividend: vi.fn().mockResolvedValue(undefined),
   deletePortfolioDividendsMatching: vi.fn().mockResolvedValue(undefined),
   deletePortfolioDividendsByIds: vi.fn().mockResolvedValue(undefined),
   dismissCorporateDividend: vi.fn().mockResolvedValue({}),
   removeDividendDismissal: vi.fn().mockResolvedValue(undefined),
+  revertSettledUserDividendEvents: vi.fn().mockResolvedValue(undefined),
+  createManualUserDividendEvent: vi.fn(),
+  updateUserDividendEvent: vi.fn(),
+  deleteUserDividendEvent: vi.fn(),
 }));
 
 vi.mock("@/services/toast", () => ({

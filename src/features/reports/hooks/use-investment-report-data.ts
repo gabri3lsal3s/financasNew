@@ -106,7 +106,20 @@ export function useInvestmentReportData({
       FALLBACK_USD_RATE,
     [historicalPit?.usdRate, positionQuery.usdRate, positionRows],
   );
-  const fxMetadata = positionQuery.fxMetadata ?? null;
+  const fxMetadata = useMemo(
+    () =>
+      historicalPit && typeof historicalPit.usdRate === "number" && historicalPit.usdRate > 0
+        ? {
+            rate: historicalPit.usdRate,
+            source: "closing_saved" as const,
+            provider: "closing_saved",
+            fxRateAt: null,
+            fetchedAt: null,
+            isFallback: false,
+          }
+        : positionQuery.fxMetadata ?? null,
+    [historicalPit, positionQuery.fxMetadata],
+  );
   const assetCurrencyMap = useMemo(() => new Map(assets.map((a) => [a.id, a.currency])), [assets]);
 
   const yearDividendsBRL = useMemo(

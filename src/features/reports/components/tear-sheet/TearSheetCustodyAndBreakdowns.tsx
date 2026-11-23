@@ -85,15 +85,15 @@ export function TearSheetCustodyAndBreakdowns({
             title="Dossiê Executivo da Posição Vigente"
             periodLabel={periodLabel}
           />
-          <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
+          <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
             <div className="flex items-center gap-1.5">
-              <Layers className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
+              <Layers className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
               <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
                 CUSTÓDIA CONSOLIDADA DE ATIVOS POR CLASSE ({model.activeInvestmentRows.length} ativos{hasCashReserve ? " + Reserva de Caixa" : ""})
               </h3>
             </div>
             <span className="text-[10px] text-muted-foreground font-mono num">
-              Total Custodiado: <MoneyText cents={numberToCents(totalBRL)} className="font-bold text-foreground inline" />
+              Total Custodiado: <MoneyText cents={numberToCents(totalBRL)} tone="default" className="font-bold text-foreground inline" />
             </span>
           </div>
 
@@ -136,15 +136,15 @@ export function TearSheetCustodyAndBreakdowns({
               title="Dossiê Executivo da Posição Vigente"
               periodLabel={periodLabel}
             />
-            <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
+            <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
               <div className="flex items-center gap-1.5">
-                <PieChart className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
+                <PieChart className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                 <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
                   Detalhamento Gráfico da Alocação &amp; Exposição Setorial
                 </h3>
               </div>
               <span className="text-[10px] text-muted-foreground font-mono num">
-                Total Custodiado: <strong className="text-foreground"><MoneyText cents={numberToCents(totalBRL)} /></strong>
+                Total Custodiado: <strong className="text-foreground"><MoneyText cents={numberToCents(totalBRL)} tone="default" /></strong>
               </span>
             </div>
 
@@ -179,9 +179,9 @@ export function TearSheetCustodyAndBreakdowns({
               title="Dossiê Executivo da Posição Vigente"
               periodLabel={periodLabel}
             />
-            <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
+            <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
               <div className="flex items-center gap-1.5">
-                <PieChart className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
+                <PieChart className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                 <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
                   Raios-X de Subalocação da Carteira
                 </h3>
@@ -245,9 +245,9 @@ export function TearSheetCustodyAndBreakdowns({
               title="Dossiê Executivo da Posição Vigente"
               periodLabel={periodLabel}
             />
-            <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
+            <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
               <div className="flex items-center gap-1.5">
-                <PieChart className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
+                <PieChart className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                 <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
                   Raios-X de Subalocação: Renda Variável (Ações Brasil &amp; Fundos Imobiliários)
                 </h3>
@@ -295,9 +295,9 @@ export function TearSheetCustodyAndBreakdowns({
               title="Dossiê Executivo da Posição Vigente"
               periodLabel={periodLabel}
             />
-            <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/70 pb-1.5">
+            <div className="report-section-header flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-1.5">
               <div className="flex items-center gap-1.5">
-                <PieChart className="size-3.5 text-primary-strong shrink-0" aria-hidden="true" />
+                <PieChart className="size-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
                 <h3 className="text-[10px] font-bold text-foreground uppercase tracking-wider">
                   Raios-X de Subalocação: Renda Fixa &amp; Ativos Internacionais
                 </h3>

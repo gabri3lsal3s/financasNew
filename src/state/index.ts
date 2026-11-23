@@ -133,6 +133,8 @@ export { useAssetPrices, useSetManualPrice, useRemoveManualPrice } from "./queri
 export {
   useMarketQuotesSwr,
   resetMarketQuotesSwrStateForTest,
+  subscribeMarketQuotesSwr,
+  getMarketQuotesSwrSnapshot,
   type UseMarketQuotesSwrOptions,
   type UseMarketQuotesSwrResult,
 } from "./queries/use-market-quotes-swr";

@@ -11,11 +11,14 @@ import {
 } from "./quotes";
 
 const listMarketPriceHistoryByMonthMock = vi.fn();
+const getMarketPriceHistoryForDateMock = vi.fn();
 const functionsInvokeMock = vi.fn();
 
 vi.mock("@/data/repositories/asset-prices", () => ({
   listMarketPriceHistoryByMonth: (...args: unknown[]) =>
     listMarketPriceHistoryByMonthMock(...args),
+  getMarketPriceHistoryForDate: (...args: unknown[]) =>
+    getMarketPriceHistoryForDateMock(...args),
 }));
 
 vi.mock("@/data/client", () => ({
@@ -31,6 +34,7 @@ describe("services/quotes (Modelo Global via Edge Function)", () => {
     clearBcbCache();
     vi.restoreAllMocks();
     listMarketPriceHistoryByMonthMock.mockReset();
+    getMarketPriceHistoryForDateMock.mockReset();
     functionsInvokeMock.mockReset();
   });
 
@@ -248,26 +252,25 @@ describe("services/quotes (Modelo Global via Edge Function)", () => {
     expect(quotes[0]).toMatchObject({ ticker: "USDBRL=X", price: 5.6123, provider: "bcb_ptax" });
   });
 
-  it("fetchPtaxForDate consulta market_price_history antes do BCB SGS e só vai ao BCB em cache miss", async () => {
-    listMarketPriceHistoryByMonthMock.mockResolvedValueOnce([
-      {
-        ticker: "USDBRL=X",
-        reference_date: "2026-09-30",
-        price: 5.45123,
-        currency: "BRL",
-        provider: "bcb_ptax",
-        market_price_at: "2026-09-30T21:00:00.000Z",
-        month: "2026-09",
-        is_month_end: true,
-      },
-    ]);
+  it("fetchPtaxForDate consulta getMarketPriceHistoryForDate antes do BCB SGS e só vai ao BCB em cache miss", async () => {
+    getMarketPriceHistoryForDateMock.mockResolvedValueOnce({
+      ticker: "USDBRL=X",
+      reference_date: "2026-09-30",
+      price: 5.45123,
+      currency: "BRL",
+      provider: "bcb_ptax",
+      market_price_at: "2026-09-30T21:00:00.000Z",
+      month: "2026-09",
+      is_month_end: true,
+    });
     const fetchSpy = vi.spyOn(globalThis, "fetch");
 
     const fromHistory = await fetchPtaxForDate("2026-09-30");
     expect(fromHistory).toBe(5.4512);
+    expect(getMarketPriceHistoryForDateMock).toHaveBeenCalledWith("USDBRL=X", "2026-09-30");
     expect(fetchSpy).not.toHaveBeenCalled();
 
-    listMarketPriceHistoryByMonthMock.mockResolvedValueOnce([]);
+    getMarketPriceHistoryForDateMock.mockResolvedValueOnce(null);
     fetchSpy.mockResolvedValueOnce({
       ok: true,
       json: async () => [
@@ -280,6 +283,23 @@ describe("services/quotes (Modelo Global via Edge Function)", () => {
     expect(fromBcb).toBe(5.4489);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(String(fetchSpy.mock.calls[0]?.[0])).toContain("bcdata.sgs.1");
+  });
+
+  it("syncMarketQuotesBatch interrompe chunks imediatamente quando rateLimited=true", async () => {
+    const tickers = Array.from({ length: 65 }, (_, i) => `PETR${i + 1}`);
+    functionsInvokeMock.mockResolvedValueOnce({
+      data: {
+        updated: 0,
+        rateLimited: true,
+        retryAfterSeconds: 60,
+        quotes: [],
+      },
+      error: null,
+    });
+
+    const res = await syncMarketQuotesBatch({ tickers, mode: "swr" });
+    expect(res.rateLimited).toBe(true);
+    expect(functionsInvokeMock).toHaveBeenCalledTimes(1);
   });
 
   it("fetchBcbIndicator busca e armazena CDI em cache de memória", async () => {

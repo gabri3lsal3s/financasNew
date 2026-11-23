@@ -10,18 +10,23 @@ interface Builder {
   select: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
   update: ReturnType<typeof vi.fn>;
+  upsert: ReturnType<typeof vi.fn>;
   maybeSingle: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
 }
 
 let lastError: unknown = null;
 let lastUpdateInput: unknown = null;
+let lastUpsertInput: unknown = null;
+let lastUpsertOptions: unknown = null;
+let customSettingsState: Record<string, unknown> = {};
 
 function makeBuilder(result: unknown): Builder {
   const builder = {
     select: vi.fn(),
     eq: vi.fn(),
     update: vi.fn(),
+    upsert: vi.fn(),
     maybeSingle: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as Builder;
@@ -33,6 +38,18 @@ function makeBuilder(result: unknown): Builder {
       eq: vi.fn().mockReturnValue({
         then: (cb: (v: unknown) => unknown) => Promise.resolve({ error: lastError }).then(cb),
       }),
+    };
+  });
+  builder.upsert.mockImplementation((input: unknown, options: unknown) => {
+    lastUpsertInput = input;
+    lastUpsertOptions = options;
+    if (input && typeof input === "object" && "custom_settings" in input) {
+      customSettingsState = {
+        ...((input as { custom_settings?: Record<string, unknown> }).custom_settings ?? {}),
+      };
+    }
+    return {
+      then: (cb: (v: unknown) => unknown) => Promise.resolve({ error: lastError }).then(cb),
     };
   });
   builder.maybeSingle.mockReturnValue({
@@ -55,6 +72,9 @@ describe("user-preferences repository", () => {
   beforeEach(() => {
     lastError = null;
     lastUpdateInput = null;
+    lastUpsertInput = null;
+    lastUpsertOptions = null;
+    customSettingsState = {};
   });
 
   it("getUserPreferences devolve dados mapeados", async () => {
@@ -115,7 +135,7 @@ describe("user-preferences repository", () => {
     });
   });
 
-  it("updateCustomSettings atualiza configurações customizadas JSONB", async () => {
+  it("updateCustomSettings realiza upsert de custom_settings JSONB e serializa gravações concorrentes", async () => {
     builder = makeBuilder({
       data: {
         user_id: "u1",
@@ -123,8 +143,28 @@ describe("user-preferences repository", () => {
       },
       error: null,
     });
-    await updateCustomSettings({ density: "compact", soundEnabled: true });
-    expect(lastUpdateInput).toEqual({
+    builder.maybeSingle.mockImplementation(() => ({
+      then: (cb: (v: unknown) => unknown) =>
+        Promise.resolve({
+          data: {
+            user_id: "u1",
+            custom_settings:
+              Object.keys(customSettingsState).length > 0
+                ? customSettingsState
+                : { density: "comfortable" },
+          },
+          error: null,
+        }).then(cb),
+    }));
+
+    await Promise.all([
+      updateCustomSettings({ density: "compact" }),
+      updateCustomSettings({ soundEnabled: true }),
+    ]);
+
+    expect(lastUpsertOptions).toEqual({ onConflict: "user_id" });
+    expect(lastUpsertInput).toEqual({
+      user_id: "u1",
       custom_settings: {
         density: "compact",
         soundEnabled: true,

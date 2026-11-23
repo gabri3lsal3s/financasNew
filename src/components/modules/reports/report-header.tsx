@@ -1,7 +1,9 @@
 import { useContext, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { LogoIcon } from "@/components/layout/brand-logo";
+import { formatFxRate } from "@/services/masks";
 import { SubscriptionContext } from "@/state/subscription-context-def";
 
 export interface ReportMarketMetadata {
@@ -149,7 +151,7 @@ export function ReportHeader({
       metaParts.push(`Cotações Exterior (USD): ${marketMetadata.usdRefLabel}`);
     }
     if (marketMetadata.fxRate && marketMetadata.fxRate > 0) {
-      const fxFormatted = marketMetadata.fxRate.toFixed(4).replace(".", ",");
+      const fxFormatted = formatFxRate(marketMetadata.fxRate);
       const src = marketMetadata.fxSourceLabel ?? "Cotação API";
       const refSuffix = marketMetadata.fxRefLabel ? ` - ${marketMetadata.fxRefLabel}` : "";
       metaParts.push(`Câmbio USD/BRL: R$ ${fxFormatted} (${src}${refSuffix})`);
@@ -185,13 +187,13 @@ export function ReportHeader({
               </span>
 
               {isTrialEffective ? (
-                <span className="rounded-md border border-warning/30 bg-warning/15 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-warning-strong leading-none">
+                <Badge variant="warning" size="xs" className="uppercase tracking-wider font-bold">
                   Teste Pro
-                </span>
+                </Badge>
               ) : isProEffective ? (
-                <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-wider text-primary-strong leading-none">
+                <Badge variant="default" size="xs" className="uppercase tracking-wider font-bold">
                   Pro
-                </span>
+                </Badge>
               ) : null}
 
               <span className="text-muted-foreground/30 font-mono text-xs hidden sm:inline print:inline">|</span>

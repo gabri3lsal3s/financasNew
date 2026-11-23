@@ -6,6 +6,7 @@ import {
   type ProvisionedDividendsSummary,
 } from "@/domain/portfolio";
 import { cn } from "@/lib/utils";
+import { formatFxRate } from "@/services/masks";
 import { formatPercent } from "@/services/masks/percent";
 
 export interface CustodyReconciliationCardProps {
@@ -13,10 +14,6 @@ export interface CustodyReconciliationCardProps {
   provisionedSummary?: ProvisionedDividendsSummary | null;
   variant?: "ui" | "report";
   className?: string;
-}
-
-function formatFxRatePtBr(rate: number): string {
-  return rate.toFixed(4).replace(".", ",");
 }
 
 /**
@@ -30,7 +27,7 @@ export function CustodyReconciliationCard({
   className,
 }: CustodyReconciliationCardProps) {
   const isReport = variant === "report";
-  const fxFormatted = `R$ ${formatFxRatePtBr(summary.fxRateUsed)}`;
+  const fxFormatted = `R$ ${formatFxRate(summary.fxRateUsed)}`;
   const hasProvisioned = Boolean(provisionedSummary && provisionedSummary.totalCount > 0);
   const projectedModel = hasProvisioned
     ? computeProjectedPatrimonyWithProvisioned(summary.closingPatrimonyCents, provisionedSummary)
@@ -85,7 +82,7 @@ export function CustodyReconciliationCard({
         )}
       >
         {/* Bloco 1: Custódia Brasil (BRL) */}
-        <div className="flex flex-col gap-1 rounded-xl border border-border/60 bg-muted/20 p-3 min-w-0">
+        <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-muted/20 p-3 min-w-0">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-semibold text-muted-foreground">
               Custódia Brasil (BRL)
@@ -107,7 +104,7 @@ export function CustodyReconciliationCard({
 
         {/* Bloco 2: Custódia Exterior (USD) */}
         {summary.hasForeignCustody || isReport ? (
-          <div className="flex flex-col gap-1 rounded-xl border border-border/60 bg-muted/20 p-3 min-w-0">
+          <div className="flex flex-col gap-1 rounded-xl border border-border/80 bg-muted/20 p-3 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
                 <Globe className="size-3 text-muted-foreground shrink-0" aria-hidden="true" />
@@ -139,9 +136,12 @@ export function CustodyReconciliationCard({
               </>
             ) : (
               <>
-                <span className="num text-base font-semibold text-muted-foreground whitespace-nowrap">
-                  US$ 0,00
-                </span>
+                <MoneyText
+                  cents={0}
+                  currency="USD"
+                  tone="default"
+                  className="text-base font-semibold text-muted-foreground whitespace-nowrap"
+                />
                 <span className="text-[10.5px] text-muted-foreground">
                   Sem posições custodiadas diretamente em USD
                 </span>
@@ -156,7 +156,9 @@ export function CustodyReconciliationCard({
             <span className="text-[11px] font-semibold text-foreground">
               Patrimônio no Fechamento
             </span>
-            <span className="text-[10px] font-mono text-muted-foreground">100,0%</span>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              {summary.closingPatrimonyCents > 0 ? "100,0%" : "0,0%"}
+            </span>
           </div>
           <MoneyText
             cents={summary.closingPatrimonyCents}

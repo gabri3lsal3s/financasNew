@@ -863,12 +863,24 @@ describe("Notification Hub — Detectores de Eventos (Fase 4.1)", () => {
     });
 
     expect(dividendAlerts).toHaveLength(3);
-    expect(dividendAlerts[0]?.id).toBe("dividends:pending:2026-08-10");
+    expect(dividendAlerts[0]?.id).toMatch(/^dividends:pending:[a-z0-9]+$/);
     expect(dividendAlerts[0]?.totalBRLCents).toBe(15000); // 100 BRL + 10 USD * 5
     expect(dividendAlerts[0]?.hasUncertainTax).toBe(true);
     expect(dividendAlerts[0]?.targetRoute).toBe("/investments?tab=proventos&review=1");
-    expect(dividendAlerts[1]?.id).toBe("dividends:provisioned:2026-08");
+    expect(dividendAlerts[1]?.id).toMatch(/^dividends:provisioned:[a-z0-9]+$/);
     expect(dividendAlerts[2]?.id).toBe("dividends:settled:2026-08-09");
+    expect(dividendAlerts[2]?.targetRoute).toBe("/investments?tab=proventos&subtab=mensal");
+
+    const updatedAlerts = detectDividendNotificationAlerts({
+      pendingConfirmation: [
+        { ticker: "PETR4", totalAmount: 100, currency: "BRL", isTypeUncertain: true },
+        { ticker: "AAPL", totalAmount: 10, currency: "USD", isTypeUncertain: false },
+        { ticker: "BBAS3", totalAmount: 45, currency: "BRL", isTypeUncertain: false },
+      ],
+      today: "2026-08-10",
+      fxRate: 5.0,
+    });
+    expect(updatedAlerts[0]?.id).not.toBe(dividendAlerts[0]?.id);
 
     const center = buildNotificationCenter({ dividendAlerts });
     expect(center.dividendAlerts).toHaveLength(3);

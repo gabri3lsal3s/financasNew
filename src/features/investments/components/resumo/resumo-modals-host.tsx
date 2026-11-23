@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { ReportInsufficientDataModal } from "@/components/modules/reports";
 import { evaluateCarteiraMensalReadiness } from "@/domain/reports";
+import { getOptionalHook } from "@/hooks/use-notification-center";
 import { formatMonthYear } from "@/lib/date";
+import * as stateHooks from "@/state";
 import type { PortfolioTransactionType } from "@/types";
 import {
   AllocationBreakdownDialog,
@@ -25,6 +27,11 @@ export interface ResumoModalsHostProps {
 
 export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
   const { position, breakdownGroup, classTargetsQuery, sectorTargetsQuery } = ctrl;
+  const useUserAccessSafe = getOptionalHook(stateHooks, "useUserAccess", () => ({
+    profile: null as { name?: string | null } | null,
+  }));
+  const userAccess = useUserAccessSafe();
+  const accountHolder = userAccess?.profile?.name ?? undefined;
 
   const breakdownTargetPercent =
     breakdownGroup?.type === "class"
@@ -189,6 +196,7 @@ export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
             ctrl.setExecutiveReportOpen(next);
             if (!next) ctrl.setReportSelectedMonth(undefined);
           }}
+          accountHolder={accountHolder}
           rows={position.rows}
           totalBRL={position.totalBRL}
           cashBRL={position.cashBRL}

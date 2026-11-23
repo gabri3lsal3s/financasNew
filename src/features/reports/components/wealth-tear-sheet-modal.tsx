@@ -77,6 +77,7 @@ export interface WealthTearSheetModalProps {
   periodLabel?: string;
   appName?: string;
   accountHolder?: string;
+  isCurrentPeriod?: boolean;
   readiness?: ReportReadinessResult<DossiePosicaoSections>;
 }
 
@@ -118,24 +119,24 @@ export function WealthTearSheetModal({
   periodLabel = "Posição Atual Consolidada",
   appName = "Axir",
   accountHolder,
+  isCurrentPeriod = true,
 }: WealthTearSheetModalProps) {
   const reportRefresh = useExecutiveReportRefresh({
     open,
-    enabled: true,
+    enabled: isCurrentPeriod,
     assets: assetsMetadata,
     tickers: rows.map((r) => r.ticker),
   });
 
-  const staleGuard = useMemo(
-    () =>
-      evaluateStaleQuoteGuard({
-        rows,
-        transactions,
-        assets: assetsMetadata,
-        fxMetadata,
-      }),
-    [rows, transactions, assetsMetadata, fxMetadata],
-  );
+  const staleGuard = useMemo(() => {
+    if (!isCurrentPeriod) return null;
+    return evaluateStaleQuoteGuard({
+      rows,
+      transactions,
+      assets: assetsMetadata,
+      fxMetadata,
+    });
+  }, [isCurrentPeriod, rows, transactions, assetsMetadata, fxMetadata]);
 
   const marketSummary = useMemo(
     () =>
@@ -277,6 +278,7 @@ export function WealthTearSheetModal({
         model={model}
         totalBRL={totalBRL}
         periodLabel={periodLabel}
+        accountHolder={accountHolder}
         periodRedemptions={periodRedemptions}
         custodyReconciliation={custodyReconciliation}
         provisionedSummary={provisionedSummary}

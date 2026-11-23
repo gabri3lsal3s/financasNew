@@ -4,6 +4,14 @@ import {
   deletePortfolioAsset,
   updatePortfolioAsset,
 } from "@/data/repositories/portfolio";
+import {
+  isCashAssetClass,
+  isCustomValuationAsset,
+  isFixedIncomeClass,
+  isPrivateFixedIncomeTicker,
+  isTesouroAsset,
+  normalizeTesouroTicker,
+} from "@/domain/portfolio";
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
@@ -42,6 +50,19 @@ export function useCreatePortfolioAsset() {
   });
 }
 
+function isMarketQuotedPortfolioAsset(asset: PortfolioAsset): boolean {
+  const clean = (asset.ticker ?? "").trim().toUpperCase();
+  if (!clean || clean === "CAIXA" || clean === "CASH" || clean.startsWith("CAIXA_") || clean.startsWith("CASH_")) {
+    return false;
+  }
+  if ((Number(asset.quantity) || 0) <= 0) return false;
+  if (isCashAssetClass(asset.asset_class ?? null)) return false;
+  if (isFixedIncomeClass(asset.asset_class ?? null)) return false;
+  if (isPrivateFixedIncomeTicker(clean) || isCustomValuationAsset(asset)) return false;
+  if (isTesouroAsset(clean, asset.asset_class) || Boolean(normalizeTesouroTicker(clean))) return false;
+  return true;
+}
+
 export function useUpdatePortfolioAsset() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -49,7 +70,7 @@ export function useUpdatePortfolioAsset() {
       updatePortfolioAsset(id, patch),
     onSuccess: (updated) => {
       void invalidatePortfolioSuite(queryClient);
-      if (updated?.ticker) {
+      if (updated && isMarketQuotedPortfolioAsset(updated)) {
         void triggerSurgicalQuoteSync(queryClient, {
           assets: [updated],
           reason: "cache_miss",

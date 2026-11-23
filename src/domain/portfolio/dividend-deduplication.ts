@@ -13,17 +13,18 @@
  */
 
 import type { CorporateDividend, PortfolioDividend } from "@/types";
-import { countBusinessDays } from "./business-days";
+import { classifyTickerMarket, countMarketBusinessDays } from "./market-calendar";
 
 export interface DeduplicationOptions {
   maxBusinessDaysDiff?: number;
   maxAmountDiff?: number;
 }
 
-const FRACTIONAL_B3_SUFFIX_RE = /^([A-Z]{4}\d{1,2})F$/;
+const FRACTIONAL_B3_SUFFIX_RE = /^([A-Z][A-Z0-9]{3}\d{1,2})F$/;
+const VALID_ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Normaliza a chave do ticker para conciliação de proventos (PETR4F / PETR4.SA -> PETR4).
+ * Normaliza a chave do ticker para conciliação de proventos (PETR4F / B3SA3F / PETR4.SA -> PETR4 / B3SA3).
  */
 export function normalizeDividendTickerKey(rawTicker: string): string {
   const clean = rawTicker.trim().toUpperCase().replace(/\.SA$/, "");
@@ -32,13 +33,22 @@ export function normalizeDividendTickerKey(rawTicker: string): string {
 }
 
 /**
- * Calcula a diferença em dias úteis entre duas datas ISO YYYY-MM-DD.
+ * Calcula a diferença em dias úteis entre duas datas ISO YYYY-MM-DD (com validação contra data inválida).
  */
-export function getBusinessDaysDifference(date1: string, date2: string): number {
+export function getBusinessDaysDifference(
+  date1: string,
+  date2: string,
+  market: "BR" | "US" = "BR",
+): number {
   const d1 = date1.slice(0, 10);
   const d2 = date2.slice(0, 10);
+  if (!VALID_ISO_DATE_RE.test(d1) || !VALID_ISO_DATE_RE.test(d2)) {
+    return Number.POSITIVE_INFINITY;
+  }
   if (d1 === d2) return 0;
-  return d1 < d2 ? countBusinessDays(d1, d2) : countBusinessDays(d2, d1);
+  return d1 < d2
+    ? countMarketBusinessDays(d1, d2, market)
+    : countMarketBusinessDays(d2, d1, market);
 }
 
 /**
@@ -46,7 +56,7 @@ export function getBusinessDaysDifference(date1: string, date2: string): number 
  * corporativo (para deduplicação fuzzy e reconciliação de `settled_dividend_id`).
  */
 export function findFuzzyMatchingManualDividend(
-  corporateEvent: Pick<CorporateDividend, "ticker" | "payment_date">,
+  corporateEvent: Pick<CorporateDividend, "ticker" | "payment_date"> & { currency?: string },
   calculatedTotal: number,
   manualDividends: ReadonlyArray<
     Pick<PortfolioDividend, "ticker" | "date" | "amount"> & { id?: string; asset_id?: string | null }
@@ -54,13 +64,19 @@ export function findFuzzyMatchingManualDividend(
   assetTickerMap?: ReadonlyMap<string, string>,
   options: DeduplicationOptions = {},
 ): (Pick<PortfolioDividend, "ticker" | "date" | "amount"> & { id?: string; asset_id?: string | null }) | null {
-  if (!corporateEvent.payment_date) return null;
+  if (!corporateEvent.payment_date || !Number.isFinite(calculatedTotal)) return null;
 
   const maxDays = options.maxBusinessDaysDiff ?? 3;
-  const maxDiff = options.maxAmountDiff ?? 0.05;
+  const maxDiffCents = Math.round((options.maxAmountDiff ?? 0.05) * 100);
 
   const corpTicker = normalizeDividendTickerKey(corporateEvent.ticker);
   const corpDate = corporateEvent.payment_date.slice(0, 10);
+  if (!VALID_ISO_DATE_RE.test(corpDate)) return null;
+
+  const rawMarket = classifyTickerMarket(corporateEvent.ticker);
+  const market: "BR" | "US" =
+    rawMarket === "US" || corporateEvent.currency === "USD" ? "US" : "BR";
+  const calculatedCents = Math.round(calculatedTotal * 100);
 
   for (const manual of manualDividends) {
     const rawManualTicker =
@@ -70,11 +86,15 @@ export function findFuzzyMatchingManualDividend(
     if (!manualTicker || manualTicker !== corpTicker) continue;
 
     const manualDate = manual.date.slice(0, 10);
-    const dayDiff = getBusinessDaysDifference(corpDate, manualDate);
+    if (!VALID_ISO_DATE_RE.test(manualDate)) continue;
+
+    const dayDiff = getBusinessDaysDifference(corpDate, manualDate, market);
     if (dayDiff > maxDays) continue;
 
-    const amountDiff = Math.abs(calculatedTotal - manual.amount);
-    if (amountDiff <= maxDiff) {
+    const manualNum = Number(manual.amount);
+    if (!Number.isFinite(manualNum)) continue;
+    const manualCents = Math.round(manualNum * 100);
+    if (Math.abs(calculatedCents - manualCents) <= maxDiffCents) {
       return manual;
     }
   }

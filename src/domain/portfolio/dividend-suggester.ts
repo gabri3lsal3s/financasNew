@@ -18,14 +18,14 @@ import type {
 } from "@/types";
 import { applyOperation, type AssetPosition } from "./index";
 import {
-  isCorporateDividendDeduplicated,
+  findFuzzyMatchingManualDividend,
   normalizeDividendTickerKey,
 } from "./dividend-deduplication";
 import { getMarketZonedParts } from "./market-calendar";
 import { FALLBACK_USD_RATE } from "./valuation";
 
 export interface SuggestedDividendItem {
-  corporateDividendId: string;
+  corporateDividendId: string | null;
   eventId?: string | null;
   assetId: string;
   ticker: string;
@@ -43,6 +43,7 @@ export interface SuggestedDividendItem {
   provider?: string | null;
   isTypeUncertain?: boolean;
   isManual?: boolean;
+  notes?: string | null;
 }
 
 export interface SuggestedDividendsResult {
@@ -111,6 +112,24 @@ function isCustodyTransaction(type: PortfolioTransaction["type"]): boolean {
   );
 }
 
+function getCustodyTxIntradayWeight(type: PortfolioTransaction["type"]): number {
+  if (type === "split" || type === "reverse_split") return 0;
+  if (type === "buy" || type === "subscription") return 1;
+  return 2;
+}
+
+function toSaoPauloDateIso(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const parsed = Date.parse(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return /^\d{4}-\d{2}-\d{2}/.test(trimmed) ? trimmed.slice(0, 10) : "";
+  }
+  return getMarketZonedParts(new Date(parsed), "America/Sao_Paulo").isoDate;
+}
+
 /**
  * Calcula a posição de custódia de um ativo até o fechamento da Data COM (`America/Sao_Paulo`).
  *
@@ -125,14 +144,16 @@ export function getCustodyAtComDate(
   const comClean = comDate.slice(0, 10);
   const currentQty = Math.max(0, Number(asset.quantity) || 0);
   const assetCreatedAt =
-    "created_at" in asset && typeof (asset as Record<string, unknown>).created_at === "string"
-      ? ((asset as Record<string, unknown>).created_at as string).slice(0, 10)
-      : "";
+    "created_at" in asset ? toSaoPauloDateIso((asset as Record<string, unknown>).created_at) : "";
 
   const custodyTxs = transactions
     .filter((tx) => tx.asset_id === asset.id && isCustodyTransaction(tx.type))
     .slice()
-    .sort((a, b) => a.date.slice(0, 10).localeCompare(b.date.slice(0, 10)));
+    .sort((a, b) => {
+      const dCmp = a.date.slice(0, 10).localeCompare(b.date.slice(0, 10));
+      if (dCmp !== 0) return dCmp;
+      return getCustodyTxIntradayWeight(a.type) - getCustodyTxIntradayWeight(b.type);
+    });
 
   if (custodyTxs.length === 0) {
     if (!assetCreatedAt || assetCreatedAt <= comClean) {
@@ -147,13 +168,18 @@ export function getCustodyAtComDate(
     totalCost: 0,
     dividends: 0,
   };
+  let hadClampedSell = false;
   for (const tx of custodyTxs) {
+    const txQty = Number(tx.quantity) || 0;
+    if (tx.type === "sell" && zeroReplayPos.quantity + 1e-6 < txQty) {
+      hadClampedSell = true;
+    }
     zeroReplayPos = applyOperation(zeroReplayPos, tx);
   }
 
   // Detecta custódia inicial pré-ledger por reconciliação reversa a partir de `asset.quantity`.
   let baselineQty = 0;
-  if (currentQty > zeroReplayPos.quantity + 1e-6) {
+  if (currentQty > zeroReplayPos.quantity + 1e-6 || hadClampedSell) {
     let q = currentQty;
     for (let i = custodyTxs.length - 1; i >= 0; i--) {
       const tx = custodyTxs[i]!;
@@ -209,7 +235,7 @@ export function calculateSuggestedDividends(
     usdRate = FALLBACK_USD_RATE,
   } = input;
 
-  const effectiveFx = usdRate > 0 ? usdRate : FALLBACK_USD_RATE;
+  const effectiveFx = Number.isFinite(usdRate) && usdRate > 0 ? usdRate : FALLBACK_USD_RATE;
   const dismissedIds = new Set(dismissals.map((d) => d.corporate_dividend_id));
 
   const assetsByTicker = new Map<string, PortfolioAsset[]>();
@@ -232,6 +258,7 @@ export function calculateSuggestedDividends(
 
   const available: SuggestedDividendItem[] = [];
   const projected: SuggestedDividendItem[] = [];
+  const consumedManualDividends = new Set<(typeof manualDividends)[number]>();
 
   let availBRLCents = 0;
   let availUSDCents = 0;
@@ -254,19 +281,23 @@ export function calculateSuggestedDividends(
 
       const grossCents = Math.round(quantity * event.rate * 100);
       const netCents = Math.round(quantity * event.net_rate * 100);
-      if (netCents <= 0) continue;
+      if (!Number.isFinite(netCents) || netCents <= 0 || !Number.isFinite(grossCents)) continue;
 
       const grossAmount = grossCents / 100;
       const totalAmount = netCents / 100;
 
-      // Deduplicação fuzzy contra lançamentos manuais já existentes
-      const alreadyLogged = isCorporateDividendDeduplicated(
+      // Deduplicação fuzzy contra lançamentos manuais não consumidos por outro evento
+      const remainingManuals = manualDividends.filter((m) => !consumedManualDividends.has(m));
+      const matchedManual = findFuzzyMatchingManualDividend(
         event,
         totalAmount,
-        manualDividends,
+        remainingManuals,
         assetTickerMap,
       );
-      if (alreadyLogged) continue;
+      if (matchedManual) {
+        consumedManualDividends.add(matchedManual as (typeof manualDividends)[number]);
+        continue;
+      }
 
       const paymentDateClean = event.payment_date ? event.payment_date.slice(0, 10) : null;
       const isAvailable = paymentDateClean !== null && paymentDateClean <= referenceDate;

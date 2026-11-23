@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ChangeEvent, InputHTMLAttributes, KeyboardEvent } from "react";
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { ChangeEvent, FocusEvent, InputHTMLAttributes, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
 import { extractDigits } from "@/domain/money";
 
@@ -12,6 +12,8 @@ export interface PercentInputProps
   value?: number;
   /** Notifica o componente pai com o número decimal parseado. */
   onValueChange?: (value: number) => void;
+  /** Limite máximo opcional aplicado ao digitar (ex: 100 para 100%). */
+  maxValue?: number;
   /** Sufixo visual à direita do campo (default "%"). */
   suffix?: string;
   /** Variante de tamanho. */
@@ -47,12 +49,14 @@ export function PercentInput({
   id,
   value = 0,
   onValueChange,
+  maxValue,
   suffix = "%",
   size = "md",
   maxDigits = 8,
   error,
   className,
   disabled,
+  onBlur,
   "aria-invalid": ariaInvalid,
   "aria-describedby": ariaDescribedBy,
   ...rest
@@ -62,6 +66,15 @@ export function PercentInput({
   const errorId = error ? `${inputId}-error` : undefined;
   const inputRef = useRef<HTMLInputElement>(null);
   const [digits, setDigits] = useState<string>(() => digitsFromValue(value, maxDigits));
+  const [prevValueProp, setPrevValueProp] = useState<number>(value);
+
+  if (value !== prevValueProp) {
+    setPrevValueProp(value);
+    const syncedDigits = digitsFromValue(value, maxDigits);
+    if (syncedDigits !== digits) {
+      setDigits(syncedDigits);
+    }
+  }
 
   const numericValue = useMemo(() => {
     if (!digits) return 0;
@@ -70,27 +83,37 @@ export function PercentInput({
 
   const display = useMemo(() => formatPercentDisplay(numericValue), [numericValue]);
 
-  const lastExternalValue = useRef(value);
-  useEffect(() => {
-    if (lastExternalValue.current !== value) {
-      lastExternalValue.current = value;
-      setDigits(digitsFromValue(value, maxDigits));
-    }
-  }, [value, maxDigits]);
-
   useLayoutEffect(() => {
     const el = inputRef.current;
-    if (el) el.setSelectionRange(el.value.length, el.value.length);
+    if (el && document.activeElement === el) {
+      el.setSelectionRange(el.value.length, el.value.length);
+    }
   });
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const nextDigits = extractDigits(event.target.value).slice(0, maxDigits);
-      setDigits(nextDigits);
-      const nextVal = nextDigits ? Number.parseInt(nextDigits, 10) / 100 : 0;
+      let nextVal = nextDigits ? Number.parseInt(nextDigits, 10) / 100 : 0;
+      let resolvedDigits = nextDigits;
+      if (maxValue !== undefined && Number.isFinite(maxValue) && nextVal > maxValue) {
+        nextVal = maxValue;
+        resolvedDigits = digitsFromValue(maxValue, maxDigits);
+      }
+      setDigits(resolvedDigits);
       onValueChange?.(nextVal);
     },
-    [maxDigits, onValueChange],
+    [maxDigits, maxValue, onValueChange],
+  );
+
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      const syncedDigits = digitsFromValue(value, maxDigits);
+      if (syncedDigits !== digits) {
+        setDigits(syncedDigits);
+      }
+      onBlur?.(event);
+    },
+    [digits, maxDigits, onBlur, value],
   );
 
   const handleKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
@@ -116,6 +139,7 @@ export function PercentInput({
         aria-describedby={errorId ?? ariaDescribedBy}
         value={display}
         onChange={handleChange}
+        onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         className={cn(
           "flex w-full rounded-md border border-input bg-surface font-mono tabular-nums text-foreground shadow-xs transition-colors",

@@ -3,6 +3,7 @@ import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
 import { sanitizeReportText } from "@/domain/reports";
 import { cn } from "@/lib/utils";
 import { formatAssetQuantity } from "@/services/formatting";
+import { formatFxRate } from "@/services/masks";
 import { formatSignedPct } from "@/services/masks/percent";
 import {
   ReportAssetGovernanceBadges,
@@ -27,19 +28,20 @@ export function ReportEquityClassTable({
   isInternacional: boolean;
   subtotalPriceVarPct: number | null;
 }) {
-  const isAllUsd =
-    isInternacional &&
-    group.items.length > 0 &&
-    group.items.every((item) => (item.currency ?? "BRL") === "USD");
   const hasUsdAssets =
-    isInternacional &&
+    group.items.length > 0 &&
     group.items.some((item) => (item.currency ?? "BRL") === "USD");
+  const hasBrlAssets =
+    group.items.length > 0 &&
+    group.items.some((item) => (item.currency ?? "BRL") !== "USD");
+  const isAllUsd = group.items.length > 0 && hasUsdAssets && !hasBrlAssets;
+  const isMixedCurrency = hasUsdAssets && hasBrlAssets;
   const hasQuoteFlags = group.items.some((item) => Boolean(item.quoteStatusFlag));
   const fxSourceText =
     group.fxSourceLabel ??
     (group.usdRate && Math.abs(group.usdRate - FALLBACK_USD_RATE) < 0.0001
       ? "Taxa Estimada (Fallback)"
-      : "PTAX Oficial BCB");
+      : "Cotação de Referência");
 
   return (
     <div className="w-full min-w-0 rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden print:overflow-visible print:border-none print:shadow-none print:rounded-none print:block">
@@ -66,10 +68,10 @@ export function ReportEquityClassTable({
               </th>
               <th className="py-2 px-1.5 text-right">Qtd</th>
               <th className="py-2 px-2 text-right whitespace-nowrap">
-                {isAllUsd ? "PM (US$)" : "PM (R$)"}
+                {isAllUsd ? "PM (US$)" : isMixedCurrency ? "PM" : "PM (R$)"}
               </th>
               <th className="py-2 px-2 text-right whitespace-nowrap">
-                {isAllUsd ? "Cotação (US$)" : "Cotação (R$)"}
+                {isAllUsd ? "Cotação (US$)" : isMixedCurrency ? "Cotação" : "Cotação (R$)"}
               </th>
               <th className="py-2 px-2.5 text-right whitespace-nowrap">Total (R$)</th>
               <th className="py-2 px-2 text-right whitespace-nowrap">
@@ -101,11 +103,11 @@ export function ReportEquityClassTable({
                     {formatAssetQuantity(item.quantity, group.className)}
                   </td>
                   <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-muted-foreground whitespace-nowrap text-[10.5px]">
-                    <MoneyText cents={item.avgPriceCents} currency={currency} tone="default" hideCurrency />
+                    <MoneyText cents={item.avgPriceCents} currency={currency} tone="default" hideCurrency={!isMixedCurrency} />
                   </td>
                   <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-foreground whitespace-nowrap text-[10.5px]">
                     <span className="inline-flex items-center justify-end gap-1">
-                      <MoneyText cents={item.currentPriceCents} currency={currency} tone="default" hideCurrency />
+                      <MoneyText cents={item.currentPriceCents} currency={currency} tone="default" hideCurrency={!isMixedCurrency} />
                       {item.quoteStatusFlag ? (
                         <span
                           className={cn(
@@ -173,7 +175,7 @@ export function ReportEquityClassTable({
                     : "text-negative-strong",
                 )}
               >
-                {isInternacional && group.subtotalPriceVarPctUSD !== undefined ? (
+                {(isInternacional || hasUsdAssets) && group.subtotalPriceVarPctUSD !== undefined ? (
                   <div className="flex flex-col items-end leading-tight gap-0.5 text-right">
                     <span className="font-semibold text-foreground font-mono tabular-nums text-[9.5px] whitespace-nowrap">
                       {formatSignedPct(group.subtotalPriceVarPctUSD)} (USD)
@@ -210,7 +212,7 @@ export function ReportEquityClassTable({
               </div>
               {group.usdRate && group.usdRate > 0 && (
                 <div className="font-mono text-[9px] text-muted-foreground/90">
-                  Conversão USD/BRL ({fxSourceText}): R$ {group.usdRate.toFixed(4).replace(".", ",")}
+                  Conversão USD/BRL ({fxSourceText}): R$ {formatFxRate(group.usdRate)}
                 </div>
               )}
             </>

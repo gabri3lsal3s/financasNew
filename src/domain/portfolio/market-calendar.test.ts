@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyTickerMarket,
+  getLastBusinessDayOfMonth,
   getLastMarketCloseUtc,
   getUsMarketHolidays,
   isBusinessDayForMarket,
+  isMarketClosedForMonth,
   isMarketOpenForTicker,
   isTickerQuoteStaleForSwr,
   zonedMarketTimeToUtc,
@@ -133,5 +135,16 @@ describe("domain/portfolio/market-calendar", () => {
         now: openNow,
       }),
     ).toBe("swr_expired");
+  });
+
+  it("respeita último dia útil B3 e fronteira exata das 19h BRT em isMarketClosedForMonth", () => {
+    // Novembro/2024: dia 30 foi sábado -> último dia útil = sexta 2024-11-29 (pós Consciência Negra dia 20)
+    expect(getLastBusinessDayOfMonth(2024, 11)).toBe("2024-11-29");
+    // Novembro/2026: dia 30 é segunda útil -> último dia útil = 2026-11-30
+    expect(getLastBusinessDayOfMonth(2026, 11)).toBe("2026-11-30");
+
+    // 18:59 BRT = 21:59 UTC (ainda aberto na fronteira do snapshot) vs 19:00 BRT = 22:00 UTC (fechado)
+    expect(isMarketClosedForMonth(2026, 11, new Date("2026-11-30T21:59:00.000Z"))).toBe(false);
+    expect(isMarketClosedForMonth(2026, 11, new Date("2026-11-30T22:00:00.000Z"))).toBe(true);
   });
 });

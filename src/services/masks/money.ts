@@ -68,3 +68,28 @@ export function formatCentsAsCurrency(
 export function formatCentsAsBRL(cents: number, options?: FormatCurrencyOptions): string {
   return formatCentsAsCurrency(cents, "BRL", options);
 }
+
+const fxRateFormatter4 = new Intl.NumberFormat("pt-BR", {
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 4,
+});
+
+/** Formata taxa de câmbio USD/BRL em pt-BR (ex: 5.25 -> "5,2500"). */
+export function formatFxRate(rate: number, decimals = 4): string {
+  const safeDecimals = Number.isInteger(decimals) && decimals >= 0 && decimals <= 6 ? decimals : 4;
+  if (!Number.isFinite(rate) || rate <= 0) {
+    return safeDecimals === 4
+      ? "0,0000"
+      : new Intl.NumberFormat("pt-BR", {
+          minimumFractionDigits: safeDecimals,
+          maximumFractionDigits: safeDecimals,
+        }).format(0);
+  }
+  if (safeDecimals === 4) {
+    return fxRateFormatter4.format(rate);
+  }
+  return new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: safeDecimals,
+    maximumFractionDigits: safeDecimals,
+  }).format(rate);
+}

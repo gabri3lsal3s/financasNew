@@ -48,7 +48,7 @@ export function CorporateDividendsBanner({
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <h2 className="text-sm font-semibold text-foreground truncate">
-              {hasAvailable ? "Proventos Creditados na Corretora" : "Proventos Previstos no Mês"}
+              {hasAvailable ? "Proventos Creditados na Corretora" : "Proventos Provisionados"}
             </h2>
             <Badge
               variant={hasAvailable && hasUncertainTax ? "warning" : "portfolio"}
@@ -66,13 +66,13 @@ export function CorporateDividendsBanner({
             {hasAvailable ? (
               <>
                 {availableCount} {availableCount === 1 ? "provento disponível" : "proventos disponíveis"} totalizando{" "}
-                <MoneyText cents={numberToCents(totalAvailableAmount)} className="font-semibold" />
+                <MoneyText cents={numberToCents(totalAvailableAmount)} variant="caption" tone="default" className="font-semibold" />
                 {hasUncertainTax ? " (revise IR/tipo antes de aprovar)." : "."}
               </>
             ) : (
               <>
                 {projectedCount} {projectedCount === 1 ? "provento previsto" : "proventos previstos"} totalizando{" "}
-                <MoneyText cents={numberToCents(totalProjectedAmount)} className="font-semibold" />.
+                <MoneyText cents={numberToCents(totalProjectedAmount)} variant="caption" tone="default" className="font-semibold" />.
               </>
             )}
           </p>

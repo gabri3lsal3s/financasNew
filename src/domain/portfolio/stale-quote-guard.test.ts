@@ -273,4 +273,87 @@ describe("domain/portfolio/stale-quote-guard", () => {
     });
     expect(usdWithStaleFx.fxWarning).toContain("defasada");
   });
+
+  it("respeita hasMarketOpenedToday antes da abertura, alerta API sem timestamp e isenta Renda Fixa/Tesouro/Caixa/custom_valuation", () => {
+    // 2026-06-16 12:00 UTC = 09:00 BRT (B3 ainda não abriu às 10:00 BRT)
+    const beforeOpen = new Date("2026-06-16T12:00:00.000Z");
+
+    const res = evaluateStaleQuoteGuard({
+      now: beforeOpen,
+      fxMetadata: {
+        rate: 5.7,
+        source: "api",
+        provider: "bcb_ptax",
+        fxRateAt: null,
+        fetchedAt: null,
+        isFallback: false,
+      },
+      transactions: [
+        { asset_id: "br1", type: "buy", date: "2026-06-16" },
+      ],
+      rows: [
+        {
+          assetId: "br1",
+          ticker: "PETR4",
+          currency: "BRL",
+          quantity: 10,
+          priceBRL: 38,
+          source: "api",
+          marketPriceAt: "2026-06-15T20:55:00.000Z",
+        },
+        {
+          assetId: "br2",
+          ticker: "VALE3",
+          currency: "BRL",
+          quantity: 10,
+          priceBRL: 60,
+          source: "api",
+          marketPriceAt: null,
+          fetchedAt: null,
+        },
+        {
+          assetId: "rf1",
+          ticker: "CDB-BANCO-X",
+          assetClass: "Renda Fixa",
+          currency: "BRL",
+          quantity: 1,
+          priceBRL: 1000,
+          source: "fallback",
+        },
+        {
+          assetId: "td1",
+          ticker: "TESOURO SELIC 2029",
+          assetClass: "Tesouro Direto",
+          currency: "BRL",
+          quantity: 1,
+          priceBRL: 15000,
+          source: "fallback",
+        },
+        {
+          assetId: "cash1",
+          ticker: "CAIXA",
+          assetClass: "Caixa",
+          currency: "BRL",
+          quantity: 500,
+          priceBRL: 500,
+          source: "fallback",
+          isCash: true,
+        },
+        {
+          assetId: "us1",
+          ticker: "NVDA",
+          currency: "USD",
+          quantity: 2,
+          priceBRL: 1500,
+          source: "api",
+          marketPriceAt: "2026-06-15T20:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(res.postTradeStaleTickers).toEqual([]);
+    expect(res.fallbackTickers).toEqual([]);
+    expect(res.staleMarketTickers).toEqual(["VALE3"]);
+    expect(res.fxWarning).toContain("sem timestamp");
+  });
 });

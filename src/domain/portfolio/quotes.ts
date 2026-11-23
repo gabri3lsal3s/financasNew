@@ -15,24 +15,16 @@ export interface ParsedQuote {
   currency: AssetCurrency;
 }
 
+const PRIVATE_FIXED_INCOME_PREFIX_RE = /^(CDB|RDB|LCI|LCA|CRI|CRA|LC|LF|LFT|NTNB|LTN|DEB)([-_\s]|$)/;
+
 /**
  * Identifica se um ticker corresponde a um instrumento de renda fixa privada
- * (CDB, LCI, LCA, CRI, CRA, RDB, LC, Debêntures) que não possui cotação pública em bolsa.
+ * (CDB, LCI, LCA, CRI, CRA, RDB, LC, LF, Debêntures) que não possui cotação pública em bolsa.
  */
 export function isPrivateFixedIncomeTicker(raw: string): boolean {
   const ticker = raw.trim().toUpperCase();
   if (!ticker) return false;
-  return (
-    ticker.startsWith("CDB") ||
-    ticker.startsWith("LCI") ||
-    ticker.startsWith("LCA") ||
-    ticker.startsWith("CRI") ||
-    ticker.startsWith("CRA") ||
-    ticker.startsWith("RDB") ||
-    ticker.startsWith("LC-") ||
-    ticker.startsWith("LC_") ||
-    ticker.startsWith("DEB")
-  );
+  return PRIVATE_FIXED_INCOME_PREFIX_RE.test(ticker);
 }
 
 /**

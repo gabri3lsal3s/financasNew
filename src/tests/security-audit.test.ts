@@ -1658,6 +1658,7 @@ describe("Auditoria de Segurança v3.15 — Remediação Integral F-01 a F-16 (M
       "upsert_market_price_history",
       "purge_old_eod_market_price_history",
       "try_acquire_quote_locks",
+      "release_quote_locks",
       "check_quote_refresh_rate_limit",
       "commit_monthly_closing_system",
     ]) {
@@ -1665,6 +1666,10 @@ describe("Auditoria de Segurança v3.15 — Remediação Integral F-01 a F-16 (M
       expect(mig0142).toMatch(new RegExp(`REVOKE ALL ON FUNCTION public\\.${fn}[\\s\\S]*FROM PUBLIC, anon, authenticated`, "i"));
       expect(mig0142).toMatch(new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${fn}[\\s\\S]*TO service_role`, "i"));
     }
+
+    expect(mig0142).toContain("public.set_manual_asset_price");
+    expect(mig0142).toMatch(/REVOKE ALL ON FUNCTION public\.set_manual_asset_price[\s\S]*FROM PUBLIC, anon/i);
+    expect(mig0142).toMatch(/GRANT EXECUTE ON FUNCTION public\.set_manual_asset_price[\s\S]*TO authenticated/i);
 
     expect(mig0142).toMatch(/restore_backup[\s\S]*set_config\('app\.snapshot_rpc',\s*'on',\s*true\)/i);
     expect(mig0142).toMatch(
@@ -1679,10 +1684,13 @@ describe("Auditoria de Segurança v3.15 — Remediação Integral F-01 a F-16 (M
     );
 
     expect(mig0143).toMatch(/ENABLE ROW LEVEL SECURITY/i);
+    expect(mig0143).toMatch(/FORCE ROW LEVEL SECURITY/i);
     expect(mig0143).toContain("uq_user_dividend_events_corp");
+    expect(mig0143).toContain("UNIQUE (user_id, corporate_dividend_id)");
     expect(mig0143).toContain("uq_corporate_dividends");
     expect(mig0143).toContain("UNIQUE NULLS NOT DISTINCT (ticker, com_date, type, payment_date)");
     expect(mig0143).toMatch(/\(SELECT auth\.uid\(\)\) = user_id/i);
+    expect(mig0143).toMatch(/user_dividend_events_insert_own[\s\S]*portfolio_assets pa[\s\S]*WHERE pa\.id = asset_id/i);
 
     for (const sysFn of [
       "upsert_corporate_dividend_system",
@@ -1700,6 +1708,21 @@ describe("Auditoria de Segurança v3.15 — Remediação Integral F-01 a F-16 (M
     expect(mig0143).toMatch(
       /confirm_user_dividend_events_atomic[\s\S]*can_current_user_write_module\('investments'\)/i,
     );
+    expect(mig0143).toMatch(
+      /approve_dividends_batch_atomic[\s\S]*REVOKE ALL ON FUNCTION public\.approve_dividends_batch_atomic[\s\S]*FROM PUBLIC, anon/i,
+    );
+    for (const authFn of [
+      "revert_confirmed_dividend_events_atomic",
+      "dismiss_user_dividend_event_atomic",
+    ]) {
+      expect(mig0143).toContain(`public.${authFn}`);
+      expect(mig0143).toMatch(
+        new RegExp(`REVOKE ALL ON FUNCTION public\\.${authFn}[\\s\\S]*FROM PUBLIC, anon`, "i"),
+      );
+      expect(mig0143).toMatch(
+        new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${authFn}[\\s\\S]*TO authenticated`, "i"),
+      );
+    }
   });
 });
 

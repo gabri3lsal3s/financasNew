@@ -9,8 +9,30 @@ import { getEasterSunday, isBusinessDay } from "./business-days";
 
 export type QuoteMarket = "BR" | "US" | "FX" | "CRYPTO";
 
-const FRACTIONAL_B3_REGEX = /^[A-Z]{4}\d{1,2}F$/;
-const STANDARD_B3_REGEX = /^[A-Z]{4}\d{1,2}$/;
+const FRACTIONAL_B3_REGEX = /^[A-Z][A-Z0-9]{3}\d{1,2}F$/;
+const STANDARD_B3_REGEX = /^(?=[A-Z0-9]{4}\d{1,2}$)(?=.*[A-Z])[A-Z][A-Z0-9]{3}\d{1,2}$/;
+const CRYPTO_TICKERS = new Set([
+  "BTC",
+  "ETH",
+  "SOL",
+  "ADA",
+  "XRP",
+  "USDT",
+  "USDC",
+  "BNB",
+  "DOGE",
+  "MATIC",
+  "LINK",
+  "DOT",
+  "AVAX",
+  "LTC",
+  "BTCBRL",
+  "ETHBRL",
+  "SOLBRL",
+  "XRPBRL",
+  "ADABRL",
+]);
+const B3_EXCHANGE_SPECIAL_CLOSURE_MD = new Set(["12-24", "12-31"]);
 const US_HOLIDAYS_CACHE = new Map<number, Set<string>>();
 
 function formatDateIso(year: number, month: number, day: number): string {
@@ -70,10 +92,7 @@ export function classifyTickerMarket(raw: string): QuoteMarket {
   if (
     ticker.endsWith("-BRL") ||
     ticker.endsWith("-USD") ||
-    ticker === "BTC" ||
-    ticker === "ETH" ||
-    ticker === "BTCBRL" ||
-    ticker === "ETHBRL"
+    CRYPTO_TICKERS.has(ticker)
   ) {
     return "CRYPTO";
   }
@@ -87,14 +106,13 @@ export function classifyTickerMarket(raw: string): QuoteMarket {
   return "US";
 }
 
-/** Feriados oficiais da NYSE / NASDAQ (observados) para um ano civil. */
+/** Feriados oficiais da NYSE / NASDAQ (observados) para um ano civil (NYSE Rule 7.2). */
 export function getUsMarketHolidays(year: number): Set<string> {
   const cached = US_HOLIDAYS_CACHE.get(year);
   if (cached) return cached;
 
   const holidays = new Set<string>();
   observeUsHoliday(holidays, year, 1, 1);
-  observeUsHoliday(holidays, year + 1, 1, 1);
   holidays.add(nthWeekdayOfMonth(year, 1, 1, 3));
   holidays.add(nthWeekdayOfMonth(year, 2, 1, 3));
 
@@ -185,6 +203,9 @@ export function isBusinessDayForMarket(isoDate: string, market: QuoteMarket): bo
     const dow = new Date(Date.UTC(y ?? 2026, (m ?? 1) - 1, d ?? 1)).getUTCDay();
     if (dow === 0 || dow === 6) return false;
     return !getUsMarketHolidays(y ?? 2026).has(clean);
+  }
+  if (B3_EXCHANGE_SPECIAL_CLOSURE_MD.has(isoDate.slice(5, 10))) {
+    return false;
   }
   return isBusinessDay(isoDate);
 }
@@ -321,7 +342,7 @@ export function getLastBusinessDayOfMonth(year: number, month: number): string {
   for (let day = daysInMonth; day >= 1; day--) {
     const d = String(day).padStart(2, "0");
     const isoDate = `${year}-${m}-${d}`;
-    if (isBusinessDay(isoDate)) {
+    if (isBusinessDayForMarket(isoDate, "BR")) {
       return isoDate;
     }
   }
@@ -338,13 +359,7 @@ export function isMarketClosedForMonth(
   currentDateTime: Date = new Date(),
 ): boolean {
   const lastBizDay = getLastBusinessDayOfMonth(year, month);
-  const parts = lastBizDay.split("-").map(Number);
-  const y = parts[0] ?? year;
-  const m = parts[1] ?? month;
-  const d = parts[2] ?? 28;
-
-  // 19:00 BRT (UTC-3) equivale exatamente a 22:00:00 UTC
-  const marketCloseUtc = new Date(Date.UTC(y, m - 1, d, 22, 0, 0, 0));
+  const marketCloseUtc = zonedMarketTimeToUtc(lastBizDay, 19, 0, "America/Sao_Paulo");
 
   return currentDateTime.getTime() >= marketCloseUtc.getTime();
 }

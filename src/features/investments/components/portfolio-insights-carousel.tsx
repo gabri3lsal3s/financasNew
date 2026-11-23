@@ -7,9 +7,11 @@ import { evaluatePortfolioStructuralRisk } from "@/domain/portfolio/portfolio-ri
 import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
 import { usePortfolioAlertDismissals } from "@/hooks/use-portfolio-alert-dismissals";
 import { openDividendReviewModal } from "@/services/dividend-review-modal";
+import { formatPercent } from "@/services/masks/percent";
 import { pushToast } from "@/services/toast";
+import { getOptionalHook } from "@/hooks/use-notification-center";
+import * as stateHooks from "@/state";
 import {
-  useApproveDividendsBatch,
   useAssetGovernanceInsights,
   useCorporateDividends,
   useGroupTargets,
@@ -17,7 +19,12 @@ import {
   usePortfolioPosition,
   useUpdatePortfolioAsset,
 } from "@/state";
-import type { PortfolioAsset } from "@/types";
+import type {
+  ConfirmDividendEventItem,
+  CorporateDividendType,
+  PortfolioAsset,
+  UserPreferences,
+} from "@/types";
 import { AssetScoreEvaluationDialog } from "./asset-score-evaluation-dialog";
 import { buildAllocationInsightItems } from "./insights-carousel/build-allocation-insight-items";
 import { buildDividendInsightItems } from "./insights-carousel/build-dividend-insight-items";
@@ -38,13 +45,28 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
     isLoading: isDividendsLoading,
   } = useCorporateDividends();
 
+  const useConfirmEventsSafe = getOptionalHook(stateHooks, "useConfirmUserDividendEvents", () => ({
+    mutateAsync: (async () => undefined) as (payload: {
+      items: ConfirmDividendEventItem[];
+      sync_cash: boolean;
+    }) => Promise<unknown>,
+    isPending: false,
+  }));
+  const useUserPreferencesSafe = getOptionalHook(stateHooks, "useUserPreferences", () => ({
+    data: null as UserPreferences | null,
+  }));
+
   const gov = useAssetGovernanceInsights();
   const position = usePortfolioPosition();
   const assetsQuery = usePortfolioAssets();
   const classTargetsQuery = useGroupTargets("class");
-  const approveMutation = useApproveDividendsBatch();
+  const confirmMutation = useConfirmEventsSafe();
+  const userPreferencesQuery = useUserPreferencesSafe();
   const updateAssetMutation = useUpdatePortfolioAsset();
   const { dismissAlert, isAlertDismissed } = usePortfolioAlertDismissals();
+
+  const autoCreditCash =
+    userPreferencesQuery?.data?.custom_settings?.dividendAutomation?.autoCreditCash !== false;
 
   const [evaluationQueue, setEvaluationQueue] = useState<PortfolioAsset[]>([]);
   const [evaluationIndex, setEvaluationIndex] = useState(0);
@@ -65,22 +87,63 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
     [available],
   );
 
+  const usdRate =
+    position?.usdRate && position.usdRate > 0
+      ? position.usdRate
+      : (position?.rows?.find((r) => r.currency === "USD")?.usdRate ?? FALLBACK_USD_RATE);
+
   const handleApproveAll = async () => {
+    if (confirmMutation.isPending) return;
     if (available.length === 0 || hasUncertainTax) {
       openDividendReviewModal({ initialTab: "review" });
       return;
     }
-    const items = available.map((d) => ({
-      asset_id: d.assetId,
-      ticker: d.ticker,
-      date: d.paymentDate ?? todaySaoPauloISO(),
-      amount: d.totalAmount,
-      notes: `Provento automático (${d.type}) apurado na B3`,
-      corporate_dividend_id: d.corporateDividendId,
-      ...(d.currency === "USD" ? { currency: "USD" as const } : {}),
-    }));
 
-    await approveMutation.mutateAsync({ dividends: items, sync_cash: true });
+    const items: ConfirmDividendEventItem[] = available
+      .filter((d) => d.totalAmount > 0)
+      .map((d) => {
+        const taxPct =
+          d.taxRatePct !== undefined
+            ? d.taxRatePct
+            : d.currency === "USD"
+              ? 30
+              : d.type === "JCP"
+                ? 15
+                : 0;
+        return {
+          event_id: d.eventId ?? null,
+          corporate_dividend_id: d.isManual ? null : d.corporateDividendId,
+          asset_id: d.assetId,
+          ticker: d.ticker,
+          type: (d.type as CorporateDividendType) || "DIVIDENDO",
+          com_date: d.comDate,
+          date: d.paymentDate ?? todaySaoPauloISO(),
+          amount: Math.round(d.totalAmount * 100) / 100,
+          tax_rate_pct: taxPct,
+          quantity_on_com_date: Math.max(0, d.quantityOnComDate),
+          gross_rate: d.rate,
+          net_rate: d.netRate,
+          currency: d.currency,
+          fx_rate: d.currency === "USD" ? usdRate : null,
+          notes: d.isManual
+            ? (d.notes?.trim() || `Provento manual (${d.type})`)
+            : `Provento automático (${d.type}${taxPct > 0 ? ` · ${formatPercent(taxPct)}% IR` : ""})`,
+        };
+      });
+
+    if (items.length === 0) {
+      openDividendReviewModal({ initialTab: "review" });
+      return;
+    }
+
+    try {
+      await confirmMutation.mutateAsync({
+        items,
+        sync_cash: autoCreditCash,
+      });
+    } catch {
+      // O hook já exibe toast de erro
+    }
   };
 
   const handleQuickConfirmScore = async (asset: PortfolioAsset) => {
@@ -110,11 +173,6 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
     [classTargetsQuery?.data, position?.rows, position?.totalBRL, position?.cashBRL],
   );
 
-  const usdRate = useMemo(
-    () => position?.rows?.find((r) => r.currency === "USD")?.usdRate ?? FALLBACK_USD_RATE,
-    [position?.rows],
-  );
-
   const structuralAlerts = useMemo(
     () =>
       evaluatePortfolioStructuralRisk(
@@ -139,7 +197,8 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
       totalAvailableAmount,
       totalProjectedAmount,
       hasUncertainTax,
-      isApproving: approveMutation.isPending,
+      autoCreditCash,
+      isApproving: confirmMutation.isPending,
       isAvailableDismissed: isAlertDismissed("available-dividends-alert"),
       isProjectedDismissed: isAlertDismissed("projected-dividends-alert"),
       onApproveAll: () => void handleApproveAll(),

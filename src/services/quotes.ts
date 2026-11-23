@@ -18,7 +18,10 @@ import {
   parseBcbSgsResponse,
   type ParsedQuote,
 } from "@/domain/portfolio";
-import { listMarketPriceHistoryByMonth } from "@/data/repositories/asset-prices";
+import {
+  getMarketPriceHistoryForDate,
+  listMarketPriceHistoryByMonth,
+} from "@/data/repositories/asset-prices";
 import { getSupabase } from "@/data/client";
 
 const FETCH_TIMEOUT_MS = 5_000;
@@ -90,11 +93,10 @@ export async function fetchBcbIndicator(
   const serie = indicator === "CDI" ? 12 : indicator === "SELIC" ? 432 : 13522;
   const targetUrl = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.${serie}/dados/ultimos/1?formato=json`;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     const response = await fetch(targetUrl, { signal: controller.signal });
-    clearTimeout(timer);
     if (!response.ok) return null;
     const payload: unknown = await response.json();
     const parsed = parseBcbSgsResponse(payload);
@@ -108,6 +110,8 @@ export async function fetchBcbIndicator(
     }
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 
   return null;
@@ -121,14 +125,18 @@ export async function fetchPtaxForDate(dateISO: string): Promise<number | null> 
   const cleanDate = dateISO.slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) return null;
 
-  // 1. Consulta primeiro o histórico oficial já congelado no Postgres (mês correspondente)
+  let historyFallbackRate: number | null = null;
+
+  // 1. Consulta primeiro o histórico oficial já congelado no Postgres (janela de 7 dias)
   try {
-    const month = cleanDate.slice(0, 7);
-    const histRows = await listMarketPriceHistoryByMonth(month);
-    const exact = histRows.find(
-      (r) => r.ticker === "USDBRL=X" && r.reference_date === cleanDate && r.price > 0,
-    );
-    if (exact) return Math.round(exact.price * 10000) / 10000;
+    const histRow = await getMarketPriceHistoryForDate("USDBRL=X", cleanDate);
+    if (histRow && histRow.price > 0) {
+      const rounded = Math.round(histRow.price * 10000) / 10000;
+      if (histRow.reference_date === cleanDate) {
+        return rounded;
+      }
+      historyFallbackRate = rounded;
+    }
   } catch {
     // Segue para consulta oficial no BCB
   }
@@ -140,12 +148,11 @@ export async function fetchPtaxForDate(dateISO: string): Promise<number | null> 
     `${String(dt.getUTCDate()).padStart(2, "0")}/${String(dt.getUTCMonth() + 1).padStart(2, "0")}/${dt.getUTCFullYear()}`;
 
   // 2. API oficial do Banco Central (Série SGS 1 - Dólar Comercial Venda / PTAX)
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const url = `https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados?formato=json&dataInicial=${fmtBcb(startUtc)}&dataFinal=${fmtBcb(endUtc)}`;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timer);
     if (response.ok) {
       const payload: unknown = await response.json();
       if (Array.isArray(payload) && payload.length > 0) {
@@ -155,10 +162,12 @@ export async function fetchPtaxForDate(dateISO: string): Promise<number | null> 
       }
     }
   } catch {
-    // Fallback silencioso
+    // Fallback silencioso para histórico lookback
+  } finally {
+    clearTimeout(timer);
   }
 
-  return null;
+  return historyFallbackRate;
 }
 
 function emptySyncResult(): SyncMarketQuotesResult {
@@ -245,6 +254,9 @@ export async function syncMarketQuotesBatch(params: {
             });
           }
         }
+      }
+      if (aggregated.rateLimited) {
+        break;
       }
     } catch {
       aggregated.failed += chunk.length;
@@ -391,44 +403,51 @@ export async function fetchHistoricalMonthlyQuotes(
 
   const missingTickers = cleanTickers.filter((t) => !resolvedMap.has(t));
   if (missingTickers.length > 0) {
-    try {
-      const supabase = getSupabase();
-      const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout quotes edge function")), 4_500),
-      );
+    const supabase = getSupabase();
+    const chunkSize = 50;
+    for (let i = 0; i < missingTickers.length; i += chunkSize) {
+      const chunk = missingTickers.slice(i, i + chunkSize);
+      let timerId: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) => {
+          timerId = setTimeout(() => reject(new Error("Timeout quotes edge function")), 15_000);
+        });
 
-      const fetchPromise = supabase.functions.invoke<{
-        quotes?: Array<{
-          ticker: string;
-          price: number;
-          currency: "BRL" | "USD";
-          marketPriceAt?: string | null;
-          provider?: string | null;
-        }>;
-      }>("quotes", {
-        body: { tickers: missingTickers, month },
-      });
+        const fetchPromise = supabase.functions.invoke<{
+          quotes?: Array<{
+            ticker: string;
+            price: number;
+            currency: "BRL" | "USD";
+            marketPriceAt?: string | null;
+            provider?: string | null;
+          }>;
+        }>("quotes", {
+          body: { tickers: chunk, month },
+        });
 
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
-      const quotes = response.data?.quotes;
+        const response = await Promise.race([fetchPromise, timeoutPromise]);
+        const quotes = response.data?.quotes;
 
-      if (Array.isArray(quotes)) {
-        for (const q of quotes) {
-          const key = q.ticker?.toUpperCase().trim();
-          if (key && Number(q.price) > 0 && !resolvedMap.has(key)) {
-            resolvedMap.set(key, {
-              ticker: key,
-              price: Number(q.price),
-              currency: q.currency === "USD" ? "USD" : "BRL",
-              source: "api",
-              marketPriceAt: q.marketPriceAt ?? null,
-              provider: q.provider ?? null,
-            });
+        if (Array.isArray(quotes)) {
+          for (const q of quotes) {
+            const key = q.ticker?.toUpperCase().trim();
+            if (key && Number(q.price) > 0 && !resolvedMap.has(key)) {
+              resolvedMap.set(key, {
+                ticker: key,
+                price: Number(q.price),
+                currency: q.currency === "USD" ? "USD" : "BRL",
+                source: "api",
+                marketPriceAt: q.marketPriceAt ?? null,
+                provider: q.provider ?? null,
+              });
+            }
           }
         }
+      } catch {
+        // Degradação graciosa em timeout ou falha de rede
+      } finally {
+        if (timerId !== undefined) clearTimeout(timerId);
       }
-    } catch {
-      // Degradação graciosa em timeout ou falha de rede
     }
   }
 

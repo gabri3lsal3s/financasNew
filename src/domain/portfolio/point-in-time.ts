@@ -65,7 +65,7 @@ export interface PointInTimeAssetPosition {
   priceQuote: number;
   priceBRL: number;
   valueBRL: number;
-  quoteSource: ResolvedHistoricalQuote["source"];
+  quoteSource: ResolvedHistoricalQuote["source"] | "custom_valuation";
   isEstimate: boolean;
   unrealizedPnl: number;
   unrealizedPct: number | null;

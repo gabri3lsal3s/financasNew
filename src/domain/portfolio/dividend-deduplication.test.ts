@@ -121,4 +121,25 @@ describe("dividend-deduplication: Deduplicação Inteligente B3 vs Manual", () =
     );
     expect(matchFrac?.id).toBe("m2");
   });
+
+  it("usa calendário NYSE quando o evento corporativo é USD e resolve ticker via assetTickerMap", () => {
+    // 2026-07-03 é feriado observado de Independence Day nos EUA (sem pregão US), 2026-07-04/05 fim de semana.
+    // Entre 2026-07-01 e 2026-07-07 contam-se apenas 3 dias úteis US (02, 06, 07) <= max 3.
+    const assetTickerMap = new Map([["asset-aapl", "AAPL"]]);
+    const matchUs = findFuzzyMatchingManualDividend(
+      { ticker: "AAPL", payment_date: "2026-07-01", currency: "USD" },
+      25.5,
+      [{ id: "m-us", ticker: null, asset_id: "asset-aapl", date: "2026-07-07", amount: 25.53 }],
+      assetTickerMap,
+    );
+    expect(matchUs?.id).toBe("m-us");
+
+    // Payment date inválida nunca colide mesmo com valor idêntico
+    const invalidCorp = isCorporateDividendDeduplicated(
+      { ticker: "AAPL", payment_date: "" },
+      25.5,
+      [{ ticker: "AAPL", date: "2026-07-07", amount: 25.5 }],
+    );
+    expect(invalidCorp).toBe(false);
+  });
 });

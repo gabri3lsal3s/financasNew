@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import { evaluateStaleQuoteGuard } from "@/domain/portfolio";
-import { currentMonth } from "@/lib/date";
+import { todaySaoPauloISO } from "@/domain/portfolio/dividend-suggester";
 import {
   useAllPortfolioTransactions,
   usePortfolioPosition,
   usePortfolioSnapshots,
   useUpsertPortfolioSnapshot,
 } from "@/state";
+import {
+  getMarketQuotesSwrSnapshot,
+  subscribeMarketQuotesSwr,
+} from "@/state/queries/use-market-quotes-swr";
 
 /**
  * Rotina autônoma de materialização de snapshots patrimoniais mensais (§F50/F51).
@@ -27,11 +31,23 @@ export function useAutoPortfolioSnapshot() {
   const transactionsQuery = useAllPortfolioTransactions();
   const snapshotsQuery = usePortfolioSnapshots();
   const upsertMutation = useUpsertPortfolioSnapshot();
+  const swrSnapshot = useSyncExternalStore(
+    subscribeMarketQuotesSwr,
+    getMarketQuotesSwrSnapshot,
+    getMarketQuotesSwrSnapshot,
+  );
 
-  const isTriggeredRef = useRef(false);
+  const lastPersistedSigRef = useRef<string | null>(null);
 
   const hasPostTradeStale = useMemo(() => {
-    if (position.isLoading || transactionsQuery.isLoading) return true;
+    if (
+      position.isLoading ||
+      Boolean(position.error) ||
+      transactionsQuery.isLoading ||
+      Boolean(transactionsQuery.isError)
+    ) {
+      return true;
+    }
     return evaluateStaleQuoteGuard({
       rows: position.rows,
       transactions: transactionsQuery.data ?? [],
@@ -39,24 +55,30 @@ export function useAutoPortfolioSnapshot() {
     }).hasPostTradeStale;
   }, [
     position.isLoading,
+    position.error,
     position.rows,
     position.fxMetadata,
     transactionsQuery.isLoading,
+    transactionsQuery.isError,
     transactionsQuery.data,
   ]);
 
   useEffect(() => {
     if (
       position.isLoading ||
+      Boolean(position.error) ||
       transactionsQuery.isLoading ||
+      Boolean(transactionsQuery.isError) ||
       snapshotsQuery.isLoading ||
+      Boolean(snapshotsQuery.isError) ||
       upsertMutation.isPending ||
+      swrSnapshot.isSyncing ||
       hasPostTradeStale
     ) {
       return;
     }
 
-    const thisMonth = currentMonth();
+    const thisMonth = todaySaoPauloISO().slice(0, 7);
     const existingSnapshots = snapshotsQuery.data ?? [];
     const thisMonthSnapshot = existingSnapshots.find((s) => s.month === thisMonth);
 
@@ -66,39 +88,50 @@ export function useAutoPortfolioSnapshot() {
       return;
     }
 
-    const currentCost = Math.round((position.totalCostBRL + position.cashBRL) * 100) / 100;
+    // position.totalCostBRL já incorpora CAIXA no motor canônico (zero dupla contagem)
+    const currentCost = Math.round(position.totalCostBRL * 100) / 100;
     const currentTotalValue = Math.round(position.totalBRL * 100) / 100;
 
-    if (!isTriggeredRef.current && (currentTotalValue > 0 || currentCost > 0)) {
-      if (!thisMonthSnapshot) {
-        isTriggeredRef.current = true;
+    if (currentTotalValue <= 0 && currentCost <= 0) {
+      return;
+    }
+
+    const nextSignature = `${thisMonth}|${currentTotalValue.toFixed(2)}|${currentCost.toFixed(2)}`;
+    if (lastPersistedSigRef.current === nextSignature) {
+      return;
+    }
+
+    if (!thisMonthSnapshot) {
+      lastPersistedSigRef.current = nextSignature;
+      upsertMutation.mutate({
+        month: thisMonth,
+        total_value: currentTotalValue,
+        total_cost: currentCost,
+        status: "provisional",
+      });
+      return;
+    }
+
+    if (thisMonthSnapshot.status === "provisional") {
+      const valDiff = Math.abs(currentTotalValue - (Number(thisMonthSnapshot.total_value) || 0));
+      const costDiff = Math.abs(currentCost - (Number(thisMonthSnapshot.total_cost) || 0));
+      if (valDiff >= 1.0 || costDiff >= 1.0) {
+        lastPersistedSigRef.current = nextSignature;
         upsertMutation.mutate({
           month: thisMonth,
           total_value: currentTotalValue,
           total_cost: currentCost,
           status: "provisional",
         });
-        return;
-      } else if (thisMonthSnapshot.status === "provisional") {
-        const valDiff = Math.abs(currentTotalValue - (Number(thisMonthSnapshot.total_value) || 0));
-        const costDiff = Math.abs(currentCost - (Number(thisMonthSnapshot.total_cost) || 0));
-        if (valDiff >= 1.0 || costDiff >= 1.0) {
-          isTriggeredRef.current = true;
-          upsertMutation.mutate({
-            month: thisMonth,
-            total_value: currentTotalValue,
-            total_cost: currentCost,
-            status: "provisional",
-          });
-          return;
-        }
       }
     }
   }, [
     position,
     transactionsQuery.isLoading,
+    transactionsQuery.isError,
     snapshotsQuery,
     upsertMutation,
+    swrSnapshot.isSyncing,
     hasPostTradeStale,
   ]);
 }

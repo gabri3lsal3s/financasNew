@@ -16,7 +16,7 @@ import {
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
-import { todayISO } from "@/lib/date";
+import { todaySaoPauloISO } from "@/domain/portfolio/dividend-suggester";
 import type { FixedIncomeMetadata, PortfolioAsset } from "@/types";
 import {
   PORTFOLIO_QUERY_KEYS,
@@ -541,11 +541,12 @@ export function useRecordOrder() {
       const txDate = (params.date ?? "").slice(0, 10);
       if (
         (params.type === "buy" || params.type === "sell" || params.type === "subscription") &&
-        txDate >= todayISO()
+        txDate >= todaySaoPauloISO()
       ) {
         void triggerSurgicalQuoteSync(queryClient, {
           assets: [params.asset],
           reason: "post_trade_stale",
+          includeUsdFx: params.asset.currency === "USD",
         });
       }
       pushToast({
@@ -597,7 +598,7 @@ export function useExecutePortfolioBatchAporte() {
     },
     onSuccess: (result, params) => {
       void invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
-      if ((params.date ?? "").slice(0, 10) >= todayISO()) {
+      if ((params.date ?? "").slice(0, 10) >= todaySaoPauloISO()) {
         const cachedAssets =
           queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
         const assetMap = new Map(cachedAssets.map((a) => [a.id, a]));
@@ -608,6 +609,7 @@ export function useExecutePortfolioBatchAporte() {
           void triggerSurgicalQuoteSync(queryClient, {
             assets: batchAssets,
             reason: "post_trade_stale",
+            includeUsdFx: batchAssets.some((a) => a.currency === "USD"),
           });
         }
       }

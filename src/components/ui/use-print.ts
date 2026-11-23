@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { flushSync } from "react-dom";
 import { isNativePlatform, printCurrentWebView } from "@/services/native";
 import { pushToast } from "@/services/toast";
 
@@ -6,41 +7,29 @@ import { pushToast } from "@/services/toast";
  * Hook de impressão seguro com suporte a nomenclatura dinâmica de PDF (F22).
  *
  * Estratégia de captura:
- *  1. `setPrinting(true)` + `document.title` temporário com o nome sugerido para o arquivo PDF;
- *  2. `useEffect` dispara após o commit no DOM;
- *  3. `requestAnimationFrame` aguarda o próximo frame de pintura do browser (dois frames no
- *     Android nativo para garantir a pintura dos `<canvas>` do QR Code antes do adapter);
- *  4. Web/PWA chama `window.print()`; APK Android invoca `PrintManager` via `printCurrentWebView`;
- *  5. Restauração automática do `document.title` original e limpeza do portal ao finalizar.
+ *  - Web/PWA: `flushSync` monta `.print-sheet` e atualiza `document.title` de forma síncrona
+ *    dentro do clique para preservar o user-gesture token do Safari/iOS antes de chamar `window.print()`,
+ *    limpando via evento `afterprint` (ou fallback timer).
+ *  - Android nativo (Capacitor): mantém `.print-sheet` montado por 2 frames (`requestAnimationFrame`)
+ *    para pintura dos gráficos/QR e chama `printCurrentWebView`.
  */
 export function usePrint(defaultDocumentTitle?: string) {
   const [printing, setPrinting] = useState(false);
   const [titleToUse, setTitleToUse] = useState<string | undefined>(defaultDocumentTitle);
+  const webCleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    if (!printing) return;
+    return () => {
+      webCleanupRef.current?.();
+      webCleanupRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!printing || !isNativePlatform()) return;
     const originalTitle = typeof document !== "undefined" ? document.title : "";
     if (titleToUse && typeof document !== "undefined") {
       document.title = titleToUse;
-    }
-
-    if (!isNativePlatform()) {
-      const rafId = requestAnimationFrame(() => {
-        if (typeof window !== "undefined" && typeof window.print === "function") {
-          window.print();
-        }
-        if (typeof document !== "undefined") {
-          document.title = originalTitle;
-        }
-        setPrinting(false);
-      });
-
-      return () => {
-        cancelAnimationFrame(rafId);
-        if (typeof document !== "undefined") {
-          document.title = originalTitle;
-        }
-      };
     }
 
     // Fluxo Nativo Android (Capacitor): mantém `.print-sheet` montado até `PrintDocumentAdapter.onFinish()`
@@ -89,10 +78,62 @@ export function usePrint(defaultDocumentTitle?: string) {
 
   const triggerPrint = useCallback(
     (customTitle?: string) => {
-      if (customTitle) {
-        setTitleToUse(customTitle);
-      } else if (defaultDocumentTitle) {
-        setTitleToUse(defaultDocumentTitle);
+      const resolvedTitle = customTitle ?? defaultDocumentTitle;
+
+      if (!isNativePlatform()) {
+        webCleanupRef.current?.();
+        webCleanupRef.current = null;
+
+        const originalTitle = typeof document !== "undefined" ? document.title : "";
+        if (resolvedTitle && typeof document !== "undefined") {
+          document.title = resolvedTitle;
+        }
+
+        // Mantém sincronia dentro do evento de clique para Safari/iOS não bloquear window.print()
+        flushSync(() => {
+          setTitleToUse(resolvedTitle);
+          setPrinting(true);
+        });
+
+        let cleaned = false;
+        let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+        const cleanup = () => {
+          if (cleaned) return;
+          cleaned = true;
+          if (fallbackTimer !== null) {
+            clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+          }
+          if (typeof window !== "undefined") {
+            window.removeEventListener("afterprint", cleanup);
+          }
+          if (typeof document !== "undefined") {
+            document.title = originalTitle;
+          }
+          setPrinting(false);
+          if (webCleanupRef.current === cleanup) {
+            webCleanupRef.current = null;
+          }
+        };
+
+        webCleanupRef.current = cleanup;
+        if (typeof window !== "undefined") {
+          window.addEventListener("afterprint", cleanup, { once: true });
+        }
+        fallbackTimer = setTimeout(cleanup, 500);
+
+        try {
+          if (typeof window !== "undefined" && typeof window.print === "function") {
+            window.print();
+          }
+        } catch {
+          cleanup();
+        }
+        return;
+      }
+
+      if (resolvedTitle) {
+        setTitleToUse(resolvedTitle);
       }
       setPrinting(true);
     },

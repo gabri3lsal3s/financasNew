@@ -20,27 +20,46 @@ describe("usePrint (F22)", () => {
     expect(result.current.printing).toBe(false);
   });
 
-  it("muda printing para true e dispara window.print no rAF em ambiente Web", () => {
+  it("dispara window.print de forma síncrona no triggerPrint Web e limpa em afterprint/fallback", () => {
     const printSpy = vi.fn();
     const originalPrint = window.print;
+    const originalTitle = document.title;
+    document.title = "Axir";
     window.print = printSpy;
 
-    const { result } = renderHook(() => usePrint());
+    const { result } = renderHook(() => usePrint("Relatorio_Web.pdf"));
 
     act(() => {
       result.current.triggerPrint();
     });
 
+    expect(printSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.printing).toBe(true);
+    expect(document.title).toBe("Relatorio_Web.pdf");
+
+    act(() => {
+      window.dispatchEvent(new Event("afterprint"));
+    });
+
+    expect(result.current.printing).toBe(false);
+    expect(document.title).toBe("Axir");
+
+    // Fallback timer quando afterprint não dispara
+    act(() => {
+      result.current.triggerPrint("Relatorio_Timer.pdf");
+    });
+    expect(printSpy).toHaveBeenCalledTimes(2);
     expect(result.current.printing).toBe(true);
 
     act(() => {
-      vi.advanceTimersByTime(50);
+      vi.advanceTimersByTime(500);
     });
 
-    expect(printSpy).toHaveBeenCalledTimes(1);
     expect(result.current.printing).toBe(false);
+    expect(document.title).toBe("Axir");
 
     window.print = originalPrint;
+    document.title = originalTitle;
   });
 
   it("mantém printing true até printCurrentWebView concluir no Android nativo e restaura título", async () => {

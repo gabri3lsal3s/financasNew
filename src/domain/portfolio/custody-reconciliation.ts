@@ -79,15 +79,18 @@ export function calculateCustodyReconciliation(params: {
   let rawForeignBRLCents = 0;
   let custodyForeignUSDCents = 0;
   let custodyForeignAssetsCount = 0;
-  let hasExplicitCashRow = false;
+  let hasExplicitBrlCashRow = false;
 
   for (const row of params.rows) {
-    if (row.isCash) hasExplicitCashRow = true;
     const qty = Number(row.quantity) || 0;
     const valCents = numberToCents(row.valueBRL);
+    const currency = (row.currency ?? "BRL").toUpperCase().trim();
+    const tickerUpper = row.ticker.toUpperCase().trim();
+    if ((row.isCash || tickerUpper === "CAIXA") && currency !== "USD" && (qty > 0 || valCents > 0)) {
+      hasExplicitBrlCashRow = true;
+    }
     if (qty <= 0 && valCents <= 0) continue;
 
-    const currency = (row.currency ?? "BRL").toUpperCase().trim();
     if (currency === "USD") {
       custodyForeignAssetsCount += 1;
       rawForeignBRLCents += valCents;
@@ -114,7 +117,10 @@ export function calculateCustodyReconciliation(params: {
   }
 
   const extraCashCents =
-    !hasExplicitCashRow && params.cashBRL && params.cashBRL > 0 ? numberToCents(params.cashBRL) : 0;
+    !hasExplicitBrlCashRow && params.cashBRL && params.cashBRL > 0 ? numberToCents(params.cashBRL) : 0;
+  if (extraCashCents > 0) {
+    custodyBrazilAssetsCount += 1;
+  }
   rawBrazilBRLCents += extraCashCents;
 
   const rawSumCents = rawBrazilBRLCents + rawForeignBRLCents;
@@ -124,11 +130,21 @@ export function calculateCustodyReconciliation(params: {
       : rawSumCents;
 
   const roundingAdjustmentCents = closingPatrimonyCents - rawSumCents;
-  const custodyForeignBRLCents =
-    closingPatrimonyCents >= 0
-      ? Math.min(Math.max(0, rawForeignBRLCents), closingPatrimonyCents)
-      : rawForeignBRLCents;
-  const custodyBrazilCents = closingPatrimonyCents - custodyForeignBRLCents;
+  const isPureForeignCustody =
+    custodyForeignAssetsCount > 0 && custodyBrazilAssetsCount === 0 && rawBrazilBRLCents === 0;
+
+  let custodyForeignBRLCents: number;
+  let custodyBrazilCents: number;
+  if (isPureForeignCustody) {
+    custodyForeignBRLCents = closingPatrimonyCents;
+    custodyBrazilCents = 0;
+  } else {
+    custodyForeignBRLCents =
+      closingPatrimonyCents >= 0
+        ? Math.min(Math.max(0, rawForeignBRLCents), closingPatrimonyCents)
+        : rawForeignBRLCents;
+    custodyBrazilCents = closingPatrimonyCents - custodyForeignBRLCents;
+  }
 
   const hasForeignCustody = custodyForeignAssetsCount > 0 || custodyForeignBRLCents > 0;
   const custodyForeignPct =

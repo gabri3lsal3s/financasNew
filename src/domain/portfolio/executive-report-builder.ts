@@ -14,6 +14,12 @@ import { formatFixedIncomeRateLabel } from "./fixed-income";
 import type { PointInTimeResult } from "./point-in-time";
 import { formatFxSourceLabel, type StaleQuoteGuardResult } from "./stale-quote-guard";
 import { resolveFixedIncomeIndexer } from "./tickers-catalog";
+import {
+  isCashAssetClass,
+  isCustomValuationAsset,
+  isFixedIncomeClass,
+  isTesouroAsset,
+} from "./valuation";
 
 export interface ReportMonthOption {
   value: string;
@@ -59,31 +65,51 @@ export function resolveReportPositionRows({
   }
 
   const pit = monthlyPosition;
-  const pitRows: PositionRow[] = pit.positions.map((p) => ({
-    assetId: p.assetId ?? p.ticker,
-    ticker: p.ticker,
-    assetClass: p.assetClass,
-    sector: p.sector ?? undefined,
-    currency: (p.currency as "BRL" | "USD") ?? "BRL",
-    quantity: p.quantity,
-    averageCost: p.averagePrice,
-    totalCost: p.totalCost,
-    totalCostBRL: p.totalCostBRL,
-    priceQuote: p.priceQuote ?? p.priceBRL,
-    priceBRL: p.priceBRL,
-    usdRate: p.currency === "USD" && p.priceQuote && p.priceQuote > 0 ? p.priceBRL / p.priceQuote : 1,
-    valueBRL: p.valueBRL,
-    pct: pit.totalValueBRL > 0 ? (p.valueBRL / pit.totalValueBRL) * 100 : 0,
-    source: (p.quoteSource ?? "manual") as PositionRow["source"],
-    isEstimate: p.isEstimate,
-    pricingMode: "unit_price",
-    unrealizedPnl: p.unrealizedPnl,
-    unrealizedPct: p.unrealizedPct,
-    dividends: p.accumulatedDividendsBRL,
-    totalReturnPnl: p.totalReturnPnl,
-    totalReturnPct: p.totalReturnPct,
-    isCash: false,
-  }));
+  const currentByAssetId = new Map(currentRows.map((r) => [r.assetId, r]));
+  const currentByTicker = new Map(currentRows.map((r) => [r.ticker.toUpperCase().trim(), r]));
+
+  const pitRows: PositionRow[] = pit.positions.map((p) => {
+    const matched =
+      (p.assetId ? currentByAssetId.get(p.assetId) : undefined) ??
+      currentByTicker.get(p.ticker.toUpperCase().trim());
+    const tickerUpper = p.ticker.toUpperCase().trim();
+    const isCash = isCashAssetClass(p.assetClass) || tickerUpper === "CAIXA";
+    const resolvedPricingMode: PositionRow["pricingMode"] = isCash
+      ? "cash"
+      : matched?.pricingMode ??
+        (isFixedIncomeClass(p.assetClass) || isTesouroAsset(tickerUpper, p.assetClass)
+          ? "total_value"
+          : "unit_price");
+
+    return {
+      assetId: p.assetId ?? p.ticker,
+      ticker: p.ticker,
+      assetClass: p.assetClass,
+      sector: p.sector ?? undefined,
+      currency: (p.currency as "BRL" | "USD") ?? "BRL",
+      quantity: p.quantity,
+      averageCost: p.averagePrice,
+      totalCost: p.totalCost,
+      totalCostBRL: p.totalCostBRL,
+      priceQuote: p.priceQuote ?? p.priceBRL,
+      priceBRL: p.priceBRL,
+      usdRate: p.currency === "USD" && p.priceQuote && p.priceQuote > 0 ? p.priceBRL / p.priceQuote : 1,
+      valueBRL: p.valueBRL,
+      pct: pit.totalValueBRL > 0 ? (p.valueBRL / pit.totalValueBRL) * 100 : 0,
+      source: (p.quoteSource === "custom_valuation" ? "api" : (p.quoteSource ?? "manual")) as PositionRow["source"],
+      canonicalSource: p.quoteSource === "custom_valuation" ? "custom_valuation" : matched?.canonicalSource,
+      isEstimate: p.quoteSource === "custom_valuation" ? false : p.isEstimate,
+      pricingMode: resolvedPricingMode,
+      notes: matched?.notes ?? null,
+      fixedIncomeMetadata: matched?.fixedIncomeMetadata ?? null,
+      unrealizedPnl: p.unrealizedPnl,
+      unrealizedPct: p.unrealizedPct,
+      dividends: p.accumulatedDividendsBRL,
+      totalReturnPnl: p.totalReturnPnl,
+      totalReturnPct: p.totalReturnPct,
+      isCash,
+    };
+  });
 
   if (pit.cashQuantity > 0) {
     pitRows.push({
@@ -252,14 +278,28 @@ export function buildExecutiveReportClassGroups({
           const raw = findRaw(i);
           const tickerUpper = i.ticker.trim().toUpperCase();
           const staleIssue = staleGuard?.issueByTicker[tickerUpper];
+          const isExemptCustomOrFixed =
+            i.isCash ||
+            i.pricingMode === "cash" ||
+            i.pricingMode === "total_value" ||
+            i.fixedIncomeMetadata != null ||
+            i.canonicalSource === "custom_valuation" ||
+            isCustomValuationAsset({
+              ticker: i.ticker,
+              asset_class: i.assetClass,
+              notes: i.notes ?? raw?.notes,
+            }) ||
+            isTesouroAsset(i.ticker, i.assetClass);
           const quoteStatusFlag =
             i.source === "manual"
               ? ("manual" as const)
-              : staleIssue?.kind === "post_trade_stale" || staleIssue?.kind === "stale_market_data"
-                ? ("stale" as const)
-                : i.isEstimate || i.source === "fallback" || staleIssue?.kind === "missing_or_fallback"
-                  ? ("fallback" as const)
-                  : null;
+              : isExemptCustomOrFixed
+                ? null
+                : staleIssue?.kind === "post_trade_stale" || staleIssue?.kind === "stale_market_data"
+                  ? ("stale" as const)
+                  : i.isEstimate || i.source === "fallback" || staleIssue?.kind === "missing_or_fallback"
+                    ? ("fallback" as const)
+                    : null;
 
           return {
             ticker: i.ticker,

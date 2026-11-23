@@ -5,6 +5,7 @@ import { numberToCents } from "@/domain/money";
 import type { SnowballAssetDashboardItem } from "@/domain/portfolio/dividends-analytics";
 import { cn } from "@/lib/utils";
 import { formatAssetQuantity } from "@/services/formatting";
+import { formatPercent } from "@/services/masks/percent";
 
 export interface DividendsSnowballPanelProps {
   totalMonthlyEstimatedIncome: number;
@@ -87,7 +88,7 @@ export function DividendsSnowballPanel({
                       </Badge>
                     ) : (
                       <span className="text-[11px] font-semibold text-portfolio tabular-nums">
-                        {progress.progressPct}%
+                        {`${formatPercent(progress.progressPct)}%`}
                       </span>
                     )}
                   </div>

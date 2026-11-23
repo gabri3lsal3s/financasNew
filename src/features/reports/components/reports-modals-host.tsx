@@ -49,6 +49,11 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
     provisionedSummary: null as ProvisionedDividendsSummary | null,
   }));
   const corporateDividendsState = useCorporateDividendsSafe();
+  const useUserAccessSafe = getOptionalHook(stateHooks, "useUserAccess", () => ({
+    profile: null as { name?: string | null } | null,
+  }));
+  const userAccess = useUserAccessSafe();
+  const accountHolder = userAccess?.profile?.name ?? undefined;
   // 1. DRE Pessoal
   const dreReadiness = useMemo(
     () =>
@@ -124,10 +129,11 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
     ],
   );
 
-  // 6. Dossiê Posição Vigente
+  // 6. Dossiê Posição Vigente (sempre reflete a custódia viva consolidada)
+  const livePositionRows = data.positionQuery.rows ?? data.positionRows;
   const tearSheetRows = useMemo(
-    () => mapPositionRowsToWealthRows(data.positionRows),
-    [data.positionRows],
+    () => mapPositionRowsToWealthRows(livePositionRows),
+    [livePositionRows],
   );
 
   const tearSheetReadiness = useMemo(() => {
@@ -136,23 +142,23 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
       data.allocationAnalysis.classGaps.some((c) => c.targetPct > 0);
     const activeClassCount = data.allocationAnalysis.classGaps.filter((c) => c.currentBRL > 0).length;
     const validSectorCount = (data.allocationAnalysis.sectorGaps ?? []).filter((s) => s.currentBRL > 0).length;
-    const acoes = data.positionRows.some(
+    const acoes = livePositionRows.some(
       (r) => r.assetClass?.toLowerCase().includes("ações") || r.assetClass?.toLowerCase().includes("stock"),
     );
-    const fiis = data.positionRows.some(
+    const fiis = livePositionRows.some(
       (r) => r.assetClass?.toLowerCase().includes("imobiliário") || r.assetClass?.toLowerCase().includes("fii"),
     );
-    const rendaFixa = data.positionRows.some(
+    const rendaFixa = livePositionRows.some(
       (r) => r.assetClass?.toLowerCase().includes("renda fixa") || r.assetClass?.toLowerCase().includes("fixed"),
     );
-    const internacional = data.positionRows.some(
+    const internacional = livePositionRows.some(
       (r) => r.assetClass?.toLowerCase().includes("internacional") || r.currency === "USD",
     );
 
     return evaluateDossiePosicaoReadiness({
-      activeAssetCount: data.positionRows.length,
+      activeAssetCount: livePositionRows.length,
       totalBRL: data.positionQuery.totalBRL ?? 0,
-      cashBRL: data.cashBalanceBRL ?? 0,
+      cashBRL: data.positionQuery.cashBRL ?? data.cashBalanceBRL ?? 0,
       hasAllocationTargets: hasTargets,
       activeClassCount,
       validSectorCount,
@@ -164,8 +170,9 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
     data.allocationAnalysis.totalTargetPct,
     data.allocationAnalysis.classGaps,
     data.allocationAnalysis.sectorGaps,
-    data.positionRows,
+    livePositionRows,
     data.positionQuery.totalBRL,
+    data.positionQuery.cashBRL,
     data.cashBalanceBRL,
     data.positionQuery.monthlySeries?.length,
     data.positionQuery.portfolioIrr,
@@ -189,6 +196,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
             open={state.financialReportOpen}
             onOpenChange={state.setFinancialReportOpen}
             periodLabel={data.periodLabel}
+            accountHolder={accountHolder}
             dre={data.financialDRE}
             categories={mapCategoriesForCloseReport({
               byCategory: data.byCategory,
@@ -227,6 +235,8 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
             open={state.tearSheetOpen}
             onOpenChange={state.setTearSheetOpen}
             periodLabel="Posição Atual Consolidada"
+            accountHolder={accountHolder}
+            isCurrentPeriod={true}
             rows={tearSheetRows}
             totalBRL={data.positionQuery.totalBRL ?? 0}
             totalCostBRL={data.positionQuery.totalCostBRL ?? 0}
@@ -238,7 +248,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
             unrealizedPnlBRL={data.positionQuery.unrealizedPnlBRL}
             unrealizedPnlPct={data.positionQuery.unrealizedPct}
             periodRedemptions={data.periodRedemptions}
-            cashBRL={data.cashBalanceBRL}
+            cashBRL={data.positionQuery.cashBRL ?? data.cashBalanceBRL}
             yearDividendsBRL={data.yearDividendsBRL}
             monthSummary={data.periodFlowSummary}
             allocationAnalysis={data.allocationAnalysis}
@@ -253,8 +263,8 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
             annualIpcaRate={data.macroIndicatorsQuery.data?.annualIpcaRate}
             ibovPeriodReturnPct={data.macroIndicatorsQuery.data?.ibovPeriodReturnPct}
             assetsMetadata={data.assetsQuery.data ?? []}
-            usdRate={data.usdRate}
-            fxMetadata={data.fxMetadata}
+            usdRate={data.positionQuery.usdRate ?? data.usdRate}
+            fxMetadata={data.positionQuery.fxMetadata ?? data.fxMetadata}
             provisionedSummary={corporateDividendsState?.provisionedSummary ?? null}
             transactions={data.transactions}
             readiness={tearSheetReadiness}
@@ -276,6 +286,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
           open={state.dividendFreedomOpen}
           onOpenChange={state.setDividendFreedomOpen}
           periodLabel={data.periodLabel}
+          accountHolder={accountHolder}
           freedomAnalysis={data.freedomAnalysis}
           dividends={data.dividends}
           yearDividendsBRL={data.yearDividendsBRL}
@@ -299,6 +310,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
           open={state.consolidatedWealthOpen}
           onOpenChange={state.setConsolidatedWealthOpen}
           periodLabel={data.periodLabel}
+          accountHolder={accountHolder}
           balanceSheet={data.consolidatedBalance}
           readiness={balancoReadiness}
         />
@@ -317,6 +329,7 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
         <TaxFacilitatorModal
           open={state.taxReportOpen}
           onOpenChange={state.setTaxReportOpen}
+          accountHolder={accountHolder}
           assets={data.assets}
           dividends={data.dividends}
           usdRate={data.usdRate}

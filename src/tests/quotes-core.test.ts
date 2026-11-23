@@ -642,5 +642,129 @@ describe("Bloco C — Proventos B3/EUA, Custódia na Data COM, Anti-Flood e Dedu
     ]);
     expect(nullDate).toEqual({ matched: false, matchedDividendId: null });
   });
+
+  it("evaluateSpikeGuardrail libera desdobramento recente, consenso secundário e confirmação dupla >= 10 min", () => {
+    const now = new Date("2026-06-15T15:00:00.000Z");
+
+    // 1. Split 2:1 em 2026-06-15 com preço anterior pré-split de 40 -> 20 (-50% -> variation > 0.5 se 19.8)
+    const splitRes = evaluateSpikeGuardrail({
+      ticker: "PETR4",
+      newPrice: 19.5,
+      newMarketPriceAt: "2026-06-15T14:55:00.000Z",
+      newProvider: "brapi",
+      previousPrice: 40,
+      previousMarketPriceAt: "2026-06-12T20:00:00.000Z",
+      previousProvider: "brapi",
+      splits: [
+        {
+          dateISO: "2026-06-15",
+          ratio: 2,
+          timestamp: Math.floor(Date.parse("2026-06-15T13:00:00.000Z") / 1000),
+          numerator: 2,
+          denominator: 1,
+        },
+      ],
+      now,
+    });
+    expect(splitRes.accepted).toBe(true);
+    expect(splitRes.reason).toBe("split_verified");
+    expect(splitRes.effectivePrice).toBe(19.5);
+
+    // 2. Consenso secundário confirma salto legítimo (> 50%)
+    const consensusRes = evaluateSpikeGuardrail({
+      ticker: "SMALL11",
+      newPrice: 80,
+      newMarketPriceAt: "2026-06-15T14:55:00.000Z",
+      newProvider: "brapi",
+      previousPrice: 40,
+      previousMarketPriceAt: "2026-06-12T20:00:00.000Z",
+      previousProvider: "brapi",
+      secondaryConfirmPrice: 79.5,
+      now,
+    });
+    expect(consensusRes.accepted).toBe(true);
+    expect(consensusRes.reason).toBe("consensus_verified");
+
+    // 3. Sem consenso nem split -> bloqueia inicialmente, mas libera após 10 min no mesmo patamar
+    const guarded = evaluateSpikeGuardrail({
+      ticker: "SMALL11",
+      newPrice: 80,
+      newMarketPriceAt: "2026-06-15T14:50:00.000Z",
+      newProvider: "yahoo",
+      previousPrice: 40,
+      previousMarketPriceAt: "2026-06-12T20:00:00.000Z",
+      previousProvider: "yahoo",
+      now,
+    });
+    expect(guarded.accepted).toBe(false);
+    expect(guarded.reason).toBe("spike_guarded");
+    expect(guarded.effectivePrice).toBe(40);
+    expect(guarded.pendingSpikePrice).toBe(80);
+
+    const unlocked = evaluateSpikeGuardrail({
+      ticker: "SMALL11",
+      newPrice: 80.5,
+      newMarketPriceAt: "2026-06-15T15:01:00.000Z",
+      newProvider: "yahoo",
+      previousPrice: 40,
+      previousMarketPriceAt: "2026-06-12T20:00:00.000Z",
+      previousProvider: "yahoo",
+      pendingSpikePrice: guarded.pendingSpikePrice,
+      pendingSpikeAt: guarded.pendingSpikeAt,
+      now: new Date(now.getTime() + 10 * 60_000 + 1000),
+    });
+    expect(unlocked.accepted).toBe(true);
+    expect(unlocked.reason).toBe("double_confirm_unlocked");
+    expect(unlocked.pendingSpikeAt).toBeNull();
+  });
+
+  it("shouldSkipByEodGuard bloqueia apenas mercado fechado com preço API >= último fechamento", () => {
+    const sunday = new Date("2026-06-14T15:00:00.000Z");
+
+    expect(
+      shouldSkipByEodGuard({
+        ticker: "PETR4",
+        fetchedAt: "2026-06-12T21:30:00.000Z",
+        marketPriceAt: "2026-06-12T20:55:00.000Z",
+        existingPrice: 38.5,
+        existingSource: "api",
+        now: sunday,
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldSkipByEodGuard({
+        ticker: "PETR4",
+        fetchedAt: "2026-06-12T21:30:00.000Z",
+        marketPriceAt: null,
+        existingPrice: 38.5,
+        existingSource: "fallback",
+        now: sunday,
+      }),
+    ).toBe(false);
+
+    expect(
+      shouldSkipByEodGuard({
+        ticker: "PETR4",
+        fetchedAt: "2026-06-12T21:30:00.000Z",
+        marketPriceAt: null,
+        existingPrice: 0,
+        existingSource: "api",
+        now: sunday,
+      }),
+    ).toBe(false);
+
+    const row = buildGlobalQuoteUpsertRow({
+      ticker: " petr4 ",
+      price: 38.5,
+      currency: "BRL",
+      marketPriceAt: "2026-06-12T20:55:00.000Z",
+      fetchedAt: "2026-06-12T21:30:00.000Z",
+      provider: "brapi",
+    });
+    expect(row.user_id).toBeNull();
+    expect(row.ticker).toBe("PETR4");
+    expect(row.source).toBe("api");
+  });
 });
 

@@ -10,6 +10,7 @@ export function buildDividendInsightItems({
   totalAvailableAmount,
   totalProjectedAmount,
   hasUncertainTax = false,
+  autoCreditCash = true,
   isApproving,
   isAvailableDismissed = false,
   isProjectedDismissed = false,
@@ -24,6 +25,7 @@ export function buildDividendInsightItems({
   totalAvailableAmount: number;
   totalProjectedAmount: number;
   hasUncertainTax?: boolean;
+  autoCreditCash?: boolean;
   isApproving: boolean;
   isAvailableDismissed?: boolean;
   isProjectedDismissed?: boolean;
@@ -65,14 +67,14 @@ export function buildDividendInsightItems({
               ) : (
                 <>
                   {availableCount}{" "}
-                  {availableCount === 1 ? "provento da B3 soma" : "proventos da B3 somam"}{" "}
+                  {availableCount === 1 ? "provento soma" : "proventos somam"}{" "}
                   <MoneyText
                     cents={Math.round(totalAvailableAmount * 100)}
                     variant="caption"
                     tone="default"
                     className="font-medium text-foreground inline"
                   />{" "}
-                  para confirmação no Caixa.
+                  {autoCreditCash ? "para confirmação no Caixa." : "para confirmação no extrato."}
                 </>
               )
             }
@@ -98,10 +100,12 @@ export function buildDividendInsightItems({
                     {isApproving ? (
                       <>
                         <Loader2 className="size-3.5 animate-spin mr-1.5" aria-hidden="true" />
-                        Creditando...
+                        Confirmando...
                       </>
-                    ) : (
+                    ) : autoCreditCash ? (
                       "Aprovar no Caixa"
+                    ) : (
+                      "Confirmar no Extrato"
                     )}
                   </Button>
                 </>

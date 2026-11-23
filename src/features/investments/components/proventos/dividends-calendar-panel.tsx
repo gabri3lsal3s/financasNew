@@ -201,7 +201,7 @@ export function DividendsCalendarPanel({
               headingLevel="h3"
             />
           ) : (
-            <div className="flex flex-col divide-y divide-border/60 rounded-xl border border-border/80">
+            <div className="flex flex-col divide-y divide-border/80 rounded-xl border border-border/80">
               {agendaItems.map((item) => {
                 const key = item.eventId ?? `${item.corporateDividendId}:${item.assetId}`;
                 const taxPct = item.taxRatePct ?? 0;

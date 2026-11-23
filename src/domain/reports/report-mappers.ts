@@ -14,6 +14,7 @@ export interface ReportContributionLike {
 }
 
 export interface WealthSourceRowLike {
+  assetId?: string;
   ticker: string;
   assetClass: string | null;
   sector?: string | null;
@@ -34,6 +35,11 @@ export interface WealthSourceRowLike {
   dividendsNative?: number | null;
   score?: number | null;
   allocationStatus?: string | null;
+  isCash?: boolean;
+  pricingMode?: string | null;
+  notes?: string | null;
+  fixedIncomeMetadata?: unknown;
+  canonicalSource?: string | null;
   avgPriceUSD?: number | null;
   totalCostUSD?: number | null;
   impliedHistoricalFxRate?: number | null;
@@ -194,6 +200,7 @@ export function mapPositionRowsToWealthRows(
       effectiveCostNative > 0 && effectiveDivs > 0 ? (effectiveDivs / effectiveCostNative) * 100 : 0;
 
     return {
+      assetId: r.assetId,
       ticker: r.ticker,
       name: r.ticker,
       assetClass: r.assetClass ?? "outros",
@@ -211,7 +218,11 @@ export function mapPositionRowsToWealthRows(
       dividendsBRL: divs,
       yearDividendsBRL: divs,
       yocPct: yoc,
-      isCash: isCashAssetClass(r.assetClass),
+      isCash: Boolean(r.isCash || isCashAssetClass(r.assetClass) || r.ticker.toUpperCase() === "CAIXA"),
+      pricingMode: r.pricingMode ?? null,
+      notes: r.notes ?? null,
+      fixedIncomeMetadata: r.fixedIncomeMetadata ?? null,
+      canonicalSource: r.canonicalSource ?? null,
       score: r.score ?? null,
       allocationStatus: r.allocationStatus ?? null,
       avgPriceUSD: r.avgPriceUSD,

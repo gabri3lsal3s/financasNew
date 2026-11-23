@@ -93,6 +93,7 @@ export function ReportDocumentLayout({
   const handleOpenChange = (next: boolean) => {
     if (!next) {
       setBrowserPrinting(false);
+      setWarningConfirmOpen(false);
     }
     onOpenChange(next);
   };

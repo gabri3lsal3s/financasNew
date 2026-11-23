@@ -17,18 +17,20 @@ describe("Tarefa 2.4 — Auditoria de Quotas e Estrutura do Cron de Cotações",
     const content = readFileSync(cronSqlPath, "utf8");
     expect(content).toMatch(/AUDITORIA DE QUOTAS/i);
     expect(content).toMatch(/500\.000/); // Cota mensal de Edge Functions Supabase Free
-    expect(content).toMatch(/asset_prices/);
-    expect(content).toMatch(/user_id\s+null/i);
+    expect(content).toMatch(/timeout_milliseconds\s*:=\s*60000/);
+    expect(content).toMatch(/jsonb_build_object/);
   });
 
-  it("documenta opções de agendamento recomendadas para dias úteis e 24/7", () => {
+  it("agenda os 4 jobs oficiais EOD/EOM e Proventos com timeouts seguros", () => {
     const content = readFileSync(cronSqlPath, "utf8");
-    // Opção dias úteis pregão B3
-    expect(content).toMatch(/0 11,14,17,20 \* \* 1-5/);
-    // Opção a cada 6 horas
-    expect(content).toMatch(/0 \*\/6 \* \* \*/);
-    // Opção a cada 4 horas em dias úteis
-    expect(content).toMatch(/0 \*\/4 \* \* 1-5/);
+    expect(content).toMatch(/'quotes-eod-close'/);
+    expect(content).toMatch(/0 22 \* \* 1-5/);
+    expect(content).toMatch(/'quotes-eom-close'/);
+    expect(content).toMatch(/30 22 \* \* 1-5/);
+    expect(content).toMatch(/'dividends-sync-global'/);
+    expect(content).toMatch(/0 10 \* \* \*/);
+    expect(content).toMatch(/'dividends-process-user'/);
+    expect(content).toMatch(/30 11 \* \* \*/);
   });
 
   it("aplica hardening rigoroso revogando acesso do schema cron para roles públicas", () => {

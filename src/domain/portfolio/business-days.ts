@@ -148,6 +148,10 @@ export function countBusinessDays(startDate: string, endDate: string): number {
   const { year: endY, month: endM, day: endD } = parseDateParts(endClean);
   const endLimit = new Date(Date.UTC(endY, endM - 1, endD));
 
+  if (!Number.isFinite(current.getTime()) || !Number.isFinite(endLimit.getTime())) {
+    return 0;
+  }
+
   let count = 0;
 
   while (true) {

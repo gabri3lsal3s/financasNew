@@ -73,7 +73,7 @@ function getEmptyDescription(subFilter: RemindersSubFilter): string {
     return "Nenhum valor a receber pendente no momento.";
   if (subFilter === "advisor") return "Nenhum aviso inteligente no momento.";
   if (subFilter === "system")
-    return "Nenhum comunicado ou sinalização de racha no momento.";
+    return "Nenhum comunicado, provento ou sinalização de racha no momento.";
   return "Nenhuma pendência no momento. Todas as faturas, dívidas e avisos estão em dia.";
 }
 
@@ -175,7 +175,7 @@ export function RemindersPendingTab({
               ? [
                   {
                     key: "system",
-                    label: "Comunicados & Rachas",
+                    label: "Sistema & Proventos",
                     count: systemCount,
                   },
                 ]

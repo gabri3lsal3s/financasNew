@@ -158,6 +158,7 @@ vi.mock("@/state", () => ({
     refetch: vi.fn(),
   }),
   useApproveDividendsBatch: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useConfirmUserDividendEvents: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useDismissCorporateDividend: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useAppMode: () => ({
     appMode: mockMode.isEssential ? "essential" : "investor",

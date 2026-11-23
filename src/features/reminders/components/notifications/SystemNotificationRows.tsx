@@ -671,8 +671,9 @@ export function DividendNotificationRow({
             {alert.totalBRLCents > 0 ? (
               <MoneyText
                 cents={alert.totalBRLCents}
+                variant="caption"
                 tone={isSettled ? "positive" : "default"}
-                className="font-semibold text-foreground text-xs"
+                className={cn("font-semibold text-xs", !isSettled && "text-foreground")}
               />
             ) : null}
             <span className={cn("line-clamp-2", alert.totalBRLCents > 0 && "border-l border-border/80 pl-1.5")}>

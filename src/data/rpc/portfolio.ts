@@ -188,6 +188,52 @@ export async function confirmUserDividendEventsRpc(
 }
 
 /**
+ * Reverte atomicamente proventos confirmados (exclui `portfolio_dividends`, estorna crédito em Caixa
+ * quando aplicável e restaura `user_dividend_events` / dispensas sem race conditions).
+ */
+export async function revertConfirmedDividendEventsRpc(payload: {
+  dividendIds: string[];
+  eventIds?: string[] | null;
+  corporateIds?: string[] | null;
+}): Promise<{
+  success: boolean;
+  deleted_dividends: number;
+  reverted_events: number;
+  reverted_cash_brl: number;
+}> {
+  return unwrapRpc(
+    callRpc("revert_confirmed_dividend_events_atomic", {
+      p_dividend_ids: payload.dividendIds,
+      p_event_ids: payload.eventIds ?? null,
+      p_corporate_ids: payload.corporateIds ?? null,
+    }),
+  );
+}
+
+/**
+ * Dispensa ou descarta atomicamente um evento/sugestão de provento sem race conditions.
+ */
+export async function dismissUserDividendEventRpc(payload: {
+  eventId?: string | null;
+  corporateDividendId?: string | null;
+  assetId?: string | null;
+  reason?: string;
+}): Promise<{
+  success: boolean;
+  event_id: string | null;
+  corporate_dividend_id: string | null;
+}> {
+  return unwrapRpc(
+    callRpc("dismiss_user_dividend_event_atomic", {
+      p_event_id: payload.eventId ?? null,
+      p_corporate_dividend_id: payload.corporateDividendId ?? null,
+      p_asset_id: payload.assetId ?? null,
+      p_reason: payload.reason ?? "manual_ignore",
+    }),
+  );
+}
+
+/**
  * Registra atomicamente um aporte/depósito em uma meta via RPC allocate_goal_deposit (§Plano 12).
  */
 export async function allocateGoalDeposit(input: {

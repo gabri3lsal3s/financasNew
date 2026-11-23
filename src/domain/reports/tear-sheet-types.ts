@@ -10,6 +10,7 @@ import type { AllocationAnalysisResult } from "./allocation-gaps";
 import type { ConcentrationRiskResult } from "./concentration-risk";
 
 export interface WealthPositionRow {
+  assetId?: string;
   ticker: string;
   name?: string | null;
   assetClass: string | null;
@@ -28,6 +29,10 @@ export interface WealthPositionRow {
   yearDividendsBRL?: number;
   yocPct?: number;
   isCash?: boolean;
+  pricingMode?: string | null;
+  notes?: string | null;
+  fixedIncomeMetadata?: unknown;
+  canonicalSource?: string | null;
   score?: number | null;
   allocationStatus?: string | null;
   avgPriceUSD?: number | null;

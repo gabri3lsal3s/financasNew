@@ -25,6 +25,10 @@ vi.mock("@/state", async (importOriginal) => {
       mutateAsync: mockMutateAsync,
       isPending: false,
     }),
+    useConfirmUserDividendEvents: () => ({
+      mutateAsync: mockMutateAsync,
+      isPending: false,
+    }),
     useDismissCorporateDividend: () => ({
       mutateAsync: vi.fn(),
       isPending: false,
@@ -106,6 +110,8 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
           quantityOnComDate: 100,
           rate: 1.0,
           netRate: 1.0,
+          taxRatePct: 0,
+          grossAmount: 100,
           totalAmount: 100,
           currency: "BRL",
           status: "available",
@@ -125,14 +131,23 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
 
     fireEvent.click(screen.getByText("Aprovar no Caixa"));
     expect(mockMutateAsync).toHaveBeenCalledWith({
-      dividends: [
+      items: [
         {
+          event_id: null,
+          corporate_dividend_id: "c1",
           asset_id: "a1",
           ticker: "PETR4",
+          type: "DIVIDENDO",
+          com_date: "2026-10-30",
           date: "2026-11-05",
           amount: 100,
-          notes: "Provento automático (DIVIDENDO) apurado na B3",
-          corporate_dividend_id: "c1",
+          tax_rate_pct: 0,
+          quantity_on_com_date: 100,
+          gross_rate: 1.0,
+          net_rate: 1.0,
+          currency: "BRL",
+          fx_rate: null,
+          notes: "Provento automático (DIVIDENDO)",
         },
       ],
       sync_cash: true,

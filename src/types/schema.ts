@@ -390,7 +390,7 @@ export type UserCustomSettings = {
 };
 
 export type DividendAutomationPreferences = {
-  /** Modo padrão de efetivação quando chega a data de pagamento: "auto" (padrão) ou "manual_confirm". */
+  /** Modo padrão de efetivação quando chega a data de pagamento: "manual_confirm" (padrão seguro) ou "auto". */
   settlementMode?: "auto" | "manual_confirm";
   /** Credita automaticamente o valor líquido no ativo CAIXA (em BRL). Padrão: true. */
   autoCreditCash?: boolean;
@@ -950,6 +950,8 @@ export type UserDividendEvent = {
   settled_dividend_id?: string | null;
   is_manual: boolean;
   is_type_uncertain: boolean;
+  settlement_origin?: "auto" | "manual" | "dedup" | null;
+  manual_review_required?: boolean;
   dismiss_reason?: PortfolioDividendDismissalReason | null;
   notes?: string | null;
   created_at?: string;

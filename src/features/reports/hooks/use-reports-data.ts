@@ -143,6 +143,7 @@ export function useReportsData(params: UseReportsDataParams) {
 
   return {
     periodLabel: period.periodLabel,
+    isCurrentPeriod: period.isCurrentPeriod,
     isDateInPeriod: period.isDateInPeriod,
     loading,
     error,

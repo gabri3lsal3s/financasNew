@@ -1,14 +1,15 @@
 -- ============================================================================
 -- CRON — Motor Global de Cotações EOD/EOM & Proventos Automatizados (Blocos A–C)
 -- ============================================================================
--- Arquitetura Custo Zero (eliminação de crons intradiários):
---   • Durante o pregão aberto, o cliente usa SWR compartilhado sob demanda (15 min)
+-- AUDITORIA DE QUOTAS & DIMENSIONAMENTO (Plano Gratuito: 500.000 invocações/mês):
+--   • Eliminação dos crons intradiários legados (`0 11,14,17,20 * * 1-5`):
+--     durante o pregão aberto, o cliente usa SWR compartilhado sob demanda (15 min)
 --     exclusivamente para tickers vencidos com pregão ativo;
---   • Na nuvem, apenas 1 âncora diária pós-fechamento EOD + 1 fechamento mensal EOM
---     garantem histórico diário (90d) e congelamento mensal oficial (permanente),
---     independentemente de o usuário abrir o aplicativo na virada do mês;
---   • Proventos: coleta global diária B3 + EUA (`sync_corporate_dividends`) e
---     materialização/efetivação segura por usuário (`process_user_dividends`).
+--   • Na nuvem, apenas 4 agendamentos (~100 invocações/mês no total, < 0,03% da
+--     cota mensal de 500.000 invocações) garantem histórico diário (90d), fechamento
+--     mensal oficial (EOM permanente), coleta global B3+EUA e efetivação diária;
+--   • Todas as chamadas definem `timeout_milliseconds := 60000` (60s) para
+--     comportar retries externos e paginação em lote no `pg_net`.
 --
 -- Jobs ativos (Produção):
 --   1. 'quotes-eod-close'       ('0 22 * * 1-5'  → 19:00 BRT seg–sex): action = 'eod_close'
@@ -48,7 +49,8 @@ select cron.schedule(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
       ),
-      body := '{"action":"eod_close"}'
+      body := jsonb_build_object('action', 'eod_close'),
+      timeout_milliseconds := 60000
     );
   $cron$
 );
@@ -64,7 +66,8 @@ select cron.schedule(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
       ),
-      body := '{"action":"close_month_global"}'
+      body := jsonb_build_object('action', 'close_month_global'),
+      timeout_milliseconds := 60000
     );
   $cron$
 );
@@ -80,7 +83,8 @@ select cron.schedule(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
       ),
-      body := '{"action":"sync_corporate_dividends"}'
+      body := jsonb_build_object('action', 'sync_corporate_dividends'),
+      timeout_milliseconds := 60000
     );
   $cron$
 );
@@ -96,7 +100,8 @@ select cron.schedule(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
       ),
-      body := '{"action":"process_user_dividends"}'
+      body := jsonb_build_object('action', 'process_user_dividends'),
+      timeout_milliseconds := 60000
     );
   $cron$
 );

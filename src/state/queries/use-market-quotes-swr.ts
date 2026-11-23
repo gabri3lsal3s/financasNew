@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   FALLBACK_USD_RATE,
@@ -16,16 +16,63 @@ import { usePortfolioAssets } from "./use-portfolio";
 
 const DEFAULT_INTERVAL_MS = 15 * 60_000;
 const CLIENT_COOLDOWN_MS = 14.5 * 60_000;
+const MARKET_CLOCK_REFRESH_MS = 60_000;
 
-/** Estado de módulo compartilhado para evitar corridas entre montagens simultâneas (Home / Investimentos). */
+interface MarketQuotesSwrStoreSnapshot {
+  isSyncing: boolean;
+  lastSyncAt: number | null;
+  degradedTickers: string[];
+}
+
+/** Estado de módulo compartilhado via useSyncExternalStore para zero drift entre instâncias. */
+let swrStoreSnapshot: MarketQuotesSwrStoreSnapshot = {
+  isSyncing: false,
+  lastSyncAt: null,
+  degradedTickers: [],
+};
+const swrStoreListeners = new Set<() => void>();
 let inFlightSyncPromise: Promise<void> | null = null;
 const attemptedCacheMissTickers = new Set<string>();
 const lastClientAttemptByTicker = new Map<string, number>();
+
+function updateSwrStoreSnapshot(
+  updater: (prev: MarketQuotesSwrStoreSnapshot) => MarketQuotesSwrStoreSnapshot,
+): void {
+  const next = updater(swrStoreSnapshot);
+  if (
+    next.isSyncing === swrStoreSnapshot.isSyncing &&
+    next.lastSyncAt === swrStoreSnapshot.lastSyncAt &&
+    next.degradedTickers.length === swrStoreSnapshot.degradedTickers.length &&
+    next.degradedTickers.every((t, i) => t === swrStoreSnapshot.degradedTickers[i])
+  ) {
+    return;
+  }
+  swrStoreSnapshot = next;
+  for (const listener of swrStoreListeners) {
+    listener();
+  }
+}
+
+export function subscribeMarketQuotesSwr(listener: () => void): () => void {
+  swrStoreListeners.add(listener);
+  return () => {
+    swrStoreListeners.delete(listener);
+  };
+}
+
+export function getMarketQuotesSwrSnapshot(): MarketQuotesSwrStoreSnapshot {
+  return swrStoreSnapshot;
+}
 
 export function resetMarketQuotesSwrStateForTest(): void {
   inFlightSyncPromise = null;
   attemptedCacheMissTickers.clear();
   lastClientAttemptByTicker.clear();
+  updateSwrStoreSnapshot(() => ({
+    isSyncing: false,
+    lastSyncAt: null,
+    degradedTickers: [],
+  }));
 }
 
 export interface UseMarketQuotesSwrOptions {
@@ -60,17 +107,16 @@ export function useMarketQuotesSwr(
   const assetsQuery = usePortfolioAssets();
   const pricesQuery = useAssetPrices();
 
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
-  const [degradedTickers, setDegradedTickers] = useState<string[]>([]);
-  const mountedRef = useRef(true);
-
+  const swrSnapshot = useSyncExternalStore(
+    subscribeMarketQuotesSwr,
+    getMarketQuotesSwrSnapshot,
+    getMarketQuotesSwrSnapshot,
+  );
+  const [marketClockTick, setMarketClockTick] = useState(0);
+  const pricesDataRef = useRef(pricesQuery.data);
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
+    pricesDataRef.current = pricesQuery.data;
+  }, [pricesQuery.data]);
 
   const eligibleTickers = useMemo(() => {
     const assets = assetsQuery.data ?? [];
@@ -80,8 +126,8 @@ export function useMarketQuotesSwr(
     let needsUsdFx = false;
 
     for (const a of assets) {
-      if (a.currency === "USD") needsUsdFx = true;
       if ((Number(a.quantity) || 0) <= 0) continue;
+      if (a.currency === "USD") needsUsdFx = true;
       if (isCashAssetClass(a.asset_class)) continue;
       if (isFixedIncomeClass(a.asset_class)) continue;
       if (isTesouroAsset(a.ticker, a.asset_class) || Boolean(normalizeTesouroTicker(a.ticker))) {
@@ -103,17 +149,25 @@ export function useMarketQuotesSwr(
       set.add(clean);
     }
 
-    if (needsUsdFx || set.size > 0) {
+    if (needsUsdFx) {
       set.add("USDBRL=X");
     }
 
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [assetsQuery.data]);
 
-  const hasOpenMarket = useMemo(
-    () => eligibleTickers.some((t) => isMarketOpenForTicker(t)),
-    [eligibleTickers],
-  );
+  useEffect(() => {
+    if (!enabled || eligibleTickers.length === 0) return;
+    const timer = setInterval(() => {
+      setMarketClockTick((prev) => prev + 1);
+    }, MARKET_CLOCK_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [enabled, eligibleTickers.length]);
+
+  const hasOpenMarket = useMemo(() => {
+    void marketClockTick;
+    return eligibleTickers.some((t) => isMarketOpenForTicker(t));
+  }, [eligibleTickers, marketClockTick]);
 
   const runSyncForTickers = useCallback(
     async (forceRetryTickers?: string[]) => {
@@ -126,12 +180,14 @@ export function useMarketQuotesSwr(
 
       const now = new Date();
       const nowMs = now.getTime();
-      const priceRows = pricesQuery.data ?? [];
+      const priceRows = pricesDataRef.current ?? [];
       const rowByTicker = new Map(priceRows.map((r) => [r.ticker.toUpperCase().trim(), r]));
 
       const cacheMissCandidates: string[] = [];
       const swrCandidates: string[] = [];
       const eligibleSet = new Set(eligibleTickers);
+      const addedMissAttempt: string[] = [];
+      const prevClientAttempts = new Map<string, number | undefined>();
 
       const classifyForceTicker = (ticker: string) => {
         const row = rowByTicker.get(ticker);
@@ -168,12 +224,14 @@ export function useMarketQuotesSwr(
           if (staleReason === "cache_miss") {
             if (attemptedCacheMissTickers.has(ticker)) continue;
             attemptedCacheMissTickers.add(ticker);
+            addedMissAttempt.push(ticker);
             cacheMissCandidates.push(ticker);
             continue;
           }
 
-          const prevAttempt = lastClientAttemptByTicker.get(ticker) ?? 0;
-          if (nowMs - prevAttempt < CLIENT_COOLDOWN_MS) continue;
+          const prevAttempt = lastClientAttemptByTicker.get(ticker);
+          if (prevAttempt !== undefined && nowMs - prevAttempt < CLIENT_COOLDOWN_MS) continue;
+          prevClientAttempts.set(ticker, prevAttempt);
           lastClientAttemptByTicker.set(ticker, nowMs);
           swrCandidates.push(ticker);
         }
@@ -182,7 +240,20 @@ export function useMarketQuotesSwr(
       const allCandidates = [...cacheMissCandidates, ...swrCandidates];
       if (allCandidates.length === 0) return;
 
-      if (mountedRef.current) setIsSyncing(true);
+      const rollbackAttemptCaches = () => {
+        for (const t of addedMissAttempt) {
+          attemptedCacheMissTickers.delete(t);
+        }
+        for (const [t, prevVal] of prevClientAttempts.entries()) {
+          if (prevVal === undefined) {
+            lastClientAttemptByTicker.delete(t);
+          } else {
+            lastClientAttemptByTicker.set(t, prevVal);
+          }
+        }
+      };
+
+      updateSwrStoreSnapshot((prev) => ({ ...prev, isSyncing: true }));
 
       const work = (async () => {
         try {
@@ -207,10 +278,26 @@ export function useMarketQuotesSwr(
 
           const returnedMap = new Map<string, { ticker: string; price: number }>();
           let totalUpdated = 0;
+          let hadTransientBlock = false;
           for (const res of results) {
             totalUpdated += res.updated;
+            if (res.rateLimited || res.skippedByLock > 0 || (res.failed > 0 && res.quotes.length === 0)) {
+              hadTransientBlock = true;
+            }
             for (const q of res.quotes) {
               returnedMap.set(q.ticker, q);
+            }
+          }
+
+          if (hadTransientBlock) {
+            for (const t of addedMissAttempt) {
+              if (!returnedMap.has(t)) attemptedCacheMissTickers.delete(t);
+            }
+            for (const [t, prevVal] of prevClientAttempts.entries()) {
+              if (!returnedMap.has(t)) {
+                if (prevVal === undefined) lastClientAttemptByTicker.delete(t);
+                else lastClientAttemptByTicker.set(t, prevVal);
+              }
             }
           }
 
@@ -221,36 +308,36 @@ export function useMarketQuotesSwr(
             const existingRow = rowByTicker.get(t);
             const hasValidQuote =
               (hit && hit.price > 0) ||
-              (existingRow?.source === "api" && existingRow.price > 0 &&
+              (existingRow?.source === "api" &&
+                existingRow.price > 0 &&
                 !(t === "USDBRL=X" && existingRow.price === FALLBACK_USD_RATE && !existingRow.fetched_at));
             if (!hasValidQuote) {
               failedTickers.push(t);
             }
           }
 
-          if (mountedRef.current) {
-            setDegradedTickers((prev) => {
-              const merged = new Set(
-                prev.filter((t) => eligibleSet.has(t) && !attemptedSet.has(t)),
-              );
-              for (const t of failedTickers) {
-                merged.add(t);
-              }
-              return [...merged].sort((a, b) => a.localeCompare(b));
-            });
-            setLastSyncAt(Date.now());
-          }
+          updateSwrStoreSnapshot((prev) => {
+            const merged = new Set(
+              prev.degradedTickers.filter((t) => eligibleSet.has(t) && !attemptedSet.has(t)),
+            );
+            for (const t of failedTickers) {
+              merged.add(t);
+            }
+            return {
+              ...prev,
+              degradedTickers: [...merged].sort((a, b) => a.localeCompare(b)),
+              lastSyncAt: Date.now(),
+            };
+          });
 
-          if (totalUpdated > 0) {
+          if (totalUpdated > 0 || returnedMap.size > 0) {
             await queryClient.invalidateQueries({ queryKey: ["asset_prices"] });
           }
         } catch {
-          // Degradação graciosa: mantém cache existente sem travar UI
+          rollbackAttemptCaches();
         } finally {
           inFlightSyncPromise = null;
-          if (mountedRef.current) {
-            setIsSyncing(false);
-          }
+          updateSwrStoreSnapshot((prev) => ({ ...prev, isSyncing: false }));
         }
       })();
 
@@ -261,7 +348,6 @@ export function useMarketQuotesSwr(
       enabled,
       assetsQuery.isLoading,
       pricesQuery.isLoading,
-      pricesQuery.data,
       eligibleTickers,
       intervalMs,
       queryClient,
@@ -272,7 +358,7 @@ export function useMarketQuotesSwr(
   useEffect(() => {
     if (!enabled) return;
     void runSyncForTickers();
-  }, [enabled, runSyncForTickers]);
+  }, [enabled, runSyncForTickers, pricesQuery.data]);
 
   // Revalidação silenciosa a cada 15 min enquanto ativo em tela com pregão aberto
   useEffect(() => {
@@ -309,19 +395,19 @@ export function useMarketQuotesSwr(
   }, [enabled, enableInterval, intervalMs, runSyncForTickers]);
 
   const retryDegraded = useCallback(async () => {
-    if (degradedTickers.length === 0) return;
-    for (const t of degradedTickers) {
+    if (swrSnapshot.degradedTickers.length === 0) return;
+    for (const t of swrSnapshot.degradedTickers) {
       attemptedCacheMissTickers.delete(t);
       lastClientAttemptByTicker.delete(t);
     }
-    await runSyncForTickers(degradedTickers);
-  }, [degradedTickers, runSyncForTickers]);
+    await runSyncForTickers(swrSnapshot.degradedTickers);
+  }, [swrSnapshot.degradedTickers, runSyncForTickers]);
 
   return {
-    isSyncing,
-    lastSyncAt,
+    isSyncing: swrSnapshot.isSyncing,
+    lastSyncAt: swrSnapshot.lastSyncAt,
     hasOpenMarket,
-    degradedTickers,
+    degradedTickers: swrSnapshot.degradedTickers,
     retryDegraded,
   };
 }

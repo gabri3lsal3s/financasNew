@@ -54,32 +54,52 @@ export function useExecutiveReportRefresh({
 
   const targetTickers = useMemo(() => {
     const set = new Set<string>();
+    const excludedTickers = new Set<string>();
     let needsUsdFx = false;
 
-    for (const rawTicker of tickers ?? []) {
-      const clean = rawTicker.trim().toUpperCase();
-      if (clean && !isPrivateFixedIncomeTicker(clean) && !normalizeTesouroTicker(clean)) {
-        set.add(clean);
-      }
-    }
-
     for (const a of assets ?? []) {
-      if (a.currency === "USD") needsUsdFx = true;
-      if ((Number(a.quantity) || 0) <= 0) continue;
-      if (isCashAssetClass(a.asset_class)) continue;
-      if (isFixedIncomeClass(a.asset_class)) continue;
-      if (isTesouroAsset(a.ticker, a.asset_class) || Boolean(normalizeTesouroTicker(a.ticker))) {
+      const clean = a.ticker.trim().toUpperCase();
+      const isExcluded =
+        (Number(a.quantity) || 0) <= 0 ||
+        isCashAssetClass(a.asset_class) ||
+        isFixedIncomeClass(a.asset_class) ||
+        isTesouroAsset(a.ticker, a.asset_class) ||
+        Boolean(normalizeTesouroTicker(a.ticker)) ||
+        isPrivateFixedIncomeTicker(a.ticker) ||
+        isCustomValuationAsset(a);
+
+      if (isExcluded) {
+        if (clean) excludedTickers.add(clean);
         continue;
       }
-      if (isPrivateFixedIncomeTicker(a.ticker) || isCustomValuationAsset(a)) continue;
 
-      const clean = a.ticker.trim().toUpperCase();
+      if (a.currency === "USD") {
+        needsUsdFx = true;
+      }
+
       if (clean && clean !== "CAIXA" && clean !== "CASH") {
         set.add(clean);
       }
     }
 
-    if (needsUsdFx || set.size > 0) {
+    for (const rawTicker of tickers ?? []) {
+      const clean = rawTicker.trim().toUpperCase();
+      if (!clean || clean === "CAIXA" || clean === "CASH") continue;
+      if (clean === "USDBRL=X") {
+        needsUsdFx = true;
+        continue;
+      }
+      if (
+        excludedTickers.has(clean) ||
+        isPrivateFixedIncomeTicker(clean) ||
+        Boolean(normalizeTesouroTicker(clean))
+      ) {
+        continue;
+      }
+      set.add(clean);
+    }
+
+    if (needsUsdFx) {
       set.add("USDBRL=X");
     }
 
@@ -109,7 +129,7 @@ export function useExecutiveReportRefresh({
         setRateLimited(res.rateLimited);
       }
 
-      if (res.updated > 0) {
+      if (res.updated > 0 || res.quotes.length > 0) {
         await queryClient.invalidateQueries({ queryKey: ["asset_prices"] });
       }
     } catch {

@@ -10,6 +10,7 @@ import {
 import {
   formatMarketReferenceTimestampBR,
   type AssetPricingMode,
+  type CanonicalQuoteSource,
   type FixedIncomeBalanceResult,
   type PriceSource,
   type StaleQuoteAssetIssue,
@@ -34,6 +35,7 @@ export interface PositionRow {
   priceBRL: number;
   usdRate?: number;
   source: PriceSource;
+  canonicalSource?: CanonicalQuoteSource;
   isEstimate?: boolean;
   marketPriceAt?: string | null;
   fetchedAt?: string | null;
@@ -57,6 +59,7 @@ export interface PositionRow {
   finalReturnPct?: number | null;
   isCash: boolean;
   pricingMode?: AssetPricingMode;
+  notes?: string | null;
   fixedIncomeMetadata?: FixedIncomeMetadata | null;
   fixedIncomeResult?: FixedIncomeBalanceResult | null;
   isMatured?: boolean;
@@ -133,14 +136,16 @@ const PROVIDER_DISPLAY_LABEL: Record<string, string> = {
 /** Formata tooltip rico e auditável da cotação do ativo para tabelas Desktop e Mobile. */
 export function buildPositionPriceTooltip(row: Pick<
   PositionRow,
-  "source" | "provider" | "marketPriceAt" | "staleIssue" | "isEstimate"
+  "source" | "canonicalSource" | "provider" | "marketPriceAt" | "staleIssue" | "isEstimate"
 >): string {
   const baseStatus =
-    row.source === "manual"
-      ? "Manual"
-      : row.isEstimate || row.source === "fallback"
-        ? "Estimada"
-        : "Oficial";
+    row.canonicalSource === "custom_valuation"
+      ? "Valoração Própria"
+      : row.source === "manual"
+        ? "Manual"
+        : row.isEstimate || row.source === "fallback"
+          ? "Estimada"
+          : "Oficial";
   const providerLabel = row.provider
     ? PROVIDER_DISPLAY_LABEL[row.provider.toLowerCase()] ?? row.provider
     : null;

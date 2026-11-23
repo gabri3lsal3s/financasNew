@@ -1,6 +1,8 @@
 import { numberToCents } from "@/domain/money";
 import {
   formatFxSourceLabel,
+  isCustomValuationAsset,
+  isTesouroAsset,
   type CanonicalFxMetadata,
   type PortfolioMonthlySeriesPoint,
   type StaleQuoteGuardResult,
@@ -283,14 +285,28 @@ export function buildClassTableGroups(
 
           const tickerUpper = r.ticker.trim().toUpperCase();
           const staleIssue = staleGuard?.issueByTicker[tickerUpper];
+          const isExemptCustomOrFixed =
+            r.isCash ||
+            r.pricingMode === "cash" ||
+            r.pricingMode === "total_value" ||
+            r.fixedIncomeMetadata != null ||
+            r.canonicalSource === "custom_valuation" ||
+            isCustomValuationAsset({
+              ticker: r.ticker,
+              asset_class: r.assetClass,
+              notes: r.notes ?? null,
+            }) ||
+            isTesouroAsset(r.ticker, r.assetClass);
           const quoteStatusFlag =
             r.source === "manual"
               ? ("manual" as const)
-              : staleIssue?.kind === "post_trade_stale" || staleIssue?.kind === "stale_market_data"
-                ? ("stale" as const)
-                : r.isEstimate || r.source === "fallback" || staleIssue?.kind === "missing_or_fallback"
-                  ? ("fallback" as const)
-                  : null;
+              : isExemptCustomOrFixed
+                ? null
+                : staleIssue?.kind === "post_trade_stale" || staleIssue?.kind === "stale_market_data"
+                  ? ("stale" as const)
+                  : r.isEstimate || r.source === "fallback" || staleIssue?.kind === "missing_or_fallback"
+                    ? ("fallback" as const)
+                    : null;
 
           return {
             ticker: r.ticker,

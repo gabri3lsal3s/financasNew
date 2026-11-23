@@ -19,6 +19,7 @@ import {
   getLastMarketCloseUtc,
   getMarketTimeZone,
   getMarketZonedParts,
+  isBusinessDayForMarket,
   type QuoteMarket,
 } from "./market-calendar";
 import { isPrivateFixedIncomeTicker, normalizeTesouroTicker } from "./quotes";
@@ -125,6 +126,17 @@ function toMarketIsoDate(iso: string | null | undefined, market: QuoteMarket): s
   const ms = Date.parse(iso);
   if (!Number.isFinite(ms)) return null;
   return getMarketZonedParts(new Date(ms), getMarketTimeZone(market)).isoDate;
+}
+
+function hasMarketOpenedToday(market: QuoteMarket, now: Date): boolean {
+  if (market === "CRYPTO") return true;
+  const tz = getMarketTimeZone(market);
+  const zoned = getMarketZonedParts(now, tz);
+  if (!isBusinessDayForMarket(zoned.isoDate, market)) return false;
+  const minutes = zoned.hour * 60 + zoned.minute;
+  if (market === "US") return minutes >= 9 * 60 + 25;
+  if (market === "FX") return minutes >= 9 * 60;
+  return minutes >= 9 * 60 + 55;
 }
 
 function shouldSkipRow(row: StaleQuoteGuardRowLike): boolean {
@@ -251,8 +263,8 @@ export function evaluateStaleQuoteGuard(params: {
       continue;
     }
 
-    // 2. Ordem D+0 sem cotação atualizada na data civil de Brasília
-    if (latestTradeDate && latestTradeDate === todayBR) {
+    // 2. Ordem D+0 sem cotação atualizada na data civil de Brasília (apenas após abertura do pregão no dia útil)
+    if (latestTradeDate && latestTradeDate === todayBR && hasMarketOpenedToday(market, now)) {
       const priceDateBR = toBrIsoDate(row.marketPriceAt ?? null);
       if (!row.marketPriceAt || !priceDateBR || priceDateBR < latestTradeDate) {
         const issue: StaleQuoteAssetIssue = {
@@ -272,33 +284,65 @@ export function evaluateStaleQuoteGuard(params: {
       }
     }
 
-    // 3. Defasagem de mercado (> 1 dia útil do respectivo mercado para ações/B3/US; > 24h para Cripto)
+    // 3. Defasagem de mercado (> 1 dia útil do respectivo mercado para ações/B3/US; > 24h para Cripto; ou API sem timestamps)
     const refTimestamp = row.marketPriceAt ?? row.fetchedAt ?? null;
+    if (!refTimestamp) {
+      const issue: StaleQuoteAssetIssue = {
+        assetId: row.assetId,
+        ticker,
+        market,
+        kind: "stale_market_data",
+        marketPriceAt: null,
+        provider: row.provider ?? null,
+        latestTradeDate,
+        message: `${ticker}: cotação API sem timestamp de referência de mercado.`,
+      };
+      issues.push(issue);
+      staleMarketTickers.push(ticker);
+      issueByTicker[ticker] = issue;
+      continue;
+    }
+
     if (market === "CRYPTO") {
-      if (refTimestamp) {
-        const refMs = Date.parse(refTimestamp);
-        if (Number.isFinite(refMs) && now.getTime() - refMs > CRYPTO_STALE_MS) {
-          const issue: StaleQuoteAssetIssue = {
-            assetId: row.assetId,
-            ticker,
-            market,
-            kind: "stale_market_data",
-            marketPriceAt: row.marketPriceAt ?? null,
-            provider: row.provider ?? null,
-            latestTradeDate,
-            message: `${ticker}: cotação cripto com mais de 24h sem atualização de mercado.`,
-          };
-          issues.push(issue);
-          staleMarketTickers.push(ticker);
-          issueByTicker[ticker] = issue;
-        }
+      const refMs = Date.parse(refTimestamp);
+      if (!Number.isFinite(refMs) || now.getTime() - refMs > CRYPTO_STALE_MS) {
+        const issue: StaleQuoteAssetIssue = {
+          assetId: row.assetId,
+          ticker,
+          market,
+          kind: "stale_market_data",
+          marketPriceAt: row.marketPriceAt ?? null,
+          provider: row.provider ?? null,
+          latestTradeDate,
+          message: `${ticker}: cotação cripto com mais de 24h sem atualização de mercado.`,
+        };
+        issues.push(issue);
+        staleMarketTickers.push(ticker);
+        issueByTicker[ticker] = issue;
       }
       continue;
     }
 
     const lastCloseUtc = getLastMarketCloseUtc(ticker, now);
     const priceDateLocal = toMarketIsoDate(refTimestamp, market);
-    if (lastCloseUtc && priceDateLocal) {
+    if (!priceDateLocal) {
+      const issue: StaleQuoteAssetIssue = {
+        assetId: row.assetId,
+        ticker,
+        market,
+        kind: "stale_market_data",
+        marketPriceAt: row.marketPriceAt ?? null,
+        provider: row.provider ?? null,
+        latestTradeDate,
+        message: `${ticker}: timestamp de cotação inválido para verificação de frescor.`,
+      };
+      issues.push(issue);
+      staleMarketTickers.push(ticker);
+      issueByTicker[ticker] = issue;
+      continue;
+    }
+
+    if (lastCloseUtc) {
       const lastClosedDateLocal = getMarketZonedParts(lastCloseUtc, getMarketTimeZone(market)).isoDate;
       if (countMarketBusinessDays(priceDateLocal, lastClosedDateLocal, market) > 1) {
         const issue: StaleQuoteAssetIssue = {
@@ -328,7 +372,9 @@ export function evaluateStaleQuoteGuard(params: {
       const fxRefIso = params.fxMetadata.fxRateAt ?? params.fxMetadata.fetchedAt;
       const fxDateBR = toBrIsoDate(fxRefIso);
       const lastFxClose = getLastMarketCloseUtc("USDBRL=X", now);
-      if (fxDateBR && lastFxClose) {
+      if (!fxRefIso || !fxDateBR) {
+        fxWarning = "Taxa de câmbio USD/BRL sem timestamp de referência de mercado.";
+      } else if (lastFxClose) {
         const lastFxDateBR = getMarketZonedParts(lastFxClose, "America/Sao_Paulo").isoDate;
         if (countMarketBusinessDays(fxDateBR, lastFxDateBR, "FX") > 1) {
           fxWarning = `Taxa de câmbio USD/BRL defasada (referência ${fxDateBR}, último fechamento ${lastFxDateBR}).`;

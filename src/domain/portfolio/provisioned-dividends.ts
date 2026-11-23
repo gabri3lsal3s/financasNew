@@ -9,6 +9,7 @@
  *    nem ao saldo de Caixa (`CAIXA`), atuando somente em linhas auxiliares informativas.
  */
 
+import { numberToCents } from "@/domain/money";
 import type { UserDividendEvent } from "@/types";
 import type { SuggestedDividendItem } from "./dividend-suggester";
 import { FALLBACK_USD_RATE } from "./valuation";
@@ -72,15 +73,17 @@ export function summarizeProvisionedDividends(
 
   let provisionedNativeBRLCents = 0;
   let provisionedUSDCents = 0;
+  let provisionedConvertedBRLCents = 0;
   let pendingNativeBRLCents = 0;
   let pendingUSDCents = 0;
+  let pendingConvertedBRLCents = 0;
   let provisionedCount = 0;
   let pendingCount = 0;
   let hasUncertainTax = false;
 
   for (const item of items) {
     if (item.status === "SETTLED" || item.status === "DISMISSED") continue;
-    const cents = Math.round((Number(item.netAmount) || 0) * 100);
+    const cents = numberToCents(item.netAmount);
     if (cents <= 0) continue;
 
     const isPendingConfirm =
@@ -93,6 +96,7 @@ export function summarizeProvisionedDividends(
       pendingCount += 1;
       if (item.currency === "USD") {
         pendingUSDCents += cents;
+        pendingConvertedBRLCents += Math.round(cents * effectiveFx);
       } else {
         pendingNativeBRLCents += cents;
       }
@@ -100,16 +104,15 @@ export function summarizeProvisionedDividends(
       provisionedCount += 1;
       if (item.currency === "USD") {
         provisionedUSDCents += cents;
+        provisionedConvertedBRLCents += Math.round(cents * effectiveFx);
       } else {
         provisionedNativeBRLCents += cents;
       }
     }
   }
 
-  const totalProvisionedBRLCents =
-    provisionedNativeBRLCents + Math.round(provisionedUSDCents * effectiveFx);
-  const totalPendingBRLCents =
-    pendingNativeBRLCents + Math.round(pendingUSDCents * effectiveFx);
+  const totalProvisionedBRLCents = provisionedNativeBRLCents + provisionedConvertedBRLCents;
+  const totalPendingBRLCents = pendingNativeBRLCents + pendingConvertedBRLCents;
   const totalReceivableNativeBRLCents = provisionedNativeBRLCents + pendingNativeBRLCents;
   const totalReceivableUSDCents = provisionedUSDCents + pendingUSDCents;
   const totalReceivableBRLCents = totalProvisionedBRLCents + totalPendingBRLCents;

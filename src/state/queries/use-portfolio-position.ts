@@ -13,13 +13,14 @@ import {
   type AssetPricingMode,
   type CanonicalAssetHolding,
   type CanonicalFxMetadata,
+  type CanonicalQuoteSource,
   type FixedIncomeBalanceResult,
   type PortfolioMonthlySeriesPoint,
   type PriceSource,
   type TwrConsolidatedResult,
   type XIRRResult,
 } from "@/domain/portfolio";
-import { todayISO } from "@/domain/debts";
+import { todaySaoPauloISO } from "@/domain/portfolio/dividend-suggester";
 import type {
   AssetAllocationStatus,
   AssetCurrency,
@@ -45,6 +46,7 @@ export interface PortfolioPositionRow {
   priceBRL: number;
   usdRate: number;
   source: PriceSource;
+  canonicalSource?: CanonicalQuoteSource;
   isEstimate?: boolean;
   marketPriceAt?: string | null;
   fetchedAt?: string | null;
@@ -122,14 +124,12 @@ function mapCanonicalHoldingToRow(
   if (
     holding.resolvedPrice.source === "api" ||
     holding.resolvedPrice.source === "fixed_income" ||
-    holding.resolvedPrice.source === "closing_saved"
-  ) {
-    source = "api";
-  } else if (
-    holding.resolvedPrice.source === "fallback" ||
+    holding.resolvedPrice.source === "closing_saved" ||
     holding.resolvedPrice.source === "custom_valuation" ||
     holding.resolvedPrice.source === "cash"
   ) {
+    source = "api";
+  } else if (holding.resolvedPrice.source === "fallback") {
     source = "fallback";
   }
 
@@ -159,6 +159,7 @@ function mapCanonicalHoldingToRow(
     priceBRL: holding.priceBRL,
     usdRate: holding.usdRate,
     source,
+    canonicalSource: holding.resolvedPrice.source,
     isEstimate: holding.resolvedPrice.isEstimate,
     marketPriceAt: holding.resolvedPrice.marketPriceAt ?? null,
     fetchedAt: holding.resolvedPrice.fetchedAt ?? null,
@@ -208,7 +209,7 @@ export function usePortfolioPosition(): PortfolioPosition {
 
   const canonicalState = useMemo(() => {
     return evaluatePortfolioCanonicalState({
-      asOfDate: todayISO(),
+      asOfDate: todaySaoPauloISO(),
       mode: "instant",
       assets: assetsQuery.data ?? [],
       transactions: transactionsQuery.data ?? [],

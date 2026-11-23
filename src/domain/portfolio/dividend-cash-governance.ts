@@ -8,6 +8,8 @@
  * Módulo puro — sem chamadas externas.
  */
 
+import { todaySaoPauloISO } from "./dividend-suggester";
+
 export interface CashReversalSafeguardResult {
   isSafe: boolean;
   cashBalance: number;
@@ -22,7 +24,7 @@ export interface CashReversalSafeguardResult {
  */
 export function isDividendLiquidationDue(
   paymentDate: string,
-  referenceDate: string = new Date().toISOString().slice(0, 10),
+  referenceDate: string = todaySaoPauloISO(),
 ): boolean {
   return paymentDate.slice(0, 10) <= referenceDate.slice(0, 10);
 }

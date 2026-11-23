@@ -107,7 +107,8 @@ select cron.schedule(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer ${serviceRole}'
       ),
-      body := '{"action":"eod_close"}'
+      body := jsonb_build_object('action', 'eod_close'),
+      timeout_milliseconds := 60000
     );
   $cron$
 );
@@ -123,7 +124,8 @@ select cron.schedule(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer ${serviceRole}'
       ),
-      body := '{"action":"close_month_global"}'
+      body := jsonb_build_object('action', 'close_month_global'),
+      timeout_milliseconds := 60000
     );
   $cron$
 );
@@ -139,7 +141,8 @@ select cron.schedule(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer ${serviceRole}'
       ),
-      body := '{"action":"sync_corporate_dividends"}'
+      body := jsonb_build_object('action', 'sync_corporate_dividends'),
+      timeout_milliseconds := 60000
     );
   $cron$
 );
@@ -155,7 +158,8 @@ select cron.schedule(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer ${serviceRole}'
       ),
-      body := '{"action":"process_user_dividends"}'
+      body := jsonb_build_object('action', 'process_user_dividends'),
+      timeout_milliseconds := 60000
     );
   $cron$
 );

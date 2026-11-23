@@ -116,6 +116,16 @@ export function useProventosTabController(defaultMonth?: string) {
     [dividends, month, assetById, rowByAssetId],
   );
 
+  const corporateFxRate =
+    "fxRate" in corporateDividends &&
+    typeof corporateDividends.fxRate === "number" &&
+    corporateDividends.fxRate > 0
+      ? corporateDividends.fxRate
+      : null;
+  const positionFxRate =
+    typeof position.usdRate === "number" && position.usdRate > 0 ? position.usdRate : null;
+  const fxRate = corporateFxRate ?? positionFxRate ?? FALLBACK_USD_RATE;
+
   const yearlySummary = useMemo(
     () =>
       buildYearlyDividendsSummary(
@@ -124,21 +134,23 @@ export function useProventosTabController(defaultMonth?: string) {
         corporateDividends.projected,
         assetById,
         rowByAssetId,
+        fxRate,
       ),
-    [dividends, year, corporateDividends.projected, assetById, rowByAssetId],
+    [dividends, year, corporateDividends.projected, assetById, rowByAssetId, fxRate],
   );
 
-  const projectedInSelectedMonth = useMemo(
-    () =>
-      corporateDividends.projected.filter(
-        (p) => typeof p.paymentDate === "string" && p.paymentDate.startsWith(month),
-      ),
-    [corporateDividends.projected, month],
-  );
-  const fxRate =
-    "fxRate" in corporateDividends && typeof corporateDividends.fxRate === "number" && corporateDividends.fxRate > 0
-      ? corporateDividends.fxRate
-      : FALLBACK_USD_RATE;
+  const projectedInSelectedMonth = useMemo(() => {
+    const seen = new Set<string>();
+    return [...corporateDividends.available, ...corporateDividends.projected].filter((p) => {
+      if (typeof p.paymentDate !== "string" || !p.paymentDate.startsWith(month)) {
+        return false;
+      }
+      const key = p.eventId ?? `${p.corporateDividendId}:${p.assetId}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [corporateDividends.available, corporateDividends.projected, month]);
   const projectedTotalInSelectedMonth = useMemo(
     () =>
       projectedInSelectedMonth.reduce(
@@ -154,8 +166,8 @@ export function useProventosTabController(defaultMonth?: string) {
   );
 
   const snowballSummary = useMemo(
-    () => buildSnowballDashboardItems(assets, dividends, rowByAssetId),
-    [assets, dividends, rowByAssetId],
+    () => buildSnowballDashboardItems(assets, dividends, rowByAssetId, fxRate),
+    [assets, dividends, rowByAssetId, fxRate],
   );
 
   const handleDelete = async () => {
@@ -185,7 +197,15 @@ export function useProventosTabController(defaultMonth?: string) {
     year,
     loading: dividendsQuery.isLoading || assetsQuery.isLoading,
     error: dividendsQuery.error ?? assetsQuery.error,
-    refetch: () => void dividendsQuery.refetch(),
+    refetch: () => {
+      void Promise.allSettled([
+        dividendsQuery.refetch(),
+        assetsQuery.refetch(),
+        "refetch" in corporateDividends && typeof corporateDividends.refetch === "function"
+          ? corporateDividends.refetch()
+          : Promise.resolve(),
+      ]);
+    },
     hasAny,
     assetById,
     rowByAssetId,
