@@ -1,5 +1,8 @@
 import { lazy, Suspense, useMemo } from "react";
 import { resolveEffectiveLimit } from "@/domain/budgets";
+import type { ProvisionedDividendsSummary } from "@/domain/portfolio";
+import { getOptionalHook } from "@/hooks/use-notification-center";
+import * as stateHooks from "@/state";
 import {
   evaluateBalancoReadiness,
   evaluateDossiePosicaoReadiness,
@@ -42,6 +45,10 @@ export interface ReportsModalsHostProps {
  * Orquestrador dos modais executivos A4, DARF e drilldown de lançamentos da Central de Relatórios.
  */
 export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModalsHostProps) {
+  const useCorporateDividendsSafe = getOptionalHook(stateHooks, "useCorporateDividends", () => ({
+    provisionedSummary: null as ProvisionedDividendsSummary | null,
+  }));
+  const corporateDividendsState = useCorporateDividendsSafe();
   // 1. DRE Pessoal
   const dreReadiness = useMemo(
     () =>
@@ -246,6 +253,10 @@ export function ReportsModalsHost({ weightsEnabled, state, data }: ReportsModals
             annualIpcaRate={data.macroIndicatorsQuery.data?.annualIpcaRate}
             ibovPeriodReturnPct={data.macroIndicatorsQuery.data?.ibovPeriodReturnPct}
             assetsMetadata={data.assetsQuery.data ?? []}
+            usdRate={data.usdRate}
+            fxMetadata={data.fxMetadata}
+            provisionedSummary={corporateDividendsState?.provisionedSummary ?? null}
+            transactions={data.transactions}
             readiness={tearSheetReadiness}
           />
         </Suspense>

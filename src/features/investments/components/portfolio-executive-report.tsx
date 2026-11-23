@@ -3,7 +3,13 @@ import { ConfirmDialog, ErrorState, Skeleton } from "@/components/ui";
 import type { PositionRow } from "@/components/modules/position-table";
 import { ReportDocumentLayout } from "@/components/modules/reports";
 import {
+  buildMarketReferenceSummary,
+  buildReportPrintWarning,
+  calculateCustodyReconciliation,
+  evaluateStaleQuoteGuard,
   getActiveCustodyPositions,
+  type CanonicalFxMetadata,
+  type ProvisionedDividendsSummary,
   type TwrConsolidatedResult,
   type XIRRResult,
 } from "@/domain/portfolio";
@@ -13,13 +19,17 @@ import {
   resolveReportPositionRows,
   resolveReportTotals,
 } from "@/domain/portfolio/executive-report-builder";
+import { getOptionalHook } from "@/hooks/use-notification-center";
 import { currentMonth, formatMonthYear } from "@/lib/date";
+import * as state from "@/state";
 import {
   useDeletePortfolioSnapshot,
   usePortfolioAssets,
   usePortfolioMonthlyPosition,
   usePortfolioSnapshots,
 } from "@/state";
+import type { PortfolioTransaction } from "@/types";
+import { useExecutiveReportRefresh } from "../hooks/use-executive-report-refresh";
 import { ExecutiveReportDocument } from "./executive-report/executive-report-document";
 import { ExecutiveReportPeriodBar } from "./executive-report/executive-report-period-bar";
 import {
@@ -45,6 +55,9 @@ export interface PortfolioExecutiveReportProps {
   appName?: string;
   accountHolder?: string;
   initialMonth?: string;
+  usdRate?: number;
+  fxMetadata?: CanonicalFxMetadata | null;
+  transactions?: readonly PortfolioTransaction[];
 }
 
 /**
@@ -59,6 +72,9 @@ export function PortfolioExecutiveReport({
   appName = "Axir",
   accountHolder,
   initialMonth,
+  usdRate,
+  fxMetadata,
+  transactions = [],
 }: PortfolioExecutiveReportProps) {
   const activeMonth = currentMonth();
   const [selectedMonth, setSelectedMonth] = useState<string>(() => initialMonth ?? activeMonth);
@@ -76,8 +92,18 @@ export function PortfolioExecutiveReport({
   const assetsQuery = usePortfolioAssets();
   const snapshotsQuery = usePortfolioSnapshots();
   const monthlyPositionQuery = usePortfolioMonthlyPosition(selectedMonth);
+  const useCorporateDividendsSafe = getOptionalHook(state, "useCorporateDividends", () => ({
+    provisionedSummary: null as ProvisionedDividendsSummary | null,
+  }));
+  const corporateDividendsState = useCorporateDividendsSafe();
 
   const isCurrentSelected = selectedMonth === activeMonth;
+  const reportRefresh = useExecutiveReportRefresh({
+    open,
+    enabled: isCurrentSelected,
+    assets: assetsQuery.data ?? [],
+    tickers: rows.map((r) => r.ticker),
+  });
 
   const monthOptions = useMemo(
     () =>
@@ -117,6 +143,60 @@ export function PortfolioExecutiveReport({
     [effectiveRows],
   );
 
+  const effectiveUsdRate = isCurrentSelected
+    ? usdRate
+    : monthlyPositionQuery.data?.usdRate ?? usdRate;
+  const effectiveFxMetadata = useMemo(
+    () =>
+      isCurrentSelected
+        ? fxMetadata
+        : effectiveUsdRate && effectiveUsdRate > 0
+          ? {
+              rate: effectiveUsdRate,
+              source: "closing_saved" as const,
+              provider: "closing_saved",
+              fxRateAt: null,
+              fetchedAt: null,
+              isFallback: false,
+            }
+          : fxMetadata,
+    [isCurrentSelected, fxMetadata, effectiveUsdRate],
+  );
+
+  const staleGuard = useMemo(() => {
+    if (!isCurrentSelected) return null;
+    return evaluateStaleQuoteGuard({
+      rows: effectiveRows,
+      transactions,
+      assets: assetsQuery.data ?? [],
+      fxMetadata: effectiveFxMetadata,
+    });
+  }, [isCurrentSelected, effectiveRows, transactions, assetsQuery.data, effectiveFxMetadata]);
+
+  const marketSummary = useMemo(
+    () =>
+      buildMarketReferenceSummary({
+        rows: effectiveRows,
+        fxMetadata: effectiveFxMetadata,
+        usdRate: effectiveUsdRate,
+      }),
+    [effectiveRows, effectiveFxMetadata, effectiveUsdRate],
+  );
+
+  const custodyReconciliation = useMemo(
+    () =>
+      calculateCustodyReconciliation({
+        rows: effectiveRows,
+        totalBRL: effectiveTotalBRL,
+        cashBRL: effectiveCashBRL,
+        fxMetadata: effectiveFxMetadata,
+        usdRate: effectiveUsdRate,
+      }),
+    [effectiveRows, effectiveTotalBRL, effectiveCashBRL, effectiveFxMetadata, effectiveUsdRate],
+  );
+
+  const printWarning = useMemo(() => buildReportPrintWarning(staleGuard), [staleGuard]);
+
   const { classGroups, pqs } = useMemo(
     () =>
       buildExecutiveReportClassGroups({
@@ -124,8 +204,19 @@ export function PortfolioExecutiveReport({
         effectiveTotalBRL,
         rawAssets: assetsQuery.data ?? [],
         cashBRL: effectiveCashBRL,
+        fxMetadata: effectiveFxMetadata,
+        usdRate: effectiveUsdRate,
+        staleGuard,
       }),
-    [investmentRows, effectiveTotalBRL, assetsQuery.data, effectiveCashBRL],
+    [
+      investmentRows,
+      effectiveTotalBRL,
+      assetsQuery.data,
+      effectiveCashBRL,
+      effectiveFxMetadata,
+      effectiveUsdRate,
+      staleGuard,
+    ],
   );
 
   const canDeleteSnapshot =
@@ -137,6 +228,7 @@ export function PortfolioExecutiveReport({
       onOpenChange={onOpenChange}
       title="Relatório Executivo da Carteira"
       documentTitle={`AXIR_Relatorio_Executivo_Carteira_${selectedMonth}.pdf`}
+      printWarning={printWarning}
       size="3xl"
     >
       <div className="flex flex-col gap-4 w-full">
@@ -203,6 +295,14 @@ export function PortfolioExecutiveReport({
             investmentCount={investmentRows.length}
             classGroups={classGroups}
             pqs={pqs}
+            marketMetadata={marketSummary}
+            custodyReconciliation={custodyReconciliation}
+            provisionedSummary={
+              isCurrentSelected ? (corporateDividendsState?.provisionedSummary ?? null) : null
+            }
+            staleGuard={staleGuard}
+            isRefreshingQuotes={reportRefresh.isRefreshing}
+            onRetryQuotes={() => void reportRefresh.retry()}
             onOpenClosing={() => setActiveTab("closing")}
           />
         )}

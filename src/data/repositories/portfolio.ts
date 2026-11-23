@@ -3,6 +3,7 @@ import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
 import { AppError, classifyError } from "@/services/errors";
 import { currentMonth } from "@/lib/date";
+import { normalizeDividendTickerKey } from "@/domain/portfolio/dividend-deduplication";
 import type {
   DbInsert,
   DbUpdate,
@@ -13,8 +14,11 @@ import type {
   PortfolioSnapshotInput,
   PortfolioTransaction,
   CorporateDividend,
+  CorporateDividendType,
   PortfolioDividendDismissal,
   PortfolioDividendDismissalReason,
+  UserDividendEvent,
+  UserDividendEventStatus,
 } from "@/types";
 
 /**
@@ -745,16 +749,74 @@ export async function deletePortfolioContributionsMatching(filter: {
   }
 }
 
+function mapCorporateDividend(row: CorporateDividend): CorporateDividend {
+  return {
+    ...row,
+    ticker: row.ticker.trim().toUpperCase(),
+    payment_date: row.payment_date ?? null,
+    rate: Number(row.rate),
+    net_rate: Number(row.net_rate),
+    tax_rate_pct: Number(row.tax_rate_pct ?? 0),
+    is_type_uncertain: Boolean(row.is_type_uncertain),
+  };
+}
+
+function mapUserDividendEvent(row: UserDividendEvent): UserDividendEvent {
+  return {
+    ...row,
+    ticker: row.ticker.trim().toUpperCase(),
+    payment_date: row.payment_date ?? null,
+    quantity_on_com_date: Number(row.quantity_on_com_date),
+    gross_rate: Number(row.gross_rate),
+    net_rate: Number(row.net_rate),
+    tax_rate_pct: Number(row.tax_rate_pct ?? 0),
+    gross_amount: Number(row.gross_amount),
+    net_amount: Number(row.net_amount),
+    fx_rate_applied: row.fx_rate_applied != null ? Number(row.fx_rate_applied) : null,
+    is_manual: Boolean(row.is_manual),
+    is_type_uncertain: Boolean(row.is_type_uncertain),
+  };
+}
+
 /**
- * Consulta a lista global de proventos corporativos capturados da B3.
+ * Consulta proventos corporativos capturados (B3 e EUA).
+ * Quando `tickers` é informado, filtra estritamente pelos ativos do usuário (sem limite cego global).
  */
-export async function listCorporateDividends(limit = 200): Promise<CorporateDividend[]> {
+export async function listCorporateDividends(tickers?: string[]): Promise<CorporateDividend[]> {
+  if (Array.isArray(tickers)) {
+    const normalizedSet = new Set<string>();
+    for (const raw of tickers) {
+      const upper = raw.trim().toUpperCase();
+      if (!upper) continue;
+      normalizedSet.add(upper);
+      const canon = normalizeDividendTickerKey(upper);
+      if (canon) normalizedSet.add(canon);
+    }
+    const uniqueTickers = Array.from(normalizedSet);
+    if (uniqueTickers.length === 0) return [];
+
+    const { data, error } = await resolveQuery(
+      getSupabase()
+        .from("corporate_dividends")
+        .select("*")
+        .in("ticker", uniqueTickers)
+        .order("com_date", { ascending: false }),
+    );
+
+    if (error) {
+      const classified = classifyError(error);
+      throw new AppError(classified.kind, classified.message, error);
+    }
+
+    return ((data ?? []) as CorporateDividend[]).map(mapCorporateDividend);
+  }
+
   const { data, error } = await resolveQuery(
     getSupabase()
       .from("corporate_dividends")
       .select("*")
-      .order("payment_date", { ascending: false })
-      .limit(limit),
+      .order("com_date", { ascending: false })
+      .limit(500),
   );
 
   if (error) {
@@ -762,11 +824,190 @@ export async function listCorporateDividends(limit = 200): Promise<CorporateDivi
     throw new AppError(classified.kind, classified.message, error);
   }
 
-  return ((data ?? []) as CorporateDividend[]).map((row) => ({
-    ...row,
-    rate: Number(row.rate),
-    net_rate: Number(row.net_rate),
-  }));
+  return ((data ?? []) as CorporateDividend[]).map(mapCorporateDividend);
+}
+
+/**
+ * Lista os eventos de proventos materializados ou provisionados manualmente do usuário autenticado.
+ */
+export async function listUserDividendEvents(): Promise<UserDividendEvent[]> {
+  const uid = await currentUserId();
+  const { data, error } = await resolveQuery(
+    getSupabase()
+      .from("user_dividend_events")
+      .select("*")
+      .eq("user_id", uid)
+      .order("payment_date", { ascending: false, nullsFirst: true })
+      .order("com_date", { ascending: false }),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+
+  return ((data ?? []) as UserDividendEvent[]).map(mapUserDividendEvent);
+}
+
+export interface CreateManualUserDividendEventInput {
+  asset_id: string;
+  ticker: string;
+  type: CorporateDividendType;
+  com_date: string;
+  payment_date: string | null;
+  quantity_on_com_date: number;
+  gross_rate?: number;
+  net_rate?: number;
+  tax_rate_pct?: number;
+  gross_amount?: number;
+  net_amount: number;
+  currency: "BRL" | "USD";
+  status?: Extract<UserDividendEventStatus, "PROVISIONED" | "PENDING_CONFIRMATION">;
+  notes?: string | null;
+}
+
+/**
+ * Registra manualmente um evento de provento provisionado pelo usuário (`is_manual = true`).
+ */
+export async function createManualUserDividendEvent(
+  input: CreateManualUserDividendEventInput,
+): Promise<UserDividendEvent> {
+  const uid = await currentUserId();
+  const qty = Math.max(0, Number(input.quantity_on_com_date) || 0);
+  const netAmount = Math.max(0, Math.round(Number(input.net_amount) * 100) / 100);
+  const taxPct = Math.max(0, Math.min(100, Number(input.tax_rate_pct ?? 0) || 0));
+  const grossAmount =
+    input.gross_amount !== undefined
+      ? Math.max(netAmount, Math.round(Number(input.gross_amount) * 100) / 100)
+      : taxPct > 0 && taxPct < 100
+        ? Math.round((netAmount / (1 - taxPct / 100)) * 100) / 100
+        : netAmount;
+  const netRate =
+    input.net_rate !== undefined ? Number(input.net_rate) : qty > 0 ? netAmount / qty : 0;
+  const grossRate =
+    input.gross_rate !== undefined ? Number(input.gross_rate) : qty > 0 ? grossAmount / qty : 0;
+
+  const { data, error } = await resolveQuery(
+    getSupabase()
+      .from("user_dividend_events")
+      .insert({
+        user_id: uid,
+        corporate_dividend_id: null,
+        asset_id: input.asset_id,
+        ticker: input.ticker.trim().toUpperCase(),
+        type: input.type,
+        status: input.status ?? "PROVISIONED",
+        com_date: input.com_date.slice(0, 10),
+        payment_date: input.payment_date ? input.payment_date.slice(0, 10) : null,
+        quantity_on_com_date: qty,
+        gross_rate: grossRate,
+        net_rate: netRate,
+        tax_rate_pct: taxPct,
+        gross_amount: grossAmount,
+        net_amount: netAmount,
+        currency: input.currency,
+        is_manual: true,
+        is_type_uncertain: false,
+        notes: input.notes ?? null,
+      })
+      .select()
+      .single(),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Resposta vazia ao registrar provento provisionado.", null);
+  }
+
+  return mapUserDividendEvent(data as UserDividendEvent);
+}
+
+/**
+ * Atualiza campos editáveis de um evento de provento do usuário.
+ */
+export async function updateUserDividendEvent(
+  id: string,
+  patch: Partial<
+    Pick<
+      UserDividendEvent,
+      | "status"
+      | "payment_date"
+      | "net_amount"
+      | "gross_amount"
+      | "tax_rate_pct"
+      | "type"
+      | "notes"
+      | "dismiss_reason"
+      | "settled_dividend_id"
+      | "fx_rate_applied"
+    >
+  >,
+): Promise<UserDividendEvent> {
+  const uid = await currentUserId();
+  const { data, error } = await resolveQuery(
+    getSupabase()
+      .from("user_dividend_events")
+      .update({
+        ...patch,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .eq("user_id", uid)
+      .select()
+      .single(),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+  if (!data) {
+    throw new AppError("unknown", "Evento de provento não encontrado para atualização.", null);
+  }
+
+  return mapUserDividendEvent(data as UserDividendEvent);
+}
+
+/**
+ * Exclui um evento de provento do usuário (uso típico: provisionamento manual).
+ */
+export async function deleteUserDividendEvent(id: string): Promise<void> {
+  const uid = await currentUserId();
+  const { error } = await resolveQuery(
+    getSupabase().from("user_dividend_events").delete().eq("id", id).eq("user_id", uid),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
+}
+
+/**
+ * Reverte eventos liquidados de volta a PENDING_CONFIRMATION durante o Undo seguro.
+ */
+export async function revertSettledUserDividendEvents(eventIds: string[]): Promise<void> {
+  if (eventIds.length === 0) return;
+  const uid = await currentUserId();
+  const { error } = await resolveQuery(
+    getSupabase()
+      .from("user_dividend_events")
+      .update({
+        status: "PENDING_CONFIRMATION",
+        settled_dividend_id: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", uid)
+      .in("id", eventIds),
+  );
+
+  if (error) {
+    const classified = classifyError(error);
+    throw new AppError(classified.kind, classified.message, error);
+  }
 }
 
 /**

@@ -1,16 +1,16 @@
 {
-  "version": "3.16.1",
-  "versionCode": 104,
-  "releaseDate": "2026-11-23T01:39:30Z",
-  "minSupportedVersion": "3.16.1",
+  "version": "3.17.0",
+  "versionCode": 105,
+  "releaseDate": "2026-11-23T12:16:58Z",
+  "minSupportedVersion": "3.17.0",
   "apkUrl": "https://pub-8b490da0649647f0a70d2eff96bd39e0.r2.dev/guia-financeiro-release.apk",
-  "sha256": "555e93eae4bf7b62dd85cef1ae8b3ffd36d0484e985074cc6baffe9a7959db35",
-  "fileSizeBytes": 13280713,
+  "sha256": "a91ac7b3049a3cdca1d4c68b859fcb254cb7c36abddff3cd74c684d1b6b9dbe1",
+  "fileSizeBytes": 13309339,
   "changelog": [
-    "Axir v3.16.1 (Build 104): Push Remoto Android FCM, Hardening de Seguranca 0139/0140, Webhook de Suporte e Melhorias Pix",
-    "Push Remoto Nativo Android (FCM): opt-in nas configuracoes, canal padrao due_reminders, roteamento por deep-link e limpeza no logout",
-    "Seguranca e Privacidade (Migrations 0139 e 0140): endurecimento RLS/triggers, MFA AAL2 admin, protecao de keystore e webhook de suporte com deduplicacao atomica",
-    "Pix e Financas Compartilhadas: diagnostico aprimorado de chaves Pix, validacao de destinatario e maior confiabilidade em Rachas, Metas, Familia e Viagens",
-    "Infraestrutura de Producao: Cloudflare Workers com VAPID ativo, SSL Full (strict), Resend verificado, crons pg_cron/pg_net e FCM HTTP v1"
+    "Axir v3.17.0 (Build 105): Motor Global de Cotacoes (SWR + EOD/EOM), Stale Quote Guard, Custodia BRL/USD e Proventos Automatizados",
+    "Cotacoes e Cambio SSOT (Migration 0142): cache global compartilhado sem duplicidade, historico oficial EOD/EOM, PTAX BCB e atualizacao automatica SWR",
+    "Stale Quote Guard e Relatorio Executivo: custodia segregada BRL/USD/Caixa, alertas de defasagem de mercado, metadados de cambio nos PDFs e confirmacao pre-impressao",
+    "Proventos Automatizados (Migration 0143): apuracao deterministica na Data COM (B3 e EUA com 30% IR), fila unificada de revisao, credito USD->BRL no Caixa e alertas no Hub",
+    "Qualidade e Testes: 224 suites de dominio (3187 testes), 17 suites focadas (302 testes) e 8 testes E2E Playwright aprovados, com migrations 0142/0143 e Edge Functions prontas para aplicacao"
   ]
 }

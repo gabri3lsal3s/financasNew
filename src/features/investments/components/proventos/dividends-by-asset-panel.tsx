@@ -2,6 +2,7 @@ import { KpiCard } from "@/components/modules";
 import { Badge, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
 import type { AssetDividendBreakdownItem } from "@/domain/portfolio/dividends-analytics";
+import { formatPercent } from "@/services/masks/percent";
 
 export interface DividendsByAssetPanelProps {
   lifetimeTotal: number;
@@ -35,7 +36,7 @@ export function DividendsByAssetPanel({
 
         <KpiCard
           label="YoC Médio da Carteira"
-          value={portfolioAverageYoC > 0 ? `${portfolioAverageYoC}%` : "—"}
+          value={portfolioAverageYoC > 0 ? `${formatPercent(portfolioAverageYoC, 2)}%` : "—"}
           hint="Yield on Cost sobre preço de compra"
         />
       </div>
@@ -84,7 +85,7 @@ export function DividendsByAssetPanel({
                       <div className="flex items-center gap-1 shrink-0">
                         <span className="text-[11px] text-muted-foreground font-medium">YoC:</span>
                         <span className="font-mono text-xs font-semibold text-foreground tabular-nums">
-                          {yoc}%
+                          {`${formatPercent(yoc, 2)}%`}
                         </span>
                       </div>
                     ) : null}
@@ -217,7 +218,7 @@ export function DividendsByAssetPanel({
                         ) : null}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono font-medium text-foreground tabular-nums">
-                        {yoc > 0 ? `${yoc}%` : "—"}
+                        {yoc > 0 ? `${formatPercent(yoc, 2)}%` : "—"}
                       </td>
                     </tr>
                   ))}

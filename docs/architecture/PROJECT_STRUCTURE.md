@@ -132,13 +132,14 @@
 │   └── mockups/                   #   Mockups promocionais e prévias da interface
 │
 ├── supabase/                      # Backend — ver ESPECIFICAÇÃO §2 (migrations versionadas)
-│   ├── migrations/                # 0001..0140_support_ticket_webhook_and_dedup.sql
+│   ├── migrations/                # 0001..0143_automated_dividends_engine.sql
 │   │                              # (schema, RLS estrito com is_current_user_active, triggers,
 │   │                              # RPCs transacionais, backend feature flag enforcement, expurgo atômico de contas, 0060_support_tickets.sql,
 │   │                              # user_push_subscriptions/push_delivery_logs 0136, weekly_digest_enabled opt-in 0137, FORCE RLS e hardening 0138,
-│   │                              # remediação auditoria de segurança e RLS hardening 0139, Database Webhook support_tickets + dedup telegram_notified_at 0140)
+│   │                              # remediação auditoria de segurança e RLS hardening 0139, Database Webhook support_tickets + dedup 0140,
+│   │                              # defaults de preferências 0141, motor global SWR/EOD/EOM & market_price_history 0142, proventos automatizados user_dividend_events 0143)
 │   ├── notifications-cron.sql     # SQL idempotente do pg_cron para billing-lifecycle-cron e sunday-digest
-│   ├── quotes-cron.sql            # SQL idempotente do pg_cron para atualização periódica de cotações
+│   ├── quotes-cron.sql            # SQL idempotente do pg_cron para EOD/EOM (quotes-eod-close, quotes-eom-close) e proventos (dividends-sync-global, dividends-process-user)
 │   ├── tests/                     # Testes pgTAP para execução contra banco Postgres real (supabase test db)
 │   │   └── database/              #   01_rls_and_rollback.test.sql (auditoria pgTAP de RLS e rollback atômico)
 │   └── functions/                 # Edge functions (runtime Deno — fora do bundle Vite)
@@ -214,6 +215,7 @@
     │   │   │                      #   aporte-result (F4/F31 — checklist interativo de aportes),
     │   │   │                      #   cash-kpi-card (card exclusivo de saldo em Caixa & Liquidez com variantes banner e card),
     │   │   │                      #   reports/ (report-document-layout, report-header, report-footer, report-kpi-grid,
+    │   │   │                      #     custody-reconciliation-card, report-quote-status-banner,
     │   │   │                      #     report-donut-chart, report-stacked-bar, report-risk-gauge, report-class-tables,
     │   │   │                      #     report-redemptions-table F80, report-allocation-donuts F84,
 │   │   │                      #     report-fii-breakdown-card, report-fixed-income-breakdown-card,
@@ -252,7 +254,7 @@
     │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Central unificada de notificações & preferências (hooks/use-notification-preferences-form, prefs/{InAppRemindersPrefsCard,DueNotificationsPrefsCard,DailyClosingReminderCard,RemotePushPrefsCard,QuietHoursPrefsCard})
-    │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas (incluindo notifications-tab em 4 blocos: reminders-card, device-push-card, banking-assistant-card, email-digest-prefs-card)
+    │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas (incluindo notifications-tab em 5 blocos: reminders-card, device-push-card, dividend-automation-card, banking-assistant-card, email-digest-prefs-card)
     │   ├── admin/                 #   Módulo Administrativo SaaS Isolado (/admin/login, /admin/*)
     │   │                          #     layouts/ (admin-shell), components/ (user-edit-dialog, feature-toggle-card, telegram-settings-card, ticket-manage-dialog)
     │   │                          #     pages: admin-login-page, admin-dashboard-page, admin-users-page, admin-billing-page,
@@ -267,12 +269,12 @@
     │   ├── investments/           #   ÁREA ÚNICA de investimentos /investments (F17+F28+F35+F40+F72):
     │   │                          #     hub de 5 abas (Resumo / Proventos / Metas / Aporte / Relatórios & IR)
     │   │                          #     pages: resumo-tab, proventos-tab, targets-tab, aporte-tab, relatorios-tab, investments-page
+    │   │                          #     hooks: use-executive-report-refresh.ts
     │   │                          #     components: targets/ (target-classes-card, target-sectors-card, target-assets-card F61),
     │   │                          #       asset-form/ (asset-sell-tab F61), asset-form-dialog, cash-form-dialog, manual-price-dialog,
     │   │                          #       fixed-income-form-fields (F72), calibrate-fixed-income-dialog (F72), asset-edit-dialog (F72), asset-detail-sheet,
-    │   │                          #       transaction-form-dialog, transaction-list-dialog, dividend-form-dialog, portfolio-import-dialog,
-    │   │                          #       contribution-form-dialog, contributions-list-dialog,
-    │   │                          #       portfolio-tax-report, portfolio-darf-monitor, allocation-breakdown-dialog,
+    │   │                          #       pending-dividends-dialog (+ PendingDividendsDialogHost único global), quick-transaction-sheet,
+    │   │                          #       portfolio-darf-monitor, portfolio-executive-report, allocation-breakdown-dialog,
     │   │                          #       portfolio-snapshots-carousel, portfolio-snapshots-dialog, monthly-closing-editor (F51),
     │   │                          #       initial-pocket-cost-dialog (calibração do Marco Zero) com barrels components/index.ts e index.ts
     │   │
@@ -387,6 +389,8 @@
     │   │                          #   import-parser.ts (F35: sniffer de CSV e Quick-Paste),
     │   │                          #   xlsx-parser.ts (parser puro de planilhas Excel .xlsx/.xls),
     │   │                          #   statement-parser.ts (parser inteligente de extratos de bancos/corretoras, cálculo de deltas e deduplicação),
+    │   │                          #   canonical-engine.ts, market-calendar.ts, stale-quote-guard.ts, custody-reconciliation.ts,
+    │   │                          #   dividend-deduplication.ts, dividend-suggester.ts, provisioned-dividends.ts,
     │   │                          #   class-breakdown.ts (F85: decomposição holística dos 4 pilares FIIs/RF/Ações/Internacional e benchmarks IBOV/IFIX/CDI/S&P500),
     │   │                          #   tickers-catalog.ts (catálogo ampliado de tickers e inferência setorial, macroestratégia e risco)
     │   └── subscription/          #   Regras puras de planos, trial 30 dias (trial.ts), precificação, CDC 7 dias, estorno pró-rata (plans.ts) e adaptadores agnósticos de faturamento SaaS (billing.ts)
@@ -425,6 +429,8 @@
     │   ├── cache-policy.ts        #   F23: STALE_TIMES/gcTime por tipo de dado
     │   │                          #     (estático 5 min, analítico, cotações, transacional)
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), useMacroIndicators (CDI/Selic BCB), use-trips.ts,
+    │   │                          #     use-market-quotes-swr.ts (SWR/cache_miss/post_trade_stale sem botão manual),
+    │   │                          #     use-corporate-dividends.ts (+ useUserDividendEvents — B3/EUA + eventos persistidos),
     │   │                          #     use-push-subscriptions.ts (inscrições de Push Remoto do usuário),
     │   │                          #     use-emergency-fund-composition.ts (composição dinâmica da reserva de emergência),
     │   │                          #     use-insight-feedback.ts (aprendizado do usuário com persistência e atualização otimista),
@@ -485,7 +491,8 @@
     │   ├── calculator-open.ts     #   Store compartilhado de abertura da calculadora
     │   │                          #     (header e modais abrem o mesmo painel — F9/pós-F25)
     │   ├── calculator-bridge.ts   #   Ponte bidirecional da calculadora (leitura e injeção contextual de centavos)
-    │   ├── quotes.ts              #   Busca e sincronização online de cotações no cliente (Brapi/AwesomeAPI/Yahoo)
+    │   ├── quotes.ts              #   Busca e sincronização online via Edge Function `quotes` (SWR, refresh controlado, histórico EOD/EOM)
+    │   ├── dividend-review-modal.ts # Event bus do modal global único de conferência/provisionamento de proventos
     │   └── analytics/             #   Telemetria e tracking resiliente de uso (tracker.ts com batching e flush no unload)
     │
     ├── lib/                       # Utils genéricos (sem regra financeira)

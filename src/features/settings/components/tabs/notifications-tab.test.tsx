@@ -708,5 +708,25 @@ describe("NotificationsTab - Lembretes e Assistente Bancário (Fase 1 — Tarefa
         }
       }
     });
+
+    it("renderiza Proventos Automatizados e grava settlementMode + activatedAt", async () => {
+      const user = userEvent.setup();
+      renderNotificationsTab();
+
+      expect(screen.getByText("Proventos Automatizados (Carteira)")).toBeInTheDocument();
+      const autoRadio = screen.getByRole("radio", {
+        name: /Liquidar automaticamente na Data de Pagamento/i,
+      });
+      await user.click(autoRadio);
+
+      expect(mockUpdateCustomSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dividendAutomation: expect.objectContaining({
+            settlementMode: "auto",
+            activatedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+          }),
+        }),
+      );
+    });
   });
 });

@@ -25,8 +25,9 @@ export interface DividendPositionRef {
 }
 
 export interface ProjectedDividendRef {
-  paymentDate: string;
+  paymentDate: string | null;
   totalAmount: number;
+  currency?: "BRL" | "USD";
 }
 
 export interface YearlyDividendMonthPoint {
@@ -105,7 +106,14 @@ export function buildYearlyDividendsSummary(
   projectedDividends: readonly ProjectedDividendRef[],
   assetById: ReadonlyMap<string, PortfolioAsset>,
   rowByAssetId: ReadonlyMap<string, DividendPositionRef>,
+  usdRate?: number,
 ) {
+  const effectiveFx =
+    usdRate && usdRate > 0
+      ? usdRate
+      : (Array.from(rowByAssetId.values()).find((r) => r.usdRate && r.usdRate > 0)?.usdRate ??
+        FALLBACK_USD_RATE);
+
   const allMonthsOfYear = Array.from({ length: 12 }, (_, i) => {
     const mm = String(i + 1).padStart(2, "0");
     return `${year}-${mm}`;
@@ -115,8 +123,13 @@ export function buildYearlyDividendsSummary(
     const total = dividends
       .filter((d) => d.date.startsWith(m))
       .reduce((acc, d) => acc + resolveDividendAmountBRL(d, assetById, rowByAssetId), 0);
-    const projectedInMonth = projectedDividends.filter((p) => p.paymentDate.startsWith(m));
-    const projectedTotal = projectedInMonth.reduce((acc, p) => acc + p.totalAmount, 0);
+    const projectedInMonth = projectedDividends.filter(
+      (p) => typeof p.paymentDate === "string" && p.paymentDate.startsWith(m),
+    );
+    const projectedTotal = projectedInMonth.reduce((acc, p) => {
+      const rate = p.currency === "USD" ? effectiveFx : 1;
+      return acc + p.totalAmount * rate;
+    }, 0);
     return { month: m, total, projectedTotal, projectedCount: projectedInMonth.length };
   });
 

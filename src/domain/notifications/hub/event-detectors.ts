@@ -10,6 +10,7 @@ import {
   shiftMonth,
 } from "@/domain/cards";
 import { addDaysISO, todayISO } from "@/domain/debts";
+import type { SuggestedDividendItem } from "@/domain/portfolio";
 import type {
   Budget,
   CardPayment,
@@ -18,6 +19,7 @@ import type {
   Expense,
   MyFamilyData,
   NotificationCategoryPreferences,
+  UserDividendEvent,
 } from "@/types";
 import type { Trip } from "@/types/trips";
 
@@ -278,6 +280,163 @@ export function detectTripAndFamilyPendingAlerts(
       badgeLabel: "Família",
       targetRoute: "/familia",
       entityRefs: [`family:invite:${invite.id}`],
+    });
+  }
+
+  return alerts;
+}
+
+export interface DividendNotificationAlert {
+  id: string;
+  kind: "pending_confirmation" | "provisioned" | "settled";
+  title: string;
+  body: string;
+  badgeLabel: string;
+  count: number;
+  tickersPreview: string;
+  totalBRLCents: number;
+  hasUncertainTax: boolean;
+  targetRoute: string;
+  entityRefs: string[];
+}
+
+export interface DetectDividendNotificationAlertsInput {
+  pendingConfirmation?: ReadonlyArray<
+    Pick<SuggestedDividendItem, "ticker" | "totalAmount" | "currency" | "isTypeUncertain">
+  >;
+  provisioned?: ReadonlyArray<
+    Pick<SuggestedDividendItem, "ticker" | "totalAmount" | "currency" | "isTypeUncertain">
+  >;
+  recentlySettled?: ReadonlyArray<
+    Pick<
+      UserDividendEvent,
+      "ticker" | "net_amount" | "currency" | "fx_rate_applied" | "payment_date" | "updated_at" | "com_date"
+    >
+  >;
+  today?: string;
+  fxRate?: number;
+  notifyOnProvisioned?: boolean;
+  notifyOnPayment?: boolean;
+}
+
+function buildTickersPreview(tickers: readonly string[]): string {
+  const unique = Array.from(
+    new Set(tickers.map((t) => t.trim().toUpperCase()).filter(Boolean)),
+  );
+  if (unique.length === 0) return "";
+  if (unique.length <= 3) return unique.join(", ");
+  return `${unique.slice(0, 3).join(", ")} +${unique.length - 3}`;
+}
+
+function sumSuggestedBRLCents(
+  items: ReadonlyArray<Pick<SuggestedDividendItem, "totalAmount" | "currency">>,
+  fxRate: number,
+): number {
+  let cents = 0;
+  for (const item of items) {
+    const rawCents = Math.round((Number(item.totalAmount) || 0) * 100);
+    if (rawCents <= 0) continue;
+    cents += item.currency === "USD" ? Math.round(rawCents * fxRate) : rawCents;
+  }
+  return cents;
+}
+
+/**
+ * Agrupa proventos corporativos/manuais da carteira em até 3 alertas determinísticos
+ * para a Central de Notificações e o Sininho (a confirmar, provisionados e liquidados).
+ */
+export function detectDividendNotificationAlerts(
+  input: DetectDividendNotificationAlertsInput,
+): DividendNotificationAlert[] {
+  const today = (input.today ?? todayISO()).slice(0, 10);
+  const fx = input.fxRate && input.fxRate > 0 ? input.fxRate : 5.25;
+  const alerts: DividendNotificationAlert[] = [];
+
+  const pending = input.pendingConfirmation ?? [];
+  if (input.notifyOnPayment !== false && pending.length > 0) {
+    const tickersPreview = buildTickersPreview(pending.map((p) => p.ticker));
+    const hasUncertainTax = pending.some((p) => Boolean(p.isTypeUncertain));
+    const totalBRLCents = sumSuggestedBRLCents(pending, fx);
+    const key = `dividends:pending:${today}`;
+    alerts.push({
+      id: key,
+      kind: "pending_confirmation",
+      title:
+        pending.length === 1
+          ? `Provento de ${tickersPreview || "ativo"} aguardando confirmação`
+          : `${pending.length} proventos aguardando confirmação`,
+      body: hasUncertainTax
+        ? `Inclui eventos sem distinção Dividendo/JCP (${tickersPreview}). Revise IR/tipo antes de creditar no Caixa.`
+        : `Confira e confirme o lançamento de ${tickersPreview} no extrato e no Caixa.`,
+      badgeLabel: hasUncertainTax ? "Conferir IR" : "A confirmar",
+      count: pending.length,
+      tickersPreview,
+      totalBRLCents,
+      hasUncertainTax,
+      targetRoute: "/investments?tab=proventos&review=1",
+      entityRefs: [key],
+    });
+  }
+
+  const provisioned = input.provisioned ?? [];
+  if (input.notifyOnProvisioned !== false && provisioned.length > 0) {
+    const tickersPreview = buildTickersPreview(provisioned.map((p) => p.ticker));
+    const hasUncertainTax = provisioned.some((p) => Boolean(p.isTypeUncertain));
+    const totalBRLCents = sumSuggestedBRLCents(provisioned, fx);
+    const key = `dividends:provisioned:${today.slice(0, 7)}`;
+    alerts.push({
+      id: key,
+      kind: "provisioned",
+      title:
+        provisioned.length === 1
+          ? `Provento provisionado: ${tickersPreview || "Carteira"}`
+          : `${provisioned.length} proventos provisionados na agenda`,
+      body: `Data COM cumprida para ${tickersPreview}. Fora do Patrimônio e do Caixa até o pagamento.`,
+      badgeLabel: "Provisionado",
+      count: provisioned.length,
+      tickersPreview,
+      totalBRLCents,
+      hasUncertainTax,
+      targetRoute: "/investments?tab=proventos&subtab=calendario",
+      entityRefs: [key],
+    });
+  }
+
+  const settledCutoff = addDaysISO(today, -3);
+  const settledRecent = (input.recentlySettled ?? []).filter((ev) => {
+    const refDay = (ev.payment_date ?? ev.updated_at ?? ev.com_date).slice(0, 10);
+    return refDay >= settledCutoff && refDay <= today;
+  });
+
+  if (input.notifyOnPayment !== false && settledRecent.length > 0) {
+    const latestDate = settledRecent.reduce((max, ev) => {
+      const refDay = (ev.payment_date ?? ev.updated_at ?? ev.com_date).slice(0, 10);
+      return refDay > max ? refDay : max;
+    }, settledCutoff);
+    const tickersPreview = buildTickersPreview(settledRecent.map((s) => s.ticker));
+    let totalBRLCents = 0;
+    for (const ev of settledRecent) {
+      const rawCents = Math.round((Number(ev.net_amount) || 0) * 100);
+      if (rawCents <= 0) continue;
+      const evFx = ev.fx_rate_applied && ev.fx_rate_applied > 0 ? ev.fx_rate_applied : fx;
+      totalBRLCents += ev.currency === "USD" ? Math.round(rawCents * evFx) : rawCents;
+    }
+    const key = `dividends:settled:${latestDate}`;
+    alerts.push({
+      id: key,
+      kind: "settled",
+      title:
+        settledRecent.length === 1
+          ? `Provento creditado: ${tickersPreview || "Carteira"}`
+          : `${settledRecent.length} proventos creditados automaticamente`,
+      body: `Liquidados recentemente na carteira (${tickersPreview}).`,
+      badgeLabel: "Creditado",
+      count: settledRecent.length,
+      tickersPreview,
+      totalBRLCents,
+      hasUncertainTax: false,
+      targetRoute: "/investments?tab=proventos",
+      entityRefs: [key],
     });
   }
 

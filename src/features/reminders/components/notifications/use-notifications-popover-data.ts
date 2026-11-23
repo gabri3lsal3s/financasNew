@@ -84,6 +84,7 @@ export function useNotificationsPopoverData({
     closedBillAlerts,
     budgetOverrunAlert,
     tripAndFamilyAlerts,
+    dividendAlerts,
     criticalCount,
     actionNeededCount,
     isLoading,
@@ -221,6 +222,7 @@ export function useNotificationsPopoverData({
     keys.push(...closedBillAlerts.map((a) => a.key));
     if (budgetOverrunAlert) keys.push(budgetOverrunAlert.id);
     keys.push(...tripAndFamilyAlerts.map((a) => a.id));
+    keys.push(...dividendAlerts.map((a) => a.id));
     if (keys.length > 0) markAllMutation.mutate(keys);
     for (const b of unreadBroadcasts) {
       markBroadcastMutation.mutate(b.id);
@@ -237,6 +239,7 @@ export function useNotificationsPopoverData({
     closedBillAlerts,
     budgetOverrunAlert,
     tripAndFamilyAlerts,
+    dividendAlerts,
     unreadBroadcasts,
     unreadSupportTickets,
     pendingSplitSignals,

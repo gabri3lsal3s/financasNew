@@ -600,4 +600,152 @@ describe("canonical-engine", () => {
       expect(t1 - t0).toBeLessThan(50); // Execução O(1) em menos de 50ms
     });
   });
+
+  // -------------------------------------------------------------------------
+  // 8. Preservação de Metadados, Estimativas e SSOT de Câmbio (Bloco A)
+  // -------------------------------------------------------------------------
+  describe("metadados de cotações, estimativas e SSOT de câmbio", () => {
+    it("preserva source manual, api com metadados e nunca mascara fallback como Oficial API", () => {
+      const assets: PortfolioAsset[] = [
+        {
+          id: "a-manual",
+          user_id: "u1",
+          ticker: "VALE3",
+          asset_class: "Ações",
+          currency: "BRL",
+          quantity: 10,
+          average_price: 58,
+        },
+        {
+          id: "a-api",
+          user_id: "u1",
+          ticker: "PETR4",
+          asset_class: "Ações",
+          currency: "BRL",
+          quantity: 10,
+          average_price: 35,
+        },
+        {
+          id: "a-miss",
+          user_id: "u1",
+          ticker: "WEGE3",
+          asset_class: "Ações",
+          currency: "BRL",
+          quantity: 10,
+          average_price: 42,
+        },
+      ];
+
+      const res = evaluatePortfolioCanonicalState({
+        asOfDate: "2026-11-17",
+        mode: "instant",
+        assets,
+        assetPrices: [
+          {
+            ticker: "VALE3",
+            price: 60,
+            manual_price: 65,
+            source: "manual",
+            market_price_at: "2026-11-17T12:00:00.000Z",
+          },
+          {
+            ticker: "PETR4",
+            price: 39.5,
+            source: "api",
+            provider: "yahoo",
+            market_price_at: "2026-11-17T18:55:00.000Z",
+            fetched_at: "2026-11-17T19:00:00.000Z",
+          },
+        ],
+        disableMemoization: true,
+      });
+
+      const vale = res.holdings.find((h) => h.ticker === "VALE3");
+      const petr = res.holdings.find((h) => h.ticker === "PETR4");
+      const wege = res.holdings.find((h) => h.ticker === "WEGE3");
+
+      expect(vale?.quoteSource).toBe("manual");
+      expect(vale?.resolvedPrice.isEstimate).toBe(false);
+      expect(vale?.resolvedPrice.provider).toBe("manual");
+      expect(vale?.resolvedPrice.badgeLabel).toBe("Manual");
+
+      expect(petr?.quoteSource).toBe("api");
+      expect(petr?.resolvedPrice.isEstimate).toBe(false);
+      expect(petr?.resolvedPrice.provider).toBe("yahoo");
+      expect(petr?.resolvedPrice.marketPriceAt).toBe("2026-11-17T18:55:00.000Z");
+      expect(petr?.resolvedPrice.fetchedAt).toBe("2026-11-17T19:00:00.000Z");
+      expect(petr?.resolvedPrice.badgeLabel).toBe("Oficial API");
+
+      expect(wege?.quoteSource).toBe("fallback");
+      expect(wege?.resolvedPrice.isEstimate).toBe(true);
+      expect(wege?.resolvedPrice.provider).toBeNull();
+      expect(wege?.resolvedPrice.badgeLabel).not.toBe("Oficial API");
+    });
+
+    it("expõe fxMetadata SSOT distinguindo PTAX real igual a 5.25 de fallback estático 5.25", () => {
+      const assets: PortfolioAsset[] = [
+        {
+          id: "a-usd",
+          user_id: "u1",
+          ticker: "AAPL",
+          asset_class: "Ações EUA",
+          currency: "USD",
+          quantity: 5,
+          average_price: 200,
+        },
+      ];
+
+      // Caso 1: PTAX oficial realmente vale 5.25 em assetPrices (`source: "api"`)
+      const withOfficialFxAt525 = evaluatePortfolioCanonicalState({
+        asOfDate: "2026-11-17",
+        mode: "instant",
+        assets,
+        usdRate: 5.25,
+        assetPrices: [
+          {
+            ticker: "USDBRL=X",
+            price: 5.25,
+            source: "api",
+            provider: "bcb_ptax",
+            market_price_at: "2026-11-17T16:11:00.000Z",
+            fetched_at: "2026-11-17T16:12:00.000Z",
+          },
+          {
+            ticker: "AAPL",
+            price: 220,
+            source: "api",
+            provider: "yahoo",
+          },
+        ],
+        disableMemoization: true,
+      });
+
+      expect(withOfficialFxAt525.fxMetadata).toEqual({
+        rate: 5.25,
+        source: "api",
+        provider: "bcb_ptax",
+        fxRateAt: "2026-11-17T16:11:00.000Z",
+        fetchedAt: "2026-11-17T16:12:00.000Z",
+        isFallback: false,
+      });
+
+      // Caso 2: Sem USDBRL=X e sem usdRate explícito → fallback estático explícito
+      const withFallback = evaluatePortfolioCanonicalState({
+        asOfDate: "2026-11-17",
+        mode: "instant",
+        assets,
+        assetPrices: [{ ticker: "AAPL", price: 220, source: "api" }],
+        disableMemoization: true,
+      });
+
+      expect(withFallback.fxMetadata).toEqual({
+        rate: 5.25,
+        source: "fallback",
+        provider: null,
+        fxRateAt: null,
+        fetchedAt: null,
+        isFallback: true,
+      });
+    });
+  });
 });

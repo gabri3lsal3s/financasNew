@@ -6,7 +6,6 @@ import { ResumoTab } from "./resumo-tab";
 
 const {
   mockDeleteAsset,
-  mockSyncQuotes,
   mockStartDemo,
   mockSetStepIndex,
   getMockPortfolioPosition,
@@ -87,7 +86,6 @@ const {
 
   return {
     mockDeleteAsset: vi.fn(),
-    mockSyncQuotes: vi.fn(),
     mockStartDemo: vi.fn(),
     mockSetStepIndex: vi.fn(),
     defaultPosition: initialPosition,
@@ -139,9 +137,12 @@ vi.mock("@/state", () => ({
     mutateAsync: mockDeleteAsset,
     isPending: false,
   }),
-  useSyncQuotes: () => ({
-    mutate: mockSyncQuotes,
-    isPending: false,
+  useMarketQuotesSwr: () => ({
+    isSyncing: false,
+    lastSyncAt: null,
+    hasOpenMarket: false,
+    degradedTickers: [],
+    retryDegraded: vi.fn(),
   }),
   useGroupTargets: () => ({
     data: getMockClassTargets(),
@@ -389,6 +390,10 @@ describe("ResumoTab", () => {
 
     const noScoreBadges = screen.getAllByText("Sem nota");
     expect(noScoreBadges.length).toBeGreaterThan(0);
+
+    // Sem botão manual de atualizar cotações; com card de Conciliação por Custódia Brasil vs Exterior
+    expect(screen.queryByRole("button", { name: /Atualizar cotações/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Conciliação por Custódia/i)).toBeInTheDocument();
 
     // Ao clicar em "Sem nota", abre o diálogo de Avaliação de Tese
     await user.click(screen.getAllByRole("button", { name: /Avaliar nota de PETR4/i })[0]!);

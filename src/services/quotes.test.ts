@@ -1,233 +1,297 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clearBcbCache,
   fetchBcbIndicator,
   fetchHistoricalMonthlyQuotes,
   fetchOnlineQuote,
+  fetchPtaxForDate,
+  syncMarketQuotesBatch,
   syncQuoteForTicker,
   syncQuotesForAssets,
 } from "./quotes";
 
-const mockSetAssetPrice = vi.fn();
-const mockSetAssetPricesBatch = vi.fn();
-const mockInvoke = vi.fn();
+const listMarketPriceHistoryByMonthMock = vi.fn();
+const functionsInvokeMock = vi.fn();
+
+vi.mock("@/data/repositories/asset-prices", () => ({
+  listMarketPriceHistoryByMonth: (...args: unknown[]) =>
+    listMarketPriceHistoryByMonthMock(...args),
+}));
 
 vi.mock("@/data/client", () => ({
   getSupabase: () => ({
     functions: {
-      invoke: (...args: unknown[]) => mockInvoke(...args),
+      invoke: (...args: unknown[]) => functionsInvokeMock(...args),
     },
   }),
 }));
 
-vi.mock("@/data/repositories/asset-prices", () => ({
-  setAssetPriceFromApi: (ticker: string, price: number, currency: string) =>
-    mockSetAssetPrice(ticker, price, currency),
-  setAssetPricesBatchFromApi: (quotes: Array<{ ticker: string; price: number; currency: string }>) =>
-    mockSetAssetPricesBatch(quotes),
-}));
-
-describe("quotes service", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe("services/quotes (Modelo Global via Edge Function)", () => {
+  afterEach(() => {
+    clearBcbCache();
+    vi.restoreAllMocks();
+    listMarketPriceHistoryByMonthMock.mockReset();
+    functionsInvokeMock.mockReset();
   });
 
-  it("syncQuoteForTicker ignora ativos de classe caixa", async () => {
-    const result = await syncQuoteForTicker("RESERVA", "caixa");
-    expect(result).toBeNull();
-    expect(mockSetAssetPrice).not.toHaveBeenCalled();
-  });
-
-  it("fetchOnlineQuote retorna cotação da Brapi para ticker B3", async () => {
-    const globalFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        results: [{ symbol: "PETR4", currency: "BRL", regularMarketPrice: 39.5 }],
-      }),
-    });
-    vi.stubGlobal("fetch", globalFetch);
-
-    const quote = await fetchOnlineQuote("PETR4");
-    expect(quote).toEqual({
-      ticker: "PETR4",
-      price: 39.5,
-      currency: "BRL",
-    });
-
-    vi.unstubAllGlobals();
-  });
-
-  it("syncQuoteForTicker grava o preço obtido via setAssetPriceFromApi", async () => {
-    const globalFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        results: [{ symbol: "VALE3", currency: "BRL", regularMarketPrice: 61.2 }],
-      }),
-    });
-    vi.stubGlobal("fetch", globalFetch);
-
-    const quote = await syncQuoteForTicker("VALE3", "Ações");
-    expect(quote).not.toBeNull();
-    expect(mockSetAssetPrice).toHaveBeenCalledWith("VALE3", 61.2, "BRL");
-
-    vi.unstubAllGlobals();
-  });
-
-  it("syncQuotesForAssets sincroniza ativos elegíveis via Edge Function e ignora caixa", async () => {
-    mockInvoke.mockResolvedValueOnce({
+  it("fetchOnlineQuote consulta exclusivamente a Edge Function em mode preview sem fetch direto externo", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    functionsInvokeMock.mockResolvedValueOnce({
       data: {
+        updated: 0,
+        guarded: 0,
+        failed: 0,
+        skippedByEodGuard: 0,
+        skippedByCooldown: 0,
+        skippedByLock: 0,
+        rateLimited: false,
         quotes: [
-          { ticker: "BOVA11", price: 120.0, currency: "BRL" },
+          {
+            ticker: "PETR4",
+            price: 38.75,
+            currency: "BRL",
+            marketPriceAt: "2026-10-16T20:55:00.000Z",
+            fetchedAt: "2026-10-16T21:00:00.000Z",
+            provider: "yahoo",
+          },
         ],
       },
       error: null,
     });
 
-    const updated = await syncQuotesForAssets([
-      { ticker: "BOVA11", asset_class: "ETF" },
-      { ticker: "RESERVA", asset_class: "caixa" },
-      { ticker: "CDB-FACTA", asset_class: "Renda Fixa" },
-    ]);
-
-    expect(updated).toBe(1);
-    expect(mockInvoke).toHaveBeenCalledTimes(1);
-    expect(mockSetAssetPricesBatch).toHaveBeenCalledTimes(1);
-    expect(mockSetAssetPricesBatch).toHaveBeenCalledWith([
-      { ticker: "BOVA11", price: 120.0, currency: "BRL" },
-    ]);
+    const quote = await fetchOnlineQuote("petr4");
+    expect(quote).toEqual({
+      ticker: "PETR4",
+      price: 38.75,
+      currency: "BRL",
+    });
+    expect(functionsInvokeMock).toHaveBeenCalledWith("quotes", {
+      body: { tickers: ["PETR4"], mode: "preview", reason: "cache_miss" },
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("syncQuotesForAssets não dispara requisições externas concorrentes pelo cliente para ativos faltantes (Tarefa 2.1)", async () => {
-    // Edge function falha ou não encontra o ativo
-    mockInvoke.mockResolvedValueOnce({
-      data: { quotes: [] },
+  it("fetchOnlineQuote ignora títulos privados de RF e Tesouro Direto antes de chamar servidor", async () => {
+    expect(await fetchOnlineQuote("CDB-BANCO-INTER")).toBeNull();
+    expect(await fetchOnlineQuote("TESOURO SELIC 2029")).toBeNull();
+    expect(functionsInvokeMock).not.toHaveBeenCalled();
+  });
+
+  it("syncQuoteForTicker delega à Edge Function em mode swr sem fetch externo no cliente", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    functionsInvokeMock.mockResolvedValueOnce({
+      data: {
+        updated: 1,
+        quotes: [{ ticker: "IVVB11", price: 345.2, currency: "BRL" }],
+      },
       error: null,
     });
 
-    const globalFetch = vi.fn();
-    vi.stubGlobal("fetch", globalFetch);
+    const res = await syncQuoteForTicker("ivvb11", "ETF", "cache_miss");
+    expect(res).toEqual({ ticker: "IVVB11", price: 345.2, currency: "BRL" });
+    expect(functionsInvokeMock).toHaveBeenCalledWith("quotes", {
+      body: { tickers: ["IVVB11"], mode: "swr", reason: "cache_miss" },
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 
-    const updated = await syncQuotesForAssets([
-      { ticker: "PETR4", asset_class: "Ações" },
+  it("syncQuotesForAssets filtra CAIXA, CDB, Tesouro e valoração própria, inclui USDBRL=X e não chama fetch externo", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    functionsInvokeMock.mockResolvedValueOnce({
+      data: {
+        updated: 3,
+        quotes: [
+          { ticker: "VALE3", price: 61.5, currency: "BRL" },
+          { ticker: "AAPL", price: 225.4, currency: "USD" },
+          { ticker: "USDBRL=X", price: 5.71, currency: "BRL" },
+        ],
+      },
+      error: null,
+    });
+
+    const count = await syncQuotesForAssets([
       { ticker: "VALE3", asset_class: "Ações" },
+      { ticker: "AAPL", asset_class: "Ações EUA" },
+      { ticker: "CAIXA", asset_class: "Reserva" },
+      { ticker: "CDB-110", asset_class: "Renda Fixa" },
+      { ticker: "TESOURO IPCA+ 2035", asset_class: "Tesouro Direto" },
+      { ticker: "IMOVEL", asset_class: "Outros", notes: "[VALUATION:CUSTOM]" },
     ]);
 
-    // Não deve disparar fetch externo a partir do cliente
-    expect(globalFetch).not.toHaveBeenCalled();
-    expect(updated).toBe(0);
-    expect(mockSetAssetPricesBatch).not.toHaveBeenCalled();
-
-    vi.unstubAllGlobals();
-  });
-
-  it("syncQuoteForTicker ignora renda fixa privada sem fazer fetch", async () => {
-    const globalFetch = vi.fn();
-    vi.stubGlobal("fetch", globalFetch);
-
-    const quote = await syncQuoteForTicker("CDB-FACTA", "Renda Fixa");
-    expect(quote).toBeNull();
-    expect(globalFetch).not.toHaveBeenCalled();
-
-    vi.unstubAllGlobals();
-  });
-
-  it("syncQuoteForTicker e fetchOnlineQuote não disparam chamadas para a Brapi com tickers de Tesouro Direto", async () => {
-    const globalFetch = vi.fn();
-    vi.stubGlobal("fetch", globalFetch);
-
-    mockInvoke.mockResolvedValueOnce({
-      data: { quotes: [] },
-      error: null,
+    expect(count).toBe(3);
+    expect(functionsInvokeMock).toHaveBeenCalledWith("quotes", {
+      body: {
+        tickers: ["VALE3", "AAPL", "USDBRL=X"],
+        mode: "swr",
+        reason: "swr",
+      },
     });
-
-    const quote = await syncQuoteForTicker("TESOURO SELIC 2026", "Renda Fixa");
-    expect(quote).toBeNull();
-    expect(globalFetch).not.toHaveBeenCalled();
-
-    vi.unstubAllGlobals();
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("fetchBcbIndicator busca taxa CDI com fallback e converte para % anual", async () => {
-    clearBcbCache();
-    const globalFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => [{ data: "02/09/2026", valor: "0.041646" }],
-    });
-    vi.stubGlobal("fetch", globalFetch);
-
-    const cdi = await fetchBcbIndicator("CDI");
-    // 0.041646% diário -> (1 + 0.00041646)^252 - 1 ≈ 11.06%
-    expect(cdi).toBeGreaterThan(10.0);
-    expect(cdi).toBeLessThan(13.0);
-
-    vi.unstubAllGlobals();
-  });
-
-  it("fetchBcbIndicator busca Selic Meta (% a.a.)", async () => {
-    clearBcbCache();
-    const globalFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => [{ data: "02/09/2026", valor: "10.50" }],
-    });
-    vi.stubGlobal("fetch", globalFetch);
-
-    const selic = await fetchBcbIndicator("SELIC");
-    expect(selic).toBe(10.5);
-
-    vi.unstubAllGlobals();
-  });
-
-  it("fetchBcbIndicator utiliza cache em chamadas subsequentes", async () => {
-    clearBcbCache();
-    const globalFetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => [{ data: "02/09/2026", valor: "10.50" }],
-    });
-    vi.stubGlobal("fetch", globalFetch);
-
-    const selic1 = await fetchBcbIndicator("SELIC");
-    const selic2 = await fetchBcbIndicator("SELIC");
-
-    expect(selic1).toBe(10.5);
-    expect(selic2).toBe(10.5);
-    expect(globalFetch).toHaveBeenCalledTimes(1);
-
-    vi.unstubAllGlobals();
-  });
-
-  describe("fetchHistoricalMonthlyQuotes", () => {
-    it("retorna cotações históricas da Edge Function formatadas", async () => {
-      mockInvoke.mockResolvedValueOnce({
+  it("syncMarketQuotesBatch divide em lotes de 50 e agrega contadores de rate limit e skipped", async () => {
+    const tickers = Array.from({ length: 52 }, (_, idx) => `TKR${idx + 1}3`);
+    functionsInvokeMock
+      .mockResolvedValueOnce({
         data: {
-          quotes: [
-            { ticker: "PETR4", price: 38.5, currency: "BRL" },
-            { ticker: "AAPL", price: 230.0, currency: "USD" },
-          ],
+          updated: 40,
+          guarded: 1,
+          failed: 0,
+          skippedByEodGuard: 5,
+          skippedByCooldown: 4,
+          skippedByLock: 0,
+          rateLimited: false,
+          quotes: [{ ticker: "TKR13", price: 10, currency: "BRL" }],
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          updated: 0,
+          guarded: 0,
+          failed: 0,
+          skippedByEodGuard: 0,
+          skippedByCooldown: 0,
+          skippedByLock: 0,
+          rateLimited: true,
+          retryAfterSeconds: 45,
+          quotes: [],
         },
         error: null,
       });
 
-      const quotes = await fetchHistoricalMonthlyQuotes(["PETR4", "AAPL"], "2026-01");
-      expect(quotes).toEqual([
-        { ticker: "PETR4", price: 38.5, currency: "BRL", source: "api" },
-        { ticker: "AAPL", price: 230.0, currency: "USD", source: "api" },
-      ]);
-      expect(mockInvoke).toHaveBeenCalledWith("quotes", {
-        body: { tickers: ["PETR4", "AAPL"], month: "2026-01" },
-      });
+    const res = await syncMarketQuotesBatch({
+      tickers,
+      mode: "report_preflight",
+      reason: "report_preflight",
     });
 
-    it("retorna array vazio em caso de erro da Edge Function ou timeout", async () => {
-      mockInvoke.mockRejectedValueOnce(new Error("Network failure"));
+    expect(functionsInvokeMock).toHaveBeenCalledTimes(2);
+    expect(res.updated).toBe(40);
+    expect(res.guarded).toBe(1);
+    expect(res.skippedByEodGuard).toBe(5);
+    expect(res.skippedByCooldown).toBe(4);
+    expect(res.rateLimited).toBe(true);
+    expect(res.retryAfterSeconds).toBe(45);
+    expect(res.quotes).toHaveLength(1);
+  });
 
-      const quotes = await fetchHistoricalMonthlyQuotes(["VALE3"], "2026-01");
-      expect(quotes).toEqual([]);
+  it("fetchHistoricalMonthlyQuotes lê market_price_history primeiro e envia só ausentes à Edge Function", async () => {
+    listMarketPriceHistoryByMonthMock.mockResolvedValueOnce([
+      {
+        ticker: "PETR4",
+        reference_date: "2026-09-30",
+        price: 39.1,
+        currency: "BRL",
+        provider: "yahoo",
+        market_price_at: "2026-09-30T21:00:00.000Z",
+        month: "2026-09",
+        is_month_end: true,
+      },
+    ]);
+    functionsInvokeMock.mockResolvedValueOnce({
+      data: {
+        quotes: [
+          {
+            ticker: "AAPL",
+            price: 220.4,
+            currency: "USD",
+            marketPriceAt: "2026-09-30T20:00:00.000Z",
+            provider: "yahoo",
+          },
+        ],
+      },
+      error: null,
     });
 
-    it("ignora tickers vazios ou de renda fixa privada antes de chamar Edge Function", async () => {
-      const quotes = await fetchHistoricalMonthlyQuotes(["", "   "], "2026-01");
-      expect(quotes).toEqual([]);
-      expect(mockInvoke).not.toHaveBeenCalled();
+    const quotes = await fetchHistoricalMonthlyQuotes(["PETR4", "AAPL"], "2026-09");
+    expect(listMarketPriceHistoryByMonthMock).toHaveBeenCalledWith("2026-09");
+    expect(functionsInvokeMock).toHaveBeenCalledWith("quotes", {
+      body: { tickers: ["AAPL"], month: "2026-09" },
     });
+    expect(quotes).toEqual([
+      {
+        ticker: "PETR4",
+        price: 39.1,
+        currency: "BRL",
+        source: "api",
+        marketPriceAt: "2026-09-30T21:00:00.000Z",
+        provider: "yahoo",
+      },
+      {
+        ticker: "AAPL",
+        price: 220.4,
+        currency: "USD",
+        source: "api",
+        marketPriceAt: "2026-09-30T20:00:00.000Z",
+        provider: "yahoo",
+      },
+    ]);
+  });
+
+  it("fetchHistoricalMonthlyQuotes evita invocar Edge Function quando todos os tickers já constam em market_price_history", async () => {
+    listMarketPriceHistoryByMonthMock.mockResolvedValueOnce([
+      {
+        ticker: "USDBRL=X",
+        reference_date: "2026-08-31",
+        price: 5.6123,
+        currency: "BRL",
+        provider: "bcb_ptax",
+        market_price_at: "2026-08-31T21:00:00.000Z",
+        month: "2026-08",
+        is_month_end: true,
+      },
+    ]);
+
+    const quotes = await fetchHistoricalMonthlyQuotes(["USDBRL=X"], "2026-08");
+    expect(functionsInvokeMock).not.toHaveBeenCalled();
+    expect(quotes[0]).toMatchObject({ ticker: "USDBRL=X", price: 5.6123, provider: "bcb_ptax" });
+  });
+
+  it("fetchPtaxForDate consulta market_price_history antes do BCB SGS e só vai ao BCB em cache miss", async () => {
+    listMarketPriceHistoryByMonthMock.mockResolvedValueOnce([
+      {
+        ticker: "USDBRL=X",
+        reference_date: "2026-09-30",
+        price: 5.45123,
+        currency: "BRL",
+        provider: "bcb_ptax",
+        market_price_at: "2026-09-30T21:00:00.000Z",
+        month: "2026-09",
+        is_month_end: true,
+      },
+    ]);
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    const fromHistory = await fetchPtaxForDate("2026-09-30");
+    expect(fromHistory).toBe(5.4512);
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    listMarketPriceHistoryByMonthMock.mockResolvedValueOnce([]);
+    fetchSpy.mockResolvedValueOnce({
+      ok: true,
+      json: async () => [
+        { data: "29/09/2026", valor: "5.4100" },
+        { data: "30/09/2026", valor: "5.4489" },
+      ],
+    } as Response);
+
+    const fromBcb = await fetchPtaxForDate("2026-09-30");
+    expect(fromBcb).toBe(5.4489);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(String(fetchSpy.mock.calls[0]?.[0])).toContain("bcdata.sgs.1");
+  });
+
+  it("fetchBcbIndicator busca e armazena CDI em cache de memória", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => [{ data: "22/11/2026", valor: "0.055131" }],
+    } as Response);
+
+    const first = await fetchBcbIndicator("CDI");
+    const second = await fetchBcbIndicator("CDI");
+    expect(first).toBeGreaterThan(10);
+    expect(second).toBe(first);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });

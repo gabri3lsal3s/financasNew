@@ -9,8 +9,10 @@ import { numberToCents } from "@/domain/money";
 import { formatMonthYear } from "@/lib/date";
 import type { PortfolioAsset, PortfolioSnapshot } from "@/types";
 import { calculatePortfolioQualityScore } from "./allocation";
+import type { CanonicalFxMetadata } from "./canonical-types";
 import { formatFixedIncomeRateLabel } from "./fixed-income";
 import type { PointInTimeResult } from "./point-in-time";
+import { formatFxSourceLabel, type StaleQuoteGuardResult } from "./stale-quote-guard";
 import { resolveFixedIncomeIndexer } from "./tickers-catalog";
 
 export interface ReportMonthOption {
@@ -73,6 +75,7 @@ export function resolveReportPositionRows({
     valueBRL: p.valueBRL,
     pct: pit.totalValueBRL > 0 ? (p.valueBRL / pit.totalValueBRL) * 100 : 0,
     source: (p.quoteSource ?? "manual") as PositionRow["source"],
+    isEstimate: p.isEstimate,
     pricingMode: "unit_price",
     unrealizedPnl: p.unrealizedPnl,
     unrealizedPct: p.unrealizedPct,
@@ -169,11 +172,17 @@ export function buildExecutiveReportClassGroups({
   effectiveTotalBRL,
   rawAssets,
   cashBRL,
+  fxMetadata,
+  usdRate,
+  staleGuard,
 }: {
   investmentRows: readonly PositionRow[];
   effectiveTotalBRL: number;
   rawAssets: readonly PortfolioAsset[];
   cashBRL?: number;
+  fxMetadata?: CanonicalFxMetadata | null;
+  usdRate?: number;
+  staleGuard?: StaleQuoteGuardResult | null;
 }): { classGroups: ReportClassGroup[]; pqs: number | null } {
   const rawAssetMap = new Map(rawAssets.map((a) => [a.id, a]));
   const findRaw = (row: PositionRow) =>
@@ -212,6 +221,14 @@ export function buildExecutiveReportClassGroups({
       const classTotalReturnPct =
         totalCostBRLGroup > 0 ? (totalReturnPnlBRLGroup / totalCostBRLGroup) * 100 : 0;
 
+      const groupUsdRate =
+        fxMetadata?.rate ??
+        usdRate ??
+        items.find((i) => i.currency === "USD" && i.usdRate && i.usdRate > 0)?.usdRate;
+      const fxSourceLabel = fxMetadata
+        ? formatFxSourceLabel(fxMetadata)
+        : undefined;
+
       return {
         className,
         totalCents: numberToCents(subtotalBRL),
@@ -219,6 +236,8 @@ export function buildExecutiveReportClassGroups({
         totalDividendsCents: numberToCents(totalDividendsBRLGroup),
         sharePct: effectiveTotalBRL > 0 ? (subtotalBRL / effectiveTotalBRL) * 100 : 0,
         pnlPct: classTotalReturnPct,
+        usdRate: groupUsdRate,
+        fxSourceLabel,
         items: items.map((i) => {
           const isUsd = i.currency === "USD";
           const quoteOrPrice = i.priceQuote || i.priceBRL;
@@ -231,6 +250,16 @@ export function buildExecutiveReportClassGroups({
               ? i.totalReturnPct
               : (i.unrealizedPct ?? 0);
           const raw = findRaw(i);
+          const tickerUpper = i.ticker.trim().toUpperCase();
+          const staleIssue = staleGuard?.issueByTicker[tickerUpper];
+          const quoteStatusFlag =
+            i.source === "manual"
+              ? ("manual" as const)
+              : staleIssue?.kind === "post_trade_stale" || staleIssue?.kind === "stale_market_data"
+                ? ("stale" as const)
+                : i.isEstimate || i.source === "fallback" || staleIssue?.kind === "missing_or_fallback"
+                  ? ("fallback" as const)
+                  : null;
 
           return {
             ticker: i.ticker,
@@ -261,6 +290,8 @@ export function buildExecutiveReportClassGroups({
             maturityDate: i.fixedIncomeMetadata?.maturity_date ?? i.maturityDate ?? null,
             score: raw?.score ?? null,
             status: raw?.allocation_status ?? "active",
+            quoteStatusFlag,
+            marketPriceAt: i.marketPriceAt ?? null,
           };
         }),
       };

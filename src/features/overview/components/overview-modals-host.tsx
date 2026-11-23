@@ -7,7 +7,6 @@ import {
 import { CashCheckpointDialog } from "@/components/modules/cash-checkpoint-dialog";
 import { resolveEffectiveLimit, spentByCategoryMap } from "@/domain/budgets";
 import { AddContributionDialog } from "@/features/goals";
-import { PendingDividendsDialog } from "@/features/investments/components/pending-dividends-dialog";
 import type { useOverviewData } from "../hooks/use-overview-data";
 import type { useOverviewModals } from "../hooks/use-overview-modals";
 import { CategoryBreakdownDialog } from "./category-breakdown-dialog";
@@ -132,13 +131,6 @@ export function OverviewModalsHost({
           share={modals.depositGoalShare}
         />
       ) : null}
-
-      <PendingDividendsDialog
-        open={modals.pendingDividendsModalOpen}
-        onOpenChange={modals.setPendingDividendsModalOpen}
-        availableDividends={data.corporateDividends.available}
-        projectedDividends={data.corporateDividends.projected}
-      />
 
       {modals.initialPreferencesOpen ? (
         <InitialPreferencesModal

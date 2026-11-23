@@ -1,6 +1,8 @@
 import type {
+  CanonicalFxMetadata,
   PortfolioMonthlySeriesPoint,
   PositionLikeItem,
+  StaleQuoteGuardResult,
   TwrConsolidatedResult,
 } from "@/domain/portfolio";
 import type { AllocationDonutsResult } from "./allocation-donuts";
@@ -35,6 +37,12 @@ export interface WealthPositionRow {
   fxPnlPct?: number | null;
   pricePnlPctBRL?: number | null;
   usdRate?: number;
+  source?: string | null;
+  isEstimate?: boolean;
+  marketPriceAt?: string | null;
+  fetchedAt?: string | null;
+  provider?: string | null;
+  priceBRL?: number;
   indexType?: string | null;
   maturityDate?: string | null;
 }
@@ -71,6 +79,8 @@ export interface BuildTearSheetModelParams {
   allTimeEconomicPnlBRL?: number;
   realizedPnlBRL?: number;
   usdRate?: number;
+  fxMetadata?: CanonicalFxMetadata | null;
+  staleGuard?: StaleQuoteGuardResult | null;
   indexType?: string | null;
   maturityDate?: string | null;
 }
@@ -109,6 +119,8 @@ export interface TearSheetClassGroupItem {
   currency: string;
   score?: number | null;
   status: string;
+  quoteStatusFlag?: "fallback" | "stale" | "manual" | null;
+  marketPriceAt?: string | null;
 }
 
 export interface TearSheetClassGroup {
@@ -120,6 +132,7 @@ export interface TearSheetClassGroup {
   subtotalPriceVarPct: number;
   subtotalPriceVarPctUSD?: number;
   usdRate?: number;
+  fxSourceLabel?: string | null;
   totalCostCents: number;
   totalDividendsCents: number;
   topAssetTicker?: string;

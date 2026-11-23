@@ -1,15 +1,23 @@
 import { AlertCircle, Layers, SlidersHorizontal, TrendingUp } from "lucide-react";
 import { Button, MoneyText } from "@/components/ui";
 import {
+  CustodyReconciliationCard,
   ReportClassTables,
   ReportExecutiveSummary,
   ReportFooter,
   ReportHeader,
   ReportMonthlyMovements,
+  ReportQuoteStatusBanner,
   ReportRunningHeader,
+  type ReportMarketMetadata,
 } from "@/components/modules/reports";
 import type { ReportClassGroup } from "@/components/modules/reports/report-class-tables";
 import { numberToCents } from "@/domain/money";
+import type {
+  CustodyReconciliationSummary,
+  ProvisionedDividendsSummary,
+  StaleQuoteGuardResult,
+} from "@/domain/portfolio";
 import type { PointInTimeFidelity, PointInTimeResult } from "@/domain/portfolio/point-in-time";
 import { OFFICIAL_CVM_DISCLAIMER } from "@/lib/institutional";
 import { formatPercent, formatSignedPct } from "@/services/masks";
@@ -26,6 +34,12 @@ export interface ExecutiveReportDocumentProps {
   investmentCount: number;
   classGroups: ReportClassGroup[];
   pqs: number | null;
+  marketMetadata?: ReportMarketMetadata | null;
+  custodyReconciliation?: CustodyReconciliationSummary | null;
+  provisionedSummary?: ProvisionedDividendsSummary | null;
+  staleGuard?: StaleQuoteGuardResult | null;
+  isRefreshingQuotes?: boolean;
+  onRetryQuotes?: () => void;
   onOpenClosing: () => void;
 }
 
@@ -41,6 +55,12 @@ export function ExecutiveReportDocument({
   investmentCount,
   classGroups,
   pqs,
+  marketMetadata,
+  custodyReconciliation,
+  provisionedSummary = null,
+  staleGuard,
+  isRefreshingQuotes = false,
+  onRetryQuotes,
   onOpenClosing,
 }: ExecutiveReportDocumentProps) {
   const discrepancyPct = fidelity?.discrepancyPct;
@@ -93,6 +113,13 @@ export function ExecutiveReportDocument({
         appName={appName}
         icon={TrendingUp}
         accountHolder={accountHolder}
+        marketMetadata={marketMetadata}
+      />
+
+      <ReportQuoteStatusBanner
+        isRefreshing={isRefreshingQuotes}
+        staleGuard={staleGuard}
+        onRetry={onRetryQuotes}
       />
 
       {showDiscrepancyAlert && fidelity && discrepancyPct != null ? (
@@ -237,6 +264,14 @@ export function ExecutiveReportDocument({
         dividendsCount={stmt?.dividendsCount}
         pqs={pqs}
       />
+
+      {custodyReconciliation ? (
+        <CustodyReconciliationCard
+          variant="report"
+          summary={custodyReconciliation}
+          provisionedSummary={provisionedSummary}
+        />
+      ) : null}
 
       {/* Quadro-Síntese de Alocação por Classe de Ativos (Página 1) */}
       {classGroups.length > 0 ? (

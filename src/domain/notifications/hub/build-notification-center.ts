@@ -22,6 +22,7 @@ import {
   resolveNotificationCategoryPreferences,
   type BudgetOverrunAlert,
   type ClosedCardBillAlert,
+  type DividendNotificationAlert,
   type TripFamilyAlert,
 } from "./event-detectors";
 
@@ -527,6 +528,27 @@ function mapTripFamilyToNotification(alert: TripFamilyAlert): AppNotification {
   };
 }
 
+function mapDividendAlertToNotification(alert: DividendNotificationAlert): AppNotification {
+  const isPending = alert.kind === "pending_confirmation";
+  const isSettled = alert.kind === "settled";
+  return {
+    id: alert.id,
+    domain: "portfolio",
+    severity: isPending ? "P1_ACTION_NEEDED" : "P2_ADVISORY",
+    title: alert.title,
+    body: alert.body,
+    badgeLabel: alert.badgeLabel,
+    badgeVariant: isPending ? "warning" : isSettled ? "positive" : "portfolio",
+    tone: isPending ? "warning" : isSettled ? "positive" : "portfolio",
+    iconName: "hand-coins",
+    amountCents: alert.totalBRLCents > 0 ? alert.totalBRLCents : undefined,
+    targetRoute: alert.targetRoute,
+    channels: ["bell", "reminders_page"],
+    entityRefs: alert.entityRefs,
+    state: "unread",
+  };
+}
+
 /**
  * Constrói o estado consolidado, priorizado e deduplicado do Notification Hub.
  */
@@ -597,6 +619,8 @@ export function buildNotificationCenter(
     ? (input.tripAndFamilyAlerts ?? [])
     : [];
 
+  const dividendAlerts = input.dividendAlerts ?? [];
+
   const advisorAlerts = categoryPrefs.advisorInsights
     ? (input.advisorInsights ?? []).filter((insight) => {
         if (insight.priority > 2) return false;
@@ -653,6 +677,10 @@ export function buildNotificationCenter(
 
   for (const tfAlert of tripAndFamilyAlerts) {
     rawNotifications.push(mapTripFamilyToNotification(tfAlert));
+  }
+
+  for (const divAlert of dividendAlerts) {
+    rawNotifications.push(mapDividendAlertToNotification(divAlert));
   }
 
   for (const signalGroup of pendingSplitSignals) {
@@ -715,6 +743,7 @@ export function buildNotificationCenter(
     closedBillAlerts,
     budgetOverrunAlert,
     tripAndFamilyAlerts,
+    dividendAlerts,
     advisorAlerts,
     unreadBroadcasts,
     unreadSupportTickets,

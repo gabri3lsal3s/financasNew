@@ -4,6 +4,7 @@ import {
   ReportDocumentLayout,
   ReportFooter,
   ReportHeader,
+  ReportQuoteStatusBanner,
   ReportRiskGauge,
 } from "@/components/modules";
 import {
@@ -18,13 +19,20 @@ import {
   type ReportReadinessResult,
   computeTearSheetPagination,
 } from "@/domain/reports";
-import type {
-  PortfolioMonthlySeriesPoint,
-  TwrConsolidatedResult,
-  XIRRResult,
+import {
+  buildMarketReferenceSummary,
+  buildReportPrintWarning,
+  calculateCustodyReconciliation,
+  evaluateStaleQuoteGuard,
+  type CanonicalFxMetadata,
+  type PortfolioMonthlySeriesPoint,
+  type ProvisionedDividendsSummary,
+  type TwrConsolidatedResult,
+  type XIRRResult,
 } from "@/domain/portfolio";
 import { OFFICIAL_WEALTH_TEAR_SHEET_DISCLAIMER } from "@/lib/institutional";
-import type { PortfolioAsset } from "@/types";
+import type { PortfolioAsset, PortfolioTransaction } from "@/types";
+import { useExecutiveReportRefresh } from "@/features/investments/hooks/use-executive-report-refresh";
 import { TearSheetAllocationSection } from "./tear-sheet/TearSheetAllocationSection";
 import { TearSheetCustodyAndBreakdowns } from "./tear-sheet/TearSheetCustodyAndBreakdowns";
 import { TearSheetExecutiveNarrative } from "./tear-sheet/TearSheetExecutiveNarrative";
@@ -62,6 +70,10 @@ export interface WealthTearSheetModalProps {
   annualIpcaRate?: number;
   ibovPeriodReturnPct?: number;
   assetsMetadata?: readonly PortfolioAsset[];
+  usdRate?: number;
+  fxMetadata?: CanonicalFxMetadata | null;
+  provisionedSummary?: ProvisionedDividendsSummary | null;
+  transactions?: readonly PortfolioTransaction[];
   periodLabel?: string;
   appName?: string;
   accountHolder?: string;
@@ -99,10 +111,56 @@ export function WealthTearSheetModal({
   annualIpcaRate,
   ibovPeriodReturnPct,
   assetsMetadata = [],
+  usdRate,
+  fxMetadata,
+  provisionedSummary = null,
+  transactions = [],
   periodLabel = "Posição Atual Consolidada",
   appName = "Axir",
   accountHolder,
 }: WealthTearSheetModalProps) {
+  const reportRefresh = useExecutiveReportRefresh({
+    open,
+    enabled: true,
+    assets: assetsMetadata,
+    tickers: rows.map((r) => r.ticker),
+  });
+
+  const staleGuard = useMemo(
+    () =>
+      evaluateStaleQuoteGuard({
+        rows,
+        transactions,
+        assets: assetsMetadata,
+        fxMetadata,
+      }),
+    [rows, transactions, assetsMetadata, fxMetadata],
+  );
+
+  const marketSummary = useMemo(
+    () =>
+      buildMarketReferenceSummary({
+        rows,
+        fxMetadata,
+        usdRate,
+      }),
+    [rows, fxMetadata, usdRate],
+  );
+
+  const custodyReconciliation = useMemo(
+    () =>
+      calculateCustodyReconciliation({
+        rows,
+        totalBRL,
+        cashBRL,
+        fxMetadata,
+        usdRate,
+      }),
+    [rows, totalBRL, cashBRL, fxMetadata, usdRate],
+  );
+
+  const printWarning = useMemo(() => buildReportPrintWarning(staleGuard), [staleGuard]);
+
   const model = useMemo(
     () =>
       buildTearSheetModel({
@@ -123,6 +181,9 @@ export function WealthTearSheetModal({
         monthlySeries,
         allTimeEconomicPnlBRL,
         realizedPnlBRL,
+        usdRate,
+        fxMetadata,
+        staleGuard,
       }),
     [
       rows,
@@ -142,6 +203,9 @@ export function WealthTearSheetModal({
       monthlySeries,
       allTimeEconomicPnlBRL,
       realizedPnlBRL,
+      usdRate,
+      fxMetadata,
+      staleGuard,
     ],
   );
 
@@ -156,6 +220,7 @@ export function WealthTearSheetModal({
       onOpenChange={onOpenChange}
       title="Dossiê Executivo da Posição Vigente Consolidada"
       documentTitle="AXIR_Dossie_Posicao_Vigente.pdf"
+      printWarning={printWarning}
     >
       <ReportHeader
         title="Dossiê Executivo da Posição Vigente Consolidada"
@@ -164,6 +229,13 @@ export function WealthTearSheetModal({
         appName={appName}
         icon={Landmark}
         accountHolder={accountHolder}
+        marketMetadata={marketSummary}
+      />
+
+      <ReportQuoteStatusBanner
+        isRefreshing={reportRefresh.isRefreshing}
+        staleGuard={staleGuard}
+        onRetry={() => void reportRefresh.retry()}
       />
 
       <TearSheetExecutiveNarrative
@@ -206,6 +278,8 @@ export function WealthTearSheetModal({
         totalBRL={totalBRL}
         periodLabel={periodLabel}
         periodRedemptions={periodRedemptions}
+        custodyReconciliation={custodyReconciliation}
+        provisionedSummary={provisionedSummary}
         assetsMetadata={assetsMetadata}
         annualCdiRate={annualCdiRate}
         annualSelicRate={annualSelicRate}

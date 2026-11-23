@@ -4,6 +4,7 @@ import { QueryClientContext } from "@tanstack/react-query";
 import { parseTimeHHMM } from "@/domain/notifications";
 import { NativeUpdateToast } from "@/components/modules/native-update-toast";
 import { AppLockOverlay } from "@/app/app-lock-overlay";
+import { PendingDividendsDialogHost } from "@/features/investments/components/pending-dividends-dialog";
 import { SubscriptionProvider, useIsPro } from "@/state/subscription-context";
 import {
   syncMerchantLearningFromCloud,
@@ -177,6 +178,7 @@ export function AuthenticatedProviders({ children }: { children: ReactNode }) {
         <DynamicBrandSync />
         <RemindersNotificationSync />
         <NativeUpdateToast />
+        <PendingDividendsDialogHost />
         <AppLockOverlay />
         {children}
       </SubscriptionProvider>

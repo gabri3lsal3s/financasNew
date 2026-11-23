@@ -1,16 +1,15 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import {
   buildAssetsDividendsBreakdown,
   buildMonthlyDividendsSummary,
-  buildMonthlyReinvestmentOpportunities,
   buildSnowballDashboardItems,
   buildYearlyDividendsSummary,
 } from "@/domain/portfolio/dividends-analytics";
-import type { ReinvestmentOpportunity } from "@/domain/portfolio/snowball";
-import { isCashAssetClass } from "@/domain/portfolio/valuation";
+import { FALLBACK_USD_RATE, isCashAssetClass } from "@/domain/portfolio/valuation";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { currentMonth } from "@/lib/date";
+import { openDividendReviewModal } from "@/services/dividend-review-modal";
 import {
   useCorporateDividends,
   useDeletePortfolioDividend,
@@ -18,15 +17,11 @@ import {
   usePortfolioDividends,
   usePortfolioPosition,
 } from "@/state";
-import type { PortfolioAsset, PortfolioDividend } from "@/types";
-import type { WizardMode } from "../../wizard/wizard-state";
+import type { PortfolioDividend } from "@/types";
 
 export type ProventosSubTab = "mensal" | "calendario" | "ativos" | "snowball";
 
-export function useProventosTabController(
-  defaultMonth?: string,
-  onOpenWizard?: (asset?: PortfolioAsset | null, mode?: WizardMode) => void,
-) {
+export function useProventosTabController(defaultMonth?: string) {
   let searchParams: URLSearchParams | null = null;
   let setSearchParams: ReturnType<typeof useSearchParams>[1] | null = null;
 
@@ -69,7 +64,18 @@ export function useProventosTabController(
   const [editingDividend, setEditingDividend] = useState<PortfolioDividend | null>(null);
   const [rollbackCash, setRollbackCash] = useState(true);
   const [dividendFormOpen, setDividendFormOpen] = useState(false);
-  const [pendingDividendsDialogOpen, setPendingDividendsDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    if (searchParams.get("review") === "1") {
+      openDividendReviewModal({ initialTab: "review" });
+      if (setSearchParams) {
+        const next = new URLSearchParams(searchParams);
+        next.delete("review");
+        setSearchParams(next, { replace: true });
+      }
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleSubTabChange = useCallback(
     (nextTab: ProventosSubTab) => {
@@ -123,12 +129,23 @@ export function useProventosTabController(
   );
 
   const projectedInSelectedMonth = useMemo(
-    () => corporateDividends.projected.filter((p) => p.paymentDate.startsWith(month)),
+    () =>
+      corporateDividends.projected.filter(
+        (p) => typeof p.paymentDate === "string" && p.paymentDate.startsWith(month),
+      ),
     [corporateDividends.projected, month],
   );
+  const fxRate =
+    "fxRate" in corporateDividends && typeof corporateDividends.fxRate === "number" && corporateDividends.fxRate > 0
+      ? corporateDividends.fxRate
+      : FALLBACK_USD_RATE;
   const projectedTotalInSelectedMonth = useMemo(
-    () => projectedInSelectedMonth.reduce((acc, p) => acc + p.totalAmount, 0),
-    [projectedInSelectedMonth],
+    () =>
+      projectedInSelectedMonth.reduce(
+        (acc, p) => acc + (p.currency === "USD" ? Math.round(p.totalAmount * fxRate * 100) / 100 : p.totalAmount),
+        0,
+      ),
+    [projectedInSelectedMonth, fxRate],
   );
 
   const assetsBreakdown = useMemo(
@@ -139,17 +156,6 @@ export function useProventosTabController(
   const snowballSummary = useMemo(
     () => buildSnowballDashboardItems(assets, dividends, rowByAssetId),
     [assets, dividends, rowByAssetId],
-  );
-
-  const reinvestmentOpportunities = useMemo(
-    () =>
-      buildMonthlyReinvestmentOpportunities(
-        assets,
-        monthlySummary.extract,
-        assetById,
-        rowByAssetId,
-      ),
-    [assets, monthlySummary.extract, assetById, rowByAssetId],
   );
 
   const handleDelete = async () => {
@@ -164,20 +170,6 @@ export function useProventosTabController(
     } catch {
       // Toast disparado pelo hook
     }
-  };
-
-  const handleReinvest = (opp: ReinvestmentOpportunity) => {
-    guardAction(() => {
-      if (onOpenWizard) {
-        onOpenWizard(assetById.get(opp.assetId) ?? null, "buy");
-      }
-    }, "Reinvestir Proventos");
-  };
-
-  const handleReinvestCash = () => {
-    guardAction(() => {
-      onOpenWizard?.(null, "existing_aporte");
-    }, "Reinvestir Proventos em Caixa");
   };
 
   const hasAny =
@@ -204,7 +196,6 @@ export function useProventosTabController(
     projectedTotalInSelectedMonth,
     assetsBreakdown,
     snowballSummary,
-    reinvestmentOpportunities,
     corporateDividends,
     guardAction,
     upgradeModal,
@@ -218,9 +209,6 @@ export function useProventosTabController(
     setRollbackCash,
     isDeleting: deleteDividend.isPending,
     handleDelete,
-    handleReinvest,
-    handleReinvestCash,
-    pendingDividendsDialogOpen,
-    setPendingDividendsDialogOpen,
+    openPendingDividendsModal: () => openDividendReviewModal({ initialTab: "review" }),
   };
 }

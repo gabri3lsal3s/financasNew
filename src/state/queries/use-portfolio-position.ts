@@ -12,6 +12,7 @@ import {
   evaluatePortfolioCanonicalState,
   type AssetPricingMode,
   type CanonicalAssetHolding,
+  type CanonicalFxMetadata,
   type FixedIncomeBalanceResult,
   type PortfolioMonthlySeriesPoint,
   type PriceSource,
@@ -44,6 +45,10 @@ export interface PortfolioPositionRow {
   priceBRL: number;
   usdRate: number;
   source: PriceSource;
+  isEstimate?: boolean;
+  marketPriceAt?: string | null;
+  fetchedAt?: string | null;
+  provider?: string | null;
   valueBRL: number;
   pct: number;
   unrealizedPnl: number;
@@ -80,6 +85,8 @@ export interface PortfolioPositionRow {
 
 export interface PortfolioPosition {
   rows: PortfolioPositionRow[];
+  usdRate: number;
+  fxMetadata: CanonicalFxMetadata;
   totalBRL: number;
   totalCostBRL: number;
   assetsTotalCostBRL?: number;
@@ -152,6 +159,10 @@ function mapCanonicalHoldingToRow(
     priceBRL: holding.priceBRL,
     usdRate: holding.usdRate,
     source,
+    isEstimate: holding.resolvedPrice.isEstimate,
+    marketPriceAt: holding.resolvedPrice.marketPriceAt ?? null,
+    fetchedAt: holding.resolvedPrice.fetchedAt ?? null,
+    provider: holding.resolvedPrice.provider ?? null,
     valueBRL: holding.valueBRL,
     pct: holding.weightPct,
     unrealizedPnl: holding.unrealizedPnl,
@@ -244,6 +255,8 @@ export function usePortfolioPosition(): PortfolioPosition {
 
   return {
     rows,
+    usdRate: canonicalState.usdRate,
+    fxMetadata: canonicalState.fxMetadata,
     totalBRL: canonicalState.totalBRL,
     totalCostBRL: canonicalState.totalCostBRL,
     assetsTotalCostBRL: canonicalState.assetsTotalCostBRL,

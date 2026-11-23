@@ -169,11 +169,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Push Remoto Android FCM, Hardening de Seguranca 0139/0140, Webhook de Suporte e Melhorias Pix",
-    "Push Remoto Nativo Android (FCM): opt-in nas configuracoes, canal padrao due_reminders, roteamento por deep-link e limpeza no logout",
-    "Seguranca e Privacidade (Migrations 0139 e 0140): endurecimento RLS/triggers, MFA AAL2 admin, protecao de keystore e webhook de suporte com deduplicacao atomica",
-    "Pix e Financas Compartilhadas: diagnostico aprimorado de chaves Pix, validacao de destinatario e maior confiabilidade em Rachas, Metas, Familia e Viagens",
-    "Infraestrutura de Producao: Cloudflare Workers com VAPID ativo, SSL Full (strict), Resend verificado, crons pg_cron/pg_net e FCM HTTP v1"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Motor Global de Cotacoes (SWR + EOD/EOM), Stale Quote Guard, Custodia BRL/USD e Proventos Automatizados",
+    "Cotacoes e Cambio SSOT (Migration 0142): cache global compartilhado sem duplicidade, historico oficial EOD/EOM, PTAX BCB e atualizacao automatica SWR",
+    "Stale Quote Guard e Relatorio Executivo: custodia segregada BRL/USD/Caixa, alertas de defasagem de mercado, metadados de cambio nos PDFs e confirmacao pre-impressao",
+    "Proventos Automatizados (Migration 0143): apuracao deterministica na Data COM (B3 e EUA com 30% IR), fila unificada de revisao, credito USD->BRL no Caixa e alertas no Hub",
+    "Qualidade e Testes: 224 suites de dominio (3187 testes), 17 suites focadas (302 testes) e 8 testes E2E Playwright aprovados, com migrations 0142/0143 e Edge Functions prontas para aplicacao"
   ]
 }
 EOF

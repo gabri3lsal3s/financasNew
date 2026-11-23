@@ -56,6 +56,7 @@ export function RemindersPage() {
             s.closedBillAlerts.length > 0 ||
             Boolean(s.budgetOverrunAlert) ||
             s.tripAndFamilyAlerts.length > 0 ||
+            s.dividendAlerts.length > 0 ||
             s.unreadBroadcasts.length > 0 ? (
               <Button
                 type="button"
@@ -171,6 +172,7 @@ export function RemindersPage() {
                   closedBillAlerts={s.closedBillAlerts}
                   budgetOverrunAlert={s.budgetOverrunAlert}
                   tripAndFamilyAlerts={s.tripAndFamilyAlerts}
+                  dividendAlerts={s.dividendAlerts}
                   unreadBroadcasts={s.unreadBroadcasts}
                   unreadSupportTickets={s.unreadSupportTickets}
                   pendingSplitSignals={s.pendingSplitSignals}

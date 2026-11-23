@@ -518,6 +518,7 @@ export * from "./closing-validator";
 export * from "./dividend-deduplication";
 export * from "./dividend-suggester";
 export * from "./dividend-cash-governance";
+export * from "./provisioned-dividends";
 export * from "./score-criteria";
 export * from "./fire";
 export * from "./simulation-presets";
@@ -535,5 +536,7 @@ export * from "./fixed-income-diagnostics";
 export * from "./aporte-execution-mapper";
 export * from "./ceiling-types";
 export * from "./ceiling-valuation";
+export * from "./stale-quote-guard";
+export * from "./custody-reconciliation";
 
 

@@ -1,8 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
+  consolidateAssetPrices,
   listAssetPrices,
+  listMarketPriceHistoryByMonth,
   removeManualPrice,
-  setAssetPricesBatchFromApi,
   setManualPrice,
 } from "./asset-prices";
 
@@ -10,7 +11,7 @@ interface Builder {
   select: ReturnType<typeof vi.fn>;
   or: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
-  in: ReturnType<typeof vi.fn>;
+  order: ReturnType<typeof vi.fn>;
   insert: ReturnType<typeof vi.fn>;
   delete: ReturnType<typeof vi.fn>;
   then: (onFulfilled: (value: unknown) => unknown) => Promise<unknown>;
@@ -18,26 +19,22 @@ interface Builder {
 
 let lastInsertInput: unknown = null;
 let lastDeleteCalls: string[] = [];
-let lastInCalls: Array<{ col: string; vals: unknown[] }> = [];
 
 function makeBuilder(result: unknown): Builder {
   const builder = {
     select: vi.fn(),
     or: vi.fn(),
     eq: vi.fn(),
-    in: vi.fn(),
+    order: vi.fn(),
     insert: vi.fn(),
     delete: vi.fn(),
     then: (onFulfilled: (value: unknown) => unknown) => Promise.resolve(result).then(onFulfilled),
   } as Builder;
   builder.select.mockReturnValue(builder);
   builder.or.mockReturnValue(builder);
+  builder.order.mockReturnValue(builder);
   builder.eq.mockImplementation((col: string, val: string) => {
     lastDeleteCalls.push(`${col}=${val}`);
-    return builder;
-  });
-  builder.in.mockImplementation((col: string, vals: unknown[]) => {
-    lastInCalls.push({ col, vals });
     return builder;
   });
   builder.insert.mockImplementation((input: unknown) => {
@@ -70,7 +67,6 @@ describe("asset-prices repository (Fase 4 — valoração §1.6)", () => {
   beforeEach(() => {
     lastInsertInput = null;
     lastDeleteCalls = [];
-    lastInCalls = [];
     assetBuilder = null;
   });
 
@@ -134,26 +130,106 @@ describe("asset-prices repository (Fase 4 — valoração §1.6)", () => {
     expect(lastDeleteCalls).toEqual(["user_id=u1", "ticker=AAPL", "source=manual"]);
   });
 
-  it("setAssetPricesBatchFromApi grava lote ignorando tickers com override manual", async () => {
-    // Simula que PETR4 possui override manual já registrado
-    builder = makeBuilder({
-      data: [{ ticker: "PETR4", price: 45, currency: "BRL", source: "manual", manual_price: 45 }],
-    });
-
-    await setAssetPricesBatchFromApi([
-      { ticker: "PETR4", price: 38.0, currency: "BRL" },
-      { ticker: "VALE3", price: 62.5, currency: "BRL" },
+  it("consolidateAssetPrices ordena deterministicamente por market_price_at e impede degradação por zero", () => {
+    const consolidated = consolidateAssetPrices([
+      {
+        ticker: "PETR4",
+        price: 39.4,
+        currency: "BRL",
+        source: "api",
+        manual_price: null,
+        market_price_at: "2026-10-16T20:00:00.000Z",
+        provider: "yahoo",
+      },
+      {
+        ticker: "PETR4",
+        price: 37.1,
+        currency: "BRL",
+        source: "api",
+        manual_price: null,
+        market_price_at: "2026-10-15T20:00:00.000Z",
+        provider: "brapi",
+      },
+      {
+        ticker: "PETR4",
+        price: 0,
+        currency: "BRL",
+        source: "api",
+        manual_price: null,
+        market_price_at: "2026-10-17T20:00:00.000Z",
+      },
+      {
+        ticker: "VALE3",
+        price: 55.0,
+        currency: "BRL",
+        source: "api",
+        manual_price: null,
+      },
+      {
+        ticker: "VALE3",
+        price: 62.5,
+        currency: "BRL",
+        source: "manual",
+        manual_price: 62.5,
+      },
     ]);
 
-    // Apenas VALE3 deve ser inserido (PETR4 foi ignorado devido ao override manual)
-    const inserted = lastInsertInput as Array<{ ticker: string; price: number; source: string }>;
-    expect(inserted).toHaveLength(1);
-    expect(inserted[0]).toMatchObject({
-      ticker: "VALE3",
-      price: 62.5,
-      currency: "BRL",
-      source: "api",
+    const petr = consolidated.find((r) => r.ticker === "PETR4");
+    const vale = consolidated.find((r) => r.ticker === "VALE3");
+    expect(petr?.price).toBe(39.4);
+    expect(petr?.provider).toBe("yahoo");
+    expect(vale?.source).toBe("manual");
+    expect(vale?.price).toBe(62.5);
+  });
+
+  it("listMarketPriceHistoryByMonth consulta competência priorizando is_month_end e ignora preço <= 0", async () => {
+    builder = makeBuilder({
+      data: [
+        {
+          ticker: "USDBRL=X",
+          reference_date: "2026-10-30",
+          price: "5.7412",
+          currency: "BRL",
+          provider: "bcb_ptax",
+          market_price_at: "2026-10-30T21:00:00.000Z",
+          month: "2026-10",
+          is_month_end: true,
+        },
+        {
+          ticker: "USDBRL=X",
+          reference_date: "2026-10-29",
+          price: "5.7000",
+          currency: "BRL",
+          provider: "yahoo",
+          market_price_at: "2026-10-29T21:00:00.000Z",
+          month: "2026-10",
+          is_month_end: false,
+        },
+        {
+          ticker: "INVALID3",
+          reference_date: "2026-10-30",
+          price: "0",
+          currency: "BRL",
+          provider: "yahoo",
+          market_price_at: null,
+          month: "2026-10",
+          is_month_end: true,
+        },
+      ],
+      error: null,
     });
+
+    const rows = await listMarketPriceHistoryByMonth("2026-10");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      ticker: "USDBRL=X",
+      price: 5.7412,
+      provider: "bcb_ptax",
+      is_month_end: true,
+    });
+    expect(builder.eq).toHaveBeenCalledWith("month", "2026-10");
+    expect(builder.order).toHaveBeenCalledWith("is_month_end", { ascending: false });
+    expect(builder.order).toHaveBeenCalledWith("reference_date", { ascending: false });
   });
 
   it("propaga erro classificado quando a leitura falha", async () => {

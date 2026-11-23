@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Layers, PieChart } from "lucide-react";
 import {
+  CustodyReconciliationCard,
   ReportAllocationDonuts,
   ReportClassTables,
   ReportFiiBreakdownCard,
@@ -12,6 +13,10 @@ import {
   ReportRunningHeader,
   ReportStocksBreakdownCard,
 } from "@/components/modules";
+import type {
+  CustodyReconciliationSummary,
+  ProvisionedDividendsSummary,
+} from "@/domain/portfolio";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import {
@@ -29,6 +34,8 @@ export interface TearSheetCustodyAndBreakdownsProps {
   accountHolder?: string;
   periodRedemptions?: readonly PeriodRedemptionItem[];
   assetsMetadata: readonly PortfolioAsset[];
+  custodyReconciliation?: CustodyReconciliationSummary | null;
+  provisionedSummary?: ProvisionedDividendsSummary | null;
   annualCdiRate?: number;
   annualSelicRate?: number;
   annualIpcaRate?: number;
@@ -44,6 +51,8 @@ export function TearSheetCustodyAndBreakdowns({
   accountHolder,
   periodRedemptions,
   assetsMetadata,
+  custodyReconciliation,
+  provisionedSummary = null,
   annualCdiRate,
   annualSelicRate,
   annualIpcaRate,
@@ -89,6 +98,14 @@ export function TearSheetCustodyAndBreakdowns({
           </div>
 
           <ReportClassTables groups={model.classTableGroups} />
+
+          {custodyReconciliation ? (
+            <CustodyReconciliationCard
+              variant="report"
+              summary={custodyReconciliation}
+              provisionedSummary={provisionedSummary}
+            />
+          ) : null}
 
           {periodRedemptions && periodRedemptions.length > 0 ? (
             <ReportRedemptionsTable

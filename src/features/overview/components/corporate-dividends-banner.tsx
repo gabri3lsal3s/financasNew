@@ -9,6 +9,7 @@ export interface CorporateDividendsBannerProps {
   projectedCount: number;
   totalAvailableAmount: number;
   totalProjectedAmount: number;
+  hasUncertainTax?: boolean;
   onInspect: () => void;
   onDismiss?: (days: 7 | 30) => void;
 }
@@ -21,6 +22,7 @@ export function CorporateDividendsBanner({
   projectedCount,
   totalAvailableAmount,
   totalProjectedAmount,
+  hasUncertainTax = false,
   onInspect,
   onDismiss,
 }: CorporateDividendsBannerProps) {
@@ -33,7 +35,14 @@ export function CorporateDividendsBanner({
       className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full h-full min-h-[104px] sm:min-h-[72px] flex-1 p-3.5 sm:p-4 rounded-2xl border border-border/80 bg-surface shadow-xs transition-all"
     >
       <div className={cn("flex items-center gap-3 min-w-0", onDismiss && "pr-6 sm:pr-0")}>
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-portfolio/20 bg-portfolio/10 text-portfolio">
+        <div
+          className={cn(
+            "flex size-9 shrink-0 items-center justify-center rounded-xl border",
+            hasAvailable && hasUncertainTax
+              ? "border-warning/20 bg-warning/15 text-warning-strong"
+              : "border-portfolio/20 bg-portfolio/10 text-portfolio",
+          )}
+        >
           <Coins className="size-4.5" aria-hidden="true" />
         </div>
         <div className="flex flex-col min-w-0">
@@ -41,9 +50,15 @@ export function CorporateDividendsBanner({
             <h2 className="text-sm font-semibold text-foreground truncate">
               {hasAvailable ? "Proventos Creditados na Corretora" : "Proventos Previstos no Mês"}
             </h2>
-            <Badge variant="portfolio" size="xs" className="shrink-0">
+            <Badge
+              variant={hasAvailable && hasUncertainTax ? "warning" : "portfolio"}
+              size="xs"
+              className="shrink-0"
+            >
               {hasAvailable
-                ? `${availableCount} ${availableCount === 1 ? "disponível" : "disponíveis"}`
+                ? hasUncertainTax
+                  ? "Conferir alíquota"
+                  : `${availableCount} ${availableCount === 1 ? "disponível" : "disponíveis"}`
                 : "Provisionado"}
             </Badge>
           </div>
@@ -51,7 +66,8 @@ export function CorporateDividendsBanner({
             {hasAvailable ? (
               <>
                 {availableCount} {availableCount === 1 ? "provento disponível" : "proventos disponíveis"} totalizando{" "}
-                <MoneyText cents={numberToCents(totalAvailableAmount)} className="font-semibold" />.
+                <MoneyText cents={numberToCents(totalAvailableAmount)} className="font-semibold" />
+                {hasUncertainTax ? " (revise IR/tipo antes de aprovar)." : "."}
               </>
             ) : (
               <>
@@ -70,7 +86,7 @@ export function CorporateDividendsBanner({
           onClick={onInspect}
           className="shrink-0 flex-1 sm:flex-initial justify-center font-semibold cursor-pointer gap-1.5"
         >
-          <span>Conferir</span>
+          <span>{hasAvailable && hasUncertainTax ? "Conferir e Aprovar" : "Conferir"}</span>
           <ChevronRight className="size-3.5" aria-hidden="true" />
         </Button>
 

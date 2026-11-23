@@ -58,6 +58,7 @@ export function useRemindersPageState() {
     closedBillAlerts,
     budgetOverrunAlert,
     tripAndFamilyAlerts,
+    dividendAlerts,
     readHistoryItems,
     overdueCount,
     criticalCount,
@@ -271,6 +272,7 @@ export function useRemindersPageState() {
       if (subFilter === "all" || subFilter === "system") {
         if (budgetOverrunAlert) keys.push(budgetOverrunAlert.id);
         keys.push(...tripAndFamilyAlerts.map((a) => a.id));
+        keys.push(...dividendAlerts.map((a) => a.id));
         for (const b of unreadBroadcasts) {
           markBroadcastMutation.mutate(b.id);
         }
@@ -347,7 +349,8 @@ export function useRemindersPageState() {
     pendingSplitSignals.length +
     (hasPastDueSubscription ? 1 : 0) +
     (budgetOverrunAlert ? 1 : 0) +
-    tripAndFamilyAlerts.length;
+    tripAndFamilyAlerts.length +
+    dividendAlerts.length;
 
   const totalPendingEffective = totalRemindersPageCount;
   const hasUrgentPending = criticalCount > 0;
@@ -381,6 +384,7 @@ export function useRemindersPageState() {
     closedBillAlerts,
     budgetOverrunAlert,
     tripAndFamilyAlerts,
+    dividendAlerts,
     unreadBroadcasts,
     unreadSupportTickets,
     pendingSplitSignals,

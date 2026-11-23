@@ -2,6 +2,8 @@ import { callRpc, unwrapRpc } from "./client";
 import type {
   ApproveDividendsBatchPayload,
   ApproveDividendsBatchResult,
+  ConfirmDividendEventsPayload,
+  ConfirmDividendEventsResult,
   FixedIncomeMetadata,
   MonthlyClosingPayload,
   MonthlyClosingResult,
@@ -166,6 +168,21 @@ export async function approveDividendsBatchRpc(
     callRpc("approve_dividends_batch_atomic", {
       p_dividends: payload.dividends,
       p_sync_cash: payload.sync_cash ?? false,
+    }),
+  );
+}
+
+/**
+ * Confirma eventos de proventos (automatizados ou manuais) de forma atômica,
+ * respeitando valores editados, IRRF/WHT e conversão USD -> BRL no Caixa.
+ */
+export async function confirmUserDividendEventsRpc(
+  payload: ConfirmDividendEventsPayload,
+): Promise<ConfirmDividendEventsResult> {
+  return unwrapRpc(
+    callRpc("confirm_user_dividend_events_atomic", {
+      p_items: payload.items,
+      p_sync_cash: payload.sync_cash ?? true,
     }),
   );
 }

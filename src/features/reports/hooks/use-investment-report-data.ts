@@ -99,9 +99,14 @@ export function useInvestmentReportData({
   }, [enabled, historicalPit, positionQuery.rows]);
 
   const usdRate = useMemo(
-    () => positionRows.find((r) => r.currency === "USD")?.usdRate ?? FALLBACK_USD_RATE,
-    [positionRows],
+    () =>
+      historicalPit?.usdRate ??
+      positionQuery.usdRate ??
+      positionRows.find((r) => r.currency === "USD")?.usdRate ??
+      FALLBACK_USD_RATE,
+    [historicalPit?.usdRate, positionQuery.usdRate, positionRows],
   );
+  const fxMetadata = positionQuery.fxMetadata ?? null;
   const assetCurrencyMap = useMemo(() => new Map(assets.map((a) => [a.id, a.currency])), [assets]);
 
   const yearDividendsBRL = useMemo(
@@ -234,6 +239,7 @@ export function useInvestmentReportData({
     dividends,
     transactions,
     usdRate,
+    fxMetadata,
     historicalPit,
     positionQuery,
     emergencyFund,

@@ -185,6 +185,7 @@ export function useReportsData(params: UseReportsDataParams) {
     dividends: investments.dividends,
     assets: investments.assets,
     usdRate: investments.usdRate,
+    fxMetadata: investments.fxMetadata,
     transactions: investments.transactions,
   };
 }

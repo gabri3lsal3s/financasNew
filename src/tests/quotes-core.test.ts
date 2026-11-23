@@ -7,14 +7,29 @@
 import { describe, expect, it } from "vitest";
 import {
   applySpikeGuardrail,
+  buildGlobalQuoteUpsertRow,
   buildQuoteUpsertRow,
+  classifyTickerMarket,
+  computeCustodyAtComDatePure,
+  evaluateSpikeGuardrail,
+  isBusinessDayForMarket,
   isCashClass,
+  isFuzzyDuplicateManualDividend,
+  isMarketOpenForTicker,
+  isMarketQuotedAsset,
   normalizeTickerForApi,
   normalizeTickerForBrapi,
   parseAwesomeApiResponse,
+  parseBcbPtaxResponse,
+  parseBrapiDetailed,
   parseBrapiResponse,
   parseBrapiDividends,
+  parseYahooChartDetailed,
   parseYahooChartResponse,
+  parseYahooDividends,
+  parseYahooHistoricalClose,
+  resolveAntiFloodCutoffDate,
+  shouldSkipByEodGuard,
 } from "../../supabase/functions/_shared/quotes-core";
 
 describe("normalizeTickerForApi — ticker armazenado → formato Yahoo", () => {
@@ -278,7 +293,10 @@ describe("parseBrapiDividends — extração de proventos B3", () => {
       payment_date: "2026-11-20",
       rate: 1.0,
       net_rate: 1.0,
+      tax_rate_pct: 0,
       currency: "BRL",
+      provider: "brapi",
+      is_type_uncertain: false,
     });
 
     expect(divs[1]).toEqual({
@@ -288,7 +306,10 @@ describe("parseBrapiDividends — extração de proventos B3", () => {
       payment_date: "2026-12-15",
       rate: 0.5,
       net_rate: 0.425, // 0.5 * 0.85
+      tax_rate_pct: 15,
       currency: "BRL",
+      provider: "brapi",
+      is_type_uncertain: false,
     });
   });
 
@@ -296,6 +317,330 @@ describe("parseBrapiDividends — extração de proventos B3", () => {
     expect(parseBrapiDividends("PETR4", null)).toEqual([]);
     expect(parseBrapiDividends("PETR4", {})).toEqual([]);
     expect(parseBrapiDividends("PETR4", { results: [] })).toEqual([]);
+  });
+});
+
+describe("Bloco A — Normalização fracionária/US, parsers detalhados, EOD Guard e Spike inteligente", () => {
+  it("normaliza fracionário B3 (PETR4F) e ações EUA com ponto (BRK.B)", () => {
+    expect(normalizeTickerForApi("PETR4F")).toBe("PETR4.SA");
+    expect(normalizeTickerForApi("petr4f.sa")).toBe("PETR4.SA");
+    expect(normalizeTickerForBrapi("PETR4F")).toBe("PETR4");
+    expect(normalizeTickerForApi("BRK.B")).toBe("BRK-B");
+    expect(classifyTickerMarket("PETR4F")).toBe("BR");
+    expect(classifyTickerMarket("BRK.B")).toBe("US");
+  });
+
+  it("parseYahooChartDetailed extrai marketPriceAt, chartPreviousClose e events.splits", () => {
+    const detailed = parseYahooChartDetailed("PETR4", {
+      chart: {
+        result: [
+          {
+            meta: {
+              regularMarketPrice: 19.5,
+              currency: "BRL",
+              regularMarketTime: 1760648100, // 2025-10-16T20:55:00Z
+              chartPreviousClose: 39.0,
+            },
+            events: {
+              splits: {
+                "1760616000": {
+                  date: 1760616000,
+                  numerator: 2,
+                  denominator: 1,
+                },
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(detailed).not.toBeNull();
+    expect(detailed?.price).toBe(19.5);
+    expect(detailed?.provider).toBe("yahoo");
+    expect(detailed?.marketPriceAt).toBe("2025-10-16T20:55:00.000Z");
+    expect(detailed?.chartPreviousClose).toBe(39.0);
+    expect(detailed?.splits).toHaveLength(1);
+    expect(detailed?.splits?.[0]?.ratio).toBe(2);
+  });
+
+  it("parseBrapiDetailed e parseBcbPtaxResponse extraem timestamps reais (Olinda e SGS 1)", () => {
+    const brapi = parseBrapiDetailed("VALE3", {
+      results: [
+        {
+          regularMarketPrice: 61.2,
+          currency: "BRL",
+          regularMarketTime: "2026-10-16T18:05:00.000Z",
+        },
+      ],
+    });
+    expect(brapi?.marketPriceAt).toBe("2026-10-16T18:05:00.000Z");
+    expect(brapi?.provider).toBe("brapi");
+
+    const olinda = parseBcbPtaxResponse("USDBRL=X", {
+      value: [
+        { cotacaoCompra: 5.71, cotacaoVenda: 5.72, dataHoraCotacao: "2026-10-30 13:09:24.123" },
+        { cotacaoCompra: 5.73, cotacaoVenda: 5.7412, dataHoraCotacao: "2026-10-30 13:11:00.000" },
+      ],
+    });
+    expect(olinda?.price).toBe(5.7412);
+    expect(olinda?.provider).toBe("bcb_ptax");
+    expect(olinda?.referenceDate).toBe("2026-10-30");
+    expect(olinda?.marketPriceAt).toBe("2026-10-30T16:11:00.000Z");
+
+    const sgs = parseBcbPtaxResponse("USDBRL=X", [{ data: "30/10/2026", valor: "5.7399" }]);
+    expect(sgs?.price).toBe(5.7399);
+    expect(sgs?.referenceDate).toBe("2026-10-30");
+  });
+
+  it("parseYahooHistoricalClose seleciona o último pregão dentro da competência YYYY-MM", () => {
+    const tSep30 = Math.floor(Date.parse("2026-09-30T20:00:00.000Z") / 1000);
+    const tOct01 = Math.floor(Date.parse("2026-10-01T20:00:00.000Z") / 1000);
+    const hist = parseYahooHistoricalClose(
+      "AAPL",
+      {
+        chart: {
+          result: [
+            {
+              meta: { currency: "USD" },
+              timestamp: [tSep30, tOct01],
+              indicators: { quote: [{ close: [224.5, 230.0] }] },
+            },
+          ],
+        },
+      },
+      "2026-09",
+    );
+
+    expect(hist?.price).toBe(224.5);
+    expect(hist?.currency).toBe("USD");
+    expect(hist?.referenceDate).toBe("2026-09-30");
+  });
+
+  it("shouldSkipByEodGuard libera cache_miss e bloqueia chamadas repetidas após EOD com mercado fechado", () => {
+    const sunday = new Date("2026-06-14T15:00:00.000Z");
+    expect(isMarketOpenForTicker("PETR4", sunday)).toBe(false);
+    expect(isBusinessDayForMarket("2026-06-15", "BR")).toBe(true);
+
+    expect(
+      shouldSkipByEodGuard({
+        ticker: "PETR4",
+        fetchedAt: "2026-06-12T21:30:00.000Z",
+        marketPriceAt: "2026-06-12T20:55:00.000Z",
+        existingPrice: 38.0,
+        existingSource: "api",
+        now: sunday,
+      }),
+    ).toBe(true);
+
+    expect(
+      shouldSkipByEodGuard({
+        ticker: "PETR4",
+        fetchedAt: "2026-06-12T21:30:00.000Z",
+        marketPriceAt: "2026-06-12T20:55:00.000Z",
+        existingPrice: 38.0,
+        existingSource: "api",
+        now: sunday,
+        reason: "cache_miss",
+      }),
+    ).toBe(false);
+  });
+
+  it("evaluateSpikeGuardrail destrava splits, consenso, cache > 5 dias úteis e confirmação dupla", () => {
+    const now = new Date("2026-06-17T16:00:00.000Z");
+
+    // 1. Split 3:1 e inplit 1:10 nos últimos 5 dias úteis (> 50% variação)
+    const splitRes = evaluateSpikeGuardrail({
+      ticker: "PETR4",
+      newPrice: 20.0,
+      previousPrice: 60.0,
+      splits: [{ timestamp: 1, dateISO: "2026-06-15", numerator: 3, denominator: 1, ratio: 3 }],
+      now,
+    });
+    expect(splitRes.accepted).toBe(true);
+    expect(splitRes.reason).toBe("split_verified");
+
+    const inplitRes = evaluateSpikeGuardrail({
+      ticker: "OIBR3",
+      newPrice: 20.0,
+      previousPrice: 2.0,
+      splits: [{ timestamp: 2, dateISO: "2026-06-15", numerator: 1, denominator: 10, ratio: 0.1 }],
+      now,
+    });
+    expect(inplitRes.accepted).toBe(true);
+    expect(inplitRes.reason).toBe("split_verified");
+
+    // 2. Consenso secundário (±5%)
+    const consensusRes = evaluateSpikeGuardrail({
+      ticker: "PETR4",
+      newPrice: 90.0,
+      previousPrice: 40.0,
+      secondaryConfirmPrice: 89.5,
+      now,
+    });
+    expect(consensusRes.accepted).toBe(true);
+    expect(consensusRes.reason).toBe("consensus_verified");
+
+    // 3. Cache antigo > 5 dias úteis
+    const staleRes = evaluateSpikeGuardrail({
+      ticker: "PETR4",
+      newPrice: 90.0,
+      previousPrice: 40.0,
+      previousMarketPriceAt: "2026-06-01T20:00:00.000Z",
+      now,
+    });
+    expect(staleRes.accepted).toBe(true);
+    expect(staleRes.reason).toBe("stale_cache_override");
+
+    // 4. Spike isolado trava e registra pending_spike_*; 2ª confirmação >= 10 min destrava
+    const firstSpike = evaluateSpikeGuardrail({
+      ticker: "PETR4",
+      newPrice: 90.0,
+      previousPrice: 40.0,
+      previousMarketPriceAt: "2026-06-16T20:00:00.000Z",
+      now,
+    });
+    expect(firstSpike.accepted).toBe(false);
+    expect(firstSpike.reason).toBe("spike_guarded");
+    expect(firstSpike.effectivePrice).toBe(40.0);
+    expect(firstSpike.pendingSpikePrice).toBe(90.0);
+
+    const secondSpike = evaluateSpikeGuardrail({
+      ticker: "PETR4",
+      newPrice: 91.0,
+      previousPrice: 40.0,
+      previousMarketPriceAt: "2026-06-16T20:00:00.000Z",
+      pendingSpikePrice: 90.0,
+      pendingSpikeAt: new Date(now.getTime() - 12 * 60_000).toISOString(),
+      now,
+    });
+    expect(secondSpike.accepted).toBe(true);
+    expect(secondSpike.reason).toBe("double_confirm_unlocked");
+  });
+
+  it("buildGlobalQuoteUpsertRow e isMarketQuotedAsset respeitam esquema global e exclusões de RF/Caixa", () => {
+    const row = buildGlobalQuoteUpsertRow({
+      ticker: "petr4",
+      price: 38.9,
+      currency: "BRL",
+      marketPriceAt: "2026-06-17T16:00:00.000Z",
+      fetchedAt: "2026-06-17T16:01:00.000Z",
+      provider: "yahoo",
+    });
+    expect(row.user_id).toBeNull();
+    expect(row.ticker).toBe("PETR4");
+    expect(row.source).toBe("api");
+
+    expect(isMarketQuotedAsset({ ticker: "PETR4", asset_class: "Ações" })).toBe(true);
+    expect(isMarketQuotedAsset({ ticker: "CAIXA", asset_class: "Reserva" })).toBe(false);
+    expect(isMarketQuotedAsset({ ticker: "CDB-BANCO", asset_class: "Renda Fixa" })).toBe(false);
+    expect(isMarketQuotedAsset({ ticker: "TESOURO SELIC", asset_class: "Tesouro Direto" })).toBe(false);
+    expect(isMarketQuotedAsset({ ticker: "IMOVEL", asset_class: "Outros", notes: "[VALUATION:CUSTOM]" })).toBe(false);
+  });
+});
+
+describe("Bloco C — Proventos B3/EUA, Custódia na Data COM, Anti-Flood e Deduplicação", () => {
+  it("parseBrapiDividends aceita paymentDate nula/indefinida mantendo com_date válida", () => {
+    const divs = parseBrapiDividends("ITUB4", {
+      results: [
+        {
+          symbol: "ITUB4",
+          dividendsData: {
+            cashDividends: [
+              {
+                rate: 0.35,
+                paymentDate: null,
+                lastDatePrior: "2026-11-10",
+                label: "DIVIDENDO",
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(divs).toHaveLength(1);
+    expect(divs[0]?.payment_date).toBeNull();
+    expect(divs[0]?.com_date).toBe("2026-11-10");
+  });
+
+  it("parseYahooDividends aplica WHT 30% + dia útil NYSE anterior para EUA e is_type_uncertain para B3", () => {
+    const mondayExTs = Math.floor(Date.parse("2026-06-15T14:00:00.000Z") / 1000);
+    const usDivs = parseYahooDividends(
+      "AAPL",
+      {
+        chart: {
+          result: [
+            {
+              meta: { currency: "USD" },
+              events: {
+                dividends: {
+                  [String(mondayExTs)]: { amount: 1.0, date: mondayExTs },
+                },
+              },
+            },
+          ],
+        },
+      },
+      "US",
+    );
+
+    expect(usDivs).toHaveLength(1);
+    expect(usDivs[0]?.currency).toBe("USD");
+    expect(usDivs[0]?.tax_rate_pct).toBe(30);
+    expect(usDivs[0]?.net_rate).toBe(0.7);
+    expect(usDivs[0]?.is_type_uncertain).toBe(false);
+    expect(usDivs[0]?.com_date).toBe("2026-06-12"); // sexta anterior à segunda-feira 15/06
+
+    const brDivs = parseYahooDividends(
+      "BBAS3",
+      {
+        chart: {
+          result: [
+            {
+              meta: { currency: "BRL" },
+              events: {
+                dividends: {
+                  [String(mondayExTs)]: { amount: 0.8, date: mondayExTs },
+                },
+              },
+            },
+          ],
+        },
+      },
+      "BR",
+    );
+
+    expect(brDivs).toHaveLength(1);
+    expect(brDivs[0]?.currency).toBe("BRL");
+    expect(brDivs[0]?.provider).toBe("yahoo");
+    expect(brDivs[0]?.is_type_uncertain).toBe(true);
+  });
+
+  it("computeCustodyAtComDatePure reconcilia baseline + compras + split 2:1 na Data COM", () => {
+    // Usuário tinha 50 cotas iniciais, comprou +50 em 2026-05-05 (total 100) e sofreu split 2:1 em 2026-05-20 (total final 200)
+    const txs = [
+      { type: "buy", date: "2026-05-05", quantity: 50 },
+      { type: "split", date: "2026-05-20", quantity: 2 },
+    ];
+    expect(computeCustodyAtComDatePure({ quantity: 200, created_at: "2026-01-01" }, txs, "2026-05-01")).toBe(50);
+    expect(computeCustodyAtComDatePure({ quantity: 200, created_at: "2026-01-01" }, txs, "2026-05-10")).toBe(100);
+    expect(computeCustodyAtComDatePure({ quantity: 200, created_at: "2026-01-01" }, txs, "2026-05-25")).toBe(200);
+  });
+
+  it("resolveAntiFloodCutoffDate e isFuzzyDuplicateManualDividend respeitam janela segura e tolerância", () => {
+    expect(resolveAntiFloodCutoffDate("2026-11-20", "2026-11-23", 7)).toBe("2026-11-20");
+    expect(resolveAntiFloodCutoffDate("2026-01-01", "2026-11-23", 7)).toBe("2026-11-16");
+
+    const dup = isFuzzyDuplicateManualDividend("2026-11-20", 100.0, [
+      { id: "man-1", date: "2026-11-23", amount: 100.03 },
+    ]);
+    expect(dup).toEqual({ matched: true, matchedDividendId: "man-1" });
+
+    const nullDate = isFuzzyDuplicateManualDividend(null, 100.0, [
+      { id: "man-1", date: "2026-11-23", amount: 100.0 },
+    ]);
+    expect(nullDate).toEqual({ matched: false, matchedDividendId: null });
   });
 });
 

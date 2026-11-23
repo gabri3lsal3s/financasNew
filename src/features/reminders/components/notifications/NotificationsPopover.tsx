@@ -18,6 +18,7 @@ import {
   BroadcastNotificationRow,
   BudgetOverrunNotificationRow,
   ClosedBillNotificationRow,
+  DividendNotificationRow,
   OnboardingNotificationRow,
   SplitSignalNotificationRow,
   SubscriptionPastDueRow,
@@ -52,6 +53,7 @@ export function NotificationsPopover({
     data.closedBillAlerts.length === 0 &&
     !data.budgetOverrunAlert &&
     data.tripAndFamilyAlerts.length === 0 &&
+    data.dividendAlerts.length === 0 &&
     !data.showOnboarding &&
     data.advisorAlerts.length === 0 &&
     data.unreadSupportTickets.length === 0 &&
@@ -66,6 +68,7 @@ export function NotificationsPopover({
     data.closedBillAlerts.length > 0 ||
     Boolean(data.budgetOverrunAlert) ||
     data.tripAndFamilyAlerts.length > 0 ||
+    data.dividendAlerts.length > 0 ||
     data.unreadBroadcasts.length > 0;
 
   // Ordenação unificada por severidade (P0 Críticos -> P1 Ação necessária -> P2/P3 Informativos)
@@ -106,6 +109,12 @@ export function NotificationsPopover({
   );
   const advisoryTripsAndFamily = data.tripAndFamilyAlerts.filter(
     (a) => !activeTrips.includes(a),
+  );
+  const pendingDividendAlerts = data.dividendAlerts.filter(
+    (a) => a.kind === "pending_confirmation",
+  );
+  const advisoryDividendAlerts = data.dividendAlerts.filter(
+    (a) => a.kind !== "pending_confirmation",
   );
 
   return (
@@ -262,6 +271,15 @@ export function NotificationsPopover({
                 />
               ))}
 
+              {pendingDividendAlerts.map((alert) => (
+                <DividendNotificationRow
+                  key={alert.id}
+                  alert={alert}
+                  onOpen={() => data.handleOpenRoute(alert.targetRoute)}
+                  onMarkRead={() => data.handleMarkRead(alert.id)}
+                />
+              ))}
+
               {p1AdvisorAlerts.map((advisorItem) => (
                 <AdvisorNotificationRow
                   key={advisorItem.id}
@@ -304,6 +322,15 @@ export function NotificationsPopover({
 
               {advisoryTripsAndFamily.map((alert) => (
                 <TripFamilyNotificationRow
+                  key={alert.id}
+                  alert={alert}
+                  onOpen={() => data.handleOpenRoute(alert.targetRoute)}
+                  onMarkRead={() => data.handleMarkRead(alert.id)}
+                />
+              ))}
+
+              {advisoryDividendAlerts.map((alert) => (
+                <DividendNotificationRow
                   key={alert.id}
                   alert={alert}
                   onOpen={() => data.handleOpenRoute(alert.targetRoute)}

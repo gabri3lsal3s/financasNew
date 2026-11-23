@@ -1,6 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { evaluateStaleQuoteGuard } from "@/domain/portfolio";
 import { currentMonth } from "@/lib/date";
 import {
+  useAllPortfolioTransactions,
   usePortfolioPosition,
   usePortfolioSnapshots,
   useUpsertPortfolioSnapshot,
@@ -22,16 +24,34 @@ import {
  */
 export function useAutoPortfolioSnapshot() {
   const position = usePortfolioPosition();
+  const transactionsQuery = useAllPortfolioTransactions();
   const snapshotsQuery = usePortfolioSnapshots();
   const upsertMutation = useUpsertPortfolioSnapshot();
 
   const isTriggeredRef = useRef(false);
 
+  const hasPostTradeStale = useMemo(() => {
+    if (position.isLoading || transactionsQuery.isLoading) return true;
+    return evaluateStaleQuoteGuard({
+      rows: position.rows,
+      transactions: transactionsQuery.data ?? [],
+      fxMetadata: position.fxMetadata,
+    }).hasPostTradeStale;
+  }, [
+    position.isLoading,
+    position.rows,
+    position.fxMetadata,
+    transactionsQuery.isLoading,
+    transactionsQuery.data,
+  ]);
+
   useEffect(() => {
     if (
       position.isLoading ||
+      transactionsQuery.isLoading ||
       snapshotsQuery.isLoading ||
-      upsertMutation.isPending
+      upsertMutation.isPending ||
+      hasPostTradeStale
     ) {
       return;
     }
@@ -76,8 +96,10 @@ export function useAutoPortfolioSnapshot() {
     }
   }, [
     position,
+    transactionsQuery.isLoading,
     snapshotsQuery,
     upsertMutation,
+    hasPostTradeStale,
   ]);
 }
 

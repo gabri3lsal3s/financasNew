@@ -553,4 +553,37 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     fireEvent.click(btn!);
     expect(mockNavigate).toHaveBeenCalledWith("/investments?tab=posicao");
   });
+
+  it("bloqueia 1-clique cego no carrossel quando houver provento com isTypeUncertain=true", () => {
+    mockUseCorporateDividends.mockReturnValue({
+      available: [
+        {
+          corporateDividendId: "c-yahoo-1",
+          assetId: "a1",
+          ticker: "BBAS3",
+          type: "DIVIDENDO",
+          comDate: "2026-10-30",
+          paymentDate: "2026-11-05",
+          quantityOnComDate: 100,
+          rate: 0.8,
+          netRate: 0.8,
+          totalAmount: 80,
+          currency: "BRL",
+          status: "available",
+          isTypeUncertain: true,
+        },
+      ],
+      projected: [],
+      totalAvailableAmount: 80,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+
+    render(<PortfolioInsightsCarousel />);
+
+    expect(screen.getByText("Alíquota a conferir")).toBeInTheDocument();
+    expect(screen.queryByText("Aprovar no Caixa")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Conferir e Aprovar/i }));
+    expect(mockMutateAsync).not.toHaveBeenCalled();
+  });
 });

@@ -1,9 +1,15 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { Printer } from "lucide-react";
-import { Button, Modal, usePrint, PrintSheet } from "@/components/ui";
+import { Button, ConfirmDialog, Modal, usePrint, PrintSheet } from "@/components/ui";
 import type { ModalSize } from "@/components/ui";
 import { cn } from "@/lib/utils";
+
+export interface ReportPrintWarning {
+  title: string;
+  description: string;
+  confirmLabel?: string;
+}
 
 export interface ReportDocumentLayoutProps {
   /** Controla se o modal de pré-visualização está aberto. */
@@ -18,6 +24,8 @@ export interface ReportDocumentLayoutProps {
   customActions?: ReactNode;
   /** Interceptador executado antes de disparar a impressão nativa/PDF. Retornar false cancela a impressão. */
   onBeforePrint?: () => boolean | void;
+  /** Alerta de confirmação explícita antes de gerar PDF quando há cotações/câmbio defasados ou estimados. */
+  printWarning?: ReportPrintWarning | null;
   /** Conteúdo editorial do relatório (usado tanto no preview de tela quanto na impressão). */
   children: ReactNode;
   /** Tamanho do modal no desktop (padrão: "3xl" = max-w-7xl / 1280px para máxima escaneabilidade de dados tabulares). */
@@ -43,13 +51,19 @@ export function ReportDocumentLayout({
   size = "3xl",
   className,
   onBeforePrint,
+  printWarning,
 }: ReportDocumentLayoutProps) {
   const suggestedTitle = documentTitle ?? `${title.replace(/[^a-zA-Z0-9_\u00C0-\u00FF]+/g, "_")}.pdf`;
   const { printing, triggerPrint } = usePrint(suggestedTitle);
   const [browserPrinting, setBrowserPrinting] = useState(false);
+  const [warningConfirmOpen, setWarningConfirmOpen] = useState(false);
 
   const handlePrintClick = () => {
     if (onBeforePrint && onBeforePrint() === false) {
+      return;
+    }
+    if (printWarning) {
+      setWarningConfirmOpen(true);
       return;
     }
     triggerPrint(suggestedTitle);
@@ -133,6 +147,22 @@ export function ReportDocumentLayout({
           {shouldMountPrintContent ? children : null}
         </div>
       </PrintSheet>
+
+      {printWarning ? (
+        <ConfirmDialog
+          open={warningConfirmOpen}
+          onOpenChange={setWarningConfirmOpen}
+          title={printWarning.title}
+          description={printWarning.description}
+          confirmLabel={printWarning.confirmLabel ?? "Emitir PDF mesmo assim"}
+          cancelLabel="Cancelar"
+          elevated
+          onConfirm={() => {
+            setWarningConfirmOpen(false);
+            triggerPrint(suggestedTitle);
+          }}
+        />
+      ) : null}
     </>
   );
 }

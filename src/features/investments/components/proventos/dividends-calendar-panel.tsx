@@ -1,11 +1,12 @@
-import { CalendarDays } from "lucide-react";
+import { CalendarClock, CalendarDays } from "lucide-react";
 import { KpiCard } from "@/components/modules";
-import { Badge, MoneyText } from "@/components/ui";
+import { Badge, Button, EmptyState, MoneyText } from "@/components/ui";
 import { numberToCents } from "@/domain/money";
-import type { MonthDividendSummary } from "@/domain/portfolio";
+import type { MonthDividendSummary, SuggestedDividendItem } from "@/domain/portfolio";
 import type { YearlyDividendMonthPoint } from "@/domain/portfolio/dividends-analytics";
-import { monthLabel } from "@/lib/date";
+import { formatDateBR, monthLabel } from "@/lib/date";
 import { cn } from "@/lib/utils";
+import { formatPercent } from "@/services/masks/percent";
 import { triggerSensory } from "@/services/sensory";
 
 export interface DividendsCalendarPanelProps {
@@ -17,6 +18,9 @@ export interface DividendsCalendarPanelProps {
   bestMonth: MonthDividendSummary | null;
   maxMonthTotal: number;
   onSelectMonth: (month: string) => void;
+  pendingItems?: readonly SuggestedDividendItem[];
+  provisionedItems?: readonly SuggestedDividendItem[];
+  onOpenReview?: () => void;
 }
 
 export function DividendsCalendarPanel({
@@ -28,7 +32,12 @@ export function DividendsCalendarPanel({
   bestMonth,
   maxMonthTotal,
   onSelectMonth,
+  pendingItems = [],
+  provisionedItems = [],
+  onOpenReview,
 }: DividendsCalendarPanelProps) {
+  const agendaItems = [...pendingItems, ...provisionedItems];
+
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -154,6 +163,104 @@ export function DividendsCalendarPanel({
           })}
         </ul>
       </section>
+
+      {agendaItems.length > 0 || onOpenReview ? (
+        <section
+          aria-label="Agenda de proventos provisionados e a confirmar"
+          className="rounded-2xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs min-w-0 overflow-hidden"
+        >
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <CalendarClock className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-foreground">
+                  Agenda de Proventos Provisionados e a Confirmar
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Eventos futuros e pendentes ficam segregados fora do Patrimônio e do Caixa até a liquidação.
+                </p>
+              </div>
+            </div>
+            {onOpenReview ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onOpenReview}
+                className="shrink-0 self-start sm:self-center"
+              >
+                Conferir / Provisionar
+              </Button>
+            ) : null}
+          </div>
+
+          {agendaItems.length === 0 ? (
+            <EmptyState
+              title="Nenhum provento provisionado no momento"
+              description="Proventos com Data COM cumprida capturados automaticamente ou cadastrados manualmente aparecerão nesta agenda."
+              headingLevel="h3"
+            />
+          ) : (
+            <div className="flex flex-col divide-y divide-border/60 rounded-xl border border-border/80">
+              {agendaItems.map((item) => {
+                const key = item.eventId ?? `${item.corporateDividendId}:${item.assetId}`;
+                const taxPct = item.taxRatePct ?? 0;
+                return (
+                  <div
+                    key={key}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 text-xs"
+                  >
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono font-bold text-foreground">{item.ticker}</span>
+                        <Badge
+                          size="xs"
+                          variant={item.status === "available" ? "warning" : "portfolio"}
+                        >
+                          {item.status === "available" ? "A confirmar" : "Provisionado"}
+                        </Badge>
+                        <Badge size="xs" variant={item.type === "JCP" ? "warning" : "muted"}>
+                          {item.type}
+                        </Badge>
+                        {item.currency === "USD" ? (
+                          <Badge size="xs" variant="portfolio">
+                            {`EUA · ${formatPercent(taxPct)}% IR`}
+                          </Badge>
+                        ) : taxPct > 0 ? (
+                          <Badge size="xs" variant="warning">
+                            {`${formatPercent(taxPct)}% IR`}
+                          </Badge>
+                        ) : null}
+                        {item.isTypeUncertain ? (
+                          <Badge size="xs" variant="warning">
+                            Alíquota a conferir
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <span className="text-[11px] text-muted-foreground">
+                        {`Data COM ${formatDateBR(item.comDate)} · ${
+                          item.paymentDate
+                            ? `Pagamento ${formatDateBR(item.paymentDate)}`
+                            : "Data a definir"
+                        }`}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                      <MoneyText
+                        cents={numberToCents(item.totalAmount)}
+                        currency={item.currency}
+                        tone="portfolio"
+                        className="font-semibold"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      ) : null}
     </div>
   );
 }

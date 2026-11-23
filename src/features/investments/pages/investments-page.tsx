@@ -2,6 +2,7 @@ import { Briefcase, Coins, Plus, Scale, Wallet } from "lucide-react";
 import { PageHeader } from "@/components/layout";
 import { ReadOnlyBanner, UpgradeDialog } from "@/components/modules";
 import { Button, Tabs } from "@/components/ui";
+import { useMarketQuotesSwr } from "@/state";
 import { CashFormDialog, PortfolioInsightsCarousel } from "../components";
 import { useInvestmentsPageController } from "../components/resumo/use-investments-page-controller";
 import { InvestmentWizard } from "../wizard";
@@ -19,6 +20,7 @@ import { ResumoTab } from "./resumo-tab";
  */
 export function InvestmentsPage() {
   const controller = useInvestmentsPageController();
+  useMarketQuotesSwr({ enabled: true, enableInterval: true });
 
   return (
     <div className="flex flex-col gap-6 min-w-0">

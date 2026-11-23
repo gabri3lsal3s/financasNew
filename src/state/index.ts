@@ -115,12 +115,27 @@ export {
   LAST_BATCH_APORTE_STORAGE_KEY,
   useApproveDividendsBatch,
   useDismissCorporateDividend,
+  useConfirmUserDividendEvents,
+  useCreateManualUserDividendEvent,
+  useUpdateUserDividendEvent,
+  useDismissUserDividendEvent,
+  useDeleteUserDividendEvent,
   reconcileAssetCustody,
   PORTFOLIO_QUERY_KEYS,
   invalidatePortfolioSuite,
 } from "./queries/use-portfolio";
-export { useCorporateDividends } from "./queries/use-corporate-dividends";
-export { useAssetPrices, useSetManualPrice, useRemoveManualPrice, useSyncQuotes } from "./queries/use-asset-prices";
+export {
+  useCorporateDividends,
+  useUserDividendEvents,
+  USER_DIVIDEND_EVENTS_QUERY_KEY,
+} from "./queries/use-corporate-dividends";
+export { useAssetPrices, useSetManualPrice, useRemoveManualPrice } from "./queries/use-asset-prices";
+export {
+  useMarketQuotesSwr,
+  resetMarketQuotesSwrStateForTest,
+  type UseMarketQuotesSwrOptions,
+  type UseMarketQuotesSwrResult,
+} from "./queries/use-market-quotes-swr";
 export { usePortfolioPosition } from "./queries/use-portfolio-position";
 export type { PortfolioPosition, PortfolioPositionRow } from "./queries/use-portfolio-position";
 export { useAssetGovernanceInsights, type UseAssetGovernanceInsightsResult } from "./queries/use-asset-governance-insights";

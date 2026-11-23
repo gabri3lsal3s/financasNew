@@ -1,62 +1,46 @@
 -- ============================================================================
--- CRON — Edge function de cotações (F1.7 · ESPECIFICAÇÃO §1.6 D5)
+-- CRON — Motor Global de Cotações EOD/EOM & Proventos Automatizados (Blocos A–C)
 -- ============================================================================
--- Agendamento do cache global de preços (asset_prices com user_id NULL).
+-- Arquitetura Custo Zero (eliminação de crons intradiários):
+--   • Durante o pregão aberto, o cliente usa SWR compartilhado sob demanda (15 min)
+--     exclusivamente para tickers vencidos com pregão ativo;
+--   • Na nuvem, apenas 1 âncora diária pós-fechamento EOD + 1 fechamento mensal EOM
+--     garantem histórico diário (90d) e congelamento mensal oficial (permanente),
+--     independentemente de o usuário abrir o aplicativo na virada do mês;
+--   • Proventos: coleta global diária B3 + EUA (`sync_corporate_dividends`) e
+--     materialização/efetivação segura por usuário (`process_user_dividends`).
 --
--- 1. AUDITORIA DE QUOTAS & ARQUITETURA SERVER-SIDE:
---    • O Supabase Free Tier concede até 500.000 invocações de Edge Functions/mês.
---    • Provedores externos (Brapi, Yahoo Finance, AwesomeAPI) impõem limites de taxa (rate limits).
---    • Para blindar o frontend contra erros HTTP 429 sob concorrência, o cliente
---      nunca dispara requisições em lote para serviços externos; ele lê exclusivamente
---      do cache global consolidado na tabela `asset_prices`.
---    • Com agendamento a cada 4 ou 6 horas em dias úteis (~4 a 6 execuções/dia),
---      consomem-se apenas ~120 a 180 invocações de Edge Function por mês (< 0,04% da cota)
---      e um número mínimo e previsível de consultas a provedores externos.
+-- Jobs ativos (Produção):
+--   1. 'quotes-eod-close'       ('0 22 * * 1-5'  → 19:00 BRT seg–sex): action = 'eod_close'
+--   2. 'quotes-eom-close'       ('30 22 * * 1-5' → 19:30 BRT seg–sex): action = 'close_month_global' (auto-healing nos 3 primeiros dias úteis)
+--   3. 'dividends-sync-global'  ('0 10 * * *'    → 07:00 BRT diário):  action = 'sync_corporate_dividends'
+--   4. 'dividends-process-user' ('30 11 * * *'   → 08:30 BRT diário):  action = 'process_user_dividends'
 --
--- 2. OPÇÕES DE AGENDAMENTO RECOMENDADAS (<CRON_SCHEDULE>):
---    • Opção A (Recomendada — Pregão B3 em dias úteis):
---      '0 11,14,17,20 * * 1-5'
---      Dispara às 11h, 14h, 17h e 20h UTC de segunda a sexta (4x/dia útil).
---      Economiza 100% de chamadas durante a madrugada e finais de semana.
---
---    • Opção B (A cada 6 horas todos os dias — 24/7):
---      '0 */6 * * *'
---      Dispara às 00h, 06h, 12h e 18h UTC todos os dias (4x/dia).
---      Ideal quando há carteiras ativas com Criptoativos ou Mercado Internacional.
---
---    • Opção C (A cada 4 horas em dias úteis):
---      '0 */4 * * 1-5'
---      Dispara a cada 4 horas de segunda a sexta-feira.
---
--- 3. COMO USAR:
---    Opção 1 (Automatizada via CLI — recomendada):
---      npm run quotes:cron
---      → Gera o script SQL com os valores do seu .env prontos para colar no SQL Editor.
---
---    Opção 2 (Manual):
---      Substitua os 3 placeholders abaixo e execute no SQL Editor do Supabase:
---      <CRON_SCHEDULE>    ex.: 0 */6 * * * ou 0 11,14,17,20 * * 1-5
---      <FUNCTION_URL>     https://<SEU_REF>.supabase.co/functions/v1/quotes
---      <SERVICE_ROLE_KEY> Supabase Dashboard > Settings > API > service_role (secret)
---
--- 4. PRÉ-REQUISITOS (EXTENSÕES):
---    Dashboard > Database > Extensions > Habilitar 'pg_cron' e 'pg_net'
---    (ou execute: create extension if not exists pg_cron; create extension if not exists pg_net;)
+-- Substitua os placeholders antes de executar manualmente (ou gere via `npm run quotes:cron`):
+--   <FUNCTION_URL>      https://<SEU_REF>.supabase.co/functions/v1/quotes
+--   <SERVICE_ROLE_KEY>  Supabase Dashboard > Settings > API > service_role (secret)
 -- ============================================================================
 
 -- 1) Hardening de permissões: revoga acesso ao schema cron para roles públicas/não-admin
 revoke all on schema cron from public, anon, authenticated;
 revoke all on all tables in schema cron from public, anon, authenticated;
 
--- 2) Remove agendamentos anteriores, se existirem (idempotente — permite re-execuções sem erro)
+-- 2) Remove agendamentos anteriores (idempotente — substitui cron intradiário legado 4x/dia)
 select cron.unschedule(jobname)
 from cron.job
-where jobname in ('quotes-cron', 'quotes-6h');
-
--- 3) Agenda a atualização periódica do cache global de cotações
-select cron.schedule(
+where jobname in (
   'quotes-cron',
-  '<CRON_SCHEDULE>',
+  'quotes-6h',
+  'quotes-eod-close',
+  'quotes-eom-close',
+  'dividends-sync-global',
+  'dividends-process-user'
+);
+
+-- 3) Âncora EOD pós-fechamento B3 + NYSE + PTAX oficial (22:00 UTC = 19:00 BRT, seg–sex)
+select cron.schedule(
+  'quotes-eod-close',
+  '0 22 * * 1-5',
   $cron$
     select net.http_post(
       url := '<FUNCTION_URL>',
@@ -64,33 +48,67 @@ select cron.schedule(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
       ),
-      body := '{}'
+      body := '{"action":"eod_close"}'
+    );
+  $cron$
+);
+
+-- 4) Fechamento Mensal Global EOM + Auto-Healing 3 dias úteis (22:30 UTC = 19:30 BRT, seg–sex)
+select cron.schedule(
+  'quotes-eom-close',
+  '30 22 * * 1-5',
+  $cron$
+    select net.http_post(
+      url := '<FUNCTION_URL>',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
+      ),
+      body := '{"action":"close_month_global"}'
+    );
+  $cron$
+);
+
+-- 5) Coleta Global de Proventos B3 (Brapi + fallback Yahoo) & EUA (Yahoo 30% IR) (10:00 UTC = 07:00 BRT, diário)
+select cron.schedule(
+  'dividends-sync-global',
+  '0 10 * * *',
+  $cron$
+    select net.http_post(
+      url := '<FUNCTION_URL>',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
+      ),
+      body := '{"action":"sync_corporate_dividends"}'
+    );
+  $cron$
+);
+
+-- 6) Materialização Data COM, Anti-Flood, Efetivação & Push de Proventos por Usuário (11:30 UTC = 08:30 BRT, diário)
+select cron.schedule(
+  'dividends-process-user',
+  '30 11 * * *',
+  $cron$
+    select net.http_post(
+      url := '<FUNCTION_URL>',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer <SERVICE_ROLE_KEY>'
+      ),
+      body := '{"action":"process_user_dividends"}'
     );
   $cron$
 );
 
 -- ============================================================================
--- 5. CONSULTAS DE DIAGNÓSTICO E AUDITORIA OPERACIONAL
+-- CONSULTAS DE DIAGNÓSTICO E AUDITORIA OPERACIONAL
 -- ============================================================================
--- Listar jobs agendados ativos:
 -- select jobid, jobname, schedule, active from cron.job order by jobid;
-
--- Auditar histórico de execuções recentes do cron e status HTTP retornado:
--- select
---   r.runid,
---   r.jobid,
---   j.jobname,
---   r.status,
---   r.return_message,
---   r.start_time,
---   r.end_time
--- from cron.job_run_details r
--- join cron.job j on j.jobid = r.jobid
--- order by r.start_time desc
--- limit 10;
-
--- Auditar o cache global gravado:
--- select ticker, price, currency, updated_at
--- from public.asset_prices
--- where user_id is null
--- order by updated_at desc;
+-- select r.runid, r.jobid, j.jobname, r.status, r.return_message, r.start_time, r.end_time
+-- from cron.job_run_details r join cron.job j on j.jobid = r.jobid
+-- order by r.start_time desc limit 15;
+-- select ticker, price, currency, source, provider, market_price_at, fetched_at
+-- from public.asset_prices where user_id is null order by fetched_at desc nulls last;
+-- select ticker, reference_date, price, provider, is_month_end
+-- from public.market_price_history order by reference_date desc, ticker limit 30;

@@ -50,12 +50,12 @@ function statements(): string[] {
 }
 
 describe("F6.2 — RLS: cobertura total (D4 — multiusuário isolado)", () => {
-  it("toda tabela criada nas migrations tem RLS habilitado (64 tabelas)", () => {
+  it("toda tabela criada nas migrations tem RLS habilitado (68 tabelas)", () => {
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(64);
+    expect(created.length).toBe(68);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -490,7 +490,6 @@ describe("Fase 5.3 — Auditoria do Bundle Client contra Vazamento de Segredos",
     "VITE_SUPABASE_ANON_KEY",
     "VITE_DEFAULT_BILLING_PROVIDER",
     "VITE_SENTRY_DSN",
-    "VITE_BRAPI_TOKEN",
     "VITE_APP_COMPANY_NAME",
     "VITE_APP_LEGAL_NATURE",
     "VITE_APP_DEVELOPER_NAME",
@@ -866,14 +865,14 @@ describe("Tarefa 3.3 — Criação do Índice Composto Complementar em portfolio
 });
 
 describe("Tarefa 3.4 — Expansão da Suíte de Auditoria Integral de Banco & Governança InitPlan", () => {
-  it("todas as 64 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
+  it("todas as 68 tabelas possuem RLS habilitado e nenhuma migração contém disable row level security", () => {
     expect(ALL_SQL).not.toMatch(/disable\s+row\s+level\s+security/i);
 
     const createdMatches = [...ALL_SQL.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-zA-Z0-9_]+)/gi)]
       .map((m) => m[1]?.toLowerCase())
       .filter((name): name is string => Boolean(name));
     const created = Array.from(new Set(createdMatches));
-    expect(created.length).toBe(64);
+    expect(created.length).toBe(68);
     for (const table of created) {
       expect(ALL_SQL).toMatch(
         new RegExp(`alter\\s+table\\s+(?:only\\s+)?public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, "i"),
@@ -1642,6 +1641,65 @@ describe("Auditoria de Segurança v3.15 — Remediação Integral F-01 a F-16 (M
     const adminSuperAction = readFileSync(resolve(root, "supabase/functions/admin-super-action/index.ts"), "utf8");
     expect(adminSuperAction).toContain("aal2");
     expect(adminSuperAction).toContain("mfa.listFactors");
+  });
+
+  it("migration 000142 garante modelo multi-tenant global de asset_prices e privilégios restritos ao service_role", () => {
+    const mig0142 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000142_global_market_quotes_engine.sql"),
+      "utf8",
+    );
+
+    expect(mig0142).toContain("uq_asset_prices_global_ticker");
+    expect(mig0142).toContain("uq_asset_prices_user_manual_ticker");
+    expect(mig0142).toContain("chk_asset_prices_tenant_source");
+
+    for (const fn of [
+      "upsert_global_asset_prices",
+      "upsert_market_price_history",
+      "purge_old_eod_market_price_history",
+      "try_acquire_quote_locks",
+      "check_quote_refresh_rate_limit",
+      "commit_monthly_closing_system",
+    ]) {
+      expect(mig0142).toContain(`public.${fn}`);
+      expect(mig0142).toMatch(new RegExp(`REVOKE ALL ON FUNCTION public\\.${fn}[\\s\\S]*FROM PUBLIC, anon, authenticated`, "i"));
+      expect(mig0142).toMatch(new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${fn}[\\s\\S]*TO service_role`, "i"));
+    }
+
+    expect(mig0142).toMatch(/restore_backup[\s\S]*set_config\('app\.snapshot_rpc',\s*'on',\s*true\)/i);
+    expect(mig0142).toMatch(
+      /restore_backup[\s\S]*DISTINCT ON \(upper\(trim\(ap\.ticker\)\)\)[\s\S]*ap\.user_id IS NOT NULL[\s\S]*\(ap\.source = 'manual' OR ap\.manual_price IS NOT NULL\)/i,
+    );
+  });
+
+  it("migration 000143 protege user_dividend_events com RLS InitPlan e restringe RPCs de sistema ao service_role", () => {
+    const mig0143 = readFileSync(
+      resolve(root, "supabase/migrations/20260101000143_automated_dividends_engine.sql"),
+      "utf8",
+    );
+
+    expect(mig0143).toMatch(/ENABLE ROW LEVEL SECURITY/i);
+    expect(mig0143).toContain("uq_user_dividend_events_corp");
+    expect(mig0143).toContain("uq_corporate_dividends");
+    expect(mig0143).toContain("UNIQUE NULLS NOT DISTINCT (ticker, com_date, type, payment_date)");
+    expect(mig0143).toMatch(/\(SELECT auth\.uid\(\)\) = user_id/i);
+
+    for (const sysFn of [
+      "upsert_corporate_dividend_system",
+      "settle_user_dividend_event_system",
+    ]) {
+      expect(mig0143).toContain(`public.${sysFn}`);
+      expect(mig0143).toMatch(
+        new RegExp(`REVOKE ALL ON FUNCTION public\\.${sysFn}[\\s\\S]*FROM PUBLIC, anon, authenticated`, "i"),
+      );
+      expect(mig0143).toMatch(
+        new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${sysFn}[\\s\\S]*TO service_role`, "i"),
+      );
+    }
+
+    expect(mig0143).toMatch(
+      /confirm_user_dividend_events_atomic[\s\S]*can_current_user_write_module\('investments'\)/i,
+    );
   });
 });
 

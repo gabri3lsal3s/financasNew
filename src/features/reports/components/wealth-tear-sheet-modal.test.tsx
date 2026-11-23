@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { WealthTearSheetModal } from "./wealth-tear-sheet-modal";
 import type { AllocationAnalysisResult, ConcentrationRiskResult } from "@/domain/reports";
@@ -511,6 +512,76 @@ describe("WealthTearSheetModal — Reconciliação Contábil na Síntese Executi
     // Deve renderizar o título formal do documento institucional
     expect(screen.getAllByText("Dossiê Executivo da Posição Vigente Consolidada").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Posição Patrimonial Consolidada & Diagnóstico de Metas").length).toBeGreaterThan(0);
+  });
+
+  it("exibe alerta pré-impressão, metadados reais e conciliação Brasil vs Exterior quando há cotação fallback", async () => {
+    const user = userEvent.setup();
+    render(
+      <WealthTearSheetModal
+        open={true}
+        onOpenChange={vi.fn()}
+        rows={[
+          {
+            ticker: "AAPL",
+            name: "Apple Inc.",
+            assetClass: "Internacional",
+            sector: "Tecnologia",
+            currency: "USD",
+            quantity: 10,
+            averagePrice: 200,
+            currentPrice: 220,
+            valueBRL: 11550,
+            totalCostBRL: 10500,
+            unrealizedPnlBRL: 1050,
+            unrealizedPnlPct: 10,
+            source: "fallback",
+            isEstimate: true,
+            usdRate: 5.25,
+            isCash: false,
+          },
+          {
+            ticker: "IVVB11",
+            name: "iShares S&P 500 B3",
+            assetClass: "Internacional",
+            sector: "ETF B3",
+            currency: "BRL",
+            quantity: 10,
+            averagePrice: 300,
+            currentPrice: 345,
+            valueBRL: 3450,
+            totalCostBRL: 3000,
+            unrealizedPnlBRL: 450,
+            unrealizedPnlPct: 15,
+            source: "api",
+            marketPriceAt: "2026-06-15T20:55:00.000Z",
+            isCash: false,
+          },
+        ]}
+        totalBRL={15000}
+        totalCostBRL={13500}
+        usdRate={5.25}
+        fxMetadata={{
+          rate: 5.25,
+          source: "fallback",
+          provider: null,
+          fxRateAt: null,
+          fetchedAt: null,
+          isFallback: true,
+        }}
+        allocationAnalysis={mockAllocation}
+        concentrationRisk={mockConcentration}
+      />,
+    );
+
+    expect(screen.getByText(/Atenção às referências de mercado na prévia/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Preços estimados \(fallback\): AAPL/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Conciliação por Custódia/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Taxa Estimada \(Fallback\)/i).length).toBeGreaterThan(0);
+
+    const printBtn = screen.getByRole("button", { name: /Imprimir \/ Salvar PDF/i });
+    await user.click(printBtn);
+    expect(screen.getByText(/Emitir PDF com pendências de cotação\?/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Emitir PDF mesmo assim/i })).toBeInTheDocument();
   });
 });
 

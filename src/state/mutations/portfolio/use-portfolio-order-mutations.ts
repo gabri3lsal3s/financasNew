@@ -16,8 +16,13 @@ import {
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { todayISO } from "@/lib/date";
 import type { FixedIncomeMetadata, PortfolioAsset } from "@/types";
-import { invalidatePortfolioSuite } from "./portfolio-keys";
+import {
+  PORTFOLIO_QUERY_KEYS,
+  invalidatePortfolioSuite,
+  triggerSurgicalQuoteSync,
+} from "./portfolio-keys";
 import {
   useCreatePortfolioAsset,
   useUpdatePortfolioAsset,
@@ -531,8 +536,18 @@ export function useRecordOrder() {
 
       return { success: true };
     },
-    onSuccess: () => {
+    onSuccess: (_result, params) => {
       void invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
+      const txDate = (params.date ?? "").slice(0, 10);
+      if (
+        (params.type === "buy" || params.type === "sell" || params.type === "subscription") &&
+        txDate >= todayISO()
+      ) {
+        void triggerSurgicalQuoteSync(queryClient, {
+          assets: [params.asset],
+          reason: "post_trade_stale",
+        });
+      }
       pushToast({
         title: "Ordem executada",
         description: "A movimentação foi concluída e a posição atualizada.",
@@ -582,6 +597,20 @@ export function useExecutePortfolioBatchAporte() {
     },
     onSuccess: (result, params) => {
       void invalidatePortfolioSuite(queryClient, { invalidateAccounts: true });
+      if ((params.date ?? "").slice(0, 10) >= todayISO()) {
+        const cachedAssets =
+          queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
+        const assetMap = new Map(cachedAssets.map((a) => [a.id, a]));
+        const batchAssets = params.items
+          .map((item) => assetMap.get(item.asset_id))
+          .filter((a): a is PortfolioAsset => Boolean(a));
+        if (batchAssets.length > 0) {
+          void triggerSurgicalQuoteSync(queryClient, {
+            assets: batchAssets,
+            reason: "post_trade_stale",
+          });
+        }
+      }
       if (typeof window !== "undefined" && window.sessionStorage) {
         try {
           const sessionData: LastBatchAporteSession = {

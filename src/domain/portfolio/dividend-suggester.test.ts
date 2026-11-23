@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { calculateSuggestedDividends, getCustodyAtComDate } from "./dividend-suggester";
+import {
+  calculateSuggestedDividends,
+  getCustodyAtComDate,
+  resolveDividendAntiFloodCutoff,
+} from "./dividend-suggester";
 import type { CorporateDividend, PortfolioAsset, PortfolioTransaction } from "@/types";
 
 describe("dividend-suggester: Apuração de Proventos na Data COM", () => {
@@ -48,7 +52,7 @@ describe("dividend-suggester: Apuração de Proventos na Data COM", () => {
         },
       ];
 
-      const qtyAtCom = getCustodyAtComDate(assetPetr, txs, "2026-05-31");
+      const qtyAtCom = getCustodyAtComDate({ ...assetPetr, quantity: 150 }, txs, "2026-05-31");
       expect(qtyAtCom).toBe(100);
     });
 
@@ -76,8 +80,62 @@ describe("dividend-suggester: Apuração de Proventos na Data COM", () => {
         },
       ];
 
-      const qtyAtCom = getCustodyAtComDate(assetPetr, txs, "2026-05-31");
+      const qtyAtCom = getCustodyAtComDate({ ...assetPetr, quantity: 60 }, txs, "2026-05-31");
       expect(qtyAtCom).toBe(60);
+    });
+
+    it("deve preservar custódia baseline pré-ledger combinada com movimentações posteriores", () => {
+      const txsWithSell: PortfolioTransaction[] = [
+        {
+          id: "t1",
+          user_id: "user-1",
+          asset_id: "asset-petr",
+          type: "buy",
+          date: "2026-05-10",
+          quantity: 100,
+          price: 30,
+          total: 3000,
+        },
+        {
+          id: "t2",
+          user_id: "user-1",
+          asset_id: "asset-petr",
+          type: "sell",
+          date: "2026-05-20",
+          quantity: 40,
+          price: 35,
+          total: 1400,
+        },
+      ];
+
+      // Saldo final declarado = 100 e ledger líquido = +60 -> baseline pré-ledger = 40 -> na COM = 40 + 100 - 40 = 100
+      const qtyBaselineWithSell = getCustodyAtComDate(
+        { ...assetPetr, quantity: 100 },
+        txsWithSell,
+        "2026-05-31",
+      );
+      expect(qtyBaselineWithSell).toBe(100);
+
+      const txsFutureBuy: PortfolioTransaction[] = [
+        {
+          id: "t3",
+          user_id: "user-1",
+          asset_id: "asset-petr",
+          type: "buy",
+          date: "2026-06-05",
+          quantity: 50,
+          price: 32,
+          total: 1600,
+        },
+      ];
+
+      // Saldo final declarado = 150 com compra posterior de 50 -> baseline na COM = 100
+      const qtyBaselineFutureBuy = getCustodyAtComDate(
+        { ...assetPetr, quantity: 150 },
+        txsFutureBuy,
+        "2026-05-31",
+      );
+      expect(qtyBaselineFutureBuy).toBe(100);
     });
   });
 
@@ -172,6 +230,77 @@ describe("dividend-suggester: Apuração de Proventos na Data COM", () => {
       // Já o evento corp-div-3 (R$ 50) não lançado manualmente permanece disponível
       const hasCorp3 = result.available.some((d) => d.corporateDividendId === "corp-div-3");
       expect(hasCorp3).toBe(true);
+    });
+
+    it("trata payment_date nula como provisionado (projected), reconcilia baseline+split e segrega USD/BRL", () => {
+      const assetUsd: PortfolioAsset = {
+        id: "asset-aapl",
+        user_id: "user-1",
+        ticker: "AAPL",
+        asset_class: "Internacional",
+        currency: "USD",
+        quantity: 20, // baseline 10 antes de split 2:1 em 2026-11-05
+        average_price: 150,
+      };
+      const txs: PortfolioTransaction[] = [
+        {
+          id: "tx-split",
+          user_id: "user-1",
+          asset_id: "asset-aapl",
+          type: "split",
+          date: "2026-11-05",
+          quantity: 2,
+          price: 0,
+          total: 0,
+        },
+      ];
+      const events: CorporateDividend[] = [
+        {
+          id: "c-no-date",
+          ticker: "PETR4",
+          type: "DIVIDENDO",
+          com_date: "2026-11-01",
+          payment_date: null,
+          rate: 0.5,
+          net_rate: 0.5,
+          currency: "BRL",
+        },
+        {
+          id: "c-us",
+          ticker: "AAPL",
+          type: "DIVIDENDO",
+          com_date: "2026-11-02", // Antes do split 2:1 -> custódia = 10
+          payment_date: "2026-11-06",
+          rate: 1.0,
+          net_rate: 0.7,
+          tax_rate_pct: 30,
+          currency: "USD",
+          provider: "yahoo",
+          is_type_uncertain: false,
+        },
+      ];
+
+      const res = calculateSuggestedDividends({
+        corporateEvents: events,
+        dismissals: [],
+        assets: [assetPetr, assetUsd],
+        transactions: txs,
+        manualDividends: [],
+        referenceDate: "2026-11-10",
+        usdRate: 5.5,
+      });
+
+      expect(res.projected).toHaveLength(1);
+      expect(res.projected[0]?.paymentDate).toBeNull();
+      expect(res.totalProjectedBRL).toBe(50);
+
+      expect(res.available).toHaveLength(1);
+      expect(res.available[0]?.ticker).toBe("AAPL");
+      expect(res.available[0]?.quantityOnComDate).toBe(10);
+      expect(res.available[0]?.totalAmount).toBe(7); // 10 * 0.70 USD
+      expect(res.totalAvailableUSD).toBe(7);
+      expect(res.totalAvailableAmount).toBe(38.5); // 7 * 5.50 BRL
+      expect(resolveDividendAntiFloodCutoff("2026-11-08", "2026-11-10", 7)).toBe("2026-11-08");
     });
   });
 });

@@ -154,6 +154,12 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
           ...patch.portfolioAlertDismissals,
         }
       : current?.custom_settings?.portfolioAlertDismissals,
+    dividendAutomation: patch.dividendAutomation !== undefined
+      ? {
+          ...(current?.custom_settings?.dividendAutomation ?? {}),
+          ...patch.dividendAutomation,
+        }
+      : current?.custom_settings?.dividendAutomation,
   };
 
   const input: DbUpdate<UserPreferences> = {

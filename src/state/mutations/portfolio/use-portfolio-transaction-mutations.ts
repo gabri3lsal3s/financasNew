@@ -15,6 +15,7 @@ import {
 import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
+import { todayISO } from "@/lib/date";
 import type {
   DbInsert,
   DbUpdate,
@@ -22,15 +23,33 @@ import type {
   PortfolioAsset,
   PortfolioTransaction,
 } from "@/types";
-import { PORTFOLIO_QUERY_KEYS, invalidatePortfolioSuite } from "./portfolio-keys";
+import {
+  PORTFOLIO_QUERY_KEYS,
+  invalidatePortfolioSuite,
+  triggerSurgicalQuoteSync,
+} from "./portfolio-keys";
 
 export function useCreatePortfolioTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: Omit<DbInsert<PortfolioTransaction>, "user_id">) =>
       createPortfolioTransaction(input),
-    onSuccess: () => {
+    onSuccess: (_data, input) => {
       void invalidatePortfolioSuite(queryClient);
+      const txDate = (input.date ?? "").slice(0, 10);
+      if (
+        (input.type === "buy" || input.type === "sell" || input.type === "subscription") &&
+        txDate >= todayISO()
+      ) {
+        const cachedAssets = queryClient.getQueryData<PortfolioAsset[]>(PORTFOLIO_QUERY_KEYS.assets) ?? [];
+        const asset = cachedAssets.find((a) => a.id === input.asset_id);
+        if (asset) {
+          void triggerSurgicalQuoteSync(queryClient, {
+            assets: [asset],
+            reason: "post_trade_stale",
+          });
+        }
+      }
       triggerSensory("success");
     },
     onError: (err) => {

@@ -7,7 +7,13 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import type { AssetPricingMode, PriceSource, FixedIncomeBalanceResult } from "@/domain/portfolio";
+import {
+  formatMarketReferenceTimestampBR,
+  type AssetPricingMode,
+  type FixedIncomeBalanceResult,
+  type PriceSource,
+  type StaleQuoteAssetIssue,
+} from "@/domain/portfolio";
 import { formatAssetQuantity } from "@/services/formatting";
 import type { AssetAllocationStatus, AssetCurrency, FixedIncomeMetadata } from "@/types";
 
@@ -28,6 +34,11 @@ export interface PositionRow {
   priceBRL: number;
   usdRate?: number;
   source: PriceSource;
+  isEstimate?: boolean;
+  marketPriceAt?: string | null;
+  fetchedAt?: string | null;
+  provider?: string | null;
+  staleIssue?: StaleQuoteAssetIssue | null;
   valueBRL: number;
   pct: number;
   /** Lucro/prejuízo não realizado em BRL (valor − custo; F14). */
@@ -107,9 +118,41 @@ export interface SortState {
 
 export const PRICE_SOURCE_LABEL: Record<PriceSource, { label: string; title: string }> = {
   manual: { label: "manual", title: "Preço definido manualmente pelo usuário" },
-  api: { label: "cotação", title: "Cotação de fechamento atualizada via API" },
-  fallback: { label: "fallback", title: "Preço estimado por fallback estático" },
+  api: { label: "cotação", title: "Cotação oficial de mercado via API" },
+  fallback: { label: "fallback", title: "Preço estimado por fallback" },
 };
+
+const PROVIDER_DISPLAY_LABEL: Record<string, string> = {
+  yahoo: "Yahoo Finance",
+  brapi: "Brapi",
+  bcb_ptax: "PTAX BCB",
+  awesomeapi: "AwesomeAPI",
+  manual: "Manual",
+};
+
+/** Formata tooltip rico e auditável da cotação do ativo para tabelas Desktop e Mobile. */
+export function buildPositionPriceTooltip(row: Pick<
+  PositionRow,
+  "source" | "provider" | "marketPriceAt" | "staleIssue" | "isEstimate"
+>): string {
+  const baseStatus =
+    row.source === "manual"
+      ? "Manual"
+      : row.isEstimate || row.source === "fallback"
+        ? "Estimada"
+        : "Oficial";
+  const providerLabel = row.provider
+    ? PROVIDER_DISPLAY_LABEL[row.provider.toLowerCase()] ?? row.provider
+    : null;
+  const refTime = formatMarketReferenceTimestampBR(row.marketPriceAt);
+
+  const parts = [`Cotação ${baseStatus}`];
+  if (providerLabel && row.source === "api") parts.push(`fonte ${providerLabel}`);
+  if (refTime) parts.push(`ref. ${refTime}`);
+  if (row.staleIssue?.message) parts.push(row.staleIssue.message);
+  parts.push("clique para alterar");
+  return parts.join(" · ");
+}
 
 export const formatQuantity = (quantity: number, assetClass?: string | null): string =>
   formatAssetQuantity(quantity, assetClass ?? undefined);

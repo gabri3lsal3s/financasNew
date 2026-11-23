@@ -1,5 +1,11 @@
 import { numberToCents } from "@/domain/money";
-import type { PortfolioMonthlySeriesPoint, TwrConsolidatedResult } from "@/domain/portfolio";
+import {
+  formatFxSourceLabel,
+  type CanonicalFxMetadata,
+  type PortfolioMonthlySeriesPoint,
+  type StaleQuoteGuardResult,
+  type TwrConsolidatedResult,
+} from "@/domain/portfolio";
 import type {
   TearSheetClassGroup,
   TearSheetPerformancePoint,
@@ -145,6 +151,8 @@ export function buildClassTableGroups(
   totalBRL: number,
   cashBRL?: number,
   usdRate?: number,
+  fxMetadata?: CanonicalFxMetadata | null,
+  staleGuard?: StaleQuoteGuardResult | null,
 ): TearSheetClassGroup[] {
   const groups = new Map<string, WealthPositionRow[]>();
   for (const row of activeInvestmentRows) {
@@ -225,6 +233,7 @@ export function buildClassTableGroups(
 
       const sortedItems = [...items].sort((a, b) => b.valueBRL - a.valueBRL);
       const topItem = sortedItems[0];
+      const effectiveFxLabel = fxMetadata ? formatFxSourceLabel(fxMetadata) : undefined;
 
       return {
         className: assetClass,
@@ -235,6 +244,7 @@ export function buildClassTableGroups(
         subtotalPriceVarPct: subtotalUnrealizedPct,
         subtotalPriceVarPctUSD,
         usdRate: effectiveGroupUsdRate,
+        fxSourceLabel: effectiveFxLabel,
         totalCostCents: numberToCents(subtotalCostBRL),
         totalDividendsCents: numberToCents(subtotalDividendsBRL),
         topAssetTicker: topItem?.ticker,
@@ -271,6 +281,17 @@ export function buildClassTableGroups(
                   ? ((r.valueBRL - effectiveCost + (r.dividendsBRL ?? r.yearDividendsBRL ?? 0)) / effectiveCost) * 100
                   : 0;
 
+          const tickerUpper = r.ticker.trim().toUpperCase();
+          const staleIssue = staleGuard?.issueByTicker[tickerUpper];
+          const quoteStatusFlag =
+            r.source === "manual"
+              ? ("manual" as const)
+              : staleIssue?.kind === "post_trade_stale" || staleIssue?.kind === "stale_market_data"
+                ? ("stale" as const)
+                : r.isEstimate || r.source === "fallback" || staleIssue?.kind === "missing_or_fallback"
+                  ? ("fallback" as const)
+                  : null;
+
           return {
             ticker: r.ticker,
             name: r.name,
@@ -288,6 +309,8 @@ export function buildClassTableGroups(
             status: r.allocationStatus ?? "active",
             indexType: r.indexType,
             maturityDate: r.maturityDate,
+            quoteStatusFlag,
+            marketPriceAt: r.marketPriceAt ?? null,
           };
         }),
       };
@@ -303,6 +326,7 @@ export function buildClassTableGroups(
       subtotalPriceVarPct: 0,
       subtotalPriceVarPctUSD: undefined,
       usdRate: undefined,
+      fxSourceLabel: undefined,
       totalCostCents: numberToCents(cashBRL),
       totalDividendsCents: 0,
       topAssetTicker: "CAIXA",
@@ -325,6 +349,8 @@ export function buildClassTableGroups(
           score: null,
           indexType: null,
           maturityDate: null,
+          quoteStatusFlag: null,
+          marketPriceAt: null,
         },
       ],
     });

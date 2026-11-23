@@ -21,6 +21,8 @@ export interface ReportClassTableItem {
   maturityDate?: string | null;
   score?: number | null;
   status?: string | null;
+  quoteStatusFlag?: "fallback" | "stale" | "manual" | null;
+  marketPriceAt?: string | null;
 }
 
 export interface ReportClassGroup {
@@ -31,6 +33,7 @@ export interface ReportClassGroup {
   subtotalPriceVarPct?: number;
   subtotalPriceVarPctUSD?: number;
   usdRate?: number;
+  fxSourceLabel?: string | null;
   totalCostCents?: number;
   totalDividendsCents?: number;
   topAssetTicker?: string;

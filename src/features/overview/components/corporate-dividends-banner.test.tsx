@@ -42,4 +42,20 @@ describe("CorporateDividendsBanner", () => {
     fireEvent.click(screen.getByRole("button", { name: /Lembrar no próximo mês/i }));
     expect(onDismiss).toHaveBeenCalledWith(30);
   });
+
+  it("destaca conferência obrigatória quando houver alíquota incerta (fallback Yahoo)", () => {
+    render(
+      <CorporateDividendsBanner
+        availableCount={2}
+        projectedCount={0}
+        totalAvailableAmount={180}
+        totalProjectedAmount={0}
+        hasUncertainTax
+        onInspect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Conferir alíquota")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Conferir e Aprovar/i })).toBeInTheDocument();
+  });
 });

@@ -34,6 +34,12 @@ export function ReportEquityClassTable({
   const hasUsdAssets =
     isInternacional &&
     group.items.some((item) => (item.currency ?? "BRL") === "USD");
+  const hasQuoteFlags = group.items.some((item) => Boolean(item.quoteStatusFlag));
+  const fxSourceText =
+    group.fxSourceLabel ??
+    (group.usdRate && Math.abs(group.usdRate - FALLBACK_USD_RATE) < 0.0001
+      ? "Taxa Estimada (Fallback)"
+      : "PTAX Oficial BCB");
 
   return (
     <div className="w-full min-w-0 rounded-xl border border-border/80 bg-surface shadow-xs overflow-hidden print:overflow-visible print:border-none print:shadow-none print:rounded-none print:block">
@@ -98,7 +104,32 @@ export function ReportEquityClassTable({
                     <MoneyText cents={item.avgPriceCents} currency={currency} tone="default" hideCurrency />
                   </td>
                   <td className="py-1.5 px-2 text-right num font-mono tabular-nums text-foreground whitespace-nowrap text-[10.5px]">
-                    <MoneyText cents={item.currentPriceCents} currency={currency} tone="default" hideCurrency />
+                    <span className="inline-flex items-center justify-end gap-1">
+                      <MoneyText cents={item.currentPriceCents} currency={currency} tone="default" hideCurrency />
+                      {item.quoteStatusFlag ? (
+                        <span
+                          className={cn(
+                            "text-[8.5px] font-bold px-1 rounded-xs leading-tight",
+                            item.quoteStatusFlag === "manual"
+                              ? "text-portfolio bg-portfolio/10"
+                              : "text-warning-strong bg-warning/15",
+                          )}
+                          title={
+                            item.quoteStatusFlag === "manual"
+                              ? "Cotação definida manualmente"
+                              : item.quoteStatusFlag === "stale"
+                                ? "Cotação defasada na data de emissão"
+                                : "Cotação estimada (fallback)"
+                          }
+                        >
+                          {item.quoteStatusFlag === "manual"
+                            ? "[M]"
+                            : item.quoteStatusFlag === "stale"
+                              ? "[D]"
+                              : "[E]"}
+                        </span>
+                      ) : null}
+                    </span>
                   </td>
                   <td className="py-1.5 px-2.5 text-right num font-mono tabular-nums font-bold text-foreground whitespace-nowrap text-[11px]">
                     <MoneyText cents={item.totalCents} tone="default" hideCurrency />
@@ -169,19 +200,26 @@ export function ReportEquityClassTable({
           </tfoot>
         </table>
       </div>
-      {hasUsdAssets && (
+      {(hasUsdAssets || hasQuoteFlags) && (
         <div className="px-3 py-1.5 text-[10px] text-muted-foreground bg-muted/20 border-t border-border/80 flex flex-col gap-0.5">
-          <div>
-            * <strong>Var. (USD)</strong> refere-se à valorização da cota na moeda original (USD).{" "}
-            <strong>Ret. (BRL)</strong> consolida oscilação em dólar, variação cambial BRL/USD e proventos creditados.
-          </div>
-          {group.usdRate && group.usdRate > 0 && (
+          {hasUsdAssets ? (
+            <>
+              <div>
+                * <strong>Var. (USD)</strong> refere-se à valorização da cota na moeda original (USD).{" "}
+                <strong>Ret. (BRL)</strong> consolida oscilação em dólar, variação cambial BRL/USD e proventos creditados.
+              </div>
+              {group.usdRate && group.usdRate > 0 && (
+                <div className="font-mono text-[9px] text-muted-foreground/90">
+                  Conversão USD/BRL ({fxSourceText}): R$ {group.usdRate.toFixed(4).replace(".", ",")}
+                </div>
+              )}
+            </>
+          ) : null}
+          {hasQuoteFlags ? (
             <div className="font-mono text-[9px] text-muted-foreground/90">
-              {Math.abs(group.usdRate - FALLBACK_USD_RATE) < 0.0001
-                ? `Conversão USD/BRL pelo câmbio de referência estimado (fallback): R$ ${group.usdRate.toFixed(4).replace(".", ",")}`
-                : `Conversão USD/BRL pela PTAX Oficial BCB de referência: R$ ${group.usdRate.toFixed(4).replace(".", ",")}`}
+              Marcadores de cotação: [E] Estimada por fallback · [D] Defasada em relação ao pregão/operação · [M] Override manual.
             </div>
-          )}
+          ) : null}
         </div>
       )}
     </div>

@@ -43,7 +43,6 @@ export function useOverviewModals({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [isOthersBudgetOpen, setIsOthersBudgetOpen] = useState(false);
   const [isOtherCategoriesOpen, setIsOtherCategoriesOpen] = useState(false);
-  const [pendingDividendsModalOpen, setPendingDividendsModalOpen] = useState(false);
   const [checkpointOpen, setCheckpointOpen] = useState(false);
   const [depositGoalShare, setDepositGoalShare] = useState<PublicShare | null>(null);
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
@@ -177,8 +176,6 @@ export function useOverviewModals({
     setIsOthersBudgetOpen,
     isOtherCategoriesOpen,
     setIsOtherCategoriesOpen,
-    pendingDividendsModalOpen,
-    setPendingDividendsModalOpen,
     checkpointOpen,
     setCheckpointOpen,
     depositGoalShare,

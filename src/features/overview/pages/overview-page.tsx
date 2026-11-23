@@ -11,6 +11,7 @@ import {
 import { getTourTrackMeta } from "@/domain/demo-simulation";
 import { useMutationGuard } from "@/hooks/use-mutation-guard";
 import { currentMonth } from "@/lib/date";
+import { openDividendReviewModal } from "@/services/dividend-review-modal";
 import { startDemo, useAssetGovernanceInsights, useMarketQuotesSwr, useUserAccess } from "@/state";
 import {
   buildOverviewAlertItems,
@@ -157,7 +158,7 @@ export function OverviewPage() {
     onNavigateGoal: (shareId) => navigate(`/orcamentos?tab=goals&q=${shareId}`),
     onDismissGoal: modals.handleDismissGoal,
     onDismissSurplus: modals.handleDismissSurplus,
-    onInspectDividends: () => modals.setPendingDividendsModalOpen(true),
+    onInspectDividends: () => openDividendReviewModal({ initialTab: "review" }),
     canViewInvestments: hasFeature("investments"),
     overdueReviewsCount: govInsights.overdueReviewsCount,
     onReviewGovernance: () => navigate("/investments?tab=metas"),

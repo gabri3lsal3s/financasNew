@@ -82,8 +82,30 @@ export interface CanonicalResolvedPrice {
   isEstimate: boolean;
   /** Data civil (YYYY-MM-DD) referente à cotação resolvida. */
   asOfDate?: string;
+  /** Timestamp real da cotação no mercado (ISO UTC). */
+  marketPriceAt?: string | null;
+  /** Timestamp da última captura no provedor (ISO UTC). */
+  fetchedAt?: string | null;
+  /** Provedor real que forneceu a cotação ("yahoo", "brapi", "bcb_ptax", "awesomeapi", "manual"). */
+  provider?: string | null;
   /** Rótulo visual de auditoria para exibição em tabelas e relatórios (ex.: "Oficial API", "Manual", "Sugerida"). */
   badgeLabel?: string;
+}
+
+/** Metadados canônicos e auditáveis do câmbio USD/BRL (SSOT). */
+export interface CanonicalFxMetadata {
+  /** Taxa USD/BRL aplicada. */
+  rate: number;
+  /** Origem da taxa cambial. */
+  source: "api" | "manual" | "closing_saved" | "fallback";
+  /** Provedor real ("bcb_ptax", "yahoo", "awesomeapi", "manual", etc.). */
+  provider: string | null;
+  /** Timestamp oficial de referência da taxa (ISO UTC). */
+  fxRateAt: string | null;
+  /** Timestamp de captura no servidor (ISO UTC). */
+  fetchedAt: string | null;
+  /** Verdadeiro quando não há taxa oficial e o fallback estático está ativo. */
+  isFallback: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -322,6 +344,8 @@ export interface CanonicalPortfolioState {
   mode: "instant" | "point_in_time";
   /** Taxa de câmbio USD/BRL oficial adotada para a data de corte (PTAX). */
   usdRate: number;
+  /** Metadados auditáveis do câmbio USD/BRL adotado (SSOT). */
+  fxMetadata: CanonicalFxMetadata;
 
   /** Posições analíticas consolidadas de ativos em custódia na data de corte. */
   holdings: CanonicalAssetHolding[];
@@ -422,6 +446,8 @@ export interface CreateCanonicalPortfolioStateParams {
   mode?: "instant" | "point_in_time";
   /** Taxa de câmbio USD/BRL oficial adotada para a data de corte (PTAX). */
   usdRate?: number;
+  /** Metadados auditáveis do câmbio USD/BRL adotado (SSOT). */
+  fxMetadata?: CanonicalFxMetadata;
   /** Posições analíticas consolidadas de ativos em custódia na data de corte. */
   holdings?: readonly CanonicalAssetHolding[];
   /** Saldo de caixa / reserva em BRL adicional ou explícito. */
@@ -764,6 +790,14 @@ export function createCanonicalPortfolioState(
   const asOfDate = params.asOfDate.trim();
   const mode = params.mode ?? "instant";
   const usdRate = params.usdRate && params.usdRate > 0 ? params.usdRate : 1.0;
+  const fxMetadata: CanonicalFxMetadata = params.fxMetadata ?? {
+    rate: usdRate,
+    source: usdRate !== 5.25 ? "api" : "fallback",
+    provider: null,
+    fxRateAt: null,
+    fetchedAt: null,
+    isFallback: usdRate === 5.25,
+  };
 
   const rawHoldings = params.holdings ?? [];
   let derivedCashBRL = 0;
@@ -867,6 +901,7 @@ export function createCanonicalPortfolioState(
     asOfDate,
     mode,
     usdRate,
+    fxMetadata,
     holdings,
     rows: holdings,
 

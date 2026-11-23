@@ -8,16 +8,18 @@ import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import type { DbInsert, DbUpdate, PortfolioAsset } from "@/types";
-import { invalidatePortfolioSuite } from "./portfolio-keys";
+import { invalidatePortfolioSuite, triggerSurgicalQuoteSync } from "./portfolio-keys";
 
 export function useCreatePortfolioAsset() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: Omit<DbInsert<PortfolioAsset>, "user_id">) => {
       const created = await createPortfolioAsset(input);
-      void import("@/services/quotes")
-        .then(({ syncQuoteForTicker }) => syncQuoteForTicker(created.ticker, created.asset_class))
-        .catch(() => undefined);
+      void triggerSurgicalQuoteSync(queryClient, {
+        assets: [created],
+        reason: "cache_miss",
+        includeUsdFx: created.currency === "USD",
+      });
       return created;
     },
     onSuccess: () => {
@@ -48,9 +50,11 @@ export function useUpdatePortfolioAsset() {
     onSuccess: (updated) => {
       void invalidatePortfolioSuite(queryClient);
       if (updated?.ticker) {
-        void import("@/services/quotes")
-          .then(({ syncQuoteForTicker }) => syncQuoteForTicker(updated.ticker, updated.asset_class))
-          .catch(() => undefined);
+        void triggerSurgicalQuoteSync(queryClient, {
+          assets: [updated],
+          reason: "cache_miss",
+          includeUsdFx: updated.currency === "USD",
+        });
       }
       triggerSensory("success");
     },

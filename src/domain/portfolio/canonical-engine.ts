@@ -29,7 +29,7 @@ import {
   computeCanonicalAssetLedger,
   normalizeCutoffDate,
   reconcilePortfolioEvents,
-  resolveDynamicPtaxRate,
+  resolveCanonicalPtaxResolution,
   type CanonicalReconciledDividend,
   type CanonicalReconciledFlow,
   type CanonicalReconciledTransaction,
@@ -46,6 +46,7 @@ import {
 import {
   type CanonicalAssetHolding,
   type CanonicalFidelityReport,
+  type CanonicalFxMetadata,
   type CanonicalMonthlyStatement,
   type CanonicalPortfolioState,
   type CanonicalPricingMode,
@@ -77,7 +78,6 @@ import {
   isCashAssetClass,
   isCustomValuationAsset,
   resolvePrice,
-  usdRateFromPrices,
   type PriceCandidate,
 } from "./valuation";
 import {
@@ -106,6 +106,60 @@ export interface CanonicalAssetPriceItem {
   currency?: AssetCurrency;
   source?: "api" | "fallback" | "manual" | string;
   manual_price?: number | null;
+  market_price_at?: string | null;
+  fetched_at?: string | null;
+  provider?: string | null;
+  updated_at?: string | null;
+}
+
+const ITEM_SOURCE_PRIORITY: Record<string, number> = {
+  manual: 3,
+  api: 2,
+  fallback: 1,
+};
+
+function buildLivePriceItemMap(
+  assetPrices?: Readonly<Record<string, number>> | readonly CanonicalAssetPriceItem[],
+): Map<string, CanonicalAssetPriceItem> {
+  const map = new Map<string, CanonicalAssetPriceItem>();
+  if (!assetPrices) return map;
+
+  if (Array.isArray(assetPrices)) {
+    for (const raw of assetPrices) {
+      if (!raw?.ticker) continue;
+      const ticker = raw.ticker.toUpperCase().trim();
+      if (!ticker) continue;
+      const candidate: CanonicalAssetPriceItem = {
+        ...raw,
+        ticker,
+        price: Number(raw.price) || 0,
+        manual_price: raw.manual_price != null ? Number(raw.manual_price) : null,
+      };
+      const existing = map.get(ticker);
+      if (!existing) {
+        map.set(ticker, candidate);
+        continue;
+      }
+      const nextPrio = ITEM_SOURCE_PRIORITY[candidate.source ?? "api"] ?? 0;
+      const prevPrio = ITEM_SOURCE_PRIORITY[existing.source ?? "api"] ?? 0;
+      if (nextPrio > prevPrio && (candidate.price > 0 || (candidate.manual_price ?? 0) > 0)) {
+        map.set(ticker, candidate);
+      } else if (nextPrio === prevPrio && existing.price <= 0 && candidate.price > 0) {
+        map.set(ticker, candidate);
+      }
+    }
+    return map;
+  }
+
+  for (const [k, v] of Object.entries(assetPrices)) {
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) {
+      const ticker = k.toUpperCase().trim();
+      if (ticker) {
+        map.set(ticker, { ticker, price: v, source: "api" });
+      }
+    }
+  }
+  return map;
 }
 
 export interface CanonicalEngineParams {
@@ -247,19 +301,119 @@ export function evaluatePortfolioCanonicalState(
   }
 
   // 1. Resolução Dinâmica de Câmbio PTAX (USDBRL=X) (§Salvaguarda S12)
-  const livePriceUsd = params.assetPrices ? usdRateFromPrices(params.assetPrices) : undefined;
-  const liveRate = livePriceUsd && livePriceUsd !== FALLBACK_USD_RATE ? livePriceUsd : undefined;
+  const livePriceItemMap = buildLivePriceItemMap(params.assetPrices);
+  const fxLiveItem =
+    livePriceItemMap.get("USDBRL=X") ??
+    livePriceItemMap.get("USD-BRL") ??
+    livePriceItemMap.get("USDBRL");
+  const liveFxRate =
+    fxLiveItem?.source === "manual"
+      ? (fxLiveItem.manual_price ?? (fxLiveItem.price > 0 ? fxLiveItem.price : undefined))
+      : fxLiveItem?.source === "api" && fxLiveItem.price > 0
+        ? fxLiveItem.price
+        : undefined;
 
-  const effectiveUsdRate = resolveDynamicPtaxRate(
-    params.monthlyPrices,
-    month,
-    {
+  let effectiveUsdRate: number;
+  let fxMetadata: CanonicalFxMetadata;
+
+  if (mode === "instant") {
+    const explicitValid = params.usdRate && params.usdRate > 0 ? params.usdRate : undefined;
+    const fxSource = fxLiveItem?.source;
+    const isRealFxLive = Boolean(
+      fxLiveItem && (fxSource === "manual" || fxSource === "api") && liveFxRate && liveFxRate > 0,
+    );
+    if (explicitValid) {
+      effectiveUsdRate = round4(explicitValid);
+      const isFallback =
+        fxSource === "fallback" ||
+        (explicitValid === FALLBACK_USD_RATE && !isRealFxLive);
+      fxMetadata = {
+        rate: effectiveUsdRate,
+        source: isFallback
+          ? "fallback"
+          : fxSource === "manual"
+            ? "manual"
+            : "api",
+        provider: isFallback
+          ? null
+          : fxSource === "manual"
+            ? "manual"
+            : (fxLiveItem?.provider ?? null),
+        fxRateAt: isFallback ? null : (fxLiveItem?.market_price_at ?? fxLiveItem?.updated_at ?? null),
+        fetchedAt: isFallback || fxSource === "manual" ? null : (fxLiveItem?.fetched_at ?? null),
+        isFallback,
+      };
+    } else if (fxLiveItem?.source === "manual" && liveFxRate && liveFxRate > 0) {
+      effectiveUsdRate = round4(liveFxRate);
+      fxMetadata = {
+        rate: effectiveUsdRate,
+        source: "manual",
+        provider: "manual",
+        fxRateAt: fxLiveItem.market_price_at ?? fxLiveItem.updated_at ?? null,
+        fetchedAt: null,
+        isFallback: false,
+      };
+    } else if (fxLiveItem?.source === "api" && liveFxRate && liveFxRate > 0) {
+      effectiveUsdRate = round4(liveFxRate);
+      fxMetadata = {
+        rate: effectiveUsdRate,
+        source: "api",
+        provider: fxLiveItem.provider ?? "yahoo",
+        fxRateAt: fxLiveItem.market_price_at ?? fxLiveItem.updated_at ?? null,
+        fetchedAt: fxLiveItem.fetched_at ?? fxLiveItem.updated_at ?? null,
+        isFallback: false,
+      };
+    } else {
+      effectiveUsdRate = FALLBACK_USD_RATE;
+      fxMetadata = {
+        rate: FALLBACK_USD_RATE,
+        source: "fallback",
+        provider: null,
+        fxRateAt: null,
+        fetchedAt: null,
+        isFallback: true,
+      };
+    }
+  } else {
+    const ptaxRes = resolveCanonicalPtaxResolution(params.monthlyPrices, month, {
       explicitRate: params.usdRate,
       preferExplicitOverSaved: Boolean(params.usdRate && params.usdRate !== FALLBACK_USD_RATE),
-      liveRate,
+      liveRate: liveFxRate,
       fallbackRate: FALLBACK_USD_RATE,
-    },
-  );
+    });
+    effectiveUsdRate = ptaxRes.rate;
+    const savedMonthlyFx = (params.monthlyPrices ?? []).find(
+      (mp) =>
+        mp.month?.slice(0, 7) === month &&
+        ["USDBRL=X", "USD-BRL", "USDBRL"].includes(mp.ticker.toUpperCase().trim()) &&
+        Number(mp.price) > 0,
+    );
+    const fxSource: CanonicalFxMetadata["source"] =
+      savedMonthlyFx?.source === "manual"
+        ? "manual"
+        : ptaxRes.source === "saved_monthly_price"
+          ? "closing_saved"
+          : ptaxRes.source === "explicit"
+            ? "api"
+            : ptaxRes.source === "live" && fxLiveItem?.source === "api"
+              ? "api"
+              : "fallback";
+    fxMetadata = {
+      rate: effectiveUsdRate,
+      source: fxSource,
+      provider:
+        fxSource === "manual"
+          ? "manual"
+          : fxSource === "closing_saved"
+            ? ((savedMonthlyFx as { provider?: string | null } | undefined)?.provider ?? "bcb_ptax")
+            : fxSource === "api"
+              ? (fxLiveItem?.provider ?? null)
+              : null,
+      fxRateAt: savedMonthlyFx?.updated_at ?? fxLiveItem?.market_price_at ?? null,
+      fetchedAt: fxLiveItem?.fetched_at ?? null,
+      isFallback: ptaxRes.isFallback,
+    };
+  }
 
   const annualCdiRate = params.annualCdiRate ?? 10.5;
 
@@ -271,6 +425,8 @@ export function evaluatePortfolioCanonicalState(
       ...params,
       asOfDate: cutoffDate,
       effectiveUsdRate,
+      fxMetadata,
+      livePriceItemMap,
       annualCdiRate,
       month,
     });
@@ -280,6 +436,8 @@ export function evaluatePortfolioCanonicalState(
       asOfDate: cutoffDate,
       cutoffDate,
       effectiveUsdRate,
+      fxMetadata,
+      livePriceItemMap,
       annualCdiRate,
       month,
     });
@@ -306,6 +464,8 @@ export function evaluatePortfolioCanonicalState(
 
 interface InternalInstantParams extends CanonicalEngineParams {
   effectiveUsdRate: number;
+  fxMetadata: CanonicalFxMetadata;
+  livePriceItemMap: Map<string, CanonicalAssetPriceItem>;
   annualCdiRate: number;
   month: string;
 }
@@ -315,25 +475,12 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     asOfDate,
     assets,
     effectiveUsdRate,
+    fxMetadata,
+    livePriceItemMap,
     annualCdiRate,
     month,
     apiPrices = {},
   } = params;
-
-  const livePriceMap: Record<string, number> = {};
-  if (Array.isArray(params.assetPrices)) {
-    for (const p of params.assetPrices) {
-      if (p.ticker && typeof p.price === "number") {
-        livePriceMap[p.ticker.toUpperCase().trim()] = p.price;
-      }
-    }
-  } else if (params.assetPrices) {
-    for (const [k, v] of Object.entries(params.assetPrices)) {
-      if (typeof v === "number") {
-        livePriceMap[k.toUpperCase().trim()] = v;
-      }
-    }
-  }
 
   // 1. Reconciliação Determinística de Eventos (instant mode)
   const reconciliation = reconcilePortfolioEvents({
@@ -462,7 +609,6 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
       totalCostBRL = totalCost;
       averageCostBRL = averageCost;
     }
-      Boolean(fiMeta);
 
     let resolvedPrice: CanonicalResolvedPrice;
     let fixedIncomeResult: FixedIncomeBalanceResult | null = null;
@@ -498,26 +644,47 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
         badgeLabel: hasActiveRate ? "Renda Fixa Atualizada" : "Saldo Manual",
       };
     } else {
-      // Ativo de Renda Variável ou Alternativo
-      const priceFromLive = apiPrices[tickerUpper] ?? livePriceMap[tickerUpper] ?? null;
+      // Ativo de Renda Variável ou Alternativo: preserva origem real sem mascarar fallback/manual
+      const liveItem = livePriceItemMap.get(tickerUpper);
       const fallbackPrice = fallbackPriceFor(currency);
+      const apiOverridePrice = apiPrices[tickerUpper] ?? null;
+      const itemManualPrice =
+        liveItem?.source === "manual"
+          ? (liveItem.manual_price ?? (liveItem.price > 0 ? liveItem.price : null))
+          : null;
+      const itemApiCachePrice =
+        liveItem?.source === "api" && liveItem.price > 0 ? liveItem.price : null;
+      const effectiveCachePrice =
+        apiOverridePrice !== null && apiOverridePrice > 0 ? apiOverridePrice : itemApiCachePrice;
 
       const candidate: PriceCandidate = {
-        manualPrice: null,
-        cachePrice: priceFromLive,
+        manualPrice: itemManualPrice,
+        cachePrice: effectiveCachePrice,
         fallbackPrice,
       };
 
       const resolved = resolvePrice(candidate);
-      let quoteSource = resolved.source === "manual" ? "manual" : resolved.source === "api" ? "api" : "fallback";
+      let quoteSource: CanonicalResolvedPrice["source"] =
+        resolved.source === "manual" ? "manual" : resolved.source === "api" ? "api" : "fallback";
+      let isEstimate = quoteSource === "fallback";
+      let quotePrice = resolved.price;
+      let badgeLabel =
+        quoteSource === "api" ? "Oficial API" : quoteSource === "manual" ? "Manual" : "Estimada";
 
-      // Ativos não cotados com preço firme (Salvaguarda S7)
-      if (quoteSource === "fallback" && averageCost > 0) {
-        quoteSource = "custom_valuation";
-        pricingMode = "custom_valuation";
+      if (quoteSource === "fallback") {
+        if (isCustomValuationAsset(asset) && averageCost > 0) {
+          quoteSource = "custom_valuation";
+          pricingMode = "custom_valuation";
+          quotePrice = averageCost;
+          isEstimate = false;
+          badgeLabel = "Valoração Própria";
+        } else if (averageCost > 0) {
+          quotePrice = averageCost;
+          isEstimate = true;
+          badgeLabel = "Estimada (PM)";
+        }
       }
 
-      const quotePrice = quoteSource === "custom_valuation" ? averageCost : resolved.price;
       const priceBRL = currency === "USD" ? round4(quotePrice * effectiveUsdRate) : round4(quotePrice);
 
       resolvedPrice = {
@@ -525,10 +692,21 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
         priceQuote: round4(quotePrice),
         priceBRL,
         usdRate: assetUsdRate,
-        source: quoteSource as CanonicalResolvedPrice["source"],
-        isEstimate: quoteSource === "fallback",
+        source: quoteSource,
+        isEstimate,
         asOfDate,
-        badgeLabel: quoteSource === "api" ? "Oficial API" : quoteSource === "manual" ? "Manual" : "Sugerida",
+        marketPriceAt:
+          quoteSource === "api" || quoteSource === "manual"
+            ? (liveItem?.market_price_at ?? liveItem?.updated_at ?? null)
+            : null,
+        fetchedAt: quoteSource === "api" ? (liveItem?.fetched_at ?? liveItem?.updated_at ?? null) : null,
+        provider:
+          quoteSource === "manual"
+            ? "manual"
+            : quoteSource === "api"
+              ? (apiOverridePrice ? "api" : (liveItem?.provider ?? null))
+              : null,
+        badgeLabel,
       };
     }
 
@@ -618,6 +796,7 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
     asOfDate,
     mode: "instant",
     usdRate: effectiveUsdRate,
+    fxMetadata,
     holdings,
     cashBRL: params.cashBalance ?? 0,
     closedSnapshotsCount: (params.snapshots ?? []).filter((s) => s.month < month).length,
@@ -811,6 +990,8 @@ function evaluateInstantState(params: InternalInstantParams): CanonicalEngineRes
 interface InternalPointInTimeParams extends CanonicalEngineParams {
   cutoffDate: string;
   effectiveUsdRate: number;
+  fxMetadata: CanonicalFxMetadata;
+  livePriceItemMap: Map<string, CanonicalAssetPriceItem>;
   annualCdiRate: number;
   month: string;
 }
@@ -819,6 +1000,8 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
   const {
     cutoffDate,
     effectiveUsdRate,
+    fxMetadata,
+    livePriceItemMap,
     annualCdiRate,
     month,
     assets,
@@ -826,21 +1009,6 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
     snapshots = [],
     apiPrices = {},
   } = params;
-
-  const livePriceMap: Record<string, number> = {};
-  if (Array.isArray(params.assetPrices)) {
-    for (const p of params.assetPrices) {
-      if (p.ticker && typeof p.price === "number") {
-        livePriceMap[p.ticker.toUpperCase().trim()] = p.price;
-      }
-    }
-  } else if (params.assetPrices) {
-    for (const [k, v] of Object.entries(params.assetPrices)) {
-      if (typeof v === "number") {
-        livePriceMap[k.toUpperCase().trim()] = v;
-      }
-    }
-  }
 
   // 1. Reconciliação Determinística de Eventos até a Data de Corte (Salvaguarda S13)
   const reconciliation = reconcilePortfolioEvents({
@@ -1067,7 +1235,13 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
       // Prioridade histórica de cotação
       const savedMonthlyPrice = monthlyPriceMap.get(tickerUpper) ?? null;
       const apiPrice = apiPrices[tickerUpper] ?? null;
-      const livePrice = livePriceMap[tickerUpper] ?? null;
+      const liveItem = livePriceItemMap.get(tickerUpper);
+      const livePrice =
+        liveItem?.source === "manual"
+          ? (liveItem.manual_price ?? (liveItem.price > 0 ? liveItem.price : null))
+          : liveItem && liveItem.price > 0
+            ? liveItem.price
+            : null;
 
       const resolvedHistorical: ResolvedHistoricalQuote = resolveHistoricalQuotePriority({
         ticker: tickerUpper,
@@ -1163,6 +1337,7 @@ function evaluatePointInTimeState(params: InternalPointInTimeParams): CanonicalE
     asOfDate: cutoffDate,
     mode: "point_in_time",
     usdRate: effectiveUsdRate,
+    fxMetadata,
     holdings,
     cashBRL,
     cashUSD,

@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { DashboardAlertsCarousel, type DashboardAlertItem } from "@/components/modules/dashboard-alerts-carousel";
+import { todaySaoPauloISO } from "@/domain/portfolio";
 import { computePortfolioCarouselDrift } from "@/domain/portfolio/insights-carousel-drift";
 import { evaluatePortfolioStructuralRisk } from "@/domain/portfolio/portfolio-risk-policy";
 import { FALLBACK_USD_RATE } from "@/domain/portfolio/valuation";
 import { usePortfolioAlertDismissals } from "@/hooks/use-portfolio-alert-dismissals";
+import { openDividendReviewModal } from "@/services/dividend-review-modal";
 import { pushToast } from "@/services/toast";
 import {
   useApproveDividendsBatch,
@@ -21,7 +23,6 @@ import { buildAllocationInsightItems } from "./insights-carousel/build-allocatio
 import { buildDividendInsightItems } from "./insights-carousel/build-dividend-insight-items";
 import { buildGovernanceInsightItems } from "./insights-carousel/build-governance-insight-items";
 import { buildStructuralRiskItems } from "./insights-carousel/build-structural-risk-items";
-import { PendingDividendsDialog } from "./pending-dividends-dialog";
 
 export interface PortfolioInsightsCarouselProps {
   className?: string;
@@ -45,7 +46,6 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
   const updateAssetMutation = useUpdatePortfolioAsset();
   const { dismissAlert, isAlertDismissed } = usePortfolioAlertDismissals();
 
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [evaluationQueue, setEvaluationQueue] = useState<PortfolioAsset[]>([]);
   const [evaluationIndex, setEvaluationIndex] = useState(0);
 
@@ -60,16 +60,24 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
 
   const currentEvaluatedAsset = evaluationQueue[evaluationIndex] ?? null;
   const hasNextInQueue = evaluationIndex + 1 < evaluationQueue.length;
+  const hasUncertainTax = useMemo(
+    () => available.some((d) => Boolean(d.isTypeUncertain)),
+    [available],
+  );
 
   const handleApproveAll = async () => {
-    if (available.length === 0) return;
+    if (available.length === 0 || hasUncertainTax) {
+      openDividendReviewModal({ initialTab: "review" });
+      return;
+    }
     const items = available.map((d) => ({
       asset_id: d.assetId,
       ticker: d.ticker,
-      date: d.paymentDate,
+      date: d.paymentDate ?? todaySaoPauloISO(),
       amount: d.totalAmount,
       notes: `Provento automático (${d.type}) apurado na B3`,
       corporate_dividend_id: d.corporateDividendId,
+      ...(d.currency === "USD" ? { currency: "USD" as const } : {}),
     }));
 
     await approveMutation.mutateAsync({ dividends: items, sync_cash: true });
@@ -130,9 +138,14 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
       projectedCount: projected.length,
       totalAvailableAmount,
       totalProjectedAmount,
+      hasUncertainTax,
       isApproving: approveMutation.isPending,
+      isAvailableDismissed: isAlertDismissed("available-dividends-alert"),
+      isProjectedDismissed: isAlertDismissed("projected-dividends-alert"),
       onApproveAll: () => void handleApproveAll(),
-      onOpenDetails: () => setIsDetailsOpen(true),
+      onOpenDetails: () => openDividendReviewModal({ initialTab: "review" }),
+      onDismissAvailable: (days) => dismissAlert("available-dividends-alert", days),
+      onDismissProjected: (days) => dismissAlert("projected-dividends-alert", days),
       className,
     }),
     ...buildGovernanceInsightItems({
@@ -174,15 +187,6 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
   return (
     <>
       <DashboardAlertsCarousel items={items} maxItems={5} className={className} />
-
-      {isDetailsOpen ? (
-        <PendingDividendsDialog
-          open={isDetailsOpen}
-          onOpenChange={setIsDetailsOpen}
-          availableDividends={available}
-          projectedDividends={projected}
-        />
-      ) : null}
 
       <AssetScoreEvaluationDialog
         open={Boolean(currentEvaluatedAsset)}

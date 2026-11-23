@@ -5,6 +5,7 @@ import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type {
   BudgetOverrunAlert,
   ClosedCardBillAlert,
+  DividendNotificationAlert,
   PendingSplitSignalSummary,
   TripFamilyAlert,
 } from "@/domain/notifications/hub";
@@ -16,6 +17,7 @@ import {
   BroadcastNotificationRow,
   BudgetOverrunNotificationRow,
   ClosedBillNotificationRow,
+  DividendNotificationRow,
   SplitSignalNotificationRow,
   SubscriptionPastDueRow,
   SupportReplyRow,
@@ -36,6 +38,7 @@ export interface RemindersPendingTabProps {
   closedBillAlerts?: ClosedCardBillAlert[];
   budgetOverrunAlert?: BudgetOverrunAlert | null;
   tripAndFamilyAlerts?: TripFamilyAlert[];
+  dividendAlerts?: DividendNotificationAlert[];
   unreadBroadcasts?: UserBroadcastNotification[];
   unreadSupportTickets?: SupportTicket[];
   pendingSplitSignals?: PendingSplitSignalSummary[];
@@ -88,6 +91,7 @@ export function RemindersPendingTab({
   closedBillAlerts = [],
   budgetOverrunAlert = null,
   tripAndFamilyAlerts = [],
+  dividendAlerts = [],
   unreadBroadcasts = [],
   unreadSupportTickets = [],
   pendingSplitSignals = [],
@@ -207,6 +211,14 @@ export function RemindersPendingTab({
               ) : null}
               {tripAndFamilyAlerts.map((alert) => (
                 <TripFamilyNotificationRow
+                  key={alert.id}
+                  alert={alert}
+                  onOpen={() => onOpenRoute?.(alert.targetRoute)}
+                  onMarkRead={() => onMarkRead(alert.id)}
+                />
+              ))}
+              {dividendAlerts.map((alert) => (
+                <DividendNotificationRow
                   key={alert.id}
                   alert={alert}
                   onOpen={() => onOpenRoute?.(alert.targetRoute)}

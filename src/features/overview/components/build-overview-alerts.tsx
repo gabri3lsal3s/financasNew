@@ -245,6 +245,7 @@ export function buildOverviewAlertItems(
             projectedCount={corporateDividends.projected.length}
             totalAvailableAmount={corporateDividends.totalAvailableAmount}
             totalProjectedAmount={corporateDividends.totalProjectedAmount}
+            hasUncertainTax={corporateDividends.available.some((d) => Boolean(d.isTypeUncertain))}
             onInspect={params.onInspectDividends}
             onDismiss={(days) => params.onDismissCard?.("corporate-dividends-alert", days)}
           />

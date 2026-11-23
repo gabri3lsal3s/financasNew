@@ -1,5 +1,5 @@
 import { Plus, Sparkles, TrendingUp } from "lucide-react";
-import { CashKpiCard } from "@/components/modules";
+import { CashKpiCard, CustodyReconciliationCard } from "@/components/modules";
 import { Button, EmptyState, ErrorState } from "@/components/ui";
 import { getErrorMessage } from "@/services/errors";
 import { setStepIndex, startDemo } from "@/state";
@@ -107,12 +107,21 @@ export function ResumoTab({ onOpenWizard, onOpenCash, onSelectTab }: ResumoTabPr
             totalBRL={position.totalBRL}
           />
 
+          <CustodyReconciliationCard
+            variant="ui"
+            summary={ctrl.custodyReconciliation}
+            provisionedSummary={ctrl.provisionedSummary}
+          />
+
           <CustodySectionCard
             rows={ctrl.investmentRows}
             highlightId={ctrl.highlightId}
-            isSyncingQuotes={ctrl.syncQuotes.isPending}
+            isSyncingQuotes={ctrl.marketSwr.isSyncing}
+            degradedTickers={ctrl.marketSwr.degradedTickers}
+            onRetryDegraded={() => void ctrl.marketSwr.retryDegraded()}
+            marketSummary={ctrl.marketSummary}
+            staleGuard={ctrl.staleGuard}
             onOpenExecutiveReport={() => ctrl.setExecutiveReportOpen(true)}
-            onSyncQuotes={() => ctrl.syncQuotes.mutate(ctrl.assetsQuery.data ?? [])}
             onOpenDetail={ctrl.openDetail}
             onOpenEdit={ctrl.openEdit}
             onCalibrateAsset={(assetId, _ticker, currentValueCents) => {

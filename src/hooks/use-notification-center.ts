@@ -4,13 +4,16 @@ import {
   buildNotificationCenter,
   detectClosedCardBills,
   detectConsolidatedBudgetOverrun,
+  detectDividendNotificationAlerts,
   detectTripAndFamilyPendingAlerts,
   resolveNotificationCategoryPreferences,
   type BudgetOverrunAlert,
   type ClosedCardBillAlert,
+  type DividendNotificationAlert,
   type NotificationCenterSummary,
   type TripFamilyAlert,
 } from "@/domain/notifications/hub";
+import { FALLBACK_USD_RATE, type SuggestedDividendItem } from "@/domain/portfolio";
 import {
   coreOnboardingProgress,
   shouldShowOnboardingBanner,
@@ -35,6 +38,7 @@ import type {
   PublicShare,
   SupportTicket,
   UserBroadcastNotification,
+  UserDividendEvent,
   UserPreferences,
   UserSubscription,
 } from "@/types";
@@ -235,6 +239,13 @@ export function useNotificationCenter(
     data: null as MyFamilyData | null,
     isLoading: false,
   }));
+  const useCorporateDividendsSafe = getOptionalHook(state, "useCorporateDividends", () => ({
+    available: [] as SuggestedDividendItem[],
+    projected: [] as SuggestedDividendItem[],
+    recentlySettled: [] as UserDividendEvent[],
+    fxRate: FALLBACK_USD_RATE,
+    isLoading: false,
+  }));
 
   const rawAdvisorHook = getOptionalHook(
     overviewHooks,
@@ -306,6 +317,7 @@ export function useNotificationCenter(
   const expenseCategoriesQuery = useCategoriesSafe("expense");
   const tripsQuery = useUserTripsSafe();
   const familyQuery = useMyFamilySafe({ enabled: canDetectFamilyOrTrips });
+  const corporateDividendsState = useCorporateDividendsSafe();
 
   const reminderStates = useMemo(
     () => reminderStatesQuery?.data ?? [],
@@ -448,6 +460,36 @@ export function useNotificationCenter(
     reminderStates,
   ]);
 
+  const dividendAlerts: DividendNotificationAlert[] = useMemo(() => {
+    if (!preferences.enabled || !hasFeature("investments")) return [];
+    const available = corporateDividendsState?.available ?? [];
+    const projected = corporateDividendsState?.projected ?? [];
+    const recentlySettled = corporateDividendsState?.recentlySettled ?? [];
+    if (available.length === 0 && projected.length === 0 && recentlySettled.length === 0) {
+      return [];
+    }
+    const divPrefs = userPrefsQuery?.data?.custom_settings?.dividendAutomation;
+    return detectDividendNotificationAlerts({
+      pendingConfirmation: available,
+      provisioned: projected,
+      recentlySettled,
+      today,
+      fxRate: corporateDividendsState?.fxRate ?? FALLBACK_USD_RATE,
+      notifyOnProvisioned: divPrefs?.notifyOnProvisioned,
+      notifyOnPayment: divPrefs?.notifyOnPayment,
+    }).filter((alert) => !isHubAlertHiddenByState(alert.id, reminderStates, today));
+  }, [
+    preferences.enabled,
+    hasFeature,
+    corporateDividendsState?.available,
+    corporateDividendsState?.projected,
+    corporateDividendsState?.recentlySettled,
+    corporateDividendsState?.fxRate,
+    userPrefsQuery?.data?.custom_settings?.dividendAutomation,
+    today,
+    reminderStates,
+  ]);
+
   const effectiveAdvisorInsights = useMemo(
     () => (preferences.enabled ? advisorInsights : []),
     [preferences.enabled, advisorInsights],
@@ -460,6 +502,7 @@ export function useNotificationCenter(
         closedBillAlerts,
         budgetOverrunAlert,
         tripAndFamilyAlerts,
+        dividendAlerts,
         categoryPreferences,
         advisorInsights: effectiveAdvisorInsights,
         broadcasts,
@@ -478,6 +521,7 @@ export function useNotificationCenter(
       closedBillAlerts,
       budgetOverrunAlert,
       tripAndFamilyAlerts,
+      dividendAlerts,
       categoryPreferences,
       effectiveAdvisorInsights,
       broadcasts,

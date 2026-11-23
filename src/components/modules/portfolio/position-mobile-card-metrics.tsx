@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { MoneyText } from "@/components/ui/money-text";
 import { numberToCents } from "@/domain/money";
 import { formatAssetQuantity } from "@/services/formatting";
-import type { PositionRow } from "./position-types";
+import { buildPositionPriceTooltip, type PositionRow } from "./position-types";
 
 export interface PositionMobileCardMetricsProps {
   row: PositionRow;
@@ -100,6 +100,7 @@ export function PositionMobileCardMetrics({
                 )
               }
               aria-label={`Cotação de ${row.ticker}`}
+              title={buildPositionPriceTooltip(row)}
               className="relative z-10 h-auto min-h-11 sm:min-h-6 py-1 px-1.5 -mx-1.5 justify-start font-semibold text-foreground whitespace-nowrap tabular-nums w-fit"
             >
               <MoneyText cents={numberToCents(row.priceBRL)} tone="default" />
@@ -108,6 +109,12 @@ export function PositionMobileCardMetrics({
                   aria-hidden="true"
                   className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
                   title="Preço manual"
+                />
+              ) : row.source === "fallback" || row.isEstimate || row.staleIssue ? (
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-warning-strong shrink-0 ring-2 ring-warning-strong/25"
+                  title={row.staleIssue?.message ?? "Preço estimado ou defasado"}
                 />
               ) : null}
             </Button>
@@ -126,6 +133,12 @@ export function PositionMobileCardMetrics({
                   aria-hidden="true"
                   className="size-1.5 rounded-full bg-portfolio shrink-0 ring-2 ring-portfolio/25"
                   title="Preço manual"
+                />
+              ) : row.source === "fallback" || row.isEstimate || row.staleIssue ? (
+                <span
+                  aria-hidden="true"
+                  className="size-1.5 rounded-full bg-warning-strong shrink-0 ring-2 ring-warning-strong/25"
+                  title={row.staleIssue?.message ?? "Preço estimado ou defasado"}
                 />
               ) : null}
             </span>

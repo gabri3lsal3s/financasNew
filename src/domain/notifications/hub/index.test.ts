@@ -20,6 +20,7 @@ import {
   deduplicateNotifications,
   detectClosedCardBills,
   detectConsolidatedBudgetOverrun,
+  detectDividendNotificationAlerts,
   detectTripAndFamilyPendingAlerts,
   extractPendingSplitSignals,
   invoiceClosingDate,
@@ -835,5 +836,43 @@ describe("Notification Hub — Detectores de Eventos (Fase 4.1)", () => {
       "trip:settlement:trip-settling",
       "family:invite:inv-valid",
     ]);
+  });
+
+  it("detectDividendNotificationAlerts agrupa pendentes, provisionados e liquidados integrando ao hub", () => {
+    const dividendAlerts = detectDividendNotificationAlerts({
+      pendingConfirmation: [
+        { ticker: "PETR4", totalAmount: 100, currency: "BRL", isTypeUncertain: true },
+        { ticker: "AAPL", totalAmount: 10, currency: "USD", isTypeUncertain: false },
+      ],
+      provisioned: [
+        { ticker: "VALE3", totalAmount: 85, currency: "BRL", isTypeUncertain: false },
+      ],
+      recentlySettled: [
+        {
+          ticker: "ITUB4",
+          net_amount: 40,
+          currency: "BRL",
+          fx_rate_applied: null,
+          payment_date: "2026-08-09",
+          updated_at: "2026-08-09T12:00:00Z",
+          com_date: "2026-08-01",
+        },
+      ],
+      today: "2026-08-10",
+      fxRate: 5.0,
+    });
+
+    expect(dividendAlerts).toHaveLength(3);
+    expect(dividendAlerts[0]?.id).toBe("dividends:pending:2026-08-10");
+    expect(dividendAlerts[0]?.totalBRLCents).toBe(15000); // 100 BRL + 10 USD * 5
+    expect(dividendAlerts[0]?.hasUncertainTax).toBe(true);
+    expect(dividendAlerts[0]?.targetRoute).toBe("/investments?tab=proventos&review=1");
+    expect(dividendAlerts[1]?.id).toBe("dividends:provisioned:2026-08");
+    expect(dividendAlerts[2]?.id).toBe("dividends:settled:2026-08-09");
+
+    const center = buildNotificationCenter({ dividendAlerts });
+    expect(center.dividendAlerts).toHaveLength(3);
+    expect(center.actionNeededCount).toBe(1);
+    expect(center.totalBellCount).toBe(3);
   });
 });

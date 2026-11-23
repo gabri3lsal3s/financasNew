@@ -40,6 +40,11 @@ export interface WealthSourceRowLike {
   pricePnlPctUSD?: number | null;
   fxPnlPct?: number | null;
   pricePnlPctBRL?: number | null;
+  source?: string | null;
+  isEstimate?: boolean;
+  marketPriceAt?: string | null;
+  fetchedAt?: string | null;
+  provider?: string | null;
 }
 
 /** Formata o rótulo legível do período selecionado em pt-BR (sem datas ISO cruas). */
@@ -216,6 +221,12 @@ export function mapPositionRowsToWealthRows(
       fxPnlPct: r.fxPnlPct,
       pricePnlPctBRL: r.pricePnlPctBRL,
       usdRate: rate > 0 ? rate : undefined,
+      source: r.source ?? null,
+      isEstimate: r.isEstimate,
+      marketPriceAt: r.marketPriceAt ?? null,
+      fetchedAt: r.fetchedAt ?? null,
+      provider: r.provider ?? null,
+      priceBRL: r.priceBRL,
     };
   });
 }

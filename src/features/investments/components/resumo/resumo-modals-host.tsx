@@ -198,6 +198,9 @@ export function ResumoModalsHost({ ctrl }: ResumoModalsHostProps) {
           totalReturnPct={position.totalReturnPct}
           totalReturnPnlBRL={position.totalReturnPnlBRL}
           allTimeEconomicPnlBRL={position.allTimeEconomicPnlBRL}
+          usdRate={position.usdRate}
+          fxMetadata={position.fxMetadata}
+          transactions={ctrl.transactions}
           initialMonth={ctrl.reportSelectedMonth}
         />
       )}

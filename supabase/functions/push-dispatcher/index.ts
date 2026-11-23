@@ -41,6 +41,11 @@ interface UserPrefDeviceSettings {
   quietHours?: QuietHoursSetting;
 }
 
+interface UserPrefDividendAutomation {
+  notifyOnProvisioned?: boolean;
+  notifyOnPayment?: boolean;
+}
+
 interface WebPushClient {
   setVapidDetails(subject: string, publicKey: string, privateKey: string): void;
   sendNotification(
@@ -352,13 +357,21 @@ Deno.serve(async (req: Request) => {
 
       const customSettings = (prefRow?.custom_settings ?? {}) as {
         deviceNotifications?: UserPrefDeviceSettings;
+        dividendAutomation?: UserPrefDividendAutomation;
       };
       const deviceNotifs = customSettings.deviceNotifications;
+      const divAutomation = customSettings.dividendAutomation;
+
+      const isDividendEventDisabledByUser =
+        (eventType === "dividend_provisioned" && divAutomation?.notifyOnProvisioned === false) ||
+        ((eventType === "dividend_settled" || eventType === "dividend_pending_confirmation") &&
+          divAutomation?.notifyOnPayment === false);
 
       const isOptInAllowed =
-        eventType === "test_push" ||
-        severity === "P0" ||
-        deviceNotifs?.remotePushEnabled === true;
+        !isDividendEventDisabledByUser &&
+        (eventType === "test_push" ||
+          severity === "P0" ||
+          deviceNotifs?.remotePushEnabled === true);
 
       if (!isOptInAllowed) {
         await supabaseAdmin

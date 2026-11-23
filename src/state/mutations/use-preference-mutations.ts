@@ -109,6 +109,12 @@ export function useUpdateCustomSettings() {
                     ...patch.portfolioAlertDismissals,
                   }
                 : old.custom_settings?.portfolioAlertDismissals,
+              dividendAutomation: patch.dividendAutomation !== undefined
+                ? {
+                    ...(old.custom_settings?.dividendAutomation ?? {}),
+                    ...patch.dividendAutomation,
+                  }
+                : old.custom_settings?.dividendAutomation,
             },
           };
         });

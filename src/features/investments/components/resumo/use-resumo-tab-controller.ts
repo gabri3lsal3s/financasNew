@@ -1,7 +1,14 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import type { PriceSource } from "@/domain/portfolio";
-import { calculatePortfolioConcentration, isCashAssetClass } from "@/domain/portfolio";
+import type { PositionRow } from "@/components/modules";
+import type { PriceSource, ProvisionedDividendsSummary } from "@/domain/portfolio";
+import {
+  buildMarketReferenceSummary,
+  calculateCustodyReconciliation,
+  calculatePortfolioConcentration,
+  evaluateStaleQuoteGuard,
+  isCashAssetClass,
+} from "@/domain/portfolio";
 import {
   buildAssetAllocationSummaries,
   buildClassAllocationSummaries,
@@ -10,11 +17,14 @@ import {
 } from "@/domain/portfolio/resumo-metrics";
 import { currentMonth } from "@/lib/date";
 import { useCreateDeepLink } from "@/hooks/use-create-deep-link";
+import { getOptionalHook } from "@/hooks/use-notification-center";
+import * as state from "@/state";
 import {
+  useAllPortfolioTransactions,
   useGroupTargets,
+  useMarketQuotesSwr,
   usePortfolioAssets,
   usePortfolioPosition,
-  useSyncQuotes,
 } from "@/state";
 import type { AssetCurrency, PortfolioAsset, PortfolioTransactionType } from "@/types";
 import type { WizardMode } from "../../wizard/wizard-state";
@@ -39,9 +49,14 @@ export function useResumoTabController({
   const navigate = useNavigate();
   const position = usePortfolioPosition();
   const assetsQuery = usePortfolioAssets();
+  const transactionsQuery = useAllPortfolioTransactions();
   const classTargetsQuery = useGroupTargets("class");
   const sectorTargetsQuery = useGroupTargets("sector");
-  const syncQuotes = useSyncQuotes();
+  const marketSwr = useMarketQuotesSwr({ enabled: true, enableInterval: false });
+  const useCorporateDividendsSafe = getOptionalHook(state, "useCorporateDividends", () => ({
+    provisionedSummary: null as ProvisionedDividendsSummary | null,
+  }));
+  const corporateDividendsState = useCorporateDividendsSafe();
 
   const { open: wizardDeepOpen, setOpen: setWizardDeepOpen } = useCreateDeepLink("investimento");
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -88,9 +103,6 @@ export function useResumoTabController({
   const rows = position.rows;
   const deepLinks = useResumoDeepLinks({
     assets: assetsQuery.data,
-    assetsLoading: assetsQuery.isLoading,
-    rows,
-    onSyncQuotes: (list) => syncQuotes.mutate(list),
     onOpenCashModal: handleOpenCash,
     onOpenCashProp: onOpenCash,
     onEditAsset: setAssetEditing,
@@ -122,7 +134,49 @@ export function useResumoTabController({
     [onOpenWizard],
   );
 
-  const investmentRows = useMemo(() => rows.filter((r) => !r.isCash), [rows]);
+  const staleGuard = useMemo(
+    () =>
+      evaluateStaleQuoteGuard({
+        rows: position.rows,
+        transactions: transactionsQuery.data ?? [],
+        assets: assetsQuery.data ?? [],
+        fxMetadata: position.fxMetadata,
+      }),
+    [position.rows, position.fxMetadata, transactionsQuery.data, assetsQuery.data],
+  );
+
+  const marketSummary = useMemo(
+    () =>
+      buildMarketReferenceSummary({
+        rows: position.rows,
+        fxMetadata: position.fxMetadata,
+        usdRate: position.usdRate,
+      }),
+    [position.rows, position.fxMetadata, position.usdRate],
+  );
+
+  const custodyReconciliation = useMemo(
+    () =>
+      calculateCustodyReconciliation({
+        rows: position.rows,
+        totalBRL: position.totalBRL,
+        cashBRL: position.cashBRL,
+        fxMetadata: position.fxMetadata,
+        usdRate: position.usdRate,
+      }),
+    [position.rows, position.totalBRL, position.cashBRL, position.fxMetadata, position.usdRate],
+  );
+
+  const investmentRows: PositionRow[] = useMemo(
+    () =>
+      rows
+        .filter((r) => !r.isCash)
+        .map((r) => ({
+          ...r,
+          staleIssue: staleGuard.issueByTicker[r.ticker.trim().toUpperCase()] ?? null,
+        })),
+    [rows, staleGuard.issueByTicker],
+  );
   const cashAsset = useMemo(
     () =>
       (assetsQuery.data ?? []).find(
@@ -185,9 +239,14 @@ export function useResumoTabController({
     navigate,
     position,
     assetsQuery,
+    transactions: transactionsQuery.data ?? [],
     classTargetsQuery,
     sectorTargetsQuery,
-    syncQuotes,
+    marketSwr,
+    staleGuard,
+    marketSummary,
+    custodyReconciliation,
+    provisionedSummary: corporateDividendsState?.provisionedSummary ?? null,
     month: currentMonth(),
     rows,
     investmentRows,

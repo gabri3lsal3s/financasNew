@@ -67,7 +67,6 @@ function deploy() {
 
 function cron() {
   const functionUrl = `${functionBaseUrl()}/quotes`;
-  const schedule = (env.QUOTES_CRON_SCHEDULE || "0 */6 * * *").split(/\s+#/)[0].trim();
   const serviceRole = env.SUPABASE_SERVICE_ROLE_KEY || "";
 
   if (!serviceRole) {
@@ -88,12 +87,19 @@ revoke all on all tables in schema cron from public, anon, authenticated;
 -- 2) Remove agendamentos anteriores, se existirem (idempotente).
 select cron.unschedule(jobname)
 from cron.job
-where jobname in ('quotes-cron', 'quotes-6h');
-
--- 3) Agenda a atualização periódica (${schedule}).
-select cron.schedule(
+where jobname in (
   'quotes-cron',
-  '${schedule}',
+  'quotes-6h',
+  'quotes-eod-close',
+  'quotes-eom-close',
+  'dividends-sync-global',
+  'dividends-process-user'
+);
+
+-- 3) Âncora diária EOD pós-fechamento B3 + NYSE + PTAX (22:00 UTC / 19:00 BRT, seg–sex).
+select cron.schedule(
+  'quotes-eod-close',
+  '0 22 * * 1-5',
   $cron$
     select net.http_post(
       url := '${functionUrl}',
@@ -101,7 +107,55 @@ select cron.schedule(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer ${serviceRole}'
       ),
-      body := '{}'
+      body := '{"action":"eod_close"}'
+    );
+  $cron$
+);
+
+-- 4) Fechamento mensal EOM com auto-healing nos 3 primeiros dias úteis (22:30 UTC / 19:30 BRT, seg–sex).
+select cron.schedule(
+  'quotes-eom-close',
+  '30 22 * * 1-5',
+  $cron$
+    select net.http_post(
+      url := '${functionUrl}',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ${serviceRole}'
+      ),
+      body := '{"action":"close_month_global"}'
+    );
+  $cron$
+);
+
+-- 5) Coleta global diária de proventos B3 + EUA (10:00 UTC / 07:00 BRT, diário).
+select cron.schedule(
+  'dividends-sync-global',
+  '0 10 * * *',
+  $cron$
+    select net.http_post(
+      url := '${functionUrl}',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ${serviceRole}'
+      ),
+      body := '{"action":"sync_corporate_dividends"}'
+    );
+  $cron$
+);
+
+-- 6) Apuração Data COM, anti-flood, efetivação e push de proventos (11:30 UTC / 08:30 BRT, diário).
+select cron.schedule(
+  'dividends-process-user',
+  '30 11 * * *',
+  $cron$
+    select net.http_post(
+      url := '${functionUrl}',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ${serviceRole}'
+      ),
+      body := '{"action":"process_user_dividends"}'
     );
   $cron$
 );

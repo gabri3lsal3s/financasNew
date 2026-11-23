@@ -10,9 +10,10 @@ import {
 import type { AssetCurrency } from "@/types";
 
 /**
- * Cotações (D5 — §1.6): cache em servidor + override manual.
- *   • Cache global (user_id NULL) é escrito pela edge function — leitura;
- *   • Override manual (user_id = dono, source 'manual') prevalece.
+ * Cotações (§1.6 D5 — Modelo Global Compartilhado + Override Manual):
+ *   • Cache global (user_id NULL) é escrito exclusivamente pela Edge Function (`service_role`);
+ *   • Override manual (user_id = dono, source 'manual') prevalece sobre tudo;
+ *   • Fallback offline/custo médio é apenas contingência quando não há preço oficial.
  */
 
 export type ManualPriceInput = {
@@ -27,6 +28,23 @@ export interface AssetPriceRow {
   currency: AssetCurrency;
   source: "api" | "fallback" | "manual";
   manual_price: number | null;
+  user_id?: string | null;
+  updated_at?: string | null;
+  fetched_at?: string | null;
+  market_price_at?: string | null;
+  provider?: string | null;
+}
+
+/** Linha histórica oficial de fechamento EOD/EOM em `public.market_price_history`. */
+export interface MarketPriceHistoryRow {
+  ticker: string;
+  reference_date: string;
+  price: number;
+  currency: AssetCurrency;
+  provider: string | null;
+  market_price_at: string | null;
+  month: string;
+  is_month_end: boolean;
 }
 
 const SOURCE_PRIORITY: Record<AssetPriceRow["source"], number> = {
@@ -35,12 +53,34 @@ const SOURCE_PRIORITY: Record<AssetPriceRow["source"], number> = {
   fallback: 1,
 };
 
+function parseTimestampMs(raw?: string | null): number {
+  if (!raw) return 0;
+  const ms = Date.parse(raw);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function getRowRecencyMs(row: AssetPriceRow): number {
+  if (row.source === "manual") {
+    return parseTimestampMs(row.updated_at);
+  }
+  return (
+    parseTimestampMs(row.market_price_at) ||
+    parseTimestampMs(row.fetched_at) ||
+    parseTimestampMs(row.updated_at)
+  );
+}
+
 function mapRow(row: {
   ticker: string;
   price: string | number;
   currency: AssetCurrency;
   source: AssetPriceRow["source"];
   manual_price: string | number | null;
+  user_id?: string | null;
+  updated_at?: string | null;
+  fetched_at?: string | null;
+  market_price_at?: string | null;
+  provider?: string | null;
 }): AssetPriceRow {
   return {
     ticker: row.ticker.trim().toUpperCase(),
@@ -48,6 +88,11 @@ function mapRow(row: {
     currency: row.currency,
     source: row.source,
     manual_price: row.manual_price === null ? null : Number(row.manual_price),
+    user_id: row.user_id ?? null,
+    updated_at: row.updated_at ?? null,
+    fetched_at: row.fetched_at ?? null,
+    market_price_at: row.market_price_at ?? null,
+    provider: row.provider ?? null,
   };
 }
 
@@ -79,68 +124,83 @@ function buildFallbackRows(
         currency,
         source: "fallback" as const,
         manual_price: null,
+        user_id: null,
+        updated_at: null,
+        fetched_at: null,
+        market_price_at: null,
+        provider: "fallback",
       };
     });
 }
 
 /**
- * Consolida as linhas de preços por ticker:
- * 1. Linhas manuais do usuário (`source === 'manual'`) prevalecem sobre cache global (`source === 'api'`) e fallback;
- * 2. Cotação de API positiva (`price > 0`) prevalece sobre fallback estático;
- * 3. Se a cotação da API falhar ou vier zerada, o fallback positivo (preço médio ou nominal) é mantido;
- * 4. O override manual do usuário nunca é sobrescrito.
+ * Consolida as linhas de preços por ticker de forma 100% determinística:
+ * 1. Override manual do usuário (`source === 'manual'`) com preço positivo vence sempre;
+ * 2. Cotação de API positiva (`price > 0`) vence fallback; entre duas APIs válidas,
+ *    vence a de timestamp de mercado (`market_price_at ?? fetched_at ?? updated_at`) mais recente;
+ * 3. Never-Degrade: uma linha API positiva nunca é substituída por preço <= 0;
+ * 4. Em fallback vs. fallback, prevalece o positivo mais recente.
  */
 export function consolidateAssetPrices(rows: AssetPriceRow[]): AssetPriceRow[] {
   const map = new Map<string, AssetPriceRow>();
   for (const row of rows) {
     const key = row.ticker.trim().toUpperCase();
+    const normalizedRow: AssetPriceRow =
+      row.source === "manual"
+        ? {
+            ...row,
+            ticker: key,
+            manual_price: row.manual_price ?? (row.price > 0 ? row.price : null),
+          }
+        : { ...row, ticker: key };
+
     const existing = map.get(key);
     if (!existing) {
-      map.set(key, {
-        ...row,
-        manual_price:
-          row.source === "manual"
-            ? (row.manual_price ?? (row.price > 0 ? row.price : null))
-            : row.manual_price,
-      });
+      map.set(key, normalizedRow);
       continue;
     }
 
-    const rowPriority = SOURCE_PRIORITY[row.source] ?? 0;
+    const rowPriority = SOURCE_PRIORITY[normalizedRow.source] ?? 0;
     const existingPriority = SOURCE_PRIORITY[existing.source] ?? 0;
 
-    // 1. Manual tem prioridade absoluta
-    if (row.source === "manual") {
-      map.set(key, {
-        ...row,
-        manual_price: row.manual_price ?? (row.price > 0 ? row.price : null),
-      });
+    if (normalizedRow.source === "manual") {
+      if (existing.source !== "manual") {
+        if ((normalizedRow.manual_price ?? normalizedRow.price) > 0) {
+          map.set(key, normalizedRow);
+        }
+        continue;
+      }
+      if (getRowRecencyMs(normalizedRow) >= getRowRecencyMs(existing)) {
+        map.set(key, normalizedRow);
+      }
       continue;
     }
+
     if (existing.source === "manual") {
       continue;
     }
 
-    // 2. Se a nova linha tem maior prioridade (ex: api sobre fallback)
     if (rowPriority > existingPriority) {
-      if (row.price > 0 || existing.price <= 0) {
-        map.set(key, row);
+      if (normalizedRow.price > 0 || existing.price <= 0) {
+        map.set(key, normalizedRow);
       }
       continue;
     }
 
-    // 3. Se a linha existente tem maior prioridade (ex: api sobre fallback)
     if (existingPriority > rowPriority) {
-      // Se a cotação existente de API estiver zerada/inválida, permite fallback com preço positivo
-      if (existing.price <= 0 && row.price > 0) {
-        map.set(key, row);
+      if (existing.price <= 0 && normalizedRow.price > 0) {
+        map.set(key, normalizedRow);
       }
       continue;
     }
 
-    // 4. Mesma prioridade (ex: api com api, ou fallback com fallback)
-    if (existing.price <= 0 && row.price > 0) {
-      map.set(key, row);
+    // Mesma prioridade (`api` vs `api`, ou `fallback` vs `fallback`)
+    if (existing.price <= 0 && normalizedRow.price > 0) {
+      map.set(key, normalizedRow);
+      continue;
+    }
+    if (normalizedRow.price > 0 && getRowRecencyMs(normalizedRow) >= getRowRecencyMs(existing)) {
+      map.set(key, normalizedRow);
     }
   }
   return Array.from(map.values()).sort((a, b) => a.ticker.localeCompare(b.ticker));
@@ -148,11 +208,9 @@ export function consolidateAssetPrices(rows: AssetPriceRow[]): AssetPriceRow[] {
 
 /**
  * Lista os preços relevantes para o usuário:
- * 1. Prioridade estrita da tabela `asset_prices`: cache global (user_id NULL) e overrides do usuário;
- * 2. Fallback offline resiliente: se a tabela `asset_prices` estiver vazia para um ticker
- *    ou houver falha de rede/offline, utiliza os ativos da custódia do usuário
- *    (via índice cobridor `idx_portfolio_assets_user_covering`) com preço médio ou valor nominal.
- * Nunca lança exceção bloqueante se houver ativos ou possibilidade de degradação graciosa.
+ *   • Lê cache global (`user_id IS NULL`) + overrides manuais do usuário (`user_id = owner`);
+ *   • Aplica ordenação determinística por `updated_at DESC` e consolidação em memória;
+ *   • Degrada graciosamente com fallback local offline em caso de ausência ou falha de rede.
  */
 export async function listAssetPrices(
   knownAssets?: Array<{
@@ -164,15 +222,22 @@ export async function listAssetPrices(
 ): Promise<AssetPriceRow[]> {
   const user_id = await currentUserId();
 
-  // 1. Prioridade estrita: leitura da tabela asset_prices
-  const pricePromise = resolveQuery<AssetPriceRow[]>(
-    getSupabase()
-      .from("asset_prices")
-      .select("ticker, price, currency, source, manual_price")
-      .or(`user_id.is.null,user_id.eq.${user_id}`),
-  );
+  const priceQuery = getSupabase()
+    .from("asset_prices")
+    .select(
+      "ticker, price, currency, source, manual_price, user_id, updated_at, fetched_at, market_price_at, provider",
+    )
+    .or(`user_id.is.null,user_id.eq.${user_id}`);
 
-  // 2. Busca ativos da custódia em portfolio_assets aproveitando idx_portfolio_assets_user_covering
+  const orderedQuery =
+    typeof (priceQuery as unknown as { order?: unknown }).order === "function"
+      ? (priceQuery as unknown as {
+          order: (col: string, opts: { ascending: boolean }) => typeof priceQuery;
+        }).order("updated_at", { ascending: false })
+      : priceQuery;
+
+  const pricePromise = resolveQuery<AssetPriceRow[]>(orderedQuery);
+
   const assetPromise = knownAssets
     ? Promise.resolve({ data: knownAssets, error: null })
     : resolveQuery<
@@ -191,7 +256,6 @@ export async function listAssetPrices(
 
   const [priceRes, assetRes] = await Promise.all([pricePromise, assetPromise]);
 
-  // Se a tabela asset_prices falhou (ex: offline ou erro de rede)
   if (priceRes.error) {
     if (assetRes.data && assetRes.data.length > 0) {
       const fallbackRows = buildFallbackRows(assetRes.data);
@@ -208,14 +272,68 @@ export async function listAssetPrices(
 }
 
 /**
- * Grava o override manual de preço (prevalece sobre cache/fallback).
- * A moeda é inferida pelo padrão do ticker (mesma regra do domínio — DRY).
- * Usa delete prévio + insert para garantir idempotência sem depender de constraint parcial no Postgres.
+ * Consulta o histórico global oficial de fechamento para uma competência (`YYYY-MM`)
+ * em `public.market_price_history`, priorizando linhas `is_month_end = true` e data mais recente.
+ */
+export async function listMarketPriceHistoryByMonth(
+  month: string,
+): Promise<MarketPriceHistoryRow[]> {
+  if (!/^\d{4}-\d{2}$/.test(month.trim())) return [];
+
+  const { data, error } = await resolveQuery<
+    Array<{
+      ticker: string;
+      reference_date: string;
+      price: string | number;
+      currency: AssetCurrency;
+      provider: string | null;
+      market_price_at: string | null;
+      month: string;
+      is_month_end: boolean;
+    }>
+  >(
+    getSupabase()
+      .from("market_price_history")
+      .select("ticker, reference_date, price, currency, provider, market_price_at, month, is_month_end")
+      .eq("month", month.trim())
+      .order("is_month_end", { ascending: false })
+      .order("reference_date", { ascending: false }),
+  );
+
+  if (error || !Array.isArray(data)) {
+    return [];
+  }
+
+  const byTicker = new Map<string, MarketPriceHistoryRow>();
+  for (const row of data) {
+    const ticker = row.ticker.trim().toUpperCase();
+    const price = Number(row.price);
+    if (!ticker || !Number.isFinite(price) || price <= 0) continue;
+    if (!byTicker.has(ticker)) {
+      byTicker.set(ticker, {
+        ticker,
+        reference_date: row.reference_date,
+        price,
+        currency: row.currency === "USD" ? "USD" : "BRL",
+        provider: row.provider ?? null,
+        market_price_at: row.market_price_at ?? null,
+        month: row.month,
+        is_month_end: Boolean(row.is_month_end),
+      });
+    }
+  }
+
+  return Array.from(byTicker.values()).sort((a, b) => a.ticker.localeCompare(b.ticker));
+}
+
+/**
+ * Grava o override manual de preço exclusivo do usuário (`source = 'manual'`).
  */
 export async function setManualPrice(input: ManualPriceInput): Promise<void> {
   const user_id = await currentUserId();
   const normalizedTicker = input.ticker.trim().toUpperCase();
   const currency: AssetCurrency = inferCurrencyFromTicker(normalizedTicker);
+  const nowIso = new Date().toISOString();
   const row = {
     user_id,
     ticker: normalizedTicker,
@@ -223,10 +341,11 @@ export async function setManualPrice(input: ManualPriceInput): Promise<void> {
     currency,
     source: "manual" as const,
     manual_price: input.price,
-    updated_at: new Date().toISOString(),
+    provider: "manual",
+    market_price_at: nowIso,
+    updated_at: nowIso,
   };
 
-  // Remove qualquer override prévio para este usuário e ticker antes de inserir
   const { error: deleteError } = await getSupabase()
     .from("asset_prices")
     .delete()
@@ -245,7 +364,7 @@ export async function setManualPrice(input: ManualPriceInput): Promise<void> {
   }
 }
 
-/** Remove o override manual — o preço volta a seguir cache/fallback. */
+/** Remove o override manual do usuário — a leitura volta a usar o cache global. */
 export async function removeManualPrice(ticker: string): Promise<void> {
   const user_id = await currentUserId();
   const normalizedTicker = ticker.trim().toUpperCase();
@@ -260,85 +379,3 @@ export async function removeManualPrice(ticker: string): Promise<void> {
     throw new AppError(classified.kind, classified.message, error);
   }
 }
-
-/**
- * Grava a cotação obtida de API para o usuário.
- * Não sobrescreve se o usuário tiver um override manual ativo.
- */
-export async function setAssetPriceFromApi(
-  ticker: string,
-  price: number,
-  currency: AssetCurrency,
-): Promise<void> {
-  await setAssetPricesBatchFromApi([{ ticker, price, currency }]);
-}
-
-/**
- * Grava cotações obtidas de API em lote para o usuário (evita N+1 de banco).
- * Não sobrescreve se o usuário tiver override manual ativo para o ticker.
- */
-export async function setAssetPricesBatchFromApi(
-  quotes: Array<{ ticker: string; price: number; currency: AssetCurrency }>,
-): Promise<void> {
-  if (quotes.length === 0) return;
-  const user_id = await currentUserId();
-  const normalizedTickers = [...new Set(quotes.map((q) => q.ticker.trim().toUpperCase()))];
-
-  // 1) Busca em lote todos os overrides manuais existentes
-  const { data: existingManuals, error: fetchError } = await resolveQuery<AssetPriceRow[]>(
-    getSupabase()
-      .from("asset_prices")
-      .select("ticker, price, currency, source, manual_price")
-      .eq("user_id", user_id)
-      .eq("source", "manual")
-      .in("ticker", normalizedTickers),
-  );
-
-  if (fetchError) {
-    const classified = classifyError(fetchError);
-    throw new AppError(classified.kind, classified.message, fetchError);
-  }
-
-  const manualSet = new Set((existingManuals ?? []).map((m) => m.ticker.trim().toUpperCase()));
-  const now = new Date().toISOString();
-
-  // 2) Filtra apenas os tickers sem override manual
-  const rowsToInsert = quotes
-    .filter((q) => !manualSet.has(q.ticker.trim().toUpperCase()) && q.price > 0)
-    .map((q) => ({
-      user_id,
-      ticker: q.ticker.trim().toUpperCase(),
-      price: q.price,
-      currency: q.currency,
-      source: "api" as const,
-      manual_price: null,
-      updated_at: now,
-    }));
-
-  if (rowsToInsert.length === 0) return;
-
-  const tickersToUpdate = [...new Set(rowsToInsert.map((r) => r.ticker))];
-
-  // 3) Remove caches anteriores de API em lote
-  const { error: deleteError } = await getSupabase()
-    .from("asset_prices")
-    .delete()
-    .eq("user_id", user_id)
-    .eq("source", "api")
-    .in("ticker", tickersToUpdate);
-
-  if (deleteError) {
-    const classified = classifyError(deleteError);
-    throw new AppError(classified.kind, classified.message, deleteError);
-  }
-
-  // 4) Insere o lote em uma única instrução atômica
-  const { error: insertError } = await getSupabase().from("asset_prices").insert(rowsToInsert);
-  if (insertError) {
-    const classified = classifyError(insertError);
-    throw new AppError(classified.kind, classified.message, insertError);
-  }
-}
-
-
-

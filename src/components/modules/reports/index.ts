@@ -1,4 +1,8 @@
-export { ReportDocumentLayout, type ReportDocumentLayoutProps } from "./report-document-layout";
+export {
+  ReportDocumentLayout,
+  type ReportDocumentLayoutProps,
+  type ReportPrintWarning,
+} from "./report-document-layout";
 export {
   ReportHeader,
   ReportCoverHeader,
@@ -8,6 +12,7 @@ export {
   AxirMonogram,
   type ReportHeaderProps,
   type ReportCoverHeaderProps,
+  type ReportMarketMetadata,
   type ReportRunningHeaderProps,
 } from "./report-header";
 export { REPORT_SPACING, type ReportSpacing } from "./report-tokens";
@@ -101,3 +106,11 @@ export {
   ReportInsufficientDataModal,
   type ReportInsufficientDataModalProps,
 } from "./report-insufficient-data-modal";
+export {
+  CustodyReconciliationCard,
+  type CustodyReconciliationCardProps,
+} from "./custody-reconciliation-card";
+export {
+  ReportQuoteStatusBanner,
+  type ReportQuoteStatusBannerProps,
+} from "./report-quote-status-banner";

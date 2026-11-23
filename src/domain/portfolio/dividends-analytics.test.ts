@@ -107,4 +107,19 @@ describe("dividends-analytics", () => {
     expect(snowball.activeCount).toBe(1);
     expect(snowball.totalMonthlyEstimatedIncome).toBe(10);
   });
+
+  it("ignora proventos com paymentDate nula na grade mensal anual sem lançar exceção", () => {
+    const assetById = new Map([["a1", makeAsset()]]);
+    const yearly = buildYearlyDividendsSummary(
+      [],
+      "2026",
+      [
+        { paymentDate: null, totalAmount: 99 },
+        { paymentDate: "2026-08-25", totalAmount: 30 },
+      ],
+      assetById,
+      new Map(),
+    );
+    expect(yearly.yearly[7]?.projectedTotal).toBe(30);
+  });
 });

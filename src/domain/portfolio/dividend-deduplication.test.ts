@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isCorporateDividendDeduplicated } from "./dividend-deduplication";
+import {
+  findFuzzyMatchingManualDividend,
+  isCorporateDividendDeduplicated,
+  normalizeDividendTickerKey,
+} from "./dividend-deduplication";
 
 describe("dividend-deduplication: Deduplicação Inteligente B3 vs Manual", () => {
   it("deve deduplicar quando ticker, data (dentro de 3 dias úteis) e valor forem coincidentes", () => {
@@ -98,5 +102,23 @@ describe("dividend-deduplication: Deduplicação Inteligente B3 vs Manual", () =
     );
 
     expect(deduplicated).toBe(false);
+  });
+
+  it("normaliza tickers fracionários (.SA / F) e não deduplica quando payment_date é nula", () => {
+    expect(normalizeDividendTickerKey("petr4f.sa")).toBe("PETR4");
+
+    const matchNull = findFuzzyMatchingManualDividend(
+      { ticker: "PETR4", payment_date: null },
+      100,
+      [{ id: "m1", ticker: "PETR4", date: "2026-11-20", amount: 100 }],
+    );
+    expect(matchNull).toBeNull();
+
+    const matchFrac = findFuzzyMatchingManualDividend(
+      { ticker: "PETR4", payment_date: "2026-11-20" },
+      100,
+      [{ id: "m2", ticker: "PETR4F", date: "2026-11-20", amount: 100 }],
+    );
+    expect(matchFrac?.id).toBe("m2");
   });
 });

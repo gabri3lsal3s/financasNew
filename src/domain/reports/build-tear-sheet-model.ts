@@ -240,7 +240,14 @@ export function buildTearSheetModel(params: BuildTearSheetModelParams): TearShee
     allocationRows,
     topDominance,
     breakdownRows,
-    classTableGroups: buildClassTableGroups(activeInvestmentRows, totalBRL, cashBRL, params.usdRate),
+    classTableGroups: buildClassTableGroups(
+      activeInvestmentRows,
+      totalBRL,
+      cashBRL,
+      params.usdRate,
+      params.fxMetadata,
+      params.staleGuard,
+    ),
     intlPct: totalBRL > 0 ? (intlTotalBRL / totalBRL) * 100 : 0,
     hasTargets: allocationRows.some((cg) => cg.targetPct > 0),
     surplusClasses: allocationRows

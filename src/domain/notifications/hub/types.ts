@@ -11,6 +11,7 @@ import type {
 import type {
   BudgetOverrunAlert,
   ClosedCardBillAlert,
+  DividendNotificationAlert,
   TripFamilyAlert,
 } from "./event-detectors";
 
@@ -106,6 +107,7 @@ export interface BuildNotificationCenterInput {
   closedBillAlerts?: ClosedCardBillAlert[];
   budgetOverrunAlert?: BudgetOverrunAlert | null;
   tripAndFamilyAlerts?: TripFamilyAlert[];
+  dividendAlerts?: DividendNotificationAlert[];
   categoryPreferences?: NotificationCategoryPreferences | null;
   advisorInsights?: SmartAdvisorInsight[];
   broadcasts?: UserBroadcastNotification[];
@@ -126,6 +128,7 @@ export interface NotificationCenterSummary {
   closedBillAlerts: ClosedCardBillAlert[];
   budgetOverrunAlert: BudgetOverrunAlert | null;
   tripAndFamilyAlerts: TripFamilyAlert[];
+  dividendAlerts: DividendNotificationAlert[];
   advisorAlerts: SmartAdvisorInsight[];
   unreadBroadcasts: UserBroadcastNotification[];
   unreadSupportTickets: SupportTicket[];

@@ -32,6 +32,7 @@ import type {
   LeaveFamilyResult,
   RemoveFamilyMemberResult,
   Loan,
+  MarketPriceHistory,
   Plan,
   PortfolioAsset,
   PortfolioContribution,
@@ -57,7 +58,9 @@ import type {
   TransactionalEmailLog,
   CorporateDividend,
   PortfolioDividendDismissal,
+  UserDividendEvent,
   ApproveDividendsBatchResult,
+  ConfirmDividendEventsResult,
   MonthlyClosingResult,
   UserDevice,
   UserPushSubscription,
@@ -109,6 +112,7 @@ export interface Database {
       class_targets: Table<GroupTarget>;
       sector_targets: Table<GroupTarget>;
       asset_prices: Table<AssetPrice>;
+      market_price_history: Table<MarketPriceHistory>;
       cash_checkpoints: Table<CashCheckpoint>;
       audit_events: Table<AuditEvent>;
       support_tickets: Table<SupportTicket>;
@@ -121,6 +125,7 @@ export interface Database {
       family_settlements: Table<FamilySettlement>;
       corporate_dividends: Table<CorporateDividend>;
       portfolio_dividend_dismissals: Table<PortfolioDividendDismissal>;
+      user_dividend_events: Table<UserDividendEvent>;
       user_devices: Table<UserDevice>;
       user_push_subscriptions: Table<UserPushSubscription>;
     };
@@ -143,6 +148,30 @@ export interface Database {
           p_sync_cash?: boolean;
         };
         Returns: ApproveDividendsBatchResult;
+      };
+      confirm_user_dividend_events_atomic: {
+        Args: {
+          p_items: unknown;
+          p_sync_cash?: boolean;
+        };
+        Returns: ConfirmDividendEventsResult;
+      };
+      settle_user_dividend_event_system: {
+        Args: {
+          p_event_id: string;
+          p_sync_cash?: boolean;
+          p_fx_rate?: number | null;
+          p_override_net_amount?: number | null;
+          p_override_payment_date?: string | null;
+          p_notes?: string | null;
+        };
+        Returns: Record<string, unknown>;
+      };
+      upsert_corporate_dividend_system: {
+        Args: {
+          p_rows: unknown;
+        };
+        Returns: Record<string, unknown>;
       };
       calibrate_portfolio_snapshot: {
         Args: {

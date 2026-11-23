@@ -7,7 +7,7 @@ import { formatDateBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { formatAssetQuantity } from "@/services/formatting";
 import {
-  PRICE_SOURCE_LABEL,
+  buildPositionPriceTooltip,
   type PositionRow,
   type PositionTableProps,
   type SortKey,
@@ -189,27 +189,36 @@ export function buildPositionColumns(params: BuildPositionColumnsParams): {
       header: headerFor("price", "Preço"),
       align: "right",
       className: "flex-1 min-w-[105px]",
-      cell: (row) => (
-        <div className="flex flex-col items-end">
-          <PositionActionMoneyCell
-            cents={numberToCents(row.priceBRL)}
-            ariaLabel={`Cotação de ${row.ticker}`}
-            tooltipTitle={`${PRICE_SOURCE_LABEL[row.source].title} — clique para alterar`}
-            onAction={onSetManualPrice ? () => triggerManualPrice(row) : undefined}
-            dotTone={row.source === "manual" ? "manual" : row.source === "fallback" ? "fallback" : "auto"}
-            manualTitle="Preço manual"
-            fallbackTitle="Preço estimado (fallback)"
-          />
-          {row.currency === "USD" && row.priceQuote ? (
-            <span
-              className="text-[10.5px] text-muted-foreground font-mono tabular-nums pr-1.5"
-              title={`Cotação em Dólar: US$ ${row.priceQuote.toFixed(2)}`}
-            >
-              US$ {row.priceQuote.toFixed(2)}
-            </span>
-          ) : null}
-        </div>
-      ),
+      cell: (row) => {
+        const dotTone =
+          row.source === "manual"
+            ? "manual"
+            : row.source === "fallback" || row.isEstimate || row.staleIssue
+              ? "fallback"
+              : "auto";
+        const fallbackTitle = row.staleIssue?.message ?? "Preço estimado ou defasado";
+        return (
+          <div className="flex flex-col items-end">
+            <PositionActionMoneyCell
+              cents={numberToCents(row.priceBRL)}
+              ariaLabel={`Cotação de ${row.ticker}`}
+              tooltipTitle={buildPositionPriceTooltip(row)}
+              onAction={onSetManualPrice ? () => triggerManualPrice(row) : undefined}
+              dotTone={dotTone}
+              manualTitle="Preço manual"
+              fallbackTitle={fallbackTitle}
+            />
+            {row.currency === "USD" && row.priceQuote ? (
+              <span
+                className="text-[10.5px] text-muted-foreground font-mono tabular-nums pr-1.5"
+                title={`Cotação em Dólar: US$ ${row.priceQuote.toFixed(2)}`}
+              >
+                US$ {row.priceQuote.toFixed(2)}
+              </span>
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       key: "averageCost",

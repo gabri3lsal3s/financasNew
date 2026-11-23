@@ -3,7 +3,7 @@ import { numberToCents } from "@/domain/money";
 import { getErrorMessage } from "@/services/errors";
 import { formatCentsAsBRL } from "@/services/masks";
 import type { PortfolioAsset } from "@/types";
-import { PendingDividendsDialog, QuickTransactionSheet } from "../components";
+import { QuickTransactionSheet } from "../components";
 import { DividendsByAssetPanel } from "../components/proventos/dividends-by-asset-panel";
 import { DividendsCalendarPanel } from "../components/proventos/dividends-calendar-panel";
 import { DividendsHistoryPanel } from "../components/proventos/dividends-history-panel";
@@ -25,8 +25,8 @@ export interface ProventosTabProps {
  * Proventos da carteira (§F36 e §F39) — extrato mensal dos rendimentos RECEBIDOS,
  * calendário anual, histórico vitalício por ativo e acompanhamento Bola de Neve.
  */
-export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) {
-  const ctrl = useProventosTabController(defaultMonth, onOpenWizard);
+export function ProventosTab({ defaultMonth }: ProventosTabProps) {
+  const ctrl = useProventosTabController(defaultMonth);
 
   const tabItems: TabItem[] = [
     {
@@ -48,7 +48,7 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
           onOpenNewDividend={() => ctrl.guardAction(() => ctrl.setDividendFormOpen(true), "Registrar Provento")}
           onEditDividend={(entry) => ctrl.guardAction(() => ctrl.setEditingDividend(entry), "Editar Provento")}
           onDeleteDividend={(entry) => ctrl.guardAction(() => ctrl.setDividendToDelete(entry), "Excluir Provento")}
-          onOpenPendingDividends={() => ctrl.setPendingDividendsDialogOpen(true)}
+          onOpenPendingDividends={ctrl.openPendingDividendsModal}
         />
       ),
     },
@@ -64,6 +64,9 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
           yearMonthlyAverage={ctrl.yearlySummary.yearMonthlyAverage}
           bestMonth={ctrl.yearlySummary.bestMonth}
           maxMonthTotal={ctrl.yearlySummary.maxMonthTotal}
+          pendingItems={ctrl.corporateDividends.available}
+          provisionedItems={ctrl.corporateDividends.projected}
+          onOpenReview={ctrl.openPendingDividendsModal}
           onSelectMonth={(nextMonth) => {
             ctrl.setMonth(nextMonth);
             ctrl.handleSubTabChange("mensal");
@@ -174,13 +177,6 @@ export function ProventosTab({ defaultMonth, onOpenWizard }: ProventosTabProps) 
           </div>
         ) : null}
       </ConfirmDialog>
-
-      <PendingDividendsDialog
-        open={ctrl.pendingDividendsDialogOpen}
-        onOpenChange={ctrl.setPendingDividendsDialogOpen}
-        availableDividends={ctrl.corporateDividends.available}
-        projectedDividends={ctrl.corporateDividends.projected}
-      />
 
       {ctrl.upgradeModal}
     </div>

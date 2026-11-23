@@ -386,6 +386,20 @@ export type UserCustomSettings = {
   hasDismissedAndroidProBanner?: boolean;
   portfolioRiskPolicy?: PortfolioRiskPolicySettings;
   portfolioAlertDismissals?: PortfolioAlertDismissalsMap;
+  dividendAutomation?: DividendAutomationPreferences;
+};
+
+export type DividendAutomationPreferences = {
+  /** Modo padrão de efetivação quando chega a data de pagamento: "auto" (padrão) ou "manual_confirm". */
+  settlementMode?: "auto" | "manual_confirm";
+  /** Credita automaticamente o valor líquido no ativo CAIXA (em BRL). Padrão: true. */
+  autoCreditCash?: boolean;
+  /** Emite aviso/push ao detectar proventos futuros provisionados com Data COM. Padrão: true. */
+  notifyOnProvisioned?: boolean;
+  /** Emite aviso/push quando provento é creditado ou aguarda confirmação. Padrão: true. */
+  notifyOnPayment?: boolean;
+  /** Data civil YYYY-MM-DD (America/Sao_Paulo) da ativação da automação para trava Anti-Flood. */
+  activatedAt?: string | null;
 };
 
 export type PortfolioRiskPolicySettings = {
@@ -898,11 +912,48 @@ export type CorporateDividend = {
   ticker: string;
   type: CorporateDividendType;
   com_date: string;
-  payment_date: string;
+  payment_date: string | null;
   rate: number;
   currency: "BRL" | "USD";
   net_rate: number;
+  provider?: string | null;
+  tax_rate_pct?: number;
+  is_type_uncertain?: boolean;
   created_at?: string;
+  updated_at?: string;
+};
+
+export type UserDividendEventStatus =
+  | "PROVISIONED"
+  | "PENDING_CONFIRMATION"
+  | "SETTLED"
+  | "DISMISSED";
+
+export type UserDividendEvent = {
+  id: string;
+  user_id: string;
+  corporate_dividend_id: string | null;
+  asset_id: string;
+  ticker: string;
+  type: CorporateDividendType;
+  status: UserDividendEventStatus;
+  com_date: string;
+  payment_date: string | null;
+  quantity_on_com_date: number;
+  gross_rate: number;
+  net_rate: number;
+  tax_rate_pct: number;
+  gross_amount: number;
+  net_amount: number;
+  currency: "BRL" | "USD";
+  fx_rate_applied?: number | null;
+  settled_dividend_id?: string | null;
+  is_manual: boolean;
+  is_type_uncertain: boolean;
+  dismiss_reason?: PortfolioDividendDismissalReason | null;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type PortfolioDividendDismissalReason = "already_received" | "not_applicable" | "manual_ignore";
@@ -922,6 +973,8 @@ export type ApproveDividendsBatchItem = {
   amount: number;
   notes?: string | null;
   corporate_dividend_id?: string | null;
+  currency?: "BRL" | "USD";
+  fx_rate?: number | null;
 };
 
 export type ApproveDividendsBatchPayload = {
@@ -935,6 +988,38 @@ export type ApproveDividendsBatchResult = {
   total_cash: number;
   cash_asset_id: string | null;
   inserted_ids: string[];
+};
+
+export type ConfirmDividendEventItem = {
+  event_id?: string | null;
+  corporate_dividend_id?: string | null;
+  asset_id?: string | null;
+  ticker: string;
+  type: CorporateDividendType;
+  com_date?: string;
+  date: string;
+  amount: number;
+  tax_rate_pct?: number;
+  quantity_on_com_date?: number;
+  gross_rate?: number;
+  net_rate?: number;
+  currency?: "BRL" | "USD";
+  fx_rate?: number | null;
+  notes?: string | null;
+};
+
+export type ConfirmDividendEventsPayload = {
+  items: ConfirmDividendEventItem[];
+  sync_cash?: boolean;
+};
+
+export type ConfirmDividendEventsResult = {
+  success: boolean;
+  inserted_count: number;
+  total_cash: number;
+  cash_asset_id: string | null;
+  inserted_ids: string[];
+  settled_event_ids: string[];
 };
 
 export type MonthlyClosingPriceItem = {
@@ -1023,6 +1108,7 @@ export type PortfolioDividend = {
   notes?: string | null;
   sync_cash?: boolean | null;
   cash_amount?: number | null;
+  source_event_id?: string | null;
   created_at?: string;
 };
 
@@ -1066,6 +1152,24 @@ export type AssetPrice = {
   source: AssetSource;
   manual_price: number | null;
   updated_at: string;
+  market_price_at?: string | null;
+  fetched_at?: string | null;
+  provider?: string | null;
+  pending_spike_price?: number | null;
+  pending_spike_at?: string | null;
+};
+
+export type MarketPriceHistory = {
+  ticker: string;
+  reference_date: string;
+  price: number;
+  currency: AssetCurrency;
+  provider?: string | null;
+  market_price_at?: string | null;
+  month: string;
+  is_month_end: boolean;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type CashCheckpoint = {
