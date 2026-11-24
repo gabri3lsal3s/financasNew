@@ -125,7 +125,7 @@ export function SplitPublicPage() {
             <div className="pt-2">
               <SplitConversionBanner
                 isSavingDirectly={state.isSavingDirectly}
-                onStartTrial={() => navigate("/cadastrar?ref=split")}
+                onLearnMore={() => navigate("/")}
                 onSaveExpense={state.handleSaveExpenseClick}
               />
             </div>

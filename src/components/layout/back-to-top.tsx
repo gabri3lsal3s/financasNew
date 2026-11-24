@@ -8,7 +8,7 @@ export interface BackToTopProps {
   visible: boolean;
   /** ID do contêiner de rolagem alvo (padrão: "main-content"). */
   containerId?: string;
-  /** Aplica offset para posicionar confortavelmente acima da BottomNav no mobile (padrão: true). */
+  /** Aplica offset para posicionar confortavelmente acima da BottomNav no mobile e tablet (< lg) (padrão: true). */
   bottomNavOffset?: boolean;
   /** Offset alternativo para a Landing Page quando houver MobileCtaDock visível. */
   hasBottomDock?: boolean;
@@ -37,8 +37,8 @@ export function BackToTop({
         ? "bottom-[calc(4.75rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] md:bottom-8"
         : "bottom-[calc(1.25rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] md:bottom-8"
       : bottomNavOffset
-        ? "bottom-[calc(5.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] md:bottom-8"
-        : "bottom-6 md:bottom-8";
+        ? "bottom-[calc(5.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] lg:bottom-8"
+        : "bottom-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--safe-area-bottom,0px)))] md:bottom-8";
 
   return (
     <div

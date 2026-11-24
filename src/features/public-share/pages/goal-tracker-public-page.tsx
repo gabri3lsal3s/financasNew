@@ -152,9 +152,6 @@ export function GoalTrackerPublicPage() {
                       <span className="text-sm font-semibold text-foreground">
                         Crie Vaquinhas &amp; Metas Financeiras Coletivas
                       </span>
-                      <Badge variant="muted" size="xs">
-                        30 Dias Grátis
-                      </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       Organize arrecadações com amigos, casamento, viagens ou projetos pessoais com link público e Pix integrado.
@@ -162,13 +159,13 @@ export function GoalTrackerPublicPage() {
                   </div>
                 </div>
                 <Link
-                  to="/cadastrar?ref=meta"
+                  to="/"
                   className={cn(
                     buttonVariants({ size: "sm" }),
                     "gap-1.5 shrink-0 font-semibold text-xs rounded-xl",
                   )}
                 >
-                  <span>Criar Minha Meta Grátis</span>
+                  <span>Conhecer o Axir</span>
                   <ArrowRight className="size-3.5" aria-hidden="true" />
                 </Link>
               </div>

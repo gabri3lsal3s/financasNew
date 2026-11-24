@@ -277,7 +277,7 @@ describe("SplitPublicPage (/r/:token)", () => {
 
     expect(screen.getByText("Divida despesas com elegância")).toBeInTheDocument();
     expect(screen.getByText("Salvar esta despesa")).toBeInTheDocument();
-    expect(screen.getByText("Testar 30 dias grátis")).toBeInTheDocument();
+    expect(screen.getByText("Conhecer o Axir")).toBeInTheDocument();
   });
 
   it("renderiza timeline de parcelas e atualiza valor ao selecionar uma parcela específica", async () => {
