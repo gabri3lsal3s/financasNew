@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { LogOut } from "lucide-react";
 import { Modal, Button } from "@/components/ui";
@@ -6,6 +6,7 @@ import { BrandLogo } from "@/components/layout/brand-logo";
 import { DemoTrackSelectModal } from "@/components/modules/demo-track-select-modal";
 import { HelpModal } from "@/components/modules/help-modal";
 import { useAuth } from "@/hooks/use-auth";
+import { useModalTransition } from "@/hooks/use-modal-transition";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useUserSubscription } from "@/state";
 import { AXIR_APP_NAME, AXIR_APP_VERSION } from "@/services/native/app-links";
@@ -51,10 +52,15 @@ export function LogoProfileButton({
   const [open, setOpen] = useState(false);
   const [demoSelectOpen, setDemoSelectOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const { scheduleAfterClose, cancelTransition } = useModalTransition();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { signOut } = useSignOut();
   const subscription = useUserSubscription();
+
+  useEffect(() => {
+    if (open) cancelTransition();
+  }, [open, cancelTransition]);
 
   const name: string | undefined = user?.user_metadata?.name as string | undefined;
   const email = user?.email;
@@ -62,17 +68,20 @@ export function LogoProfileButton({
   const displayName = name ?? email?.split("@")[0] ?? "Usuário";
 
   const handleLogout = async () => {
+    cancelTransition();
     setOpen(false);
     await signOut();
   };
 
   const navigateFromMenu = (path: string) => {
+    cancelTransition();
     triggerSensory("selection");
     setOpen(false);
     navigate(path);
   };
 
   const navigateFromButton = (path: string) => {
+    cancelTransition();
     setOpen(false);
     navigate(path);
   };
@@ -134,13 +143,17 @@ export function LogoProfileButton({
             onNavigateTab={navigateFromMenu}
             onOpenDemoSelect={() => {
               triggerSensory("selection");
-              setOpen(false);
-              setDemoSelectOpen(true);
+              scheduleAfterClose(
+                () => setOpen(false),
+                () => setDemoSelectOpen(true),
+              );
             }}
             onOpenHelp={() => {
               triggerSensory("selection");
-              setOpen(false);
-              setHelpModalOpen(true);
+              scheduleAfterClose(
+                () => setOpen(false),
+                () => setHelpModalOpen(true),
+              );
             }}
           />
         </div>

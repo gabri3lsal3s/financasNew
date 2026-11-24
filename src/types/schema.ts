@@ -1769,6 +1769,7 @@ export type UserDevice = {
   browser: string;
   os: string;
   ip_address: string | null;
+  auth_session_id?: string | null;
   last_seen_at: string;
   created_at: string;
   is_revoked: boolean;

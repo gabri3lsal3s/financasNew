@@ -141,24 +141,14 @@ export function SupportTab() {
         </CardContent>
       </Card>
 
-      {chatOpen ? <SupportChatDialog open={chatOpen} onOpenChange={setChatOpen} /> : null}
-      {helpOpen ? (
-        <HelpModal
-          open={helpOpen}
-          onOpenChange={setHelpOpen}
-          onOpenDemoSelect={() => {
-            setHelpOpen(false);
-            setDemoSelectOpen(true);
-          }}
-          onOpenSupport={() => {
-            setHelpOpen(false);
-            setChatOpen(true);
-          }}
-        />
-      ) : null}
-      {demoSelectOpen ? (
-        <DemoTrackSelectModal open={demoSelectOpen} onOpenChange={setDemoSelectOpen} />
-      ) : null}
+      <SupportChatDialog open={chatOpen} onOpenChange={setChatOpen} />
+      <HelpModal
+        open={helpOpen}
+        onOpenChange={setHelpOpen}
+        onOpenDemoSelect={() => setDemoSelectOpen(true)}
+        onOpenSupport={() => setChatOpen(true)}
+      />
+      <DemoTrackSelectModal open={demoSelectOpen} onOpenChange={setDemoSelectOpen} />
     </div>
   );
 }

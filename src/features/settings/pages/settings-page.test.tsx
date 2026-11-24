@@ -17,6 +17,9 @@ vi.mock("@/hooks/use-auth", () => ({
     loading: false,
     configError: null,
   }),
+  getActiveUserMfaFactor: vi.fn().mockResolvedValue(null),
+  verifyCurrentPassword: vi.fn().mockResolvedValue(true),
+  verifyMfaTotpCode: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/data/client", () => ({
@@ -225,7 +228,7 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     expect(screen.getByRole("tab", { name: /Minha Conta/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Aparência" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Notificações" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Dados & Privacidade" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Segurança & Privacidade" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Plano" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Suporte & Ajuda" })).toBeInTheDocument();
     // Aba padrão é Minha Conta
@@ -312,11 +315,11 @@ describe("SettingsPage (Centro de Configurações Otimizado)", () => {
     });
   });
 
-  it("permite acessar a aba Dados & Privacidade e visualizar bloqueio e sobre o app", async () => {
+  it("permite acessar a aba Segurança & Privacidade e visualizar bloqueio e sobre o app", async () => {
     const user = userEvent.setup();
     renderSettings();
 
-    const securityTab = screen.getByRole("tab", { name: "Dados & Privacidade" });
+    const securityTab = screen.getByRole("tab", { name: "Segurança & Privacidade" });
     await user.click(securityTab);
 
     expect(screen.getByText("Bloqueio do Aplicativo & Privacidade")).toBeInTheDocument();

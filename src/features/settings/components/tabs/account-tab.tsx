@@ -7,7 +7,6 @@ import { getErrorMessage } from "@/services/errors";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { useUpdateProfile, useUserAccess, useUserSubscription } from "@/state";
-import { MfaModal } from "../mfa-modal";
 import { AccountDetailsCard } from "./account/account-details-card";
 import { AccountSessionsCard } from "./account/account-sessions-card";
 import { ChangeEmailModal } from "./account/change-email-modal";
@@ -62,8 +61,6 @@ export function AccountTab() {
   const [copiedId, setCopiedId] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
-  const [isSigningOutOthers, setIsSigningOutOthers] = useState(false);
-  const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
 
   const isNameChanged = name.trim().length > 0 && name.trim() !== currentName.trim();
 
@@ -126,29 +123,6 @@ export function AccountTab() {
     }
   };
 
-  const handleSignOutOthers = async () => {
-    setIsSigningOutOthers(true);
-    try {
-      await signOut({ scope: "others" });
-      triggerSensory("success");
-      pushToast({
-        title: "Outros acessos encerrados",
-        description:
-          "Todas as sessões ativas em outros navegadores ou aparelhos foram desconectadas com sucesso.",
-        variant: "success",
-      });
-    } catch (err) {
-      triggerSensory("destructive");
-      pushToast({
-        title: "Não foi possível encerrar outras sessões",
-        description: getErrorMessage(err),
-        variant: "destructive",
-      });
-    } finally {
-      setIsSigningOutOthers(false);
-    }
-  };
-
   const accountCreatedAt = profile?.created_at ?? user?.created_at;
 
   return (
@@ -183,12 +157,7 @@ export function AccountTab() {
       />
 
       <AccountSessionsCard
-        isSigningOutOthers={isSigningOutOthers}
         onOpenSignOutModal={() => setIsSignOutModalOpen(true)}
-        onSignOutOthers={() => {
-          void handleSignOutOthers();
-        }}
-        onOpenMfaModal={() => setIsMfaModalOpen(true)}
       />
 
       <ChangeEmailModal
@@ -220,8 +189,6 @@ export function AccountTab() {
           Ao sair, suas informações e lançamentos continuam seguros na sua conta da nuvem. Você poderá se autenticar novamente a qualquer momento com seu e-mail e senha.
         </p>
       </ConfirmDialog>
-
-      <MfaModal open={isMfaModalOpen} onOpenChange={setIsMfaModalOpen} />
     </div>
   );
 }

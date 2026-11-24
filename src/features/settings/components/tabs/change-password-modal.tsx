@@ -4,12 +4,14 @@ import { KeyRound, Loader2 } from "lucide-react";
 import {
   Alert,
   Button,
+  Checkbox,
   FormField,
   Modal,
   ModalFooter,
   PasswordInput,
 } from "@/components/ui";
 import { changeUserPassword } from "@/hooks/use-auth";
+import { useSignOut } from "@/hooks/use-sign-out";
 import { checkPasswordRequirements } from "@/domain/validation";
 import { pushToast } from "@/services/toast";
 import { triggerSensory } from "@/services/sensory";
@@ -24,9 +26,11 @@ export interface ChangePasswordModalProps {
 const CHANGE_PASSWORD_FORM_ID = "change-password-form";
 
 export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalProps) {
+  const { signOut } = useSignOut();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [revokeOtherSessions, setRevokeOtherSessions] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -34,6 +38,7 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
+    setRevokeOtherSessions(false);
     setErrorMessage(null);
   };
 
@@ -76,6 +81,13 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
 
     try {
       await changeUserPassword(currentPassword, newPassword);
+      if (revokeOtherSessions) {
+        try {
+          await signOut({ scope: "others" });
+        } catch {
+          // Falha ao encerrar outras sessões não invalida a troca já efetuada
+        }
+      }
       triggerSensory("success");
       pushToast({
         title: "Senha atualizada com sucesso",
@@ -195,6 +207,21 @@ export function ChangePasswordModal({ open, onOpenChange }: ChangePasswordModalP
         </div>
 
         {newPassword.length > 0 ? <PasswordRequirementsChecklist password={newPassword} /> : null}
+
+        <div className="flex items-start gap-2.5 rounded-xl bg-surface-raised/60 p-3 border border-border/80">
+          <Checkbox
+            id="modal-revoke-other-sessions"
+            checked={revokeOtherSessions}
+            onCheckedChange={(checked) => setRevokeOtherSessions(Boolean(checked))}
+            disabled={isUpdating}
+          />
+          <label
+            htmlFor="modal-revoke-other-sessions"
+            className="text-xs text-muted-foreground leading-relaxed cursor-pointer select-none"
+          >
+            Encerrar sessão em outros dispositivos após atualizar a senha
+          </label>
+        </div>
       </form>
     </Modal>
   );

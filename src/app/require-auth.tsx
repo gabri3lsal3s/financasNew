@@ -4,6 +4,7 @@ import { Navigate, Outlet, useLocation, useNavigate } from "react-router";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { AuthenticatedProviders } from "@/app/authenticated-providers";
 import { useAuth } from "@/hooks/use-auth";
+import { useDeviceSessionSync } from "@/hooks/use-device-session-sync";
 import { useIdleSessionTimeout } from "@/hooks/use-idle-session-timeout";
 import { useMinimumLoading } from "@/hooks/use-minimum-loading";
 import { getOptionalHook } from "@/hooks/use-notification-center";
@@ -37,6 +38,11 @@ const FloatingCalculator = lazy(() =>
 );
 const ApkBetaRestrictedModal = lazy(() =>
   import("@/components/modules/apk-beta-restricted-modal").then((m) => ({ default: m.ApkBetaRestrictedModal })),
+);
+const IdleSessionWarningModal = lazy(() =>
+  import("@/components/modules/idle-session-warning-modal").then((m) => ({
+    default: m.IdleSessionWarningModal,
+  })),
 );
 
 /**
@@ -154,7 +160,8 @@ export function RequireAuth({ children }: { children?: ReactNode }) {
   usePendingSplitExpense();
   usePendingSimulation();
   useRoutePrefetch();
-  useIdleSessionTimeout();
+  const idleSession = useIdleSessionTimeout();
+  useDeviceSessionSync();
 
   const hasUser = Boolean(session?.user);
   const isAccessPending = hasUser && !userAccess.profile && !userAccess.error;
@@ -209,6 +216,12 @@ export function RequireAuth({ children }: { children?: ReactNode }) {
         <Suspense fallback={null}>
           <FloatingCalculator />
           <ApkBetaRestrictedModal />
+          <IdleSessionWarningModal
+            open={idleSession.isWarningVisible}
+            secondsRemaining={idleSession.secondsRemaining}
+            onStayConnected={idleSession.stayConnected}
+            onSignOutNow={idleSession.signOutNow}
+          />
         </Suspense>
         <NativeIntegrationsHandler />
         {children ?? <Outlet />}

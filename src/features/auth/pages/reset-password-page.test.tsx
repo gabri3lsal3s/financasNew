@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ResetPasswordPage } from "./reset-password-page";
 import * as toastModule from "@/services/toast";
 import * as sensoryModule from "@/services/sensory";
+import { markPendingExplicitDeviceRegistration } from "@/services/native/device-info";
 
 const mockUnsubscribe = vi.fn();
 type AuthListener = (event: string, session: unknown) => void;
@@ -34,6 +35,10 @@ vi.mock("@/services/toast", () => ({
 
 vi.mock("@/services/sensory", () => ({
   triggerSensory: vi.fn(),
+}));
+
+vi.mock("@/services/native/device-info", () => ({
+  markPendingExplicitDeviceRegistration: vi.fn(),
 }));
 
 function renderResetPasswordPage() {
@@ -93,6 +98,7 @@ describe("ResetPasswordPage - Redefinição de Senha", () => {
     await waitFor(() => {
       expect(mockUpdateUserPassword).toHaveBeenCalledWith("SenhaForte123");
       expect(mockSignOut).toHaveBeenCalledWith({ scope: "others" });
+      expect(markPendingExplicitDeviceRegistration).toHaveBeenCalledTimes(1);
       expect(sensoryModule.triggerSensory).toHaveBeenCalledWith("success");
       expect(toastModule.pushToast).toHaveBeenCalledWith(
         expect.objectContaining({ variant: "success" }),

@@ -1,4 +1,4 @@
-import { cloneElement, isValidElement, useRef, useState } from "react";
+import { cloneElement, isValidElement, useLayoutEffect, useRef, useState } from "react";
 import type { ReactElement, ReactNode, UIEvent } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { cn } from "@/lib/utils";
@@ -90,11 +90,11 @@ function DiscardConfirmDialog({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 bg-overlay/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200 z-floating-tools" />
+        <DialogPrimitive.Overlay className="fixed inset-0 bg-overlay/80 backdrop-blur-sm data-[state=open]:animate-overlay-in data-[state=closed]:animate-overlay-out z-floating-tools" />
         <DialogPrimitive.Content
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
-          className="fixed left-1/2 top-1/2 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-primary/25 bg-surface p-4 sm:p-5 shadow-2xl z-floating-tools animate-in fade-in-0 zoom-in-95 duration-200 focus:outline-none"
+          className="fixed left-1/2 top-1/2 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-primary/25 bg-surface p-4 sm:p-5 shadow-2xl z-floating-tools data-[state=open]:animate-dialog-in data-[state=closed]:animate-dialog-out focus:outline-none"
         >
           <DialogPrimitive.Title className="font-display text-base font-bold text-foreground tracking-tight">
             {title ?? "Descartar alterações?"}
@@ -187,9 +187,18 @@ export function Modal({
     setPrevOpen(open);
     if (!open) {
       setShowDiscardConfirm(false);
-      resetDrag();
+    } else {
+      setIsScrolled(false);
+      setHasScrolled(false);
     }
   }
+
+  useLayoutEffect(() => {
+    if (open) {
+      resetDrag();
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    }
+  }, [open, resetDrag]);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {
@@ -210,7 +219,6 @@ export function Modal({
 
   const handleConfirmDiscard = () => {
     setShowDiscardConfirm(false);
-    resetDrag();
     setIsScrolled(false);
     setHasScrolled(false);
     onDiscard?.();
@@ -249,7 +257,7 @@ export function Modal({
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay
             className={cn(
-              "fixed inset-0 bg-overlay backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 duration-200",
+              "fixed inset-0 bg-overlay backdrop-blur-sm data-[state=open]:animate-overlay-in data-[state=closed]:animate-overlay-out",
               z,
             )}
           />
@@ -261,8 +269,8 @@ export function Modal({
             onCloseAutoFocus={(e) => e.preventDefault()}
             style={dragStyle}
             className={cn(
-              "fixed inset-x-0 bottom-0 w-full max-h-[calc(92dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] flex flex-col overflow-hidden rounded-t-2xl border border-primary/25 bg-surface shadow-2xl focus:outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-sheet-in data-[state=closed]:animate-sheet-out duration-200",
-              "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:max-h-[calc(100dvh-3rem)] md:rounded-2xl md:-translate-x-1/2 md:-translate-y-1/2 md:animate-none md:data-[state=open]:animate-in md:data-[state=closed]:animate-out md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95 md:duration-200",
+              "fixed inset-x-0 bottom-0 w-full max-h-[calc(92dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] flex flex-col overflow-hidden rounded-t-2xl border border-primary/25 bg-surface shadow-2xl will-change-transform focus:outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-sheet-in data-[state=closed]:animate-sheet-out",
+              "md:inset-x-auto md:bottom-auto md:left-1/2 md:top-1/2 md:w-[calc(100vw-2rem)] md:max-h-[calc(100dvh-3rem)] md:rounded-2xl md:-translate-x-1/2 md:-translate-y-1/2 md:will-change-auto md:data-[state=open]:animate-dialog-in md:data-[state=closed]:animate-dialog-out",
               SIZE_MAX_W[size],
               z,
               className,

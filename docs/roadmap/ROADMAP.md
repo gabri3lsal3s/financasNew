@@ -1,5 +1,17 @@
 # ROADMAP.md — Roadmap Executável de Desenvolvimento
 
+> **v3.24.0 (Auth Multidispositivo, Inatividade Opt-in & Login + Motor Resiliente e Autoevolutivo de Importação de Faturas)** (2026-11-24):
+> - **Arquitetura Auth Multidispositivo, Inatividade Opt-in & Redesign do Login (`PLANO_MESTRE_AUTH_MULTIDISPOSITIVO_INATIVIDADE_BLOQUEIO.md`):**
+>   - Migration `20260101000152_session_devices_lifecycle_hardening.sql` aplicada em produção: vínculo `auth_session_id` em `public.user_devices`, limpeza oportunista de registros revogados > 90 dias, revogação real em `auth.sessions` e nova RPC `revoke_other_device_sessions`, com habilitação idempotente no Realtime;
+>   - Política de inatividade Web opt-in (`src/services/session-policy.ts`, padrão `"never"` = *Manter conectado*), opção *"Computador compartilhado (sair após 30 min sem uso)"* em `/entrar` (`login-page.tsx`), sincronização multi-aba via `BroadcastChannel`/`localStorage` (`use-idle-session-timeout.ts`), aviso regressivo de 60s (`IdleSessionWarningModal`), precedência estrita com `AppLockOverlay` e timeout obrigatório de 30 min no Console Admin (`RequireAdminSession`);
+>   - Orquestrador singleton `useDeviceSessionSync` (`StrictMode`-safe) com gate estrito de MFA (`AAL2`), heartbeat, revalidação em `online`/`focus` e rotação de `device_id` ao ser revogado; backoff persistido de PIN em `AppLockOverlay` + separação `onPinSaved`/`onPinRemoved`;
+>   - Aba *Segurança & Privacidade* consolidada (`SessionInactivityCard`, `TwoFactorCard`, `AppLockCard` com `lockOnIdle`, `ActiveDevicesCard` com desconexão em lote) e opção de encerrar outros aparelhos em `ChangePasswordModal`.
+> - **Motor Resiliente e Autoevolutivo de Importação de Faturas (`PLANO_ARQUITETURA_RESILIENTE_IMPORTACAO_AUTOEVOLUTIVA.md`):**
+>   - Camada 0 (`magic-bytes.ts`): sniffer de magic bytes para PDF digital/híbrido, PNG/JPG/WEBP, OFX/QFX, CSV/TSV, `.xlsx`/`.xls` HTML e texto colado, com fingerprint estável imune a mês/ano;
+>   - Camada 1 (`src/domain/reconciliation/blueprints/`): receitas declarativas por banco (`user_learned` → `ai_learned` → `builtin` com Nomad, XP/Rico/Clear, Nubank, Itaú, Bradesco, Santander, Inter, C6, BTG, BB e Caixa) e correções cirúrgicas em `csv-parser.ts`, `ofx-parser.ts`, `spreadsheet-parser.ts` (multi-aba + IEEE-754), `spatial-pdf-parser.ts` e `text-parser.ts`;
+>   - Camada 2 (`quality-gate.ts`) & Camada 3 (IA 3A/3B): Equação Contábil Dupla (`cycleNet` e `statementBalance`), desempate por `qualityScore`, SHA-256 determinístico para reanálise, escalada Vision governada por cota (`batch_calls`) e detecção de duplicatas já lançadas no app (`app-duplicates.ts`);
+>   - Camada 4 & 5 (`statement-blueprint-store.ts` + `StatementBlockClipperStep`): Shadow Replay obrigatório (`score >= 85`) somente no commit, LRU de 50 entradas com *self-healing* e assistente inline guiado sem tokens (recorte Início–Fim + exclusão pontual de linhas intrusas).
+
 > **v3.22.0 (Catálogo de Kits de Categorias & Aposentadoria da Restauração Monolítica)** (2026-11-24):
 > - **Aposentadoria da Restauração Monolítica:** remoção completa do botão cego e destrutivo "Restaurar categorias padrões" em `/orcamentos` (`BudgetsCategoriesTab`), substituindo-o pelo botão "Kits de categorias";
 > - **Catálogo Canônico de Kits (`src/domain/budgets/kits.ts`):** definição pura e testada dos kits `Kit Essencial (Padrão)` (prateleira de recuperação com 15 categorias padrão sem poluição de categorias reservadas de sistema), `Kit Negócio` (7 categorias operacionais para MEI/PJ/Autônomo), `Kit Família & Casa` (7 categorias para o lar e dependentes) e `Kit Veículo & Transporte` (5 categorias de mobilidade);
@@ -8127,6 +8139,22 @@ flowchart TD
 >   - 134 testes unitários passando em 16 arquivos em `src/features/categories/`, `src/domain/categories/`, `src/domain/budgets/` e `src/features/budgets/`;
 >   - Typecheck (`npm run typecheck`) 100% verde;
 >   - Lint (`npm run lint`) com 0 erros, certificando conformidade total com a Regra 8 do `AGENTS.md` (zero emojis e zero caracteres decorativos).
+
+---
+
+### Fase 128 — Auth Multidispositivo, Inatividade Opt-in & Login + Motor Resiliente e Autoevolutivo de Importação de Faturas (v3.24.0)
+
+> **Status:** Concluída, Migration `0152` Aplicada em Produção, Documentação Atualizada e Release v3.24.0 Empacotada:
+> - **Autenticação Multidispositivo, Inatividade Opt-in & Bloqueio (`PLANO_MESTRE_AUTH_MULTIDISPOSITIVO_INATIVIDADE_BLOQUEIO.md`):**
+>   - Migration `20260101000152_session_devices_lifecycle_hardening.sql` aplicada no Supabase remoto: `auth_session_id` em `public.user_devices`, limpeza oportunista de registros revogados > 90 dias, revogação real em `auth.sessions`, policy de `SELECT` compatível com Realtime e RPC `revoke_other_device_sessions`;
+>   - Política de inatividade configurável (`session-policy.ts`, padrão `"never"` = *Manter conectado*), opção *"Computador compartilhado (sair após 30 min sem uso)"* no `/entrar` (`login-page.tsx`), sincronia multi-aba via `BroadcastChannel` + `localStorage` (`use-idle-session-timeout.ts`), aviso regressivo de 60s (`IdleSessionWarningModal`) calculado por timestamp (`deadlineAt - Date.now()`), precedência com `AppLockOverlay` e política estrita de 30 min no Console Admin (`RequireAdminSession`);
+>   - Orquestrador singleton `useDeviceSessionSync` com gate de MFA (`AAL2`), heartbeat, revalidação em `online`/`focus` e rotação de `device_id` ao ser revogado; backoff persistido de PIN (`app-lock-overlay.tsx`, `pin-lock.ts`), separação `onPinSaved`/`onPinRemoved` e botão biométrico condicional;
+>   - Consolidação da aba *Segurança & Privacidade* (`SessionInactivityCard`, `TwoFactorCard`, `AppLockCard`, `ActiveDevicesCard`) e opção de encerrar outras sessões em `ChangePasswordModal`, com atualização completa de `docs/operations/SECURITY_GOVERNANCE.md`.
+> - **Motor Resiliente e Autoevolutivo de Importação de Faturas (`PLANO_ARQUITETURA_RESILIENTE_IMPORTACAO_AUTOEVOLUTIVA.md`):**
+>   - Pipeline em 5 camadas: Ingestão universal por Magic Bytes (`magic-bytes.ts`) + fingerprint estável sem PII;
+>   - Blueprints declarativos (`src/domain/reconciliation/blueprints/`) com precedência `user_learned` → `ai_learned` → `builtin` e parsers blindados (`csv-parser.ts`, `ofx-parser.ts`, `spreadsheet-parser.ts`, `spatial-pdf-parser.ts`, `text-parser.ts`);
+>   - Quality Gate Contábil Duplo (`quality-gate.ts`: `cycleNet` + `statementBalance`), deduplicação contra lançamentos existentes no app (`app-duplicates.ts`), escalada IA 3A → 3B governada por cota (`batch_calls`) e Shadow Replay obrigatório (`score >= 85`) no commit (`statement-blueprint-store.ts`);
+>   - Assistente inline sem tokens (`StatementBlockClipperStep`) com recorte Início–Fim, exclusão pontual de linhas intrusas e conferência ao vivo.
 
 
 

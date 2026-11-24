@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { checkAppUpdate, triggerAppUpdate } from "@/services/native/update-checker";
 import type { AppUpdateCheckResult, AppUpdateState } from "@/types/app-update";
 
@@ -20,6 +20,7 @@ export function useAppUpdate(options?: UseAppUpdateOptions): UseAppUpdateReturn 
   const [status, setStatus] = useState<AppUpdateState>("idle");
   const [updateInfo, setUpdateInfo] = useState<AppUpdateCheckResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hasAutoCheckedRef = useRef(false);
 
   const checkForUpdates = useCallback(async (silent = false): Promise<AppUpdateCheckResult> => {
     if (!silent) {
@@ -62,9 +63,10 @@ export function useAppUpdate(options?: UseAppUpdateOptions): UseAppUpdateReturn 
   useEffect(() => {
     let isCancelled = false;
 
-    if (options?.autoCheck) {
+    if (options?.autoCheck && !hasAutoCheckedRef.current) {
       void checkAppUpdate().then((result) => {
         if (isCancelled) return;
+        hasAutoCheckedRef.current = true;
         setUpdateInfo(result);
         if (result.error) {
           setError(result.error);

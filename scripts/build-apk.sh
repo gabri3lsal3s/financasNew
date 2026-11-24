@@ -169,11 +169,11 @@ if [ -f "${RELEASE_FILE}" ]; then
   "sha256": "${SHA256_HASH}",
   "fileSizeBytes": ${FILE_SIZE},
   "changelog": [
-    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Motor Espacial de Faturas, Reconciliação Inteligente e Curadoria por IA",
-    "Motor Espacial (X, Y) com 4 Barreiras Anti-Ruído: suporte nativo a faturas digitais densas de cartão com divisão bimodal e checksum gate estrito",
-    "Inteligência de Parcelamentos: detecção automática dos 4 estados de séries (K/N), equivalência temporal e projeção transacional ancorada na competência ativa",
-    "Reconciliação e UI/UX Inline: staging area simplificada com edição inline, resumo financeiro adaptativo, microdiscrepâncias em 1 clique e zero modais aninhados",
-    "Micro-IA Deduplicada e Curador por ID: categorização inteligente assíncrona com privacidade total (zero valores/datas para IA) e descarte de subtotais espúrios"
+    "Axir v${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}): Auth Multidispositivo, Inatividade Opt-in & Login + Motor Resiliente de Faturas",
+    "Sessao Multidispositivo & Seguranca: politica de inatividade opt-in (padrao Manter conectado), modo Computador compartilhado no login e revogacao real em tempo real",
+    "AppLock & PIN: backoff persistido contra tentativas, bloqueio por ociosidade e painel unificado em Seguranca & Privacidade",
+    "Motor Resiliente e Autoevolutivo de Faturas: ingestao universal por Magic Bytes (PDF/OFX/CSV/XLSX/Imagens), blueprints por banco e Quality Gate duplo",
+    "Aprendizado no Commit & Block Clipper: Shadow Replay automatico sem tokens em faturas futuras e assistente inline de recorte sem IA"
   ]
 }
 EOF

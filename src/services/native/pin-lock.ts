@@ -3,6 +3,17 @@ import { setAppLocked } from "./app-lock";
 
 const KEY_PIN_HASH = "app_pin_hash";
 const KEY_PIN_SALT = "app_pin_salt";
+const KEY_PIN_LOCKOUT = "app_pin_lockout";
+
+export interface PinLockoutState {
+  failedAttempts: number;
+  lockedUntilMs: number | null;
+}
+
+const EMPTY_LOCKOUT_STATE: PinLockoutState = {
+  failedAttempts: 0,
+  lockedUntilMs: null,
+};
 
 function bufToHex(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -46,6 +57,81 @@ async function derivePinHash(pin: string, salt: Uint8Array): Promise<string> {
 }
 
 /**
+ * Regra pura de cálculo de backoff progressivo para tentativas falhas de PIN:
+ * - 1 a 4 erros: sem espera (`lockedUntilMs: null`)
+ * - 5 a 9 erros: espera progressiva a partir de 30s (`30s * (tentativa - 4)`)
+ * - >= 10 erros: espera de 5 minutos (`300s`)
+ */
+export function computePinLockoutAfterFailure(
+  currentFailedAttempts: number,
+  nowMs = Date.now(),
+): PinLockoutState {
+  const nextAttempts = Math.max(0, currentFailedAttempts) + 1;
+  if (nextAttempts < 5) {
+    return { failedAttempts: nextAttempts, lockedUntilMs: null };
+  }
+  if (nextAttempts >= 10) {
+    return { failedAttempts: nextAttempts, lockedUntilMs: nowMs + 5 * 60 * 1000 };
+  }
+  const durationMs = 30_000 * (nextAttempts - 4);
+  return { failedAttempts: nextAttempts, lockedUntilMs: nowMs + durationMs };
+}
+
+/**
+ * Lê o estado persistido de lockout de PIN isolado por `userId`.
+ */
+export function getPinLockoutState(userId?: string | null): PinLockoutState {
+  const raw = getUserStorageItem(KEY_PIN_LOCKOUT, userId);
+  if (!raw) return { ...EMPTY_LOCKOUT_STATE };
+  try {
+    const parsed = JSON.parse(raw) as Partial<PinLockoutState>;
+    const failedAttempts =
+      typeof parsed.failedAttempts === "number" && Number.isFinite(parsed.failedAttempts)
+        ? Math.max(0, parsed.failedAttempts)
+        : 0;
+    const lockedUntilMs =
+      typeof parsed.lockedUntilMs === "number" && Number.isFinite(parsed.lockedUntilMs)
+        ? parsed.lockedUntilMs
+        : null;
+    return { failedAttempts, lockedUntilMs };
+  } catch {
+    return { ...EMPTY_LOCKOUT_STATE };
+  }
+}
+
+/**
+ * Retorna os segundos restantes de bloqueio temporário por excesso de tentativas.
+ */
+export function getRemainingPinLockoutSeconds(
+  userId?: string | null,
+  nowMs = Date.now(),
+): number {
+  const { lockedUntilMs } = getPinLockoutState(userId);
+  if (!lockedUntilMs || lockedUntilMs <= nowMs) return 0;
+  return Math.ceil((lockedUntilMs - nowMs) / 1000);
+}
+
+/**
+ * Registra uma falha de PIN e persiste o estado de backoff em `user-storage`.
+ */
+export function recordPinFailure(
+  userId?: string | null,
+  nowMs = Date.now(),
+): PinLockoutState {
+  const current = getPinLockoutState(userId);
+  const next = computePinLockoutAfterFailure(current.failedAttempts, nowMs);
+  setUserStorageItem(KEY_PIN_LOCKOUT, JSON.stringify(next), userId);
+  return next;
+}
+
+/**
+ * Limpa o contador de tentativas falhas e o bloqueio temporário do PIN.
+ */
+export function clearPinLockout(userId?: string | null): void {
+  removeUserStorageItem(KEY_PIN_LOCKOUT, userId);
+}
+
+/**
  * Verifica se o usuário possui um PIN numérico local configurado.
  */
 export function isPinLockConfigured(userId?: string | null): boolean {
@@ -70,6 +156,7 @@ export async function setPinLock(pin: string, userId?: string | null): Promise<v
 
   setUserStorageItem(KEY_PIN_SALT, saltHex, userId);
   setUserStorageItem(KEY_PIN_HASH, hash, userId);
+  clearPinLockout(userId);
 }
 
 /**
@@ -103,16 +190,25 @@ export async function verifyPinLock(pin: string, userId?: string | null): Promis
 export function removePinLock(userId?: string | null): void {
   removeUserStorageItem(KEY_PIN_HASH, userId);
   removeUserStorageItem(KEY_PIN_SALT, userId);
+  clearPinLockout(userId);
 }
 
 /**
- * Tenta desbloquear o aplicativo através do PIN numérico.
+ * Tenta desbloquear o aplicativo através do PIN numérico, aplicando o backoff persistido.
  */
 export async function unlockAppWithPin(pin: string, userId?: string | null): Promise<boolean> {
+  const remainingSec = getRemainingPinLockoutSeconds(userId);
+  if (remainingSec > 0) {
+    throw new Error(`Muitas tentativas incorretas. Aguarde ${remainingSec}s para tentar novamente.`);
+  }
+
   const isValid = await verifyPinLock(pin, userId);
   if (isValid) {
+    clearPinLockout(userId);
     setAppLocked(false);
     return true;
   }
+
+  recordPinFailure(userId);
   return false;
 }

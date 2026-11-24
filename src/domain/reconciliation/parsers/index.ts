@@ -17,6 +17,7 @@ import { parseOfxToTransactions } from "./ofx-parser";
 import { parseTextToRows } from "./text-parser";
 
 export * from "./type-sniffer";
+export * from "./magic-bytes";
 export * from "./csv-parser";
 export * from "./ofx-parser";
 export * from "./text-parser";
@@ -47,11 +48,43 @@ function resolveDateWithCompetenceBoundary(rawDate: string, competenceMonth: str
 }
 
 /**
+ * Detecta se a coluna monetária do arquivo segue padrão decimal com ponto (ex.: `12.50`, `45.99`)
+ * sem decimais com vírgula, para proteger números como `1.500` em planilhas/CSVs internacionais.
+ */
+function inferPreferDotDecimal(dataRows: RawParsedRow[], mapping: ColumnMapping): boolean {
+  let dotDecimalCount = 0;
+  let commaDecimalCount = 0;
+  const colsToInspect =
+    mapping.debitColIndex !== undefined && mapping.creditColIndex !== undefined
+      ? [mapping.debitColIndex, mapping.creditColIndex]
+      : [mapping.amountColIndex];
+
+  for (const row of dataRows.slice(0, 40)) {
+    for (const colIdx of colsToInspect) {
+      const cell = (row.cells[colIdx] ?? "").trim();
+      if (!cell) continue;
+      if (/R\$|\bBRL\b/i.test(cell)) return false;
+      if (/\d,\d{1,2}\s*(?:[dDcC+-])?$/.test(cell)) {
+        commaDecimalCount++;
+      } else if (/\d\.\d{1,2}\s*(?:[dDcC+-])?$/.test(cell) && !/\d,\d/.test(cell)) {
+        dotDecimalCount++;
+      }
+    }
+  }
+
+  return dotDecimalCount > 0 && commaDecimalCount === 0;
+}
+
+/**
  * Infere a convenção de polaridade de sinal do arquivo tabular:
  * Se a maioria das compras regulares vier com sinal negativo e as quitações com sinal positivo,
  * inverte a interpretação padrão para que negativo = compra e positivo = crédito/estorno.
  */
-function inferNegativeMeansPurchase(dataRows: RawParsedRow[], mapping: ColumnMapping): boolean {
+function inferNegativeMeansPurchase(
+  dataRows: RawParsedRow[],
+  mapping: ColumnMapping,
+  preferDotDecimal: boolean,
+): boolean {
   if (mapping.debitColIndex !== undefined || mapping.typeColIndex !== undefined) {
     return false;
   }
@@ -67,7 +100,7 @@ function inferNegativeMeansPurchase(dataRows: RawParsedRow[], mapping: ColumnMap
     if (!rawDesc.trim() || isStatementNoiseOrSummary(rawDesc) || isSubcardHeader(rawDesc)) {
       continue;
     }
-    const parsedAmt = parseAmountToCents(rawAmt);
+    const parsedAmt = parseAmountToCents(rawAmt, { preferDotDecimal });
     if (!parsedAmt || parsedAmt.amountCents === 0) continue;
     if (parsedAmt.isCreditSuffix || parsedAmt.isDebitSuffix) continue;
 
@@ -103,7 +136,8 @@ export function buildTransactionsFromRows(
   let index = 0;
 
   const dataRows = rows.slice(mapping.startRowIndex);
-  const negativeMeansPurchase = inferNegativeMeansPurchase(dataRows, mapping);
+  const preferDotDecimal = inferPreferDotDecimal(dataRows, mapping);
+  const negativeMeansPurchase = inferNegativeMeansPurchase(dataRows, mapping, preferDotDecimal);
 
   for (const row of dataRows) {
     const rawDate = row.cells[mapping.dateColIndex] ?? "";
@@ -125,8 +159,8 @@ export function buildTransactionsFromRows(
     if (mapping.debitColIndex !== undefined && mapping.creditColIndex !== undefined) {
       const rawDebit = row.cells[mapping.debitColIndex] ?? "";
       const rawCredit = row.cells[mapping.creditColIndex] ?? "";
-      const parsedDebit = parseAmountToCents(rawDebit);
-      const parsedCredit = parseAmountToCents(rawCredit);
+      const parsedDebit = parseAmountToCents(rawDebit, { preferDotDecimal });
+      const parsedCredit = parseAmountToCents(rawCredit, { preferDotDecimal });
 
       if (parsedDebit && parsedDebit.amountCents > 0) {
         amountCents = parsedDebit.amountCents;
@@ -139,7 +173,7 @@ export function buildTransactionsFromRows(
       }
     } else {
       const rawAmt = row.cells[mapping.amountColIndex] ?? "";
-      const parsedAmt = parseAmountToCents(rawAmt);
+      const parsedAmt = parseAmountToCents(rawAmt, { preferDotDecimal });
       if (!parsedAmt) {
         continue;
       }
@@ -261,7 +295,14 @@ export function parseStatementInput(
   const lowerName = fileNameOrType.toLowerCase();
 
   // 1. Arquivo OFX
-  if (lowerName.endsWith(".ofx") || textContent.includes("<OFX>") || textContent.includes("<STMTTRN>")) {
+  const headSample = textContent.slice(0, 4096).replace(/^[\uFEFF\uFFFE\s]+/, "");
+  if (
+    lowerName.endsWith(".ofx") ||
+    lowerName.endsWith(".qfx") ||
+    /^OFXHEADER\s*:/i.test(headSample) ||
+    /<OFX[\s>]/i.test(headSample) ||
+    /<STMTTRN[\s>]/i.test(textContent)
+  ) {
     const transactions = parseOfxToTransactions(textContent, params);
     return {
       transactions,
@@ -277,9 +318,15 @@ export function parseStatementInput(
     };
   }
 
-  // 2. CSV ou Texto tabular
+  // 2. CSV/TSV ou Texto tabular
   const startYear = Number.parseInt(params.competenceMonth.slice(0, 4), 10) || new Date().getFullYear();
-  const rows = lowerName.endsWith(".csv") ? parseCsvToRows(textContent) : parseTextToRows(textContent, startYear);
+  const isPdfText = lowerName.endsWith(".pdf") || lowerName.includes("application/pdf");
+  const rows =
+    lowerName.endsWith(".csv") || lowerName.endsWith(".tsv")
+      ? parseCsvToRows(textContent)
+      : parseTextToRows(textContent, startYear, {
+          mode: isPdfText ? "strict_statement" : "auto",
+        });
   const mapping = sniffColumnMapping(rows);
   const transactions = buildTransactionsFromRows(rows, mapping, params);
 

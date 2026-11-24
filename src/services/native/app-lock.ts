@@ -1,19 +1,35 @@
 import { App } from "@capacitor/app";
-import { getUserStorageItem, setUserStorageItem } from "@/services/user-storage";
+import { getActiveUserId, getUserStorageItem, setUserStorageItem } from "@/services/user-storage";
 import { isBiometricAuthInProgress, authenticateWithBiometrics } from "./biometrics";
 import { disablePrivacyShield, enablePrivacyShield } from "./privacy-shield";
 import { isNativePlatform } from "./platform";
-import { isPinLockConfigured } from "./pin-lock";
+import { clearPinLockout, isPinLockConfigured } from "./pin-lock";
 import { isNativeExportInProgress } from "./native-export";
 
 const KEY_BIOMETRIC_LOCK = "biometric_lock_enabled";
+const KEY_APP_LOCK_ENABLED = "app_lock_enabled";
+const KEY_APP_LOCK_METHOD = "app_lock_method";
+const KEY_APP_LOCK_IDLE_ENABLED = "app_lock_idle_enabled";
 const KEY_TIMEOUT = "biometric_lock_timeout_minutes";
 const KEY_PRIVACY_SHIELD = "privacy_shield_enabled";
 
-/**
- * Lê se o bloqueio por biometria está ativado pelo usuário.
- */
-export function isBiometricLockEnabled(userId?: string | null): boolean {
+export type AppLockMethod = "biometrics" | "pin" | "biometrics_or_pin";
+
+export interface AppLockConfig {
+  enabled: boolean;
+  method: AppLockMethod;
+  graceMinutes: number;
+  lockOnIdle: boolean;
+}
+
+const APP_LOCK_IDLE_EVENTS = [
+  "pointerdown",
+  "keydown",
+  "touchstart",
+  "scroll",
+] as const;
+
+function readLegacyBiometricFlag(userId?: string | null): boolean | null {
   const direct = getUserStorageItem(KEY_BIOMETRIC_LOCK, userId);
   if (direct !== null) return direct === "true";
 
@@ -21,37 +37,111 @@ export function isBiometricLockEnabled(userId?: string | null): boolean {
     try {
       const activeVal = window.localStorage.getItem(`financas_active_${KEY_BIOMETRIC_LOCK}`);
       if (activeVal !== null) return activeVal === "true";
-
-      for (let i = 0; i < window.localStorage.length; i++) {
-        const k = window.localStorage.key(i);
-        if (k && k.startsWith("financas_") && k.endsWith(`_${KEY_BIOMETRIC_LOCK}`)) {
-          return window.localStorage.getItem(k) === "true";
-        }
-      }
     } catch {
       // no-op
     }
   }
-  return false;
+  return null;
+}
+
+function resolveDefaultMethod(userId?: string | null): AppLockMethod {
+  if (isNativePlatform()) {
+    return isPinLockConfigured(userId) ? "biometrics_or_pin" : "biometrics";
+  }
+  return isPinLockConfigured(userId) ? "pin" : "biometrics";
 }
 
 /**
- * Atualiza a preferência de bloqueio por biometria.
+ * Lê a configuração completa do bloqueio local do dispositivo, migrando transparentemente
+ * a chave legada `biometric_lock_enabled` quando encontrada.
  */
-export function setBiometricLockEnabled(enabled: boolean, userId?: string | null): void {
-  setUserStorageItem(KEY_BIOMETRIC_LOCK, String(enabled), userId);
-  if (typeof window !== "undefined") {
-    try {
-      window.localStorage.setItem(`financas_active_${KEY_BIOMETRIC_LOCK}`, String(enabled));
-    } catch {
-      // no-op
+export function getAppLockConfig(userId?: string | null): AppLockConfig {
+  const storedEnabled = getUserStorageItem(KEY_APP_LOCK_ENABLED, userId);
+  let enabled = false;
+
+  if (storedEnabled !== null) {
+    enabled = storedEnabled === "true";
+  } else {
+    const legacyEnabled = readLegacyBiometricFlag(userId);
+    if (legacyEnabled !== null) {
+      enabled = legacyEnabled;
+      setUserStorageItem(KEY_APP_LOCK_ENABLED, String(legacyEnabled), userId);
     }
   }
+
+  const rawMethod = getUserStorageItem(KEY_APP_LOCK_METHOD, userId);
+  const method: AppLockMethod =
+    rawMethod === "biometrics" || rawMethod === "pin" || rawMethod === "biometrics_or_pin"
+      ? rawMethod
+      : resolveDefaultMethod(userId);
+
+  const graceMinutes = getAppLockGraceMinutes(userId);
+
+  const rawIdle = getUserStorageItem(KEY_APP_LOCK_IDLE_ENABLED, userId);
+  const lockOnIdle = rawIdle !== null ? rawIdle === "true" : true;
+
+  return {
+    enabled,
+    method,
+    graceMinutes,
+    lockOnIdle,
+  };
+}
+
+/**
+ * Atualiza parcialmente a configuração do bloqueio local e sincroniza chaves espelhadas.
+ */
+export function setAppLockConfig(
+  partial: Partial<AppLockConfig>,
+  userId?: string | null,
+): void {
+  if (partial.enabled !== undefined) {
+    setUserStorageItem(KEY_APP_LOCK_ENABLED, String(partial.enabled), userId);
+    setUserStorageItem(KEY_BIOMETRIC_LOCK, String(partial.enabled), userId);
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(
+          `financas_active_${KEY_BIOMETRIC_LOCK}`,
+          String(partial.enabled),
+        );
+      } catch {
+        // no-op
+      }
+    }
+  }
+
+  if (partial.method !== undefined) {
+    setUserStorageItem(KEY_APP_LOCK_METHOD, partial.method, userId);
+  }
+
+  if (partial.graceMinutes !== undefined) {
+    setUserStorageItem(KEY_TIMEOUT, String(partial.graceMinutes), userId);
+  }
+
+  if (partial.lockOnIdle !== undefined) {
+    setUserStorageItem(KEY_APP_LOCK_IDLE_ENABLED, String(partial.lockOnIdle), userId);
+  }
+
+  scheduleIdleLockCheck();
   notifyLockListeners();
 }
 
 /**
- * Retorna o tempo de tolerância em minutos antes de exigir biometria ao retornar (padrão: 1 min).
+ * Lê se o bloqueio do aplicativo (biometria ou PIN) está ativado pelo usuário.
+ */
+export function isBiometricLockEnabled(userId?: string | null): boolean {
+  return getAppLockConfig(userId).enabled;
+}
+
+/**
+ * Atualiza a preferência de bloqueio do aplicativo.
+ */
+export function setBiometricLockEnabled(enabled: boolean, userId?: string | null): void {
+  setAppLockConfig({ enabled }, userId);
+}
+
+/**
+ * Retorna o tempo de tolerância em minutos antes de exigir desbloqueio ao retornar (padrão: 1 min).
  */
 export function getAppLockGraceMinutes(userId?: string | null): number {
   const val = getUserStorageItem(KEY_TIMEOUT, userId);
@@ -64,14 +154,11 @@ export function getAppLockGraceMinutes(userId?: string | null): number {
  * Define o tempo de tolerância em minutos antes do bloqueio (0 = imediato).
  */
 export function setAppLockGraceMinutes(minutes: number, userId?: string | null): void {
-  setUserStorageItem(KEY_TIMEOUT, String(minutes), userId);
-  notifyLockListeners();
+  setAppLockConfig({ graceMinutes: minutes }, userId);
 }
 
 /**
  * Lê se o Privacy Shield (FLAG_SECURE) está ativado.
- * Padrão: false (desativado por padrão para viabilizar capturas de tela e comprovantes).
- * Ativado exclusivamente quando o usuário ligar a opção nas configurações de segurança.
  */
 export function isPrivacyShieldEnabled(userId?: string | null): boolean {
   const direct = getUserStorageItem(KEY_PRIVACY_SHIELD, userId);
@@ -111,7 +198,6 @@ export function setPrivacyShieldEnabled(enabled: boolean, userId?: string | null
 
 /**
  * Sincroniza o Privacy Shield nativo com base na preferência salva.
- * Garante que tanto a ativação quanto a desativação sejam despachadas para o container nativo.
  */
 export function syncPrivacyShield(userId?: string | null): void {
   if (isPrivacyShieldEnabled(userId)) {
@@ -121,20 +207,35 @@ export function syncPrivacyShield(userId?: string | null): void {
   }
 }
 
+function hasActiveSessionContext(userId?: string | null): boolean {
+  if (userId) return true;
+  if (getActiveUserId()) return true;
+  if (typeof window !== "undefined") {
+    try {
+      if (window.localStorage.getItem(`financas_active_${KEY_BIOMETRIC_LOCK}`) === "true") {
+        return true;
+      }
+    } catch {
+      // no-op
+    }
+  }
+  return false;
+}
+
 /**
  * Indica se o aplicativo deve inicializar travado no cold start.
- * No nativo: trava se o bloqueio biométrico estiver ativo.
- * Na Web/PWA: trava se o bloqueio estiver ativo E houver PIN local configurado.
+ * Só retorna true quando há sessão ativa e método válido configurado.
  */
 export function shouldLockOnColdStart(userId?: string | null): boolean {
-  if (!isBiometricLockEnabled(userId)) return false;
+  if (!hasActiveSessionContext(userId)) return false;
+  const config = getAppLockConfig(userId);
+  if (!config.enabled) return false;
   if (isNativePlatform()) return true;
   return isPinLockConfigured(userId);
 }
 
 // ---------- Estado Reativo de Bloqueio em Memória ----------
 
-// No cold start, inicializa travado se aplicável ao ambiente
 let isLocked = typeof window !== "undefined" && shouldLockOnColdStart();
 const lockListeners = new Set<() => void>();
 
@@ -153,6 +254,10 @@ export function setAppLocked(locked: boolean): void {
   isLocked = locked;
   if (!locked) {
     lastBackgroundTime = 0;
+    lastInteractionAt = Date.now();
+    scheduleIdleLockCheck();
+  } else {
+    clearIdleLockTimer();
   }
   notifyLockListeners();
 }
@@ -181,33 +286,103 @@ export async function unlockAppWithBiometrics(): Promise<boolean> {
   const result = await authenticateWithBiometrics("Desbloqueie o aplicativo para acessar seus dados");
   if (result.success) {
     lastBackgroundTime = 0;
+    clearPinLockout(getActiveUserId());
     setAppLocked(false);
     return true;
   }
   return false;
 }
 
-// ---------- Monitoramento de Segundo Plano (AppStateChange) ----------
+// ---------- Monitoramento de Segundo Plano e Inatividade em Tela Aberta ----------
 
 let lastBackgroundTime = 0;
+let lastInteractionAt = 0;
+let idleLockTimer: ReturnType<typeof setTimeout> | null = null;
+let isIdleLockPaused = false;
 let isListenerActive = false;
 
+function clearIdleLockTimer(): void {
+  if (idleLockTimer !== null) {
+    clearTimeout(idleLockTimer);
+    idleLockTimer = null;
+  }
+}
+
 /**
- * Redefine o timestamp de início de segundo plano.
+ * Pausa ou retoma o disparo de `lockOnIdle` (ex.: enquanto o modal de aviso de sessão estiver aberto).
+ */
+export function setAppLockIdlePaused(paused: boolean): void {
+  isIdleLockPaused = paused;
+  if (!paused) {
+    lastInteractionAt = Date.now();
+    scheduleIdleLockCheck();
+  } else {
+    clearIdleLockTimer();
+  }
+}
+
+/**
+ * Recalcula o bloqueio por inatividade com base exclusivamente em `Date.now() - lastInteractionAt`.
+ */
+export function evaluateIdleLock(nowMs = Date.now()): void {
+  if (!isListenerActive || isLocked || isIdleLockPaused) return;
+  if (isBiometricAuthInProgress() || isNativeExportInProgress()) return;
+
+  const config = getAppLockConfig();
+  if (!config.enabled || !config.lockOnIdle || config.graceMinutes <= 0) return;
+
+  if (lastInteractionAt <= 0) {
+    lastInteractionAt = nowMs;
+    scheduleIdleLockCheck(nowMs);
+    return;
+  }
+
+  const timeoutMs = config.graceMinutes * 60 * 1000;
+  const elapsed = nowMs - lastInteractionAt;
+
+  if (elapsed >= timeoutMs) {
+    setAppLocked(true);
+    return;
+  }
+
+  scheduleIdleLockCheck(nowMs);
+}
+
+function scheduleIdleLockCheck(nowMs = Date.now()): void {
+  clearIdleLockTimer();
+  if (!isListenerActive || isLocked || isIdleLockPaused) return;
+
+  const config = getAppLockConfig();
+  if (!config.enabled || !config.lockOnIdle || config.graceMinutes <= 0) return;
+
+  if (lastInteractionAt <= 0) {
+    lastInteractionAt = nowMs;
+  }
+
+  const timeoutMs = config.graceMinutes * 60 * 1000;
+  const remainingMs = Math.max(0, lastInteractionAt + timeoutMs - nowMs);
+
+  idleLockTimer = setTimeout(() => {
+    evaluateIdleLock(Date.now());
+  }, remainingMs);
+}
+
+/**
+ * Redefine o timestamp de início de segundo plano e interação.
  */
 export function resetAppLockBackgroundTimer(): void {
   lastBackgroundTime = 0;
+  lastInteractionAt = Date.now();
+  scheduleIdleLockCheck();
 }
 
 /**
  * Inicializa o monitoramento de ciclo de vida do app nativo e PWA / Web.
- * Ao retornar do background após a tolerância configurada, bloqueia o app.
+ * Ao retornar do background ou após inatividade em tela aberta superior à tolerância, bloqueia o app.
  */
 export function initAppLockListener(): () => void {
-  // Sincroniza o Privacy Shield na inicialização (ativa ou desativa ativamente)
   syncPrivacyShield();
 
-  // No cold start, se o bloqueio estiver ativo e aplicável, garante o bloqueio imediato
   if (shouldLockOnColdStart()) {
     setAppLocked(true);
   }
@@ -217,37 +392,57 @@ export function initAppLockListener(): () => void {
   }
 
   isListenerActive = true;
+  lastInteractionAt = Date.now();
+  scheduleIdleLockCheck();
+
+  const handleUserInteraction = () => {
+    if (isLocked) return;
+    lastInteractionAt = Date.now();
+    scheduleIdleLockCheck(lastInteractionAt);
+  };
+
+  if (typeof window !== "undefined") {
+    for (const eventName of APP_LOCK_IDLE_EVENTS) {
+      window.addEventListener(eventName, handleUserInteraction, { passive: true });
+    }
+  }
 
   if (isNativePlatform()) {
     const listenerPromise = App.addListener("appStateChange", ({ isActive }) => {
-      // Se a autenticação biométrica nativa ou o Print/Share Sheet está em andamento,
-      // a alternância de foco da janela não representa uma saída real do aplicativo.
       if (isBiometricAuthInProgress() || isNativeExportInProgress()) {
         return;
       }
 
       if (!isActive) {
         lastBackgroundTime = Date.now();
+        clearIdleLockTimer();
       } else {
-        if (lastBackgroundTime > 0 && isBiometricLockEnabled()) {
-          const timeoutMinutes = getAppLockGraceMinutes();
-          const timeoutMs = timeoutMinutes * 60 * 1000;
-          if (Date.now() - lastBackgroundTime >= timeoutMs) {
+        const now = Date.now();
+        const config = getAppLockConfig();
+        if (lastBackgroundTime > 0 && config.enabled) {
+          const timeoutMs = config.graceMinutes * 60 * 1000;
+          if (now - lastBackgroundTime >= timeoutMs) {
             setAppLocked(true);
           }
         }
         lastBackgroundTime = 0;
+        evaluateIdleLock(now);
       }
     });
 
     return () => {
       isListenerActive = false;
       lastBackgroundTime = 0;
+      clearIdleLockTimer();
+      if (typeof window !== "undefined") {
+        for (const eventName of APP_LOCK_IDLE_EVENTS) {
+          window.removeEventListener(eventName, handleUserInteraction);
+        }
+      }
       void listenerPromise?.then?.((handle) => handle?.remove?.());
     };
   }
 
-  // Plataforma Web / PWA: monitora visibilitychange ao minimizar ou trocar de aba
   if (typeof document !== "undefined") {
     const handleHide = () => {
       if (isBiometricAuthInProgress()) {
@@ -256,20 +451,27 @@ export function initAppLockListener(): () => void {
       if (!lastBackgroundTime) {
         lastBackgroundTime = Date.now();
       }
+      clearIdleLockTimer();
     };
 
     const handleShow = () => {
       if (isBiometricAuthInProgress()) {
         return;
       }
-      if (lastBackgroundTime > 0 && isBiometricLockEnabled()) {
-        const timeoutMinutes = getAppLockGraceMinutes();
-        const timeoutMs = timeoutMinutes * 60 * 1000;
-        if (Date.now() - lastBackgroundTime >= timeoutMs) {
+      const now = Date.now();
+      const config = getAppLockConfig();
+      if (lastBackgroundTime > 0 && config.enabled) {
+        const timeoutMs = config.graceMinutes * 60 * 1000;
+        if (now - lastBackgroundTime >= timeoutMs) {
           setAppLocked(true);
         }
       }
       lastBackgroundTime = 0;
+      evaluateIdleLock(now);
+    };
+
+    const handleFocus = () => {
+      evaluateIdleLock(Date.now());
     };
 
     const handleVisibilityChange = () => {
@@ -284,15 +486,21 @@ export function initAppLockListener(): () => void {
     if (typeof window !== "undefined") {
       window.addEventListener("pagehide", handleHide);
       window.addEventListener("pageshow", handleShow);
+      window.addEventListener("focus", handleFocus);
     }
 
     return () => {
       isListenerActive = false;
       lastBackgroundTime = 0;
+      clearIdleLockTimer();
+      for (const eventName of APP_LOCK_IDLE_EVENTS) {
+        window.removeEventListener(eventName, handleUserInteraction);
+      }
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (typeof window !== "undefined") {
         window.removeEventListener("pagehide", handleHide);
         window.removeEventListener("pageshow", handleShow);
+        window.removeEventListener("focus", handleFocus);
       }
     };
   }
@@ -300,5 +508,11 @@ export function initAppLockListener(): () => void {
   return () => {
     isListenerActive = false;
     lastBackgroundTime = 0;
+    clearIdleLockTimer();
+    if (typeof window !== "undefined") {
+      for (const eventName of APP_LOCK_IDLE_EVENTS) {
+        window.removeEventListener(eventName, handleUserInteraction);
+      }
+    }
   };
 }

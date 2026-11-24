@@ -53,15 +53,51 @@ export interface SpatialPdfResult {
   detectedCardLast4s?: string[];
 }
 
+export interface SpatialBlueprintHints {
+  startMarkers?: readonly string[];
+  pauseMarkers?: readonly string[];
+  boletoMarkers?: readonly string[];
+  totalLabels?: readonly string[];
+  ignoredTotalLabels?: readonly string[];
+  columnMode?: "auto" | "single" | "bimodal";
+  /**
+   * Quando true e existem `startMarkers`, impede que linhas avulsas de Data+Valor
+   * antes do cabeçalho real de lançamentos (ex.: capa/resumo) ativem `start_zone`.
+   */
+  strictStartZone?: boolean;
+  /**
+   * Convenção de sinal para compras nas linhas extraídas pelo blueprint.
+   */
+  polarity?: "auto" | "positive_purchase" | "negative_purchase";
+}
+
+function normalizeMarkerMatchText(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function matchesAnyMarker(lineText: string, markers?: readonly string[]): boolean {
+  if (!markers || markers.length === 0) return false;
+  const normalized = normalizeMarkerMatchText(lineText);
+  return markers.some((m) => {
+    const clean = normalizeMarkerMatchText(m);
+    return clean.length >= 3 && normalized.includes(clean);
+  });
+}
+
 // -----------------------------------------------------------------------------
 // Regex de Barreiras Anti-Ruído
 // -----------------------------------------------------------------------------
 
 const SECTION_START_REGEX =
-  /\b(?:lan[çc]amentos|detalhamento\s+(?:da\s+fatura|das\s+despesas|dos\s+gastos)|compras\s+(?:nacionais|internacionais)|movimenta[çc][oõ]es|transa[çc][oõ]es|extrato\s+de\s+compras|hist[oó]rico\s+de\s+lan[çc]amentos)\b/i;
+  /\b(?:lan[çc]amentos|detalhamento\s+(?:da\s+fatura|das\s+despesas|dos\s+gastos)|compras\s+(?:nacionais|internacionais)|movimenta[çc][oõ]es|transa[çc][oõ]es|extrato\s+de\s+compras|extrato\s+referente|hist[oó]rico\s+de\s+lan[çc]amentos|data\s+(?:\|\s*)?(?:descri[çc][aã]o|hist[oó]rico|estabelecimento|lan[çc]amento)\s+(?:\|\s*)?valor)\b/i;
 
 const SECTION_PAUSE_REGEX =
-  /\b(?:op[çc][oõ]es\s+de\s+parcelamento|simula[çc][aã]o|demonstrativo\s+de\s+encargos|canais\s+de\s+atendimento|fale\s+conosco|ouvidoria|central\s+de\s+atendimento|sac\b|informa[çc][oõ]es\s+importantes)\b/i;
+  /\b(?:op[çc][oõ]es\s+de\s+parcelamento|parcelamentos\s+para\s+aliviar|outras\s+formas\s+de\s+pagar|simula[çc][aã]o|demonstrativo\s+de\s+encargos|taxas\s+taxa\s+ao\s+m[eê]s|canais\s+de\s+atendimento|canais\s+de\s+contato|fale\s+conosco|ouvidoria|central\s+de\s+atendimento|sac\b|informa[çc][oõ]es\s+importantes)\b/i;
 
 const HARD_STOP_BARCODE_REGEX =
   /(?:\b\d{5}[.\s]?\d{5}\s+\d{5}[.\s]?\d{6}\s+\d{5}[.\s]?\d{6}\s+\d\s+\d{14}\b|\b\d{47,48}\b|\bautentica[çc][aã]o\s+mec[aâ]nica\b|\brecibo\s+do\s+sacado\b|\bcanhoto\s+do\s+boleto\b)/i;
@@ -274,6 +310,27 @@ export function groupTokensIntoLines(
 export class SectionStateMachine {
   private state: SectionZoneState = "outside";
   private boletoPage = 1;
+  private pausePage = 1;
+  private readonly hints?: SpatialBlueprintHints;
+
+  constructor(hints?: SpatialBlueprintHints) {
+    this.hints = hints;
+  }
+
+  private isStartMarker(lineText: string): boolean {
+    return SECTION_START_REGEX.test(lineText) || matchesAnyMarker(lineText, this.hints?.startMarkers);
+  }
+
+  private isPauseMarker(lineText: string): boolean {
+    return SECTION_PAUSE_REGEX.test(lineText) || matchesAnyMarker(lineText, this.hints?.pauseMarkers);
+  }
+
+  private isBoletoMarker(lineText: string): boolean {
+    return (
+      HARD_STOP_BARCODE_REGEX.test(lineText) ||
+      matchesAnyMarker(lineText, this.hints?.boletoMarkers)
+    );
+  }
 
   public processLine(
     lineText: string,
@@ -283,7 +340,7 @@ export class SectionStateMachine {
       if (pageNumber > this.boletoPage) {
         // Virou a página: sai da pausa do boleto e reavalia a nova página
         this.state = "outside";
-      } else if (SECTION_START_REGEX.test(lineText)) {
+      } else if (this.isStartMarker(lineText)) {
         this.state = "start_zone";
         const hasDateAndAmount = DATE_REGEX.test(lineText) && AMOUNT_REGEX.test(lineText);
         return { state: "start_zone", shouldDrop: !hasDateAndAmount };
@@ -292,7 +349,12 @@ export class SectionStateMachine {
       }
     }
 
-    if (HARD_STOP_BARCODE_REGEX.test(lineText)) {
+    if (this.state === "pause_zone" && pageNumber > this.pausePage) {
+      // Virou a página: sai automaticamente da pausa de simulação/taxas e reavalia a nova página
+      this.state = "outside";
+    }
+
+    if (this.isBoletoMarker(lineText)) {
       this.state = "paused_boleto";
       this.boletoPage = pageNumber;
       return { state: "paused_boleto", shouldDrop: true };
@@ -302,21 +364,26 @@ export class SectionStateMachine {
       return { state: this.state, shouldDrop: true };
     }
 
-    if (SECTION_START_REGEX.test(lineText)) {
+    if (this.isStartMarker(lineText)) {
       this.state = "start_zone";
       // Se a linha contiver data e valor válidos, é uma transação legítima (ex.: "IOF TRANSACOES EXTERIOR"), não cabeçalho
       const hasDateAndAmount = DATE_REGEX.test(lineText) && AMOUNT_REGEX.test(lineText);
       return { state: "start_zone", shouldDrop: !hasDateAndAmount };
     }
 
-    if (SECTION_PAUSE_REGEX.test(lineText)) {
+    if (this.isPauseMarker(lineText)) {
       this.state = "pause_zone";
+      this.pausePage = pageNumber;
       return { state: "pause_zone", shouldDrop: true };
     }
 
     // Se estiver fora da zona mas encontrar uma linha com Data + Valor claros, ativa a zona
+    // (exceto quando o blueprint exige estritamente um marcador de início antes da tabela).
     if (this.state === "outside") {
-      if (DATE_REGEX.test(lineText) && AMOUNT_REGEX.test(lineText)) {
+      const requireExplicitStart =
+        this.hints?.strictStartZone === true &&
+        Boolean(this.hints?.startMarkers && this.hints.startMarkers.length > 0);
+      if (!requireExplicitStart && DATE_REGEX.test(lineText) && AMOUNT_REGEX.test(lineText)) {
         this.state = "start_zone";
         return { state: "start_zone", shouldDrop: false };
       }
@@ -366,14 +433,18 @@ export function isSimulationOrContractualNoise(text: string): boolean {
  */
 export function extractTransactionsFromSpatialLines(
   lines: SpatialPdfLine[],
-  params: { cardId: string; competenceMonth: string },
+  params: {
+    cardId: string;
+    competenceMonth: string;
+    blueprintHints?: SpatialBlueprintHints;
+  },
 ): {
   transactions: StatementTransaction[];
   reconstructedText: string;
   discardedMoneyLines: number;
   detectedCardLast4s: string[];
 } {
-  const stateMachine = new SectionStateMachine();
+  const stateMachine = new SectionStateMachine(params.blueprintHints);
   const transactions: StatementTransaction[] = [];
   const acceptedLines: string[] = [];
   const occurrenceCounter = new Map<string, number>();
@@ -447,7 +518,13 @@ export function extractTransactionsFromSpatialLines(
     const suffixLower = amountExtracted.suffix?.toLowerCase();
     const isCreditSuffix = suffixLower === "c" || parsedAmt.isCreditSuffix;
     const isDebitSuffix = suffixLower === "d" || suffixLower === "-" || parsedAmt.isDebitSuffix;
-    const isCredit = isCreditSuffix || (parsedAmt.isNegative && !isDebitSuffix);
+    const isCredit = isCreditSuffix
+      ? true
+      : isDebitSuffix
+        ? false
+        : params.blueprintHints?.polarity === "negative_purchase"
+          ? !parsedAmt.isNegative
+          : parsedAmt.isNegative;
 
     // Extrai descrição isolando data e valor (removendo a correspondência inteira de valor para não sobrar "R$")
     const rawDesc = text
@@ -535,6 +612,38 @@ export function extractTransactionsFromSpatialLines(
 }
 
 /**
+ * Constrói linhas espaciais sintéticas a partir de texto bruto linha a linha
+ * (usado no Shadow Replay determinístico e na aplicação de blueprints sobre texto digital).
+ */
+export function buildSpatialLinesFromRawLines(
+  rawLines: readonly string[],
+): SpatialPdfLine[] {
+  const result: SpatialPdfLine[] = [];
+  let currentPage = 1;
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const text = (rawLines[i] ?? "").trim();
+    if (!text) continue;
+    if (/^---\s*page\s+\d+\s*---$/i.test(text) || text === "\f") {
+      currentPage += 1;
+      continue;
+    }
+    result.push({
+      y: Math.max(0, 1000 - i * 12),
+      xStart: 0,
+      xEnd: text.length * 6,
+      fontSize: 10,
+      column: 1,
+      text,
+      tokens: [],
+      pageNumber: currentPage,
+    });
+  }
+
+  return result;
+}
+
+/**
  * Barreira 4: Checksum Gate
  * Compara a soma líquida extraída contra o total oficial detectado na fatura (tolerância +- R$ 0,05).
  */
@@ -588,6 +697,7 @@ export async function parseSpatialPdfDocument(
     competenceMonth: string;
     password?: string;
     officialTotalCents?: number | null;
+    blueprintHints?: SpatialBlueprintHints;
   },
 ): Promise<SpatialPdfResult> {
   const unpdf = await import("unpdf");
@@ -647,7 +757,13 @@ export async function parseSpatialPdfDocument(
           };
         });
 
-      const isBimodal = evaluateBimodalPrecondition(tokens, viewport.width);
+      const colMode = params.blueprintHints?.columnMode ?? "auto";
+      const isBimodal =
+        colMode === "bimodal"
+          ? true
+          : colMode === "single"
+            ? false
+            : evaluateBimodalPrecondition(tokens, viewport.width);
       if (isBimodal) {
         usedTwoColumnMode = true;
       }

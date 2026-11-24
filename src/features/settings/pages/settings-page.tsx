@@ -85,8 +85,8 @@ export function SettingsPage() {
       },
       {
         value: "security",
-        label: "Dados & Privacidade",
-        shortLabel: "Privacidade",
+        label: "Segurança & Privacidade",
+        shortLabel: "Segurança",
         icon: <ShieldCheck className="size-4" aria-hidden="true" />,
         content: <SecurityTab />,
       },

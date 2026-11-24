@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseSpreadsheetOrHtmlToRows } from "./spreadsheet-parser";
+import {
+  normalizeSpreadsheetNumericCellValue,
+  parseSpreadsheetOrHtmlToRows,
+} from "./spreadsheet-parser";
 
 function writeUint16LE(buf: Uint8Array, offset: number, val: number): void {
   buf[offset] = val & 0xff;
@@ -155,5 +158,113 @@ describe("spreadsheet-parser (.xlsx, .xls HTML e SpreadsheetML XML — 0 IA)", (
     await expect(parseSpreadsheetOrHtmlToRows(biff8Buffer)).rejects.toThrow(
       "Planilhas no formato binário legado (.xls / Excel 97-2003) não são suportadas diretamente",
     );
+  });
+
+  it("inspeciona múltiplas abas e seleciona automaticamente sheet2.xml quando sheet1.xml é apenas capa/resumo (#20)", async () => {
+    const xlsxBuffer = await buildMinimalXlsxBuffer({
+      "xl/sharedStrings.xml": `<?xml version="1.0" encoding="UTF-8"?>
+        <sst count="7" uniqueCount="7">
+          <si><t>Resumo da Fatura</t></si>
+          <si><t>Titular: Fulano</t></si>
+          <si><t>Data</t></si>
+          <si><t>Estabelecimento</t></si>
+          <si><t>Valor</t></si>
+          <si><t>Padaria Estrela</t></si>
+          <si><t>Mercado Central</t></si>
+        </sst>`,
+      "xl/styles.xml": `<?xml version="1.0" encoding="UTF-8"?>
+        <styleSheet>
+          <cellXfs count="2">
+            <xf numFmtId="0" />
+            <xf numFmtId="14" />
+          </cellXfs>
+        </styleSheet>`,
+      "xl/worksheets/sheet1.xml": `<?xml version="1.0" encoding="UTF-8"?>
+        <worksheet><sheetData>
+          <row r="1"><c r="A1" t="s"><v>0</v></c></row>
+          <row r="2"><c r="A2" t="s"><v>1</v></c></row>
+        </sheetData></worksheet>`,
+      "xl/worksheets/sheet2.xml": `<?xml version="1.0" encoding="UTF-8"?>
+        <worksheet><sheetData>
+          <row r="1">
+            <c r="A1" t="s"><v>2</v></c>
+            <c r="B1" t="s"><v>3</v></c>
+            <c r="C1" t="s"><v>4</v></c>
+          </row>
+          <row r="2">
+            <c r="A2" s="1"><v>46340</v></c>
+            <c r="B2" t="s"><v>5</v></c>
+            <c r="C2"><v>45.90</v></c>
+          </row>
+          <row r="3">
+            <c r="A3" s="1"><v>46341</v></c>
+            <c r="B3" t="s"><v>6</v></c>
+            <c r="C3"><v>140.49999999999997</v></c>
+          </row>
+        </sheetData></worksheet>`,
+    });
+
+    const rows = await parseSpreadsheetOrHtmlToRows(xlsxBuffer);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]?.cells).toEqual(["Data", "Estabelecimento", "Valor"]);
+    expect(rows[1]?.cells).toEqual(["2026-11-14", "Padaria Estrela", "45.90"]);
+    expect(rows[2]?.cells).toEqual(["2026-11-15", "Mercado Central", "140.50"]);
+  });
+
+  it("corrige ruído IEEE-754 e notação científica preservando inteiros intactos (#21)", () => {
+    expect(normalizeSpreadsheetNumericCellValue("140.49999999999997")).toBe("140.50");
+    expect(normalizeSpreadsheetNumericCellValue("12.300000000000001")).toBe("12.30");
+    expect(normalizeSpreadsheetNumericCellValue("2.5E+3")).toBe("2500");
+    // Inteiros (datas seriais sem estilo, finais de cartão) NÃO recebem .toFixed(2)
+    expect(normalizeSpreadsheetNumericCellValue("46340")).toBe("46340");
+    expect(normalizeSpreadsheetNumericCellValue("2107")).toBe("2107");
+    // Float legítimo com 3 casas fora da tolerância 1e-6 permanece intacto
+    expect(normalizeSpreadsheetNumericCellValue("1.525")).toBe("1.525");
+  });
+
+  it("suporta células t='d' (ISO-8601 nativo) e formatos customizados de data com hora hh:mm:00 (#22)", async () => {
+    const xlsxBuffer = await buildMinimalXlsxBuffer({
+      "xl/sharedStrings.xml": `<?xml version="1.0" encoding="UTF-8"?>
+        <sst count="5" uniqueCount="5">
+          <si><t>Data</t></si>
+          <si><t>Descricao</t></si>
+          <si><t>Valor</t></si>
+          <si><t>Restaurante ISO</t></si>
+          <si><t>Cafeteria Hora</t></si>
+        </sst>`,
+      "xl/styles.xml": `<?xml version="1.0" encoding="UTF-8"?>
+        <styleSheet>
+          <numFmts count="1">
+            <numFmt numFmtId="164" formatCode="dd/mm/yyyy hh:mm:00" />
+          </numFmts>
+          <cellXfs count="2">
+            <xf numFmtId="0" />
+            <xf numFmtId="164" />
+          </cellXfs>
+        </styleSheet>`,
+      "xl/worksheets/sheet1.xml": `<?xml version="1.0" encoding="UTF-8"?>
+        <worksheet><sheetData>
+          <row r="1">
+            <c r="A1" t="s"><v>0</v></c>
+            <c r="B1" t="s"><v>1</v></c>
+            <c r="C1" t="s"><v>2</v></c>
+          </row>
+          <row r="2">
+            <c r="A2" t="d"><v>2026-11-15T14:30:00Z</v></c>
+            <c r="B2" t="s"><v>3</v></c>
+            <c r="C2"><v>89.50</v></c>
+          </row>
+          <row r="3">
+            <c r="A3" s="1"><v>46342.625</v></c>
+            <c r="B3" t="s"><v>4</v></c>
+            <c r="C3"><v>2.5E+2</v></c>
+          </row>
+        </sheetData></worksheet>`,
+    });
+
+    const rows = await parseSpreadsheetOrHtmlToRows(xlsxBuffer);
+    expect(rows).toHaveLength(3);
+    expect(rows[1]?.cells).toEqual(["2026-11-15", "Restaurante ISO", "89.50"]);
+    expect(rows[2]?.cells).toEqual(["2026-11-16", "Cafeteria Hora", "250"]);
   });
 });

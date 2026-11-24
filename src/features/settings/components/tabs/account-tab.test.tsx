@@ -518,12 +518,15 @@ describe("AccountTab", () => {
   });
 
   describe("Sessão & Desconexão", () => {
-    it("renderiza o card Sessão & Desconexão com botão Sair deste aparelho", () => {
+    it("renderiza o card Sessão neste Dispositivo com botão Sair deste aparelho e link para Segurança", () => {
       renderAccountTab();
 
-      expect(screen.getByText("Segurança de Acesso & Sessões")).toBeInTheDocument();
+      expect(screen.getByText("Sessão neste Dispositivo")).toBeInTheDocument();
       expect(screen.getByText("Este Dispositivo")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Sair deste aparelho" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /Configurar bloqueio, 2FA e outros aparelhos/i }),
+      ).toHaveAttribute("href", "/configuracoes?tab=security");
     });
 
     it("abre o modal de confirmação ao clicar em Sair deste aparelho", async () => {

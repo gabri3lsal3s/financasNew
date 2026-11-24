@@ -6,18 +6,30 @@ import {
   type CanonicalCategorySlug,
 } from "@/domain/notifications";
 import {
+  buildClipperLinePreviews,
   buildTransactionsFromRows,
   calculateMatchScore,
   chunkArray,
   detectInstallmentSeriesState,
+  detectStatementMetadata,
+  distillStatementBlueprintDraft,
+  evaluateStatementExtractionQuality,
+  extractStatementSummaryAmounts,
+  findAppDuplicateCandidates,
+  generateStatementHash,
   projectFutureInstallments,
   predictCategoryForDescription,
   STATEMENT_IMPORT_CHUNK_SIZE,
+  validateBlueprintWithShadowReplay,
+  type AppDuplicateCandidate,
+  type BlueprintOrigin,
+  type ChecksumGateResult,
   type ColumnMapping,
   type ExistingExpenseForReconciliation,
   type PendingLinkAdjustment,
   type RawParsedRow,
   type ReconciliationItem,
+  type StatementQualityGateResult,
   type StatementTransaction,
   type DetectedStatementMetadata,
 } from "@/domain/reconciliation";
@@ -33,7 +45,11 @@ import {
 } from "@/services/native/receipt-extractor";
 import { computeFileSha256 } from "@/services/receipt-resolution";
 import { triggerSensory } from "@/services/sensory";
-import { setCachedColumnMapping } from "@/services/statement-mapping-cache";
+import { saveStatementBlueprint } from "@/services/statement-blueprint-store";
+import {
+  extractHeaderCellsForCache,
+  setCachedColumnMapping,
+} from "@/services/statement-mapping-cache";
 import { pushToast } from "@/services/toast";
 import { getActiveUserId } from "@/services/user-storage";
 import {
@@ -41,6 +57,7 @@ import {
   useCardExpenses,
   useCategories,
   useCreateRefund,
+  useDeleteExpense,
   useImportStatementExpenses,
   usePredictionHistory,
   useUpdateExpense,
@@ -52,20 +69,33 @@ import {
   applyEditedReconciliationItem,
   createManualReconciliationItem,
   executeChunkedStatementImport,
-  isRasterStatementImage,
+  isRasterStatementImageByContent,
+  mapAdjacentExpensesForReconciliation,
   mapExpensesForReconciliation,
   parseStatementVisionBlobsWithAi,
   parseStatementWithPdfAiFallback,
   readStatementFileContent,
   runStatementReconciliation,
   sanitizeDescriptionForStatementMicroAi,
+  selectCandidatePdfVisionPages,
+  shouldPreferAiCandidateByQuality,
   type ChunkedImportExpenseInput,
+  type DraftStatementBlueprintSession,
   type LoadedStatementSource,
+  type StatementAiStatusNotice,
+  type StatementExtractionOrigin,
   type StatementItemPatch,
+  type VisionEscalationOffer,
 } from "./statement-import-helpers";
+import type { StatementBlockClipperSelection } from "./statement-block-clipper-step";
 import type { StatementImportProgress } from "./statement-reconcile-step";
 
-export type StatementWizardStep = "upload" | "competence_conflict" | "mapping" | "reconcile";
+export type StatementWizardStep =
+  | "upload"
+  | "competence_conflict"
+  | "mapping"
+  | "block_clipper"
+  | "reconcile";
 
 export interface UseStatementImportParams {
   card: CreditCard;
@@ -98,6 +128,7 @@ export function useStatementImport({
   const [unmatchedAppExpenses, setUnmatchedAppExpenses] = useState<
     ExistingExpenseForReconciliation[]
   >([]);
+  const [appDuplicates, setAppDuplicates] = useState<AppDuplicateCandidate[]>([]);
   const [pendingLinkAdjustments, setPendingLinkAdjustments] = useState<
     Map<string, PendingLinkAdjustment>
   >(new Map());
@@ -105,17 +136,32 @@ export function useStatementImport({
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [importProgress, setImportProgress] = useState<StatementImportProgress | null>(null);
   const [isReadingFile, setIsReadingFile] = useState(false);
+  const [readingStatusMessage, setReadingStatusMessage] = useState<string | null>(null);
+  const [isReanalyzingWithAi, setIsReanalyzingWithAi] = useState(false);
   const [usedAiStructurer, setUsedAiStructurer] = useState(false);
+  const [extractionOrigin, setExtractionOrigin] = useState<StatementExtractionOrigin | null>(null);
+  const [qualityGate, setQualityGate] = useState<StatementQualityGateResult | null>(null);
+  const [aiStatusNotice, setAiStatusNotice] = useState<StatementAiStatusNotice | null>(null);
+  const [visionEscalationOffer, setVisionEscalationOffer] = useState<VisionEscalationOffer | null>(null);
+  const [clipperRawLines, setClipperRawLines] = useState<string[]>([]);
+  const [clipperReasonMessage, setClipperReasonMessage] = useState<string | null>(null);
   const [printedTotalCents, setPrintedTotalCents] = useState<number | null>(null);
   const [detectedMeta, setDetectedMeta] = useState<DetectedStatementMetadata | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [hasLoadedInput, setHasLoadedInput] = useState(false);
 
   const reconcileRunIdRef = useRef(0);
+  const reanalyzeNonceRef = useRef(0);
+  const autoVisionEscalatedRef = useRef(false);
+  const draftBlueprintRef = useRef<DraftStatementBlueprintSession | null>(null);
   const manuallyEditedIdsRef = useRef<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
   const pendingConflictRef = useRef<{
     transactions: import("@/domain/reconciliation").StatementTransaction[];
     usedAiStructurer: boolean;
+    extractionOrigin?: StatementExtractionOrigin | null;
+    qualityGate?: StatementQualityGateResult | null;
+    aiStatusNotice?: StatementAiStatusNotice | null;
     printedTotalCents: number | null;
     detectedMeta?: DetectedStatementMetadata | null;
     shouldAutoAdvance: boolean;
@@ -124,9 +170,28 @@ export function useStatementImport({
   const unmatchedAppExpensesRef = useRef<ExistingExpenseForReconciliation[]>([]);
   const loadedInputRef = useRef<{
     content: string | ArrayBuffer;
+    rawFullText?: string;
+    pdfBuffer?: ArrayBuffer;
+    pdfPageTexts?: string[];
+    pdfTotalPages?: number;
     fileNameOrType: string;
     fileSha256?: string | null;
     visionBlobs?: readonly { blob: Blob; sha256?: string | null }[];
+    spatialTransactions?: StatementTransaction[];
+    checksumGate?: ChecksumGateResult;
+    spatialLinesCount?: number;
+    discardedMoneyLines?: number;
+    spatialRawLines?: string[];
+    extractedTransactions?: StatementTransaction[];
+    usedAiStructurer?: boolean;
+    extractionOrigin?: StatementExtractionOrigin;
+    qualityGate?: StatementQualityGateResult;
+    aiStatusNotice?: StatementAiStatusNotice;
+    printedTotalCents?: number | null;
+    rows?: RawParsedRow[];
+    mapping?: ColumnMapping;
+    shouldAutoAdvance?: boolean;
+    sourceCompetenceMonth?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -146,6 +211,7 @@ export function useStatementImport({
   useEffect(() => {
     return () => {
       reconcileRunIdRef.current += 1;
+      draftBlueprintRef.current = null;
       abortControllerRef.current?.abort();
     };
   }, []);
@@ -155,6 +221,7 @@ export function useStatementImport({
   const historyQuery = usePredictionHistory(true);
   const importMutation = useImportStatementExpenses();
   const updateExpenseMutation = useUpdateExpense();
+  const deleteExpenseMutation = useDeleteExpense();
   const createRefundMutation = useCreateRefund();
 
   const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
@@ -165,11 +232,18 @@ export function useStatementImport({
     () => mapExpensesForReconciliation(expensesQuery.data ?? [], activeCompetenceMonth),
     [expensesQuery.data, activeCompetenceMonth],
   );
+  const adjacentExpensesForReconciliation = useMemo(
+    () => mapAdjacentExpensesForReconciliation(expensesQuery.data ?? [], activeCompetenceMonth),
+    [expensesQuery.data, activeCompetenceMonth],
+  );
 
   const applyReconciliation = (
     transactions: Parameters<typeof runStatementReconciliation>[0]["transactions"],
     meta?: {
       usedAiStructurer?: boolean;
+      extractionOrigin?: StatementExtractionOrigin | null;
+      qualityGate?: StatementQualityGateResult | null;
+      aiStatusNotice?: StatementAiStatusNotice | null;
       printedTotalCents?: number | null;
       detectedMeta?: DetectedStatementMetadata | null;
       competenceForReconciliation?: string;
@@ -187,6 +261,15 @@ export function useStatementImport({
     if (meta?.usedAiStructurer !== undefined) {
       setUsedAiStructurer(meta.usedAiStructurer);
     }
+    if (meta?.extractionOrigin !== undefined) {
+      setExtractionOrigin(meta.extractionOrigin);
+    }
+    if (meta?.qualityGate !== undefined) {
+      setQualityGate(meta.qualityGate);
+    }
+    if (meta?.aiStatusNotice !== undefined) {
+      setAiStatusNotice(meta.aiStatusNotice);
+    }
     if (meta?.printedTotalCents !== undefined) {
       setPrintedTotalCents(meta.printedTotalCents);
     }
@@ -198,13 +281,18 @@ export function useStatementImport({
     const existingExpenses = meta?.competenceForReconciliation
       ? mapExpensesForReconciliation(expensesQuery.data ?? [], meta.competenceForReconciliation)
       : existingExpensesForReconciliation;
+    const adjacentExpenses = meta?.competenceForReconciliation
+      ? mapAdjacentExpensesForReconciliation(expensesQuery.data ?? [], meta.competenceForReconciliation)
+      : adjacentExpensesForReconciliation;
 
     const history = historyQuery.entries ?? [];
     const reconciliation = runStatementReconciliation({
       transactions,
       existingExpenses,
+      adjacentExpenses,
       history,
       defaultCategoryId,
+      cardScope: card.scope,
     });
 
     // Detecta estados de séries de parcelamento
@@ -301,6 +389,7 @@ export function useStatementImport({
     unmatchedAppExpensesRef.current = reconciliation.unmatchedExistingExpenses;
     setReconciledItems(preResolvedItems);
     setUnmatchedAppExpenses(reconciliation.unmatchedExistingExpenses);
+    setAppDuplicates(reconciliation.appDuplicates ?? []);
     setStep("reconcile");
 
     // Ordena descrições genuinamente inéditas pelo maior impacto financeiro (FinOps)
@@ -496,18 +585,43 @@ export function useStatementImport({
     content: string | ArrayBuffer,
     fileNameOrType: string,
     fileSha256?: string | null,
-    spatialTransactions?: import("@/domain/reconciliation").StatementTransaction[],
-    checksumGate?: import("@/domain/reconciliation").ChecksumGateResult,
+    spatialTransactions?: StatementTransaction[],
+    checksumGate?: ChecksumGateResult,
     spatialExtras?: {
       spatialLinesCount?: number;
       discardedMoneyLines?: number;
       spatialRawLines?: string[];
+      rawFullText?: string;
+      pdfBuffer?: ArrayBuffer;
+      pdfPageTexts?: string[];
+      pdfTotalPages?: number;
+      appliedBlueprintFingerprint?: string;
+      appliedBlueprintOrigin?: BlueprintOrigin;
+      skipVisionEscalation?: boolean;
     },
   ) => {
     setError(null);
-    loadedInputRef.current = { content, fileNameOrType, fileSha256 };
+    setVisionEscalationOffer(null);
+    setAiStatusNotice(null);
+    draftBlueprintRef.current = null;
+    setHasLoadedInput(true);
+    loadedInputRef.current = {
+      content,
+      rawFullText: spatialExtras?.rawFullText,
+      pdfBuffer: spatialExtras?.pdfBuffer,
+      pdfPageTexts: spatialExtras?.pdfPageTexts,
+      pdfTotalPages: spatialExtras?.pdfTotalPages,
+      fileNameOrType,
+      fileSha256,
+      spatialTransactions,
+      checksumGate,
+      spatialLinesCount: spatialExtras?.spatialLinesCount,
+      discardedMoneyLines: spatialExtras?.discardedMoneyLines,
+      spatialRawLines: spatialExtras?.spatialRawLines,
+      sourceCompetenceMonth: activeCompetenceMonth,
+    };
     try {
-      const result = await parseStatementWithPdfAiFallback({
+      let result = await parseStatementWithPdfAiFallback({
         content,
         fileNameOrType,
         cardId: card.id,
@@ -529,18 +643,166 @@ export function useStatementImport({
         spatialLinesCount: spatialExtras?.spatialLinesCount,
         discardedMoneyLines: spatialExtras?.discardedMoneyLines,
         spatialRawLines: spatialExtras?.spatialRawLines,
+        rawFullText: spatialExtras?.rawFullText,
+        appliedBlueprintFingerprint: spatialExtras?.appliedBlueprintFingerprint,
+        appliedBlueprintOrigin: spatialExtras?.appliedBlueprintOrigin,
       });
 
-      if (result.transactions.length === 0 && result.rows.length === 0) {
-        setError("Nenhuma linha de transação válida foi encontrada nos dados informados.");
+      // Camada 3B — Escalada Vision Governada para PDFs cujo Quality Gate ainda reprovou
+      const hasPdfBuffer = Boolean(spatialExtras?.pdfBuffer);
+      const gateFailed = result.qualityGate
+        ? !result.qualityGate.passed
+        : result.transactions.length === 0;
+      const blockedByQuotaOrOffline =
+        result.aiStatusNotice?.kind === "quota_exceeded" ||
+        result.aiStatusNotice?.kind === "offline" ||
+        isReadOnlyMode ||
+        !aiExtractionEnabled ||
+        (typeof navigator !== "undefined" && navigator.onLine === false);
+
+      let pendingOffer: VisionEscalationOffer | null = null;
+      if (
+        hasPdfBuffer &&
+        gateFailed &&
+        !blockedByQuotaOrOffline &&
+        !spatialExtras?.skipVisionEscalation
+      ) {
+        const candidatePages = selectCandidatePdfVisionPages(
+          spatialExtras?.pdfPageTexts ?? [],
+          spatialExtras?.pdfTotalPages,
+        );
+        const totalPages = Math.max(
+          spatialExtras?.pdfTotalPages ?? 1,
+          spatialExtras?.pdfPageTexts?.length ?? 1,
+        );
+
+        if (candidatePages.length === 1 && !autoVisionEscalatedRef.current) {
+          // Máximo 1 escalada automática por arquivo (somente quando há 1 página de extrato)
+          autoVisionEscalatedRef.current = true;
+          setReadingStatusMessage("Refinando leitura visual com IA...");
+          try {
+            const { renderScannedPdfPageToBlob } = await import(
+              "@/services/native/receipt-extractor"
+            );
+            const blob = await renderScannedPdfPageToBlob(
+              spatialExtras!.pdfBuffer!,
+              candidatePages[0]!,
+            );
+            if (blob) {
+              const visionRes = await parseStatementVisionBlobsWithAi({
+                blobs: [{ blob, sha256: fileSha256 }],
+                cardId: card.id,
+                competenceMonth: activeCompetenceMonth,
+                card: {
+                  id: card.id,
+                  name: card.name,
+                  brand: card.brand,
+                  closing_day: card.closing_day,
+                  due_day: card.due_day,
+                  last_four_digits: card.last_four_digits,
+                },
+                userId: resolvedUserId,
+                isReadOnlyMode,
+                aiFallbackEnabled: aiExtractionEnabled,
+                officialTotalCents: result.printedTotalCents,
+              });
+
+              if (visionRes.aiStatusNotice) {
+                result = { ...result, aiStatusNotice: visionRes.aiStatusNotice };
+              }
+              if (
+                visionRes.transactions.length > 0 &&
+                (!result.qualityGate ||
+                  !visionRes.qualityGate ||
+                  shouldPreferAiCandidateByQuality({
+                    aiTransactionsCount: visionRes.transactions.length,
+                    aiQuality: visionRes.qualityGate,
+                    localQuality: result.qualityGate,
+                  }))
+              ) {
+                result = visionRes;
+              }
+            }
+          } catch {
+            // Degrada silenciosamente mantendo o melhor resultado textual já obtido
+          } finally {
+            setReadingStatusMessage(null);
+          }
+        } else if (candidatePages.length > 1) {
+          // 2 a 3 páginas: exige confirmação inline explícita antes de consumir múltiplos créditos Vision
+          pendingOffer = {
+            candidatePages,
+            totalPages,
+            reason:
+              "A leitura textual apresentou divergência e o documento possui múltiplas páginas de extrato.",
+          };
+        }
+      }
+
+      if (result.aiStatusNotice) {
+        setAiStatusNotice(result.aiStatusNotice);
+      }
+      if (pendingOffer) {
+        setVisionEscalationOffer(pendingOffer);
+      }
+      // Mantém rascunho em memória na sessão (NÃO persiste ainda — só no commit após Shadow Replay)
+      draftBlueprintRef.current = result.draftBlueprint ?? null;
+
+      // Extrai linhas brutas para eventual uso na Camada 5 (Recorte Guiado Sem Tokens)
+      const rawTextForClipper =
+        spatialExtras?.rawFullText ??
+        (typeof content === "string"
+          ? content
+          : new TextDecoder("utf-8", { fatal: false }).decode(content));
+      const rawLinesForClipper =
+        spatialExtras?.spatialRawLines && spatialExtras.spatialRawLines.length > 0
+          ? spatialExtras.spatialRawLines
+          : rawTextForClipper
+              .split(/\r?\n/)
+              .map((l) => l.trim())
+              .filter(Boolean);
+      setClipperRawLines(rawLinesForClipper);
+
+      // Camada 5: quando o Quality Gate reprova e a IA não está disponível
+      // (offline, quota_exceeded, sem permissão ou modo somente leitura), encaminha para o
+      // passo inline `block_clipper` em vez de jogar linhas degradadas na Staging Area.
+      const hasClipperCandidates =
+        rawLinesForClipper.length > 0 &&
+        buildClipperLinePreviews({
+          rawLines: rawLinesForClipper,
+          cardId: card.id,
+          competenceMonth: activeCompetenceMonth,
+        }).some((p) => p.isCandidate);
+
+      if (
+        gateFailed &&
+        blockedByQuotaOrOffline &&
+        !result.isOfx &&
+        hasClipperCandidates
+      ) {
+        setParsedRows(result.rows);
+        setColumnMapping(result.mapping);
+        setUsedAiStructurer(false);
+        setExtractionOrigin(result.extractionOrigin ?? "local_unverified");
+        setQualityGate(result.qualityGate ?? null);
+        setPrintedTotalCents(result.printedTotalCents);
+        setDetectedMeta(result.detectedMeta ?? null);
+        setClipperReasonMessage(
+          result.aiStatusNotice?.message ??
+            "A leitura automática apresentou divergência sem IA disponível. Marque o início e o fim das compras para importar com precisão e ensinar este layout ao app.",
+        );
+        setStep("block_clipper");
         return;
       }
 
-      setParsedRows(result.rows);
-      setColumnMapping(result.mapping);
-      setUsedAiStructurer(result.usedAiFallback);
-      setPrintedTotalCents(result.printedTotalCents);
-      setDetectedMeta(result.detectedMeta ?? null);
+      if (result.transactions.length === 0 && result.rows.length === 0) {
+        setError(
+          result.aiStatusNotice?.kind === "quota_exceeded"
+            ? result.aiStatusNotice.message
+            : "Nenhuma linha de transação válida foi encontrada nos dados informados.",
+        );
+        return;
+      }
 
       const shouldAutoAdvance =
         result.isOfx ||
@@ -548,6 +810,27 @@ export function useStatementImport({
         result.rows.length === 0 ||
         ((result.mapping.hasHeader ?? false) &&
           ((result.isCacheHit ?? false) || (result.mappingConfidence ?? 0) >= 85));
+
+      loadedInputRef.current = {
+        ...loadedInputRef.current,
+        extractedTransactions: result.transactions,
+        usedAiStructurer: result.usedAiFallback,
+        extractionOrigin: result.extractionOrigin,
+        qualityGate: result.qualityGate,
+        aiStatusNotice: result.aiStatusNotice,
+        printedTotalCents: result.printedTotalCents,
+        rows: result.rows,
+        mapping: result.mapping,
+        shouldAutoAdvance,
+      };
+
+      setParsedRows(result.rows);
+      setColumnMapping(result.mapping);
+      setUsedAiStructurer(result.usedAiFallback);
+      setExtractionOrigin(result.extractionOrigin ?? null);
+      setQualityGate(result.qualityGate ?? null);
+      setPrintedTotalCents(result.printedTotalCents);
+      setDetectedMeta(result.detectedMeta ?? null);
 
       // Se houver divergência real de competência, pausa antes de montar a Staging Area
       if (
@@ -557,6 +840,9 @@ export function useStatementImport({
         pendingConflictRef.current = {
           transactions: result.transactions,
           usedAiStructurer: result.usedAiFallback,
+          extractionOrigin: result.extractionOrigin ?? null,
+          qualityGate: result.qualityGate ?? null,
+          aiStatusNotice: result.aiStatusNotice ?? null,
           printedTotalCents: result.printedTotalCents,
           detectedMeta: result.detectedMeta,
           shouldAutoAdvance,
@@ -568,6 +854,9 @@ export function useStatementImport({
       if (shouldAutoAdvance) {
         applyReconciliation(result.transactions, {
           usedAiStructurer: result.usedAiFallback,
+          extractionOrigin: result.extractionOrigin ?? null,
+          qualityGate: result.qualityGate ?? null,
+          aiStatusNotice: result.aiStatusNotice ?? null,
           printedTotalCents: result.printedTotalCents,
           detectedMeta: result.detectedMeta,
         });
@@ -576,10 +865,70 @@ export function useStatementImport({
       }
     } catch (err) {
       setError(getErrorMessage(err));
+    } finally {
+      setReadingStatusMessage(null);
     }
   };
 
   const processLoadedStatementSource = async (loaded: LoadedStatementSource) => {
+    autoVisionEscalatedRef.current = false;
+    draftBlueprintRef.current = null;
+    setVisionEscalationOffer(null);
+    setAiStatusNotice(null);
+
+    if (loaded.kind === "image") {
+      const blobsWithSha = [{ blob: loaded.file, sha256: loaded.sha256 }];
+      setHasLoadedInput(true);
+      loadedInputRef.current = {
+        visionBlobs: blobsWithSha,
+        content: "",
+        fileNameOrType: "images",
+      };
+
+      const visionResult = await parseStatementVisionBlobsWithAi({
+        blobs: blobsWithSha,
+        cardId: card.id,
+        competenceMonth: activeCompetenceMonth,
+        card: {
+          id: card.id,
+          name: card.name,
+          brand: card.brand,
+          closing_day: card.closing_day,
+          due_day: card.due_day,
+          last_four_digits: card.last_four_digits,
+        },
+        userId: resolvedUserId,
+        isReadOnlyMode,
+        aiFallbackEnabled: aiExtractionEnabled,
+      });
+
+      if (visionResult.aiStatusNotice) {
+        setAiStatusNotice(visionResult.aiStatusNotice);
+      }
+
+      if (visionResult.transactions.length === 0) {
+        setError(
+          visionResult.aiStatusNotice?.kind === "quota_exceeded"
+            ? visionResult.aiStatusNotice.message
+            : "Não foi possível extrair lançamentos das imagens enviadas. Verifique a nitidez do print ou utilize o arquivo PDF, CSV ou OFX da fatura.",
+        );
+        return;
+      }
+
+      setParsedRows(visionResult.rows);
+      setColumnMapping(visionResult.mapping);
+      setDetectedMeta(visionResult.detectedMeta ?? null);
+      applyReconciliation(visionResult.transactions, {
+        usedAiStructurer: true,
+        extractionOrigin: visionResult.extractionOrigin ?? "ai_vision",
+        qualityGate: visionResult.qualityGate ?? null,
+        aiStatusNotice: visionResult.aiStatusNotice ?? null,
+        printedTotalCents: visionResult.printedTotalCents,
+        detectedMeta: visionResult.detectedMeta,
+      });
+      return;
+    }
+
     if (loaded.kind === "pdf_scanned") {
       const { renderScannedPdfPageToBlob } = await import(
         "@/services/native/receipt-extractor"
@@ -594,8 +943,32 @@ export function useStatementImport({
         });
       }
 
+      // Degradação graciosa: se não foi possível renderizar páginas em canvas (ex.: PDF híbrido curto
+      // ou ambiente sem canvas 2D), mas existe texto extraído, cai para o pipeline textual.
+      if (pageBlobs.length === 0 && loaded.fallbackRawText?.trim()) {
+        await handleProcessInput(
+          loaded.fallbackRawText,
+          loaded.fileName,
+          loaded.sha256,
+          undefined,
+          undefined,
+          {
+            rawFullText: loaded.fallbackRawText,
+            pdfBuffer: loaded.buffer,
+            pdfPageTexts: loaded.pdfPageTexts,
+            pdfTotalPages: loaded.pdfTotalPages,
+            skipVisionEscalation: true,
+          },
+        );
+        return;
+      }
+
+      setHasLoadedInput(true);
       loadedInputRef.current = {
         visionBlobs: pageBlobs,
+        pdfBuffer: loaded.buffer,
+        pdfPageTexts: loaded.pdfPageTexts,
+        pdfTotalPages: loaded.pdfTotalPages,
         content: "",
         fileNameOrType: "scanned_pdf",
       };
@@ -617,12 +990,34 @@ export function useStatementImport({
         aiFallbackEnabled: aiExtractionEnabled,
       });
 
+      if (scannedVision.aiStatusNotice) {
+        setAiStatusNotice(scannedVision.aiStatusNotice);
+      }
+
       if (scannedVision.transactions.length === 0) {
         setError(
-          "Não foi possível extrair os dados da fatura em PDF. Se o arquivo estiver protegido por senha, desbloqueie-o ou exporte em CSV/OFX.",
+          scannedVision.aiStatusNotice?.kind === "quota_exceeded"
+            ? scannedVision.aiStatusNotice.message
+            : "Não foi possível extrair os dados da fatura em PDF. Se o arquivo estiver protegido por senha, desbloqueie-o ou exporte em CSV/OFX.",
         );
         return;
       }
+
+      loadedInputRef.current = {
+        ...loadedInputRef.current,
+        content: "",
+        fileNameOrType: "scanned_pdf",
+        extractedTransactions: scannedVision.transactions,
+        usedAiStructurer: true,
+        extractionOrigin: scannedVision.extractionOrigin ?? "ai_vision",
+        qualityGate: scannedVision.qualityGate,
+        aiStatusNotice: scannedVision.aiStatusNotice,
+        printedTotalCents: scannedVision.printedTotalCents,
+        rows: scannedVision.rows,
+        mapping: scannedVision.mapping,
+        shouldAutoAdvance: true,
+        sourceCompetenceMonth: activeCompetenceMonth,
+      };
 
       setParsedRows(scannedVision.rows);
       setColumnMapping(scannedVision.mapping);
@@ -635,7 +1030,10 @@ export function useStatementImport({
         pendingConflictRef.current = {
           transactions: scannedVision.transactions,
           usedAiStructurer: true,
-          printedTotalCents: null,
+          extractionOrigin: scannedVision.extractionOrigin ?? "ai_vision",
+          qualityGate: scannedVision.qualityGate ?? null,
+          aiStatusNotice: scannedVision.aiStatusNotice ?? null,
+          printedTotalCents: scannedVision.printedTotalCents,
           detectedMeta: scannedVision.detectedMeta,
           shouldAutoAdvance: true,
         };
@@ -645,7 +1043,10 @@ export function useStatementImport({
 
       applyReconciliation(scannedVision.transactions, {
         usedAiStructurer: true,
-        printedTotalCents: null,
+        extractionOrigin: scannedVision.extractionOrigin ?? "ai_vision",
+        qualityGate: scannedVision.qualityGate ?? null,
+        aiStatusNotice: scannedVision.aiStatusNotice ?? null,
+        printedTotalCents: scannedVision.printedTotalCents,
         detectedMeta: scannedVision.detectedMeta,
       });
       return;
@@ -662,6 +1063,12 @@ export function useStatementImport({
           spatialLinesCount: loaded.spatialLinesCount,
           discardedMoneyLines: loaded.discardedMoneyLines,
           spatialRawLines: loaded.spatialRawLines,
+          rawFullText: loaded.rawFullText,
+          pdfBuffer: loaded.buffer,
+          pdfPageTexts: loaded.pdfPageTexts,
+          pdfTotalPages: loaded.pdfTotalPages,
+          appliedBlueprintFingerprint: loaded.appliedBlueprintFingerprint,
+          appliedBlueprintOrigin: loaded.appliedBlueprintOrigin,
         },
       );
       return;
@@ -678,10 +1085,17 @@ export function useStatementImport({
   const handleFilesSelect = async (files: File[]) => {
     if (files.length === 0) return;
     setError(null);
+    setVisionEscalationOffer(null);
+    setAiStatusNotice(null);
+    draftBlueprintRef.current = null;
+    autoVisionEscalatedRef.current = false;
     setIsReadingFile(true);
 
     try {
-      const imageFiles = files.filter((f) => isRasterStatementImage(f));
+      const imageChecks = await Promise.all(
+        files.map(async (f) => ({ file: f, isImage: await isRasterStatementImageByContent(f) })),
+      );
+      const imageFiles = imageChecks.filter((entry) => entry.isImage).map((entry) => entry.file);
       if (imageFiles.length > 0) {
         const limitedImages = imageFiles.slice(0, MAX_STATEMENT_VISION_PAGES_OR_IMAGES);
         const blobsWithSha = await Promise.all(
@@ -691,6 +1105,7 @@ export function useStatementImport({
           })),
         );
 
+        setHasLoadedInput(true);
         loadedInputRef.current = {
           visionBlobs: blobsWithSha,
           content: "",
@@ -699,6 +1114,7 @@ export function useStatementImport({
 
         const visionResult = await parseStatementVisionBlobsWithAi({
           blobs: blobsWithSha,
+          totalUploadedCount: imageFiles.length,
           cardId: card.id,
           competenceMonth: activeCompetenceMonth,
           card: {
@@ -714,19 +1130,50 @@ export function useStatementImport({
           aiFallbackEnabled: aiExtractionEnabled,
         });
 
+        if (visionResult.aiStatusNotice) {
+          setAiStatusNotice(visionResult.aiStatusNotice);
+        }
+
+        if (visionResult.visionTruncationWarning) {
+          pushToast({
+            title: "Limite de imagens por lote",
+            description: visionResult.visionTruncationWarning,
+            variant: "default",
+          });
+        }
+
         if (visionResult.transactions.length === 0) {
           setError(
-            "Não foi possível extrair lançamentos das imagens enviadas. Verifique a nitidez do print ou utilize o arquivo PDF, CSV ou OFX da fatura.",
+            visionResult.aiStatusNotice?.kind === "quota_exceeded"
+              ? visionResult.aiStatusNotice.message
+              : "Não foi possível extrair lançamentos das imagens enviadas. Verifique a nitidez do print ou utilize o arquivo PDF, CSV ou OFX da fatura.",
           );
           return;
         }
+
+        loadedInputRef.current = {
+          ...loadedInputRef.current,
+          extractedTransactions: visionResult.transactions,
+          usedAiStructurer: true,
+          extractionOrigin: visionResult.extractionOrigin ?? "ai_vision",
+          qualityGate: visionResult.qualityGate,
+          aiStatusNotice: visionResult.aiStatusNotice,
+          printedTotalCents: visionResult.printedTotalCents,
+          rows: visionResult.rows,
+          mapping: visionResult.mapping,
+          shouldAutoAdvance: true,
+          sourceCompetenceMonth: activeCompetenceMonth,
+        };
 
         setParsedRows(visionResult.rows);
         setColumnMapping(visionResult.mapping);
         setDetectedMeta(visionResult.detectedMeta ?? null);
         applyReconciliation(visionResult.transactions, {
           usedAiStructurer: true,
-          printedTotalCents: null,
+          extractionOrigin: visionResult.extractionOrigin ?? "ai_vision",
+          qualityGate: visionResult.qualityGate ?? null,
+          aiStatusNotice: visionResult.aiStatusNotice ?? null,
+          printedTotalCents: visionResult.printedTotalCents,
           detectedMeta: visionResult.detectedMeta,
         });
         return;
@@ -808,14 +1255,76 @@ export function useStatementImport({
     if (!newMonth || newMonth === activeCompetenceMonth) return;
     setActiveCompetenceMonth(newMonth);
     onCompetenceChange?.(newMonth);
+    pendingConflictRef.current = null;
 
-    if (loadedInputRef.current) {
+    const loaded = loadedInputRef.current;
+    if (loaded) {
       setIsReadingFile(true);
       setError(null);
       try {
-        if (loadedInputRef.current.visionBlobs?.length) {
+        const sameYear =
+          (loaded.sourceCompetenceMonth?.slice(0, 4) ?? activeCompetenceMonth.slice(0, 4)) ===
+          newMonth.slice(0, 4);
+
+        // Reaproveita transações já extraídas (PDF espacial ou Vision IA) sem rebaixar ao text-parser nem chamar IA 2x
+        if (loaded.extractedTransactions && loaded.extractedTransactions.length > 0 && sameYear) {
+          const rehashedTransactions = loaded.extractedTransactions.map((tx) => ({
+            ...tx,
+            statementHash: generateStatementHash({
+              cardId: card.id,
+              competenceMonth: newMonth,
+              date: tx.originalDate || tx.date,
+              amountCents: tx.amountCents,
+              cleanDescription: tx.cleanDescription,
+              occurrenceIndex: tx.occurrenceIndex,
+            }),
+          }));
+
+          const metadataRawText =
+            loaded.rawFullText ?? (typeof loaded.content === "string" ? loaded.content : "");
+          const refreshedMeta = detectStatementMetadata({
+            rawText: metadataRawText,
+            transactions: rehashedTransactions,
+            activeCompetenceMonth: newMonth,
+            card: {
+              id: card.id,
+              name: card.name,
+              brand: card.brand,
+              closing_day: card.closing_day,
+              due_day: card.due_day,
+              last_four_digits: card.last_four_digits,
+            },
+            printedTotalCents: loaded.printedTotalCents ?? null,
+          });
+
+          loadedInputRef.current = {
+            ...loaded,
+            extractedTransactions: rehashedTransactions,
+            sourceCompetenceMonth: newMonth,
+          };
+
+          if (loaded.rows) setParsedRows(loaded.rows);
+          if (loaded.mapping) setColumnMapping(loaded.mapping);
+          setUsedAiStructurer(Boolean(loaded.usedAiStructurer));
+          setPrintedTotalCents(loaded.printedTotalCents ?? null);
+          setDetectedMeta(refreshedMeta);
+
+          if (loaded.shouldAutoAdvance ?? true) {
+            applyReconciliation(rehashedTransactions, {
+              usedAiStructurer: Boolean(loaded.usedAiStructurer),
+              printedTotalCents: loaded.printedTotalCents ?? null,
+              detectedMeta: refreshedMeta,
+              competenceForReconciliation: newMonth,
+            });
+          } else {
+            setStep("mapping");
+          }
+          return;
+        }
+
+        if (loaded.visionBlobs?.length) {
           const visionResult = await parseStatementVisionBlobsWithAi({
-            blobs: loadedInputRef.current.visionBlobs,
+            blobs: loaded.visionBlobs,
             cardId: card.id,
             competenceMonth: newMonth,
             card: {
@@ -844,8 +1353,8 @@ export function useStatementImport({
         }
 
         const result = await parseStatementWithPdfAiFallback({
-          content: loadedInputRef.current.content,
-          fileNameOrType: loadedInputRef.current.fileNameOrType,
+          content: loaded.content,
+          fileNameOrType: loaded.fileNameOrType,
           cardId: card.id,
           competenceMonth: newMonth,
           card: {
@@ -856,10 +1365,16 @@ export function useStatementImport({
             due_day: card.due_day,
             last_four_digits: card.last_four_digits,
           },
-          fileSha256: loadedInputRef.current.fileSha256,
+          fileSha256: loaded.fileSha256,
           userId: resolvedUserId,
           isReadOnlyMode,
           aiFallbackEnabled: aiExtractionEnabled,
+          spatialTransactions: loaded.spatialTransactions,
+          checksumGate: loaded.checksumGate,
+          spatialLinesCount: loaded.spatialLinesCount,
+          discardedMoneyLines: loaded.discardedMoneyLines,
+          spatialRawLines: loaded.spatialRawLines,
+          rawFullText: loaded.rawFullText,
         });
 
         setParsedRows(result.rows);
@@ -908,6 +1423,9 @@ export function useStatementImport({
     if (pending.shouldAutoAdvance) {
       applyReconciliation(pending.transactions, {
         usedAiStructurer: pending.usedAiStructurer,
+        extractionOrigin: pending.extractionOrigin ?? null,
+        qualityGate: pending.qualityGate ?? null,
+        aiStatusNotice: pending.aiStatusNotice ?? null,
         printedTotalCents: pending.printedTotalCents,
         detectedMeta: pending.detectedMeta
           ? { ...pending.detectedMeta, hasCompetenceMismatch: false }
@@ -921,19 +1439,395 @@ export function useStatementImport({
   const handleCancelCompetenceConflict = () => {
     pendingConflictRef.current = null;
     loadedInputRef.current = null;
+    draftBlueprintRef.current = null;
+    setHasLoadedInput(false);
     setParsedRows([]);
     setColumnMapping(null);
     setDetectedMeta(null);
+    setExtractionOrigin(null);
+    setQualityGate(null);
+    setAiStatusNotice(null);
+    setVisionEscalationOffer(null);
     setError(null);
     setHasUnsavedChanges(false);
     setStep("upload");
   };
 
+  const handleDismissVisionEscalation = () => {
+    setVisionEscalationOffer(null);
+  };
+
+  const handleOpenBlockClipper = () => {
+    setVisionEscalationOffer(null);
+    if (!clipperReasonMessage) {
+      setClipperReasonMessage(
+        "Marque o início e o fim das compras abaixo e desmarque eventuais linhas intrusas.",
+      );
+    }
+    setStep("block_clipper");
+  };
+
+  const handleConfirmBlockClipper = (selection: StatementBlockClipperSelection) => {
+    const loaded = loadedInputRef.current;
+    const rawText =
+      loaded?.rawFullText ??
+      clipperRawLines.join("\n");
+    const summaryAmounts = extractStatementSummaryAmounts(rawText);
+    const officialTotal = printedTotalCents ?? summaryAmounts.invoiceTotalCents;
+
+    const clippedQuality = evaluateStatementExtractionQuality({
+      transactions: selection.transactions,
+      officialTotalCents: officialTotal,
+      cycleNetTargetCents: summaryAmounts.cycleNetTargetCents,
+      previousBalanceCents: summaryAmounts.previousBalanceCents,
+      paymentsCents: summaryAmounts.paymentsCents,
+    });
+
+    // Alimenta BlueprintLearner com origem `user_learned` em memória (NÃO salvo ainda — só no commit após Shadow Replay)
+    const fileKind = (loaded?.fileNameOrType ?? "").toLowerCase().endsWith(".pdf")
+      ? "pdf_text"
+      : "text";
+    const distilled = distillStatementBlueprintDraft({
+      rawText,
+      rawLines: clipperRawLines,
+      extractedTransactions: selection.transactions,
+      fileKind,
+      fileName: loaded?.fileNameOrType,
+      extractionSource: "user_manual",
+      officialTotalCents: officialTotal,
+      cycleNetTargetCents: summaryAmounts.cycleNetTargetCents,
+    });
+
+    draftBlueprintRef.current = distilled.blueprint
+      ? {
+          blueprint: distilled.blueprint,
+          rawLines: clipperRawLines,
+          officialTotalCents: officialTotal,
+          cycleNetTargetCents: summaryAmounts.cycleNetTargetCents,
+          previousBalanceCents: summaryAmounts.previousBalanceCents,
+          paymentsCents: summaryAmounts.paymentsCents,
+        }
+      : null;
+
+    const refreshedMeta = detectStatementMetadata({
+      rawText,
+      transactions: selection.transactions,
+      activeCompetenceMonth,
+      card: {
+        id: card.id,
+        name: card.name,
+        brand: card.brand,
+        closing_day: card.closing_day,
+        due_day: card.due_day,
+        last_four_digits: card.last_four_digits,
+      },
+      printedTotalCents: officialTotal,
+    });
+
+    if (loadedInputRef.current) {
+      loadedInputRef.current = {
+        ...loadedInputRef.current,
+        extractedTransactions: selection.transactions,
+        usedAiStructurer: false,
+        extractionOrigin: clippedQuality.passed ? "local_verified" : "local_unverified",
+        qualityGate: clippedQuality,
+        printedTotalCents: officialTotal,
+      };
+    }
+
+    setError(null);
+    setDetectedMeta(refreshedMeta);
+    applyReconciliation(selection.transactions, {
+      usedAiStructurer: false,
+      extractionOrigin: clippedQuality.passed ? "local_verified" : "local_unverified",
+      qualityGate: clippedQuality,
+      printedTotalCents: officialTotal,
+      detectedMeta: refreshedMeta,
+    });
+  };
+
+  const handleConfirmVisionEscalation = async () => {
+    const offer = visionEscalationOffer;
+    const loaded = loadedInputRef.current;
+    if (!offer || !loaded?.pdfBuffer) {
+      setVisionEscalationOffer(null);
+      return;
+    }
+
+    setVisionEscalationOffer(null);
+    setIsReanalyzingWithAi(true);
+    setReadingStatusMessage(
+      `Analisando visualmente ${offer.candidatePages.length} páginas com IA...`,
+    );
+    setError(null);
+
+    try {
+      const { renderScannedPdfPageToBlob } = await import(
+        "@/services/native/receipt-extractor"
+      );
+      const pageBlobs: Array<{ blob: Blob; sha256?: string | null }> = [];
+      for (const pageNum of offer.candidatePages) {
+        const blob = await renderScannedPdfPageToBlob(loaded.pdfBuffer, pageNum);
+        if (!blob) continue;
+        pageBlobs.push({
+          blob,
+          sha256: loaded.fileSha256 ? `${loaded.fileSha256}:p${pageNum}` : undefined,
+        });
+      }
+
+      if (pageBlobs.length === 0) {
+        setAiStatusNotice({
+          kind: "ai_unavailable",
+          message:
+            "Não foi possível renderizar as páginas deste PDF para leitura visual neste dispositivo.",
+        });
+        return;
+      }
+
+      const nonce = ++reanalyzeNonceRef.current;
+      const visionResult = await parseStatementVisionBlobsWithAi({
+        blobs: pageBlobs,
+        cardId: card.id,
+        competenceMonth: activeCompetenceMonth,
+        card: {
+          id: card.id,
+          name: card.name,
+          brand: card.brand,
+          closing_day: card.closing_day,
+          due_day: card.due_day,
+          last_four_digits: card.last_four_digits,
+        },
+        userId: resolvedUserId,
+        isReadOnlyMode,
+        aiFallbackEnabled: aiExtractionEnabled,
+        reanalyzeNonce: nonce,
+        officialTotalCents: printedTotalCents,
+      });
+
+      if (visionResult.aiStatusNotice) {
+        setAiStatusNotice(visionResult.aiStatusNotice);
+      }
+
+      if (visionResult.transactions.length === 0) {
+        if (visionResult.aiStatusNotice?.kind === "quota_exceeded") {
+          pushToast({
+            title: "Limite de IA atingido",
+            description: visionResult.aiStatusNotice.message,
+            variant: "default",
+          });
+        } else {
+          setError(
+            "A leitura visual não encontrou lançamentos adicionais. Você pode revisar ou editar os itens manualmente.",
+          );
+        }
+        return;
+      }
+
+      loadedInputRef.current = {
+        ...loaded,
+        visionBlobs: pageBlobs,
+        extractedTransactions: visionResult.transactions,
+        usedAiStructurer: true,
+        extractionOrigin: "ai_vision",
+        qualityGate: visionResult.qualityGate,
+        aiStatusNotice: visionResult.aiStatusNotice,
+        printedTotalCents: visionResult.printedTotalCents ?? printedTotalCents,
+        rows: visionResult.rows,
+        mapping: visionResult.mapping,
+        shouldAutoAdvance: true,
+      };
+
+      setParsedRows(visionResult.rows);
+      setColumnMapping(visionResult.mapping);
+      setDetectedMeta(visionResult.detectedMeta ?? detectedMeta);
+      applyReconciliation(visionResult.transactions, {
+        usedAiStructurer: true,
+        extractionOrigin: "ai_vision",
+        qualityGate: visionResult.qualityGate ?? null,
+        aiStatusNotice: visionResult.aiStatusNotice ?? null,
+        printedTotalCents: visionResult.printedTotalCents ?? printedTotalCents,
+        detectedMeta: visionResult.detectedMeta ?? detectedMeta,
+      });
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsReanalyzingWithAi(false);
+      setReadingStatusMessage(null);
+    }
+  };
+
+  /**
+   * Reanálise explícita sob demanda via botão "Reanalisar com IA" (Item #8):
+   * Usa salt determinístico `${baseSha}:reanalyze:${nonce}` (SHA-256 64-hex válido)
+   * para contornar cache remoto sem exigir deploy na Edge Function.
+   */
+  const handleReanalyzeWithAi = async () => {
+    const loaded = loadedInputRef.current;
+    if (!loaded || isReanalyzingWithAi) return;
+
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setAiStatusNotice({
+        kind: "offline",
+        message: "Sem conexão no momento. Conecte-se à internet para reanalisar com IA.",
+      });
+      return;
+    }
+
+    if (isReadOnlyMode || !aiExtractionEnabled) {
+      setAiStatusNotice({
+        kind: "ai_unavailable",
+        message: "A análise por IA está indisponível neste modo.",
+      });
+      return;
+    }
+
+    const nonce = ++reanalyzeNonceRef.current;
+    setIsReanalyzingWithAi(true);
+    setReadingStatusMessage("Reanalisando fatura com IA...");
+    setError(null);
+    setVisionEscalationOffer(null);
+
+    try {
+      if (loaded.visionBlobs?.length) {
+        const visionResult = await parseStatementVisionBlobsWithAi({
+          blobs: loaded.visionBlobs,
+          cardId: card.id,
+          competenceMonth: activeCompetenceMonth,
+          card: {
+            id: card.id,
+            name: card.name,
+            brand: card.brand,
+            closing_day: card.closing_day,
+            due_day: card.due_day,
+            last_four_digits: card.last_four_digits,
+          },
+          userId: resolvedUserId,
+          isReadOnlyMode,
+          aiFallbackEnabled: aiExtractionEnabled,
+          reanalyzeNonce: nonce,
+          officialTotalCents: printedTotalCents,
+        });
+
+        if (visionResult.aiStatusNotice) {
+          setAiStatusNotice(visionResult.aiStatusNotice);
+        }
+
+        if (visionResult.transactions.length > 0) {
+          loadedInputRef.current = {
+            ...loaded,
+            extractedTransactions: visionResult.transactions,
+            usedAiStructurer: true,
+            extractionOrigin: visionResult.extractionOrigin ?? "ai_vision",
+            qualityGate: visionResult.qualityGate,
+            aiStatusNotice: visionResult.aiStatusNotice,
+            printedTotalCents: visionResult.printedTotalCents ?? printedTotalCents,
+            rows: visionResult.rows,
+            mapping: visionResult.mapping,
+          };
+          setParsedRows(visionResult.rows);
+          setColumnMapping(visionResult.mapping);
+          applyReconciliation(visionResult.transactions, {
+            usedAiStructurer: true,
+            extractionOrigin: visionResult.extractionOrigin ?? "ai_vision",
+            qualityGate: visionResult.qualityGate ?? null,
+            aiStatusNotice: visionResult.aiStatusNotice ?? null,
+            printedTotalCents: visionResult.printedTotalCents ?? printedTotalCents,
+            detectedMeta: visionResult.detectedMeta ?? detectedMeta,
+          });
+        }
+        return;
+      }
+
+      const result = await parseStatementWithPdfAiFallback({
+        content: loaded.content,
+        fileNameOrType: loaded.fileNameOrType,
+        cardId: card.id,
+        competenceMonth: activeCompetenceMonth,
+        card: {
+          id: card.id,
+          name: card.name,
+          brand: card.brand,
+          closing_day: card.closing_day,
+          due_day: card.due_day,
+          last_four_digits: card.last_four_digits,
+        },
+        fileSha256: loaded.fileSha256,
+        userId: resolvedUserId,
+        isReadOnlyMode,
+        aiFallbackEnabled: aiExtractionEnabled,
+        spatialTransactions: loaded.spatialTransactions,
+        checksumGate: loaded.checksumGate,
+        spatialLinesCount: loaded.spatialLinesCount,
+        discardedMoneyLines: loaded.discardedMoneyLines,
+        spatialRawLines: loaded.spatialRawLines,
+        rawFullText: loaded.rawFullText,
+        forceAiReanalyze: true,
+        reanalyzeNonce: nonce,
+      });
+
+      if (result.aiStatusNotice) {
+        setAiStatusNotice(result.aiStatusNotice);
+      }
+
+      // Se a reanálise textual ainda reprovou no Quality Gate e há PDF multi-página,
+      // oferece escalada Vision governada (sem consumir créditos sem aviso)
+      if (
+        loaded.pdfBuffer &&
+        result.qualityGate &&
+        !result.qualityGate.passed &&
+        result.aiStatusNotice?.kind !== "quota_exceeded" &&
+        result.aiStatusNotice?.kind !== "offline"
+      ) {
+        const candidatePages = selectCandidatePdfVisionPages(
+          loaded.pdfPageTexts ?? [],
+          loaded.pdfTotalPages,
+        );
+        setVisionEscalationOffer({
+          candidatePages,
+          totalPages: Math.max(loaded.pdfTotalPages ?? 1, loaded.pdfPageTexts?.length ?? 1),
+          reason:
+            "A reanálise textual ainda apresentou diferença em relação ao valor oficial da fatura.",
+        });
+      }
+
+      if (result.transactions.length > 0) {
+        loadedInputRef.current = {
+          ...loaded,
+          extractedTransactions: result.transactions,
+          usedAiStructurer: result.usedAiFallback,
+          extractionOrigin: result.extractionOrigin,
+          qualityGate: result.qualityGate,
+          aiStatusNotice: result.aiStatusNotice,
+          printedTotalCents: result.printedTotalCents ?? printedTotalCents,
+          rows: result.rows,
+          mapping: result.mapping,
+        };
+        setParsedRows(result.rows);
+        setColumnMapping(result.mapping);
+        draftBlueprintRef.current = result.draftBlueprint ?? draftBlueprintRef.current;
+        applyReconciliation(result.transactions, {
+          usedAiStructurer: result.usedAiFallback,
+          extractionOrigin: result.extractionOrigin ?? null,
+          qualityGate: result.qualityGate ?? null,
+          aiStatusNotice: result.aiStatusNotice ?? null,
+          printedTotalCents: result.printedTotalCents ?? printedTotalCents,
+          detectedMeta: result.detectedMeta ?? detectedMeta,
+        });
+      }
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsReanalyzingWithAi(false);
+      setReadingStatusMessage(null);
+    }
+  };
+
   const handleConfirmMapping = (mapping: ColumnMapping) => {
     setColumnMapping(mapping);
     setError(null);
-    if (parsedRows.length > 0 && parsedRows[0]?.cells?.length) {
-      setCachedColumnMapping(parsedRows[0].cells, mapping);
+    const headerCells = extractHeaderCellsForCache(parsedRows, mapping);
+    if (headerCells.length > 0) {
+      setCachedColumnMapping(headerCells, mapping);
     }
     try {
       applyReconciliation(
@@ -1169,6 +2063,174 @@ export function useStatementImport({
     );
   };
 
+  const recomputeAppDuplicatesFromLists = (
+    nextItems: ReconciliationItem[],
+    nextUnmatched: ExistingExpenseForReconciliation[],
+  ) => {
+    const baseExisting = mapExpensesForReconciliation(expensesQuery.data ?? [], activeCompetenceMonth);
+    const remainingIds = new Set(nextUnmatched.map((e) => e.id));
+    const filteredExisting = baseExisting.filter(
+      (e) =>
+        remainingIds.has(e.id) ||
+        nextItems.some((it) => it.matchedExpenseId === e.id),
+    );
+    setAppDuplicates(
+      findAppDuplicateCandidates({
+        items: nextItems,
+        existingExpenses: filteredExisting,
+        unmatchedExistingExpenses: nextUnmatched,
+      }),
+    );
+  };
+
+  const handleDeleteAppExpense = async (
+    expenseId: string,
+    mode: "single" | "all" = "single",
+  ) => {
+    try {
+      await deleteExpenseMutation.mutateAsync({ expenseId, mode });
+      const nextUnmatched = unmatchedAppExpensesRef.current.filter((e) => e.id !== expenseId);
+      unmatchedAppExpensesRef.current = nextUnmatched;
+      setUnmatchedAppExpenses(nextUnmatched);
+      recomputeAppDuplicatesFromLists(reconciledItemsRef.current, nextUnmatched);
+      triggerSensory("success");
+      pushToast({
+        title: "Duplicata excluída do aplicativo",
+        description: "A despesa excedente foi removida mantendo a conciliação intacta.",
+        variant: "default",
+      });
+    } catch (err) {
+      triggerSensory("error");
+      pushToast({
+        title: "Não foi possível excluir a despesa",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMoveExpenseToCompetence = async (params: {
+    expenseId: string;
+    targetCompetence: string;
+    statementHash?: string;
+    transactionId?: string;
+  }) => {
+    const { expenseId, targetCompetence, statementHash, transactionId } = params;
+    try {
+      await updateExpenseMutation.mutateAsync({
+        id: expenseId,
+        input: {
+          bill_competence: targetCompetence,
+          ...(statementHash ? { statement_hash: statementHash } : {}),
+        },
+      });
+
+      if (targetCompetence === activeCompetenceMonth && transactionId) {
+        setReconciledItems((prev) =>
+          prev.map((it) => {
+            if (it.transaction.id !== transactionId || !it.crossCompetenceMatch) return it;
+            return {
+              ...it,
+              status: "exact_match",
+              score: it.crossCompetenceMatch.score,
+              matchedExpenseId: it.crossCompetenceMatch.expenseId,
+              matchedExpenseDescription: it.crossCompetenceMatch.expenseDescription,
+              matchedExpenseDate: it.crossCompetenceMatch.expenseDate,
+              matchedExpenseValueCents: it.crossCompetenceMatch.expenseValueCents,
+              crossCompetenceMatch: undefined,
+              selected: false,
+              suggestedAction: "link_existing",
+            };
+          }),
+        );
+      } else {
+        const nextUnmatched = unmatchedAppExpensesRef.current.filter((e) => e.id !== expenseId);
+        unmatchedAppExpensesRef.current = nextUnmatched;
+        setUnmatchedAppExpenses(nextUnmatched);
+        recomputeAppDuplicatesFromLists(reconciledItemsRef.current, nextUnmatched);
+      }
+
+      triggerSensory("success");
+      const [y, m] = targetCompetence.split("-");
+      pushToast({
+        title: "Competência atualizada",
+        description: `Despesa movida para a fatura ${m}/${y}.`,
+        variant: "default",
+      });
+    } catch (err) {
+      triggerSensory("error");
+      pushToast({
+        title: "Erro ao mover competência",
+        description: getErrorMessage(err),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMoveAllCrossCompetenceMatches = async (sourceCompetence?: string) => {
+    const targets = reconciledItems.filter(
+      (it) =>
+        it.crossCompetenceMatch &&
+        (!sourceCompetence || it.crossCompetenceMatch.currentBillCompetence === sourceCompetence),
+    );
+    if (targets.length === 0) return;
+
+    const results = await Promise.allSettled(
+      targets.map((it) =>
+        updateExpenseMutation.mutateAsync({
+          id: it.crossCompetenceMatch!.expenseId,
+          input: {
+            bill_competence: activeCompetenceMonth,
+            statement_hash: it.crossCompetenceMatch!.statementHash,
+          },
+        }),
+      ),
+    );
+
+    const movedTxIds = new Set<string>();
+    results.forEach((res, idx) => {
+      if (res.status === "fulfilled" && targets[idx]) {
+        movedTxIds.add(targets[idx]!.transaction.id);
+      }
+    });
+
+    if (movedTxIds.size > 0) {
+      setReconciledItems((prev) =>
+        prev.map((it) => {
+          if (!movedTxIds.has(it.transaction.id) || !it.crossCompetenceMatch) return it;
+          return {
+            ...it,
+            status: "exact_match",
+            score: it.crossCompetenceMatch.score,
+            matchedExpenseId: it.crossCompetenceMatch.expenseId,
+            matchedExpenseDescription: it.crossCompetenceMatch.expenseDescription,
+            matchedExpenseDate: it.crossCompetenceMatch.expenseDate,
+            matchedExpenseValueCents: it.crossCompetenceMatch.expenseValueCents,
+            crossCompetenceMatch: undefined,
+            selected: false,
+            suggestedAction: "link_existing",
+          };
+        }),
+      );
+      triggerSensory("success");
+      const [y, m] = activeCompetenceMonth.split("-");
+      pushToast({
+        title: "Fatura realinhada",
+        description: `${movedTxIds.size} ${movedTxIds.size === 1 ? "despesa movida" : "despesas movidas"} para ${m}/${y}.`,
+        variant: "default",
+      });
+    }
+
+    if (movedTxIds.size < targets.length) {
+      triggerSensory("error");
+      pushToast({
+        title: "Algumas despesas não puderam ser movidas",
+        description: "Verifique sua conexão e tente novamente nos itens restantes.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleConfirmImport = async () => {
     const toImport = reconciledItems.filter((it) => it.selected);
     const hasLinkedAdjustments = pendingLinkAdjustments.size > 0;
@@ -1282,9 +2344,32 @@ export function useStatementImport({
         }
       }
 
-      // 4. Salva cache declarativo de colunas se houver cabeçalhos
-      if (columnMapping && parsedRows.length > 0 && parsedRows[0]?.cells?.length) {
-        setCachedColumnMapping(parsedRows[0].cells, columnMapping);
+      // 4. Salva cache declarativo de colunas usando a linha real de cabeçalho
+      if (columnMapping && parsedRows.length > 0) {
+        const headerCells = extractHeaderCellsForCache(parsedRows, columnMapping);
+        if (headerCells.length > 0) {
+          setCachedColumnMapping(headerCells, columnMapping);
+        }
+      }
+
+      // 4b. Auto-aprendizado blindado (Camada 4): executa Shadow Replay determinístico antes de persistir
+      // Só salva o blueprint se o dry-run atingir score >= 85 e Checksum válido no próprio documento.
+      const draftSession = draftBlueprintRef.current;
+      if (draftSession) {
+        const replay = validateBlueprintWithShadowReplay({
+          blueprint: draftSession.blueprint,
+          rawLines: draftSession.rawLines,
+          cardId: card.id,
+          competenceMonth: activeCompetenceMonth,
+          officialTotalCents: draftSession.officialTotalCents,
+          cycleNetTargetCents: draftSession.cycleNetTargetCents,
+          previousBalanceCents: draftSession.previousBalanceCents,
+          paymentsCents: draftSession.paymentsCents,
+        });
+        if (replay.passed) {
+          saveStatementBlueprint(draftSession.blueprint);
+        }
+        draftBlueprintRef.current = null;
       }
 
       // 5. Precedência Humana: grava em merchant-learning apenas o que foi confirmado pelo usuário
@@ -1339,19 +2424,38 @@ export function useStatementImport({
     columnMapping,
     reconciledItems,
     unmatchedAppExpenses,
+    appDuplicates,
     importProgress,
     categories,
     selectedCount,
     isReadingFile,
+    readingStatusMessage,
+    isReanalyzingWithAi,
     usedAiStructurer,
+    extractionOrigin,
+    qualityGate,
+    aiStatusNotice,
+    visionEscalationOffer,
+    clipperRawLines,
+    clipperReasonMessage,
     printedTotalCents,
     pendingPasswordFile,
     passwordError,
     hasUnsavedChanges,
     showScopeControls,
     canOpenMapping: parsedRows.length > 0,
+    canOpenBlockClipper: clipperRawLines.length > 0,
+    canReanalyzeWithAi:
+      hasLoadedInput &&
+      !isReadOnlyMode &&
+      aiExtractionEnabled &&
+      aiStatusNotice?.kind !== "quota_exceeded",
     isPending:
-      importMutation.isPending || updateExpenseMutation.isPending || importProgress !== null,
+      importMutation.isPending ||
+      updateExpenseMutation.isPending ||
+      deleteExpenseMutation.isPending ||
+      importProgress !== null ||
+      isReanalyzingWithAi,
     handleFileSelect,
     handleFilesSelect,
     handleTextSubmit,
@@ -1362,6 +2466,11 @@ export function useStatementImport({
     handleDismissCompetenceMismatch,
     handleConfirmKeepCurrentCompetence,
     handleCancelCompetenceConflict,
+    handleConfirmVisionEscalation,
+    handleDismissVisionEscalation,
+    handleOpenBlockClipper,
+    handleConfirmBlockClipper,
+    handleReanalyzeWithAi,
     handleToggleItem,
     handleToggleAll,
     handleChangeCategory,
@@ -1376,6 +2485,9 @@ export function useStatementImport({
     handleToggleProjectSeries,
     handleLinkAndAdjust,
     handleCreateRefund,
+    handleDeleteAppExpense,
+    handleMoveExpenseToCompetence,
+    handleMoveAllCrossCompetenceMatches,
     handleConfirmImport,
   };
 }

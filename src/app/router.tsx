@@ -12,8 +12,8 @@ import { isNativePlatform } from "@/services/native";
 const PageShell = lazy(() =>
   import("@/components/layout/page-shell").then((m) => ({ default: m.PageShell })),
 );
-const AuthenticatedRoot = lazy(() =>
-  import("@/app/authenticated-root").then((m) => ({ default: m.AuthenticatedRoot })),
+const AuthenticatedHome = lazy(() =>
+  import("@/app/authenticated-root").then((m) => ({ default: m.AuthenticatedHome })),
 );
 const RequireAuth = lazy(() =>
   import("@/app/require-auth").then((m) => ({ default: m.RequireAuth })),
@@ -183,38 +183,37 @@ const ROUTE_FEATURE_MAP: Record<string, string> = {
   "/negocio": "transactions",
 };
 
-/**
- * Entrada pública da raiz: visitantes web sem token recebem a landing page
- * imediatamente, sem montar guards, stores ou sincronizações do App Shell.
- * Usuários logados e o app nativo carregam a raiz autenticada sob demanda.
- */
-function RootEntry() {
-  const isNative = isNativePlatform();
-  const hasStoredSession = (() => {
-    if (typeof window === "undefined" || !window.localStorage) return false;
-    try {
-      for (let i = 0; i < window.localStorage.length; i++) {
-        const key = window.localStorage.key(i);
-        if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
-          const item = window.localStorage.getItem(key);
-          if (item && item.includes("access_token")) return true;
-        }
+function hasStoredAuthSession(): boolean {
+  if (typeof window === "undefined" || !window.localStorage) return false;
+  try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i);
+      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        const item = window.localStorage.getItem(key);
+        if (item && item.includes("access_token")) return true;
       }
-    } catch {
-      return false;
     }
+  } catch {
     return false;
-  })();
+  }
+  return false;
+}
 
-  if (!isNative && !hasStoredSession) {
+/**
+ * Entrada da área autenticada: visitantes web sem token na raiz `/` recebem
+ * a landing page imediatamente, sem montar guards, stores ou sincronizações do App Shell.
+ * Usuários logados e o app nativo compartilham a mesma instância de `PageShell`
+ * entre `/` e as demais rotas protegidas.
+ */
+function AuthenticatedAreaEntry() {
+  const { pathname } = useLocation();
+  const isNative = isNativePlatform();
+
+  if (pathname === "/" && !isNative && !hasStoredAuthSession()) {
     return <LandingPage />;
   }
 
-  return (
-    <Suspense fallback={<LoadingScreen statusText="Preparando painel financeiro…" />}>
-      <AuthenticatedRoot />
-    </Suspense>
-  );
+  return <RequireAuth />;
 }
 
 /**
@@ -262,9 +261,6 @@ export function AppRouter() {
       <HashRouteNormalizer />
       <Suspense fallback={<LoadingScreen statusText="Iniciando sessão segura…" />}>
         <Routes>
-          {/* Raiz: landing para visitantes, App Shell apenas com sessão */}
-          <Route path="/" element={<RootEntry />} />
-
           {/* Páginas públicas de apresentação & planos */}
           <Route path="/apresentacao" element={<LandingPage />} />
           <Route path="/landing" element={<LandingPage />} />
@@ -329,7 +325,7 @@ export function AppRouter() {
           </Route>
 
           {/* Telas de status da conta para usuários autenticados */}
-          <Route element={<RequireAuth />}>
+          <Route element={<AuthenticatedAreaEntry />}>
             <Route path="/aprovacao-pendente" element={<PendingApprovalPage />} />
             <Route path="/conta-suspensa" element={<SuspendedAccountPage />} />
 
@@ -343,6 +339,7 @@ export function AppRouter() {
               <Route path="/modo-familia" element={<RedirectWithSearch to="/familia" />} />
 
               <Route element={<PageShell />}>
+                <Route path="/" element={<AuthenticatedHome />} />
                 <Route path="/share-target" element={<ShareTargetPage />} />
                 {appRoutes.filter((route) => route.path !== "/").map((route) => {
                   const featureKey = ROUTE_FEATURE_MAP[route.path];

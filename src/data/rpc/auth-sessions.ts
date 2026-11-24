@@ -40,3 +40,16 @@ export async function revokeDeviceSessionRpc(
   });
   return unwrapRpc(promise);
 }
+
+/**
+ * Revoga todos os outros dispositivos registrados do usuário autenticado,
+ * preservando apenas o dispositivo atual.
+ */
+export async function revokeOtherDeviceSessionsRpc(
+  currentDeviceId: string,
+): Promise<number> {
+  const promise = callRpc("revoke_other_device_sessions", {
+    p_current_device_id: currentDeviceId,
+  });
+  return unwrapRpc(promise);
+}

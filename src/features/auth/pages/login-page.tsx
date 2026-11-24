@@ -3,6 +3,7 @@ import { ArrowLeft, Mail } from "lucide-react";
 import {
   Alert,
   Button,
+  Checkbox,
   FormField,
   Input,
   PasswordInput,
@@ -30,6 +31,8 @@ export function LoginPage() {
     setEmail,
     password,
     setPassword,
+    isSharedDevice,
+    setIsSharedDevice,
     setCaptchaToken,
     error,
     isEmailUnconfirmed,
@@ -144,6 +147,21 @@ export function LoginPage() {
               className="text-base sm:text-sm"
             />
           </FormField>
+
+          <div className="flex items-center gap-2.5">
+            <Checkbox
+              id="login-shared-device"
+              checked={isSharedDevice}
+              onCheckedChange={(checked) => setIsSharedDevice(Boolean(checked))}
+              disabled={pending}
+            />
+            <label
+              htmlFor="login-shared-device"
+              className="text-xs text-muted-foreground cursor-pointer select-none"
+            >
+              Computador compartilhado (sair após 30 min sem uso)
+            </label>
+          </div>
 
           <Turnstile
             className="my-0.5"

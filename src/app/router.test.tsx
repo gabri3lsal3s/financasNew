@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { configure, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { AppRouter } from "./router";
 import * as useAuthModule from "@/hooks/use-auth";
@@ -8,29 +10,60 @@ import * as useAuthModule from "@/hooks/use-auth";
 // o timeout padrão de 1s sem significar falha funcional.
 configure({ asyncUtilTimeout: 30000 });
 
+const mockPageShellMount = vi.fn();
+const mockPageShellUnmount = vi.fn();
+
 vi.mock("@/components/layout", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
+  const { Outlet } = await import("react-router");
   return {
     ...actual,
     LoadingScreen: () => <div data-testid="loading-screen" />,
-    PageShell: () => <div data-testid="page-shell" />,
+    PageShell: ({ children }: { children?: ReactNode }) => (
+      <div data-testid="page-shell">{children ?? <Outlet />}</div>
+    ),
   };
 });
 
-vi.mock("@/components/layout/page-shell", () => ({
-  PageShell: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="page-shell">{children}</div>
-  ),
-}));
+vi.mock("@/components/layout/page-shell", async () => {
+  const { Outlet } = await import("react-router");
+  return {
+    PageShell: ({ children }: { children?: ReactNode }) => {
+      useEffect(() => {
+        mockPageShellMount();
+        return () => mockPageShellUnmount();
+      }, []);
+      return <div data-testid="page-shell">{children ?? <Outlet />}</div>;
+    },
+  };
+});
 
 // Os providers autenticados são exercitados nos testes próprios; aqui isolamos o roteamento.
 vi.mock("@/app/authenticated-providers", () => ({
   AuthenticatedProviders: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
-vi.mock("@/features/overview/pages/overview-page", () => ({
-  OverviewPage: () => <div data-testid="overview-page-stub" />,
-}));
+vi.mock("@/features/overview/pages/overview-page", async () => {
+  const { Link } = await import("react-router");
+  return {
+    OverviewPage: () => (
+      <div data-testid="overview-page-stub">
+        <Link to="/transacoes">Ir para Transações</Link>
+      </div>
+    ),
+  };
+});
+
+vi.mock("@/features/transactions/pages/transaction-list-page", async () => {
+  const { Link } = await import("react-router");
+  return {
+    TransactionListPage: () => (
+      <div data-testid="transactions-page-stub">
+        <Link to="/">Voltar para Início</Link>
+      </div>
+    ),
+  };
+});
 
 vi.mock("@/state", () => ({
   useUserAccess: () => ({
@@ -581,4 +614,47 @@ describe("AppRouter (Code Splitting e Lazy Routes)", () => {
       expect(window.location.pathname).toBe("/entrar");
     });
   });
+
+  it("mantém a mesma instância de PageShell montada ao navegar entre / e rotas internas", async () => {
+    const user = userEvent.setup();
+    window.localStorage.setItem(
+      "sb-test-auth-token",
+      JSON.stringify({ access_token: "token-teste", refresh_token: "refresh-teste" }),
+    );
+    vi.spyOn(useAuthModule, "useAuth").mockReturnValue({
+      session: { user: { id: "user-123" } } as unknown as useAuthModule.AuthState["session"],
+      user: { id: "user-123" } as unknown as useAuthModule.AuthState["user"],
+      loading: false,
+      configError: null,
+      signIn: vi.fn(),
+      signUp: vi.fn(),
+      resetPassword: vi.fn(),
+      resendConfirmation: vi.fn(),
+    });
+
+    try {
+      window.history.pushState({}, "", "/");
+      render(<AppRouter />);
+
+      const initialShell = await screen.findByTestId("page-shell", {}, { timeout: 45000 });
+      expect(await screen.findByTestId("overview-page-stub")).toBeInTheDocument();
+
+      mockPageShellMount.mockClear();
+      mockPageShellUnmount.mockClear();
+
+      await user.click(screen.getByRole("link", { name: "Ir para Transações" }));
+      expect(await screen.findByTestId("transactions-page-stub")).toBeInTheDocument();
+      expect(screen.getByTestId("page-shell")).toBe(initialShell);
+      expect(mockPageShellMount).not.toHaveBeenCalled();
+      expect(mockPageShellUnmount).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole("link", { name: "Voltar para Início" }));
+      expect(await screen.findByTestId("overview-page-stub")).toBeInTheDocument();
+      expect(screen.getByTestId("page-shell")).toBe(initialShell);
+      expect(mockPageShellMount).not.toHaveBeenCalled();
+      expect(mockPageShellUnmount).not.toHaveBeenCalled();
+    } finally {
+      window.localStorage.removeItem("sb-test-auth-token");
+    }
+  }, 60000);
 });

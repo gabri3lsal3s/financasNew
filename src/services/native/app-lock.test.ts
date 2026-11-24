@@ -1,15 +1,20 @@
 import { App } from "@capacitor/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  evaluateIdleLock,
+  getAppLockConfig,
   getAppLockGraceMinutes,
   initAppLockListener,
   isAppLocked,
   isBiometricLockEnabled,
   isPrivacyShieldEnabled,
+  setAppLockConfig,
   setAppLocked,
+  setAppLockIdlePaused,
   setBiometricLockEnabled,
   setAppLockGraceMinutes,
   setPrivacyShieldEnabled,
+  shouldLockOnColdStart,
   syncPrivacyShield,
   subscribeAppLock,
   unlockAppWithBiometrics,
@@ -355,6 +360,47 @@ describe("Gateway Nativo — App Lock & Biometria", () => {
       document.dispatchEvent(new Event("visibilitychange"));
 
       expect(isAppLocked()).toBe(false);
+    });
+  });
+
+  describe("Contrato AppLockConfig, migração legada, lockOnIdle e cold start blindado", () => {
+    it("migra transparentemente a chave legada biometric_lock_enabled para app_lock_enabled", () => {
+      localStorage.setItem("financas_user-mig_biometric_lock_enabled", "true");
+      const config = getAppLockConfig("user-mig");
+      expect(config.enabled).toBe(true);
+      expect(localStorage.getItem("financas_user-mig_app_lock_enabled")).toBe("true");
+    });
+
+    it("shouldLockOnColdStart retorna false quando não há sessão ativa mesmo com preferência residual", () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(true);
+      localStorage.setItem("financas_user-old_biometric_lock_enabled", "true");
+      expect(shouldLockOnColdStart()).toBe(false);
+    });
+
+    it("bloqueia por inatividade em tela aberta (lockOnIdle) via timestamp e respeita setAppLockIdlePaused", () => {
+      vi.spyOn(platformModule, "isNativePlatform").mockReturnValue(false);
+      vi.spyOn(biometricsModule, "isBiometricAuthInProgress").mockReturnValue(false);
+
+      const now = 5_000_000;
+      const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+
+      setAppLockConfig({ enabled: true, graceMinutes: 5, lockOnIdle: true });
+      const cleanup = initAppLockListener();
+
+      // Pausa durante modal de aviso: não deve travar mesmo após 10 min
+      setAppLockIdlePaused(true);
+      nowSpy.mockReturnValue(now + 10 * 60_000);
+      evaluateIdleLock(now + 10 * 60_000);
+      expect(isAppLocked()).toBe(false);
+
+      // Retoma: reinicia o timestamp base e trava após 5 min sem interação
+      setAppLockIdlePaused(false);
+      nowSpy.mockReturnValue(now + 15 * 60_000 + 1000);
+      window.dispatchEvent(new Event("focus"));
+      expect(isAppLocked()).toBe(true);
+
+      cleanup();
+      nowSpy.mockRestore();
     });
   });
 });

@@ -22,6 +22,9 @@ vi.mock("@/hooks/use-auth", () => ({
   useAuth: () => ({
     user: { id: "u-123", email: "teste@financas.app", user_metadata: { name: "Usuario Teste" } },
   }),
+  getActiveUserMfaFactor: vi.fn().mockResolvedValue(null),
+  verifyCurrentPassword: vi.fn().mockResolvedValue(true),
+  verifyMfaTotpCode: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/hooks/use-sign-out", () => ({

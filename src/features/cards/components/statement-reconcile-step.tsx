@@ -1,14 +1,22 @@
 import { useMemo, useState } from "react";
-import { Check, Columns3, RotateCcw, Tag } from "lucide-react";
-import { Button, ModalFooter, MoneyText, Progress } from "@/components/ui";
+import { CalendarClock, Check, Columns3, RotateCcw, Tag } from "lucide-react";
+import { Alert, Button, ModalFooter, MoneyText, Progress } from "@/components/ui";
 import type {
+  AppDuplicateCandidate,
   ExistingExpenseForReconciliation,
   ReconciliationItem,
   DetectedStatementMetadata,
+  StatementQualityGateResult,
 } from "@/domain/reconciliation";
 import type { Category } from "@/types";
-import type { StatementItemPatch } from "./statement-import-helpers";
 import {
+  isDateNearCardClosingDay,
+  shiftCompetenceMonth,
+  type StatementExtractionOrigin,
+  type StatementItemPatch,
+} from "./statement-import-helpers";
+import {
+  StatementAppDuplicateRow,
   StatementAppOnlyRow,
   StatementInlineAddRow,
   StatementReconcileItemRow,
@@ -31,8 +39,15 @@ export interface StatementImportProgress {
 export interface StatementReconcileStepProps {
   items: ReconciliationItem[];
   unmatchedAppExpenses?: ExistingExpenseForReconciliation[];
+  appDuplicates?: AppDuplicateCandidate[];
+  competenceMonth?: string;
+  closingDay?: number | null;
   categories: Category[];
   usedAiStructurer?: boolean;
+  extractionOrigin?: StatementExtractionOrigin | null;
+  qualityGate?: StatementQualityGateResult | null;
+  onReanalyzeWithAi?: () => void;
+  isReanalyzingWithAi?: boolean;
   printedTotalCents?: number | null;
   detectedMeta?: DetectedStatementMetadata | null;
   onOpenMapping?: () => void;
@@ -49,6 +64,14 @@ export interface StatementReconcileStepProps {
   onToggleProjectSeries?: (id: string) => void;
   onLinkAndAdjust?: (id: string) => void;
   onCreateRefund?: (item: ReconciliationItem) => void;
+  onDeleteAppExpense?: (expenseId: string, mode: "single" | "all") => void;
+  onMoveExpenseToCompetence?: (params: {
+    expenseId: string;
+    targetCompetence: string;
+    statementHash?: string;
+    transactionId?: string;
+  }) => void;
+  onMoveAllCrossCompetenceMatches?: (sourceCompetence?: string) => void;
   onApplyCategoryBatch?: (ids: string[], categoryId: string) => void;
   onBack: () => void;
   onConfirm: () => void;
@@ -60,8 +83,15 @@ export interface StatementReconcileStepProps {
 export function StatementReconcileStep({
   items,
   unmatchedAppExpenses = [],
+  appDuplicates = [],
+  competenceMonth,
+  closingDay = null,
   categories,
   usedAiStructurer = false,
+  extractionOrigin = null,
+  qualityGate = null,
+  onReanalyzeWithAi,
+  isReanalyzingWithAi = false,
   printedTotalCents = null,
   detectedMeta = null,
   onOpenMapping,
@@ -78,6 +108,9 @@ export function StatementReconcileStep({
   onToggleProjectSeries,
   onLinkAndAdjust,
   onCreateRefund,
+  onDeleteAppExpense,
+  onMoveExpenseToCompetence,
+  onMoveAllCrossCompetenceMatches,
   onApplyCategoryBatch,
   onBack,
   onConfirm,
@@ -109,9 +142,18 @@ export function StatementReconcileStep({
   const defaultCategoryId = categories[0]?.id ?? "";
 
   const duplicateItems = useMemo(
-    () => items.filter((it) => it.isInternalDuplicate || it.status === "exact_match"),
+    () => items.filter((it) => Boolean(it.isInternalDuplicate)),
     [items],
   );
+  const totalDuplicatesCount = duplicateItems.length + appDuplicates.length;
+
+  const crossCompetenceItems = useMemo(
+    () => items.filter((it) => Boolean(it.crossCompetenceMatch)),
+    [items],
+  );
+
+  const prevCompetence = competenceMonth ? shiftCompetenceMonth(competenceMonth, -1) : undefined;
+  const nextCompetence = competenceMonth ? shiftCompetenceMonth(competenceMonth, 1) : undefined;
 
   const effectivePrintedTotalCents = detectedMeta?.detectedTotalCents ?? printedTotalCents;
 
@@ -175,10 +217,10 @@ export function StatementReconcileStep({
       suggested: suggestedCount,
       matched: matchedCount,
       ignored: ignoredCount,
-      duplicates: duplicateItems.length,
+      duplicates: totalDuplicatesCount,
       appOnly: unmatchedAppExpenses.length,
     };
-  }, [items, duplicateItems.length, unmatchedAppExpenses.length]);
+  }, [items, totalDuplicatesCount, unmatchedAppExpenses.length]);
 
   const filteredItems = useMemo(() => {
     switch (filter) {
@@ -250,6 +292,42 @@ export function StatementReconcileStep({
     setCategoryPropagationPrompt(null);
   };
 
+  const renderReconcileRow = (item: ReconciliationItem) => (
+    <StatementReconcileItemRow
+      key={item.transaction.id}
+      item={item}
+      categoryOptions={categoryOptions}
+      isEditing={editingRowId === item.transaction.id}
+      onToggleItem={onToggleItem}
+      onChangeCategory={handleCategoryChangeWithPropagation}
+      onStartEdit={(id) => setEditingRowId(id)}
+      onSaveEdit={(id, updated) => {
+        onEditItem?.(id, updated);
+        setEditingRowId(null);
+      }}
+      onCancelEdit={() => setEditingRowId(null)}
+      onRemove={onRemoveItem}
+      isBusinessModeEnabled={isBusinessModeEnabled}
+      onToggleScope={onToggleScope}
+      onToggleProjectSeries={onToggleProjectSeries}
+      onLinkAndAdjust={onLinkAndAdjust}
+      onMoveCrossCompetence={
+        onMoveExpenseToCompetence && competenceMonth
+          ? (row) => {
+              if (!row.crossCompetenceMatch) return;
+              onMoveExpenseToCompetence({
+                expenseId: row.crossCompetenceMatch.expenseId,
+                targetCompetence: competenceMonth,
+                statementHash: row.crossCompetenceMatch.statementHash,
+                transactionId: row.transaction.id,
+              });
+            }
+          : undefined
+      }
+      onCreateRefund={onCreateRefund}
+    />
+  );
+
   return (
     <div className="space-y-3">
       {/* Sumário Financeiro Adaptativo */}
@@ -260,6 +338,10 @@ export function StatementReconcileStep({
         selectedNewCents={selectedNewCents}
         officialInvoiceTotalCents={effectivePrintedTotalCents}
         usedAiStructurer={usedAiStructurer}
+        extractionOrigin={extractionOrigin}
+        qualityGate={qualityGate}
+        onReanalyzeWithAi={onReanalyzeWithAi}
+        isReanalyzingWithAi={isReanalyzingWithAi}
       />
 
       {/* Linha contextual discreta (Cartão detectado / Reimportação / Ajustar colunas) — sem caixa vazia */}
@@ -331,18 +413,43 @@ export function StatementReconcileStep({
         </div>
       ) : null}
 
+      {/* Faixa de Realinhamento em Lote para Competência Vizinha (Mudança de Fechamento) */}
+      {crossCompetenceItems.length >= 2 && onMoveAllCrossCompetenceMatches ? (
+        <Alert variant="warning" className="py-2.5 px-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-start gap-2">
+              <CalendarClock className="size-4 shrink-0 text-warning-strong mt-0.5" aria-hidden="true" />
+              <span className="text-xs text-foreground">
+                Detectamos <strong>{crossCompetenceItems.length}</strong> compras desta fatura
+                cadastradas em fatura vizinha (possível mudança no fechamento do cartão).
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              disabled={isPending}
+              onClick={() => onMoveAllCrossCompetenceMatches()}
+              className="h-7 px-2.5 text-xs border-warning/40 text-warning-strong hover:bg-warning/15 self-end sm:self-center shrink-0 cursor-pointer"
+            >
+              Mover todas para esta fatura
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
+
       {/* Toolbar de Filtros com Contadores Vivos */}
       <StatementReconcileToolbar
         filter={filter}
         onFilterChange={setFilter}
-        duplicateCount={duplicateItems.length}
+        duplicateCount={totalDuplicatesCount}
         countAppOnly={unmatchedAppExpenses.length}
         allFilteredSelected={allFilteredSelected}
         isPending={isPending}
         canAddManual={Boolean(onAddManualItem)}
         onOpenAddManual={() => setIsAddingManual((prev) => !prev)}
         onToggleAll={onToggleAll}
-        onUncheckDuplicates={onUncheckDuplicates}
+        onUncheckDuplicates={duplicateItems.length > 0 ? onUncheckDuplicates : undefined}
         isBusinessModeEnabled={isBusinessModeEnabled}
         onSetScopeAll={onSetScopeAll}
         counts={filterCounts}
@@ -375,36 +482,49 @@ export function StatementReconcileStep({
                 key={exp.id}
                 expense={exp}
                 categoryName={categoryMap.get(exp.categoryId) ?? "Sem categoria"}
+                isNearClosing={isDateNearCardClosingDay(exp.date, closingDay)}
+                prevCompetence={prevCompetence}
+                nextCompetence={nextCompetence}
+                onMoveCompetence={
+                  onMoveExpenseToCompetence
+                    ? (expenseId, targetCompetence) =>
+                        onMoveExpenseToCompetence({ expenseId, targetCompetence })
+                    : undefined
+                }
+                onDeleteExpense={onDeleteAppExpense}
+                isPending={isPending}
               />
             ))
+          )
+        ) : filter === "duplicates" ? (
+          totalDuplicatesCount === 0 ? (
+            <div className="p-8 text-center text-xs text-muted-foreground">
+              Nenhuma duplicidade detectada no aplicativo ou no arquivo.
+            </div>
+          ) : (
+            <>
+              {appDuplicates.map((candidate) => (
+                <StatementAppDuplicateRow
+                  key={candidate.id}
+                  candidate={candidate}
+                  categoryName={
+                    categoryMap.get(candidate.duplicateExpense.categoryId) ?? "Sem categoria"
+                  }
+                  onDeleteDuplicate={(expenseId, mode) =>
+                    onDeleteAppExpense?.(expenseId, mode)
+                  }
+                  isPending={isPending}
+                />
+              ))}
+              {duplicateItems.map(renderReconcileRow)}
+            </>
           )
         ) : filteredItems.length === 0 ? (
           <div className="p-8 text-center text-xs text-muted-foreground">
             Nenhum lançamento nesta categoria de filtro.
           </div>
         ) : (
-          filteredItems.map((item) => (
-            <StatementReconcileItemRow
-              key={item.transaction.id}
-              item={item}
-              categoryOptions={categoryOptions}
-              isEditing={editingRowId === item.transaction.id}
-              onToggleItem={onToggleItem}
-              onChangeCategory={handleCategoryChangeWithPropagation}
-              onStartEdit={(id) => setEditingRowId(id)}
-              onSaveEdit={(id, updated) => {
-                onEditItem?.(id, updated);
-                setEditingRowId(null);
-              }}
-              onCancelEdit={() => setEditingRowId(null)}
-              onRemove={onRemoveItem}
-              isBusinessModeEnabled={isBusinessModeEnabled}
-              onToggleScope={onToggleScope}
-              onToggleProjectSeries={onToggleProjectSeries}
-              onLinkAndAdjust={onLinkAndAdjust}
-              onCreateRefund={onCreateRefund}
-            />
-          ))
+          filteredItems.map(renderReconcileRow)
         )}
       </div>
 

@@ -2,14 +2,6 @@ import { useEffect, useState } from "react";
 import { getSupabase } from "@/data/client";
 import { ensureOwnProfile } from "@/data/repositories/profiles";
 import { ensureDefaultCategories } from "@/data/repositories/categories";
-import { registerDevice, checkDeviceRevoked } from "@/data/repositories/devices";
-import {
-  getDeviceInfo,
-  getOrCreateDeviceId,
-  shouldSyncDeviceSession,
-  markDeviceSessionSynced,
-  clearDeviceSessionSync,
-} from "@/services/native/device-info";
 import { getErrorMessage } from "@/services/errors";
 import { reportError, setObservabilityUser } from "@/services/observability";
 import { setActiveUserId } from "@/services/user-storage";
@@ -333,47 +325,6 @@ export function useAuth(): AuthState {
         void reportError(err, { source: "ensureOwnProfile_ensureDefaultCategories" });
       });
   }, [snapshot.user]);
-
-  // Registro e Sincronização de Dispositivos Multi-Sessão (Etapa 1.1)
-  // Permite autenticar a mesma conta em múltiplos aparelhos mantendo ambos conectados.
-  // Caso o aparelho atual seja revogado remotamente, encerra apenas a sessão local.
-  useEffect(() => {
-    const user = snapshot.user;
-    if (!user || snapshot.loading) {
-      if (!user) clearDeviceSessionSync();
-      return;
-    }
-
-    const deviceId = getOrCreateDeviceId();
-
-    void checkDeviceRevoked(deviceId)
-      .then((isRevoked) => {
-        if (isRevoked) {
-          try {
-            const supabase = getSupabase();
-            void supabase.auth.signOut({ scope: "local" });
-          } catch {
-            // Silencia erro em ambiente offline
-          }
-          clearDeviceSessionSync();
-          return;
-        }
-
-        if (shouldSyncDeviceSession()) {
-          const info = getDeviceInfo();
-          void registerDevice(info)
-            .then(() => {
-              markDeviceSessionSynced();
-            })
-            .catch((err) => {
-              void reportError(err, { source: "syncDeviceRegistration" });
-            });
-        }
-      })
-      .catch((err) => {
-        void reportError(err, { source: "checkDeviceRevoked" });
-      });
-  }, [snapshot.user, snapshot.loading]);
 
   return {
     ...snapshot,

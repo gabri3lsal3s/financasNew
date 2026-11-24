@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import {
   getOrCreateDeviceId,
+  rotateDeviceId,
   detectOS,
   detectBrowser,
   getFriendlyDeviceName,
@@ -8,6 +9,8 @@ import {
   shouldSyncDeviceSession,
   markDeviceSessionSynced,
   clearDeviceSessionSync,
+  markPendingExplicitDeviceRegistration,
+  consumePendingExplicitDeviceRegistration,
   DEVICE_ID_STORAGE_KEY,
   DEVICE_LAST_SYNC_STORAGE_KEY,
   SYNC_THROTTLE_MS,
@@ -133,12 +136,13 @@ describe("device-info service", () => {
       expect(shouldSyncDeviceSession(true)).toBe(true);
     });
 
-    it("shouldSyncDeviceSession retorna false dentro da janela de throttle de 24h", () => {
+    it("shouldSyncDeviceSession retorna false dentro da janela de throttle de 1h", () => {
       localStorage.setItem(DEVICE_LAST_SYNC_STORAGE_KEY, (Date.now() - 1000).toString());
       expect(shouldSyncDeviceSession(false)).toBe(false);
     });
 
-    it("shouldSyncDeviceSession retorna true se expirou o throttle de 24h", () => {
+    it("shouldSyncDeviceSession retorna true se expirou o throttle de 1h", () => {
+      expect(SYNC_THROTTLE_MS).toBe(60 * 60 * 1000);
       localStorage.setItem(DEVICE_LAST_SYNC_STORAGE_KEY, (Date.now() - (SYNC_THROTTLE_MS + 1000)).toString());
       expect(shouldSyncDeviceSession(false)).toBe(true);
     });
@@ -154,6 +158,22 @@ describe("device-info service", () => {
       markDeviceSessionSynced();
       clearDeviceSessionSync();
       expect(localStorage.getItem(DEVICE_LAST_SYNC_STORAGE_KEY)).toBeNull();
+    });
+  });
+
+  describe("rotação e registro explícito pendente", () => {
+    it("rotateDeviceId gera um novo identificador diferente do anterior e persiste", () => {
+      localStorage.setItem(DEVICE_ID_STORAGE_KEY, "dev-antigo");
+      const rotated = rotateDeviceId();
+      expect(rotated).not.toBe("dev-antigo");
+      expect(localStorage.getItem(DEVICE_ID_STORAGE_KEY)).toBe(rotated);
+    });
+
+    it("consumePendingExplicitDeviceRegistration retorna true uma única vez após mark", () => {
+      expect(consumePendingExplicitDeviceRegistration()).toBe(false);
+      markPendingExplicitDeviceRegistration();
+      expect(consumePendingExplicitDeviceRegistration()).toBe(true);
+      expect(consumePendingExplicitDeviceRegistration()).toBe(false);
     });
   });
 });

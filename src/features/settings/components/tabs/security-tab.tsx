@@ -5,12 +5,14 @@ import {
   authenticateWithBiometrics,
   checkBiometricsAvailability,
   clearWebAuthnPlatformCredential,
+  getAppLockConfig,
   getAppLockGraceMinutes,
   isBiometricLockEnabled,
   isNativePlatform,
   isPinLockConfigured,
   isPrivacyShieldEnabled,
   resetAppLockBackgroundTimer,
+  setAppLockConfig,
   setAppLockGraceMinutes,
   setBiometricLockEnabled,
   setPrivacyShieldEnabled,
@@ -21,11 +23,14 @@ import {
   useUserPreferences,
 } from "@/state";
 import { useDemoSession } from "@/state/demo-mode";
+import { MfaModal } from "../mfa-modal";
 import { PinSetupDialog } from "../pin-setup-dialog";
 import { ActiveDevicesCard } from "./active-devices-card";
 import { DeleteAccountCard } from "./delete-account-card";
 import { AppAboutCard } from "./security/app-about-card";
 import { AppLockCard } from "./security/app-lock-card";
+import { SessionInactivityCard } from "./security/session-inactivity-card";
+import { TwoFactorCard } from "./security/two-factor-card";
 
 export function SecurityTab() {
   const { user } = useAuth();
@@ -37,14 +42,16 @@ export function SecurityTab() {
   const [biometryType, setBiometryType] = useState<string>("none");
   const [bioLockEnabled, setBioLockEnabled] = useState(() => isBiometricLockEnabled());
   const [graceMinutes, setGraceMinutes] = useState(() => String(getAppLockGraceMinutes()));
+  const [lockOnIdle, setLockOnIdle] = useState(() => getAppLockConfig(userId).lockOnIdle);
   const [hasPinConfigured, setHasPinConfigured] = useState(() => isPinLockConfigured(userId));
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+  const [isMfaModalOpen, setIsMfaModalOpen] = useState(false);
+  const [mfaRefreshKey, setMfaRefreshKey] = useState(0);
 
   const { isDemoActive } = useDemoSession();
   const isNative = isNativePlatform() || isDemoActive;
   const showBiometrics = isNative || Boolean(biometricsAvailable);
   const showPrivacyShield = isNative;
-  // Sempre visível: na Web/PWA sem biometria garante acesso completo ao bloqueio via PIN (AUDITORIA_UI_UX M8)
   const showAppLockCard = true;
 
   const [localPrivacyOverride, setLocalPrivacyOverride] = useState<boolean | null>(null);
@@ -127,6 +134,11 @@ export function SecurityTab() {
     setAppLockGraceMinutes(Number(val));
   };
 
+  const handleToggleLockOnIdle = (enabled: boolean) => {
+    setLockOnIdle(enabled);
+    setAppLockConfig({ lockOnIdle: enabled }, userId);
+  };
+
   const handleTogglePrivacyShield = (enabled: boolean) => {
     setLocalPrivacyOverride(enabled);
     setPrivacyShieldEnabled(enabled);
@@ -151,6 +163,7 @@ export function SecurityTab() {
           isDemoActive={isDemoActive}
           bioLockEnabled={bioLockEnabled}
           graceMinutes={graceMinutes}
+          lockOnIdle={lockOnIdle}
           hasPinConfigured={hasPinConfigured}
           privacyEnabled={privacyEnabled}
           onToggleBiometrics={(enabled) => {
@@ -159,23 +172,48 @@ export function SecurityTab() {
           onTogglePinLock={handleTogglePinLock}
           onOpenPinDialog={() => setIsPinDialogOpen(true)}
           onGraceMinutesChange={handleGraceMinutesChange}
+          onToggleLockOnIdle={handleToggleLockOnIdle}
           onTogglePrivacyShield={handleTogglePrivacyShield}
         />
       ) : null}
+
+      {!isNative ? <SessionInactivityCard userId={userId} /> : null}
+
+      <TwoFactorCard
+        refreshKey={mfaRefreshKey}
+        onOpenMfaModal={() => setIsMfaModalOpen(true)}
+      />
+
+      <ActiveDevicesCard />
 
       <PinSetupDialog
         open={isPinDialogOpen}
         onOpenChange={setIsPinDialogOpen}
         userId={userId}
         hasExistingPin={hasPinConfigured}
-        onSuccess={() => {
+        onPinSaved={() => {
           setHasPinConfigured(isPinLockConfigured(userId));
           setBioLockEnabled(true);
           setBiometricLockEnabled(true);
         }}
+        onPinRemoved={() => {
+          setHasPinConfigured(false);
+          if (!isNative && !biometricsAvailable) {
+            setBioLockEnabled(false);
+            setBiometricLockEnabled(false);
+          }
+        }}
       />
 
-      <ActiveDevicesCard />
+      <MfaModal
+        open={isMfaModalOpen}
+        onOpenChange={(open) => {
+          setIsMfaModalOpen(open);
+          if (!open) {
+            setMfaRefreshKey((k) => k + 1);
+          }
+        }}
+      />
 
       <PlatformsTriptychCard />
 

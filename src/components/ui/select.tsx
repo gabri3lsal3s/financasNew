@@ -72,7 +72,7 @@ export function Select({
             e.preventDefault();
           }}
           className={cn(
-            "z-floating-tools max-h-72 w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-primary/25 p-1 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+            "z-floating-tools max-h-72 w-[var(--radix-select-trigger-width)] min-w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-lg border border-primary/25 p-1 data-[state=open]:animate-popover-in data-[state=closed]:animate-popover-out",
             isFlat ? "bg-surface shadow-none" : "bg-surface/95 shadow-xl backdrop-blur-md",
           )}
         >

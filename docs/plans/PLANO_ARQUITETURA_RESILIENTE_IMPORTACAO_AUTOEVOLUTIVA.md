@@ -1,7 +1,7 @@
 # PLANO ARQUITETURAL — MOTOR RESILIENTE E AUTO-EVOLUTIVO DE IMPORTAÇÃO DE FATURAS (v2.3)
 
 > **Documento Canônico de Arquitetura — Self-Learning Statement Import Engine**  
-> **Versão:** 2.3 (Consolidada pós-Revisão Arquitetural — 6 Formatos, 25 Blindagens, Zero-Deploy Edge Function) · **Status:** Aguardando "OK" para Iniciar Fase 1A  
+> **Versão:** 2.3 (Consolidada pós-Revisão Arquitetural — 6 Formatos, 25 Blindagens, Zero-Deploy Edge Function) · **Status:** Concluído e Homologado (Fases 1A–5 · v3.24.0)  
 > **Objetivo Central:** Garantir resiliência universal para **todos os tipos de arquivo** (PDF digital, PDF híbrido/escaneado, imagens/prints, OFX/QFX, CSV/TSV, Excel `.xlsx`/`.xls` HTML e texto colado), tornar a **IA proativa com governança estrita de cota** e capacitar o aplicativo a **aprender o layout de qualquer banco** (via IA ou ajuste manual), passando a ler faturas futuras daquele emissor com **0 tokens de IA e 100% de precisão determinística**.  
 > **Governança:** `AGENTS.md` (§3, §4, §8, §18, §20, §26) · Zero Emojis · Funções Puras em `src/domain/` · TypeScript Estrito
 
@@ -149,47 +149,47 @@ flowchart LR
 ```
 
 ### Fase 1A — Estabilização do Motor PDF, Metadados e Quality Gate Contábil Duplo (Itens #1–#11)
-- [ ] **#1:** Passar `officialTotalCents` real ao `parseSpatialPdfDocument` em `readStatementFileContent` (reativando Checksum Gate e `line_curator`).
-- [ ] **#2:** Separar `rawFullText` de `reconstructedText` em `statement-import-helpers.ts`, garantindo que `detectStatementMetadata` leia sempre o cabeçalho completo.
-- [ ] **#3:** Corrigir `handleSwitchCompetence` em `use-statement-import.ts` para preservar extração espacial/Vision sem rebaixar ao `text-parser.ts` nem cobrar cota dupla.
-- [ ] **#4:** Corrigir `sniffColumnMapping` em `type-sniffer.ts` (prioridade absoluta para `bestDescCol` sobre `bestTypeCol`; `bestTypeCol` só com `maxCols >= 4`).
-- [ ] **#5:** Corrigir `extractPrintedStatementTotalCents` em `statement-preprocessor.ts` (2 níveis: `Despesas e créditos do mês` / `Valor da fatura` > `Total a pagar` fora de parcelamentos).
-- [ ] **#6:** Separar `strict_statement` (data obrigatória, sem `todayISO()`, bloqueia `%`/CEP/CPF/Nosso Número e parênteses explicativos) de `quick_paste_nl` ($\le 15$ linhas) em `text-parser.ts`.
-- [ ] Corrigir `spatial-pdf-parser.ts` (saída de `pause_zone` na virada de página + `Extrato Referente ao mês` e `Data Descrição Valor` em `SECTION_START_REGEX`).
-- [ ] **#11:** Criar `src/domain/reconciliation/quality-gate.ts` com **Equação Contábil Dupla** (`cycleNetCents` + `statementBalanceCents`) e reprovação bidirecional (falta e excesso).
-- [ ] Teste de regressão real da fatura completa da **Nomad** (3 páginas → exatamente **11 compras = R$ 1.528,54**, cartões `2107`/`7756`).
+- [x] **#1:** Passar `officialTotalCents` real ao `parseSpatialPdfDocument` em `readStatementFileContent` (reativando Checksum Gate e `line_curator`).
+- [x] **#2:** Separar `rawFullText` de `reconstructedText` em `statement-import-helpers.ts`, garantindo que `detectStatementMetadata` leia sempre o cabeçalho completo.
+- [x] **#3:** Corrigir `handleSwitchCompetence` em `use-statement-import.ts` para preservar extração espacial/Vision sem rebaixar ao `text-parser.ts` nem cobrar cota dupla.
+- [x] **#4:** Corrigir `sniffColumnMapping` em `type-sniffer.ts` (prioridade absoluta para `bestDescCol` sobre `bestTypeCol`; `bestTypeCol` só com `maxCols >= 4`).
+- [x] **#5:** Corrigir `extractPrintedStatementTotalCents` em `statement-preprocessor.ts` (2 níveis: `Despesas e créditos do mês` / `Valor da fatura` > `Total a pagar` fora de parcelamentos).
+- [x] **#6:** Separar `strict_statement` (data obrigatória, sem `todayISO()`, bloqueia `%`/CEP/CPF/Nosso Número e parênteses explicativos) de `quick_paste_nl` ($\le 15$ linhas) em `text-parser.ts`.
+- [x] Corrigir `spatial-pdf-parser.ts` (saída de `pause_zone` na virada de página + `Extrato Referente ao mês` e `Data Descrição Valor` em `SECTION_START_REGEX`).
+- [x] **#11:** Criar `src/domain/reconciliation/quality-gate.ts` com **Equação Contábil Dupla** (`cycleNetCents` + `statementBalanceCents`) e reprovação bidirecional (falta e excesso).
+- [x] Teste de regressão real da fatura completa da **Nomad** (3 páginas → exatamente **11 compras = R$ 1.528,54**, cartões `2107`/`7756`).
 
 ### Fase 1B — Blindagem Abrangente Multi-Formatos (Itens #12–#25)
-- [ ] **#12:** Implementar **Sniffer de Magic Bytes** na Camada 0 (`%PDF-`, `PK` XLSX, `D0 CF 11 E0` BIFF8, `<OFX>`, `<table`/`<Workbook`, PNG/JPG/WEBP).
-- [ ] **#13–#14:** Aprimorar `csv-parser.ts` (delimitador fora de aspas descontando decimais `\d,\d{2}`, suporte RFC-4180 a `\n` em aspas, remoção de `sep=;`).
-- [ ] **#15–#16:** Corrigir assinatura do cache de colunas em `statement-import-helpers.ts` (usar linha real de cabeçalho `startRowIndex - 1`, não `rows[0]`) e `validateMappingAgainstSample` em `statement-mapping-cache.ts` (suportar colunas duplas `Débito`/`Crédito` e exigir `desc !== date`).
-- [ ] **#17–#19:** Blindar `ofx-parser.ts` (usar `parseAmountToCents` corrigindo erro 1000x em `-1.234,56`, inferência automática de polaridade para `TRNTYPE=OTHER`, descarte de `SALDO ANTERIOR`, extração **informativa** de `<LEDGERBAL>`, `<ORG>`, `<ACCTID>` sem reprovar OFX no Quality Gate).
-- [ ] **#20–#22:** Blindar `spreadsheet-parser.ts` e `type-sniffer.ts` (seleção automática da melhor aba `sheet*.xml`, limpeza cirúrgica de ruído IEEE-754 apenas em floats não-inteiros com desvio `< 1e-6` sem corromper inteiros, notação científica, proteção de padrão decimal americano vs milhar BRL, suporte a `t="d"` e formatos de data com hora).
-- [ ] **#23:** Classificar PDFs híbridos (`fullText.trim().length < 100` ou zero tokens monetários) como `pdf_scanned` para acionar Vision.
-- [ ] **#24–#25:** Em `parseStatementVisionBlobsWithAi`, deduplicar fronteira entre prints consecutivos, mesclar metadados campo a campo e retornar aviso de truncamento quando exceder o limite de imagens.
-- [ ] Testes unitários dedicados para cada formato (`csv-parser.test.ts`, `ofx-parser.test.ts`, `spreadsheet-parser.test.ts`, `type-sniffer.test.ts`, `statement-mapping-cache.test.ts`, vision dedup).
+- [x] **#12:** Implementar **Sniffer de Magic Bytes** na Camada 0 (`%PDF-`, `PK` XLSX, `D0 CF 11 E0` BIFF8, `<OFX>`, `<table`/`<Workbook`, PNG/JPG/WEBP).
+- [x] **#13–#14:** Aprimorar `csv-parser.ts` (delimitador fora de aspas descontando decimais `\d,\d{2}`, suporte RFC-4180 a `\n` em aspas, remoção de `sep=;`).
+- [x] **#15–#16:** Corrigir assinatura do cache de colunas em `statement-import-helpers.ts` (usar linha real de cabeçalho `startRowIndex - 1`, não `rows[0]`) e `validateMappingAgainstSample` em `statement-mapping-cache.ts` (suportar colunas duplas `Débito`/`Crédito` e exigir `desc !== date`).
+- [x] **#17–#19:** Blindar `ofx-parser.ts` (usar `parseAmountToCents` corrigindo erro 1000x em `-1.234,56`, inferência automática de polaridade para `TRNTYPE=OTHER`, descarte de `SALDO ANTERIOR`, extração **informativa** de `<LEDGERBAL>`, `<ORG>`, `<ACCTID>` sem reprovar OFX no Quality Gate).
+- [x] **#20–#22:** Blindar `spreadsheet-parser.ts` e `type-sniffer.ts` (seleção automática da melhor aba `sheet*.xml`, limpeza cirúrgica de ruído IEEE-754 apenas em floats não-inteiros com desvio `< 1e-6` sem corromper inteiros, notação científica, proteção de padrão decimal americano vs milhar BRL, suporte a `t="d"` e formatos de data com hora).
+- [x] **#23:** Classificar PDFs híbridos (`fullText.trim().length < 100` ou zero tokens monetários) como `pdf_scanned` para acionar Vision.
+- [x] **#24–#25:** Em `parseStatementVisionBlobsWithAi`, deduplicar fronteira entre prints consecutivos, mesclar metadados campo a campo e retornar aviso de truncamento quando exceder o limite de imagens.
+- [x] Testes unitários dedicados para cada formato (`csv-parser.test.ts`, `ofx-parser.test.ts`, `spreadsheet-parser.test.ts`, `type-sniffer.test.ts`, `statement-mapping-cache.test.ts`, vision dedup).
 
 ### Fase 2 — IA Proativa em Todos os Formatos, Governança de Cota e Transparência na UI (Itens #7, #8, #10)
-- [ ] **#7:** Substituir `never-degrade` por desempate de `qualityScore` contábil em `statement-import-helpers.ts`.
-- [ ] **#8:** Garantir SHA-256 hex válido (64 chars) em todas as chamadas e salt determinístico (`reanalyze:${nonce}`) para o botão **"Reanalisar com IA"** sem exigir deploy na Edge Function.
-- [ ] Ativar gatilhos proativos da IA (Camada 3A) para PDF digital, texto colado e planilhas/CSVs ambíguos com agregação de metadados multi-chunk.
-- [ ] **#10:** Implementar escalada Vision governada (Camada 3B): aborto imediato em `quota_exceeded`, seleção cirúrgica de páginas com extrato, máximo 1 escalada automática (1 pág.) e confirmação explícita do usuário se $> 1$ página.
-- [ ] Exibir na UI a origem da leitura (*Local Conferida*, *Layout Aprendido*, *Estruturado com IA*), botão **"Reanalisar com IA"** e avisos honestos de cota/offline.
+- [x] **#7:** Substituir `never-degrade` por desempate de `qualityScore` contábil em `statement-import-helpers.ts`.
+- [x] **#8:** Garantir SHA-256 hex válido (64 chars) em todas as chamadas e salt determinístico (`reanalyze:${nonce}`) para o botão **"Reanalisar com IA"** sem exigir deploy na Edge Function.
+- [x] Ativar gatilhos proativos da IA (Camada 3A) para PDF digital, texto colado e planilhas/CSVs ambíguos com agregação de metadados multi-chunk.
+- [x] **#10:** Implementar escalada Vision governada (Camada 3B): aborto imediato em `quota_exceeded`, seleção cirúrgica de páginas com extrato, máximo 1 escalada automática (1 pág.) e confirmação explícita do usuário se $> 1$ página.
+- [x] Exibir na UI a origem da leitura (*Local Conferida*, *Layout Aprendido*, *Estruturado com IA*), botão **"Reanalisar com IA"** e avisos honestos de cota/offline.
 
 ### Fase 3 — Catálogo de Blueprints Nativos e `BlueprintLearner` com Shadow Replay (Item #9)
-- [ ] Criar `src/domain/reconciliation/blueprints/` (`types.ts`, `builtin-blueprints.ts`, `fingerprint.ts`, `matcher.ts`, `learner.ts`, testes).
-- [ ] Criar `src/services/statement-blueprint-store.ts` (validação Zod, LRU 50 entradas, self-healing `consecutiveFailures >= 2`).
-- [ ] Implementar **Persistência somente no Commit**, **Shadow Replay** (`score >= 85` obrigatório), bloqueio de destilação Vision com `anchorMatchRate < 0.8` e **Fingerprint estável entre meses** com fallback `pdf:<issuerKey>`.
-- [ ] Teste ponta a ponta: *1ª fatura de banco inédito usa IA → commit salva blueprint após Shadow Replay → 2ª fatura (outro mês!) com IA desligada lê 100% com 0 tokens*.
+- [x] Criar `src/domain/reconciliation/blueprints/` (`types.ts`, `builtin-blueprints.ts`, `fingerprint.ts`, `matcher.ts`, `learner.ts`, testes).
+- [x] Criar `src/services/statement-blueprint-store.ts` (validação Zod, LRU 50 entradas, self-healing `consecutiveFailures >= 2`).
+- [x] Implementar **Persistência somente no Commit**, **Shadow Replay** (`score >= 85` obrigatório), bloqueio de destilação Vision com `anchorMatchRate < 0.8` e **Fingerprint estável entre meses** com fallback `pdf:<issuerKey>`.
+- [x] Teste ponta a ponta: *1ª fatura de banco inédito usa IA → commit salva blueprint após Shadow Replay → 2ª fatura (outro mês!) com IA desligada lê 100% com 0 tokens*.
 
 ### Fase 4 — Camada 5: Assistente Guiado Sem Tokens (`StatementBlockClipperStep`)
-- [ ] Criar componente inline `StatementBlockClipperStep` (zero modais aninhados, zero `autoFocus`, zero emojis).
-- [ ] Suportar marcação Início–Fim + **exclusão pontual de linhas intrusas individuais** com conferência ao vivo do total contra `Valor da fatura`.
-- [ ] Integrar com rascunho do `BlueprintLearner` para salvar no commit após Shadow Replay.
+- [x] Criar componente inline `StatementBlockClipperStep` (zero modais aninhados, zero `autoFocus`, zero emojis).
+- [x] Suportar marcação Início–Fim + **exclusão pontual de linhas intrusas individuais** com conferência ao vivo do total contra `Valor da fatura`.
+- [x] Integrar com rascunho do `BlueprintLearner` para salvar no commit após Shadow Replay.
 
 ### Fase 5 — Regressão Multibancos e Homologação Final
-- [ ] Fixtures de regressão: Nomad, Rico/XP, Nubank, Itaú, Bradesco, CSV `;` com aspas/decimais, OFX com `-1.234,56` e `SALDO ANTERIOR`, XLSX multi-aba com floats IEEE-754, PDF híbrido, prints sobrepostos e fatura com saldo anterior.
-- [ ] Executar `npm run test`, `npm run typecheck`, `npm run lint` e auditoria `AGENTS.md` (parando antes de qualquer commit ou build de APK).
+- [x] Fixtures de regressão: Nomad, Rico/XP, Nubank, Itaú, Bradesco, CSV `;` com aspas/decimais, OFX com `-1.234,56` e `SALDO ANTERIOR`, XLSX multi-aba com floats IEEE-754, PDF híbrido, prints sobrepostos e fatura com saldo anterior.
+- [x] Executar `npm run test`, `npm run typecheck`, `npm run lint` e auditoria `AGENTS.md` (parando antes de qualquer commit ou build de APK).
 
 ---
 

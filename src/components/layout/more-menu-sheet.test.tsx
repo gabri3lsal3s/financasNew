@@ -93,7 +93,9 @@ describe("MoreMenuSheet", () => {
     await user.click(tourBtn);
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(screen.getByText("Escolha sua Trilha de Demonstração")).toBeInTheDocument();
+    // Não abre o segundo modal no mesmo tick síncrono (evita colisão de dois Radix Dialogs)
+    expect(screen.queryByText("Escolha sua Trilha de Demonstração")).not.toBeInTheDocument();
+    expect(await screen.findByText("Escolha sua Trilha de Demonstração")).toBeInTheDocument();
   });
 
   it("abre a central de ajuda ao clicar em Central de Ajuda & Suporte", async () => {
@@ -112,7 +114,8 @@ describe("MoreMenuSheet", () => {
     await user.click(helpBtn);
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(screen.getByText("Tour Guiado & Modo Simulação")).toBeInTheDocument();
+    expect(screen.queryByText("Tour Guiado & Modo Simulação")).not.toBeInTheDocument();
+    expect(await screen.findByText("Tour Guiado & Modo Simulação")).toBeInTheDocument();
   });
 
   it("mantém Investimentos acessível no menu Mais para todos os usuários (§Plano 11)", () => {

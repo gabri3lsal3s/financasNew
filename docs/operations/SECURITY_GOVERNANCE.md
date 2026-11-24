@@ -18,7 +18,7 @@ O **Áxis** processa dados financeiros e transacionais sensíveis. A governança
 | **Interceptação em Trânsito** | Ataques *Man-in-the-Middle* na rede. | **TLS 1.3 / HTTPS** estrito com HSTS em todas as conexões (web e mobile). |
 | **Sequestro de Conta (*Account Takeover*)** | Invasor com acesso temporário ao terminal tenta trocar senha ou e-mail. | **Reautenticação obrigatória com Senha Atual** (`verifyCurrentPassword`) antes de qualquer alteração de credencial. |
 | **Interceptação OAuth / PKCE** | Interceptação de código de autorização em redirects abertos. | **PKCE Estrito** (`flowType: "pkce"`) no cliente Supabase Auth, sem segredos client-side. |
-| **Terminal Desatendido na Web** | Usuário deixa navegador aberto em computador compartilhado/público. | **Timeout de Inatividade Web de 20 minutos** (`useIdleSessionTimeout`) com desconexão automática suave. |
+| **Terminal Desatendido na Web** | Usuário deixa navegador aberto em computador compartilhado/público. | **Política de Inatividade Opt-in + Modo Computador Compartilhado** (`useIdleSessionTimeout`) com aviso prévio de 60s e sincronização multi-aba; **Timeout obrigatório de 30 min** no Console Administrativo (`/admin/*`). |
 | **Ataque de Força Bruta Local** | Automação repetitiva de tentativas de login na interface. | **Cloudflare Turnstile** anti-bot real + **Backoff Exponencial no Cliente** (3 falhas: 15s; 5 falhas: 60s). |
 | **Resíduos em Memória Pós-Logout** | WebSockets ativos escutando dados ou comprovantes em cache volátil. | **Teardown atômico** (`resetAppState`): fecha canais Realtime (`removeAllChannels()`) e purga buffers de OCR (`clearRecentReceipts()`). |
 | **Falha de Sensor Biométrico Mobile** | Usuário impedido de acessar o app por sensor biométrico danificado. | **Saída de Emergência no AppLock** permitindo deslogar e reautenticar com senha. |
@@ -95,11 +95,12 @@ A desconexão de usuário (`signOut`) executa uma rotina profunda de limpeza de 
 3. **Limpeza de Armazenamento Local Transitório:** Purgamento de chaves temporárias de fluxo em `sessionStorage` e remoção do identificador ativo em `localStorage` (`financas_active_user_id`).
 4. **Purga de Caches de Dados:** `queryClient.clear()` expurga todas as queries em memória do TanStack Query.
 
-### 3.4 Proteção contra Inatividade Web e Throttling contra Força Bruta
-* **Timeout de Inatividade Web (`useIdleSessionTimeout`):**
-  * Em sessões web (desktop/mobile browser), o hook escuta passivamente eventos de interação do usuário (`pointerdown`, `keydown`, `touchstart`, `scroll`).
-  * Após 20 minutos sem interação, executa logout automático e redireciona para a tela de login com toast informativo: *"Sessão encerrada por inatividade para sua proteção."*
-  * O timeout permanece inativo quando o app roda em ambiente nativo Android (onde o bloqueio biométrico `AppLock` cumpre este papel) ou quando em modo demonstração (`isDemoActive`).
+### 3.4 Proteção contra Inatividade (Web, Computador Compartilhado & Admin) e Throttling
+* **Política de Inatividade Web (`useIdleSessionTimeout` + `session-policy.ts`):**
+  * **Padrão em dispositivos pessoais:** `"never"` (*Manter conectado*) — não desconecta automaticamente nem destrói assinaturas Web Push, mantendo a emissão leve de heartbeat multi-aba (`BroadcastChannel` + `localStorage`) para preservar sessões paralelas do Console Administrativo.
+  * **Opt-in por dispositivo ou Modo Computador Compartilhado:** O usuário pode configurar timeout de `15m`, `30m`, `60m` ou `240m` em *Segurança & Privacidade*, ou marcar *"Computador compartilhado (sair após 30 min sem uso)"* no login (`/entrar`, persistido apenas naquela sessão via `sessionStorage`).
+  * **Console Administrativo (`/admin/*`):** Impõe política estrita obrigatória de **30 minutos** (`forcedPolicy: "30m"`).
+  * **Aviso Prévio & Precedência:** Janela de aviso de **60 segundos** (`IdleSessionWarningModal`) calculada por diferença de timestamp (`deadlineAt - Date.now()`). Se o `AppLockOverlay` já estiver ativo, o modal de aviso é suprimido e o encerramento ocorre silenciosamente ao atingir o deadline.
 * **Throttling e Backoff Exponencial no Login:**
   * O formulário de login (`login-page.tsx`) contabiliza falhas consecutivas de autenticação local:
     * 3 falhas seguidas: bloqueio temporário do botão Entrar por 15 segundos regressivos com cronômetro na UI.
@@ -107,9 +108,10 @@ A desconexão de usuário (`signOut`) executa uma rotina profunda de limpeza de 
     * Login bem-sucedido zera o contador imediatamente.
   * O Cloudflare Turnstile anti-bot atua em paralelo como desafio criptográfico de borda antes do envio da requisição.
 
-### 3.5 Escudo do AppLock Nativo e Desconexão de Emergência
-* Em dispositivos Android, o `AppLockOverlay` protege a tela contra visualização indevida via Biometria Nativa / Credencial do Sistema operacional.
-* **Saída de Emergência:** Caso o sensor biométrico do smartphone apresente defeito físico, sujeira ou recusa de leitura, a tela de bloqueio disponibiliza a ação discreta *"Sair da conta e entrar com senha"*, permitindo que o usuário encerre a sessão local sem necessidade de reinstalar o aplicativo.
+### 3.5 Escudo do AppLock (Biometria / PIN), Backoff e Desconexão de Emergência
+* O motor unificado `AppLock` (`src/services/native/app-lock.ts`) protege a tela via Biometria Nativa (Android) ou PIN local de 4–6 dígitos (Web/PWA e fallback), monitorando retorno de segundo plano e inatividade em tela aberta (`lockOnIdle`) por diferença de timestamp, **sem encerrar a sessão**.
+* **Backoff Persistido de PIN:** Tentativas incorretas de PIN são persistidas por `userId` (`app_pin_lockout`): 1–4 erros sem espera; 5–9 erros aplicam espera progressiva a partir de 30s; ≥ 10 erros aplicam espera de 5 minutos com destaque visual no botão de saída.
+* **Saída de Emergência:** A tela de bloqueio disponibiliza a ação *"Sair da conta e entrar com senha"*, permitindo encerrar a sessão local a qualquer momento.
 
 ---
 
@@ -191,9 +193,16 @@ Em cumprimento ao princípio de Minimização de Dados da LGPD (Art. 6º, III):
   * A interface exibe a tela de desafio 2FA com campo de 6 dígitos numéricos e botões "Confirmar Acesso" e "Cancelar e voltar ao login" (que executa `signOut`).
   * A elevação para `aal2` só é concluída após resposta positiva de `supabase.auth.mfa.challengeAndVerify({ factorId, code })`.
 
-### 6.3 Gestão de Dispositivos e Desconexão Remota
-* O painel de conta (`AccountTab`) identifica o tipo de dispositivo atual (Web/Mobile/Desktop) e provê a ação *"Desconectar outros aparelhos"*.
-* A desconexão remota utiliza `supabase.auth.signOut({ scope: "others" })`, invalidando imediatamente os refresh tokens emitidos para navegadores ou aparelhos secundários sem deslogar a sessão corrente do usuário.
+### 6.3 Gestão Multidispositivo, Revogação Real e Parâmetros do Supabase Cloud
+* **Suporte Multidispositivo Real:** A aba *Segurança & Privacidade* (`ActiveDevicesCard`) lista todos os aparelhos registrados em `public.user_devices`, com destaque para o dispositivo atual e histórico recente (últimos 30 dias, até 5 revogados).
+* **Gate de MFA & Orquestrador Singleton (`useDeviceSessionSync`):** O registro de aparelho (`register_device_session`) só ocorre após conclusão do desafio TOTP (`aal2`, quando 2FA ativo), vinculando `auth_session_id` (`auth.jwt() ->> 'session_id'`) e limpando registros revogados com > 90 dias.
+* **Revogação Individual Efetiva + Realtime:** Revogar um dispositivo específico (`revoke_device_session`) marca `is_revoked = true`, remove a sessão correspondente em `auth.sessions` (com fallback defensivo) e desconecta o aparelho alvo instantaneamente via canal Supabase Realtime (`user_devices` `UPDATE`), rotacionando o `device_id` local para permitir futuro re-login sem loop.
+* **Desconexão em Lote:** A ação *"Desconectar outros aparelhos"* executa `supabase.auth.signOut({ scope: "others" })` em conjunto com a RPC `revoke_other_device_sessions(p_current_device_id)`.
+* **Parâmetros Obrigatórios no Supabase Dashboard (`Authentication → Sessions`):**
+  * `Enforce single session per user`: **OFF (`false`)** — evita que o login no celular derrube o navegador e previne invalidação durante `verifyCurrentPassword`.
+  * `Time-box user sessions`: **OFF (`0`)** ou **90 dias**.
+  * `Inactivity timeout`: **30 dias** (ou **OFF**).
+  * `Refresh token rotation`: **ON (`true`)** com `Reuse interval = 10s`.
 
 ---
 

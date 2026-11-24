@@ -2,14 +2,25 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import {
   useIdleSessionTimeout,
-  DEFAULT_IDLE_TIMEOUT_MS,
-  IDLE_ACTIVITY_EVENTS,
+  DEFAULT_IDLE_WARNING_SECONDS,
+  getIdleActivityStorageKey,
 } from "./use-idle-session-timeout";
 import * as authModule from "@/hooks/use-auth";
 import * as demoModule from "@/state/demo-mode";
+import * as appLockModule from "@/services/native/app-lock";
 import * as platformModule from "@/services/native/platform";
 import * as signOutModule from "@/hooks/use-sign-out";
 import * as toastModule from "@/services/toast";
+import {
+  setIdleLogoutPolicy,
+  setSharedDeviceSession,
+} from "@/services/session-policy";
+
+vi.mock("@capacitor/app", () => ({
+  App: {
+    addListener: vi.fn().mockResolvedValue({ remove: vi.fn() }),
+  },
+}));
 
 vi.mock("@/services/toast", () => ({
   pushToast: vi.fn(),
@@ -23,6 +34,11 @@ vi.mock("@/services/native/platform", () => ({
   isNativePlatform: vi.fn(),
 }));
 
+vi.mock("@/services/native/app-lock", () => ({
+  isAppLocked: vi.fn(() => false),
+  setAppLockIdlePaused: vi.fn(),
+}));
+
 vi.mock("@/state/demo-mode", () => ({
   useDemoSession: vi.fn(),
 }));
@@ -31,11 +47,13 @@ vi.mock("@/hooks/use-auth", () => ({
   useAuth: vi.fn(),
 }));
 
-describe("useIdleSessionTimeout", () => {
+describe("useIdleSessionTimeout (v2.0 — Opt-in, Multi-aba e Precedência AppLock)", () => {
   const mockSignOut = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    sessionStorage.clear();
     vi.useFakeTimers();
 
     mockSignOut.mockResolvedValue(undefined);
@@ -44,6 +62,7 @@ describe("useIdleSessionTimeout", () => {
     });
 
     vi.mocked(platformModule.isNativePlatform).mockReturnValue(false);
+    vi.mocked(appLockModule.isAppLocked).mockReturnValue(false);
     vi.mocked(demoModule.useDemoSession).mockReturnValue({
       isDemoActive: false,
       activeTrack: null,
@@ -66,271 +85,150 @@ describe("useIdleSessionTimeout", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    localStorage.clear();
+    sessionStorage.clear();
   });
 
-  it("exporta a constante de tempo limite de 20 minutos (1.200.000 ms)", () => {
-    expect(DEFAULT_IDLE_TIMEOUT_MS).toBe(20 * 60 * 1000);
-  });
-
-  it("inicia com monitoramento ativo e escuta os 4 eventos de atividade passivamente no ambiente Web", () => {
-    const addEventListenerSpy = vi.spyOn(window, "addEventListener");
-
+  it("padrão 'never': não desloga nem exibe aviso mesmo após 2 horas, mas emite heartbeat multi-aba para Admin", async () => {
     const { result } = renderHook(() => useIdleSessionTimeout());
 
-    expect(result.current.isMonitoringActive).toBe(true);
+    expect(result.current.isMonitoringActive).toBe(false);
+    expect(result.current.isWarningVisible).toBe(false);
 
-    for (const eventName of IDLE_ACTIVITY_EVENTS) {
-      expect(addEventListenerSpy).toHaveBeenCalledWith(
-        eventName,
-        expect.any(Function),
-        { passive: true },
-      );
-    }
-  });
+    // Emite atividade inicial no localStorage
+    const storageKey = getIdleActivityStorageKey("user-123");
+    const initialRaw = localStorage.getItem(storageKey);
+    expect(initialRaw).not.toBeNull();
 
-  it("dispara pushToast discreto e signOut quando o tempo limite de 20 minutos expira", async () => {
-    renderHook(() => useIdleSessionTimeout());
+    await act(async () => {
+      vi.advanceTimersByTime(2 * 60 * 60 * 1000);
+    });
 
     expect(mockSignOut).not.toHaveBeenCalled();
-    expect(toastModule.pushToast).not.toHaveBeenCalled();
+    expect(result.current.isWarningVisible).toBe(false);
 
-    // Avança 20 minutos
-    await act(async () => {
-      vi.advanceTimersByTime(DEFAULT_IDLE_TIMEOUT_MS);
-    });
-
-    expect(toastModule.pushToast).toHaveBeenCalledWith({
-      title: "Sessão encerrada por inatividade para sua proteção.",
-      variant: "info",
-    });
-    expect(mockSignOut).toHaveBeenCalledTimes(1);
-  });
-
-  it("executa callback opcional onTimeout fornecido nas opções", async () => {
-    const onTimeoutMock = vi.fn();
-
-    renderHook(() =>
-      useIdleSessionTimeout({
-        onTimeout: onTimeoutMock,
-      }),
-    );
-
-    await act(async () => {
-      vi.advanceTimersByTime(DEFAULT_IDLE_TIMEOUT_MS);
-    });
-
-    expect(onTimeoutMock).toHaveBeenCalledTimes(1);
-    expect(mockSignOut).toHaveBeenCalledTimes(1);
-  });
-
-  it("reinicia a contagem quando o usuário interage via pointerdown", async () => {
-    renderHook(() => useIdleSessionTimeout());
-
-    // Avança 15 minutos (sem expirar)
-    await act(async () => {
-      vi.advanceTimersByTime(15 * 60 * 1000);
-    });
-    expect(mockSignOut).not.toHaveBeenCalled();
-
-    // Usuário interage
+    // Interação no App em modo 'never' atualiza o heartbeat para manter aba Admin viva
     await act(async () => {
       window.dispatchEvent(new Event("pointerdown"));
     });
-
-    // Avança mais 10 minutos (total 25m, mas 10m após interação)
-    await act(async () => {
-      vi.advanceTimersByTime(10 * 60 * 1000);
-    });
-    expect(mockSignOut).not.toHaveBeenCalled();
-
-    // Avança os 10 minutos restantes para completar os 20 minutos pós-interação
-    await act(async () => {
-      vi.advanceTimersByTime(10 * 60 * 1000);
-    });
-    expect(mockSignOut).toHaveBeenCalledTimes(1);
+    const updatedRaw = localStorage.getItem(storageKey);
+    expect(updatedRaw).not.toBeNull();
   });
 
-  it("reinicia a contagem com outros eventos de atividade (keydown, touchstart, scroll)", async () => {
-    renderHook(() => useIdleSessionTimeout());
-
-    // keydown
-    await act(async () => {
-      vi.advanceTimersByTime(18 * 60 * 1000);
-      window.dispatchEvent(new Event("keydown"));
-    });
-    expect(mockSignOut).not.toHaveBeenCalled();
-
-    // touchstart
-    await act(async () => {
-      vi.advanceTimersByTime(18 * 60 * 1000);
-      window.dispatchEvent(new Event("touchstart"));
-    });
-    expect(mockSignOut).not.toHaveBeenCalled();
-
-    // scroll
-    await act(async () => {
-      vi.advanceTimersByTime(18 * 60 * 1000);
-      window.dispatchEvent(new Event("scroll"));
-    });
-    expect(mockSignOut).not.toHaveBeenCalled();
-
-    // Expira 20 minutos após o último scroll
-    await act(async () => {
-      vi.advanceTimersByTime(DEFAULT_IDLE_TIMEOUT_MS);
-    });
-    expect(mockSignOut).toHaveBeenCalledTimes(1);
-  });
-
-  it("permite reinicialização manual via resetTimer()", async () => {
+  it("opt-in (15m): exibe aviso prévio de 60s baseado em timestamp e desloga ao expirar", async () => {
+    setIdleLogoutPolicy("15m", "user-123");
     const { result } = renderHook(() => useIdleSessionTimeout());
 
+    expect(result.current.isMonitoringActive).toBe(true);
+    expect(result.current.isWarningVisible).toBe(false);
+
+    // Avança 14 minutos -> entra na janela de aviso de 60s
     await act(async () => {
-      vi.advanceTimersByTime(15 * 60 * 1000);
+      vi.advanceTimersByTime(14 * 60 * 1000);
     });
+
+    expect(result.current.isWarningVisible).toBe(true);
+    expect(result.current.secondsRemaining).toBe(DEFAULT_IDLE_WARNING_SECONDS);
+    expect(appLockModule.setAppLockIdlePaused).toHaveBeenCalledWith(true);
     expect(mockSignOut).not.toHaveBeenCalled();
 
+    // Avança 60s -> expira e encerra sessão localmente
     await act(async () => {
-      result.current.resetTimer();
+      vi.advanceTimersByTime(60 * 1000);
     });
 
-    await act(async () => {
-      vi.advanceTimersByTime(10 * 60 * 1000);
-    });
-    expect(mockSignOut).not.toHaveBeenCalled();
-
-    await act(async () => {
-      vi.advanceTimersByTime(10 * 60 * 1000);
-    });
-    expect(mockSignOut).toHaveBeenCalledTimes(1);
-  });
-
-  it("permanece inativo em ambiente nativo móvel (isNativePlatform === true)", async () => {
-    vi.mocked(platformModule.isNativePlatform).mockReturnValue(true);
-
-    const { result } = renderHook(() => useIdleSessionTimeout());
-
-    expect(result.current.isMonitoringActive).toBe(false);
-
-    await act(async () => {
-      vi.advanceTimersByTime(DEFAULT_IDLE_TIMEOUT_MS * 2);
-    });
-
-    expect(mockSignOut).not.toHaveBeenCalled();
-    expect(toastModule.pushToast).not.toHaveBeenCalled();
-  });
-
-  it("permanece inativo quando em modo de demonstração (isDemoActive === true)", async () => {
-    vi.mocked(demoModule.useDemoSession).mockReturnValue({
-      isDemoActive: true,
-      activeTrack: null,
-      currentStepIndex: 0,
-    } as never);
-
-    const { result } = renderHook(() => useIdleSessionTimeout());
-
-    expect(result.current.isMonitoringActive).toBe(false);
-
-    await act(async () => {
-      vi.advanceTimersByTime(DEFAULT_IDLE_TIMEOUT_MS * 2);
-    });
-
-    expect(mockSignOut).not.toHaveBeenCalled();
-    expect(toastModule.pushToast).not.toHaveBeenCalled();
-  });
-
-  it("permanece inativo quando não houver usuário logado (session === null)", async () => {
-    vi.mocked(authModule.useAuth).mockReturnValue({
-      session: null,
-      user: null,
-      loading: false,
-      configError: null,
-      signIn: vi.fn(),
-      signUp: vi.fn(),
-      resetPassword: vi.fn(),
-      resendConfirmation: vi.fn(),
-    });
-
-    const { result } = renderHook(() => useIdleSessionTimeout());
-
-    expect(result.current.isMonitoringActive).toBe(false);
-
-    await act(async () => {
-      vi.advanceTimersByTime(DEFAULT_IDLE_TIMEOUT_MS * 2);
-    });
-
-    expect(mockSignOut).not.toHaveBeenCalled();
-    expect(toastModule.pushToast).not.toHaveBeenCalled();
-  });
-
-  it("respeita a opção enabled: false", async () => {
-    const { result } = renderHook(() =>
-      useIdleSessionTimeout({ enabled: false }),
-    );
-
-    expect(result.current.isMonitoringActive).toBe(false);
-
-    await act(async () => {
-      vi.advanceTimersByTime(DEFAULT_IDLE_TIMEOUT_MS * 2);
-    });
-
-    expect(mockSignOut).not.toHaveBeenCalled();
-    expect(toastModule.pushToast).not.toHaveBeenCalled();
-  });
-
-  it("remove event listeners e limpa o timer ao desmontar", () => {
-    const removeEventListenerSpy = vi.spyOn(window, "removeEventListener");
-    const { unmount } = renderHook(() => useIdleSessionTimeout());
-
-    unmount();
-
-    for (const eventName of IDLE_ACTIVITY_EVENTS) {
-      expect(removeEventListenerSpy).toHaveBeenCalledWith(
-        eventName,
-        expect.any(Function),
-      );
-    }
-  });
-
-  it("desconecta imediatamente caso a aba volte a ficar visível após o tempo limite (visibilitychange)", async () => {
-    renderHook(() => useIdleSessionTimeout({ timeoutMs: 5000 }));
-
-    // Simula passagem de tempo em aba de segundo plano
-    await act(async () => {
-      vi.advanceTimersByTime(6000);
-      Object.defineProperty(document, "visibilityState", {
-        value: "visible",
-        configurable: true,
-      });
-      document.dispatchEvent(new Event("visibilitychange"));
-    });
-
-    expect(mockSignOut).toHaveBeenCalledTimes(1);
     expect(toastModule.pushToast).toHaveBeenCalledWith({
       title: "Sessão encerrada por inatividade para sua proteção.",
       variant: "info",
     });
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
   });
 
-  it("reagenda o timer para o tempo restante ao voltar à aba visível antes do tempo limite", async () => {
-    renderHook(() => useIdleSessionTimeout({ timeoutMs: 10000 }));
+  it("stayConnected fecha o modal de aviso, retoma AppLock e reseta o contador", async () => {
+    setIdleLogoutPolicy("15m", "user-123");
+    const { result } = renderHook(() => useIdleSessionTimeout());
 
-    // Avança 4 segundos e simula retorno à aba
     await act(async () => {
-      vi.advanceTimersByTime(4000);
-      Object.defineProperty(document, "visibilityState", {
-        value: "visible",
-        configurable: true,
-      });
-      document.dispatchEvent(new Event("visibilitychange"));
+      vi.advanceTimersByTime(14 * 60 * 1000);
+    });
+    expect(result.current.isWarningVisible).toBe(true);
+
+    await act(async () => {
+      result.current.stayConnected();
     });
 
+    expect(result.current.isWarningVisible).toBe(false);
+    expect(appLockModule.setAppLockIdlePaused).toHaveBeenCalledWith(false);
+
+    // Avança mais 10 minutos -> não deve ter expirado
+    await act(async () => {
+      vi.advanceTimersByTime(10 * 60 * 1000);
+    });
+    expect(mockSignOut).not.toHaveBeenCalled();
+  });
+
+  it("sincronização entre abas: atividade remota recebida via storage event reseta o contador e evita logout", async () => {
+    const { result } = renderHook(() =>
+      useIdleSessionTimeout({ forcedPolicy: "30m", warningSeconds: 60 }),
+    );
+
+    // Avança 29 minutos -> abre modal de aviso
+    await act(async () => {
+      vi.advanceTimersByTime(29 * 60 * 1000);
+    });
+    expect(result.current.isWarningVisible).toBe(true);
+
+    // Outra aba (ex.: App de Finanças) envia atividade/stay_connected via storage event
+    const now = Date.now();
+    await act(async () => {
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: getIdleActivityStorageKey("user-123"),
+          newValue: JSON.stringify({
+            type: "stay_connected",
+            at: now,
+            senderId: "other-tab",
+          }),
+        }),
+      );
+    });
+
+    expect(result.current.isWarningVisible).toBe(false);
+    await act(async () => {
+      vi.advanceTimersByTime(60 * 1000);
+    });
+    expect(mockSignOut).not.toHaveBeenCalled();
+  });
+
+  it("precedência AppLock: se isAppLocked() === true na janela de 60s, não abre modal e desloga silenciosamente no deadline", async () => {
+    setIdleLogoutPolicy("15m", "user-123");
+    vi.mocked(appLockModule.isAppLocked).mockReturnValue(true);
+
+    const { result } = renderHook(() => useIdleSessionTimeout());
+
+    await act(async () => {
+      vi.advanceTimersByTime(14 * 60 * 1000);
+    });
+
+    expect(result.current.isWarningVisible).toBe(false);
     expect(mockSignOut).not.toHaveBeenCalled();
 
-    // Avança mais 6 segundos (completando 10s)
     await act(async () => {
-      vi.advanceTimersByTime(6000);
+      vi.advanceTimersByTime(60 * 1000);
     });
 
-    expect(mockSignOut).toHaveBeenCalledTimes(1);
+    expect(result.current.isWarningVisible).toBe(false);
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
+  });
+
+  it("modo 'Computador compartilhado' e forcedPolicy Admin aplicam 30m automaticamente", async () => {
+    setSharedDeviceSession(true);
+    const { result } = renderHook(() => useIdleSessionTimeout());
+    expect(result.current.isMonitoringActive).toBe(true);
+
+    await act(async () => {
+      vi.advanceTimersByTime(30 * 60 * 1000);
+    });
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
   });
 });

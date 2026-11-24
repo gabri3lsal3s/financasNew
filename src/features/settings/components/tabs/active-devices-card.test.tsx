@@ -51,6 +51,11 @@ vi.mock("@/services/sensory", () => ({
   triggerSensory: (...args: unknown[]) => mockTriggerSensory(...args),
 }));
 
+const mockSignOut = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/hooks/use-sign-out", () => ({
+  useSignOut: () => ({ signOut: mockSignOut }),
+}));
+
 function renderCard() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -105,8 +110,8 @@ describe("ActiveDevicesCard — Painel de Dispositivos Conectados", () => {
         browser: "Safari",
         os: "macOS",
         ip_address: null,
-        last_seen_at: "2026-10-20T08:00:00.000Z",
-        created_at: "2026-10-01T08:00:00.000Z",
+        last_seen_at: "2026-11-20T08:00:00.000Z",
+        created_at: "2026-11-01T08:00:00.000Z",
         is_revoked: true,
       },
     ];
@@ -282,5 +287,34 @@ describe("ActiveDevicesCard — Painel de Dispositivos Conectados", () => {
     fireEvent.click(refreshBtn);
 
     expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it("oculta dispositivos revogados há mais de 30 dias e permite desconectar outros aparelhos", async () => {
+    mockDevicesData.push({
+      id: "rec-expired",
+      user_id: "user-1",
+      device_id: "remote-very-old",
+      device_name: "Firefox Antigo",
+      browser: "Firefox",
+      os: "Windows",
+      ip_address: null,
+      last_seen_at: "2026-08-01T08:00:00.000Z",
+      created_at: "2026-07-01T08:00:00.000Z",
+      is_revoked: true,
+    });
+
+    renderCard();
+
+    expect(screen.queryByText("Firefox Antigo")).not.toBeInTheDocument();
+
+    const disconnectBtn = screen.getByRole("button", { name: /Desconectar outros aparelhos/i });
+    fireEvent.click(disconnectBtn);
+
+    const confirmBtn = screen.getByRole("button", { name: /Desconectar outros/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(mockSignOut).toHaveBeenCalledWith({ scope: "others" });
+    });
   });
 });

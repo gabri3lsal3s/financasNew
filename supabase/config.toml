@@ -276,10 +276,16 @@ max_frequency = "5s"
 # 4152127777 = "123456"
 
 # Configure logged in session timeouts.
+# IMPORTANTE (Governança Cloud): `supabase db push` aplica apenas migrations SQL e NÃO sincroniza
+# automaticamente a seção `[auth]` com o projeto no Supabase Cloud.
+# Parâmetros oficiais recomendados em produção (Authentication -> Sessions no Dashboard):
+#   - Enforce single session per user: OFF (false) — permite multidispositivo real (APK + Web/PWA)
+#   - Time-box user sessions: OFF (0) ou 90d
+#   - Inactivity timeout: 30d (ou OFF) — evita desconexões involuntárias em dispositivos pessoais
+#   - Refresh token rotation: ON (true) com reuse interval = 10s
 # [auth.sessions]
-# Force log out after the specified duration.
+# single_per_user = false
 # timebox = "24h"
-# Force log out if the user has been inactive longer than the specified duration.
 # inactivity_timeout = "8h"
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.

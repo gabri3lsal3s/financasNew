@@ -59,7 +59,8 @@ describe("Modal", () => {
     // Base mobile + override md: o conteúdo é ancorado na base da tela (bottom-0) com slide-up.
     expect(dialog.className).toContain("bottom-0");
     expect(dialog.className).toContain("animate-sheet-in");
-    expect(dialog.className).toContain("md:animate-none");
+    expect(dialog.className).toContain("md:data-[state=open]:animate-dialog-in");
+    expect(dialog.className).toContain("md:data-[state=closed]:animate-dialog-out");
     expect(dialog.className).toContain("border-primary/25");
     // Alça visível apenas no mobile.
     const handle = dialog.querySelector("[aria-hidden='true']");
@@ -614,6 +615,23 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
       expect(dialog.style.transition).toContain("cubic-bezier");
     });
 
+    it("aplica animações reais de entrada/saída no overlay sem classes fantasma", () => {
+      render(
+        <Modal open onOpenChange={vi.fn()} title="Visualização de Detalhes">
+          <p>Conteúdo</p>
+        </Modal>,
+      );
+      const dialog = screen.getByRole("dialog");
+      const overlay = dialog.previousElementSibling as HTMLElement | null;
+      expect(overlay).not.toBeNull();
+      expect(overlay?.className).toContain("data-[state=open]:animate-overlay-in");
+      expect(overlay?.className).toContain("data-[state=closed]:animate-overlay-out");
+      expect(overlay?.className).not.toContain("animate-in");
+      expect(overlay?.className).not.toContain("animate-out");
+      expect(dialog.className).not.toContain("animate-in");
+      expect(dialog.className).not.toContain("animate-out");
+    });
+
     it("mantém a posição de arrasto em --sheet-drag-y para continuidade da animação ao fechar", () => {
       const onOpenChange = vi.fn();
       render(
@@ -639,6 +657,84 @@ describe("Plano 08: Micro-título reativo e rolagem fluida", () => {
       expect(onOpenChange).toHaveBeenCalledWith(false);
       // Mantém --sheet-drag-y para que @keyframes sheet-out comece exatamente na posição atual
       expect(dialog.style.getPropertyValue("--sheet-drag-y")).toBe("80px");
+    });
+
+    it("preserva --sheet-drag-y durante o fechamento (open=false) e só reseta para 0px ao reabrir", () => {
+      const originalGetComputedStyle = window.getComputedStyle.bind(window);
+      const getComputedStyleSpy = vi
+        .spyOn(window, "getComputedStyle")
+        .mockImplementation((elt: Element, pseudoElt?: string | null) => {
+          const base = originalGetComputedStyle(elt, pseudoElt);
+          if (elt.getAttribute("role") === "dialog") {
+            return new Proxy(base, {
+              get(target, prop) {
+                if (prop === "animationName") {
+                  return elt.getAttribute("data-state") === "closed" ? "sheet-out" : "sheet-in";
+                }
+                if (prop === "display") return "flex";
+                const value = Reflect.get(target, prop);
+                return typeof value === "function" ? value.bind(target) : value;
+              },
+            });
+          }
+          return base;
+        });
+
+      try {
+        const onOpenChange = vi.fn();
+        const { rerender } = render(
+          <Modal open={true} onOpenChange={onOpenChange} title="Visualização de Detalhes">
+            <p>Conteúdo</p>
+          </Modal>,
+        );
+        const dialog = screen.getByRole("dialog");
+        const handle = screen.getByTestId("modal-sheet-handle");
+
+        fireEvent.pointerDown(handle, {
+          pointerId: 1,
+          pointerType: "touch",
+          clientY: 100,
+          clientX: 50,
+          isPrimary: true,
+        });
+        fireEvent.pointerMove(handle, {
+          pointerId: 1,
+          pointerType: "touch",
+          clientY: 190,
+          clientX: 50,
+        });
+        fireEvent.pointerUp(handle, {
+          pointerId: 1,
+          pointerType: "touch",
+          clientY: 190,
+          clientX: 50,
+        });
+
+        expect(onOpenChange).toHaveBeenCalledWith(false);
+        expect(dialog.style.getPropertyValue("--sheet-drag-y")).toBe("90px");
+
+        // Pai re-renderiza com open=false: o modal em unmountSuspended deve permanecer no DOM e preservar 90px
+        rerender(
+          <Modal open={false} onOpenChange={onOpenChange} title="Visualização de Detalhes">
+            <p>Conteúdo</p>
+          </Modal>,
+        );
+        expect(dialog.isConnected).toBe(true);
+        expect(dialog.getAttribute("data-state")).toBe("closed");
+        expect(dialog.style.getPropertyValue("--sheet-drag-y")).toBe("90px");
+
+        // Ao reabrir com open=true, --sheet-drag-y volta para 0px
+        rerender(
+          <Modal open={true} onOpenChange={onOpenChange} title="Visualização de Detalhes">
+            <p>Conteúdo</p>
+          </Modal>,
+        );
+        expect(dialog.isConnected).toBe(true);
+        expect(dialog.getAttribute("data-state")).toBe("open");
+        expect(dialog.style.getPropertyValue("--sheet-drag-y")).toBe("0px");
+      } finally {
+        getComputedStyleSpy.mockRestore();
+      }
     });
   });
 });

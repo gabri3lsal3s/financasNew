@@ -198,6 +198,7 @@
     │   │   │                      #   smart-advisor-card (assistente proativo de insights com confirmação de renda em 1 toque),
     │   │   │                      #   quick-aporte-card (bloco de aporte rápido direcionado na Home com rebalanceamento em lote),
     │   │   │                      #   pending-suggestions-card (card discreto de transações capturadas do assistente passivo),
+    │   │   │                      #   idle-session-warning-modal (aviso regressivo de 60s antes de logout por inatividade),
     │   │   │                      #   pending-split-signals-card (card de sugestões de abatimento de racha com 1 toque),
     │   │   │                      #   split-charge-card (card canônico de cobrança de racha compartilhado com paridade visual integral),
     │   │   │                      #   split-preview-mockup-card (preview didático demonstrativo de racha com chave Pix para tours),
@@ -259,7 +260,7 @@
     │   ├── insights/              #   Insights, radar de vencimentos RF (F72), projeção e corte
     │   │                          #     components/ (diagnostic-card, diagnostics-tab, recurrences-tab, projection-tab F61)
     │   ├── reminders/             #   Central unificada de notificações & preferências (hooks/use-notification-preferences-form, prefs/{InAppRemindersPrefsCard,DueNotificationsPrefsCard,DailyClosingReminderCard,RemotePushPrefsCard,QuietHoursPrefsCard})
-    │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas (incluindo notifications-tab em 5 blocos: reminders-card, device-push-card, dividend-automation-card, banking-assistant-card, email-digest-prefs-card)
+    │   ├── settings/              #   Configurações consolidadas em 6 abas especializadas (incluindo notifications-tab em 5 blocos: reminders-card, device-push-card, dividend-automation-card, banking-assistant-card, email-digest-prefs-card; e security-tab: app-lock-card, session-inactivity-card, two-factor-card, active-devices-card)
     │   ├── admin/                 #   Módulo Administrativo SaaS Isolado (/admin/login, /admin/*)
     │   │                          #     layouts/ (admin-shell), components/ (user-edit-dialog, feature-toggle-card, telegram-settings-card, ticket-manage-dialog)
     │   │                          #     pages: admin-login-page, admin-dashboard-page, admin-users-page, admin-billing-page,
@@ -378,11 +379,16 @@
     │   ├── export/                #   F22: serialização CSV pt-BR (`;`/`,`/BOM — csv.ts)
     │   │                          #     e backup versionado com Zod + integridade
     │   │                          #     referencial (backup.ts, BACKUP_TABLE_KEYS)
-    │   ├── reconciliation/        #   F30: conciliação de faturas (parsers CSV/OFX/Texto,
-    │   │                          #     type-sniffer, hashing ordinal, scoring 0-100),
+    │   ├── reconciliation/        #   F30 + Motor Resiliente & Autoevolutivo: conciliação de faturas (parsers CSV/OFX/XLSX/PDF Espacial/Texto,
+    │   │                          #     magic-bytes.ts, type-sniffer, hashing ordinal, scoring 0-100),
+    │   │                          #     blueprints/ (receitas declarativas por emissor: types, builtin-blueprints, fingerprint, matcher, learner),
+    │   │                          #     quality-gate.ts (equação contábil dupla cycleNet + statementBalance),
+    │   │                          #     block-clipper.ts (recorte guiado Início-Fim + exclusão pontual sem tokens),
+    │   │                          #     app-duplicates.ts (detecção de duplicatas já lançadas no app),
+    │   │                          #     statement-preprocessor.ts, statement-metadata.ts,
     │   │                          #     clean.ts (sanitização de descrições e remoção de ruídos bancários),
     │   │                          #     chunking.ts (teto rígido de 250 itens por lote e chunkArray),
-    │   │                          #     chunking.test.ts, stress.test.ts (estresse com 2.000 linhas)
+    │   │                          #     multibank-regression.test.ts, chunking.test.ts, stress.test.ts (estresse com 2.000 linhas)
     │   ├── portfolio/             #   ledger, custo médio, valoração, rebalanceamento,
     │   │                          #   point-in-time.ts (F51: reconstrução de custódia ponto-no-tempo por competência),
     │   │                          #   historical-quotes.ts (F51: resolução de cotações de fechamento com cascata defensiva),
@@ -459,6 +465,9 @@
     │   └── demo-mode/             #   Fase 2 Tour: máquina de estados reativa da simulação (useDemoSession, demo-session-store, demo-storage)
     │
     ├── hooks/                     # Hooks de UI reaproveitáveis (use-auth,
+    │                              #   use-device-session-sync (orquestrador singleton StrictMode-safe com gate MFA e Realtime),
+    │                              #   use-idle-session-timeout (política opt-in por dispositivo, sync multi-aba e timers por timestamp),
+    │                              #   use-modal-transition (transições suaves de abertura/fechamento de modais e sheets),
     │                              #   use-highlight-target, use-pwa-install, use-app-update (In-App Updater),
     │                              #   use-network-status (F83 — detecção pub/sub via useSyncExternalStore),
     │                              #   use-sidebar-state, use-sign-out (logout unificado),
@@ -485,6 +494,9 @@
     │   ├── network-status.ts      #   F83: pub/sub de conectividade online/offline com snapshot síncrono
     │   ├── excel-export.ts        #   F44/F80: gerador XML do Caderno Excel multi-abas (Resumo, Custódia, Proventos, DRE, Dívidas, Resgates, Metas/Rebalanceamento)
     │   ├── user-storage.ts        #   Isolamento de localStorage por userId (financas_${userId}_*) + sanitizeLegacyStorage
+    │   ├── session-policy.ts      #   Política de inatividade Web por dispositivo (IdleLogoutPolicy) e flag efêmera de computador compartilhado
+    │   ├── statement-blueprint-store.ts # Persistência local validada por Zod de blueprints aprendidos (LRU 50 + self-healing)
+    │   ├── statement-mapping-cache.ts   # Cache estrutural de mapeamento de colunas de extratos CSV/XLSX
     │   ├── auth-cleanup.ts        #   resetAppState() — cancelamento de queries, purge de cache, reset de stores e DOM
     │   ├── haptics.ts             #   Feedback háptico (navigator.vibrate) (F8)
     │   ├── scroll.ts              #   Serviço canônico de rolagem: scrollToTop (smooth na mesma rota) e resetPageScroll (instantâneo em transições de rota)

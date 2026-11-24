@@ -10,7 +10,11 @@ const OverviewPage = lazy(() =>
   import("@/features/overview/pages/overview-page").then((m) => ({ default: m.OverviewPage })),
 );
 
-function OverviewOrInvestmentsRedirect() {
+/**
+ * Conteúdo da raiz autenticada (`/`): renderiza o painel financeiro ou redireciona
+ * perfis exclusivos de investimentos para `/investments`.
+ */
+export function AuthenticatedHome() {
   const { hasFeature, isLoading } = useUserAccess();
 
   if (isLoading) {
@@ -36,15 +40,14 @@ function OverviewOrInvestmentsRedirect() {
 }
 
 /**
- * Raiz autenticada (`/`): carregada somente após confirmação síncrona de sessão
- * ou no aplicativo nativo. Mantém a landing page fora do grafo do App Shell.
+ * Raiz autenticada (`/`): wrapper de compatibilidade com PageShell e guards.
  */
 export function AuthenticatedRoot() {
   return (
     <RequireAuth>
       <RequireActiveAccount>
         <PageShell>
-          <OverviewOrInvestmentsRedirect />
+          <AuthenticatedHome />
         </PageShell>
       </RequireActiveAccount>
     </RequireAuth>

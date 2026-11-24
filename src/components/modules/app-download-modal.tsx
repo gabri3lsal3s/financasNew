@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Download, Globe, HelpCircle, Smartphone } from "lucide-react";
 import { Badge, Button, Modal, ModalFooter } from "@/components/ui";
+import { useModalTransition } from "@/hooks/use-modal-transition";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import {
   AXIR_APK_DOWNLOAD_URL,
@@ -33,6 +34,11 @@ export function AppDownloadModal({
   const { isInstalled, install } = usePWAInstall();
   const [showIosGuide, setShowIosGuide] = useState(false);
   const [showApkGuide, setShowApkGuide] = useState(false);
+  const { scheduleAfterClose, cancelTransition } = useModalTransition();
+
+  useEffect(() => {
+    if (open) cancelTransition();
+  }, [open, cancelTransition]);
 
   const isIOS = isIOSDevice();
   const isPwaActive = isInstalled || isStandaloneDisplay();
@@ -40,11 +46,15 @@ export function AppDownloadModal({
 
   const handleInstallPwa = async () => {
     if (isIOS) {
-      setShowIosGuide(true);
+      scheduleAfterClose(
+        () => onOpenChange(false),
+        () => setShowIosGuide(true),
+      );
       return;
     }
     try {
       await install();
+      cancelTransition();
       onOpenChange(false);
     } catch {
       // Falha silenciosa caso o usuário cancele o prompt do navegador
@@ -66,6 +76,7 @@ export function AppDownloadModal({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    cancelTransition();
     onOpenChange(false);
   };
 
@@ -162,7 +173,12 @@ export function AppDownloadModal({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowApkGuide(true)}
+                  onClick={() =>
+                    scheduleAfterClose(
+                      () => onOpenChange(false),
+                      () => setShowApkGuide(true),
+                    )
+                  }
                   className="w-full sm:w-auto gap-1.5"
                 >
                   <HelpCircle className="size-3.5" aria-hidden="true" />

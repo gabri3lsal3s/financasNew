@@ -65,6 +65,7 @@ export const CREDIT_ONLY_SETTLEMENT_PATTERNS: RegExp[] = [
   /\bpagto\s+t[ií]tulo\b/i,
   /\bpagamento\s+de\s+cobran[çc]a\b/i,
   /\bpagamento\s+por\s+pix\b/i,
+  /\bpagamento\s+em\s+\d{1,2}(?:\s*\/\s*\d{1,2}|\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*)\b/i,
 ];
 
 const PAYMENT_KEYWORDS = [

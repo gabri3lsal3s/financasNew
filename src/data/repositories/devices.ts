@@ -3,6 +3,7 @@ import {
   registerDeviceSessionRpc,
   checkDeviceSessionRevokedRpc,
   revokeDeviceSessionRpc,
+  revokeOtherDeviceSessionsRpc,
 } from "@/data/rpc/auth-sessions";
 import { AppError, classifyError } from "@/services/errors";
 import type { DeviceRegistrationInput, UserDevice } from "@/types";
@@ -69,20 +70,26 @@ export async function getUserDevices(): Promise<UserDevice[]> {
 
 /**
  * Consulta se um dispositivo específico foi revogado.
+ * Invariante fail-open: em falhas de rede, offline ou ausência de resposta,
+ * retorna `false` para nunca desconectar o usuário por instabilidade temporária.
  */
 export async function checkDeviceRevoked(deviceId: string): Promise<boolean> {
   try {
     return await checkDeviceSessionRevokedRpc(deviceId);
   } catch {
-    const supabase = getSupabase();
-    const { data, error } = await supabase
-      .from("user_devices")
-      .select("is_revoked")
-      .eq("device_id", deviceId)
-      .maybeSingle();
+    try {
+      const supabase = getSupabase();
+      const { data, error } = await supabase
+        .from("user_devices")
+        .select("is_revoked")
+        .eq("device_id", deviceId)
+        .maybeSingle();
 
-    if (error || !data) return false;
-    return Boolean(data.is_revoked);
+      if (error || !data) return false;
+      return Boolean(data.is_revoked);
+    } catch {
+      return false;
+    }
   }
 }
 
@@ -104,6 +111,39 @@ export async function revokeDevice(deviceRecordId: string): Promise<boolean> {
       throw new AppError(classified.kind, classified.message, error);
     }
     return true;
+  }
+}
+
+/**
+ * Marca todos os demais dispositivos do usuário como revogados, preservando o dispositivo atual.
+ */
+export async function revokeOtherDevices(currentDeviceId: string): Promise<number> {
+  try {
+    return await revokeOtherDeviceSessionsRpc(currentDeviceId);
+  } catch {
+    const supabase = getSupabase();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      throw new AppError("session-expired", "Sessão expirada ao revogar outros dispositivos.");
+    }
+
+    const { data, error } = await supabase
+      .from("user_devices")
+      .update({ is_revoked: true, last_seen_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .neq("device_id", currentDeviceId)
+      .eq("is_revoked", false)
+      .select("id");
+
+    if (error) {
+      const classified = classifyError(error);
+      throw new AppError(classified.kind, classified.message, error);
+    }
+    return data?.length ?? 0;
   }
 }
 

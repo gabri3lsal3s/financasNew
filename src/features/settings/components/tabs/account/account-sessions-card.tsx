@@ -1,4 +1,5 @@
-import { KeyRound, Laptop, Loader2, LogOut, ShieldCheck, Smartphone } from "lucide-react";
+import { Link } from "react-router";
+import { ArrowRight, Laptop, LogOut, ShieldCheck, Smartphone } from "lucide-react";
 import {
   Badge,
   Button,
@@ -10,10 +11,7 @@ import {
 } from "@/components/ui";
 
 export interface AccountSessionsCardProps {
-  isSigningOutOthers: boolean;
   onOpenSignOutModal: () => void;
-  onSignOutOthers: () => void;
-  onOpenMfaModal: () => void;
 }
 
 function resolveDevicePlatformLabel(): { isMobile: boolean; label: string } {
@@ -30,12 +28,7 @@ function resolveDevicePlatformLabel(): { isMobile: boolean; label: string } {
   return { isMobile, label };
 }
 
-export function AccountSessionsCard({
-  isSigningOutOthers,
-  onOpenSignOutModal,
-  onSignOutOthers,
-  onOpenMfaModal,
-}: AccountSessionsCardProps) {
+export function AccountSessionsCard({ onOpenSignOutModal }: AccountSessionsCardProps) {
   const { isMobile, label } = resolveDevicePlatformLabel();
 
   return (
@@ -43,10 +36,10 @@ export function AccountSessionsCard({
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2">
           <ShieldCheck className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          <span>Segurança de Acesso &amp; Sessões</span>
+          <span>Sessão neste Dispositivo</span>
         </CardTitle>
         <CardDescription>
-          Monitore dispositivos conectados, encerre outros acessos ativos e configure proteção em duas etapas (2FA).
+          Encerre sua sessão neste aparelho ou gerencie bloqueio, 2FA e dispositivos conectados na aba de Segurança.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -84,57 +77,14 @@ export function AccountSessionsCard({
           </Button>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl bg-surface-raised/60">
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-xs font-semibold text-foreground block">
-              Encerrar outras sessões ativas
-            </span>
-            <span className="text-[11px] text-muted-foreground block">
-              Desconecta imediatamente seu usuário em outros computadores, celulares ou navegadores conectados.
-            </span>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            sensoryIntent={false}
-            disabled={isSigningOutOthers}
-            onClick={onSignOutOthers}
-            className="shrink-0 gap-1.5 self-start sm:self-auto"
+        <div className="flex items-center justify-end">
+          <Link
+            to="/configuracoes?tab=security"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-strong hover:text-primary hover:underline transition-colors"
           >
-            {isSigningOutOthers ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
-                <span>Encerrando…</span>
-              </>
-            ) : (
-              <>
-                <KeyRound className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                <span>Desconectar outros aparelhos</span>
-              </>
-            )}
-          </Button>
-        </div>
-
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 rounded-xl bg-surface-raised/60">
-          <div className="space-y-0.5 min-w-0">
-            <span className="text-xs font-semibold text-foreground block">
-              Verificação em Duas Etapas (2FA / TOTP)
-            </span>
-            <span className="text-[11px] text-muted-foreground block">
-              Exige um código numérico temporário de 6 dígitos do Google Authenticator ou 1Password no login.
-            </span>
-          </div>
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            onClick={onOpenMfaModal}
-            className="shrink-0 gap-1.5 self-start sm:self-auto"
-          >
-            <ShieldCheck className="size-3.5" aria-hidden="true" />
-            <span>Gerenciar 2FA</span>
-          </Button>
+            <span>Configurar bloqueio, 2FA e outros aparelhos</span>
+            <ArrowRight className="size-3.5" aria-hidden="true" />
+          </Link>
         </div>
       </CardContent>
     </Card>

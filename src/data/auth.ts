@@ -135,12 +135,17 @@ export async function verifyCurrentPassword(password: string): Promise<boolean> 
   }
 
   // Usa cliente isolado sem persistência para evitar rebaixar a sessão ativa de AAL2 para AAL1
+  // e encerra a sessão efêmera em `finally` para não acumular sessões órfãs em `auth.sessions`.
   const isolatedClient = createIsolatedSupabaseClient();
-  const { error } = await isolatedClient.auth.signInWithPassword({
-    email: user.email,
-    password,
-  });
-  return !error;
+  try {
+    const { error } = await isolatedClient.auth.signInWithPassword({
+      email: user.email,
+      password,
+    });
+    return !error;
+  } finally {
+    await isolatedClient.auth.signOut({ scope: "local" }).catch(() => {});
+  }
 }
 
 /**

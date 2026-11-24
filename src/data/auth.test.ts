@@ -22,6 +22,7 @@ const mockUpdateUser = vi.fn();
 const mockGetUser = vi.fn();
 const mockListFactors = vi.fn();
 const mockChallengeAndVerify = vi.fn();
+const mockIsolatedSignOut = vi.fn().mockResolvedValue({ error: null });
 
 vi.mock("@/data/client", () => {
   const mockClient = {
@@ -32,6 +33,7 @@ vi.mock("@/data/client", () => {
       resend: (...args: unknown[]) => mockResend(...args),
       updateUser: (...args: unknown[]) => mockUpdateUser(...args),
       getUser: (...args: unknown[]) => mockGetUser(...args),
+      signOut: (...args: unknown[]) => mockIsolatedSignOut(...args),
       mfa: {
         listFactors: (...args: unknown[]) => mockListFactors(...args),
         challengeAndVerify: (...args: unknown[]) => mockChallengeAndVerify(...args),
@@ -420,6 +422,30 @@ describe("data/auth — operações de autenticação", () => {
       await expect(
         requestUserEmailChange("MinhaSenha123", "novo@exemplo.com"),
       ).rejects.toThrow(AppError);
+    });
+  });
+
+  describe("verifyCurrentPassword", () => {
+    it("encerra a sessão efêmera do cliente isolado no finally em sucesso", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { email: "usuario@exemplo.com" } },
+      });
+      mockSignInWithPassword.mockResolvedValueOnce({ error: null });
+
+      const result = await verifyCurrentPassword("SenhaCorreta123");
+
+      expect(result).toBe(true);
+      expect(mockIsolatedSignOut).toHaveBeenCalledWith({ scope: "local" });
+    });
+
+    it("encerra a sessão efêmera do cliente isolado no finally mesmo quando signInWithPassword falha", async () => {
+      mockGetUser.mockResolvedValueOnce({
+        data: { user: { email: "usuario@exemplo.com" } },
+      });
+      mockSignInWithPassword.mockRejectedValueOnce(new Error("Network error"));
+
+      await expect(verifyCurrentPassword("SenhaErrada")).rejects.toThrow("Network error");
+      expect(mockIsolatedSignOut).toHaveBeenCalledWith({ scope: "local" });
     });
   });
 

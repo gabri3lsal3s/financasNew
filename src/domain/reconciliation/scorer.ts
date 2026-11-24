@@ -1,7 +1,9 @@
 import { jaccardTokens, tokenize } from "@/domain/predictions";
 import { addMonthsClamped, toISODate } from "@/domain/money/parcelar";
+import { findAppDuplicateCandidates } from "./app-duplicates";
 import type {
   CategoryPredictionSource,
+  CrossCompetenceMatch,
   ExistingExpenseForReconciliation,
   ReconciliationItem,
   ReconciliationResult,
@@ -239,15 +241,23 @@ export function predictCategoryForDescription(
 export function reconcileStatementTransactions(params: {
   statementTransactions: StatementTransaction[];
   existingExpenses: ExistingExpenseForReconciliation[];
+  adjacentExpenses?: ExistingExpenseForReconciliation[];
   history: CategoryPredictionSource[];
   defaultCategoryId: string;
   cardScope?: "personal" | "business" | "mixed";
 }): ReconciliationResult {
-  const { statementTransactions, existingExpenses, history, defaultCategoryId, cardScope } =
-    params;
+  const {
+    statementTransactions,
+    existingExpenses,
+    adjacentExpenses = [],
+    history,
+    defaultCategoryId,
+    cardScope,
+  } = params;
 
   // Mapa de despesas existentes que já receberam match para evitar duplo match
   const matchedExistingIds = new Set<string>();
+  const matchedAdjacentIds = new Set<string>();
 
   // Mapa de ocorrências de assinaturas no próprio lote para detectar duplicidades internas
   const seenSignatures = new Map<string, number>();
@@ -327,7 +337,7 @@ export function reconcileStatementTransactions(params: {
         isInternalDuplicate,
         duplicateReason: isInternalDuplicate
           ? "Lançamento duplicado no arquivo e já cadastrado no app"
-          : "Despesa já cadastrada no app",
+          : undefined,
       };
     }
 
@@ -353,7 +363,45 @@ export function reconcileStatementTransactions(params: {
       };
     }
 
-    // Classificação 3: Novo Lançamento (não encontrado no app)
+    // Classificação 3: Novo Lançamento (não encontrado na competência atual)
+    // Verifica antes se existe correspondência forte em competência vizinha (M-1 / M+1)
+    let crossCompetenceMatch: CrossCompetenceMatch | undefined;
+    if (!tx.isRefund && !isInternalDuplicate && adjacentExpenses.length > 0) {
+      let bestAdj: ExistingExpenseForReconciliation | null = null;
+      let bestAdjScore = -1;
+
+      for (const adj of adjacentExpenses) {
+        if (matchedAdjacentIds.has(adj.id)) continue;
+        if (!adj.billCompetence) continue;
+
+        const adjScore =
+          adj.statementHash && adj.statementHash === tx.statementHash
+            ? 100
+            : calculateMatchScore(tx, adj, {
+                predictedCategoryId: predictedCatId,
+                cardScope,
+              });
+
+        if (adjScore > bestAdjScore) {
+          bestAdjScore = adjScore;
+          bestAdj = adj;
+        }
+      }
+
+      if (bestAdj && bestAdjScore >= 75 && bestAdj.valueCents === tx.amountCents && bestAdj.billCompetence) {
+        matchedAdjacentIds.add(bestAdj.id);
+        crossCompetenceMatch = {
+          expenseId: bestAdj.id,
+          expenseDescription: bestAdj.description,
+          expenseDate: bestAdj.date,
+          expenseValueCents: bestAdj.valueCents,
+          currentBillCompetence: bestAdj.billCompetence,
+          score: bestAdjScore,
+          statementHash: tx.statementHash,
+        };
+      }
+    }
+
     const suggestedAction =
       tx.installment && tx.installment.total > 1
         ? tx.installment.current === 1
@@ -368,8 +416,9 @@ export function reconcileStatementTransactions(params: {
       score: 0,
       suggestedCategoryId: predictedCatId,
       selectedCategoryId: predictedCatId,
-      selected: !tx.isRefund && !isInternalDuplicate,
+      selected: !tx.isRefund && !isInternalDuplicate && !crossCompetenceMatch,
       suggestedAction,
+      crossCompetenceMatch,
       isInternalDuplicate,
       duplicateReason: isInternalDuplicate ? "Lançamento duplicado no mesmo arquivo" : undefined,
     };
@@ -377,9 +426,15 @@ export function reconcileStatementTransactions(params: {
 
   // Despesas cadastradas no app que NÃO tiveram nenhuma correspondência na fatura
   const unmatchedExistingExpenses = existingExpenses.filter((e) => !matchedExistingIds.has(e.id));
+  const appDuplicates = findAppDuplicateCandidates({
+    items,
+    existingExpenses,
+    unmatchedExistingExpenses,
+  });
 
   return {
     items,
     unmatchedExistingExpenses,
+    appDuplicates,
   };
 }

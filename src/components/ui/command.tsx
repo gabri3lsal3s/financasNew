@@ -69,13 +69,13 @@ export function Command({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-floating-tools bg-overlay backdrop-blur-sm transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Overlay className="fixed inset-0 z-floating-tools bg-overlay backdrop-blur-sm data-[state=open]:animate-overlay-in data-[state=closed]:animate-overlay-out" />
         <DialogPrimitive.Content
           onOpenAutoFocus={(e) => {
             e.preventDefault();
           }}
           onCloseAutoFocus={(e) => e.preventDefault()}
-          className="fixed left-1/2 top-[max(1rem,calc(max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))+0.75rem))] z-floating-tools max-h-[calc(85dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] w-[calc(100vw-2rem)] max-w-lg sm:max-w-xl md:max-w-2xl -translate-x-1/2 overflow-hidden rounded-2xl border border-primary/25 bg-surface shadow-2xl backdrop-blur-md focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:top-[12%] sm:max-h-[82dvh]"
+          className="fixed left-1/2 top-[max(1rem,calc(max(env(safe-area-inset-top,0px),var(--safe-area-top,0px))+0.75rem))] z-floating-tools max-h-[calc(85dvh-max(env(safe-area-inset-top,0px),var(--safe-area-top,0px)))] w-[calc(100vw-2rem)] max-w-lg sm:max-w-xl md:max-w-2xl -translate-x-1/2 overflow-hidden rounded-2xl border border-primary/25 bg-surface shadow-2xl backdrop-blur-md focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 data-[state=open]:animate-dialog-in data-[state=closed]:animate-dialog-out sm:top-[12%] sm:max-h-[82dvh]"
         >
           <DialogPrimitive.Title className="sr-only">Busca e comandos rápidos</DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">

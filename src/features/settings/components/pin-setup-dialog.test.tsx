@@ -37,9 +37,10 @@ describe("PinSetupDialog", () => {
     expect(screen.getByText(/A confirmação do PIN não confere./i)).toBeInTheDocument();
   });
 
-  it("salva o PIN e chama onSuccess ao preencher campos válidos", async () => {
+  it("salva o PIN e chama onPinSaved ao preencher campos válidos", async () => {
     const user = userEvent.setup();
-    const onSuccess = vi.fn();
+    const onPinSaved = vi.fn();
+    const onPinRemoved = vi.fn();
     const onOpenChange = vi.fn();
     const setPinSpy = vi.spyOn(nativeModule, "setPinLock").mockResolvedValue();
 
@@ -47,7 +48,8 @@ describe("PinSetupDialog", () => {
       <PinSetupDialog
         open={true}
         onOpenChange={onOpenChange}
-        onSuccess={onSuccess}
+        onPinSaved={onPinSaved}
+        onPinRemoved={onPinRemoved}
         userId="user-test"
       />,
     );
@@ -61,12 +63,15 @@ describe("PinSetupDialog", () => {
     await user.click(submitBtn);
 
     expect(setPinSpy).toHaveBeenCalledWith("5678", "user-test");
-    expect(onSuccess).toHaveBeenCalled();
+    expect(onPinSaved).toHaveBeenCalledTimes(1);
+    expect(onPinRemoved).not.toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it("permite remover o PIN existente quando hasExistingPin=true", async () => {
+  it("permite remover o PIN existente chamando apenas onPinRemoved (sem reativar bloqueio)", async () => {
     const user = userEvent.setup();
+    const onPinSaved = vi.fn();
+    const onPinRemoved = vi.fn();
     const onSuccess = vi.fn();
     const onOpenChange = vi.fn();
     const removePinSpy = vi.spyOn(nativeModule, "removePinLock");
@@ -76,6 +81,8 @@ describe("PinSetupDialog", () => {
         open={true}
         onOpenChange={onOpenChange}
         hasExistingPin={true}
+        onPinSaved={onPinSaved}
+        onPinRemoved={onPinRemoved}
         onSuccess={onSuccess}
         userId="user-test"
       />,
@@ -85,7 +92,9 @@ describe("PinSetupDialog", () => {
     await user.click(removeBtn);
 
     expect(removePinSpy).toHaveBeenCalledWith("user-test");
-    expect(onSuccess).toHaveBeenCalled();
+    expect(onPinRemoved).toHaveBeenCalledTimes(1);
+    expect(onPinSaved).not.toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

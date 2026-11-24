@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -75,7 +75,7 @@ describe("HelpModal", () => {
     await user.click(tourBtn);
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(onOpenDemoSelect).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onOpenDemoSelect).toHaveBeenCalledTimes(1));
   });
 
   beforeEach(() => {

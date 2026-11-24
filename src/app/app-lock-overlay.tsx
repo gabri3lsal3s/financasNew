@@ -4,7 +4,10 @@ import { KeyRound, Lock, LogOut, ShieldCheck } from "lucide-react";
 import { Button, Input } from "@/components/ui";
 import { useAuth } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
+import { cn } from "@/lib/utils";
 import {
+  checkBiometricsAvailability,
+  getPinLockoutState,
   isAppLocked,
   isNativePlatform,
   isPinLockConfigured,
@@ -18,9 +21,8 @@ const FOCUSABLE_SELECTOR =
 
 /**
  * Escudo de bloqueio do aplicativo (App Lock).
- * Exibido quando o usuário retorna ao aplicativo após o tempo de tolerância
- * em segundo plano, exigindo autenticação biométrica (impressão digital ou rosto)
- * ou PIN numérico local de 4 a 6 dígitos quando configurado.
+ * Exibido quando o usuário retorna ao aplicativo ou permanece inativo além da tolerância,
+ * exigindo autenticação biométrica ou PIN numérico local de 4 a 6 dígitos quando configurado.
  */
 export function AppLockOverlay() {
   const isLocked = useSyncExternalStore(subscribeAppLock, isAppLocked);
@@ -29,7 +31,9 @@ export function AppLockOverlay() {
   const { signOut } = useSignOut();
 
   const hasPinConfigured = userId ? isPinLockConfigured(userId) : isPinLockConfigured();
+  const isNative = isNativePlatform();
 
+  const [biometricsAvailable, setBiometricsAvailable] = useState<boolean>(isNative);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isPinMode, setIsPinMode] = useState(
@@ -37,11 +41,69 @@ export function AppLockOverlay() {
   );
   const [pinValue, setPinValue] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
+  const [, setLockoutRevision] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
+  const lockoutState = isLocked ? getPinLockoutState(userId) : { failedAttempts: 0, lockedUntilMs: null };
+  const canUseBiometrics = isNative || biometricsAvailable;
   const effectivePinMode = isPinMode && hasPinConfigured;
+
+  const lockoutRemainingSeconds =
+    lockoutState.lockedUntilMs && lockoutState.lockedUntilMs > nowMs
+      ? Math.ceil((lockoutState.lockedUntilMs - nowMs) / 1000)
+      : 0;
+  const isPinTemporarilyLocked = lockoutRemainingSeconds > 0;
+  const shouldHighlightEmergencySignOut = lockoutState.failedAttempts >= 10;
 
   const isAuthenticatingRef = useRef(false);
   const overlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isLocked || isNative) return;
+
+    let cancelled = false;
+    void checkBiometricsAvailability()
+      .then((res) => {
+        if (!cancelled) {
+          setBiometricsAvailable(res.isAvailable);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBiometricsAvailable(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLocked, isNative]);
+
+  useEffect(() => {
+    if (!isLocked || !lockoutState.lockedUntilMs) return;
+    if (lockoutState.lockedUntilMs <= Date.now()) return;
+
+    const syncNow = () => setNowMs(Date.now());
+    const intervalId = setInterval(syncNow, 500);
+    const handleVisibilityOrFocus = () => syncNow();
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", handleVisibilityOrFocus);
+    }
+
+    return () => {
+      clearInterval(intervalId);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", handleVisibilityOrFocus);
+      }
+    };
+  }, [isLocked, lockoutState.lockedUntilMs]);
 
   const handleUnlock = useCallback(async () => {
     if (isAuthenticatingRef.current || isSigningOut) return;
@@ -63,7 +125,7 @@ export function AppLockOverlay() {
   }, [hasPinConfigured, isSigningOut]);
 
   const handleUnlockPin = useCallback(async () => {
-    if (pinValue.length < 4 || isAuthenticating || isSigningOut) return;
+    if (pinValue.length < 4 || isAuthenticating || isSigningOut || isPinTemporarilyLocked) return;
     setIsAuthenticating(true);
     setPinError(null);
     try {
@@ -72,15 +134,20 @@ export function AppLockOverlay() {
         : await unlockAppWithPin(pinValue);
       if (isValid) {
         setPinValue("");
+        setLockoutRevision((r) => r + 1);
       } else {
+        setLockoutRevision((r) => r + 1);
+        setNowMs(Date.now());
         setPinError("PIN incorreto. Tente novamente.");
       }
     } catch (err) {
+      setLockoutRevision((r) => r + 1);
+      setNowMs(Date.now());
       setPinError(err instanceof Error ? err.message : "Erro ao validar PIN.");
     } finally {
       setIsAuthenticating(false);
     }
-  }, [pinValue, isAuthenticating, isSigningOut, userId]);
+  }, [pinValue, isAuthenticating, isSigningOut, isPinTemporarilyLocked, userId]);
 
   const handleEmergencySignOut = useCallback(async () => {
     if (isSigningOut) return;
@@ -236,42 +303,48 @@ export function AppLockOverlay() {
                   placeholder="PIN (4 a 6 dígitos)"
                   aria-label="PIN de Acesso"
                   className="text-center font-mono tracking-widest text-lg h-12"
-                  disabled={isAuthenticating || isSigningOut}
+                  disabled={isAuthenticating || isSigningOut || isPinTemporarilyLocked}
                 />
-                {pinError && (
+                {isPinTemporarilyLocked ? (
+                  <p role="alert" className="text-xs text-critical-strong text-center font-medium mt-1 tabular-nums">
+                    Muitas tentativas incorretas. Aguarde {lockoutRemainingSeconds}s para tentar novamente.
+                  </p>
+                ) : pinError ? (
                   <p role="alert" className="text-xs text-critical-strong text-center font-medium mt-1">
                     {pinError}
                   </p>
-                )}
+                ) : null}
               </div>
 
               <Button
                 type="submit"
                 size="lg"
                 aria-label="Desbloquear com PIN"
-                disabled={pinValue.length < 4 || isAuthenticating || isSigningOut}
+                disabled={pinValue.length < 4 || isAuthenticating || isSigningOut || isPinTemporarilyLocked}
                 className="w-full gap-2"
               >
                 <KeyRound className="size-4" aria-hidden="true" />
                 <span>{isAuthenticating ? "Verificando..." : "Desbloquear com PIN"}</span>
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                sensoryIntent="selection"
-                aria-label="Usar Biometria"
-                onClick={() => {
-                  setIsPinMode(false);
-                  setPinError(null);
-                }}
-                disabled={isAuthenticating || isSigningOut}
-                className="w-full gap-2 text-xs"
-              >
-                <Lock className="size-3.5" aria-hidden="true" />
-                <span>Usar Biometria</span>
-              </Button>
+              {canUseBiometrics ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  sensoryIntent="selection"
+                  aria-label="Usar Biometria"
+                  onClick={() => {
+                    setIsPinMode(false);
+                    setPinError(null);
+                  }}
+                  disabled={isAuthenticating || isSigningOut}
+                  className="w-full gap-2 text-xs"
+                >
+                  <Lock className="size-3.5" aria-hidden="true" />
+                  <span>Usar Biometria</span>
+                </Button>
+              ) : null}
             </form>
           ) : (
             <div className="mt-6 flex flex-col gap-2.5">
@@ -311,13 +384,18 @@ export function AppLockOverlay() {
           <div className="mt-3">
             <Button
               type="button"
-              variant="ghost"
+              variant={shouldHighlightEmergencySignOut ? "outline" : "ghost"}
               size="sm"
               sensoryIntent="destructive"
               aria-label="Sair da conta e entrar com senha"
               onClick={handleEmergencySignOut}
               disabled={isAuthenticating || isSigningOut}
-              className="w-full gap-2 text-xs text-muted-foreground hover:text-foreground"
+              className={cn(
+                "w-full gap-2 text-xs",
+                shouldHighlightEmergencySignOut
+                  ? "border-critical/40 text-critical-strong hover:bg-critical/10"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
             >
               <LogOut className="size-3.5" aria-hidden="true" />
               <span>{isSigningOut ? "Saindo..." : "Sair da conta e entrar com senha"}</span>

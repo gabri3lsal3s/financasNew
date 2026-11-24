@@ -28,12 +28,14 @@ export interface AppLockCardProps {
   isDemoActive: boolean;
   bioLockEnabled: boolean;
   graceMinutes: string;
+  lockOnIdle?: boolean;
   hasPinConfigured: boolean;
   privacyEnabled: boolean;
   onToggleBiometrics: (enabled: boolean) => void;
   onTogglePinLock: (enabled: boolean) => void;
   onOpenPinDialog: () => void;
   onGraceMinutesChange: (val: string) => void;
+  onToggleLockOnIdle?: (enabled: boolean) => void;
   onTogglePrivacyShield: (enabled: boolean) => void;
 }
 
@@ -45,14 +47,17 @@ export function AppLockCard({
   isDemoActive,
   bioLockEnabled,
   graceMinutes,
+  lockOnIdle = true,
   hasPinConfigured,
   privacyEnabled,
   onToggleBiometrics,
   onTogglePinLock,
   onOpenPinDialog,
   onGraceMinutesChange,
+  onToggleLockOnIdle,
   onTogglePrivacyShield,
 }: AppLockCardProps) {
+  const showIdleToggle = Number(graceMinutes) > 0 && Boolean(onToggleLockOnIdle);
   const effectiveBiometricActive =
     bioLockEnabled && (biometricsAvailable !== false || isDemoActive);
   const effectivePinActive = bioLockEnabled && hasPinConfigured;
@@ -121,7 +126,7 @@ export function AppLockCard({
             </div>
 
             {effectiveBiometricActive ? (
-              <div className="pt-3 border-t border-border/80">
+              <div className="pt-3 border-t border-border/80 space-y-3">
                 <FormField
                   label="Tolerância para bloqueio"
                   htmlFor="app-lock-grace-bio"
@@ -135,6 +140,28 @@ export function AppLockCard({
                     ariaLabel="Selecione o tempo de tolerância para bloqueio"
                   />
                 </FormField>
+
+                {showIdleToggle ? (
+                  <div className="flex items-start justify-between gap-4 pt-2 border-t border-border/60">
+                    <div className="space-y-0.5 min-w-0">
+                      <label
+                        htmlFor="toggle-lock-on-idle-bio"
+                        className="text-xs font-semibold text-foreground cursor-pointer block"
+                      >
+                        Bloquear também quando a tela ficar parada
+                      </label>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Trava o aplicativo sem encerrar sua sessão se ficar sem interação pelo tempo de tolerância.
+                      </p>
+                    </div>
+                    <Checkbox
+                      id="toggle-lock-on-idle-bio"
+                      aria-label="Bloquear também quando a tela ficar parada"
+                      checked={lockOnIdle}
+                      onCheckedChange={(checked) => onToggleLockOnIdle?.(Boolean(checked))}
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -177,7 +204,7 @@ export function AppLockCard({
             </div>
 
             {effectivePinActive ? (
-              <div className="pt-3 border-t border-border/80">
+              <div className="pt-3 border-t border-border/80 space-y-3">
                 <FormField
                   label="Tolerância para bloqueio"
                   htmlFor="app-lock-grace-pin"
@@ -191,6 +218,28 @@ export function AppLockCard({
                     ariaLabel="Selecione o tempo de tolerância para bloqueio"
                   />
                 </FormField>
+
+                {showIdleToggle ? (
+                  <div className="flex items-start justify-between gap-4 pt-2 border-t border-border/60">
+                    <div className="space-y-0.5 min-w-0">
+                      <label
+                        htmlFor="toggle-lock-on-idle-pin"
+                        className="text-xs font-semibold text-foreground cursor-pointer block"
+                      >
+                        Bloquear também quando a tela ficar parada
+                      </label>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Exige o PIN sem encerrar sua sessão se a aba ficar parada pelo tempo de tolerância.
+                      </p>
+                    </div>
+                    <Checkbox
+                      id="toggle-lock-on-idle-pin"
+                      aria-label="Bloquear também quando a tela ficar parada"
+                      checked={lockOnIdle}
+                      onCheckedChange={(checked) => onToggleLockOnIdle?.(Boolean(checked))}
+                    />
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>

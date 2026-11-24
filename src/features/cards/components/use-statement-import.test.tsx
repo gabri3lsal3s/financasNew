@@ -53,6 +53,10 @@ vi.mock("@/state", async (importOriginal) => {
       mutateAsync: mutateUpdateAsyncMock,
       isPending: false,
     }),
+    useDeleteExpense: () => ({
+      mutateAsync: vi.fn().mockResolvedValue({}),
+      isPending: false,
+    }),
     useCreateRefund: () => ({
       mutateAsync: mutateRefundAsyncMock,
       isPending: false,

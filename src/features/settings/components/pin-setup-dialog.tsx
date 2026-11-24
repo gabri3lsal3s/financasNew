@@ -17,6 +17,9 @@ export interface PinSetupDialogProps {
   onOpenChange: (open: boolean) => void;
   userId?: string | null;
   hasExistingPin?: boolean;
+  onPinSaved?: () => void;
+  onPinRemoved?: () => void;
+  /** @deprecated Preferir `onPinSaved` e `onPinRemoved` separados. */
   onSuccess?: () => void;
 }
 
@@ -27,6 +30,8 @@ export function PinSetupDialog({
   onOpenChange,
   userId,
   hasExistingPin = false,
+  onPinSaved,
+  onPinRemoved,
   onSuccess,
 }: PinSetupDialogProps) {
   const [pin, setPin] = useState("");
@@ -74,7 +79,11 @@ export function PinSetupDialog({
         description: "Seu código de acesso rápido foi armazenado com segurança neste dispositivo.",
         variant: "success",
       });
-      onSuccess?.();
+      if (onPinSaved) {
+        onPinSaved();
+      } else {
+        onSuccess?.();
+      }
       handleClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao salvar o PIN.");
@@ -91,7 +100,7 @@ export function PinSetupDialog({
       description: "O bloqueio por PIN foi removido deste dispositivo.",
       variant: "default",
     });
-    onSuccess?.();
+    onPinRemoved?.();
     handleClose();
   };
 

@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router";
 import { Compass, Download, HelpCircle, Sparkles } from "lucide-react";
 import { navGroups, filterNavItems, navItems } from "@/components/layout/nav-items";
@@ -11,6 +11,7 @@ import { shouldOfferAndroidApk } from "@/services/native/app-links";
 import { triggerSensory } from "@/services/sensory";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { useAppUpdate } from "@/hooks/use-app-update";
+import { useModalTransition } from "@/hooks/use-modal-transition";
 import { applyPWAUpdate, getPWAUpdateAvailable, subscribePWAUpdate } from "@/app/pwa";
 import { useNotificationCenter } from "@/hooks/use-notification-center";
 import { useBusinessMode, useFamilyMode, useTripMode, useUserAccess } from "@/state";
@@ -26,6 +27,11 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
   const [demoSelectOpen, setDemoSelectOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
+  const { scheduleAfterClose, cancelTransition } = useModalTransition();
+
+  useEffect(() => {
+    if (open) cancelTransition();
+  }, [open, cancelTransition]);
   const { isInstalled } = usePWAInstall();
   const isNative = isNativePlatform();
   const isPwaActive = isInstalled || isStandaloneDisplay();
@@ -93,6 +99,7 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                       key={item.path}
                       to={item.path}
                       onClick={() => {
+                        cancelTransition();
                         triggerSensory("selection");
                         onOpenChange(false);
                       }}
@@ -127,8 +134,10 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                 type="button"
                 onClick={() => {
                   triggerSensory("selection");
-                  onOpenChange(false);
-                  setDemoSelectOpen(true);
+                  scheduleAfterClose(
+                    () => onOpenChange(false),
+                    () => setDemoSelectOpen(true),
+                  );
                 }}
                 className="flex min-h-11 w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover cursor-pointer shadow-xs"
               >
@@ -152,8 +161,10 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                 type="button"
                 onClick={() => {
                   triggerSensory("selection");
-                  onOpenChange(false);
-                  setHelpModalOpen(true);
+                  scheduleAfterClose(
+                    () => onOpenChange(false),
+                    () => setHelpModalOpen(true),
+                  );
                 }}
                 className="flex min-h-11 w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover cursor-pointer shadow-xs"
               >
@@ -174,6 +185,7 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                 <button
                   type="button"
                   onClick={async () => {
+                    cancelTransition();
                     triggerSensory("action");
                     onOpenChange(false);
                     if (isNative) {
@@ -206,8 +218,10 @@ export function MoreMenuSheet({ open, onOpenChange }: MoreMenuSheetProps) {
                   type="button"
                   onClick={() => {
                     triggerSensory("selection");
-                    onOpenChange(false);
-                    setDownloadModalOpen(true);
+                    scheduleAfterClose(
+                      () => onOpenChange(false),
+                      () => setDownloadModalOpen(true),
+                    );
                   }}
                   className="flex min-h-11 w-full items-center justify-between rounded-xl border border-border/80 bg-surface p-3.5 text-left transition-colors hover:bg-surface-hover cursor-pointer shadow-xs"
                 >

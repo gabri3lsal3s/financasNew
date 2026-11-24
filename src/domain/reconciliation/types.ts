@@ -101,6 +101,8 @@ export interface ReconciliationItem {
   seriesAnalysis?: import("./series-detector").InstallmentSeriesAnalysis | null;
   /** Se o usuário optou por projetar parcelas futuras K+1..N para esta compra. */
   projectSeries?: boolean;
+  /** Correspondência forte encontrada em competência vizinha (M-1 ou M+1). */
+  crossCompetenceMatch?: CrossCompetenceMatch;
   /** Se o item foi vinculado a uma despesa existente com ajuste de valor pendente. */
   isLinkedAndAdjusted?: boolean;
   /** Diferença em centavos entre o extrato e a despesa vinculada no app. */
@@ -111,6 +113,36 @@ export interface ReconciliationItem {
     | "import_and_project_series"
     | "import_single"
     | "link_existing";
+}
+
+/**
+ * Despesa encontrada no mesmo cartão, porém lançada em competência vizinha (M-1 ou M+1),
+ * geralmente por erro de competência ou mudança pontual no dia de fechamento.
+ */
+export interface CrossCompetenceMatch {
+  expenseId: string;
+  expenseDescription: string;
+  expenseDate: string;
+  expenseValueCents: number;
+  currentBillCompetence: string;
+  score: number;
+  statementHash: string;
+}
+
+/**
+ * Par de provável duplicidade já cadastrada no aplicativo (duas despesas no app
+ * para uma única compra na fatura, ou duas despesas idênticas sobrando no app).
+ */
+export interface AppDuplicateCandidate {
+  id: string;
+  /** Despesa principal que deve ser mantida (conciliada na fatura ou mais antiga). */
+  keepExpense: ExistingExpenseForReconciliation;
+  /** Despesa excedente no app sugerida para exclusão. */
+  duplicateExpense: ExistingExpenseForReconciliation;
+  /** True quando `keepExpense` já está conciliada com um lançamento da fatura atual. */
+  keepIsMatchedOnStatement: boolean;
+  /** Motivo legível da suspeita de duplicidade. */
+  reason: string;
 }
 
 export interface PendingLinkAdjustment {
@@ -130,6 +162,8 @@ export interface ReconciliationResult {
   items: ReconciliationItem[];
   /** Despesas cadastradas no app na competência que NÃO foram encontradas no extrato. */
   unmatchedExistingExpenses: ExistingExpenseForReconciliation[];
+  /** Duplicatas prováveis já cadastradas no aplicativo. */
+  appDuplicates?: AppDuplicateCandidate[];
 }
 
 /**
@@ -146,6 +180,8 @@ export interface ExistingExpenseForReconciliation {
   statementHash?: string | null;
   chargeKind?: import("@/types").ChargeKind | null;
   scope?: "personal" | "business";
+  billCompetence?: string;
+  installmentGroupId?: string | null;
 }
 
 /**

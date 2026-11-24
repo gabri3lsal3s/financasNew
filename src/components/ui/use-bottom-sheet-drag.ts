@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from "react";
 import { getVisualCustomization } from "@/hooks/use-visual-customization";
 import { triggerSensory } from "@/services/sensory";
@@ -60,7 +60,7 @@ export function useBottomSheetDrag({ onClose }: UseBottomSheetDragOptions) {
     };
   }, []);
 
-  const resetDrag = () => {
+  const resetDrag = useCallback(() => {
     if (snapTimeoutRef.current) {
       clearTimeout(snapTimeoutRef.current);
       snapTimeoutRef.current = null;
@@ -69,7 +69,7 @@ export function useBottomSheetDrag({ onClose }: UseBottomSheetDragOptions) {
     setDragY(0);
     setIsDragging(false);
     setIsSnapping(false);
-  };
+  }, []);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse") return;

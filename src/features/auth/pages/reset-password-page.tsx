@@ -14,6 +14,7 @@ import { subscribeAuthStateChange, updateUserPassword } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services/errors";
+import { markPendingExplicitDeviceRegistration } from "@/services/native/device-info";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { AuthShell } from "../components/auth-shell";
@@ -112,6 +113,7 @@ export function ResetPasswordPage() {
         // fail-safe
       }
 
+      markPendingExplicitDeviceRegistration();
       triggerSensory("success");
       setIsSuccess(true);
       pushToast({

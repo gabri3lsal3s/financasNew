@@ -74,6 +74,8 @@ export { NotificationsPopover } from "./notifications-popover";
 export type { NotificationsPopoverProps } from "./notifications-popover";
 export { PaceAlertBanner } from "./pace-alert-banner";
 export type { PaceAlertBannerProps } from "./pace-alert-banner";
+export { IdleSessionWarningModal } from "./idle-session-warning-modal";
+export type { IdleSessionWarningModalProps } from "./idle-session-warning-modal";
 export { RealCashHeroCard } from "./real-cash-hero-card";
 export type { RealCashHeroCardProps } from "./real-cash-hero-card";
 export { CycleObligationsDialog } from "./cycle-obligations-dialog";

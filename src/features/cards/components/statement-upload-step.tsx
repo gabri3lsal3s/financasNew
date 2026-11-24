@@ -13,6 +13,7 @@ export interface StatementUploadStepProps {
   onFilesSelect?: (files: File[]) => void;
   onTextSubmit?: (text: string) => void;
   isProcessing?: boolean;
+  processingMessage?: string | null;
   pendingPasswordFile?: File | null;
   passwordError?: string | null;
   onPasswordSubmit?: (password: string) => void;
@@ -29,6 +30,7 @@ export function StatementUploadStep({
   onFilesSelect,
   onTextSubmit,
   isProcessing = false,
+  processingMessage = null,
   pendingPasswordFile = null,
   passwordError = null,
   onPasswordSubmit,
@@ -232,7 +234,7 @@ export function StatementUploadStep({
           className="flex items-center gap-2 rounded-xl border border-border/80 bg-surface px-3.5 py-2.5 text-xs text-muted-foreground"
         >
           <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden="true" />
-          <span>Pré-processando e organizando lançamentos da fatura...</span>
+          <span>{processingMessage || "Pré-processando e organizando lançamentos da fatura..."}</span>
         </div>
       ) : null}
     </div>

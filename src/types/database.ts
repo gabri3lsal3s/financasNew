@@ -916,6 +916,12 @@ export interface Database {
         };
         Returns: boolean;
       };
+      revoke_other_device_sessions: {
+        Args: {
+          p_current_device_id: string;
+        };
+        Returns: number;
+      };
     };
   };
 }

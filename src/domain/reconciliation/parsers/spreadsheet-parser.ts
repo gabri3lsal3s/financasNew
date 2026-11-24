@@ -1,5 +1,6 @@
 import type { RawParsedRow } from "../types";
 import { decodeBufferToString, parseCsvToRows } from "./csv-parser";
+import { normalizeDateToISO, parseAmountToCents } from "./type-sniffer";
 
 interface ZipCentralEntry {
   name: string;
@@ -182,6 +183,93 @@ function excelSerialToIsoDate(serial: number): string | null {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * Normaliza valores numéricos crus extraídos do XML de planilhas `.xlsx`:
+ * - Expande notação científica (ex.: `2.5E+3` -> `2500`).
+ * - NÃO aplica `.toFixed(2)` em inteiros (preserva datas seriais não estilizadas e finais de cartão).
+ * - Corrige ruído de ponto flutuante IEEE-754 (ex.: `140.49999999999997` -> `140.50`)
+ *   exclusivamente em floats não-inteiros com desvio `< 1e-6` para 2 casas decimais.
+ */
+export function normalizeSpreadsheetNumericCellValue(vText: string): string {
+  const trimmed = vText.trim();
+  if (!trimmed) return "";
+  if (!/^[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const num = Number(trimmed);
+  if (!Number.isFinite(num)) return trimmed;
+
+  const isScientific = /[eE][+-]?\d+$/.test(trimmed);
+  if (isScientific) {
+    if (Number.isInteger(num)) {
+      return String(num);
+    }
+    const rounded2 = Math.round(num * 100) / 100;
+    if (Math.abs(num - rounded2) < 1e-6) {
+      return rounded2.toFixed(2);
+    }
+    return String(num);
+  }
+
+  // Preserva estritamente inteiros sem forçar casas decimais
+  if (Number.isInteger(num)) {
+    return trimmed;
+  }
+
+  // Corrige apenas ruído IEEE-754 em floats não-inteiros com mais de 2 dígitos decimais
+  const dotIdx = trimmed.indexOf(".");
+  const decimalDigits = dotIdx >= 0 ? trimmed.length - dotIdx - 1 : 0;
+  if (decimalDigits > 2) {
+    const rounded2 = Math.round(num * 100) / 100;
+    if (Math.abs(num - rounded2) < 1e-6) {
+      return rounded2.toFixed(2);
+    }
+  }
+
+  return trimmed;
+}
+
+/**
+ * Pontua uma aba de planilha pela quantidade de linhas que possuem
+ * simultaneamente ao menos uma célula de data válida e uma célula monetária válida distinta.
+ */
+export function scoreWorksheetRows(rows: readonly RawParsedRow[]): number {
+  let validDataRows = 0;
+  for (const row of rows) {
+    let dateCellIdx = -1;
+    let hasAmountOnOtherCell = false;
+
+    for (let i = 0; i < row.cells.length; i++) {
+      const cell = (row.cells[i] ?? "").trim();
+      if (!cell) continue;
+      if (dateCellIdx === -1 && normalizeDateToISO(cell) !== null) {
+        dateCellIdx = i;
+        continue;
+      }
+      if (parseAmountToCents(cell, { preferDotDecimal: true }) !== null) {
+        hasAmountOnOtherCell = true;
+      }
+    }
+
+    // Reavalia se uma célula monetária apareceu antes da célula de data
+    if (dateCellIdx > 0 && !hasAmountOnOtherCell) {
+      for (let i = 0; i < dateCellIdx; i++) {
+        const cell = (row.cells[i] ?? "").trim();
+        if (cell && parseAmountToCents(cell, { preferDotDecimal: true }) !== null) {
+          hasAmountOnOtherCell = true;
+          break;
+        }
+      }
+    }
+
+    if (dateCellIdx !== -1 && hasAmountOnOtherCell) {
+      validDataRows++;
+    }
+  }
+  return validDataRows;
+}
+
 function parseDateStyleIndicesFromStylesXml(stylesXml: string): Set<number> {
   const dateStyles = new Set<number>();
   if (!stylesXml || typeof DOMParser === "undefined") return dateStyles;
@@ -193,9 +281,16 @@ function parseDateStyleIndicesFromStylesXml(stylesXml: string): Set<number> {
   for (const fmt of numFmts) {
     const id = Number.parseInt(fmt.getAttribute("numFmtId") ?? "", 10);
     const code = (fmt.getAttribute("formatCode") ?? "").toLowerCase();
-    // Remove seções entre colchetes como [Red] ou [$-416]
-    const cleanCode = code.replace(/\[[^\]]*\]/g, "");
-    if (Number.isFinite(id) && /[dmy]/i.test(cleanCode) && !/[#0]/.test(cleanCode)) {
+    // Remove seções entre colchetes ([Red], [$-416]), literais entre aspas e escapes
+    const cleanCode = code
+      .replace(/\[[^\]]*\]/g, "")
+      .replace(/"[^"]*"/g, "")
+      .replace(/\\./g, "");
+    const hasDateTokens =
+      /(?:d+.*m+|m+.*d+|y+.*m+|m+.*y+)/i.test(cleanCode);
+    const isNumericOrCurrencyMask =
+      /[#%]|r\$|\$|\b0+[.,]0+\b/i.test(cleanCode);
+    if (Number.isFinite(id) && hasDateTokens && !isNumericOrCurrencyMask) {
       customDateFmtIds.add(id);
     }
   }
@@ -260,13 +355,17 @@ function parseWorksheetXmlToRows(
         if (cellType === "s") {
           const sIdx = Number.parseInt(vText, 10);
           value = Number.isFinite(sIdx) ? (sharedStrings[sIdx] ?? "") : "";
-        } else if (
-          (cellType === "" || cellType === "n") &&
-          Number.isFinite(styleIdx) &&
-          dateStyleIndices.has(styleIdx)
-        ) {
-          const serial = Number.parseFloat(vText);
-          value = excelSerialToIsoDate(serial) ?? vText;
+        } else if (cellType === "d") {
+          // Células nativas ISO-8601 do OOXML (t="d"), ex.: "2026-11-15T14:30:00Z" -> "2026-11-15"
+          const isoDateMatch = /^(\d{4}-\d{2}-\d{2})/.exec(vText);
+          value = isoDateMatch?.[1] ?? vText;
+        } else if (cellType === "" || cellType === "n") {
+          if (Number.isFinite(styleIdx) && dateStyleIndices.has(styleIdx)) {
+            const serial = Number.parseFloat(vText);
+            value = excelSerialToIsoDate(serial) ?? vText;
+          } else {
+            value = normalizeSpreadsheetNumericCellValue(vText);
+          }
         } else {
           value = vText;
         }
@@ -400,21 +499,42 @@ export async function parseSpreadsheetOrHtmlToRows(
       const stylesEntry = entries.find(
         (e) => e.name.toLowerCase() === "xl/styles.xml",
       );
-      const sheetEntry =
-        entries.find((e) => e.name.toLowerCase() === "xl/worksheets/sheet1.xml") ??
-        entries.find((e) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(e.name));
+      const sheetEntries = entries
+        .filter((e) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(e.name))
+        .sort((a, b) => {
+          const numA = Number.parseInt(/sheet(\d+)\.xml$/i.exec(a.name)?.[1] ?? "0", 10);
+          const numB = Number.parseInt(/sheet(\d+)\.xml$/i.exec(b.name)?.[1] ?? "0", 10);
+          return numA - numB;
+        });
 
-      if (!sheetEntry) return [];
+      if (sheetEntries.length === 0) return [];
 
-      const [sharedXml, stylesXml, sheetXml] = await Promise.all([
+      const [sharedXml, stylesXml, ...sheetXmls] = await Promise.all([
         sharedEntry ? extractZipEntryText(bytes, sharedEntry) : Promise.resolve(""),
         stylesEntry ? extractZipEntryText(bytes, stylesEntry) : Promise.resolve(""),
-        extractZipEntryText(bytes, sheetEntry),
+        ...sheetEntries.map((entry) => extractZipEntryText(bytes, entry)),
       ]);
 
       const sharedStrings = parseSharedStringsXml(sharedXml);
       const dateStyleIndices = parseDateStyleIndicesFromStylesXml(stylesXml);
-      return parseWorksheetXmlToRows(sheetXml, sharedStrings, dateStyleIndices);
+
+      let bestRows: RawParsedRow[] = [];
+      let bestScore = -1;
+
+      for (const sheetXml of sheetXmls) {
+        const candidateRows = parseWorksheetXmlToRows(
+          sheetXml,
+          sharedStrings,
+          dateStyleIndices,
+        );
+        const score = scoreWorksheetRows(candidateRows);
+        if (score > bestScore || (bestRows.length === 0 && candidateRows.length > 0)) {
+          bestScore = score;
+          bestRows = candidateRows;
+        }
+      }
+
+      return bestRows;
     }
   }
 

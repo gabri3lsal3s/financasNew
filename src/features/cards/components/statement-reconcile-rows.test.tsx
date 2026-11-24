@@ -1,13 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { ReconciliationItem } from "@/domain/reconciliation";
+import type { AppDuplicateCandidate, ReconciliationItem } from "@/domain/reconciliation";
 import {
   CategoryPill,
+  StatementAppDuplicateRow,
   StatementInlineAddRow,
   StatementInlineEditRow,
   StatementReconcileItemRow,
 } from "./statement-reconcile-rows";
+import { StatementReconcileStep } from "./statement-reconcile-step";
 import { StatementReconcileSummaryCard } from "./statement-reconcile-summary-card";
 
 const mockCategoryOptions = [
@@ -304,5 +306,138 @@ describe("StatementReconcileSummaryCard", () => {
     );
 
     expect(screen.getByText(/Diferença:/i)).toBeInTheDocument();
+  });
+});
+
+describe("Duplicatas do App, Cross-Competência e Conciliados Limpos", () => {
+  it("StatementAppDuplicateRow exige confirmação em 2 cliques para excluir duplicata do app", async () => {
+    const user = userEvent.setup();
+    const onDelete = vi.fn();
+    const candidate: AppDuplicateCandidate = {
+      id: "app-dup:e1:e2",
+      keepExpense: {
+        id: "e1",
+        date: "2026-11-10",
+        description: "Padaria Estrela",
+        valueCents: 4070,
+        categoryId: "cat-1",
+        installmentNumber: null,
+        installmentsTotal: null,
+      },
+      duplicateExpense: {
+        id: "e2",
+        date: "2026-11-11",
+        description: "Padaria Estrela",
+        valueCents: 4070,
+        categoryId: "cat-1",
+        installmentNumber: null,
+        installmentsTotal: null,
+      },
+      keepIsMatchedOnStatement: true,
+      reason: "Mesmo valor e descrição semelhante (1 dia de diferença)",
+    };
+
+    render(
+      <StatementAppDuplicateRow
+        candidate={candidate}
+        categoryName="Alimentação"
+        onDeleteDuplicate={onDelete}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Excluir duplicata/i }));
+    expect(onDelete).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: /Confirmar exclusão/i }));
+    expect(onDelete).toHaveBeenCalledWith("e2", "single");
+  });
+
+  it("StatementReconcileItemRow exibe crossCompetenceMatch e 'Vincular à despesa' quando valor já coincide", async () => {
+    const user = userEvent.setup();
+    const onMoveCross = vi.fn();
+
+    const crossItem: ReconciliationItem = {
+      ...baseReconciliationItem,
+      selected: false,
+      crossCompetenceMatch: {
+        expenseId: "exp-11",
+        expenseDescription: "Amazon Brasil",
+        expenseDate: "2026-11-28",
+        expenseValueCents: 11080,
+        currentBillCompetence: "2026-11",
+        score: 95,
+        statementHash: "hash-tx-1",
+      },
+    };
+
+    const { rerender } = render(
+      <StatementReconcileItemRow
+        item={crossItem}
+        categoryOptions={mockCategoryOptions}
+        onToggleItem={vi.fn()}
+        onChangeCategory={vi.fn()}
+        onMoveCrossCompetence={onMoveCross}
+      />,
+    );
+
+    expect(screen.getByText("Na fatura 11/2026")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Mover para esta fatura/i }));
+    expect(onMoveCross).toHaveBeenCalledWith(crossItem);
+
+    const probableSameValue: ReconciliationItem = {
+      ...baseReconciliationItem,
+      status: "probable_match",
+      score: 68,
+      matchedExpenseId: "exp-22",
+      matchedExpenseDescription: "Amazon",
+      matchedExpenseDate: "2026-08-13",
+      matchedExpenseValueCents: 11080,
+      selected: false,
+    };
+
+    rerender(
+      <StatementReconcileItemRow
+        item={probableSameValue}
+        categoryOptions={mockCategoryOptions}
+        onToggleItem={vi.fn()}
+        onChangeCategory={vi.fn()}
+        onLinkAndAdjust={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /Vincular à despesa/i })).toBeInTheDocument();
+  });
+
+  it("StatementReconcileStep não exibe aba ou alerta de Duplicatas quando há apenas itens Conciliados", () => {
+    const matchedItem: ReconciliationItem = {
+      ...baseReconciliationItem,
+      status: "exact_match",
+      score: 100,
+      selected: false,
+      matchedExpenseId: "exp-1",
+      matchedExpenseDescription: "Amazon Brasil",
+      matchedExpenseDate: "2026-08-15",
+      matchedExpenseValueCents: 11080,
+    };
+
+    render(
+      <StatementReconcileStep
+        items={[matchedItem]}
+        appDuplicates={[]}
+        categories={[
+          { id: "cat-1", user_id: "u1", name: "Alimentação", type: "expense", icon: "tag", color: "#000", is_reserved: false, is_active: true },
+        ]}
+        onToggleItem={vi.fn()}
+        onToggleAll={vi.fn()}
+        onChangeCategory={vi.fn()}
+        onBack={vi.fn()}
+        onConfirm={vi.fn()}
+        isPending={false}
+      />,
+    );
+
+    expect(screen.queryByText(/potenciais? duplicidades? detectada/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Duplicatas/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Conciliados \(1\)/i })).toBeInTheDocument();
   });
 });

@@ -3,7 +3,15 @@ import type { DeviceRegistrationInput } from "@/types";
 
 export const DEVICE_ID_STORAGE_KEY = "axir_device_id";
 export const DEVICE_LAST_SYNC_STORAGE_KEY = "axir_device_last_synced_at";
-export const SYNC_THROTTLE_MS = 24 * 60 * 60 * 1000; // 24 horas
+export const DEVICE_PENDING_EXPLICIT_REG_KEY = "axir_pending_explicit_device_reg";
+export const SYNC_THROTTLE_MS = 60 * 60 * 1000; // 1 hora
+
+function generateNewDeviceId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "dev_" + Math.random().toString(36).substring(2, 15) + "_" + Date.now().toString(36);
+}
 
 /**
  * Obtém ou gera um identificador estável e exclusivo para a instalação / dispositivo atual.
@@ -20,18 +28,64 @@ export function getOrCreateDeviceId(): string {
       return existing.trim();
     }
 
-    let newId = "";
-    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-      newId = crypto.randomUUID();
-    } else {
-      newId = "dev_" + Math.random().toString(36).substring(2, 15) + "_" + Date.now().toString(36);
-    }
-
+    const newId = generateNewDeviceId();
     window.localStorage.setItem(DEVICE_ID_STORAGE_KEY, newId);
     return newId;
   } catch {
     return "session_temp_device";
   }
+}
+
+/**
+ * Rotaciona o identificador do dispositivo local (usado após revogação remota)
+ * para evitar loop de logout ao efetuar um novo login legítimo no mesmo aparelho.
+ */
+export function rotateDeviceId(): string {
+  const newId = generateNewDeviceId();
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      window.localStorage.setItem(DEVICE_ID_STORAGE_KEY, newId);
+    } catch {
+      // Ignora falhas de escrita no localStorage
+    }
+  }
+  return newId;
+}
+
+let inMemoryPendingExplicitReg = false;
+
+/**
+ * Sinaliza que o usuário acabou de concluir um login explícito (ou redefinição de senha),
+ * garantindo que o registro do dispositivo execute antes de qualquer checagem de revogação.
+ */
+export function markPendingExplicitDeviceRegistration(): void {
+  inMemoryPendingExplicitReg = true;
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    try {
+      window.sessionStorage.setItem(DEVICE_PENDING_EXPLICIT_REG_KEY, "1");
+    } catch {
+      // Ignora falhas de sessionStorage
+    }
+  }
+}
+
+/**
+ * Consome (lê e limpa atomicamente) a flag de registro explícito pendente.
+ */
+export function consumePendingExplicitDeviceRegistration(): boolean {
+  let pending = inMemoryPendingExplicitReg;
+  inMemoryPendingExplicitReg = false;
+  if (typeof window !== "undefined" && window.sessionStorage) {
+    try {
+      if (window.sessionStorage.getItem(DEVICE_PENDING_EXPLICIT_REG_KEY) === "1") {
+        pending = true;
+      }
+      window.sessionStorage.removeItem(DEVICE_PENDING_EXPLICIT_REG_KEY);
+    } catch {
+      // Ignora falhas de sessionStorage
+    }
+  }
+  return pending;
 }
 
 /**

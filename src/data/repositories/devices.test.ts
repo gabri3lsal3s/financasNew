@@ -4,6 +4,7 @@ import {
   getUserDevices,
   checkDeviceRevoked,
   revokeDevice,
+  revokeOtherDevices,
   deleteDevice,
 } from "./devices";
 import * as authSessionsRpc from "@/data/rpc/auth-sessions";
@@ -12,6 +13,7 @@ vi.mock("@/data/rpc/auth-sessions", () => ({
   registerDeviceSessionRpc: vi.fn(),
   checkDeviceSessionRevokedRpc: vi.fn(),
   revokeDeviceSessionRpc: vi.fn(),
+  revokeOtherDeviceSessionsRpc: vi.fn(),
 }));
 
 const mockSingle = vi.fn();
@@ -158,6 +160,14 @@ describe("devices repository", () => {
       const isRevoked = await checkDeviceRevoked("dev-123");
       expect(isRevoked).toBe(true);
     });
+
+    it("garante fail-open retornando false quando RPC e fallback falham (offline)", async () => {
+      vi.mocked(authSessionsRpc.checkDeviceSessionRevokedRpc).mockRejectedValueOnce(new Error("Offline"));
+      mockMaybeSingle.mockRejectedValueOnce(new Error("Network error"));
+
+      const isRevoked = await checkDeviceRevoked("dev-123");
+      expect(isRevoked).toBe(false);
+    });
   });
 
   describe("revokeDevice", () => {
@@ -166,6 +176,15 @@ describe("devices repository", () => {
       const res = await revokeDevice("rec-123");
       expect(res).toBe(true);
       expect(authSessionsRpc.revokeDeviceSessionRpc).toHaveBeenCalledWith("rec-123");
+    });
+  });
+
+  describe("revokeOtherDevices", () => {
+    it("executa revogação em lote dos demais dispositivos via RPC", async () => {
+      vi.mocked(authSessionsRpc.revokeOtherDeviceSessionsRpc).mockResolvedValueOnce(3);
+      const count = await revokeOtherDevices("dev-atual");
+      expect(count).toBe(3);
+      expect(authSessionsRpc.revokeOtherDeviceSessionsRpc).toHaveBeenCalledWith("dev-atual");
     });
   });
 

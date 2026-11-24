@@ -5,9 +5,10 @@ import {
   deactivatePushSubscriptionByEndpoint,
   deactivatePushSubscriptionByFcmToken,
 } from "@/data/repositories/push-subscriptions";
+import { revokeOtherDevices } from "@/data/repositories/devices";
 import { resetAppState } from "@/services/auth-cleanup";
 import { clearNativeBankMonitoring } from "@/services/native/bank-listener";
-import { clearDeviceSessionSync } from "@/services/native/device-info";
+import { clearDeviceSessionSync, getOrCreateDeviceId } from "@/services/native/device-info";
 import { cancelDailyReminder, clearAllDueNotifications } from "@/services/native/local-notifications";
 import { unregisterNativeFcmPush, unsubscribeBrowserWebPush } from "@/services/push";
 
@@ -15,8 +16,13 @@ vi.mock("@/services/auth-cleanup", () => ({
   resetAppState: vi.fn(),
 }));
 
+vi.mock("@/data/repositories/devices", () => ({
+  revokeOtherDevices: vi.fn().mockResolvedValue(2),
+}));
+
 vi.mock("@/services/native/device-info", () => ({
   clearDeviceSessionSync: vi.fn(),
+  getOrCreateDeviceId: vi.fn(() => "dev-current-1"),
 }));
 
 vi.mock("@/services/native/bank-listener", () => ({
@@ -85,7 +91,7 @@ describe("useSignOut", () => {
     expect(mockSignOut).toHaveBeenCalledWith({ scope: "local" });
   });
 
-  it("encerra outras sessões (scope others) sem destruir lembretes, push ou sessão local", async () => {
+  it("encerra outras sessões (scope others) e revoga demais dispositivos sem destruir estado local", async () => {
     const { result } = renderHook(() => useSignOut());
 
     await act(async () => {
@@ -93,6 +99,8 @@ describe("useSignOut", () => {
     });
 
     expect(mockSignOut).toHaveBeenCalledWith({ scope: "others" });
+    expect(getOrCreateDeviceId).toHaveBeenCalledTimes(1);
+    expect(revokeOtherDevices).toHaveBeenCalledWith("dev-current-1");
     expect(clearDeviceSessionSync).not.toHaveBeenCalled();
     expect(unsubscribeBrowserWebPush).not.toHaveBeenCalled();
     expect(deactivatePushSubscriptionByEndpoint).not.toHaveBeenCalled();
@@ -104,14 +112,20 @@ describe("useSignOut", () => {
     expect(resetAppState).not.toHaveBeenCalled();
   });
 
-  it("garante chamada de resetAppState mesmo se supabase.auth.signOut lançar erro", async () => {
-    mockSignOut.mockRejectedValueOnce(new Error("Network failure"));
+  it("garante chamada de resetAppState no finally mesmo quando push e signOut falham com 401 pós-revogação", async () => {
+    vi.mocked(deactivatePushSubscriptionByEndpoint).mockRejectedValueOnce({ status: 401 });
+    vi.mocked(deactivatePushSubscriptionByFcmToken).mockRejectedValueOnce({ status: 401 });
+    mockSignOut.mockRejectedValueOnce({ status: 401, message: "Session not found" });
     const { result } = renderHook(() => useSignOut());
 
     await act(async () => {
       await result.current.signOut();
     });
 
-    expect(resetAppState).toHaveBeenCalledTimes(2);
+    expect(clearNativeBankMonitoring).toHaveBeenCalledTimes(1);
+    expect(clearAllDueNotifications).toHaveBeenCalledWith("user-123");
+    expect(cancelDailyReminder).toHaveBeenCalledTimes(1);
+    expect(resetAppState).toHaveBeenCalledTimes(1);
+    expect(resetAppState).toHaveBeenCalledWith(undefined, null);
   });
 });

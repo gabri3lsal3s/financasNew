@@ -91,15 +91,17 @@ const BANK_BRAND_PATTERNS: Array<{ pattern: RegExp; canonicalName: string }> = [
   { pattern: /\bwill\s*bank\b/i, canonicalName: "Will Bank" },
   { pattern: /\bpicpay\b/i, canonicalName: "PicPay" },
   { pattern: /\bmercadopago\b|\bmercado\s*pago\b/i, canonicalName: "Mercado Pago" },
+  { pattern: /\bnomad\b|\bnomadglobal\b/i, canonicalName: "Nomad" },
+  { pattern: /\brico\b/i, canonicalName: "Rico" },
 ];
 
-function extractExplicitCompetenceFromText(rawText: string): string | null {
+function extractExplicitCompetenceFromText(rawText: string, fallbackYear?: number): string | null {
   if (!rawText) return null;
-  const headerSlice = rawText.slice(0, 10_000);
+  const headerSlice = rawText.slice(0, 15_000);
 
-  // 1. "Fatura de Novembro de 2026", "Fatura: Nov/2026", "Competência: Dezembro 2026"
+  // 1. "Fatura de Novembro de 2026", "Extrato Referente ao mês de Novembro de 2026", "Competência: Dezembro 2026"
   const namedMatch =
-    /(?:fatura\s+(?:de\s+|do\s+m[eê]s\s+de\s+)?|compet[eê]ncia\s*[:#]?\s*)(janeiro|jan|fevereiro|fev|feb|março|marco|mar|abril|abr|apr|maio|mai|may|junho|jun|julho|jul|agosto|ago|aug|setembro|set|sep|outubro|out|oct|novembro|nov|dezembro|dez|dec)[a-zç]*\s*(?:de\s+|[/-])?\s*(\d{2,4})/i.exec(
+    /(?:(?:fatura|extrato\s+referente\s+ao\s+m[eê]s|m[eê]s\s+de\s+refer[eê]ncia)\s*(?:[:#]\s*|de\s+|do\s+m[eê]s\s+de\s+)?|compet[eê]ncia\s*[:#]?\s*)(janeiro|jan|fevereiro|fev|feb|março|marco|mar|abril|abr|apr|maio|mai|may|junho|jun|julho|jul|agosto|ago|aug|setembro|set|sep|outubro|out|oct|novembro|nov|dezembro|dez|dec)[a-zç]*\s*(?:de\s+|[/-])?\s*(\d{2,4})/i.exec(
       headerSlice,
     );
   if (namedMatch?.[1] && namedMatch?.[2]) {
@@ -111,14 +113,26 @@ function extractExplicitCompetenceFromText(rawText: string): string | null {
     }
   }
 
-  // 2. "Competência: 11/2026" ou "Fatura 11/2026"
+  // 2. "Mês de referência: Novembro" (sem ano explícito — usa ano do vencimento ou fallbackYear)
+  if (fallbackYear) {
+    const refMonthOnly =
+      /m[eê]s\s+de\s+refer[eê]ncia\s*[:#]?\s*(janeiro|jan|fevereiro|fev|feb|março|marco|mar|abril|abr|apr|maio|mai|may|junho|jun|julho|jul|agosto|ago|aug|setembro|set|sep|outubro|out|oct|novembro|nov|dezembro|dez|dec)\b/i.exec(
+        headerSlice,
+      );
+    if (refMonthOnly?.[1]) {
+      const monthNum = MONTH_NAMES_MAP[refMonthOnly[1].toLowerCase()];
+      if (monthNum) return `${fallbackYear}-${monthNum}`;
+    }
+  }
+
+  // 3. "Competência: 11/2026" ou "Fatura 11/2026"
   const numericMatch =
     /(?:fatura|compet[eê]ncia)\s*[:#]?\s*(0[1-9]|1[0-2])[/-](\d{4})/i.exec(headerSlice);
   if (numericMatch?.[1] && numericMatch?.[2]) {
     return `${numericMatch[2]}-${numericMatch[1]}`;
   }
 
-  // 3. "Competência 2026-11"
+  // 4. "Competência 2026-11"
   const isoMatch =
     /(?:fatura|compet[eê]ncia)\s*[:#]?\s*(\d{4})[/-](0[1-9]|1[0-2])/i.exec(headerSlice);
   if (isoMatch?.[1] && isoMatch?.[2]) {
@@ -254,8 +268,9 @@ export function detectStatementMetadata(
   const refYear = Number.parseInt(activeCompetenceMonth.slice(0, 4), 10) || new Date().getFullYear();
 
   // 1. Extrações textuais locais
-  const explicitComp = extractExplicitCompetenceFromText(text);
   const localDueDate = extractDueDateFromText(text, refYear);
+  const dueYear = localDueDate ? Number.parseInt(localDueDate.slice(0, 4), 10) : refYear;
+  const explicitComp = extractExplicitCompetenceFromText(text, Number.isFinite(dueYear) ? dueYear : refYear);
   const allLocalLast4 = extractAllCardLast4FromText(text);
   const localLast4 = allLocalLast4[0] ?? null;
   const localBank = extractBankBrandFromText(text);

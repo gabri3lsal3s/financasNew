@@ -1,8 +1,19 @@
 import { useId, useState } from "react";
-import { AlertCircle, ArrowRight, Briefcase, CalendarClock, Check, FileUp, RotateCcw } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  Briefcase,
+  CalendarClock,
+  Check,
+  FileUp,
+  RotateCcw,
+  ScanSearch,
+  WifiOff,
+} from "lucide-react";
 import { Alert, Badge, Button, Modal, ModalFooter } from "@/components/ui";
 import { monthLabel } from "@/lib/date";
 import type { CreditCard } from "@/types";
+import { StatementBlockClipperStep } from "./statement-block-clipper-step";
 import { StatementMappingStep } from "./statement-mapping-step";
 import { StatementReconcileStep } from "./statement-reconcile-step";
 import { StatementUploadStep } from "./statement-upload-step";
@@ -41,6 +52,7 @@ function StatementImportContent({
   onCompetenceChange,
 }: StatementImportContentProps) {
   const mappingFormId = useId();
+  const clipperFormId = useId();
   const [confirmBackDiscard, setConfirmBackDiscard] = useState(false);
   const state = useStatementImport({
     card,
@@ -73,6 +85,16 @@ function StatementImportContent({
           Voltar
         </Button>
         <Button type="submit" form={mappingFormId}>
+          Avançar para Conferência
+        </Button>
+      </ModalFooter>
+    ) : state.step === "block_clipper" ? (
+      <ModalFooter borderless>
+        <Button type="button" variant="outline" onClick={() => state.setStep("upload")}>
+          <RotateCcw className="size-4" aria-hidden="true" />
+          Voltar
+        </Button>
+        <Button type="submit" form={clipperFormId}>
           Avançar para Conferência
         </Button>
       </ModalFooter>
@@ -174,6 +196,70 @@ function StatementImportContent({
           </Alert>
         ) : null}
 
+        {state.aiStatusNotice ? (
+          <Alert variant="warning">
+            <div className="flex items-start gap-2 text-xs">
+              {state.aiStatusNotice.kind === "offline" ? (
+                <WifiOff
+                  className="size-4 shrink-0 mt-0.5 text-warning-strong"
+                  aria-hidden="true"
+                />
+              ) : (
+                <AlertCircle
+                  className="size-4 shrink-0 mt-0.5 text-warning-strong"
+                  aria-hidden="true"
+                />
+              )}
+              <span>{state.aiStatusNotice.message}</span>
+            </div>
+          </Alert>
+        ) : null}
+
+        {state.step !== "competence_conflict" && state.visionEscalationOffer ? (
+          <div className="rounded-xl border border-warning/30 bg-surface p-3.5 sm:p-4 shadow-xs space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-warning/20 bg-warning/15 text-warning-strong">
+                <ScanSearch className="size-4.5" aria-hidden="true" />
+              </div>
+              <div className="space-y-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground">
+                  Leitura visual com IA recomendada
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Este PDF requer leitura visual de{" "}
+                  <strong className="text-foreground">
+                    {state.visionEscalationOffer.candidatePages.length} páginas
+                  </strong>{" "}
+                  com IA (consome {state.visionEscalationOffer.candidatePages.length} créditos de IA).
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={state.isReanalyzingWithAi || state.isReadingFile}
+                onClick={
+                  state.canOpenBlockClipper
+                    ? state.handleOpenBlockClipper
+                    : state.handleDismissVisionEscalation
+                }
+              >
+                {state.canOpenBlockClipper ? "Recortar manualmente" : "Revisar manualmente"}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={state.isReanalyzingWithAi || state.isReadingFile}
+                onClick={() => void state.handleConfirmVisionEscalation()}
+              >
+                Prosseguir com leitura visual
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         {state.step === "competence_conflict" && state.detectedMeta?.detectedCompetenceMonth ? (
           <div className="rounded-2xl border border-warning/30 bg-surface p-5 sm:p-6 shadow-xs space-y-5">
             <div className="flex items-start gap-3.5">
@@ -273,6 +359,7 @@ function StatementImportContent({
             onFilesSelect={(files) => void state.handleFilesSelect(files)}
             onTextSubmit={(text) => void state.handleTextSubmit(text)}
             isProcessing={state.isReadingFile}
+            processingMessage={state.readingStatusMessage}
             pendingPasswordFile={state.pendingPasswordFile}
             passwordError={state.passwordError}
             onPasswordSubmit={state.handlePasswordSubmit}
@@ -287,12 +374,33 @@ function StatementImportContent({
             formId={mappingFormId}
             hideFooter
           />
+        ) : state.step === "block_clipper" ? (
+          <StatementBlockClipperStep
+            rawLines={state.clipperRawLines}
+            cardId={card.id}
+            competenceMonth={state.activeCompetenceMonth}
+            officialTotalCents={state.printedTotalCents}
+            reasonMessage={state.clipperReasonMessage}
+            onConfirmSelection={state.handleConfirmBlockClipper}
+            onBack={() => state.setStep("upload")}
+            formId={clipperFormId}
+            hideFooter
+          />
         ) : state.step === "reconcile" ? (
           <StatementReconcileStep
             items={state.reconciledItems}
             unmatchedAppExpenses={state.unmatchedAppExpenses}
+            appDuplicates={state.appDuplicates}
+            competenceMonth={state.activeCompetenceMonth}
+            closingDay={card.closing_day}
             categories={state.categories}
             usedAiStructurer={state.usedAiStructurer}
+            extractionOrigin={state.extractionOrigin}
+            qualityGate={state.qualityGate}
+            onReanalyzeWithAi={
+              state.canReanalyzeWithAi ? () => void state.handleReanalyzeWithAi() : undefined
+            }
+            isReanalyzingWithAi={state.isReanalyzingWithAi}
             printedTotalCents={state.printedTotalCents}
             detectedMeta={state.detectedMeta}
             onOpenMapping={state.canOpenMapping ? () => state.setStep("mapping") : undefined}
@@ -309,6 +417,9 @@ function StatementImportContent({
             onToggleProjectSeries={state.handleToggleProjectSeries}
             onLinkAndAdjust={state.handleLinkAndAdjust}
             onCreateRefund={state.handleCreateRefund}
+            onDeleteAppExpense={state.handleDeleteAppExpense}
+            onMoveExpenseToCompetence={state.handleMoveExpenseToCompetence}
+            onMoveAllCrossCompetenceMatches={state.handleMoveAllCrossCompetenceMatches}
             onApplyCategoryBatch={state.handleApplyCategoryBatch}
             onBack={handleBackFromReconcile}
             onConfirm={() => void state.handleConfirmImport()}

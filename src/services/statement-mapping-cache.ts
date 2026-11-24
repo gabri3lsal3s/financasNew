@@ -63,37 +63,80 @@ function writeStorageMap(map: Record<string, CachedMappingEntry>): void {
 }
 
 /**
+ * Extrai a linha real de cabeçalho associada a um mapeamento de colunas.
+ * Protege explicitamente CSVs sem cabeçalho (`startRowIndex === 0`) contra acesso a índice negativo.
+ */
+export function extractHeaderCellsForCache(
+  rows: readonly RawParsedRow[],
+  mapping: ColumnMapping,
+): string[] {
+  if (!mapping.hasHeader || rows.length === 0) return [];
+  const headerRowIndex = mapping.startRowIndex - 1;
+  if (headerRowIndex < 0 || headerRowIndex >= rows.length) return [];
+  return rows[headerRowIndex]?.cells ?? [];
+}
+
+/**
  * Validação Defensiva do Mapeamento:
  * Avalia se os índices em cache continuam válidos no arquivo atual.
- * Exige que os índices estejam dentro dos limites de colunas e que >= 50% das linhas amostradas
- * contenham data e valor válidos nos índices propostos.
+ * Exige que os índices estejam dentro dos limites de colunas, que Descrição != Data,
+ * e que >= 50% das linhas amostradas contenham data e valor (único ou débito/crédito) válidos.
  */
 export function validateMappingAgainstSample(
   mapping: ColumnMapping,
   sampleRows: RawParsedRow[],
 ): boolean {
+  if (mapping.descriptionColIndex === mapping.dateColIndex) return false;
   if (!sampleRows || sampleRows.length === 0) return true;
 
   const dataRows = sampleRows.slice(mapping.startRowIndex, mapping.startRowIndex + 10);
   if (dataRows.length === 0) return true;
+
+  const hasDualAmountCols =
+    mapping.debitColIndex !== undefined && mapping.creditColIndex !== undefined;
 
   let validCount = 0;
   for (const row of dataRows) {
     const numCols = row.cells.length;
     // 1. Verificação de limites de colunas
     if (
+      mapping.dateColIndex < 0 ||
+      mapping.descriptionColIndex < 0 ||
       mapping.dateColIndex >= numCols ||
-      mapping.descriptionColIndex >= numCols ||
-      (mapping.amountColIndex !== undefined && mapping.amountColIndex >= numCols)
+      mapping.descriptionColIndex >= numCols
+    ) {
+      return false;
+    }
+
+    if (hasDualAmountCols) {
+      if (
+        mapping.debitColIndex! < 0 ||
+        mapping.creditColIndex! < 0 ||
+        mapping.debitColIndex! >= numCols ||
+        mapping.creditColIndex! >= numCols
+      ) {
+        return false;
+      }
+    } else if (
+      mapping.amountColIndex < 0 ||
+      mapping.amountColIndex >= numCols
     ) {
       return false;
     }
 
     const rawDate = row.cells[mapping.dateColIndex] ?? "";
-    const rawAmt = row.cells[mapping.amountColIndex] ?? "";
-
     const hasDate = Boolean(normalizeDateToISO(rawDate));
-    const hasAmt = Boolean(parseAmountToCents(rawAmt));
+
+    let hasAmt: boolean;
+    if (hasDualAmountCols) {
+      const rawDebit = row.cells[mapping.debitColIndex!] ?? "";
+      const rawCredit = row.cells[mapping.creditColIndex!] ?? "";
+      hasAmt =
+        Boolean(parseAmountToCents(rawDebit)) || Boolean(parseAmountToCents(rawCredit));
+    } else {
+      const rawAmt = row.cells[mapping.amountColIndex] ?? "";
+      hasAmt = Boolean(parseAmountToCents(rawAmt));
+    }
 
     if (hasDate && hasAmt) {
       validCount++;

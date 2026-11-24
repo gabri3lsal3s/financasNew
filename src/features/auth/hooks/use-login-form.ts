@@ -12,6 +12,8 @@ import {
 } from "@/hooks/use-auth";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { classifyError, getErrorMessage } from "@/services/errors";
+import { markPendingExplicitDeviceRegistration } from "@/services/native/device-info";
+import { setSharedDeviceSession } from "@/services/session-policy";
 import { triggerSensory } from "@/services/sensory";
 import { pushToast } from "@/services/toast";
 import { calculateLoginBackoff } from "../utils/login-backoff";
@@ -37,6 +39,7 @@ export function useLoginForm() {
 
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
+  const [isSharedDevice, setIsSharedDevice] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isEmailUnconfirmed, setIsEmailUnconfirmed] = useState(false);
@@ -120,6 +123,7 @@ export function useLoginForm() {
     setIsEmailUnconfirmed(false);
     setPending(true);
     try {
+      setSharedDeviceSession(isSharedDevice);
       await signInWithEmail(email, password, captchaToken ?? undefined);
       try {
         const verified = await listVerifiedMfaFactors();
@@ -132,6 +136,7 @@ export function useLoginForm() {
       } catch {
         // Segue login se MFA não configurado
       }
+      markPendingExplicitDeviceRegistration();
       triggerSensory("success");
       setConsecutiveFailures(0);
       setLockoutSeconds(0);
@@ -162,6 +167,7 @@ export function useLoginForm() {
       if (!verifyOk) throw new Error("Código de autenticação incorreto ou expirado.");
 
       markMfaVerified();
+      markPendingExplicitDeviceRegistration();
       triggerSensory("success");
       setIsMfaRequired(false);
       pushToast({ title: "Acesso confirmado", description: "Identidade validada com sucesso.", variant: "success" });
@@ -197,6 +203,8 @@ export function useLoginForm() {
     setEmail,
     password,
     setPassword,
+    isSharedDevice,
+    setIsSharedDevice,
     setCaptchaToken,
     error,
     isEmailUnconfirmed,

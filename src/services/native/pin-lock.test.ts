@@ -1,5 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  clearPinLockout,
+  computePinLockoutAfterFailure,
+  getPinLockoutState,
+  getRemainingPinLockoutSeconds,
   isPinLockConfigured,
   setPinLock,
   verifyPinLock,
@@ -67,5 +71,41 @@ describe("Gateway Nativo — PIN Lock (Web/PWA & Fallback)", () => {
     const unlockedRight = await unlockAppWithPin("9876", "user-1");
     expect(unlockedRight).toBe(true);
     expect(isAppLocked()).toBe(false);
+  });
+
+  describe("backoff progressivo persistido (app_pin_lockout)", () => {
+    it("regra pura: 1-4 erros sem espera, 5-9 erros progressivo >= 30s, >= 10 erros = 5 min", () => {
+      const base = 1_000_000;
+      expect(computePinLockoutAfterFailure(0, base)).toEqual({ failedAttempts: 1, lockedUntilMs: null });
+      expect(computePinLockoutAfterFailure(3, base)).toEqual({ failedAttempts: 4, lockedUntilMs: null });
+      expect(computePinLockoutAfterFailure(4, base)).toEqual({ failedAttempts: 5, lockedUntilMs: base + 30_000 });
+      expect(computePinLockoutAfterFailure(8, base)).toEqual({ failedAttempts: 9, lockedUntilMs: base + 150_000 });
+      expect(computePinLockoutAfterFailure(9, base)).toEqual({ failedAttempts: 10, lockedUntilMs: base + 300_000 });
+    });
+
+    it("persiste falhas no user-storage, bloqueia no 5º erro e limpa ao acertar o PIN", async () => {
+      await setPinLock("1234", "user-1");
+      setAppLocked(true);
+
+      for (let i = 0; i < 4; i++) {
+        expect(await unlockAppWithPin("0000", "user-1")).toBe(false);
+        expect(getRemainingPinLockoutSeconds("user-1")).toBe(0);
+      }
+
+      // 5ª falha ativa espera de 30s
+      expect(await unlockAppWithPin("0000", "user-1")).toBe(false);
+      expect(getPinLockoutState("user-1").failedAttempts).toBe(5);
+      expect(getRemainingPinLockoutSeconds("user-1")).toBeGreaterThan(0);
+
+      // Tentativa durante lockout lança erro sem validar PIN
+      await expect(unlockAppWithPin("1234", "user-1")).rejects.toThrow(/Aguarde \d+s/);
+
+      // Após expirar o tempo, PIN correto desbloqueia e zera o lockout
+      const futureSpy = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 60_000);
+      expect(await unlockAppWithPin("1234", "user-1")).toBe(true);
+      expect(getPinLockoutState("user-1")).toEqual({ failedAttempts: 0, lockedUntilMs: null });
+      futureSpy.mockRestore();
+      clearPinLockout("user-1");
+    });
   });
 });

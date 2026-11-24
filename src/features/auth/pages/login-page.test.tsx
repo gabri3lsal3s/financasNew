@@ -6,6 +6,7 @@ import { LoginPage } from "./login-page";
 import { calculateLoginBackoff } from "../utils/login-backoff";
 import * as authHook from "@/hooks/use-auth";
 import * as toastModule from "@/services/toast";
+import { SHARED_DEVICE_SESSION_KEY } from "@/services/session-policy";
 
 vi.mock("@/data/auth", () => ({
   resendConfirmationEmail: vi.fn(),
@@ -708,5 +709,51 @@ describe("LoginPage - Desafio de Verificação em Duas Etapas (2FA / TOTP) (SEC-
       }),
     );
     expect(markMfaVerifiedMock).toHaveBeenCalled();
+  });
+
+  it("checkbox 'Computador compartilhado' inicia desmarcado e preserva flag no sessionStorage durante fluxo 2FA", async () => {
+    sessionStorage.clear();
+    listFactorsMock.mockResolvedValueOnce({
+      data: { totp: [{ id: "factor-1", status: "verified", factor_type: "totp" }], all: [] },
+      error: null,
+    });
+    vi.mocked(authHook.signInWithEmail).mockResolvedValueOnce(undefined);
+
+    renderLoginPage();
+
+    const sharedCheckbox = screen.getByRole("checkbox", {
+      name: /Computador compartilhado/i,
+    });
+    expect(sharedCheckbox).not.toBeChecked();
+
+    fireEvent.click(sharedCheckbox);
+    expect(sharedCheckbox).toBeChecked();
+
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "mfa@exemplo.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Senha"), {
+      target: { value: "SenhaSegura123" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    });
+
+    // Flag deve permanecer preservada durante a etapa intermediária de desafio TOTP
+    expect(sessionStorage.getItem(SHARED_DEVICE_SESSION_KEY)).toBe("1");
+    expect(screen.getByLabelText("Código de 6 dígitos")).toBeInTheDocument();
+
+    challengeAndVerifyMock.mockResolvedValueOnce({ data: {}, error: null });
+    fireEvent.change(screen.getByLabelText("Código de 6 dígitos"), {
+      target: { value: "123456" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Confirmar Acesso/i }));
+    });
+
+    expect(sessionStorage.getItem(SHARED_DEVICE_SESSION_KEY)).toBe("1");
+    sessionStorage.clear();
   });
 });

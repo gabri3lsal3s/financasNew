@@ -57,9 +57,20 @@ const LEGAL_BLOCK_START_REGEX =
   /^(?:custo\s+efetivo\s+total|taxas?\s+e\s+encargos|op[çc][oõ]es\s+para\s+parcelar|importante\s*:|fique\s+atento|regras\s+do\s+rotativo|condi[çc][oõ]es\s+gerais)/i;
 
 const TRANSACTION_SECTION_RESUME_REGEX =
-  /\b(?:lan[çc]amentos|compras?\s+(?:nacionais|internacionais|do\s+m[eê]s)|transa[çc][oõ]es|detalhamento\s+da\s+fatura|despesas\s+do\s+per[ií]odo|cart[aã]o\s+final)\b/i;
+  /\b(?:lan[çc]amentos|compras?\s+(?:nacionais|internacionais|do\s+m[eê]s)|transa[çc][oõ]es|detalhamento\s+da\s+fatura|despesas\s+do\s+per[ií]odo|cart[aã]o\s+final|extrato\s+referente|data\s+(?:\|\s*)?(?:descri[çc][aã]o|hist[oó]rico|estabelecimento)\s+(?:\|\s*)?valor)\b/i;
 
-function parseBrlTokenToCents(rawAmount: string): number | null {
+export interface StatementSummaryAmounts {
+  /** Total oficial impresso da fatura (ex.: "Valor da fatura", "Total da fatura"). */
+  invoiceTotalCents: number | null;
+  /** Total líquido das despesas/créditos do ciclo (ex.: "Despesas e créditos do mês"). */
+  cycleNetTargetCents: number | null;
+  /** Saldo da fatura anterior, quando informado no quadro de resumo. */
+  previousBalanceCents: number | null;
+  /** Pagamentos efetuados sobre a fatura anterior, quando informado no quadro de resumo. */
+  paymentsCents: number | null;
+}
+
+function parseBrlTokenToCents(rawAmount: string, allowZero = false): number | null {
   const cleaned = rawAmount.replace(/[^\d,.-]/g, "").trim();
   if (!cleaned) return null;
   const normalized =
@@ -67,50 +78,139 @@ function parseBrlTokenToCents(rawAmount: string): number | null {
       ? cleaned.replace(/\./g, "").replace(",", ".")
       : cleaned.replace(",", ".");
   const value = Number.parseFloat(normalized);
-  if (!Number.isFinite(value) || value <= 0) return null;
+  if (!Number.isFinite(value) || value < 0) return null;
   const cents = Math.round(value * 100);
+  if (allowZero) return cents >= 0 ? cents : null;
   return cents > 0 ? cents : null;
 }
 
-/**
- * Extrai localmente o "Total da Fatura" impresso no cabeçalho/resumo do PDF ou texto,
- * ignorando pagamento mínimo, fatura anterior, limites e simulações de parcelamento.
- */
-export function extractPrintedStatementTotalCents(rawText: string): number | null {
-  if (!rawText) return null;
-  const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-
-  const ignoredTotalContext =
-    /\b(?:m[ií]nimo|anterior|parcelamento|limite|pr[oó]xima|futur[ao]|rotativo|desconto|economia)\b/i;
-  const totalLabelRegex =
-    /\b(?:valor\s+total\s+(?:desta\s+|da\s+)?fatura|total\s+(?:desta\s+|da\s+|de\s+sua\s+)?fatura(?:\s+atual)?|total\s+a\s+pagar|valor\s+da\s+fatura(?:\s+atual)?)\b/i;
+function extractAmountNearLabel(
+  lines: readonly string[],
+  index: number,
+  ignoredContext: RegExp,
+  allowZero = false,
+): number | null {
   const amountExtractRegex = /(?:R\$\s*)?(\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})/;
+  const line = lines[index]!;
+  const inlineMatch = amountExtractRegex.exec(line);
+  if (inlineMatch?.[1]) {
+    const cents = parseBrlTokenToCents(inlineMatch[1], allowZero);
+    if (cents !== null) return cents;
+  }
 
-  for (let i = 0; i < Math.min(lines.length, 250); i++) {
-    const line = lines[i]!;
-    if (!totalLabelRegex.test(line) || ignoredTotalContext.test(line)) {
-      continue;
-    }
-
-    const inlineMatch = amountExtractRegex.exec(line);
-    if (inlineMatch?.[1]) {
-      const cents = parseBrlTokenToCents(inlineMatch[1]);
+  for (let offset = 1; offset <= 2 && index + offset < lines.length; offset++) {
+    const nextLine = lines[index + offset]!;
+    if (ignoredContext.test(nextLine)) break;
+    const nextMatch = amountExtractRegex.exec(nextLine);
+    if (nextMatch?.[1]) {
+      const cents = parseBrlTokenToCents(nextMatch[1], allowZero);
       if (cents !== null) return cents;
-    }
-
-    // Muitos PDFs colocam o rótulo "Total da fatura" em uma linha e "R$ 2.345,67" na linha seguinte
-    for (let offset = 1; offset <= 2 && i + offset < lines.length; offset++) {
-      const nextLine = lines[i + offset]!;
-      if (ignoredTotalContext.test(nextLine)) break;
-      const nextMatch = amountExtractRegex.exec(nextLine);
-      if (nextMatch?.[1]) {
-        const cents = parseBrlTokenToCents(nextMatch[1]);
-        if (cents !== null) return cents;
-      }
     }
   }
 
   return null;
+}
+
+/**
+ * Extrai localmente o "Total da Fatura" impresso no cabeçalho/resumo do PDF ou texto
+ * usando hierarquia de 2 níveis:
+ * - Nível 1 (Prioritário): "Valor da fatura", "Total da fatura", "Valor total desta fatura", "Despesas e créditos do mês".
+ * - Nível 2 (Fallback): "Total a pagar", bloqueado se próximo a simulações ("1x R$", "CET", "parcelamento", "entrada").
+ */
+export function extractPrintedStatementTotalCents(rawText: string): number | null {
+  if (!rawText) return null;
+  const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const scanLimit = Math.min(lines.length, 350);
+
+  const ignoredTotalContext =
+    /\b(?:m[ií]nimo|anterior|parcelamento|limite|pr[oó]xima|futur[ao]|rotativo|desconto|economia)\b/i;
+  const installmentSimulationContext =
+    /(?:\b\d{1,2}\s*x\s*(?:de\s+)?r?\$|\bentrada\b|\bparcelamento\b|\bcet\b|\bsimula[çc][aã]o\b|\btaxa\s+ao\s+m[eê]s\b)/i;
+
+  const primaryInvoiceTotalRegex =
+    /\b(?:valor\s+total\s+(?:desta\s+|da\s+)?fatura|total\s+(?:desta\s+|da\s+|de\s+sua\s+)?fatura(?:\s+atual)?|valor\s+da\s+fatura(?:\s+atual)?)\b/i;
+  const cycleNetTotalRegex = /\b(?:despesas\s+e\s+cr[eé]ditos\s+do\s+m[eê]s)\b/i;
+  const fallbackTotalToPayRegex = /\btotal\s+a\s+pagar\b/i;
+
+  let primaryInvoiceCandidate: number | null = null;
+  let cycleNetCandidate: number | null = null;
+  let fallbackCandidate: number | null = null;
+
+  for (let i = 0; i < scanLimit; i++) {
+    const line = lines[i]!;
+    if (ignoredTotalContext.test(line)) continue;
+
+    if (primaryInvoiceCandidate === null && primaryInvoiceTotalRegex.test(line)) {
+      const cents = extractAmountNearLabel(lines, i, ignoredTotalContext);
+      if (cents !== null) primaryInvoiceCandidate = cents;
+      continue;
+    }
+
+    if (cycleNetCandidate === null && cycleNetTotalRegex.test(line)) {
+      const cents = extractAmountNearLabel(lines, i, ignoredTotalContext);
+      if (cents !== null) cycleNetCandidate = cents;
+      continue;
+    }
+
+    if (fallbackCandidate === null && fallbackTotalToPayRegex.test(line)) {
+      // Bloqueia "Total a pagar" dentro ou imediatamente após cards de simulação de parcelamento
+      const contextWindow = lines.slice(Math.max(0, i - 3), i + 2).join(" ");
+      if (!installmentSimulationContext.test(contextWindow)) {
+        const cents = extractAmountNearLabel(lines, i, ignoredTotalContext);
+        if (cents !== null) fallbackCandidate = cents;
+      }
+    }
+  }
+
+  return primaryInvoiceCandidate ?? cycleNetCandidate ?? fallbackCandidate;
+}
+
+/**
+ * Extrai os componentes estruturais do quadro de resumo da fatura para a Equação Contábil Dupla.
+ */
+export function extractStatementSummaryAmounts(rawText: string): StatementSummaryAmounts {
+  const invoiceTotalCents = extractPrintedStatementTotalCents(rawText);
+  if (!rawText) {
+    return {
+      invoiceTotalCents: null,
+      cycleNetTargetCents: null,
+      previousBalanceCents: null,
+      paymentsCents: null,
+    };
+  }
+
+  const lines = rawText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const scanLimit = Math.min(lines.length, 350);
+  const noStop = /$^/; // não interrompe
+
+  const cycleNetRegex =
+    /\b(?:despesas\s+e\s+cr[eé]ditos\s+do\s+m[eê]s|total\s+(?:de\s+)?compras\s+do\s+per[ií]odo|total\s+de\s+lan[çc]amentos(?:\s+do\s+m[eê]s)?)\b/i;
+  const prevBalanceRegex = /\bsaldo\s+(?:da\s+fatura\s+)?anterior\b/i;
+  const paymentsRegex = /\b(?:pagamentos\s+efetuados|pagamentos\s*\/\s*cr[eé]ditos)\b/i;
+
+  let cycleNetTargetCents: number | null = null;
+  let previousBalanceCents: number | null = null;
+  let paymentsCents: number | null = null;
+
+  for (let i = 0; i < scanLimit; i++) {
+    const line = lines[i]!;
+    if (cycleNetTargetCents === null && cycleNetRegex.test(line)) {
+      cycleNetTargetCents = extractAmountNearLabel(lines, i, noStop, false);
+    }
+    if (previousBalanceCents === null && prevBalanceRegex.test(line)) {
+      previousBalanceCents = extractAmountNearLabel(lines, i, noStop, true);
+    }
+    if (paymentsCents === null && paymentsRegex.test(line)) {
+      paymentsCents = extractAmountNearLabel(lines, i, noStop, true);
+    }
+  }
+
+  return {
+    invoiceTotalCents,
+    cycleNetTargetCents,
+    previousBalanceCents,
+    paymentsCents,
+  };
 }
 
 function normalizeLineWhitespace(line: string): string {

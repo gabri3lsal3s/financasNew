@@ -135,24 +135,37 @@ function extractDateEntity(
   return null;
 }
 
+export type TextParserMode = "auto" | "strict_statement" | "quick_paste_nl";
+
+const STRICT_STATEMENT_NOISE_REGEX =
+  /(?:\bcet\b|\btaxa\s+(?:ao\s+m[eê]s|ao\s+ano|m[aá]x|\(m[eê]s\)|\(ano\))|\bjuros\s+de\s+atraso\b|\bmora\s+de\s+atraso\b|\b\d{1,2}\s*x\s*(?:de\s+)?r?\$|\b\d{5}-\d{3}\b|\b\d{3}\.\d{3}\.\d{3}-\d{2}\b|\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b|\b\d{3}\/\d{7,10}-\d\b|\bcpf\/cnpj\b|\bnosso\s+n[uú]mero\b|\bsimula[çc][aã]o\b|\bparcelamento\s+compuls[oó]rio\b|\bvalor\s+de\s+entrada\b|\bvalor\s+n[aã]o\s+pago\b)/i;
+
 /**
  * Extrai valor monetário e seu sinal do texto, retornando o valor formatado e o texto restante.
  */
-function extractAmountEntity(text: string): { amountStr: string; remainingText: string } | null {
-  // 1. Valores entre parênteses: (R$ 150,00) ou (150,00) ou (2.500,00) -> negativo contábil
-  const parenRegex = /\(\s*(?:R\$|BRL|\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?|\d+)\s*\)/i;
-  const parenMatch = parenRegex.exec(text);
-  if (parenMatch && parenMatch[1]) {
-    const rawVal = `-${parenMatch[1]}`;
-    const remainingText = text.replace(parenMatch[0], " ").trim();
-    return { amountStr: rawVal, remainingText };
+function extractAmountEntity(
+  text: string,
+  strictMode = false,
+): { amountStr: string; remainingText: string } | null {
+  // Remove percentuais explícitos em modo estrito para evitar ler "14,83%" como R$ 14,83
+  const workingText = strictMode ? text.replace(/\b\d+(?:[.,]\d+)?\s*%/g, " ") : text;
+
+  // 1. Valores entre parênteses: (R$ 150,00) ou (150,00) -> negativo contábil
+  // Em strictMode, ignora parênteses explicativos no meio de frases (ex.: "Valor não pago (R$ 1.452,11) + encargos")
+  if (!strictMode || /^\s*\(\s*(?:R\$|BRL|\$)?\s*\d/.test(workingText) || /\s+\(\s*(?:R\$|BRL|\$)?\s*\d{1,3}(?:\.\d{3})*,\d{2}\s*\)\s*$/i.test(workingText)) {
+    const parenRegex = /\(\s*(?:R\$|BRL|\$)?\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?|\d+)\s*\)/i;
+    const parenMatch = parenRegex.exec(workingText);
+    if (parenMatch && parenMatch[1]) {
+      const rawVal = `-${parenMatch[1]}`;
+      const remainingText = workingText.replace(parenMatch[0], " ").trim();
+      return { amountStr: rawVal, remainingText };
+    }
   }
 
   // 2. Valores com sinal e moeda: [+-]? R$ [+-]? ... com sufixo opcional D/C/+/-
-  // ex: "+ R$ 1.250,75", "- R$ 45,90", "R$ -50,00", "R$ 150,00 D", "R$ 2.000,00 C"
   const prefixRegex =
     /(?:\b(?:por|paguei|gastei|valor\s*:?|de|total\s*:?)\s+)?([+-]?\s*(?:R\$|BRL|\$)\s*[+-]?\s*(?:\d{1,3}(?:\.\d{3})*,\d{2}|\d+(?:[.,]\d{1,2})?|\d+)(?:\s*(?:[dDcC]|\([dDcC]\)|[+-]))?)/i;
-  const prefixMatch = prefixRegex.exec(text);
+  const prefixMatch = prefixRegex.exec(workingText);
   if (prefixMatch && prefixMatch[1]) {
     const matchedStr = prefixMatch[1].trim();
     let sign = "";
@@ -166,65 +179,70 @@ function extractAmountEntity(text: string): { amountStr: string; remainingText: 
       .trim();
 
     const rawVal = sign ? `${sign}${cleanNum}` : cleanNum;
-    const remainingText = text.replace(prefixMatch[0], " ").trim();
+    const remainingText = workingText.replace(prefixMatch[0], " ").trim();
     return { amountStr: rawVal, remainingText };
   }
 
   // 3. Valores com sufixo "reais", "real", "conto": 50 reais, -120,50 reais, +200 reais
   const suffixRegex =
     /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?([+-]?\s*\d{1,3}(?:\.\d{3})*,\d{2}|[+-]?\s*\d+(?:[.,]\d{1,2})?|[+-]?\s*\d+)\s*(?:reais|real|conto)\b/i;
-  const suffixMatch = suffixRegex.exec(text);
+  const suffixMatch = suffixRegex.exec(workingText);
   if (suffixMatch && suffixMatch[1]) {
     const rawVal = suffixMatch[1].replace(/\s+/g, "");
-    const remainingText = text.replace(suffixMatch[0], " ").trim();
+    const remainingText = workingText.replace(suffixMatch[0], " ").trim();
     return { amountStr: rawVal, remainingText };
   }
 
   // 4. Padrão monetário com sufixo D/C ou sinal: 150,00 D, 2.000,00 C, 150,00D, 2.000,00+, 150,00-
   const dcSuffixRegex =
     /\b([+-]?\d{1,3}(?:\.\d{3})*,\d{2}|[+-]?\d+(?:[.,]\d{1,2})?)\s*([dDcC]|\([dDcC]\)|[+-])\b/i;
-  const dcMatch = dcSuffixRegex.exec(text);
+  const dcMatch = dcSuffixRegex.exec(workingText);
   if (dcMatch && dcMatch[1] && dcMatch[2]) {
     const rawVal = `${dcMatch[1].trim()} ${dcMatch[2].trim()}`;
-    const remainingText = text.replace(dcMatch[0], " ").trim();
+    const remainingText = workingText.replace(dcMatch[0], " ").trim();
     return { amountStr: rawVal, remainingText };
   }
 
   // 5. Padrão monetário brasileiro com vírgula decimal (ex: 1.250,75 ou -45,90 ou +250,00)
   const brlDecimalRegex =
-    /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?\b([+-]?\d{1,3}(?:\.\d{3})*,\d{2})\b/i;
-  const brlDecimalMatch = brlDecimalRegex.exec(text);
+    /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?\b([+-]?\d{1,3}(?:\.\d{3})*,\d{2})(?!\s*%)\b/i;
+  const brlDecimalMatch = brlDecimalRegex.exec(workingText);
   if (brlDecimalMatch && brlDecimalMatch[1]) {
     const rawVal = brlDecimalMatch[1];
-    const remainingText = text.replace(brlDecimalMatch[0], " ").trim();
+    const remainingText = workingText.replace(brlDecimalMatch[0], " ").trim();
     return { amountStr: rawVal, remainingText };
   }
 
   // 6. Padrão com ponto decimal monetário (ex: 45.90 ou -1234.56)
   const dotDecimalRegex =
-    /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?\b([+-]?\d+\.\d{2})\b/i;
-  const dotDecimalMatch = dotDecimalRegex.exec(text);
+    /(?:\b(?:por|paguei|gastei|valor\s*:?|de)\s+)?\b([+-]?\d+\.\d{2})(?!\s*%)\b/i;
+  const dotDecimalMatch = dotDecimalRegex.exec(workingText);
   if (dotDecimalMatch && dotDecimalMatch[1]) {
     const rawVal = dotDecimalMatch[1];
-    const remainingText = text.replace(dotDecimalMatch[0], " ").trim();
+    const remainingText = workingText.replace(dotDecimalMatch[0], " ").trim();
     return { amountStr: rawVal, remainingText };
+  }
+
+  // Em strictMode (PDFs/extratos), não extrai inteiros soltos sem decimal (evita CEP, Nosso Número, endereço)
+  if (strictMode) {
+    return null;
   }
 
   // 7. Palavras-chave indicando valor inteiro ou decimal (ex: "valor 150", "por 250", "de 80")
   const kwRegex = /(?:valor|por|paguei|gastei)\s*:?\s*(?:de\s+)?([+-]?\d+(?:[.,]\d{1,2})?)\b/i;
-  const kwMatch = kwRegex.exec(text);
+  const kwMatch = kwRegex.exec(workingText);
   if (kwMatch && kwMatch[1]) {
     const rawVal = kwMatch[1];
-    const remainingText = text.replace(kwMatch[0], " ").trim();
+    const remainingText = workingText.replace(kwMatch[0], " ").trim();
     return { amountStr: rawVal, remainingText };
   }
 
   // 8. Número isolado no fim da linha que não seja parte de data
   const trailingNumRegex = /(?<![/.-])\b([+-]?\d+(?:[.,]\d{1,2})?)\s*$/;
-  const trailingMatch = trailingNumRegex.exec(text);
+  const trailingMatch = trailingNumRegex.exec(workingText);
   if (trailingMatch && trailingMatch[1]) {
     const rawVal = trailingMatch[1];
-    const remainingText = text.replace(trailingMatch[0], " ").trim();
+    const remainingText = workingText.replace(trailingMatch[0], " ").trim();
     return { amountStr: rawVal, remainingText };
   }
 
@@ -296,16 +314,26 @@ function isHeaderCells(cells: string[]): boolean {
 function parseNaturalLanguageLine(
   line: string,
   defaultYear = new Date().getFullYear(),
+  strictMode = false,
 ): { date: string; description: string; amount: string } | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
 
+  if (strictMode && STRICT_STATEMENT_NOISE_REGEX.test(trimmed)) {
+    return null;
+  }
+
   // 1. Extrai data PRIMEIRO (para evitar que números de dia/mês sejam confundidos com valor monetário)
   const dateEntity = extractDateEntity(trimmed, defaultYear);
+  if (strictMode && !dateEntity) {
+    // Em modo strict_statement (PDFs/extratos bancários), nunca inventa todayISO()
+    return null;
+  }
+
   const textAfterDate = dateEntity ? dateEntity.remainingText : trimmed;
 
   // 2. Extrai valor monetário do texto restante
-  let amountEntity = extractAmountEntity(textAfterDate);
+  let amountEntity = extractAmountEntity(textAfterDate, strictMode);
 
   let dateStr = dateEntity ? dateEntity.dateStr : todayISO();
   let descCandidate: string;
@@ -313,8 +341,9 @@ function parseNaturalLanguageLine(
   if (amountEntity) {
     descCandidate = amountEntity.remainingText;
   } else {
-    // Tenta extrair valor do texto completo e depois data
-    amountEntity = extractAmountEntity(trimmed);
+    if (strictMode) return null;
+    // Tenta extrair valor do texto completo e depois data (apenas Quick-Paste NL)
+    amountEntity = extractAmountEntity(trimmed, false);
     if (!amountEntity) return null;
 
     const secondDateEntity = extractDateEntity(amountEntity.remainingText, defaultYear);
@@ -328,6 +357,9 @@ function parseNaturalLanguageLine(
 
   // 3. Sanitiza a descrição
   const description = sanitizeNaturalDescription(descCandidate) || descCandidate.trim() || "Transação";
+  if (strictMode && (!description || description === "Transação" || /^[\d\s/.,+-]+$/.test(description))) {
+    return null;
+  }
 
   let amountStr = amountEntity.amountStr;
 
@@ -464,10 +496,20 @@ function groupMultilineBlocks(lines: string[]): string[] {
  * Analisa tanto dados tabulares quanto frases em linguagem natural e blocos multilinhas,
  * ignorando automaticamente cabeçalhos e linhas ruidosas.
  */
-export function parseTextToRows(rawText: string, defaultYear = new Date().getFullYear()): RawParsedRow[] {
+export function parseTextToRows(
+  rawText: string,
+  defaultYear = new Date().getFullYear(),
+  options?: { mode?: TextParserMode },
+): RawParsedRow[] {
   const rawLines = rawText.split(/\r?\n/);
   const lines = groupMultilineBlocks(rawLines);
   const rows: RawParsedRow[] = [];
+
+  const nonEmptyCount = lines.filter((l) => l.trim().length > 0).length;
+  const mode = options?.mode ?? "auto";
+  // Modo strict_statement para PDFs/extratos longos (> 15 linhas); quick_paste_nl apenas para colagens curtas
+  const isStrict =
+    mode === "strict_statement" || (mode !== "quick_paste_nl" && nonEmptyCount > 15);
 
   let rowIndex = 0;
   for (const line of lines) {
@@ -476,6 +518,7 @@ export function parseTextToRows(rawText: string, defaultYear = new Date().getFul
 
     // Filtra ruídos, separadores, metadados de relatório e somatórios/saldos contábeis
     if (isStatementNoiseOrSummary(trimmed)) continue;
+    if (isStrict && STRICT_STATEMENT_NOISE_REGEX.test(trimmed)) continue;
 
     let cells: string[] = [];
 
@@ -516,18 +559,20 @@ export function parseTextToRows(rawText: string, defaultYear = new Date().getFul
       continue;
     }
 
-    // Se encontrou 3+ células ou 2 células com data/valor identificáveis, usa a divisão tabular
+    // Se encontrou 3+ células delimitadas: em modo strict, exige que a linha contenha data explícita
     if (cells.length >= 3) {
-      rows.push({
-        rowIndex: rowIndex++,
-        rawText: trimmed,
-        cells,
-      });
+      if (!isStrict || extractDateEntity(trimmed, defaultYear) !== null) {
+        rows.push({
+          rowIndex: rowIndex++,
+          rawText: trimmed,
+          cells,
+        });
+      }
       continue;
     }
 
-    // 6. Caso não seja tabular delimitado, processa como linguagem natural
-    const natural = parseNaturalLanguageLine(trimmed, defaultYear);
+    // 6. Caso não seja tabular delimitado, processa como linha de extrato estrito ou linguagem natural
+    const natural = parseNaturalLanguageLine(trimmed, defaultYear, isStrict);
     if (natural) {
       // Ignora se a descrição resultante for ruído de extrato
       if (isStatementNoiseOrSummary(natural.description)) {
@@ -542,8 +587,8 @@ export function parseTextToRows(rawText: string, defaultYear = new Date().getFul
       continue;
     }
 
-    // 7. Fallback: se houver células parciais e não forem ruído, armazena
-    if (cells.length > 0) {
+    // 7. Fallback: em strict_statement não empurra células parciais sem data/valor
+    if (!isStrict && cells.length > 0) {
       rows.push({
         rowIndex: rowIndex++,
         rawText: trimmed,

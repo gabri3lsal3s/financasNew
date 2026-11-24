@@ -112,8 +112,16 @@
   --animate-ripple: ripple 0.55s cubic-bezier(0, 0, 0.2, 1) forwards;
   --animate-live-pulse: live-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-spring-pop: spring-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  --animate-sheet-in: sheet-in 0.25s cubic-bezier(0.32, 0.72, 0, 1);
-  --animate-sheet-out: sheet-out 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-sheet-in: sheet-in 0.26s cubic-bezier(0.32, 0.72, 0, 1) both;
+  --animate-sheet-out: sheet-out 0.2s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  --animate-overlay-in: overlay-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-overlay-out: overlay-out 0.18s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  --animate-dialog-in: dialog-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-dialog-out: dialog-out 0.16s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  --animate-popover-in: popover-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-popover-out: popover-out 0.12s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  --animate-in: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-out: overlay-out 0.16s cubic-bezier(0.32, 0.72, 0, 1) forwards;
   --animate-fade-in: fade-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-fade-slide-in: fade-slide-in 0.2s cubic-bezier(0, 0, 0.2, 1);
   --animate-card-slide-left: card-slide-left 0.28s cubic-bezier(0.16, 1, 0.3, 1);
@@ -272,11 +280,9 @@
   @keyframes sheet-in {
     from {
       transform: translateY(100%);
-      opacity: 0.4;
     }
     to {
       transform: translateY(0);
-      opacity: 1;
     }
   }
 
@@ -289,7 +295,69 @@
     }
     to {
       transform: translateY(100%);
-      opacity: 0.4;
+      opacity: 0;
+    }
+  }
+
+  @keyframes overlay-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes overlay-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes dialog-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes dialog-out {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+  }
+
+  @keyframes popover-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes popover-out {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.96);
     }
   }
 }
@@ -572,26 +640,30 @@ html[data-density="compact"] {
      Cards de dados permanecem OPACOS (regra DESIGN_SYSTEM §8).
      flat (data-surface-style) mantém o chrome 100% opaco sem sombras. */
   @supports (backdrop-filter: blur(1px)) {
-    /* Temas escuros (Dark e OLED): translúcido sofisticado com blur */
-    html:not([data-surface-style]):is([data-theme="dark"], [data-theme="oled"]) :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
-      background-color: hsl(var(--surface) / 0.82);
-      -webkit-backdrop-filter: blur(12px);
-      backdrop-filter: blur(12px);
-    }
-
-    /* Tema claro (padrão / :root / light): superfície branca límpida de alto contraste sem névoa cinzenta */
-    html:not([data-surface-style]):not([data-theme="dark"]):not([data-theme="oled"]) :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
-      background-color: hsl(var(--surface) / 0.98);
-      -webkit-backdrop-filter: blur(16px);
-      backdrop-filter: blur(16px);
-      box-shadow: var(--shadow-2xl);
-    }
-
-    @media (prefers-color-scheme: dark) {
-      html:not([data-theme]):not([data-surface-style]) :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
+    /* Em mobile (< 768px), modais usam superfície sólida bg-surface + shadow-2xl para evitar
+       backdrop-filter duplo animado na GPU durante translateY do Bottom Sheet. */
+    @media (min-width: 768px) {
+      /* Temas escuros (Dark e OLED): translúcido sofisticado com blur */
+      html:not([data-surface-style]):is([data-theme="dark"], [data-theme="oled"]) :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
         background-color: hsl(var(--surface) / 0.82);
         -webkit-backdrop-filter: blur(12px);
         backdrop-filter: blur(12px);
+      }
+
+      /* Tema claro (padrão / :root / light): superfície branca límpida de alto contraste sem névoa cinzenta */
+      html:not([data-surface-style]):not([data-theme="dark"]):not([data-theme="oled"]) :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
+        background-color: hsl(var(--surface) / 0.98);
+        -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(16px);
+        box-shadow: var(--shadow-2xl);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        html:not([data-theme]):not([data-surface-style]) :where(.rounded-xl, .rounded-2xl, .rounded-t-2xl).bg-surface:is(.z-modal, .z-floating-tools) {
+          background-color: hsl(var(--surface) / 0.82);
+          -webkit-backdrop-filter: blur(12px);
+          backdrop-filter: blur(12px);
+        }
       }
     }
   }

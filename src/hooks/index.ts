@@ -1,5 +1,6 @@
 export { useAuth, resetEnsuredProfiles, signInWithEmail, signUpWithEmail, resetPasswordForEmail } from "./use-auth";
 export type { AuthState, SignUpResult } from "./use-auth";
+export { useDeviceSessionSync } from "./use-device-session-sync";
 export { useAutoPortfolioSnapshot } from "./use-auto-portfolio-snapshot";
 export { useCreateDeepLink } from "./use-create-deep-link";
 export { useCurrencyInput } from "./use-currency-input";
@@ -28,7 +29,8 @@ export { useAppUpdate, type UseAppUpdateOptions, type UseAppUpdateReturn } from 
 export { useActiveOverlays, type ActiveOverlaysResult } from "./use-active-overlays";
 export {
   useIdleSessionTimeout,
-  DEFAULT_IDLE_TIMEOUT_MS,
+  DEFAULT_IDLE_WARNING_SECONDS,
+  ACTIVITY_BROADCAST_THROTTLE_MS,
   IDLE_ACTIVITY_EVENTS,
   type UseIdleSessionTimeoutOptions,
   type UseIdleSessionTimeoutResult,
@@ -44,6 +46,12 @@ export type {
   DetectedPixTransaction,
   UsePixClipboardDetectorResult,
 } from "./use-pix-clipboard-detector";
+export {
+  useModalTransition,
+  MODAL_EXIT_DURATION_MS,
+  shouldSkipModalTransitionDelay,
+  type UseModalTransitionResult,
+} from "./use-modal-transition";
 export {
   useNotificationCenter,
   type UseNotificationCenterResult,

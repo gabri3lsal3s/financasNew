@@ -29,6 +29,7 @@ import {
 } from "@/components/ui";
 import { todayISO } from "@/domain/debts";
 import type {
+  AppDuplicateCandidate,
   ExistingExpenseForReconciliation,
   ReconciliationItem,
 } from "@/domain/reconciliation";
@@ -137,9 +138,31 @@ export function CategoryPill({
 export interface StatementAppOnlyRowProps {
   expense: ExistingExpenseForReconciliation;
   categoryName: string;
+  isNearClosing?: boolean;
+  prevCompetence?: string;
+  nextCompetence?: string;
+  onMoveCompetence?: (expenseId: string, targetCompetence: string) => void;
+  onDeleteExpense?: (expenseId: string, mode: "single" | "all") => void;
+  isPending?: boolean;
 }
 
-export function StatementAppOnlyRow({ expense, categoryName }: StatementAppOnlyRowProps) {
+function formatCompetenceLabel(comp: string): string {
+  const [y, m] = comp.split("-");
+  return y && m ? `${m}/${y}` : comp;
+}
+
+export function StatementAppOnlyRow({
+  expense,
+  categoryName,
+  isNearClosing = false,
+  prevCompetence,
+  nextCompetence,
+  onMoveCompetence,
+  onDeleteExpense,
+  isPending = false,
+}: StatementAppOnlyRowProps) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3 gap-2 bg-warning/10">
       <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -147,7 +170,7 @@ export function StatementAppOnlyRow({ expense, categoryName }: StatementAppOnlyR
           <AlertTriangle className="size-4 shrink-0" aria-hidden="true" />
         </div>
 
-        <div className="space-y-0.5 min-w-0 flex-1">
+        <div className="space-y-1 min-w-0 flex-1">
           <div className="flex items-start sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
               <span className="font-medium text-xs text-foreground truncate">
@@ -163,6 +186,12 @@ export function StatementAppOnlyRow({ expense, categoryName }: StatementAppOnlyR
               <Badge variant="warning" size="xs">
                 Ausente no Extrato
               </Badge>
+
+              {isNearClosing ? (
+                <Badge variant="muted" size="xs">
+                  Próxima ao fechamento
+                </Badge>
+              ) : null}
             </div>
 
             <div className="sm:hidden text-right shrink-0">
@@ -170,10 +199,80 @@ export function StatementAppOnlyRow({ expense, categoryName }: StatementAppOnlyR
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
             <span className="font-mono tabular-nums">{formatDateBR(expense.date)}</span>
-            <span>· Lançamento manual cadastrado no app</span>
+            <span>· Lançamento cadastrado no app</span>
           </div>
+
+          {onMoveCompetence || onDeleteExpense ? (
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              {onMoveCompetence && prevCompetence ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  disabled={isPending}
+                  onClick={() => onMoveCompetence(expense.id, prevCompetence)}
+                  className="h-6 px-2 text-[11px] cursor-pointer"
+                >
+                  Mover para {formatCompetenceLabel(prevCompetence)}
+                </Button>
+              ) : null}
+              {onMoveCompetence && nextCompetence ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  disabled={isPending}
+                  onClick={() => onMoveCompetence(expense.id, nextCompetence)}
+                  className="h-6 px-2 text-[11px] cursor-pointer"
+                >
+                  Mover para {formatCompetenceLabel(nextCompetence)}
+                </Button>
+              ) : null}
+              {onDeleteExpense ? (
+                confirmingDelete ? (
+                  <div className="inline-flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="xs"
+                      disabled={isPending}
+                      onClick={() => {
+                        onDeleteExpense(expense.id, "single");
+                        setConfirmingDelete(false);
+                      }}
+                      className="h-6 px-2 text-[11px] cursor-pointer"
+                    >
+                      Confirmar exclusão
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="xs"
+                      disabled={isPending}
+                      onClick={() => setConfirmingDelete(false)}
+                      className="h-6 px-2 text-[11px] cursor-pointer"
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    disabled={isPending}
+                    onClick={() => setConfirmingDelete(true)}
+                    className="h-6 px-2 text-[11px] text-destructive hover:text-destructive cursor-pointer gap-1"
+                  >
+                    <Trash2 className="size-3" aria-hidden="true" />
+                    Excluir
+                  </Button>
+                )
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -181,6 +280,117 @@ export function StatementAppOnlyRow({ expense, categoryName }: StatementAppOnlyR
         <span className="text-xs text-muted-foreground">{categoryName}</span>
         <div className="hidden sm:block text-right min-w-[80px]">
           <MoneyText cents={expense.valueCents} tone="negative" className="font-medium text-xs" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export interface StatementAppDuplicateRowProps {
+  candidate: AppDuplicateCandidate;
+  categoryName: string;
+  onDeleteDuplicate: (expenseId: string, mode: "single" | "all") => void;
+  isPending?: boolean;
+}
+
+export function StatementAppDuplicateRow({
+  candidate,
+  categoryName,
+  onDeleteDuplicate,
+  isPending = false,
+}: StatementAppDuplicateRowProps) {
+  const [confirming, setConfirming] = useState(false);
+  const { keepExpense, duplicateExpense, keepIsMatchedOnStatement, reason } = candidate;
+  const isInstallment = Boolean(duplicateExpense.installmentGroupId);
+
+  return (
+    <div className="p-3 space-y-2 bg-warning/10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-start gap-2.5 min-w-0 flex-1">
+          <Copy className="size-4 text-warning-strong shrink-0 mt-0.5" aria-hidden="true" />
+          <div className="space-y-0.5 min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-foreground truncate">
+                {duplicateExpense.description || "Despesa sem descrição"}
+              </span>
+              <Badge variant="warning" size="xs">
+                Duplicata no App
+              </Badge>
+              {keepIsMatchedOnStatement ? (
+                <Badge variant="positive" size="xs">
+                  Principal já conciliada
+                </Badge>
+              ) : null}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {reason} · Categoria: {categoryName}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between sm:justify-end gap-3 pl-6 sm:pl-0 shrink-0">
+          <MoneyText cents={duplicateExpense.valueCents} tone="negative" className="font-semibold text-xs" />
+
+          {confirming ? (
+            <div className="flex items-center gap-1.5">
+              <Button
+                type="button"
+                variant="destructive"
+                size="xs"
+                disabled={isPending}
+                onClick={() => {
+                  onDeleteDuplicate(duplicateExpense.id, "single");
+                  setConfirming(false);
+                }}
+                className="h-7 px-2.5 text-[11px] cursor-pointer"
+              >
+                {isInstallment ? "Excluir esta parcela" : "Confirmar exclusão"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                disabled={isPending}
+                onClick={() => setConfirming(false)}
+                className="h-7 px-2 text-[11px] cursor-pointer"
+              >
+                Cancelar
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              disabled={isPending}
+              onClick={() => setConfirming(true)}
+              className="h-7 px-2.5 text-[11px] text-destructive border-destructive/30 hover:bg-destructive/10 gap-1 cursor-pointer"
+            >
+              <Trash2 className="size-3" aria-hidden="true" />
+              Excluir duplicata
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6 text-[11px]">
+        <div className="rounded-lg border border-border/80 bg-surface p-2">
+          <span className="font-semibold text-positive-strong block">
+            Manter ({keepIsMatchedOnStatement ? "conciliada na fatura" : "principal"})
+          </span>
+          <span className="text-foreground font-medium">{keepExpense.description}</span>
+          <span className="text-muted-foreground ml-1.5 font-mono">
+            ({formatDateBR(keepExpense.date)})
+          </span>
+        </div>
+        <div className="rounded-lg border border-warning/30 bg-surface p-2">
+          <span className="font-semibold text-warning-strong block">
+            Excedente no app (sugerida para excluir)
+          </span>
+          <span className="text-foreground font-medium">{duplicateExpense.description}</span>
+          <span className="text-muted-foreground ml-1.5 font-mono">
+            ({formatDateBR(duplicateExpense.date)})
+          </span>
         </div>
       </div>
     </div>
@@ -483,6 +693,7 @@ export interface StatementReconcileItemRowProps {
   onToggleScope?: (id: string) => void;
   onToggleProjectSeries?: (id: string) => void;
   onLinkAndAdjust?: (id: string) => void;
+  onMoveCrossCompetence?: (item: ReconciliationItem) => void;
   onCreateRefund?: (item: ReconciliationItem) => void;
 }
 
@@ -500,6 +711,7 @@ export const StatementReconcileItemRow = memo(function StatementReconcileItemRow
   onToggleScope,
   onToggleProjectSeries,
   onLinkAndAdjust,
+  onMoveCrossCompetence,
   onCreateRefund,
 }: StatementReconcileItemRowProps) {
   const tx = item.transaction;
@@ -590,6 +802,10 @@ export const StatementReconcileItemRow = memo(function StatementReconcileItemRow
                   <Sparkles className="size-3" aria-hidden="true" />
                   Sugestão ({item.score}%)
                 </Badge>
+              ) : item.crossCompetenceMatch ? (
+                <Badge variant="warning" size="xs">
+                  Na fatura {formatCompetenceLabel(item.crossCompetenceMatch.currentBillCompetence)}
+                </Badge>
               ) : item.ignoredByDefault ? (
                 <Badge variant="muted" size="xs">
                   Pagamento / Ignorado
@@ -634,8 +850,35 @@ export const StatementReconcileItemRow = memo(function StatementReconcileItemRow
                   <span className="font-mono">({formatDateBR(item.matchedExpenseDate)})</span>
                 ) : null}
               </span>
+            ) : item.crossCompetenceMatch ? (
+              <span className="flex items-center gap-1">
+                <span>· Encontrada em {formatCompetenceLabel(item.crossCompetenceMatch.currentBillCompetence)}:</span>
+                <span className="font-medium text-foreground">
+                  {item.crossCompetenceMatch.expenseDescription}
+                </span>
+                <span className="font-mono">
+                  ({formatDateBR(item.crossCompetenceMatch.expenseDate)})
+                </span>
+              </span>
             ) : null}
           </div>
+
+          {/* Ação de mover despesa de competência vizinha para esta fatura */}
+          {item.crossCompetenceMatch && onMoveCrossCompetence ? (
+            <div className="pt-0.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                className="h-6 px-2 text-[11px] text-primary-strong border-primary/30 hover:bg-primary/10 gap-1 cursor-pointer"
+                onClick={() => onMoveCrossCompetence(item)}
+                title="Mover a despesa cadastrada na competência vizinha para esta fatura sem duplicar"
+              >
+                <CornerDownRight className="size-3" aria-hidden="true" />
+                Mover para esta fatura
+              </Button>
+            </div>
+          ) : null}
 
           {/* Ação de vincular e ajustar valor para sugestões */}
           {item.status === "probable_match" && item.matchedExpenseId && !item.isLinkedAndAdjusted && onLinkAndAdjust ? (
@@ -646,10 +889,12 @@ export const StatementReconcileItemRow = memo(function StatementReconcileItemRow
                 size="xs"
                 className="h-6 px-2 text-[11px] text-primary-strong border-primary/30 hover:bg-primary/10 gap-1 cursor-pointer"
                 onClick={() => onLinkAndAdjust(tx.id)}
-                title="Vincular a esta despesa cadastrada no app e ajustar o valor para o valor da fatura"
+                title="Vincular a esta despesa cadastrada no app"
               >
                 <CornerDownRight className="size-3" aria-hidden="true" />
-                Vincular e ajustar valor
+                {item.matchedExpenseValueCents === tx.amountCents
+                  ? "Vincular à despesa"
+                  : "Vincular e ajustar valor"}
               </Button>
             </div>
           ) : null}
@@ -686,7 +931,7 @@ export const StatementReconcileItemRow = memo(function StatementReconcileItemRow
             </div>
           ) : null}
 
-          {item.duplicateReason ? (
+          {item.isInternalDuplicate && item.duplicateReason ? (
             <div className="text-[10px] text-warning-strong italic pt-0.5">{item.duplicateReason}</div>
           ) : null}
         </div>

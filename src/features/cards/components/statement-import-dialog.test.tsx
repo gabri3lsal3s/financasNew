@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { UseQueryResult } from "@tanstack/react-query";
 import * as merchantLearningService from "@/services/merchant-learning";
+import {
+  clearAllStatementBlueprints,
+  listStoredStatementBlueprints,
+} from "@/services/statement-blueprint-store";
 import { clearAllColumnMappingCache } from "@/services/statement-mapping-cache";
 import type { CreditCard, Expense } from "@/types";
 import { StatementImportDialog } from "./statement-import-dialog";
@@ -51,6 +55,10 @@ vi.mock("@/state", async (importOriginal) => {
       isPending: false,
     }),
     useUpdateExpense: () => ({
+      mutateAsync: vi.fn().mockResolvedValue({}),
+      isPending: false,
+    }),
+    useDeleteExpense: () => ({
       mutateAsync: vi.fn().mockResolvedValue({}),
       isPending: false,
     }),
@@ -130,6 +138,7 @@ async function advanceFromMapping(user: ReturnType<typeof userEvent.setup>) {
 describe("StatementImportDialog", () => {
   beforeEach(() => {
     clearAllColumnMappingCache();
+    clearAllStatementBlueprints();
   });
   it("renderiza o diálogo aberto com o componente de upload de arquivo", () => {
     render(
@@ -458,7 +467,7 @@ describe("StatementImportDialog", () => {
     );
     await advanceFromMapping(user);
 
-    expect(await screen.findByText(/1 potencial duplicidade detectada nesta fatura/i)).toBeInTheDocument();
+    expect(await screen.findByText(/1 potencial duplicidade detectada/i)).toBeInTheDocument();
     expect(screen.getByText(/Duplicata no Arquivo/i)).toBeInTheDocument();
   });
 
@@ -500,7 +509,11 @@ describe("StatementImportDialog", () => {
     await uploadMockStatementFile(user, rows.join("\n"));
     await advanceFromMapping(user);
 
-    const importBtn = await screen.findByRole("button", { name: /Importar 270 Lançamentos/i });
+    const importBtn = await screen.findByRole(
+      "button",
+      { name: /Importar 270 Lançamentos/i },
+      { timeout: 5000 },
+    );
     expect(importBtn).toBeInTheDocument();
 
     // Dispara a importação em lotes
@@ -524,7 +537,9 @@ describe("StatementImportDialog", () => {
     await screen.findByRole("button", { name: /Importar/i }).catch(() => null);
 
     // Valida que o RPC foi chamado exatamente 2 vezes
-    expect(mutateAsyncMock).toHaveBeenCalledTimes(2);
+    await waitFor(() => {
+      expect(mutateAsyncMock).toHaveBeenCalledTimes(2);
+    });
 
     // Lote 1: exatamente 250 despesas
     expect(mutateAsyncMock.mock.calls[0]![0].expenses).toHaveLength(250);
@@ -634,24 +649,26 @@ describe("StatementImportDialog", () => {
       await user.click(importBtn);
 
       // Precedência Humana: aprendizado persistido após o clique de confirmação do usuário
-      expect(autoLearnSpy).toHaveBeenCalledWith(
-        "Loja XPTZ Tech",
-        "cat-2",
-        undefined,
-        expect.stringContaining("LOJA XPTZ 9981"),
-      );
+      await waitFor(() => {
+        expect(autoLearnSpy).toHaveBeenCalledWith(
+          "Loja XPTZ Tech",
+          "cat-2",
+          undefined,
+          expect.stringContaining("LOJA XPTZ 9981"),
+        );
 
-      expect(mutateAsyncMock).toHaveBeenCalledWith({
-        cardId: "card-test",
-        competenceMonth: "2026-08",
-        expenses: [
-          expect.objectContaining({
-            date: "2026-08-18",
-            description: "Loja XPTZ Tech",
-            value: 349.9,
-            category_id: "cat-2",
-          }),
-        ],
+        expect(mutateAsyncMock).toHaveBeenCalledWith({
+          cardId: "card-test",
+          competenceMonth: "2026-08",
+          expenses: [
+            expect.objectContaining({
+              date: "2026-08-18",
+              description: "Loja XPTZ Tech",
+              value: 349.9,
+              category_id: "cat-2",
+            }),
+          ],
+        });
       });
     });
 
@@ -754,7 +771,7 @@ describe("StatementImportDialog", () => {
       expect(await screen.findByText("Livraria Cultura")).toBeInTheDocument();
       expect(screen.getByText("2/3")).toBeInTheDocument();
       expect(screen.getByText("Estorno Livraria")).toBeInTheDocument();
-      expect(screen.getByText("Organizado automaticamente")).toBeInTheDocument();
+      expect(screen.getByText("Estruturado com IA")).toBeInTheDocument();
       expect(mockExtractStatementPdfRowsWithAi).toHaveBeenCalledTimes(1);
 
       // Compra positiva fica selecionada; estorno (-40,00) fica desmarcado pelo motor determinístico
@@ -909,7 +926,7 @@ describe("StatementImportDialog", () => {
       await user.upload(printInput, printFile);
 
       expect(await screen.findByText("Padaria Estrela")).toBeInTheDocument();
-      expect(screen.getByText("Organizado automaticamente")).toBeInTheDocument();
+      expect(screen.getByText("Estruturado com IA")).toBeInTheDocument();
       expect(mockExtractStatementPdfRowsWithAi).toHaveBeenCalledWith(
         expect.objectContaining({
           imageBlob: expect.any(File),
@@ -1038,6 +1055,435 @@ Data;Estabelecimento;Valor
 
       expect(await screen.findByText("Aviso de Compatibilidade de Cartão")).toBeInTheDocument();
       expect(screen.getByText(/A fatura menciona o cartão com final 9999/i)).toBeInTheDocument();
+    });
+  });
+
+  describe("Fase 2 — IA Proativa, Governança de Cota e Transparência na UI (#7, #8, #10)", () => {
+    it("exibe badge 'Leitura local conferida' quando importação determinística passa no Quality Gate", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      await uploadMockStatementFile(
+        user,
+        "Data;Estabelecimento;Valor\n15/08/2026;Padaria Estrela;25,00\n16/08/2026;Supermercado Dia;140,50",
+        "fatura-limpa.csv",
+      );
+      await advanceFromMapping(user);
+
+      expect(await screen.findByText("Padaria Estrela")).toBeInTheDocument();
+      expect(screen.getByText("Leitura local conferida")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Reanalisar com IA/i })).not.toBeInTheDocument();
+    });
+
+    it("exibe confirmação inline para PDF com >1 página na escalada Vision e botão 'Reanalisar com IA' quando há divergência", async () => {
+      const user = userEvent.setup();
+      mockExtractStatementPdfRowsWithAi.mockReset();
+
+      // PDF digital com 2 páginas de extrato e soma divergente (Total da fatura R$ 500,00 vs 2 compras somando R$ 100,00)
+      mockUnpdfExtractText.mockResolvedValueOnce({
+        text: [
+          "FATURA BANCO DIGITAL - VALOR DA FATURA: R$ 500,00\nLANCAMENTOS PAGINA 1\n10/08/2026 Padaria Estrela 40,00\nResumo de encargos e limite disponivel para consulta do cliente.",
+          "LANCAMENTOS PAGINA 2\n15/08/2026 Supermercado Dia 60,00\nDemonstrativo detalhado de compras realizadas no ciclo mensal vigente.",
+        ],
+        totalPages: 2,
+      });
+
+      // Estágio 3A melhora o score (R$ 300,00 vs R$ 100,00 local -> 70 > 45), mas ainda diverge de R$ 500,00,
+      // entrando na Conferência com oferta Vision para 2 páginas e botão "Reanalisar com IA"
+      mockExtractStatementPdfRowsWithAi
+        .mockResolvedValueOnce({
+          ok: true,
+          cached: false,
+          source: "ai_text",
+          data: {
+            rows: [
+              {
+                date: "2026-08-10",
+                description: "Padaria Estrela",
+                amountCents: 15000,
+                installmentCurrent: null,
+                installmentTotal: null,
+                entryType: "purchase",
+              },
+              {
+                date: "2026-08-15",
+                description: "Supermercado Dia",
+                amountCents: 15000,
+                installmentCurrent: null,
+                installmentTotal: null,
+                entryType: "purchase",
+              },
+            ],
+            detectedTotalInvoiceCents: 50000,
+          },
+        })
+        // Reanálise explícita sob demanda ("Reanalisar com IA") corrige para R$ 500,00 com novo SHA-256 salted
+        .mockResolvedValueOnce({
+          ok: true,
+          cached: false,
+          source: "ai_text",
+          data: {
+            rows: [
+              {
+                date: "2026-08-10",
+                description: "Padaria Estrela",
+                amountCents: 20000,
+                installmentCurrent: null,
+                installmentTotal: null,
+                entryType: "purchase",
+              },
+              {
+                date: "2026-08-15",
+                description: "Supermercado Dia",
+                amountCents: 30000,
+                installmentCurrent: null,
+                installmentTotal: null,
+                entryType: "purchase",
+              },
+            ],
+            detectedTotalInvoiceCents: 50000,
+          },
+        });
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      const pdfFile = new File(["%PDF-1.7\nmulti-page"], "fatura-2-paginas.pdf", {
+        type: "application/pdf",
+      });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(input, pdfFile);
+
+      // Confirmação inline obrigatória para 2 páginas (não dispara Vision silenciosamente)
+      expect(await screen.findByText("Leitura visual com IA recomendada")).toBeInTheDocument();
+      expect(screen.getByText(/2 páginas/i)).toBeInTheDocument();
+      expect(screen.getByText(/2 créditos de IA/i)).toBeInTheDocument();
+      expect(mockExtractStatementPdfRowsWithAi).toHaveBeenCalledTimes(1);
+
+      // Botão direto "Reanalisar com IA" presente na divergência
+      const reanalyzeBtn = screen.getByRole("button", { name: /Reanalisar com IA/i });
+      expect(reanalyzeBtn).toBeInTheDocument();
+
+      await user.click(reanalyzeBtn);
+
+      await waitFor(() => {
+        expect(mockExtractStatementPdfRowsWithAi).toHaveBeenCalledTimes(2);
+      });
+
+      // Ambas chamadas devem usar SHA-256 64-hex válido e distintos (salt reanalyze)
+      const firstSha = mockExtractStatementPdfRowsWithAi.mock.calls[0]?.[0]?.sha256 as string;
+      const secondSha = mockExtractStatementPdfRowsWithAi.mock.calls[1]?.[0]?.sha256 as string;
+      expect(firstSha).toMatch(/^[a-f0-9]{64}$/);
+      expect(secondSha).toMatch(/^[a-f0-9]{64}$/);
+      expect(secondSha).not.toBe(firstSha);
+    });
+
+    it("exibe aviso honesto de cota esgotada com horário de renovação quando IA retorna quota_exceeded", async () => {
+      const user = userEvent.setup();
+      mockExtractStatementPdfRowsWithAi.mockReset();
+
+      mockUnpdfExtractText.mockResolvedValueOnce({
+        text: [
+          "FATURA BANCO DIGITAL - VALOR DA FATURA: R$ 450,00\nRESUMO SEM COMPRAS ALINHADAS NO PARSER LOCAL PARA ACIONAR IA PROATIVA NO TESTE DE COTA ESGOTADA.",
+        ],
+        totalPages: 1,
+      });
+
+      mockExtractStatementPdfRowsWithAi.mockResolvedValueOnce({
+        ok: false,
+        reason: "quota_exceeded",
+        fallbackToLocal: true,
+        quotaResetAt: "2026-08-20T03:00:00.000Z",
+      });
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      const pdfFile = new File(["%PDF-1.7\nquota-test"], "fatura-cota.pdf", {
+        type: "application/pdf",
+      });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(input, pdfFile);
+
+      expect(await screen.findAllByText(/Limite de IA atingido/i)).not.toHaveLength(0);
+      // Aborta imediatamente: 1 única chamada (sem escalada Vision automática)
+      expect(mockExtractStatementPdfRowsWithAi).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("Fase 3 — Ciclo Fechado de Auto-Aprendizado com Shadow Replay", () => {
+    const buildNovelBankPdfMonth1 = () =>
+      [
+        "Banco Horizonte S.A.",
+        "Fatura Mensal - Agosto de 2026",
+        "Titular: JOAO CARLOS DA SILVA",
+        "CPF: 123.456.789-00",
+        "01/08/2026 Limite pre aprovado vigente 15.000,00",
+        "Valor da fatura: R$ 420,50",
+        "Movimento Exclusivo Cartao Titular",
+        "10/08/2026 Padaria Estrela 120,50",
+        "12/08/2026 Mercado Central 200,00",
+        "15/08/2026 Farmacia Popular 100,00",
+        "Resumo Programa Fidelidade Bonus",
+        "30/08/2026 Pontos acumulados ciclo 250,00",
+      ].join("\n");
+
+    const buildNovelBankPdfMonth2 = () =>
+      [
+        "Banco Horizonte S.A.",
+        "Fatura Mensal - Setembro de 2026",
+        "Campanha de Primavera Exclusiva",
+        "Titular: MARIA OLIVEIRA SOUZA",
+        "CPF: 987.654.321-11",
+        "01/09/2026 Limite pre aprovado vigente 18.000,00",
+        "Valor da fatura: R$ 310,75",
+        "Movimento Exclusivo Cartao Titular",
+        "08/09/2026 Padaria Estrela 110,75",
+        "14/09/2026 Supermercado Dia 200,00",
+        "Resumo Programa Fidelidade Bonus",
+        "28/09/2026 Pontos acumulados ciclo 410,00",
+      ].join("\n");
+
+    it("NÃO persiste blueprint rascunho quando o usuário cancela/fecha o modal sem confirmar importação", async () => {
+      const user = userEvent.setup();
+      mockExtractStatementPdfRowsWithAi.mockReset();
+
+      mockUnpdfExtractText.mockResolvedValueOnce({
+        text: [buildNovelBankPdfMonth1()],
+        totalPages: 1,
+      });
+
+      mockExtractStatementPdfRowsWithAi.mockResolvedValueOnce({
+        ok: true,
+        cached: false,
+        source: "ai_text",
+        data: {
+          rows: [
+            { date: "2026-08-10", description: "Padaria Estrela", amountCents: 12050, installmentCurrent: null, installmentTotal: null, entryType: "purchase" },
+            { date: "2026-08-12", description: "Mercado Central", amountCents: 20000, installmentCurrent: null, installmentTotal: null, entryType: "purchase" },
+            { date: "2026-08-15", description: "Farmacia Popular", amountCents: 10000, installmentCurrent: null, installmentTotal: null, entryType: "purchase" },
+          ],
+          detectedTotalInvoiceCents: 42050,
+        },
+      });
+
+      const { unmount } = render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      const pdfFile = new File(["%PDF-1.7\nhorizonte-m1"], "BancoHorizonte_2026-08.pdf", {
+        type: "application/pdf",
+      });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      await user.upload(input, pdfFile);
+
+      expect(await screen.findByText("Mercado Central")).toBeInTheDocument();
+      // Antes do commit, nada foi salvo no store
+      expect(listStoredStatementBlueprints()).toHaveLength(0);
+
+      // Fecha/desmonta o modal sem importar
+      unmount();
+      expect(listStoredStatementBlueprints()).toHaveLength(0);
+    });
+
+    it("ciclo completo: 1ª fatura inédita via IA -> commit salva blueprint após Shadow Replay -> 2ª fatura (outro mês!) com IA desligada lê 100% no centavo com 0 tokens", async () => {
+      const user = userEvent.setup();
+      mockExtractStatementPdfRowsWithAi.mockReset();
+      mutateAsyncMock.mockClear();
+
+      // --- MÊS 1 (Agosto/2026): banco inédito usa IA e salva blueprint somente no Commit ---
+      mockUnpdfExtractText.mockResolvedValueOnce({
+        text: [buildNovelBankPdfMonth1()],
+        totalPages: 1,
+      });
+
+      mockExtractStatementPdfRowsWithAi.mockResolvedValueOnce({
+        ok: true,
+        cached: false,
+        source: "ai_text",
+        data: {
+          rows: [
+            { date: "2026-08-10", description: "Padaria Estrela", amountCents: 12050, installmentCurrent: null, installmentTotal: null, entryType: "purchase" },
+            { date: "2026-08-12", description: "Mercado Central", amountCents: 20000, installmentCurrent: null, installmentTotal: null, entryType: "purchase" },
+            { date: "2026-08-15", description: "Farmacia Popular", amountCents: 10000, installmentCurrent: null, installmentTotal: null, entryType: "purchase" },
+          ],
+          detectedTotalInvoiceCents: 42050,
+        },
+      });
+
+      const firstRender = render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={true}
+        />,
+      );
+
+      const pdfMonth1 = new File(["%PDF-1.7\nhorizonte-m1"], "BancoHorizonte_2026-08.pdf", {
+        type: "application/pdf",
+      });
+      await user.upload(
+        document.querySelector('input[type="file"]') as HTMLInputElement,
+        pdfMonth1,
+      );
+
+      expect(await screen.findByText("Mercado Central")).toBeInTheDocument();
+      expect(screen.getByText("Estruturado com IA")).toBeInTheDocument();
+      expect(mockExtractStatementPdfRowsWithAi).toHaveBeenCalledTimes(1);
+      expect(listStoredStatementBlueprints()).toHaveLength(0);
+
+      // Commit dispara Shadow Replay e persiste o blueprint aprendido
+      await user.click(screen.getByRole("button", { name: /Importar 3 Lançamentos/i }));
+
+      await waitFor(() => {
+        expect(listStoredStatementBlueprints()).toHaveLength(1);
+      });
+      const savedBp = listStoredStatementBlueprints()[0]!;
+      expect(savedBp.issuerKey).toBe("banco_horizonte");
+      expect(savedBp.origin).toBe("ai_learned");
+      expect(JSON.stringify(savedBp)).not.toMatch(/joao|silva|123\.456/i);
+
+      firstRender.unmount();
+
+      // --- MÊS 2 (Setembro/2026): IA DESLIGADA -> Blueprint aprendido lê 100% no centavo com 0 tokens ---
+      mockExtractStatementPdfRowsWithAi.mockClear();
+      mockUnpdfExtractText.mockResolvedValueOnce({
+        text: [buildNovelBankPdfMonth2()],
+        totalPages: 1,
+      });
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-09"
+          userId="user-1"
+          aiExtractionEnabled={false}
+        />,
+      );
+
+      const pdfMonth2 = new File(["%PDF-1.7\nhorizonte-m2"], "BancoHorizonte_2026-09.pdf", {
+        type: "application/pdf",
+      });
+      await user.upload(
+        document.querySelector('input[type="file"]') as HTMLInputElement,
+        pdfMonth2,
+      );
+
+      expect(await screen.findByText("Padaria Estrela")).toBeInTheDocument();
+      expect(screen.getByText("Supermercado Dia")).toBeInTheDocument();
+      // Ruídos pré e pós-tabela foram bloqueados pelo blueprint aprendido (0 vazamentos!)
+      expect(screen.queryByText(/Limite pre aprovado/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Pontos acumulados/i)).not.toBeInTheDocument();
+      // Badge explícito de layout aprendido + soma conferida + ZERO chamadas de IA
+      expect(screen.getByText("Leitura local (Layout aprendido)")).toBeInTheDocument();
+      expect(screen.getByText("Soma conferida")).toBeInTheDocument();
+      expect(mockExtractStatementPdfRowsWithAi).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Fase 4 — Assistente Guiado Sem Tokens (StatementBlockClipperStep — Camada 5)", () => {
+    it("encaminha para block_clipper inline quando Quality Gate reprova sem IA e salva blueprint user_learned somente no commit", async () => {
+      const user = userEvent.setup();
+      mockExtractStatementPdfRowsWithAi.mockReset();
+      mutateAsyncMock.mockClear();
+
+      const unseenInvoice = [
+        "Banco Horizonte S.A.",
+        "Fatura Mensal - Agosto de 2026",
+        "01/08/2026 Limite pre aprovado vigente 15.000,00",
+        "Valor da fatura: R$ 320,50",
+        "Movimento Exclusivo Cartao Titular",
+        "10/08/2026 Padaria Estrela 120,50",
+        "12/08/2026 Mercado Central 200,00",
+        "Resumo Programa Fidelidade Bonus",
+        "30/08/2026 Pontos acumulados ciclo 250,00",
+      ].join("\n");
+
+      mockUnpdfExtractText.mockResolvedValueOnce({
+        text: [unseenInvoice],
+        totalPages: 1,
+      });
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={mockCard}
+          competenceMonth="2026-08"
+          userId="user-1"
+          aiExtractionEnabled={false}
+        />,
+      );
+
+      const pdfFile = new File(["%PDF-1.7\nsem-ia"], "BancoHorizonte_SemIA.pdf", {
+        type: "application/pdf",
+      });
+      await user.upload(
+        document.querySelector('input[type="file"]') as HTMLInputElement,
+        pdfFile,
+      );
+
+      // Encaminha direto para o passo inline `block_clipper` (zero modais aninhados!)
+      expect(await screen.findByText("Recorte guiado de lançamentos")).toBeInTheDocument();
+      expect(screen.getAllByRole("dialog")).toHaveLength(1);
+      expect(mockExtractStatementPdfRowsWithAi).not.toHaveBeenCalled();
+
+      // Marca Início (Padaria Estrela) e Fim (Mercado Central)
+      await user.click(screen.getByText(/Padaria Estrela/i));
+      await user.click(screen.getByText(/Mercado Central/i));
+      expect(screen.getByText("Soma conferida")).toBeInTheDocument();
+
+      // Avança para Conferência (rascunho user_learned ainda NÃO foi salvo no store!)
+      await user.click(screen.getByRole("button", { name: /Avançar para Conferência/i }));
+      expect(await screen.findByText("Conferência da Fatura")).toBeInTheDocument();
+      expect(listStoredStatementBlueprints()).toHaveLength(0);
+
+      // Commit dispara Shadow Replay e salva o blueprint com origin: "user_learned"
+      await user.click(screen.getByRole("button", { name: /Importar 2 Lançamentos/i }));
+
+      await waitFor(() => {
+        expect(listStoredStatementBlueprints()).toHaveLength(1);
+      });
+      expect(listStoredStatementBlueprints()[0]?.origin).toBe("user_learned");
+      expect(listStoredStatementBlueprints()[0]?.issuerKey).toBe("banco_horizonte");
     });
   });
 });

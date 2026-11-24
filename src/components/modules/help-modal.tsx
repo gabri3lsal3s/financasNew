@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Compass, HelpCircle, MessageSquare } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, Badge, Button, Modal, ModalFooter } from "@/components/ui";
 import { SupportChatDialog } from "@/components/modules/support";
+import { useModalTransition } from "@/hooks/use-modal-transition";
 import { startDemo } from "@/state/demo-mode";
 import { FAQ_ITEMS } from "./help-faq-data";
 
@@ -24,12 +25,19 @@ export function HelpModal({
 }: HelpModalProps) {
   const navigate = useNavigate();
   const [supportChatOpen, setSupportChatOpen] = useState(false);
+  const [hasOpenedSupportChat, setHasOpenedSupportChat] = useState(false);
+  const { scheduleAfterClose, cancelTransition } = useModalTransition();
+
+  useEffect(() => {
+    if (open) cancelTransition();
+  }, [open, cancelTransition]);
 
   const handleStartTour = () => {
-    onOpenChange(false);
     if (onOpenDemoSelect) {
-      onOpenDemoSelect();
+      scheduleAfterClose(() => onOpenChange(false), onOpenDemoSelect);
     } else {
+      cancelTransition();
+      onOpenChange(false);
       startDemo("finances");
       navigate("/");
     }
@@ -37,10 +45,15 @@ export function HelpModal({
 
   const handleOpenSupport = () => {
     if (onOpenSupport) {
-      onOpenChange(false);
-      onOpenSupport();
+      scheduleAfterClose(() => onOpenChange(false), onOpenSupport);
     } else {
-      setSupportChatOpen(true);
+      scheduleAfterClose(
+        () => onOpenChange(false),
+        () => {
+          setHasOpenedSupportChat(true);
+          setSupportChatOpen(true);
+        },
+      );
     }
   };
 
@@ -127,7 +140,9 @@ export function HelpModal({
         </div>
       </Modal>
 
-      {supportChatOpen ? <SupportChatDialog open={supportChatOpen} onOpenChange={setSupportChatOpen} /> : null}
+      {hasOpenedSupportChat ? (
+        <SupportChatDialog open={supportChatOpen} onOpenChange={setSupportChatOpen} />
+      ) : null}
     </>
   );
 }

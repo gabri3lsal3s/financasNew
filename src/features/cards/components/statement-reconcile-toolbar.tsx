@@ -103,8 +103,8 @@ export function StatementReconcileToolbar({
               <Copy className="size-4 shrink-0 text-warning-strong" aria-hidden="true" />
               <span className="text-xs text-foreground">
                 {duplicateCount === 1
-                  ? "1 potencial duplicidade detectada nesta fatura."
-                  : `${duplicateCount} potenciais duplicidades detectadas nesta fatura.`}
+                  ? "1 potencial duplicidade detectada (app ou arquivo)."
+                  : `${duplicateCount} potenciais duplicidades detectadas (app ou arquivo).`}
               </span>
             </div>
             <div className="flex items-center gap-2">

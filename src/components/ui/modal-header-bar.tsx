@@ -132,7 +132,7 @@ export function ModalHeaderBar({
           {isScrolled ? (
             <span
               aria-hidden="true"
-              className="block text-xs font-semibold text-foreground truncate transition-opacity duration-150 animate-in fade-in-0"
+              className="block text-xs font-semibold text-foreground truncate transition-opacity duration-150 animate-fade-in"
             >
               {title}
             </span>

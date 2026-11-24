@@ -225,4 +225,43 @@ describe("AppLockOverlay", () => {
 
     rootEl.remove();
   });
+
+  it("oculta o botão 'Usar Biometria' na Web quando não há biometria disponível", async () => {
+    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(false);
+    vi.spyOn(nativeModule, "isPinLockConfigured").mockReturnValue(true);
+    vi.spyOn(nativeModule, "checkBiometricsAvailability").mockResolvedValue({
+      isAvailable: false,
+      biometryType: "none",
+      deviceIsSecure: false,
+    });
+
+    nativeModule.setAppLocked(true);
+    render(<AppLockOverlay />);
+
+    expect(screen.getByLabelText(/PIN de Acesso/i)).toBeInTheDocument();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole("button", { name: /Usar Biometria/i })).not.toBeInTheDocument();
+  });
+
+  it("exibe contagem regressiva do lockout de PIN e destaca CTA de saída após 10 falhas", () => {
+    vi.spyOn(nativeModule, "isNativePlatform").mockReturnValue(false);
+    vi.spyOn(nativeModule, "isPinLockConfigured").mockReturnValue(true);
+    vi.spyOn(nativeModule, "getPinLockoutState").mockReturnValue({
+      failedAttempts: 10,
+      lockedUntilMs: Date.now() + 45_000,
+    });
+
+    nativeModule.setAppLocked(true);
+    render(<AppLockOverlay />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/Muitas tentativas incorretas\. Aguarde \d+s/);
+    expect(screen.getByLabelText(/PIN de Acesso/i)).toBeDisabled();
+
+    const emergencyButton = screen.getByRole("button", {
+      name: /Sair da conta e entrar com senha/i,
+    });
+    expect(emergencyButton.className).toContain("text-critical-strong");
+  });
 });

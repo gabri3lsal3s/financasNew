@@ -123,11 +123,23 @@ export function normalizeDateToISO(
   return null;
 }
 
+export interface ParseAmountOptions {
+  /**
+   * Quando true, indica que o contexto do arquivo utiliza ponto (`.`) como separador decimal
+   * (ex.: OFX internacional, CSV/XLSX em padrão americano), impedindo que `1.500` sem vírgula
+   * seja interpretado como milhar brasileiro (`1500`).
+   */
+  preferDotDecimal?: boolean;
+}
+
 /**
  * Extrai o valor monetário em centavos (inteiro).
  * Retorna null se não for um número válido.
  */
-export function parseAmountToCents(raw: string): {
+export function parseAmountToCents(
+  raw: string,
+  options?: ParseAmountOptions,
+): {
   amountCents: number;
   isNegative: boolean;
   isCreditSuffix?: boolean;
@@ -140,6 +152,8 @@ export function parseAmountToCents(raw: string): {
   if (!/\d/.test(trimmed) || DATE_PATTERNS.some((p) => p.test(trimmed))) {
     return null;
   }
+
+  const hasExplicitBrlMarker = /(?:R\$|\bBRL\b|\breais\b|\breal\b)/i.test(trimmed);
 
   // Detecta prefixo ou sufixo D/C ou sinal no formato bancário brasileiro (ex.: "150,00 D", "2.000,00 C", "+ R$ 150,00", "(150,00)")
   const hasCreditPrefix = /^\+\s*(?:R\$|BRL|\$)?/i.test(trimmed);
@@ -173,13 +187,28 @@ export function parseAmountToCents(raw: string): {
     .replace(/\s*[+-]\s*$/, "")
     .trim();
 
+  // Suporte a notação científica (ex.: "2.5E+3", "1.25e+4") antes de remover letras
+  const sciCandidate = sanitized.replace(/^\((.+)\)$/, "$1").trim();
+  if (/^[+-]?\d+(?:[.,]\d+)?[eE][+-]?\d+$/.test(sciCandidate)) {
+    const parsedSci = Number(sciCandidate.replace(",", "."));
+    if (!Number.isFinite(parsedSci)) return null;
+    const amountCents = Math.round(Math.abs(parsedSci) * 100);
+    if (amountCents === 0) return null;
+    return {
+      amountCents,
+      isNegative: isCredit ? false : isNegative || parsedSci < 0,
+      isCreditSuffix: hasCreditSuffix || undefined,
+      isDebitSuffix: hasDebitSuffix || undefined,
+    };
+  }
+
   // Remove caracteres que não sejam dígitos, vírgula ou ponto
   const clean = sanitized.replace(/[^\d,.-]/g, "");
   if (!clean) return null;
 
   let normalized = clean.replace(/[-()]/g, "");
 
-  // Trata formato brasileiro: "1.234,56" -> "1234.56"
+  // Trata formato brasileiro: "1.234,56" -> "1234.56" e internacional: "1,234.56" -> "1234.56"
   if (normalized.includes(",") && normalized.includes(".")) {
     const lastComma = normalized.lastIndexOf(",");
     const lastDot = normalized.lastIndexOf(".");
@@ -191,8 +220,24 @@ export function parseAmountToCents(raw: string): {
       normalized = normalized.replace(/,/g, "");
     }
   } else if (normalized.includes(",")) {
-    // 1234,56
-    normalized = normalized.replace(",", ".");
+    if (/^\d{1,3}(?:,\d{3}){2,}$/.test(normalized)) {
+      // 1,200,000 (milhar internacional com 2+ grupos)
+      normalized = normalized.replace(/,/g, "");
+    } else {
+      // 1234,56
+      normalized = normalized.replace(",", ".");
+    }
+  } else if (normalized.includes(".")) {
+    if (/^\d{1,3}(?:\.\d{3}){2,}$/.test(normalized)) {
+      // 1.200.000 (milhar brasileiro com 2+ grupos)
+      normalized = normalized.replace(/\./g, "");
+    } else if (
+      /^\d{1,3}\.\d{3}$/.test(normalized) &&
+      (hasExplicitBrlMarker || !options?.preferDotDecimal)
+    ) {
+      // 1.500 sem vírgula em contexto brasileiro (ou com R$/BRL explícito) -> 1500
+      normalized = normalized.replace(/\./g, "");
+    }
   }
 
   const parsed = Number.parseFloat(normalized);
@@ -521,25 +566,14 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
     }
   }
 
-  // Encontra a melhor coluna de tipo (diferente de data e valor)
-  let bestTypeCol: number | undefined;
-  let maxTypeScore = 10; // Threshold mínimo
-  for (let i = 0; i < maxCols; i++) {
-    if (i === bestDateCol || i === bestAmountCol || i === bestDebitCol || i === bestCreditCol) continue;
-    if ((typeScores[i] ?? 0) > maxTypeScore) {
-      maxTypeScore = typeScores[i] ?? 0;
-      bestTypeCol = i;
-    }
-  }
-
-  // Encontra a melhor coluna de descrição (diferente de data, valor, tipo, débito e crédito)
-  let bestDescCol = 0;
+  // Prioridade absoluta: encontra a melhor coluna de descrição ANTES de tipo (D/C),
+  // garantindo que descriptionColIndex nunca colida com dateColIndex quando houver coluna livre.
+  let bestDescCol = -1;
   let maxTextScore = -Infinity;
   for (let i = 0; i < maxCols; i++) {
     if (
       i === bestDateCol ||
       i === bestAmountCol ||
-      i === bestTypeCol ||
       i === bestDebitCol ||
       i === bestCreditCol
     ) {
@@ -548,6 +582,38 @@ export function sniffColumnMapping(rows: RawParsedRow[]): ColumnMapping {
     if ((textScores[i] ?? 0) > maxTextScore) {
       maxTextScore = textScores[i] ?? 0;
       bestDescCol = i;
+    }
+  }
+
+  // Fallback defensivo caso exista apenas 2 colunas: evita colidir com bestDateCol
+  if (bestDescCol === -1) {
+    for (let i = 0; i < maxCols; i++) {
+      if (i !== bestDateCol) {
+        bestDescCol = i;
+        break;
+      }
+    }
+    if (bestDescCol === -1) bestDescCol = 0;
+  }
+
+  // Encontra a melhor coluna de tipo (D/C) apenas quando maxCols >= 4 e sem roubar a coluna de descrição
+  let bestTypeCol: number | undefined;
+  if (maxCols >= 4) {
+    let maxTypeScore = 10; // Threshold mínimo
+    for (let i = 0; i < maxCols; i++) {
+      if (
+        i === bestDateCol ||
+        i === bestAmountCol ||
+        i === bestDescCol ||
+        i === bestDebitCol ||
+        i === bestCreditCol
+      ) {
+        continue;
+      }
+      if ((typeScores[i] ?? 0) > maxTypeScore) {
+        maxTypeScore = typeScores[i] ?? 0;
+        bestTypeCol = i;
+      }
     }
   }
 
@@ -583,16 +649,27 @@ export function evaluateMappingConfidence(params: {
   let validAmounts = 0;
   let validTexts = 0;
 
+  const hasDualAmountCols =
+    mapping.debitColIndex !== undefined && mapping.creditColIndex !== undefined;
+
   for (const row of sample) {
     const dateCell = (row.cells[mapping.dateColIndex] ?? "").trim();
-    const amountCell = (row.cells[mapping.amountColIndex] ?? "").trim();
     const textCell = (row.cells[mapping.descriptionColIndex] ?? "").trim();
 
     if (normalizeDateToISO(dateCell) !== null || DATE_PATTERNS.some((p) => p.test(dateCell))) {
       validDates++;
     }
-    if (parseAmountToCents(amountCell) !== null) {
-      validAmounts++;
+    if (hasDualAmountCols) {
+      const debitCell = (row.cells[mapping.debitColIndex!] ?? "").trim();
+      const creditCell = (row.cells[mapping.creditColIndex!] ?? "").trim();
+      if (parseAmountToCents(debitCell) !== null || parseAmountToCents(creditCell) !== null) {
+        validAmounts++;
+      }
+    } else {
+      const amountCell = (row.cells[mapping.amountColIndex] ?? "").trim();
+      if (parseAmountToCents(amountCell) !== null) {
+        validAmounts++;
+      }
     }
     if (textCell.length >= 2 && parseAmountToCents(textCell) === null) {
       validTexts++;
