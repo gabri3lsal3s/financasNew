@@ -1,240 +1,399 @@
-# Plano de Auditoria: Largura de Botões de Cabeçalho e Sistema Universal de Playbooks Educativos
+# Plano Canônico de Engenharia e Design: Padronização de Cabeçalhos e Sistema Universal de Playbooks Educativos
 
-> **Status:** Proposto / Em Planejamento  
+> **Status:** Aprovado para Planejamento / Versão 2.0 Consolidada  
 > **Data:** 24 de Novembro de 2026  
-> **Documentos de Referência:** `AGENTS.md` (Regras 4, 7, 8, 13, 18, 21), `docs/architecture/ESPECIFICACAO_TECNICA.md`, `docs/design/DESIGN_SYSTEM.md`.  
-> **Autores:** Engenharia de Produto & Design System Axir  
+> **Documentos de Referência:** `AGENTS.md` (Regras 4, 7, 8, 13, 15, 18, 20, 21), `docs/architecture/ESPECIFICACAO_TECNICA.md`, `docs/architecture/ARCHITECTURE.md`, `docs/design/DESIGN_SYSTEM.md`.  
+> **Papel de Governança:** Arquiteto de Software Sênior & Product Designer Especialista em UX Mobile-First.  
+> **Regra de Execução desta Etapa:** Modo estrito de auditoria, análise e refinamento documental (zero alterações em código de produção ou testes).  
 
 ---
 
-## 1. Sumário Executivo & Diagnóstico da Auditoria
+## 1. Sumário Executivo & Visão do Produto
 
-O presente plano endereça duas frentes de grande impacto para a experiência, estética e retenção do aplicativo:
+O Axir é um ecossistema financeiro pessoal e colaborativo avançado. Seu diferencial reside em motores de cálculo sofisticados (Reconciliação Familiar via *Hamilton-Hare*, Liquidação de Viagens por *Min-Cash-Flow*, Rebalanceamento de Carteira por Aportes e DRE com Segregação PF/PJ).
 
-1. **Correção e Padronização da Largura e Altura dos Botões de Cabeçalho (`PageHeader`):**
-   - **Diagnóstico:** Na tela do **Modo Família** (evidenciada na captura enviada pelo usuário) e no **Modo Viagem**, os botões de ação do topo sofrem de hipertrofia visual: classes manuais como `max-sm:min-h-11` (44px de altura) e `w-full` forçam os botões a se expandirem como blocos maciços de ponta a ponta na tela do celular, quebrando a harmonia visual em relação às outras páginas do app (como Transações, Cartões, Dívidas e Orçamentos).
-   - **Solução:** Eliminação de classes infladas de altura (`min-h-11`), padronização canônica do tamanho `size="sm"` (`h-8` / `h-9` no mobile) e alinhamento responsivo proporcional sem deformação de largura.
+No entanto, a experiência do usuário enfrentava dois gargalos críticos identificados nesta auditoria:
 
-2. **Criação do Sistema de Playbooks Educativos & Metodológicos:**
-   - **Diagnóstico:** O modelo mental dos usuários diante de conceitos financeiros fundamentais frequentemente gera insegurança e abandono:
-     * *Em Lançamentos:* Dúvida entre lançar despesa por despesa ou em lote; como nomear itens sem poluição; e o erro crítico de cadastrar a "fatura do cartão" como uma despesa única no fim do mês, quebrando toda a inteligência orçamentária do app.
-     * *No Modo Família:* Dúvida sobre como dividir contas a dois (50/50 vs proporcional à renda vs caixa único vs frentes separadas) e o que é gasto da casa vs individual.
-     * *No Modo Viagem:* Dúvida sobre acerto no fim vs vaquinha prévia, viagens a trabalho reembolsáveis e isolamento do extrato doméstico.
-   - **Solução com Governança Anti-Poluição:**
-     * Criação de **Playbooks Interativos com Diagnóstico (Quiz) + Configuração com 1 Clique**.
-     * **Seletor Global em Configurações:** Um switch dedicado em *Ajustes $\rightarrow$ Interface* (`showEducationalPlaybooks`), exatamente idêntico ao da *Memória de Cálculo*, permitindo que usuários avançados desliguem completamente todos os atalhos de playbooks de todo o app, preservando o minimalismo.
+1. **Hipertrofia e Deformação de Botões de Cabeçalho no Mobile:**  
+   Em telas como o **Modo Família** e o **Modo Viagem**, classes pontuais injetadas no JSX (`max-sm:min-h-11` e `w-full min-h-11`) aliadas ao comportamento rígido do contêiner `PageHeader` criavam botões maciços de 44px de altura ocupando 100% da largura útil, com aspecto desproporcional e desconfortável quando comparados às páginas de Transações, Cartões, Investimentos e Dívidas.
+2. **Insegurança Metodológica dos Usuários:**  
+   Muitos usuários abandonam apps de finanças não por falta de recursos, mas por **dúvida metodológica** sobre o "jeito certo" de conduzir suas rotinas:
+   - *Em Lançamentos:* Incerteza entre cadastrar despesa por despesa ou em lote; como nomear itens sem poluição; e o erro fatal de cadastrar a "fatura do cartão" como uma despesa única no fim do mês (quebrando DRE, orçamentos e relatórios).
+   - *Em Investimentos:* O erro crônico de vender ativos para rebalancear gerando DARF e corretagem desnecessárias, ou misturar Reserva de Emergência com Renda Variável.
+   - *No Modo Família e Viagem:* A incapacidade de lidar com a variabilidade de dinâmicas humanas (50/50 vs proporcional à renda vs caixa único; amigos dividindo no bar vs férias de casal).
 
----
-
-## 2. Auditoria dos Botões de Cabeçalho (Modo Família, Viagem e Demais Páginas)
-
-### 2.1 Análise Comparativa do Código Atual
-
-| Página / Módulo | Linha de Código | Comportamento no Mobile (< sm) | Diagnóstico Visual |
-|---|---|---|---|
-| **Modo Família** (`family-page.tsx`) | `className="gap-1.5 max-sm:min-h-11"` nos 2 botões (`+ Convidar` e `Ajustes`) | `PageHeader` aplica `grid grid-cols-2 [&>*]:w-full` somado a `min-h-11` (44px) | **Grave:** Dois botões enormes ocupando 100% da largura útil, com altura desproporcional a outros cabeçalhos, parecendo botões de checkout. |
-| **Modo Viagem - Lista** (`trip-list-page.tsx`) | `className="gap-1.5 w-full sm:w-auto min-h-11 sm:min-h-8 shadow-xs"` no botão `+ Nova Viagem` | O botão único se estende por 100% da largura da tela (`w-full`) com 44px de altura (`min-h-11`) | **Grave:** Um único botão ocupando toda a horizontalidade como um bloco maciço. |
-| **Modo Viagem - Detalhes** (`trip-details-page.tsx`) | `TripDetailsHeaderActions` usa `flex items-center gap-2 flex-wrap` com botões `size="sm"` | Mantém largura natural baseada no texto/ícone | **Harmônico:** Largura intrínseca correta, mas com excesso de botões quebrando linha sem scroll. |
-| **Transações** (`transaction-list-page.tsx`) | Botões com `size="sm" className="gap-1.5"` | `grid grid-cols-2 gap-2` pelo `PageHeader` (2 ações) com altura padrão `h-8` | **Aceitável:** Distribuição simétrica, mas botões sofrem esticamento total da coluna. |
-| **Negócio** (`business-page.tsx`) | 4 botões com `size="sm" className="gap-1.5"` | `actionCount >= 3` ativa `overflow-x-auto no-scrollbar flex-nowrap` | **Excelente:** Botões mantêm largura compacta confortável e deslizam suavemente sem esticar. |
-
-### 2.2 Inconsistências Identificadas
-1. **Injeção de `max-sm:min-h-11` / `min-h-11`:** Violação do padrão sóbrio de cabeçalhos (`AGENTS.md` Regra 21). Botões de cabeçalho devem ser compactos (`size="sm"` / `h-8` a `h-9`).
-2. **Forçamento de `w-full` direto no botão:** Em `trip-list-page.tsx`, o botão `Nova Viagem` recebe `w-full` explícito, virando um banner horizontal isolado.
-3. **Rigidez de 2 Colunas no `PageHeader`:** Quando há 2 botões, a regra `[&>*]:w-full` estica ambos até os limites da tela mesmo quando os rótulos são curtos (ex: "Convidar" e "Ajustes"), criando grandes vazios laterais dentro de cada botão.
-
-### 2.3 Solução de Engenharia Proposta
-- **Padronização Canônica em `PageHeader.tsx`:**
-  * Remover classes de altura forçada dos botões filhos (`min-h-11`).
-  * Em pares de 2 botões no mobile: manter `grid grid-cols-2 gap-2 w-full sm:w-auto` com botões em altura canônica `h-9` (`size="sm"` adaptado ao toque mobile sem virar tijolo de 44px), ou permitir alinhamento natural `flex items-center gap-2 overflow-x-auto no-scrollbar`.
-  * No botão único de `trip-list-page.tsx`: remover `w-full min-h-11`, adotando `self-start sm:self-auto` ou largura intrínseca confortável.
+A solução unificada proposta combina a **padronização geométrica e ergonômica dos cabeçalhos** com a introdução do **Sistema Universal de Playbooks Educativos do Axir**: módulos consultivos leves, interativos, orientados a diagnóstico rápido (quiz de 2 a 3 perguntas) com **configuração executável em 1 clique** e **governança anti-poluição estrita via seletor global nas Configurações**.
 
 ---
 
-## 3. Playbook de Lançamentos & Gestão de Cartões
+## 2. Fase 0 — Meta-Análise Crítica e Auditoria da Codebase
 
-A maior fonte de abandono de apps financeiros reside na dúvida operacional do usuário: *"Como eu lanço minhas despesas do dia a dia sem enlouquecer?"*.
+### 2.1 Auto-Crítica do Escopo & Mitigação de Vieses
+
+Uma auditoria técnica honesta exige avaliar os próprios pressupostos para evitar desperdício de engenharia e complexidade acidental:
+
+| Pressuposto Inicial | Avaliação Crítica na Codebase Real | Diretriz Canônica Estabelecida |
+|---|---|---|
+| **"O problema dos botões gigantes é culpa exclusiva do componente `PageHeader`."** | **Falso.** A inspeção revelou que o `PageHeader` aplica `grid grid-cols-2 [&>*]:w-full` apenas para distribuir os botões simetricamente. A deformação grotesca em Família e Viagem foi provocada por **classes locais manuais** (`max-sm:min-h-11` e `w-full min-h-11`) introduzidas no JSX dessas páginas específicas. | A correção deve ser cirúrgica: limpar as classes locais infladas nas páginas e calibrar o `PageHeader` para manter botões em `size="sm"` (`h-9` mobile / `h-8` desktop) sem quebrar o layout das outras 25+ telas consumidoras. |
+| **"Toda área complexa do app precisa de um Playbook completo de 4 abas."** | **Risco Crítico de Inchaço (*Scope Creep*).** Transformar o app em um manual escolar infantilizado afasta o usuário experiente e infla o bundle. | **Critério Estrito de Gating:** Apenas recebem Playbook Dedicado os módulos onde o erro metodológico do usuário **corrompe os dados financeiros ou causa prejuízo real** (duplicar despesa com fatura, gerar DARF indevida, misturar PJ/PF). Telas de consumo analítico (Relatórios, Metas, Lembretes) devem receber apenas micro-dicas ou permanecer puramente minimalistas. |
+| **"A hit-area mínima da Apple/Google exige botões com altura visual de 44px no cabeçalho."** | **Conceito Errado de UX.** A diretriz WCAG 2.5.8 (Target Size Minimum) exige área de toque efetiva de 24×24px com espaçamento de 8px, ou 44×44px com alívio. Botões com altura visual de 36px (`h-9`) e padding horizontal com `gap-2` (8px) atendem plenamente à acessibilidade sem devorar o viewport vertical da tela. | Adotar altura canônica de `h-9` no mobile para botões de cabeçalho, preservando ergonomia ao toque sem criar blocos visuais maciços. |
+| **"O switch nas Configurações pode ser apenas um estado remoto no banco."** | **Ponto Cego de Conectividade.** Se a flag `showEducationalPlaybooks` depender de requisição remota na inicialização, causará *layout shift* (FOUC) ou botões piscando na tela ao abrir o app offline. | Reutilizar a arquitetura síncrona do `useVisualCustomization` e `visual-storage.ts` (armazenamento local em `localStorage` com chave por usuário + sincronização assíncrona com `custom_settings` no Supabase). |
+
+---
+
+### 2.2 Mapeamento do Raio de Impacto do `PageHeader`
+
+Foram auditadas todas as **26 telas e componentes** que consomem `<PageHeader />` no repositório:
+
+1. `src/features/transactions/pages/transaction-list-page.tsx` (2 ações: Exportar CSV + Nova Transação)
+2. `src/features/cards/pages/cards-page.tsx` (2 ações: Importar Fatura + Novo Cartão)
+3. `src/features/debts/pages/debts-page.tsx` (2 ações: Contrato + Nova Conta)
+4. `src/features/budgets/pages/budgets-page.tsx` (2 ações: Ajustar Orçamento + Nova Categoria)
+5. `src/features/reports/pages/reports-page.tsx` (2 ações: Exportar Relatório + Compartilhar)
+6. `src/features/investments/pages/investments-page.tsx` (2 ações com rótulos responsivos: Caixa + Nova Operação)
+7. `src/features/family/pages/family-page.tsx` (**Alvo da Correção:** 2 ações com `max-sm:min-h-11`)
+8. `src/features/trips/pages/trip-list-page.tsx` (**Alvo da Correção:** 1 ação com `w-full min-h-11`)
+9. `src/features/trips/pages/trip-details-page.tsx` (Múltiplas ações agrupadas em `TripDetailsHeaderActions`)
+10. `src/features/business/pages/business-page.tsx` (4 ações: Guia + Configurar + Transferir + Operação PJ $\rightarrow$ ativa `overflow-x-auto`)
+11. `src/features/insights/pages/insights-page.tsx` (1 ação: Filtros)
+12. `src/features/reminders/pages/reminders-page.tsx` (1 ação: Novo Lembrete)
+13. `src/features/settings/pages/settings-page.tsx` (0 ações)
+14. `src/features/family/components/family-onboarding-empty-view.tsx` (Empty states com PageHeader)
+15. `src/features/trips/components/details/trip-details-empty-views.tsx` (Empty states com PageHeader)
+16. *Telas Administrativas:* 9 páginas em `src/features/admin/pages/` e `admin-forensics-page.tsx`
+
+**Conclusão de Segurança:** Qualquer modificação estrutural na prop `actionsLayoutClass` do `PageHeader` afeta todas as páginas acima. A estratégia mais segura consiste em:
+- Eliminar as classes locais anômalas em `family-page.tsx` e `trip-list-page.tsx`.
+- Refinar a lógica de 2 botões no `PageHeader` para assegurar altura canônica `h-9` sem sobreposição.
+- Validar que a adição do botão de playbook nessas páginas elevará o `actionCount` para 3, ativando automaticamente o layout de chips horizontais fluidos (`overflow-x-auto no-scrollbar`), que já é comprovadamente elegante e harmônico no Modo Negócio.
+
+---
+
+## 3. Fase 1 — Matriz Holística de Priorização de Playbooks
+
+Mapeamento completo das áreas funcionais da codebase sob a ótica da fricção metodológica do usuário e do risco de corrupção contábil:
+
+| Módulo / Funcionalidade | Fricção Metodológica Inicial | Risco de Erro Crítico nos Dados | Frequência de Uso | Classificação Final | Justificativa Arquitetural |
+|---|---|---|---|---|---|
+| **Lançamentos & Gestão de Cartões** (`transactions` / `cards`) | **Altíssima** (maior causa de abandono de iniciantes) | **Crítico** (duplicação de despesas com fatura, quebra de DRE e orçamentos) | Diária (Core Loop) | **Playbook Dedicado (Onda 1)** | O erro de lançar a fatura inteira como despesa única destrói a base de dados do usuário. |
+| **Modo Família** (`family`) | **Altíssima** (atritos conjugais e modelos mentais divergentes) | **Alto** (acertos de contas distorcidos, sensação de injustiça) | Semanal / Mensal | **Playbook Dedicado (Onda 1)** | Usuários não sabem quando usar 50/50 vs proporcional ou o que pertence à casa. |
+| **Modo Viagem** (`trips`) | **Alta** (vaquinha prévia vs acerto no fim, estresse com rateio) | **Médio/Alto** (inflar custo de vida se não isolar da cesta da casa) | Eventual / Férias | **Playbook Dedicado (Onda 1)** | Essencial para orientar o rateio justo e blindar o extrato pessoal de distorções. |
+| **Modo Negócio / PJ** (`business`) | **Altíssima** (confusão patrimonial PF/PJ, risco fiscal) | **Crítico** (autuações fiscais, desenquadramento de MEI) | Semanal | **Playbook Dedicado Existente** | Já implementado com sucesso (`EducationalGuideModal`); serve de referência. |
+| **Investimentos & Carteira** (`investments`) | **Altíssima** (insegurança em alocação, medo de errar no aporte) | **Crítico** (DARF indevida por giro de carteira, resgate de emergência no prejuízo) | Semanal / Mensal | **Playbook Dedicado (Onda 2)** | O motor de rebalanceamento por aportes do Axir exige alinhamento conceitual imediato. |
+| **Contas & Dívidas** (`debts`) | **Alta** (estratégia de amortização: matemática vs psicológica) | **Alto** (rolagem de crédito rotativo e contração de juros abusivos) | Mensal | **Playbook Dedicado (Onda 2)** | Decisão crucial entre método Bola de Neve (psicológico) vs Avalanche (matemático). |
+| **Orçamentos & Tetos** (`budgets`) | Média / Alta (50/30/20 vs Base Zero) | Médio (tetos irreais abandonados na 2ª semana) | Mensal | **Micro-guia / Kits Contextuais** | O módulo já possui o sistema de kits orçamentários (`kits.ts`); dialog explicativo resolve. |
+| **Contas, Saldos & Checkpoints** (`accounts` / `reconciliation`) | Média (conciliação bancária vs ajuste de saldo) | Médio (criação de transações fantasmas de ajuste) | Semanal | **Micro-guia / Dica Contextual** | Tooltip e card explicativo dentro do diálogo de conciliação de saldo bastam. |
+| **Metas Financeiras** (`goals`) | Baixa (sonhos, prazos e caixinhas) | Baixo (apenas poupança direcionada) | Eventual | **Não Precisa de Playbook** | A interface de metas e prazos já é 100% intuitiva; adicionar playbook geraria poluição. |
+| **Relatórios Executivos & Projeções** (`reports` / `insights`) | Baixa / Média (interpretação de gráficos e DRE) | Zero (camada de leitura analítica) | Mensal | **Não Precisa de Playbook** | Já atendido com maestria pelo sistema de **Memória de Cálculo e Explicabilidade**. |
+| **Lembretes & Recorrências** (`reminders`) | Baixa (contas com vencimento agendado) | Baixo | Pontual | **Não Precisa de Playbook** | Formulário direto e autoexplicativo. |
+
+---
+
+### 2.3 Especificação dos Playbooks Dedicados Novamente Priorizados
+
+#### A. Playbook de Investimentos & Rebalanceamento Inteligente (`InvestmentsEducationalGuideModal`)
+
+* **As 4 Dúvidas e Erros Fatais dos Usuários:**
+  1. *O Erro do Giro de Carteira:* Achar que para rebalancear a carteira é necessário vender o ativo que subiu para comprar o que caiu. Isso gera DARF antecipada (15% em ações, 20% em FIIs), taxas de custódia/corretagem e interrompe o poder dos juros compostos.
+  2. *A Ilusão da Reserva em Renda Variável:* Deixar o dinheiro de emergência em Fundos Imobiliários ou Ações atraído pelo dividendo mensal, sendo obrigado a vender cotas desvalorizadas no pior momento.
+  3. *O Mito da Isenção Geral no IRPF:* Acreditar que a isenção de R\$ 20.000 de vendas mensais em ações se aplica a FIIs e ETFs (não se aplica: qualquer lucro de venda em FII paga 20% de DARF!).
+  4. *O Abismo do "Preço Médio Cego":* Fazer preço médio para baixo em ativos que perderam completamente a governança ou que estão rumo à falência.
+* **Os 4 Arquétipos e Pilares Mentais:**
+  1. *Aporte Inteligente:* Você nunca vende ativos vencedores para equilibrar fatias; você usa o dinheiro novo do mês para comprar exclusivamente o ativo que está mais distante da sua meta percentual.
+  2. *A Pirâmide Patrimonial:* Caixa Operacional $\rightarrow$ Reserva de Emergência (liquidez diária) $\rightarrow$ Renda Fixa de Médio Prazo $\rightarrow$ Renda Variável de Longo Prazo.
+  3. *Score de Ativos & Governança:* O motor do Axir avalia a solidez antes de recomendar aportes; se a nota do ativo caiu, ele congela novas compras.
+  4. *Fiscalidade Proativa:* Como o monitor de DARF e prejuízos a compensar protege o investidor de multas da Receita Federal.
+* **CTAs Acionáveis Conectados ao App:**
+  - `Ajustar Metas da Carteira` $\rightarrow$ Abre o diálogo `AllocationBreakdownDialog`.
+  - `Calcular Aporte do Mês` $\rightarrow$ Abre o diálogo `ContributionFormDialog`.
+  - `Auditar Reserva de Emergência` $\rightarrow$ Direciona para o card de Reserva da Home.
+
+---
+
+#### B. Playbook de Contas & Dívidas (`DebtsEducationalGuideModal`)
+
+* **As 3 Dúvidas e Erros Fatais dos Usuários:**
+  1. *A Armadilha do Empréstimo Substituto:* Pegar um empréstimo consignado ou pessoal para quitar o cartão e continuar utilizando o limite liberado do cartão (duplicando o endividamento).
+  2. *Pagamento Mínimo vs Rotativo:* A ilusão de que pagar o mínimo da fatura resolve o mês, sem compreender o Custo Efetivo Total (CET) de mais de 400% ao ano.
+  3. *Paralisia Decisória:* Não saber qual dívida priorizar quando há múltiplos credores.
+* **Os 3 Pilares e Arquétipos:**
+  1. *Método Bola de Neve (Snowball - Foco Psicológico):* Paga o valor mínimo em todas e quita primeiro a dívida de menor saldo. Elimina uma conta rapidamente, gerando vitória emocional e alívio mental.
+  2. *Método Avalanche (Foco Matemático):* Quita primeiro a dívida com a maior taxa de juros (geralmente cartão ou cheque especial). Economiza o máximo de dinheiro em juros ao longo do tempo.
+  3. *Estratégia de Amortização Extraordinária:* Abater parcelas do saldo devedor diretamente no final do contrato (reduz juros futuros drasticamente).
+* **CTAs Acionáveis Conectados ao App:**
+  - `Ordenar Esteira por Avalanche` $\rightarrow$ Aplica a ordenação automática na lista de dívidas.
+  - `Ordenar Esteira por Bola de Neve` $\rightarrow$ Ajusta a prioridade na esteira.
+  - `Registrar Renegociação` $\rightarrow$ Abre o modal de amortização de contrato com desconto.
+
+---
+
+## 4. Fase 2 — Refinamento Técnico e Governança Anti-Poluição
+
+### 4.1 Solução Geométrica para Cabeçalhos e Botões (`PageHeader`)
+
+#### O Diagnóstico Detalhado da Quebra Visual
+1. **Em `src/features/family/pages/family-page.tsx`:**  
+   Linhas 134 e 151:
+   ```tsx
+   // ANTES (Causa da deformação)
+   className="gap-1.5 max-sm:min-h-11"
+   ```
+   A classe `max-sm:min-h-11` força uma altura de 44px no mobile. Como o `PageHeader` aplica `grid grid-cols-2 gap-2 [&>*]:w-full`, os botões tornam-se blocos retangulares pesados, gerando o "efeito tijolo".
+2. **Em `src/features/trips/pages/trip-list-page.tsx`:**  
+   Linha 173:
+   ```tsx
+   // ANTES (Causa da deformação)
+   className="gap-1.5 w-full sm:w-auto min-h-11 sm:min-h-8 shadow-xs"
+   ```
+   O botão único recebe `w-full min-h-11`, esticando-se por 100% da largura útil da tela com 44px de altura.
+
+#### A Solução Canônica de Engenharia
+1. **Limpeza nas Telas:**
+   - Em `family-page.tsx`: remover `max-sm:min-h-11`. Utilizar `size="sm"` canônico com `className="gap-1.5"`.
+   - Em `trip-list-page.tsx`: remover `w-full min-h-11 sm:min-h-8`. Utilizar `size="sm" className="gap-1.5 shadow-xs"`.
+2. **Harmonia de Altura e Área de Toque (WCAG 2.5.8):**
+   - No mobile, botões `size="sm"` possuem altura canônica de `h-8` a `h-9` (32px a 36px) com padding vertical `py-2` e `gap-2` (8px).
+   - O espaçamento de 8px e a ausência de elementos clicáveis colados acima/abaixo conferem área de toque segura e confortável sem necessidade de inflar artificialmente a caixa visual para 44px.
+3. **Comportamento quando o Playbook for Adicionado:**
+   - No Modo Família, ao adicionar o botão `Guia da Família` ao lado de `Convidar` e `Ajustes`, o número de ações passará de 2 para 3.
+   - O `PageHeader` ativará automaticamente o layout `actionCount >= 3`:
+     ```tsx
+     "flex items-center justify-start sm:justify-end gap-2 overflow-x-auto no-scrollbar sm:flex-nowrap shrink-0 w-full sm:w-auto"
+     ```
+   - Os botões passarão a ser chips compactos com rolagem horizontal suave (`shrink-0 min-w-fit px-3 py-1.5`), eliminando instantaneamente o esticamento de 2 colunas e harmonizando a interface com o padrão já elogiado do Modo Negócio.
+
+---
+
+### 4.2 Governança Anti-Poluição: O Seletor Global em Configurações
+
+O maior risco de adicionar playbooks é criar poluição visual para o usuário veterano que já domina a ferramenta. Para assegurar controle total:
+
+```mermaid
+flowchart LR
+    subgraph Config["Ajustes → Interface"]
+        SW["Switch Global:<br/><b>Playbooks e Guias Metodológicos</b><br/>(showEducationalPlaybooks)"]
+    end
+
+    subgraph Estado["Estado & Persistência Reutilizados"]
+        LS["localStorage (Síncrono/Offline)"]
+        HOOK["useVisualCustomization()"]
+        MUT["Supabase (custom_settings)"]
+    end
+
+    subgraph Telas["Renderização Condicional nas Telas"]
+        T1["Cabeçalhos (PageHeader Actions)"]
+        T2["Links em Diálogos (Rodapé)"]
+        T3["Botões Secundários em Empty States"]
+    end
+
+    SW --> HOOK
+    HOOK <--> LS
+    HOOK --> MUT
+    HOOK -- "false" -->|Oculta 100% dos botões| Telas
+    HOOK -- "true" -->|Exibe atalhos discretos| Telas
+```
+
+#### Mecânica de Implementação Reutilizada
+1. **Contrato de Tipos (`src/types/schema.ts`):**
+   Adicionar no tipo `UserSettings` / `custom_settings`:
+   ```ts
+   showEducationalPlaybooks?: boolean;
+   ```
+2. **Domínio de Preferências Visuais (`src/domain/preferences/visual-defaults.ts`):**
+   - Campo em `VisualCustomizationSettings`: `showEducationalPlaybooks: boolean;`
+   - Chave em `VISUAL_STORAGE_KEYS`: `showEducationalPlaybooks: "show_educational_playbooks"`
+   - Default em `DEFAULT_VISUAL_CUSTOMIZATION`: `showEducationalPlaybooks: true`
+3. **Camada de Armazenamento (`src/services/visual-storage.ts`):**
+   - Persistência e hidratação síncrona com `getUserStorageItem` / `setUserStorageItem`.
+4. **Hook Central (`src/hooks/use-visual-customization.ts`):**
+   - Expor `showEducationalPlaybooks` e `setShowEducationalPlaybooks`.
+5. **Interface em Ajustes (`src/features/settings/components/tabs/interface-shortcuts-card.tsx`):**
+   - Novo card idêntico ao da *Memória de Cálculo*, posicionado imediatamente após o card da memória de cálculo:
+     * Ícone: `BookOpen`
+     * Título: `Playbooks e Guias Metodológicos`
+     * Descrição Ativo: *"Exibe atalhos para os guias práticos e playbooks metodológicos nas páginas (Família, Viagens, Lançamentos, Negócio e Dívidas)."*
+     * Descrição Inativo: *"Oculto. Mantém a interface 100% minimalista e focada em dados, ocultando os botões de guias educativos."*
+6. **UX do Atalho "Desativar atalhos de guias" dentro dos Modais:**
+   - No rodapé de cada playbook, ao lado do botão "Fechar", incluir link discreto:
+     `<Button variant="ghost" size="xs" onClick={handleDisableAllGuides}>Desativar atalhos de guias</Button>`
+   - Ao clicar, desliga a flag global, fecha o modal e emite feedback sonoro/tátil e toast informativo:
+     *"Guias educativos desativados. Você pode reativá-los a qualquer momento em Ajustes → Interface."*
+7. **Regra Estrita de Empty States:**
+   - Se `showEducationalPlaybooks === false`, o botão secundário "Ver Guia" no `EmptyState` não é renderizado, exibindo apenas o CTA operacional primário.
+   - Zero `autoFocus` declarativo no mobile em formulários e modais (respeitando estritamente a Regra 20 do `AGENTS.md`).
+
+---
+
+### 4.3 Arquitetura de Software: Registro Declarativo de Playbooks (DRY)
+
+Para não duplicar código e estruturas de modal (respeitando a Regra 4 do `AGENTS.md`):
+
+1. **Componente Shell Genérico:**  
+   `src/components/modules/playbooks/interactive-playbook-modal.tsx`  
+   Estrutura padronizada:
+   - Header com título, subtítulo e badge de método.
+   - Tabs fluidas com scroll desobstruído (`variant="underline"`, `fullWidth={false}`).
+   - Stepper de Quiz com feedback tátil (`triggerSensory("selection")`).
+   - Card de recomendação com explicação fiscal/metodológica e botão de aplicação 1-Click.
+   - Seções de boas práticas comparativas (verde vs vermelho).
+   - Rodapé com botão de fechar e atalho de desativação global.
+2. **Definições Puras de Conteúdo em Domínio:**  
+   Colocalizadas em `src/domain/playbooks/`:
+   - `transaction-playbook.ts`
+   - `family-playbook.ts`
+   - `trip-playbook.ts`
+   - `investments-playbook.ts`
+   - `debts-playbook.ts`
+   Totalmente testadas com Vitest (`*.test.ts`), sem dependências de UI ou Supabase.
+
+---
+
+## 5. Especificação Técnica dos Playbooks Core
+
+### 5.1 Playbook de Lançamentos & Gestão de Cartões (`TransactionEducationalGuideModal`)
 
 ```mermaid
 flowchart TD
-    subgraph Dores["Dúvidas & Erros Clássicos dos Usuários"]
-        D1["Dúvida de Granularidade:<br/>Registro centavo a centavo ou em lote?"]
-        D2["Dúvida de Nomenclatura:<br/>Como descrever sem virar um diário prolixo?"]
-        D3["Erro Fatal do Cartão:<br/>Lançar o valor da fatura como despesa única no fim do mês!"]
-    end
+    Q1["Pergunta 1:<br/>Qual é o seu ritmo de registro desejado?"] -->|Tempo Real| R1["Lançamento Manual Rápido"]
+    Q1 -->|Semanal / Revisão| R2["Importação Inteligente"]
+    Q1 -->|Fechamento do Mês| R3["Conciliação Mensal"]
 
-    subgraph Playbook["O Playbook de Lançamentos do Axir"]
-        P1["Aba 1: Quiz de Rotina de Registro<br/><b>(Rápido, Equilibrado ou Detalhista)</b>"]
-        P2["Aba 2: A Anatomia do Lançamento Limpo<br/><b>(Categoria Forte + Descrição Enxuta)</b>"]
-        P3["Aba 3: O Cartão de Crédito Desmistificado<br/><b>(Meio de Pagamento vs Despesa vs Pagamento de Fatura)</b>"]
-        P4["Aba 4: Importação Automática & Conciliação<br/><b>(Zero Digitação Manual via Fatura / Pix)</b>"]
-    end
+    Q2["Pergunta 2:<br/>Qual a forma de pagamento dominante?"] -->|Cartão de Crédito| S1["Importação de Fatura OFX/CSV<br/>+ Agrupamento por Competência"]
+    Q2 -->|Pix & Dinheiro| S2["Leitor de Comprovantes Pix IA<br/>+ Registro de Carteira"]
+    Q2 -->|Misto| S3["Fluxo Híbrido Equilibrado"]
 
-    Dores --> Playbook
+    R1 & R2 & R3 & S1 & S2 & S3 --> REC["Recomendação Prescritiva com CTA 1-Click"]
 ```
 
-### 3.1 Conteúdo Estruturado do Playbook de Lançamentos (`TransactionEducationalGuideModal`)
-
-#### Aba 1: Descubra seu Ritmo de Registro (Quiz Interativo)
-- **Passo 1:** *Com que frequência você quer interagir com o app?*
-  - Opção A: "Todos os dias no momento da compra (tempo real)."
-  - Opção B: "1 vez por semana ou no fim de semana (revisão de extrato)."
-  - Opção C: "1 vez por mês ao fechar as contas."
-- **Passo 2:** *Como você realiza a maioria dos seus pagamentos?*
-  - Opção A: "Quase tudo no Cartão de Crédito."
-  - Opção B: "Muito Pix e Débito no dia a dia."
-  - Opção C: "Misto (Cartão, Pix, Boleto e Dinheiro vivo)."
-- **Recomendação Acionável (com botão 1-Click):**
-  - Para quem usa muito cartão: *"Recomendamos o fluxo de Importação de Fatura (OFX/CSV) + Notificações instantâneas. Você não precisa digitar compras manuais uma a uma."*
-  - Para quem faz muito Pix: *"Recomendamos o Importador de Comprovantes Pix com leitura por IA."*
-
-#### Aba 2: Categoria vs Descrição — A Regra da Clareza
-Desmistifica a confusão entre o que escrever na descrição:
-- **A Regra de Ouro:** A **Categoria** é o que alimenta seus gráficos, limites e inteligência orçamentária (`Alimentação`, `Transporte`, `Lazer`). A **Descrição** serve apenas para você lembrar o local ou o motivo em 2 a 3 palavras.
-- **Tabela Comparativa "O que Fazer vs O que Evitar":**
-  * ❌ *Evitar:* "Almoço de domingo que fui comer lasanha com meu primo em Campinas" $\rightarrow$ Quebra a tabela, corta na tela do celular e polui relatórios.
-  * ✅ *Fazer:* Categoria: `Alimentação` | Descrição: `Restaurante Bella Pasta` | Nota opcional: `#almoço-família`.
-  * ❌ *Evitar:* "Uber para ir até a casa da minha tia buscar a chave do portão".
-  * ✅ *Fazer:* Categoria: `Transporte` | Descrição: `Uber Viagem`.
-
-#### Aba 3: O Grande Mito do Cartão de Crédito
-Explica de forma visual e amigável o erro de lançar a fatura como uma despesa:
-1. **O Cartão é Meio de Pagamento, não Categoria:**
-   - Se você gasta R\$ 2.000 no supermercado e R\$ 1.000 no posto de combustível no cartão de crédito, esses R\$ 3.000 pertencem a `Alimentação` e `Transporte`.
-   - Se você lançar no final do mês "Fatura do Cartão R\$ 3.000", você destrói o histórico de quanto comeu e quanto rodou de carro!
-2. **Como o Axir Resolve Isso Automaticamente:**
-   - Você lança as compras vinculadas ao cartão durante o mês. O app agrupa tudo na fatura da competência certa.
-   - Quando você paga o boleto do cartão da sua conta bancária, registra-se como **Transferência Interna** (Conta $\rightarrow$ Cartão) ou Pagamento de Fatura. O dinheiro sai do seu saldo bancário **sem contar como nova despesa** (prevenindo duplicar gastos)!
-
-#### Aba 4: Compras Parceladas & Competência
-- O que acontece quando você compra uma geladeira em 10x de R\$ 300?
-- O Axir projeta os R\$ 300 nos próximos 10 meses nas faturas certas, sem você ter que lembrar de lançar todo mês.
+#### As 4 Abas do Playbook de Lançamentos:
+1. **Aba 1: Quiz de Ritmo & Diagnóstico:**  
+   Microfluxo client-side de 2 perguntas objetivas. Sugere o melhor caminho e fornece CTAs imediatos:
+   - Se Cartão: CTA `Importar Fatura` (`onOpenImport`).
+   - Se Pix: CTA `Ler Comprovante Pix` (`onOpenPixScanner`).
+   - Se Dinheiro/Manual: CTA `Novo Lançamento` (`onOpenNewTx`).
+2. **Aba 2: A Anatomia do Lançamento Limpo (Categoria vs Descrição):**  
+   - Ensinar que o campo **Categoria** é o motor estatístico do app (`Alimentação`, `Transporte`, `Lazer`).
+   - O campo **Descrição** deve conter apenas o **Nome do Estabelecimento** (ex.: `Padaria Estrela`, `Uber Viagem`, `Supermercado Pão de Açúcar`).
+   - Explicar que o importador de faturas do Axir já realiza a higienização automática (remove prefixos sujos como `PAG*`, `UBER*TRIP`, etc.), portanto o usuário deve adotar a mesma elegância nos lançamentos manuais.
+3. **Aba 3: O Mito da "Fatura como Despesa":**  
+   - Explicação visual didática: o cartão é apenas a forma de pagamento. O almoço no restaurante foi despesa de `Alimentação` no dia em que ocorreu.
+   - O pagamento da fatura no fim do mês é registrado no Axir como **Transferência Interna** (Conta Bancária $\rightarrow$ Cartão) ou Pagamento de Fatura, **sem contar como nova despesa** e sem duplicar seu custo de vida.
+4. **Aba 4: Compras Parceladas no Cartão:**  
+   - Como o Axir distribui as parcelas (1 a 60) nas competências futuras automaticamente, mantendo a projeção de fluxo de caixa e o termômetro de faturas sempre precisos.
 
 ---
 
-## 4. Playbooks para Modo Família e Modo Viagem
+### 5.2 Playbook do Modo Família (`FamilyEducationalGuideModal`)
 
-### 4.1 Playbook do Modo Família (`FamilyEducationalGuideModal`)
-
-Mapeia a variabilidade dos 4 modelos mentais familiares:
-
-1. **Modelo Proporcional à Renda (Fair Share / Hamilton-Hare):**
-   - Ideal quando há diferença relevante de salários (ex: 70% e 30%).
-   - Cada um contribui na proporção exata da sua capacidade financeira.
-   - *Ação 1-Click:* Configura a regra `proportional` e define as cotas com base na renda dos membros.
-2. **Modelo Igualitário 50/50:**
-   - Despesas compartilhadas da casa divididas estritamente ao meio.
-   - Ideal para casais com rendas parecidas ou repúblicas de amigos.
-   - *Ação 1-Click:* Configura a regra `equal`.
-3. **Modelo de Caixa Único (Fusão Patrimonial Total):**
-   - O dinheiro de ambos cai na mesma conta familiar imaginária.
-   - Não há acerto de Pix entre o casal no final do mês; o foco é o teto total da casa e os investimentos conjuntos.
-   - *Ação 1-Click:* Configura a regra `combined`.
-4. **O que é da Casa vs O que é Pessoal:**
-   - Tabela educativa de despesas comuns (aluguel, condomínio, luz, mercado, farmácia infantil) vs despesas individuais (hobbies, roupas pessoais, almoço individual no trabalho).
+* **Aba 1: Quiz de Arquétipo Familiar (Diagnóstico):**
+  - Mapeia a realidade do casal (diferença salarial, contas unificadas vs separadas, nível de privacidade desejado).
+  - Prescrição 1-Click: dispara `updateFamilySettingsMutation.mutate({ split_rule: 'proportional' | 'equal' | 'combined' })`.
+* **Aba 2: Os 3 Modelos de Divisão:**
+  1. *Proporcional à Renda (Fair Share / Hamilton-Hare):* Quem ganha 70% da renda arca com 70% das contas compartilhadas.
+  2. *Igualitário (50/50):* Contas divididas meio a meio.
+  3. *Caixa Único (Fusão Patrimonial):* Foco no teto global da casa e no patrimônio unificado; sem cobranças entre o casal.
+* **Aba 3: O que é da Casa vs O que é Individual:**
+  - Tabela comparativa clara: moradia, feira, remédios dos filhos e contas de consumo pertencem à Casa; presentes, hobbies pessoais, roupas e saídas individuais saem do bolso individual.
+* **Aba 4: O Fechamento Sem Constrangimento:**
+  - Demonstra como o Axir calcula o saldo devedor/credor e gera o Pix de transferência direta com QR Code e chave copiada, encerrando o mês com transparência e harmonia.
 
 ---
 
-### 4.2 Playbook do Modo Viagem (`TripEducationalGuideModal`)
+### 5.3 Playbook do Modo Viagem (`TripEducationalGuideModal`)
 
-Mapeia os 4 arquétipos de viagem:
-
-1. **Viagem em Galera / Amigos (Algoritmo Min-Cash-Flow):**
-   - "Quem tiver na vez paga". Não precisa transferir Pix no meio do restaurante.
-   - O Axir consolida o extrato da viagem e calcula no final o número mínimo de transferências Pix para zerar todos os saldos.
-2. **Fundo Pré-Pago ("Caixinha da Viagem"):**
-   - Cada membro antecipa um valor fixo (ex: R\$ 500) antes da viagem começar.
-   - O app audita o consumo do fundo compartilhado.
-3. **Viagem em Casal / Férias da Família:**
-   - O foco não é cobrar o parceiro, mas controlar o **ritmo diário de gastos (Daily Burn-Rate)** para não estourar o limite das férias.
-4. **Viagem a Trabalho / Reembolsável:**
-   - Como usar o `report_weight: 0%` para despesas pagas do bolso próprio que serão reembolsadas pela empresa, sem distorcer o custo de vida pessoal.
+* **Aba 1: Qual é o Perfil da sua Viagem? (Quiz):**
+  - Avalia se é viagem em grupo grande, férias em casal, viagem solo ou deslocamento a trabalho.
+* **Aba 2: Viagem em Grupo & Rateio Descomplicado:**
+  - Ensina a regra "quem tiver na vez paga". O algoritmo *Min-Cash-Flow* calcula no final o menor número de transferências Pix para zerar o grupo.
+* **Aba 3: Viagem a Trabalho & Despesas Reembolsáveis:**
+  - Como utilizar o parâmetro `report_weight: 0%` para despesas corporativas pagas no cartão pessoal que serão reembolsadas pela empresa, impedindo que gastos corporativos inflem seu custo de vida doméstico.
+* **Aba 4: Blindagem do Extrato Pessoal:**
+  - Explica como o vínculo `trip_id` isola compras de férias para que a média histórica de gastos e projeções da Home não fiquem distorcidas.
 
 ---
 
-## 5. Governança Anti-Poluição & Seletor Global em Configurações
+## 6. Roadmap Reorganizado em Ondas de Entrega
 
-Para garantir que os playbooks agreguem valor aos novos usuários sem irritar usuários veteranos, adota-se uma estratégia rigorosa de **Design Não-Intrusivo**:
+O plano foi estruturado em **3 Ondas Incrementais** para garantir testes contínuos, ausência de regressões e validação funcional passo a passo:
 
-### 5.1 O Seletor Global em Configurações
-Analogamente ao switch já existente de **Memória de Cálculo e Explicabilidade**, adicionaremos a configuração no perfil do usuário (`custom_settings`):
+```mermaid
+flowchart LR
+    subgraph Onda1["ONDA 1: Infraestrutura & Core"]
+        O1A["Correção de Cabeçalhos<br/>(Família & Viagem)"] --> O1B["Switch Global Ajustes<br/>(showEducationalPlaybooks)"]
+        O1B --> O1C["Shell Genérica de Playbooks<br/>(InteractivePlaybookModal)"]
+        O1C --> O1D["Playbook de Lançamentos & Cartões"]
+    end
 
-```tsx
-// src/features/settings/components/tabs/interface-shortcuts-card.tsx
+    subgraph Onda2["ONDA 2: Colaborativo & Rateio"]
+        O2A["Playbook do Modo Família<br/>(Com mutação 1-Click)"]
+        O2B["Playbook do Modo Viagem<br/>(Com Min-Cash-Flow e Reembolso)"]
+    end
 
-<div
-  className={cn(
-    "flex items-center justify-between gap-3 p-3.5 rounded-xl border transition-colors duration-150",
-    showEducationalPlaybooks ? "border-primary/40 bg-primary/5" : "border-border/80 bg-surface",
-  )}
->
-  <div className="flex items-center gap-3 min-w-0">
-    <BookOpen className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-    <div className="min-w-0">
-      <div className="font-semibold text-xs text-foreground">
-        Playbooks e Guias Metodológicos
-      </div>
-      <div className="text-[11px] text-muted-foreground">
-        {showEducationalPlaybooks
-          ? "Ativo. Exibe atalhos para os guias práticos e playbooks metodológicos nas páginas (Família, Viagens, Lançamentos, Negócio e Dívidas)."
-          : "Oculto. Mantém a interface 100% minimalista e focada em dados, ocultando os botões de guias educativos."}
-      </div>
-    </div>
-  </div>
-  <Switch
-    checked={showEducationalPlaybooks}
-    disabled={updateCustomSettingsMutation.isPending}
-    onCheckedChange={(checked) => {
-      triggerSensory("toggle");
-      setShowEducationalPlaybooks(checked);
-      updateCustomSettingsMutation.mutate({ showEducationalPlaybooks: checked });
-    }}
-    aria-label="Playbooks e Guias Metodológicos"
-  />
-</div>
+    subgraph Onda3["ONDA 3: Patrimônio & Estratégia"]
+        O3A["Playbook de Investimentos<br/>(Aporte sem giro de carteira)"]
+        O3B["Playbook de Contas & Dívidas<br/>(Bola de Neve vs Avalanche)"]
+    end
+
+    Onda1 --> Onda2
+    Onda2 --> Onda3
 ```
 
-### 5.2 Onde o Botão do Playbook Ficará Posicionado (quando habilitado)
-1. **No cabeçalho das páginas (`PageHeader`):** Botão compacto `size="sm"` com ícone sóbrio `BookOpen` e texto conciso (ex.: "Guia de Lançamentos", "Guia da Família", "Guia de Viagem"), condicionado a `if (showEducationalPlaybooks)`.
-2. **Dentro dos Diálogos de Formulário:** Um link textual discreto `text-[11px] text-muted-foreground hover:text-foreground` no rodapé do diálogo: *"Dúvida sobre qual método de divisão escolher? Consulte o guia"*.
-3. **Nos Empty States:** Convite amigável antes do usuário criar o primeiro registro.
+### Onda 1 — Fundação, Correção Geométrica & Playbook de Lançamentos
+* **Objetivo:** Corrigir os botões defeituosos de cabeçalho, implantar o switch global de governança e lançar o playbook mais crítico do aplicativo (Lançamentos e Cartões).
+* **Tarefas de Engenharia:**
+  1. Remover `max-sm:min-h-11` de `src/features/family/pages/family-page.tsx`.
+  2. Remover `w-full min-h-11 sm:min-h-8` de `src/features/trips/pages/trip-list-page.tsx`.
+  3. Revisar `PageHeader.tsx` para assegurar que pares de botões adotem altura canônica `h-9` no mobile.
+  4. Adicionar `showEducationalPlaybooks` no schema de `UserSettings`, no domínio `visual-defaults.ts`, no storage `visual-storage.ts` e no hook `useVisualCustomization`.
+  5. Adicionar o card/switch em `src/features/settings/components/tabs/interface-shortcuts-card.tsx` colocalizado com a Memória de Cálculo.
+  6. Desenvolver a shell reutilizável `<InteractivePlaybookModal />` em `src/components/modules/playbooks/`.
+  7. Criar o domínio `transaction-playbook.ts` e o modal `TransactionEducationalGuideModal.tsx`.
+  8. Adicionar o gatilho discreto em `transaction-list-page.tsx` condicionado a `showEducationalPlaybooks`.
+* **Quality Gate 1:**
+  - Altura máxima de botões de cabeçalho no mobile $\le 36\text{px}$ (`h-9`).
+  - Nenhum botão esticado em 100% da tela desnecessariamente.
+  - Ao desligar o switch nas Configurações, o botão do playbook desaparece do extrato de transações.
+  - Testes unitários com 100% de aprovação para `transaction-playbook.test.ts` e `TransactionEducationalGuideModal.test.tsx`.
 
 ---
 
-## 6. Plano de Execução Faseado
-
-### Fase 1: Padronização Imediata da Largura e Altura dos Botões de Cabeçalho
-- [ ] Remover `max-sm:min-h-11` de `src/features/family/pages/family-page.tsx`.
-- [ ] Remover `w-full min-h-11 sm:min-h-8` de `src/features/trips/pages/trip-list-page.tsx`.
-- [ ] Ajustar o contêiner de ações em `src/components/layout/page-header.tsx` para assegurar que botões em mobile não se estiquem de forma grotesca, mantendo altura padrão `h-8` / `h-9` (`size="sm"`).
-- [ ] Validar responsividade em viewport estreito (< 380px) e viewport padrão (390px a 430px).
-
-### Fase 2: Configuração Global em Ajustes (`showEducationalPlaybooks`)
-- [ ] Adicionar o campo `showEducationalPlaybooks: boolean` em `UserSettings` / `custom_settings` (default: `true`).
-- [ ] Adicionar o Card com Switch no painel de aparência/interface de `src/features/settings/components/tabs/interface-shortcuts-card.tsx`.
-- [ ] Criar hook de conveniência `usePlaybooksPreference()` para consulta rápida em qualquer página.
-
-### Fase 3: Playbook de Lançamentos & Gestão de Cartões
-- [ ] Criar o modal `TransactionEducationalGuideModal` em `src/features/transactions/components/` com as 4 abas (Ritmo de Registro, Categoria vs Descrição, O Mito do Cartão, Parcelamentos).
-- [ ] Adicionar gatilho sóbrio em `src/features/transactions/pages/transaction-list-page.tsx` respeitando `showEducationalPlaybooks`.
-- [ ] Adicionar link sutil no diálogo de criação de despesas e importação de faturas.
-
-### Fase 4: Playbook do Modo Família
-- [ ] Criar o modal `FamilyEducationalGuideModal` em `src/features/family/components/` com as abas (Descobrir Regra de Divisão, 50/50 vs Proporcional vs Caixa Único, O que é da Casa vs Individual, Acerto sem Constrangimento).
-- [ ] Integrar aplicação com 1-Click diretamente no estado da família (`consolidation.family.split_rule`).
-- [ ] Adicionar gatilho no cabeçalho de `family-page.tsx` condicionado a `showEducationalPlaybooks`.
-
-### Fase 5: Playbook do Modo Viagem
-- [ ] Criar o modal `TripEducationalGuideModal` em `src/features/trips/components/` cobrindo os 4 perfis de viagem.
-- [ ] Integrar no cabeçalho de `trip-list-page.tsx` e `trip-details-page.tsx`.
-- [ ] Adicionar testes unitários completos de renderização e fluxos de quiz.
+### Onda 2 — Playbooks Colaborativos (Família & Viagem)
+* **Objetivo:** Solucionar a insegurança de rateio e convivência financeira nos módulos colaborativos.
+* **Tarefas de Engenharia:**
+  1. Criar o domínio puro `family-playbook.ts` e o modal `FamilyEducationalGuideModal.tsx`.
+  2. Integrar o CTA 1-Click do quiz diretamente com a mutação de divisão da família (`split_rule`).
+  3. Adicionar o gatilho `Guia da Família` no cabeçalho de `family-page.tsx` (respeitando `showEducationalPlaybooks`).
+  4. Criar o domínio puro `trip-playbook.ts` e o modal `TripEducationalGuideModal.tsx`.
+  5. Adicionar o gatilho `Guia de Viagem` no cabeçalho de `trip-list-page.tsx` e `trip-details-page.tsx`.
+* **Quality Gate 2:**
+  - O cabeçalho de Família (agora com 3 botões) ativa o layout fluido de chips horizontais com scroll suave no mobile, sem esmagamento.
+  - A recomendação do quiz de família atualiza a regra de divisão com feedback tátil e persistência no Supabase.
+  - Testes unitários cobrindo todos os fluxos de quiz e renderização condicional.
 
 ---
 
-## 7. Critérios de Aceite e Definição de Pronto (DoD)
+### Onda 3 — Playbooks de Patrimônio & Gestão de Passivos (Investimentos & Dívidas)
+* **Objetivo:** Proteger o usuário de prejuízos fiscais em investimentos e orientar a saída inteligente do endividamento.
+* **Tarefas de Engenharia:**
+  1. Criar o domínio puro `investments-playbook.ts` e o modal `InvestmentsEducationalGuideModal.tsx`.
+  2. Adicionar atalho no cabeçalho de `investments-page.tsx` conectando CTAs aos diálogos de metas e aportes.
+  3. Criar o domínio puro `debts-playbook.ts` e o modal `DebtsEducationalGuideModal.tsx`.
+  4. Adicionar atalho em `debts-page.tsx` com CTAs de ordenação da esteira (Bola de Neve vs Avalanche).
+* **Quality Gate 3:**
+  - Zero duplicação de marcação JSX (reutilização estrita da shell `<InteractivePlaybookModal />`).
+  - Conformidade estrita com as Regras de Ouro de UI (`AGENTS.md` Regras 4, 8, 13, 18, 20).
+  - Cobertura completa de testes de regressão na suíte Vitest.
 
-1. **Zero Botões Gigantes/Deformados:** Nenhum botão de cabeçalho em mobile ultrapassa a altura de 36px (`h-9`), e nenhum botão único se expande por 100% da tela sem necessidade funcional.
-2. **Zero Poluição para Usuários Avançados:** Ao desmarcar o switch "Playbooks e Guias Metodológicos" nas configurações, **todos** os botões e links de playbooks desaparecem da interface do app instantaneamente.
-3. **Prescritivo e Acionável:** Todo playbook inclui um quiz de no máximo 3 passos com recomendação clara e botão de aplicação com 1 clique.
-4. **Governança do Design System:** Todos os modais de playbooks seguem estritamente `size="xl"`, abas com `Tabs variant="underline"`, ícones sóbrios de Nível 1 sem containers decorativos redundantes e feedback sensorial com `triggerSensory`.
-5. **Zero Violações de Linter & TypeScript:** Cobertura de testes unitários com Vitest para todos os novos componentes de playbook.
+---
+
+## 7. Decisões de Produto & Arquitetura Submetidas à Validação
+
+Antes da autorização formal para implementação, submetem-se à validação do Fundador/Product Owner as seguintes decisões de design:
+
+1. **Rótulo e Localização do Seletor em Ajustes:**  
+   *Proposta:* O switch será batizado de **"Playbooks e Guias Metodológicos"** e ficará colocalizado imediatamente abaixo do switch de **"Memória de Cálculo e Explicabilidade"** na aba *Interface* das Configurações.  
+   *Alternativa:* Posicionar em aba própria de "Auxílio & Ajuda". *(Nossa recomendação é manter na aba Interface, colocalizado com Memória de Cálculo, pois ambos controlam a densidade de atalhos explicativos da UI).*
+2. **Valor Padrão da Flag (`showEducationalPlaybooks`):**  
+   *Proposta:* Padrão `true` para novos usuários (para garantir acolhimento metodológico imediato), com atalho visível no rodapé dos modais para desativação com 1 clique se o usuário desejar minimalismo.
+3. **Escopo de Execução Imediata:**  
+   *Proposta:* Autorizar a execução da **Onda 1** (Correção dos botões de Família/Viagem + Infraestrutura do Switch Global + Playbook de Lançamentos & Cartões).
