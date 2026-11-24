@@ -51,7 +51,11 @@ const DATE_PATTERNS = [
  * Converte diferentes formatos de data textual para ISO YYYY-MM-DD.
  * Se a data não tiver ano (ex.: "15/08"), usa o ano da competência ou o ano atual.
  */
-export function normalizeDateToISO(rawDate: string, defaultYear = new Date().getFullYear()): string | null {
+export function normalizeDateToISO(
+  rawDate: string,
+  defaultYear = new Date().getFullYear(),
+  referenceMonth?: number,
+): string | null {
   const trimmed = rawDate.trim().toLowerCase();
   if (!trimmed) return null;
 
@@ -87,8 +91,12 @@ export function normalizeDateToISO(rawDate: string, defaultYear = new Date().get
     if (rawYear && rawYear.length === 2) {
       rawYear = `20${rawYear}`;
     }
-    const year = rawYear ?? defaultYear.toString();
-    return `${year}-${month}-${day}`;
+    const inferredYear =
+      rawYear ??
+      (referenceMonth !== undefined && Number.parseInt(month, 10) > referenceMonth
+        ? (defaultYear - 1).toString()
+        : defaultYear.toString());
+    return `${inferredYear}-${month}-${day}`;
   }
 
   // 5. DD/MM/YY ou DD-MM-YY
@@ -105,7 +113,11 @@ export function normalizeDateToISO(rawDate: string, defaultYear = new Date().get
   if (dmMatch && dmMatch[1] && dmMatch[2]) {
     const day = dmMatch[1].padStart(2, "0");
     const month = dmMatch[2].padStart(2, "0");
-    return `${defaultYear}-${month}-${day}`;
+    const inferredYear =
+      referenceMonth !== undefined && Number.parseInt(month, 10) > referenceMonth
+        ? defaultYear - 1
+        : defaultYear;
+    return `${inferredYear}-${month}-${day}`;
   }
 
   return null;

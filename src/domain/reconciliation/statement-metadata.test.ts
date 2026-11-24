@@ -168,4 +168,49 @@ describe("detectStatementMetadata", () => {
     expect(meta.hasCompetenceMismatch).toBe(false);
     expect(meta.hasCardMismatch).toBe(false);
   });
+
+  it("não dispara falso conflito de competência quando due_day < closing_day e compras pertencem ao mês ativo", () => {
+    const rawText = `
+      Banco Rico
+      Fatura de Dezembro 2026
+      Vencimento: 05/12/2026
+    `;
+    const txs: StatementTransaction[] = [
+      mockTx("2026-11-05"),
+      mockTx("2026-11-12"),
+      mockTx("2026-11-18"),
+    ];
+
+    const meta = detectStatementMetadata({
+      rawText,
+      transactions: txs,
+      activeCompetenceMonth: "2026-11",
+      card: {
+        name: "Rico Visa",
+        closing_day: 25,
+        due_day: 5,
+      },
+    });
+
+    expect(meta.hasCompetenceMismatch).toBe(false);
+    expect(meta.detectedCompetenceMonth).toBe("2026-11");
+  });
+
+  it("não dispara falso alerta de cartão diferente quando há múltiplos finais no extrato (físico + virtual)", () => {
+    const rawText = `
+      Cartão: **** **** **** 1111 VISA
+      Cartão Virtual: **** **** **** 2107 VISA
+    `;
+
+    const meta = detectStatementMetadata({
+      rawText,
+      activeCompetenceMonth: "2026-11",
+      card: {
+        name: "Rico Visa",
+        last_four_digits: "2107",
+      },
+    });
+
+    expect(meta.hasCardMismatch).toBe(false);
+  });
 });

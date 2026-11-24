@@ -85,13 +85,14 @@ export function HouseholdComparisonCard({
 
   return (
     <Card className={cn("border-border/80 bg-surface shadow-xs rounded-2xl", className)}>
-      <CardHeader className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          <GitCompare className="size-4 text-muted-foreground" aria-hidden="true" />
-          <span>Gráfico Comparativo</span>
+      <CardHeader className="flex flex-row items-center justify-between gap-2.5 pb-3">
+        <CardTitle className="flex items-center gap-2 min-w-0 text-sm font-semibold text-foreground">
+          <GitCompare className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className="sm:hidden truncate">Comparativo</span>
+          <span className="hidden sm:inline truncate">Gráfico Comparativo</span>
         </CardTitle>
 
-        <div>
+        <div className="shrink-0">
           <Badge variant="muted" size="sm">
             {splitRule === "proportional" ? "Meta Proporcional" : "Meta 50% / 50%"}
           </Badge>

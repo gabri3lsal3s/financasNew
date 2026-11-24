@@ -11,8 +11,8 @@ const mockCard: CreditCard = {
   id: "card-test",
   user_id: "user-test",
   name: "Nubank Roxinho",
-  closing_day: 5,
-  due_day: 12,
+  closing_day: 25,
+  due_day: 5,
   credit_limit: 10000,
   brand: "mastercard",
   color: "#820ad1",
@@ -153,7 +153,7 @@ describe("StatementImportDialog", () => {
       <StatementImportDialog
         open={true}
         onOpenChange={handleOpenChange}
-        card={mockCard}
+        card={{ ...mockCard, scope: "mixed" }}
         competenceMonth="2026-08"
       />,
     );
@@ -208,7 +208,7 @@ describe("StatementImportDialog", () => {
       <StatementImportDialog
         open={true}
         onOpenChange={handleOpenChange}
-        card={mockCard}
+        card={{ ...mockCard, scope: "mixed" }}
         competenceMonth="2026-08"
       />,
     );
@@ -970,17 +970,40 @@ Data;Estabelecimento;Valor
 15/11/2026;Restaurante Fogão;120,00
 `;
       await uploadMockStatementFile(user, content, "fatura-nubank.csv");
-      await advanceFromMapping(user);
 
-      // Deve alertar sobre a competência
+      // Deve pausar no pré-modal bloqueante ANTES de carregar a lista de conferência
       expect(await screen.findByText("Divergência de Competência Detectada")).toBeInTheDocument();
-      expect(screen.getByText(/Esta fatura aparenta ser da competência 2026-11/i)).toBeInTheDocument();
+      expect(screen.getByText(/O arquivo anexado aparenta pertencer à fatura de/i)).toBeInTheDocument();
+      expect(screen.queryByText("Restaurante Fogão")).not.toBeInTheDocument();
 
       // Clica em ajustar competência
       const adjustBtn = screen.getByRole("button", { name: /Ajustar para/i });
       await user.click(adjustBtn);
 
       expect(onCompetenceChange).toHaveBeenCalledWith("2026-11");
+    });
+
+    it("oculta botões Tudo PJ e Tudo PF em cartões estritamente pessoais", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <StatementImportDialog
+          open={true}
+          onOpenChange={vi.fn()}
+          card={{ ...mockCard, scope: "personal" }}
+          competenceMonth="2026-08"
+        />,
+      );
+
+      await uploadMockStatementFile(
+        user,
+        "15/08/2026\tPadaria Estrela\t25,00\n16/08/2026\tSupermercado Dia\t140,50",
+      );
+      await advanceFromMapping(user);
+
+      expect(await screen.findByText("Padaria Estrela")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Tudo PJ/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Tudo PF/i })).not.toBeInTheDocument();
     });
 
     it("exibe aviso de compatibilidade de cartão quando os 4 dígitos ou o banco emissor divergem", async () => {

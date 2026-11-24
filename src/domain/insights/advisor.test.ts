@@ -1499,6 +1499,52 @@ describe("filterAndRankAdvisorInsights", () => {
       expect(endings?.title).toBe("Parcelamentos chegando ao fim");
       expect(endings?.description).toContain("R$ 350,00");
     });
+
+    it("P1 crítico não é bloqueado por cooldown temporário da família, apenas por muted: true ou dispensa própria", () => {
+      const nowMs = Date.UTC(2026, 10, 10, 12, 0, 0);
+      const dayMs = 86_400_000;
+
+      // Cooldown temporário (não mutado) na família savings_cut:
+      // suprime insight regular P3 (savings:spotify), mas mantém P1 crítico (dup:netflix) ativo!
+      const withTempCooldown = filterAndRankAllAdvisorInsights(
+        [insightSavings, insightCrit],
+        {
+          decayByFamily: {
+            savings_cut: {
+              dismissCount: 1,
+              lastDismissedAt: new Date(nowMs - dayMs).toISOString(),
+              dismissedUntil: nowMs + 6 * dayMs,
+              muted: false,
+            },
+          },
+          nowMs,
+        },
+      );
+      expect(withTempCooldown.map((i) => i.themeKey)).toEqual(["dup:netflix"]);
+
+      // Quando o usuário silencia definitivamente a família (muted: true), P1 também sai
+      const withMutedFamily = filterAndRankAllAdvisorInsights([insightCrit], {
+        decayByFamily: {
+          savings_cut: {
+            dismissCount: 3,
+            lastDismissedAt: new Date(nowMs - dayMs).toISOString(),
+            dismissedUntil: nowMs + 90 * dayMs,
+            muted: true,
+          },
+        },
+        nowMs,
+      });
+      expect(withMutedFamily).toHaveLength(0);
+
+      // E quando dispensado especificamente pelo próprio themeKey, P1 sai
+      const withOwnDismissal = filterAndRankAllAdvisorInsights([insightCrit], {
+        dismissals: {
+          "dup:netflix": nowMs + 10 * dayMs,
+        },
+        nowMs,
+      });
+      expect(withOwnDismissal).toHaveLength(0);
+    });
   });
 });
 

@@ -108,6 +108,44 @@ function replaceSmartAdvisorDismissals(next: Record<string, number>) {
   notifySubscribers();
 }
 
+function syncLastDismissedDayFromCloud(cloudDay: string) {
+  initStorageIfNeeded();
+  if (memoryLastDismissedDay && memoryLastDismissedDay >= cloudDay) {
+    return;
+  }
+  memoryLastDismissedDay = cloudDay;
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      window.localStorage.setItem(getScopedLastDismissedDayKey(), cloudDay);
+    } catch {
+      // Ignora erro
+    }
+  }
+  notifySubscribers();
+}
+
+function pickEffectiveDecayRecord(
+  cloudRec: SmartDecayRecord | undefined,
+  localRec: SmartDecayRecord | undefined,
+): SmartDecayRecord | undefined {
+  if (!cloudRec) return localRec;
+  if (!localRec) return cloudRec;
+  if (
+    cloudRec.dismissCount === 0 &&
+    cloudRec.dismissedUntil === 0 &&
+    cloudRec.muted !== true &&
+    cloudRec.lastDismissedAt === localRec.lastDismissedAt
+  ) {
+    return cloudRec;
+  }
+  const cloudTs = Date.parse(cloudRec.lastDismissedAt || "");
+  const localTs = Date.parse(localRec.lastDismissedAt || "");
+  if (Number.isFinite(cloudTs) && Number.isFinite(localTs) && cloudTs !== localTs) {
+    return cloudTs > localTs ? cloudRec : localRec;
+  }
+  return (localRec.dismissedUntil ?? 0) >= (cloudRec.dismissedUntil ?? 0) ? localRec : cloudRec;
+}
+
 /**
  * Reseta todos os cooldowns e registros locais de dispensa do SmartAdvisor.
  */
@@ -193,10 +231,21 @@ export function useSmartAdvisorCooldownController(params: {
   );
   const effectiveLastDismissedDay =
     localLastDismissedDay ?? params.cloudLastDismissedDay ?? storeLastDismissedDay;
-  const effectiveDecayMeta = useMemo(
-    () => localDecayMeta ?? params.cloudDecayMeta ?? {},
-    [localDecayMeta, params.cloudDecayMeta],
-  );
+  const effectiveDecayMeta = useMemo<Partial<Record<InsightThemeFamily, SmartDecayRecord>>>(() => {
+    if (!localDecayMeta && !params.cloudDecayMeta) return {};
+    if (!localDecayMeta) return params.cloudDecayMeta ?? {};
+    if (!params.cloudDecayMeta) return localDecayMeta;
+    const merged: Partial<Record<InsightThemeFamily, SmartDecayRecord>> = {};
+    const families = new Set([
+      ...Object.keys(params.cloudDecayMeta),
+      ...Object.keys(localDecayMeta),
+    ]) as Set<InsightThemeFamily>;
+    for (const family of families) {
+      const chosen = pickEffectiveDecayRecord(params.cloudDecayMeta[family], localDecayMeta[family]);
+      if (chosen) merged[family] = chosen;
+    }
+    return merged;
+  }, [localDecayMeta, params.cloudDecayMeta]);
 
   useEffect(() => {
     if (params.cloudDismissals && Object.keys(params.cloudDismissals).length > 0) {
@@ -210,14 +259,47 @@ export function useSmartAdvisorCooldownController(params: {
     }
   }, [params.cloudDismissals, params.nowMs]);
 
+  useEffect(() => {
+    if (params.cloudLastDismissedDay && params.cloudLastDismissedDay.trim().length > 0) {
+      syncLastDismissedDayFromCloud(params.cloudLastDismissedDay);
+    }
+  }, [params.cloudLastDismissedDay]);
+
   const dismissInsight = useCallback(
     (
       eligibleInsights: readonly SmartAdvisorInsight[],
       activeThemeKey: string | undefined,
       themeKey?: string,
       days = DEFAULT_DISMISS_DAYS,
+      options?: { isResolution?: boolean },
     ) => {
       const keyToDismiss = themeKey ?? activeThemeKey;
+      const isResolution = options?.isResolution === true;
+
+      if (isResolution) {
+        if (localDismissals !== undefined || localLastDismissedDay !== undefined) {
+          if (keyToDismiss) {
+            const expiry = computeDismissCooldownExpiry(params.nowMs, days);
+            setLocalDismissals((prev) => ({ ...(prev ?? {}), [keyToDismiss]: expiry }));
+          }
+          return;
+        }
+
+        const nextMemory = recordCooldownDismissal(keyToDismiss, null, params.nowMs, days);
+        if (keyToDismiss) {
+          const mergedCloud = mergeAndFilterValidDismissals(
+            nextMemory,
+            params.cloudDismissals,
+            params.nowMs,
+            false,
+          );
+          params.onPersistCloudDismissal({
+            advisorDismissals: mergedCloud,
+          });
+        }
+        return;
+      }
+
       const isLastRemaining =
         eligibleInsights.length <= 1 ||
         (keyToDismiss != null && eligibleInsights.length === 1 && eligibleInsights[0]?.themeKey === keyToDismiss);
@@ -308,7 +390,9 @@ export function useSmartAdvisorDismissals() {
       );
       delete next[themeKey];
       replaceSmartAdvisorDismissals(next);
-      updateCustomSettingsMutation?.mutate({ advisorDismissals: next });
+      updateCustomSettingsMutation?.mutate({
+        advisorDismissals: { ...next, [themeKey]: 0 },
+      });
     },
     [cloudDismissals, updateCustomSettingsMutation],
   );

@@ -39,10 +39,19 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
     return null;
   }
 
-  if (allFinalized && !isExpanded) {
+  const pendingSplits = activeSplits.filter((item) => !item.isSettled);
+  const remainingReceivableCents = pendingSplits.reduce(
+    (sum, item) => sum + Math.max(0, item.receivableExpectedCents - item.totalSettledFromFriendsCents),
+    0,
+  );
+
+  if (!isExpanded) {
     return (
       <ActiveSplitsCollapsedBar
         totalCount={activeSplits.length}
+        pendingCount={pendingSplits.length}
+        remainingReceivableCents={remainingReceivableCents}
+        allFinalized={allFinalized}
         onExpand={() => setUserExpanded(true)}
       />
     );
@@ -69,19 +78,17 @@ export function ActiveSplitsCard({ month }: ActiveSplitsCardProps) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-          {allFinalized && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              sensoryIntent="selection"
-              onClick={() => setUserExpanded(false)}
-              className="gap-1 text-muted-foreground hover:text-foreground"
-            >
-              <span>Recolher</span>
-              <ChevronUp className="size-3.5" aria-hidden="true" />
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            sensoryIntent="selection"
+            onClick={() => setUserExpanded(false)}
+            className="gap-1 text-muted-foreground hover:text-foreground"
+          >
+            <span>Recolher</span>
+            <ChevronUp className="size-3.5" aria-hidden="true" />
+          </Button>
 
           {totalBlocks > 1 && (
             <div className="flex items-center rounded-lg border border-border/80 bg-surface-raised/60 p-0.5">

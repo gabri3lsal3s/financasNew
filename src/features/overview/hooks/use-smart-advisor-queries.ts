@@ -31,6 +31,7 @@ import {
   useUpdateCustomSettings,
   useUserPreferences,
 } from "@/state";
+import { isQueryPending } from "@/state/query-readiness";
 import type { Budget, Category } from "@/types";
 
 interface UseSmartAdvisorQueriesParams {
@@ -187,21 +188,31 @@ export function useSmartAdvisorQueries({
     [preloadedFeedbackMap, feedbackQuery.data],
   );
 
+  const waitExpenses = queryEnabled && preloadedExpenses === undefined;
+  const waitIncomes = queryEnabled && preloadedIncomes === undefined;
   const isWaitingQueries =
     queryEnabled &&
-    (feedbackQuery.isLoading ||
-      categoriesQuery.isLoading ||
-      month0Expenses.isLoading ||
-      userPreferencesQuery.isLoading ||
-      (isCurrentMonth && realCashData.isLoading));
+    (isQueryPending(month0Expenses, waitExpenses) ||
+      isQueryPending(month1Expenses, waitExpenses) ||
+      isQueryPending(month2Expenses, waitExpenses) ||
+      isQueryPending(month3Expenses, waitExpenses) ||
+      isQueryPending(month11Expenses, waitExpenses) ||
+      isQueryPending(month12Expenses, waitExpenses) ||
+      isQueryPending(month0Incomes, waitIncomes) ||
+      isQueryPending(month1Incomes, waitIncomes) ||
+      isQueryPending(month2Incomes, waitIncomes) ||
+      isQueryPending(month3Incomes, waitIncomes) ||
+      isQueryPending(budgetsQuery, preloadedBudgets === undefined) ||
+      isQueryPending(categoriesQuery, preloadedCategories === undefined) ||
+      isQueryPending(feedbackQuery, preloadedFeedbackMap === undefined) ||
+      isQueryPending(creditCardsQuery, preloadedCards === undefined) ||
+      isQueryPending(incomeGoalsQuery) ||
+      isQueryPending(userPreferencesQuery) ||
+      isQueryPending(myFamilyQuery, isFamilyModeEnabled) ||
+      isQueryPending(familyConsolidationQuery, hasFamily) ||
+      Boolean(isCurrentMonth && safeToSpendCents === undefined && realCashData.isLoading));
 
-  const isLoading =
-    queryEnabled &&
-    (month0Expenses.isLoading || month1Expenses.isLoading || month2Expenses.isLoading ||
-      month3Expenses.isLoading || month11Expenses.isLoading || month12Expenses.isLoading ||
-      month0Incomes.isLoading || month1Incomes.isLoading || month2Incomes.isLoading ||
-      month3Incomes.isLoading || budgetsQuery.isLoading || categoriesQuery.isLoading ||
-      feedbackQuery.isLoading);
+  const isLoading = isWaitingQueries;
 
   const isError =
     queryEnabled &&

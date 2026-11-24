@@ -115,7 +115,7 @@ export function PortfolioKpiStrip({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3" data-tour="investments-summary">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3" data-tour="investments-summary">
         <SkeletonKpi className="col-span-1" />
         <SkeletonKpi className="col-span-1" />
         <SkeletonKpi className="col-span-1" />
@@ -158,7 +158,7 @@ export function PortfolioKpiStrip({
     );
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3" data-tour="investments-summary">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3" data-tour="investments-summary">
       <KpiCard
         label="Patrimônio Total"
         cents={numberToCents(totalBRL)}

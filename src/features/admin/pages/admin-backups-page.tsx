@@ -96,8 +96,8 @@ export function AdminBackupsPage() {
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
       <PageHeader
-        title="Central de Backups & Continuidade (DRP)"
-        description="Registro auditável de snapshots, cálculo criptográfico SHA-256 e plano de recuperação"
+        title="Backups & Continuidade"
+        description="Snapshots, verificação SHA-256 e recuperação"
         actions={
           <Button
             type="button"

@@ -151,7 +151,7 @@ export function useActiveSplits(month?: string) {
   const safeBlock = Math.min(currentBlock, totalBlocks - 1);
   const visibleSplits = activeSplits.slice(safeBlock * ITEMS_PER_BLOCK, (safeBlock + 1) * ITEMS_PER_BLOCK);
   const allFinalized = activeSplits.length > 0 && activeSplits.every((item) => item.isSettled);
-  const isExpanded = userExpanded !== null ? userExpanded : !allFinalized;
+  const isExpanded = userExpanded ?? false;
 
   return {
     isLoading: isLoadingShares || isLoadingDebts,

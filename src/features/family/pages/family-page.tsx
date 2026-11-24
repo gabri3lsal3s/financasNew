@@ -103,25 +103,11 @@ export function FamilyPage() {
     <div className="flex flex-col gap-5 sm:gap-6 min-w-0">
       <PageHeader
         title="Modo Família"
-        description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
+        description="Despesas compartilhadas e divisão da casa"
         badge={
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Badge variant="default" size="sm">
-              {myFamilyData.family.name}
-            </Badge>
-            <Badge variant="muted" size="sm">
-              {activeMembersCount} de 6 membros
-            </Badge>
-            {consolidation?.family.split_rule && (
-              <Badge variant="muted" size="sm">
-                {consolidation.family.split_rule === "combined"
-                  ? "Caixa Único"
-                  : consolidation.family.split_rule === "proportional"
-                    ? "Divisão Proporcional"
-                    : "Divisão 50/50"}
-              </Badge>
-            )}
-          </div>
+          <Badge variant="default" size="sm">
+            {myFamilyData.family.name}
+          </Badge>
         }
         actions={
           <>
@@ -131,14 +117,13 @@ export function FamilyPage() {
                 variant="outline"
                 size="sm"
                 sensoryIntent="selection"
-                className="gap-1.5"
                 onClick={() => {
                   setSettingsTab("members");
                   setIsSettingsOpen(true);
                 }}
                 aria-label="Convidar novo membro da família"
               >
-                <UserPlus className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                <UserPlus aria-hidden="true" />
                 <span>Convidar</span>
               </Button>
             )}
@@ -148,7 +133,6 @@ export function FamilyPage() {
               variant="outline"
               size="sm"
               sensoryIntent="selection"
-              className="gap-1.5"
               onClick={() => {
                 setSettingsTab("general");
                 setIsSettingsOpen(true);
@@ -156,7 +140,7 @@ export function FamilyPage() {
               aria-label="Abrir configurações da família"
               title="Abrir configurações da família"
             >
-              <Settings className="size-3.5 text-muted-foreground" aria-hidden="true" />
+              <Settings aria-hidden="true" />
               <span>Ajustes</span>
             </Button>
           </>

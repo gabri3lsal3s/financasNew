@@ -246,6 +246,7 @@ export type {
   OperationalHomeBannerPlan,
   SmartDecayEvaluation,
 } from "./attention-budget";
+export { mergePersistedAdvisorDismissals } from "./smart-advisor-rules";
 
 
 

@@ -11,8 +11,8 @@ export function AdminNotificationsPage() {
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
       <PageHeader
-        title="Central de Notificações & Push"
-        description="Dispare comunicados em tempo real diretamente para o aplicativo dos usuários"
+        title="Notificações & Push"
+        description="Comunicados em tempo real para os usuários"
       />
 
       <BroadcastComposerForm

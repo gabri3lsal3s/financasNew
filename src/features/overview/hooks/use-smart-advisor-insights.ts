@@ -50,6 +50,8 @@ export interface UseSmartAdvisorInsightsOptions {
   committedObligationsCents?: number;
   spendingHabits?: readonly SpendingHabit[];
   suppressedThemeKeys?: readonly string[];
+  financialContext?: UserFinancialContext;
+  isFinancialContextLoading?: boolean;
 }
 
 export interface UseSmartAdvisorInsightsResult {
@@ -64,7 +66,7 @@ export interface UseSmartAdvisorInsightsResult {
   isLoading: boolean;
   isError: boolean;
   error: unknown;
-  dismiss: (themeKey?: string, days?: number) => void;
+  dismiss: (themeKey?: string, days?: number, options?: { isResolution?: boolean }) => void;
   confirmRecurrence: (occurrenceKey: string) => Promise<void>;
   ignoreRecurrence: (
     occurrenceKey: string,
@@ -136,11 +138,15 @@ export function useSmartAdvisorInsights(
   const userFinancialContextResult = useUserFinancialContextSafe({
     month: refMonth,
     todayISO: todayISOStr,
-    enabled: queryEnabled,
+    enabled: queryEnabled && options.financialContext === undefined,
   });
-  const financialContext: UserFinancialContext | undefined = queryEnabled
-    ? userFinancialContextResult?.context
-    : undefined;
+  const effectiveFinancialContext: UserFinancialContext | undefined =
+    options.financialContext ?? (queryEnabled ? userFinancialContextResult?.context : undefined);
+  const effectiveFinancialContextLoading =
+    options.isFinancialContextLoading ??
+    (queryEnabled && options.financialContext === undefined
+      ? Boolean(userFinancialContextResult?.isLoading)
+      : false);
 
   const cooldown = useSmartAdvisorCooldownController({
     initialDismissals: options.initialDismissals,
@@ -176,7 +182,12 @@ export function useSmartAdvisorInsights(
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const { allCandidates, eligibleInsights } = useMemo(() => {
-    if (queries.isWaitingQueries) return { allCandidates: [], eligibleInsights: [] };
+    if (options.enabled === false) {
+      return { allCandidates: [], eligibleInsights: [] };
+    }
+    if (queries.isWaitingQueries || effectiveFinancialContextLoading) {
+      return { allCandidates: [], eligibleInsights: [] };
+    }
     return evaluateSmartAdvisorInsights({
       allExpenses: queries.allExpenses,
       allIncomes: queries.allIncomes,
@@ -201,11 +212,13 @@ export function useSmartAdvisorInsights(
       nowMs,
       categories: queries.categories,
       suppressedThemeKeys: options.suppressedThemeKeys,
-      financialContext,
+      financialContext: effectiveFinancialContext,
       decayByFamily: cooldown.effectiveDecayMeta,
     });
   }, [
+    options.enabled,
     queries,
+    effectiveFinancialContextLoading,
     refMonth,
     todayISOStr,
     effectiveSurplusCents,
@@ -216,7 +229,7 @@ export function useSmartAdvisorInsights(
     cooldown.effectiveDismissals,
     cooldown.effectiveLastDismissedDay,
     cooldown.effectiveDecayMeta,
-    financialContext,
+    effectiveFinancialContext,
     nowMs,
   ]);
 
@@ -238,8 +251,14 @@ export function useSmartAdvisorInsights(
   );
 
   const dismiss = useCallback(
-    (themeKey?: string, days = DEFAULT_DISMISS_DAYS) => {
-      cooldown.dismissInsight(eligibleInsights, activeInsight?.themeKey, themeKey, days);
+    (themeKey?: string, days = DEFAULT_DISMISS_DAYS, dismissOptions?: { isResolution?: boolean }) => {
+      cooldown.dismissInsight(
+        eligibleInsights,
+        activeInsight?.themeKey,
+        themeKey,
+        days,
+        dismissOptions,
+      );
       setCurrentIndex((prev) => (prev > 0 ? prev - 1 : 0));
     },
     [cooldown, eligibleInsights, activeInsight?.themeKey],
@@ -260,7 +279,8 @@ export function useSmartAdvisorInsights(
     prevInsight,
     goToInsight,
     allCandidates,
-    isLoading: queries.isLoading,
+    isLoading:
+      options.enabled === false ? false : queries.isWaitingQueries || effectiveFinancialContextLoading,
     isError: queries.isError,
     error: queries.error,
     dismiss,

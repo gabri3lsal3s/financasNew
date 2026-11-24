@@ -1,6 +1,6 @@
-import { useId } from "react";
-import { AlertCircle, Check, RotateCcw } from "lucide-react";
-import { Alert, Button, Modal, ModalFooter } from "@/components/ui";
+import { useId, useState } from "react";
+import { AlertCircle, ArrowRight, Briefcase, CalendarClock, Check, FileUp, RotateCcw } from "lucide-react";
+import { Alert, Badge, Button, Modal, ModalFooter } from "@/components/ui";
 import { monthLabel } from "@/lib/date";
 import type { CreditCard } from "@/types";
 import { StatementMappingStep } from "./statement-mapping-step";
@@ -41,6 +41,7 @@ function StatementImportContent({
   onCompetenceChange,
 }: StatementImportContentProps) {
   const mappingFormId = useId();
+  const [confirmBackDiscard, setConfirmBackDiscard] = useState(false);
   const state = useStatementImport({
     card,
     competenceMonth,
@@ -52,6 +53,11 @@ function StatementImportContent({
   });
 
   const handleBackFromReconcile = () => {
+    if (state.hasUnsavedChanges && !confirmBackDiscard) {
+      setConfirmBackDiscard(true);
+      return;
+    }
+    setConfirmBackDiscard(false);
     if (state.usedAiStructurer || state.parsedRows.length === 0) {
       state.setStep("upload");
     } else {
@@ -72,38 +78,74 @@ function StatementImportContent({
       </ModalFooter>
     ) : state.step === "reconcile" ? (
       <ModalFooter borderless>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleBackFromReconcile}
-          disabled={state.isPending}
-        >
-          <RotateCcw className="size-4" aria-hidden="true" />
-          Voltar
-        </Button>
-        <Button
-          type="button"
-          sensoryIntent={false}
-          disabled={state.selectedCount === 0 || state.isPending}
-          onClick={() => void state.handleConfirmImport()}
-        >
-          {state.isPending ? (
-            state.importProgress && state.importProgress.totalChunks > 1 ? (
-              `Importando (${state.importProgress.percent}%)...`
-            ) : (
-              "Importando..."
-            )
-          ) : (
-            <>
-              <Check className="size-4" aria-hidden="true" />
-              <span>
-                Importar {state.selectedCount > 0 ? state.selectedCount : ""}{" "}
-                {state.selectedCount === 1 ? "Lançamento" : "Lançamentos"}
-              </span>
-            </>
-          )}
-        </Button>
+        {confirmBackDiscard ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 w-full">
+            <span className="text-xs font-medium text-warning-strong">
+              Descartar alterações feitas nesta conferência?
+            </span>
+            <div className="flex items-center gap-2 ml-auto">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmBackDiscard(false)}
+              >
+                Continuar editando
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleBackFromReconcile}
+              >
+                Descartar e voltar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleBackFromReconcile}
+              disabled={state.isPending}
+            >
+              <RotateCcw className="size-4" aria-hidden="true" />
+              Voltar
+            </Button>
+            <Button
+              type="button"
+              sensoryIntent={false}
+              disabled={state.selectedCount === 0 || state.isPending}
+              onClick={() => void state.handleConfirmImport()}
+            >
+              {state.isPending ? (
+                state.importProgress && state.importProgress.totalChunks > 1 ? (
+                  `Importando (${state.importProgress.percent}%)...`
+                ) : (
+                  "Importando..."
+                )
+              ) : (
+                <>
+                  <Check className="size-4" aria-hidden="true" />
+                  <span>
+                    Importar {state.selectedCount > 0 ? state.selectedCount : ""}{" "}
+                    {state.selectedCount === 1 ? "Lançamento" : "Lançamentos"}
+                  </span>
+                </>
+              )}
+            </Button>
+          </>
+        )}
       </ModalFooter>
+    ) : undefined;
+
+  const businessHeaderBadge =
+    card.scope === "business" ? (
+      <Badge size="xs" variant="portfolio" className="gap-1">
+        <Briefcase className="size-3" aria-hidden="true" />
+        Cartão PJ / Negócio
+      </Badge>
     ) : undefined;
 
   return (
@@ -113,7 +155,14 @@ function StatementImportContent({
       title={`Importar Fatura — ${card.name}`}
       description={`Competência de ${monthLabel(state.activeCompetenceMonth)} · Concilie faturas via PDF, CSV, OFX, Excel, prints ou texto colado.`}
       size="2xl"
+      headerActions={businessHeaderBadge}
       footer={footer}
+      isDirty={state.step === "reconcile" && state.hasUnsavedChanges}
+      confirmDiscard
+      discardTitle="Descartar alterações da conferência?"
+      discardDescription="Você realizou ajustes nesta fatura que ainda não foram importados. Se fechar agora, essas alterações serão perdidas."
+      discardConfirmLabel="Descartar"
+      discardCancelLabel="Continuar conferindo"
     >
       <div className="space-y-4">
         {state.error ? (
@@ -125,50 +174,81 @@ function StatementImportContent({
           </Alert>
         ) : null}
 
-        {state.detectedMeta?.hasCompetenceMismatch &&
-        state.detectedMeta.detectedCompetenceMonth ? (
-          <Alert variant="warning">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-              <div className="flex items-start gap-2">
-                <AlertCircle
-                  className="size-4 shrink-0 mt-0.5 text-warning-strong"
-                  aria-hidden="true"
-                />
-                <div className="text-xs space-y-0.5">
-                  <p className="font-semibold text-foreground">
-                    Divergência de Competência Detectada
-                  </p>
-                  <p className="text-muted-foreground">
-                    {state.detectedMeta.competenceMismatchWarning}
-                  </p>
-                </div>
+        {state.step === "competence_conflict" && state.detectedMeta?.detectedCompetenceMonth ? (
+          <div className="rounded-2xl border border-warning/30 bg-surface p-5 sm:p-6 shadow-xs space-y-5">
+            <div className="flex items-start gap-3.5">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-warning/25 bg-warning/15 text-warning-strong">
+                <CalendarClock className="size-5" aria-hidden="true" />
               </div>
-              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={state.handleDismissCompetenceMismatch}
-                >
-                  Manter {monthLabel(state.activeCompetenceMonth)}
-                </Button>
-                <Button
-                  type="button"
-                  size="xs"
-                  onClick={() =>
-                    void state.handleSwitchCompetence(
-                      state.detectedMeta!.detectedCompetenceMonth!,
-                    )
-                  }
-                >
-                  Ajustar para {monthLabel(state.detectedMeta.detectedCompetenceMonth)}
-                </Button>
+              <div className="space-y-1.5">
+                <h3 className="font-display text-base font-bold text-foreground">
+                  Divergência de Competência Detectada
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  O arquivo anexado aparenta pertencer à fatura de{" "}
+                  <strong className="text-foreground">
+                    {monthLabel(state.detectedMeta.detectedCompetenceMonth)}
+                  </strong>
+                  , mas a importação atual foi aberta em{" "}
+                  <strong className="text-foreground">
+                    {monthLabel(state.activeCompetenceMonth)}
+                  </strong>
+                  .
+                </p>
+                {state.detectedMeta.detectedDueDate ? (
+                  <p className="text-xs text-muted-foreground">
+                    Vencimento detectado no documento:{" "}
+                    <strong className="text-foreground">
+                      {state.detectedMeta.detectedDueDate.split("-").reverse().join("/")}
+                    </strong>
+                  </p>
+                ) : null}
               </div>
             </div>
-          </Alert>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-2.5 pt-2 border-t border-border/60">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={state.isReadingFile}
+                onClick={state.handleConfirmKeepCurrentCompetence}
+                className="text-xs text-muted-foreground hover:text-foreground sm:mr-auto"
+              >
+                Manter {monthLabel(state.activeCompetenceMonth)} mesmo assim
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={state.isReadingFile}
+                onClick={state.handleCancelCompetenceConflict}
+                className="gap-1.5"
+              >
+                <FileUp className="size-3.5" aria-hidden="true" />
+                Conferir e anexar outro arquivo
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={state.isReadingFile}
+                onClick={() =>
+                  void state.handleSwitchCompetence(
+                    state.detectedMeta!.detectedCompetenceMonth!,
+                  )
+                }
+                className="gap-1.5"
+              >
+                <span>
+                  Ajustar para {monthLabel(state.detectedMeta.detectedCompetenceMonth)} e prosseguir
+                </span>
+                <ArrowRight className="size-3.5" aria-hidden="true" />
+              </Button>
+            </div>
+          </div>
         ) : null}
 
-        {state.detectedMeta?.hasCardMismatch ? (
+        {state.step !== "competence_conflict" && state.detectedMeta?.hasCardMismatch ? (
           <Alert variant="warning">
             <div className="flex items-start gap-2 text-xs">
               <AlertCircle
@@ -223,7 +303,7 @@ function StatementImportContent({
             onRemoveItem={state.handleRemoveItem}
             onAddManualItem={state.handleAddManualItem}
             onUncheckDuplicates={state.handleUncheckDuplicates}
-            isBusinessModeEnabled={state.isBusinessModeEnabled}
+            isBusinessModeEnabled={state.showScopeControls}
             onToggleScope={state.handleToggleScope}
             onSetScopeAll={state.handleSetScopeAll}
             onToggleProjectSeries={state.handleToggleProjectSeries}

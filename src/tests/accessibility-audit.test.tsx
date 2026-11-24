@@ -467,6 +467,10 @@ vi.mock("@/state", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useInstallCategoryKit: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useSignalSplitPayment: () => ({
     mutateAsync: vi.fn(),
     mutate: vi.fn(),

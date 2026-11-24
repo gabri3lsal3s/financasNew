@@ -88,4 +88,26 @@ describe("PageHeader", () => {
     await user.click(backBtn);
     expect(onBack).toHaveBeenCalledTimes(1);
   });
+
+  it("renderiza utilityActions junto com actions mantendo grid-cols-2 para os botões principais", () => {
+    render(
+      <BrowserRouter>
+        <PageHeader
+          title="Transações"
+          utilityActions={<button type="button">Guia</button>}
+          actions={
+            <>
+              <button type="button">Exportar CSV</button>
+              <button type="button">Nova transação</button>
+            </>
+          }
+        />
+      </BrowserRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: "Guia" })).toBeInTheDocument();
+    const actionsContainer = screen.getByRole("button", { name: "Exportar CSV" }).parentElement;
+    expect(actionsContainer?.className).toContain("grid-cols-2");
+    expect(actionsContainer?.className).toContain("flex-1");
+  });
 });

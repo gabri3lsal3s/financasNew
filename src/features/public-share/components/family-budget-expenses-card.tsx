@@ -32,12 +32,13 @@ export function FamilyBudgetExpensesCard({ expenses }: FamilyBudgetExpensesCardP
   return (
     <Card className="border-border/80 bg-surface shadow-xs">
       <CardHeader className="pb-3 border-b border-border/80">
-        <CardTitle className="text-base flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
-          <span className="flex items-center gap-2">
-            <Receipt className="size-4 text-muted-foreground" aria-hidden="true" />
-            <span>Despesas Familiares do Mês</span>
+        <CardTitle className="text-base flex flex-row items-center justify-between gap-2.5">
+          <span className="flex items-center gap-2 min-w-0">
+            <Receipt className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="sm:hidden truncate">Despesas do Mês</span>
+            <span className="hidden sm:inline truncate">Despesas Familiares do Mês</span>
           </span>
-          <Badge variant="muted" size="xs">
+          <Badge variant="muted" size="xs" className="shrink-0">
             {expenses.length === 1 ? "1 lançamento" : `${expenses.length} lançamentos`}
           </Badge>
         </CardTitle>

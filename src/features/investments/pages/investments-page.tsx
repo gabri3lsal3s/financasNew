@@ -26,29 +26,27 @@ export function InvestmentsPage() {
     <div className="flex flex-col gap-6 min-w-0">
       <PageHeader
         title="Investimentos"
-        description="Posição da carteira, rendimentos, rebalanceamento de aportes e inteligência fiscal"
+        description="Carteira, rendimentos e rebalanceamento"
         actions={
           <>
             <Button
               variant="outline"
               size="sm"
               aria-label="Adicionar caixa"
-              className="flex-1 sm:flex-initial"
               onClick={controller.handleOpenCash}
             >
-              <Wallet aria-hidden="true" className="size-4" />
-              <span className="hidden sm:inline">Adicionar Caixa</span>
+              <Wallet aria-hidden="true" />
+              <span className="hidden sm:inline">Adicionar caixa</span>
               <span className="sm:hidden">Caixa</span>
             </Button>
             <Button
               size="sm"
               aria-label="Nova operação"
               data-tour="investments-new-op"
-              className="flex-1 sm:flex-initial"
               onClick={() => controller.handleOpenWizard(null, "select")}
             >
-              <Plus aria-hidden="true" className="size-4" />
-              Nova Operação
+              <Plus aria-hidden="true" />
+              <span>Nova operação</span>
             </Button>
           </>
         }

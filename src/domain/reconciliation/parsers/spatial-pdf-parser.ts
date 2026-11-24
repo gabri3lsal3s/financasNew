@@ -5,6 +5,8 @@ import {
   cleanDescription,
   isFxDetail,
   isInvoicePayment,
+  isStatementNoiseOrSummary,
+  isSubcardHeader,
 } from "../clean";
 import { extractInstallmentInfo } from "../installments";
 import { generateStatementHash } from "../hash";
@@ -27,9 +29,10 @@ export interface SpatialPdfLine {
   column: 1 | 2;
   text: string;
   tokens: SpatialPdfToken[];
+  pageNumber?: number;
 }
 
-export type SectionZoneState = "outside" | "start_zone" | "pause_zone" | "hard_stop";
+export type SectionZoneState = "outside" | "start_zone" | "pause_zone" | "paused_boleto";
 
 export interface ChecksumGateResult {
   passed: boolean;
@@ -46,6 +49,8 @@ export interface SpatialPdfResult {
   checksumGate: ChecksumGateResult;
   totalPages: number;
   usedTwoColumnMode: boolean;
+  discardedMoneyLines?: number;
+  detectedCardLast4s?: string[];
 }
 
 // -----------------------------------------------------------------------------
@@ -68,7 +73,62 @@ const DATE_REGEX =
   /\b(?:(\d{1,2})[/.-](\d{1,2})(?:[/.-](\d{2,4}))?|(\d{1,2})\s+(?:de\s+)?(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*)\b/i;
 
 const AMOUNT_REGEX =
-  /(?:r\$\s*)?(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s*([cd]))?\b/i;
+  /(?:r\$\s*)?(-?\d{1,3}(?:\.\d{3})*,\d{2}|-?\d+,\d{2})(?:\s*([cd-]))?(?!\d)/i;
+
+const BOLETO_FIELD_NOISE_REGEX =
+  /\b(?:vencimento|data\s+do\s+documento|valor\s+do\s+documento|sacado|pagador|cedente|benefici[aá]rio|nosso\s+n[uú]mero|ag[eê]ncia\s*\/\s*c[oó]digo|ficha\s+de\s+compensa[çc][aã]o|autentica[çc][aã]o\s+mec[aâ]nica|recibo\s+do\s+sacado)\b/i;
+
+const FOREIGN_CURRENCY_PREFIX_REGEX =
+  /(?:usd|eur|gbp|us\$|€|£|cad|aud|chf)\s*$/i;
+
+export function isBoletoFieldNoise(text: string): boolean {
+  return BOLETO_FIELD_NOISE_REGEX.test(text);
+}
+
+/**
+ * Em linhas com moeda estrangeira e BRL (ex.: "10/11 OPENAI USD 20,00 116,40"),
+ * ancora a extração no último valor em BRL à direita, ignorando o valor em moeda estrangeira.
+ */
+export function extractBrlAmountFromLine(text: string): {
+  fullMatch: string;
+  valueStr: string;
+  suffix?: string;
+} | null {
+  const globalRegex = new RegExp(AMOUNT_REGEX.source, "gi");
+  const matches: Array<{ fullMatch: string; valueStr: string; suffix?: string; index: number }> = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = globalRegex.exec(text)) !== null) {
+    matches.push({
+      fullMatch: match[0],
+      valueStr: match[1] ?? match[0],
+      suffix: match[2],
+      index: match.index,
+    });
+  }
+
+  if (matches.length === 0) return null;
+  if (matches.length === 1) {
+    return {
+      fullMatch: matches[0]!.fullMatch,
+      valueStr: matches[0]!.valueStr,
+      suffix: matches[0]!.suffix,
+    };
+  }
+
+  // Filtra fora os matches imediatamente precedidos por moeda estrangeira
+  const brlMatches = matches.filter((m) => {
+    const before = text.slice(Math.max(0, m.index - 12), m.index);
+    return !FOREIGN_CURRENCY_PREFIX_REGEX.test(before);
+  });
+
+  const chosen = brlMatches.length > 0 ? brlMatches[brlMatches.length - 1]! : matches[matches.length - 1]!;
+  return {
+    fullMatch: chosen.fullMatch,
+    valueStr: chosen.valueStr,
+    suffix: chosen.suffix,
+  };
+}
 
 // -----------------------------------------------------------------------------
 // Funções Puras de Análise e Agrupamento Espacial
@@ -213,15 +273,33 @@ export function groupTokensIntoLines(
  */
 export class SectionStateMachine {
   private state: SectionZoneState = "outside";
+  private boletoPage = 1;
 
-  public processLine(lineText: string): { state: SectionZoneState; shouldDrop: boolean } {
-    if (this.state === "hard_stop") {
-      return { state: "hard_stop", shouldDrop: true };
+  public processLine(
+    lineText: string,
+    pageNumber = 1,
+  ): { state: SectionZoneState; shouldDrop: boolean } {
+    if (this.state === "paused_boleto") {
+      if (pageNumber > this.boletoPage) {
+        // Virou a página: sai da pausa do boleto e reavalia a nova página
+        this.state = "outside";
+      } else if (SECTION_START_REGEX.test(lineText)) {
+        this.state = "start_zone";
+        const hasDateAndAmount = DATE_REGEX.test(lineText) && AMOUNT_REGEX.test(lineText);
+        return { state: "start_zone", shouldDrop: !hasDateAndAmount };
+      } else {
+        return { state: "paused_boleto", shouldDrop: true };
+      }
     }
 
     if (HARD_STOP_BARCODE_REGEX.test(lineText)) {
-      this.state = "hard_stop";
-      return { state: "hard_stop", shouldDrop: true };
+      this.state = "paused_boleto";
+      this.boletoPage = pageNumber;
+      return { state: "paused_boleto", shouldDrop: true };
+    }
+
+    if (isBoletoFieldNoise(lineText)) {
+      return { state: this.state, shouldDrop: true };
     }
 
     if (SECTION_START_REGEX.test(lineText)) {
@@ -289,23 +367,41 @@ export function isSimulationOrContractualNoise(text: string): boolean {
 export function extractTransactionsFromSpatialLines(
   lines: SpatialPdfLine[],
   params: { cardId: string; competenceMonth: string },
-): { transactions: StatementTransaction[]; reconstructedText: string } {
+): {
+  transactions: StatementTransaction[];
+  reconstructedText: string;
+  discardedMoneyLines: number;
+  detectedCardLast4s: string[];
+} {
   const stateMachine = new SectionStateMachine();
   const transactions: StatementTransaction[] = [];
   const acceptedLines: string[] = [];
   const occurrenceCounter = new Map<string, number>();
+  const detectedCardLast4s = new Set<string>();
+  let discardedMoneyLines = 0;
   let index = 0;
+
+  const compYear =
+    Number.parseInt(params.competenceMonth.slice(0, 4), 10) || new Date().getFullYear();
+  const compMonth = Number.parseInt(params.competenceMonth.slice(5, 7), 10) || undefined;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]!;
     const text = line.text.trim();
 
-    // Barreira 1: Máquina de Estados
-    const { state, shouldDrop } = stateMachine.processLine(text);
-    if (state === "hard_stop") {
-      break;
+    // Captura finais de cartão em cabeçalhos de seção / subcartão
+    const cardLast4Match = /(?:[•*xX.-]{3,4}\s*){1,4}(\d{4})\b|\bfinal\s+(\d{4})\b/i.exec(text);
+    const matchedDigits = cardLast4Match?.[1] ?? cardLast4Match?.[2];
+    if (matchedDigits && isSubcardHeader(text)) {
+      detectedCardLast4s.add(matchedDigits);
     }
+
+    // Barreira 1: Máquina de Estados (nunca executa break global em boleto)
+    const { shouldDrop } = stateMachine.processLine(text, line.pageNumber ?? 1);
     if (shouldDrop) {
+      if (AMOUNT_REGEX.test(text)) {
+        discardedMoneyLines++;
+      }
       continue;
     }
 
@@ -316,14 +412,17 @@ export function extractTransactionsFromSpatialLines(
 
     // Barreira 3: Encargos Informativos vs Cobrados
     if (isSimulationOrContractualNoise(text)) {
+      if (AMOUNT_REGEX.test(text)) {
+        discardedMoneyLines++;
+      }
       continue;
     }
 
-    // Validação de par Data + Valor
+    // Validação de par Data + Valor (ancorado no último BRL à direita)
     const dateMatch = DATE_REGEX.exec(text);
-    const amountMatch = AMOUNT_REGEX.exec(text);
+    const amountExtracted = extractBrlAmountFromLine(text);
 
-    if (!dateMatch || !amountMatch) {
+    if (!dateMatch || !amountExtracted) {
       // Verificação de continuação internacional (fx_detail) anexada à transação anterior
       if (isFxDetail(text) && transactions.length > 0) {
         const lastTx = transactions[transactions.length - 1]!;
@@ -333,21 +432,22 @@ export function extractTransactionsFromSpatialLines(
       continue;
     }
 
-    // Normalização da data
+    // Normalização da data (com virada de ano DD/MM e meses abreviados)
     const rawDateStr = dateMatch[0];
-    const compYear = Number.parseInt(params.competenceMonth.slice(0, 4), 10) || new Date().getFullYear();
-    const dateIso = normalizeDateToISO(rawDateStr, compYear);
+    const dateIso = normalizeDateToISO(rawDateStr, compYear, compMonth);
     if (!dateIso) continue;
 
     // Normalização do valor
-    const rawAmtFullMatch = amountMatch[0];
-    const rawAmtValueStr = amountMatch[1] ?? amountMatch[0];
+    const rawAmtFullMatch = amountExtracted.fullMatch;
+    const rawAmtValueStr = amountExtracted.valueStr;
     const parsedAmt = parseAmountToCents(rawAmtValueStr);
     if (!parsedAmt || parsedAmt.amountCents === 0) continue;
 
     const amountCents = parsedAmt.amountCents;
-    const isCreditSuffix = amountMatch[2]?.toLowerCase() === "c" || parsedAmt.isCreditSuffix;
-    const isCredit = isCreditSuffix || parsedAmt.isNegative;
+    const suffixLower = amountExtracted.suffix?.toLowerCase();
+    const isCreditSuffix = suffixLower === "c" || parsedAmt.isCreditSuffix;
+    const isDebitSuffix = suffixLower === "d" || suffixLower === "-" || parsedAmt.isDebitSuffix;
+    const isCredit = isCreditSuffix || (parsedAmt.isNegative && !isDebitSuffix);
 
     // Extrai descrição isolando data e valor (removendo a correspondência inteira de valor para não sobrar "R$")
     const rawDesc = text
@@ -357,6 +457,17 @@ export function extractTransactionsFromSpatialLines(
       .trim();
 
     if (!rawDesc) continue;
+
+    // Descarte estrito de cabeçalhos de subcartões, subtotais e ruídos de resumo
+    if (
+      isSubcardHeader(rawDesc) ||
+      isSubcardHeader(text) ||
+      isStatementNoiseOrSummary(rawDesc) ||
+      isStatementNoiseOrSummary(text)
+    ) {
+      discardedMoneyLines++;
+      continue;
+    }
 
     const isPayment = isInvoicePayment(rawDesc, isCredit);
     const isRefund = isCredit && !isPayment;
@@ -418,6 +529,8 @@ export function extractTransactionsFromSpatialLines(
   return {
     transactions,
     reconstructedText: acceptedLines.join("\n"),
+    discardedMoneyLines,
+    detectedCardLast4s: Array.from(detectedCardLast4s),
   };
 }
 
@@ -539,7 +652,10 @@ export async function parseSpatialPdfDocument(
         usedTwoColumnMode = true;
       }
 
-      const pageLines = groupTokensIntoLines(tokens, viewport.width, isBimodal);
+      const pageLines = groupTokensIntoLines(tokens, viewport.width, isBimodal).map((l) => ({
+        ...l,
+        pageNumber: pageNum,
+      }));
       allLines.push(...pageLines);
 
       page.cleanup();
@@ -553,10 +669,12 @@ export async function parseSpatialPdfDocument(
     }
   }
 
-  const { transactions, reconstructedText } = extractTransactionsFromSpatialLines(
-    allLines,
-    params,
-  );
+  const {
+    transactions,
+    reconstructedText,
+    discardedMoneyLines,
+    detectedCardLast4s,
+  } = extractTransactionsFromSpatialLines(allLines, params);
 
   const checksumGate = evaluateChecksumGate(transactions, params.officialTotalCents ?? null);
 
@@ -567,5 +685,7 @@ export async function parseSpatialPdfDocument(
     checksumGate,
     totalPages,
     usedTwoColumnMode,
+    discardedMoneyLines,
+    detectedCardLast4s,
   };
 }

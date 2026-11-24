@@ -6,7 +6,6 @@ import {
   filterIncomesByViewScope,
 } from "@/domain/business";
 import { todayISO } from "@/domain/debts";
-import { isFamilyUnderDecay } from "@/domain/insights";
 import { extractPendingSplitSignals } from "@/domain/notifications/hub";
 import { isFirstUse, shouldShowOnboardingBanner } from "@/domain/onboarding";
 import {
@@ -42,9 +41,10 @@ import {
   useUserAccess,
   useUserPreferences,
   useUserSubscription,
+  useUserTrips,
 } from "@/state";
 import { getStoredInitialGoal, setStoredInitialGoal } from "@/state/demo-mode";
-import { useUserTrips } from "@/state/queries/use-trips";
+import { isQueryPending } from "@/state/query-readiness";
 import { useUserFinancialContext } from "@/state/selectors";
 import type { DashboardAlertDismissals, OnboardingGoalId } from "@/types";
 import { useOverviewCashflow } from "./use-overview-cashflow";
@@ -116,11 +116,13 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
   const portfolioPositionQuery = usePortfolioPosition();
   const rawPositionRows = portfolioPositionQuery?.rows;
   const positionRows = useMemo(() => rawPositionRows ?? [], [rawPositionRows]);
-  const { hasFeature, profile } = useUserAccess();
+  const { hasFeature, profile, isLoading: accessLoading } = useUserAccess();
   const userPreferencesQuery = useUserPreferences();
   const updateCustomSettingsMutation = useUpdateCustomSettings();
   const onboardingQuery = useOnboardingCounts();
-  const corporateDividends = useCorporateDividends();
+  const corporateDividends = useCorporateDividends({
+    enabled: !accessLoading && hasFeature("investments"),
+  });
   const subscription = useUserSubscription();
   const { isDismissed: isOnboardingDismissed, dismiss: rawDismissOnboarding } = useOnboardingDismissed();
   const isEffectiveOnboardingDismissed =
@@ -200,7 +202,11 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
       realCashData.cashBalance.eventsSinceCheckpoint.length > 0,
   );
 
-  const { context: financialContext, predictedUpcomingInflows } = useUserFinancialContext({
+  const {
+    context: financialContext,
+    predictedUpcomingInflows,
+    isLoading: financialContextLoading,
+  } = useUserFinancialContext({
     month,
     todayISO: today,
     isCurrentMonth,
@@ -263,13 +269,13 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
       month,
       spentPercent: cashflow.pace.spentPercent,
       surplusCents: cashflow.projection.surplusCents,
-    }) && !isFamilyUnderDecay(advisorDecayMeta.pace);
+    }) && advisorDecayMeta.pace?.muted !== true;
 
   const isSurplusEligible =
     shouldShowSurplusAlert(alertDismissals.surplus, {
       month,
       surplusCents: cashflow.surplusCapacity.suggestedAporteCents,
-    }) && !isFamilyUnderDecay(advisorDecayMeta.surplus);
+    }) && advisorDecayMeta.surplus?.muted !== true;
 
   const isGovernanceDismissed = isGovernanceAlertDismissed(alertDismissals.governance);
   const hasPendingSplitSignals = useMemo(
@@ -281,13 +287,35 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     [alertDismissals.cards],
   );
   const isCashGapEligible =
-    !isCardDismissed("cash-gap-alert") && !isFamilyUnderDecay(advisorDecayMeta.cash_gap);
+    !isCardDismissed("cash-gap-alert") && advisorDecayMeta.cash_gap?.muted !== true;
   const isTrialBannerEligible =
     !subscription.isLoading &&
     shouldShowTrialBanner(
       subscription.trialDaysRemaining,
       Boolean(subscription.hasAutoRenew),
       alertDismissals.cards?.["trial-ending"],
+    );
+
+  const isAlertsDataLoading =
+    loading ||
+    financialContextLoading ||
+    Boolean(accessLoading) ||
+    Boolean(subscription.isLoading) ||
+    isQueryPending(userPreferencesQuery) ||
+    isQueryPending(budgetsQuery) ||
+    isQueryPending(expenseCategories) ||
+    isQueryPending(cardExpensesQuery) ||
+    isQueryPending(cardPaymentsQuery) ||
+    isQueryPending(contributionsQuery) ||
+    isQueryPending(splitSharesQuery) ||
+    isQueryPending(goalSharesQuery) ||
+    isQueryPending(tripsQuery) ||
+    isQueryPending(myFamilyQuery, isFamilyModeEnabled) ||
+    isQueryPending(familyConsolidationQuery, hasFamily) ||
+    Boolean(
+      !accessLoading &&
+        hasFeature("investments") &&
+        (corporateDividends.isLoading || portfolioPositionQuery?.isLoading),
     );
 
   return {
@@ -297,6 +325,8 @@ export function useOverviewData({ month, alertDismissals }: UseOverviewDataOptio
     today,
     isCurrentMonth,
     loading,
+    financialContextLoading,
+    isAlertsDataLoading,
     error,
     hasFeature,
     onboardingQuery,

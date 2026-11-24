@@ -181,6 +181,53 @@ describe("user-preferences repository", () => {
     });
   });
 
+  it("updateCustomSettings preserva e mescla advisorDecayMeta e suporta revogação em advisorDismissals", async () => {
+    const futureExpiry = Date.now() + 86_400_000 * 10;
+    customSettingsState = {
+      advisorDecayMeta: {
+        habit: {
+          dismissCount: 2,
+          lastDismissedAt: "2026-11-20T10:00:00.000Z",
+          dismissedUntil: futureExpiry,
+        },
+      },
+      advisorDismissals: {
+        "dup:netflix": futureExpiry,
+        "habit:cafe": futureExpiry,
+      },
+    };
+    builder = makeBuilder({ error: null });
+    builder.maybeSingle.mockImplementation(() => ({
+      then: (cb: (v: unknown) => unknown) =>
+        Promise.resolve({
+          data: {
+            user_id: "u1",
+            custom_settings: customSettingsState,
+          },
+          error: null,
+        }).then(cb),
+    }));
+
+    await updateCustomSettings({
+      advisorDecayMeta: {
+        pace: {
+          dismissCount: 1,
+          lastDismissedAt: "2026-11-24T10:00:00.000Z",
+          dismissedUntil: futureExpiry,
+        },
+      },
+      advisorDismissals: { "dup:netflix": 0 },
+    });
+
+    expect(customSettingsState.advisorDecayMeta).toEqual({
+      habit: expect.objectContaining({ dismissCount: 2 }),
+      pace: expect.objectContaining({ dismissCount: 1 }),
+    });
+    expect(customSettingsState.advisorDismissals).toEqual({
+      "habit:cafe": futureExpiry,
+    });
+  });
+
   it("propaga erro ao falhar atualização", async () => {
     builder = makeBuilder({ error: null });
     lastError = { message: "db error", code: "PGRST" };

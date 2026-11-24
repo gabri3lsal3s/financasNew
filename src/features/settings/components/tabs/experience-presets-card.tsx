@@ -34,15 +34,16 @@ export function ExperiencePresetsCard({
   return (
     <Card data-tour="settings-experience-presets">
       <CardHeader>
-        <CardTitle className="text-base flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+        <CardTitle className="text-base flex flex-row items-center justify-between gap-2.5">
           <span className="flex items-center gap-2 min-w-0">
             <Sparkles className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-            <span>Modo de Experiência do Aplicativo</span>
+            <span className="sm:hidden truncate">Modo de Experiência</span>
+            <span className="hidden sm:inline truncate">Modo de Experiência do Aplicativo</span>
           </span>
           <Badge
             variant={activePreset === "custom" ? "warning" : "default"}
             size="sm"
-            className="self-start sm:self-center shrink-0"
+            className="shrink-0"
           >
             {activePreset === "custom" ? "Modo: Personalizado" : "Preset Ativo"}
           </Badge>

@@ -11,12 +11,17 @@ export function FamilyBudgetShareCard() {
     <>
       <Card className="border-border/80 bg-surface shadow-xs rounded-2xl">
         <CardHeader>
-          <CardTitle className="text-base flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
-            <span className="flex items-center gap-2">
-              <Users className="size-4 text-muted-foreground" aria-hidden="true" />
-              <span>Modo Família &amp; Link do Cônjuge</span>
+          <CardTitle className="text-base flex flex-row items-center justify-between gap-2.5">
+            <span className="flex items-center gap-2 min-w-0">
+              <Users className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="sm:hidden truncate">Modo Família</span>
+              <span className="hidden sm:inline truncate">Modo Família &amp; Link do Cônjuge</span>
             </span>
-            <Badge variant={s.isFamilyModeEnabled && s.activeShare ? "positive" : "muted"} size="xs">
+            <Badge
+              variant={s.isFamilyModeEnabled && s.activeShare ? "positive" : "muted"}
+              size="xs"
+              className="shrink-0"
+            >
               {!s.isFamilyModeEnabled ? "Modo Desativado" : s.activeShare ? "Link Ativo" : "Sem Link Ativo"}
             </Badge>
           </CardTitle>

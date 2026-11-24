@@ -28,6 +28,7 @@ export interface OverviewDashboardContentProps {
   modals: ReturnType<typeof useOverviewModals>;
   donutSlices: DonutSlice[];
   alertItems: (DashboardAlertItem | null | undefined | false)[];
+  isAlertsReady?: boolean;
   detectedPix: DetectedPixTransaction | null;
   showPixClipboardBanner?: boolean;
   onDismissDetectedPix: () => void;
@@ -45,6 +46,7 @@ export function OverviewDashboardContent({
   modals,
   donutSlices,
   alertItems,
+  isAlertsReady = true,
   detectedPix,
   showPixClipboardBanner = true,
   onDismissDetectedPix,
@@ -102,7 +104,7 @@ export function OverviewDashboardContent({
             </div>
           ) : null}
 
-          <DashboardAlertsCarousel items={alertItems} maxItems={2} />
+          <DashboardAlertsCarousel items={alertItems} maxItems={2} isLoading={!isAlertsReady} />
 
           {data.subscription.isReadOnly ? <ReadOnlyBanner /> : null}
 

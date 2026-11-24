@@ -26,29 +26,27 @@ export function CategoriesPage() {
     <div className="flex flex-col gap-5 sm:gap-6">
       <PageHeader
         title="Categorias"
-        description="Personalize suas categorias de despesas e receitas, cores e kits temáticos"
+        description="Organize categorias de receitas e despesas"
         actions={
-          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+          <>
             <Button
               variant="outline"
               size="sm"
               onClick={() => c.handleOpenKits()}
-              className="gap-1.5"
               title="Explorar e instalar kits temáticos de categorias"
             >
-              <Boxes aria-hidden="true" className="size-4" />
+              <Boxes aria-hidden="true" />
               <span>Kits de categorias</span>
             </Button>
             <Button
               size="sm"
               onClick={c.handleOpenCreate}
-              className="gap-1.5"
               title="Criar nova categoria"
             >
-              <Plus aria-hidden="true" className="size-4" />
+              <Plus aria-hidden="true" />
               <span>Nova categoria</span>
             </Button>
-          </div>
+          </>
         }
       />
 
@@ -96,8 +94,8 @@ export function CategoriesPage() {
           />
 
           {/* Barra de Busca e Filtros de Escopo */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="relative w-full flex-1 min-w-0">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none"
                 aria-hidden="true"
@@ -121,7 +119,7 @@ export function CategoriesPage() {
             </div>
 
             {/* Chips de filtro por escopo */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0">
               {SCOPE_OPTIONS.map((opt) => {
                 const isSelected = c.scopeFilter === opt.id;
                 return (

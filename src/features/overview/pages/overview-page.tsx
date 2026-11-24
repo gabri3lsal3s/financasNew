@@ -87,11 +87,16 @@ export function OverviewPage() {
 
   const advisor = useSmartAdvisorInsights({
     month,
-    enabled: data.isCurrentMonth && !data.showVirginGuide && !data.loading,
+    enabled:
+      data.isCurrentMonth &&
+      !data.showVirginGuide &&
+      !(data.onboardingQuery.isLoading && !data.onboardingQuery.data),
     savingsSurplusCents: data.surplusCapacity.suggestedAporteCents,
     safeToSpendCents: data.realCashData.safeToSpend.safeToSpendCents,
     committedObligationsCents: data.realCashData.safeToSpend.committedObligationsCents,
     suppressedThemeKeys: suppressedAdvisorThemeKeys,
+    financialContext: data.financialContext,
+    isFinancialContextLoading: data.financialContextLoading,
   });
 
   const modals = useOverviewModals({
@@ -150,53 +155,68 @@ export function OverviewPage() {
     (data.cardsQuery.data?.length ?? 0) > 0 ||
     (data.debtsQuery.data?.length ?? 0) > 0 ||
     data.splitPendingData.count > 0;
-  const showJitDeviceAlertsInvite = Boolean(
+  const needsJitPermissionsCheck = Boolean(
     !data.showVirginGuide &&
       hasTrackableObligation &&
       data.onboardingQuery?.data &&
       !data.onboardingQuery.data.notificationsEnabled &&
-      !permissions.isChecking &&
       !permissions.hasDeviceAlertsConfigured &&
       !data.isCardDismissed("jit-device-alerts-invite"),
   );
+  const showJitDeviceAlertsInvite = Boolean(needsJitPermissionsCheck && !permissions.isChecking);
+  const isPermissionsBlockingCarousel = Boolean(
+    permissions.needsPermissionsBannerCheck || (needsJitPermissionsCheck && permissions.isChecking),
+  );
 
-  const alertItems = buildOverviewAlertItems({
-    month,
-    data,
-    shouldShowPermissionsBanner: permissions.shouldShowPermissionsBanner,
-    permissionBannerType: permissions.permissionBannerType,
-    onPermissionsAction: permissions.handlePermissionsBannerAction,
-    onPermissionsDismiss: permissions.handlePermissionsBannerDismiss,
-    onNavigateInsights: () => navigate("/insights?aba=projection"),
-    onDismissPace: modals.handleDismissPace,
-    onOpenGoalDeposit: (share) => modals.setDepositGoalShare(share),
-    onNavigateGoal: (shareId) => navigate(`/orcamentos?tab=goals&q=${shareId}`),
-    onDismissGoal: modals.handleDismissGoal,
-    onDismissSurplus: modals.handleDismissSurplus,
-    onInspectDividends: () => openDividendReviewModal({ initialTab: "review" }),
-    canViewInvestments: hasFeature("investments"),
-    overdueReviewsCount: govInsights.overdueReviewsCount,
-    onReviewGovernance: () => navigate("/investments?tab=metas"),
-    onDismissGovernance: modals.handleDismissGovernance,
-    isGovernanceDismissed: data.isGovernanceDismissed,
-    showOnboardingCarousel: data.showOnboarding,
-    initialGoal: data.initialGoal,
-    onOpenOnboardingChecklist: () => modals.setOnboardingChecklistOpen(true),
-    onDismissOnboarding: data.dismissOnboarding,
-    showJitDeviceAlertsInvite,
-    onOpenInitialPreferences: () => modals.setInitialPreferencesOpen(true),
-    onDismissCard: modals.handleDismissCard,
-    advisorInsights: advisor.insights,
-    onDismissAdvisor: advisor.dismiss,
-    onConfirmRecurrence: advisor.confirmRecurrence,
-    onIgnoreRecurrence: (occurrenceKey, reason) =>
-      reason === "essential"
-        ? advisor.markAsEssential(occurrenceKey)
-        : advisor.ignoreRecurrence(occurrenceKey, reason),
-    onMarkEssential: advisor.markAsEssential,
-    onConfirmIncome: advisor.confirmIncome,
-    onConfirmExpense: advisor.confirmExpense,
-  });
+  const isCarouselReady =
+    !data.isAlertsDataLoading &&
+    !accessLoading &&
+    !isPermissionsBlockingCarousel &&
+    !(hasFeature("investments") && govInsights.isLoading) &&
+    !(data.isCurrentMonth && !data.showVirginGuide && advisor.isLoading);
+
+  const alertItems = isCarouselReady
+    ? buildOverviewAlertItems({
+        month,
+        data,
+        shouldShowPermissionsBanner: permissions.shouldShowPermissionsBanner,
+        permissionBannerType: permissions.permissionBannerType,
+        onPermissionsAction: permissions.handlePermissionsBannerAction,
+        onPermissionsDismiss: permissions.handlePermissionsBannerDismiss,
+        onNavigateInsights: () => navigate("/insights?aba=projection"),
+        onDismissPace: modals.handleDismissPace,
+        onOpenGoalDeposit: (share) => modals.setDepositGoalShare(share),
+        onNavigateGoal: (shareId) => navigate(`/orcamentos?tab=goals&q=${shareId}`),
+        onDismissGoal: modals.handleDismissGoal,
+        onDismissSurplus: modals.handleDismissSurplus,
+        onInspectDividends: () => openDividendReviewModal({ initialTab: "review" }),
+        canViewInvestments: hasFeature("investments"),
+        overdueReviewsCount: govInsights.overdueReviewsCount,
+        onReviewGovernance: () => navigate("/investments?tab=metas"),
+        onDismissGovernance: modals.handleDismissGovernance,
+        isGovernanceDismissed: data.isGovernanceDismissed,
+        showOnboardingCarousel: data.showOnboarding,
+        initialGoal: data.initialGoal,
+        onOpenOnboardingChecklist: () => modals.setOnboardingChecklistOpen(true),
+        onDismissOnboarding: data.dismissOnboarding,
+        showJitDeviceAlertsInvite,
+        onOpenInitialPreferences: () => modals.setInitialPreferencesOpen(true),
+        onDismissCard: modals.handleDismissCard,
+        advisorInsights: advisor.insights,
+        onDismissAdvisor: advisor.dismiss,
+        onConfirmRecurrence: advisor.confirmRecurrence,
+        onIgnoreRecurrence: (occurrenceKey, reason) =>
+          reason === "essential"
+            ? advisor.markAsEssential(occurrenceKey)
+            : advisor.ignoreRecurrence(occurrenceKey, reason),
+        onMarkEssential: advisor.markAsEssential,
+        onConfirmIncome: advisor.confirmIncome,
+        onConfirmExpense: advisor.confirmExpense,
+        onMarkTxOneOff: advisor.markTxOneOff,
+        onPauseFamily: advisor.muteFamily,
+        decayByFamily: advisor.decayByFamily,
+      })
+    : [];
 
   const hasFinance =
     hasFeature("transactions") || hasFeature("cards") || hasFeature("debts") || hasFeature("budgets");
@@ -231,6 +251,7 @@ export function OverviewPage() {
           modals={modals}
           donutSlices={donutSlices}
           alertItems={alertItems}
+          isAlertsReady={isCarouselReady}
           detectedPix={detectedPix}
           showPixClipboardBanner={operationalBannerPlan.visibleKinds.includes("pix_clipboard")}
           onDismissDetectedPix={dismissDetectedPix}

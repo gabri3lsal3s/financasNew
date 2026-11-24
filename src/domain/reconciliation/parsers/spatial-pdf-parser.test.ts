@@ -77,53 +77,59 @@ describe("spatial-pdf-parser — Motor Espacial (X, Y) com 4 Barreiras Anti-Ruí
   });
 
   describe("Barreira 1 — Máquina de Estados de Seção", () => {
-    it("inicia em start_zone, entra em pause_zone e para em hard_stop no boleto", () => {
+    it("inicia em start_zone, entra em pause_zone e pausa em paused_boleto até virada de página ou nova seção", () => {
       const sm = new SectionStateMachine();
 
       // Cabeçalho institucional antes das compras
-      expect(sm.processLine("FATURA DO CARTÃO DE CRÉDITO")).toEqual({
+      expect(sm.processLine("FATURA DO CARTÃO DE CRÉDITO", 1)).toEqual({
         state: "outside",
         shouldDrop: true,
       });
 
       // Título de início
-      expect(sm.processLine("LANÇAMENTOS DA FATURA")).toEqual({
+      expect(sm.processLine("LANÇAMENTOS DA FATURA", 1)).toEqual({
         state: "start_zone",
         shouldDrop: true, // Título é descartado
       });
 
       // Linha de compra aceita
-      expect(sm.processLine("10/05 Posto Shell R$ 180,00")).toEqual({
+      expect(sm.processLine("10/05 Posto Shell R$ 180,00", 1)).toEqual({
         state: "start_zone",
         shouldDrop: false,
       });
 
       // Entra em zona de simulação de parcelamento
-      expect(sm.processLine("OPÇÕES DE PARCELAMENTO DA FATURA")).toEqual({
+      expect(sm.processLine("OPÇÕES DE PARCELAMENTO DA FATURA", 1)).toEqual({
         state: "pause_zone",
         shouldDrop: true,
       });
 
       // Conteúdo dentro de pause_zone é descartado
-      expect(sm.processLine("Plano em até 12x de R$ 45,00")).toEqual({
+      expect(sm.processLine("Plano em até 12x de R$ 45,00", 1)).toEqual({
         state: "pause_zone",
         shouldDrop: true,
       });
 
-      // Hard stop ao encontrar linha digitável de boleto bancário (47 dígitos)
-      expect(sm.processLine("23793.38128 60000.123456 01000.678901 3 98760000018000")).toEqual({
-        state: "hard_stop",
+      // Pausa de boleto ao encontrar linha digitável de boleto bancário (47 dígitos) na página 1
+      expect(sm.processLine("23793.38128 60000.123456 01000.678901 3 98760000018000", 1)).toEqual({
+        state: "paused_boleto",
         shouldDrop: true,
       });
 
-      // Tudo após hard stop é estritamente ignorado
-      expect(sm.processLine("Autenticação Mecânica")).toEqual({
-        state: "hard_stop",
+      // Campos do boleto na mesma página 1 são descartados sem vazar
+      expect(sm.processLine("Vencimento 15/05/2026 Valor do Documento R$ 1.800,00", 1)).toEqual({
+        state: "paused_boleto",
         shouldDrop: true,
       });
-      expect(sm.processLine("11/05 Compra Qualquer R$ 50,00")).toEqual({
-        state: "hard_stop",
+      expect(sm.processLine("Autenticação Mecânica", 1)).toEqual({
+        state: "paused_boleto",
         shouldDrop: true,
+      });
+
+      // Ao virar para a página 2, a máquina retoma a leitura normalmente
+      expect(sm.processLine("11/05 Compra Qualquer R$ 50,00", 2)).toEqual({
+        state: "start_zone",
+        shouldDrop: false,
       });
     });
   });
@@ -298,6 +304,58 @@ describe("spatial-pdf-parser — Motor Espacial (X, Y) com 4 Barreiras Anti-Ruí
       const noOfficialTotal = evaluateChecksumGate(candidateTxs, null);
       expect(noOfficialTotal.passed).toBe(true);
       expect(noOfficialTotal.officialTotalCents).toBeNull();
+    });
+  });
+
+  describe("Cenários Reais Rico/XP, Moeda Estrangeira e Virada de Ano", () => {
+    it("descarta boleto na capa (pág 1) e cabeçalho de cartão, extraindo compras reais na pág 2", () => {
+      const lines: SpatialPdfLine[] = [
+        { y: 780, xStart: 40, xEnd: 300, fontSize: 10, column: 1, pageNumber: 1, text: "Cartão: **** **** **** 2107 VISA 15/11/2026 R$ 1.528,54", tokens: [] },
+        { y: 700, xStart: 40, xEnd: 400, fontSize: 9, column: 1, pageNumber: 1, text: "23793.38128 60000.123456 01000.678901 3 98760000152854", tokens: [] },
+        { y: 680, xStart: 40, xEnd: 300, fontSize: 9, column: 1, pageNumber: 1, text: "Vencimento 15/11/2026 Valor do Documento R$ 1.528,54", tokens: [] },
+        { y: 750, xStart: 40, xEnd: 300, fontSize: 10, column: 1, pageNumber: 2, text: "10/11/2026 MERCADO CENTRAL R$ 528,54", tokens: [] },
+        { y: 730, xStart: 40, xEnd: 300, fontSize: 10, column: 1, pageNumber: 2, text: "12/11/2026 FARMACIA SAUDE R$ 1.000,00", tokens: [] },
+      ];
+
+      const { transactions, detectedCardLast4s } = extractTransactionsFromSpatialLines(lines, {
+        cardId: "card-rico",
+        competenceMonth: "2026-11",
+      });
+
+      expect(detectedCardLast4s).toContain("2107");
+      expect(transactions).toHaveLength(2);
+      expect(transactions[0]?.cleanDescription).toBe("MERCADO CENTRAL");
+      expect(transactions[0]?.amountCents).toBe(52854);
+      expect(transactions[1]?.cleanDescription).toBe("FARMACIA SAUDE");
+      expect(transactions[1]?.amountCents).toBe(100000);
+    });
+
+    it("ancora no último valor BRL à direita em compras internacionais com USD + BRL", () => {
+      const lines: SpatialPdfLine[] = [
+        { y: 750, xStart: 40, xEnd: 400, fontSize: 10, column: 1, pageNumber: 1, text: "10/11/2026 OPENAI *CHATGPT USD 20,00 116,40", tokens: [] },
+      ];
+
+      const { transactions } = extractTransactionsFromSpatialLines(lines, {
+        cardId: "card-1",
+        competenceMonth: "2026-11",
+      });
+
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0]?.amountCents).toBe(11640);
+    });
+
+    it("resolve virada de ano e meses abreviados em faturas de Janeiro (28 DEZ -> ano anterior)", () => {
+      const lines: SpatialPdfLine[] = [
+        { y: 750, xStart: 40, xEnd: 300, fontSize: 10, column: 1, pageNumber: 1, text: "28 DEZ RESTAURANTE ANO NOVO R$ 120,00", tokens: [] },
+      ];
+
+      const { transactions } = extractTransactionsFromSpatialLines(lines, {
+        cardId: "card-1",
+        competenceMonth: "2027-01",
+      });
+
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0]?.date).toBe("2026-12-28");
     });
   });
 });

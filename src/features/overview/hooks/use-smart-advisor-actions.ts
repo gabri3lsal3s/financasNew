@@ -24,7 +24,7 @@ export interface SmartAdvisorActionSensoryOptions {
 interface UseSmartAdvisorActionsParams {
   todayISOStr: string;
   activeThemeKey?: string;
-  dismiss: (themeKey?: string, days?: number) => void;
+  dismiss: (themeKey?: string, days?: number, options?: { isResolution?: boolean }) => void;
 }
 
 /**
@@ -135,7 +135,7 @@ export function useSmartAdvisorActions({
         buildAdvisorConfirmIncomeInput(payload, todayISOStr),
       );
       const keyToDismiss = activeThemeKey ?? `income:${normalizeText(payload.name)}`;
-      dismiss(keyToDismiss, DEFAULT_DISMISS_DAYS);
+      dismiss(keyToDismiss, DEFAULT_DISMISS_DAYS, { isResolution: true });
       triggerSensory("success");
       pushToast({
         title: "Entrada confirmada",
@@ -174,7 +174,7 @@ export function useSmartAdvisorActions({
         buildAdvisorConfirmExpenseInput(payload, todayISOStr),
       );
       const keyToDismiss = activeThemeKey ?? `missing_expense:${normalizeText(payload.name)}`;
-      dismiss(keyToDismiss, DEFAULT_DISMISS_DAYS);
+      dismiss(keyToDismiss, DEFAULT_DISMISS_DAYS, { isResolution: true });
       triggerSensory("success");
       pushToast({
         title: "Pagamento confirmado",

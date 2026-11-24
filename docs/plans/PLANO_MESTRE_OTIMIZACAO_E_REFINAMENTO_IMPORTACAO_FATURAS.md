@@ -1,7 +1,7 @@
 # PLANO MESTRE DE OTIMIZAÇÃO, BLINDAGEM E REFINAMENTO DA IMPORTAÇÃO DE FATURAS
 
 > **Documento Canônico de Arquitetura, UX e Engenharia Financeira**  
-> **Versão:** 1.1 (Definitiva e Refinada pós-Fase 0) · **Status:** Pronto para Execução (Aguardando Sinal Verde)  
+> **Versão:** 1.2 (Definitiva — Refinada com Ajustes Cirúrgicos e 5 Otimizações Essenciais) · **Status:** Em Execução (Fases 1–5)  
 > **Escopo:** Blindagem Determinística, Resolução das 5 Fragilidades Reais, Matriz Multibancos, Governança Temporal de Ciclos e Experiência de Usuário de Mínima Fricção  
 > **Governança:** `AGENTS.md` (§3, §4, §8, §10, §13, §18, §20, §25, §26) · Zero Emojis · TypeScript Estrito · Vitest
 
@@ -129,10 +129,10 @@ A partir de testes empíricos com faturas reais de mercado e das evidências vis
 
 ### 3.4 Solução para Fragilidade 4: Blindagem Incondicional de Quitações e Isolamento de Resumo
 1. **Expansão de Padrões em `clean.ts`:**
-   - Atualizar `UNCONDITIONAL_INVOICE_PAYMENT_PATTERNS` para cobrir de forma exaustiva quitações bancárias nominais:
+   - Atualizar `UNCONDITIONAL_INVOICE_PAYMENT_PATTERNS` com regex cirúrgico cobrindo singular/plural e todas as variações bancárias nominais:
      ```ts
      export const UNCONDITIONAL_INVOICE_PAYMENT_PATTERNS: RegExp[] = [
-       /\bpag(?:amentos?|to)?\s+(?:v[aá]lidos?\s+)?(?:normais|nominais)\b/i,
+       /\bpag(?:amentos?|to)?\s+(?:de\s+|v[aá]lidos?\s+|tit(?:ulo)?\s+)?(?:norma(?:is|l)|nomina(?:is|l))\b/i,
        /\bpag(?:amentos?|to)?\s+(?:efetuados?|recebidos?|parciais?|antecipados?)\b/i,
        /\bpag(?:amentos?|to)?\s*(?:de\s+|da\s+)?fatura\b/i,
        /\bpgto\s*fatura\b/i,
@@ -144,7 +144,7 @@ A partir de testes empíricos com faturas reais de mercado e das evidências vis
      ];
      ```
    - **Pix no Crédito:** Linhas contendo apenas `"pagamento por pix"` permanecem em `CREDIT_ONLY_SETTLEMENT_PATTERNS` (ou exigem `isCredit === true`), preservando compras e transferências realizadas pelo titular via Pix no crédito.
-   - **Saldo Anterior e Total da Fatura:** Removidos de `UNCONDITIONAL_INVOICE_PAYMENT_PATTERNS`. São interceptados como **ruído de resumo/cabeçalho** (`isSummaryOrNoiseLine`), sendo sumariamente descartados no parser/pré-processador para **nunca entrarem** na Staging Area nem na aba de ignorados.
+   - **Saldo Anterior, Total da Fatura e Subtotais:** Removidos de `UNCONDITIONAL_INVOICE_PAYMENT_PATTERNS`. São interceptados como **ruído estrutural** (`isSummaryOrNoiseLine`), sendo descartados no parser/pré-processador para **nunca entrarem** na Staging Area nem na aba de ignorados.
 2. **Classificação Contábil no Scorer:**
    - Toda linha com `isPayment === true` recebe: `nature = "invoice_payment"`, `selected = false`, `ignoredByDefault = true`, alocada exclusivamente na aba *"Ignorados / Estornos"*.
 
@@ -156,17 +156,22 @@ A partir de testes empíricos com faturas reais de mercado e das evidências vis
      * A página virar (`line.pageNumber > boletoPage`); OU
      * Encontrar uma seção válida de compras (`SECTION_START_REGEX`: *Lançamentos, Compras, Detalhamento, Transações*).
    - Adicionar predicado `isBoletoFieldNoise` (*vencimento, data do documento, valor do documento, sacado, cedente, nosso número, ficha de compensação, autenticação mecânica*) para impedir vazamento de linhas residuais do boleto como compras.
-2. **Flexibilização de Máscaras em `SUBCARD_HEADER_REGEX`:**
-   - Atualizar a expressão regular em `clean.ts`:
+2. **Flexibilização de Máscaras em `SUBCARD_HEADER_REGEX` e Subtotais:**
+   - Atualizar a expressão regular em `clean.ts` para cobrir grupos separados por espaço (`**** **** **** 2107`, `•••• •••• •••• 2107`, `XXXX XXXX XXXX 2107`) e subtotais de cartões virtuais/adicionais:
      ```ts
      const SUBCARD_HEADER_REGEX =
-       /^(?:(?:cart[aã]o(?:\s*:)?|final|titular|adicional)\s*(?:[•*xX.-]{3,16}[\s*]*\d{4}|\b\d{4}\b)|(?:visa|mastercard|elo|amex)\s+.*final\s+\d{4}|lan[çc]amentos\s+do\s+cart[aã]o)\b/i;
+       /^(?:(?:cart[aã]o(?:\s*:)?|final|titular|adicional)\s*(?:(?:[•*xX.-]{3,4}\s*){1,4}\d{4}|\b\d{4}\b)|(?:visa|mastercard|elo|amex)\s+.*(?:final\s+)?\d{4}|lan[çc]amentos\s+do\s+cart[aã]o|subtotal\s+cart[aã]o\s+(?:[•*xX.-]{0,4}\s*)*\d{4}|total\s+lan[çc]amentos\s+cart[aã]o(?:\s+final)?\s+\d{4})\b/i;
      ```
-   - Em `extractTransactionsFromSpatialLines`, se uma linha for classificada como `subcard_header`, ela alimenta os metadados do cartão (`detectedCardLast4`), mas **nunca é adicionada ao array `transactions`**.
+   - Em `extractTransactionsFromSpatialLines` e demais parsers, linhas classificadas como `subcard_header` ou `isSummaryOrNoiseLine` alimentam metadados (`detectedCardLast4s`), mas **nunca são adicionadas ao array `transactions`**.
+   - Se o extrato possuir múltiplos finais de 4 dígitos (cartão físico + virtual/adicional), `statement-metadata.ts` não dispara falso alerta caso o cartão selecionado esteja entre os finais detectados.
 3. **Detector Determinístico de Anomalia de Colapso com Input Integral:**
-   - Condição de Colapso Real: $\le 2$ transações extraídas, documento com densidade textual alta (`allLines.length > 15`) e a linha resultante apresenta descrição característica de cartão ou fatura (`isSubcardHeader`).
-   - Diferenciação de Compra Única Legítima: Se o documento tem poucas linhas úteis e a descrição é de estabelecimento comum (`"UBER"`, `"POSTO IPIRANGA"`), o fluxo transcorre normalmente sem falso alarme.
-   - Fallback de Resgate por Micro-IA: No colapso real, o input enviado ao orquestrador inteligente (`line_curator`) consiste no **conjunto integral de linhas espaciais pré-filtro (`allLines`)** ou no texto completo reconstruído das páginas, permitindo isolar as compras detalhadas que haviam sido suprimidas.
+   - Condição de Colapso Real (sem exigir match em `isSubcardHeader`, pois cabeçalhos já são descartados na Fase 1): `allLines.length > 15` E (`transactions.length === 0` havendo linhas monetárias no PDF, OU `transactions.length <= 2` com `discardedMoneyLines >= 3`).
+   - Fallback de Resgate por Micro-IA: No colapso real, o input enviado ao orquestrador inteligente (`line_curator` / resgate) consiste no **conjunto integral de linhas espaciais pré-filtro higienizadas com `maskSensitivePiiForAi` (`allLines`)**.
+4. **Otimizações de Ingestão Determinística:**
+   - **Virada de Ano (`DD/MM`) e Meses Abreviados (`DD MMM`):** Suporte a meses `JAN`–`DEZ` (ex.: `15 NOV`, `28 DEZ`) e inferência `competenceYear - 1` quando `txMonth > competenceMonth` em datas sem ano.
+   - **Compras Internacionais (`USD` + `BRL` na mesma linha):** Ancorar a extração monetária no **último valor em BRL à direita**, ignorando valores precedidos por `USD`, `EUR`, `GBP`, `US$`, `€`, `£`.
+   - **Inferência Automática de Polaridade de Sinal:** Cruzamento automático da polaridade majoritária (compras positivas vs negativas, sufixos `D`/`C`, sinal à direita `120,50-`) com a direção das quitações detectadas.
+   - **Proteção contra Fechamento Acidental e Resumo de Reimportação:** Rastreamento de `hasUnsavedChanges` com confirmação inline (*"Descartar alterações?"*) e resumo direto para faturas parcialmente já importadas via `statement_hash`.
 
 ---
 
@@ -317,21 +322,19 @@ flowchart LR
 ```
 
 ### Fase 1: Motor Determinístico & Regras de Negócio
-- [ ] Atualizar `UNCONDITIONAL_INVOICE_PAYMENT_PATTERNS` em `clean.ts` com suporte a *"Pagamentos Validos Normais"*, variações de quitação e pagamentos de fatura.
-- [ ] Manter `pagamento por pix` restrito a créditos ou exigindo a palavra *"fatura"*, prevenindo bloqueio de Pix no Crédito.
-- [ ] Descartar termos de `saldo anterior` e `total da fatura` como ruído de resumo antes da Staging Area, sem enviá-los para a aba de ignorados.
-- [ ] Atualizar `SUBCARD_HEADER_REGEX` em `clean.ts` para cobrir máscaras com `•`, `*`, `x`, `X`, `.`, `-` e formatos sem prefixo estrito `"Cartão"`.
-- [ ] Adicionar `pageNumber: number` em `SpatialPdfLine` e implementar o estado `paused_boleto` em `spatial-pdf-parser.ts`, com reativação na virada de página ou seção válida.
-- [ ] Implementar filtro anti-ruído `isBoletoFieldNoise` em `spatial-pdf-parser.ts`.
-- [ ] Descartar linhas de cabeçalho de cartão da lista de compras em `spatial-pdf-parser.ts`, aproveitando-as unicamente para preencher `detectedCardLast4`.
-- [ ] Adicionar testes de unidade em `clean.test.ts` e `spatial-pdf-parser.test.ts` cobrindo faturas reais da Rico e quitações do Itaú.
+- [ ] Atualizar `UNCONDITIONAL_INVOICE_PAYMENT_PATTERNS` em `clean.ts` com o regex `/\bpag(?:amentos?|to)?\s+(?:de\s+|v[aá]lidos?\s+|tit(?:ulo)?\s+)?(?:norma(?:is|l)|nomina(?:is|l))\b/i` e demais variações.
+- [ ] Manter `pagamento por pix` restrito a créditos ou exigindo `"fatura"`; descartar `saldo anterior`, `total da fatura` e subtotais como ruído estrutural antes da Staging Area.
+- [ ] Atualizar `SUBCARD_HEADER_REGEX` em `clean.ts` com `(?:[•*xX.-]{3,4}\s*){1,4}\d{4}` cobrindo `*`, `•`, `X` espaçados e subtotais de cartões adicionais/virtuais.
+- [ ] Adicionar suporte a virada de ano (`txMonth > competenceMonth => competenceYear - 1`), meses abreviados `JAN`–`DEZ`, compras internacionais (`USD` + `BRL` ancorando no último valor em BRL) e inferência automática de polaridade de sinal.
+- [ ] Suportar múltiplos finais de 4 dígitos em `statement-metadata.ts` para não gerar falso alerta quando cartão físico e virtual constam no mesmo extrato.
+- [ ] Adicionar `pageNumber: number` em `SpatialPdfLine`, estado `paused_boleto` em `spatial-pdf-parser.ts`, `isBoletoFieldNoise` e descarte de cabeçalhos de cartão.
+- [ ] Adicionar testes de unidade em `clean.test.ts`, `type-sniffer.test.ts`, `statement-metadata.test.ts` e `spatial-pdf-parser.test.ts`.
 
 ### Fase 2: Redesenho Visual, Eliminação de Ruído e Z-Index
-- [ ] Configurar `<Popover modal={false}>` no `CategoryPill` em `statement-reconcile-rows.tsx` com `elevated={true}` e classe `z-floating-tools`.
-- [ ] Adicionar `onOpenAutoFocus={(e) => e.preventDefault()}` e `stopPropagation` nos itens da lista para blindagem contra foco/scroll trap do diálogo pai.
-- [ ] Ocultar seletores `Tudo PJ` / `Tudo PF` e badges `PF` das linhas quando `card.scope !== "mixed"` em `statement-reconcile-toolbar.tsx` e `statement-reconcile-rows.tsx`.
-- [ ] Exibir chip compacto `<Badge size="xs" variant="portfolio">Cartão PJ / Negócio</Badge>` no cabeçalho quando `card.scope === "business"`.
+- [ ] Configurar `<Popover modal={false}>` no `CategoryPill` em `statement-reconcile-rows.tsx` com `elevated={true}`, `z-floating-tools`, foco e rolagem desobstruídos.
+- [ ] Ocultar seletores `Tudo PJ` / `Tudo PF` e badges `PF` sempre que `card.scope !== "mixed"`, exibindo badge discreto `Cartão PJ / Negócio` no cabeçalho quando `card.scope === "business"`.
 - [ ] Eliminar o container vazio de metadados em `statement-reconcile-step.tsx`, integrando *"Ajustar colunas"* de forma limpa.
+- [ ] Rastrear `hasUnsavedChanges` com confirmação inline rápida (*"Descartar alterações?"*) e exibir resumo direto para faturas já parcialmente importadas via `statement_hash`.
 
 ### Fase 3: Pré-Modal Bloqueante de Divergência de Competência
 - [ ] Criar o estado `step = "competence_conflict"` em `use-statement-import.ts`.

@@ -112,7 +112,7 @@ export function SettingsPage() {
     <div className="flex w-full flex-col gap-5 sm:gap-6 min-w-0">
       <PageHeader
         title="Configurações"
-        description="Gestão de conta, personalização visual, notificações, privacidade e plano"
+        description="Conta, aparência, notificações e plano"
       />
 
       <div className="pb-28 sm:pb-10">

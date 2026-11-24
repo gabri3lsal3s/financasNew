@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Sparkles,
   Wallet,
+  XCircle,
 } from "lucide-react";
 import { Badge, Button, Card, CardContent, type TabItem } from "@/components/ui";
 import { InteractivePlaybookModal } from "@/components/modules/playbooks";
@@ -339,7 +340,7 @@ export function TransactionEducationalGuideModal({
                   <strong>Descrição enxuta:</strong> Escreva apenas o local em 2 ou 3 palavras (ex.: <em>Padaria Estrela</em>, <em>Posto Ipiranga</em>, <em>Uber</em>).
                 </li>
                 <li>
-                  <strong>Tags e notas (opcional):</strong> Se quiser detalhar, use o campo de observações para contexto extra.
+                  <strong>Contexto estruturado:</strong> Use os campos próprios de <em>Meio de pagamento</em>, <em>Cartão</em>, <em>Viagem</em>, <em>Família</em> ou <em>PF/PJ</em> em vez de misturar isso na descrição.
                 </li>
               </ul>
             </div>
@@ -350,14 +351,23 @@ export function TransactionEducationalGuideModal({
                 O que Evitar (Gera Poluição)
               </span>
               <ul className="space-y-1.5">
-                <li>
-                  ❌ <em>"Almoço de domingo com meu primo que comi lasanha"</em> (Quebra linhas, corta na tela do celular e polui relatórios).
+                <li className="flex items-start gap-1.5">
+                  <XCircle className="size-3.5 shrink-0 mt-0.5 text-critical-strong" aria-hidden="true" />
+                  <span>
+                    <em>"Almoço de domingo com meu primo que comi lasanha"</em> (Quebra linhas, corta na tela do celular e polui relatórios).
+                  </span>
                 </li>
-                <li>
-                  ❌ Cadastrar o nome do banco no campo descrição (ex.: <em>"Nubank débito"</em>). Para isso existe o campo de Conta.
+                <li className="flex items-start gap-1.5">
+                  <XCircle className="size-3.5 shrink-0 mt-0.5 text-critical-strong" aria-hidden="true" />
+                  <span>
+                    Cadastrar a forma de pagamento ou o nome do cartão na descrição (ex.: <em>"Nubank débito"</em>). Para isso existem os campos de Meio de pagamento e Cartão.
+                  </span>
                 </li>
-                <li>
-                  ❌ Criar 40 categorias hiper-específicas (ex.: <em>Almoço de Terça</em>). Mantenha categorias simples.
+                <li className="flex items-start gap-1.5">
+                  <XCircle className="size-3.5 shrink-0 mt-0.5 text-critical-strong" aria-hidden="true" />
+                  <span>
+                    Criar 40 categorias hiper-específicas (ex.: <em>Almoço de Terça</em>). Mantenha categorias simples.
+                  </span>
                 </li>
               </ul>
             </div>

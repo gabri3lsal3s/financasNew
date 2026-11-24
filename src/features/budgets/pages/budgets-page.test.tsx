@@ -230,15 +230,6 @@ describe("BudgetsPage — limites e metas (§3.5.2/§3.5.3)", () => {
     setIncomeGoalMock.mockResolvedValue(undefined);
   });
 
-  it("exibe atalho para o módulo de Categorias no cabeçalho e redireciona ao acessar com ?tab=categories", async () => {
-    const user = userEvent.setup();
-    renderBudgetsPage();
-
-    const catBtn = screen.getByRole("button", { name: "Gerenciar categorias" });
-    expect(catBtn).toBeInTheDocument();
-    await user.click(catBtn);
-  });
-
   it("exibe o botão 'Ajustar orçamento' ao lado de 'Nova categoria' e abre o modal de ajuste proporcional", async () => {
     const user = userEvent.setup();
     renderBudgetsPage();

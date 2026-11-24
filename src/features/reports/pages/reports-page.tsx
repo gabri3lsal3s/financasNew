@@ -179,8 +179,8 @@ export function ReportsPage() {
         title={!hasFinanceFeatures ? "Relatórios de Investimentos" : "Relatórios"}
         description={
           !hasFinanceFeatures
-            ? "Dossiês executivos da carteira, proventos, evolução patrimonial e inteligência fiscal"
-            : "Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal"
+            ? "Resumo da carteira, proventos e imposto de renda"
+            : "Resumo mensal, patrimônio e imposto de renda"
         }
       />
 

@@ -12,6 +12,7 @@ import {
   mapRawExpensesToAdvisorLikes,
   mapRawIncomesToAdvisorLikes,
   mergeAndFilterValidDismissals,
+  mergePersistedAdvisorDismissals,
   resolveIgnoreRecurrenceToast,
 } from "./smart-advisor-rules";
 
@@ -252,5 +253,36 @@ describe("smart-advisor-rules (regras puras do SmartAdvisor)", () => {
     const result = detectCardChargesDrain(expenses, 2000);
     expect(result.hasDrain).toBe(false);
     expect(result.insight).toBeNull();
+  });
+
+  it("mergePersistedAdvisorDismissals suporta merge concorrente, revogação pontual, limpeza total e poda de expirados", () => {
+    const now = 1_000_000;
+    const current = {
+      "dup:netflix": now + 50_000,
+      "habit:cafe": now + 20_000,
+      expired: now - 10,
+    };
+
+    // patch undefined preserva atual
+    expect(mergePersistedAdvisorDismissals(current, undefined, now)).toBe(current);
+
+    // merge preservando outras chaves válidas e podando expirado
+    expect(
+      mergePersistedAdvisorDismissals(current, { "calib:academia": now + 90_000 }, now),
+    ).toEqual({
+      "dup:netflix": now + 50_000,
+      "habit:cafe": now + 20_000,
+      "calib:academia": now + 90_000,
+    });
+
+    // revogação via valor 0 remove apenas a chave alvo
+    expect(
+      mergePersistedAdvisorDismissals(current, { "dup:netflix": 0 }, now),
+    ).toEqual({
+      "habit:cafe": now + 20_000,
+    });
+
+    // limpeza total com {}
+    expect(mergePersistedAdvisorDismissals(current, {}, now)).toEqual({});
   });
 });

@@ -20,7 +20,7 @@ export function BusinessDreCard({ dre, periodLabel }: BusinessDreCardProps) {
         <div className="flex items-center gap-2 min-w-0">
           <Briefcase className="size-4 shrink-0 text-portfolio" aria-hidden="true" />
           <CardTitle className="text-sm sm:text-base font-semibold line-clamp-2 break-words">
-            DRE Simplificado ({periodLabel})
+            DRE Simplificado
           </CardTitle>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">

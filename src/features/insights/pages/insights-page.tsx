@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
-import { Activity, Calendar, LineChart, Repeat } from "lucide-react";
-import { ErrorState, Tabs, type TabItem } from "@/components/ui";
+import { Activity, LineChart, Repeat } from "lucide-react";
+import { Badge, ErrorState, Tabs, type TabItem } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
 import { EmergencyFundConfigDialog } from "@/components/modules";
 import { normalizeText } from "@/domain/insights";
@@ -186,15 +186,12 @@ export function InsightsPage({
     <div className="flex flex-col gap-6 min-w-0">
       {showHeader ? (
         <PageHeader
-          title="Insights & Inteligência"
-          description="Diagnósticos preditivos, radar de recorrências, oportunidades de economia e saúde financeira"
+          title="Insights"
+          description="Diagnósticos, recorrências e projeções"
           badge={
-            <div className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-surface px-2.5 py-1 text-xs text-muted-foreground shadow-xs">
-              <Calendar className="size-3.5" aria-hidden="true" />
-              <span>
-                Referência: <strong className="font-medium text-foreground">{monthLabel(month)}</strong>
-              </span>
-            </div>
+            <Badge variant="muted" size="sm">
+              {monthLabel(month)}
+            </Badge>
           }
         />
       ) : null}

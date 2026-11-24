@@ -1322,7 +1322,12 @@ export function filterAndRankAllAdvisorInsights(
 
     if (decayByFamily) {
       const family = resolveInsightThemeFamily(insight.themeKey);
-      if (isFamilyUnderDecay(decayByFamily[family], nowMs)) {
+      const familyRecord = decayByFamily[family];
+      if (insight.priority === 1) {
+        if (familyRecord?.muted === true) {
+          return false;
+        }
+      } else if (isFamilyUnderDecay(familyRecord, nowMs)) {
         return false;
       }
     }

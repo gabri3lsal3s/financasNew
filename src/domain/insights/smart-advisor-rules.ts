@@ -65,6 +65,32 @@ export function mergeAndFilterValidDismissals(
   return merged;
 }
 
+/**
+ * Mescla o mapa persistido de dispensas do SmartAdvisor (`advisorDismissals`),
+ * suportando limpeza total (`patch === {}`), revogação pontual (valor <= nowMs, ex.: 0)
+ * e poda automática de cooldowns expirados.
+ */
+export function mergePersistedAdvisorDismissals(
+  current: Record<string, number> | undefined,
+  patch: Record<string, number> | undefined,
+  nowMs: number = Date.now(),
+): Record<string, number> | undefined {
+  if (patch === undefined) {
+    return current;
+  }
+  if (Object.keys(patch).length === 0) {
+    return {};
+  }
+  const merged = { ...(current ?? {}), ...patch };
+  const valid: Record<string, number> = {};
+  for (const [k, v] of Object.entries(merged)) {
+    if (typeof v === "number" && Number.isFinite(v) && v > nowMs) {
+      valid[k] = v;
+    }
+  }
+  return valid;
+}
+
 export function computeDismissCooldownExpiry(nowMs: number, days: number): number {
   return nowMs + days * 24 * 60 * 60 * 1000;
 }

@@ -13,6 +13,7 @@ import {
 } from "@/services/native";
 import { getActiveUserId, getUserStorageKey, subscribeActiveUserId } from "@/services/user-storage";
 import { useUpdateCustomSettings, useUserAccess, useUserPreferences } from "@/state";
+import { isQueryPending } from "@/state/query-readiness";
 import type { DashboardAlertDismissals } from "@/types";
 
 const DASHBOARD_ALERT_DISMISSALS_KEY = "financasnew:dashboard_alert_dismissals";
@@ -95,7 +96,11 @@ export function useDashboardAlertDismissals() {
     [cloudAlertDismissals, localDismissalsOverride, storageKey, updateCustomSettingsMutation],
   );
 
-  return { alertDismissals, updateAlertDismissals, isLoading: userPreferencesQuery.isLoading };
+  return {
+    alertDismissals,
+    updateAlertDismissals,
+    isLoading: isQueryPending(userPreferencesQuery),
+  };
 }
 
 export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
@@ -148,6 +153,14 @@ export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
 
   const shouldShowPermissionsBanner =
     isNative && !isChecking && (showBankMissing || showPushMissing);
+  const needsPermissionsBannerCheck =
+    isNative &&
+    isChecking &&
+    ((isBankListenerAllowed &&
+      bankPrefs.passiveCaptureEnabled &&
+      hasMonitoredBanks &&
+      !isBankListenerDismissed) ||
+      ((dueNotificationsActive || dailyReminderActive) && !isPushDueDismissed));
 
   const permissionBannerType: PermissionAlertBannerType =
     showBankMissing && showPushMissing
@@ -193,6 +206,7 @@ export function useOverviewPermissionsBanner(navigate: NavigateFunction) {
 
   return {
     isChecking,
+    needsPermissionsBannerCheck,
     hasDeviceAlertsConfigured,
     shouldShowPermissionsBanner,
     permissionBannerType,

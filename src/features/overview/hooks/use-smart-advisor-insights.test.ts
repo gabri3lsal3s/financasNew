@@ -16,8 +16,13 @@ const mutateFeedbackMock = vi.fn().mockResolvedValue({});
 const mutateCreateIncomeMock = vi.fn().mockResolvedValue({});
 const mutateCreateExpenseMock = vi.fn().mockResolvedValue("exp-created-123");
 const mutateDeleteExpenseMock = vi.fn().mockResolvedValue({});
+const updateCustomSettingsMutateMock = vi.fn();
 const pushToastMock = vi.fn();
 const triggerSensoryMock = vi.fn();
+
+let expensesByMonthMock: Record<string, Array<Record<string, unknown>>> = {};
+let expensesLoadingByMonthMock: Record<string, boolean> = {};
+let userPreferencesLoadingMock = false;
 
 vi.mock("@/services/toast", () => ({
   pushToast: (args: unknown) => pushToastMock(args),
@@ -28,7 +33,13 @@ vi.mock("@/services/sensory", () => ({
 }));
 
 vi.mock("@/state", () => ({
-  useExpenses: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
+  useExpenses: (month?: string) => ({
+    data: month ? (expensesByMonthMock[month] ?? []) : [],
+    isLoading: month ? Boolean(expensesLoadingByMonthMock[month]) : false,
+    isError: false,
+    error: null,
+    refetch: vi.fn(),
+  }),
   useIncomes: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useBudgets: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useCategories: () => ({ data: [], isLoading: false, isError: false, error: null, refetch: vi.fn() }),
@@ -39,8 +50,18 @@ vi.mock("@/state", () => ({
   useDeleteIncome: () => ({ mutateAsync: vi.fn() }),
   useCreateExpense: () => ({ mutateAsync: mutateCreateExpenseMock }),
   useDeleteExpense: () => ({ mutateAsync: mutateDeleteExpenseMock }),
-  useUserPreferences: () => ({ data: { custom_settings: {} }, isLoading: false, isError: false, error: null }),
-  useUpdateCustomSettings: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useUserPreferences: () => ({
+    data: userPreferencesLoadingMock ? undefined : { custom_settings: {} },
+    isLoading: userPreferencesLoadingMock,
+    isPending: userPreferencesLoadingMock,
+    isError: false,
+    error: null,
+  }),
+  useUpdateCustomSettings: () => ({
+    mutate: updateCustomSettingsMutateMock,
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
   useFamilyMode: () => ({ isFamilyModeEnabled: false, toggleFamilyMode: vi.fn() }),
   useMyFamily: () => ({ data: null, isLoading: false, isError: false }),
   useFamilyConsolidation: () => ({ data: null, isLoading: false, isError: false }),
@@ -62,6 +83,9 @@ describe("useSmartAdvisorInsights", () => {
     localStorage.clear();
     resetSmartAdvisorCooldowns();
     vi.clearAllMocks();
+    expensesByMonthMock = {};
+    expensesLoadingByMonthMock = {};
+    userPreferencesLoadingMock = false;
   });
 
   describe("Matriz de Prioridade Canônica", () => {
@@ -975,6 +999,94 @@ describe("useSmartAdvisorInsights", () => {
       // Não deve sugerir aporte de R$ 2.774,55 pois as obrigações engolem a sobra
       expect(result.current.allCandidates.some((c) => c.id === "aporte:rebalance")).toBe(false);
       expect(result.current.insight?.id).not.toBe("aporte:rebalance");
+    });
+  });
+
+  describe("Blindagem de Prontidão & Resolução Positiva sem Fadiga", () => {
+    it("mantém isLoading true e insights vazio enquanto m2Expenses ou userPreferences estiverem carregando", () => {
+      expensesByMonthMock = {
+        "2026-10": [
+          { id: "e1", description: "Netflix", date: "2026-10-05", value: 55.9, category_id: "c1" },
+          { id: "e2", description: "Netflix", date: "2026-10-18", value: 55.9, category_id: "c1" },
+        ],
+        "2026-09": [
+          { id: "e3", description: "Netflix", date: "2026-09-05", value: 55.9, category_id: "c1" },
+        ],
+      };
+      expensesLoadingByMonthMock = { "2026-08": true };
+
+      const { result, rerender } = renderHook(() =>
+        useSmartAdvisorInsights({
+          month: "2026-10",
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+          enabled: true,
+        }),
+      );
+
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.insights).toEqual([]);
+
+      expensesLoadingByMonthMock = {};
+      userPreferencesLoadingMock = true;
+      rerender();
+
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.insights).toEqual([]);
+
+      userPreferencesLoadingMock = false;
+      rerender();
+
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.insights.some((i) => i.themeKey === "dup:sub:netflix")).toBe(true);
+    });
+
+    it("confirmIncome e confirmExpense silenciam o tema sem marcar lastDismissedDay nem avançar advisorDecayMeta", async () => {
+      const { result } = renderHook(() =>
+        useSmartAdvisorInsights({
+          expenses: [],
+          incomes: [],
+          todayISO: TODAY,
+          nowMs: NOW_MS,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.confirmIncome({
+          name: "Salário",
+          valueCents: 500_000,
+          categoryId: "cat-sal",
+          date: TODAY,
+        });
+      });
+
+      expect(localStorage.getItem(SMART_ADVISOR_LAST_DISMISSED_DAY_KEY)).toBeNull();
+      expect(localStorage.getItem(SMART_ADVISOR_DISMISSALS_KEY)).toContain("income:salario");
+      expect(updateCustomSettingsMutateMock).toHaveBeenCalledTimes(1);
+      expect(updateCustomSettingsMutateMock.mock.calls[0]?.[0]).not.toHaveProperty("advisorDecayMeta");
+      expect(updateCustomSettingsMutateMock.mock.calls[0]?.[0]).not.toHaveProperty(
+        "advisorLastDismissedDay",
+      );
+
+      updateCustomSettingsMutateMock.mockClear();
+
+      await act(async () => {
+        await result.current.confirmExpense({
+          name: "Spotify",
+          valueCents: 3490,
+          categoryId: "cat-stream",
+          date: TODAY,
+          cardId: "card-1",
+        });
+      });
+
+      expect(localStorage.getItem(SMART_ADVISOR_LAST_DISMISSED_DAY_KEY)).toBeNull();
+      expect(localStorage.getItem(SMART_ADVISOR_DISMISSALS_KEY)).toContain("missing_expense:spotify");
+      expect(updateCustomSettingsMutateMock).toHaveBeenCalledTimes(1);
+      expect(updateCustomSettingsMutateMock.mock.calls[0]?.[0]).not.toHaveProperty("advisorDecayMeta");
+      expect(updateCustomSettingsMutateMock.mock.calls[0]?.[0]).not.toHaveProperty(
+        "advisorLastDismissedDay",
+      );
     });
   });
 });

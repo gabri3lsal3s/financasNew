@@ -37,7 +37,7 @@ export function TripListPage() {
       <div className="space-y-6" data-testid="trip-mode-inactive">
         <PageHeader
           title="Modo Viagem"
-          description="Grupos temporários de despesas compartilhadas com compensação líquida e acerto Pix."
+          description="Despesas compartilhadas e acerto entre participantes"
         />
 
         <EmptyState
@@ -164,16 +164,15 @@ export function TripListPage() {
     <div className="space-y-6" data-tour="trips-hub">
       <PageHeader
         title="Modo Viagem"
-        description="Grupos temporários de despesas compartilhadas com compensação líquida e acerto Pix."
+        description="Despesas compartilhadas e acerto entre participantes"
         actions={
           <Button
             type="button"
             size="sm"
             onClick={() => setIsCreateOpen(true)}
-            className="gap-1.5 shadow-xs"
           >
-            <Plus className="size-4" aria-hidden="true" />
-            <span>Nova Viagem</span>
+            <Plus aria-hidden="true" />
+            <span>Nova viagem</span>
           </Button>
         }
       />

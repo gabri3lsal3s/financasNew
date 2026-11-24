@@ -14,6 +14,7 @@ export interface DashboardAlertsCarouselProps {
   className?: string;
   autoplayIntervalMs?: number;
   maxItems?: number;
+  isLoading?: boolean;
 }
 
 /**
@@ -24,6 +25,7 @@ export function DashboardAlertsCarousel({
   className,
   autoplayIntervalMs = 8000,
   maxItems,
+  isLoading = false,
 }: DashboardAlertsCarouselProps) {
   const validItems = useMemo(() => {
     const sorted = items
@@ -43,7 +45,7 @@ export function DashboardAlertsCarousel({
 
   const carousel = useAlertsCarousel(total, autoplayIntervalMs, itemsKey);
 
-  if (total === 0) return null;
+  if (isLoading || total === 0) return null;
 
   const firstItem = validItems[0];
   if (total === 1 && firstItem) {
@@ -51,7 +53,7 @@ export function DashboardAlertsCarousel({
       <section
         aria-label="Alertas e avisos contextuais"
         aria-roledescription="carousel"
-        className={cn("flex flex-col gap-2 w-full min-w-0 relative group", className)}
+        className={cn("flex flex-col gap-2 w-full min-w-0 relative group animate-fade-slide-in", className)}
       >
         <div className="w-full min-w-0 py-0.5">
           <div className="w-full px-1 sm:px-1.5">{firstItem.content}</div>
@@ -67,7 +69,7 @@ export function DashboardAlertsCarousel({
     <section
       aria-label="Alertas e avisos contextuais"
       aria-roledescription="carousel"
-      className={cn("flex flex-col gap-2 w-full min-w-0 relative group", className)}
+      className={cn("flex flex-col gap-2 w-full min-w-0 relative group animate-fade-slide-in", className)}
       onMouseEnter={() => carousel.setIsPaused(true)}
       onMouseLeave={() => carousel.setIsPaused(false)}
       onFocus={() => carousel.setIsPaused(true)}

@@ -272,7 +272,7 @@ describe("ReportsPage (Central Unificada §F42)", () => {
     renderReports();
     expect(screen.getByRole("heading", { level: 1, name: "Relatórios" })).toBeInTheDocument();
     expect(
-      screen.getByText("Dossiês executivos, DRE pessoal, consolidação patrimonial e inteligência fiscal"),
+      screen.getByText("Resumo mensal, patrimônio e imposto de renda"),
     ).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Finanças & DRE/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Investimentos & Carteira/i })).toBeInTheDocument();

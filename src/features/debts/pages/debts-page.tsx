@@ -21,7 +21,7 @@ export function DebtsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Contas & Dívidas"
-        description="Gestão de contas a pagar, a receber e contratos"
+        description="Contas a pagar, a receber e contratos"
         actions={
           <>
             <Button
@@ -29,21 +29,19 @@ export function DebtsPage() {
               variant="outline"
               size="sm"
               aria-label="Novo contrato"
-              className="shrink-0 gap-1.5"
               onClick={state.handleOpenLoanForm}
             >
-              <Coins aria-hidden="true" className="size-4" />
-              Contrato
+              <Coins aria-hidden="true" />
+              <span>Novo contrato</span>
             </Button>
             <Button
               type="button"
               size="sm"
               aria-label="Nova dívida"
-              className="shrink-0 gap-1.5 shadow-xs"
               onClick={() => state.handleOpenDebtForm(null)}
             >
-              <Plus aria-hidden="true" className="size-4" />
-              Nova dívida
+              <Plus aria-hidden="true" />
+              <span>Nova dívida</span>
             </Button>
           </>
         }

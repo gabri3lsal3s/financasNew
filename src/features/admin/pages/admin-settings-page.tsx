@@ -21,8 +21,8 @@ export function AdminSettingsPage() {
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
       <PageHeader
-        title="Sistema & Configurações da Plataforma"
-        description="Controle de liberação do APK Android Beta, Kill-Switches globais e bot do Telegram"
+        title="Configurações da Plataforma"
+        description="APK Android, kill-switches globais e bot do Telegram"
       />
 
       <section aria-label="Controle de Acesso ao APK" className="flex flex-col gap-4">

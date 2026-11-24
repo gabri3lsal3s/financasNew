@@ -40,28 +40,6 @@ export function TripDetailsHeaderActions({
 }: TripDetailsHeaderActionsProps) {
   return (
     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-      <Button
-        type="button"
-        size="sm"
-        onClick={onOpenAddExpense}
-        className="gap-1.5 shadow-xs"
-      >
-        <Plus className="size-3.5" aria-hidden="true" />
-        <span>Nova Despesa</span>
-      </Button>
-
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        data-tour="trip-settlement-card"
-        onClick={onOpenSettlement}
-        className="gap-1.5"
-      >
-        <DollarSign className="size-3.5" aria-hidden="true" />
-        <span>Fechar Contas</span>
-      </Button>
-
       <div className="flex items-center gap-1.5 shrink-0">
         {isHost && (
           <Button
@@ -148,6 +126,26 @@ export function TripDetailsHeaderActions({
           </Button>
         )}
       </div>
+
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        data-tour="trip-settlement-card"
+        onClick={onOpenSettlement}
+      >
+        <DollarSign aria-hidden="true" />
+        <span>Fechar contas</span>
+      </Button>
+
+      <Button
+        type="button"
+        size="sm"
+        onClick={onOpenAddExpense}
+      >
+        <Plus aria-hidden="true" />
+        <span>Nova despesa</span>
+      </Button>
     </div>
   );
 }

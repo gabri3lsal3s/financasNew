@@ -95,6 +95,9 @@ let debtsMock = [
   { id: "d2", name: "A pagar", type: "payable", amount: 500, due_date: "2026-08-15", paid_at: null },
 ];
 let debtsLoadingMock = false;
+let govInsightsLoadingMock = false;
+let corporateDividendsLoadingMock = false;
+let userPreferencesMock: Record<string, unknown> | null = null;
 let splitSharesMock: Array<Record<string, unknown>> = [];
 let recurrencesMock: unknown[] = [];
 
@@ -152,7 +155,7 @@ vi.mock("@/state", () => ({
     quarantinedCount: 0,
     discountOpportunitiesCount: 0,
     lowScoreRiskCount: 0,
-    isLoading: false,
+    isLoading: govInsightsLoadingMock,
     refetch: vi.fn(),
   }),
   useCorporateDividends: () => ({
@@ -160,7 +163,7 @@ vi.mock("@/state", () => ({
     projected: [],
     totalAvailableAmount: 0,
     totalProjectedAmount: 0,
-    isLoading: false,
+    isLoading: corporateDividendsLoadingMock,
     isError: false,
     refetch: vi.fn(),
   }),
@@ -279,11 +282,12 @@ vi.mock("@/state", () => ({
   useUserSubscription: () => subscriptionMock,
   useFeedback: () => ({ data: {}, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   useSetFeedback: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useUserPreferences: () => ({ data: null, isLoading: false, isError: false, error: null }),
+  useUserPreferences: () => ({ data: userPreferencesMock, isLoading: false, isError: false, error: null }),
   useUpdateCustomSettings: () => ({ mutate: vi.fn(), mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useFamilyMode: () => ({ isFamilyModeEnabled: false, isLoading: false }),
   useMyFamily: () => ({ data: null, isLoading: false }),
   useFamilyConsolidation: () => ({ data: null, isLoading: false, isError: false, error: null }),
+  useUserTrips: () => ({ data: [], isLoading: false, isError: false, error: null }),
   useIncomeGoals: () => ({ data: [], isLoading: false, isError: false, error: null }),
   useRecurrences: () => ({ data: recurrencesMock, isLoading: false, isError: false, error: null, refetch: vi.fn() }),
   hasSeenWelcomeModal: () => {
@@ -369,6 +373,9 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
     splitSharesMock = [];
     recurrencesMock = [];
     debtsLoadingMock = false;
+    govInsightsLoadingMock = false;
+    corporateDividendsLoadingMock = false;
+    userPreferencesMock = null;
     localStorage.removeItem("financasnew:dashboard_alert_dismissals");
     onboardingCountsMock = {
       expenseCategories: 2,
@@ -850,7 +857,7 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       notificationsEnabled: false,
     };
     render(<OverviewPage />);
-    expect(screen.getAllByText("Primeiros passos no Axir").length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Primeiros passos no Axir")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("1/2 concluídos").length).toBeGreaterThan(0);
     const continueBtn = screen.getAllByRole("button", { name: /Continuar/i })[0]!;
     expect(continueBtn).toBeInTheDocument();
@@ -871,9 +878,11 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       notificationsEnabled: false,
     };
     render(<OverviewPage />);
-    const dismissBtn = screen.getAllByRole("button", {
-      name: /Dispensar guia de primeiros passos/i,
-    })[0]!;
+    const dismissBtn = (
+      await screen.findAllByRole("button", {
+        name: /Dispensar guia de primeiros passos/i,
+      })
+    )[0]!;
     await user.click(dismissBtn);
     expect(screen.queryByText("Primeiros passos no Axir")).not.toBeInTheDocument();
   });
@@ -1417,6 +1426,103 @@ describe("OverviewPage — visão consolidada (§3.6)", () => {
       const carouselDots = screen.getAllByRole("button", { name: /Ir para alerta \d/i });
       expect(carouselDots.length).toBe(2);
       expect(screen.getByText("1 de 2")).toBeInTheDocument();
+    });
+
+    it("mantém o carrossel oculto enquanto govInsights, corporateDividends ou subscription estiverem carregando e exibe sem flash após resolver", () => {
+      subscriptionMock = {
+        ...defaultSubscriptionMock,
+        tier: "trial",
+        isPro: false,
+        isTrial: true,
+        trialDaysRemaining: 6,
+        trialEndsAt: "2026-08-21T12:00:00Z",
+        isLoading: false,
+      };
+      govInsightsLoadingMock = true;
+
+      const { rerender } = render(<OverviewPage />);
+      expect(
+        screen.queryByRole("region", { name: "Alertas e avisos contextuais" }),
+      ).not.toBeInTheDocument();
+
+      govInsightsLoadingMock = false;
+      corporateDividendsLoadingMock = true;
+      rerender(<OverviewPage />);
+      expect(
+        screen.queryByRole("region", { name: "Alertas e avisos contextuais" }),
+      ).not.toBeInTheDocument();
+
+      corporateDividendsLoadingMock = false;
+      subscriptionMock = { ...subscriptionMock, isLoading: true };
+      rerender(<OverviewPage />);
+      expect(
+        screen.queryByRole("region", { name: "Alertas e avisos contextuais" }),
+      ).not.toBeInTheDocument();
+
+      subscriptionMock = { ...subscriptionMock, isLoading: false };
+      rerender(<OverviewPage />);
+      expect(
+        screen.getAllByText("Seu período de teste Pro encerra em 6 dias").length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("permite que PaceAlertBanner dispensado por 7d fure o cooldown ao entrar em déficit projetado e respeita muted: true", () => {
+      incomesMock.data = (m: string) =>
+        m === "2026-08" ? [{ id: "i1", value: 5000, report_weight: 1, date: "2026-08-05" }] : [];
+      expensesMock.data = (m: string) =>
+        m === "2026-08"
+          ? [
+              { id: "e1", value: 1500, report_weight: 1, date: "2026-08-03", category_id: "c2" },
+              { id: "e2", value: 1500, report_weight: 1, date: "2026-08-08", category_id: "c2" },
+              { id: "e3", value: 1200, report_weight: 1, date: "2026-08-12", category_id: "c2" },
+            ]
+          : [];
+
+      const futureMs = new Date("2026-08-21T12:00:00Z").getTime();
+      userPreferencesMock = {
+        custom_settings: {
+          dashboardAlertDismissals: {
+            pace: {
+              dismissedAt: "2026-08-14T12:00:00Z",
+              dismissedUntil: futureMs,
+              month: "2026-08",
+              spentPercent: 40,
+              surplusCents: 100000,
+            },
+          },
+          advisorDecayMeta: {
+            pace: {
+              dismissCount: 2,
+              lastDismissedAt: "2026-08-14T12:00:00Z",
+              dismissedUntil: futureMs + 30 * 86_400_000,
+              muted: false,
+            },
+          },
+        },
+      };
+
+      const { rerender } = render(<OverviewPage />);
+      expect(
+        screen.getAllByRole("button", { name: /Simular cortes e projeção/i }).length,
+      ).toBeGreaterThan(0);
+
+      userPreferencesMock = {
+        custom_settings: {
+          ...(userPreferencesMock.custom_settings as Record<string, unknown>),
+          advisorDecayMeta: {
+            pace: {
+              dismissCount: 3,
+              lastDismissedAt: "2026-08-14T12:00:00Z",
+              dismissedUntil: futureMs + 90 * 86_400_000,
+              muted: true,
+            },
+          },
+        },
+      };
+      rerender(<OverviewPage />);
+      expect(
+        screen.queryByRole("button", { name: /Simular cortes e projeção/i }),
+      ).not.toBeInTheDocument();
     });
   });
 });

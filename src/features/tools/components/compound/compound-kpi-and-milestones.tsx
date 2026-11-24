@@ -21,7 +21,7 @@ export function CompoundKpiAndMilestones({
 }: CompoundKpiAndMilestonesProps) {
   return (
     <>
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <Card className="border-primary/30 bg-primary/5 shadow-xs">
           <CardHeader className="pb-2">
             <span className="text-xs font-semibold text-primary-strong dark:text-primary">

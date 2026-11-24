@@ -31,6 +31,12 @@ const CAROUSEL_ICON_TONES: Record<SmartAdvisorPresentation["badgeVariant"], stri
   muted: "bg-primary/10 border-primary/20 text-primary-strong",
 };
 
+const NOOP = () => {};
+
+export interface SmartAdvisorDismissOptions {
+  isResolution?: boolean;
+}
+
 export interface SmartAdvisorCardProps {
   className?: string;
   month?: string;
@@ -40,7 +46,7 @@ export interface SmartAdvisorCardProps {
   totalCount?: number;
   onNext?: () => void;
   onPrev?: () => void;
-  onDismiss?: (themeKey?: string, days?: number) => void;
+  onDismiss?: (themeKey?: string, days?: number, options?: SmartAdvisorDismissOptions) => void;
   onConfirmRecurrence?: (occurrenceKey: string) => void | Promise<void>;
   onIgnoreRecurrence?: (occurrenceKey: string, reason?: CalibrationDecision) => void | Promise<void>;
   onConfirmIncome?: (payload: { name: string; valueCents: number; categoryId: string; date?: string }) => void | Promise<void>;
@@ -53,6 +59,9 @@ export interface SmartAdvisorCardProps {
     cardId?: string;
   }) => void | Promise<void>;
   onMarkEssential?: (occurrenceKey: string, displayName?: string) => void | Promise<void>;
+  onMarkTxOneOff?: (occurrenceKey: string, displayName?: string) => void | Promise<void>;
+  onPauseFamily?: (themeKey: string) => void;
+  canPauseFamily?: boolean;
   savingsSurplusCents?: number;
   safeToSpendCents?: number;
   committedObligationsCents?: number;
@@ -60,49 +69,63 @@ export interface SmartAdvisorCardProps {
   embeddedInCarousel?: boolean;
 }
 
+interface SmartAdvisorCardViewProps {
+  className?: string;
+  month?: string;
+  activeInsight: SmartAdvisorInsight;
+  cardContext?: SmartAdvisorCardContext;
+  currentIndex: number;
+  totalCount: number;
+  onNext?: () => void;
+  onPrev?: () => void;
+  onDismiss: (themeKey?: string, days?: number, options?: SmartAdvisorDismissOptions) => void;
+  onConfirmRecurrence?: (occurrenceKey: string) => void | Promise<void>;
+  onIgnoreRecurrence?: (occurrenceKey: string, reason?: CalibrationDecision) => void | Promise<void>;
+  onConfirmIncome?: (payload: { name: string; valueCents: number; categoryId: string; date?: string }) => void | Promise<void>;
+  onConfirmExpense?: (payload: {
+    name: string;
+    valueCents: number;
+    categoryId: string;
+    date?: string;
+    forma?: string;
+    cardId?: string;
+  }) => void | Promise<void>;
+  onMarkEssential?: (occurrenceKey: string, displayName?: string) => void | Promise<void>;
+  onMarkTxOneOff?: (occurrenceKey: string, displayName?: string) => void | Promise<void>;
+  onPauseFamily?: (themeKey: string) => void;
+  canPauseFamily: boolean;
+  embeddedInCarousel: boolean;
+}
+
 /**
- * Microcard do Assistente Proativo de Insights na Home (SmartAdvisor).
+ * Apresentação pura do microcard de insights (zero hooks de fetch — evita queries duplicadas em carrosséis e clones).
  */
-export function SmartAdvisorCard({
+function SmartAdvisorCardView({
   className,
   month,
-  insight: controlledInsight,
+  activeInsight,
   cardContext: controlledCardContext,
-  currentIndex: controlledCurrentIndex,
-  totalCount: controlledTotalCount,
-  onNext,
-  onPrev,
+  currentIndex,
+  totalCount,
+  onNext = NOOP,
+  onPrev = NOOP,
   onDismiss,
   onConfirmRecurrence,
   onIgnoreRecurrence,
   onMarkEssential,
   onConfirmIncome,
   onConfirmExpense,
-  savingsSurplusCents,
-  safeToSpendCents,
-  committedObligationsCents,
-  suppressedThemeKeys,
-  embeddedInCarousel = false,
-}: SmartAdvisorCardProps) {
+  onMarkTxOneOff,
+  onPauseFamily,
+  canPauseFamily,
+  embeddedInCarousel,
+}: SmartAdvisorCardViewProps) {
   const navigate = useNavigate();
-  const isCurrentMonth = month ? month === currentMonth() : true;
-  const hook = useSmartAdvisorInsights({
-    month,
-    enabled: controlledInsight === undefined && isCurrentMonth,
-    savingsSurplusCents,
-    safeToSpendCents,
-    committedObligationsCents,
-    suppressedThemeKeys,
-  });
-
-  const activeInsight = controlledInsight !== undefined ? controlledInsight : hook.insight;
-  const currentIndex = controlledCurrentIndex ?? hook.currentIndex;
-  const totalCount = controlledTotalCount ?? hook.totalCount;
-  const cardContext = controlledCardContext ?? activeInsight?.cardContext ?? activeInsight?.metadata?.cardContext;
+  const cardContext =
+    controlledCardContext ?? activeInsight.cardContext ?? activeInsight.metadata?.cardContext;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const breakdown = useMemo(() => {
-    if (!activeInsight) return undefined;
     const now = new Date();
     const dayOfMonth = now.getDate();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -112,10 +135,6 @@ export function SmartAdvisorCard({
       daysInMonth,
     });
   }, [activeInsight, month]);
-
-  if (!isCurrentMonth) return null;
-  if (controlledInsight === undefined && hook.isLoading) return <SmartAdvisorCardSkeleton className={className} />;
-  if (!activeInsight) return null;
 
   const presentation = resolveSmartAdvisorPresentation(activeInsight);
 
@@ -130,14 +149,8 @@ export function SmartAdvisorCard({
 
   const handleDismiss = (days?: 7 | 30) => {
     const resolvedDays = days ?? 30;
-    if (onDismiss) {
-      if (days !== undefined) onDismiss(activeInsight.themeKey, days);
-      else onDismiss(activeInsight.themeKey);
-    } else if (days !== undefined) {
-      hook.dismiss(activeInsight.themeKey, days);
-    } else {
-      hook.dismiss(activeInsight.themeKey);
-    }
+    if (days !== undefined) onDismiss(activeInsight.themeKey, days);
+    else onDismiss(activeInsight.themeKey);
     pushToast({
       title: "Sugestão dispensada",
       description:
@@ -149,32 +162,28 @@ export function SmartAdvisorCard({
   };
 
   const handleMarkEssential = () => {
+    if (!onMarkEssential) return Promise.resolve();
     const payload = (activeInsight.secondaryAction?.payload ?? activeInsight.primaryAction?.payload) as
       | { key?: string; name?: string }
       | undefined;
     const key = payload?.key ?? activeInsight.themeKey.replace(/^(savings:|calib:|price_adj:)/, "");
     const displayName = payload?.name ?? activeInsight.title;
     return runWithSubmitting(async () => {
-      if (onMarkEssential) await onMarkEssential(key, displayName);
-      else await hook.markAsEssential(key, displayName);
+      await onMarkEssential(key, displayName);
     });
   };
 
   const handleIgnoreRecurrence = (reason: CalibrationDecision = "one_off") => {
     if (reason === "essential") {
       return handleMarkEssential().then(() => {
-        if (onDismiss) onDismiss(activeInsight.themeKey);
-        else hook.dismiss(activeInsight.themeKey);
+        onDismiss(activeInsight.themeKey, undefined, { isResolution: true });
       });
     }
+    if (!onIgnoreRecurrence) return Promise.resolve();
     const payload = activeInsight.secondaryAction?.payload as { key?: string } | undefined;
     const key = payload?.key ?? activeInsight.themeKey.replace(/^calib:/, "");
     return runWithSubmitting(async () => {
-      if (onIgnoreRecurrence) await onIgnoreRecurrence(key, reason);
-      else {
-        await hook.ignoreRecurrence(key, reason, { skipSensory: true });
-        hook.dismiss(activeInsight.themeKey);
-      }
+      await onIgnoreRecurrence(key, reason);
     });
   };
 
@@ -184,52 +193,46 @@ export function SmartAdvisorCard({
       activeInsight.primaryAction?.kind === "set_category_budget");
 
   const handleConfirmRecurrenceAction = () => {
+    if (!onConfirmRecurrence) return;
     const p = activeInsight.primaryAction?.payload as { key?: string } | undefined;
     const key = p?.key ?? activeInsight.themeKey.replace(/^calib:/, "");
     void runWithSubmitting(async () => {
-      if (onConfirmRecurrence) await onConfirmRecurrence(key);
-      else {
-        await hook.confirmRecurrence(key);
-        hook.dismiss(activeInsight.themeKey);
-      }
+      await onConfirmRecurrence(key);
     });
   };
 
   const handleConfirmIncomeAction = () => {
+    if (!onConfirmIncome) return;
     const p = activeInsight.primaryAction?.payload as
       | { name: string; valueCents: number; categoryId: string; date?: string }
       | undefined;
     if (!p) return;
-    void runWithSubmitting(() =>
-      onConfirmIncome ? Promise.resolve(onConfirmIncome(p)) : hook.confirmIncome(p),
-    );
+    void runWithSubmitting(() => Promise.resolve(onConfirmIncome(p)));
   };
 
   const handleConfirmExpenseAction = () => {
+    if (!onConfirmExpense) return;
     const p = activeInsight.primaryAction?.payload as
       | { name: string; valueCents: number; categoryId: string; date?: string; forma?: string; cardId?: string }
       | undefined;
     if (!p) return;
-    void runWithSubmitting(() =>
-      onConfirmExpense ? Promise.resolve(onConfirmExpense(p)) : hook.confirmExpense(p),
-    );
+    void runWithSubmitting(() => Promise.resolve(onConfirmExpense(p)));
   };
 
   const handleMarkTxOneOff = () => {
+    if (!onMarkTxOneOff) return;
     const p = activeInsight.primaryAction?.payload as
       | { occurrenceKey?: string; name?: string }
       | undefined;
     const key = p?.occurrenceKey ?? activeInsight.themeKey.replace(/^calib_tx:/, "tx_one_off:");
     void runWithSubmitting(async () => {
-      await hook.markTxOneOff(key, p?.name ?? activeInsight.title);
-      hook.dismiss(activeInsight.themeKey);
+      await onMarkTxOneOff(key, p?.name ?? activeInsight.title);
+      onDismiss(activeInsight.themeKey, undefined, { isResolution: true });
     });
   };
 
-  const activeFamily = resolveInsightThemeFamily(activeInsight.themeKey);
-  const canPauseFamily = (hook.decayByFamily?.[activeFamily]?.dismissCount ?? 0) >= 2;
   const handlePauseFamily = () => {
-    hook.muteFamily(activeInsight.themeKey);
+    onPauseFamily?.(activeInsight.themeKey);
     pushToast({
       title: "Tema pausado",
       description: "Você pode reativar este tema a qualquer momento na Memória do Copiloto.",
@@ -356,8 +359,8 @@ export function SmartAdvisorCard({
         totalCount={totalCount}
         isTopSavingsEssential={isTopSavingsEssential}
         isSubmitting={isSubmitting}
-        onPrev={onPrev ?? hook.prevInsight}
-        onNext={onNext ?? hook.nextInsight}
+        onPrev={onPrev}
+        onNext={onNext}
         onMarkEssential={() => void handleMarkEssential()}
         onDismiss={(days) => handleDismiss(days)}
         hasExternalMarkEssential={Boolean(onMarkEssential)}
@@ -395,4 +398,126 @@ export function SmartAdvisorCard({
       </div>
     </div>
   );
+}
+
+/**
+ * Wrapper autônomo quando SmartAdvisorCard é montado sem `insight` controlado.
+ */
+function SmartAdvisorCardStandalone(props: SmartAdvisorCardProps) {
+  const {
+    className,
+    month,
+    cardContext,
+    currentIndex: controlledCurrentIndex,
+    totalCount: controlledTotalCount,
+    onNext,
+    onPrev,
+    onDismiss,
+    onConfirmRecurrence,
+    onIgnoreRecurrence,
+    onMarkEssential,
+    onConfirmIncome,
+    onConfirmExpense,
+    onMarkTxOneOff,
+    onPauseFamily,
+    canPauseFamily,
+    savingsSurplusCents,
+    safeToSpendCents,
+    committedObligationsCents,
+    suppressedThemeKeys,
+    embeddedInCarousel = false,
+  } = props;
+
+  const isCurrentMonth = month ? month === currentMonth() : true;
+  const hook = useSmartAdvisorInsights({
+    month,
+    enabled: isCurrentMonth,
+    savingsSurplusCents,
+    safeToSpendCents,
+    committedObligationsCents,
+    suppressedThemeKeys,
+  });
+
+  if (!isCurrentMonth) return null;
+  if (hook.isLoading) return <SmartAdvisorCardSkeleton className={className} />;
+  if (!hook.insight) return null;
+
+  const activeInsight = hook.insight;
+  const activeFamily = resolveInsightThemeFamily(activeInsight.themeKey);
+  const resolvedCanPauseFamily =
+    canPauseFamily ?? (hook.decayByFamily?.[activeFamily]?.dismissCount ?? 0) >= 2;
+
+  return (
+    <SmartAdvisorCardView
+      className={className}
+      month={month}
+      activeInsight={activeInsight}
+      cardContext={cardContext}
+      currentIndex={controlledCurrentIndex ?? hook.currentIndex}
+      totalCount={controlledTotalCount ?? hook.totalCount}
+      onNext={onNext ?? hook.nextInsight}
+      onPrev={onPrev ?? hook.prevInsight}
+      onDismiss={onDismiss ?? hook.dismiss}
+      onConfirmRecurrence={
+        onConfirmRecurrence ??
+        (async (key) => {
+          await hook.confirmRecurrence(key);
+          hook.dismiss(activeInsight.themeKey, undefined, { isResolution: true });
+        })
+      }
+      onIgnoreRecurrence={
+        onIgnoreRecurrence ??
+        (async (key, reason) => {
+          if (reason === "essential") {
+            await hook.markAsEssential(key, activeInsight.title);
+          } else {
+            await hook.ignoreRecurrence(key, reason, { skipSensory: true });
+          }
+          hook.dismiss(activeInsight.themeKey, undefined, { isResolution: true });
+        })
+      }
+      onMarkEssential={onMarkEssential ?? hook.markAsEssential}
+      onConfirmIncome={onConfirmIncome ?? hook.confirmIncome}
+      onConfirmExpense={onConfirmExpense ?? hook.confirmExpense}
+      onMarkTxOneOff={onMarkTxOneOff ?? hook.markTxOneOff}
+      onPauseFamily={onPauseFamily ?? hook.muteFamily}
+      canPauseFamily={resolvedCanPauseFamily}
+      embeddedInCarousel={embeddedInCarousel}
+    />
+  );
+}
+
+/**
+ * Microcard do Assistente Proativo de Insights na Home (SmartAdvisor).
+ */
+export function SmartAdvisorCard(props: SmartAdvisorCardProps) {
+  if (props.insight !== undefined) {
+    const isCurrentMonth = props.month ? props.month === currentMonth() : true;
+    if (!isCurrentMonth || !props.insight) return null;
+
+    return (
+      <SmartAdvisorCardView
+        className={props.className}
+        month={props.month}
+        activeInsight={props.insight}
+        cardContext={props.cardContext}
+        currentIndex={props.currentIndex ?? 0}
+        totalCount={props.totalCount ?? 1}
+        onNext={props.onNext}
+        onPrev={props.onPrev}
+        onDismiss={props.onDismiss ?? (() => undefined)}
+        onConfirmRecurrence={props.onConfirmRecurrence}
+        onIgnoreRecurrence={props.onIgnoreRecurrence}
+        onMarkEssential={props.onMarkEssential}
+        onConfirmIncome={props.onConfirmIncome}
+        onConfirmExpense={props.onConfirmExpense}
+        onMarkTxOneOff={props.onMarkTxOneOff}
+        onPauseFamily={props.onPauseFamily}
+        canPauseFamily={props.canPauseFamily ?? false}
+        embeddedInCarousel={props.embeddedInCarousel ?? false}
+      />
+    );
+  }
+
+  return <SmartAdvisorCardStandalone {...props} />;
 }

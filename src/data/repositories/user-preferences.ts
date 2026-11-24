@@ -1,6 +1,7 @@
 import { getSupabase } from "@/data/client";
 import { currentUserId } from "@/data/session";
 import { resolveQuery } from "@/data/query";
+import { mergePersistedAdvisorDismissals } from "@/domain/insights/smart-advisor-rules";
 import { AppError, classifyError } from "@/services/errors";
 import type { AppMode, DbInsert, DbUpdate, UserCustomSettings, UserPreferences } from "@/types";
 
@@ -173,13 +174,17 @@ export async function updateCustomSettings(patch: Partial<UserCustomSettings>): 
                 ...patch.dividendAutomation,
               }
             : current?.custom_settings?.dividendAutomation,
-        advisorDismissals:
-          patch.advisorDismissals !== undefined
+        advisorDismissals: mergePersistedAdvisorDismissals(
+          current?.custom_settings?.advisorDismissals,
+          patch.advisorDismissals,
+        ),
+        advisorDecayMeta:
+          patch.advisorDecayMeta !== undefined
             ? {
-                ...(current?.custom_settings?.advisorDismissals ?? {}),
-                ...patch.advisorDismissals,
+                ...(current?.custom_settings?.advisorDecayMeta ?? {}),
+                ...patch.advisorDecayMeta,
               }
-            : current?.custom_settings?.advisorDismissals,
+            : current?.custom_settings?.advisorDecayMeta,
       };
 
       const { error } = await getSupabase()

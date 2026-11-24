@@ -52,8 +52,8 @@ export function AdminUsersPage() {
     <div className="flex flex-col gap-6 w-full min-w-0">
       <PageHeader
         title="Gestão de Usuários"
-        description="Consulta cadastral, contato criptografado, concessão de planos e permissões modulares"
-        badge={<Badge variant="muted" size="sm">{users.length} usuários listados</Badge>}
+        description="Cadastro, planos e permissões modulares"
+        badge={<Badge variant="muted" size="sm">{users.length} usuários</Badge>}
         actions={
           isSuperadmin ? (
             <Button

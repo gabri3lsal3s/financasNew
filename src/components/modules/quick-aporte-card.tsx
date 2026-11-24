@@ -87,10 +87,10 @@ export function QuickAporteCard({
         className,
       )}
     >
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 min-w-0">
+      <div className="flex items-center justify-between gap-2 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <TrendingUp className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-          <h2 className="text-sm font-semibold tracking-tight text-foreground line-clamp-2 break-words min-w-0">
+          <h2 className="text-sm font-semibold tracking-tight text-foreground truncate min-w-0">
             Investimentos do mês
           </h2>
         </div>
@@ -100,9 +100,9 @@ export function QuickAporteCard({
           size="sm"
           onClick={handleGoToPortfolio}
           aria-label="Ver carteira completa"
-          className="gap-1 px-2.5 text-xs font-medium text-foreground self-start sm:self-auto shrink-0"
+          className="h-7 gap-1 px-2 sm:px-2.5 text-xs font-medium text-foreground hover:bg-surface-hover cursor-pointer border-border/80 shrink-0"
         >
-          <span>Ver carteira</span>
+          <span className="hidden sm:inline">Ver carteira</span>
           <ChevronRight className="size-3.5 text-muted-foreground" aria-hidden="true" />
         </Button>
       </div>
@@ -181,9 +181,10 @@ export function QuickAporteCard({
 
             <Button
               type="submit"
+              variant="outline"
               size="default"
               aria-label="Calcular Rebalanceamento"
-              className="gap-1.5 px-3 sm:px-4 shrink-0 font-semibold rounded-xl"
+              className="gap-1.5 shrink-0"
             >
               <span className="hidden sm:inline">Calcular Rebalanceamento</span>
               <span className="sm:hidden">Calcular</span>

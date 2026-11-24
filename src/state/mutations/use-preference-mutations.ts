@@ -6,6 +6,7 @@ import {
   type ReminderPreferencesInput,
 } from "@/data/repositories/user-preferences";
 import { userPreferencesKey } from "@/state/queries/use-user-preferences";
+import { mergePersistedAdvisorDismissals } from "@/domain/insights/smart-advisor-rules";
 import { getErrorMessage } from "@/services/errors";
 import { pushToast } from "@/services/toast";
 import type { AppMode, UserCustomSettings, UserPreferences } from "@/types";
@@ -115,12 +116,17 @@ export function useUpdateCustomSettings() {
                     ...patch.dividendAutomation,
                   }
                 : old.custom_settings?.dividendAutomation,
-              advisorDismissals: patch.advisorDismissals !== undefined
-                ? {
-                    ...(old.custom_settings?.advisorDismissals ?? {}),
-                    ...patch.advisorDismissals,
-                  }
-                : old.custom_settings?.advisorDismissals,
+              advisorDismissals: mergePersistedAdvisorDismissals(
+                old.custom_settings?.advisorDismissals,
+                patch.advisorDismissals,
+              ),
+              advisorDecayMeta:
+                patch.advisorDecayMeta !== undefined
+                  ? {
+                      ...(old.custom_settings?.advisorDecayMeta ?? {}),
+                      ...patch.advisorDecayMeta,
+                    }
+                  : old.custom_settings?.advisorDecayMeta,
             },
           };
         });

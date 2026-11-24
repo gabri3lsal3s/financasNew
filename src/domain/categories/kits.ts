@@ -19,6 +19,8 @@ export interface CategoryKitItem {
   icon: string;
   color: string;
   description?: string;
+  scope?: "personal" | "business";
+  is_family?: boolean;
 }
 
 export type CategoryKitId = "essential" | "business" | "family" | "vehicle";
@@ -76,6 +78,7 @@ export const CATEGORY_KIT_BUSINESS: CategoryKit = {
       type: "income",
       icon: "salario",
       color: "#10B981",
+      scope: "business",
       description: "Faturamento de honorários, consultorias, atendimentos e horas técnicas.",
     },
     {
@@ -83,6 +86,7 @@ export const CATEGORY_KIT_BUSINESS: CategoryKit = {
       type: "income",
       icon: "compras",
       color: "#059669",
+      scope: "business",
       description: "Comércio, revenda de mercadorias, cursos ou infoprodutos.",
     },
     {
@@ -90,6 +94,7 @@ export const CATEGORY_KIT_BUSINESS: CategoryKit = {
       type: "expense",
       icon: "impostos",
       color: "#EF4444",
+      scope: "business",
       description: "Guia DAS-MEI, Simples Nacional, ISS e tributos corporativos.",
     },
     {
@@ -97,6 +102,7 @@ export const CATEGORY_KIT_BUSINESS: CategoryKit = {
       type: "expense",
       icon: "assinaturas",
       color: "#6366F1",
+      scope: "business",
       description: "Assinaturas de software, hospedagem, CRM, domínio e licenças.",
     },
     {
@@ -104,6 +110,7 @@ export const CATEGORY_KIT_BUSINESS: CategoryKit = {
       type: "expense",
       icon: "moradia",
       color: "#64748B",
+      scope: "business",
       description: "Aluguel comercial, coworking, telefone corporativo e infraestrutura.",
     },
     {
@@ -111,6 +118,7 @@ export const CATEGORY_KIT_BUSINESS: CategoryKit = {
       type: "expense",
       icon: "mercado",
       color: "#D97706",
+      scope: "business",
       description: "Matéria-prima, estoque de mercadorias e materiais de trabalho.",
     },
     {
@@ -118,6 +126,7 @@ export const CATEGORY_KIT_BUSINESS: CategoryKit = {
       type: "expense",
       icon: "justica",
       color: "#8B5CF6",
+      scope: "business",
       description: "Contador, assessoria jurídica, certificação digital e freelancers.",
     },
   ],
@@ -137,6 +146,7 @@ export const CATEGORY_KIT_FAMILY: CategoryKit = {
       type: "expense",
       icon: "educacao",
       color: "#F59E0B",
+      is_family: true,
       description: "Vestuário infantil, creche, materiais escolares, pediatra e lazer infantil.",
     },
     {
@@ -144,6 +154,7 @@ export const CATEGORY_KIT_FAMILY: CategoryKit = {
       type: "expense",
       icon: "mercado",
       color: "#DDA726",
+      is_family: true,
       description: "Abastecimento da despensa e compras de mantimentos para o domicílio.",
     },
     {
@@ -151,6 +162,7 @@ export const CATEGORY_KIT_FAMILY: CategoryKit = {
       type: "expense",
       icon: "moradia",
       color: "#8B5CF6",
+      is_family: true,
       description: "Faxina, diarista, reparos da casa, produtos de limpeza e manutenção do lar.",
     },
     {
@@ -158,6 +170,7 @@ export const CATEGORY_KIT_FAMILY: CategoryKit = {
       type: "expense",
       icon: "pets",
       color: "#EC4899",
+      is_family: true,
       description: "Ração, veterinário, vacinas, banho e tosa dos animais da casa.",
     },
     {
@@ -165,6 +178,7 @@ export const CATEGORY_KIT_FAMILY: CategoryKit = {
       type: "expense",
       icon: "saude",
       color: "#EF4444",
+      is_family: true,
       description: "Medicamentos de uso contínuo da família, consultas e exames do casal.",
     },
     {
@@ -172,6 +186,7 @@ export const CATEGORY_KIT_FAMILY: CategoryKit = {
       type: "income",
       icon: "salario",
       color: "#3B82F6",
+      is_family: true,
       description: "Pensão alimentícia, ajuda de custo ou reembolso de gastos domiciliares.",
     },
     {
@@ -179,6 +194,7 @@ export const CATEGORY_KIT_FAMILY: CategoryKit = {
       type: "income",
       icon: "moradia",
       color: "#10B981",
+      is_family: true,
       description: "Aluguel de imóvel da família ou sublocação de espaço compartilhado.",
     },
   ],

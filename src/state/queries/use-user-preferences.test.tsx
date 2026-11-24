@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useUserPreferences, userPreferencesKey } from "./use-user-preferences";
@@ -63,5 +63,29 @@ describe("useUserPreferences Hook — Calibração de Cache (Tarefa 1.2)", () =>
     expect(observers[0]?.options.staleTime).toBe(STALE_TIMES.static);
     expect(observers[0]?.options.staleTime).toBe(300_000);
     expect(observers[0]?.options.gcTime).toBe(STATIC_GC_TIME);
+  });
+
+  it("ativa reativamente quando activeUserId transita de null para um usuário autenticado", async () => {
+    setActiveUserId(null);
+    vi.mocked(userPrefsRepo.getUserPreferences).mockResolvedValueOnce(mockPreferences);
+
+    const { result } = renderHook(() => useUserPreferences(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.isPending).toBe(true);
+    expect(result.current.isLoading).toBe(false);
+    expect(userPrefsRepo.getUserPreferences).not.toHaveBeenCalled();
+
+    act(() => {
+      setActiveUserId("user-1");
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toEqual(mockPreferences);
+    expect(userPrefsRepo.getUserPreferences).toHaveBeenCalledTimes(1);
   });
 });

@@ -34,3 +34,5 @@ export { AppErrorBoundary } from "./app-error-boundary";
 export type { AppErrorBoundaryProps } from "./app-error-boundary";
 export { PageHeader } from "./page-header";
 export type { PageHeaderProps } from "./page-header";
+export { PageGuideButton } from "./page-guide-button";
+export type { PageGuideButtonProps } from "./page-guide-button";

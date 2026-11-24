@@ -140,28 +140,41 @@ export function CategoryKitsModal({
                   key={itemKey}
                   className="flex items-center justify-between gap-3 rounded-xl border border-border/80 bg-surface p-3 shadow-xs min-w-0 transition-colors"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <CategoryIcon icon={item.icon} color={item.color} />
+                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                    <div className="shrink-0 mt-0.5">
+                      <CategoryIcon icon={item.icon} color={item.color} />
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
+                      <p className="text-xs sm:text-sm font-semibold text-foreground line-clamp-2 break-words">
                         {item.name}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
                         <Badge
                           size="xs"
                           variant={item.type === "income" ? "positive" : "muted"}
+                          className="shrink-0"
                         >
                           {item.type === "income" ? "Receita" : "Despesa"}
                         </Badge>
-                        {item.description ? (
-                          <span
-                            className="text-[11px] text-muted-foreground truncate hidden sm:inline"
-                            title={item.description}
-                          >
-                            {item.description}
-                          </span>
+                        {item.is_family ? (
+                          <Badge size="xs" variant="positive" className="shrink-0">
+                            Família
+                          </Badge>
+                        ) : null}
+                        {item.scope === "business" ? (
+                          <Badge size="xs" variant="default" className="shrink-0">
+                            Negócio PJ
+                          </Badge>
                         ) : null}
                       </div>
+                      {item.description ? (
+                        <p
+                          className="text-[11px] text-muted-foreground line-clamp-2 break-words mt-1 leading-relaxed"
+                          title={item.description}
+                        >
+                          {item.description}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
 

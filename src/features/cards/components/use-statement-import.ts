@@ -65,7 +65,7 @@ import {
 } from "./statement-import-helpers";
 import type { StatementImportProgress } from "./statement-reconcile-step";
 
-export type StatementWizardStep = "upload" | "mapping" | "reconcile";
+export type StatementWizardStep = "upload" | "competence_conflict" | "mapping" | "reconcile";
 
 export interface UseStatementImportParams {
   card: CreditCard;
@@ -108,10 +108,18 @@ export function useStatementImport({
   const [usedAiStructurer, setUsedAiStructurer] = useState(false);
   const [printedTotalCents, setPrintedTotalCents] = useState<number | null>(null);
   const [detectedMeta, setDetectedMeta] = useState<DetectedStatementMetadata | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const reconcileRunIdRef = useRef(0);
   const manuallyEditedIdsRef = useRef<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
+  const pendingConflictRef = useRef<{
+    transactions: import("@/domain/reconciliation").StatementTransaction[];
+    usedAiStructurer: boolean;
+    printedTotalCents: number | null;
+    detectedMeta?: DetectedStatementMetadata | null;
+    shouldAutoAdvance: boolean;
+  } | null>(null);
   const reconciledItemsRef = useRef<ReconciliationItem[]>([]);
   const unmatchedAppExpensesRef = useRef<ExistingExpenseForReconciliation[]>([]);
   const loadedInputRef = useRef<{
@@ -174,6 +182,7 @@ export function useStatementImport({
 
     manuallyEditedIdsRef.current.clear();
     setPendingLinkAdjustments(new Map());
+    setHasUnsavedChanges(false);
 
     if (meta?.usedAiStructurer !== undefined) {
       setUsedAiStructurer(meta.usedAiStructurer);
@@ -489,6 +498,11 @@ export function useStatementImport({
     fileSha256?: string | null,
     spatialTransactions?: import("@/domain/reconciliation").StatementTransaction[],
     checksumGate?: import("@/domain/reconciliation").ChecksumGateResult,
+    spatialExtras?: {
+      spatialLinesCount?: number;
+      discardedMoneyLines?: number;
+      spatialRawLines?: string[];
+    },
   ) => {
     setError(null);
     loadedInputRef.current = { content, fileNameOrType, fileSha256 };
@@ -512,6 +526,9 @@ export function useStatementImport({
         aiFallbackEnabled: aiExtractionEnabled,
         spatialTransactions,
         checksumGate,
+        spatialLinesCount: spatialExtras?.spatialLinesCount,
+        discardedMoneyLines: spatialExtras?.discardedMoneyLines,
+        spatialRawLines: spatialExtras?.spatialRawLines,
       });
 
       if (result.transactions.length === 0 && result.rows.length === 0) {
@@ -531,6 +548,22 @@ export function useStatementImport({
         result.rows.length === 0 ||
         ((result.mapping.hasHeader ?? false) &&
           ((result.isCacheHit ?? false) || (result.mappingConfidence ?? 0) >= 85));
+
+      // Se houver divergência real de competência, pausa antes de montar a Staging Area
+      if (
+        result.detectedMeta?.hasCompetenceMismatch &&
+        result.detectedMeta.detectedCompetenceMonth
+      ) {
+        pendingConflictRef.current = {
+          transactions: result.transactions,
+          usedAiStructurer: result.usedAiFallback,
+          printedTotalCents: result.printedTotalCents,
+          detectedMeta: result.detectedMeta,
+          shouldAutoAdvance,
+        };
+        setStep("competence_conflict");
+        return;
+      }
 
       if (shouldAutoAdvance) {
         applyReconciliation(result.transactions, {
@@ -594,6 +627,22 @@ export function useStatementImport({
       setParsedRows(scannedVision.rows);
       setColumnMapping(scannedVision.mapping);
       setDetectedMeta(scannedVision.detectedMeta ?? null);
+
+      if (
+        scannedVision.detectedMeta?.hasCompetenceMismatch &&
+        scannedVision.detectedMeta.detectedCompetenceMonth
+      ) {
+        pendingConflictRef.current = {
+          transactions: scannedVision.transactions,
+          usedAiStructurer: true,
+          printedTotalCents: null,
+          detectedMeta: scannedVision.detectedMeta,
+          shouldAutoAdvance: true,
+        };
+        setStep("competence_conflict");
+        return;
+      }
+
       applyReconciliation(scannedVision.transactions, {
         usedAiStructurer: true,
         printedTotalCents: null,
@@ -609,6 +658,11 @@ export function useStatementImport({
         loaded.sha256,
         loaded.spatialTransactions,
         loaded.checksumGate,
+        {
+          spatialLinesCount: loaded.spatialLinesCount,
+          discardedMoneyLines: loaded.discardedMoneyLines,
+          spatialRawLines: loaded.spatialRawLines,
+        },
       );
       return;
     }
@@ -843,6 +897,38 @@ export function useStatementImport({
     setDetectedMeta((prev) => (prev ? { ...prev, hasCompetenceMismatch: false } : null));
   };
 
+  const handleConfirmKeepCurrentCompetence = () => {
+    const pending = pendingConflictRef.current;
+    pendingConflictRef.current = null;
+    setDetectedMeta((prev) => (prev ? { ...prev, hasCompetenceMismatch: false } : null));
+    if (!pending) {
+      setStep("reconcile");
+      return;
+    }
+    if (pending.shouldAutoAdvance) {
+      applyReconciliation(pending.transactions, {
+        usedAiStructurer: pending.usedAiStructurer,
+        printedTotalCents: pending.printedTotalCents,
+        detectedMeta: pending.detectedMeta
+          ? { ...pending.detectedMeta, hasCompetenceMismatch: false }
+          : null,
+      });
+    } else {
+      setStep("mapping");
+    }
+  };
+
+  const handleCancelCompetenceConflict = () => {
+    pendingConflictRef.current = null;
+    loadedInputRef.current = null;
+    setParsedRows([]);
+    setColumnMapping(null);
+    setDetectedMeta(null);
+    setError(null);
+    setHasUnsavedChanges(false);
+    setStep("upload");
+  };
+
   const handleConfirmMapping = (mapping: ColumnMapping) => {
     setColumnMapping(mapping);
     setError(null);
@@ -860,6 +946,7 @@ export function useStatementImport({
 
   const handleToggleItem = (id: string) => {
     manuallyEditedIdsRef.current.add(id);
+    setHasUnsavedChanges(true);
     setReconciledItems((prev) =>
       prev.map((it) => (it.transaction.id === id ? { ...it, selected: !it.selected } : it)),
     );
@@ -869,11 +956,13 @@ export function useStatementImport({
     for (const it of reconciledItems) {
       manuallyEditedIdsRef.current.add(it.transaction.id);
     }
+    setHasUnsavedChanges(true);
     setReconciledItems((prev) => prev.map((it) => ({ ...it, selected })));
   };
 
   const handleChangeCategory = (id: string, categoryId: string) => {
     manuallyEditedIdsRef.current.add(id);
+    setHasUnsavedChanges(true);
     setReconciledItems((prev) =>
       prev.map((it) =>
         it.transaction.id === id ? { ...it, selectedCategoryId: categoryId } : it,
@@ -894,6 +983,7 @@ export function useStatementImport({
     for (const id of ids) {
       manuallyEditedIdsRef.current.add(id);
     }
+    setHasUnsavedChanges(true);
 
     setReconciledItems((prev) =>
       prev.map((it) =>
@@ -921,6 +1011,7 @@ export function useStatementImport({
 
   const handleEditItem = (id: string, updated: StatementItemPatch) => {
     manuallyEditedIdsRef.current.add(id);
+    setHasUnsavedChanges(true);
     const existing = reconciledItems.find((it) => it.transaction.id === id);
     if (updated.selectedCategoryId) {
       autoLearnExpenseCategory(
@@ -1236,6 +1327,8 @@ export function useStatementImport({
     [reconciledItems],
   );
 
+  const showScopeControls = isBusinessModeEnabled && card.scope === "mixed";
+
   return {
     step,
     setStep,
@@ -1254,6 +1347,8 @@ export function useStatementImport({
     printedTotalCents,
     pendingPasswordFile,
     passwordError,
+    hasUnsavedChanges,
+    showScopeControls,
     canOpenMapping: parsedRows.length > 0,
     isPending:
       importMutation.isPending || updateExpenseMutation.isPending || importProgress !== null,
@@ -1265,6 +1360,8 @@ export function useStatementImport({
     handleConfirmMapping,
     handleSwitchCompetence,
     handleDismissCompetenceMismatch,
+    handleConfirmKeepCurrentCompetence,
+    handleCancelCompetenceConflict,
     handleToggleItem,
     handleToggleAll,
     handleChangeCategory,

@@ -16,7 +16,9 @@ export interface PageHeaderProps {
   backTo?: string | (() => void);
   /** Rótulo acessível para o botão de voltar */
   backLabel?: string;
-  /** Botões ou ferramentas de ação à direita/topo */
+  /** Botões utilitários compactos (ícone-only, ex: Guia, Compartilhar, Excluir) */
+  utilityActions?: ReactNode;
+  /** Botões ou ferramentas de ação principais à direita/topo */
   actions?: ReactNode;
   /** Classes extras para o contêiner raiz do cabeçalho */
   className?: string;
@@ -48,6 +50,7 @@ export function PageHeader({
   badge,
   backTo,
   backLabel = "Voltar",
+  utilityActions,
   actions,
   className,
 }: PageHeaderProps) {
@@ -66,10 +69,19 @@ export function PageHeader({
   const actionCount = actions ? countActionChildren(actions) : 0;
   const actionsLayoutClass =
     actionCount === 2
-      ? "grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end sm:flex-nowrap shrink-0 w-full sm:w-auto [&>*]:w-full [&>*]:sm:w-auto"
+      ? cn(
+          "grid grid-cols-2 gap-2 sm:flex sm:items-center sm:justify-end sm:flex-nowrap shrink-0 [&>*]:w-full [&>*]:sm:w-auto",
+          utilityActions ? "flex-1 min-w-0 sm:flex-initial sm:w-auto" : "w-full sm:w-auto",
+        )
       : actionCount >= 3
-        ? "flex items-center justify-start sm:justify-end gap-2 overflow-x-auto no-scrollbar sm:flex-nowrap shrink-0 w-full sm:w-auto"
-        : "flex items-center justify-start sm:justify-end gap-2 flex-wrap sm:flex-nowrap shrink-0 w-full sm:w-auto";
+        ? cn(
+            "flex items-center justify-start sm:justify-end gap-2 overflow-x-auto no-scrollbar sm:flex-nowrap shrink-0",
+            utilityActions ? "flex-1 min-w-0 sm:flex-initial sm:w-auto" : "w-full sm:w-auto",
+          )
+        : cn(
+            "flex items-center justify-start sm:justify-end gap-2 flex-wrap sm:flex-nowrap shrink-0",
+            utilityActions ? "flex-1 min-w-0 sm:flex-initial sm:w-auto" : "w-full sm:w-auto",
+          );
 
   return (
     <header
@@ -102,14 +114,25 @@ export function PageHeader({
           </div>
 
           {description && (
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 leading-relaxed">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 leading-snug">
               {description}
             </p>
           )}
         </div>
       </div>
 
-      {actions && <div className={actionsLayoutClass}>{actions}</div>}
+      {utilityActions && actions ? (
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 shrink-0">{utilityActions}</div>
+          <div className={actionsLayoutClass}>{actions}</div>
+        </div>
+      ) : utilityActions ? (
+        <div className="flex items-center justify-start sm:justify-end gap-1.5 shrink-0 w-full sm:w-auto">
+          {utilityActions}
+        </div>
+      ) : actions ? (
+        <div className={actionsLayoutClass}>{actions}</div>
+      ) : null}
     </header>
   );
 }

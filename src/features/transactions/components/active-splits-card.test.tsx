@@ -97,6 +97,7 @@ describe("ActiveSplitsCard", () => {
     mockDebts = [mockDebt];
 
     render(<ActiveSplitsCard month="2026-08" />);
+    fireEvent.click(screen.getByRole("button", { name: /Expandir/i }));
 
     expect(screen.getByText("Rachas de Despesa Ativos")).toBeInTheDocument();
     expect(screen.getByText("Pizza com a galera")).toBeInTheDocument();
@@ -144,6 +145,7 @@ describe("ActiveSplitsCard", () => {
     mockDebts = [mockDebt];
 
     render(<ActiveSplitsCard month="2026-08" />);
+    fireEvent.click(screen.getByRole("button", { name: /Expandir/i }));
 
     const settleBtn = screen.getByRole("button", { name: /dar baixa/i });
     fireEvent.click(settleBtn);
@@ -193,6 +195,7 @@ describe("ActiveSplitsCard", () => {
     }));
 
     render(<ActiveSplitsCard month="2026-08" />);
+    fireEvent.click(screen.getByRole("button", { name: /Expandir/i }));
 
     // Bloco 1: 2 itens visíveis (itens 1 e 2), item 3 não visível
     expect(screen.getByText("Racha Número 1")).toBeInTheDocument();
@@ -302,6 +305,7 @@ describe("ActiveSplitsCard", () => {
     ];
 
     render(<ActiveSplitsCard month="2026-08" />);
+    fireEvent.click(screen.getByRole("button", { name: /Expandir/i }));
 
     // Bloco 1 (2 itens): os dois primeiros ordenados devem ser:
     // 1º: Racha Vence Cedo (15/08)
@@ -339,6 +343,7 @@ describe("ActiveSplitsCard", () => {
     ];
 
     render(<ActiveSplitsCard month="2026-08" />);
+    fireEvent.click(screen.getByRole("button", { name: /Expandir/i }));
 
     // Deve exibir o card e o título do racha
     expect(screen.getByText("Rachas de Despesa Ativos")).toBeInTheDocument();
@@ -460,8 +465,8 @@ describe("ActiveSplitsCard", () => {
     ];
 
     render(<ActiveSplitsCard month="2026-08" />);
+    fireEvent.click(screen.getByRole("button", { name: /Expandir/i }));
 
-    // Quando há pendente, não colapsa automaticamente
     const pendingTitle = screen.getByText("Racha Ainda Pendente");
     const settledTitle = screen.getByText("Racha Já Quitado");
     expect(pendingTitle).toBeInTheDocument();
@@ -471,6 +476,58 @@ describe("ActiveSplitsCard", () => {
     expect(
       Boolean(pendingTitle.compareDocumentPosition(settledTitle) & Node.DOCUMENT_POSITION_FOLLOWING)
     ).toBe(true);
+  });
+
+  it("permite recolher e expandir mesmo quando há rachas ativos, exibindo resumo ao recolher", () => {
+    mockPublicShares = [
+      {
+        id: "share-pending",
+        user_id: "u1",
+        token: "tok-p",
+        kind: "split",
+        created_at: "2026-08-05T10:00:00Z",
+        expires_at: null,
+        is_revoked: false,
+        updated_at: "2026-08-05T10:00:00Z",
+        payload: {
+          title: "Aniversário",
+          total_cents: 20000,
+          guest_share_cents: 5000,
+          people_count: 4,
+          debt_id: "debt-p",
+        },
+      },
+    ];
+    mockDebts = [
+      {
+        id: "debt-p",
+        user_id: "u1",
+        name: "Aniversário",
+        type: "receivable",
+        amount: 150,
+        due_date: "2026-08-20",
+        paid_at: null,
+        created_at: "2026-08-05T10:00:00Z",
+        expense_id: null,
+        installment_group_id: null,
+      },
+    ];
+
+    render(<ActiveSplitsCard month="2026-08" />);
+
+    // Deve iniciar colapsado por padrão mesmo com rachas ativos, exibindo o resumo
+    expect(screen.queryByText("Aniversário")).not.toBeInTheDocument();
+    expect(screen.getByText("Rachas de Despesa Ativos")).toBeInTheDocument();
+    expect(screen.getByText("1 ativo")).toBeInTheDocument();
+    expect(screen.getByText(/A receber:/i)).toBeInTheDocument();
+
+    const expandBtn = screen.getByRole("button", { name: /Expandir/i });
+    fireEvent.click(expandBtn);
+    expect(screen.getByText("Aniversário")).toBeInTheDocument();
+
+    const collapseBtn = screen.getByRole("button", { name: /Recolher/i });
+    fireEvent.click(collapseBtn);
+    expect(screen.queryByText("Aniversário")).not.toBeInTheDocument();
   });
 });
 

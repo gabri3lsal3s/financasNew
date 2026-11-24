@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   ArrowLeftRight,
-  BookOpen,
   Boxes,
   Briefcase,
   Plus,
@@ -21,7 +20,7 @@ import {
   MoneyText,
   Skeleton,
 } from "@/components/ui";
-import { PageHeader } from "@/components/layout";
+import { PageGuideButton, PageHeader } from "@/components/layout";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import {
   CashCheckpointDialog,
@@ -114,7 +113,7 @@ export function BusinessPage() {
   if (isPrefsLoading) {
     return (
       <div className="flex flex-col gap-6">
-        <PageHeader title="Meu Negócio" description="Gestão PF vs PJ para MEI, autônomos e liberais" />
+        <PageHeader title="Meu Negócio" description="Separe finanças pessoais e do negócio" />
         <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
     );
@@ -125,7 +124,7 @@ export function BusinessPage() {
       <div className="flex flex-col gap-6">
         <PageHeader
           title="Meu Negócio"
-          description="Separe faturamento, custos operacionais e pró-labore das finanças pessoais"
+          description="Separe finanças pessoais e do negócio"
         />
         <BusinessOnboardingEmptyView
           isPending={isBusinessUpdating}
@@ -310,54 +309,51 @@ function BusinessDashboardContent({
     <div className="flex flex-col gap-6">
       <PageHeader
         title={pageTitle}
-        description="Caixa isolado da operação PJ, DRE mensal e transferências PF/PJ"
+        description="Operação PJ e transferências com a conta pessoal"
         badge={
           <Badge variant="portfolio" size="sm">
             {profileBadgeLabel}
           </Badge>
         }
-        actions={
+        utilityActions={
           <>
             {isPlaybookVisible("business") && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
+              <PageGuideButton
                 onClick={() => setGuideOpen(true)}
                 title="Abrir guia do negócio"
-              >
-                <BookOpen className="size-3.5" aria-hidden="true" />
-                <span>Guia</span>
-              </Button>
+              />
             )}
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="gap-1.5"
+              className="size-8 !w-8 !min-w-8 p-0 shrink-0"
+              aria-label="Configurar negócio"
+              title="Configurar perfil do negócio"
               onClick={() => guardAction(() => setProfileOpen(true), "Configurar Negócio")}
             >
-              <Settings2 className="size-4" aria-hidden="true" />
-              <span>Configurar</span>
+              <Settings2 aria-hidden="true" />
+              <span className="sr-only">Configurar</span>
             </Button>
+          </>
+        }
+        actions={
+          <>
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="gap-1.5"
               onClick={() => guardAction(() => setTransferOpen(true), "Transferência PF/PJ")}
             >
-              <ArrowLeftRight className="size-4" aria-hidden="true" />
+              <ArrowLeftRight aria-hidden="true" />
               <span>Transferir PF/PJ</span>
             </Button>
             <Button
               type="button"
               size="sm"
-              className="gap-1.5 shadow-xs"
               onClick={() => guardAction(() => setWizardOpen(true), "Novo Lançamento PJ")}
             >
-              <Plus className="size-4" aria-hidden="true" />
+              <Plus aria-hidden="true" />
               <span>Lançar</span>
             </Button>
           </>
@@ -380,7 +376,7 @@ function BusinessDashboardContent({
           }}
         />
       ) : isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-28 rounded-2xl" />
           ))}
@@ -458,6 +454,7 @@ function BusinessDashboardContent({
               estimatedTaxCents={taxShield.estimatedTaxCents}
               targetProLaboreCents={effectiveProfile.targetProLaboreCents ?? 0}
               periodLabel={periodLabel}
+              fullWidth={!meiLimit}
             />
             {meiLimit ? (
               <MeiCeilingCard mei={meiLimit} yearLabel={String(selectedYear)} />
@@ -465,14 +462,15 @@ function BusinessDashboardContent({
           </div>
 
           <Card className="border-border/80 bg-surface shadow-xs">
-            <CardHeader className="flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between pb-3">
+            <CardHeader className="flex-row items-center justify-between gap-2.5 pb-3">
               <div className="flex items-center gap-2 min-w-0">
                 <Briefcase className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <CardTitle className="text-sm sm:text-base font-semibold">
-                  Movimentações do Negócio ({periodLabel})
+                <CardTitle className="text-sm sm:text-base font-semibold truncate">
+                  <span className="sm:hidden">Movimentações</span>
+                  <span className="hidden sm:inline">Movimentações do Negócio</span>
                 </CardTitle>
               </div>
-              <Badge variant="muted" size="xs">
+              <Badge variant="muted" size="xs" className="shrink-0">
                 {cashflowFeed.length} registro{cashflowFeed.length === 1 ? "" : "s"}
               </Badge>
             </CardHeader>

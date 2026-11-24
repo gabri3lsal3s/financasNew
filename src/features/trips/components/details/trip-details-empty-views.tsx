@@ -18,7 +18,7 @@ export function TripDetailsModeInactiveView({
     <div className="space-y-6" data-testid="trip-mode-inactive">
       <PageHeader
         title="Modo Viagem"
-        description="Grupos temporários de despesas compartilhadas com compensação líquida e acerto Pix."
+        description="Despesas compartilhadas e acerto entre participantes"
       />
 
       <EmptyState

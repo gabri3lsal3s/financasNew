@@ -30,6 +30,7 @@ import {
   subscribeInsightsReevaluation,
 } from "@/services/merchant-learning";
 import * as state from "@/state";
+import { isQueryPending } from "@/state/query-readiness";
 import type {
   Budget,
   Category,
@@ -64,6 +65,7 @@ const EMPTY_RECURRENCES: readonly Recurrence[] = [];
 const EMPTY_INCOME_GOALS: readonly IncomeGoal[] = [];
 const EMPTY_CONTRIBUTIONS: readonly PortfolioContribution[] = [];
 const EMPTY_DIVIDENDS: readonly UserDividendEvent[] = [];
+const EMPTY_POSITION_ROWS: readonly OverviewPortfolioPositionLike[] = [];
 
 export interface UseUserFinancialContextOptions {
   month?: string;
@@ -94,10 +96,23 @@ export interface UseUserFinancialContextResult {
 export function useUserFinancialContext(
   options: UseUserFinancialContextOptions = {},
 ): UseUserFinancialContextResult {
-  const month = options.month ?? currentMonth();
-  const today = options.todayISO ?? todayISO();
-  const isCurrentMonth = options.isCurrentMonth ?? today.slice(0, 7) === month;
-  const queryEnabled = options.enabled ?? true;
+  const {
+    month: optionMonth,
+    todayISO: optionTodayISO,
+    isCurrentMonth: optionIsCurrentMonth,
+    enabled: optionEnabled,
+    realCashBalanceCents: optionRealCashBalanceCents,
+    hasCashCheckpoint: optionHasCashCheckpoint,
+    hasCashHistory: optionHasCashHistory,
+    committedObligationsCents: optionCommittedObligationsCents,
+    safeToSpendCents: optionSafeToSpendCents,
+    positionRows: optionPositionRows,
+    scopeOverride: optionScopeOverride,
+  } = options;
+  const month = optionMonth ?? currentMonth();
+  const today = optionTodayISO ?? todayISO();
+  const isCurrentMonth = optionIsCurrentMonth ?? today.slice(0, 7) === month;
+  const queryEnabled = optionEnabled ?? true;
 
   const m1 = shiftMonth(month, -1);
   const m2 = shiftMonth(month, -2);
@@ -199,6 +214,31 @@ export function useUserFinancialContext(
   const realCashFallbackQ = useRealCashBalanceSafe(isCurrentMonth ? today : `${month}-01`);
   const portfolioPositionFallbackQ = usePortfolioPositionSafe();
 
+  const isLoading = Boolean(
+    queryEnabled &&
+      (isQueryPending(m0IncomesQ) ||
+        isQueryPending(m1IncomesQ) ||
+        isQueryPending(m2IncomesQ) ||
+        isQueryPending(m3IncomesQ) ||
+        isQueryPending(m0ExpensesQ) ||
+        isQueryPending(m1ExpensesQ) ||
+        isQueryPending(m2ExpensesQ) ||
+        isQueryPending(m3ExpensesQ) ||
+        isQueryPending(budgetsQ) ||
+        isQueryPending(categoriesQ) ||
+        isQueryPending(expenseCategoriesQ) ||
+        isQueryPending(incomeCategoriesQ) ||
+        isQueryPending(feedbackEntriesQ) ||
+        isQueryPending(feedbackMapQ) ||
+        isQueryPending(recurrencesQ) ||
+        isQueryPending(incomeGoalsQ) ||
+        isQueryPending(contributionsQ) ||
+        isQueryPending(userPrefsQ) ||
+        (hasInvestmentsAccess && Boolean(corporateDividendsQ?.isLoading)) ||
+        (optionRealCashBalanceCents === undefined && Boolean(realCashFallbackQ?.isLoading)) ||
+        (optionPositionRows === undefined && Boolean(portfolioPositionFallbackQ?.isLoading))),
+  );
+
   const [merchantVersion, setMerchantVersion] = useState(0);
   useEffect(
     () =>
@@ -210,7 +250,7 @@ export function useUserFinancialContext(
 
   // Contexto financeiro pessoal da família (Reserva de Emergência, taxa de poupança e custo de vida)
   // deve SEMPRE filtrar por 'personal' por padrão para não contaminar o orçamento doméstico com compras PJ.
-  const targetScope: ViewScope = options.scopeOverride ?? "personal";
+  const targetScope: ViewScope = optionScopeOverride ?? "personal";
 
   const m0Incomes = useMemo(
     () => filterIncomesByViewScope(m0IncomesQ?.data ?? EMPTY_INCOMES, targetScope, { mode: "dre" }),
@@ -284,27 +324,25 @@ export function useUserFinancialContext(
   }, [feedbackEntriesQ?.data, feedbackMapQ?.data]);
 
   const effectiveRealCashBalanceCents =
-    options.realCashBalanceCents ?? realCashFallbackQ?.cashBalance?.currentBalanceCents ?? 0;
+    optionRealCashBalanceCents ?? realCashFallbackQ?.cashBalance?.currentBalanceCents ?? 0;
   const effectiveHasCheckpoint =
-    options.hasCashCheckpoint ?? realCashFallbackQ?.cashBalance?.latestCheckpoint !== null;
+    optionHasCashCheckpoint ?? realCashFallbackQ?.cashBalance?.latestCheckpoint !== null;
   const effectiveHasCashHistory =
-    options.hasCashHistory ??
+    optionHasCashHistory ??
     Boolean(
       (realCashFallbackQ?.cashBalance?.inflowSinceCheckpointCents ?? 0) > 0 ||
         (realCashFallbackQ?.cashBalance?.outflowSinceCheckpointCents ?? 0) > 0 ||
         (realCashFallbackQ?.cashBalance?.eventsSinceCheckpoint?.length ?? 0) > 0,
     );
   const effectiveCommittedObligationsCents =
-    options.committedObligationsCents ??
+    optionCommittedObligationsCents ??
     realCashFallbackQ?.safeToSpend?.committedObligationsCents ??
     0;
   const effectiveSafeToSpendCents =
-    options.safeToSpendCents ?? realCashFallbackQ?.safeToSpend?.safeToSpendCents ?? 0;
+    optionSafeToSpendCents ?? realCashFallbackQ?.safeToSpend?.safeToSpendCents ?? 0;
 
-  const effectivePositionRows = useMemo(
-    () => options.positionRows ?? portfolioPositionFallbackQ?.rows ?? [],
-    [options.positionRows, portfolioPositionFallbackQ?.rows],
-  );
+  const effectivePositionRows =
+    optionPositionRows ?? portfolioPositionFallbackQ?.rows ?? EMPTY_POSITION_ROWS;
 
   const { context, predictedUpcomingInflows, detectedRecurrences } = useMemo(() => {
     const seenIncomeIds = new Set(m0Incomes.map((i) => i.id));
@@ -549,14 +587,6 @@ export function useUserFinancialContext(
     hasInvestmentsAccess,
     merchantVersion,
   ]);
-
-  const isLoading = Boolean(
-    m0IncomesQ?.isLoading ||
-      m0ExpensesQ?.isLoading ||
-      categoriesQ?.isLoading ||
-      (options.realCashBalanceCents === undefined && realCashFallbackQ?.isLoading) ||
-      (options.positionRows === undefined && portfolioPositionFallbackQ?.isLoading),
-  );
 
   return {
     context,

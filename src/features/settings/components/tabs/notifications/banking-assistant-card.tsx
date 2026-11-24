@@ -52,12 +52,13 @@ export function BankingAssistantCard() {
     return (
       <Card className="border-border/80 bg-surface shadow-xs">
         <CardHeader>
-          <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
+          <div className="flex flex-row gap-2.5 items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2 min-w-0">
               <CreditCard className="size-4 text-muted-foreground shrink-0" aria-hidden="true" />
-              <span>Assistente Passivo de Compras &amp; Bancos</span>
+              <span className="sm:hidden truncate">Assistente Bancário</span>
+              <span className="hidden sm:inline truncate">Assistente Passivo de Compras &amp; Bancos</span>
             </CardTitle>
-            <Badge variant="default" size="xs" className="self-start sm:self-auto">
+            <Badge variant="default" size="xs" className="shrink-0">
               Exclusivo no App Android
             </Badge>
           </div>

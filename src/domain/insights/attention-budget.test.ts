@@ -5,6 +5,8 @@ import {
   DEFAULT_ATTENTION_BUDGET_POLICY,
   isFamilyUnderDecay,
   muteInsightFamily,
+  resolveInsightThemeFamily,
+  resolveThemeFamily,
   selectOperationalHomeBanner,
   unmuteInsightFamily,
 } from "./attention-budget";
@@ -126,6 +128,39 @@ describe("attention-budget (Governança de Atenção & Smart Decay)", () => {
       expect(unmuted.muted).toBe(false);
       expect(unmuted.dismissCount).toBe(0);
       expect(isFamilyUnderDecay(unmuted, t2 + 10 * DAY_MS)).toBe(false);
+    });
+  });
+
+  describe("resolução unificada de família (resolveInsightThemeFamily === resolveThemeFamily)", () => {
+    it("mapeia de forma idêntica todos os prefixos sem colidir dup:* em pace", () => {
+      const keys = [
+        "dup:netflix",
+        "dup:sub:spotify",
+        "savings:streaming",
+        "charges:drain",
+        "annual:ipva",
+        "annual_commit:iptu",
+        "weekly:feira",
+        "due_today:aluguel",
+        "calib_tx:123",
+        "calib:academia",
+        "income_goal:cat-1",
+        "aporte:rebalance",
+        "celebration:real_savings",
+        "household:ceiling_exceeded",
+      ];
+
+      for (const k of keys) {
+        expect(resolveInsightThemeFamily(k)).toBe(resolveThemeFamily(k));
+      }
+
+      expect(resolveInsightThemeFamily("dup:netflix")).toBe("savings_cut");
+      expect(resolveInsightThemeFamily("dup:netflix")).not.toBe("pace");
+      expect(resolveInsightThemeFamily("annual:ipva")).toBe("annual_commitment");
+      expect(resolveInsightThemeFamily("annual_commit:iptu")).toBe("annual_commitment");
+      expect(resolveInsightThemeFamily("weekly:feira")).toBe("habit");
+      expect(resolveInsightThemeFamily("due_today:aluguel")).toBe("missing_expense");
+      expect(resolveInsightThemeFamily("household:ceiling_exceeded")).toBe("habit");
     });
   });
 });

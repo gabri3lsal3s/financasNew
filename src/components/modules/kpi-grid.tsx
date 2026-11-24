@@ -9,8 +9,8 @@ export interface KpiGridProps extends ComponentPropsWithoutRef<"div"> {
 
 const columnStyles: Record<2 | 3 | 4, string> = {
   2: "grid grid-cols-2 gap-3 sm:gap-3.5",
-  3: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5",
-  4: "grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5",
+  3: "grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-3.5",
+  4: "grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-3.5",
 };
 
 /**

@@ -140,9 +140,10 @@ export function GoalPixContributionSidebar({ goalData }: GoalPixContributionSide
   return (
     <Card className="border-border/80 bg-surface shadow-xs">
       <CardHeader className="pb-3 border-b border-border/80">
-        <CardTitle className="text-base flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-          <span>Contribua com a Meta via Pix</span>
-          <Badge variant="muted" size="xs">
+        <CardTitle className="text-base flex flex-row items-center justify-between gap-2">
+          <span className="sm:hidden truncate">Contribua via Pix</span>
+          <span className="hidden sm:inline truncate">Contribua com a Meta via Pix</span>
+          <Badge variant="muted" size="xs" className="shrink-0">
             {formatPixKeyTypeLabel(goalData.pix_key_type)}
           </Badge>
         </CardTitle>

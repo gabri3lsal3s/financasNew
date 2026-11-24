@@ -10,10 +10,16 @@ let userPrefsData: UserPreferences | null = null;
 let realCashCentsMock = 0;
 let hasCheckpointMock = false;
 let hasCashHistoryMock = false;
+let m2ExpenseLoadingMock = false;
+let recurrencesLoadingMock = false;
+let feedbackEntriesLoadingMock = false;
 
 vi.mock("@/state", () => ({
   useIncomes: (m: string) => ({ data: incomesByMonth[m] ?? [], isLoading: false }),
-  useExpenses: (m: string) => ({ data: expensesByMonth[m] ?? [], isLoading: false }),
+  useExpenses: (m: string) => ({
+    data: expensesByMonth[m] ?? [],
+    isLoading: m === "2026-06" ? m2ExpenseLoadingMock : false,
+  }),
   useBudgets: () => ({ data: [], isLoading: false }),
   useCategories: () => ({
     data: [
@@ -22,9 +28,9 @@ vi.mock("@/state", () => ({
     ],
     isLoading: false,
   }),
-  useFeedbackEntries: () => ({ data: [], isLoading: false }),
+  useFeedbackEntries: () => ({ data: [], isLoading: feedbackEntriesLoadingMock }),
   useFeedback: () => ({ data: {}, isLoading: false }),
-  useRecurrences: () => ({ data: recurrencesList, isLoading: false }),
+  useRecurrences: () => ({ data: recurrencesList, isLoading: recurrencesLoadingMock }),
   useIncomeGoals: () => ({ data: [], isLoading: false }),
   usePortfolioContributions: () => ({ data: [], isLoading: false }),
   useCorporateDividends: () => ({ recentlySettled: [], fxRate: 1, isLoading: false }),
@@ -87,6 +93,9 @@ describe("useUserFinancialContext (src/state/selectors)", () => {
     realCashCentsMock = 0;
     hasCheckpointMock = false;
     hasCashHistoryMock = false;
+    m2ExpenseLoadingMock = false;
+    recurrencesLoadingMock = false;
+    feedbackEntriesLoadingMock = false;
   });
 
   it("identifica Cold Start sem base no dia 23 com R$ 50 de despesa e sem checkpoint", () => {
@@ -174,5 +183,39 @@ describe("useUserFinancialContext (src/state/selectors)", () => {
     expect(result.current.context.lens.wealth.hasExternalEmergencyFund).toBe(true);
     expect(result.current.context.lens.wealth.isEmergencyFundComplete).toBe(true);
     expect(result.current.context.lens.wealth.emergencyGapCents).toBe(0);
+  });
+
+  it("mantém isLoading true enquanto histórico m2/m3, recorrências ou feedbackEntries estiverem carregando", () => {
+    m2ExpenseLoadingMock = true;
+    const { result, rerender } = renderHook(
+      ({ enabled = true }: { enabled?: boolean }) =>
+        useUserFinancialContext({
+          month: "2026-08",
+          todayISO: "2026-08-15",
+          isCurrentMonth: true,
+          enabled,
+        }),
+      { initialProps: { enabled: true } },
+    );
+
+    expect(result.current.isLoading).toBe(true);
+
+    m2ExpenseLoadingMock = false;
+    recurrencesLoadingMock = true;
+    rerender({ enabled: true });
+    expect(result.current.isLoading).toBe(true);
+
+    recurrencesLoadingMock = false;
+    feedbackEntriesLoadingMock = true;
+    rerender({ enabled: true });
+    expect(result.current.isLoading).toBe(true);
+
+    // Se enabled: false, não bloqueia
+    rerender({ enabled: false });
+    expect(result.current.isLoading).toBe(false);
+
+    feedbackEntriesLoadingMock = false;
+    rerender({ enabled: true });
+    expect(result.current.isLoading).toBe(false);
   });
 });

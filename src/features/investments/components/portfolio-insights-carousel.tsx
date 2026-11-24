@@ -19,6 +19,7 @@ import {
   usePortfolioPosition,
   useUpdatePortfolioAsset,
 } from "@/state";
+import { isQueryPending } from "@/state/query-readiness";
 import type {
   ConfirmDividendEventItem,
   CorporateDividendType,
@@ -63,7 +64,8 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
   const confirmMutation = useConfirmEventsSafe();
   const userPreferencesQuery = useUserPreferencesSafe();
   const updateAssetMutation = useUpdatePortfolioAsset();
-  const { dismissAlert, isAlertDismissed } = usePortfolioAlertDismissals();
+  const { dismissAlert, isAlertDismissed, isLoading: isDismissalsLoading } =
+    usePortfolioAlertDismissals();
 
   const autoCreditCash =
     userPreferencesQuery?.data?.custom_settings?.dividendAutomation?.autoCreditCash !== false;
@@ -239,7 +241,15 @@ export function PortfolioInsightsCarousel({ className }: PortfolioInsightsCarous
   ];
 
   const activeItems = items.filter(Boolean);
-  if ((isDividendsLoading && gov.isLoading) || activeItems.length === 0) {
+  const isCarouselLoading =
+    isDividendsLoading ||
+    gov.isLoading ||
+    Boolean(position?.isLoading) ||
+    isQueryPending(assetsQuery) ||
+    isQueryPending(classTargetsQuery) ||
+    isDismissalsLoading;
+
+  if (isCarouselLoading || activeItems.length === 0) {
     return null;
   }
 

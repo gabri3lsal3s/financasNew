@@ -98,6 +98,7 @@ vi.mock("@/state", () => ({
     error: null,
   }),
   useCreateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useInstallCategoryKit: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteCategory: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDebts: () => ({
@@ -234,7 +235,9 @@ describe("Navegação por teclado — telas P0 (F5.3 DoD)", () => {
     const user = userEvent.setup();
     render(<TransactionListPage />);
 
-    // Primeiro foco: ação primária do PageHeader (Exportar CSV)
+    // Primeiro foco: botão utilitário Guia, seguido de Exportar CSV no PageHeader
+    await user.tab();
+    expect(screen.getByRole("button", { name: "Guia" })).toHaveFocus();
     await user.tab();
     expect(screen.getByRole("button", { name: "Exportar CSV" })).toHaveFocus();
 

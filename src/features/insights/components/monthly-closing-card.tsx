@@ -34,14 +34,14 @@ export function MonthlyClosingCard({
       aria-label="Ritual de fechamento mensal"
       className="flex flex-col gap-4 rounded-xl border border-border/80 bg-surface p-4 sm:p-5 shadow-xs min-w-0"
     >
-      <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center sm:justify-between">
+      <div className="flex items-center justify-between gap-2.5 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <CalendarCheck2 className="size-4 text-positive-strong shrink-0" aria-hidden="true" />
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <h2 className="text-sm font-semibold text-foreground">
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="text-sm font-semibold text-foreground truncate">
               Fechamento de {monthLabel(summary.closedMonth)}
             </h2>
-            <Badge variant="positive" size="xs">
+            <Badge variant="positive" size="xs" className="shrink-0">
               Mês encerrado
             </Badge>
           </div>
@@ -54,10 +54,10 @@ export function MonthlyClosingCard({
           sensoryIntent="selection"
           onClick={() => onDismiss(summary.closedMonth)}
           aria-label="Dispensar resumo de fechamento"
-          className="self-start sm:self-auto h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
+          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1 cursor-pointer shrink-0"
         >
           <X className="size-3.5" aria-hidden="true" />
-          <span>Dispensar</span>
+          <span className="hidden sm:inline">Dispensar</span>
         </Button>
       </div>
 

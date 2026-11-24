@@ -1,3 +1,4 @@
+import { shiftMonth } from "@/domain/cards";
 import { resolveBillCompetence } from "@/domain/competence";
 import { normalizeDateToISO } from "./parsers/type-sniffer";
 import type { StatementTransaction } from "./types";
@@ -142,26 +143,26 @@ function extractDueDateFromText(rawText: string, referenceYear?: number): string
   return null;
 }
 
-function extractCardLast4FromText(rawText: string): string | null {
-  if (!rawText) return null;
-  const headerSlice = rawText.slice(0, 10_000);
+function extractAllCardLast4FromText(rawText: string): string[] {
+  if (!rawText) return [];
+  const headerSlice = rawText.slice(0, 20_000);
+  const found = new Set<string>();
 
-  // 1. "cartão final 1234", "final: 1234", "cartão: **** 1234"
-  const labeledMatch =
-    /(?:cart[aã]o|final|cart[aã]o\s+final|card|conta)\s*[:#]?\s*(?:[•*xX]{4,12}\s*)?(\d{4})\b/i.exec(
-      headerSlice,
-    );
-  if (labeledMatch?.[1]) {
-    return labeledMatch[1];
+  // 1. "cartão final 1234", "final: 1234", "cartão: **** **** **** 1234"
+  const labeledRegex =
+    /(?:cart[aã]o|final|cart[aã]o\s+final|card|conta)\s*[:#]?\s*(?:(?:[•*xX.-]{3,4}\s*){1,4})?(\d{4})\b/gi;
+  let m: RegExpExecArray | null;
+  while ((m = labeledRegex.exec(headerSlice)) !== null) {
+    if (m[1]) found.add(m[1]);
   }
 
   // 2. Formato mascarado clássico: "•••• •••• •••• 1234" ou "**** **** **** 1234"
-  const maskedMatch = /(?:[•*xX]{4}\s*){3}(\d{4})\b/.exec(headerSlice);
-  if (maskedMatch?.[1]) {
-    return maskedMatch[1];
+  const maskedRegex = /(?:[•*xX]{3,4}\s*){2,4}(\d{4})\b/g;
+  while ((m = maskedRegex.exec(headerSlice)) !== null) {
+    if (m[1]) found.add(m[1]);
   }
 
-  return null;
+  return Array.from(found);
 }
 
 function extractBankBrandFromText(rawText: string): string | null {
@@ -255,7 +256,8 @@ export function detectStatementMetadata(
   // 1. Extrações textuais locais
   const explicitComp = extractExplicitCompetenceFromText(text);
   const localDueDate = extractDueDateFromText(text, refYear);
-  const localLast4 = extractCardLast4FromText(text);
+  const allLocalLast4 = extractAllCardLast4FromText(text);
+  const localLast4 = allLocalLast4[0] ?? null;
   const localBank = extractBankBrandFromText(text);
 
   // 2. Mescla com extração da Micro-IA (quando disponível)
@@ -266,6 +268,7 @@ export function detectStatementMetadata(
     aiDetectedMeta?.detectedTotalInvoiceCents ?? printedTotalCents ?? null;
 
   // 3. Resolução da competência
+  const fromTxs = inferDominantCompetenceFromTransactions(transactions, card?.closing_day);
   let detectedCompetenceMonth: string | null = null;
   let competenceInferenceSource:
     | "explicit_header"
@@ -282,19 +285,30 @@ export function detectStatementMetadata(
     detectedCompetenceMonth = aiDetectedMeta.detectedCompetenceMonth;
     competenceInferenceSource = "explicit_header";
     competenceConfidence = "high";
-  } else {
-    // Tenta pela distribuição de transações com o dia de fechamento do cartão
-    const fromTxs = inferDominantCompetenceFromTransactions(transactions, card?.closing_day);
-    if (fromTxs) {
-      detectedCompetenceMonth = fromTxs.competence;
-      competenceInferenceSource = "transactions_distribution";
-      competenceConfidence = fromTxs.confidence;
-    } else if (detectedDueDate) {
-      // Se não houver transações nem texto de competência, usa o mês de vencimento
-      detectedCompetenceMonth = detectedDueDate.slice(0, 7);
-      competenceInferenceSource = "due_date";
-      competenceConfidence = "medium";
-    }
+  } else if (fromTxs) {
+    detectedCompetenceMonth = fromTxs.competence;
+    competenceInferenceSource = "transactions_distribution";
+    competenceConfidence = fromTxs.confidence;
+  } else if (detectedDueDate) {
+    // Se não houver transações nem texto de competência, usa o mês de vencimento
+    detectedCompetenceMonth = detectedDueDate.slice(0, 7);
+    competenceInferenceSource = "due_date";
+    competenceConfidence = "medium";
+  }
+
+  // Tolerância de vencimento no mês seguinte (due_day < closing_day):
+  // Se o cabeçalho cita M+1 (mês de vencimento), mas as compras com closing_day pertencem
+  // com alta confiança à competência ativa, evita falso conflito recorrente todo mês.
+  if (
+    detectedCompetenceMonth === shiftMonth(activeCompetenceMonth, 1) &&
+    typeof card?.due_day === "number" &&
+    typeof card?.closing_day === "number" &&
+    card.due_day < card.closing_day &&
+    fromTxs?.competence === activeCompetenceMonth &&
+    fromTxs.confidence === "high"
+  ) {
+    detectedCompetenceMonth = activeCompetenceMonth;
+    competenceInferenceSource = "transactions_distribution";
   }
 
   // 4. Verificação de discrepância de competência
@@ -312,12 +326,16 @@ export function detectStatementMetadata(
     competenceMismatchWarning = `Esta fatura aparenta ser da competência ${detectedCompetenceMonth}${dueInfo}, mas a importação atual está aberta em ${activeCompetenceMonth}.`;
   }
 
-  // 5. Verificação de discrepância de cartão
+  // 5. Verificação de discrepância de cartão (suporta múltiplos finais no mesmo extrato: físico + virtual/adicional)
   let hasCardMismatch = false;
   let cardMismatchWarning: string | undefined;
 
   const cardDigits = card?.last_four_digits?.trim();
-  if (cardDigits && detectedCardLast4 && cardDigits !== detectedCardLast4) {
+  const cardMatchesAnyDetected = Boolean(
+    cardDigits &&
+      (cardDigits === detectedCardLast4 || allLocalLast4.includes(cardDigits)),
+  );
+  if (cardDigits && detectedCardLast4 && !cardMatchesAnyDetected) {
     hasCardMismatch = true;
     cardMismatchWarning = `A fatura menciona o cartão com final ${detectedCardLast4}, mas o cartão selecionado termina em ${cardDigits}.`;
   } else if (detectedBankBrand && card?.name) {

@@ -54,12 +54,13 @@ export function FamilyRulesTab({
     <div className="space-y-4 pt-2">
       <Card className="border-border/80 bg-surface shadow-xs">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <span className="flex items-center gap-2">
-              <DollarSign className="size-4 text-muted-foreground" aria-hidden="true" />
-              <span>Parâmetros do Orçamento Doméstico</span>
+          <CardTitle className="text-sm flex flex-row items-center justify-between gap-2">
+            <span className="flex items-center gap-2 min-w-0">
+              <DollarSign className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span className="sm:hidden truncate">Orçamento Doméstico</span>
+              <span className="hidden sm:inline truncate">Parâmetros do Orçamento Doméstico</span>
             </span>
-            <Badge variant={isOwner ? "default" : "muted"} size="xs">
+            <Badge variant={isOwner ? "default" : "muted"} size="xs" className="shrink-0">
               {isOwner ? "Anfitrião / Titular" : "Participante (Leitura)"}
             </Badge>
           </CardTitle>

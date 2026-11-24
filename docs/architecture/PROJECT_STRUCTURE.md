@@ -224,6 +224,8 @@
     │   │   └── index.ts
     │   └── layout/                # Estrutura de página: sidebar (collapsible F7), bottom-nav (5 slots F7),
     │       │                      #   more-menu-sheet (F56 — bottom sheet móvel),
+    │       │                      #   page-header (cabeçalho canônico com title, description, badge, utilityActions e actions),
+    │       │                      #   page-guide-button (botão compacto de guia educativo/playbook para PageHeader.utilityActions),
     │       │                      #   page-shell, more-menu, nav-items, brand-logo (F10), logo-profile-button,
     │       │                      #   privacy-toggle (F8), theme-toggle, calculator-button,
     │       │                      #   notifications-button (v1.62 — sininho com badge dinâmico no header),
@@ -240,7 +242,7 @@
     │   │                          #     pages/ (share-receipt-page.tsx), wizard/ (step-quick.tsx — lançamento rápido em 1 tela),
     │   │                          #     components/split/ (split-expense-dialog, manage-split-dialog, split-edit-tab, split-public-config-tab)
     │   ├── cards/                 #   Cartões (faturas, pagamentos, estornos, refinanciamento)
-    │   │                          #     components/ (card-invoice-expenses-feed, card-invoice-payments-feed — extratos extraídos da página)
+    │   │                          #     components/ (card-invoice-expenses-feed, card-invoice-payments-feed, statement-import-helpers.ts — orquestração de importação em lotes)
     │   ├── debts/                 #   Dívidas (status, quitação com juros/multa/desconto, empréstimos Price/SAC, loan-schedule-dialog, loan-edit-dialog F72, debts-page-demo.test.tsx)
     │   ├── categories/            #   Categorias (/categorias — catálogo de despesas e receitas, cores, ícones e kits temáticos)
     │   │                          #     components/ (category-card, category-form-dialog, category-form-fields, category-kits-modal, delete-category-dialog),
@@ -432,6 +434,7 @@
     ├── state/                     # CONTRATOS DE ESTADO para a UI
     │   ├── cache-policy.ts        #   F23: STALE_TIMES/gcTime por tipo de dado
     │   │                          #     (estático 5 min, analítico, cotações, transacional)
+    │   ├── query-readiness.ts     #   Guards puros de prontidão de queries autenticadas (evita race de auth/session)
     │   ├── queries/               #   useExpenses({month}), useInvoices(cardId), useMacroIndicators (CDI/Selic BCB), use-trips.ts,
     │   │                          #     use-market-quotes-swr.ts (SWR/cache_miss/post_trade_stale sem botão manual),
     │   │                          #     use-corporate-dividends.ts (+ useUserDividendEvents — B3/EUA + eventos persistidos),

@@ -601,4 +601,57 @@ describe("PortfolioInsightsCarousel (Regra 19)", () => {
     fireEvent.click(screen.getByRole("button", { name: /Conferir e Aprovar/i }));
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
+
+  it("não renderiza slides parciais enquanto isDividendsLoading for true mesmo com gov.isLoading false", () => {
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: true,
+    });
+    mockUseAssetGovernanceInsights.mockReturnValue({
+      overdueReviewsCount: 2,
+      upcomingReviewsCount: 0,
+      unscoredAssetsCount: 0,
+      quarantinedCount: 0,
+      discountOpportunitiesCount: 0,
+      lowScoreRiskCount: 0,
+      overdueAssets: [
+        {
+          id: "a1",
+          ticker: "ITUB4",
+          asset_class: "Ações",
+          score: 8,
+          last_reviewed_at: "2025-01-01",
+        },
+      ],
+      upcomingReviewAssets: [],
+      unscoredAssets: [],
+      consolidatedReviewAlert: {
+        id: "gov-overdue",
+        severity: "warning",
+        category: "overdue_review",
+        title: "2 ativos com revisão vencida",
+        description: "Revisar teses.",
+        assetIds: ["a1"],
+      },
+      isLoading: false,
+    });
+
+    const { container, rerender } = render(<PortfolioInsightsCarousel />);
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByText("Revisão de Teses Pendente")).not.toBeInTheDocument();
+
+    mockUseCorporateDividends.mockReturnValue({
+      available: [],
+      projected: [],
+      totalAvailableAmount: 0,
+      totalProjectedAmount: 0,
+      isLoading: false,
+    });
+    rerender(<PortfolioInsightsCarousel />);
+    expect(screen.getByText("Revisão de Teses Pendente")).toBeInTheDocument();
+    expect(screen.getByText("2 ativos")).toBeInTheDocument();
+  });
 });

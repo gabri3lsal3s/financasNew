@@ -29,12 +29,13 @@ export function CumulativeRenewalCard({
     <>
       <Card className="border-portfolio/30 bg-portfolio/5 shadow-xs">
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <CardTitle className="text-base flex items-center gap-2">
+          <div className="flex flex-row items-center justify-between gap-2.5">
+            <CardTitle className="text-base flex items-center gap-2 min-w-0">
               <Sparkles className="size-4 text-portfolio shrink-0" aria-hidden="true" />
-              <span>Antecipação de Mensalidades com Desconto</span>
+              <span className="sm:hidden truncate">Antecipação</span>
+              <span className="hidden sm:inline truncate">Antecipação de Mensalidades com Desconto</span>
             </CardTitle>
-            <Badge variant="portfolio" size="sm" className="self-start sm:self-auto">
+            <Badge variant="portfolio" size="sm" className="shrink-0">
               Até 20% OFF
             </Badge>
           </div>

@@ -1,14 +1,17 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getUserPreferences } from "@/data/repositories/user-preferences";
 import type { UserPreferences } from "@/types";
 import { STALE_TIMES, STATIC_GC_TIME } from "@/state/cache-policy";
-import { getActiveUserId } from "@/services/user-storage";
+import { getActiveUserId, subscribeActiveUserId } from "@/services/user-storage";
 
 export const userPreferencesKey = ["user-preferences"] as const;
 
 /** Preferências do usuário logado (tema, lembretes, travas setoriais). */
 export function useUserPreferences(options?: { enabled?: boolean }) {
-  const activeUserId = getActiveUserId();
+  const [activeUserId, setActiveUserId] = useState<string | null>(() => getActiveUserId());
+  useEffect(() => subscribeActiveUserId(setActiveUserId), []);
+
   return useQuery<UserPreferences | null>({
     queryKey: userPreferencesKey,
     queryFn: () => getUserPreferences(),

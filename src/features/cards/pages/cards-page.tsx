@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { BookOpen, FileUp, Plus } from "lucide-react";
+import { FileUp, Plus } from "lucide-react";
 import { Alert, Badge, Button, ErrorState } from "@/components/ui";
-import { PageHeader } from "@/components/layout";
+import { PageGuideButton, PageHeader } from "@/components/layout";
 import { CreditCardWallet, ReadOnlyBanner, TransactionRow } from "@/components/modules";
 import { numberToCents } from "@/domain/money";
 import { formatDateBR, monthLabel } from "@/lib/date";
@@ -64,40 +64,33 @@ export function CardsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Cartões de Crédito"
-        description="Gestão integrada de cartões, faturas por competência, limites e conciliação"
+        description="Faturas, limites e compras no crédito"
+        utilityActions={
+          isPlaybookVisible("transactions") ? (
+            <PageGuideButton
+              onClick={() => setIsGuideOpen(true)}
+              title="Abrir guia de lançamentos e cartões"
+            />
+          ) : undefined
+        }
         actions={
           <>
-            {isPlaybookVisible("transactions") && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsGuideOpen(true)}
-                className="gap-1.5"
-                title="Abrir guia metodológico de lançamentos e cartões"
-              >
-                <BookOpen className="size-3.5" aria-hidden="true" />
-                <span>Guia</span>
-              </Button>
-            )}
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={state.handleOpenImport}
-              className="gap-1.5"
             >
-              <FileUp className="size-3.5" aria-hidden="true" />
-              <span>Importar Fatura</span>
+              <FileUp aria-hidden="true" />
+              <span>Importar fatura</span>
             </Button>
             <Button
               type="button"
               size="sm"
               onClick={() => state.handleOpenForm(null)}
-              className="gap-1.5 shadow-xs"
             >
-              <Plus className="size-3.5" aria-hidden="true" />
-              <span>Novo Cartão</span>
+              <Plus aria-hidden="true" />
+              <span>Novo cartão</span>
             </Button>
           </>
         }

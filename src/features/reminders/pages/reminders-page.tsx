@@ -31,8 +31,8 @@ export function RemindersPage() {
   return (
     <div className="flex flex-col gap-5 sm:gap-6 min-w-0">
       <PageHeader
-        title="Lembretes e Avisos"
-        description="Faturas, compromissos e avisos inteligentes que precisam da sua atenção"
+        title="Lembretes"
+        description="Vencimentos e avisos pendentes"
         badge={
           s.totalPendingEffective > 0 ? (
             <Badge
@@ -66,12 +66,8 @@ export function RemindersPage() {
                 onClick={s.handleMarkAllRead}
                 disabled={s.markAllPending}
                 aria-label="Marcar todas como lidas"
-                className="max-sm:min-h-11"
               >
-                <CheckCheck
-                  className="size-4 mr-1.5 text-muted-foreground"
-                  aria-hidden="true"
-                />
+                <CheckCheck aria-hidden="true" />
                 <span className="sm:hidden">Marcar lidas</span>
                 <span className="hidden sm:inline">
                   Marcar todas como lidas
@@ -86,13 +82,9 @@ export function RemindersPage() {
               sensoryIntent="selection"
               onClick={() => s.setIsSettingsOpen(true)}
               title="Configurar Lembretes e Antecedência"
-              className="max-sm:min-h-11"
             >
-              <SlidersHorizontal
-                className="size-4 mr-1.5 text-muted-foreground"
-                aria-hidden="true"
-              />
-              Ajustes
+              <SlidersHorizontal aria-hidden="true" />
+              <span>Ajustes</span>
             </Button>
           </>
         }

@@ -33,6 +33,7 @@ import {
   computeTextSha256,
   curateStatementLinesWithAi,
   extractStatementPdfRowsWithAi,
+  maskSensitivePiiForAi,
   sanitizeBatchDescriptionForAi,
 } from "@/services/ai-assistant";
 import { computeFileSha256 } from "@/services/receipt-resolution";
@@ -120,6 +121,9 @@ export type LoadedStatementSource =
       sha256: string | null;
       spatialTransactions?: StatementTransaction[];
       checksumGate?: ChecksumGateResult;
+      spatialLinesCount?: number;
+      discardedMoneyLines?: number;
+      spatialRawLines?: string[];
     }
   | { kind: "pdf_scanned"; buffer: ArrayBuffer; fileName: string; sha256: string | null }
   | { kind: "spreadsheet"; buffer: ArrayBuffer; fileName: string }
@@ -169,6 +173,9 @@ export async function readStatementFileContent(
     // Tenta reconstrução espacial (X, Y) com as 4 barreiras se parâmetros forem fornecidos
     let spatialTransactions: StatementTransaction[] | undefined;
     let checksumGate: ChecksumGateResult | undefined;
+    let spatialLinesCount: number | undefined;
+    let discardedMoneyLines: number | undefined;
+    let spatialRawLines: string[] | undefined;
 
     if (options?.cardId && options?.competenceMonth) {
       try {
@@ -177,6 +184,10 @@ export async function readStatementFileContent(
           competenceMonth: options.competenceMonth,
           password: options.password,
         });
+        spatialLinesCount = spatialResult.lines.length;
+        discardedMoneyLines = spatialResult.discardedMoneyLines ?? 0;
+        spatialRawLines = spatialResult.lines.map((l) => l.text);
+
         if (spatialResult.transactions.length > 0) {
           spatialTransactions = spatialResult.transactions;
           checksumGate = spatialResult.checksumGate;
@@ -200,6 +211,9 @@ export async function readStatementFileContent(
       sha256,
       spatialTransactions,
       checksumGate,
+      spatialLinesCount,
+      discardedMoneyLines,
+      spatialRawLines,
     };
   }
 
@@ -513,6 +527,18 @@ export function buildTransactionsFromAiRows(
   };
 }
 
+export function detectSpatialCollapseAnomaly(params: {
+  allLinesCount: number;
+  transactionsCount: number;
+  discardedMoneyLines: number;
+}): boolean {
+  const { allLinesCount, transactionsCount, discardedMoneyLines } = params;
+  if (allLinesCount <= 15) return false;
+  if (transactionsCount === 0 && discardedMoneyLines >= 1) return true;
+  if (transactionsCount <= 2 && discardedMoneyLines >= 3) return true;
+  return false;
+}
+
 export interface ParseStatementWithFallbackParams {
   content: string | ArrayBuffer;
   fileNameOrType: string;
@@ -525,6 +551,9 @@ export interface ParseStatementWithFallbackParams {
   aiFallbackEnabled?: boolean;
   spatialTransactions?: StatementTransaction[];
   checksumGate?: ChecksumGateResult;
+  spatialLinesCount?: number;
+  discardedMoneyLines?: number;
+  spatialRawLines?: string[];
 }
 
 export interface ParsedStatementWithFallbackResult {
@@ -551,6 +580,80 @@ export async function parseStatementWithPdfAiFallback(
   params: ParseStatementWithFallbackParams,
 ): Promise<ParsedStatementWithFallbackResult> {
   // 0. Prioridade Máxima: Reconstrução Espacial (X, Y) com as 4 barreiras já concluída
+  const isCollapseAnomaly = detectSpatialCollapseAnomaly({
+    allLinesCount: params.spatialLinesCount ?? 0,
+    transactionsCount: params.spatialTransactions?.length ?? 0,
+    discardedMoneyLines: params.discardedMoneyLines ?? 0,
+  });
+
+  const canUseAiFallback =
+    params.aiFallbackEnabled !== false &&
+    !params.isReadOnlyMode &&
+    (typeof navigator === "undefined" || navigator.onLine !== false);
+
+  if (isCollapseAnomaly && canUseAiFallback && params.spatialRawLines && params.spatialRawLines.length > 0) {
+    try {
+      const sanitizedSpatialText = params.spatialRawLines
+        .map((l) => maskSensitivePiiForAi(l))
+        .filter((l) => l.trim().length > 0)
+        .join("\n");
+
+      if (sanitizedSpatialText.length > 0) {
+        const rescueSha = params.fileSha256
+          ? `${params.fileSha256}:collapse-rescue`
+          : await computeTextSha256(`collapse_rescue:${params.competenceMonth}:${sanitizedSpatialText}`);
+        const parsedYear = Number.parseInt(params.competenceMonth.slice(0, 4), 10);
+        const aiRes = await extractStatementPdfRowsWithAi({
+          sha256: rescueSha,
+          text: sanitizedSpatialText,
+          referenceYear: Number.isFinite(parsedYear) ? parsedYear : undefined,
+          competenceMonth: params.competenceMonth,
+          userId: params.userId,
+          isReadOnlyMode: params.isReadOnlyMode,
+          featureEnabled: params.aiFallbackEnabled,
+        });
+
+        if (aiRes.ok && aiRes.data.rows.length > 0) {
+          const built = buildTransactionsFromAiRows(aiRes.data.rows, {
+            cardId: params.cardId,
+            competenceMonth: params.competenceMonth,
+          });
+          if (built.transactions.length > (params.spatialTransactions?.length ?? 0)) {
+            const officialTotal =
+              aiRes.data.detectedTotalInvoiceCents ?? params.checksumGate?.officialTotalCents ?? null;
+            const detectedMeta = detectStatementMetadata({
+              rawText: sanitizedSpatialText,
+              transactions: built.transactions,
+              activeCompetenceMonth: params.competenceMonth,
+              card: params.card,
+              printedTotalCents: officialTotal,
+              aiDetectedMeta: {
+                detectedCompetenceMonth: aiRes.data.detectedCompetenceMonth,
+                detectedDueDate: aiRes.data.detectedDueDate,
+                detectedCardLast4: aiRes.data.detectedCardLast4,
+                detectedCardBrandOrBank: aiRes.data.detectedCardBrandOrBank,
+                detectedTotalInvoiceCents: aiRes.data.detectedTotalInvoiceCents,
+              },
+            });
+            return {
+              transactions: built.transactions,
+              rows: built.rows,
+              mapping: built.mapping,
+              isOfx: false,
+              usedAiFallback: true,
+              printedTotalCents: officialTotal,
+              detectedMeta,
+              isCacheHit: true,
+              mappingConfidence: 100,
+            };
+          }
+        }
+      }
+    } catch {
+      // Degrada silenciosamente para o fluxo espacial ou fallback textual padrão
+    }
+  }
+
   if (params.spatialTransactions && params.spatialTransactions.length > 0) {
     let activeTransactions = params.spatialTransactions;
     let activeChecksumGate = params.checksumGate;

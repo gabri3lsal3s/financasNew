@@ -13,8 +13,8 @@ export function AdminBillingPage() {
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
       <PageHeader
-        title="Faturamento SaaS & Gateway Asaas"
-        description="Gestão de receitas recorrentes, conciliação de pagamentos e contingências operacionais"
+        title="Faturamento SaaS"
+        description="Receitas recorrentes, pagamentos e conciliação"
         actions={
           <a
             href="https://www.asaas.com"

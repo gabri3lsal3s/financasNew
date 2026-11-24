@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "./use-auth";
 import { useUpdateCustomSettings, useUserPreferences } from "@/state";
+import { isQueryPending } from "@/state/query-readiness";
 import type { PortfolioAlertDismissalEntry, PortfolioAlertDismissalsMap } from "@/types";
 
 export type { PortfolioAlertDismissalEntry, PortfolioAlertDismissalsMap };
@@ -75,6 +76,16 @@ export function usePortfolioAlertDismissals() {
 
   const cloudDismissals = userPreferencesQuery.data?.custom_settings?.portfolioAlertDismissals;
 
+  useEffect(() => {
+    if (cloudDismissals && storageKey) {
+      const merged = mergePortfolioDismissalsByLatestExpiry(
+        cloudDismissals,
+        readDismissals(storageKey),
+      );
+      writeDismissals(storageKey, merged);
+    }
+  }, [cloudDismissals, storageKey]);
+
   const dismissals = useMemo<PortfolioAlertDismissalsMap>(() => {
     return mergePortfolioDismissalsByLatestExpiry(cloudDismissals, effectiveLocalDismissals);
   }, [cloudDismissals, effectiveLocalDismissals]);
@@ -120,5 +131,6 @@ export function usePortfolioAlertDismissals() {
     dismissals,
     dismissAlert,
     isAlertDismissed,
+    isLoading: isQueryPending(userPreferencesQuery),
   };
 }

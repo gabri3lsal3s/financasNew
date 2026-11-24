@@ -3,8 +3,11 @@ import { inferChargeKindFromDescription } from "@/domain/cards/charges";
 import {
   classifyTransactionNature,
   cleanDescription,
+  isInvoicePayment,
   isLikelyIncomeDescription,
   isPaymentOrSettlement,
+  isStatementNoiseOrSummary,
+  isSubcardHeader,
 } from "../clean";
 import { extractInstallmentInfo } from "../installments";
 import { generateStatementHash } from "../hash";
@@ -32,18 +35,59 @@ function hasExplicitYearToken(rawDate: string): boolean {
 function resolveDateWithCompetenceBoundary(rawDate: string, competenceMonth: string): string | null {
   const compYear = Number.parseInt(competenceMonth.slice(0, 4), 10) || new Date().getFullYear();
   const compMonth = Number.parseInt(competenceMonth.slice(5, 7), 10);
-  const initialIso = normalizeDateToISO(rawDate, compYear);
+  const hasYear = hasExplicitYearToken(rawDate);
+  const initialIso = normalizeDateToISO(
+    rawDate,
+    compYear,
+    !hasYear && Number.isFinite(compMonth) ? compMonth : undefined,
+  );
   if (!initialIso) return null;
 
-  if (!hasExplicitYearToken(rawDate) && Number.isFinite(compMonth)) {
-    const parsedMonth = Number.parseInt(initialIso.slice(5, 7), 10);
-    // Ex.: compra em "22/12" dentro da fatura de competência "2027-01" pertence a 2026-12
-    if (Number.isFinite(parsedMonth) && parsedMonth > compMonth + 2) {
-      return `${compYear - 1}${initialIso.slice(4)}`;
+  return initialIso;
+}
+
+/**
+ * Infere a convenção de polaridade de sinal do arquivo tabular:
+ * Se a maioria das compras regulares vier com sinal negativo e as quitações com sinal positivo,
+ * inverte a interpretação padrão para que negativo = compra e positivo = crédito/estorno.
+ */
+function inferNegativeMeansPurchase(dataRows: RawParsedRow[], mapping: ColumnMapping): boolean {
+  if (mapping.debitColIndex !== undefined || mapping.typeColIndex !== undefined) {
+    return false;
+  }
+
+  let negPurchaseCount = 0;
+  let posPurchaseCount = 0;
+  let posPaymentCount = 0;
+  let negPaymentCount = 0;
+
+  for (const row of dataRows) {
+    const rawDesc = row.cells[mapping.descriptionColIndex] ?? "";
+    const rawAmt = row.cells[mapping.amountColIndex] ?? "";
+    if (!rawDesc.trim() || isStatementNoiseOrSummary(rawDesc) || isSubcardHeader(rawDesc)) {
+      continue;
+    }
+    const parsedAmt = parseAmountToCents(rawAmt);
+    if (!parsedAmt || parsedAmt.amountCents === 0) continue;
+    if (parsedAmt.isCreditSuffix || parsedAmt.isDebitSuffix) continue;
+
+    const isUnconditionalPay = isInvoicePayment(rawDesc, false);
+    if (isUnconditionalPay) {
+      if (parsedAmt.isNegative) negPaymentCount++;
+      else posPaymentCount++;
+    } else {
+      if (parsedAmt.isNegative) negPurchaseCount++;
+      else posPurchaseCount++;
     }
   }
 
-  return initialIso;
+  if (negPurchaseCount > posPurchaseCount && negPurchaseCount >= 1) {
+    // Confirma que não há pagamentos negativos contradizendo
+    if (posPaymentCount >= negPaymentCount) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -59,6 +103,7 @@ export function buildTransactionsFromRows(
   let index = 0;
 
   const dataRows = rows.slice(mapping.startRowIndex);
+  const negativeMeansPurchase = inferNegativeMeansPurchase(dataRows, mapping);
 
   for (const row of dataRows) {
     const rawDate = row.cells[mapping.dateColIndex] ?? "";
@@ -66,6 +111,11 @@ export function buildTransactionsFromRows(
 
     const date = resolveDateWithCompetenceBoundary(rawDate, params.competenceMonth);
     if (!date || !rawDesc.trim()) {
+      continue;
+    }
+
+    // Descarte estrutural de saldos, totais de fatura, subtotais e cabeçalhos de subcartões
+    if (isStatementNoiseOrSummary(rawDesc) || isSubcardHeader(rawDesc)) {
       continue;
     }
 
@@ -122,6 +172,8 @@ export function buildTransactionsFromRows(
         } else {
           isCredit = parsedAmt.isNegative;
         }
+      } else if (negativeMeansPurchase) {
+        isCredit = !parsedAmt.isNegative;
       } else if (!parsedAmt.isNegative) {
         isCredit = isLikelyIncomeDescription(row.rawText);
       } else {

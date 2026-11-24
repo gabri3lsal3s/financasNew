@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { BookOpen, Download, Plus } from "lucide-react";
+import { Download, Plus } from "lucide-react";
 import { Button, ErrorState } from "@/components/ui";
 import { MonthPicker, ReadOnlyBanner } from "@/components/modules";
-import { PageHeader } from "@/components/layout";
+import { PageGuideButton, PageHeader } from "@/components/layout";
 import { buildCheckoutUrl } from "@/domain/subscription/plans";
 import { useVisualCustomization } from "@/hooks/use-visual-customization";
 import { getErrorMessage } from "@/services/errors";
@@ -28,22 +28,17 @@ export function TransactionListPage() {
     <div className="flex flex-col gap-5 sm:gap-6">
       <PageHeader
         title="Transações"
-        description="Extrato consolidado de receitas, despesas e transferências por competência"
+        description="Receitas, despesas e transferências"
+        utilityActions={
+          isPlaybookVisible("transactions") ? (
+            <PageGuideButton
+              onClick={() => setIsGuideOpen(true)}
+              title="Abrir guia de lançamentos e cartões"
+            />
+          ) : undefined
+        }
         actions={
           <>
-            {isPlaybookVisible("transactions") && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsGuideOpen(true)}
-                className="gap-1.5"
-                title="Abrir guia metodológico de lançamentos e cartões"
-              >
-                <BookOpen className="size-3.5" aria-hidden="true" />
-                <span>Guia</span>
-              </Button>
-            )}
             <Button
               type="button"
               variant="outline"
@@ -56,18 +51,16 @@ export function TransactionListPage() {
                   ? "Nenhum lançamento para exportar"
                   : "Exportar lançamentos filtrados em CSV"
               }
-              className="gap-1.5"
             >
-              <Download className="size-3.5" aria-hidden="true" />
+              <Download aria-hidden="true" />
               <span>Exportar CSV</span>
             </Button>
             <Button
               type="button"
               size="sm"
               onClick={tx.handleNewTransaction}
-              className="gap-1.5 shadow-xs"
             >
-              <Plus className="size-3.5" aria-hidden="true" />
+              <Plus aria-hidden="true" />
               <span>Nova transação</span>
             </Button>
           </>

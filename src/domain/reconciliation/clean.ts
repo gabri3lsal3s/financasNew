@@ -37,26 +37,25 @@ const CITY_SUFFIX_REGEX =
  * Acionados independentemente do sinal da transação.
  */
 export const UNCONDITIONAL_INVOICE_PAYMENT_PATTERNS: RegExp[] = [
-  /\bpag(?:amento)?\s+(?:de\s+)?nominais\b/i,
-  /\bpagto\s+tit(?:ulo)?\s+nominal\b/i,
-  /\bpag(?:amento)?\s*(?:de\s+|da\s+)?fatura\b/i,
+  /\bpag(?:amentos?|to)?\s+(?:de\s+|v[aá]lidos?\s+|tit(?:ulo)?\s+)?(?:norma(?:is|l)|nomina(?:is|l))\b/i,
+  /\bpag(?:amentos?|to)?\s+(?:de\s+|da\s+)?fatura\b/i,
   /\bpgto\s*fatura\b/i,
-  /\bpagamento\s+efetuado\b/i,
-  /\bpagamento\s+recebido\b/i,
+  /\bpag(?:amentos?|to)?\s+(?:efetuados?|recebidos?|parciais?|antecipados?)\b/i,
+  /\bcr[eé]dito\s+(?:de\s+)?pag(?:amento|to)?\b/i,
   /\bdeb(?:ito)?\s+aut(?:omatico)?\s+cart[aã]o\b/i,
   /\bdebito\s+automatico\s+fatura\b/i,
   /\bpg\s+fatura\b/i,
   /\bpgto\s+cartao\b/i,
   /\bpagamento\s+cartao\b/i,
-  /\bsaldo\s+anterior\b/i,
-  /\btotal\s+da\s+fatura\b/i,
+  /\bpagamento\s+(?:da\s+)?fatura\s+por\s+pix\b/i,
+  /\bautopagto\b/i,
 ];
 
 /**
  * 2. CREDIT_ONLY_SETTLEMENT_PATTERNS
  * Termos ambíguos de liquidação/compensação que só caracterizam quitação de fatura
  * quando acompanhados de crédito (isCredit === true / sinal positivo de entrada).
- * Se forem débitos regulares (isCredit === false), tratam-se de boletos pagos no cartão (compra/purchase).
+ * Se forem débitos regulares (isCredit === false), tratam-se de boletos/Pix pagos no cartão (compra/purchase).
  */
 export const CREDIT_ONLY_SETTLEMENT_PATTERNS: RegExp[] = [
   /\bficha\s+de\s+compensa[çc][aã]o\b/i,
@@ -65,6 +64,7 @@ export const CREDIT_ONLY_SETTLEMENT_PATTERNS: RegExp[] = [
   /\bpagamento\s+de\s+t[ií]tulo\b/i,
   /\bpagto\s+t[ií]tulo\b/i,
   /\bpagamento\s+de\s+cobran[çc]a\b/i,
+  /\bpagamento\s+por\s+pix\b/i,
 ];
 
 const PAYMENT_KEYWORDS = [
@@ -74,9 +74,9 @@ const PAYMENT_KEYWORDS = [
   "pagamento recebido",
   "pgto fatura",
   "pagamento em conta",
-  "saldo anterior",
-  "total da fatura",
   "pagamento de nominais",
+  "pagamentos validos normais",
+  "pagamento valido normal",
   "pagto tit nominal",
   "deb aut cartao",
   "debito automatico fatura",
@@ -315,7 +315,7 @@ export function isPaymentOrSettlement(raw: string, isCredit = false): boolean {
 }
 
 const SUBCARD_HEADER_REGEX =
-  /^(?:cart[aã]o\s+(?:adicional|titular|final\s+\d{4})|final\s+\d{4}\s*-\s*[a-z\s]+|lan[çc]amentos\s+do\s+cart[aã]o)\b/i;
+  /^(?:(?:cart[aã]o(?:\s*:)?|final|titular|adicional)\s*(?:(?:[•*xX.-]{3,4}\s*){1,4}\d{4}|\b(?:final\s+)?\d{4}\b|.*final\s+\d{4})|(?:[•*xX.-]{3,4}\s*){2,4}\d{4}|(?:visa|mastercard|elo|amex)\s+.*(?:final\s+)?(?:[•*xX.-]{3,4}\s*){0,4}\d{4}|lan[çc]amentos\s+do\s+cart[aã]o|subtotal\s+cart[aã]o\s*(?:[•*xX.-]{0,4}\s*){0,4}\d{4}|total\s+(?:de\s+)?lan[çc]amentos\s+cart[aã]o(?:\s+final)?\s*\d{4})\b/i;
 
 export function isSubcardHeader(text: string): boolean {
   if (!text) return false;

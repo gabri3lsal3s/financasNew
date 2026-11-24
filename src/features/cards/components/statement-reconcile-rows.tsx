@@ -63,7 +63,7 @@ export function CategoryPill({
   }, [options, search]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -78,18 +78,27 @@ export function CategoryPill({
         </button>
       </PopoverTrigger>
       <PopoverContent
+        elevated
         align="start"
         sideOffset={4}
-        className="w-56 p-2 space-y-1.5 z-dropdown bg-surface/98 border border-border/80 rounded-xl shadow-lg"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="w-56 p-2 space-y-1.5 z-floating-tools bg-surface/98 border border-border/80 rounded-xl shadow-xl"
       >
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onPointerDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
           placeholder="Buscar categoria..."
           className="h-8 text-xs"
           autoFocus={false}
         />
-        <div className="max-h-48 overflow-y-auto no-scrollbar space-y-0.5">
+        <div
+          className="max-h-48 overflow-y-auto no-scrollbar space-y-0.5"
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
           {filteredOptions.length === 0 ? (
             <div className="p-2 text-center text-[11px] text-muted-foreground">
               Nenhuma categoria encontrada.
@@ -99,7 +108,9 @@ export function CategoryPill({
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => {
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
                   onChange(opt.value);
                   setOpen(false);
                   setSearch("");

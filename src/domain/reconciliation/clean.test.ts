@@ -3,6 +3,8 @@ import {
   classifyTransactionNature,
   cleanDescription,
   isInvoicePayment,
+  isStatementNoiseOrSummary,
+  isSubcardHeader,
 } from "./clean";
 
 describe("reconciliation/clean — Higienização de Linhas de Extrato Bancário", () => {
@@ -37,10 +39,35 @@ describe("reconciliation/clean — Higienização de Linhas de Extrato Bancário
       expect(isInvoicePayment("PAGAMENTO DE NOMINAIS", false)).toBe(true);
       expect(isInvoicePayment("PAGAMENTO DE NOMINAIS", true)).toBe(true);
       expect(isInvoicePayment("PAGTO TIT NOMINAL", false)).toBe(true);
+      expect(isInvoicePayment("Pagamentos Validos Normais", false)).toBe(true);
+      expect(isInvoicePayment("Pagamento Valido Normal", false)).toBe(true);
       expect(isInvoicePayment("PAGAMENTO DE FATURA", false)).toBe(true);
       expect(isInvoicePayment("PGTO FATURA", false)).toBe(true);
       expect(isInvoicePayment("PAGAMENTO RECEBIDO", true)).toBe(true);
       expect(isInvoicePayment("DEB AUT CARTAO", false)).toBe(true);
+      expect(isInvoicePayment("PAGAMENTO DA FATURA POR PIX", false)).toBe(true);
+    });
+
+    it("protege compras de Pix no Crédito e trata saldo/total como ruído estrutural", () => {
+      // Pix no crédito como débito é compra legítima, não pagamento de fatura
+      expect(isInvoicePayment("PAGAMENTO POR PIX MERCADO CENTRAL", false)).toBe(false);
+      // Em crédito, é liquidação/recebimento
+      expect(isInvoicePayment("PAGAMENTO POR PIX", true)).toBe(true);
+
+      // Saldo anterior e total da fatura são ruído estrutural, não pagamento de fatura
+      expect(isInvoicePayment("SALDO ANTERIOR", false)).toBe(false);
+      expect(isInvoicePayment("TOTAL DA FATURA", false)).toBe(false);
+      expect(isStatementNoiseOrSummary("SALDO ANTERIOR")).toBe(true);
+      expect(isStatementNoiseOrSummary("TOTAL DA FATURA")).toBe(true);
+    });
+
+    it("identifica cabeçalhos de subcartão e subtotais com máscaras variadas", () => {
+      expect(isSubcardHeader("Cartão: **** **** **** 2107 VISA")).toBe(true);
+      expect(isSubcardHeader("Cartão •••• •••• •••• 2107")).toBe(true);
+      expect(isSubcardHeader("Cartão XXXX XXXX XXXX 2107")).toBe(true);
+      expect(isSubcardHeader("Subtotal cartão 2107")).toBe(true);
+      expect(isSubcardHeader("Total lançamentos cartão final 2107")).toBe(true);
+      expect(isSubcardHeader("UBER *TRIP")).toBe(false);
     });
 
     it("identifica quitação apenas em crédito para termos de compensação ambíguos", () => {

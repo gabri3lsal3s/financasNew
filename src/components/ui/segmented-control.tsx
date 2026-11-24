@@ -17,7 +17,7 @@ export interface SegmentedControlProps<T extends string = string> {
   options: readonly SegmentedControlOption<T>[];
   ariaLabel: string;
   size?: "sm" | "md";
-  fullWidth?: boolean;
+  fullWidth?: boolean | "mobile";
   className?: string;
   disabled?: boolean;
 }
@@ -46,7 +46,8 @@ export function SegmentedControl<T extends string = string>({
       className={cn(
         "inline-flex items-center rounded-xl border border-border/80 bg-muted/50 p-0.5 shadow-xs shrink-0 select-none",
         isSm ? "gap-0.5 sm:gap-1" : "gap-1",
-        fullWidth && "w-full",
+        fullWidth === true && "w-full",
+        fullWidth === "mobile" && "w-full sm:w-auto",
         className,
       )}
     >
@@ -72,7 +73,11 @@ export function SegmentedControl<T extends string = string>({
             title={option.title ?? option.label}
             className={cn(
               "justify-center transition-all duration-150",
-              fullWidth ? "flex-1" : "flex-initial",
+              fullWidth === true
+                ? "flex-1"
+                : fullWidth === "mobile"
+                  ? "flex-1 sm:flex-initial"
+                  : "flex-initial",
               isSm
                 ? "h-8 sm:h-7 px-2.5 gap-1.5 text-xs"
                 : "h-9 sm:h-8 px-3 gap-2 text-xs sm:text-sm",

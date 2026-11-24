@@ -85,7 +85,13 @@ export function StatementReconcileStep({
   importProgress,
   hideFooter = false,
 }: StatementReconcileStepProps) {
-  const [filter, setFilter] = useState<ReconcileFilterTab>("all");
+  const [filter, setFilter] = useState<ReconcileFilterTab>(() => {
+    const hasExactMatch = items.some((it) => it.status === "exact_match");
+    const hasNew = items.some(
+      (it) => it.status === "unmatched_new" && !it.ignoredByDefault && !it.transaction.isRefund,
+    );
+    return hasExactMatch && hasNew ? "new" : "all";
+  });
   const [isAddingManual, setIsAddingManual] = useState(false);
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
   const [categoryPropagationPrompt, setCategoryPropagationPrompt] = useState<{
@@ -256,13 +262,21 @@ export function StatementReconcileStep({
         usedAiStructurer={usedAiStructurer}
       />
 
-      {/* Barra de Ajuste de Colunas e Metadados do Cartão */}
-      {onOpenMapping || detectedMeta?.detectedCardLast4 ? (
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between rounded-xl border border-border/80 bg-surface px-3 py-2 text-xs shadow-xs">
-          <div className="flex flex-wrap items-center gap-2">
+      {/* Linha contextual discreta (Cartão detectado / Reimportação / Ajustar colunas) — sem caixa vazia */}
+      {onOpenMapping || detectedMeta?.detectedCardLast4 || filterCounts.matched > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {detectedMeta?.detectedCardLast4 ? (
-              <span className="text-muted-foreground text-[11px]">
-                Cartão detectado na fatura: •••• {detectedMeta.detectedCardLast4}
+              <span className="text-[11px]">
+                Cartão na fatura: <strong className="font-medium text-foreground">•••• {detectedMeta.detectedCardLast4}</strong>
+              </span>
+            ) : null}
+            {filterCounts.matched > 0 ? (
+              <span className="text-[11px]">
+                <strong className="font-medium text-foreground">{filterCounts.matched}</strong>{" "}
+                {filterCounts.matched === 1 ? "já importado anteriormente" : "já importados anteriormente"} ·{" "}
+                <strong className="font-medium text-positive-strong">{filterCounts.new}</strong>{" "}
+                {filterCounts.new === 1 ? "novo encontrado" : "novos encontrados"}
               </span>
             ) : null}
           </div>
@@ -274,7 +288,7 @@ export function StatementReconcileStep({
               size="sm"
               disabled={isPending}
               onClick={onOpenMapping}
-              className="h-7 self-start sm:self-center gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer ml-auto"
             >
               <Columns3 className="size-3.5" aria-hidden="true" />
               Ajustar colunas

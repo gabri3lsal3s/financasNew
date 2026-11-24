@@ -53,7 +53,7 @@ export function AdminDashboardPage() {
     <div className="flex flex-col gap-8 w-full min-w-0">
       <PageHeader
         title="Dashboard Executivo"
-        description="Métricas em tempo real, telemetria da infraestrutura e ações de governança"
+        description="Métricas em tempo real e ações de governança"
         actions={
           <>
             <Link

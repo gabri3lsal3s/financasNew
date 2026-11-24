@@ -23,8 +23,8 @@ export function AdminSecurityPage() {
   return (
     <div className="flex flex-col gap-8 w-full min-w-0">
       <PageHeader
-        title="Auditoria, Segurança & Governança LGPD"
-        description="Trilha imutável de eventos administrativos e console do encarregado de dados (DPO)"
+        title="Segurança & LGPD"
+        description="Trilha de eventos administrativos e console DPO"
       />
 
       <section

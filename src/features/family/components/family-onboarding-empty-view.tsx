@@ -18,7 +18,7 @@ export function FamilyModeInactiveView({
     <div className="flex flex-col gap-5 sm:gap-6 min-w-0" data-testid="family-mode-inactive">
       <PageHeader
         title="Modo Família"
-        description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
+        description="Despesas compartilhadas e divisão da casa"
       />
 
       <EmptyState
@@ -65,7 +65,7 @@ export function FamilyEmptySetupView({ onOpenCreate }: FamilyEmptySetupViewProps
     <div className="flex flex-col gap-5 sm:gap-6 min-w-0">
       <PageHeader
         title="Modo Família"
-        description="Acompanhamento colaborativo, fatias de consumo e equilíbrio de contas da casa."
+        description="Despesas compartilhadas e divisão da casa"
       />
 
       <EmptyState

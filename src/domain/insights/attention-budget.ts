@@ -17,18 +17,7 @@ export type { InsightThemeFamily, SmartDecayRecord };
  * Mapeia uma `themeKey` para sua familia semantica de Smart Decay.
  */
 export function resolveInsightThemeFamily(themeKey: string): InsightThemeFamily {
-  if (themeKey.startsWith("habit:") || themeKey.startsWith("weekly:")) return "habit";
-  if (themeKey.startsWith("price_adj:")) return "price_adjustment";
-  if (themeKey.startsWith("savings:") || themeKey.startsWith("charges:")) return "savings_cut";
-  if (themeKey.startsWith("calib:") || themeKey.startsWith("calib_tx:")) return "calibration";
-  if (themeKey.startsWith("income:") || themeKey.startsWith("income_goal:")) return "income_confirm";
-  if (themeKey.startsWith("missing_expense:") || themeKey.startsWith("due_today:")) return "missing_expense";
-  if (themeKey.startsWith("annual:")) return "annual_commitment";
-  if (themeKey.startsWith("celebration:")) return "celebration";
-  if (themeKey.startsWith("aporte:")) return "surplus";
-  if (themeKey.startsWith("cash_gap")) return "cash_gap";
-  if (themeKey.startsWith("monthly_closing")) return "monthly_closing";
-  return "pace";
+  return resolveThemeFamily(themeKey);
 }
 
 export type InsightSurfaceLayer = "attention_now" | "to_organize" | "on_track_celebration";
@@ -222,7 +211,7 @@ export function resolveThemeFamily(themeOrFamily: string): InsightThemeFamily {
   if (normalized.startsWith("pace")) return "pace";
   if (normalized.startsWith("cash_gap")) return "cash_gap";
   if (normalized.startsWith("surplus") || normalized.startsWith("aporte")) return "surplus";
-  if (normalized.startsWith("habit")) return "habit";
+  if (normalized.startsWith("habit") || normalized.startsWith("weekly")) return "habit";
   if (
     normalized.startsWith("savings") ||
     normalized.startsWith("dup") ||
@@ -234,8 +223,12 @@ export function resolveThemeFamily(themeOrFamily: string): InsightThemeFamily {
   if (normalized.startsWith("price_adj")) return "price_adjustment";
   if (normalized.startsWith("calib")) return "calibration";
   if (normalized.startsWith("income")) return "income_confirm";
-  if (normalized.startsWith("missing_expense")) return "missing_expense";
-  if (normalized.startsWith("annual_commit")) return "annual_commitment";
+  if (normalized.startsWith("missing_expense") || normalized.startsWith("due_today")) {
+    return "missing_expense";
+  }
+  if (normalized.startsWith("annual:") || normalized.startsWith("annual_commit")) {
+    return "annual_commitment";
+  }
   if (normalized.startsWith("celebration")) return "celebration";
   if (normalized.startsWith("monthly_closing")) return "monthly_closing";
   return "habit";

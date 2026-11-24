@@ -10,7 +10,12 @@ import {
 } from "@/components/modules";
 import type { PermissionAlertBannerType } from "@/components/modules/permissions-alert-banner";
 import { buildCashGapBreakdown, buildPaceProjectionBreakdown } from "@/domain/calculation-memory";
-import { applyHomeCarouselAttentionBudget } from "@/domain/insights";
+import {
+  applyHomeCarouselAttentionBudget,
+  type InsightThemeFamily,
+  type SmartDecayRecord,
+} from "@/domain/insights";
+import { resolveInsightThemeFamily } from "@/domain/insights/attention-budget";
 import type { SmartAdvisorInsight } from "@/domain/insights/advisor";
 import type { CalibrationDecision } from "@/domain/insights/feedback";
 import { ActiveTripBanner } from "@/features/trips/components";
@@ -51,10 +56,13 @@ export interface BuildOverviewAlertItemsParams {
   onOpenInitialPreferences?: () => void;
   onDismissCard?: (cardKey: string, days: 7 | 30) => void;
   advisorInsights?: SmartAdvisorInsight[];
-  onDismissAdvisor?: (themeKey?: string, days?: number) => void;
+  onDismissAdvisor?: (themeKey?: string, days?: number, options?: { isResolution?: boolean }) => void;
   onConfirmRecurrence?: (occurrenceKey: string) => void | Promise<void>;
   onIgnoreRecurrence?: (occurrenceKey: string, reason?: CalibrationDecision) => void | Promise<void>;
   onMarkEssential?: (occurrenceKey: string, displayName?: string) => void | Promise<void>;
+  onMarkTxOneOff?: (occurrenceKey: string, displayName?: string) => void | Promise<void>;
+  onPauseFamily?: (themeKey: string) => void;
+  decayByFamily?: Readonly<Partial<Record<InsightThemeFamily, SmartDecayRecord>>>;
   onConfirmIncome?: (payload: {
     name: string;
     valueCents: number;
@@ -365,51 +373,59 @@ export function buildOverviewAlertItems(
   const maxAdvisorSlides = Math.max(0, 2 - operationalItems.length);
   const advisorSlides: DashboardAlertItem[] = (params.advisorInsights ?? [])
     .slice(0, maxAdvisorSlides)
-    .map((insight) => ({
-      id: `smart-advisor-${insight.id}`,
-      priority: insight.priority === 1 ? 3.2 : insight.priority === 2 ? 3.6 : 4.2,
-      content: (
-        <SmartAdvisorCard
-          embeddedInCarousel
-          month={params.month}
-          insight={insight}
-          onDismiss={params.onDismissAdvisor}
-          onConfirmRecurrence={
-            params.onConfirmRecurrence
-              ? async (key) => {
-                  await params.onConfirmRecurrence!(key);
-                  params.onDismissAdvisor?.(insight.themeKey);
-                }
-              : undefined
-          }
-          onIgnoreRecurrence={
-            params.onIgnoreRecurrence
-              ? async (key, reason) => {
-                  await params.onIgnoreRecurrence!(key, reason);
-                  params.onDismissAdvisor?.(insight.themeKey);
-                }
-              : undefined
-          }
-          onMarkEssential={params.onMarkEssential}
-          onConfirmIncome={
-            params.onConfirmIncome
-              ? async (payload) => {
-                  await params.onConfirmIncome!(payload);
-                  params.onDismissAdvisor?.(insight.themeKey);
-                }
-              : undefined
-          }
-          onConfirmExpense={
-            params.onConfirmExpense
-              ? async (payload) => {
-                  await params.onConfirmExpense!(payload);
-                  params.onDismissAdvisor?.(insight.themeKey);
-                }
-              : undefined
-          }
-        />
-      ),
-    }));
+    .map((insight) => {
+      const canPauseFamily =
+        (params.decayByFamily?.[resolveInsightThemeFamily(insight.themeKey)]?.dismissCount ?? 0) >=
+        2;
+      return {
+        id: `smart-advisor-${insight.id}`,
+        priority: insight.priority === 1 ? 3.2 : insight.priority === 2 ? 3.6 : 4.2,
+        content: (
+          <SmartAdvisorCard
+            embeddedInCarousel
+            month={params.month}
+            insight={insight}
+            onDismiss={params.onDismissAdvisor}
+            onConfirmRecurrence={
+              params.onConfirmRecurrence
+                ? async (key) => {
+                    await params.onConfirmRecurrence!(key);
+                    params.onDismissAdvisor?.(insight.themeKey, undefined, { isResolution: true });
+                  }
+                : undefined
+            }
+            onIgnoreRecurrence={
+              params.onIgnoreRecurrence
+                ? async (key, reason) => {
+                    await params.onIgnoreRecurrence!(key, reason);
+                    params.onDismissAdvisor?.(insight.themeKey, undefined, { isResolution: true });
+                  }
+                : undefined
+            }
+            onMarkEssential={params.onMarkEssential}
+            onMarkTxOneOff={params.onMarkTxOneOff}
+            onPauseFamily={params.onPauseFamily}
+            canPauseFamily={canPauseFamily}
+            onConfirmIncome={
+              params.onConfirmIncome
+                ? async (payload) => {
+                    await params.onConfirmIncome!(payload);
+                    params.onDismissAdvisor?.(insight.themeKey, undefined, { isResolution: true });
+                  }
+                : undefined
+            }
+            onConfirmExpense={
+              params.onConfirmExpense
+                ? async (payload) => {
+                    await params.onConfirmExpense!(payload);
+                    params.onDismissAdvisor?.(insight.themeKey, undefined, { isResolution: true });
+                  }
+                : undefined
+            }
+          />
+        ),
+      };
+    });
 
   return applyHomeCarouselAttentionBudget([...operationalItems, ...advisorSlides]).visibleItems;
 }

@@ -149,7 +149,7 @@ export function InvestmentsTab({
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         <div className="rounded-2xl border border-border/80 bg-surface p-4 shadow-xs flex flex-col gap-1">
           <span className="text-xs text-muted-foreground">Patrimônio Consolidado</span>
           <MoneyText cents={numberToCents(totalPatrimonyBRL)} tone="portfolio" variant="hero" animated className="text-lg sm:text-xl font-bold font-display whitespace-nowrap" />

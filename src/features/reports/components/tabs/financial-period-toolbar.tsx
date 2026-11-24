@@ -72,29 +72,28 @@ export function FinancialPeriodToolbar({
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
-          Acompanhe o fluxo de caixa, DRE pessoal e taxas de poupança da competência.
-        </p>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {isBusinessModeEnabled && (
-            <SegmentedControl
-              value={viewScope}
-              onChange={(val) => setViewScope(val as ViewScope)}
-              options={SPHERE_OPTIONS}
-              ariaLabel="Esfera contábil do relatório"
-            />
-          )}
-
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        {isBusinessModeEnabled ? (
           <SegmentedControl
-            value={mode}
-            onChange={(val) => setMode(val as PeriodMode)}
-            options={PERIOD_OPTIONS}
-            ariaLabel="Periodicidade do relatório"
-            className="self-start sm:self-auto"
+            value={viewScope}
+            onChange={(val) => setViewScope(val as ViewScope)}
+            options={SPHERE_OPTIONS}
+            ariaLabel="Esfera contábil do relatório"
+            fullWidth="mobile"
           />
-        </div>
+        ) : (
+          <p className="hidden text-xs text-muted-foreground sm:block sm:text-sm">
+            Fluxo de caixa, entradas, saídas e economia do período
+          </p>
+        )}
+
+        <SegmentedControl
+          value={mode}
+          onChange={(val) => setMode(val as PeriodMode)}
+          options={PERIOD_OPTIONS}
+          ariaLabel="Periodicidade do relatório"
+          fullWidth="mobile"
+        />
       </div>
     </div>
   );
