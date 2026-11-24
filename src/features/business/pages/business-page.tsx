@@ -358,7 +358,7 @@ function BusinessDashboardContent({
               onClick={() => guardAction(() => setWizardOpen(true), "Novo Lançamento PJ")}
             >
               <Plus className="size-4" aria-hidden="true" />
-              <span>Lançar PJ</span>
+              <span>Lançar</span>
             </Button>
           </>
         }
